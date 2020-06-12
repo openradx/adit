@@ -1,0 +1,20 @@
+{
+  "name": "adit",
+  "version": "0.0.1",
+  "description": "JS dependencies for ADIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/medihack/adit.git"
+  },
+  "author": "kai.schlamp@med.uni-heidelberg.de",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/medihack/adit/issues"
+  },
+  "homepage": "https://github.com/medihack/adit#readme",
+  "dependencies": {
+    "bootstrap": "^4.5.0",
+    "bootstrap-icons": "^1.0.0-alpha4",
+    "jquery": "^3.5.1"
+  }
+}
