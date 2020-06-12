@@ -9,5 +9,5 @@ class BatchConfig(AppConfig):
         nav_menu_items.append({
             "name": "new_batch_transfer",
             "label": "Batch Transfer",
-            "url": "/batch/new/"
+            "url": "/batch-transfer/new/"
         })
