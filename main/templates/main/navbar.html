@@ -7,7 +7,16 @@
     <div class="collapse navbar-collapse" id="navbarSupportedContent">
         <ul class="navbar-nav mr-auto">
             {% for item in nav_menu_items %}
-            
+                {% with request.resolver_match.url_name as url_name %}
+                    <li class="nav-item {% if url_name == item.name %} active {% endif %}">
+                        <a class="nav-link" href="{{ item.url }}">
+                            {{ item.label }}
+                            {% if url_name == item.name %}
+                                <span class="sr-only">(current)</span>
+                            {% endif %}
+                        </a>
+                    </li>
+                {% endwith %}
             {% endfor %}
         </ul>
     </div>
