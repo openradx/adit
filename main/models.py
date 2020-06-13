@@ -7,7 +7,7 @@ class DicomNode(models.Model):
         SERVER = 'SV', 'Server'
         PATH = 'PA', 'Path'
 
-    nodeId = models.CharField(max_length=64)
+    nodeId = models.CharField(unique=True, max_length=64)
     nodeName = models.CharField(max_length=128)
     nodeType = models.CharField(max_length=2, choices=NodeType.choices)
 
