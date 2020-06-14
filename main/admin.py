@@ -2,10 +2,10 @@ from django.contrib import admin
 from .models import DicomServer, DicomPath, TransferJob
 
 class DicomServerAdmin(admin.ModelAdmin):
-    pass
+    exclude = ('node_type',)
 
 class DicomPathAdmin(admin.ModelAdmin):
-    pass
+    exclude = ('node_type',)
 
 class TransferJobAdmin(admin.ModelAdmin):
     pass

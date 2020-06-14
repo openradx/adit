@@ -16,5 +16,8 @@
     "bootstrap": "^4.5.0",
     "bootstrap-icons": "^1.0.0-alpha4",
     "jquery": "^3.5.1"
+  },
+  "devDependencies": {
+    "browser-sync": "^2.26.7"
   }
 }
