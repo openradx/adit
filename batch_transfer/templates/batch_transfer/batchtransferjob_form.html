@@ -1,0 +1,11 @@
+{% extends "main/base_generic.html" %}
+
+{% block content %}
+    <div class="container">
+        <h5 class="card-title">Add new batch transfer job</h5>
+        <p>
+            {% load crispy_forms_tags %}
+            {% crispy form %}
+        </p>
+    </div>
+{% endblock %}

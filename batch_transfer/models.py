@@ -2,9 +2,10 @@ from django.db import models
 from main.models import TransferJob
 from .apps import BATCH_TRANSFER_JOB_KEY
 
+
 class BatchTransferJob(TransferJob):
-    project_name = models.CharField(max_length=256)
-    project_description = models.TextField()
+    project_name = models.CharField(max_length=150)
+    project_description = models.TextField(max_length=2000)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

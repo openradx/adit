@@ -1,4 +1,7 @@
-from django.shortcuts import render
+from django.views.generic.edit import CreateView
+from .models import BatchTransferJob
+from .forms import BatchTransferJobForm
 
-def new_batch_transfer(request):
-    return render(request, 'batch_transfer/new_batch_transfer.html', {})
+class BatchTransferJobCreate(CreateView):
+    model = BatchTransferJob
+    form_class = BatchTransferJobForm

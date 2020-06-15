@@ -1,4 +1,4 @@
-<nav class="navbar navbar-expand-lg navbar-light bg-light">
+<nav class="navbar navbar-expand-md navbar-dark fixed-top bg-dark">
     <a class="navbar-brand" href="/">ADIT</a>
     <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
         <span class="navbar-toggler-icon"></span>
@@ -9,9 +9,9 @@
             {% for item in nav_menu_items %}
                 {% with request.resolver_match.url_name as url_name %}
                     <li class="nav-item {% if url_name == item.name %} active {% endif %}">
-                        <a class="nav-link" href="{{ item.url }}">
+                        <a class="nav-link" href="{% url item.url_name %}">
                             {{ item.label }}
-                            {% if url_name == item.name %}
+                            {% if url_name == item.url_name %}
                                 <span class="sr-only">(current)</span>
                             {% endif %}
                         </a>

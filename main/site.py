@@ -1,11 +1,10 @@
 nav_menu_items = []
 transfer_job_type_choices = []
 
-def register_main_menu_item(name, label, url):
+def register_main_menu_item(url_name, label):
     nav_menu_items.append({
-        'name': name,
-        'label': label,
-        'url': url
+        'url_name': url_name,
+        'label': label
     })
 
 def register_transfer_job_type(key, name):
