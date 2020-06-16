@@ -1,4 +1,5 @@
 from django.db import models
+from django.conf import settings
 from django.core.validators import MaxValueValidator, MinValueValidator
 from .site import transfer_job_type_choices
 
@@ -40,6 +41,7 @@ class DicomPath(DicomNode):
 class TransferJob(models.Model):
     
     class Status(models.TextChoices):
+        UNVERIFIED = 'UV', 'Unverified'
         PENDING =  'PE', 'Pending'
         IN_PROGRESS = 'PR', 'In Progress'
         CANCELED = 'CA', 'Canceled'
@@ -48,7 +50,8 @@ class TransferJob(models.Model):
     source = models.ForeignKey(DicomNode, related_name='+', null=True, on_delete=models.SET_NULL)
     target = models.ForeignKey(DicomNode, related_name='+', null=True, on_delete=models.SET_NULL)
     job_type = models.CharField(max_length=2, choices=transfer_job_type_choices)
-    status = models.CharField(max_length=2, choices=Status.choices, default=Status.PENDING)
+    status = models.CharField(max_length=2, choices=Status.choices, default=Status.UNVERIFIED)
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
     started_at = models.DateTimeField(null=True)
     stopped_at = models.DateTimeField(null=True)
