@@ -48,7 +48,7 @@ class TransferJob(models.Model):
         COMPLETED = 'CP', 'Completed'
 
     source = models.ForeignKey(DicomNode, related_name='+', null=True, on_delete=models.SET_NULL)
-    target = models.ForeignKey(DicomNode, related_name='+', null=True, on_delete=models.SET_NULL)
+    destination = models.ForeignKey(DicomNode, related_name='+', null=True, on_delete=models.SET_NULL)
     job_type = models.CharField(max_length=2, choices=transfer_job_type_choices)
     status = models.CharField(max_length=2, choices=Status.choices, default=Status.UNVERIFIED)
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)

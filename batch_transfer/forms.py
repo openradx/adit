@@ -15,4 +15,4 @@ class BatchTransferJobForm(forms.ModelForm):
 
     class Meta:
         model = BatchTransferJob
-        fields=['source', 'target', 'project_name', 'project_description']
+        fields=['source', 'destination', 'project_name', 'project_description']
