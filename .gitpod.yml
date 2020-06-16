@@ -6,4 +6,5 @@ tasks:
       pip install -r /workspace/adit/requirements.txt
       createdb adit
       python manage.py migrate
+      echo "from django.contrib.auth import get_user_model; User = get_user_model(); User.objects.create_superuser('admin', 'kai.schlamp@med.uni-heidelberg.de', 'admin')" | python manage.py shell
     command: python manage.py runserver
