@@ -1,6 +1,8 @@
 from django.contrib import admin
 from .models import DicomServer, DicomPath, TransferJob
 
+admin.site.site_header = 'ADIT administration'
+
 class DicomServerAdmin(admin.ModelAdmin):
     exclude = ('node_type',)
 
