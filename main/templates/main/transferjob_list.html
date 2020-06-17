@@ -24,10 +24,14 @@
                 <li class="disabled"><span>&laquo;</span></li>
             {% endif %}
             {% for i in paginator.page_range %}
-                {% if page_obj.number == i %}
-                    <li class="active"><span>{{ i }} <span class="sr-only">(current)</span></span></li>
-                {% else %}
-                    <li><a href="?page={{ i }}">{{ i }}</a></li>
+                {% if i >= page_obj.number|add:-5 and i <= page_obj.number|add:5 %}
+                    {% if page_obj.number == i %}
+                        <li class="active">
+                            <span>{{ i }} <span class="sr-only">(current)</span></span>
+                        </li>
+                    {% else %}
+                        <li><a href="?page={{ i }}">{{ i }}</a></li>
+                    {% endif %}
                 {% endif %}
             {% endfor %}
             {% if page_obj.has_next %}
