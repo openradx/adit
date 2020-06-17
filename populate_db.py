@@ -55,7 +55,7 @@ pallas_path, _ = DicomPath.objects.get_or_create(
 )
 
 batch_transfer_jobs = []
-for i in range(10):
+for i in range(100):
     project_name = 'Project ' + str(i)
     project_description = project_name + ' description'
     batch_transfer_jobs.append(
