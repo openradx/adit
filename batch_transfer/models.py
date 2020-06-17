@@ -1,4 +1,5 @@
 from django.db import models
+from django.urls import reverse
 from main.models import TransferJob
 from .apps import BATCH_TRANSFER_JOB_KEY
 
@@ -10,6 +11,9 @@ class BatchTransferJob(TransferJob):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.job_type = BATCH_TRANSFER_JOB_KEY
+
+    def get_absolute_url(self):
+        return reverse("batch-transfer-job-detail", args=[str(self.id)])
 
 
 class BatchTransferRequest(models.Model):

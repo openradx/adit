@@ -6,8 +6,8 @@
 
     <div class="collapse navbar-collapse" id="navbarSupportedContent">
         <ul class="navbar-nav mr-auto">
-            {% for item in nav_menu_items %}
-                {% with request.resolver_match.url_name as url_name %}
+            {% with request.resolver_match.url_name as url_name %}
+                {% for item in nav_menu_items %}
                     <li class="nav-item {% if url_name == item.name %} active {% endif %}">
                         <a class="nav-link" href="{% url item.url_name %}">
                             {{ item.label }}
@@ -16,8 +16,16 @@
                             {% endif %}
                         </a>
                     </li>
-                {% endwith %}
-            {% endfor %}
+                {% endfor %}
+                <li class="nav-item {% if url_name == 'transfer-job-list' %} active {% endif %}">
+                    <a class="nav-link" href="{% url 'transfer-job-list' %}">
+                        Jobs
+                        {% if url_name == 'transfer-job-list' %}
+                            <span class="sr-only">(current)</span>
+                        {% endif %}
+                    </a>
+                </li>
+            {% endwith %}
         </ul>
     </div>
 </nav>

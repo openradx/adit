@@ -3,7 +3,6 @@ from django.conf import settings
 from django.core.validators import MaxValueValidator, MinValueValidator
 from .site import transfer_job_type_choices
 
-
 class DicomNode(models.Model):
 
     class NodeType(models.TextChoices):
@@ -16,7 +15,7 @@ class DicomNode(models.Model):
 
     def __str__(self):
         node_types_dict = {key: value for key, value in self.NodeType.choices}
-        return f"{self.node_name} ({node_types_dict[self.node_type]})"
+        return f"DICOM {node_types_dict[self.node_type]}  {self.node_name}"
 
 
 class DicomServer(DicomNode):
@@ -58,4 +57,4 @@ class TransferJob(models.Model):
 
     def __str__(self):
         status_dict = {key: value for key, value in self.Status.choices}
-        return f"Transfer Job - {status_dict[self.status]}"
+        return f"{self.__class__.__name__} {status_dict[self.status]}"
