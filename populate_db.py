@@ -1,14 +1,32 @@
 from django.contrib.auth import get_user_model
+from django.db import IntegrityError
 from main.models import DicomServer, DicomPath
+from batch_transfer.models import BatchTransferJob
+from main.models import TransferJob
 
+superuser = None
+User = get_user_model()
 try:
-    User = get_user_model()
-    User.objects.get(username='admin')
+    superuser = User.objects.get(username='admin')
 except User.DoesNotExist:
-    User.objects.create_superuser('admin', 'kai.schlamp@med.uni-heidelberg.de', 'admin')
+    superuser = User.objects.create_superuser('admin', 'kai.schlamp@med.uni-heidelberg.de', 'admin')
 
+def get_or_create_user(username, email, password, *args, **kwargs):
+    global User, IntegrityError
+    try:
+        return (User.objects.create_user(username, email, password), True)
+    except IntegrityError:
+        return (User.objects.get(username=username, email=email), False)
 
-DicomServer.objects.get_or_create(
+normal_users = []
+for i in range(10):
+    username = 'user' + str(i)
+    email = username + '@foo.com'
+    password = username
+    normal_user, _ = get_or_create_user(username, email, password)
+    normal_users.append(normal_user)
+
+ceres_server, _ = DicomServer.objects.get_or_create(
     node_id='id_ceres',
     defaults=dict(
         node_name='Ceres',
@@ -17,7 +35,8 @@ DicomServer.objects.get_or_create(
         port=11112
     )
 )
-DicomServer.objects.get_or_create(
+
+eros_server, _ = DicomServer.objects.get_or_create(
     node_id='id_eros',
     defaults=dict(
         node_name='Eros',
@@ -27,10 +46,24 @@ DicomServer.objects.get_or_create(
     )
 )
 
-DicomPath.objects.get_or_create(
+pallas_path, _ = DicomPath.objects.get_or_create(
     node_id='id_pallas',
     defaults=dict(
         node_name='Pallas',
         path='/workspace/test_dir'
     )
 )
+
+batch_transfer_jobs = []
+for i in range(10):
+    project_name = 'Project ' + str(i)
+    project_description = project_name + ' description'
+    batch_transfer_jobs.append(
+        BatchTransferJob.objects.create(
+            source=ceres_server,
+            destination=eros_server,
+            project_name=project_name,
+            project_description=project_description,
+            created_by=normal_users[3]
+        )
+    )

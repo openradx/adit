@@ -7,3 +7,7 @@ tasks:
       createdb adit
       python manage.py migrate
     command: python manage.py runserver
+
+ports:
+  - port: 5432
+    onOpen: ignore
