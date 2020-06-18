@@ -15,7 +15,7 @@ class DicomNode(models.Model):
 
     def __str__(self):
         node_types_dict = {key: value for key, value in self.NodeType.choices}
-        return f"DICOM {node_types_dict[self.node_type]}  {self.node_name}"
+        return f"DICOM {node_types_dict[self.node_type]} {self.node_name}"
 
 
 class DicomServer(DicomNode):
