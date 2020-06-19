@@ -11,3 +11,7 @@ tasks:
 ports:
   - port: 5432
     onOpen: ignore
+
+vscode:
+  extensions:
+    - batisteo.vscode-django@0.20.0:gUr2ptf5xx2Pcb6pNcYqgw==

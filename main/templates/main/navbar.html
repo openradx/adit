@@ -25,6 +25,13 @@
                         {% endif %}
                     </a>
                 </li>
+                {% if user.is_superuser or user.is_staff %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'admin:index' %}">
+                            Admin
+                        </a>
+                    </li>
+                {% endif %}
             {% endwith %}
         </ul>
     </div>

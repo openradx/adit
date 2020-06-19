@@ -12,10 +12,9 @@ class UserFactory(factory.django.DjangoModelFactory):
     first_name = factory.Faker('first_name')
     last_name = factory.Faker('last_name')
 
-
 class AdminUserFactory(UserFactory):
+    username = 'admin'
+    email = 'foo@bar.com'
+    password = factory.PostGenerationMethodCall('set_password', 'admin')
     is_superuser = True
-    is_staff = True
-
-class StaffUserFactory(UserFactory):
     is_staff = True
