@@ -7,6 +7,8 @@ from .apps import BATCH_TRANSFER_JOB_KEY
 class BatchTransferJob(TransferJob):
     project_name = models.CharField(max_length=150)
     project_description = models.TextField(max_length=2000)
+    trial_protocol_id = models.TextField(max_length=64, blank=True)
+    trial_protocol_name = models.TextField(max_length=64, blank=True)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -23,6 +25,9 @@ class BatchTransferRequest(models.Model):
         WARNING = 'WA', 'Warning'
         ERROR = 'ER', 'Error'
 
+    class Meta:
+        unique_together = (('request_id', 'job'))
+
     request_id = models.CharField(max_length=16)
     patient_id = models.CharField(null=True, max_length=64)
     patient_name = models.CharField(null=True, max_length=256)
@@ -33,6 +38,3 @@ class BatchTransferRequest(models.Model):
     status_code = models.CharField(null=True, max_length=2, choices=Status.choices)
     status_message = models.CharField(null=True, max_length=256)
     job = models.ForeignKey(BatchTransferJob, on_delete=models.CASCADE)
-
-    class Meta:
-        unique_together = (('request_id', 'job'))
