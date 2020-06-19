@@ -9,8 +9,7 @@ class DicomNode(models.Model):
         SERVER = 'SV', 'Server'
         PATH = 'PA', 'Path'
 
-    node_id = models.CharField(unique=True, max_length=64)
-    node_name = models.CharField(max_length=128)
+    node_name = models.CharField(unique=True, max_length=64)
     node_type = models.CharField(max_length=2, choices=NodeType.choices)
 
     def __str__(self):
