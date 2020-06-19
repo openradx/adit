@@ -3,14 +3,13 @@ image:
 
 tasks:
   - init: |
-      cd /workspace/adit/webserver/
-      pip install -r ./requirements.txt
-      createdb adit
+      pip install -r /workspace/adit/requirements.txt
+      createdb adit_dev
       python manage.py migrate
     command: python manage.py runserver
 
 ports:
-  - port: 5432
+  - port: 5432 # PostgreSQL
     onOpen: ignore
 
 vscode:
