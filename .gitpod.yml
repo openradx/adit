@@ -3,7 +3,8 @@ image:
 
 tasks:
   - init: |
-      pip install -r /workspace/adit/requirements.txt
+      cd /workspace/adit/webserver/
+      pip install -r ./requirements.txt
       createdb adit
       python manage.py migrate
     command: python manage.py runserver
