@@ -25,7 +25,7 @@ SECRET_KEY = 'r&!5(b4ha2a(wnc#&tv-5s)dgf#4rbj_gon5ua05a-ufs#k3ue'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1']
+ALLOWED_HOSTS = []
 
 
 # Application definition
@@ -142,4 +142,5 @@ LOGIN_REDIRECT_URL = 'home'
 
 # This seems to be imporant for development on Gitpod as CookieStorage
 # and FallbackStorage does not work there.
+# Seems to be the same problem with Cloud9 https://stackoverflow.com/a/34828308/166229
 MESSAGE_STORAGE = 'django.contrib.messages.storage.session.SessionStorage'
