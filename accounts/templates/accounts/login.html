@@ -1,0 +1,24 @@
+{% extends "main/base_generic.html" %}
+
+{% block content %}
+    <div class="top container">
+        {% if form.errors %}
+            <p>Your username or password is incorrect. Try again?</p>
+        {% endif %}
+        
+        {% if next %}
+            {% if user.is_authenticated %}
+                <p>Your account doesn't have access to this page. To proceed,
+                please login with an account that has access.</p>
+            {% else %}
+                <p>You muss login to access this page.</p>
+            {% endif %}
+        {% endif %}
+
+        <h5>Login</h5>
+        <p>
+            {% load crispy_forms_tags %}
+            {% crispy form %}
+        </p>
+    </div>
+{% endblock %}

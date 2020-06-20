@@ -19,6 +19,7 @@ from django.conf import settings
 
 urlpatterns = [
     path('', include('main.urls')),
+    path('accounts/', include('accounts.urls')),
     path('batch-transfer-jobs/', include('batch_transfer.urls')),
     path('admin/', admin.site.urls),
 ]

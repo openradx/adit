@@ -1,7 +1,7 @@
 from django import forms
 from crispy_forms.helper import FormHelper
 from crispy_forms.bootstrap import FormActions
-from crispy_forms.layout import Submit, Button
+from crispy_forms.layout import Submit
 from .models import BatchTransferJob
 
 

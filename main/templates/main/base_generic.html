@@ -1,7 +1,9 @@
+{% load bootstrap4 %}
+{% load static %}
+
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    {% load static %}
     <link rel="stylesheet" type="text/css" href="{% static 'main/vendor/css/bootstrap.min.css' %}">
     <link rel="stylesheet" type="text/css" href="{% static 'main/css/main.css' %}">
     <script src="{% static 'main/vendor/js/jquery.min.js' %}"></script>
@@ -14,5 +16,9 @@
     <main role="role">
         {% block content %}{% endblock %}
     </main>
+
+    {% if messages %}
+        {% bootstrap_messages %}
+    {% endif %}
   </body>
 </html>

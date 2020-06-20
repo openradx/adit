@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     'django_extensions',
     'debug_toolbar',
     'crispy_forms',
+    'bootstrap4',
     'main',
     'accounts',
     'batch_transfer'
@@ -136,3 +137,9 @@ AUTH_USER_MODEL = 'accounts.User'
 CRISPY_TEMPLATE_PACK = 'bootstrap4'
 
 INTERNAL_IPS = ['127.0.0.1']
+
+LOGIN_REDIRECT_URL = 'home'
+
+# This seems to be imporant for development on Gitpod as CookieStorage
+# and FallbackStorage does not work there.
+MESSAGE_STORAGE = 'django.contrib.messages.storage.session.SessionStorage'
