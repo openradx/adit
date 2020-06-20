@@ -1,7 +1,7 @@
 import sys, os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
 
-from tools import Anonymizer # pylint: disable-msg=import-error
+from ..tools import Anonymizer # pylint: disable-msg=import-error
 
 anonymizer = Anonymizer()
 # anonymizer.anonymize_folder(

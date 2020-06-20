@@ -5,8 +5,8 @@ import os, shutil
 from functools import partial
 from pprint import pprint
 from datetime import datetime
-from tools import ExcelProcessor, Anonymizer
-from dicom_conductor import DicomConductor, Config as ConConfig
+from shared.tools import ExcelProcessor, Anonymizer
+from shared.dicom_conductor import DicomConductor, Config as ConConfig
 
 class Adit:
     def __init__(self, config_ini_path, excel_file_path, worksheet_name):

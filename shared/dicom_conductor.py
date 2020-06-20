@@ -7,8 +7,8 @@ import os
 import subprocess
 from pathlib import Path
 from functools import partial
-from tools import Anonymizer
-from dicom_operations import (
+from .tools import Anonymizer
+from .dicom_operations import (
     Config as OpConfig,
     DicomFind, DicomGet, DicomStore
 )

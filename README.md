@@ -4,3 +4,7 @@
 
 # Important manage commands
 - ./manage.py shell_plus --print-sql
+
+#  Used dicom images from
+- https://wiki.cancerimagingarchive.net/display/Public/RIDER+PHANTOM+MRI
+- https://wiki.cancerimagingarchive.net/display/Public/Collections
