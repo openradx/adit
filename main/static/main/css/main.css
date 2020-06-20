@@ -3,6 +3,15 @@ body {
     padding-top: 3.5rem;
 }
 
+/* Move main container even a bit more away from the navbar */
 .top.container {
     margin-top: 1.5rem;
+}
+
+/* Floating panel for Django messages framework */
+.messages-panel {
+    position: absolute;
+    z-index: 2000;
+    top: 4rem;
+    right: 0.5rem;
 }

@@ -8,6 +8,7 @@
     <link rel="stylesheet" type="text/css" href="{% static 'main/css/main.css' %}">
     <script src="{% static 'main/vendor/js/jquery.min.js' %}"></script>
     <script src="{% static 'main/vendor/js/bootstrap.bundle.min.js' %}"></script>
+    <script src="{% static 'main/js/main.js' %}"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
   </head>
 
@@ -18,7 +19,9 @@
     </main>
 
     {% if messages %}
-        {% bootstrap_messages %}
+        <div class="messages-panel">
+            {% bootstrap_messages %}
+        </div>
     {% endif %}
   </body>
 </html>
