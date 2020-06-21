@@ -10,9 +10,28 @@ class BatchTransferJobForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+
+        self.fields['trial_protocol_id'].help_text = """
+            Optional to set ClinicalTrialProtocolID in all transfered
+            DICOM headers. Leave blank to no modify this DICOM tag.
+        """
+
+        self.fields['trial_protocol_name'].help_text = """
+            Optional to set ClinicalTrialProtocolName in all transfered
+            DICOM headers. Leave blank to no modify this DICOM tag.
+        """
+
+        self.fields['excel_file'].help_text = """
+            The Excel file which contains the data to transfer between
+            two DICOM nodes. See [help] how to format the Excel sheet.
+        """
+
         self.helper = FormHelper()
-        self.helper.add_input(Submit('save', 'Add job'))
+        self.helper.add_input(Submit('save', 'Create new job'))
 
     class Meta:
         model = BatchTransferJob
-        fields=['source', 'destination', 'project_name', 'project_description']
+        fields=[
+            'source', 'destination', 'project_name', 'project_description',
+            'pseudonymize', 'trial_protocol_id', 'trial_protocol_name'
+        ]
