@@ -1,69 +1,31 @@
-from django.contrib.auth import get_user_model
-from django.db import IntegrityError
-from main.models import DicomServer, DicomPath
-from batch_transfer.models import BatchTransferJob
-from main.models import TransferJob
+import factory
+from accounts.factories import AdminUserFactory, UserFactory
+from main.factories import DicomServerFactory, DicomPathFactory
+from batch_transfer.factories import BatchTransferJobFactory
 
-superuser = None
-User = get_user_model()
-try:
-    superuser = User.objects.get(username='admin')
-except User.DoesNotExist:
-    superuser = User.objects.create_superuser('admin', 'kai.schlamp@med.uni-heidelberg.de', 'admin')
+AdminUserFactory()
 
-def get_or_create_user(username, email, password, *args, **kwargs):
-    global User, IntegrityError
-    try:
-        return (User.objects.create_user(username, email, password), True)
-    except IntegrityError:
-        return (User.objects.get(username=username, email=email), False)
-
-normal_users = []
+users = []
 for i in range(10):
-    username = 'user' + str(i)
-    email = username + '@foo.com'
-    password = username
-    normal_user, _ = get_or_create_user(username, email, password)
-    normal_users.append(normal_user)
+    user = UserFactory()
+    users.append(user)
+    
+servers = []
+for i in range(5):
+    server = DicomServerFactory()
+    servers.append(server)
 
-ceres_server, _ = DicomServer.objects.get_or_create(
-    node_id='id_ceres',
-    defaults=dict(
-        node_name='Ceres',
-        ae_title='ae_ceres',
-        ip='192.168.1.1',
-        port=11112
-    )
-)
+paths = []
+for i in range(3):
+    path = DicomPathFactory()
+    paths.append(path)
 
-eros_server, _ = DicomServer.objects.get_or_create(
-    node_id='id_eros',
-    defaults=dict(
-        node_name='Eros',
-        ae_title='ae_eros',
-        ip='192.168.1.2',
-        port=11112
-    )
-)
-
-pallas_path, _ = DicomPath.objects.get_or_create(
-    node_id='id_pallas',
-    defaults=dict(
-        node_name='Pallas',
-        path='/workspace/test_dir'
-    )
-)
+server_or_paths = servers + paths
 
 batch_transfer_jobs = []
-for i in range(100):
-    project_name = 'Project ' + str(i)
-    project_description = project_name + ' description'
-    batch_transfer_jobs.append(
-        BatchTransferJob.objects.create(
-            source=ceres_server,
-            destination=eros_server,
-            project_name=project_name,
-            project_description=project_description,
-            created_by=normal_users[3]
-        )
+for i in range(150):
+    job = BatchTransferJobFactory(
+        source=factory.Faker('random_element', elements=servers),
+        destination=factory.Faker('random_element', elements=server_or_paths),
+        created_by=factory.Faker('random_element', elements=users)
     )

@@ -14,7 +14,7 @@ class DicomServerFactory(factory.django.DjangoModelFactory):
 class DicomPathFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = DicomPath
-        django_get_or_create = ('node_name', 'node_type')
+        django_get_or_create = ('node_name',)
 
     node_name = factory.Faker('domain_word')
     path = factory.Faker('file_path')
