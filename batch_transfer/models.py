@@ -7,8 +7,9 @@ from .apps import BATCH_TRANSFER_JOB_KEY
 class BatchTransferJob(TransferJob):
     project_name = models.CharField(max_length=150)
     project_description = models.TextField(max_length=2000)
-    trial_protocol_id = models.TextField(max_length=64, blank=True)
-    trial_protocol_name = models.TextField(max_length=64, blank=True)
+    pseudonymize = models.BooleanField(default=True)
+    trial_protocol_id = models.CharField(max_length=64, blank=True)
+    trial_protocol_name = models.CharField(max_length=64, blank=True)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

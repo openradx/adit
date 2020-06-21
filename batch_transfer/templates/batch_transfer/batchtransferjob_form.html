@@ -4,7 +4,10 @@
 
 {% block content %}
     <div class="top container">
-        <h5 class="card-title">Add new batch transfer job</h5>
+        <h5 class="card-title">
+            New batch transfer job
+            {% include 'main/header_help_link.html' %}
+        </h5>
         <p>{% crispy form %}</p>
     </div>
 {% endblock %}

@@ -14,4 +14,11 @@ body {
     z-index: 2000;
     top: 4rem;
     right: 0.5rem;
+    width: 500px;
+}
+
+/* Style the help links in the headers */
+.header-help-link {
+    font-size: 1rem;
+    border-bottom: 2px dotted;
 }
