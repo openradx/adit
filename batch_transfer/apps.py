@@ -8,7 +8,7 @@ class BatchTransferConfig(AppConfig):
 
     def ready(self):
         register_main_menu_item(
-            url_name='add-batch-transfer-job',
+            url_name='new_batch_transfer_job',
             label='Batch Transfer'
         )
         

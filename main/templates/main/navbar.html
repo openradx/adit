@@ -17,10 +17,10 @@
                         </a>
                     </li>
                 {% endfor %}
-                <li class="nav-item {% if url_name == 'transfer-job-list' %} active {% endif %}">
-                    <a class="nav-link" href="{% url 'transfer-job-list' %}">
+                <li class="nav-item {% if url_name == 'dicom_job_list' %} active {% endif %}">
+                    <a class="nav-link" href="{% url 'dicom_job_list' %}">
                         Jobs
-                        {% if url_name == 'transfer-job-list' %}
+                        {% if url_name == 'dicom_job_list' %}
                             <span class="sr-only">(current)</span>
                         {% endif %}
                     </a>

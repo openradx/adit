@@ -57,7 +57,7 @@ class DicomPath(DicomNode):
         self.node_type = DicomNode.NodeType.PATH
 
 
-class TransferJob(models.Model):
+class DicomJob(models.Model):
     
     class Status(models.TextChoices):
         UNVERIFIED = 'UV', 'Unverified'

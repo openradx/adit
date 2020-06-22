@@ -1,8 +1,8 @@
 from django.urls import path
 from django.views.generic import TemplateView
-from . import views
+from .views import DicomJobListView
 
 urlpatterns = [
     path('', TemplateView.as_view(template_name="main/home.html"), name='home'),
-    path('jobs/', views.TransferJobList.as_view(), name='transfer-job-list')
+    path('jobs/', DicomJobListView.as_view(), name='dicom_job_list')
 ]

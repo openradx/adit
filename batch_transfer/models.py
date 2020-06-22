@@ -1,10 +1,10 @@
 from django.db import models
 from django.urls import reverse
-from main.models import TransferJob
+from main.models import DicomJob
 from .apps import BATCH_TRANSFER_JOB_KEY
 
 
-class BatchTransferJob(TransferJob):
+class BatchTransferJob(DicomJob):
     project_name = models.CharField(max_length=150)
     project_description = models.TextField(max_length=2000)
     pseudonymize = models.BooleanField(default=True)
@@ -16,7 +16,7 @@ class BatchTransferJob(TransferJob):
         self.job_type = BATCH_TRANSFER_JOB_KEY
 
     def get_absolute_url(self):
-        return reverse("batch-transfer-job-detail", args=[str(self.id)])
+        return reverse("batch_transfer_job_detail", args=[str(self.id)])
 
 
 class BatchTransferRequest(models.Model):
