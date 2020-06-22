@@ -12,8 +12,9 @@ class BatchTransferConfig(AppConfig):
             label='Batch Transfer'
         )
         
+        from .views import BatchTransferJobDetail
         register_dicom_job(
             type_key=BATCH_TRANSFER_JOB_KEY,
             type_name='Batch transfer job',
-            detail_url_name='batch_transfer_job_detail'
+            detail_view=BatchTransferJobDetail
         )

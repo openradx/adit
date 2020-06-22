@@ -2,7 +2,7 @@ from django.db import models
 from django.conf import settings
 from django.urls import reverse
 from django.core.validators import MaxValueValidator, MinValueValidator
-from .site import job_type_choices, job_detail_url_names
+from .site import job_type_choices, job_detail_views
 
 class DicomNode(models.Model):
 
@@ -79,8 +79,7 @@ class DicomJob(models.Model):
     stopped_at = models.DateTimeField(null=True)
 
     def get_absolute_url(self):
-        url_name = job_detail_url_names[self.job_type]
-        return reverse(url_name, args=[str(self.id)])
+        return reverse('dicom_job_detail', args=[str(self.id)])
 
     def __str__(self):
         status_dict = {key: value for key, value in self.Status.choices}

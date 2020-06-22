@@ -4,8 +4,7 @@ from .models import DicomJob
 
 
 class JobIdColumn(tables.Column):
-    def __init__(self):
-        super().__init__()
+    attrs={"td": {"class": "job-id"}}
 
     def render(self, record, value):
         url = record.get_absolute_url()
@@ -17,5 +16,7 @@ class DicomJobTable(tables.Table):
 
     class Meta:
         model = DicomJob
+        order_by = ('-id',)
         template_name = 'django_tables2/bootstrap4.html'
         fields = ('id', 'job_type', 'status', 'source', 'destination', 'created_at')
+        attrs = {"class": "table table-bordered table-hover"}
