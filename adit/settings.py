@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     'django_extensions',
     'debug_toolbar',
     'crispy_forms',
+    'django_tables2',
     'bootstrap4',
     'main',
     'accounts',

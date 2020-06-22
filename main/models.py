@@ -1,7 +1,8 @@
 from django.db import models
 from django.conf import settings
+from django.urls import reverse
 from django.core.validators import MaxValueValidator, MinValueValidator
-from .site import transfer_job_type_choices
+from .site import job_type_choices, job_detail_url_names
 
 class DicomNode(models.Model):
 
@@ -63,17 +64,23 @@ class DicomJob(models.Model):
         UNVERIFIED = 'UV', 'Unverified'
         PENDING =  'PE', 'Pending'
         IN_PROGRESS = 'PR', 'In Progress'
+        CANCELING = 'CI', 'Canceling'
         CANCELED = 'CA', 'Canceled'
         COMPLETED = 'CP', 'Completed'
+        DELETED = 'DE', 'Deleted'
 
     source = models.ForeignKey(DicomNode, related_name='+', null=True, on_delete=models.SET_NULL)
     destination = models.ForeignKey(DicomNode, related_name='+', null=True, on_delete=models.SET_NULL)
-    job_type = models.CharField(max_length=2, choices=transfer_job_type_choices)
+    job_type = models.CharField(max_length=2, choices=job_type_choices)
     status = models.CharField(max_length=2, choices=Status.choices, default=Status.UNVERIFIED)
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
     started_at = models.DateTimeField(null=True)
     stopped_at = models.DateTimeField(null=True)
+
+    def get_absolute_url(self):
+        url_name = job_detail_url_names[self.job_type]
+        return reverse(url_name, args=[str(self.id)])
 
     def __str__(self):
         status_dict = {key: value for key, value in self.Status.choices}

@@ -1,6 +1,7 @@
 nav_menu_items = []
-transfer_job_type_choices = []
-#job_detail_paths = []
+job_detail_url_names = {}
+job_type_choices = []
+
 
 def register_main_menu_item(url_name, label):
     nav_menu_items.append({
@@ -8,12 +9,12 @@ def register_main_menu_item(url_name, label):
         'label': label
     })
 
-# TODO
-#def register_transfer_job(job_type_key, job_type_name, job_detail_path):
+def register_dicom_job(type_key, type_name, detail_url_name):
+    if type_key in job_detail_url_names:
+        raise KeyError(f'The key {type_key} for job type {type_name} is already registered.')
 
-
-def register_transfer_job_type(key, name):
-    transfer_job_type_choices.append((key, name))
+    job_detail_url_names[type_key] = detail_url_name
+    job_type_choices.append((type_key, type_name))
 
 def inject_context(request):
     return {'nav_menu_items': nav_menu_items}

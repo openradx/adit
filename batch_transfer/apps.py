@@ -1,5 +1,5 @@
 from django.apps import AppConfig
-from main.site import register_main_menu_item, register_transfer_job_type
+from main.site import register_main_menu_item, register_dicom_job
 
 BATCH_TRANSFER_JOB_KEY = 'BA'
 
@@ -12,4 +12,8 @@ class BatchTransferConfig(AppConfig):
             label='Batch Transfer'
         )
         
-        register_transfer_job_type(BATCH_TRANSFER_JOB_KEY, 'Batch transfer job')
+        register_dicom_job(
+            type_key=BATCH_TRANSFER_JOB_KEY,
+            type_name='Batch transfer job',
+            detail_url_name='batch_transfer_job_detail'
+        )
