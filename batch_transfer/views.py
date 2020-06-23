@@ -1,6 +1,6 @@
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.generic.edit import CreateView
-from main.views import BaseJobDetail
+from django.views.generic import DetailView
 from .models import BatchTransferJob
 from .forms import BatchTransferJobForm
 
@@ -14,5 +14,7 @@ class BatchTransferJobCreate(LoginRequiredMixin, CreateView):
         return super().form_valid(form)
 
 
-class BatchTransferJobDetail(LoginRequiredMixin, BaseJobDetail):
+class BatchTransferJobDetail(LoginRequiredMixin, DetailView):
+    model = BatchTransferJob
+    context_object_name = 'job'
     template_name = 'batch_transfer/batch_transfer_job_detail.html'

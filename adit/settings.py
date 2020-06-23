@@ -42,9 +42,9 @@ INSTALLED_APPS = [
     'crispy_forms',
     'django_tables2',
     'bootstrap4',
-    'main',
-    'accounts',
-    'batch_transfer'
+    'main.apps.MainConfig',
+    'accounts.apps.AccountsConfig',
+    'batch_transfer.apps.BatchTransferConfig'
 ]
 
 MIDDLEWARE = [

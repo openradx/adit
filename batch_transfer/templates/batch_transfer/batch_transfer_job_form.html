@@ -6,8 +6,12 @@
     <div class="top container">
         <h5 class="card-title">
             New batch transfer job
-            {% include 'main/header_help_link.html' %}
+            {% include 'main/header_help_link.html' with modal_id="batch-transfer-help-modal" %}
         </h5>
         <p>{% crispy form %}</p>
     </div>
+{% endblock %}
+
+{% block bottom %}
+    {% include 'batch_transfer/batch_transfer_help_modal.html' with modal_id="batch-transfer-help-modal" %}
 {% endblock %}
