@@ -1,19 +1,28 @@
 from django.db import models
 from django.urls import reverse
 from main.models import DicomJob
-from .apps import BATCH_TRANSFER_JOB_KEY
 
 
 class BatchTransferJob(DicomJob):
+    JOB_TYPE = 'BA'
+    
     project_name = models.CharField(max_length=150)
     project_description = models.TextField(max_length=2000)
     pseudonymize = models.BooleanField(default=True)
     trial_protocol_id = models.CharField(max_length=64, blank=True)
     trial_protocol_name = models.CharField(max_length=64, blank=True)
 
+    class Meta:
+        permissions = [
+            (
+                'cancel_batchtransferjob',
+                'Can cancel batch transfer job'
+            ),
+        ]
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.job_type = BATCH_TRANSFER_JOB_KEY
+        self.job_type = self.JOB_TYPE
 
     def get_absolute_url(self):
         return reverse("batch_transfer_job_detail", args=[str(self.id)])
