@@ -9,7 +9,17 @@
                 DICOM data between different servers or export the files
                 in an encrypted archive to a network drive.
             </p>
-            <a class="btn btn-primary btn-lg" href="#" role="button">Start Transfer</a>
+
+            {% if not user.is_authenticated %}
+                <p>
+                    <a class="btn btn-primary btn-lg" href="{% url 'login' %}" role="button">Log in</a>
+                </p>
+                <p>
+                    No account yet?
+                    <a href="#">Register</a>
+                </p>
+                
+            {% endif %}
         </div>
     </div>
 {% endblock %}
