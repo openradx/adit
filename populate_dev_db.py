@@ -1,13 +1,22 @@
 import factory
-from accounts.factories import AdminUserFactory, UserFactory
+from accounts.factories import DepartmentFactory, AdminUserFactory, UserFactory
 from main.factories import DicomServerFactory, DicomPathFactory
 from batch_transfer.factories import BatchTransferJobFactory
 
-AdminUserFactory()
+departments = []
+for i in range(3):
+    department = DepartmentFactory()
+    departments.append(department)
+
+AdminUserFactory(
+    department=factory.Faker('random_element', elements=departments)
+)
 
 users = []
 for i in range(10):
-    user = UserFactory()
+    user = UserFactory(
+        department=factory.Faker('random_element', elements=departments)
+    )
     users.append(user)
     
 servers = []

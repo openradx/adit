@@ -1,5 +1,13 @@
 import factory
-from .models import User
+from .models import Department, User
+
+class DepartmentFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = Department
+        django_get_or_create = ('name',)
+
+    name = factory.Faker('company')
+    institution = factory.Faker('city')
 
 class UserFactory(factory.django.DjangoModelFactory):
     class Meta:
@@ -11,6 +19,8 @@ class UserFactory(factory.django.DjangoModelFactory):
     password = factory.PostGenerationMethodCall('set_password', 'userpass')
     first_name = factory.Faker('first_name')
     last_name = factory.Faker('last_name')
+    phone_number = factory.Faker('phone_number')
+    department = factory.SubFactory(DepartmentFactory)
 
 class AdminUserFactory(UserFactory):
     username = 'admin'

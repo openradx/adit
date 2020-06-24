@@ -3,7 +3,7 @@ body {
     padding-top: 3.5rem;
 }
 
-/* Move main container even a bit more away from the navbar */
+/* Move the top container even a bit more away from the navbar */
 .top.container {
     margin-top: 1.5rem;
 }
