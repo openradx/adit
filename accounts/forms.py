@@ -28,13 +28,3 @@ class RegistrationForm(UserCreationForm):
 
         self.helper = FormHelper()
         self.helper.add_input(Submit('register', 'Register'))
-
-    def save(self, commit=True):
-        user = super().save(commit=False)
-        user.is_active = False
-        if commit:
-            user.save()
-        return user
-
-            
-        

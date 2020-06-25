@@ -31,4 +31,7 @@ class RegistrationView(CreateView):
     model = User
     form_class = RegistrationForm
     template_name = 'accounts/registration.html'
-    
+
+    def form_valid(self, form):
+        form.instance.is_active = False
+        return super().form_valid(form)
