@@ -1,11 +1,11 @@
 from django.contrib.auth.views import LoginView
 from django.contrib.auth.mixins import AccessMixin, LoginRequiredMixin
 from django.views.generic import DetailView
+from django.views.generic.edit import CreateView
 from django.contrib.messages.views import SuccessMessageMixin
 from django.contrib import messages
-from .forms import CrispyAuthentificationForm
+from .forms import CrispyAuthentificationForm, RegistrationForm
 from .models import User
-
 
 class LoginViewWithSuccessMsg(SuccessMessageMixin, LoginView):
     template_name = 'accounts/login.html'
@@ -26,3 +26,9 @@ class UserProfileView(LoginRequiredMixin, AccessMixin, DetailView):
             self.handle_no_permission()
 
         return super().dispatch(request, *args, **kwargs)
+
+class RegistrationView(CreateView):
+    model = User
+    form_class = RegistrationForm
+    template_name = 'accounts/registration.html'
+    

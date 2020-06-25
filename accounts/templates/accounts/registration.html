@@ -1,0 +1,10 @@
+{% extends "main/base_generic.html" %}
+
+{% load crispy_forms_tags %}
+
+{% block content %}
+    <div class="top container">
+        <h5>User registration</h5>
+        <p>{% crispy form %}</p>
+    </div>
+{% endblock %}

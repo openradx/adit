@@ -1,25 +1,16 @@
 import factory
 from django.contrib.auth.models import Group
-from accounts.factories import DepartmentFactory, AdminUserFactory, UserFactory
+from accounts.factories import AdminUserFactory, UserFactory
 from main.factories import DicomServerFactory, DicomPathFactory
 from batch_transfer.factories import BatchTransferJobFactory
 
-departments = []
-for i in range(3):
-    department = DepartmentFactory()
-    departments.append(department)
-
-AdminUserFactory(
-    department=factory.Faker('random_element', elements=departments)
-)
+AdminUserFactory()
 
 batch_transferrers_group = Group.objects.get(name='batch_transferrers')
 
 users = []
 for i in range(10):
-    user = UserFactory(
-        department=factory.Faker('random_element', elements=departments)
-    )
+    user = UserFactory()
     user.groups.add(batch_transferrers_group)
     users.append(user)
     
