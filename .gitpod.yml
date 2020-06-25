@@ -15,3 +15,4 @@ ports:
 vscode:
   extensions:
     - batisteo.vscode-django@0.20.0:gUr2ptf5xx2Pcb6pNcYqgw==
+    - GrapeCity.gc-excelviewer@2.1.35:7NzkeRn7IqFadY0v3fCHwQ==
