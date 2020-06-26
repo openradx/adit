@@ -4,7 +4,6 @@ from crispy_forms.bootstrap import FormActions
 from crispy_forms.layout import Submit
 from .models import BatchTransferJob
 
-
 class BatchTransferJobForm(forms.ModelForm):
     excel_file = forms.FileField()
 

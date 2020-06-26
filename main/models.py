@@ -73,7 +73,8 @@ class DicomJob(models.Model):
     destination = models.ForeignKey(DicomNode, related_name='+', null=True, on_delete=models.SET_NULL)
     job_type = models.CharField(max_length=2, choices=job_type_choices)
     status = models.CharField(max_length=2, choices=Status.choices, default=Status.UNVERIFIED)
-    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE,
+            related_name='jobs')
     created_at = models.DateTimeField(auto_now_add=True)
     started_at = models.DateTimeField(null=True)
     stopped_at = models.DateTimeField(null=True)

@@ -29,9 +29,9 @@ for i in range(row_count):
     row_id = i + 1
     ws.cell(row=row, column=1).value = row_id
 
-    patient_id = fake.numerify(text="##########")
+    patient_id = fake.numerify(text='##########')
     ws.cell(row=row, column=2).value = patient_id
-    patient_name = f'{fake.first_name()}, {fake.last_name()}'
+    patient_name = f'{fake.last_name()}, {fake.first_name()}'
     ws.cell(row=row, column=3).value = patient_name
 
     patient_birth_date = fake.date_of_birth(minimum_age=15)
