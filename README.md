@@ -14,3 +14,8 @@ max_period_size = models.PositiveIntegerField(default=100)
     enforced_break = models.PositiveIntegerField(default=2000)
     interval_start_time = models.TimeField()
     interval_end_time = models.TimeField()
+
+# Resources
+
+## Testing
+- https://developer.mozilla.org/en-US/docs/Learn/Server-side/Django

@@ -1,5 +1,5 @@
 import factory
-from .models import Department, User
+from .models import User
 
 class UserFactory(factory.django.DjangoModelFactory):
     class Meta:

@@ -29,9 +29,14 @@ class BatchTransferJobForm(forms.ModelForm):
         self.helper = FormHelper()
         self.helper.add_input(Submit('save', 'Create new job'))
 
+    def save(self, commit=True):
+        print('in save')
+        return super().save(commit=commit)
+
     class Meta:
         model = BatchTransferJob
-        fields=[
+        fields=(
             'source', 'destination', 'project_name', 'project_description',
-            'pseudonymize', 'trial_protocol_id', 'trial_protocol_name'
-        ]
+            'pseudonymize', 'trial_protocol_id', 'trial_protocol_name',
+            'excel_file'
+        )
