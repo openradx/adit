@@ -3,9 +3,10 @@ from crispy_forms.helper import FormHelper
 from crispy_forms.bootstrap import FormActions
 from crispy_forms.layout import Submit
 from .models import BatchTransferJob
+from .fields import RestrictedFileField
 
 class BatchTransferJobForm(forms.ModelForm):
-    excel_file = forms.FileField()
+    excel_file = RestrictedFileField(max_upload_size=5242880)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -28,9 +29,16 @@ class BatchTransferJobForm(forms.ModelForm):
         self.helper = FormHelper()
         self.helper.add_input(Submit('save', 'Create new job'))
 
+    def clean_excel_file(self):
+        file = self.cleaned_data['excel_file']
+        # TODO proccess excel file here and create items
+        # use self.add_error to add multiple errors
+        return file
+
     def save(self, commit=True):
-        print('in save')
-        return super().save(commit=commit)
+        job = super().save(commit=commit)
+        # TODO save job items here
+        return job
 
     class Meta:
         model = BatchTransferJob

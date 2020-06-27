@@ -8,13 +8,18 @@ from ..forms import BatchTransferJobForm
 class BatchTransferJobFormTests(TestCase):
     @classmethod
     def setUpTestData(cls):
-        cls.server1 = DicomServerFactory()
-        cls.server2 = DicomServerFactory()
+        cls.data_dict = {
+            'source': DicomServerFactory(),
+            'destination': DicomServerFactory(),
+            'project_name': 'Apollo project',
+            'project_description': 'Fly to the moon'
+        }
 
-        cls.excel_file_mock = file_mock = MagicMock(spec=File, name='FileMock')
-        cls.excel_file_mock.name = 'sample_sheet.xlsx'
+        file = MagicMock(spec=File, name='FileMock', size=5242880)
+        file.name = 'sample_sheet.xlsx'
+        cls.file_dict = { 'excel_file': file }
 
-    def test_batch_form_field_labels(self):
+    def test_field_labels(self):
         form = BatchTransferJobForm()
         self.assertEqual(len(form.fields), 8)
         self.assertEqual(form.fields['source'].label, 'Source')
@@ -26,18 +31,11 @@ class BatchTransferJobFormTests(TestCase):
         self.assertEqual(form.fields['trial_protocol_name'].label, 'Trial protocol name')
         self.assertIsNone(form.fields['excel_file'].label)
 
-    def test_batch_form_with_valid_data(self):
-        data = {
-            'source': self.server1,
-            'destination': self.server2,
-            'project_name': 'Apollo project',
-            'project_description': 'Fly to the moon'
-        }
-        file_dict = { 'excel_file': self.excel_file_mock }
-        form = BatchTransferJobForm(data, file_dict)
+    def test_with_valid_data(self):
+        form = BatchTransferJobForm(self.data_dict, self.file_dict)
         self.assertTrue(form.is_valid())
 
-    def test_batch_form_with_missing_values(self):
+    def test_with_missing_values(self):
         form = BatchTransferJobForm({})
         self.assertFalse(form.is_valid())
         self.assertEqual(len(form.errors), 5)
@@ -46,4 +44,11 @@ class BatchTransferJobFormTests(TestCase):
         self.assertEqual(form.errors['project_name'], ['This field is required.'])
         self.assertEqual(form.errors['project_description'], ['This field is required.'])
         self.assertEqual(form.errors['excel_file'], ['This field is required.'])
-        
+
+    def test_disallow_too_large_file(self):
+        file = MagicMock(spec=File, name='FileMock', size=5242881)
+        file.name = 'sample_sheet.xlsx'
+        form = BatchTransferJobForm(self.data_dict, { 'excel_file': file })
+        self.assertFalse(form.is_valid())
+        self.assertEqual(form.errors['excel_file'],
+                ['File too large. Please keep filesize under 5.0\xa0MB.'])
