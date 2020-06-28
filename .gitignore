@@ -133,3 +133,6 @@ node_modules/
 
 # Ignore db of pytest-testmon
 .testmondata
+
+# Ignore Orthanc storage
+OrthancStorage*

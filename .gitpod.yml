@@ -8,7 +8,7 @@ tasks:
       python manage.py migrate
     command: python manage.py runserver
 
-  - command: ptw --runner "pytest -s --testmon"
+  - command: ptw
 
   - command: redis-server
 
@@ -18,6 +18,12 @@ tasks:
 
 ports:
   - port: 5432 # PostgreSQL
+    onOpen: ignore
+  - port: 6379 # Redis Server
+    onOpen: ignore
+  - port: 3501 # Orhtanc 1 (DICOM port)
+    onOpen: ignore
+  - port: 3502 # Orhtanc 2 (DICOM port)
     onOpen: ignore
 
 vscode:
