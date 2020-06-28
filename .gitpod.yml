@@ -8,6 +8,14 @@ tasks:
       python manage.py migrate
     command: python manage.py runserver
 
+  - command: ptw --runner "pytest -s --testmon"
+
+  - command: redis-server
+
+  - command: Orthanc /workspace/adit/_debug/orthanc_config1.json
+
+  - command: Orthanc /workspace/adit/_debug/orthanc_config2.json
+
 ports:
   - port: 5432 # PostgreSQL
     onOpen: ignore

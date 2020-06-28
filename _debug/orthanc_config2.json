@@ -1,0 +1,6 @@
+{
+    "Name": "My archive 2",
+    "HttpPort": 4502,
+    "DicomAet": "ARCHIVE2",
+    "DicomPort": 3502
+}
