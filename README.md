@@ -1,5 +1,9 @@
 [![Gitpod ready-to-code](https://img.shields.io/badge/Gitpod-ready--to--code-blue?logo=gitpod)](https://gitpod.io/#https://github.com/medihack/adit)
 
+# Commands
+- Watch only changed tests with pytest watch: ptw --runner "pytest -s --testmon"
+
+
 # adit
 
 # Important manage commands

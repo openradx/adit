@@ -130,3 +130,6 @@ dmypy.json
 
 # Javascript dev dependencies
 node_modules/
+
+# Ignore db of pytest-testmon
+.testmondata

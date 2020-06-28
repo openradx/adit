@@ -1,6 +1,5 @@
 from django.forms import forms
 from django.template.defaultfilters import filesizeformat
-from django.utils.translation import ugettext_lazy as _
 
 class RestrictedFileField(forms.FileField):
     """File field with restrictions.
@@ -26,7 +25,7 @@ class RestrictedFileField(forms.FileField):
         file = super().clean(*args, **kwargs)
 
         if file.size > self.max_upload_size:
-            raise forms.ValidationError(_('File too large. Please keep filesize under %s.') 
+            raise forms.ValidationError('File too large. Please keep filesize under %s.'
                     % (filesizeformat(self.max_upload_size)))
 
         return file
