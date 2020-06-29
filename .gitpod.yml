@@ -26,7 +26,7 @@ ports:
     onOpen: ignore
   - port: 7501 # Orhtanc 1 Webserver
     onOpen: ignore
-  - port: 7501 # Orhtanc 2 Webserver
+  - port: 7502 # Orhtanc 2 Webserver
     onOpen: ignore
   - port: 8000 # Django Dev Webserver
     onOpen: open-browser
