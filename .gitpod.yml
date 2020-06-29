@@ -9,26 +9,30 @@ tasks:
       createdb adit_dev
       python manage.py migrate
     command: |
-      python manage.py runserver
       supervisord
+      python manage.py runserver
 
   - init: sleep 1 && while [ -f /tmp/.pip-install-lock ]; do sleep 1; done
     command: ptw --runner 'pytest -s --testmon'
 
 ports:
-  - port: 8000 # Django Dev Webserver
-    onOpen: ignore
-  - port: 9001 # Supervisord Webserver
-    onOpen: ignore
   - port: 5432 # PostgreSQL
     onOpen: ignore
   - port: 6379 # Redis Server
     onOpen: ignore
-  - port: 7501 # Orhtanc 1 (DICOM port)
+  - port: 6501 # Orhtanc 1 DICOM Server
     onOpen: ignore
-  - port: 7502 # Orhtanc 2 (DICOM port)
+  - port: 6502 # Orhtanc 2 DICOM Server
     onOpen: ignore
-
+  - port: 7501 # Orhtanc 1 Webserver
+    onOpen: ignore
+  - port: 7501 # Orhtanc 2 Webserver
+    onOpen: ignore
+  - port: 8000 # Django Dev Webserver
+    onOpen: open-browser
+  - port: 9001 # Supervisord Webserver
+    onOpen: ignore
+    
 vscode:
   extensions:
     - batisteo.vscode-django@0.20.0:gUr2ptf5xx2Pcb6pNcYqgw==
