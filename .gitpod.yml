@@ -6,27 +6,23 @@ tasks:
       pip install -r /workspace/adit/requirements.txt
       createdb adit_dev
       python manage.py migrate
+      supervisord
     command: python manage.py runserver
 
-  - command: ptw
-
-  - command: redis-server
-
-  - command: Orthanc /workspace/adit/_debug/orthanc_config1.json
-
-  - command: Orthanc /workspace/adit/_debug/orthanc_config2.json
+  - command: ptw --runner 'pytest -s --testmon'
 
 ports:
+  - port: 9001 # Supervisord Webserver
+    onOpen: ignore
   - port: 5432 # PostgreSQL
     onOpen: ignore
   - port: 6379 # Redis Server
     onOpen: ignore
-  - port: 3501 # Orhtanc 1 (DICOM port)
+  - port: 7501 # Orhtanc 1 (DICOM port)
     onOpen: ignore
-  - port: 3502 # Orhtanc 2 (DICOM port)
+  - port: 7502 # Orhtanc 2 (DICOM port)
     onOpen: ignore
 
 vscode:
   extensions:
     - batisteo.vscode-django@0.20.0:gUr2ptf5xx2Pcb6pNcYqgw==
-    - GrapeCity.gc-excelviewer@2.1.35:7NzkeRn7IqFadY0v3fCHwQ==

@@ -1,3 +1,4 @@
+# Apps
 Django==3.0.7
 psycopg2==2.8.5
 django-crispy-forms==1.9.1
@@ -11,6 +12,7 @@ pynetdicom==1.5.1
 django-extensions==2.2.9
 django-debug-toolbar==2.2
 django-debug-permissions==1.0.0
+supervisor==4.2.0
 
 # Testing
 factory-boy==2.12.0
