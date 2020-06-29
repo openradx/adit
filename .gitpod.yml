@@ -3,15 +3,21 @@ image:
 
 tasks:
   - init: |
+      touch /tmp/.pip-install-lock
       pip install -r /workspace/adit/requirements.txt
+      rm /tmp/.pip-install-lock
       createdb adit_dev
       python manage.py migrate
+    command: |
+      python manage.py runserver
       supervisord
-    command: python manage.py runserver
 
-  - command: ptw --runner 'pytest -s --testmon'
+  - init: sleep 1 && while [ -f /tmp/.pip-install-lock ]; do sleep 1; done
+    command: ptw --runner 'pytest -s --testmon'
 
 ports:
+  - port: 8000 # Django Dev Webserver
+    onOpen: ignore
   - port: 9001 # Supervisord Webserver
     onOpen: ignore
   - port: 5432 # PostgreSQL
