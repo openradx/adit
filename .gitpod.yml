@@ -30,7 +30,7 @@ ports:
   - port: 7502 # Orhtanc 2 Webserver
     onOpen: ignore
   - port: 8000 # Django Dev Webserver
-    onOpen: open-browser
+    onOpen: notify
   - port: 9001 # Supervisord Webserver
     onOpen: ignore
     
