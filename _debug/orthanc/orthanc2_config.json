@@ -7,5 +7,8 @@
     "DicomModalities" : {
         "ORTHANC1" : [ "ORTHANC1", "127.0.0.1", 7501 ],
         "ADIT" : [ "ADIT", "127.0.0.1", 7900 ]
-    }
+    },
+    "Plugins" : [
+        "./OrthancWebViewer/libOrthancWebViewer.so.2.6"
+    ]
 }
