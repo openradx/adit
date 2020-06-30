@@ -2,7 +2,7 @@ image:
   file: .gitpod.Dockerfile
 
 tasks:
-  - before: supervisord
+  - before: supervisord && sleep 1
     init: |
       touch /tmp/.pip-install-lock
       pip install -r /workspace/adit/requirements.txt
