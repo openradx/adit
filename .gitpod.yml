@@ -2,6 +2,7 @@ image:
   file: .gitpod.Dockerfile
 
 tasks:
+  - before: echo "foobar"
   - init: |
       touch /tmp/.pip-install-lock
       pip install -r /workspace/adit/requirements.txt
