@@ -1,0 +1,11 @@
+{
+    "Name": "Orthanc Test Server 1",
+    "HttpPort": 6501,
+    "DicomAet": "ORTHANC1",
+    "DicomPort": 7501,
+    "StorageDirectory" : "OrthancStorage1",
+    "DicomModalities" : {
+        "ORTHANC2" : [ "ORTHANC2", "127.0.0.1", 7502 ],
+        "ADIT" : [ "ADIT", "127.0.0.1", 7900 ]
+    }
+}

@@ -26,5 +26,8 @@ max_period_size = models.PositiveIntegerField(default=100)
 
 # Resources
 
+## supervisord
+- https://medium.com/@jayden.chua/use-supervisor-to-run-your-python-tests-13e91171d6d3
+
 ## Testing
 - https://developer.mozilla.org/en-US/docs/Learn/Server-side/Django

@@ -1,7 +1,0 @@
-{
-    "Name": "My archive 2",
-    "HttpPort": 6502,
-    "DicomAet": "ARCHIVE2",
-    "DicomPort": 7502,
-    "StorageDirectory" : "OrthancStorage2"
-}
