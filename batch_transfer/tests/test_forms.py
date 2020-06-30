@@ -1,6 +1,6 @@
 import os
 from django.test import TestCase
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 from django.core.files import File
 from main.factories import DicomServerFactory
 from ..forms import BatchTransferJobForm
@@ -31,9 +31,16 @@ class BatchTransferJobFormTests(TestCase):
         self.assertEqual(form.fields['trial_protocol_name'].label, 'Trial protocol name')
         self.assertIsNone(form.fields['excel_file'].label)
 
-    def test_with_valid_data(self):
+    @patch('batch_transfer.forms.ExcelProcessor')
+    def test_with_valid_data(self, ExcelProcessorMock):
+        excel_processer_mock = ExcelProcessorMock.return_value
+        excel_processer_mock.extract_data.return_value = []
+
         form = BatchTransferJobForm(self.data_dict, self.file_dict)
+        
         self.assertTrue(form.is_valid())
+        ExcelProcessorMock.assert_called_once_with(self.file_dict['excel_file'])
+        excel_processer_mock.extract_data.assert_called_once()
 
     def test_with_missing_values(self):
         form = BatchTransferJobForm({})

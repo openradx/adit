@@ -1,9 +1,12 @@
 from django import forms
+from django.db import transaction
+from django.core.exceptions import ValidationError
 from crispy_forms.helper import FormHelper
 from crispy_forms.bootstrap import FormActions
 from crispy_forms.layout import Submit
-from .models import BatchTransferJob
+from .models import BatchTransferJob, BatchTransferItem
 from .fields import RestrictedFileField
+from .utils.excel_processor import ExcelProcessor, ExcelError
 
 class BatchTransferJobForm(forms.ModelForm):
     excel_file = RestrictedFileField(max_upload_size=5242880)
@@ -31,13 +34,44 @@ class BatchTransferJobForm(forms.ModelForm):
 
     def clean_excel_file(self):
         file = self.cleaned_data['excel_file']
-        # TODO proccess excel file here and create items
-        # use self.add_error to add multiple errors
+
+        try:
+            processor = ExcelProcessor(file)
+            self.data = processor.extract_data()
+        except ExcelError as err:
+            for error in err.errors:
+                self.add_error(error)
+            raise ValidationError(str(err))
+
         return file
 
+    def _save_items(self, job):
+        items = []
+        for row in self.data:
+            item = BatchTransferItem(
+                job=job,
+                patient_id=row['PatientID'],
+                patient_name=row['PatientName'],
+                patient_birth_data=row['PatientBirthDate'],
+                study_date=row['StudyDate'],
+                modality=row['Modality'],
+                pseudonym=row['Pseudonym']
+            )
+            items.append(item)
+        
+        BatchTransferItem.objects.bulk_create(items)
+            
     def save(self, commit=True):
-        job = super().save(commit=commit)
-        # TODO save job items here
+        with transaction.atomic():
+            job = super().save(commit=commit)
+
+            if commit:
+                self._save_items(job)
+            else:
+                # If not committing, add a method to the form to allow deferred
+                # saving of items.
+                self.save_items = self._save_items
+
         return job
 
     class Meta:

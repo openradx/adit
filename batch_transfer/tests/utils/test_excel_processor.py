@@ -12,8 +12,12 @@ class ExcelProcessorTest(TestCase):
         
     def test_open_valid_excel_batch_file(self):
         processor = ExcelProcessor(self.excel_file)
-        processor.open()
-        data = processor.data
-        print(data)
+        data = processor.extract_data()
         self.assertEquals(len(data), 3)
+        self.assertEquals(data[0]['PatientName'], 'Turner^Yolanda')
+        self.assertEquals(data[0]['Modality'], 'MR')
+        self.assertEquals(data[1]['PatientID'], '9918223726')
         self.assertEquals(data[1]['RowID'], '2')
+        self.assertEquals(data[1]['StudyDate'], '20181219')
+        self.assertEquals(data[2]['PatientBirthDate'], '19461211')
+        self.assertEquals(data[2]['Pseudonym'], 'AXPVQR47')

@@ -12,14 +12,7 @@ cat /tmp/supervisord.pid | kill -s SIGTERM '{print $1}'
 python manage.py shell_plus --print-sql
 
 # Ports in development
-- 8000 Django Webserver (development)
-- 5432 PostreSQL
-- 9001 Supervisord Webserver
-- 6379 Redis Server
-- 7501 Orthanc 1 DICOM
-- 7502 Orhtanc 2 DICOM
-- 6501 Orthanc 1 Webserver
-- 6502 Orthanc 2 Webserver
+- see .gitpod.yml file
 
 #  Used dicom images from
 - https://wiki.cancerimagingarchive.net/display/Public/RIDER+PHANTOM+MRI
