@@ -8,6 +8,11 @@ tasks:
       rm /tmp/.pip-install-lock
       createdb adit_dev
       python manage.py migrate
+      supervisord
+      sleep 3 # wait for orthancs to come up
+      python manage.py reset_orthancs
+      supervisorctl shutdown
+      sleep 3 # wait for supervisord to completely shutdown
     command: |
       supervisord
       python manage.py runserver
