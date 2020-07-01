@@ -1,5 +1,5 @@
-import os
 from django.test import TestCase
+import os
 from unittest.mock import MagicMock, patch
 from django.core.files import File
 from main.factories import DicomServerFactory

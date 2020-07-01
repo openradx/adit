@@ -37,7 +37,7 @@ class BatchTransferJobForm(forms.ModelForm):
 
         try:
             processor = ExcelProcessor(file)
-            self.data = processor.extract_data()
+            self.excel_data = processor.extract_data()
         except ExcelError as err:
             for error in err.errors:
                 self.add_error(error)
@@ -47,12 +47,13 @@ class BatchTransferJobForm(forms.ModelForm):
 
     def _save_items(self, job):
         items = []
-        for row in self.data:
+        for row in self.excel_data:
             item = BatchTransferItem(
                 job=job,
+                row_id=row['RowID'],
                 patient_id=row['PatientID'],
                 patient_name=row['PatientName'],
-                patient_birth_data=row['PatientBirthDate'],
+                patient_birth_date=row['PatientBirthDate'],
                 study_date=row['StudyDate'],
                 modality=row['Modality'],
                 pseudonym=row['Pseudonym']
@@ -60,7 +61,7 @@ class BatchTransferJobForm(forms.ModelForm):
             items.append(item)
         
         BatchTransferItem.objects.bulk_create(items)
-            
+
     def save(self, commit=True):
         with transaction.atomic():
             job = super().save(commit=commit)

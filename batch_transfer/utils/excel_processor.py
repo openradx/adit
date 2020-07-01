@@ -130,17 +130,17 @@ class ExcelProcessor:
             r += 1
 
     def _clean_row_id(self, row_id, r):
-        if row_id is not None:
-            if row_id not in self._row_ids:
-                self._row_ids.add(row_id)
-                return str(row_id)
-            else:
-                self._errors.append('Invalid duplicate RowID in row ' % r)
+        row_id = str(row_id).strip()
+        if row_id and row_id not in self._row_ids:
+            self._row_ids.add(row_id)
+            return row_id
+        elif row_id and row_id in self._row_ids:
+            self._errors.append('Duplicate RowID in row ' % r)  
         else:
             self._errors.append('Missing RowID in Excel row ' % r)
-        return ''
 
     def _clean_patient_id(self, patient_id):
+        patient_id = str(patient_id).strip()
         return str(patient_id) if patient_id else ''
 
     def _clean_patient_name(self, patient_name):
@@ -148,28 +148,25 @@ class ExcelProcessor:
 
     def _clean_patient_birth_date(self, patient_birth_date, r):
         if patient_birth_date and isinstance(patient_birth_date, datetime.datetime):
-            return patient_birth_date.strftime('%Y%m%d') if patient_birth_date else ''
+            return patient_birth_date
         elif patient_birth_date:
-            self._errors.append('No valid PatientBirthDate (row %d)' % r)
+            self._errors.append('Invalid PatientBirthDate (row %d)' % r)
         else:
             self._errors.append('Missing PatientBirthDate (row %d)' % r)
-        return ''
 
     def _clean_modality(self, modality, r):
         if modality:
             return str(modality)
         else:
             self._errors.append('Missing Modality (row %d)' % r)
-            return ''
 
     def _clean_study_date(self, study_date, r):
         if study_date and isinstance(study_date, datetime.datetime):
-            return study_date.strftime('%Y%m%d')
+            return study_date
         elif study_date:
             self._errors.append('No valid StudyDate (row %d)' % r)
         else:
             self._errors.append('Missing StudyDate (row %d)' % r)
-        return ''
 
     def _clean_pseudonym(self, pseudonym):
         return str(pseudonym) if pseudonym else ''

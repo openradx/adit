@@ -1,5 +1,9 @@
 [![Gitpod ready-to-code](https://img.shields.io/badge/Gitpod-ready--to--code-blue?logo=gitpod)](https://gitpod.io/#https://github.com/medihack/adit)
 
+
+# TODO
+- rename row_id / RowID to ransfer_id / TransferID
+
 # Commands
 
 ## Watch only changed tests with pytest watch
@@ -17,6 +21,7 @@ python manage.py shell_plus --print-sql
 #  Used dicom images from
 - https://wiki.cancerimagingarchive.net/display/Public/RIDER+PHANTOM+MRI
 - https://wiki.cancerimagingarchive.net/display/Public/Collections
+
 
 # Planned fields for BatchTransferJob model
 max_period_size = models.PositiveIntegerField(default=100)
