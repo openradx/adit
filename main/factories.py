@@ -1,5 +1,5 @@
 import factory
-from .models import DicomServer, DicomPath
+from .models import DicomServer, DicomFolder
 
 class DicomServerFactory(factory.django.DjangoModelFactory):
     class Meta:
@@ -11,9 +11,9 @@ class DicomServerFactory(factory.django.DjangoModelFactory):
     ip = factory.Faker('ipv4')
     port = factory.Faker('random_int', min=1, max=9999)
 
-class DicomPathFactory(factory.django.DjangoModelFactory):
+class DicomFolderFactory(factory.django.DjangoModelFactory):
     class Meta:
-        model = DicomPath
+        model = DicomFolder
         django_get_or_create = ('node_name',)
 
     node_name = factory.Faker('domain_word')

@@ -12,16 +12,34 @@ class BatchTransferJobForm(forms.ModelForm):
     excel_file = RestrictedFileField(max_upload_size=5242880)
 
     def __init__(self, *args, **kwargs):
+        self.user = kwargs.pop('user')
+
         super().__init__(*args, **kwargs)
 
+        if not self.user.has_perm('batch_transfer.can_transfer_unpseudonymized'):
+            self.fields['pseudonymize'].widget.attrs['disabled'] = 'true'
+            
+            self.fields['pseudonymize'].help_text = """
+                You only have the permission to transfer the data pseudonymized.
+            """
+        else:
+            self.fields['pseudonymize'].help_text = """
+                Should the transferred data be pseudonymized by providing the
+                pseudonyms in the Excel file or by letting ADIT generate them.
+            """
+
+        self.fields['trial_protocol_id'].widget.attrs['placeholder'] = 'Optional'
+
         self.fields['trial_protocol_id'].help_text = """
-            Optional to set ClinicalTrialProtocolID in all transfered
-            DICOM headers. Leave blank to no modify this DICOM tag.
+            Fill only when to modify the ClinicalTrialProtocolID tag
+            of all transfered DICOM files. Leave blank otherwise.
         """
 
+        self.fields['trial_protocol_name'].widget.attrs['placeholder'] = 'Optional'
+
         self.fields['trial_protocol_name'].help_text = """
-            Optional to set ClinicalTrialProtocolName in all transfered
-            DICOM headers. Leave blank to no modify this DICOM tag.
+            Fill only when to modify the ClinicalTrialProtocolName tag
+            of all transfered DICOM files. Leave blank otherwise.
         """
 
         self.fields['excel_file'].help_text = """
@@ -30,7 +48,15 @@ class BatchTransferJobForm(forms.ModelForm):
         """
 
         self.helper = FormHelper()
-        self.helper.add_input(Submit('save', 'Create new job'))
+        self.helper.add_input(Submit('save', 'Create new batch transfer job'))
+
+    def clean_pseudonymize(self):
+        pseudonymize = self.cleaned_data['pseudonymize']
+
+        if not self.user.has_perm('batch_transfer.can_transfer_unpseudonymized'):
+            pseudonymize = True
+
+        return pseudonymize
 
     def clean_excel_file(self):
         file = self.cleaned_data['excel_file']

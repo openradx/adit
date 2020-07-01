@@ -31,6 +31,6 @@ def create_group(sender, **kwargs):
         (
             'batch_transfer.add_batchtransferjob',
             'batch_transfer.view_batchtransferjob',
-            'batch_transfer.cancel_batchtransferjob'
+            'batch_transfer.can_cancel_batchtransferjob'
         )
     )

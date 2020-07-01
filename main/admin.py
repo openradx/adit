@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import DicomServer, DicomPath
+from .models import DicomServer, DicomFolder
 
 admin.site.site_header = 'ADIT administration'
 
@@ -9,8 +9,8 @@ class DicomServerAdmin(admin.ModelAdmin):
 
 admin.site.register(DicomServer, DicomServerAdmin)
 
-class DicomPathAdmin(admin.ModelAdmin):
+class DicomFolderAdmin(admin.ModelAdmin):
     list_display = ('node_name', 'path')
     exclude = ('node_type',)
 
-admin.site.register(DicomPath, DicomPathAdmin)
+admin.site.register(DicomFolder, DicomFolderAdmin)

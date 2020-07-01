@@ -12,12 +12,13 @@ class BatchTransferJob(DicomJob):
     trial_protocol_name = models.CharField(max_length=64, blank=True)
 
     class Meta:
-        permissions = [
-            (
-                'cancel_batchtransferjob',
-                'Can cancel batch transfer job'
-            ),
-        ]
+        permissions = ((
+            'can_cancel_batchtransferjob',
+            'Can cancel batch transfer job'
+        ), (
+            'can_transfer_unpseudonymized',
+            'Can transfer unpseudonymized'
+        ))
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

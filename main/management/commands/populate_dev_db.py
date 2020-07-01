@@ -2,7 +2,7 @@ from django.core.management.base import BaseCommand
 import factory
 from django.contrib.auth.models import Group
 from accounts.factories import AdminUserFactory, UserFactory
-from main.factories import DicomServerFactory, DicomPathFactory
+from main.factories import DicomServerFactory, DicomFolderFactory
 from batch_transfer.factories import BatchTransferJobFactory
 
 class Command(BaseCommand):
@@ -20,21 +20,31 @@ class Command(BaseCommand):
             users.append(user)
             
         servers = []
-        for i in range(5):
-            server = DicomServerFactory()
-            servers.append(server)
+        servers.append(DicomServerFactory(
+            node_name='Orthac Test Server 1',
+            ae_title='ORTHANC1',
+            ip='127.0.0.1',
+            port=7501
+        ))
+        servers.append(DicomServerFactory(
+            node_name='Orthac Test Server 2',
+            ae_title='ORTHANC2',
+            ip='127.0.0.1',
+            port=7502
+        ))
 
-        paths = []
-        for i in range(3):
-            path = DicomPathFactory()
-            paths.append(path)
+        folders = []
+        folders.append(DicomFolderFactory(
+            node_name='tmp folder',
+            path='/tmp/adit_dicom_folder'
+        ))
 
-        server_or_paths = servers + paths
+        servers_and_folders = servers + folders
 
         batch_transfer_jobs = []
         for i in range(150):
             job = BatchTransferJobFactory(
                 source=factory.Faker('random_element', elements=servers),
-                destination=factory.Faker('random_element', elements=server_or_paths),
+                destination=factory.Faker('random_element', elements=servers_and_folders),
                 created_by=factory.Faker('random_element', elements=users)
             )

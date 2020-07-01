@@ -1,7 +1,7 @@
 import factory
 from faker import Faker
 from .models import BatchTransferJob, BatchTransferItem
-from main.factories import DicomServerFactory, DicomPathFactory
+from main.factories import DicomServerFactory, DicomFolderFactory
 from accounts.factories import UserFactory
 
 fake = Faker()
@@ -19,7 +19,7 @@ class BatchTransferJobFactory(factory.django.DjangoModelFactory):
     created_by = factory.SubFactory(UserFactory)
 
 class BatchTransferJobToPathFactory(BatchTransferJobFactory):
-    destination = factory.SubFactory(DicomPathFactory)
+    destination = factory.SubFactory(DicomFolderFactory)
 
 status_codes = [key for key, value in BatchTransferItem.Status.choices]
 class BatchTransferItemFactory(factory.django.DjangoModelFactory):

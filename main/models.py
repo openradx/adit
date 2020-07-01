@@ -8,7 +8,7 @@ class DicomNode(models.Model):
 
     class NodeType(models.TextChoices):
         SERVER = 'SV', 'Server'
-        PATH = 'PA', 'Path'
+        FOLDER = 'FO', 'Folder'
 
     node_name = models.CharField(unique=True, max_length=64)
     node_type = models.CharField(max_length=2, choices=NodeType.choices)
@@ -34,12 +34,12 @@ class DicomServer(DicomNode):
         choices=QueryModel.choices,
         default=QueryModel.PATIENT_ROOT
     )
-    move_query_model = models.CharField(
+    get_query_model = models.CharField(
         max_length=2,
         choices=QueryModel.choices,
         default=QueryModel.PATIENT_ROOT
     )
-    get_query_model = models.CharField(
+    move_query_model = models.CharField(
         max_length=2,
         choices=QueryModel.choices,
         default=QueryModel.PATIENT_ROOT
@@ -50,12 +50,12 @@ class DicomServer(DicomNode):
         self.node_type = DicomNode.NodeType.SERVER
 
 
-class DicomPath(DicomNode):
+class DicomFolder(DicomNode):
     path = models.CharField(max_length=256)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.node_type = DicomNode.NodeType.PATH
+        self.node_type = DicomNode.NodeType.FOLDER
 
 
 class DicomJob(models.Model):
