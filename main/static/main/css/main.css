@@ -9,12 +9,16 @@ body {
 }
 
 /* Floating panel for Django messages framework */
-.messages-panel {
+.messages-panel-outer {
     position: absolute;
-    z-index: 2000;
-    top: 4rem;
-    right: 0.5rem;
-    width: 500px;
+    left: 50%;
+    z-index: 10000;
+    bottom: 0.5rem;
+}
+.messages-panel-inner {
+    position: relative;
+    left: -50%;
+    min-width: 500px;
 }
 
 /* Style the help links in the headers */

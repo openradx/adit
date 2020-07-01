@@ -10,6 +10,7 @@ tasks:
       rm /tmp/.pip-install-lock
       createdb adit_dev
       python manage.py migrate
+      python manage.py populate_dev_db
       python manage.py reset_orthancs
     command: python manage.py runserver
 
