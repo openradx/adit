@@ -4,6 +4,7 @@ from unittest.mock import MagicMock, patch
 from django.core.files import File
 from main.factories import DicomServerFactory
 from ..forms import BatchTransferJobForm
+from accounts.models import User
 
 class BatchTransferJobFormTests(TestCase):
     @classmethod
@@ -19,8 +20,10 @@ class BatchTransferJobFormTests(TestCase):
         file.name = 'sample_sheet.xlsx'
         cls.file_dict = { 'excel_file': file }
 
+        cls.user = MagicMock(spec=User, name='UserMock')
+
     def test_field_labels(self):
-        form = BatchTransferJobForm()
+        form = BatchTransferJobForm(user=self.user)
         self.assertEqual(len(form.fields), 8)
         self.assertEqual(form.fields['source'].label, 'Source')
         self.assertEqual(form.fields['destination'].label, 'Destination')
@@ -36,14 +39,16 @@ class BatchTransferJobFormTests(TestCase):
         excel_processer_mock = ExcelProcessorMock.return_value
         excel_processer_mock.extract_data.return_value = []
 
-        form = BatchTransferJobForm(self.data_dict, self.file_dict)
+        form = BatchTransferJobForm(self.data_dict, self.file_dict, user=self.user)
         
         self.assertTrue(form.is_valid())
         ExcelProcessorMock.assert_called_once_with(self.file_dict['excel_file'])
         excel_processer_mock.extract_data.assert_called_once()
 
     def test_with_missing_values(self):
-        form = BatchTransferJobForm({})
+        print('foobar')
+        form = BatchTransferJobForm(user=self.user)
+        print(form.errors)
         self.assertFalse(form.is_valid())
         self.assertEqual(len(form.errors), 5)
         self.assertEqual(form.errors['source'], ['This field is required.'])
@@ -55,7 +60,7 @@ class BatchTransferJobFormTests(TestCase):
     def test_disallow_too_large_file(self):
         file = MagicMock(spec=File, name='FileMock', size=5242881)
         file.name = 'sample_sheet.xlsx'
-        form = BatchTransferJobForm(self.data_dict, { 'excel_file': file })
+        form = BatchTransferJobForm(self.data_dict, { 'excel_file': file }, user=self.user)
         self.assertFalse(form.is_valid())
         self.assertEqual(form.errors['excel_file'],
                 ['File too large. Please keep filesize under 5.0\xa0MB.'])
