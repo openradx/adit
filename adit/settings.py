@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     'crispy_forms',
     'django_tables2',
     'bootstrap4',
+    'django_rq',
     'main.apps.MainConfig',
     'accounts.apps.AccountsConfig',
     'batch_transfer.apps.BatchTransferConfig'
@@ -139,8 +140,10 @@ USE_TZ = True
 
 STATIC_URL = '/static/'
 
+# Custom user model
 AUTH_USER_MODEL = 'accounts.User'
 
+# For crispy forms
 CRISPY_TEMPLATE_PACK = 'bootstrap4'
 
 INTERNAL_IPS = ['127.0.0.1']
@@ -151,3 +154,23 @@ LOGIN_REDIRECT_URL = 'home'
 # and FallbackStorage does not work there.
 # Seems to be the same problem with Cloud9 https://stackoverflow.com/a/34828308/166229
 MESSAGE_STORAGE = 'django.contrib.messages.storage.session.SessionStorage'
+
+# Django RQ settings
+RQ_QUEUES = {
+    'default': {
+        'HOST': 'localhost',
+        'PORT': 6379,
+        'DB': 0
+    },
+    'high': {
+        'HOST': 'localhost',
+        'PORT': 6379,
+        'DB': 0
+    },
+    'low': {
+        'HOST': 'localhost',
+        'PORT': 6379,
+        'DB': 0
+    }
+}
+RQ_SHOW_ADMIN_LINK = True

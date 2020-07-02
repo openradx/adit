@@ -9,11 +9,13 @@
 ## Watch only changed tests with pytest watch
 ptw --runner 'pytest -s --testmon'
 
-## Kill supervisord
-cat /tmp/supervisord.pid | kill -s SIGTERM '{print $1}'
+## supervisord
+- Start supervisord: `supervisord`
+- Show all control commands: `supervisorctl help`
+- Shutdown supervisord: `supervisorctl shutdown`
 
-## Shell with show all excecuted SQL statements
-python manage.py shell_plus --print-sql
+## Django shells
+- Show all SQL statements (needs django_extensions): `python manage.py shell_plus --print-sql`
 
 # Ports in development
 - see .gitpod.yml file

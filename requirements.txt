@@ -7,6 +7,8 @@ django-bootstrap4==2.1.1
 openpyxl==3.0.3
 pydicom==2.0.0
 pynetdicom==1.5.1
+django-rq==2.3.2
+rq-scheduler==0.10.0
 
 # Dev
 django-extensions==2.2.9

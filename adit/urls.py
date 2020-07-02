@@ -24,6 +24,12 @@ urlpatterns = [
     path('', include('batch_transfer.urls')),
 ]
 
+# Django RQ dashboard
+urlpatterns += [
+    path('django-rq/', include('django_rq.urls'))
+]
+
+# Debug Toolbar in Debug mode only
 if settings.DEBUG:
     import debug_toolbar
     urlpatterns = [
