@@ -1,8 +1,7 @@
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.generic.edit import CreateView
-from django.views.generic import DetailView
+from django.views.generic import TemplateView, DetailView
 from django.contrib.auth.mixins import PermissionRequiredMixin
-from django.template.response import SimpleTemplateResponse
 from main.mixins import OwnerRequiredMixin
 from .models import SiteConfig, BatchTransferJob
 from .forms import BatchTransferJobForm
@@ -25,7 +24,8 @@ class BatchTransferJobCreate(LoginRequiredMixin, PermissionRequiredMixin, Create
     def dispatch(self, request, *args, **kwargs):
         config = SiteConfig.objects.first()
         if config.batch_transfer_locked and not request.user.is_staff:
-            return SimpleTemplateResponse('batch_transfer/batch_transfer_locked.html')
+            return TemplateView.as_view(
+                    template_name='batch_transfer/batch_transfer_locked.html')(request)
         return super().dispatch(request, *args, **kwargs)
 
 class BatchTransferJobDetail(LoginRequiredMixin, OwnerRequiredMixin, DetailView):

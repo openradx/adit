@@ -1,6 +1,6 @@
 import re
 
-from django.template.response import SimpleTemplateResponse
+from django.views.generic import TemplateView
 from django.urls import reverse
 from .models import SiteConfig
 
@@ -14,17 +14,19 @@ class MaintenanceMiddleware:
 
     def __call__(self, request):
         login_request = request.path == reverse('login')
-        if login_request:
+        logout_request = request.path == reverse('logout')
+        if login_request or logout_request:
             return self.get_response(request)
 
         self.config = SiteConfig.objects.first()
         in_maintenance = self.config.maintenance_mode
         if in_maintenance and not request.user.is_staff:
-            return SimpleTemplateResponse('main/maintenance.html').render()
+            return TemplateView.as_view(
+                    template_name='main/maintenance.html')(request).render()
         else:
             response = self.get_response(request)
             if self.is_html_response(response) and in_maintenance and request.user.is_staff:
-                response.content = re.sub(r'<body.*>', '\g<0>Site is in maintenance mode!',
+                response.content = re.sub(r'<body.*>', r'\g<0>Site is in maintenance mode!',
                         response.content.decode('utf-8'))
             return response
 
