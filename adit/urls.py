@@ -25,9 +25,10 @@ urlpatterns = [
 ]
 
 # Django RQ dashboard
-urlpatterns += [
-    path('django-rq/', include('django_rq.urls'))
-]
+urlpatterns += [path('django-rq/', include('django_rq.urls'))]
+
+# Django loginas
+urlpatterns += [path("admin/", include('loginas.urls'))]
 
 # Debug Toolbar in Debug mode only
 if settings.DEBUG:

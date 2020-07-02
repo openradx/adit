@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     'django_extensions',
     'debug_permissions',
     'debug_toolbar',
+    'loginas',
     'crispy_forms',
     'django_tables2',
     'bootstrap4',
