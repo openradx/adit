@@ -46,9 +46,7 @@ class BatchTransferJobFormTests(TestCase):
         excel_processer_mock.extract_data.assert_called_once()
 
     def test_with_missing_values(self):
-        print('foobar')
-        form = BatchTransferJobForm(user=self.user)
-        print(form.errors)
+        form = BatchTransferJobForm({}, user=self.user)
         self.assertFalse(form.is_valid())
         self.assertEqual(len(form.errors), 5)
         self.assertEqual(form.errors['source'], ['This field is required.'])
