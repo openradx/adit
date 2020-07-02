@@ -62,3 +62,25 @@ class BatchTransferJobFormTests(TestCase):
         self.assertFalse(form.is_valid())
         self.assertEqual(form.errors['excel_file'],
                 ['File too large. Please keep filesize under 5.0\xa0MB.'])
+
+    @patch('batch_transfer.forms.ExcelProcessor')
+    def test_dont_allow_pseudonymized_transfer_for_user_without_permission(self, ExcelProcessorMock):
+        excel_processer_mock = ExcelProcessorMock.return_value
+        excel_processer_mock.extract_data.return_value = []
+        self.user.has_perm.return_value = False
+        self.data_dict['pseudonymize'] = False
+        form = BatchTransferJobForm(self.data_dict, self.file_dict, user=self.user)
+        self.assertTrue(form.is_valid())
+        self.user.has_perm.assert_called_with('batch_transfer.can_transfer_unpseudonymized')
+        self.assertTrue(form.cleaned_data['pseudonymize'])
+
+    @patch('batch_transfer.forms.ExcelProcessor')
+    def test_allow_pseudonymized_transfer_for_user_with_permission(self, ExcelProcessorMock):
+        excel_processer_mock = ExcelProcessorMock.return_value
+        excel_processer_mock.extract_data.return_value = []
+        self.user.has_perm.return_value = True
+        self.data_dict['pseudonymize'] = False
+        form = BatchTransferJobForm(self.data_dict, self.file_dict, user=self.user)
+        self.assertTrue(form.is_valid())
+        self.user.has_perm.assert_called_with('batch_transfer.can_transfer_unpseudonymized')
+        self.assertFalse(form.cleaned_data['pseudonymize'])
