@@ -7,8 +7,9 @@ class BatchTransferConfig(AppConfig):
 
     def ready(self):
         register_app()
-        post_migrate.connect(create_group, sender=self)
 
+        # Put calls to db stuff in this signal handler
+        post_migrate.connect(init_db, sender=self)
 
 def register_app():
     register_main_menu_item(
@@ -24,7 +25,11 @@ def register_app():
         detail_view=BatchTransferJobDetail
     )
 
-def create_group(sender, **kwargs):
+def init_db(sender, **kwargs):
+    create_group()
+    create_site_config()
+
+def create_group():
     from accounts.utils import create_group_with_permissions
     create_group_with_permissions(
         'batch_transferrers',
@@ -34,3 +39,9 @@ def create_group(sender, **kwargs):
             'batch_transfer.can_cancel_batchtransferjob'
         )
     )
+
+def create_site_config():
+    from .models import SiteConfig
+    config = SiteConfig.objects.first()
+    if not config:
+        SiteConfig.objects.create()

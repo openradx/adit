@@ -2,6 +2,10 @@ from django.db import models
 from django.urls import reverse
 from main.models import DicomJob
 
+class SiteConfig(models.Model):
+    batch_transfer_locked = models.BooleanField(default=False)
+    
+
 class BatchTransferJob(DicomJob):
     JOB_TYPE = 'BA'
     

@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import BatchTransferJob
+from .models import SiteConfig, BatchTransferJob
 
 class BatchTransferJobAdmin(admin.ModelAdmin):
     list_display = (
@@ -15,3 +15,8 @@ class BatchTransferJobAdmin(admin.ModelAdmin):
     get_creator.admin_order_field = 'created_by__username'
 
 admin.site.register(BatchTransferJob, BatchTransferJobAdmin)
+
+class SiteConfigAdmin(admin.ModelAdmin):
+    pass
+
+admin.site.register(SiteConfig)
