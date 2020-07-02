@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import DicomServer, DicomFolder
+from .models import SiteConfig, DicomServer, DicomFolder
 
 admin.site.site_header = 'ADIT administration'
 
@@ -14,3 +14,8 @@ class DicomFolderAdmin(admin.ModelAdmin):
     exclude = ('node_type',)
 
 admin.site.register(DicomFolder, DicomFolderAdmin)
+
+class SiteConfigAdmin(admin.ModelAdmin):
+    pass
+
+admin.site.register(SiteConfig)

@@ -4,6 +4,10 @@ from django.urls import reverse
 from django.core.validators import MaxValueValidator, MinValueValidator
 from .site import job_type_choices, job_detail_views
 
+class SiteConfig(models.Model):
+    maintenance_mode = models.BooleanField(default=False)
+    
+
 class DicomNode(models.Model):
 
     class NodeType(models.TextChoices):
