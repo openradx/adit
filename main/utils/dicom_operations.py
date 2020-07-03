@@ -22,7 +22,6 @@ from pynetdicom.sop_class import ( # pylint: disable-msg=no-name-in-module
 )
 from pynetdicom.status import code_to_category
 
-
 def connect_to_server(func):
     def wrapper(self, *args, **kwargs):
         if self.assoc is None or not self.assoc.isAlive():
@@ -56,7 +55,7 @@ def connect_to_server(func):
 
 
 @dataclass
-class Config:
+class DicomOperationConfig:
     client_ae_title: str
     server_ip: str
     server_port: int
@@ -69,7 +68,7 @@ class Config:
 
 
 class DicomOperation:
-    def __init__(self, config):
+    def __init__(self, config: DicomOperationConfig):
         self.config = config
         self.assoc = None
 
@@ -349,10 +348,10 @@ class DicomMove(DicomOperation):
             raise Exception('Association rejected, aborted or never connected.')
 
     @connect_to_server
-    def send_c_move(self, query_dict, target_ae_title):
+    def send_c_move(self, query_dict, destination_ae_title):
         query_ds = self.make_query_dataset(query_dict)
 
-        responses = self.assoc.send_c_move(query_ds, target_ae_title, self.query_model)
+        responses = self.assoc.send_c_move(query_ds, destination_ae_title, self.query_model)
 
         results = []
         for status, ds in responses:

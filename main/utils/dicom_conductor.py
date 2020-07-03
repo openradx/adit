@@ -7,29 +7,11 @@ import os
 import subprocess
 from pathlib import Path
 from functools import partial
-from .tools import Anonymizer
+from .anonymizer import Anonymizer
 from .dicom_operations import (
     Config as OpConfig,
     DicomFind, DicomGet, DicomStore
 )
-
-@dataclass
-class Config:
-    username: str
-    client_ae_title: str
-    cache_folder: str
-    source_ip: str
-    source_port: int
-    source_ae_title: str
-    target_ip: str = ""
-    target_port: int = 0
-    target_ae_title: str = ""
-    archive_folder: str = ""
-    archive_name: str = ""
-    trial_name: str = ""
-    include_structured_reports: bool = False
-    pseudonymize: bool = True
-    cleanup: bool = True
 
 class ProcessingError(Exception):
     pass
@@ -45,29 +27,48 @@ class DicomConductor:
     INFO = "Info"
     ERROR = "Error"
 
-    def __init__(self, config):
-        self._config = config
+    @dataclass
+    class Config:
+        username: str
+        client_ae_title: str
+        cache_folder: str
+        source_ae_title: str
+        source_ip: str
+        source_port: int
+        destination_ae_title: str = None
+        destination_ip: str = None
+        destination_port: int = None
+        destination_folder: str = None
+        archive_name: str = None
+        clinical_trial_protocol_id: str = None
+        clinical_trial_protocol_name: str = None
+        include_structured_reports: bool = False
+        pseudonymize: bool = True
+        cleanup: bool = True
+
+    def __init__(self, config: DicomConductor.Config):
+        self.config = config
         self.patient_id_cache = dict()
         self.pseudonym_cache = dict()
         self._anonymizer = Anonymizer()
         self._find = DicomFind(OpConfig(
-            self._config.client_ae_title,
-            self._config.source_ip,
-            self._config.source_port,
-            self._config.source_ae_title
+            self.config.client_ae_title,
+            self.config.source_ip,
+            self.config.source_port,
+            self.config.source_ae_title
         ))
         self._get = DicomGet(OpConfig(
-            self._config.client_ae_title,
-            self._config.source_ip,
-            self._config.source_port,
-            self._config.source_ae_title,
+            self.config.client_ae_title,
+            self.config.source_ip,
+            self.config.source_port,
+            self.config.source_ae_title,
             patient_root_query_model=False
         ))
         self._store = DicomStore(OpConfig(
-            self._config.client_ae_title,
-            self._config.target_ip,
-            self._config.target_port,
-            self._config.target_ae_title
+            self.config.client_ae_title,
+            self.config.destination_ip,
+            self.config.destination_port,
+            self.config.destination_ae_title
         ))
 
     def fetch_patient_ids(self, data, result_callback):
@@ -99,9 +100,9 @@ class DicomConductor:
     def download(self, data, archive_password, result_callback):
         start_time = datetime.now().ctime()
         logging.info("Download of %d patients started at %s with config: %s" %
-            (len(data), start_time, str(self._config)))
+            (len(data), start_time, str(self.config)))
 
-        temp_folder = tempfile.mkdtemp(dir=self._config.cache_folder)
+        temp_folder = tempfile.mkdtemp(dir=self.config.cache_folder)
 
         self._create_archive(temp_folder, start_time, archive_password)
 
@@ -115,9 +116,9 @@ class DicomConductor:
     def transfer(self, data, result_callback):
         start_time = datetime.now().ctime()
         logging.info("Transfer of %d patients started at %s with config: %s" %
-            (len(data), start_time, str(self._config)))
+            (len(data), start_time, str(self.config)))
 
-        temp_folder = tempfile.mkdtemp(dir=self._config.cache_folder)
+        temp_folder = tempfile.mkdtemp(dir=self.config.cache_folder)
 
         self._fetch_studies(
             data,
@@ -131,7 +132,7 @@ class DicomConductor:
 
         start_time = datetime.now().ctime()
         logging.info("Upload of folder %s started at %s with config: %s" %
-            (folder_path, start_time, str(self._config)))
+            (folder_path, start_time, str(self.config)))
 
         results = self._store.send_c_store(folder_path)
         for result in results:
@@ -168,7 +169,7 @@ class DicomConductor:
                 # Only works ok when a provided pseudonym in the Excel file is assigned to the same patient 
                 # in the whole file. Never mix provided pseudonym with not filled out pseudonym for the
                 # same patient.
-                if self._config.pseudonymize:
+                if self.config.pseudonymize:
                     pseudonym = study['Pseudonym'].strip()
                     if not pseudonym:
                         pseudonym = self.pseudonym_cache.get(patient_id)
@@ -206,10 +207,10 @@ class DicomConductor:
                 })
 
             finally:
-                if self._config.cleanup:
+                if self.config.cleanup:
                     shutil.rmtree(patient_folder)
 
-        if self._config.cleanup:
+        if self.config.cleanup:
             shutil.rmtree(temp_folder)
 
         logging.info("Transfer finished at %s." % datetime.now().ctime())
@@ -298,7 +299,7 @@ class DicomConductor:
             if series['Modality'] == modality:
                 series_uids.append(series['SeriesInstanceUID'])
 
-        if series_uids and self._config.include_structured_reports:
+        if series_uids and self.config.include_structured_reports:
             series_uids += structured_reports
 
         return series_uids
@@ -344,21 +345,24 @@ class DicomConductor:
         """Pseudonymize an incoming dataset with the given pseudonym and add the trial
         name to the DICOM header if specified."""
 
-        if self._config.pseudonymize:
+        if self.config.pseudonymize:
             self._anonymizer.anonymize_dataset(ds, patient_name=pseudonym)
 
-        if self._config.trial_name:
-            ds.ClinicalTrialProtocolID = self._config.trial_name
+        if self.config.clinical_trial_protocol_id:
+            ds.ClinicalTrialProtocolID = self.config.clinical_trial_protocol_id
+        
+        if self.config.clinical_trial_protocol_name:
+            ds.ClinicalTrialProtocolName = self.config.clinical_trial_protocol_name
 
     def _create_archive(self, temp_folder, creation_time, archive_password):
         """Create a nearly empty archive with only an index file."""
 
         readme_path = os.path.join(temp_folder, "INDEX.txt")
         readme_file = open(readme_path, "w")
-        readme_file.write(f"Archive created by {self._config.username} at {creation_time}.")
+        readme_file.write(f"Archive created by {self.config.username} at {creation_time}.")
         readme_file.close()
 
-        archive_path = os.path.join(self._config.archive_folder, self._config.archive_name)
+        archive_path = os.path.join(self.config.destination_folder, self.config.archive_name)
         if Path(archive_path).is_file():
             raise ProcessingError(f"Archive ${archive_path} already exists.")
 
@@ -370,7 +374,7 @@ class DicomConductor:
 
         # TODO catch error like https://stackoverflow.com/a/46098513/166229
         password_option = '-p' + archive_password
-        archive_path = os.path.join(self._config.archive_folder, self._config.archive_name + ".7z")
+        archive_path = os.path.join(self.config.destination_folder, self.config.archive_name + ".7z")
         cmd = ['7z', 'a', password_option, '-mhe=on', '-mx1', '-y', archive_path, path_to_add]
         proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL)
         proc.wait()

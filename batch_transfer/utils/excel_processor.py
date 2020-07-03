@@ -19,8 +19,8 @@ class ExcelProcessor:
     EXCLUDE_COL = 'exclude_col'
     STATUS_COL = 'status_col'
 
-    def __init__(self, excel_file, worksheet_name=None, cmd_line_mode=False):
-        self._worksheet_name = worksheet_name
+    def __init__(self, excel_file, worksheet=None, cmd_line_mode=False):
+        self._worksheet = worksheet
         self._cmd_line_mode = cmd_line_mode
         self._excel_file = excel_file
         self.wb = None
@@ -82,8 +82,8 @@ class ExcelProcessor:
 
         self.wb = load_workbook(filename=self._excel_file)
 
-        if self._worksheet_name is not None:
-            self.ws = self.wb[self._worksheet_name]
+        if self._worksheet is not None:
+            self.ws = self.wb[self._worksheet]
         else:
             self.ws = self.wb.active
 
@@ -179,7 +179,7 @@ class ExcelProcessor:
         # TODO check that combination patient_name and patient_birth_date and pseudonym is unique
         # TODO check that combination patient_id and patient_name and patient_birth_date is unique
 
-    def extract_data(self, worksheet_name=None):
+    def extract_data(self):
         self._row_ids = set()
         self._data = []
         self._errors = []

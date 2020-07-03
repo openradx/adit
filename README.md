@@ -38,3 +38,8 @@ max_period_size = models.PositiveIntegerField(default=100)
 
 ## Testing
 - https://developer.mozilla.org/en-US/docs/Learn/Server-side/Django
+
+# Planing
+
+transfer(node1, node2):
+    no1
