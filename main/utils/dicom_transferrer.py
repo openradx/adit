@@ -1,7 +1,7 @@
 import os
 import logging
+from dataclasses import dataclass
 from datetime import datetime
-from .anonymizer import Anonymizer
 from .dicom_operations import (
     DicomFind, DicomGet, DicomStore,
     DicomOperation, DicomOperationConfig
@@ -19,7 +19,7 @@ class DicomTransferrerConfig:
     destination_ip: str = None
     destination_port: int = None
     destination_folder: str = None
-    patient_root_query_model_find: bool = True
+    patient_root_query_model_find: bool = False
     patient_root_query_model_get: bool = True
 
 
@@ -30,8 +30,6 @@ class TransferError(Exception):
 class DicomTransferrer:
     def __init__(self, config: DicomTransferrerConfig):
         self.config = config
-
-        self._anonymizer = Anonymizer()
 
         self._find = DicomFind(DicomOperationConfig(
             self.config.client_ae_title,
@@ -113,14 +111,18 @@ class DicomTransferrer:
 
         study_list = []
         for item in result_data:
-            study_modalities = self.fetch_study_modalities()
+            study_uid = item['StudyInstanceUID']
+            study_modalities = self.fetch_study_modalities(patient_id, study_uid)
             if modality is not None:
-                if (isinstance(modality, str) and modality not in study_modalities
-                        or set(study_modalities) & set(modality)):
-                    continue
+                if isinstance(modality, str):
+                    if modality not in study_modalities:
+                        continue
+                else:
+                    if len(set(study_modalities) & set(modality)) == 0:
+                        continue
 
             study_list.append({
-                'StudyInstanceUID': item['StudyInstanceUID'],
+                'StudyInstanceUID': study_uid,
                 'StudyDescription': item['StudyDescription'],
                 'StudyDate': item['StudyDate'],
                 'StudyTime': item['StudyTime'],
@@ -168,10 +170,11 @@ class DicomTransferrer:
             study_date = study['StudyDate']
             study_time = study['StudyTime']
             modalities = ','.join(study['Modalities'])
-            download_path = f'{study_date}-{study_time}-{modalities}'
+            study_folder_name = f'{study_date}-{study_time}-{modalities}'
+            study_folder_path = os.path.join(folder_path, study_folder_name)
             
-            self.download_study(patient_id, study_uid, download_path, modality, 
-                    create_series_folders, modifier_callback)
+            self.download_study(patient_id, study_uid, study_folder_path, 
+                    modality, create_series_folders, modifier_callback)
 
     def download_study(self, patient_id, study_uid, folder_path, modality=None, 
             create_series_folders=True, modifier_callback=None):
@@ -199,7 +202,7 @@ class DicomTransferrer:
 
         results = self._get.send_c_get(query_dict, folder_path, modifier_callback)
 
-        if not results or results[0]['status']['category'] != 'Success':
+        if not results or results[-1]['status']['category'] != 'Success':
             msg = str(results)
             raise TransferError("Could not download series %s: %s" % (series_uid, msg))
 

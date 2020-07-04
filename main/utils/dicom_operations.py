@@ -57,9 +57,9 @@ def connect_to_server(func):
 @dataclass
 class DicomOperationConfig:
     client_ae_title: str
+    server_ae_title: str
     server_ip: str
     server_port: int
-    server_ae_title: str
     patient_root_query_model: bool = True
     auto_close_connection: bool = True
     debug: bool = False
