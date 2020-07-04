@@ -1,3 +1,6 @@
+import os
+import logging
+from datetime import datetime
 from .anonymizer import Anonymizer
 from .dicom_operations import (
     DicomFind, DicomGet, DicomStore,
@@ -18,8 +21,6 @@ class DicomTransferrerConfig:
     destination_folder: str = None
     patient_root_query_model_find: bool = True
     patient_root_query_model_get: bool = True
-    download_series_in_own_folder = True
-    cleanup: bool = True
 
 
 class TransferError(Exception):
@@ -53,12 +54,6 @@ class DicomTransferrer:
             self.config.destination_port
         ))
 
-    def get_download_folder(self):
-        download_folder = self.config.destination_folder
-        if not download_folder:
-            download_folder = self.config.cache_folder
-        return download_folder
-
     def _extract_pending_data(self, results):
         """Extract the data from a DicomOperation result."""
 
@@ -66,9 +61,18 @@ class DicomTransferrer:
         data = map(lambda x: x['data'], filtered)
         return data
 
+    def get_download_folder(self):
+        download_folder = self.config.destination_folder
+        if not download_folder:
+            download_folder = self.config.cache_folder
+        return download_folder
+
     def fetch_study_modalities(self, patient_id, study_uid):
+        """Fetch all modalities of a study and return them in a list."""
+
         series_list = self.find_series(patient_id, study_uid)
-        ...
+        modalities = set(map(lambda x: x['Modality'], series_list))
+        return sorted(list(modalities))
 
     def find_patients(self, patient_id, patient_name, patient_birth_date):
         """Find patients with the given patient ID and/or patient name and birth date."""
@@ -100,6 +104,7 @@ class DicomTransferrer:
             'QueryRetrieveLevel': 'STUDY',
             'PatientID': patient_id,
             'StudyDate': study_date,
+            'StudyTime': '',
             'StudyInstanceUID': '',
             'StudyDescription': ''
         }
@@ -108,7 +113,21 @@ class DicomTransferrer:
 
         study_list = []
         for item in result_data:
-            pass
+            study_modalities = self.fetch_study_modalities()
+            if modality is not None:
+                if (isinstance(modality, str) and modality not in study_modalities
+                        or set(study_modalities) & set(modality)):
+                    continue
+
+            study_list.append({
+                'StudyInstanceUID': item['StudyInstanceUID'],
+                'StudyDescription': item['StudyDescription'],
+                'StudyDate': item['StudyDate'],
+                'StudyTime': item['StudyTime'],
+                'Modalities': study_modalities
+            })
+
+        return study_list
 
     def find_series(self, patient_id, study_uid, modality=None):
         """Find all series UIDs for a given study UID. The series can be filtered by a 
@@ -140,16 +159,34 @@ class DicomTransferrer:
 
         return series_list
 
-    def download_patient(self, patient_id, folder_path, modality=None, callback=None):
-        pass
+    def download_patient(self, patient_id, folder_path, modality=None,
+            create_series_folders=True, modifier_callback=None):
 
-    def download_study(self, patient_id, study_uid, folder_path=None, modality=None, callback=None):
+        study_list = self.find_studies(patient_id, modality=modality)
+        for study in study_list:
+            study_uid = study['StudyInstanceUID']
+            study_date = study['StudyDate']
+            study_time = study['StudyTime']
+            modalities = ','.join(study['Modalities'])
+            download_path = f'{study_date}-{study_time}-{modalities}'
+            
+            self.download_study(patient_id, study_uid, download_path, modality, 
+                    create_series_folders, modifier_callback)
+
+    def download_study(self, patient_id, study_uid, folder_path, modality=None, 
+            create_series_folders=True, modifier_callback=None):
+
         series_list = self.find_series(patient_id, study_uid, modality)
         for series in series_list:
+            series_uid = series['SeriesInstanceUID']
+            download_path = folder_path
+            if create_series_folders:
+                series_folder_name = series['SeriesDescription']
+                download_path = os.path.join(folder_path, series_folder_name)
 
-            self.download_series(patient_id, study_uid, series_uid, callback)
+            self.download_series(patient_id, study_uid, series_uid, download_path, modifier_callback)
 
-    def download_series(self, patient_id, study_uid, series_uid, folder_path=None, callback=None):
+    def download_series(self, patient_id, study_uid, series_uid, folder_path, modifier_callback=None):
         """Download all series to a specified folder for given series UIDs and pseudonymize
         the dataset before storing it to disk."""
 
@@ -160,11 +197,25 @@ class DicomTransferrer:
             "SeriesInstanceUID": series_uid
         }
 
-        results = self._get.send_c_get(query_dict, folder_path, callback)
+        results = self._get.send_c_get(query_dict, folder_path, modifier_callback)
 
         if not results or results[0]['status']['category'] != 'Success':
             msg = str(results)
             raise TransferError("Could not download series %s: %s" % (series_uid, msg))
 
-    def upload_folder(self, folder):
-        pass
+    def upload_folder(self, folder_path):
+        """Upload a specified folder to a DICOM server."""
+
+        start_time = datetime.now().ctime()
+        logging.info("Upload of folder %s started at %s with config: %s" %
+            (folder_path, start_time, str(self.config)))
+
+        results = self._store.send_c_store(folder_path)
+        for result in results:
+            # Category names can be found in https://github.com/pydicom/pynetdicom/blob/master/pynetdicom/_globals.py
+            status_category = result['status']['category']
+            if status_category != "Success":
+                if status_category == "Failure":
+                    logging.error("Error while uploading instance UID %s." % result['data'])
+                else:
+                    logging.warning("%s while uploading instance UID %s." % (status_category, result['data']))
