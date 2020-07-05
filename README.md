@@ -2,7 +2,6 @@
 
 
 # TODO
-- rename row_id / RowID to ransfer_id / TransferID
 
 # Commands
 

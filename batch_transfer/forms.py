@@ -4,7 +4,7 @@ from django.core.exceptions import ValidationError
 from crispy_forms.helper import FormHelper
 from crispy_forms.bootstrap import FormActions
 from crispy_forms.layout import Submit
-from .models import BatchTransferJob, BatchTransferItem
+from .models import BatchTransferJob, BatchTransferRequest
 from .fields import RestrictedFileField
 from .utils.excel_processor import ExcelProcessor, ExcelError
 
@@ -71,12 +71,12 @@ class BatchTransferJobForm(forms.ModelForm):
 
         return file
 
-    def _save_items(self, job):
-        items = []
+    def _save_requests(self, job):
+        requests = []
         for row in self.excel_data:
-            item = BatchTransferItem(
+            request = BatchTransferRequest(
                 job=job,
-                row_id=row['RowID'],
+                request_id=row['RequestID'],
                 patient_id=row['PatientID'],
                 patient_name=row['PatientName'],
                 patient_birth_date=row['PatientBirthDate'],
@@ -84,20 +84,20 @@ class BatchTransferJobForm(forms.ModelForm):
                 modality=row['Modality'],
                 pseudonym=row['Pseudonym']
             )
-            items.append(item)
+            requests.append(request)
         
-        BatchTransferItem.objects.bulk_create(items)
+        BatchTransferRequest.objects.bulk_create(requests)
 
     def save(self, commit=True):
         with transaction.atomic():
             job = super().save(commit=commit)
 
             if commit:
-                self._save_items(job)
+                self._save_requests(job)
             else:
                 # If not committing, add a method to the form to allow deferred
-                # saving of items.
-                self.save_items = self._save_items
+                # saving of requests.
+                self.save_requests = self._save_requests
 
         return job
 

@@ -18,7 +18,7 @@ class ExcelProcessorTest(TestCase):
         self.assertEqual(data[0]['PatientName'], 'Turner^Yolanda')
         self.assertEqual(data[0]['Modality'], 'MR')
         self.assertEqual(data[1]['PatientID'], '9918223726')
-        self.assertEqual(data[1]['RowID'], '2')
+        self.assertEqual(data[1]['RequestID'], '2')
         study_date = datetime(2018, 12, 19)
         self.assertEqual(data[1]['StudyDate'], study_date)
         patient_birth_date = datetime(1946, 12, 11)

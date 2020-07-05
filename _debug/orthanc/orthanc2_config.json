@@ -9,6 +9,6 @@
         "ADIT" : [ "ADIT", "127.0.0.1", 7900 ]
     },
     "Plugins" : [
-        "./OrthancWebViewer/libOrthancWebViewer.so.2.6"
+        "libOrthancWebViewer.so"
     ]
 }

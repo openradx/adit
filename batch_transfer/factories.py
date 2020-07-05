@@ -1,6 +1,6 @@
 import factory
 from faker import Faker
-from .models import BatchTransferJob, BatchTransferItem
+from .models import BatchTransferJob, BatchTransferRequest
 from main.factories import DicomServerFactory, DicomFolderFactory
 from accounts.factories import UserFactory
 
@@ -21,13 +21,13 @@ class BatchTransferJobFactory(factory.django.DjangoModelFactory):
 class BatchTransferJobToPathFactory(BatchTransferJobFactory):
     destination = factory.SubFactory(DicomFolderFactory)
 
-status_codes = [key for key, value in BatchTransferItem.Status.choices]
-class BatchTransferItemFactory(factory.django.DjangoModelFactory):
+status_codes = [key for key, value in BatchTransferRequest.Status.choices]
+class BatchTransferRequestFactory(factory.django.DjangoModelFactory):
     class Meta:
-        model = BatchTransferItem
+        model = BatchTransferRequest
 
     job = factory.SubFactory(BatchTransferJobFactory)
-    row_id = factory.Sequence(lambda n: str(n))
+    request_id = factory.Sequence(lambda n: str(n))
     patient_id = factory.Faker('numerify', text='##########')
     patient_name = factory.LazyFunction(
             lambda: f'{fake.last_name()}, {fake.first_name}')

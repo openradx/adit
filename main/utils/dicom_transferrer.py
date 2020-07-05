@@ -22,12 +22,13 @@ class DicomTransferrerConfig:
     patient_root_query_model_find: bool = False
     patient_root_query_model_get: bool = True
 
-
-class TransferError(Exception):
-    pass
-
-    
+  
 class DicomTransferrer:
+
+    SUCCESS = "Success"
+    INFO = "Info"
+    ERROR = "Error"
+
     def __init__(self, config: DicomTransferrerConfig):
         self.config = config
 
@@ -58,12 +59,6 @@ class DicomTransferrer:
         filtered = filter(lambda x: x['status']['category'] == 'Pending', results)
         data = map(lambda x: x['data'], filtered)
         return data
-
-    def get_download_folder(self):
-        download_folder = self.config.destination_folder
-        if not download_folder:
-            download_folder = self.config.cache_folder
-        return download_folder
 
     def fetch_study_modalities(self, patient_id, study_uid):
         """Fetch all modalities of a study and return them in a list."""
@@ -204,7 +199,7 @@ class DicomTransferrer:
 
         if not results or results[-1]['status']['category'] != 'Success':
             msg = str(results)
-            raise TransferError("Could not download series %s: %s" % (series_uid, msg))
+            raise Exception("Failure while downloading series with UID %s: %s" % (series_uid, msg))
 
     def upload_folder(self, folder_path):
         """Upload a specified folder to a DICOM server."""
