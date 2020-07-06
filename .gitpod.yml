@@ -12,7 +12,9 @@ tasks:
       python manage.py migrate
       python manage.py populate_dev_db
       python manage.py reset_orthancs
-    command: python manage.py runserver
+    command: |
+      supervisorctl start rq:
+      python manage.py runserver
 
   - init: sleep 1 && while [ -f /tmp/.pip-install-lock ]; do sleep 1; done
     command: ptw --runner 'pytest -s --testmon'
