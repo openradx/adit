@@ -57,9 +57,9 @@ def connect_to_server(func):
 @dataclass
 class DicomOperationConfig:
     client_ae_title: str
+    server_ae_title: str
     server_ip: str
     server_port: int
-    server_ae_title: str
     patient_root_query_model: bool = True
     auto_close_connection: bool = True
     debug: bool = False
@@ -89,14 +89,8 @@ class DicomOperation:
         return results
 
     def dictify_dataset(self, ds):
-        """Turn a pydicom Dataset into a dict with keys derived from the Element tags.
+        """Turn a pydicom Dataset into a dict with keys derived from the Element tags."""
 
-        Args:
-            ds (pydicom.dataset.Dataset): The Dataset to dictify
-
-        Returns:
-            A Python dict
-        """
         output = dict()
         if ds:
             for elem in ds:
@@ -113,14 +107,8 @@ class DicomOperation:
         return output
 
     def make_query_dataset(self, query_dict):
-        """Turn a dict into a pydicom Dataset.
+        """Turn a dict into a pydicom dataset for query."""
 
-        Args:
-            query_dict (dict): The dict to turn into a pydicom Dataset
-
-        Return:
-            A pydicom Dataset
-        """
         ds = Dataset()
         for i in query_dict:
             setattr(ds, i, query_dict[i])
@@ -145,7 +133,7 @@ class DicomFind(DicomOperation):
             ae_title=self.config.server_ae_title)
 
         if not self.assoc.is_established:
-            raise Exception('Association rejected, aborted or never connected.')
+            raise Exception('Could not connect to DICOM server with AE Title %s.' % self.config.server_ae_title)
 
     @connect_to_server
     def send_c_find(self, query_dict):
@@ -241,7 +229,7 @@ class DicomGet(DicomOperation):
             evt_handlers=handlers)
 
         if not self.assoc.is_established:
-            raise Exception('Association rejected, aborted or never connected.')
+            raise Exception('Could not connect to DICOM server with AE Title %s.' % self.config.server_ae_title)
 
     @connect_to_server
     def send_c_get(self, query_dict, folder=None, callback=None):
@@ -256,8 +244,6 @@ class DicomGet(DicomOperation):
             A dict of responses
         """
         self.callback = callback
-        if self.callback is not None and not callable(self.callback):
-            raise ValueError("A callback must be a callable function")
 
         self.folder = folder
         if self.folder:
@@ -295,7 +281,7 @@ class DicomStore(DicomOperation):
             ae_title=self.config.server_ae_title)
 
         if not self.assoc.is_established:
-            raise Exception('Association rejected, aborted or never connected.')
+            raise Exception('Could not connect to DICOM server with AE Title %s.' % self.config.server_ae_title)
 
     @connect_to_server
     def send_c_store(self, folder, callback=None):
@@ -345,7 +331,7 @@ class DicomMove(DicomOperation):
             ae_title=self.config.server_ae_title)
 
         if not self.assoc.is_established:
-            raise Exception('Association rejected, aborted or never connected.')
+            raise Exception('Could not connect to DICOM server with AE Title %s.' % self.config.server_ae_title)
 
     @connect_to_server
     def send_c_move(self, query_dict, destination_ae_title):

@@ -9,7 +9,7 @@ class ExcelError(Exception):
 
 
 class ExcelProcessor:
-    ROW_ID_COL = 'row_id_col'
+    REQUEST_ID_COL = 'request_id_col'
     PATIENT_ID_COL = 'patient_id_col'
     PATIENT_NAME_COL = 'patient_name_col'
     PATIENT_BIRTH_DATE_COL = 'patient_birth_date_col'
@@ -45,7 +45,7 @@ class ExcelProcessor:
 
     def _scan_columns(self):
         cols = dict()
-        cols[self.ROW_ID_COL] = self._search_column('RowID')
+        cols[self.REQUEST_ID_COL] = self._search_column('RequestID')
         cols[self.PATIENT_ID_COL] = self._search_column('PatientID')
         cols[self.PATIENT_NAME_COL] = self._search_column('PatientName')
         cols[self.PATIENT_BIRTH_DATE_COL] = self._search_column('PatientBirthDate')
@@ -61,7 +61,7 @@ class ExcelProcessor:
 
     def _check_columns(self, cols):
         required_columns = [
-            self.ROW_ID_COL,
+            self.REQUEST_ID_COL,
             self.PATIENT_ID_COL,
             self.PATIENT_NAME_COL,
             self.PATIENT_BIRTH_DATE_COL,
@@ -97,7 +97,7 @@ class ExcelProcessor:
 
         r = 2 # Skip the header row
         while(True):
-            row_id = self.ws.cell(column=cols[self.ROW_ID_COL], row=r).value
+            request_id = self.ws.cell(column=cols[self.REQUEST_ID_COL], row=r).value
             patient_id = self.ws.cell(column=cols[self.PATIENT_ID_COL], row=r).value
             patient_name = self.ws.cell(column=cols[self.PATIENT_NAME_COL], row=r).value
             patient_birth_date = self.ws.cell(column=cols[self.PATIENT_BIRTH_DATE_COL], row=r).value
@@ -106,7 +106,7 @@ class ExcelProcessor:
             pseudonym = self.ws.cell(column=cols[self.PSEUDONYM_COL], row=r).value
 
             # Check for an empty row and then stop parsing
-            if not (row_id or patient_id or patient_name or patient_birth_date
+            if not (request_id or patient_id or patient_name or patient_birth_date
                     or modality or study_date or pseudonym):
                 break
 
@@ -116,7 +116,8 @@ class ExcelProcessor:
 
             if not exclude:
                 row = dict()
-                row['RowID'] = self._clean_row_id(row_id, r)
+                row['Row'] = r
+                row['RequestID'] = self._clean_request_id(request_id, r)
                 row['PatientID'] = self._clean_patient_id(patient_id)
                 row['PatientName'] = self._clean_patient_name(patient_name)
                 row['PatientBirthDate'] = self._clean_patient_birth_date(patient_birth_date, r)
@@ -129,15 +130,15 @@ class ExcelProcessor:
 
             r += 1
 
-    def _clean_row_id(self, row_id, r):
-        row_id = str(row_id).strip()
-        if row_id and row_id not in self._row_ids:
-            self._row_ids.add(row_id)
-            return row_id
-        elif row_id and row_id in self._row_ids:
-            self._errors.append('Duplicate RowID in row ' % r)  
+    def _clean_request_id(self, request_id, r):
+        request_id = str(request_id).strip()
+        if request_id and request_id not in self._request_ids:
+            self._request_ids.add(request_id)
+            return request_id
+        elif request_id and request_id in self._request_ids:
+            self._errors.append('Duplicate RequestID in row ' % r)  
         else:
-            self._errors.append('Missing RowID in Excel row ' % r)
+            self._errors.append('Missing RequestID in Excel row ' % r)
 
     def _clean_patient_id(self, patient_id):
         patient_id = str(patient_id).strip()
@@ -180,7 +181,7 @@ class ExcelProcessor:
         # TODO check that combination patient_id and patient_name and patient_birth_date is unique
 
     def extract_data(self):
-        self._row_ids = set()
+        self._request_ids = set()
         self._data = []
         self._errors = []
 

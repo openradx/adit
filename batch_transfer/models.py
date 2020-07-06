@@ -29,10 +29,10 @@ class BatchTransferJob(DicomJob):
         self.job_type = self.JOB_TYPE
 
     def get_absolute_url(self):
-        return reverse("batch_transfer_job_detail", args=[str(self.id)])
+        return reverse("batch_transfer_job_detail", args=[str(self.pk)])
 
 
-class BatchTransferItem(models.Model):
+class BatchTransferRequest(models.Model):
 
     class Status(models.TextChoices):
         SUCCESS = 'SU', 'Success'
@@ -40,11 +40,11 @@ class BatchTransferItem(models.Model):
         ERROR = 'ER', 'Error'
 
     class Meta:
-        unique_together = (('row_id', 'job'))
+        unique_together = (('request_id', 'job'))
 
     job = models.ForeignKey(BatchTransferJob, on_delete=models.CASCADE,
-            related_name='items')
-    row_id = models.CharField(max_length=16)
+            related_name='requests')
+    request_id = models.CharField(max_length=16)
     patient_id = models.CharField(null=True, max_length=64)
     patient_name = models.CharField(null=True, max_length=256)
     patient_birth_date = models.DateField()

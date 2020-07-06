@@ -86,18 +86,18 @@ class AditCmd:
         if result['Status'] == DicomConductor.SUCCESS:
             self._excel_processor.set_cell_value(
                 ExcelProcessor.STATUS_COL,
-                result['RowID'],
+                result['RequestID'],
                 'Ok'
             )
             self._excel_processor.set_cell_value(
                 column,
-                result['RowID'],
+                result['RequestID'],
                 result['Message']
             )
         elif result['Status'] == DicomConductor.ERROR:
             self._excel_processor.set_cell_value(
                 ExcelProcessor.STATUS_COL,
-                result['RowID'],
+                result['RequestID'],
                 f"Error: {result['Message']}"
             )
         self._excel_processor.save()

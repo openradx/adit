@@ -17,7 +17,7 @@ ws = wb.active
 fake = Faker()
 
 col_headers = (
-    'RowID',                # A
+    'RequestID',            # A
     'PatientID',            # B
     'PatientName',          # C
     'PatientBirthDate',     # D
@@ -33,8 +33,8 @@ for index, header in enumerate(col_headers):
 for i in range(row_count):
     row = i + 2
 
-    row_id = i + 1
-    ws.cell(row=row, column=1).value = row_id
+    request_id = i + 1
+    ws.cell(row=row, column=1).value = request_id
 
     patient_id = fake.numerify(text='##########')
     ws.cell(row=row, column=2).value = patient_id
@@ -57,13 +57,13 @@ for i in range(row_count):
                 letters='0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ')
         ws.cell(row=row, column=7).value = pseudonym
 
-ws.column_dimensions['A'].width = 8
-ws.column_dimensions['B'].width = 16
-ws.column_dimensions['C'].width = 32
-ws.column_dimensions['D'].width = 16
-ws.column_dimensions['E'].width = 16
-ws.column_dimensions['F'].width = 16
-ws.column_dimensions['G'].width = 16
+ws.column_dimensions['A'].width = 10
+ws.column_dimensions['B'].width = 15
+ws.column_dimensions['C'].width = 30
+ws.column_dimensions['D'].width = 15
+ws.column_dimensions['E'].width = 15
+ws.column_dimensions['F'].width = 10
+ws.column_dimensions['G'].width = 15
 
 parent_folder = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 samples_folder = os.path.join(parent_folder, '_samples')
