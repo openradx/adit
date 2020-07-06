@@ -2,7 +2,10 @@ image:
   file: .gitpod.Dockerfile
 
 tasks:
-  - before: supervisord # supervisor is already installed in .gitpod.Dockerfile
+  - before: |
+      ls -la
+      ls /workspace/adit
+      supervisord # supervisor is already installed in .gitpod.Dockerfile
     init: |
       sleep 1
       touch /tmp/.pip-install-lock
