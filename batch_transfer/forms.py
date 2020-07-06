@@ -66,7 +66,7 @@ class BatchTransferJobForm(forms.ModelForm):
             self.excel_data = processor.extract_data()
         except ExcelError as err:
             for error in err.errors:
-                self.add_error(error)
+                self.add_error(None, error)
             raise ValidationError(str(err))
 
         return file

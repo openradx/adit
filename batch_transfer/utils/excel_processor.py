@@ -5,19 +5,23 @@ import datetime
 class ExcelError(Exception):
     def __init__(self, message, errors):
         super().__init__(message)
+        self.message = message
         self.errors = errors
+
+    def __str__(self):
+        return f'{self.message}: {", ".join(self.errors)}'
 
 
 class ExcelProcessor:
-    REQUEST_ID_COL = 'request_id_col'
-    PATIENT_ID_COL = 'patient_id_col'
-    PATIENT_NAME_COL = 'patient_name_col'
-    PATIENT_BIRTH_DATE_COL = 'patient_birth_date_col'
-    STUDY_DATE_COL = 'study_date_col'
-    MODALITY_COL = 'modality_col'
-    PSEUDONYM_COL = 'pseudonym_col'
-    EXCLUDE_COL = 'exclude_col'
-    STATUS_COL = 'status_col'
+    REQUEST_ID_COL = 'RequestID'
+    PATIENT_ID_COL = 'PatientID'
+    PATIENT_NAME_COL = 'PatientName'
+    PATIENT_BIRTH_DATE_COL = 'PatientBirthDate'
+    STUDY_DATE_COL = 'StudyDate'
+    MODALITY_COL = 'Modality'
+    PSEUDONYM_COL = 'Pseudonym'
+    EXCLUDE_COL = 'Exclude'
+    STATUS_COL = 'Status'
 
     def __init__(self, excel_file, worksheet=None, cmd_line_mode=False):
         self._worksheet = worksheet
@@ -45,15 +49,15 @@ class ExcelProcessor:
 
     def _scan_columns(self):
         cols = dict()
-        cols[self.REQUEST_ID_COL] = self._search_column('RequestID')
-        cols[self.PATIENT_ID_COL] = self._search_column('PatientID')
-        cols[self.PATIENT_NAME_COL] = self._search_column('PatientName')
-        cols[self.PATIENT_BIRTH_DATE_COL] = self._search_column('PatientBirthDate')
-        cols[self.STUDY_DATE_COL] = self._search_column('StudyDate')
-        cols[self.MODALITY_COL] = self._search_column('Modality')
-        cols[self.PSEUDONYM_COL] = self._search_column('Pseudonym')
-        cols[self.EXCLUDE_COL] = self._search_column('Exclude')
-        cols[self.STATUS_COL] = self._search_column('Status')
+        cols[self.REQUEST_ID_COL] = self._search_column(self.REQUEST_ID_COL)
+        cols[self.PATIENT_ID_COL] = self._search_column(self.PATIENT_ID_COL)
+        cols[self.PATIENT_NAME_COL] = self._search_column(self.PATIENT_NAME_COL)
+        cols[self.PATIENT_BIRTH_DATE_COL] = self._search_column(self.PATIENT_BIRTH_DATE_COL)
+        cols[self.STUDY_DATE_COL] = self._search_column(self.STUDY_DATE_COL)
+        cols[self.MODALITY_COL] = self._search_column(self.MODALITY_COL)
+        cols[self.PSEUDONYM_COL] = self._search_column(self.PSEUDONYM_COL)
+        cols[self.EXCLUDE_COL] = self._search_column(self.EXCLUDE_COL)
+        cols[self.STATUS_COL] = self._search_column(self.STATUS_COL)
 
         self._check_columns(cols)
 
@@ -117,13 +121,14 @@ class ExcelProcessor:
             if not exclude:
                 row = dict()
                 row['Row'] = r
-                row['RequestID'] = self._clean_request_id(request_id, r)
-                row['PatientID'] = self._clean_patient_id(patient_id)
-                row['PatientName'] = self._clean_patient_name(patient_name)
-                row['PatientBirthDate'] = self._clean_patient_birth_date(patient_birth_date, r)
-                row['Modality'] = self._clean_modality(modality, r)
-                row['StudyDate'] = self._clean_study_date(study_date, r)
-                row['Pseudonym'] = self._clean_pseudonym(pseudonym)
+                row[self.REQUEST_ID_COL] = self._clean_request_id(request_id, r)
+                row[self.PATIENT_ID_COL] = self._clean_patient_id(patient_id)
+                row[self.PATIENT_NAME_COL] = self._clean_patient_name(patient_name)
+                row[self.PATIENT_BIRTH_DATE_COL] = self._clean_patient_birth_date(
+                        patient_birth_date, r)
+                row[self.MODALITY_COL] = self._clean_modality(modality, r)
+                row[self.STUDY_DATE_COL] = self._clean_study_date(study_date, r)
+                row[self.PSEUDONYM_COL] = self._clean_pseudonym(pseudonym)
                 self._clean_row(row, r)
 
                 self._data.append(row)
