@@ -61,7 +61,7 @@ class BatchTransferJobCreateTest(TestCase):
         self.client.force_login(self.user_with_permission)
         response = self.client.post(reverse('new_batch_transfer_job'), self.form_data)
         job = BatchTransferJob.objects.first()
-        self.assertEqual(job.items.count(), 3)
+        self.assertEqual(job.requests.count(), 3)
 
     def test_job_cant_be_created_with_missing_fields(self):
         self.client.force_login(self.user_with_permission)
