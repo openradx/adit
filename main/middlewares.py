@@ -13,8 +13,8 @@ class MaintenanceMiddleware:
         self.get_response = get_response
 
     def __call__(self, request):
-        login_request = request.path == reverse('login')
-        logout_request = request.path == reverse('logout')
+        login_request = request.path == reverse('auth_login')
+        logout_request = request.path == reverse('auth_logout')
         if login_request or logout_request:
             return self.get_response(request)
 

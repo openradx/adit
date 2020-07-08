@@ -32,6 +32,8 @@ ALLOWED_HOSTS = []
 # Application definition
 
 INSTALLED_APPS = [
+    'accounts.apps.AccountsConfig',
+    'registration',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -47,7 +49,6 @@ INSTALLED_APPS = [
     'bootstrap4',
     'django_rq',
     'main.apps.MainConfig',
-    'accounts.apps.AccountsConfig',
     'batch_transfer.apps.BatchTransferConfig'
 ]
 
@@ -180,3 +181,15 @@ RQ_QUEUES = {
     }
 }
 RQ_SHOW_ADMIN_LINK = True
+
+# Also used for django-registration-redux
+ADMINS = [('Kai', 'kai.schlamp@med.uni-heidelberg.de'),]
+
+# Form for registration (used by django-registration-redux)
+REGISTRATION_FORM = 'accounts.forms.RegistrationForm'
+
+if DEBUG:
+    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+else:
+    EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+    # TODO provide SMTP details, see https://docs.djangoproject.com/en/dev/topics/email/

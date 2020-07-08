@@ -1,6 +1,7 @@
 # Apps
 Django==3.0.7
 psycopg2==2.8.5
+django-registration-redux==2.8
 django-crispy-forms==1.9.1
 django-tables2==2.3.1
 django-bootstrap4==2.1.1
