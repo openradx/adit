@@ -24,6 +24,7 @@ col_headers = (
     'StudyDate',            # E
     'Modality',             # F
     'Pseudonym'             # G
+    'Exclude'               # H
 )
 
 for index, header in enumerate(col_headers):
@@ -57,13 +58,14 @@ for i in range(row_count):
                 letters='0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ')
         ws.cell(row=row, column=7).value = pseudonym
 
-ws.column_dimensions['A'].width = 10
-ws.column_dimensions['B'].width = 15
+ws.column_dimensions['A'].width = 15
+ws.column_dimensions['B'].width = 20
 ws.column_dimensions['C'].width = 30
-ws.column_dimensions['D'].width = 15
-ws.column_dimensions['E'].width = 15
-ws.column_dimensions['F'].width = 10
-ws.column_dimensions['G'].width = 15
+ws.column_dimensions['D'].width = 20
+ws.column_dimensions['E'].width = 20
+ws.column_dimensions['F'].width = 15
+ws.column_dimensions['G'].width = 20
+ws.column_dimensions['H'].width = 15
 
 parent_folder = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 samples_folder = os.path.join(parent_folder, '_samples')
