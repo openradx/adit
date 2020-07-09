@@ -182,11 +182,13 @@ RQ_QUEUES = {
 }
 RQ_SHOW_ADMIN_LINK = True
 
-# Also used for django-registration-redux
+# Also used by django-registration-redux
 ADMINS = [('Kai', 'kai.schlamp@med.uni-heidelberg.de'),]
 
-# Form for registration (used by django-registration-redux)
+# Settings for django-registration-redux
 REGISTRATION_FORM = 'accounts.forms.RegistrationForm'
+ACCOUNT_ACTIVATION_DAYS = 14
+REGISTRATION_OPEN = True
 
 if DEBUG:
     EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'

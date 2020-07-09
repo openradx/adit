@@ -1,0 +1,7 @@
+{% load i18n %}
+{% blocktrans %}
+    The following user ({{ user }}) has asked to register an account at ADIT.
+    To approve this, please click the following link.
+{% endblocktrans %}
+
+http://{{site.domain}}{% url 'registration_admin_approve' profile_id %}

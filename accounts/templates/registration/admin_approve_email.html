@@ -1,0 +1,31 @@
+{% load i18n %}
+<!doctype html>
+<html lang="en">
+
+<head>
+    <title>{% trans "ADIT registration" %}</title>
+</head>
+
+<body>
+    <p>
+        {% blocktrans %}
+            The following user ({{ user }}) has asked to register an account at ADIT.
+        {% endblocktrans %}
+    </p>
+    <p>
+        {% blocktrans %}
+            To approve this, please
+        {% endblocktrans %}
+        <a href="http://{{site.domain}}{% url 'registration_admin_approve' profile_id %}">
+            {% trans "click here" %}
+        </a>.
+    </p>
+    <p>
+        {% blocktrans %}
+            Sincerely,
+            ADIT Support
+        {% endblocktrans %}
+    </p>
+</body>
+
+</html>

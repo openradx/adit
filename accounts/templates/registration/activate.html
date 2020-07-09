@@ -1,18 +1,9 @@
 {% extends "registration/registration_base.html" %}
 {% load i18n %}
 
-{% block title %}{% trans "Account Activation Failure- ADIT" %}{% endblock %}
+{% block title %}{% trans "Account Activation Failure - ADIT" %}{% endblock %}
 
 {% block container %}
-    <p>{% trans "Account activation failed." %}</p>
+    <h5>{% trans "Account activation failed" %}</h5>
+    <p>{% trans "Please contact the support if the problem persists." %}</p>
 {% endblock %}
-
-
-{% comment %}
-**registration/activate.html**
-
-Used if account activation fails. With the default setup, has the following context:
-
-``activation_key``
-    The activation key used during the activation attempt.
-{% endcomment %}
