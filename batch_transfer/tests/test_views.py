@@ -35,7 +35,7 @@ class BatchTransferJobCreateTest(TestCase):
             'destination': DicomServerFactory().id,
             'project_name': 'Apollo project',
             'project_description': 'Fly to the moon',
-            'excel_file': load_file('sample_sheet_valid_small.xlsx')
+            'excel_file': load_file('sample_sheet_small.xlsx')
         }
 
     def test_user_must_be_logged_in_to_access_view(self):
