@@ -4,7 +4,11 @@
 
 {% block content %}
     <div class="top container">
-        <h5>All jobs</h5>
-        {% render_table table %}
+        <h5>All DICOM jobs</h5>
+        {% if table.data %}
+            {% render_table table %}
+        {% else %}
+            No DICOM jobs to added.
+        {% endif %}
     </div>
 {% endblock %}
