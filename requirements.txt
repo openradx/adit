@@ -21,5 +21,5 @@ django-debug-permissions==1.0.0
 factory-boy==2.12.0
 Faker==4.1.1
 pytest-django==3.9.0
-pytest-testmon==1.0.2
 pytest-watch==4.2.0
+pytest-picked==0.4.4

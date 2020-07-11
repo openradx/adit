@@ -20,8 +20,13 @@ tasks:
       python manage.py runserver
 
   - init: sleep 1 && while [ -f /tmp/.pip-install-lock ]; do sleep 1; done
-    command: ptw --runner 'pytest -s --testmon'
+    # Alternatives:
+    # with pytest-picked: ptw --runner 'pytest --picked'
+    # with pytest-testmon: ptw --runner 'pytest -s --testmon' (sometimes cumbersome and .testmondb must be deleted)
+    # with pytest-xdist: pytest --looponfail (doesn't work with Orthanc db in the working dir)
+    command: ptw --runner 'pytest --picked'
 
+  # A terminal for the developer to do stuff
   - command: echo 'For your convenience!'
 
 ports:
