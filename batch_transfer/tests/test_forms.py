@@ -1,6 +1,6 @@
 from django.test import TestCase
 import os
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch, create_autospec
 from django.core.files import File
 from main.factories import DicomServerFactory
 from ..forms import BatchTransferJobForm
@@ -16,11 +16,11 @@ class BatchTransferJobFormTests(TestCase):
             'project_description': 'Fly to the moon'
         }
 
-        file = MagicMock(spec=File, name='FileMock', size=5242880)
+        file = create_autospec(File, size=5242880)
         file.name = 'sample_sheet.xlsx'
         cls.file_dict = { 'excel_file': file }
 
-        cls.user = MagicMock(spec=User, name='UserMock')
+        cls.user = create_autospec(User)
 
     def test_field_labels(self):
         form = BatchTransferJobForm(user=self.user)
@@ -34,7 +34,7 @@ class BatchTransferJobFormTests(TestCase):
         self.assertEqual(form.fields['trial_protocol_name'].label, 'Trial protocol name')
         self.assertIsNone(form.fields['excel_file'].label)
 
-    @patch('batch_transfer.forms.ExcelProcessor')
+    @patch('batch_transfer.forms.ExcelProcessor', autospec=True)
     def test_with_valid_data(self, ExcelProcessorMock):
         excel_processer_mock = ExcelProcessorMock.return_value
         excel_processer_mock.extract_data.return_value = []
@@ -56,14 +56,14 @@ class BatchTransferJobFormTests(TestCase):
         self.assertEqual(form.errors['excel_file'], ['This field is required.'])
 
     def test_disallow_too_large_file(self):
-        file = MagicMock(spec=File, name='FileMock', size=5242881)
+        file = create_autospec(File, size=5242881)
         file.name = 'sample_sheet.xlsx'
         form = BatchTransferJobForm(self.data_dict, { 'excel_file': file }, user=self.user)
         self.assertFalse(form.is_valid())
         self.assertEqual(form.errors['excel_file'],
                 ['File too large. Please keep filesize under 5.0\xa0MB.'])
 
-    @patch('batch_transfer.forms.ExcelProcessor')
+    @patch('batch_transfer.forms.ExcelProcessor', autospec=True)
     def test_dont_allow_pseudonymized_transfer_for_user_without_permission(self, ExcelProcessorMock):
         excel_processer_mock = ExcelProcessorMock.return_value
         excel_processer_mock.extract_data.return_value = []
@@ -74,7 +74,7 @@ class BatchTransferJobFormTests(TestCase):
         self.user.has_perm.assert_called_with('batch_transfer.can_transfer_unpseudonymized')
         self.assertTrue(form.cleaned_data['pseudonymize'])
 
-    @patch('batch_transfer.forms.ExcelProcessor')
+    @patch('batch_transfer.forms.ExcelProcessor', autospec=True)
     def test_allow_pseudonymized_transfer_for_user_with_permission(self, ExcelProcessorMock):
         excel_processer_mock = ExcelProcessorMock.return_value
         excel_processer_mock.extract_data.return_value = []
