@@ -1,6 +1,7 @@
 from django.test import TestCase
 from django.conf import settings
 import os
+from unittest.mock import patch
 from django.contrib.auth.models import Group
 from django.urls import reverse
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -57,11 +58,13 @@ class BatchTransferJobCreateTest(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, 'batch_transfer/batch_transfer_job_form.html')
 
-    def test_job_can_be_created_successfully(self):
+    @patch('batch_transfer.views.enqueue_batch_job')
+    def test_batch_job_created_and_enqueued(self, enqueue_batch_job_mock):
         self.client.force_login(self.user_with_permission)
         response = self.client.post(reverse('new_batch_transfer_job'), self.form_data)
         job = BatchTransferJob.objects.first()
         self.assertEqual(job.requests.count(), 3)
+        enqueue_batch_job_mock.assert_called_once_with(job.id)
 
     def test_job_cant_be_created_with_missing_fields(self):
         self.client.force_login(self.user_with_permission)
@@ -71,3 +74,4 @@ class BatchTransferJobCreateTest(TestCase):
             response = self.client.post(reverse('new_batch_transfer_job'), invalid_form_data)
             self.assertGreater(len(response.context['form'].errors), 0)
             self.assertIsNone(BatchTransferJob.objects.first())
+

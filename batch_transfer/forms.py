@@ -1,4 +1,4 @@
-from django import forms
+from django.forms import ModelForm
 from django.db import transaction
 from django.core.exceptions import ValidationError
 from crispy_forms.helper import FormHelper
@@ -8,7 +8,7 @@ from .models import BatchTransferJob, BatchTransferRequest
 from .fields import RestrictedFileField
 from .utils.excel_processor import ExcelProcessor, ExcelError
 
-class BatchTransferJobForm(forms.ModelForm):
+class BatchTransferJobForm(ModelForm):
     excel_file = RestrictedFileField(max_upload_size=5242880)
 
     def __init__(self, *args, **kwargs):
@@ -71,11 +71,11 @@ class BatchTransferJobForm(forms.ModelForm):
 
         return file
 
-    def _save_requests(self, job):
+    def _save_requests(self, batch_job):
         requests = []
         for row in self.excel_data:
             request = BatchTransferRequest(
-                job=job,
+                job=batch_job, # TODO rename to batch_job
                 request_id=row['RequestID'],
                 patient_id=row['PatientID'],
                 patient_name=row['PatientName'],
@@ -90,16 +90,16 @@ class BatchTransferJobForm(forms.ModelForm):
 
     def save(self, commit=True):
         with transaction.atomic():
-            job = super().save(commit=commit)
+            batch_job = super().save(commit=commit)
 
             if commit:
-                self._save_requests(job)
+                self._save_requests(batch_job)
             else:
                 # If not committing, add a method to the form to allow deferred
                 # saving of requests.
                 self.save_requests = self._save_requests
 
-        return job
+        return batch_job
 
     class Meta:
         model = BatchTransferJob

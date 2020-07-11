@@ -5,6 +5,7 @@ from django.contrib.auth.mixins import PermissionRequiredMixin
 from main.mixins import OwnerRequiredMixin
 from .models import SiteConfig, BatchTransferJob
 from .forms import BatchTransferJobForm
+from .utils.job_helpers import enqueue_batch_job
 
 class BatchTransferJobCreate(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
     model = BatchTransferJob
@@ -19,7 +20,9 @@ class BatchTransferJobCreate(LoginRequiredMixin, PermissionRequiredMixin, Create
 
     def form_valid(self, form):
         form.instance.created_by = self.request.user
-        return super().form_valid(form)
+        response = super().form_valid(form)
+        enqueue_batch_job(self.object.id)
+        return response
 
     def dispatch(self, request, *args, **kwargs):
         config = SiteConfig.objects.first()
