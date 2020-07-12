@@ -15,10 +15,10 @@ from main.utils.anonymizer import Anonymizer
 @dataclass
 class BatchTransferrerConfig(DicomTransferrerConfig):
     archive_name: str = None
-    clinical_trial_protocol_id: str = None
-    clinical_trial_protocol_name: str = None
+    trial_protocol_id: str = None
+    trial_protocol_name: str = None
     pseudonymize: bool = True
-    cleanup: bool = True
+    cache_folder: str = '/tmp'
 
 class BatchTransferrer(DicomTransferrer):
     def __init__(self, config: BatchTransferrerConfig):
@@ -35,17 +35,18 @@ class BatchTransferrer(DicomTransferrer):
         if self.config.pseudonymize:
             self._anonymizer.anonymize_dataset(ds, patient_name=pseudonym)
 
-        if self.config.clinical_trial_protocol_id:
-            ds.ClinicalTrialProtocolID = self.config.clinical_trial_protocol_id
+        if self.config.trial_protocol_id:
+            ds.ClinicalTrialProtocolID = self.config.trial_protocol_id
         
-        if self.config.clinical_trial_protocol_name:
-            ds.ClinicalTrialProtocolName = self.config.clinical_trial_protocol_name
+        if self.config.trial_protocol_name:
+            ds.ClinicalTrialProtocolName = self.config.trial_protocol_name
 
     def _fetch_patient(self, request):
         """Fetch the correct patient for this request. Raises an error if there
         are multiple patients for this request."""
 
         request_id = request['RequestID']
+
         patient_id = request['PatientID']
         patient_name = request['PatientName']
         patient_birth_date = request['PatientBirthDate']
@@ -59,7 +60,6 @@ class BatchTransferrer(DicomTransferrer):
             raise Exception(f'Ambigious patient for request with ID {request_id}.')
 
         patient = patients[0]
-        request_id = patient['RequestID']
         patient_id = patient['PatientID']
         patient_name = patient['PatientName']
         patient_birth_date = patient['PatientBirthDate']
@@ -79,7 +79,7 @@ class BatchTransferrer(DicomTransferrer):
 
         return pseudonym
 
-    def _batch_process(self, requests, folder_path, handler_callback):
+    def _batch_process(self, requests, folder_path, callback, cleanup=True):
         """The heart of the batch transferrer which handles each request, download the
         DICOM data, calls a handler to process it and optionally cleans everything up."""
 
@@ -122,36 +122,31 @@ class BatchTransferrer(DicomTransferrer):
                             modality, modifier_callback=modifier_callback)
 
                 logging.info(f'Successfully processed request with ID {request_id}.')
-                handler_callback({
+                callback({
                     'RequestID': request_id,
                     'Status': DicomTransferrer.SUCCESS,
-                    'FolderName': patient_folder_name,
-                    'FolderPath': patient_folder_path,
+                    'Message': None,
+                    'Folder': patient_folder_path,
                     'Pseudonym': pseudonym
                 })
-
             except Exception as err:
                 logging.error(f'Error while processing request with ID {request_id}: {err}')
-                handler_callback({
+                callback({
                     'RequestID': request_id,
                     'Status': DicomTransferrer.ERROR,
-                    'Message': str(err)
+                    'Message': str(err),
+                    'Folder': None,
+                    'Pseudonym': None
                 })
 
-            finally:
-                if self.config.cleanup and patient_folder_path:
-                    shutil.rmtree(patient_folder_path)
-                patient_folder_path = None
+    def _create_archive(self, archive_password):
+        """Create a new archive with just an INDEX.txt file in it."""
 
-        if self.config.cleanup:
-            shutil.rmtree(folder_path)
+        temp_folder_path = tempfile.mkdtemp(dir=self.config.cache_folder)
 
-    def _create_archive(self, temp_folder, creation_time, archive_password):
-        """Create an empty archive with just an index file in it."""
-
-        readme_path = os.path.join(temp_folder, 'INDEX.txt')
+        readme_path = os.path.join(temp_folder_path, 'INDEX.txt')
         readme_file = open(readme_path, 'w')
-        readme_file.write(f'Archive created by {self.config.username} at {creation_time}.')
+        readme_file.write(f'Archive created by {self.config.username} at {datetime.now()}.')
         readme_file.close()
 
         archive_path = os.path.join(self.config.destination_folder, self.config.archive_name)
@@ -159,6 +154,8 @@ class BatchTransferrer(DicomTransferrer):
             raise Exception(f'Archive ${archive_path} already exists.')
 
         self._add_to_archive(readme_path, archive_password)
+
+        shutil.rmtree(temp_folder_path)
 
     def _add_to_archive(self, path_to_add, archive_password):
         """Add a file or folder to an archive. If the archive does not exist 
@@ -168,38 +165,57 @@ class BatchTransferrer(DicomTransferrer):
         password_option = '-p' + archive_password
         archive_path = os.path.join(self.config.destination_folder, self.config.archive_name + ".7z")
         cmd = ['7z', 'a', password_option, '-mhe=on', '-mx1', '-y', archive_path, path_to_add]
-        proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL)
-        proc.wait()
-        (_, stderr) = proc.communicate()
-        if proc.returncode != 0:
-            raise Exception('Failed to add files to archive (%s)' % stderr)
+        try:
+            proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL)
+            proc.wait()
+            (_, stderr) = proc.communicate()
+            if proc.returncode != 0:
+                raise Exception('Failed to add path to archive (%s)' % stderr)
+        except Exception as err:
+            raise Exception('Failure while executing 7zip: %s' % str(err))
 
-
-    def batch_download(self, requests, progress_callback, archive_password=None):
+    def transfer_to_folder(self, requests, progress_callback, archive_password=None):
         logging.info(f'Starting download of {len(requests)} requests at {datetime.now().ctime()}'
                 f'with config: {self.config}')
 
-        def handler_callback(result):
-            if self.config.archive_name and archive_password:
-                self._add_to_archive(...)
-            else:
-                copy...
+        add_to_archive = self.config.archive_name and archive_password
 
-        cache_folder_path = tempfile.mkdtemp(dir=self.config.cache_folder)
-        self._batch_process(requests, cache_folder_path, handler_callback)
+        if add_to_archive:
+            self._create_archive(archive_password)
+            cache_folder_path = tempfile.mkdtemp(dir=self.config.cache_folder)
+            destination_folder_path = cache_folder_path
+        else:
+            destination_folder_path = self.config.destination_folder
+            cache_folder_path = None
+
+        def callback(result):
+            if add_to_archive and result['Status'] == BatchTransferrer.SUCCESS:
+                folder_path = result['Folder']
+                self._add_to_archive(folder_path, archive_password)
+                # Cleanup when folder is archived
+                shutil.rmtree(folder_path)
+
+            progress_callback(result)
+
+        #self._batch_process(requests, cache_folder_path, callback)
+
+        # Cleanup when finished
+        if (cache_folder_path):
+            shutil.rmtree(cache_folder_path)
 
         logging.info(f'Finished download of {len(requests)} requests at {datetime.now().ctime()}'
                 f'with config: {self.config}')
 
-    def batch_transfer(self, requests, progress_callback):
+    def transfer_to_server(self, requests, progress_callback):
         logging.info(f'Starting transfer of {len(requests)} requests at {datetime.now().ctime()}'
                 f'with config: {self.config}')
 
         def handler_callback(result):
+            #self.upload_folder(result...)
             pass
 
         cache_folder_path = tempfile.mkdtemp(dir=self.config.cache_folder)
-        self._batch_process(requests, cache_folder_path, handler_callback)
+        #self._batch_process(requests, cache_folder_path, handler_callback)
 
         logging.info(f'Finished download of {len(requests)} requests at {datetime.now().ctime()}'
                 f'with config: {self.config}')

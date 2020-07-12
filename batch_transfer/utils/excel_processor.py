@@ -13,19 +13,8 @@ class ExcelError(Exception):
 
 
 class ExcelProcessor:
-    REQUEST_ID_COL = 'RequestID'
-    PATIENT_ID_COL = 'PatientID'
-    PATIENT_NAME_COL = 'PatientName'
-    PATIENT_BIRTH_DATE_COL = 'PatientBirthDate'
-    STUDY_DATE_COL = 'StudyDate'
-    MODALITY_COL = 'Modality'
-    PSEUDONYM_COL = 'Pseudonym'
-    EXCLUDE_COL = 'Exclude'
-    STATUS_COL = 'Status'
-
-    def __init__(self, excel_file, worksheet=None, cmd_line_mode=False):
+    def __init__(self, excel_file, worksheet=None):
         self._worksheet = worksheet
-        self._cmd_line_mode = cmd_line_mode
         self._excel_file = excel_file
         self.wb = None
         self.ws = None
@@ -49,15 +38,14 @@ class ExcelProcessor:
 
     def _scan_columns(self):
         cols = dict()
-        cols[self.REQUEST_ID_COL] = self._search_column(self.REQUEST_ID_COL)
-        cols[self.PATIENT_ID_COL] = self._search_column(self.PATIENT_ID_COL)
-        cols[self.PATIENT_NAME_COL] = self._search_column(self.PATIENT_NAME_COL)
-        cols[self.PATIENT_BIRTH_DATE_COL] = self._search_column(self.PATIENT_BIRTH_DATE_COL)
-        cols[self.STUDY_DATE_COL] = self._search_column(self.STUDY_DATE_COL)
-        cols[self.MODALITY_COL] = self._search_column(self.MODALITY_COL)
-        cols[self.PSEUDONYM_COL] = self._search_column(self.PSEUDONYM_COL)
-        cols[self.EXCLUDE_COL] = self._search_column(self.EXCLUDE_COL)
-        cols[self.STATUS_COL] = self._search_column(self.STATUS_COL)
+        cols['RequestID'] = self._search_column('RequestID')
+        cols['PatientID'] = self._search_column('PatientID')
+        cols['PatientName'] = self._search_column('PatientName')
+        cols['PatientBirthDate'] = self._search_column('PatientBirthDate')
+        cols['StudyDate'] = self._search_column('StudyDate')
+        cols['Modality'] = self._search_column('Modality')
+        cols['Pseudonym'] = self._search_column('Pseudonym')
+        cols['Exclude'] = self._search_column('Exclude')
 
         self._check_columns(cols)
 
@@ -65,17 +53,14 @@ class ExcelProcessor:
 
     def _check_columns(self, cols):
         required_columns = [
-            self.REQUEST_ID_COL,
-            self.PATIENT_ID_COL,
-            self.PATIENT_NAME_COL,
-            self.PATIENT_BIRTH_DATE_COL,
-            self.STUDY_DATE_COL, 
-            self.MODALITY_COL,
-            self.PSEUDONYM_COL
+            'RequestID',
+            'PatientID',
+            'PatientName',
+            'PatientBirthDate',
+            'StudyDate', 
+            'Modality',
+            'Pseudonym'
         ]
-
-        if self._cmd_line_mode:
-            required_columns.append(self.STATUS_COL)
 
         for column_name in required_columns:
             if not cols[column_name]:
@@ -101,13 +86,13 @@ class ExcelProcessor:
 
         r = 2 # Skip the header row
         while(True):
-            request_id = self.ws.cell(column=cols[self.REQUEST_ID_COL], row=r).value
-            patient_id = self.ws.cell(column=cols[self.PATIENT_ID_COL], row=r).value
-            patient_name = self.ws.cell(column=cols[self.PATIENT_NAME_COL], row=r).value
-            patient_birth_date = self.ws.cell(column=cols[self.PATIENT_BIRTH_DATE_COL], row=r).value
-            modality = self.ws.cell(column=cols[self.MODALITY_COL], row=r).value
-            study_date = self.ws.cell(column=cols[self.STUDY_DATE_COL], row=r).value
-            pseudonym = self.ws.cell(column=cols[self.PSEUDONYM_COL], row=r).value
+            request_id = self.ws.cell(column=cols['RequestID'], row=r).value
+            patient_id = self.ws.cell(column=cols['PatientID'], row=r).value
+            patient_name = self.ws.cell(column=cols['PatientName'], row=r).value
+            patient_birth_date = self.ws.cell(column=cols['PatientBirthDate'], row=r).value
+            modality = self.ws.cell(column=cols['Modality'], row=r).value
+            study_date = self.ws.cell(column=cols['StudyDate'], row=r).value
+            pseudonym = self.ws.cell(column=cols['Pseudonym'], row=r).value
 
             # Check for an empty row and then stop parsing
             if not (request_id or patient_id or patient_name or patient_birth_date
@@ -115,20 +100,19 @@ class ExcelProcessor:
                 break
 
             exclude = False
-            if cols[self.EXCLUDE_COL]:
-                exclude = bool(self.ws.cell(column=cols[self.EXCLUDE_COL], row=r).value)
+            if cols['Exclude']:
+                exclude = bool(self.ws.cell(column=cols['Exclude'], row=r).value)
 
             if not exclude:
                 row = dict()
                 row['Row'] = r
-                row[self.REQUEST_ID_COL] = self._clean_request_id(request_id, r)
-                row[self.PATIENT_ID_COL] = self._clean_patient_id(patient_id)
-                row[self.PATIENT_NAME_COL] = self._clean_patient_name(patient_name)
-                row[self.PATIENT_BIRTH_DATE_COL] = self._clean_patient_birth_date(
-                        patient_birth_date, r)
-                row[self.MODALITY_COL] = self._clean_modality(modality, r)
-                row[self.STUDY_DATE_COL] = self._clean_study_date(study_date, r)
-                row[self.PSEUDONYM_COL] = self._clean_pseudonym(pseudonym)
+                row['RequestID'] = self._clean_request_id(request_id, r)
+                row['PatientID'] = self._clean_patient_id(patient_id)
+                row['PatientName'] = self._clean_patient_name(patient_name)
+                row['PatientBirthDate'] = self._clean_patient_birth_date(patient_birth_date, r)
+                row['Modality'] = self._clean_modality(modality, r)
+                row['StudyDate'] = self._clean_study_date(study_date, r)
+                row['Pseudonym'] = self._clean_pseudonym(pseudonym)
                 self._clean_row(row, r)
 
                 self._data.append(row)
@@ -178,7 +162,8 @@ class ExcelProcessor:
         return str(pseudonym) if pseudonym else ''
 
     def _clean_row(self, row, r):
-        if not(row['PatientID'] or (row['PatientName'] and row['PatientBirthDate'])):
+        if not(row['PatientID'] 
+                or (row['PatientName'] and row['PatientBirthDate'])):
             self._errors.append('Missing PatientID or PatientName/PatientBirthDate (row %d)' % r)
 
         # TODO check that combination patient_id and pseudonym is unique

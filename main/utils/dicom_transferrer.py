@@ -11,7 +11,6 @@ from .dicom_operations import (
 class DicomTransferrerConfig:
     username: str
     client_ae_title: str
-    cache_folder: str
     source_ae_title: str
     source_ip: str
     source_port: int

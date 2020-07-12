@@ -75,7 +75,7 @@ class BatchTransferJobForm(ModelForm):
         requests = []
         for row in self.excel_data:
             request = BatchTransferRequest(
-                job=batch_job, # TODO rename to batch_job
+                job=batch_job,
                 request_id=row['RequestID'],
                 patient_id=row['PatientID'],
                 patient_name=row['PatientName'],

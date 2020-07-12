@@ -6,8 +6,9 @@ from functools import partial
 from pprint import pprint
 from datetime import datetime
 from main.utils.anonymizer import Anonymizer
+from main.utils.dicom_transferrer import DicomTransferrer
 from batch_transfer.utils.excel_processor import ExcelProcessor
-from main.utils.dicom_conductor import DicomConductor, Config as ConductorConfig
+from batch_transfer.utils.batch_transferrer import BatchTransferrerConfig, BatchTransferrer
 
 class AditCmd:
     def __init__(self, config_ini_path, excel_file_path, worksheet=None):
@@ -18,7 +19,7 @@ class AditCmd:
             raise IOError('Excel file already in use by another program, please close.')
 
         self._excel_processor = ExcelProcessor(excel_file_path, worksheet=worksheet)
-        self._conductor = DicomConductor(self._create_conductor_config())
+        self._transferrer = BatchTransferrer(self._create_transferrer_config())
 
     def _load_config_from_ini(self, config_ini_path):
         config = configparser.ConfigParser()
@@ -57,18 +58,18 @@ class AditCmd:
 
         return already_open
 
-    def _create_conductor_config(self):
-        return ConductorConfig(
+    def _create_transferrer_config(self):
+        return BatchTransferrerConfig(
             username=self.config['Username'],
             client_ae_title=self.config['ClientAETitle'],
             cache_folder=self.config['CacheFolder'],
             source_ae_title=self.config.get('SourceAETitle'),
             source_ip=self.config.get('SourceIP'),
             source_port=self.config.getint('SourcePort'),
-            target_ae_title=self.config.get('DestinationAETitle'),
-            target_ip=self.config.get('DestinationIP'),
-            target_port=self.config.getint('DestinationPort'),
-            archive_folder=self.config.get('DestinationFolder'),
+            destination_ae_title=self.config.get('DestinationAETitle'),
+            destination_ip=self.config.get('DestinationIP'),
+            destination_port=self.config.getint('DestinationPort'),
+            destination_folder=self.config.get('DestinationFolder'),
             archive_name=self.config.get('ArchiveName'),
             trial_protocol_id=self.config.get('TrialProtocolID', ''),
             trial_protocol_name=self.config.get('TrialProtocolName', ''),
@@ -76,14 +77,14 @@ class AditCmd:
         )
 
     def _print_status(self, status):
-        if status == DicomConductor.ERROR:
+        if status == DicomTransferrer.ERROR:
             print('E', end='', flush=True)
         else:
             print('.', end='', flush=True)
 
     def _process_result(self, column, result):
         self._print_status(result['Status'])
-        if result['Status'] == DicomConductor.SUCCESS:
+        if result['Status'] == DicomTransferrer.SUCCESS:
             self._excel_processor.set_cell_value(
                 ExcelProcessor.STATUS_COL,
                 result['RequestID'],
@@ -94,7 +95,7 @@ class AditCmd:
                 result['RequestID'],
                 result['Message']
             )
-        elif result['Status'] == DicomConductor.ERROR:
+        elif result['Status'] == DicomTransferrer.ERROR:
             self._excel_processor.set_cell_value(
                 ExcelProcessor.STATUS_COL,
                 result['RequestID'],
@@ -104,14 +105,14 @@ class AditCmd:
 
     def fetch_patient_ids(self):
         callback = partial(self._process_result, ExcelProcessor.PATIENT_ID_COL)
-        self._conductor.fetch_patient_ids(
+        self._transferrer.fetch_patient_ids(
             self._excel_processor.extract_data(),
             result_callback=callback
         )
 
     def download(self, archive_password):
         callback = partial(self._process_result, ExcelProcessor.PSEUDONYM_COL)
-        self._conductor.download(
+        self._transferrer.download(
             self._excel_processor.extract_data(),
             archive_password,
             result_callback=callback
@@ -119,7 +120,7 @@ class AditCmd:
 
     def transfer(self):
         callback = partial(self._process_result, ExcelProcessor.PSEUDONYM_COL)
-        self._conductor.transfer(
+        self._transferrer.transfer(
             self._excel_processor.extract_data(),
             result_callback=callback
         )

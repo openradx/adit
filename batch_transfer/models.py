@@ -35,6 +35,7 @@ class BatchTransferJob(DicomJob):
 class BatchTransferRequest(models.Model):
 
     class Status(models.TextChoices):
+        UNPROCESSED = 'UP', 'Unprocessed'
         SUCCESS = 'SU', 'Success'
         WARNING = 'WA', 'Warning'
         ERROR = 'ER', 'Error'
@@ -51,5 +52,6 @@ class BatchTransferRequest(models.Model):
     study_date = models.DateField()
     modality = models.CharField(max_length=16)
     pseudonym = models.CharField(null=True, max_length=256)
-    status_code = models.CharField(null=True, max_length=2, choices=Status.choices)
-    status_message = models.CharField(null=True, max_length=256)
+    status = models.CharField(max_length=2, choices=Status.choices,
+            default=Status.UNPROCESSED)
+    message = models.CharField(null=True, max_length=256)

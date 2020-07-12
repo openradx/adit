@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/3.0/ref/settings/
 
 import os
 import sys
+from datetime import time
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -195,3 +196,11 @@ if DEBUG:
 else:
     EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
     # TODO provide SMTP details, see https://docs.djangoproject.com/en/dev/topics/email/
+
+# General ADIT settings
+ADIT_AE_TITLE = 'ADIT'
+
+# When should batch transfer jobs be processed
+BATCH_TRANSFER_CACHE_FOLDER = '/tmp/adit_batch_transfer'
+BATCH_TRANSFER_JOB_FROM_TIME = time(21, 0)
+BATCH_TRANSFER_JOB_TILL_TIME = time(9, 0)

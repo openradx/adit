@@ -2,8 +2,12 @@
 
 
 # TODO
+- Think about moving all those dicts to dataclasses when passing around data
 
 # Commands
+
+## Test with manage.py
+- Show print outputs: python manage.py -v 2 app_name
 
 ## Watch only changed tests with pytest watch
 ptw --runner 'pytest -s --testmon'
