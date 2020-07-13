@@ -7,28 +7,27 @@ from .dicom_operations import (
     DicomOperation, DicomOperationConfig
 )
 
-@dataclass
-class DicomTransferrerConfig:
-    username: str
-    client_ae_title: str
-    source_ae_title: str
-    source_ip: str
-    source_port: int
-    destination_ae_title: str = None
-    destination_ip: str = None
-    destination_port: int = None
-    destination_folder: str = None
-    patient_root_query_model_find: bool = False
-    patient_root_query_model_get: bool = True
-
-  
 class DicomTransferrer:
 
     SUCCESS = "Success"
     INFO = "Info"
     ERROR = "Error"
 
-    def __init__(self, config: DicomTransferrerConfig):
+    @dataclass
+    class Config:
+        username: str
+        client_ae_title: str
+        source_ae_title: str
+        source_ip: str
+        source_port: int
+        destination_ae_title: str = None
+        destination_ip: str = None
+        destination_port: int = None
+        destination_folder: str = None
+        patient_root_query_model_find: bool = False
+        patient_root_query_model_get: bool = True
+
+    def __init__(self, config: Config):
         self.config = config
 
         self._find = DicomFind(DicomOperationConfig(

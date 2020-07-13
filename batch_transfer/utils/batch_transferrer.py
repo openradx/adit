@@ -7,21 +7,20 @@ from pathlib import Path
 from dataclasses import dataclass
 from datetime import datetime
 from functools import partial
-from main.utils.dicom_transferrer import (
-    DicomTransferrerConfig, DicomTransferrer
-)
+from main.utils.dicom_transferrer import DicomTransferrer
 from main.utils.anonymizer import Anonymizer
 
-@dataclass
-class BatchTransferrerConfig(DicomTransferrerConfig):
-    archive_name: str = None
-    trial_protocol_id: str = None
-    trial_protocol_name: str = None
-    pseudonymize: bool = True
-    cache_folder: str = '/tmp'
-
 class BatchTransferrer(DicomTransferrer):
-    def __init__(self, config: BatchTransferrerConfig):
+
+    @dataclass
+    class Config(DicomTransferrer.Config):
+        archive_name: str = None
+        trial_protocol_id: str = None
+        trial_protocol_name: str = None
+        pseudonymize: bool = True
+        cache_folder: str = '/tmp'
+
+    def __init__(self, config: Config):
         super().__init__(config)
         self.config = config
         self._anonymizer = Anonymizer()
@@ -79,7 +78,7 @@ class BatchTransferrer(DicomTransferrer):
 
         return pseudonym
 
-    def _batch_process(self, requests, folder_path, callback, cleanup=True):
+    def _batch_process(self, requests, folder_path, handler_callback, cleanup=True):
         """The heart of the batch transferrer which handles each request, download the
         DICOM data, calls a handler to process it and optionally cleans everything up."""
 
@@ -122,7 +121,7 @@ class BatchTransferrer(DicomTransferrer):
                             modality, modifier_callback=modifier_callback)
 
                 logging.info(f'Successfully processed request with ID {request_id}.')
-                callback({
+                handler_callback({
                     'RequestID': request_id,
                     'Status': DicomTransferrer.SUCCESS,
                     'Message': None,
@@ -131,7 +130,7 @@ class BatchTransferrer(DicomTransferrer):
                 })
             except Exception as err:
                 logging.error(f'Error while processing request with ID {request_id}: {err}')
-                callback({
+                handler_callback({
                     'RequestID': request_id,
                     'Status': DicomTransferrer.ERROR,
                     'Message': str(err),
@@ -174,7 +173,7 @@ class BatchTransferrer(DicomTransferrer):
         except Exception as err:
             raise Exception('Failure while executing 7zip: %s' % str(err))
 
-    def transfer_to_folder(self, requests, progress_callback, archive_password=None):
+    def batch_download(self, requests, progress_callback, archive_password=None):
         logging.info(f'Starting download of {len(requests)} requests at {datetime.now().ctime()}'
                 f'with config: {self.config}')
 
@@ -183,12 +182,12 @@ class BatchTransferrer(DicomTransferrer):
         if add_to_archive:
             self._create_archive(archive_password)
             cache_folder_path = tempfile.mkdtemp(dir=self.config.cache_folder)
-            destination_folder_path = cache_folder_path
+            dest_folder_path = cache_folder_path
         else:
-            destination_folder_path = self.config.destination_folder
             cache_folder_path = None
+            dest_folder_path = self.config.destination_folder
 
-        def callback(result):
+        def handler_callback(result):
             if add_to_archive and result['Status'] == BatchTransferrer.SUCCESS:
                 folder_path = result['Folder']
                 self._add_to_archive(folder_path, archive_password)
@@ -197,16 +196,16 @@ class BatchTransferrer(DicomTransferrer):
 
             progress_callback(result)
 
-        #self._batch_process(requests, cache_folder_path, callback)
+        self._batch_process(requests, dest_folder_path, handler_callback)
 
         # Cleanup when finished
-        if (cache_folder_path):
+        if cache_folder_path:
             shutil.rmtree(cache_folder_path)
 
         logging.info(f'Finished download of {len(requests)} requests at {datetime.now().ctime()}'
                 f'with config: {self.config}')
 
-    def transfer_to_server(self, requests, progress_callback):
+    def batch_transfer(self, requests, progress_callback):
         logging.info(f'Starting transfer of {len(requests)} requests at {datetime.now().ctime()}'
                 f'with config: {self.config}')
 
@@ -215,7 +214,7 @@ class BatchTransferrer(DicomTransferrer):
             pass
 
         cache_folder_path = tempfile.mkdtemp(dir=self.config.cache_folder)
-        #self._batch_process(requests, cache_folder_path, handler_callback)
+        self._batch_process(requests, cache_folder_path, handler_callback)
 
         logging.info(f'Finished download of {len(requests)} requests at {datetime.now().ctime()}'
                 f'with config: {self.config}')

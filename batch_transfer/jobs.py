@@ -1,9 +1,7 @@
 from django.conf import settings
 from .models import BatchTransferJob
 from main.models import DicomNode, DicomServer
-from .utils.batch_transferrer import (
-    BatchTransferrerConfig, BatchTransferrer
-)
+from .utils.batch_transferrer import BatchTransferrer
 
 def progress_callback(result):
     pass
@@ -13,7 +11,7 @@ def batch_transfer(batch_job_id):
     user = batch_job.created_by
     source = batch_job.source.dicomserver # Source is always a server
 
-    config = BatchTransferrerConfig(
+    config = BatchTransferrer.Config(
         username = user.username,
         client_ae_title = settings.ADIT_AE_TITLE,
         cache_folder = settings.BATCH_TRANSFER_CACHE_FOLDER,

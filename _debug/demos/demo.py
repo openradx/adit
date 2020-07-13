@@ -2,17 +2,17 @@ import sys, os
 root_folder = os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
 sys.path.append(root_folder)
 
-from batch_transfer.utils.batch_transferrer import BatchTransferrer, BatchTransferrerConfig
+from batch_transfer.utils.batch_transferrer import BatchTransferrer
 
 tmp_folder = os.path.join(root_folder, '_tmp')
 
-config = BatchTransferrerConfig(
-    'kai',
-    'ADIT',
-    tmp_folder,
-    'OTRTHANC1',
-    '127.0.0.1',
-    7501
+config = BatchTransferrer.Config(
+    username='kai',
+    client_ae_title='ADIT',
+    source_ae_title='OTRTHANC1',
+    source_ip='127.0.0.1',
+    source_port=7501,
+    destination_folder='/tmp/adit_download_folder'
 )
 
 transferrer = BatchTransferrer(config)

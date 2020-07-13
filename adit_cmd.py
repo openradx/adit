@@ -8,7 +8,7 @@ from datetime import datetime
 from main.utils.anonymizer import Anonymizer
 from main.utils.dicom_transferrer import DicomTransferrer
 from batch_transfer.utils.excel_processor import ExcelProcessor
-from batch_transfer.utils.batch_transferrer import BatchTransferrerConfig, BatchTransferrer
+from batch_transfer.utils.batch_transferrer import BatchTransferrer
 
 class AditCmd:
     def __init__(self, config_ini_path, excel_file_path, worksheet=None):
@@ -20,6 +20,8 @@ class AditCmd:
 
         self._excel_processor = ExcelProcessor(excel_file_path, worksheet=worksheet)
         self._transferrer = BatchTransferrer(self._create_transferrer_config())
+
+        self._results = []
 
     def _load_config_from_ini(self, config_ini_path):
         config = configparser.ConfigParser()
@@ -59,7 +61,7 @@ class AditCmd:
         return already_open
 
     def _create_transferrer_config(self):
-        return BatchTransferrerConfig(
+        return BatchTransferrer.Config(
             username=self.config['Username'],
             client_ae_title=self.config['ClientAETitle'],
             cache_folder=self.config['CacheFolder'],
@@ -82,47 +84,20 @@ class AditCmd:
         else:
             print('.', end='', flush=True)
 
-    def _process_result(self, column, result):
-        self._print_status(result['Status'])
-        if result['Status'] == DicomTransferrer.SUCCESS:
-            self._excel_processor.set_cell_value(
-                ExcelProcessor.STATUS_COL,
-                result['RequestID'],
-                'Ok'
-            )
-            self._excel_processor.set_cell_value(
-                column,
-                result['RequestID'],
-                result['Message']
-            )
-        elif result['Status'] == DicomTransferrer.ERROR:
-            self._excel_processor.set_cell_value(
-                ExcelProcessor.STATUS_COL,
-                result['RequestID'],
-                f"Error: {result['Message']}"
-            )
-        self._excel_processor.save()
-
     def fetch_patient_ids(self):
-        callback = partial(self._process_result, ExcelProcessor.PATIENT_ID_COL)
-        self._transferrer.fetch_patient_ids(
-            self._excel_processor.extract_data(),
-            result_callback=callback
-        )
+        raise NotImplementedError # TODO
 
     def download(self, archive_password):
-        callback = partial(self._process_result, ExcelProcessor.PSEUDONYM_COL)
-        self._transferrer.download(
+        self._transferrer.batch_download(
             self._excel_processor.extract_data(),
-            archive_password,
-            result_callback=callback
+            lambda result: self._results.append(result),
+            archive_password
         )
 
     def transfer(self):
-        callback = partial(self._process_result, ExcelProcessor.PSEUDONYM_COL)
-        self._transferrer.transfer(
+        self._transferrer.batch_transfer(
             self._excel_processor.extract_data(),
-            result_callback=callback
+            lambda result: self._results.append(result)
         )
 
     def close(self):

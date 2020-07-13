@@ -184,10 +184,3 @@ class ExcelProcessor:
 
     def close(self):
         self.wb.close()
-
-    def save(self):
-        self.wb.save(filename=self._excel_file)
-
-    def set_cell_value(self, column_name, row, value):
-        column = self._cols[column_name]
-        self.ws.cell(column=column, row=row, value=value)

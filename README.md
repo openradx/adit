@@ -3,6 +3,7 @@
 
 # TODO
 - Think about moving all those dicts to dataclasses when passing around data
+- Use Pandas to parse the excel file
 
 # Commands
 
