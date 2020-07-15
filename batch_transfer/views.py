@@ -2,8 +2,10 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.generic.edit import CreateView
 from django.views.generic import TemplateView, DetailView
 from django.contrib.auth.mixins import PermissionRequiredMixin
+from django.db import transaction
 from main.mixins import OwnerRequiredMixin
 from .models import SiteConfig, BatchTransferJob
+from main.models import DicomNode
 from .forms import BatchTransferJobForm
 from .utils.job_helpers import enqueue_batch_job
 
@@ -21,8 +23,23 @@ class BatchTransferJobCreate(LoginRequiredMixin, PermissionRequiredMixin, Create
     def form_valid(self, form):
         form.instance.created_by = self.request.user
         response = super().form_valid(form)
-        enqueue_batch_job(self.object.id)
+
+        # Do it after an ongoing transaction (even if it is currently
+        # unnecessary as ATOMIC_REQUESTS is False), see also
+        # https://spapas.github.io/2019/02/25/django-fix-async-db/
+        transaction.on_commit(lambda: enqueue_batch_job(self.object.id))
+
         return response
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['node_types'] = {}
+        for node in DicomNode.objects.all():
+            if node.node_type == DicomNode.NodeType.SERVER:
+                context['node_types'][node.id] = 'server'
+            elif node.node_type == DicomNode.NodeType.FOLDER:
+                context['node_types'][node.id] = 'folder'
+        return context
 
     def dispatch(self, request, *args, **kwargs):
         config = SiteConfig.objects.first()

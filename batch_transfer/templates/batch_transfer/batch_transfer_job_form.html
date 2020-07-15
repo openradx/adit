@@ -2,16 +2,26 @@
 
 {% load crispy_forms_tags %}
 
+{% block script %}
+<script>
+    {{ block.super }}
+    const nodeTypes = {{ node_types|safe }}
+    $(function() {
+        console.log("TODO")
+    });
+</script>
+{% endblock %}
+
 {% block content %}
-    <div class="top container">
-        <h5 class="card-title">
-            New batch transfer job
-            {% include 'main/header_help_link.html' with modal_id="batch-transfer-help-modal" %}
-        </h5>
-        <p>{% crispy form %}</p>
-    </div>
+<div class="top container">
+    <h5 class="card-title">
+        New batch transfer job
+        {% include 'main/header_help_link.html' with modal_id="batch-transfer-help-modal" %}
+    </h5>
+    <p>{% crispy form %}</p>
+</div>
 {% endblock %}
 
 {% block bottom %}
-    {% include 'batch_transfer/batch_transfer_help_modal.html' with modal_id="batch-transfer-help-modal" %}
+{% include 'batch_transfer/batch_transfer_help_modal.html' with modal_id="batch-transfer-help-modal" %}
 {% endblock %}

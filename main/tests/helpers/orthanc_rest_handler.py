@@ -1,5 +1,6 @@
 import requests
 import os
+from pathlib import Path
 
 class OrthancRestHandler:
     PATIENTS_RESOURCE = 'patients'
@@ -14,8 +15,8 @@ class OrthancRestHandler:
     def upload_files(self, folder_to_upload):
         for root, dirs, files in os.walk(folder_to_upload):
             for file in files:
-                dicom_file = os.path.join(root, file)
-                with open(dicom_file, 'rb') as f:
+                dicom_file_path = Path(root) / file
+                with open(dicom_file_path, 'rb') as f:
                     payload = f.read()
                     r = requests.post(f'http://{self.host}:{self.port}/instances', data=payload)
                     r.raise_for_status()

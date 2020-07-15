@@ -13,9 +13,12 @@
 
     <link rel="stylesheet" type="text/css" href="{% static 'main/vendor/css/bootstrap.min.css' %}">
     <link rel="stylesheet" type="text/css" href="{% static 'main/css/main.css' %}">
+    {% block css %}{% endblock %}
+
     <script src="{% static 'main/vendor/js/jquery.min.js' %}"></script>
     <script src="{% static 'main/vendor/js/bootstrap.bundle.min.js' %}"></script>
     <script src="{% static 'main/js/main.js' %}"></script>
+    {% block script %}{% endblock %}
   </head>
 
   <body>

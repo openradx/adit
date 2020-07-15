@@ -1,6 +1,6 @@
 from django.core.management.base import BaseCommand, CommandError
 from django.conf import settings
-import os
+from pathlib import Path
 from main.tests.helpers.orthanc_rest_handler import OrthancRestHandler
 
 class Command(BaseCommand):
@@ -8,7 +8,7 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         
-        dicoms_folder = os.path.join(settings.BASE_DIR, '_debug', 'samples', 'dicoms')
+        dicoms_folder = Path(settings.BASE_DIR) / '_debug' / 'samples' / 'dicoms'
         handler = OrthancRestHandler(port=6501)
         handler.clear()
         handler.upload_files(dicoms_folder)

@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 import string
 import random
 import pydicom
@@ -72,7 +73,7 @@ class Anonymizer:
         return (ds.PatientID, ds.PatientName)
 
     def anonymize_folder(self, folder, *args, **kwargs):
-        if not os.path.isdir(folder):
+        if not Path(folder).is_dir():
             raise ValueError(f"Invalid folder: {folder}")
 
         callback = kwargs.pop('callback', None)
@@ -81,15 +82,15 @@ class Anonymizer:
 
         for root, _, files in os.walk(folder):
             for filename in files:
-                filepath = os.path.join(root, filename)
-                ds = pydicom.dcmread(filepath)
+                file_path = Path(root) / filename
+                ds = pydicom.dcmread(file_path)
                 self.anonymize_dataset(ds, *args, **kwargs)
 
                 # Allow to manipulate the dataset before saving it to disk
                 if callback:
                     callback(ds)
 
-                ds.save_as(filepath)
+                ds.save_as(file_path)
 
         return True
 

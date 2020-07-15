@@ -1,17 +1,38 @@
 from django.conf import settings
-from .models import BatchTransferJob
+from functools import partial
+from datetime import datetime
+from .models import BatchTransferJob, BatchTransferRequest
 from main.models import DicomNode, DicomServer
-from .utils.batch_transferrer import BatchTransferrer
+from .utils.batch_handler import BatchHandler
+from .utils.job_helpers import must_be_scheduled, enqueue_batch_job
 
-def progress_callback(result):
-    pass
+def _process_result(batch_job_id, result):
+    request_id = result['RequestID']
+    request = BatchTransferRequest.objects.get(
+            job=batch_job_id, request_id=request_id)
+    if result['Status'] == BatchHandler.SUCCESS:
+        request.status = BatchTransferRequest.Status.SUCCESS
+    elif result['Status'] == BatchHandler.ERROR:
+        request.status = BatchTransferRequest.Status.ERROR
+    else:
+        raise Exception('Invalid result status: ' + result['Status'])
+    request.message = result['Message']
+    if result['Pseudonym']:
+        result.pseudonym = result['Pseudonym']
+    result.processed_at = datetime.now()
+    result.save()
+
+    if must_be_scheduled():
+        enqueue_batch_job(batch_job_id)
+        return True
+    return False
 
 def batch_transfer(batch_job_id):
     batch_job = BatchTransferJob.objects.select_related().get(id=batch_job_id)
     user = batch_job.created_by
     source = batch_job.source.dicomserver # Source is always a server
 
-    config = BatchTransferrer.Config(
+    config = BatchHandler.Config(
         username = user.username,
         client_ae_title = settings.ADIT_AE_TITLE,
         cache_folder = settings.BATCH_TRANSFER_CACHE_FOLDER,
@@ -27,7 +48,7 @@ def batch_transfer(batch_job_id):
         trial_protocol_name = batch_job.trial_protocol_name
     )
 
-    requests = map(lambda req: {
+    unprocessed_requests = map(lambda req: {
         'RequestID': req.request_id,
         'PatientID': req.patient_id,
         'PatientName': req.patient_name,
@@ -35,7 +56,9 @@ def batch_transfer(batch_job_id):
         'StudyDate': req.study_date,
         'Modality': req.modality,
         'Pseudonym': req.pseudonym
-    }, batch_job.requests.all())
+    }, batch_job.requests.filter(status=BatchTransferRequest.Status.UNPROCESSED))
+
+    process_result_callback = partial(_process_result, batch_job.id)
 
     # Destination can be a server or a folder
     if batch_job.destination.node_type == DicomNode.NodeType.SERVER:
@@ -44,12 +67,12 @@ def batch_transfer(batch_job_id):
         config.destination_ip = dest_server.ip
         config.destination_port = dest_server.port
 
-        transferrer = BatchTransferrer(config)
-        transferrer.transfer_to_server(requests, progress_callback)
+        handler = BatchHandler(config)
+        handler.batch_transfer(unprocessed_requests, process_result_callback)
     else:
         dest_folder = batch_job.destination.dicomfolder
         config.destination_folder = dest_folder.path
         # TODO configuration for creating an archive
 
-        transferrer = BatchTransferrer(config)
-        transferrer.transfer_to_folder(requests, progress_callback)
+        handler = BatchHandler(config)
+        handler.batch_download(unprocessed_requests, process_result_callback)

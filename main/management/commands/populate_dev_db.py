@@ -3,7 +3,8 @@ import factory
 from django.contrib.auth.models import Group
 from accounts.factories import AdminUserFactory, UserFactory
 from main.factories import DicomServerFactory, DicomFolderFactory
-from batch_transfer.factories import BatchTransferJobFactory
+from batch_transfer.factories import (
+        BatchTransferJobFactory, BatchTransferRequestFactory)
 
 class Command(BaseCommand):
     help = 'Copies vendor files from node_modues folder'
@@ -43,8 +44,14 @@ class Command(BaseCommand):
 
         batch_transfer_jobs = []
         for i in range(150):
-            job = BatchTransferJobFactory(
+            batch_transfer_jobs.append(BatchTransferJobFactory(
                 source=factory.Faker('random_element', elements=servers),
                 destination=factory.Faker('random_element', elements=servers_and_folders),
                 created_by=factory.Faker('random_element', elements=users)
-            )
+            ))
+
+        batch_transfer_requests = []
+        for i in range(500):
+            batch_transfer_requests.append(BatchTransferRequestFactory(
+                job=factory.Faker('random_element', elements=batch_transfer_jobs)
+            ))

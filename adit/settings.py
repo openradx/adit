@@ -165,17 +165,12 @@ MESSAGE_STORAGE = 'django.contrib.messages.storage.session.SessionStorage'
 
 # Django RQ settings
 RQ_QUEUES = {
-    'default': {
+    'default': { # used by rqscheduler
         'HOST': 'localhost',
         'PORT': 6379,
         'DB': 0
     },
-    'high': {
-        'HOST': 'localhost',
-        'PORT': 6379,
-        'DB': 0
-    },
-    'low': {
+    'batch_transfer': {
         'HOST': 'localhost',
         'PORT': 6379,
         'DB': 0

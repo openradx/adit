@@ -1,18 +1,18 @@
 from django.test import TestCase
 from django.conf import settings
-import os
+from pathlib import Path
 from datetime import datetime
-from batch_transfer.utils.excel_processor import ExcelProcessor
+from batch_transfer.utils.excel_loader import ExcelLoader
 
-class ExcelProcessorTest(TestCase):
+class ExcelLoaderTest(TestCase):
     @classmethod
     def setUpTestData(cls):
-        excel_file_path = os.path.join(settings.BASE_DIR, '_debug',
-                'samples', 'sample_sheet_small.xlsx')
+        excel_file_path = (Path(settings.BASE_DIR) / '_debug' / 
+                'samples' / 'sample_sheet_small.xlsx')
         cls.excel_file = open(excel_file_path, 'rb')
         
     def test_open_valid_excel_batch_file(self):
-        processor = ExcelProcessor(self.excel_file)
+        processor = ExcelLoader(self.excel_file)
         data = processor.extract_data()
         self.assertEqual(len(data), 3)
         self.assertEqual(data[0]['PatientName'], 'Papaya^Pamela')

@@ -2,11 +2,11 @@ import sys, os
 root_folder = os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
 sys.path.append(root_folder)
 
-from batch_transfer.utils.batch_transferrer import BatchTransferrer
+from batch_transfer.utils.batch_handler import BatchHandler
 
 tmp_folder = os.path.join(root_folder, '_tmp')
 
-config = BatchTransferrer.Config(
+config = BatchHandler.Config(
     username='kai',
     client_ae_title='ADIT',
     source_ae_title='OTRTHANC1',
@@ -15,7 +15,7 @@ config = BatchTransferrer.Config(
     destination_folder='/tmp/adit_download_folder'
 )
 
-transferrer = BatchTransferrer(config)
+transferrer = BatchHandler(config)
 
 from datetime import datetime
 result = transferrer.find_patients('patient1', '', '')

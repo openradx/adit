@@ -1,5 +1,5 @@
-import os
 import logging
+from pathlib import Path
 from dataclasses import dataclass
 from datetime import datetime
 from .dicom_operations import (
@@ -7,10 +7,9 @@ from .dicom_operations import (
     DicomOperation, DicomOperationConfig
 )
 
-class DicomTransferrer:
+class DicomHandler:
 
     SUCCESS = "Success"
-    INFO = "Info"
     ERROR = "Error"
 
     @dataclass
@@ -164,7 +163,7 @@ class DicomTransferrer:
             study_time = study['StudyTime']
             modalities = ','.join(study['Modalities'])
             study_folder_name = f'{study_date}-{study_time}-{modalities}'
-            study_folder_path = os.path.join(folder_path, study_folder_name)
+            study_folder_path = Path(folder_path) / study_folder_name
             
             self.download_study(patient_id, study_uid, study_folder_path, 
                     modality, create_series_folders, modifier_callback)
@@ -178,7 +177,7 @@ class DicomTransferrer:
             download_path = folder_path
             if create_series_folders:
                 series_folder_name = series['SeriesDescription']
-                download_path = os.path.join(folder_path, series_folder_name)
+                download_path = Path(folder_path) / series_folder_name
 
             self.download_series(patient_id, study_uid, series_uid, download_path, modifier_callback)
 

@@ -1,6 +1,6 @@
 from django.test import TestCase
 from django.conf import settings
-import os
+from pathlib import Path
 from unittest.mock import patch
 from django.contrib.auth.models import Group
 from django.urls import reverse
@@ -19,11 +19,11 @@ class BatchTransferJobCreateTest(TestCase):
         batch_transferrers_group = Group.objects.get(name='batch_transferrers')
         cls.user_with_permission.groups.add(batch_transferrers_group)
 
-        samples_folder = os.path.join(settings.BASE_DIR, '_debug', 'samples')
+        samples_folder_path = Path(settings.BASE_DIR) / '_debug' / 'samples'
 
         # Real excel file
         def load_file(filename):
-            file_path = os.path.join(samples_folder, filename)
+            file_path = samples_folder_path / filename
             file_content = open(file_path, 'rb').read()
             return SimpleUploadedFile(
                 name=filename,

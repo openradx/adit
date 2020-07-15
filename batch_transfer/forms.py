@@ -6,7 +6,7 @@ from crispy_forms.bootstrap import FormActions
 from crispy_forms.layout import Submit
 from .models import BatchTransferJob, BatchTransferRequest
 from .fields import RestrictedFileField
-from .utils.excel_processor import ExcelProcessor, ExcelError
+from .utils.excel_loader import ExcelLoader, ExcelError
 
 class BatchTransferJobForm(ModelForm):
     excel_file = RestrictedFileField(max_upload_size=5242880)
@@ -62,8 +62,8 @@ class BatchTransferJobForm(ModelForm):
         file = self.cleaned_data['excel_file']
 
         try:
-            processor = ExcelProcessor(file)
-            self.excel_data = processor.extract_data()
+            loader = ExcelLoader(file)
+            self.excel_data = loader.extract_data()
         except ExcelError as err:
             for error in err.errors:
                 self.add_error(None, error)

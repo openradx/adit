@@ -1,5 +1,5 @@
 import argparse
-import os
+from pathlib import Path
 from datetime import datetime
 from openpyxl import Workbook
 from openpyxl.styles import Font
@@ -67,9 +67,8 @@ ws.column_dimensions['F'].width = 15
 ws.column_dimensions['G'].width = 20
 ws.column_dimensions['H'].width = 15
 
-parent_folder = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-samples_folder = os.path.join(parent_folder, '_samples')
+samples_folder_path = Path(__file__).parent / 'samples'
 filename = f'sample_sheet_generated_{row_count}.xlsx'
-sample_sheet_path = os.path.join(samples_folder, filename)
+sample_sheet_path = samples_folder_path / filename
 
 wb.save(sample_sheet_path)

@@ -12,7 +12,7 @@ class ExcelError(Exception):
         return f'{self.message}: {", ".join(self.errors)}'
 
 
-class ExcelProcessor:
+class ExcelLoader:
     def __init__(self, excel_file, worksheet=None):
         self._worksheet = worksheet
         self._excel_file = excel_file
