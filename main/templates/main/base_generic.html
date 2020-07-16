@@ -21,7 +21,7 @@
     {% block script %}{% endblock %}
   </head>
 
-  <body>
+  <body id="{{ request.resolver_match.url_name }}">
     {% include 'main/navbar.html' %}
     
     <main role="role">

@@ -1,9 +1,16 @@
 from django.db import models
 from django.urls import reverse
+from datetime import time
 from main.models import DicomJob
 
-class SiteConfig(models.Model):
+class AppSettings(models.Model):
     batch_transfer_locked = models.BooleanField(default=False)
+    batch_transfer_paused = models.BooleanField(default=False)
+    batch_slot_begin_time = models.TimeField(default=time(22, 0))
+    batch_slot_end_time = models.TimeField(default=time(8, 0))
+
+    class Meta:
+        verbose_name_plural = 'App settings'
     
 
 class BatchTransferJob(DicomJob):
@@ -14,6 +21,7 @@ class BatchTransferJob(DicomJob):
     pseudonymize = models.BooleanField(default=True)
     trial_protocol_id = models.CharField(max_length=64, blank=True)
     trial_protocol_name = models.CharField(max_length=64, blank=True)
+    archive_password = models.CharField(max_length=50, blank=True)
 
     class Meta:
         permissions = ((
@@ -29,7 +37,7 @@ class BatchTransferJob(DicomJob):
         self.job_type = self.JOB_TYPE
 
     def get_absolute_url(self):
-        return reverse("batch_transfer_job_detail", args=[str(self.pk)])
+        return reverse('batch_transfer_job_detail', args=[str(self.pk)])
 
 
 class BatchTransferRequest(models.Model):

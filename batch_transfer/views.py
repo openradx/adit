@@ -4,10 +4,10 @@ from django.views.generic import TemplateView, DetailView
 from django.contrib.auth.mixins import PermissionRequiredMixin
 from django.db import transaction
 from main.mixins import OwnerRequiredMixin
-from .models import SiteConfig, BatchTransferJob
+from .models import AppSettings, BatchTransferJob
 from main.models import DicomNode
 from .forms import BatchTransferJobForm
-from .utils.job_helpers import enqueue_batch_job
+from .tasks import enqueue_batch_job
 
 class BatchTransferJobCreate(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
     model = BatchTransferJob
@@ -42,8 +42,8 @@ class BatchTransferJobCreate(LoginRequiredMixin, PermissionRequiredMixin, Create
         return context
 
     def dispatch(self, request, *args, **kwargs):
-        config = SiteConfig.objects.first()
-        if config.batch_transfer_locked and not request.user.is_staff:
+        app_settings = AppSettings.objects.first()
+        if app_settings.batch_transfer_locked and not request.user.is_staff:
             return TemplateView.as_view(
                     template_name='batch_transfer/batch_transfer_locked.html')(request)
         return super().dispatch(request, *args, **kwargs)

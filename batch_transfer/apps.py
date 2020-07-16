@@ -27,7 +27,7 @@ def register_app():
 
 def init_db(sender, **kwargs):
     create_group()
-    create_site_config()
+    create_app_settings()
 
 def create_group():
     from accounts.utils import create_group_with_permissions
@@ -40,8 +40,8 @@ def create_group():
         )
     )
 
-def create_site_config():
-    from .models import SiteConfig
-    config = SiteConfig.objects.first()
-    if not config:
-        SiteConfig.objects.create()
+def create_app_settings():
+    from .models import AppSettings
+    app_settings = AppSettings.objects.first()
+    if not app_settings:
+        AppSettings.objects.create()

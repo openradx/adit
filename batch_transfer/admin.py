@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import SiteConfig, BatchTransferJob
+from .models import AppSettings, BatchTransferJob
 
 class BatchTransferJobAdmin(admin.ModelAdmin):
     list_display = (
@@ -16,7 +16,7 @@ class BatchTransferJobAdmin(admin.ModelAdmin):
 
 admin.site.register(BatchTransferJob, BatchTransferJobAdmin)
 
-class SiteConfigAdmin(admin.ModelAdmin):
+class AppSettingsAdmin(admin.ModelAdmin):
     pass
 
-admin.site.register(SiteConfig)
+admin.site.register(AppSettings, AppSettingsAdmin)

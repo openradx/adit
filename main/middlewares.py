@@ -2,7 +2,7 @@ import re
 
 from django.views.generic import TemplateView
 from django.urls import reverse
-from .models import SiteConfig
+from .models import AppSettings
 
 class MaintenanceMiddleware:
     """Render a maintenance template if in maintenance mode.
@@ -18,8 +18,8 @@ class MaintenanceMiddleware:
         if login_request or logout_request:
             return self.get_response(request)
 
-        self.config = SiteConfig.objects.first()
-        in_maintenance = self.config.maintenance_mode
+        app_settings = AppSettings.objects.first()
+        in_maintenance = app_settings.maintenance_mode
         if in_maintenance and not request.user.is_staff:
             return TemplateView.as_view(
                     template_name='main/maintenance.html')(request).render()

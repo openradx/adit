@@ -4,6 +4,7 @@ from django.core.exceptions import ValidationError
 from crispy_forms.helper import FormHelper
 from crispy_forms.bootstrap import FormActions
 from crispy_forms.layout import Submit
+from main.models import DicomNode
 from .models import BatchTransferJob, BatchTransferRequest
 from .fields import RestrictedFileField
 from .utils.excel_loader import ExcelLoader, ExcelError
@@ -42,6 +43,14 @@ class BatchTransferJobForm(ModelForm):
             of all transfered DICOM files. Leave blank otherwise.
         """
 
+        self.fields['archive_password'].widget.attrs['placeholder'] = 'Optional'
+
+        self.fields['archive_password'].help_text = """
+            A password to download the DICOM files into an encrypted
+            7z (https://7-zip.org) archive (max. 10 investigations). 
+            Leave blank to not use an archive.
+        """
+
         self.fields['excel_file'].help_text = """
             The Excel file which contains the data to transfer between
             two DICOM nodes. See [help] how to format the Excel sheet.
@@ -52,11 +61,16 @@ class BatchTransferJobForm(ModelForm):
 
     def clean_pseudonymize(self):
         pseudonymize = self.cleaned_data['pseudonymize']
-
         if not self.user.has_perm('batch_transfer.can_transfer_unpseudonymized'):
             pseudonymize = True
-
         return pseudonymize
+
+    def clean_archive_password(self):
+        archive_password = self.cleaned_data['archive_password']
+        destination = self.cleaned_data['destination']
+        if destination.nodeType != DicomNode.NodeType.FOLDER:
+            archive_password = ''
+        return archive_password
 
     def clean_excel_file(self):
         file = self.cleaned_data['excel_file']
@@ -106,5 +120,5 @@ class BatchTransferJobForm(ModelForm):
         fields=(
             'source', 'destination', 'project_name', 'project_description',
             'pseudonymize', 'trial_protocol_id', 'trial_protocol_name',
-            'excel_file'
+            'archive_password', 'excel_file'
         )

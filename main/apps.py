@@ -9,10 +9,10 @@ class MainConfig(AppConfig):
         post_migrate.connect(init_db, sender=self)
 
 def init_db(sender, **kwargs):
-    create_site_config()
+    create_app_settings()
 
-def create_site_config():
-    from .models import SiteConfig
-    config = SiteConfig.objects.first()
-    if not config:
-        SiteConfig.objects.create()
+def create_app_settings():
+    from .models import AppSettings
+    app_settings = AppSettings.objects.first()
+    if not app_settings:
+        AppSettings.objects.create()

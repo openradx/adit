@@ -1,15 +1,12 @@
 {% extends "main/base_generic.html" %}
 
+{% load static %}
 {% load crispy_forms_tags %}
 
 {% block script %}
-<script>
-    {{ block.super }}
-    const nodeTypes = {{ node_types|safe }}
-    $(function() {
-        console.log("TODO")
-    });
-</script>
+{{ block.super }}
+<script>const nodeTypes = {{ node_types|safe }};</script>
+<script src="{% static 'batch_transfer/js/batch_transfer.js' %}"></script>
 {% endblock %}
 
 {% block content %}

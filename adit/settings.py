@@ -192,10 +192,13 @@ else:
     EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
     # TODO provide SMTP details, see https://docs.djangoproject.com/en/dev/topics/email/
 
+# For Django-RQ to make all jobs run immediatly
+if DEBUG:
+    for _, queueConfig in RQ_QUEUES.items():
+        queueConfig['ASYNC'] = False
+
 # General ADIT settings
 ADIT_AE_TITLE = 'ADIT'
 
-# When should batch transfer jobs be processed
+# Static (non database) settings for batch_transfer app
 BATCH_TRANSFER_CACHE_FOLDER = '/tmp/adit_batch_transfer'
-BATCH_TRANSFER_JOB_FROM_TIME = time(21, 0)
-BATCH_TRANSFER_JOB_TILL_TIME = time(9, 0)

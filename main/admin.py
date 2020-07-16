@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import SiteConfig, DicomServer, DicomFolder
+from .models import AppSettings, DicomServer, DicomFolder
 
 admin.site.site_header = 'ADIT administration'
 
@@ -15,7 +15,7 @@ class DicomFolderAdmin(admin.ModelAdmin):
 
 admin.site.register(DicomFolder, DicomFolderAdmin)
 
-class SiteConfigAdmin(admin.ModelAdmin):
+class AppSettingsAdmin(admin.ModelAdmin):
     pass
 
-admin.site.register(SiteConfig)
+admin.site.register(AppSettings, AppSettingsAdmin)

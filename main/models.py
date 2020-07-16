@@ -4,8 +4,11 @@ from django.urls import reverse
 from django.core.validators import MaxValueValidator, MinValueValidator
 from .site import job_type_choices, job_detail_views
 
-class SiteConfig(models.Model):
+class AppSettings(models.Model):
     maintenance_mode = models.BooleanField(default=False)
+
+    class Meta:
+        verbose_name_plural = 'App settings'
     
 
 class DicomNode(models.Model):
