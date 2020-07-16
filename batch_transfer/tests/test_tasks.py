@@ -2,16 +2,16 @@ from django.test import TestCase
 from unittest.mock import patch
 from main.factories import DicomServerFactory, DicomFolderFactory
 from ..factories import BatchTransferJobFactory, BatchTransferRequestFactory
-from ..jobs import BatchHandler
-from ..jobs import batch_transfer
+from ..utils.batch_handler import BatchHandler
+from ..tasks import batch_transfer
 
-class BackgroundJobTests(TestCase):
+class BatchTransferTaskTest(TestCase):
     @classmethod
     def setUpTestData(cls):
         cls.batch_job_with_server_dest = BatchTransferJobFactory()
 
     @patch.object(BatchHandler, 'batch_transfer')
-    def test_batch_transfer_to_folder(self, handler_batch_transfer_mock):
+    def test_batch_transfer_to_server(self, handler_batch_transfer_mock):
         batch_job = BatchTransferJobFactory(
             source = DicomServerFactory(),
             destination = DicomServerFactory()

@@ -23,7 +23,7 @@ class BatchTransferJobFormTests(TestCase):
 
     def test_field_labels(self):
         form = BatchTransferJobForm(user=self.user)
-        self.assertEqual(len(form.fields), 8)
+        self.assertEqual(len(form.fields), 9)
         self.assertEqual(form.fields['source'].label, 'Source')
         self.assertEqual(form.fields['destination'].label, 'Destination')
         self.assertEqual(form.fields['project_name'].label, 'Project name')
@@ -31,6 +31,7 @@ class BatchTransferJobFormTests(TestCase):
         self.assertEqual(form.fields['pseudonymize'].label, 'Pseudonymize')
         self.assertEqual(form.fields['trial_protocol_id'].label, 'Trial protocol id')
         self.assertEqual(form.fields['trial_protocol_name'].label, 'Trial protocol name')
+        self.assertEqual(form.fields['archive_password'].label, 'Archive password')
         self.assertIsNone(form.fields['excel_file'].label)
 
     @patch('batch_transfer.forms.ExcelLoader', autospec=True)

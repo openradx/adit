@@ -27,7 +27,11 @@ class BatchTransferJobCreate(LoginRequiredMixin, PermissionRequiredMixin, Create
         # Do it after an ongoing transaction (even if it is currently
         # unnecessary as ATOMIC_REQUESTS is False), see also
         # https://spapas.github.io/2019/02/25/django-fix-async-db/
-        transaction.on_commit(lambda: enqueue_batch_job(self.object.id))
+        # Currently I am not using it because it is hard to test, but there
+        # it is already fixed in an upcoming release, see
+        # https://code.djangoproject.com/ticket/30457
+        #transaction.on_commit(lambda: enqueue_batch_job(self.object.id))
+        enqueue_batch_job(self.object.id)
 
         return response
 

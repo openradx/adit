@@ -67,8 +67,8 @@ class BatchTransferJobForm(ModelForm):
 
     def clean_archive_password(self):
         archive_password = self.cleaned_data['archive_password']
-        destination = self.cleaned_data['destination']
-        if destination.nodeType != DicomNode.NodeType.FOLDER:
+        destination = self.cleaned_data.get('destination')
+        if destination and destination.node_type != DicomNode.NodeType.FOLDER:
             archive_password = ''
         return archive_password
 
