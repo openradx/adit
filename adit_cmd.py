@@ -73,7 +73,6 @@ class AditCmd:
             destination_ip=self.config.get('DestinationIP'),
             destination_port=self.config.getint('DestinationPort'),
             destination_folder=self.config.get('DestinationFolder'),
-            archive_name=self.config.get('ArchiveName'),
             trial_protocol_id=self.config.get('TrialProtocolID', ''),
             trial_protocol_name=self.config.get('TrialProtocolName', ''),
             pseudonymize=self.config.getboolean('Pseudonymize', True)

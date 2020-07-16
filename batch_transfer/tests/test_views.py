@@ -74,4 +74,3 @@ class BatchTransferJobCreateTest(TestCase):
             response = self.client.post(reverse('new_batch_transfer_job'), invalid_form_data)
             self.assertGreater(len(response.context['form'].errors), 0)
             self.assertIsNone(BatchTransferJob.objects.first())
-

@@ -13,7 +13,6 @@ class BatchHandler(DicomHandler):
 
     @dataclass
     class Config(DicomHandler.Config):
-        archive_name: str = None
         trial_protocol_id: str = None
         trial_protocol_name: str = None
         pseudonymize: bool = True
@@ -26,7 +25,7 @@ class BatchHandler(DicomHandler):
         self.patient_cache = dict()
         self.pseudonym_cache = dict()
 
-    def _create_archive(self, archive_password):
+    def _create_archive(self, archive_name, archive_password):
         """Create a new archive with just an INDEX.txt file in it."""
 
         temp_folder_path = tempfile.mkdtemp(dir=self.config.cache_folder)
@@ -36,21 +35,21 @@ class BatchHandler(DicomHandler):
         readme_file.write(f'Archive created by {self.config.username} at {datetime.now()}.')
         readme_file.close()
 
-        archive_path = Path(self.config.destination_folder) / self.config.archive_name
+        archive_path = Path(self.config.destination_folder) / archive_name
         if Path(archive_path).is_file():
             raise Exception(f'Archive ${archive_path} already exists.')
 
-        self._add_to_archive(readme_path, archive_password)
+        self._add_to_archive(readme_path, archive_name, archive_password)
 
         shutil.rmtree(temp_folder_path)
 
-    def _add_to_archive(self, path_to_add, archive_password):
+    def _add_to_archive(self, path_to_add, archive_name, archive_password):
         """Add a file or folder to an archive. If the archive does not exist 
         it will be created."""
 
         # TODO catch error like https://stackoverflow.com/a/46098513/166229
         password_option = '-p' + archive_password
-        archive_path = Path(self.config.destination_folder) / self.config.archive_name + '.7z'
+        archive_path = Path(self.config.destination_folder) / archive_name + '.7z'
         cmd = ['7z', 'a', password_option, '-mhe=on', '-mx1', '-y', archive_path, path_to_add]
         try:
             proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL)
@@ -178,29 +177,32 @@ class BatchHandler(DicomHandler):
         logging.info(f'Starting download of {len(requests)} requests at {datetime.now().ctime()}'
                 f'with config: {self.config}')
 
-        add_to_archive = self.config.archive_name and archive_password
-
-        if add_to_archive:
-            self._create_archive(archive_password)
-            cache_folder_path = tempfile.mkdtemp(dir=self.config.cache_folder)
-            dest_folder_path = cache_folder_path
+        if archive_password:
+            # When an archive should be used then download to the cache folder
+            # and it to the archive from there
+            archive_name = f'{self.config.username}_{datetime.now().isoformat()}'
+            self._create_archive(archive_name, archive_password)
+            download_path = tempfile.mkdtemp(dir=self.config.cache_folder)
         else:
-            cache_folder_path = None
-            dest_folder_path = self.config.destination_folder
+            # Otherwise download directly to destination folder
+            dest_folder_name = f'{self.config.username}_{datetime.now().isoformat()}'
+            download_path = Path(self.config.destination_folder) / dest_folder_name
+            download_path.mkdir()
 
         def process_callback(result):
-            if add_to_archive and result['Status'] == DicomHandler.SUCCESS:
-                folder_path = result['Folder']
-                self._add_to_archive(folder_path, archive_password)
-                # Cleanup when folder is archived
-                shutil.rmtree(folder_path)
+            if archive_password and result['Status'] == DicomHandler.SUCCESS:
+                folder_path_to_add = result['Folder']
+                self._add_to_archive(folder_path_to_add, archive_name, archive_password)
+                # Cleanup when folder was archived
+                shutil.rmtree(folder_path_to_add)
+
             return handler_callback(result)
 
-        self._batch_process(requests, dest_folder_path, process_callback)
+        self._batch_process(requests, download_path, process_callback)
 
-        # Cleanup when finished
-        if cache_folder_path:
-            shutil.rmtree(cache_folder_path)
+        # Cleanup the temporary cache folder if an archive was created
+        if archive_password:
+            shutil.rmtree(download_path)
 
         logging.info(f'Finished download of {len(requests)} requests at {datetime.now().ctime()}'
                 f'with config: {self.config}')

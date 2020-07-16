@@ -2,11 +2,12 @@ from django.conf import settings
 from functools import partial
 from datetime import datetime, time, timedelta
 import django_rq
+from django_rq import job
 from .models import AppSettings, BatchTransferJob, BatchTransferRequest
 from main.models import DicomNode, DicomServer
 from .utils.batch_handler import BatchHandler
 
-def is_time_between(begin_time, end_time, check_time=datetime.now().time()):
+def _is_time_between(begin_time, end_time, check_time=datetime.now().time()):
     """Adapted from https://stackoverflow.com/a/10048290/166229"""
 
     if begin_time < end_time:
@@ -14,14 +15,14 @@ def is_time_between(begin_time, end_time, check_time=datetime.now().time()):
     else: # crosses midnight
         return check_time >= begin_time or check_time <= end_time
 
-def must_be_scheduled():
+def _must_be_scheduled():
     app_settings = AppSettings.objects.first()
     paused = app_settings.batch_transfer_paused
     begin_time = app_settings.batch_slot_begin_time
     end_time = app_settings.batch_slot_end_time
-    return paused or not is_time_between(begin_time, end_time)
+    return paused or not _is_time_between(begin_time, end_time)
 
-def next_batch_slot():
+def _next_batch_slot():
     from_time = settings.BATCH_TRANSFER_JOB_FROM_TIME
     now = datetime.now()
     if now.time < from_time:
@@ -29,16 +30,6 @@ def next_batch_slot():
     else:
         tomorrow = now.date() + timedelta(days=1)
         return datetime.combine(tomorrow, from_time)    
-
-def enqueue_batch_job(batch_job_id, eta=None):
-    if eta or must_be_scheduled():
-        if eta is None:
-            eta = next_batch_slot()
-        scheduler = django_rq.get_scheduler('batch_transfer')
-        scheduler.enqueue_at(eta, batch_transfer, batch_job_id)
-    else:
-        queue = django_rq.get_queue('batch_transfer')
-        queue.enqueue(batch_transfer, batch_job_id)
 
 def _process_result(batch_job_id, result):
     request_id = result['RequestID']
@@ -56,12 +47,23 @@ def _process_result(batch_job_id, result):
     result.processed_at = datetime.now()
     result.save()
 
-    if must_be_scheduled():
-        enqueue_batch_job(batch_job_id, eta=next_batch_slot())
+    if _must_be_scheduled():
+        enqueue_batch_job(batch_job_id, eta=_next_batch_slot())
         return True # stops further processing
 
     return False
 
+def enqueue_batch_job(batch_job_id, eta=None):
+    if eta or _must_be_scheduled():
+        if eta is None:
+            eta = _next_batch_slot()
+        scheduler = django_rq.get_scheduler('batch_transfer')
+        scheduler.enqueue_at(eta, batch_transfer, batch_job_id)
+    else:
+        queue = django_rq.get_queue('batch_transfer')
+        queue.enqueue(batch_transfer, batch_job_id)
+
+@job
 def batch_transfer(batch_job_id):
     batch_job = BatchTransferJob.objects.select_related().get(id=batch_job_id)
     user = batch_job.created_by
@@ -107,7 +109,7 @@ def batch_transfer(batch_job_id):
     else: # DicomNode.NodeType.Folder
         dest_folder = batch_job.destination.dicomfolder
         config.destination_folder = dest_folder.path
-        # TODO configuration for creating an archive
 
         handler = BatchHandler(config)
-        handler.batch_download(unprocessed_requests, process_result_callback)
+        handler.batch_download(unprocessed_requests, process_result_callback,
+                batch_job.archive_password)
