@@ -19,7 +19,7 @@ class AditCmd:
         self._excel_loader = ExcelLoader(excel_file_path, worksheet=worksheet)
         self._batch_handler = BatchHandler(self._create_batch_handler_config())
 
-        self._results = []
+        self.results = []
 
     def _load_config_from_ini(self, config_ini_path):
         config = configparser.ConfigParser()
@@ -86,7 +86,7 @@ class AditCmd:
         )
 
     def _handle_result(self, result):
-        self._results.append(result)
+        self.results.append(result)
         if result['Status'] == DicomHandler.ERROR:
             print('E', end='', flush=True)
         else:
@@ -94,7 +94,7 @@ class AditCmd:
 
     def batch_download(self, archive_password=None):
         def handler_callback(result):
-            self._results.append(result)
+            self.results.append(result)
             self._print_status(result['Status'])
 
         self._batch_handler.batch_download(
@@ -102,7 +102,6 @@ class AditCmd:
             self._handle_result,
             archive_password
         )
-        print(self._results)
 
     def batch_transfer(self):
         self._batch_handler.batch_transfer(
@@ -153,5 +152,9 @@ if __name__ == '__main__':
         adit_cmd.batch_download(args.archive)
     elif args.transfer:
         adit_cmd.batch_transfer()
+
+    print()
+    for result in adit_cmd.results:
+        print(result)
 
     adit_cmd.cleanup()

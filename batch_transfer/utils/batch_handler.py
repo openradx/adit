@@ -157,19 +157,19 @@ class BatchHandler(DicomHandler):
                 logging.info(f'Successfully processed request with ID {request_id}.')
                 stop_processing = process_callback({
                     'RequestID': request_id,
+                    'Pseudonym': pseudonym,
                     'Status': DicomHandler.SUCCESS,
                     'Message': None,
-                    'Folder': patient_folder_path,
-                    'Pseudonym': pseudonym
+                    'Folder': patient_folder_path
                 })
             except Exception as err:
                 logging.error(f'Error while processing request with ID {request_id}: {err}')
                 stop_processing = process_callback({
                     'RequestID': request_id,
+                    'Pseudonym': None,
                     'Status': DicomHandler.ERROR,
                     'Message': str(err),
-                    'Folder': None,
-                    'Pseudonym': None
+                    'Folder': None
                 })
             finally:
                 # The caller can force to halt the processing and may schedule processing
@@ -198,10 +198,12 @@ class BatchHandler(DicomHandler):
 
         def process_callback(result):
             if archive_password and result['Status'] == DicomHandler.SUCCESS:
-                folder_path_to_add = result['Folder']
+                folder_path_to_add = result.pop('Folder')
                 self._add_to_archive(folder_path_to_add, archive_name, archive_password)
                 # Cleanup when folder was archived
                 shutil.rmtree(folder_path_to_add)
+            else:
+                del result['Folder']
 
             return handler_callback(result)
 
@@ -219,9 +221,11 @@ class BatchHandler(DicomHandler):
                 f'with config: {self.config}')
 
         def process_callback(result):
-            folder_path = result['Folder']
-            self.upload_folder(folder_path)
-            shutil.rmtree(folder_path)
+            folder_path = result.pop('Folder')
+            if folder_path:
+                self.upload_folder(folder_path)
+                shutil.rmtree(folder_path)
+                
             return handler_callback(result)
 
         cache_folder_path = tempfile.mkdtemp(dir=self.config.cache_folder)
