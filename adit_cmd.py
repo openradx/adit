@@ -65,7 +65,6 @@ class AditCmd:
         return BatchHandler.Config(
             username=self.config['Username'],
             client_ae_title=self.config['ClientAETitle'],
-            cache_folder=self.config['CacheFolder'],
             source_ae_title=self.config.get('SourceAETitle'),
             source_ip=self.config.get('SourceIP'),
             source_port=self.config.getint('SourcePort'),
@@ -75,7 +74,9 @@ class AditCmd:
             destination_folder=self.config.get('DestinationFolder'),
             trial_protocol_id=self.config.get('TrialProtocolID', ''),
             trial_protocol_name=self.config.get('TrialProtocolName', ''),
-            pseudonymize=self.config.getboolean('Pseudonymize', True)
+            pseudonymize=self.config.getboolean('Pseudonymize', True),
+            cache_folder=self.config.get('CacheFolder', '/tmp'),
+            batch_timeout=self.config.get('BatchTimeout', 0)
         )
 
     def _print_status(self, status):

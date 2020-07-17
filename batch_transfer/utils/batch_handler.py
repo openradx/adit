@@ -6,6 +6,7 @@ from pathlib import Path
 from dataclasses import dataclass
 from datetime import datetime
 from functools import partial
+from time import sleep
 from main.utils.dicom_handler import DicomHandler
 from main.utils.anonymizer import Anonymizer
 
@@ -17,6 +18,7 @@ class BatchHandler(DicomHandler):
         trial_protocol_name: str = None
         pseudonymize: bool = True
         cache_folder: str = '/tmp'
+        batch_timeout: int = 3
 
     def __init__(self, config: Config):
         super().__init__(config)
@@ -170,8 +172,13 @@ class BatchHandler(DicomHandler):
                     'Pseudonym': None
                 })
             finally:
+                # The caller can force to halt the processing and may schedule processing
+                # the remaining requests sometime later
                 if stop_processing:
                     break
+
+                # A customizable timeout (in seconds) between each batch request
+                sleep(self.config.batch_timeout)
 
     def batch_download(self, requests, handler_callback, archive_password=None):
         logging.info(f'Starting download of {len(requests)} requests at {datetime.now().ctime()}'

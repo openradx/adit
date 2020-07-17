@@ -16,7 +16,7 @@ def _is_time_between(begin_time, end_time, check_time=datetime.now().time()):
         return check_time >= begin_time or check_time <= end_time
 
 def _must_be_scheduled():
-    app_settings = AppSettings.objects.first()
+    app_settings = AppSettings.load()
     paused = app_settings.batch_transfer_paused
     begin_time = app_settings.batch_slot_begin_time
     end_time = app_settings.batch_slot_end_time
@@ -66,23 +66,24 @@ def enqueue_batch_job(batch_job_id, eta=None):
 @job
 def batch_transfer(batch_job_id):
     batch_job = BatchTransferJob.objects.select_related().get(id=batch_job_id)
-    user = batch_job.created_by
     source = batch_job.source.dicomserver # Source is always a server
+    app_settings = AppSettings.load()
 
     config = BatchHandler.Config(
-        username = user.username,
-        client_ae_title = settings.ADIT_AE_TITLE,
-        cache_folder = settings.BATCH_TRANSFER_CACHE_FOLDER,
-        source_ae_title = source.ae_title,
-        source_ip = source.ip,
-        source_port = source.port,
-        patient_root_query_model_find = (source.find_query_model 
+        username=batch_job.created_by.username,
+        client_ae_title=settings.ADIT_AE_TITLE,
+        cache_folder=settings.BATCH_TRANSFER_CACHE_FOLDER,
+        source_ae_title=source.ae_title,
+        source_ip=source.ip,
+        source_port=source.port,
+        patient_root_query_model_find=(source.find_query_model 
                 == DicomServer.QueryModel.PATIENT_ROOT),
-        patient_root_query_model_get = (source.get_query_model 
+        patient_root_query_model_get=(source.get_query_model 
                 == DicomServer.QueryModel.PATIENT_ROOT),
-        pseudonymize = batch_job.pseudonymize,
-        trial_protocol_id = batch_job.trial_protocol_id,
-        trial_protocol_name = batch_job.trial_protocol_name
+        pseudonymize=batch_job.pseudonymize,
+        trial_protocol_id=batch_job.trial_protocol_id,
+        trial_protocol_name=batch_job.trial_protocol_name,
+        batch_timeout=app_settings.batch_timeout
     )
 
     unprocessed_requests = map(lambda req: {
