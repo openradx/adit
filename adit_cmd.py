@@ -11,7 +11,7 @@ from batch_transfer.utils.batch_handler import BatchHandler
 class AditCmd:
     def __init__(self, config_ini_path, excel_file_path, worksheet=None):
         self.config = self._load_config_from_ini(config_ini_path)
-        self._setup_logging()
+        self.log_path = self._setup_logging()
 
         if self._check_file_already_open(excel_file_path):
             raise IOError('Excel file already in use by another program, please close.')
@@ -40,7 +40,7 @@ class AditCmd:
         log_folder_path = Path('.')
         if 'LogFolder' in self.config:
             log_folder_path = Path(self.config['LogFolder'])
-        log_filename = 'adit_log_' + datetime.now().strftime('%Y%m%d%H%M%S')
+        log_filename = 'adit_' + datetime.now().strftime('%Y%m%d%H%M%S') + '.log'
         log_path = log_folder_path / log_filename
 
         logging.basicConfig(
@@ -50,6 +50,8 @@ class AditCmd:
             filename=log_path,
             filemode='a'
         )
+
+        return log_path
 
     def _check_file_already_open(self, file_path):
         already_open = False
@@ -80,22 +82,24 @@ class AditCmd:
             trial_protocol_name=self.config.get('TrialProtocolName', ''),
             pseudonymize=self.config.getboolean('Pseudonymize', True),
             cache_folder=self.config.get('CacheFolder', '/tmp'),
-            batch_timeout=self.config.get('BatchTimeout', 0)
+            batch_timeout=self.config.getint('BatchTimeout', 0)
         )
 
-    def _print_status(self, status):
-        if status == DicomHandler.ERROR:
+    def _handle_result(self, result):
+        self._results.append(result)
+        if result['Status'] == DicomHandler.ERROR:
             print('E', end='', flush=True)
         else:
             print('.', end='', flush=True)
 
-    def fetch_patient_ids(self):
-        raise NotImplementedError # TODO
-
     def batch_download(self, archive_password=None):
+        def handler_callback(result):
+            self._results.append(result)
+            self._print_status(result['Status'])
+
         self._batch_handler.batch_download(
             self._excel_loader.extract_data(),
-            lambda result: self._results.append(result),
+            self._handle_result,
             archive_password
         )
         print(self._results)
@@ -103,16 +107,21 @@ class AditCmd:
     def batch_transfer(self):
         self._batch_handler.batch_transfer(
             self._excel_loader.extract_data(),
-            lambda result: self._results.append(result)
+            self._handle_result
         )
+    
+    def fetch_patient_ids(self):
+        raise NotImplementedError # TODO
 
-    def close(self):
-        self._excel_loader.close()
-
+    def cleanup(self):
+        """If nothing was written to the log file then delete it."""
+        logging.shutdown()
+        log_path = Path(self.log_path)
+        if log_path.stat().st_size == 0:
+            log_path.unlink()
 
 def password_type(password):
-    print(password)
-    if not password or len(password) < 5:
+    if not password or len(password) < 8:
         raise argparse.ArgumentTypeError('Provide a password with at least 8 characters.')
     return password
 
@@ -140,5 +149,9 @@ if __name__ == '__main__':
         adit_cmd.fetch_patient_ids()
     elif args.download:
         adit_cmd.batch_download()
+    elif args.archive:
+        adit_cmd.batch_download(args.archive)
     elif args.transfer:
         adit_cmd.batch_transfer()
+
+    adit_cmd.cleanup()

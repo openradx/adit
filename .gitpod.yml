@@ -20,17 +20,17 @@ tasks:
       supervisorctl start rq:
       python manage.py runserver
 
-  # A terminal for continous testing
+# A terminal for continous testing
   - init: sleep 1 && while [ -f /tmp/.pip-install-lock ]; do sleep 1; done
-    # Alternatives for continous testing:
-    # with pytest-picked: ptw --runner 'pytest --picked'
-    # with pytest-testmon: ptw --runner 'pytest -s --testmon' (sometimes cumbersome and .testmondb must be deleted)
-    # with pytest-xdist: pytest --looponfail (doesn't work with Orthanc db in the working dir)
+# Alternatives for continous testing:
+# with pytest-picked: ptw --runner 'pytest --picked'
+# with pytest-testmon: ptw --runner 'pytest -s --testmon' (sometimes cumbersome and .testmondb must be deleted)
+# with pytest-xdist: pytest --looponfail (doesn't work with Orthanc db in the working dir)
     command: |
       pytest # run all test once
       ptw --runner 'pytest --picked'
 
-  # A terminal for the developer to do stuff
+# A terminal for the developer to do stuff
   - command: echo 'For your convenience!'
 
 ports:
@@ -50,7 +50,8 @@ ports:
     onOpen: notify
   - port: 9001 # Supervisord Webserver
     onOpen: ignore
-    
+
 vscode:
   extensions:
     - batisteo.vscode-django@0.20.0:gUr2ptf5xx2Pcb6pNcYqgw==
+    - GrapeCity.gc-excelviewer@2.1.35:7NzkeRn7IqFadY0v3fCHwQ==

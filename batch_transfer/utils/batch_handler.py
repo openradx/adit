@@ -51,7 +51,7 @@ class BatchHandler(DicomHandler):
 
         # TODO catch error like https://stackoverflow.com/a/46098513/166229
         password_option = '-p' + archive_password
-        archive_path = Path(self.config.destination_folder) / archive_name + '.7z'
+        archive_path = Path(self.config.destination_folder) / f'{archive_name}.7z'
         cmd = ['7z', 'a', password_option, '-mhe=on', '-mx1', '-y', archive_path, path_to_add]
         try:
             proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL)
