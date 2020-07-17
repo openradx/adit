@@ -26,31 +26,14 @@ class DicomNode(models.Model):
 
 
 class DicomServer(DicomNode):
-
-    class QueryModel(models.TextChoices):
-        PATIENT_ROOT = 'PR', 'Patient Root'
-        STUDY_ROOT = 'SR', 'Study Root'
-
     ae_title = models.CharField(unique=True, max_length=16)
     ip = models.GenericIPAddressField()
     port = models.PositiveIntegerField(
         validators=[MinValueValidator(1), MaxValueValidator(65535)]
     )
-    find_query_model = models.CharField(
-        max_length=2,
-        choices=QueryModel.choices,
-        default=QueryModel.PATIENT_ROOT
-    )
-    get_query_model = models.CharField(
-        max_length=2,
-        choices=QueryModel.choices,
-        default=QueryModel.PATIENT_ROOT
-    )
-    move_query_model = models.CharField(
-        max_length=2,
-        choices=QueryModel.choices,
-        default=QueryModel.PATIENT_ROOT
-    )
+    patient_root_query_model_find = models.BooleanField(default=True)
+    patient_root_query_model_get = models.BooleanField(default=True)
+    patient_root_query_model_move = models.BooleanField(default=True)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

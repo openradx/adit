@@ -65,13 +65,17 @@ class AditCmd:
         return BatchHandler.Config(
             username=self.config['Username'],
             client_ae_title=self.config['ClientAETitle'],
-            source_ae_title=self.config.get('SourceAETitle'),
-            source_ip=self.config.get('SourceIP'),
-            source_port=self.config.getint('SourcePort'),
+            source_ae_title=self.config['SourceAETitle'],
+            source_ip=self.config['SourceIP'],
+            source_port=int(self.config['SourcePort']),
             destination_ae_title=self.config.get('DestinationAETitle'),
             destination_ip=self.config.get('DestinationIP'),
             destination_port=self.config.getint('DestinationPort'),
             destination_folder=self.config.get('DestinationFolder'),
+            patient_root_query_model_find=self.config.getboolean(
+                    'PatientRootQueryModelFind', True),
+            patient_root_query_model_get=self.config.getboolean(
+                    'PatientRootQueryModelGet', True),
             trial_protocol_id=self.config.get('TrialProtocolID', ''),
             trial_protocol_name=self.config.get('TrialProtocolName', ''),
             pseudonymize=self.config.getboolean('Pseudonymize', True),

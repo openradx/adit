@@ -3,7 +3,11 @@
 
 # TODO
 - Think about moving all those dicts to dataclasses when passing around data
-- Use Pandas to parse the excel file
+- Batch Mode
+-- Use Pandas to parse the excel file
+-- Allow to use AccessionNumber in Excel sheet
+-- Allow provide a regex of StudyDescription in Excel sheet
+-- Allow to specify many modalities per row in Excel sheet
 
 # Commands
 

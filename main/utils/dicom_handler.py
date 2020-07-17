@@ -23,7 +23,7 @@ class DicomHandler:
         destination_ip: str = None
         destination_port: int = None
         destination_folder: str = None
-        patient_root_query_model_find: bool = False
+        patient_root_query_model_find: bool = True
         patient_root_query_model_get: bool = True
 
     def __init__(self, config: Config):

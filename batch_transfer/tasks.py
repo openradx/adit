@@ -76,10 +76,8 @@ def batch_transfer(batch_job_id):
         source_ae_title=source.ae_title,
         source_ip=source.ip,
         source_port=source.port,
-        patient_root_query_model_find=(source.find_query_model 
-                == DicomServer.QueryModel.PATIENT_ROOT),
-        patient_root_query_model_get=(source.get_query_model 
-                == DicomServer.QueryModel.PATIENT_ROOT),
+        patient_root_query_model_find=source.patient_root_query_model_find,
+        patient_root_query_model_get=source.patient_root_query_model_get,
         pseudonymize=batch_job.pseudonymize,
         trial_protocol_id=batch_job.trial_protocol_id,
         trial_protocol_name=batch_job.trial_protocol_name,
