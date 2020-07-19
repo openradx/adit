@@ -6,8 +6,8 @@ from main.models import DicomJob
 class AppSettings(models.Model):
     batch_transfer_locked = models.BooleanField(default=False)
     batch_transfer_paused = models.BooleanField(default=False)
-    batch_slot_begin_time = models.TimeField(default=time(22, 0))
-    batch_slot_end_time = models.TimeField(default=time(8, 0))
+    batch_slot_begin_time = models.TimeField(default=lambda: time(22, 0))
+    batch_slot_end_time = models.TimeField(default=lambda: time(8, 0))
     batch_timeout = models.IntegerField(default=3)
 
     @classmethod

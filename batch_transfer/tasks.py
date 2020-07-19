@@ -4,7 +4,7 @@ from datetime import datetime, time, timedelta
 import django_rq
 from django_rq import job
 from .models import AppSettings, BatchTransferJob, BatchTransferRequest
-from main.models import DicomNode, DicomServer
+from main.models import DicomNode, DicomServer, DicomJob
 from .utils.batch_handler import BatchHandler
 
 def _is_time_between(begin_time, end_time, check_time=datetime.now().time()):
@@ -31,10 +31,10 @@ def _next_batch_slot():
         tomorrow = now.date() + timedelta(days=1)
         return datetime.combine(tomorrow, from_time)    
 
-def _process_result(batch_job_id, result):
+def _process_result(batch_job, result):
     request_id = result['RequestID']
     request = BatchTransferRequest.objects.get(
-            job=batch_job_id, request_id=request_id)
+            job=batch_job.id, request_id=request_id)
     if result['Status'] == BatchHandler.SUCCESS:
         request.status = BatchTransferRequest.Status.SUCCESS
     elif result['Status'] == BatchHandler.ERROR:
@@ -48,8 +48,15 @@ def _process_result(batch_job_id, result):
     result.save()
 
     if _must_be_scheduled():
-        enqueue_batch_job(batch_job_id, eta=_next_batch_slot())
-        return True # stops further processing
+        batch_job.status = DicomJob.Status.PAUSED
+        batch_job.save()
+        enqueue_batch_job(batch_job.id, eta=_next_batch_slot())
+        return True # stops further processing for now
+
+    if batch_job.status == DicomJob.Status.CANCELING:
+        batch_job.status = DicomJob.Status.CANCELED
+        batch_job.save()
+        return True # cancel further processing
 
     return False
 
@@ -94,7 +101,10 @@ def batch_transfer(batch_job_id):
         'Pseudonym': req.pseudonym
     }, batch_job.requests.filter(status=BatchTransferRequest.Status.UNPROCESSED))
 
-    process_result_callback = partial(_process_result, batch_job.id)
+    process_result_callback = partial(_process_result, batch_job)
+
+    batch_job.status = DicomJob.Status.IN_PROGRESS
+    batch_job.save()
 
     # Destination can be a server or a folder
     if batch_job.destination.node_type == DicomNode.NodeType.SERVER:
