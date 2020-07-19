@@ -175,10 +175,12 @@ class BatchHandler(DicomHandler):
                 # The caller can force to halt the processing and may schedule processing
                 # the remaining requests sometime later
                 if stop_processing:
-                    break
+                    return False
 
                 # A customizable timeout (in seconds) between each batch request
                 sleep(self.config.batch_timeout)
+
+        return True
 
     def batch_download(self, requests, handler_callback, archive_password=None):
         logging.info(f'Starting download of {len(requests)} requests at {datetime.now().ctime()}'
@@ -207,7 +209,7 @@ class BatchHandler(DicomHandler):
 
             return handler_callback(result)
 
-        self._batch_process(requests, download_path, process_callback)
+        finished = self._batch_process(requests, download_path, process_callback)
 
         # Cleanup the temporary cache folder if an archive was created
         if archive_password:
@@ -215,6 +217,8 @@ class BatchHandler(DicomHandler):
 
         logging.info(f'Finished download of {len(requests)} requests at {datetime.now().ctime()}'
                 f'with config: {self.config}')
+
+        return finished
 
     def batch_transfer(self, requests, handler_callback):
         logging.info(f'Starting transfer of {len(requests)} requests at {datetime.now().ctime()}'
@@ -229,7 +233,9 @@ class BatchHandler(DicomHandler):
             return handler_callback(result)
 
         cache_folder_path = tempfile.mkdtemp(dir=self.config.cache_folder)
-        self._batch_process(requests, cache_folder_path, process_callback)
+        finished = self._batch_process(requests, cache_folder_path, process_callback)
 
         logging.info(f'Finished download of {len(requests)} requests at {datetime.now().ctime()}'
                 f'with config: {self.config}')
+
+        return finished

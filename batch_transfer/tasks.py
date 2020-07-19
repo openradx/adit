@@ -73,6 +73,10 @@ def enqueue_batch_job(batch_job_id, eta=None):
 @job
 def batch_transfer(batch_job_id):
     batch_job = BatchTransferJob.objects.select_related().get(id=batch_job_id)
+
+    batch_job.status = DicomJob.Status.IN_PROGRESS
+    batch_job.save()
+
     source = batch_job.source.dicomserver # Source is always a server
     app_settings = AppSettings.load()
 
@@ -106,6 +110,8 @@ def batch_transfer(batch_job_id):
     batch_job.status = DicomJob.Status.IN_PROGRESS
     batch_job.save()
 
+    finished = False
+    
     # Destination can be a server or a folder
     if batch_job.destination.node_type == DicomNode.NodeType.SERVER:
         dest_server = batch_job.destination.dicomserver
@@ -114,11 +120,15 @@ def batch_transfer(batch_job_id):
         config.destination_port = dest_server.port
 
         handler = BatchHandler(config)
-        handler.batch_transfer(unprocessed_requests, process_result_callback)
+        finished = handler.batch_transfer(unprocessed_requests, process_result_callback)
     else: # DicomNode.NodeType.Folder
         dest_folder = batch_job.destination.dicomfolder
         config.destination_folder = dest_folder.path
 
         handler = BatchHandler(config)
-        handler.batch_download(unprocessed_requests, process_result_callback,
-                batch_job.archive_password)
+        finished = handler.batch_download(unprocessed_requests, 
+                process_result_callback, batch_job.archive_password)
+
+    if finished:
+        batch_job.status = DicomJob.Status.COMPLETED
+        batch_job.save()

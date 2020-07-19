@@ -5,7 +5,9 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.messages.views import SuccessMessageMixin
 from django.urls import reverse_lazy
 from django.shortcuts import get_object_or_404
+from django.core.exceptions import SuspiciousOperation
 from django.contrib import messages
+from django.shortcuts import redirect
 from django_tables2 import SingleTableView
 from .models import DicomJob
 from .tables import DicomJobTable
@@ -40,11 +42,14 @@ class DicomJobDelete(LoginRequiredMixin, OwnerRequiredMixin, DeleteView):
 class DicomJobCancel(LoginRequiredMixin, OwnerRequiredMixin, SingleObjectMixin, View):
     model = DicomJob
     owner_accessor = 'created_by'
+    success_message = 'Job with ID %(id)n was canceled'
 
     def post(self, request, *args, **kwargs):
-        self.object = self.get_object()
-        if self.object.is_cancelable():
-            self.object.status = DicomJob.Status.CANCELING
-            self.object.save()
-
-        # TODO
+        job = self.get_object()
+        if job.is_cancelable():
+            job.status = DicomJob.Status.CANCELING
+            job.save()
+            messages.success(self.request, self.success_message % job.__dict__)
+            redirect(job)
+        else:
+            raise SuspiciousOperation(f'Job with ID {job.id} is not cancelable.')
