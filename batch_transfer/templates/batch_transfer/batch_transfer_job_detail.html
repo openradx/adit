@@ -1,17 +1,29 @@
 {% extends "main/base_generic.html" %}
 
-{% block content %}
-    <div class="top container">
-        <h5 class="card-title">Batch transfer job detail</h5>
-        <dl class="row">
-            <dt class="col-sm-3">Source</dt>
-            <dd class="col-sm-9">{{job.source}}</dd>
+{% block container %}
+<h5 class="card-title">Batch transfer job detail</h5>
+<dl class="row">
+    <dt class="col-sm-3">Source</dt>
+    <dd class="col-sm-9">{{job.source}}</dd>
 
-            <dt class="col-sm-3">Destination</dt>
-            <dd class="col-sm-9">{{job.created_at}}</dd>
+    <dt class="col-sm-3">Destination</dt>
+    <dd class="col-sm-9">{{job.created_at}}</dd>
 
-            <dt class="col-sm-3">Status</dt>
-            <dd class="col-sm-9">{{job.get_status_display}}</dd>
-        </dl>
-    </div>
+    <dt class="col-sm-3">Status</dt>
+    <dd class="col-sm-9">{{job.get_status_display}}</dd>
+</dl>
+
+{% if job.is_deletable %}
+    <button type="button" class="btn btn-danger" data-toggle="modal" data-target="#delete-job-modal">Delete Job</button>
+{% endif %}
+
+{% if job.is_cancelable %}
+    <button type="button" class="btn btn-danger">Cancel Job</button>
+{% endif %}
+
+<button type="button" class="btn btn-success">Show Results</button>
+{% endblock %}
+
+{% block bottom %}
+{% include 'main/delete_job_modal.html' with modal_id="delete-job-modal" %}
 {% endblock %}

@@ -1,10 +1,14 @@
 from django.views.generic import DetailView
+from django.views.generic.edit import DeleteView
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.contrib.messages.views import SuccessMessageMixin
+from django.urls import reverse_lazy
 from django.shortcuts import get_object_or_404
 from django_tables2 import SingleTableView
 from .models import DicomJob
 from .tables import DicomJobTable
 from .site import job_detail_views
+from .mixins import OwnerRequiredMixin
 
 
 class DicomJobTable(LoginRequiredMixin, SingleTableView):
@@ -18,3 +22,9 @@ def render_job_detail(request, pk):
     job = get_object_or_404(DicomJob, pk=pk)
     CustomDetailView = job_detail_views[job.job_type]
     return CustomDetailView.as_view()(request, pk=pk)
+
+class DicomJobDelete(LoginRequiredMixin, OwnerRequiredMixin, SuccessMessageMixin, DeleteView):
+    model = DicomJob
+    owner_accessor = 'created_by'
+    success_url = reverse_lazy('dicom_job_list')
+    success_message = 'Job was deleted successfully'

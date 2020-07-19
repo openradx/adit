@@ -10,7 +10,7 @@ from .models import User
 class LoginViewWithSuccessMsg(SuccessMessageMixin, LoginView):
     template_name = 'accounts/login.html'
     authentication_form = CrispyAuthentificationForm
-    success_message = "You were successfully logged in"
+    success_message = 'You were successfully logged in'
 
 class UserProfileView(LoginRequiredMixin, AccessMixin, DetailView):
     model = User

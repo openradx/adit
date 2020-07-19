@@ -8,6 +8,7 @@
 -- Allow to use AccessionNumber in Excel sheet
 -- Allow provide a regex of StudyDescription in Excel sheet
 -- Allow to specify many modalities per row in Excel sheet
+-- base_generic -> base.html
 
 # Commands
 

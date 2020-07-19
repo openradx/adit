@@ -53,11 +53,16 @@ class DicomJob(models.Model):
     class Status(models.TextChoices):
         UNVERIFIED = 'UV', 'Unverified'
         PENDING =  'PE', 'Pending'
-        IN_PROGRESS = 'PR', 'In Progress'
+        IN_PROGRESS = 'IP', 'In Progress'
+        PAUSED = 'PA', 'Paused'
         CANCELING = 'CI', 'Canceling'
         CANCELED = 'CA', 'Canceled'
         COMPLETED = 'CP', 'Completed'
-        DELETED = 'DE', 'Deleted'
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['created_by', 'status'])
+        ]
 
     source = models.ForeignKey(DicomNode, related_name='+', null=True, on_delete=models.SET_NULL)
     destination = models.ForeignKey(DicomNode, related_name='+', null=True, on_delete=models.SET_NULL)
@@ -71,6 +76,18 @@ class DicomJob(models.Model):
 
     def get_absolute_url(self):
         return reverse('dicom_job_detail', args=[str(self.id)])
+
+    def is_deletable(self):
+        return self.status in [
+            self.Status.UNVERIFIED, 
+            self.Status.PENDING
+        ]
+
+    def is_cancelable(self):
+        return self.status in [
+            self.Status.IN_PROGRESS,
+            self.Status.PAUSED
+        ]
 
     def __str__(self):
         status_dict = {key: value for key, value in self.Status.choices}
