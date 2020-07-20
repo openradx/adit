@@ -170,10 +170,11 @@ RQ_QUEUES = {
         'PORT': 6379,
         'DB': 0
     },
-    'batch_transfer': {
+    'low': {
         'HOST': 'localhost',
         'PORT': 6379,
-        'DB': 0
+        'DB': 0,
+        'DEFAULT_TIMEOUT': 86400 # 24h, TODO maybe do this dynamically
     }
 }
 RQ_SHOW_ADMIN_LINK = True

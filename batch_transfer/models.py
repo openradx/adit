@@ -41,6 +41,12 @@ class BatchTransferJob(DicomJob):
         super().__init__(*args, **kwargs)
         self.job_type = self.JOB_TYPE
 
+    def get_unprocessed_requests(self):
+        return self.requests.filter(status=BatchTransferRequest.Status.UNPROCESSED)
+
+    def get_processed_requests(self):
+        return self.requests.exclude(status=BatchTransferRequest.Status.UNPROCESSED)
+
     def get_absolute_url(self):
         return reverse('batch_transfer_job_detail', args=[str(self.pk)])
 

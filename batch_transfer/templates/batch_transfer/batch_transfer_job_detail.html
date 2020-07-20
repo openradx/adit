@@ -21,7 +21,8 @@
     <button type="button" class="btn btn-danger">Cancel Job</button>
 {% endif %}
 
-<button type="button" class="btn btn-success">Show Results</button>
+{% include 'batch_transfer/batch_transfer_result_table.html' %}
+
 {% endblock %}
 
 {% block bottom %}
