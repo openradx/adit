@@ -1,18 +1,57 @@
 {% extends "main/base_generic.html" %}
 
 {% block container %}
-<h5 class="card-title">Batch transfer job detail</h5>
+
+{% with processed_requests=job.get_processed_requests %}
+
+<h4 class="card-title">Batch Transfer Job</h4>
+
 <dl class="row">
     <dt class="col-sm-3">Source</dt>
     <dd class="col-sm-9">{{job.source}}</dd>
 
     <dt class="col-sm-3">Destination</dt>
-    <dd class="col-sm-9">{{job.created_at}}</dd>
+    <dd class="col-sm-9">{{job.destination}}</dd>
+
+    <dt class="col-sm-3">Created At</dt>
+    <dd class="col-sm-9">{{ job.created_at }}</dd>
+
+    {% if user.is_staff %}
+        <dt class="col-sm-3">Created By</dt>
+        <dd class="col-sm-9">{{ job.created_by }}</dd>
+    {% endif %}
+
+    <dt class="col-sm-3">Project Name</dt>
+    <dd class="col-sm-9">{{ job.project_name }}</dd>
+
+    <dt class="col-sm-3">Pseudonymize</dt>
+    <dd class="col-sm-9">{{ job.pseudonymize }}</dd>
+
+    <dt class="col-sm-3">Trial Protocol ID</dt>
+    <dd class="col-sm-9">{{ job.trial_protocol_id|default:"-" }}</dd>
+
+    <dt class="col-sm-3">Trial Protocol Name</dt>
+    <dd class="col-sm-9">{{ job.trial_protocol_name|default:"-" }}</dd>
+
+    <dt class="col-sm-3">Total Requests</dt>
+    <dd class="col-sm-9">{{ job.requests.count }}</dd>
+
+    <dt class="col-sm-3">Processed Requests</dt>
+    <dd class="col-sm-9">{{ processed_requests.count }}</dd>
 
     <dt class="col-sm-3">Status</dt>
-    <dd class="col-sm-9">{{job.get_status_display}}</dd>
+    <dd class="col-sm-9">{{ job.get_status_display }}</dd>
 </dl>
 
+<div>
+{% if processed_requests %}
+    {% include 'batch_transfer/batch_transfer_result_table.html' %}
+{% endif %}
+</div>
+
+{% endwith %}
+
+<div>
 {% if job.is_deletable %}
     <button type="button" class="btn btn-danger" data-toggle="modal" data-target="#delete-job-modal">Delete Job</button>
 {% endif %}
@@ -20,8 +59,7 @@
 {% if job.is_cancelable %}
     <button type="button" class="btn btn-danger">Cancel Job</button>
 {% endif %}
-
-{% include 'batch_transfer/batch_transfer_result_table.html' %}
+</div>
 
 {% endblock %}
 

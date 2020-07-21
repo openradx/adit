@@ -134,7 +134,7 @@ def batch_transfer_task(batch_job_id):
     batch_job.status = DicomJob.Status.IN_PROGRESS
     batch_job.save()
 
-    finished = False
+    complete = False
     
     # Destination can be a server or a folder
     if batch_job.destination.node_type == DicomNode.NodeType.SERVER:
@@ -144,15 +144,17 @@ def batch_transfer_task(batch_job_id):
         config.destination_port = dest_server.port
 
         handler = BatchHandler(config)
-        finished = handler.batch_transfer(unprocessed_requests, process_result_callback)
+        complete = handler.batch_transfer(unprocessed_requests, process_result_callback)
     else: # DicomNode.NodeType.Folder
         dest_folder = batch_job.destination.dicomfolder
         config.destination_folder = dest_folder.path
 
         handler = BatchHandler(config)
-        finished = handler.batch_download(unprocessed_requests, 
+        complete = handler.batch_download(unprocessed_requests, 
                 process_result_callback, batch_job.archive_password)
 
-    if finished:
+    # If all requests were processed then the job completed otherwise it is
+    # paused or was cancelled by the user
+    if complete:
         batch_job.status = DicomJob.Status.COMPLETED
         batch_job.save()

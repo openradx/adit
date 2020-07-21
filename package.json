@@ -15,6 +15,7 @@
   "dependencies": {
     "bootstrap": "^4.5.0",
     "bootstrap-icons": "^1.0.0-alpha4",
+    "clipboard": "^2.0.6",
     "jquery": "^3.5.1"
   },
   "devDependencies": {

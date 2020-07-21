@@ -1,6 +1,5 @@
-<h5>Results</h5>
+<h5>Processed Requests</h5>
 <table class="table">
-    <caption>Processed Requests</caption>
     <thead>
         <tr>
             <th>RequestID</th>
@@ -11,7 +10,7 @@
         </tr>
     </thead>
     <tbody>
-    {% for request in job.get_processed_requests %}
+    {% for request in processed_requests %}
         <tr>
             <td>{{ request.request_id }}</td>
             <td>{{ request.patient_id }}</td>
@@ -20,5 +19,5 @@
             <td>{{ request.message|default:" - " }}</td>
         </tr>
     {% endfor %}
-    </tbody
+    </tbody>
 </table>

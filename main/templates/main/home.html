@@ -3,23 +3,22 @@
 {% block content %}
     <div class="jumbotron">
         <div class="container">
-            <h1 class="display-4">Welcome to ADIT!</h1>
+            <h1 class="display-4">Welcome to ADIT</h1>
             <p class="lead">
-                ADIT (Automatic DICOM Transfer) allows to transfer
-                DICOM data between different servers or download the files
-                (optionally into an encrypted archive) to a network folder.
+                ADIT (Automatic DICOM Transfer) is a service to transfer or download
+                DICOM data with the following features:
+                <ul>
+                    <li>Transfer DICOM data between DICOM servers</li>
+                    <li>Download DICOM data to a network folder</li>
+                    <li>Pseudonymize the DICOM data on the fly</li>
+                    <li>Specify a trial name or ID for the transfered data (stored in the DICOM header)</li>
+                    <li>Download the data to an encrpyted archive (7-Zip)</li>
+                    <li>Batch transfer or download multiple studies by uploading an Excel file</li>
+                    <li>Search for a single study to transfer or download using a web interface</li>
+                    <li>Find Patient IDs using the name and birth date</li>
+                    <li>Check if a list of studies is present on a DICOM server</li>
+                </ul>
             </p>
-            <p class="lead">
-                "Batch transfer" can be used to transfer or download multiple
-                studies of different patients using an Excel sheet with
-                defined studies.
-            </p>
-            <p class="lead">
-                "Batch transfer" can be used to transfer or download multiple
-                studies of different patients using an Excel sheet with
-                defined studies.
-            </p>
-
 
             {% if not user.is_authenticated %}
                 <p>

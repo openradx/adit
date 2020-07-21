@@ -10,11 +10,11 @@ class Command(BaseCommand):
     help = 'Copies vendor files from node_modues folder'
 
     def handle(self, *args, **options):
-        AdminUserFactory()
+        admin = AdminUserFactory()
 
         batch_transferrers_group = Group.objects.get(name='batch_transferrers')
 
-        users = []
+        users = [admin]
         for i in range(10):
             user = UserFactory()
             user.groups.add(batch_transferrers_group)
