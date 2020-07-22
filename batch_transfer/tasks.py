@@ -23,13 +23,13 @@ def _must_be_scheduled():
 
     In the dynamic site settings a time slot is specified when the
     batch transfer jobs should run. The job processing could also be
-    paused in the settings.
+    suspended in the settings.
     """
     app_settings = AppSettings.load()
-    paused = app_settings.batch_transfer_paused
+    suspended = app_settings.batch_transfer_suspended
     begin_time = app_settings.batch_slot_begin_time
     end_time = app_settings.batch_slot_end_time
-    return paused or not _is_time_between(begin_time, end_time)
+    return suspended or not _is_time_between(begin_time, end_time)
 
 def _next_batch_slot():
     """Return the next datetime slot when a batch job can be processed."""

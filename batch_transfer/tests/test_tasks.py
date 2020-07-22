@@ -6,7 +6,7 @@ from main.factories import DicomServerFactory, DicomFolderFactory
 from ..factories import BatchTransferJobFactory, BatchTransferRequestFactory
 from ..models import BatchTransferRequest
 from ..utils.batch_handler import BatchHandler
-from ..tasks import batch_transfer_task
+from .. import tasks
 
 class BatchTransferTasksTest(TestCase):
     @classmethod
@@ -22,7 +22,7 @@ class BatchTransferTasksTest(TestCase):
         )
         BatchTransferRequestFactory(job=batch_job)
 
-        batch_transfer_task(batch_job.id)
+        tasks.batch_transfer_task(batch_job.id)
 
         handler_batch_transfer_mock.assert_called_once()
         batch_job.refresh_from_db()
@@ -37,11 +37,28 @@ class BatchTransferTasksTest(TestCase):
         )
         BatchTransferRequestFactory(job=batch_job)
 
-        batch_transfer_task(batch_job.id)
+        tasks.batch_transfer_task(batch_job.id)
 
         handler_batch_transfer_mock.assert_called_once()
         batch_job.refresh_from_db()
         self.assertNotEqual(batch_job.status, DicomJob.Status.COMPLETED)
 
     def test_is_time_between(self):
-        pass
+        params = (
+            (time(1, 0), time(3, 0), time(2, 0)),
+            (time(1, 0), time(3, 0), time(1, 0)),
+            (time(1, 0), time(3, 0), time(3, 0)),
+            (time(23, 0), time(1, 0), time(0, 0)),
+        )
+        for param in params:
+            self.assertEqual(tasks._is_time_between(param[0], param[1], param[2]), True)
+
+    def test_is_time_not_between(self):
+        params = (
+            (time(1, 0), time(3, 0), time(0, 0)),
+            (time(1, 0), time(3, 0), time(4, 0)),
+            (time(23, 0), time(1, 0), time(22, 0)),
+            (time(23, 0), time(1, 0), time(2, 0)),
+        )
+        for param in params:
+            self.assertEqual(tasks._is_time_between(param[0], param[1], param[2]), False)
