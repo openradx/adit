@@ -7,7 +7,10 @@ def slot_time(hour, min):
     return time(hour, min)
 
 class AppSettings(models.Model):
+    # Lock the batch transfer creation form
     batch_transfer_locked = models.BooleanField(default=False)
+    # Suspend the batch transfer background processing. Pauses all
+    # running job by 
     batch_transfer_suspended = models.BooleanField(default=False)
     batch_slot_begin_time = models.TimeField(default=slot_time(22, 0))
     batch_slot_end_time = models.TimeField(default=slot_time(8, 0))

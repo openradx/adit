@@ -24,19 +24,19 @@ from pynetdicom.status import code_to_category
 
 def connect_to_server(func):
     def wrapper(self, *args, **kwargs):
-        if self.assoc is None or not self.assoc.isAlive():
-            for _ in range(self.config.connection_retries):
-                connected = False
+        if self.assoc is None or not self.assoc.is_alive():
+            for i in range(self.config.connection_retries):
                 try:
                     self.open()
-                    connected = True
-                except Exception as ex:
-                    logging.error("Could not connect to server: %s" % str(ex))
-                    logging.warn("Retrying to connect.")
-                    time.sleep(self.config.retry_timeout)
-
-                if connected:
                     break
+                except Exception as ex:
+                    logging.exception("Could not connect to server: %s" % str(ex))
+                    if i < self.config.connection_retries - 1:
+                        logging.info('Retrying to connect in '
+                                f'{self.config.retry_timeout} seconds')
+                        time.sleep(self.config.retry_timeout)
+                    else:
+                        raise ex
 
         result = None
         exception_occurred = False
@@ -64,7 +64,7 @@ class DicomOperationConfig:
     auto_close_connection: bool = True
     debug: bool = False
     connection_retries: int = 3
-    retry_timeout: int = 300 # in seconds
+    retry_timeout: int = 30 # seconds
 
 
 class DicomOperation:
@@ -133,12 +133,13 @@ class DicomFind(DicomOperation):
             ae_title=self.config.server_ae_title)
 
         if not self.assoc.is_established:
-            raise Exception('Could not connect to DICOM server with AE Title %s.' % self.config.server_ae_title)
+            raise Exception('Could not connect to DICOM server with AE Title %s.' 
+                    % self.config.server_ae_title)
 
     @connect_to_server
     def send_c_find(self, query_dict):
         query_ds = self.make_query_dataset(query_dict)
-        
+
         responses = self.assoc.send_c_find(
             query_ds,
             self.query_model

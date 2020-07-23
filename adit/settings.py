@@ -202,4 +202,4 @@ if DEBUG:
 ADIT_AE_TITLE = 'ADIT'
 
 # Static (non database) settings for batch_transfer app
-BATCH_TRANSFER_CACHE_FOLDER = '/tmp/adit_batch_transfer'
+BATCH_TRANSFER_CACHE_FOLDER = '/tmp/adit_cache_folder'

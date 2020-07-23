@@ -117,8 +117,10 @@ class BatchHandler(DicomHandler):
         """The heart of the batch transferrer which handles each request, download the
         DICOM data, calls a handler to process it and optionally cleans everything up."""
 
-        for request in requests:
+        for i, request in enumerate(requests):
             request_id = request['RequestID']
+
+            stop_processing = False
 
             try:
                 patient = self._fetch_patient(request)
@@ -172,15 +174,15 @@ class BatchHandler(DicomHandler):
                     'Folder': None
                 })
             finally:
-                # The caller can force to halt the processing and may schedule processing
-                # the remaining requests sometime later
-                if stop_processing:
-                    return False
+                # The callback can force to halt the processing and may schedule 
+                # the processing of the remaining requests sometime later
+                if stop_processing and i < len(requests) - 1:
+                    return False # We are not finished yet 
 
                 # A customizable timeout (in seconds) between each batch request
                 sleep(self.config.batch_timeout)
 
-        return True
+        return True # All requests were processed
 
     def batch_download(self, requests, handler_callback, archive_password=None):
         logging.info(f'Starting download of {len(requests)} requests at {datetime.now().ctime()}'
@@ -215,7 +217,7 @@ class BatchHandler(DicomHandler):
         if archive_password:
             shutil.rmtree(download_path)
 
-        logging.info(f'Finished download of {len(requests)} requests at {datetime.now().ctime()}'
+        logging.info(f'Downloaded {len(requests)} requests at {datetime.now().ctime()}'
                 f'with config: {self.config}')
 
         return finished
@@ -235,7 +237,7 @@ class BatchHandler(DicomHandler):
         cache_folder_path = tempfile.mkdtemp(dir=self.config.cache_folder)
         finished = self._batch_process(requests, cache_folder_path, process_callback)
 
-        logging.info(f'Finished download of {len(requests)} requests at {datetime.now().ctime()}'
+        logging.info(f'Transfered {len(requests)} requests at {datetime.now().ctime()}'
                 f'with config: {self.config}')
 
         return finished

@@ -66,7 +66,6 @@ class DicomHandler:
 
     def find_patients(self, patient_id, patient_name, patient_birth_date):
         """Find patients with the given patient ID and/or patient name and birth date."""
-
         query_dict = {
             'QueryRetrieveLevel': 'PATIENT',
             'PatientID': patient_id,

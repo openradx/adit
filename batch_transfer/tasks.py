@@ -1,5 +1,7 @@
 from django.conf import settings
+import logging
 from functools import partial
+from django.utils import timezone
 from datetime import datetime, time, timedelta
 import django_rq
 from django_rq import job
@@ -7,7 +9,7 @@ from .models import AppSettings, BatchTransferJob, BatchTransferRequest
 from main.models import DicomNode, DicomServer, DicomJob
 from .utils.batch_handler import BatchHandler
 
-def _is_time_between(begin_time, end_time, check_time=datetime.now().time()):
+def is_time_between(begin_time, end_time, check_time):
     """Checks if a given time is between two other times.
 
     If the time to check is not provided then use the current time.    
@@ -18,7 +20,7 @@ def _is_time_between(begin_time, end_time, check_time=datetime.now().time()):
     else: # crosses midnight
         return check_time >= begin_time or check_time <= end_time
 
-def _must_be_scheduled():
+def must_be_scheduled():
     """Checks if the batch job can run now or must be scheduled.
 
     In the dynamic site settings a time slot is specified when the
@@ -29,19 +31,21 @@ def _must_be_scheduled():
     suspended = app_settings.batch_transfer_suspended
     begin_time = app_settings.batch_slot_begin_time
     end_time = app_settings.batch_slot_end_time
-    return suspended or not _is_time_between(begin_time, end_time)
+    check_time = timezone.now().time()
+    return suspended or not is_time_between(begin_time, end_time, check_time)
 
-def _next_batch_slot():
+def next_batch_slot():
     """Return the next datetime slot when a batch job can be processed."""
-    from_time = settings.BATCH_TRANSFER_JOB_FROM_TIME
-    now = datetime.now()
-    if now.time < from_time:
-        return datetime.combine(now.date(), from_time)
+    app_settings = AppSettings.load()
+    begin_time = app_settings.batch_slot_begin_time
+    now = timezone.now()
+    if now.time() < begin_time:
+        return datetime.combine(now.date(), begin_time)
     else:
         tomorrow = now.date() + timedelta(days=1)
-        return datetime.combine(tomorrow, from_time)    
+        return datetime.combine(tomorrow, begin_time)    
 
-def _process_result(batch_job, result):
+def process_result(batch_job, result):
     """The callback to process a result of a running batch job.
 
     The callback returns True if the job should be paused or canceled.
@@ -58,16 +62,14 @@ def _process_result(batch_job, result):
     request.message = result['Message']
     if result['Pseudonym']:
         result.pseudonym = result['Pseudonym']
-    result.processed_at = datetime.now()
-    result.save()
+    request.processed_at = timezone.now()
+    request.save()
 
-    if _must_be_scheduled():
+    if must_be_scheduled():
         batch_job.status = DicomJob.Status.PAUSED
         batch_job.save()
-        enqueue_batch_job(batch_job.id, eta=_next_batch_slot())
-        return True # pauses further processing for now
-
-    if batch_job.status == DicomJob.Status.CANCELING:
+        return True # pause further processing for now
+    elif batch_job.status == DicomJob.Status.CANCELING:
         batch_job.status = DicomJob.Status.CANCELED
         batch_job.save()
         return True # cancel further processing
@@ -80,9 +82,9 @@ def enqueue_batch_job(batch_job_id, eta=None):
     If we are in a time slot for batch transfers then the job is directly
     enqueued, otherwise it is scheduled for the next slot.
     """
-    if eta or _must_be_scheduled():
+    if eta or must_be_scheduled():
         if eta is None:
-            eta = _next_batch_slot()
+            eta = next_batch_slot()
         scheduler = django_rq.get_scheduler('low')
         scheduler.enqueue_at(eta, batch_transfer_task, batch_job_id)
     else:
@@ -94,9 +96,8 @@ def batch_transfer_task(batch_job_id):
     batch_job = BatchTransferJob.objects.get(id=batch_job_id)
 
     if batch_job.status not in [DicomJob.Status.PENDING, DicomJob.Status.PAUSED]:
-        raise Exception(f'Invalid status ({batch_job.get_status_display()})'
-                f' of batch transfer job with ID {batch_job.id}'
-                f'to be processed by the background task.')
+        raise Exception(f'Skipping task to process batch job with ID {batch_job.id} '
+                f' because of an invalid status {batch_job.get_status_display()}.')
 
     batch_job.status = DicomJob.Status.IN_PROGRESS
     batch_job.save()
@@ -116,10 +117,11 @@ def batch_transfer_task(batch_job_id):
         pseudonymize=batch_job.pseudonymize,
         trial_protocol_id=batch_job.trial_protocol_id,
         trial_protocol_name=batch_job.trial_protocol_name,
-        batch_timeout=app_settings.batch_timeout
+        batch_timeout=app_settings.batch_timeout,
+        debug_mode=settings.DEBUG
     )
 
-    unprocessed_requests = map(lambda req: {
+    unprocessed_requests = [{
         'RequestID': req.request_id,
         'PatientID': req.patient_id,
         'PatientName': req.patient_name,
@@ -127,14 +129,14 @@ def batch_transfer_task(batch_job_id):
         'StudyDate': req.study_date,
         'Modality': req.modality,
         'Pseudonym': req.pseudonym
-    }, batch_job.get_unprocessed_requests())
-
-    process_result_callback = partial(_process_result, batch_job)
+    } for req in batch_job.get_unprocessed_requests()]
 
     batch_job.status = DicomJob.Status.IN_PROGRESS
     batch_job.save()
 
     complete = False
+
+    process_result_callback = partial(process_result, batch_job)
     
     # Destination can be a server or a folder
     if batch_job.destination.node_type == DicomNode.NodeType.SERVER:
@@ -158,3 +160,8 @@ def batch_transfer_task(batch_job_id):
     if complete:
         batch_job.status = DicomJob.Status.COMPLETED
         batch_job.save()
+    elif batch_job.status == DicomJob.Status.PAUSED:
+        enqueue_batch_job(batch_job.id, eta=next_batch_slot())
+    elif batch_job.status != DicomJob.Status.CANCELED:
+        raise Exception('Invalid job status while processing task: ' \
+                + batch_job.get_status_display())
