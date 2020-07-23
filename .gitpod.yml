@@ -17,7 +17,7 @@ tasks:
       python manage.py populate_dev_db
       python manage.py reset_orthancs
     command: |
-      supervisorctl start rq:
+      supervisorctl start celery:
       python manage.py runserver
 
 # A terminal for continous testing

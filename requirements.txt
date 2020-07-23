@@ -1,4 +1,4 @@
-# Apps
+# Production
 Django==3.0.7
 psycopg2==2.8.5
 django-registration-redux==2.8
@@ -8,8 +8,7 @@ django-bootstrap4==2.1.1
 openpyxl==3.0.3
 pydicom==2.0.0
 pynetdicom==1.5.1
-django-rq==2.3.2
-rq-scheduler==0.10.0
+celery==4.4.6
 django-loginas==0.3.8
 
 # Dev

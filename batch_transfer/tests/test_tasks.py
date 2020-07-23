@@ -2,7 +2,6 @@ from django.test import TestCase
 from unittest.mock import patch
 from datetime import time, datetime
 import time_machine
-import django_rq
 from main.models import DicomJob
 from main.factories import DicomServerFactory, DicomFolderFactory
 from ..factories import BatchTransferJobFactory, BatchTransferRequestFactory
@@ -65,12 +64,6 @@ class BatchTransferTaskUnitTest(TestCase):
 class BatchTransferTaskIntegrationTest(TestCase):
     @time_machine.travel('2020-11-05 15:22')
     def test_enqueue_batch_job(self):
-        print(111)
-        scheduler = django_rq.get_scheduler('low')
-        print(dir(scheduler))
-        for x in scheduler.get_jobs():
-            print(x)
-        print(222)
 
         batch_job = BatchTransferJobFactory(
             source=DicomServerFactory(),
@@ -79,14 +72,15 @@ class BatchTransferTaskIntegrationTest(TestCase):
         )
         request1 = BatchTransferRequestFactory(job=batch_job, status=BatchTransferRequest.Status.UNPROCESSED)
 
+        print("ffooo")
+        print(batch_job.__dict__)
+
         tasks.enqueue_batch_job(batch_job.id)
 
-        django_rq.get_worker().work(burst=True)
-
         request1.refresh_from_db()
-        print(request1.__dict__)
+        #print(request1.__dict__)
 
-        print(datetime.now())
+        #print(datetime.now())
 
         self.assertFalse(False)
 

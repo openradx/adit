@@ -24,9 +24,6 @@ urlpatterns = [
     path('', include('batch_transfer.urls')),
 ]
 
-# Django RQ dashboard
-urlpatterns += [path('django-rq/', include('django_rq.urls'))]
-
 # Django loginas
 urlpatterns += [path("admin/", include('loginas.urls'))]
 

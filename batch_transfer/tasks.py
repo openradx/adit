@@ -1,12 +1,11 @@
 from django.conf import settings
 import logging
+from celery import shared_task
 from functools import partial
 from django.utils import timezone
 from datetime import datetime, time, timedelta
-import django_rq
-from django_rq import job
-from .models import AppSettings, BatchTransferJob, BatchTransferRequest
 from main.models import DicomNode, DicomServer, DicomJob
+from .models import AppSettings, BatchTransferJob, BatchTransferRequest
 from .utils.batch_handler import BatchHandler
 
 def is_time_between(begin_time, end_time, check_time):
@@ -85,12 +84,11 @@ def enqueue_batch_job(batch_job_id, eta=None):
     if eta or must_be_scheduled():
         if eta is None:
             eta = next_batch_slot()
-        scheduler = django_rq.get_scheduler('low')
-        scheduler.enqueue_at(eta, batch_transfer_task, batch_job_id)
+        batch_transfer_task.apply_async(args=[batch_job_id], eta=eta)
     else:
-        queue = django_rq.get_queue('low')
-        queue.enqueue(batch_transfer_task, batch_job_id)
+        batch_transfer_task.delay(batch_job_id)
 
+@shared_task
 def batch_transfer_task(batch_job_id):
     """The background task to do the batch transfer."""
     batch_job = BatchTransferJob.objects.get(id=batch_job_id)
@@ -117,8 +115,7 @@ def batch_transfer_task(batch_job_id):
         pseudonymize=batch_job.pseudonymize,
         trial_protocol_id=batch_job.trial_protocol_id,
         trial_protocol_name=batch_job.trial_protocol_name,
-        batch_timeout=app_settings.batch_timeout,
-        debug_mode=settings.DEBUG
+        batch_timeout=app_settings.batch_timeout
     )
 
     unprocessed_requests = [{

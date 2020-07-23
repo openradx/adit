@@ -48,7 +48,6 @@ INSTALLED_APPS = [
     'crispy_forms',
     'django_tables2',
     'bootstrap4',
-    'django_rq',
     'main.apps.MainConfig',
     'batch_transfer.apps.BatchTransferConfig'
 ]
@@ -163,22 +162,6 @@ LOGIN_REDIRECT_URL = 'home'
 # Seems to be the same problem with Cloud9 https://stackoverflow.com/a/34828308/166229
 MESSAGE_STORAGE = 'django.contrib.messages.storage.session.SessionStorage'
 
-# Django RQ settings
-RQ_QUEUES = {
-    'default': { # used by rqscheduler
-        'HOST': 'localhost',
-        'PORT': 6379,
-        'DB': 0
-    },
-    'low': {
-        'HOST': 'localhost',
-        'PORT': 6379,
-        'DB': 0,
-        'DEFAULT_TIMEOUT': 86400 # 24h, TODO maybe do this dynamically
-    }
-}
-RQ_SHOW_ADMIN_LINK = True
-
 # Also used by django-registration-redux
 ADMINS = [('Kai', 'kai.schlamp@med.uni-heidelberg.de'),]
 
@@ -193,10 +176,17 @@ else:
     EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
     # TODO provide SMTP details, see https://docs.djangoproject.com/en/dev/topics/email/
 
-# For Django-RQ to make all jobs run immediatly
-if DEBUG:
-    for _, queueConfig in RQ_QUEUES.items():
-        queueConfig['ASYNC'] = False
+# Celery
+# see https://github.com/celery/celery/issues/5026 for how to name configs
+if USE_TZ:
+    CELERY_TIMEZONE = TIME_ZONE
+REDIS_URL = os.environ.get('REDIS_URL', 'redis://localhost:6379/0')
+CELERY_BROKER_URL = REDIS_URL
+CELERY_RESULT_BACKEND = REDIS_URL
+CELERY_TASK_DEFAULT_QUEUE = 'default'
+CELERY_TASK_ROUTES = {
+    'batch_transfer.tasks.batch_transfer_task': {'queue': 'low'}
+}
 
 # General ADIT settings
 ADIT_AE_TITLE = 'ADIT'
