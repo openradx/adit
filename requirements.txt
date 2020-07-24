@@ -8,7 +8,10 @@ django-bootstrap4==2.1.1
 openpyxl==3.0.3
 pydicom==2.0.0
 pynetdicom==1.5.1
+redis==3.5.3
 celery==4.4.6
+flower==0.9.5
+django-revproxy==0.10.0
 django-loginas==0.3.8
 
 # Dev

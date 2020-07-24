@@ -1,18 +1,21 @@
 from django.views.generic import DetailView, View
 from django.views.generic.edit import DeleteView
 from django.views.generic.detail import SingleObjectMixin
-from django.contrib.auth.mixins import LoginRequiredMixin
+from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.contrib.messages.views import SuccessMessageMixin
 from django.urls import reverse_lazy
 from django.shortcuts import get_object_or_404
 from django.core.exceptions import SuspiciousOperation
 from django.contrib import messages
 from django.shortcuts import redirect
+from django.urls import re_path, path
 from django_tables2 import SingleTableView
+from revproxy.views import ProxyView
 from .models import DicomJob
 from .tables import DicomJobTable
 from .site import job_detail_views
 from .mixins import OwnerRequiredMixin
+
 
 class DicomJobTable(LoginRequiredMixin, SingleTableView):
     table_class = DicomJobTable
@@ -53,3 +56,22 @@ class DicomJobCancel(LoginRequiredMixin, OwnerRequiredMixin, SingleObjectMixin, 
             redirect(job)
         else:
             raise SuspiciousOperation(f'Job with ID {job.id} is not cancelable.')
+
+class FlowerProxyView(UserPassesTestMixin, ProxyView):
+    """A reverse proxy view to access the Flower Celery admin tool.
+
+    By using a reverse proxy we can check for an logged in admin user.
+    Code from https://stackoverflow.com/a/61997024/166229
+    """
+    upstream = 'http://{}:{}'.format('localhost', 5555)
+    url_prefix = 'flower'
+    rewrite = (
+        (r'^/{}$'.format(url_prefix), r'/{}/'.format(url_prefix)),
+     )
+
+    def test_func(self):
+        return self.request.user.is_staff
+
+    @classmethod
+    def as_url(cls):
+        return re_path(r'^(?P<path>{}.*)$'.format(cls.url_prefix), cls.as_view())

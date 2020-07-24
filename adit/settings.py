@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'django_extensions',
     'debug_permissions',
+    'revproxy',
     'debug_toolbar',
     'loginas',
     'crispy_forms',
