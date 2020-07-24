@@ -17,6 +17,10 @@ class BatchTransferJobForm(ModelForm):
 
         super().__init__(*args, **kwargs)
 
+        # Folders can only be a destination for batch mode
+        self.fields['source'].queryset = DicomNode.objects.filter(
+                node_type=DicomNode.NodeType.SERVER)
+
         if not self.user.has_perm('batch_transfer.can_transfer_unpseudonymized'):
             self.fields['pseudonymize'].widget.attrs['disabled'] = 'true'
             
