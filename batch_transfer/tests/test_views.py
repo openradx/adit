@@ -40,28 +40,28 @@ class BatchTransferJobCreateTest(TestCase):
         }
 
     def test_user_must_be_logged_in_to_access_view(self):
-        response = self.client.get(reverse('new_batch_transfer_job'))
+        response = self.client.get(reverse('batch_transfer_job_create'))
         self.assertEqual(response.status_code, 302)
-        response = self.client.post(reverse('new_batch_transfer_job'))
+        response = self.client.post(reverse('batch_transfer_job_create'))
         self.assertEqual(response.status_code, 302)
 
     def test_user_must_have_permission_to_access_view(self):
         self.client.force_login(self.user_without_permission)
-        response = self.client.get(reverse('new_batch_transfer_job'))
+        response = self.client.get(reverse('batch_transfer_job_create'))
         self.assertEqual(response.status_code, 403)
-        response = self.client.post(reverse('new_batch_transfer_job'))
+        response = self.client.post(reverse('batch_transfer_job_create'))
         self.assertEqual(response.status_code, 403)
 
     def test_logged_in_user_with_permission_can_access_form(self):
         self.client.force_login(self.user_with_permission)
-        response = self.client.get(reverse('new_batch_transfer_job'))
+        response = self.client.get(reverse('batch_transfer_job_create'))
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, 'batch_transfer/batch_transfer_job_form.html')
 
     @patch('batch_transfer.views.enqueue_batch_job')
     def test_batch_job_created_and_enqueued(self, enqueue_batch_job_mock):
         self.client.force_login(self.user_with_permission)
-        response = self.client.post(reverse('new_batch_transfer_job'), self.form_data)
+        response = self.client.post(reverse('batch_transfer_job_create'), self.form_data)
         job = BatchTransferJob.objects.first()
         self.assertEqual(job.requests.count(), 3)
         enqueue_batch_job_mock.assert_called_once_with(job.id)
@@ -71,6 +71,6 @@ class BatchTransferJobCreateTest(TestCase):
         for key_to_exclude in self.form_data:
             invalid_form_data = self.form_data.copy()
             del invalid_form_data[key_to_exclude]
-            response = self.client.post(reverse('new_batch_transfer_job'), invalid_form_data)
+            response = self.client.post(reverse('batch_transfer_job_create'), invalid_form_data)
             self.assertGreater(len(response.context['form'].errors), 0)
             self.assertIsNone(BatchTransferJob.objects.first())

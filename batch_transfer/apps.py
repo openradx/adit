@@ -13,7 +13,7 @@ class BatchTransferConfig(AppConfig):
 
 def register_app():
     register_main_menu_item(
-        url_name='new_batch_transfer_job',
+        url_name='batch_transfer_job_create',
         label='Batch Transfer'
     )
     

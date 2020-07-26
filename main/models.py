@@ -57,7 +57,9 @@ class DicomJob(models.Model):
         PAUSED = 'PA', 'Paused'
         CANCELING = 'CI', 'Canceling'
         CANCELED = 'CA', 'Canceled'
-        COMPLETED = 'CP', 'Completed'
+        SUCCESS = 'SU', 'Success'
+        WARNING = 'WA', 'Warning'
+        FAILURE = 'FA', 'Failure'
 
     class Meta:
         indexes = [
@@ -68,10 +70,12 @@ class DicomJob(models.Model):
     destination = models.ForeignKey(DicomNode, related_name='+', null=True, on_delete=models.SET_NULL)
     job_type = models.CharField(max_length=2, choices=job_type_choices)
     status = models.CharField(max_length=2, choices=Status.choices, default=Status.UNVERIFIED)
+    message = models.TextField(null=True, blank=True)
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE,
             related_name='jobs')
     created_at = models.DateTimeField(auto_now_add=True)
     started_at = models.DateTimeField(null=True)
+    paused_at = models.DateTimeField(null=True)
     stopped_at = models.DateTimeField(null=True)
 
     def get_absolute_url(self):

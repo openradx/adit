@@ -87,8 +87,8 @@ class AditCmd:
 
     def _handle_result(self, result):
         self.results.append(result)
-        if result['Status'] == DicomHandler.ERROR:
-            print('E', end='', flush=True)
+        if result['Status'] == DicomHandler.FAILURE:
+            print('F', end='', flush=True)
         else:
             print('.', end='', flush=True)
 

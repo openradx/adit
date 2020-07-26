@@ -2,7 +2,6 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.generic.edit import CreateView
 from django.views.generic import TemplateView, DetailView
 from django.contrib.auth.mixins import PermissionRequiredMixin
-from django.db import transaction
 from main.mixins import OwnerRequiredMixin
 from .models import AppSettings, BatchTransferJob
 from main.models import DicomNode

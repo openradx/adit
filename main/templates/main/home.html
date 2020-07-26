@@ -5,28 +5,31 @@
         <div class="container">
             <h1 class="display-4">Welcome to ADIT</h1>
             <p class="lead">
-                ADIT (Automatic DICOM Transfer) is a service to transfer or download
-                DICOM data with the following features:
+                ADIT (Automated DICOM Transfer) is a swiss army knife to exchange 
+                DICOM data between various systems
                 <ul>
-                    <li>Transfer DICOM data between DICOM servers</li>
+                    <li>Transfer DICOM data between DICOM / PACS servers</li>
                     <li>Download DICOM data to a network folder</li>
-                    <li>Pseudonymize the DICOM data on the fly</li>
-                    <li>Specify a trial name or ID for the transfered data (stored in the DICOM header)</li>
+                    <li>Pseudonymize DICOM data on the fly</li>
+                    <li>Specify a trial name for the transfered data (stored in the DICOM header)</li>
                     <li>Download the data to an encrpyted archive (7-Zip)</li>
-                    <li>Batch transfer or download multiple studies by uploading an Excel file</li>
-                    <li>Search for a single study to transfer or download using a web interface</li>
-                    <li>Find Patient IDs using the name and birth date</li>
+                    <li>Use the web interface to select studies to transfer or download</li>
+                    <li>Upload a batch file to transfer or download multiple studies</li>
+                    <li>A continuous mode to transfer past and future studies automatically</li>
+                    <li>Define when transfers should happen (to reduce PACS server load)</li>
+                    <li>Find Patient IDs using the patient's name and birth date</li>
                     <li>Check if a list of studies is present on a DICOM server</li>
                 </ul>
             </p>
 
             {% if not user.is_authenticated %}
                 <p>
-                    <a class="btn btn-primary btn-lg" href="{% url 'auth_login' %}" role="button">Log in</a>
+                    <a class="btn btn-info" href="{% url 'auth_login' %}" role="button">Log in</a>
+                    <span class="ml-2">No account yet?</span>
+                    <a href="{% url 'registration_register' %}">Register</a>
                 </p>
                 <p>
-                    No account yet?
-                    <a href="{% url 'registration_register' %}">Register</a>
+                    
                 </p>
                 
             {% endif %}

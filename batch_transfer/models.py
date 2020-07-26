@@ -14,7 +14,7 @@ class AppSettings(models.Model):
     batch_transfer_suspended = models.BooleanField(default=False)
     batch_slot_begin_time = models.TimeField(default=slot_time(22, 0))
     batch_slot_end_time = models.TimeField(default=slot_time(8, 0))
-    batch_timeout = models.IntegerField(default=3)
+    batch_timeout = models.IntegerField(default=3) # TODO rename to batch_transfer_timeout
 
     @classmethod
     def load(cls):
@@ -25,7 +25,7 @@ class AppSettings(models.Model):
     
 
 class BatchTransferJob(DicomJob):
-    JOB_TYPE = 'BA'
+    JOB_TYPE = 'BT'
     
     project_name = models.CharField(max_length=150)
     project_description = models.TextField(max_length=2000)
@@ -47,11 +47,17 @@ class BatchTransferJob(DicomJob):
         super().__init__(*args, **kwargs)
         self.job_type = self.JOB_TYPE
 
+    # TODO make property
     def get_unprocessed_requests(self):
         return self.requests.filter(status=BatchTransferRequest.Status.UNPROCESSED)
 
+    # TODO make property
     def get_processed_requests(self):
         return self.requests.exclude(status=BatchTransferRequest.Status.UNPROCESSED)
+
+    # TODO make property
+    def get_successful_requests(self):
+        return self.requests.filter(status=BatchTransferRequest.Status.SUCCESS)
 
     def get_absolute_url(self):
         return reverse('batch_transfer_job_detail', args=[str(self.pk)])
@@ -62,21 +68,22 @@ class BatchTransferRequest(models.Model):
     class Status(models.TextChoices):
         UNPROCESSED = 'UN', 'Unprocessed'
         SUCCESS = 'SU', 'Success'
-        ERROR = 'ER', 'Error'
+        FAILURE = 'FA', 'Failure'
 
     class Meta:
         unique_together = (('request_id', 'job'))
 
     job = models.ForeignKey(BatchTransferJob, on_delete=models.CASCADE,
             related_name='requests')
-    request_id = models.CharField(max_length=16)
-    patient_id = models.CharField(null=True, max_length=64)
-    patient_name = models.CharField(null=True, max_length=256)
+    request_id = models.PositiveIntegerField()
+    patient_id = models.CharField(null=True, blank=True, max_length=64)
+    patient_name = models.CharField(null=True, blank=True, max_length=256)
     patient_birth_date = models.DateField()
+    accession_number = models.CharField(null=True, blank=True, max_length=16)
     study_date = models.DateField()
     modality = models.CharField(max_length=16)
-    pseudonym = models.CharField(null=True, max_length=256)
+    pseudonym = models.CharField(null=True, blank=True, max_length=256)
     status = models.CharField(max_length=2, choices=Status.choices,
             default=Status.UNPROCESSED)
-    message = models.CharField(null=True, max_length=256)
+    message = models.TextField(null=True, blank=True)
     processed_at = models.DateTimeField(null=True)

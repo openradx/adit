@@ -10,7 +10,7 @@ from .dicom_operations import (
 class DicomHandler:
 
     SUCCESS = "Success"
-    ERROR = "Error"
+    FAILURE = "Failure"
 
     @dataclass
     class Config:
@@ -57,6 +57,39 @@ class DicomHandler:
         data = map(lambda x: x['data'], filtered)
         return data
 
+    def _extract_study_data(self, result_data, modality=None):
+        """Extract the study data from a DicomOperation result.
+        
+        Can be optionally filtered by a modality. If no modality is provided
+        all studies will be extracted.
+        """
+
+        study_list = []
+        for item in result_data:
+            patient_id = item['PatientID']
+            study_uid = item['StudyInstanceUID']
+            study_modalities = self.fetch_study_modalities(patient_id, study_uid)
+            if modality is not None:
+                if isinstance(modality, str):
+                    if modality not in study_modalities:
+                        continue
+                else:
+                    # Can also be a list of modalities, TODO but this is not 
+                    # implemented in the Django BatchTransferRequest model currently
+                    if len(set(study_modalities) & set(modality)) == 0:
+                        continue
+
+            study_list.append({
+                'PatientID': patient_id,
+                'StudyInstanceUID': study_uid,
+                'StudyDescription': item['StudyDescription'],
+                'StudyDate': item['StudyDate'],
+                'StudyTime': item['StudyTime'],
+                'Modalities': study_modalities
+            })
+
+        return study_list
+
     def fetch_study_modalities(self, patient_id, study_uid):
         """Fetch all modalities of a study and return them in a list."""
 
@@ -85,6 +118,22 @@ class DicomHandler:
 
         return patient_list
 
+    def find_study(self, accession_number):
+        """Find the study with the given accession number."""
+
+        query_dict = {
+            'QueryRetrieveLevel': 'STUDY',
+            'AccessionNumber': accession_number,
+            'PatientID': '',
+            'StudyDate': '',
+            'StudyTime': '',
+            'StudyInstanceUID': '',
+            'StudyDescription': ''
+        }
+        results = self._find.send_c_find(query_dict)
+        result_data = self._extract_pending_data(results)
+        return self._extract_study_data(result_data)
+
     def find_studies(self, patient_id, study_date='', modality=None):
         """Find all studies for a given patient and filter optionally by
         study date and/or modality."""
@@ -99,28 +148,7 @@ class DicomHandler:
         }
         results = self._find.send_c_find(query_dict)
         result_data = self._extract_pending_data(results)
-
-        study_list = []
-        for item in result_data:
-            study_uid = item['StudyInstanceUID']
-            study_modalities = self.fetch_study_modalities(patient_id, study_uid)
-            if modality is not None:
-                if isinstance(modality, str):
-                    if modality not in study_modalities:
-                        continue
-                else:
-                    if len(set(study_modalities) & set(modality)) == 0:
-                        continue
-
-            study_list.append({
-                'StudyInstanceUID': study_uid,
-                'StudyDescription': item['StudyDescription'],
-                'StudyDate': item['StudyDate'],
-                'StudyTime': item['StudyTime'],
-                'Modalities': study_modalities
-            })
-
-        return study_list
+        return self._extract_study_data(result_data, modality)
 
     def find_series(self, patient_id, study_uid, modality=None):
         """Find all series UIDs for a given study UID. The series can be filtered by a 

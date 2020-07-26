@@ -1,5 +1,5 @@
 $(function() {
-    if ($('body#new_batch_transfer_job')) {
+    if ($('body#batch_transfer_job_create')) {
         const archivePasswordField = $('div#div_id_archive_password');
         function showHideArchivePasswordField(nodeType) {
             if (nodeType === 'folder') {

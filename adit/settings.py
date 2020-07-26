@@ -50,6 +50,7 @@ INSTALLED_APPS = [
     'django_tables2',
     'bootstrap4',
     'main.apps.MainConfig',
+    'selective_transfer.apps.SelectiveTransferConfig',
     'batch_transfer.apps.BatchTransferConfig'
 ]
 

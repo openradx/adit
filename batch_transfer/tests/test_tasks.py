@@ -11,7 +11,7 @@ from .. import tasks
 
 class BatchTransferTaskUnitTest(TestCase):
     @patch.object(BatchHandler, 'batch_transfer', return_value=True)
-    def test_batch_transfer_task_completed(self, handler_batch_transfer_mock):
+    def test_batch_transfer_task_finished(self, handler_batch_transfer_mock):
         batch_job = BatchTransferJobFactory(
             source=DicomServerFactory(),
             destination=DicomServerFactory(),
@@ -23,10 +23,10 @@ class BatchTransferTaskUnitTest(TestCase):
 
         handler_batch_transfer_mock.assert_called_once()
         batch_job.refresh_from_db()
-        self.assertEqual(batch_job.status, DicomJob.Status.COMPLETED)
+        self.assertEqual(batch_job.status, DicomJob.Status.SUCCESS)
 
     @patch.object(BatchHandler, 'batch_transfer', return_value=False)
-    def test_batch_transfer_task_not_completed(self, handler_batch_transfer_mock):
+    def test_batch_transfer_task_not_finished(self, handler_batch_transfer_mock):
         batch_job = BatchTransferJobFactory(
             source=DicomServerFactory(),
             destination=DicomServerFactory(),
@@ -38,7 +38,7 @@ class BatchTransferTaskUnitTest(TestCase):
 
         handler_batch_transfer_mock.assert_called_once()
         batch_job.refresh_from_db()
-        self.assertNotEqual(batch_job.status, DicomJob.Status.COMPLETED)
+        self.assertEqual(batch_job.status, DicomJob.Status.IN_PROGRESS)
 
     def test_is_time_between(self):
         params = (

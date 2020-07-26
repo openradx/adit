@@ -2,6 +2,7 @@
 
 
 # TODO
+- Add AccessionNumber to excel_loader and batch_transfer/forms
 - Pseudonymize BirthDate
 - Think about moving all those dicts to dataclasses when passing around data
 - Batch Mode

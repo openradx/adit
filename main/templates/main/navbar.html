@@ -19,7 +19,7 @@
                 {% endfor %}
                 <li class="nav-item {% if url_name == 'dicom_job_list' %} active {% endif %}">
                     <a class="nav-link" href="{% url 'dicom_job_list' %}">
-                        All Jobs
+                        Show Jobs
                         {% if url_name == 'dicom_job_list' %}
                             <span class="sr-only">(current)</span>
                         {% endif %}

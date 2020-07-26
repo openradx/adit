@@ -141,9 +141,13 @@ class BatchHandler(DicomHandler):
                 patient_folder_path = Path(folder_path) / patient_folder_name
                 patient_folder_path.mkdir(exist_ok=True)
 
-                study_date = request['StudyDate']
-                modality = request['Modality']
-                study_list = self.find_studies(patient_id, study_date, modality)
+                accession_number = request['AccessionNumber']
+                if accession_number:
+                    study_list = self.find_study(accession_number)
+                else:
+                    study_date = request['StudyDate']
+                    modality = request['Modality']
+                    study_list = self.find_studies(patient_id, study_date, modality)
 
                 for study in study_list:
                     study_uid = study['StudyInstanceUID']
@@ -169,7 +173,7 @@ class BatchHandler(DicomHandler):
                 stop_processing = process_callback({
                     'RequestID': request_id,
                     'Pseudonym': None,
-                    'Status': DicomHandler.ERROR,
+                    'Status': DicomHandler.FAILURE,
                     'Message': str(err),
                     'Folder': None
                 })

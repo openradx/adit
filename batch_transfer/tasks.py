@@ -42,38 +42,7 @@ def next_batch_slot():
         return datetime.combine(now.date(), begin_time)
     else:
         tomorrow = now.date() + timedelta(days=1)
-        return datetime.combine(tomorrow, begin_time)    
-
-def process_result(batch_job, result):
-    """The callback to process a result of a running batch job.
-
-    The callback returns True if the job should be paused or canceled.
-    """
-    request_id = result['RequestID']
-    request = BatchTransferRequest.objects.get(
-            job=batch_job.id, request_id=request_id)
-    if result['Status'] == BatchHandler.SUCCESS:
-        request.status = BatchTransferRequest.Status.SUCCESS
-    elif result['Status'] == BatchHandler.ERROR:
-        request.status = BatchTransferRequest.Status.ERROR
-    else:
-        raise Exception('Invalid result status: ' + result['Status'])
-    request.message = result['Message']
-    if result['Pseudonym']:
-        result.pseudonym = result['Pseudonym']
-    request.processed_at = timezone.now()
-    request.save()
-
-    if must_be_scheduled():
-        batch_job.status = DicomJob.Status.PAUSED
-        batch_job.save()
-        return True # pause further processing for now
-    elif batch_job.status == DicomJob.Status.CANCELING:
-        batch_job.status = DicomJob.Status.CANCELED
-        batch_job.save()
-        return True # cancel further processing
-
-    return False
+        return datetime.combine(tomorrow, begin_time) 
 
 def enqueue_batch_job(batch_job_id, eta=None):
     """Enqueue a batch transfer job.
@@ -86,7 +55,39 @@ def enqueue_batch_job(batch_job_id, eta=None):
             eta = next_batch_slot()
         batch_transfer_task.apply_async(args=[batch_job_id], eta=eta)
     else:
-        batch_transfer_task.delay(batch_job_id)
+        batch_transfer_task.delay(batch_job_id)   
+
+def process_result(batch_job, result):
+    """The callback to process a result of a running batch job.
+
+    The callback returns True if the job should be paused or canceled.
+    """
+    request_id = result['RequestID']
+    request = BatchTransferRequest.objects.get(
+            job=batch_job.id, request_id=request_id)
+    if result['Status'] == BatchHandler.SUCCESS:
+        request.status = BatchTransferRequest.Status.SUCCESS
+    elif result['Status'] == BatchHandler.FAILURE:
+        request.status = BatchTransferRequest.Status.FAILURE
+    else:
+        raise Exception('Invalid result status: ' + result['Status'])
+    request.message = result['Message']
+    if result['Pseudonym']:
+        result.pseudonym = result['Pseudonym']
+    request.processed_at = timezone.now()
+    request.save()
+
+    if must_be_scheduled():
+        batch_job.status = DicomJob.Status.PAUSED
+        batch_job.paused_at = timezone.now()
+        batch_job.save()
+        return True # stop further processing (for now)
+    elif batch_job.status == DicomJob.Status.CANCELING:
+        batch_job.status = DicomJob.Status.CANCELED
+        batch_job.save()
+        return True # stop further processing
+
+    return False # continue processing
 
 @shared_task
 def batch_transfer_task(batch_job_id):
@@ -98,6 +99,8 @@ def batch_transfer_task(batch_job_id):
                 f' because of an invalid status {batch_job.get_status_display()}.')
 
     batch_job.status = DicomJob.Status.IN_PROGRESS
+    batch_job.started_at = timezone.now()
+    batch_job.paused_at = None
     batch_job.save()
 
     source = batch_job.source.dicomserver # Source is always a server
@@ -128,10 +131,7 @@ def batch_transfer_task(batch_job_id):
         'Pseudonym': req.pseudonym
     } for req in batch_job.get_unprocessed_requests()]
 
-    batch_job.status = DicomJob.Status.IN_PROGRESS
-    batch_job.save()
-
-    complete = False
+    finished = False
 
     process_result_callback = partial(process_result, batch_job)
     
@@ -143,22 +143,36 @@ def batch_transfer_task(batch_job_id):
         config.destination_port = dest_server.port
 
         handler = BatchHandler(config)
-        complete = handler.batch_transfer(unprocessed_requests, process_result_callback)
+        finished = handler.batch_transfer(unprocessed_requests, process_result_callback)
     else: # DicomNode.NodeType.Folder
         dest_folder = batch_job.destination.dicomfolder
         config.destination_folder = dest_folder.path
 
         handler = BatchHandler(config)
-        complete = handler.batch_download(unprocessed_requests, 
+        finished = handler.batch_download(unprocessed_requests, 
                 process_result_callback, batch_job.archive_password)
 
-    # If all requests were processed then the job completed otherwise it is
-    # paused or was cancelled by the user
-    if complete:
-        batch_job.status = DicomJob.Status.COMPLETED
+    # If all requests were processed then the job finished otherwise it was
+    # paused by the system or cancelled by the user
+    if finished:
+        total_requests = batch_job.requests.count()
+        successful_requests = batch_job.get_successful_requests().count()
+        if successful_requests == total_requests:
+            batch_job.status = DicomJob.Status.SUCCESS
+            batch_job.message = 'All requests succeeded.'
+        elif successful_requests == 0:
+            batch_job.status = DicomJob.Status.WARNING
+            batch_job.message = 'Some requests failed.'
+        else:
+            batch_job.status = DicomJob.Status.FAILURE
+            batch_job.message = 'All requests failed.'
         batch_job.save()
     elif batch_job.status == DicomJob.Status.PAUSED:
+        batch_job.paused_at = timezone.now()
+        batch_job.save()
         enqueue_batch_job(batch_job.id, eta=next_batch_slot())
-    elif batch_job.status != DicomJob.Status.CANCELED:
-        raise Exception('Invalid job status while processing task: ' \
-                + batch_job.get_status_display())
+    elif batch_job.status == DicomJob.Status.CANCELED:
+        batch_job.stopped_at = timezone.now()
+        batch_job.save()
+    else:
+        raise Exception(f'Invalid status of job with ID {batch_job.id}: {batch_job.status}')

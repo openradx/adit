@@ -1,8 +1,7 @@
 from django.urls import path
 
-from .views import BatchTransferJobCreate, BatchTransferJobDetail
+from .views import BatchTransferJobCreate
 
 urlpatterns = [
-    path('new/', BatchTransferJobCreate.as_view(), name='new_batch_transfer_job'),
-    path('<int:pk>/', BatchTransferJobDetail.as_view(), name='batch_transfer_job_detail'),
+    path('batch-transfer/', BatchTransferJobCreate.as_view(), name='batch_transfer_job_create')
 ]
