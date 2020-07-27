@@ -1,5 +1,6 @@
+from io import StringIO
 from django.test import TestCase
-from unittest.mock import patch, create_autospec
+from unittest.mock import patch, create_autospec, ANY
 from django.core.files import File
 from main.factories import DicomServerFactory
 from ..forms import BatchTransferJobForm
@@ -16,8 +17,9 @@ class BatchTransferJobFormTests(TestCase):
         }
 
         file = create_autospec(File, size=5242880)
-        file.name = 'sample_sheet.xlsx'
-        cls.file_dict = { 'excel_file': file }
+        file.name = 'sample_sheet.csv'
+        file.read.return_value.decode.return_value = ''
+        cls.file_dict = { 'csv_file': file }
 
         cls.user = create_autospec(User)
 
@@ -32,18 +34,19 @@ class BatchTransferJobFormTests(TestCase):
         self.assertEqual(form.fields['trial_protocol_id'].label, 'Trial protocol id')
         self.assertEqual(form.fields['trial_protocol_name'].label, 'Trial protocol name')
         self.assertEqual(form.fields['archive_password'].label, 'Archive password')
-        self.assertIsNone(form.fields['excel_file'].label)
+        self.assertIsNone(form.fields['csv_file'].label)
 
-    @patch('batch_transfer.forms.ExcelLoader', autospec=True)
-    def test_with_valid_data(self, ExcelLoaderMock):
-        excel_loader_mock = ExcelLoaderMock.return_value
-        excel_loader_mock.extract_data.return_value = []
+    @patch('batch_transfer.forms.RequestParserCsv', autospec=True)
+    @patch('batch_transfer.forms.chardet.detect', return_value={'encoding': 'UTF-8'})
+    def test_with_valid_data(self, _, ParserMock):
+        parser_mock = ParserMock.return_value
+        parser_mock.parse.return_value = []
 
         form = BatchTransferJobForm(self.data_dict, self.file_dict, user=self.user)
-        
         self.assertTrue(form.is_valid())
-        ExcelLoaderMock.assert_called_once_with(self.file_dict['excel_file'])
-        excel_loader_mock.extract_data.assert_called_once()
+        ParserMock.assert_called_once()
+        parser_mock.parse.assert_called_once()
+        self.assertIsInstance(parser_mock.parse.call_args.args[0], StringIO)
 
     def test_with_missing_values(self):
         form = BatchTransferJobForm({}, user=self.user)
@@ -53,20 +56,20 @@ class BatchTransferJobFormTests(TestCase):
         self.assertEqual(form.errors['destination'], ['This field is required.'])
         self.assertEqual(form.errors['project_name'], ['This field is required.'])
         self.assertEqual(form.errors['project_description'], ['This field is required.'])
-        self.assertEqual(form.errors['excel_file'], ['This field is required.'])
-
+        self.assertEqual(form.errors['csv_file'], ['This field is required.'])
+ 
     def test_disallow_too_large_file(self):
         file = create_autospec(File, size=5242881)
         file.name = 'sample_sheet.xlsx'
-        form = BatchTransferJobForm(self.data_dict, { 'excel_file': file }, user=self.user)
+        form = BatchTransferJobForm(self.data_dict, { 'csv_file': file }, user=self.user)
         self.assertFalse(form.is_valid())
-        self.assertEqual(form.errors['excel_file'],
-                ['File too large. Please keep filesize under 5.0\xa0MB.'])
+        self.assertIn('File too large', form.errors['csv_file'][0])
 
-    @patch('batch_transfer.forms.ExcelLoader', autospec=True)
-    def test_dont_allow_pseudonymized_transfer_for_user_without_permission(self, ExcelLoaderMock):
-        excel_loader_mock = ExcelLoaderMock.return_value
-        excel_loader_mock.extract_data.return_value = []
+    @patch('batch_transfer.forms.RequestParserCsv', autospec=True)
+    @patch('batch_transfer.forms.chardet.detect', return_value={'encoding': 'UTF-8'})
+    def test_dont_allow_pseudonymized_transfer_for_user_without_permission(self, _, ParserMock):
+        parser_mock = ParserMock.return_value
+        parser_mock.parse.return_value = []
         self.user.has_perm.return_value = False
         self.data_dict['pseudonymize'] = False
         form = BatchTransferJobForm(self.data_dict, self.file_dict, user=self.user)
@@ -74,10 +77,11 @@ class BatchTransferJobFormTests(TestCase):
         self.user.has_perm.assert_called_with('batch_transfer.can_transfer_unpseudonymized')
         self.assertTrue(form.cleaned_data['pseudonymize'])
 
-    @patch('batch_transfer.forms.ExcelLoader', autospec=True)
-    def test_allow_pseudonymized_transfer_for_user_with_permission(self, ExcelLoaderMock):
-        excel_loader_mock = ExcelLoaderMock.return_value
-        excel_loader_mock.extract_data.return_value = []
+    @patch('batch_transfer.forms.RequestParserCsv', autospec=True)
+    @patch('batch_transfer.forms.chardet.detect', return_value={'encoding': 'UTF-8'})
+    def test_allow_pseudonymized_transfer_for_user_with_permission(self, _, ParserMock):
+        parser_mock = ParserMock.return_value
+        parser_mock.parse.return_value = []
         self.user.has_perm.return_value = True
         self.data_dict['pseudonymize'] = False
         form = BatchTransferJobForm(self.data_dict, self.file_dict, user=self.user)

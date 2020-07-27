@@ -60,7 +60,7 @@ class BatchTransferJob(DicomJob):
         return self.requests.filter(status=BatchTransferRequest.Status.SUCCESS)
 
     def get_absolute_url(self):
-        return reverse('batch_transfer_job_detail', args=[str(self.pk)])
+        return reverse('dicom_job_detail', args=[str(self.pk)])
 
 
 class BatchTransferRequest(models.Model):
@@ -77,12 +77,12 @@ class BatchTransferRequest(models.Model):
             related_name='requests')
     request_id = models.PositiveIntegerField()
     patient_id = models.CharField(null=True, blank=True, max_length=64)
-    patient_name = models.CharField(null=True, blank=True, max_length=256)
+    patient_name = models.CharField(null=True, blank=True, max_length=324)
     patient_birth_date = models.DateField()
     accession_number = models.CharField(null=True, blank=True, max_length=16)
     study_date = models.DateField()
     modality = models.CharField(max_length=16)
-    pseudonym = models.CharField(null=True, blank=True, max_length=256)
+    pseudonym = models.CharField(null=True, blank=True, max_length=324)
     status = models.CharField(max_length=2, choices=Status.choices,
             default=Status.UNPROCESSED)
     message = models.TextField(null=True, blank=True)

@@ -1,16 +1,20 @@
+from io import StringIO
 from django.forms import ModelForm
 from django.db import transaction
 from django.core.exceptions import ValidationError
+from django.conf import settings
+from django.utils import formats
 from crispy_forms.helper import FormHelper
 from crispy_forms.bootstrap import FormActions
 from crispy_forms.layout import Submit
+import chardet
 from main.models import DicomNode
 from .models import BatchTransferJob, BatchTransferRequest
 from .fields import RestrictedFileField
-from .utils.excel_loader import ExcelLoader, ExcelError
+from .utils.request_parsers import RequestParserCsv, ParsingError
 
 class BatchTransferJobForm(ModelForm):
-    excel_file = RestrictedFileField(max_upload_size=5242880)
+    csv_file = RestrictedFileField(max_upload_size=5242880)
 
     def __init__(self, *args, **kwargs):
         self.user = kwargs.pop('user')
@@ -30,7 +34,7 @@ class BatchTransferJobForm(ModelForm):
         else:
             self.fields['pseudonymize'].help_text = """
                 Should the transferred data be pseudonymized by providing the
-                pseudonyms in the Excel file or by letting ADIT generate them.
+                pseudonyms in the CSV file or by letting ADIT generate them.
             """
 
         self.fields['trial_protocol_id'].widget.attrs['placeholder'] = 'Optional'
@@ -55,9 +59,9 @@ class BatchTransferJobForm(ModelForm):
             Leave blank to not use an archive.
         """
 
-        self.fields['excel_file'].help_text = """
-            The Excel file which contains the data to transfer between
-            two DICOM nodes. See [help] how to format the Excel sheet.
+        self.fields['csv_file'].help_text = """
+            The CSV file which contains the data to transfer between
+            two DICOM nodes. See [help] how to format the CSV file.
         """
 
         self.helper = FormHelper()
@@ -76,22 +80,28 @@ class BatchTransferJobForm(ModelForm):
             archive_password = ''
         return archive_password
 
-    def clean_excel_file(self):
-        file = self.cleaned_data['excel_file']
+    def clean_csv_file(self):
+        csv_file = self.cleaned_data['csv_file']
+
+        delimiter = settings.BATCH_FILE_CSV_DELIMITER
+        date_input_formats = formats.get_format('DATE_INPUT_FORMATS')
+        parser = RequestParserCsv(delimiter, date_input_formats)
 
         try:
-            loader = ExcelLoader(file)
-            self.excel_data = loader.extract_data()
-        except ExcelError as err:
+            rawdata = csv_file.read()
+            encoding = chardet.detect(rawdata)['encoding']
+            fp = StringIO(rawdata.decode(encoding)) # TODO is this really the best way?
+            self.csv_data = parser.parse(fp)
+        except ParsingError as err:
             for error in err.errors:
                 self.add_error(None, error)
-            raise ValidationError(str(err))
+            raise ValidationError(err.message)
 
-        return file
+        return csv_file
 
     def _save_requests(self, batch_job):
         requests = []
-        for row in self.excel_data:
+        for row in self.csv_data:
             request = BatchTransferRequest(
                 job=batch_job,
                 request_id=row['RequestID'],
@@ -124,5 +134,5 @@ class BatchTransferJobForm(ModelForm):
         fields=(
             'source', 'destination', 'project_name', 'project_description',
             'pseudonymize', 'trial_protocol_id', 'trial_protocol_name',
-            'archive_password', 'excel_file'
+            'archive_password', 'csv_file'
         )

@@ -133,12 +133,14 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/3.0/topics/i18n/
 
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = 'de-de'
 
 TIME_ZONE = 'UTC'
 
-USE_I18N = True
+# We don't want to have German translations, but everything in English
+USE_I18N = False
 
+# But we still want to have dates and times localized
 USE_L10N = True
 
 USE_TZ = True
@@ -190,8 +192,16 @@ CELERY_TASK_ROUTES = {
     'batch_transfer.tasks.batch_transfer_task': {'queue': 'low'}
 }
 
+###
+# ADIT specific settings
+###
+
 # General ADIT settings
 ADIT_AE_TITLE = 'ADIT'
 
 # Static (non database) settings for batch_transfer app
 BATCH_TRANSFER_CACHE_FOLDER = '/tmp/adit_cache_folder'
+
+# The delimiter of the CSV file that contains the requests for
+# the batch transfer
+BATCH_FILE_CSV_DELIMITER = ';'

@@ -9,15 +9,16 @@ from ..models import BatchTransferRequest
 from ..utils.batch_handler import BatchHandler
 from .. import tasks
 
-class BatchTransferTaskUnitTest(TestCase):
+class BatchTaskTest(TestCase):
     @patch.object(BatchHandler, 'batch_transfer', return_value=True)
-    def test_batch_transfer_task_finished(self, handler_batch_transfer_mock):
+    def test_batch_transfer_task_finished_with_success(self, handler_batch_transfer_mock):
         batch_job = BatchTransferJobFactory(
             source=DicomServerFactory(),
             destination=DicomServerFactory(),
             status=DicomJob.Status.PENDING
         )
-        BatchTransferRequestFactory(job=batch_job)
+        BatchTransferRequestFactory(job=batch_job,
+                status=BatchTransferRequest.Status.SUCCESS)
 
         tasks.batch_transfer_task(batch_job.id)
 
@@ -25,8 +26,26 @@ class BatchTransferTaskUnitTest(TestCase):
         batch_job.refresh_from_db()
         self.assertEqual(batch_job.status, DicomJob.Status.SUCCESS)
 
+    @patch.object(BatchHandler, 'batch_transfer', return_value=True)
+    def test_batch_transfer_task_finished_with_warning(self, handler_batch_transfer_mock):
+        batch_job = BatchTransferJobFactory(
+            source=DicomServerFactory(),
+            destination=DicomServerFactory(),
+            status=DicomJob.Status.PENDING
+        )
+        BatchTransferRequestFactory(job=batch_job,
+                status=BatchTransferRequest.Status.FAILURE)
+        BatchTransferRequestFactory(job=batch_job,
+                status=BatchTransferRequest.Status.SUCCESS)
+
+        tasks.batch_transfer_task(batch_job.id)
+
+        handler_batch_transfer_mock.assert_called_once()
+        batch_job.refresh_from_db()
+        self.assertEqual(batch_job.status, DicomJob.Status.WARNING)
+
     @patch.object(BatchHandler, 'batch_transfer', return_value=False)
-    def test_batch_transfer_task_not_finished(self, handler_batch_transfer_mock):
+    def test_batch_transfer_task_paused(self, handler_batch_transfer_mock):
         batch_job = BatchTransferJobFactory(
             source=DicomServerFactory(),
             destination=DicomServerFactory(),
@@ -34,11 +53,21 @@ class BatchTransferTaskUnitTest(TestCase):
         )
         BatchTransferRequestFactory(job=batch_job)
 
-        tasks.batch_transfer_task(batch_job.id)
+        # We have to alter the instance in the handler and not the instance
+        # in the test function (those are different instances of the same
+        # database object). For that we access the partial.
+        def simulate_callback(*args):
+            # args[2] is the partial and args[0] the parameter
+            batch_job_in_handler = args[2].args[0]
+            batch_job_in_handler.status = DicomJob.Status.PAUSED
+            batch_job_in_handler.save()
+            return False
 
-        handler_batch_transfer_mock.assert_called_once()
+        with patch.object(BatchHandler, 'batch_transfer', new=simulate_callback):
+            tasks.batch_transfer_task(batch_job.id)
+
         batch_job.refresh_from_db()
-        self.assertEqual(batch_job.status, DicomJob.Status.IN_PROGRESS)
+        self.assertEqual(batch_job.status, DicomJob.Status.PAUSED)
 
     def test_is_time_between(self):
         params = (
@@ -72,15 +101,10 @@ class BatchTransferTaskIntegrationTest(TestCase):
         )
         request1 = BatchTransferRequestFactory(job=batch_job, status=BatchTransferRequest.Status.UNPROCESSED)
 
-        print("ffooo")
-        print(batch_job.__dict__)
-
         tasks.enqueue_batch_job(batch_job.id)
 
         request1.refresh_from_db()
-        #print(request1.__dict__)
 
-        #print(datetime.now())
+        print('TODO')
 
         self.assertFalse(False)
-

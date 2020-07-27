@@ -21,14 +21,14 @@ class BatchTransferJobCreateTest(TestCase):
 
         samples_folder_path = Path(settings.BASE_DIR) / '_debug' / 'samples'
 
-        # Real excel file
+        # Real CSV file
         def load_file(filename):
             file_path = samples_folder_path / filename
             file_content = open(file_path, 'rb').read()
             return SimpleUploadedFile(
                 name=filename,
                 content=file_content,
-                content_type='application/vnd.ms-excel'
+                content_type='text/csv'
             )
 
         cls.form_data = {
@@ -36,7 +36,7 @@ class BatchTransferJobCreateTest(TestCase):
             'destination': DicomServerFactory().id,
             'project_name': 'Apollo project',
             'project_description': 'Fly to the moon',
-            'excel_file': load_file('sample_sheet_small.xlsx')
+            'csv_file': load_file('sample_sheet_small.csv')
         }
 
     def test_user_must_be_logged_in_to_access_view(self):

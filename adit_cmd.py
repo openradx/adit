@@ -5,18 +5,18 @@ from pathlib import Path
 from datetime import datetime
 from main.utils.anonymizer import Anonymizer
 from main.utils.dicom_handler import DicomHandler
-from batch_transfer.utils.excel_loader import ExcelLoader
+from batch_transfer.utils.request_parsers import RequestParserCsv
 from batch_transfer.utils.batch_handler import BatchHandler
 
 class AditCmd:
-    def __init__(self, config_ini_path, excel_file_path, worksheet=None):
+    def __init__(self, config_ini_path, csv_file_path, worksheet=None):
         self.config = self._load_config_from_ini(config_ini_path)
         self.log_path = self._setup_logging()
 
-        if self._check_file_already_open(excel_file_path):
-            raise IOError('Excel file already in use by another program, please close.')
+        if self._check_file_already_open(csv_file_path):
+            raise IOError('CSV file already in use by another program, please close it.')
 
-        self._excel_loader = ExcelLoader(excel_file_path, worksheet=worksheet)
+        self._csv_parser = RequestParserCsv(csv_file_path, ';', ['%d.%m.%Y'])
         self._batch_handler = BatchHandler(self._create_batch_handler_config())
 
         self.results = []
@@ -98,14 +98,14 @@ class AditCmd:
             self._print_status(result['Status'])
 
         self._batch_handler.batch_download(
-            self._excel_loader.extract_data(),
+            self._csv_parser.parse(),
             self._handle_result,
             archive_password
         )
 
     def batch_transfer(self):
         self._batch_handler.batch_transfer(
-            self._excel_loader.extract_data(),
+            self._csv_parser.parse(),
             self._handle_result
         )
     
@@ -127,8 +127,7 @@ def password_type(password):
 def parse_cmd_args():
         parser = argparse.ArgumentParser()
         parser.add_argument('config_ini', help='The configiguration INI file.')
-        parser.add_argument('excel_file', help='The name or path of the Excel file to process')
-        parser.add_argument('-w', '--worksheet', help='The name of the worksheet in the Excel file')
+        parser.add_argument('csv_file', help='The name or path of the CSV file to process')
         parser.add_argument('-i', '--ids', action='store_true',
                 help='Find Patient IDs (by using Patient Name and Patient Birth Date')
         parser.add_argument('-d', '--download', action='store_true',
@@ -142,7 +141,7 @@ def parse_cmd_args():
 
 if __name__ == '__main__':
     args = parse_cmd_args()
-    adit_cmd = AditCmd(args.config_ini, args.excel_file, args.worksheet)
+    adit_cmd = AditCmd(args.config_ini, args.csv_file, args.worksheet)
 
     if args.ids:
         adit_cmd.fetch_patient_ids()

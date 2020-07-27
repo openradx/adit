@@ -14,19 +14,18 @@ class ParsingError(Exception):
 
 
 class RequestParserCsv:
-    def __init__(self, csv_file, delimiter, date_formats):
-        self._csv_file = csv_file
+    def __init__(self, delimiter, date_formats):
         self._delimiter = delimiter
         self._date_formats = date_formats
 
-    def parse(self):
+    def parse(self, csv_file):
         self._errors = []
         self._request_ids = set()
         self._patient_ids = dict()
         self._pseudonyms = dict()
         requests = []
 
-        reader = csv.DictReader(self._csv_file, delimiter=self._delimiter)
+        reader = csv.DictReader(csv_file, delimiter=self._delimiter)
         for i, row in enumerate(reader):
             request = self._extract_request(row, i)
             requests.append(request)
@@ -37,6 +36,7 @@ class RequestParserCsv:
         return requests
 
     def _extract_request(self, row, i):
+
         request_id = row.get('RequestID', '').strip()
         request_id = self._clean_request_id(request_id, i)
         patient_id = row.get('PatientID', '').strip()
@@ -87,9 +87,12 @@ class RequestParserCsv:
         return patient_id
 
     def _clean_patient_name(self, patient_name, i):
-        if len(patient_name) > 256:
-            self._errors.append(f'Invalid PatientName in row {i}. Maximum 256 characters.')
-        return re.sub(r',\s*', '^', patient_name)
+        name = re.sub(r',\s*', '^', patient_name)
+        if len(name) > 324:
+            self._errors.append(f'Invalid PatientName in row {i}. Maximum 324 characters.')
+            return patient_name
+        else:
+            return name
 
     def _clean_patient_birth_date(self, patient_birth_date, i):
         if patient_birth_date:
@@ -120,9 +123,12 @@ class RequestParserCsv:
         return modality
 
     def _clean_pseudonym(self, pseudonym, i):
-        if len(pseudonym) > 256:
-            self._errors.append(f'Invalid Pseudonym in row {i}. Maximum 256 characters.')
-        return re.sub(r',\s*', '^', pseudonym)
+        pseudo = re.sub(r',\s*', '^', pseudonym)
+        if len(pseudo) > 324:
+            self._errors.append(f'Invalid Pseudonym in row {i}. Maximum 324 characters.')
+            return pseudonym
+        else:
+            return pseudo 
 
     def _parse_date(self, date_str):
         date = None
@@ -135,14 +141,41 @@ class RequestParserCsv:
         return date
 
     def _clean_request(self, request, i):
-        # If an AccessionNumber is present we don't need anything else.
-        if 'AccessionNumber' in request:
-            return request
-
         patient_id = request['PatientID']
         patient_name = request['PatientName']
         birth_date = request['PatientBirthDate']
         pseudonym = request['Pseudonym']
+
+        # When both PatientID and PatientName / PatientBirthDate are
+        # present then they must never mix up
+        if patient_id and (patient_name or birth_date):
+            descriptor = f'{patient_id}_{patient_name}_{birth_date}'
+            if patient_id in self._patient_ids:
+                v = self._patient_ids[patient_id]
+                if v and v != descriptor:
+                    msg = (f'The same PatientID was also given for a different '
+                            'PatientName / PatientBirthDate in row {i}.')
+                    self._errors.append(msg)
+            else:
+                self._patient_ids[patient_id] = descriptor
+
+        if pseudonym:
+            # Only one pseudonym allowed per patient
+            # This can still go wrong when patient data is mixed with
+            # only an accession number per request, but this can only be
+            # found out while real data is fetched
+            descriptor = f'{patient_id}_{patient_name}_{birth_date}'
+            if pseudonym in self._pseudonyms:
+                v = self._pseudonyms[pseudonym]
+                if v and v != descriptor:
+                    msg = f'Pseudonym already used for another patient in row {i}.'
+                    self._errors.append(msg)
+            else:
+                self._pseudonyms[pseudonym] = descriptor
+
+        # If an AccessionNumber is present we don't need anything else.
+        if request.get('AccessionNumber'):
+            return request
 
         # If PatientName is present then PatientBirthDate must be
         # also present too and the other way around
@@ -160,30 +193,5 @@ class RequestParserCsv:
             msg = (f'AccessionNumber or PatientID or PatientName and '
                     'PatientBirthDate must be present in row {i}.')
             self._errors.append(msg)
-
-        # When both PatientID and PatientName / PatientBirthDate are
-        # present then they must never mix up
-        if patient_id and (patient_name or birth_date):
-            descriptor = f'{patient_id}_{patient_name}_{birth_date}'
-            if patient_id in self._patient_ids:
-                v = self._patient_ids[patient_id]
-                if v and v != descriptor:
-                    msg = (f'The same PatientID was also given for a different '
-                            'PatientName / PatientBirthDate in row {i}.')
-                    self._errors.append(msg)
-
-        if pseudonym:
-            # Only one pseudonym allowed per patient
-            # This can still go wrong when patient data is mixed with
-            # only an accession number per request, but this can only be
-            # found out while real data is fetched
-            descriptor = f'{patient_id}_{patient_name}_{birth_date}'
-            if pseudonym in self._pseudonyms:
-                v = self._pseudonyms[pseudonym]
-                if v and v != descriptor:
-                    msg = f'Pseudonym already used for another patient in row {i}.'
-                    self._errors.append(msg)
-            else:
-                self._pseudonyms[pseudonym] = descriptor
 
         return request

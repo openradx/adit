@@ -160,7 +160,7 @@ def batch_transfer_task(batch_job_id):
         if successful_requests == total_requests:
             batch_job.status = DicomJob.Status.SUCCESS
             batch_job.message = 'All requests succeeded.'
-        elif successful_requests == 0:
+        elif successful_requests > 0:
             batch_job.status = DicomJob.Status.WARNING
             batch_job.message = 'Some requests failed.'
         else:
@@ -175,4 +175,5 @@ def batch_transfer_task(batch_job_id):
         batch_job.stopped_at = timezone.now()
         batch_job.save()
     else:
-        raise Exception(f'Invalid status of job with ID {batch_job.id}: {batch_job.status}')
+        raise Exception(f'Invalid status of job with ID {batch_job.id}:'
+                f' {batch_job.get_status_display()}')

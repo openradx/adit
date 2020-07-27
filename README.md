@@ -2,15 +2,12 @@
 
 
 # TODO
-- Add AccessionNumber to excel_loader and batch_transfer/forms
 - Pseudonymize BirthDate
 - Think about moving all those dicts to dataclasses when passing around data
 - Batch Mode
--- Use Pandas to parse the excel file
 -- or only allow csv files
--- Allow to use AccessionNumber in Excel sheet
--- Allow provide a regex of StudyDescription in Excel sheet
--- Allow to specify many modalities per row in Excel sheet
+-- Allow provide a regex of StudyDescription in CSV batch file
+-- Allow to specify many modalities per row in CSV file
 
 # Commands
 

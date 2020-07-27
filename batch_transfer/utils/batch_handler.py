@@ -126,9 +126,9 @@ class BatchHandler(DicomHandler):
                 patient = self._fetch_patient(request)
                 patient_id = patient['PatientID']
 
-                # Only works ok when a provided pseudonym in the Excel file is assigned to the same patient 
+                # Only works ok when a provided pseudonym in the batch file is assigned to the same patient 
                 # in the whole file. Never mix provided pseudonym with not filled out pseudonym for the
-                # same patient. TODO validate that in excel loader
+                # same patient. TODO validate that in CSV loader
                 if self.config.pseudonymize:
                     pseudonym = request['Pseudonym']
                     if not pseudonym:
