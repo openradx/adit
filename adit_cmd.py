@@ -5,7 +5,7 @@ from pathlib import Path
 from datetime import datetime
 from main.utils.anonymizer import Anonymizer
 from main.utils.dicom_handler import DicomHandler
-from batch_transfer.utils.request_parsers import RequestParserCsv
+from batch_transfer.utils.request_parsers import RequestParser
 from batch_transfer.utils.batch_handler import BatchHandler
 
 class AditCmd:
@@ -16,7 +16,7 @@ class AditCmd:
         if self._check_file_already_open(csv_file_path):
             raise IOError('CSV file already in use by another program, please close it.')
 
-        self._csv_parser = RequestParserCsv(csv_file_path, ';', ['%d.%m.%Y'])
+        self._csv_parser = RequestParser(csv_file_path, ';', ['%d.%m.%Y'])
         self._batch_handler = BatchHandler(self._create_batch_handler_config())
 
         self.results = []

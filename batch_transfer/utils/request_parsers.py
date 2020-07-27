@@ -13,7 +13,7 @@ class ParsingError(Exception):
         return self.message + '\n' + errors
 
 
-class RequestParserCsv:
+class RequestParser:
     def __init__(self, delimiter, date_formats):
         self._delimiter = delimiter
         self._date_formats = date_formats

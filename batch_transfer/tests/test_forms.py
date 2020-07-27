@@ -36,7 +36,7 @@ class BatchTransferJobFormTests(TestCase):
         self.assertEqual(form.fields['archive_password'].label, 'Archive password')
         self.assertIsNone(form.fields['csv_file'].label)
 
-    @patch('batch_transfer.forms.RequestParserCsv', autospec=True)
+    @patch('batch_transfer.forms.RequestParser', autospec=True)
     @patch('batch_transfer.forms.chardet.detect', return_value={'encoding': 'UTF-8'})
     def test_with_valid_data(self, _, ParserMock):
         parser_mock = ParserMock.return_value
@@ -65,7 +65,7 @@ class BatchTransferJobFormTests(TestCase):
         self.assertFalse(form.is_valid())
         self.assertIn('File too large', form.errors['csv_file'][0])
 
-    @patch('batch_transfer.forms.RequestParserCsv', autospec=True)
+    @patch('batch_transfer.forms.RequestParser', autospec=True)
     @patch('batch_transfer.forms.chardet.detect', return_value={'encoding': 'UTF-8'})
     def test_dont_allow_pseudonymized_transfer_for_user_without_permission(self, _, ParserMock):
         parser_mock = ParserMock.return_value
@@ -77,7 +77,7 @@ class BatchTransferJobFormTests(TestCase):
         self.user.has_perm.assert_called_with('batch_transfer.can_transfer_unpseudonymized')
         self.assertTrue(form.cleaned_data['pseudonymize'])
 
-    @patch('batch_transfer.forms.RequestParserCsv', autospec=True)
+    @patch('batch_transfer.forms.RequestParser', autospec=True)
     @patch('batch_transfer.forms.chardet.detect', return_value={'encoding': 'UTF-8'})
     def test_allow_pseudonymized_transfer_for_user_with_permission(self, _, ParserMock):
         parser_mock = ParserMock.return_value

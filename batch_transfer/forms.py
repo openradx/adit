@@ -11,7 +11,7 @@ import chardet
 from main.models import DicomNode
 from .models import BatchTransferJob, BatchTransferRequest
 from .fields import RestrictedFileField
-from .utils.request_parsers import RequestParserCsv, ParsingError
+from .utils.request_parsers import RequestParser, ParsingError
 
 class BatchTransferJobForm(ModelForm):
     csv_file = RestrictedFileField(max_upload_size=5242880)
@@ -85,7 +85,7 @@ class BatchTransferJobForm(ModelForm):
 
         delimiter = settings.BATCH_FILE_CSV_DELIMITER
         date_input_formats = formats.get_format('DATE_INPUT_FORMATS')
-        parser = RequestParserCsv(delimiter, date_input_formats)
+        parser = RequestParser(delimiter, date_input_formats)
 
         try:
             rawdata = csv_file.read()

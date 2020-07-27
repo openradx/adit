@@ -5,7 +5,7 @@ from datetime import datetime
 from io import StringIO
 import random
 import string
-from batch_transfer.utils.request_parsers import ParsingError, RequestParserCsv
+from batch_transfer.utils.request_parsers import ParsingError, RequestParser
 
 def get_header_data():
     return [
@@ -53,13 +53,13 @@ def create_csv_file(columns, data):
         csv_str += ';'.join(values) + '\n'
     return StringIO(csv_str)
 
-class RequestParserCsvTest(TestCase):
+class RequestParserTest(TestCase):
     def test_valid_csv_file(self):
         columns = get_header_data()
         rows = get_row_data()
         file = create_csv_file(columns, rows)
 
-        data = RequestParserCsv(';', ['%d.%m.%Y']).parse(file)
+        data = RequestParser(';', ['%d.%m.%Y']).parse(file)
 
         self.assertEqual(len(data), 2)
         self.assertEqual(data[0]['PatientName'], 'Banana^Ben')
@@ -79,7 +79,7 @@ class RequestParserCsvTest(TestCase):
         file = create_csv_file(columns, rows)
         
         with self.assertRaises(ParsingError):
-            RequestParserCsv(';', ['%d.%m.%Y']).parse(file)
+            RequestParser(';', ['%d.%m.%Y']).parse(file)
 
     def test_invalid_request_id(self):
         columns = get_header_data()
@@ -88,7 +88,7 @@ class RequestParserCsvTest(TestCase):
         file = create_csv_file(columns, rows)
 
         with self.assertRaises(ParsingError):
-            RequestParserCsv(';', ['%d.%m.%Y']).parse(file)
+            RequestParser(';', ['%d.%m.%Y']).parse(file)
 
     def test_duplicate_request_id(self):
         columns = get_header_data()
@@ -98,7 +98,7 @@ class RequestParserCsvTest(TestCase):
         file = create_csv_file(columns, rows)
 
         with self.assertRaises(ParsingError):
-            RequestParserCsv(';', ['%d.%m.%Y']).parse(file)
+            RequestParser(';', ['%d.%m.%Y']).parse(file)
 
     def test_valid_patient_id(self):
         columns = get_header_data()
@@ -107,7 +107,7 @@ class RequestParserCsvTest(TestCase):
         file = create_csv_file(columns, rows)
         
         try:
-            RequestParserCsv(';', ['%d.%m.%Y']).parse(file)
+            RequestParser(';', ['%d.%m.%Y']).parse(file)
         except ParsingError:
             self.fail()
 
@@ -118,7 +118,7 @@ class RequestParserCsvTest(TestCase):
         file = create_csv_file(columns, rows)
         
         with self.assertRaises(ParsingError):
-            RequestParserCsv(';', ['%d.%m.%Y']).parse(file)
+            RequestParser(';', ['%d.%m.%Y']).parse(file)
     
     def test_valid_patient_name(self):
         columns = get_header_data()
@@ -128,7 +128,7 @@ class RequestParserCsvTest(TestCase):
         file = create_csv_file(columns, rows)
 
         try:
-            RequestParserCsv(';', ['%d.%m.%Y']).parse(file)
+            RequestParser(';', ['%d.%m.%Y']).parse(file)
         except ParsingError:
             self.fail()
     
@@ -140,7 +140,7 @@ class RequestParserCsvTest(TestCase):
         file = create_csv_file(columns, rows)
         
         with self.assertRaises(ParsingError):
-            RequestParserCsv(';', ['%d.%m.%Y']).parse(file)
+            RequestParser(';', ['%d.%m.%Y']).parse(file)
     
     def test_valid_patient_birth_date(self):
         columns = get_header_data()
@@ -149,7 +149,7 @@ class RequestParserCsvTest(TestCase):
         file = create_csv_file(columns, rows)
     
         try:
-            RequestParserCsv(';', ['%d.%m.%Y']).parse(file)
+            RequestParser(';', ['%d.%m.%Y']).parse(file)
         except ParsingError:
             self.fail()
     
@@ -160,12 +160,12 @@ class RequestParserCsvTest(TestCase):
         rows[0]['PatientBirthDate'] = 'foobar'
         file = create_csv_file(columns, rows)
         with self.assertRaises(ParsingError):
-            RequestParserCsv(';', ['%d.%m.%Y']).parse(file)
+            RequestParser(';', ['%d.%m.%Y']).parse(file)
 
         rows[0]['PatientBirthDate'] = '32.01.1955'
         file = create_csv_file(columns, rows)
         with self.assertRaises(ParsingError):
-            RequestParserCsv(';', ['%d.%m.%Y']).parse(file)
+            RequestParser(';', ['%d.%m.%Y']).parse(file)
    
     def test_valid_accession_number(self):
         columns = get_header_data()
@@ -174,7 +174,7 @@ class RequestParserCsvTest(TestCase):
         file = create_csv_file(columns, rows)
         
         try:
-            RequestParserCsv( ';', ['%d.%m.%Y']).parse(file)
+            RequestParser( ';', ['%d.%m.%Y']).parse(file)
         except ParsingError:
             self.fail()
     
@@ -185,7 +185,7 @@ class RequestParserCsvTest(TestCase):
         file = create_csv_file(columns, rows)
         
         with self.assertRaises(ParsingError):
-            RequestParserCsv(';', ['%d.%m.%Y']).parse(file)
+            RequestParser(';', ['%d.%m.%Y']).parse(file)
 
     def test_valid_modality(self):
         columns = get_header_data()
@@ -194,7 +194,7 @@ class RequestParserCsvTest(TestCase):
         file = create_csv_file(columns, rows)
         
         try:
-            RequestParserCsv(';', ['%d.%m.%Y']).parse(file)
+            RequestParser(';', ['%d.%m.%Y']).parse(file)
         except ParsingError:
             self.fail()        
 
@@ -205,7 +205,7 @@ class RequestParserCsvTest(TestCase):
         file = create_csv_file(columns, rows)
         
         with self.assertRaises(ParsingError):
-            RequestParserCsv(';', ['%d.%m.%Y']).parse(file)
+            RequestParser(';', ['%d.%m.%Y']).parse(file)
 
     def test_valid_pseudonym(self):
         columns = get_header_data()
@@ -215,7 +215,7 @@ class RequestParserCsvTest(TestCase):
         file = create_csv_file(columns, rows)
 
         try:
-            RequestParserCsv(';', ['%d.%m.%Y']).parse(file)
+            RequestParser(';', ['%d.%m.%Y']).parse(file)
         except ParsingError:
             self.fail()
     
@@ -227,7 +227,7 @@ class RequestParserCsvTest(TestCase):
         file = create_csv_file(columns, rows)
         
         with self.assertRaises(ParsingError):
-            RequestParserCsv(';', ['%d.%m.%Y']).parse(file)
+            RequestParser(';', ['%d.%m.%Y']).parse(file)
 
     def test_patient_name_missing_when_birth_date_present(self):
         columns = get_header_data()
@@ -238,7 +238,7 @@ class RequestParserCsvTest(TestCase):
         file = create_csv_file(columns, rows)
         
         with self.assertRaises(ParsingError):
-            RequestParserCsv(';', ['%d.%m.%Y']).parse(file)
+            RequestParser(';', ['%d.%m.%Y']).parse(file)
 
     def test_birth_date_missing_when_patient_name_present(self):
         columns = get_header_data()
@@ -249,7 +249,7 @@ class RequestParserCsvTest(TestCase):
         file = create_csv_file(columns, rows)
         
         with self.assertRaises(ParsingError):
-            RequestParserCsv(';', ['%d.%m.%Y']).parse(file)
+            RequestParser(';', ['%d.%m.%Y']).parse(file)
 
     def test_patient_not_identifiable(self):
         columns = get_header_data()
@@ -261,7 +261,7 @@ class RequestParserCsvTest(TestCase):
         file = create_csv_file(columns, rows)
         
         with self.assertRaises(ParsingError):
-            RequestParserCsv(';', ['%d.%m.%Y']).parse(file)
+            RequestParser(';', ['%d.%m.%Y']).parse(file)
 
     def test_conflict_of_patient_id_with_patient_name_birth_date(self):
         columns = get_header_data()
@@ -271,7 +271,7 @@ class RequestParserCsvTest(TestCase):
         file = create_csv_file(columns, rows)
 
         with self.assertRaises(ParsingError):
-            RequestParserCsv(';', ['%d.%m.%Y']).parse(file)
+            RequestParser(';', ['%d.%m.%Y']).parse(file)
 
     def test_conflict_of_pseudonym_with_different_patients(self):
         columns = get_header_data()
@@ -281,5 +281,5 @@ class RequestParserCsvTest(TestCase):
         file = create_csv_file(columns, rows)
 
         with self.assertRaises(ParsingError):
-            RequestParserCsv(';', ['%d.%m.%Y']).parse(file)
+            RequestParser(';', ['%d.%m.%Y']).parse(file)
 
