@@ -109,7 +109,7 @@ def batch_transfer_task(batch_job_id):
     config = BatchHandler.Config(
         username=batch_job.created_by.username,
         client_ae_title=settings.ADIT_AE_TITLE,
-        cache_folder=settings.BATCH_TRANSFER_CACHE_FOLDER,
+        cache_folder=settings.ADIT_CACHE_FOLDER,
         source_ae_title=source.ae_title,
         source_ip=source.ip,
         source_port=source.port,

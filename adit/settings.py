@@ -13,6 +13,10 @@ https://docs.djangoproject.com/en/3.0/ref/settings/
 import os
 import sys
 from datetime import time
+import environ
+
+env = environ.Env()
+environ.Env.read_env()
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -22,7 +26,7 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # See https://docs.djangoproject.com/en/3.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'r&!5(b4ha2a(wnc#&tv-5s)dgf#4rbj_gon5ua05a-ufs#k3ue'
+SECRET_KEY = env('SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -92,23 +96,14 @@ WSGI_APPLICATION = 'adit.wsgi.application'
 # https://docs.djangoproject.com/en/3.0/ref/settings/#databases
 
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'adit',
-        'USER': 'gitpod',
-        'PASSWORD': '',
-        'HOST': '127.0.0.1',
-        'PORT': '5432',
-    }
+    'default': env.db()
 }
 
 # TODO: Maybe use a separate settings file for testing, development and
 # production.
 if sys.argv and ('test' in sys.argv or 'pytest' in sys.argv[0]):
     DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.sqlite3'
-        }
+        'default': env.db('SQLITE_URL')
     }
 
 # Password validation
@@ -167,7 +162,7 @@ LOGIN_REDIRECT_URL = 'home'
 MESSAGE_STORAGE = 'django.contrib.messages.storage.session.SessionStorage'
 
 # Also used by django-registration-redux
-ADMINS = [('Kai', 'kai.schlamp@med.uni-heidelberg.de'),]
+ADMINS = [(env('ADMIN_NAME'), env('ADMIN_EMAIL'))]
 
 # Settings for django-registration-redux
 REGISTRATION_FORM = 'accounts.forms.RegistrationForm'
@@ -184,7 +179,7 @@ else:
 # see https://github.com/celery/celery/issues/5026 for how to name configs
 if USE_TZ:
     CELERY_TIMEZONE = TIME_ZONE
-REDIS_URL = os.environ.get('REDIS_URL', 'redis://localhost:6379/0')
+REDIS_URL = env('REDIS_URL')
 CELERY_BROKER_URL = REDIS_URL
 CELERY_RESULT_BACKEND = REDIS_URL
 CELERY_TASK_DEFAULT_QUEUE = 'default'
@@ -197,10 +192,10 @@ CELERY_TASK_ROUTES = {
 ###
 
 # General ADIT settings
-ADIT_AE_TITLE = 'ADIT'
+ADIT_AE_TITLE = env('ADIT_AE_TITLE')
 
 # Static (non database) settings for batch_transfer app
-BATCH_TRANSFER_CACHE_FOLDER = '/tmp/adit_cache_folder'
+ADIT_CACHE_FOLDER = env('ADIT_CACHE_FOLDER')
 
 # The delimiter of the CSV file that contains the requests for
 # the batch transfer
