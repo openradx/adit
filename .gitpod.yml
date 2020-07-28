@@ -12,7 +12,7 @@ tasks:
       touch /tmp/.pip-install-lock
       pip install -r /workspace/adit/requirements.txt
       rm /tmp/.pip-install-lock
-      createdb adit_dev
+      createdb adit
       python manage.py migrate
       python manage.py populate_dev_db
       python manage.py reset_orthancs

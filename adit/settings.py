@@ -94,7 +94,7 @@ WSGI_APPLICATION = 'adit.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'adit_dev',
+        'NAME': 'adit',
         'USER': 'gitpod',
         'PASSWORD': '',
         'HOST': '127.0.0.1',
