@@ -10,6 +10,7 @@ $(function() {
         }
 
         const nodeId = $('select#id_destination').val();
+        const nodeTypes = $.adit.loadData('nodeTypes');
         const nodeType = nodeTypes[nodeId];
         showHideArchivePasswordField(nodeType);
 

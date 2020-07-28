@@ -5,7 +5,7 @@
 
 {% block script %}
 {{ block.super }}
-<script>const nodeTypes = {{ node_types|safe }};</script>
+{{ node_types|json_script:"nodeTypes" }}
 <script src="{% static 'batch_transfer/js/batch_transfer.js' %}"></script>
 {% endblock %}
 

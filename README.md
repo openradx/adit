@@ -2,10 +2,9 @@
 
 
 # TODO
+- Add license file
 - Pseudonymize BirthDate
 - Think about moving all those dicts to dataclasses when passing around data
-- Batch Mode
--- or only allow csv files
 -- Allow provide a regex of StudyDescription in CSV batch file
 -- Allow to specify many modalities per row in CSV file
 
