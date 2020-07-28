@@ -8,14 +8,12 @@ class Command(BaseCommand):
     help = 'Reset all migration files (dangerous!!!).'
 
     def handle(self, *args, **options):
-        base_dir = settings.BASE_DIR
-
-        migration_paths = Path(base_dir).glob('*/migrations/**/*.py')
+        migration_paths = settings.BASE_DIR.glob('*/migrations/**/*.py')
         migration_paths = [i for i in migration_paths if i.name != '__init__.py']
         for migration_path in migration_paths:
             migration_path.unlink()
 
-        pyc_paths = Path(base_dir).glob('*/migrations/**/*.pyc')
+        pyc_paths = settings.BASE_DIR.glob('*/migrations/**/*.pyc')
         for pyc_path in pyc_paths:
             pyc_path.unlink()
 

@@ -7,8 +7,7 @@ class Command(BaseCommand):
     help = 'Clear both Orthanc instances and upload DICOM files to Orthanc 1 instance.'
 
     def handle(self, *args, **options):
-        
-        dicoms_folder = Path(settings.BASE_DIR) / '_debug' / 'samples' / 'dicoms'
+        dicoms_folder = settings.BASE_DIR / '_debug' / 'samples' / 'dicoms'
         handler = OrthancRestHandler(port=6501)
         handler.clear()
         handler.upload_files(dicoms_folder)

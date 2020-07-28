@@ -19,7 +19,7 @@ class BatchTransferJobCreateTest(TestCase):
         batch_transferrers_group = Group.objects.get(name='batch_transferrers')
         cls.user_with_permission.groups.add(batch_transferrers_group)
 
-        samples_folder_path = Path(settings.BASE_DIR) / '_debug' / 'samples'
+        samples_folder_path = settings.BASE_DIR / '_debug' / 'samples'
 
         # Real CSV file
         def load_file(filename):
