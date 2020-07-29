@@ -6,7 +6,7 @@ tasks:
   - before: supervisord # supervisor is already installed in .gitpod.Dockerfile
     init: |
       touch /tmp/.pip-install-lock
-      pip install -r /workspace/adit/requirements.txt
+      pip install -r /workspace/adit/requirements/development.txt
       rm /tmp/.pip-install-lock
       createdb adit
       python manage.py migrate
