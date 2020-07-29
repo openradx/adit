@@ -10,9 +10,9 @@ tasks:
       pip install -r /workspace/adit/requirements.txt
       rm /tmp/.pip-install-lock
       createdb adit
-      python manage.py migrate --settings=adit.settings.dev
-      python manage.py populate_dev_db --settings=adit.settings.dev
-      python manage.py reset_orthancs --settings=adit.settings.dev
+      python manage.py migrate
+      python manage.py populate_dev_db
+      python manage.py reset_orthancs
     command: |
       supervisorctl start celery:
       python manage.py runserver
