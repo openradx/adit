@@ -5,7 +5,6 @@ tasks:
   # A terminal where all services are started
   - before: supervisord # supervisor is already installed in .gitpod.Dockerfile
     init: |
-      sleep 1
       touch /tmp/.pip-install-lock
       pip install -r /workspace/adit/requirements.txt
       rm /tmp/.pip-install-lock
