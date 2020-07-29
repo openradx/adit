@@ -3,30 +3,27 @@ image:
 
 tasks:
   # A terminal where all services are started
-  - before: |
-      ls -la
-      ls /workspace/adit
-      supervisord # supervisor is already installed in .gitpod.Dockerfile
+  - before: supervisord # supervisor is already installed in .gitpod.Dockerfile
     init: |
       sleep 1
       touch /tmp/.pip-install-lock
       pip install -r /workspace/adit/requirements.txt
       rm /tmp/.pip-install-lock
       createdb adit
-      python manage.py migrate
-      python manage.py populate_dev_db
-      python manage.py reset_orthancs
+      python manage.py migrate --settings=adit.settings.dev
+      python manage.py populate_dev_db --settings=adit.settings.dev
+      python manage.py reset_orthancs --settings=adit.settings.dev
     command: |
       supervisorctl start celery:
       python manage.py runserver
 
-# A terminal for continous testing
+  # A terminal for continous testing
   - init: sleep 1 && while [ -f /tmp/.pip-install-lock ]; do sleep 1; done
-# Alternatives for continous testing:
-# with pytest-picked: ptw --runner 'pytest --picked'
-# with pytest-testmon: ptw --runner 'pytest -s --testmon' (sometimes cumbersome and .testmondb must be deleted)
-# with pytest-xdist: pytest --looponfail (doesn't work with Orthanc db in the working dir)
     command: |
+      # Alternatives for continous testing:
+      # with pytest-picked: ptw --runner 'pytest --picked'
+      # with pytest-testmon: ptw --runner 'pytest -s --testmon' (sometimes cumbersome and .testmondb must be deleted)
+      # with pytest-xdist: pytest --looponfail (doesn't work with Orthanc db in the working dir)
       pytest # run all test once
       ptw --runner 'pytest --picked'
 

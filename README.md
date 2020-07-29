@@ -46,7 +46,9 @@ max_period_size = models.PositiveIntegerField(default=100)
 ## Testing
 - https://developer.mozilla.org/en-US/docs/Learn/Server-side/Django
 
-# Planing
-
-transfer(node1, node2):
-    no1
+# Knowledge
+- It is not possible to set an ENV variable using the Gitpod Dockerfile
+- In Gitpod ENV variables can only be set using the Gitpod settings
+- The PYTHONPATH environment variable can't be set in the Gitpod settings (it is always overwritten with a blank value)
+- What is ALLOWED_HOSTS? https://www.divio.com/blog/django-allowed-hosts-explained/
+- The SECRET_KEY should not start with a dollar sign ($), django-environ has problems with it (see Proxy value in the documentation)

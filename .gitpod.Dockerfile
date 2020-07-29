@@ -7,3 +7,4 @@ RUN sudo apt-get update \
     && mkdir /tmp/adit_cache_folder \
     && mkdir /tmp/adit_download_folder \
     && sudo rm -rf /var/lib/apt/lists/*
+ENV PYTHONPATH "${PYTHONPATH}:/workspace/adit"
