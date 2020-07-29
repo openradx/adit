@@ -122,12 +122,11 @@ STATIC_URL = '/static/'
 # Custom user model
 AUTH_USER_MODEL = 'accounts.User'
 
+# Where to redirect to after login
+LOGIN_REDIRECT_URL = 'home'
+
 # For crispy forms
 CRISPY_TEMPLATE_PACK = 'bootstrap4'
-
-INTERNAL_IPS = ['127.0.0.1']
-
-LOGIN_REDIRECT_URL = 'home'
 
 # This seems to be imporant for development on Gitpod as CookieStorage
 # and FallbackStorage does not work there.
