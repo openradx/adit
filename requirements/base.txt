@@ -1,0 +1,15 @@
+Django==3.0.7
+psycopg2==2.8.5
+django-registration-redux==2.8
+django-crispy-forms==1.9.1
+django-tables2==2.3.1
+django-bootstrap4==2.1.1
+django-environ==0.4.5
+pydicom==2.0.0
+pynetdicom==1.5.1
+cchardet==2.1.6 # To detect encoding of Batch CSV file
+redis==3.5.3
+celery==4.4.6
+flower==0.9.5
+django-revproxy==0.10.0 # To integrate flower into the Django app (authentication)
+django-loginas==0.3.8

@@ -16,25 +16,14 @@ from datetime import time
 import environ
 
 env = environ.Env()
-environ.Env.read_env()
 
 # The base directory of the project (where README.md is located)
-BASE_DIR = Path(__file__).resolve(strict=True).parent.parent
+BASE_DIR = Path(__file__).resolve(strict=True).parent.parent.parent
 
-
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/3.0/howto/deployment/checklist/
-
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = env('SECRET_KEY')
-
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
-
-ALLOWED_HOSTS = []
-
-
-# Application definition
+READ_DOT_ENV_FILE = env.bool('DJANGO_READ_DOT_ENV_FILE', default=False)
+if READ_DOT_ENV_FILE:
+    # OS environment variables take precedence over variables from .env
+    env.read_env(str(BASE_DIR / '.env'))
 
 INSTALLED_APPS = [
     'accounts.apps.AccountsConfig',
@@ -45,10 +34,8 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'django_extensions',
     'debug_permissions',
     'revproxy',
-    'debug_toolbar',
     'loginas',
     'crispy_forms',
     'django_tables2',
@@ -59,7 +46,6 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
-    'debug_toolbar.middleware.DebugToolbarMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -91,20 +77,7 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'adit.wsgi.application'
 
-
-# Database
-# https://docs.djangoproject.com/en/3.0/ref/settings/#databases
-
-DATABASES = {
-    'default': env.db()
-}
-
-# TODO: Maybe use a separate settings file for testing, development and
-# production.
-if sys.argv and ('test' in sys.argv or 'pytest' in sys.argv[0]):
-    DATABASES = {
-        'default': env.db('SQLITE_URL')
-    }
+DATABASES = {'default': env.db()}
 
 # Password validation
 # https://docs.djangoproject.com/en/3.0/ref/settings/#auth-password-validators
@@ -149,12 +122,11 @@ STATIC_URL = '/static/'
 # Custom user model
 AUTH_USER_MODEL = 'accounts.User'
 
+# Where to redirect to after login
+LOGIN_REDIRECT_URL = 'home'
+
 # For crispy forms
 CRISPY_TEMPLATE_PACK = 'bootstrap4'
-
-INTERNAL_IPS = ['127.0.0.1']
-
-LOGIN_REDIRECT_URL = 'home'
 
 # This seems to be imporant for development on Gitpod as CookieStorage
 # and FallbackStorage does not work there.
@@ -168,12 +140,6 @@ ADMINS = [(env('ADMIN_NAME'), env('ADMIN_EMAIL'))]
 REGISTRATION_FORM = 'accounts.forms.RegistrationForm'
 ACCOUNT_ACTIVATION_DAYS = 14
 REGISTRATION_OPEN = True
-
-if DEBUG:
-    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
-else:
-    EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-    # TODO provide SMTP details, see https://docs.djangoproject.com/en/dev/topics/email/
 
 # Celery
 # see https://github.com/celery/celery/issues/5026 for how to name configs
