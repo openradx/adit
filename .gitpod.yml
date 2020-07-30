@@ -32,6 +32,8 @@ tasks:
 ports:
   - port: 5432 # PostgreSQL
     onOpen: ignore
+  - port: 5555 # Flower (for Celery)
+    onOpen: ignore
   - port: 6379 # Redis Server
     onOpen: ignore
   - port: 6501 # Orhtanc 1 DICOM Server
