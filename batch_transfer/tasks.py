@@ -1,23 +1,25 @@
-from django.conf import settings
-import logging
-from celery import shared_task
 from functools import partial
+from datetime import datetime, timedelta
+from celery import shared_task
+from django.conf import settings
 from django.utils import timezone
-from datetime import datetime, time, timedelta
-from main.models import DicomNode, DicomServer, DicomJob
+from main.models import DicomNode, DicomJob
 from .models import AppSettings, BatchTransferJob, BatchTransferRequest
 from .utils.batch_handler import BatchHandler
+
 
 def is_time_between(begin_time, end_time, check_time):
     """Checks if a given time is between two other times.
 
-    If the time to check is not provided then use the current time.    
+    If the time to check is not provided then use the current time.
     Adapted from https://stackoverflow.com/a/10048290/166229
     """
+    # pylint: disable=no-else-return, chained-comparison
     if begin_time < end_time:
         return check_time >= begin_time and check_time <= end_time
-    else: # crosses midnight
+    else:  # crosses midnight
         return check_time >= begin_time or check_time <= end_time
+
 
 def must_be_scheduled():
     """Checks if the batch job can run now or must be scheduled.
@@ -33,16 +35,19 @@ def must_be_scheduled():
     check_time = timezone.now().time()
     return suspended or not is_time_between(begin_time, end_time, check_time)
 
+
 def next_batch_slot():
     """Return the next datetime slot when a batch job can be processed."""
     app_settings = AppSettings.load()
     begin_time = app_settings.batch_slot_begin_time
     now = timezone.now()
+
     if now.time() < begin_time:
         return datetime.combine(now.date(), begin_time)
-    else:
-        tomorrow = now.date() + timedelta(days=1)
-        return datetime.combine(tomorrow, begin_time) 
+
+    tomorrow = now.date() + timedelta(days=1)
+    return datetime.combine(tomorrow, begin_time)
+
 
 def enqueue_batch_job(batch_job_id, eta=None):
     """Enqueue a batch transfer job.
@@ -55,39 +60,42 @@ def enqueue_batch_job(batch_job_id, eta=None):
             eta = next_batch_slot()
         batch_transfer_task.apply_async(args=[batch_job_id], eta=eta)
     else:
-        batch_transfer_task.delay(batch_job_id)   
+        batch_transfer_task.delay(batch_job_id)
+
 
 def process_result(batch_job, result):
     """The callback to process a result of a running batch job.
 
     The callback returns True if the job should be paused or canceled.
     """
-    request_id = result['RequestID']
-    request = BatchTransferRequest.objects.get(
-            job=batch_job.id, request_id=request_id)
-    if result['Status'] == BatchHandler.SUCCESS:
+    request_id = result["RequestID"]
+    request = BatchTransferRequest.objects.get(job=batch_job.id, request_id=request_id)
+    if result["Status"] == BatchHandler.SUCCESS:
         request.status = BatchTransferRequest.Status.SUCCESS
-    elif result['Status'] == BatchHandler.FAILURE:
+    elif result["Status"] == BatchHandler.FAILURE:
         request.status = BatchTransferRequest.Status.FAILURE
     else:
-        raise Exception('Invalid result status: ' + result['Status'])
-    request.message = result['Message']
-    if result['Pseudonym']:
-        result.pseudonym = result['Pseudonym']
+        raise Exception("Invalid result status: " + result["Status"])
+    request.message = result["Message"]
+    if result["Pseudonym"]:
+        result.pseudonym = result["Pseudonym"]
     request.processed_at = timezone.now()
     request.save()
+
+    stop_processing = False
 
     if must_be_scheduled():
         batch_job.status = DicomJob.Status.PAUSED
         batch_job.paused_at = timezone.now()
         batch_job.save()
-        return True # stop further processing (for now)
+        stop_processing = True
     elif batch_job.status == DicomJob.Status.CANCELING:
         batch_job.status = DicomJob.Status.CANCELED
         batch_job.save()
-        return True # stop further processing
+        stop_processing = True
 
-    return False # continue processing
+    return stop_processing
+
 
 @shared_task
 def batch_transfer_task(batch_job_id):
@@ -95,15 +103,17 @@ def batch_transfer_task(batch_job_id):
     batch_job = BatchTransferJob.objects.get(id=batch_job_id)
 
     if batch_job.status not in [DicomJob.Status.PENDING, DicomJob.Status.PAUSED]:
-        raise Exception(f'Skipping task to process batch job with ID {batch_job.id} '
-                f' because of an invalid status {batch_job.get_status_display()}.')
+        raise Exception(
+            f"Skipping task to process batch job with ID {batch_job.id} "
+            f" because of an invalid status {batch_job.get_status_display()}."
+        )
 
     batch_job.status = DicomJob.Status.IN_PROGRESS
     batch_job.started_at = timezone.now()
     batch_job.paused_at = None
     batch_job.save()
 
-    source = batch_job.source.dicomserver # Source is always a server
+    source = batch_job.source.dicomserver  # Source is always a server
     app_settings = AppSettings.load()
 
     config = BatchHandler.Config(
@@ -118,23 +128,26 @@ def batch_transfer_task(batch_job_id):
         pseudonymize=batch_job.pseudonymize,
         trial_protocol_id=batch_job.trial_protocol_id,
         trial_protocol_name=batch_job.trial_protocol_name,
-        batch_timeout=app_settings.batch_timeout
+        batch_timeout=app_settings.batch_timeout,
     )
 
-    unprocessed_requests = [{
-        'RequestID': req.request_id,
-        'PatientID': req.patient_id,
-        'PatientName': req.patient_name,
-        'PatientBirthDate': req.patient_birth_date,
-        'StudyDate': req.study_date,
-        'Modality': req.modality,
-        'Pseudonym': req.pseudonym
-    } for req in batch_job.get_unprocessed_requests()]
+    unprocessed_requests = [
+        {
+            "RequestID": req.request_id,
+            "PatientID": req.patient_id,
+            "PatientName": req.patient_name,
+            "PatientBirthDate": req.patient_birth_date,
+            "StudyDate": req.study_date,
+            "Modality": req.modality,
+            "Pseudonym": req.pseudonym,
+        }
+        for req in batch_job.get_unprocessed_requests()
+    ]
 
     finished = False
 
     process_result_callback = partial(process_result, batch_job)
-    
+
     # Destination can be a server or a folder
     if batch_job.destination.node_type == DicomNode.NodeType.SERVER:
         dest_server = batch_job.destination.dicomserver
@@ -144,13 +157,14 @@ def batch_transfer_task(batch_job_id):
 
         handler = BatchHandler(config)
         finished = handler.batch_transfer(unprocessed_requests, process_result_callback)
-    else: # DicomNode.NodeType.Folder
+    else:  # DicomNode.NodeType.Folder
         dest_folder = batch_job.destination.dicomfolder
         config.destination_folder = dest_folder.path
 
         handler = BatchHandler(config)
-        finished = handler.batch_download(unprocessed_requests, 
-                process_result_callback, batch_job.archive_password)
+        finished = handler.batch_download(
+            unprocessed_requests, process_result_callback, batch_job.archive_password
+        )
 
     # If all requests were processed then the job finished otherwise it was
     # paused by the system or cancelled by the user
@@ -159,13 +173,13 @@ def batch_transfer_task(batch_job_id):
         successful_requests = batch_job.get_successful_requests().count()
         if successful_requests == total_requests:
             batch_job.status = DicomJob.Status.SUCCESS
-            batch_job.message = 'All requests succeeded.'
+            batch_job.message = "All requests succeeded."
         elif successful_requests > 0:
             batch_job.status = DicomJob.Status.WARNING
-            batch_job.message = 'Some requests failed.'
+            batch_job.message = "Some requests failed."
         else:
             batch_job.status = DicomJob.Status.FAILURE
-            batch_job.message = 'All requests failed.'
+            batch_job.message = "All requests failed."
         batch_job.save()
     elif batch_job.status == DicomJob.Status.PAUSED:
         batch_job.paused_at = timezone.now()
@@ -175,5 +189,7 @@ def batch_transfer_task(batch_job_id):
         batch_job.stopped_at = timezone.now()
         batch_job.save()
     else:
-        raise Exception(f'Invalid status of job with ID {batch_job.id}:'
-                f' {batch_job.get_status_display()}')
+        raise Exception(
+            f"Invalid status of job with ID {batch_job.id}:"
+            f" {batch_job.get_status_display()}"
+        )
