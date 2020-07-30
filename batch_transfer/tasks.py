@@ -1,66 +1,11 @@
 from functools import partial
-from datetime import datetime, timedelta
 from celery import shared_task
 from django.conf import settings
 from django.utils import timezone
 from main.models import DicomNode, DicomJob
 from .models import AppSettings, BatchTransferJob, BatchTransferRequest
 from .utils.batch_handler import BatchHandler
-
-
-def is_time_between(begin_time, end_time, check_time):
-    """Checks if a given time is between two other times.
-
-    If the time to check is not provided then use the current time.
-    Adapted from https://stackoverflow.com/a/10048290/166229
-    """
-    # pylint: disable=no-else-return, chained-comparison
-    if begin_time < end_time:
-        return check_time >= begin_time and check_time <= end_time
-    else:  # crosses midnight
-        return check_time >= begin_time or check_time <= end_time
-
-
-def must_be_scheduled():
-    """Checks if the batch job can run now or must be scheduled.
-
-    In the dynamic site settings a time slot is specified when the
-    batch transfer jobs should run. The job processing could also be
-    suspended in the settings.
-    """
-    app_settings = AppSettings.load()
-    suspended = app_settings.batch_transfer_suspended
-    begin_time = app_settings.batch_slot_begin_time
-    end_time = app_settings.batch_slot_end_time
-    check_time = timezone.now().time()
-    return suspended or not is_time_between(begin_time, end_time, check_time)
-
-
-def next_batch_slot():
-    """Return the next datetime slot when a batch job can be processed."""
-    app_settings = AppSettings.load()
-    begin_time = app_settings.batch_slot_begin_time
-    now = timezone.now()
-
-    if now.time() < begin_time:
-        return datetime.combine(now.date(), begin_time)
-
-    tomorrow = now.date() + timedelta(days=1)
-    return datetime.combine(tomorrow, begin_time)
-
-
-def enqueue_batch_job(batch_job_id, eta=None):
-    """Enqueue a batch transfer job.
-
-    If we are in a time slot for batch transfers then the job is directly
-    enqueued, otherwise it is scheduled for the next slot.
-    """
-    if eta or must_be_scheduled():
-        if eta is None:
-            eta = next_batch_slot()
-        batch_transfer_task.apply_async(args=[batch_job_id], eta=eta)
-    else:
-        batch_transfer_task.delay(batch_job_id)
+from .utils.task_utils import must_be_scheduled, next_batch_slot
 
 
 def process_result(batch_job, result):
@@ -184,7 +129,8 @@ def batch_transfer_task(batch_job_id):
     elif batch_job.status == DicomJob.Status.PAUSED:
         batch_job.paused_at = timezone.now()
         batch_job.save()
-        enqueue_batch_job(batch_job.id, eta=next_batch_slot())
+        next_slot = next_batch_slot()
+        batch_transfer_task.apply_async(args=[batch_job_id], eta=next_slot)
     elif batch_job.status == DicomJob.Status.CANCELED:
         batch_job.stopped_at = timezone.now()
         batch_job.save()
