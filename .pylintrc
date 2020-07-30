@@ -12,3 +12,6 @@ max-parents=13
 
 [TYPECHECK]
 generated-members=REQUEST,acl_users,aq_parent,"[a-zA-Z]+_set{1,2}",save,delete
+
+[LOGGING]
+logging-format-style=new
