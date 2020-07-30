@@ -1,32 +1,36 @@
+from datetime import time
 from django.db import models
 from django.urls import reverse
-from datetime import time
 from main.models import DicomJob
 
-def slot_time(hour, min):
-    return time(hour, min)
+
+def slot_time(hour, minute):
+    return time(hour, minute)
+
 
 class AppSettings(models.Model):
     # Lock the batch transfer creation form
     batch_transfer_locked = models.BooleanField(default=False)
     # Suspend the batch transfer background processing. Pauses all
-    # running job by 
+    # running job by
     batch_transfer_suspended = models.BooleanField(default=False)
     batch_slot_begin_time = models.TimeField(default=slot_time(22, 0))
     batch_slot_end_time = models.TimeField(default=slot_time(8, 0))
-    batch_timeout = models.IntegerField(default=3) # TODO rename to batch_transfer_timeout
+    batch_timeout = models.IntegerField(
+        default=3
+    )  # TODO rename to batch_transfer_timeout
 
     @classmethod
     def load(cls):
         return cls.objects.first()
 
     class Meta:
-        verbose_name_plural = 'App settings'
-    
+        verbose_name_plural = "App settings"
+
 
 class BatchTransferJob(DicomJob):
-    JOB_TYPE = 'BT'
-    
+    JOB_TYPE = "BT"
+
     project_name = models.CharField(max_length=150)
     project_description = models.TextField(max_length=2000)
     pseudonymize = models.BooleanField(default=True)
@@ -35,13 +39,10 @@ class BatchTransferJob(DicomJob):
     archive_password = models.CharField(max_length=50, blank=True)
 
     class Meta:
-        permissions = ((
-            'can_cancel_batchtransferjob',
-            'Can cancel batch transfer job'
-        ), (
-            'can_transfer_unpseudonymized',
-            'Can transfer unpseudonymized'
-        ))
+        permissions = (
+            ("can_cancel_batchtransferjob", "Can cancel batch transfer job"),
+            ("can_transfer_unpseudonymized", "Can transfer unpseudonymized"),
+        )
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -60,21 +61,21 @@ class BatchTransferJob(DicomJob):
         return self.requests.filter(status=BatchTransferRequest.Status.SUCCESS)
 
     def get_absolute_url(self):
-        return reverse('dicom_job_detail', args=[str(self.pk)])
+        return reverse("dicom_job_detail", args=[str(self.pk)])
 
 
 class BatchTransferRequest(models.Model):
-
     class Status(models.TextChoices):
-        UNPROCESSED = 'UN', 'Unprocessed'
-        SUCCESS = 'SU', 'Success'
-        FAILURE = 'FA', 'Failure'
+        UNPROCESSED = "UN", "Unprocessed"
+        SUCCESS = "SU", "Success"
+        FAILURE = "FA", "Failure"
 
     class Meta:
-        unique_together = (('request_id', 'job'))
+        unique_together = ("request_id", "job")
 
-    job = models.ForeignKey(BatchTransferJob, on_delete=models.CASCADE,
-            related_name='requests')
+    job = models.ForeignKey(
+        BatchTransferJob, on_delete=models.CASCADE, related_name="requests"
+    )
     request_id = models.PositiveIntegerField()
     patient_id = models.CharField(null=True, blank=True, max_length=64)
     patient_name = models.CharField(null=True, blank=True, max_length=324)
@@ -83,7 +84,8 @@ class BatchTransferRequest(models.Model):
     study_date = models.DateField()
     modality = models.CharField(max_length=16)
     pseudonym = models.CharField(null=True, blank=True, max_length=324)
-    status = models.CharField(max_length=2, choices=Status.choices,
-            default=Status.UNPROCESSED)
+    status = models.CharField(
+        max_length=2, choices=Status.choices, default=Status.UNPROCESSED
+    )
     message = models.TextField(null=True, blank=True)
     processed_at = models.DateTimeField(null=True)
