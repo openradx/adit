@@ -43,7 +43,7 @@ def process_result(batch_job, result):
 
 
 @shared_task
-def batch_transfer_task(batch_job_id):
+def perform_batch_transfer(batch_job_id):
     """The background task to do the batch transfer."""
     batch_job = BatchTransferJob.objects.get(id=batch_job_id)
 
@@ -130,7 +130,7 @@ def batch_transfer_task(batch_job_id):
         batch_job.paused_at = timezone.now()
         batch_job.save()
         next_slot = next_batch_slot()
-        batch_transfer_task.apply_async(args=[batch_job_id], eta=next_slot)
+        perform_batch_transfer.apply_async(args=[batch_job_id], eta=next_slot)
     elif batch_job.status == DicomJob.Status.CANCELED:
         batch_job.stopped_at = timezone.now()
         batch_job.save()

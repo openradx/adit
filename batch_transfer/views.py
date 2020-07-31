@@ -7,7 +7,7 @@ from main.models import DicomNode
 from .models import AppSettings, BatchTransferJob
 from .forms import BatchTransferJobForm
 from .utils.task_utils import must_be_scheduled, next_batch_slot
-from .tasks import batch_transfer_task
+from .tasks import perform_batch_transfer
 
 
 class BatchTransferJobCreate(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
@@ -35,9 +35,9 @@ class BatchTransferJobCreate(LoginRequiredMixin, PermissionRequiredMixin, Create
         batch_job_id = self.object.id
         if must_be_scheduled():
             next_slot = next_batch_slot()
-            batch_transfer_task.apply_async(args=[batch_job_id], eta=next_slot)
+            perform_batch_transfer.apply_async(args=[batch_job_id], eta=next_slot)
         else:
-            batch_transfer_task.delay(batch_job_id)
+            perform_batch_transfer.delay(batch_job_id)
 
         return response
 
