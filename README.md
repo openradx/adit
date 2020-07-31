@@ -15,16 +15,15 @@ coverage run --source=. -m pytest   # Run coverage only
 coverage report   # Show coverage report
 coverage annotate   # Annotate files with coverage
 pystest --cov=.   # Run Pytest and report coverage (in one command)
+find . -name "*,cover" -type f -delete   # Delete all cover files (from coverage annotate)
 
+# Supervisor commands
+supervisord   # Start supervisor daemon
+supervisorctl  # Supervisor control shell
+supervisorctl shutdown  # Shut down supervisor daemon
 
-
-## supervisord
-- Start supervisord: `supervisord`
-- Show all control commands: `supervisorctl help`
-- Shutdown supervisord: `supervisorctl shutdown`
-
-## Django shells
-- Show all SQL statements (needs django_extensions): `python manage.py shell_plus --print-sql`
+# Django shell commands
+python manage.py shell_plus --print-sql  # Show all SQL statements (django_extensions required)
 
 # Ports in development
 - see .gitpod.yml file
