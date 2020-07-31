@@ -8,13 +8,15 @@
 -- Allow provide a regex of StudyDescription in CSV batch file
 -- Allow to specify many modalities per row in CSV file
 
-# Commands
+# Testing and coverage commands
+ptw --runner 'pytest -s --testmon'   # Watch only changed tests with pytest watch
+python manage.py test -v 2 app_name   # Show print outputs during test
+coverage run --source=. -m pytest   # Run coverage only
+coverage report   # Show coverage report
+coverage annotate   # Annotate files with coverage
+pystest --cov=.   # Run Pytest and report coverage (in one command)
 
-## Test with manage.py
-- Show print outputs: python manage.py -v 2 app_name
 
-## Watch only changed tests with pytest watch
-ptw --runner 'pytest -s --testmon'
 
 ## supervisord
 - Start supervisord: `supervisord`
@@ -27,16 +29,11 @@ ptw --runner 'pytest -s --testmon'
 # Ports in development
 - see .gitpod.yml file
 
-#  Used dicom images from
-- https://wiki.cancerimagingarchive.net/display/Public/RIDER+PHANTOM+MRI
-- https://wiki.cancerimagingarchive.net/display/Public/Collections
-
-
 # Planned fields for BatchTransferJob model
 max_period_size = models.PositiveIntegerField(default=100)
-    enforced_break = models.PositiveIntegerField(default=2000)
-    interval_start_time = models.TimeField()
-    interval_end_time = models.TimeField()
+enforced_break = models.PositiveIntegerField(default=2000)
+interval_start_time = models.TimeField()
+interval_end_time = models.TimeField()
 
 # Resources
 
