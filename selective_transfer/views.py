@@ -17,6 +17,7 @@ class SelectiveTransferJobCreate(
     LoginRequiredMixin, PermissionRequiredMixin, CreateView
 ):
     model = SelectiveTransferJob
+    permission_required = "selective_transfer.add_selectivetransferjob"
 
 
 class SelectiveTransferJobDetail(LoginRequiredMixin, OwnerRequiredMixin, DetailView):
