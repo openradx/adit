@@ -2,41 +2,44 @@
 
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8">
-    <meta http-equiv="x-ua-compatible" content="ie=edge">
-    <title>{% block title %}ADIT - Automated DICOM Transfer{% endblock title %}</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="">
-    <meta name="author" content="">
-    {% block meta %}{% endblock %}
 
-    <link rel="stylesheet" type="text/css" href="{% static 'main/vendor/css/bootstrap.min.css' %}">
-    <link rel="stylesheet" type="text/css" href="{% static 'main/css/main.css' %}">
-    {% block css %}{% endblock %}
+<head>
+	<meta charset="utf-8">
+	<meta http-equiv="x-ua-compatible" content="ie=edge">
+	<title>{% block title %}ADIT - Automated DICOM Transfer{% endblock title %}</title>
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<meta name="description" content="">
+	<meta name="author" content="">
+	{% block meta %}{% endblock %}
 
-    <script src="{% static 'main/vendor/js/jquery.min.js' %}"></script>
-    <script src="{% static 'main/vendor/js/bootstrap.bundle.min.js' %}"></script>
-    <script src="{% static 'main/vendor/js/clipboard.min.js' %}"></script>
-    <script src="{% static 'main/js/main.js' %}"></script>
-    {% block script %}{% endblock %}
-  </head>
+	<link rel="stylesheet" type="text/css" href="{% static 'main/vendor/css/bootstrap.css' %}">
+	<link rel="stylesheet" type="text/css" href="{% static 'main/css/main.css' %}">
+	{% block css %}{% endblock %}
 
-  <body id="{{ request.resolver_match.url_name }}">
-    {% include 'main/navbar.html' %}
-    
-    <main role="role">
-        {% block content %}
-            <div class="top container">
-                {% block container %}{% endblock %}
-            </div>
-        {% endblock %}
-    </main>
+	<script src="{% static 'main/vendor/js/jquery.js' %}"></script>
+	<script src="{% static 'main/vendor/js/bootstrap.bundle.js' %}"></script>
+	<script src="{% static 'main/vendor/js/intercooler.js' %}"></script>
+	<script src="{% static 'main/vendor/js/clipboard.js' %}"></script>
+	<script src="{% static 'main/js/main.js' %}"></script>
+	{% block script %}{% endblock %}
+</head>
 
-    {% if messages %}
-        {% include 'main/messages_panel.html' %}
-    {% endif %}
+<body id="{{ request.resolver_match.url_name }}">
+	{% include 'main/navbar.html' %}
 
-    {% block bottom %}{% endblock %}
-  </body>
+	<main role="role">
+		{% block content %}
+		<div class="top container">
+			{% block container %}{% endblock %}
+		</div>
+		{% endblock %}
+	</main>
+
+	{% if messages %}
+	{% include 'main/messages_panel.html' %}
+	{% endif %}
+
+	{% block bottom %}{% endblock %}
+</body>
+
 </html>
