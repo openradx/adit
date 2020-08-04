@@ -46,15 +46,12 @@ class BatchTransferJob(DicomJob):
         super().__init__(*args, **kwargs)
         self.job_type = self.JOB_TYPE
 
-    # TODO make property
     def get_unprocessed_requests(self):
         return self.requests.filter(status=BatchTransferRequest.Status.UNPROCESSED)
 
-    # TODO make property
     def get_processed_requests(self):
         return self.requests.exclude(status=BatchTransferRequest.Status.UNPROCESSED)
 
-    # TODO make property
     def get_successful_requests(self):
         return self.requests.filter(status=BatchTransferRequest.Status.SUCCESS)
 

@@ -10,9 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/3.0/ref/settings/
 """
 
-import sys
 from pathlib import Path
-from datetime import time
 import environ
 
 env = environ.Env()
@@ -20,90 +18,85 @@ env = environ.Env()
 # The base directory of the project (where README.md is located)
 BASE_DIR = Path(__file__).resolve(strict=True).parent.parent.parent
 
-READ_DOT_ENV_FILE = env.bool('DJANGO_READ_DOT_ENV_FILE', default=False)
+READ_DOT_ENV_FILE = env.bool("DJANGO_READ_DOT_ENV_FILE", default=False)
 if READ_DOT_ENV_FILE:
     # OS environment variables take precedence over variables from .env
-    env.read_env(str(BASE_DIR / '.env'))
+    env.read_env(str(BASE_DIR / ".env"))
 
 INSTALLED_APPS = [
-    'accounts.apps.AccountsConfig',
-    'registration',
-    'django.contrib.admin',
-    'django.contrib.auth',
-    'django.contrib.contenttypes',
-    'django.contrib.sessions',
-    'django.contrib.messages',
-    'django.contrib.staticfiles',
-    'debug_permissions',
-    'revproxy',
-    'loginas',
-    'crispy_forms',
-    'django_tables2',
-    'bootstrap4',
-    'main.apps.MainConfig',
-    'selective_transfer.apps.SelectiveTransferConfig',
-    'batch_transfer.apps.BatchTransferConfig'
+    "channels",
+    "accounts.apps.AccountsConfig",
+    "registration",
+    "django.contrib.admin",
+    "django.contrib.auth",
+    "django.contrib.contenttypes",
+    "django.contrib.sessions",
+    "django.contrib.messages",
+    "django.contrib.staticfiles",
+    "debug_permissions",
+    "revproxy",
+    "loginas",
+    "crispy_forms",
+    "django_tables2",
+    "bootstrap4",
+    "main.apps.MainConfig",
+    "selective_transfer.apps.SelectiveTransferConfig",
+    "batch_transfer.apps.BatchTransferConfig",
 ]
 
 MIDDLEWARE = [
-    'django.middleware.security.SecurityMiddleware',
-    'django.contrib.sessions.middleware.SessionMiddleware',
-    'django.middleware.common.CommonMiddleware',
-    'django.middleware.csrf.CsrfViewMiddleware',
-    'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'django.contrib.messages.middleware.MessageMiddleware',
-    'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'main.middlewares.MaintenanceMiddleware'
+    "django.middleware.security.SecurityMiddleware",
+    "django.contrib.sessions.middleware.SessionMiddleware",
+    "django.middleware.common.CommonMiddleware",
+    "django.middleware.csrf.CsrfViewMiddleware",
+    "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "django.contrib.messages.middleware.MessageMiddleware",
+    "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "main.middlewares.MaintenanceMiddleware",
 ]
 
-ROOT_URLCONF = 'adit.urls'
+ROOT_URLCONF = "adit.urls"
 
 TEMPLATES = [
     {
-        'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
-        'APP_DIRS': True,
-        'OPTIONS': {
-            'context_processors': [
-                'django.template.context_processors.debug',
-                'django.template.context_processors.request',
-                'django.contrib.auth.context_processors.auth',
-                'django.contrib.messages.context_processors.messages',
-                'main.site.inject_context'
+        "BACKEND": "django.template.backends.django.DjangoTemplates",
+        "DIRS": [],
+        "APP_DIRS": True,
+        "OPTIONS": {
+            "context_processors": [
+                "django.template.context_processors.debug",
+                "django.template.context_processors.request",
+                "django.contrib.auth.context_processors.auth",
+                "django.contrib.messages.context_processors.messages",
+                "main.site.inject_context",
             ],
         },
     },
 ]
 
-WSGI_APPLICATION = 'adit.wsgi.application'
+WSGI_APPLICATION = "adit.wsgi.application"
 
-DATABASES = {'default': env.db()}
+DATABASES = {"default": env.db()}
 
 # Password validation
 # https://docs.djangoproject.com/en/3.0/ref/settings/#auth-password-validators
 
 AUTH_PASSWORD_VALIDATORS = [
     {
-        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
+        "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator",
     },
-    {
-        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
-    },
+    {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",},
+    {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator",},
+    {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator",},
 ]
 
 
 # Internationalization
 # https://docs.djangoproject.com/en/3.0/topics/i18n/
 
-LANGUAGE_CODE = 'de-de'
+LANGUAGE_CODE = "de-de"
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = "UTC"
 
 # We don't want to have German translations, but everything in English
 USE_I18N = False
@@ -117,52 +110,53 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/3.0/howto/static-files/
 
-STATIC_URL = '/static/'
+STATIC_URL = "/static/"
 
 # Custom user model
-AUTH_USER_MODEL = 'accounts.User'
+AUTH_USER_MODEL = "accounts.User"
 
 # Where to redirect to after login
-LOGIN_REDIRECT_URL = 'home'
+LOGIN_REDIRECT_URL = "home"
 
 # For crispy forms
-CRISPY_TEMPLATE_PACK = 'bootstrap4'
+CRISPY_TEMPLATE_PACK = "bootstrap4"
 
 # This seems to be imporant for development on Gitpod as CookieStorage
 # and FallbackStorage does not work there.
 # Seems to be the same problem with Cloud9 https://stackoverflow.com/a/34828308/166229
-MESSAGE_STORAGE = 'django.contrib.messages.storage.session.SessionStorage'
+MESSAGE_STORAGE = "django.contrib.messages.storage.session.SessionStorage"
 
 # Also used by django-registration-redux
-ADMINS = [(env('ADMIN_NAME'), env('ADMIN_EMAIL'))]
+ADMINS = [(env("ADMIN_NAME"), env("ADMIN_EMAIL"))]
 
 # Settings for django-registration-redux
-REGISTRATION_FORM = 'accounts.forms.RegistrationForm'
+REGISTRATION_FORM = "accounts.forms.RegistrationForm"
 ACCOUNT_ACTIVATION_DAYS = 14
 REGISTRATION_OPEN = True
+
+# Channels
+ASGI_APPLICATION = "adit.routing.application"
 
 # Celery
 # see https://github.com/celery/celery/issues/5026 for how to name configs
 if USE_TZ:
     CELERY_TIMEZONE = TIME_ZONE
-REDIS_URL = env('REDIS_URL')
+REDIS_URL = env("REDIS_URL")
 CELERY_BROKER_URL = REDIS_URL
 CELERY_RESULT_BACKEND = REDIS_URL
-CELERY_TASK_DEFAULT_QUEUE = 'default'
-CELERY_TASK_ROUTES = {
-    'batch_transfer.tasks.batch_transfer_task': {'queue': 'low'}
-}
+CELERY_TASK_DEFAULT_QUEUE = "default"
+CELERY_TASK_ROUTES = {"batch_transfer.tasks.batch_transfer_task": {"queue": "low"}}
 
 ###
 # ADIT specific settings
 ###
 
 # General ADIT settings
-ADIT_AE_TITLE = env('ADIT_AE_TITLE')
+ADIT_AE_TITLE = env("ADIT_AE_TITLE")
 
 # Static (non database) settings for batch_transfer app
-ADIT_CACHE_FOLDER = env('ADIT_CACHE_FOLDER')
+ADIT_CACHE_FOLDER = env("ADIT_CACHE_FOLDER")
 
 # The delimiter of the CSV file that contains the requests for
 # the batch transfer
-BATCH_FILE_CSV_DELIMITER = ';'
+BATCH_FILE_CSV_DELIMITER = ";"

@@ -25,8 +25,8 @@
     "scripts": {
         "copy": "npm run copy:jquery && npm run copy:bootstrap && npm run copy:clipbard && npm run copy:intercooler",
         "copy:jquery": "cp node_modules/jquery/dist/jquery.js main/static/main/vendor/js/",
-        "copy:bootstrap_css": "cp node_modules/bootstrap/dist/css/bootstrap.css main/static/main/vendor/css/",
-        "copy:bootstrap_js": "cp node_modules/bootstrap/dist/js/bootstrap.bundle.js main/static/main/vendor/js/",
+        "copy:bootstrap_css": "cp node_modules/bootstrap/dist/css/bootstrap.css* main/static/main/vendor/css/",
+        "copy:bootstrap_js": "cp node_modules/bootstrap/dist/js/bootstrap.bundle.js* main/static/main/vendor/js/",
         "copy:bootstrap": "npm run copy:bootstrap_css && npm run copy:bootstrap_js",
         "copy:clipbard": "cp node_modules/clipboard/dist/clipboard.js main/static/main/vendor/js/",
         "copy:intercooler": "cp node_modules/intercooler/dist/intercooler.js main/static/main/vendor/js/"

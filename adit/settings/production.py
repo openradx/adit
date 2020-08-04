@@ -1,4 +1,4 @@
-from .base import *
+from .base import *  # pylint: disable=wildcard-import,unused-wildcard-import
 from .base import env
 
 # Production settings, see
@@ -6,9 +6,9 @@ from .base import env
 
 DEBUG = False
 
-SECRET_KEY = env('DJANGO_SECRET_KEY')
+SECRET_KEY = env("DJANGO_SECRET_KEY")
 
-ALLOWED_HOSTS = env.list('DJANGO_ALLOWED_HOSTS')
+ALLOWED_HOSTS = env.list("DJANGO_ALLOWED_HOSTS")
 
 # TODO provide SMTP details, see https://docs.djangoproject.com/en/dev/topics/email/
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"

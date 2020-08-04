@@ -6,21 +6,53 @@ from dataclasses import dataclass
 from pydicom.dataset import Dataset
 from pydicom import dcmread
 from pynetdicom import (
-    AE, evt, build_role, debug_logger,
+    AE,
+    evt,
+    build_role,
+    debug_logger,
     QueryRetrievePresentationContexts,
     StoragePresentationContexts,
     PYNETDICOM_IMPLEMENTATION_UID,
-    PYNETDICOM_IMPLEMENTATION_VERSION
+    PYNETDICOM_IMPLEMENTATION_VERSION,
 )
-from pynetdicom.sop_class import ( # pylint: disable-msg=no-name-in-module
+from pynetdicom.sop_class import (  # pylint: disable-msg=no-name-in-module
     PatientRootQueryRetrieveInformationModelFind,
     PatientRootQueryRetrieveInformationModelGet,
     PatientRootQueryRetrieveInformationModelMove,
     StudyRootQueryRetrieveInformationModelFind,
     StudyRootQueryRetrieveInformationModelGet,
-    StudyRootQueryRetrieveInformationModelMove
+    StudyRootQueryRetrieveInformationModelMove,
 )
 from pynetdicom.status import code_to_category
+
+
+def make_query_dataset(query_dict):
+    """Turn a dict into a pydicom dataset for query."""
+
+    ds = Dataset()
+    for i in query_dict:
+        setattr(ds, i, query_dict[i])
+    return ds
+
+
+def dictify_dataset(ds):
+    """Turn a pydicom Dataset into a dict with keys derived from the Element tags."""
+
+    output = dict()
+    if ds:
+        for elem in ds:
+            # We only use non private tags as keywords may not be unique when
+            # there are also private tags present.
+            # See also https://github.com/pydicom/pydicom/issues/319
+            if elem.tag.is_private:
+                continue
+
+            if elem.VR != "SQ":
+                output[elem.keyword] = elem.value
+            else:
+                output[elem.keyword] = [dictify_dataset(item) for item in elem]
+    return output
+
 
 def connect_to_server(func):
     def wrapper(self, *args, **kwargs):
@@ -29,33 +61,39 @@ def connect_to_server(func):
                 try:
                     self.open()
                     break
-                except Exception as ex:
-                    logging.exception("Could not connect to server: %s" % str(ex))
+                except ConnectionError as err:
+                    logging.exception("Could not connect to server: %s", str(err))
                     if i < self.config.connection_retries - 1:
-                        logging.info('Retrying to connect in '
-                                f'{self.config.retry_timeout} seconds')
+                        logging.info(
+                            "Retrying to connect in %d seconds.",
+                            self.config.retry_timeout,
+                        )
                         time.sleep(self.config.retry_timeout)
                     else:
-                        raise ex
+                        raise err
 
         result = None
         exception_occurred = False
         try:
             result = func(self, *args, **kwargs)
-        except Exception as ex:
-            logging.error("An error occurred during DICOM operation %s: %s"
-                % (func.__name__, str(ex)))
+        except Exception as ex:  # pylint: disable=broad-except
+            logging.exception(
+                "An error occurred during DICOM operation %s: %s",
+                func.__name__,
+                str(ex),
+            )
             exception_occurred = True
         finally:
             if exception_occurred or self.config.auto_close_connection:
                 self.close()
 
         return result
+
     return wrapper
 
 
 @dataclass
-class DicomOperationConfig:
+class DicomOperationConfig:  # pylint: disable=too-many-instance-attributes
     client_ae_title: str
     server_ae_title: str
     server_ip: str
@@ -64,7 +102,7 @@ class DicomOperationConfig:
     auto_close_connection: bool = True
     debug: bool = False
     connection_retries: int = 3
-    retry_timeout: int = 30 # seconds
+    retry_timeout: int = 30  # seconds
 
 
 class DicomOperation:
@@ -82,43 +120,22 @@ class DicomOperation:
 
     def send_c_echo(self):
         status = self.assoc.send_c_echo()
-        results = [{
-            'status': {'code': status.Status, 'category': code_to_category(status.Status)},
-            'data': {}
-        }]
+        results = [
+            {
+                "status": {
+                    "code": status.Status,
+                    "category": code_to_category(status.Status),
+                },
+                "data": {},
+            }
+        ]
         return results
-
-    def dictify_dataset(self, ds):
-        """Turn a pydicom Dataset into a dict with keys derived from the Element tags."""
-
-        output = dict()
-        if ds:
-            for elem in ds:
-                # We only use non private tags as keywords may not be unique when
-                # there are also private tags present.
-                # See also https://github.com/pydicom/pydicom/issues/319
-                if elem.tag.is_private:
-                    continue
-
-                if elem.VR != 'SQ':
-                    output[elem.keyword] = elem.value
-                else:
-                    output[elem.keyword] = [self.dictify_dataset(item) for item in elem]
-        return output
-
-    def make_query_dataset(self, query_dict):
-        """Turn a dict into a pydicom dataset for query."""
-
-        ds = Dataset()
-        for i in query_dict:
-            setattr(ds, i, query_dict[i])
-        return ds
 
 
 class DicomFind(DicomOperation):
     def __init__(self, *args, **kwargs):
         super(DicomFind, self).__init__(*args, **kwargs)
-        
+
         self.query_model = PatientRootQueryRetrieveInformationModelFind
         if not self.config.patient_root_query_model:
             self.query_model = StudyRootQueryRetrieveInformationModelFind
@@ -130,20 +147,20 @@ class DicomFind(DicomOperation):
         self.assoc = ae.associate(
             self.config.server_ip,
             self.config.server_port,
-            ae_title=self.config.server_ae_title)
+            ae_title=self.config.server_ae_title,
+        )
 
         if not self.assoc.is_established:
-            raise Exception('Could not connect to DICOM server with AE Title %s.' 
-                    % self.config.server_ae_title)
+            raise ConnectionError(
+                "Could not connect to DICOM server with AE Title %s."
+                % self.config.server_ae_title
+            )
 
     @connect_to_server
-    def send_c_find(self, query_dict):
-        query_ds = self.make_query_dataset(query_dict)
+    def send_c_find(self, query_dict, msg_id=1):
+        query_ds = make_query_dataset(query_dict)
 
-        responses = self.assoc.send_c_find(
-            query_ds,
-            self.query_model
-        )
+        responses = self.assoc.send_c_find(query_ds, self.query_model, msg_id)
 
         results = []
         for status, ds in responses:
@@ -153,12 +170,19 @@ class DicomFind(DicomOperation):
                 # status_dict['status_category'] = code_to_category(status.Status)
                 # query_response['status'].append(status_dict)
 
-                results.append({
-                    'status': {'code': status.Status, 'category': code_to_category(status.Status)},
-                    'data': self.dictify_dataset(ds)
-                })
+                results.append(
+                    {
+                        "status": {
+                            "code": status.Status,
+                            "category": code_to_category(status.Status),
+                        },
+                        "data": dictify_dataset(ds),
+                    }
+                )
             else:
-                logging.error("Invalid connection during C-Find with query: %s" % (str(query_dict)))
+                logging.error(
+                    "Invalid connection during C-Find with query: %s", str(query_dict)
+                )
 
         return results
 
@@ -213,10 +237,10 @@ class DicomGet(DicomOperation):
         # and https://github.com/pydicom/pynetdicom/blob/master/pynetdicom/apps/getscu/getscu.py#L222
         cx = list(QueryRetrievePresentationContexts)
         nr_pc = len(QueryRetrievePresentationContexts)
-        cx += StoragePresentationContexts[:128 - nr_pc]
+        cx += StoragePresentationContexts[: 128 - nr_pc]
         ae.requested_contexts = cx
         negotiation_items = []
-        for context in StoragePresentationContexts[:128 - nr_pc]:
+        for context in StoragePresentationContexts[: 128 - nr_pc]:
             role = build_role(context.abstract_syntax, scp_role=True)
             negotiation_items.append(role)
 
@@ -227,13 +251,17 @@ class DicomGet(DicomOperation):
             self.config.server_port,
             ae_title=self.config.server_ae_title,
             ext_neg=negotiation_items,
-            evt_handlers=handlers)
+            evt_handlers=handlers,
+        )
 
         if not self.assoc.is_established:
-            raise Exception('Could not connect to DICOM server with AE Title %s.' % self.config.server_ae_title)
+            raise ConnectionError(
+                "Could not connect to DICOM server with AE Title %s."
+                % self.config.server_ae_title
+            )
 
     @connect_to_server
-    def send_c_get(self, query_dict, folder=None, callback=None):
+    def send_c_get(self, query_dict, folder=None, callback=None, msg_id=1):
         """
         Download DICOM instances to a local folder.
 
@@ -250,42 +278,50 @@ class DicomGet(DicomOperation):
         if self.folder:
             Path(self.folder).mkdir(parents=True, exist_ok=True)
 
-        ds = self.make_query_dataset(query_dict)
+        ds = make_query_dataset(query_dict)
 
         # The Synapse PACS server only accepts study root queries (not patient root queries)
         # for C-GET requests
-        responses = self.assoc.send_c_get(ds, self.query_model)
+        responses = self.assoc.send_c_get(ds, self.query_model, msg_id)
 
         results = []
         for status, ds in responses:
             if status:
-                results.append({
-                    'status': {'code': status.Status, 'category': code_to_category(status.Status)},
-                    'data': self.dictify_dataset(ds)
-                })
+                results.append(
+                    {
+                        "status": {
+                            "code": status.Status,
+                            "category": code_to_category(status.Status),
+                        },
+                        "data": dictify_dataset(ds),
+                    }
+                )
             else:
-                logging.error("Invalid connection during C-GET with query: %s" % (str(query_dict)))
+                logging.error(
+                    "Invalid connection during C-GET with query: %s", str(query_dict)
+                )
 
         return results
 
 
 class DicomStore(DicomOperation):
-    def __init__(self, *args, **kwargs):
-        super(DicomStore, self).__init__(*args, **kwargs)
-
     def open(self):
         ae = AE(ae_title=self.config.client_ae_title)
         ae.requested_contexts = StoragePresentationContexts
         self.assoc = ae.associate(
             self.config.server_ip,
             self.config.server_port,
-            ae_title=self.config.server_ae_title)
+            ae_title=self.config.server_ae_title,
+        )
 
         if not self.assoc.is_established:
-            raise Exception('Could not connect to DICOM server with AE Title %s.' % self.config.server_ae_title)
+            raise ConnectionError(
+                "Could not connect to DICOM server with AE Title %s."
+                % self.config.server_ae_title
+            )
 
     @connect_to_server
-    def send_c_store(self, folder, callback=None):
+    def send_c_store(self, folder, callback=None, msg_id=1):
         results = []
         for root, _, files in os.walk(folder):
             for filename in files:
@@ -296,21 +332,28 @@ class DicomStore(DicomOperation):
                 if callback:
                     callback(ds)
 
-                status = self.assoc.send_c_store(ds)
+                status = self.assoc.send_c_store(ds, msg_id)
 
                 if status:
                     status_category = code_to_category(status.Status)
 
                     data_dict = {}
-                    if (status_category in ['WARNING', 'FAILURE', 'CANCEL']):
+                    if status_category in ["WARNING", "FAILURE", "CANCEL"]:
                         data_dict = {"SOPInstanceUID": ds.SOPInstanceUID}
-                    
-                    results.append({
-                        'status': {'code': status.Status, 'category': status_category},
-                        'data': data_dict
-                    })
+
+                    results.append(
+                        {
+                            "status": {
+                                "code": status.Status,
+                                "category": status_category,
+                            },
+                            "data": data_dict,
+                        }
+                    )
                 else:
-                    logging.error("Invalid connection during C-STORE with folder: %s" % (folder))
+                    logging.error(
+                        "Invalid connection during C-STORE with folder: %s", folder
+                    )
 
         return results
 
@@ -329,25 +372,38 @@ class DicomMove(DicomOperation):
         self.assoc = ae.associate(
             self.config.server_ip,
             self.config.server_port,
-            ae_title=self.config.server_ae_title)
+            ae_title=self.config.server_ae_title,
+        )
 
         if not self.assoc.is_established:
-            raise Exception('Could not connect to DICOM server with AE Title %s.' % self.config.server_ae_title)
+            raise ConnectionError(
+                "Could not connect to DICOM server with AE Title %s."
+                % self.config.server_ae_title
+            )
 
     @connect_to_server
-    def send_c_move(self, query_dict, destination_ae_title):
-        query_ds = self.make_query_dataset(query_dict)
+    def send_c_move(self, query_dict, destination_ae_title, msg_id=1):
+        query_ds = make_query_dataset(query_dict)
 
-        responses = self.assoc.send_c_move(query_ds, destination_ae_title, self.query_model)
+        responses = self.assoc.send_c_move(
+            query_ds, destination_ae_title, self.query_model, msg_id
+        )
 
         results = []
         for status, ds in responses:
             if status:
-                results.append({
-                    'status': {'code': status.Status, 'category': code_to_category(status.Status)},
-                    'data': self.dictify_dataset(ds)
-                })
+                results.append(
+                    {
+                        "status": {
+                            "code": status.Status,
+                            "category": code_to_category(status.Status),
+                        },
+                        "data": dictify_dataset(ds),
+                    }
+                )
             else:
-                logging.error("Invalid connection during C-MOVE with query: %s" % (str(query_dict)))
+                logging.error(
+                    "Invalid connection during C-MOVE with query: %s", str(query_dict)
+                )
 
         return results

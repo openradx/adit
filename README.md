@@ -7,6 +7,7 @@
 - Think about moving all those dicts to dataclasses when passing around data
 -- Allow provide a regex of StudyDescription in CSV batch file
 -- Allow to specify many modalities per row in CSV file
+- rename DicomJob to TransferJob
 
 # Testing and coverage commands
 ptw --runner 'pytest -s --testmon'   # Watch only changed tests with pytest watch
@@ -48,3 +49,6 @@ interval_end_time = models.TimeField()
 - The PYTHONPATH environment variable can't be set in the Gitpod settings (it is always overwritten with a blank value)
 - What is ALLOWED_HOSTS? https://www.divio.com/blog/django-allowed-hosts-explained/
 - The SECRET_KEY should not start with a dollar sign ($), django-environ has problems with it (see Proxy value in the documentation)
+
+# ContinousTransferJob
+- Fields: job_name, from, till (optional), dicom_tag_regex
