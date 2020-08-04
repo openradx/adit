@@ -1,7 +1,11 @@
 from django.urls import path
 
-from .views import QueryStudiesView
+from .views import SelectiveTransferJobCreate
 
 urlpatterns = [
-    path('selective-transfer/', QueryStudiesView.as_view(), name='query_studies')
+    path(
+        "selective-transfer/",
+        SelectiveTransferJobCreate.as_view(),
+        name="query_studies",
+    )
 ]
