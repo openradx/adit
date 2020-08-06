@@ -22,6 +22,8 @@ services:
       DATABASE_URL: "psql://postgres:postgres@postgres:5432/postgres"
       DJANGO_SETTINGS_MODULE: "adit.settings.development"
       USE_DOCKER: 1
+      ORTHANC1_HOST: "orthanc_1"
+      ORTHANC2_HOST: "orthanc_2"
     command: >
       bash -c "
         python ./manage.py migrate &&
@@ -61,10 +63,18 @@ services:
   orthanc_1:
     image: jodogne/orthanc-plugins:latest
     ports:
-      - "4242:4242"
-      - "8042:8042"
+      - "6501:6501"
+      - "7501:7501"
     volumes:
-      - ./orthanc_config.json:/etc/orthanc/orthanc.json
+      - ./compose/orthanc1_config.json:/etc/orthanc/orthanc.json
+
+  orthanc_2:
+    image: jodogne/orthanc-plugins:latest
+    ports:
+      - "6502:6502"
+      - "7502:7502"
+    volumes:
+      - ./compose/orthanc2_config.json:/etc/orthanc/orthanc.json
 
 volumes:
   postgres_data:

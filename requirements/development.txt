@@ -20,3 +20,4 @@ coverage==5.2.1
 django-extensions==2.2.9
 django-debug-toolbar==2.2
 django-debug-permissions==1.0.0
+requests==2.24.0
