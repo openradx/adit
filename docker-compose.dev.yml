@@ -1,0 +1,71 @@
+version: "3.8"
+
+services:
+  postgres:
+    image: postgres:latest
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_PASSWORD: "postgres" # TODO: move to .env file
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  web:
+    build: .
+    ports:
+      - "8000:8000"
+    depends_on:
+      - postgres
+    volumes:
+      - .:/src
+    environment:
+      DATABASE_URL: "psql://postgres:postgres@postgres:5432/postgres"
+      DJANGO_SETTINGS_MODULE: "adit.settings.development"
+      USE_DOCKER: 1
+    command: >
+      bash -c "
+        python ./manage.py migrate &&
+        python manage.py populate_dev_db &&
+        python ./manage.py runserver 0.0.0.0:8000
+      "
+
+  redis:
+    image: redis:latest
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+  celery_worker_low_1:
+    build: .
+    volumes:
+      - .:/src
+    depends_on:
+      - redis
+    environment:
+      DJANGO_SETTINGS_MODULE: "adit.settings.development"
+      REDIS_URL: "redis://redis:6379/0"
+    command: celery -A adit worker -Q low -l info -n celery_worker_low_1
+
+  celery_worker_high_1:
+    build: .
+    volumes:
+      - .:/src
+    depends_on:
+      - redis
+    environment:
+      DJANGO_SETTINGS_MODULE: "adit.settings.development"
+      REDIS_URL: "redis://redis:6379/0"
+    command: celery -A adit worker -Q low -l info -n celery_worker_high_1
+
+  orthanc_1:
+    image: jodogne/orthanc-plugins:latest
+    ports:
+      - "4242:4242"
+      - "8042:8042"
+    volumes:
+      - ./orthanc_config.json:/etc/orthanc/orthanc.json
+
+volumes:
+  postgres_data:
+  redis_data:
