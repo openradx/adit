@@ -3,10 +3,11 @@ image:
 
 tasks:
   # A terminal where all services are started
-  - before: supervisord # supervisor is already installed in .gitpod.Dockerfile
+  # supervisor is already installed in .gitpod.Dockerfile
+  - before: supervisord -c ./gitpod/supervisord.conf
     init: |
       touch /tmp/.pip-install-lock
-      pip install -r /workspace/adit/requirements/development.txt
+      pip install -r ./requirements/development.txt
       rm /tmp/.pip-install-lock
       createdb adit
       python manage.py migrate
@@ -16,7 +17,7 @@ tasks:
       supervisorctl start celery:
       python manage.py runserver
 
-# A terminal for continous testing
+  # A terminal for continous testing
   - init: sleep 1 && while [ -f /tmp/.pip-install-lock ]; do sleep 1; done
     command: |
       # Alternatives for continous testing:
@@ -26,7 +27,7 @@ tasks:
       pytest --cov=. # run all test once (with coverage report)
       ptw --runner 'pytest --picked'
 
-# A terminal for the developer to do stuff
+  # A terminal for the developer to do stuff
   - command: echo 'For your convenience!'
 
 ports:
