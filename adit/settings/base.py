@@ -76,7 +76,7 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "adit.wsgi.application"
 
-DATABASES = {"default": env.db()}
+DATABASES = {"default": env.db(default="psql://postgres@127.0.0.1:5432/postgres")}
 
 # Password validation
 # https://docs.djangoproject.com/en/3.0/ref/settings/#auth-password-validators
@@ -127,7 +127,10 @@ CRISPY_TEMPLATE_PACK = "bootstrap4"
 MESSAGE_STORAGE = "django.contrib.messages.storage.session.SessionStorage"
 
 # Also used by django-registration-redux
-ADMINS = [(env("ADMIN_NAME"), env("ADMIN_EMAIL"))]
+ADMINS = [(
+    env.str("ADMIN_NAME", default="ADIT Support"),
+    env.str("ADMIN_EMAIL", default="support@adit.test")
+)]
 
 # Settings for django-registration-redux
 REGISTRATION_FORM = "accounts.forms.RegistrationForm"
@@ -141,7 +144,7 @@ ASGI_APPLICATION = "adit.routing.application"
 # see https://github.com/celery/celery/issues/5026 for how to name configs
 if USE_TZ:
     CELERY_TIMEZONE = TIME_ZONE
-REDIS_URL = env("REDIS_URL")
+REDIS_URL = env.str("REDIS_URL", default="redis://localhost:6379/0")
 CELERY_BROKER_URL = REDIS_URL
 CELERY_RESULT_BACKEND = REDIS_URL
 CELERY_TASK_DEFAULT_QUEUE = "default"
@@ -152,10 +155,10 @@ CELERY_TASK_ROUTES = {"batch_transfer.tasks.batch_transfer_task": {"queue": "low
 ###
 
 # General ADIT settings
-ADIT_AE_TITLE = env("ADIT_AE_TITLE")
+ADIT_AE_TITLE = env.str("ADIT_AE_TITLE", default="ADIT")
 
 # Static (non database) settings for batch_transfer app
-ADIT_CACHE_FOLDER = env("ADIT_CACHE_FOLDER")
+ADIT_CACHE_FOLDER = env.str("ADIT_CACHE_FOLDER", "/tmp/adit_cache_folder")
 
 # The delimiter of the CSV file that contains the requests for
 # the batch transfer
