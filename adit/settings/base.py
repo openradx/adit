@@ -127,10 +127,12 @@ CRISPY_TEMPLATE_PACK = "bootstrap4"
 MESSAGE_STORAGE = "django.contrib.messages.storage.session.SessionStorage"
 
 # Also used by django-registration-redux
-ADMINS = [(
-    env.str("ADMIN_NAME", default="ADIT Support"),
-    env.str("ADMIN_EMAIL", default="support@adit.test")
-)]
+ADMINS = [
+    (
+        env.str("ADMIN_NAME", default="ADIT Support"),
+        env.str("ADMIN_EMAIL", default="support@adit.test"),
+    )
+]
 
 # Settings for django-registration-redux
 REGISTRATION_FORM = "accounts.forms.RegistrationForm"
@@ -149,6 +151,11 @@ CELERY_BROKER_URL = REDIS_URL
 CELERY_RESULT_BACKEND = REDIS_URL
 CELERY_TASK_DEFAULT_QUEUE = "default"
 CELERY_TASK_ROUTES = {"batch_transfer.tasks.batch_transfer_task": {"queue": "low"}}
+
+# Flower is integrated in ADIT by using an reverse proxy (django-revproxy).
+# This allows to use the authentication of ADIT.
+FLOWER_HOST = env.str("FLOWER_HOST", default="localhost")
+FLOWER_PORT = env.int("FLOWER_PORT", default=5555)
 
 ###
 # ADIT specific settings

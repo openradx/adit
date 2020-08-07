@@ -24,6 +24,8 @@ services:
       USE_DOCKER: 1
       ORTHANC1_HOST: "orthanc_1"
       ORTHANC2_HOST: "orthanc_2"
+      FLOWER_HOST: "flower"
+      FLOWER_PORT: "5555"
     command: >
       bash -c "
         python ./manage.py migrate &&
@@ -59,6 +61,12 @@ services:
       DJANGO_SETTINGS_MODULE: "adit.settings.development"
       REDIS_URL: "redis://redis:6379/0"
     command: celery -A adit worker -Q low -l info -n celery_worker_high_1
+
+  flower:
+    image: mher/flower
+    ports:
+      - "5555:5555"
+    command: flower --url_prefix=flower --broker=redis://redis:6379/0
 
   orthanc_1:
     image: jodogne/orthanc-plugins:latest
