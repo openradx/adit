@@ -1,70 +1,78 @@
 version: "3.8"
 
 services:
+  # TODO add secret_key, ADMIN_NAME, ADMIN_EMAIL to .env file
   postgres:
-    #restart: always
+    restart: always
     image: postgres:latest
-    ports:
-      - "5432:5432"
+    expose:
+      - "5432"
     environment:
-      POSTGRES_PASSWORD: "postgres"  # TODO: move to .env file
-    # volumes:
-    #   - "./postgres_data:/var/lib/postgresql/data/"
+      POSTGRES_PASSWORD: "postgres" # TODO secure pass and move to .env file
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
 
   web:
-    #restart: always
+    restart: always
     build: .
     ports:
-      - "8000:8000"
+      - "80:8000" # TODO https and ws port? daphne?
     depends_on:
       - postgres
     volumes:
       - .:/src
     environment:
       DATABASE_URL: "psql://postgres:postgres@postgres:5432/postgres"
-      DJANGO_SETTINGS_MODULE: "adit.settings.development"
+      DJANGO_SETTINGS_MODULE: "adit.settings.production"
       USE_DOCKER: 1
-    #command: /usr/local/bin/gunicorn docker_django.wsgi:application -w 2 -b :8000
-    command: python ./manage.py runserver 0.0.0.0:8000
+      FLOWER_HOST: "flower"
+      FLOWER_PORT: "5555"
+    command: > # TODO completely other command
+      bash -c "
+        python ./manage.py migrate &&
+        python manage.py populate_dev_db &&
+        python ./manage.py runserver 0.0.0.0:8000
+      "
 
   redis:
-    #restart: always
+    restart: always
     image: redis:latest
-    ports:
-      - "6379:6379"
-  #   # volumes:
-  #   #   - ./redis_data:/data
+    expose:
+      - "6379"
+    volumes:
+      - redis_data:/data
 
-  celery_worker_low_1:
-    #restart: always
+  celery_worker_low:
+    restart: always
     build: .
     volumes:
       - .:/src
     depends_on:
       - redis
     environment:
-      DATABASE_URL: "psql://postgres:postgres@postgres:5432/postgres"
-      DJANGO_SETTINGS_MODULE: "adit.settings.development"
-    command: celery -A adit worker -Q low -l info -n celery_worker_low_1
+      DJANGO_SETTINGS_MODULE: "adit.settings.production"
+      REDIS_URL: "redis://redis:6379/0"
+    command: bash -c "celery -A adit worker -Q low -l info -n celery_worker_low_$$(hostname)"
 
-  celery_worker_high_1:
-    #restart: always
+  celery_worker_high:
+    restart: always
     build: .
     volumes:
       - .:/src
     depends_on:
       - redis
-    command: celery -A adit worker -Q low -l info -n celery_worker_high_1
+    environment:
+      DJANGO_SETTINGS_MODULE: "adit.settings.production"
+      REDIS_URL: "redis://redis:6379/0"
+    command: bash -c "celery -A adit worker -Q low -l info -n celery_worker_high_$$(hostname)"
 
-  # nginx:
-  #   #restart: always
-  #   image: nginx:latest
-  #   volumes:
-  #     - ./nginx.conf:/etc/nginx/nginx.conf
-  #   ports:
-  #     - 80:80
-  #     - 443:443
+  flower:
+    restart: always
+    image: mher/flower
+    expose:
+      - "5555"
+    command: flower --url_prefix=flower --broker=redis://redis:6379/0
 
-# volumes:
-#   postgres_data: {}
-#   redis_data: {}
+volumes:
+  postgres_data:
+  redis_data:
