@@ -3,6 +3,7 @@
     "HttpPort": 6501,
     "DicomAet": "ORTHANC1",
     "DicomPort": 7501,
+    "StorageDirectory": "/var/lib/orthanc/db",
     "DicomModalities": {
         "ORTHANC2": [
             "ORTHANC2",
@@ -15,6 +16,10 @@
             7900
         ]
     },
+    "Plugins": [
+        "/usr/share/orthanc/plugins",
+        "/usr/local/share/orthanc/plugins"
+    ],
     "RemoteAccessAllowed": true,
     "AuthenticationEnabled": false
 }

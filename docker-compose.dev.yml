@@ -1,6 +1,22 @@
 version: "3.8"
 
 services:
+  orthanc_1:
+    image: jodogne/orthanc-plugins:latest
+    ports:
+      - "6501:6501"
+      - "7501:7501"
+    volumes:
+      - ./compose/orthanc1_config.json:/etc/orthanc/orthanc.json
+
+  orthanc_2:
+    image: jodogne/orthanc-plugins:latest
+    ports:
+      - "6502:6502"
+      - "7502:7502"
+    volumes:
+      - ./compose/orthanc2_config.json:/etc/orthanc/orthanc.json
+
   postgres:
     image: postgres:latest
     ports:
@@ -15,6 +31,8 @@ services:
     ports:
       - "8000:8000"
     depends_on:
+      - orthanc_1
+      - orthanc_2
       - postgres
     volumes:
       - .:/src
@@ -28,8 +46,9 @@ services:
       FLOWER_PORT: "5555"
     command: >
       bash -c "
+        python ./manage.py reset_orthancs &&
         python ./manage.py migrate &&
-        python manage.py populate_dev_db &&
+        python ./manage.py populate_dev_db &&
         python ./manage.py runserver 0.0.0.0:8000
       "
 
@@ -66,23 +85,9 @@ services:
     image: mher/flower
     ports:
       - "5555:5555"
+    depends_on:
+      - redis
     command: flower --url_prefix=flower --broker=redis://redis:6379/0
-
-  orthanc_1:
-    image: jodogne/orthanc-plugins:latest
-    ports:
-      - "6501:6501"
-      - "7501:7501"
-    volumes:
-      - ./compose/orthanc1_config.json:/etc/orthanc/orthanc.json
-
-  orthanc_2:
-    image: jodogne/orthanc-plugins:latest
-    ports:
-      - "6502:6502"
-      - "7502:7502"
-    volumes:
-      - ./compose/orthanc2_config.json:/etc/orthanc/orthanc.json
 
 volumes:
   postgres_data:
