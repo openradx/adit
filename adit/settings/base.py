@@ -24,6 +24,7 @@ if READ_DOT_ENV_FILE:
     env.read_env(str(BASE_DIR / ".env"))
 
 INSTALLED_APPS = [
+    "whitenoise.runserver_nostatic",
     "channels",
     "accounts.apps.AccountsConfig",
     "registration",
@@ -46,6 +47,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -126,6 +128,8 @@ CRISPY_TEMPLATE_PACK = "bootstrap4"
 # Seems to be the same problem with Cloud9 https://stackoverflow.com/a/34828308/166229
 MESSAGE_STORAGE = "django.contrib.messages.storage.session.SessionStorage"
 
+STATIC_ROOT = "/var/www/adit/static/"
+
 # Also used by django-registration-redux
 ADMINS = [
     (
@@ -141,6 +145,9 @@ REGISTRATION_OPEN = True
 
 # Channels
 ASGI_APPLICATION = "adit.routing.application"
+
+# WhiteNoise
+STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
 # Celery
 # see https://github.com/celery/celery/issues/5026 for how to name configs

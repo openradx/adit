@@ -30,6 +30,8 @@ services:
       - .env
     command: >
       bash -c "
+        python ./manage.py migrate &&
+        python ./manage.py collectstatic &&
         daphne -b 0.0.0.0 -p 8000 adit.asgi:application
       "
 

@@ -131,11 +131,11 @@ dmypy.json
 # Javascript dev dependencies
 node_modules/
 
-# Ignore db of pytest-testmon
+# Database of pytest-testmon
 .testmondata
 
-# Ignore Orthanc storage
+# The Orthanc storage folders
 OrthancStorage*
 
-# Ignore Redis DB dump
+# Redis DB dump
 dump.rdb
