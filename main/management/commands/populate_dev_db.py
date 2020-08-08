@@ -1,6 +1,8 @@
 from django.core.management.base import BaseCommand
 from django.contrib.auth.models import Group
 import factory
+
+# pylint: disable=import-error,no-name-in-module
 from accounts.factories import AdminUserFactory, UserFactory
 from main.factories import DicomServerFactory, DicomFolderFactory
 from batch_transfer.factories import (

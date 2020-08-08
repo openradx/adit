@@ -1,14 +1,13 @@
 version: "3.8"
 
 services:
-  # TODO add secret_key, ADMIN_NAME, ADMIN_EMAIL to .env file
   postgres:
     restart: always
     image: postgres:latest
     expose:
       - "5432"
-    environment:
-      POSTGRES_PASSWORD: "postgres" # TODO secure pass and move to .env file
+    env_file:
+      - .env
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
@@ -27,11 +26,11 @@ services:
       USE_DOCKER: 1
       FLOWER_HOST: "flower"
       FLOWER_PORT: "5555"
-    command: > # TODO completely other command
+    env_file:
+      - .env
+    command: >
       bash -c "
-        python ./manage.py migrate &&
-        python manage.py populate_dev_db &&
-        python ./manage.py runserver 0.0.0.0:8000
+        daphne -b 0.0.0.0 -p 8000 adit.asgi:application
       "
 
   redis:
@@ -52,6 +51,8 @@ services:
     environment:
       DJANGO_SETTINGS_MODULE: "adit.settings.production"
       REDIS_URL: "redis://redis:6379/0"
+    env_file:
+      - .env
     command: bash -c "celery -A adit worker -Q low -l info -n celery_worker_low_$$(hostname)"
 
   celery_worker_high:
@@ -64,6 +65,8 @@ services:
     environment:
       DJANGO_SETTINGS_MODULE: "adit.settings.production"
       REDIS_URL: "redis://redis:6379/0"
+    env_file:
+      - .env
     command: bash -c "celery -A adit worker -Q low -l info -n celery_worker_high_$$(hostname)"
 
   flower:

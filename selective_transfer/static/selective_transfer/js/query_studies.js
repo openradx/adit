@@ -1,6 +1,7 @@
 $(function () {
+    var wsScheme = window.location.protocol == "https:" ? "wss" : "ws";
     const querySocket = new WebSocket(
-        'wss://' // wss as we are using a secure connection (over https)
+        wsScheme + '://'
         + window.location.host
         + '/ws/query-studies'
     );
