@@ -34,7 +34,6 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-    "debug_permissions",
     "revproxy",
     "loginas",
     "crispy_forms",

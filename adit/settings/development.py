@@ -13,11 +13,13 @@ SECRET_KEY = env.str(
 ALLOWED_HOSTS = []
 
 if sys.argv and ("test" in sys.argv or "pytest" in sys.argv[0]):
-    DATABASES = {"default": env.db("SQLITE_URL", default="sqlite:///tmp/adit-sqlite.db")}
+    DATABASES = {
+        "default": env.db("SQLITE_URL", default="sqlite:///tmp/adit-sqlite.db")
+    }
 
 EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 
-INSTALLED_APPS += ["debug_toolbar", "django_extensions"]
+INSTALLED_APPS += ["debug_toolbar", "debug_permissions", "django_extensions"]
 
 MIDDLEWARE += ["debug_toolbar.middleware.DebugToolbarMiddleware"]
 
@@ -31,5 +33,6 @@ CELERY_TASK_EAGER_PROPAGATES = True
 INTERNAL_IPS = ["127.0.0.1"]
 if env.bool("USE_DOCKER", default=False):
     import socket
+
     hostname, _, ips = socket.gethostbyname_ex(socket.gethostname())
     INTERNAL_IPS += [".".join(ip.split(".")[:-1] + ["1"]) for ip in ips]

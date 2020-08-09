@@ -13,7 +13,9 @@ services:
 
   web:
     restart: always
-    build: .
+    build:
+      context: .
+      dockerfile: prod.Dockerfile
     ports:
       - "80:8000" # TODO https and ws port? daphne?
     depends_on:
@@ -46,7 +48,9 @@ services:
 
   celery_worker_low:
     restart: always
-    build: .
+    build:
+      context: .
+      dockerfile: prod.Dockerfile
     volumes:
       - .:/src
     depends_on:
@@ -60,7 +64,9 @@ services:
 
   celery_worker_high:
     restart: always
-    build: .
+    build:
+      context: .
+      dockerfile: prod.Dockerfile
     volumes:
       - .:/src
     depends_on:
