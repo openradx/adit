@@ -113,6 +113,8 @@ USE_TZ = True
 
 STATIC_URL = "/static/"
 
+STATIC_ROOT = "/var/www/adit/static/"
+
 # Custom user model
 AUTH_USER_MODEL = "accounts.User"
 

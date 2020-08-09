@@ -10,8 +10,6 @@ SECRET_KEY = env("DJANGO_SECRET_KEY")
 
 ALLOWED_HOSTS = env.list("DJANGO_ALLOWED_HOSTS")
 
-STATIC_ROOT = "/var/www/adit/static/"
-
 # TODO provide SMTP details, see https://docs.djangoproject.com/en/dev/topics/email/
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 
