@@ -26,6 +26,11 @@ supervisorctl shutdown  # Shut down supervisor daemon
 # Django shell commands
 python manage.py shell_plus --print-sql  # Show all SQL statements (django_extensions required)
 
+# Docker comands
+docker ps -a --filter volume=vol_name  # Find container that mounts volume
+docker run -v=adit_web_data:/var/www/adit -it busybox /bin/sh  # Start interactive shell with named volume mounted
+docker run --rm -i -v=adit_web_data:/foo busybox find /foo  # List files in named volume
+
 # Ports in development
 - see .gitpod.yml file
 

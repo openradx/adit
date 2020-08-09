@@ -93,8 +93,11 @@ services:
       - "5555:5555"
     depends_on:
       - redis
+    volumes:
+      - flower_data:/data
     command: flower --url_prefix=flower --broker=redis://redis:6379/0
 
 volumes:
   postgres_data:
   redis_data:
+  flower_data:

@@ -17,11 +17,13 @@ services:
       context: .
       dockerfile: prod.Dockerfile
     ports:
-      - "80:8000" # TODO https and ws port? daphne?
+      - "80:80"
+      - "443:443"
     depends_on:
       - postgres
     volumes:
       - .:/src
+      - web_data:/var/www/adit
     environment:
       DATABASE_URL: "psql://postgres:postgres@postgres:5432/postgres"
       DJANGO_SETTINGS_MODULE: "adit.settings.production"
@@ -33,9 +35,10 @@ services:
     command: >
       bash -c "
         python ./manage.py migrate &&
-        python ./manage.py collectstatic &&
+        python ./manage.py collectstatic --no-input &&
         python ./manage.py create_admin &&
-        daphne -b 0.0.0.0 -p 8000 adit.asgi:application
+        python ./manage.py generate_cert &&
+        daphne -b 0.0.0.0 -p 80 -e ssl:443:privateKey=/var/www/adit/ssl/key.pem:certKey=/var/www/adit/ssl/cert.pem adit.asgi:application
       "
 
   redis:
@@ -83,8 +86,14 @@ services:
     image: mher/flower
     expose:
       - "5555"
+    depends_on:
+      - redis
+    volumes:
+      - flower_data:/data
     command: flower --url_prefix=flower --broker=redis://redis:6379/0
 
 volumes:
   postgres_data:
+  web_data: # only neccessary in production for static files and SSL certs
   redis_data:
+  flower_data:

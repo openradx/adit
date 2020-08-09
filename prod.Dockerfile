@@ -8,4 +8,5 @@ COPY requirements/* /src/requirements/
 RUN ls -la
 RUN pip install -r ./requirements/production.txt
 RUN mkdir -p /var/www/adit/static
+RUN mkdir -p /var/www/adit/ssl
 COPY . /src/

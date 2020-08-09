@@ -127,8 +127,6 @@ CRISPY_TEMPLATE_PACK = "bootstrap4"
 # Seems to be the same problem with Cloud9 https://stackoverflow.com/a/34828308/166229
 MESSAGE_STORAGE = "django.contrib.messages.storage.session.SessionStorage"
 
-STATIC_ROOT = "/var/www/adit/static/"
-
 # Also used by django-registration-redux to send account approval emails
 admin_first_name = env.str("ADMIN_FIRST_NAME", default="ADIT")
 admin_last_name = env.str("ADMIN_LAST_NAME", default="Support")
