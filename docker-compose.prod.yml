@@ -32,6 +32,7 @@ services:
       bash -c "
         python ./manage.py migrate &&
         python ./manage.py collectstatic &&
+        python ./manage.py create_admin &&
         daphne -b 0.0.0.0 -p 8000 adit.asgi:application
       "
 

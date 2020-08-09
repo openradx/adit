@@ -130,13 +130,11 @@ MESSAGE_STORAGE = "django.contrib.messages.storage.session.SessionStorage"
 
 STATIC_ROOT = "/var/www/adit/static/"
 
-# Also used by django-registration-redux
-ADMINS = [
-    (
-        env.str("ADMIN_NAME", default="ADIT Support"),
-        env.str("ADMIN_EMAIL", default="support@adit.test"),
-    )
-]
+# Also used by django-registration-redux to send account approval emails
+admin_first_name = env.str("ADMIN_FIRST_NAME", default="ADIT")
+admin_last_name = env.str("ADMIN_LAST_NAME", default="Support")
+admin_full_name = admin_first_name + " " + admin_last_name
+ADMINS = [(admin_full_name, env.str("ADMIN_EMAIL", default="support@adit.test"),)]
 
 # Settings for django-registration-redux
 REGISTRATION_FORM = "accounts.forms.RegistrationForm"
