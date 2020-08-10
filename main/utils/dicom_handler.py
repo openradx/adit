@@ -59,7 +59,7 @@ class DicomHandler:
             )
         )
 
-    def _extract_pending_data(self, results):
+    def _extract_pending_data(self, results):  # pylint: disable=no-self-use
         """Extract the data from a DicomOperation result."""
 
         filtered = filter(lambda x: x["status"]["category"] == "Pending", results)
@@ -197,7 +197,7 @@ class DicomHandler:
 
         return series_list
 
-    def download_patient(
+    def download_patient(  # pylint: disable=too-many-arguments
         self,
         patient_id,
         folder_path,
@@ -205,7 +205,6 @@ class DicomHandler:
         create_series_folders=True,
         modifier_callback=None,
     ):
-
         study_list = self.find_studies(patient_id, modality=modality)
         for study in study_list:
             study_uid = study["StudyInstanceUID"]
@@ -224,7 +223,7 @@ class DicomHandler:
                 modifier_callback,
             )
 
-    def download_study(
+    def download_study(  # pylint: disable=too-many-arguments
         self,
         patient_id,
         study_uid,
@@ -246,7 +245,7 @@ class DicomHandler:
                 patient_id, study_uid, series_uid, download_path, modifier_callback
             )
 
-    def download_series(
+    def download_series(  # pylint: disable=too-many-arguments
         self, patient_id, study_uid, series_uid, folder_path, modifier_callback=None
     ):
         """Download all series to a specified folder for given series UIDs and pseudonymize
