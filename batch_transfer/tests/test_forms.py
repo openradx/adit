@@ -6,38 +6,43 @@ from main.factories import DicomServerFactory
 from ..forms import BatchTransferJobForm
 from accounts.models import User
 
+
 class BatchTransferJobFormTests(TestCase):
     @classmethod
     def setUpTestData(cls):
         cls.data_dict = {
-            'source': DicomServerFactory(),
-            'destination': DicomServerFactory(),
-            'project_name': 'Apollo project',
-            'project_description': 'Fly to the moon'
+            "source": DicomServerFactory(),
+            "destination": DicomServerFactory(),
+            "project_name": "Apollo project",
+            "project_description": "Fly to the moon",
         }
 
         file = create_autospec(File, size=5242880)
-        file.name = 'sample_sheet.csv'
-        file.read.return_value.decode.return_value = ''
-        cls.file_dict = { 'csv_file': file }
+        file.name = "sample_sheet.csv"
+        file.read.return_value.decode.return_value = ""
+        cls.file_dict = {"csv_file": file}
 
         cls.user = create_autospec(User)
 
     def test_field_labels(self):
         form = BatchTransferJobForm(user=self.user)
         self.assertEqual(len(form.fields), 9)
-        self.assertEqual(form.fields['source'].label, 'Source')
-        self.assertEqual(form.fields['destination'].label, 'Destination')
-        self.assertEqual(form.fields['project_name'].label, 'Project name')
-        self.assertEqual(form.fields['project_description'].label, 'Project description')
-        self.assertEqual(form.fields['pseudonymize'].label, 'Pseudonymize')
-        self.assertEqual(form.fields['trial_protocol_id'].label, 'Trial protocol id')
-        self.assertEqual(form.fields['trial_protocol_name'].label, 'Trial protocol name')
-        self.assertEqual(form.fields['archive_password'].label, 'Archive password')
-        self.assertIsNone(form.fields['csv_file'].label)
+        self.assertEqual(form.fields["source"].label, "Source")
+        self.assertEqual(form.fields["destination"].label, "Destination")
+        self.assertEqual(form.fields["project_name"].label, "Project name")
+        self.assertEqual(
+            form.fields["project_description"].label, "Project description"
+        )
+        self.assertEqual(form.fields["pseudonymize"].label, "Pseudonymize")
+        self.assertEqual(form.fields["trial_protocol_id"].label, "Trial protocol id")
+        self.assertEqual(
+            form.fields["trial_protocol_name"].label, "Trial protocol name"
+        )
+        self.assertEqual(form.fields["archive_password"].label, "Archive password")
+        self.assertEqual(form.fields["csv_file"].label, "CSV file")
 
-    @patch('batch_transfer.forms.RequestParser', autospec=True)
-    @patch('batch_transfer.forms.chardet.detect', return_value={'encoding': 'UTF-8'})
+    @patch("batch_transfer.forms.RequestParser", autospec=True)
+    @patch("batch_transfer.forms.chardet.detect", return_value={"encoding": "UTF-8"})
     def test_with_valid_data(self, _, ParserMock):
         parser_mock = ParserMock.return_value
         parser_mock.parse.return_value = []
@@ -52,39 +57,48 @@ class BatchTransferJobFormTests(TestCase):
         form = BatchTransferJobForm({}, user=self.user)
         self.assertFalse(form.is_valid())
         self.assertEqual(len(form.errors), 5)
-        self.assertEqual(form.errors['source'], ['This field is required.'])
-        self.assertEqual(form.errors['destination'], ['This field is required.'])
-        self.assertEqual(form.errors['project_name'], ['This field is required.'])
-        self.assertEqual(form.errors['project_description'], ['This field is required.'])
-        self.assertEqual(form.errors['csv_file'], ['This field is required.'])
- 
+        self.assertEqual(form.errors["source"], ["This field is required."])
+        self.assertEqual(form.errors["destination"], ["This field is required."])
+        self.assertEqual(form.errors["project_name"], ["This field is required."])
+        self.assertEqual(
+            form.errors["project_description"], ["This field is required."]
+        )
+        self.assertEqual(form.errors["csv_file"], ["This field is required."])
+
     def test_disallow_too_large_file(self):
         file = create_autospec(File, size=5242881)
-        file.name = 'sample_sheet.xlsx'
-        form = BatchTransferJobForm(self.data_dict, { 'csv_file': file }, user=self.user)
+        file.name = "sample_sheet.xlsx"
+        form = BatchTransferJobForm(self.data_dict, {"csv_file": file}, user=self.user)
         self.assertFalse(form.is_valid())
-        self.assertIn('File too large', form.errors['csv_file'][0])
+        self.assertIn("File too large", form.errors["csv_file"][0])
 
-    @patch('batch_transfer.forms.RequestParser', autospec=True)
-    @patch('batch_transfer.forms.chardet.detect', return_value={'encoding': 'UTF-8'})
-    def test_dont_allow_pseudonymized_transfer_for_user_without_permission(self, _, ParserMock):
+    @patch("batch_transfer.forms.RequestParser", autospec=True)
+    @patch("batch_transfer.forms.chardet.detect", return_value={"encoding": "UTF-8"})
+    def test_dont_allow_pseudonymized_transfer_for_user_without_permission(
+        self, _, ParserMock
+    ):
         parser_mock = ParserMock.return_value
         parser_mock.parse.return_value = []
         self.user.has_perm.return_value = False
-        self.data_dict['pseudonymize'] = False
+        self.data_dict["pseudonymize"] = False
         form = BatchTransferJobForm(self.data_dict, self.file_dict, user=self.user)
         self.assertTrue(form.is_valid())
-        self.user.has_perm.assert_called_with('batch_transfer.can_transfer_unpseudonymized')
-        self.assertTrue(form.cleaned_data['pseudonymize'])
+        self.user.has_perm.assert_called_with(
+            "batch_transfer.can_transfer_unpseudonymized"
+        )
+        self.assertTrue(form.cleaned_data["pseudonymize"])
 
-    @patch('batch_transfer.forms.RequestParser', autospec=True)
-    @patch('batch_transfer.forms.chardet.detect', return_value={'encoding': 'UTF-8'})
+    @patch("batch_transfer.forms.RequestParser", autospec=True)
+    @patch("batch_transfer.forms.chardet.detect", return_value={"encoding": "UTF-8"})
     def test_allow_pseudonymized_transfer_for_user_with_permission(self, _, ParserMock):
         parser_mock = ParserMock.return_value
         parser_mock.parse.return_value = []
         self.user.has_perm.return_value = True
-        self.data_dict['pseudonymize'] = False
+        self.data_dict["pseudonymize"] = False
         form = BatchTransferJobForm(self.data_dict, self.file_dict, user=self.user)
         self.assertTrue(form.is_valid())
-        self.user.has_perm.assert_called_with('batch_transfer.can_transfer_unpseudonymized')
-        self.assertFalse(form.cleaned_data['pseudonymize'])
+        self.user.has_perm.assert_called_with(
+            "batch_transfer.can_transfer_unpseudonymized"
+        )
+        self.assertFalse(form.cleaned_data["pseudonymize"])
+

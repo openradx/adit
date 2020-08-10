@@ -2,14 +2,13 @@ import ipaddress
 from pathlib import Path
 from datetime import datetime, timedelta
 from django.core.management.base import BaseCommand
-from django.conf import settings
-from adit.settings.base import env
 from cryptography import x509
 from cryptography.x509.oid import NameOID
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
+from adit.settings.base import env  # pylint: disable=import-error
 
 
 def generate_selfsigned_cert(hostname, ip_addresses=None, key=None):
@@ -67,18 +66,18 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         hostname = env.str("SSL_HOSTNAME")
-        ip_addresses = env.list("SSL_IP_ADDRESSES")
+        ip_addresses = env.list("SSL_IP_ADDRESSES", default=[])
 
         (cert_pem, key_pem) = generate_selfsigned_cert(hostname, ip_addresses)
 
-        cert_path = settings.CERT_PEM_FILE
-        key_path = settings.KEY_PEM_FILE
-
         do_generate = True
+
+        cert_path = env("SSL_CERT_FILE")
         if Path(cert_path).is_file():
             do_generate = False
             print(f"Cert file {cert_path} already exists. Generation stopped.")
 
+        key_path = env("SSL_KEY_FILE")
         if Path(key_path).is_file():
             do_generate = False
             print(f"Key file {key_path} already exists. Generation stopped.")

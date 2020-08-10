@@ -6,6 +6,7 @@ tasks:
   # supervisor is already installed in .gitpod.Dockerfile
   - before: supervisord -c ./gitpod/supervisord.conf
     init: |
+      mkdir /workspace/adit/staticfiles
       touch /tmp/.pip-install-lock
       pip install -r ./requirements/development.txt
       rm /tmp/.pip-install-lock

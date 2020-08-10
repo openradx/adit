@@ -113,7 +113,7 @@ USE_TZ = True
 
 STATIC_URL = "/static/"
 
-STATIC_ROOT = "/var/www/adit/static/"
+STATIC_ROOT = env.str("DJANGO_STATIC_ROOT", default=(BASE_DIR / "staticfiles"))
 
 # Custom user model
 AUTH_USER_MODEL = "accounts.User"
@@ -142,9 +142,6 @@ REGISTRATION_OPEN = True
 
 # Channels
 ASGI_APPLICATION = "adit.routing.application"
-
-# WhiteNoise
-STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
 # Celery
 # see https://github.com/celery/celery/issues/5026 for how to name configs

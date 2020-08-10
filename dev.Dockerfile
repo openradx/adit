@@ -7,4 +7,6 @@ RUN pip install --upgrade pip
 COPY requirements/* /src/requirements/
 RUN ls -la
 RUN pip install -r ./requirements/development.txt
+RUN mkdir -p /var/www/adit/static
+RUN mkdir -p /var/www/adit/ssl
 COPY . /src/
