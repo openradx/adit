@@ -2,5 +2,12 @@
     "python.pythonPath": "/home/gitpod/.pyenv/shims/python",
     "editor.formatOnSave": true,
     "python.formatting.provider": "black",
-    "python.linting.pylintEnabled": true
+    "python.linting.pylintEnabled": true,
+    "prettier.tabWidth": 4,
+    "files.associations": {
+        "**/*.html": "html",
+        "**/templates/**/*.html": "django-html",
+        "**/templates/**/*": "django-txt",
+        "**/requirements{/**,*}.{txt,in}": "pip-requirements"
+    }
 }
