@@ -1,44 +1,56 @@
 $(function () {
+    let ws = null;
+
+    function connect(url) {
+        ws = new WebSocket(url);
+        ws.onopen = function () {};
+        ws.onmessage = function (e) {
+            const data = JSON.parse(e.data);
+            console.log(data);
+        };
+        ws.onclose = function (e) {
+            console.log(
+                "Socket is closed. Reconnect will be attempted in 1 second.",
+                e.reason
+            );
+            setTimeout(function () {
+                connect(url);
+            }, 1000);
+        };
+        ws.onerror = function (err) {
+            console.error(
+                "Socket encountered error: ",
+                err.message,
+                "Closing socket"
+            );
+            ws.close();
+        };
+    }
+
+    function getQueryParams() {
+        const form = $("form#study_query_form");
+        return {
+            source: form.find('select[name="source"]').val(),
+            patient_id: form.find('input[name="patient_id"]').val(),
+            patient_name: form.find('input[name="patient_name"]').val(),
+            patient_birth_date: form
+                .find('input[name="patient_birth_date"]')
+                .val(),
+            study_date: form.find('input[name="study_date"]').val(),
+            modality: form.find('input[name="modality"]').val(),
+            accession_number: form.find('input[name="accession_number"]').val(),
+        };
+    }
+
     var wsScheme = window.location.protocol == "https:" ? "wss" : "ws";
-    const querySocket = new WebSocket(
-        wsScheme + '://'
-        + window.location.host
-        + '/ws/query-studies'
-    );
+    var wsUrl = wsScheme + "://" + window.location.host + "/ws/query-studies";
 
-    querySocket.onmessage = function (e) {
-        // const data = JSON.parse(e.data);
-        console.log(e);
-        //document.querySelector('#chat-log').value += (data.message + '\n');
-    };
-
-    querySocket.onclose = function (e) {
-        console.log(e);
-        console.error('Chat socket closed unexpectedly');
-    };
+    connect(wsUrl);
 
     $(".query_field").keyup(function (event) {
         if (event.keyCode === 13) {
-            querySocket.send(JSON.stringify({
-                query: "foooom"
-            }))
+            const queryParams = getQueryParams();
+            ws.send(JSON.stringify(queryParams));
         }
     });
 });
-
-
-// document.querySelector('#chat-message-input').focus();
-// document.querySelector('#chat-message-input').onkeyup = function (e) {
-//     if (e.keyCode === 13) {  // enter, return
-//         document.querySelector('#chat-message-submit').click();
-//     }
-// };
-
-// document.querySelector('#chat-message-submit').onclick = function (e) {
-//     const messageInputDom = document.querySelector('#chat-message-input');
-//     const message = messageInputDom.value;
-//     chatSocket.send(JSON.stringify({
-//         'message': message
-//     }));
-//     messageInputDom.value = '';
-// };

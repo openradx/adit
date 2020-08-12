@@ -2,6 +2,7 @@ from django import forms
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Layout, Field, Row, Column
 from selective_transfer.models import SelectiveTransferJob
+from main.models import DicomNode
 
 
 class SelectiveTransferJobForm(forms.ModelForm):
@@ -17,8 +18,11 @@ class SelectiveTransferJobForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
+        self.fields['source'].queryset = DicomNode.objects.filter(node_type=DicomNode.NodeType.SERVER)
+
         query_field_class = "query_field"
         self.helper = FormHelper()
+        self.helper.form_id = "study_query_form"
         self.helper.layout = Layout(
             Row(Column(Field("source")), Column(Field("destination"))),
             Row(

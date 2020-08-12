@@ -124,7 +124,7 @@ class BatchHandler(DicomHandler):
         if self.config.trial_protocol_name:
             ds.ClinicalTrialProtocolName = self.config.trial_protocol_name
 
-    def _batch_process(self, requests, folder_path, process_callback, cleanup=True):
+    def _batch_process(self, requests, folder_path, process_callback):
         """The heart of the batch transferrer which handles each request, download the
         DICOM data, calls a handler to process it and optionally cleans everything up."""
 
@@ -154,11 +154,13 @@ class BatchHandler(DicomHandler):
 
                 accession_number = request["AccessionNumber"]
                 if accession_number:
-                    study_list = self.find_study(accession_number)
+                    study_list = self.find_studies(accession_number=accession_number)
                 else:
                     study_date = request["StudyDate"]
                     modality = request["Modality"]
-                    study_list = self.find_studies(patient_id, study_date, modality)
+                    study_list = self.find_studies(
+                        patient_id=patient_id, study_date=study_date, modality=modality
+                    )
 
                 for study in study_list:
                     study_uid = study["StudyInstanceUID"]
@@ -176,7 +178,7 @@ class BatchHandler(DicomHandler):
                         modifier_callback=modifier_callback,
                     )
 
-                logging.info(f"Successfully processed request with ID {request_id}.")
+                logging.info("Successfully processed request with ID %d.", request_id)
                 stop_processing = process_callback(
                     {
                         "RequestID": request_id,
@@ -188,7 +190,7 @@ class BatchHandler(DicomHandler):
                 )
             except Exception as err:
                 logging.error(
-                    f"Error while processing request with ID {request_id}: {err}"
+                    "Error while processing request with ID %d: %s", request_id, err
                 )
                 stop_processing = process_callback(
                     {
@@ -212,8 +214,10 @@ class BatchHandler(DicomHandler):
 
     def batch_download(self, requests, handler_callback, archive_password=None):
         logging.info(
-            f"Starting download of {len(requests)} requests at {datetime.now().ctime()}"
-            f"with config: {self.config}"
+            "Starting download of %d requests at %s with config: %s",
+            len(requests),
+            datetime.now().ctime(),
+            self.config,
         )
 
         if archive_password:
@@ -246,16 +250,20 @@ class BatchHandler(DicomHandler):
             shutil.rmtree(download_path)
 
         logging.info(
-            f"Downloaded {len(requests)} requests at {datetime.now().ctime()}"
-            f"with config: {self.config}"
+            "Downloaded %d requests at %s with config: %s",
+            len(requests),
+            datetime.now().ctime(),
+            self.config,
         )
 
         return finished
 
     def batch_transfer(self, requests, handler_callback):
         logging.info(
-            f"Starting transfer of {len(requests)} requests at {datetime.now().ctime()}"
-            f"with config: {self.config}"
+            "Starting transfer of %d requests at %s with config: %s",
+            len(requests),
+            datetime.now().ctime(),
+            self.config,
         )
 
         def process_callback(result):
@@ -270,8 +278,10 @@ class BatchHandler(DicomHandler):
         finished = self._batch_process(requests, cache_folder_path, process_callback)
 
         logging.info(
-            f"Transfered {len(requests)} requests at {datetime.now().ctime()}"
-            f"with config: {self.config}"
+            "Transfered %d requests at %s with config: %s",
+            len(requests),
+            datetime.now().ctime(),
+            self.config,
         )
 
         return finished

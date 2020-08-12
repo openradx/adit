@@ -28,34 +28,38 @@ class DicomHandler:
         destination_folder: str = None
         patient_root_query_model_find: bool = True
         patient_root_query_model_get: bool = True
+        debug: bool = False
 
     def __init__(self, config: Config):
         self.config = config
 
         self._find = DicomFind(
             DicomOperationConfig(
-                self.config.client_ae_title,
-                self.config.source_ae_title,
-                self.config.source_ip,
-                self.config.source_port,
-                self.config.patient_root_query_model_find,
+                client_ae_title=config.client_ae_title,
+                server_ae_title=config.source_ae_title,
+                server_ip=config.source_ip,
+                server_port=config.source_port,
+                patient_root_query_model=config.patient_root_query_model_find,
+                debug=config.debug,
             )
         )
         self._get = DicomGet(
             DicomOperationConfig(
-                self.config.client_ae_title,
-                self.config.source_ae_title,
-                self.config.source_ip,
-                self.config.source_port,
-                self.config.patient_root_query_model_get,
+                client_ae_title=config.client_ae_title,
+                server_ae_title=config.source_ae_title,
+                server_ip=config.source_ip,
+                server_port=config.source_port,
+                patient_root_query_model=config.patient_root_query_model_get,
+                debug=config.debug,
             )
         )
         self._store = DicomStore(
             DicomOperationConfig(
-                self.config.client_ae_title,
-                self.config.destination_ae_title,
-                self.config.destination_ip,
-                self.config.destination_port,
+                client_ae_title=config.client_ae_title,
+                server_ae_title=config.destination_ae_title,
+                server_ip=config.destination_ip,
+                server_port=config.destination_port,
+                debug=config.debug,
             )
         )
 
@@ -64,42 +68,7 @@ class DicomHandler:
 
         filtered = filter(lambda x: x["status"]["category"] == "Pending", results)
         data = map(lambda x: x["data"], filtered)
-        return data
-
-    def _extract_study_data(self, result_data, modality=None):
-        """Extract the study data from a DicomOperation result.
-
-        Can be optionally filtered by a modality. If no modality is provided
-        all studies will be extracted.
-        """
-
-        study_list = []
-        for item in result_data:
-            patient_id = item["PatientID"]
-            study_uid = item["StudyInstanceUID"]
-            study_modalities = self.fetch_study_modalities(patient_id, study_uid)
-            if modality is not None:
-                if isinstance(modality, str):
-                    if modality not in study_modalities:
-                        continue
-                else:
-                    # Can also be a list of modalities, TODO but this is not
-                    # implemented in the Django BatchTransferRequest model currently
-                    if len(set(study_modalities) & set(modality)) == 0:
-                        continue
-
-            study_list.append(
-                {
-                    "PatientID": patient_id,
-                    "StudyInstanceUID": study_uid,
-                    "StudyDescription": item["StudyDescription"],
-                    "StudyDate": item["StudyDate"],
-                    "StudyTime": item["StudyTime"],
-                    "Modalities": study_modalities,
-                }
-            )
-
-        return study_list
+        return list(data)
 
     def fetch_study_modalities(self, patient_id, study_uid):
         """Fetch all modalities of a study and return them in a list."""
@@ -119,41 +88,26 @@ class DicomHandler:
         results = self._find.send_c_find(query_dict)
         result_data = self._extract_pending_data(results)
 
-        patient_list = []
-        for item in result_data:
-            patient_list.append(
-                {
-                    "PatientID": item["PatientID"],
-                    "PatientName": item["PatientName"],
-                    "PatientBirthDate": item["PatientBirthDate"],
-                }
-            )
+        return result_data
 
-        return patient_list
-
-    def find_study(self, accession_number):
-        """Find the study with the given accession number."""
-
-        query_dict = {
-            "QueryRetrieveLevel": "STUDY",
-            "AccessionNumber": accession_number,
-            "PatientID": "",
-            "StudyDate": "",
-            "StudyTime": "",
-            "StudyInstanceUID": "",
-            "StudyDescription": "",
-        }
-        results = self._find.send_c_find(query_dict)
-        result_data = self._extract_pending_data(results)
-        return self._extract_study_data(result_data)
-
-    def find_studies(self, patient_id, study_date="", modality=None):
+    def find_studies(  # pylint: disable=too-many-arguments
+        self,
+        patient_id="",
+        patient_name="",
+        patient_birth_date="",
+        accession_number="",
+        study_date="",
+        modality=None,
+    ):
         """Find all studies for a given patient and filter optionally by
         study date and/or modality."""
 
         query_dict = {
             "QueryRetrieveLevel": "STUDY",
             "PatientID": patient_id,
+            "PatientName": patient_name,
+            "PatientBirthDate": patient_birth_date,
+            "AccessionNumber": accession_number,
             "StudyDate": study_date,
             "StudyTime": "",
             "StudyInstanceUID": "",
@@ -161,7 +115,24 @@ class DicomHandler:
         }
         results = self._find.send_c_find(query_dict)
         result_data = self._extract_pending_data(results)
-        return self._extract_study_data(result_data, modality)
+
+        for ds in result_data:
+            patient_id = ds["PatientID"]
+            study_uid = ds["StudyInstanceUID"]
+            study_modalities = self.fetch_study_modalities(patient_id, study_uid)
+            if modality is not None:
+                if isinstance(modality, str):
+                    if modality not in study_modalities:
+                        continue
+                else:
+                    # Can also be a list of modalities, TODO but this is not
+                    # implemented in the Django BatchTransferRequest model currently
+                    if len(set(study_modalities) & set(modality)) == 0:
+                        continue
+
+            ds["Modalities"] = study_modalities
+
+        return result_data
 
     def find_series(self, patient_id, study_uid, modality=None):
         """Find all series UIDs for a given study UID. The series can be filtered by a
@@ -179,23 +150,15 @@ class DicomHandler:
         results = self._find.send_c_find(query_dict)
         result_data = self._extract_pending_data(results)
 
-        series_list = []
-        for item in result_data:
-            if (
-                modality is None
-                or item["Modality"] == modality
-                or item["Modality"] in modality
-            ):
+        if modality is None:
+            return result_data
 
-                series_list.append(
-                    {
-                        "SeriesInstanceUID": item["SeriesInstanceUID"],
-                        "SeriesDescription": item["SeriesDescription"],
-                        "Modality": item["Modality"],
-                    }
-                )
-
-        return series_list
+        return list(
+            filter(
+                lambda x: x["Modality"] == modality or x["Modality"] in modality,
+                result_data,
+            )
+        )
 
     def download_patient(  # pylint: disable=too-many-arguments
         self,
