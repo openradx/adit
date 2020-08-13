@@ -11,37 +11,14 @@ def fetch_source_server(source_id):
     return DicomServer.objects.get(id=source_id)
 
 
-@sync_to_async
-def query_studies(username: str, server: DicomServer, query: dict):
-    config = DicomHandler.Config(
-        username=username,
-        client_ae_title=settings.ADIT_AE_TITLE,
-        source_ae_title=server.ae_title,
-        source_ip=server.ip,
-        source_port=server.port,
-        patient_root_query_model_find=server.patient_root_query_model_find,
-        debug=True,
-    )
-
-    handler = DicomHandler(config)
-    results = handler.find_studies(
-        query["patient_id"],
-        query["patient_name"],
-        query["patient_birth_date"],
-        query["accession_number"],
-        query["study_date"],
-        query["modality"],
-    )
-
-    return results
-
-
-class QueryStudiesConsumer(AsyncJsonWebsocketConsumer):
+class SelectiveTransferConsumer(AsyncJsonWebsocketConsumer):
     def __init__(self, *args, **kwargs):
         self.user = None
+        self.assoc = None
         super().__init__(*args, **kwargs)
 
     async def connect(self):
+        print(self.scope)
         self.user = self.scope["user"]
         await self.accept()
 
@@ -54,3 +31,29 @@ class QueryStudiesConsumer(AsyncJsonWebsocketConsumer):
         server = await fetch_source_server(query.get("source"))
         result = await query_studies(self.user.username, server, query)
         await self.send_json(result)
+
+    @sync_to_async
+    def query_studies(self, username: str, server: DicomServer, query: dict):
+        config = DicomHandler.Config(
+            username=username,
+            client_ae_title=settings.ADIT_AE_TITLE,
+            source_ae_title=server.ae_title,
+            source_ip=server.ip,
+            source_port=server.port,
+            patient_root_query_model_find=server.patient_root_query_model_find,
+        )
+        handler = DicomHandler(config)
+        results = handler.find_studies(
+            query["patient_id"],
+            query["patient_name"],
+            query["patient_birth_date"],
+            query["accession_number"],
+            query["study_date"],
+            query["modality"],
+        )
+
+        return results
+
+    def cancel_query(self):
+        pass
+        # self.assoc.accepted_contexts[0].context_id

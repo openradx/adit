@@ -1,6 +1,6 @@
 from django.urls import path
-from .consumers import QueryStudiesConsumer
+from .consumers import SelectiveTransferConsumer
 
 websocket_urlpatterns = [
-    path("ws/query-studies", QueryStudiesConsumer),
+    path("ws/selective-transfer", SelectiveTransferConsumer),
 ]

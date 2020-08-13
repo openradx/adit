@@ -3,7 +3,7 @@ $(function () {
 
     function connect(url) {
         ws = new WebSocket(url);
-        ws.onopen = function () {};
+        ws.onopen = function () { };
         ws.onmessage = function (e) {
             const data = JSON.parse(e.data);
             console.log(data);
@@ -43,14 +43,17 @@ $(function () {
     }
 
     var wsScheme = window.location.protocol == "https:" ? "wss" : "ws";
-    var wsUrl = wsScheme + "://" + window.location.host + "/ws/query-studies";
+    var wsUrl = wsScheme + "://" + window.location.host + "/ws/selective-transfer";
 
     connect(wsUrl);
 
     $(".query_field").keyup(function (event) {
         if (event.keyCode === 13) {
             const queryParams = getQueryParams();
-            ws.send(JSON.stringify(queryParams));
+            ws.send(JSON.stringify({
+                action: "query_studies",
+                query: queryParams
+            }));
         }
     });
 });
