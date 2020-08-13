@@ -18,7 +18,7 @@ tasks:
       supervisorctl start celery:
       python manage.py runserver
 
-  # A terminal for continous testing
+# A terminal for continous testing
   - init: sleep 1 && while [ -f /tmp/.pip-install-lock ]; do sleep 1; done
     command: |
       # Alternatives for continous testing:
@@ -28,7 +28,7 @@ tasks:
       pytest --cov=. # run all test once (with coverage report)
       ptw --runner 'pytest --picked'
 
-  # A terminal for the developer to do stuff
+# A terminal for the developer to do stuff
   - command: echo 'For your convenience!'
 
 ports:
@@ -55,3 +55,4 @@ vscode:
   extensions:
     - batisteo.vscode-django@0.20.0:gUr2ptf5xx2Pcb6pNcYqgw==
     - dbaeumer.vscode-eslint@2.1.3:1NRvj3UKNTNwmYjptmUmIw==
+    - esbenp.prettier-vscode@5.1.3:t532ajsImUSrA9N8Bd7jQw==
