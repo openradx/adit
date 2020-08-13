@@ -233,13 +233,13 @@ class DicomConnector:
             self.assoc.release()
             self.assoc = None
 
-    def find(self, query_dict, msg_id=1):
+    def c_find(self, query_dict, msg_id=1):
         query_ds = _make_query_dataset(query_dict)
 
         responses = self.assoc.send_c_find(query_ds, self.find_query_model, msg_id)
         return _extract_results(responses, "C-Find", query_dict)
 
-    def get(self, query_dict, folder=None, callback=None, msg_id=1):
+    def c_get(self, query_dict, folder=None, callback=None, msg_id=1):
         if folder:
             Path(folder).mkdir(parents=True, exist_ok=True)
 
@@ -257,7 +257,7 @@ class DicomConnector:
 
         return results
 
-    def move(self, query_dict, destination_ae_title, msg_id=1):
+    def c_move(self, query_dict, destination_ae_title, msg_id=1):
         query_ds = _make_query_dataset(query_dict)
 
         responses = self.assoc.send_c_move(
@@ -265,7 +265,7 @@ class DicomConnector:
         )
         return _extract_results(responses, "C-MOVE", query_dict)
 
-    def store(self, folder, callback=None, msg_id=1):
+    def c_store(self, folder, callback=None, msg_id=1):
         results = []
         for root, _, files in os.walk(folder):
             for filename in files:
