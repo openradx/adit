@@ -7,22 +7,30 @@ from dataclasses import dataclass
 from datetime import datetime
 from functools import partial
 from time import sleep
-from main.utils.dicom_handler import DicomHandler
+from main.utils.dicom_connector import DicomConnector
 from main.utils.anonymizer import Anonymizer
 
 
-class BatchHandler(DicomHandler):
+class BatchTransferHandler:
+
+    SUCCESS = "Success"
+    FAILURE = "Failure"
+
     @dataclass
-    class Config(DicomHandler.Config):
+    class Config:
+        username: str
         trial_protocol_id: str = None
         trial_protocol_name: str = None
         pseudonymize: bool = True
         cache_folder: str = "/tmp"
         batch_timeout: int = 3
 
-    def __init__(self, config: Config):
-        super().__init__(config)
+    def __init__(
+        self, source: DicomConnector, destination: DicomConnector, config: Config
+    ):
         self.config = config
+        self.source = source
+        self.destination = destination
         self._anonymizer = Anonymizer()
         self.patient_cache = dict()
         self.pseudonym_cache = dict()
@@ -87,7 +95,9 @@ class BatchHandler(DicomHandler):
         if patient_key in self.patient_cache:
             return self.patient_cache[patient_key]
 
-        patients = self.find_patients(patient_id, patient_name, patient_birth_date)
+        patients = self.source.find_patients(
+            patient_id, patient_name, patient_birth_date
+        )
         if len(patients) != 1:
             raise Exception(f"Ambigious patient for request with ID {request_id}.")
 
@@ -154,11 +164,13 @@ class BatchHandler(DicomHandler):
 
                 accession_number = request["AccessionNumber"]
                 if accession_number:
-                    study_list = self.find_studies(accession_number=accession_number)
+                    study_list = self.source.find_studies(
+                        accession_number=accession_number
+                    )
                 else:
                     study_date = request["StudyDate"]
                     modality = request["Modality"]
-                    study_list = self.find_studies(
+                    study_list = self.source.find_studies(
                         patient_id=patient_id, study_date=study_date, modality=modality
                     )
 
@@ -170,7 +182,7 @@ class BatchHandler(DicomHandler):
                     study_folder_name = f"{study_date}-{study_time}-{modalities}"
                     study_folder_path = patient_folder_path / study_folder_name
                     modifier_callback = partial(self._modify_dataset, pseudonym)
-                    self.download_study(
+                    self.source.download_study(
                         patient_id,
                         study_uid,
                         study_folder_path,
@@ -183,7 +195,7 @@ class BatchHandler(DicomHandler):
                     {
                         "RequestID": request_id,
                         "Pseudonym": pseudonym,
-                        "Status": DicomHandler.SUCCESS,
+                        "Status": BatchTransferHandler.SUCCESS,
                         "Message": None,
                         "Folder": patient_folder_path,
                     }
@@ -196,7 +208,7 @@ class BatchHandler(DicomHandler):
                     {
                         "RequestID": request_id,
                         "Pseudonym": None,
-                        "Status": DicomHandler.FAILURE,
+                        "Status": BatchTransferHandler.FAILURE,
                         "Message": str(err),
                         "Folder": None,
                     }
@@ -233,7 +245,7 @@ class BatchHandler(DicomHandler):
             download_path.mkdir()
 
         def process_callback(result):
-            if archive_password and result["Status"] == DicomHandler.SUCCESS:
+            if archive_password and result["Status"] == BatchTransferHandler.SUCCESS:
                 folder_path_to_add = result.pop("Folder")
                 self._add_to_archive(folder_path_to_add, archive_name, archive_password)
                 # Cleanup when folder was archived
@@ -269,7 +281,7 @@ class BatchHandler(DicomHandler):
         def process_callback(result):
             folder_path = result.pop("Folder")
             if folder_path:
-                self.upload_folder(folder_path)
+                self.destination.upload_folder(folder_path)
                 shutil.rmtree(folder_path)
 
             return handler_callback(result)

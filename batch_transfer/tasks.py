@@ -2,10 +2,22 @@ from functools import partial
 from celery import shared_task
 from django.conf import settings
 from django.utils import timezone
-from main.models import DicomNode, DicomJob
+from main.models import DicomNode, DicomServer, DicomJob
 from .models import AppSettings, BatchTransferJob, BatchTransferRequest
-from .utils.batch_handler import BatchHandler
+from main.utils.dicom_connector import DicomConnector
+from .utils.batch_transfer_handler import BatchTransferHandler
 from .utils.task_utils import must_be_scheduled, next_batch_slot
+
+
+def _build_connector_config(server: DicomServer):
+    return DicomConnector.Config(
+        client_ae_title=settings.ADIT_AE_TITLE,
+        server_ae_title=server.ae_title,
+        server_ip=server.ip,
+        server_port=server.port,
+        patient_root_query_model_find=server.patient_root_query_model_find,
+        patient_root_query_model_get=server.patient_root_query_model_get,
+    )
 
 
 def process_result(batch_job, result):
@@ -15,9 +27,9 @@ def process_result(batch_job, result):
     """
     request_id = result["RequestID"]
     request = BatchTransferRequest.objects.get(job=batch_job.id, request_id=request_id)
-    if result["Status"] == BatchHandler.SUCCESS:
+    if result["Status"] == BatchTransferHandler.SUCCESS:
         request.status = BatchTransferRequest.Status.SUCCESS
-    elif result["Status"] == BatchHandler.FAILURE:
+    elif result["Status"] == BatchTransferHandler.FAILURE:
         request.status = BatchTransferRequest.Status.FAILURE
     else:
         raise Exception("Invalid result status: " + result["Status"])
@@ -58,21 +70,15 @@ def perform_batch_transfer(batch_job_id):
     batch_job.paused_at = None
     batch_job.save()
 
-    source = batch_job.source.dicomserver  # Source is always a server
+    src_server = batch_job.source.dicomserver  # Source is always a server
     app_settings = AppSettings.load()
 
-    config = BatchHandler.Config(
+    config = BatchTransferHandler.Config(
         username=batch_job.created_by.username,
-        client_ae_title=settings.ADIT_AE_TITLE,
-        cache_folder=settings.ADIT_CACHE_FOLDER,
-        source_ae_title=source.ae_title,
-        source_ip=source.ip,
-        source_port=source.port,
-        patient_root_query_model_find=source.patient_root_query_model_find,
-        patient_root_query_model_get=source.patient_root_query_model_get,
-        pseudonymize=batch_job.pseudonymize,
         trial_protocol_id=batch_job.trial_protocol_id,
         trial_protocol_name=batch_job.trial_protocol_name,
+        pseudonymize=batch_job.pseudonymize,
+        cache_folder=settings.ADIT_CACHE_FOLDER,
         batch_timeout=app_settings.batch_timeout,
     )
 
@@ -100,13 +106,13 @@ def perform_batch_transfer(batch_job_id):
         config.destination_ip = dest_server.ip
         config.destination_port = dest_server.port
 
-        handler = BatchHandler(config)
+        handler = BatchTransferHandler(config)
         finished = handler.batch_transfer(unprocessed_requests, process_result_callback)
     else:  # DicomNode.NodeType.Folder
         dest_folder = batch_job.destination.dicomfolder
         config.destination_folder = dest_folder.path
 
-        handler = BatchHandler(config)
+        handler = BatchTransferHandler(config)
         finished = handler.batch_download(
             unprocessed_requests, process_result_callback, batch_job.archive_password
         )
