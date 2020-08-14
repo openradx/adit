@@ -1,10 +1,11 @@
+from pathlib import Path
 from functools import partial
 from celery import shared_task
 from django.conf import settings
 from django.utils import timezone
 from main.models import DicomNode, DicomServer, DicomJob
-from .models import AppSettings, BatchTransferJob, BatchTransferRequest
 from main.utils.dicom_connector import DicomConnector
+from .models import AppSettings, BatchTransferJob, BatchTransferRequest
 from .utils.batch_transfer_handler import BatchTransferHandler
 from .utils.task_utils import must_be_scheduled, next_batch_slot
 
@@ -60,7 +61,7 @@ def perform_batch_transfer(batch_job_id):
     batch_job = BatchTransferJob.objects.get(id=batch_job_id)
 
     if batch_job.status not in [DicomJob.Status.PENDING, DicomJob.Status.PAUSED]:
-        raise Exception(
+        raise AssertionError(
             f"Skipping task to process batch job with ID {batch_job.id} "
             f" because of an invalid status {batch_job.get_status_display()}."
         )
@@ -70,17 +71,27 @@ def perform_batch_transfer(batch_job_id):
     batch_job.paused_at = None
     batch_job.save()
 
-    src_server = batch_job.source.dicomserver  # Source is always a server
     app_settings = AppSettings.load()
-
-    config = BatchTransferHandler.Config(
+    handler_config = BatchTransferHandler.Config(
         username=batch_job.created_by.username,
         trial_protocol_id=batch_job.trial_protocol_id,
         trial_protocol_name=batch_job.trial_protocol_name,
-        pseudonymize=batch_job.pseudonymize,
+        archive_password=batch_job.archive_password,
         cache_folder=settings.ADIT_CACHE_FOLDER,
         batch_timeout=app_settings.batch_timeout,
     )
+
+    # The source of the transfer is always a server
+    server = batch_job.source.dicomserver
+    source = DicomConnector(_build_connector_config(server))
+
+    # Destination can be a server or a folder
+    if batch_job.destination.node_type == DicomNode.NodeType.SERVER:
+        server = batch_job.destination.dicomserver
+        destination = DicomConnector(_build_connector_config(server))
+    else:
+        folder = batch_job.destination.dicomfolder
+        destination = Path(folder.path)
 
     unprocessed_requests = [
         {
@@ -94,28 +105,9 @@ def perform_batch_transfer(batch_job_id):
         }
         for req in batch_job.get_unprocessed_requests()
     ]
-
-    finished = False
-
-    process_result_callback = partial(process_result, batch_job)
-
-    # Destination can be a server or a folder
-    if batch_job.destination.node_type == DicomNode.NodeType.SERVER:
-        dest_server = batch_job.destination.dicomserver
-        config.destination_ae_title = dest_server.ae_title
-        config.destination_ip = dest_server.ip
-        config.destination_port = dest_server.port
-
-        handler = BatchTransferHandler(config)
-        finished = handler.batch_transfer(unprocessed_requests, process_result_callback)
-    else:  # DicomNode.NodeType.Folder
-        dest_folder = batch_job.destination.dicomfolder
-        config.destination_folder = dest_folder.path
-
-        handler = BatchTransferHandler(config)
-        finished = handler.batch_download(
-            unprocessed_requests, process_result_callback, batch_job.archive_password
-        )
+    handler = BatchTransferHandler(handler_config, source, destination)
+    callback = partial(process_result, batch_job)
+    finished = handler.batch_transfer(unprocessed_requests, callback)
 
     # If all requests were processed then the job finished otherwise it was
     # paused by the system or cancelled by the user
@@ -141,7 +133,7 @@ def perform_batch_transfer(batch_job_id):
         batch_job.stopped_at = timezone.now()
         batch_job.save()
     else:
-        raise Exception(
+        raise AssertionError(
             f"Invalid status of job with ID {batch_job.id}:"
             f" {batch_job.get_status_display()}"
         )

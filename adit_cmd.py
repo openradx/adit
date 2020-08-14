@@ -80,7 +80,6 @@ class AditCmd:
                     'PatientRootQueryModelGet', True),
             trial_protocol_id=self.config.get('TrialProtocolID', ''),
             trial_protocol_name=self.config.get('TrialProtocolName', ''),
-            pseudonymize=self.config.getboolean('Pseudonymize', True),
             cache_folder=self.config.get('CacheFolder', '/tmp'),
             batch_timeout=self.config.getint('BatchTimeout', 0)
         )

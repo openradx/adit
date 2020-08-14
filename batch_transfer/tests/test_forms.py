@@ -33,7 +33,6 @@ class BatchTransferJobFormTests(TestCase):
         self.assertEqual(
             form.fields["project_description"].label, "Project description"
         )
-        self.assertEqual(form.fields["pseudonymize"].label, "Pseudonymize")
         self.assertEqual(form.fields["trial_protocol_id"].label, "Trial protocol id")
         self.assertEqual(
             form.fields["trial_protocol_name"].label, "Trial protocol name"
@@ -71,34 +70,3 @@ class BatchTransferJobFormTests(TestCase):
         form = BatchTransferJobForm(self.data_dict, {"csv_file": file}, user=self.user)
         self.assertFalse(form.is_valid())
         self.assertIn("File too large", form.errors["csv_file"][0])
-
-    @patch("batch_transfer.forms.RequestParser", autospec=True)
-    @patch("batch_transfer.forms.chardet.detect", return_value={"encoding": "UTF-8"})
-    def test_dont_allow_pseudonymized_transfer_for_user_without_permission(
-        self, _, ParserMock
-    ):
-        parser_mock = ParserMock.return_value
-        parser_mock.parse.return_value = []
-        self.user.has_perm.return_value = False
-        self.data_dict["pseudonymize"] = False
-        form = BatchTransferJobForm(self.data_dict, self.file_dict, user=self.user)
-        self.assertTrue(form.is_valid())
-        self.user.has_perm.assert_called_with(
-            "batch_transfer.can_transfer_unpseudonymized"
-        )
-        self.assertTrue(form.cleaned_data["pseudonymize"])
-
-    @patch("batch_transfer.forms.RequestParser", autospec=True)
-    @patch("batch_transfer.forms.chardet.detect", return_value={"encoding": "UTF-8"})
-    def test_allow_pseudonymized_transfer_for_user_with_permission(self, _, ParserMock):
-        parser_mock = ParserMock.return_value
-        parser_mock.parse.return_value = []
-        self.user.has_perm.return_value = True
-        self.data_dict["pseudonymize"] = False
-        form = BatchTransferJobForm(self.data_dict, self.file_dict, user=self.user)
-        self.assertTrue(form.is_valid())
-        self.user.has_perm.assert_called_with(
-            "batch_transfer.can_transfer_unpseudonymized"
-        )
-        self.assertFalse(form.cleaned_data["pseudonymize"])
-

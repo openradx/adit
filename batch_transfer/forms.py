@@ -28,22 +28,6 @@ class BatchTransferJobForm(ModelForm):
             node_type=DicomNode.NodeType.SERVER
         )
 
-        if not self.user.has_perm("batch_transfer.can_transfer_unpseudonymized"):
-            self.fields["pseudonymize"].widget.attrs["disabled"] = "true"
-
-            self.fields[
-                "pseudonymize"
-            ].help_text = """
-                You only have the permission to transfer the data pseudonymized.
-            """
-        else:
-            self.fields[
-                "pseudonymize"
-            ].help_text = """
-                Should the transferred data be pseudonymized by providing the
-                pseudonyms in the CSV file or by letting ADIT generate them.
-            """
-
         self.fields["trial_protocol_id"].widget.attrs["placeholder"] = "Optional"
 
         self.fields[
@@ -83,12 +67,6 @@ class BatchTransferJobForm(ModelForm):
 
         self.helper = FormHelper()
         self.helper.add_input(Submit("save", "Create new batch transfer job"))
-
-    def clean_pseudonymize(self):
-        pseudonymize = self.cleaned_data["pseudonymize"]
-        if not self.user.has_perm("batch_transfer.can_transfer_unpseudonymized"):
-            pseudonymize = True
-        return pseudonymize
 
     def clean_archive_password(self):
         archive_password = self.cleaned_data["archive_password"]
@@ -153,7 +131,6 @@ class BatchTransferJobForm(ModelForm):
             "destination",
             "project_name",
             "project_description",
-            "pseudonymize",
             "trial_protocol_id",
             "trial_protocol_name",
             "archive_password",

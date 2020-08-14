@@ -31,7 +31,6 @@ class BatchTransferJob(DicomJob):
 
     project_name = models.CharField(max_length=150)
     project_description = models.TextField(max_length=2000)
-    pseudonymize = models.BooleanField(default=True)
     trial_protocol_id = models.CharField(max_length=64, blank=True)
     trial_protocol_name = models.CharField(max_length=64, blank=True)
     archive_password = models.CharField(max_length=50, blank=True)
@@ -39,7 +38,6 @@ class BatchTransferJob(DicomJob):
     class Meta:
         permissions = (
             ("can_cancel_batchtransferjob", "Can cancel batch transfer job"),
-            ("can_transfer_unpseudonymized", "Can transfer unpseudonymized"),
         )
 
     def __init__(self, *args, **kwargs):

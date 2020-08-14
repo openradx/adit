@@ -6,6 +6,7 @@ from pathlib import Path
 from dataclasses import dataclass
 from datetime import datetime
 from functools import partial
+from typing import Union
 from time import sleep
 from main.utils.dicom_connector import DicomConnector
 from main.utils.anonymizer import Anonymizer
@@ -21,51 +22,50 @@ class BatchTransferHandler:
         username: str
         trial_protocol_id: str = None
         trial_protocol_name: str = None
-        pseudonymize: bool = True
+        archive_password: str = None
         cache_folder: str = "/tmp"
         batch_timeout: int = 3
 
     def __init__(
-        self, source: DicomConnector, destination: DicomConnector, config: Config
+        self,
+        config: Config,
+        source: DicomConnector,
+        destination: Union[DicomConnector, Path],
     ):
         self.config = config
         self.source = source
         self.destination = destination
         self._anonymizer = Anonymizer()
         self.patient_cache = dict()
-        self.pseudonym_cache = dict()
 
-    def _create_archive(self, archive_name, archive_password):
+    def _create_archive(self, archive_name):
         """Create a new archive with just an INDEX.txt file in it."""
+        temp_folder = tempfile.mkdtemp(dir=self.config.cache_folder)
 
-        temp_folder_path = tempfile.mkdtemp(dir=self.config.cache_folder)
-
-        readme_path = Path(temp_folder_path) / "INDEX.txt"
+        readme_path = Path(temp_folder) / "INDEX.txt"
         readme_file = open(readme_path, "w")
         readme_file.write(
             f"Archive created by {self.config.username} at {datetime.now()}."
         )
         readme_file.close()
 
-        archive_path = Path(self.config.destination_folder) / archive_name
+        archive_path = self.destination / archive_name
         if Path(archive_path).is_file():
-            raise Exception(f"Archive ${archive_path} already exists.")
+            raise ValueError(f"Archive ${archive_path} already exists.")
 
-        self._add_to_archive(readme_path, archive_name, archive_password)
+        self._add_to_archive(readme_path, archive_name)
 
-        shutil.rmtree(temp_folder_path)
+        shutil.rmtree(temp_folder)
 
-    def _add_to_archive(self, path_to_add, archive_name, archive_password):
+    def _add_to_archive(self, path_to_add, archive_name):
         """Add a file or folder to an archive. If the archive does not exist
         it will be created."""
-
         # TODO catch error like https://stackoverflow.com/a/46098513/166229
-        password_option = "-p" + archive_password
-        archive_path = Path(self.config.destination_folder) / f"{archive_name}.7z"
+        archive_path = self.destination / f"{archive_name}.7z"
         cmd = [
             "7z",
             "a",
-            password_option,
+            "-p" + self.config.archive_password,
             "-mhe=on",
             "-mx1",
             "-y",
@@ -111,21 +111,11 @@ class BatchTransferHandler:
 
         return patient
 
-    def _fetch_pseudonym(self, patient_id):
-        """Returns a given pseudonym for the specified patient ID or create a new one."""
-
-        pseudonym = self.pseudonym_cache.get(patient_id)
-        if not pseudonym:
-            pseudonym = self._anonymizer.generate_pseudonym()
-            self.pseudonym_cache[patient_id] = pseudonym
-
-        return pseudonym
-
     def _modify_dataset(self, pseudonym, ds):
         """Optionally pseudonymize an incoming dataset with the given pseudonym
         and add the trial ID and name to the DICOM header if specified."""
 
-        if self.config.pseudonymize:
+        if pseudonym:
             self._anonymizer.anonymize_dataset(ds, patient_name=pseudonym)
 
         if self.config.trial_protocol_id:
@@ -134,7 +124,45 @@ class BatchTransferHandler:
         if self.config.trial_protocol_name:
             ds.ClinicalTrialProtocolName = self.config.trial_protocol_name
 
-    def _batch_process(self, requests, folder_path, process_callback):
+    def _download_request(self, request, folder_path):
+        patient_id = self._fetch_patient(request)["PatientID"]
+
+        pseudonym = request["Pseudonym"]
+        if pseudonym:
+            patient_folder = Path(folder_path) / pseudonym
+        else:
+            pseudonym = None
+            patient_folder = Path(folder_path) / patient_id
+
+        patient_folder.mkdir(exist_ok=True)
+
+        if request["AccessionNumber"]:
+            study_list = self.source.find_studies(
+                accession_number=request["AccessionNumber"]
+            )
+        else:
+            study_list = self.source.find_studies(
+                patient_id=patient_id,
+                study_date=request["StudyDate"],
+                modality=request["Modality"],
+            )
+
+        for study in study_list:
+            study_date = study["StudyDate"]
+            study_time = study["StudyTime"]
+            modalities = ",".join(study["Modalities"])
+            study_folder = patient_folder / f"{study_date}-{study_time}-{modalities}"
+            modifier_callback = partial(self._modify_dataset, pseudonym)
+            self.source.download_study(
+                patient_id,
+                study["StudyInstanceUID"],
+                study_folder,
+                modifier_callback=modifier_callback,
+            )
+
+        return patient_folder, pseudonym
+
+    def _process_requests(self, requests, folder_path, process_callback):
         """The heart of the batch transferrer which handles each request, download the
         DICOM data, calls a handler to process it and optionally cleans everything up."""
 
@@ -144,51 +172,9 @@ class BatchTransferHandler:
             stop_processing = False
 
             try:
-                patient = self._fetch_patient(request)
-                patient_id = patient["PatientID"]
-
-                # Only works ok when a provided pseudonym in the batch file is assigned to the same patient
-                # in the whole file. Never mix provided pseudonym with not filled out pseudonym for the
-                # same patient. TODO validate that in CSV loader
-                if self.config.pseudonymize:
-                    pseudonym = request["Pseudonym"]
-                    if not pseudonym:
-                        pseudonym = self._fetch_pseudonym(patient_id)
-                    patient_folder_name = pseudonym
-                else:
-                    pseudonym = None
-                    patient_folder_name = patient_id
-
-                patient_folder_path = Path(folder_path) / patient_folder_name
-                patient_folder_path.mkdir(exist_ok=True)
-
-                accession_number = request["AccessionNumber"]
-                if accession_number:
-                    study_list = self.source.find_studies(
-                        accession_number=accession_number
-                    )
-                else:
-                    study_date = request["StudyDate"]
-                    modality = request["Modality"]
-                    study_list = self.source.find_studies(
-                        patient_id=patient_id, study_date=study_date, modality=modality
-                    )
-
-                for study in study_list:
-                    study_uid = study["StudyInstanceUID"]
-                    study_date = study["StudyDate"]
-                    study_time = study["StudyTime"]
-                    modalities = ",".join(study["Modalities"])
-                    study_folder_name = f"{study_date}-{study_time}-{modalities}"
-                    study_folder_path = patient_folder_path / study_folder_name
-                    modifier_callback = partial(self._modify_dataset, pseudonym)
-                    self.source.download_study(
-                        patient_id,
-                        study_uid,
-                        study_folder_path,
-                        modality,
-                        modifier_callback=modifier_callback,
-                    )
+                patient_folder, pseudonym = self._download_request(
+                    requests, folder_path
+                )
 
                 logging.info("Successfully processed request with ID %d.", request_id)
                 stop_processing = process_callback(
@@ -197,7 +183,7 @@ class BatchTransferHandler:
                         "Pseudonym": pseudonym,
                         "Status": BatchTransferHandler.SUCCESS,
                         "Message": None,
-                        "Folder": patient_folder_path,
+                        "Folder": patient_folder,
                     }
                 )
             except Exception as err:
@@ -224,70 +210,61 @@ class BatchTransferHandler:
 
         return True  # All requests were processed
 
-    def batch_download(self, requests, handler_callback, archive_password=None):
-        logging.info(
-            "Starting download of %d requests at %s with config: %s",
-            len(requests),
-            datetime.now().ctime(),
-            self.config,
-        )
+    def _transfer_to_server(self, requests, callback):
+        def _callback(result):
+            folder_to_upload = result.pop("Folder")
+            if folder_to_upload:
+                self.destination.upload_folder(folder_to_upload)
+                shutil.rmtree(folder_to_upload)
+            return callback(result)
 
-        if archive_password:
-            # When an archive should be used then download to the cache folder
-            # and it to the archive from there
-            archive_name = f"{self.config.username}_{datetime.now().isoformat()}"
-            self._create_archive(archive_name, archive_password)
-            download_path = tempfile.mkdtemp(dir=self.config.cache_folder)
-        else:
-            # Otherwise download directly to destination folder
-            dest_folder_name = f"{self.config.username}_{datetime.now().isoformat()}"
-            download_path = Path(self.config.destination_folder) / dest_folder_name
-            download_path.mkdir()
-
-        def process_callback(result):
-            if archive_password and result["Status"] == BatchTransferHandler.SUCCESS:
-                folder_path_to_add = result.pop("Folder")
-                self._add_to_archive(folder_path_to_add, archive_name, archive_password)
-                # Cleanup when folder was archived
-                shutil.rmtree(folder_path_to_add)
-            else:
-                del result["Folder"]
-
-            return handler_callback(result)
-
-        finished = self._batch_process(requests, download_path, process_callback)
-
-        # Cleanup the temporary cache folder if an archive was created
-        if archive_password:
-            shutil.rmtree(download_path)
-
-        logging.info(
-            "Downloaded %d requests at %s with config: %s",
-            len(requests),
-            datetime.now().ctime(),
-            self.config,
-        )
-
+        temp_folder = tempfile.mkdtemp(dir=self.config.cache_folder)
+        finished = self._process_requests(requests, temp_folder, _callback)
+        shutil.rmtree(temp_folder)
         return finished
 
-    def batch_transfer(self, requests, handler_callback):
+    def _transfer_to_folder(self, requests, callback):
+        folder_name = f"{self.config.username}_{datetime.now().isoformat()}"
+        folder = self.destination / folder_name
+        folder.mkdir()
+
+        def _callback(result):
+            del result["Folder"]
+            return callback(result)
+
+        return self._process_requests(requests, folder, _callback)
+
+    def _transfer_to_archive(self, requests, callback):
+        archive_name = f"{self.config.username}_{datetime.now().isoformat()}"
+        self._create_archive(archive_name)
+        temp_folder = tempfile.mkdtemp(dir=self.config.cache_folder)
+
+        def _callback(result):
+            folder_to_add = result.pop("Folder")
+            self._add_to_archive(folder_to_add, archive_name)
+            shutil.rmtree(folder_to_add)
+            return callback(result)
+
+        finished = self._process_requests(requests, temp_folder, _callback)
+        shutil.rmtree(temp_folder)
+        return finished
+
+    def batch_transfer(self, requests, callback):
         logging.info(
-            "Starting transfer of %d requests at %s with config: %s",
+            "Starting to transfer %d requests at %s with config: %s",
             len(requests),
             datetime.now().ctime(),
             self.config,
         )
 
-        def process_callback(result):
-            folder_path = result.pop("Folder")
-            if folder_path:
-                self.destination.upload_folder(folder_path)
-                shutil.rmtree(folder_path)
-
-            return handler_callback(result)
-
-        cache_folder_path = tempfile.mkdtemp(dir=self.config.cache_folder)
-        finished = self._batch_process(requests, cache_folder_path, process_callback)
+        if isinstance(self.destination, DicomConnector):
+            finished = self._transfer_to_server(requests, callback)
+        else:
+            assert isinstance(self.destination, Path)
+            if self.config.archive_password:
+                finished = self._transfer_to_archive(requests, callback)
+            else:
+                finished = self._transfer_to_folder(requests, callback)
 
         logging.info(
             "Transfered %d requests at %s with config: %s",
