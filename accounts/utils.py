@@ -1,7 +1,8 @@
 import logging
 from django.contrib.auth.models import Group, Permission
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("adit." + __name__)
+
 
 def _permission_names_to_objects(names):
     """
@@ -14,21 +15,25 @@ def _permission_names_to_objects(names):
     for name in names:
         app_label, codename = name.split(".", 1)
         try:
-            result.append(Permission.objects.get(content_type__app_label=app_label,
-                                                 codename=codename))
+            result.append(
+                Permission.objects.get(
+                    content_type__app_label=app_label, codename=codename
+                )
+            )
         except Permission.DoesNotExist:
-            logger.exception("NO SUCH PERMISSION: %s, %s" % (app_label, codename))
+            logger.exception("NO SUCH PERMISSION: %s, %s", app_label, codename)
             raise
     return result
 
+
 def create_group_with_permissions(group_name, permission_names):
     """Create a group with added permissions programmatically.
-    
+
     Inspired by https://cheat.readthedocs.io/en/latest/django/permissions.html
     """
     group, created = Group.objects.get_or_create(name=group_name)
     if created:
-        logger.info(f'Created group {group_name}')
+        logger.info("Created group %s.", group_name)
 
     perms_to_add = _permission_names_to_objects(permission_names)
     group.permissions.add(*perms_to_add)

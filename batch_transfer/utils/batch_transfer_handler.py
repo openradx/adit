@@ -11,6 +11,8 @@ from time import sleep
 from main.utils.dicom_connector import DicomConnector
 from main.utils.anonymizer import Anonymizer
 
+logger = logging.getLogger("adit." + __name__)
+
 
 class BatchTransferHandler:
 
@@ -176,7 +178,7 @@ class BatchTransferHandler:
                     requests, folder_path
                 )
 
-                logging.info("Successfully processed request with ID %d.", request_id)
+                logger.info("Successfully processed request with ID %d.", request_id)
                 stop_processing = process_callback(
                     {
                         "RequestID": request_id,
@@ -187,7 +189,7 @@ class BatchTransferHandler:
                     }
                 )
             except Exception as err:
-                logging.error(
+                logger.error(
                     "Error while processing request with ID %d: %s", request_id, err
                 )
                 stop_processing = process_callback(
@@ -250,7 +252,7 @@ class BatchTransferHandler:
         return finished
 
     def batch_transfer(self, requests, callback):
-        logging.info(
+        logger.info(
             "Starting to transfer %d requests at %s with config: %s",
             len(requests),
             datetime.now().ctime(),
@@ -266,7 +268,7 @@ class BatchTransferHandler:
             else:
                 finished = self._transfer_to_folder(requests, callback)
 
-        logging.info(
+        logger.info(
             "Transfered %d requests at %s with config: %s",
             len(requests),
             datetime.now().ctime(),

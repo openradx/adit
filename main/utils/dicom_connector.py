@@ -27,6 +27,8 @@ from pynetdicom.sop_class import (  # pylint: disable-msg=no-name-in-module
 )
 from pynetdicom.status import code_to_category
 
+logger = logging.getLogger("adit." + __name__)
+
 
 def _make_query_dataset(query_dict):
     """Turn a dict into a pydicom dataset for query."""
@@ -106,7 +108,7 @@ def _extract_results(responses, operation, query_dict):
                 }
             )
         else:
-            logging.error(
+            logger.error(
                 "Association rejected, aborted or never connected during %s with query: %s.",
                 operation,
                 str(query_dict),
@@ -157,22 +159,29 @@ def _handle_store(folder, callback, event):
 
 
 def _connect_to_server(func):
-    def wrapper(self, *args, **kwargs):
-        if self.assoc is None or not self.assoc.is_alive():
-            self.open_connection()
+    """Automatically handles the connection when `auto_config` option is set.
 
-        result = None
-        exception_occurred = False
-        try:
-            result = func(self, *args, **kwargs)
-        except Exception as ex:
-            logging.error(
-                "An error occurred during DICOM operation %s: %s", func.__name__, ex
-            )
-            exception_occurred = True
-        finally:
-            if exception_occurred or self.config.auto_close_connection:
-                self.close_connection()
+    Opens and closes the connecition to the DICOM server when a method is
+    decorated with this function. Only a connection is opened for the most
+    outer function that is called. So if the method itself calls a method
+    that is also decorated with this function then the connection is reused
+    and the connection is closed by the most outer method automatically.
+    """
+
+    def wrapper(self, *args, **kwargs):
+        opened_connection = False
+
+        if self.config.auto_connect and (
+            self.assoc is None or not self.assoc.is_alive()
+        ):
+            self.open_connection()
+            opened_connection = True
+
+        result = func(self, *args, **kwargs)
+
+        if opened_connection and self.config.auto_connect:
+            self.close_connection()
+            opened_connection = False
 
         return result
 
@@ -189,16 +198,16 @@ class DicomConnector:
         patient_root_query_model_find: bool = True
         patient_root_query_model_get: bool = True
         patient_root_query_model_move: bool = True
-        debug: bool = False
+        debug_logger: bool = False
         connection_retries: int = 3
         retry_timeout: int = 30  # in seconds
-        auto_close_connection = True
+        auto_connect = True
 
     def __init__(self, config: Config):
         self.config = config
 
-        if config.debug:
-            debug_logger()
+        if config.debug_logger:
+            debug_logger()  # Debug mode of pynetdicom
 
         if config.patient_root_query_model_find:
             self.find_query_model = PatientRootQueryRetrieveInformationModelFind
@@ -248,14 +257,18 @@ class DicomConnector:
         if self.assoc:
             raise AssertionError("A former connection was not closed properly.")
 
+        logger.debug(
+            "Opening connection to DICOM server %s.", self.config.server_ae_title
+        )
+
         for i in range(self.config.connection_retries):
             try:
                 self._associate()
                 break
             except ConnectionError as err:
-                logging.exception("Could not connect to server: %s", str(err))
+                logger.exception("Could not connect to server: %s", str(err))
                 if i < self.config.connection_retries - 1:
-                    logging.info(
+                    logger.info(
                         "Retrying to connect in %d seconds.", self.config.retry_timeout,
                     )
                     time.sleep(self.config.retry_timeout)
@@ -263,16 +276,24 @@ class DicomConnector:
                     raise err
 
     def close_connection(self):
-        if self.assoc:
-            self.assoc.release()
-            self.assoc = None
+        if not self.assoc:
+            raise AssertionError("No connection to close was opened.")
+
+        logger.debug(
+            "Closing connection to DICOM server %s.", self.config.server_ae_title
+        )
+
+        self.assoc.release()
+        self.assoc = None
 
     @_connect_to_server
     def c_find(self, query_dict, msg_id=1):
+        logger.info("Sending C-FIND with query: %s", query_dict)
+
         query_ds = _make_query_dataset(query_dict)
 
         responses = self.assoc.send_c_find(query_ds, self.find_query_model, msg_id)
-        return _extract_results(responses, "C-Find", query_dict)
+        return _extract_results(responses, "C-FIND", query_dict)
 
     @_connect_to_server
     def c_get(self, query_dict, folder=None, callback=None, msg_id=1):
@@ -327,12 +348,13 @@ class DicomConnector:
                         }
                     )
                 else:
-                    logging.error(
+                    logger.error(
                         "Invalid connection during C-STORE with folder: %s", folder
                     )
 
         return results
 
+    @_connect_to_server
     def fetch_study_modalities(self, patient_id, study_uid):
         """Fetch all modalities of a study and return them in a list."""
 
@@ -340,6 +362,7 @@ class DicomConnector:
         modalities = set(map(lambda x: x["Modality"], series_list))
         return sorted(list(modalities))
 
+    @_connect_to_server
     def find_patients(self, patient_id, patient_name, patient_birth_date):
         """Find patients with the given patient ID and/or patient name and birth date."""
         query_dict = {
@@ -353,6 +376,7 @@ class DicomConnector:
 
         return result_data
 
+    @_connect_to_server
     def find_studies(  # pylint: disable=too-many-arguments
         self,
         patient_id="",
@@ -397,6 +421,7 @@ class DicomConnector:
 
         return result_data
 
+    @_connect_to_server
     def find_series(self, patient_id, study_uid, modality=None):
         """Find all series UIDs for a given study UID. The series can be filtered by a
         modality (or multiple modalities). If no modality is set all series UIDs of the
@@ -423,6 +448,7 @@ class DicomConnector:
             )
         )
 
+    @_connect_to_server
     def download_patient(  # pylint: disable=too-many-arguments
         self,
         patient_id,
@@ -449,6 +475,7 @@ class DicomConnector:
                 modifier_callback,
             )
 
+    @_connect_to_server
     def download_study(  # pylint: disable=too-many-arguments
         self,
         patient_id,
@@ -471,6 +498,7 @@ class DicomConnector:
                 patient_id, study_uid, series_uid, download_path, modifier_callback
             )
 
+    @_connect_to_server
     def download_series(  # pylint: disable=too-many-arguments
         self, patient_id, study_uid, series_uid, folder_path, modifier_callback=None
     ):
@@ -488,15 +516,16 @@ class DicomConnector:
 
         if not results or results[-1]["status"]["category"] != "Success":
             msg = str(results)
-            raise Exception(
+            raise RuntimeError(
                 "Failure while downloading series with UID %s: %s" % (series_uid, msg)
             )
 
+    @_connect_to_server
     def upload_folder(self, folder_path):
         """Upload a specified folder to a DICOM server."""
 
         start_time = datetime.now().ctime()
-        logging.info(
+        logger.info(
             "Upload of folder %s started at %s with config: %s",
             folder_path,
             start_time,
@@ -509,11 +538,11 @@ class DicomConnector:
             status_category = result["status"]["category"]
             if status_category != "Success":
                 if status_category == "Failure":
-                    logging.error(
+                    logger.error(
                         "Error while uploading instance UID %s.", result["data"]
                     )
                 else:
-                    logging.warning(
+                    logger.warning(
                         "%s while uploading instance UID %s.",
                         status_category,
                         result["data"],
