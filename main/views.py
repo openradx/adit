@@ -10,30 +10,30 @@ from django.shortcuts import redirect
 from django.conf import settings
 from django_tables2 import SingleTableView
 from revproxy.views import ProxyView
-from .models import DicomJob
-from .tables import DicomJobTable
+from .models import TransferJob
+from .tables import TransferJobTable
 from .site import job_detail_views
 from .mixins import OwnerRequiredMixin
 
 
-class DicomJobListView(LoginRequiredMixin, SingleTableView):
-    table_class = DicomJobTable
-    template_name = "main/dicom_job_table.html"
+class TransferJobListView(LoginRequiredMixin, SingleTableView):
+    table_class = TransferJobTable
+    template_name = "main/transfer_job_table.html"
 
     def get_queryset(self):
-        return DicomJob.objects.filter(created_by=self.request.user)
+        return TransferJob.objects.filter(created_by=self.request.user)
 
 
 def render_job_detail(request, pk):
-    job = get_object_or_404(DicomJob, pk=pk)
+    job = get_object_or_404(TransferJob, pk=pk)
     CustomDetailView = job_detail_views[job.job_type]
     return CustomDetailView.as_view()(request, pk=pk)
 
 
-class DicomJobDelete(LoginRequiredMixin, OwnerRequiredMixin, DeleteView):
-    model = DicomJob
+class TransferJobDelete(LoginRequiredMixin, OwnerRequiredMixin, DeleteView):
+    model = TransferJob
     owner_accessor = "created_by"
-    success_url = reverse_lazy("dicom_job_list")
+    success_url = reverse_lazy("transfer_job_list")
     success_message = "Job with ID %(id)s was deleted successfully"
 
     def delete(self, request, *args, **kwargs):
@@ -44,15 +44,17 @@ class DicomJobDelete(LoginRequiredMixin, OwnerRequiredMixin, DeleteView):
         return super().delete(request, *args, **kwargs)
 
 
-class DicomJobCancel(LoginRequiredMixin, OwnerRequiredMixin, SingleObjectMixin, View):
-    model = DicomJob
+class TransferJobCancel(
+    LoginRequiredMixin, OwnerRequiredMixin, SingleObjectMixin, View
+):
+    model = TransferJob
     owner_accessor = "created_by"
     success_message = "Job with ID %(id)n was canceled"
 
     def post(self, request, *args, **kwargs):  # pylint: disable=unused-argument
         job = self.get_object()
         if job.is_cancelable():
-            job.status = DicomJob.Status.CANCELING
+            job.status = TransferJob.Status.CANCELING
             job.save()
             messages.success(self.request, self.success_message % job.__dict__)
             redirect(job)

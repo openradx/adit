@@ -1,6 +1,6 @@
 from django.utils.html import format_html
 import django_tables2 as tables
-from .models import DicomJob
+from .models import TransferJob
 
 
 class JobIdColumn(tables.Column):
@@ -11,11 +11,11 @@ class JobIdColumn(tables.Column):
         return format_html(f'<a href="{url}">{value}</a>')
 
 
-class DicomJobTable(tables.Table):
+class TransferJobTable(tables.Table):
     id = JobIdColumn()
 
     class Meta:  # pylint: disable=too-few-public-methods
-        model = DicomJob
+        model = TransferJob
         order_by = ("-id",)
         template_name = "django_tables2/bootstrap4.html"
         fields = ("id", "job_type", "status", "source", "destination", "created_at")

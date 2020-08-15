@@ -48,7 +48,7 @@ class DicomFolder(DicomNode):
         self.node_type = DicomNode.NodeType.FOLDER
 
 
-class DicomJob(models.Model):
+class TransferJob(models.Model):
     class Status(models.TextChoices):
         UNVERIFIED = "UV", "Unverified"
         PENDING = "PE", "Pending"
@@ -75,7 +75,7 @@ class DicomJob(models.Model):
     )
     message = models.TextField(null=True, blank=True)
     created_by = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="jobs"
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="transfer_jobs"
     )
     created_at = models.DateTimeField(auto_now_add=True)
     started_at = models.DateTimeField(null=True)
@@ -83,7 +83,7 @@ class DicomJob(models.Model):
     stopped_at = models.DateTimeField(null=True)
 
     def get_absolute_url(self):
-        return reverse("dicom_job_detail", args=[str(self.id)])
+        return reverse("transfer_job_detail", args=[str(self.id)])
 
     def is_deletable(self):
         return self.status in [self.Status.UNVERIFIED, self.Status.PENDING]

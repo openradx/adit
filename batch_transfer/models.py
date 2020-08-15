@@ -1,7 +1,7 @@
 from datetime import time
 from django.db import models
 from django.urls import reverse
-from main.models import DicomJob
+from main.models import TransferJob
 
 
 def slot_time(hour, minute):
@@ -26,7 +26,7 @@ class AppSettings(models.Model):
         verbose_name_plural = "App settings"
 
 
-class BatchTransferJob(DicomJob):
+class BatchTransferJob(TransferJob):
     JOB_TYPE = "BT"
 
     project_name = models.CharField(max_length=150)
@@ -54,7 +54,7 @@ class BatchTransferJob(DicomJob):
         return self.requests.filter(status=BatchTransferRequest.Status.SUCCESS)
 
     def get_absolute_url(self):
-        return reverse("dicom_job_detail", args=[str(self.pk)])
+        return reverse("transfer_job_detail", args=[str(self.pk)])
 
 
 class BatchTransferRequest(models.Model):

@@ -1,6 +1,6 @@
 from django.apps import AppConfig
 from django.db.models.signals import post_migrate
-from main.site import register_main_menu_item, register_dicom_job
+from main.site import register_main_menu_item, register_transfer_job
 
 
 class SelectiveTransferConfig(AppConfig):
@@ -20,7 +20,7 @@ def register_app():
     from .models import SelectiveTransferJob
     from .views import SelectiveTransferJobDetail
 
-    register_dicom_job(
+    register_transfer_job(
         type_key=SelectiveTransferJob.JOB_TYPE,
         type_name="Selective transfer job",
         detail_view=SelectiveTransferJobDetail,

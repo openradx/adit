@@ -50,7 +50,14 @@
 
 <div>
 {% if job.is_deletable %}
-    <button type="button" class="btn btn-danger" data-toggle="modal" data-target="#delete-job-modal">Delete Job</button>
+    <button 
+        type="button"
+        class="btn btn-danger"
+        data-toggle="modal"
+        data-target="#delete-transfer-job-modal"
+    >
+        Delete Job
+    </button>
 {% endif %}
 
 {% if job.is_cancelable %}
@@ -61,5 +68,5 @@
 {% endblock %}
 
 {% block bottom %}
-{% include 'main/delete_job_modal.html' with modal_id="delete-job-modal" %}
+{% include 'main/delete_transfer_job_modal.html' with modal_id="delete-transfer-job-modal" %}
 {% endblock %}

@@ -1,5 +1,5 @@
 from django.db import models
-from main.models import DicomJob
+from main.models import TransferJob
 
 
 class AppSettings(models.Model):
@@ -17,7 +17,7 @@ class AppSettings(models.Model):
         verbose_name_plural = "App settings"
 
 
-class SelectiveTransferJob(DicomJob):
+class SelectiveTransferJob(TransferJob):
     JOB_TYPE = "ST"
 
 

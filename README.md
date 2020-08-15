@@ -7,7 +7,6 @@
 -   Think about moving all those dicts to dataclasses when passing around data
     -- Allow provide a regex of StudyDescription in CSV batch file
     -- Allow to specify many modalities per row in CSV file
--   rename DicomJob to TransferJob
 
 # Testing and coverage commands
 

@@ -3,7 +3,7 @@ from functools import partial
 from celery import shared_task
 from django.conf import settings
 from django.utils import timezone
-from main.models import DicomNode, DicomServer, DicomJob
+from main.models import DicomNode, DicomServer, TransferJob
 from main.utils.dicom_connector import DicomConnector
 from .models import AppSettings, BatchTransferJob, BatchTransferRequest
 from .utils.batch_transfer_handler import BatchTransferHandler
@@ -43,12 +43,12 @@ def process_result(batch_job, result):
     stop_processing = False
 
     if must_be_scheduled():
-        batch_job.status = DicomJob.Status.PAUSED
+        batch_job.status = TransferJob.Status.PAUSED
         batch_job.paused_at = timezone.now()
         batch_job.save()
         stop_processing = True
-    elif batch_job.status == DicomJob.Status.CANCELING:
-        batch_job.status = DicomJob.Status.CANCELED
+    elif batch_job.status == TransferJob.Status.CANCELING:
+        batch_job.status = TransferJob.Status.CANCELED
         batch_job.save()
         stop_processing = True
 
@@ -60,13 +60,13 @@ def perform_batch_transfer(batch_job_id):
     """The background task to do the batch transfer."""
     batch_job = BatchTransferJob.objects.get(id=batch_job_id)
 
-    if batch_job.status not in [DicomJob.Status.PENDING, DicomJob.Status.PAUSED]:
+    if batch_job.status not in [TransferJob.Status.PENDING, TransferJob.Status.PAUSED]:
         raise AssertionError(
             f"Skipping task to process batch job with ID {batch_job.id} "
             f" because of an invalid status {batch_job.get_status_display()}."
         )
 
-    batch_job.status = DicomJob.Status.IN_PROGRESS
+    batch_job.status = TransferJob.Status.IN_PROGRESS
     batch_job.started_at = timezone.now()
     batch_job.paused_at = None
     batch_job.save()
@@ -115,21 +115,21 @@ def perform_batch_transfer(batch_job_id):
         total_requests = batch_job.requests.count()
         successful_requests = batch_job.get_successful_requests().count()
         if successful_requests == total_requests:
-            batch_job.status = DicomJob.Status.SUCCESS
+            batch_job.status = TransferJob.Status.SUCCESS
             batch_job.message = "All requests succeeded."
         elif successful_requests > 0:
-            batch_job.status = DicomJob.Status.WARNING
+            batch_job.status = TransferJob.Status.WARNING
             batch_job.message = "Some requests failed."
         else:
-            batch_job.status = DicomJob.Status.FAILURE
+            batch_job.status = TransferJob.Status.FAILURE
             batch_job.message = "All requests failed."
         batch_job.save()
-    elif batch_job.status == DicomJob.Status.PAUSED:
+    elif batch_job.status == TransferJob.Status.PAUSED:
         batch_job.paused_at = timezone.now()
         batch_job.save()
         next_slot = next_batch_slot()
         perform_batch_transfer.apply_async(args=[batch_job_id], eta=next_slot)
-    elif batch_job.status == DicomJob.Status.CANCELED:
+    elif batch_job.status == TransferJob.Status.CANCELED:
         batch_job.stopped_at = timezone.now()
         batch_job.save()
     else:

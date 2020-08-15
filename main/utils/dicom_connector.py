@@ -156,6 +156,29 @@ def _handle_store(folder, callback, event):
     return 0x0000
 
 
+def _connect_to_server(func):
+    def wrapper(self, *args, **kwargs):
+        if self.assoc is None or not self.assoc.is_alive():
+            self.open_connection()
+
+        result = None
+        exception_occurred = False
+        try:
+            result = func(self, *args, **kwargs)
+        except Exception as ex:
+            logging.error(
+                "An error occurred during DICOM operation %s: %s", func.__name__, ex
+            )
+            exception_occurred = True
+        finally:
+            if exception_occurred or self.config.auto_close_connection:
+                self.close_connection()
+
+        return result
+
+    return wrapper
+
+
 class DicomConnector:
     @dataclass
     class Config:  # pylint: disable=too-many-instance-attributes
@@ -169,6 +192,7 @@ class DicomConnector:
         debug: bool = False
         connection_retries: int = 3
         retry_timeout: int = 30  # in seconds
+        auto_close_connection = True
 
     def __init__(self, config: Config):
         self.config = config
@@ -221,33 +245,36 @@ class DicomConnector:
             )
 
     def open_connection(self):
-        if self.assoc is None or not self.assoc.is_alive():
-            for i in range(self.config.connection_retries):
-                try:
-                    self._associate()
-                    break
-                except ConnectionError as err:
-                    logging.exception("Could not connect to server: %s", str(err))
-                    if i < self.config.connection_retries - 1:
-                        logging.info(
-                            "Retrying to connect in %d seconds.",
-                            self.config.retry_timeout,
-                        )
-                        time.sleep(self.config.retry_timeout)
-                    else:
-                        raise err
+        if self.assoc:
+            raise AssertionError("A former connection was not closed properly.")
+
+        for i in range(self.config.connection_retries):
+            try:
+                self._associate()
+                break
+            except ConnectionError as err:
+                logging.exception("Could not connect to server: %s", str(err))
+                if i < self.config.connection_retries - 1:
+                    logging.info(
+                        "Retrying to connect in %d seconds.", self.config.retry_timeout,
+                    )
+                    time.sleep(self.config.retry_timeout)
+                else:
+                    raise err
 
     def close_connection(self):
         if self.assoc:
             self.assoc.release()
             self.assoc = None
 
+    @_connect_to_server
     def c_find(self, query_dict, msg_id=1):
         query_ds = _make_query_dataset(query_dict)
 
         responses = self.assoc.send_c_find(query_ds, self.find_query_model, msg_id)
         return _extract_results(responses, "C-Find", query_dict)
 
+    @_connect_to_server
     def c_get(self, query_dict, folder=None, callback=None, msg_id=1):
         if folder:
             Path(folder).mkdir(parents=True, exist_ok=True)
@@ -266,6 +293,7 @@ class DicomConnector:
 
         return results
 
+    @_connect_to_server
     def c_move(self, query_dict, destination_ae_title, msg_id=1):
         query_ds = _make_query_dataset(query_dict)
 
@@ -274,6 +302,7 @@ class DicomConnector:
         )
         return _extract_results(responses, "C-MOVE", query_dict)
 
+    @_connect_to_server
     def c_store(self, folder, callback=None, msg_id=1):
         results = []
         for root, _, files in os.walk(folder):

@@ -1,6 +1,6 @@
 from django.apps import AppConfig
 from django.db.models.signals import post_migrate
-from main.site import register_main_menu_item, register_dicom_job
+from main.site import register_main_menu_item, register_transfer_job
 
 
 class BatchTransferConfig(AppConfig):
@@ -22,7 +22,7 @@ def register_app():
     from .models import BatchTransferJob
     from .views import BatchTransferJobDetail
 
-    register_dicom_job(
+    register_transfer_job(
         type_key=BatchTransferJob.JOB_TYPE,
         type_name="Batch transfer job",
         detail_view=BatchTransferJobDetail,
