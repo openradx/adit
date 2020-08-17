@@ -56,17 +56,13 @@ class BatchTransferJobCreateTest(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "batch_transfer/batch_transfer_job_form.html")
 
-    @patch("batch_transfer.views.must_be_scheduled", return_value=False)
-    @patch("batch_transfer.views.perform_batch_transfer")
-    def test_batch_job_created_and_enqueued(
-        self, perform_batch_transfer_mock, must_be_scheduled_mock
-    ):
+    @patch("batch_transfer.views.batch_transfer.delay")
+    def test_batch_job_created_and_enqueued(self, batch_transfer_delay_mock):
         self.client.force_login(self.user_with_permission)
         self.client.post(reverse("batch_transfer_job_create"), self.form_data)
         job = BatchTransferJob.objects.first()
         self.assertEqual(job.requests.count(), 3)
-        must_be_scheduled_mock.assert_called_once()
-        perform_batch_transfer_mock.delay.assert_called_once_with(job.id)
+        batch_transfer_delay_mock.assert_called_once_with(job.id)
 
     def test_job_cant_be_created_with_missing_fields(self):
         self.client.force_login(self.user_with_permission)

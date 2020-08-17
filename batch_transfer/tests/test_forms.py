@@ -26,7 +26,7 @@ class BatchTransferJobFormTests(TestCase):
 
     def test_field_labels(self):
         form = BatchTransferJobForm(user=self.user)
-        self.assertEqual(len(form.fields), 9)
+        self.assertEqual(len(form.fields), 8)
         self.assertEqual(form.fields["source"].label, "Source")
         self.assertEqual(form.fields["destination"].label, "Destination")
         self.assertEqual(form.fields["project_name"].label, "Project name")
