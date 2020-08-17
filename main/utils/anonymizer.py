@@ -4,17 +4,27 @@ import string
 import random
 import pydicom
 
+def _person_names_callback(_, data_element):
+    if data_element.VR == "PN":
+        data_element.value = "Anonymized"
+
+
+def _curves_callback(ds, data_element):
+    if data_element.tag.group & 0xFF00 == 0x5000:
+        del ds[data_element.tag]
+
+
 class Anonymizer:
     def __init__(
-            self,
-            anonymize_patient_id=False,
-            anonymize_patient_name=True,
-            normalize_birth_date=True,
-            anonymize_all_person_names=True,
-            anomymize_curves=True,
-            remove_private_tags=True,
-            remove_other_patient_ids=True):
-
+        self,
+        anonymize_patient_id=False,
+        anonymize_patient_name=True,
+        normalize_birth_date=True,
+        anonymize_all_person_names=True,
+        anomymize_curves=True,
+        remove_private_tags=True,
+        remove_other_patient_ids=True,
+    ):
         self.anonymize_patient_id = anonymize_patient_id
         self.anonymize_patient_name = anonymize_patient_name
         self.normalize_birth_date = normalize_birth_date
@@ -25,19 +35,7 @@ class Anonymizer:
 
         self.generated_pseudonyms = []
 
-    def _person_names_callback(self, ds, data_element):
-        if data_element.VR == "PN":
-            data_element.value = "Anonymized"
-
-    def _curves_callback(self, ds, data_element):
-        if data_element.tag.group & 0xFF00 == 0x5000:
-            del ds[data_element.tag]
-
-    def anonymize_dataset(
-            self,
-            ds,
-            patient_id=None,
-            patient_name=None):
+    def anonymize_dataset(self, ds, patient_id=None, patient_name=None):
 
         if self.anonymize_patient_id:
             ds.PatientID = "Anonymized"
@@ -50,18 +48,18 @@ class Anonymizer:
             ds.PatientBirthDate = birth_date[0:4] + "0101"
 
         if self.anonymize_all_person_names:
-            ds.walk(self._person_names_callback)
+            ds.walk(_person_names_callback)
 
         if self.anomymize_curves:
-            ds.walk(self._curves_callback)
+            ds.walk(_curves_callback)
 
         if self.remove_private_tags:
             ds.remove_private_tags()
 
         if self.remove_other_patient_ids:
-            if hasattr(ds, 'OtherPatientIDs'):
+            if hasattr(ds, "OtherPatientIDs"):
                 del ds.OtherPatientIDs
-            if hasattr(ds, 'OtherPatientIDsSequence'):
+            if hasattr(ds, "OtherPatientIDsSequence"):
                 del ds.OtherPatientIDsSequence
 
         if patient_id is not None:
@@ -76,7 +74,7 @@ class Anonymizer:
         if not Path(folder).is_dir():
             raise ValueError(f"Invalid folder: {folder}")
 
-        callback = kwargs.pop('callback', None)
+        callback = kwargs.pop("callback", None)
         if callback is not None and not callable(callback):
             raise ValueError("callback must be callable function")
 
@@ -95,18 +93,13 @@ class Anonymizer:
         return True
 
     def generate_pseudonym(
-        self,
-        length=12,
-        prefix="",
-        suffix="",
-        random_string=True,
-        uppercase=True
+        self, length=12, prefix="", suffix="", random_string=True, uppercase=True
     ):
         pseudonym = None
         while True:
             chars = string.ascii_lowercase + string.digits
             if random_string:
-                pseudonym = ''.join(random.choice(chars) for _ in range(length))
+                pseudonym = "".join(random.choice(chars) for _ in range(length))
                 if uppercase:
                     pseudonym = pseudonym.upper()
             else:

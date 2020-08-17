@@ -1,7 +1,8 @@
 from datetime import time
 from django.db import models
+from django.contrib.contenttypes.fields import GenericRelation
 from django.urls import reverse
-from main.models import TransferJob
+from main.models import TransferJob, TransferTask
 
 
 def slot_time(hour, minute):
@@ -31,9 +32,6 @@ class BatchTransferJob(TransferJob):
 
     project_name = models.CharField(max_length=150)
     project_description = models.TextField(max_length=2000)
-    trial_protocol_id = models.CharField(max_length=64, blank=True)
-    trial_protocol_name = models.CharField(max_length=64, blank=True)
-    archive_password = models.CharField(max_length=50, blank=True)
 
     class Meta:
         permissions = (
@@ -44,14 +42,8 @@ class BatchTransferJob(TransferJob):
         super().__init__(*args, **kwargs)
         self.job_type = self.JOB_TYPE
 
-    def get_unprocessed_requests(self):
-        return self.requests.filter(status=BatchTransferRequest.Status.UNPROCESSED)
-
     def get_processed_requests(self):
-        return self.requests.exclude(status=BatchTransferRequest.Status.UNPROCESSED)
-
-    def get_successful_requests(self):
-        return self.requests.filter(status=BatchTransferRequest.Status.SUCCESS)
+        return self.requests.exclude(status=BatchTransferRequest.Status.PENDING)
 
     def get_absolute_url(self):
         return reverse("transfer_job_detail", args=[str(self.pk)])
@@ -59,7 +51,8 @@ class BatchTransferJob(TransferJob):
 
 class BatchTransferRequest(models.Model):
     class Status(models.TextChoices):
-        UNPROCESSED = "UN", "Unprocessed"
+        PENDING = "PE", "Pending"
+        IN_PROGRESS = "IP", "In Progress"
         SUCCESS = "SU", "Success"
         FAILURE = "FA", "Failure"
 
@@ -68,6 +61,9 @@ class BatchTransferRequest(models.Model):
 
     job = models.ForeignKey(
         BatchTransferJob, on_delete=models.CASCADE, related_name="requests"
+    )
+    transfer_tasks = GenericRelation(
+        TransferTask, related_query_name="batch_transfer_request"
     )
     request_id = models.PositiveIntegerField()
     patient_id = models.CharField(null=True, blank=True, max_length=64)
@@ -78,7 +74,7 @@ class BatchTransferRequest(models.Model):
     modality = models.CharField(max_length=16)
     pseudonym = models.CharField(null=True, blank=True, max_length=324)
     status = models.CharField(
-        max_length=2, choices=Status.choices, default=Status.UNPROCESSED
+        max_length=2, choices=Status.choices, default=Status.PENDING
     )
     message = models.TextField(null=True, blank=True)
     processed_at = models.DateTimeField(null=True)

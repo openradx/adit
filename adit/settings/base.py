@@ -212,3 +212,7 @@ ADIT_CACHE_FOLDER = env.str("ADIT_CACHE_FOLDER", "/tmp/adit_cache_folder")
 # The delimiter of the CSV file that contains the requests for
 # the batch transfer
 BATCH_FILE_CSV_DELIMITER = ";"
+
+# ADIT uses a cache for patients so that not the DICOM server must not
+# always be queried. This is how many patients fit into the cache.
+BATCH_PATIENT_CACHE_SIZE = 10000
