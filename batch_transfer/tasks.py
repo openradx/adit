@@ -28,7 +28,7 @@ def batch_transfer(job_id):
         eta = scheduler.next_slot()
 
     transfer_requests = [
-        transfer_request.s((request.id,), eta=eta) for request in job.requests
+        transfer_request.s((request.id,), eta=eta) for request in job.requests.all()
     ]
 
     chord(transfer_requests)(update_job_status.s(job_id))
