@@ -363,7 +363,7 @@ class DicomConnector:
         return sorted(list(modalities))
 
     @_connect_to_server
-    def find_patients(self, patient_id, patient_name, patient_birth_date):
+    def find_patients(self, patient_id="", patient_name="", patient_birth_date=""):
         """Find patients with the given patient ID and/or patient name and birth date."""
         query_dict = {
             "QueryRetrieveLevel": "PATIENT",
@@ -381,9 +381,12 @@ class DicomConnector:
         self,
         patient_id="",
         patient_name="",
-        patient_birth_date="",
+        birth_date="",
         accession_number="",
+        study_uid="",
         study_date="",
+        study_time="",
+        study_description="",
         modality=None,
     ):
         """Find all studies for a given patient and filter optionally by
@@ -393,12 +396,12 @@ class DicomConnector:
             "QueryRetrieveLevel": "STUDY",
             "PatientID": patient_id,
             "PatientName": patient_name,
-            "PatientBirthDate": patient_birth_date,
+            "PatientBirthDate": birth_date,
             "AccessionNumber": accession_number,
+            "StudyInstanceUID": study_uid,
             "StudyDate": study_date,
-            "StudyTime": "",
-            "StudyInstanceUID": "",
-            "StudyDescription": "",
+            "StudyTime": study_time,
+            "StudyDescription": study_description,
         }
         results = self.c_find(query_dict)
         result_data = _extract_pending_data(results)
@@ -422,7 +425,14 @@ class DicomConnector:
         return result_data
 
     @_connect_to_server
-    def find_series(self, patient_id, study_uid, modality=None):
+    def find_series(  # pylint: disable=too-many-arguments
+        self,
+        patient_id="",
+        study_uid="",
+        series_uid="",
+        series_description="",
+        modality=None,
+    ):
         """Find all series UIDs for a given study UID. The series can be filtered by a
         modality (or multiple modalities). If no modality is set all series UIDs of the
         study will be returned."""
@@ -431,9 +441,9 @@ class DicomConnector:
             "QueryRetrieveLevel": "SERIES",
             "PatientID": patient_id,
             "StudyInstanceUID": study_uid,
-            "SeriesInstanceUID": "",
-            "SeriesDescription": "",
-            "Modality": "",
+            "SeriesInstanceUID": series_uid,
+            "SeriesDescription": series_description,
+            "Modality": "",  # we handle Modality programmatically, see below
         }
         results = self.c_find(query_dict)
         result_data = _extract_pending_data(results)

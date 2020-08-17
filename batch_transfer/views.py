@@ -6,8 +6,7 @@ from main.mixins import OwnerRequiredMixin
 from main.models import DicomNode
 from .models import AppSettings, BatchTransferJob
 from .forms import BatchTransferJobForm
-from .utils.task_utils import must_be_scheduled, next_batch_slot
-from .tasks import perform_batch_transfer
+from .tasks import batch_transfer
 
 
 class BatchTransferJobCreate(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
@@ -32,12 +31,8 @@ class BatchTransferJobCreate(LoginRequiredMixin, PermissionRequiredMixin, Create
         # it is already fixed in an upcoming release, see
         # https://code.djangoproject.com/ticket/30457
         # transaction.on_commit(lambda: enqueue_batch_job(self.object.id))
-        batch_job_id = self.object.id
-        if must_be_scheduled():
-            next_slot = next_batch_slot()
-            perform_batch_transfer.apply_async(args=[batch_job_id], eta=next_slot)
-        else:
-            perform_batch_transfer.delay(batch_job_id)
+        job_id = self.object.id
+        batch_transfer.delay(job_id)
 
         return response
 

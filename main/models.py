@@ -1,8 +1,11 @@
+from django.contrib.contenttypes.fields import GenericForeignKey
+from django.contrib.contenttypes.models import ContentType
 from django.db import models
 from django.conf import settings
 from django.urls import reverse
 from django.core.validators import MaxValueValidator, MinValueValidator
 from .site import job_type_choices
+from .utils.dicom_connector import DicomConnector
 
 
 class AppSettings(models.Model):
@@ -39,6 +42,20 @@ class DicomServer(DicomNode):
         super().__init__(*args, **kwargs)
         self.node_type = DicomNode.NodeType.SERVER
 
+    def create_connector(self, auto_connect=True):
+        return DicomConnector(
+            DicomConnector.Config(
+                client_ae_title=settings.ADIT_AE_TITLE,
+                server_ae_title=self.ae_title,
+                server_ip=self.ip,
+                server_port=self.port,
+                patient_root_query_model_find=self.patient_root_query_model_find,
+                patient_root_query_model_get=self.patient_root_query_model_get,
+                patient_root_query_model_move=self.patient_root_query_model_move,
+                auto_connect=auto_connect,
+            )
+        )
+
 
 class DicomFolder(DicomNode):
     path = models.CharField(max_length=256)
@@ -53,7 +70,6 @@ class TransferJob(models.Model):
         UNVERIFIED = "UV", "Unverified"
         PENDING = "PE", "Pending"
         IN_PROGRESS = "IP", "In Progress"
-        PAUSED = "PA", "Paused"
         CANCELING = "CI", "Canceling"
         CANCELED = "CA", "Canceled"
         SUCCESS = "SU", "Success"
@@ -74,12 +90,14 @@ class TransferJob(models.Model):
         max_length=2, choices=Status.choices, default=Status.UNVERIFIED
     )
     message = models.TextField(null=True, blank=True)
+    trial_protocol_id = models.CharField(max_length=64, blank=True)
+    trial_protocol_name = models.CharField(max_length=64, blank=True)
+    archive_password = models.CharField(max_length=50, blank=True)
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="transfer_jobs"
     )
     created_at = models.DateTimeField(auto_now_add=True)
     started_at = models.DateTimeField(null=True)
-    paused_at = models.DateTimeField(null=True)
     stopped_at = models.DateTimeField(null=True)
 
     def get_absolute_url(self):
@@ -94,3 +112,46 @@ class TransferJob(models.Model):
     def __str__(self):
         status_dict = dict(self.Status.choices)
         return f"{self.__class__.__name__} {status_dict[self.status]}"
+
+
+class TransferTask(models.Model):
+    class Status(models.TextChoices):
+        PENDING = "PE", "Pending"
+        IN_PROGRESS = "IP", "In Progress"
+        SUCCESS = "SU", "Success"
+        FAILURE = "FA", "Failure"
+
+    # The generic relation is optional and may be used to organize
+    # the transfers in an additional way
+    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
+    object_id = models.PositiveIntegerField()
+    content_object = GenericForeignKey("content_type", "object_id")
+
+    job = models.ForeignKey(TransferJob, on_delete=models.CASCADE, related_name="tasks")
+    status = models.CharField(
+        max_length=2, choices=Status.choices, default=Status.PENDING,
+    )
+    message = models.TextField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    started_at = models.DateTimeField(null=True)
+    stopped_at = models.DateTimeField(null=True)
+
+
+class DicomStudy(models.Model):
+    task = models.ForeignKey(
+        TransferTask, on_delete=models.CASCADE, related_name="study_list"
+    )
+    patient_id = models.CharField(max_length=64)
+    pseudonym = models.CharField(null=True, blank=True, max_length=324)
+    study_uid = models.CharField(null=True, blank=True, max_length=64)
+    modalities = models.TextField(null=True, blank=True)
+
+
+class DicomSeries(models.Model):
+    task = models.ForeignKey(
+        TransferTask, on_delete=models.CASCADE, related_name="series_list"
+    )
+    patient_id = models.CharField(max_length=64)
+    pseudonym = models.CharField(null=True, blank=True, max_length=324)
+    study_uid = models.CharField(null=True, blank=True, max_length=64)
+    series_uid = models.CharField(null=True, blank=True, max_length=64)

@@ -1,139 +1,156 @@
-from pathlib import Path
-from functools import partial
-from celery import shared_task
+from celery import shared_task, chord
 from django.conf import settings
-from django.utils import timezone
-from main.models import DicomNode, DicomServer, TransferJob
-from main.utils.dicom_connector import DicomConnector
+from main.models import TransferJob, TransferTask, DicomStudy
+from main.tasks import transfer_dicoms
+from main.utils.cache import LRUCache
+from main.utils.scheduler import Scheduler
 from .models import AppSettings, BatchTransferJob, BatchTransferRequest
-from .utils.batch_transfer_handler import BatchTransferHandler
-from .utils.task_utils import must_be_scheduled, next_batch_slot
+
+patient_cache = LRUCache(settings.BATCH_PATIENT_CACHE_SIZE)
 
 
-def _build_connector_config(server: DicomServer):
-    return DicomConnector.Config(
-        client_ae_title=settings.ADIT_AE_TITLE,
-        server_ae_title=server.ae_title,
-        server_ip=server.ip,
-        server_port=server.port,
-        patient_root_query_model_find=server.patient_root_query_model_find,
-        patient_root_query_model_get=server.patient_root_query_model_get,
+@shared_task(ignore_result=True)
+def batch_transfer(job_id):
+    job = BatchTransferJob.objects.get(id=job_id)
+
+    if job.status != TransferJob.Status.PENDING:
+        raise AssertionError(f"Invalid job status: {job.get_status_display()}")
+
+    app_settings = AppSettings.load()
+    scheduler = Scheduler(
+        app_settings.batch_slot_begin_time,
+        app_settings.batch_slot_end_time,
+        app_settings.batch_transfer_suspended,
     )
 
+    eta = None
+    if scheduler.must_be_scheduled():
+        eta = scheduler.next_slot()
 
-def process_result(batch_job, result):
-    """The callback to process a result of a running batch job.
+    transfer_requests = [
+        transfer_request.s((request.id,), eta=eta) for request in job.requests
+    ]
 
-    The callback returns True if the job should be paused or canceled.
-    """
-    request_id = result["RequestID"]
-    request = BatchTransferRequest.objects.get(job=batch_job.id, request_id=request_id)
-    if result["Status"] == BatchTransferHandler.SUCCESS:
-        request.status = BatchTransferRequest.Status.SUCCESS
-    elif result["Status"] == BatchTransferHandler.FAILURE:
-        request.status = BatchTransferRequest.Status.FAILURE
-    else:
-        raise Exception("Invalid result status: " + result["Status"])
-    request.message = result["Message"]
-    if result["Pseudonym"]:
-        result.pseudonym = result["Pseudonym"]
-    request.processed_at = timezone.now()
-    request.save()
-
-    stop_processing = False
-
-    if must_be_scheduled():
-        batch_job.status = TransferJob.Status.PAUSED
-        batch_job.paused_at = timezone.now()
-        batch_job.save()
-        stop_processing = True
-    elif batch_job.status == TransferJob.Status.CANCELING:
-        batch_job.status = TransferJob.Status.CANCELED
-        batch_job.save()
-        stop_processing = True
-
-    return stop_processing
+    chord(transfer_requests)(update_job_status.s(job_id))
 
 
 @shared_task
-def perform_batch_transfer(batch_job_id):
-    """The background task to do the batch transfer."""
-    batch_job = BatchTransferJob.objects.get(id=batch_job_id)
+def transfer_request(request_id):
+    request = BatchTransferRequest.objects.get(id=request_id)
+    if request.status != BatchTransferRequest.Status.PENDING:
+        raise AssertionError(f"Invalid job status: {request.get_status_display()}")
 
-    if batch_job.status not in [TransferJob.Status.PENDING, TransferJob.Status.PAUSED]:
-        raise AssertionError(
-            f"Skipping task to process batch job with ID {batch_job.id} "
-            f" because of an invalid status {batch_job.get_status_display()}."
+    job = request.job
+    if job.status == BatchTransferJob.Status.PENDING:
+        job.status = BatchTransferJob.Status.IN_PROGRESS
+        job.save()
+
+    request.status = BatchTransferRequest.Status.IN_PROGRESS
+    request.save()
+
+    try:
+        connector = job.source.create_connector()
+
+        patient_id = _fetch_patient(request, connector)["PatientID"]
+        studies = connector.find_studies(
+            patient_id,
+            accession_number=request.accession_number,
+            study_date=request.study_date,
+            modality=request.modality,
         )
 
-    batch_job.status = TransferJob.Status.IN_PROGRESS
-    batch_job.started_at = timezone.now()
-    batch_job.paused_at = None
-    batch_job.save()
+        if len(studies) == 0:
+            raise ValueError("No studies found to transfer.")
 
-    app_settings = AppSettings.load()
-    handler_config = BatchTransferHandler.Config(
-        username=batch_job.created_by.username,
-        trial_protocol_id=batch_job.trial_protocol_id,
-        trial_protocol_name=batch_job.trial_protocol_name,
-        archive_password=batch_job.archive_password,
-        cache_folder=settings.ADIT_CACHE_FOLDER,
-        batch_timeout=app_settings.batch_timeout,
-    )
+        transfer_task = TransferTask.objects.create(content_object=request, job=job)
 
-    # The source of the transfer is always a server
-    server = batch_job.source.dicomserver
-    source = DicomConnector(_build_connector_config(server))
+        for study in studies:
+            DicomStudy.objects.create(
+                task=transfer_task,
+                patient_id=patient_id,
+                pseudonym=request.pseudonym,
+                study_uid=study["StudyInstanceUID"],
+                modalities=request.modality,
+            )
 
-    # Destination can be a server or a folder
-    if batch_job.destination.node_type == DicomNode.NodeType.SERVER:
-        server = batch_job.destination.dicomserver
-        destination = DicomConnector(_build_connector_config(server))
-    else:
-        folder = batch_job.destination.dicomfolder
-        destination = Path(folder.path)
+        has_success = False
+        has_failure = False
+        task_status = transfer_dicoms(transfer_task.id)
+        if task_status == TransferTask.Status.SUCCESS:
+            has_success = True
+        if task_status == TransferTask.Status.FAILURE:
+            has_failure = True
 
-    unprocessed_requests = [
-        {
-            "RequestID": req.request_id,
-            "PatientID": req.patient_id,
-            "PatientName": req.patient_name,
-            "PatientBirthDate": req.patient_birth_date,
-            "StudyDate": req.study_date,
-            "Modality": req.modality,
-            "Pseudonym": req.pseudonym,
-        }
-        for req in batch_job.get_unprocessed_requests()
-    ]
-    handler = BatchTransferHandler(handler_config, source, destination)
-    callback = partial(process_result, batch_job)
-    finished = handler.batch_transfer(unprocessed_requests, callback)
+        if has_failure and has_success:
+            raise ValueError("Some transfers failed")
 
-    # If all requests were processed then the job finished otherwise it was
-    # paused by the system or cancelled by the user
-    if finished:
-        total_requests = batch_job.requests.count()
-        successful_requests = batch_job.get_successful_requests().count()
-        if successful_requests == total_requests:
-            batch_job.status = TransferJob.Status.SUCCESS
-            batch_job.message = "All requests succeeded."
-        elif successful_requests > 0:
-            batch_job.status = TransferJob.Status.WARNING
-            batch_job.message = "Some requests failed."
+        if has_failure and not has_success:
+            raise ValueError("All transfers failed.")
+
+        request.status = BatchTransferRequest.Status.SUCCESS
+        request.save()
+
+    except Exception as err:  # pylint: disable=broad-except
+        request.status = BatchTransferRequest.Status.FAILURE
+        request.message = str(err)
+        request.save()
+
+    return request.status
+
+
+@shared_task(ignore_result=True)
+def update_job_status(job_id, request_status_list):
+    job = BatchTransferJob.objects.get(id=job_id)
+
+    has_success = False
+    has_failure = False
+    for status in request_status_list:
+        if status == BatchTransferRequest.Status.SUCCESS:
+            has_success = True
+        elif status == BatchTransferRequest.Status.FAILURE:
+            has_failure = True
         else:
-            batch_job.status = TransferJob.Status.FAILURE
-            batch_job.message = "All requests failed."
-        batch_job.save()
-    elif batch_job.status == TransferJob.Status.PAUSED:
-        batch_job.paused_at = timezone.now()
-        batch_job.save()
-        next_slot = next_batch_slot()
-        perform_batch_transfer.apply_async(args=[batch_job_id], eta=next_slot)
-    elif batch_job.status == TransferJob.Status.CANCELED:
-        batch_job.stopped_at = timezone.now()
-        batch_job.save()
+            raise AssertionError("Invalid request status.")
+
+    if has_success and has_failure:
+        job.status = TransferJob.Status.WARNING
+        job.message = "Some requests failed."
+    elif has_success:
+        job.status = TransferJob.Status.SUCCESS
+        job.message = "All requests succeeded."
+    elif has_failure:
+        job.status = TransferJob.Status.FAILURE
+        job.message = "All requests failed."
     else:
-        raise AssertionError(
-            f"Invalid status of job with ID {batch_job.id}:"
-            f" {batch_job.get_status_display()}"
-        )
+        raise AssertionError("Invalid request status.")
+
+
+def _fetch_patient(request, connector):
+    """Fetch the patient for this request.
+
+    Raises an error if there is no patient or there are multiple patients for this request.
+    """
+    patient_id = request.patient_id
+    patient_name = request.patient_name
+    patient_birth_date = request.patient_birth_date
+
+    patient_key = f"{patient_id}__{patient_name}__{patient_birth_date}"
+    patient = patient_cache.get(patient_key)
+    if patient:
+        return patient
+
+    patients = connector.find_patients(patient_id, patient_name, patient_birth_date)
+    if len(patients) == 0:
+        raise ValueError("No patients found.")
+    if len(patients) > 1:
+        raise ValueError("Multiple patients found.")
+
+    patient = patients[0]
+    patient_id = patient["PatientID"]
+    patient_name = patient["PatientName"]
+    patient_birth_date = patient["PatientBirthDate"]
+
+    patient_key = f"{patient_id}__{patient_name}__{patient_birth_date}"
+    patient_cache.set(patient_key, patient)
+
+    return patient
