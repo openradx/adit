@@ -1,7 +1,26 @@
-{% load bootstrap4 %}
+{% load i18n bootstrap4 %}
 
 <div class="messages-panel-outer">
-    <div class="messages-panel-inner">
-        {% bootstrap_messages %}
+    <div
+        class="messages-panel-inner"
+        x-data="alertMessages()"
+        x-init="autoHideServerMessages($el)"
+        @main:add-message.window="addMessage($event.detail)"
+    >
+        {# Messages placed by the server (server side rendered) #}
+        {% for message in messages %}
+            <div class="{{ message|bootstrap_message_classes }} alert-dismissible fade show server-message" role="alert">
+                <button type="button" class="close" data-dismiss="alert" aria-label="{% trans 'close' %}">&#215;</button>
+                <span>{{ message }}</span>
+            </div>
+        {% endfor %}
+
+        {# Messages placed by the client (client side rendered) #}
+        <template x-for="message in messages" :key="message.id">
+            <div :class="{[message.type]: true}" class="alert alert-dismissible fade show client-message" role="alert">
+                <button type="button" class="close" data-dismiss="alert" aria-label="{% trans 'close' %}">&#215;</button>
+                <span x-text="message.text" />
+            </div>
+        </template>
     </div>
 </div>
