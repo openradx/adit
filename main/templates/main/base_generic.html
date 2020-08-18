@@ -18,7 +18,8 @@
 
 	<script src="{% static 'main/vendor/js/jquery.js' %}"></script>
 	<script src="{% static 'main/vendor/js/bootstrap.bundle.js' %}"></script>
-	<script src="{% static 'main/vendor/js/intercooler.js' %}"></script>
+	<script type="module" src="{% static 'main/vendor/js/alpine.js' %}"></script>
+	<script nomodule src="{% static 'main/vendor/js/alpine-ie11.js' %}" defer></script>
 	<script src="{% static 'main/vendor/js/clipboard.js' %}"></script>
 	<script src="{% static 'main/js/main.js' %}"></script>
 	{% block script %}{% endblock %}
@@ -35,9 +36,7 @@
 		{% endblock %}
 	</main>
 
-	{% if messages %}
 	{% include 'main/messages_panel.html' %}
-	{% endif %}
 
 	{% block bottom %}{% endblock %}
 </body>

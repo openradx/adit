@@ -5,7 +5,7 @@ from django.core.exceptions import ValidationError
 from django.conf import settings
 from django.utils import formats
 from crispy_forms.helper import FormHelper
-from crispy_forms.layout import Submit
+from crispy_forms.layout import Submit, Div
 import cchardet as chardet
 from main.models import DicomNode
 from .models import BatchTransferJob, BatchTransferRequest
@@ -27,6 +27,10 @@ class BatchTransferJobForm(ModelForm):
         self.fields["source"].queryset = DicomNode.objects.filter(
             node_type=DicomNode.NodeType.SERVER
         )
+
+        self.fields["destination"].widget.attrs[
+            "@change"
+        ] = "destinationChanged($event)"
 
         self.fields["trial_protocol_id"].widget.attrs["placeholder"] = "Optional"
 
@@ -65,8 +69,13 @@ class BatchTransferJobForm(ModelForm):
             two DICOM nodes. See [help] how to format the CSV file.
         """
 
-        self.helper = FormHelper()
-        self.helper.add_input(Submit("save", "Create new batch transfer job"))
+        self.helper = FormHelper(self)
+        self.helper.attrs["x-data"] = "batchTransferForm()"
+        self.helper.attrs["x-init"] = "init"
+
+        self.helper["archive_password"].wrap(Div, x_show="isDestinationFolder")
+
+        self.helper.add_input(Submit("save", "Create Job"))
 
     def clean_archive_password(self):
         archive_password = self.cleaned_data["archive_password"]

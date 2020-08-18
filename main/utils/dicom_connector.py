@@ -201,7 +201,7 @@ class DicomConnector:
         debug_logger: bool = False
         connection_retries: int = 3
         retry_timeout: int = 30  # in seconds
-        auto_connect = True
+        auto_connect: bool = True
 
     def __init__(self, config: Config):
         self.config = config
