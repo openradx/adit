@@ -1,11 +1,26 @@
+function loadData(jsonElementId) {
+    return JSON.parse(document.getElementById(jsonElementId).textContent);
+}
+
+// From https://stackoverflow.com/a/2117523/166229
+function uuidv4() {
+    return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function (
+        c
+    ) {
+        var r = (Math.random() * 16) | 0,
+            v = c == "x" ? r : (r & 0x3) | 0x8;
+        return v.toString(16);
+    });
+}
+
 function alertMessages() {
     return {
         options: {
             nextMessageId: 1,
-            duration: 3000,
+            duration: 10000,
         },
         messages: [],
-        autoHideServerMessages(panel) {
+        autoHideServerMessages: function (panel) {
             const serverMessages = panel.getElementsByClassName(
                 "server-message"
             );
@@ -17,7 +32,7 @@ function alertMessages() {
                 );
             }
         },
-        addMessage(message) {
+        addMessage: function (message) {
             message.id = this.options.nextMessageId;
             this.messages.push(message);
             const self = this;
@@ -26,8 +41,4 @@ function alertMessages() {
             }, this.options.duration);
         },
     };
-}
-
-function loadData(jsonElementId) {
-    return JSON.parse(document.getElementById(jsonElementId).textContent);
 }

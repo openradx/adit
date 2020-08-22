@@ -8,12 +8,67 @@
 {% endblock %}
 
 {% block container %}
-<h4>Search studies to transfer</h4>
-<p>{% crispy form %}</p>
-<p>No results found</p>
-<div class="progress" style="height: 20px;">
-    <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" aria-valuenow="75" aria-valuemin="0" aria-valuemax="100" style="width: 100%">
-        Searching ...
+<h4 class="mb-3">Select studies to transfer</h4>
+
+<form @submit.prevent="submitTransfer" novalidate="true" x-data="queryForm()" x-init="init($el, $dispatch)" method="post">
+    {% crispy form %}
+
+    <p x-show="noSearchYet" class="lead">Choose a DICOM source and enter your search</p>
+
+    <div x-show="searchInProgress" x-cloak>
+        <div class="d-flex justify-content-center">
+            <div class="d-flex flex-column align-items-center">
+                <div class="spinner-border" style="width: 3rem; height: 3rem;" role="status">
+                    <span class="sr-only">Loading...</span>
+                </div>
+                <div class="mt-2">
+                    Searching ...
+                </div>
+            </div>
+        </div>
     </div>
-</div>
+
+    <div x-show="results.length > 0">
+        <table class="table" x-cloak>
+            <thead>
+                <tr>
+                    <th>
+                        <div class="custom-control custom-checkbox">
+                            <input x-model="selectAllChecked" @change="watchSelectAll" type="checkbox" class="custom-control-input" id="select_all">
+                            <label class="custom-control-label" for="select_all"></label>
+                        </div>
+                    </th>
+                    <th>Patient ID</th>
+                    <th>Patient Name</th>
+                    <th>Birth Date</th>
+                    <th>Study Date</th>
+                    <th>Modality</th>
+                    <th>Study Description</th>
+                </tr>
+            </thead>
+            <tbody>
+                <template x-for="(result, index) in results" :key="result.StudyInstanceUID">
+                    <tr>
+                        <td>
+                            <div class="custom-control custom-checkbox">
+                                <input x-model="result.selected" @change="selectionChanged" :id="'select_' + index" type="checkbox" class="custom-control-input">
+                                <label class="custom-control-label" :for="'select_' + index"></label>
+                            </div>
+                            <input type="hidden" :name="'form-' + index + '-patient_id'" value="result.PatientID" />
+                            <input type="hidden" :name="'form-' + index + '-study_uid'" value="result.StudyInstanceUID" />
+                        </td>
+                        <td x-text="result.PatientID" />
+                        <td x-text="result.PatientName" />
+                        <td x-text="result.PatientBirthDate" />
+                        <td x-text="result.StudyDate" />
+                        <td x-text="result.Modalities" />
+                        <td x-text="result.StudyDescription" />
+                    </tr>
+                </template>
+            </tbody>
+        </table>
+
+        <input type="submit" class="btn btn-primary" value="Start Transfer" />
+    </div>
+</form>
 {% endblock %}

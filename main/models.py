@@ -123,8 +123,10 @@ class TransferTask(models.Model):
 
     # The generic relation is optional and may be used to organize
     # the transfers in an additional way
-    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
-    object_id = models.PositiveIntegerField()
+    content_type = models.ForeignKey(
+        ContentType, blank=True, null=True, on_delete=models.SET_NULL
+    )
+    object_id = models.PositiveIntegerField(blank=True, null=True)
     content_object = GenericForeignKey("content_type", "object_id")
 
     job = models.ForeignKey(TransferJob, on_delete=models.CASCADE, related_name="tasks")
@@ -142,9 +144,9 @@ class DicomStudy(models.Model):
         TransferTask, on_delete=models.CASCADE, related_name="study_list"
     )
     patient_id = models.CharField(max_length=64)
+    study_uid = models.CharField(max_length=64)
+    modalities = models.CharField(null=True, blank=True, max_length=100)
     pseudonym = models.CharField(null=True, blank=True, max_length=324)
-    study_uid = models.CharField(null=True, blank=True, max_length=64)
-    modalities = models.TextField(null=True, blank=True)
 
 
 class DicomSeries(models.Model):
@@ -152,6 +154,6 @@ class DicomSeries(models.Model):
         TransferTask, on_delete=models.CASCADE, related_name="series_list"
     )
     patient_id = models.CharField(max_length=64)
+    study_uid = models.CharField(max_length=64)
+    series_uid = models.CharField(max_length=64)
     pseudonym = models.CharField(null=True, blank=True, max_length=324)
-    study_uid = models.CharField(null=True, blank=True, max_length=64)
-    series_uid = models.CharField(null=True, blank=True, max_length=64)

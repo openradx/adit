@@ -1,18 +1,26 @@
+import logging
 from channels.generic.websocket import AsyncJsonWebsocketConsumer
 from channels.db import database_sync_to_async
 from asgiref.sync import sync_to_async
 from main.models import DicomServer
 
+logger = logging.getLogger("adit." + __name__)
+
 
 @database_sync_to_async
 def fetch_source_server(source_id):
-    print(source_id)
-    return DicomServer.objects.get(id=source_id)
+    if not source_id:
+        return None
+
+    try:
+        server = DicomServer.objects.get(id=source_id)
+    except DicomServer.DoesNotExist:
+        server = None
+    return server
 
 
 @sync_to_async
 def query_studies(server: DicomServer, query: dict):
-    print(query)
     connector = server.create_connector()
     results = connector.find_studies(
         query["patient_id"],
@@ -22,31 +30,41 @@ def query_studies(server: DicomServer, query: dict):
         query["study_date"],
         query["modality"],
     )
-
     return results
 
 
 class SelectiveTransferConsumer(AsyncJsonWebsocketConsumer):
     def __init__(self, *args, **kwargs):
         self.user = None
-        self.assoc = None
         super().__init__(*args, **kwargs)
 
     async def connect(self):
+        logger.debug("Connected to WebSocket client.")
         self.user = self.scope["user"]
         await self.accept()
 
     async def disconnect(self, close_code):  # pylint: disable=arguments-differ
-        print("diconnected")
-        print(close_code)
+        logger.debug("Disconnected from WebSocket client with code: %s", close_code)
 
     async def receive_json(self, msg):  # pylint: disable=arguments-differ
         if msg.get("action") == "query_studies":
+            query_id = msg["queryId"]
             query = msg["query"]
+
+            if not query.get("source"):
+                await self.send_json(
+                    {"status": "ERROR", "message": "Source server missing."}
+                )
+
             server = await fetch_source_server(query.get("source"))
-            result = await query_studies(server, query)
-            await self.send_json(result)
+            if not server:
+                self.send_json({"status": "ERROR", "message": "Invalid source server."})
+            else:
+                results = await query_studies(server, query)
+                await self.send_json(
+                    {"queryId": query_id, "status": "SUCCESS", "results": results}
+                )
 
     def cancel_query(self):
-        pass
+        raise NotImplementedError()
         # self.assoc.accepted_contexts[0].context_id

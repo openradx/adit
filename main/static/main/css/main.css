@@ -1,3 +1,8 @@
+/* For alpinejs */
+[x-cloak] {
+    display: none;
+}
+
 /* Move down content because we have a fixed navbar that is 3.5rem tall */
 body {
     padding-top: 3.5rem;
@@ -19,12 +24,6 @@ body {
     position: relative;
     left: -50%;
     min-width: 500px;
-}
-
-/* Style the help links in the headers */
-.header-help-link {
-    font-size: 1rem;
-    border-bottom: 2px dotted;
 }
 
 /* Nice sort indicators in the django-table2 tables */

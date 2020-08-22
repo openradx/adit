@@ -5,10 +5,10 @@ function batchTransferForm() {
         init() {
             this.nodeTypes = loadData("nodeTypes");
         },
-        destinationChanged(event) {
+        destinationChanged: function (event) {
             const nodeId = event.currentTarget.value;
             const nodeType = this.nodeTypes[nodeId];
             this.isDestinationFolder = nodeType === "folder";
-        }
-    }
+        },
+    };
 }

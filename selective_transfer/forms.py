@@ -5,10 +5,12 @@ from selective_transfer.models import SelectiveTransferJob
 from main.models import DicomNode
 
 
-def create_field(field_name, submit_on_return=True):
+def create_field(field_name, send_query_on_enter=True):
     field_attrs = {"css_class": "query_field", "x_model": f"formData.{field_name}"}
-    if submit_on_return:
-        field_attrs["@keyup"] = "submitData($event, $dispatch)"
+    if send_query_on_enter:
+        field_attrs["@keydown.enter.prevent"] = "submitQuery()"
+    else:
+        field_attrs["@keydown.enter.prevent"] = ""
     return Column(Field(field_name, **field_attrs))
 
 
@@ -30,13 +32,7 @@ class SelectiveTransferJobForm(forms.ModelForm):
         )
 
         self.helper = FormHelper(self)
-        self.helper.attrs = {
-            "x-data": "queryForm()",
-            "x-init": "connect()",
-            "@submit.prevent": "",
-            "novalidate": "true",
-        }
-        self.helper.form_id = "study_query_form"
+        self.helper.form_tag = False
         self.helper.layout = Layout(
             Row(create_field("source", False), create_field("destination", False)),
             Row(
