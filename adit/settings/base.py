@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     "rest_framework",
     "bootstrap4",
     "main.apps.MainConfig",
+    "api.apps.ApiConfig",
     "selective_transfer.apps.SelectiveTransferConfig",
     "batch_transfer.apps.BatchTransferConfig",
 ]

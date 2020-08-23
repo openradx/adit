@@ -15,11 +15,6 @@ class BatchTransferJobCreate(LoginRequiredMixin, PermissionRequiredMixin, Create
     template_name = "batch_transfer/batch_transfer_job_form.html"
     permission_required = "batch_transfer.add_batchtransferjob"
 
-    def get_form_kwargs(self):
-        kwargs = super().get_form_kwargs()
-        kwargs.update({"user": self.request.user})
-        return kwargs
-
     def form_valid(self, form):
         form.instance.created_by = self.request.user
         response = super().form_valid(form)

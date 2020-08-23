@@ -17,7 +17,6 @@ class BatchTransferJobForm(ModelForm):
     csv_file = RestrictedFileField(max_upload_size=5242880)
 
     def __init__(self, *args, **kwargs):
-        self.user = kwargs.pop("user")
         self.csv_data = None
         self.save_requests = None
 

@@ -14,7 +14,9 @@ class SelectiveTransferConfig(AppConfig):
 
 
 def register_app():
-    register_main_menu_item(url_name="query_studies", label="Selective Transfer")
+    register_main_menu_item(
+        url_name="selective_transfer_job_form", label="Selective Transfer"
+    )
 
     # pylint: disable=import-outside-toplevel
     from .models import SelectiveTransferJob

@@ -8,15 +8,11 @@ from django.core.exceptions import SuspiciousOperation
 from django.contrib import messages
 from django.shortcuts import redirect
 from django.conf import settings
-from rest_framework import generics
-from rest_framework import permissions
-from rest_framework.exceptions import MethodNotAllowed
 from django_tables2 import SingleTableView
 from revproxy.views import ProxyView
 from .models import TransferJob
 from .tables import TransferJobTable
 from .site import job_detail_views
-from .serializers import TransferJobListSerializer, TransferJobCreateSerializer
 from .mixins import OwnerRequiredMixin
 
 
@@ -86,19 +82,3 @@ class FlowerProxyView(UserPassesTestMixin, ProxyView):
     @classmethod
     def as_url(cls):
         return re_path(r"^(?P<path>{}.*)$".format(cls.url_prefix), cls.as_view())
-
-
-class TransferJobListCreateAPIView(generics.ListCreateAPIView):
-    permission_classes = [permissions.IsAuthenticated]
-
-    def get_queryset(self):
-        return TransferJob.objects.filter(created_by=self.request.user)
-
-    def get_serializer_class(self):
-        if self.request.method == "GET":
-            return TransferJobListSerializer
-
-        if self.request.method == "POST":
-            return TransferJobCreateSerializer
-
-        raise MethodNotAllowed(self.request.method)

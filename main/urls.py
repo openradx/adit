@@ -6,7 +6,6 @@ from .views import (
     TransferJobDelete,
     TransferJobCancel,
     FlowerProxyView,
-    TransferJobListCreateAPIView,
 )
 
 urlpatterns = [
@@ -22,11 +21,6 @@ urlpatterns = [
         "transfer-jobs/<int:pk>/cancel",
         TransferJobCancel.as_view(),
         name="transfer_job_cancel",
-    ),
-    path(
-        "api/transfer-jobs/",
-        TransferJobListCreateAPIView.as_view(),
-        name="transfer_job_list_create_api",
     ),
     FlowerProxyView.as_url(),
 ]

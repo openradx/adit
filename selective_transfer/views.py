@@ -3,12 +3,14 @@ from django.contrib.auth.mixins import PermissionRequiredMixin
 from django.views.generic.edit import CreateView
 from django.views.generic import DetailView
 from django.http import HttpResponseBadRequest
+from rest_framework import generics
 from main.mixins import OwnerRequiredMixin
 from .forms import SelectiveTransferJobForm
 from .models import SelectiveTransferJob
+from .serializers import SelectiveTransferJobCreateSerializer
 
 
-class SelectiveTransferJobCreate(
+class SelectiveTransferJobFormView(
     LoginRequiredMixin, PermissionRequiredMixin, CreateView
 ):
     """A view class to render the selective transfer form.
@@ -23,6 +25,14 @@ class SelectiveTransferJobCreate(
 
     def post(self, request, *args, **kwargs):
         return HttpResponseBadRequest()
+
+
+class SelectiveTransferJobCreateAPIView(generics.CreateAPIView):
+    serializer_class = SelectiveTransferJobCreateSerializer
+
+    def perform_create(self, serializer):
+        print("in here")
+        serializer.save(created_by=self.request.user)
 
 
 class SelectiveTransferJobDetail(LoginRequiredMixin, OwnerRequiredMixin, DetailView):

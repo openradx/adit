@@ -111,14 +111,16 @@ function queryForm() {
             this.selectAllChecked = allSelected;
         },
         submitTransfer: function () {
+            const self = this;
+
             const studiesToTransfer = this.results
                 .filter(function (study) {
                     return !!study.selected;
                 })
                 .map(function (study) {
                     return {
-                        PatientID: study.PatientID,
-                        StudyInstanceUID: study.StudyInstanceUID,
+                        patient_id: study.PatientID,
+                        study_uid: study.StudyInstanceUID,
                     };
                 });
 
@@ -143,16 +145,30 @@ function queryForm() {
                     "[name=csrfmiddlewaretoken]"
                 ).value;
 
-                console.log(data);
-
                 $.ajax({
+                    url: "/selective-transfer/create/",
                     method: "POST",
                     headers: { "X-CSRFToken": csrftoken },
+                    dataType: "json",
+                    contentType: "application/json",
                     data: JSON.stringify(data),
                 })
-                    .done(function (data, textStatus, jqXHR) {})
-                    .fail(function (jqXHR, textStatus, errorThrown) {});
+                    .done(function (data) {
+                        self.showSuccess(
+                            "Successfully submitted transfer job with ID " +
+                                data.id
+                        );
+                    })
+                    .fail(function (response) {
+                        console.error(response);
+                    });
             }
+        },
+        showSuccess: function (text) {
+            this.dispatch("main:add-message", {
+                type: "alert-success",
+                text: text,
+            });
         },
         showError: function (text) {
             this.dispatch("main:add-message", {
