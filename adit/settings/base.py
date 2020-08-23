@@ -38,6 +38,7 @@ INSTALLED_APPS = [
     "loginas",
     "crispy_forms",
     "django_tables2",
+    "rest_framework",
     "bootstrap4",
     "main.apps.MainConfig",
     "selective_transfer.apps.SelectiveTransferConfig",

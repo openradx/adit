@@ -8,11 +8,15 @@ from django.core.exceptions import SuspiciousOperation
 from django.contrib import messages
 from django.shortcuts import redirect
 from django.conf import settings
+from rest_framework import generics
+from rest_framework import permissions
+from rest_framework.exceptions import MethodNotAllowed
 from django_tables2 import SingleTableView
 from revproxy.views import ProxyView
 from .models import TransferJob
 from .tables import TransferJobTable
 from .site import job_detail_views
+from .serializers import TransferJobListSerializer, TransferJobCreateSerializer
 from .mixins import OwnerRequiredMixin
 
 
@@ -37,10 +41,13 @@ class TransferJobDelete(LoginRequiredMixin, OwnerRequiredMixin, DeleteView):
     success_message = "Job with ID %(id)s was deleted successfully"
 
     def delete(self, request, *args, **kwargs):
-        obj = self.get_object()
+        job = self.get_object()
+        if not job.is_deletable():
+            raise SuspiciousOperation(f"Job with ID {job.id} is not deletable.")
+
         # As SuccessMessageMixin does not work in DeleteView we have to do
         # it manually (https://code.djangoproject.com/ticket/21936)
-        messages.success(self.request, self.success_message % obj.__dict__)
+        messages.success(self.request, self.success_message % job.__dict__)
         return super().delete(request, *args, **kwargs)
 
 
@@ -53,13 +60,13 @@ class TransferJobCancel(
 
     def post(self, request, *args, **kwargs):  # pylint: disable=unused-argument
         job = self.get_object()
-        if job.is_cancelable():
-            job.status = TransferJob.Status.CANCELING
-            job.save()
-            messages.success(self.request, self.success_message % job.__dict__)
-            redirect(job)
-        else:
+        if not job.is_cancelable():
             raise SuspiciousOperation(f"Job with ID {job.id} is not cancelable.")
+
+        job.status = TransferJob.Status.CANCELING
+        job.save()
+        messages.success(self.request, self.success_message % job.__dict__)
+        redirect(job)
 
 
 class FlowerProxyView(UserPassesTestMixin, ProxyView):
@@ -79,3 +86,19 @@ class FlowerProxyView(UserPassesTestMixin, ProxyView):
     @classmethod
     def as_url(cls):
         return re_path(r"^(?P<path>{}.*)$".format(cls.url_prefix), cls.as_view())
+
+
+class TransferJobListCreateAPIView(generics.ListCreateAPIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return TransferJob.objects.filter(created_by=self.request.user)
+
+    def get_serializer_class(self):
+        if self.request.method == "GET":
+            return TransferJobListSerializer
+
+        if self.request.method == "POST":
+            return TransferJobCreateSerializer
+
+        raise MethodNotAllowed(self.request.method)

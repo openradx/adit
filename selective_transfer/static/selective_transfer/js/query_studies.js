@@ -15,8 +15,7 @@ function queryForm() {
         noSearchYet: true,
         searchInProgress: false,
         selectAllChecked: false,
-        init: function ($el, $dispatch) {
-            this.form = $el;
+        init: function ($dispatch) {
             this.dispatch = $dispatch;
             this.connect();
         },
@@ -123,8 +122,6 @@ function queryForm() {
                     };
                 });
 
-            console.log(JSON.stringify(studiesToTransfer));
-
             if (!this.formData.source) {
                 this.showError("You must select a source.");
             } else if (!this.formData.destination) {
@@ -132,23 +129,29 @@ function queryForm() {
             } else if (studiesToTransfer.length === 0) {
                 this.showError("You must at least select one study.");
             } else {
-                this.form.submit();
-                console.log(this.form)
-                // const csrftoken = document.querySelector(
-                //     "[name=csrfmiddlewaretoken]"
-                // ).value;
+                const tasks = studiesToTransfer.map(function (study) {
+                    return { study_list: [study] };
+                });
 
-                // $.ajax({
-                //     method: "POST",
-                //     headers: { "X-CSRFToken": csrftoken },
-                //     data: JSON.stringify(studiesToTransfer),
-                // }).done(function(data, textStatus, jqXHR) {
+                const data = {
+                    source: this.formData.source,
+                    destination: this.formData.destination,
+                    tasks: tasks,
+                };
 
-                // }).fail(function(jqXHR, textStatus, errorThrown) {
+                const csrftoken = document.querySelector(
+                    "[name=csrfmiddlewaretoken]"
+                ).value;
 
-                // });
+                console.log(data);
 
-
+                $.ajax({
+                    method: "POST",
+                    headers: { "X-CSRFToken": csrftoken },
+                    data: JSON.stringify(data),
+                })
+                    .done(function (data, textStatus, jqXHR) {})
+                    .fail(function (jqXHR, textStatus, errorThrown) {});
             }
         },
         showError: function (text) {
