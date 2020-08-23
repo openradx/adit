@@ -9,7 +9,9 @@ from .forms import BatchTransferJobForm
 from .tasks import batch_transfer
 
 
-class BatchTransferJobCreate(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
+class BatchTransferJobCreateView(
+    LoginRequiredMixin, PermissionRequiredMixin, CreateView
+):
     model = BatchTransferJob
     form_class = BatchTransferJobForm
     template_name = "batch_transfer/batch_transfer_job_form.html"
@@ -50,7 +52,7 @@ class BatchTransferJobCreate(LoginRequiredMixin, PermissionRequiredMixin, Create
         return super().dispatch(request, *args, **kwargs)
 
 
-class BatchTransferJobDetail(LoginRequiredMixin, OwnerRequiredMixin, DetailView):
+class BatchTransferJobDetailView(LoginRequiredMixin, OwnerRequiredMixin, DetailView):
     model = BatchTransferJob
     context_object_name = "job"
     template_name = "batch_transfer/batch_transfer_job_detail.html"

@@ -24,13 +24,13 @@ class TransferJobListView(LoginRequiredMixin, SingleTableView):
         return TransferJob.objects.filter(created_by=self.request.user)
 
 
-def render_job_detail(request, pk):
+def render_job_detail_view(request, pk):
     job = get_object_or_404(TransferJob, pk=pk)
     CustomDetailView = job_detail_views[job.job_type]
     return CustomDetailView.as_view()(request, pk=pk)
 
 
-class TransferJobDelete(LoginRequiredMixin, OwnerRequiredMixin, DeleteView):
+class TransferJobDeleteView(LoginRequiredMixin, OwnerRequiredMixin, DeleteView):
     model = TransferJob
     owner_accessor = "created_by"
     success_url = reverse_lazy("transfer_job_list")
@@ -47,7 +47,7 @@ class TransferJobDelete(LoginRequiredMixin, OwnerRequiredMixin, DeleteView):
         return super().delete(request, *args, **kwargs)
 
 
-class TransferJobCancel(
+class TransferJobCancelView(
     LoginRequiredMixin, OwnerRequiredMixin, SingleObjectMixin, View
 ):
     model = TransferJob

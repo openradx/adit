@@ -9,7 +9,7 @@ from main.factories import DicomServerFactory
 from ..models import BatchTransferJob
 
 
-class BatchTransferJobCreateTest(TestCase):
+class BatchTransferJobCreateViewTest(TestCase):
     @classmethod
     def setUpTestData(cls):
         # Setup test users

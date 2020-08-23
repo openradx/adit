@@ -20,12 +20,12 @@ def register_app():
 
     # pylint: disable=import-outside-toplevel
     from .models import BatchTransferJob
-    from .views import BatchTransferJobDetail
+    from .views import BatchTransferJobDetailView
 
     register_transfer_job(
         type_key=BatchTransferJob.JOB_TYPE,
-        type_name="Batch transfer job",
-        detail_view=BatchTransferJobDetail,
+        type_name="Batch Transfer",
+        detail_view=BatchTransferJobDetailView,
     )
 
 

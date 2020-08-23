@@ -20,12 +20,12 @@ def register_app():
 
     # pylint: disable=import-outside-toplevel
     from .models import SelectiveTransferJob
-    from .views import SelectiveTransferJobDetail
+    from .views import SelectiveTransferJobDetailView
 
     register_transfer_job(
         type_key=SelectiveTransferJob.JOB_TYPE,
-        type_name="Selective transfer job",
-        detail_view=SelectiveTransferJobDetail,
+        type_name="Selective Transfer",
+        detail_view=SelectiveTransferJobDetailView,
     )
 
 

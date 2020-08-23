@@ -2,24 +2,24 @@ from django.urls import path
 from django.views.generic import TemplateView
 from .views import (
     TransferJobListView,
-    render_job_detail,
-    TransferJobDelete,
-    TransferJobCancel,
+    render_job_detail_view,
+    TransferJobDeleteView,
+    TransferJobCancelView,
     FlowerProxyView,
 )
 
 urlpatterns = [
     path("", TemplateView.as_view(template_name="main/home.html"), name="home"),
     path("transfer-jobs/", TransferJobListView.as_view(), name="transfer_job_list"),
-    path("transfer-jobs/<int:pk>/", render_job_detail, name="transfer_job_detail"),
+    path("transfer-jobs/<int:pk>/", render_job_detail_view, name="transfer_job_detail"),
     path(
         "transfer-jobs/<int:pk>/delete",
-        TransferJobDelete.as_view(),
+        TransferJobDeleteView.as_view(),
         name="transfer_job_delete",
     ),
     path(
         "transfer-jobs/<int:pk>/cancel",
-        TransferJobCancel.as_view(),
+        TransferJobCancelView.as_view(),
         name="transfer_job_cancel",
     ),
     FlowerProxyView.as_url(),

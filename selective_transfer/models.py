@@ -3,10 +3,9 @@ from main.models import TransferJob
 
 
 class AppSettings(models.Model):
-    # Lock the batch transfer creation form
+    # Lock the selective transfer creation form
     selective_transfer_locked = models.BooleanField(default=False)
-    # Suspend the batch transfer background processing. Pauses all
-    # running job by
+    # Suspend the selective transfer background processing.
     selective_transfer_suspended = models.BooleanField(default=False)
 
     @classmethod

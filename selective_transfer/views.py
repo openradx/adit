@@ -35,7 +35,9 @@ class SelectiveTransferJobCreateAPIView(generics.CreateAPIView):
         serializer.save(created_by=self.request.user)
 
 
-class SelectiveTransferJobDetail(LoginRequiredMixin, OwnerRequiredMixin, DetailView):
+class SelectiveTransferJobDetailView(
+    LoginRequiredMixin, OwnerRequiredMixin, DetailView
+):
     model = SelectiveTransferJob
     context_object_name = "job"
     template_name = "selective_transfer/selective_transfer_job_detail.html"

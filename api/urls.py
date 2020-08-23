@@ -1,11 +1,7 @@
 from django.urls import path
 
-from .views import TransferJobListCreateAPIView
+from .views import TransferJobListAPIView
 
 urlpatterns = [
-    path(
-        "transfer-jobs/",
-        TransferJobListCreateAPIView.as_view(),
-        name="transfer_job_list_create_api",
-    ),
+    path("transfer-jobs/", TransferJobListAPIView.as_view(),),
 ]

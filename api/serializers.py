@@ -29,7 +29,7 @@ class TransferTaskSerializer(serializers.ModelSerializer):
         super().__init__(instance=instance, data=data, **kwargs)
 
     def validate_study_list(self, study_list):  # pylint: disable=no-self-use
-        print("validating study_list")
+        print("validating study_list")  # TODO
         print(study_list)
         if len(study_list) > 3:
             raise serializers.ValidationError(
@@ -43,44 +43,6 @@ class TransferTaskSerializer(serializers.ModelSerializer):
         for study_data in study_list_data:
             DicomStudy.objects.create(task=task, **study_data)
         return task
-
-
-class TransferJobCreateSerializer(serializers.ModelSerializer):
-    tasks = TransferTaskSerializer(many=True)
-
-    class Meta:
-        model = TransferJob
-        fields = [
-            "source",
-            "destination",
-            "trial_protocol_id",
-            "trial_protocol_name",
-            "archive_password",
-            "tasks",
-        ]
-
-    def create(self, validated_data):
-        tasks_data = validated_data.pop("tasks")
-        job = TransferJob.objects.create(**validated_data)
-        for task_data in tasks_data:
-            TransferTask.objects.create(job=job, **task_data)
-        return job
-
-
-class TransferJobDetailSerializer(serializers.ModelSerializer):
-    tasks = TransferTaskSerializer(many=True)
-    archive = serializers.BooleanField(source="is_transfer_to_archive")
-
-    class Meta:
-        model = TransferJob
-        fields = [
-            "source",
-            "destination",
-            "trial_protocol_id",
-            "trial_protocol_name",
-            "archive",
-            "tasks",
-        ]
 
 
 class TransferJobListSerializer(serializers.ModelSerializer):
