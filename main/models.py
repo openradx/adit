@@ -87,7 +87,7 @@ class TransferJob(models.Model):
     )
     job_type = models.CharField(max_length=2, choices=job_type_choices)
     status = models.CharField(
-        max_length=2, choices=Status.choices, default=Status.UNVERIFIED
+        max_length=2, choices=Status.choices, default=Status.PENDING
     )
     message = models.TextField(null=True, blank=True)
     trial_protocol_id = models.CharField(max_length=64, blank=True)
@@ -107,7 +107,9 @@ class TransferJob(models.Model):
         return self.status in [self.Status.UNVERIFIED, self.Status.PENDING]
 
     def is_cancelable(self):
-        return self.status in [self.Status.IN_PROGRESS, self.Status.PAUSED]
+        return self.status in [
+            self.Status.IN_PROGRESS,
+        ]
 
     def is_transfer_to_archive(self):
         return bool(self.archive_password)

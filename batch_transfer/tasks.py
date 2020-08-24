@@ -1,6 +1,6 @@
 from celery import shared_task, chord
 from django.conf import settings
-from main.models import TransferJob, TransferTask, DicomStudy
+from main.models import TransferTask, DicomStudy
 from main.tasks import transfer_dicoms
 from main.utils.cache import LRUCache
 from main.utils.scheduler import Scheduler
@@ -13,7 +13,7 @@ patient_cache = LRUCache(settings.BATCH_PATIENT_CACHE_SIZE)
 def batch_transfer(job_id):
     job = BatchTransferJob.objects.get(id=job_id)
 
-    if job.status != TransferJob.Status.PENDING:
+    if job.status != BatchTransferJob.Status.PENDING:
         raise AssertionError(f"Invalid job status: {job.get_status_display()}")
 
     app_settings = AppSettings.load()
@@ -113,13 +113,13 @@ def update_job_status(job_id, request_status_list):
             raise AssertionError("Invalid request status.")
 
     if has_success and has_failure:
-        job.status = TransferJob.Status.WARNING
+        job.status = BatchTransferJob.Status.WARNING
         job.message = "Some requests failed."
     elif has_success:
-        job.status = TransferJob.Status.SUCCESS
+        job.status = BatchTransferJob.Status.SUCCESS
         job.message = "All requests succeeded."
     elif has_failure:
-        job.status = TransferJob.Status.FAILURE
+        job.status = BatchTransferJob.Status.FAILURE
         job.message = "All requests failed."
     else:
         raise AssertionError("Invalid request status.")
