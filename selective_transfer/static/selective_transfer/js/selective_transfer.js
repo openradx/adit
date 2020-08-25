@@ -1,4 +1,4 @@
-function queryForm() {
+function selectiveTransferForm() {
     return {
         formData: {
             source: 1,

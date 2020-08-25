@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from rest_framework.fields import empty
-from main.models import DicomNode, TransferJob, TransferTask, DicomStudy
+from main.models import DicomNode, TransferJob, TransferTask
 
 
 class DicomNodeSerializer(serializers.ModelSerializer):
@@ -11,38 +11,23 @@ class DicomNodeSerializer(serializers.ModelSerializer):
         fields = ["node_name", "node_type"]
 
 
-class DicomStudySerializer(serializers.ModelSerializer):
-    class Meta:
-        model = DicomStudy
-        fields = ["patient_id", "study_uid", "modalities", "pseudonym"]
-
-
 class TransferTaskSerializer(serializers.ModelSerializer):
-    study_list = DicomStudySerializer(many=True)
-
     class Meta:
         model = TransferTask
-        fields = ["study_list"]
+        fields = ["patient_id", "study_uid", "series_uids", "pseudonym"]
 
-    def __init__(self, instance=None, data=empty, max_study_count=3, **kwargs):
-        self.max_study_count = max_study_count
+    def __init__(self, instance=None, data=empty, max_series_count=100, **kwargs):
+        self.max_series_count = max_series_count
         super().__init__(instance=instance, data=data, **kwargs)
 
-    def validate_study_list(self, study_list):  # pylint: disable=no-self-use
-        print("validating study_list")  # TODO
-        print(study_list)
-        if len(study_list) > 3:
+    def validate_series_uids(self, series_uids):  # pylint: disable=no-self-use
+        print("validating series uids")  # TODO
+        print(series_uids)
+        if len(series_uids) > self.max_series_count:
             raise serializers.ValidationError(
-                f"Maximum {self.max_study_count} studies per task allowed."
+                f"Maximum {self.max_series_count} series per task allowed."
             )
-        return study_list
-
-    def create(self, validated_data):
-        study_list_data = validated_data.pop("study_list")
-        task = TransferTask.objects.create(**validated_data)
-        for study_data in study_list_data:
-            DicomStudy.objects.create(task=task, **study_data)
-        return task
+        return series_uids
 
 
 class TransferJobListSerializer(serializers.ModelSerializer):

@@ -6,6 +6,7 @@ from django.urls import reverse
 from django.core.validators import MaxValueValidator, MinValueValidator
 from .site import job_type_choices
 from .utils.dicom_connector import DicomConnector
+from .fields import SeparatedValuesField
 
 
 class AppSettings(models.Model):
@@ -89,10 +90,10 @@ class TransferJob(models.Model):
     status = models.CharField(
         max_length=2, choices=Status.choices, default=Status.PENDING
     )
-    message = models.TextField(null=True, blank=True)
-    trial_protocol_id = models.CharField(max_length=64, blank=True)
-    trial_protocol_name = models.CharField(max_length=64, blank=True)
-    archive_password = models.CharField(max_length=50, blank=True)
+    message = models.TextField(blank=True, null=True)
+    trial_protocol_id = models.CharField(max_length=64, blank=True, null=True)
+    trial_protocol_name = models.CharField(max_length=64, blank=True, null=True)
+    archive_password = models.CharField(max_length=50, blank=True, null=True)
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="transfer_jobs"
     )
@@ -135,30 +136,14 @@ class TransferTask(models.Model):
     content_object = GenericForeignKey("content_type", "object_id")
 
     job = models.ForeignKey(TransferJob, on_delete=models.CASCADE, related_name="tasks")
+    patient_id = models.CharField(max_length=64)
+    study_uid = models.CharField(max_length=64)
+    series_uids = SeparatedValuesField(blank=True, null=True)
+    pseudonym = models.CharField(max_length=324, blank=True, null=True)
     status = models.CharField(
         max_length=2, choices=Status.choices, default=Status.PENDING,
     )
-    message = models.TextField(null=True, blank=True)
+    message = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     started_at = models.DateTimeField(null=True)
     stopped_at = models.DateTimeField(null=True)
-
-
-class DicomStudy(models.Model):
-    task = models.ForeignKey(
-        TransferTask, on_delete=models.CASCADE, related_name="study_list"
-    )
-    patient_id = models.CharField(max_length=64)
-    study_uid = models.CharField(max_length=64)
-    modalities = models.CharField(null=True, blank=True, max_length=100)
-    pseudonym = models.CharField(null=True, blank=True, max_length=324)
-
-
-class DicomSeries(models.Model):
-    task = models.ForeignKey(
-        TransferTask, on_delete=models.CASCADE, related_name="series_list"
-    )
-    patient_id = models.CharField(max_length=64)
-    study_uid = models.CharField(max_length=64)
-    series_uid = models.CharField(max_length=64)
-    pseudonym = models.CharField(null=True, blank=True, max_length=324)

@@ -21,7 +21,9 @@ class TransferJobListView(LoginRequiredMixin, SingleTableView):
     template_name = "main/transfer_job_table.html"
 
     def get_queryset(self):
-        return TransferJob.objects.filter(created_by=self.request.user)
+        return TransferJob.objects.select_related("source", "destination").filter(
+            created_by=self.request.user
+        )
 
 
 def render_job_detail_view(request, pk):

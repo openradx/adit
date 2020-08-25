@@ -5,8 +5,7 @@
 
 {% block script %}
 {{ block.super }}
-<script src="{% static 'selective_transfer/js/query_studies.js' %}"></script>
-{% comment %} {{ url transfer_job_list_create_api|json_script"create_transfer_job_api" }} {% endcomment %}
+<script src="{% static 'selective_transfer/js/selective_transfer.js' %}"></script>
 {% endblock %}
 
 {% block container %}
@@ -15,7 +14,7 @@
 <form
     @submit.prevent="submitTransfer"
     novalidate="true"
-    x-data="queryForm()"
+    x-data="selectiveTransferForm()"
     x-init="init($dispatch)"
     method="post"
 >

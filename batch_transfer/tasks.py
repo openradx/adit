@@ -1,6 +1,6 @@
 from celery import shared_task, chord
 from django.conf import settings
-from main.models import TransferTask, DicomStudy
+from main.models import TransferTask
 from main.tasks import transfer_dicoms
 from main.utils.cache import LRUCache
 from main.utils.scheduler import Scheduler
@@ -62,30 +62,31 @@ def transfer_request(request_id):
         if len(studies) == 0:
             raise ValueError("No studies found to transfer.")
 
-        transfer_task = TransferTask.objects.create(content_object=request, job=job)
-
         for study in studies:
-            DicomStudy.objects.create(
-                task=transfer_task,
-                patient_id=patient_id,
-                pseudonym=request.pseudonym,
-                study_uid=study["StudyInstanceUID"],
-                modalities=request.modality,
-            )
+            pass
 
         has_success = False
         has_failure = False
-        task_status = transfer_dicoms(transfer_task.id)
-        if task_status == TransferTask.Status.SUCCESS:
-            has_success = True
-        if task_status == TransferTask.Status.FAILURE:
-            has_failure = True
+        for study in studies:
+            transfer_task = TransferTask.objects.create(
+                content_object=request,
+                job=job,
+                patient_id=patient_id,
+                study_uid=study["StudyInstanceUID"],
+                pseudonym=request.pseudonym,
+            )
+
+            task_status = transfer_dicoms(transfer_task.id)
+            if task_status == TransferTask.Status.SUCCESS:
+                has_success = True
+            if task_status == TransferTask.Status.FAILURE:
+                has_failure = True
 
         if has_failure and has_success:
-            raise ValueError("Some transfers failed")
+            raise ValueError("Some transfer tasks failed")
 
         if has_failure and not has_success:
-            raise ValueError("All transfers failed.")
+            raise ValueError("All transfer tasks failed.")
 
         request.status = BatchTransferRequest.Status.SUCCESS
         request.save()

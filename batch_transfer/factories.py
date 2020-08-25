@@ -1,24 +1,18 @@
 import factory
 from faker import Faker
-from main.factories import DicomServerFactory, DicomFolderFactory
-from accounts.factories import UserFactory
+from main.factories import DicomFolderFactory
+from main.factories import TransferJobFactory
 from .models import BatchTransferJob, BatchTransferRequest
 
 fake = Faker()
 
-status_keys = [key for key, value in BatchTransferJob.Status.choices]
 
-
-class BatchTransferJobFactory(factory.django.DjangoModelFactory):
+class BatchTransferJobFactory(TransferJobFactory):
     class Meta:
         model = BatchTransferJob
 
     project_name = factory.Faker("sentence")
     project_description = factory.Faker("paragraph")
-    source = factory.SubFactory(DicomServerFactory)
-    destination = factory.SubFactory(DicomServerFactory)
-    status = factory.Faker("random_element", elements=status_keys)
-    created_by = factory.SubFactory(UserFactory)
 
 
 class BatchTransferJobToPathFactory(BatchTransferJobFactory):

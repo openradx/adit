@@ -9,7 +9,7 @@ from celery import shared_task
 from django.conf import settings
 from .utils.dicom_connector import DicomConnector
 from .utils.anonymizer import Anonymizer
-from .models import TransferTask, DicomNode, DicomStudy
+from .models import DicomNode, TransferTask
 
 logger = logging.getLogger("adit." + __name__)
 
@@ -52,13 +52,12 @@ def _transfer_to_server(transfer_task: TransferTask):
     dest_connector = job.destination.create_connector()
     temp_folder = tempfile.mkdtemp(dir=settings.ADIT_CACHE_FOLDER)
 
-    for dicom_study in transfer_task.study_list:
-        study_folder = _download_study(dicom_study, temp_folder, source_connector)
-        dest_connector.upload_folder(study_folder)
-        shutil.rmtree(study_folder)
+    study_folder = _download_dicoms(source_connector, transfer_task, temp_folder)
+    dest_connector.upload_folder(study_folder)
+    shutil.rmtree(study_folder)
 
 
-def _transfer_to_archive(transfer_task):
+def _transfer_to_archive(transfer_task: TransferTask):
     job = transfer_task.job
     source_connector = job.source.create_connector()
     username = job.created_by.username
@@ -67,24 +66,24 @@ def _transfer_to_archive(transfer_task):
     archive_path = _create_archive(username, archive_folder, archive_password)
     temp_folder = tempfile.mkdtemp(dir=settings.ADIT_CACHE_FOLDER)
 
-    for dicom_study in transfer_task.study_list:
-        study_folder = _download_study(dicom_study, temp_folder, source_connector)
-        _add_to_archive(archive_path, archive_password, study_folder)
-        shutil.rmtree(study_folder)
+    study_folder = _download_dicoms(source_connector, transfer_task, temp_folder)
+    _add_to_archive(archive_path, archive_password, study_folder)
+    shutil.rmtree(study_folder)
 
 
-def _transfer_to_folder(transfer_task):
+def _transfer_to_folder(transfer_task: TransferTask):
     job = transfer_task.job
     source_connector = job.source.create_connector()
     dest_folder = Path(job.destination)
 
-    for dicom_study in transfer_task.study_list:
-        _download_study(dicom_study, dest_folder, source_connector)
+    _download_dicoms(source_connector, transfer_task, dest_folder)
 
 
-def _download_study(dicom_study: DicomStudy, folder: Path, connector: DicomConnector):
-    pseudonym = dicom_study.pseudonym
-    patient_id = dicom_study.patient_id
+def _download_dicoms(
+    connector: DicomConnector, transfer_task: TransferTask, folder: Path
+):
+    pseudonym = transfer_task.pseudonym
+    patient_id = transfer_task.patient_id
     if pseudonym:
         patient_folder = folder / pseudonym
     else:
@@ -92,15 +91,15 @@ def _download_study(dicom_study: DicomStudy, folder: Path, connector: DicomConne
         patient_folder = folder / patient_id
 
     studies = connector.find_studies(
-        patient_id=patient_id, study_uid=dicom_study.study_uid
+        patient_id=patient_id, study_uid=transfer_task.study_uid
     )
     if len(studies) == 0:
         raise AssertionError(
-            f"No study found with Study Instance UID: {dicom_study.study_uid}"
+            f"No study found with Study Instance UID: {transfer_task.study_uid}"
         )
     if len(studies) > 1:
         raise AssertionError(
-            f"Multiple studies found with Study Instance UID {dicom_study.study_uid}."
+            f"Multiple studies found with Study Instance UID {transfer_task.study_uid}."
         )
 
     study = studies[0]
@@ -110,10 +109,24 @@ def _download_study(dicom_study: DicomStudy, folder: Path, connector: DicomConne
     study_folder = patient_folder / f"{study_date}-{study_time}-{modalities}"
     study_folder.mkdir(parents=True, exist_ok=True)
 
-    job = dicom_study.task.job
+    job = transfer_task.job
     modifier_callback = partial(
         _modify_dataset, job.trial_protocol_id, job.trial_protocol_name, pseudonym
     )
+
+    if transfer_task.series_uids:
+        # Download specific series of a study only.
+        _download_series(
+            connector, study, transfer_task.series_uids, study_folder, modifier_callback
+        )
+    else:
+        # Download the whole study.
+        _download_study(connector, study, study_folder, modifier_callback)
+
+    return study_folder
+
+
+def _download_study(connector: DicomConnector, study, study_folder, modifier_callback):
     connector.download_study(
         study["PatientID"],
         study["StudyInstanceUID"],
@@ -121,12 +134,33 @@ def _download_study(dicom_study: DicomStudy, folder: Path, connector: DicomConne
         modifier_callback=modifier_callback,
     )
 
-    return study_folder
 
+def _download_series(
+    connector: DicomConnector, study, series_uids, study_folder, modifier_callback
+):
+    for series_uid in series_uids:
+        series_list = connector.find_series(
+            study["PatientID"], study["StudyInstanceUID"], series_uid
+        )
+        if len(series_list) == 0:
+            raise AssertionError(
+                f"No series found with Series Instance UID: {series_uid}"
+            )
+        if len(series_list) > 1:
+            raise AssertionError(
+                f"Multiple series found with Series Instance UID {series_uid}."
+            )
+        series = series_list[0]
+        series_folder_name = series["SeriesDescription"]
+        series_folder = study_folder / series_folder_name
 
-def _download_series(dicom_series):
-    # TODO a bit difficult cause it has to be stored in a correctly named study folder
-    raise NotImplementedError()
+        connector.download_series(
+            series["PatientID"],
+            series["StudyInstanceUID"],
+            series["SeriesInstanceUID"],
+            series_folder,
+            modifier_callback,
+        )
 
 
 def _modify_dataset(pseudonym, trial_protocol_id, trial_protocol_name, ds):
