@@ -34,9 +34,7 @@ class BatchTransferJob(TransferJob):
     project_description = models.TextField(max_length=2000)
 
     class Meta:
-        permissions = (
-            ("can_cancel_batchtransferjob", "Can cancel batch transfer job"),
-        )
+        permissions = (("cancel_batchtransferjob", "Can cancel batch transfer job"),)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -53,6 +51,7 @@ class BatchTransferRequest(models.Model):
     class Status(models.TextChoices):
         PENDING = "PE", "Pending"
         IN_PROGRESS = "IP", "In Progress"
+        CANCELED = "CA", "Canceled"
         SUCCESS = "SU", "Success"
         FAILURE = "FA", "Failure"
 

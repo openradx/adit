@@ -150,6 +150,10 @@ USE_L10N = True
 
 USE_TZ = True
 
+# All REST API requests must come from authenticated clients
+REST_FRAMEWORK = {
+    "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.IsAuthenticated",]
+}
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/3.0/howto/static-files/
@@ -218,3 +222,8 @@ BATCH_FILE_CSV_DELIMITER = ";"
 # ADIT uses a cache for patients so that not the DICOM server must not
 # always be queried. This is how many patients fit into the cache.
 BATCH_PATIENT_CACHE_SIZE = 10000
+
+# Usually a batch transfer job must be verified by an admin. By setting
+# this option to True ADIT will also schedule unverified batch transfers
+# (and also giving them the PENDING status).
+BATCH_TRANSFER_UNVERIFIED = False

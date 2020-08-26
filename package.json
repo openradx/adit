@@ -17,18 +17,20 @@
         "bootstrap": "^4.5.0",
         "bootstrap-icons": "^1.0.0-alpha5",
         "clipboard": "^2.0.6",
-        "jquery": "^3.5.1"
+        "jquery": "^3.5.1",
+        "js-cookie": "^2.2.1"
     },
     "devDependencies": {
         "browser-sync": "^2.26.12"
     },
     "scripts": {
-        "copy": "npm run copy:jquery && npm run copy:bootstrap && npm run copy:alpine && npm run copy:clipboard",
+        "copy": "npm run copy:jquery && npm run copy:bootstrap && npm run copy:alpine && npm run copy:clipboard && npm run copy:cookie",
         "copy:jquery": "cp node_modules/jquery/dist/jquery.js main/static/main/vendor/js/",
         "copy:bootstrap_css": "cp node_modules/bootstrap/dist/css/bootstrap.css* main/static/main/vendor/css/",
         "copy:bootstrap_js": "cp node_modules/bootstrap/dist/js/bootstrap.bundle.js* main/static/main/vendor/js/",
         "copy:bootstrap": "npm run copy:bootstrap_css && npm run copy:bootstrap_js",
         "copy:alpine": "cp node_modules/alpinejs/dist/alpine*.js main/static/main/vendor/js/",
-        "copy:clipbard": "cp node_modules/clipboard/dist/clipboard.js main/static/main/vendor/js/"
+        "copy:clipbard": "cp node_modules/clipboard/dist/clipboard.js main/static/main/vendor/js/",
+        "copy:cookie": "cp node_modules/js-cookie/src/js.cookie.js main/static/main/vendor/js/"
     }
 }

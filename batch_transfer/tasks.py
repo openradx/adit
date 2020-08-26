@@ -16,6 +16,29 @@ def batch_transfer(job_id):
     if job.status != BatchTransferJob.Status.PENDING:
         raise AssertionError(f"Invalid job status: {job.get_status_display()}")
 
+    transfer_requests = [
+        transfer_request.s(request.id) for request in job.requests.all()
+    ]
+
+    chord(transfer_requests)(update_job_status.s(job_id))
+
+
+@shared_task(bind=True)
+def transfer_request(self, request_id):
+    request = BatchTransferRequest.objects.get(id=request_id)
+
+    if request.status != BatchTransferRequest.Status.PENDING:
+        raise AssertionError(
+            f"Invalid transfer job status: {request.get_status_display()}"
+        )
+
+    job = request.job
+
+    if job.status == BatchTransferJob.Status.CANCELING:
+        request.status = BatchTransferRequest.Status.CANCELED
+        request.save()
+        return request.status
+
     app_settings = AppSettings.load()
     scheduler = Scheduler(
         app_settings.batch_slot_begin_time,
@@ -23,24 +46,9 @@ def batch_transfer(job_id):
         app_settings.batch_transfer_suspended,
     )
 
-    eta = None
     if scheduler.must_be_scheduled():
-        eta = scheduler.next_slot()
+        raise self.retry(eta=scheduler.next_slot())
 
-    transfer_requests = [
-        transfer_request.s((request.id,), eta=eta) for request in job.requests.all()
-    ]
-
-    chord(transfer_requests)(update_job_status.s(job_id))
-
-
-@shared_task
-def transfer_request(request_id):
-    request = BatchTransferRequest.objects.get(id=request_id)
-    if request.status != BatchTransferRequest.Status.PENDING:
-        raise AssertionError(f"Invalid job status: {request.get_status_display()}")
-
-    job = request.job
     if job.status == BatchTransferJob.Status.PENDING:
         job.status = BatchTransferJob.Status.IN_PROGRESS
         job.save()
@@ -61,9 +69,6 @@ def transfer_request(request_id):
 
         if len(studies) == 0:
             raise ValueError("No studies found to transfer.")
-
-        for study in studies:
-            pass
 
         has_success = False
         has_failure = False
@@ -102,6 +107,14 @@ def transfer_request(request_id):
 @shared_task(ignore_result=True)
 def update_job_status(job_id, request_status_list):
     job = BatchTransferJob.objects.get(id=job_id)
+
+    if (
+        job.status == BatchTransferJob.Status.CANCELING
+        and BatchTransferRequest.Status.CANCELED in request_status_list
+    ):
+        job.status = BatchTransferJob.Status.CANCELED
+        job.save()
+        return
 
     has_success = False
     has_failure = False

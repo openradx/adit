@@ -88,7 +88,7 @@ class TransferJob(models.Model):
     )
     job_type = models.CharField(max_length=2, choices=job_type_choices)
     status = models.CharField(
-        max_length=2, choices=Status.choices, default=Status.PENDING
+        max_length=2, choices=Status.choices, default=Status.UNVERIFIED
     )
     message = models.TextField(blank=True, null=True)
     trial_protocol_id = models.CharField(max_length=64, blank=True, null=True)
@@ -124,6 +124,7 @@ class TransferTask(models.Model):
     class Status(models.TextChoices):
         PENDING = "PE", "Pending"
         IN_PROGRESS = "IP", "In Progress"
+        CANCELED = "CA", "Canceled"
         SUCCESS = "SU", "Success"
         FAILURE = "FA", "Failure"
 

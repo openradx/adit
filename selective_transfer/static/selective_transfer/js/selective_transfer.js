@@ -1,8 +1,8 @@
 function selectiveTransferForm() {
     return {
         formData: {
-            source: 1,
-            destination: 2,
+            source: "",
+            destination: "",
             patient_id: "",
             patient_name: "",
             patient_birth_date: "",
@@ -18,6 +18,7 @@ function selectiveTransferForm() {
         init: function ($dispatch) {
             this.dispatch = $dispatch;
             this.connect();
+            this.loadCookie();
         },
         connect: function () {
             const self = this;
@@ -60,6 +61,19 @@ function selectiveTransferForm() {
             // FIXME for debugging
             this.currentQueryId = foobar.queryId;
             this.handleMessage(foobar);
+        },
+        loadCookie: function () {
+            const data = Cookies.getJSON("selectiveTransferForm");
+            if (data) {
+                this.formData.source = data.source;
+                this.formData.destination = data.destination;
+            }
+        },
+        updateCookie: function () {
+            Cookies.set("selectiveTransferForm", {
+                source: this.formData.source,
+                destination: this.formData.destination,
+            });
         },
         handleMessage: function (data) {
             console.log(data);
@@ -131,19 +145,15 @@ function selectiveTransferForm() {
             } else if (studiesToTransfer.length === 0) {
                 this.showError("You must at least select one study.");
             } else {
-                const tasks = studiesToTransfer.map(function (study) {
-                    return { study_list: [study] };
-                });
+                const csrftoken = document.querySelector(
+                    "[name=csrfmiddlewaretoken]"
+                ).value;
 
                 const data = {
                     source: this.formData.source,
                     destination: this.formData.destination,
-                    tasks: tasks,
+                    tasks: studiesToTransfer,
                 };
-
-                const csrftoken = document.querySelector(
-                    "[name=csrfmiddlewaretoken]"
-                ).value;
 
                 $.ajax({
                     url: "/selective-transfer/create/",

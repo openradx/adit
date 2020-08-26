@@ -11,21 +11,42 @@ def selective_transfer(job_id):
     if job.status != SelectiveTransferJob.Status.PENDING:
         raise AssertionError(f"Invalid job status: {job.get_status_display()}")
 
+    transfers = [transfer_selected_dicoms.s(task.id) for task in job.tasks.all()]
+
+    chord(transfers)(update_job_status.s(job_id))
+
+
+@shared_task(bind=True)
+def transfer_selected_dicoms(self, task_id):
+    task = TransferTask.objects.get(id=task_id)
+
+    if task.status != TransferTask.Status.PENDING:
+        raise AssertionError(f"Invalid transfer task status: {task.status}")
+
+    if task.job.status == SelectiveTransferJob.Status.CANCELING:
+        task.status = TransferTask.Status.CANCELED
+        task.save()
+        return task.status
+
     app_settings = AppSettings.load()
-    countdown = None
     if app_settings.selective_transfer_suspended:
-        countdown = 60 * 60  # 1 hour
+        countdown = 60 * 5  # retry in 5 minutes
+        raise self.retry(countdown=countdown)
 
-    transfer_tasks = [
-        transfer_dicoms.s((task.id,), countdown=countdown) for task in job.tasks.all()
-    ]
-
-    chord(transfer_tasks)(update_job_status.s(job_id))
+    return transfer_dicoms(task_id)
 
 
 @shared_task(ignore_result=True)
 def update_job_status(job_id, task_status_list):
     job = SelectiveTransferJob.objects.get(id=job_id)
+
+    if (
+        job.status == SelectiveTransferJob.Status.CANCELING
+        and SelectiveTransferJob.Status.CANCELED in task_status_list
+    ):
+        job.status = SelectiveTransferJob.Status.CANCELED
+        job.save()
+        return
 
     has_success = False
     has_failure = False

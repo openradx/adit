@@ -2,6 +2,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.generic.edit import CreateView
 from django.views.generic import TemplateView, DetailView
 from django.contrib.auth.mixins import PermissionRequiredMixin
+from django.conf import settings
 from main.mixins import OwnerRequiredMixin
 from main.models import DicomNode
 from .models import AppSettings, BatchTransferJob
@@ -28,8 +29,11 @@ class BatchTransferJobCreateView(
         # it is already fixed in an upcoming release, see
         # https://code.djangoproject.com/ticket/30457
         # transaction.on_commit(lambda: enqueue_batch_job(self.object.id))
-        job_id = self.object.id
-        batch_transfer.delay(job_id)
+        job = self.object
+        if settings.BATCH_TRANSFER_UNVERIFIED:
+            job.status = BatchTransferJob.Status.PENDING
+            job.save()
+            batch_transfer.delay(job.id)
 
         return response
 

@@ -5,13 +5,25 @@ from selective_transfer.models import SelectiveTransferJob
 from main.models import DicomNode
 
 
-def create_field(field_name, send_query_on_enter=True):
-    field_attrs = {"css_class": "query_field", "x_model": f"formData.{field_name}"}
-    if send_query_on_enter:
-        field_attrs["@keydown.enter.prevent"] = "submitQuery()"
-    else:
-        field_attrs["@keydown.enter.prevent"] = ""
-    return Column(Field(field_name, **field_attrs))
+def create_node_field(field_name):
+    return Column(
+        Field(
+            field_name,
+            **{"x_model": f"formData.{field_name}", "@change": "updateCookie",},
+        )
+    )
+
+
+def create_search_field(field_name):
+    return Column(
+        Field(
+            field_name,
+            **{
+                "x_model": f"formData.{field_name}",
+                "@keydown.enter.prevent": "submitQuery",
+            },
+        )
+    )
 
 
 class SelectiveTransferJobForm(forms.ModelForm):
@@ -34,14 +46,14 @@ class SelectiveTransferJobForm(forms.ModelForm):
         self.helper = FormHelper(self)
         self.helper.form_tag = False
         self.helper.layout = Layout(
-            Row(create_field("source", False), create_field("destination", False)),
+            Row(create_node_field("source"), create_node_field("destination"),),
             Row(
-                create_field("patient_id"),
-                create_field("patient_name"),
-                create_field("patient_birth_date"),
-                create_field("study_date"),
-                create_field("modality"),
-                create_field("accession_number"),
+                create_search_field("patient_id"),
+                create_search_field("patient_name"),
+                create_search_field("patient_birth_date"),
+                create_search_field("study_date"),
+                create_search_field("modality"),
+                create_search_field("accession_number"),
             ),
         )
 

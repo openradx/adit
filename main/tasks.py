@@ -17,6 +17,7 @@ logger = logging.getLogger("adit." + __name__)
 @shared_task
 def transfer_dicoms(task_id):
     task = TransferTask.objects.get(id=task_id)
+
     if task.status != TransferTask.Status.PENDING:
         raise AssertionError(f"Invalid transfer task status: {task.status}")
 

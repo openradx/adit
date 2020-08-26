@@ -43,7 +43,7 @@ def create_group():
         (
             "batch_transfer.add_batchtransferjob",
             "batch_transfer.view_batchtransferjob",
-            "batch_transfer.can_cancel_batchtransferjob",
+            "batch_transfer.cancel_batchtransferjob",
         ),
     )
 

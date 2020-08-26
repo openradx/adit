@@ -3,11 +3,12 @@ from django.contrib.auth.mixins import PermissionRequiredMixin
 from django.views.generic.edit import CreateView
 from django.views.generic import DetailView
 from django.http import HttpResponseBadRequest
-from rest_framework import generics
+from rest_framework import generics, permissions
 from main.mixins import OwnerRequiredMixin
 from .forms import SelectiveTransferJobForm
 from .models import SelectiveTransferJob
 from .serializers import SelectiveTransferJobCreateSerializer
+from .tasks import selective_transfer
 
 
 class SelectiveTransferJobFormView(
@@ -29,10 +30,14 @@ class SelectiveTransferJobFormView(
 
 class SelectiveTransferJobCreateAPIView(generics.CreateAPIView):
     serializer_class = SelectiveTransferJobCreateSerializer
+    queryset = SelectiveTransferJob.objects.none()  # required for permission to work
+    permission_classes = (permissions.DjangoModelPermissions,)
 
     def perform_create(self, serializer):
-        print("in here")
-        serializer.save(created_by=self.request.user)
+        job = serializer.save(
+            status=SelectiveTransferJob.Status.PENDING, created_by=self.request.user
+        )
+        selective_transfer.delay(job.id)
 
 
 class SelectiveTransferJobDetailView(
