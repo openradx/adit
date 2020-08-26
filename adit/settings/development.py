@@ -48,6 +48,7 @@ DEBUG_TOOLBAR_PANELS = [
     "debug_toolbar.panels.profiling.ProfilingPanel",
 ]
 
+CELERY_TASK_ALWAYS_EAGER = True
 CELERY_TASK_EAGER_PROPAGATES = True
 
 INTERNAL_IPS = ["127.0.0.1"]

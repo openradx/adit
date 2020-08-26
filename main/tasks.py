@@ -1,4 +1,3 @@
-import logging
 from pathlib import Path
 from datetime import datetime
 import shutil
@@ -6,12 +5,13 @@ import tempfile
 import subprocess
 from functools import partial
 from celery import shared_task
+from celery.utils.log import get_task_logger
 from django.conf import settings
 from .utils.dicom_connector import DicomConnector
 from .utils.anonymizer import Anonymizer
 from .models import DicomNode, TransferTask
 
-logger = logging.getLogger("adit." + __name__)
+logger = get_task_logger("adit." + __name__)
 
 
 @shared_task
@@ -40,6 +40,7 @@ def transfer_dicoms(task_id):
         task.save()
 
     except Exception as err:  # pylint: disable=broad-except
+        logger.exception("Error while transferring DICOM files.")
         task.status = TransferTask.Status.FAILURE
         task.message = str(err)
         task.save()
@@ -49,9 +50,9 @@ def transfer_dicoms(task_id):
 
 def _transfer_to_server(transfer_task: TransferTask):
     job = transfer_task.job
-    source_connector = job.source.create_connector()
-    dest_connector = job.destination.create_connector()
-    temp_folder = tempfile.mkdtemp(dir=settings.ADIT_CACHE_FOLDER)
+    source_connector = job.source.dicomserver.create_connector()
+    dest_connector = job.destination.dicomserver.create_connector()
+    temp_folder = Path(tempfile.mkdtemp(dir=settings.ADIT_CACHE_FOLDER))
 
     study_folder = _download_dicoms(source_connector, transfer_task, temp_folder)
     dest_connector.upload_folder(study_folder)
@@ -60,12 +61,12 @@ def _transfer_to_server(transfer_task: TransferTask):
 
 def _transfer_to_archive(transfer_task: TransferTask):
     job = transfer_task.job
-    source_connector = job.source.create_connector()
+    source_connector = job.source.dicomserver.create_connector()
     username = job.created_by.username
     archive_folder = Path(job.destination)
     archive_password = job.archive_password
     archive_path = _create_archive(username, archive_folder, archive_password)
-    temp_folder = tempfile.mkdtemp(dir=settings.ADIT_CACHE_FOLDER)
+    temp_folder = Path(tempfile.mkdtemp(dir=settings.ADIT_CACHE_FOLDER))
 
     study_folder = _download_dicoms(source_connector, transfer_task, temp_folder)
     _add_to_archive(archive_path, archive_password, study_folder)
@@ -74,7 +75,7 @@ def _transfer_to_archive(transfer_task: TransferTask):
 
 def _transfer_to_folder(transfer_task: TransferTask):
     job = transfer_task.job
-    source_connector = job.source.create_connector()
+    source_connector = job.source.dicomserver.create_connector()
     dest_folder = Path(job.destination)
 
     _download_dicoms(source_connector, transfer_task, dest_folder)

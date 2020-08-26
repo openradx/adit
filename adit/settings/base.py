@@ -93,7 +93,8 @@ AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator",},
 ]
 
-# The default logging from https://github.com/django/django/blob/master/django/utils/log.py
+# Adapted from default Django logging
+# https://github.com/django/django/blob/master/django/utils/log.py
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
@@ -106,13 +107,22 @@ LOGGING = {
             "()": "django.utils.log.ServerFormatter",
             "format": "[{server_time}] {message}",
             "style": "{",
-        }
+        },
+        "simple": {
+            "format": "[%(asctime)s] %(name)-12s %(levelname)s %(message)s",
+            "datefmt": "%Y-%m-%d %H:%M:%S",
+        },
+        "verbose": {
+            "format": "[%(asctime)s] %(levelname)s [%(name)s.%(funcName)s:%(lineno)d] %(message)s",
+            "datefmt": "%Y-%m-%d %H:%M:%S",
+        },
     },
     "handlers": {
         "console": {
             "level": "INFO",
             "filters": ["require_debug_true"],
             "class": "logging.StreamHandler",
+            "formatter": "simple",
         },
         "django.server": {
             "level": "INFO",
@@ -132,6 +142,7 @@ LOGGING = {
             "level": "INFO",
             "propagate": False,
         },
+        "celery.task": {"handlers": ["console"], "level": "INFO"},
     },
 }
 
