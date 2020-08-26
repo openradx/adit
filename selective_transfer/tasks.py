@@ -37,7 +37,7 @@ def transfer_selected_dicoms(self, task_id):
 
 
 @shared_task(ignore_result=True)
-def update_job_status(job_id, task_status_list):
+def update_job_status(task_status_list, job_id):
     job = SelectiveTransferJob.objects.get(id=job_id)
 
     if (

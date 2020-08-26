@@ -105,7 +105,7 @@ def transfer_request(self, request_id):
 
 
 @shared_task(ignore_result=True)
-def update_job_status(job_id, request_status_list):
+def update_job_status(request_status_list, job_id):
     job = BatchTransferJob.objects.get(id=job_id)
 
     if (
