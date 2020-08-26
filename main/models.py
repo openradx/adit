@@ -104,13 +104,15 @@ class TransferJob(models.Model):
     def get_absolute_url(self):
         return reverse("transfer_job_detail", args=[str(self.id)])
 
+    def get_processed_tasks(self):
+        non_processed = (TransferTask.Status.PENDING, TransferTask.Status.IN_PROGRESS)
+        return self.tasks.exclude(status__in=non_processed)
+
     def is_deletable(self):
         return self.status in [self.Status.UNVERIFIED, self.Status.PENDING]
 
     def is_cancelable(self):
-        return self.status in [
-            self.Status.IN_PROGRESS,
-        ]
+        return self.status in (self.Status.IN_PROGRESS,)
 
     def is_transfer_to_archive(self):
         return bool(self.archive_password)

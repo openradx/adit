@@ -41,7 +41,11 @@ class BatchTransferJob(TransferJob):
         self.job_type = self.JOB_TYPE
 
     def get_processed_requests(self):
-        return self.requests.exclude(status=BatchTransferRequest.Status.PENDING)
+        non_processed = (
+            BatchTransferRequest.Status.PENDING,
+            BatchTransferRequest.Status.IN_PROGRESS,
+        )
+        return self.requests.exclude(status__in=non_processed)
 
     def get_absolute_url(self):
         return reverse("transfer_job_detail", args=[str(self.pk)])
