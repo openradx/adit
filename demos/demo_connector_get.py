@@ -5,7 +5,7 @@ from pprint import pprint
 path = Path(__file__).parent.parent.resolve()
 sys.path.append(path.as_posix())
 
-# pylint: disable-msg=import-error, wrong-import-position
+# pylint: disable-msg=wrong-import-position
 from main.utils.dicom_connector import DicomConnector
 
 config = DicomConnector.Config(
@@ -21,7 +21,7 @@ query_dict = {
     "StudyInstanceUID": "1.2.840.113845.11.1000000001951524609.20200705182951.2689481",
 }
 folder = "/tmp/adit_download_folder"
-results = connector.get(query_dict, folder)
+results = connector.c_get(query_dict, folder)
 pprint(results)
 print()
 

@@ -1,14 +1,18 @@
-import sys, os
-sys.path.append(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
+import sys
+from pathlib import Path
 
-from ..tools import Anonymizer # pylint: disable-msg=import-error
+path = Path(__file__).parent.parent.resolve()
+sys.path.append(path.as_posix())
+
+# pylint: disable-msg=wrong-import-position
+from main.utils.anonymizer import Anonymizer
 
 anonymizer = Anonymizer()
 # anonymizer.anonymize_folder(
-    # "V:\\ext02\\THOR-SchlampKai\\DICOM",
-    # "foobar",
-    # "Foo, Bar",
-    # callback=lambda ds: print(".", end="", flush=True))
+# "V:\\ext02\\THOR-SchlampKai\\DICOM",
+# "foobar",
+# "Foo, Bar",
+# callback=lambda ds: print(".", end="", flush=True))
 
 for x in range(10):
     print(anonymizer.generate_pseudonym())

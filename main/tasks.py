@@ -40,7 +40,11 @@ def transfer_dicoms(task_id):
         task.save()
 
     except Exception as err:  # pylint: disable=broad-except
-        logger.exception("Error while transferring DICOM files.")
+        logger.exception(
+            "Error during transfer task with ID %d (in transfer job with ID %d).",
+            task.id,
+            job.id,
+        )
         task.status = TransferTask.Status.FAILURE
         task.message = str(err)
         task.save()

@@ -14,8 +14,6 @@ from pynetdicom import (
     debug_logger,
     QueryRetrievePresentationContexts,
     StoragePresentationContexts,
-    PYNETDICOM_IMPLEMENTATION_UID,
-    PYNETDICOM_IMPLEMENTATION_VERSION,
 )
 from pynetdicom.sop_class import (  # pylint: disable-msg=no-name-in-module
     PatientRootQueryRetrieveInformationModelFind,
@@ -131,13 +129,7 @@ def _handle_store(folder, callback, event):
     context = event.context
 
     # Add DICOM File Meta Information
-    meta = Dataset()
-    meta.MediaStorageSOPClassUID = ds.SOPClassUID
-    meta.MediaStorageSOPInstanceUID = ds.SOPInstanceUID
-    meta.ImplementationClassUID = PYNETDICOM_IMPLEMENTATION_UID
-    meta.ImplementationVersionName = PYNETDICOM_IMPLEMENTATION_VERSION
-    meta.TransferSyntaxUID = context.transfer_syntax
-    ds.file_meta = meta
+    ds.file_meta = event.file_meta
 
     # Set the transfer syntax attributes of the dataset
     ds.is_little_endian = context.transfer_syntax.is_little_endian
@@ -198,7 +190,7 @@ class DicomConnector:
         patient_root_query_model_find: bool = True
         patient_root_query_model_get: bool = True
         patient_root_query_model_move: bool = True
-        debug_logger: bool = False
+        debug_logger: bool = True
         connection_retries: int = 3
         retry_timeout: int = 30  # in seconds
         auto_connect: bool = True
@@ -237,7 +229,7 @@ class DicomConnector:
         ae.requested_contexts = cx
         negotiation_items = []
         for context in StoragePresentationContexts[: 128 - nr_pc]:
-            role = build_role(context.abstract_syntax, scp_role=True)
+            role = build_role(context.abstract_syntax, scp_role=True, scu_role=True)
             negotiation_items.append(role)
 
         self.assoc = ae.associate(

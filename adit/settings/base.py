@@ -134,8 +134,14 @@ LOGGING = {
             "filters": ["require_debug_false"],
             "class": "django.utils.log.AdminEmailHandler",
         },
+        "file": {
+            "level": "DEBUG",
+            "class": "logging.FileHandler",
+            "filename": "/tmp/adit_debug.log",
+        },
     },
     "loggers": {
+        "": {"handlers": ["file"], "level": "DEBUG"},
         "django": {"handlers": ["console", "mail_admins"], "level": "INFO",},
         "django.server": {
             "handlers": ["django.server"],
