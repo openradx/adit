@@ -9,16 +9,14 @@
 <script src="{% static 'batch_transfer/js/batch_transfer.js' %}"></script>
 {% endblock %}
 
-{% block content %}
-<div class="top container">
-    <h4>
-        New Batch Transfer Job
-        {% include 'main/header_help_link.html' with modal_id="batch-transfer-help-modal" %}
-    </h4>
-    <p>{% crispy form %}</p>
-</div>
-{% endblock %}
+{% block container %}
+<h4>
+    New Batch Transfer Job
+    {% include 'main/header_help_link.html' with modal_id="batch-transfer-help-modal" %}
+</h4>
+<p>{% crispy form %}</p>
+{% endblock container %}
 
 {% block bottom %}
 {% include 'batch_transfer/batch_transfer_help_modal.html' with modal_id="batch-transfer-help-modal" %}
-{% endblock %}
+{% endblock bottom %}

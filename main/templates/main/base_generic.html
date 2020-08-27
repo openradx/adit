@@ -29,9 +29,9 @@
 <body id="{{ request.resolver_match.url_name }}">
 	{% include 'main/navbar.html' %}
 
-	<main role="role">
+	<main role="main">
 		{% block content %}
-		<div class="top container">
+		<div class="top container mt-3">
 			{% block container %}{% endblock %}
 		</div>
 		{% endblock %}

@@ -2,13 +2,11 @@
 
 {% load render_table from django_tables2 %}
 
-{% block content %}
-    <div class="top container">
-        <h5>All Jobs</h5>
-        {% if table.data %}
-            {% render_table table %}
-        {% else %}
-            No jobs to view.
-        {% endif %}
-    </div>
-{% endblock %}
+{% block container %}
+<h4 class="mb-3">All Transfer Jobs</h4>
+{% if table.data %}
+    {% render_table table %}
+{% else %}
+    No jobs to view.
+{% endif %}
+{% endblock container %}

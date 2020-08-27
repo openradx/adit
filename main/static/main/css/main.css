@@ -3,14 +3,17 @@
     display: none;
 }
 
-/* Move down content because we have a fixed navbar that is 3.5rem tall */
-body {
-    padding-top: 3.5rem;
+/* All other stuff */
+html,
+body,
+main {
+    width: 100%;
+    height: 100%;
 }
 
-/* Move the top container even a bit more away from the navbar */
-.top.container {
-    margin-top: 1.5rem;
+/* Move down content because we have a fixed navbar */
+main {
+    padding-top: 3.5rem;
 }
 
 /* Floating panel for Django messages framework */

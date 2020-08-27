@@ -1,4 +1,4 @@
-from django.views.generic import View
+from django.views.generic import View, TemplateView
 from django.views.generic.edit import DeleteView
 from django.views.generic.detail import SingleObjectMixin
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
@@ -67,10 +67,19 @@ class TransferJobCancelView(
         redirect(job)
 
 
+class AdminIFrameView(TemplateView):
+    template_name = "main/admin_iframe.html"
+
+
+class FlowerIFrameView(TemplateView):
+    template_name = "main/flower_iframe.html"
+
+
 class FlowerProxyView(UserPassesTestMixin, ProxyView):
     """A reverse proxy view to access the Flower Celery admin tool.
 
-    By using a reverse proxy we can check for an logged in admin user.
+    By using a reverse proxy we can use the Django authentication
+    to check for an logged in admin user.
     Code from https://stackoverflow.com/a/61997024/166229
     """
 

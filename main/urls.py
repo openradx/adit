@@ -5,6 +5,8 @@ from .views import (
     render_job_detail_view,
     TransferJobDeleteView,
     TransferJobCancelView,
+    AdminIFrameView,
+    FlowerIFrameView,
     FlowerProxyView,
 )
 
@@ -22,5 +24,7 @@ urlpatterns = [
         TransferJobCancelView.as_view(),
         name="transfer_job_cancel",
     ),
+    path("iadmin/", AdminIFrameView.as_view(), name="iadmin"),
+    path("iflower/", FlowerIFrameView.as_view(), name="iflower"),
     FlowerProxyView.as_url(),
 ]
