@@ -33,7 +33,7 @@ function alertMessages() {
             }
         },
         addMessage: function (message) {
-            message.id = this.options.nextMessageId;
+            message.id = this.options.nextMessageId++;
             this.messages.push(message);
             const self = this;
             setTimeout(function () {

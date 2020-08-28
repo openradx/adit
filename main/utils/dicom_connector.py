@@ -190,7 +190,7 @@ class DicomConnector:
         patient_root_query_model_find: bool = True
         patient_root_query_model_get: bool = True
         patient_root_query_model_move: bool = True
-        debug_logger: bool = True
+        debug_logger: bool = False
         connection_retries: int = 3
         retry_timeout: int = 30  # in seconds
         auto_connect: bool = True

@@ -19,6 +19,10 @@
 >
     {% crispy form %}
 
+    {% include "./_advanced_transfer_options.html" %}
+
+    {% include "./_query_input_panel.html" %}
+
     <p x-show="noSearchYet" class="lead">Choose a DICOM source and enter your search</p>
 
     <div x-show="searchInProgress" x-cloak>
@@ -35,54 +39,7 @@
     </div>
 
     <div x-show="results.length > 0">
-        <table class="table" x-cloak>
-            <thead>
-                <tr>
-                    <th>
-                        <div class="custom-control custom-checkbox">
-                            <input
-                                x-model="selectAllChecked"
-                                @change="watchSelectAll"
-                                type="checkbox"
-                                class="custom-control-input"
-                                id="select_all"
-                            >
-                            <label class="custom-control-label" for="select_all"></label>
-                        </div>
-                    </th>
-                    <th>Patient ID</th>
-                    <th>Patient Name</th>
-                    <th>Birth Date</th>
-                    <th>Study Date</th>
-                    <th>Modality</th>
-                    <th>Study Description</th>
-                </tr>
-            </thead>
-            <tbody>
-                <template x-for="(result, index) in results" :key="result.StudyInstanceUID">
-                    <tr>
-                        <td>
-                            <div class="custom-control custom-checkbox">
-                                <input
-                                    x-model="result.selected"
-                                    @change="selectionChanged"
-                                    :id="'select_' + index"
-                                    type="checkbox"
-                                    class="custom-control-input"
-                                >
-                                <label class="custom-control-label" :for="'select_' + index"></label>
-                            </div>
-                        </td>
-                        <td x-text="result.PatientID" />
-                        <td x-text="result.PatientName" />
-                        <td x-text="result.PatientBirthDate" />
-                        <td x-text="result.StudyDate" />
-                        <td x-text="result.Modalities" />
-                        <td x-text="result.StudyDescription" />
-                    </tr>
-                </template>
-            </tbody>
-        </table>
+        {% include "./_query_result_table.html" %}
 
         <input type="submit" class="btn btn-primary" value="Start Transfer" />
     </div>

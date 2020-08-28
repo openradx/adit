@@ -69,3 +69,5 @@ def update_job_status(task_status_list, job_id):
         job.message = "All transfer tasks failed."
     else:
         raise AssertionError("Invalid task status.")
+
+    job.save()

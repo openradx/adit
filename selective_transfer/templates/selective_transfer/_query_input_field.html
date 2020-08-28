@@ -1,0 +1,11 @@
+<div class="col">
+    <label for="patient_id">{{ label }}</label>
+    <input
+        type="text"
+        class="form-control"
+        name="{{ field_name }}"
+        id="{{ field_name }}"
+        x-model="formData.{{ field_name }}"
+        @keydown.enter.prevent="submitQuery"
+    />
+</div>
