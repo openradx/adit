@@ -48,8 +48,8 @@ DEBUG_TOOLBAR_PANELS = [
     "debug_toolbar.panels.profiling.ProfilingPanel",
 ]
 
-CELERY_TASK_ALWAYS_EAGER = True
-CELERY_TASK_EAGER_PROPAGATES = True
+CELERY_TASK_ALWAYS_EAGER = False
+CELERY_TASK_EAGER_PROPAGATES = False
 
 INTERNAL_IPS = ["127.0.0.1"]
 if env.bool("USE_DOCKER", default=False):

@@ -9,15 +9,23 @@ function selectiveTransferForm() {
             study_date: "",
             modality: "",
             accession_number: "",
+            pseudonym: "",
+            archive_password: "",
+            trial_protocol_id: "",
+            trial_protocol_name: "",
         },
-        results: [],
+        queryResults: [],
         currentQueryId: null,
+        advancedOptionsCollapsed: true,
         noSearchYet: true,
         searchInProgress: false,
         selectAllChecked: false,
-        init: function ($dispatch) {
-            this.dispatch = $dispatch;
+        init: function ($dispatch, $refs) {
+            this.$dispatch = $dispatch;
+            this.$refs = $refs;
+
             this.connect();
+            this.initAdvancedOptions();
             this.loadCookie();
         },
         connect: function () {
@@ -59,8 +67,20 @@ function selectiveTransferForm() {
             this.ws = ws;
 
             // FIXME for debugging
-            this.currentQueryId = foobar.queryId;
-            this.handleMessage(foobar);
+            // this.currentQueryId = foobar.queryId;
+            // this.handleMessage(foobar);
+        },
+        initAdvancedOptions: function () {
+            const self = this;
+            $(this.$refs.advancedOptions)
+                .on("show.bs.collapse", function () {
+                    self.advancedOptionsCollapsed = false;
+                    self.updateCookie();
+                })
+                .on("hide.bs.collapse", function () {
+                    self.advancedOptionsCollapsed = true;
+                    self.updateCookie();
+                });
         },
         loadCookie: function () {
             const data = Cookies.getJSON("selectiveTransferForm");
@@ -68,11 +88,18 @@ function selectiveTransferForm() {
                 this.formData.source = data.source;
                 this.formData.destination = data.destination;
             }
+
+            if (data.advancedOptionsCollapsed) {
+                $(this.$refs.advancedOptions).collapse("hide");
+            } else {
+                $(this.$refs.advancedOptions).collapse("show");
+            }
         },
         updateCookie: function () {
             Cookies.set("selectiveTransferForm", {
                 source: this.formData.source,
                 destination: this.formData.destination,
+                advancedOptionsCollapsed: this.advancedOptionsCollapsed,
             });
         },
         handleMessage: function (data) {
@@ -83,13 +110,13 @@ function selectiveTransferForm() {
                 const queryId = data.queryId;
                 if (this.currentQueryId === queryId) {
                     this.searchInProgress = false;
-                    this.results = data.results;
+                    this.queryResults = data.queryResults;
                     this.currentQueryId = null;
                 }
             }
         },
         submitQuery: function () {
-            this.results = [];
+            this.queryResults = [];
             this.noSearchYet = false;
             this.searchInProgress = true;
             this.currentQueryId = uuidv4();
@@ -104,11 +131,11 @@ function selectiveTransferForm() {
         watchSelectAll: function (event) {
             const selectAll = event.target.checked;
             if (selectAll) {
-                for (result of this.results) {
+                for (result of this.queryResults) {
                     result.selected = true;
                 }
             } else {
-                for (result of this.results) {
+                for (result of this.queryResults) {
                     delete result.selected;
                 }
             }
@@ -116,7 +143,7 @@ function selectiveTransferForm() {
         },
         selectionChanged: function () {
             let allSelected = true;
-            for (result of this.results) {
+            for (result of this.queryResults) {
                 if (!result.selected) {
                     allSelected = false;
                     break;
@@ -127,18 +154,28 @@ function selectiveTransferForm() {
         submitTransfer: function () {
             const self = this;
 
-            const studiesToTransfer = this.results
+            const patientIds = [];
+            const studiesToTransfer = this.queryResults
                 .filter(function (study) {
                     return !!study.selected;
                 })
                 .map(function (study) {
+                    if (patientIds.indexOf(study.PatientID) === -1) {
+                        patientIds.push(study.PatientID);
+                    }
+
                     return {
                         patient_id: study.PatientID,
                         study_uid: study.StudyInstanceUID,
+                        pseudonym: self.formData.pseudonym,
                     };
                 });
 
-            if (!this.formData.source) {
+            if (this.formData.pseudonym && patientIds.length > 1) {
+                this.showError(
+                    "When a pseudonym is provided only studies of one patient can be transferred."
+                );
+            } else if (!this.formData.source) {
                 this.showError("You must select a source.");
             } else if (!this.formData.destination) {
                 this.showError("You must select a destination.");
@@ -152,6 +189,9 @@ function selectiveTransferForm() {
                 const data = {
                     source: this.formData.source,
                     destination: this.formData.destination,
+                    archive_password: this.formData.archive_password,
+                    trial_protocol_id: this.formData.trial_protocol_id,
+                    trial_protocol_name: this.formData.trial_protocol_name,
                     tasks: studiesToTransfer,
                 };
 
@@ -175,13 +215,13 @@ function selectiveTransferForm() {
             }
         },
         showSuccess: function (text) {
-            this.dispatch("main:add-message", {
+            this.$dispatch("main:add-message", {
                 type: "alert-success",
                 text: text,
             });
         },
         showError: function (text) {
-            this.dispatch("main:add-message", {
+            this.$dispatch("main:add-message", {
                 type: "alert-danger",
                 text: text,
             });
@@ -191,9 +231,9 @@ function selectiveTransferForm() {
 
 // TODO Remove!
 const foobar = {
-    queryId: "dc9e071b-d8db-4b57-824b-76bad3f8c96c",
     status: "SUCCESS",
-    results: [
+    queryId: "dc9e071b-d8db-4b57-824b-76bad3f8c96c",
+    queryResults: [
         {
             SpecificCharacterSet: "ISO_IR 100",
             StudyDate: "20190915",

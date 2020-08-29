@@ -62,7 +62,7 @@ class SelectiveTransferConsumer(AsyncJsonWebsocketConsumer):
             else:
                 results = await query_studies(server, query)
                 await self.send_json(
-                    {"queryId": query_id, "status": "SUCCESS", "results": results}
+                    {"status": "SUCCESS", "queryId": query_id, "queryResults": results}
                 )
 
     def cancel_query(self):

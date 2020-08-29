@@ -15,7 +15,7 @@
     @submit.prevent="submitTransfer"
     novalidate="true"
     x-data="selectiveTransferForm()"
-    x-init="init($dispatch)"
+    x-init="init($dispatch, $refs)"
 >
     {% crispy form %}
 
@@ -23,7 +23,13 @@
 
     {% include "./_query_input_panel.html" %}
 
-    <p x-show="noSearchYet" class="lead">Choose a DICOM source and enter your search</p>
+    <p x-show="!queryResults.length && noSearchYet && !searchInProgress" class="lead" x-cloak>
+        Choose a DICOM source and enter your search
+    </p>
+
+    <p x-show="!queryResults.length && !noSearchYet && !searchInProgress" class="lead" x-cloak>
+        No studies for your query found.
+    </p>
 
     <div x-show="searchInProgress" x-cloak>
         <div class="d-flex justify-content-center">
@@ -38,7 +44,7 @@
         </div>
     </div>
 
-    <div x-show="results.length > 0">
+    <div x-show="queryResults.length > 0" x-cloak>
         {% include "./_query_result_table.html" %}
 
         <input type="submit" class="btn btn-primary" value="Start Transfer" />
