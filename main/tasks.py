@@ -1,3 +1,5 @@
+import io
+import logging
 from pathlib import Path
 from datetime import datetime
 import shutil
@@ -26,6 +28,15 @@ def transfer_dicoms(task_id):
 
     job = task.job
 
+    # Intercept all logger messages and save them later to the task.
+    # This only works when the logger is fetched by Celery get_task_logger.
+    stream = io.StringIO()
+    handler = logging.StreamHandler(stream)
+    handler.setLevel(logging.INFO)
+    formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
+    handler.setFormatter(formatter)
+    logger.parent.addHandler(handler)
+
     try:
         if job.destination.node_type == DicomNode.NodeType.SERVER:
             _transfer_to_server(task)
@@ -37,16 +48,18 @@ def transfer_dicoms(task_id):
                 _transfer_to_folder(task)
 
         task.status = TransferTask.Status.SUCCESS
-        task.save()
 
     except Exception as err:  # pylint: disable=broad-except
         logger.exception(
-            "Error during transfer task with ID %d (in transfer job with ID %d).",
-            task.id,
-            job.id,
+            "Error during transfer task ID %d (transfer job ID %d).", task.id, job.id,
         )
         task.status = TransferTask.Status.FAILURE
         task.message = str(err)
+    finally:
+        handler.flush()
+        task.log = stream.getvalue()
+        stream.close()
+        logger.parent.removeHandler(handler)
         task.save()
 
     return task.status

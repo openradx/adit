@@ -1,10 +1,21 @@
-import logging
+"""The heart of ADIT that communicates diretly with the DICOM servers.
+
+Error handling and logging is quite complex here. All lower level methods
+(c_find, c_get, c_move, c_store) only raise a ConnectionError if the connection
+itself fails, but not if some operation itself (inside a working connection)
+fails. Those failures are recognized and raised in all higher level methods
+(find_patients, download_study, ...). A higher level method that uses another
+higher level method does catch the exception and raises one itself. Loggings
+only occur in higher level methods that uses lower level methods. As logger
+the Celery task logger is used as we intercept those messages and save them
+in TransferTask model object.
+"""
 import time
-from datetime import datetime
 from dataclasses import dataclass
 from pathlib import Path
 import os
 from functools import partial
+from celery.utils.log import get_task_logger
 from pydicom.dataset import Dataset
 from pydicom import dcmread, valuerep, uid
 from pynetdicom import (
@@ -23,9 +34,18 @@ from pynetdicom.sop_class import (  # pylint: disable-msg=no-name-in-module
     StudyRootQueryRetrieveInformationModelGet,
     StudyRootQueryRetrieveInformationModelMove,
 )
-from pynetdicom.status import code_to_category
+from pynetdicom.status import (
+    code_to_category,
+    STATUS_PENDING,
+    STATUS_SUCCESS,
+)
 
-logger = logging.getLogger("adit." + __name__)
+# We must use this logger to intercept the logging messages and
+# store them in the task (see main.tasks.transfer_dicoms()).
+# TODO Maybe it would be better to use the standard python logger somehow.
+# See https://www.distributedpython.com/2018/08/28/celery-logging/
+# and https://www.distributedpython.com/2018/11/06/celery-task-logger-format/
+logger = get_task_logger("adit." + __name__)
 
 
 def _make_query_dataset(query_dict):
@@ -88,13 +108,13 @@ def _dictify_dataset(ds):
     return output
 
 
-def _extract_results(responses, operation, query_dict):
+def _fetch_results(responses, operation, query_dict):
     results = []
-    for status, ds in responses:
+    for (status, identifier) in responses:
         if status:
             data = {}
-            if ds:
-                data.update(_dictify_dataset(ds))
+            if identifier:
+                data.update(_dictify_dataset(identifier))
 
             results.append(
                 {
@@ -106,10 +126,11 @@ def _extract_results(responses, operation, query_dict):
                 }
             )
         else:
-            logger.error(
-                "Association rejected, aborted or never connected during %s with query: %s.",
-                operation,
-                str(query_dict),
+            raise ConnectionError(
+                (
+                    "Connection timed out, was aborted or received invalid "
+                    f"response during {operation} with query: {str(query_dict)}"
+                )
             )
 
     return results
@@ -118,7 +139,7 @@ def _extract_results(responses, operation, query_dict):
 def _extract_pending_data(results):
     """Extract the data from a DicomOperation result."""
 
-    filtered = filter(lambda x: x["status"]["category"] == "Pending", results)
+    filtered = filter(lambda x: x["status"]["category"] == STATUS_PENDING, results)
     data = map(lambda x: x["data"], filtered)
     return list(data)
 
@@ -148,6 +169,16 @@ def _handle_store(folder, callback, event):
 
     # Return a 'Success' status
     return 0x0000
+
+
+def _check_find_results(results, resource, query_dict):
+    status_category = results[-1]["status"]["category"]
+    status_code = results[-1]["status"]["code"]
+    if status_category not in [STATUS_PENDING, STATUS_SUCCESS]:
+        error_msg = f"{status_category} ({status_code}) occurred while trying to find {resource}"
+        log_msg = error_msg + " with query params %s and returned identifier: %s"
+        logger.error(log_msg, query_dict, results[-1]["data"])
+        raise ValueError(error_msg + ".")
 
 
 def _connect_to_server(func):
@@ -280,15 +311,17 @@ class DicomConnector:
 
     @_connect_to_server
     def c_find(self, query_dict, msg_id=1):
-        logger.info("Sending C-FIND with query: %s", query_dict)
+        logger.debug("Sending C-FIND with query: %s", query_dict)
 
         query_ds = _make_query_dataset(query_dict)
 
         responses = self.assoc.send_c_find(query_ds, self.find_query_model, msg_id)
-        return _extract_results(responses, "C-FIND", query_dict)
+        return _fetch_results(responses, "C-FIND", query_dict)
 
     @_connect_to_server
     def c_get(self, query_dict, folder=None, callback=None, msg_id=1):
+        logger.debug("Sending C-GET with query: %s", query_dict)
+
         if folder:
             Path(folder).mkdir(parents=True, exist_ok=True)
 
@@ -297,10 +330,10 @@ class DicomConnector:
         handle_store = partial(_handle_store, folder, callback)
         self.assoc.bind(evt.EVT_C_STORE, handle_store)
 
-        # The Synapse PACS server only accepts study root queries (not patient root queries)
-        # for C-GET requests
+        # Cave, the Synapse PACS server only accepts study root queries
+        # (not patient root queries) for C-GET requests
         responses = self.assoc.send_c_get(ds, self.get_query_model, msg_id)
-        results = _extract_results(responses, "C-GET", query_dict)
+        results = _fetch_results(responses, "C-GET", query_dict)
 
         self.assoc.unbind(evt.EVT_C_STORE, handle_store)
 
@@ -308,15 +341,19 @@ class DicomConnector:
 
     @_connect_to_server
     def c_move(self, query_dict, destination_ae_title, msg_id=1):
+        logger.debug("Sending C-MOVE with query: %s", query_dict)
+
         query_ds = _make_query_dataset(query_dict)
 
         responses = self.assoc.send_c_move(
             query_ds, destination_ae_title, self.move_query_model, msg_id
         )
-        return _extract_results(responses, "C-MOVE", query_dict)
+        return _fetch_results(responses, "C-MOVE", query_dict)
 
     @_connect_to_server
-    def c_store(self, folder, callback=None, msg_id=1):
+    def c_store(self, folder: Path, callback=None, msg_id=1):
+        logger.debug("Sending C-STORE of folder: %s", folder.as_posix())
+
         results = []
         for root, _, files in os.walk(folder):
             for filename in files:
@@ -340,8 +377,11 @@ class DicomConnector:
                         }
                     )
                 else:
-                    logger.error(
-                        "Invalid connection during C-STORE with folder: %s", folder
+                    raise ConnectionError(
+                        (
+                            "Connection timed out, was aborted or received invalid "
+                            f"response during C-STORE of folder: {folder.as_posix()}"
+                        )
                     )
 
         return results
@@ -350,7 +390,14 @@ class DicomConnector:
     def fetch_study_modalities(self, patient_id, study_uid):
         """Fetch all modalities of a study and return them in a list."""
 
-        series_list = self.find_series(patient_id, study_uid)
+        try:
+            series_list = self.find_series(patient_id, study_uid)
+        except ValueError:
+            raise ValueError(
+                "A problem occurred while fetching the study modalities "
+                f"of study with UID {study_uid}."
+            )
+
         modalities = set(map(lambda x: x["Modality"], series_list))
         return sorted(list(modalities))
 
@@ -364,12 +411,13 @@ class DicomConnector:
             "PatientBirthDate": patient_birth_date,
         }
         results = self.c_find(query_dict)
+        _check_find_results(results, "patients", query_dict)
         result_data = _extract_pending_data(results)
 
         return result_data
 
     @_connect_to_server
-    def find_studies(  # pylint: disable=too-many-arguments
+    def find_studies(  # pylint: disable=too-many-arguments,too-many-locals
         self,
         patient_id="",
         patient_name="",
@@ -396,12 +444,20 @@ class DicomConnector:
             "StudyDescription": study_description,
         }
         results = self.c_find(query_dict)
+        _check_find_results(results, "studies", query_dict)
         result_data = _extract_pending_data(results)
 
+        failed_studies = []
         for ds in result_data:
             patient_id = ds["PatientID"]
             study_uid = ds["StudyInstanceUID"]
-            study_modalities = self.fetch_study_modalities(patient_id, study_uid)
+
+            try:
+                study_modalities = self.fetch_study_modalities(patient_id, study_uid)
+            except ValueError:
+                failed_studies.append(study_uid)
+                study_modalities = []
+
             if modality is not None:
                 if isinstance(modality, str):
                     if modality not in study_modalities:
@@ -413,6 +469,12 @@ class DicomConnector:
                         continue
 
             ds["Modalities"] = study_modalities
+
+        if len(failed_studies) > 0:
+            raise ValueError(
+                "Problems occurred while finding modilities for studies with UID: %s"
+                % ", ".join(failed_studies)
+            )
 
         return result_data
 
@@ -438,6 +500,7 @@ class DicomConnector:
             "Modality": "",  # we handle Modality programmatically, see below
         }
         results = self.c_find(query_dict)
+        _check_find_results(results, "series", query_dict)
         result_data = _extract_pending_data(results)
 
         if modality is None:
@@ -460,6 +523,8 @@ class DicomConnector:
         modifier_callback=None,
     ):
         study_list = self.find_studies(patient_id, modality=modality)
+
+        failed_studies = []
         for study in study_list:
             study_uid = study["StudyInstanceUID"]
             study_date = study["StudyDate"]
@@ -468,13 +533,22 @@ class DicomConnector:
             study_folder_name = f"{study_date}-{study_time}-{modalities}"
             study_folder_path = Path(folder_path) / study_folder_name
 
-            self.download_study(
-                patient_id,
-                study_uid,
-                study_folder_path,
-                modality,
-                create_series_folders,
-                modifier_callback,
+            try:
+                self.download_study(
+                    patient_id,
+                    study_uid,
+                    study_folder_path,
+                    modality,
+                    create_series_folders,
+                    modifier_callback,
+                )
+            except ValueError:
+                failed_studies.append(study_uid)
+
+        if len(failed_studies) > 0:
+            raise ValueError(
+                "Problems occurred while downloading studies with UID: %s"
+                % ", ".join(failed_studies)
             )
 
     @_connect_to_server
@@ -487,8 +561,9 @@ class DicomConnector:
         create_series_folders=True,
         modifier_callback=None,
     ):
-
         series_list = self.find_series(patient_id, study_uid, modality)
+
+        failed_series = []
         for series in series_list:
             series_uid = series["SeriesInstanceUID"]
             download_path = folder_path
@@ -496,8 +571,17 @@ class DicomConnector:
                 series_folder_name = series["SeriesDescription"]
                 download_path = Path(folder_path) / series_folder_name
 
-            self.download_series(
-                patient_id, study_uid, series_uid, download_path, modifier_callback
+            try:
+                self.download_series(
+                    patient_id, study_uid, series_uid, download_path, modifier_callback
+                )
+            except ValueError:
+                failed_series.append(series_uid)
+
+        if len(failed_series) > 0:
+            raise ValueError(
+                "Problems occurred while downloading series with UID: %s"
+                % ", ".join(failed_series)
             )
 
     @_connect_to_server
@@ -516,36 +600,39 @@ class DicomConnector:
 
         results = self.c_get(query_dict, folder_path, modifier_callback)
 
-        if not results or results[-1]["status"]["category"] != "Success":
-            msg = str(results)
-            raise RuntimeError(
-                "Failure while downloading series with UID %s: %s" % (series_uid, msg)
+        status_category = results[-1]["status"]["category"]
+        status_code = results[-1]["status"]["code"]
+        if status_category not in [STATUS_PENDING, STATUS_SUCCESS]:
+            error_msg = (
+                f"{status_category} ({status_code}) occurred while downloading "
+                f"series with UID {series_uid}."
             )
+            log_msg = error_msg + " Provided identifier: %s"
+            logger.error(log_msg, results[-1]["data"])
+            raise ValueError(error_msg)
 
     @_connect_to_server
     def upload_folder(self, folder_path):
         """Upload a specified folder to a DICOM server."""
 
-        start_time = datetime.now().ctime()
-        logger.info(
-            "Upload of folder %s started at %s with config: %s",
-            folder_path,
-            start_time,
-            str(self.config),
-        )
-
         results = self.c_store(folder_path)
+
+        failed_instances = []
         for result in results:
-            # Category names can be found in https://github.com/pydicom/pynetdicom/blob/master/pynetdicom/_globals.py
             status_category = result["status"]["category"]
-            if status_category != "Success":
-                if status_category == "Failure":
-                    logger.error(
-                        "Error while uploading instance UID %s.", result["data"]
-                    )
-                else:
-                    logger.warning(
-                        "%s while uploading instance UID %s.",
-                        status_category,
-                        result["data"],
-                    )
+            status_code = result["status"]["code"]
+            instance_uid = result["data"]["SOPInstanceUID"]
+            if status_category != STATUS_SUCCESS:
+                failed_instances.append(instance_uid)
+                logger.error(
+                    "%s (%d) occurred during uploading instance with UID %s.",
+                    status_category,
+                    status_code,
+                    instance_uid,
+                )
+
+        if len(failed_instances) > 0:
+            raise ValueError(
+                "Problems occurred while uploading instances with UID: %s"
+                % ", ".join(failed_instances)
+            )

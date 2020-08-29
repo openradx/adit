@@ -1,7 +1,10 @@
 from celery import shared_task, chord
+from celery.utils.log import get_task_logger
 from main.tasks import transfer_dicoms
 from main.models import TransferTask
 from .models import AppSettings, SelectiveTransferJob
+
+logger = get_task_logger("adit." + __name__)
 
 
 @shared_task(ignore_result=True)

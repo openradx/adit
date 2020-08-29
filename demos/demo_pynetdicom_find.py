@@ -2,8 +2,9 @@ from pydicom.dataset import Dataset
 
 from pynetdicom import AE, debug_logger
 from pynetdicom.sop_class import PatientRootQueryRetrieveInformationModelFind
+from pynetdicom.status import code_to_category
 
-debug_logger()
+# debug_logger()
 
 ae = AE(ae_title="ADIT")
 ae.add_requested_context(PatientRootQueryRetrieveInformationModelFind)
@@ -19,7 +20,7 @@ assoc = ae.associate("127.0.0.1", 7501)
 if assoc.is_established:
     responses = assoc.send_c_find(ds, PatientRootQueryRetrieveInformationModelFind)
     for (status, identifier) in responses:
-        print(identifier)
+        print(code_to_category(status.Status))
         if status:
             print("C-FIND query status: 0x{0:04X}".format(status.Status))
         else:

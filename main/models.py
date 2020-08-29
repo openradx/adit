@@ -147,6 +147,7 @@ class TransferTask(models.Model):
         max_length=2, choices=Status.choices, default=Status.PENDING,
     )
     message = models.TextField(blank=True, null=True)
+    log = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     started_at = models.DateTimeField(null=True)
     stopped_at = models.DateTimeField(null=True)

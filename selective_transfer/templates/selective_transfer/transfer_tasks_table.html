@@ -20,8 +20,8 @@
     {% for task in job.tasks.all %}
         <tr>
             <td>{{ task.id }}</td>
-            <td>{{ request.get_status_display }}</td>
-            <td>{{ request.message|default:" - " }}</td>
+            <td>{{ task.get_status_display }}</td>
+            <td>{{ task.message|default:" - " }}</td>
         </tr>
     {% endfor %}
     </tbody>

@@ -18,9 +18,6 @@ debug_logger()
 def handle_store(event):
     data = event.dataset
     data.file_meta = event.file_meta
-    print("----------------------------------------")
-    print(data)
-    print("----------------------------------------")
     data.save_as(data.SOPInstanceUID, write_like_original=False)
     return 0x0000
 
