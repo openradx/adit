@@ -8,8 +8,8 @@
             aria-expanded="false"
             aria-controls="advancedOptions"
         >
-            <template x-if="advancedOptionsCollapsed"><span>+</span></template>
-            <template x-if="!advancedOptionsCollapsed"><span>-</span></template>
+            <template x-if="advancedOptionsVisible"><span>-</span></template>
+            <template x-if="!advancedOptionsVisible"><span>+</span></template>
             <span>
                 Advanced Transfer Options
             </span>

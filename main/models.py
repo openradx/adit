@@ -31,7 +31,7 @@ class DicomNode(models.Model):
 
 class DicomServer(DicomNode):
     ae_title = models.CharField(unique=True, max_length=16)
-    ip = models.GenericIPAddressField()
+    host = models.CharField(max_length=255)
     port = models.PositiveIntegerField(
         validators=[MinValueValidator(1), MaxValueValidator(65535)]
     )
@@ -48,7 +48,7 @@ class DicomServer(DicomNode):
             DicomConnector.Config(
                 client_ae_title=settings.ADIT_AE_TITLE,
                 server_ae_title=self.ae_title,
-                server_ip=self.ip,
+                server_host=self.host,
                 server_port=self.port,
                 patient_root_query_model_find=self.patient_root_query_model_find,
                 patient_root_query_model_get=self.patient_root_query_model_get,

@@ -1,3 +1,4 @@
+from os import environ
 from django.core.management.base import BaseCommand
 from django.contrib.auth.models import Group
 from faker import Faker
@@ -33,19 +34,21 @@ def create_users():
 
 def create_server_nodes():
     servers = []
+    orthanc1_host = environ.get("ORTHANC1_HOST", "127.0.0.1")
     servers.append(
         DicomServerFactory(
             node_name="Orthac Test Server 1",
             ae_title="ORTHANC1",
-            ip="127.0.0.1",
+            host=orthanc1_host,
             port=7501,
         )
     )
+    orthanc2_host = environ.get("ORTHANC2_HOST", "127.0.0.1")
     servers.append(
         DicomServerFactory(
             node_name="Orthac Test Server 2",
             ae_title="ORTHANC2",
-            ip="127.0.0.1",
+            host=orthanc2_host,
             port=7502,
         )
     )
@@ -61,7 +64,7 @@ def create_folder_nodes():
 
 
 def create_jobs(users, servers, folders):
-    for _ in range(110):
+    for _ in range(10):
         if fake.boolean(chance_of_getting_true=25):
             create_batch_transfer_job(users, servers, folders)
         else:
@@ -77,7 +80,7 @@ def create_batch_transfer_job(users, servers, folders):
         created_by=factory.Faker("random_element", elements=users),
     )
 
-    for _ in range(fake.random_int(min=0, max=200)):
+    for _ in range(fake.random_int(min=0, max=100)):
         request = BatchTransferRequestFactory(job=job)
 
         for _ in range(fake.random_int(min=0, max=3)):
@@ -103,6 +106,8 @@ class Command(BaseCommand):
     help = "Copies vendor files from node_modues folder"
 
     def handle(self, *args, **options):
+        print("Populating development database with test data.")
+
         users = create_users()
         servers = create_server_nodes()
         folders = create_folder_nodes()

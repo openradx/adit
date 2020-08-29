@@ -13,7 +13,7 @@ class DicomServerFactory(factory.django.DjangoModelFactory):
 
     node_name = factory.Faker("domain_word")
     ae_title = factory.Faker("pystr", min_chars=4, max_chars=12)
-    ip = factory.Faker("ipv4")
+    host = factory.Faker("ipv4")
     port = factory.Faker("random_int", min=1, max=9999)
 
 

@@ -216,7 +216,7 @@ class DicomConnector:
     class Config:  # pylint: disable=too-many-instance-attributes
         client_ae_title: str
         server_ae_title: str
-        server_ip: str
+        server_host: str
         server_port: int
         patient_root_query_model_find: bool = True
         patient_root_query_model_get: bool = True
@@ -264,7 +264,7 @@ class DicomConnector:
             negotiation_items.append(role)
 
         self.assoc = ae.associate(
-            self.config.server_ip,
+            self.config.server_host,
             self.config.server_port,
             ae_title=self.config.server_ae_title,
             ext_neg=negotiation_items,

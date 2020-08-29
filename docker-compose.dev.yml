@@ -8,6 +8,7 @@ services:
       - "7501:7501"
     volumes:
       - ./compose/orthanc1_config.json:/etc/orthanc/orthanc.json
+      - orthanc1_data:/var/lib/orthanc/db
 
   orthanc_2:
     image: jodogne/orthanc-plugins:latest
@@ -16,6 +17,7 @@ services:
       - "7502:7502"
     volumes:
       - ./compose/orthanc2_config.json:/etc/orthanc/orthanc.json
+      - orthanc2_data:/var/lib/orthanc/db
 
   postgres:
     image: postgres:latest
@@ -102,3 +104,5 @@ volumes:
   postgres_data:
   redis_data:
   flower_data:
+  orthanc1_data:
+  orthanc2_data:

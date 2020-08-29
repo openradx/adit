@@ -58,6 +58,9 @@ MIDDLEWARE = [
     "main.middlewares.MaintenanceMiddleware",
 ]
 
+# We need this as we embed Django Admin and Celery Flower in an iframe.
+X_FRAME_OPTIONS = "SAMEORIGIN"
+
 ROOT_URLCONF = "adit.urls"
 
 TEMPLATES = [

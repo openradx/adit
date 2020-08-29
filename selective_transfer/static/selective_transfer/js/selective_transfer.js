@@ -16,7 +16,7 @@ function selectiveTransferForm() {
         },
         queryResults: [],
         currentQueryId: null,
-        advancedOptionsCollapsed: true,
+        advancedOptionsVisible: false,
         noSearchYet: true,
         searchInProgress: false,
         selectAllChecked: false,
@@ -74,11 +74,11 @@ function selectiveTransferForm() {
             const self = this;
             $(this.$refs.advancedOptions)
                 .on("show.bs.collapse", function () {
-                    self.advancedOptionsCollapsed = false;
+                    self.advancedOptionsVisible = true;
                     self.updateCookie();
                 })
                 .on("hide.bs.collapse", function () {
-                    self.advancedOptionsCollapsed = true;
+                    self.advancedOptionsVisible = false;
                     self.updateCookie();
                 });
         },
@@ -89,17 +89,17 @@ function selectiveTransferForm() {
                 this.formData.destination = data.destination;
             }
 
-            if (data.advancedOptionsCollapsed) {
-                $(this.$refs.advancedOptions).collapse("hide");
-            } else {
+            if (data && data.advancedOptionsVisible) {
                 $(this.$refs.advancedOptions).collapse("show");
+            } else {
+                $(this.$refs.advancedOptions).collapse("hide");
             }
         },
         updateCookie: function () {
             Cookies.set("selectiveTransferForm", {
                 source: this.formData.source,
                 destination: this.formData.destination,
-                advancedOptionsCollapsed: this.advancedOptionsCollapsed,
+                advancedOptionsVisible: this.advancedOptionsVisible,
             });
         },
         handleMessage: function (data) {
@@ -207,7 +207,7 @@ function selectiveTransferForm() {
                     .done(function (data) {
                         self.showSuccess(
                             "Successfully submitted transfer job with ID " +
-                                data.id
+                            data.id
                         );
                     })
                     .fail(function (response) {
