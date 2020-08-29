@@ -103,7 +103,7 @@ function selectiveTransferForm() {
             });
         },
         handleMessage: function (data) {
-            console.log(data);
+            console.info(data);
             if (data.status === "ERROR") {
                 this.showError(data.message);
             } else if (data.status === "SUCCESS") {
@@ -116,6 +116,7 @@ function selectiveTransferForm() {
             }
         },
         submitQuery: function () {
+            this.selectAllChecked = false;
             this.queryResults = [];
             this.noSearchYet = false;
             this.searchInProgress = true;
