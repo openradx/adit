@@ -52,6 +52,22 @@ services:
     volumes:
       - redis_data:/data
 
+  celery_worker_default:
+    restart: always
+    build:
+      context: .
+      dockerfile: prod.Dockerfile
+    volumes:
+      - .:/src
+    depends_on:
+      - redis
+    environment:
+      DJANGO_SETTINGS_MODULE: "adit.settings.production"
+      REDIS_URL: "redis://redis:6379/0"
+    env_file:
+      - .env
+    command: bash -c "celery -A adit worker -Q default -l info -n celery_worker_default_$$(hostname)"
+
   celery_worker_low:
     restart: always
     build:
@@ -67,22 +83,6 @@ services:
     env_file:
       - .env
     command: bash -c "celery -A adit worker -Q low -l info -n celery_worker_low_$$(hostname)"
-
-  celery_worker_high:
-    restart: always
-    build:
-      context: .
-      dockerfile: prod.Dockerfile
-    volumes:
-      - .:/src
-    depends_on:
-      - redis
-    environment:
-      DJANGO_SETTINGS_MODULE: "adit.settings.production"
-      REDIS_URL: "redis://redis:6379/0"
-    env_file:
-      - .env
-    command: bash -c "celery -A adit worker -Q low -l info -n celery_worker_high_$$(hostname)"
 
   flower:
     restart: always

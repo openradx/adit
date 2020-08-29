@@ -8,7 +8,6 @@ import subprocess
 from functools import partial
 from celery import shared_task
 from celery.utils.log import get_task_logger
-from django.conf import settings
 from .utils.dicom_connector import DicomConnector
 from .utils.anonymizer import Anonymizer
 from .models import DicomNode, TransferTask
@@ -69,7 +68,7 @@ def _transfer_to_server(transfer_task: TransferTask):
     job = transfer_task.job
     source_connector = job.source.dicomserver.create_connector()
     dest_connector = job.destination.dicomserver.create_connector()
-    temp_folder = Path(tempfile.mkdtemp(dir=settings.ADIT_CACHE_FOLDER))
+    temp_folder = Path(tempfile.mkdtemp(prefix="adit_"))
 
     study_folder = _download_dicoms(source_connector, transfer_task, temp_folder)
     dest_connector.upload_folder(study_folder)
@@ -83,7 +82,7 @@ def _transfer_to_archive(transfer_task: TransferTask):
     archive_folder = Path(job.destination)
     archive_password = job.archive_password
     archive_path = _create_archive(username, archive_folder, archive_password)
-    temp_folder = Path(tempfile.mkdtemp(dir=settings.ADIT_CACHE_FOLDER))
+    temp_folder = Path(tempfile.mkdtemp(prefix="adit_"))
 
     study_folder = _download_dicoms(source_connector, transfer_task, temp_folder)
     _add_to_archive(archive_path, archive_password, study_folder)
@@ -198,8 +197,8 @@ def _modify_dataset(pseudonym, trial_protocol_id, trial_protocol_name, ds):
 
 def _create_archive(username: str, archive_folder: Path, archive_password: str):
     """Create a new archive with just an INDEX.txt file in it."""
-    temp_folder = tempfile.mkdtemp(dir=settings.ADIT_CACHE_FOLDER)
-    readme_path = Path(temp_folder) / "INDEX.txt"
+    temp_folder = Path(tempfile.mkdtemp(prefix="adit_"))
+    readme_path = temp_folder / "INDEX.txt"
     readme_file = open(readme_path, "w")
     readme_file.write(f"Archive created by {username} at {datetime.now()}.")
     readme_file.close()

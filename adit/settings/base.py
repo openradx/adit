@@ -232,9 +232,6 @@ FLOWER_PORT = env.int("FLOWER_PORT", default=5555)
 # General ADIT settings
 ADIT_AE_TITLE = env.str("ADIT_AE_TITLE", default="ADIT")
 
-# Static (non database) settings for batch_transfer app
-ADIT_CACHE_FOLDER = env.str("ADIT_CACHE_FOLDER", "/tmp/adit_cache_folder")
-
 # The delimiter of the CSV file that contains the requests for
 # the batch transfer
 BATCH_FILE_CSV_DELIMITER = ";"
