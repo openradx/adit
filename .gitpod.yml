@@ -8,9 +8,10 @@ tasks:
     init: |
       mkdir /workspace/adit/staticfiles
       touch /tmp/.pip-install-lock
-      pip install -r ./requirements/development.txt
+      pipenv install --dev
       rm /tmp/.pip-install-lock
       createdb adit
+      pipenv shell
       python manage.py migrate
       python manage.py populate_dev_db
       python manage.py reset_orthancs
@@ -18,9 +19,10 @@ tasks:
       supervisorctl start celery:
       python manage.py runserver
 
-# A terminal for continous testing
+  # A terminal for continous testing
   - init: sleep 1 && while [ -f /tmp/.pip-install-lock ]; do sleep 1; done
     command: |
+      pipenv shell
       # Alternatives for continous testing:
       # with pytest-picked: ptw --runner 'pytest --picked'
       # with pytest-testmon: ptw --runner 'pytest -s --testmon' (sometimes cumbersome and .testmondb must be deleted)
@@ -28,8 +30,8 @@ tasks:
       pytest --cov=. # run all test once (with coverage report)
       ptw --runner 'pytest --picked'
 
-# A terminal for the developer to do stuff
-  - command: echo 'For your convenience!'
+  # A terminal for the developer to do stuff
+  - command: pipenv shell && echo 'For your convenience!'
 
 ports:
   - port: 5432 # PostgreSQL

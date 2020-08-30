@@ -1,4 +1,0 @@
--r ./base.txt
-
-cryptography==3.0  # For generating the SSL certificate
-Twisted[tls,http2]==20.3.0 # For HTTP/2 support

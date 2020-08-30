@@ -15,7 +15,7 @@ services:
     restart: always
     build:
       context: .
-      dockerfile: prod.Dockerfile
+      target: production
     ports:
       - "80:80"
       - "443:443"
@@ -58,7 +58,7 @@ services:
     restart: always
     build:
       context: .
-      dockerfile: prod.Dockerfile
+      target: production
     volumes:
       - .:/src
     depends_on:
@@ -75,7 +75,7 @@ services:
     restart: always
     build:
       context: .
-      dockerfile: prod.Dockerfile
+      target: production
     volumes:
       - .:/src
     depends_on:

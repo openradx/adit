@@ -31,7 +31,7 @@ services:
   web:
     build:
       context: .
-      dockerfile: dev.Dockerfile
+      target: development
     ports:
       - "8000:8000"
     depends_on:
@@ -69,7 +69,7 @@ services:
   celery_worker_default:
     build:
       context: .
-      dockerfile: dev.Dockerfile
+      target: development
     volumes:
       - .:/src
     depends_on:
@@ -83,7 +83,7 @@ services:
   celery_worker_low:
     build:
       context: .
-      dockerfile: dev.Dockerfile
+      target: development
     volumes:
       - .:/src
     depends_on:
