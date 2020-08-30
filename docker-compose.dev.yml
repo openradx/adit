@@ -1,6 +1,74 @@
 version: "3.8"
 
+x-app: &default-app
+  build:
+    context: .
+    target: development
+  depends_on:
+    - postgres
+    - redis
+    - orthanc_1
+    - orthanc_2
+  volumes:
+    - .:/src
+  environment:
+    USE_DOCKER: 1
+    DJANGO_SETTINGS_MODULE: "adit.settings.development"
+    DATABASE_URL: "psql://postgres:postgres@postgres:5432/postgres"
+    REDIS_URL: "redis://redis:6379/0"
+    DJANGO_STATIC_ROOT: "/var/www/adit/static/"
+    FLOWER_HOST: "flower"
+    FLOWER_PORT: "5555"
+    ORTHANC1_HOST: "orthanc_1"
+    ORTHANC2_HOST: "orthanc_2"
+
 services:
+  web:
+    <<: *default-app
+    ports:
+      - "8000:8000"
+    command: >
+      bash -c "
+        python ./manage.py reset_orthancs &&
+        python ./manage.py migrate &&
+        python ./manage.py populate_dev_db &&
+        python ./manage.py runserver 0.0.0.0:8000
+      "
+
+  celery_worker_default:
+    <<: *default-app
+    command: bash -c "celery -A adit worker -Q default -l info -n celery_worker_default_$$(hostname)"
+
+  celery_worker_low:
+    <<: *default-app
+    command: bash -c "celery -A adit worker -Q low -l info -n celery_worker_low_$$(hostname)"
+
+  postgres:
+    image: postgres:latest
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_PASSWORD: "postgres"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:latest
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+  flower:
+    image: mher/flower
+    ports:
+      - "5555:5555"
+    depends_on:
+      - redis
+    volumes:
+      - flower_data:/data
+    command: flower --url_prefix=flower --broker=redis://redis:6379/0
+
   orthanc_1:
     image: jodogne/orthanc-plugins:latest
     ports:
@@ -18,91 +86,6 @@ services:
     volumes:
       - ./compose/orthanc2_config.json:/etc/orthanc/orthanc.json
       - orthanc2_data:/var/lib/orthanc/db
-
-  postgres:
-    image: postgres:latest
-    ports:
-      - "5432:5432"
-    environment:
-      POSTGRES_PASSWORD: "postgres"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-
-  web:
-    build:
-      context: .
-      target: development
-    ports:
-      - "8000:8000"
-    depends_on:
-      - orthanc_1
-      - orthanc_2
-      - postgres
-      - redis
-    volumes:
-      - .:/src
-    environment:
-      USE_DOCKER: 1
-      DJANGO_SETTINGS_MODULE: "adit.settings.development"
-      DATABASE_URL: "psql://postgres:postgres@postgres:5432/postgres"
-      REDIS_URL: "redis://redis:6379/0"
-      DJANGO_STATIC_ROOT: "/var/www/adit/static/"
-      FLOWER_HOST: "flower"
-      FLOWER_PORT: "5555"
-      ORTHANC1_HOST: "orthanc_1"
-      ORTHANC2_HOST: "orthanc_2"
-    command: >
-      bash -c "
-        python ./manage.py reset_orthancs &&
-        python ./manage.py migrate &&
-        python ./manage.py populate_dev_db &&
-        python ./manage.py runserver 0.0.0.0:8000
-      "
-
-  redis:
-    image: redis:latest
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
-
-  celery_worker_default:
-    build:
-      context: .
-      target: development
-    volumes:
-      - .:/src
-    depends_on:
-      - redis
-    environment:
-      DJANGO_SETTINGS_MODULE: "adit.settings.development"
-      DATABASE_URL: "psql://postgres:postgres@postgres:5432/postgres"
-      REDIS_URL: "redis://redis:6379/0"
-    command: bash -c "celery -A adit worker -Q default -l info -n celery_worker_default_$$(hostname)"
-
-  celery_worker_low:
-    build:
-      context: .
-      target: development
-    volumes:
-      - .:/src
-    depends_on:
-      - redis
-    environment:
-      DJANGO_SETTINGS_MODULE: "adit.settings.development"
-      DATABASE_URL: "psql://postgres:postgres@postgres:5432/postgres"
-      REDIS_URL: "redis://redis:6379/0"
-    command: bash -c "celery -A adit worker -Q low -l info -n celery_worker_low_$$(hostname)"
-
-  flower:
-    image: mher/flower
-    ports:
-      - "5555:5555"
-    depends_on:
-      - redis
-    volumes:
-      - flower_data:/data
-    command: flower --url_prefix=flower --broker=redis://redis:6379/0
 
 volumes:
   postgres_data:

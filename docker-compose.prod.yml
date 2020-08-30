@@ -1,6 +1,52 @@
 version: "3.8"
 
+x-app: &default-app
+  restart: always
+  build:
+    context: .
+    target: production
+  ports:
+    - "80:80"
+    - "443:443"
+  depends_on:
+    - postgres
+    - redis
+  volumes:
+    - .:/src
+    - web_data:/var/www/adit
+  environment:
+    USE_DOCKER: 1
+    DJANGO_SETTINGS_MODULE: "adit.settings.production"
+    DATABASE_URL: "psql://postgres:postgres@postgres:5432/postgres"
+    REDIS_URL: "redis://redis:6379/0"
+    DJANGO_STATIC_ROOT: "/var/www/adit/static/"
+    SSL_CERT_FILE: "/var/www/adit/ssl/cert.pem"
+    SSL_KEY_FILE: "/var/www/adit/ssl/key.pem"
+    FLOWER_HOST: "flower"
+    FLOWER_PORT: "5555"
+  env_file:
+    - .env
+
 services:
+  web:
+    <<: *default-app
+    command: >
+      bash -c "
+        python ./manage.py migrate &&
+        python ./manage.py collectstatic --no-input &&
+        python ./manage.py create_admin &&
+        python ./manage.py generate_cert &&
+        daphne -b 0.0.0.0 -p 80 -e ssl:443:privateKey=/var/www/adit/ssl/key.pem:certKey=/var/www/adit/ssl/cert.pem adit.asgi:application
+      "
+
+  celery_worker_default:
+    <<: *default-app
+    command: bash -c "celery -A adit worker -Q default -l info -n celery_worker_default_$$(hostname)"
+
+  celery_worker_low:
+    <<: *default-app
+    command: bash -c "celery -A adit worker -Q low -l info -n celery_worker_low_$$(hostname)"
+
   postgres:
     restart: always
     image: postgres:latest
@@ -11,41 +57,6 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
-  web:
-    restart: always
-    build:
-      context: .
-      target: production
-    ports:
-      - "80:80"
-      - "443:443"
-    depends_on:
-      - postgres
-      - redis
-    volumes:
-      - .:/src
-      - web_data:/var/www/adit
-    environment:
-      USE_DOCKER: 1
-      DJANGO_SETTINGS_MODULE: "adit.settings.production"
-      DATABASE_URL: "psql://postgres:postgres@postgres:5432/postgres"
-      REDIS_URL: "redis://redis:6379/0"
-      DJANGO_STATIC_ROOT: "/var/www/adit/static/"
-      SSL_CERT_FILE: "/var/www/adit/ssl/cert.pem"
-      SSL_KEY_FILE: "/var/www/adit/ssl/key.pem"
-      FLOWER_HOST: "flower"
-      FLOWER_PORT: "5555"
-    env_file:
-      - .env
-    command: >
-      bash -c "
-        python ./manage.py migrate &&
-        python ./manage.py collectstatic --no-input &&
-        python ./manage.py create_admin &&
-        python ./manage.py generate_cert &&
-        daphne -b 0.0.0.0 -p 80 -e ssl:443:privateKey=/var/www/adit/ssl/key.pem:certKey=/var/www/adit/ssl/cert.pem adit.asgi:application
-      "
-
   redis:
     restart: always
     image: redis:latest
@@ -53,40 +64,6 @@ services:
       - "6379"
     volumes:
       - redis_data:/data
-
-  celery_worker_default:
-    restart: always
-    build:
-      context: .
-      target: production
-    volumes:
-      - .:/src
-    depends_on:
-      - redis
-    environment:
-      DJANGO_SETTINGS_MODULE: "adit.settings.production"
-      DATABASE_URL: "psql://postgres:postgres@postgres:5432/postgres"
-      REDIS_URL: "redis://redis:6379/0"
-    env_file:
-      - .env
-    command: bash -c "celery -A adit worker -Q default -l info -n celery_worker_default_$$(hostname)"
-
-  celery_worker_low:
-    restart: always
-    build:
-      context: .
-      target: production
-    volumes:
-      - .:/src
-    depends_on:
-      - redis
-    environment:
-      DJANGO_SETTINGS_MODULE: "adit.settings.production"
-      DATABASE_URL: "psql://postgres:postgres@postgres:5432/postgres"
-      REDIS_URL: "redis://redis:6379/0"
-    env_file:
-      - .env
-    command: bash -c "celery -A adit worker -Q low -l info -n celery_worker_low_$$(hostname)"
 
   flower:
     restart: always
@@ -100,7 +77,7 @@ services:
     command: flower --url_prefix=flower --broker=redis://redis:6379/0
 
 volumes:
-  postgres_data:
   web_data: # only neccessary in production for static files and SSL certs
+  postgres_data:
   redis_data:
   flower_data:
