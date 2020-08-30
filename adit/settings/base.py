@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/3.0/ref/settings/
 """
 
+import sys
 from pathlib import Path
 import environ
 
@@ -17,6 +18,9 @@ env = environ.Env()
 
 # The base directory of the project (where README.md is located)
 BASE_DIR = Path(__file__).resolve(strict=True).parent.parent.parent
+
+# Allows to put apps in the adit subfolder
+sys.path.insert(0, str(BASE_DIR / "adit"))
 
 READ_DOT_ENV_FILE = env.bool("DJANGO_READ_DOT_ENV_FILE", default=False)
 if READ_DOT_ENV_FILE:
@@ -91,9 +95,15 @@ AUTH_PASSWORD_VALIDATORS = [
     {
         "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator",
     },
-    {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",},
-    {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator",},
-    {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator",},
+    {
+        "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
+    },
+    {
+        "NAME": "django.contrib.auth.password_validation.CommonPasswordValidator",
+    },
+    {
+        "NAME": "django.contrib.auth.password_validation.NumericPasswordValidator",
+    },
 ]
 
 # Adapted from default Django logging
@@ -102,8 +112,12 @@ LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
     "filters": {
-        "require_debug_false": {"()": "django.utils.log.RequireDebugFalse",},
-        "require_debug_true": {"()": "django.utils.log.RequireDebugTrue",},
+        "require_debug_false": {
+            "()": "django.utils.log.RequireDebugFalse",
+        },
+        "require_debug_true": {
+            "()": "django.utils.log.RequireDebugTrue",
+        },
     },
     "formatters": {
         "django.server": {
@@ -145,7 +159,10 @@ LOGGING = {
     },
     "loggers": {
         "": {"handlers": ["file"], "level": "DEBUG"},
-        "django": {"handlers": ["console", "mail_admins"], "level": "INFO",},
+        "django": {
+            "handlers": ["console", "mail_admins"],
+            "level": "INFO",
+        },
         "django.server": {
             "handlers": ["django.server"],
             "level": "INFO",
@@ -172,7 +189,9 @@ USE_TZ = True
 
 # All REST API requests must come from authenticated clients
 REST_FRAMEWORK = {
-    "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.IsAuthenticated",]
+    "DEFAULT_PERMISSION_CLASSES": [
+        "rest_framework.permissions.IsAuthenticated",
+    ]
 }
 
 # Static files (CSS, JavaScript, Images)
@@ -200,7 +219,12 @@ MESSAGE_STORAGE = "django.contrib.messages.storage.session.SessionStorage"
 admin_first_name = env.str("ADMIN_FIRST_NAME", default="ADIT")
 admin_last_name = env.str("ADMIN_LAST_NAME", default="Support")
 admin_full_name = admin_first_name + " " + admin_last_name
-ADMINS = [(admin_full_name, env.str("ADMIN_EMAIL", default="support@adit.test"),)]
+ADMINS = [
+    (
+        admin_full_name,
+        env.str("ADMIN_EMAIL", default="support@adit.test"),
+    )
+]
 
 # Settings for django-registration-redux
 REGISTRATION_FORM = "accounts.forms.RegistrationForm"
