@@ -3,7 +3,7 @@ from django.core.management.base import BaseCommand
 from django.conf import settings
 
 # pylint: disable=import-error,no-name-in-module
-from main.tests.helpers.orthanc_rest_handler import OrthancRestHandler
+from adit.main.tests.helpers.orthanc_rest_handler import OrthancRestHandler
 
 
 class Command(BaseCommand):

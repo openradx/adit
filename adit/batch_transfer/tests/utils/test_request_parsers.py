@@ -3,7 +3,7 @@ import random
 from datetime import datetime
 from io import StringIO
 from django.test import TestCase
-from batch_transfer.utils.request_parsers import ParsingError, RequestParser
+from adit.batch_transfer.utils.request_parsers import ParsingError, RequestParser
 
 
 def get_header_data():

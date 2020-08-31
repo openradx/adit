@@ -3,8 +3,8 @@ from django.views.generic.edit import CreateView
 from django.views.generic import TemplateView, DetailView
 from django.contrib.auth.mixins import PermissionRequiredMixin
 from django.conf import settings
-from main.mixins import OwnerRequiredMixin
-from main.models import DicomNode
+from adit.main.mixins import OwnerRequiredMixin
+from adit.main.models import DicomNode
 from .models import AppSettings, BatchTransferJob
 from .forms import BatchTransferJobForm
 from .tasks import batch_transfer

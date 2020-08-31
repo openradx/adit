@@ -2,7 +2,7 @@ import logging
 from channels.generic.websocket import AsyncJsonWebsocketConsumer
 from channels.db import database_sync_to_async
 from asgiref.sync import sync_to_async
-from main.models import DicomServer
+from adit.main.models import DicomServer
 
 logger = logging.getLogger("adit." + __name__)
 

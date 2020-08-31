@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from rest_framework.fields import empty
-from main.models import DicomNode, TransferJob, TransferTask
+from adit.main.models import DicomNode, TransferJob, TransferTask
 
 
 class DicomNodeSerializer(serializers.ModelSerializer):

@@ -1,5 +1,5 @@
 from django.db import models
-from main.models import TransferJob
+from adit.main.models import TransferJob
 
 
 class AppSettings(models.Model):

@@ -12,7 +12,6 @@ x-app: &default-app
     - postgres
     - redis
   volumes:
-    - .:/src
     - web_data:/var/www/adit
   environment:
     USE_DOCKER: 1

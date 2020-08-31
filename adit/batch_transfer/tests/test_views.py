@@ -4,8 +4,8 @@ from django.conf import settings
 from django.contrib.auth.models import Group
 from django.urls import reverse
 from django.core.files.uploadedfile import SimpleUploadedFile
-from accounts.factories import UserFactory
-from main.factories import DicomServerFactory
+from adit.accounts.factories import UserFactory
+from adit.main.factories import DicomServerFactory
 from ..models import BatchTransferJob
 
 
@@ -56,7 +56,7 @@ class BatchTransferJobCreateViewTest(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "batch_transfer/batch_transfer_job_form.html")
 
-    @patch("batch_transfer.views.batch_transfer.delay")
+    @patch("adit.batch_transfer.tasks.batch_transfer.delay")
     def test_batch_job_created_and_enqueued(self, batch_transfer_delay_mock):
         self.client.force_login(self.user_with_permission)
         self.client.post(reverse("batch_transfer_job_create"), self.form_data)

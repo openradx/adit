@@ -1,10 +1,10 @@
 from io import StringIO
+from unittest.mock import patch, create_autospec
 from django.test import TestCase
-from unittest.mock import patch, create_autospec, ANY
 from django.core.files import File
-from main.factories import DicomServerFactory
+from adit.main.factories import DicomServerFactory
+from adit.accounts.models import User
 from ..forms import BatchTransferJobForm
-from accounts.models import User
 
 
 class BatchTransferJobFormTests(TestCase):
@@ -40,8 +40,10 @@ class BatchTransferJobFormTests(TestCase):
         self.assertEqual(form.fields["archive_password"].label, "Archive password")
         self.assertEqual(form.fields["csv_file"].label, "CSV file")
 
-    @patch("batch_transfer.forms.RequestParser", autospec=True)
-    @patch("batch_transfer.forms.chardet.detect", return_value={"encoding": "UTF-8"})
+    @patch("adit.batch_transfer.forms.RequestParser", autospec=True)
+    @patch(
+        "adit.batch_transfer.forms.chardet.detect", return_value={"encoding": "UTF-8"}
+    )
     def test_with_valid_data(self, _, ParserMock):
         parser_mock = ParserMock.return_value
         parser_mock.parse.return_value = []

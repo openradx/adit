@@ -1,6 +1,6 @@
 from rest_framework import serializers
-from api.serializers import TransferTaskSerializer
-from main.models import TransferTask
+from adit.api.serializers import TransferTaskSerializer
+from adit.main.models import TransferTask
 from .models import SelectiveTransferJob
 
 

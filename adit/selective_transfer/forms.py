@@ -1,8 +1,8 @@
 from django import forms
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Layout, Field, Row, Column
-from selective_transfer.models import SelectiveTransferJob
-from main.models import DicomNode
+from adit.selective_transfer.models import SelectiveTransferJob
+from adit.main.models import DicomNode
 
 
 def create_field(field_name):

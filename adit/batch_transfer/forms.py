@@ -7,7 +7,7 @@ from django.utils import formats
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Submit, Div
 import cchardet as chardet
-from main.models import DicomNode
+from adit.main.models import DicomNode
 from .models import BatchTransferJob, BatchTransferRequest
 from .fields import RestrictedFileField
 from .utils.request_parsers import RequestParser, ParsingError

@@ -5,7 +5,7 @@ path = Path(__file__).parent.parent.resolve()
 sys.path.append(path.as_posix())
 
 # pylint: disable-msg=wrong-import-position
-from main.utils.anonymizer import Anonymizer
+from adit.main.utils.anonymizer import Anonymizer
 
 anonymizer = Anonymizer()
 # anonymizer.anonymize_folder(

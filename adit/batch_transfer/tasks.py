@@ -1,9 +1,9 @@
 from celery import shared_task, chord
 from django.conf import settings
-from main.models import TransferTask
-from main.tasks import transfer_dicoms
-from main.utils.cache import LRUCache
-from main.utils.scheduler import Scheduler
+from adit.main.models import TransferTask
+from adit.main.tasks import transfer_dicoms
+from adit.main.utils.cache import LRUCache
+from adit.main.utils.scheduler import Scheduler
 from .models import AppSettings, BatchTransferJob, BatchTransferRequest
 
 patient_cache = LRUCache(settings.BATCH_PATIENT_CACHE_SIZE)

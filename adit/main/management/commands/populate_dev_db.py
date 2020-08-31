@@ -5,13 +5,17 @@ from faker import Faker
 import factory
 
 # pylint: disable=import-error,no-name-in-module
-from accounts.factories import AdminUserFactory, UserFactory
-from main.factories import DicomServerFactory, DicomFolderFactory, TransferTaskFactory
-from batch_transfer.factories import (
+from adit.accounts.factories import AdminUserFactory, UserFactory
+from adit.main.factories import (
+    DicomServerFactory,
+    DicomFolderFactory,
+    TransferTaskFactory,
+)
+from adit.batch_transfer.factories import (
     BatchTransferJobFactory,
     BatchTransferRequestFactory,
 )
-from selective_transfer.factories import SelectiveTransferJobFactory
+from adit.selective_transfer.factories import SelectiveTransferJobFactory
 
 fake = Faker()
 

@@ -3,7 +3,7 @@ from django.db.models.signals import post_migrate
 
 
 class MainConfig(AppConfig):
-    name = "main"
+    name = "adit.main"
 
     def ready(self):
         # Put calls to db stuff in this signal handler

@@ -19,12 +19,12 @@ from django.conf import settings
 
 urlpatterns = [
     path("admin/", admin.site.urls),
-    path("accounts/", include("accounts.urls")),
     path("api-auth/", include("rest_framework.urls")),
-    path("api/", include("api.urls")),
-    path("", include("main.urls")),
-    path("", include("selective_transfer.urls")),
-    path("", include("batch_transfer.urls")),
+    path("accounts/", include("adit.accounts.urls")),
+    path("api/", include("adit.api.urls")),
+    path("", include("adit.main.urls")),
+    path("", include("adit.selective_transfer.urls")),
+    path("", include("adit.batch_transfer.urls")),
 ]
 
 # Django loginas
@@ -34,4 +34,6 @@ urlpatterns += [path("admin/", include("loginas.urls"))]
 if settings.DEBUG:
     import debug_toolbar
 
-    urlpatterns = [path("__debug__/", include(debug_toolbar.urls)),] + urlpatterns
+    urlpatterns = [
+        path("__debug__/", include(debug_toolbar.urls)),
+    ] + urlpatterns

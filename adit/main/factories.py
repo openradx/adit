@@ -1,6 +1,6 @@
 import factory
 from faker import Faker
-from accounts.factories import UserFactory
+from adit.accounts.factories import UserFactory
 from .models import DicomServer, DicomFolder, TransferJob, TransferTask
 
 fake = Faker()

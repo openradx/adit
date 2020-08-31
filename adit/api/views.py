@@ -1,5 +1,5 @@
 from rest_framework import generics
-from main.models import TransferJob
+from adit.main.models import TransferJob
 from .serializers import TransferJobListSerializer
 
 

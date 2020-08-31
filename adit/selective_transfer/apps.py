@@ -1,10 +1,10 @@
 from django.apps import AppConfig
 from django.db.models.signals import post_migrate
-from main.site import register_main_menu_item, register_transfer_job
+from adit.main.site import register_main_menu_item, register_transfer_job
 
 
 class SelectiveTransferConfig(AppConfig):
-    name = "selective_transfer"
+    name = "adit.selective_transfer"
 
     def ready(self):
         register_app()
@@ -36,7 +36,7 @@ def init_db(**kwargs):  # pylint: disable=unused-argument
 
 def create_group():
     # pylint: disable=import-outside-toplevel
-    from accounts.utils import create_group_with_permissions
+    from adit.accounts.utils import create_group_with_permissions
 
     create_group_with_permissions(
         "selective_transferrers",

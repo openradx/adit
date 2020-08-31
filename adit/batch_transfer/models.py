@@ -2,7 +2,7 @@ from datetime import time
 from django.db import models
 from django.contrib.contenttypes.fields import GenericRelation
 from django.urls import reverse
-from main.models import TransferJob, TransferTask
+from adit.main.models import TransferJob, TransferTask
 
 
 def slot_time(hour, minute):

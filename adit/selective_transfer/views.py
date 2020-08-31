@@ -4,7 +4,7 @@ from django.views.generic.edit import CreateView
 from django.views.generic import DetailView
 from django.http import HttpResponseBadRequest
 from rest_framework import generics, permissions
-from main.mixins import OwnerRequiredMixin
+from adit.main.mixins import OwnerRequiredMixin
 from .forms import SelectiveTransferJobForm
 from .models import SelectiveTransferJob
 from .serializers import SelectiveTransferJobCreateSerializer

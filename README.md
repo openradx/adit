@@ -30,6 +30,8 @@ python manage.py shell_plus --print-sql # Show all SQL statements (django_extens
 
 # Docker comands
 
+docker build . --target development -t adit_dev  # Build a volume from our Dockerfile
+docker run -v C:\Users\kaisc\Projects\adit:/src -it adit_dev /bin/bash  # Run the built container with src folder mounted from host
 docker ps -a --filter volume=vol_name # Find container that mounts volume
 docker run -v=adit_web_data:/var/www/adit -it busybox /bin/sh # Start interactive shell with named volume mounted
 docker run --rm -i -v=adit_web_data:/foo busybox find /foo # List files in named volume

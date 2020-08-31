@@ -10,17 +10,13 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/3.0/ref/settings/
 """
 
-import sys
 from pathlib import Path
 import environ
 
 env = environ.Env()
 
-# The base directory of the project (where README.md is located)
+# The base directory of the project (the root of the repository)
 BASE_DIR = Path(__file__).resolve(strict=True).parent.parent.parent
-
-# Allows to put apps in the adit subfolder
-sys.path.insert(0, str(BASE_DIR / "adit"))
 
 READ_DOT_ENV_FILE = env.bool("DJANGO_READ_DOT_ENV_FILE", default=False)
 if READ_DOT_ENV_FILE:
@@ -30,7 +26,7 @@ if READ_DOT_ENV_FILE:
 INSTALLED_APPS = [
     "whitenoise.runserver_nostatic",
     "channels",
-    "accounts.apps.AccountsConfig",
+    "adit.accounts.apps.AccountsConfig",
     "registration",
     "django.contrib.admin",
     "django.contrib.auth",
@@ -44,10 +40,10 @@ INSTALLED_APPS = [
     "django_tables2",
     "rest_framework",
     "bootstrap4",
-    "main.apps.MainConfig",
-    "api.apps.ApiConfig",
-    "selective_transfer.apps.SelectiveTransferConfig",
-    "batch_transfer.apps.BatchTransferConfig",
+    "adit.main.apps.MainConfig",
+    "adit.api.apps.ApiConfig",
+    "adit.selective_transfer.apps.SelectiveTransferConfig",
+    "adit.batch_transfer.apps.BatchTransferConfig",
 ]
 
 MIDDLEWARE = [
@@ -59,7 +55,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
-    "main.middlewares.MaintenanceMiddleware",
+    "adit.main.middlewares.MaintenanceMiddleware",
 ]
 
 # We need this as we embed Django Admin and Celery Flower in an iframe.
@@ -78,7 +74,7 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
-                "main.site.inject_context",
+                "adit.main.site.inject_context",
             ],
         },
     },
@@ -86,7 +82,7 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "adit.wsgi.application"
 
-DATABASES = {"default": env.db(default="psql://postgres@127.0.0.1:5432/postgres")}
+DATABASES = {"default": env.db(default="sqlite:////tmp/adit-sqlite.db")}
 
 # Password validation
 # https://docs.djangoproject.com/en/3.0/ref/settings/#auth-password-validators
@@ -151,14 +147,14 @@ LOGGING = {
             "filters": ["require_debug_false"],
             "class": "django.utils.log.AdminEmailHandler",
         },
-        "file": {
-            "level": "DEBUG",
-            "class": "logging.FileHandler",
-            "filename": "/tmp/adit_debug.log",
-        },
+        # "file": {
+        #     "level": "DEBUG",
+        #     "class": "logging.FileHandler",
+        #     "filename": "/tmp/adit_debug.log",
+        # },
     },
     "loggers": {
-        "": {"handlers": ["file"], "level": "DEBUG"},
+        # "": {"handlers": ["file"], "level": "DEBUG"},
         "django": {
             "handlers": ["console", "mail_admins"],
             "level": "INFO",
@@ -227,7 +223,7 @@ ADMINS = [
 ]
 
 # Settings for django-registration-redux
-REGISTRATION_FORM = "accounts.forms.RegistrationForm"
+REGISTRATION_FORM = "adit.accounts.forms.RegistrationForm"
 ACCOUNT_ACTIVATION_DAYS = 14
 REGISTRATION_OPEN = True
 
@@ -242,7 +238,7 @@ REDIS_URL = env.str("REDIS_URL", default="redis://localhost:6379/0")
 CELERY_BROKER_URL = REDIS_URL
 CELERY_RESULT_BACKEND = REDIS_URL
 CELERY_TASK_DEFAULT_QUEUE = "default"
-CELERY_TASK_ROUTES = {"batch_transfer.tasks.batch_transfer_task": {"queue": "low"}}
+CELERY_TASK_ROUTES = {"adit.batch_transfer.tasks.batch_transfer_task": {"queue": "low"}}
 
 # Flower is integrated in ADIT by using an reverse proxy (django-revproxy).
 # This allows to use the authentication of ADIT.

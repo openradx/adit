@@ -1,17 +1,17 @@
 from unittest.mock import patch, Mock
 from django.test import TestCase
-from main.models import TransferJob
-from main.factories import DicomServerFactory
-from main.utils.scheduler import Scheduler
+from adit.main.models import TransferJob
+from adit.main.factories import DicomServerFactory
+from adit.main.utils.scheduler import Scheduler
 from ..factories import BatchTransferJobFactory, BatchTransferRequestFactory
 from ..models import BatchTransferRequest
 from ..tasks import batch_transfer
 
 
 class BatchTransferTest(TestCase):
-    @patch("batch_transfer.tasks.update_job_status.s")
-    @patch("batch_transfer.tasks.chord")
-    @patch("batch_transfer.tasks.transfer_request.s")
+    @patch("adit.batch_transfer.tasks.update_job_status.s")
+    @patch("adit.batch_transfer.tasks.chord")
+    @patch("adit.batch_transfer.tasks.transfer_request.s")
     @patch.object(Scheduler, "must_be_scheduled", return_value=False)
     def test_perform_batch_transfer_finished_with_success(  # pylint: disable=no-self-use
         self,
