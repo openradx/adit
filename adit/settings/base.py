@@ -238,7 +238,7 @@ REDIS_URL = env.str("REDIS_URL", default="redis://localhost:6379/0")
 CELERY_BROKER_URL = REDIS_URL
 CELERY_RESULT_BACKEND = REDIS_URL
 CELERY_TASK_DEFAULT_QUEUE = "default"
-CELERY_TASK_ROUTES = {"adit.batch_transfer.tasks.batch_transfer_task": {"queue": "low"}}
+CELERY_TASK_ROUTES = {"adit.batch_transfer.tasks.transfer_request": {"queue": "low"}}
 
 # Flower is integrated in ADIT by using an reverse proxy (django-revproxy).
 # This allows to use the authentication of ADIT.
