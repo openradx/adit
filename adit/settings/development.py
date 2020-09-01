@@ -51,10 +51,13 @@ DEBUG_TOOLBAR_PANELS = [
 CELERY_TASK_ALWAYS_EAGER = False
 CELERY_TASK_EAGER_PROPAGATES = False
 
-INTERNAL_IPS = ["127.0.0.1"]
+INTERNAL_IPS = env.list("DJANGO_INTERNAL_IPS", default=["127.0.0.1"])
+
 if env.bool("USE_DOCKER", default=False):
     import socket
 
     # For Debug Toolbar to show up on Docker Compose in development mode.
+    # This only works when browsed from the host where the containers are run.
+    # If viewed from somewhere else then DJANGO_INTERNAL_IPS must be set.
     hostname, _, ips = socket.gethostbyname_ex(socket.gethostname())
     INTERNAL_IPS += [".".join(ip.split(".")[:-1] + ["1"]) for ip in ips]
