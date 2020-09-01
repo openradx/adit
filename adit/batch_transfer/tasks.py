@@ -57,7 +57,7 @@ def transfer_request(self, request_id):
     request.save()
 
     try:
-        connector = job.source.create_connector()
+        connector = job.source.dicomserver.create_connector()
 
         patient_id = _fetch_patient(request, connector)["PatientID"]
         studies = connector.find_studies(

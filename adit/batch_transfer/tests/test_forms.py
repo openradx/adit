@@ -25,7 +25,7 @@ class BatchTransferJobFormTests(TestCase):
         cls.user = create_autospec(User)
 
     def test_field_labels(self):
-        form = BatchTransferJobForm(user=self.user)
+        form = BatchTransferJobForm()
         self.assertEqual(len(form.fields), 8)
         self.assertEqual(form.fields["source"].label, "Source")
         self.assertEqual(form.fields["destination"].label, "Destination")
@@ -48,14 +48,14 @@ class BatchTransferJobFormTests(TestCase):
         parser_mock = ParserMock.return_value
         parser_mock.parse.return_value = []
 
-        form = BatchTransferJobForm(self.data_dict, self.file_dict, user=self.user)
+        form = BatchTransferJobForm(self.data_dict, self.file_dict)
         self.assertTrue(form.is_valid())
         ParserMock.assert_called_once()
         parser_mock.parse.assert_called_once()
         self.assertIsInstance(parser_mock.parse.call_args.args[0], StringIO)
 
     def test_with_missing_values(self):
-        form = BatchTransferJobForm({}, user=self.user)
+        form = BatchTransferJobForm({})
         self.assertFalse(form.is_valid())
         self.assertEqual(len(form.errors), 5)
         self.assertEqual(form.errors["source"], ["This field is required."])
@@ -69,6 +69,6 @@ class BatchTransferJobFormTests(TestCase):
     def test_disallow_too_large_file(self):
         file = create_autospec(File, size=5242881)
         file.name = "sample_sheet.xlsx"
-        form = BatchTransferJobForm(self.data_dict, {"csv_file": file}, user=self.user)
+        form = BatchTransferJobForm(self.data_dict, {"csv_file": file})
         self.assertFalse(form.is_valid())
         self.assertIn("File too large", form.errors["csv_file"][0])
