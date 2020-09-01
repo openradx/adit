@@ -11,27 +11,25 @@ tasks:
       pipenv install --dev
       rm /tmp/.pip-install-lock
       createdb adit
-      pipenv shell
-      python manage.py migrate
-      python manage.py populate_dev_db
-      python manage.py reset_orthancs
+      pipenv run python manage.py migrate
+      pipenv run python manage.py populate_dev_db
+      pipenv run python manage.py reset_orthancs
     command: |
       supervisorctl start celery:
-      python manage.py runserver
+      pipenv run python manage.py runserver
 
   # A terminal for continous testing
   - init: sleep 1 && while [ -f /tmp/.pip-install-lock ]; do sleep 1; done
     command: |
-      pipenv shell
       # Alternatives for continous testing:
       # with pytest-picked: ptw --runner 'pytest --picked'
       # with pytest-testmon: ptw --runner 'pytest -s --testmon' (sometimes cumbersome and .testmondb must be deleted)
       # with pytest-xdist: pytest --looponfail (doesn't work with Orthanc db in the working dir)
-      pytest --cov=. # run all test once (with coverage report)
-      ptw --runner 'pytest --picked'
+      pipenv run pytest --cov=. # run all test once (with coverage report)
+      pipenv run ptw --runner 'pytest --picked'
 
   # A terminal for the developer to do stuff
-  - command: pipenv shell && echo 'For your convenience!'
+  - command: echo 'For your convenience!' && pipenv shell
 
 ports:
   - port: 5432 # PostgreSQL

@@ -1,5 +1,5 @@
 {
-    "python.pythonPath": "/home/gitpod/.pyenv/shims/python",
+    "python.pythonPath": ".venv/bin/python",
     "editor.formatOnSave": true,
     "python.formatting.provider": "black",
     "python.linting.pylintEnabled": true,

@@ -27,7 +27,7 @@ def create_users():
         "last_name": environ.get("ADMIN_LAST_NAME"),
         "email": environ.get("ADMIN_EMAIL"),
     }
-    admin_data = {k: v for k, v in admin_data if v is not None}
+    admin_data = {k: v for k, v in admin_data.items() if v is not None}
     admin = AdminUserFactory(**admin_data)
     admin_password = environ.get("ADMIN_PASSWORD", "admin")
     admin.set_password(admin_password)
