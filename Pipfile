@@ -9,6 +9,7 @@ factory-boy = "*"
 faker = "*"
 pytest-django = "*"
 pytest-cov = "*"
+colorama = "*" # dependency for pytest-watch (must be installed separately because of a bug)
 pytest-watch = "*"
 pytest-picked = "*"
 django-webtest = "*"

@@ -50,7 +50,9 @@ def transfer_dicoms(task_id):
 
     except Exception as err:  # pylint: disable=broad-except
         logger.exception(
-            "Error during transfer task ID %d (transfer job ID %d).", task.id, job.id,
+            "Error during transfer task ID %d (transfer job ID %d).",
+            task.id,
+            job.id,
         )
         task.status = TransferTask.Status.FAILURE
         task.message = str(err)
@@ -183,7 +185,7 @@ def _download_series(
 
 def _modify_dataset(pseudonym, trial_protocol_id, trial_protocol_name, ds):
     """Optionally pseudonymize an incoming dataset with the given pseudonym
-        and add the trial ID and name to the DICOM header if specified."""
+    and add the trial ID and name to the DICOM header if specified."""
     if pseudonym:
         anonymizer = Anonymizer()
         anonymizer.anonymize_dataset(ds, patient_name=pseudonym)
@@ -215,7 +217,7 @@ def _create_archive(username: str, archive_folder: Path, archive_password: str):
 
 def _add_to_archive(archive_path, archive_password, path_to_add):
     """Add a file or folder to an archive. If the archive does not exist
-        it will be created."""
+    it will be created."""
     # TODO catch error like https://stackoverflow.com/a/46098513/166229
     cmd = [
         "7z",
