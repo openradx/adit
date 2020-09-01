@@ -21,6 +21,8 @@ x-app: &default-app
     FLOWER_PORT: "5555"
     ORTHANC1_HOST: "orthanc_1"
     ORTHANC2_HOST: "orthanc_2"
+  env_file:
+    - .env
 
 services:
   web:

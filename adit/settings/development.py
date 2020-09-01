@@ -10,7 +10,7 @@ SECRET_KEY = env.str(
     "DJANGO_SECRET_KEY", default="ug+cbde301nelb)(di0^p21osy3h=t$%2$-8d&0#xlyfj8&==5"
 )
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = env.list("DJANGO_ALLOWED_HOSTS", default=[])
 
 if sys.argv and ("test" in sys.argv or "pytest" in sys.argv[0]):
     DATABASES = {

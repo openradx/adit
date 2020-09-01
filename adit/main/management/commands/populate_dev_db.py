@@ -21,7 +21,16 @@ fake = Faker()
 
 
 def create_users():
-    admin = AdminUserFactory()
+    admin_data = {
+        "username": environ.get("ADMIN_USERNAME"),
+        "first_name": environ.get("ADMIN_FIRST_NAME"),
+        "last_name": environ.get("ADMIN_LAST_NAME"),
+        "email": environ.get("ADMIN_EMAIL"),
+    }
+    admin_data = {k: v for k, v in admin_data if v is not None}
+    admin = AdminUserFactory(**admin_data)
+    admin_password = environ.get("ADMIN_PASSWORD", "admin")
+    admin.set_password(admin_password)
 
     batch_transferrers_group = Group.objects.get(name="batch_transferrers")
     selective_transferrers_group = Group.objects.get(name="selective_transferrers")

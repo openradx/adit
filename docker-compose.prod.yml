@@ -16,7 +16,7 @@ x-app: &default-app
   environment:
     USE_DOCKER: 1
     DJANGO_SETTINGS_MODULE: "adit.settings.production"
-    DATABASE_URL: "psql://postgres:postgres@postgres:5432/postgres"
+    DATABASE_URL: "psql://postgres:${POSTGRES_PASSWORD}@postgres:5432/postgres"
     REDIS_URL: "redis://redis:6379/0"
     DJANGO_STATIC_ROOT: "/var/www/adit/static/"
     SSL_CERT_FILE: "/var/www/adit/ssl/cert.pem"
