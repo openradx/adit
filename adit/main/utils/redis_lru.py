@@ -70,9 +70,6 @@ def redis_lru(capacity=5000, slicer=slice(None)):
             if conn:
                 items = args + tuple(sorted(kwargs.items()))
                 key = pickle.dumps(items[slicer])
-                print(key)
-                v = func(*args, **kwargs)
-                print(v)
                 return get(key) or add(key, func(*args, **kwargs))
 
             return func(*args, **kwargs)

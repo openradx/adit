@@ -34,13 +34,10 @@ class SelectiveTransferJobCreateAPIView(generics.CreateAPIView):
     permission_classes = (permissions.DjangoModelPermissions,)
 
     def perform_create(self, serializer):
-        print("perform")
         job = serializer.save(
             status=SelectiveTransferJob.Status.PENDING, created_by=self.request.user
         )
-        print(job.id)
         selective_transfer.delay(job.id)
-        print("ok")
 
 
 class SelectiveTransferJobDetailView(
