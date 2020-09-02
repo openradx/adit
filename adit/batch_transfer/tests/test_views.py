@@ -60,22 +60,22 @@ class BatchTransferJobCreateViewTest(TestCase):
         self.assertTemplateUsed(response, "batch_transfer/batch_transfer_job_form.html")
 
     @patch("adit.batch_transfer.tasks.batch_transfer.delay")
-    def test_batch_job_created_and_enqueued_when_batch_transfer_unverified(
+    def test_batch_job_created_and_enqueued_with_auto_verify(
         self, batch_transfer_delay_mock
     ):
         self.client.force_login(self.user_with_permission)
-        with self.settings(BATCH_TRANSFER_UNVERIFIED=True):
+        with self.settings(BATCH_AUTO_VERIFY=True):
             self.client.post(reverse("batch_transfer_job_create"), create_form_data())
             job = BatchTransferJob.objects.first()
             self.assertEqual(job.requests.count(), 3)
             batch_transfer_delay_mock.assert_called_once_with(job.id)
 
     @patch("adit.batch_transfer.tasks.batch_transfer.delay")
-    def test_batch_job_created_and_not_enqueue_when_not_batch_transfer_unverified(
+    def test_batch_job_created_and_not_enqueued_without_auto_verify(
         self, batch_transfer_delay_mock
     ):
         self.client.force_login(self.user_with_permission)
-        with self.settings(BATCH_TRANSFER_UNVERIFIED=False):
+        with self.settings(BATCH_AUTO_VERIFY=False):
             self.client.post(reverse("batch_transfer_job_create"), create_form_data())
             job = BatchTransferJob.objects.first()
             self.assertEqual(job.requests.count(), 3)
