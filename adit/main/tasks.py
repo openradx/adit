@@ -27,6 +27,14 @@ def transfer_dicoms(task_id):
 
     job = task.job
 
+    logger.debug(
+        "Transfer task started: Job ID %d, Task ID %d, Source %s, Destination %s.",
+        job.id,
+        task.id,
+        job.source.node_name,
+        job.destination.node_name,
+    )
+
     # Intercept all logger messages and save them later to the task.
     # This only works when the logger is fetched by Celery get_task_logger.
     stream = io.StringIO()
@@ -80,10 +88,15 @@ def _transfer_to_server(transfer_task: TransferTask):
 def _transfer_to_archive(transfer_task: TransferTask):
     job = transfer_task.job
     source_connector = job.source.dicomserver.create_connector()
-    username = job.created_by.username
-    archive_folder = Path(job.destination)
+    archive_folder = Path(job.destination.dicomfolder.path)
     archive_password = job.archive_password
-    archive_path = _create_archive(username, archive_folder, archive_password)
+
+    archive_name = f"{_create_destination_name}.7z"
+    archive_path = archive_folder / archive_name
+
+    if not archive_folder.is_file():
+        _create_archive(archive_path, archive_password, job.id)
+
     temp_folder = Path(tempfile.mkdtemp(prefix="adit_"))
 
     study_folder = _download_dicoms(source_connector, transfer_task, temp_folder)
@@ -94,7 +107,9 @@ def _transfer_to_archive(transfer_task: TransferTask):
 def _transfer_to_folder(transfer_task: TransferTask):
     job = transfer_task.job
     source_connector = job.source.dicomserver.create_connector()
-    dest_folder = Path(job.destination)
+
+    dicom_folder = Path(job.destination.dicomfolder.path)
+    dest_folder = dicom_folder / _create_destination_name(job)
 
     _download_dicoms(source_connector, transfer_task, dest_folder)
 
@@ -131,7 +146,7 @@ def _download_dicoms(
 
     job = transfer_task.job
     modifier_callback = partial(
-        _modify_dataset, job.trial_protocol_id, job.trial_protocol_name, pseudonym
+        _modify_dataset, pseudonym, job.trial_protocol_id, job.trial_protocol_name
     )
 
     if transfer_task.series_uids:
@@ -197,16 +212,14 @@ def _modify_dataset(pseudonym, trial_protocol_id, trial_protocol_name, ds):
         ds.ClinicalTrialProtocolName = trial_protocol_name
 
 
-def _create_archive(username: str, archive_folder: Path, archive_password: str):
+def _create_archive(archive_path: Path, archive_password: str, job_id: str):
     """Create a new archive with just an INDEX.txt file in it."""
     temp_folder = Path(tempfile.mkdtemp(prefix="adit_"))
     readme_path = temp_folder / "INDEX.txt"
     readme_file = open(readme_path, "w")
-    readme_file.write(f"Archive created by {username} at {datetime.now()}.")
+    readme_file.write(f"Archive created by Job {job_id} at {datetime.now()}.")
     readme_file.close()
 
-    archive_name = f"{username}_{datetime.now().isoformat()}.7z"
-    archive_path = archive_folder / archive_name
     if Path(archive_path).is_file():
         raise ValueError(f"Archive ${archive_path} already exists.")
 
@@ -215,7 +228,7 @@ def _create_archive(username: str, archive_folder: Path, archive_password: str):
     return archive_path
 
 
-def _add_to_archive(archive_path, archive_password, path_to_add):
+def _add_to_archive(archive_path: Path, archive_password: str, path_to_add: Path):
     """Add a file or folder to an archive. If the archive does not exist
     it will be created."""
     # TODO catch error like https://stackoverflow.com/a/46098513/166229
@@ -234,3 +247,9 @@ def _add_to_archive(archive_path, archive_password, path_to_add):
     (_, stderr) = proc.communicate()
     if proc.returncode != 0:
         raise IOError("Failed to add path to archive (%s)" % stderr)
+
+
+def _create_destination_name(job):
+    dt = job.created_at.strftime("%Y%m%d")
+    user = job.created_by.username
+    return f"adit_job_{job.id}_{dt}_{user}"

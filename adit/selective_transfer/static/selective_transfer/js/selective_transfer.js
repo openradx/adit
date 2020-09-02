@@ -41,11 +41,11 @@ function selectiveTransferForm() {
 
             const ws = new WebSocket(wsUrl);
             ws.onopen = function () {
-                console.log("Socket is opened.");
+                console.log("Socket open.");
             };
             ws.onclose = function (e) {
                 console.log(
-                    "Socket is closed. Reconnect will be attempted in 1 second.",
+                    "Socket closed. Reconnect will be attempted in 1 second.",
                     e.reason
                 );
                 setTimeout(function () {
@@ -65,10 +65,6 @@ function selectiveTransferForm() {
                 ws.close();
             };
             this.ws = ws;
-
-            // FIXME for debugging
-            // this.currentQueryId = foobar.queryId;
-            // this.handleMessage(foobar);
         },
         initAdvancedOptions: function () {
             const self = this;
@@ -103,7 +99,8 @@ function selectiveTransferForm() {
             });
         },
         handleMessage: function (data) {
-            console.info(data);
+            console.debug("Received message:", data);
+
             if (data.status === "ERROR") {
                 this.showError(data.message);
             } else if (data.status === "SUCCESS") {
@@ -121,13 +118,16 @@ function selectiveTransferForm() {
             this.noSearchYet = false;
             this.searchInProgress = true;
             this.currentQueryId = uuidv4();
-            this.ws.send(
-                JSON.stringify({
-                    action: "query_studies",
-                    queryId: this.currentQueryId,
-                    query: this.formData,
-                })
-            );
+
+            const data = {
+                action: "query_studies",
+                queryId: this.currentQueryId,
+                query: this.formData,
+            };
+
+            console.debug("Submitting query:", data);
+
+            this.ws.send(JSON.stringify(data));
         },
         watchSelectAll: function (event) {
             const selectAll = event.target.checked;
@@ -196,6 +196,8 @@ function selectiveTransferForm() {
                     tasks: studiesToTransfer,
                 };
 
+                console.debug("Submitting transfer:", data);
+
                 $.ajax({
                     url: "/selective-transfer/create/",
                     method: "POST",
@@ -207,7 +209,7 @@ function selectiveTransferForm() {
                     .done(function (data) {
                         self.showSuccess(
                             "Successfully submitted transfer job with ID " +
-                            data.id
+                                data.id
                         );
                     })
                     .fail(function (response) {
@@ -229,53 +231,3 @@ function selectiveTransferForm() {
         },
     };
 }
-
-// TODO Remove!
-const foobar = {
-    status: "SUCCESS",
-    queryId: "dc9e071b-d8db-4b57-824b-76bad3f8c96c",
-    queryResults: [
-        {
-            SpecificCharacterSet: "ISO_IR 100",
-            StudyDate: "20190915",
-            StudyTime: "183223.0",
-            AccessionNumber: "0062094332",
-            QueryRetrieveLevel: "STUDY",
-            StudyDescription: "MRT-Kopf",
-            PatientName: "Banana^Ben",
-            PatientID: "10002",
-            PatientBirthDate: "19620218",
-            StudyInstanceUID:
-                "1.2.840.113845.11.1000000001951524609.20200705182751.2689480",
-            Modalities: ["MR"],
-        },
-        {
-            SpecificCharacterSet: "ISO_IR 100",
-            StudyDate: "20180327",
-            StudyTime: "180756.0",
-            AccessionNumber: "0062115923",
-            QueryRetrieveLevel: "STUDY",
-            StudyDescription: "CT des Schädels",
-            PatientName: "Banana^Ben",
-            PatientID: "10002",
-            PatientBirthDate: "19620218",
-            StudyInstanceUID:
-                "1.2.840.113845.11.1000000001951524609.20200705180932.2689477",
-            Modalities: ["CT"],
-        },
-        {
-            SpecificCharacterSet: "ISO_IR 100",
-            StudyDate: "20180913",
-            StudyTime: "185458.0",
-            AccessionNumber: "0062115944",
-            QueryRetrieveLevel: "STUDY",
-            StudyDescription: "CT des Schädels",
-            PatientName: "Banana^Ben",
-            PatientID: "10002",
-            PatientBirthDate: "19620218",
-            StudyInstanceUID:
-                "1.2.840.113845.11.1000000001951524609.20200705185333.2689485",
-            Modalities: ["CT"],
-        },
-    ],
-};
