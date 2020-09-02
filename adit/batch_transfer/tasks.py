@@ -1,12 +1,11 @@
+import redis
 from celery import shared_task, chord
 from django.conf import settings
 from adit.main.models import TransferTask
 from adit.main.tasks import transfer_dicoms
-from adit.main.utils.cache import LRUCache
 from adit.main.utils.scheduler import Scheduler
+from adit.main.utils.redis_lru import redis_lru
 from .models import AppSettings, BatchTransferJob, BatchTransferRequest
-
-patient_cache = LRUCache(settings.BATCH_PATIENT_CACHE_SIZE)
 
 
 @shared_task(ignore_result=True)
@@ -59,7 +58,12 @@ def transfer_request(self, request_id):
     try:
         connector = job.source.dicomserver.create_connector()
 
-        patient_id = _fetch_patient(request, connector)["PatientID"]
+        patient_id = _fetch_patient_id(
+            request.patient_id,
+            request.patient_name,
+            request.patient_birth_date,
+            connector,
+        )
         studies = connector.find_studies(
             patient_id,
             accession_number=request.accession_number,
@@ -139,32 +143,20 @@ def update_job_status(request_status_list, job_id):
         raise AssertionError("Invalid request status.")
 
 
-def _fetch_patient(request, connector):
+@redis_lru(capacity=10000, slicer=slice(3))
+def _fetch_patient_id(patient_id, patient_name, patient_birth_date, connector):
     """Fetch the patient for this request.
 
     Raises an error if there is no patient or there are multiple patients for this request.
     """
-    patient_id = request.patient_id
-    patient_name = request.patient_name
-    patient_birth_date = request.patient_birth_date
-
-    patient_key = f"{patient_id}__{patient_name}__{patient_birth_date}"
-    patient = patient_cache.get(patient_key)
-    if patient:
-        return patient
-
     patients = connector.find_patients(patient_id, patient_name, patient_birth_date)
+
     if len(patients) == 0:
         raise ValueError("No patients found.")
     if len(patients) > 1:
         raise ValueError("Multiple patients found.")
 
-    patient = patients[0]
-    patient_id = patient["PatientID"]
-    patient_name = patient["PatientName"]
-    patient_birth_date = patient["PatientBirthDate"]
+    return patients[0]["PatientID"]
 
-    patient_key = f"{patient_id}__{patient_name}__{patient_birth_date}"
-    patient_cache.set(patient_key, patient)
 
-    return patient
+_fetch_patient_id.init(redis.Redis.from_url(settings.REDIS_URL))
