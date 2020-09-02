@@ -8,6 +8,27 @@ from adit.accounts.factories import UserFactory
 from adit.main.factories import DicomServerFactory
 from ..models import BatchTransferJob
 
+# Somehow the form data must be always generated from scratch (maybe cause of the
+# SimpleUploadedFile) otherwise tests fail.
+def create_form_data():
+    samples_folder_path = settings.BASE_DIR / "samples"
+
+    def load_file(filename):
+        file_path = samples_folder_path / filename
+        with open(file_path, "rb") as f:
+            file_content = f.read()
+            return SimpleUploadedFile(
+                name=filename, content=file_content, content_type="text/csv"
+            )
+
+    return {
+        "source": DicomServerFactory().id,
+        "destination": DicomServerFactory().id,
+        "project_name": "Apollo project",
+        "project_description": "Fly to the moon",
+        "csv_file": load_file("sample_sheet_small.csv"),
+    }
+
 
 class BatchTransferJobCreateViewTest(TestCase):
     @classmethod
@@ -18,24 +39,6 @@ class BatchTransferJobCreateViewTest(TestCase):
         cls.user_with_permission = UserFactory()
         batch_transferrers_group = Group.objects.get(name="batch_transferrers")
         cls.user_with_permission.groups.add(batch_transferrers_group)
-
-        samples_folder_path = settings.BASE_DIR / "samples"
-
-        # Real CSV file
-        def load_file(filename):
-            file_path = samples_folder_path / filename
-            file_content = open(file_path, "rb").read()
-            return SimpleUploadedFile(
-                name=filename, content=file_content, content_type="text/csv"
-            )
-
-        cls.form_data = {
-            "source": DicomServerFactory().id,
-            "destination": DicomServerFactory().id,
-            "project_name": "Apollo project",
-            "project_description": "Fly to the moon",
-            "csv_file": load_file("sample_sheet_small.csv"),
-        }
 
     def test_user_must_be_logged_in_to_access_view(self):
         response = self.client.get(reverse("batch_transfer_job_create"))
@@ -62,7 +65,7 @@ class BatchTransferJobCreateViewTest(TestCase):
     ):
         self.client.force_login(self.user_with_permission)
         with self.settings(BATCH_TRANSFER_UNVERIFIED=True):
-            self.client.post(reverse("batch_transfer_job_create"), self.form_data)
+            self.client.post(reverse("batch_transfer_job_create"), create_form_data())
             job = BatchTransferJob.objects.first()
             self.assertEqual(job.requests.count(), 3)
             batch_transfer_delay_mock.assert_called_once_with(job.id)
@@ -72,16 +75,16 @@ class BatchTransferJobCreateViewTest(TestCase):
         self, batch_transfer_delay_mock
     ):
         self.client.force_login(self.user_with_permission)
-        # with self.settings(BATCH_TRANSFER_UNVERIFIED=False):
-        self.client.post(reverse("batch_transfer_job_create"), self.form_data)
-        job = BatchTransferJob.objects.first()
-        self.assertEqual(job.requests.count(), 3)
-        batch_transfer_delay_mock.assert_not_called()
+        with self.settings(BATCH_TRANSFER_UNVERIFIED=False):
+            self.client.post(reverse("batch_transfer_job_create"), create_form_data())
+            job = BatchTransferJob.objects.first()
+            self.assertEqual(job.requests.count(), 3)
+            batch_transfer_delay_mock.assert_not_called()
 
     def test_job_cant_be_created_with_missing_fields(self):
         self.client.force_login(self.user_with_permission)
-        for key_to_exclude in self.form_data:
-            invalid_form_data = self.form_data.copy()
+        for key_to_exclude in create_form_data():
+            invalid_form_data = create_form_data().copy()
             del invalid_form_data[key_to_exclude]
             response = self.client.post(
                 reverse("batch_transfer_job_create"), invalid_form_data

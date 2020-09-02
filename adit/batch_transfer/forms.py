@@ -98,7 +98,7 @@ class BatchTransferJobForm(ModelForm):
         except ParsingError as err:
             for error in err.errors:
                 self.add_error(None, error)
-            raise ValidationError(err.message)
+            raise ValidationError(err.message) from err
 
         return csv_file
 
