@@ -1,11 +1,13 @@
 FROM python:3 as base
 ENV PYTHONDONTWRITEBYTECODE 1
 ENV PYTHONUNBUFFERED 1
-RUN pip install --upgrade pip
-RUN pip install pipenv
-RUN mkdir -p /var/www/adit/static
-RUN mkdir -p /var/www/adit/ssl
-RUN mkdir /src
+RUN apt update \
+    && apt install -y p7zip-full \
+    && pip install --upgrade pip \
+    && pip install pipenv \
+    && mkdir -p /var/www/adit/static \
+    && mkdir -p /var/www/adit/ssl \
+    && mkdir /src
 COPY . /src/
 WORKDIR /src
 
