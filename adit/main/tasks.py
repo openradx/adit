@@ -2,7 +2,6 @@ import io
 import logging
 from pathlib import Path
 from datetime import datetime
-import shutil
 import tempfile
 import subprocess
 from functools import partial
@@ -78,11 +77,10 @@ def _transfer_to_server(transfer_task: TransferTask):
     job = transfer_task.job
     source_connector = job.source.dicomserver.create_connector()
     dest_connector = job.destination.dicomserver.create_connector()
-    temp_folder = Path(tempfile.mkdtemp(prefix="adit_"))
 
-    study_folder = _download_dicoms(source_connector, transfer_task, temp_folder)
-    dest_connector.upload_folder(study_folder)
-    shutil.rmtree(study_folder)
+    with tempfile.TemporaryDirectory(prefix="adit_") as tmpdir:
+        patient_folder = _download_dicoms(source_connector, transfer_task, Path(tmpdir))
+        dest_connector.upload_folder(patient_folder)
 
 
 def _transfer_to_archive(transfer_task: TransferTask):
@@ -91,17 +89,15 @@ def _transfer_to_archive(transfer_task: TransferTask):
     archive_folder = Path(job.destination.dicomfolder.path)
     archive_password = job.archive_password
 
-    archive_name = f"{_create_destination_name}.7z"
+    archive_name = f"{_create_destination_name(job)}.7z"
     archive_path = archive_folder / archive_name
 
     if not archive_folder.is_file():
         _create_archive(archive_path, archive_password, job.id)
 
-    temp_folder = Path(tempfile.mkdtemp(prefix="adit_"))
-
-    study_folder = _download_dicoms(source_connector, transfer_task, temp_folder)
-    _add_to_archive(archive_path, archive_password, study_folder)
-    shutil.rmtree(study_folder)
+    with tempfile.TemporaryDirectory(prefix="adit_") as tmpdir:
+        patient_folder = _download_dicoms(source_connector, transfer_task, Path(tmpdir))
+        _add_to_archive(archive_path, archive_password, patient_folder)
 
 
 def _transfer_to_folder(transfer_task: TransferTask):
@@ -109,21 +105,21 @@ def _transfer_to_folder(transfer_task: TransferTask):
     source_connector = job.source.dicomserver.create_connector()
 
     dicom_folder = Path(job.destination.dicomfolder.path)
-    dest_folder = dicom_folder / _create_destination_name(job)
+    download_folder = dicom_folder / _create_destination_name(job)
 
-    _download_dicoms(source_connector, transfer_task, dest_folder)
+    _download_dicoms(source_connector, transfer_task, download_folder)
 
 
 def _download_dicoms(
-    connector: DicomConnector, transfer_task: TransferTask, folder: Path
+    connector: DicomConnector, transfer_task: TransferTask, download_folder: Path
 ):
     pseudonym = transfer_task.pseudonym
     patient_id = transfer_task.patient_id
     if pseudonym:
-        patient_folder = folder / pseudonym
+        patient_folder = download_folder / pseudonym
     else:
         pseudonym = None
-        patient_folder = folder / patient_id
+        patient_folder = download_folder / patient_id
 
     studies = connector.find_studies(
         patient_id=patient_id, study_uid=transfer_task.study_uid
@@ -158,7 +154,7 @@ def _download_dicoms(
         # Download the whole study.
         _download_study(connector, study, study_folder, modifier_callback)
 
-    return study_folder
+    return patient_folder
 
 
 def _download_study(connector: DicomConnector, study, study_folder, modifier_callback):
@@ -214,18 +210,16 @@ def _modify_dataset(pseudonym, trial_protocol_id, trial_protocol_name, ds):
 
 def _create_archive(archive_path: Path, archive_password: str, job_id: str):
     """Create a new archive with just an INDEX.txt file in it."""
-    temp_folder = Path(tempfile.mkdtemp(prefix="adit_"))
-    readme_path = temp_folder / "INDEX.txt"
-    readme_file = open(readme_path, "w")
-    readme_file.write(f"Archive created by Job {job_id} at {datetime.now()}.")
-    readme_file.close()
-
     if Path(archive_path).is_file():
         raise ValueError(f"Archive ${archive_path} already exists.")
 
-    _add_to_archive(archive_path, archive_password, readme_path)
-    shutil.rmtree(temp_folder)
-    return archive_path
+    with tempfile.TemporaryDirectory(prefix="adit_") as tmpdir:
+        readme_path = Path(tmpdir) / "INDEX.txt"
+        readme_file = open(readme_path, "w")
+        readme_file.write(f"Archive created by Job {job_id} at {datetime.now()}.")
+        readme_file.close()
+
+        _add_to_archive(archive_path, archive_password, readme_path)
 
 
 def _add_to_archive(archive_path: Path, archive_password: str, path_to_add: Path):
