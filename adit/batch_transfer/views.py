@@ -19,7 +19,9 @@ class BatchTransferJobCreateView(
     permission_required = "batch_transfer.add_batchtransferjob"
 
     def form_valid(self, form):
-        form.instance.created_by = self.request.user
+        user = self.request.user
+
+        form.instance.created_by = user
         response = super().form_valid(form)
 
         # Do it after an ongoing transaction (even if it is currently
@@ -28,9 +30,9 @@ class BatchTransferJobCreateView(
         # Currently I am not using it because it is hard to test, but there
         # it is already fixed in an upcoming release, see
         # https://code.djangoproject.com/ticket/30457
-        # transaction.on_commit(lambda: enqueue_batch_job(self.object.id))
+        # TODO transaction.on_commit(lambda: enqueue_batch_job(self.object.id))
         job = self.object
-        if settings.BATCH_AUTO_VERIFY:
+        if user.is_staff or settings.BATCH_AUTO_VERIFY:
             job.status = BatchTransferJob.Status.PENDING
             job.save()
             batch_transfer.delay(job.id)
