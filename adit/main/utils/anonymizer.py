@@ -1,8 +1,8 @@
 import os
+from dataclasses import dataclass
 from pathlib import Path
-import string
-import random
 import pydicom
+
 
 def _person_names_callback(_, data_element):
     if data_element.VR == "PN":
@@ -15,58 +15,52 @@ def _curves_callback(ds, data_element):
 
 
 class Anonymizer:
-    def __init__(
-        self,
-        anonymize_patient_id=False,
-        anonymize_patient_name=True,
-        normalize_birth_date=True,
-        anonymize_all_person_names=True,
-        anomymize_curves=True,
-        remove_private_tags=True,
-        remove_other_patient_ids=True,
-    ):
-        self.anonymize_patient_id = anonymize_patient_id
-        self.anonymize_patient_name = anonymize_patient_name
-        self.normalize_birth_date = normalize_birth_date
-        self.anonymize_all_person_names = anonymize_all_person_names
-        self.anomymize_curves = anomymize_curves
-        self.remove_private_tags = remove_private_tags
-        self.remove_other_patient_ids = remove_other_patient_ids
+    @dataclass
+    class Config:
+        anonymize_patient_id: bool = False
+        anonymize_patient_name: bool = True
+        normalize_birth_date: bool = True
+        anonymize_all_person_names: bool = True
+        anomymize_curves: bool = True
+        remove_private_tags: bool = True
+        remove_other_patient_ids: bool = True
 
+    def __init__(self, config=Config()):
+        self.config = config
         self.generated_pseudonyms = []
 
-    def anonymize_dataset(self, ds, patient_id=None, patient_name=None):
+    def anonymize_dataset(self, ds, pseudonymized_id=None, pseudonymized_name=None):
 
-        if self.anonymize_patient_id:
+        if self.config.anonymize_patient_id:
             ds.PatientID = "Anonymized"
 
-        if self.anonymize_patient_name:
+        if self.config.anonymize_patient_name:
             ds.PatientName = "Anonymized"
 
-        if self.normalize_birth_date:
+        if self.config.normalize_birth_date:
             birth_date = ds.PatientBirthDate
             ds.PatientBirthDate = birth_date[0:4] + "0101"
 
-        if self.anonymize_all_person_names:
+        if self.config.anonymize_all_person_names:
             ds.walk(_person_names_callback)
 
-        if self.anomymize_curves:
+        if self.config.anomymize_curves:
             ds.walk(_curves_callback)
 
-        if self.remove_private_tags:
+        if self.config.remove_private_tags:
             ds.remove_private_tags()
 
-        if self.remove_other_patient_ids:
+        if self.config.remove_other_patient_ids:
             if hasattr(ds, "OtherPatientIDs"):
                 del ds.OtherPatientIDs
             if hasattr(ds, "OtherPatientIDsSequence"):
                 del ds.OtherPatientIDsSequence
 
-        if patient_id is not None:
-            ds.PatientID = patient_id
+        if pseudonymized_id is not None:
+            ds.PatientID = pseudonymized_id
 
-        if patient_name is not None:
-            ds.PatientName = patient_name
+        if pseudonymized_name is not None:
+            ds.PatientName = pseudonymized_name
 
         return (ds.PatientID, ds.PatientName)
 
@@ -91,20 +85,3 @@ class Anonymizer:
                 ds.save_as(file_path)
 
         return True
-
-    def generate_pseudonym(
-        self, length=12, prefix="", suffix="", random_string=True, uppercase=True
-    ):
-        pseudonym = None
-        while True:
-            chars = string.ascii_lowercase + string.digits
-            if random_string:
-                pseudonym = "".join(random.choice(chars) for _ in range(length))
-                if uppercase:
-                    pseudonym = pseudonym.upper()
-            else:
-                pseudonym = str(len(self.generated_pseudonyms) + 1).zfill(length)
-            pseudonym = prefix + pseudonym + suffix
-            if not pseudonym in self.generated_pseudonyms:
-                self.generated_pseudonyms.append(pseudonym)
-                return pseudonym

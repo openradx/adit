@@ -199,7 +199,7 @@ def _modify_dataset(pseudonym, trial_protocol_id, trial_protocol_name, ds):
     and add the trial ID and name to the DICOM header if specified."""
     if pseudonym:
         anonymizer = Anonymizer()
-        anonymizer.anonymize_dataset(ds, patient_name=pseudonym)
+        anonymizer.anonymize_dataset(ds, pseudonymized_name=pseudonym)
 
     if trial_protocol_id:
         ds.ClinicalTrialProtocolID = trial_protocol_id
