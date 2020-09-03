@@ -292,7 +292,8 @@ class DicomConnector:
                 logger.exception("Could not connect to server: %s", str(err))
                 if i < self.config.connection_retries - 1:
                     logger.info(
-                        "Retrying to connect in %d seconds.", self.config.retry_timeout,
+                        "Retrying to connect in %d seconds.",
+                        self.config.retry_timeout,
                     )
                     time.sleep(self.config.retry_timeout)
                 else:
@@ -392,11 +393,11 @@ class DicomConnector:
 
         try:
             series_list = self.find_series(patient_id, study_uid)
-        except ValueError:
+        except ValueError as err:
             raise ValueError(
                 "A problem occurred while fetching the study modalities "
                 f"of study with UID {study_uid}."
-            )
+            ) from err
 
         modalities = set(map(lambda x: x["Modality"], series_list))
         return sorted(list(modalities))
