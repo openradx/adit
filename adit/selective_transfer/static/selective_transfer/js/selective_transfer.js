@@ -18,6 +18,8 @@ function selectiveTransferForm() {
         currentQueryId: null,
         advancedOptionsVisible: false,
         noSearchYet: true,
+        noResults: false,
+        errorMessage: "",
         searchInProgress: false,
         selectAllChecked: false,
         init: function ($dispatch, $refs) {
@@ -98,25 +100,13 @@ function selectiveTransferForm() {
                 advancedOptionsVisible: this.advancedOptionsVisible,
             });
         },
-        handleMessage: function (data) {
-            console.debug("Received message:", data);
-
-            if (data.status === "ERROR") {
-                this.showError(data.message);
-            } else if (data.status === "SUCCESS") {
-                const queryId = data.queryId;
-                if (this.currentQueryId === queryId) {
-                    this.searchInProgress = false;
-                    this.queryResults = data.queryResults;
-                    this.currentQueryId = null;
-                }
-            }
-        },
         submitQuery: function () {
             this.selectAllChecked = false;
             this.queryResults = [];
             this.noSearchYet = false;
+            this.noResults = false;
             this.searchInProgress = true;
+            this.errorMessage = "";
             this.currentQueryId = uuidv4();
 
             const data = {
@@ -128,6 +118,22 @@ function selectiveTransferForm() {
             console.debug("Submitting query:", data);
 
             this.ws.send(JSON.stringify(data));
+        },
+        handleMessage: function (data) {
+            console.debug("Received message:", data);
+            this.searchInProgress = false;
+            if (data.status === "error") {
+                this.errorMessage = data.message;
+            } else if (data.status === "success") {
+                const queryId = data.queryId;
+                if (this.currentQueryId === queryId) {
+                    this.queryResults = data.queryResults;
+                    if (this.queryResults.length === 0) {
+                        this.noResults = true;
+                    }
+                    this.currentQueryId = null;
+                }
+            }
         },
         watchSelectAll: function (event) {
             const selectAll = event.target.checked;
@@ -172,62 +178,42 @@ function selectiveTransferForm() {
                     };
                 });
 
-            if (this.formData.pseudonym && patientIds.length > 1) {
-                this.showError(
-                    "When a pseudonym is provided only studies of one patient can be transferred."
-                );
-            } else if (!this.formData.source) {
-                this.showError("You must select a source.");
-            } else if (!this.formData.destination) {
-                this.showError("You must select a destination.");
-            } else if (studiesToTransfer.length === 0) {
-                this.showError("You must at least select one study.");
-            } else {
-                const csrftoken = document.querySelector(
-                    "[name=csrfmiddlewaretoken]"
-                ).value;
+            const csrftoken = document.querySelector(
+                "[name=csrfmiddlewaretoken]"
+            ).value;
 
-                const data = {
-                    source: this.formData.source,
-                    destination: this.formData.destination,
-                    archive_password: this.formData.archive_password,
-                    trial_protocol_id: this.formData.trial_protocol_id,
-                    trial_protocol_name: this.formData.trial_protocol_name,
-                    tasks: studiesToTransfer,
-                };
+            const data = {
+                source: this.formData.source,
+                destination: this.formData.destination,
+                archive_password: this.formData.archive_password,
+                trial_protocol_id: this.formData.trial_protocol_id,
+                trial_protocol_name: this.formData.trial_protocol_name,
+                tasks: studiesToTransfer,
+            };
 
-                console.debug("Submitting transfer:", data);
+            console.debug("Submitting transfer:", data);
 
-                $.ajax({
-                    url: "/selective-transfer/create/",
-                    method: "POST",
-                    headers: { "X-CSRFToken": csrftoken },
-                    dataType: "json",
-                    contentType: "application/json",
-                    data: JSON.stringify(data),
-                })
-                    .done(function (data) {
-                        self.showSuccess(
+            $.ajax({
+                url: "/selective-transfer/create/",
+                method: "POST",
+                headers: { "X-CSRFToken": csrftoken },
+                dataType: "json",
+                contentType: "application/json",
+                data: JSON.stringify(data),
+            })
+                .done(function (data) {
+                    console.info(data);
+                    this.$dispatch("main:add-message", {
+                        level: "success",
+                        text:
                             "Successfully submitted transfer job with ID " +
-                                data.id
-                        );
-                    })
-                    .fail(function (response) {
-                        console.error(response);
+                            data.id,
                     });
-            }
-        },
-        showSuccess: function (text) {
-            this.$dispatch("main:add-message", {
-                type: "alert-success",
-                text: text,
-            });
-        },
-        showError: function (text) {
-            this.$dispatch("main:add-message", {
-                type: "alert-danger",
-                text: text,
-            });
+                })
+                .fail(function (response) {
+                    console.error(response);
+                    this.errorMessage = "Communication with the server failed.";
+                });
         },
     };
 }

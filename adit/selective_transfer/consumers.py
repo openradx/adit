@@ -1,14 +1,18 @@
 import logging
+import re
+from datetime import datetime
 from channels.generic.websocket import AsyncJsonWebsocketConsumer
 from channels.db import database_sync_to_async
+from django.utils import formats, dateformat
 from asgiref.sync import sync_to_async
 from adit.main.models import DicomServer
+from adit.main.utils.dicom_connector import DicomConnector
 
 logger = logging.getLogger("adit." + __name__)
 
 
 @database_sync_to_async
-def fetch_source_server(source_id):
+def _fetch_source_server(source_id):
     if not source_id:
         return None
 
@@ -19,23 +23,90 @@ def fetch_source_server(source_id):
     return server
 
 
+# TODO May it would be better to use thread_sensitive=True instead
+# of threading.lock. Not sure about that or about possible race
+# conditions.
+# See also https://docs.djangoproject.com/en/3.1/topics/async/#sync-to-async
 @sync_to_async
-def query_studies(server: DicomServer, query: dict):
-    connector = server.create_connector()
-    results = connector.find_studies(
-        query["patient_id"],
-        query["patient_name"],
-        query["patient_birth_date"],
-        query["accession_number"],
-        query["study_date"],
-        query["modality"],
+def _query_studies(connector: DicomConnector, query: dict):
+    return connector.find_studies(
+        patient_id=query["patient_id"],
+        patient_name=query["patient_name"],
+        birth_date=query["patient_birth_date"],
+        accession_number=query["accession_number"],
+        study_date=query["study_date"],
+        modality=query["modality"],
     )
-    return results
+
+
+def _convert_date_from_dicom(date_str):
+    dt = datetime.strptime(date_str, "%Y%m%d")
+    date_format = formats.get_format("SHORT_DATE_FORMAT")
+    return dateformat.format(dt, date_format)
+
+
+def _convert_date_to_dicom(date_str):
+    dt = None
+    date_input_formats = formats.get_format("DATE_INPUT_FORMATS")
+    for input_format in date_input_formats:
+        try:
+            dt = datetime.strptime(date_str, input_format)
+            break
+        except ValueError:
+            pass
+
+    if not dt:
+        raise ValueError("Invalid date input format.")
+
+    return dt.strftime("%Y%m%d")
+
+
+def _convert_name_from_dicom(name_str):
+    return name_str.replace("^", ", ")
+
+
+def _convert_name_to_dicom(name_str):
+    return re.sub(r",\s*", "^", name_str)
+
+
+def _sanitize_query(query):
+    print(query)
+    if not query["source"]:
+        raise ValueError("Source server missing.")
+
+    if not (
+        query["patient_id"]
+        or query["patient_name"]
+        or query["patient_birth_date"]
+        or query["study_date"]
+        or query["modality"]
+        or query["accession_number"]
+    ):
+        raise ValueError("You must provide at least one search parameter.")
+
+    if query["patient_name"]:
+        query["patient_name"] = _convert_name_to_dicom(query["patient_name"])
+
+    if query["study_date"]:
+        query["study_date"] = _convert_date_to_dicom(query["study_date"])
+
+    if query["patient_birth_date"]:
+        query["patient_birth_date"] = _convert_date_from_dicom(
+            query["patient_birth_date"]
+        )
+
+
+def _convert_query_results(studies):
+    for study in studies:
+        study["PatientName"] = _convert_name_from_dicom(study["PatientName"])
+        study["PatientBirthDate"] = _convert_date_from_dicom(study["PatientBirthDate"])
+        study["StudyDate"] = _convert_date_from_dicom(study["StudyDate"])
 
 
 class SelectiveTransferConsumer(AsyncJsonWebsocketConsumer):
     def __init__(self, *args, **kwargs):
         self.user = None
+        self.connector = None
         super().__init__(*args, **kwargs)
 
     async def connect(self):
@@ -47,24 +118,30 @@ class SelectiveTransferConsumer(AsyncJsonWebsocketConsumer):
         logger.debug("Disconnected from WebSocket client with code: %s", close_code)
 
     async def receive_json(self, msg):  # pylint: disable=arguments-differ
-        if msg.get("action") == "query_studies":
-            query_id = msg["queryId"]
-            query = msg["query"]
+        action = msg.get("action")
+        if action == "query_studies":
+            self.cancel_query()  # cancel a previous still running query
+            await self.query_studies(msg["queryId"], msg["query"])
+        elif action == "cancel_query":
+            self.cancel_query()
 
-            if not query.get("source"):
-                await self.send_json(
-                    {"status": "ERROR", "message": "Source server missing."}
-                )
+    async def query_studies(self, query_id, query):
+        try:
+            _sanitize_query(query)
 
-            server = await fetch_source_server(query.get("source"))
+            server = await _fetch_source_server(query.get("source"))
             if not server:
-                self.send_json({"status": "ERROR", "message": "Invalid source server."})
-            else:
-                results = await query_studies(server, query)
-                await self.send_json(
-                    {"status": "SUCCESS", "queryId": query_id, "queryResults": results}
-                )
+                raise ValueError("Invalid source server.")
+
+            self.connector = server.create_connector()
+            studies = await _query_studies(self.connector, query)
+            _convert_query_results(studies)
+            await self.send_json(
+                {"status": "success", "queryId": query_id, "queryResults": studies}
+            )
+        except ValueError as err:
+            await self.send_json({"status": "error", "message": str(err)})
 
     def cancel_query(self):
-        raise NotImplementedError()
-        # self.assoc.accepted_contexts[0].context_id
+        if self.connector and self.connector.is_connected():
+            self.connector.c_cancel()

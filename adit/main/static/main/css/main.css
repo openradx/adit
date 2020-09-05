@@ -16,17 +16,20 @@ main {
     padding-top: 3.5rem;
 }
 
-/* Floating panel for Django messages framework */
-.messages-panel-outer {
+/* Floating panel for toast messages */
+.messages-panel {
     position: absolute;
-    left: 50%;
-    z-index: 10000;
-    bottom: 0.5rem;
+    top: 5em;
+    right: 1em;
 }
-.messages-panel-inner {
-    position: relative;
-    left: -50%;
-    min-width: 500px;
+.toast.success svg rect {
+    fill: green;
+}
+.toast.warning svg rect {
+    fill: yellow;
+}
+.toast.error svg rect {
+    fill: red;
 }
 
 /* Nice sort indicators in the django-table2 tables */

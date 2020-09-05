@@ -23,15 +23,28 @@
 
     {% include "./_query_input_panel.html" %}
 
-    <p x-show="!queryResults.length && noSearchYet && !searchInProgress" class="lead" x-cloak>
+    <div x-show="noSearchYet" class="alert alert-primary mt-3" role="alert" x-cloak>
         Choose a DICOM source and enter your search
-    </p>
+    </div>
 
-    <p x-show="!queryResults.length && !noSearchYet && !searchInProgress" class="lead" x-cloak>
-        No studies for your query found.
-    </p>
+    <div
+        x-show="noResults"
+        class="alert alert-secondary mt-3"
+        role="alert" 
+        x-cloak
+    >
+        No studies for your query found. Try with other search terms.
+    </div>
 
-    <div x-show="searchInProgress" x-cloak>
+    <div
+        x-show="errorMessage"
+        x-text="errorMessage"
+        class="alert alert-danger mt-3"
+        role="alert"
+        x-cloak
+    ></div>
+
+    <div x-show="searchInProgress" class="mt-3" x-cloak>
         <div class="d-flex justify-content-center">
             <div class="d-flex flex-column align-items-center">
                 <div class="spinner-border" style="width: 3rem; height: 3rem;" role="status">
@@ -44,7 +57,7 @@
         </div>
     </div>
 
-    <div x-show="queryResults.length > 0" x-cloak>
+    <div x-show="queryResults.length > 0" class="mt-3" x-cloak>
         {% include "./_query_result_table.html" %}
 
         <input type="submit" class="btn btn-primary" value="Start Transfer" />

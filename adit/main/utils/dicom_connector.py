@@ -194,9 +194,7 @@ def _connect_to_server(func):
     def wrapper(self, *args, **kwargs):
         opened_connection = False
 
-        if self.config.auto_connect and (
-            self.assoc is None or not self.assoc.is_alive()
-        ):
+        if self.config.auto_connect and not self.is_connected():
             self.open_connection()
             opened_connection = True
 
@@ -248,6 +246,7 @@ class DicomConnector:
             self.move_query_model = StudyRootQueryRetrieveInformationModelMove
 
         self.assoc = None
+        self.msg_id = 1
 
     def _associate(self):
         ae = AE(ae_title=self.config.client_ae_title)
@@ -310,9 +309,47 @@ class DicomConnector:
         self.assoc.release()
         self.assoc = None
 
+    def is_connected(self):
+        return self.assoc and self.assoc.is_alive()
+
+    def c_cancel(self, msg_id=None, abstract_syntax=None):
+        """Cancels a DICOM operation.
+
+        If no message ID or abstract syntax is provided then a C-FIND operation
+        with the default message ID will be tried to cancel.
+        """
+        if msg_id is None:
+            msg_id = self.msg_id
+        if abstract_syntax is None:
+            abstract_syntax = self.find_query_model
+
+        logger.debug(
+            "Sending C-CANCEL for Message ID %d and abstract syntax %s.",
+            msg_id,
+            abstract_syntax,
+        )
+
+        if not self.is_connected():
+            raise AssertionError("No connection alive to send C-CANCEL.")
+
+        context_id = None
+        for accepted_context in self.assoc.accepted_contexts:
+            if accepted_context.abstract_syntax == abstract_syntax:
+                context_id = accepted_context.context_id
+
+        if context_id is None:
+            raise AssertionError(
+                "No presentation context ID could be found for C-CANCEL."
+            )
+
+        self.assoc.send_c_cancel(msg_id, context_id)
+
     @_connect_to_server
-    def c_find(self, query_dict, msg_id=1):
+    def c_find(self, query_dict, msg_id=None):
         logger.debug("Sending C-FIND with query: %s", query_dict)
+
+        if msg_id is None:
+            msg_id = self.msg_id
 
         query_ds = _make_query_dataset(query_dict)
 
@@ -320,8 +357,11 @@ class DicomConnector:
         return _fetch_results(responses, "C-FIND", query_dict)
 
     @_connect_to_server
-    def c_get(self, query_dict, folder=None, callback=None, msg_id=1):
+    def c_get(self, query_dict, folder=None, callback=None, msg_id=None):
         logger.debug("Sending C-GET with query: %s", query_dict)
+
+        if msg_id is None:
+            msg_id = self.msg_id
 
         if folder:
             Path(folder).mkdir(parents=True, exist_ok=True)
@@ -341,8 +381,11 @@ class DicomConnector:
         return results
 
     @_connect_to_server
-    def c_move(self, query_dict, destination_ae_title, msg_id=1):
+    def c_move(self, query_dict, destination_ae_title, msg_id=None):
         logger.debug("Sending C-MOVE with query: %s", query_dict)
+
+        if msg_id is None:
+            msg_id = self.msg_id
 
         query_ds = _make_query_dataset(query_dict)
 
@@ -352,8 +395,11 @@ class DicomConnector:
         return _fetch_results(responses, "C-MOVE", query_dict)
 
     @_connect_to_server
-    def c_store(self, folder: Path, callback=None, msg_id=1):
+    def c_store(self, folder: Path, callback=None, msg_id=None):
         logger.debug("Sending C-STORE of folder: %s", folder.as_posix())
+
+        if msg_id is None:
+            msg_id = self.msg_id
 
         results = []
         for root, _, files in os.walk(folder):
@@ -448,7 +494,8 @@ class DicomConnector:
         _check_find_results(results, "studies", query_dict)
         result_data = _extract_pending_data(results)
 
-        failed_studies = []
+        failed_study_uids = []
+        filtered_studies = []
         for ds in result_data:
             patient_id = ds["PatientID"]
             study_uid = ds["StudyInstanceUID"]
@@ -456,10 +503,12 @@ class DicomConnector:
             try:
                 study_modalities = self.fetch_study_modalities(patient_id, study_uid)
             except ValueError:
-                failed_studies.append(study_uid)
+                failed_study_uids.append(study_uid)
                 study_modalities = []
 
-            if modality is not None:
+            ds["Modalities"] = study_modalities
+
+            if modality:
                 if isinstance(modality, str):
                     if modality not in study_modalities:
                         continue
@@ -469,12 +518,12 @@ class DicomConnector:
                     if len(set(study_modalities) & set(modality)) == 0:
                         continue
 
-            ds["Modalities"] = study_modalities
+            filtered_studies.append(ds)
 
-        if len(failed_studies) > 0:
+        if len(failed_study_uids) > 0:
             raise ValueError(
                 "Problems occurred while finding modilities for studies with UID: %s"
-                % ", ".join(failed_studies)
+                % ", ".join(failed_study_uids)
             )
 
         return result_data
