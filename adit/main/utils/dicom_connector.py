@@ -57,7 +57,7 @@ def _make_query_dataset(query_dict):
     return ds
 
 
-def _sanitise_unicode(s):
+def _sanitize_unicode(s):
     return s.replace("\u0000", "").strip()
 
 
@@ -66,10 +66,10 @@ def _convert_value(v):
     if t in (list, int, float):
         cv = v
     elif t == str:
-        cv = _sanitise_unicode(v)
+        cv = _sanitize_unicode(v)
     elif t == bytes:
         s = v.decode("ascii", "replace")
-        cv = _sanitise_unicode(s)
+        cv = _sanitize_unicode(s)
     elif t == valuerep.DSfloat:
         cv = float(v)
     elif t == valuerep.IS:
@@ -136,8 +136,15 @@ def _fetch_results(responses, operation, query_dict):
     return results
 
 
-def _extract_pending_data(results):
+def _extract_pending_data(results, resource, query_dict):
     """Extract the data from a DicomOperation result."""
+    status_category = results[-1]["status"]["category"]
+    status_code = results[-1]["status"]["code"]
+    if status_category not in [STATUS_PENDING, STATUS_SUCCESS]:
+        error_msg = f"{status_category} ({status_code}) occurred while trying to find {resource}"
+        log_msg = error_msg + " with query params %s and returned identifier: %s"
+        logger.error(log_msg, query_dict, results[-1]["data"])
+        raise ValueError(error_msg + ".")
 
     filtered = filter(lambda x: x["status"]["category"] == STATUS_PENDING, results)
     data = map(lambda x: x["data"], filtered)
@@ -169,16 +176,6 @@ def _handle_store(folder, callback, event):
 
     # Return a 'Success' status
     return 0x0000
-
-
-def _check_find_results(results, resource, query_dict):
-    status_category = results[-1]["status"]["category"]
-    status_code = results[-1]["status"]["code"]
-    if status_category not in [STATUS_PENDING, STATUS_SUCCESS]:
-        error_msg = f"{status_category} ({status_code}) occurred while trying to find {resource}"
-        log_msg = error_msg + " with query params %s and returned identifier: %s"
-        logger.error(log_msg, query_dict, results[-1]["data"])
-        raise ValueError(error_msg + ".")
 
 
 def _connect_to_server(func):
@@ -458,10 +455,9 @@ class DicomConnector:
             "PatientBirthDate": patient_birth_date,
         }
         results = self.c_find(query_dict)
-        _check_find_results(results, "patients", query_dict)
-        result_data = _extract_pending_data(results)
+        patients = _extract_pending_data(results, "patients", query_dict)
 
-        return result_data
+        return patients
 
     @_connect_to_server
     def find_studies(  # pylint: disable=too-many-arguments,too-many-locals
@@ -491,14 +487,13 @@ class DicomConnector:
             "StudyDescription": study_description,
         }
         results = self.c_find(query_dict)
-        _check_find_results(results, "studies", query_dict)
-        result_data = _extract_pending_data(results)
+        studies = _extract_pending_data(results, "studies", query_dict)
 
         failed_study_uids = []
         filtered_studies = []
-        for ds in result_data:
-            patient_id = ds["PatientID"]
-            study_uid = ds["StudyInstanceUID"]
+        for study in studies:
+            patient_id = study["PatientID"]
+            study_uid = study["StudyInstanceUID"]
 
             try:
                 study_modalities = self.fetch_study_modalities(patient_id, study_uid)
@@ -506,7 +501,7 @@ class DicomConnector:
                 failed_study_uids.append(study_uid)
                 study_modalities = []
 
-            ds["Modalities"] = study_modalities
+            study["Modalities"] = study_modalities
 
             if modality:
                 if isinstance(modality, str):
@@ -518,7 +513,7 @@ class DicomConnector:
                     if len(set(study_modalities) & set(modality)) == 0:
                         continue
 
-            filtered_studies.append(ds)
+            filtered_studies.append(study)
 
         if len(failed_study_uids) > 0:
             raise ValueError(
@@ -526,7 +521,7 @@ class DicomConnector:
                 % ", ".join(failed_study_uids)
             )
 
-        return result_data
+        return filtered_studies
 
     @_connect_to_server
     def find_series(  # pylint: disable=too-many-arguments
@@ -550,16 +545,15 @@ class DicomConnector:
             "Modality": "",  # we handle Modality programmatically, see below
         }
         results = self.c_find(query_dict)
-        _check_find_results(results, "series", query_dict)
-        result_data = _extract_pending_data(results)
+        series_list = _extract_pending_data(results, "series", query_dict)
 
         if modality is None:
-            return result_data
+            return series_list
 
         return list(
             filter(
                 lambda x: x["Modality"] == modality or x["Modality"] in modality,
-                result_data,
+                series_list,
             )
         )
 
@@ -572,10 +566,10 @@ class DicomConnector:
         create_series_folders=True,
         modifier_callback=None,
     ):
-        study_list = self.find_studies(patient_id, modality=modality)
+        studies = self.find_studies(patient_id, modality=modality)
 
         failed_studies = []
-        for study in study_list:
+        for study in studies:
             study_uid = study["StudyInstanceUID"]
             study_date = study["StudyDate"]
             study_time = study["StudyTime"]
