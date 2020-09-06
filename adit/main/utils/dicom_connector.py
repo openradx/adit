@@ -14,6 +14,7 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 import os
+import re
 from functools import partial
 from celery.utils.log import get_task_logger
 from pydicom.dataset import Dataset
@@ -485,21 +486,30 @@ class DicomConnector:
             "StudyDate": study_date,
             "StudyTime": study_time,
             "StudyDescription": study_description,
+            "ModalitiesInStudy": "",
         }
         results = self.c_find(query_dict)
         studies = _extract_pending_data(results, "studies", query_dict)
 
-        failed_study_uids = []
         filtered_studies = []
         for study in studies:
             patient_id = study["PatientID"]
             study_uid = study["StudyInstanceUID"]
 
-            try:
-                study_modalities = self.fetch_study_modalities(patient_id, study_uid)
-            except ValueError:
-                failed_study_uids.append(study_uid)
-                study_modalities = []
+            # Modalities In Study is not supported by all PACS servers. If it is
+            # supported then it should be not empty. Otherwise we fetch the Modality
+            # of all its series manually.
+            if study["ModalitiesInStudy"]:
+                study_modalities = re.split(r"\s*\\\s*", study["ModalitiesInStudy"])
+            else:
+                try:
+                    study_modalities = self.fetch_study_modalities(
+                        patient_id, study_uid
+                    )
+                except ValueError as err:
+                    raise ValueError(
+                        "Failed to fetch modalities of study with UID %s" % study_uid
+                    ) from err
 
             study["Modalities"] = study_modalities
 
@@ -514,12 +524,6 @@ class DicomConnector:
                         continue
 
             filtered_studies.append(study)
-
-        if len(failed_study_uids) > 0:
-            raise ValueError(
-                "Problems occurred while finding modilities for studies with UID: %s"
-                % ", ".join(failed_study_uids)
-            )
 
         return filtered_studies
 
