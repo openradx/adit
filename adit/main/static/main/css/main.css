@@ -1,9 +1,8 @@
-/* For alpinejs */
-[x-cloak] {
-    display: none;
-}
+/***
+* Misc
+***/
 
-/* All other stuff */
+/* Make site take the full screen */
 html,
 body,
 main {
@@ -15,6 +14,18 @@ main {
 main {
     padding-top: 3.5rem;
 }
+
+/***
+* Alpine.js
+***/
+
+[x-cloak] {
+    display: none;
+}
+
+/***
+* Toast message panel
+***/
 
 /* Floating panel for toast messages */
 .messages-panel {
@@ -31,6 +42,10 @@ main {
 .toast.error svg rect {
     fill: red;
 }
+
+/***
+* django_tables2
+***/
 
 /* Nice sort indicators in the django-table2 tables */
 table.table thead th.asc.orderable {
@@ -56,10 +71,10 @@ table.table thead th.desc.orderable {
 
 /* Make the sort indicator fit for small columns */
 table.table thead th.orderable {
-    min-width: 75px;
+    min-width: 85px;
 }
 
 /* Align job ids to the right inside the column */
-table.table tbody td.job-id {
+table.table tbody td.record-id {
     text-align: right;
 }

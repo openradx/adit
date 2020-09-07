@@ -17,6 +17,9 @@ from adit.batch_transfer.factories import (
 )
 from adit.selective_transfer.factories import SelectiveTransferJobFactory
 
+CREATE_JOBS_FOR_ADMIN_ONLY = True
+PROBABILITY_OF_BATCH_JOB = 50
+
 fake = Faker()
 
 
@@ -78,7 +81,7 @@ def create_folder_nodes():
 
 def create_jobs(users, servers, folders):
     for _ in range(10):
-        if fake.boolean(chance_of_getting_true=25):
+        if fake.boolean(chance_of_getting_true=PROBABILITY_OF_BATCH_JOB):
             create_batch_transfer_job(users, servers, folders)
         else:
             create_selective_transfer_job(users, servers, folders)
@@ -124,4 +127,8 @@ class Command(BaseCommand):
         users = create_users()
         servers = create_server_nodes()
         folders = create_folder_nodes()
+
+        if CREATE_JOBS_FOR_ADMIN_ONLY:
+            users = [users[0]]
+
         create_jobs(users, servers, folders)

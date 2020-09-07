@@ -24,6 +24,7 @@ django-extensions = "*"
 django-debug-toolbar = "*"
 django-debug-permissions = "*"
 requests = "*"
+ipython = "*"
 
 [packages]
 django = "*" 

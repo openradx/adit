@@ -12,9 +12,8 @@
     <thead>
         <tr>
             <th>Request ID</th>
-            <th>Patient ID</th>
-            <th>Pseudonym</th>
             <th>Status</th>
+            <th>Finished At</th>
             <th>Message</th>
         </tr>
     </thead>
@@ -22,9 +21,8 @@
     {% for request in job.requests.all %}
         <tr>
             <td>{{ request.request_id }}</td>
-            <td>{{ request.patient_id }}</td>
-            <td>{{ request.pseudonym|default:" - " }}</td>
             <td>{{ request.get_status_display }}</td>
+            <td>{{ request.stopped_at|default:" - " }}</td>
             <td>{{ request.message|default:" - " }}</td>
         </tr>
     {% endfor %}

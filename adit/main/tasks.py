@@ -6,6 +6,7 @@ import tempfile
 import subprocess
 from functools import partial
 from celery import shared_task
+from django.utils import timezone
 from celery.utils.log import get_task_logger
 from .utils.dicom_connector import DicomConnector
 from .utils.anonymizer import Anonymizer
@@ -22,6 +23,7 @@ def transfer_dicoms(task_id):
         raise AssertionError(f"Invalid transfer task status: {task.status}")
 
     task.status = TransferTask.Status.IN_PROGRESS
+    task.started_at = timezone.now()
     task.save()
 
     job = task.job
@@ -68,6 +70,7 @@ def transfer_dicoms(task_id):
         task.log = stream.getvalue()
         stream.close()
         logger.parent.removeHandler(handler)
+        task.stopped_at = timezone.now()
         task.save()
 
     return task.status

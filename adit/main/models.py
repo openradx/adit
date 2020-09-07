@@ -109,13 +109,13 @@ class TransferJob(models.Model):
         return self.tasks.exclude(status__in=non_processed)
 
     def is_deletable(self):
-        return self.status in [self.Status.UNVERIFIED, self.Status.PENDING]
+        return self.status in (self.Status.UNVERIFIED, self.Status.PENDING)
 
     def is_cancelable(self):
         return self.status in (self.Status.IN_PROGRESS,)
 
-    def is_transfer_to_archive(self):
-        return bool(self.archive_password)
+    def is_retryable(self):
+        return self.status in (self.Status.WARNING, self.Status.FAILURE)
 
     def __str__(self):
         status_dict = dict(self.Status.choices)
@@ -144,7 +144,9 @@ class TransferTask(models.Model):
     series_uids = SeparatedValuesField(blank=True, null=True)
     pseudonym = models.CharField(max_length=324, blank=True, null=True)
     status = models.CharField(
-        max_length=2, choices=Status.choices, default=Status.PENDING,
+        max_length=2,
+        choices=Status.choices,
+        default=Status.PENDING,
     )
     message = models.TextField(blank=True, null=True)
     log = models.TextField(blank=True, null=True)

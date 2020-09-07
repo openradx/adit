@@ -1,6 +1,7 @@
 import redis
 from celery import shared_task, chord
 from django.conf import settings
+from django.utils import timezone
 from adit.main.models import TransferTask
 from adit.main.tasks import transfer_dicoms
 from adit.main.utils.scheduler import Scheduler
@@ -35,6 +36,7 @@ def transfer_request(self, request_id):
 
     if job.status == BatchTransferJob.Status.CANCELING:
         request.status = BatchTransferRequest.Status.CANCELED
+        request.stopped_at = timezone.now()
         request.save()
         return request.status
 
@@ -50,9 +52,11 @@ def transfer_request(self, request_id):
 
     if job.status == BatchTransferJob.Status.PENDING:
         job.status = BatchTransferJob.Status.IN_PROGRESS
+        job.started_at = timezone.now()
         job.save()
 
     request.status = BatchTransferRequest.Status.IN_PROGRESS
+    request.started_at = timezone.now()
     request.save()
 
     try:
@@ -98,10 +102,12 @@ def transfer_request(self, request_id):
             raise ValueError("All transfer tasks failed.")
 
         request.status = BatchTransferRequest.Status.SUCCESS
+        request.stopped_at = timezone.now()
         request.save()
 
     except Exception as err:  # pylint: disable=broad-except
         request.status = BatchTransferRequest.Status.FAILURE
+        request.stopped_at = timezone.now()
         request.message = str(err)
         request.save()
 
@@ -141,6 +147,9 @@ def update_job_status(request_status_list, job_id):
         job.message = "All requests failed."
     else:
         raise AssertionError("Invalid request status.")
+
+    job.stopped_at = timezone.now()
+    job.save()
 
 
 @redis_lru(capacity=10000, slicer=slice(3))

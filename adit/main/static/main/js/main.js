@@ -1,3 +1,7 @@
+$(function () {
+    new ClipboardJS(".clipboard");
+});
+
 function loadData(jsonElementId) {
     return JSON.parse(document.getElementById(jsonElementId).textContent);
 }

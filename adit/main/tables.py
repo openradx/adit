@@ -3,8 +3,8 @@ import django_tables2 as tables
 from .models import TransferJob
 
 
-class JobIdColumn(tables.Column):
-    attrs = {"td": {"class": "job-id"}}
+class RecordIdColumn(tables.Column):
+    attrs = {"td": {"class": "record-id"}}
 
     def render(self, record, value):  # pylint: disable=arguments-differ
         url = record.get_absolute_url()
@@ -12,7 +12,7 @@ class JobIdColumn(tables.Column):
 
 
 class TransferJobTable(tables.Table):
-    id = JobIdColumn()
+    id = RecordIdColumn(verbose_name="Job ID")
 
     class Meta:  # pylint: disable=too-few-public-methods
         model = TransferJob
