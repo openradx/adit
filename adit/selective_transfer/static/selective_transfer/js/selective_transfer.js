@@ -203,7 +203,7 @@ function selectiveTransferForm() {
             })
                 .done(function (data) {
                     console.info(data);
-                    this.$dispatch("main:add-message", {
+                    self.$dispatch("main:add-message", {
                         level: "success",
                         text:
                             "Successfully submitted transfer job with ID " +

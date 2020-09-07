@@ -59,7 +59,7 @@ def update_job_status(task_status_list, job_id):
         elif status == TransferTask.Status.FAILURE:
             has_failure = True
         else:
-            raise AssertionError("Invalid task status.")
+            raise AssertionError("Invalid task status: " + status)
 
     if has_success and has_failure:
         job.status = SelectiveTransferJob.Status.WARNING
@@ -71,6 +71,6 @@ def update_job_status(task_status_list, job_id):
         job.status = SelectiveTransferJob.Status.FAILURE
         job.message = "All transfer tasks failed."
     else:
-        raise AssertionError("Invalid task status.")
+        raise AssertionError("Invalid task status: " + job.status)
 
     job.save()

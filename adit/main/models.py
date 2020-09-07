@@ -23,6 +23,7 @@ class DicomNode(models.Model):
 
     node_name = models.CharField(unique=True, max_length=64)
     node_type = models.CharField(max_length=2, choices=NodeType.choices)
+    active = models.BooleanField(default=True)
 
     def __str__(self):
         node_types_dict = dict(self.NodeType.choices)
@@ -80,11 +81,9 @@ class TransferJob(models.Model):
     class Meta:
         indexes = [models.Index(fields=["created_by", "status"])]
 
-    source = models.ForeignKey(
-        DicomNode, related_name="+", null=True, on_delete=models.SET_NULL
-    )
+    source = models.ForeignKey(DicomNode, related_name="+", on_delete=models.PROTECT)
     destination = models.ForeignKey(
-        DicomNode, related_name="+", null=True, on_delete=models.SET_NULL
+        DicomNode, related_name="+", on_delete=models.PROTECT
     )
     job_type = models.CharField(max_length=2, choices=job_type_choices)
     status = models.CharField(
@@ -113,9 +112,6 @@ class TransferJob(models.Model):
 
     def is_cancelable(self):
         return self.status in (self.Status.IN_PROGRESS,)
-
-    def is_retryable(self):
-        return self.status in (self.Status.WARNING, self.Status.FAILURE)
 
     def __str__(self):
         status_dict = dict(self.Status.choices)
