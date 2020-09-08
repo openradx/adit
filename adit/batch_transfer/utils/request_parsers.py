@@ -20,13 +20,13 @@ class RequestParser:  # pylint: disable=too-few-public-methods
         self._date_formats = date_formats
 
         self._errors = []
-        self._request_ids = set()
+        self._row_keys = set()
         self._patient_ids = dict()
         self._pseudonyms = dict()
 
     def parse(self, csv_file):
         self._errors = []
-        self._request_ids = set()
+        self._row_keys = set()
         self._patient_ids = dict()
         self._pseudonyms = dict()
         requests = []
@@ -42,8 +42,8 @@ class RequestParser:  # pylint: disable=too-few-public-methods
         return requests
 
     def _extract_request(self, row, i):
-        request_id = row.get("RequestID", "").strip()
-        request_id = self._clean_request_id(request_id, i)
+        row_key = row.get("RowKey", "").strip()
+        row_key = self._clean_row_key(row_key, i)
         patient_id = row.get("PatientID", "").strip()
         patient_id = self._clean_patient_id(patient_id, i)
         patient_name = row.get("PatientName", "").strip()
@@ -60,7 +60,7 @@ class RequestParser:  # pylint: disable=too-few-public-methods
         pseudonym = self._clean_pseudonym(pseudonym, i)
 
         request = {
-            "RequestID": request_id,
+            "RowKey": row_key,
             "PatientID": patient_id,
             "PatientName": patient_name,
             "PatientBirthDate": patient_birth_date,
@@ -72,19 +72,19 @@ class RequestParser:  # pylint: disable=too-few-public-methods
 
         return self._clean_request(request, i)
 
-    def _clean_request_id(self, request_id, i):
-        if not request_id:
-            self._errors.append(f"Missing RequestID in row {i}.")
-        elif not request_id.isdigit():
-            self._errors.append(f"Invalid RequestID in row {i}. Must be a digit.")
+    def _clean_row_key(self, row_key, i):
+        if not row_key:
+            self._errors.append(f"Missing RowKey in row {i}.")
+        elif not row_key.isdigit():
+            self._errors.append(f"Invalid RowKey in row {i}. Must be a digit.")
         else:
-            r_id = int(request_id)
-            if r_id in self._request_ids:
-                self._errors.append(f"Duplicate RequestID in row {i}.")
+            r_id = int(row_key)
+            if r_id in self._row_keys:
+                self._errors.append(f"Duplicate RowKey in row {i}.")
             else:
-                self._request_ids.add(r_id)
+                self._row_keys.add(r_id)
                 return r_id
-        return request_id
+        return row_key
 
     def _clean_patient_id(self, patient_id, i):
         if len(patient_id) > 64:

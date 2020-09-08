@@ -8,7 +8,7 @@ from adit.batch_transfer.utils.request_parsers import ParsingError, RequestParse
 
 def get_header_data():
     return [
-        "RequestID",
+        "RowKey",
         "PatientID",
         "PatientName",
         "PatientBirthDate",
@@ -22,7 +22,7 @@ def get_header_data():
 def get_row_data():
     return [
         {
-            "RequestID": "1",
+            "RowKey": "1",
             "PatientID": "10002",
             "PatientName": "Banana, Ben",
             "PatientBirthDate": "18.02.1962",
@@ -32,7 +32,7 @@ def get_row_data():
             "Pseudonym": "DEDH6SVQ",
         },
         {
-            "RequestID": "2",
+            "RowKey": "2",
             "PatientID": "10004",
             "PatientName": "Coconut, Coco",
             "PatientBirthDate": "09.12.1976",
@@ -71,36 +71,36 @@ class RequestParserTest(TestCase):
         self.assertEqual(data[0]["PatientName"], "Banana^Ben")
         self.assertEqual(data[0]["Modality"], "CT")
         self.assertEqual(data[1]["PatientID"], "10004")
-        self.assertEqual(data[1]["RequestID"], 2)
+        self.assertEqual(data[1]["RowKey"], 2)
         study_date = datetime(2019, 6, 1)
         self.assertEqual(data[1]["StudyDate"], study_date)
         patient_birth_date = datetime(1976, 12, 9)
         self.assertEqual(data[1]["PatientBirthDate"], patient_birth_date)
         self.assertEqual(data[1]["Pseudonym"], "C2XJQ2AR")
 
-    def test_missing_request_id(self):
+    def test_missing_row_key(self):
         columns = get_header_data()
         rows = get_row_data()
-        rows[0]["RequestID"] = " "
+        rows[0]["RowKey"] = " "
         file = create_csv_file(columns, rows)
 
         with self.assertRaises(ParsingError):
             RequestParser(";", ["%d.%m.%Y"]).parse(file)
 
-    def test_invalid_request_id(self):
+    def test_invalid_row_key(self):
         columns = get_header_data()
         rows = get_row_data()
-        rows[0]["RequestID"] = "ABC"
+        rows[0]["RowKey"] = "ABC"
         file = create_csv_file(columns, rows)
 
         with self.assertRaises(ParsingError):
             RequestParser(";", ["%d.%m.%Y"]).parse(file)
 
-    def test_duplicate_request_id(self):
+    def test_duplicate_row_key(self):
         columns = get_header_data()
         rows = get_row_data()
-        request_id = rows[0]["RequestID"]
-        rows[1]["RequestID"] = request_id
+        row_key = rows[0]["RowKey"]
+        rows[1]["RowKey"] = row_key
         file = create_csv_file(columns, rows)
 
         with self.assertRaises(ParsingError):

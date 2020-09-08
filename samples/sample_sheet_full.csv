@@ -1,4 +1,4 @@
-﻿RequestID;PatientID;PatientName;PatientBirthDate;StudyDate;Modality;Pseudonym;Exclude
+RowKey;PatientID;PatientName;PatientBirthDate;StudyDate;Modality;Pseudonym;Exclude
 1;10006;Pineapple, Peter;02.11.1960;29.05.2020;MR;30MX3T5N;
 2;10002;Banana, Ben;18.02.1962;27.03.2018;CT;DEDH6SVQ;
 3;10002;Banana, Ben;18.02.1962;13.09.2018;CT;DEDH6SVQ;

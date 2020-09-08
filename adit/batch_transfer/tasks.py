@@ -24,8 +24,8 @@ def batch_transfer(job_id):
 
 
 @shared_task(bind=True)
-def transfer_request(self, request_id):
-    request = BatchTransferRequest.objects.get(id=request_id)
+def transfer_request(self, row_key):
+    request = BatchTransferRequest.objects.get(id=row_key)
 
     if request.status != BatchTransferRequest.Status.PENDING:
         raise AssertionError(

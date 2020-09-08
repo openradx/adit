@@ -109,7 +109,7 @@ class BatchTransferJobForm(ModelForm):
         for row in self.csv_data:
             request = BatchTransferRequest(
                 job=batch_job,
-                request_id=row["RequestID"],
+                row_key=row["RowKey"],
                 patient_id=row["PatientID"],
                 patient_name=row["PatientName"],
                 patient_birth_date=row["PatientBirthDate"],
