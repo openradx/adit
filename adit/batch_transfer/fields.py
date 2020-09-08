@@ -1,6 +1,7 @@
 from django.forms import forms
 from django.template.defaultfilters import filesizeformat
 
+
 class RestrictedFileField(forms.FileField):
     """File field with restrictions.
 
@@ -13,19 +14,22 @@ class RestrictedFileField(forms.FileField):
             20MB - 20971520
             50MB - 52428800
             100MB - 104857600
-        
+
     Adapted from https://stackoverflow.com/a/9016664/166229
     """
+
     def __init__(self, *args, **kwargs):
         self.max_upload_size = kwargs.pop("max_upload_size", 0)
 
         super().__init__(*args, **kwargs)
 
-    def clean(self, *args, **kwargs):
-        file = super().clean(*args, **kwargs)
+    def clean(self, data, initial=None):
+        file = super().clean(data, initial=initial)
 
         if file.size > self.max_upload_size:
-            raise forms.ValidationError('File too large. Please keep filesize under %s.'
-                    % (filesizeformat(self.max_upload_size)))
+            raise forms.ValidationError(
+                "File too large. Please keep filesize under %s."
+                % (filesizeformat(self.max_upload_size))
+            )
 
         return file

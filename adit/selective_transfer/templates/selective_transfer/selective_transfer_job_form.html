@@ -15,7 +15,7 @@
     @submit.prevent="submitTransfer"
     novalidate="true"
     x-data="selectiveTransferForm()"
-    x-init="init($dispatch, $refs)"
+    x-init="init($refs)"
 >
     {% crispy form %}
 
@@ -43,6 +43,16 @@
         role="alert"
         x-cloak
     ></div>
+
+    <div
+        x-show="successJobId"
+        class="alert alert-success mt-3"
+        role="alert"
+        x-cloak
+    >
+        Successfully submitted transfer job with ID
+        <span x-text="successJobId"></span>
+    </div>
 
     <div x-show="searchInProgress" class="mt-3" x-cloak>
         <div class="d-flex justify-content-center">

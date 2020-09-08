@@ -42,7 +42,7 @@ class BatchTransferJobCreateView(
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context["node_types"] = {}
-        for node in DicomNode.objects.all():
+        for node in DicomNode.objects.filter(active=True):
             if node.node_type == DicomNode.NodeType.SERVER:
                 context["node_types"][node.id] = "server"
             elif node.node_type == DicomNode.NodeType.FOLDER:

@@ -6,8 +6,8 @@ import tempfile
 import subprocess
 from functools import partial
 from celery import shared_task
-from django.utils import timezone
 from celery.utils.log import get_task_logger
+from django.utils import timezone
 from .utils.dicom_connector import DicomConnector
 from .utils.anonymizer import Anonymizer
 from .models import DicomNode, TransferTask
@@ -46,6 +46,12 @@ def transfer_dicoms(task_id):
     logger.parent.addHandler(handler)
 
     try:
+        if not job.source.active:
+            raise ValueError("Source DICOM node not active.")
+
+        if not job.destination.active:
+            raise ValueError("Destination DICOM node not active.")
+
         if job.destination.node_type == DicomNode.NodeType.SERVER:
             _transfer_to_server(task)
         else:
@@ -59,9 +65,10 @@ def transfer_dicoms(task_id):
 
     except Exception as err:  # pylint: disable=broad-except
         logger.exception(
-            "Error during transfer task ID %d (transfer job ID %d).",
+            "Error during transfer task ID %d (transfer job ID %d): %s",
             task.id,
             job.id,
+            str(err),
         )
         task.status = TransferTask.Status.FAILURE
         task.message = str(err)

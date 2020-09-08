@@ -24,8 +24,10 @@ class BatchTransferJobForm(ModelForm):
 
         # Folders can only be a destination for batch mode
         self.fields["source"].queryset = DicomNode.objects.filter(
-            node_type=DicomNode.NodeType.SERVER
+            node_type=DicomNode.NodeType.SERVER, active=True
         )
+
+        self.fields["destination"].queryset = DicomNode.objects.filter(active=True)
 
         self.fields["destination"].widget.attrs[
             "@change"

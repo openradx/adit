@@ -41,7 +41,6 @@ INSTALLED_APPS = [
     "rest_framework",
     "bootstrap4",
     "adit.main.apps.MainConfig",
-    "adit.api.apps.ApiConfig",
     "adit.selective_transfer.apps.SelectiveTransferConfig",
     "adit.batch_transfer.apps.BatchTransferConfig",
 ]

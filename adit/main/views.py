@@ -8,12 +8,14 @@ from django.core.exceptions import SuspiciousOperation
 from django.contrib import messages
 from django.shortcuts import redirect
 from django.conf import settings
+from rest_framework import generics
 from django_tables2 import SingleTableView
 from revproxy.views import ProxyView
 from .models import TransferJob
 from .tables import TransferJobTable
 from .site import job_detail_views
 from .mixins import OwnerRequiredMixin
+from .serializers import TransferJobListSerializer
 
 
 class TransferJobListView(LoginRequiredMixin, SingleTableView):
@@ -93,3 +95,10 @@ class FlowerProxyView(UserPassesTestMixin, ProxyView):
     @classmethod
     def as_url(cls):
         return re_path(r"^(?P<path>{}.*)$".format(cls.url_prefix), cls.as_view())
+
+
+class TransferJobListAPIView(generics.ListAPIView):
+    serializer_class = TransferJobListSerializer
+
+    def get_queryset(self):
+        return TransferJob.objects.filter(created_by=self.request.user)

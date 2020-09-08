@@ -2,6 +2,7 @@ from django.urls import path
 from django.views.generic import TemplateView
 from .views import (
     TransferJobListView,
+    TransferJobListAPIView,
     render_job_detail_view,
     TransferJobDeleteView,
     TransferJobCancelView,
@@ -13,6 +14,10 @@ from .views import (
 urlpatterns = [
     path("", TemplateView.as_view(template_name="main/home.html"), name="home"),
     path("transfer-jobs/", TransferJobListView.as_view(), name="transfer_job_list"),
+    path(
+        "api/transfer-jobs/",
+        TransferJobListAPIView.as_view(),
+    ),
     path("transfer-jobs/<int:pk>/", render_job_detail_view, name="transfer_job_detail"),
     path(
         "transfer-jobs/<int:pk>/delete",

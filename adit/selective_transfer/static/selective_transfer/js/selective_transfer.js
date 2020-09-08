@@ -20,10 +20,10 @@ function selectiveTransferForm() {
         noSearchYet: true,
         noResults: false,
         errorMessage: "",
+        successJobId: null,
         searchInProgress: false,
         selectAllChecked: false,
-        init: function ($dispatch, $refs) {
-            this.$dispatch = $dispatch;
+        init: function ($refs) {
             this.$refs = $refs;
 
             this.connect();
@@ -100,13 +100,18 @@ function selectiveTransferForm() {
                 advancedOptionsVisible: this.advancedOptionsVisible,
             });
         },
-        submitQuery: function () {
+        reset: function (noSearchYet) {
+            this.noSearchYet = !!noSearchYet;
             this.selectAllChecked = false;
             this.queryResults = [];
-            this.noSearchYet = false;
             this.noResults = false;
-            this.searchInProgress = true;
             this.errorMessage = "";
+            this.successJobId = null;
+            this.searchInProgress = false;
+        },
+        submitQuery: function () {
+            this.reset();
+            this.searchInProgress = true;
             this.currentQueryId = uuidv4();
 
             const data = {
@@ -161,6 +166,8 @@ function selectiveTransferForm() {
         submitTransfer: function () {
             const self = this;
 
+            this.errorMessage = "";
+
             const patientIds = [];
             const studiesToTransfer = this.queryResults
                 .filter(function (study) {
@@ -203,16 +210,21 @@ function selectiveTransferForm() {
             })
                 .done(function (data) {
                     console.info(data);
-                    self.$dispatch("main:add-message", {
-                        level: "success",
-                        text:
-                            "Successfully submitted transfer job with ID " +
-                            data.id,
-                    });
+                    self.reset();
+                    self.successJobId = data.id;
                 })
-                .fail(function (response) {
-                    console.error(response);
-                    this.errorMessage = "Communication with the server failed.";
+                .fail(function (jqXHR) {
+                    console.error(jqXHR);
+                    let errorString = "";
+                    const errorMessages = jqXHR.responseJSON;
+                    if (jqXHR.status === 400) {
+                        for (const field in errorMessages) {
+                            errorString += capitalize(field);
+                            errorString += ": " + errorMessages[field];
+                            errorString += "\n";
+                        }
+                    }
+                    self.errorMessage = errorString;
                 });
         },
     };

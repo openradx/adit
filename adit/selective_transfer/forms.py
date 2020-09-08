@@ -5,15 +5,6 @@ from adit.selective_transfer.models import SelectiveTransferJob
 from adit.main.models import DicomNode
 
 
-def create_field(field_name):
-    return Column(
-        Field(
-            field_name,
-            **{"x_model": f"formData.{field_name}", "@change": "updateCookie"},
-        )
-    )
-
-
 class SelectiveTransferJobForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -21,12 +12,31 @@ class SelectiveTransferJobForm(forms.ModelForm):
         self.fields["source"].queryset = DicomNode.objects.filter(
             node_type=DicomNode.NodeType.SERVER, active=True
         )
-        self.fields["destination"].queryset = DicomNode.objects.filer(active=True)
+        self.fields["destination"].queryset = DicomNode.objects.filter(active=True)
 
         self.helper = FormHelper(self)
         self.helper.form_tag = False
         self.helper.layout = Layout(
-            Row(create_field("source"), create_field("destination"))
+            Row(
+                Column(
+                    Field(
+                        "source",
+                        **{
+                            "x_model": "formData.source",
+                            "@change": "updateCookie(); reset(true)",
+                        },
+                    )
+                ),
+                Column(
+                    Field(
+                        "destination",
+                        **{
+                            "x_model": "formData.destination",
+                            "@change": "updateCookie",
+                        },
+                    )
+                ),
+            )
         )
 
     class Meta:
