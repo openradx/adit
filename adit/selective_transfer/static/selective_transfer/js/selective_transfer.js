@@ -20,6 +20,7 @@ function selectiveTransferForm() {
         noSearchYet: true,
         noResults: false,
         errorMessage: "",
+        transferRequested: false,
         successJobId: null,
         searchInProgress: false,
         selectAllChecked: false,
@@ -108,6 +109,7 @@ function selectiveTransferForm() {
             this.errorMessage = "";
             this.successJobId = null;
             this.searchInProgress = false;
+            this.transferRequested = false;
         },
         submitQuery: function () {
             this.reset();
@@ -166,6 +168,7 @@ function selectiveTransferForm() {
         submitTransfer: function () {
             const self = this;
 
+            this.transferRequested = true;
             this.errorMessage = "";
 
             const patientIds = [];
@@ -225,6 +228,7 @@ function selectiveTransferForm() {
                         }
                     }
                     self.errorMessage = errorString;
+                    self.transferRequested = false;
                 });
         },
     };
