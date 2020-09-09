@@ -62,6 +62,7 @@ def transfer_dicoms(task_id):
                 _transfer_to_folder(task)
 
         task.status = TransferTask.Status.SUCCESS
+        task.message = "Transfer task completed successfully."
 
     except Exception as err:  # pylint: disable=broad-except
         logger.exception(
