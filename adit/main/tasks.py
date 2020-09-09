@@ -65,10 +65,9 @@ def transfer_dicoms(task_id):
 
     except Exception as err:  # pylint: disable=broad-except
         logger.exception(
-            "Error during transfer task ID %d (transfer job ID %d): %s",
-            task.id,
+            "Error during task transfer (Job ID %d, Task ID %d).",
             job.id,
-            str(err),
+            task.id,
         )
         task.status = TransferTask.Status.FAILURE
         task.message = str(err)
@@ -77,6 +76,7 @@ def transfer_dicoms(task_id):
         task.log = stream.getvalue()
         stream.close()
         logger.parent.removeHandler(handler)
+
         task.stopped_at = timezone.now()
         task.save()
 

@@ -52,7 +52,7 @@ def redis_lru(capacity=5000, slicer=slice(None)):
             value = conn.hget(cache_vals, key)
             if value:
                 conn.incr(cache_hits)
-                conn.zincrby(cache_keys, key, 1.0)
+                conn.zincrby(cache_keys, 1, key)
                 value = pickle.loads(value)
             return value
 

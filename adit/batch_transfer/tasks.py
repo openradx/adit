@@ -1,5 +1,6 @@
 import redis
 from celery import shared_task, chord
+from celery.utils.log import get_task_logger
 from django.conf import settings
 from django.utils import timezone
 from adit.main.models import TransferTask
@@ -7,6 +8,8 @@ from adit.main.tasks import transfer_dicoms
 from adit.main.utils.scheduler import Scheduler
 from adit.main.utils.redis_lru import redis_lru
 from .models import AppSettings, BatchTransferJob, BatchTransferRequest
+
+logger = get_task_logger("adit." + __name__)
 
 
 @shared_task(ignore_result=True)
@@ -102,13 +105,21 @@ def transfer_request(self, row_key):
             raise ValueError("All transfer tasks failed.")
 
         request.status = BatchTransferRequest.Status.SUCCESS
-        request.stopped_at = timezone.now()
-        request.save()
 
     except Exception as err:  # pylint: disable=broad-except
+        logger.exception(
+            (
+                "Error during transferring batch request"
+                "(Job ID %d, Request ID %d, Row Key %s)."
+            ),
+            job.id,
+            request.id,
+            request.row_key,
+        )
         request.status = BatchTransferRequest.Status.FAILURE
-        request.stopped_at = timezone.now()
         request.message = str(err)
+    finally:
+        request.stopped_at = timezone.now()
         request.save()
 
     return request.status
