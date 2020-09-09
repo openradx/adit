@@ -11,7 +11,7 @@ class SeparatedValuesField(models.TextField):
 
     def __init__(self, *args, **kwargs):
         self.token = kwargs.pop("token", ",")
-        super(SeparatedValuesField, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
     def to_python(self, value):
         if not value:

@@ -1,6 +1,5 @@
 from unittest.mock import patch
 from django.test import TestCase
-from django.conf import settings
 from django.contrib.auth.models import Group
 from django.urls import reverse
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -8,25 +7,24 @@ from adit.accounts.factories import UserFactory
 from adit.main.factories import DicomServerFactory
 from ..models import BatchTransferJob
 
+csv_data = b"""\
+RowKey;PatientID;PatientName;PatientBirthDate;StudyDate;Modality;Pseudonym;Exclude
+1;10007;Papaya, Pamela;29.08.1976;19.08.2018;MR;ABU5QZL9;
+2;10002;Banana, Ben;18.02.1962;27.03.2018;CT;DEDH6SVQ;
+3;10002;Banana, Ben;18.02.1962;15.09.2019;MR;DEDH6SVQ;
+"""
+
 # Somehow the form data must be always generated from scratch (maybe cause of the
 # SimpleUploadedFile) otherwise tests fail.
 def create_form_data():
-    samples_folder_path = settings.BASE_DIR / "samples"
-
-    def load_file(filename):
-        file_path = samples_folder_path / filename
-        with open(file_path, "rb") as f:
-            file_content = f.read()
-            return SimpleUploadedFile(
-                name=filename, content=file_content, content_type="text/csv"
-            )
-
     return {
         "source": DicomServerFactory().id,
         "destination": DicomServerFactory().id,
         "project_name": "Apollo project",
         "project_description": "Fly to the moon",
-        "csv_file": load_file("sample_sheet_small.csv"),
+        "csv_file": SimpleUploadedFile(
+            name="sample_sheet.csv", content=csv_data, content_type="text/csv"
+        ),
     }
 
 
