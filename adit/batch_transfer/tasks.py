@@ -109,7 +109,7 @@ def transfer_request(self, row_key):
     except Exception as err:  # pylint: disable=broad-except
         logger.exception(
             (
-                "Error during transferring batch request"
+                "Error during transferring batch request "
                 "(Job ID %d, Request ID %d, Row Key %s)."
             ),
             job.id,
