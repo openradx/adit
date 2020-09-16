@@ -5,12 +5,10 @@ x-app: &default-app
   build:
     context: .
     target: production
-  ports:
-    - "80:80"
-    - "443:443"
   depends_on:
     - postgres
     - redis
+    - postfix
   volumes:
     - web_data:/var/www/adit
   environment:
@@ -29,6 +27,9 @@ x-app: &default-app
 services:
   web:
     <<: *default-app
+    ports:
+      - "80:80"
+      - "443:443"
     command: >
       bash -c "
         python ./manage.py migrate &&
@@ -75,8 +76,17 @@ services:
       - flower_data:/data
     command: flower --url_prefix=flower --broker=redis://redis:6379/0
 
+  postfix:
+    restart: always
+    image: freinet/postfix-relay
+    env_file:
+      - .env
+    volumes:
+      - postfix_data:/var/spool/postfix
+
 volumes:
   web_data: # only neccessary in production for static files and SSL certs
   postgres_data:
   redis_data:
   flower_data:
+  postfix_data:

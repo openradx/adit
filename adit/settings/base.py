@@ -81,6 +81,8 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "adit.wsgi.application"
 
+# In production a PostgreSQL (psql://...) URL is passed by using an
+# environment variable set in in docker-compose.prod.yml.
 DATABASES = {"default": env.db(default="sqlite:////tmp/adit-sqlite.db")}
 
 # Password validation
