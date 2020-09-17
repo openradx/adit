@@ -7,15 +7,20 @@ class Command(BaseCommand):
     help = "Send a test mail using the provided Email settings."
 
     def add_arguments(self, parser):
-        parser.add_argument("to_address", type=str)
+        parser.add_argument(
+            "to_address",
+            nargs="?",
+            type=str,
+            default=settings.ADMINS[0][1]
+        )
 
     def handle(self, *args, **options):
         to_address = options["to_address"]
 
         send_mail(
-            "Test Mail",
+            "[ADIT] Test Mail",
             "This is a test mail sent by ADIT.",
-            settings.ADMINS[0][1],
+            settings.SERVER_EMAIL,
             [to_address],
             fail_silently=False,
         )

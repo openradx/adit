@@ -214,14 +214,19 @@ MESSAGE_STORAGE = "django.contrib.messages.storage.session.SessionStorage"
 
 EMAIL_SUBJECT_PREFIX = "[ADIT] "
 
+# An Email address used by the ADIT server to notify about finished jobs and
+# management notifications.
+SERVER_EMAIL = env.str("DJANGO_SERVER_EMAIL", default="support@adit.test")
+DEFAULT_FROM_EMAIL = SERVER_EMAIL
+
 # Also used by django-registration-redux to send account approval emails
 admin_first_name = env.str("ADMIN_FIRST_NAME", default="ADIT")
-admin_last_name = env.str("ADMIN_LAST_NAME", default="Support")
+admin_last_name = env.str("ADMIN_LAST_NAME", default="Admin")
 admin_full_name = admin_first_name + " " + admin_last_name
 ADMINS = [
     (
         admin_full_name,
-        env.str("ADMIN_EMAIL", default="support@adit.test"),
+        env.str("ADMIN_EMAIL", default="admin@adit.test"),
     )
 ]
 

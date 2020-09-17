@@ -32,6 +32,7 @@ services:
       - "443:443"
     command: >
       bash -c "
+        ./scripts/wait-for-it.sh postgres:5432 -t 30 &&
         python ./manage.py migrate &&
         python ./manage.py collectstatic --no-input &&
         python ./manage.py create_admin &&
