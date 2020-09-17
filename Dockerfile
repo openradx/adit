@@ -8,11 +8,13 @@ RUN apt update \
     && mkdir -p /var/www/adit/static \
     && mkdir -p /var/www/adit/ssl \
     && mkdir /src
-COPY . /src/
+COPY ./Pipfile* /src/
 WORKDIR /src
 
 FROM base as development
 RUN pipenv install --dev --system --deploy --ignore-pipfile
+COPY . /src/
 
 FROM base as production
 RUN pipenv install --system --deploy --ignore-pipfile
+COPY . /src/
