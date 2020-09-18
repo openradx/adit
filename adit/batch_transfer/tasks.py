@@ -3,11 +3,13 @@ from celery import shared_task, chord
 from celery.utils.log import get_task_logger
 from django.conf import settings
 from django.utils import timezone
-from django.core.mail import send_mail
+from django.template.loader import render_to_string
+from django.core.mail import mail_admins
 from adit.main.models import TransferTask
 from adit.main.tasks import transfer_dicoms
 from adit.main.utils.scheduler import Scheduler
 from adit.main.utils.redis_lru import redis_lru
+from adit.main.utils.mail import send_mail
 from .models import AppSettings, BatchTransferJob, BatchTransferRequest
 
 logger = get_task_logger("adit." + __name__)
@@ -24,7 +26,9 @@ def batch_transfer(job_id):
         transfer_request.s(request.id) for request in job.requests.all()
     ]
 
-    chord(transfer_requests)(update_job_status.s(job_id))
+    chord(transfer_requests)(
+        update_job_status.s(job_id).on_error(on_job_error.s())
+    )
 
 
 @shared_task(bind=True)
@@ -163,12 +167,27 @@ def update_job_status(request_status_list, job_id):
     job.stopped_at = timezone.now()
     job.save()
 
+    html_content = render_to_string(
+        'batch_transfer/mail/batch_transfer_finished.html',
+        {
+            'BASE_URL': settings.BASE_URL,
+            'job': job
+        }
+    )
     send_mail(
-        "[ADIT] Batch transfer job finished",
-        f"Your batch transfer job with ID {job.id} finished. " + job.message,
-        None,
-        [job.created_by.email],
-        fail_silently=True
+        "Batch transfer job finished",
+        html_content,
+        [job.created_by.email]
+    )
+
+
+@shared_task
+def on_job_error(req, exc, traceback):
+    print('Task with ID {0!r} raised error: {1!r}'.format(req.id, exc))
+
+    mail_admins(
+        'Batch transfer job failed',
+        f'Celery task with ID {req.id} failed unexpectedly.'
     )
 
 

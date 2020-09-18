@@ -23,6 +23,8 @@ if READ_DOT_ENV_FILE:
     # OS environment variables take precedence over variables from .env
     env.read_env(str(BASE_DIR / ".env"))
 
+BASE_URL = env.str("BASE_URL", default="")
+
 INSTALLED_APPS = [
     "whitenoise.runserver_nostatic",
     "channels",
@@ -73,7 +75,7 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
-                "adit.main.site.inject_context",
+                "adit.main.site.base_context_processor",
             ],
         },
     },

@@ -1,3 +1,5 @@
+from django.conf import settings
+
 nav_menu_items = []
 job_detail_views = {}
 job_type_choices = []
@@ -17,5 +19,8 @@ def register_transfer_job(type_key, type_name, detail_view):
     job_type_choices.append((type_key, type_name))
 
 
-def inject_context(request):
-    return {"nav_menu_items": nav_menu_items}
+def base_context_processor(request):
+    return {
+        "BASE_URL": settings.BASE_URL,
+        "nav_menu_items": nav_menu_items
+    }
