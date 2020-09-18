@@ -1,4 +1,5 @@
 {
+    // https://hg.orthanc-server.com/orthanc/file/Orthanc-1.7.3/OrthancServer/Resources/Configuration.json
     "Name": "Orthanc Test Server 1",
     "HttpPort": 6501,
     "DicomAet": "ORTHANC1",

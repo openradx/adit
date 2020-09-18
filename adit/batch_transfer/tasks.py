@@ -3,6 +3,7 @@ from celery import shared_task, chord
 from celery.utils.log import get_task_logger
 from django.conf import settings
 from django.utils import timezone
+from django.core.mail import send_mail
 from adit.main.models import TransferTask
 from adit.main.tasks import transfer_dicoms
 from adit.main.utils.scheduler import Scheduler
@@ -161,6 +162,14 @@ def update_job_status(request_status_list, job_id):
 
     job.stopped_at = timezone.now()
     job.save()
+
+    send_mail(
+        "[ADIT] Batch transfer job finished",
+        f"Your batch transfer job with ID {job.id} finished. " + job.message,
+        None,
+        [job.created_by.email],
+        fail_silently=True
+    )
 
 
 @redis_lru(capacity=10000, slicer=slice(3))

@@ -10,6 +10,8 @@ x-app: &default-app
     - redis
   volumes:
     - web_data:/var/www/adit
+  env_file:
+    - .env
   environment:
     USE_DOCKER: 1
     DJANGO_SETTINGS_MODULE: "adit.settings.production"
@@ -20,8 +22,6 @@ x-app: &default-app
     SSL_KEY_FILE: "/var/www/adit/ssl/key.pem"
     FLOWER_HOST: "flower"
     FLOWER_PORT: "5555"
-  env_file:
-    - .env
 
 services:
   web:
