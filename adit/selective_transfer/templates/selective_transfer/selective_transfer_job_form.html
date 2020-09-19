@@ -50,8 +50,8 @@
         role="alert"
         x-cloak
     >
-        Successfully submitted transfer job with ID
-        <span x-text="successJobId"></span>
+        Successfully submitted transfer job with
+        <a :href="successJobUrl">ID <span x-text="successJobId"></span></a>
     </div>
 
     <div x-show="searchInProgress" class="mt-3" x-cloak>

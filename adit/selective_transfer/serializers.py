@@ -6,12 +6,16 @@ from .models import SelectiveTransferJob
 
 
 class SelectiveTransferJobCreateSerializer(serializers.ModelSerializer):
+    url = serializers.HyperlinkedIdentityField(
+        view_name="transfer_job_detail", read_only=True
+    )
     tasks = TransferTaskSerializer(many=True)
 
     class Meta:
         model = SelectiveTransferJob
         fields = [
             "id",
+            "url",
             "source",
             "destination",
             "trial_protocol_id",

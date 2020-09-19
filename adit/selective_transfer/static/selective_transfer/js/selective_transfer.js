@@ -22,8 +22,10 @@ function selectiveTransferForm() {
         errorMessage: "",
         transferRequested: false,
         successJobId: null,
+        successJobUrl: null,
         searchInProgress: false,
         selectAllChecked: false,
+
         init: function ($refs) {
             this.$refs = $refs;
 
@@ -108,6 +110,7 @@ function selectiveTransferForm() {
             this.noResults = false;
             this.errorMessage = "";
             this.successJobId = null;
+            this.successJobUrl = null;
             this.searchInProgress = false;
             this.transferRequested = false;
         },
@@ -201,7 +204,7 @@ function selectiveTransferForm() {
                 tasks: studiesToTransfer,
             };
 
-            console.debug("Submitting transfer:", data);
+            console.debug("Submitting transfer job:", data);
 
             $.ajax({
                 url: "/selective-transfer/create/",
@@ -212,12 +215,13 @@ function selectiveTransferForm() {
                 data: JSON.stringify(data),
             })
                 .done(function (data) {
-                    console.info(data);
+                    console.debug("Successfully created transfer job:", data);
                     self.reset();
                     self.successJobId = data.id;
+                    self.successJobUrl = data.url;
                 })
                 .fail(function (jqXHR) {
-                    console.error(jqXHR);
+                    console.error("Error while creating transfer job:", jqXHR);
                     let errorString = "";
                     const errorMessages = jqXHR.responseJSON;
                     if (jqXHR.status === 400) {
