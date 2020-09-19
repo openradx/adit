@@ -16,22 +16,18 @@ def is_time_between(begin_time, end_time, check_time):
 
 
 class Scheduler:
-    def __init__(self, begin_time, end_time, suspended=False):
+    def __init__(self, begin_time, end_time):
         self.begin_time = begin_time
         self.end_time = end_time
-        self.suspended = suspended
 
     def must_be_scheduled(self):
         """Checks if the batch job can run now or must be scheduled.
 
         In the dynamic site settings a time slot is specified when the
-        batch transfer jobs should run. The job processing could also be
-        suspended in the settings.
+        batch transfer jobs should run.
         """
         check_time = timezone.now().time()
-        return self.suspended or not is_time_between(
-            self.begin_time, self.end_time, check_time
-        )
+        return not is_time_between(self.begin_time, self.end_time, check_time)
 
     def next_slot(self):
         """Return the next datetime slot when a batch job can be processed."""

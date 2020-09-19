@@ -1,3 +1,4 @@
+from datetime import timedelta
 import redis
 from celery import shared_task, chord
 from celery.utils.log import get_task_logger
@@ -5,6 +6,7 @@ from django.conf import settings
 from django.utils import timezone
 from django.template.loader import render_to_string
 from django.core.mail import mail_admins
+from django.contrib.humanize.templatetags.humanize import naturaltime
 from adit.main.models import TransferTask
 from adit.main.tasks import transfer_dicoms
 from adit.main.utils.scheduler import Scheduler
@@ -27,7 +29,7 @@ def batch_transfer(job_id):
     ]
 
     chord(transfer_requests)(
-        update_job_status.s(job_id).on_error(on_job_error.s())
+        update_job_status.s(job_id).on_error(on_job_error.s(job_id))
     )
 
 
@@ -49,14 +51,22 @@ def transfer_request(self, row_key):
         return request.status
 
     app_settings = AppSettings.load()
-    scheduler = Scheduler(
-        app_settings.batch_slot_begin_time,
-        app_settings.batch_slot_end_time,
-        app_settings.batch_transfer_suspended,
-    )
 
+    scheduler = Scheduler(
+        app_settings.batch_slot_begin_time, app_settings.batch_slot_end_time
+    )
     if scheduler.must_be_scheduled():
-        raise self.retry(eta=scheduler.next_slot())
+        eta = scheduler.next_slot()
+        raise self.retry(
+            eta=eta, exc=Warning(f"Not in batch slot. Scheduled in {naturaltime(eta)}.")
+        )
+
+    if app_settings.batch_transfer_suspended:
+        eta = timezone.now + timedelta(minutes=5)
+        raise self.retry(
+            eta=eta,
+            exc=Warning(f"Batch transfer suspended. Retrying in {naturaltime(eta)}."),
+        )
 
     if job.status == BatchTransferJob.Status.PENDING:
         job.status = BatchTransferJob.Status.IN_PROGRESS
@@ -168,26 +178,23 @@ def update_job_status(request_status_list, job_id):
     job.save()
 
     html_content = render_to_string(
-        'batch_transfer/mail/batch_transfer_finished.html',
-        {
-            'BASE_URL': settings.BASE_URL,
-            'job': job
-        }
+        "batch_transfer/mail/batch_transfer_finished.html",
+        {"BASE_URL": settings.BASE_URL, "job": job},
     )
-    send_mail(
-        "Batch transfer job finished",
-        html_content,
-        [job.created_by.email]
-    )
+    send_mail("Batch transfer job finished", html_content, [job.created_by.email])
 
 
 @shared_task
-def on_job_error(req, exc, traceback):
-    print('Task with ID {0!r} raised error: {1!r}'.format(req.id, exc))
+def on_job_error(*args, **kwargs):  # TODO
+    job_id = kwargs["job_id"]
 
+    # print("Task with ID {0!r} raised error: {1!r}".format(req.id, exc))
+    print("------------------")
+    print(f"Job iwth {job_id} faield.")
+    print("------------------")
     mail_admins(
-        'Batch transfer job failed',
-        f'Celery task with ID {req.id} failed unexpectedly.'
+        "Batch transfer job failed",
+        f"Batch transfer of job with ID {job_id} failed unexpectedly.",
     )
 
 

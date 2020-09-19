@@ -1,5 +1,8 @@
+from datetime import timedelta
 from celery import shared_task, chord
 from celery.utils.log import get_task_logger
+from django.utils import timezone
+from django.contrib.humanize.templatetags.humanize import naturaltime
 from adit.main.tasks import transfer_dicoms
 from adit.main.models import TransferTask
 from .models import AppSettings, SelectiveTransferJob
@@ -33,8 +36,13 @@ def transfer_selected_dicoms(self, task_id):
 
     app_settings = AppSettings.load()
     if app_settings.selective_transfer_suspended:
-        countdown = 60 * 5  # retry in 5 minutes
-        raise self.retry(countdown=countdown)
+        eta = timezone.now + timedelta(minutes=5)
+        raise self.retry(
+            eta=eta,
+            exc=Warning(
+                f"Selective transfer suspended. Retrying in {naturaltime(eta)}."
+            ),
+        )
 
     return transfer_dicoms(task_id)
 
