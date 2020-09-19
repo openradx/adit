@@ -6,7 +6,6 @@ tasks:
   # supervisor is already installed in .gitpod.Dockerfile
   - before: supervisord -c ./gitpod/supervisord.conf
     init: |
-      python -m playwright install
       mkdir /workspace/adit/staticfiles
       touch /tmp/.pip-install-lock
       pipenv install --dev
@@ -30,7 +29,8 @@ tasks:
       pipenv run ptw --runner 'pytest --picked'
 
   # A terminal for the developer to do stuff
-  - command: echo 'For your convenience!' && pipenv shell
+  - init: sleep 1 && while [ -f /tmp/.pip-install-lock ]; do sleep 1; done
+    command: echo 'For your convenience!' && pipenv shell
 
 ports:
   - port: 5432 # PostgreSQL

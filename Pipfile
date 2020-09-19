@@ -25,7 +25,6 @@ django-debug-toolbar = "*"
 django-debug-permissions = "*"
 requests = "*"
 ipython = "*"
-pytest-playwright = "*"
 
 [packages]
 django = "*" 

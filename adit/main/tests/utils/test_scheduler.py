@@ -32,11 +32,6 @@ class SchedulerTest(TestCase):
         scheduler = Scheduler(time(22, 0), time(6, 0))
         self.assertFalse(scheduler.must_be_scheduled())
 
-    @time_machine.travel("2020-11-05 23:00")
-    def test_must_be_sheduled_when_suspended(self):
-        scheduler = Scheduler(time(22, 0), time(6, 0), True)
-        self.assertTrue(scheduler.must_be_scheduled())
-
     @time_machine.travel("2020-11-05 21:00")
     def test_must_be_sheduled_when_outside_slot(self):
         scheduler = Scheduler(time(22, 0), time(6, 0))
