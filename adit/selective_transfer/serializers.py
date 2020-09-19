@@ -6,9 +6,7 @@ from .models import SelectiveTransferJob
 
 
 class SelectiveTransferJobCreateSerializer(serializers.ModelSerializer):
-    url = serializers.HyperlinkedIdentityField(
-        view_name="transfer_job_detail", read_only=True
-    )
+    url = serializers.HyperlinkedIdentityField(view_name="transfer_job_detail")
     tasks = TransferTaskSerializer(many=True)
 
     class Meta:

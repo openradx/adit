@@ -18,7 +18,7 @@ tasks:
       supervisorctl start celery:
       pipenv run python manage.py runserver
 
-  # A terminal for continous testing
+# A terminal for continous testing
   - init: sleep 1 && while [ -f /tmp/.pip-install-lock ]; do sleep 1; done
     command: |
       # Alternatives for continous testing:
@@ -28,7 +28,7 @@ tasks:
       pipenv run pytest --cov=. # run all test once (with coverage report)
       pipenv run ptw --runner 'pytest --picked'
 
-  # A terminal for the developer to do stuff
+# A terminal for the developer to do stuff
   - command: echo 'For your convenience!' && pipenv shell
 
 ports:
