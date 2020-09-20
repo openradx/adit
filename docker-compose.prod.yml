@@ -41,11 +41,11 @@ services:
 
   celery_worker_default:
     <<: *default-app
-    command: bash -c "celery -A adit worker -Q default -l info -n celery_worker_default_$$(hostname)"
+    command: bash -c "celery -A adit worker -Q default -l warning -n celery_worker_default_$$(hostname)"
 
   celery_worker_low:
     <<: *default-app
-    command: bash -c "celery -A adit worker -Q low -l info -n celery_worker_low_$$(hostname)"
+    command: bash -c "celery -A adit worker -Q low -l warning -n celery_worker_low_$$(hostname)"
 
   postgres:
     restart: always

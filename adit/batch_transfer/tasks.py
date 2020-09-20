@@ -5,13 +5,12 @@ from celery.utils.log import get_task_logger
 from django.conf import settings
 from django.utils import timezone
 from django.template.loader import render_to_string
-from django.core.mail import mail_admins
 from django.contrib.humanize.templatetags.humanize import naturaltime
 from adit.main.models import TransferTask
 from adit.main.tasks import transfer_dicoms
 from adit.main.utils.scheduler import Scheduler
 from adit.main.utils.redis_lru import redis_lru
-from adit.main.utils.mail import send_mail
+from adit.main.utils.mail import send_mail_to_user, send_mail_to_admins
 from .models import AppSettings, BatchTransferJob, BatchTransferRequest
 
 logger = get_task_logger("adit." + __name__)
@@ -29,13 +28,19 @@ def batch_transfer(job_id):
     ]
 
     chord(transfer_requests)(
-        update_job_status.s(job_id).on_error(on_job_error.s(job_id))
+        on_job_finished.s(job_id).on_error(on_job_failed.s(job_id=job_id))
     )
 
 
 @shared_task(bind=True)
 def transfer_request(self, row_key):
     request = BatchTransferRequest.objects.get(id=row_key)
+
+    # TODO remove
+    # print("+++++++++++")
+    # print(request.patient_id)
+    # if request.patient_id == "10007":
+    #     raise Exception("A test exception")
 
     if request.status != BatchTransferRequest.Status.PENDING:
         raise AssertionError(
@@ -141,7 +146,7 @@ def transfer_request(self, row_key):
 
 
 @shared_task(ignore_result=True)
-def update_job_status(request_status_list, job_id):
+def on_job_finished(request_status_list, job_id):
     job = BatchTransferJob.objects.get(id=job_id)
 
     if (
@@ -181,21 +186,30 @@ def update_job_status(request_status_list, job_id):
         "batch_transfer/mail/batch_transfer_finished.html",
         {"BASE_URL": settings.BASE_URL, "job": job},
     )
-    send_mail("Batch transfer job finished", html_content, [job.created_by.email])
+    send_mail_to_user("Batch transfer job finished", html_content, job.created_by)
 
 
+# The Celery documentation is wrong about the provided parameters and when
+# the callback is called. This function definition seems to work however.
+# See https://github.com/celery/celery/issues/3709
 @shared_task
-def on_job_error(*args, **kwargs):  # TODO
+def on_job_failed(*args, **kwargs):
+    celery_task_id = args[0]
     job_id = kwargs["job_id"]
 
-    # print("Task with ID {0!r} raised error: {1!r}".format(req.id, exc))
-    print("------------------")
-    print(f"Job iwth {job_id} faield.")
-    print("------------------")
-    mail_admins(
-        "Batch transfer job failed",
-        f"Batch transfer of job with ID {job_id} failed unexpectedly.",
+    job = BatchTransferJob.objects.get(id=job_id)
+
+    job.status = BatchTransferJob.Status.FAILURE
+    job.message = "Job failed unexpectedly."
+    job.save()
+
+    subject = "Batch transfer job failed"
+    html_content = render_to_string(
+        "batch_transfer/mail/batch_transfer_failed.html",
+        {"BASE_URL": settings.BASE_URL, "job": job, "celery_task_id": celery_task_id},
     )
+    send_mail_to_admins(subject, html_content)
+    send_mail_to_user(subject, html_content, job.created_by)
 
 
 @redis_lru(capacity=10000, slicer=slice(3))
