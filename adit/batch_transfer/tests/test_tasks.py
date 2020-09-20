@@ -51,8 +51,9 @@ class BatchTransferTest(TestCase):
 class TransferRequestTest(TestCase):
     @patch.object(Scheduler, "must_be_scheduled", return_value=False)
     @patch("adit.main.tasks.transfer_dicoms")
+    @patch("adit.batch_transfer.tasks._fetch_patient_id")
     def test_request_without_study_fails(
-        self, transfer_dicoms_mock, must_be_scheduled_mock
+        self, fetch_patient_id_mock, transfer_dicoms_mock, must_be_scheduled_mock
     ):
         # Arrange
         job = BatchTransferJobFactory(
@@ -71,6 +72,7 @@ class TransferRequestTest(TestCase):
         connector.find_patients.return_value = [patient]
         connector.find_studies.return_value = []
 
+        fetch_patient_id_mock.return_value = patient["PatientID"]
         transfer_dicoms_mock.return_value = TransferTask.Status.SUCCESS
 
         with patch.object(BatchTransferJob, "source") as source_mock:
