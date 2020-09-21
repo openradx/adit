@@ -36,6 +36,8 @@ docker run -v C:\Users\kaisc\Projects\adit:/src -it adit_dev /bin/bash # Run the
 docker ps -a --filter volume=vol_name # Find container that mounts volume
 docker run -v=adit_web_data:/var/www/adit -it busybox /bin/sh # Start interactive shell with named volume mounted
 docker run --rm -i -v=adit_web_data:/foo busybox find /foo # List files in named volume
+docker-compose -f "docker-compose.dev.yml" -p adit_dev up -d --build
+docker-compose -f "docker-compose.prod.yml" -p adit_prod up -d --build
 
 # Ports in development
 
