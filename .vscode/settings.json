@@ -1,3 +1,4 @@
 {
-    "python.linting.enabled": true
+    "python.linting.enabled": true,
+    "python.pythonPath": "/home/adm-adit/.local/share/virtualenvs/adit-wsRqs2Ov/bin/python"
 }
