@@ -14,7 +14,6 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 import os
-import re
 from functools import partial
 from celery.utils.log import get_task_logger
 from pydicom.dataset import Dataset
@@ -77,6 +76,8 @@ def _convert_value(v):
         cv = int(v)
     elif t == valuerep.PersonName:
         cv = str(v)
+    elif t == valuerep.MultiValue:  # e.g. ModalitiesInStudy
+        cv = list(v)
     elif t == uid.UID:
         cv = str(v)
     else:
@@ -500,7 +501,7 @@ class DicomConnector:
             # supported then it should be not empty. Otherwise we fetch the Modality
             # of all its series manually.
             if study["ModalitiesInStudy"]:
-                study_modalities = re.split(r"\s*\\\s*", study["ModalitiesInStudy"])
+                study_modalities = study["ModalitiesInStudy"]
             else:
                 try:
                     study_modalities = self.fetch_study_modalities(

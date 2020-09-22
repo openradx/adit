@@ -9,6 +9,7 @@ x-app: &default-app
     - postgres
     - redis
   volumes:
+    - /mnt:/mnt
     - web_data:/var/www/adit
   env_file:
     - .env
