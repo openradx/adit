@@ -1,5 +1,23 @@
 [![Gitpod ready-to-code](https://img.shields.io/badge/Gitpod-ready--to--code-blue?logo=gitpod)](https://gitpod.io/#https://github.com/medihack/adit)
 
+# About
+
+ADIT (Automated DICOM Transfer) is a swiss army knife to exchange DICOM data between various systems.
+
+# Features
+
+- Transfer DICOM data between DICOM / PACS servers
+- Download DICOM data to a network folder
+- Pseudonymize DICOM data on the fly
+- Specify a trial name for the transfered data (stored in the DICOM header)
+- Download the data to an encrpyted archive (7-Zip)
+- Use the web interface to select studies to transfer or download
+- Upload a batch file to transfer or download multiple studies
+- A continuous mode to transfer past and future studies automatically
+- Define when transfers should happen (to reduce PACS server load)
+- Find Patient IDs using the patient's name and birth date
+- Check if a list of studies is present on a DICOM server
+
 # TODO
 
 -   Humanize times in tables

@@ -28,6 +28,11 @@ class IsTimeBetweenTest(TestCase):
 
 class SchedulerTest(TestCase):
     @time_machine.travel("2020-11-05 23:00")
+    def test_must_not_be_sheduled_when_scheduling_is_turned_off(self):
+        scheduler = Scheduler(time(0, 0), time(0, 0))
+        self.assertFalse(scheduler.must_be_scheduled())
+
+    @time_machine.travel("2020-11-05 23:00")
     def test_must_not_be_sheduled(self):
         scheduler = Scheduler(time(22, 0), time(6, 0))
         self.assertFalse(scheduler.must_be_scheduled())

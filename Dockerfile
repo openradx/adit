@@ -7,7 +7,7 @@ RUN apt update \
     && pip install pipenv \
     && mkdir -p /var/www/adit/static \
     && mkdir -p /var/www/adit/ssl \
-    && mkdir /src
+    && mkdir -p /src
 COPY ./Pipfile* /src/
 WORKDIR /src
 

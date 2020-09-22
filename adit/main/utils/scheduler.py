@@ -24,8 +24,12 @@ class Scheduler:
         """Checks if the batch job can run now or must be scheduled.
 
         In the dynamic site settings a time slot is specified when the
-        batch transfer jobs should run.
+        batch transfer jobs should run. If begin time and end time are the same
+        then scheduling is turned off.
         """
+        if self.begin_time == self.end_time:
+            return False
+
         check_time = timezone.now().time()
         return not is_time_between(self.begin_time, self.end_time, check_time)
 
