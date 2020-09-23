@@ -39,6 +39,7 @@ from pynetdicom.status import (
     STATUS_PENDING,
     STATUS_SUCCESS,
 )
+from ..utils.sanitize import sanitize_dirname
 
 # We must use this logger to intercept the logging messages and
 # store them in the task (see main.tasks.transfer_dicoms()).
@@ -617,7 +618,7 @@ class DicomConnector:
             series_uid = series["SeriesInstanceUID"]
             download_path = folder_path
             if create_series_folders:
-                series_folder_name = series["SeriesDescription"]
+                series_folder_name = sanitize_dirname(series["SeriesDescription"])
                 download_path = Path(folder_path) / series_folder_name
 
             try:

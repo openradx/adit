@@ -10,6 +10,7 @@ from celery.utils.log import get_task_logger
 from django.utils import timezone
 from .utils.dicom_connector import DicomConnector
 from .utils.anonymizer import Anonymizer
+from .utils.sanitize import sanitize_dirname
 from .models import DicomNode, TransferTask
 
 logger = get_task_logger(__name__)
@@ -127,10 +128,10 @@ def _download_dicoms(
     pseudonym = transfer_task.pseudonym
     patient_id = transfer_task.patient_id
     if pseudonym:
-        patient_folder = download_folder / pseudonym
+        patient_folder = download_folder / sanitize_dirname(pseudonym)
     else:
         pseudonym = None
-        patient_folder = download_folder / patient_id
+        patient_folder = download_folder / sanitize_dirname(patient_id)
 
     studies = connector.find_studies(
         patient_id=patient_id, study_uid=transfer_task.study_uid
@@ -193,7 +194,7 @@ def _download_series(
                 f"Multiple series found with Series Instance UID {series_uid}."
             )
         series = series_list[0]
-        series_folder_name = series["SeriesDescription"]
+        series_folder_name = sanitize_dirname(series["SeriesDescription"])
         series_folder = study_folder / series_folder_name
 
         connector.download_series(
@@ -256,5 +257,5 @@ def _add_to_archive(archive_path: Path, archive_password: str, path_to_add: Path
 
 def _create_destination_name(job):
     dt = job.created_at.strftime("%Y%m%d")
-    user = job.created_by.username
-    return f"adit_job_{job.id}_{dt}_{user}"
+    username = job.created_by.username
+    return sanitize_dirname(f"adit_job_{job.id}_{dt}_{username}")

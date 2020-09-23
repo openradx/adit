@@ -21,7 +21,6 @@ x-app: &default-app
     REDIS_URL: "redis://redis:6379/0"
     DJANGO_STATIC_ROOT: "/var/www/adit/static/"
     LOG_FOLDER: "/var/www/adit/logs"
-    ADIT_AE_TITLE: "ADIT"
     FLOWER_HOST: "flower"
     FLOWER_PORT: "5555"
     ORTHANC1_HOST: "orthanc_1"
