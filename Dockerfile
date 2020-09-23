@@ -1,8 +1,8 @@
 FROM python:3 as base
 ENV PYTHONDONTWRITEBYTECODE 1
 ENV PYTHONUNBUFFERED 1
-RUN apt update \
-    && apt install -y p7zip-full \
+RUN apt-get update \
+    && apt-get install -y p7zip-full \
     && pip install --upgrade pip \
     && pip install pipenv \
     && mkdir -p /var/www/adit/static \

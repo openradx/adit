@@ -13,7 +13,7 @@ from adit.main.utils.redis_lru import redis_lru
 from adit.main.utils.mail import send_mail_to_user, send_mail_to_admins
 from .models import AppSettings, BatchTransferJob, BatchTransferRequest
 
-logger = get_task_logger("adit." + __name__)
+logger = get_task_logger(__name__)
 
 
 @shared_task(ignore_result=True)

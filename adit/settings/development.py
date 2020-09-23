@@ -23,11 +23,11 @@ INSTALLED_APPS += ["debug_toolbar", "debug_permissions", "django_extensions"]
 
 MIDDLEWARE += ["debug_toolbar.middleware.DebugToolbarMiddleware"]
 
-LOGGING["handlers"]["console"]["level"] = "DEBUG"
-LOGGING["loggers"]["adit"] = {
-    "handlers": ["console"],
-    "level": "DEBUG",
-}
+# LOGGING["handlers"]["console"]["level"] = "DEBUG"
+# LOGGING["loggers"]["adit"] = {
+#     "handlers": ["console"],
+#     "level": "DEBUG",
+# }
 
 DEBUG_TOOLBAR_PANELS = [
     "debug_toolbar.panels.versions.VersionsPanel",

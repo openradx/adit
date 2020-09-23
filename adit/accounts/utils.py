@@ -1,7 +1,7 @@
 import logging
 from django.contrib.auth.models import Group, Permission
 
-logger = logging.getLogger("adit." + __name__)
+logger = logging.getLogger(__name__)
 
 
 def _permission_names_to_objects(names):

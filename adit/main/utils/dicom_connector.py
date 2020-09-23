@@ -45,7 +45,7 @@ from pynetdicom.status import (
 # TODO Maybe it would be better to use the standard python logger somehow.
 # See https://www.distributedpython.com/2018/08/28/celery-logging/
 # and https://www.distributedpython.com/2018/11/06/celery-task-logger-format/
-logger = get_task_logger("adit." + __name__)
+logger = get_task_logger(__name__)
 
 
 def _make_query_dataset(query_dict):

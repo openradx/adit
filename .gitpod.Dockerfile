@@ -1,8 +1,8 @@
 FROM gitpod/workspace-postgres
 
-RUN sudo apt update \
-    && sudo apt install -y p7zip-full \
-    && sudo apt install -y redis-server \
+RUN sudo apt-get update \
+    && sudo apt-get install -y p7zip-full \
+    && sudo apt-get install -y redis-server \
     && pip install --upgrade pip \
     && pip install pipenv \
     && pip install supervisor \

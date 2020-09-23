@@ -8,7 +8,7 @@ from asgiref.sync import sync_to_async
 from adit.main.models import DicomServer
 from adit.main.utils.dicom_connector import DicomConnector
 
-logger = logging.getLogger("adit." + __name__)
+logger = logging.getLogger(__name__)
 
 
 @database_sync_to_async
@@ -70,7 +70,6 @@ def _convert_name_to_dicom(name_str):
 
 
 def _sanitize_query(query):
-    print(query)
     if not query["source"]:
         raise ValueError("Source server missing.")
 

@@ -7,7 +7,7 @@ from adit.main.tasks import transfer_dicoms
 from adit.main.models import TransferTask
 from .models import AppSettings, SelectiveTransferJob
 
-logger = get_task_logger("adit." + __name__)
+logger = get_task_logger(__name__)
 
 
 @shared_task(ignore_result=True)

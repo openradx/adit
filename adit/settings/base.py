@@ -158,17 +158,26 @@ LOGGING = {
         # },
     },
     "loggers": {
-        # "": {"handlers": ["file"], "level": "DEBUG"},
+        "adit": {
+            "handlers": ["console", "mail_admins"],
+            "level": "INFO",
+            "propagate": False,
+        },
         "django": {
             "handlers": ["console", "mail_admins"],
             "level": "INFO",
+            "propagate": False,
         },
         "django.server": {
             "handlers": ["django.server"],
             "level": "INFO",
             "propagate": False,
         },
-        "celery.task": {"handlers": ["console"], "level": "INFO"},
+        "celery.task": {
+            "handlers": ["console"],
+            "level": "INFO",
+            "propagate": False,
+        },
     },
 }
 

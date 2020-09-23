@@ -12,7 +12,7 @@ from .utils.dicom_connector import DicomConnector
 from .utils.anonymizer import Anonymizer
 from .models import DicomNode, TransferTask
 
-logger = get_task_logger("adit." + __name__)
+logger = get_task_logger(__name__)
 
 
 @shared_task
