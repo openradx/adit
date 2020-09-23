@@ -20,6 +20,7 @@ x-app: &default-app
     DATABASE_URL: "psql://postgres:postgres@postgres:5432/postgres"
     REDIS_URL: "redis://redis:6379/0"
     DJANGO_STATIC_ROOT: "/var/www/adit/static/"
+    LOG_FOLDER: "/var/www/adit/logs"
     ADIT_AE_TITLE: "ADIT"
     FLOWER_HOST: "flower"
     FLOWER_PORT: "5555"

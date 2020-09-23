@@ -23,12 +23,6 @@ INSTALLED_APPS += ["debug_toolbar", "debug_permissions", "django_extensions"]
 
 MIDDLEWARE += ["debug_toolbar.middleware.DebugToolbarMiddleware"]
 
-# LOGGING["handlers"]["console"]["level"] = "DEBUG"
-# LOGGING["loggers"]["adit"] = {
-#     "handlers": ["console"],
-#     "level": "DEBUG",
-# }
-
 DEBUG_TOOLBAR_PANELS = [
     "debug_toolbar.panels.versions.VersionsPanel",
     "debug_toolbar.panels.timer.TimerPanel",
@@ -52,6 +46,9 @@ CELERY_TASK_ALWAYS_EAGER = False
 CELERY_TASK_EAGER_PROPAGATES = False
 
 INTERNAL_IPS = env.list("DJANGO_INTERNAL_IPS", default=["127.0.0.1"])
+
+LOGGING["loggers"]["adit"]["level"] = "DEBUG"
+LOGGING["loggers"]["celery.task"]["level"] = "DEBUG"
 
 if env.bool("USE_DOCKER", default=False):
     import socket

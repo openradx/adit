@@ -18,5 +18,9 @@ EMAIL_HOST_USER = env.str("DJANGO_EMAIL_HOST_USER", default="")
 EMAIL_HOST_PASSWORD = env.str("DJANGO_EMAIL_HOST_PASSWORD", default="")
 EMAIL_USE_TLS = env.bool("DJANGO_EMAIL_USE_TLS", default=False)
 
+LOGGING["loggers"]["adit"]["handlers"] = ["console", "log_file", "mail_admins"]
+LOGGING["loggers"]["celery.task"]["handlers"] = ["console", "log_file", "mail_admins"]
+LOGGING["loggers"]["django"]["handlers"] = ["console", "log_file", "mail_admins"]
+
 # WhiteNoise
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"

@@ -78,7 +78,7 @@ services:
     command: flower --url_prefix=flower --broker=redis://redis:6379/0
 
 volumes:
-  web_data: # only neccessary in production for static files and SSL certs
+  web_data: # in production for static files, SSL certs and logs
   postgres_data:
   redis_data:
   flower_data:

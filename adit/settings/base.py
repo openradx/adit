@@ -106,8 +106,12 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-# Adapted from default Django logging
+LOG_FOLDER = Path(env.str("LOG_FOLDER", default="/tmp"))
+
+# See following examples:
 # https://github.com/django/django/blob/master/django/utils/log.py
+# https://cheat.readthedocs.io/en/latest/django/logging.html
+# https://stackoverflow.com/a/7045981/166229
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
@@ -120,11 +124,6 @@ LOGGING = {
         },
     },
     "formatters": {
-        "django.server": {
-            "()": "django.utils.log.ServerFormatter",
-            "format": "[{server_time}] {message}",
-            "style": "{",
-        },
         "simple": {
             "format": "[%(asctime)s] %(name)-12s %(levelname)s %(message)s",
             "datefmt": "%Y-%m-%d %H:%M:%S",
@@ -137,39 +136,27 @@ LOGGING = {
     "handlers": {
         "console": {
             "level": "INFO",
-            "filters": ["require_debug_true"],
             "class": "logging.StreamHandler",
             "formatter": "simple",
         },
-        "django.server": {
+        "log_file": {
             "level": "INFO",
-            "class": "logging.StreamHandler",
-            "formatter": "django.server",
+            "filters": ["require_debug_false"],
+            "class": "logging.handlers.RotatingFileHandler",
+            "filename": str(LOG_FOLDER / "adit.log"),
+            "maxBytes": 10 * 1024 * 1024,  # 10 MB
+            "backupCount": 10,
+            "formatter": "verbose",
         },
         "mail_admins": {
             "level": "ERROR",
             "filters": ["require_debug_false"],
             "class": "django.utils.log.AdminEmailHandler",
         },
-        # "file": {
-        #     "level": "DEBUG",
-        #     "class": "logging.FileHandler",
-        #     "filename": "/tmp/adit_debug.log",
-        # },
     },
     "loggers": {
         "adit": {
-            "handlers": ["console", "mail_admins"],
-            "level": "INFO",
-            "propagate": False,
-        },
-        "django": {
-            "handlers": ["console", "mail_admins"],
-            "level": "INFO",
-            "propagate": False,
-        },
-        "django.server": {
-            "handlers": ["django.server"],
+            "handlers": ["console"],
             "level": "INFO",
             "propagate": False,
         },
@@ -178,7 +165,13 @@ LOGGING = {
             "level": "INFO",
             "propagate": False,
         },
+        "django": {
+            "handlers": ["console"],
+            "level": "INFO",
+            "propagate": False,
+        },
     },
+    "root": {"handlers": ["console", "log_file"], "level": "WARNING"},
 }
 
 # Internationalization
