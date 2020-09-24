@@ -21,6 +21,7 @@ EMAIL_USE_TLS = env.bool("DJANGO_EMAIL_USE_TLS", default=False)
 LOGGING["loggers"]["adit"]["handlers"] = ["console", "log_file", "mail_admins"]
 LOGGING["loggers"]["celery.task"]["handlers"] = ["console", "log_file", "mail_admins"]
 LOGGING["loggers"]["django"]["handlers"] = ["console", "log_file", "mail_admins"]
+LOGGING["loggers"]["pynetdicom"]["handlers"] = ["console", "log_file", "mail_admins"]
 
 # WhiteNoise
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"

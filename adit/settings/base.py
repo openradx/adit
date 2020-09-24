@@ -170,6 +170,8 @@ LOGGING = {
             "level": "INFO",
             "propagate": False,
         },
+        "pynetdicom": {"handlers": ["console"], "level": "WARNING"},
+        "pydicom": {"handlers": ["console"], "level": "WARNING"},
     },
     "root": {"handlers": ["console", "log_file"], "level": "WARNING"},
 }

@@ -45,7 +45,7 @@ def _convert_date_from_dicom(date_str):
     return dateformat.format(dt, date_format)
 
 
-def _convert_date_to_dicom(date_str):
+def _convert_date_to_dicom(date_str, field_name):
     dt = None
     date_input_formats = formats.get_format("DATE_INPUT_FORMATS")
     for input_format in date_input_formats:
@@ -56,7 +56,7 @@ def _convert_date_to_dicom(date_str):
             pass
 
     if not dt:
-        raise ValueError("Invalid date input format.")
+        raise ValueError(f'Invalid date input format of "{field_name}".')
 
     return dt.strftime("%Y%m%d")
 
@@ -83,15 +83,25 @@ def _sanitize_query(query):
     ):
         raise ValueError("You must provide at least one search parameter.")
 
+    if not (
+        query["patient_id"]
+        or (query["patient_name"] and query["patient_birth_date"])
+        or query["accession_number"]
+    ):
+        raise ValueError(
+            'At least "Patient ID" or "Patient Name" / "Birth Date" '
+            'or "Accession Nr" must be provided.'
+        )
+
     if query["patient_name"]:
         query["patient_name"] = _convert_name_to_dicom(query["patient_name"])
 
     if query["study_date"]:
-        query["study_date"] = _convert_date_to_dicom(query["study_date"])
+        query["study_date"] = _convert_date_to_dicom(query["study_date"], "Study Date")
 
     if query["patient_birth_date"]:
-        query["patient_birth_date"] = _convert_date_from_dicom(
-            query["patient_birth_date"]
+        query["patient_birth_date"] = _convert_date_to_dicom(
+            query["patient_birth_date"], "Birth Date"
         )
 
 
