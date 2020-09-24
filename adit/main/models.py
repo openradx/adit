@@ -36,9 +36,12 @@ class DicomServer(DicomNode):
     port = models.PositiveIntegerField(
         validators=[MinValueValidator(1), MaxValueValidator(65535)]
     )
-    patient_root_query_model_find = models.BooleanField(default=True)
-    patient_root_query_model_get = models.BooleanField(default=True)
-    patient_root_query_model_move = models.BooleanField(default=True)
+    patient_root_find_support = models.BooleanField(default=True)
+    patient_root_get_support = models.BooleanField(default=True)
+    patient_root_move_support = models.BooleanField(default=True)
+    study_root_find_support = models.BooleanField(default=True)
+    study_root_get_support = models.BooleanField(default=True)
+    study_root_move_support = models.BooleanField(default=True)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -51,9 +54,12 @@ class DicomServer(DicomNode):
                 server_ae_title=self.ae_title,
                 server_host=self.host,
                 server_port=self.port,
-                patient_root_query_model_find=self.patient_root_query_model_find,
-                patient_root_query_model_get=self.patient_root_query_model_get,
-                patient_root_query_model_move=self.patient_root_query_model_move,
+                patient_root_find_support=self.patient_root_find_support,
+                patient_root_get_support=self.patient_root_get_support,
+                patient_root_move_support=self.patient_root_move_support,
+                study_root_find_support=self.study_root_find_support,
+                study_root_get_support=self.study_root_get_support,
+                study_root_move_support=self.study_root_move_support,
                 auto_connect=auto_connect,
             )
         )

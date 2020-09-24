@@ -23,7 +23,7 @@ def _fetch_source_server(source_id):
     return server
 
 
-# TODO May it would be better to use thread_sensitive=True instead
+# TODO Maybe it would be better to use thread_sensitive=True instead
 # of threading.lock. Not sure about that or about possible race
 # conditions.
 # See also https://docs.djangoproject.com/en/3.1/topics/async/#sync-to-async
@@ -66,7 +66,7 @@ def _convert_name_from_dicom(name_str):
 
 
 def _convert_name_to_dicom(name_str):
-    return re.sub(r",\s*", "^", name_str)
+    return re.sub(r"\s*,\s*", "^", name_str)
 
 
 def _sanitize_query(query):

@@ -216,9 +216,12 @@ class DicomConnector:
         server_ae_title: str
         server_host: str
         server_port: int
-        patient_root_query_model_find: bool = True
-        patient_root_query_model_get: bool = True
-        patient_root_query_model_move: bool = True
+        patient_root_find_support: bool = True
+        patient_root_get_support: bool = True
+        patient_root_move_support: bool = True
+        study_root_find_support: bool = True
+        study_root_get_support: bool = True
+        study_root_move_support: bool = True
         debug_logger: bool = False
         connection_retries: int = 3
         retry_timeout: int = 30  # in seconds
@@ -230,20 +233,23 @@ class DicomConnector:
         if config.debug_logger:
             debug_logger()  # Debug mode of pynetdicom
 
-        if config.patient_root_query_model_find:
-            self.find_query_model = PatientRootQueryRetrieveInformationModelFind
-        else:
-            self.find_query_model = StudyRootQueryRetrieveInformationModelFind
+        self.default_find_query_model = None
+        if config.patient_root_find_support:
+            self.default_find_query_model = PatientRootQueryRetrieveInformationModelFind
+        elif config.study_root_find_support:
+            self.default_find_query_model = StudyRootQueryRetrieveInformationModelFind
 
-        if config.patient_root_query_model_get:
-            self.get_query_model = PatientRootQueryRetrieveInformationModelGet
-        else:
-            self.get_query_model = StudyRootQueryRetrieveInformationModelGet
+        self.default_get_query_model = None
+        if config.patient_root_get_support:
+            self.default_get_query_model = PatientRootQueryRetrieveInformationModelGet
+        elif config.study_root_get_support:
+            self.default_get_query_model = StudyRootQueryRetrieveInformationModelGet
 
-        if config.patient_root_query_model_move:
-            self.move_query_model = PatientRootQueryRetrieveInformationModelMove
-        else:
-            self.move_query_model = StudyRootQueryRetrieveInformationModelMove
+        self.default_move_query_model = None
+        if config.patient_root_move_support:
+            self.default_move_query_model = PatientRootQueryRetrieveInformationModelMove
+        elif config.study_root_move_support:
+            self.default_move_query_model = StudyRootQueryRetrieveInformationModelMove
 
         self.assoc = None
         self.msg_id = 1
@@ -312,6 +318,7 @@ class DicomConnector:
     def is_connected(self):
         return self.assoc and self.assoc.is_alive()
 
+    # TODO move to async connector and remove here
     def c_cancel(self, msg_id=None, abstract_syntax=None):
         """Cancels a DICOM operation.
 
@@ -321,7 +328,7 @@ class DicomConnector:
         if msg_id is None:
             msg_id = self.msg_id
         if abstract_syntax is None:
-            abstract_syntax = self.find_query_model
+            abstract_syntax = self.default_find_query_model
 
         logger.debug(
             "Sending C-CANCEL for Message ID %d and abstract syntax %s.",
@@ -353,7 +360,16 @@ class DicomConnector:
 
         query_ds = _make_query_dataset(query_dict)
 
-        responses = self.assoc.send_c_find(query_ds, self.find_query_model, msg_id)
+        query_model = self.default_find_query_model
+        if "PatientID" not in query_ds or not query_ds.PatientID:
+            if not self.config.study_root_find_support:
+                raise ValueError(
+                    "Patient ID missing in query without support for "
+                    "Study Root Query/Retrieve Information Model."
+                )
+            query_model = StudyRootQueryRetrieveInformationModelFind
+
+        responses = self.assoc.send_c_find(query_ds, query_model, msg_id)
         return _fetch_results(responses, "C-FIND", query_dict)
 
     @_connect_to_server
@@ -366,14 +382,21 @@ class DicomConnector:
         if folder:
             Path(folder).mkdir(parents=True, exist_ok=True)
 
-        ds = _make_query_dataset(query_dict)
+        query_ds = _make_query_dataset(query_dict)
+
+        query_model = self.default_get_query_model
+        if "PatientID" not in query_ds or not query_ds.PatientID:
+            if not self.config.study_root_get_support:
+                raise ValueError(
+                    "Patient ID missing in query without support for "
+                    "Study Root Query/Retrieve Information Model."
+                )
+            query_model = StudyRootQueryRetrieveInformationModelGet
 
         handle_store = partial(_handle_store, folder, callback)
         self.assoc.bind(evt.EVT_C_STORE, handle_store)
 
-        # Cave, the Synapse PACS server only accepts study root queries
-        # (not patient root queries) for C-GET requests
-        responses = self.assoc.send_c_get(ds, self.get_query_model, msg_id)
+        responses = self.assoc.send_c_get(query_ds, query_model, msg_id)
         results = _fetch_results(responses, "C-GET", query_dict)
 
         self.assoc.unbind(evt.EVT_C_STORE, handle_store)
@@ -389,8 +412,17 @@ class DicomConnector:
 
         query_ds = _make_query_dataset(query_dict)
 
+        query_model = self.default_move_query_model
+        if "PatientID" not in query_ds or not query_ds.PatientID:
+            if not self.config.study_root_move_support:
+                raise ValueError(
+                    "Patient ID missing in query without support for "
+                    "Study Root Query/Retrieve Information Model."
+                )
+            query_model = StudyRootQueryRetrieveInformationModelMove
+
         responses = self.assoc.send_c_move(
-            query_ds, destination_ae_title, self.move_query_model, msg_id
+            query_ds, destination_ae_title, query_model, msg_id
         )
         return _fetch_results(responses, "C-MOVE", query_dict)
 
