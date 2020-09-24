@@ -20,6 +20,7 @@ ADIT (Automated DICOM Transfer) is a swiss army knife to exchange DICOM data bet
 
 # TODO
 
+-   stopped_at -> finished_at
 -   Humanize times in tables
 -   Think about moving all those dicts to dataclasses when passing around data
     -- Allow provide a regex of StudyDescription in CSV batch file

@@ -13,8 +13,8 @@
         <tr>
             <th>Row Key</th>
             <th>Status</th>
-            <th>Finished At</th>
             <th>Message</th>
+            <th>Finished At</th>
         </tr>
     </thead>
     <tbody>
@@ -22,8 +22,8 @@
         <tr>
             <td>{{ request.row_key }}</td>
             <td>{{ request.get_status_display }}</td>
-            <td>{{ request.stopped_at|default:" - " }}</td>
             <td>{{ request.message|default:" - " }}</td>
+            <td>{{ request.stopped_at|date:"SHORT_DATE_FORMAT"|default:" - " }}</td>
         </tr>
     {% endfor %}
     </tbody>

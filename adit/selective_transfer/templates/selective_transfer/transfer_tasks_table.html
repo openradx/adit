@@ -12,9 +12,9 @@
     <thead>
         <tr>
             <th>Task ID</th>
-            <th>Finished At</th>
             <th>Status</th>
             <th>Message</th>
+            <th>Finished At</th>
         </tr>
     </thead>
     <tbody>
@@ -22,8 +22,8 @@
         <tr>
             <td>{{ task.id }}</td>
             <td>{{ task.get_status_display }}</td>
-            <td>{{ task.stopped_at|default:" - " }}</td>
             <td>{{ task.message|default:" - " }}</td>
+            <td>{{ task.stopped_at|date:"SHORT_DATE_FORMAT"|default:" - " }}</td>
         </tr>
     {% endfor %}
     </tbody>

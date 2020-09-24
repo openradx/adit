@@ -1,6 +1,7 @@
 import logging
 import re
 from datetime import datetime
+from operator import itemgetter
 from channels.generic.websocket import AsyncJsonWebsocketConsumer
 from channels.db import database_sync_to_async
 from django.utils import formats, dateformat
@@ -28,8 +29,8 @@ def _fetch_source_server(source_id):
 # conditions.
 # See also https://docs.djangoproject.com/en/3.1/topics/async/#sync-to-async
 @sync_to_async
-def _query_studies(connector: DicomConnector, query: dict):
-    return connector.find_studies(
+def _query_studies_sync(connector: DicomConnector, query: dict):
+    studies = connector.find_studies(
         patient_id=query["patient_id"],
         patient_name=query["patient_name"],
         birth_date=query["patient_birth_date"],
@@ -37,6 +38,7 @@ def _query_studies(connector: DicomConnector, query: dict):
         study_date=query["study_date"],
         modality=query["modality"],
     )
+    return sorted(studies, key=itemgetter("StudyDate"), reverse=True)
 
 
 def _convert_date_from_dicom(date_str):
@@ -143,7 +145,7 @@ class SelectiveTransferConsumer(AsyncJsonWebsocketConsumer):
                 raise ValueError("Invalid source server.")
 
             self.connector = server.create_connector()
-            studies = await _query_studies(self.connector, query)
+            studies = await _query_studies_sync(self.connector, query)
             _convert_query_results(studies)
             await self.send_json(
                 {"status": "success", "queryId": query_id, "queryResults": studies}
