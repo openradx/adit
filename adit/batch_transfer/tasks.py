@@ -36,12 +36,6 @@ def batch_transfer(job_id):
 def transfer_request(self, row_key):
     request = BatchTransferRequest.objects.get(id=row_key)
 
-    # TODO remove
-    # print("+++++++++++")
-    # print(request.patient_id)
-    # if request.patient_id == "10007":
-    #     raise Exception("A test exception")
-
     if request.status != BatchTransferRequest.Status.PENDING:
         raise AssertionError(
             f"Invalid transfer job status: {request.get_status_display()}"
@@ -55,23 +49,7 @@ def transfer_request(self, row_key):
         request.save()
         return request.status
 
-    app_settings = AppSettings.load()
-
-    scheduler = Scheduler(
-        app_settings.batch_slot_begin_time, app_settings.batch_slot_end_time
-    )
-    if scheduler.must_be_scheduled():
-        eta = scheduler.next_slot()
-        raise self.retry(
-            eta=eta, exc=Warning(f"Not in batch slot. Scheduled in {naturaltime(eta)}.")
-        )
-
-    if app_settings.batch_transfer_suspended:
-        eta = timezone.now + timedelta(minutes=5)
-        raise self.retry(
-            eta=eta,
-            exc=Warning(f"Batch transfer suspended. Retrying in {naturaltime(eta)}."),
-        )
+    _check_can_run_now(self)
 
     if job.status == BatchTransferJob.Status.PENDING:
         job.status = BatchTransferJob.Status.IN_PROGRESS
@@ -210,6 +188,27 @@ def on_job_failed(*args, **kwargs):
     )
     send_mail_to_admins(subject, html_content)
     send_mail_to_user(subject, html_content, job.created_by)
+
+
+def _check_can_run_now(celery_task):
+    app_settings = AppSettings.load()
+
+    scheduler = Scheduler(
+        app_settings.batch_slot_begin_time, app_settings.batch_slot_end_time
+    )
+    if scheduler.must_be_scheduled():
+        eta = scheduler.next_slot()
+        raise celery_task.retry(
+            eta=eta,
+            exc=Warning(f"Not in batch time slot. Scheduled in {naturaltime(eta)}."),
+        )
+
+    if app_settings.batch_transfer_suspended:
+        eta = timezone.now + timedelta(minutes=5)
+        raise celery_task.retry(
+            eta=eta,
+            exc=Warning(f"Batch transfer suspended. Retrying in {naturaltime(eta)}."),
+        )
 
 
 @redis_lru(capacity=10000, slicer=slice(3))
