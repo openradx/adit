@@ -6,26 +6,34 @@
             <h1 class="display-4">Welcome to ADIT</h1>
             <p class="lead">
                 ADIT (Automated DICOM Transfer) is a swiss army knife to exchange 
-                DICOM data between various systems
+                DICOM data between various systems.
+            </p>
+
+            <p>
+                Studies can be transferred between different DICOM / PACS servers
+                or can be downloaded to a network drive. The transferred / downloaded
+                data can be pseudonymized on the fly and can be tagged with trial
+                information. The files can also be downloaded to an encrypted 7zip
+                archive.
+            </p>
+            <p>
+                ADIT supports different modes to accomplish the transfer or download:
             </p>
 
             <dl class="row">
                 <dt class="col-sm-2 text-nowrap">Selective Transfer</dt>
                 <dd class="col-sm-10">
-                    Search for specific studies and transfer them another DICOM server or
-                    download them to a folder (optionally pseudonymized).
+                    Search and select specific studies to transfer or download.
                 </dd>
 
                 <dt class="col-sm-2 text-nowrap">Batch Transfer</dt>
                 <dd class="col-sm-10">
-                    Transfer multiple studies specified in a CSV file to another DICOM / PACS
-                    server or download them to a folder (optionally pseudonymized).
+                    Transfer or download multiple studies specified in a CSV file.
                 </dd>
 
                 <dt class="col-sm-2 text-nowrap">Continuous Transfer</dt>
                 <dd class="col-sm-10">
-                    Continously transfer studies to another DICOM / PACS server starting by
-                    a specified date until an end date (or infinite).
+                    Continously transfer studies from a certain point in time (TBR).
                 </dd>
             </dl>
 
