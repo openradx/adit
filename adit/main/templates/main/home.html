@@ -9,16 +9,32 @@
                 DICOM data between various systems
             </p>
 
+            <dl class="row">
+                <dt class="col-sm-2 text-nowrap">Selective Transfer</dt>
+                <dd class="col-sm-10">
+                    Search for specific studies and transfer them another DICOM server or
+                    download them to a folder (optionally pseudonymized).
+                </dd>
+
+                <dt class="col-sm-2 text-nowrap">Batch Transfer</dt>
+                <dd class="col-sm-10">
+                    Transfer multiple studies specified in a CSV file to another DICOM / PACS
+                    server or download them to a folder (optionally pseudonymized).
+                </dd>
+
+                <dt class="col-sm-2 text-nowrap">Continuous Transfer</dt>
+                <dd class="col-sm-10">
+                    Continously transfer studies to another DICOM / PACS server starting by
+                    a specified date until an end date (or infinite).
+                </dd>
+            </dl>
+
             {% if not user.is_authenticated %}
                 <p>
                     <a class="btn btn-info" href="{% url 'auth_login' %}" role="button">Log in</a>
                     <span class="ml-2">No account yet?</span>
                     <a href="{% url 'registration_register' %}">Register</a>
                 </p>
-                <p>
-                    
-                </p>
-                
             {% endif %}
         </div>
     </div>
