@@ -148,20 +148,20 @@ function selectiveTransferForm() {
         watchSelectAll: function (event) {
             const selectAll = event.target.checked;
             if (selectAll) {
-                for (result of this.queryResults) {
+                this.queryResults.forEach(function (result) {
                     result.selected = true;
-                }
+                });
             } else {
-                for (result of this.queryResults) {
+                this.queryResults.forEach(function (result) {
                     delete result.selected;
-                }
+                });
             }
             this.selectionChanged();
         },
         selectionChanged: function () {
             let allSelected = true;
-            for (result of this.queryResults) {
-                if (!result.selected) {
+            for (let i = 0; i < this.queryResults.length; i++) {
+                if (!this.queryResults[i].selected) {
                     allSelected = false;
                     break;
                 }

@@ -17,10 +17,10 @@ function uuidv4() {
     });
 }
 
-const capitalize = (s) => {
+function capitalize(s) {
     if (typeof s !== "string") return "";
     return s.charAt(0).toUpperCase() + s.slice(1);
-};
+}
 
 function messages() {
     return {
@@ -36,9 +36,9 @@ function messages() {
             const serverMessages = this.$el.getElementsByClassName(
                 "server-message"
             );
-            for (const serverMessage of serverMessages) {
+            for (let i = 0; i < serverMessages.length; i++) {
                 setTimeout(function () {
-                    serverMessage.remove();
+                    serverMessages[i].remove();
                 }, this.options.duration);
             }
         },
