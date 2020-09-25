@@ -226,6 +226,9 @@ EMAIL_SUBJECT_PREFIX = "[ADIT] "
 SERVER_EMAIL = env.str("DJANGO_SERVER_EMAIL", default="support@adit.test")
 DEFAULT_FROM_EMAIL = SERVER_EMAIL
 
+# An support Email address
+SUPPORT_EMAIL = env.str("SUPPORT_EMAIL", default=SERVER_EMAIL)
+
 # Also used by django-registration-redux to send account approval emails
 admin_first_name = env.str("ADMIN_FIRST_NAME", default="ADIT")
 admin_last_name = env.str("ADMIN_LAST_NAME", default="Admin")

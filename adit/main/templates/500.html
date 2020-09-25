@@ -1,0 +1,17 @@
+{% extends "main/base_generic.html" %}
+
+{% block container %}
+
+<div class="card bg-light mb-3">
+    <div class="card-header">500</div>
+    <div class="card-body">
+        <h5 class="card-title">Server Error</h5>
+        <p class="card-text">
+            An unexpected server error occurred. Please try again later and if
+            the problem persists contant the
+            <a href="mailto:{{ SUPPORT_EMAIL }}">ADIT Support</a>.
+        </p>
+    </div>
+</div>
+
+{% endblock container %}

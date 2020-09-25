@@ -21,17 +21,23 @@
             </p>
 
             <dl class="row">
-                <dt class="col-sm-2 text-nowrap">Selective Transfer</dt>
+                <dt class="col-sm-2 text-nowrap">
+                    <a href="{% url 'selective_transfer_job_form' %}">Selective Transfer</a>
+                </dt>
                 <dd class="col-sm-10">
                     Search and select specific studies to transfer or download.
                 </dd>
 
-                <dt class="col-sm-2 text-nowrap">Batch Transfer</dt>
+                <dt class="col-sm-2 text-nowrap">
+                    <a href="{% url 'batch_transfer_job_create' %}">Batch Transfer</a>
+                </dt>
                 <dd class="col-sm-10">
                     Transfer or download multiple studies specified in a CSV file.
                 </dd>
 
-                <dt class="col-sm-2 text-nowrap">Continuous Transfer</dt>
+                <dt class="col-sm-2 text-nowrap">
+                    <a href="">Continuous Transfer</a>
+                </dt>
                 <dd class="col-sm-10">
                     Continously transfer studies from a certain point in time (TBR).
                 </dd>

@@ -9,9 +9,10 @@
 <body>
     <p>
         {% blocktrans %}
-            The following user ({{ user }}) has asked to register an account at ADIT.
+            The user ({{ user }}) has asked to register an account at ADIT.
         {% endblocktrans %}
     </p>
+
     <p>
         {% blocktrans %}
             To approve this, please
@@ -20,11 +21,26 @@
             {% trans "click here" %}
         </a>.
     </p>
+
     <p>
-        {% blocktrans %}
-            Sincerely,
-            ADIT Support
-        {% endblocktrans %}
+        <h4>User Details:</h4>
+
+        <dl class="row">
+            <dt class="col-sm-3">Username</dt>
+            <dd class="col-sm-9">{{ user.username }}</dd>
+
+            <dt class="col-sm-3">Email</dt>
+            <dd class="col-sm-9">{{ user.email }}</dd>
+
+            <dt class="col-sm-3">Full Name</dt>
+            <dd class="col-sm-9">{{ user.get_full_name }}</dd>
+
+            <dt class="col-sm-3">Phone Number</dt>
+            <dd class="col-sm-9">{{ user.phone_number }}</dd>
+
+            <dt class="col-sm-3">Department</dt>
+            <dd class="col-sm-9">{{ user.department }}</dd>
+        </dl>
     </p>
 </body>
 

@@ -22,5 +22,6 @@ def register_transfer_job(type_key, type_name, detail_view):
 def base_context_processor(request):
     return {
         "BASE_URL": settings.BASE_URL,
-        "nav_menu_items": nav_menu_items
+        "SUPPORT_EMAIL": settings.SUPPORT_EMAIL,
+        "nav_menu_items": nav_menu_items,
     }
