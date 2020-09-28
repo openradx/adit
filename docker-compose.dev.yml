@@ -42,11 +42,11 @@ services:
 
   worker_default:
     <<: *default-app
-    command: bash -c "celery -A adit worker -Q default -l warning -n worker_default_$$(hostname)"
+    command: bash -c "celery -A adit worker -Q default -l INFO -n worker_default_$$(hostname)"
 
   worker_low:
     <<: *default-app
-    command: bash -c "celery -A adit worker -Q low -l warning -n worker_low_$$(hostname)"
+    command: bash -c "celery -A adit worker -Q low -l INFO -n worker_low_$$(hostname)"
 
   postgres:
     image: postgres:latest
