@@ -11,9 +11,29 @@ from django.utils import timezone
 from .utils.dicom_connector import DicomConnector
 from .utils.anonymizer import Anonymizer
 from .utils.sanitize import sanitize_dirname
-from .models import DicomNode, TransferTask
+from .utils.mail import send_job_failed_mail
+from .models import DicomNode, TransferJob, TransferTask
 
 logger = get_task_logger(__name__)
+
+
+# The Celery documentation is wrong about the provided parameters and when
+# the callback is called. This function definition seems to work however.
+# See https://github.com/celery/celery/issues/3709
+@shared_task
+def on_job_failed(*args, **kwargs):
+    celery_task_id = args[0]
+    job_id = kwargs["job_id"]
+
+    logger.error("Transfer job with ID %d failed unexpectedly.", job_id)
+
+    job = TransferJob.objects.get(id=job_id)
+
+    job.status = TransferJob.Status.FAILURE
+    job.message = "Transfer job failed unexpectedly."
+    job.save()
+
+    send_job_failed_mail(job, celery_task_id)
 
 
 @shared_task

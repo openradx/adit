@@ -3,7 +3,7 @@ from celery import shared_task, chord
 from celery.utils.log import get_task_logger
 from django.utils import timezone
 from django.contrib.humanize.templatetags.humanize import naturaltime
-from adit.main.tasks import transfer_dicoms
+from adit.main.tasks import on_job_failed, transfer_dicoms
 from adit.main.models import TransferTask
 from .models import AppSettings, SelectiveTransferJob
 
@@ -12,6 +12,8 @@ logger = get_task_logger(__name__)
 
 @shared_task(ignore_result=True)
 def selective_transfer(job_id):
+    logger.info("Prepare selective transfer job with ID %d", job_id)
+
     job = SelectiveTransferJob.objects.get(id=job_id)
 
     if job.status != SelectiveTransferJob.Status.PENDING:
@@ -19,11 +21,15 @@ def selective_transfer(job_id):
 
     transfers = [transfer_selected_dicoms.s(task.id) for task in job.tasks.all()]
 
-    chord(transfers)(update_job_status.s(job_id))
+    chord(transfers)(on_job_finished.s(job_id).on_error(on_job_failed.s(job_id=job_id)))
 
 
 @shared_task(bind=True)
 def transfer_selected_dicoms(self, task_id):
+    logger.info(
+        "Processing transfer task with ID %d in selective transfer job.", task_id
+    )
+
     task = TransferTask.objects.get(id=task_id)
 
     if task.status != TransferTask.Status.PENDING:
@@ -48,12 +54,14 @@ def transfer_selected_dicoms(self, task_id):
 
 
 @shared_task(ignore_result=True)
-def update_job_status(task_status_list, job_id):
+def on_job_finished(task_status_list, job_id):
+    logger.info("Selective transfer job with ID %d finished.", job_id)
+
     job = SelectiveTransferJob.objects.get(id=job_id)
 
     if (
         job.status == SelectiveTransferJob.Status.CANCELING
-        and SelectiveTransferJob.Status.CANCELED in task_status_list
+        and TransferTask.Status.CANCELED in task_status_list
     ):
         job.status = SelectiveTransferJob.Status.CANCELED
         job.save()

@@ -6,11 +6,12 @@ from django.conf import settings
 from django.utils import timezone
 from django.template.loader import render_to_string
 from django.contrib.humanize.templatetags.humanize import naturaltime
+from django.template.defaultfilters import pluralize
 from adit.main.models import TransferTask
-from adit.main.tasks import transfer_dicoms
+from adit.main.tasks import on_job_failed, transfer_dicoms
 from adit.main.utils.scheduler import Scheduler
 from adit.main.utils.redis_lru import redis_lru
-from adit.main.utils.mail import send_mail_to_user, send_mail_to_admins
+from adit.main.utils.mail import send_job_finished_mail
 from .models import AppSettings, BatchTransferJob, BatchTransferRequest
 
 logger = get_task_logger(__name__)
@@ -18,6 +19,8 @@ logger = get_task_logger(__name__)
 
 @shared_task(ignore_result=True)
 def batch_transfer(job_id):
+    logger.info("Prepare batch transfer job with ID %d", job_id)
+
     job = BatchTransferJob.objects.get(id=job_id)
 
     if job.status != BatchTransferJob.Status.PENDING:
@@ -33,8 +36,10 @@ def batch_transfer(job_id):
 
 
 @shared_task(bind=True)
-def transfer_request(self, row_key):
-    request = BatchTransferRequest.objects.get(id=row_key)
+def transfer_request(self, request_id):
+    logger.info("Processing batch transfer request with ID %d", request_id)
+
+    request = BatchTransferRequest.objects.get(id=request_id)
 
     if request.status != BatchTransferRequest.Status.PENDING:
         raise AssertionError(
@@ -76,8 +81,18 @@ def transfer_request(self, row_key):
             modality=request.modality,
         )
 
-        if len(studies) == 0:
+        study_count = len(studies)
+
+        if study_count == 0:
             raise ValueError("No studies found to transfer.")
+
+        study_str = "stud{}".format(pluralize(study_count, "y, ies"))
+        logger.debug(
+            "Found %d %s to transfer for request with ID %d.",
+            study_count,
+            study_str,
+            request_id,
+        )
 
         has_success = False
         has_failure = False
@@ -125,6 +140,8 @@ def transfer_request(self, row_key):
 
 @shared_task(ignore_result=True)
 def on_job_finished(request_status_list, job_id):
+    logger.info("Batch transfer job with ID %d finished.", job_id)
+
     job = BatchTransferJob.objects.get(id=job_id)
 
     if (
@@ -160,34 +177,7 @@ def on_job_finished(request_status_list, job_id):
     job.stopped_at = timezone.now()
     job.save()
 
-    html_content = render_to_string(
-        "batch_transfer/mail/batch_transfer_finished.html",
-        {"BASE_URL": settings.BASE_URL, "job": job},
-    )
-    send_mail_to_user("Batch transfer job finished", html_content, job.created_by)
-
-
-# The Celery documentation is wrong about the provided parameters and when
-# the callback is called. This function definition seems to work however.
-# See https://github.com/celery/celery/issues/3709
-@shared_task
-def on_job_failed(*args, **kwargs):
-    celery_task_id = args[0]
-    job_id = kwargs["job_id"]
-
-    job = BatchTransferJob.objects.get(id=job_id)
-
-    job.status = BatchTransferJob.Status.FAILURE
-    job.message = "Job failed unexpectedly."
-    job.save()
-
-    subject = "Batch transfer job failed"
-    html_content = render_to_string(
-        "batch_transfer/mail/batch_transfer_failed.html",
-        {"BASE_URL": settings.BASE_URL, "job": job, "celery_task_id": celery_task_id},
-    )
-    send_mail_to_admins(subject, html_content)
-    send_mail_to_user(subject, html_content, job.created_by)
+    send_job_finished_mail(job)
 
 
 def _check_can_run_now(celery_task):
