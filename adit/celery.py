@@ -15,6 +15,18 @@ app = Celery("adit")
 #   should have a `CELERY_` prefix.
 app.config_from_object("django.conf:settings", namespace="CELERY")
 
+
+from celery.signals import setup_logging  # pylint: disable=wrong-import-position
+
+
+@setup_logging.connect
+def config_loggers(*args, **kwargs):  # pylint: disable=unused-argument
+    from logging.config import dictConfig  # pylint: disable=import-outside-toplevel
+    from django.conf import settings  # pylint: disable=import-outside-toplevel
+
+    dictConfig(settings.LOGGING)
+
+
 # Load task modules from all registered Django app configs.
 app.autodiscover_tasks()
 

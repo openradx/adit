@@ -160,7 +160,7 @@ LOGGING = {
             "level": "INFO",
             "propagate": False,
         },
-        "celery.task": {
+        "celery": {
             "handlers": ["console"],
             "level": "INFO",
             "propagate": False,
@@ -257,6 +257,7 @@ CELERY_BROKER_URL = REDIS_URL
 CELERY_RESULT_BACKEND = REDIS_URL
 CELERY_TASK_DEFAULT_QUEUE = "default"
 CELERY_TASK_ROUTES = {"adit.batch_transfer.tasks.transfer_request": {"queue": "low"}}
+CELERY_WORKER_HIJACK_ROOT_LOGGER = False
 
 # Flower is integrated in ADIT by using an reverse proxy (django-revproxy).
 # This allows to use the authentication of ADIT.
