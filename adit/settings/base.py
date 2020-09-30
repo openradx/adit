@@ -279,7 +279,7 @@ BATCH_FILE_CSV_DELIMITER = ";"
 # always be queried. This is how many patients fit into the cache.
 BATCH_PATIENT_CACHE_SIZE = 10000
 
-# Usually a batch transfer job must be verified by an admin. By setting
-# this option to True ADIT will schedule unverified batch transfers
-# (and directly set the status to PENDING).
-BATCH_AUTO_VERIFY = True
+# Usually a transfer job must be verified by an admin. By setting
+# this option to True ADIT will schedule unverified transfers
+# (and directly set the status of the job to PENDING).
+BATCH_TRANSFER_UNVERIFIED = True

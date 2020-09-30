@@ -32,7 +32,7 @@ class BatchTransferJobCreateView(
         # https://code.djangoproject.com/ticket/30457
         # TODO transaction.on_commit(lambda: enqueue_batch_job(self.object.id))
         job = self.object
-        if user.is_staff or settings.BATCH_AUTO_VERIFY:
+        if user.is_staff or settings.BATCH_TRANSFER_UNVERIFIED:
             job.status = BatchTransferJob.Status.PENDING
             job.save()
             batch_transfer.delay(job.id)

@@ -62,7 +62,7 @@ class BatchTransferJobCreateViewTest(TestCase):
         self, batch_transfer_delay_mock
     ):
         self.client.force_login(self.user_with_permission)
-        with self.settings(BATCH_AUTO_VERIFY=True):
+        with self.settings(BATCH_TRANSFER_UNVERIFIED=True):
             self.client.post(reverse("batch_transfer_job_create"), create_form_data())
             job = BatchTransferJob.objects.first()
             self.assertEqual(job.requests.count(), 3)
@@ -73,7 +73,7 @@ class BatchTransferJobCreateViewTest(TestCase):
         self, batch_transfer_delay_mock
     ):
         self.client.force_login(self.user_with_permission)
-        with self.settings(BATCH_AUTO_VERIFY=False):
+        with self.settings(BATCH_TRANSFER_UNVERIFIED=False):
             self.client.post(reverse("batch_transfer_job_create"), create_form_data())
             job = BatchTransferJob.objects.first()
             self.assertEqual(job.requests.count(), 3)
