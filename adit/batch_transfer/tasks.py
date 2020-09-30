@@ -4,7 +4,6 @@ from celery import shared_task, chord
 from celery.utils.log import get_task_logger
 from django.conf import settings
 from django.utils import timezone
-from django.template.loader import render_to_string
 from django.contrib.humanize.templatetags.humanize import naturaltime
 from django.template.defaultfilters import pluralize
 from adit.main.models import TransferTask
@@ -19,7 +18,7 @@ logger = get_task_logger(__name__)
 
 @shared_task(ignore_result=True)
 def batch_transfer(job_id):
-    logger.info("Prepare batch transfer job with ID %d", job_id)
+    logger.info("Prepare batch transfer job (ID %d).", job_id)
 
     job = BatchTransferJob.objects.get(id=job_id)
 
@@ -37,9 +36,13 @@ def batch_transfer(job_id):
 
 @shared_task(bind=True)
 def transfer_request(self, request_id):
-    logger.info("Processing batch transfer request with ID %d", request_id)
-
     request = BatchTransferRequest.objects.get(id=request_id)
+
+    logger.info(
+        "Processing batch transfer request (ID %d, RowKey %d).",
+        request.id,
+        request.row_key,
+    )
 
     if request.status != BatchTransferRequest.Status.PENDING:
         raise AssertionError(
@@ -140,7 +143,7 @@ def transfer_request(self, request_id):
 
 @shared_task(ignore_result=True)
 def on_job_finished(request_status_list, job_id):
-    logger.info("Batch transfer job with ID %d finished.", job_id)
+    logger.info("Batch transfer job (ID %d) finished.", job_id)
 
     job = BatchTransferJob.objects.get(id=job_id)
 
