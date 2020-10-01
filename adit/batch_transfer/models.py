@@ -14,8 +14,17 @@ class AppSettings(models.Model):
     batch_transfer_locked = models.BooleanField(default=False)
     # Suspend the batch transfer background processing.
     batch_transfer_suspended = models.BooleanField(default=False)
-    batch_slot_begin_time = models.TimeField(default=slot_time(22, 0))
-    batch_slot_end_time = models.TimeField(default=slot_time(8, 0))
+    # Must be set in UTC time as Celery workers can't figure out another time zone.
+    # TODO It would be nicer if in Web UI the local time could be set that is
+    #   converted on the fly and stored in the db as UTC. Unfortunately, this does
+    #   not work with TimeField (as it is never time zone aware).
+    batch_slot_begin_time = models.TimeField(
+        default=slot_time(22, 0), help_text="Must be set in UTC time."
+    )
+    # Must be set in UTC time as Celery workers can't figure out another time zone.
+    batch_slot_end_time = models.TimeField(
+        default=slot_time(8, 0), help_text="Must be set in UTC time."
+    )
     batch_timeout = models.IntegerField(default=3)
 
     @classmethod

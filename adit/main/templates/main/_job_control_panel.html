@@ -1,0 +1,22 @@
+<div>
+    {% if job.is_deletable %}
+        <form action="{% url 'transfer_job_delete' job.pk %}" method="post">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-danger">Delete</button>
+        </form>
+    {% endif %}
+
+    {% if job.is_cancelable %}
+        <form action="{% url 'transfer_job_cancel' job.pk %}" method="post">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-warning">Cancel</button>
+        </form>
+    {% endif %}
+
+    {% if user.is_staff and job.is_unverified %}
+        <form action="{% url 'transfer_job_verify' job.pk %}" method="post">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-danger">Verify</button>
+        </form>
+    {% endif %}
+</div>

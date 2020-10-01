@@ -58,6 +58,7 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "adit.main.middlewares.MaintenanceMiddleware",
+    "adit.main.middlewares.TimezoneMiddleware",
 ]
 
 # We need this as we embed Django Admin and Celery Flower in an iframe.
@@ -126,11 +127,11 @@ LOGGING = {
     "formatters": {
         "simple": {
             "format": "[%(asctime)s] %(name)-12s %(levelname)s %(message)s",
-            "datefmt": "%Y-%m-%d %H:%M:%S",
+            "datefmt": "%Y-%m-%d %H:%M:%S %Z",
         },
         "verbose": {
             "format": "[%(asctime)s] %(levelname)s [%(name)s.%(funcName)s:%(lineno)d] %(message)s",
-            "datefmt": "%Y-%m-%d %H:%M:%S",
+            "datefmt": "%Y-%m-%d %H:%M:%S %Z",
         },
     },
     "handlers": {
@@ -181,8 +182,6 @@ LOGGING = {
 
 LANGUAGE_CODE = "de-de"
 
-TIME_ZONE = "UTC"
-
 # We don't want to have German translations, but everything in English
 USE_I18N = False
 
@@ -190,6 +189,8 @@ USE_I18N = False
 USE_L10N = True
 
 USE_TZ = True
+
+TIME_ZONE = "UTC"
 
 # All REST API requests must come from authenticated clients
 REST_FRAMEWORK = {
@@ -283,3 +284,6 @@ BATCH_PATIENT_CACHE_SIZE = 10000
 # this option to True ADIT will schedule unverified transfers
 # (and directly set the status of the job to PENDING).
 BATCH_TRANSFER_UNVERIFIED = True
+
+# A default timezone that is used for users of the web interface.
+DEFAULT_TIME_ZONE = env.str("DEFAULT_TIME_ZONE", default=None)

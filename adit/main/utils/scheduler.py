@@ -41,4 +41,5 @@ class Scheduler:
             return datetime.combine(now.date(), self.begin_time)
 
         tomorrow = now.date() + timedelta(days=1)
-        return datetime.combine(tomorrow, self.begin_time)
+        slot_begin_time = datetime.combine(tomorrow, self.begin_time)
+        return timezone.make_aware(slot_begin_time)

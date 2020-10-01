@@ -119,6 +119,9 @@ class TransferJob(models.Model):
     def is_cancelable(self):
         return self.status in (self.Status.IN_PROGRESS,)
 
+    def is_unverified(self):
+        return self.status == self.Status.UNVERIFIED
+
     def __str__(self):
         status_dict = dict(self.Status.choices)
         return f"{self.__class__.__name__} {status_dict[self.status]}"

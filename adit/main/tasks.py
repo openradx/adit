@@ -25,7 +25,7 @@ def on_job_failed(*args, **kwargs):
     celery_task_id = args[0]
     job_id = kwargs["job_id"]
 
-    logger.error("Transfer job with ID %d failed unexpectedly.", job_id)
+    logger.error("Transfer job failed unexpectedly (Job ID %d).", job_id)
 
     job = TransferJob.objects.get(id=job_id)
 
@@ -39,18 +39,20 @@ def on_job_failed(*args, **kwargs):
 @shared_task
 def transfer_dicoms(task_id):
     task = TransferTask.objects.get(id=task_id)
+    job = task.job
 
     if task.status != TransferTask.Status.PENDING:
-        raise AssertionError(f"Invalid transfer task status: {task.status}")
+        raise AssertionError(
+            f"Invalid transfer task status {task.status} "
+            f"(Job ID {job.id}, Task ID {task.id})."
+        )
 
     task.status = TransferTask.Status.IN_PROGRESS
     task.started_at = timezone.now()
     task.save()
 
-    job = task.job
-
     logger.debug(
-        "Transfer task started: Job ID %d, Task ID %d, Source %s, Destination %s.",
+        "Transfer task started (Job ID %d, Task ID %d, Source %s, Destination %s).",
         job.id,
         task.id,
         job.source.node_name,
@@ -87,7 +89,7 @@ def transfer_dicoms(task_id):
 
     except Exception as err:  # pylint: disable=broad-except
         logger.exception(
-            "Error during task transfer (Job ID %d, Task ID %d).",
+            "Error during transfer task (Job ID %d, Task ID %d).",
             job.id,
             task.id,
         )
@@ -158,11 +160,13 @@ def _download_dicoms(
     )
     if len(studies) == 0:
         raise AssertionError(
-            f"No study found with Study Instance UID: {transfer_task.study_uid}"
+            f"No study found with Study Instance UID {transfer_task.study_uid} "
+            f"(Job ID {transfer_task.job.id}, Task ID {transfer_task.id})."
         )
     if len(studies) > 1:
         raise AssertionError(
-            f"Multiple studies found with Study Instance UID {transfer_task.study_uid}."
+            f"Multiple studies found with Study Instance UID {transfer_task.study_uid} "
+            f"(Job ID {transfer_task.job.id}, Task ID {transfer_task.id})."
         )
 
     study = studies[0]

@@ -12,12 +12,15 @@ logger = get_task_logger(__name__)
 
 @shared_task(ignore_result=True)
 def selective_transfer(job_id):
-    logger.info("Prepare selective transfer job with ID %d", job_id)
+    logger.info("Prepare selective transfer job (Job ID %d).", job_id)
 
     job = SelectiveTransferJob.objects.get(id=job_id)
 
     if job.status != SelectiveTransferJob.Status.PENDING:
-        raise AssertionError(f"Invalid job status: {job.get_status_display()}")
+        raise AssertionError(
+            f"Invalid selective transfer job status {job.get_status_display()} "
+            f"(Job ID {job.id})."
+        )
 
     transfers = [transfer_selected_dicoms.s(task.id) for task in job.tasks.all()]
 
@@ -26,36 +29,41 @@ def selective_transfer(job_id):
 
 @shared_task(bind=True)
 def transfer_selected_dicoms(self, task_id):
+    transfer_task = TransferTask.objects.get(id=task_id)
+    job = transfer_task.job
+
     logger.info(
-        "Processing transfer task with ID %d in selective transfer job.", task_id
+        "Processing selective transfer task (Job ID %d, Task ID %d).",
+        job.id,
+        transfer_task.id,
     )
 
-    task = TransferTask.objects.get(id=task_id)
-
-    if task.status != TransferTask.Status.PENDING:
-        raise AssertionError(f"Invalid transfer task status: {task.status}")
-
-    if task.job.status == SelectiveTransferJob.Status.CANCELING:
-        task.status = TransferTask.Status.CANCELED
-        task.save()
-        return task.status
-
-    app_settings = AppSettings.load()
-    if app_settings.selective_transfer_suspended:
-        eta = timezone.now + timedelta(minutes=5)
-        raise self.retry(
-            eta=eta,
-            exc=Warning(
-                f"Selective transfer suspended. Retrying in {naturaltime(eta)}."
-            ),
+    if transfer_task.status != TransferTask.Status.PENDING:
+        raise AssertionError(
+            "Invalid selective transfer task processing status "
+            f"{transfer_task.get_status_display()} "
+            f"(Job ID {job.id}, Task ID {transfer_task.id})"
         )
+
+    if job.status == SelectiveTransferJob.Status.CANCELING:
+        transfer_task.status = TransferTask.Status.CANCELED
+        transfer_task.stopped_at = timezone.now()
+        transfer_task.save()
+        return transfer_task.status
+
+    if job.status == SelectiveTransferJob.Status.PENDING:
+        job.status = SelectiveTransferJob.Status.IN_PROGRESS
+        job.started_at = timezone.now()
+        job.save()
+
+    _check_can_run_now(self, transfer_task)
 
     return transfer_dicoms(task_id)
 
 
 @shared_task(ignore_result=True)
 def on_job_finished(task_status_list, job_id):
-    logger.info("Selective transfer job with ID %d finished.", job_id)
+    logger.info("Selective transfer job finished (Job ID %d).", job_id)
 
     job = SelectiveTransferJob.objects.get(id=job_id)
 
@@ -75,7 +83,9 @@ def on_job_finished(task_status_list, job_id):
         elif status == TransferTask.Status.FAILURE:
             has_failure = True
         else:
-            raise AssertionError("Invalid task status: " + status)
+            raise AssertionError(
+                f"Invalid selective transfer task result status {status} (Job ID {job.id})."
+            )
 
     if has_success and has_failure:
         job.status = SelectiveTransferJob.Status.WARNING
@@ -87,6 +97,23 @@ def on_job_finished(task_status_list, job_id):
         job.status = SelectiveTransferJob.Status.FAILURE
         job.message = "All transfer tasks failed."
     else:
-        raise AssertionError("Invalid task status: " + job.status)
+        raise AssertionError(
+            f"At least one request must succeed or fail (Job ID {job.id})."
+        )
 
     job.save()
+
+
+def _check_can_run_now(celery_task, transfer_task):
+    app_settings = AppSettings.load()
+
+    if app_settings.batch_transfer_suspended:
+        eta = timezone.now() + timedelta(minutes=5)
+        raise celery_task.retry(
+            eta=eta,
+            exc=Warning(
+                "Selective transfer suspended. Retrying selective transfer task "
+                f"(Job ID {transfer_task.job.id}, Task ID {transfer_task.id}) "
+                f"in {naturaltime(eta)}."
+            ),
+        )

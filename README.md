@@ -46,7 +46,7 @@ supervisorctl shutdown # Shut down supervisor daemon
 
 # Django shell commands
 
-python manage.py shell_plus --print-sql # Show all SQL statements (django_extensions required)
+python manage.py shell_plus --print-sql  # Show all SQL statements (django_extensions required)
 
 # Docker comands
 
@@ -57,6 +57,17 @@ docker run -v=adit_web_data:/var/www/adit -it busybox /bin/sh # Start interactiv
 docker run --rm -i -v=adit_web_data:/foo busybox find /foo # List files in named volume
 docker-compose -f "docker-compose.dev.yml" -p adit_dev up -d --build
 docker-compose -f "docker-compose.prod.yml" -p adit_prod up -d --build
+
+# Celery commands
+- celery -A adit purge -Q default,low
+- celery -A adit inspect scheduled
+
+# Celery Manage Python API
+- python manage.py shell_plus
+from adit.celery import app
+i = app.control.inspect()
+i.scheduled()
+app.AsyncResult("task_id").state
 
 # Ports in development
 
