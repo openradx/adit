@@ -254,7 +254,7 @@ ASGI_APPLICATION = "adit.routing.application"
 if USE_TZ:
     CELERY_TIMEZONE = TIME_ZONE
 REDIS_URL = env.str("REDIS_URL", default="redis://localhost:6379/0")
-CELERY_BROKER_URL = REDIS_URL
+CELERY_BROKER_URL = env.str("RABBITMQ_URL", default="amqp://localhost")
 CELERY_RESULT_BACKEND = REDIS_URL
 CELERY_TASK_DEFAULT_QUEUE = "default"
 CELERY_TASK_ROUTES = {"adit.batch_transfer.tasks.transfer_request": {"queue": "low"}}

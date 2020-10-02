@@ -6,6 +6,7 @@ x-app: &default-app
     target: development
   depends_on:
     - postgres
+    - rabbit
     - redis
     - orthanc_1
     - orthanc_2
@@ -19,6 +20,7 @@ x-app: &default-app
     DJANGO_SETTINGS_MODULE: "adit.settings.development"
     DATABASE_URL: "psql://postgres:postgres@postgres:5432/postgres"
     REDIS_URL: "redis://redis:6379/0"
+    RABBITMQ_URL: "amqp://rabbit"
     DJANGO_STATIC_ROOT: "/var/www/adit/static/"
     LOG_FOLDER: "/var/www/adit/logs"
     FLOWER_HOST: "flower"
@@ -64,15 +66,22 @@ services:
     volumes:
       - redis_data:/data
 
+  rabbit:
+    image: rabbitmq:latest
+    expose:
+      - "5672"
+    volumes:
+      - rabbit_data:/var/lib/rabbitmq
+
   flower:
     image: mher/flower
     expose:
       - "5555"
     depends_on:
-      - redis
+      - rabbit
     volumes:
       - flower_data:/data
-    command: flower --url_prefix=flower --broker=redis://redis:6379/0
+    command: flower --url_prefix=flower --broker=amqp://rabbit
 
   orthanc_1:
     image: jodogne/orthanc-plugins:latest
@@ -97,6 +106,7 @@ services:
 volumes:
   postgres_data:
   redis_data:
+  rabbit_data:
   flower_data:
   orthanc1_data:
   orthanc2_data:

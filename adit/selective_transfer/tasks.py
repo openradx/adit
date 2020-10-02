@@ -107,7 +107,7 @@ def on_job_finished(task_status_list, job_id):
 def _check_can_run_now(celery_task, transfer_task):
     app_settings = AppSettings.load()
 
-    if app_settings.batch_transfer_suspended:
+    if app_settings.selective_transfer_suspended:
         eta = timezone.now() + timedelta(minutes=5)
         raise celery_task.retry(
             eta=eta,
