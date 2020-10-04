@@ -37,6 +37,8 @@ ports:
     onOpen: ignore
   - port: 5555 # Flower (for Celery)
     onOpen: ignore
+  - port: 5672 # RabbitMQ
+    onOpen: ignore
   - port: 6379 # Redis Server
     onOpen: ignore
   - port: 6501 # Orhtanc 1 DICOM Server

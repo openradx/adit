@@ -249,11 +249,13 @@ REGISTRATION_OPEN = True
 # Channels
 ASGI_APPLICATION = "adit.routing.application"
 
+# Redis is used as Celery result backend and as LRU cache for patient IDs.
+REDIS_URL = env.str("REDIS_URL", default="redis://localhost:6379/0")
+
 # Celery
 # see https://github.com/celery/celery/issues/5026 for how to name configs
 if USE_TZ:
     CELERY_TIMEZONE = TIME_ZONE
-REDIS_URL = env.str("REDIS_URL", default="redis://localhost:6379/0")
 CELERY_BROKER_URL = env.str("RABBITMQ_URL", default="amqp://localhost")
 CELERY_RESULT_BACKEND = REDIS_URL
 CELERY_TASK_DEFAULT_QUEUE = "default"

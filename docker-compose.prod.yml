@@ -7,6 +7,7 @@ x-app: &default-app
     target: production
   depends_on:
     - postgres
+    - rabbit
     - redis
   volumes:
     - /mnt:/mnt
@@ -17,6 +18,7 @@ x-app: &default-app
     USE_DOCKER: 1
     DJANGO_SETTINGS_MODULE: "adit.settings.production"
     DATABASE_URL: "psql://postgres:${POSTGRES_PASSWORD}@postgres:5432/postgres"
+    RABBITMQ_URL: "amqp://rabbit"
     REDIS_URL: "redis://redis:6379/0"
     DJANGO_STATIC_ROOT: "/var/www/adit/static/"
     SSL_CERT_FILE: "/var/www/adit/ssl/cert.pem"
@@ -58,6 +60,13 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
+  rabbit:
+    image: rabbitmq:latest
+    expose:
+      - "5672"
+    volumes:
+      - rabbit_data:/var/lib/rabbitmq
+
   redis:
     restart: always
     image: redis:latest
@@ -72,13 +81,15 @@ services:
     expose:
       - "5555"
     depends_on:
+      - rabbit
       - redis
     volumes:
       - flower_data:/data
-    command: flower --url_prefix=flower --broker=redis://redis:6379/0
+    command: flower --url_prefix=flower --broker=amqp://rabbit
 
 volumes:
   web_data: # in production for static files, SSL certs and logs
   postgres_data:
+  rabbit_data:
   redis_data:
   flower_data:

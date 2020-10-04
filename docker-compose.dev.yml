@@ -19,8 +19,8 @@ x-app: &default-app
     USE_DOCKER: 1
     DJANGO_SETTINGS_MODULE: "adit.settings.development"
     DATABASE_URL: "psql://postgres:postgres@postgres:5432/postgres"
-    REDIS_URL: "redis://redis:6379/0"
     RABBITMQ_URL: "amqp://rabbit"
+    REDIS_URL: "redis://redis:6379/0"
     DJANGO_STATIC_ROOT: "/var/www/adit/static/"
     LOG_FOLDER: "/var/www/adit/logs"
     FLOWER_HOST: "flower"
@@ -59,13 +59,6 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
-  redis:
-    image: redis:latest
-    expose:
-      - "6379"
-    volumes:
-      - redis_data:/data
-
   rabbit:
     image: rabbitmq:latest
     expose:
@@ -73,12 +66,20 @@ services:
     volumes:
       - rabbit_data:/var/lib/rabbitmq
 
+  redis:
+    image: redis:latest
+    expose:
+      - "6379"
+    volumes:
+      - redis_data:/data
+
   flower:
     image: mher/flower
     expose:
       - "5555"
     depends_on:
       - rabbit
+      - redis
     volumes:
       - flower_data:/data
     command: flower --url_prefix=flower --broker=amqp://rabbit
@@ -105,8 +106,8 @@ services:
 
 volumes:
   postgres_data:
-  redis_data:
   rabbit_data:
+  redis_data:
   flower_data:
   orthanc1_data:
   orthanc2_data:
