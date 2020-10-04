@@ -26,12 +26,12 @@
   },
   "scripts": {
     "copy": "npm run copy:jquery && npm run copy:bootstrap && npm run copy:alpine && npm run copy:clipboard && npm run copy:cookie",
-    "copy:jquery": "cpy node_modules/jquery/dist/jquery.js adit/main/static/main/vendor/js/",
-    "copy:bootstrap_css": "cpy node_modules/bootstrap/dist/css/bootstrap.css* adit/main/static/main/vendor/css/",
-    "copy:bootstrap_js": "cpy node_modules/bootstrap/dist/js/bootstrap.bundle.js* adit/main/static/main/vendor/js/",
+    "copy:jquery": "cpy node_modules/jquery/dist/jquery.js adit/static/vendor/",
+    "copy:bootstrap_css": "cpy node_modules/bootstrap/dist/css/bootstrap.css* adit/static/vendor/",
+    "copy:bootstrap_js": "cpy node_modules/bootstrap/dist/js/bootstrap.bundle.js* adit/static/vendor/",
     "copy:bootstrap": "npm run copy:bootstrap_css && npm run copy:bootstrap_js",
-    "copy:alpine": "cpy node_modules/alpinejs/dist/alpine*.js adit/main/static/main/vendor/js/",
-    "copy:clipboard": "cpy node_modules/clipboard/dist/clipboard.js adit/main/static/main/vendor/js/",
-    "copy:cookie": "cpy node_modules/js-cookie/src/js.cookie.js adit/main/static/main/vendor/js/"
+    "copy:alpine": "cpy node_modules/alpinejs/dist/alpine*.js adit/static/vendor/",
+    "copy:clipboard": "cpy node_modules/clipboard/dist/clipboard.js adit/static/vendor/",
+    "copy:cookie": "cpy node_modules/js-cookie/src/js.cookie.js adit/static/vendor/"
   }
 }

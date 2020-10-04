@@ -6,7 +6,7 @@
 {% block script %}
 {{ block.super }}
 {{ node_types|json_script:"nodeTypes" }}
-<script src="{% static 'batch_transfer/js/batch_transfer.js' %}"></script>
+<script src="{% static 'batch_transfer/batch_transfer.js' %}"></script>
 {% endblock %}
 
 {% block container %}
