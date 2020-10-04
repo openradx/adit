@@ -1,36 +1,37 @@
 {
-    "name": "adit",
-    "version": "0.0.1",
-    "description": "JS dependencies for ADIT",
-    "repository": {
-        "type": "git",
-        "url": "git+https://github.com/medihack/adit.git"
-    },
-    "author": "kai.schlamp@med.uni-heidelberg.de",
-    "license": "MIT",
-    "bugs": {
-        "url": "https://github.com/medihack/adit/issues"
-    },
-    "homepage": "https://github.com/medihack/adit#readme",
-    "dependencies": {
-        "alpinejs": "^2.6.0",
-        "bootstrap": "^4.5.0",
-        "bootstrap-icons": "^1.0.0-alpha5",
-        "clipboard": "^2.0.6",
-        "jquery": "^3.5.1",
-        "js-cookie": "^2.2.1"
-    },
-    "devDependencies": {
-        "browser-sync": "^2.26.12"
-    },
-    "scripts": {
-        "copy": "npm run copy:jquery && npm run copy:bootstrap && npm run copy:alpine && npm run copy:clipboard && npm run copy:cookie",
-        "copy:jquery": "cp node_modules/jquery/dist/jquery.js adit/main/static/main/vendor/js/",
-        "copy:bootstrap_css": "cp node_modules/bootstrap/dist/css/bootstrap.css* adit/main/static/main/vendor/css/",
-        "copy:bootstrap_js": "cp node_modules/bootstrap/dist/js/bootstrap.bundle.js* adit/main/static/main/vendor/js/",
-        "copy:bootstrap": "npm run copy:bootstrap_css && npm run copy:bootstrap_js",
-        "copy:alpine": "cp node_modules/alpinejs/dist/alpine*.js adit/main/static/main/vendor/js/",
-        "copy:clipbard": "cp node_modules/clipboard/dist/clipboard.js adit/main/static/main/vendor/js/",
-        "copy:cookie": "cp node_modules/js-cookie/src/js.cookie.js adit/main/static/main/vendor/js/"
-    }
+  "name": "adit",
+  "version": "0.0.1",
+  "description": "JS dependencies for ADIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/medihack/adit.git"
+  },
+  "author": "kai.schlamp@gmail.com",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/medihack/adit/issues"
+  },
+  "homepage": "https://github.com/medihack/adit#readme",
+  "dependencies": {
+    "alpinejs": "^2.7.0",
+    "bootstrap": "^4.5.2",
+    "bootstrap-icons": "^1.0.0",
+    "clipboard": "^2.0.6",
+    "jquery": "^3.5.1",
+    "js-cookie": "^2.2.1"
+  },
+  "devDependencies": {
+    "browser-sync": "^2.26.12",
+    "cpy-cli": "^3.1.1"
+  },
+  "scripts": {
+    "copy": "npm run copy:jquery && npm run copy:bootstrap && npm run copy:alpine && npm run copy:clipboard && npm run copy:cookie",
+    "copy:jquery": "cpy node_modules/jquery/dist/jquery.js adit/main/static/main/vendor/js/",
+    "copy:bootstrap_css": "cpy node_modules/bootstrap/dist/css/bootstrap.css* adit/main/static/main/vendor/css/",
+    "copy:bootstrap_js": "cpy node_modules/bootstrap/dist/js/bootstrap.bundle.js* adit/main/static/main/vendor/js/",
+    "copy:bootstrap": "npm run copy:bootstrap_css && npm run copy:bootstrap_js",
+    "copy:alpine": "cpy node_modules/alpinejs/dist/alpine*.js adit/main/static/main/vendor/js/",
+    "copy:clipboard": "cpy node_modules/clipboard/dist/clipboard.js adit/main/static/main/vendor/js/",
+    "copy:cookie": "cpy node_modules/js-cookie/src/js.cookie.js adit/main/static/main/vendor/js/"
+  }
 }
