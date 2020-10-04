@@ -20,23 +20,25 @@ ADIT (Automated DICOM Transfer) is a swiss army knife to exchange DICOM data bet
 
 # TODO
 
--   stopped_at -> finished_at
--   Humanize times in tables
--   Think about moving all those dicts to dataclasses when passing around data
-    -- Allow provide a regex of StudyDescription in CSV batch file
-    -- Allow to specify many modalities per row in CSV file
--   Better scheduler (with day in week and times)
--   Continous Transfer
+- stopped_at -> finished_at
+- Humanize times in tables
+- Think about moving all those dicts to dataclasses when passing around data
+  -- Allow provide a regex of StudyDescription in CSV batch file
+  -- Allow to specify many modalities per row in CSV file
+- Better scheduler (with day in week and times)
+- Continous Transfer
 
 # Testing and coverage commands
 
-ptw --runner 'pytest -s --testmon' # Watch only changed tests with pytest watch
-python manage.py test -v 2 app_name # Show print outputs during test
-coverage run --source=. -m pytest # Run coverage only
-coverage report # Show coverage report
-coverage annotate # Annotate files with coverage
-pystest --cov=. # Run Pytest and report coverage (in one command)
-find . -name "\*,cover" -type f -delete # Delete all cover files (from coverage annotate)
+- Alle tests müssen jetzt auf dem Docker Container ausgeführt werden
+  docker exec -it adit_dev_web_1 pytest
+  ptw --runner 'pytest -s --testmon' # Watch only changed tests with pytest watch
+  python manage.py test -v 2 app_name # Show print outputs during test
+  coverage run --source=. -m pytest # Run coverage only
+  coverage report # Show coverage report
+  coverage annotate # Annotate files with coverage
+  pystest --cov=. # Run Pytest and report coverage (in one command)
+  find . -name "\*,cover" -type f -delete # Delete all cover files (from coverage annotate)
 
 # Supervisor commands
 
@@ -46,7 +48,7 @@ supervisorctl shutdown # Shut down supervisor daemon
 
 # Django shell commands
 
-python manage.py shell_plus --print-sql  # Show all SQL statements (django_extensions required)
+python manage.py shell_plus --print-sql # Show all SQL statements (django_extensions required)
 
 # Docker comands
 
@@ -59,19 +61,21 @@ docker-compose -f "docker-compose.dev.yml" -p adit_dev up -d --build
 docker-compose -f "docker-compose.prod.yml" -p adit_prod up -d --build
 
 # Celery commands
+
 - celery -A adit purge -Q default,low
 - celery -A adit inspect scheduled
 
 # Celery Manage Python API
+
 - python manage.py shell_plus
-from adit.celery import app
-i = app.control.inspect()
-i.scheduled()
-app.AsyncResult("task_id").state
+  from adit.celery import app
+  i = app.control.inspect()
+  i.scheduled()
+  app.AsyncResult("task_id").state
 
 # Ports in development
 
--   see .gitpod.yml file
+- see .gitpod.yml file
 
 # Planned fields for BatchTransferJob model
 
@@ -84,23 +88,23 @@ interval_end_time = models.TimeField()
 
 ## supervisord
 
--   https://medium.com/@jayden.chua/use-supervisor-to-run-your-python-tests-13e91171d6d3
+- https://medium.com/@jayden.chua/use-supervisor-to-run-your-python-tests-13e91171d6d3
 
 ## Testing
 
--   https://developer.mozilla.org/en-US/docs/Learn/Server-side/Django
+- https://developer.mozilla.org/en-US/docs/Learn/Server-side/Django
 
 # Knowledge
 
--   It is not possible to set an ENV variable using the Gitpod Dockerfile
--   In Gitpod ENV variables can only be set using the Gitpod settings
--   The PYTHONPATH environment variable can't be set in the Gitpod settings (it is always overwritten with a blank value)
--   What is ALLOWED_HOSTS? https://www.divio.com/blog/django-allowed-hosts-explained/
--   The SECRET_KEY should not start with a dollar sign (\$), django-environ has problems with it (see Proxy value in the documentation)
+- It is not possible to set an ENV variable using the Gitpod Dockerfile
+- In Gitpod ENV variables can only be set using the Gitpod settings
+- The PYTHONPATH environment variable can't be set in the Gitpod settings (it is always overwritten with a blank value)
+- What is ALLOWED_HOSTS? https://www.divio.com/blog/django-allowed-hosts-explained/
+- The SECRET_KEY should not start with a dollar sign (\$), django-environ has problems with it (see Proxy value in the documentation)
 
 # ContinousTransferJob
 
--   Fields: job_name, from, till (optional), dicom_tag_regex
+- Fields: job_name, from, till (optional), dicom_tag_regex
 
 # Big refactoring
 

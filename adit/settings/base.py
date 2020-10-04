@@ -227,7 +227,8 @@ EMAIL_SUBJECT_PREFIX = "[ADIT] "
 SERVER_EMAIL = env.str("DJANGO_SERVER_EMAIL", default="support@adit.test")
 DEFAULT_FROM_EMAIL = SERVER_EMAIL
 
-# An support Email address
+# A support Email address that is presented to the users where
+# they can get support.
 SUPPORT_EMAIL = env.str("SUPPORT_EMAIL", default=SERVER_EMAIL)
 
 # Also used by django-registration-redux to send account approval emails
@@ -287,5 +288,7 @@ BATCH_PATIENT_CACHE_SIZE = 10000
 # (and directly set the status of the job to PENDING).
 BATCH_TRANSFER_UNVERIFIED = True
 
-# A default timezone that is used for users of the web interface.
-DEFAULT_TIME_ZONE = env.str("DEFAULT_TIME_ZONE", default=None)
+# A timezone that is used for users of the web interface.
+# It is also used by the Scheduler to calculate if a batch or
+# continuous transfer should run.
+SERVER_TIME_ZONE = env.str("SERVER_TIME_ZONE", default=None)

@@ -198,7 +198,9 @@ def _check_can_run_now(celery_task, request):
     app_settings = AppSettings.load()
 
     scheduler = Scheduler(
-        app_settings.batch_slot_begin_time, app_settings.batch_slot_end_time
+        app_settings.batch_slot_begin_time,
+        app_settings.batch_slot_end_time,
+        settings.SERVER_TIME_ZONE,
     )
     if scheduler.must_be_scheduled():
         eta = scheduler.next_slot()
