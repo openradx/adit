@@ -107,7 +107,7 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-LOG_FOLDER = Path(env.str("LOG_FOLDER", default="/tmp"))
+LOG_FOLDER = Path(env.str("LOG_FOLDER", default="./"))
 
 # See following examples:
 # https://github.com/django/django/blob/master/django/utils/log.py

@@ -46,9 +46,10 @@ supervisord # Start supervisor daemon
 supervisorctl # Supervisor control shell
 supervisorctl shutdown # Shut down supervisor daemon
 
-# Django shell commands
+# Django commands
 
 python manage.py shell_plus --print-sql # Show all SQL statements (django_extensions required)
+python .\manage.py startapp continuous_transfer .\adit\continuous_transfer # Folder must exist
 
 # Docker comands
 

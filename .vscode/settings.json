@@ -2,5 +2,6 @@
     "python.linting.enabled": true,
     "python.formatting.provider": "black",
     "editor.formatOnSave": true,
-    "html.format.enable": false
+    "html.format.enable": false,
+    "python.linting.pylintEnabled": true
 }
