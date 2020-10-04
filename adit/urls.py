@@ -24,6 +24,7 @@ urlpatterns = [
     path("", include("adit.main.urls")),
     path("", include("adit.selective_transfer.urls")),
     path("", include("adit.batch_transfer.urls")),
+    path("", include("adit.continuous_transfer.urls")),
 ]
 
 # Django loginas

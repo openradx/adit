@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     "adit.main.apps.MainConfig",
     "adit.selective_transfer.apps.SelectiveTransferConfig",
     "adit.batch_transfer.apps.BatchTransferConfig",
+    "adit.continuous_transfer.apps.ContinuousTransferConfig",
 ]
 
 MIDDLEWARE = [
@@ -289,6 +290,7 @@ BATCH_PATIENT_CACHE_SIZE = 10000
 # this option to True ADIT will schedule unverified transfers
 # (and directly set the status of the job to PENDING).
 BATCH_TRANSFER_UNVERIFIED = True
+CONTINUOUS_TRANSFER_UNVERIFIED = True
 
 # A timezone that is used for users of the web interface.
 # It is also used by the Scheduler to calculate if a batch or

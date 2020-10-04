@@ -1,7 +1,6 @@
-from django.contrib.auth.mixins import LoginRequiredMixin
+from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
 from django.views.generic.edit import CreateView
 from django.views.generic import TemplateView, DetailView
-from django.contrib.auth.mixins import PermissionRequiredMixin
 from django.conf import settings
 from adit.main.mixins import OwnerRequiredMixin
 from adit.main.models import DicomNode
@@ -20,7 +19,6 @@ class BatchTransferJobCreateView(
 
     def form_valid(self, form):
         user = self.request.user
-
         form.instance.created_by = user
         response = super().form_valid(form)
 

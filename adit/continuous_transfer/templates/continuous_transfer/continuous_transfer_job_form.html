@@ -1,0 +1,11 @@
+{% extends "main/base_generic.html" %}
+
+{% load static %}
+{% load crispy_forms_tags %}
+
+{% block container %}
+<h4>
+    New Continuous Transfer Job
+</h4>
+<p>{% crispy form %}</p>
+{% endblock container %}

@@ -27,6 +27,7 @@ ADIT (Automated DICOM Transfer) is a swiss army knife to exchange DICOM data bet
   -- Allow to specify many modalities per row in CSV file
 - Better scheduler (with day in week and times)
 - Continous Transfer
+- remove cancel_batchtransferjob
 
 # Testing and coverage commands
 
