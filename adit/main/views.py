@@ -43,7 +43,9 @@ class TransferJobDeleteView(LoginRequiredMixin, OwnerRequiredMixin, DeleteView):
     def delete(self, request, *args, **kwargs):
         job = self.get_object()
         if not job.is_deletable():
-            raise SuspiciousOperation(f"Job with ID {job.id} is not deletable.")
+            raise SuspiciousOperation(
+                f"Job with ID {job.id} and status {job.get_status_display()} is not deletable."
+            )
 
         # As SuccessMessageMixin does not work in DeleteView we have to do
         # it manually (https://code.djangoproject.com/ticket/21936)
@@ -61,11 +63,34 @@ class TransferJobCancelView(
     def post(self, request, *args, **kwargs):  # pylint: disable=unused-argument
         job = self.get_object()
         if not job.is_cancelable():
-            raise SuspiciousOperation(f"Job with ID {job.id} is not cancelable.")
+            raise SuspiciousOperation(
+                f"Job with ID {job.id} and status {job.get_status_display()} is not cancelable."
+            )
 
         job.status = TransferJob.Status.CANCELING
         job.save()
         messages.success(self.request, self.success_message % job.__dict__)
+        redirect(job)
+
+
+class TransferJobVerifyView(
+    LoginRequiredMixin, OwnerRequiredMixin, SingleObjectMixin, View
+):
+    model = TransferJob
+    owner_accessor = "created_by"
+    success_message = "Transfer job with ID %(id)s was verified"
+
+    def post(self, request, *args, **kwargs):  # pylint: disable=unused-argument
+        job = self.get_object()
+        if not job.is_unverified():
+            raise SuspiciousOperation(
+                f"Job with ID {job.id} and status {job.get_status_display()} can't be verified."
+            )
+
+        job.status = TransferJob.Status.PENDING
+        job.save()
+        messages.success(self.request, self.success_message % job.__dict__)
+        # TODO put it one the task queue somehow
         redirect(job)
 
 
