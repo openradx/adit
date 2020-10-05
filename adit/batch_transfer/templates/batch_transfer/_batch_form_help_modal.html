@@ -1,0 +1,19 @@
+{% extends "main/_help_modal.html" %}
+
+{% block modal_title %}
+Batch Transfer Help
+{% endblock modal_title %}
+
+{% block modal_body %}
+<p>
+    With this form you can create a new batch transfer job. Batch transfer jobs
+    are put into a job pipeline and will be processed by a worker when the
+    time is right. The status of a job can be viewed on the "All Jobs" page.
+</p>
+<pre>
+RowKey;PatientID;PatientName;PatientBirthDate;AccessionNumber;StudyDate;Modality;Pseudonym
+1;;Papaya, Pamela;29.08.1976;;19.08.2018;MR;ABU5QZL9;
+2;;Banana, Ben;18.02.1962;;27.03.2018;CT;DEDH6SVQ;
+3;;Banana, Ben;18.02.1962;;15.09.2019;MR;DEDH6SVQ;
+</pre>
+{% endblock modal_body %}

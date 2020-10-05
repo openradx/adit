@@ -11,12 +11,12 @@
 
 {% block container %}
 <h4>
-    New Batch Transfer Job
-    {% include 'main/header_help_link.html' with modal_id="batch-transfer-help-modal" %}
+    Create Batch Transfer Job
+    {% include 'main/_help_link.html' with modal_id="batch-form-help-modal" %}
 </h4>
 <p>{% crispy form %}</p>
 {% endblock container %}
 
 {% block bottom %}
-{% include 'batch_transfer/batch_transfer_help_modal.html' with modal_id="batch-transfer-help-modal" %}
+{% include 'batch_transfer/_batch_form_help_modal.html' with modal_id="batch-form-help-modal" %}
 {% endblock bottom %}

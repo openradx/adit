@@ -1,4 +1,4 @@
-From https://favicon.io/favicon-converter/
+https://favicon.io/favicon-converter/
 
 Installation
 First, use the download button to download the files listed below. Place the files in the root directory of your website.

@@ -41,29 +41,8 @@
     <dd class="col-sm-9">{{ job.message|default:" - " }}</dd>
 </dl>
 
-<div>
-    {% include 'selective_transfer/transfer_tasks_table.html' %}
-</div>
+{% include 'selective_transfer/transfer_tasks_table.html' %}
 
-<div>
-{% if job.is_deletable %}
-    <button 
-        type="button"
-        class="btn btn-danger"
-        data-toggle="modal"
-        data-target="#delete-transfer-job-modal"
-    >
-        Delete Job
-    </button>
-{% endif %}
-
-{% if job.is_cancelable %}
-    <button type="button" class="btn btn-danger">Cancel Job</button>
-{% endif %}
-</div>
+{% include "main/_job_control_panel.html" %}
 
 {% endblock container %}
-
-{% block bottom %}
-{% include 'main/delete_transfer_job_modal.html' with modal_id="delete-transfer-job-modal" %}
-{% endblock bottom %}
