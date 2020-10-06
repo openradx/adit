@@ -5,10 +5,10 @@ from django.views.generic import DetailView
 from django.http import HttpResponseBadRequest
 from rest_framework import generics, permissions
 from adit.main.mixins import OwnerRequiredMixin
+from adit.main.utils.task_utils import delay_job
 from .forms import SelectiveTransferJobForm
 from .models import SelectiveTransferJob
 from .serializers import SelectiveTransferJobCreateSerializer
-from .tasks import selective_transfer
 
 
 class SelectiveTransferJobFormView(
@@ -37,7 +37,7 @@ class SelectiveTransferJobCreateAPIView(generics.CreateAPIView):
         job = serializer.save(
             status=SelectiveTransferJob.Status.PENDING, created_by=self.request.user
         )
-        selective_transfer.delay(job.id)
+        delay_job(job)
 
 
 class SelectiveTransferJobDetailView(

@@ -14,6 +14,7 @@ from revproxy.views import ProxyView
 from .models import TransferJob
 from .tables import TransferJobTable
 from .site import job_detail_views
+from .utils.task_utils import delay_job
 from .mixins import OwnerRequiredMixin
 from .serializers import TransferJobListSerializer
 
@@ -90,7 +91,7 @@ class TransferJobVerifyView(
         job.status = TransferJob.Status.PENDING
         job.save()
         messages.success(self.request, self.success_message % job.__dict__)
-        # TODO put it one the task queue somehow
+        delay_job(job)
         redirect(job)
 
 

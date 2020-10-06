@@ -21,11 +21,16 @@ def register_app():
     # pylint: disable=import-outside-toplevel
     from .models import ContinuousTransferJob
     from .views import ContinuousTransferJobDetailView
+    from .tasks import continuous_transfer
+
+    def delay(job_id):
+        continuous_transfer.delay(job_id)
 
     register_transfer_job(
         type_key=ContinuousTransferJob.JOB_TYPE,
         type_name="Continuous Transfer",
         detail_view=ContinuousTransferJobDetailView,
+        delay_func=delay,
     )
 
 

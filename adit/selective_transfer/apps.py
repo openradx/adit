@@ -21,11 +21,16 @@ def register_app():
     # pylint: disable=import-outside-toplevel
     from .models import SelectiveTransferJob
     from .views import SelectiveTransferJobDetailView
+    from .tasks import selective_transfer
+
+    def delay(job_id):
+        selective_transfer.delay(job_id)
 
     register_transfer_job(
         type_key=SelectiveTransferJob.JOB_TYPE,
         type_name="Selective Transfer",
         detail_view=SelectiveTransferJobDetailView,
+        delay_func=delay,
     )
 
 

@@ -21,11 +21,16 @@ def register_app():
     # pylint: disable=import-outside-toplevel
     from .models import BatchTransferJob
     from .views import BatchTransferJobDetailView
+    from .tasks import batch_transfer
+
+    def delay(job_id):
+        batch_transfer.delay(job_id)
 
     register_transfer_job(
         type_key=BatchTransferJob.JOB_TYPE,
         type_name="Batch Transfer",
         detail_view=BatchTransferJobDetailView,
+        delay_func=delay,
     )
 
 
