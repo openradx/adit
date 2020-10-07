@@ -83,7 +83,7 @@ class BatchTransferRequest(models.Model):
     accession_number = models.CharField(null=True, blank=True, max_length=16)
     study_date = models.DateField()
     modality = models.CharField(max_length=16)
-    pseudonym = models.CharField(null=True, blank=True, max_length=324)
+    pseudonym = models.CharField(null=True, blank=True, max_length=64)
     status = models.CharField(
         max_length=2, choices=Status.choices, default=Status.PENDING
     )

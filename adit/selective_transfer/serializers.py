@@ -48,7 +48,9 @@ class SelectiveTransferJobCreateSerializer(serializers.ModelSerializer):
                 "For the transfer at least one item must be selected."
             )
 
-        if len(tasks) > 10:
+        user = self.context["request"].user
+
+        if len(tasks) > 10 and not user.is_staff:
             raise serializers.ValidationError(
                 "Maximum 10 items per transfer can be selected."
             )

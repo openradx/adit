@@ -146,15 +146,15 @@ class TransferTask(models.Model):
     job = models.ForeignKey(TransferJob, on_delete=models.CASCADE, related_name="tasks")
     patient_id = models.CharField(max_length=64)
     study_uid = models.CharField(max_length=64)
-    series_uids = SeparatedValuesField(blank=True, null=True)
-    pseudonym = models.CharField(max_length=324, blank=True, null=True)
+    series_uids = SeparatedValuesField(null=True, blank=True)
+    pseudonym = models.CharField(null=True, blank=True, max_length=64)
     status = models.CharField(
         max_length=2,
         choices=Status.choices,
         default=Status.PENDING,
     )
-    message = models.TextField(blank=True, null=True)
-    log = models.TextField(blank=True, null=True)
+    message = models.TextField(null=True, blank=True)
+    log = models.TextField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     started_at = models.DateTimeField(null=True)
     stopped_at = models.DateTimeField(null=True)

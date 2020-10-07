@@ -123,7 +123,7 @@ class RequestParser:  # pylint: disable=too-few-public-methods
             if date:
                 return date
 
-            self._errors.append(f"Invalid date format of Study Date in row {i}.")
+            self._errors.append(f"Invalid date format of StudyDate in row {i}.")
         return study_date
 
     def _clean_modality(self, modality, i):
@@ -133,10 +133,8 @@ class RequestParser:  # pylint: disable=too-few-public-methods
 
     def _clean_pseudonym(self, pseudonym, i):
         pseudo = re.sub(r",\s*", "^", pseudonym)
-        if len(pseudo) > 324:
-            self._errors.append(
-                f"Invalid Pseudonym in row {i}. Maximum 324 characters."
-            )
+        if len(pseudo) > 64:
+            self._errors.append(f"Invalid Pseudonym in row {i}. Maximum 64 characters.")
             return pseudonym
 
         return pseudo
