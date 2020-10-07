@@ -7,9 +7,9 @@ import subprocess
 from functools import partial
 from celery import shared_task
 from celery.utils.log import get_task_logger
+from dicognito.anonymizer import Anonymizer
 from django.utils import timezone
 from .utils.dicom_connector import DicomConnector
-from .utils.anonymizer import Anonymizer
 from .utils.sanitize import sanitize_dirname
 from .utils.mail import send_job_failed_mail
 from .models import DicomNode, TransferJob, TransferTask
@@ -176,9 +176,13 @@ def _download_dicoms(
     study_folder = patient_folder / f"{study_date}-{study_time}-{modalities}"
     study_folder.mkdir(parents=True, exist_ok=True)
 
-    job = transfer_task.job
+    anonymizer = Anonymizer()
     modifier_callback = partial(
-        _modify_dataset, pseudonym, job.trial_protocol_id, job.trial_protocol_name
+        _modify_dataset,
+        anonymizer,
+        pseudonym,
+        transfer_task.job.trial_protocol_id,
+        transfer_task.job.trial_protocol_name,
     )
 
     if transfer_task.series_uids:
@@ -230,12 +234,13 @@ def _download_series(
         )
 
 
-def _modify_dataset(pseudonym, trial_protocol_id, trial_protocol_name, ds):
+def _modify_dataset(anonymizer, pseudonym, trial_protocol_id, trial_protocol_name, ds):
     """Optionally pseudonymize an incoming dataset with the given pseudonym
     and add the trial ID and name to the DICOM header if specified."""
     if pseudonym:
-        anonymizer = Anonymizer()
-        anonymizer.anonymize_dataset(ds, pseudonymized_name=pseudonym)
+        anonymizer.anonymize(ds)
+        ds.PatientID = pseudonym
+        ds.PatientName = pseudonym
 
     if trial_protocol_id:
         ds.ClinicalTrialProtocolID = trial_protocol_id

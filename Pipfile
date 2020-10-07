@@ -49,6 +49,7 @@ django-revproxy = "*" # To integrate flower directly in the ADIT site
 django-loginas = "*" 
 cryptography = "*" # For generating the SSL certificate in production
 twisted = { extras = ["http2", "tls"], version = "*" }# For HTTP/2 support in production    
+dicognito = "*"
 
 [requires]
 python_version = "3.8"
