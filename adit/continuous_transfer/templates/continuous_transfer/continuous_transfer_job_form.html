@@ -3,6 +3,11 @@
 {% load static %}
 {% load crispy_forms_tags %}
 
+{% block script %}
+{{ block.super }}
+<script src="{% static 'continuous_transfer/continuous_transfer.js' %}"></script>
+{% endblock script %}
+
 {% block container %}
 <h4>
     Create Continuous Transfer Job

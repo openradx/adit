@@ -16,6 +16,39 @@ from .utils.request_parsers import RequestParser, ParsingError
 class BatchTransferJobForm(ModelForm):
     csv_file = RestrictedFileField(max_upload_size=5242880)
 
+    class Meta:
+        model = BatchTransferJob
+        fields = (
+            "source",
+            "destination",
+            "project_name",
+            "project_description",
+            "trial_protocol_id",
+            "trial_protocol_name",
+            "archive_password",
+            "csv_file",
+        )
+        labels = {"csv_field": "CSV file"}
+        help_texts = {
+            "trial_protocol_id": (
+                "Fill only when to modify the ClinicalTrialProtocolID tag "
+                "of all transfered DICOM files. Leave blank otherwise."
+            ),
+            "trial_protocol_name": (
+                "Fill only when to modify the ClinicalTrialProtocolName tag "
+                "of all transfered DICOM files. Leave blank otherwise."
+            ),
+            "archive_password": (
+                "A password to download the DICOM files into an encrypted "
+                "7z (https://7-zip.org) archive (max. 10 investigations). "
+                "Leave blank to not use an archive."
+            ),
+            "csv_file": (
+                "The CSV file which contains the data to transfer between "
+                "two DICOM nodes. See [help] how to format the CSV file."
+            ),
+        }
+
     def __init__(self, *args, **kwargs):
         self.csv_data = None
         self.save_requests = None
@@ -34,41 +67,8 @@ class BatchTransferJobForm(ModelForm):
         ] = "destinationChanged($event)"
 
         self.fields["trial_protocol_id"].widget.attrs["placeholder"] = "Optional"
-
-        self.fields[
-            "trial_protocol_id"
-        ].help_text = """
-            Fill only when to modify the ClinicalTrialProtocolID tag
-            of all transfered DICOM files. Leave blank otherwise.
-        """
-
         self.fields["trial_protocol_name"].widget.attrs["placeholder"] = "Optional"
-
-        self.fields[
-            "trial_protocol_name"
-        ].help_text = """
-            Fill only when to modify the ClinicalTrialProtocolName tag
-            of all transfered DICOM files. Leave blank otherwise.
-        """
-
         self.fields["archive_password"].widget.attrs["placeholder"] = "Optional"
-
-        self.fields[
-            "archive_password"
-        ].help_text = """
-            A password to download the DICOM files into an encrypted
-            7z (https://7-zip.org) archive (max. 10 investigations). 
-            Leave blank to not use an archive.
-        """
-
-        self.fields["csv_file"].label = "CSV file"
-
-        self.fields[
-            "csv_file"
-        ].help_text = """
-            The CSV file which contains the data to transfer between
-            two DICOM nodes. See [help] how to format the CSV file.
-        """
 
         self.helper = FormHelper(self)
         self.helper.attrs["x-data"] = "batchTransferForm()"
@@ -133,16 +133,3 @@ class BatchTransferJobForm(ModelForm):
                 self.save_requests = self._save_requests
 
         return batch_job
-
-    class Meta:
-        model = BatchTransferJob
-        fields = (
-            "source",
-            "destination",
-            "project_name",
-            "project_description",
-            "trial_protocol_id",
-            "trial_protocol_name",
-            "archive_password",
-            "csv_file",
-        )

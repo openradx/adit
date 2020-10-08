@@ -1,10 +1,14 @@
-from django.forms import ModelForm, inlineformset_factory
+from django import forms
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Submit
 from .models import ContinuousTransferJob, DataElementFilter
 
 
-class ContinuousTransferJobForm(ModelForm):
+class DateInput(forms.DateInput):
+    input_type = "date"
+
+
+class ContinuousTransferJobForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -23,14 +27,15 @@ class ContinuousTransferJobForm(ModelForm):
             "start_date",
             "end_date",
         )
+        widgets = {"start_date": DateInput(), "end_date": DateInput()}
 
 
-class DataElementFilterForm(ModelForm):
+class DataElementFilterForm(forms.ModelForm):
     class Meta:
         model = DataElementFilter
         fields = ("dicom_tag", "filter_type", "filter_value", "case_sensitive")
 
 
-DataElementFilterFormSet = inlineformset_factory(
+DataElementFilterFormSet = forms.inlineformset_factory(
     ContinuousTransferJob, DataElementFilter, form=DataElementFilterForm, extra=1
 )
