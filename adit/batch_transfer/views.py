@@ -3,7 +3,6 @@ from django.views.generic.edit import CreateView
 from django.views.generic import TemplateView, DetailView
 from django.conf import settings
 from adit.main.mixins import OwnerRequiredMixin
-from adit.main.models import DicomNode
 from adit.main.utils.task_utils import delay_job
 from .models import AppSettings, BatchTransferJob
 from .forms import BatchTransferJobForm
@@ -36,16 +35,6 @@ class BatchTransferJobCreateView(
             delay_job(job)
 
         return response
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context["node_types"] = {}
-        for node in DicomNode.objects.filter(active=True):
-            if node.node_type == DicomNode.NodeType.SERVER:
-                context["node_types"][node.id] = "server"
-            elif node.node_type == DicomNode.NodeType.FOLDER:
-                context["node_types"][node.id] = "folder"
-        return context
 
     def dispatch(self, request, *args, **kwargs):
         app_settings = AppSettings.objects.first()

@@ -1,5 +1,6 @@
 from io import StringIO
-from django.forms import ModelForm
+from django.forms import ModelForm, ModelChoiceField
+from django.forms.widgets import Select
 from django.db import transaction
 from django.core.exceptions import ValidationError
 from django.conf import settings
@@ -13,7 +14,35 @@ from .fields import RestrictedFileField
 from .utils.request_parsers import RequestParser, ParsingError
 
 
+class DicomNodeSelect(Select):
+    def create_option(  # pylint: disable=too-many-arguments
+        self, name, value, label, selected, index, subindex=None, attrs=None
+    ):
+        option = super().create_option(
+            name, value, label, selected, index, subindex, attrs
+        )
+        if hasattr(value, "instance"):
+            dicom_node = value.instance
+            if dicom_node.node_type == DicomNode.NodeType.SERVER:
+                option["attrs"]["data-node_type"] = "server"
+            elif dicom_node.node_type == DicomNode.NodeType.FOLDER:
+                option["attrs"]["data-node_type"] = "folder"
+
+        return option
+
+
 class BatchTransferJobForm(ModelForm):
+    source = ModelChoiceField(
+        # Folders can only be a destination for batch mode
+        queryset=DicomNode.objects.filter(
+            node_type=DicomNode.NodeType.SERVER, active=True
+        ),
+        widget=DicomNodeSelect,
+    )
+    destination = ModelChoiceField(
+        queryset=DicomNode.objects.filter(active=True),
+        widget=DicomNodeSelect,
+    )
     csv_file = RestrictedFileField(max_upload_size=5242880)
 
     class Meta:
@@ -55,13 +84,6 @@ class BatchTransferJobForm(ModelForm):
 
         super().__init__(*args, **kwargs)
 
-        # Folders can only be a destination for batch mode
-        self.fields["source"].queryset = DicomNode.objects.filter(
-            node_type=DicomNode.NodeType.SERVER, active=True
-        )
-
-        self.fields["destination"].queryset = DicomNode.objects.filter(active=True)
-
         self.fields["destination"].widget.attrs[
             "@change"
         ] = "destinationChanged($event)"
@@ -72,7 +94,6 @@ class BatchTransferJobForm(ModelForm):
 
         self.helper = FormHelper(self)
         self.helper.attrs["x-data"] = "batchTransferForm()"
-        self.helper.attrs["x-init"] = "init"
 
         self.helper["archive_password"].wrap(Div, x_show="isDestinationFolder")
 

@@ -2,10 +2,6 @@ $(function () {
     new ClipboardJS(".clipboard");
 });
 
-function loadData(jsonElementId) {
-    return JSON.parse(document.getElementById(jsonElementId).textContent);
-}
-
 // From https://stackoverflow.com/a/2117523/166229
 function uuidv4() {
     return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function (
