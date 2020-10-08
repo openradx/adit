@@ -3,6 +3,7 @@ from django.db import models
 from django.contrib.contenttypes.fields import GenericRelation
 from django.urls import reverse
 from adit.main.models import TransferJob, TransferTask
+from adit.main.validators import validate_pseudonym
 
 
 def slot_time(hour, minute):
@@ -83,7 +84,9 @@ class BatchTransferRequest(models.Model):
     accession_number = models.CharField(null=True, blank=True, max_length=16)
     study_date = models.DateField()
     modality = models.CharField(max_length=16)
-    pseudonym = models.CharField(null=True, blank=True, max_length=64)
+    pseudonym = models.CharField(
+        null=True, blank=True, max_length=64, validators=[validate_pseudonym]
+    )
     status = models.CharField(
         max_length=2, choices=Status.choices, default=Status.PENDING
     )

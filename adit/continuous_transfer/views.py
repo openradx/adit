@@ -5,7 +5,7 @@ from django.conf import settings
 from adit.main.mixins import OwnerRequiredMixin
 from adit.main.utils.task_utils import delay_job
 from .models import ContinuousTransferJob
-from .forms import ContinuousTransferJobForm
+from .forms import ContinuousTransferJobForm, DataElementFilterFormSet
 
 
 class ContinuousTransferJobCreateView(
@@ -15,6 +15,14 @@ class ContinuousTransferJobCreateView(
     form_class = ContinuousTransferJobForm
     template_name = "continuous_transfer/continuous_transfer_job_form.html"
     permission_required = "continuous_transfer.add_continuoustransferjob"
+
+    def get_context_data(self, **kwargs):
+        data = super().get_context_data(**kwargs)
+        if self.request.POST:
+            data["filters"] = DataElementFilterFormSet(self.request.POST)
+        else:
+            data["filters"] = DataElementFilterFormSet()
+        return data
 
     def form_valid(self, form):
         user = self.request.user

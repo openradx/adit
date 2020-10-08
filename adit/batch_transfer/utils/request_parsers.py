@@ -1,6 +1,8 @@
 import csv
 import re
 from datetime import datetime
+from django.core.exceptions import ValidationError
+from adit.main.validators import validate_pseudonym
 
 
 class ParsingError(Exception):
@@ -132,12 +134,15 @@ class RequestParser:  # pylint: disable=too-few-public-methods
         return modality
 
     def _clean_pseudonym(self, pseudonym, i):
-        pseudo = re.sub(r",\s*", "^", pseudonym)
-        if len(pseudo) > 64:
+        if len(pseudonym) > 64:
             self._errors.append(f"Invalid Pseudonym in row {i}. Maximum 64 characters.")
-            return pseudonym
-
-        return pseudo
+        try:
+            validate_pseudonym(pseudonym)
+        except ValidationError:
+            self._errors.append(
+                f"Invalid Pseudonym in row {i}. Contains invalid characters."
+            )
+        return pseudonym
 
     def _parse_date(self, date_str):
         date = None

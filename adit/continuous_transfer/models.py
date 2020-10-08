@@ -21,7 +21,27 @@ class ContinuousTransferJob(TransferJob):
 
     project_name = models.CharField(max_length=150)
     project_description = models.TextField(max_length=2000)
+    start_date = models.DateField()
+    end_date = models.DateField(null=True, blank=True)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.job_type = self.JOB_TYPE
+
+
+class DataElementFilter(models.Model):
+    class FilterTypes(models.TextChoices):
+        EQUALS = "EQ", "equals"
+        CONTAINS = "CO", "contains"
+        CONTAINS_NOT = "CN", "contains not"
+        REGEXP = "RE", "regexp"
+
+    job = models.ForeignKey(
+        ContinuousTransferJob, on_delete=models.CASCADE, related_name="filters"
+    )
+    dicom_tag = models.CharField(max_length=100)
+    filter_type = models.CharField(
+        max_length=2, choices=FilterTypes.choices, default=FilterTypes.CONTAINS
+    )
+    filter_value = models.CharField(max_length=200)
+    case_sensitive = models.BooleanField(default=False)
