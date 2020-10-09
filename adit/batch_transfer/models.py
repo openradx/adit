@@ -80,10 +80,10 @@ class BatchTransferRequest(models.Model):
     row_key = models.PositiveIntegerField()
     patient_id = models.CharField(null=True, blank=True, max_length=64)
     patient_name = models.CharField(null=True, blank=True, max_length=324)
-    patient_birth_date = models.DateField()
+    patient_birth_date = models.DateField(null=True, blank=True)
     accession_number = models.CharField(null=True, blank=True, max_length=16)
-    study_date = models.DateField()
-    modality = models.CharField(max_length=16)
+    study_date = models.DateField(null=True, blank=True)
+    modality = models.CharField(null=True, blank=True, max_length=16)
     pseudonym = models.CharField(
         null=True, blank=True, max_length=64, validators=[validate_pseudonym]
     )
@@ -92,5 +92,5 @@ class BatchTransferRequest(models.Model):
     )
     message = models.TextField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
-    started_at = models.DateTimeField(null=True)
-    stopped_at = models.DateTimeField(null=True)
+    started_at = models.DateTimeField(null=True, blank=True)
+    stopped_at = models.DateTimeField(null=True, blank=True)

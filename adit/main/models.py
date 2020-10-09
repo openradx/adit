@@ -96,15 +96,15 @@ class TransferJob(models.Model):
         max_length=2, choices=Status.choices, default=Status.UNVERIFIED
     )
     message = models.TextField(blank=True, null=True)
-    trial_protocol_id = models.CharField(max_length=64, blank=True, null=True)
-    trial_protocol_name = models.CharField(max_length=64, blank=True, null=True)
-    archive_password = models.CharField(max_length=50, blank=True, null=True)
+    trial_protocol_id = models.CharField(null=True, blank=True, max_length=64)
+    trial_protocol_name = models.CharField(null=True, blank=True, max_length=64)
+    archive_password = models.CharField(null=True, blank=True, max_length=50)
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="transfer_jobs"
     )
     created_at = models.DateTimeField(auto_now_add=True)
-    started_at = models.DateTimeField(null=True)
-    stopped_at = models.DateTimeField(null=True)
+    started_at = models.DateTimeField(null=True, blank=True)
+    stopped_at = models.DateTimeField(null=True, blank=True)
 
     def get_absolute_url(self):
         return reverse("transfer_job_detail", args=[str(self.id)])
@@ -156,5 +156,5 @@ class TransferTask(models.Model):
     message = models.TextField(null=True, blank=True)
     log = models.TextField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
-    started_at = models.DateTimeField(null=True)
-    stopped_at = models.DateTimeField(null=True)
+    started_at = models.DateTimeField(null=True, blank=True)
+    stopped_at = models.DateTimeField(null=True, blank=True)
