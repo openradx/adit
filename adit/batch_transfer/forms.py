@@ -11,7 +11,7 @@ import cchardet as chardet
 from adit.main.models import DicomNode
 from .models import BatchTransferJob, BatchTransferRequest
 from .fields import RestrictedFileField
-from .utils.request_parsers import RequestParser, ParsingError
+from .utils.parsers import RequestsParser, ParsingError
 
 
 class DicomNodeSelect(Select):
@@ -111,7 +111,7 @@ class BatchTransferJobForm(ModelForm):
 
         delimiter = settings.BATCH_FILE_CSV_DELIMITER
         date_input_formats = formats.get_format("DATE_INPUT_FORMATS")
-        parser = RequestParser(delimiter, date_input_formats)
+        parser = RequestsParser(delimiter, date_input_formats)
 
         try:
             rawdata = csv_file.read()

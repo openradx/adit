@@ -1,5 +1,7 @@
 from datetime import time
+import re
 from django.db import models
+from django.core.exceptions import ValidationError
 from django.contrib.contenttypes.fields import GenericRelation
 from django.urls import reverse
 from adit.main.models import TransferJob, TransferTask
@@ -80,10 +82,10 @@ class BatchTransferRequest(models.Model):
     row_key = models.PositiveIntegerField()
     patient_id = models.CharField(null=True, blank=True, max_length=64)
     patient_name = models.CharField(null=True, blank=True, max_length=324)
-    patient_birth_date = models.DateField()
+    patient_birth_date = models.DateField(null=True, blank=True)
     accession_number = models.CharField(null=True, blank=True, max_length=16)
-    study_date = models.DateField()
-    modality = models.CharField(max_length=16)
+    study_date = models.DateField(null=True, blank=True)
+    modality = models.CharField(null=True, blank=True, max_length=16)
     pseudonym = models.CharField(
         null=True, blank=True, max_length=64, validators=[validate_pseudonym]
     )
@@ -92,5 +94,20 @@ class BatchTransferRequest(models.Model):
     )
     message = models.TextField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
-    started_at = models.DateTimeField(null=True)
-    stopped_at = models.DateTimeField(null=True)
+    started_at = models.DateTimeField(null=True, blank=True)
+    stopped_at = models.DateTimeField(null=True, blank=True)
+
+    def clean(self):
+        self.patient_name = re.sub(r",\s*", "^", self.patient_name)
+
+        if not (self.patient_id or self.patient_name and self.patient_birth_date):
+            raise ValidationError(
+                "A patient must be distinctly identifiable by either a PatientID "
+                "or a PatientName and PatientBirthDate."
+            )
+
+        if not (self.accession_number or self.study_date and self.modality):
+            raise ValidationError(
+                "A study must be identifiable by either an AccessionNumber "
+                "or a StudyDate and Modality."
+            )
