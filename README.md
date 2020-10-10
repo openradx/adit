@@ -21,8 +21,8 @@ ADIT (Automated DICOM Transfer) is a swiss army knife to exchange DICOM data bet
 # TODO
 
 - use BatchTransferRequest directly in request parser
+- Check why archive feature does not work correctly
 - stopped_at -> finished_at
-- Humanize times in tables
 - Think about moving all those dicts to dataclasses when passing around data
   -- Allow provide a regex of StudyDescription in CSV batch file
   -- Allow to specify many modalities per row in CSV file

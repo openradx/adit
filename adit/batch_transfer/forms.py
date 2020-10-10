@@ -11,7 +11,7 @@ import cchardet as chardet
 from adit.main.models import DicomNode
 from .models import BatchTransferJob, BatchTransferRequest
 from .fields import RestrictedFileField
-from .utils.request_parsers import RequestParser, ParsingError
+from .utils.parsers import RequestsParser, ParsingError
 
 
 class DicomNodeSelect(Select):
@@ -80,6 +80,7 @@ class BatchTransferJobForm(ModelForm):
 
     def __init__(self, *args, **kwargs):
         self.csv_data = None
+        self.csv_error_details = None
         self.save_requests = None
 
         super().__init__(*args, **kwargs)
@@ -111,7 +112,7 @@ class BatchTransferJobForm(ModelForm):
 
         delimiter = settings.BATCH_FILE_CSV_DELIMITER
         date_input_formats = formats.get_format("DATE_INPUT_FORMATS")
-        parser = RequestParser(delimiter, date_input_formats)
+        parser = RequestsParser(delimiter, date_input_formats)
 
         try:
             rawdata = csv_file.read()
@@ -119,9 +120,8 @@ class BatchTransferJobForm(ModelForm):
             fp = StringIO(rawdata.decode(encoding))
             self.csv_data = parser.parse(fp)
         except ParsingError as err:
-            for error in err.errors:
-                self.add_error(None, error)
-            raise ValidationError(err.message) from err
+            self.csv_error_details = err.details
+            raise ValidationError(err) from err
 
         return csv_file
 

@@ -1,5 +1,7 @@
 from datetime import time
+import re
 from django.db import models
+from django.core.exceptions import ValidationError
 from django.contrib.contenttypes.fields import GenericRelation
 from django.urls import reverse
 from adit.main.models import TransferJob, TransferTask
@@ -94,3 +96,18 @@ class BatchTransferRequest(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     started_at = models.DateTimeField(null=True, blank=True)
     stopped_at = models.DateTimeField(null=True, blank=True)
+
+    def clean(self):
+        self.patient_name = re.sub(r",\s*", "^", self.patient_name)
+
+        if not (self.patient_id or self.patient_name and self.patient_birth_date):
+            raise ValidationError(
+                "A patient must be distinctly identifiable by either a PatientID "
+                "or a PatientName and PatientBirthDate."
+            )
+
+        if not (self.accession_number or self.study_date and self.modality):
+            raise ValidationError(
+                "A study must be identifiable by either an AccessionNumber "
+                "or a StudyDate and Modality."
+            )
