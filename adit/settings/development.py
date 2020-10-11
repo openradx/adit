@@ -13,9 +13,7 @@ SECRET_KEY = env.str(
 ALLOWED_HOSTS = env.list("DJANGO_ALLOWED_HOSTS", default=[])
 
 if sys.argv and ("test" in sys.argv or "pytest" in sys.argv[0]):
-    DATABASES = {
-        "default": env.db("SQLITE_URL", default="sqlite:///tmp/adit-sqlite.db")
-    }
+    DATABASES = {"default": env.db("SQLITE_URL", default="sqlite:///./adit-sqlite.db")}
 
 EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 

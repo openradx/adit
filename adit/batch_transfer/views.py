@@ -3,7 +3,6 @@ from django.views.generic.edit import CreateView
 from django.views.generic import TemplateView, DetailView
 from django.conf import settings
 from adit.main.mixins import OwnerRequiredMixin
-from adit.main.utils.task_utils import delay_job
 from .models import AppSettings, BatchTransferJob
 from .forms import BatchTransferJobForm
 
@@ -32,7 +31,7 @@ class BatchTransferJobCreateView(
         if user.is_staff or settings.BATCH_TRANSFER_UNVERIFIED:
             job.status = BatchTransferJob.Status.PENDING
             job.save()
-            delay_job(job)
+            job.delay()
 
         return response
 

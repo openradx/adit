@@ -1,4 +1,6 @@
 from django.db import models
+from django.urls import reverse
+import celery
 from adit.main.models import TransferJob
 
 
@@ -17,8 +19,13 @@ class AppSettings(models.Model):
 
 
 class SelectiveTransferJob(TransferJob):
-    JOB_TYPE = "ST"
+    def job_type(self):
+        return "Selective Transfer"
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.job_type = self.JOB_TYPE
+    def delay(self):
+        celery.current_app.send_task(
+            "adit.selective_transfer.tasks.selective_transfer", (self.id,)
+        )
+
+    def get_absolute_url(self):
+        return reverse("selective_transfer_job_detail", args=[str(self.id)])

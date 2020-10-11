@@ -3,7 +3,7 @@ from django.views.generic.edit import DeleteView
 from django.views.generic.detail import SingleObjectMixin
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.urls import re_path, reverse_lazy
-from django.shortcuts import get_object_or_404
+from django.shortcuts import get_object_or_404, redirect
 from django.core.exceptions import SuspiciousOperation
 from django.contrib import messages
 from django.shortcuts import redirect
@@ -13,8 +13,6 @@ from django_tables2 import SingleTableView
 from revproxy.views import ProxyView
 from .models import TransferJob
 from .tables import TransferJobTable
-from .site import job_detail_views
-from .utils.task_utils import delay_job
 from .mixins import OwnerRequiredMixin
 from .serializers import TransferJobListSerializer
 
@@ -29,10 +27,9 @@ class TransferJobListView(LoginRequiredMixin, SingleTableView):
         )
 
 
-def render_job_detail_view(request, pk):
+def redirect_to_job_detail_view(request, pk):
     job = get_object_or_404(TransferJob, pk=pk)
-    CustomDetailView = job_detail_views[job.job_type]
-    return CustomDetailView.as_view()(request, pk=pk)
+    return redirect(job)
 
 
 class TransferJobDeleteView(LoginRequiredMixin, OwnerRequiredMixin, DeleteView):
@@ -90,8 +87,8 @@ class TransferJobVerifyView(
 
         job.status = TransferJob.Status.PENDING
         job.save()
+        job.delay()
         messages.success(self.request, self.success_message % job.__dict__)
-        delay_job(job)
         redirect(job)
 
 

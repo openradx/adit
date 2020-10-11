@@ -11,8 +11,14 @@ class RecordIdColumn(tables.Column):
         return format_html(f'<a href="{url}">{value}</a>')
 
 
+class JobTypeColumn(tables.Column):
+    def render(self, value):  # pylint: disable=arguments-differ
+        return value
+
+
 class TransferJobTable(tables.Table):
     id = RecordIdColumn(verbose_name="Job ID")
+    job_type = JobTypeColumn()
 
     class Meta:  # pylint: disable=too-few-public-methods
         model = TransferJob

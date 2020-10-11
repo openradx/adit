@@ -2,9 +2,8 @@ from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
 from django.conf import settings
-from django.urls import reverse
 from django.core.validators import MaxValueValidator, MinValueValidator
-from .site import job_type_choices
+from polymorphic.models import PolymorphicModel
 from .utils.dicom_connector import DicomConnector
 from .fields import SeparatedValuesField
 
@@ -73,7 +72,7 @@ class DicomFolder(DicomNode):
         self.node_type = DicomNode.NodeType.FOLDER
 
 
-class TransferJob(models.Model):
+class TransferJob(PolymorphicModel):
     class Status(models.TextChoices):
         UNVERIFIED = "UV", "Unverified"
         PENDING = "PE", "Pending"
@@ -91,7 +90,6 @@ class TransferJob(models.Model):
     destination = models.ForeignKey(
         DicomNode, related_name="+", on_delete=models.PROTECT
     )
-    job_type = models.CharField(max_length=2, choices=job_type_choices)
     status = models.CharField(
         max_length=2, choices=Status.choices, default=Status.UNVERIFIED
     )
@@ -106,8 +104,8 @@ class TransferJob(models.Model):
     started_at = models.DateTimeField(null=True, blank=True)
     stopped_at = models.DateTimeField(null=True, blank=True)
 
-    def get_absolute_url(self):
-        return reverse("transfer_job_detail", args=[str(self.id)])
+    def job_type(self):
+        return self._meta.verbose_name
 
     def get_processed_tasks(self):
         non_processed = (TransferTask.Status.PENDING, TransferTask.Status.IN_PROGRESS)

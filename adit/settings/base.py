@@ -88,7 +88,7 @@ WSGI_APPLICATION = "adit.wsgi.application"
 
 # In production a PostgreSQL (psql://...) URL is passed by using an
 # environment variable set in in docker-compose.prod.yml.
-DATABASES = {"default": env.db(default="sqlite:////tmp/adit-sqlite.db")}
+DATABASES = {"default": env.db(default="sqlite:///./adit-sqlite.db")}
 
 # Password validation
 # https://docs.djangoproject.com/en/3.0/ref/settings/#auth-password-validators
