@@ -29,6 +29,7 @@ ADIT (Automated DICOM Transfer) is a swiss army knife to exchange DICOM data bet
 - Better scheduler (with day in week and times)
 - Continous Transfer
 - remove cancel_batchtransferjob
+- move date parsing part in parsers.py and consumers.py to date_util.py
 
 # Testing and coverage commands
 

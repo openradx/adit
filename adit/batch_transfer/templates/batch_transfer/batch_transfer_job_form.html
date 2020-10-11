@@ -12,7 +12,7 @@
 <h4>
     Create Batch Transfer Job
     <small>
-        [<a href="#" class="border-bottom" data-toggle="modal" data-target="#batch-form-help-modal">
+        [<a href="#" class="border-bottom" data-toggle="modal" data-target="#batch_form_help_modal">
             Help
             {% include "main/_help_icon.html" %}
         </a>]
@@ -22,5 +22,6 @@
 {% endblock container %}
 
 {% block bottom %}
-{% include 'batch_transfer/_batch_form_help_modal.html' with modal_id="batch-form-help-modal" %}
+{% include 'batch_transfer/_batch_form_help_modal.html' with modal_id="batch_form_help_modal" %}
+{% include 'batch_transfer/_csv_error_details_modal.html' with modal_id="csv_error_details_modal" %}
 {% endblock bottom %}

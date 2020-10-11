@@ -1,9 +1,9 @@
 import string
 import random
-from datetime import datetime
+from datetime import date
 from io import StringIO
 from django.test import TestCase
-from adit.batch_transfer.utils.request_parsers import ParsingError, RequestParser
+from adit.batch_transfer.utils.parsers import RequestsParser, ParsingError
 
 
 def get_header_data():
@@ -65,27 +65,27 @@ class RequestParserTest(TestCase):
         rows = get_row_data()
         file = create_csv_file(columns, rows)
 
-        data = RequestParser(";", ["%d.%m.%Y"]).parse(file)
+        requests = RequestsParser(";", ["%d.%m.%Y"]).parse(file)
 
-        self.assertEqual(len(data), 2)
-        self.assertEqual(data[0]["PatientName"], "Banana^Ben")
-        self.assertEqual(data[0]["Modality"], "CT")
-        self.assertEqual(data[1]["PatientID"], "10004")
-        self.assertEqual(data[1]["RowKey"], 2)
-        study_date = datetime(2019, 6, 1)
-        self.assertEqual(data[1]["StudyDate"], study_date)
-        patient_birth_date = datetime(1976, 12, 9)
-        self.assertEqual(data[1]["PatientBirthDate"], patient_birth_date)
-        self.assertEqual(data[1]["Pseudonym"], "C2XJQ2AR")
+        self.assertEqual(len(requests), 2)
+        self.assertEqual(requests[0].patient_name, "Banana^Ben")
+        self.assertEqual(requests[0].modality, "CT")
+        self.assertEqual(requests[1].patient_id, "10004")
+        self.assertEqual(requests[1].row_key, 2)
+        study_date = date(2019, 6, 1)
+        self.assertEqual(requests[1].study_date, study_date)
+        patient_birth_date = date(1976, 12, 9)
+        self.assertEqual(requests[1].patient_birth_date, patient_birth_date)
+        self.assertEqual(requests[1].pseudonym, "C2XJQ2AR")
 
     def test_missing_row_key(self):
         columns = get_header_data()
         rows = get_row_data()
-        rows[0]["RowKey"] = " "
+        rows[0]["RowKey"] = ""
         file = create_csv_file(columns, rows)
 
-        with self.assertRaises(ParsingError):
-            RequestParser(";", ["%d.%m.%Y"]).parse(file)
+        with self.assertRaisesRegex(ParsingError, "RowKey:.*must be an integer"):
+            RequestsParser(";", ["%d.%m.%Y"]).parse(file)
 
     def test_invalid_row_key(self):
         columns = get_header_data()
@@ -93,8 +93,8 @@ class RequestParserTest(TestCase):
         rows[0]["RowKey"] = "ABC"
         file = create_csv_file(columns, rows)
 
-        with self.assertRaises(ParsingError):
-            RequestParser(";", ["%d.%m.%Y"]).parse(file)
+        with self.assertRaisesRegex(ParsingError, "RowKey:.*must be an integer"):
+            RequestsParser(";", ["%d.%m.%Y"]).parse(file)
 
     def test_duplicate_row_key(self):
         columns = get_header_data()
@@ -103,8 +103,8 @@ class RequestParserTest(TestCase):
         rows[1]["RowKey"] = row_key
         file = create_csv_file(columns, rows)
 
-        with self.assertRaises(ParsingError):
-            RequestParser(";", ["%d.%m.%Y"]).parse(file)
+        with self.assertRaisesRegex(ParsingError, "Duplicate RowKey"):
+            RequestsParser(";", ["%d.%m.%Y"]).parse(file)
 
     def test_valid_patient_id(self):
         columns = get_header_data()
@@ -113,7 +113,7 @@ class RequestParserTest(TestCase):
         file = create_csv_file(columns, rows)
 
         try:
-            RequestParser(";", ["%d.%m.%Y"]).parse(file)
+            RequestsParser(";", ["%d.%m.%Y"]).parse(file)
         except ParsingError:
             self.fail()
 
@@ -123,8 +123,8 @@ class RequestParserTest(TestCase):
         rows[0]["PatientID"] = create_str(65)
         file = create_csv_file(columns, rows)
 
-        with self.assertRaises(ParsingError):
-            RequestParser(";", ["%d.%m.%Y"]).parse(file)
+        with self.assertRaisesRegex(ParsingError, "PatientID:.*at most 64"):
+            RequestsParser(";", ["%d.%m.%Y"]).parse(file)
 
     def test_valid_patient_name(self):
         columns = get_header_data()
@@ -134,19 +134,20 @@ class RequestParserTest(TestCase):
         file = create_csv_file(columns, rows)
 
         try:
-            RequestParser(";", ["%d.%m.%Y"]).parse(file)
+            RequestsParser(";", ["%d.%m.%Y"]).parse(file)
         except ParsingError:
             self.fail()
 
     def test_invalid_patient_name(self):
         columns = get_header_data()
         rows = get_row_data()
-        patient_name = ", ".join([create_str(65) for _ in range(5)])
+        patient_name = ", ".join([create_str(64) for _ in range(5)])
+        patient_name += "x"
         rows[0]["PatientName"] = patient_name
         file = create_csv_file(columns, rows)
 
-        with self.assertRaises(ParsingError):
-            RequestParser(";", ["%d.%m.%Y"]).parse(file)
+        with self.assertRaisesRegex(ParsingError, "PatientName:.*has at most 324"):
+            RequestsParser(";", ["%d.%m.%Y"]).parse(file)
 
     def test_valid_patient_birth_date(self):
         columns = get_header_data()
@@ -155,7 +156,7 @@ class RequestParserTest(TestCase):
         file = create_csv_file(columns, rows)
 
         try:
-            RequestParser(";", ["%d.%m.%Y"]).parse(file)
+            RequestsParser(";", ["%d.%m.%Y"]).parse(file)
         except ParsingError:
             self.fail()
 
@@ -165,13 +166,17 @@ class RequestParserTest(TestCase):
 
         rows[0]["PatientBirthDate"] = "foobar"
         file = create_csv_file(columns, rows)
-        with self.assertRaises(ParsingError):
-            RequestParser(";", ["%d.%m.%Y"]).parse(file)
+        with self.assertRaisesRegex(
+            ParsingError, "PatientBirthDate:.*invalid date format"
+        ):
+            RequestsParser(";", ["%d.%m.%Y"]).parse(file)
 
         rows[0]["PatientBirthDate"] = "32.01.1955"
         file = create_csv_file(columns, rows)
-        with self.assertRaises(ParsingError):
-            RequestParser(";", ["%d.%m.%Y"]).parse(file)
+        with self.assertRaisesRegex(
+            ParsingError, "PatientBirthDate:.*invalid date format"
+        ):
+            RequestsParser(";", ["%d.%m.%Y"]).parse(file)
 
     def test_valid_accession_number(self):
         columns = get_header_data()
@@ -180,7 +185,7 @@ class RequestParserTest(TestCase):
         file = create_csv_file(columns, rows)
 
         try:
-            RequestParser(";", ["%d.%m.%Y"]).parse(file)
+            RequestsParser(";", ["%d.%m.%Y"]).parse(file)
         except ParsingError:
             self.fail()
 
@@ -190,8 +195,8 @@ class RequestParserTest(TestCase):
         rows[0]["AccessionNumber"] = create_str(17)
         file = create_csv_file(columns, rows)
 
-        with self.assertRaises(ParsingError):
-            RequestParser(";", ["%d.%m.%Y"]).parse(file)
+        with self.assertRaisesRegex(ParsingError, "AccessionNumber:.*has at most 16"):
+            RequestsParser(";", ["%d.%m.%Y"]).parse(file)
 
     def test_valid_modality(self):
         columns = get_header_data()
@@ -200,7 +205,7 @@ class RequestParserTest(TestCase):
         file = create_csv_file(columns, rows)
 
         try:
-            RequestParser(";", ["%d.%m.%Y"]).parse(file)
+            RequestsParser(";", ["%d.%m.%Y"]).parse(file)
         except ParsingError:
             self.fail()
 
@@ -210,81 +215,99 @@ class RequestParserTest(TestCase):
         rows[0]["Modality"] = create_str(17)
         file = create_csv_file(columns, rows)
 
-        with self.assertRaises(ParsingError):
-            RequestParser(";", ["%d.%m.%Y"]).parse(file)
+        with self.assertRaisesRegex(ParsingError, "Modality:.*has at most 16"):
+            RequestsParser(";", ["%d.%m.%Y"]).parse(file)
 
     def test_valid_pseudonym(self):
         columns = get_header_data()
         rows = get_row_data()
-        pseudonym = ", ".join([create_str(64) for _ in range(5)])
-        rows[0]["Pseudonym"] = pseudonym
+        rows[0]["Pseudonym"] = create_str(64)
         file = create_csv_file(columns, rows)
 
         try:
-            RequestParser(";", ["%d.%m.%Y"]).parse(file)
+            RequestsParser(";", ["%d.%m.%Y"]).parse(file)
         except ParsingError:
             self.fail()
 
     def test_invalid_pseudonym(self):
         columns = get_header_data()
         rows = get_row_data()
-        pseudonym = ", ".join([create_str(65) for _ in range(5)])
-        rows[0]["Pseudonym"] = pseudonym
+        rows[0]["Pseudonym"] = create_str(65)
         file = create_csv_file(columns, rows)
 
-        with self.assertRaises(ParsingError):
-            RequestParser(";", ["%d.%m.%Y"]).parse(file)
+        with self.assertRaisesRegex(ParsingError, "Pseudonym:.*has at most 64"):
+            RequestsParser(";", ["%d.%m.%Y"]).parse(file)
 
-    def test_patient_name_missing_when_birth_date_present(self):
+    def test_patient_identifiable(self):
         columns = get_header_data()
         rows = get_row_data()
-        rows[0]["AccessionNumber"] = " "
-        rows[0]["PatientID"] = " "
-        rows[0]["PatientName"] = " "
+
+        rows[0]["PatientID"] = ""
         file = create_csv_file(columns, rows)
+        try:
+            RequestsParser(";", ["%d.%m.%Y"]).parse(file)
+        except ParsingError:
+            self.fail()
 
-        with self.assertRaises(ParsingError):
-            RequestParser(";", ["%d.%m.%Y"]).parse(file)
-
-    def test_birth_date_missing_when_patient_name_present(self):
-        columns = get_header_data()
-        rows = get_row_data()
-        rows[0]["AccessionNumber"] = " "
-        rows[0]["PatientID"] = " "
-        rows[0]["PatientBirthDate"] = " "
+        rows[0]["PatientID"] = "1234"
+        rows[0]["PatientName"] = ""
+        rows[0]["PatientBirthDate"] = ""
         file = create_csv_file(columns, rows)
-
-        with self.assertRaises(ParsingError):
-            RequestParser(";", ["%d.%m.%Y"]).parse(file)
+        try:
+            RequestsParser(";", ["%d.%m.%Y"]).parse(file)
+        except ParsingError:
+            self.fail()
 
     def test_patient_not_identifiable(self):
         columns = get_header_data()
         rows = get_row_data()
-        rows[0]["AccessionNumber"] = " "
-        rows[0]["PatientID"] = " "
-        rows[0]["PatientName"] = " "
-        rows[0]["PatientBirthDate"] = " "
+
+        rows[0]["PatientID"] = ""
+        rows[0]["PatientName"] = ""
         file = create_csv_file(columns, rows)
+        with self.assertRaisesRegex(ParsingError, "patient must be identifiable"):
+            RequestsParser(";", ["%d.%m.%Y"]).parse(file)
 
-        with self.assertRaises(ParsingError):
-            RequestParser(";", ["%d.%m.%Y"]).parse(file)
+        rows[0]["PatientID"] = ""
+        rows[0]["PatientName"] = "Foo, Bar"
+        rows[0]["PatientBirthDate"] = ""
+        file = create_csv_file(columns, rows)
+        with self.assertRaisesRegex(ParsingError, "patient must be identifiable"):
+            RequestsParser(";", ["%d.%m.%Y"]).parse(file)
 
-    def test_conflict_of_patient_id_with_patient_name_birth_date(self):
+    def test_study_identifiable(self):
         columns = get_header_data()
         rows = get_row_data()
-        patient_id = rows[0]["PatientID"]
-        rows[1]["PatientID"] = patient_id
+
+        rows[0]["AccessionNumber"] = ""
         file = create_csv_file(columns, rows)
+        try:
+            RequestsParser(";", ["%d.%m.%Y"]).parse(file)
+        except ParsingError:
+            self.fail()
 
-        with self.assertRaises(ParsingError):
-            RequestParser(";", ["%d.%m.%Y"]).parse(file)
+        rows[0]["AccessionNumber"] = "1234"
+        rows[0]["StudyDate"] = ""
+        rows[0]["Modality"] = ""
+        file = create_csv_file(columns, rows)
+        try:
+            RequestsParser(";", ["%d.%m.%Y"]).parse(file)
+        except ParsingError:
+            self.fail()
 
-    def test_conflict_of_pseudonym_with_different_patients(self):
+    def test_study_not_identifiable(self):
         columns = get_header_data()
         rows = get_row_data()
-        pseudonym = rows[0]["Pseudonym"]
-        rows[1]["Pseudonym"] = pseudonym
-        file = create_csv_file(columns, rows)
 
-        with self.assertRaises(ParsingError):
-            RequestParser(";", ["%d.%m.%Y"]).parse(file)
+        rows[0]["AccessionNumber"] = ""
+        rows[0]["Modality"] = ""
+        file = create_csv_file(columns, rows)
+        with self.assertRaisesRegex(ParsingError, "study must be identifiable"):
+            RequestsParser(";", ["%d.%m.%Y"]).parse(file)
+
+        rows[0]["AccesionNumber"] = ""
+        rows[0]["Modality"] = "MR"
+        rows[0]["StudyDate"] = ""
+        file = create_csv_file(columns, rows)
+        with self.assertRaisesRegex(ParsingError, "study must be identifiable"):
+            RequestsParser(";", ["%d.%m.%Y"]).parse(file)

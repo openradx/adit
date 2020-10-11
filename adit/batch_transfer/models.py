@@ -1,5 +1,4 @@
 from datetime import time
-import re
 from django.db import models
 from django.core.exceptions import ValidationError
 from django.contrib.contenttypes.fields import GenericRelation
@@ -98,16 +97,23 @@ class BatchTransferRequest(models.Model):
     stopped_at = models.DateTimeField(null=True, blank=True)
 
     def clean(self):
-        self.patient_name = re.sub(r",\s*", "^", self.patient_name)
+        errors = []
 
         if not (self.patient_id or self.patient_name and self.patient_birth_date):
-            raise ValidationError(
-                "A patient must be distinctly identifiable by either a PatientID "
-                "or a PatientName and PatientBirthDate."
+            errors.append(
+                ValidationError(
+                    "A patient must be identifiable by either a PatientID "
+                    "or a PatientName and PatientBirthDate."
+                )
             )
 
         if not (self.accession_number or self.study_date and self.modality):
-            raise ValidationError(
-                "A study must be identifiable by either an AccessionNumber "
-                "or a StudyDate and Modality."
+            errors.append(
+                ValidationError(
+                    "A study must be identifiable by either an AccessionNumber "
+                    "or a StudyDate and Modality."
+                )
             )
+
+        if len(errors) > 0:
+            raise ValidationError(errors)

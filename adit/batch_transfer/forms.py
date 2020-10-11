@@ -5,6 +5,7 @@ from django.db import transaction
 from django.core.exceptions import ValidationError
 from django.conf import settings
 from django.utils import formats
+from django.utils.safestring import mark_safe
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Submit, Div
 import cchardet as chardet
@@ -79,8 +80,8 @@ class BatchTransferJobForm(ModelForm):
         }
 
     def __init__(self, *args, **kwargs):
-        self.csv_data = None
         self.csv_error_details = None
+        self.requests = None
         self.save_requests = None
 
         super().__init__(*args, **kwargs)
@@ -118,29 +119,25 @@ class BatchTransferJobForm(ModelForm):
             rawdata = csv_file.read()
             encoding = chardet.detect(rawdata)["encoding"]
             fp = StringIO(rawdata.decode(encoding))
-            self.csv_data = parser.parse(fp)
+            self.requests = parser.parse(fp)
         except ParsingError as err:
-            self.csv_error_details = err.details
-            raise ValidationError(err) from err
+            self.csv_error_details = err
+            raise ValidationError(
+                mark_safe(
+                    "Invalid format of CSV file. "
+                    '<a href="#" data-toggle="modal" data-target="#csv_error_details_modal">'
+                    "[View details]"
+                    "</a>"
+                )
+            ) from err
 
         return csv_file
 
     def _save_requests(self, batch_job):
-        requests = []
-        for row in self.csv_data:
-            request = BatchTransferRequest(
-                job=batch_job,
-                row_key=row["RowKey"],
-                patient_id=row["PatientID"],
-                patient_name=row["PatientName"],
-                patient_birth_date=row["PatientBirthDate"],
-                study_date=row["StudyDate"],
-                modality=row["Modality"],
-                pseudonym=row["Pseudonym"],
-            )
-            requests.append(request)
+        for request in self.requests:
+            request.job = batch_job.id
 
-        BatchTransferRequest.objects.bulk_create(requests)
+        BatchTransferRequest.objects.bulk_create(self.requests)
 
     def save(self, commit=True):
         with transaction.atomic():
