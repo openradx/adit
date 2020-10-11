@@ -12,7 +12,7 @@ from django.utils import timezone
 from .utils.dicom_connector import DicomConnector
 from .utils.sanitize import sanitize_dirname
 from .utils.mail import send_job_failed_mail
-from .models import DicomNode, TransferJob, TransferTask
+from .models import DicomServer, DicomFolder, TransferJob, TransferTask
 
 logger = get_task_logger(__name__)
 
@@ -55,8 +55,8 @@ def transfer_dicoms(task_id):
         "Transfer task started (Job ID %d, Task ID %d, Source %s, Destination %s).",
         job.id,
         task.id,
-        job.source.node_name,
-        job.destination.node_name,
+        job.source.name,
+        job.destination.name,
     )
 
     # Intercept all logger messages and save them later to the task.
@@ -75,14 +75,15 @@ def transfer_dicoms(task_id):
         if not job.destination.active:
             raise ValueError("Destination DICOM node not active.")
 
-        if job.destination.node_type == DicomNode.NodeType.SERVER:
+        if isinstance(job.destination, DicomServer):
             _transfer_to_server(task)
-        else:
-            assert job.destination.node_type == DicomNode.NodeType.FOLDER
+        elif isinstance(job.destination, DicomFolder):
             if job.archive_password:
                 _transfer_to_archive(task)
             else:
                 _transfer_to_folder(task)
+        else:
+            raise AssertionError(f"Invalid node type: {job.destination}")
 
         task.status = TransferTask.Status.SUCCESS
         task.message = "Transfer task completed successfully."

@@ -29,7 +29,7 @@ def create_users():
         "first_name": environ.get("ADMIN_FIRST_NAME"),
         "last_name": environ.get("ADMIN_LAST_NAME"),
         "email": environ.get("ADMIN_EMAIL"),
-        "password": environ.get("ADMIN_PASSWORD")
+        "password": environ.get("ADMIN_PASSWORD"),
     }
     admin_data = {k: v for k, v in admin_data.items() if v is not None}
     admin = AdminUserFactory(**admin_data)
@@ -52,7 +52,7 @@ def create_server_nodes():
     orthanc1_host = environ.get("ORTHANC1_HOST", "127.0.0.1")
     servers.append(
         DicomServerFactory(
-            node_name="Orthac Test Server 1",
+            name="Orthac Test Server 1",
             ae_title="ORTHANC1",
             host=orthanc1_host,
             port=7501,
@@ -61,7 +61,7 @@ def create_server_nodes():
     orthanc2_host = environ.get("ORTHANC2_HOST", "127.0.0.1")
     servers.append(
         DicomServerFactory(
-            node_name="Orthac Test Server 2",
+            name="Orthac Test Server 2",
             ae_title="ORTHANC2",
             host=orthanc2_host,
             port=7502,
@@ -72,9 +72,7 @@ def create_server_nodes():
 
 def create_folder_nodes():
     folders = []
-    folders.append(
-        DicomFolderFactory(node_name="tmp folder", path="/tmp/adit_dicom_folder")
-    )
+    folders.append(DicomFolderFactory(name="tmp folder", path="/tmp/adit_dicom_folder"))
     return folders
 
 

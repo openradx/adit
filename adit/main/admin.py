@@ -5,16 +5,14 @@ admin.site.site_header = "ADIT administration"
 
 
 class DicomServerAdmin(admin.ModelAdmin):
-    list_display = ("node_name", "ae_title", "host", "port")
-    exclude = ("node_type",)
+    list_display = ("name", "ae_title", "host", "port")
 
 
 admin.site.register(DicomServer, DicomServerAdmin)
 
 
 class DicomFolderAdmin(admin.ModelAdmin):
-    list_display = ("node_name", "path")
-    exclude = ("node_type",)
+    list_display = ("name", "path")
 
 
 admin.site.register(DicomFolder, DicomFolderAdmin)

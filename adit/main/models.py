@@ -15,18 +15,12 @@ class AppSettings(models.Model):
         verbose_name_plural = "App settings"
 
 
-class DicomNode(models.Model):
-    class NodeType(models.TextChoices):
-        SERVER = "SV", "Server"
-        FOLDER = "FO", "Folder"
-
-    node_name = models.CharField(unique=True, max_length=64)
-    node_type = models.CharField(max_length=2, choices=NodeType.choices)
+class DicomNode(PolymorphicModel):
+    name = models.CharField(unique=True, max_length=64)
     active = models.BooleanField(default=True)
 
     def __str__(self):
-        node_types_dict = dict(self.NodeType.choices)
-        return f"DICOM {node_types_dict[self.node_type]} {self.node_name}"
+        return f"{self.__class__.__name__} {self.name}"
 
 
 class DicomServer(DicomNode):
@@ -41,10 +35,6 @@ class DicomServer(DicomNode):
     study_root_find_support = models.BooleanField(default=True)
     study_root_get_support = models.BooleanField(default=True)
     study_root_move_support = models.BooleanField(default=True)
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.node_type = DicomNode.NodeType.SERVER
 
     def create_connector(self, auto_connect=True):
         return DicomConnector(
@@ -66,10 +56,6 @@ class DicomServer(DicomNode):
 
 class DicomFolder(DicomNode):
     path = models.CharField(max_length=256)
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.node_type = DicomNode.NodeType.FOLDER
 
 
 class TransferJob(PolymorphicModel):
