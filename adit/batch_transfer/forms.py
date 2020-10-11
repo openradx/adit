@@ -9,7 +9,7 @@ from django.utils.safestring import mark_safe
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Submit, Div
 import cchardet as chardet
-from adit.main.models import DicomNode
+from adit.main.models import DicomNode, DicomServer, DicomFolder
 from .models import BatchTransferJob, BatchTransferRequest
 from .fields import RestrictedFileField
 from .utils.parsers import RequestsParser, ParsingError
@@ -24,9 +24,9 @@ class DicomNodeSelect(Select):
         )
         if hasattr(value, "instance"):
             dicom_node = value.instance
-            if dicom_node.node_type == DicomNode.NodeType.SERVER:
+            if isinstance(dicom_node, DicomServer):
                 option["attrs"]["data-node_type"] = "server"
-            elif dicom_node.node_type == DicomNode.NodeType.FOLDER:
+            elif isinstance(dicom_node, DicomFolder):
                 option["attrs"]["data-node_type"] = "folder"
 
         return option
@@ -34,10 +34,8 @@ class DicomNodeSelect(Select):
 
 class BatchTransferJobForm(ModelForm):
     source = ModelChoiceField(
-        # Folders can only be a destination for batch mode
-        queryset=DicomNode.objects.filter(
-            node_type=DicomNode.NodeType.SERVER, active=True
-        ),
+        # Only server can be a source of a transfer
+        queryset=DicomServer.objects.filter(active=True),
         widget=DicomNodeSelect,
     )
     destination = ModelChoiceField(
@@ -104,7 +102,7 @@ class BatchTransferJobForm(ModelForm):
     def clean_archive_password(self):
         archive_password = self.cleaned_data["archive_password"]
         destination = self.cleaned_data.get("destination")
-        if destination and destination.node_type != DicomNode.NodeType.FOLDER:
+        if not isinstance(destination, DicomNode):
             archive_password = ""
         return archive_password
 

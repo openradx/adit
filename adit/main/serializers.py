@@ -4,11 +4,9 @@ from adit.main.models import DicomNode, TransferJob, TransferTask
 
 
 class DicomNodeSerializer(serializers.ModelSerializer):
-    node_type = serializers.CharField(source="get_node_type_display")
-
     class Meta:
         model = DicomNode
-        fields = ["node_name", "node_type"]
+        fields = ["name"]
 
 
 class TransferTaskSerializer(serializers.ModelSerializer):
