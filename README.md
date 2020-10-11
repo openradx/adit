@@ -28,8 +28,8 @@ ADIT (Automated DICOM Transfer) is a swiss army knife to exchange DICOM data bet
   -- Allow to specify many modalities per row in CSV file
 - Better scheduler (with day in week and times)
 - Continous Transfer
-- remove cancel_batchtransferjob
 - move date parsing part in parsers.py and consumers.py to date_util.py
+- AppSettings -> BatchTransferSettings
 
 # Testing and coverage commands
 
@@ -105,6 +105,7 @@ interval_end_time = models.TimeField()
 - The PYTHONPATH environment variable can't be set in the Gitpod settings (it is always overwritten with a blank value)
 - What is ALLOWED_HOSTS? https://www.divio.com/blog/django-allowed-hosts-explained/
 - The SECRET_KEY should not start with a dollar sign (\$), django-environ has problems with it (see Proxy value in the documentation)
+- Multi table inheritance extensions: https://github.com/django-polymorphic/django-polymorphic and https://github.com/jazzband/django-model-utils
 
 # ContinousTransferJob
 

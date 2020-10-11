@@ -3,6 +3,7 @@ from django.db import models
 from django.core.exceptions import ValidationError
 from django.contrib.contenttypes.fields import GenericRelation
 from django.urls import reverse
+import celery
 from adit.main.models import TransferJob, TransferTask
 from adit.main.validators import validate_pseudonym
 
@@ -38,17 +39,11 @@ class AppSettings(models.Model):
 
 
 class BatchTransferJob(TransferJob):
-    JOB_TYPE = "BT"
-
     project_name = models.CharField(max_length=150)
     project_description = models.TextField(max_length=2000)
 
-    class Meta:
-        permissions = (("cancel_batchtransferjob", "Can cancel batch transfer job"),)
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.job_type = self.JOB_TYPE
+    def job_type(self):
+        return "Batch Transfer"
 
     def get_processed_requests(self):
         non_processed = (
@@ -57,8 +52,13 @@ class BatchTransferJob(TransferJob):
         )
         return self.requests.exclude(status__in=non_processed)
 
+    def delay(self):
+        celery.current_app.send_task(
+            "adit.batch_transfer.tasks.batch_transfer", (self.id,)
+        )
+
     def get_absolute_url(self):
-        return reverse("transfer_job_detail", args=[str(self.pk)])
+        return reverse("batch_transfer_job_detail", args=[str(self.id)])
 
 
 class BatchTransferRequest(models.Model):

@@ -1,4 +1,6 @@
 from django.db import models
+from django.urls import reverse
+import celery
 from adit.main.models import TransferJob
 
 
@@ -17,16 +19,21 @@ class AppSettings(models.Model):
 
 
 class ContinuousTransferJob(TransferJob):
-    JOB_TYPE = "CT"
-
     project_name = models.CharField(max_length=150)
     project_description = models.TextField(max_length=2000)
     start_date = models.DateField()
     end_date = models.DateField(null=True, blank=True)
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.job_type = self.JOB_TYPE
+    def job_type(self):
+        return "Continuous Transfer"
+
+    def delay(self):
+        celery.current_app.send_task(
+            "adit.continuous_transfer.tasks.continuous_transfer", (self.id,)
+        )
+
+    def get_absolute_url(self):
+        return reverse("continuous_transfer_job_detail", args=[str(self.id)])
 
 
 class DataElementFilter(models.Model):

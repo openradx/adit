@@ -3,7 +3,6 @@ from django.views.generic.edit import CreateView
 from django.views.generic import DetailView
 from django.conf import settings
 from adit.main.mixins import OwnerRequiredMixin
-from adit.main.utils.task_utils import delay_job
 from .models import ContinuousTransferJob
 from .forms import ContinuousTransferJobForm, DataElementFilterFormSet
 
@@ -33,7 +32,7 @@ class ContinuousTransferJobCreateView(
         if user.is_staff or settings.CONTINUOUS_TRANSFER_UNVERIFIED:
             job.status = ContinuousTransferJob.Status.PENDING
             job.save()
-            delay_job(job)
+            job.delay()
 
         return response
 
