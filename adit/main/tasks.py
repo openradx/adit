@@ -27,7 +27,7 @@ def on_job_failed(*args, **kwargs):
 
     logger.error("Transfer job failed unexpectedly (Job ID %d).", job_id)
 
-    job = TransferJob.objects.get(id=job_id)
+    job = TransferJob.objects.get_subclass(id=job_id)
 
     job.status = TransferJob.Status.FAILURE
     job.message = "Transfer job failed unexpectedly."

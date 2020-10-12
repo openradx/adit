@@ -10,7 +10,9 @@ class SelectiveTransferJobForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
 
         self.fields["source"].queryset = DicomServer.objects.filter(active=True)
-        self.fields["destination"].queryset = DicomNode.objects.filter(active=True)
+        self.fields["destination"].queryset = DicomNode.objects.filter(
+            active=True
+        ).select_subclasses()
 
         self.helper = FormHelper(self)
         self.helper.form_tag = False

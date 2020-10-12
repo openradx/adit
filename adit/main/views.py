@@ -6,7 +6,6 @@ from django.urls import re_path, reverse_lazy
 from django.shortcuts import get_object_or_404, redirect
 from django.core.exceptions import SuspiciousOperation
 from django.contrib import messages
-from django.shortcuts import redirect
 from django.conf import settings
 from rest_framework import generics
 from django_tables2 import SingleTableView
@@ -22,8 +21,10 @@ class TransferJobListView(LoginRequiredMixin, SingleTableView):
     template_name = "main/transfer_job_table.html"
 
     def get_queryset(self):
-        return TransferJob.objects.select_related("source", "destination").filter(
-            created_by=self.request.user
+        return (
+            TransferJob.objects.select_related("source", "destination")
+            .filter(created_by=self.request.user)
+            .select_subclasses()
         )
 
 
@@ -124,4 +125,6 @@ class TransferJobListAPIView(generics.ListAPIView):
     serializer_class = TransferJobListSerializer
 
     def get_queryset(self):
-        return TransferJob.objects.filter(created_by=self.request.user)
+        return TransferJob.objects.filter(
+            created_by=self.request.user
+        ).select_subclasses()

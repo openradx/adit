@@ -22,8 +22,7 @@ def send_mail_to_admins(subject, html_content):
 
 
 def send_job_finished_mail(job):
-    job_type = job.get_job_type_display()
-    subject = f"{job_type} finished"
+    subject = f"{job.job_type()} finished"
     html_content = render_to_string(
         "main/mail/transfer_job_finished.html",
         {"BASE_URL": settings.BASE_URL, "job": job},
@@ -32,8 +31,7 @@ def send_job_finished_mail(job):
 
 
 def send_job_failed_mail(job, celery_task_id):
-    job_type = job.get_job_type_display()
-    subject = f"{job_type} failed"
+    subject = f"{job.job_type()} failed"
     html_content = render_to_string(
         "main/mail/transfer_job_failed.html",
         {"BASE_URL": settings.BASE_URL, "job": job, "celery_task_id": celery_task_id},

@@ -4,7 +4,7 @@ from .views import ContinuousTransferJobCreateView, ContinuousTransferJobDetailV
 
 urlpatterns = [
     path(
-        "continuous-transfer/",
+        "continuous-transfer/new/",
         ContinuousTransferJobCreateView.as_view(),
         name="continuous_transfer_job_create",
     ),

@@ -3,7 +3,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.db import models
 from django.conf import settings
 from django.core.validators import MaxValueValidator, MinValueValidator
-from polymorphic.models import PolymorphicModel
+from model_utils.managers import InheritanceManager
 from .utils.dicom_connector import DicomConnector
 from .fields import SeparatedValuesField
 
@@ -15,9 +15,10 @@ class AppSettings(models.Model):
         verbose_name_plural = "App settings"
 
 
-class DicomNode(PolymorphicModel):
+class DicomNode(models.Model):
     name = models.CharField(unique=True, max_length=64)
     active = models.BooleanField(default=True)
+    objects = InheritanceManager()
 
     def __str__(self):
         return f"{self.__class__.__name__} {self.name}"
@@ -58,7 +59,7 @@ class DicomFolder(DicomNode):
     path = models.CharField(max_length=256)
 
 
-class TransferJob(PolymorphicModel):
+class TransferJob(models.Model):
     class Status(models.TextChoices):
         UNVERIFIED = "UV", "Unverified"
         PENDING = "PE", "Pending"
@@ -89,6 +90,7 @@ class TransferJob(PolymorphicModel):
     created_at = models.DateTimeField(auto_now_add=True)
     started_at = models.DateTimeField(null=True, blank=True)
     stopped_at = models.DateTimeField(null=True, blank=True)
+    objects = InheritanceManager()
 
     def job_type(self):
         return self._meta.verbose_name

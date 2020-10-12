@@ -39,7 +39,7 @@ class BatchTransferJobForm(ModelForm):
         widget=DicomNodeSelect,
     )
     destination = ModelChoiceField(
-        queryset=DicomNode.objects.filter(active=True),
+        queryset=DicomNode.objects.filter(active=True).select_subclasses(),
         widget=DicomNodeSelect,
     )
     csv_file = RestrictedFileField(max_upload_size=5242880)

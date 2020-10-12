@@ -31,7 +31,6 @@ class TransferJobListSerializer(serializers.ModelSerializer):
     source = DicomNodeSerializer()
     destination = DicomNodeSerializer()
     status = serializers.CharField(source="get_status_display")
-    job_type = serializers.CharField(source="get_job_type_display")
 
     class Meta:
         model = TransferJob
@@ -39,7 +38,6 @@ class TransferJobListSerializer(serializers.ModelSerializer):
             "id",
             "source",
             "destination",
-            "job_type",
             "status",
             "message",
             "trial_protocol_id",
