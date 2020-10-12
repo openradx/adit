@@ -24,5 +24,5 @@ class TransferJobTable(tables.Table):
         model = TransferJob
         order_by = ("-id",)
         template_name = "django_tables2/bootstrap4.html"
-        fields = ("id", "job_type", "status", "source", "destination", "created_at")
+        fields = ("id", "job_type", "status", "source", "destination", "created")
         attrs = {"class": "table table-bordered table-hover"}

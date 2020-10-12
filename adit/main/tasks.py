@@ -286,6 +286,6 @@ def _add_to_archive(archive_path: Path, archive_password: str, path_to_add: Path
 
 
 def _create_destination_name(job):
-    dt = job.created_at.strftime("%Y%m%d")
+    dt = job.created.strftime("%Y%m%d")
     username = job.created_by.username
     return sanitize_dirname(f"adit_job_{job.id}_{dt}_{username}")

@@ -9,11 +9,11 @@ class BatchTransferJobAdmin(admin.ModelAdmin):
         "source",
         "destination",
         "status",
-        "created_at",
+        "created",
         "get_creator",
     )
 
-    list_filter = ("status", "created_at", "created_by")
+    list_filter = ("status", "created", "created_by")
     search_fields = ("project_name", "created_by__username")
 
     def get_creator(self, obj):  # pylint: disable=no-self-use
