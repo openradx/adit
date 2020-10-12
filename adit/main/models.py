@@ -71,7 +71,7 @@ class TransferJob(models.Model):
         FAILURE = "FA", "Failure"
 
     class Meta:
-        indexes = [models.Index(fields=["created_by", "status"])]
+        indexes = [models.Index(fields=["owner", "status"])]
 
     source = models.ForeignKey(DicomNode, related_name="+", on_delete=models.PROTECT)
     destination = models.ForeignKey(
@@ -84,12 +84,12 @@ class TransferJob(models.Model):
     trial_protocol_id = models.CharField(null=True, blank=True, max_length=64)
     trial_protocol_name = models.CharField(null=True, blank=True, max_length=64)
     archive_password = models.CharField(null=True, blank=True, max_length=50)
-    created_by = models.ForeignKey(
+    owner = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="transfer_jobs"
     )
     created = models.DateTimeField(auto_now_add=True)
-    started_at = models.DateTimeField(null=True, blank=True)
-    stopped_at = models.DateTimeField(null=True, blank=True)
+    start = models.DateTimeField(null=True, blank=True)
+    end = models.DateTimeField(null=True, blank=True)
     objects = InheritanceManager()
 
     def job_type(self):
@@ -142,5 +142,5 @@ class TransferTask(models.Model):
     message = models.TextField(null=True, blank=True)
     log = models.TextField(null=True, blank=True)
     created = models.DateTimeField(auto_now_add=True)
-    started_at = models.DateTimeField(null=True, blank=True)
-    stopped_at = models.DateTimeField(null=True, blank=True)
+    start = models.DateTimeField(null=True, blank=True)
+    end = models.DateTimeField(null=True, blank=True)

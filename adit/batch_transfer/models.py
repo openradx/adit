@@ -93,8 +93,8 @@ class BatchTransferRequest(models.Model):
     )
     message = models.TextField(null=True, blank=True)
     created = models.DateTimeField(auto_now_add=True)
-    started_at = models.DateTimeField(null=True, blank=True)
-    stopped_at = models.DateTimeField(null=True, blank=True)
+    start = models.DateTimeField(null=True, blank=True)
+    end = models.DateTimeField(null=True, blank=True)
 
     def clean(self):
         errors = []

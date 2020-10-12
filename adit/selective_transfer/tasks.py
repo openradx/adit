@@ -47,13 +47,13 @@ def transfer_selected_dicoms(self, task_id):
 
     if job.status == SelectiveTransferJob.Status.CANCELING:
         transfer_task.status = TransferTask.Status.CANCELED
-        transfer_task.stopped_at = timezone.now()
+        transfer_task.end = timezone.now()
         transfer_task.save()
         return transfer_task.status
 
     if job.status == SelectiveTransferJob.Status.PENDING:
         job.status = SelectiveTransferJob.Status.IN_PROGRESS
-        job.started_at = timezone.now()
+        job.start = timezone.now()
         job.save()
 
     _check_can_run_now(self, transfer_task)

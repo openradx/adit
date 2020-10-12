@@ -58,7 +58,7 @@ def transfer_request(self, request_id):
 
     if job.status == BatchTransferJob.Status.CANCELING:
         request.status = BatchTransferRequest.Status.CANCELED
-        request.stopped_at = timezone.now()
+        request.end = timezone.now()
         request.save()
         return request.status
 
@@ -66,11 +66,11 @@ def transfer_request(self, request_id):
 
     if job.status == BatchTransferJob.Status.PENDING:
         job.status = BatchTransferJob.Status.IN_PROGRESS
-        job.started_at = timezone.now()
+        job.start = timezone.now()
         job.save()
 
     request.status = BatchTransferRequest.Status.IN_PROGRESS
-    request.started_at = timezone.now()
+    request.start = timezone.now()
     request.save()
 
     try:
@@ -142,7 +142,7 @@ def transfer_request(self, request_id):
         request.status = BatchTransferRequest.Status.FAILURE
         request.message = str(err)
     finally:
-        request.stopped_at = timezone.now()
+        request.end = timezone.now()
         request.save()
 
     return request.status
@@ -188,7 +188,7 @@ def on_job_finished(request_status_list, job_id):
             f"At least one request must succeed or fail (Job ID {job.id})."
         )
 
-    job.stopped_at = timezone.now()
+    job.end = timezone.now()
     job.save()
 
     send_job_finished_mail(job)

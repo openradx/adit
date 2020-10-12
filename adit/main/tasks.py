@@ -48,7 +48,7 @@ def transfer_dicoms(task_id):
         )
 
     task.status = TransferTask.Status.IN_PROGRESS
-    task.started_at = timezone.now()
+    task.start = timezone.now()
     task.save()
 
     logger.debug(
@@ -102,7 +102,7 @@ def transfer_dicoms(task_id):
         stream.close()
         logger.parent.removeHandler(handler)
 
-        task.stopped_at = timezone.now()
+        task.end = timezone.now()
         task.save()
 
     return task.status
@@ -287,5 +287,5 @@ def _add_to_archive(archive_path: Path, archive_password: str, path_to_add: Path
 
 def _create_destination_name(job):
     dt = job.created.strftime("%Y%m%d")
-    username = job.created_by.username
+    username = job.owner.username
     return sanitize_dirname(f"adit_job_{job.id}_{dt}_{username}")

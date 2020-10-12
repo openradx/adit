@@ -27,7 +27,7 @@ def send_job_finished_mail(job):
         "main/mail/transfer_job_finished.html",
         {"BASE_URL": settings.BASE_URL, "job": job},
     )
-    send_mail_to_user(subject, html_content, job.created_by)
+    send_mail_to_user(subject, html_content, job.owner)
 
 
 def send_job_failed_mail(job, celery_task_id):
@@ -37,4 +37,4 @@ def send_job_failed_mail(job, celery_task_id):
         {"BASE_URL": settings.BASE_URL, "job": job, "celery_task_id": celery_task_id},
     )
     send_mail_to_admins(subject, html_content)
-    send_mail_to_user(subject, html_content, job.created_by)
+    send_mail_to_user(subject, html_content, job.owner)

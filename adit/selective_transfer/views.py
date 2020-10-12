@@ -34,7 +34,7 @@ class SelectiveTransferJobCreateAPIView(generics.CreateAPIView):
 
     def perform_create(self, serializer):
         job = serializer.save(
-            status=SelectiveTransferJob.Status.PENDING, created_by=self.request.user
+            status=SelectiveTransferJob.Status.PENDING, owner=self.request.user
         )
         job.delay()
 
@@ -45,4 +45,4 @@ class SelectiveTransferJobDetailView(
     model = SelectiveTransferJob
     context_object_name = "job"
     template_name = "selective_transfer/selective_transfer_job_detail.html"
-    owner_accessor = "created_by"
+    owner_accessor = "owner"

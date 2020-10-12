@@ -47,7 +47,7 @@ class TransferJobFactory(factory.django.DjangoModelFactory):
     trial_protocol_id = factory.Faker("word")
     trial_protocol_name = factory.Faker("text", max_nb_chars=25)
     archive_password = factory.LazyFunction(generate_archive_password)
-    created_by = factory.SubFactory(UserFactory)
+    owner = factory.SubFactory(UserFactory)
 
 
 task_status_keys = [key for key, value in TransferTask.Status.choices]

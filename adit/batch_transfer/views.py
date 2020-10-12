@@ -17,7 +17,7 @@ class BatchTransferJobCreateView(
 
     def form_valid(self, form):
         user = self.request.user
-        form.instance.created_by = user
+        form.instance.owner = user
         response = super().form_valid(form)
 
         # Do it after an ongoing transaction (even if it is currently
@@ -48,4 +48,4 @@ class BatchTransferJobDetailView(LoginRequiredMixin, OwnerRequiredMixin, DetailV
     model = BatchTransferJob
     context_object_name = "job"
     template_name = "batch_transfer/batch_transfer_job_detail.html"
-    owner_accessor = "created_by"
+    owner_accessor = "owner"

@@ -10,17 +10,17 @@ class BatchTransferJobAdmin(admin.ModelAdmin):
         "destination",
         "status",
         "created",
-        "get_creator",
+        "get_owner",
     )
 
-    list_filter = ("status", "created", "created_by")
-    search_fields = ("project_name", "created_by__username")
+    list_filter = ("status", "created", "owner")
+    search_fields = ("project_name", "owner__username")
 
-    def get_creator(self, obj):  # pylint: disable=no-self-use
-        return obj.created_by.username
+    def get_owner(self, obj):  # pylint: disable=no-self-use
+        return obj.owner.username
 
-    get_creator.short_description = "Creator"
-    get_creator.admin_order_field = "created_by__username"
+    get_owner.short_description = "Owner"
+    get_owner.admin_order_field = "owner__username"
 
 
 admin.site.register(BatchTransferJob, BatchTransferJobAdmin)

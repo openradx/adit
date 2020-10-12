@@ -25,7 +25,7 @@ class ContinuousTransferJobCreateView(
 
     def form_valid(self, form):
         user = self.request.user
-        form.instance.created_by = user
+        form.instance.owner = user
         response = super().form_valid(form)
 
         job = self.object
@@ -43,4 +43,4 @@ class ContinuousTransferJobDetailView(
     model = ContinuousTransferJob
     context_object_name = "job"
     template_name = "continuous_transfer/continuous_transfer_job_detail.html"
-    owner_accessor = "created_by"
+    owner_accessor = "owner"

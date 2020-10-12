@@ -90,7 +90,7 @@ def create_batch_transfer_job(users, servers, folders):
     job = BatchTransferJobFactory(
         source=factory.Faker("random_element", elements=servers),
         destination=factory.Faker("random_element", elements=servers_and_folders),
-        created_by=factory.Faker("random_element", elements=users),
+        owner=factory.Faker("random_element", elements=users),
     )
 
     for _ in range(fake.random_int(min=0, max=100)):
@@ -108,7 +108,7 @@ def create_selective_transfer_job(users, servers, folders):
     job = SelectiveTransferJobFactory(
         source=factory.Faker("random_element", elements=servers),
         destination=factory.Faker("random_element", elements=servers_and_folders),
-        created_by=factory.Faker("random_element", elements=users),
+        owner=factory.Faker("random_element", elements=users),
     )
 
     for _ in range(fake.random_int(min=0, max=120)):

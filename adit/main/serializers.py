@@ -42,8 +42,8 @@ class TransferJobListSerializer(serializers.ModelSerializer):
             "message",
             "trial_protocol_id",
             "trial_protocol_name",
-            "created_by",
+            "owner",
             "created",
-            "started_at",
-            "stopped_at",
+            "start",
+            "end",
         ]

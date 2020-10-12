@@ -23,7 +23,7 @@ class TransferJobListView(LoginRequiredMixin, SingleTableView):
     def get_queryset(self):
         return (
             TransferJob.objects.select_related("source", "destination")
-            .filter(created_by=self.request.user)
+            .filter(owner=self.request.user)
             .select_subclasses()
         )
 
@@ -35,7 +35,7 @@ def redirect_to_job_detail_view(request, pk):
 
 class TransferJobDeleteView(LoginRequiredMixin, OwnerRequiredMixin, DeleteView):
     model = TransferJob
-    owner_accessor = "created_by"
+    owner_accessor = "owner"
     success_url = reverse_lazy("transfer_job_list")
     success_message = "Job with ID %(id)s was deleted successfully"
 
@@ -56,7 +56,7 @@ class TransferJobCancelView(
     LoginRequiredMixin, OwnerRequiredMixin, SingleObjectMixin, View
 ):
     model = TransferJob
-    owner_accessor = "created_by"
+    owner_accessor = "owner"
     success_message = "Job with ID %(id)n was canceled"
 
     def post(self, request, *args, **kwargs):  # pylint: disable=unused-argument
@@ -76,7 +76,7 @@ class TransferJobVerifyView(
     LoginRequiredMixin, OwnerRequiredMixin, SingleObjectMixin, View
 ):
     model = TransferJob
-    owner_accessor = "created_by"
+    owner_accessor = "owner"
     success_message = "Transfer job with ID %(id)s was verified"
 
     def post(self, request, *args, **kwargs):  # pylint: disable=unused-argument
@@ -125,6 +125,4 @@ class TransferJobListAPIView(generics.ListAPIView):
     serializer_class = TransferJobListSerializer
 
     def get_queryset(self):
-        return TransferJob.objects.filter(
-            created_by=self.request.user
-        ).select_subclasses()
+        return TransferJob.objects.filter(owner=self.request.user).select_subclasses()
