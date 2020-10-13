@@ -29,7 +29,8 @@ class TransferJobListView(LoginRequiredMixin, SingleTableView):
 
 
 def redirect_to_job_detail_view(request, pk):
-    job = get_object_or_404(TransferJob, pk=pk)
+    queryset = TransferJob.objects.select_subclasses()
+    job = get_object_or_404(queryset, pk=pk)
     return redirect(job)
 
 

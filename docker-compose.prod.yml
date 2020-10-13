@@ -11,7 +11,7 @@ x-app: &default-app
     - redis
   volumes:
     - /mnt:/mnt
-    - web_data:/var/www/adit
+    - adit_data:/var/www/adit
   env_file:
     - .env
   environment:
@@ -88,7 +88,7 @@ services:
     command: flower --url_prefix=flower --broker=amqp://rabbit
 
 volumes:
-  web_data: # in production for static files, SSL certs and logs
+  adit_data:  # For static files, SSL certs and logs
   postgres_data:
   rabbit_data:
   redis_data:

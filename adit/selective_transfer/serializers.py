@@ -1,11 +1,15 @@
 from rest_framework import serializers
 from adit.main.serializers import TransferTaskSerializer
-from adit.main.models import DicomServer, TransferTask
+from adit.main.models import DicomNode, DicomServer, TransferTask
 
 from .models import SelectiveTransferJob
 
 
 class SelectiveTransferJobCreateSerializer(serializers.ModelSerializer):
+    source = serializers.PrimaryKeyRelatedField(queryset=DicomServer.objects.all())
+    destination = serializers.PrimaryKeyRelatedField(
+        queryset=DicomNode.objects.select_subclasses().all()
+    )
     url = serializers.HyperlinkedIdentityField(view_name="transfer_job_detail")
     tasks = TransferTaskSerializer(many=True)
 

@@ -52,7 +52,7 @@ def create_server_nodes():
     orthanc1_host = environ.get("ORTHANC1_HOST", "127.0.0.1")
     servers.append(
         DicomServerFactory(
-            name="Orthac Test Server 1",
+            name="Orthanc Test Server 1",
             ae_title="ORTHANC1",
             host=orthanc1_host,
             port=7501,
@@ -61,7 +61,7 @@ def create_server_nodes():
     orthanc2_host = environ.get("ORTHANC2_HOST", "127.0.0.1")
     servers.append(
         DicomServerFactory(
-            name="Orthac Test Server 2",
+            name="Orthanc Test Server 2",
             ae_title="ORTHANC2",
             host=orthanc2_host,
             port=7502,

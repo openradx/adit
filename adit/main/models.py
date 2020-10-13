@@ -5,7 +5,7 @@ from django.conf import settings
 from django.core.validators import MaxValueValidator, MinValueValidator
 from model_utils.managers import InheritanceManager
 from .utils.dicom_connector import DicomConnector
-from .fields import SeparatedValuesField
+from .fields import SeparatedValuesField, InheritanceForeignKey
 
 
 class AppSettings(models.Model):
@@ -54,6 +54,9 @@ class DicomServer(DicomNode):
             )
         )
 
+    def __str__(self):
+        return f"DICOM Server {self.name}"
+
 
 class DicomFolder(DicomNode):
     path = models.CharField(max_length=256)
@@ -73,8 +76,10 @@ class TransferJob(models.Model):
     class Meta:
         indexes = [models.Index(fields=["owner", "status"])]
 
-    source = models.ForeignKey(DicomNode, related_name="+", on_delete=models.PROTECT)
-    destination = models.ForeignKey(
+    source = InheritanceForeignKey(
+        DicomNode, related_name="+", on_delete=models.PROTECT
+    )
+    destination = InheritanceForeignKey(
         DicomNode, related_name="+", on_delete=models.PROTECT
     )
     status = models.CharField(

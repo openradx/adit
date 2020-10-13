@@ -276,7 +276,7 @@ FLOWER_PORT = env.int("FLOWER_PORT", default=5555)
 ###
 
 # General ADIT settings
-ADIT_AE_TITLE = env.str("ADIT_AE_TITLE", default="ADIT")
+ADIT_AE_TITLE = env.str("ADIT_AE_TITLE", default="ADIT1")
 
 # The delimiter of the CSV file that contains the requests for
 # the batch transfer
