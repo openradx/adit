@@ -26,10 +26,6 @@ class ContinuousTransferJob(TransferJob):
     start_date = models.DateField()
     end_date = models.DateField(null=True, blank=True)
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.job_type = self.JOB_TYPE
-
     def delay(self):
         celery.current_app.send_task(
             "adit.continuous_transfer.tasks.continuous_transfer", (self.id,)

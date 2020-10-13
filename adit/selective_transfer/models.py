@@ -21,10 +21,6 @@ class AppSettings(models.Model):
 class SelectiveTransferJob(TransferJob):
     JOB_TYPE = "ST"
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.job_type = self.JOB_TYPE
-
     def delay(self):
         celery.current_app.send_task(
             "adit.selective_transfer.tasks.selective_transfer", (self.id,)

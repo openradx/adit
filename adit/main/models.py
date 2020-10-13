@@ -18,6 +18,8 @@ class AppSettings(models.Model):
 
 
 class DicomNode(models.Model):
+    NODE_TYPE = None
+
     class NodeType(models.TextChoices):
         SERVER = "SV", "Server"
         FOLDER = "FO", "Folder"
@@ -27,12 +29,21 @@ class DicomNode(models.Model):
     active = models.BooleanField(default=True)
     objects = InheritanceManager()
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if not self.node_type:
+            if not self.NODE_TYPE in dict(self.NodeType.choices):
+                raise AssertionError(f"Invalid node type: {self.NODE_TYPE}")
+            self.node_type = self.NODE_TYPE
+
     def __str__(self):
         node_types_dict = dict(self.NodeType.choices)
         return f"DICOM {node_types_dict[self.node_type]} {self.name}"
 
 
 class DicomServer(DicomNode):
+    NODE_TYPE = DicomNode.NodeType.SERVER
+
     ae_title = models.CharField(unique=True, max_length=16)
     host = models.CharField(max_length=255)
     port = models.PositiveIntegerField(
@@ -44,10 +55,6 @@ class DicomServer(DicomNode):
     study_root_find_support = models.BooleanField(default=True)
     study_root_get_support = models.BooleanField(default=True)
     study_root_move_support = models.BooleanField(default=True)
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.node_type = DicomNode.NodeType.SERVER
 
     def create_connector(self, auto_connect=True):
         return DicomConnector(
@@ -71,14 +78,14 @@ class DicomServer(DicomNode):
 
 
 class DicomFolder(DicomNode):
-    path = models.CharField(max_length=256)
+    NODE_TYPE = DicomNode.NodeType.FOLDER
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.node_type = DicomNode.NodeType.FOLDER
+    path = models.CharField(max_length=256)
 
 
 class TransferJob(models.Model):
+    JOB_TYPE = None
+
     class Status(models.TextChoices):
         UNVERIFIED = "UV", "Unverified"
         PENDING = "PE", "Pending"
@@ -111,6 +118,13 @@ class TransferJob(models.Model):
     start = models.DateTimeField(null=True, blank=True)
     end = models.DateTimeField(null=True, blank=True)
     objects = InheritanceManager()
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if not self.job_type:
+            if not any(self.JOB_TYPE == job_type[0] for job_type in job_type_choices):
+                raise AssertionError(f"Invalid job type: {self.JOB_TYPE}")
+            self.job_type = self.JOB_TYPE
 
     def get_processed_tasks(self):
         non_processed = (TransferTask.Status.PENDING, TransferTask.Status.IN_PROGRESS)
