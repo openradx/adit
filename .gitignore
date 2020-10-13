@@ -142,3 +142,6 @@ OrthancStorage*
 
 # Redis DB dump
 dump.rdb
+
+# SQLite databases
+*.db

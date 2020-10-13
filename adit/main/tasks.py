@@ -12,7 +12,7 @@ from django.utils import timezone
 from .utils.dicom_connector import DicomConnector
 from .utils.sanitize import sanitize_dirname
 from .utils.mail import send_job_failed_mail
-from .models import DicomServer, DicomFolder, TransferJob, TransferTask
+from .models import DicomNode, TransferJob, TransferTask
 
 logger = get_task_logger(__name__)
 
@@ -27,7 +27,7 @@ def on_job_failed(*args, **kwargs):
 
     logger.error("Transfer job failed unexpectedly (Job ID %d).", job_id)
 
-    job = TransferJob.objects.get_subclass(id=job_id)
+    job = TransferJob.objects.get(id=job_id)
 
     job.status = TransferJob.Status.FAILURE
     job.message = "Transfer job failed unexpectedly."
@@ -75,9 +75,9 @@ def transfer_dicoms(task_id):
         if not job.destination.active:
             raise ValueError("Destination DICOM node not active.")
 
-        if isinstance(job.destination, DicomServer):
+        if job.destination.node_type == DicomNode.NodeType.SERVER:
             _transfer_to_server(task)
-        elif isinstance(job.destination, DicomFolder):
+        elif job.destination.node_type == DicomNode.NodeType.FOLDER:
             if job.archive_password:
                 _transfer_to_archive(task)
             else:

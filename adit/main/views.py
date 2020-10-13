@@ -21,10 +21,8 @@ class TransferJobListView(LoginRequiredMixin, SingleTableView):
     template_name = "main/transfer_job_table.html"
 
     def get_queryset(self):
-        return (
-            TransferJob.objects.select_related("source", "destination")
-            .filter(owner=self.request.user)
-            .select_subclasses()
+        return TransferJob.objects.select_related("source", "destination").filter(
+            owner=self.request.user
         )
 
 
@@ -76,15 +74,15 @@ class TransferJobCancelView(
 class TransferJobVerifyView(
     LoginRequiredMixin, OwnerRequiredMixin, SingleObjectMixin, View
 ):
-    model = TransferJob
+    queryset = TransferJob.objects.select_subclasses()
     owner_accessor = "owner"
     success_message = "Transfer job with ID %(id)s was verified"
 
     def post(self, request, *args, **kwargs):  # pylint: disable=unused-argument
         job = self.get_object()
-        if not job.is_unverified():
+        if job.is_verified():
             raise SuspiciousOperation(
-                f"Job with ID {job.id} and status {job.get_status_display()} can't be verified."
+                f"Job with ID {job.id} and status {job.get_status_display()} was already verified."
             )
 
         job.status = TransferJob.Status.PENDING
@@ -126,4 +124,4 @@ class TransferJobListAPIView(generics.ListAPIView):
     serializer_class = TransferJobListSerializer
 
     def get_queryset(self):
-        return TransferJob.objects.filter(owner=self.request.user).select_subclasses()
+        return TransferJob.objects.filter(owner=self.request.user)

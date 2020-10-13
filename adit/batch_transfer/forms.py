@@ -9,7 +9,7 @@ from django.utils.safestring import mark_safe
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Submit, Div
 import cchardet as chardet
-from adit.main.models import DicomNode, DicomServer, DicomFolder
+from adit.main.models import DicomNode
 from .models import BatchTransferJob, BatchTransferRequest
 from .fields import RestrictedFileField
 from .utils.parsers import RequestsParser, ParsingError
@@ -24,9 +24,9 @@ class DicomNodeSelect(Select):
         )
         if hasattr(value, "instance"):
             dicom_node = value.instance
-            if isinstance(dicom_node, DicomServer):
+            if dicom_node.node_type == DicomNode.NodeType.SERVER:
                 option["attrs"]["data-node_type"] = "server"
-            elif isinstance(dicom_node, DicomFolder):
+            elif dicom_node.node_type == DicomNode.NodeType.FOLDER:
                 option["attrs"]["data-node_type"] = "folder"
 
         return option
@@ -34,12 +34,14 @@ class DicomNodeSelect(Select):
 
 class BatchTransferJobForm(ModelForm):
     source = ModelChoiceField(
-        # Only server can be a source of a transfer
-        queryset=DicomServer.objects.filter(active=True),
+        # Only servers can be a source of a transfer
+        queryset=DicomNode.objects.filter(
+            node_type=DicomNode.NodeType.SERVER, active=True
+        ),
         widget=DicomNodeSelect,
     )
     destination = ModelChoiceField(
-        queryset=DicomNode.objects.filter(active=True).select_subclasses(),
+        queryset=DicomNode.objects.filter(active=True),
         widget=DicomNodeSelect,
     )
     csv_file = RestrictedFileField(max_upload_size=5242880)
@@ -102,7 +104,7 @@ class BatchTransferJobForm(ModelForm):
     def clean_archive_password(self):
         archive_password = self.cleaned_data["archive_password"]
         destination = self.cleaned_data.get("destination")
-        if not isinstance(destination, DicomNode):
+        if not destination or destination.node_type != DicomNode.NodeType.FOLDER:
             archive_password = ""
         return archive_password
 

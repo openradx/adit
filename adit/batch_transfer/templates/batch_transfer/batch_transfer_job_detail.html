@@ -15,21 +15,21 @@
     <dd class="col-sm-9">{{job.destination}}</dd>
 
     <dt class="col-sm-3">Created At</dt>
-    <dd class="col-sm-9">{{ job.created_at }}</dd>
+    <dd class="col-sm-9">{{ job.created }}</dd>
 
     {% if user.is_staff %}
         <dt class="col-sm-3">Created By</dt>
-        <dd class="col-sm-9">{{ job.created_by }}</dd>
+        <dd class="col-sm-9">{{ job.owner }}</dd>
     {% endif %}
 
     <dt class="col-sm-3">Project Name</dt>
     <dd class="col-sm-9">{{ job.project_name }}</dd>
 
     <dt class="col-sm-3">Trial Protocol ID</dt>
-    <dd class="col-sm-9">{{ job.trial_protocol_id|default:" - " }}</dd>
+    <dd class="col-sm-9">{{ job.trial_protocol_id|default:"-" }}</dd>
 
     <dt class="col-sm-3">Trial Protocol Name</dt>
-    <dd class="col-sm-9">{{ job.trial_protocol_name|default:" - " }}</dd>
+    <dd class="col-sm-9">{{ job.trial_protocol_name|default:"-" }}</dd>
 
     <dt class="col-sm-3">Total Requests</dt>
     <dd class="col-sm-9">{{ job.requests.count }}</dd>
@@ -41,7 +41,7 @@
     <dd class="col-sm-9">{{ job.get_status_display }}</dd>
 
     <dt class="col-sm-3">Message</dt>
-    <dd class="col-sm-9">{{ job.message|default:" - " }}</dd>
+    <dd class="col-sm-9">{{ job.message|default:"-" }}</dd>
 </dl>
 
 {% include "batch_transfer/batch_transfer_requests_table.html" %}

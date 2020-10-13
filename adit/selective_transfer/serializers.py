@@ -1,15 +1,11 @@
 from rest_framework import serializers
 from adit.main.serializers import TransferTaskSerializer
-from adit.main.models import DicomNode, DicomServer, TransferTask
+from adit.main.models import DicomNode, TransferTask
 
 from .models import SelectiveTransferJob
 
 
 class SelectiveTransferJobCreateSerializer(serializers.ModelSerializer):
-    source = serializers.PrimaryKeyRelatedField(queryset=DicomServer.objects.all())
-    destination = serializers.PrimaryKeyRelatedField(
-        queryset=DicomNode.objects.select_subclasses().all()
-    )
     url = serializers.HyperlinkedIdentityField(view_name="transfer_job_detail")
     tasks = TransferTaskSerializer(many=True)
 
@@ -32,7 +28,7 @@ class SelectiveTransferJobCreateSerializer(serializers.ModelSerializer):
         self.fields["destination"].error_messages["null"] = "This field is required."
 
     def validate_source(self, source):  # pylint: disable=no-self-use
-        if not isinstance(source, DicomServer):
+        if source.node_type != DicomNode.NodeType.SERVER:
             raise serializers.ValidationError("Must be a DICOM server.")
 
         if not source.active:

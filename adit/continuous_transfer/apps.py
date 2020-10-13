@@ -1,18 +1,30 @@
 from django.apps import AppConfig
 from django.db.models.signals import post_migrate
-from adit.main.site import register_main_menu_item
+from adit.main.site import register_main_menu_item, register_transfer_job
 
 
 class ContinuousTransferConfig(AppConfig):
     name = "adit.continuous_transfer"
 
     def ready(self):
-        register_main_menu_item(
-            url_name="continuous_transfer_job_create", label="Continuous Transfer"
-        )
+        register_app()
 
         # Put calls to db stuff in this signal handler
         post_migrate.connect(init_db, sender=self)
+
+
+def register_app():
+    register_main_menu_item(
+        url_name="continuous_transfer_job_create",
+        label="Continuous Transfer",
+    )
+
+    from .models import ContinuousTransferJob  # pylint: disable=import-outside-toplevel
+
+    register_transfer_job(
+        job_type_key=ContinuousTransferJob.JOB_TYPE,
+        job_type_name="Continuous Transfer",
+    )
 
 
 def init_db(**kwargs):  # pylint: disable=unused-argument

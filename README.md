@@ -22,7 +22,6 @@ ADIT (Automated DICOM Transfer) is a swiss army knife to exchange DICOM data bet
 
 - use BatchTransferRequest directly in request parser
 - Check why archive feature does not work correctly
-- stopped_at -> finished_at
 - Think about moving all those dicts to dataclasses when passing around data
   -- Allow provide a regex of StudyDescription in CSV batch file
   -- Allow to specify many modalities per row in CSV file
@@ -117,3 +116,20 @@ job_type -> transfer_type
 selectivetransferjob -> ---
 batchtransferjob -> ---
 job_type -> ?
+
+
+# Make related fields work with InheritanceManager of django-model-utils.
+# This unfortunately does not work for prefetching related fields with
+# select_related (but does work for prefetch_related).
+# Solution from https://github.com/jazzband/django-model-utils/issues/11
+from django.db.models.fields.related_descriptors import ForwardManyToOneDescriptor
+
+class InheritanceForwardManyToOneDescriptor(ForwardManyToOneDescriptor):
+    def get_queryset(self, **hints):
+        return self.field.remote_field.model.objects.db_manager(
+            hints=hints
+        ).select_subclasses()
+
+
+class InheritanceForeignKey(models.ForeignKey):
+    forward_related_accessor_class = InheritanceForwardManyToOneDescriptor

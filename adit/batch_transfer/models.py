@@ -39,11 +39,14 @@ class AppSettings(models.Model):
 
 
 class BatchTransferJob(TransferJob):
+    JOB_TYPE = "BT"
+
     project_name = models.CharField(max_length=150)
     project_description = models.TextField(max_length=2000)
 
-    def job_type(self):
-        return "Batch Transfer"
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.job_type = self.JOB_TYPE
 
     def get_processed_requests(self):
         non_processed = (

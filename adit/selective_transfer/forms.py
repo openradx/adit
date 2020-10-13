@@ -2,17 +2,17 @@ from django import forms
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Layout, Field, Row, Column
 from adit.selective_transfer.models import SelectiveTransferJob
-from adit.main.models import DicomNode, DicomServer
+from adit.main.models import DicomNode
 
 
 class SelectiveTransferJobForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.fields["source"].queryset = DicomServer.objects.filter(active=True)
-        self.fields["destination"].queryset = DicomNode.objects.filter(
-            active=True
-        ).select_subclasses()
+        self.fields["source"].queryset = DicomNode.objects.filter(
+            node_type=DicomNode.NodeType.SERVER, active=True
+        )
+        self.fields["destination"].queryset = DicomNode.objects.filter(active=True)
 
         self.helper = FormHelper(self)
         self.helper.form_tag = False

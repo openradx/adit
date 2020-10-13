@@ -3,9 +3,11 @@ from django.contrib.contenttypes.models import ContentType
 from django.db import models
 from django.conf import settings
 from django.core.validators import MaxValueValidator, MinValueValidator
+from django.urls import reverse
 from model_utils.managers import InheritanceManager
+from .site import job_type_choices
 from .utils.dicom_connector import DicomConnector
-from .fields import SeparatedValuesField, InheritanceForeignKey
+from .fields import SeparatedValuesField
 
 
 class AppSettings(models.Model):
@@ -16,12 +18,18 @@ class AppSettings(models.Model):
 
 
 class DicomNode(models.Model):
+    class NodeType(models.TextChoices):
+        SERVER = "SV", "Server"
+        FOLDER = "FO", "Folder"
+
+    node_type = models.CharField(max_length=2, choices=NodeType.choices)
     name = models.CharField(unique=True, max_length=64)
     active = models.BooleanField(default=True)
     objects = InheritanceManager()
 
     def __str__(self):
-        return f"{self.__class__.__name__} {self.name}"
+        node_types_dict = dict(self.NodeType.choices)
+        return f"DICOM {node_types_dict[self.node_type]} {self.name}"
 
 
 class DicomServer(DicomNode):
@@ -36,6 +44,10 @@ class DicomServer(DicomNode):
     study_root_find_support = models.BooleanField(default=True)
     study_root_get_support = models.BooleanField(default=True)
     study_root_move_support = models.BooleanField(default=True)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.node_type = DicomNode.NodeType.SERVER
 
     def create_connector(self, auto_connect=True):
         return DicomConnector(
@@ -61,6 +73,10 @@ class DicomServer(DicomNode):
 class DicomFolder(DicomNode):
     path = models.CharField(max_length=256)
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.node_type = DicomNode.NodeType.FOLDER
+
 
 class TransferJob(models.Model):
     class Status(models.TextChoices):
@@ -76,10 +92,9 @@ class TransferJob(models.Model):
     class Meta:
         indexes = [models.Index(fields=["owner", "status"])]
 
-    source = InheritanceForeignKey(
-        DicomNode, related_name="+", on_delete=models.PROTECT
-    )
-    destination = InheritanceForeignKey(
+    job_type = models.CharField(max_length=2, choices=job_type_choices)
+    source = models.ForeignKey(DicomNode, related_name="+", on_delete=models.PROTECT)
+    destination = models.ForeignKey(
         DicomNode, related_name="+", on_delete=models.PROTECT
     )
     status = models.CharField(
@@ -97,9 +112,6 @@ class TransferJob(models.Model):
     end = models.DateTimeField(null=True, blank=True)
     objects = InheritanceManager()
 
-    def job_type(self):
-        return self._meta.verbose_name
-
     def get_processed_tasks(self):
         non_processed = (TransferTask.Status.PENDING, TransferTask.Status.IN_PROGRESS)
         return self.tasks.exclude(status__in=non_processed)
@@ -110,8 +122,11 @@ class TransferJob(models.Model):
     def is_cancelable(self):
         return self.status in (self.Status.IN_PROGRESS,)
 
-    def is_unverified(self):
-        return self.status == self.Status.UNVERIFIED
+    def is_verified(self):
+        return self.status != self.Status.UNVERIFIED
+
+    def get_absolute_url(self):
+        return reverse("transfer_job_detail", args=[str(self.id)])
 
     def __str__(self):
         status_dict = dict(self.Status.choices)
