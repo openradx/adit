@@ -10,11 +10,29 @@ from .utils.dicom_connector import DicomConnector
 from .fields import SeparatedValuesField
 
 
-class AppSettings(models.Model):
+class MainSettings(models.Model):
     maintenance_mode = models.BooleanField(default=False)
 
     class Meta:
-        verbose_name_plural = "App settings"
+        verbose_name_plural = "Main settings"
+
+    @classmethod
+    def get(cls):
+        return cls.objects.first()
+
+
+class AppSettings(models.Model):
+    # Lock the creation of new jobs
+    locked = models.BooleanField(default=False)
+    # Suspend the background processing.
+    suspended = models.BooleanField(default=False)
+
+    class Meta:
+        abstract = True
+
+    @classmethod
+    def get(cls):
+        return cls.objects.first()
 
 
 class DicomNode(models.Model):
@@ -25,8 +43,9 @@ class DicomNode(models.Model):
         FOLDER = "FO", "Folder"
 
     node_type = models.CharField(max_length=2, choices=NodeType.choices)
-    name = models.CharField(unique=True, max_length=64)
     active = models.BooleanField(default=True)
+    name = models.CharField(unique=True, max_length=64)
+
     objects = InheritanceManager()
 
     def __init__(self, *args, **kwargs):

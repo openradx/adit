@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import AppSettings, BatchTransferJob
+from .models import BatchTransferSettings, BatchTransferJob
 
 
 class BatchTransferJobAdmin(admin.ModelAdmin):
@@ -26,8 +26,4 @@ class BatchTransferJobAdmin(admin.ModelAdmin):
 admin.site.register(BatchTransferJob, BatchTransferJobAdmin)
 
 
-class AppSettingsAdmin(admin.ModelAdmin):
-    pass
-
-
-admin.site.register(AppSettings, AppSettingsAdmin)
+admin.site.register(BatchTransferSettings, admin.ModelAdmin)

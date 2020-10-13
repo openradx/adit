@@ -4,7 +4,7 @@ from django.core.exceptions import ValidationError
 from django.contrib.contenttypes.fields import GenericRelation
 from django.urls import reverse
 import celery
-from adit.main.models import TransferJob, TransferTask
+from adit.main.models import AppSettings, TransferJob, TransferTask
 from adit.main.validators import validate_pseudonym
 
 
@@ -12,11 +12,7 @@ def slot_time(hour, minute):
     return time(hour, minute)
 
 
-class AppSettings(models.Model):
-    # Lock the batch transfer creation form
-    batch_transfer_locked = models.BooleanField(default=False)
-    # Suspend the batch transfer background processing.
-    batch_transfer_suspended = models.BooleanField(default=False)
+class BatchTransferSettings(AppSettings):
     # Must be set in UTC time as Celery workers can't figure out another time zone.
     # TODO It would be nicer if in Web UI the local time could be set that is
     #   converted on the fly and stored in the db as UTC. Unfortunately, this does
@@ -30,12 +26,8 @@ class AppSettings(models.Model):
     )
     batch_timeout = models.IntegerField(default=3)
 
-    @classmethod
-    def load(cls):
-        return cls.objects.first()
-
     class Meta:
-        verbose_name_plural = "App settings"
+        verbose_name_plural = "Batch transfer settings"
 
 
 class BatchTransferJob(TransferJob):

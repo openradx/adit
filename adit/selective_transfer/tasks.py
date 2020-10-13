@@ -5,7 +5,7 @@ from django.utils import timezone
 from django.contrib.humanize.templatetags.humanize import naturaltime
 from adit.main.tasks import on_job_failed, transfer_dicoms
 from adit.main.models import TransferTask
-from .models import AppSettings, SelectiveTransferJob
+from .models import SelectiveTransferSettings, SelectiveTransferJob
 
 logger = get_task_logger(__name__)
 
@@ -105,10 +105,10 @@ def on_job_finished(task_status_list, job_id):
 
 
 def _check_can_run_now(celery_task, transfer_task):
-    app_settings = AppSettings.load()
+    selective_transfer_settings = SelectiveTransferSettings.get()
 
-    if app_settings.selective_transfer_suspended:
-        eta = timezone.now() + timedelta(minutes=5)
+    if selective_transfer_settings.suspended:
+        eta = timezone.now() + timedelta(minutes=60)
         raise celery_task.retry(
             eta=eta,
             exc=Warning(

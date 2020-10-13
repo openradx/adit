@@ -4,10 +4,14 @@ from django.views.generic import TemplateView
 from django.urls import reverse
 from django.conf import settings
 from django.utils import timezone
-from .models import AppSettings
+from .models import MainSettings
 
 
-class MaintenanceMiddleware:
+def is_html_response(response):
+    return response["Content-Type"].startswith("text/html")
+
+
+class MaintenanceMiddleware:  # pylint: disable=too-few-public-methods
     """Render a maintenance template if in maintenance mode.
 
     Adapted from http://blog.ankitjaiswal.tech/put-your-django-site-on-maintenanceoffline-mode/
@@ -22,28 +26,21 @@ class MaintenanceMiddleware:
         if login_request or logout_request:
             return self.get_response(request)
 
-        app_settings = AppSettings.objects.first()
-        in_maintenance = app_settings.maintenance_mode
+        main_settings = MainSettings.get()
+        in_maintenance = main_settings.maintenance_mode
         if in_maintenance and not request.user.is_staff:
             return TemplateView.as_view(template_name="main/maintenance.html")(
                 request
             ).render()
-        else:
-            response = self.get_response(request)
-            if (
-                self.is_html_response(response)
-                and in_maintenance
-                and request.user.is_staff
-            ):
-                response.content = re.sub(
-                    r"<body.*>",
-                    r"\g<0>Site is in maintenance mode!",
-                    response.content.decode("utf-8"),
-                )
-            return response
 
-    def is_html_response(self, response):
-        return response["Content-Type"].startswith("text/html")
+        response = self.get_response(request)
+        if is_html_response(response) and in_maintenance and request.user.is_staff:
+            response.content = re.sub(
+                r"<body.*>",
+                r"\g<0>Site is in maintenance mode!",
+                response.content.decode("utf-8"),
+            )
+        return response
 
 
 class TimezoneMiddleware:  # pylint: disable=too-few-public-methods

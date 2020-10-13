@@ -15,8 +15,8 @@ def init_db(sender, **kwargs):  # pylint: disable=unused-argument
 
 
 def create_app_settings():
-    from .models import AppSettings  # pylint: disable=import-outside-toplevel
+    from .models import MainSettings  # pylint: disable=import-outside-toplevel
 
-    app_settings = AppSettings.objects.first()
-    if not app_settings:
-        AppSettings.objects.create()
+    settings = MainSettings.get()
+    if not settings:
+        MainSettings.objects.create()

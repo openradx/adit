@@ -1,21 +1,12 @@
 from django.db import models
 from django.urls import reverse
 import celery
-from adit.main.models import TransferJob
+from adit.main.models import AppSettings, TransferJob
 
 
-class AppSettings(models.Model):
-    # Lock the continuous transfer creation form
-    continuous_transfer_locked = models.BooleanField(default=False)
-    # Suspend the continuous transfer background processing.
-    continuous_transfer_suspended = models.BooleanField(default=False)
-
-    @classmethod
-    def load(cls):
-        return cls.objects.first()
-
+class ContinuousTransferSettings(AppSettings):
     class Meta:
-        verbose_name_plural = "App settings"
+        verbose_name_plural = "Continuous transfer settings"
 
 
 class ContinuousTransferJob(TransferJob):

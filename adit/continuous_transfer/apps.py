@@ -47,8 +47,8 @@ def create_group():
 
 def create_app_settings():
     # pylint: disable=import-outside-toplevel
-    from .models import AppSettings
+    from .models import ContinuousTransferSettings
 
-    app_settings = AppSettings.objects.first()
-    if not app_settings:
-        AppSettings.objects.create()
+    settings = ContinuousTransferSettings.get()
+    if not settings:
+        ContinuousTransferSettings.objects.create()

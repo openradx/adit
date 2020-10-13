@@ -3,7 +3,7 @@ from django.views.generic.edit import CreateView
 from django.views.generic import TemplateView, DetailView
 from django.conf import settings
 from adit.main.mixins import OwnerRequiredMixin
-from .models import AppSettings, BatchTransferJob
+from .models import BatchTransferSettings, BatchTransferJob
 from .forms import BatchTransferJobForm
 
 
@@ -36,8 +36,8 @@ class BatchTransferJobCreateView(
         return response
 
     def dispatch(self, request, *args, **kwargs):
-        app_settings = AppSettings.objects.first()
-        if app_settings.batch_transfer_locked and not request.user.is_staff:
+        batch_transfer_settings = BatchTransferSettings.get()
+        if batch_transfer_settings.locked and not request.user.is_staff:
             return TemplateView.as_view(
                 template_name="batch_transfer/batch_transfer_locked.html"
             )(request)

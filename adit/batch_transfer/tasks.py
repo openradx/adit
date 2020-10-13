@@ -11,7 +11,7 @@ from adit.main.tasks import on_job_failed, transfer_dicoms
 from adit.main.utils.scheduler import Scheduler
 from adit.main.utils.redis_lru import redis_lru
 from adit.main.utils.mail import send_job_finished_mail
-from .models import AppSettings, BatchTransferJob, BatchTransferRequest
+from .models import BatchTransferSettings, BatchTransferJob, BatchTransferRequest
 
 logger = get_task_logger(__name__)
 
@@ -195,11 +195,11 @@ def on_job_finished(request_status_list, job_id):
 
 
 def _check_can_run_now(celery_task, request):
-    app_settings = AppSettings.load()
+    batch_transfer_settings = BatchTransferSettings.get()
 
     scheduler = Scheduler(
-        app_settings.batch_slot_begin_time,
-        app_settings.batch_slot_end_time,
+        batch_transfer_settings.batch_slot_begin_time,
+        batch_transfer_settings.batch_slot_end_time,
         settings.SERVER_TIME_ZONE,
     )
     if scheduler.must_be_scheduled():
@@ -213,8 +213,8 @@ def _check_can_run_now(celery_task, request):
             ),
         )
 
-    if app_settings.batch_transfer_suspended:
-        eta = timezone.now() + timedelta(minutes=5)
+    if batch_transfer_settings.suspended:
+        eta = timezone.now() + timedelta(minutes=60)
         raise celery_task.retry(
             eta=eta,
             exc=Warning(

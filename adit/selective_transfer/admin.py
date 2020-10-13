@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import AppSettings, SelectiveTransferJob
+from .models import SelectiveTransferSettings, SelectiveTransferJob
 
 
 class SelectiveTransferJobAdmin(admin.ModelAdmin):
@@ -25,8 +25,4 @@ class SelectiveTransferJobAdmin(admin.ModelAdmin):
 admin.site.register(SelectiveTransferJob, SelectiveTransferJobAdmin)
 
 
-class AppSettingsAdmin(admin.ModelAdmin):
-    pass
-
-
-admin.site.register(AppSettings, AppSettingsAdmin)
+admin.site.register(SelectiveTransferSettings, admin.ModelAdmin)

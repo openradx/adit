@@ -1,21 +1,11 @@
-from django.db import models
 from django.urls import reverse
 import celery
-from adit.main.models import TransferJob
+from adit.main.models import AppSettings, TransferJob
 
 
-class AppSettings(models.Model):
-    # Lock the selective transfer creation form
-    selective_transfer_locked = models.BooleanField(default=False)
-    # Suspend the selective transfer background processing.
-    selective_transfer_suspended = models.BooleanField(default=False)
-
-    @classmethod
-    def load(cls):
-        return cls.objects.first()
-
+class SelectiveTransferSettings(AppSettings):
     class Meta:
-        verbose_name_plural = "App settings"
+        verbose_name_plural = "Selective transfer settings"
 
 
 class SelectiveTransferJob(TransferJob):
