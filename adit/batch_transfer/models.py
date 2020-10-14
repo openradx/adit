@@ -3,7 +3,6 @@ from django.db import models
 from django.core.exceptions import ValidationError
 from django.contrib.contenttypes.fields import GenericRelation
 from django.urls import reverse
-import celery
 from adit.main.models import AppSettings, TransferJob, TransferTask
 from adit.main.validators import validate_pseudonym
 
@@ -44,9 +43,9 @@ class BatchTransferJob(TransferJob):
         return self.requests.exclude(status__in=non_processed)
 
     def delay(self):
-        celery.current_app.send_task(
-            "adit.batch_transfer.tasks.batch_transfer", (self.id,)
-        )
+        from .tasks import batch_transfer  # pylint: disable=import-outside-toplevel
+
+        batch_transfer(self.id)
 
     def get_absolute_url(self):
         return reverse("batch_transfer_job_detail", args=[str(self.id)])

@@ -1,6 +1,5 @@
 from django.db import models
 from django.urls import reverse
-import celery
 from adit.main.models import AppSettings, TransferJob
 
 
@@ -18,9 +17,11 @@ class ContinuousTransferJob(TransferJob):
     end_date = models.DateField(null=True, blank=True)
 
     def delay(self):
-        celery.current_app.send_task(
-            "adit.continuous_transfer.tasks.continuous_transfer", (self.id,)
+        from .tasks import (  # pylint: disable=import-outside-toplevel
+            continuous_transfer,
         )
+
+        continuous_transfer(self.id)
 
     def get_absolute_url(self):
         return reverse("continuous_transfer_job_detail", args=[str(self.id)])
@@ -29,8 +30,11 @@ class ContinuousTransferJob(TransferJob):
 class DataElementFilter(models.Model):
     class FilterTypes(models.TextChoices):
         EQUALS = "EQ", "equals"
+        EQUALS_NOT = "EN", "equals not"
         CONTAINS = "CO", "contains"
-        REGEXP = "RE", "regexp"
+        CONTAINS_NOT = "CN", "contains not"
+        REGEX = "RE", "regex"
+        REGEX_NOT = "RN", "regex not"
 
     job = models.ForeignKey(
         ContinuousTransferJob, on_delete=models.CASCADE, related_name="filters"
