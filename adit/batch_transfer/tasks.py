@@ -128,6 +128,7 @@ def transfer_request(self, request_id):
             raise ValueError("All transfer tasks failed.")
 
         request.status = BatchTransferRequest.Status.SUCCESS
+        request.message = "All transfers succeeded."
 
     except Exception as err:  # pylint: disable=broad-except
         logger.exception(

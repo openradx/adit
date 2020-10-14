@@ -135,7 +135,7 @@ class BatchTransferJobForm(ModelForm):
 
     def _save_requests(self, batch_job):
         for request in self.requests:
-            request.job = batch_job.id
+            request.job = batch_job
 
         BatchTransferRequest.objects.bulk_create(self.requests)
 

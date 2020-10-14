@@ -17,11 +17,11 @@ class BatchTransferSettings(AppSettings):
     #   converted on the fly and stored in the db as UTC. Unfortunately, this does
     #   not work with TimeField (as it is never time zone aware).
     batch_slot_begin_time = models.TimeField(
-        default=slot_time(22, 0), help_text="Must be set in UTC time."
+        default=slot_time(22, 0), help_text="Uses time zone of SERVER_ZIME_ZONE env."
     )
     # Must be set in UTC time as Celery workers can't figure out another time zone.
     batch_slot_end_time = models.TimeField(
-        default=slot_time(8, 0), help_text="Must be set in UTC time."
+        default=slot_time(8, 0), help_text="Uses time zone of SERVER_ZIME_ZONE env."
     )
     batch_timeout = models.IntegerField(default=3)
 
