@@ -30,7 +30,6 @@ class DataElementFilter(models.Model):
     class FilterTypes(models.TextChoices):
         EQUALS = "EQ", "equals"
         CONTAINS = "CO", "contains"
-        CONTAINS_NOT = "CN", "contains not"
         REGEXP = "RE", "regexp"
 
     job = models.ForeignKey(
