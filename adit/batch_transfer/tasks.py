@@ -37,6 +37,7 @@ def batch_transfer(job_id):
     )
 
 
+# pylint: disable=too-many-locals,too-many-statements
 @shared_task(bind=True)
 def transfer_request(self, request_id):
     request = BatchTransferRequest.objects.get(id=request_id)
@@ -107,11 +108,19 @@ def transfer_request(self, request_id):
         has_success = False
         has_failure = False
         for study in studies:
+            study_uid = study["StudyInstanceUID"]
+
+            series_list = connector.find_series(
+                patient_id=patient_id, study_uid=study_uid, modality=request.modality
+            )
+            series_uids = [series["SeriesInstanceUID"] for series in series_list]
+
             transfer_task = TransferTask.objects.create(
                 content_object=request,
                 job=job,
                 patient_id=patient_id,
-                study_uid=study["StudyInstanceUID"],
+                study_uid=study_uid,
+                series_uids=series_uids,
                 pseudonym=request.pseudonym,
             )
 

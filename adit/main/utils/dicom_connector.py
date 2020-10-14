@@ -570,10 +570,12 @@ class DicomConnector:
         series_description="",
         modality=None,
     ):
-        """Find all series UIDs for a given study UID. The series can be filtered by a
-        modality (or multiple modalities). If no modality is set all series UIDs of the
-        study will be returned."""
+        """Find all series UIDs for a given study UID.
 
+        The series can be filtered by a modality (or a list of modalities for
+        multiple modalities). If no modality is set all series UIDs of the study
+        will be returned.
+        """
         query_dict = {
             "QueryRetrieveLevel": "SERIES",
             "PatientID": patient_id,

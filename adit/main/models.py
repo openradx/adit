@@ -7,7 +7,6 @@ from django.urls import reverse
 from model_utils.managers import InheritanceManager
 from .site import job_type_choices
 from .utils.dicom_connector import DicomConnector
-from .fields import SeparatedValuesField
 
 
 class MainSettings(models.Model):
@@ -185,7 +184,7 @@ class TransferTask(models.Model):
     job = models.ForeignKey(TransferJob, on_delete=models.CASCADE, related_name="tasks")
     patient_id = models.CharField(max_length=64)
     study_uid = models.CharField(max_length=64)
-    series_uids = SeparatedValuesField(null=True, blank=True)
+    series_uids = models.JSONField(null=True, blank=True)
     pseudonym = models.CharField(null=True, blank=True, max_length=64)
     status = models.CharField(
         max_length=2,
