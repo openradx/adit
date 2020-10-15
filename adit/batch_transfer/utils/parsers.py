@@ -116,7 +116,7 @@ class RequestsParser:  # pylint: disable=too-few-public-methods
             errors.insert(0, f"Duplicate RowKey: {ds}")
 
         if len(errors) > 0:
-            error_details = "\n\n".join(errors)
+            error_details = "\n".join(errors)
             raise ParsingError(error_details)
 
         return requests

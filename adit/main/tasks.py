@@ -127,7 +127,7 @@ def _transfer_to_archive(transfer_task: TransferTask):
     archive_name = f"{_create_destination_name(job)}.7z"
     archive_path = archive_folder / archive_name
 
-    if not archive_folder.is_file():
+    if not archive_path.is_file():
         _create_archive(archive_path, archive_password, job.id)
 
     with tempfile.TemporaryDirectory(prefix="adit_") as tmpdir:
@@ -149,19 +149,21 @@ def _download_dicoms(
     connector: DicomConnector, transfer_task: TransferTask, download_folder: Path
 ):
     pseudonym = transfer_task.pseudonym
-    patient_id = transfer_task.patient_id
     if pseudonym:
         patient_folder = download_folder / sanitize_dirname(pseudonym)
     else:
         pseudonym = None
-        patient_folder = download_folder / sanitize_dirname(patient_id)
+        patient_folder = download_folder / sanitize_dirname(transfer_task.patient_id)
 
+    # Check if the Study Instance UID is correct and fetch some parameters to create
+    # the study folder.
     studies = connector.find_studies(
-        patient_id=patient_id, study_uid=transfer_task.study_uid
+        patient_id=transfer_task.patient_id,
+        study_uid=transfer_task.study_uid,
     )
     if len(studies) == 0:
         raise AssertionError(
-            f"No study found with Study Instance UID {transfer_task.study_uid} "
+            f"No study found with StudyInstanceUID {transfer_task.study_uid} "
             f"(Job ID {transfer_task.job.id}, Task ID {transfer_task.id})."
         )
     if len(studies) > 1:
@@ -169,11 +171,34 @@ def _download_dicoms(
             f"Multiple studies found with Study Instance UID {transfer_task.study_uid} "
             f"(Job ID {transfer_task.job.id}, Task ID {transfer_task.id})."
         )
-
     study = studies[0]
     study_date = study["StudyDate"]
     study_time = study["StudyTime"]
-    modalities = ",".join(study["Modalities"])
+    modalities = study["Modalities"]
+
+    # If some series are explicitly chosen then check if their Series Instance UIDs
+    # are correct and only use their modalities for the name of the study folder.
+    if transfer_task.series_uids:
+        modalities = set()
+        series_list = connector.find_series(
+            patient_id=transfer_task.patient_id,
+            study_uid=transfer_task.study_uid,
+        )
+        for series_uid in transfer_task.series_uids:
+            found_series = None
+            for series in series_list:
+                if series["SeriesInstanceUID"] == series_uid:
+                    found_series = series
+
+            if not found_series:
+                raise AssertionError(
+                    f"No series found with SeriesInstanceUID {series_uid} "
+                    f"(Job ID {transfer_task.job.id}, Task ID {transfer_task.id})."
+                )
+
+            modalities.add(found_series["Modality"])
+    modalities = ",".join(modalities)
+
     study_folder = patient_folder / f"{study_date}-{study_time}-{modalities}"
     study_folder.mkdir(parents=True, exist_ok=True)
 
