@@ -69,19 +69,19 @@ class BatchTransferRequest(models.Model):
         TransferTask, related_query_name="batch_transfer_request"
     )
     row_key = models.PositiveIntegerField()
-    patient_id = models.CharField(null=True, blank=True, max_length=64)
-    patient_name = models.CharField(null=True, blank=True, max_length=324)
+    patient_id = models.CharField(blank=True, max_length=64)
+    patient_name = models.CharField(blank=True, max_length=324)
     patient_birth_date = models.DateField(null=True, blank=True)
-    accession_number = models.CharField(null=True, blank=True, max_length=16)
+    accession_number = models.CharField(blank=True, max_length=16)
     study_date = models.DateField(null=True, blank=True)
-    modality = models.CharField(null=True, blank=True, max_length=16)
+    modality = models.CharField(blank=True, max_length=16)
     pseudonym = models.CharField(
-        null=True, blank=True, max_length=64, validators=[validate_pseudonym]
+        blank=True, max_length=64, validators=[validate_pseudonym]
     )
     status = models.CharField(
         max_length=2, choices=Status.choices, default=Status.PENDING
     )
-    message = models.TextField(null=True, blank=True)
+    message = models.TextField(blank=True, default="")
     created = models.DateTimeField(auto_now_add=True)
     start = models.DateTimeField(null=True, blank=True)
     end = models.DateTimeField(null=True, blank=True)
@@ -93,7 +93,7 @@ class BatchTransferRequest(models.Model):
             errors.append(
                 ValidationError(
                     "A patient must be identifiable by either a PatientID "
-                    "or a PatientName and PatientBirthDate."
+                    "or a PatientName combined with a PatientBirthDate."
                 )
             )
 
@@ -101,7 +101,7 @@ class BatchTransferRequest(models.Model):
             errors.append(
                 ValidationError(
                     "A study must be identifiable by either an AccessionNumber "
-                    "or a StudyDate and Modality."
+                    "or a StudyDate combined with a Modality."
                 )
             )
 

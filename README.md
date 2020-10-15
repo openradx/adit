@@ -62,6 +62,11 @@ docker run --rm -i -v=adit_web_data:/foo busybox find /foo # List files in named
 docker-compose -f "docker-compose.dev.yml" -p adit_dev up -d --build
 docker-compose -f "docker-compose.prod.yml" -p adit_prod up -d --build
 
+# Production setup
+- Copy cert.pem and key.pem from N:\Dokumente\Projekte\ADIT_Server\ssl_certificate to /var/www/adit/ssl/
+- Restart apit_prod_web container
+- Add Synapse DICOM server (Uncheck "Patient root get support"!!!)
+
 # Celery commands
 
 - celery -A adit purge -Q default,low

@@ -7,6 +7,7 @@ from django.urls import reverse
 from model_utils.managers import InheritanceManager
 from .site import job_type_choices
 from .utils.dicom_connector import DicomConnector
+from .validators import validate_pseudonym
 
 
 class MainSettings(models.Model):
@@ -125,10 +126,10 @@ class TransferJob(models.Model):
     status = models.CharField(
         max_length=2, choices=Status.choices, default=Status.UNVERIFIED
     )
-    message = models.TextField(blank=True, null=True)
-    trial_protocol_id = models.CharField(null=True, blank=True, max_length=64)
-    trial_protocol_name = models.CharField(null=True, blank=True, max_length=64)
-    archive_password = models.CharField(null=True, blank=True, max_length=50)
+    message = models.TextField(blank=True, default="")
+    trial_protocol_id = models.CharField(blank=True, max_length=64)
+    trial_protocol_name = models.CharField(blank=True, max_length=64)
+    archive_password = models.CharField(blank=True, max_length=50)
     owner = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="transfer_jobs"
     )
@@ -185,14 +186,16 @@ class TransferTask(models.Model):
     patient_id = models.CharField(max_length=64)
     study_uid = models.CharField(max_length=64)
     series_uids = models.JSONField(null=True, blank=True)
-    pseudonym = models.CharField(null=True, blank=True, max_length=64)
+    pseudonym = models.CharField(
+        blank=True, max_length=64, validators=[validate_pseudonym]
+    )
     status = models.CharField(
         max_length=2,
         choices=Status.choices,
         default=Status.PENDING,
     )
-    message = models.TextField(null=True, blank=True)
-    log = models.TextField(null=True, blank=True)
+    message = models.TextField(blank=True, default="")
+    log = models.TextField(blank=True, default="")
     created = models.DateTimeField(auto_now_add=True)
     start = models.DateTimeField(null=True, blank=True)
     end = models.DateTimeField(null=True, blank=True)

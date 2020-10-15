@@ -32,8 +32,7 @@ job_status_keys = [key for key, value in TransferJob.Status.choices]
 def generate_archive_password():
     if fake.boolean(chance_of_getting_true=25):
         return fake.word()
-
-    return None
+    return ""
 
 
 class TransferJobFactory(factory.django.DjangoModelFactory):
@@ -56,7 +55,6 @@ task_status_keys = [key for key, value in TransferTask.Status.choices]
 def generate_uids():
     if fake.boolean(chance_of_getting_true=25):
         return [fake.uuid4() for _ in range(fake.random_int(min=1, max=8))]
-
     return None
 
 

@@ -6,30 +6,30 @@ from ..models import BatchTransferRequest
 
 
 def parse_int(value):
-    if value is not None and value.isdigit():
-        return int(value.strip())
+    value = value.strip()
+    if value.isdigit():
+        return int(value)
     return value
 
 
 def parse_string(value):
-    if value is not None:
-        return value.strip()
-    return value
+    return value.strip()
 
 
 def parse_name(value):
-    if value is not None:
-        return re.sub(r"\s*,\s*", "^", value.strip())
-    return value
+    value = value.strip()
+    return re.sub(r"\s*,\s*", "^", value)
 
 
 def parse_date(value, date_formats):
-    if value is not None:
-        for date_format in date_formats:
-            try:
-                return datetime.strptime(value.strip(), date_format)
-            except ValueError:
-                pass
+    value = value.strip()
+    if value == "":
+        return None
+    for date_format in date_formats:
+        try:
+            return datetime.strptime(value, date_format)
+        except ValueError:
+            pass
     return value
 
 
@@ -79,16 +79,16 @@ class RequestsParser:  # pylint: disable=too-few-public-methods
         reader = csv.DictReader(csv_file, delimiter=self._delimiter)
         for num, data in enumerate(reader):
             request = BatchTransferRequest(
-                row_key=parse_int(data.get("RowKey")),
-                patient_id=parse_string(data.get("PatientID")),
-                patient_name=parse_name(data.get("PatientName")),
+                row_key=parse_int(data.get("RowKey", "")),
+                patient_id=parse_string(data.get("PatientID", "")),
+                patient_name=parse_name(data.get("PatientName", "")),
                 patient_birth_date=parse_date(
-                    data.get("PatientBirthDate"), self._date_formats
+                    data.get("PatientBirthDate", ""), self._date_formats
                 ),
-                accession_number=parse_string(data.get("AccessionNumber")),
-                study_date=parse_date(data.get("StudyDate"), self._date_formats),
-                modality=parse_string(data.get("Modality")),
-                pseudonym=parse_string(data.get("Pseudonym")),
+                accession_number=parse_string(data.get("AccessionNumber", "")),
+                study_date=parse_date(data.get("StudyDate", ""), self._date_formats),
+                modality=parse_string(data.get("Modality", "")),
+                pseudonym=parse_string(data.get("Pseudonym", "")),
             )
 
             try:
