@@ -12,6 +12,13 @@
 <h4>
     Create Continuous Transfer Job
 </h4>
-<p>{% crispy form %}</p>
-<p>{% crispy filters %}</p>
+<form action="{% url 'continuous_transfer_job_create' %}" method="post">
+    {% csrf_token %}
+    {% crispy form %}
+    {% crispy filters helper %}
+    <div class="form-group">
+        <input type="submit" name="save" value="Create Job" class="btn btn-primary" id="submit-id-save">
+    </div>
+    <input type="submit" value="true" name="add_filter" formnovalidate>
+</form>
 {% endblock container %}

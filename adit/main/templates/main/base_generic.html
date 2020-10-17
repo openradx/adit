@@ -19,18 +19,11 @@
 	<link rel="stylesheet" type="text/css" href="{% static 'vendor/bootstrap.css' %}">
 	<link rel="stylesheet" type="text/css" href="{% static 'main/main.css' %}">
 	{% block css %}{% endblock %}
-
-	<script src="{% static 'vendor/jquery.js' %}"></script>
-	<script src="{% static 'vendor/bootstrap.bundle.js' %}"></script>
-	<script type="module" src="{% static 'vendor/alpine.js' %}"></script>
-	<script nomodule src="{% static 'vendor/alpine-ie11.js' %}" defer></script>
-	<script src="{% static 'vendor/clipboard.js' %}"></script>
-	<script src="{% static 'vendor/js.cookie.js' %}"></script>
-	<script src="{% static 'main/main.js' %}"></script>
-	{% block script %}{% endblock %}
 </head>
 
 <body id="{{ request.resolver_match.url_name }}">
+	<script>document.body.className="js";</script>
+	
 	{% include 'main/navbar.html' %}
 
 	<main role="main">
@@ -44,6 +37,15 @@
 	{% include 'main/messages_panel.html' %}
 
 	{% block bottom %}{% endblock %}
+
+	<script src="{% static 'vendor/jquery.js' %}"></script>
+	<script src="{% static 'vendor/bootstrap.bundle.js' %}"></script>
+	<script type="module" src="{% static 'vendor/alpine.js' %}"></script>
+	<script nomodule src="{% static 'vendor/alpine-ie11.js' %}" defer></script>
+	<script src="{% static 'vendor/clipboard.js' %}"></script>
+	<script src="{% static 'vendor/js.cookie.js' %}"></script>
+	<script src="{% static 'main/main.js' %}"></script>
+	{% block script %}{% endblock %}
 </body>
 
 </html>
