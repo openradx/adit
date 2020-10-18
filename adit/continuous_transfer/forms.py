@@ -1,6 +1,5 @@
 from django import forms
 from crispy_forms.helper import FormHelper
-from crispy_forms.layout import Submit
 from .models import ContinuousTransferJob, DataElementFilter
 
 
@@ -13,7 +12,8 @@ class ContinuousTransferJobForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
 
         self.helper = FormHelper(self)
-        self.helper.add_input(Submit("save", "Create Job"))
+        self.helper.form_tag = False
+        self.helper.disable_csrf = True
 
     class Meta:
         model = ContinuousTransferJob
@@ -37,5 +37,14 @@ class DataElementFilterForm(forms.ModelForm):
 
 
 DataElementFilterFormSet = forms.inlineformset_factory(
-    ContinuousTransferJob, DataElementFilter, form=DataElementFilterForm, extra=1
+    ContinuousTransferJob,
+    DataElementFilter,
+    form=DataElementFilterForm,
+    extra=1,
 )
+
+
+class DataElementFilterFormSetHelper(FormHelper):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.template = "continuous_transfer/data_element_filter_formset.html"

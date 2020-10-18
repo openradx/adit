@@ -3,5 +3,6 @@
     "python.formatting.provider": "black",
     "editor.formatOnSave": true,
     "html.format.enable": false,
-    "python.linting.pylintEnabled": true
+    "python.linting.pylintEnabled": true,
+    "prettier.tabWidth": 4
 }
