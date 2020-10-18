@@ -5,6 +5,7 @@ from faker import Faker
 import factory
 
 # pylint: disable=import-error,no-name-in-module
+from adit.accounts.models import User
 from adit.accounts.factories import AdminUserFactory, UserFactory
 from adit.main.factories import (
     DicomServerFactory,
@@ -119,13 +120,19 @@ class Command(BaseCommand):
     help = "Copies vendor files from node_modues folder"
 
     def handle(self, *args, **options):
-        print("Populating development database with test data.")
+        do_populate = True
+        if User.objects.count() > 0:
+            print("Development database already populated. Skipping.")
+            do_populate = False
 
-        users = create_users()
-        servers = create_server_nodes()
-        folders = create_folder_nodes()
+        if do_populate:
+            print("Populating development database with test data.")
 
-        if CREATE_JOBS_FOR_ADMIN_ONLY:
-            users = [users[0]]
+            users = create_users()
+            servers = create_server_nodes()
+            folders = create_folder_nodes()
 
-        create_jobs(users, servers, folders)
+            if CREATE_JOBS_FOR_ADMIN_ONLY:
+                users = [users[0]]
+
+            create_jobs(users, servers, folders)

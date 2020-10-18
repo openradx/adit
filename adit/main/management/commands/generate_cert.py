@@ -17,7 +17,9 @@ def generate_selfsigned_cert(hostname, ip_addresses=None, key=None):
     # Generate our key
     if key is None:
         key = rsa.generate_private_key(
-            public_exponent=65537, key_size=2048, backend=default_backend(),
+            public_exponent=65537,
+            key_size=2048,
+            backend=default_backend(),
         )
 
     name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, hostname)])
@@ -75,12 +77,12 @@ class Command(BaseCommand):
         cert_path = env("SSL_CERT_FILE")
         if Path(cert_path).is_file():
             do_generate = False
-            print(f"Cert file {cert_path} already exists. Generation stopped.")
+            print(f"Cert file {cert_path} already exists. Skipping.")
 
         key_path = env("SSL_KEY_FILE")
         if Path(key_path).is_file():
             do_generate = False
-            print(f"Key file {key_path} already exists. Generation stopped.")
+            print(f"Key file {key_path} already exists. Skipping.")
 
         if do_generate:
             with open(cert_path, "wb") as cert_file:
