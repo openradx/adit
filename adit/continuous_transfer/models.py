@@ -45,3 +45,4 @@ class DataElementFilter(models.Model):
     )
     filter_value = models.CharField(max_length=200)
     case_sensitive = models.BooleanField(default=False)
+    order = models.SmallIntegerField()
