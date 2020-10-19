@@ -163,7 +163,7 @@ def _download_dicoms(
     )
     if len(studies) == 0:
         raise AssertionError(
-            f"No study found with StudyInstanceUID {transfer_task.study_uid} "
+            f"No study found with Study Instance UID {transfer_task.study_uid} "
             f"(Job ID {transfer_task.job.id}, Task ID {transfer_task.id})."
         )
     if len(studies) > 1:
@@ -192,7 +192,7 @@ def _download_dicoms(
 
             if not found_series:
                 raise AssertionError(
-                    f"No series found with SeriesInstanceUID {series_uid} "
+                    f"No series found with Series Instance UID {series_uid} "
                     f"(Job ID {transfer_task.job.id}, Task ID {transfer_task.id})."
                 )
 

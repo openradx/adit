@@ -41,7 +41,7 @@ class DataElementFilter(models.Model):
     )
     dicom_tag = models.CharField(max_length=100)
     filter_type = models.CharField(
-        max_length=2, choices=FilterTypes.choices, default=FilterTypes.CONTAINS
+        max_length=2, choices=FilterTypes.choices, default=FilterTypes.EQUALS
     )
     filter_value = models.CharField(max_length=200)
     case_sensitive = models.BooleanField(default=False)

@@ -92,16 +92,16 @@ class BatchTransferRequest(models.Model):
         if not (self.patient_id or self.patient_name and self.patient_birth_date):
             errors.append(
                 ValidationError(
-                    "A patient must be identifiable by either a PatientID "
-                    "or a PatientName combined with a PatientBirthDate."
+                    "A patient must be identifiable by either a 'Patient ID' "
+                    "or a 'Patient Name' combined with a 'Birth Date'."
                 )
             )
 
         if not (self.accession_number or self.study_date and self.modality):
             errors.append(
                 ValidationError(
-                    "A study must be identifiable by either an AccessionNumber "
-                    "or a StudyDate combined with a Modality."
+                    "A study must be identifiable by either an 'Accession Number' "
+                    "or a 'Study Date' combined with a 'Modality'."
                 )
             )
 
