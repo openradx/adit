@@ -15,6 +15,7 @@ from dataclasses import dataclass
 from pathlib import Path
 import os
 from functools import partial
+import errno
 from celery.utils.log import get_task_logger
 from pydicom.dataset import Dataset
 from pydicom import dcmread, valuerep, uid
@@ -175,7 +176,13 @@ def _handle_store(folder, callback, event):
     if callback:
         callback(ds)
 
-    ds.save_as(filename, write_like_original=False)
+    try:
+        ds.save_as(filename, write_like_original=False)
+    except OSError as err:
+        if err.errno == errno.ENOSPC:  # No space left on device
+            # Out of resources
+            # see https://pydicom.github.io/pynetdicom/stable/service_classes/defined_procedure_service_class.html
+            return 0xA702
 
     # Return a 'Success' status
     return 0x0000
@@ -230,25 +237,25 @@ class DicomConnector:
     def __init__(self, config: Config):
         self.config = config
 
-        if config.debug_logger:
+        if self.config.debug_logger:
             debug_logger()  # Debug mode of pynetdicom
 
         self.default_find_query_model = None
-        if config.patient_root_find_support:
+        if self.config.patient_root_find_support:
             self.default_find_query_model = PatientRootQueryRetrieveInformationModelFind
-        elif config.study_root_find_support:
+        elif self.config.study_root_find_support:
             self.default_find_query_model = StudyRootQueryRetrieveInformationModelFind
 
         self.default_get_query_model = None
-        if config.patient_root_get_support:
+        if self.config.patient_root_get_support:
             self.default_get_query_model = PatientRootQueryRetrieveInformationModelGet
-        elif config.study_root_get_support:
+        elif self.config.study_root_get_support:
             self.default_get_query_model = StudyRootQueryRetrieveInformationModelGet
 
         self.default_move_query_model = None
-        if config.patient_root_move_support:
+        if self.config.patient_root_move_support:
             self.default_move_query_model = PatientRootQueryRetrieveInformationModelMove
-        elif config.study_root_move_support:
+        elif self.config.study_root_move_support:
             self.default_move_query_model = StudyRootQueryRetrieveInformationModelMove
 
         self.assoc = None

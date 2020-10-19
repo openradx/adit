@@ -4,14 +4,16 @@ from pathlib import Path
 from datetime import datetime
 import tempfile
 import subprocess
+import shutil
 from functools import partial
 from celery import shared_task
 from celery.utils.log import get_task_logger
 from dicognito.anonymizer import Anonymizer
 from django.utils import timezone
+from django.conf import settings
 from .utils.dicom_connector import DicomConnector
 from .utils.sanitize import sanitize_dirname
-from .utils.mail import send_job_failed_mail
+from .utils.mail import send_job_failed_mail, send_mail_to_admins
 from .models import DicomNode, TransferJob, TransferTask
 
 logger = get_task_logger(__name__)
@@ -314,3 +316,13 @@ def _create_destination_name(job):
     dt = job.created.strftime("%Y%m%d")
     username = job.owner.username
     return sanitize_dirname(f"adit_job_{job.id}_{dt}_{username}")
+
+
+@shared_task(ignore_result=True)
+def check_disk_space(destination_path):
+    usage = shutil.disk_usage(destination_path)
+    if usage.free < settings.FREE_SPACE_WARNING:
+        send_mail_to_admins(
+            "Warning, low disk space.",
+            f"Low disk space of destination folder: {destination_path}",
+        )

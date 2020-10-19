@@ -6,8 +6,8 @@ from django.conf import settings
 from django.utils import timezone
 from django.contrib.humanize.templatetags.humanize import naturaltime
 from django.template.defaultfilters import pluralize
-from adit.main.models import TransferTask
-from adit.main.tasks import on_job_failed, transfer_dicoms
+from adit.main.models import DicomNode, TransferTask
+from adit.main.tasks import on_job_failed, transfer_dicoms, check_disk_space
 from adit.main.utils.scheduler import Scheduler
 from adit.main.utils.redis_lru import redis_lru
 from adit.main.utils.mail import send_job_finished_mail
@@ -27,6 +27,10 @@ def batch_transfer(job_id):
             f"Invalid batch transfer job status {job.get_status_display()} "
             f"(Job ID {job.id})."
         )
+
+    if job.destination.node_type == DicomNode.NodeType.FOLDER:
+        destination_path = job.destination.dicomfolder.path
+        check_disk_space(destination_path)
 
     transfer_requests = [
         transfer_request.s(request.id) for request in job.requests.all()

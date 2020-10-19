@@ -296,3 +296,8 @@ CONTINUOUS_TRANSFER_UNVERIFIED = True
 # It is also used by the Scheduler to calculate if a batch or
 # continuous transfer should run.
 SERVER_TIME_ZONE = env.str("SERVER_TIME_ZONE", default=None)
+
+# Warn (by sending an Email to the admins) when free disk space of
+# a destination folder is below a defined size (in bytes). When set
+# to None then no warning Email is sent.
+FREE_SPACE_WARNING = 1024 * 1024 * 1024  # 1 GB
