@@ -1,63 +1,63 @@
+from functools import partial
 from pydicom.dataset import Dataset
 from pynetdicom import (
     AE,
     evt,
     build_role,
     debug_logger,
-    QueryRetrievePresentationContexts,
-    StoragePresentationContexts,
 )
 from pynetdicom.sop_class import (
     PatientRootQueryRetrieveInformationModelGet,
-    MRImageStorage,
+    CTImageStorage,
 )
 
 debug_logger()
 
 
-def handle_store(event):
-    data = event.dataset
-    data.file_meta = event.file_meta
-    data.save_as(data.SOPInstanceUID, write_like_original=False)
-    return 0x0000
+def _handle_store(foo, event):
+    print(foo)
+    print(event)
+    print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+    foo["x"] += 1
+    event.assoc.abort()
+
+    return 0xA702
 
 
-handlers = [(evt.EVT_C_STORE, handle_store)]
+ae = AE(ae_title="ADIT1")
 
-ae = AE(ae_title="ADIT")
-
-# Test Case (works)
-# cx = list(QueryRetrievePresentationContexts)
-# nr_pc = len(QueryRetrievePresentationContexts)
-# cx += StoragePresentationContexts[: 128 - nr_pc]
-# ae.requested_contexts = cx
-# negotiation_items = []
-# for context in StoragePresentationContexts[: 128 - nr_pc]:
-#     role = build_role(context.abstract_syntax, scp_role=True)
-#     negotiation_items.append(role)
-
-# Test Case (works)
-ae.requested_contexts = QueryRetrievePresentationContexts
-ae.add_requested_context(MRImageStorage)
-role = build_role(MRImageStorage, scp_role=True, scu_role=True)
+ae.add_requested_context(PatientRootQueryRetrieveInformationModelGet)
+ae.add_requested_context(CTImageStorage)
+role = build_role(CTImageStorage, scp_role=True, scu_role=True)
 
 ds = Dataset()
-ds.QueryRetrieveLevel = "SERIES"
-ds.PatientID = "10005"
-ds.StudyInstanceUID = "1.2.840.113845.11.1000000001951524609.20200705150256.2689458"
-ds.SeriesInstanceUID = "1.3.12.2.1107.5.2.18.41369.2020070515244568288101946.0.0.0"
-# ds.SOPIntanceUID = "1.3.12.2.1107.5.2.18.41369.2020070515244557481001938"
+ds.QueryRetrieveLevel = "STUDY"
+ds.PatientID = "10001"
+ds.StudyInstanceUID = "1.2.840.113845.11.1000000001951524609.20200705182951.2689481"
+# ds.SeriesInstanceUID = "1.3.12.2.1107.5.1.4.66002.30000020070513455668000000609"
 
-assoc = ae.associate("127.0.0.1", 7501, ext_neg=[role], evt_handlers=handlers)
+assoc = ae.associate("127.0.0.1", 7501, ext_neg=[role])
 
 if assoc.is_established:
-    responses = assoc.send_c_get(ds, PatientRootQueryRetrieveInformationModelGet)
+    errors = {"x": 0}
+    handle_store = partial(_handle_store, errors)
+    assoc.bind(evt.EVT_C_STORE, handle_store)
+
+    responses = assoc.send_c_get(
+        ds,
+        PatientRootQueryRetrieveInformationModelGet,
+        msg_id=9999,
+    )
+
     for (status, identifier) in responses:
+        print(status)
         if status:
             print("C-GET query status: 0x{0:04x}".format(status.Status))
         else:
             print("Connection timed out, was aborted or received invalid response")
 
+    assoc.unbind(evt.EVT_C_STORE, _handle_store)
+    print(errors)
     assoc.release()
 else:
     print("Association rejected, aborted or never connected")

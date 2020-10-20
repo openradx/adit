@@ -88,8 +88,7 @@ services:
     image: jodogne/orthanc-plugins:latest
     ports:
       - "6501:6501"
-    expose:
-      - "7501"
+      - "7501:7501"
     volumes:
       - ./compose/orthanc1_config.json:/etc/orthanc/orthanc.json
       - orthanc1_data:/var/lib/orthanc/db
@@ -98,8 +97,7 @@ services:
     image: jodogne/orthanc-plugins:latest
     ports:
       - "6502:6502"
-    expose:
-      - "7502"
+      - "7502:7502"
     volumes:
       - ./compose/orthanc2_config.json:/etc/orthanc/orthanc.json
       - orthanc2_data:/var/lib/orthanc/db
