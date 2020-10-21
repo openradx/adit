@@ -15,6 +15,7 @@ from .utils.dicom_connector import DicomConnector
 from .utils.sanitize import sanitize_dirname
 from .utils.mail import send_job_failed_mail, send_mail_to_admins
 from .models import DicomNode, TransferJob, TransferTask
+from .errors import NoSpaceLeftError
 
 logger = get_task_logger(__name__)
 
@@ -38,8 +39,8 @@ def on_job_failed(*args, **kwargs):
     send_job_failed_mail(job, celery_task_id)
 
 
-@shared_task
-def transfer_dicoms(task_id):
+@shared_task(bind=True)
+def transfer_dicoms(self, task_id):
     task = TransferTask.objects.get(id=task_id)
     job = task.job
 
@@ -90,6 +91,20 @@ def transfer_dicoms(task_id):
         task.status = TransferTask.Status.SUCCESS
         task.message = "Transfer task completed successfully."
 
+    except NoSpaceLeftError as err:
+        logger.exception(
+            "No space left for transfer task (Job ID %d, Task ID %d).",
+            job.id,
+            task.id,
+        )
+        task.status = TransferTask.Status.PENDING
+        task.message = "Out of disk space. Retrying."
+
+        raise self.retry(
+            countdown=60 * 60 * 24,  # retry in one day
+            exc=err,
+        )
+
     except Exception as err:  # pylint: disable=broad-except
         logger.exception(
             "Error during transfer task (Job ID %d, Task ID %d).",
@@ -100,7 +115,10 @@ def transfer_dicoms(task_id):
         task.message = str(err)
     finally:
         handler.flush()
-        task.log = stream.getvalue()
+        if task.log:
+            task.log += "\n" + stream.getvalue()
+        else:
+            task.log = stream.getvalue()
         stream.close()
         logger.parent.removeHandler(handler)
 

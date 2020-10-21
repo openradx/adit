@@ -217,24 +217,20 @@ def _check_can_run_now(celery_task, request):
         settings.SERVER_TIME_ZONE,
     )
     if scheduler.must_be_scheduled():
-        eta = scheduler.next_slot()
         raise celery_task.retry(
-            eta=eta,
+            eta=scheduler.next_slot(),
             exc=Warning(
                 f"Batch transfer request outside of batch time slot "
                 f"(Job ID {request.job.id}, Request ID {request.id}, RowKey {request.row_key})."
-                f"Rescheduling in {naturaltime(eta)}."
             ),
         )
 
     if batch_transfer_settings.suspended:
-        eta = timezone.now() + timedelta(minutes=60)
         raise celery_task.retry(
-            eta=eta,
+            eta=timezone.now() + timedelta(minutes=60),
             exc=Warning(
-                "Batch transfer suspended. Retrying batch transfer request "
-                f"(Job ID {request.job.id}, Request ID {request.id}, RowKey {request.row_key}) "
-                f"in {naturaltime(eta)}."
+                "Batch transfer suspended "
+                f"(Job ID {request.job.id}, Request ID {request.id}, RowKey {request.row_key})."
             ),
         )
 

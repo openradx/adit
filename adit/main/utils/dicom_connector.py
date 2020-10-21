@@ -40,6 +40,7 @@ from pynetdicom.status import (
     STATUS_PENDING,
     STATUS_SUCCESS,
 )
+from ..errors import NoSpaceLeftError
 from ..utils.sanitize import sanitize_dirname
 
 # We must use this logger to intercept the logging messages and
@@ -155,8 +156,12 @@ def _extract_pending_data(results, resource, query_dict):
     return list(data)
 
 
-def _handle_store(folder, callback, event):
+def _handle_store(folder, callback, errors, event):
     """Handle a C-STORE request event."""
+
+    if len(errors) > 0:
+        event.assoc.abort()
+
     ds = event.dataset
     context = event.context
 
@@ -180,6 +185,7 @@ def _handle_store(folder, callback, event):
         ds.save_as(filename, write_like_original=False)
     except OSError as err:
         if err.errno == errno.ENOSPC:  # No space left on device
+            errors.append(NoSpaceLeftError(f"No space left in folder: {folder}"))
             # Out of resources
             # see https://pydicom.github.io/pynetdicom/stable/service_classes/defined_procedure_service_class.html
             return 0xA702
@@ -400,13 +406,17 @@ class DicomConnector:
                 )
             query_model = StudyRootQueryRetrieveInformationModelGet
 
-        handle_store = partial(_handle_store, folder, callback)
+        errors = []
+        handle_store = partial(_handle_store, folder, callback, errors)
         self.assoc.bind(evt.EVT_C_STORE, handle_store)
 
         responses = self.assoc.send_c_get(query_ds, query_model, msg_id)
         results = _fetch_results(responses, "C-GET", query_dict)
 
         self.assoc.unbind(evt.EVT_C_STORE, handle_store)
+
+        if len(errors) > 0:
+            raise errors[-1]
 
         return results
 
