@@ -4,3 +4,12 @@
 - Otherwise dates and times are represented as strings (e.g. 19760831)
 - Same is true for datetime.time (valuerep.DT)
 
+# C-CANCEL support
+- GE simply aborts the association on a C-CANCEL request, but only after some time (maybe 20 seconds or so).
+- So it seems C-CANCEL is not well supported. We better abort the association just ourself and create a new association for further requests.
+
+# Parallel C-MOVE requests to download images
+- This is much more complicated than C-GET as only one C-MOVE storage SCP as destination can be chosen.
+- So the images of multiple C-MOVE SCU requests go to the same destination and must be somehow routed there.
+- The only option seems to use MoveOriginatorMessageID (see https://stackoverflow.com/q/14259852/166229), which unfortunately is option in the DICOM standard.
+
