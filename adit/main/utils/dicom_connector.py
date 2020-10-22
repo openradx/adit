@@ -565,6 +565,7 @@ class DicomConnector:
             "StudyDate": study_date,
             "StudyTime": study_time,
             "StudyDescription": study_description,
+            "NumberOfStudyRelatedInstances": "",
             "ModalitiesInStudy": "",
         }
         results = self.c_find(query_dict)
