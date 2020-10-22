@@ -1,0 +1,2 @@
+class NoStudiesFoundError(Exception):
+    pass

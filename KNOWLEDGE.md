@@ -12,4 +12,4 @@
 - This is much more complicated than C-GET as only one C-MOVE storage SCP as destination can be chosen.
 - So the images of multiple C-MOVE SCU requests go to the same destination and must be somehow routed there.
 - The only option seems to use MoveOriginatorMessageID (see https://stackoverflow.com/q/14259852/166229), which unfortunately is option in the DICOM standard.
-
+- Other systems have the same issue: 'Warning: the PACS station server must support the "Move Originator Message ID" (0000,1031) and "Move Originator Application Entity Title" (0000,1030) when sending CSTORE messages during processing CMOVE operations.', see http://www.onis-viewer.com/PluginInfo.aspx?id=42

@@ -4,7 +4,6 @@ from celery import shared_task, chord
 from celery.utils.log import get_task_logger
 from django.conf import settings
 from django.utils import timezone
-from django.contrib.humanize.templatetags.humanize import naturaltime
 from django.template.defaultfilters import pluralize
 from adit.main.models import DicomNode, TransferTask
 from adit.main.tasks import on_job_failed, transfer_dicoms, check_disk_space
@@ -12,20 +11,21 @@ from adit.main.utils.scheduler import Scheduler
 from adit.main.utils.redis_lru import redis_lru
 from adit.main.utils.mail import send_job_finished_mail
 from .models import BatchTransferSettings, BatchTransferJob, BatchTransferRequest
+from .errors import NoStudiesFoundError
 
 logger = get_task_logger(__name__)
 
 
 @shared_task(ignore_result=True)
 def batch_transfer(job_id):
-    logger.info("Prepare batch transfer job (Job ID %d).", job_id)
+    logger.info("Prepare batch transfer job. [Job ID %d]", job_id)
 
     job = BatchTransferJob.objects.get(id=job_id)
 
     if job.status != BatchTransferJob.Status.PENDING:
         raise AssertionError(
-            f"Invalid batch transfer job status {job.get_status_display()} "
-            f"(Job ID {job.id})."
+            f"Invalid batch transfer job status: {job.get_status_display()} "
+            f"[Job ID {job.id}]"
         )
 
     if job.destination.node_type == DicomNode.NodeType.FOLDER:
@@ -48,7 +48,7 @@ def transfer_request(self, request_id):
     job = request.job
 
     logger.info(
-        "Processing batch transfer request (Job ID %d, Request ID %d, RowKey %d).",
+        "Processing batch transfer request. [Job ID %d, Request ID %d, RowKey %d]",
         job.id,
         request.id,
         request.row_key,
@@ -56,9 +56,9 @@ def transfer_request(self, request_id):
 
     if request.status != BatchTransferRequest.Status.PENDING:
         raise AssertionError(
-            "Invalid batch transfer request processing status "
+            "Invalid batch transfer request processing status: "
             f"{request.get_status_display()} "
-            f"(Job ID {job.id}, Request ID {request.id}, RowKey {request.row_key})."
+            f"[Job ID {job.id}, Request ID {request.id}, RowKey {request.row_key}]"
         )
 
     if job.status == BatchTransferJob.Status.CANCELING:
@@ -97,11 +97,11 @@ def transfer_request(self, request_id):
         study_count = len(studies)
 
         if study_count == 0:
-            raise ValueError("No studies found to transfer.")
+            raise NoStudiesFoundError()
 
         study_str = "stud{}".format(pluralize(study_count, "y, ies"))
         logger.debug(
-            "Found %d %s to transfer (Job ID %d, Request ID %d, RowKey %s).",
+            "Found %d %s to transfer. [Job ID %d, Request ID %d, RowKey %d]",
             study_count,
             study_str,
             job.id,
@@ -143,11 +143,24 @@ def transfer_request(self, request_id):
         request.status = BatchTransferRequest.Status.SUCCESS
         request.message = "All transfers succeeded."
 
+    except NoStudiesFoundError:
+        logger.warning(
+            (
+                "No studies found for batch transfer request. "
+                "[Job ID %d, Request ID %d, RowKey %d]"
+            ),
+            job.id,
+            request.id,
+            request.row_key,
+        )
+        request.status = BatchTransferRequest.Status.WARNING
+        request.message = "No studies found to transfer."
+
     except Exception as err:  # pylint: disable=broad-except
         logger.exception(
             (
-                "Error during transferring batch transfer request "
-                "(Job ID %d, Request ID %d, RowKey %s)."
+                "Error during transferring batch transfer request. "
+                "[Job ID %d, Request ID %d, RowKey %d]"
             ),
             job.id,
             request.id,
@@ -155,6 +168,7 @@ def transfer_request(self, request_id):
         )
         request.status = BatchTransferRequest.Status.FAILURE
         request.message = str(err)
+
     finally:
         request.end = timezone.now()
         request.save()
@@ -164,7 +178,7 @@ def transfer_request(self, request_id):
 
 @shared_task(ignore_result=True)
 def on_job_finished(request_status_list, job_id):
-    logger.info("Batch transfer job finished (Job ID %d).", job_id)
+    logger.info("Batch transfer job finished. [Job ID %d]", job_id)
 
     job = BatchTransferJob.objects.get(id=job_id)
 
@@ -178,28 +192,37 @@ def on_job_finished(request_status_list, job_id):
 
     has_success = False
     has_failure = False
+    has_warning = False
     for status in request_status_list:
         if status == BatchTransferRequest.Status.SUCCESS:
             has_success = True
+        elif status == BatchTransferRequest.Status.WARNING:
+            has_warning = True
         elif status == BatchTransferRequest.Status.FAILURE:
             has_failure = True
         else:
             raise AssertionError(
-                f"Invalid batch transfer request result status {status} (Job ID {job.id})."
+                f"Invalid batch transfer request result status: {status} [Job ID {job.id}]"
             )
 
     if has_success and has_failure:
         job.status = BatchTransferJob.Status.WARNING
         job.message = "Some requests failed."
+    elif has_success and has_warning:
+        job.status = BatchTransferJob.Status.WARNING
+        job.message = "Some requests have warnings."
     elif has_success:
         job.status = BatchTransferJob.Status.SUCCESS
         job.message = "All requests succeeded."
     elif has_failure:
         job.status = BatchTransferJob.Status.FAILURE
         job.message = "All requests failed."
+    elif has_warning:
+        job.status = BatchTransferJob.Status.WARNING
+        job.message = "All requests have warnings."
     else:
         raise AssertionError(
-            f"At least one request must succeed or fail (Job ID {job.id})."
+            f"At least one request must succeed, fail or have a warning. [Job ID {job.id}]"
         )
 
     job.end = timezone.now()
@@ -220,8 +243,8 @@ def _check_can_run_now(celery_task, request):
         raise celery_task.retry(
             eta=scheduler.next_slot(),
             exc=Warning(
-                f"Batch transfer request outside of batch time slot "
-                f"(Job ID {request.job.id}, Request ID {request.id}, RowKey {request.row_key})."
+                f"Batch transfer request outside of batch time slot. "
+                f"[Job ID {request.job.id}, Request ID {request.id}, RowKey {request.row_key}]"
             ),
         )
 
@@ -229,8 +252,8 @@ def _check_can_run_now(celery_task, request):
         raise celery_task.retry(
             eta=timezone.now() + timedelta(minutes=60),
             exc=Warning(
-                "Batch transfer suspended "
-                f"(Job ID {request.job.id}, Request ID {request.id}, RowKey {request.row_key})."
+                "Batch transfer suspended. "
+                f"[Job ID {request.job.id}, Request ID {request.id}, RowKey {request.row_key}]"
             ),
         )
 

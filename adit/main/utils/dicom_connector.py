@@ -192,9 +192,8 @@ def _handle_store(folder, callback, query_model, errors, event):
         ds.save_as(filename, write_like_original=False)
     except OSError as err:
         if err.errno == errno.ENOSPC:  # No space left on device
-            errors.append(
-                NoSpaceLeftError(f"No space left to save DICOM dataset to {filename}.")
-            )
+            logger.exception("No space left to save DICOM dataset to %s.", filename)
+            errors.append(NoSpaceLeftError())
 
             if event.assoc.is_alive():
                 # We try to cancel the C-GET request as the disk space of the folder is full

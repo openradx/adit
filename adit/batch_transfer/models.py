@@ -57,6 +57,7 @@ class BatchTransferRequest(models.Model):
         IN_PROGRESS = "IP", "In Progress"
         CANCELED = "CA", "Canceled"
         SUCCESS = "SU", "Success"
+        WARNING = "WA", "Warning"
         FAILURE = "FA", "Failure"
 
     class Meta:
