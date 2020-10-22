@@ -43,8 +43,8 @@ class DicomNode(models.Model):
         FOLDER = "FO", "Folder"
 
     node_type = models.CharField(max_length=2, choices=NodeType.choices)
-    active = models.BooleanField(default=True)
     name = models.CharField(unique=True, max_length=64)
+    active = models.BooleanField(default=True)
 
     objects = InheritanceManager()
 

@@ -20,6 +20,16 @@ from .errors import NoSpaceLeftError
 logger = get_task_logger(__name__)
 
 
+@shared_task(ignore_result=True)
+def check_disk_space(destination_path):
+    usage = shutil.disk_usage(destination_path)
+    if usage.free < settings.FREE_SPACE_WARNING:
+        send_mail_to_admins(
+            "Warning, low disk space.",
+            f"Low disk space of destination folder: {destination_path}",
+        )
+
+
 # The Celery documentation is wrong about the provided parameters and when
 # the callback is called. This function definition seems to work however.
 # See https://github.com/celery/celery/issues/3709
@@ -39,8 +49,8 @@ def on_job_failed(*args, **kwargs):
     send_job_failed_mail(job, celery_task_id)
 
 
-@shared_task(bind=True)
-def transfer_dicoms(self, task_id):
+@shared_task
+def transfer_dicoms(task_id):
     task = TransferTask.objects.get(id=task_id)
     job = task.job
 
@@ -62,14 +72,7 @@ def transfer_dicoms(self, task_id):
         job.destination.name,
     )
 
-    # Intercept all logger messages and save them later to the task.
-    # This only works when the logger is fetched by Celery get_task_logger.
-    stream = io.StringIO()
-    handler = logging.StreamHandler(stream)
-    handler.setLevel(logging.INFO)
-    formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
-    handler.setFormatter(formatter)
-    logger.parent.addHandler(handler)
+    handler, stream = _setup_logger()
 
     try:
         if not job.source.active:
@@ -92,40 +95,50 @@ def transfer_dicoms(self, task_id):
         task.message = "Transfer task completed successfully."
 
     except NoSpaceLeftError as err:
-        logger.exception(
-            "No space left for transfer task (Job ID %d, Task ID %d).",
-            job.id,
-            task.id,
-        )
-        task.status = TransferTask.Status.PENDING
-        task.message = "Out of disk space. Retrying."
-
-        raise self.retry(
-            countdown=60 * 60 * 24,  # retry in one day
-            exc=err,
-        )
+        logger.error("%s (Job ID %d, Task ID %d)", str(err), job.id, task.id)
+        task.status = TransferTask.Status.FAILURE
+        task.message = f"Out of disk space on destination {job.destination.name}."
 
     except Exception as err:  # pylint: disable=broad-except
         logger.exception(
-            "Error during transfer task (Job ID %d, Task ID %d).",
+            "Unexpected error during transfer task (Job ID %d, Task ID %d).",
             job.id,
             task.id,
         )
         task.status = TransferTask.Status.FAILURE
         task.message = str(err)
     finally:
-        handler.flush()
-        if task.log:
-            task.log += "\n" + stream.getvalue()
-        else:
-            task.log = stream.getvalue()
-        stream.close()
-        logger.parent.removeHandler(handler)
+        _save_log_to_task(handler, stream, task)
 
         task.end = timezone.now()
         task.save()
 
     return task.status
+
+
+def _setup_logger():
+    """Intercept all logger messages to save them later to the task.
+
+    This only works when the logger is fetched by Celery get_task_logger.
+    """
+    stream = io.StringIO()
+    handler = logging.StreamHandler(stream)
+    handler.setLevel(logging.INFO)
+    formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
+    handler.setFormatter(formatter)
+    logger.parent.addHandler(handler)
+
+    return handler, stream
+
+
+def _save_log_to_task(handler, stream, task):
+    handler.flush()
+    if task.log:
+        task.log += "\n" + stream.getvalue()
+    else:
+        task.log = stream.getvalue()
+    stream.close()
+    logger.parent.removeHandler(handler)
 
 
 def _transfer_to_server(transfer_task: TransferTask):
@@ -334,13 +347,3 @@ def _create_destination_name(job):
     dt = job.created.strftime("%Y%m%d")
     username = job.owner.username
     return sanitize_dirname(f"adit_job_{job.id}_{dt}_{username}")
-
-
-@shared_task(ignore_result=True)
-def check_disk_space(destination_path):
-    usage = shutil.disk_usage(destination_path)
-    if usage.free < settings.FREE_SPACE_WARNING:
-        send_mail_to_admins(
-            "Warning, low disk space.",
-            f"Low disk space of destination folder: {destination_path}",
-        )

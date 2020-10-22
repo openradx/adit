@@ -156,11 +156,18 @@ def _extract_pending_data(results, resource, query_dict):
     return list(data)
 
 
-def _handle_store(folder, callback, errors, event):
+def _handle_store(folder, callback, query_model, errors, event):
     """Handle a C-STORE request event."""
 
+    # Unfortunately not all PACS servers support or respect the cancel request.
+    # For those that don't we just abort the association when those send a store
+    # request again.
+    # See https://github.com/pydicom/pynetdicom/issues/553
+    # and https://groups.google.com/g/orthanc-users/c/tS826iEzHb0
     if len(errors) > 0:
+        logger.warning("Aborting association as cancel request was not respected.")
         event.assoc.abort()
+        return 0xFE00
 
     ds = event.dataset
     context = event.context
@@ -185,7 +192,21 @@ def _handle_store(folder, callback, errors, event):
         ds.save_as(filename, write_like_original=False)
     except OSError as err:
         if err.errno == errno.ENOSPC:  # No space left on device
-            errors.append(NoSpaceLeftError(f"No space left in folder: {folder}"))
+            errors.append(
+                NoSpaceLeftError(f"No space left to save DICOM dataset to {filename}.")
+            )
+
+            if event.assoc.is_alive():
+                # We try to cancel the C-GET request as the disk space of the folder is full
+                # and we don't want to handle further store requests.
+                cxs = [
+                    cx
+                    for cx in event.assoc.accepted_contexts
+                    if cx.abstract_syntax == query_model
+                ]
+                cx_id = cxs[0].context_id
+                event.assoc.send_c_cancel(1, cx_id)
+
             # Out of resources
             # see https://pydicom.github.io/pynetdicom/stable/service_classes/defined_procedure_service_class.html
             return 0xA702
@@ -406,17 +427,25 @@ class DicomConnector:
                 )
             query_model = StudyRootQueryRetrieveInformationModelGet
 
-        errors = []
-        handle_store = partial(_handle_store, folder, callback, errors)
+        store_errors = []
+        handle_store = partial(
+            _handle_store, folder, callback, query_model, store_errors
+        )
         self.assoc.bind(evt.EVT_C_STORE, handle_store)
 
-        responses = self.assoc.send_c_get(query_ds, query_model, msg_id)
-        results = _fetch_results(responses, "C-GET", query_dict)
+        try:
+            responses = self.assoc.send_c_get(query_ds, query_model, msg_id)
+            results = _fetch_results(responses, "C-GET", query_dict)
+        except ConnectionError as err:
+            # Check if the connection error was triggered by our own store handler
+            # due to aborting the assocation.
+            if store_errors:
+                raise store_errors[0] from err
 
-        self.assoc.unbind(evt.EVT_C_STORE, handle_store)
-
-        if len(errors) > 0:
-            raise errors[-1]
+            # If not just raise the original error.
+            raise err
+        finally:
+            self.assoc.unbind(evt.EVT_C_STORE, handle_store)
 
         return results
 
