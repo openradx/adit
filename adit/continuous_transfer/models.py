@@ -21,7 +21,7 @@ class ContinuousTransferJob(TransferJob):
             continuous_transfer,
         )
 
-        continuous_transfer(self.id)
+        continuous_transfer.delay(self.id)
 
     def get_absolute_url(self):
         return reverse("continuous_transfer_job_detail", args=[str(self.id)])

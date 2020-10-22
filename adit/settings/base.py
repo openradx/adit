@@ -263,7 +263,10 @@ if USE_TZ:
 CELERY_BROKER_URL = env.str("RABBITMQ_URL", default="amqp://localhost")
 CELERY_RESULT_BACKEND = REDIS_URL
 CELERY_TASK_DEFAULT_QUEUE = "default"
-CELERY_TASK_ROUTES = {"adit.batch_transfer.tasks.transfer_request": {"queue": "low"}}
+CELERY_TASK_ROUTES = {
+    "adit.batch_transfer.tasks.transfer_request": {"queue": "batch_transfer"},
+    "adit.continuous_transfer.tasks.transfer_task": {"queue": "continuous_transfer"},
+}
 CELERY_WORKER_HIJACK_ROOT_LOGGER = False
 
 # Flower is integrated in ADIT by using an reverse proxy (django-revproxy).

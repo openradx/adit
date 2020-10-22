@@ -13,7 +13,7 @@ class SelectiveTransferJob(TransferJob):
     def delay(self):
         from .tasks import selective_transfer  # pylint: disable=import-outside-toplevel
 
-        selective_transfer(self.id)
+        selective_transfer.delay(self.id)
 
     def get_absolute_url(self):
         return reverse("selective_transfer_job_detail", args=[str(self.id)])

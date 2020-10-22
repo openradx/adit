@@ -46,9 +46,13 @@ services:
     <<: *default-app
     command: bash -c "celery -A adit worker -Q default -l INFO -c 1 -n worker_default_$$(hostname)"
 
-  worker_low:
+  worker_batch_transfer:
     <<: *default-app
-    command: bash -c "celery -A adit worker -Q low -l INFO -c 1 -n worker_low_$$(hostname)"
+    command: bash -c "celery -A adit worker -Q batch_transfer -l INFO -c 1 -n worker_batch_transfer_$$(hostname)"
+
+  worker_continuous_transfer:
+    <<: *default-app
+    command: bash -c "celery -A adit worker -Q continuous_transfer -l INFO -c 1 -n worker_continuous_transfer_$$(hostname)"
 
   postgres:
     restart: always
