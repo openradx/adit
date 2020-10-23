@@ -477,6 +477,16 @@ class DicomConnector:
         results = self.c_find(query_dict)
         patients = _extract_pending_data(results, "patients", query_dict)
 
+        # Some PACS servers (like our Synapse) do simply ignore the PatientBirthDate
+        # filter, so we have to filter programmatically.
+        # TODO allow range filter (but not needed at the moment)
+        if patient_birth_date:
+            return [
+                patient
+                for patient in patients
+                if patient["PatientBirthDate"] == patient_birth_date
+            ]
+
         return patients
 
     @_connect_to_server
