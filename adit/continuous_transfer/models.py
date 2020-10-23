@@ -36,6 +36,9 @@ class DataElementFilter(models.Model):
         REGEX = "RE", "regex"
         REGEX_NOT = "RN", "regex not"
 
+    class Meta:
+        ordering = ("order",)
+
     job = models.ForeignKey(
         ContinuousTransferJob, on_delete=models.CASCADE, related_name="filters"
     )

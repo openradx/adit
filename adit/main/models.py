@@ -42,6 +42,9 @@ class DicomNode(models.Model):
         SERVER = "SV", "Server"
         FOLDER = "FO", "Folder"
 
+    class Meta:
+        ordering = ("name",)
+
     node_type = models.CharField(max_length=2, choices=NodeType.choices)
     name = models.CharField(unique=True, max_length=64)
     active = models.BooleanField(default=True)
@@ -175,6 +178,9 @@ class TransferTask(models.Model):
         CANCELED = "CA", "Canceled"
         SUCCESS = "SU", "Success"
         FAILURE = "FA", "Failure"
+
+    class Meta:
+        ordering = ("id",)
 
     # The generic relation is optional and may be used to organize
     # the transfers in an additional way
