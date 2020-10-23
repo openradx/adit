@@ -131,10 +131,12 @@ class SelectiveTransferConsumer(AsyncJsonWebsocketConsumer):
     async def receive_json(self, msg):  # pylint: disable=arguments-differ
         action = msg.get("action")
         if action == "query_studies":
-            self.cancel_query()  # cancel a previous still running query
+            if self.connector and self.connector.assoc:
+                self.connector.assoc.abort()
             await self.query_studies(msg["queryId"], msg["query"])
         elif action == "cancel_query":
-            self.cancel_query()
+            if self.connector and self.connector.assoc:
+                self.connector.assoc.abort()
 
     async def query_studies(self, query_id, query):
         try:
@@ -152,7 +154,3 @@ class SelectiveTransferConsumer(AsyncJsonWebsocketConsumer):
             )
         except ValueError as err:
             await self.send_json({"status": "error", "message": str(err)})
-
-    def cancel_query(self):
-        if self.connector and self.connector.is_connected():
-            self.connector.c_cancel()

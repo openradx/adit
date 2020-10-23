@@ -156,18 +156,8 @@ def _extract_pending_data(results, resource, query_dict):
     return list(data)
 
 
-def _handle_store(folder, callback, query_model, errors, event):
+def _handle_store(folder, callback, errors, event):
     """Handle a C-STORE request event."""
-
-    # Unfortunately not all PACS servers support or respect the cancel request.
-    # For those that don't we just abort the association when those send a store
-    # request again.
-    # See https://github.com/pydicom/pynetdicom/issues/553
-    # and https://groups.google.com/g/orthanc-users/c/tS826iEzHb0
-    if len(errors) > 0:
-        logger.warning("Aborting association as cancel request was not respected.")
-        event.assoc.abort()
-        return 0xFE00
 
     ds = event.dataset
     context = event.context
@@ -192,19 +182,17 @@ def _handle_store(folder, callback, query_model, errors, event):
         ds.save_as(filename, write_like_original=False)
     except OSError as err:
         if err.errno == errno.ENOSPC:  # No space left on device
-            logger.exception("No space left to save DICOM dataset to %s.", filename)
+            logger.exception(
+                "No space left to save DICOM dataset to %s. Aborting association.",
+                filename,
+            )
             errors.append(NoSpaceLeftError())
 
-            if event.assoc.is_alive():
-                # We try to cancel the C-GET request as the disk space of the folder is full
-                # and we don't want to handle further store requests.
-                cxs = [
-                    cx
-                    for cx in event.assoc.accepted_contexts
-                    if cx.abstract_syntax == query_model
-                ]
-                cx_id = cxs[0].context_id
-                event.assoc.send_c_cancel(1, cx_id)
+            # Unfortunately not all PACS servers support or respect a C-CANCEL request,
+            # so we just abort the association.
+            # See https://github.com/pydicom/pynetdicom/issues/553
+            # and https://groups.google.com/g/orthanc-users/c/tS826iEzHb0
+            event.assoc.abort()
 
             # Out of resources
             # see https://pydicom.github.io/pynetdicom/stable/service_classes/defined_procedure_service_class.html
@@ -285,7 +273,6 @@ class DicomConnector:
             self.default_move_query_model = StudyRootQueryRetrieveInformationModelMove
 
         self.assoc = None
-        self.msg_id = 1
 
     def _associate(self):
         ae = AE(ae_title=self.config.client_ae_title)
@@ -339,7 +326,7 @@ class DicomConnector:
 
     def close_connection(self):
         if not self.assoc:
-            raise AssertionError("No connection to close was opened.")
+            raise AssertionError("No association to release.")
 
         logger.debug(
             "Closing connection to DICOM server %s.", self.config.server_ae_title
@@ -351,45 +338,9 @@ class DicomConnector:
     def is_connected(self):
         return self.assoc and self.assoc.is_alive()
 
-    # TODO move to async connector and remove here
-    def c_cancel(self, msg_id=None, abstract_syntax=None):
-        """Cancels a DICOM operation.
-
-        If no message ID or abstract syntax is provided then a C-FIND operation
-        with the default message ID will be tried to cancel.
-        """
-        if msg_id is None:
-            msg_id = self.msg_id
-        if abstract_syntax is None:
-            abstract_syntax = self.default_find_query_model
-
-        logger.debug(
-            "Sending C-CANCEL for Message ID %d and abstract syntax %s.",
-            msg_id,
-            abstract_syntax,
-        )
-
-        if not self.is_connected():
-            raise AssertionError("No connection alive to send C-CANCEL.")
-
-        context_id = None
-        for accepted_context in self.assoc.accepted_contexts:
-            if accepted_context.abstract_syntax == abstract_syntax:
-                context_id = accepted_context.context_id
-
-        if context_id is None:
-            raise AssertionError(
-                "No presentation context ID could be found for C-CANCEL."
-            )
-
-        self.assoc.send_c_cancel(msg_id, context_id)
-
     @_connect_to_server
-    def c_find(self, query_dict, msg_id=None):
+    def c_find(self, query_dict, msg_id=1):
         logger.debug("Sending C-FIND with query: %s", query_dict)
-
-        if msg_id is None:
-            msg_id = self.msg_id
 
         query_ds = _make_query_dataset(query_dict)
 
@@ -406,11 +357,8 @@ class DicomConnector:
         return _fetch_results(responses, "C-FIND", query_dict)
 
     @_connect_to_server
-    def c_get(self, query_dict, folder=None, callback=None, msg_id=None):
+    def c_get(self, query_dict, folder=None, callback=None, msg_id=1):
         logger.debug("Sending C-GET with query: %s", query_dict)
-
-        if msg_id is None:
-            msg_id = self.msg_id
 
         if folder:
             Path(folder).mkdir(parents=True, exist_ok=True)
@@ -427,9 +375,7 @@ class DicomConnector:
             query_model = StudyRootQueryRetrieveInformationModelGet
 
         store_errors = []
-        handle_store = partial(
-            _handle_store, folder, callback, query_model, store_errors
-        )
+        handle_store = partial(_handle_store, folder, callback, store_errors)
         self.assoc.bind(evt.EVT_C_STORE, handle_store)
 
         try:
@@ -449,11 +395,8 @@ class DicomConnector:
         return results
 
     @_connect_to_server
-    def c_move(self, query_dict, destination_ae_title, msg_id=None):
+    def c_move(self, query_dict, destination_ae_title, msg_id=1):
         logger.debug("Sending C-MOVE with query: %s", query_dict)
-
-        if msg_id is None:
-            msg_id = self.msg_id
 
         query_ds = _make_query_dataset(query_dict)
 
@@ -472,11 +415,8 @@ class DicomConnector:
         return _fetch_results(responses, "C-MOVE", query_dict)
 
     @_connect_to_server
-    def c_store(self, folder: Path, callback=None, msg_id=None):
+    def c_store(self, folder: Path, callback=None, msg_id=1):
         logger.debug("Sending C-STORE of folder: %s", folder.as_posix())
-
-        if msg_id is None:
-            msg_id = self.msg_id
 
         results = []
         for root, _, files in os.walk(folder):
