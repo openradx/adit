@@ -100,6 +100,8 @@ class DicomFolder(DicomNode):
     NODE_TYPE = DicomNode.NodeType.FOLDER
 
     path = models.CharField(max_length=256)
+    quota = models.PositiveIntegerField(null=True, blank=True)
+    warn_size = models.PositiveIntegerField(null=True, blank=True)
 
 
 class TransferJob(models.Model):

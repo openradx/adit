@@ -54,6 +54,10 @@ services:
       <<: *default-app
       command: bash -c "celery -A adit worker -Q continuous_transfer -l INFO -c 1 -n worker_continuous_transfer_$$(hostname)"
 
+  celery_beat:
+    <<: *default-app
+    command: bash -c "celery -A adit beat -l INFO"
+
   postgres:
     image: postgres:latest
     expose:

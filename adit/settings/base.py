@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/3.0/ref/settings/
 
 from pathlib import Path
 import environ
+from celery.schedules import crontab
 
 env = environ.Env()
 
@@ -262,12 +263,18 @@ if USE_TZ:
     CELERY_TIMEZONE = TIME_ZONE
 CELERY_BROKER_URL = env.str("RABBITMQ_URL", default="amqp://localhost")
 CELERY_RESULT_BACKEND = REDIS_URL
+CELERY_WORKER_HIJACK_ROOT_LOGGER = False
 CELERY_TASK_DEFAULT_QUEUE = "default"
 CELERY_TASK_ROUTES = {
     "adit.batch_transfer.tasks.transfer_request": {"queue": "batch_transfer"},
     "adit.continuous_transfer.tasks.transfer_task": {"queue": "continuous_transfer"},
 }
-CELERY_WORKER_HIJACK_ROOT_LOGGER = False
+CELERY_BEAT_SCHEDULE = {
+    "check-disk-space": {
+        "task": "adit.main.tasks.check_disk_space",
+        "schedule": crontab(minute=0, hour=7),  # execute daily at 7 o'clock UTC
+    }
+}
 
 # Flower is integrated in ADIT by using an reverse proxy (django-revproxy).
 # This allows to use the authentication of ADIT.
@@ -299,8 +306,3 @@ CONTINUOUS_TRANSFER_UNVERIFIED = True
 # It is also used by the Scheduler to calculate if a batch or
 # continuous transfer should run.
 SERVER_TIME_ZONE = env.str("SERVER_TIME_ZONE", default=None)
-
-# Warn (by sending an Email to the admins) when free disk space of
-# a destination folder is below a defined size (in bytes). When set
-# to None then no warning Email is sent.
-FREE_SPACE_WARNING = 1024 * 1024 * 1024  # 1 GB
