@@ -2,9 +2,11 @@ from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMix
 from django.views.generic.edit import CreateView
 from django.views.generic import TemplateView, DetailView
 from django.conf import settings
+from django_tables2 import SingleTableMixin
 from adit.main.mixins import OwnerRequiredMixin
 from .models import BatchTransferSettings, BatchTransferJob
 from .forms import BatchTransferJobForm
+from .tables import BatchTransferRequestTable
 
 
 class BatchTransferJobCreateView(
@@ -44,8 +46,15 @@ class BatchTransferJobCreateView(
         return super().dispatch(request, *args, **kwargs)
 
 
-class BatchTransferJobDetailView(LoginRequiredMixin, OwnerRequiredMixin, DetailView):
+class BatchTransferJobDetailView(
+    LoginRequiredMixin, OwnerRequiredMixin, SingleTableMixin, DetailView
+):
+    owner_accessor = "owner"
+    table_class = BatchTransferRequestTable
     model = BatchTransferJob
     context_object_name = "job"
     template_name = "batch_transfer/batch_transfer_job_detail.html"
-    owner_accessor = "owner"
+
+    def get_table_data(self):
+        job = self.get_object()
+        return job.requests
