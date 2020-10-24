@@ -7,6 +7,7 @@ from adit.main.mixins import OwnerRequiredMixin
 from .models import BatchTransferSettings, BatchTransferJob
 from .forms import BatchTransferJobForm
 from .tables import BatchTransferRequestTable
+from .filters import BatchTransferRequestFilter
 
 
 class BatchTransferJobCreateView(
@@ -57,4 +58,16 @@ class BatchTransferJobDetailView(
 
     def get_table_data(self):
         job = self.get_object()
-        return job.requests
+        self.filterset = BatchTransferRequestFilter(  # pylint: disable=attribute-defined-outside-init
+            data=self.request.GET or None, request=self.request, queryset=job.requests
+        )
+        self.object_list = (  # pylint: disable=attribute-defined-outside-init
+            self.filterset.qs
+        )
+        return self.object_list
+
+    def get_context_data(self, **kwargs):
+        data = super().get_context_data(**kwargs)
+        data["filter"] = self.filterset
+        data["object_list"] = self.object_list
+        return data
