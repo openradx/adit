@@ -37,6 +37,7 @@ def _query_studies_sync(connector: DicomConnector, query: dict):
         accession_number=query["accession_number"],
         study_date=query["study_date"],
         modality=query["modality"],
+        limit_results=50,
     )
     return sorted(studies, key=itemgetter("StudyDate"), reverse=True)
 

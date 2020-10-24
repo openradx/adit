@@ -113,9 +113,12 @@ def _dictify_dataset(ds):
     return output
 
 
-def _fetch_results(responses, operation, query_dict):
+def _fetch_results(responses, operation, query_dict, limit_results=None):
     results = []
     for (status, identifier) in responses:
+        if limit_results is not None and len(results) >= limit_results:
+            break
+
         if status:
             data = {}
             if identifier:
@@ -339,7 +342,7 @@ class DicomConnector:
         return self.assoc and self.assoc.is_alive()
 
     @_connect_to_server
-    def c_find(self, query_dict, msg_id=1):
+    def c_find(self, query_dict, msg_id=1, limit_results=None):
         logger.debug("Sending C-FIND with query: %s", query_dict)
 
         query_ds = _make_query_dataset(query_dict)
@@ -354,7 +357,7 @@ class DicomConnector:
             query_model = StudyRootQueryRetrieveInformationModelFind
 
         responses = self.assoc.send_c_find(query_ds, query_model, msg_id)
-        return _fetch_results(responses, "C-FIND", query_dict)
+        return _fetch_results(responses, "C-FIND", query_dict, limit_results)
 
     @_connect_to_server
     def c_get(self, query_dict, folder=None, callback=None, msg_id=1):
@@ -501,6 +504,7 @@ class DicomConnector:
         study_time="",
         study_description="",
         modality=None,
+        limit_results=None,
     ):
         """Find all studies for a given patient and filter optionally by
         study date and/or modality."""
@@ -518,7 +522,7 @@ class DicomConnector:
             "NumberOfStudyRelatedInstances": "",
             "ModalitiesInStudy": "",
         }
-        results = self.c_find(query_dict)
+        results = self.c_find(query_dict, limit_results=limit_results)
         studies = _extract_pending_data(results, "studies", query_dict)
 
         filtered_studies = []
