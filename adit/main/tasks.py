@@ -27,10 +27,13 @@ def check_disk_space():
             .split()[0]
             .decode("utf-8")
         )
-        if size > folder.warn_size:
+        if folder.warn_size is not None and size > folder.warn_size:
+            quota = "?"
+            if folder.quota is not None:
+                quota = folder.quota
             msg = (
                 f"Low disk space of destination folder: {folder.name}\n"
-                f"{size} MB of {folder.quota} MB used."
+                f"{size} MB of {quota} MB used."
             )
             logger.warning(msg)
             send_mail_to_admins("Warning, low disk space!", msg)

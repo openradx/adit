@@ -103,8 +103,16 @@ class DicomFolder(DicomNode):
     NODE_TYPE = DicomNode.NodeType.FOLDER
 
     path = models.CharField(max_length=256)
-    quota = models.PositiveIntegerField(null=True, blank=True)
-    warn_size = models.PositiveIntegerField(null=True, blank=True)
+    quota = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        help_text="The disk quota of this folder in MB.",
+    )
+    warn_size = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        help_text="When to warn the admins by Email (used space in MB).",
+    )
 
 
 class TransferJob(models.Model):
