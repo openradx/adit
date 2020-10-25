@@ -45,18 +45,19 @@
 </dl>
 
 {% load crispy_forms_tags %}
-<div class="row justify-content-end mb-2">
+<div class="row justify-content-end mb-1">
     <div class="col-md">
         <h5 text-nowrap>
             Requests
             <a 
                 href="javascript:void(null);"
                 id="copy-table-link"
+                class="badge badge-light"
                 data-clipboard-target="#requests-table"
                 data-toggle="tooltip"
                 data-placement="top"
                 title="Copy table to clipboard"
-            >   
+            >
                 {% include "batch_transfer/_clipboard_icon.html" %}
             </a>
         </h5>
