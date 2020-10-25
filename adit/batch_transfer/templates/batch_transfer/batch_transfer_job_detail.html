@@ -59,7 +59,9 @@
 </h5>
 
 {% load crispy_forms_tags %}
-{% crispy filter.form filter.form.helper %}
+{% crispy filter.form %}
+
+{% crispy page_size %}
 
 {% if table.data %}
     {% render_table table %}
