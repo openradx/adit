@@ -4,5 +4,9 @@
     "editor.formatOnSave": true,
     "html.format.enable": false,
     "python.linting.pylintEnabled": true,
-    "prettier.tabWidth": 4
+    "prettier.tabWidth": 4,
+    "prettier.disableLanguages": [
+        "html",
+        "django-html"
+    ]
 }
