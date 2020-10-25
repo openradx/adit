@@ -22,8 +22,8 @@
         <tr>
             <td>{{ task.id }}</td>
             <td>{{ task.get_status_display }}</td>
-            <td>{{ task.message|default:"-" }}</td>
-            <td>{{ task.end|date:"SHORT_DATETIME_FORMAT"|default:"-" }}</td>
+            <td>{{ task.message|default:"—" }}</td>
+            <td>{{ task.end|date:"SHORT_DATETIME_FORMAT"|default:"—" }}</td>
         </tr>
     {% endfor %}
     </tbody>

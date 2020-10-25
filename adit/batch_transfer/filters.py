@@ -1,4 +1,5 @@
 import django_filters
+from adit.main.forms import FilterFormHelper
 from .models import BatchTransferRequest
 
 
@@ -9,4 +10,5 @@ class BatchTransferRequestFilter(django_filters.FilterSet):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.filters["status"].label = "Filter by Status"
+        self.filters["status"].label = "Filter by status"
+        self.form.helper = FilterFormHelper(self.request.GET, "status")

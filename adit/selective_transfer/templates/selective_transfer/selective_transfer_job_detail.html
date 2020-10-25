@@ -23,10 +23,10 @@
     {% endif %}
 
     <dt class="col-sm-3">Trial Protocol ID</dt>
-    <dd class="col-sm-9">{{ job.trial_protocol_id|default:"-" }}</dd>
+    <dd class="col-sm-9">{{ job.trial_protocol_id|default:"—" }}</dd>
 
     <dt class="col-sm-3">Trial Protocol Name</dt>
-    <dd class="col-sm-9">{{ job.trial_protocol_name|default:"-" }}</dd>
+    <dd class="col-sm-9">{{ job.trial_protocol_name|default:"—" }}</dd>
 
     <dt class="col-sm-3">Total Transfer Tasks</dt>
     <dd class="col-sm-9">{{ job.tasks.count }}</dd>
@@ -38,7 +38,7 @@
     <dd class="col-sm-9">{{ job.get_status_display }}</dd>
 
     <dt class="col-sm-3">Message</dt>
-    <dd class="col-sm-9">{{ job.message|default:"-" }}</dd>
+    <dd class="col-sm-9">{{ job.message|default:"—" }}</dd>
 </dl>
 
 {% include 'selective_transfer/transfer_tasks_table.html' %}

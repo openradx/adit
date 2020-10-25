@@ -1,5 +1,6 @@
 $(function () {
     new ClipboardJS(".clipboard");
+    $('[data-toggle="tooltip"]').tooltip();
 });
 
 // From https://stackoverflow.com/a/2117523/166229

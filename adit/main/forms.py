@@ -4,7 +4,7 @@ from crispy_forms.layout import Layout, Submit, Field, Div, Hidden
 from crispy_forms.bootstrap import FieldWithButtons
 
 
-class PageSizeForm(forms.Form):
+class PageSizeSelectForm(forms.Form):
     per_page = forms.ChoiceField(required=False, label="Items per page")
 
     def __init__(self, data, pages_sizes, *args, **kwargs):
@@ -29,7 +29,7 @@ class PageSizeForm(forms.Form):
             query_fields,
             FieldWithButtons(
                 Field("per_page", css_class="custom-select custom-select-sm"),
-                Submit("", "Set", css_class="btn-sm"),
+                Submit("", "Set", css_class="btn-secondary btn-sm"),
                 css_class="input-group-sm",
             ),
         )
@@ -53,7 +53,7 @@ class FilterFormHelper(FormHelper):
         self.layout = Layout(
             FieldWithButtons(
                 Field(field_name, css_class="custom-select custom-select-sm"),
-                Submit("", "Set", css_class="btn-sm"),
+                Submit("", "Set", css_class="btn-secondary btn-sm"),
                 css_class="input-group-sm",
             ),
             query_fields,
