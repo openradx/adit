@@ -21,6 +21,7 @@ ADIT (Automated DICOM Transfer) is a swiss army knife to exchange DICOM data bet
 # TODO
 
 -   row_key -> row
+-   patient_birth_date -> birth_date
 -   Exclude SR
 -   Check why archive feature does not work correctly
 -   Think about moving all those dicts to dataclasses when passing around data
