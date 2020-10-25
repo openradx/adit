@@ -4,6 +4,7 @@ from django.views.generic import TemplateView, DetailView
 from django.conf import settings
 from django_tables2 import SingleTableMixin
 from adit.main.mixins import OwnerRequiredMixin
+from adit.main.forms import FilterFormHelper
 from .models import BatchTransferSettings, BatchTransferJob
 from .forms import BatchTransferJobForm
 from .tables import BatchTransferRequestTable
@@ -58,16 +59,24 @@ class BatchTransferJobDetailView(
 
     def get_table_data(self):
         job = self.get_object()
-        self.filterset = BatchTransferRequestFilter(  # pylint: disable=attribute-defined-outside-init
+
+        # pylint: disable=attribute-defined-outside-init
+        per_page = int(self.request.GET.get("per_page", 50))
+        if per_page > 1000:
+            per_page = 1000
+        self.paginate_by = per_page  # Used by django_tables2
+
+        # pylint: disable=attribute-defined-outside-init
+        self.filterset = BatchTransferRequestFilter(
             data=self.request.GET or None, request=self.request, queryset=job.requests
         )
-        self.object_list = (  # pylint: disable=attribute-defined-outside-init
-            self.filterset.qs
-        )
+        self.object_list = self.filterset.qs
+
         return self.object_list
 
     def get_context_data(self, **kwargs):
         data = super().get_context_data(**kwargs)
         data["filter"] = self.filterset
+        data["filter"].form.helper = FilterFormHelper("status")
         data["object_list"] = self.object_list
         return data
