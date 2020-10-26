@@ -27,7 +27,7 @@ class BatchTransferRequestFactory(factory.django.DjangoModelFactory):
         model = BatchTransferRequest
 
     job = factory.SubFactory(BatchTransferJobFactory)
-    row_key = factory.Sequence(str)
+    row_number = factory.Sequence(int)
     patient_id = factory.Faker("numerify", text="##########")
     patient_name = factory.LazyFunction(
         lambda: f"{fake.last_name()}, {fake.first_name()}"

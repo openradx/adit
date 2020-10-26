@@ -61,8 +61,8 @@ class BatchTransferRequest(models.Model):
         FAILURE = "FA", "Failure"
 
     class Meta:
-        unique_together = ("row_key", "job")
-        ordering = ("row_key",)
+        unique_together = ("row_number", "job")
+        ordering = ("row_number",)
 
     job = models.ForeignKey(
         BatchTransferJob, on_delete=models.CASCADE, related_name="requests"
@@ -70,7 +70,7 @@ class BatchTransferRequest(models.Model):
     transfer_tasks = GenericRelation(
         TransferTask, related_query_name="batch_transfer_request"
     )
-    row_key = models.PositiveIntegerField()
+    row_number = models.PositiveIntegerField()
     patient_id = models.CharField(blank=True, max_length=64)
     patient_name = models.CharField(blank=True, max_length=324)
     patient_birth_date = models.DateField(null=True, blank=True)

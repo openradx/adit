@@ -8,7 +8,7 @@ from adit.batch_transfer.utils.parsers import RequestsParser, ParsingError
 
 def get_header_data():
     return [
-        "RowKey",
+        "RowNumber",
         "PatientID",
         "PatientName",
         "PatientBirthDate",
@@ -22,7 +22,7 @@ def get_header_data():
 def get_row_data():
     return [
         {
-            "RowKey": "1",
+            "RowNumber": "1",
             "PatientID": "10002",
             "PatientName": "Banana, Ben",
             "PatientBirthDate": "18.02.1962",
@@ -32,7 +32,7 @@ def get_row_data():
             "Pseudonym": "DEDH6SVQ",
         },
         {
-            "RowKey": "2",
+            "RowNumber": "2",
             "PatientID": "10004",
             "PatientName": "Coconut, Coco",
             "PatientBirthDate": "09.12.1976",
@@ -71,39 +71,39 @@ class RequestParserTest(TestCase):
         self.assertEqual(requests[0].patient_name, "Banana^Ben")
         self.assertEqual(requests[0].modality, "CT")
         self.assertEqual(requests[1].patient_id, "10004")
-        self.assertEqual(requests[1].row_key, 2)
+        self.assertEqual(requests[1].row_number, 2)
         study_date = date(2019, 6, 1)
         self.assertEqual(requests[1].study_date, study_date)
         patient_birth_date = date(1976, 12, 9)
         self.assertEqual(requests[1].patient_birth_date, patient_birth_date)
         self.assertEqual(requests[1].pseudonym, "C2XJQ2AR")
 
-    def test_missing_row_key(self):
+    def test_missing_row_number(self):
         columns = get_header_data()
         rows = get_row_data()
-        rows[0]["RowKey"] = ""
+        rows[0]["RowNumber"] = ""
         file = create_csv_file(columns, rows)
 
-        with self.assertRaisesRegex(ParsingError, "RowKey:.*must be an integer"):
+        with self.assertRaisesRegex(ParsingError, "RowNumber:.*must be an integer"):
             RequestsParser(";", ["%d.%m.%Y"]).parse(file)
 
-    def test_invalid_row_key(self):
+    def test_invalid_row_number(self):
         columns = get_header_data()
         rows = get_row_data()
-        rows[0]["RowKey"] = "ABC"
+        rows[0]["RowNumber"] = "ABC"
         file = create_csv_file(columns, rows)
 
-        with self.assertRaisesRegex(ParsingError, "RowKey:.*must be an integer"):
+        with self.assertRaisesRegex(ParsingError, "RowNumber:.*must be an integer"):
             RequestsParser(";", ["%d.%m.%Y"]).parse(file)
 
-    def test_duplicate_row_key(self):
+    def test_duplicate_row_number(self):
         columns = get_header_data()
         rows = get_row_data()
-        row_key = rows[0]["RowKey"]
-        rows[1]["RowKey"] = row_key
+        row_number = rows[0]["RowNumber"]
+        rows[1]["RowNumber"] = row_number
         file = create_csv_file(columns, rows)
 
-        with self.assertRaisesRegex(ParsingError, "Duplicate RowKey"):
+        with self.assertRaisesRegex(ParsingError, "Duplicate RowNumber"):
             RequestsParser(";", ["%d.%m.%Y"]).parse(file)
 
     def test_valid_patient_id(self):

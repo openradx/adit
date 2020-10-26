@@ -7,7 +7,7 @@ class BatchTransferRequestTable(tables.Table):
 
     class Meta:  # pylint: disable=too-few-public-methods
         model = BatchTransferRequest
-        order_by = ("row_key",)
+        order_by = ("row_number",)
         template_name = "django_tables2/bootstrap4.html"
-        fields = ("row_key", "status", "message", "end")
+        fields = ("row_number", "status", "message", "end")
         attrs = {"id": "requests-table", "class": "table table-bordered table-hover"}

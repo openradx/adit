@@ -44,17 +44,17 @@ def transfer_request(self, request_id):
     job = request.job
 
     logger.info(
-        "Processing batch transfer request. [Job ID %d, Request ID %d, RowKey %d]",
+        "Processing batch transfer request. [Job ID %d, Request ID %d, RowNumber %d]",
         job.id,
         request.id,
-        request.row_key,
+        request.row_number,
     )
 
     if request.status != BatchTransferRequest.Status.PENDING:
         raise AssertionError(
             "Invalid batch transfer request processing status: "
             f"{request.get_status_display()} "
-            f"[Job ID {job.id}, Request ID {request.id}, RowKey {request.row_key}]"
+            f"[Job ID {job.id}, Request ID {request.id}, RowNumber {request.row_number}]"
         )
 
     if job.status == BatchTransferJob.Status.CANCELING:
@@ -97,12 +97,12 @@ def transfer_request(self, request_id):
 
         study_str = "stud{}".format(pluralize(study_count, "y, ies"))
         logger.debug(
-            "Found %d %s to transfer. [Job ID %d, Request ID %d, RowKey %d]",
+            "Found %d %s to transfer. [Job ID %d, Request ID %d, RowNumber %d]",
             study_count,
             study_str,
             job.id,
             request.id,
-            request.row_key,
+            request.row_number,
         )
 
         has_success = False
@@ -143,11 +143,11 @@ def transfer_request(self, request_id):
         logger.warning(
             (
                 "No studies found for batch transfer request. "
-                "[Job ID %d, Request ID %d, RowKey %d]"
+                "[Job ID %d, Request ID %d, RowNumber %d]"
             ),
             job.id,
             request.id,
-            request.row_key,
+            request.row_number,
         )
         request.status = BatchTransferRequest.Status.WARNING
         request.message = "No studies found to transfer."
@@ -156,11 +156,11 @@ def transfer_request(self, request_id):
         logger.exception(
             (
                 "Error during transferring batch transfer request. "
-                "[Job ID %d, Request ID %d, RowKey %d]"
+                "[Job ID %d, Request ID %d, RowNumber %d]"
             ),
             job.id,
             request.id,
-            request.row_key,
+            request.row_number,
         )
         request.status = BatchTransferRequest.Status.FAILURE
         request.message = str(err)
@@ -240,7 +240,7 @@ def _check_can_run_now(celery_task, request):
             eta=scheduler.next_slot(),
             exc=Warning(
                 f"Batch transfer request outside of batch time slot. "
-                f"[Job ID {request.job.id}, Request ID {request.id}, RowKey {request.row_key}]"
+                f"[Job ID {request.job.id}, Request ID {request.id}, RowNumber {request.row_number}]"
             ),
         )
 
@@ -249,7 +249,7 @@ def _check_can_run_now(celery_task, request):
             eta=timezone.now() + timedelta(minutes=60),
             exc=Warning(
                 "Batch transfer suspended. "
-                f"[Job ID {request.job.id}, Request ID {request.id}, RowKey {request.row_key}]"
+                f"[Job ID {request.job.id}, Request ID {request.id}, RowNumber {request.row_number}]"
             ),
         )
 

@@ -41,15 +41,15 @@ def get_field_label(field_id):
     return camelcase
 
 
-def build_request_error(message_dict, num, row_key):
+def build_request_error(message_dict, num, row_number):
     general_errors = []
     field_errors = []
 
-    if not isinstance(row_key, int):
-        row_key = None
+    if not isinstance(row_number, int):
+        row_number = None
 
-    if row_key is not None:
-        general_errors.append(f"Invalid request with RowKey {row_key}:")
+    if row_number is not None:
+        general_errors.append(f"Invalid request with RowNumber {row_number}:")
     else:
         general_errors.append(f"Invalid request #{num + 1}:")
 
@@ -79,7 +79,7 @@ class RequestsParser:  # pylint: disable=too-few-public-methods
         reader = csv.DictReader(csv_file, delimiter=self._delimiter)
         for num, data in enumerate(reader):
             request = BatchTransferRequest(
-                row_key=parse_int(data.get("RowKey", "")),
+                row_number=parse_int(data.get("RowNumber", "")),
                 patient_id=parse_string(data.get("PatientID", "")),
                 patient_name=parse_name(data.get("PatientName", "")),
                 patient_birth_date=parse_date(
@@ -95,25 +95,25 @@ class RequestsParser:  # pylint: disable=too-few-public-methods
                 request.full_clean(exclude=["job"])
             except ValidationError as err:
                 request_error = build_request_error(
-                    err.message_dict, num, request.row_key
+                    err.message_dict, num, request.row_number
                 )
                 errors.append(request_error)
 
             requests.append(request)
 
-        row_keys = set()
+        row_numbers = set()
         duplicates = set()
         for request in requests:
-            row_key = request.row_key
-            if row_key is not None and isinstance(row_key, int):
-                if row_key not in row_keys:
-                    row_keys.add(row_key)
+            row_number = request.row_number
+            if row_number is not None and isinstance(row_number, int):
+                if row_number not in row_numbers:
+                    row_numbers.add(row_number)
                 else:
-                    duplicates.add(row_key)
+                    duplicates.add(row_number)
 
         if len(duplicates) > 0:
             ds = ", ".join(str(i) for i in duplicates)
-            errors.insert(0, f"Duplicate RowKey: {ds}")
+            errors.insert(0, f"Duplicate RowNumber: {ds}")
 
         if len(errors) > 0:
             error_details = "\n".join(errors)
