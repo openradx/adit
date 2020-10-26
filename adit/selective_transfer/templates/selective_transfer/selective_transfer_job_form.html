@@ -19,10 +19,6 @@
 >
     {% crispy form %}
 
-    {% include "./_advanced_transfer_options.html" %}
-
-    {% include "./_query_input_panel.html" %}
-
     <div x-show="noSearchYet" class="alert alert-primary mt-3" role="alert" x-cloak>
         Choose a DICOM source and enter your search
     </div>
