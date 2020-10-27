@@ -56,6 +56,7 @@ python .\manage.py startapp continuous_transfer .\adit\continuous_transfer # Fol
 
 # Docker comands
 
+docker-compose -f "docker-compose.dev.yml" -p adit_dev exec web pytest # Run Pytest on web container
 docker build . --target development -t adit_dev # Build a volume from our Dockerfile
 docker run -v C:\Users\kaisc\Projects\adit:/src -it adit_dev /bin/bash # Run the built container with src folder mounted from host
 docker ps -a --filter volume=vol_name # Find container that mounts volume

@@ -44,7 +44,7 @@ class BatchTransferJobForm(ModelForm):
         queryset=DicomNode.objects.filter(active=True),
         widget=DicomNodeSelect,
     )
-    csv_file = RestrictedFileField(max_upload_size=5242880)
+    csv_file = RestrictedFileField(max_upload_size=5242880, label="CSV file")
 
     class Meta:
         model = BatchTransferJob
@@ -58,7 +58,7 @@ class BatchTransferJobForm(ModelForm):
             "archive_password",
             "csv_file",
         )
-        labels = {"csv_field": "CSV file"}
+        labels = {"trial_protocol_id": "Trial protocol ID"}
         help_texts = {
             "trial_protocol_id": (
                 "Fill only when to modify the ClinicalTrialProtocolID tag "

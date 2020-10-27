@@ -26,21 +26,17 @@ class BatchTransferJobFormTests(TestCase):
 
     def test_field_labels(self):
         form = BatchTransferJobForm()
-        self.assertEqual(len(form.fields), 8)
-        self.assertEqual(form.fields["source"].label, "Source")
-        self.assertEqual(form.fields["destination"].label, "Destination")
-        self.assertEqual(form.fields["project_name"].label, "Project name")
-        self.assertEqual(
-            form.fields["project_description"].label, "Project description"
-        )
-        self.assertEqual(form.fields["trial_protocol_id"].label, "Trial protocol id")
-        self.assertEqual(
-            form.fields["trial_protocol_name"].label, "Trial protocol name"
-        )
-        self.assertEqual(form.fields["archive_password"].label, "Archive password")
-        self.assertEqual(form.fields["csv_file"].label, "CSV file")
+        assert len(form.fields) == 8
+        assert "source" in form.fields
+        assert "destination" in form.fields
+        assert form.fields["project_name"].label == "Project name"
+        assert form.fields["project_description"].label == "Project description"
+        assert form.fields["trial_protocol_id"].label == "Trial protocol ID"
+        assert form.fields["trial_protocol_name"].label == "Trial protocol name"
+        assert form.fields["archive_password"].label == "Archive password"
+        assert form.fields["csv_file"].label == "CSV file"
 
-    @patch("adit.batch_transfer.forms.RequestParser", autospec=True)
+    @patch("adit.batch_transfer.forms.RequestsParser", autospec=True)
     @patch(
         "adit.batch_transfer.forms.chardet.detect", return_value={"encoding": "UTF-8"}
     )
