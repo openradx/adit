@@ -29,6 +29,7 @@ ADIT (Automated DICOM Transfer) is a swiss army knife to exchange DICOM data bet
 -   Continous Transfer
 -   move date parsing part in parsers.py and consumers.py to date_util.py
 -   https://stackoverflow.com/questions/14259852/how-to-identify-image-receive-in-c-store-as-result-of-a-c-move-query
+-   https://www.yergler.net/2009/09/27/nested-formsets-with-django/
 
 # Testing and coverage commands
 
