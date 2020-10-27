@@ -20,7 +20,6 @@ ADIT (Automated DICOM Transfer) is a swiss army knife to exchange DICOM data bet
 
 # TODO
 
--   patient_birth_date -> birth_date
 -   Exclude SR
 -   Check why archive feature does not work correctly
 -   Think about moving all those dicts to dataclasses when passing around data
@@ -29,6 +28,7 @@ ADIT (Automated DICOM Transfer) is a swiss army knife to exchange DICOM data bet
 -   Better scheduler (with day in week and times)
 -   Continous Transfer
 -   move date parsing part in parsers.py and consumers.py to date_util.py
+-   https://stackoverflow.com/questions/14259852/how-to-identify-image-receive-in-c-store-as-result-of-a-c-move-query
 
 # Testing and coverage commands
 

@@ -481,7 +481,9 @@ class DicomConnector:
         patients = _extract_pending_data(results, "patients", query_dict)
 
         # Some PACS servers (like our Synapse) do simply ignore the PatientBirthDate
-        # filter, so we have to filter programmatically.
+        # while querying as it is optional in the Patient Root Query/Retrieve Information Model,
+        # see https://groups.google.com/g/comp.protocols.dicom/c/h28r_znomEw
+        # So we have to filter programmatically.
         # TODO allow range filter (but not needed at the moment)
         if patient_birth_date:
             return [

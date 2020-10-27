@@ -50,10 +50,12 @@ class SelectiveTransferJobForm(forms.ModelForm):
     )
     patient_id = forms.CharField(required=False, max_length=64, label="Patient ID")
     patient_name = forms.CharField(required=False, max_length=324)
-    patient_birth_date = forms.DateField(required=False)
+    patient_birth_date = forms.DateField(required=False, label="Birth date")
     study_date = forms.DateField(required=False)
     modality = forms.CharField(required=False, max_length=16)
-    accession_number = forms.CharField(required=False, max_length=16)
+    accession_number = forms.CharField(
+        required=False, max_length=16, label="Accession #"
+    )
 
     class Meta:
         model = SelectiveTransferJob
@@ -133,3 +135,14 @@ class SelectiveTransferJobForm(forms.ModelForm):
                 query_field("accession_number"),
             ),
         )
+
+
+class TransferTaskForm(forms.ModelForm):
+    class Meta:
+        model = TransferTask
+        fields = ("patient_id", "study_uid")
+
+
+TransferTaskFormSet = forms.inlineformset_factory(
+    SelectiveTransferJob, TransferTask, form=TransferTaskForm, extra=0
+)
