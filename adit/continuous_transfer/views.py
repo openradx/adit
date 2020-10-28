@@ -83,7 +83,6 @@ class ContinuousTransferJobCreateView(
     def form_valid(self, form):
         user = self.request.user
         form.instance.owner = user
-        response = super().form_valid(form)
 
         context = self.get_context_data()
         formset = context["formset"]
