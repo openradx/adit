@@ -233,7 +233,6 @@ def _check_can_run_now(celery_task, request):
     scheduler = Scheduler(
         batch_transfer_settings.batch_slot_begin_time,
         batch_transfer_settings.batch_slot_end_time,
-        settings.SERVER_TIME_ZONE,
     )
     if scheduler.must_be_scheduled():
         raise celery_task.retry(

@@ -1,5 +1,6 @@
 from datetime import time
 from django.db import models
+from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.contrib.contenttypes.fields import GenericRelation
 from django.urls import reverse
@@ -13,15 +14,14 @@ def slot_time(hour, minute):
 
 class BatchTransferSettings(AppSettings):
     # Must be set in UTC time as Celery workers can't figure out another time zone.
-    # TODO It would be nicer if in Web UI the local time could be set that is
-    #   converted on the fly and stored in the db as UTC. Unfortunately, this does
-    #   not work with TimeField (as it is never time zone aware).
     batch_slot_begin_time = models.TimeField(
-        default=slot_time(22, 0), help_text="Uses time zone of SERVER_ZIME_ZONE env."
+        default=slot_time(22, 0),
+        help_text=f"Must be set in {settings.TIME_ZONE} time zone.",
     )
     # Must be set in UTC time as Celery workers can't figure out another time zone.
     batch_slot_end_time = models.TimeField(
-        default=slot_time(8, 0), help_text="Uses time zone of SERVER_ZIME_ZONE env."
+        default=slot_time(8, 0),
+        help_text=f"Must be set in {settings.TIME_ZONE} time zone.",
     )
     batch_timeout = models.IntegerField(default=3)
 

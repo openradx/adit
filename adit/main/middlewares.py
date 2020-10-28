@@ -50,7 +50,7 @@ class TimezoneMiddleware:  # pylint: disable=too-few-public-methods
     def __call__(self, request):
         tzname = request.session.get("django_timezone")
         if not tzname:
-            tzname = settings.SERVER_TIME_ZONE
+            tzname = settings.USER_TIME_ZONE
         if tzname:
             timezone.activate(pytz.timezone(tzname))
         else:

@@ -51,6 +51,7 @@ cryptography = "*" # For generating the SSL certificate in production
 twisted = { extras = ["http2", "tls"], version = "*" }# For HTTP/2 support in production     
 dicognito = "*" 
 django-model-utils = "*" 
+pylint-pytest = "*"
 
 [requires]
 python_version = "3.8"

@@ -303,6 +303,4 @@ BATCH_TRANSFER_UNVERIFIED = True
 CONTINUOUS_TRANSFER_UNVERIFIED = True
 
 # A timezone that is used for users of the web interface.
-# It is also used by the Scheduler to calculate if a batch or
-# continuous transfer should run.
-SERVER_TIME_ZONE = env.str("SERVER_TIME_ZONE", default=None)
+USER_TIME_ZONE = env.str("USER_TIME_ZONE", default=None)

@@ -1,5 +1,4 @@
 from datetime import datetime, timedelta
-import pytz
 from django.utils import timezone
 
 
@@ -22,13 +21,11 @@ class Scheduler:
     Args:
         begin_time (time): The start time of the slot
         end_time (time): The end time of the slot
-        tzname (str): The timezone of the provided times
     """
 
-    def __init__(self, begin_time, end_time, tzname=None):
+    def __init__(self, begin_time, end_time):
         self.begin_time = begin_time
         self.end_time = end_time
-        self.tzname = tzname
 
     def must_be_scheduled(self):
         """Checks if the batch job can run now or must be scheduled.
@@ -41,31 +38,18 @@ class Scheduler:
             return False
 
         now = timezone.now()
-        if self.tzname:
-            tz = pytz.timezone(self.tzname)
-            now = now.astimezone(tz)
-
-        check_time = now.time()
-        return not is_time_between(self.begin_time, self.end_time, check_time)
+        return not is_time_between(self.begin_time, self.end_time, now.time())
 
     def next_slot(self):
         """Return the next datetime slot.
 
-        The returned datetime object has the default Django timezone set
-        (which is different from SERVER_TIME_ZONE and mostly UTC).
+        The returned datetime object has the default Django timezone set.
         """
         now = timezone.now()
-        tz = now.tzinfo
-        if self.tzname:
-            tz = pytz.timezone(self.tzname)
-            now = now.astimezone(tz)
-
         if now.time() < self.begin_time:
             slot = datetime.combine(now.date(), self.begin_time)
-            slot = tz.localize(slot)
-            return slot.astimezone(timezone.get_default_timezone())
+            return timezone.make_aware(slot)
 
         tomorrow = now.date() + timedelta(days=1)
         slot = datetime.combine(tomorrow, self.begin_time)
-        slot = tz.localize(slot)
-        return slot.astimezone(timezone.get_default_timezone())
+        return timezone.make_aware(slot)
