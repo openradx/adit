@@ -15,7 +15,7 @@
 <form action="{% url 'continuous_transfer_job_create' %}" method="post">
     {% csrf_token %}
     {% crispy form %}
-    {% crispy filters helper %}
+    {% crispy formset helper %}
     <div class="form-group">
         <input type="submit" name="save" value="Create Job" class="btn btn-primary" id="submit-id-save">
     </div>

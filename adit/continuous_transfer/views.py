@@ -30,13 +30,15 @@ class ContinuousTransferJobCreateView(
     form_class = ContinuousTransferJobForm
     template_name = "continuous_transfer/continuous_transfer_job_form.html"
     permission_required = "continuous_transfer.add_continuoustransferjob"
+    formset_class = DataElementFilterFormSet
+    formset_prefix = "filters"
 
     def add_formset_form(self, prefix):
         cp = self.request.POST.copy()
         cp[f"{prefix}-TOTAL_FORMS"] = int(cp[f"{prefix}-TOTAL_FORMS"]) + 1
         return cp
 
-    def delete_formset_form(self, num_to_delete, prefix):
+    def delete_formset_form(self, idx_to_delete, prefix):
         cp = self.request.POST.copy()
         cp[f"{prefix}-TOTAL_FORMS"] = int(cp[f"{prefix}-TOTAL_FORMS"]) - 1
         regex = prefix + r"-(\d+)-"
@@ -44,11 +46,11 @@ class ContinuousTransferJobCreateView(
         for k, v in cp.items():
             match = re.findall(regex, k)
             if match:
-                num = int(match[0])
-                if num == num_to_delete:
+                idx = int(match[0])
+                if idx == idx_to_delete:
                     continue
-                if num > num_to_delete:
-                    k = re.sub(regex, f"{prefix}-{num-1}-", k)
+                if idx > idx_to_delete:
+                    k = re.sub(regex, f"{prefix}-{idx-1}-", k)
                 filtered[k] = v
             else:
                 filtered[k] = v
@@ -59,23 +61,23 @@ class ContinuousTransferJobCreateView(
         data["helper"] = DataElementFilterFormSetHelper()
 
         if self.request.POST:
-            if self.request.POST.get("add_filter"):
-                post_data = self.add_formset_form("filters")
-                filters = DataElementFilterFormSet(post_data)
-                data["filters"] = filters
+            if self.request.POST.get("add_formset_form"):
+                post_data = self.add_formset_form(self.formset_prefix)
+                formset = self.formset_class(post_data)
+                data["formset"] = formset
                 clear_errors(data["form"])
-                clear_errors(data["filters"])
-            elif self.request.POST.get("delete_filter"):
-                num_to_delete = int(self.request.POST.get("delete_filter"))
-                post_data = self.delete_formset_form(num_to_delete, "filters")
-                filters = DataElementFilterFormSet(post_data)
-                data["filters"] = filters
+                clear_errors(data["formset"])
+            elif self.request.POST.get("delete_formset_form"):
+                idx_to_delete = int(self.request.POST.get("delete_formset_form"))
+                post_data = self.delete_formset_form(idx_to_delete, self.formset_prefix)
+                formset = self.formset_class(post_data)
+                data["formset"] = formset
                 clear_errors(data["form"])
-                clear_errors(data["filters"])
+                clear_errors(data["formset"])
             else:
-                data["filters"] = DataElementFilterFormSet(self.request.POST)
+                data["formset"] = self.formset_class(self.request.POST)
         else:
-            data["filters"] = DataElementFilterFormSet()
+            data["formset"] = self.formset_class()
         return data
 
     def form_valid(self, form):
@@ -83,13 +85,21 @@ class ContinuousTransferJobCreateView(
         form.instance.owner = user
         response = super().form_valid(form)
 
-        job = self.object
-        if user.is_staff or settings.CONTINUOUS_TRANSFER_UNVERIFIED:
-            job.status = ContinuousTransferJob.Status.PENDING
-            job.save()
-            job.delay()
+        context = self.get_context_data()
+        formset = context["formset"]
+        if formset.is_valid():
+            response = super().form_valid(form)
+            formset.instance = self.object
+            formset.save()
 
-        return response
+            job = self.object
+            if user.is_staff or settings.CONTINUOUS_TRANSFER_UNVERIFIED:
+                job.status = ContinuousTransferJob.Status.PENDING
+                job.delay()
+
+            return response
+        else:
+            return self.form_invalid(form)
 
 
 class ContinuousTransferJobDetailView(
