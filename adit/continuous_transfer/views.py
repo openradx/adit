@@ -65,15 +65,15 @@ class ContinuousTransferJobCreateView(
                 post_data = self.add_formset_form(self.formset_prefix)
                 formset = self.formset_class(post_data)
                 data["formset"] = formset
-                clear_errors(data["form"])
                 clear_errors(data["formset"])
+                clear_errors(data["form"])
             elif self.request.POST.get("delete_formset_form"):
                 idx_to_delete = int(self.request.POST.get("delete_formset_form"))
                 post_data = self.delete_formset_form(idx_to_delete, self.formset_prefix)
                 formset = self.formset_class(post_data)
                 data["formset"] = formset
-                clear_errors(data["form"])
                 clear_errors(data["formset"])
+                clear_errors(data["form"])
             else:
                 data["formset"] = self.formset_class(self.request.POST)
         else:
