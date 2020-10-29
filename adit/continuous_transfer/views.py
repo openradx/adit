@@ -3,6 +3,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMix
 from django.views.generic.edit import CreateView
 from django.views.generic import DetailView
 from django.conf import settings
+from django.forms.formsets import ORDERING_FIELD_NAME
 from adit.main.mixins import OwnerRequiredMixin
 from .models import ContinuousTransferJob
 from .forms import (
@@ -91,7 +92,7 @@ class ContinuousTransferJobCreateView(
             formset.instance = self.object
             for idx, formset_form in enumerate(formset.ordered_forms):
                 formset_form.instance.order = (
-                    formset_form.cleaned_data["ORDER"] or idx + 1
+                    formset_form.cleaned_data.get(ORDERING_FIELD_NAME) or idx + 1
                 )
             formset.save()
 

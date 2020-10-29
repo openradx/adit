@@ -37,9 +37,16 @@ class DataElementFilterForm(forms.ModelForm):
         fields = ("dicom_tag", "filter_type", "filter_value", "case_sensitive")
 
 
+class BaseDataElementFilterFormSet(BaseInlineFormSet):
+    def add_fields(self, form, index):
+        super().add_fields(form, index)
+        form.fields[forms.formsets.ORDERING_FIELD_NAME].initial = index + 1
+
+
 DataElementFilterFormSet = forms.inlineformset_factory(
     ContinuousTransferJob,
     DataElementFilter,
+    formset=BaseDataElementFilterFormSet,
     form=DataElementFilterForm,
     extra=1,
     can_order=True,
