@@ -3,7 +3,7 @@ from .models import BatchTransferRequest
 
 
 class BatchTransferRequestTable(tables.Table):
-    end = tables.Column(verbose_name="Finished at")
+    end = tables.DateTimeColumn(verbose_name="Finished at")
 
     class Meta:  # pylint: disable=too-few-public-methods
         model = BatchTransferRequest

@@ -11,7 +11,6 @@ class PageSizeSelectForm(forms.Form):
         super().__init__(data, *args, **kwargs)
         choices = [(size, size) for size in pages_sizes]
         self.fields["per_page"].choices = choices
-        print(dir(self.fields["per_page"]))
 
         self.helper = FormHelper()
         self.helper.form_method = "get"
