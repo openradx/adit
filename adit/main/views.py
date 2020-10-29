@@ -1,5 +1,6 @@
+import re
 from django.views.generic import View, TemplateView
-from django.views.generic.edit import DeleteView
+from django.views.generic.edit import DeleteView, CreateView
 from django.views.generic.detail import SingleObjectMixin
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.urls import re_path, reverse_lazy
@@ -7,6 +8,7 @@ from django.shortcuts import get_object_or_404, redirect
 from django.core.exceptions import SuspiciousOperation
 from django.contrib import messages
 from django.conf import settings
+from django.forms.formsets import ORDERING_FIELD_NAME
 from rest_framework import generics
 from django_tables2 import SingleTableView
 from revproxy.views import ProxyView
@@ -125,3 +127,83 @@ class TransferJobListAPIView(generics.ListAPIView):
 
     def get_queryset(self):
         return TransferJob.objects.filter(owner=self.request.user)
+
+
+class InlineFormSetCreateView(CreateView):
+    def add_formset_form(self, prefix):
+        cp = self.request.POST.copy()
+        cp[f"{prefix}-TOTAL_FORMS"] = int(cp[f"{prefix}-TOTAL_FORMS"]) + 1
+        return cp
+
+    def delete_formset_form(self, idx_to_delete, prefix):
+        cp = self.request.POST.copy()
+        cp[f"{prefix}-TOTAL_FORMS"] = int(cp[f"{prefix}-TOTAL_FORMS"]) - 1
+        regex = prefix + r"-(\d+)-"
+        filtered = {}
+        for k, v in cp.items():
+            match = re.findall(regex, k)
+            if match:
+                idx = int(match[0])
+                if idx == idx_to_delete:
+                    continue
+                if idx > idx_to_delete:
+                    k = re.sub(regex, f"{prefix}-{idx-1}-", k)
+                filtered[k] = v
+            else:
+                filtered[k] = v
+        return filtered
+
+    def clear_errors(self, form_or_formset):
+        # Hide all errors of a form or formset.
+        # Found only this hacky way.
+        # See https://stackoverflow.com/questions/64402527
+        # pylint: disable=protected-access
+        form_or_formset._errors = {}
+        if hasattr(form_or_formset, "forms"):
+            for form in form_or_formset.forms:
+                self.clear_errors(form)
+
+    def post(self, request, *args, **kwargs):
+        self.object = None
+        form = self.get_form()
+
+        if request.POST.get("add_formset_form"):
+            post_data = self.add_formset_form(self.formset_prefix)
+            formset = self.formset_class(post_data)
+            return self.form_rerender(form, formset)
+        elif request.POST.get("delete_formset_form"):
+            idx_to_delete = int(self.request.POST.get("delete_formset_form"))
+            post_data = self.delete_formset_form(idx_to_delete, self.formset_prefix)
+            formset = self.formset_class(post_data)
+            return self.form_rerender(form, formset)
+        else:
+            formset = self.formset_class(request.POST)
+            if form.is_valid() and formset.is_valid():
+                return self.form_valid(form, formset)
+            else:
+                return self.form_invalid(form, formset)
+
+    def form_rerender(self, form, formset):
+        self.clear_errors(form)
+        self.clear_errors(formset)
+        return self.form_invalid(form, formset)
+
+    def form_invalid(self, form, formset):
+        return self.render_to_response(
+            self.get_context_data(form=form, formset=formset)
+        )
+
+    def form_valid(self, form, formset):
+        response = super().form_valid(form)
+        formset.instance = self.object
+        for idx, formset_form in enumerate(formset.ordered_forms):
+            formset_form.instance.order = (
+                formset_form.cleaned_data.get(ORDERING_FIELD_NAME) or idx + 1
+            )
+        formset.save()
+        return response
+
+    def get_context_data(self, **kwargs):
+        if "formset" not in kwargs:
+            kwargs["formset"] = self.formset_class()
+        return super().get_context_data(**kwargs)

@@ -3,8 +3,8 @@ from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMix
 from django.views.generic.edit import CreateView
 from django.views.generic import DetailView
 from django.conf import settings
-from django.forms.formsets import ORDERING_FIELD_NAME
 from adit.main.mixins import OwnerRequiredMixin
+from adit.main.views import InlineFormSetCreateView
 from .models import ContinuousTransferJob
 from .forms import (
     ContinuousTransferJobForm,
@@ -25,7 +25,7 @@ def clear_errors(form_or_formset):
 
 
 class ContinuousTransferJobCreateView(
-    LoginRequiredMixin, PermissionRequiredMixin, CreateView
+    LoginRequiredMixin, PermissionRequiredMixin, InlineFormSetCreateView
 ):
     model = ContinuousTransferJob
     form_class = ContinuousTransferJobForm
@@ -34,76 +34,24 @@ class ContinuousTransferJobCreateView(
     formset_class = DataElementFilterFormSet
     formset_prefix = "filters"
 
-    def add_formset_form(self, prefix):
-        cp = self.request.POST.copy()
-        cp[f"{prefix}-TOTAL_FORMS"] = int(cp[f"{prefix}-TOTAL_FORMS"]) + 1
-        return cp
-
-    def delete_formset_form(self, idx_to_delete, prefix):
-        cp = self.request.POST.copy()
-        cp[f"{prefix}-TOTAL_FORMS"] = int(cp[f"{prefix}-TOTAL_FORMS"]) - 1
-        regex = prefix + r"-(\d+)-"
-        filtered = {}
-        for k, v in cp.items():
-            match = re.findall(regex, k)
-            if match:
-                idx = int(match[0])
-                if idx == idx_to_delete:
-                    continue
-                if idx > idx_to_delete:
-                    k = re.sub(regex, f"{prefix}-{idx-1}-", k)
-                filtered[k] = v
-            else:
-                filtered[k] = v
-        return filtered
-
     def get_context_data(self, **kwargs):
         data = super().get_context_data(**kwargs)
         data["helper"] = DataElementFilterFormSetHelper()
-
-        if self.request.POST:
-            if self.request.POST.get("add_formset_form"):
-                post_data = self.add_formset_form(self.formset_prefix)
-                formset = self.formset_class(post_data)
-                data["formset"] = formset
-                clear_errors(data["formset"])
-                clear_errors(data["form"])
-            elif self.request.POST.get("delete_formset_form"):
-                idx_to_delete = int(self.request.POST.get("delete_formset_form"))
-                post_data = self.delete_formset_form(idx_to_delete, self.formset_prefix)
-                formset = self.formset_class(post_data)
-                data["formset"] = formset
-                clear_errors(data["formset"])
-                clear_errors(data["form"])
-            else:
-                data["formset"] = self.formset_class(self.request.POST)
-        else:
-            data["formset"] = self.formset_class()
         return data
 
     def form_valid(self, form):
         user = self.request.user
         form.instance.owner = user
 
-        context = self.get_context_data()
-        formset = context["formset"]
-        if formset.is_valid():
-            response = super().form_valid(form)
-            formset.instance = self.object
-            for idx, formset_form in enumerate(formset.ordered_forms):
-                formset_form.instance.order = (
-                    formset_form.cleaned_data.get(ORDERING_FIELD_NAME) or idx + 1
-                )
-            formset.save()
+        response = super().form_valid(form)
 
-            job = self.object
-            if user.is_staff or settings.CONTINUOUS_TRANSFER_UNVERIFIED:
-                job.status = ContinuousTransferJob.Status.PENDING
-                job.delay()
+        job = self.object
+        if user.is_staff or settings.CONTINUOUS_TRANSFER_UNVERIFIED:
+            job.status = ContinuousTransferJob.Status.PENDING
+            job.save()
+            job.delay()
 
-            return response
-        else:
-            return self.form_invalid(form)
+        return response
 
 
 class ContinuousTransferJobDetailView(

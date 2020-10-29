@@ -21,6 +21,7 @@ class BatchTransferJobCreateView(
     def form_valid(self, form):
         user = self.request.user
         form.instance.owner = user
+
         response = super().form_valid(form)
 
         # Do it after an ongoing transaction (even if it is currently
