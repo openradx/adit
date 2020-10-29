@@ -19,6 +19,7 @@
         {% for form in formset %}
             <tr>
                 <td class="form-group">
+                    {{ form.ORDER.as_hidden }}
                     {% crispy_field form.dicom_tag %}
                 </td>
                 <td class="form_group">

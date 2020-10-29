@@ -1,5 +1,6 @@
 from django import forms
 from crispy_forms.helper import FormHelper
+from django.forms.models import BaseInlineFormSet
 from .models import ContinuousTransferJob, DataElementFilter
 
 
@@ -41,6 +42,7 @@ DataElementFilterFormSet = forms.inlineformset_factory(
     DataElementFilter,
     form=DataElementFilterForm,
     extra=1,
+    can_order=True,
 )
 
 

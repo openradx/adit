@@ -89,6 +89,10 @@ class ContinuousTransferJobCreateView(
         if formset.is_valid():
             response = super().form_valid(form)
             formset.instance = self.object
+            for idx, formset_form in enumerate(formset.ordered_forms):
+                formset_form.instance.order = (
+                    formset_form.cleaned_data["ORDER"] or idx + 1
+                )
             formset.save()
 
             job = self.object
