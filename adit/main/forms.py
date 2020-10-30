@@ -34,7 +34,7 @@ class PageSizeSelectForm(forms.Form):
         )
 
 
-class FilterFormHelper(FormHelper):
+class SingleFilterFormHelper(FormHelper):
     form_class = "form-inline"
     label_class = "mr-sm-2"
     field_template = "bootstrap4/layout/inline_field.html"
@@ -57,3 +57,25 @@ class FilterFormHelper(FormHelper):
             ),
             query_fields,
         )
+
+
+class MultiInlineFilterFormHelper(FormHelper):
+    form_class = "form-inline"
+    label_class = "mr-sm-2"
+    field_template = "bootstrap4/layout/inline_field.html"
+
+    def __init__(self, data, field_names, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.form_method = "get"
+        self.disable_csrf = True
+
+        query_fields = Div()
+        for key in data:
+            if key not in field_names:
+                query_fields.append(Hidden(key, data.get(key)))
+
+        form_fields = Div()
+        for field_name in field_names:
+            form_fields.append(Field(field_name))
+
+        self.layout = Layout()

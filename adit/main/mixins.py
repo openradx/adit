@@ -37,8 +37,8 @@ class RelatedFilterMixin(FilterMixin):
 
     The advantage is provided over FilterMixin is that it does use a special
     get_filter_queryset() method to get its data from and not get_queryset()
-    like its parent so that it can be used a DetailView to filter a related
-    field in table.
+    like its parent so that it can be used in a DetailView to filter a related
+    model field.
     django_tables2 automatically uses the set self.object_list attribute.
     It must be placed behind SingleTableMixin.
     """

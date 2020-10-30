@@ -10,17 +10,20 @@ from django.contrib import messages
 from django.conf import settings
 from django.forms.formsets import ORDERING_FIELD_NAME
 from rest_framework import generics
-from django_tables2 import SingleTableView
+from django_tables2 import SingleTableMixin
+from django_filters.views import FilterView
 from revproxy.views import ProxyView
 from .models import TransferJob
 from .tables import TransferJobTable
+from .filters import TransferJobFilter
 from .mixins import OwnerRequiredMixin
 from .serializers import TransferJobListSerializer
 
 
-class TransferJobListView(LoginRequiredMixin, SingleTableView):
+class TransferJobListView(LoginRequiredMixin, SingleTableMixin, FilterView):
     table_class = TransferJobTable
     template_name = "main/transfer_job_table.html"
+    filterset_class = TransferJobFilter
 
     def get_queryset(self):
         return TransferJob.objects.select_related("source", "destination").filter(

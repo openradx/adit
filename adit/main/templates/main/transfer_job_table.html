@@ -4,6 +4,10 @@
 
 {% block container %}
 <h4 class="mb-3">All Transfer Jobs</h4>
+
+{% load crispy_forms_tags %}
+{% crispy filter.form %}
+
 {% if table.data %}
     {% render_table table %}
 {% else %}
