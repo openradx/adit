@@ -282,7 +282,7 @@ FLOWER_HOST = env.str("FLOWER_HOST", default="localhost")
 FLOWER_PORT = env.int("FLOWER_PORT", default=5555)
 
 # For django-filter
-FILTERS_EMPTY_CHOICE_LABEL = "All"
+FILTERS_EMPTY_CHOICE_LABEL = "Show All"
 
 ###
 # ADIT specific settings
