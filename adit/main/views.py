@@ -130,6 +130,9 @@ class TransferJobListAPIView(generics.ListAPIView):
 
 
 class InlineFormSetCreateView(CreateView):
+    formset_class = None
+    formset_prefix = None
+
     def add_formset_form(self, prefix):
         cp = self.request.POST.copy()
         cp[f"{prefix}-TOTAL_FORMS"] = int(cp[f"{prefix}-TOTAL_FORMS"]) + 1
@@ -165,35 +168,49 @@ class InlineFormSetCreateView(CreateView):
 
     def post(self, request, *args, **kwargs):
         self.object = None
+
         form = self.get_form()
 
         if request.POST.get("add_formset_form"):
             post_data = self.add_formset_form(self.formset_prefix)
-            formset = self.formset_class(post_data)
-            return self.form_rerender(form, formset)
-        elif request.POST.get("delete_formset_form"):
-            idx_to_delete = int(self.request.POST.get("delete_formset_form"))
-            post_data = self.delete_formset_form(idx_to_delete, self.formset_prefix)
-            formset = self.formset_class(post_data)
-            return self.form_rerender(form, formset)
-        else:
-            formset = self.formset_class(request.POST)
-            if form.is_valid() and formset.is_valid():
-                return self.form_valid(form, formset)
-            else:
-                return self.form_invalid(form, formset)
+            formset = self.formset_class(post_data)  # pylint: disable=not-callable
+            return self.render_changed_formset(form, formset)
 
-    def form_rerender(self, form, formset):
+        if request.POST.get("delete_formset_form"):
+            idx_to_delete = int(request.POST.get("delete_formset_form"))
+            post_data = self.delete_formset_form(idx_to_delete, self.formset_prefix)
+            formset = self.formset_class(post_data)  # pylint: disable=not-callable
+            return self.render_changed_formset(form, formset)
+
+        formset = self.formset_class(request.POST)  # pylint: disable=not-callable
+        if form.is_valid() and formset.is_valid():
+            return self.form_and_formset_valid(form, formset)
+
+        return self.form_or_formset_invalid(form, formset)
+
+    def render_changed_formset(self, form, formset):
         self.clear_errors(form)
         self.clear_errors(formset)
-        return self.form_invalid(form, formset)
+        return self.form_or_formset_invalid(form, formset)
 
-    def form_invalid(self, form, formset):
+    def form_invalid(self, form):
+        raise AttributeError(
+            "A 'InlineFormSetCreateView' does not have a 'form_invalid' attribute. "
+            "Use 'form_or_formset_invalid' instead."
+        )
+
+    def form_valid(self, form):
+        raise AttributeError(
+            "A 'InlineFormSetCreateView' does not have a 'form_valid' attribute. "
+            "Use 'form_and_formset_valid' instead."
+        )
+
+    def form_or_formset_invalid(self, form, formset):
         return self.render_to_response(
             self.get_context_data(form=form, formset=formset)
         )
 
-    def form_valid(self, form, formset):
+    def form_and_formset_valid(self, form, formset):
         response = super().form_valid(form)
         formset.instance = self.object
         for idx, formset_form in enumerate(formset.ordered_forms):
@@ -205,5 +222,5 @@ class InlineFormSetCreateView(CreateView):
 
     def get_context_data(self, **kwargs):
         if "formset" not in kwargs:
-            kwargs["formset"] = self.formset_class()
+            kwargs["formset"] = self.formset_class()  # pylint: disable=not-callable
         return super().get_context_data(**kwargs)

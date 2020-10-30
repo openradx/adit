@@ -1,6 +1,4 @@
-import re
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
-from django.views.generic.edit import CreateView
 from django.views.generic import DetailView
 from django.conf import settings
 from adit.main.mixins import OwnerRequiredMixin
@@ -39,7 +37,7 @@ class ContinuousTransferJobCreateView(
         data["helper"] = DataElementFilterFormSetHelper()
         return data
 
-    def form_valid(self, form):
+    def form_and_formset_valid(self, form, formset):
         user = self.request.user
         form.instance.owner = user
 
