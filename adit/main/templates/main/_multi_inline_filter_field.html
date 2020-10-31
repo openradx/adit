@@ -1,0 +1,21 @@
+{% load crispy_forms_field %}
+
+{% if field.is_hidden %}
+    {{ field }}
+{% else %}
+    {% if field|is_select %}
+        <div id="div_{{ field.auto_id }}" class="form-group form-group-sm{% if wrapper_class %} {{ wrapper_class }}{% endif %}">
+            <label for="{{ field.id_for_label }}" class="{% if label_class %}{{ label_class }}{% endif %}">
+                {{ field.label|safe }}
+            </label>
+            {% crispy_field field "class" "custom-select custom-select-sm" %}
+        </div>
+    {% else %}
+        <div id="div_{{ field.auto_id }}" class="input-group{% if wrapper_class %} {{ wrapper_class }}{% endif %}">
+            <label for="{{ field.id_for_label }}" class="{% if field.field.required %}requiredField{% endif %}">
+                {{ field.label|safe }}
+            </label>
+            {% crispy_field field %}
+        </div>
+    {% endif %}
+{% endif %}

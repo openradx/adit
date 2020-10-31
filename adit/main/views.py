@@ -16,11 +16,13 @@ from revproxy.views import ProxyView
 from .models import TransferJob
 from .tables import TransferJobTable
 from .filters import TransferJobFilter
-from .mixins import OwnerRequiredMixin
+from .mixins import OwnerRequiredMixin, PageSizeSelectMixin
 from .serializers import TransferJobListSerializer
 
 
-class TransferJobListView(LoginRequiredMixin, SingleTableMixin, FilterView):
+class TransferJobListView(
+    LoginRequiredMixin, SingleTableMixin, PageSizeSelectMixin, FilterView
+):
     table_class = TransferJobTable
     template_name = "main/transfer_job_table.html"
     filterset_class = TransferJobFilter
