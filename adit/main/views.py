@@ -99,14 +99,6 @@ class TransferJobVerifyView(
         redirect(job)
 
 
-class AdminIFrameView(TemplateView):
-    template_name = "main/admin_iframe.html"
-
-
-class FlowerIFrameView(TemplateView):
-    template_name = "main/flower_iframe.html"
-
-
 class FlowerProxyView(UserPassesTestMixin, ProxyView):
     """A reverse proxy view to access the Flower Celery admin tool.
 
