@@ -10,7 +10,6 @@ class TransferJobFilter(django_filters.FilterSet):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # self.filters["status"].label = "Filter by status"
         self.form.helper = MultiInlineFilterFormHelper(
             self.request.GET, self.Meta.fields
         )

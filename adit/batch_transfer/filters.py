@@ -10,5 +10,4 @@ class BatchTransferRequestFilter(django_filters.FilterSet):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.filters["status"].label = "Filter by status"
         self.form.helper = SingleFilterFormHelper(self.request.GET, "status")
