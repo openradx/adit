@@ -10,11 +10,6 @@ main {
     height: 100%;
 }
 
-/* Move down content because we have a fixed navbar. */
-main {
-    padding-top: 3.5rem;
-}
-
 /* Place caption on tables on the top. */
 caption {
     caption-side: top;

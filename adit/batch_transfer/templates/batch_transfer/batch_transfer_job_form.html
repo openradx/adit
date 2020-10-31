@@ -11,12 +11,12 @@
 {% block container %}
 <h4>
     Create Batch Transfer Job
-    <small>
-        [<a href="#" class="border-bottom" data-toggle="modal" data-target="#batch_form_help_modal">
-            Help
+    <a href="#" class="badge badge-info" data-toggle="modal" data-target="#batch_form_help_modal">
+        Help
+        <span class="align-bottom">
             {% include "main/_help_icon.html" %}
-        </a>]
-    </small>
+        </span>
+    </a>
 </h4>
 <p>{% crispy form %}</p>
 {% endblock container %}

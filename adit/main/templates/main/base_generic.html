@@ -24,7 +24,7 @@
 <body id="{{ request.resolver_match.url_name }}">
 	<script>document.body.className="js";</script>
 	
-	{% include 'main/navbar.html' %}
+	{% include 'main/_navbar.html' %}
 
 	<main role="main">
 		{% block content %}
@@ -34,7 +34,7 @@
 		{% endblock %}
 	</main>
 
-	{% include 'main/messages_panel.html' %}
+	{% include 'main/_messages_panel.html' %}
 
 	{% block bottom %}{% endblock %}
 
