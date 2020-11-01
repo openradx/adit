@@ -1,3 +1,4 @@
+import re
 from django import forms
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Layout, Field, Row, Column, Div, Button
@@ -136,3 +137,7 @@ class SelectiveTransferJobForm(forms.ModelForm):
                 query_field("accession_number"),
             ),
         )
+
+    def clean_patient_name(self):
+        patient_name = self.cleaned_data["patient_name"]
+        return re.sub(r"\s*,\s*", "^", patient_name)
