@@ -1,0 +1,41 @@
+<table class="table">
+    <thead>
+        <tr>
+            <th></th>
+            <th>Patient ID</th>
+            <th>Patient Name</th>
+            <th>Birth Date</th>
+            <th>Study Date</th>
+            <th>Modality</th>
+            <th>Study Description</th>
+            <th># Images</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for result in query_results %}
+            <tr>
+                <td>
+                    <div class="form-check">
+                        {% with result.PatientID|add:"\\"|add:result.StudyInstanceUID as value %}
+                            <input
+                                class="form-check-input position-static"
+                                type="checkbox"
+                                id="study_select_{{ forloop.counter0 }}"
+                                name="selected_studies"
+                                value={{ value }}
+                                aria-label="Select Study"
+                            >
+                        {% endwith %}
+                    </div>
+                </td>
+                <td>{{ result.PatientID }}</td>
+                <td>{{ result.PatientName }}</td>
+                <td>{{ result.PatientBirthDate }}</td>
+                <td>{{ result.StudyDate }}</td>
+                <td>{{ result.Modalities }}</td>
+                <td>{{ result.StudyDescription }}</td>
+                <td>{{ result.NumberOfStudyRelatedInstances }}</td>
+            </tr>
+        {% endfor %}
+    </tbody>
+</table>

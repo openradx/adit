@@ -1,6 +1,6 @@
 from django import forms
 from crispy_forms.helper import FormHelper
-from crispy_forms.layout import Layout, Field, Row, Column, Div
+from crispy_forms.layout import Layout, Field, Row, Column, Div, Button
 from crispy_forms.bootstrap import StrictButton
 from adit.selective_transfer.models import SelectiveTransferJob
 from adit.main.models import DicomNode, TransferTask
@@ -15,6 +15,7 @@ def server_field(field_name):
     return Column(
         Field(
             field_name,
+            css_class="custom-select",
             **{"x-model": f"formData.{field_name}", "@change": change},
         )
     )
@@ -135,14 +136,3 @@ class SelectiveTransferJobForm(forms.ModelForm):
                 query_field("accession_number"),
             ),
         )
-
-
-class TransferTaskForm(forms.ModelForm):
-    class Meta:
-        model = TransferTask
-        fields = ("patient_id", "study_uid")
-
-
-TransferTaskFormSet = forms.inlineformset_factory(
-    SelectiveTransferJob, TransferTask, form=TransferTaskForm, extra=0
-)

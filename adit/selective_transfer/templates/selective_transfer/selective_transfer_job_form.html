@@ -12,69 +12,51 @@
 <h4 class="mb-3">Select studies to transfer</h4>
 
 <form
-    @submit.prevent="submitTransfer"
+    method="POST"
+    action=""
     novalidate="true"
-    x-data="selectiveTransferForm()"
-    x-init="init($refs)"
 >
     {% crispy form %}
 
-    <div x-show="noSearchYet" class="alert alert-primary mt-3" role="alert" x-cloak>
-        Choose a DICOM source and enter your search
-    </div>
+    <input type="submit" class="d-none" name="action" value="query" />
 
-    <div
-        x-show="noResults"
-        class="alert alert-secondary mt-3"
-        role="alert" 
-        x-cloak
-    >
-        No studies for your query found. Try with other search terms.
-    </div>
-
-    <div
-        x-show="errorMessage"
-        x-text="errorMessage"
-        class="alert alert-danger mt-3"
-        role="alert"
-        x-cloak
-    ></div>
-
-    <div
-        x-show="successJobId"
-        class="alert alert-success mt-3"
-        role="alert"
-        x-cloak
-    >
-        Successfully submitted transfer job with
-        <a :href="successJobUrl">ID <span x-text="successJobId"></span></a>
-    </div>
-
-    <div x-show="searchInProgress" class="mt-3" x-cloak>
-        <div class="d-flex justify-content-center">
-            <div class="d-flex flex-column align-items-center">
-                <div class="spinner-border" style="width: 3rem; height: 3rem;" role="status">
-                    <span class="sr-only">Loading...</span>
-                </div>
-                <div class="mt-2">
-                    Searching ...
-                </div>
-            </div>
+    {% if not query and not transfer %}
+        <div class="alert alert-primary mt-3" role="alert">
+            Choose a DICOM source and enter your search
         </div>
-    </div>
+    {% endif %}
 
-    <div x-show="queryResults.length > 0" class="mt-3" x-cloak>
-        {% include "./_query_result_table.html" %}
+    {% if query and not query_results %}
+        <div class="alert alert-secondary mt-3" role="alert">
+            No studies for your query found. Try with other search terms.
+        </div>
+    {% endif %}
 
-        <button type="submit" class="btn btn-primary" :disabled="transferRequested">
-            <span>Start Transfer</span>
-            <span 
-                x-show="transferRequested"
-                class="spinner-border spinner-border-sm"
-                role="status"
-                aria-hidden="true">
-            </span>
+    {% if query and query_results %}
+        {% include "selective_transfer/_query_results_table.html" %}
+
+        <button type="submit" class="btn btn-primary" name="action" value="transfer">
+            Start Transfer
         </button>
-    </div>
+    {% endif %}
+
+    {% if transfer and error %}
+        <div
+            class="alert alert-danger mt-3"
+            role="alert"
+        >
+         {{ error }}
+        </div>
+    {% endif %}
+
+    {% if transfer and not error %}
+        <div
+            class="alert alert-success mt-3"
+            role="alert"
+        >
+            Successfully submitted transfer job with
+            <a href="{{ object.get_absolute_url}}">ID {{ object.id }}</a>
+        </div>
+    {% endif %}
 </form>
 {% endblock %}
