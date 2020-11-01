@@ -7,6 +7,12 @@ caption {
     caption-side: top;
 }
 
+/* Shows that you get more info when hovering it. */
+.info-hint {
+    border-bottom: 1px dotted black;
+    cursor: help;
+}
+
 /***
 * Alpine.js
 ***/
@@ -59,13 +65,4 @@ table.table thead th.orderable {
 /* Align job ids to the right inside the column */
 table.table tbody td.record-id {
     text-align: right;
-}
-
-/***
-* Misc
-***/
-
-.info-hint {
-    border-bottom: 1px dotted black;
-    cursor: help;
 }
