@@ -1,10 +1,10 @@
 import re
 from django import forms
 from crispy_forms.helper import FormHelper
-from crispy_forms.layout import Layout, Field, Row, Column, Div, Button
+from crispy_forms.layout import Layout, Field, Row, Column, Div
 from crispy_forms.bootstrap import StrictButton
 from adit.selective_transfer.models import SelectiveTransferJob
-from adit.main.models import DicomNode, TransferTask
+from adit.main.models import DicomNode
 from adit.main.validators import validate_pseudonym
 
 
@@ -17,19 +17,7 @@ def server_field(field_name):
         Field(
             field_name,
             css_class="custom-select",
-            **{"x-model": f"formData.{field_name}", "@change": change},
-        )
-    )
-
-
-def query_field(field_name):
-    return Column(
-        Field(
-            field_name,
-            **{
-                "x_model": f"formData.{field_name}",
-                "@keydown.enter.prevent": "submitQuery",
-            },
+            **{"@change": change},
         )
     )
 
@@ -38,10 +26,16 @@ def option_field(field_name):
     return Column(
         Field(
             field_name,
-            **{
-                "x_model": f"formData.{field_name}",
-                "@keydown.enter.prevent": "",
-            },
+            **{"@keydown.enter.prevent": ""},
+        )
+    )
+
+
+def query_field(field_name):
+    return Column(
+        Field(
+            field_name,
+            **{"@keydown.enter.prevent": "submitQuery"},
         )
     )
 

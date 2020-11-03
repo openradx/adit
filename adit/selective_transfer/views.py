@@ -1,17 +1,19 @@
-from adit.main.models import TransferTask
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.mixins import PermissionRequiredMixin
 from django.views.generic.edit import CreateView
 from django.views.generic import DetailView
 from django.http import HttpResponseBadRequest
-from rest_framework import generics, permissions
 from adit.main.mixins import OwnerRequiredMixin
 from .forms import SelectiveTransferJobForm
 from .models import SelectiveTransferJob
+from .mixins import SelectiveTransferJobCreateMixin
 
 
-class SelectiveTransferJobFormView(
-    LoginRequiredMixin, PermissionRequiredMixin, CreateView
+class SelectiveTransferJobCreateView(
+    LoginRequiredMixin,
+    PermissionRequiredMixin,
+    SelectiveTransferJobCreateMixin,
+    CreateView,
 ):
     """A view class to render the selective transfer form.
 
@@ -24,55 +26,28 @@ class SelectiveTransferJobFormView(
     permission_required = "selective_transfer.add_selectivetransferjob"
 
     def form_valid(self, form):
-        if self.request.POST.get("action") == "query":
-            data = form.cleaned_data
-            server = form.instance.source.dicomserver
-            connector = server.create_connector()
-            studies = connector.find_studies(
-                patient_id=data["patient_id"],
-                patient_name=data["patient_name"],
-                birth_date=data["patient_birth_date"],
-                accession_number=data["accession_number"],
-                study_date=data["study_date"],
-                modality=data["modality"],
-                limit_results=50,
-            )
+        action = self.request.POST.get("action")
+
+        if action == "query":
+            studies = self.do_query(form)
             return self.render_to_response(
-                self.get_context_data(
-                    query=True,
-                    query_results=studies,
-                )
+                self.get_context_data(query=True, query_results=studies)
             )
-        else:
+
+        if action == "transfer":
             user = self.request.user
             selected_studies = self.request.POST.getlist("selected_studies")
-            error = None
-            if not selected_studies:
-                error = "At least one study must be selected for transfer."
-            elif len(selected_studies) > 10 and not user.is_staff:
-                error = "Maximum 10 studies per transfer can be selected."
-
-            if error:
+            try:
+                job = self.do_transfer(user, form, selected_studies)
+            except ValueError as err:
                 return self.render_to_response(
-                    self.get_context_data(transfer=True, error=error)
+                    self.get_context_data(transfer=True, error_message=str(err))
                 )
-            else:
-                form.instance.owner = user
-                self.object = form.save()
+            return self.render_to_response(
+                self.get_context_data(transfer=True, created_job=job)
+            )
 
-                pseudonym = form.cleaned_data["pseudonym"]
-                for selected_study in selected_studies:
-                    study_data = selected_study.split("\\")
-                    patient_id = study_data[0]
-                    study_uid = study_data[1]
-                    TransferTask.objects.create(
-                        job=self.object,
-                        patient_id=patient_id,
-                        study_uid=study_uid,
-                        pseudonym=pseudonym,
-                    )
-
-                return self.render_to_response(self.get_context_data(transfer=True))
+        return HttpResponseBadRequest()
 
 
 class SelectiveTransferJobDetailView(

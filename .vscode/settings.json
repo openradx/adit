@@ -1,12 +1,8 @@
 {
-    "python.linting.enabled": true,
-    "python.formatting.provider": "black",
     "editor.formatOnSave": true,
     "html.format.enable": false,
-    "python.linting.pylintEnabled": true,
     "prettier.tabWidth": 4,
-    "prettier.disableLanguages": [
-        "html",
-        "django-html"
-    ]
+    "prettier.disableLanguages": ["html", "django-html"],
+    "python.formatting.provider": "black",
+    "python.linting.pylintEnabled": true
 }

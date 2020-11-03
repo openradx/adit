@@ -1,37 +1,10 @@
 function selectiveTransferForm() {
     return {
-        formData: {
-            source: "",
-            destination: "",
-            patient_id: "",
-            patient_name: "",
-            patient_birth_date: "",
-            study_date: "",
-            modality: "",
-            accession_number: "",
-            pseudonym: "",
-            archive_password: "",
-            trial_protocol_id: "",
-            trial_protocol_name: "",
-        },
-        queryResults: [],
-        currentQueryId: null,
-        advancedOptionsVisible: false,
-        noSearchYet: true,
-        noResults: false,
-        errorMessage: "",
-        transferRequested: false,
-        successJobId: null,
-        successJobUrl: null,
-        searchInProgress: false,
-        selectAllChecked: false,
-
-        init: function ($refs) {
-            this.$refs = $refs;
-
+        initialHelpMessage: true,
+        init: function (el) {
+            this.$el = $(el);
+            this.messageId = 0;
             this.connect();
-            this.initAdvancedOptions();
-            this.loadCookie();
         },
         connect: function () {
             const self = this;
@@ -46,20 +19,20 @@ function selectiveTransferForm() {
 
             const ws = new WebSocket(wsUrl);
             ws.onopen = function () {
-                console.log("Socket open.");
+                console.info("Socket open.");
             };
-            ws.onclose = function (e) {
-                console.log(
+            ws.onclose = function (event) {
+                console.info(
                     "Socket closed. Reconnect will be attempted in 1 second.",
-                    e.reason
+                    event.reason
                 );
                 setTimeout(function () {
                     self.connect(wsUrl);
                 }, 1000);
             };
-            ws.onmessage = function (e) {
-                const data = JSON.parse(e.data);
-                self.handleMessage(data);
+            ws.onmessage = function (event) {
+                const msg = JSON.parse(event.data);
+                self.handleMessage(msg);
             };
             ws.onerror = function (err) {
                 console.error(
@@ -71,169 +44,64 @@ function selectiveTransferForm() {
             };
             this.ws = ws;
         },
-        initAdvancedOptions: function () {
-            const self = this;
-            $(this.$refs.advancedOptions)
-                .on("show.bs.collapse", function () {
-                    self.advancedOptionsVisible = true;
-                    self.updateCookie();
-                })
-                .on("hide.bs.collapse", function () {
-                    self.advancedOptionsVisible = false;
-                    self.updateCookie();
-                });
-        },
-        loadCookie: function () {
-            const data = Cookies.getJSON("selectiveTransferForm");
-            if (data) {
-                this.formData.source = data.source;
-                this.formData.destination = data.destination;
-            }
-
-            if (data && data.advancedOptionsVisible) {
-                $(this.$refs.advancedOptions).collapse("show");
-            } else {
-                $(this.$refs.advancedOptions).collapse("hide");
-            }
-        },
-        updateCookie: function () {
-            Cookies.set("selectiveTransferForm", {
-                source: this.formData.source,
-                destination: this.formData.destination,
-                advancedOptionsVisible: this.advancedOptionsVisible,
-            });
-        },
-        reset: function (noSearchYet) {
-            this.noSearchYet = !!noSearchYet;
-            this.selectAllChecked = false;
-            this.queryResults = [];
-            this.noResults = false;
-            this.errorMessage = "";
-            this.successJobId = null;
-            this.successJobUrl = null;
-            this.searchInProgress = false;
-            this.transferRequested = false;
-        },
         submitQuery: function () {
-            this.reset();
-            this.searchInProgress = true;
-            this.currentQueryId = uuidv4();
-
-            const data = {
-                action: "query_studies",
-                queryId: this.currentQueryId,
-                query: this.formData,
-            };
-
-            console.debug("Submitting query:", data);
-
-            this.ws.send(JSON.stringify(data));
-        },
-        handleMessage: function (data) {
-            console.debug("Received message:", data);
-            this.searchInProgress = false;
-            if (data.status === "error") {
-                this.errorMessage = data.message;
-            } else if (data.status === "success") {
-                const queryId = data.queryId;
-                if (this.currentQueryId === queryId) {
-                    this.queryResults = data.queryResults;
-                    if (this.queryResults.length === 0) {
-                        this.noResults = true;
-                    }
-                    this.currentQueryId = null;
-                }
-            }
-        },
-        watchSelectAll: function (event) {
-            const selectAll = event.target.checked;
-            if (selectAll) {
-                this.queryResults.forEach(function (result) {
-                    result.selected = true;
-                });
-            } else {
-                this.queryResults.forEach(function (result) {
-                    delete result.selected;
-                });
-            }
-            this.selectionChanged();
-        },
-        selectionChanged: function () {
-            let allSelected = true;
-            for (let i = 0; i < this.queryResults.length; i++) {
-                if (!this.queryResults[i].selected) {
-                    allSelected = false;
-                    break;
-                }
-            }
-            this.selectAllChecked = allSelected;
+            this.initialHelpMessage = false;
+            this.submitForm("query");
         },
         submitTransfer: function () {
-            const self = this;
-
-            this.transferRequested = true;
-            this.errorMessage = "";
-
-            const patientIds = [];
-            const studiesToTransfer = this.queryResults
-                .filter(function (study) {
-                    return !!study.selected;
-                })
-                .map(function (study) {
-                    if (patientIds.indexOf(study.PatientID) === -1) {
-                        patientIds.push(study.PatientID);
-                    }
-
-                    return {
-                        patient_id: study.PatientID,
-                        study_uid: study.StudyInstanceUID,
-                        pseudonym: self.formData.pseudonym,
-                    };
-                });
-
-            const csrftoken = document.querySelector(
-                "[name=csrfmiddlewaretoken]"
-            ).value;
-
-            const data = {
-                source: this.formData.source,
-                destination: this.formData.destination,
-                archive_password: this.formData.archive_password,
-                trial_protocol_id: this.formData.trial_protocol_id,
-                trial_protocol_name: this.formData.trial_protocol_name,
-                tasks: studiesToTransfer,
-            };
-
-            console.debug("Submitting transfer job:", data);
-
-            $.ajax({
-                url: "/selective-transfer/create/",
-                method: "POST",
-                headers: { "X-CSRFToken": csrftoken },
-                dataType: "json",
-                contentType: "application/json",
-                data: JSON.stringify(data),
-            })
-                .done(function (data) {
-                    console.debug("Successfully created transfer job:", data);
-                    self.reset();
-                    self.successJobId = data.id;
-                    self.successJobUrl = data.url;
-                })
-                .fail(function (jqXHR) {
-                    console.error("Error while creating transfer job:", jqXHR);
-                    let errorString = "";
-                    const errorMessages = jqXHR.responseJSON;
-                    if (jqXHR.status === 400) {
-                        for (const field in errorMessages) {
-                            errorString += capitalize(field);
-                            errorString += ": " + errorMessages[field];
-                            errorString += "\n";
-                        }
-                    }
-                    self.errorMessage = errorString;
-                    self.transferRequested = false;
-                });
+            this.initialHelpMessage = false;
+            this.submitForm("transfer");
         },
+        submitForm(action) {
+            const formData = this.$el.serialize();
+            this.ws.send(
+                JSON.stringify({
+                    messageId: ++this.messageId,
+                    action: action,
+                    data: formData,
+                })
+            );
+        },
+        handleMessage: function (msg) {
+            console.debug("Received message:", msg);
+            const messageId = msg.messageId;
+            delete msg.messageId;
+            if (messageId !== this.messageId) {
+                console.debug("Discarding message with ID: " + messageId);
+                return;
+            }
+
+            // Save focus and possible caret position.
+            const prevActiveElement = document.activeElement;
+            const prevSelectionStart =
+                prevActiveElement && prevActiveElement.selectionStart;
+            const prevSelectionEnd =
+                prevActiveElement && prevActiveElement.selectionEnd;
+
+            // Replace the HTML as demanded by the server.
+            for (const elementId in msg) {
+                const $el = this.$el.find("#" + elementId);
+                $el.html(msg[elementId]);
+            }
+
+            // Restore focus and caret position after element was replaced.
+            const activeElement = document.activeElement;
+            if (activeElement && activeElement !== prevActiveElement) {
+                const name = prevActiveElement.name;
+                if (name) {
+                    const $el = this.$el.find("[name=" + name + "]");
+                    $el.focus();
+                    const el = $el[0];
+                    if (el && el.type === "text") {
+                        el.setSelectionRange(
+                            prevSelectionStart,
+                            prevSelectionEnd
+                        );
+                    }
+                }
+            }
+        },
+        updateCookie: function () {},
+        reset: function () {},
     };
 }

@@ -15,48 +15,33 @@
     method="POST"
     action=""
     novalidate="true"
+    x-data="selectiveTransferForm()"
+    x-init="init($el, $refs)"
 >
-    {% crispy form %}
+    <div id="query_form">
+        {% crispy form %}
+    </div>
 
     <input type="submit" class="d-none" name="action" value="query" />
 
     {% if not query and not transfer %}
-        <div class="alert alert-primary mt-3" role="alert">
-            Choose a DICOM source and enter your search
+        <div id="help_message">
+            <div class="alert alert-primary mt-3" role="alert">
+                Choose a DICOM source and enter your search
+            </div>
         </div>
     {% endif %}
 
-    {% if query and not query_results %}
-        <div class="alert alert-secondary mt-3" role="alert">
-            No studies for your query found. Try with other search terms.
-        </div>
-    {% endif %}
+    <div id="error_message">
+        {% include "selective_transfer/_error_message.html" %}
+    </div>
 
-    {% if query and query_results %}
-        {% include "selective_transfer/_query_results_table.html" %}
+    <div id="created_job">
+        {% include "selective_transfer/_created_job.html" %}
+    </div>
 
-        <button type="submit" class="btn btn-primary" name="action" value="transfer">
-            Start Transfer
-        </button>
-    {% endif %}
-
-    {% if transfer and error %}
-        <div
-            class="alert alert-danger mt-3"
-            role="alert"
-        >
-         {{ error }}
-        </div>
-    {% endif %}
-
-    {% if transfer and not error %}
-        <div
-            class="alert alert-success mt-3"
-            role="alert"
-        >
-            Successfully submitted transfer job with
-            <a href="{{ object.get_absolute_url}}">ID {{ object.id }}</a>
-        </div>
-    {% endif %}
+    <div id="query_results">
+        {% include "selective_transfer/_query_results.html" %}
+    </div>
 </form>
 {% endblock %}
