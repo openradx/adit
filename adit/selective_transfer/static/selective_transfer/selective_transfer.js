@@ -1,6 +1,5 @@
 function selectiveTransferForm() {
     return {
-        initialHelpMessage: true,
         init: function (el) {
             this.$el = $(el);
             this.messageId = 0;
@@ -45,11 +44,9 @@ function selectiveTransferForm() {
             this.ws = ws;
         },
         submitQuery: function () {
-            this.initialHelpMessage = false;
             this.submitForm("query");
         },
         submitTransfer: function () {
-            this.initialHelpMessage = false;
             this.submitForm("transfer");
         },
         submitForm(action) {
@@ -71,34 +68,12 @@ function selectiveTransferForm() {
                 return;
             }
 
-            // Save focus and possible caret position.
-            const prevActiveElement = document.activeElement;
-            const prevSelectionStart =
-                prevActiveElement && prevActiveElement.selectionStart;
-            const prevSelectionEnd =
-                prevActiveElement && prevActiveElement.selectionEnd;
-
             // Replace the HTML as demanded by the server.
             for (const elementId in msg) {
-                const $el = this.$el.find("#" + elementId);
-                $el.html(msg[elementId]);
-            }
-
-            // Restore focus and caret position after element was replaced.
-            const activeElement = document.activeElement;
-            if (activeElement && activeElement !== prevActiveElement) {
-                const name = prevActiveElement.name;
-                if (name) {
-                    const $el = this.$el.find("[name=" + name + "]");
-                    $el.focus();
-                    const el = $el[0];
-                    if (el && el.type === "text") {
-                        el.setSelectionRange(
-                            prevSelectionStart,
-                            prevSelectionEnd
-                        );
-                    }
-                }
+                const fromNode = this.$el.find("#" + elementId)[0];
+                const toNode = fromNode.cloneNode(false);
+                toNode.innerHTML = msg[elementId];
+                morphdom(fromNode, toNode);
             }
         },
         updateCookie: function () {},
