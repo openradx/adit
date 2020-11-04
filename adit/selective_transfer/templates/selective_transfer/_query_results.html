@@ -13,7 +13,14 @@
         name="action"
         value="transfer"
         @click.prevent="submitTransfer"
+        :disabled="transferInProgress"
     >
-        Start Transfer
+        <span>Start Transfer<span>
+        <span 
+            x-show="transferInProgress"
+            class="spinner-border spinner-border-sm"
+            role="status"
+            aria-hidden="true">
+        </span>
     </button>
 {% endif %}

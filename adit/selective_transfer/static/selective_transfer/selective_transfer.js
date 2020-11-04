@@ -1,9 +1,40 @@
 function selectiveTransferForm() {
     return {
+        queryInProgress: false,
+        transferInProgress: false,
+
         init: function (el) {
-            this.$el = $(el);
+            this.$form = $(el);
             this.messageId = 0;
             this.connect();
+
+            const self = this;
+
+            const advanced_options = this.$form.find("#advanced_options");
+            advanced_options
+                .on("hide.bs.collapse", function () {
+                    self.updateCookie("hideOptions", true);
+                })
+                .on("show.bs.collapse", function () {
+                    self.updateCookie("hideOptions", false);
+                });
+
+            const cookie = JSON.parse(
+                Cookies.get("selectiveTransferForm") || "{}"
+            );
+            if ("hideOptions" in cookie) {
+                if (cookie.hideOptions) {
+                    advanced_options.collapse("hide");
+                } else {
+                    advanced_options.collapse("show");
+                }
+            }
+            if ("source" in cookie) {
+                this.$form.find("[name=source]").val(cookie.source);
+            }
+            if ("destination" in cookie) {
+                this.$form.find("[name=destination]").val(cookie.destination);
+            }
         },
         connect: function () {
             const self = this;
@@ -43,14 +74,26 @@ function selectiveTransferForm() {
             };
             this.ws = ws;
         },
+        updateCookie: function (key, value) {
+            const cookie = JSON.parse(
+                Cookies.get("selectiveTransferForm") || "{}"
+            );
+            cookie[key] = value;
+            Cookies.set("selectiveTransferForm", JSON.stringify(cookie));
+        },
         submitQuery: function () {
+            this.queryInProgress = true;
+            this.$form.find("#error_message").empty();
+            this.$form.find("#created_job").empty();
+            this.$form.find("#query_results").empty();
             this.submitForm("query");
         },
         submitTransfer: function () {
+            this.transferInProgress = true;
             this.submitForm("transfer");
         },
         submitForm(action) {
-            const formData = this.$el.serialize();
+            const formData = this.$form.serialize();
             this.ws.send(
                 JSON.stringify({
                     messageId: ++this.messageId,
@@ -68,15 +111,29 @@ function selectiveTransferForm() {
                 return;
             }
 
+            this.queryInProgress = false;
+            this.transferInProgress = false;
+
             // Replace the HTML as demanded by the server.
-            for (const elementId in msg) {
-                const fromNode = this.$el.find("#" + elementId)[0];
+            for (const selector in msg) {
+                const fromNode = this.$form.find(selector)[0];
                 const toNode = fromNode.cloneNode(false);
-                toNode.innerHTML = msg[elementId];
+                toNode.innerHTML = msg[selector];
                 morphdom(fromNode, toNode);
             }
         },
-        updateCookie: function () {},
-        reset: function () {},
+        onServerChanged: function (event) {
+            const name = event.target.name;
+            const value = event.target.value;
+            if (name === "source") {
+                this.reset();
+            }
+            this.updateCookie(name, value);
+        },
+        reset: function () {
+            this.$form.find("#error_message").empty();
+            this.$form.find("#created_job").empty();
+            this.$form.find("#query_results").empty();
+        },
     };
 }

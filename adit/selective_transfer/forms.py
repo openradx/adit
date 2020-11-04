@@ -9,15 +9,11 @@ from adit.main.validators import validate_pseudonym
 
 
 def server_field(field_name):
-    change = "updateCookie();"
-    if field_name == "source":
-        change += " reset(true);"
-
     return Column(
         Field(
             field_name,
             css_class="custom-select",
-            **{"@change": change},
+            **{"@change": "onServerChanged"},
         )
     )
 
@@ -114,7 +110,6 @@ class SelectiveTransferJobForm(forms.ModelForm):
                             ),
                             css_class="show pt-1",
                             css_id="advanced_options",
-                            **{"x-ref": "advancedOptions"},
                         ),
                         css_class="card-body p-2",
                     ),

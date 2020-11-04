@@ -12,13 +12,13 @@ logger = logging.getLogger(__name__)
 
 def create_error_response(error_message):
     return {
-        "error_message": render_to_string(
+        "#error_message": render_to_string(
             "selective_transfer/_error_message.html",
             {"error_message": str(error_message)},
         ),
-        "help_message": "",
-        "query_results": "",
-        "created_job": "",
+        "#help_message": "",
+        "#query_results": "",
+        "#created_job": "",
     }
 
 
@@ -74,43 +74,43 @@ class SelectiveTransferConsumer(
     @database_sync_to_async
     def get_query_response(self, form):
         if not form.is_valid():
-            return {"query_form": render_crispy_form(form)}
+            return {"#query_form": render_crispy_form(form)}
 
         studies = self.do_query(form)
         return {
-            "query_form": render_crispy_form(form),
-            "query_results": render_to_string(
+            "#query_form": render_crispy_form(form),
+            "#query_results": render_to_string(
                 "selective_transfer/_query_results.html",
                 {"query": True, "query_results": studies},
             ),
-            "help_message": "",
-            "error_message": "",
-            "created_job": "",
+            "#help_message": "",
+            "#error_message": "",
+            "#created_job": "",
         }
 
     @database_sync_to_async
     def get_transfer_response(self, form, selected_studies):
         if not form.is_valid():
-            return {"query_form": render_crispy_form(form)}
+            return {"#query_form": render_crispy_form(form)}
 
         try:
             job = self.do_transfer(self.user, form, selected_studies)
         except ValueError as err:
             return {
-                "query_form": render_crispy_form(form),
-                "error_message": render_to_string(
+                "#query_form": render_crispy_form(form),
+                "#error_message": render_to_string(
                     "selective_transfer/_error_message.html",
                     {"transfer": True, "error_message": str(err)},
                 ),
             }
 
         return {
-            "query_form": render_crispy_form(form),
-            "created_job": render_to_string(
+            "#query_form": render_crispy_form(form),
+            "#created_job": render_to_string(
                 "selective_transfer/_created_job.html",
                 {"transfer": True, "created_job": job},
             ),
-            "help_message": "",
-            "error_message": "",
-            "query_results": "",
+            "#help_message": "",
+            "#error_message": "",
+            "#query_results": "",
         }

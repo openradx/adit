@@ -16,7 +16,7 @@
     action=""
     novalidate="true"
     x-data="selectiveTransferForm()"
-    x-init="init($el, $refs)"
+    x-init="init($el)"
 >
     <div id="query_form">
         {% crispy form %}
@@ -27,10 +27,23 @@
     {% if not query and not transfer %}
         <div id="help_message">
             <div class="alert alert-primary mt-3" role="alert">
-                Choose a DICOM source and enter your search
+                Choose a DICOM source and destination, then enter your search
             </div>
         </div>
     {% endif %}
+
+    <div x-show="queryInProgress" class="mt-3" x-cloak>
+        <div class="d-flex justify-content-center">
+            <div class="d-flex flex-column align-items-center">
+                <div class="spinner-border" style="width: 3rem; height: 3rem;" role="status">
+                    <span class="sr-only">Loading...</span>
+                </div>
+                <div class="mt-2">
+                    Searching ...
+                </div>
+            </div>
+        </div>
+    </div>
 
     <div id="error_message">
         {% include "selective_transfer/_error_message.html" %}
