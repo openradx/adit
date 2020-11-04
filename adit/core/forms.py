@@ -1,6 +1,6 @@
 from django import forms
 from crispy_forms.helper import FormHelper
-from crispy_forms.layout import Button, Layout, Submit, Field, Div, Hidden
+from crispy_forms.layout import Layout, Submit, Field, Div, Hidden
 from crispy_forms.bootstrap import FieldWithButtons
 
 
@@ -14,7 +14,11 @@ class PageSizeSelectForm(forms.Form):
         self.fields["per_page"].choices = choices
 
         self.helper = SingleFilterFormHelper(
-            data, "per_page", button_label="Set", at_url_end=True
+            data,
+            "per_page",
+            button_label="Set",
+            button_id="set_page_size",
+            at_url_end=True,
         )
 
 
@@ -24,6 +28,7 @@ class SingleFilterFormHelper(FormHelper):
 
     def __init__(self, data, field_name, *args, **kwargs):
         button_label = kwargs.pop("button_label", "Filter")
+        button_id = kwargs.pop("button_id", "filter")
         at_url_end = kwargs.pop("at_url_end", False)
 
         super().__init__(*args, **kwargs)
@@ -36,7 +41,12 @@ class SingleFilterFormHelper(FormHelper):
         layout.append(
             FieldWithButtons(
                 Field(field_name, css_class="custom-select custom-select-sm"),
-                Submit("", button_label, css_class="btn-secondary btn-sm"),
+                Submit(
+                    "",
+                    button_label,
+                    css_class="btn-secondary btn-sm",
+                    css_id=button_id,
+                ),
                 css_class="input-group-sm",
             ),
         )
@@ -79,6 +89,13 @@ class MultiInlineFilterFormHelper(FormHelper):
             if key not in field_names:
                 layout.append(Hidden(key, data.get(key)))
 
-        layout.append(Submit("", "Filter", css_class="btn-secondary btn-sm ml-1"))
+        layout.append(
+            Submit(
+                "",
+                "Filter",
+                css_class="btn-secondary btn-sm ml-1",
+                css_id="filter",
+            )
+        )
 
         self.layout = layout
