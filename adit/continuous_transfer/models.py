@@ -1,6 +1,6 @@
 from django.db import models
 from django.urls import reverse
-from adit.main.models import AppSettings, TransferJob
+from adit.core.models import AppSettings, TransferJob
 
 
 class ContinuousTransferSettings(AppSettings):

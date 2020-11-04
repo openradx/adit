@@ -7,7 +7,7 @@ from django.contrib.auth.models import Group
 from django.urls import reverse
 from django.core.files.uploadedfile import SimpleUploadedFile
 from adit.accounts.factories import UserFactory
-from adit.main.factories import DicomServerFactory
+from adit.core.factories import DicomServerFactory
 from ..models import BatchTransferJob
 
 csv_data = b"""\

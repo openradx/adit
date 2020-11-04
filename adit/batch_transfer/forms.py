@@ -9,7 +9,7 @@ from django.utils.safestring import mark_safe
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Submit, Div
 import cchardet as chardet
-from adit.main.models import DicomNode
+from adit.core.models import DicomNode
 from .models import BatchTransferJob, BatchTransferRequest
 from .fields import RestrictedFileField
 from .utils.parsers import RequestsParser, ParsingError

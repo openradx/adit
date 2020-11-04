@@ -1,0 +1,42 @@
+<div
+    class="messages-panel"
+    x-data="messages()"
+    x-init="init($el, $watch, $nextTick)"
+    @core:add-message.window="addMessage($event.detail)"
+>
+    {# Messages placed by the server (server side rendered) #}
+    {% for message in messages %}
+        <div class="{{ message.level_tag }} toast show server-message" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="toast-header">
+                <svg class="bd-placeholder-img rounded mr-2" width="20" height="20" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice" focusable="false" role="img">
+                    <rect width="100%" height="100%" fill="#007aff"></rect>
+                </svg>
+                <strong class="mr-auto">{{ message.level_tag|capfirst }}</strong>
+                <small class="text-muted">just now</small>
+                <button type="button" class="ml-2 mb-1 close" data-dismiss="toast" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="toast-body">
+                {{ message }}
+            </div>
+        </div>
+    {% endfor %}
+
+    {# Messages placed by the client (client side rendered) #}
+    <template x-for="message in messages" :key="message.id">
+        <div x-ref="message.id" :class="{[message.level]: true}" class="toast show client-message" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="toast-header">
+                <svg class="bd-placeholder-img rounded mr-2" width="20" height="20" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice" focusable="false" role="img">
+                    <rect width="100%" height="100%" fill="#007aff"></rect>
+                </svg>
+                <strong x-text="message.title" class="mr-auto"></strong>
+                <small class="text-muted">just now</small>
+                <button @click="removeMessage(message)" type="button" class="ml-2 mb-1 close" data-dismiss="toast" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div x-text="message.text" class="toast-body"></div>
+        </div>
+    </template>
+</div>

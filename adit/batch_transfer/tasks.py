@@ -5,11 +5,11 @@ from celery.utils.log import get_task_logger
 from django.conf import settings
 from django.utils import timezone
 from django.template.defaultfilters import pluralize
-from adit.main.models import TransferTask
-from adit.main.tasks import on_job_failed, transfer_dicoms
-from adit.main.utils.scheduler import Scheduler
-from adit.main.utils.redis_lru import redis_lru
-from adit.main.utils.mail import send_job_finished_mail
+from adit.core.models import TransferTask
+from adit.core.tasks import on_job_failed, transfer_dicoms
+from adit.core.utils.scheduler import Scheduler
+from adit.core.utils.redis_lru import redis_lru
+from adit.core.utils.mail import send_job_finished_mail
 from .models import BatchTransferSettings, BatchTransferJob, BatchTransferRequest
 from .errors import NoStudiesFoundError
 

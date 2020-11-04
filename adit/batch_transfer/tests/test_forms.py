@@ -2,7 +2,7 @@ from io import StringIO
 from unittest.mock import patch, create_autospec
 import pytest
 from django.core.files import File
-from adit.main.factories import DicomServerFactory
+from adit.core.factories import DicomServerFactory
 from ..forms import BatchTransferJobForm
 
 

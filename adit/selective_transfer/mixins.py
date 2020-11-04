@@ -1,4 +1,4 @@
-from adit.main.models import TransferTask
+from adit.core.models import TransferTask
 
 
 class SelectiveTransferJobCreateMixin:

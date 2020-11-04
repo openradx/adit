@@ -3,8 +3,8 @@ from celery import shared_task, chord
 from celery.utils.log import get_task_logger
 from django.utils import timezone
 from django.contrib.humanize.templatetags.humanize import naturaltime
-from adit.main.tasks import on_job_failed, transfer_dicoms
-from adit.main.models import TransferTask
+from adit.core.tasks import on_job_failed, transfer_dicoms
+from adit.core.models import TransferTask
 from .models import SelectiveTransferSettings, SelectiveTransferJob
 
 logger = get_task_logger(__name__)

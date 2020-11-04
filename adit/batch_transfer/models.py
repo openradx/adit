@@ -4,8 +4,8 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.contrib.contenttypes.fields import GenericRelation
 from django.urls import reverse
-from adit.main.models import AppSettings, TransferJob, TransferTask
-from adit.main.validators import validate_pseudonym
+from adit.core.models import AppSettings, TransferJob, TransferTask
+from adit.core.validators import validate_pseudonym
 
 
 def slot_time(hour, minute):

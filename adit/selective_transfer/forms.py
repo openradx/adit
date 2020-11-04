@@ -4,8 +4,8 @@ from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Layout, Field, Row, Column, Div
 from crispy_forms.bootstrap import StrictButton
 from adit.selective_transfer.models import SelectiveTransferJob
-from adit.main.models import DicomNode
-from adit.main.validators import validate_pseudonym
+from adit.core.models import DicomNode
+from adit.core.validators import validate_pseudonym
 
 
 def server_field(field_name):

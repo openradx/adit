@@ -3,7 +3,7 @@ from django.views.generic.edit import CreateView
 from django.views.generic import TemplateView, DetailView
 from django.conf import settings
 from django_tables2 import SingleTableMixin
-from adit.main.mixins import OwnerRequiredMixin, RelatedFilterMixin, PageSizeSelectMixin
+from adit.core.mixins import OwnerRequiredMixin, RelatedFilterMixin, PageSizeSelectMixin
 from .models import BatchTransferSettings, BatchTransferJob
 from .forms import BatchTransferJobForm
 from .tables import BatchTransferRequestTable

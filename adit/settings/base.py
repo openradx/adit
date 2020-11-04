@@ -44,7 +44,7 @@ INSTALLED_APPS = [
     "django_tables2",
     "rest_framework",
     "bootstrap4",
-    "adit.main.apps.MainConfig",
+    "adit.core.apps.CoreConfig",
     "adit.selective_transfer.apps.SelectiveTransferConfig",
     "adit.batch_transfer.apps.BatchTransferConfig",
     "adit.continuous_transfer.apps.ContinuousTransferConfig",
@@ -59,8 +59,8 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
-    "adit.main.middlewares.MaintenanceMiddleware",
-    "adit.main.middlewares.TimezoneMiddleware",
+    "adit.core.middlewares.MaintenanceMiddleware",
+    "adit.core.middlewares.TimezoneMiddleware",
 ]
 
 ROOT_URLCONF = "adit.urls"
@@ -76,7 +76,7 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
-                "adit.main.site.base_context_processor",
+                "adit.core.site.base_context_processor",
             ],
         },
     },
@@ -268,7 +268,7 @@ CELERY_TASK_ROUTES = {
 }
 CELERY_BEAT_SCHEDULE = {
     "check-disk-space": {
-        "task": "adit.main.tasks.check_disk_space",
+        "task": "adit.core.tasks.check_disk_space",
         "schedule": crontab(minute=0, hour=7),  # execute daily at 7 o'clock UTC
     }
 }

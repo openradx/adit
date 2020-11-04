@@ -6,7 +6,7 @@ path = Path(__file__).parent.parent.resolve()
 sys.path.append(path.as_posix())
 
 # pylint: disable-msg=wrong-import-position
-from adit.main.utils.dicom_connector import DicomConnector
+from adit.core.utils.dicom_connector import DicomConnector
 
 config = DicomConnector.Config(
     "ADIT", "ORTHANC1", "127.0.0.1", 7501, patient_root_query_model_get=False

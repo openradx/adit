@@ -1,8 +1,8 @@
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
 from django.views.generic import DetailView
 from django.conf import settings
-from adit.main.mixins import OwnerRequiredMixin
-from adit.main.views import InlineFormSetCreateView
+from adit.core.mixins import OwnerRequiredMixin
+from adit.core.views import InlineFormSetCreateView
 from .models import ContinuousTransferJob
 from .forms import (
     ContinuousTransferJobForm,

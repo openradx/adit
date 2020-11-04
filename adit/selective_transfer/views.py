@@ -3,7 +3,7 @@ from django.contrib.auth.mixins import PermissionRequiredMixin
 from django.views.generic.edit import CreateView
 from django.views.generic import DetailView
 from django.http import HttpResponseBadRequest
-from adit.main.mixins import OwnerRequiredMixin
+from adit.core.mixins import OwnerRequiredMixin
 from .forms import SelectiveTransferJobForm
 from .models import SelectiveTransferJob
 from .mixins import SelectiveTransferJobCreateMixin

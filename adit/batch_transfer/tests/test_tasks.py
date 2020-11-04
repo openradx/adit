@@ -1,9 +1,9 @@
 from unittest.mock import patch, Mock, create_autospec
 import pytest
-from adit.main.models import TransferJob, TransferTask
-from adit.main.utils.dicom_connector import DicomConnector
-from adit.main.factories import DicomServerFactory
-from adit.main.utils.scheduler import Scheduler
+from adit.core.models import TransferJob, TransferTask
+from adit.core.utils.dicom_connector import DicomConnector
+from adit.core.factories import DicomServerFactory
+from adit.core.utils.scheduler import Scheduler
 from ..factories import BatchTransferJobFactory, BatchTransferRequestFactory
 from ..models import BatchTransferJob, BatchTransferRequest
 from ..tasks import batch_transfer, transfer_request
@@ -57,7 +57,7 @@ def test_batch_transfer_finished_with_success(
 
 @pytest.mark.django_db
 @patch.object(Scheduler, "must_be_scheduled", return_value=False)
-@patch("adit.main.tasks.transfer_dicoms")
+@patch("adit.core.tasks.transfer_dicoms")
 @patch("adit.batch_transfer.tasks._fetch_patient_id")
 def test_request_without_study_fails(
     fetch_patient_id_mock,

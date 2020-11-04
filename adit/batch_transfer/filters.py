@@ -1,5 +1,5 @@
 import django_filters
-from adit.main.forms import SingleFilterFormHelper
+from adit.core.forms import SingleFilterFormHelper
 from .models import BatchTransferRequest
 
 

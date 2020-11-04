@@ -1,6 +1,6 @@
 import factory
-from adit.main.factories import DicomFolderFactory
-from adit.main.factories import TransferJobFactory
+from adit.core.factories import DicomFolderFactory
+from adit.core.factories import TransferJobFactory
 from .models import SelectiveTransferJob
 
 
