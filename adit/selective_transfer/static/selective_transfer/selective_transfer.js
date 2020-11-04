@@ -1,17 +1,19 @@
 function selectiveTransferForm() {
     return {
+        showHelpMessage: true,
         queryInProgress: false,
         transferInProgress: false,
 
-        init: function (el) {
+        init: function (el, refs) {
             this.$form = $(el);
+            this.refs = refs;
             this.messageId = 0;
             this.connect();
 
             const self = this;
 
-            const advanced_options = this.$form.find("#advanced_options");
-            advanced_options
+            const $advanced_options = this.$form.find("#advanced_options");
+            $advanced_options
                 .on("hide.bs.collapse", function () {
                     self.updateCookie("hideOptions", true);
                 })
@@ -24,9 +26,9 @@ function selectiveTransferForm() {
             );
             if ("hideOptions" in cookie) {
                 if (cookie.hideOptions) {
-                    advanced_options.collapse("hide");
+                    $advanced_options.collapse("hide");
                 } else {
-                    advanced_options.collapse("show");
+                    $advanced_options.collapse("show");
                 }
             }
             if ("source" in cookie) {
@@ -82,6 +84,7 @@ function selectiveTransferForm() {
             Cookies.set("selectiveTransferForm", JSON.stringify(cookie));
         },
         submitQuery: function () {
+            this.showHelpMessage = false;
             this.queryInProgress = true;
             this.$form.find("#error_message").empty();
             this.$form.find("#created_job").empty();
@@ -119,7 +122,21 @@ function selectiveTransferForm() {
                 const fromNode = this.$form.find(selector)[0];
                 const toNode = fromNode.cloneNode(false);
                 toNode.innerHTML = msg[selector];
-                morphdom(fromNode, toNode);
+                morphdom(fromNode, toNode, {
+                    onBeforeElUpdated: function (fromEl, toEl) {
+                        // We need to preserve the collapse state as it is only
+                        // set on the client.
+                        if (
+                            fromEl.id === "advanced_options" ||
+                            fromEl.id === "advanced_options_toggle"
+                        ) {
+                            for (let i = 0; i < fromEl.attributes.length; i++) {
+                                const attr = fromEl.attributes[i];
+                                toEl.setAttribute(attr.name, attr.value);
+                            }
+                        }
+                    },
+                });
             }
         },
         onServerChanged: function (event) {
@@ -131,6 +148,7 @@ function selectiveTransferForm() {
             this.updateCookie(name, value);
         },
         reset: function () {
+            this.showHelpMessage = true;
             this.$form.find("#error_message").empty();
             this.$form.find("#created_job").empty();
             this.$form.find("#query_results").empty();

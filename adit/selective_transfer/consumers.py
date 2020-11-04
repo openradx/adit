@@ -10,13 +10,18 @@ from .mixins import SelectiveTransferJobCreateMixin
 logger = logging.getLogger(__name__)
 
 
-def create_error_response(error_message):
-    return {
-        "#error_message": render_to_string(
+def render_error_message(error_message):
+    return (
+        render_to_string(
             "selective_transfer/_error_message.html",
             {"error_message": str(error_message)},
         ),
-        "#help_message": "",
+    )
+
+
+def create_error_response(error_message):
+    return {
+        "#error_message": render_error_message(error_message),
         "#query_results": "",
         "#created_job": "",
     }
@@ -74,7 +79,12 @@ class SelectiveTransferConsumer(
     @database_sync_to_async
     def get_query_response(self, form):
         if not form.is_valid():
-            return {"#query_form": render_crispy_form(form)}
+            return {
+                "#query_form": render_crispy_form(form),
+                "#error_message": render_error_message(
+                    "Please correct the form errors and search again."
+                ),
+            }
 
         studies = self.do_query(form)
         return {
@@ -83,7 +93,6 @@ class SelectiveTransferConsumer(
                 "selective_transfer/_query_results.html",
                 {"query": True, "query_results": studies},
             ),
-            "#help_message": "",
             "#error_message": "",
             "#created_job": "",
         }
@@ -91,17 +100,19 @@ class SelectiveTransferConsumer(
     @database_sync_to_async
     def get_transfer_response(self, form, selected_studies):
         if not form.is_valid():
-            return {"#query_form": render_crispy_form(form)}
+            return {
+                "#query_form": render_crispy_form(form),
+                "#error_message": render_error_message(
+                    "Please correct the form errors and transfer again."
+                ),
+            }
 
         try:
             job = self.do_transfer(self.user, form, selected_studies)
         except ValueError as err:
             return {
                 "#query_form": render_crispy_form(form),
-                "#error_message": render_to_string(
-                    "selective_transfer/_error_message.html",
-                    {"transfer": True, "error_message": str(err)},
-                ),
+                "#error_message": render_error_message(str(err)),
             }
 
         return {
@@ -110,7 +121,6 @@ class SelectiveTransferConsumer(
                 "selective_transfer/_created_job.html",
                 {"transfer": True, "created_job": job},
             ),
-            "#help_message": "",
             "#error_message": "",
             "#query_results": "",
         }

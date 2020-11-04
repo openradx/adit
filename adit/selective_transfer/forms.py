@@ -90,6 +90,7 @@ class SelectiveTransferJobForm(forms.ModelForm):
                             StrictButton(
                                 "Advanced transfer options (optional)",
                                 css_class="btn-link px-0",
+                                css_id="advanced_options_toggle",
                                 **{
                                     "data-toggle": "collapse",
                                     "data-target": "#advanced_options",

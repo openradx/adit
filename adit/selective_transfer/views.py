@@ -25,6 +25,12 @@ class SelectiveTransferJobCreateView(
     form_class = SelectiveTransferJobForm
     permission_required = "selective_transfer.add_selectivetransferjob"
 
+    def form_invalid(self, form):
+        error_message = "Please correct the form errors and search again."
+        return self.render_to_response(
+            self.get_context_data(form=form, error_message=error_message)
+        )
+
     def form_valid(self, form):
         action = self.request.POST.get("action")
 

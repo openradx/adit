@@ -16,7 +16,7 @@
     action=""
     novalidate="true"
     x-data="selectiveTransferForm()"
-    x-init="init($el)"
+    x-init="init($el, $refs)"
 >
     <div id="query_form">
         {% crispy form %}
@@ -24,11 +24,9 @@
 
     <input type="submit" class="d-none" name="action" value="query" />
 
-    {% if not query and not transfer %}
-        <div id="help_message">
-            <div class="alert alert-primary mt-3" role="alert">
-                Choose a DICOM source and destination, then enter your search
-            </div>
+    {% if request.method == "GET" %}
+        <div x-show="showHelpMessage" class="alert alert-primary mt-3" role="alert">
+            Choose a DICOM source and destination, then enter your search
         </div>
     {% endif %}
 
