@@ -42,7 +42,6 @@ class TransferJobFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = TransferJob
 
-    job_type = factory.Faker("random_element", elements=job_type_keys)
     source = factory.SubFactory(DicomServerFactory)
     destination = factory.SubFactory(DicomServerFactory)
     status = factory.Faker("random_element", elements=job_status_keys)

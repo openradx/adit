@@ -9,22 +9,23 @@ factory-boy = "*"
 faker = "*" 
 pytest-django = "*" 
 pytest-cov = "*" 
-colorama = "*" # dependency for pytest-watch (must be installed separately because of a bug)
+colorama = "*" # Dependency for pytest-watch (must be installed separately because of a bug)
 pytest-watch = "*" 
 pytest-picked = "*" 
 django-webtest = "*" 
 time-machine = "*" 
 ### Code quality
-black = "==20.8b1" # version must be fixed as only a prerelase is available, see https://github.com/psf/black/issues/209
+black = "==20.8b1" # Version must be fixed as only a prerelase is available, see https://github.com/psf/black/issues/209
 pylint-django = "*" 
 pylint-celery = "*" 
 coverage = "*" 
 ### Debugging
-django-extensions = "*"
-django-debug-toolbar = "*"
-django-debug-permissions = "*"
-requests = "*"
-ipython = "*"
+django-extensions = "*" 
+django-debug-toolbar = "*" 
+django-debug-permissions = "*" 
+requests = "*" 
+ipython = "*" 
+pexpect = "*" # Dependency of ipython that is not installed (and locked) under Windows
 
 [packages]
 django = "*" 
@@ -48,10 +49,10 @@ flower = "*"
 django-revproxy = "*" # To integrate flower directly in the ADIT site
 django-loginas = "*" 
 cryptography = "*" # For generating the SSL certificate in production
-twisted = { extras = ["http2", "tls"], version = "*" }# For HTTP/2 support in production     
+twisted = { extras = ["http2", "tls"], version = "*" }# For HTTP/2 support in production          
 dicognito = "*" 
 django-model-utils = "*" 
-pylint-pytest = "*"
+pylint-pytest = "*" 
 
 [requires]
 python_version = "3.8"

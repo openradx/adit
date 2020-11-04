@@ -7,6 +7,7 @@ from ..tasks import transfer_dicoms
 @pytest.fixture
 def server_to_server_job(db):
     return TransferJobFactory(
+        job_type="TE",
         status=TransferJob.Status.PENDING,
         source=DicomServerFactory(),
         destination=DicomServerFactory(),
