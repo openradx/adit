@@ -22,6 +22,7 @@ ADIT (Automated DICOM Transfer) is a swiss army knife to exchange DICOM data bet
 
 -   Evaluate to use diffhtml instead of morphdom, see https://diffhtml.org/api.html#inner-html
 -   https://channels.readthedocs.io/en/stable/tutorial/part_1.html
+-   Maybe another alternative is https://github.com/Polymer/lit-html
 -   Exclude SR
 -   Check why archive feature does not work correctly
 -   Think about moving all those dicts to dataclasses when passing around data
