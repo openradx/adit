@@ -218,7 +218,8 @@ def _connect_to_server(func):
     def wrapper(self, *args, **kwargs):
         opened_connection = False
 
-        if self.config.auto_connect and not self.is_connected():
+        is_connected = self.assoc and self.assoc.is_alive()
+        if self.config.auto_connect and not is_connected:
             self.open_connection()
             opened_connection = True
 
@@ -337,9 +338,6 @@ class DicomConnector:
 
         self.assoc.release()
         self.assoc = None
-
-    def is_connected(self):
-        return self.assoc and self.assoc.is_alive()
 
     @_connect_to_server
     def c_find(self, query_dict, msg_id=1, limit_results=None):
