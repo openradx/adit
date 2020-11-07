@@ -20,6 +20,7 @@ ADIT (Automated DICOM Transfer) is a swiss army knife to exchange DICOM data bet
 
 # TODO
 
+-   approval from an ethics committee
 -   Evaluate to use diffhtml instead of morphdom, see https://diffhtml.org/api.html#inner-html
 -   https://channels.readthedocs.io/en/stable/tutorial/part_1.html
 -   Maybe another alternative is https://github.com/Polymer/lit-html
