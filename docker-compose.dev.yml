@@ -11,7 +11,7 @@ x-app: &default-app
     - orthanc_1
     - orthanc_2
   volumes:
-    - .:/src
+    - .:/app
     - /mnt:/mnt
   env_file:
     - .env

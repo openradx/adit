@@ -43,7 +43,6 @@ INSTALLED_APPS = [
     "crispy_forms",
     "django_tables2",
     "rest_framework",
-    "bootstrap4",
     "adit.core.apps.CoreConfig",
     "adit.selective_transfer.apps.SelectiveTransferConfig",
     "adit.batch_transfer.apps.BatchTransferConfig",
