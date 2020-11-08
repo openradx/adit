@@ -1,7 +1,37 @@
 from django import forms
+from django.forms.models import ModelChoiceField
+from django.forms.widgets import Select
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Layout, Submit, Field, Div, Hidden
 from crispy_forms.bootstrap import FieldWithButtons
+from .models import DicomNode
+
+
+class DicomNodeSelect(Select):
+    def create_option(  # pylint: disable=too-many-arguments
+        self, name, value, label, selected, index, subindex=None, attrs=None
+    ):
+        option = super().create_option(
+            name, value, label, selected, index, subindex, attrs
+        )
+        if hasattr(value, "instance"):
+            dicom_node = value.instance
+            if dicom_node.node_type == DicomNode.NodeType.SERVER:
+                option["attrs"]["data-node_type"] = "server"
+            elif dicom_node.node_type == DicomNode.NodeType.FOLDER:
+                option["attrs"]["data-node_type"] = "folder"
+
+        return option
+
+
+class DicomNodeChoiceField(ModelChoiceField):
+    def __init__(self, node_type=None):
+        if node_type and node_type in dict(DicomNode.NodeType.choices):
+            queryset = DicomNode.objects.filter(node_type=node_type, active=True)
+        else:
+            queryset = DicomNode.objects.filter(active=True)
+
+        super().__init__(queryset=queryset, widget=DicomNodeSelect)
 
 
 class PageSizeSelectForm(forms.Form):

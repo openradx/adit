@@ -34,7 +34,6 @@ def test_field_labels():
     assert form.fields["project_description"].label == "Project description"
     assert form.fields["trial_protocol_id"].label == "Trial protocol ID"
     assert form.fields["trial_protocol_name"].label == "Trial protocol name"
-    assert form.fields["archive_password"].label == "Archive password"
     assert form.fields["csv_file"].label == "CSV file"
 
 

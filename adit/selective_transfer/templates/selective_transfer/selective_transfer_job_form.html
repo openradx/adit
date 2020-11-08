@@ -9,7 +9,15 @@
 {% endblock %}
 
 {% block container %}
-<h4 class="mb-3">Select studies to transfer</h4>
+<h4 class="mb-3">
+    Select studies to transfer
+    <a href="#" class="badge badge-info" data-toggle="modal" data-target="#selective_form_help_modal">
+        Help
+        <span class="align-bottom">
+            {% include "core/_help_icon.html" %}
+        </span>
+    </a>
+</h4>
 
 <form
     method="POST"
@@ -56,3 +64,7 @@
     </div>
 </form>
 {% endblock %}
+
+{% block bottom %}
+{% include 'selective_transfer/_selective_form_help_modal.html' with modal_id="selective_form_help_modal" %}
+{% endblock bottom %}

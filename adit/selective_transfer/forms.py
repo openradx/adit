@@ -3,9 +3,10 @@ from django import forms
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Layout, Field, Row, Column, Div
 from crispy_forms.bootstrap import StrictButton
-from adit.selective_transfer.models import SelectiveTransferJob
+from adit.core.forms import DicomNodeChoiceField
 from adit.core.models import DicomNode
 from adit.core.validators import validate_pseudonym
+from .models import SelectiveTransferJob
 
 
 def server_field(field_name):
@@ -18,11 +19,15 @@ def server_field(field_name):
     )
 
 
-def option_field(field_name):
+def option_field(field_name, additional_attrs=None):
+    attrs = {"@keydown.enter.prevent": ""}
+    if additional_attrs:
+        attrs = {**additional_attrs, **attrs}
+
     return Column(
         Field(
             field_name,
-            **{"@keydown.enter.prevent": ""},
+            **attrs,
         )
     )
 
@@ -37,6 +42,8 @@ def query_field(field_name):
 
 
 class SelectiveTransferJobForm(forms.ModelForm):
+    source = DicomNodeChoiceField(DicomNode.NodeType.SERVER)
+    destination = DicomNodeChoiceField()
     pseudonym = forms.CharField(
         required=False, max_length=64, validators=[validate_pseudonym]
     )
@@ -56,6 +63,7 @@ class SelectiveTransferJobForm(forms.ModelForm):
             "destination",
             "trial_protocol_id",
             "trial_protocol_name",
+            "pseudonym",
             "archive_password",
             "patient_id",
             "patient_name",
@@ -102,12 +110,15 @@ class SelectiveTransferJobForm(forms.ModelForm):
                         ),
                         Div(
                             Row(
-                                option_field("pseudonym"),
-                                option_field("archive_password"),
-                            ),
-                            Row(
                                 option_field("trial_protocol_id"),
                                 option_field("trial_protocol_name"),
+                            ),
+                            Row(
+                                option_field("pseudonym"),
+                                option_field(
+                                    "archive_password",
+                                    {":disabled": "!isDestinationFolder"},
+                                ),
                             ),
                             css_class="show pt-1",
                             css_id="advanced_options",
@@ -131,3 +142,10 @@ class SelectiveTransferJobForm(forms.ModelForm):
     def clean_patient_name(self):
         patient_name = self.cleaned_data["patient_name"]
         return re.sub(r"\s*,\s*", "^", patient_name)
+
+    def clean_archive_password(self):
+        archive_password = self.cleaned_data["archive_password"]
+        destination = self.cleaned_data.get("destination")
+        if not destination or destination.node_type != DicomNode.NodeType.FOLDER:
+            archive_password = ""
+        return archive_password

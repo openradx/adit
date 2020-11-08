@@ -3,6 +3,7 @@ function selectiveTransferForm() {
         showHelpMessage: true,
         queryInProgress: false,
         transferInProgress: false,
+        isDestinationFolder: false,
 
         init: function (el, refs) {
             this.$form = $(el);
@@ -35,7 +36,9 @@ function selectiveTransferForm() {
                 this.$form.find("[name=source]").val(cookie.source);
             }
             if ("destination" in cookie) {
-                this.$form.find("[name=destination]").val(cookie.destination);
+                const destination = this.$form.find("[name=destination]");
+                destination.val(cookie.destination);
+                this.onDestinationChanged(destination[0]);
             }
         },
         connect: function () {
@@ -140,12 +143,21 @@ function selectiveTransferForm() {
             }
         },
         onServerChanged: function (event) {
-            const name = event.target.name;
-            const value = event.target.value;
+            const name = event.currentTarget.name;
+            const value = event.currentTarget.value;
+            this.updateCookie(name, value);
+
+            if (name === "destination") {
+                this.onDestinationChanged(event.currentTarget);
+            }
+
             if (name === "source") {
                 this.reset();
             }
-            this.updateCookie(name, value);
+        },
+        onDestinationChanged(selectEl) {
+            const option = selectEl.options[selectEl.selectedIndex];
+            this.isDestinationFolder = option.dataset.node_type === "folder";
         },
         reset: function () {
             this.showHelpMessage = true;
