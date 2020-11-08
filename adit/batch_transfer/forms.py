@@ -1,5 +1,5 @@
 from io import StringIO
-from django.forms import ModelForm
+from django import forms
 from django.db import transaction
 from django.core.exceptions import ValidationError
 from django.conf import settings
@@ -15,10 +15,11 @@ from .fields import RestrictedFileField
 from .utils.parsers import RequestsParser, ParsingError
 
 
-class BatchTransferJobForm(ModelForm):
+class BatchTransferJobForm(forms.ModelForm):
     source = DicomNodeChoiceField(DicomNode.NodeType.SERVER)
     destination = DicomNodeChoiceField()
     csv_file = RestrictedFileField(max_upload_size=5242880, label="CSV file")
+    ethics_committee_approval = forms.BooleanField()
 
     class Meta:
         model = BatchTransferJob
@@ -29,6 +30,7 @@ class BatchTransferJobForm(ModelForm):
             "project_description",
             "trial_protocol_id",
             "trial_protocol_name",
+            "ethics_committee_approval",
             "csv_file",
         )
         labels = {
@@ -48,6 +50,10 @@ class BatchTransferJobForm(ModelForm):
                 "The CSV file which contains the data to transfer between "
                 "two DICOM nodes. See [help] how to format the CSV file."
             ),
+            "ethics_committee_approval": (
+                "Only studies of an approved trial can be transferred!"
+                "If unsure contact the support."
+            )
         }
 
     def __init__(self, *args, **kwargs):
@@ -64,6 +70,12 @@ class BatchTransferJobForm(ModelForm):
         self.helper.attrs["x-data"] = "batchTransferForm()"
 
         self.helper.add_input(Submit("save", "Create Job"))
+
+    def clean_ethics_committee_approval(self):
+        approval = self.cleaned_data["ethics_committee_approval"]
+        if not approval:
+            raise ValidationError("Your study must be approved by an ethics committee.")
+        return approval
 
     def clean_csv_file(self):
         csv_file = self.cleaned_data["csv_file"]
