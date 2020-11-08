@@ -128,9 +128,6 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
-# Static files (by collectstatic command)
-staticfiles/
-
 # Javascript dev dependencies
 node_modules/
 
