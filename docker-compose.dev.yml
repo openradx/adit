@@ -14,7 +14,7 @@ x-app: &default-app
         - .:/app
         - /mnt:/mnt
     env_file:
-        - .env
+        - development.env
     environment:
         USE_DOCKER: 1
         DJANGO_SETTINGS_MODULE: "adit.settings.development"

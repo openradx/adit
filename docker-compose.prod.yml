@@ -13,7 +13,7 @@ x-app: &default-app
         - /mnt:/mnt
         - adit_data:/var/www/adit
     env_file:
-        - .env
+        - production.env
     environment:
         USE_DOCKER: 1
         DJANGO_SETTINGS_MODULE: "adit.settings.production"
