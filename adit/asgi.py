@@ -11,10 +11,21 @@ https://channels.readthedocs.io/en/latest/deploying.html#run-protocol-servers
 """
 
 import os
-import django
-from channels.routing import get_default_application
+from django.core.asgi import get_asgi_application
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "adit.settings.production")
+django_asgi_app = get_asgi_application()
 
-django.setup()
-application = get_default_application()
+# pylint: disable=wrong-import-position
+from channels.auth import AuthMiddlewareStack
+from channels.routing import ProtocolTypeRouter, URLRouter
+from adit.selective_transfer import routing as selective_transfer_routing
+
+application = ProtocolTypeRouter(
+    {
+        "http": django_asgi_app,
+        "websocket": AuthMiddlewareStack(
+            URLRouter(selective_transfer_routing.websocket_urlpatterns)
+        ),
+    }
+)

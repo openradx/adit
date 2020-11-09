@@ -28,7 +28,6 @@ BASE_URL = env.str("BASE_URL", default="")
 
 INSTALLED_APPS = [
     "whitenoise.runserver_nostatic",
-    "channels",
     "adit.accounts.apps.AccountsConfig",
     "registration",
     "django.contrib.admin",
@@ -47,6 +46,7 @@ INSTALLED_APPS = [
     "adit.selective_transfer.apps.SelectiveTransferConfig",
     "adit.batch_transfer.apps.BatchTransferConfig",
     "adit.continuous_transfer.apps.ContinuousTransferConfig",
+    "channels",
 ]
 
 MIDDLEWARE = [
@@ -206,6 +206,8 @@ STATIC_URL = "/static/"
 
 STATIC_ROOT = env.str("DJANGO_STATIC_ROOT", default=(BASE_DIR / "staticfiles"))
 
+STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+
 # Custom user model
 AUTH_USER_MODEL = "accounts.User"
 
@@ -248,7 +250,7 @@ ACCOUNT_ACTIVATION_DAYS = 14
 REGISTRATION_OPEN = True
 
 # Channels
-ASGI_APPLICATION = "adit.routing.application"
+ASGI_APPLICATION = "adit.asgi.application"
 
 # Redis is used as Celery result backend and as LRU cache for patient IDs.
 REDIS_URL = env.str("REDIS_URL", default="redis://localhost:6379/0")
