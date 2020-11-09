@@ -13,6 +13,7 @@ def data_dict():
         "destination": DicomServerFactory(),
         "project_name": "Apollo project",
         "project_description": "Fly to the moon",
+        "ethics_committee_approval": "on",
     }
 
 
@@ -32,8 +33,9 @@ def test_field_labels():
     assert "destination" in form.fields
     assert form.fields["project_name"].label == "Project name"
     assert form.fields["project_description"].label == "Project description"
-    assert form.fields["trial_protocol_id"].label == "Trial protocol ID"
-    assert form.fields["trial_protocol_name"].label == "Trial protocol name"
+    assert form.fields["trial_protocol_id"].label == "Trial ID"
+    assert form.fields["trial_protocol_name"].label == "Trial name"
+    assert "ethics_committee_approval" in form.fields
     assert form.fields["csv_file"].label == "CSV file"
 
 
@@ -56,11 +58,12 @@ def test_with_missing_values():
     form = BatchTransferJobForm({})
 
     assert not form.is_valid()
-    assert len(form.errors) == 5
+    assert len(form.errors) == 6
     assert form.errors["source"] == ["This field is required."]
     assert form.errors["destination"] == ["This field is required."]
     assert form.errors["project_name"] == ["This field is required."]
     assert form.errors["project_description"] == ["This field is required."]
+    assert form.errors["ethics_committee_approval"] == ["This field is required."]
     assert form.errors["csv_file"] == ["This field is required."]
 
 
