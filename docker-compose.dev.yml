@@ -1,119 +1,119 @@
 version: "3.8"
 
 x-app: &default-app
-  build:
-    context: .
-    target: development
-  depends_on:
-    - postgres
-    - rabbit
-    - redis
-    - orthanc_1
-    - orthanc_2
-  volumes:
-    - .:/app
-    - /mnt:/mnt
-  env_file:
-    - .env
-  environment:
-    USE_DOCKER: 1
-    DJANGO_SETTINGS_MODULE: "adit.settings.development"
-    DATABASE_URL: "psql://postgres:postgres@postgres:5432/postgres"
-    RABBITMQ_URL: "amqp://rabbit"
-    REDIS_URL: "redis://redis:6379/0"
-    DJANGO_STATIC_ROOT: "/var/www/adit/static/"
-    LOG_FOLDER: "/var/www/adit/logs"
-    FLOWER_HOST: "flower"
-    FLOWER_PORT: "5555"
-    ORTHANC1_HOST: "orthanc_1"
-    ORTHANC2_HOST: "orthanc_2"
+    build:
+        context: .
+        target: development
+    depends_on:
+        - postgres
+        - rabbit
+        - redis
+        - orthanc_1
+        - orthanc_2
+    volumes:
+        - .:/app
+        - /mnt:/mnt
+    env_file:
+        - .env
+    environment:
+        USE_DOCKER: 1
+        DJANGO_SETTINGS_MODULE: "adit.settings.development"
+        DATABASE_URL: "psql://postgres:postgres@postgres:5432/postgres"
+        RABBITMQ_URL: "amqp://rabbit"
+        REDIS_URL: "redis://redis:6379/0"
+        DJANGO_STATIC_ROOT: "/var/www/adit/static/"
+        LOG_FOLDER: "/var/www/adit/logs"
+        FLOWER_HOST: "flower"
+        FLOWER_PORT: "5555"
+        ORTHANC1_HOST: "orthanc_1"
+        ORTHANC2_HOST: "orthanc_2"
 
 services:
-  web:
-    <<: *default-app
-    ports:
-      - "8000:8000"
-    command: >
-      bash -c "
-        ./scripts/wait-for-it.sh postgres:5432 -t 30 &&
-        python ./manage.py reset_orthancs &&
-        python ./manage.py migrate &&
-        python ./manage.py populate_dev_db &&
-        python ./manage.py runserver 0.0.0.0:8000
-      "
+    web:
+        <<: *default-app
+        ports:
+            - "8000:8000"
+        command: >
+            bash -c "
+              ./scripts/wait-for-it.sh postgres:5432 -t 30 &&
+              python ./manage.py reset_orthancs &&
+              python ./manage.py migrate &&
+              python ./manage.py populate_dev_db &&
+              python ./manage.py runserver 0.0.0.0:8000
+            "
 
-  worker_default:
-    <<: *default-app
-    command: bash -c "celery -A adit worker -Q default -l INFO -c 1 -n worker_default_$$(hostname)"
+    worker_default:
+        <<: *default-app
+        command: bash -c "celery -A adit worker -Q default -l INFO -c 1 -n worker_default_$$(hostname)"
 
-  worker_batch_transfer:
-    <<: *default-app
-    command: bash -c "celery -A adit worker -Q batch_transfer -l INFO -c 1 -n worker_batch_transfer_$$(hostname)"
+    worker_batch_transfer:
+        <<: *default-app
+        command: bash -c "celery -A adit worker -Q batch_transfer -l INFO -c 1 -n worker_batch_transfer_$$(hostname)"
 
-  worker_continuous_transfer:
-      <<: *default-app
-      command: bash -c "celery -A adit worker -Q continuous_transfer -l INFO -c 1 -n worker_continuous_transfer_$$(hostname)"
+    worker_continuous_transfer:
+        <<: *default-app
+        command: bash -c "celery -A adit worker -Q continuous_transfer -l INFO -c 1 -n worker_continuous_transfer_$$(hostname)"
 
-  celery_beat:
-    <<: *default-app
-    command: bash -c "celery -A adit beat -l INFO"
+    celery_beat:
+        <<: *default-app
+        command: bash -c "celery -A adit beat -l INFO"
 
-  postgres:
-    image: postgres:latest
-    expose:
-      - "5432"
-    environment:
-      POSTGRES_PASSWORD: "postgres"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
+    postgres:
+        image: postgres:latest
+        expose:
+            - "5432"
+        environment:
+            POSTGRES_PASSWORD: "postgres"
+        volumes:
+            - postgres_data:/var/lib/postgresql/data
 
-  rabbit:
-    image: rabbitmq:latest
-    expose:
-      - "5672"
-    volumes:
-      - rabbit_data:/var/lib/rabbitmq
+    rabbit:
+        image: rabbitmq:latest
+        expose:
+            - "5672"
+        volumes:
+            - rabbit_data:/var/lib/rabbitmq
 
-  redis:
-    image: redis:latest
-    expose:
-      - "6379"
-    volumes:
-      - redis_data:/data
+    redis:
+        image: redis:latest
+        expose:
+            - "6379"
+        volumes:
+            - redis_data:/data
 
-  flower:
-    image: mher/flower
-    expose:
-      - "5555"
-    depends_on:
-      - rabbit
-      - redis
-    volumes:
-      - flower_data:/data
-    command: flower --url_prefix=flower --broker=amqp://rabbit
+    # flower:
+    #     image: mher/flower
+    #     expose:
+    #         - "5555"
+    #     depends_on:
+    #         - rabbit
+    #         - redis
+    #     volumes:
+    #         - flower_data:/data
+    #     command: flower --url_prefix=flower --broker=amqp://rabbit
 
-  orthanc_1:
-    image: jodogne/orthanc-plugins:latest
-    ports:
-      - "6501:6501"
-      - "7501:7501"
-    volumes:
-      - ./compose/orthanc1_config.json:/etc/orthanc/orthanc.json
-      - orthanc1_data:/var/lib/orthanc/db
+    orthanc_1:
+        image: jodogne/orthanc-plugins:latest
+        ports:
+            - "6501:6501"
+            - "7501:7501"
+        volumes:
+            - ./compose/orthanc1_config.json:/etc/orthanc/orthanc.json
+            - orthanc1_data:/var/lib/orthanc/db
 
-  orthanc_2:
-    image: jodogne/orthanc-plugins:latest
-    ports:
-      - "6502:6502"
-      - "7502:7502"
-    volumes:
-      - ./compose/orthanc2_config.json:/etc/orthanc/orthanc.json
-      - orthanc2_data:/var/lib/orthanc/db
+    orthanc_2:
+        image: jodogne/orthanc-plugins:latest
+        ports:
+            - "6502:6502"
+            - "7502:7502"
+        volumes:
+            - ./compose/orthanc2_config.json:/etc/orthanc/orthanc.json
+            - orthanc2_data:/var/lib/orthanc/db
 
 volumes:
-  postgres_data:
-  rabbit_data:
-  redis_data:
-  flower_data:
-  orthanc1_data:
-  orthanc2_data:
+    postgres_data:
+    rabbit_data:
+    redis_data:
+    flower_data:
+    orthanc1_data:
+    orthanc2_data:

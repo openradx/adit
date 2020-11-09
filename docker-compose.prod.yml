@@ -1,103 +1,103 @@
 version: "3.8"
 
 x-app: &default-app
-  restart: always
-  build:
-    context: .
-    target: production
-  depends_on:
-    - postgres
-    - rabbit
-    - redis
-  volumes:
-    - /mnt:/mnt
-    - adit_data:/var/www/adit
-  env_file:
-    - .env
-  environment:
-    USE_DOCKER: 1
-    DJANGO_SETTINGS_MODULE: "adit.settings.production"
-    DATABASE_URL: "psql://postgres:${POSTGRES_PASSWORD}@postgres:5432/postgres"
-    RABBITMQ_URL: "amqp://rabbit"
-    REDIS_URL: "redis://redis:6379/0"
-    DJANGO_STATIC_ROOT: "/var/www/adit/static/"
-    SSL_CERT_FILE: "/var/www/adit/ssl/cert.pem"
-    SSL_KEY_FILE: "/var/www/adit/ssl/key.pem"
-    FLOWER_HOST: "flower"
-    FLOWER_PORT: "5555"
+    restart: always
+    build:
+        context: .
+        target: production
+    depends_on:
+        - postgres
+        - rabbit
+        - redis
+    volumes:
+        - /mnt:/mnt
+        - adit_data:/var/www/adit
+    env_file:
+        - .env
+    environment:
+        USE_DOCKER: 1
+        DJANGO_SETTINGS_MODULE: "adit.settings.production"
+        DATABASE_URL: "psql://postgres:${POSTGRES_PASSWORD}@postgres:5432/postgres"
+        RABBITMQ_URL: "amqp://rabbit"
+        REDIS_URL: "redis://redis:6379/0"
+        DJANGO_STATIC_ROOT: "/var/www/adit/static/"
+        SSL_CERT_FILE: "/var/www/adit/ssl/cert.pem"
+        SSL_KEY_FILE: "/var/www/adit/ssl/key.pem"
+        FLOWER_HOST: "flower"
+        FLOWER_PORT: "5555"
 
 services:
-  web:
-    <<: *default-app
-    ports:
-      - "80:80"
-      - "443:443"
-    command: >
-      bash -c "
-        ./scripts/wait-for-it.sh postgres:5432 -t 30 &&
-        python ./manage.py migrate &&
-        python ./manage.py collectstatic --no-input &&
-        python ./manage.py create_admin &&
-        python ./manage.py generate_cert &&
-        daphne -b 0.0.0.0 -p 80 -e ssl:443:privateKey=/var/www/adit/ssl/key.pem:certKey=/var/www/adit/ssl/cert.pem adit.asgi:application
-      "
+    web:
+        <<: *default-app
+        ports:
+            - "80:80"
+            - "443:443"
+        command: >
+            bash -c "
+              ./scripts/wait-for-it.sh postgres:5432 -t 30 &&
+              python ./manage.py migrate &&
+              python ./manage.py collectstatic --no-input &&
+              python ./manage.py create_admin &&
+              python ./manage.py generate_cert &&
+              daphne -b 0.0.0.0 -p 80 -e ssl:443:privateKey=/var/www/adit/ssl/key.pem:certKey=/var/www/adit/ssl/cert.pem adit.asgi:application
+            "
 
-  worker_default:
-    <<: *default-app
-    command: bash -c "celery -A adit worker -Q default -l INFO -c 1 -n worker_default_$$(hostname)"
+    worker_default:
+        <<: *default-app
+        command: bash -c "celery -A adit worker -Q default -l INFO -c 1 -n worker_default_$$(hostname)"
 
-  worker_batch_transfer:
-    <<: *default-app
-    command: bash -c "celery -A adit worker -Q batch_transfer -l INFO -c 1 -n worker_batch_transfer_$$(hostname)"
+    worker_batch_transfer:
+        <<: *default-app
+        command: bash -c "celery -A adit worker -Q batch_transfer -l INFO -c 1 -n worker_batch_transfer_$$(hostname)"
 
-  worker_continuous_transfer:
-    <<: *default-app
-    command: bash -c "celery -A adit worker -Q continuous_transfer -l INFO -c 1 -n worker_continuous_transfer_$$(hostname)"
+    worker_continuous_transfer:
+        <<: *default-app
+        command: bash -c "celery -A adit worker -Q continuous_transfer -l INFO -c 1 -n worker_continuous_transfer_$$(hostname)"
 
-  celery_beat:
-    <<: *default-app
-    command: bash -c "celery -A adit beat -l INFO"
+    celery_beat:
+        <<: *default-app
+        command: bash -c "celery -A adit beat -l INFO"
 
-  postgres:
-    restart: always
-    image: postgres:latest
-    expose:
-      - "5432"
-    env_file:
-      - .env
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
+    postgres:
+        restart: always
+        image: postgres:latest
+        expose:
+            - "5432"
+        env_file:
+            - .env
+        volumes:
+            - postgres_data:/var/lib/postgresql/data
 
-  rabbit:
-    image: rabbitmq:latest
-    expose:
-      - "5672"
-    volumes:
-      - rabbit_data:/var/lib/rabbitmq
+    rabbit:
+        image: rabbitmq:latest
+        expose:
+            - "5672"
+        volumes:
+            - rabbit_data:/var/lib/rabbitmq
 
-  redis:
-    restart: always
-    image: redis:latest
-    expose:
-      - "6379"
-    volumes:
-      - redis_data:/data
+    redis:
+        restart: always
+        image: redis:latest
+        expose:
+            - "6379"
+        volumes:
+            - redis_data:/data
 
-  flower:
-    restart: always
-    image: mher/flower
-    expose:
-      - "5555"
-    depends_on:
-      - rabbit
-      - redis
-    volumes:
-      - flower_data:/data
-    command: flower --url_prefix=flower --broker=amqp://rabbit
+    # flower:
+    #     restart: always
+    #     image: mher/flower
+    #     expose:
+    #         - "5555"
+    #     depends_on:
+    #         - rabbit
+    #         - redis
+    #     volumes:
+    #         - flower_data:/data
+    #     command: flower --url_prefix=flower --broker=amqp://rabbit
 
 volumes:
-  adit_data:  # For static files, SSL certs and logs
-  postgres_data:
-  rabbit_data:
-  redis_data:
-  flower_data:
+    adit_data: # For static files, SSL certs and logs
+    postgres_data:
+    rabbit_data:
+    redis_data:
+    flower_data:
