@@ -1,5 +1,5 @@
 import re
-from django.views.generic import View, TemplateView
+from django.views.generic import View
 from django.views.generic.edit import DeleteView, CreateView
 from django.views.generic.detail import SingleObjectMixin
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
