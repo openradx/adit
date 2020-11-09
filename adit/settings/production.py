@@ -23,5 +23,4 @@ LOGGING["loggers"]["celery"]["handlers"] = ["console", "log_file"]
 LOGGING["loggers"]["django"]["handlers"] = ["console", "log_file"]
 LOGGING["loggers"]["pynetdicom"]["handlers"] = ["console", "log_file"]
 
-# WhiteNoise
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"

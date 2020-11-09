@@ -206,8 +206,6 @@ STATIC_URL = "/static/"
 
 STATIC_ROOT = env.str("DJANGO_STATIC_ROOT", default=(BASE_DIR / "staticfiles"))
 
-STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
-
 # Custom user model
 AUTH_USER_MODEL = "accounts.User"
 
