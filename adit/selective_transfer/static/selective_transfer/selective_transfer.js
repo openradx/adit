@@ -33,12 +33,13 @@ function selectiveTransferForm() {
                 }
             }
             if ("source" in cookie) {
-                this.$form.find("[name=source]").val(cookie.source);
+                const source = this.$form.find("[name=source]")[0];
+                this.setSelectOption(source, cookie.source);
             }
             if ("destination" in cookie) {
-                const destination = this.$form.find("[name=destination]");
-                destination.val(cookie.destination);
-                this.onDestinationChanged(destination[0]);
+                const destination = this.$form.find("[name=destination]")[0];
+                this.setSelectOption(destination, cookie.destination);
+                this.onDestinationChanged(destination);
             }
         },
         connect: function () {
@@ -78,6 +79,15 @@ function selectiveTransferForm() {
                 ws.close();
             };
             this.ws = ws;
+        },
+        setSelectOption: function (select, value)  {
+            const options = select.options;
+            let valueToSet = "";
+            for (let i = 0, len = options.length; i < len; i++) {
+                if (i == 0) valueToSet = options[i].value;
+                if (options[i].value === value) valueToSet = value;
+            }
+            select.value = valueToSet;
         },
         updateCookie: function (key, value) {
             const cookie = JSON.parse(
