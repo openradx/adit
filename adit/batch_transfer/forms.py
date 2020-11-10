@@ -53,7 +53,7 @@ class BatchTransferJobForm(forms.ModelForm):
             "ethics_committee_approval": (
                 "Only studies of an approved trial can be transferred!"
                 "If unsure contact the support."
-            )
+            ),
         }
 
     def __init__(self, *args, **kwargs):
@@ -62,6 +62,9 @@ class BatchTransferJobForm(forms.ModelForm):
         self.save_requests = None
 
         super().__init__(*args, **kwargs)
+
+        self.fields["source"].widget.attrs["class"] = "custom-select"
+        self.fields["destination"].widget.attrs["class"] = "custom-select"
 
         self.fields["trial_protocol_id"].widget.attrs["placeholder"] = "Optional"
         self.fields["trial_protocol_name"].widget.attrs["placeholder"] = "Optional"

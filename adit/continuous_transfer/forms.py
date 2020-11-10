@@ -12,6 +12,9 @@ class ContinuousTransferJobForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
+        self.fields["source"].widget.attrs["class"] = "custom-select"
+        self.fields["destination"].widget.attrs["class"] = "custom-select"
+
         self.helper = FormHelper(self)
         self.helper.form_tag = False
         self.helper.disable_csrf = True
