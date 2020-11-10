@@ -21,6 +21,7 @@ urlpatterns = [
     path("admin-the-great/", admin.site.urls),
     path("api-auth/", include("rest_framework.urls")),
     path("accounts/", include("adit.accounts.urls")),
+    path("api/", include("adit.api.urls")),
     path("", include("adit.core.urls")),
     path("", include("adit.selective_transfer.urls")),
     path("", include("adit.batch_transfer.urls")),

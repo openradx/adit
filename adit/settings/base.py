@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     "django_tables2",
     "rest_framework",
     "adit.core.apps.CoreConfig",
+    "adit.api.apps.ApiConfig",
     "adit.selective_transfer.apps.SelectiveTransferConfig",
     "adit.batch_transfer.apps.BatchTransferConfig",
     "adit.continuous_transfer.apps.ContinuousTransferConfig",

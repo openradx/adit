@@ -9,7 +9,6 @@ from django.core.exceptions import SuspiciousOperation
 from django.contrib import messages
 from django.conf import settings
 from django.forms.formsets import ORDERING_FIELD_NAME
-from rest_framework import generics
 from django_tables2 import SingleTableMixin
 from django_filters.views import FilterView
 from revproxy.views import ProxyView
@@ -17,7 +16,6 @@ from .models import TransferJob
 from .tables import TransferJobTable
 from .filters import TransferJobFilter
 from .mixins import OwnerRequiredMixin, PageSizeSelectMixin
-from .serializers import TransferJobListSerializer
 
 
 class TransferJobListView(
@@ -119,13 +117,6 @@ class FlowerProxyView(UserPassesTestMixin, ProxyView):
         return re_path(r"^(?P<path>{}.*)$".format(cls.url_prefix), cls.as_view())
 
 
-class TransferJobListAPIView(generics.ListAPIView):
-    serializer_class = TransferJobListSerializer
-
-    def get_queryset(self):
-        return TransferJob.objects.filter(owner=self.request.user)
-
-
 class InlineFormSetCreateView(CreateView):
     formset_class = None
     formset_prefix = None
@@ -164,7 +155,7 @@ class InlineFormSetCreateView(CreateView):
                 self.clear_errors(form)
 
     def post(self, request, *args, **kwargs):
-        self.object = None
+        self.object = None  # pylint: disable=attribute-defined-outside-init
 
         form = self.get_form()
 
