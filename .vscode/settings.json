@@ -4,5 +4,6 @@
     "prettier.tabWidth": 4,
     "prettier.disableLanguages": ["html", "django-html"],
     "python.formatting.provider": "black",
-    "python.linting.pylintEnabled": true
+    "python.linting.pylintEnabled": true,
+    "python.pythonPath": "/home/adm-adit/.cache/pypoetry/virtualenvs/adit-miyn3Bdb-py3.9/bin/python"
 }
