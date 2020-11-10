@@ -4,13 +4,13 @@
     <thead>
         <tr>
             <th></th>
-            <th>Patient ID</th>
-            <th>Patient Name</th>
-            <th>Birth Date</th>
-            <th>Study Date</th>
-            <th>Modality</th>
-            <th>Study Description</th>
-            <th># Images</th>
+            <th class="text-nowrap">Patient ID</th>
+            <th class="text-nowrap">Patient Name</th>
+            <th class="text-nowrap">Birth Date</th>
+            <th class="text-nowrap">Study Date</th>
+            <th class="text-nowrap">Modality</th>
+            <th class="text-nowrap">Study Description</th>
+            <th class="text-nowrap"># Images</th>
         </tr>
     </thead>
     <tbody>
@@ -34,7 +34,7 @@
                 <td>{{ result.PatientName|convert_dicom_person_name }}</td>
                 <td>{{ result.PatientBirthDate|parse_dicom_date|date:"SHORT_DATE_FORMAT" }}</td>
                 <td>{{ result.StudyDate|parse_dicom_date|date:"SHORT_DATE_FORMAT" }}</td>
-                <td>{{ result.Modalities }}</td>
+                <td>{{ result.Modalities|join:", " }}</td>
                 <td>{{ result.StudyDescription }}</td>
                 <td>{{ result.NumberOfStudyRelatedInstances }}</td>
             </tr>
