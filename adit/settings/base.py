@@ -304,3 +304,8 @@ CONTINUOUS_TRANSFER_UNVERIFIED = True
 
 # A timezone that is used for users of the web interface.
 USER_TIME_ZONE = env.str("USER_TIME_ZONE", default=None)
+
+###
+# TKHD specific settings
+###
+PERMANENT_SOURCE_AE_TITLES = env.list("PERMANENT_SOURCE_AE_TITLES", default=[])
