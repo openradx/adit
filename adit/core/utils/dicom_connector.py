@@ -555,6 +555,9 @@ class DicomConnector:
                         "Failed to fetch modalities of study with UID %s" % study_uid
                     ) from err
 
+            if isinstance(study_modalities, str):
+                study_modalities = [study_modalities]
+
             study["Modalities"] = study_modalities
 
             if modality:
