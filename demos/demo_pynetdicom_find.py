@@ -15,7 +15,7 @@ from pynetdicom.status import code_to_category
 
 # debug_logger()
 
-ae = AE(ae_title="ADIT")
+ae = AE(ae_title="ADIT1")
 # ae.add_requested_context(PatientRootQueryRetrieveInformationModelFind)
 cx = list(QueryRetrievePresentationContexts)
 nr_pc = len(QueryRetrievePresentationContexts)
@@ -33,9 +33,6 @@ ds.StudyInstanceUID = "1.2.840.113845.11.1000000001951524609.20200705150256.2689
 ds.SeriesInstanceUID = "1.3.12.2.1107.5.2.18.41369.2020070515244568288101946.0.0.0"
 ds.SeriesDescription = ""
 
-c = build_context(PatientRootQueryRetrieveInformationModelFind)
-print(c.context_id)
-
 assoc = ae.associate("127.0.0.1", 7501)
 if assoc.is_established:
     for accepted_context in assoc.accepted_contexts:
@@ -43,11 +40,9 @@ if assoc.is_established:
             accepted_context.abstract_syntax
             == PatientRootQueryRetrieveInformationModelFind
         ):
-            print(accepted_context.context_id)
-            print("!!!!!!!!")
+            print(f"Accepted context ID: {accepted_context.context_id}")
     responses = assoc.send_c_find(ds, PatientRootQueryRetrieveInformationModelFind)
     for (status, identifier) in responses:
-        print(code_to_category(status.Status))
         if status:
             print("C-FIND query status: 0x{0:04X}".format(status.Status))
         else:
