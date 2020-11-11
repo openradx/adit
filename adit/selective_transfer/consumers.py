@@ -7,6 +7,8 @@ from crispy_forms.utils import render_crispy_form
 from .forms import SelectiveTransferJobForm
 from .mixins import SelectiveTransferJobCreateMixin
 
+QUERY_RESULT_LIMIT = 51
+
 logger = logging.getLogger(__name__)
 
 
@@ -50,19 +52,13 @@ class SelectiveTransferConsumer(
             await self.send_json(error_response)
             return
 
-        data = QueryDict(content["data"])
-        form = SelectiveTransferJobForm(data)
+        form_data = QueryDict(content["data"])
 
         if content["action"] == "query":
-            response = await self.get_query_response(form)
-            response["messageId"] = content["messageId"]
-            await self.send_json(response)
+            await self.make_query(form_data, content["messageId"])
 
         elif content["action"] == "transfer":
-            selected_studies = data.getlist("selected_studies")
-            response = await self.get_transfer_response(form, selected_studies)
-            response["messageId"] = content["messageId"]
-            await self.send_json(response)
+            await self.make_transfer(form_data, content["messageId"])
 
     @database_sync_to_async
     def check_user(self):
@@ -76,6 +72,19 @@ class SelectiveTransferConsumer(
 
         return None
 
+    async def make_query(self, form_data, message_id):
+        form = SelectiveTransferJobForm(form_data)
+        response = await self.get_query_response(form)
+        response["messageId"] = message_id
+        await self.send_json(response)
+
+    async def make_transfer(self, form_data, message_id):
+        form = SelectiveTransferJobForm(form_data)
+        selected_studies = form_data.getlist("selected_studies")
+        response = await self.get_transfer_response(form, selected_studies)
+        response["messageId"] = message_id
+        await self.send_json(response)
+
     @database_sync_to_async
     def get_query_response(self, form):
         if not form.is_valid():
@@ -86,12 +95,19 @@ class SelectiveTransferConsumer(
                 ),
             }
 
-        studies = self.do_query(form)
+        studies = self.query_studies(form, QUERY_RESULT_LIMIT)
+
+        max_query_results = len(studies) >= QUERY_RESULT_LIMIT
+
         return {
             "#query_form": render_crispy_form(form),
             "#query_results": render_to_string(
                 "selective_transfer/_query_results.html",
-                {"query": True, "query_results": studies},
+                {
+                    "query": True,
+                    "query_results": studies,
+                    "max_query_results": max_query_results,
+                },
             ),
             "#error_message": "",
             "#created_job": "",
@@ -108,7 +124,7 @@ class SelectiveTransferConsumer(
             }
 
         try:
-            job = self.do_transfer(self.user, form, selected_studies)
+            job = self.transfer_selected_studies(self.user, form, selected_studies)
         except ValueError as err:
             return {
                 "#query_form": render_crispy_form(form),

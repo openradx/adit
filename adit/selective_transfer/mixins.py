@@ -2,22 +2,22 @@ from adit.core.models import TransferTask
 
 
 class SelectiveTransferJobCreateMixin:
-    def do_query(self, form):
+    def query_studies(self, form, limit):
         data = form.cleaned_data
         server = form.instance.source.dicomserver
-        connector = server.create_connector()
-        studies = connector.find_studies(
+        self.connector = server.create_connector()
+        studies = self.connector.find_studies(
             patient_id=data["patient_id"],
             patient_name=data["patient_name"],
             birth_date=data["patient_birth_date"],
             accession_number=data["accession_number"],
             study_date=data["study_date"],
             modality=data["modality"],
-            limit_results=50,
+            limit_results=limit,
         )
         return studies
 
-    def do_transfer(self, user, form, selected_studies):
+    def transfer_selected_studies(self, user, form, selected_studies):
         if not selected_studies:
             raise ValueError("At least one study to transfer must be selected.")
         if len(selected_studies) > 10 and not user.is_staff:

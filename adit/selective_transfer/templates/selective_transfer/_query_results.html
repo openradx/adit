@@ -1,6 +1,13 @@
 {% if query and not query_results %}
-    <div class="alert alert-secondary mt-3" role="alert">
+    <div class="alert alert-warning mt-3" role="alert">
         No studies for your query found. Try with other search terms.
+    </div>
+{% endif %}
+
+{% if query and max_query_results %}
+    <div class="alert alert-warning mt-3" role="alert">
+        More then {{ query_results|length|add:"-1" }} studies found.
+        Try to limit the results by more precise search terms.
     </div>
 {% endif %}
 

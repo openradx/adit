@@ -43,6 +43,8 @@ from pynetdicom.status import (
 from ..errors import NoSpaceLeftError
 from ..utils.sanitize import sanitize_dirname
 
+FORCE_DEBUG_LOGGER = False
+
 # We must use this logger to intercept the logging messages and
 # store them in the task (see core.tasks.transfer_dicoms()).
 # TODO Maybe it would be better to use the standard python logger somehow.
@@ -111,37 +113,6 @@ def _dictify_dataset(ds):
             output[elem.keyword] = [_dictify_dataset(item) for item in elem]
 
     return output
-
-
-def _fetch_results(responses, operation, query_dict, limit_results=None):
-    results = []
-    for (status, identifier) in responses:
-        if limit_results is not None and len(results) >= limit_results:
-            break
-
-        if status:
-            data = {}
-            if identifier:
-                data.update(_dictify_dataset(identifier))
-
-            results.append(
-                {
-                    "status": {
-                        "code": status.Status,
-                        "category": code_to_category(status.Status),
-                    },
-                    "data": data,
-                }
-            )
-        else:
-            raise ConnectionError(
-                (
-                    "Connection timed out, was aborted or received invalid "
-                    f"response during {operation} with query: {str(query_dict)}"
-                )
-            )
-
-    return results
 
 
 def _extract_pending_data(results, resource, query_dict):
@@ -255,7 +226,7 @@ class DicomConnector:
     def __init__(self, config: Config):
         self.config = config
 
-        if self.config.debug_logger:
+        if self.config.debug_logger or FORCE_DEBUG_LOGGER:
             debug_logger()  # Debug mode of pynetdicom
 
         self.default_find_query_model = None
@@ -339,6 +310,40 @@ class DicomConnector:
         self.assoc.release()
         self.assoc = None
 
+    def abort_connection(self):
+        if self.assoc and self.assoc.is_alive():
+            self.assoc.abort()
+
+    def _fetch_results(self, responses, operation, query_dict, limit_results=None):
+        results = []
+        for (status, identifier) in responses:
+            if limit_results is not None and len(results) >= limit_results:
+                self.abort_connection()
+                break
+
+            if status:
+                data = {}
+                if identifier:
+                    data.update(_dictify_dataset(identifier))
+
+                results.append(
+                    {
+                        "status": {
+                            "code": status.Status,
+                            "category": code_to_category(status.Status),
+                        },
+                        "data": data,
+                    }
+                )
+            else:
+                raise ConnectionError(
+                    (
+                        "Connection timed out, was aborted or received invalid "
+                        f"response during {operation} with query: {str(query_dict)}"
+                    )
+                )
+        return results
+
     @_connect_to_server
     def c_find(self, query_dict, msg_id=1, limit_results=None):
         logger.debug("Sending C-FIND with query: %s", query_dict)
@@ -355,7 +360,7 @@ class DicomConnector:
             query_model = StudyRootQueryRetrieveInformationModelFind
 
         responses = self.assoc.send_c_find(query_ds, query_model, msg_id)
-        return _fetch_results(responses, "C-FIND", query_dict, limit_results)
+        return self._fetch_results(responses, "C-FIND", query_dict, limit_results)
 
     @_connect_to_server
     def c_get(self, query_dict, folder=None, callback=None, msg_id=1):
@@ -381,7 +386,7 @@ class DicomConnector:
 
         try:
             responses = self.assoc.send_c_get(query_ds, query_model, msg_id)
-            results = _fetch_results(responses, "C-GET", query_dict)
+            results = self._fetch_results(responses, "C-GET", query_dict)
         except ConnectionError as err:
             # Check if the connection error was triggered by our own store handler
             # due to aborting the assocation.
@@ -413,7 +418,7 @@ class DicomConnector:
         responses = self.assoc.send_c_move(
             query_ds, destination_ae_title, query_model, msg_id
         )
-        return _fetch_results(responses, "C-MOVE", query_dict)
+        return self._fetch_results(responses, "C-MOVE", query_dict)
 
     @_connect_to_server
     def c_store(self, folder: Path, callback=None, msg_id=1):
