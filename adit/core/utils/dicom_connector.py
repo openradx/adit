@@ -345,13 +345,15 @@ class DicomConnector:
         return results
 
     @_connect_to_server
-    def c_find(self, query_dict, msg_id=1, limit_results=None):
+    def c_find(self, query_dict, msg_id=1, limit_results=None, prefer_study_root=False):
         logger.debug("Sending C-FIND with query: %s", query_dict)
 
         query_ds = _make_query_dataset(query_dict)
 
         query_model = self.default_find_query_model
-        if "PatientID" not in query_ds or not query_ds.PatientID:
+        if prefer_study_root and self.config.study_root_find_support:
+            query_model = StudyRootQueryRetrieveInformationModelFind
+        elif "PatientID" not in query_ds or not query_ds.PatientID:
             if not self.config.study_root_find_support:
                 raise ValueError(
                     "Patient ID missing in query without support for "
@@ -510,6 +512,7 @@ class DicomConnector:
         study_description="",
         modality=None,
         limit_results=None,
+        prefer_study_root=False,
     ):
         """Find all studies for a given patient and filter optionally by
         study date and/or modality."""
@@ -527,7 +530,9 @@ class DicomConnector:
             "NumberOfStudyRelatedInstances": "",
             "ModalitiesInStudy": "",
         }
-        results = self.c_find(query_dict, limit_results=limit_results)
+        results = self.c_find(
+            query_dict, limit_results=limit_results, prefer_study_root=prefer_study_root
+        )
         studies = _extract_pending_data(results, "studies", query_dict)
 
         filtered_studies = []

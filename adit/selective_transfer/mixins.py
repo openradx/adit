@@ -2,7 +2,7 @@ from adit.core.models import TransferTask
 
 
 class SelectiveTransferJobCreateMixin:
-    def query_studies(self, form, limit):
+    def query_studies(self, form, limit_results):
         data = form.cleaned_data
         server = form.instance.source.dicomserver
         self.connector = server.create_connector()
@@ -13,7 +13,8 @@ class SelectiveTransferJobCreateMixin:
             accession_number=data["accession_number"],
             study_date=data["study_date"],
             modality=data["modality"],
-            limit_results=limit,
+            limit_results=limit_results,
+            prefer_study_root=True,
         )
         return studies
 
