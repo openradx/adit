@@ -139,13 +139,23 @@ class SelectiveTransferJobForm(forms.ModelForm):
             ),
         )
 
-    def clean_patient_name(self):
-        patient_name = self.cleaned_data["patient_name"]
-        return re.sub(r"\s*,\s*", "^", patient_name)
-
     def clean_archive_password(self):
         archive_password = self.cleaned_data["archive_password"]
         destination = self.cleaned_data.get("destination")
         if not destination or destination.node_type != DicomNode.NodeType.FOLDER:
             archive_password = ""
         return archive_password
+
+    def clean_patient_name(self):
+        patient_name = self.cleaned_data["patient_name"]
+        return re.sub(r"\s*,\s*", "^", patient_name)
+
+    def clean_modality(self):
+        modality = self.cleaned_data["modality"]
+        modilities = re.split(r"\s*,\s*", modality)
+
+        if len(modilities) == 0:
+            return ""
+        if len(modilities) == 1:
+            return modilities[0]
+        return modilities

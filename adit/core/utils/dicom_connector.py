@@ -534,8 +534,8 @@ class DicomConnector:
             "StudyDate": study_date,
             "StudyTime": study_time,
             "StudyDescription": study_description,
+            "ModalitiesInStudy": modality,
             "NumberOfStudyRelatedInstances": "",
-            "ModalitiesInStudy": "",
         }
         results = self.c_find(
             query_dict, limit_results=limit_results, prefer_study_root=prefer_study_root
@@ -548,10 +548,15 @@ class DicomConnector:
             study_uid = study["StudyInstanceUID"]
 
             # Modalities In Study is not supported by all PACS servers. If it is
-            # supported then it should be not empty. Otherwise we fetch the Modality
-            # of all its series manually.
+            # supported then it should be not empty. Otherwise we fetch the modalities
+            # of all the series of this study manually.
             if study["ModalitiesInStudy"]:
                 study_modalities = study["ModalitiesInStudy"]
+
+                # ModalitiesInStudy returns multiple modalities in a list, but only one modality
+                # as a string (at least with the Synapse PACS). So we convert the later one to a list.
+                if isinstance(study_modalities, str):
+                    study_modalities = [study_modalities]
             else:
                 try:
                     study_modalities = self.fetch_study_modalities(
@@ -562,20 +567,21 @@ class DicomConnector:
                         "Failed to fetch modalities of study with UID %s" % study_uid
                     ) from err
 
-            if isinstance(study_modalities, str):
-                study_modalities = [study_modalities]
+                # If we fetched the modalities manually we must filter the studies with
+                # which only have the requested modality. Cave, when limit_results is used
+                # this may lead to less studies then there really exist for the query as this filter
+                # is used after the results were already limited.
+                if modality:
+                    if isinstance(modality, str):
+                        if modality not in study_modalities:
+                            continue
+                    else:
+                        # Can also be a list of modalities, TODO but this is not
+                        # implemented in the Django BatchTransferRequest model currently
+                        if len(set(study_modalities) & set(modality)) == 0:
+                            continue
 
             study["Modalities"] = study_modalities
-
-            if modality:
-                if isinstance(modality, str):
-                    if modality not in study_modalities:
-                        continue
-                else:
-                    # Can also be a list of modalities, TODO but this is not
-                    # implemented in the Django BatchTransferRequest model currently
-                    if len(set(study_modalities) & set(modality)) == 0:
-                        continue
 
             filtered_studies.append(study)
 

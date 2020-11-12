@@ -31,10 +31,10 @@
                     </div>
                 </td>
                 <td>{{ result.PatientID }}</td>
-                <td>{{ result.PatientName|convert_dicom_person_name }}</td>
+                <td>{{ result.PatientName|convert_dicom_person_name|title }}</td>
                 <td>{{ result.PatientBirthDate|parse_dicom_date|date:"SHORT_DATE_FORMAT" }}</td>
                 <td>{{ result.StudyDate|parse_dicom_date|date:"SHORT_DATE_FORMAT" }}</td>
-                <td>{{ result.Modalities|join:", " }}</td>
+                <td>{{ result.Modalities|filter_modalities|join:", " }}</td>
                 <td>{{ result.StudyDescription }}</td>
                 <td>{{ result.NumberOfStudyRelatedInstances }}</td>
             </tr>
