@@ -352,6 +352,13 @@ class DicomConnector:
 
         query_model = self.default_find_query_model
         if prefer_study_root and self.config.study_root_find_support:
+            # When PatientRootQueryRetrieveInformationModelFind is used then on most PACS
+            # servers PatientID must be valid and exist otherwise an error is returned
+            # (0xA700 on Synapse PACS). So if we want to allow to search with maybe
+            # non existent PatientIDs (like in the Selective Transfer form where the user
+            # creates the query for searching studies) we must use
+            # StudyRootQueryRetrieveInformationModelFind so that the query ends with
+            # a SUCCESS (0x0000) but and empty array.
             query_model = StudyRootQueryRetrieveInformationModelFind
         elif "PatientID" not in query_ds or not query_ds.PatientID:
             if not self.config.study_root_find_support:
