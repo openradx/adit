@@ -8,7 +8,7 @@ from .forms import SelectiveTransferJobForm
 from .models import SelectiveTransferJob
 from .mixins import SelectiveTransferJobCreateMixin
 
-QUERY_RESULT_LIMIT = 51
+QUERY_RESULT_LIMIT = 101
 
 
 class SelectiveTransferJobCreateView(

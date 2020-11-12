@@ -1,5 +1,6 @@
 from django.conf import settings
 from adit.core.models import TransferTask
+from adit.core.templatetags.dicom_helpers import parse_dicom_date
 from .models import SelectiveTransferJob
 
 
@@ -18,6 +19,14 @@ class SelectiveTransferJobCreateMixin:
             limit_results=limit_results,
             prefer_study_root=True,
         )
+
+        studies = sorted(studies, key=lambda study: study["PatientName"].lower())
+        studies = sorted(
+            studies,
+            key=lambda study: parse_dicom_date(study["StudyDate"]),
+            reverse=True,
+        )
+
         return studies
 
     def transfer_selected_studies(self, user, form, selected_studies):

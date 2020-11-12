@@ -7,7 +7,7 @@ from crispy_forms.utils import render_crispy_form
 from .forms import SelectiveTransferJobForm
 from .mixins import SelectiveTransferJobCreateMixin
 
-QUERY_RESULT_LIMIT = 51
+QUERY_RESULT_LIMIT = 101
 
 logger = logging.getLogger(__name__)
 
