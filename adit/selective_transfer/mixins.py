@@ -1,4 +1,6 @@
+from django.conf import settings
 from adit.core.models import TransferTask
+from .models import SelectiveTransferJob
 
 
 class SelectiveTransferJobCreateMixin:
@@ -38,5 +40,10 @@ class SelectiveTransferJobCreateMixin:
                 study_uid=study_uid,
                 pseudonym=pseudonym,
             )
+
+        if user.is_staff or settings.SELECTIVE_TRANSFER_UNVERIFIED:
+            job.status = SelectiveTransferJob.Status.PENDING
+            job.save()
+            job.delay()
 
         return job
