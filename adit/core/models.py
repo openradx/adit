@@ -7,7 +7,7 @@ from django.urls import reverse
 from model_utils.managers import InheritanceManager
 from .site import job_type_choices
 from .utils.dicom_connector import DicomConnector
-from .validators import no_special_chars_validator
+from .validators import no_backslash_char_validator, no_control_chars_validator
 
 
 class CoreSettings(models.Model):
@@ -140,8 +140,12 @@ class TransferJob(models.Model):
         max_length=2, choices=Status.choices, default=Status.UNVERIFIED
     )
     message = models.TextField(blank=True, default="")
-    trial_protocol_id = models.CharField(blank=True, max_length=64)
-    trial_protocol_name = models.CharField(blank=True, max_length=64)
+    trial_protocol_id = models.CharField(
+        blank=True, max_length=64, validators=[no_backslash_char_validator]
+    )
+    trial_protocol_name = models.CharField(
+        blank=True, max_length=64, validators=[no_backslash_char_validator]
+    )
     archive_password = models.CharField(blank=True, max_length=50)
     owner = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="transfer_jobs"
@@ -203,7 +207,9 @@ class TransferTask(models.Model):
     study_uid = models.CharField(max_length=64)
     series_uids = models.JSONField(null=True, blank=True)
     pseudonym = models.CharField(
-        blank=True, max_length=64, validators=[no_special_chars_validator]
+        blank=True,
+        max_length=64,
+        validators=[no_backslash_char_validator, no_control_chars_validator],
     )
     status = models.CharField(
         max_length=2,
