@@ -23,11 +23,6 @@ class Migration(migrations.Migration):
         ),
         migrations.AlterField(
             model_name='batchtransferrequest',
-            name='patient_birth_date',
-            field=models.DateField(blank=True, null=True, validators=[django.core.validators.RegexValidator(inverse_match=True, message='No date range allowed.', regex='-')]),
-        ),
-        migrations.AlterField(
-            model_name='batchtransferrequest',
             name='patient_id',
             field=models.CharField(blank=True, max_length=64, validators=[django.core.validators.RegexValidator(inverse_match=True, message='Contains invalid characters.', regex='[\\f\\n\\r\\\\]'), django.core.validators.RegexValidator(inverse_match=True, message='No wildcards allowed.', regex='[\\*\\?]')]),
         ),
@@ -40,10 +35,5 @@ class Migration(migrations.Migration):
             model_name='batchtransferrequest',
             name='pseudonym',
             field=models.CharField(blank=True, max_length=64, validators=[django.core.validators.RegexValidator(inverse_match=True, message='Contains invalid characters.', regex='[\\f\\n\\r\\\\]'), django.core.validators.RegexValidator(inverse_match=True, message='No wildcards allowed.', regex='[\\*\\?]')]),
-        ),
-        migrations.AlterField(
-            model_name='batchtransferrequest',
-            name='study_date',
-            field=models.DateField(blank=True, null=True, validators=[django.core.validators.RegexValidator(inverse_match=True, message='No date range allowed.', regex='-')]),
         ),
     ]

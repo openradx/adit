@@ -1,16 +1,11 @@
 from datetime import time
-from django.core import validators
 from django.db import models
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.contrib.contenttypes.fields import GenericRelation
 from django.urls import reverse
 from adit.core.models import AppSettings, TransferJob, TransferTask
-from adit.core.validators import (
-    no_special_chars_validator,
-    no_wildcard_validator,
-    no_date_range_validator,
-)
+from adit.core.validators import no_special_chars_validator, no_wildcard_validator
 
 
 def slot_time(hour, minute):
@@ -89,7 +84,6 @@ class BatchTransferRequest(models.Model):
     patient_birth_date = models.DateField(
         null=True,
         blank=True,
-        validators=[no_date_range_validator],
     )
     accession_number = models.CharField(
         blank=True,
@@ -99,7 +93,6 @@ class BatchTransferRequest(models.Model):
     study_date = models.DateField(
         null=True,
         blank=True,
-        validators=[no_date_range_validator],
     )
     modality = models.CharField(
         blank=True,
