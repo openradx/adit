@@ -1,11 +1,16 @@
 from datetime import time
+from django.core import validators
 from django.db import models
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.contrib.contenttypes.fields import GenericRelation
 from django.urls import reverse
 from adit.core.models import AppSettings, TransferJob, TransferTask
-from adit.core.validators import validate_pseudonym
+from adit.core.validators import (
+    no_special_chars_validator,
+    no_wildcard_validator,
+    no_date_range_validator,
+)
 
 
 def slot_time(hour, minute):
@@ -71,14 +76,40 @@ class BatchTransferRequest(models.Model):
         TransferTask, related_query_name="batch_transfer_request"
     )
     row_number = models.PositiveIntegerField()
-    patient_id = models.CharField(blank=True, max_length=64)
-    patient_name = models.CharField(blank=True, max_length=324)
-    patient_birth_date = models.DateField(null=True, blank=True)
-    accession_number = models.CharField(blank=True, max_length=16)
-    study_date = models.DateField(null=True, blank=True)
-    modality = models.CharField(blank=True, max_length=16)
+    patient_id = models.CharField(
+        blank=True,
+        max_length=64,
+        validators=[no_special_chars_validator, no_wildcard_validator],
+    )
+    patient_name = models.CharField(
+        blank=True,
+        max_length=324,
+        validators=[no_special_chars_validator, no_wildcard_validator],
+    )
+    patient_birth_date = models.DateField(
+        null=True,
+        blank=True,
+        validators=[no_date_range_validator],
+    )
+    accession_number = models.CharField(
+        blank=True,
+        max_length=16,
+        validators=[no_special_chars_validator, no_wildcard_validator],
+    )
+    study_date = models.DateField(
+        null=True,
+        blank=True,
+        validators=[no_date_range_validator],
+    )
+    modality = models.CharField(
+        blank=True,
+        max_length=16,
+        validators=[no_special_chars_validator, no_wildcard_validator],
+    )
     pseudonym = models.CharField(
-        blank=True, max_length=64, validators=[validate_pseudonym]
+        blank=True,
+        max_length=64,
+        validators=[no_special_chars_validator, no_wildcard_validator],
     )
     status = models.CharField(
         max_length=2, choices=Status.choices, default=Status.PENDING

@@ -5,7 +5,7 @@ from crispy_forms.layout import Layout, Field, Row, Column, Div
 from crispy_forms.bootstrap import StrictButton
 from adit.core.forms import DicomNodeChoiceField
 from adit.core.models import DicomNode
-from adit.core.validators import validate_pseudonym
+from adit.core.validators import no_special_chars_validator
 from .models import SelectiveTransferJob
 
 
@@ -45,7 +45,7 @@ class SelectiveTransferJobForm(forms.ModelForm):
     source = DicomNodeChoiceField(DicomNode.NodeType.SERVER)
     destination = DicomNodeChoiceField()
     pseudonym = forms.CharField(
-        required=False, max_length=64, validators=[validate_pseudonym]
+        required=False, max_length=64, validators=[no_special_chars_validator]
     )
     patient_id = forms.CharField(required=False, max_length=64, label="Patient ID")
     patient_name = forms.CharField(required=False, max_length=324)

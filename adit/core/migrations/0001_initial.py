@@ -91,7 +91,7 @@ class Migration(migrations.Migration):
                 ('patient_id', models.CharField(max_length=64)),
                 ('study_uid', models.CharField(max_length=64)),
                 ('series_uids', models.JSONField(blank=True, null=True)),
-                ('pseudonym', models.CharField(blank=True, max_length=64, validators=[adit.core.validators.validate_pseudonym])),
+                ('pseudonym', models.CharField(blank=True, max_length=64)),
                 ('status', models.CharField(choices=[('PE', 'Pending'), ('IP', 'In Progress'), ('CA', 'Canceled'), ('SU', 'Success'), ('FA', 'Failure')], default='PE', max_length=2)),
                 ('message', models.TextField(blank=True, default='')),
                 ('log', models.TextField(blank=True, default='')),

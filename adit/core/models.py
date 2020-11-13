@@ -7,7 +7,7 @@ from django.urls import reverse
 from model_utils.managers import InheritanceManager
 from .site import job_type_choices
 from .utils.dicom_connector import DicomConnector
-from .validators import validate_pseudonym
+from .validators import no_special_chars_validator
 
 
 class CoreSettings(models.Model):
@@ -203,7 +203,7 @@ class TransferTask(models.Model):
     study_uid = models.CharField(max_length=64)
     series_uids = models.JSONField(null=True, blank=True)
     pseudonym = models.CharField(
-        blank=True, max_length=64, validators=[validate_pseudonym]
+        blank=True, max_length=64, validators=[no_special_chars_validator]
     )
     status = models.CharField(
         max_length=2,

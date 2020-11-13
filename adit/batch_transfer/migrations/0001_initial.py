@@ -49,7 +49,7 @@ class Migration(migrations.Migration):
                 ('accession_number', models.CharField(blank=True, max_length=16)),
                 ('study_date', models.DateField(blank=True, null=True)),
                 ('modality', models.CharField(blank=True, max_length=16)),
-                ('pseudonym', models.CharField(blank=True, max_length=64, validators=[adit.core.validators.validate_pseudonym])),
+                ('pseudonym', models.CharField(blank=True, max_length=64)),
                 ('status', models.CharField(choices=[('PE', 'Pending'), ('IP', 'In Progress'), ('CA', 'Canceled'), ('SU', 'Success'), ('WA', 'Warning'), ('FA', 'Failure')], default='PE', max_length=2)),
                 ('message', models.TextField(blank=True, default='')),
                 ('created', models.DateTimeField(auto_now_add=True)),
