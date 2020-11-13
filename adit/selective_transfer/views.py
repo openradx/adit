@@ -37,7 +37,8 @@ class SelectiveTransferJobCreateView(
         action = self.request.POST.get("action")
 
         if action == "query":
-            studies = self.query_studies(form, QUERY_RESULT_LIMIT)
+            connector = self.create_source_connector(form)
+            studies = self.query_studies(connector, form, QUERY_RESULT_LIMIT)
 
             max_query_results = len(studies) >= QUERY_RESULT_LIMIT
 

@@ -1,4 +1,5 @@
 import logging
+import asyncio
 from django.http import QueryDict
 from django.template.loader import render_to_string
 from channels.generic.websocket import AsyncJsonWebsocketConsumer
@@ -35,6 +36,7 @@ class SelectiveTransferConsumer(
     def __init__(self, *args, **kwargs):
         self.user = None
         self.connector = None
+        self.current_query_id = None
         super().__init__(*args, **kwargs)
 
     async def connect(self):
@@ -46,19 +48,33 @@ class SelectiveTransferConsumer(
         logger.debug("Disconnected from WebSocket client with code: %s", close_code)
 
     async def receive_json(self, content, **kwargs):
+        message_id = content["messageId"]
+
         error_response = await self.check_user()
         if error_response:
-            error_response["messageId"] = content["messageId"]
-            await self.send_json(error_response)
+            await self.send_response(error_response, message_id)
             return
 
-        form_data = QueryDict(content["data"])
+        form = SelectiveTransferJobForm(QueryDict(content["data"]))
+        form_valid = await database_sync_to_async(form.is_valid)()
 
         if content["action"] == "query":
-            await self.make_query(form_data, content["messageId"])
+            if form_valid:
+                asyncio.create_task(self.make_query(form, message_id))
+            else:
+                response = self.get_form_error_response(
+                    form, "Please correct the form errors and search again."
+                )
+                await self.send_response(response, message_id)
 
         elif content["action"] == "transfer":
-            await self.make_transfer(form_data, content["messageId"])
+            if form_valid:
+                asyncio.create_task(self.make_transfer(form, message_id))
+            else:
+                response = self.get_form_error_response(
+                    form, "Please correct the form errors and transfer again."
+                )
+                await self.send_response(response, message_id)
 
     @database_sync_to_async
     def check_user(self):
@@ -72,31 +88,26 @@ class SelectiveTransferConsumer(
 
         return None
 
-    async def make_query(self, form_data, message_id):
-        form = SelectiveTransferJobForm(form_data)
-        response = await self.get_query_response(form)
-        response["messageId"] = message_id
-        await self.send_json(response)
+    @database_sync_to_async
+    def get_form_error_response(self, form, message):
+        return {
+            "#query_form": render_crispy_form(form),
+            "#error_message": render_error_message(message),
+        }
 
-    async def make_transfer(self, form_data, message_id):
-        form = SelectiveTransferJobForm(form_data)
-        selected_studies = form_data.getlist("selected_studies")
+    async def make_query(self, form, message_id):
+        connector = await database_sync_to_async(self.create_source_connector)(form)
+        studies = self.query_studies(connector, form, QUERY_RESULT_LIMIT)
+        response = await self.get_query_response(form, studies)
+        await self.send_response(response, message_id)
+
+    async def make_transfer(self, form, message_id):
+        selected_studies = form.data.getlist("selected_studies")
         response = await self.get_transfer_response(form, selected_studies)
-        response["messageId"] = message_id
-        await self.send_json(response)
+        await self.send_response(response, message_id)
 
     @database_sync_to_async
-    def get_query_response(self, form):
-        if not form.is_valid():
-            return {
-                "#query_form": render_crispy_form(form),
-                "#error_message": render_error_message(
-                    "Please correct the form errors and search again."
-                ),
-            }
-
-        studies = self.query_studies(form, QUERY_RESULT_LIMIT)
-
+    def get_query_response(self, form, studies):
         max_query_results = len(studies) >= QUERY_RESULT_LIMIT
 
         return {
@@ -115,14 +126,6 @@ class SelectiveTransferConsumer(
 
     @database_sync_to_async
     def get_transfer_response(self, form, selected_studies):
-        if not form.is_valid():
-            return {
-                "#query_form": render_crispy_form(form),
-                "#error_message": render_error_message(
-                    "Please correct the form errors and transfer again."
-                ),
-            }
-
         try:
             job = self.transfer_selected_studies(self.user, form, selected_studies)
         except ValueError as err:
@@ -140,3 +143,7 @@ class SelectiveTransferConsumer(
             "#error_message": "",
             "#query_results": "",
         }
+
+    async def send_response(self, response, message_id):
+        response["messageId"] = message_id
+        await self.send_json(response)
