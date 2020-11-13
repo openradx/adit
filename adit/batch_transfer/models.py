@@ -84,6 +84,7 @@ class BatchTransferRequest(models.Model):
     patient_birth_date = models.DateField(
         null=True,
         blank=True,
+        error_messages={"invalid": "Invalid date format."},
     )
     accession_number = models.CharField(
         blank=True,
@@ -93,6 +94,7 @@ class BatchTransferRequest(models.Model):
     study_date = models.DateField(
         null=True,
         blank=True,
+        error_messages={"invalid": "Invalid date format."},
     )
     modality = models.CharField(
         blank=True,
