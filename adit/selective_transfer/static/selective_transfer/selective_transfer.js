@@ -8,7 +8,6 @@ function selectiveTransferForm() {
         init: function (el, refs) {
             this.$form = $(el);
             this.refs = refs;
-            this.messageId = 0;
             this.connect();
 
             const self = this;
@@ -80,7 +79,7 @@ function selectiveTransferForm() {
             };
             this.ws = ws;
         },
-        setSelectOption: function (select, value)  {
+        setSelectOption: function (select, value) {
             const options = select.options;
             let valueToSet = "";
             for (let i = 0, len = options.length; i < len; i++) {
@@ -112,7 +111,6 @@ function selectiveTransferForm() {
             const formData = this.$form.serialize();
             this.ws.send(
                 JSON.stringify({
-                    messageId: ++this.messageId,
                     action: action,
                     data: formData,
                 })
@@ -120,12 +118,6 @@ function selectiveTransferForm() {
         },
         handleMessage: function (msg) {
             console.debug("Received message:", msg);
-            const messageId = msg.messageId;
-            delete msg.messageId;
-            if (messageId !== this.messageId) {
-                console.debug("Discarding message with ID: " + messageId);
-                return;
-            }
 
             this.queryInProgress = false;
             this.transferInProgress = false;
