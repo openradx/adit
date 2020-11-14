@@ -19,6 +19,7 @@ import errno
 from celery.utils.log import get_task_logger
 from pydicom.dataset import Dataset
 from pydicom import dcmread, valuerep, uid
+from pydicom.errors import InvalidDicomError
 from pynetdicom import (
     AE,
     evt,
@@ -437,7 +438,14 @@ class DicomConnector:
         for root, _, files in os.walk(folder):
             for filename in files:
                 filepath = os.path.join(root, filename)
-                ds = dcmread(filepath)
+
+                try:
+                    ds = dcmread(filepath)
+                except InvalidDicomError:
+                    logger.warning(
+                        "Tried to read invalid DICOM file %s. Skipping it.", filepath
+                    )
+                    continue
 
                 # Allow to manipuate the dataset by using a callback before storing to server
                 if callback:
