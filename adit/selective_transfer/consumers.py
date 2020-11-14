@@ -70,11 +70,14 @@ class SelectiveTransferConsumer(
 
     async def receive_json(self, content, **kwargs):
         async with async_lock(lock):
-            self.abort_connectors()
             self.current_message_id += 1
             message_id = self.current_message_id
+            self.abort_connectors()
 
-        error_response = await self.check_user()
+        if content["action"] == "cancelQuery":
+            return
+
+        error_response = await self.check_permission()
         if error_response:
             await self.send_json(error_response)
             return
@@ -107,7 +110,7 @@ class SelectiveTransferConsumer(
                 connector.abort_connection()
 
     @database_sync_to_async
-    def check_user(self):
+    def check_permission(self):
         if not self.user:
             return create_error_response("Access denied. You must be logged in.")
 
@@ -143,9 +146,8 @@ class SelectiveTransferConsumer(
 
         try:
             studies = self.query_studies(connector, form, QUERY_RESULT_LIMIT)
+            max_query_results = len(studies) >= QUERY_RESULT_LIMIT
             if message_id == self.current_message_id:
-                max_query_results = len(studies) >= QUERY_RESULT_LIMIT
-
                 return {
                     "#query_form": render_crispy_form(form),
                     "#query_results": render_to_string(

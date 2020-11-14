@@ -103,6 +103,15 @@ function selectiveTransferForm() {
             this.$form.find("#query_results").empty();
             this.submitForm("query");
         },
+        cancelQuery: function () {
+            this.ws.send(
+                JSON.stringify({
+                    action: "cancelQuery",
+                })
+            );
+            this.queryInProgress = false;
+            this.showHelpMessage = true;
+        },
         submitTransfer: function () {
             this.transferInProgress = true;
             this.submitForm("transfer");
@@ -121,6 +130,7 @@ function selectiveTransferForm() {
 
             this.queryInProgress = false;
             this.transferInProgress = false;
+            this.showHelpMessage = false;
 
             // Replace the HTML as demanded by the server.
             for (const selector in msg) {
