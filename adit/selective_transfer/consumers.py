@@ -1,5 +1,7 @@
 import logging
 import asyncio
+from time import sleep
+from asgiref.sync import async_to_sync
 from django.http import QueryDict
 from django.template.loader import render_to_string
 from channels.generic.websocket import AsyncJsonWebsocketConsumer
@@ -50,6 +52,7 @@ class SelectiveTransferConsumer(
         logger.debug("Disconnected from WebSocket client with code: %s", close_code)
 
     async def receive_json(self, content, **kwargs):
+        print("recevied message")
         if self.connector:
             self.connector.abort_connection()
 
@@ -66,7 +69,8 @@ class SelectiveTransferConsumer(
 
         if content["action"] == "query":
             if form_valid:
-                asyncio.create_task(self.make_query(form, message_id))
+                loop = asyncio.get_event_loop()
+                loop.run_in_executor(None, self.make_query, form, message_id)
             else:
                 response = self.get_form_error_response(
                     form, "Please correct the form errors and search again."
@@ -101,30 +105,30 @@ class SelectiveTransferConsumer(
             "#error_message": render_error_message(message),
         }
 
-    async def make_query(self, form, message_id):
-        self.connector = await database_sync_to_async(self.create_source_connector)(
-            form
-        )
-
+    def make_query(self, form, message_id):
+        print("query start")
+        if message_id != self.current_message_id:
+            return
+        self.connector = self.create_source_connector(form)
         if message_id != self.current_message_id:
             return
 
+        print("before query")
         studies = self.query_studies(self.connector, form, QUERY_RESULT_LIMIT)
-
         if message_id != self.current_message_id:
             return
-
-        response = await self.get_query_response(form, studies)
-
-        if message_id == self.current_message_id:
-            await self.send_json(response)
+        print(studies)
+        print("after query")
+        response = self.get_query_response(form, studies)
+        if message_id != self.current_message_id:
+            return
+        async_to_sync(self.send_json)(response)
 
     async def make_transfer(self, form):
         selected_studies = form.data.getlist("selected_studies")
         response = await self.get_transfer_response(form, selected_studies)
         await self.send_json(response)
 
-    @database_sync_to_async
     def get_query_response(self, form, studies):
         max_query_results = len(studies) >= QUERY_RESULT_LIMIT
 

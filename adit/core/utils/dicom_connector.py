@@ -317,8 +317,10 @@ class DicomConnector:
     def _fetch_results(self, responses, operation, query_dict, limit_results=None):
         results = []
         for (status, identifier) in responses:
+            time.sleep(1)
             if limit_results is not None and len(results) >= limit_results:
                 self.abort_connection()
+                print("aborting")
                 break
 
             if status:
