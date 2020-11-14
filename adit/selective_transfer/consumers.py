@@ -82,10 +82,11 @@ class SelectiveTransferConsumer(
                 await self.send_json(response)
 
     def abort_connectors(self):
-        print(self.query_connectors)
-        for connector in self.query_connectors:
+        while self.query_connectors:
             print("aborting!!!!!!!!!!!!!!")
-            connector.abort_connection()
+            for connector in self.query_connectors[:]:
+                self.query_connectors.remove(connector)
+                connector.abort_connection()
 
     @database_sync_to_async
     def check_user(self):
@@ -108,9 +109,8 @@ class SelectiveTransferConsumer(
 
     async def make_query(self, form, message_id):
         loop = asyncio.get_event_loop()
-        response = await loop.run_in_executor(
-            None, self.get_query_response, form, message_id
-        )
+        future = loop.run_in_executor(None, self.get_query_response, form, message_id)
+        response = await future
         if response:
             print("query connectors:")
             print(self.query_connectors)
@@ -153,7 +153,8 @@ class SelectiveTransferConsumer(
             pass
         finally:
             print("ifnally ++++++++++++++++++++++++")
-            self.query_connectors.remove(connector)
+            if connector in self.query_connectors:
+                self.query_connectors.remove(connector)
 
         return None
 
