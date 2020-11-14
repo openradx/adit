@@ -1,5 +1,8 @@
 import logging
+import contextlib
 import asyncio
+import threading
+from concurrent.futures import ThreadPoolExecutor
 from django.http import QueryDict
 from django.template.loader import render_to_string
 from channels.generic.websocket import AsyncJsonWebsocketConsumer
@@ -11,6 +14,22 @@ from .mixins import SelectiveTransferJobCreateMixin
 QUERY_RESULT_LIMIT = 101
 
 logger = logging.getLogger(__name__)
+
+lock = threading.Lock()
+
+
+@contextlib.asynccontextmanager
+async def async_lock(_lock):
+    """To handle a thread lock in async code.
+
+    See https://stackoverflow.com/a/63425191/166229
+    """
+    loop = asyncio.get_event_loop()
+    await loop.run_in_executor(None, _lock.acquire)
+    try:
+        yield  # the lock is held
+    finally:
+        _lock.release()
 
 
 def render_error_message(error_message):
@@ -33,27 +52,27 @@ def create_error_response(error_message):
 class SelectiveTransferConsumer(
     SelectiveTransferJobCreateMixin, AsyncJsonWebsocketConsumer
 ):
-    def __init__(self, *args, **kwargs):
-        self.user = None
-        self.query_connectors = []
-        self.current_message_id = 0
-        super().__init__(*args, **kwargs)
-
     async def connect(self):
         logger.debug("Connected to WebSocket client.")
+
+        # pylint: disable=attribute-defined-outside-init
         self.user = self.scope["user"]
+        self.query_connectors = []
+        self.current_message_id = 0
+        self.pool = ThreadPoolExecutor()
+
         await self.accept()
 
     async def disconnect(self, close_code):  # pylint: disable=arguments-differ
         self.abort_connectors()
+        self.pool.shutdown(wait=False, cancel_futures=True)
         logger.debug("Disconnected from WebSocket client with code: %s", close_code)
 
     async def receive_json(self, content, **kwargs):
-        print("recevied message")
-        self.abort_connectors()
-
-        self.current_message_id += 1
-        message_id = self.current_message_id
+        async with async_lock(lock):
+            self.abort_connectors()
+            self.current_message_id += 1
+            message_id = self.current_message_id
 
         error_response = await self.check_user()
         if error_response:
@@ -83,7 +102,6 @@ class SelectiveTransferConsumer(
 
     def abort_connectors(self):
         while self.query_connectors:
-            print("aborting!!!!!!!!!!!!!!")
             for connector in self.query_connectors[:]:
                 self.query_connectors.remove(connector)
                 connector.abort_connection()
@@ -109,29 +127,23 @@ class SelectiveTransferConsumer(
 
     async def make_query(self, form, message_id):
         loop = asyncio.get_event_loop()
-        future = loop.run_in_executor(None, self.get_query_response, form, message_id)
+        future = loop.run_in_executor(
+            self.pool, self.get_query_response, form, message_id
+        )
         response = await future
         if response:
-            print("query connectors:")
-            print(self.query_connectors)
             await self.send_json(response)
 
     def get_query_response(self, form, message_id):
-        print("query start")
-        print(message_id)
-        print(self.current_message_id)
-        if message_id != self.current_message_id:
-            return None
-
-        connector = self.create_source_connector(form)
+        with lock:
+            if message_id != self.current_message_id:
+                return None
+            connector = self.create_source_connector(form)
+            self.query_connectors.append(connector)
 
         try:
-            print("before query")
-            self.query_connectors.append(connector)
             studies = self.query_studies(connector, form, QUERY_RESULT_LIMIT)
             if message_id == self.current_message_id:
-                print(studies)
-                print("after query")
                 max_query_results = len(studies) >= QUERY_RESULT_LIMIT
 
                 return {
@@ -152,9 +164,9 @@ class SelectiveTransferConsumer(
             # Maybe we should check here if we really aborted the connection
             pass
         finally:
-            print("ifnally ++++++++++++++++++++++++")
-            if connector in self.query_connectors:
-                self.query_connectors.remove(connector)
+            with lock:
+                if connector in self.query_connectors:
+                    self.query_connectors.remove(connector)
 
         return None
 
