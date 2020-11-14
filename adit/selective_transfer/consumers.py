@@ -113,16 +113,21 @@ class SelectiveTransferConsumer(
         if message_id != self.current_message_id:
             return
 
-        print("before query")
-        studies = self.query_studies(self.connector, form, QUERY_RESULT_LIMIT)
-        if message_id != self.current_message_id:
-            return
-        print(studies)
-        print("after query")
-        response = self.get_query_response(form, studies)
-        if message_id != self.current_message_id:
-            return
-        async_to_sync(self.send_json)(response)
+        try:
+            print("before query")
+            studies = self.query_studies(self.connector, form, QUERY_RESULT_LIMIT)
+            if message_id != self.current_message_id:
+                return
+            print(studies)
+            print("after query")
+            response = self.get_query_response(form, studies)
+            if message_id != self.current_message_id:
+                return
+            async_to_sync(self.send_json)(response)
+        except ConnectionError:
+            # Ignore connection aborts (most probably from ourself)
+            # Maybe we should check here if we really aborted the connection
+            pass
 
     async def make_transfer(self, form):
         selected_studies = form.data.getlist("selected_studies")
