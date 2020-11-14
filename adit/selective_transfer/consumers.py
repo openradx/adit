@@ -35,7 +35,7 @@ class SelectiveTransferConsumer(
 ):
     def __init__(self, *args, **kwargs):
         self.user = None
-        self.connector = None
+        self.query_connectors = []
         self.current_message_id = 0
         super().__init__(*args, **kwargs)
 
@@ -45,14 +45,12 @@ class SelectiveTransferConsumer(
         await self.accept()
 
     async def disconnect(self, close_code):  # pylint: disable=arguments-differ
-        if self.connector:
-            self.connector.abort_connection()
+        self.abort_connectors()
         logger.debug("Disconnected from WebSocket client with code: %s", close_code)
 
     async def receive_json(self, content, **kwargs):
         print("recevied message")
-        if self.connector:
-            self.connector.abort_connection()
+        self.abort_connectors()
 
         self.current_message_id += 1
         message_id = self.current_message_id
@@ -83,6 +81,12 @@ class SelectiveTransferConsumer(
                 )
                 await self.send_json(response)
 
+    def abort_connectors(self):
+        print(self.query_connectors)
+        for connector in self.query_connectors:
+            print("aborting!!!!!!!!!!!!!!")
+            connector.abort_connection()
+
     @database_sync_to_async
     def check_user(self):
         if not self.user:
@@ -108,42 +112,48 @@ class SelectiveTransferConsumer(
             None, self.get_query_response, form, message_id
         )
         if response:
+            print("query connectors:")
+            print(self.query_connectors)
             await self.send_json(response)
 
     def get_query_response(self, form, message_id):
         print("query start")
+        print(message_id)
+        print(self.current_message_id)
         if message_id != self.current_message_id:
             return None
-        self.connector = self.create_source_connector(form)
-        if message_id != self.current_message_id:
-            return None
+
+        connector = self.create_source_connector(form)
 
         try:
             print("before query")
-            studies = self.query_studies(self.connector, form, QUERY_RESULT_LIMIT)
-            if message_id != self.current_message_id:
-                return None
-            print(studies)
-            print("after query")
-            max_query_results = len(studies) >= QUERY_RESULT_LIMIT
+            self.query_connectors.append(connector)
+            studies = self.query_studies(connector, form, QUERY_RESULT_LIMIT)
+            if message_id == self.current_message_id:
+                print(studies)
+                print("after query")
+                max_query_results = len(studies) >= QUERY_RESULT_LIMIT
 
-            return {
-                "#query_form": render_crispy_form(form),
-                "#query_results": render_to_string(
-                    "selective_transfer/_query_results.html",
-                    {
-                        "query": True,
-                        "query_results": studies,
-                        "max_query_results": max_query_results,
-                    },
-                ),
-                "#error_message": "",
-                "#created_job": "",
-            }
+                return {
+                    "#query_form": render_crispy_form(form),
+                    "#query_results": render_to_string(
+                        "selective_transfer/_query_results.html",
+                        {
+                            "query": True,
+                            "query_results": studies,
+                            "max_query_results": max_query_results,
+                        },
+                    ),
+                    "#error_message": "",
+                    "#created_job": "",
+                }
         except ConnectionError:
             # Ignore connection aborts (most probably from ourself)
             # Maybe we should check here if we really aborted the connection
             pass
+        finally:
+            print("ifnally ++++++++++++++++++++++++")
+            self.query_connectors.remove(connector)
 
         return None
 
