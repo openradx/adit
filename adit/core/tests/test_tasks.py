@@ -1,7 +1,12 @@
 from unittest.mock import patch, create_autospec, ANY
 import pytest
 from adit.core.utils.dicom_connector import DicomConnector
-from ..factories import TransferTaskFactory, TransferJobFactory, DicomServerFactory
+from ..factories import (
+    TransferTaskFactory,
+    TransferJobFactory,
+    DicomServerFactory,
+    DicomFolderFactory,
+)
 from ..models import TransferJob, TransferTask, DicomServer
 from ..tasks import transfer_dicoms
 
@@ -23,26 +28,60 @@ def create_task(db):
 
 
 @pytest.fixture
-def transfer_to_server_job(db, create_task):
-    job = TransferJobFactory(
-        status=TransferJob.Status.PENDING,
-        source=DicomServerFactory(),
-        destination=DicomServerFactory(),
-    )
-    create_task(job)
-    return job
+def create_transfer_job(db, create_task):
+    def _create_transfer_job(destination, archive_password=""):
+        job = TransferJobFactory(
+            status=TransferJob.Status.PENDING,
+            source=DicomServerFactory(),
+            destination=destination,
+            archive_password=archive_password,
+        )
+        create_task(job)
+        return job
+
+    return _create_transfer_job
 
 
-def test_transfer_task_to_server_with_study_succeeds(transfer_to_server_job):
+@pytest.fixture
+def create_study():
+    def _create_study(task):
+        return {
+            "PatientID": task.patient_id,
+            "StudyInstanceUID": task.study_uid,
+            "StudyDate": "20201001",
+            "StudyTime": "0800",
+            "Modalities": ["CT", "SR"],
+        }
+
+    return _create_study
+
+
+def test_transfer_task_to_folder_with_study_succeeds(create_transfer_job, create_study):
     # Arrange
-    task = transfer_to_server_job.tasks.first()
-    study = {
-        "PatientID": task.patient_id,
-        "StudyInstanceUID": task.study_uid,
-        "StudyDate": "20201001",
-        "StudyTime": "0800",
-        "Modalities": ["CT", "SR"],
-    }
+    task = create_transfer_job(DicomFolderFactory()).tasks.first()
+    study = create_study(task)
+    source_connector = create_autospec(DicomConnector)
+    source_connector.find_studies.return_value = [study]
+
+    with patch.object(DicomServer, "create_connector", return_value=source_connector):
+        # Act
+        transfer_dicoms(task.id)
+
+    # Assert
+    source_connector.download_study.assert_called_with(
+        task.patient_id, task.study_uid, ANY, modifier_callback=ANY
+    )
+    download_path = source_connector.download_study.call_args[0][2]
+    assert download_path.match(
+        f"{study['PatientID']}/"
+        f"{study['StudyDate']}-{study['StudyTime']}-{','.join(study['Modalities'])}"
+    )
+
+
+def test_transfer_task_to_server_with_study_succeeds(create_transfer_job, create_study):
+    # Arrange
+    task = create_transfer_job(DicomServerFactory()).tasks.first()
+    study = create_study(task)
     source_connector = create_autospec(DicomConnector)
     source_connector.find_studies.return_value = [study]
     dest_connector = create_autospec(DicomConnector)
@@ -64,3 +103,31 @@ def test_transfer_task_to_server_with_study_succeeds(transfer_to_server_job):
     )
     upload_path = dest_connector.upload_folder.call_args[0][0]
     assert upload_path.match(f"*/{study['PatientID']}")
+
+
+@patch("subprocess.Popen")
+def test_transfer_task_to_archive_with_study_succeeds(
+    Popen, create_transfer_job, create_study
+):
+    # Arrange
+    task = create_transfer_job(DicomFolderFactory(), "foobar").tasks.first()
+    study = create_study(task)
+    source_connector = create_autospec(DicomConnector)
+    source_connector.find_studies.return_value = [study]
+    Popen().returncode = 0
+    Popen().communicate.return_value = ("", "")
+
+    with patch.object(DicomServer, "create_connector", return_value=source_connector):
+        # Act
+        transfer_dicoms(task.id)
+
+    # Assert
+    source_connector.download_study.assert_called_with(
+        task.patient_id, task.study_uid, ANY, modifier_callback=ANY
+    )
+    download_path = source_connector.download_study.call_args[0][2]
+    assert download_path.match(
+        f"{study['PatientID']}/"
+        f"{study['StudyDate']}-{study['StudyTime']}-{','.join(study['Modalities'])}"
+    )
+    assert Popen.call_args[0][0][0] == "7z"

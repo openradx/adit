@@ -178,7 +178,7 @@ def test_invalid_patient_birth_date(birth_date, rows, columns, create_csv_file):
     with pytest.raises(ParsingError) as err:
         RequestsParser(";", ["%d.%m.%Y"]).parse(file)
 
-    assert err.match(r"PatientBirthDate:.*invalid date format")
+    assert err.match(r"PatientBirthDate: Invalid date format")
 
 
 def test_valid_accession_number(rows, columns, create_csv_file, create_random_str):
