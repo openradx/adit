@@ -17,6 +17,9 @@ ADIT (Automated DICOM Transfer) is a swiss army knife to exchange DICOM data bet
 -   Define when transfers should happen (to reduce PACS server load)
 -   Find Patient IDs using the patient's name and birth date
 -   Check if a list of studies is present on a DICOM server
+-   find_patients(query_dict)
+-   find_studies(query_dict, modalities=True or ["MR", "CT"], limit_results=None, prefer_study_root=False)
+-   find_series(query_dict)
 
 # TODO
 

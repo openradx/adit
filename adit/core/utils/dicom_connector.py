@@ -1,7 +1,7 @@
 """The heart of ADIT that communicates diretly with the DICOM servers.
 
 Error handling and logging is quite complex here. All lower level methods
-(c_find, c_get, c_move, c_store) only raise a ConnectionError if the connection
+(_find, _get, _move, _store) only raise a ConnectionError if the connection
 itself fails, but not if some operation itself (inside a working connection)
 fails. Those failures are recognized and raised in all higher level methods
 (find_patients, download_study, ...). A higher level method that uses another
@@ -346,12 +346,15 @@ class DicomConnector:
         return results
 
     @_connect_to_server
-    def c_find(self, query_dict, msg_id=1, limit_results=None, prefer_study_root=False):
+    def _find(self, query_dict, msg_id=1, limit_results=None, prefer_study_root=False):
         logger.debug("Sending C-FIND with query: %s", query_dict)
 
         query_ds = _make_query_dataset(query_dict)
 
         query_model = self.default_find_query_model
+        level = query_ds.get("QueryRetrieveLevel")
+        patient_id = query_ds.get("PatientID")
+
         if prefer_study_root and self.config.study_root_find_support:
             # When PatientRootQueryRetrieveInformationModelFind is used then on most PACS
             # servers PatientID must be valid and exist otherwise an error is returned
@@ -361,7 +364,8 @@ class DicomConnector:
             # StudyRootQueryRetrieveInformationModelFind so that the query ends with
             # a SUCCESS (0x0000) but and empty array.
             query_model = StudyRootQueryRetrieveInformationModelFind
-        elif "PatientID" not in query_ds or not query_ds.PatientID:
+
+        elif level != "PATIENT" and not patient_id:
             if not self.config.study_root_find_support:
                 raise ValueError(
                     "Patient ID missing in query without support for "
@@ -373,7 +377,7 @@ class DicomConnector:
         return self._fetch_results(responses, "C-FIND", query_dict, limit_results)
 
     @_connect_to_server
-    def c_get(self, query_dict, folder=None, callback=None, msg_id=1):
+    def _get(self, query_dict, folder=None, callback=None, msg_id=1):
         logger.debug("Sending C-GET with query: %s", query_dict)
 
         if folder:
@@ -382,7 +386,14 @@ class DicomConnector:
         query_ds = _make_query_dataset(query_dict)
 
         query_model = self.default_get_query_model
-        if "PatientID" not in query_ds or not query_ds.PatientID:
+        patient_id = query_ds.get("PatientID")
+        study_uid = query_ds.get("StudyInstanceUID")
+        if not patient_id:
+            if not study_uid:
+                raise ValueError(
+                    "Study Instance UID missing in query for "
+                    "Study Root Query/Retrieve Information Model."
+                )
             if not self.config.study_root_get_support:
                 raise ValueError(
                     "Patient ID missing in query without support for "
@@ -411,13 +422,20 @@ class DicomConnector:
         return results
 
     @_connect_to_server
-    def c_move(self, query_dict, destination_ae_title, msg_id=1):
+    def _move(self, query_dict, destination_ae_title, msg_id=1):
         logger.debug("Sending C-MOVE with query: %s", query_dict)
 
         query_ds = _make_query_dataset(query_dict)
 
         query_model = self.default_move_query_model
-        if "PatientID" not in query_ds or not query_ds.PatientID:
+        patient_id = query_ds.get("PatientID")
+        study_uid = query_ds.get("StudyInstanceUID")
+        if not patient_id:
+            if not study_uid:
+                raise ValueError(
+                    "Study Instance UID missing in query for "
+                    "Study Root Query/Retrieve Information Model."
+                )
             if not self.config.study_root_move_support:
                 raise ValueError(
                     "Patient ID missing in query without support for "
@@ -431,7 +449,7 @@ class DicomConnector:
         return self._fetch_results(responses, "C-MOVE", query_dict)
 
     @_connect_to_server
-    def c_store(self, folder: Path, callback=None, msg_id=1):
+    def _store(self, folder: Path, callback=None, msg_id=1):
         logger.debug("Sending C-STORE of folder: %s", folder.as_posix())
 
         results = []
@@ -497,7 +515,7 @@ class DicomConnector:
             "PatientName": patient_name,
             "PatientBirthDate": patient_birth_date,
         }
-        results = self.c_find(query_dict)
+        results = self._find(query_dict)
         patients = _extract_pending_data(results, "patients", query_dict)
 
         # Some PACS servers (like our Synapse) do simply ignore the PatientBirthDate
@@ -545,7 +563,7 @@ class DicomConnector:
             "ModalitiesInStudy": modality,
             "NumberOfStudyRelatedInstances": "",
         }
-        results = self.c_find(
+        results = self._find(
             query_dict, limit_results=limit_results, prefer_study_root=prefer_study_root
         )
         studies = _extract_pending_data(results, "studies", query_dict)
@@ -618,7 +636,7 @@ class DicomConnector:
             "SeriesDescription": series_description,
             "Modality": "",  # we handle Modality programmatically, see below
         }
-        results = self.c_find(query_dict)
+        results = self._find(query_dict)
         series_list = _extract_pending_data(results, "series", query_dict)
 
         if modality is None:
@@ -716,7 +734,7 @@ class DicomConnector:
             "SeriesInstanceUID": series_uid,
         }
 
-        results = self.c_get(query_dict, folder_path, modifier_callback)
+        results = self._get(query_dict, folder_path, modifier_callback)
 
         status_category = results[-1]["status"]["category"]
         status_code = results[-1]["status"]["code"]
@@ -733,7 +751,7 @@ class DicomConnector:
     def upload_folder(self, folder_path):
         """Upload a specified folder to a DICOM server."""
 
-        results = self.c_store(folder_path)
+        results = self._store(folder_path)
 
         failed_instances = []
         for result in results:
