@@ -1,4 +1,8 @@
 import logging
+import contextlib
+import asyncio
+import threading
+from concurrent.futures import ThreadPoolExecutor
 from django.http import QueryDict
 from django.template.loader import render_to_string
 from channels.generic.websocket import AsyncJsonWebsocketConsumer
@@ -10,6 +14,22 @@ from .mixins import SelectiveTransferJobCreateMixin
 QUERY_RESULT_LIMIT = 101
 
 logger = logging.getLogger(__name__)
+
+lock = threading.Lock()
+
+
+@contextlib.asynccontextmanager
+async def async_lock(_lock):
+    """To handle a thread lock in async code.
+
+    See https://stackoverflow.com/a/63425191/166229
+    """
+    loop = asyncio.get_event_loop()
+    await loop.run_in_executor(None, _lock.acquire)
+    try:
+        yield  # the lock is held
+    finally:
+        _lock.release()
 
 
 def render_error_message(error_message):
@@ -32,36 +52,65 @@ def create_error_response(error_message):
 class SelectiveTransferConsumer(
     SelectiveTransferJobCreateMixin, AsyncJsonWebsocketConsumer
 ):
-    def __init__(self, *args, **kwargs):
-        self.user = None
-        self.connector = None
-        super().__init__(*args, **kwargs)
-
     async def connect(self):
         logger.debug("Connected to WebSocket client.")
+
+        # pylint: disable=attribute-defined-outside-init
         self.user = self.scope["user"]
+        self.query_connectors = []
+        self.current_message_id = 0
+        self.pool = ThreadPoolExecutor()
+
         await self.accept()
 
     async def disconnect(self, close_code):  # pylint: disable=arguments-differ
+        self.abort_connectors()
+        self.pool.shutdown(wait=False, cancel_futures=True)
         logger.debug("Disconnected from WebSocket client with code: %s", close_code)
 
     async def receive_json(self, content, **kwargs):
-        error_response = await self.check_user()
+        async with async_lock(lock):
+            self.current_message_id += 1
+            message_id = self.current_message_id
+            self.abort_connectors()
+
+        if content["action"] == "cancelQuery":
+            return
+
+        error_response = await self.check_permission()
         if error_response:
-            error_response["messageId"] = content["messageId"]
             await self.send_json(error_response)
             return
 
-        form_data = QueryDict(content["data"])
+        form = SelectiveTransferJobForm(QueryDict(content["data"]))
+        form_valid = await database_sync_to_async(form.is_valid)()
 
         if content["action"] == "query":
-            await self.make_query(form_data, content["messageId"])
+            if form_valid:
+                asyncio.create_task(self.make_query(form, message_id))
+            else:
+                response = self.get_form_error_response(
+                    form, "Please correct the form errors and search again."
+                )
+                await self.send_json(response)
 
         elif content["action"] == "transfer":
-            await self.make_transfer(form_data, content["messageId"])
+            if form_valid:
+                asyncio.create_task(self.make_transfer(form))
+            else:
+                response = self.get_form_error_response(
+                    form, "Please correct the form errors and transfer again."
+                )
+                await self.send_json(response)
+
+    def abort_connectors(self):
+        while self.query_connectors:
+            for connector in self.query_connectors[:]:
+                self.query_connectors.remove(connector)
+                connector.abort_connection()
 
     @database_sync_to_async
-    def check_user(self):
+    def check_permission(self):
         if not self.user:
             return create_error_response("Access denied. You must be logged in.")
 
@@ -72,57 +121,64 @@ class SelectiveTransferConsumer(
 
         return None
 
-    async def make_query(self, form_data, message_id):
-        form = SelectiveTransferJobForm(form_data)
-        response = await self.get_query_response(form)
-        response["messageId"] = message_id
-        await self.send_json(response)
-
-    async def make_transfer(self, form_data, message_id):
-        form = SelectiveTransferJobForm(form_data)
-        selected_studies = form_data.getlist("selected_studies")
-        response = await self.get_transfer_response(form, selected_studies)
-        response["messageId"] = message_id
-        await self.send_json(response)
-
     @database_sync_to_async
-    def get_query_response(self, form):
-        if not form.is_valid():
-            return {
-                "#query_form": render_crispy_form(form),
-                "#error_message": render_error_message(
-                    "Please correct the form errors and search again."
-                ),
-            }
-
-        studies = self.query_studies(form, QUERY_RESULT_LIMIT)
-
-        max_query_results = len(studies) >= QUERY_RESULT_LIMIT
-
+    def get_form_error_response(self, form, message):
         return {
             "#query_form": render_crispy_form(form),
-            "#query_results": render_to_string(
-                "selective_transfer/_query_results.html",
-                {
-                    "query": True,
-                    "query_results": studies,
-                    "max_query_results": max_query_results,
-                },
-            ),
-            "#error_message": "",
-            "#created_job": "",
+            "#error_message": render_error_message(message),
         }
+
+    async def make_query(self, form, message_id):
+        loop = asyncio.get_event_loop()
+        future = loop.run_in_executor(
+            self.pool, self.get_query_response, form, message_id
+        )
+        response = await future
+        if response:
+            await self.send_json(response)
+
+    def get_query_response(self, form, message_id):
+        with lock:
+            if message_id != self.current_message_id:
+                return None
+            connector = self.create_source_connector(form)
+            self.query_connectors.append(connector)
+
+        try:
+            studies = self.query_studies(connector, form, QUERY_RESULT_LIMIT)
+            max_query_results = len(studies) >= QUERY_RESULT_LIMIT
+            if message_id == self.current_message_id:
+                return {
+                    "#query_form": render_crispy_form(form),
+                    "#query_results": render_to_string(
+                        "selective_transfer/_query_results.html",
+                        {
+                            "query": True,
+                            "query_results": studies,
+                            "max_query_results": max_query_results,
+                        },
+                    ),
+                    "#error_message": "",
+                    "#created_job": "",
+                }
+        except ConnectionError:
+            # Ignore connection aborts (most probably from ourself)
+            # Maybe we should check here if we really aborted the connection
+            pass
+        finally:
+            with lock:
+                if connector in self.query_connectors:
+                    self.query_connectors.remove(connector)
+
+        return None
+
+    async def make_transfer(self, form):
+        selected_studies = form.data.getlist("selected_studies")
+        response = await self.get_transfer_response(form, selected_studies)
+        await self.send_json(response)
 
     @database_sync_to_async
     def get_transfer_response(self, form, selected_studies):
-        if not form.is_valid():
-            return {
-                "#query_form": render_crispy_form(form),
-                "#error_message": render_error_message(
-                    "Please correct the form errors and transfer again."
-                ),
-            }
-
         try:
             job = self.transfer_selected_studies(self.user, form, selected_studies)
         except ValueError as err:

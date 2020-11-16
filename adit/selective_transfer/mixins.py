@@ -5,11 +5,13 @@ from .models import SelectiveTransferJob
 
 
 class SelectiveTransferJobCreateMixin:
-    def query_studies(self, form, limit_results):
-        data = form.cleaned_data
+    def create_source_connector(self, form):
         server = form.instance.source.dicomserver
-        self.connector = server.create_connector()
-        studies = self.connector.find_studies(
+        return server.create_connector()
+
+    def query_studies(self, connector, form, limit_results):
+        data = form.cleaned_data
+        studies = connector.find_studies(
             patient_id=data["patient_id"],
             patient_name=data["patient_name"],
             birth_date=data["patient_birth_date"],

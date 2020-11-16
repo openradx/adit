@@ -8,7 +8,6 @@ function selectiveTransferForm() {
         init: function (el, refs) {
             this.$form = $(el);
             this.refs = refs;
-            this.messageId = 0;
             this.connect();
 
             const self = this;
@@ -80,7 +79,7 @@ function selectiveTransferForm() {
             };
             this.ws = ws;
         },
-        setSelectOption: function (select, value)  {
+        setSelectOption: function (select, value) {
             const options = select.options;
             let valueToSet = "";
             for (let i = 0, len = options.length; i < len; i++) {
@@ -104,6 +103,15 @@ function selectiveTransferForm() {
             this.$form.find("#query_results").empty();
             this.submitForm("query");
         },
+        cancelQuery: function () {
+            this.ws.send(
+                JSON.stringify({
+                    action: "cancelQuery",
+                })
+            );
+            this.queryInProgress = false;
+            this.showHelpMessage = true;
+        },
         submitTransfer: function () {
             this.transferInProgress = true;
             this.submitForm("transfer");
@@ -112,7 +120,6 @@ function selectiveTransferForm() {
             const formData = this.$form.serialize();
             this.ws.send(
                 JSON.stringify({
-                    messageId: ++this.messageId,
                     action: action,
                     data: formData,
                 })
@@ -120,15 +127,10 @@ function selectiveTransferForm() {
         },
         handleMessage: function (msg) {
             console.debug("Received message:", msg);
-            const messageId = msg.messageId;
-            delete msg.messageId;
-            if (messageId !== this.messageId) {
-                console.debug("Discarding message with ID: " + messageId);
-                return;
-            }
 
             this.queryInProgress = false;
             this.transferInProgress = false;
+            this.showHelpMessage = false;
 
             // Replace the HTML as demanded by the server.
             for (const selector in msg) {
