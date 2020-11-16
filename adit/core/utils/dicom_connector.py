@@ -650,44 +650,6 @@ class DicomConnector:
         )
 
     @_connect_to_server
-    def download_patient(  # pylint: disable=too-many-arguments
-        self,
-        patient_id,
-        folder_path,
-        modality=None,
-        create_series_folders=True,
-        modifier_callback=None,
-    ):
-        studies = self.find_studies(patient_id, modality=modality)
-
-        failed_studies = []
-        for study in studies:
-            study_uid = study["StudyInstanceUID"]
-            study_date = study["StudyDate"]
-            study_time = study["StudyTime"]
-            modalities = ",".join(study["Modalities"])
-            study_folder_name = f"{study_date}-{study_time}-{modalities}"
-            study_folder_path = Path(folder_path) / study_folder_name
-
-            try:
-                self.download_study(
-                    patient_id,
-                    study_uid,
-                    study_folder_path,
-                    modality,
-                    create_series_folders,
-                    modifier_callback,
-                )
-            except ValueError:
-                failed_studies.append(study_uid)
-
-        if len(failed_studies) > 0:
-            raise ValueError(
-                "Problems occurred while downloading studies with UID: %s"
-                % ", ".join(failed_studies)
-            )
-
-    @_connect_to_server
     def download_study(  # pylint: disable=too-many-arguments
         self,
         patient_id,
