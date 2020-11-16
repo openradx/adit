@@ -58,6 +58,12 @@ services:
         <<: *default-app
         command: bash -c "celery -A adit beat -l INFO"
 
+    flower:
+        <<: *default-app
+        expose:
+            - "5555"
+        command: bash -c "celery flower -A adit --url_prefix=flower"
+
     postgres:
         restart: always
         image: postgres:latest
@@ -82,18 +88,6 @@ services:
             - "6379"
         volumes:
             - redis_data:/data
-
-    # flower:
-    #     restart: always
-    #     image: mher/flower
-    #     expose:
-    #         - "5555"
-    #     depends_on:
-    #         - rabbit
-    #         - redis
-    #     volumes:
-    #         - flower_data:/data
-    #     command: flower --url_prefix=flower --broker=amqp://rabbit
 
 volumes:
     adit_data: # For static files, SSL certs and logs

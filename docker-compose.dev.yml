@@ -59,6 +59,12 @@ services:
         <<: *default-app
         command: bash -c "celery -A adit beat -l INFO"
 
+    flower:
+        <<: *default-app
+        expose:
+            - "5555"
+        command: bash -c "celery flower -A adit --url_prefix=flower"
+
     postgres:
         image: postgres:latest
         expose:
@@ -81,17 +87,6 @@ services:
             - "6379"
         volumes:
             - redis_data:/data
-
-    # flower:
-    #     image: mher/flower
-    #     expose:
-    #         - "5555"
-    #     depends_on:
-    #         - rabbit
-    #         - redis
-    #     volumes:
-    #         - flower_data:/data
-    #     command: flower --url_prefix=flower --broker=amqp://rabbit
 
     orthanc_1:
         image: jodogne/orthanc-plugins:latest
