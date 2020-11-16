@@ -144,22 +144,20 @@ def _handle_store(folder, callback, errors, event):
     ds.is_little_endian = context.transfer_syntax.is_little_endian
     ds.is_implicit_VR = context.transfer_syntax.is_implicit_VR
 
-    # Save the dataset using the SOP Instance UID as the filename in an optional folder
-    filename = ds.SOPInstanceUID
-    if folder:
-        filename = os.path.join(folder, filename)
+    # Save the dataset using the SOP Instance UID as the filename
+    filepath = os.path.join(folder, ds.SOPInstanceUID)
 
     # Allow to manipuate the dataset by using a callback before saving to disk
     if callback:
         callback(ds)
 
     try:
-        ds.save_as(filename, write_like_original=False)
+        ds.save_as(filepath, write_like_original=False)
     except OSError as err:
         if err.errno == errno.ENOSPC:  # No space left on device
             logger.exception(
                 "No space left to save DICOM dataset to %s. Aborting association.",
-                filename,
+                filepath,
             )
             errors.append(NoSpaceLeftError())
 
@@ -377,11 +375,10 @@ class DicomConnector:
         return self._fetch_results(responses, "C-FIND", query_dict, limit_results)
 
     @_connect_to_server
-    def _get(self, query_dict, folder=None, callback=None, msg_id=1):
+    def _get(self, query_dict, folder, callback=None, msg_id=1):
         logger.debug("Sending C-GET with query: %s", query_dict)
 
-        if folder:
-            Path(folder).mkdir(parents=True, exist_ok=True)
+        Path(folder).mkdir(parents=True, exist_ok=True)
 
         query_ds = _make_query_dataset(query_dict)
 
@@ -656,7 +653,6 @@ class DicomConnector:
         study_uid,
         folder_path,
         modality=None,
-        create_series_folders=True,
         modifier_callback=None,
     ):
         series_list = self.find_series(patient_id, study_uid, modality)
@@ -664,10 +660,12 @@ class DicomConnector:
         failed_series = []
         for series in series_list:
             series_uid = series["SeriesInstanceUID"]
-            download_path = folder_path
-            if create_series_folders:
-                series_folder_name = sanitize_dirname(series["SeriesDescription"])
-                download_path = Path(folder_path) / series_folder_name
+
+            # TODO maybe we should move the series folder name creation to the
+            # store handler as it is not guaranteed that all PACS servers
+            # do return the SeriesDescription with C-Find
+            series_folder_name = sanitize_dirname(series["SeriesDescription"])
+            download_path = Path(folder_path) / series_folder_name
 
             try:
                 self.download_series(
