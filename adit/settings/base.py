@@ -254,11 +254,15 @@ ASGI_APPLICATION = "adit.asgi.application"
 # Redis is used as Celery result backend and as LRU cache for patient IDs.
 REDIS_URL = env.str("REDIS_URL", default="redis://localhost:6379/0")
 
+# RabbitMQ is used as Celery message broker and to send incoming images
+# from the receiver to the workers.
+RABBITMQ_URL = env.str("RABBITMQ_URL", default="amqp://localhost")
+
 # Celery
 # see https://github.com/celery/celery/issues/5026 for how to name configs
 if USE_TZ:
     CELERY_TIMEZONE = TIME_ZONE
-CELERY_BROKER_URL = env.str("RABBITMQ_URL", default="amqp://localhost")
+CELERY_BROKER_URL = RABBITMQ_URL
 CELERY_RESULT_BACKEND = REDIS_URL
 CELERY_WORKER_HIJACK_ROOT_LOGGER = False
 CELERY_TASK_DEFAULT_QUEUE = "default"
