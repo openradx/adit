@@ -84,10 +84,13 @@ def transfer_request(self, request_id):
             connector,
         )
         studies = connector.find_studies(
-            patient_id,
-            accession_number=request.accession_number,
-            study_date=request.study_date,
-            modality=request.modality,
+            {
+                "PatientID": patient_id,
+                "AccessionNumber": request.accession_number,
+                "StudyDate": request.study_date,
+                "ModalitiesInStudy": request.modality,
+                "StudyInstanceUID": "",
+            }
         )
 
         study_count = len(studies)
@@ -111,7 +114,12 @@ def transfer_request(self, request_id):
             study_uid = study["StudyInstanceUID"]
 
             series_list = connector.find_series(
-                patient_id=patient_id, study_uid=study_uid, modality=request.modality
+                {
+                    "PatientID": patient_id,
+                    "StudyInstanceUID": study_uid,
+                    "Modality": request.modality,
+                    "SeriesInstanceUID": "",
+                }
             )
             series_uids = [series["SeriesInstanceUID"] for series in series_list]
 
@@ -254,12 +262,18 @@ def _check_can_run_now(celery_task, request):
 
 
 @redis_lru(capacity=10000, slicer=slice(3))
-def _fetch_patient_id(patient_id, patient_name, patient_birth_date, connector):
+def _fetch_patient_id(patient_id, patient_name, birth_date, connector):
     """Fetch the patient for this request.
 
     Raises an error if there is no patient or there are multiple patients for this request.
     """
-    patients = connector.find_patients(patient_id, patient_name, patient_birth_date)
+    patients = connector.find_patients(
+        {
+            "PatientID": patient_id,
+            "PatientName": patient_name,
+            "PatientBirthDate": birth_date,
+        }
+    )
 
     if len(patients) == 0:
         raise ValueError("No patients found.")

@@ -50,7 +50,7 @@ def create_study():
             "StudyInstanceUID": task.study_uid,
             "StudyDate": "20201001",
             "StudyTime": "0800",
-            "Modalities": ["CT", "SR"],
+            "ModalitiesInStudy": ["CT", "SR"],
         }
 
     return _create_study
@@ -74,7 +74,7 @@ def test_transfer_task_to_folder_with_study_succeeds(create_transfer_job, create
     download_path = source_connector.download_study.call_args[0][2]
     assert download_path.match(
         f"{study['PatientID']}/"
-        f"{study['StudyDate']}-{study['StudyTime']}-{','.join(study['Modalities'])}"
+        f"{study['StudyDate']}-{study['StudyTime']}-{','.join(study['ModalitiesInStudy'])}"
     )
 
 
@@ -99,7 +99,7 @@ def test_transfer_task_to_server_with_study_succeeds(create_transfer_job, create
     download_path = source_connector.download_study.call_args[0][2]
     assert download_path.match(
         f"{study['PatientID']}/"
-        f"{study['StudyDate']}-{study['StudyTime']}-{','.join(study['Modalities'])}"
+        f"{study['StudyDate']}-{study['StudyTime']}-{','.join(study['ModalitiesInStudy'])}"
     )
     upload_path = dest_connector.upload_folder.call_args[0][0]
     assert upload_path.match(f"*/{study['PatientID']}")
@@ -128,6 +128,6 @@ def test_transfer_task_to_archive_with_study_succeeds(
     download_path = source_connector.download_study.call_args[0][2]
     assert download_path.match(
         f"{study['PatientID']}/"
-        f"{study['StudyDate']}-{study['StudyTime']}-{','.join(study['Modalities'])}"
+        f"{study['StudyDate']}-{study['StudyTime']}-{','.join(study['ModalitiesInStudy'])}"
     )
     assert Popen.call_args[0][0][0] == "7z"
