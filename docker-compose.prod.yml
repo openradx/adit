@@ -56,8 +56,7 @@ services:
 
     celery_beat:
         <<: *default-app
-        command: bash -c "celery -A adit beat -l INFO"
-
+        command: bash -c "celery -A adit beat -l INFO -s /var/www/adit/celery/celerybeat-schedule --pidfile /var/www/adit/celery/celerybeat.pid"
     flower:
         <<: *default-app
         expose:
@@ -90,7 +89,7 @@ services:
             - redis_data:/data
 
 volumes:
-    adit_data: # For static files, SSL certs and logs
+    adit_data: # For statics, SSL certs, logs, Celery Beat db
     postgres_data:
     rabbit_data:
     redis_data:

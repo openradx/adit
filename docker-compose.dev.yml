@@ -13,6 +13,7 @@ x-app: &default-app
     volumes:
         - .:/app
         - /mnt:/mnt
+        - adit_data:/var/www/adit
     env_file:
         - .env
     environment:
@@ -57,7 +58,7 @@ services:
 
     celery_beat:
         <<: *default-app
-        command: bash -c "celery -A adit beat -l INFO"
+        command: bash -c "celery -A adit beat -l INFO -s /var/www/adit/celery/celerybeat-schedule --pidfile /var/www/adit/celery/celerybeat.pid"
 
     flower:
         <<: *default-app
@@ -107,6 +108,7 @@ services:
             - orthanc2_data:/var/lib/orthanc/db
 
 volumes:
+    adit_data: # For statics, logs, Celery Beat db
     postgres_data:
     rabbit_data:
     redis_data:

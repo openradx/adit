@@ -65,7 +65,10 @@ COPY --from=builder-base $PYSETUP_PATH $PYSETUP_PATH
 RUN poetry install
 
 # Required folder for ADIT
-RUN mkdir -p /var/www/adit/logs
+RUN mkdir -p /var/www/adit/logs \
+    /var/www/adit/static \
+    /var/www/adit/ssl \
+    /var/www/adit/celery
 
 # will become mountpoint of our code
 WORKDIR /app
@@ -77,8 +80,9 @@ COPY --from=builder-base $PYSETUP_PATH $PYSETUP_PATH
 COPY . /app/
 
 # Required folders for ADIT
-RUN mkdir -p /var/www/adit/static \
+RUN mkdir -p /var/www/adit/logs \
+    /var/www/adit/static \
     /var/www/adit/ssl \
-    /var/www/adit/logs
+    /var/www/adit/celery
 
 WORKDIR /app
