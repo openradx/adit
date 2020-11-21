@@ -136,7 +136,9 @@ def test_find_studies_with_study_root(
         responses
     )
     # Act
-    patients = dicom_connector.find_studies({"PatientName": "Foo^Bar"}, study_root=True)
+    patients = dicom_connector.find_studies(
+        {"PatientName": "Foo^Bar"}, force_study_root=True
+    )
     # Assert
     association.send_c_find.assert_called_once()
     assert isinstance(association.send_c_find.call_args.args[0], Dataset)
