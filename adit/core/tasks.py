@@ -201,8 +201,13 @@ def _download_dicoms(
     # Check if the Study Instance UID is correct and fetch some parameters to create
     # the study folder.
     studies = connector.find_studies(
-        patient_id=transfer_task.patient_id,
-        study_uid=transfer_task.study_uid,
+        {
+            "PatientID": transfer_task.patient_id,
+            "StudyInstanceUID": transfer_task.study_uid,
+            "StudyDate": "",
+            "StudyTime": "",
+            "ModalitiesInStudy": "",
+        }
     )
     if len(studies) == 0:
         raise AssertionError(
@@ -217,15 +222,19 @@ def _download_dicoms(
     study = studies[0]
     study_date = study["StudyDate"]
     study_time = study["StudyTime"]
-    modalities = study["Modalities"]
+    modalities = study["ModalitiesInStudy"]
 
     # If some series are explicitly chosen then check if their Series Instance UIDs
     # are correct and only use their modalities for the name of the study folder.
     if transfer_task.series_uids:
         modalities = set()
         series_list = connector.find_series(
-            patient_id=transfer_task.patient_id,
-            study_uid=transfer_task.study_uid,
+            {
+                "PatientID": transfer_task.patient_id,
+                "StudyInstanceUID": transfer_task.study_uid,
+                "SeriesInstanceUID": "",
+                "Modality": "",
+            }
         )
         for series_uid in transfer_task.series_uids:
             found_series = None
@@ -280,7 +289,12 @@ def _download_series(
 ):
     for series_uid in series_uids:
         series_list = connector.find_series(
-            study["PatientID"], study["StudyInstanceUID"], series_uid
+            {
+                "PatientID": study["PatientID"],
+                "StudyInstanceUID": study["StudyInstanceUID"],
+                "SeriesInstanceUID": series_uid,
+                "SeriesDescription": "",
+            }
         )
         if len(series_list) == 0:
             raise AssertionError(

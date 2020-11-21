@@ -116,12 +116,12 @@ def _dictify_dataset(ds):
     return output
 
 
-def _extract_pending_data(results, resource, query_dict):
+def _extract_pending_data(results, query_dict):
     """Extract the data from a DicomOperation result."""
     status_category = results[-1]["status"]["category"]
     status_code = results[-1]["status"]["code"]
     if status_category not in [STATUS_PENDING, STATUS_SUCCESS]:
-        error_msg = f"{status_category} ({status_code}) occurred while trying to find {resource}"
+        error_msg = f"{status_category} ({status_code}) occurred during C-FIND"
         log_msg = error_msg + " with query params %s and returned identifier: %s"
         logger.error(log_msg, query_dict, results[-1]["data"])
         raise ValueError(error_msg + ".")
@@ -228,24 +228,6 @@ class DicomConnector:
         if self.config.debug_logger or FORCE_DEBUG_LOGGER:
             debug_logger()  # Debug mode of pynetdicom
 
-        self.default_find_query_model = None
-        if self.config.patient_root_find_support:
-            self.default_find_query_model = PatientRootQueryRetrieveInformationModelFind
-        elif self.config.study_root_find_support:
-            self.default_find_query_model = StudyRootQueryRetrieveInformationModelFind
-
-        self.default_get_query_model = None
-        if self.config.patient_root_get_support:
-            self.default_get_query_model = PatientRootQueryRetrieveInformationModelGet
-        elif self.config.study_root_get_support:
-            self.default_get_query_model = StudyRootQueryRetrieveInformationModelGet
-
-        self.default_move_query_model = None
-        if self.config.patient_root_move_support:
-            self.default_move_query_model = PatientRootQueryRetrieveInformationModelMove
-        elif self.config.study_root_move_support:
-            self.default_move_query_model = StudyRootQueryRetrieveInformationModelMove
-
         self.assoc = None
 
     def _associate(self):
@@ -344,59 +326,28 @@ class DicomConnector:
         return results
 
     @_connect_to_server
-    def _find(self, query_dict, msg_id=1, limit_results=None, prefer_study_root=False):
+    def _find(
+        self,
+        query_dict,
+        query_model,
+        msg_id=1,
+        limit_results=None,
+    ):
         logger.debug("Sending C-FIND with query: %s", query_dict)
-
         query_ds = _make_query_dataset(query_dict)
-
-        query_model = self.default_find_query_model
-        level = query_ds.get("QueryRetrieveLevel")
-        patient_id = query_ds.get("PatientID")
-
-        if prefer_study_root and self.config.study_root_find_support:
-            # When PatientRootQueryRetrieveInformationModelFind is used then on most PACS
-            # servers PatientID must be valid and exist otherwise an error is returned
-            # (0xA700 on Synapse PACS). So if we want to allow to search with maybe
-            # non existent PatientIDs (like in the Selective Transfer form where the user
-            # creates the query for searching studies) we must use
-            # StudyRootQueryRetrieveInformationModelFind so that the query ends with
-            # a SUCCESS (0x0000) but and empty array.
-            query_model = StudyRootQueryRetrieveInformationModelFind
-
-        elif level != "PATIENT" and not patient_id:
-            if not self.config.study_root_find_support:
-                raise ValueError(
-                    "Patient ID missing in query without support for "
-                    "Study Root Query/Retrieve Information Model."
-                )
-            query_model = StudyRootQueryRetrieveInformationModelFind
-
         responses = self.assoc.send_c_find(query_ds, query_model, msg_id)
-        return self._fetch_results(responses, "C-FIND", query_dict, limit_results)
+        results = self._fetch_results(responses, "C-FIND", query_dict, limit_results)
+        return _extract_pending_data(results, query_dict)
 
     @_connect_to_server
-    def _get(self, query_dict, folder, callback=None, msg_id=1):
+    def _get(  # pylint: disable=too-many-arguments
+        self, query_dict, query_model, folder, callback=None, msg_id=1
+    ):
         logger.debug("Sending C-GET with query: %s", query_dict)
 
         Path(folder).mkdir(parents=True, exist_ok=True)
 
         query_ds = _make_query_dataset(query_dict)
-
-        query_model = self.default_get_query_model
-        patient_id = query_ds.get("PatientID")
-        study_uid = query_ds.get("StudyInstanceUID")
-        if not patient_id:
-            if not study_uid:
-                raise ValueError(
-                    "Study Instance UID missing in query for "
-                    "Study Root Query/Retrieve Information Model."
-                )
-            if not self.config.study_root_get_support:
-                raise ValueError(
-                    "Patient ID missing in query without support for "
-                    "Study Root Query/Retrieve Information Model."
-                )
-            query_model = StudyRootQueryRetrieveInformationModelGet
 
         store_errors = []
         handle_store = partial(_handle_store, folder, callback, store_errors)
@@ -419,27 +370,9 @@ class DicomConnector:
         return results
 
     @_connect_to_server
-    def _move(self, query_dict, destination_ae_title, msg_id=1):
+    def _move(self, query_dict, query_model, destination_ae_title, msg_id=1):
         logger.debug("Sending C-MOVE with query: %s", query_dict)
-
         query_ds = _make_query_dataset(query_dict)
-
-        query_model = self.default_move_query_model
-        patient_id = query_ds.get("PatientID")
-        study_uid = query_ds.get("StudyInstanceUID")
-        if not patient_id:
-            if not study_uid:
-                raise ValueError(
-                    "Study Instance UID missing in query for "
-                    "Study Root Query/Retrieve Information Model."
-                )
-            if not self.config.study_root_move_support:
-                raise ValueError(
-                    "Patient ID missing in query without support for "
-                    "Study Root Query/Retrieve Information Model."
-                )
-            query_model = StudyRootQueryRetrieveInformationModelMove
-
         responses = self.assoc.send_c_move(
             query_ds, destination_ae_title, query_model, msg_id
         )
@@ -493,7 +426,9 @@ class DicomConnector:
         """Fetch all modalities of a study and return them in a list."""
 
         try:
-            series_list = self.find_series(patient_id, study_uid)
+            series_list = self.find_series(
+                {"PatientID": patient_id, "StudyInstanceUID": study_uid, "Modality": ""}
+            )
         except ValueError as err:
             raise ValueError(
                 "A problem occurred while fetching the study modalities "
@@ -504,139 +439,138 @@ class DicomConnector:
         return sorted(list(modalities))
 
     @_connect_to_server
-    def find_patients(self, patient_id="", patient_name="", patient_birth_date=""):
-        """Find patients with the given patient ID and/or patient name and birth date."""
-        query_dict = {
-            "QueryRetrieveLevel": "PATIENT",
-            "PatientID": patient_id,
-            "PatientName": patient_name,
-            "PatientBirthDate": patient_birth_date,
-        }
-        results = self._find(query_dict)
-        patients = _extract_pending_data(results, "patients", query_dict)
+    def find_patients(self, query):
+        query["QueryRetrieveLevel"] = "PATIENT"
 
-        # Some PACS servers (like our Synapse) do simply ignore the PatientBirthDate
-        # while querying as it is optional in the Patient Root Query/Retrieve Information Model,
+        if not self.config.patient_root_find_support:
+            raise ValueError(
+                "Searching for patients is not supported without C-FIND support for "
+                "Patient Root Query/Retrieve Information Model."
+            )
+
+        patients = self._find(query, PatientRootQueryRetrieveInformationModelFind)
+
+        # Some PACS servers (like our Synapse) don't support a query filter of PatientBirthDate
+        # as it is optional in the Patient Root Query/Retrieve Information Model,
         # see https://groups.google.com/g/comp.protocols.dicom/c/h28r_znomEw
-        # So we have to filter programmatically.
+        # In those cases we we have to filter programmatically.
         # TODO allow range filter (but not needed at the moment)
-        if patient_birth_date:
+        birth_date = query.get("PatientBirthDate")
+        if birth_date:
             return [
                 patient
                 for patient in patients
-                if patient["PatientBirthDate"] == patient_birth_date
+                if patient["PatientBirthDate"] == birth_date
             ]
 
         return patients
 
     @_connect_to_server
-    def find_studies(  # pylint: disable=too-many-arguments,too-many-locals
-        self,
-        patient_id="",
-        patient_name="",
-        birth_date="",
-        accession_number="",
-        study_uid="",
-        study_date="",
-        study_time="",
-        study_description="",
-        modality=None,
-        limit_results=None,
-        prefer_study_root=False,
-    ):
-        """Find all studies for a given patient and filter optionally by
-        study date and/or modality."""
+    def find_studies(self, query, study_root=False, limit_results=None):
+        query["QueryRetrieveLevel"] = "STUDY"
 
-        query_dict = {
-            "QueryRetrieveLevel": "STUDY",
-            "PatientID": patient_id,
-            "PatientName": patient_name,
-            "PatientBirthDate": birth_date,
-            "AccessionNumber": accession_number,
-            "StudyInstanceUID": study_uid,
-            "StudyDate": study_date,
-            "StudyTime": study_time,
-            "StudyDescription": study_description,
-            "ModalitiesInStudy": modality,
-            "NumberOfStudyRelatedInstances": "",
-        }
-        results = self._find(
-            query_dict, limit_results=limit_results, prefer_study_root=prefer_study_root
-        )
-        studies = _extract_pending_data(results, "studies", query_dict)
+        if study_root:
+            query_model = StudyRootQueryRetrieveInformationModelFind
 
+            if not self.config.study_root_find_support:
+                raise ValueError(
+                    "Missing support for "
+                    "Study Root Query/Retrieve Information Model."
+                )
+        else:
+            query_model = PatientRootQueryRetrieveInformationModelFind
+
+            if not self.config.patient_root_find_support:
+                raise ValueError(
+                    "For finding studies by Patient ID C-FIND must support "
+                    "Patient Root Query/Retrieve Information Model."
+                )
+
+            # A (valid and existing) Patient ID is required for
+            # PatientRootQueryRetrieveInformationModelFind.
+            if not query["PatientID"]:
+                raise ValueError(
+                    "Missing Patient ID for C-FIND "
+                    "Patient Root Query/Retrieve Information Model."
+                )
+
+        if not "NumberObStudyRelatedInstances" in query:
+            query["NumberOfStudyRelatedInstances"] = ""
+
+        studies = self._find(query, query_model, limit_results)
+
+        query_modalities = query.get("ModalitiesInStudy")
+
+        if query_modalities is None:
+            return studies
+
+        return self._filter_studies_by_modalities(studies, query_modalities)
+
+    def _filter_studies_by_modalities(self, studies, query_modalities):
         filtered_studies = []
         for study in studies:
-            patient_id = study["PatientID"]
-            study_uid = study["StudyInstanceUID"]
+            study_modalities = study.get("ModalitiesInStudy")
+            number_images = int(study.get("NumberObStudyRelatedInstances") or 1)
 
-            # Modalities In Study is not supported by all PACS servers. If it is
-            # supported then it should be not empty. Otherwise we fetch the modalities
-            # of all the series of this study manually.
-            if study["ModalitiesInStudy"]:
-                study_modalities = study["ModalitiesInStudy"]
+            if study_modalities and isinstance(study_modalities, list):
+                filtered_studies.append(study)
 
-                # ModalitiesInStudy returns multiple modalities in a list, but only one modality
-                # as a string (at least with the Synapse PACS). So we convert the later one to a list.
-                if isinstance(study_modalities, str):
-                    study_modalities = [study_modalities]
+            elif study_modalities and isinstance(study_modalities, str):
+                # ModalitiesInStudy returns multiple modalities in a list, but only one
+                # modality as a string (at least with the Synapse PACS). So we convert the
+                # later one to a list.
+                study["ModalitiesInStudy"] = [study_modalities]
+                filtered_studies.append(study)
+
+            elif not study_modalities and number_images == 0:
+                filtered_studies.append(study)
+
+            elif not study_modalities and number_images > 0:
+                # Modalities In Study is not supported by all PACS servers. If it is
+                # supported then it should be not empty. Otherwise we fetch the modalities
+                # of all the series of this study manually.
+                study["ModalitiesInStudy"] = self.fetch_study_modalities(
+                    study["PatientID"], study["StudyInstanceUID"]
+                )
+
+                # When modalities were fetched manually then the studies must also be
+                # filtered manually. Cave, when limit_results is used this may lead to less
+                # studies then there really exist.
+                if (
+                    isinstance(query_modalities, str)
+                    and query_modalities in study["ModalitiesInStudy"]
+                ):
+                    filtered_studies.append(study)
+
+                if isinstance(query_modalities, list) and (
+                    set(query_modalities) & set(study["ModalitiesInStudy"])
+                ):
+                    filtered_studies.append(study)
+
             else:
-                try:
-                    study_modalities = self.fetch_study_modalities(
-                        patient_id, study_uid
-                    )
-                except ValueError as err:
-                    raise ValueError(
-                        "Failed to fetch modalities of study with UID %s" % study_uid
-                    ) from err
-
-                # If we fetched the modalities manually we must filter the studies with
-                # which only have the requested modality. Cave, when limit_results is used
-                # this may lead to less studies then there really exist for the query as this filter
-                # is used after the results were already limited.
-                if modality:
-                    if isinstance(modality, str):
-                        if modality not in study_modalities:
-                            continue
-                    else:
-                        # Can also be a list of modalities, TODO but this is not
-                        # implemented in the Django BatchTransferRequest model currently
-                        if len(set(study_modalities) & set(modality)) == 0:
-                            continue
-
-            study["Modalities"] = study_modalities
-
-            filtered_studies.append(study)
+                raise AssertionError(f"Invalid study modalities: {study_modalities}")
 
         return filtered_studies
 
     @_connect_to_server
-    def find_series(  # pylint: disable=too-many-arguments
-        self,
-        patient_id="",
-        study_uid="",
-        series_uid="",
-        series_description="",
-        modality=None,
-    ):
-        """Find all series UIDs for a given study UID.
+    def find_series(self, query):
+        """Fetch all series UIDs for a given study UID.
 
         The series can be filtered by a modality (or a list of modalities for
-        multiple modalities). If no modality is set all series UIDs of the study
+        multiple modalities). If no modality is set all series of the study
         will be returned.
         """
-        query_dict = {
-            "QueryRetrieveLevel": "SERIES",
-            "PatientID": patient_id,
-            "StudyInstanceUID": study_uid,
-            "SeriesInstanceUID": series_uid,
-            "SeriesDescription": series_description,
-            "Modality": "",  # we handle Modality programmatically, see below
-        }
-        results = self._find(query_dict)
-        series_list = _extract_pending_data(results, "series", query_dict)
+        query["QueryRetrieveLevel"] = "SERIES"
 
-        if modality is None:
+        # We handle query filter for Modality programmatically because we allow
+        # to filter for multiple modalities.
+        modality = query.get("Modality")
+        if modality:
+            query["Modality"] = ""
+
+        series_list = self._find(query, PatientRootQueryRetrieveInformationModelFind)
+
+        if not modality:
             return series_list
 
         return list(
@@ -655,7 +589,15 @@ class DicomConnector:
         modality=None,
         modifier_callback=None,
     ):
-        series_list = self.find_series(patient_id, study_uid, modality)
+        series_list = self.find_series(
+            {
+                "PatientID": patient_id,
+                "StudyInstanceUID": study_uid,
+                "Modality": modality,
+                "SeriesInstanceUID": "",
+                "SeriesDescription": "",
+            }
+        )
 
         failed_series = []
         for series in series_list:
@@ -663,7 +605,7 @@ class DicomConnector:
 
             # TODO maybe we should move the series folder name creation to the
             # store handler as it is not guaranteed that all PACS servers
-            # do return the SeriesDescription with C-Find
+            # do return the SeriesDescription with C-FIND
             series_folder_name = sanitize_dirname(series["SeriesDescription"])
             download_path = Path(folder_path) / series_folder_name
 
@@ -694,7 +636,28 @@ class DicomConnector:
             "SeriesInstanceUID": series_uid,
         }
 
-        results = self._get(query_dict, folder_path, modifier_callback)
+        query_model = PatientRootQueryRetrieveInformationModelGet
+
+        if not patient_id:
+            if not study_uid:
+                raise ValueError(
+                    "Study Instance UID missing in query for "
+                    "Study Root Query/Retrieve Information Model."
+                )
+            if not self.config.study_root_get_support:
+                raise ValueError(
+                    "Patient ID missing in query without support for "
+                    "Study Root Query/Retrieve Information Model."
+                )
+            query_model = StudyRootQueryRetrieveInformationModelGet
+
+        if not self.config.patient_root_get_support:
+            if not self.config.study_root_get_support:
+                raise ValueError("Missing C-GET support for downloading series.")
+
+            query_model = StudyRootQueryRetrieveInformationModelGet
+
+        results = self._get(query_dict, query_model, folder_path, modifier_callback)
 
         status_category = results[-1]["status"]["category"]
         status_code = results[-1]["status"]["code"]

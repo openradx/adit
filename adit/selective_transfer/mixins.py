@@ -12,14 +12,19 @@ class SelectiveTransferJobCreateMixin:
     def query_studies(self, connector, form, limit_results):
         data = form.cleaned_data
         studies = connector.find_studies(
-            patient_id=data["patient_id"],
-            patient_name=data["patient_name"],
-            birth_date=data["patient_birth_date"],
-            accession_number=data["accession_number"],
-            study_date=data["study_date"],
-            modality=data["modality"],
+            {
+                "PatientID": data["patient_id"],
+                "PatientName": data["patient_name"],
+                "PatientBirthDate": data["patient_birth_date"],
+                "AccessionNumber": data["accession_number"],
+                "StudyDate": data["study_date"],
+                "ModalitiesInStudy": data["modality"],
+                "StudyInstanceUID": "",
+                "StudyDescription": "",
+                "NumberOfStudyRelatedInstances": "",
+            },
+            study_root=True,
             limit_results=limit_results,
-            prefer_study_root=True,
         )
 
         studies = sorted(studies, key=lambda study: study["PatientName"].lower())

@@ -79,12 +79,92 @@ def dicom_connector():
 def test_find_patients(
     associate, association, dicom_connector, dicom_test_helper: DicomTestHelper
 ):
+    # Arrange
     associate.return_value = association
     responses = [{"PatientName": "Foo^Bar", "PatientID": "1001"}]
     association.send_c_find.return_value = dicom_test_helper.create_c_find_responses(
         responses
     )
-    patients = dicom_connector.find_patients(patient_name="Foo^Bar")
+    # Act
+    patients = dicom_connector.find_patients({"PatientName": "Foo^Bar"})
+    # Assert
+    association.send_c_find.assert_called_once()
+    assert isinstance(association.send_c_find.call_args.args[0], Dataset)
+    assert patients[0]["PatientID"] == responses[0]["PatientID"]
+    assert (
+        association.send_c_find.call_args.args[1]
+        == PatientRootQueryRetrieveInformationModelFind
+    )
+
+
+@patch("adit.core.utils.dicom_connector.AE.associate")
+def test_find_studies_with_patient_root(
+    associate,
+    association,
+    dicom_connector: DicomConnector,
+    dicom_test_helper: DicomTestHelper,
+):
+    # Arrange
+    associate.return_value = association
+    responses = [{"PatientID": "12345"}]
+    association.send_c_find.return_value = dicom_test_helper.create_c_find_responses(
+        responses
+    )
+    # Act
+    patients = dicom_connector.find_studies({"PatientID": "12345"})
+    # Assert
+    association.send_c_find.assert_called_once()
+    assert isinstance(association.send_c_find.call_args.args[0], Dataset)
+    assert patients[0]["PatientID"] == responses[0]["PatientID"]
+    assert (
+        association.send_c_find.call_args.args[1]
+        == PatientRootQueryRetrieveInformationModelFind
+    )
+
+
+@patch("adit.core.utils.dicom_connector.AE.associate")
+def test_find_studies_with_study_root(
+    associate,
+    association,
+    dicom_connector: DicomConnector,
+    dicom_test_helper: DicomTestHelper,
+):
+    # Arrange
+    associate.return_value = association
+    responses = [{"PatientName": "Foo^Bar"}]
+    association.send_c_find.return_value = dicom_test_helper.create_c_find_responses(
+        responses
+    )
+    # Act
+    patients = dicom_connector.find_studies({"PatientName": "Foo^Bar"}, study_root=True)
+    # Assert
+    association.send_c_find.assert_called_once()
+    assert isinstance(association.send_c_find.call_args.args[0], Dataset)
+    assert patients[0]["PatientName"] == responses[0]["PatientName"]
+    assert (
+        association.send_c_find.call_args.args[1]
+        == StudyRootQueryRetrieveInformationModelFind
+    )
+
+
+@patch("adit.core.utils.dicom_connector.AE.associate")
+def test_find_series(
+    associate,
+    association,
+    dicom_connector: DicomConnector,
+    dicom_test_helper: DicomTestHelper,
+):
+    # Arrange
+    associate.return_value = association
+    responses = [{"PatientID": "12345", "StudyInstanceUID": "1.123"}]
+    association.send_c_find.return_value = dicom_test_helper.create_c_find_responses(
+        responses
+    )
+    # Act
+    patients = dicom_connector.find_series(
+        {"PatientID": "12345", "StudyInstanceUID": "1.123"}
+    )
+    # Assert
     association.send_c_find.assert_called_once()
     assert isinstance(association.send_c_find.call_args.args[0], Dataset)
     assert patients[0]["PatientID"] == responses[0]["PatientID"]
