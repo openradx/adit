@@ -20,6 +20,7 @@ x-app: &default-app
         DATABASE_URL: "psql://postgres:${POSTGRES_PASSWORD}@postgres:5432/postgres"
         RABBITMQ_URL: "amqp://rabbit"
         REDIS_URL: "redis://redis:6379/0"
+        MONGO_URL: "mongodb://mongo:27017"
         DJANGO_STATIC_ROOT: "/var/www/adit/static/"
         SSL_CERT_FILE: "/var/www/adit/ssl/cert.pem"
         SSL_KEY_FILE: "/var/www/adit/ssl/key.pem"
@@ -88,9 +89,17 @@ services:
         volumes:
             - redis_data:/data
 
+    mongo:
+        image: mongo:latest
+        expose:
+            - "27017"
+        volumes:
+            - mongo_data:/data/db
+
 volumes:
     adit_data: # For statics, SSL certs, logs, Celery Beat db
     postgres_data:
     rabbit_data:
     redis_data:
+    mongo_data:
     flower_data:

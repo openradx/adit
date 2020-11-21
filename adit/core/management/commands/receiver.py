@@ -1,20 +1,39 @@
 import logging
+import time
+import json
+from io import BytesIO
 import pika
+from pymongo import MongoClient
+import gridfs
 from django.core.management.base import BaseCommand
 from django.conf import settings
 from pynetdicom import AE, evt, AllStoragePresentationContexts, debug_logger
+from pydicom.filebase import DicomFileLike
+from pydicom.filewriter import dcmwrite
 
 logger = logging.getLogger(__name__)
 
 # debug_logger()
 
+
+# def write_dataset_to_bytes(dataset):
+#     # create a buffer
+#     with BytesIO() as buffer:
+#         # create a DicomFileLike object that has some properties of DataSet
+#         memory_dataset = DicomFileLike(buffer)
+#         # write the dataset to the DicomFileLike object
+#         dcmwrite(memory_dataset, dataset)
+#         # to read from the object, you have to rewind it
+#         memory_dataset.seek(0)
+#         # read the contents as bytes
+#         return memory_dataset
+
+
 # Implement a handler for evt.EVT_C_STORE
 def handle_store(event):
     """Handle a C-STORE request event."""
 
-    connection = pika.BlockingConnection(pika.URLParameters(settings.RABBITMQ_URL))
-    channel = connection.channel()
-    channel.exchange_declare(exchange="received", exchange_type="direct")
+    start = time.time()
 
     # Decode the C-STORE request's *Data Set* parameter to a pydicom Dataset
     ds = event.dataset
@@ -25,12 +44,41 @@ def handle_store(event):
     # Add the File Meta Information
     ds.file_meta = event.file_meta
 
+    buffer = BytesIO()
+    dcmwrite(buffer, ds)
+
+    # Save dataset to MongoDB GridFS
+    db = MongoClient(settings.MONGO_URL).received_dicoms
+    fs = gridfs.GridFS(db)
+
+    file_id = fs.put(
+        buffer,
+        filename=ds.SOPInstanceUID,
+        meta={
+            "StudyInstanceUID": ds.StudyInstanceUID,
+            "SeriesInstanceUID": ds.SeriesInstanceUID,
+            "SOPInstanceUID": ds.SOPInstanceUID,
+        },
+    )
+
+    print("####################")
+    print(file_id)
+
+    connection = pika.BlockingConnection(pika.URLParameters(settings.RABBITMQ_URL))
+    channel = connection.channel()
+    channel.exchange_declare(exchange="received", exchange_type="direct")
     # Send the dataset to the worker
-    key = f"{event.assoc.remote['ae_title']}"
-    key += f"{ds.StudyInstanceUID}#{ds.SeriesInstanceUID}#{ds.SOPInstanceUID}"
-    channel.basic_publish(exchange="received", routing_key=key, body=ds)
+    source_ae = event.assoc.remote["ae_title"]
+    key = f"{source_ae}\\{ds.StudyInstanceUID}"
+    channel.basic_publish(
+        exchange="received_dicoms", routing_key=key, body=str(file_id)
+    )
 
     connection.close()
+
+    end = time.time()
+
+    print(end - start)
 
     # Return a 'Success' status
     return 0x0000

@@ -251,12 +251,12 @@ REGISTRATION_OPEN = True
 # Channels
 ASGI_APPLICATION = "adit.asgi.application"
 
-# Redis is used as Celery result backend and as LRU cache for patient IDs.
-REDIS_URL = env.str("REDIS_URL", default="redis://localhost:6379/0")
-
 # RabbitMQ is used as Celery message broker and to send incoming images
 # from the receiver to the workers.
 RABBITMQ_URL = env.str("RABBITMQ_URL", default="amqp://localhost")
+
+# Redis is used as Celery result backend and as LRU cache for patient IDs.
+REDIS_URL = env.str("REDIS_URL", default="redis://localhost:6379/0")
 
 # Celery
 # see https://github.com/celery/celery/issues/5026 for how to name configs
@@ -276,6 +276,9 @@ CELERY_BEAT_SCHEDULE = {
         "schedule": crontab(minute=0, hour=7),  # execute daily at 7 o'clock UTC
     }
 }
+
+# MongoDB GridFS is used as file storage for incoming images of a C-MOVE operation
+MONGO_URL = env.str("MONGO_URL", default="mongodb://localhost:27017")
 
 # Flower is integrated in ADIT by using an reverse proxy (django-revproxy).
 # This allows to use the authentication of ADIT.
