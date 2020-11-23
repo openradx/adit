@@ -15,7 +15,6 @@ from dataclasses import dataclass
 from pathlib import Path
 import threading
 from concurrent.futures import ThreadPoolExecutor
-import os
 from io import BytesIO
 from functools import partial
 import errno
@@ -135,7 +134,7 @@ def _extract_pending_data(results, query_dict):
     return list(data)
 
 
-def _handle_c_get_store(folder_path, modifier_callback, errors, event):
+def _handle_c_get_store(folder, modifier_callback, errors, event):
     """Handle a C-STORE request event."""
 
     ds = event.dataset
@@ -149,14 +148,14 @@ def _handle_c_get_store(folder_path, modifier_callback, errors, event):
     ds.is_implicit_VR = context.transfer_syntax.is_implicit_VR
 
     # Save the dataset using the SOP Instance UID as the filename
-    file_path = os.path.join(folder_path, ds.SOPInstanceUID)
+    file_path = Path(folder) / ds.SOPInstanceUID
 
     # Allow to manipuate the dataset by using a callback before saving to disk
     if modifier_callback:
         modifier_callback(ds)
 
     try:
-        ds.save_as(file_path, write_like_original=False)
+        ds.save_as(str(file_path), write_like_original=False)
     except OSError as err:
         if err.errno == errno.ENOSPC:  # No space left on device
             logger.exception(
@@ -384,45 +383,45 @@ class DicomConnector:
         return self._fetch_results(responses, "C-MOVE", query_dict)
 
     @_connect_to_server
-    def _store(self, folder: Path, callback=None, msg_id=1):
-        logger.debug("Sending C-STORE of folder: %s", folder.as_posix())
+    def _store(self, folder, callback=None, msg_id=1):
+        logger.debug("Sending C-STORE of folder: %s", str(folder))
 
         results = []
-        for root, _, files in os.walk(folder):
-            for filename in files:
-                file_path = os.path.join(root, filename)
+        for path in Path(folder).rglob("*"):
+            if not path.is_file():
+                continue
 
-                try:
-                    ds = dcmread(file_path)
-                except InvalidDicomError:
-                    logger.warning(
-                        "Tried to read invalid DICOM file %s. Skipping it.", file_path
+            try:
+                ds = dcmread(str(path))
+            except InvalidDicomError:
+                logger.warning(
+                    "Tried to read invalid DICOM file %s. Skipping it.", path
+                )
+                continue
+
+            # Allow to manipuate the dataset by using a callback before storing to server
+            if callback:
+                callback(ds)
+
+            status = self.assoc.send_c_store(ds, msg_id)
+
+            if status:
+                results.append(
+                    {
+                        "status": {
+                            "code": status.Status,
+                            "category": code_to_category(status.Status),
+                        },
+                        "data": {"SOPInstanceUID": ds.SOPInstanceUID},
+                    }
+                )
+            else:
+                raise ConnectionError(
+                    (
+                        "Connection timed out, was aborted or received invalid "
+                        f"response during C-STORE of folder: {folder}"
                     )
-                    continue
-
-                # Allow to manipuate the dataset by using a callback before storing to server
-                if callback:
-                    callback(ds)
-
-                status = self.assoc.send_c_store(ds, msg_id)
-
-                if status:
-                    results.append(
-                        {
-                            "status": {
-                                "code": status.Status,
-                                "category": code_to_category(status.Status),
-                            },
-                            "data": {"SOPInstanceUID": ds.SOPInstanceUID},
-                        }
-                    )
-                else:
-                    raise ConnectionError(
-                        (
-                            "Connection timed out, was aborted or received invalid "
-                            f"response during C-STORE of folder: {folder.as_posix()}"
-                        )
-                    )
+                )
 
         return results
 
@@ -594,7 +593,7 @@ class DicomConnector:
         self,
         patient_id,
         study_uid,
-        folder_path,
+        folder,
         modality=None,
         modifier_callback=None,
     ):
@@ -616,7 +615,7 @@ class DicomConnector:
             # store handler as it is not guaranteed that all PACS servers
             # do return the SeriesDescription with C-FIND
             series_folder_name = sanitize_dirname(series["SeriesDescription"])
-            download_path = Path(folder_path) / series_folder_name
+            download_path = Path(folder) / series_folder_name
 
             try:
                 self.download_series(
@@ -633,7 +632,7 @@ class DicomConnector:
 
     @_connect_to_server
     def download_series(  # pylint: disable=too-many-arguments
-        self, patient_id, study_uid, series_uid, folder_path, modifier_callback=None
+        self, patient_id, study_uid, series_uid, folder, modifier_callback=None
     ):
         """Download all series to a specified folder for given series UIDs and pseudonymize
         the dataset before storing it to disk."""
@@ -646,17 +645,17 @@ class DicomConnector:
         }
 
         if self.config.patient_root_get_support or self.config.study_root_get_support:
-            self._download_series_get(query, folder_path, modifier_callback)
+            self._download_series_get(query, folder, modifier_callback)
         elif (
             self.config.patient_root_move_support or self.config.study_root_move_support
         ):
-            self._download_series_move(query, folder_path, modifier_callback)
+            self._download_series_move(query, folder, modifier_callback)
         else:
             raise ValueError(
                 "No Query/Retrieve Information Model supported to download images."
             )
 
-    def _download_series_get(self, query, folder_path, modifier_callback=None):
+    def _download_series_get(self, query, folder, modifier_callback=None):
         if query["PatientID"] and self.config.patient_root_get_support:
             query_model = PatientRootQueryRetrieveInformationModelGet
         elif query["StudyInstanceUID"] and self.config.study_root_get_support:
@@ -666,7 +665,7 @@ class DicomConnector:
                 "No valid Query/Retrieve Information Model for C-GET could be selected."
             )
 
-        results = self._get(query, query_model, folder_path, modifier_callback)
+        results = self._get(query, query_model, folder, modifier_callback)
 
         status_category = results[-1]["status"]["category"]
         status_code = results[-1]["status"]["code"]
@@ -679,7 +678,7 @@ class DicomConnector:
             logger.error(log_msg, results[-1]["data"])
             raise ValueError(error_msg)
 
-    def _download_series_move(self, query, folder_path, modifier_callback=None):
+    def _download_series_move(self, query, folder, modifier_callback=None):
 
         if query["PatientID"] and self.config.patient_root_move_support:
             query_model = PatientRootQueryRetrieveInformationModelMove
@@ -703,7 +702,7 @@ class DicomConnector:
                 query["StudyInstanceUID"],
                 query["SeriesInstanceUID"],
                 image_uids,
-                folder_path,
+                folder,
                 modifier_callback,
                 move_stopped_event,
             )
@@ -733,11 +732,12 @@ class DicomConnector:
         study_uid,
         series_uid,
         image_uids,
-        folder_path,
+        folder,
         modifier_callback,
         move_stopped_event: threading.Event,
     ):
         print("In consume from receiver")
+        remaining_image_uids = image_uids[:]
 
         connection = pika.BlockingConnection(
             pika.URLParameters(self.config.rabbitmq_url)
@@ -755,37 +755,59 @@ class DicomConnector:
         last_consume_at = time.time()
         for message in channel.consume(queue_name, auto_ack=True, inactivity_timeout=1):
             print("Consuming !!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-            _, _, body = message
+            method, properties, body = message
+
+            # When the move operation is over then start our timer
             if move_stopped_event.is_set() and not move_stopped_at:
                 move_stopped_at = time.time()
-            if not body and move_stopped_at:
+
+            # We just reached an inactivity timeout
+            if not method and move_stopped_at:
+                # If we are waiting without a message for more than 60s
+                # after the move operation stopped then stop waiting anymore
                 time_since_last_consume = last_consume_at - move_stopped_at
                 if time_since_last_consume > 60:
                     break
                 continue
 
+            # Reset our timer if a real new message arrives
             last_consume_at = time.time()
 
-            print("++++++++++++++++++++++++++++++++++++++++++++++++++++")
+            received_image_uid = properties.message_id
+            if received_image_uid in remaining_image_uids:
+                ds = dcmread(BytesIO(body))
 
-            ds = dcmread(BytesIO(body))
+                if received_image_uid != ds.SOPInstanceUID:
+                    raise AssertionError(
+                        f"Received wrong image with UID {ds.SOPInstanceUID}. "
+                        f"Expected UID {received_image_uid}."
+                    )
 
-            if ds.SOPInstanceUID in image_uids:
                 if modifier_callback:
                     modifier_callback(ds)
-                image_uids.remove(ds.SOPInstanceUID)
-                file_path = os.path.join(folder_path, ds.SOPInstanceUID)
-                ds.save_as(file_path, write_like_original=False)
-                if not image_uids:
+
+                file_path = Path(folder) / received_image_uid
+                ds.save_as(str(file_path), write_like_original=False)
+
+                remaining_image_uids.remove(received_image_uid)
+
+                # Stop if all images of this series were received
+                if not remaining_image_uids:
                     break
 
-        return not image_uids
+        if remaining_image_uids:
+            if remaining_image_uids == image_uids:
+                raise ValueError(f"No images of series with UID {series_uid} received.")
+            raise ValueError(
+                f"Several images of series with UID {series_uid} were not received: "
+                f"{remaining_image_uids}"
+            )
 
     @_connect_to_server
-    def upload_folder(self, folder_path):
+    def upload_folder(self, folder):
         """Upload a specified folder to a DICOM server."""
 
-        results = self._store(folder_path)
+        results = self._store(folder)
 
         failed_instances = []
         for result in results:

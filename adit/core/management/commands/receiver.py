@@ -70,8 +70,12 @@ def handle_store(event):
     # channel.basic_publish(
     #     exchange="received_dicoms", routing_key=key, body=str(file_id)
     # )
+    properties = pika.BasicProperties(message_id=ds.SOPInstanceUID)
     channel.basic_publish(
-        exchange="received_dicoms", routing_key=key, body=buffer.getvalue()
+        exchange="received_dicoms",
+        routing_key=key,
+        properties=properties,
+        body=buffer.getvalue(),
     )
 
     buffer.close()

@@ -1,4 +1,3 @@
-import os
 from os import environ
 from pathlib import Path
 import requests
@@ -41,15 +40,16 @@ class OrthancRestHandler:
         self.session.trust_env = False
 
     def upload_files(self, folder_to_upload):
-        for root, _, files in os.walk(folder_to_upload):
-            for file in files:
-                dicom_file_path = Path(root) / file
-                with open(dicom_file_path, "rb") as f:
-                    payload = f.read()
-                    r = self.session.post(
-                        f"http://{self.host}:{self.port}/instances", data=payload
-                    )
-                    r.raise_for_status()
+        for path in Path(folder_to_upload).rglob("*"):
+            if not path.is_file():
+                continue
+
+            with open(path, "rb") as f:
+                payload = f.read()
+                r = self.session.post(
+                    f"http://{self.host}:{self.port}/instances", data=payload
+                )
+                r.raise_for_status()
 
     def list(self, resource_type=PATIENTS_RESOURCE):
         r = self.session.get(f"http://{self.host}:{self.port}/{resource_type}")
@@ -76,10 +76,10 @@ class OrthancRestHandler:
 
 
 # Demo of OrthancRestHandler:
-# parent_dir = os.path.dirname(os.path.realpath(__file__))
-# dicom_dir = os.path.join(parent_dir, 'samples', 'dicoms')
+# parent_folder = os.path.dirname(os.path.realpath(__file__))
+# dicom_folder = Path(parent_folder) / "samples" / "dicoms"
 # handler = OrthancRestHandler(port=6501)
-# handler.upload_files(dicom_dir)
+# handler.upload_files(dicom_folder)
 # r = handler.find({
 #     'Level' : OrthancRestHandler.STUDIES_RESOURCE,
 #     'Query' : {
