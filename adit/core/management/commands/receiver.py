@@ -4,7 +4,6 @@ import json
 from io import BytesIO
 import pika
 import pydicom
-from pymongo import MongoClient
 import gridfs
 from django.core.management.base import BaseCommand
 from django.conf import settings
@@ -47,19 +46,6 @@ def handle_store(event):
 
     buffer = BytesIO()
     dcmwrite(buffer, ds, write_like_original=False)
-
-    # Save dataset to MongoDB GridFS
-    # db = MongoClient(settings.MONGO_URL).received_dicoms
-    # fs = gridfs.GridFS(db)
-    # file_id = fs.put(
-    #     buffer,
-    #     filename=ds.SOPInstanceUID,
-    #     meta={
-    #         "StudyInstanceUID": ds.StudyInstanceUID,
-    #         "SeriesInstanceUID": ds.SeriesInstanceUID,
-    #         "SOPInstanceUID": ds.SOPInstanceUID,
-    #     },
-    # )
 
     connection = pika.BlockingConnection(pika.URLParameters(settings.RABBITMQ_URL))
     channel = connection.channel()

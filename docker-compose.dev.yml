@@ -22,7 +22,6 @@ x-app: &default-app
         DATABASE_URL: "psql://postgres:postgres@postgres:5432/postgres"
         RABBITMQ_URL: "amqp://rabbit"
         REDIS_URL: "redis://redis:6379/0"
-        MONGO_URL: "mongodb://mongo:27017"
         DJANGO_STATIC_ROOT: "/var/www/adit/static/"
         LOG_FOLDER: "/var/www/adit/logs"
         FLOWER_HOST: "flower"
@@ -96,13 +95,6 @@ services:
         volumes:
             - redis_data:/data
 
-    mongo:
-        image: mongo:latest
-        expose:
-            - "27017"
-        volumes:
-            - mongo_data:/data/db
-
     orthanc_1:
         image: jodogne/orthanc-plugins:latest
         ports:
@@ -126,7 +118,6 @@ volumes:
     postgres_data:
     rabbit_data:
     redis_data:
-    mongo_data:
     flower_data:
     orthanc1_data:
     orthanc2_data:

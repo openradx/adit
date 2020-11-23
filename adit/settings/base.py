@@ -277,9 +277,6 @@ CELERY_BEAT_SCHEDULE = {
     }
 }
 
-# MongoDB GridFS is used as file storage for incoming images of a C-MOVE operation
-MONGO_URL = env.str("MONGO_URL", default="mongodb://localhost:27017")
-
 # Flower is integrated in ADIT by using an reverse proxy (django-revproxy).
 # This allows to use the authentication of ADIT.
 FLOWER_HOST = env.str("FLOWER_HOST", default="localhost")
