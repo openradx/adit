@@ -147,12 +147,14 @@ def _handle_c_get_store(folder, modifier_callback, errors, event):
     ds.is_little_endian = context.transfer_syntax.is_little_endian
     ds.is_implicit_VR = context.transfer_syntax.is_implicit_VR
 
-    # Save the dataset using the SOP Instance UID as the filename
-    file_path = Path(folder) / ds.SOPInstanceUID
+    folder_path = Path(folder)
+    folder_path.mkdir(parents=True, exist_ok=True)
 
     # Allow to manipuate the dataset by using a callback before saving to disk
     if modifier_callback:
         modifier_callback(ds)
+
+    file_path = folder_path / ds.SOPInstanceUID
 
     try:
         ds.save_as(str(file_path), write_like_original=False)
@@ -348,8 +350,6 @@ class DicomConnector:
         self, query_dict, query_model, folder, callback=None, msg_id=1
     ):
         logger.debug("Sending C-GET with query: %s", query_dict)
-
-        Path(folder).mkdir(parents=True, exist_ok=True)
 
         query_ds = _make_query_dataset(query_dict)
 
@@ -708,6 +708,7 @@ class DicomConnector:
             )
             move_results = self._move(query, query_model, self.config.client_ae_title)
             move_stopped_event.set()
+            print("move stopped")
             consumer_succeeded = future.result()
 
             status_category = move_results[-1]["status"]["category"]
@@ -751,30 +752,31 @@ class DicomConnector:
             exchange="received_dicoms", queue=queue_name, routing_key=key
         )
 
-        move_stopped_at = None
         last_consume_at = time.time()
         for message in channel.consume(queue_name, auto_ack=True, inactivity_timeout=1):
-            print("Consuming !!!!!!!!!!!!!!!!!!!!!!!!!!!!")
             method, properties, body = message
 
-            # When the move operation is over then start our timer
-            if move_stopped_event.is_set() and not move_stopped_at:
-                move_stopped_at = time.time()
+            print(method)
+
+            # If we are waiting without a message for more than 60s
+            # after the move operation stopped then stop waiting anymore
+            time_since_last_consume = time.time() - last_consume_at
+            print(f"time since last consume {time_since_last_consume}")
+            if move_stopped_event.is_set() and time_since_last_consume > 60:
+                print("break it")
+                break
 
             # We just reached an inactivity timeout
-            if not method and move_stopped_at:
-                # If we are waiting without a message for more than 60s
-                # after the move operation stopped then stop waiting anymore
-                time_since_last_consume = last_consume_at - move_stopped_at
-                if time_since_last_consume > 60:
-                    break
+            if not method:
                 continue
 
             # Reset our timer if a real new message arrives
             last_consume_at = time.time()
 
             received_image_uid = properties.message_id
+            print(f"received image {received_image_uid}")
             if received_image_uid in remaining_image_uids:
+                print(f"found image with image {received_image_uid}")
                 ds = dcmread(BytesIO(body))
 
                 if received_image_uid != ds.SOPInstanceUID:
@@ -786,10 +788,17 @@ class DicomConnector:
                 if modifier_callback:
                     modifier_callback(ds)
 
-                file_path = Path(folder) / received_image_uid
+                folder_path = Path(folder)
+                folder_path.mkdir(parents=True, exist_ok=True)
+
+                file_path = folder_path / received_image_uid
+
+                # TODO catch out of space error
                 ds.save_as(str(file_path), write_like_original=False)
 
                 remaining_image_uids.remove(received_image_uid)
+
+                print(f"remaining images: {remaining_image_uids}")
 
                 # Stop if all images of this series were received
                 if not remaining_image_uids:
