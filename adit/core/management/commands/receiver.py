@@ -3,6 +3,7 @@ import time
 import json
 from io import BytesIO
 import pika
+import pydicom
 from pymongo import MongoClient
 import gridfs
 from django.core.management.base import BaseCommand
@@ -32,53 +33,49 @@ logger = logging.getLogger(__name__)
 # Implement a handler for evt.EVT_C_STORE
 def handle_store(event):
     """Handle a C-STORE request event."""
-
-    start = time.time()
+    print("Received image")
+    print(event)
 
     # Decode the C-STORE request's *Data Set* parameter to a pydicom Dataset
     ds = event.dataset
 
-    # Get calling AE Title: event.assoc.remote["ae_title"]
-    # Get called AE Title event.assoc.acceptor.primitive.called_ae_title
-
     # Add the File Meta Information
     ds.file_meta = event.file_meta
 
+    # Get calling AE Title: event.assoc.remote["ae_title"]
+    # Get called AE Title event.assoc.acceptor.primitive.called_ae_title
+
     buffer = BytesIO()
-    dcmwrite(buffer, ds)
+    dcmwrite(buffer, ds, write_like_original=False)
 
     # Save dataset to MongoDB GridFS
-    db = MongoClient(settings.MONGO_URL).received_dicoms
-    fs = gridfs.GridFS(db)
-
-    file_id = fs.put(
-        buffer,
-        filename=ds.SOPInstanceUID,
-        meta={
-            "StudyInstanceUID": ds.StudyInstanceUID,
-            "SeriesInstanceUID": ds.SeriesInstanceUID,
-            "SOPInstanceUID": ds.SOPInstanceUID,
-        },
-    )
-
-    print("####################")
-    print(file_id)
+    # db = MongoClient(settings.MONGO_URL).received_dicoms
+    # fs = gridfs.GridFS(db)
+    # file_id = fs.put(
+    #     buffer,
+    #     filename=ds.SOPInstanceUID,
+    #     meta={
+    #         "StudyInstanceUID": ds.StudyInstanceUID,
+    #         "SeriesInstanceUID": ds.SeriesInstanceUID,
+    #         "SOPInstanceUID": ds.SOPInstanceUID,
+    #     },
+    # )
 
     connection = pika.BlockingConnection(pika.URLParameters(settings.RABBITMQ_URL))
     channel = connection.channel()
     channel.exchange_declare(exchange="received", exchange_type="direct")
-    # Send the dataset to the worker
-    source_ae = event.assoc.remote["ae_title"]
-    key = f"{source_ae}\\{ds.StudyInstanceUID}"
+    # Send the dataset to the workers
+    source_ae = event.assoc.remote["ae_title"].decode("utf-8").strip()
+    key = f"{source_ae}\\{ds.StudyInstanceUID}\\{ds.SeriesInstanceUID}"
+    # channel.basic_publish(
+    #     exchange="received_dicoms", routing_key=key, body=str(file_id)
+    # )
     channel.basic_publish(
-        exchange="received_dicoms", routing_key=key, body=str(file_id)
+        exchange="received_dicoms", routing_key=key, body=buffer.getvalue()
     )
 
+    buffer.close()
     connection.close()
-
-    end = time.time()
-
-    print(end - start)
 
     # Return a 'Success' status
     return 0x0000
