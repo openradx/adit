@@ -104,8 +104,8 @@ def transfer_dicoms(task_id):
         task.message = "Transfer task completed successfully."
 
     except NoSpaceLeftError as err:
-        msg = f"Out of disk space on destination {job.destination.name}."
-        logger.error("%s [Job ID %d, Task ID %d]", msg, job.id, task.id)
+        msg = f"Out of disk space while saving {err.path}."
+        logger.exception("%s [Job ID %d, Task ID %d]", msg, job.id, task.id)
         task.status = TransferTask.Status.FAILURE
         task.message = msg
 

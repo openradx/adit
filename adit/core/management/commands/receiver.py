@@ -1,14 +1,9 @@
 import logging
-import time
-import json
 from io import BytesIO
 import pika
-import pydicom
-import gridfs
 from django.core.management.base import BaseCommand
 from django.conf import settings
 from pynetdicom import AE, evt, AllStoragePresentationContexts, debug_logger
-from pydicom.filebase import DicomFileLike
 from pydicom.filewriter import dcmwrite
 
 logger = logging.getLogger(__name__)
@@ -32,9 +27,6 @@ logger = logging.getLogger(__name__)
 # Implement a handler for evt.EVT_C_STORE
 def handle_store(event):
     """Handle a C-STORE request event."""
-    print("Received image")
-    print(event)
-
     # Decode the C-STORE request's *Data Set* parameter to a pydicom Dataset
     ds = event.dataset
 
@@ -47,24 +39,25 @@ def handle_store(event):
     buffer = BytesIO()
     dcmwrite(buffer, ds, write_like_original=False)
 
+    # TODO move connect outside somewhere
     connection = pika.BlockingConnection(pika.URLParameters(settings.RABBITMQ_URL))
+
     channel = connection.channel()
     channel.exchange_declare(exchange="received", exchange_type="direct")
+
     # Send the dataset to the workers
     source_ae = event.assoc.remote["ae_title"].decode("utf-8").strip()
-    key = f"{source_ae}\\{ds.StudyInstanceUID}\\{ds.SeriesInstanceUID}"
-    # channel.basic_publish(
-    #     exchange="received_dicoms", routing_key=key, body=str(file_id)
-    # )
+    routing_key = f"{source_ae}\\{ds.StudyInstanceUID}\\{ds.SeriesInstanceUID}"
     properties = pika.BasicProperties(message_id=ds.SOPInstanceUID)
     channel.basic_publish(
         exchange="received_dicoms",
-        routing_key=key,
+        routing_key=routing_key,
         properties=properties,
         body=buffer.getvalue(),
     )
 
     buffer.close()
+    channel.close()
     connection.close()
 
     # Return a 'Success' status

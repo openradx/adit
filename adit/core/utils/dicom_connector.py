@@ -44,7 +44,7 @@ from pynetdicom.status import (
     STATUS_PENDING,
     STATUS_SUCCESS,
 )
-from ..errors import NoSpaceLeftError
+from ..errors import NoSpaceLeftError, DownloadError
 from ..utils.sanitize import sanitize_dirname
 
 FORCE_DEBUG_LOGGER = False
@@ -160,11 +160,9 @@ def _handle_c_get_store(folder, modifier_callback, errors, event):
         ds.save_as(str(file_path), write_like_original=False)
     except OSError as err:
         if err.errno == errno.ENOSPC:  # No space left on device
-            logger.exception(
-                "No space left to save DICOM dataset to %s. Aborting association.",
-                file_path,
-            )
-            errors.append(NoSpaceLeftError())
+            no_space_error = NoSpaceLeftError(str(file_path))
+            no_space_error.__cause__ = err
+            errors.append(no_space_error)
 
             # Unfortunately not all PACS servers support or respect a C-CANCEL request,
             # so we just abort the association.
@@ -172,7 +170,7 @@ def _handle_c_get_store(folder, modifier_callback, errors, event):
             # and https://groups.google.com/g/orthanc-users/c/tS826iEzHb0
             event.assoc.abort()
 
-            # Out of resources
+            # Answert with "Out of Resources"
             # see https://pydicom.github.io/pynetdicom/stable/service_classes/defined_procedure_service_class.html
             return 0xA702
 
@@ -364,7 +362,7 @@ class DicomConnector:
             # Check if the connection error was triggered by our own store handler
             # due to aborting the assocation.
             if store_errors:
-                raise store_errors[0] from err
+                raise store_errors[0]
 
             # If not just raise the original error.
             raise err
@@ -708,8 +706,8 @@ class DicomConnector:
             )
             move_results = self._move(query, query_model, self.config.client_ae_title)
             move_stopped_event.set()
-            print("move stopped")
-            consumer_succeeded = future.result()
+
+            future.result()
 
             status_category = move_results[-1]["status"]["category"]
             status_code = move_results[-1]["status"]["code"]
@@ -722,12 +720,6 @@ class DicomConnector:
                 logger.error(log_msg, move_results[-1]["data"])
                 raise ValueError(error_msg)
 
-            # if not consumer_succeeded:
-            #     raise ValueError(
-            #         "Not all images could be retrieved of series with UID "
-            #         f"{query['SeriesInstanceUID']}"
-            #     )
-
     def _consume_from_receiver(
         self,
         study_uid,
@@ -737,7 +729,6 @@ class DicomConnector:
         modifier_callback,
         move_stopped_event: threading.Event,
     ):
-        print("In consume from receiver")
         remaining_image_uids = image_uids[:]
 
         connection = pika.BlockingConnection(
@@ -747,62 +738,68 @@ class DicomConnector:
         channel.exchange_declare(exchange="received_dicoms", exchange_type="direct")
         result = channel.queue_declare(queue="", exclusive=True)
         queue_name = result.method.queue
-        key = f"{self.config.server_ae_title}\\{study_uid}\\{series_uid}"
+        routing_key = f"{self.config.server_ae_title}\\{study_uid}\\{series_uid}"
         channel.queue_bind(
-            exchange="received_dicoms", queue=queue_name, routing_key=key
+            exchange="received_dicoms",
+            queue=queue_name,
+            routing_key=routing_key,
         )
 
-        last_consume_at = time.time()
-        for message in channel.consume(queue_name, auto_ack=True, inactivity_timeout=1):
-            method, properties, body = message
-
-            print(method)
-
-            # If we are waiting without a message for more than 60s
-            # after the move operation stopped then stop waiting anymore
-            time_since_last_consume = time.time() - last_consume_at
-            print(f"time since last consume {time_since_last_consume}")
-            if move_stopped_event.is_set() and time_since_last_consume > 60:
-                print("break it")
-                break
-
-            # We just reached an inactivity timeout
-            if not method:
-                continue
-
-            # Reset our timer if a real new message arrives
+        try:
             last_consume_at = time.time()
+            for message in channel.consume(
+                queue_name, auto_ack=True, inactivity_timeout=1
+            ):
+                method, properties, body = message
 
-            received_image_uid = properties.message_id
-            print(f"received image {received_image_uid}")
-            if received_image_uid in remaining_image_uids:
-                print(f"found image with image {received_image_uid}")
-                ds = dcmread(BytesIO(body))
-
-                if received_image_uid != ds.SOPInstanceUID:
-                    raise AssertionError(
-                        f"Received wrong image with UID {ds.SOPInstanceUID}. "
-                        f"Expected UID {received_image_uid}."
-                    )
-
-                if modifier_callback:
-                    modifier_callback(ds)
-
-                folder_path = Path(folder)
-                folder_path.mkdir(parents=True, exist_ok=True)
-
-                file_path = folder_path / received_image_uid
-
-                # TODO catch out of space error
-                ds.save_as(str(file_path), write_like_original=False)
-
-                remaining_image_uids.remove(received_image_uid)
-
-                print(f"remaining images: {remaining_image_uids}")
-
-                # Stop if all images of this series were received
-                if not remaining_image_uids:
+                # If we are waiting without a message for more than 60s
+                # after the move operation stopped then stop waiting anymore
+                time_since_last_consume = time.time() - last_consume_at
+                if move_stopped_event.is_set() and time_since_last_consume > 60:
+                    print("break it")
                     break
+
+                # We just reached an inactivity timeout
+                if not method:
+                    continue
+
+                # Reset our timer if a real new message arrives
+                last_consume_at = time.time()
+
+                received_image_uid = properties.message_id
+                if received_image_uid in remaining_image_uids:
+                    ds = dcmread(BytesIO(body))
+
+                    if received_image_uid != ds.SOPInstanceUID:
+                        raise AssertionError(
+                            f"Received wrong image with UID {ds.SOPInstanceUID}. "
+                            f"Expected UID {received_image_uid}."
+                        )
+
+                    if modifier_callback:
+                        modifier_callback(ds)
+
+                    folder_path = Path(folder)
+                    folder_path.mkdir(parents=True, exist_ok=True)
+
+                    file_path = folder_path / received_image_uid
+
+                    # In this case we don't need to save with `write_like_original=False` as it
+                    # saved already saved it this way to the buffer in the receiver
+                    try:
+                        ds.save_as(str(file_path), write_like_original=False)
+                    except OSError as err:
+                        if err.errno == errno.ENOSPC:  # No space left on device
+                            raise NoSpaceLeftError(str(file_path)) from err
+
+                    remaining_image_uids.remove(received_image_uid)
+
+                    # Stop if all images of this series were received
+                    if not remaining_image_uids:
+                        break
+        finally:
+            channel.close()
+            connection.close()
 
         if remaining_image_uids:
             if remaining_image_uids == image_uids:
