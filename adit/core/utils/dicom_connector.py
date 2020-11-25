@@ -44,7 +44,6 @@ from pynetdicom.status import (
     STATUS_PENDING,
     STATUS_SUCCESS,
 )
-from ..errors import NoSpaceLeftError, DownloadError
 from ..utils.sanitize import sanitize_dirname
 
 FORCE_DEBUG_LOGGER = False
@@ -160,7 +159,7 @@ def _handle_c_get_store(folder, modifier_callback, errors, event):
         ds.save_as(str(file_path), write_like_original=False)
     except OSError as err:
         if err.errno == errno.ENOSPC:  # No space left on device
-            no_space_error = NoSpaceLeftError(str(file_path))
+            no_space_error = IOError(f"Out of disk space while saving {file_path}.")
             no_space_error.__cause__ = err
             errors.append(no_space_error)
 
@@ -790,7 +789,9 @@ class DicomConnector:
                         ds.save_as(str(file_path), write_like_original=False)
                     except OSError as err:
                         if err.errno == errno.ENOSPC:  # No space left on device
-                            raise NoSpaceLeftError(str(file_path)) from err
+                            raise IOError(
+                                f"Out of disk space while saving {file_path}."
+                            ) from err
 
                     remaining_image_uids.remove(received_image_uid)
 

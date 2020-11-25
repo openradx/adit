@@ -13,7 +13,6 @@ from .utils.dicom_connector import DicomConnector
 from .utils.sanitize import sanitize_dirname
 from .utils.mail import send_job_failed_mail, send_mail_to_admins
 from .models import DicomNode, DicomFolder, TransferJob, TransferTask
-from .errors import NoSpaceLeftError
 
 logger = get_task_logger(__name__)
 
@@ -103,15 +102,9 @@ def transfer_dicoms(task_id):
         task.status = TransferTask.Status.SUCCESS
         task.message = "Transfer task completed successfully."
 
-    except NoSpaceLeftError as err:
-        msg = f"Out of disk space while saving {err.path}."
-        logger.exception("%s [Job ID %d, Task ID %d]", msg, job.id, task.id)
-        task.status = TransferTask.Status.FAILURE
-        task.message = msg
-
     except Exception as err:  # pylint: disable=broad-except
         logger.exception(
-            "Unexpected error during transfer task (Job ID %d, Task ID %d).",
+            "Error during transfer task (Job ID %d, Task ID %d).",
             job.id,
             task.id,
         )
