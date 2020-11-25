@@ -12,10 +12,9 @@ from django.conf import settings
 from pynetdicom import AE, evt, AllStoragePresentationContexts, debug_logger
 from pydicom.filewriter import dcmwrite
 
+FORCE_DEBUG_LOGGER = False
+
 logger = logging.getLogger(__name__)
-
-# debug_logger()
-
 
 # Implement a handler for evt.EVT_C_STORE
 def handle_store(connection, event):
@@ -72,6 +71,11 @@ class Command(BaseCommand):
             action="store_true",
             help="Auto reload C-STORE SCP server on code change.",
         )
+        parser.add_argument(
+            "--debug-logger",
+            action="store_true",
+            help="Enable debug logger of pynetdicom.",
+        )
 
     def handle(self, *args, **options):
         rabbit_url = settings.RABBITMQ_URL
@@ -93,6 +97,9 @@ class Command(BaseCommand):
         else:
             logger.error("Could not connect to %s. No more retries", rabbit_url)
             sys.exit(1)
+
+        if options["debug-logger"] or FORCE_DEBUG_LOGGER:
+            debug_logger()
 
         try:
             # Listens for the SIGTERM signal from stopping the Docker container. Only
