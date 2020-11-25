@@ -1,8 +1,11 @@
 import logging
 from io import BytesIO
+from functools import partial
 import signal
-from django.utils.autoreload import run_with_reloader
+import time
+import sys
 import pika
+from pika.exceptions import AMQPConnectionError
 from django.utils import autoreload
 from django.core.management.base import BaseCommand
 from django.conf import settings
@@ -14,43 +17,30 @@ logger = logging.getLogger(__name__)
 # debug_logger()
 
 
-# def write_dataset_to_bytes(dataset):
-#     # create a buffer
-#     with BytesIO() as buffer:
-#         # create a DicomFileLike object that has some properties of DataSet
-#         memory_dataset = DicomFileLike(buffer)
-#         # write the dataset to the DicomFileLike object
-#         dcmwrite(memory_dataset, dataset)
-#         # to read from the object, you have to rewind it
-#         memory_dataset.seek(0)
-#         # read the contents as bytes
-#         return memory_dataset
-
-
 # Implement a handler for evt.EVT_C_STORE
-def handle_store(event):
-    """Handle a C-STORE request event."""
-    # Decode the C-STORE request's *Data Set* parameter to a pydicom Dataset
-    ds = event.dataset
+def handle_store(connection, event):
+    """Handle a C-STORE request event.
 
-    # Add the File Meta Information
+    The request is initiated with a C-MOVE request by ADIT itself to
+    fetch images from a DICOM server that doesn't support C-GET requests.
+    """
+    ds = event.dataset
     ds.file_meta = event.file_meta
 
-    # Get calling AE Title: event.assoc.remote["ae_title"]
-    # Get called AE Title event.assoc.acceptor.primitive.called_ae_title
+    called_ae = event.assoc.acceptor.primitive.called_ae_title
+    called_ae = called_ae.decode("utf-8").strip()
+    if called_ae != settings.ADIT_AE_TITLE:
+        raise AssertionError(f"Invalid called AE title: {called_ae}")
 
     buffer = BytesIO()
     dcmwrite(buffer, ds, write_like_original=False)
 
-    # TODO move connect outside somewhere
-    connection = pika.BlockingConnection(pika.URLParameters(settings.RABBITMQ_URL))
-
     channel = connection.channel()
     channel.exchange_declare(exchange="received", exchange_type="direct")
 
-    # Send the dataset to the workers
-    source_ae = event.assoc.remote["ae_title"].decode("utf-8").strip()
-    routing_key = f"{source_ae}\\{ds.StudyInstanceUID}\\{ds.SeriesInstanceUID}"
+    # Send the dataset to the workers using RabbitMQ
+    calling_ae = event.assoc.remote["ae_title"].decode("utf-8").strip()
+    routing_key = f"{calling_ae}\\{ds.StudyInstanceUID}\\{ds.SeriesInstanceUID}"
     properties = pika.BasicProperties(message_id=ds.SOPInstanceUID)
     channel.basic_publish(
         exchange="received_dicoms",
@@ -61,27 +51,57 @@ def handle_store(event):
 
     buffer.close()
     channel.close()
-    connection.close()
 
-    # Return a 'Success' status
-    return 0x0000
+    return 0x0000  # Return a 'Success' status
 
 
-def run_store_scp_server(*args, **options):
+def run_store_scp_server(connection):
     ae = AE(ae_title=settings.ADIT_AE_TITLE)
     ae.supported_contexts = AllStoragePresentationContexts
-    handlers = [(evt.EVT_C_STORE, handle_store)]
-    logger.info("Starting ADIT DICOM Receiver.")
+    handlers = [(evt.EVT_C_STORE, partial(handle_store, connection))]
+    logger.info("Starting ADIT DICOM C-STORE SCP Receiver.")
     ae.start_server(("", 11112), evt_handlers=handlers)
-
-
-def terminate(signal, frame):
-    print("*********************************************")
 
 
 class Command(BaseCommand):
     help = "Starts a C-STORE SCP for receiving DICOM files."
 
+    def add_arguments(self, parser):
+        parser.add_argument(
+            "--autoreload",
+            action="store_true",
+            help="Auto reload C-STORE SCP server on code change.",
+        )
+
     def handle(self, *args, **options):
-        signal.signal(signal.SIGTERM, terminate)
-        autoreload.run_with_reloader(run_store_scp_server, **options)
+        rabbit_url = settings.RABBITMQ_URL
+        connection = None
+        for i in range(100):
+            try:
+                connection = pika.BlockingConnection(pika.URLParameters(rabbit_url))
+                break
+            except AMQPConnectionError:
+                logger.error(
+                    "Cannot connect to %s. Trying again in 2 seconds... (%d/100).",
+                    rabbit_url,
+                    i + 1,
+                )
+            time.sleep(2)
+
+        if connection and connection.is_open:
+            logger.info("Connected to %s.", rabbit_url)
+        else:
+            logger.error("Could not connect to %s. No more retries", rabbit_url)
+            sys.exit(1)
+
+        try:
+            # Listens for the SIGTERM signal from stopping the Docker container. Only
+            # with this listener the finally block is executed as sys.exit(0) throws
+            # an exception.
+            signal.signal(signal.SIGTERM, lambda *args: sys.exit(0))
+            if options["autoreload"]:
+                autoreload.run_with_reloader(partial(run_store_scp_server, connection))
+            else:
+                run_store_scp_server(connection)
+        finally:
+            connection.close()

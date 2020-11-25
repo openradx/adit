@@ -62,9 +62,9 @@ services:
 
     receiver:
         <<: *default-app
-        ports:
-            - "11112:11112"
-        command: bash -c "python manage.py receiver"
+        expose:
+            - "11112"
+        command: python manage.py receiver --autoreload
 
     flower:
         <<: *default-app
