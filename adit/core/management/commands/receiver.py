@@ -1,6 +1,9 @@
 import logging
 from io import BytesIO
+import signal
+from django.utils.autoreload import run_with_reloader
 import pika
+from django.utils import autoreload
 from django.core.management.base import BaseCommand
 from django.conf import settings
 from pynetdicom import AE, evt, AllStoragePresentationContexts, debug_logger
@@ -64,19 +67,21 @@ def handle_store(event):
     return 0x0000
 
 
+def run_store_scp_server(*args, **options):
+    ae = AE(ae_title=settings.ADIT_AE_TITLE)
+    ae.supported_contexts = AllStoragePresentationContexts
+    handlers = [(evt.EVT_C_STORE, handle_store)]
+    logger.info("Starting ADIT DICOM Receiver.")
+    ae.start_server(("", 11112), evt_handlers=handlers)
+
+
+def terminate(signal, frame):
+    print("*********************************************")
+
+
 class Command(BaseCommand):
     help = "Starts a C-STORE SCP for receiving DICOM files."
 
     def handle(self, *args, **options):
-        handlers = [(evt.EVT_C_STORE, handle_store)]
-
-        # Initialise the Application Entity
-        ae = AE()
-
-        # Support presentation contexts for all storage SOP Classes
-        ae.supported_contexts = AllStoragePresentationContexts
-
-        logger.info("Starting ADIT DICOM Receiver.")
-
-        # Start listening for incoming association requests
-        ae.start_server(("", 11112), evt_handlers=handlers)
+        signal.signal(signal.SIGTERM, terminate)
+        autoreload.run_with_reloader(run_store_scp_server, **options)
