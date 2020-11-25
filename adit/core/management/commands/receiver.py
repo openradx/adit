@@ -72,7 +72,7 @@ class Command(BaseCommand):
             help="Auto reload C-STORE SCP server on code change.",
         )
         parser.add_argument(
-            "--debug-logger",
+            "--debug",
             action="store_true",
             help="Enable debug logger of pynetdicom.",
         )
@@ -98,7 +98,7 @@ class Command(BaseCommand):
             logger.error("Could not connect to %s. No more retries", rabbit_url)
             sys.exit(1)
 
-        if options["debug-logger"] or FORCE_DEBUG_LOGGER:
+        if options["debug"] or FORCE_DEBUG_LOGGER:
             debug_logger()
 
         try:
