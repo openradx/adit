@@ -58,7 +58,7 @@ services:
 
     celery_beat:
         <<: *default-app
-        command: celery -A adit beat -l INFO -s /var/www/adit/celery/celerybeat-schedule --pidfile /var/www/adit/celery/celerybeat.pid
+        command: python manage.py celery_beat --autoreload
 
     receiver:
         <<: *default-app
