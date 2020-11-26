@@ -111,4 +111,6 @@ class Command(BaseCommand):
             else:
                 run_store_scp_server(connection)
         finally:
-            connection.close()
+            # The connection may be already closed when RabbitMQ container was stopped earlier.
+            if connection and connection.is_open:
+                connection.close()
