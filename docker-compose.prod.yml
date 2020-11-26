@@ -44,15 +44,15 @@ services:
 
     worker_default:
         <<: *default-app
-        command: bash -c "celery -A adit worker -Q default -l INFO -c 1 -n worker_default_$$(hostname)"
+        command: python manage.py celery_worker -Q default
 
     worker_batch_transfer:
         <<: *default-app
-        command: bash -c "celery -A adit worker -Q batch_transfer -l INFO -c 1 -n worker_batch_transfer_$$(hostname)"
+        command: python manage.py celery_worker -Q batch_transfer
 
     worker_continuous_transfer:
         <<: *default-app
-        command: bash -c "celery -A adit worker -Q continuous_transfer -l INFO -c 1 -n worker_continuous_transfer_$$(hostname)"
+        command: python manage.py celery_worker -Q continuous_stransfer
 
     celery_beat:
         <<: *default-app
