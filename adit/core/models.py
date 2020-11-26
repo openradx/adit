@@ -85,6 +85,7 @@ class DicomServer(DicomNode):
                 server_ae_title=self.ae_title,
                 server_host=self.host,
                 server_port=self.port,
+                rabbitmq_url=settings.RABBITMQ_URL,
                 patient_root_find_support=self.patient_root_find_support,
                 patient_root_get_support=self.patient_root_get_support,
                 patient_root_move_support=self.patient_root_move_support,

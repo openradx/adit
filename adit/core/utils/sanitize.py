@@ -2,7 +2,7 @@ import re
 
 
 def sanitize_dirname(dirname):
-    """Windows can't handle some files and folders so we have to sanitize them."""
+    """Windows can't handle some file and folder names so we have to sanitize them."""
     dirname = dirname.strip()
     dirname = re.sub(r"(\<|\>|\:|\"|\/|\\|\||\?|\*)", "", dirname)
     dirname = re.sub(r"(\.+)$", "", dirname)

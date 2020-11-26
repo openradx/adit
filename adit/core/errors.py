@@ -1,2 +1,0 @@
-class NoSpaceLeftError(Exception):
-    pass

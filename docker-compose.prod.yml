@@ -44,24 +44,31 @@ services:
 
     worker_default:
         <<: *default-app
-        command: bash -c "celery -A adit worker -Q default -l INFO -c 1 -n worker_default_$$(hostname)"
+        command: python manage.py celery_worker -Q default
 
     worker_batch_transfer:
         <<: *default-app
-        command: bash -c "celery -A adit worker -Q batch_transfer -l INFO -c 1 -n worker_batch_transfer_$$(hostname)"
+        command: python manage.py celery_worker -Q batch_transfer
 
     worker_continuous_transfer:
         <<: *default-app
-        command: bash -c "celery -A adit worker -Q continuous_transfer -l INFO -c 1 -n worker_continuous_transfer_$$(hostname)"
+        command: python manage.py celery_worker -Q continuous_stransfer
 
     celery_beat:
         <<: *default-app
-        command: bash -c "celery -A adit beat -l INFO -s /var/www/adit/celery/celerybeat-schedule --pidfile /var/www/adit/celery/celerybeat.pid"
+        command: python manage.py celery_beat
+
+    receiver:
+        <<: *default-app
+        ports:
+            - "11112:11112"
+        command: python manage.py receiver
+
     flower:
         <<: *default-app
         expose:
             - "5555"
-        command: bash -c "celery flower -A adit --url_prefix=flower"
+        command: celery flower -A adit --url_prefix=flower
 
     postgres:
         restart: always

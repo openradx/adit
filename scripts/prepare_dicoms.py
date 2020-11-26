@@ -4,7 +4,6 @@ Examples:
 python prepare_dicoms.py in_folder out_folder -m PatientName "Papaya^Pamela" -m PatientBirthDate "19760829"
 """
 import argparse
-import os
 from pathlib import Path
 import pydicom
 
@@ -36,32 +35,37 @@ def person_names_callback(_, data_element):
 
 
 modalities = []
-for root, dirs, files in os.walk(args.input_folder):
-    for file in files:
-        filepath = os.path.join(root, file)
-        ds = pydicom.dcmread(filepath)
-        modalities.append(ds.Modality)
+for path in Path(args.input_folder).rglob("*"):
+    if not path.is_file():
+        continue
+
+    ds = pydicom.dcmread(path)
+    modalities.append(ds.Modality)
+
 modalities = ",".join(sorted(list(set(modalities))))
 
-for root, dirs, files in os.walk(args.input_folder):
-    for file in files:
-        filepath = os.path.join(root, file)
-        ds = pydicom.dcmread(filepath)
+for path in Path(args.input_folder).rglob("*"):
+    if not path.is_file():
+        continue
 
-        if args.anonymize:
-            ds.walk(person_names_callback)
+    ds = pydicom.dcmread(path)
 
-        if args.modify_dicom_tag:
-            for modification in args.modify_dicom_tag:
-                tag_to_modify = modification[0]
-                value_to_assign = modification[1]
-                ds[tag_to_modify].value = value_to_assign
+    if args.anonymize:
+        ds.walk(person_names_callback)
 
-        patient_id = ds.PatientID
-        study_name = f"{ds.StudyDate}_{ds.StudyTime}_{modalities}"
-        series_descr = ds.SeriesDescription
-        outpath = os.path.join(args.output_folder, patient_id, study_name, series_descr)
-        Path(outpath).mkdir(parents=True, exist_ok=True)
-        instance_number = str(ds.InstanceNumber)
-        filename = f"{instance_number.zfill(5)}.dcm"
-        ds.save_as(os.path.join(outpath, filename))
+    if args.modify_dicom_tag:
+        for modification in args.modify_dicom_tag:
+            tag_to_modify = modification[0]
+            value_to_assign = modification[1]
+            ds[tag_to_modify].value = value_to_assign
+
+    patient_id = ds.PatientID
+    study_name = f"{ds.StudyDate}_{ds.StudyTime}_{modalities}"
+    series_descr = ds.SeriesDescription
+
+    folder_path = Path(args.output_folder) / patient_id / study_name / series_descr
+    folder_path.mkdir(parents=True, exist_ok=True)
+    instance_number = str(ds.InstanceNumber)
+    filename = f"{instance_number.zfill(5)}.dcm"
+    output_path = folder_path / filename
+    ds.save_as(str(output_path))
