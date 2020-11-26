@@ -73,3 +73,14 @@ class SelectiveTransferJobDetailView(
     context_object_name = "job"
     template_name = "selective_transfer/selective_transfer_job_detail.html"
     owner_accessor = "owner"
+
+
+class SelectiveTransferJobTaskView(LoginRequiredMixin, OwnerRequiredMixin, DetailView):
+    model = SelectiveTransferJob
+    context_object_name = "job"
+    template_name = "selective_transfer/selective_transfer_job_detail.html"
+    owner_accessor = "owner"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        return context
