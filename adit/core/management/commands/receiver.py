@@ -1,6 +1,5 @@
 import logging
 from io import BytesIO
-from functools import partial
 import signal
 import time
 import sys
@@ -16,8 +15,59 @@ FORCE_DEBUG_LOGGER = False
 
 logger = logging.getLogger(__name__)
 
+
+def run_store_scp_server():
+    ae = AE(ae_title=settings.ADIT_AE_TITLE)
+    ae.supported_contexts = AllStoragePresentationContexts
+    handlers = [
+        (evt.EVT_CONN_OPEN, on_connect),
+        (evt.EVT_CONN_CLOSE, on_close),
+        (evt.EVT_C_STORE, handle_store),
+    ]
+    logger.info("Starting ADIT DICOM C-STORE SCP Receiver.")
+    ae.start_server(("", 11112), evt_handlers=handlers)
+
+
+def on_connect(event):
+    rabbit_url = settings.RABBITMQ_URL
+    connection = None
+    retries = 0
+    while True:
+        try:
+            connection = pika.BlockingConnection(pika.URLParameters(rabbit_url))
+            break
+        except AMQPConnectionError as err:
+            retries += 1
+            if retries <= 30:
+                logger.error(
+                    "Cannot connect to %s. Trying again in 2 seconds... (%d/30).",
+                    rabbit_url,
+                    retries,
+                )
+            else:
+                logger.exception(
+                    "Could not connect to %s. No more retries.", rabbit_url
+                )
+                raise err
+        time.sleep(2)
+
+    if connection and connection.is_open:
+        logger.info("Connected to %s.", rabbit_url)
+    else:
+        raise AssertionError("No connection to RabbitMQ server established.")
+
+    event.assoc.rabbit_connection = connection
+
+
+def on_close(event):
+    connection = event.assoc.rabbit_connection
+    if connection and connection.is_open:
+        rabbit_url = settings.RABBITMQ_URL
+        logger.info("Disconnected from %s.", rabbit_url)
+
+
 # Implement a handler for evt.EVT_C_STORE
-def handle_store(connection, event):
+def handle_store(event):
     """Handle a C-STORE request event.
 
     The request is initiated with a C-MOVE request by ADIT itself to
@@ -33,6 +83,11 @@ def handle_store(connection, event):
 
     buffer = BytesIO()
     dcmwrite(buffer, ds, write_like_original=False)
+
+    connection = event.assoc.rabbit_connection
+
+    if not connection or not connection.is_open:
+        raise AssertionError("No connection to RabbitMQ server established.")
 
     channel = connection.channel()
     channel.exchange_declare(exchange="received", exchange_type="direct")
@@ -54,14 +109,6 @@ def handle_store(connection, event):
     return 0x0000  # Return a 'Success' status
 
 
-def run_store_scp_server(connection):
-    ae = AE(ae_title=settings.ADIT_AE_TITLE)
-    ae.supported_contexts = AllStoragePresentationContexts
-    handlers = [(evt.EVT_C_STORE, partial(handle_store, connection))]
-    logger.info("Starting ADIT DICOM C-STORE SCP Receiver.")
-    ae.start_server(("", 11112), evt_handlers=handlers)
-
-
 class Command(BaseCommand):
     help = "Starts a C-STORE SCP for receiving DICOM files."
 
@@ -78,26 +125,6 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
-        rabbit_url = settings.RABBITMQ_URL
-        connection = None
-        for i in range(100):
-            try:
-                connection = pika.BlockingConnection(pika.URLParameters(rabbit_url))
-                break
-            except AMQPConnectionError:
-                logger.error(
-                    "Cannot connect to %s. Trying again in 2 seconds... (%d/100).",
-                    rabbit_url,
-                    i + 1,
-                )
-            time.sleep(2)
-
-        if connection and connection.is_open:
-            logger.info("Connected to %s.", rabbit_url)
-        else:
-            logger.error("Could not connect to %s. No more retries", rabbit_url)
-            sys.exit(1)
-
         if options["debug"] or FORCE_DEBUG_LOGGER:
             debug_logger()
 
@@ -107,10 +134,9 @@ class Command(BaseCommand):
             # an exception.
             signal.signal(signal.SIGTERM, lambda *args: sys.exit(0))
             if options["autoreload"]:
-                autoreload.run_with_reloader(partial(run_store_scp_server, connection))
+                autoreload.run_with_reloader(run_store_scp_server)
             else:
-                run_store_scp_server(connection)
+                run_store_scp_server()
         finally:
-            # The connection may be already closed when RabbitMQ container was stopped earlier.
-            if connection and connection.is_open:
-                connection.close()
+            # Allow cleanup, not needed for now
+            pass
