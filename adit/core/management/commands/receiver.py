@@ -56,6 +56,8 @@ def on_connect(event):
     else:
         raise AssertionError("No connection to RabbitMQ server established.")
 
+    # We bind the RabbitMQ connection to assoc as this is the only object that is
+    # shared between all events.
     event.assoc.rabbit_connection = connection
 
 
