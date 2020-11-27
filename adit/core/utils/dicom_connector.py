@@ -16,7 +16,6 @@ from pathlib import Path
 import threading
 from concurrent.futures import ThreadPoolExecutor
 from io import BytesIO
-from functools import partial
 import errno
 import pika
 from celery.utils.log import get_task_logger
@@ -133,7 +132,7 @@ def _extract_pending_data(results, query_dict):
     return list(data)
 
 
-def _handle_c_get_store(folder, modifier_callback, errors, event):
+def _handle_c_get_store(event, folder, modifier_callback, errors):
     """Handle a C-STORE request event."""
 
     ds = event.dataset
@@ -351,8 +350,9 @@ class DicomConnector:
         query_ds = _make_query_dataset(query_dict)
 
         store_errors = []
-        handle_store = partial(_handle_c_get_store, folder, callback, store_errors)
-        self.assoc.bind(evt.EVT_C_STORE, handle_store)
+        self.assoc.bind(
+            evt.EVT_C_STORE, _handle_c_get_store, [folder, callback, store_errors]
+        )
 
         try:
             responses = self.assoc.send_c_get(query_ds, query_model, msg_id)
@@ -366,7 +366,7 @@ class DicomConnector:
             # If not just raise the original error.
             raise err
         finally:
-            self.assoc.unbind(evt.EVT_C_STORE, handle_store)
+            self.assoc.unbind(evt.EVT_C_STORE, _handle_c_get_store)
 
         return results
 
