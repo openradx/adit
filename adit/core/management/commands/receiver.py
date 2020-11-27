@@ -44,12 +44,12 @@ def on_connect(event):
                     rabbit_url,
                     retries,
                 )
+                time.sleep(2)
             else:
                 logger.exception(
                     "Could not connect to %s. No more retries.", rabbit_url
                 )
                 raise err
-        time.sleep(2)
 
     if connection and connection.is_open:
         logger.info("Connected to %s.", rabbit_url)
