@@ -65,7 +65,7 @@ def transfer_dicoms(task_id):
     if task.status != TransferTask.Status.PENDING:
         raise AssertionError(
             f"Invalid transfer task status {task.status} "
-            f"(Job ID {job.id}, Task ID {task.id})."
+            f"[Job ID {job.id}, Task ID {task.id}]."
         )
 
     task.status = TransferTask.Status.IN_PROGRESS
@@ -104,7 +104,7 @@ def transfer_dicoms(task_id):
 
     except Exception as err:  # pylint: disable=broad-except
         logger.exception(
-            "Error during transfer task (Job ID %d, Task ID %d).",
+            "Error during transfer task [Job ID %d, Task ID %d].",
             job.id,
             task.id,
         )

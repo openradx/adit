@@ -117,19 +117,31 @@ def _dictify_dataset(ds):
     return output
 
 
-def _extract_pending_data(results, query_dict):
+def _extract_pending_data(results):
     """Extract the data from a DicomOperation result."""
     status_category = results[-1]["status"]["category"]
     status_code = results[-1]["status"]["code"]
     if status_category not in [STATUS_PENDING, STATUS_SUCCESS]:
-        error_msg = f"{status_category} ({status_code}) occurred during C-FIND"
-        log_msg = error_msg + " with query params %s and returned identifier: %s"
-        logger.error(log_msg, query_dict, results[-1]["data"])
-        raise ValueError(error_msg + ".")
+        raise ValueError(f"{status_category} ({status_code}) occurred during C-FIND.")
 
     filtered = filter(lambda x: x["status"]["category"] == STATUS_PENDING, results)
     data = map(lambda x: x["data"], filtered)
     return list(data)
+
+
+def _evaluate_get_move_results(results, query):
+    status_category = results[-1]["status"]["category"]
+    status_code = results[-1]["status"]["code"]
+    if status_category not in [STATUS_PENDING, STATUS_SUCCESS]:
+        data = results[-1]["data"]
+        failed_image_uids = data or data.get("FailedSOPInstanceList")
+        error_msg = (
+            f"{status_category} ({status_code}) occurred while transferring "
+            f"the series with UID {query['SeriesInstanceUID']}."
+        )
+        if failed_image_uids:
+            error_msg += f" Failed images: {', '.join(failed_image_uids)}"
+        raise ValueError(error_msg)
 
 
 def _handle_c_get_store(event, folder, modifier_callback, errors):
@@ -339,16 +351,14 @@ class DicomConnector:
         query_ds = _make_query_dataset(query_dict)
         responses = self.assoc.send_c_find(query_ds, query_model, msg_id)
         results = self._fetch_results(responses, "C-FIND", query_dict, limit_results)
-        return _extract_pending_data(results, query_dict)
+        return _extract_pending_data(results)
 
     @_connect_to_server
     def _get(  # pylint: disable=too-many-arguments
         self, query_dict, query_model, folder, callback=None, msg_id=1
     ):
         logger.debug("Sending C-GET with query: %s", query_dict)
-
         query_ds = _make_query_dataset(query_dict)
-
         store_errors = []
         self.assoc.bind(
             evt.EVT_C_STORE, _handle_c_get_store, [folder, callback, store_errors]
@@ -466,7 +476,7 @@ class DicomConnector:
 
         return patients
 
-    def _get_query_model_find(self, query):
+    def _select_query_model_find(self, query):
         if query["PatientID"] and self.config.patient_root_find_support:
             return PatientRootQueryRetrieveInformationModelFind
 
@@ -489,7 +499,7 @@ class DicomConnector:
 
             query_model = StudyRootQueryRetrieveInformationModelFind
         else:
-            query_model = self._get_query_model_find(query)
+            query_model = self._select_query_model_find(query)
 
         if not "NumberObStudyRelatedInstances" in query:
             query["NumberOfStudyRelatedInstances"] = ""
@@ -565,7 +575,7 @@ class DicomConnector:
         if modality:
             query["Modality"] = ""
 
-        series_list = self._find(query, self._get_query_model_find(query))
+        series_list = self._find(query, self._select_query_model_find(query))
 
         if not modality:
             return series_list
@@ -576,14 +586,6 @@ class DicomConnector:
                 series_list,
             )
         )
-
-    @_connect_to_server
-    def find_images(self, query):
-        query["QueryRetrieveLevel"] = "IMAGE"
-
-        images = self._find(query, self._get_query_model_find(query))
-
-        return images
 
     @_connect_to_server
     def download_study(  # pylint: disable=too-many-arguments
@@ -653,49 +655,39 @@ class DicomConnector:
             )
 
     def _download_series_get(self, query, folder, modifier_callback=None):
+        results = self._get(
+            query, self._select_query_model_get(query), folder, modifier_callback
+        )
+
+        _evaluate_get_move_results(results, query)
+
+    def _select_query_model_get(self, query):
         if query["PatientID"] and self.config.patient_root_get_support:
-            query_model = PatientRootQueryRetrieveInformationModelGet
-        elif query["StudyInstanceUID"] and self.config.study_root_get_support:
-            query_model = StudyRootQueryRetrieveInformationModelGet
-        else:
-            raise ValueError(
-                "No valid Query/Retrieve Information Model for C-GET could be selected."
-            )
+            return PatientRootQueryRetrieveInformationModelGet
 
-        results = self._get(query, query_model, folder, modifier_callback)
+        if query["StudyInstanceUID"] and self.config.study_root_get_support:
+            return StudyRootQueryRetrieveInformationModelGet
 
-        status_category = results[-1]["status"]["category"]
-        status_code = results[-1]["status"]["code"]
-        if status_category not in [STATUS_PENDING, STATUS_SUCCESS]:
-            error_msg = (
-                f"{status_category} ({status_code}) occurred while downloading "
-                f"series with UID {query['SeriesInstanceUID']}."
-            )
-            log_msg = error_msg + " Provided identifier: %s"
-            logger.error(log_msg, results[-1]["data"])
-            raise ValueError(error_msg)
+        raise ValueError(
+            "No valid Query/Retrieve Information Model for C-GET could be selected."
+        )
 
     def _download_series_move(self, query, folder, modifier_callback=None):
-
-        if query["PatientID"] and self.config.patient_root_move_support:
-            query_model = PatientRootQueryRetrieveInformationModelMove
-        elif query["StudyInstanceUID"] and self.config.study_root_move_support:
-            query_model = StudyRootQueryRetrieveInformationModelMove
-        else:
-            raise ValueError(
-                "No valid Query/Retrieve Information Model for C-MOVE could be selected."
-            )
-
+        # Fetch all SOPInstanceUIDs in the series so that we can later
+        # evaluate if all images were downloaded.
         image_query = dict(
             query, **{"QueryRetrieveLevel": "IMAGE", "SOPInstanceUID": ""}
         )
-        images = self.find_images(image_query)
+        images = self._find(image_query, self._select_query_model_find(image_query))
         image_uids = [image["SOPInstanceUID"] for image in images]
 
+        # The images are sent to the receiver container (a C-STORE SCP server)
+        # by the move operation. Then those are send to a RabbitMQ queue from
+        # which we consume them in a separate thread.
         move_stopped_event = threading.Event()
         with ThreadPoolExecutor() as executor:
             future = executor.submit(
-                self._consume_from_receiver,
+                self._consume_dicoms,
                 query["StudyInstanceUID"],
                 query["SeriesInstanceUID"],
                 image_uids,
@@ -703,23 +695,31 @@ class DicomConnector:
                 modifier_callback,
                 move_stopped_event,
             )
-            move_results = self._move(query, query_model, self.config.client_ae_title)
+
+            results = self._move(
+                query,
+                self._select_query_model_move(query),
+                self.config.client_ae_title,
+            )
+
             move_stopped_event.set()
 
             future.result()
 
-            status_category = move_results[-1]["status"]["category"]
-            status_code = move_results[-1]["status"]["code"]
-            if status_category not in [STATUS_PENDING, STATUS_SUCCESS]:
-                error_msg = (
-                    f"{status_category} ({status_code}) occurred while downloading "
-                    f"series with UID {query['SeriesInstanceUID']}."
-                )
-                log_msg = error_msg + " Provided identifier: %s"
-                logger.error(log_msg, move_results[-1]["data"])
-                raise ValueError(error_msg)
+            _evaluate_get_move_results(results, query)
 
-    def _consume_from_receiver(
+    def _select_query_model_move(self, query):
+        if query["PatientID"] and self.config.patient_root_move_support:
+            return PatientRootQueryRetrieveInformationModelMove
+
+        if query["StudyInstanceUID"] and self.config.study_root_move_support:
+            return StudyRootQueryRetrieveInformationModelMove
+
+        raise ValueError(
+            "No valid Query/Retrieve Information Model for C-MOVE could be selected."
+        )
+
+    def _consume_dicoms(
         self,
         study_uid,
         series_uid,
@@ -730,6 +730,63 @@ class DicomConnector:
     ):
         remaining_image_uids = image_uids[:]
 
+        for message in self._consume_with_timeout(
+            study_uid, series_uid, move_stopped_event
+        ):
+            received_image_uid, data = message
+
+            if received_image_uid in remaining_image_uids:
+                ds = dcmread(data)
+
+                if received_image_uid != ds.SOPInstanceUID:
+                    raise AssertionError(
+                        f"Received wrong image with UID {ds.SOPInstanceUID}. "
+                        f"Expected UID {received_image_uid}."
+                    )
+
+                if modifier_callback:
+                    modifier_callback(ds)
+
+                self._save_dicom_from_receiver(ds, folder)
+
+                remaining_image_uids.remove(received_image_uid)
+
+                # Stop if all images of this series were received
+                if not remaining_image_uids:
+                    break
+
+        if remaining_image_uids:
+            if remaining_image_uids == image_uids:
+                raise ValueError(f"No images of series with UID {series_uid} received.")
+            raise ValueError(
+                f"Several images of series with UID {series_uid} were not received: "
+                f"{remaining_image_uids}"
+            )
+
+    def _consume_with_timeout(self, study_uid, series_uid, move_stopped_event):
+        last_consume_at = time.time()
+        for message in self._consume_from_receiver(study_uid, series_uid):
+            method, properties, body = message
+
+            # If we are waiting without a message for more than 60s
+            # after the move operation stopped then stop waiting anymore
+            time_since_last_consume = time.time() - last_consume_at
+            if move_stopped_event.is_set() and time_since_last_consume > 60:
+                break
+
+            # We just reached an inactivity timeout
+            if not method:
+                continue
+
+            # Reset our timer if a real new message arrives
+            last_consume_at = time.time()
+
+            received_image_uid = properties.message_id
+            data = BytesIO(body)
+
+            yield received_image_uid, data
+
+    def _consume_from_receiver(self, study_uid, series_uid):
         connection = pika.BlockingConnection(
             pika.URLParameters(self.config.rabbitmq_url)
         )
@@ -745,70 +802,68 @@ class DicomConnector:
         )
 
         try:
-            last_consume_at = time.time()
-            for message in channel.consume(
-                queue_name, auto_ack=True, inactivity_timeout=1
-            ):
-                method, properties, body = message
-
-                # If we are waiting without a message for more than 60s
-                # after the move operation stopped then stop waiting anymore
-                time_since_last_consume = time.time() - last_consume_at
-                if move_stopped_event.is_set() and time_since_last_consume > 60:
-                    print("break it")
-                    break
-
-                # We just reached an inactivity timeout
-                if not method:
-                    continue
-
-                # Reset our timer if a real new message arrives
-                last_consume_at = time.time()
-
-                received_image_uid = properties.message_id
-                if received_image_uid in remaining_image_uids:
-                    ds = dcmread(BytesIO(body))
-
-                    if received_image_uid != ds.SOPInstanceUID:
-                        raise AssertionError(
-                            f"Received wrong image with UID {ds.SOPInstanceUID}. "
-                            f"Expected UID {received_image_uid}."
-                        )
-
-                    if modifier_callback:
-                        modifier_callback(ds)
-
-                    folder_path = Path(folder)
-                    folder_path.mkdir(parents=True, exist_ok=True)
-
-                    file_path = folder_path / received_image_uid
-
-                    # In this case we don't need to save with `write_like_original=False` as it
-                    # saved already saved it this way to the buffer in the receiver
-                    try:
-                        ds.save_as(str(file_path), write_like_original=False)
-                    except OSError as err:
-                        if err.errno == errno.ENOSPC:  # No space left on device
-                            raise IOError(
-                                f"Out of disk space while saving {file_path}."
-                            ) from err
-
-                    remaining_image_uids.remove(received_image_uid)
-
-                    # Stop if all images of this series were received
-                    if not remaining_image_uids:
-                        break
+            yield from channel.consume(queue_name, auto_ack=True, inactivity_timeout=1)
         finally:
             channel.close()
             connection.close()
 
-        if remaining_image_uids:
-            if remaining_image_uids == image_uids:
-                raise ValueError(f"No images of series with UID {series_uid} received.")
+    def _save_dicom_from_receiver(self, ds, folder):
+        folder_path = Path(folder)
+        folder_path.mkdir(parents=True, exist_ok=True)
+
+        file_path = folder_path / ds.SOPInstanceUID
+
+        # In this case we don't need to save with `write_like_original=False` as it
+        # saved already saved it this way to the buffer in the receiver
+        try:
+            ds.save_as(str(file_path), write_like_original=False)
+        except OSError as err:
+            if err.errno == errno.ENOSPC:  # No space left on device
+                raise IOError(f"Out of disk space while saving {file_path}.") from err
+
+    @_connect_to_server
+    def _send_study(self, patient_id, study_uid, destination, modality=None):
+        series_list = self.find_series(
+            {
+                "PatientID": patient_id,
+                "StudyInstanceUID": study_uid,
+                "Modality": modality,
+                "SeriesInstanceUID": "",
+                "SeriesDescription": "",
+            }
+        )
+
+        failed_series = []
+        for series in series_list:
+            series_uid = series["SeriesInstanceUID"]
+
+            try:
+                self._send_series(patient_id, study_uid, series, destination)
+            except ValueError:
+                failed_series.append(series_uid)
+
+        if len(failed_series) > 0:
             raise ValueError(
-                f"Several images of series with UID {series_uid} were not received: "
-                f"{remaining_image_uids}"
+                "Problems occurred while sending series with UID: %s"
+                % ", ".join(failed_series)
             )
+
+    @_connect_to_server
+    def _send_series(self, patient_id, study_uid, series_uid, destination):
+        query = {
+            "QueryRetrieveLevel": "SERIES",
+            "PatientID": patient_id,
+            "StudyInstanceUID": study_uid,
+            "SeriesInstanceUID": series_uid,
+        }
+
+        results = self._move(
+            query,
+            self._select_query_model_move(query),
+            destination,
+        )
+
+        _evaluate_get_move_results(results, query)
 
     @_connect_to_server
     def upload_folder(self, folder):
@@ -816,22 +871,17 @@ class DicomConnector:
 
         results = self._store(folder)
 
-        failed_instances = []
+        failed = []
         for result in results:
             status_category = result["status"]["category"]
             status_code = result["status"]["code"]
-            instance_uid = result["data"]["SOPInstanceUID"]
+            image_uid = result["data"]["SOPInstanceUID"]
             if status_category != STATUS_SUCCESS:
-                failed_instances.append(instance_uid)
-                logger.error(
-                    "%s (%d) occurred during uploading instance with UID %s.",
-                    status_category,
-                    status_code,
-                    instance_uid,
-                )
+                failed.append((image_uid, status_category, status_code))
 
-        if len(failed_instances) > 0:
+        if failed:
+            failed = [f"{i[0]} ({i[1]} {i[2]}" for i in failed] 
             raise ValueError(
-                "Problems occurred while uploading instances with UID: %s"
-                % ", ".join(failed_instances)
+                "Problems while uploading the following images: %s"
+                % ", ".join(failed)
             )

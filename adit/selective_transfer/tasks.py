@@ -12,14 +12,14 @@ logger = get_task_logger(__name__)
 
 @shared_task(ignore_result=True)
 def selective_transfer(job_id):
-    logger.info("Prepare selective transfer job (Job ID %d).", job_id)
+    logger.info("Prepare selective transfer job [Job ID %d].", job_id)
 
     job = SelectiveTransferJob.objects.get(id=job_id)
 
     if job.status != SelectiveTransferJob.Status.PENDING:
         raise AssertionError(
             f"Invalid selective transfer job status {job.get_status_display()} "
-            f"(Job ID {job.id})."
+            f"[Job ID {job.id}]."
         )
 
     transfers = [transfer_selected_dicoms.s(task.id) for task in job.tasks.all()]
@@ -33,7 +33,7 @@ def transfer_selected_dicoms(self, task_id):
     job = transfer_task.job
 
     logger.info(
-        "Processing selective transfer task (Job ID %d, Task ID %d).",
+        "Processing selective transfer task [Job ID %d, Task ID %d].",
         job.id,
         transfer_task.id,
     )
@@ -42,7 +42,7 @@ def transfer_selected_dicoms(self, task_id):
         raise AssertionError(
             "Invalid selective transfer task processing status "
             f"{transfer_task.get_status_display()} "
-            f"(Job ID {job.id}, Task ID {transfer_task.id})"
+            f"[Job ID {job.id}, Task ID {transfer_task.id}]."
         )
 
     if job.status == SelectiveTransferJob.Status.CANCELING:
@@ -63,7 +63,7 @@ def transfer_selected_dicoms(self, task_id):
 
 @shared_task(ignore_result=True)
 def on_job_finished(task_status_list, job_id):
-    logger.info("Selective transfer job finished (Job ID %d).", job_id)
+    logger.info("Selective transfer job finished [Job ID %d].", job_id)
 
     job = SelectiveTransferJob.objects.get(id=job_id)
 
@@ -84,7 +84,7 @@ def on_job_finished(task_status_list, job_id):
             has_failure = True
         else:
             raise AssertionError(
-                f"Invalid selective transfer task result status {status} (Job ID {job.id})."
+                f"Invalid selective transfer task result status {status} [Job ID {job.id}]."
             )
 
     if has_success and has_failure:
@@ -98,7 +98,7 @@ def on_job_finished(task_status_list, job_id):
         job.message = "All transfer tasks failed."
     else:
         raise AssertionError(
-            f"At least one request must succeed or fail (Job ID {job.id})."
+            f"At least one request must succeed or fail [Job ID {job.id}]."
         )
 
     job.save()
@@ -112,8 +112,7 @@ def _check_can_run_now(celery_task, transfer_task):
         raise celery_task.retry(
             eta=eta,
             exc=Warning(
-                "Selective transfer suspended. Retrying selective transfer task "
-                f"(Job ID {transfer_task.job.id}, Task ID {transfer_task.id}) "
-                f"in {naturaltime(eta)}."
+                f"Selective transfer suspended. Retrying in {naturaltime(eta)} "
+                f"[Job ID {transfer_task.job.id}, Task ID {transfer_task.id}]."
             ),
         )
