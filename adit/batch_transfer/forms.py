@@ -16,8 +16,8 @@ from .utils.parsers import RequestsParser, ParsingError
 
 
 class BatchTransferJobForm(forms.ModelForm):
-    source = DicomNodeChoiceField(DicomNode.NodeType.SERVER)
-    destination = DicomNodeChoiceField()
+    source = DicomNodeChoiceField(True, DicomNode.NodeType.SERVER)
+    destination = DicomNodeChoiceField(False)
     csv_file = RestrictedFileField(max_upload_size=5242880, label="CSV file")
     ethics_committee_approval = forms.BooleanField()
 

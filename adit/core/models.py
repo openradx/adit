@@ -47,7 +47,8 @@ class DicomNode(models.Model):
 
     node_type = models.CharField(max_length=2, choices=NodeType.choices)
     name = models.CharField(unique=True, max_length=64)
-    active = models.BooleanField(default=True)
+    source_active = models.BooleanField(default=True)
+    destination_active = models.BooleanField(default=True)
 
     objects = InheritanceManager()
 

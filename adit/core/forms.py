@@ -25,11 +25,16 @@ class DicomNodeSelect(Select):
 
 
 class DicomNodeChoiceField(ModelChoiceField):
-    def __init__(self, node_type=None):
-        if node_type and node_type in dict(DicomNode.NodeType.choices):
-            queryset = DicomNode.objects.filter(node_type=node_type, active=True)
+    def __init__(self, source, node_type=None):
+        if source:
+            queryset = DicomNode.objects.filter(source_active=True)
         else:
-            queryset = DicomNode.objects.filter(active=True)
+            queryset = DicomNode.objects.filter(destination_active=True)
+
+        if node_type and node_type in dict(DicomNode.NodeType.choices):
+            queryset = queryset.filter(node_type=node_type)
+        elif node_type is not None:
+            raise AssertionError(f"Invalid node type: {node_type}")
 
         super().__init__(queryset=queryset, widget=DicomNodeSelect)
 

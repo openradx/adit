@@ -1,6 +1,8 @@
 from django import forms
 from django.forms.models import BaseInlineFormSet
 from crispy_forms.helper import FormHelper
+from adit.core.forms import DicomNodeChoiceField
+from adit.core.models import DicomNode
 from .models import ContinuousTransferJob, DataElementFilter
 
 
@@ -9,15 +11,8 @@ class DateInput(forms.DateInput):
 
 
 class ContinuousTransferJobForm(forms.ModelForm):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-        self.fields["source"].widget.attrs["class"] = "custom-select"
-        self.fields["destination"].widget.attrs["class"] = "custom-select"
-
-        self.helper = FormHelper(self)
-        self.helper.form_tag = False
-        self.helper.disable_csrf = True
+    source = DicomNodeChoiceField(True, DicomNode.NodeType.SERVER)
+    destination = DicomNodeChoiceField(False, DicomNode.NodeType.SERVER)
 
     class Meta:
         model = ContinuousTransferJob
@@ -32,6 +27,16 @@ class ContinuousTransferJobForm(forms.ModelForm):
             "end_date",
         )
         widgets = {"start_date": DateInput(), "end_date": DateInput()}
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self.fields["source"].widget.attrs["class"] = "custom-select"
+        self.fields["destination"].widget.attrs["class"] = "custom-select"
+
+        self.helper = FormHelper(self)
+        self.helper.form_tag = False
+        self.helper.disable_csrf = True
 
 
 class DataElementFilterForm(forms.ModelForm):

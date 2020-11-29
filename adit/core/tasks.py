@@ -19,7 +19,7 @@ logger = get_task_logger(__name__)
 
 @shared_task(ignore_result=True)
 def check_disk_space():
-    folders = DicomFolder.objects.filter(active=True)
+    folders = DicomFolder.objects.filter(destination_active=True)
     for folder in folders:
         size = int(
             subprocess.check_output(["du", "-sm", folder.path])
@@ -83,11 +83,13 @@ def transfer_dicoms(task_id):
     handler, stream = _setup_logger()
 
     try:
-        if not job.source.active:
-            raise ValueError("Source DICOM node not active.")
+        if not job.source.source_active:
+            raise ValueError(f"Source DICOM node not active: {job.source.name}")
 
-        if not job.destination.active:
-            raise ValueError("Destination DICOM node not active.")
+        if not job.destination.destination_active:
+            raise ValueError(
+                f"Destination DICOM node not active: {job.destination.name}"
+            )
 
         if job.destination.node_type == DicomNode.NodeType.SERVER:
             _transfer_to_server(task)

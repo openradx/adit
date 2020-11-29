@@ -42,8 +42,8 @@ def query_field(field_name):
 
 
 class SelectiveTransferJobForm(forms.ModelForm):
-    source = DicomNodeChoiceField(DicomNode.NodeType.SERVER)
-    destination = DicomNodeChoiceField()
+    source = DicomNodeChoiceField(True, DicomNode.NodeType.SERVER)
+    destination = DicomNodeChoiceField(False)
     pseudonym = forms.CharField(
         required=False,
         max_length=64,
@@ -77,11 +77,6 @@ class SelectiveTransferJobForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-
-        self.fields["source"].queryset = DicomNode.objects.filter(
-            node_type=DicomNode.NodeType.SERVER, active=True
-        )
-        self.fields["destination"].queryset = DicomNode.objects.filter(active=True)
 
         self.fields["trial_protocol_id"].label = "Trial ID"
         self.fields["trial_protocol_name"].label = "Trial name"
