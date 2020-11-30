@@ -1,6 +1,6 @@
 from django.conf import settings
 from adit.core.models import TransferTask
-from adit.core.templatetags.dicom_helpers import parse_dicom_date
+from adit.core.templatetags.dicom_extras import parse_dicom_date
 from .models import SelectiveTransferJob
 
 
