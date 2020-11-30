@@ -1,6 +1,10 @@
 from django.utils.html import format_html
 import django_tables2 as tables
-from .models import TransferJob
+from .templatetags.core_extras import (
+    transfer_job_status_css_class,
+    transfer_task_status_css_class,
+)
+from .models import TransferJob, TransferTask
 
 
 class RecordIdColumn(tables.Column):
@@ -19,4 +23,30 @@ class TransferJobTable(tables.Table):
         order_by = ("-id",)
         template_name = "django_tables2/bootstrap4.html"
         fields = ("id", "job_type", "status", "source", "destination", "created")
-        attrs = {"class": "table table-bordered table-hover"}
+        attrs = {
+            "id": "transfer_job_table",
+            "class": "table table-bordered table-hover",
+        }
+
+    def render_status(self, value, record):
+        css_class = transfer_job_status_css_class(record.status)
+        return format_html(f'<span class="{css_class}">{value}</span>')
+
+
+class TransferTaskTable(tables.Table):
+    id = RecordIdColumn(verbose_name="Task ID")
+    end = tables.DateTimeColumn(verbose_name="Finished At")
+
+    class Meta:  # pylint: disable=too-few-public-methods
+        model = TransferTask
+        order_by = ("-id",)
+        template_name = "django_tables2/bootstrap4.html"
+        fields = ("id", "status", "message", "end")
+        attrs = {
+            "id": "transfer_task_table",
+            "class": "table table-bordered table-hover",
+        }
+
+    def render_status(self, value, record):
+        css_class = transfer_task_status_css_class(record.status)
+        return format_html(f'<span class="{css_class}">{value}</span>')

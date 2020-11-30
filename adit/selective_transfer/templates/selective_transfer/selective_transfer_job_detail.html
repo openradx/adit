@@ -47,8 +47,47 @@
     <dd class="col-sm-9">{{ job.message|default:"—" }}</dd>
 </dl>
 
-{% include 'selective_transfer/transfer_tasks_table.html' %}
+{% load crispy_forms_tags %}
+<div class="row justify-content-end mb-1">
+    <div class="col-md">
+        <h5 text-nowrap>
+            Tasks
+            <a 
+                href="javascript:void(null);"
+                id="copy-table-link"
+                class="badge badge-light align-top"
+                data-clipboard-target="#transfer_task_table"
+                data-toggle="tooltip"
+                data-placement="top"
+                title="Copy table to clipboard"
+            >
+                {% include "core/_clipboard.svg" %}
+            </a>
+        </h5>
+    </div>
+    <div class="col col-md-auto">
+        {% crispy filter.form %}
+    </div>
+    <div class="col col-md-auto">
+        {% crispy page_size_select %}
+    </div>
+</div>
+
+{% load render_table from django_tables2 %}
+{% if table.data %}
+    {% render_table table %}
+{% else %}
+    No tasks to view.
+{% endif %}
 
 {% include "core/_job_control_panel.html" %}
 
 {% endblock container %}
+
+{% block script %}
+<script>
+$(function() {
+    new ClipboardJS('#copy-table-link');
+});
+</script>
+{% endblock script %}

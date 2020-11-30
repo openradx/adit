@@ -10,4 +10,7 @@ class BatchTransferRequestTable(tables.Table):
         order_by = ("row_number",)
         template_name = "django_tables2/bootstrap4.html"
         fields = ("row_number", "status", "message", "end")
-        attrs = {"id": "requests-table", "class": "table table-bordered table-hover"}
+        attrs = {
+            "id": "batch_transfer_request_table",
+            "class": "table table-bordered table-hover",
+        }

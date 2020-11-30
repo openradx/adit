@@ -57,8 +57,8 @@ class BatchTransferJobDetailView(
     DetailView,
 ):
     owner_accessor = "owner"
-    filterset_class = BatchTransferRequestFilter
     table_class = BatchTransferRequestTable
+    filterset_class = BatchTransferRequestFilter
     model = BatchTransferJob
     context_object_name = "job"
     template_name = "batch_transfer/batch_transfer_job_detail.html"

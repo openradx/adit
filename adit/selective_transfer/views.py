@@ -3,7 +3,10 @@ from django.contrib.auth.mixins import PermissionRequiredMixin
 from django.views.generic.edit import CreateView
 from django.views.generic import DetailView
 from django.http import HttpResponseBadRequest
-from adit.core.mixins import OwnerRequiredMixin
+from django_tables2 import SingleTableMixin
+from adit.core.mixins import OwnerRequiredMixin, RelatedFilterMixin, PageSizeSelectMixin
+from adit.core.filters import TransferTaskFilter
+from adit.core.tables import TransferTaskTable
 from .forms import SelectiveTransferJobForm
 from .models import SelectiveTransferJob
 from .mixins import SelectiveTransferJobCreateMixin
@@ -67,9 +70,20 @@ class SelectiveTransferJobCreateView(
 
 
 class SelectiveTransferJobDetailView(
-    LoginRequiredMixin, OwnerRequiredMixin, DetailView
+    LoginRequiredMixin,
+    OwnerRequiredMixin,
+    SingleTableMixin,
+    RelatedFilterMixin,
+    PageSizeSelectMixin,
+    DetailView,
 ):
+    owner_accessor = "owner"
+    table_class = TransferTaskTable
+    filterset_class = TransferTaskFilter
     model = SelectiveTransferJob
     context_object_name = "job"
     template_name = "selective_transfer/selective_transfer_job_detail.html"
-    owner_accessor = "owner"
+
+    def get_filter_queryset(self):
+        job = self.get_object()
+        return job.tasks
