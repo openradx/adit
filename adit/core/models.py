@@ -223,3 +223,6 @@ class TransferTask(models.Model):
     created = models.DateTimeField(auto_now_add=True)
     start = models.DateTimeField(null=True, blank=True)
     end = models.DateTimeField(null=True, blank=True)
+
+    def get_absolute_url(self):
+        return reverse("transfer_task_detail", args=[str(self.id)])

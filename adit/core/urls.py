@@ -6,6 +6,7 @@ from .views import (
     TransferJobDeleteView,
     TransferJobCancelView,
     TransferJobVerifyView,
+    TransferTaskDetailView,
     FlowerProxyView,
 )
 
@@ -31,6 +32,11 @@ urlpatterns = [
         "transfer-jobs/<int:pk>/verify/",
         TransferJobVerifyView.as_view(),
         name="transfer_job_verify",
+    ),
+    path(
+        "transfer-tasks/<int:pk>/",
+        TransferTaskDetailView.as_view(),
+        name="transfer_task_detail",
     ),
     FlowerProxyView.as_url(),
 ]

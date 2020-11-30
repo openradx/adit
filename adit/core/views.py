@@ -1,7 +1,7 @@
 import re
 from django.views.generic import View
 from django.views.generic.edit import DeleteView, CreateView
-from django.views.generic.detail import SingleObjectMixin
+from django.views.generic.detail import DetailView, SingleObjectMixin
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.urls import re_path, reverse_lazy
 from django.shortcuts import get_object_or_404, redirect
@@ -12,7 +12,7 @@ from django.forms.formsets import ORDERING_FIELD_NAME
 from django_tables2 import SingleTableMixin
 from django_filters.views import FilterView
 from revproxy.views import ProxyView
-from .models import TransferJob
+from .models import TransferJob, TransferTask
 from .tables import TransferJobTable
 from .filters import TransferJobFilter
 from .mixins import OwnerRequiredMixin, PageSizeSelectMixin
@@ -95,6 +95,13 @@ class TransferJobVerifyView(
         job.delay()
         messages.success(self.request, self.success_message % job.__dict__)
         redirect(job)
+
+
+class TransferTaskDetailView(LoginRequiredMixin, OwnerRequiredMixin, DetailView):
+    model = TransferTask
+    context_object_name = "task"
+    template_name = "core/transfer_task_detail.html"
+    owner_accessor = "owner"
 
 
 class FlowerProxyView(UserPassesTestMixin, ProxyView):
