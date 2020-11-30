@@ -47,6 +47,7 @@ INSTALLED_APPS = [
     "adit.selective_transfer.apps.SelectiveTransferConfig",
     "adit.batch_transfer.apps.BatchTransferConfig",
     "adit.continuous_transfer.apps.ContinuousTransferConfig",
+    "adit.dicom_explorer.apps.DicomExplorerConfig",
     "channels",
 ]
 
