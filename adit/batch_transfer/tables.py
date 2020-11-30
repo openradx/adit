@@ -4,13 +4,17 @@ from .models import BatchTransferRequest
 
 
 class BatchTransferRequestTable(tables.Table):
+    transfer_tasks = tables.columns.TemplateColumn(
+        verbose_name="Transfer Tasks",
+        template_name="batch_transfer/_transfer_tasks_column.html",
+    )
     end = tables.DateTimeColumn(verbose_name="Finished at")
 
     class Meta:  # pylint: disable=too-few-public-methods
         model = BatchTransferRequest
         order_by = ("row_number",)
         template_name = "django_tables2/bootstrap4.html"
-        fields = ("row_number", "status", "message", "end")
+        fields = ("row_number", "status", "transfer_tasks", "end")
         attrs = {
             "id": "batch_transfer_request_table",
             "class": "table table-bordered table-hover",
