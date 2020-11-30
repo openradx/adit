@@ -65,4 +65,4 @@ class BatchTransferJobDetailView(
 
     def get_filter_queryset(self):
         job = self.get_object()
-        return job.requests
+        return job.requests.prefetch_related("transfer_tasks")
