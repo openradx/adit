@@ -49,7 +49,7 @@ class DicomExplorerQueryForm(forms.Form):
 
         self.helper = FormHelper(self)
         self.helper.form_method = "GET"
-        self.helper.wrapper_class = "form-group row"
-        self.helper.label_class = "col-md-2 col-form-label"
+        self.helper.form_class = "form-horizontal"
+        self.helper.label_class = "col-md-2"
         self.helper.field_class = "col-md-10"
         self.helper.add_input(Submit("query", "Query"))
