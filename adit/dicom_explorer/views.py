@@ -9,6 +9,12 @@ from .forms import DicomExplorerQueryForm
 
 @sync_to_async
 @login_required
+def check_permission(request):
+    # A dummy function for the permission decorators
+    pass
+
+
+@sync_to_async
 def get_form(request):
     if not request.GET.get("query"):
         form = DicomExplorerQueryForm()
@@ -26,16 +32,20 @@ async def create_result_response(request, form):
     server = form.cleaned_data["server"]
     connector = server.create_connector()
     loop = asyncio.get_event_loop()
-    future = loop.run_in_executor(None, query_result)
+    future = loop.run_in_executor(None, query_server)
     return await query_result(request)
 
 
 @sync_to_async
-def query_result(request):
+def query_server(request):
     return render(request, "dicom_explorer/dicom_explorer_result.html", {})
 
 
 async def dicom_explorer_view(request):
+    denied_response = await check_permission(request)
+    if denied_response:
+        return denied_response
+
     form = await get_form(request)
     form_valid = await sync_to_async(form.is_valid)()
 
