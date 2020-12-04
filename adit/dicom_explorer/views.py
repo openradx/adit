@@ -1,6 +1,50 @@
+import asyncio
+from asgiref.sync import sync_to_async
 from django.views.generic.edit import FormView
 from django.core.exceptions import SuspiciousOperation
+from django.shortcuts import render
+from django.contrib.auth.decorators import login_required
 from .forms import DicomExplorerQueryForm
+
+
+@sync_to_async
+@login_required
+def get_form(request):
+    if not request.GET.get("query"):
+        form = DicomExplorerQueryForm()
+    else:
+        form = DicomExplorerQueryForm(request.GET)
+    return form
+
+
+@sync_to_async
+def create_form_response(request, form):
+    return render(request, "dicom_explorer/dicom_explorer_form.html", {"form": form})
+
+
+async def create_result_response(request, form):
+    server = form.cleaned_data["server"]
+    connector = server.create_connector()
+    loop = asyncio.get_event_loop()
+    future = loop.run_in_executor(None, query_result)
+    return await query_result(request)
+
+
+@sync_to_async
+def query_result(request):
+    return render(request, "dicom_explorer/dicom_explorer_result.html", {})
+
+
+async def dicom_explorer_view(request):
+    form = await get_form(request)
+    form_valid = await sync_to_async(form.is_valid)()
+
+    if request.GET.get("query") and form_valid:
+        response = await create_result_response(request, form)
+    else:
+        response = await create_form_response(request, form)
+
+    return response
 
 
 class DicomExplorerView(FormView):
