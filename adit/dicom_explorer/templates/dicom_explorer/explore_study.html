@@ -1,0 +1,40 @@
+{% extends "core/base_generic.html" %}
+
+{% load crispy_forms_tags %}
+
+{% block container %}
+
+<h4 class="mb-3">
+    DICOM Explorer
+    <small class="text-muted">Study Details</small>
+</h4>
+
+<div class="card">
+    {% include "dicom_explorer/_patient_details.html" %}
+</div>
+
+<div class="card mt-3">
+    {% include "dicom_explorer/_study_details.html" %}
+</div>
+
+<table class="table">
+    <caption>Series</caption>
+    <thead>
+        <tr>
+            <th scope="col">Series Description</th>
+            <th scope="col">Modality</th>
+            <th scope="col"># Images</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for study in studies %}
+            <tr>
+                <td>{{ series.SeriesDescription }}</td>
+                <td>{{ study.Modality }}</td>
+                <td>{{ study.NumberOfSeriesRelatedInstances|default:"?" }}</td>
+            </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+{% endblock container %}

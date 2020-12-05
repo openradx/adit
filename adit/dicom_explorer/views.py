@@ -1,10 +1,9 @@
 import asyncio
 from asgiref.sync import sync_to_async
-from django.views.generic.edit import FormView
-from django.core.exceptions import SuspiciousOperation
 from django.shortcuts import render
 from django.contrib.auth.decorators import login_required
 from .forms import DicomExplorerQueryForm
+from .utils.dicom_data_collector import DicomDataCollector
 
 
 @sync_to_async
@@ -17,28 +16,59 @@ def check_permission(request):
 @sync_to_async
 def get_form(request):
     if not request.GET.get("query"):
-        form = DicomExplorerQueryForm()
+        form = DicomExplorerQueryForm(initial=request.GET)
     else:
         form = DicomExplorerQueryForm(request.GET)
     return form
 
 
+def render_query_result(request, form):
+    query = form.cleaned_data
+    connector = query["server"].create_connector()
+    collector = DicomDataCollector(connector)
+
+    if query.get("patient_id") and not (
+        query.get("accession_number") or query.get("study_uid")
+    ):
+        patient, studies = collector.collect_patient_data(query.get("patient_id"))
+        return render(
+            request,
+            "dicom_explorer/explore_patient.html",
+            {"patient": patient, "studies": studies},
+        )
+
+    if query.get("accession_number") or query.get("study_uid"):
+        patient, study, series_list = collector.collect_study_data(
+            query.get("patient_id"),
+            query.get("accession_number"),
+            query.get("study_uid"),
+        )
+        return render(
+            request,
+            "dicom_explorer/explore_study.html",
+            {"patient": patient, "study": study, "series_list": series_list},
+        )
+
+    if query.get("series_uid"):
+        patient, study, series = collector.collect_series_data(
+            query.get("patient_id"),
+            query.get("accession_number"),
+            query.get("study_uid"),
+            query.get("series_uid"),
+        )
+        return render(
+            request,
+            "dicom_explorer/explore_series.html",
+            {"patient": patient, "study": study, "series": series},
+        )
+
+    # Should never happen as we validate the query with the form instance
+    raise AssertionError(f"Invalid DICOM explorer query: {query}")
+
+
 @sync_to_async
-def create_form_response(request, form):
-    return render(request, "dicom_explorer/dicom_explorer_form.html", {"form": form})
-
-
-async def create_result_response(request, form):
-    server = form.cleaned_data["server"]
-    connector = server.create_connector()
-    loop = asyncio.get_event_loop()
-    future = loop.run_in_executor(None, query_server)
-    return await query_result(request)
-
-
-@sync_to_async
-def query_server(request):
-    return render(request, "dicom_explorer/dicom_explorer_result.html", {})
+def render_query_form(request, form):
+    return render(request, "dicom_explorer/query_form.html", {"form": form})
 
 
 async def dicom_explorer_view(request):
@@ -50,47 +80,9 @@ async def dicom_explorer_view(request):
     form_valid = await sync_to_async(form.is_valid)()
 
     if request.GET.get("query") and form_valid:
-        response = await create_result_response(request, form)
+        loop = asyncio.get_event_loop()
+        response = await loop.run_in_executor(None, render_query_result, request, form)
     else:
-        response = await create_form_response(request, form)
+        response = await render_query_form(request, form)
 
     return response
-
-
-class DicomExplorerView(FormView):
-    form_class = DicomExplorerQueryForm
-
-    def get_template_names(self):
-        if self.request.GET.get("query"):
-            return ["dicom_explorer/dicom_explorer_result.html"]
-        else:
-            return ["dicom_explorer/dicom_explorer_form.html"]
-
-    def get_form_kwargs(self):
-        # Overridden because we use GET method for posting the query
-
-        kwargs = {
-            "initial": self.get_initial(),
-            "prefix": self.get_prefix(),
-        }
-
-        if self.request.GET.get("query"):
-            kwargs.update({"data": self.request.GET})
-
-        return kwargs
-
-    def post(self, request, *args, **kwargs):
-        raise SuspiciousOperation
-
-    def get(self, request, *args, **kwargs):
-        if not self.request.GET.get("query"):
-            return super().get(request, *args, **kwargs)
-
-        form = self.get_form()
-        if form.is_valid():
-            return self.form_valid(form)
-
-        return self.form_invalid(form)
-
-    def form_valid(self, form):
-        return self.render_to_response(self.get_context_data(form=form))

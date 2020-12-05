@@ -1,4 +1,5 @@
 from django import forms
+from django.core.exceptions import ValidationError
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Submit
 from adit.core.models import DicomServer
@@ -23,15 +24,15 @@ class DicomExplorerQueryForm(forms.Form):
         required=False,
         validators=id_validators,
     )
-    study_uid = forms.CharField(
-        label="Study Instance UID",
-        max_length=64,
-        required=False,
-        validators=id_validators,
-    )
     accession_number = forms.CharField(
         label="Accession Number",
         max_length=16,
+        required=False,
+        validators=id_validators,
+    )
+    study_uid = forms.CharField(
+        label="Study Instance UID",
+        max_length=64,
         required=False,
         validators=id_validators,
     )
@@ -53,3 +54,22 @@ class DicomExplorerQueryForm(forms.Form):
         self.helper.label_class = "col-md-2"
         self.helper.field_class = "col-md-10"
         self.helper.add_input(Submit("query", "Query"))
+
+    def clean(self):
+        cleaned_data = super().clean()
+
+        if not (
+            cleaned_data.get("patient_id")
+            or cleaned_data.get("accession_number")
+            or cleaned_data.get("study_uid")
+            or cleaned_data.get("series_uid")
+        ):
+            raise ValidationError("At least one ID or UID must be provided.")
+
+        if cleaned_data.get("series_uid") and not (
+            cleaned_data.get("accession_number") or cleaned_data.get("study_uid")
+        ):
+            raise ValidationError(
+                "When using Series Instance UID also a Study Instance UID "
+                " or Accession Number must be provided."
+            )

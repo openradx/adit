@@ -1,0 +1,15 @@
+{% load dicom_extras %}
+
+<dl class="row card-body mb-0">
+    <dt class="col-sm-3">Patient ID</dt>
+    <dd class="col-sm-9">{{ patient.PatientID }}
+
+    <dt class="col-sm-3">Patient Name</dt>
+    <dd class="col-sm-9">{{ patient.PatientName|convert_dicom_person_name }}
+
+    <dt class="col-sm-3">Birth Date</dt>
+    <dd class="col-sm-9">{{ patient.PatientBirthDate|parse_dicom_date|date:"SHORT_DATE_FORMAT"|default:"—" }}
+
+    <dt class="col-sm-3">Patient Sex</dt>
+    <dd class="col-sm-9">{{ patient.PatientSex|default:"—" }}
+</dl>

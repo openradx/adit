@@ -1,6 +1,6 @@
 from django.urls import path
 
-from .views import DicomExplorerView, dicom_explorer_view
+from .views import dicom_explorer_view
 
 urlpatterns = [
     path(

@@ -880,7 +880,7 @@ class DicomConnector:
                 failed.append((image_uid, status_category, status_code))
 
         if failed:
-            failed = [f"{i[0]} ({i[1]} {i[2]}" for i in failed] 
+            failed = [f"{i[0]} ({i[1]} {i[2]}" for i in failed]
             raise ValueError(
                 "Problems while uploading the following images: %s"
                 % ", ".join(failed)

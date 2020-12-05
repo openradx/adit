@@ -1,0 +1,55 @@
+{% extends "core/base_generic.html" %}
+
+{% load crispy_forms_tags %}
+{% load dicom_extras %}
+{% load dicom_explorer_extras %}
+
+{% block container %}
+
+<h4 class="mb-3">
+    DICOM Explorer
+    <small class="text-muted">Patient Details</small>
+</h4>
+
+<div class="card">
+    {% include "dicom_explorer/_patient_details.html" %}
+</div>
+
+<table class="table">
+    <caption>Studies</caption>
+    <thead>
+        <tr>
+            <th scope="col">Accession Number</th>
+            <th scope="col">Study Description</th>
+            <th scope="col">Study Date/Time</th>
+            <th scope="col">Modality</th>
+            <th scope="col"># Images</th>
+            <th scope="col"></th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for study in studies %}
+            <tr>
+                <td>{{ study.AccessionNumber }}</td>
+                <td>{{ study.StudyDescription|default:"—" }}</td>
+                {% parse_dicom_datetime study.StudyDate study.StudyTime as study_datetime %}
+                <td>{{ study_datetime|date:"SHORT_DATETIME_FORMAT" }}</td>
+                <td>{{ study.ModalitiesInStudy|filter_modalities|join:", "|default:"—" }}</td>
+                <td>{{ study.NumberOfStudyRelatedInstances|default:"—" }}</td>
+                <td>
+                    {% build_study_params study as study_params %}
+                    <a
+                        href="{% url "dicom_explorer" %}?{{ study_params }}"
+                        title="{{ study.StudyInstanceUID }}"
+                        data-toggle="tooltip"
+                        data-placement="left"
+                    >
+                        {% include "dicom_explorer/box_arrow_in_right.svg" %}
+                    </a>
+                </td>
+            </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+{% endblock container %}
