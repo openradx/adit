@@ -15,7 +15,7 @@ def check_permission(request):
 
 @sync_to_async
 def get_form(request):
-    if not request.GET.get("query"):
+    if not request.GET:
         form = DicomExplorerQueryForm(initial=request.GET)
     else:
         form = DicomExplorerQueryForm(request.GET)
@@ -24,7 +24,8 @@ def get_form(request):
 
 def render_query_result(request, form):
     query = form.cleaned_data
-    connector = query["server"].create_connector()
+    server = query["server"]
+    connector = server.create_connector()
     collector = DicomDataCollector(connector)
 
     if query.get("patient_id") and not (
@@ -34,7 +35,12 @@ def render_query_result(request, form):
         return render(
             request,
             "dicom_explorer/explore_patient.html",
-            {"patient": patient, "studies": studies},
+            {
+                "level": "patient",
+                "server": server,
+                "patient": patient,
+                "studies": studies,
+            },
         )
 
     if query.get("accession_number") or query.get("study_uid"):
@@ -46,7 +52,13 @@ def render_query_result(request, form):
         return render(
             request,
             "dicom_explorer/explore_study.html",
-            {"patient": patient, "study": study, "series_list": series_list},
+            {
+                "level": "study",
+                "server": server,
+                "patient": patient,
+                "study": study,
+                "series_list": series_list,
+            },
         )
 
     if query.get("series_uid"):
@@ -59,7 +71,13 @@ def render_query_result(request, form):
         return render(
             request,
             "dicom_explorer/explore_series.html",
-            {"patient": patient, "study": study, "series": series},
+            {
+                "level": "series",
+                "server": server,
+                "patient": patient,
+                "study": study,
+                "series": series,
+            },
         )
 
     # Should never happen as we validate the query with the form instance
@@ -79,7 +97,7 @@ async def dicom_explorer_view(request):
     form = await get_form(request)
     form_valid = await sync_to_async(form.is_valid)()
 
-    if request.GET.get("query") and form_valid:
+    if request.GET and form_valid:
         loop = asyncio.get_event_loop()
         response = await loop.run_in_executor(None, render_query_result, request, form)
     else:

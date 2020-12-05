@@ -1,6 +1,7 @@
 {% extends "core/base_generic.html" %}
 
 {% load crispy_forms_tags %}
+{% load dicom_explorer_extras %}
 
 {% block container %}
 
@@ -10,6 +11,10 @@
 </h4>
 
 <div class="card">
+    {% include "dicom_explorer/_server_details.html" %}
+</div>
+
+<div class="card mt-3">
     {% include "dicom_explorer/_patient_details.html" %}
 </div>
 
@@ -24,14 +29,26 @@
             <th scope="col">Series Description</th>
             <th scope="col">Modality</th>
             <th scope="col"># Images</th>
+            <th scope="col"></th>
         </tr>
     </thead>
     <tbody>
-        {% for study in studies %}
+        {% for series in series_list %}
             <tr>
                 <td>{{ series.SeriesDescription }}</td>
-                <td>{{ study.Modality }}</td>
-                <td>{{ study.NumberOfSeriesRelatedInstances|default:"?" }}</td>
+                <td>{{ series.Modality }}</td>
+                <td>{{ series.NumberOfSeriesRelatedInstances|default:"?" }}</td>
+                <td>
+                    {% build_series_params server.id patient.PatientID study.StudyInstanceUID series.SeriesInstanceUID as series_params %}
+                    <a
+                        href="{% url "dicom_explorer" %}?{{ series_params }}"
+                        title="{{ series.SeriesInstanceUID }}"
+                        data-toggle="tooltip"
+                        data-placement="left"
+                    >
+                        {% include "dicom_explorer/box_arrow_in_right.svg" %}
+                    </a>
+                </td>
             </tr>
         {% endfor %}
     </tbody>

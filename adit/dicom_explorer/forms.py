@@ -49,6 +49,7 @@ class DicomExplorerQueryForm(forms.Form):
         self.fields["server"].widget.attrs["class"] = "custom-select"
 
         self.helper = FormHelper(self)
+        self.helper.form_id = "dicom_explorer"
         self.helper.form_method = "GET"
         self.helper.form_class = "form-horizontal"
         self.helper.label_class = "col-md-2"
