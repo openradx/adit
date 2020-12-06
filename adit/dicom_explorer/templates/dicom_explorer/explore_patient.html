@@ -42,7 +42,7 @@
                 <td>
                     {% build_study_params server.id patient.PatientID study.StudyInstanceUID as study_params %}
                     <a
-                        href="{% url "dicom_explorer" %}?{{ study_params }}"
+                        href="{% url 'dicom_explorer' %}?{{ study_params }}"
                         title="{{ study.StudyInstanceUID }}"
                         data-toggle="tooltip"
                         data-placement="left"

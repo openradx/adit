@@ -2,11 +2,12 @@
 
 {% block container %}
 
-<h4>Transfer Task</h4>
+<h4 class="mb-3">Transfer Task</h4>
 
 {% with task.job as job %}
 
 {% load core_extras %}
+{% load dicom_explorer_extras %}
 
 <dl class="row">
     <dt class="col-sm-3">Task ID</dt>
@@ -51,15 +52,27 @@
     <dd class="col-sm-9">{{ task.patient_id }}</dd>
 
     <dt class="col-sm-3">Study Instance UID</dt>
-    <dd class="col-sm-9">{{ task.study_uid }}</dd>
+    <dd class="col-sm-9">
+        {{ task.study_uid }}
+        {% build_study_params job.source.id task.patient_id task.study_uid as study_params %}
+        <a href="{% url 'dicom_explorer' %}?{{ study_params }}">
+            {% include "core/box_arrow_in_right.svg" %}
+        </a>
+    </dd>
 
     {% for series_uid in task.series_uids %}
+        {% build_series_params job.source.id task.patient_id task.study_uid series_uid as series_params %}
         {% if forloop.first %}
             <dt class="col-sm-3">Series Instance UID</dt>
-            <dd class="col-sm-9">{{ series_uid }}</dd>
+        {% else %}
+            <dt class="col-sm-3"></dt>
         {% endif %}
-        <dt class="col-sm-3"></dt>
-        <dd class="col-sm-9">{{ series_uid }}</dd>
+        <dd class="col-sm-9">
+            {{ series_uid }}
+            <a href="{% url 'dicom_explorer' %}?{{ series_params }}">
+                {% include "core/box_arrow_in_right.svg" %}
+            </a>
+        </dd>
     {% endfor %}
 
     <dt class="col-sm-3">Pseudonym</dt>
@@ -67,7 +80,6 @@
 
     <dt class="col-sm-3">Log</dt>
     <dd class="col-sm-9">{{ task.log|default:"—" }}</dd>
-
 </dl>
 
 {% endwith %}
