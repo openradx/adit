@@ -37,7 +37,8 @@
                 <td>{{ study.StudyDescription|default:"—" }}</td>
                 {% combine_datetime study.StudyDate study.StudyTime as study_datetime %}
                 <td>{{ study_datetime|date:"SHORT_DATETIME_FORMAT"|default:"—" }}</td>
-                <td>{{ study.ModalitiesInStudy|filter_modalities|join:", "|default:"—" }}</td>
+                {% exclude_from_list study.ModalitiesInStudy "SR" "PR" as modalities %}
+                <td>{{ modalities|join:", "|default:"—" }}</td>
                 <td>{{ study.NumberOfStudyRelatedInstances|default:"—" }}</td>
                 <td>
                     {% build_study_params server.id patient.PatientID study.StudyInstanceUID as study_params %}

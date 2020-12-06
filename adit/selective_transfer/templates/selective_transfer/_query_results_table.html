@@ -34,7 +34,8 @@
                 <td>{{ result.PatientName|convert_dicom_person_name|title }}</td>
                 <td>{{ result.PatientBirthDate|date:"SHORT_DATE_FORMAT" }}</td>
                 <td>{{ result.StudyDate|date:"SHORT_DATE_FORMAT" }}</td>
-                <td>{{ result.ModalitiesInStudy|filter_modalities|join:", "|default:"—" }}</td>
+                {% exclude_from_list study.ModalitiesInStudy "SR" "PR" as modalities %}
+                <td>{{ modalities|join:", "|default:"—" }}</td>
                 <td>{{ result.StudyDescription }}</td>
                 <td>{{ result.NumberOfStudyRelatedInstances }}</td>
             </tr>

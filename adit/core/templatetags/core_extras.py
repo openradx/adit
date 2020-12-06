@@ -13,25 +13,23 @@ def convert_dicom_person_name(value):
     return value.replace("^", ", ")
 
 
-@register.filter
-def filter_modalities(value):
+@register.simple_tag
+def exclude_from_list(value, *args):
     if not value:
         return value
 
-    exclude = ["SR", "PR"]
-
     if isinstance(value, list):
-        return [modality for modality in value if modality not in exclude]
+        return [item for item in value if item not in args]
 
-    if value in exclude:
+    if value in args:
         return ""
 
     return value
 
 
 @register.simple_tag
-def combine_datetime(date_value, time_value):
-    return datetime.combine(date_value, time_value)
+def combine_datetime(date, time):
+    return datetime.combine(date, time)
 
 
 @register.filter
