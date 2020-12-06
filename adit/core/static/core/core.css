@@ -7,6 +7,11 @@ caption {
     caption-side: top;
 }
 
+/* No wrap of long Bootstrap tooltips. */
+.tooltip-inner {
+    max-width: none;
+}
+
 /* Shows that you get more info when hovering it. */
 .info-hint {
     border-bottom: 1px dotted black;

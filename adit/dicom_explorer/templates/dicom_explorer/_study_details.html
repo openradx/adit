@@ -1,11 +1,20 @@
 {% load dicom_extras %}
+{% load dicom_explorer_extras %}
 
 <dl class="row card-body mb-0">
+    <dt class="col-sm-3">Study Instance UID</dt>
+    <dd class="col-sm-9">
+        {{ study.StudyInstanceUID }}
+        {% if level != "study" %}
+            {% build_study_params server.id patient.PatientID study.StudyInstanceUID as study_params %}
+            <a href="{% url 'dicom_explorer' %}?{{ study_params }}">
+                {% include "dicom_explorer/box_arrow_in_right.svg" %}
+            </a>
+        {% endif %}
+    </dd>
+
     <dt class="col-sm-3">Accession Number</dt>
     <dd class="col-sm-9">{{ study.AccessionNumber }}</dd>
-
-    <dt class="col-sm-3">Study Instance UID</dt>
-    <dd class="col-sm-9">{{ study.StudyInstanceUID }}</dd>
 
     <dt class="col-sm-3">Study Date/Time</dt>
     {% parse_dicom_datetime study.StudyDate study.StudyTime as study_datetime %}

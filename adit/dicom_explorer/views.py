@@ -43,7 +43,9 @@ def render_query_result(request, form):
             },
         )
 
-    if query.get("accession_number") or query.get("study_uid"):
+    if (query.get("accession_number") or query.get("study_uid")) and not query.get(
+        "series_uid"
+    ):
         patient, study, series_list = collector.collect_study_data(
             query.get("patient_id"),
             query.get("accession_number"),
