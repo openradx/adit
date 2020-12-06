@@ -11,6 +11,7 @@ the Celery task logger is used as we intercept those messages and save them
 in TransferTask model object.
 """
 import time
+import datetime
 from dataclasses import dataclass
 from pathlib import Path
 import threading
@@ -19,6 +20,7 @@ from io import BytesIO
 import errno
 import pika
 from celery.utils.log import get_task_logger
+from pydicom import config as pydicom_config
 from pydicom.dataset import Dataset
 from pydicom import dcmread, valuerep, uid
 from pydicom.errors import InvalidDicomError
@@ -54,6 +56,8 @@ FORCE_DEBUG_LOGGER = False
 # and https://www.distributedpython.com/2018/11/06/celery-task-logger-format/
 logger = get_task_logger(__name__)
 
+pydicom_config.datetime_conversion = True
+
 
 def _make_query_dataset(query_dict):
     """Turn a dict into a pydicom dataset for query."""
@@ -69,6 +73,11 @@ def _sanitize_unicode(s):
 
 
 def _convert_value(v):
+    """Converts a pydicom value to native Python value.
+
+    Only works with date, time and datetime conversion when
+    pydicom.conf.datetime_conversion is set to True.
+    """
     t = type(v)
     if t in (list, int, float):
         cv = v
@@ -77,16 +86,22 @@ def _convert_value(v):
     elif t == bytes:
         s = v.decode("ascii", "replace")
         cv = _sanitize_unicode(s)
-    elif t == valuerep.DSfloat:
-        cv = float(v)
+    elif t == uid.UID:
+        cv = str(v)
     elif t == valuerep.IS:
         cv = int(v)
+    elif t == valuerep.DSfloat:
+        cv = float(v)
     elif t == valuerep.PersonName:
         cv = str(v)
     elif t == valuerep.MultiValue:  # e.g. ModalitiesInStudy
         cv = list(v)
-    elif t == uid.UID:
-        cv = str(v)
+    elif t == valuerep.DA:
+        cv = datetime.date.fromisoformat(v.isoformat())
+    elif t == valuerep.TM:
+        cv = datetime.time.fromisoformat(v.isoformat())
+    elif t == valuerep.DT:
+        cv = datetime.datetime.fromisoformat(v.isoformat())
     else:
         cv = repr(v)
     return cv
@@ -882,6 +897,5 @@ class DicomConnector:
         if failed:
             failed = [f"{i[0]} ({i[1]} {i[2]}" for i in failed]
             raise ValueError(
-                "Problems while uploading the following images: %s"
-                % ", ".join(failed)
+                "Problems while uploading the following images: %s" % ", ".join(failed)
             )

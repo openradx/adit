@@ -1,7 +1,37 @@
+from datetime import datetime
 from django.template import Library
 from ..models import TransferJob, TransferTask
 
 register = Library()
+
+
+@register.filter
+def convert_dicom_person_name(value):
+    if not value:
+        return value
+
+    return value.replace("^", ", ")
+
+
+@register.filter
+def filter_modalities(value):
+    if not value:
+        return value
+
+    exclude = ["SR", "PR"]
+
+    if isinstance(value, list):
+        return [modality for modality in value if modality not in exclude]
+
+    if value in exclude:
+        return ""
+
+    return value
+
+
+@register.simple_tag
+def combine_datetime(date_value, time_value):
+    return datetime.combine(date_value, time_value)
 
 
 @register.filter

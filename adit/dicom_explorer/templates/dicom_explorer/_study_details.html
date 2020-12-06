@@ -1,4 +1,4 @@
-{% load dicom_extras %}
+{% load core_extras %}
 {% load dicom_explorer_extras %}
 
 <dl class="row card-body mb-0">
@@ -17,7 +17,7 @@
     <dd class="col-sm-9">{{ study.AccessionNumber|default:"—" }}</dd>
 
     <dt class="col-sm-3">Study Date/Time</dt>
-    {% parse_dicom_datetime study.StudyDate study.StudyTime as study_datetime %}
+    {% combine_datetime study.StudyDate study.StudyTime as study_datetime %}
     <dd class="col-sm-9">{{ study_datetime|date:"SHORT_DATETIME_FORMAT"|default:"—" }}</dd>
 
     <dt class="col-sm-3">Study Description</dt>

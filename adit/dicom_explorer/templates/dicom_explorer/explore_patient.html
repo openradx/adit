@@ -1,6 +1,6 @@
 {% extends "core/base_generic.html" %}
 
-{% load dicom_extras %}
+{% load core_extras %}
 {% load dicom_explorer_extras %}
 
 {% block container %}
@@ -35,7 +35,7 @@
             <tr>
                 <td>{{ study.AccessionNumber|default:"—" }}</td>
                 <td>{{ study.StudyDescription|default:"—" }}</td>
-                {% parse_dicom_datetime study.StudyDate study.StudyTime as study_datetime %}
+                {% combine_datetime study.StudyDate study.StudyTime as study_datetime %}
                 <td>{{ study_datetime|date:"SHORT_DATETIME_FORMAT"|default:"—" }}</td>
                 <td>{{ study.ModalitiesInStudy|filter_modalities|join:", "|default:"—" }}</td>
                 <td>{{ study.NumberOfStudyRelatedInstances|default:"—" }}</td>

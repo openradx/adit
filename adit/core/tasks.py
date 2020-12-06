@@ -246,7 +246,8 @@ def _download_dicoms(
             modalities.add(found_series["Modality"])
     modalities = ",".join(modalities)
 
-    study_folder = patient_folder / f"{study_date}-{study_time}-{modalities}"
+    dt = f"{study_date.strftime('%Y%m%d')}-{study_time.strftime('%H%M%S')}"
+    study_folder = patient_folder / f"{dt}-{modalities}"
     study_folder.mkdir(parents=True, exist_ok=True)
 
     anonymizer = Anonymizer()

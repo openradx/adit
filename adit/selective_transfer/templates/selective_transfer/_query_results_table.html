@@ -1,4 +1,4 @@
-{% load dicom_extras %}
+{% load core_extras %}
 
 <table class="table">
     <thead>
@@ -32,8 +32,8 @@
                 </td>
                 <td>{{ result.PatientID }}</td>
                 <td>{{ result.PatientName|convert_dicom_person_name|title }}</td>
-                <td>{{ result.PatientBirthDate|parse_dicom_date|date:"SHORT_DATE_FORMAT" }}</td>
-                <td>{{ result.StudyDate|parse_dicom_date|date:"SHORT_DATE_FORMAT" }}</td>
+                <td>{{ result.PatientBirthDate|date:"SHORT_DATE_FORMAT" }}</td>
+                <td>{{ result.StudyDate|date:"SHORT_DATE_FORMAT" }}</td>
                 <td>{{ result.ModalitiesInStudy|filter_modalities|join:", "|default:"—" }}</td>
                 <td>{{ result.StudyDescription }}</td>
                 <td>{{ result.NumberOfStudyRelatedInstances }}</td>

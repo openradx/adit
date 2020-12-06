@@ -1,6 +1,6 @@
+from datetime import datetime
 from django.conf import settings
 from adit.core.models import TransferTask
-from adit.core.templatetags.dicom_extras import parse_dicom_date
 from .models import SelectiveTransferJob
 
 
@@ -21,6 +21,7 @@ class SelectiveTransferJobCreateMixin:
                 "ModalitiesInStudy": data["modality"],
                 "StudyInstanceUID": "",
                 "StudyDescription": "",
+                "StudyTime": "",
                 "NumberOfStudyRelatedInstances": "",
             },
             force_study_root=True,
@@ -30,7 +31,7 @@ class SelectiveTransferJobCreateMixin:
         studies = sorted(studies, key=lambda study: study["PatientName"].lower())
         studies = sorted(
             studies,
-            key=lambda study: parse_dicom_date(study["StudyDate"]),
+            key=lambda study: datetime.combine(study["StudyDate"], study["StudyTime"]),
             reverse=True,
         )
 

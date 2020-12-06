@@ -1,4 +1,4 @@
-{% load dicom_extras %}
+{% load core_extras %}
 {% load dicom_explorer_extras %}
 
 <dl class="row card-body mb-0">
@@ -17,7 +17,7 @@
     <dd class="col-sm-9">{{ patient.PatientName|convert_dicom_person_name|title|default:"—" }}</dd>
 
     <dt class="col-sm-3">Birth Date</dt>
-    <dd class="col-sm-9">{{ patient.PatientBirthDate|parse_dicom_date|date:"SHORT_DATE_FORMAT"|default:"—" }}</dd>
+    <dd class="col-sm-9">{{ patient.PatientBirthDate|date:"SHORT_DATE_FORMAT"|default:"—" }}</dd>
 
     <dt class="col-sm-3">Patient Sex</dt>
     <dd class="col-sm-9">{{ patient.PatientSex|default:"—" }}</dd>

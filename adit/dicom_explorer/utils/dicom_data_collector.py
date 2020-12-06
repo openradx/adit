@@ -1,3 +1,4 @@
+from datetime import datetime
 from operator import itemgetter
 
 
@@ -52,9 +53,11 @@ class DicomDataCollector:
             }
         )
 
-        # Does not take StudyTime into account.
-        # TODO Fix when pydicom handles the date/time conversion
-        studies = sorted(studies, key=itemgetter("StudyDate"), reverse=True)
+        studies = sorted(
+            studies,
+            key=lambda study: datetime.combine(study["StudyDate"], study["StudyTime"]),
+            reverse=True,
+        )
 
         return studies
 
