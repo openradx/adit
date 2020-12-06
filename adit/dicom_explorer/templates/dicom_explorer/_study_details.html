@@ -4,7 +4,7 @@
 <dl class="row card-body mb-0">
     <dt class="col-sm-3">Study Instance UID</dt>
     <dd class="col-sm-9">
-        {{ study.StudyInstanceUID|default:"—" }}
+        {{ study.StudyInstanceUID }}
         {% if level != "study" %}
             {% build_study_params server.id patient.PatientID study.StudyInstanceUID as study_params %}
             <a href="{% url 'dicom_explorer' %}?{{ study_params }}">
@@ -18,7 +18,7 @@
 
     <dt class="col-sm-3">Study Date/Time</dt>
     {% combine_datetime study.StudyDate study.StudyTime as study_datetime %}
-    <dd class="col-sm-9">{{ study_datetime|date:"SHORT_DATETIME_FORMAT"|default:"—" }}</dd>
+    <dd class="col-sm-9">{{ study_datetime|date:"SHORT_DATETIME_FORMAT" }}</dd>
 
     <dt class="col-sm-3">Study Description</dt>
     <dd class="col-sm-9">{{ study.StudyDescription|default:"—" }}</dd>
@@ -27,5 +27,5 @@
     <dd class="col-sm-9">{{ study.ModalitiesInStudy|join:", "|default:"—" }}</dd>
 
     <dt class="col-sm-3"># Images</dt>
-    <dd class="col-sm-9">{{ study.NumberOfStudyRelatedInstances|default:"—" }}</dd>
+    <dd class="col-sm-9">{{ study.NumberOfStudyRelatedInstances|default_if_none:"—" }}</dd>
 </dl>

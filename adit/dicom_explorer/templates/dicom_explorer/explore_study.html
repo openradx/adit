@@ -35,10 +35,10 @@
     <tbody>
         {% for series in series_list %}
             <tr>
-                <td>{{ series.SeriesNumber|default:"—" }}</td>
+                <td>{{ series.SeriesNumber|default_if_none:"—" }}</td>
                 <td>{{ series.SeriesDescription|default:"—" }}</td>
                 <td>{{ series.Modality|default:"—" }}</td>
-                <td>{{ series.NumberOfSeriesRelatedInstances|default:"—" }}</td>
+                <td>{{ series.NumberOfSeriesRelatedInstances|default_if_none:"—" }}</td>
                 <td>
                     {% build_series_params server.id patient.PatientID study.StudyInstanceUID series.SeriesInstanceUID as series_params %}
                     <a

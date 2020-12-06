@@ -101,11 +101,6 @@ class DicomDataCollector:
             }
         )
 
-        # TODO just a hack that can be handled better
-        for series in series_list:
-            if not isinstance(series["SeriesNumber"], int):
-                series["SeriesNumber"] = 0
-
         series_list = sorted(series_list, key=itemgetter("SeriesNumber"))
 
         return series_list
