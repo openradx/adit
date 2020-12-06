@@ -55,7 +55,12 @@
     <dd class="col-sm-9">
         {{ task.study_uid }}
         {% build_study_params job.source.id task.patient_id task.study_uid as study_params %}
-        <a href="{% url 'dicom_explorer' %}?{{ study_params }}">
+        <a
+            href="{% url 'dicom_explorer' %}?{{ study_params }}"
+            title="Show in DICOM Explorer"
+            data-toggle="tooltip"
+            data-placement="left"
+        >
             {% include "core/box_arrow_in_right.svg" %}
         </a>
     </dd>
@@ -69,7 +74,12 @@
         {% endif %}
         <dd class="col-sm-9">
             {{ series_uid }}
-            <a href="{% url 'dicom_explorer' %}?{{ series_params }}">
+            <a
+                href="{% url 'dicom_explorer' %}?{{ series_params }}"
+                title="Show in DICOM Explorer"
+                data-toggle="tooltip"
+                data-placement="left"
+            >
                 {% include "core/box_arrow_in_right.svg" %}
             </a>
         </dd>
