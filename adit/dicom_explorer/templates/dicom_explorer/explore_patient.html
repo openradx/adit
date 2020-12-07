@@ -33,10 +33,10 @@
     <tbody>
         {% for study in studies %}
             <tr>
-                <td>{{ study.AccessionNumber }}</td>
+                <td>{{ study.AccessionNumber|default:"—" }}</td>
                 <td>{{ study.StudyDescription|default:"—" }}</td>
                 {% parse_dicom_datetime study.StudyDate study.StudyTime as study_datetime %}
-                <td>{{ study_datetime|date:"SHORT_DATETIME_FORMAT" }}</td>
+                <td>{{ study_datetime|date:"SHORT_DATETIME_FORMAT"|default:"—" }}</td>
                 <td>{{ study.ModalitiesInStudy|filter_modalities|join:", "|default:"—" }}</td>
                 <td>{{ study.NumberOfStudyRelatedInstances|default:"—" }}</td>
                 <td>

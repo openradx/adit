@@ -1,3 +1,6 @@
+from operator import itemgetter
+
+
 class DicomDataCollector:
     def __init__(self, connector):
         self.connector = connector
@@ -48,6 +51,11 @@ class DicomDataCollector:
                 "NumberOfStudyRelatedInstances": "",
             }
         )
+
+        # Does not take StudyTime into account.
+        # TODO Fix when pydicom handles the date/time conversion
+        studies = sorted(studies, key=itemgetter("StudyDate"), reverse=True)
+
         return studies
 
     def _fetch_study(self, patient_id="", accession_number="", study_uid=""):
@@ -83,11 +91,20 @@ class DicomDataCollector:
                 "PatientID": patient_id,
                 "StudyInstanceUID": study_uid,
                 "SeriesInstanceUID": series_uid,
+                "SeriesNumber": "",
                 "SeriesDescription": "",
                 "Modality": "",
                 "NumberOfSeriesRelatedInstances": "",
             }
         )
+
+        # TODO just a hack that can be handled better
+        for series in series_list:
+            if not isinstance(series["SeriesNumber"], int):
+                series["SeriesNumber"] = 0
+
+        series_list = sorted(series_list, key=itemgetter("SeriesNumber"))
+
         return series_list
 
     def _fetch_series(self, patient_id="", study_uid="", series_uid=""):
