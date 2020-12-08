@@ -1,5 +1,4 @@
 from datetime import datetime
-from operator import itemgetter
 
 
 class DicomDataCollector:
@@ -101,7 +100,12 @@ class DicomDataCollector:
             }
         )
 
-        series_list = sorted(series_list, key=itemgetter("SeriesNumber"))
+        series_list = sorted(
+            series_list,
+            key=lambda x: float("inf")
+            if x["SeriesNumber"] is None
+            else x["SeriesNumber"],
+        )
 
         return series_list
 

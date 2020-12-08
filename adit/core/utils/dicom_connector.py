@@ -79,7 +79,7 @@ def _convert_value(v):
     pydicom.conf.datetime_conversion is set to True.
     """
     t = type(v)
-    if t in (list, int, float):
+    if t in (list, int, float, type(None)):
         cv = v
     elif t == str:
         cv = _sanitize_unicode(v)
