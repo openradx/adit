@@ -1,4 +1,5 @@
 from unittest.mock import patch, create_autospec, ANY
+import datetime
 import pytest
 from adit.core.utils.dicom_connector import DicomConnector
 from ..factories import (
@@ -16,7 +17,7 @@ def create_task(db):
     def _create_task(job):
         return TransferTaskFactory(
             job=job,
-            patient_id=10001,
+            patient_id="1001",
             study_uid="1.2.840.113845.11.1000000001951524609.20200705182951.2689481",
             series_uids=[],
             pseudonym="",
@@ -48,8 +49,8 @@ def create_study():
         return {
             "PatientID": task.patient_id,
             "StudyInstanceUID": task.study_uid,
-            "StudyDate": "20201001",
-            "StudyTime": "0800",
+            "StudyDate": datetime.date(2020, 10, 1),
+            "StudyTime": datetime.time(8, 0),
             "ModalitiesInStudy": ["CT", "SR"],
         }
 
@@ -72,9 +73,9 @@ def test_transfer_task_to_folder_with_study_succeeds(create_transfer_job, create
         task.patient_id, task.study_uid, ANY, modifier_callback=ANY
     )
     download_path = source_connector.download_study.call_args[0][2]
+    dt = f"{study['StudyDate'].strftime('%Y%m%d')}-{study['StudyTime'].strftime('%H%M%S')}"
     assert download_path.match(
-        f"{study['PatientID']}/"
-        f"{study['StudyDate']}-{study['StudyTime']}-{','.join(study['ModalitiesInStudy'])}"
+        f"{study['PatientID']}/{dt}-{','.join(study['ModalitiesInStudy'])}"
     )
 
 
@@ -97,9 +98,9 @@ def test_transfer_task_to_server_with_study_succeeds(create_transfer_job, create
         task.patient_id, task.study_uid, ANY, modifier_callback=ANY
     )
     download_path = source_connector.download_study.call_args[0][2]
+    dt = f"{study['StudyDate'].strftime('%Y%m%d')}-{study['StudyTime'].strftime('%H%M%S')}"
     assert download_path.match(
-        f"{study['PatientID']}/"
-        f"{study['StudyDate']}-{study['StudyTime']}-{','.join(study['ModalitiesInStudy'])}"
+        f"{study['PatientID']}/{dt}-{','.join(study['ModalitiesInStudy'])}"
     )
     upload_path = dest_connector.upload_folder.call_args[0][0]
     assert upload_path.match(f"*/{study['PatientID']}")
@@ -126,8 +127,8 @@ def test_transfer_task_to_archive_with_study_succeeds(
         task.patient_id, task.study_uid, ANY, modifier_callback=ANY
     )
     download_path = source_connector.download_study.call_args[0][2]
+    dt = f"{study['StudyDate'].strftime('%Y%m%d')}-{study['StudyTime'].strftime('%H%M%S')}"
     assert download_path.match(
-        f"{study['PatientID']}/"
-        f"{study['StudyDate']}-{study['StudyTime']}-{','.join(study['ModalitiesInStudy'])}"
+        f"{study['PatientID']}/{dt}-{','.join(study['ModalitiesInStudy'])}"
     )
     assert Popen.call_args[0][0][0] == "7z"
