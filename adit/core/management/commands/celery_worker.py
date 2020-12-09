@@ -2,33 +2,21 @@ import shlex
 import subprocess
 import logging
 import socket
-from functools import partial
-from django.core.management.base import BaseCommand
-from django.utils import autoreload
+from datetime import datetime
+from ..base.server_command import ServerCommand
 
 logger = logging.getLogger(__name__)
 
 
-def restart_celery_worker(options):
-    cmd = "pkill celery"
-    subprocess.call(shlex.split(cmd))
-
-    queue = options["queue"]
-    loglevel = options["loglevel"]
-    concurrency = options["concurrency"]
-    hostname = f"worker_{queue}_{socket.gethostname()}"
-    cmd = (
-        f"celery -A adit worker -Q {queue} -l {loglevel} -c {concurrency} -n {hostname}"
-    )
-    logger.info("Starting celery worker with '%s'.", cmd)
-    subprocess.call(shlex.split(cmd))
-
-
-class Command(BaseCommand):
+class Command(ServerCommand):
     help = "Starts a Celery worker"
 
+    starting_message = True
+
     def add_arguments(self, parser):
-        # Adapted form https://docs.celeryproject.org/en/stable/reference/cli.html
+        super().add_arguments(parser)
+
+        # https://docs.celeryproject.org/en/stable/reference/cli.html
         parser.add_argument(
             "-Q",
             "--queue",
@@ -47,15 +35,32 @@ class Command(BaseCommand):
             default=1,
             help="Number of child processes processing the queue.",
         )
-        parser.add_argument(
-            "--autoreload",
-            action="store_true",
-            help="Autoreload the celery worker.",
+
+    def run_server(self, **options):
+        # Kill previous running worker
+        logger.debug("Killing Celery worker.")
+        cmd = "pkill celery"
+        subprocess.call(shlex.split(cmd))
+
+        # Start a new worker
+        queue = options["queue"]
+        loglevel = options["loglevel"]
+        concurrency = options["concurrency"]
+        hostname = f"worker_{queue}_{socket.gethostname()}"
+        cmd = f"celery -A adit worker -Q {queue} -l {loglevel} -c {concurrency} -n {hostname}"
+
+        now = datetime.now().strftime("%B %d, %Y - %X")
+        self.stdout.write(now)
+        self.stdout.write(
+            (
+                "Starting Celery worker with command:\n"
+                "%(cmd)s\n"
+                "Quit with %(quit_command)s."
+            )
+            % {
+                "cmd": cmd,
+                "quit_command": self.quit_command,
+            }
         )
 
-    def handle(self, *args, **options):
-        if options["autoreload"]:
-            logger.info("Starting celery worker with autoreload...")
-            autoreload.run_with_reloader(partial(restart_celery_worker, options))
-        else:
-            restart_celery_worker(options)
+        subprocess.call(shlex.split(cmd))

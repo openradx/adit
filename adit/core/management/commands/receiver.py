@@ -1,31 +1,16 @@
 import logging
 from io import BytesIO
-import signal
 import time
-import sys
 import pika
 from pika.exceptions import AMQPConnectionError
-from django.utils import autoreload
-from django.core.management.base import BaseCommand
 from django.conf import settings
 from pynetdicom import AE, evt, AllStoragePresentationContexts, debug_logger
 from pydicom.filewriter import dcmwrite
+from ..base.server_command import ServerCommand
 
 FORCE_DEBUG_LOGGER = False
 
 logger = logging.getLogger(__name__)
-
-
-def run_store_scp_server():
-    ae = AE(ae_title=settings.ADIT_AE_TITLE)
-    ae.supported_contexts = AllStoragePresentationContexts
-    handlers = [
-        (evt.EVT_CONN_OPEN, on_connect),
-        (evt.EVT_CONN_CLOSE, on_close),
-        (evt.EVT_C_STORE, handle_store),
-    ]
-    logger.info("Starting ADIT DICOM C-STORE SCP Receiver.")
-    ae.start_server(("", 11112), evt_handlers=handlers)
 
 
 def on_connect(event):
@@ -111,34 +96,31 @@ def handle_store(event):
     return 0x0000  # Return a 'Success' status
 
 
-class Command(BaseCommand):
+class Command(ServerCommand):
     help = "Starts a C-STORE SCP for receiving DICOM files."
 
+    server_name = "ADIT DICOM C-STORE SCP Receiver"
+    default_port = 11112
+
     def add_arguments(self, parser):
-        parser.add_argument(
-            "--autoreload",
-            action="store_true",
-            help="Auto reload C-STORE SCP server on code change.",
-        )
+        super().add_arguments(parser)
+
         parser.add_argument(
             "--debug",
             action="store_true",
             help="Enable debug logger of pynetdicom.",
         )
 
-    def handle(self, *args, **options):
+    def run_server(self, **options):
         if options["debug"] or FORCE_DEBUG_LOGGER:
             debug_logger()
 
-        try:
-            # Listens for the SIGTERM signal from stopping the Docker container. Only
-            # with this listener the finally block is executed as sys.exit(0) throws
-            # an exception.
-            signal.signal(signal.SIGTERM, lambda *args: sys.exit(0))
-            if options["autoreload"]:
-                autoreload.run_with_reloader(run_store_scp_server)
-            else:
-                run_store_scp_server()
-        finally:
-            # Allow cleanup, not needed for now
-            pass
+        ae = AE(ae_title=settings.ADIT_AE_TITLE)
+        ae.supported_contexts = AllStoragePresentationContexts
+        handlers = [
+            (evt.EVT_CONN_OPEN, on_connect),
+            (evt.EVT_CONN_CLOSE, on_close),
+            (evt.EVT_C_STORE, handle_store),
+        ]
+
+        ae.start_server((self.addr, self.port), evt_handlers=handlers)

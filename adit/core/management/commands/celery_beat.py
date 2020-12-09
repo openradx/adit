@@ -1,48 +1,55 @@
 import shlex
 import subprocess
 import logging
+from datetime import datetime
 from pathlib import Path
-from functools import partial
-from django.core.management.base import BaseCommand
-from django.utils import autoreload
+from ..base.server_command import ServerCommand
 
 logger = logging.getLogger(__name__)
 
 
-def restart_celery_beat(options):
-    cmd = "pkill celery"
-    subprocess.call(shlex.split(cmd))
+class Command(ServerCommand):
+    help = "Starts Celery beat"
 
-    folder_path = Path("/var/www/adit/celery/")
-    folder_path.mkdir(parents=True, exist_ok=True)
-    schedule_path = folder_path / "celerybeat-schedule"
-    pid_path = folder_path / "celerybeat.pid"
-    loglevel = options["loglevel"]
-    cmd = f"celery -A adit beat -l {loglevel} -s {str(schedule_path)} --pidfile {str(pid_path)}"
-    logger.info("Starting celery beat with '%s'.", cmd)
-    subprocess.call(shlex.split(cmd))
-
-
-class Command(BaseCommand):
-    help = "Starts a Celery worker"
+    starting_message = False
 
     def add_arguments(self, parser):
-        # Adapted form https://docs.celeryproject.org/en/stable/reference/cli.html
+        super().add_arguments(parser)
+
+        # https://docs.celeryproject.org/en/stable/reference/cli.html
         parser.add_argument(
             "-l",
             "--loglevel",
             default="INFO",
             help="Logging level.",
         )
-        parser.add_argument(
-            "--autoreload",
-            action="store_true",
-            help="Autoreload the celery worker.",
+
+    def run_server(self, **options):
+        # Kill previous running beat
+        logger.debug("Killing Celery beat.")
+        cmd = "pkill celery"
+        subprocess.call(shlex.split(cmd))
+
+        # Start new Celery beat
+        folder_path = Path("/var/www/adit/celery/")
+        folder_path.mkdir(parents=True, exist_ok=True)
+        schedule_path = folder_path / "celerybeat-schedule"
+        pid_path = folder_path / "celerybeat.pid"
+        loglevel = options["loglevel"]
+        cmd = f"celery -A adit beat -l {loglevel} -s {str(schedule_path)} --pidfile {str(pid_path)}"
+
+        now = datetime.now().strftime("%B %d, %Y - %X")
+        self.stdout.write(now)
+        self.stdout.write(
+            (
+                "Starting Celery beat with command:\n"
+                "%(cmd)s\n"
+                "Quit with %(quit_command)s."
+            )
+            % {
+                "cmd": cmd,
+                "quit_command": self.quit_command,
+            }
         )
 
-    def handle(self, *args, **options):
-        if options["autoreload"]:
-            logger.info("Starting celery beat with autoreload...")
-            autoreload.run_with_reloader(partial(restart_celery_beat, options))
-        else:
-            restart_celery_beat(options)
+        subprocess.call(shlex.split(cmd))
