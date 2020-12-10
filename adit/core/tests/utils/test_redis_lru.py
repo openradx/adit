@@ -10,7 +10,7 @@ def redis_client():
     return redis.Redis.from_url(redis_url)
 
 
-@pytest.mark.skip(reason="Needs a running Redis server.")
+# @pytest.mark.skip(reason="Needs a running Redis server.")
 def test_lru_caches_successfully(redis_client):
     times_called = [0]
 
@@ -39,7 +39,7 @@ def test_lru_caches_successfully(redis_client):
     func.clear()
 
 
-@pytest.mark.skip(reason="Needs a running Redis server.")
+# @pytest.mark.skip(reason="Needs a running Redis server.")
 def test_lru_caches_successfully_with_slicer(redis_client):
     times_called = [0]
 
