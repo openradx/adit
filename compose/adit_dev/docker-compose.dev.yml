@@ -2,7 +2,7 @@ version: "3.8"
 
 x-app: &default-app
     build:
-        context: .
+        context: ../..
         target: development
     depends_on:
         - postgres
@@ -11,11 +11,11 @@ x-app: &default-app
         - orthanc_1
         - orthanc_2
     volumes:
-        - .:/app
+        - ../..:/app
         - /mnt:/mnt
         - adit_data:/var/www/adit
-    env_file:
-        - .env
+        - vscode-server:/root/.vscode-server/extensions
+        - vscode-server-insiders:/root/.vscode-server-insiders/extensions
     environment:
         USE_DOCKER: 1
         DJANGO_SETTINGS_MODULE: "adit.settings.development"
@@ -101,7 +101,7 @@ services:
             - "6501:6501"
             - "7501:7501"
         volumes:
-            - ./compose/orthanc1_config.json:/etc/orthanc/orthanc.json
+            - ../orthanc1_config.json:/etc/orthanc/orthanc.json
             - orthanc1_data:/var/lib/orthanc/db
 
     orthanc_2:
@@ -110,11 +110,13 @@ services:
             - "6502:6502"
             - "7502:7502"
         volumes:
-            - ./compose/orthanc2_config.json:/etc/orthanc/orthanc.json
+            - ../orthanc2_config.json:/etc/orthanc/orthanc.json
             - orthanc2_data:/var/lib/orthanc/db
 
 volumes:
     adit_data: # For statics, logs, Celery Beat db
+    vscode-server:
+    vscode-server-insiders:
     postgres_data:
     rabbit_data:
     redis_data:
