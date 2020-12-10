@@ -81,6 +81,7 @@ services:
             - postgres_data:/var/lib/postgresql/data
 
     rabbit:
+        restart: always
         image: rabbitmq:latest
         expose:
             - "5672"
