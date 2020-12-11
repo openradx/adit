@@ -23,4 +23,12 @@
         <dt class="col-sm-3">Date joined<dt>
         <dd class="col-sm-9">{{ user.date_joined }}</dd>
     </dl>
+
+    <a class="btn btn-secondary" href="{% url 'auth_password_change' %}">
+        Change Password
+    </a>
+
+	<a class="btn btn-secondary ml-2" href="{% url 'auth_logout' %}">
+        Logout
+    </a>
 {% endblock %}
