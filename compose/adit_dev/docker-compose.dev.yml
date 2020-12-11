@@ -17,6 +17,7 @@ x-app: &default-app
         - vscode-server:/root/.vscode-server/extensions
         - vscode-server-insiders:/root/.vscode-server-insiders/extensions
     environment:
+        ENABLE_REMOTE_DEBUGGING: 0
         USE_DOCKER: 1
         DJANGO_SETTINGS_MODULE: "adit.settings.development"
         DATABASE_URL: "psql://postgres:postgres@postgres:5432/postgres"
@@ -34,6 +35,7 @@ services:
         <<: *default-app
         ports:
             - "8000:8000"
+            - "5678:5678"
         command: >
             bash -c "
               ./scripts/wait-for-it.sh postgres:5432 -t 30 &&
