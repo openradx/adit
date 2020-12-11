@@ -1,0 +1,4 @@
+RowNumber;PatientID;PatientName;PatientBirthDate;AccessionNumber;StudyDate;Modality;Pseudonym;
+01;1006;Pineapple, Peter;02.11.1960;;29.05.2020;MR;30MX3T5N;
+02;;Papaya, Pamela;29.08.1976;0062115904;;;ABU5QZL9;
+03;1005;;;0062094291;19.08.2018;MR;ABU5QZL9;
