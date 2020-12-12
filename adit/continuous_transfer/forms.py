@@ -19,6 +19,7 @@ class ContinuousTransferJobForm(forms.ModelForm):
         fields = (
             "source",
             "destination",
+            "transfer_directly",
             "project_name",
             "project_description",
             "trial_protocol_id",
@@ -26,13 +27,24 @@ class ContinuousTransferJobForm(forms.ModelForm):
             "start_date",
             "end_date",
         )
+        labels = {
+            "transfer_directly": "Start transfer directly",
+        }
+        help_texts = {
+            "transfer_directly": "Start transfer directly or schedule it.",
+        }
         widgets = {"start_date": DateInput(), "end_date": DateInput()}
 
     def __init__(self, *args, **kwargs):
+        self.user = kwargs.pop("user")
+
         super().__init__(*args, **kwargs)
 
         self.fields["source"].widget.attrs["class"] = "custom-select"
         self.fields["destination"].widget.attrs["class"] = "custom-select"
+
+        if not self.user or not self.user.has_perm("core.transfer_directly"):
+            del self.fields["transfer_directly"]
 
         self.helper = FormHelper(self)
         self.helper.form_tag = False

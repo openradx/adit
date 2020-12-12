@@ -1,3 +1,4 @@
+from typing import Any, Dict
 from django.contrib.auth.mixins import AccessMixin
 from django_filters.views import FilterMixin
 from adit.core.forms import PageSizeSelectForm
@@ -30,6 +31,13 @@ class OwnerRequiredMixin(AccessMixin):
             self.handle_no_permission()
 
         return super().dispatch(request, *args, **kwargs)
+
+
+class TransferFormViewMixin:  # pylint: disable=too-few-public-methods
+    def get_form_kwargs(self) -> Dict[str, Any]:
+        kwargs = super().get_form_kwargs()
+        kwargs.update({"user": self.request.user})
+        return kwargs
 
 
 class RelatedFilterMixin(FilterMixin):

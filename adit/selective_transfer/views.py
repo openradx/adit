@@ -4,7 +4,12 @@ from django.views.generic.edit import CreateView
 from django.views.generic import DetailView
 from django.http import HttpResponseBadRequest
 from django_tables2 import SingleTableMixin
-from adit.core.mixins import OwnerRequiredMixin, RelatedFilterMixin, PageSizeSelectMixin
+from adit.core.mixins import (
+    OwnerRequiredMixin,
+    TransferFormViewMixin,
+    RelatedFilterMixin,
+    PageSizeSelectMixin,
+)
 from adit.core.filters import TransferTaskFilter
 from adit.core.tables import TransferTaskTable
 from .forms import SelectiveTransferJobForm
@@ -18,6 +23,7 @@ class SelectiveTransferJobCreateView(
     LoginRequiredMixin,
     PermissionRequiredMixin,
     SelectiveTransferJobCreateMixin,
+    TransferFormViewMixin,
     CreateView,
 ):
     """A view class to render the selective transfer form.

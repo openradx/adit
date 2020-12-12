@@ -1,7 +1,7 @@
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
 from django.views.generic import DetailView
 from django.conf import settings
-from adit.core.mixins import OwnerRequiredMixin
+from adit.core.mixins import OwnerRequiredMixin, TransferFormViewMixin
 from adit.core.views import InlineFormSetCreateView
 from .models import ContinuousTransferJob
 from .forms import (
@@ -23,7 +23,10 @@ def clear_errors(form_or_formset):
 
 
 class ContinuousTransferJobCreateView(
-    LoginRequiredMixin, PermissionRequiredMixin, InlineFormSetCreateView
+    LoginRequiredMixin,
+    PermissionRequiredMixin,
+    TransferFormViewMixin,
+    InlineFormSetCreateView,
 ):
     model = ContinuousTransferJob
     form_class = ContinuousTransferJobForm

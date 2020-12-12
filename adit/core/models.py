@@ -132,6 +132,9 @@ class TransferJob(models.Model):
 
     class Meta:
         indexes = [models.Index(fields=["owner", "status"])]
+        permissions = [
+            ("can_transfer_directly", "Can transfer directly (without scheduling).")
+        ]
 
     job_type = models.CharField(max_length=2, choices=job_type_choices)
     source = models.ForeignKey(DicomNode, related_name="+", on_delete=models.PROTECT)
@@ -142,6 +145,7 @@ class TransferJob(models.Model):
         max_length=2, choices=Status.choices, default=Status.UNVERIFIED
     )
     message = models.TextField(blank=True, default="")
+    transfer_directly = models.BooleanField(default=False)
     trial_protocol_id = models.CharField(
         blank=True, max_length=64, validators=[no_backslash_char_validator]
     )

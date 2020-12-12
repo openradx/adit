@@ -3,7 +3,12 @@ from django.views.generic.edit import CreateView
 from django.views.generic import TemplateView, DetailView
 from django.conf import settings
 from django_tables2 import SingleTableMixin
-from adit.core.mixins import OwnerRequiredMixin, RelatedFilterMixin, PageSizeSelectMixin
+from adit.core.mixins import (
+    OwnerRequiredMixin,
+    TransferFormViewMixin,
+    RelatedFilterMixin,
+    PageSizeSelectMixin,
+)
 from .models import BatchTransferSettings, BatchTransferJob
 from .forms import BatchTransferJobForm
 from .tables import BatchTransferRequestTable
@@ -11,7 +16,10 @@ from .filters import BatchTransferRequestFilter
 
 
 class BatchTransferJobCreateView(
-    LoginRequiredMixin, PermissionRequiredMixin, CreateView
+    LoginRequiredMixin,
+    PermissionRequiredMixin,
+    TransferFormViewMixin,
+    CreateView,
 ):
     model = BatchTransferJob
     form_class = BatchTransferJobForm

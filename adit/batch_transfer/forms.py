@@ -26,6 +26,7 @@ class BatchTransferJobForm(forms.ModelForm):
         fields = (
             "source",
             "destination",
+            "transfer_directly",
             "project_name",
             "project_description",
             "trial_protocol_id",
@@ -34,10 +35,12 @@ class BatchTransferJobForm(forms.ModelForm):
             "csv_file",
         )
         labels = {
+            "transfer_directly": "Start transfer directly",
             "trial_protocol_id": "Trial ID",
             "trial_protocol_name": "Trial name",
         }
         help_texts = {
+            "transfer_directly": "Start transfer directly or schedule it.",
             "trial_protocol_id": (
                 "Fill only when to modify the ClinicalTrialProtocolID tag "
                 "of all transfered DICOM files. Leave blank otherwise."
@@ -61,10 +64,15 @@ class BatchTransferJobForm(forms.ModelForm):
         self.requests = None
         self.save_requests = None
 
+        self.user = kwargs.pop("user")
+
         super().__init__(*args, **kwargs)
 
         self.fields["source"].widget.attrs["class"] = "custom-select"
         self.fields["destination"].widget.attrs["class"] = "custom-select"
+
+        if not self.user or not self.user.has_perm("core.transfer_directly"):
+            del self.fields["transfer_directly"]
 
         self.fields["trial_protocol_id"].widget.attrs["placeholder"] = "Optional"
         self.fields["trial_protocol_name"].widget.attrs["placeholder"] = "Optional"

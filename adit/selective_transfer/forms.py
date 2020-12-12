@@ -63,6 +63,7 @@ class SelectiveTransferJobForm(forms.ModelForm):
         fields = (
             "source",
             "destination",
+            "transfer_directly",
             "trial_protocol_id",
             "trial_protocol_name",
             "pseudonym",
@@ -74,12 +75,20 @@ class SelectiveTransferJobForm(forms.ModelForm):
             "modality",
             "accession_number",
         )
+        labels = {
+            "transfer_directly": "Start transfer directly",
+            "trial_protocol_id": "Trial ID",
+            "trial_protocol_name": "Trial name",
+        }
+        help_texts = {"transfer_directly": "Start transfer directly or schedule it."}
 
     def __init__(self, *args, **kwargs):
+        self.user = kwargs.pop("user")
+
         super().__init__(*args, **kwargs)
 
-        self.fields["trial_protocol_id"].label = "Trial ID"
-        self.fields["trial_protocol_name"].label = "Trial name"
+        if not self.user or not self.user.has_perm("core.transfer_directly"):
+            del self.fields["transfer_directly"]
 
         self.helper = FormHelper(self)
         self.helper.form_tag = False
@@ -87,6 +96,12 @@ class SelectiveTransferJobForm(forms.ModelForm):
             Row(
                 server_field("source"),
                 server_field("destination"),
+            ),
+            Row(
+                Column(
+                    Field("transfer_directly"),
+                ),
+                css_class="pl-1",
             ),
             Row(
                 Column(
