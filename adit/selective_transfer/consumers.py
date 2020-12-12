@@ -82,7 +82,7 @@ class SelectiveTransferConsumer(
             await self.send_json(error_response)
             return
 
-        form = SelectiveTransferJobForm(QueryDict(content["data"]))
+        form = SelectiveTransferJobForm(QueryDict(content["data"]), user=self.user)
         form_valid = await database_sync_to_async(form.is_valid)()
 
         if content["action"] == "query":
