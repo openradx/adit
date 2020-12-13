@@ -71,7 +71,7 @@ services:
         command: celery flower -A adit --url_prefix=flower
 
     postgres:
-        image: postgres:latest
+        image: postgres:13.1
         expose:
             - "5432"
         environment:
@@ -80,21 +80,22 @@ services:
             - postgres_data:/var/lib/postgresql/data
 
     rabbit:
-        image: rabbitmq:latest
+        image: rabbitmq:3.8-management
         expose:
             - "5672"
+            - "15672"
         volumes:
             - rabbit_data:/var/lib/rabbitmq
 
     redis:
-        image: redis:latest
+        image: redis:6.0
         expose:
             - "6379"
         volumes:
             - redis_data:/data
 
     orthanc_1:
-        image: jodogne/orthanc-plugins:latest
+        image: jodogne/orthanc-plugins:1.8.1
         ports:
             - "6501:6501"
             - "7501:7501"
@@ -103,7 +104,7 @@ services:
             - orthanc1_data:/var/lib/orthanc/db
 
     orthanc_2:
-        image: jodogne/orthanc-plugins:latest
+        image: jodogne/orthanc-plugins:1.8.1
         ports:
             - "6502:6502"
             - "7502:7502"

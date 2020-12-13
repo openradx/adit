@@ -68,9 +68,10 @@ services:
 
     postgres:
         restart: always
-        image: postgres:latest
+        image: postgres:13.1
         expose:
             - "5432"
+            - "15672"
         env_file:
             - .env
         volumes:
@@ -78,7 +79,7 @@ services:
 
     rabbit:
         restart: always
-        image: rabbitmq:latest
+        image: rabbitmq:3.8-management
         expose:
             - "5672"
         volumes:
@@ -86,7 +87,7 @@ services:
 
     redis:
         restart: always
-        image: redis:latest
+        image: redis:6.0
         expose:
             - "6379"
         volumes:
