@@ -4,8 +4,9 @@ from celery.utils.log import get_task_logger
 from django.conf import settings
 from django.utils import timezone
 from django.contrib.humanize.templatetags.humanize import naturaltime
-from adit.core.tasks import on_job_failed, transfer_dicoms
 from adit.core.models import TransferTask
+from adit.core.tasks import on_job_failed, transfer_dicoms
+from adit.core.utils.scheduler import Scheduler
 from .models import SelectiveTransferSettings, SelectiveTransferJob
 
 logger = get_task_logger(__name__)
@@ -59,12 +60,12 @@ def transfer_selected_dicoms(self, task_id):
         transfer_task.save()
         return transfer_task.status
 
+    _check_can_run_now(self, transfer_task)
+
     if job.status == SelectiveTransferJob.Status.PENDING:
         job.status = SelectiveTransferJob.Status.IN_PROGRESS
         job.start = timezone.now()
         job.save()
-
-    _check_can_run_now(self, transfer_task)
 
     return transfer_dicoms(task_id)
 
@@ -114,6 +115,20 @@ def on_job_finished(task_status_list, job_id):
 
 def _check_can_run_now(celery_task, transfer_task):
     selective_transfer_settings = SelectiveTransferSettings.get()
+
+    if not transfer_task.job.transfer_urgently:
+        scheduler = Scheduler(
+            selective_transfer_settings.slot_begin_time,
+            selective_transfer_settings.slot_end_time,
+        )
+        if scheduler.must_be_scheduled():
+            raise celery_task.retry(
+                eta=scheduler.next_slot(),
+                exc=Warning(
+                    f"Selective transfer outside of time slot. "
+                    f"[Job ID {transfer_task.job.id}, Task ID {transfer_task.id}]"
+                ),
+            )
 
     if selective_transfer_settings.suspended:
         eta = timezone.now() + timedelta(minutes=60)

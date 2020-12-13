@@ -1,3 +1,4 @@
+from datetime import time
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
@@ -21,11 +22,27 @@ class CoreSettings(models.Model):
         return cls.objects.first()
 
 
+def slot_time(hour, minute):
+    return time(hour, minute)
+
+
 class AppSettings(models.Model):
     # Lock the creation of new jobs
     locked = models.BooleanField(default=False)
     # Suspend the background processing.
     suspended = models.BooleanField(default=False)
+    # Must be set in UTC time as Celery workers can't figure out another time zone.
+    slot_begin_time = models.TimeField(
+        default=slot_time(22, 0),
+        help_text=f"Must be set in {settings.TIME_ZONE} time zone.",
+    )
+    # Must be set in UTC time as Celery workers can't figure out another time zone.
+    slot_end_time = models.TimeField(
+        default=slot_time(8, 0),
+        help_text=f"Must be set in {settings.TIME_ZONE} time zone.",
+    )
+    # Timeout between transfer tasks
+    transfer_timeout = models.IntegerField(default=3)
 
     class Meta:
         abstract = True

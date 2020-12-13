@@ -245,14 +245,14 @@ def _check_can_run_now(celery_task, request):
 
     if not request.job.transfer_urgently:
         scheduler = Scheduler(
-            batch_transfer_settings.batch_slot_begin_time,
-            batch_transfer_settings.batch_slot_end_time,
+            batch_transfer_settings.slot_begin_time,
+            batch_transfer_settings.slot_end_time,
         )
         if scheduler.must_be_scheduled():
             raise celery_task.retry(
                 eta=scheduler.next_slot(),
                 exc=Warning(
-                    f"Batch transfer request outside of batch time slot. "
+                    f"Batch transfer outside of time slot. "
                     f"[Job ID {request.job.id}, Request ID {request.id}, RowNumber {request.row_number}]"
                 ),
             )

@@ -1,4 +1,3 @@
-from datetime import time
 from django.db import models
 from django.conf import settings
 from django.core.exceptions import ValidationError
@@ -12,23 +11,7 @@ from adit.core.validators import (
 )
 
 
-def slot_time(hour, minute):
-    return time(hour, minute)
-
-
 class BatchTransferSettings(AppSettings):
-    # Must be set in UTC time as Celery workers can't figure out another time zone.
-    batch_slot_begin_time = models.TimeField(
-        default=slot_time(22, 0),
-        help_text=f"Must be set in {settings.TIME_ZONE} time zone.",
-    )
-    # Must be set in UTC time as Celery workers can't figure out another time zone.
-    batch_slot_end_time = models.TimeField(
-        default=slot_time(8, 0),
-        help_text=f"Must be set in {settings.TIME_ZONE} time zone.",
-    )
-    batch_timeout = models.IntegerField(default=3)
-
     class Meta:
         verbose_name_plural = "Batch transfer settings"
 
