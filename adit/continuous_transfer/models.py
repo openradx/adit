@@ -10,8 +10,6 @@ class ContinuousTransferSettings(AppSettings):
 
 class ContinuousTransferJob(TransferJob):
     JOB_TYPE = "CT"
-    DEFAULT_PRIORITY = 2
-    URGENT_PRIORITY = 6
 
     project_name = models.CharField(max_length=150)
     project_description = models.TextField(max_length=2000)

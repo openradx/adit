@@ -1,6 +1,7 @@
 from datetime import timedelta
 from celery import shared_task, chord
 from celery.utils.log import get_task_logger
+from django.conf import settings
 from django.utils import timezone
 from django.contrib.humanize.templatetags.humanize import naturaltime
 from adit.core.tasks import on_job_failed, transfer_dicoms
@@ -22,9 +23,9 @@ def selective_transfer(job_id):
             f"[Job ID {job.id}]."
         )
 
-    priority = SelectiveTransferJob.DEFAULT_PRIORITY
+    priority = settings.SELECTIVE_TRANSFER_DEFAULT_PRIORITY
     if job.transfer_urgently:
-        priority = SelectiveTransferJob.URGENT_PRIORITY
+        priority = settings.SELECTIVE_TRANSFER_URGENT_PRIORITY
 
     transfers = [
         transfer_selected_dicoms.s(task.id).set(priority=priority)

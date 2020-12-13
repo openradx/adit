@@ -28,9 +28,9 @@ def batch_transfer(job_id):
             f"[Job ID {job.id}]"
         )
 
-    priority = BatchTransferJob.DEFAULT_PRIORITY
+    priority = settings.BATCH_TRANSFER_DEFAULT_PRIORITY
     if job.transfer_urgently:
-        priority = BatchTransferJob.URGENT_PRIORITY
+        priority = settings.BATCH_TRANSFER_URGENT_PRIORITY
 
     transfer_requests = [
         transfer_request.s(request.id).set(priority=priority)
