@@ -83,11 +83,11 @@ class SelectiveTransferJobForm(forms.ModelForm):
         help_texts = {"transfer_directly": "Start transfer directly or schedule it."}
 
     def __init__(self, *args, **kwargs):
-        self.user = kwargs.pop("user")
+        transfer_directly_option = kwargs.pop("transfer_directly_option", False)
 
         super().__init__(*args, **kwargs)
 
-        if not self.user or not self.user.has_perm("core.transfer_directly"):
+        if not transfer_directly_option:
             del self.fields["transfer_directly"]
 
         self.helper = FormHelper(self)

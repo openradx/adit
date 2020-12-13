@@ -36,14 +36,14 @@ class ContinuousTransferJobForm(forms.ModelForm):
         widgets = {"start_date": DateInput(), "end_date": DateInput()}
 
     def __init__(self, *args, **kwargs):
-        self.user = kwargs.pop("user")
+        transfer_directly_option = kwargs.pop("transfer_directly_option", False)
 
         super().__init__(*args, **kwargs)
 
         self.fields["source"].widget.attrs["class"] = "custom-select"
         self.fields["destination"].widget.attrs["class"] = "custom-select"
 
-        if not self.user or not self.user.has_perm("core.transfer_directly"):
+        if not transfer_directly_option:
             del self.fields["transfer_directly"]
 
         self.helper = FormHelper(self)

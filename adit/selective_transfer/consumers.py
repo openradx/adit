@@ -82,7 +82,14 @@ class SelectiveTransferConsumer(
             await self.send_json(error_response)
             return
 
-        form = SelectiveTransferJobForm(QueryDict(content["data"]), user=self.user)
+        transfer_directly_option = False
+        if self.user and self.user.has_perm("core.can_transfer_directly"):
+            transfer_directly_option = True
+
+        form = SelectiveTransferJobForm(
+            QueryDict(content["data"]),
+            transfer_directly_option=transfer_directly_option,
+        )
         form_valid = await database_sync_to_async(form.is_valid)()
 
         if content["action"] == "query":
