@@ -100,6 +100,7 @@ class Command(ServerCommand):
     help = "Starts a C-STORE SCP for receiving DICOM files."
 
     server_name = "ADIT DICOM C-STORE SCP Receiver"
+    default_addr = ""
     default_port = 11112
 
     def add_arguments(self, parser):
