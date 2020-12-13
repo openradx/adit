@@ -22,7 +22,14 @@ def selective_transfer(job_id):
             f"[Job ID {job.id}]."
         )
 
-    transfers = [transfer_selected_dicoms.s(task.id) for task in job.tasks.all()]
+    priority = SelectiveTransferJob.DEFAULT_PRIORITY
+    if job.transfer_urgently:
+        priority = SelectiveTransferJob.URGENT_PRIORITY
+
+    transfers = [
+        transfer_selected_dicoms.s(task.id).set(priority=priority)
+        for task in job.tasks.all()
+    ]
 
     chord(transfers)(on_job_finished.s(job_id).on_error(on_job_failed.s(job_id=job_id)))
 

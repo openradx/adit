@@ -26,7 +26,7 @@ class BatchTransferJobForm(forms.ModelForm):
         fields = (
             "source",
             "destination",
-            "transfer_directly",
+            "transfer_urgently",
             "project_name",
             "project_description",
             "trial_protocol_id",
@@ -35,12 +35,14 @@ class BatchTransferJobForm(forms.ModelForm):
             "csv_file",
         )
         labels = {
-            "transfer_directly": "Start transfer directly",
+            "transfer_urgently": "Start transfer urgently",
             "trial_protocol_id": "Trial ID",
             "trial_protocol_name": "Trial name",
         }
         help_texts = {
-            "transfer_directly": "Start transfer directly or schedule it.",
+            "transfer_urgently": (
+                "Start transfer directly (without scheduling) and prioritize it."
+            ),
             "trial_protocol_id": (
                 "Fill only when to modify the ClinicalTrialProtocolID tag "
                 "of all transfered DICOM files. Leave blank otherwise."
@@ -64,15 +66,15 @@ class BatchTransferJobForm(forms.ModelForm):
         self.requests = None
         self.save_requests = None
 
-        transfer_directly_option = kwargs.pop("transfer_directly_option", False)
+        transfer_urgently_option = kwargs.pop("transfer_urgently_option", False)
 
         super().__init__(*args, **kwargs)
 
         self.fields["source"].widget.attrs["class"] = "custom-select"
         self.fields["destination"].widget.attrs["class"] = "custom-select"
 
-        if not transfer_directly_option:
-            del self.fields["transfer_directly"]
+        if not transfer_urgently_option:
+            del self.fields["transfer_urgently"]
 
         self.fields["trial_protocol_id"].widget.attrs["placeholder"] = "Optional"
         self.fields["trial_protocol_name"].widget.attrs["placeholder"] = "Optional"

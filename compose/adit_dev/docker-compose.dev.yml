@@ -50,13 +50,9 @@ services:
         <<: *default-app
         command: python manage.py celery_worker -Q default --autoreload
 
-    worker_batch_transfer:
+    worker_transfer:
         <<: *default-app
-        command: python manage.py celery_worker -Q batch_transfer --autoreload
-
-    worker_continuous_transfer:
-        <<: *default-app
-        command: python manage.py celery_worker -Q continuous_stransfer --autoreload
+        command: python manage.py celery_worker -Q transfer --autoreload
 
     celery_beat:
         <<: *default-app

@@ -19,7 +19,7 @@ class ContinuousTransferJobForm(forms.ModelForm):
         fields = (
             "source",
             "destination",
-            "transfer_directly",
+            "transfer_urgently",
             "project_name",
             "project_description",
             "trial_protocol_id",
@@ -28,23 +28,25 @@ class ContinuousTransferJobForm(forms.ModelForm):
             "end_date",
         )
         labels = {
-            "transfer_directly": "Start transfer directly",
+            "transfer_urgently": "Start transfer urgently",
         }
         help_texts = {
-            "transfer_directly": "Start transfer directly or schedule it.",
+            "transfer_urgently": (
+                "Start transfer directly (without scheduling) and prioritize it."
+            ),
         }
         widgets = {"start_date": DateInput(), "end_date": DateInput()}
 
     def __init__(self, *args, **kwargs):
-        transfer_directly_option = kwargs.pop("transfer_directly_option", False)
+        transfer_urgently_option = kwargs.pop("transfer_urgently_option", False)
 
         super().__init__(*args, **kwargs)
 
         self.fields["source"].widget.attrs["class"] = "custom-select"
         self.fields["destination"].widget.attrs["class"] = "custom-select"
 
-        if not transfer_directly_option:
-            del self.fields["transfer_directly"]
+        if not transfer_urgently_option:
+            del self.fields["transfer_urgently"]
 
         self.helper = FormHelper(self)
         self.helper.form_tag = False

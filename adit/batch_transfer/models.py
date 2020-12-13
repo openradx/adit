@@ -35,6 +35,8 @@ class BatchTransferSettings(AppSettings):
 
 class BatchTransferJob(TransferJob):
     JOB_TYPE = "BT"
+    DEFAULT_PRIORITY = 3
+    URGENT_PRIORITY = 6
 
     project_name = models.CharField(max_length=150)
     project_description = models.TextField(max_length=2000)

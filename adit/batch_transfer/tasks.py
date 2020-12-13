@@ -28,8 +28,13 @@ def batch_transfer(job_id):
             f"[Job ID {job.id}]"
         )
 
+    priority = BatchTransferJob.DEFAULT_PRIORITY
+    if job.transfer_urgently:
+        priority = BatchTransferJob.URGENT_PRIORITY
+
     transfer_requests = [
-        transfer_request.s(request.id) for request in job.requests.all()
+        transfer_request.s(request.id).set(priority=priority)
+        for request in job.requests.all()
     ]
 
     chord(transfer_requests)(
@@ -238,18 +243,19 @@ def on_job_finished(request_status_list, job_id):
 def _check_can_run_now(celery_task, request):
     batch_transfer_settings = BatchTransferSettings.get()
 
-    scheduler = Scheduler(
-        batch_transfer_settings.batch_slot_begin_time,
-        batch_transfer_settings.batch_slot_end_time,
-    )
-    if scheduler.must_be_scheduled():
-        raise celery_task.retry(
-            eta=scheduler.next_slot(),
-            exc=Warning(
-                f"Batch transfer request outside of batch time slot. "
-                f"[Job ID {request.job.id}, Request ID {request.id}, RowNumber {request.row_number}]"
-            ),
+    if not request.job.transfer_urgently:
+        scheduler = Scheduler(
+            batch_transfer_settings.batch_slot_begin_time,
+            batch_transfer_settings.batch_slot_end_time,
         )
+        if scheduler.must_be_scheduled():
+            raise celery_task.retry(
+                eta=scheduler.next_slot(),
+                exc=Warning(
+                    f"Batch transfer request outside of batch time slot. "
+                    f"[Job ID {request.job.id}, Request ID {request.id}, RowNumber {request.row_number}]"
+                ),
+            )
 
     if batch_transfer_settings.suspended:
         raise celery_task.retry(

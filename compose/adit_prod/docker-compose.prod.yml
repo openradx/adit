@@ -46,13 +46,9 @@ services:
         <<: *default-app
         command: python manage.py celery_worker -Q default
 
-    worker_batch_transfer:
+    worker_transfer:
         <<: *default-app
-        command: python manage.py celery_worker -Q batch_transfer
-
-    worker_continuous_transfer:
-        <<: *default-app
-        command: python manage.py celery_worker -Q continuous_stransfer
+        command: python manage.py celery_worker -Q transfer
 
     celery_beat:
         <<: *default-app

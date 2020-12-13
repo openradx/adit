@@ -9,6 +9,8 @@ class SelectiveTransferSettings(AppSettings):
 
 class SelectiveTransferJob(TransferJob):
     JOB_TYPE = "ST"
+    DEFAULT_PRIORITY = 4
+    URGENT_PRIORITY = 8
 
     def delay(self):
         from .tasks import selective_transfer  # pylint: disable=import-outside-toplevel

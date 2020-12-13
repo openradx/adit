@@ -268,8 +268,9 @@ CELERY_RESULT_BACKEND = REDIS_URL
 CELERY_WORKER_HIJACK_ROOT_LOGGER = False
 CELERY_TASK_DEFAULT_QUEUE = "default"
 CELERY_TASK_ROUTES = {
-    "adit.batch_transfer.tasks.transfer_request": {"queue": "batch_transfer"},
-    "adit.continuous_transfer.tasks.transfer_task": {"queue": "continuous_transfer"},
+    "adit.selective_transfer.tasks.transfer_selected_dicoms": {"queue": "transfer"},
+    "adit.batch_transfer.tasks.transfer_request": {"queue": "transfer"},
+    "adit.continuous_transfer.tasks.transfer_next_dicoms": {"queue": "transfer"},
 }
 CELERY_BEAT_SCHEDULE = {
     "check-disk-space": {
@@ -277,6 +278,17 @@ CELERY_BEAT_SCHEDULE = {
         "schedule": crontab(minute=0, hour=7),  # execute daily at 7 o'clock UTC
     }
 }
+
+# For priority queues, see also apply_async calls in the models.
+# Requires RabbitMQ as the message broker!
+CELERY_TASK_QUEUE_MAX_PRIORITY = 10
+CELERY_TASK_DEFAULT_PRIORITY = 5
+# Only non prefetched tasks can be sorted by their priority. So we only
+# prefetch only one task at a time.
+CELERY_WORKER_PREFETCH_MULTIPLIER = 1
+# Not sure if this is helpful. Saw this mentioned at
+# https://medium.com/better-programming/python-celery-best-practices-ae182730bb81
+# CELERY_TASK_ACKS_LATE = True
 
 # Flower is integrated in ADIT by using an reverse proxy (django-revproxy).
 # This allows to use the authentication of ADIT.
