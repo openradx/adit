@@ -18,13 +18,11 @@ from adit.core.views import (
     DicomJobVerifyView,
     TransferTaskDetailView,
 )
-from adit.core.filters import TransferTaskFilter
-from adit.core.tables import TransferTaskTable
 from .forms import SelectiveTransferJobForm
 from .models import SelectiveTransferJob, SelectiveTransferTask
 from .mixins import SelectiveTransferJobCreateMixin
-from .tables import SelectiveTransferJobTable
-from .filters import SelectiveTransferJobFilter
+from .tables import SelectiveTransferJobTable, SelectiveTransferTaskTable
+from .filters import SelectiveTransferJobFilter, SelectiveTransferTaskFilter
 
 QUERY_RESULT_LIMIT = 101
 
@@ -107,8 +105,8 @@ class SelectiveTransferJobDetailView(
     DetailView,
 ):
     owner_accessor = "owner"
-    table_class = TransferTaskTable
-    filterset_class = TransferTaskFilter
+    table_class = SelectiveTransferTaskTable
+    filterset_class = SelectiveTransferTaskFilter
     model = SelectiveTransferJob
     context_object_name = "job"
     template_name = "selective_transfer/selective_transfer_job_detail.html"

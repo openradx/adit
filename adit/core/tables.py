@@ -4,7 +4,6 @@ from .templatetags.core_extras import (
     transfer_job_status_css_class,
     transfer_task_status_css_class,
 )
-from .models import TransferTask
 
 
 class RecordIdColumn(tables.Column):
@@ -38,7 +37,7 @@ class TransferTaskTable(tables.Table):
     end = tables.DateTimeColumn(verbose_name="Finished At")
 
     class Meta:  # pylint: disable=too-few-public-methods
-        model = TransferTask
+        model = None
         order_by = ("-id",)
         template_name = "django_tables2/bootstrap4.html"
         fields = ("id", "status", "message", "end")

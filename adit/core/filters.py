@@ -17,7 +17,7 @@ class TransferJobFilter(django_filters.FilterSet):
 
 class TransferTaskFilter(django_filters.FilterSet):
     class Meta:
-        model = TransferTask
+        model = None
         fields = ("status",)
 
     def __init__(self, *args, **kwargs):
