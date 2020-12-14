@@ -1,6 +1,5 @@
 from django.db import models
 from django.core.exceptions import ValidationError
-from django.contrib.contenttypes.fields import GenericRelation
 from django.urls import reverse
 from adit.core.models import AppSettings, TransferJob, TransferTask
 from adit.core.validators import (
@@ -50,9 +49,6 @@ class BatchTransferRequest(models.Model):
 
     job = models.ForeignKey(
         BatchTransferJob, on_delete=models.CASCADE, related_name="requests"
-    )
-    transfer_tasks = GenericRelation(
-        TransferTask, related_query_name="batch_transfer_request"
     )
     row_number = models.PositiveIntegerField()
     patient_id = models.CharField(
@@ -139,3 +135,19 @@ class BatchTransferRequest(models.Model):
 
         if len(errors) > 0:
             raise ValidationError(errors)
+
+
+class BatchTransferTask(TransferTask):
+    job = models.ForeignKey(
+        BatchTransferJob,
+        on_delete=models.CASCADE,
+        related_name="tasks",
+    )
+    request = models.ForeignKey(
+        BatchTransferRequest,
+        on_delete=models.CASCADE,
+        related_name="tasks",
+    )
+
+    def get_absolute_url(self):
+        return reverse("batch_transfer_task_detail", args=[str(self.id)])

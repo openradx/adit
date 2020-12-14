@@ -6,6 +6,7 @@ from .views import (
     BatchTransferJobDeleteView,
     BatchTransferJobCancelView,
     BatchTransferJobVerifyView,
+    BatchTransferTaskDetailView,
 )
 
 urlpatterns = [
@@ -38,5 +39,10 @@ urlpatterns = [
         "<int:pk>/verify/",
         BatchTransferJobVerifyView.as_view(),
         name="batch_transfer_job_verify",
+    ),
+    path(
+        "tasks/<int:pk>/",
+        BatchTransferTaskDetailView.as_view(),
+        name="batch_transfer_task_detail",
     ),
 ]

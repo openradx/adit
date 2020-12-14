@@ -15,8 +15,9 @@ from adit.core.views import (
     DicomJobDeleteView,
     DicomJobCancelView,
     DicomJobVerifyView,
+    TransferTaskDetailView,
 )
-from .models import BatchTransferSettings, BatchTransferJob
+from .models import BatchTransferSettings, BatchTransferJob, BatchTransferTask
 from .forms import BatchTransferJobForm
 from .tables import BatchTransferJobTable, BatchTransferRequestTable
 from .filters import BatchTransferJobFilter, BatchTransferRequestFilter
@@ -93,7 +94,7 @@ class BatchTransferJobDetailView(
 
     def get_filter_queryset(self):
         job = self.get_object()
-        return job.requests.prefetch_related("transfer_tasks")
+        return job.requests.prefetch_related("tasks")
 
 
 class BatchTransferJobDeleteView(DicomJobDeleteView):
@@ -107,3 +108,7 @@ class BatchTransferJobCancelView(DicomJobCancelView):
 
 class BatchTransferJobVerifyView(DicomJobVerifyView):
     model = BatchTransferJob
+
+
+class BatchTransferTaskDetailView(TransferTaskDetailView):
+    model = BatchTransferTask

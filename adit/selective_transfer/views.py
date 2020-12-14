@@ -16,11 +16,12 @@ from adit.core.views import (
     DicomJobDeleteView,
     DicomJobCancelView,
     DicomJobVerifyView,
+    TransferTaskDetailView,
 )
 from adit.core.filters import TransferTaskFilter
 from adit.core.tables import TransferTaskTable
 from .forms import SelectiveTransferJobForm
-from .models import SelectiveTransferJob
+from .models import SelectiveTransferJob, SelectiveTransferTask
 from .mixins import SelectiveTransferJobCreateMixin
 from .tables import SelectiveTransferJobTable
 from .filters import SelectiveTransferJobFilter
@@ -128,3 +129,7 @@ class SelectiveTransferJobCancelView(DicomJobCancelView):
 
 class SelectiveTransferJobVerifyView(DicomJobVerifyView):
     model = SelectiveTransferJob
+
+
+class SelectiveTransferTaskDetailView(TransferTaskDetailView):
+    model = SelectiveTransferTask

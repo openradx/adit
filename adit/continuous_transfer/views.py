@@ -8,9 +8,10 @@ from adit.core.views import (
     DicomJobDeleteView,
     DicomJobCancelView,
     DicomJobVerifyView,
+    TransferTaskDetailView,
 )
 from adit.core.views import InlineFormSetCreateView
-from .models import ContinuousTransferJob
+from .models import ContinuousTransferJob, ContinuousTransferTask
 from .forms import (
     ContinuousTransferJobForm,
     DataElementFilterFormSet,
@@ -86,3 +87,7 @@ class ContinuousTransferJobCancelView(DicomJobCancelView):
 
 class ContinuousTransferJobVerifyView(DicomJobVerifyView):
     model = ContinuousTransferJob
+
+
+class ContinuousTransferTaskDetailView(TransferTaskDetailView):
+    model = ContinuousTransferTask

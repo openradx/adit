@@ -6,37 +6,43 @@ from .views import (
     SelectiveTransferJobDeleteView,
     SelectiveTransferJobCancelView,
     SelectiveTransferJobVerifyView,
+    SelectiveTransferTaskDetailView,
 )
 
 urlpatterns = [
     path(
-        "",
+        "jobs/",
         SelectiveTransferJobListView.as_view(),
         name="selective_transfer_job_list",
     ),
     path(
-        "new/",
+        "jobs/new/",
         SelectiveTransferJobCreateView.as_view(),
         name="selective_transfer_job_form",
     ),
     path(
-        "<int:pk>/",
+        "jobs/<int:pk>/",
         SelectiveTransferJobDetailView.as_view(),
         name="selective_transfer_job_detail",
     ),
     path(
-        "<int:pk>/delete/",
+        "jobs/<int:pk>/delete/",
         SelectiveTransferJobDeleteView.as_view(),
         name="selective_transfer_job_delete",
     ),
     path(
-        "<int:pk>/cancel/",
+        "jobs/<int:pk>/cancel/",
         SelectiveTransferJobCancelView.as_view(),
         name="selective_transfer_job_cancel",
     ),
     path(
-        "<int:pk>/verify/",
+        "jobs/<int:pk>/verify/",
         SelectiveTransferJobVerifyView.as_view(),
         name="selective_transfer_job_verify",
+    ),
+    path(
+        "tasks/<int:pk>/",
+        SelectiveTransferTaskDetailView.as_view(),
+        name="selective_transfer_task_detail",
     ),
 ]

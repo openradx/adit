@@ -93,7 +93,7 @@ class DicomJobVerifyView(
 
 
 class TransferTaskDetailView(LoginRequiredMixin, OwnerRequiredMixin, DetailView):
-    model = TransferTask
+    model = None
     context_object_name = "task"
     template_name = "core/transfer_task_detail.html"
     owner_accessor = "owner"

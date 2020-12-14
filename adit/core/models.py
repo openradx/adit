@@ -199,7 +199,7 @@ class TransferJob(DicomJob):
         return self.tasks.exclude(status__in=non_processed)
 
 
-class TransferTask(models.Model):
+class DicomTask(models.Model):
     class Status(models.TextChoices):
         PENDING = "PE", "Pending"
         IN_PROGRESS = "IP", "In Progress"
@@ -208,25 +208,9 @@ class TransferTask(models.Model):
         FAILURE = "FA", "Failure"
 
     class Meta:
+        abstract = True
         ordering = ("id",)
 
-    # The generic relation is optional and may be used to organize
-    # the transfers in an additional way
-    content_type = models.ForeignKey(
-        ContentType, blank=True, null=True, on_delete=models.SET_NULL
-    )
-    object_id = models.PositiveIntegerField(blank=True, null=True)
-    content_object = GenericForeignKey("content_type", "object_id")
-
-    job = models.ForeignKey(TransferJob, on_delete=models.CASCADE, related_name="tasks")
-    patient_id = models.CharField(max_length=64)
-    study_uid = models.CharField(max_length=64)
-    series_uids = models.JSONField(null=True, blank=True)
-    pseudonym = models.CharField(
-        blank=True,
-        max_length=64,
-        validators=[no_backslash_char_validator, no_control_chars_validator],
-    )
     status = models.CharField(
         max_length=2,
         choices=Status.choices,
@@ -238,5 +222,16 @@ class TransferTask(models.Model):
     start = models.DateTimeField(null=True, blank=True)
     end = models.DateTimeField(null=True, blank=True)
 
-    def get_absolute_url(self):
-        return reverse("transfer_task_detail", args=[str(self.id)])
+
+class TransferTask(DicomTask):
+    class Meta(DicomTask.Meta):
+        abstract = True
+
+    patient_id = models.CharField(max_length=64)
+    study_uid = models.CharField(max_length=64)
+    series_uids = models.JSONField(null=True, blank=True)
+    pseudonym = models.CharField(
+        blank=True,
+        max_length=64,
+        validators=[no_backslash_char_validator, no_control_chars_validator],
+    )

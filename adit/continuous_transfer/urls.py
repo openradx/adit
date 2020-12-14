@@ -6,6 +6,7 @@ from .views import (
     ContinuousTransferJobDeleteView,
     ContinuousTransferJobCancelView,
     ContinuousTransferJobVerifyView,
+    ContinuousTransferTaskDetailView,
 )
 
 urlpatterns = [
@@ -38,5 +39,10 @@ urlpatterns = [
         "<int:pk>/verify/",
         ContinuousTransferJobVerifyView.as_view(),
         name="continuous_transfer_job_verify",
+    ),
+    path(
+        "tasks/<int:pk>/",
+        ContinuousTransferTaskDetailView.as_view(),
+        name="continuous_transfer_task_detail",
     ),
 ]
