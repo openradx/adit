@@ -113,9 +113,6 @@ class DicomServer(DicomNode):
             )
         )
 
-    def __str__(self):
-        return f"DICOM Server {self.name}"
-
 
 class DicomFolder(DicomNode):
     NODE_TYPE = DicomNode.NodeType.FOLDER
