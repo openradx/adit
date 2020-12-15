@@ -161,7 +161,9 @@ class DicomJob(models.Model):
     urgent = models.BooleanField(default=False)
     message = models.TextField(blank=True, default="")
     owner = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="transfer_jobs"
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="%(app_label)s_jobs",
     )
     created = models.DateTimeField(auto_now_add=True)
     start = models.DateTimeField(null=True, blank=True)
