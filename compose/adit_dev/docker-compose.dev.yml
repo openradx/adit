@@ -16,6 +16,8 @@ x-app: &default-app
         - adit_data:/var/www/adit
         - vscode-server:/root/.vscode-server/extensions
         - vscode-server-insiders:/root/.vscode-server-insiders/extensions
+    env_file:
+        - ../../.env
     environment:
         ENABLE_REMOTE_DEBUGGING: 0
         USE_DOCKER: 1

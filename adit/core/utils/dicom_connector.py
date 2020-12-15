@@ -282,8 +282,10 @@ class DicomConnector:
 
         if not self.assoc.is_established:
             raise ConnectionError(
-                "Could not connect to DICOM server with AE Title %s."
-                % self.config.server_ae_title
+                "Could not connect to DICOM server ["
+                f"AET {self.config.server_ae_title}, "
+                f"IP {self.config.server_host}, "
+                f"Port {self.config.server_port}]"
             )
 
     def open_connection(self):
