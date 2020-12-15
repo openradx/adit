@@ -26,7 +26,7 @@ class BatchTransferJobForm(forms.ModelForm):
         fields = (
             "source",
             "destination",
-            "transfer_urgently",
+            "urgent",
             "project_name",
             "project_description",
             "trial_protocol_id",
@@ -35,12 +35,12 @@ class BatchTransferJobForm(forms.ModelForm):
             "csv_file",
         )
         labels = {
-            "transfer_urgently": "Start transfer urgently",
+            "urgent": "Start transfer urgently",
             "trial_protocol_id": "Trial ID",
             "trial_protocol_name": "Trial name",
         }
         help_texts = {
-            "transfer_urgently": (
+            "urgent": (
                 "Start transfer directly (without scheduling) and prioritize it."
             ),
             "trial_protocol_id": (
@@ -66,15 +66,15 @@ class BatchTransferJobForm(forms.ModelForm):
         self.requests = None
         self.save_requests = None
 
-        transfer_urgently_option = kwargs.pop("transfer_urgently_option", False)
+        urgent_option = kwargs.pop("urgent_option", False)
 
         super().__init__(*args, **kwargs)
 
         self.fields["source"].widget.attrs["class"] = "custom-select"
         self.fields["destination"].widget.attrs["class"] = "custom-select"
 
-        if not transfer_urgently_option:
-            del self.fields["transfer_urgently"]
+        if not urgent_option:
+            del self.fields["urgent"]
 
         self.fields["trial_protocol_id"].widget.attrs["placeholder"] = "Optional"
         self.fields["trial_protocol_name"].widget.attrs["placeholder"] = "Optional"

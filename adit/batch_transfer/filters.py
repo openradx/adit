@@ -1,6 +1,12 @@
 import django_filters
+from adit.core.filters import TransferJobFilter
 from adit.core.forms import SingleFilterFormHelper
-from .models import BatchTransferRequest
+from .models import BatchTransferJob, BatchTransferRequest
+
+
+class BatchTransferJobFilter(TransferJobFilter):
+    class Meta(TransferJobFilter.Meta):
+        model = BatchTransferJob
 
 
 class BatchTransferRequestFilter(django_filters.FilterSet):

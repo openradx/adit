@@ -3,6 +3,7 @@ from django.contrib.auth.mixins import PermissionRequiredMixin
 from django.views.generic.edit import CreateView
 from django.views.generic import DetailView
 from django.http import HttpResponseBadRequest
+from django.urls import reverse_lazy
 from django_tables2 import SingleTableMixin
 from adit.core.mixins import (
     OwnerRequiredMixin,
@@ -10,13 +11,34 @@ from adit.core.mixins import (
     RelatedFilterMixin,
     PageSizeSelectMixin,
 )
+from adit.core.views import (
+    TransferJobListView,
+    DicomJobDeleteView,
+    DicomJobCancelView,
+    DicomJobVerifyView,
+)
 from adit.core.filters import TransferTaskFilter
 from adit.core.tables import TransferTaskTable
 from .forms import SelectiveTransferJobForm
 from .models import SelectiveTransferJob
 from .mixins import SelectiveTransferJobCreateMixin
+from .tables import SelectiveTransferJobTable
+from .filters import SelectiveTransferJobFilter
 
 QUERY_RESULT_LIMIT = 101
+
+
+class SelectiveTransferJobListView(
+    TransferJobListView
+):  # pylint: disable=too-many-ancestors
+    model = SelectiveTransferJob
+    table_class = SelectiveTransferJobTable
+    filterset_class = SelectiveTransferJobFilter
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["job_list_title"] = "Selective Transfer Jobs"
+        return context
 
 
 class SelectiveTransferJobCreateView(
@@ -93,3 +115,16 @@ class SelectiveTransferJobDetailView(
     def get_filter_queryset(self):
         job = self.get_object()
         return job.tasks
+
+
+class SelectiveTransferJobDeleteView(DicomJobDeleteView):
+    model = SelectiveTransferJob
+    success_url = reverse_lazy("selective_transfer_job_list")
+
+
+class SelectiveTransferJobCancelView(DicomJobCancelView):
+    model = SelectiveTransferJob
+
+
+class SelectiveTransferJobVerifyView(DicomJobVerifyView):
+    model = SelectiveTransferJob

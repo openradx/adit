@@ -1,6 +1,6 @@
 from django.apps import AppConfig
 from django.db.models.signals import post_migrate
-from adit.core.site import register_main_menu_item, register_transfer_job
+from adit.core.site import register_main_menu_item
 
 
 class BatchTransferConfig(AppConfig):
@@ -17,13 +17,6 @@ def register_app():
     register_main_menu_item(
         url_name="batch_transfer_job_create",
         label="Batch Transfer",
-    )
-
-    from .models import BatchTransferJob  # pylint: disable=import-outside-toplevel
-
-    register_transfer_job(
-        job_type_key=BatchTransferJob.JOB_TYPE,
-        job_type_name="Batch Transfer",
     )
 
 

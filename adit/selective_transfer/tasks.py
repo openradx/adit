@@ -25,7 +25,7 @@ def selective_transfer(job_id):
         )
 
     priority = settings.SELECTIVE_TRANSFER_DEFAULT_PRIORITY
-    if job.transfer_urgently:
+    if job.urgent:
         priority = settings.SELECTIVE_TRANSFER_URGENT_PRIORITY
 
     transfers = [
@@ -116,7 +116,7 @@ def on_job_finished(task_status_list, job_id):
 def _check_can_run_now(celery_task, transfer_task):
     selective_transfer_settings = SelectiveTransferSettings.get()
 
-    if not transfer_task.job.transfer_urgently:
+    if not transfer_task.job.urgent:
         scheduler = Scheduler(
             selective_transfer_settings.slot_begin_time,
             selective_transfer_settings.slot_end_time,

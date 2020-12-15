@@ -1,12 +1,12 @@
 import django_filters
 from adit.core.forms import MultiInlineFilterFormHelper, SingleFilterFormHelper
-from .models import TransferJob, TransferTask
+from .models import TransferTask
 
 
 class TransferJobFilter(django_filters.FilterSet):
     class Meta:
-        model = TransferJob
-        fields = ("job_type", "status")
+        model = None
+        fields = ("status",)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

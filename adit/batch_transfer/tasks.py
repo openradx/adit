@@ -29,7 +29,7 @@ def batch_transfer(job_id):
         )
 
     priority = settings.BATCH_TRANSFER_DEFAULT_PRIORITY
-    if job.transfer_urgently:
+    if job.urgent:
         priority = settings.BATCH_TRANSFER_URGENT_PRIORITY
 
     transfer_requests = [
@@ -243,7 +243,7 @@ def on_job_finished(request_status_list, job_id):
 def _check_can_run_now(celery_task, request):
     batch_transfer_settings = BatchTransferSettings.get()
 
-    if not request.job.transfer_urgently:
+    if not request.job.urgent:
         scheduler = Scheduler(
             batch_transfer_settings.slot_begin_time,
             batch_transfer_settings.slot_end_time,

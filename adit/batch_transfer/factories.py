@@ -11,7 +11,6 @@ class BatchTransferJobFactory(TransferJobFactory):
     class Meta:
         model = BatchTransferJob
 
-    job_type = BatchTransferJob.JOB_TYPE
     project_name = factory.Faker("sentence")
     project_description = factory.Faker("paragraph")
 

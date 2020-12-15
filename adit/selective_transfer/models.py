@@ -1,3 +1,4 @@
+from django.db import models
 from django.urls import reverse
 from adit.core.models import AppSettings, TransferJob
 
@@ -8,7 +9,7 @@ class SelectiveTransferSettings(AppSettings):
 
 
 class SelectiveTransferJob(TransferJob):
-    JOB_TYPE = "ST"
+    archive_password = models.CharField(blank=True, max_length=50)
 
     def delay(self):
         from .tasks import selective_transfer  # pylint: disable=import-outside-toplevel

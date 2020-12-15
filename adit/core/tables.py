@@ -4,7 +4,7 @@ from .templatetags.core_extras import (
     transfer_job_status_css_class,
     transfer_task_status_css_class,
 )
-from .models import TransferJob, TransferTask
+from .models import TransferTask
 
 
 class RecordIdColumn(tables.Column):
@@ -19,10 +19,10 @@ class TransferJobTable(tables.Table):
     id = RecordIdColumn(verbose_name="Job ID")
 
     class Meta:  # pylint: disable=too-few-public-methods
-        model = TransferJob
+        model = None
         order_by = ("-id",)
         template_name = "django_tables2/bootstrap4.html"
-        fields = ("id", "job_type", "status", "source", "destination", "created")
+        fields = ("id", "status", "source", "destination", "created")
         attrs = {
             "id": "transfer_job_table",
             "class": "table table-bordered table-hover",

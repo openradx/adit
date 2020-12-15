@@ -82,13 +82,13 @@ class SelectiveTransferConsumer(
             await self.send_json(error_response)
             return
 
-        transfer_urgently_option = False
-        if self.user and self.user.has_perm("core.can_transfer_urgently"):
-            transfer_urgently_option = True
+        urgent_option = False
+        if self.user and self.user.has_perm("core.can_process_urgently"):
+            urgent_option = True
 
         form = SelectiveTransferJobForm(
             QueryDict(content["data"]),
-            transfer_urgently_option=transfer_urgently_option,
+            urgent_option=urgent_option,
         )
         form_valid = await database_sync_to_async(form.is_valid)()
 

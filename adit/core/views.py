@@ -3,8 +3,8 @@ from django.views.generic import View
 from django.views.generic.edit import DeleteView, CreateView
 from django.views.generic.detail import DetailView, SingleObjectMixin
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
-from django.urls import re_path, reverse_lazy
-from django.shortcuts import get_object_or_404, redirect
+from django.urls import re_path
+from django.shortcuts import redirect
 from django.core.exceptions import SuspiciousOperation
 from django.contrib import messages
 from django.conf import settings
@@ -12,35 +12,30 @@ from django.forms.formsets import ORDERING_FIELD_NAME
 from django_tables2 import SingleTableMixin
 from django_filters.views import FilterView
 from revproxy.views import ProxyView
-from .models import TransferJob, TransferTask
-from .tables import TransferJobTable
-from .filters import TransferJobFilter
+from .models import DicomJob, TransferTask
 from .mixins import OwnerRequiredMixin, PageSizeSelectMixin
 
 
-class TransferJobListView(
+class DicomJobListView(  # pylint: disable=too-many-ancestors
     LoginRequiredMixin, SingleTableMixin, PageSizeSelectMixin, FilterView
 ):
-    table_class = TransferJobTable
-    template_name = "core/transfer_job_table.html"
-    filterset_class = TransferJobFilter
+    model = None
+    table_class = None
+    filterset_class = None
+    template_name = "core/dicom_job_table.html"
 
+
+class TransferJobListView(DicomJobListView):  # pylint: disable=too-many-ancestors
     def get_queryset(self):
-        return TransferJob.objects.select_related("source", "destination").filter(
+        return self.model.objects.select_related("source", "destination").filter(
             owner=self.request.user
         )
 
 
-def redirect_to_job_detail_view(request, pk):
-    queryset = TransferJob.objects.select_subclasses()
-    job = get_object_or_404(queryset, pk=pk)
-    return redirect(job)
-
-
-class TransferJobDeleteView(LoginRequiredMixin, OwnerRequiredMixin, DeleteView):
-    model = TransferJob
+class DicomJobDeleteView(LoginRequiredMixin, OwnerRequiredMixin, DeleteView):
+    model = None
+    success_url = None
     owner_accessor = "owner"
-    success_url = reverse_lazy("transfer_job_list")
     success_message = "Job with ID %(id)s was deleted successfully"
 
     def delete(self, request, *args, **kwargs):
@@ -56,10 +51,10 @@ class TransferJobDeleteView(LoginRequiredMixin, OwnerRequiredMixin, DeleteView):
         return super().delete(request, *args, **kwargs)
 
 
-class TransferJobCancelView(
+class DicomJobCancelView(
     LoginRequiredMixin, OwnerRequiredMixin, SingleObjectMixin, View
 ):
-    model = TransferJob
+    model = None
     owner_accessor = "owner"
     success_message = "Job with ID %(id)n was canceled"
 
@@ -70,18 +65,18 @@ class TransferJobCancelView(
                 f"Job with ID {job.id} and status {job.get_status_display()} is not cancelable."
             )
 
-        job.status = TransferJob.Status.CANCELING
+        job.status = DicomJob.Status.CANCELING
         job.save()
         messages.success(self.request, self.success_message % job.__dict__)
         redirect(job)
 
 
-class TransferJobVerifyView(
+class DicomJobVerifyView(
     LoginRequiredMixin, OwnerRequiredMixin, SingleObjectMixin, View
 ):
-    queryset = TransferJob.objects.select_subclasses()
+    model = None
     owner_accessor = "owner"
-    success_message = "Transfer job with ID %(id)s was verified"
+    success_message = "Job with ID %(id)s was verified"
 
     def post(self, request, *args, **kwargs):  # pylint: disable=unused-argument
         job = self.get_object()
@@ -90,7 +85,7 @@ class TransferJobVerifyView(
                 f"Job with ID {job.id} and status {job.get_status_display()} was already verified."
             )
 
-        job.status = TransferJob.Status.PENDING
+        job.status = DicomJob.Status.PENDING
         job.save()
         job.delay()
         messages.success(self.request, self.success_message % job.__dict__)

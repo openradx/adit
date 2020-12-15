@@ -37,11 +37,11 @@ class TransferFormViewMixin:  # pylint: disable=too-few-public-methods
     def get_form_kwargs(self) -> Dict[str, Any]:
         kwargs = super().get_form_kwargs()
 
-        transfer_urgently_option = False
+        urgent_option = False
         user = self.request.user
-        if user and user.has_perm("core.can_transfer_urgently"):
-            transfer_urgently_option = True
-        kwargs.update({"transfer_urgently_option": transfer_urgently_option})
+        if user and user.has_perm("core.can_process_urgently"):
+            urgent_option = True
+        kwargs.update({"urgent_option": urgent_option})
 
         return kwargs
 

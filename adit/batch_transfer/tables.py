@@ -1,6 +1,12 @@
 from django.utils.html import format_html
 import django_tables2 as tables
-from .models import BatchTransferRequest
+from adit.core.tables import TransferJobTable
+from .models import BatchTransferJob, BatchTransferRequest
+
+
+class BatchTransferJobTable(TransferJobTable):
+    class Meta(TransferJobTable.Meta):  # pylint: disable=too-few-public-methods
+        model = BatchTransferJob
 
 
 class BatchTransferRequestTable(tables.Table):

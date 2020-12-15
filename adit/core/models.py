@@ -6,7 +6,6 @@ from django.conf import settings
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.urls import reverse
 from model_utils.managers import InheritanceManager
-from .site import job_type_choices
 from .utils.dicom_connector import DicomConnector
 from .validators import no_backslash_char_validator, no_control_chars_validator
 
@@ -134,9 +133,7 @@ class DicomFolder(DicomNode):
     )
 
 
-class TransferJob(models.Model):
-    JOB_TYPE = None
-
+class DicomJob(models.Model):
     class Status(models.TextChoices):
         UNVERIFIED = "UV", "Unverified"
         PENDING = "PE", "Pending"
@@ -148,49 +145,27 @@ class TransferJob(models.Model):
         FAILURE = "FA", "Failure"
 
     class Meta:
+        abstract = True
         indexes = [models.Index(fields=["owner", "status"])]
         permissions = [
             (
-                "can_transfer_urgently",
-                "Can transfer urgently (prioritized and without scheduling).",
+                "can_process_urgently",
+                "Can process urgently (prioritized and without scheduling).",
             )
         ]
 
-    job_type = models.CharField(max_length=2, choices=job_type_choices)
     source = models.ForeignKey(DicomNode, related_name="+", on_delete=models.PROTECT)
-    destination = models.ForeignKey(
-        DicomNode, related_name="+", on_delete=models.PROTECT
-    )
     status = models.CharField(
         max_length=2, choices=Status.choices, default=Status.UNVERIFIED
     )
+    urgent = models.BooleanField(default=False)
     message = models.TextField(blank=True, default="")
-    transfer_urgently = models.BooleanField(default=False)
-    trial_protocol_id = models.CharField(
-        blank=True, max_length=64, validators=[no_backslash_char_validator]
-    )
-    trial_protocol_name = models.CharField(
-        blank=True, max_length=64, validators=[no_backslash_char_validator]
-    )
-    archive_password = models.CharField(blank=True, max_length=50)
     owner = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="transfer_jobs"
     )
     created = models.DateTimeField(auto_now_add=True)
     start = models.DateTimeField(null=True, blank=True)
     end = models.DateTimeField(null=True, blank=True)
-    objects = InheritanceManager()
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        if not self.job_type:
-            if not any(self.JOB_TYPE == job_type[0] for job_type in job_type_choices):
-                raise AssertionError(f"Invalid job type: {self.JOB_TYPE}")
-            self.job_type = self.JOB_TYPE
-
-    def get_processed_tasks(self):
-        non_processed = (TransferTask.Status.PENDING, TransferTask.Status.IN_PROGRESS)
-        return self.tasks.exclude(status__in=non_processed)
 
     def is_deletable(self):
         return self.status in (self.Status.UNVERIFIED, self.Status.PENDING)
@@ -201,12 +176,28 @@ class TransferJob(models.Model):
     def is_verified(self):
         return self.status != self.Status.UNVERIFIED
 
-    def get_absolute_url(self):
-        return reverse("transfer_job_detail", args=[str(self.id)])
-
     def __str__(self):
         status_dict = dict(self.Status.choices)
-        return f"{self.__class__.__name__} {status_dict[self.status]}"
+        return f"{self.__class__.__name__} [ID {self.id}, Status {status_dict[self.status]}]"
+
+
+class TransferJob(DicomJob):
+    class Meta(DicomJob.Meta):
+        abstract = True
+
+    destination = models.ForeignKey(
+        DicomNode, related_name="+", on_delete=models.PROTECT
+    )
+    trial_protocol_id = models.CharField(
+        blank=True, max_length=64, validators=[no_backslash_char_validator]
+    )
+    trial_protocol_name = models.CharField(
+        blank=True, max_length=64, validators=[no_backslash_char_validator]
+    )
+
+    def get_processed_tasks(self):
+        non_processed = (TransferTask.Status.PENDING, TransferTask.Status.IN_PROGRESS)
+        return self.tasks.exclude(status__in=non_processed)
 
 
 class TransferTask(models.Model):

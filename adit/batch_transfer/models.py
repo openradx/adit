@@ -1,5 +1,4 @@
 from django.db import models
-from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.contrib.contenttypes.fields import GenericRelation
 from django.urls import reverse
@@ -17,8 +16,6 @@ class BatchTransferSettings(AppSettings):
 
 
 class BatchTransferJob(TransferJob):
-    JOB_TYPE = "BT"
-
     project_name = models.CharField(max_length=150)
     project_description = models.TextField(max_length=2000)
 
