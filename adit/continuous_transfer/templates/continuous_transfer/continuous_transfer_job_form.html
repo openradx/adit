@@ -9,9 +9,30 @@
 {% endblock script %}
 
 {% block container %}
-<h4 class="mb-3">
-    Create Continuous Transfer Job
-</h4>
+<div class="d-flex justify-content-between">
+    <h4 class="mb-3">
+        New Continuous Transfer Job
+        <small>
+            <a
+                href="#"
+                class="badge badge-info"
+                data-toggle="modal"
+                data-target="#continuous_form_help_modal"
+            >
+                Help
+                <span class="align-bottom">
+                    {% include "core/_help_icon.html" %}
+                </span>
+            </a>
+        </small>
+    </h4>
+    <a href="{% url 'continuous_transfer_job_list' %}">
+        {% include "core/_list.svg" %}
+        Previous Jobs
+    </a>
+</div>
+
+
 <form action="{% url 'continuous_transfer_job_create' %}" method="post">
     {% csrf_token %}
     {% crispy form %}

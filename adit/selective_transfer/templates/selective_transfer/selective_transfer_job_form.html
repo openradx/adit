@@ -9,15 +9,28 @@
 {% endblock %}
 
 {% block container %}
-<h4 class="mb-3">
-    Select studies to transfer
-    <a href="#" class="badge badge-info" data-toggle="modal" data-target="#selective_form_help_modal">
-        Help
-        <span class="align-bottom">
-            {% include "core/_help_icon.html" %}
-        </span>
+<div class="d-flex justify-content-between">
+    <h4 class="mb-3">
+        Select studies to transfer
+        <small>
+            <a
+                href="#"
+                class="badge badge-info"
+                data-toggle="modal"
+                data-target="#selective_form_help_modal"
+            >
+                Help
+                <span class="align-bottom">
+                    {% include "core/_help_icon.html" %}
+                </span>
+            </a>
+        </small>
+    </h4>
+    <a href="{% url 'selective_transfer_job_list' %}">
+        {% include "core/_list.svg" %}
+        Previous Jobs
     </a>
-</h4>
+</div>
 
 <form
     method="POST"
