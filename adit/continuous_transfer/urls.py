@@ -11,32 +11,32 @@ from .views import (
 
 urlpatterns = [
     path(
-        "",
+        "jobs/",
         ContinuousTransferJobListView.as_view(),
         name="continuous_transfer_job_list",
     ),
     path(
-        "new/",
+        "jobs/new/",
         ContinuousTransferJobCreateView.as_view(),
         name="continuous_transfer_job_create",
     ),
     path(
-        "<int:pk>/",
+        "jobs/<int:pk>/",
         ContinuousTransferJobDetailView.as_view(),
         name="continuous_transfer_job_detail",
     ),
     path(
-        "<int:pk>/delete/",
+        "jobs/<int:pk>/delete/",
         ContinuousTransferJobDeleteView.as_view(),
         name="continuous_transfer_job_delete",
     ),
     path(
-        "<int:pk>/cancel/",
+        "jobs/<int:pk>/cancel/",
         ContinuousTransferJobCancelView.as_view(),
         name="continuous_transfer_job_cancel",
     ),
     path(
-        "<int:pk>/verify/",
+        "jobs/<int:pk>/verify/",
         ContinuousTransferJobVerifyView.as_view(),
         name="continuous_transfer_job_verify",
     ),

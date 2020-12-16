@@ -23,9 +23,9 @@ urlpatterns = [
     path("accounts/", include("adit.accounts.urls")),
     path("api/", include("adit.api.urls")),
     path("", include("adit.core.urls")),
-    path("selective-transfers/", include("adit.selective_transfer.urls")),
-    path("batch-transfers/", include("adit.batch_transfer.urls")),
-    path("continuous-transfers/", include("adit.continuous_transfer.urls")),
+    path("selective-transfer/", include("adit.selective_transfer.urls")),
+    path("batch-transfer/", include("adit.batch_transfer.urls")),
+    path("continuous-transfer/", include("adit.continuous_transfer.urls")),
     path("dicom-explorer/", include("adit.dicom_explorer.urls")),
 ]
 
