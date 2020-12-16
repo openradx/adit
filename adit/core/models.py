@@ -1,11 +1,7 @@
 from datetime import time
-from django.contrib.contenttypes.fields import GenericForeignKey
-from django.contrib.contenttypes.models import ContentType
 from django.db import models
 from django.conf import settings
 from django.core.validators import MaxValueValidator, MinValueValidator
-from django.urls import reverse
-from model_utils.managers import InheritanceManager
 from .utils.dicom_connector import DicomConnector
 from .validators import no_backslash_char_validator, no_control_chars_validator
 
@@ -65,8 +61,6 @@ class DicomNode(models.Model):
     name = models.CharField(unique=True, max_length=64)
     source_active = models.BooleanField(default=True)
     destination_active = models.BooleanField(default=True)
-
-    objects = InheritanceManager()
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

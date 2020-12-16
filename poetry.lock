@@ -428,17 +428,6 @@ optional = false
 python-versions = ">3.3"
 
 [[package]]
-name = "django-model-utils"
-version = "4.0.0"
-description = "Django model mixins and utilities"
-category = "main"
-optional = false
-python-versions = "*"
-
-[package.dependencies]
-Django = ">=2.0.1"
-
-[[package]]
 name = "django-registration-redux"
 version = "2.8"
 description = "An extensible user-registration application for Django"
@@ -1389,7 +1378,7 @@ testing = ["coverage (>=5.0.3)", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.9"
-content-hash = "2ed77b491d7643a675d5f800486e521b5f701e59b0ed4d556c690d8a763d12e5"
+content-hash = "79e8f959932b7ff01fba852a959d2b67379ccea80814168b8659538a70fea01e"
 
 [metadata.files]
 amqp = [
@@ -1694,10 +1683,6 @@ django-filter = [
 django-loginas = [
     {file = "django-loginas-0.3.9.tar.gz", hash = "sha256:9c10b2cdcf3b6605471f260e226bddf25726d6f5eb5fce88c91ef563bcd208bf"},
     {file = "django_loginas-0.3.9-py2.py3-none-any.whl", hash = "sha256:16b6ccb8f07ee6b5950856b3c7d9cfa691de3a26e2b364efb7a7d4f7c57ac3d2"},
-]
-django-model-utils = [
-    {file = "django-model-utils-4.0.0.tar.gz", hash = "sha256:adf09e5be15122a7f4e372cb5a6dd512bbf8d78a23a90770ad0983ee9d909061"},
-    {file = "django_model_utils-4.0.0-py2.py3-none-any.whl", hash = "sha256:9cf882e5b604421b62dbe57ad2b18464dc9c8f963fc3f9831badccae66c1139c"},
 ]
 django-registration-redux = [
     {file = "django-registration-redux-2.8.tar.gz", hash = "sha256:ed525f393c452d3f5044148131cafbf50da7bdec9f78b594450bf01ad67085d4"},
