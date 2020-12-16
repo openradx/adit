@@ -33,11 +33,7 @@ class SelectiveTransferJobListView(
     model = SelectiveTransferJob
     table_class = SelectiveTransferJobTable
     filterset_class = SelectiveTransferJobFilter
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context["job_list_title"] = "Selective Transfer Jobs"
-        return context
+    template_name = "selective_transfer/selective_transfer_job_list.html"
 
 
 class SelectiveTransferJobCreateView(
@@ -131,3 +127,5 @@ class SelectiveTransferJobVerifyView(DicomJobVerifyView):
 
 class SelectiveTransferTaskDetailView(TransferTaskDetailView):
     model = SelectiveTransferTask
+    job_url_name = "selective_transfer_job_detail"
+    template_name = "selective_transfer/selective_transfer_task_detail.html"

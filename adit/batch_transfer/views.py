@@ -29,11 +29,7 @@ class BatchTransferJobListView(
     model = BatchTransferJob
     table_class = BatchTransferJobTable
     filterset_class = BatchTransferJobFilter
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context["job_list_title"] = "Batch Transfer Jobs"
-        return context
+    template_name = "batch_transfer/batch_transfer_job_list.html"
 
 
 class BatchTransferJobCreateView(
@@ -112,3 +108,5 @@ class BatchTransferJobVerifyView(DicomJobVerifyView):
 
 class BatchTransferTaskDetailView(TransferTaskDetailView):
     model = BatchTransferTask
+    job_url_name = "batch_transfer_job_detail"
+    template_name = "batch_transfer/batch_transfer_task_detail.html"

@@ -1,0 +1,15 @@
+{% extends "core/base_generic.html" %}
+
+{% block container %}
+<div class="d-flex justify-content-between">
+    <h4 class="mb-3">
+        Selective Transfer Jobs
+    </h4>
+    <a href="{% url 'selective_transfer_job_form' %}">
+        {% include "core/_plus_square.svg" %}
+        Create New Job
+    </a>
+</div>
+
+{% include "core/_dicom_job_table.html" %}
+{% endblock container %}

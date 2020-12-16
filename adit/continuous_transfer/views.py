@@ -27,11 +27,7 @@ class ContinuousTransferJobListView(
     model = ContinuousTransferJob
     table_class = ContinuousTransferJobTable
     filterset_class = ContinuousTransferJobFilter
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context["job_list_title"] = "Continuous Transfer Jobs"
-        return context
+    template_name = "continuous_transfer/continuous_transfer_job_list.html"
 
 
 class ContinuousTransferJobCreateView(
@@ -91,3 +87,5 @@ class ContinuousTransferJobVerifyView(DicomJobVerifyView):
 
 class ContinuousTransferTaskDetailView(TransferTaskDetailView):
     model = ContinuousTransferTask
+    job_url_name = "continuous_transfer_job_detail"
+    template_name = "continuous_transfer/continuous_transfer_task_detail.html"

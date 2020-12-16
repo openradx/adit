@@ -12,7 +12,7 @@ from django.forms.formsets import ORDERING_FIELD_NAME
 from django_tables2 import SingleTableMixin
 from django_filters.views import FilterView
 from revproxy.views import ProxyView
-from .models import DicomJob, TransferTask
+from .models import DicomJob
 from .mixins import OwnerRequiredMixin, PageSizeSelectMixin
 
 
@@ -22,7 +22,7 @@ class DicomJobListView(  # pylint: disable=too-many-ancestors
     model = None
     table_class = None
     filterset_class = None
-    template_name = "core/dicom_job_table.html"
+    template_name = None
 
 
 class TransferJobListView(DicomJobListView):  # pylint: disable=too-many-ancestors
@@ -94,9 +94,15 @@ class DicomJobVerifyView(
 
 class TransferTaskDetailView(LoginRequiredMixin, OwnerRequiredMixin, DetailView):
     model = None
+    job_url_name = None
+    template_name = None
     context_object_name = "task"
-    template_name = "core/transfer_task_detail.html"
     owner_accessor = "owner"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["job_url_name"] = self.job_url_name
+        return context
 
 
 class FlowerProxyView(UserPassesTestMixin, ProxyView):
