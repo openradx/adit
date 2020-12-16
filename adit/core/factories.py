@@ -29,20 +29,36 @@ class DicomFolderFactory(factory.django.DjangoModelFactory):
 job_status_keys = [key for key, value in TransferJob.Status.choices]
 
 
-class TransferJobFactory(factory.django.DjangoModelFactory):
+class DicomJobFactory(factory.django.DjangoModelFactory):
     class Meta:
-        model = TransferJob
+        model = None
 
     source = factory.SubFactory(DicomServerFactory)
-    destination = factory.SubFactory(DicomServerFactory)
     status = factory.Faker("random_element", elements=job_status_keys)
     message = factory.Faker("sentence")
-    trial_protocol_id = factory.Faker("word")
-    trial_protocol_name = factory.Faker("text", max_nb_chars=25)
+    urgent = factory.Faker("boolean", chance_of_getting_true=25)
     owner = factory.SubFactory(UserFactory)
 
 
+class TransferJobFactory(DicomJobFactory):
+    class Meta:
+        model = None
+
+    destination = factory.SubFactory(DicomServerFactory)
+    trial_protocol_id = factory.Faker("word")
+    trial_protocol_name = factory.Faker("text", max_nb_chars=25)
+
+
 task_status_keys = [key for key, value in TransferTask.Status.choices]
+
+
+class DicomTaskFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = None
+
+    status = factory.Faker("random_element", elements=task_status_keys)
+    message = factory.Faker("sentence")
+    log = factory.Faker("paragraph")
 
 
 def generate_uids():
@@ -51,14 +67,11 @@ def generate_uids():
     return None
 
 
-class TransferTaskFactory(factory.django.DjangoModelFactory):
+class TransferTaskFactory(DicomTaskFactory):
     class Meta:
-        model = TransferTask
+        model = None
 
-    job = factory.SubFactory(TransferJobFactory)
     patient_id = factory.Faker("numerify", text="##########")
     study_uid = factory.Faker("uuid4")
     series_uids = factory.LazyFunction(generate_uids)
     pseudonym = factory.Faker("hexify", text="^^^^^^^^^^")
-    status = factory.Faker("random_element", elements=task_status_keys)
-    message = factory.Faker("sentence")

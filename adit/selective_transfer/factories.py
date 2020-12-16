@@ -1,8 +1,11 @@
 import factory
 from faker import Faker
-from adit.core.factories import DicomFolderFactory
-from adit.core.factories import TransferJobFactory
-from .models import SelectiveTransferJob
+from adit.core.factories import (
+    DicomFolderFactory,
+    TransferJobFactory,
+    TransferTaskFactory,
+)
+from .models import SelectiveTransferJob, SelectiveTransferTask
 
 fake = Faker()
 
@@ -22,3 +25,10 @@ class SelectiveTransferJobFactory(TransferJobFactory):
 
 class SelectiveTransferJobToPathFactory(SelectiveTransferJobFactory):
     destination = factory.SubFactory(DicomFolderFactory)
+
+
+class SelectiveTransferTaskFactory(TransferTaskFactory):
+    class Meta:
+        model = SelectiveTransferTask
+
+    job = factory.SubFactory(SelectiveTransferJobFactory)

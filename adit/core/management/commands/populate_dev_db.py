@@ -10,13 +10,16 @@ from adit.accounts.factories import AdminUserFactory, UserFactory
 from adit.core.factories import (
     DicomServerFactory,
     DicomFolderFactory,
-    TransferTaskFactory,
 )
 from adit.batch_transfer.factories import (
     BatchTransferJobFactory,
     BatchTransferRequestFactory,
+    BatchTransferTaskFactory,
 )
-from adit.selective_transfer.factories import SelectiveTransferJobFactory
+from adit.selective_transfer.factories import (
+    SelectiveTransferJobFactory,
+    SelectiveTransferTaskFactory,
+)
 
 CREATE_JOBS_FOR_ADMIN_ONLY = True
 PROBABILITY_OF_BATCH_JOB = 50
@@ -98,7 +101,7 @@ def create_batch_transfer_job(users, servers, folders):
         request = BatchTransferRequestFactory(job=job, row_number=row_number)
 
         for _ in range(fake.random_int(min=1, max=3)):
-            TransferTaskFactory(content_object=request, job=job)
+            BatchTransferTaskFactory(request=request, job=job)
 
     return job
 
@@ -113,7 +116,7 @@ def create_selective_transfer_job(users, servers, folders):
     )
 
     for _ in range(fake.random_int(min=1, max=120)):
-        TransferTaskFactory(job=job)
+        SelectiveTransferTaskFactory(job=job)
 
 
 class Command(BaseCommand):

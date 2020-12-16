@@ -1,8 +1,11 @@
 import factory
 from faker import Faker
-from adit.core.factories import DicomFolderFactory
-from adit.core.factories import TransferJobFactory
-from .models import BatchTransferJob, BatchTransferRequest
+from adit.core.factories import (
+    DicomFolderFactory,
+    TransferJobFactory,
+    TransferTaskFactory,
+)
+from .models import BatchTransferJob, BatchTransferRequest, BatchTransferTask
 
 fake = Faker()
 
@@ -40,3 +43,11 @@ class BatchTransferRequestFactory(factory.django.DjangoModelFactory):
     )
     status = factory.Faker("random_element", elements=status_codes)
     message = factory.Faker("sentence")
+
+
+class BatchTransferTaskFactory(TransferTaskFactory):
+    class Meta:
+        model = BatchTransferTask
+
+    job = factory.SubFactory(BatchTransferJobFactory)
+    request = factory.SubFactory(BatchTransferRequestFactory)
