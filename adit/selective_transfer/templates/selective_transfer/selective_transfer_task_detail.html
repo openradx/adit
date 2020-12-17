@@ -1,15 +1,7 @@
 {% extends "core/base_generic.html" %}
 
 {% block container %}
-<div class="d-flex justify-content-between">
-    <h4 class="mb-3">
-        Selective Transfer Task
-    </h4>
-    <a href="{% url 'selective_transfer_job_list' %}">
-        {% include "core/_list.svg" %}
-        Job List
-    </a>
-</div>
+<h4 class="mb-3">Selective Transfer Task</h4>
 
 {% include "core/_transfer_task_detail.html" %}
 {% endblock container %}

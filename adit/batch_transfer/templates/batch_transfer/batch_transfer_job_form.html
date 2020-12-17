@@ -9,26 +9,14 @@
 {% endblock script %}
 
 {% block container %}
-<div class="d-flex justify-content-between">
+<div class="d-flex justify-content-between align-items-start">
     <h4 class="mb-3">
         New Batch Transfer Job
-        <small>
-            <a
-                href="#"
-                class="badge badge-info"
-                data-toggle="modal"
-                data-target="#batch_form_help_modal"
-            >
-                Help
-                <span class="align-bottom">
-                    {% include "core/_help_icon.html" %}
-                </span>
-            </a>
-        </small>
+        {% include "core/_help_button.html" with target="#batch_form_help_modal" only %}
     </h4>
     <a href="{% url 'batch_transfer_job_list' %}">
         {% include "core/_list.svg" %}
-        Previous Jobs
+        <span class="align-middle">Previous Jobs</span>
     </a>
 </div>
 

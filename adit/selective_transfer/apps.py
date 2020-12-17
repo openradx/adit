@@ -15,7 +15,7 @@ class SelectiveTransferConfig(AppConfig):
 
 def register_app():
     register_main_menu_item(
-        url_name="selective_transfer_job_form",
+        url_name="selective_transfer_job_create",
         label="Selective Transfer",
     )
 

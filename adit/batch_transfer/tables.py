@@ -12,7 +12,7 @@ class BatchTransferJobTable(TransferJobTable):
 class BatchTransferRequestTable(tables.Table):
     transfer_tasks = tables.columns.TemplateColumn(
         verbose_name="Transfer Tasks",
-        template_name="batch_transfer/_transfer_tasks_column.html",
+        template_name="batch_transfer/_batch_transfer_tasks_column.html",
     )
     end = tables.DateTimeColumn(verbose_name="Finished at")
 

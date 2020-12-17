@@ -18,7 +18,7 @@ urlpatterns = [
     path(
         "jobs/new/",
         SelectiveTransferJobCreateView.as_view(),
-        name="selective_transfer_job_form",
+        name="selective_transfer_job_create",
     ),
     path(
         "jobs/<int:pk>/",
