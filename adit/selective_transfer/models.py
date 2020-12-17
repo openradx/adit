@@ -9,8 +9,6 @@ class SelectiveTransferSettings(AppSettings):
 
 
 class SelectiveTransferJob(TransferJob):
-    archive_password = models.CharField(blank=True, max_length=50)
-
     def delay(self):
         from .tasks import selective_transfer  # pylint: disable=import-outside-toplevel
 

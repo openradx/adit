@@ -5,12 +5,16 @@ from celery.utils.log import get_task_logger
 from django.conf import settings
 from django.utils import timezone
 from django.template.defaultfilters import pluralize
-from adit.core.models import TransferTask
-from adit.core.tasks import on_job_failed, transfer_dicoms
 from adit.core.utils.scheduler import Scheduler
 from adit.core.utils.redis_lru import redis_lru
-from adit.core.utils.mail import send_job_finished_mail
-from .models import BatchTransferSettings, BatchTransferJob, BatchTransferRequest
+from adit.core.utils.transfer_util import TransferUtil
+from adit.core.utils.mail import send_job_finished_mail, send_job_failed_mail
+from .models import (
+    BatchTransferSettings,
+    BatchTransferJob,
+    BatchTransferRequest,
+    BatchTransferTask,
+)
 from .errors import NoStudiesFoundError
 
 logger = get_task_logger(__name__)
@@ -128,7 +132,7 @@ def transfer_request(self, request_id):
             )
             series_uids = [series["SeriesInstanceUID"] for series in series_list]
 
-            transfer_task = TransferTask.objects.create(
+            transfer_task = BatchTransferTask.objects.create(
                 content_object=request,
                 job=job,
                 patient_id=patient_id,
@@ -137,10 +141,12 @@ def transfer_request(self, request_id):
                 pseudonym=request.pseudonym,
             )
 
-            task_status = transfer_dicoms(transfer_task.id)
-            if task_status == TransferTask.Status.SUCCESS:
+            transfer_util = TransferUtil(job, transfer_task)
+            task_status = transfer_util.start_transfer()
+
+            if task_status == BatchTransferTask.Status.SUCCESS:
                 has_success = True
-            if task_status == TransferTask.Status.FAILURE:
+            if task_status == BatchTransferTask.Status.FAILURE:
                 has_failure = True
 
         if has_failure and has_success:
@@ -183,6 +189,58 @@ def transfer_request(self, request_id):
         request.save()
 
     return request.status
+
+
+def _check_can_run_now(celery_task, request):
+    batch_transfer_settings = BatchTransferSettings.get()
+
+    if not request.job.urgent:
+        scheduler = Scheduler(
+            batch_transfer_settings.slot_begin_time,
+            batch_transfer_settings.slot_end_time,
+        )
+        if scheduler.must_be_scheduled():
+            raise celery_task.retry(
+                eta=scheduler.next_slot(),
+                exc=Warning(
+                    f"Batch transfer outside of time slot. "
+                    f"[Job ID {request.job.id}, Request ID {request.id}, RowNumber {request.row_number}]"
+                ),
+            )
+
+    if batch_transfer_settings.suspended:
+        raise celery_task.retry(
+            eta=timezone.now() + timedelta(minutes=60),
+            exc=Warning(
+                "Batch transfer suspended. "
+                f"[Job ID {request.job.id}, Request ID {request.id}, RowNumber {request.row_number}]"
+            ),
+        )
+
+
+@redis_lru(capacity=10000, slicer=slice(3))
+def _fetch_patient_id(patient_id, patient_name, birth_date, connector):
+    """Fetch the patient for this request.
+
+    Raises an error if there is no patient or there are multiple patients for this request.
+    """
+    patients = connector.find_patients(
+        {
+            "PatientID": patient_id,
+            "PatientName": patient_name,
+            "PatientBirthDate": birth_date,
+        }
+    )
+
+    if len(patients) == 0:
+        raise ValueError("No patients found.")
+    if len(patients) > 1:
+        raise ValueError("Multiple patients found.")
+
+    return patients[0]["PatientID"]
+
+
+_fetch_patient_id.init(redis.Redis.from_url(settings.REDIS_URL))
 
 
 @shared_task(ignore_result=True)
@@ -240,53 +298,20 @@ def on_job_finished(request_status_list, job_id):
     send_job_finished_mail(job)
 
 
-def _check_can_run_now(celery_task, request):
-    batch_transfer_settings = BatchTransferSettings.get()
+# The Celery documentation is wrong about the provided parameters and when
+# the callback is called. This function definition seems to work however.
+# See https://github.com/celery/celery/issues/3709
+@shared_task
+def on_job_failed(*args, **kwargs):
+    celery_task_id = args[0]
+    job_id = kwargs["job_id"]
 
-    if not request.job.urgent:
-        scheduler = Scheduler(
-            batch_transfer_settings.slot_begin_time,
-            batch_transfer_settings.slot_end_time,
-        )
-        if scheduler.must_be_scheduled():
-            raise celery_task.retry(
-                eta=scheduler.next_slot(),
-                exc=Warning(
-                    f"Batch transfer outside of time slot. "
-                    f"[Job ID {request.job.id}, Request ID {request.id}, RowNumber {request.row_number}]"
-                ),
-            )
+    logger.error("Transfer job failed unexpectedly. [Job ID %d]", job_id)
 
-    if batch_transfer_settings.suspended:
-        raise celery_task.retry(
-            eta=timezone.now() + timedelta(minutes=60),
-            exc=Warning(
-                "Batch transfer suspended. "
-                f"[Job ID {request.job.id}, Request ID {request.id}, RowNumber {request.row_number}]"
-            ),
-        )
+    job = BatchTransferJob.objects.get(id=job_id)
 
+    job.status = BatchTransferJob.Status.FAILURE
+    job.message = "Batch transfer job failed unexpectedly."
+    job.save()
 
-@redis_lru(capacity=10000, slicer=slice(3))
-def _fetch_patient_id(patient_id, patient_name, birth_date, connector):
-    """Fetch the patient for this request.
-
-    Raises an error if there is no patient or there are multiple patients for this request.
-    """
-    patients = connector.find_patients(
-        {
-            "PatientID": patient_id,
-            "PatientName": patient_name,
-            "PatientBirthDate": birth_date,
-        }
-    )
-
-    if len(patients) == 0:
-        raise ValueError("No patients found.")
-    if len(patients) > 1:
-        raise ValueError("Multiple patients found.")
-
-    return patients[0]["PatientID"]
-
-
-_fetch_patient_id.init(redis.Redis.from_url(settings.REDIS_URL))
+    send_job_failed_mail(job, celery_task_id)

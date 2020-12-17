@@ -1,7 +1,6 @@
 from datetime import datetime
 from django.conf import settings
-from adit.core.models import TransferTask
-from .models import SelectiveTransferJob
+from .models import SelectiveTransferJob, SelectiveTransferTask
 
 
 class SelectiveTransferJobCreateMixin:
@@ -51,7 +50,7 @@ class SelectiveTransferJobCreateMixin:
             study_data = selected_study.split("\\")
             patient_id = study_data[0]
             study_uid = study_data[1]
-            TransferTask.objects.create(
+            SelectiveTransferTask.objects.create(
                 job=job,
                 patient_id=patient_id,
                 study_uid=study_uid,

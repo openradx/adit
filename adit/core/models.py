@@ -187,6 +187,7 @@ class TransferJob(DicomJob):
     trial_protocol_name = models.CharField(
         blank=True, max_length=64, validators=[no_backslash_char_validator]
     )
+    archive_password = models.CharField(blank=True, max_length=50)
 
     def get_processed_tasks(self):
         non_processed = (TransferTask.Status.PENDING, TransferTask.Status.IN_PROGRESS)
