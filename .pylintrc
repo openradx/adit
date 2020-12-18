@@ -1,5 +1,5 @@
 [MASTER]
-load-plugins=pylint_django, pylint_celery, pylint_pytest
+load-plugins=pylint_pytest, pylint_django, pylint_celery
 
 [FORMAT]
 max-line-length=120

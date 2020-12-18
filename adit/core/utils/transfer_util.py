@@ -168,12 +168,12 @@ class TransferUtil:
         if len(studies) == 0:
             raise AssertionError(
                 f"No study found with Study Instance UID {self.transfer_task.study_uid}. "
-                f"[Job ID {self.transfer_task.job.id}, Task ID {self.transfer_task.id}]"
+                f"[Job ID {self.transfer_job.id}, Task ID {self.transfer_task.id}]"
             )
         if len(studies) > 1:
             raise AssertionError(
                 f"Multiple studies found with Study Instance UID {self.transfer_task.study_uid}. "
-                f"[Job ID {self.transfer_task.job.id}, Task ID {self.transfer_task.id}]"
+                f"[Job ID {self.transfer_job.id}, Task ID {self.transfer_task.id}]"
             )
         study = studies[0]
         study_date = study["StudyDate"]
