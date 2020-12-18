@@ -43,7 +43,7 @@
 
     <dt class="col-sm-3">Status</dt>
     <dd class="col-sm-9">
-        <span class="{{ job.status|transfer_job_status_css_class }}">
+        <span class="{{ job.status|dicom_job_status_css_class }}">
             {{ job.get_status_display }}
         </span>
     </dd>
@@ -61,7 +61,7 @@
                 href="javascript:void(null);"
                 id="copy-table-link"
                 class="badge badge-light align-top"
-                data-clipboard-target="#transfer_task_table"
+                data-clipboard-target="#dicom_task_table"
                 data-toggle="tooltip"
                 data-placement="top"
                 title="Copy table to clipboard"

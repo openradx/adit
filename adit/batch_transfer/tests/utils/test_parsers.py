@@ -3,7 +3,7 @@ import random
 from datetime import date
 from io import StringIO
 import pytest
-from adit.batch_transfer.utils.parsers import RequestsParser, ParsingError
+from adit.batch_transfer.utils.parsers import RequestsParser, RequestsParserError
 
 
 @pytest.fixture
@@ -90,7 +90,7 @@ def test_missing_row_number(columns, rows, create_csv_file):
     rows[0]["RowNumber"] = ""
     file = create_csv_file(columns, rows)
 
-    with pytest.raises(ParsingError) as err:
+    with pytest.raises(RequestsParserError) as err:
         RequestsParser(";", ["%d.%m.%Y"]).parse(file)
 
     assert err.match(r"RowNumber:.*must be an integer")
@@ -100,7 +100,7 @@ def test_invalid_row_number(columns, rows, create_csv_file):
     rows[0]["RowNumber"] = "ABC"
     file = create_csv_file(columns, rows)
 
-    with pytest.raises(ParsingError) as err:
+    with pytest.raises(RequestsParserError) as err:
         RequestsParser(";", ["%d.%m.%Y"]).parse(file)
 
     assert err.match(r"RowNumber:.*must be an integer")
@@ -111,7 +111,7 @@ def test_duplicate_row_number(rows, columns, create_csv_file):
     rows[1]["RowNumber"] = row_number
     file = create_csv_file(columns, rows)
 
-    with pytest.raises(ParsingError) as err:
+    with pytest.raises(RequestsParserError) as err:
         RequestsParser(";", ["%d.%m.%Y"]).parse(file)
 
     assert err.match(r"Duplicate RowNumber")
@@ -123,15 +123,15 @@ def test_valid_patient_id(rows, columns, create_csv_file, create_random_str):
 
     try:
         RequestsParser(";", ["%d.%m.%Y"]).parse(file)
-    except ParsingError:
-        pytest.fail("Unexpected ParsingError with valid PatientID.")
+    except RequestsParserError:
+        pytest.fail("Unexpected RequestsParserError with valid PatientID.")
 
 
 def test_invalid_patient_id(rows, columns, create_csv_file, create_random_str):
     rows[0]["PatientID"] = create_random_str(65)
     file = create_csv_file(columns, rows)
 
-    with pytest.raises(ParsingError) as err:
+    with pytest.raises(RequestsParserError) as err:
         RequestsParser(";", ["%d.%m.%Y"]).parse(file)
 
     assert err.match(r"PatientID:.*at most 64")
@@ -144,8 +144,8 @@ def test_valid_patient_name(rows, columns, create_csv_file, create_random_str):
 
     try:
         RequestsParser(";", ["%d.%m.%Y"]).parse(file)
-    except ParsingError:
-        pytest.fail("Unexpected ParsingError with valid PatientName.")
+    except RequestsParserError:
+        pytest.fail("Unexpected RequestsParserError with valid PatientName.")
 
 
 def test_invalid_patient_name(rows, columns, create_csv_file, create_random_str):
@@ -154,7 +154,7 @@ def test_invalid_patient_name(rows, columns, create_csv_file, create_random_str)
     rows[0]["PatientName"] = patient_name
     file = create_csv_file(columns, rows)
 
-    with pytest.raises(ParsingError) as err:
+    with pytest.raises(RequestsParserError) as err:
         RequestsParser(";", ["%d.%m.%Y"]).parse(file)
 
     assert err.match(r"PatientName:.*has at most 324")
@@ -166,8 +166,8 @@ def test_valid_patient_birth_date(rows, columns, create_csv_file):
 
     try:
         RequestsParser(";", ["%d.%m.%Y"]).parse(file)
-    except ParsingError:
-        pytest.fail("Unexpected ParsingError with valid PatientBirthDate.")
+    except RequestsParserError:
+        pytest.fail("Unexpected RequestsParserError with valid PatientBirthDate.")
 
 
 @pytest.mark.parametrize("birth_date", ["foobar", "32.01.1955"])
@@ -175,7 +175,7 @@ def test_invalid_patient_birth_date(birth_date, rows, columns, create_csv_file):
     rows[0]["PatientBirthDate"] = birth_date
     file = create_csv_file(columns, rows)
 
-    with pytest.raises(ParsingError) as err:
+    with pytest.raises(RequestsParserError) as err:
         RequestsParser(";", ["%d.%m.%Y"]).parse(file)
 
     assert err.match(r"PatientBirthDate: Invalid date format")
@@ -187,15 +187,15 @@ def test_valid_accession_number(rows, columns, create_csv_file, create_random_st
 
     try:
         RequestsParser(";", ["%d.%m.%Y"]).parse(file)
-    except ParsingError:
-        pytest.fail("Unexpected ParsingError with valid AccessionNumber.")
+    except RequestsParserError:
+        pytest.fail("Unexpected RequestsParserError with valid AccessionNumber.")
 
 
 def test_invalid_accession_number(rows, columns, create_csv_file, create_random_str):
     rows[0]["AccessionNumber"] = create_random_str(17)
     file = create_csv_file(columns, rows)
 
-    with pytest.raises(ParsingError) as err:
+    with pytest.raises(RequestsParserError) as err:
         RequestsParser(";", ["%d.%m.%Y"]).parse(file)
 
     assert err.match(r"AccessionNumber:.*has at most 16")
@@ -207,15 +207,15 @@ def test_valid_modality(rows, columns, create_csv_file, create_random_str):
 
     try:
         RequestsParser(";", ["%d.%m.%Y"]).parse(file)
-    except ParsingError:
-        pytest.fail("Unexpected ParsingError with valid Modality.")
+    except RequestsParserError:
+        pytest.fail("Unexpected RequestsParserError with valid Modality.")
 
 
 def test_invalid_modality(rows, columns, create_csv_file, create_random_str):
     rows[0]["Modality"] = create_random_str(17)
     file = create_csv_file(columns, rows)
 
-    with pytest.raises(ParsingError) as err:
+    with pytest.raises(RequestsParserError) as err:
         RequestsParser(";", ["%d.%m.%Y"]).parse(file)
 
     assert err.match(r"Modality:.*has at most 16")
@@ -227,15 +227,15 @@ def test_valid_pseudonym(rows, columns, create_csv_file, create_random_str):
 
     try:
         RequestsParser(";", ["%d.%m.%Y"]).parse(file)
-    except ParsingError:
-        pytest.fail("Unexpected ParsingError with valid Pseudonym.")
+    except RequestsParserError:
+        pytest.fail("Unexpected RequestsParserError with valid Pseudonym.")
 
 
 def test_invalid_pseudonym(rows, columns, create_csv_file, create_random_str):
     rows[0]["Pseudonym"] = create_random_str(65)
     file = create_csv_file(columns, rows)
 
-    with pytest.raises(ParsingError) as err:
+    with pytest.raises(RequestsParserError) as err:
         RequestsParser(";", ["%d.%m.%Y"]).parse(file)
 
     assert err.match(r"Pseudonym:.*has at most 64")
@@ -247,8 +247,8 @@ def test_patient_identifiable(rows, columns, create_csv_file):
 
     try:
         RequestsParser(";", ["%d.%m.%Y"]).parse(file)
-    except ParsingError:
-        pytest.fail("Unexpected ParsingError with identifiable patient.")
+    except RequestsParserError:
+        pytest.fail("Unexpected RequestsParserError with identifiable patient.")
 
     rows[0]["PatientID"] = "1234"
     rows[0]["PatientName"] = ""
@@ -257,8 +257,8 @@ def test_patient_identifiable(rows, columns, create_csv_file):
 
     try:
         RequestsParser(";", ["%d.%m.%Y"]).parse(file)
-    except ParsingError:
-        pytest.fail("Unexpected ParsingError with identifiable patient.")
+    except RequestsParserError:
+        pytest.fail("Unexpected RequestsParserError with identifiable patient.")
 
 
 def test_patient_not_identifiable(rows, columns, create_csv_file):
@@ -266,7 +266,7 @@ def test_patient_not_identifiable(rows, columns, create_csv_file):
     rows[0]["PatientName"] = ""
     file = create_csv_file(columns, rows)
 
-    with pytest.raises(ParsingError) as err:
+    with pytest.raises(RequestsParserError) as err:
         RequestsParser(";", ["%d.%m.%Y"]).parse(file)
 
     assert err.match(r"patient must be identifiable")
@@ -276,7 +276,7 @@ def test_patient_not_identifiable(rows, columns, create_csv_file):
     rows[0]["PatientBirthDate"] = ""
     file = create_csv_file(columns, rows)
 
-    with pytest.raises(ParsingError) as err:
+    with pytest.raises(RequestsParserError) as err:
         RequestsParser(";", ["%d.%m.%Y"]).parse(file)
 
     assert err.match(r"patient must be identifiable")
@@ -288,8 +288,8 @@ def test_study_identifiable(rows, columns, create_csv_file):
 
     try:
         RequestsParser(";", ["%d.%m.%Y"]).parse(file)
-    except ParsingError:
-        pytest.fail("Unexpected ParsingError with identifiable study.")
+    except RequestsParserError:
+        pytest.fail("Unexpected RequestsParserError with identifiable study.")
 
     rows[0]["AccessionNumber"] = "1234"
     rows[0]["StudyDate"] = ""
@@ -299,8 +299,8 @@ def test_study_identifiable(rows, columns, create_csv_file):
 
     try:
         RequestsParser(";", ["%d.%m.%Y"]).parse(file)
-    except ParsingError:
-        pytest.fail("Unexpected ParsingError with identifiable study.")
+    except RequestsParserError:
+        pytest.fail("Unexpected RequestsParserError with identifiable study.")
 
 
 def test_study_not_identifiable(rows, columns, create_csv_file):
@@ -308,7 +308,7 @@ def test_study_not_identifiable(rows, columns, create_csv_file):
     rows[0]["Modality"] = ""
     file = create_csv_file(columns, rows)
 
-    with pytest.raises(ParsingError) as err:
+    with pytest.raises(RequestsParserError) as err:
         RequestsParser(";", ["%d.%m.%Y"]).parse(file)
 
     assert err.match(r"study must be identifiable")
@@ -318,7 +318,7 @@ def test_study_not_identifiable(rows, columns, create_csv_file):
     rows[0]["StudyDate"] = ""
     file = create_csv_file(columns, rows)
 
-    with pytest.raises(ParsingError) as err:
+    with pytest.raises(RequestsParserError) as err:
         RequestsParser(";", ["%d.%m.%Y"]).parse(file)
 
     assert err.match(r"study must be identifiable")

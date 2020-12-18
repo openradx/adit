@@ -10,9 +10,9 @@ from crispy_forms.layout import Submit
 import cchardet as chardet
 from adit.core.forms import DicomNodeChoiceField
 from adit.core.models import DicomNode
+from adit.core.fields import RestrictedFileField
 from .models import BatchTransferJob, BatchTransferRequest
-from .fields import RestrictedFileField
-from .utils.parsers import RequestsParser, ParsingError
+from .utils.parsers import RequestsParser, RequestsParserError
 
 
 class BatchTransferJobForm(forms.ModelForm):
@@ -53,7 +53,7 @@ class BatchTransferJobForm(forms.ModelForm):
             ),
             "csv_file": (
                 "The CSV file which contains the data to transfer between "
-                "two DICOM nodes. See [help] how to format the CSV file."
+                "two DICOM nodes. See [Help] how to format the CSV file."
             ),
             "ethics_committee_approval": (
                 "Only studies of an approved trial can be transferred!"
@@ -93,7 +93,7 @@ class BatchTransferJobForm(forms.ModelForm):
     def clean_csv_file(self):
         csv_file = self.cleaned_data["csv_file"]
 
-        delimiter = settings.BATCH_FILE_CSV_DELIMITER
+        delimiter = settings.CSV_FILE_DELIMITER
         date_input_formats = formats.get_format("DATE_INPUT_FORMATS")
         parser = RequestsParser(delimiter, date_input_formats)
 
@@ -102,7 +102,7 @@ class BatchTransferJobForm(forms.ModelForm):
             encoding = chardet.detect(rawdata)["encoding"]
             fp = StringIO(rawdata.decode(encoding))
             self.requests = parser.parse(fp)
-        except ParsingError as err:
+        except RequestsParserError as err:
             self.csv_error_details = err
             raise ValidationError(
                 mark_safe(

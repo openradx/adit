@@ -1,9 +1,8 @@
 import django_filters
 from adit.core.forms import MultiInlineFilterFormHelper, SingleFilterFormHelper
-from .models import TransferTask
 
 
-class TransferJobFilter(django_filters.FilterSet):
+class DicomJobFilter(django_filters.FilterSet):
     class Meta:
         model = None
         fields = ("status",)
@@ -15,7 +14,7 @@ class TransferJobFilter(django_filters.FilterSet):
         )
 
 
-class TransferTaskFilter(django_filters.FilterSet):
+class DicomTaskFilter(django_filters.FilterSet):
     class Meta:
         model = None
         fields = ("status",)

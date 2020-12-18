@@ -1,36 +1,7 @@
 import csv
-import re
-from datetime import datetime
 from django.core.exceptions import ValidationError
+from adit.core.utils.parsers import BaseParser
 from ..models import BatchTransferRequest
-
-
-def parse_int(value):
-    value = value.strip()
-    if value.isdigit():
-        return int(value)
-    return value
-
-
-def parse_string(value):
-    return value.strip()
-
-
-def parse_name(value):
-    value = value.strip()
-    return re.sub(r"\s*,\s*", "^", value)
-
-
-def parse_date(value, date_formats):
-    value = value.strip()
-    if value == "":
-        return None
-    for date_format in date_formats:
-        try:
-            return datetime.strptime(value, date_format)
-        except ValueError:
-            pass
-    return value
 
 
 def get_field_label(field_id):
@@ -64,31 +35,25 @@ def build_request_error(message_dict, num, row_number):
     return "\n".join(general_errors) + "\n" + "\n".join(field_errors) + "\n"
 
 
-class ParsingError(Exception):
+class RequestsParserError(Exception):
     pass
 
 
-class RequestsParser:  # pylint: disable=too-few-public-methods
-    def __init__(self, delimiter, date_formats):
-        self._delimiter = delimiter
-        self._date_formats = date_formats
-
+class RequestsParser(BaseParser):  # pylint: disable=too-few-public-methods
     def parse(self, csv_file):
         requests = []
         errors = []
         reader = csv.DictReader(csv_file, delimiter=self._delimiter)
         for num, data in enumerate(reader):
             request = BatchTransferRequest(
-                row_number=parse_int(data.get("RowNumber", "")),
-                patient_id=parse_string(data.get("PatientID", "")),
-                patient_name=parse_name(data.get("PatientName", "")),
-                patient_birth_date=parse_date(
-                    data.get("PatientBirthDate", ""), self._date_formats
-                ),
-                accession_number=parse_string(data.get("AccessionNumber", "")),
-                study_date=parse_date(data.get("StudyDate", ""), self._date_formats),
-                modality=parse_string(data.get("Modality", "")),
-                pseudonym=parse_string(data.get("Pseudonym", "")),
+                row_number=self.parse_int(data.get("RowNumber", "")),
+                patient_id=self.parse_string(data.get("PatientID", "")),
+                patient_name=self.parse_name(data.get("PatientName", "")),
+                patient_birth_date=self.parse_date(data.get("PatientBirthDate", "")),
+                accession_number=self.parse_string(data.get("AccessionNumber", "")),
+                study_date=self.parse_date(data.get("StudyDate", "")),
+                modality=self.parse_string(data.get("Modality", "")),
+                pseudonym=self.parse_string(data.get("Pseudonym", "")),
             )
 
             try:
@@ -117,6 +82,6 @@ class RequestsParser:  # pylint: disable=too-few-public-methods
 
         if len(errors) > 0:
             error_details = "\n".join(errors)
-            raise ParsingError(error_details)
+            raise RequestsParserError(error_details)
 
         return requests

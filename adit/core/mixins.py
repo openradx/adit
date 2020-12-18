@@ -33,7 +33,7 @@ class OwnerRequiredMixin(AccessMixin):
         return super().dispatch(request, *args, **kwargs)
 
 
-class TransferFormViewMixin:  # pylint: disable=too-few-public-methods
+class UrgentFormViewMixin:  # pylint: disable=too-few-public-methods
     def get_form_kwargs(self) -> Dict[str, Any]:
         kwargs = super().get_form_kwargs()
 

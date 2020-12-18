@@ -1,0 +1,54 @@
+from django.urls import path
+from .views import (
+    StudiesFinderJobListView,
+    StudiesFinderJobCreateView,
+    StudiesFinderJobDetailView,
+    StudiesFinderJobDeleteView,
+    StudiesFinderJobCancelView,
+    StudiesFinderJobVerifyView,
+    StudiesFinderQueryResultsDetailView,
+    studies_finder_results_download_view,
+)
+
+urlpatterns = [
+    path(
+        "jobs/",
+        StudiesFinderJobListView.as_view(),
+        name="studies_finder_job_list",
+    ),
+    path(
+        "jobs/new/",
+        StudiesFinderJobCreateView.as_view(),
+        name="studies_finder_job_create",
+    ),
+    path(
+        "jobs/<int:pk>/",
+        StudiesFinderJobDetailView.as_view(),
+        name="studies_finder_job_detail",
+    ),
+    path(
+        "jobs/<int:pk>/delete/",
+        StudiesFinderJobDeleteView.as_view(),
+        name="studies_finder_job_delete",
+    ),
+    path(
+        "jobs/<int:pk>/cancel/",
+        StudiesFinderJobCancelView.as_view(),
+        name="studies_finder_job_cancel",
+    ),
+    path(
+        "jobs/<int:pk>/verify/",
+        StudiesFinderJobVerifyView.as_view(),
+        name="studies_finder_job_verify",
+    ),
+    path(
+        "tasks/<int:pk>/",
+        StudiesFinderQueryResultsDetailView.as_view(),
+        name="studies_finder_result_detail",
+    ),
+    path(
+        "tasks/<int:pk>/",
+        studies_finder_results_download_view,
+        name="studies_finder_results_download",
+    ),
+]
