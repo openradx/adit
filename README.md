@@ -36,6 +36,7 @@ Downloading data from a DICOM server can done by using a C-GET or C-MOVE operati
 -   Fix version of docker base containers (Postgres, Rabbit, ...)
 -   Evaluate to use diffhtml instead of morphdom, see https://diffhtml.org/api.html#inner-html
 -   Better scheduler (with day in week and times)
+-   Row Number -> Request ID
 
 # Maybe features
 

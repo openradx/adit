@@ -13,7 +13,7 @@
     
     <dt class="col-sm-3">Status</dt>
     <dd class="col-sm-9">
-        <span class="{{ task.status|transfer_task_status_css_class }}">
+        <span class="{{ task.status|dicom_task_status_css_class }}">
             {{ task.get_status_display }}
         </span>
     </dd>

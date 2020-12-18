@@ -47,6 +47,7 @@ INSTALLED_APPS = [
     "adit.selective_transfer.apps.SelectiveTransferConfig",
     "adit.batch_transfer.apps.BatchTransferConfig",
     "adit.continuous_transfer.apps.ContinuousTransferConfig",
+    "adit.studies_finder.apps.StudiesFinderConfig",
     "adit.dicom_explorer.apps.DicomExplorerConfig",
     "channels",
 ]
@@ -305,9 +306,9 @@ FILTERS_EMPTY_CHOICE_LABEL = "Show All"
 # General ADIT settings
 ADIT_AE_TITLE = env.str("ADIT_AE_TITLE", default="ADIT1")
 
-# The delimiter of the CSV file that contains the requests for
-# the batch transfer
-BATCH_FILE_CSV_DELIMITER = ";"
+# The delimiter of the CSV file for the requests of batch transfer and the
+# queries of studies finder
+CSV_FILE_DELIMITER = ";"
 
 # ADIT uses a cache for patients so that not the DICOM server must not
 # always be queried. This is how many patients fit into the cache.

@@ -92,7 +92,7 @@ class DicomJobVerifyView(
         redirect(job)
 
 
-class TransferTaskDetailView(LoginRequiredMixin, OwnerRequiredMixin, DetailView):
+class DicomTaskDetailView(LoginRequiredMixin, OwnerRequiredMixin, DetailView):
     model = None
     job_url_name = None
     template_name = None

@@ -6,7 +6,7 @@ from django.urls import reverse_lazy
 from django_tables2 import SingleTableMixin
 from adit.core.mixins import (
     OwnerRequiredMixin,
-    TransferFormViewMixin,
+    UrgentFormViewMixin,
     RelatedFilterMixin,
     PageSizeSelectMixin,
 )
@@ -15,7 +15,7 @@ from adit.core.views import (
     DicomJobDeleteView,
     DicomJobCancelView,
     DicomJobVerifyView,
-    TransferTaskDetailView,
+    DicomTaskDetailView,
 )
 from .models import BatchTransferSettings, BatchTransferJob, BatchTransferTask
 from .forms import BatchTransferJobForm
@@ -35,7 +35,7 @@ class BatchTransferJobListView(
 class BatchTransferJobCreateView(
     LoginRequiredMixin,
     PermissionRequiredMixin,
-    TransferFormViewMixin,
+    UrgentFormViewMixin,
     CreateView,
 ):
     model = BatchTransferJob
@@ -106,7 +106,7 @@ class BatchTransferJobVerifyView(DicomJobVerifyView):
     model = BatchTransferJob
 
 
-class BatchTransferTaskDetailView(TransferTaskDetailView):
+class BatchTransferTaskDetailView(DicomTaskDetailView):
     model = BatchTransferTask
     job_url_name = "batch_transfer_job_detail"
     template_name = "batch_transfer/batch_transfer_task_detail.html"

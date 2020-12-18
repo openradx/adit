@@ -7,7 +7,7 @@ from django.urls import reverse_lazy
 from django_tables2 import SingleTableMixin
 from adit.core.mixins import (
     OwnerRequiredMixin,
-    TransferFormViewMixin,
+    UrgentFormViewMixin,
     RelatedFilterMixin,
     PageSizeSelectMixin,
 )
@@ -16,7 +16,7 @@ from adit.core.views import (
     DicomJobDeleteView,
     DicomJobCancelView,
     DicomJobVerifyView,
-    TransferTaskDetailView,
+    DicomTaskDetailView,
 )
 from .forms import SelectiveTransferJobForm
 from .models import SelectiveTransferJob, SelectiveTransferTask
@@ -40,7 +40,7 @@ class SelectiveTransferJobCreateView(
     LoginRequiredMixin,
     PermissionRequiredMixin,
     SelectiveTransferJobCreateMixin,
-    TransferFormViewMixin,
+    UrgentFormViewMixin,
     CreateView,
 ):
     """A view class to render the selective transfer form.
@@ -125,7 +125,7 @@ class SelectiveTransferJobVerifyView(DicomJobVerifyView):
     model = SelectiveTransferJob
 
 
-class SelectiveTransferTaskDetailView(TransferTaskDetailView):
+class SelectiveTransferTaskDetailView(DicomTaskDetailView):
     model = SelectiveTransferTask
     job_url_name = "selective_transfer_job_detail"
     template_name = "selective_transfer/selective_transfer_task_detail.html"

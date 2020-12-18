@@ -1,12 +1,12 @@
-from adit.core.filters import TransferJobFilter, TransferTaskFilter
+from adit.core.filters import DicomJobFilter, DicomTaskFilter
 from .models import SelectiveTransferJob, SelectiveTransferTask
 
 
-class SelectiveTransferJobFilter(TransferJobFilter):
-    class Meta(TransferJobFilter.Meta):
+class SelectiveTransferJobFilter(DicomJobFilter):
+    class Meta(DicomJobFilter.Meta):
         model = SelectiveTransferJob
 
 
-class SelectiveTransferTaskFilter(TransferTaskFilter):
-    class Meta(TransferTaskFilter.Meta):
+class SelectiveTransferTaskFilter(DicomTaskFilter):
+    class Meta(DicomTaskFilter.Meta):
         model = SelectiveTransferTask

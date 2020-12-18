@@ -3,7 +3,11 @@ from django.db import models
 from django.conf import settings
 from django.core.validators import MaxValueValidator, MinValueValidator
 from .utils.dicom_connector import DicomConnector
-from .validators import no_backslash_char_validator, no_control_chars_validator
+from .validators import (
+    no_backslash_char_validator,
+    no_control_chars_validator,
+    validate_uids,
+)
 
 
 class CoreSettings(models.Model):
@@ -200,6 +204,7 @@ class DicomTask(models.Model):
         IN_PROGRESS = "IP", "In Progress"
         CANCELED = "CA", "Canceled"
         SUCCESS = "SU", "Success"
+        WARNING = "WA", "Warning"
         FAILURE = "FA", "Failure"
 
     class Meta:
@@ -224,7 +229,11 @@ class TransferTask(DicomTask):
 
     patient_id = models.CharField(max_length=64)
     study_uid = models.CharField(max_length=64)
-    series_uids = models.JSONField(null=True, blank=True)
+    series_uids = models.JSONField(
+        null=True,
+        blank=True,
+        validators=[validate_uids],
+    )
     pseudonym = models.CharField(
         blank=True,
         max_length=64,

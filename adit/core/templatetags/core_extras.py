@@ -33,7 +33,7 @@ def combine_datetime(date, time):
 
 
 @register.filter
-def transfer_job_status_css_class(status):
+def dicom_job_status_css_class(status):
     text_class = ""
     if status == TransferJob.Status.UNVERIFIED:
         text_class = "text-info"
@@ -55,7 +55,7 @@ def transfer_job_status_css_class(status):
 
 
 @register.filter
-def transfer_task_status_css_class(status):
+def dicom_task_status_css_class(status):
     text_class = ""
     if status == TransferTask.Status.PENDING:
         text_class = "text-secondary"

@@ -1,11 +1,11 @@
 import django_filters
-from adit.core.filters import TransferJobFilter
+from adit.core.filters import DicomJobFilter
 from adit.core.forms import SingleFilterFormHelper
 from .models import BatchTransferJob, BatchTransferRequest
 
 
-class BatchTransferJobFilter(TransferJobFilter):
-    class Meta(TransferJobFilter.Meta):
+class BatchTransferJobFilter(DicomJobFilter):
+    class Meta(DicomJobFilter.Meta):
         model = BatchTransferJob
 
 
