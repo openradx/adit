@@ -6,7 +6,7 @@ from .views import (
     StudiesFinderJobDeleteView,
     StudiesFinderJobCancelView,
     StudiesFinderJobVerifyView,
-    StudiesFinderQueryResultsDetailView,
+    StudiesFinderQueryDetailView,
     studies_finder_results_download_view,
 )
 
@@ -42,9 +42,9 @@ urlpatterns = [
         name="studies_finder_job_verify",
     ),
     path(
-        "tasks/<int:pk>/",
-        StudiesFinderQueryResultsDetailView.as_view(),
-        name="studies_finder_result_detail",
+        "queries/<int:pk>/",
+        StudiesFinderQueryDetailView.as_view(),
+        name="studies_finder_query_detail",
     ),
     path(
         "tasks/<int:pk>/",

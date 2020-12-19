@@ -14,10 +14,15 @@ from adit.core.views import (
     DicomJobDeleteView,
     DicomJobCancelView,
     DicomJobVerifyView,
+    DicomTaskDetailView,
 )
 from .models import StudiesFinderJob, StudiesFinderQuery
 from .forms import StudiesFinderJobForm
-from .tables import StudiesFinderJobTable, StudiesFinderQueryTable
+from .tables import (
+    StudiesFinderJobTable,
+    StudiesFinderQueryTable,
+    StudiesFinderResultTable,
+)
 from .filters import StudiesFinderJobFilter, StudiesFinderQueryFilter
 
 
@@ -57,7 +62,7 @@ class StudiesFinderJobDetailView(
 
     def get_filter_queryset(self):
         job = self.get_object()
-        return job.requests.prefetch_related("queries")
+        return job.queries.prefetch_related("results")
 
 
 class StudiesFinderJobDeleteView(DicomJobDeleteView):
@@ -73,15 +78,24 @@ class StudiesFinderJobVerifyView(DicomJobVerifyView):
     model = StudiesFinderJob
 
 
-class StudiesFinderQueryResultsDetailView(
-    LoginRequiredMixin,
-    OwnerRequiredMixin,
+class StudiesFinderQueryDetailView(
     SingleTableMixin,
-    DetailView,
+    PageSizeSelectMixin,
+    DicomTaskDetailView,
 ):
     model = StudiesFinderQuery
     job_url_name = "studies_finder_job_detail"
-    template_name = "studies_finder/studies_finder_query_results_detail.html"
+    template_name = "studies_finder/studies_finder_query_detail.html"
+    table_class = StudiesFinderResultTable
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+
+        if self.object:
+            # table_data is consumed by SingleTableMixin of django_tables2
+            self.table_data = self.object.results
+
+        return context
 
 
 def studies_finder_results_download_view(request):

@@ -1,4 +1,5 @@
 from django.db import models
+from django.urls import reverse
 from adit.core.models import AppSettings, DicomJob, DicomTask
 from adit.core.validators import (
     no_backslash_char_validator,
@@ -17,6 +18,9 @@ class StudiesFinderJob(DicomJob):
     project_name = models.CharField(max_length=150)
     project_description = models.TextField(max_length=2000)
 
+    def get_absolute_url(self):
+        return reverse("studies_finder_job_detail", args=[str(self.id)])
+
 
 class StudiesFinderQuery(DicomTask):
     class Meta(DicomTask.Meta):
@@ -28,7 +32,7 @@ class StudiesFinderQuery(DicomTask):
     )
     query_id = models.PositiveIntegerField()
     patient_id = models.CharField(
-        null=True,
+        blank=True,
         max_length=64,
         validators=[
             no_backslash_char_validator,
@@ -37,7 +41,7 @@ class StudiesFinderQuery(DicomTask):
         ],
     )
     patient_name = models.CharField(
-        null=True,
+        blank=True,
         max_length=324,
         validators=[
             no_backslash_char_validator,
@@ -47,17 +51,27 @@ class StudiesFinderQuery(DicomTask):
     )
     patient_birth_date = models.DateField(
         null=True,
+        blank=True,
         error_messages={"invalid": "Invalid date format."},
     )
-    modalities = models.JSONField(null=True, validators=[validate_modalities])
+    modalities = models.JSONField(
+        null=True,
+        blank=True,
+        validators=[validate_modalities],
+    )
     study_date_start = models.DateField(
         null=True,
+        blank=True,
         error_messages={"invalid": "Invalid date format."},
     )
     study_date_end = models.DateField(
         null=True,
+        blank=True,
         error_messages={"invalid": "Invalid date format."},
     )
+
+    def get_absolute_url(self):
+        return reverse("studies_finder_query_detail", args=[str(self.id)])
 
 
 class StudiesFinderResult(models.Model):
@@ -110,5 +124,12 @@ class StudiesFinderResult(models.Model):
             no_wildcard_chars_validator,
         ],
     )
-    modalities = models.JSONField(validators=[validate_modalities])
-    image_count = models.PositiveIntegerField(null=True)
+    modalities = models.JSONField(
+        null=True,
+        blank=True,
+        validators=[validate_modalities],
+    )
+    image_count = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+    )

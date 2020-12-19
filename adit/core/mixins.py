@@ -79,6 +79,7 @@ class RelatedFilterMixin(FilterMixin):
             or self.filterset.is_valid()
             or not self.get_strict()
         ):
+            # object_list is consumed by SingleTableMixin of django_tables2
             self.object_list = self.filterset.qs
         else:
             self.object_list = self.filterset.queryset.none()

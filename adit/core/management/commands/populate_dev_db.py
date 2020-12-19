@@ -4,7 +4,6 @@ from django.contrib.auth.models import Group
 from faker import Faker
 import factory
 
-# pylint: disable=import-error,no-name-in-module
 from adit.accounts.models import User
 from adit.accounts.factories import AdminUserFactory, UserFactory
 from adit.core.factories import (
@@ -20,9 +19,16 @@ from adit.selective_transfer.factories import (
     SelectiveTransferJobFactory,
     SelectiveTransferTaskFactory,
 )
+from adit.studies_finder.factories import (
+    StudiesFinderJobFactory,
+    StudiesFinderQueryFactory,
+    StudiesFinderResultFactory,
+)
 
+SELECTIVE_TRANSFER_COUNT = 5
+BATCH_TRANSFER_COUNT = 3
+STUDIES_FINDER_COUNT = 2
 CREATE_JOBS_FOR_ADMIN_ONLY = True
-PROBABILITY_OF_BATCH_JOB = 50
 
 fake = Faker()
 
@@ -81,11 +87,27 @@ def create_folder_nodes():
 
 
 def create_jobs(users, servers, folders):
-    for _ in range(10):
-        if fake.boolean(chance_of_getting_true=PROBABILITY_OF_BATCH_JOB):
-            create_batch_transfer_job(users, servers, folders)
-        else:
-            create_selective_transfer_job(users, servers, folders)
+    for _ in range(SELECTIVE_TRANSFER_COUNT):
+        create_selective_transfer_job(users, servers, folders)
+
+    for _ in range(BATCH_TRANSFER_COUNT):
+        create_batch_transfer_job(users, servers, folders)
+
+    for _ in range(STUDIES_FINDER_COUNT):
+        create_studies_transfer_job(users)
+
+
+def create_selective_transfer_job(users, servers, folders):
+    servers_and_folders = servers + folders
+
+    job = SelectiveTransferJobFactory(
+        source=factory.Faker("random_element", elements=servers),
+        destination=factory.Faker("random_element", elements=servers_and_folders),
+        owner=factory.Faker("random_element", elements=users),
+    )
+
+    for _ in range(fake.random_int(min=1, max=120)):
+        SelectiveTransferTaskFactory(job=job)
 
 
 def create_batch_transfer_job(users, servers, folders):
@@ -106,17 +128,18 @@ def create_batch_transfer_job(users, servers, folders):
     return job
 
 
-def create_selective_transfer_job(users, servers, folders):
-    servers_and_folders = servers + folders
-
-    job = SelectiveTransferJobFactory(
-        source=factory.Faker("random_element", elements=servers),
-        destination=factory.Faker("random_element", elements=servers_and_folders),
+def create_studies_transfer_job(users):
+    job = StudiesFinderJobFactory(
         owner=factory.Faker("random_element", elements=users),
     )
 
-    for _ in range(fake.random_int(min=1, max=120)):
-        SelectiveTransferTaskFactory(job=job)
+    for query_id in range(fake.random_int(min=1, max=100)):
+        query = StudiesFinderQueryFactory(job=job, query_id=query_id)
+
+        for _ in range(fake.random_int(min=1, max=3)):
+            StudiesFinderResultFactory(query=query)
+
+    return job
 
 
 class Command(BaseCommand):

@@ -1,5 +1,12 @@
 # Django
 
+## `null=True` and `blank=True`
+
+-   On text and char fields use `blank=True` alone (without `null=True`)
+-   On non string fields always use `blank=True` together with `null=True`
+-   If the string field is initially not set directly use with `default=""`
+-   See also https://books.agiliq.com/projects/django-orm-cookbook/en/latest/null_vs_blank.html
+
 ## FilterMixin does not work in DetailView
 
 -   DetailView queries the object in get_object() using the get_queryset()

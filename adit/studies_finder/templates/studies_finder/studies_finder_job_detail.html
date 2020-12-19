@@ -1,11 +1,13 @@
 {% extends "core/base_generic.html" %}
 
 {% load core_extras %}
+{% load crispy_forms_tags %}
+{% load render_table from django_tables2 %}
 
 {% block container %}
 <div class="d-flex justify-content-between align-items-start">
-    <h4 class="mb-3">Selective Transfer Job</h4>
-    <a href="{% url 'selective_transfer_job_list' %}">
+    <h4 class="mb-3">Studies Finder Job</h4>
+    <a href="{% url 'studies_finder_job_list' %}">
         {% include "core/_list.svg" %}
         <span class="align-middle">Job List</span>
     </a>
@@ -18,9 +20,6 @@
     <dt class="col-sm-3">Source</dt>
     <dd class="col-sm-9">{{job.source}}</dd>
 
-    <dt class="col-sm-3">Destination</dt>
-    <dd class="col-sm-9">{{job.destination}}</dd>
-
     <dt class="col-sm-3">Created At</dt>
     <dd class="col-sm-9">{{ job.created }}</dd>
 
@@ -29,17 +28,8 @@
         <dd class="col-sm-9">{{ job.owner }}</dd>
     {% endif %}
 
-    <dt class="col-sm-3">Trial Protocol ID</dt>
-    <dd class="col-sm-9">{{ job.trial_protocol_id|default:"—" }}</dd>
-
-    <dt class="col-sm-3">Trial Protocol Name</dt>
-    <dd class="col-sm-9">{{ job.trial_protocol_name|default:"—" }}</dd>
-
-    <dt class="col-sm-3">Total Transfer Tasks</dt>
-    <dd class="col-sm-9">{{ job.tasks.count }}</dd>
-
-    <dt class="col-sm-3">Processed Transfer Tasks</dt>
-    <dd class="col-sm-9">{{ job.get_processed_tasks.count }}</dd>
+    <dt class="col-sm-3">Project Name</dt>
+    <dd class="col-sm-9">{{ job.project_name }}</dd>
 
     <dt class="col-sm-3">Status</dt>
     <dd class="col-sm-9">
@@ -52,22 +42,10 @@
     <dd class="col-sm-9">{{ job.message|default:"—" }}</dd>
 </dl>
 
-{% load crispy_forms_tags %}
 <div class="row justify-content-end mb-1">
     <div class="col-md">
         <h5 text-nowrap>
-            Tasks
-            <a 
-                href="javascript:void(null);"
-                id="copy-table-link"
-                class="badge badge-light align-top"
-                data-clipboard-target="#dicom_task_table"
-                data-toggle="tooltip"
-                data-placement="top"
-                title="Copy table to clipboard"
-            >
-                {% include "core/_clipboard.svg" %}
-            </a>
+            Queries
         </h5>
     </div>
     <div class="col col-md-auto">
@@ -78,21 +56,12 @@
     </div>
 </div>
 
-{% load render_table from django_tables2 %}
 {% if table.data %}
     {% render_table table %}
 {% else %}
-    No transfer tasks to view.
+    No study queries to view.
 {% endif %}
 
 {% include "core/_job_control_panel.html" %}
 
 {% endblock container %}
-
-{% block script %}
-<script>
-$(function() {
-    new ClipboardJS('#copy-table-link');
-});
-</script>
-{% endblock script %}
