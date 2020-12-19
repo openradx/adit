@@ -26,6 +26,7 @@ urlpatterns = [
     path("selective-transfer/", include("adit.selective_transfer.urls")),
     path("batch-transfer/", include("adit.batch_transfer.urls")),
     path("continuous-transfer/", include("adit.continuous_transfer.urls")),
+    path("studies-finder/", include("adit.studies_finder.urls")),
     path("dicom-explorer/", include("adit.dicom_explorer.urls")),
 ]
 

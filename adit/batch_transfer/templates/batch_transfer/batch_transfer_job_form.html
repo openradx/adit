@@ -12,7 +12,7 @@
 <div class="d-flex justify-content-between align-items-start">
     <h4 class="mb-3">
         New Batch Transfer Job
-        {% include "core/_help_button.html" with target="#batch_form_help_modal" only %}
+        {% include "core/_help_button.html" with target="#batch_transfer_help_modal" only %}
     </h4>
     <a href="{% url 'batch_transfer_job_list' %}">
         {% include "core/_list.svg" %}
@@ -24,6 +24,6 @@
 {% endblock container %}
 
 {% block bottom %}
-{% include 'batch_transfer/_batch_form_help_modal.html' with modal_id="batch_form_help_modal" %}
+{% include 'batch_transfer/_batch_transfer_help_modal.html' with modal_id="batch_transfer_help_modal" %}
 {% include 'batch_transfer/_csv_error_details_modal.html' with modal_id="csv_error_details_modal" %}
 {% endblock bottom %}

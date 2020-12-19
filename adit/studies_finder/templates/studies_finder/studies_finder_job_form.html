@@ -1,0 +1,24 @@
+{% extends "core/base_generic.html" %}
+
+{% load static %}
+{% load crispy_forms_tags %}
+
+{% block container %}
+<div class="d-flex justify-content-between align-items-start">
+    <h4 class="mb-3">
+        New Studies Finder Job
+        {% include "core/_help_button.html" with target="#studies_finder_help_modal" only %}
+    </h4>
+    <a href="{% url 'studies_finder_job_list' %}">
+        {% include "core/_list.svg" %}
+        <span class="align-middle">Previous Jobs</span>
+    </a>
+</div>
+
+{% crispy form %}
+{% endblock container %}
+
+{% block bottom %}
+{% include 'studies_finder/_studies_finder_help_modal.html' with modal_id="studies_finder_help_modal" %}
+{% include 'studies_finder/_csv_error_details_modal.html' with modal_id="csv_error_details_modal" %}
+{% endblock bottom %}

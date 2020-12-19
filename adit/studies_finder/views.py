@@ -36,7 +36,7 @@ class StudiesFinderJobCreateView(
 ):
     model = StudiesFinderJob
     form_class = StudiesFinderJobForm
-    template_name = "studies_finder/studies_fidner_job_form.html"
+    template_name = "studies_finder/studies_finder_job_form.html"
     permission_required = "studies_finder.add_studiesfinderjob"
 
 

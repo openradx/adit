@@ -44,6 +44,20 @@
                 <dd>
                     Continuously transfer studies from a certain point in time (TBR).
                 </dd>
+                
+                <dt>
+                    <a href="{% url 'studies_finder_job_create' %}">Studies Finder</a>
+                </dt>
+                <dd>
+                    Find studies of patients specified in a CSV file.
+                </dd>
+
+                <dt>
+                    <a href="{% url 'dicom_explorer' %}">DICOM Explorer</a>
+                </dt>
+                <dd>
+                    Explore the DICOM data of a PACS server.
+                </dd>
             </dl>
 
             {% if not user.is_authenticated %}
