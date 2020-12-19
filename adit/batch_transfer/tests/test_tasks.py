@@ -57,12 +57,12 @@ def test_batch_transfer_finished_with_success(
 
 @pytest.mark.django_db
 @patch.object(Scheduler, "must_be_scheduled", return_value=False)
-@patch("adit.core.tasks.transfer_dicoms")
+@patch("adit.batch_transfer.tasks.TransferUtil.start_transfer")
 @patch("adit.batch_transfer.tasks._fetch_patient_id")
 def test_request_without_study_fails(
-    fetch_patient_id_mock,
-    transfer_dicoms_mock,
-    must_be_scheduled_mock,
+    fetch_patient_id,
+    start_transfer,
+    must_be_scheduled,
 ):
     # Arrange
     job = BatchTransferJobFactory(
@@ -81,8 +81,8 @@ def test_request_without_study_fails(
     connector.find_patients.return_value = [patient]
     connector.find_studies.return_value = []
 
-    fetch_patient_id_mock.return_value = patient["PatientID"]
-    transfer_dicoms_mock.return_value = TransferTask.Status.SUCCESS
+    fetch_patient_id.return_value = patient["PatientID"]
+    start_transfer.return_value = TransferTask.Status.SUCCESS
 
     with patch.object(BatchTransferJob, "source") as source_mock:
         source_mock.dicomserver.create_connector.return_value = connector
@@ -97,4 +97,4 @@ def test_request_without_study_fails(
         assert result == request.status
         assert request.message == "No studies found to transfer."
         source_mock.dicomserver.create_connector.assert_called_once()
-        must_be_scheduled_mock.assert_called_once()
+        must_be_scheduled.assert_called_once()

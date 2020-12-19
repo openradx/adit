@@ -23,12 +23,12 @@ class StudiesFinderQuery(DicomTask):
         ordering = ("query_id",)
         unique_together = ("query_id", "job")
 
-    query_id = models.PositiveIntegerField()
     job = models.ForeignKey(
         StudiesFinderJob, on_delete=models.CASCADE, related_name="queries"
     )
+    query_id = models.PositiveIntegerField()
     patient_id = models.CharField(
-        blank=True,
+        null=True,
         max_length=64,
         validators=[
             no_backslash_char_validator,
@@ -37,7 +37,7 @@ class StudiesFinderQuery(DicomTask):
         ],
     )
     patient_name = models.CharField(
-        blank=True,
+        null=True,
         max_length=324,
         validators=[
             no_backslash_char_validator,
@@ -47,20 +47,15 @@ class StudiesFinderQuery(DicomTask):
     )
     patient_birth_date = models.DateField(
         null=True,
-        blank=True,
         error_messages={"invalid": "Invalid date format."},
     )
-    modalities = models.JSONField(
-        null=True, blank=True, validators=[validate_modalities]
-    )
+    modalities = models.JSONField(null=True, validators=[validate_modalities])
     study_date_start = models.DateField(
         null=True,
-        blank=True,
         error_messages={"invalid": "Invalid date format."},
     )
     study_date_end = models.DateField(
         null=True,
-        blank=True,
         error_messages={"invalid": "Invalid date format."},
     )
 
@@ -70,7 +65,6 @@ class StudiesFinderResult(models.Model):
         StudiesFinderQuery, on_delete=models.CASCADE, related_name="results"
     )
     patient_id = models.CharField(
-        blank=True,
         max_length=64,
         validators=[
             no_backslash_char_validator,
@@ -79,7 +73,6 @@ class StudiesFinderResult(models.Model):
         ],
     )
     patient_name = models.CharField(
-        blank=True,
         max_length=324,
         validators=[
             no_backslash_char_validator,
@@ -88,12 +81,17 @@ class StudiesFinderResult(models.Model):
         ],
     )
     patient_birth_date = models.DateField(
-        null=True,
-        blank=True,
         error_messages={"invalid": "Invalid date format."},
     )
-    modality = models.CharField(
-        blank=True,
+    study_uid = models.CharField(
+        max_length=64,
+        validators=[
+            no_backslash_char_validator,
+            no_control_chars_validator,
+            no_wildcard_chars_validator,
+        ],
+    )
+    accession_number = models.CharField(
         max_length=16,
         validators=[
             no_backslash_char_validator,
@@ -102,12 +100,9 @@ class StudiesFinderResult(models.Model):
         ],
     )
     study_date = models.DateField(
-        null=True,
-        blank=True,
         error_messages={"invalid": "Invalid date format."},
     )
     study_description = models.CharField(
-        blank=True,
         max_length=64,
         validators=[
             no_backslash_char_validator,
@@ -115,4 +110,5 @@ class StudiesFinderResult(models.Model):
             no_wildcard_chars_validator,
         ],
     )
-    image_count = models.PositiveIntegerField()
+    modalities = models.JSONField(validators=[validate_modalities])
+    image_count = models.PositiveIntegerField(null=True)
