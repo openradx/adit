@@ -133,8 +133,8 @@ def create_studies_transfer_job(users):
         owner=factory.Faker("random_element", elements=users),
     )
 
-    for query_id in range(fake.random_int(min=1, max=100)):
-        query = StudiesFinderQueryFactory(job=job, query_id=query_id)
+    for row_number in range(fake.random_int(min=1, max=100)):
+        query = StudiesFinderQueryFactory(job=job, row_number=row_number)
 
         for _ in range(fake.random_int(min=1, max=3)):
             StudiesFinderResultFactory(query=query)

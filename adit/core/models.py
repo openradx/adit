@@ -223,6 +223,14 @@ class DicomTask(models.Model):
     end = models.DateTimeField(null=True, blank=True)
 
 
+class BatchTask(DicomTask):
+    class Meta(DicomTask.Meta):
+        abstract = True
+        ordering = ("row_number",)
+
+    row_number = models.PositiveIntegerField()
+
+
 class TransferTask(DicomTask):
     class Meta(DicomTask.Meta):
         abstract = True

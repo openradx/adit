@@ -1,7 +1,7 @@
 {% extends "core/base_generic.html" %}
 
-{% load core_extras %}
-{% load crispy_forms_tags %}
+{% load dicom_task_status_css_class from core_extras %}
+{% load crispy from crispy_forms_tags %}
 {% load render_table from django_tables2 %}
 
 {% block container %}
@@ -11,8 +11,8 @@
 
 {% with query.job as job %}
 <dl class="row">
-    <dt class="col-sm-3">Query ID</dt>
-    <dd class="col-sm-9">{{ query.query_id }}</dd>
+    <dt class="col-sm-3">Row</dt>
+    <dd class="col-sm-9">{{ query.row_number }}</dd>
 
     <dt class="col-sm-3">Associated Job ID</dt>
     <dd class="col-sm-9">

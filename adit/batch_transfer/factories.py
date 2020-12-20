@@ -3,7 +3,7 @@ from faker import Faker
 from adit.core.factories import (
     DicomFolderFactory,
     TransferJobFactory,
-    DicomTaskFactory,
+    BatchTaskFactory,
     TransferTaskFactory,
 )
 from .models import BatchTransferJob, BatchTransferRequest, BatchTransferTask
@@ -26,12 +26,11 @@ class BatchTransferJobToPathFactory(BatchTransferJobFactory):
 status_codes = [key for key, value in BatchTransferRequest.Status.choices]
 
 
-class BatchTransferRequestFactory(DicomTaskFactory):
+class BatchTransferRequestFactory(BatchTaskFactory):
     class Meta:
         model = BatchTransferRequest
 
     job = factory.SubFactory(BatchTransferJobFactory)
-    row_number = factory.Sequence(int)
     patient_id = factory.Faker("numerify", text="##########")
     patient_name = factory.LazyFunction(
         lambda: f"{fake.last_name()}, {fake.first_name()}"

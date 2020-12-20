@@ -2,7 +2,7 @@ import factory
 from faker import Faker
 from adit.core.factories import (
     DicomJobFactory,
-    DicomTaskFactory,
+    BatchTaskFactory,
 )
 from .models import StudiesFinderJob, StudiesFinderQuery, StudiesFinderResult
 
@@ -17,12 +17,11 @@ class StudiesFinderJobFactory(DicomJobFactory):
     project_description = factory.Faker("paragraph")
 
 
-class StudiesFinderQueryFactory(DicomTaskFactory):
+class StudiesFinderQueryFactory(BatchTaskFactory):
     class Meta:
         model = StudiesFinderQuery
 
     job = factory.SubFactory(StudiesFinderJobFactory)
-    query_id = factory.Sequence(int)
     patient_id = factory.Faker("numerify", text="##########")
     patient_name = factory.LazyFunction(
         lambda: f"{fake.last_name()}, {fake.first_name()}"

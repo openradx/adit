@@ -1,7 +1,7 @@
 from django.db import models
 from django.core.exceptions import ValidationError
 from django.urls import reverse
-from adit.core.models import AppSettings, TransferJob, DicomTask, TransferTask
+from adit.core.models import AppSettings, TransferJob, BatchTask, TransferTask
 from adit.core.validators import (
     no_backslash_char_validator,
     no_control_chars_validator,
@@ -34,12 +34,10 @@ class BatchTransferJob(TransferJob):
         return reverse("batch_transfer_job_detail", args=[str(self.id)])
 
 
-class BatchTransferRequest(DicomTask):
-    class Meta(DicomTask.Meta):
-        ordering = ("row_number",)
+class BatchTransferRequest(BatchTask):
+    class Meta(BatchTask.Meta):
         unique_together = ("row_number", "job")
 
-    row_number = models.PositiveIntegerField()
     job = models.ForeignKey(
         BatchTransferJob, on_delete=models.CASCADE, related_name="requests"
     )

@@ -1,6 +1,6 @@
 from django.db import models
 from django.urls import reverse
-from adit.core.models import AppSettings, DicomJob, DicomTask
+from adit.core.models import AppSettings, DicomJob, BatchTask
 from adit.core.validators import (
     no_backslash_char_validator,
     no_control_chars_validator,
@@ -22,15 +22,13 @@ class StudiesFinderJob(DicomJob):
         return reverse("studies_finder_job_detail", args=[str(self.id)])
 
 
-class StudiesFinderQuery(DicomTask):
-    class Meta(DicomTask.Meta):
-        ordering = ("query_id",)
-        unique_together = ("query_id", "job")
+class StudiesFinderQuery(BatchTask):
+    class Meta(BatchTask.Meta):
+        unique_together = ("row_number", "job")
 
     job = models.ForeignKey(
         StudiesFinderJob, on_delete=models.CASCADE, related_name="queries"
     )
-    query_id = models.PositiveIntegerField()
     patient_id = models.CharField(
         blank=True,
         max_length=64,

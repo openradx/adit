@@ -1,6 +1,7 @@
 {% extends "core/base_generic.html" %}
 
-{% load core_extras %}
+{% load dicom_job_status_css_class from core_extras %}
+{% load job_control_panel from continuous_transfer_extras %}
 
 {% block container %}
 <div class="d-flex justify-content-between align-items-start">
@@ -48,4 +49,7 @@
     <dt class="col-sm-3">Message</dt>
     <dd class="col-sm-9">{{ job.message|default:"—" }}</dd>
 </dl>
+
+{% job_control_panel %}
+
 {% endblock container %}
