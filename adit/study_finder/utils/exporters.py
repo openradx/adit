@@ -42,7 +42,7 @@ def export_results(job: StudyFinderJob, file):
         ]
     )
 
-    for query in job.queries:
+    for query in job.queries.prefetch_related("results"):
         for result in query.results:
             csv_row = _create_csv_row(query, result)
             writer.writerow(csv_row)
