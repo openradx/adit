@@ -1,4 +1,5 @@
 import csv
+from django.conf import settings
 from django.core.exceptions import ValidationError
 from adit.core.utils.parsers import BaseParser
 from ..models import StudiesFinderQuery
@@ -18,7 +19,7 @@ class QueriesParser(BaseParser):
                 data.get("Study Date", "")
             )
             query = StudiesFinderQuery(
-                query_id=self.parse_int(data.get("Query ID", "")),
+                row_number=self.parse_int(data.get("Row", "")),
                 patient_id=self.parse_string(data.get("Patient ID", "")),
                 patient_name=self.parse_name(data.get("Patient Name", "")),
                 patient_birth_date=self.parse_date(data.get("Birth Date", "")),
@@ -37,16 +38,18 @@ class QueriesParser(BaseParser):
         return map(str.strip, modalities)
 
     def parse_date_range(self, value):
-        ranges = value.split("-")
-
-        if len(ranges) > 2:
-            raise ValueError(f"Invalid date range format: {value}")
+        ranges = value.split(settings.DATE_RANGE_DELIMITER)
 
         d1 = None
+        try:
+            d1 = ranges[0]
+        except IndexError:
+            pass
+
         d2 = None
-        if len(ranges) > 0:
-            d1 = self.parse_date(ranges[0])
-        if len(ranges) > 1:
-            d2 = self.parse_date(ranges[1])
+        try:
+            d2 = ranges[1]
+        except IndexError:
+            pass
 
         return d1, d2

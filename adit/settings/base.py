@@ -310,6 +310,10 @@ ADIT_AE_TITLE = env.str("ADIT_AE_TITLE", default="ADIT1")
 # queries of studies finder
 CSV_FILE_DELIMITER = ";"
 
+# The delimiter of a date range in a text field (or CSV file), e.g.
+# in "01.02.2019-09.03.2020" the delimiter is "-".
+DATE_RANGE_DELIMITER = "-"
+
 # ADIT uses a cache for patients so that not the DICOM server must not
 # always be queried. This is how many patients fit into the cache.
 BATCH_PATIENT_CACHE_SIZE = 10000
