@@ -33,12 +33,12 @@ Downloading data from a DICOM server can done by using a C-GET or C-MOVE operati
 
 # TODO list
 
--   Fix version of docker base containers (Postgres, Rabbit, ...)
+-   prefetch results on study finder download view
 -   Evaluate to use diffhtml instead of morphdom, see https://diffhtml.org/api.html#inner-html
 -   Better scheduler (with day in week and times)
--   Row Number -> Request ID or Request Number or Query ID -> Row Number
 -   study_date -> study_datetime
 -   django_tables2 has its own empty data widget -> use it
+-   should we really save log to task this way
 
 # Maybe features
 

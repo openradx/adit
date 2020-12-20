@@ -1,6 +1,10 @@
+from io import StringIO
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
+from django.http.response import HttpResponse
 from django.views.generic.edit import CreateView
 from django.views.generic import DetailView
+from django.views.generic.detail import SingleObjectMixin
+from django.views.generic.base import View
 from django.urls import reverse_lazy
 from django_tables2 import SingleTableMixin
 from adit.core.mixins import (
@@ -16,7 +20,7 @@ from adit.core.views import (
     DicomJobVerifyView,
     DicomTaskDetailView,
 )
-from .models import StudyFinderJob, StudyFinderQuery, StudyFinderResult
+from .models import StudyFinderJob, StudyFinderQuery
 from .forms import StudyFinderJobForm
 from .tables import (
     StudyFinderJobTable,
@@ -24,6 +28,7 @@ from .tables import (
     StudyFinderResultTable,
 )
 from .filters import StudyFinderJobFilter, StudyFinderQueryFilter
+from .utils.exporters import export_results
 
 
 class StudyFinderJobListView(DicomJobListView):  # pylint: disable=too-many-ancestors
@@ -93,5 +98,20 @@ class StudyFinderQueryDetailView(
         return self.object.results.all()
 
 
-def study_finder_results_download_view(request):
-    raise NotImplementedError()
+class StudyFinderResultsDownloadView(
+    LoginRequiredMixin,
+    OwnerRequiredMixin,
+    SingleObjectMixin,
+    View,
+):
+    model = StudyFinderJob
+    owner_accessor = "owner"
+
+    def get(self, request):
+        job = self.get_object()
+        file = StringIO()
+        export_results(job, file)
+        response = HttpResponse(file, content_type="text/csv")
+        filename = f"study_finder_job_{job.id}_results.csv"
+        response["Content-Disposition"] = f"attachment;filename={filename}"
+        return response
