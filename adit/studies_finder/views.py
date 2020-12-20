@@ -16,7 +16,7 @@ from adit.core.views import (
     DicomJobVerifyView,
     DicomTaskDetailView,
 )
-from .models import StudiesFinderJob, StudiesFinderQuery
+from .models import StudiesFinderJob, StudiesFinderQuery, StudiesFinderResult
 from .forms import StudiesFinderJobForm
 from .tables import (
     StudiesFinderJobTable,
@@ -84,18 +84,13 @@ class StudiesFinderQueryDetailView(
     DicomTaskDetailView,
 ):
     model = StudiesFinderQuery
+    context_object_name = "query"
     job_url_name = "studies_finder_job_detail"
     template_name = "studies_finder/studies_finder_query_detail.html"
     table_class = StudiesFinderResultTable
 
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-
-        if self.object:
-            # table_data is consumed by SingleTableMixin of django_tables2
-            self.table_data = self.object.results
-
-        return context
+    def get_table_data(self):
+        return self.object.results.all()
 
 
 def studies_finder_results_download_view(request):

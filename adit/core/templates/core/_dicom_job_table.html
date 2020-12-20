@@ -1,5 +1,5 @@
-{% load render_table from django_tables2 %}
 {% load crispy_forms_tags %}
+{% load render_table from django_tables2 %}
 
 <div class="row mb-1">
     <div class="col">
@@ -10,8 +10,4 @@
     </div>
 </div>
 
-{% if table.data %}
-    {% render_table table %}
-{% else %}
-    No jobs to view.
-{% endif %}
+{% render_table table %}

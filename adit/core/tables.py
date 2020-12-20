@@ -22,6 +22,7 @@ class DicomJobTable(tables.Table):
         order_by = ("-id",)
         template_name = "django_tables2/bootstrap4.html"
         fields = ("id", "status", "source", "created")
+        empty_text = "No jobs to show"
         attrs = {
             "id": "dicom_job_table",
             "class": "table table-bordered table-hover",
@@ -46,6 +47,7 @@ class DicomTaskTable(tables.Table):
         order_by = ("-id",)
         template_name = "django_tables2/bootstrap4.html"
         fields = ("id", "status", "message", "end")
+        empty_text = "No tasks to show"
         attrs = {
             "id": "dicom_task_table",
             "class": "table table-bordered table-hover",

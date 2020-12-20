@@ -21,6 +21,7 @@ class BatchTransferRequestTable(tables.Table):
         order_by = ("row_number",)
         template_name = "django_tables2/bootstrap4.html"
         fields = ("row_number", "status", "transfer_tasks", "end")
+        empty_text = "No requests to show"
         attrs = {
             "id": "batch_transfer_request_table",
             "class": "table table-bordered table-hover",
