@@ -4,7 +4,7 @@
             {% csrf_token %}
             <button type="submit" class="btn btn-danger">
                 {% include "core/_x.svg" %}
-                Delete
+                Delete Job
             </button>
         </form>
     {% endif %}
@@ -14,17 +14,17 @@
             {% csrf_token %}
             <button type="submit" class="btn btn-warning">
                 {% include "core/_stop.svg" %}
-                Cancel
+                Cancel Job
             </button>
         </form>
     {% endif %}
 
-    {% if user.is_staff and job.is_unverified %}
+    {% if user.is_staff and not job.is_verified %}
         <form class="mr-3" action="{% url verify_url job.pk %}" method="post">
             {% csrf_token %}
             <button type="submit" class="btn btn-success">
                 {% include "core/_check.svg" %}
-                Verify
+                Verify Job
             </button>
         </form>
     {% endif %}
