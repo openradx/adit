@@ -39,6 +39,7 @@ class StudyFinderResultFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = StudyFinderResult
 
+    job = factory.SubFactory(StudyFinderJobFactory)
     query = factory.SubFactory(StudyFinderQueryFactory)
     patient_id = factory.Faker("numerify", text="##########")
     patient_name = factory.LazyFunction(

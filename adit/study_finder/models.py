@@ -67,12 +67,16 @@ class StudyFinderQuery(BatchTask):
         blank=True,
         error_messages={"invalid": "Invalid date format."},
     )
+    study_description = models.CharField(max_length=64)
 
     def get_absolute_url(self):
         return reverse("study_finder_query_detail", args=[str(self.id)])
 
 
 class StudyFinderResult(models.Model):
+    job = models.ForeignKey(
+        StudyFinderJob, on_delete=models.CASCADE, related_name="results"
+    )
     query = models.ForeignKey(
         StudyFinderQuery, on_delete=models.CASCADE, related_name="results"
     )

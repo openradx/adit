@@ -43,10 +43,24 @@
     <dd class="col-sm-9">{{ job.message|default:"—" }}</dd>
 </dl>
 
-<div class="row justify-content-end mb-1">
+<div class="row justify-content-start mb-1">
     <div class="col-md">
         <h5 text-nowrap>
             Queries
+            <a 
+                href="{% url 'study_finder_result_list' job.id %}"
+                class="badge badge-light align-top"
+            >
+                {% include "core/_eye.svg" %}
+                View Results
+            </a>
+            <a 
+                href="{% url 'study_finder_result_download' job.id %}"
+                class="badge badge-light align-top"
+            >
+                {% include "core/_download.svg" %}
+                Download Results
+            </a>
         </h5>
     </div>
     <div class="col col-md-auto">

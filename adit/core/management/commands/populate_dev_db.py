@@ -124,7 +124,7 @@ def create_batch_transfer_job(users, servers, folders):
         request = BatchTransferRequestFactory(job=job, row_number=row_number)
 
         for _ in range(fake.random_int(min=1, max=3)):
-            BatchTransferTaskFactory(request=request, job=job)
+            BatchTransferTaskFactory(job=job, request=request)
 
     return job
 
@@ -138,7 +138,7 @@ def create_study_finder_job(users):
         query = StudyFinderQueryFactory(job=job, row_number=row_number)
 
         for _ in range(fake.random_int(min=1, max=3)):
-            StudyFinderResultFactory(query=query)
+            StudyFinderResultFactory(job=job, query=query)
 
     return job
 

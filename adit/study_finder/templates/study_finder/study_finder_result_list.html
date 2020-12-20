@@ -1,0 +1,17 @@
+{% extends "core/base_generic.html" %}
+
+{% load render_table from django_tables2 %}
+
+{% block container %}
+<div class="d-flex justify-content-between align-items-start">
+    <h4 class="mb-3">
+        Study Finder Results
+    </h4>
+    <a href="{% url 'study_finder_job_detail' job.id %}">
+        {% include "core/_arrow_return_left.svg" %}
+        <span class="align-middle">View Job</span>
+    </a>
+</div>
+
+{% render_table table %}
+{% endblock container %}

@@ -98,7 +98,24 @@ class StudyFinderQueryDetailView(
         return self.object.results.all()
 
 
-class StudyFinderResultsDownloadView(
+class StudyFinderResultListView(
+    LoginRequiredMixin,
+    OwnerRequiredMixin,
+    SingleTableMixin,
+    PageSizeSelectMixin,
+    DetailView,
+):
+    owner_accessor = "owner"
+    table_class = StudyFinderResultTable
+    model = StudyFinderJob
+    context_object_name = "job"
+    template_name = "study_finder/study_finder_result_list.html"
+
+    def get_table_data(self):
+        return self.object.results.all()
+
+
+class StudyFinderResultDownloadView(
     LoginRequiredMixin,
     OwnerRequiredMixin,
     SingleObjectMixin,
