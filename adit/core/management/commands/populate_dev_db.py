@@ -19,15 +19,16 @@ from adit.selective_transfer.factories import (
     SelectiveTransferJobFactory,
     SelectiveTransferTaskFactory,
 )
-from adit.studies_finder.factories import (
-    StudiesFinderJobFactory,
-    StudiesFinderQueryFactory,
-    StudiesFinderResultFactory,
+from adit.study_finder.factories import (
+    StudyFinderJobFactory,
+    StudyFinderQueryFactory,
+    StudyFinderResultFactory,
 )
+
 
 SELECTIVE_TRANSFER_COUNT = 5
 BATCH_TRANSFER_COUNT = 3
-STUDIES_FINDER_COUNT = 2
+STUDY_FINDER_COUNT = 2
 CREATE_JOBS_FOR_ADMIN_ONLY = True
 
 fake = Faker()
@@ -93,8 +94,8 @@ def create_jobs(users, servers, folders):
     for _ in range(BATCH_TRANSFER_COUNT):
         create_batch_transfer_job(users, servers, folders)
 
-    for _ in range(STUDIES_FINDER_COUNT):
-        create_studies_transfer_job(users)
+    for _ in range(STUDY_FINDER_COUNT):
+        create_study_finder_job(users)
 
 
 def create_selective_transfer_job(users, servers, folders):
@@ -128,16 +129,16 @@ def create_batch_transfer_job(users, servers, folders):
     return job
 
 
-def create_studies_transfer_job(users):
-    job = StudiesFinderJobFactory(
+def create_study_finder_job(users):
+    job = StudyFinderJobFactory(
         owner=factory.Faker("random_element", elements=users),
     )
 
     for row_number in range(fake.random_int(min=1, max=100)):
-        query = StudiesFinderQueryFactory(job=job, row_number=row_number)
+        query = StudyFinderQueryFactory(job=job, row_number=row_number)
 
         for _ in range(fake.random_int(min=1, max=3)):
-            StudiesFinderResultFactory(query=query)
+            StudyFinderResultFactory(query=query)
 
     return job
 

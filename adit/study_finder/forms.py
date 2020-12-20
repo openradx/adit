@@ -11,16 +11,16 @@ import cchardet as chardet
 from adit.core.forms import DicomNodeChoiceField
 from adit.core.models import DicomNode
 from adit.core.fields import RestrictedFileField
-from .models import StudiesFinderJob, StudiesFinderQuery
+from .models import StudyFinderJob, StudyFinderQuery
 from .utils.parsers import QueriesParser, QueriesParserError
 
 
-class StudiesFinderJobForm(forms.ModelForm):
+class StudyFinderJobForm(forms.ModelForm):
     source = DicomNodeChoiceField(True, DicomNode.NodeType.SERVER)
     csv_file = RestrictedFileField(max_upload_size=5242880, label="CSV file")
 
     class Meta:
-        model = StudiesFinderJob
+        model = StudyFinderJob
         fields = (
             "source",
             "urgent",
@@ -85,7 +85,7 @@ class StudiesFinderJobForm(forms.ModelForm):
         for query in self.queries:
             query.job = job
 
-        StudiesFinderQuery.objects.bulk_create(self.queries)
+        StudyFinderQuery.objects.bulk_create(self.queries)
 
     def save(self, commit=True):
         with transaction.atomic():

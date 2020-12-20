@@ -9,25 +9,25 @@ from adit.core.validators import (
 )
 
 
-class StudiesFinderSettings(AppSettings):
+class StudyFinderSettings(AppSettings):
     class Meta:
-        verbose_name_plural = "Studies finder settings"
+        verbose_name_plural = "Study finder settings"
 
 
-class StudiesFinderJob(DicomJob):
+class StudyFinderJob(DicomJob):
     project_name = models.CharField(max_length=150)
     project_description = models.TextField(max_length=2000)
 
     def get_absolute_url(self):
-        return reverse("studies_finder_job_detail", args=[str(self.id)])
+        return reverse("study_finder_job_detail", args=[str(self.id)])
 
 
-class StudiesFinderQuery(BatchTask):
+class StudyFinderQuery(BatchTask):
     class Meta(BatchTask.Meta):
         unique_together = ("row_number", "job")
 
     job = models.ForeignKey(
-        StudiesFinderJob, on_delete=models.CASCADE, related_name="queries"
+        StudyFinderJob, on_delete=models.CASCADE, related_name="queries"
     )
     patient_id = models.CharField(
         blank=True,
@@ -69,12 +69,12 @@ class StudiesFinderQuery(BatchTask):
     )
 
     def get_absolute_url(self):
-        return reverse("studies_finder_query_detail", args=[str(self.id)])
+        return reverse("study_finder_query_detail", args=[str(self.id)])
 
 
-class StudiesFinderResult(models.Model):
+class StudyFinderResult(models.Model):
     query = models.ForeignKey(
-        StudiesFinderQuery, on_delete=models.CASCADE, related_name="results"
+        StudyFinderQuery, on_delete=models.CASCADE, related_name="results"
     )
     patient_id = models.CharField(
         max_length=64,

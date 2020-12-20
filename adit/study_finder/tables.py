@@ -1,22 +1,22 @@
 import django_tables2 as tables
 from adit.core.tables import DicomJobTable, DicomTaskTable
-from .models import StudiesFinderJob, StudiesFinderQuery, StudiesFinderResult
+from .models import StudyFinderJob, StudyFinderQuery, StudyFinderResult
 
 
-class StudiesFinderJobTable(DicomJobTable):
+class StudyFinderJobTable(DicomJobTable):
     class Meta(DicomJobTable.Meta):  # pylint: disable=too-few-public-methods
-        model = StudiesFinderJob
+        model = StudyFinderJob
 
 
-class StudiesFinderQueryTable(DicomTaskTable):
+class StudyFinderQueryTable(DicomTaskTable):
     class Meta(DicomTaskTable.Meta):  # pylint: disable=too-few-public-methods
-        model = StudiesFinderQuery
+        model = StudyFinderQuery
         empty_text = "No queries to show"
 
 
-class StudiesFinderResultTable(tables.Table):
+class StudyFinderResultTable(tables.Table):
     class Meta:  # pylint: disable=too-few-public-methods
-        model = StudiesFinderResult
+        model = StudyFinderResult
         template_name = "django_tables2/bootstrap4.html"
         empty_text = "No results to show"
         fields = (
@@ -27,7 +27,7 @@ class StudiesFinderResultTable(tables.Table):
             "accession_number",
         )
         attrs = {
-            "id": "studies_finder_result_table",
+            "id": "study_finder_result_table",
             "class": "table table-bordered table-hover",
         }
 

@@ -3,8 +3,8 @@ from django.db.models.signals import post_migrate
 from adit.core.site import register_main_menu_item
 
 
-class StudiesFinderConfig(AppConfig):
-    name = "adit.studies_finder"
+class StudyFinderConfig(AppConfig):
+    name = "adit.study_finder"
 
     def ready(self):
         register_app()
@@ -15,8 +15,8 @@ class StudiesFinderConfig(AppConfig):
 
 def register_app():
     register_main_menu_item(
-        url_name="studies_finder_job_create",
-        label="Studies Finder",
+        url_name="study_finder_job_create",
+        label="Study Finder",
     )
 
 
@@ -30,18 +30,18 @@ def create_group():
     from adit.accounts.utils import create_group_with_permissions
 
     create_group_with_permissions(
-        "studies_finders",
+        "study_finders",
         (
-            "studies_finder.add_studiesfinderjob",
-            "studies_finder.view_studiesfinderjob",
+            "study_finder.add_studyfinderjob",
+            "study_finder.view_studyfinderjob",
         ),
     )
 
 
 def create_app_settings():
     # pylint: disable=import-outside-toplevel
-    from .models import StudiesFinderSettings
+    from .models import StudyFinderSettings
 
-    settings = StudiesFinderSettings.get()
+    settings = StudyFinderSettings.get()
     if not settings:
-        StudiesFinderSettings.objects.create()
+        StudyFinderSettings.objects.create()

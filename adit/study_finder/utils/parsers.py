@@ -2,7 +2,7 @@ import csv
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from adit.core.utils.parsers import BaseParser
-from ..models import StudiesFinderQuery
+from ..models import StudyFinderQuery
 
 
 class QueriesParserError(Exception):
@@ -18,7 +18,7 @@ class QueriesParser(BaseParser):
             study_date_start, study_date_end = self.parse_date_range(
                 data.get("Study Date", "")
             )
-            query = StudiesFinderQuery(
+            query = StudyFinderQuery(
                 row_number=self.parse_int(data.get("Row", "")),
                 patient_id=self.parse_string(data.get("Patient ID", "")),
                 patient_name=self.parse_name(data.get("Patient Name", "")),

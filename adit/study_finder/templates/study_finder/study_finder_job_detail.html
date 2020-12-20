@@ -3,12 +3,12 @@
 {% load dicom_job_status_css_class from core_extras %}
 {% load crispy from crispy_forms_tags %}
 {% load render_table from django_tables2 %}
-{% load job_control_panel from studies_finder_extras %}
+{% load job_control_panel from study_finder_extras %}
 
 {% block container %}
 <div class="d-flex justify-content-between align-items-start">
-    <h4 class="mb-3">Studies Finder Job</h4>
-    <a href="{% url 'studies_finder_job_list' %}">
+    <h4 class="mb-3">Study Finder Job</h4>
+    <a href="{% url 'study_finder_job_list' %}">
         {% include "core/_list.svg" %}
         <span class="align-middle">Job List</span>
     </a>

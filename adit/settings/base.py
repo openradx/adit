@@ -47,7 +47,7 @@ INSTALLED_APPS = [
     "adit.selective_transfer.apps.SelectiveTransferConfig",
     "adit.batch_transfer.apps.BatchTransferConfig",
     "adit.continuous_transfer.apps.ContinuousTransferConfig",
-    "adit.studies_finder.apps.StudiesFinderConfig",
+    "adit.study_finder.apps.StudyFinderConfig",
     "adit.dicom_explorer.apps.DicomExplorerConfig",
     "channels",
 ]
@@ -307,7 +307,7 @@ FILTERS_EMPTY_CHOICE_LABEL = "Show All"
 ADIT_AE_TITLE = env.str("ADIT_AE_TITLE", default="ADIT1")
 
 # The delimiter of the CSV file for the requests of batch transfer and the
-# queries of studies finder
+# queries of study finder
 CSV_FILE_DELIMITER = ";"
 
 # The delimiter of a date range in a text field (or CSV file), e.g.
