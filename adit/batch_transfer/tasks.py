@@ -1,13 +1,12 @@
-from datetime import timedelta
 import redis
 from celery import shared_task, chord
 from celery.utils.log import get_task_logger
 from django.conf import settings
 from django.utils import timezone
 from django.template.defaultfilters import pluralize
-from adit.core.utils.scheduler import Scheduler
 from adit.core.utils.redis_lru import redis_lru
 from adit.core.utils.transfer_util import TransferUtil
+from adit.core.utils import task_utils
 from adit.core.utils.mail import send_job_finished_mail, send_job_failed_mail
 from .models import (
     BatchTransferSettings,
@@ -26,11 +25,7 @@ def batch_transfer(job_id):
 
     job = BatchTransferJob.objects.get(id=job_id)
 
-    if job.status != BatchTransferJob.Status.PENDING:
-        raise AssertionError(
-            f"Invalid batch transfer job status: {job.get_status_display()} "
-            f"[Job ID {job.id}]"
-        )
+    task_utils.precheck_job(job)
 
     priority = settings.BATCH_TRANSFER_DEFAULT_PRIORITY
     if job.urgent:
@@ -59,20 +54,13 @@ def transfer_request(self, request_id):
         request.row_number,
     )
 
-    if request.status != BatchTransferRequest.Status.PENDING:
-        raise AssertionError(
-            "Invalid batch transfer request processing status: "
-            f"{request.get_status_display()} "
-            f"[Job ID {job.id}, Request ID {request.id}, RowNumber {request.row_number}]"
-        )
+    task_utils.precheck_task(request)
 
-    if job.status == BatchTransferJob.Status.CANCELING:
-        request.status = BatchTransferRequest.Status.CANCELED
-        request.end = timezone.now()
-        request.save()
-        return request.status
+    canceled_status = task_utils.check_canceled(job, request)
+    if canceled_status:
+        return canceled_status
 
-    _check_can_run_now(self, request)
+    task_utils.check_can_run_now(self, BatchTransferSettings.get(), job, request)
 
     if job.status == BatchTransferJob.Status.PENDING:
         job.status = BatchTransferJob.Status.IN_PROGRESS
@@ -189,33 +177,6 @@ def transfer_request(self, request_id):
         request.save()
 
     return request.status
-
-
-def _check_can_run_now(celery_task, request):
-    batch_transfer_settings = BatchTransferSettings.get()
-
-    if not request.job.urgent:
-        scheduler = Scheduler(
-            batch_transfer_settings.slot_begin_time,
-            batch_transfer_settings.slot_end_time,
-        )
-        if scheduler.must_be_scheduled():
-            raise celery_task.retry(
-                eta=scheduler.next_slot(),
-                exc=Warning(
-                    f"Batch transfer outside of time slot. "
-                    f"[Job ID {request.job.id}, Request ID {request.id}, RowNumber {request.row_number}]"
-                ),
-            )
-
-    if batch_transfer_settings.suspended:
-        raise celery_task.retry(
-            eta=timezone.now() + timedelta(minutes=60),
-            exc=Warning(
-                "Batch transfer suspended. "
-                f"[Job ID {request.job.id}, Request ID {request.id}, RowNumber {request.row_number}]"
-            ),
-        )
 
 
 @redis_lru(capacity=10000, slicer=slice(3))

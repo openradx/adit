@@ -174,8 +174,7 @@ class DicomJob(models.Model):
         return self.status != self.Status.UNVERIFIED
 
     def __str__(self):
-        status_dict = dict(self.Status.choices)
-        return f"{self.__class__.__name__} [ID {self.id}, Status {status_dict[self.status]}]"
+        return f"{self.__class__.__name__} [ID {self.id}]"
 
 
 class TransferJob(DicomJob):
@@ -221,6 +220,9 @@ class DicomTask(models.Model):
     created = models.DateTimeField(auto_now_add=True)
     start = models.DateTimeField(null=True, blank=True)
     end = models.DateTimeField(null=True, blank=True)
+
+    def __str__(self):
+        return f"{self.__class__.__name__} [ID {self.id}]"
 
 
 class BatchTask(DicomTask):
