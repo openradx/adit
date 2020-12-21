@@ -37,14 +37,13 @@ Downloading data from a DICOM server can done by using a C-GET or C-MOVE operati
 -   Evaluate to use diffhtml instead of morphdom, see https://diffhtml.org/api.html#inner-html
 -   Better scheduler (with day in week and times)
 -   study_date -> study_datetime
--   django_tables2 has its own empty data widget -> use it
 -   should we really save log to task this way
+-   Allow to pause a job (Status.PAUSED)
 
 # Maybe features
 
 -   Allow provide a regex of StudyDescription in CSV batch file
 -   Allow to specify many modalities per row in CSV file
--   Continous Transfer
 -   move date parsing part in parsers.py and consumers.py to date_util.py
 -   https://stackoverflow.com/questions/14259852/how-to-identify-image-receive-in-c-store-as-result-of-a-c-move-query
 -   https://www.yergler.net/2009/09/27/nested-formsets-with-django/
