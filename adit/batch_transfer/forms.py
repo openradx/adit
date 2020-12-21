@@ -12,7 +12,7 @@ from adit.core.forms import DicomNodeChoiceField
 from adit.core.models import DicomNode
 from adit.core.fields import RestrictedFileField
 from .models import BatchTransferJob, BatchTransferRequest
-from .utils.parsers import RequestsParser, RequestsParserError
+from .utils.parsers import RequestsParser, ParserError
 
 
 class BatchTransferJobForm(forms.ModelForm):
@@ -102,7 +102,7 @@ class BatchTransferJobForm(forms.ModelForm):
             encoding = chardet.detect(rawdata)["encoding"]
             fp = StringIO(rawdata.decode(encoding))
             self.requests = parser.parse(fp)
-        except RequestsParserError as err:
+        except ParserError as err:
             self.csv_error_details = err
             raise ValidationError(
                 mark_safe(
