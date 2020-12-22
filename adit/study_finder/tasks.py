@@ -1,57 +1,55 @@
 from celery import shared_task, chord
 from celery.utils.log import get_task_logger
 from django.conf import settings
-from adit.core.utils import task_utils
+from django.utils import timezone
+from adit.core.utils.mail import send_job_finished_mail
+from adit.core.utils.task_utils import (
+    prepare_dicom_job,
+    prepare_dicom_task,
+    finish_dicom_job,
+    handle_job_failure,
+)
 from .models import StudyFinderJob, StudyFinderQuery, StudyFinderSettings
 
 logger = get_task_logger(__name__)
 
 
 @shared_task(ignore_result=True)
-def find_studies(job_id):
-    logger.info("Prepare study finder job. [Job ID %d]", job_id)
-
-    job = StudyFinderJob.objects.get(id=job_id)
-
-    task_utils.precheck_job(job)
-
+@prepare_dicom_job(StudyFinderJob, logger)
+def find_studies(finder_job: StudyFinderJob):
     priority = settings.STUDY_TRANSFER_DEFAULT_PRIORITY
-    if job.urgent:
+    if finder_job.urgent:
         priority = settings.STUDY_TRANSFER_URGENT_PRIORITY
 
     process_queries = [
-        process_query.s(query.id).set(priority=priority) for query in job.queries.all()
+        process_query.s(query.id).set(priority=priority)
+        for query in finder_job.queries.all()
     ]
 
     chord(process_queries)(
-        on_job_finished.s(job_id).on_error(on_job_failed.s(job_id=job_id))
+        on_job_finished.s(finder_job.id).on_error(on_job_failed.s(job_id=finder_job.id))
     )
 
 
 @shared_task(bind=True)
-def process_query(self, query_id):
-    query = StudyFinderQuery.objects.get(id=query_id)
+@prepare_dicom_task(StudyFinderQuery, StudyFinderSettings, logger)
+def process_query(query: StudyFinderQuery):
     job = query.job
 
-    logger.info("Processing %s.", query)
+    query.status = StudyFinderQuery.Status.IN_PROGRESS
+    query.start = timezone.now()
+    query.save()
 
-    task_utils.precheck_task(query)
-
-    canceled_status = task_utils.check_canceled(job, query)
-    if canceled_status:
-        return canceled_status
-
-    task_utils.check_can_run_now(self, StudyFinderSettings.get(), job, query)
+    # TODO
 
 
 @shared_task
-def on_job_finished(query_status_list, job_id):
-    pass
+@finish_dicom_job(StudyFinderJob, logger)
+def on_job_finished(finder_job: StudyFinderJob):
+    send_job_finished_mail(finder_job)
 
 
-# The Celery documentation is wrong about the provided parameters and when
-# the callback is called. This function definition seems to work however.
-# See https://github.com/celery/celery/issues/3709
 @shared_task
-def on_job_failed(*args, **kwargs):
+@handle_job_failure(StudyFinderJob, logger)
+def on_job_failed(finder_job):  # pylint: disable=unused-argument
     pass

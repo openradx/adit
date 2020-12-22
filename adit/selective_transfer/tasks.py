@@ -19,7 +19,7 @@ logger = get_task_logger(__name__)
 
 @shared_task(ignore_result=True)
 @prepare_dicom_job(SelectiveTransferJob, logger)
-def selective_transfer(transfer_job):
+def selective_transfer(transfer_job: SelectiveTransferJob):
     priority = settings.SELECTIVE_TRANSFER_DEFAULT_PRIORITY
     if transfer_job.urgent:
         priority = settings.SELECTIVE_TRANSFER_URGENT_PRIORITY
@@ -38,18 +38,22 @@ def selective_transfer(transfer_job):
 
 @shared_task(bind=True)
 @prepare_dicom_task(SelectiveTransferTask, SelectiveTransferSettings, logger)
-def transfer_selected_dicoms(transfer_task):
+def transfer_selected_dicoms(transfer_task: SelectiveTransferTask):
     transfer_util = TransferUtil(transfer_task.job, transfer_task)
     return transfer_util.start_transfer()
 
 
 @shared_task(ignore_result=True)
 @finish_dicom_job(SelectiveTransferJob, logger)
-def on_job_finished(transfer_job):  # pylint: disable=unused-argument
+def on_job_finished(
+    transfer_job: SelectiveTransferJob,
+):  # pylint: disable=unused-argument
     pass
 
 
 @shared_task
 @handle_job_failure(SelectiveTransferJob, logger)
-def on_job_failed(transfer_job):  # pylint: disable=unused-argument
+def on_job_failed(
+    transfer_job: SelectiveTransferJob,
+):  # pylint: disable=unused-argument
     pass
