@@ -103,7 +103,10 @@ class SelectiveTransferJobForm(forms.ModelForm):
             ),
             Row(
                 Column(
-                    Field("urgent"),
+                    Field(
+                        "urgent",
+                        **{"@change": "onUrgencyChanged"},
+                    ),
                 ),
                 css_class="pl-1",
             ),

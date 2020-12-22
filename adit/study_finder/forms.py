@@ -12,7 +12,7 @@ from adit.core.forms import DicomNodeChoiceField
 from adit.core.models import DicomNode
 from adit.core.fields import RestrictedFileField
 from .models import StudyFinderJob, StudyFinderQuery
-from .utils.parsers import QueriesParser, QueriesParserError
+from .utils.parsers import QueriesParser, ParserError
 
 
 class StudyFinderJobForm(forms.ModelForm):
@@ -68,7 +68,7 @@ class StudyFinderJobForm(forms.ModelForm):
             encoding = chardet.detect(rawdata)["encoding"]
             fp = StringIO(rawdata.decode(encoding))
             self.queries = parser.parse(fp)
-        except QueriesParserError as err:
+        except ParserError as err:
             self.csv_error_details = err
             raise ValidationError(
                 mark_safe(
