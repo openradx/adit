@@ -10,7 +10,7 @@ from adit.core.utils.task_utils import (
     prepare_dicom_task,
     finish_dicom_job,
     handle_job_failure,
-    fetch_patient_id,
+    fetch_patient_id_cached,
 )
 from .models import (
     BatchTransferSettings,
@@ -55,11 +55,11 @@ def transfer_request(request: BatchTransferRequest):
     try:
         connector = job.source.dicomserver.create_connector()
 
-        patient_id = fetch_patient_id(
+        patient_id = fetch_patient_id_cached(
+            connector,
             request.patient_id,
             request.patient_name,
             request.patient_birth_date,
-            connector,
         )
         studies = connector.find_studies(
             {

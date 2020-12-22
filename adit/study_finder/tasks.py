@@ -1,3 +1,4 @@
+from adit.core.utils.dicom_connector import DicomConnector
 from celery import shared_task, chord
 from celery.utils.log import get_task_logger
 from django.conf import settings
@@ -8,10 +9,13 @@ from adit.core.utils.task_utils import (
     prepare_dicom_task,
     finish_dicom_job,
     handle_job_failure,
+    fetch_patient_id_cached,
 )
 from .models import StudyFinderJob, StudyFinderQuery, StudyFinderSettings
 
 logger = get_task_logger(__name__)
+
+DICOM_DATE_FORMAT = "%Y%m%d"
 
 
 @shared_task(ignore_result=True)
@@ -40,7 +44,54 @@ def process_query(query: StudyFinderQuery):
     query.start = timezone.now()
     query.save()
 
-    # TODO
+    try:
+        connector: DicomConnector = job.source.dicomserver.create_connector()
+
+        patient_id = fetch_patient_id_cached(
+            connector,
+            query.patient_id,
+            query.patient_name,
+            query.patient_birth_date,
+        )
+
+        study_date = ""
+        if query.study_date_start:
+            if not query.study_date_end:
+                study_date = query.study_date_start.strptime(DICOM_DATE_FORMAT) + "-"
+            elif query.study_date_start == query.study_date_end:
+                study_date = query.study_date_start.strptime(DICOM_DATE_FORMAT)
+            else:
+                study_date = (
+                    query.study_date_start.strptime(DICOM_DATE_FORMAT)
+                    + "-"
+                    + query.study_date_end.strptime(DICOM_DATE_FORMAT)
+                )
+        elif query.study_date_end:
+            study_date = "-" + query.study_date_end.strptime(DICOM_DATE_FORMAT)
+
+        studies = connector.find_studies(
+            {
+                "PatientID": patient_id,
+                "PatientName": "",
+                "PatientBirthDate": "",
+                "StudyInstanceUID": "",
+                "AccessionNumber": "",
+                "StudyDate": study_date,
+                "StudyTime": "",
+                "StudyDescription": "",
+                "ModalitiesInStudy": query.modalities,
+                "NumberOfStudyRelatedInstances": "",
+            }
+        )
+
+        for study in studies:
+            pass
+
+    except Exception as err:
+        pass
+    finally:
+        query.end = timezone.now()
+        query.save()
 
 
 @shared_task

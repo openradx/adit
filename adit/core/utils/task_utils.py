@@ -165,8 +165,8 @@ def handle_job_failure(dicom_job_class: Type[DicomJob], logger: Logger):
 
 
 @redis_lru(capacity=10000, slicer=slice(3))
-def fetch_patient_id(
-    patient_id: str, patient_name: str, birth_date: date, connector: DicomConnector
+def fetch_patient_id_cached(
+    connector: DicomConnector, patient_id: str, patient_name: str, birth_date: date
 ):
     """Fetch the patient for this request.
 
@@ -188,4 +188,4 @@ def fetch_patient_id(
     return patients[0]["PatientID"]
 
 
-fetch_patient_id.init(redis.Redis.from_url(settings.REDIS_URL))
+fetch_patient_id_cached.init(redis.Redis.from_url(settings.REDIS_URL))

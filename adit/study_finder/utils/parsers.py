@@ -22,9 +22,9 @@ class QueriesParser(BaseParser):
         reader = csv.DictReader(csv_file, delimiter=self.delimiter)
         for query_number, data in enumerate(reader):
             error_dict = {}
+
             study_date_start = None
             study_date_end = None
-
             try:
                 study_date_start, study_date_end = self.parse_date_range(
                     data.get("Study Date", "")
@@ -43,10 +43,7 @@ class QueriesParser(BaseParser):
             )
 
             try:
-                exclude = ["job"]
-                if "study_date" in error_dict:
-                    exclude += ["study_date_start", "study_date_end"]
-                query.full_clean(exclude=exclude)
+                query.full_clean(exclude=["job", "study_date_start", "study_date_end"])
             except ValidationError as err:
                 error_dict.update(err.message_dict)
 
@@ -75,15 +72,33 @@ class QueriesParser(BaseParser):
         return map(str.strip, modalities)
 
     def parse_date_range(self, value):
+        # We must validate the dates ourself as we use other fields in the model.
+
+        is_date_range = settings.DATE_RANGE_DELIMITER in value
         ranges = value.split(settings.DATE_RANGE_DELIMITER)
 
         if len(ranges) > 2:
             raise ValueError("Invalid date range (more than two date components).")
 
         if len(ranges) == 1:
-            return ranges[0], None
+            if is_date_range:
+                start_date = self.parse_date(ranges[0])
+                if not start_date:
+                    raise ValueError(f"Invalid date: {ranges[0]}")
+                return start_date, None
+            else:
+                date = self.parse_date(ranges[0])
+                if not date:
+                    ...
+                return date, date
 
         if len(ranges) == 2:
-            return ranges[0], ranges[1]
+            start_date = self.parse_date(ranges[0])
+            end_date = self.parse_date(ranges[1])
+            ...
+        
+
+
+        check start < end
 
         return None, None
