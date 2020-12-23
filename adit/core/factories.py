@@ -70,7 +70,7 @@ class BatchTaskFactory(DicomTaskFactory):
     class Meta:
         model = None
 
-    row_number = factory.Sequence(int)
+    row_id = factory.Sequence(int)
 
 
 def generate_uids():

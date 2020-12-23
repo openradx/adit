@@ -36,7 +36,7 @@ class BatchTransferJob(TransferJob):
 
 class BatchTransferRequest(BatchTask):
     class Meta(BatchTask.Meta):
-        unique_together = ("row_number", "job")
+        unique_together = ("row_id", "job")
 
     job = models.ForeignKey(
         BatchTransferJob, on_delete=models.CASCADE, related_name="requests"

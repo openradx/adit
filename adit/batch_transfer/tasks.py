@@ -78,12 +78,12 @@ def transfer_request(request: BatchTransferRequest):
 
         study_str = "stud{}".format(pluralize(study_count, "y, ies"))
         logger.debug(
-            "Found %d %s to transfer. [Job ID %d, Request ID %d, RowNumber %d]",
+            "Found %d %s to transfer. [Job ID %d, Request ID %d, Row ID %d]",
             study_count,
             study_str,
             job.id,
             request.id,
-            request.row_number,
+            request.row_id,
         )
 
         has_success = False
@@ -131,11 +131,11 @@ def transfer_request(request: BatchTransferRequest):
         logger.warning(
             (
                 "No studies found for batch transfer request. "
-                "[Job ID %d, Request ID %d, RowNumber %d]"
+                "[Job ID %d, Request ID %d, Row ID %d]"
             ),
             job.id,
             request.id,
-            request.row_number,
+            request.row_id,
         )
         request.status = BatchTransferRequest.Status.WARNING
         request.message = "No studies found to transfer."
@@ -144,11 +144,11 @@ def transfer_request(request: BatchTransferRequest):
         logger.exception(
             (
                 "Error during transferring batch transfer request. "
-                "[Job ID %d, Request ID %d, RowNumber %d]"
+                "[Job ID %d, Request ID %d, Row ID %d]"
             ),
             job.id,
             request.id,
-            request.row_number,
+            request.row_id,
         )
         request.status = BatchTransferRequest.Status.FAILURE
         request.message = str(err)

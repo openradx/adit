@@ -6,7 +6,7 @@ from ..serializers import BatchTransferRequestSerializer
 
 class RequestsParser(BaseParser):  # pylint: disable=too-few-public-methods
     field_to_column_mapping = {
-        "row_number": "Row",
+        "row_id": "Row ID",
         "patient_id": "Patient ID",
         "patient_name": "Patient Name",
         "patient_birth_date": "Birth Date",
@@ -22,7 +22,7 @@ class RequestsParser(BaseParser):  # pylint: disable=too-few-public-methods
         for row_data in reader:
             data.append(
                 {
-                    "row_number": row_data.get("Row", ""),
+                    "row_id": row_data.get("Row ID", ""),
                     "patient_id": row_data.get("Patient ID", ""),
                     "patient_name": row_data.get("Patient Name", ""),
                     "patient_birth_date": row_data.get("Birth Date", ""),

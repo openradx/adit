@@ -6,7 +6,7 @@ class BatchTransferRequestSerializer(DicomTaskSerializer):
     class Meta:
         model = BatchTransferRequest
         fields = [
-            "row_number",
+            "row_id",
             "patient_id",
             "patient_name",
             "patient_birth_date",

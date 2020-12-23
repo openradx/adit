@@ -11,7 +11,7 @@ from adit.core.factories import DicomServerFactory
 from ..models import BatchTransferJob
 
 csv_data = b"""\
-RowNumber;PatientID;PatientName;PatientBirthDate;StudyDate;Modality;Pseudonym;Exclude
+Row ID;PatientID;PatientName;PatientBirthDate;StudyDate;Modality;Pseudonym;Exclude
 1;10007;Papaya, Pamela;29.08.1976;19.08.2018;MR;ABU5QZL9;
 2;10002;Banana, Ben;18.02.1962;27.03.2018;CT;DEDH6SVQ;
 3;10002;Banana, Ben;18.02.1962;15.09.2019;MR;DEDH6SVQ;

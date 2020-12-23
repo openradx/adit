@@ -7,15 +7,13 @@ from django.utils import formats
 class DicomTaskListSerializer(
     serializers.ListSerializer
 ):  # pylint: disable=abstract-method
-    row_id_field = "row_number"
-
     def find_duplicates(self, items):
         return [item for item, count in Counter(items).items() if count > 1]
 
     def validate(self, attrs):
         attrs = super().validate(attrs)
 
-        row_ids = [data[self.row_id_field] for data in attrs]
+        row_ids = [data["row_id"] for data in attrs]
         duplicates = self.find_duplicates(row_ids)
         if len(duplicates) > 0:
             ds = ", ".join(str(i) for i in duplicates)

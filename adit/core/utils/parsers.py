@@ -25,11 +25,12 @@ class BaseParser:  # pylint: disable=too-few-public-methods
                     message += "\n"
                 if error:
                     for field in error:
-                        row_number = data[num].get("row_number")
-                        if row_number:
-                            message += f"Invalid data in Row {row_number}:\n"
+                        row_id = data[num].get("row_id")
+                        if row_id:
+                            message += f"Invalid data in row with Row ID {row_id}:\n"
                         else:
-                            message += f"Invalid data in row {num}:\n"
+                            # +2 because row begin by 1 and the first line is a header
+                            message += f"Invalid data in row #{num + 2}:\n"
                         column = self.field_to_column_mapping[field]
                         message += f"{column} - {error[field]}"
 

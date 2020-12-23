@@ -12,7 +12,7 @@ def _create_csv_row(query, result):
         image_count = result.image_count
 
     return [
-        query.row_number,
+        query.row_id,
         result.patient_id,
         result.patient_name,
         result.patient_birth_date,
@@ -29,7 +29,7 @@ def export_results(job: StudyFinderJob, file):
     writer = csv.writer(file)
     writer.writerow(
         [
-            "Row",
+            "Row ID",
             "Patient ID",
             "Patient Name",
             "Birth Date",

@@ -18,9 +18,9 @@ class BatchTransferRequestTable(tables.Table):
 
     class Meta:  # pylint: disable=too-few-public-methods
         model = BatchTransferRequest
-        order_by = ("row_number",)
+        order_by = ("row_id",)
         template_name = "django_tables2/bootstrap4.html"
-        fields = ("row_number", "status", "transfer_tasks", "end")
+        fields = ("row_id", "status", "transfer_tasks", "end")
         empty_text = "No requests to show"
         attrs = {
             "id": "batch_transfer_request_table",
