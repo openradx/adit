@@ -2,8 +2,6 @@ from io import StringIO
 from django import forms
 from django.db import transaction
 from django.core.exceptions import ValidationError
-from django.conf import settings
-from django.utils import formats
 from django.utils.safestring import mark_safe
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Submit
@@ -58,10 +56,7 @@ class StudyFinderJobForm(forms.ModelForm):
 
     def clean_csv_file(self):
         csv_file = self.cleaned_data["csv_file"]
-
-        delimiter = settings.CSV_FILE_DELIMITER
-        date_input_formats = formats.get_format("DATE_INPUT_FORMATS")
-        parser = QueriesParser(delimiter, date_input_formats)
+        parser = QueriesParser()
 
         try:
             rawdata = csv_file.read()

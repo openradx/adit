@@ -532,7 +532,7 @@ class DicomConnector:
         return self._filter_studies_by_modalities(studies, query_modalities)
 
     def _filter_studies_by_modalities(
-        self, studies: List[Dict[str, Any]], query_modalities: Union(str, List[str])
+        self, studies: List[Dict[str, Any]], query_modalities: Union[str, List[str]]
     ) -> List[Dict[str, Any]]:
         filtered_studies = []
         for study in studies:

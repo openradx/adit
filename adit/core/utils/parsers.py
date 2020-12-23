@@ -1,65 +1,36 @@
-import re
-from datetime import datetime
-from collections import Counter
+from django.conf import settings
 
 
 class ParserError(Exception):
     pass
 
 
-class BaseParser:
+class BaseParser:  # pylint: disable=too-few-public-methods
     item_name = None
     field_to_column_mapping = None
 
-    def __init__(self, delimiter, date_formats):
-        self.delimiter = delimiter
-        self.date_formats = date_formats
+    def __init__(self):
+        self.delimiter = settings.CSV_FILE_DELIMITER
 
-    def parse_int(self, value):
-        value = value.strip()
-        if value.isdigit():
-            return int(value)
-        return value
+    def build_error_message(self, errors, data):
+        message = ""
 
-    def parse_string(self, value):
-        return value.strip()
+        if isinstance(errors, dict):
+            for error in errors["non_field_errors"]:
+                message += f"{error}.\n"
 
-    def parse_name(self, value):
-        value = value.strip()
-        return re.sub(r"\s*,\s*", "^", value)
+        if isinstance(errors, list):
+            for num, error in enumerate(errors):
+                if message:
+                    message += "\n"
+                if error:
+                    for field in error:
+                        row_number = data[num].get("row_number")
+                        if row_number:
+                            message += f"Invalid data in Row {row_number}:\n"
+                        else:
+                            message += f"Invalid data in row {num}:\n"
+                        column = self.field_to_column_mapping[field]
+                        message += f"{column} - {error[field]}"
 
-    def parse_date(self, value):
-        value = value.strip()
-        if value == "":
-            return None
-        for date_format in self.date_formats:
-            try:
-                return datetime.strptime(value, date_format)
-            except ValueError:
-                pass
-        return value
-
-    def build_item_error(self, message_dict, row_number, item_number):
-        general_errors = []
-        field_errors = []
-
-        if not isinstance(row_number, int):
-            row_number = None
-
-        if row_number is not None:
-            general_errors.append(f"Invalid {self.item_name} [Row {row_number}]:")
-        else:
-            general_errors.append(f"Invalid {self.item_name} [#{item_number + 1}]:")
-
-        for field_id, messages in message_dict.items():
-            if field_id == "__all__":
-                for message in messages:
-                    general_errors.append(message)
-            else:
-                column_label = self.field_to_column_mapping[field_id]
-                field_errors.append(f"{column_label}: {', '.join(messages)}")
-
-        return "\n".join(general_errors) + "\n" + "\n".join(field_errors) + "\n"
-
-    def find_duplicates(self, items):
-        return [item for item, count in Counter(items).items() if count > 1]
+        return message

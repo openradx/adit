@@ -1,11 +1,10 @@
 import csv
-from django.core.exceptions import ValidationError
 from adit.core.utils.parsers import BaseParser, ParserError
 from ..models import BatchTransferRequest
+from ..serializers import BatchTransferRequestSerializer
 
 
 class RequestsParser(BaseParser):  # pylint: disable=too-few-public-methods
-    item_name = "request"
     field_to_column_mapping = {
         "row_number": "Row",
         "patient_id": "Patient ID",
@@ -18,40 +17,26 @@ class RequestsParser(BaseParser):  # pylint: disable=too-few-public-methods
     }
 
     def parse(self, csv_file):
-        requests = []
-        errors = []
+        data = []
         reader = csv.DictReader(csv_file, delimiter=self.delimiter)
-        for request_number, data in enumerate(reader):
-            request = BatchTransferRequest(
-                row_number=self.parse_int(data.get("Row", "")),
-                patient_id=self.parse_string(data.get("Patient ID", "")),
-                patient_name=self.parse_name(data.get("Patient Name", "")),
-                patient_birth_date=self.parse_date(data.get("Birth Date", "")),
-                accession_number=self.parse_string(data.get("Accession Number", "")),
-                study_date=self.parse_date(data.get("Study Date", "")),
-                modality=self.parse_string(data.get("Modality", "")),
-                pseudonym=self.parse_string(data.get("Pseudonym", "")),
+        for row_data in reader:
+            data.append(
+                {
+                    "row_number": row_data.get("Row", ""),
+                    "patient_id": row_data.get("Patient ID", ""),
+                    "patient_name": row_data.get("Patient Name", ""),
+                    "patient_birth_date": row_data.get("Birth Date", ""),
+                    "accession_number": row_data.get("Accession Number", ""),
+                    "study_date": row_data.get("Study Date", ""),
+                    "modality": row_data.get("Modality", ""),
+                    "pseudonym": row_data.get("Pseudonym"),
+                }
             )
 
-            try:
-                request.full_clean(exclude=["job"])
-            except ValidationError as err:
-                request_error = self.build_item_error(
-                    err.message_dict, request.row_number, request_number
-                )
-                errors.append(request_error)
+        serializer = BatchTransferRequestSerializer(data=data, many=True)
+        if not serializer.is_valid():
+            raise ParserError(
+                self.build_error_message(serializer.errors, serializer.data)
+            )
 
-            requests.append(request)
-
-        row_numbers = [request.row_number for request in requests]
-        duplicates = self.find_duplicates(row_numbers)
-
-        if len(duplicates) > 0:
-            ds = ", ".join(str(i) for i in duplicates)
-            errors.insert(0, f"Duplicate 'Row' number: {ds}")
-
-        if len(errors) > 0:
-            error_details = "\n".join(errors)
-            raise ParserError(error_details)
-
-        return requests
+        return [BatchTransferRequest(**item) for item in serializer.validated_data]

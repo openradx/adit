@@ -52,11 +52,6 @@ class StudyFinderQuery(BatchTask):
         blank=True,
         error_messages={"invalid": "Invalid date format."},
     )
-    modalities = models.JSONField(
-        null=True,
-        blank=True,
-        validators=[validate_modalities],
-    )
     study_date_start = models.DateField(
         null=True,
         blank=True,
@@ -66,6 +61,11 @@ class StudyFinderQuery(BatchTask):
         null=True,
         blank=True,
         error_messages={"invalid": "Invalid date format."},
+    )
+    modalities = models.JSONField(
+        null=True,
+        blank=True,
+        validators=[validate_modalities],
     )
 
     def get_absolute_url(self):

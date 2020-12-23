@@ -25,21 +25,19 @@ Study Finder Help
     The following columns must be present in the CSV file:
     <dl>
         <dt>Row</dt>
-        <dd>A consecutive unique number that identifies the row.</dd>
+        <dd>A consecutive unique number (starting by 1) that identifies the row (required).</dd>
         <dt>Patient ID</dt>
-        <dd>The unique ID of the patient in the PACS.</dd>
+        <dd>The unique ID of the patient in the PACS (optional if "Patient Name" and "Birth Date" is provided).</dd>
         <dt>Patient Name</dt>
         <dd>The name of the patient (optional if Patient ID is provided).</dd>
         <dt>Birth Date</dt>
-        <dd>The birth date of the patient (optional if Patient ID is provided)</dd>
-        <dt>Accession Number</dt>
-        <dd>The unique ID of the study in the PACS</dd>
-        <dt>Study Date</dt>
-        <dd>The date when the study took place (optional if Accession Number is provided)</dd>
-        <dt>Modality</dt>
-        <dd>The modality of the study (optional if Accession Number is provided)</dd>
-        <dt>Pseudonym</dt>
-        <dd>An optional pseudonym to pseudonymize the images to transfer.</dd>
+        <dd>The birth date of the patient (optional if Patient ID is provided).</dd>
+        <dt>From</dt>
+        <dd>Only include studies newer than or equal to this date (optional).</dd>
+        <dt>Until</dt>
+        <dd>Only include studies older than or equal to this date (optional).</dd>
+        <dt>Modalities</dt>
+        <dd>A comma separated list of modalities (optional). A study must contain at least one modality in this list.</dd>
     </dl>
 </p>
 
