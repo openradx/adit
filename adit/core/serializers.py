@@ -32,9 +32,17 @@ class DicomTaskSerializer(serializers.ModelSerializer):
         super().__init__(instance=instance, data=data, **kwargs)
         self.date_input_formats = formats.get_format("DATE_INPUT_FORMATS")
 
-    def adapt_date_field(self, field):
+    def adapt_date_field(self, field_name):
+        field = self.fields[field_name]
         field.input_formats = self.date_input_formats
         field.error_messages["invalid"] = "Date has wrong format."
 
-    def patient_name_to_dicom(self, patient_name):
-        return re.sub(r"\s*,\s*", "^", patient_name)
+    def clean_date_string(self, data, field_name):
+        if field_name in data:
+            data[field_name] = data[field_name].strip()
+            if data[field_name] == "":
+                data[field_name] = None
+
+    def patient_name_to_dicom(self, data, field_name):
+        if field_name in data:
+            data[field_name] = re.sub(r"\s*,\s*", "^", data[field_name])

@@ -5,17 +5,6 @@ from ..serializers import BatchTransferRequestSerializer
 
 
 class RequestsParser(BaseParser):  # pylint: disable=too-few-public-methods
-    field_to_column_mapping = {
-        "row_id": "Row ID",
-        "patient_id": "Patient ID",
-        "patient_name": "Patient Name",
-        "patient_birth_date": "Birth Date",
-        "accession_number": "Accession Number",
-        "study_date": "Study Date",
-        "modality": "Modality",
-        "pseudonym": "Pseudonym",
-    }
-
     def parse(self, csv_file):
         data = []
         reader = csv.DictReader(csv_file, delimiter=self.delimiter)
@@ -25,7 +14,7 @@ class RequestsParser(BaseParser):  # pylint: disable=too-few-public-methods
                     "row_id": row_data.get("Row ID", ""),
                     "patient_id": row_data.get("Patient ID", ""),
                     "patient_name": row_data.get("Patient Name", ""),
-                    "patient_birth_date": row_data.get("Birth Date", ""),
+                    "patient_birth_date": row_data.get("Birth Date", None),
                     "accession_number": row_data.get("Accession Number", ""),
                     "study_date": row_data.get("Study Date", ""),
                     "modality": row_data.get("Modality", ""),
@@ -36,7 +25,18 @@ class RequestsParser(BaseParser):  # pylint: disable=too-few-public-methods
         serializer = BatchTransferRequestSerializer(data=data, many=True)
         if not serializer.is_valid():
             raise ParserError(
-                self.build_error_message(serializer.errors, serializer.data)
+                {
+                    "row_id": "Row ID",
+                    "patient_id": "Patient ID",
+                    "patient_name": "Patient Name",
+                    "patient_birth_date": "Birth Date",
+                    "accession_number": "Accession Number",
+                    "study_date": "Study Date",
+                    "modality": "Modality",
+                    "pseudonym": "Pseudonym",
+                },
+                data,
+                serializer.errors,
             )
 
         return [BatchTransferRequest(**item) for item in serializer.validated_data]

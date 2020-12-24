@@ -72,7 +72,11 @@ def create_csv_file():
 def test_valid_csv_file(columns, rows, create_csv_file):
     file = create_csv_file(columns, rows)
 
-    requests = RequestsParser().parse(file)
+    requests = []
+    try:
+        requests = RequestsParser().parse(file)
+    except ParserError:
+        pytest.fail("Unexpected ParserError with valid data.")
 
     assert len(requests) == 2
     assert requests[0].patient_name == "Banana^Ben"
@@ -93,7 +97,8 @@ def test_missing_row_id(columns, rows, create_csv_file):
     with pytest.raises(ParserError) as err:
         RequestsParser().parse(file)
 
-    assert err.match(r"Row ID:.*must be an integer")
+    assert err.match(r"Invalid data in row #2")
+    assert err.match(r"Row ID - A valid integer is required")
 
 
 def test_invalid_row_id(columns, rows, create_csv_file):
@@ -103,7 +108,8 @@ def test_invalid_row_id(columns, rows, create_csv_file):
     with pytest.raises(ParserError) as err:
         RequestsParser().parse(file)
 
-    assert err.match(r"Row ID:.*must be an integer")
+    assert err.match(r"Invalid data in row #2 \(Row ID ABC\)")
+    assert err.match(r"Row ID - A valid integer is required")
 
 
 def test_duplicate_row_id(rows, columns, create_csv_file):
@@ -114,7 +120,7 @@ def test_duplicate_row_id(rows, columns, create_csv_file):
     with pytest.raises(ParserError) as err:
         RequestsParser().parse(file)
 
-    assert err.match(r"Duplicate Row ID")
+    assert err.match(r"Duplicate 'Row ID': 1")
 
 
 def test_valid_patient_id(rows, columns, create_csv_file, create_random_str):
@@ -134,7 +140,8 @@ def test_invalid_patient_id(rows, columns, create_csv_file, create_random_str):
     with pytest.raises(ParserError) as err:
         RequestsParser().parse(file)
 
-    assert err.match(r"PatientID:.*at most 64")
+    assert err.match(r"Invalid data in row #2 \(Row ID 1\)")
+    assert err.match(r"Patient ID - Ensure this field has no more than 64 characters")
 
 
 def test_valid_patient_name(rows, columns, create_csv_file, create_random_str):
@@ -157,7 +164,10 @@ def test_invalid_patient_name(rows, columns, create_csv_file, create_random_str)
     with pytest.raises(ParserError) as err:
         RequestsParser().parse(file)
 
-    assert err.match(r"PatientName:.*has at most 324")
+    assert err.match(r"Invalid data in row #2 \(Row ID 1\)")
+    assert err.match(
+        r"Patient Name - Ensure this field has no more than 324 characters"
+    )
 
 
 def test_valid_patient_birth_date(rows, columns, create_csv_file):
@@ -178,7 +188,8 @@ def test_invalid_patient_birth_date(birth_date, rows, columns, create_csv_file):
     with pytest.raises(ParserError) as err:
         RequestsParser().parse(file)
 
-    assert err.match(r"Birth Date: Invalid date format")
+    assert err.match(r"Invalid data in row #2 \(Row ID 1\)")
+    assert err.match(r"Birth Date - Date has wrong format.")
 
 
 def test_valid_accession_number(rows, columns, create_csv_file, create_random_str):
@@ -198,7 +209,10 @@ def test_invalid_accession_number(rows, columns, create_csv_file, create_random_
     with pytest.raises(ParserError) as err:
         RequestsParser().parse(file)
 
-    assert err.match(r"Accession Number:.*has at most 16")
+    assert err.match(r"Invalid data in row #2 \(Row ID 1\)")
+    assert err.match(
+        r"Accession Number - Ensure this field has no more than 16 characters"
+    )
 
 
 def test_valid_modality(rows, columns, create_csv_file, create_random_str):
@@ -218,7 +232,8 @@ def test_invalid_modality(rows, columns, create_csv_file, create_random_str):
     with pytest.raises(ParserError) as err:
         RequestsParser().parse(file)
 
-    assert err.match(r"Modality:.*has at most 16")
+    assert err.match(r"Invalid data in row #2 \(Row ID 1\)")
+    assert err.match(r"Modality - Ensure this field has no more than 16 characters")
 
 
 def test_valid_pseudonym(rows, columns, create_csv_file, create_random_str):
@@ -238,11 +253,12 @@ def test_invalid_pseudonym(rows, columns, create_csv_file, create_random_str):
     with pytest.raises(ParserError) as err:
         RequestsParser().parse(file)
 
-    assert err.match(r"Pseudonym:.*has at most 64")
+    assert err.match(r"Invalid data in row #2 \(Row ID 1\)")
+    assert err.match(r"Pseudonym - Ensure this field has no more than 64 characters")
 
 
 def test_patient_identifiable(rows, columns, create_csv_file):
-    rows[0]["PatientID"] = ""
+    rows[0]["Patient ID"] = ""
     file = create_csv_file(columns, rows)
 
     try:
@@ -250,9 +266,10 @@ def test_patient_identifiable(rows, columns, create_csv_file):
     except ParserError:
         pytest.fail("Unexpected ParserError with identifiable patient.")
 
-    rows[0]["PatientID"] = "1234"
-    rows[0]["PatientName"] = ""
-    rows[0]["PatientBirthDate"] = ""
+    rows[0]["Patient ID"] = "1234"
+    rows[0]["Patient Name"] = ""
+    rows[0]["Birth Date"] = ""
+
     file = create_csv_file(columns, rows)
 
     try:
@@ -262,8 +279,8 @@ def test_patient_identifiable(rows, columns, create_csv_file):
 
 
 def test_patient_not_identifiable(rows, columns, create_csv_file):
-    rows[0]["PatientID"] = ""
-    rows[0]["PatientName"] = ""
+    rows[0]["Patient ID"] = ""
+    rows[0]["Patient Name"] = ""
     file = create_csv_file(columns, rows)
 
     with pytest.raises(ParserError) as err:
@@ -271,15 +288,15 @@ def test_patient_not_identifiable(rows, columns, create_csv_file):
 
     assert err.match(r"patient must be identifiable")
 
-    rows[0]["PatientID"] = ""
-    rows[0]["PatientName"] = "Foo, Bar"
-    rows[0]["PatientBirthDate"] = ""
+    rows[0]["Patient ID"] = ""
+    rows[0]["Patient Name"] = "Foo, Bar"
+    rows[0]["Birth Date"] = ""
     file = create_csv_file(columns, rows)
 
     with pytest.raises(ParserError) as err:
         RequestsParser().parse(file)
 
-    assert err.match(r"patient must be identifiable")
+    assert err.match(r"A patient must be identifiable")
 
 
 def test_study_identifiable(rows, columns, create_csv_file):
@@ -304,21 +321,21 @@ def test_study_identifiable(rows, columns, create_csv_file):
 
 
 def test_study_not_identifiable(rows, columns, create_csv_file):
-    rows[0]["AccessionNumber"] = ""
+    rows[0]["Accession Number"] = ""
     rows[0]["Modality"] = ""
     file = create_csv_file(columns, rows)
 
     with pytest.raises(ParserError) as err:
         RequestsParser().parse(file)
 
-    assert err.match(r"study must be identifiable")
+    assert err.match(r"A study must be identifiable")
 
-    rows[0]["AccesionNumber"] = ""
+    rows[0]["Accesion Number"] = ""
     rows[0]["Modality"] = "MR"
-    rows[0]["StudyDate"] = ""
+    rows[0]["Study Date"] = ""
     file = create_csv_file(columns, rows)
 
     with pytest.raises(ParserError) as err:
         RequestsParser().parse(file)
 
-    assert err.match(r"study must be identifiable")
+    assert err.match(r"A study must be identifiable")

@@ -33,8 +33,6 @@ class QueriesParser(BaseParser):
 
         serializer = StudyFinderQuerySerializer(data=data, many=True)
         if not serializer.is_valid():
-            raise ParserError(
-                self.build_error_message(serializer.errors, serializer.data)
-            )
+            raise ParserError(self.build_error_message(data, serializer.errors))
 
         return [StudyFinderQuery(**item) for item in serializer.validated_data]

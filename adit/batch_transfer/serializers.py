@@ -3,7 +3,7 @@ from .models import BatchTransferRequest
 
 
 class BatchTransferRequestSerializer(DicomTaskSerializer):
-    class Meta:
+    class Meta(DicomTaskSerializer.Meta):
         model = BatchTransferRequest
         fields = [
             "row_id",
@@ -23,8 +23,10 @@ class BatchTransferRequestSerializer(DicomTaskSerializer):
         self.adapt_date_field("study_date")
 
     def to_internal_value(self, data):
-        if "patient_name" in data:
-            data["patient_name"] = self.patient_name_to_dicom(data["patient_name"])
+        self.patient_name_to_dicom(data, "patient_name")
+
+        self.clean_date_string(data, "patient_birth_date")
+        self.clean_date_string(data, "study_date")
 
         return super().to_internal_value(data)
 
