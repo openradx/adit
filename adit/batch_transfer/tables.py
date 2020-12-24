@@ -22,10 +22,7 @@ class BatchTransferRequestTable(tables.Table):
         template_name = "django_tables2/bootstrap4.html"
         fields = ("row_id", "status", "transfer_tasks", "end")
         empty_text = "No requests to show"
-        attrs = {
-            "id": "batch_transfer_request_table",
-            "class": "table table-bordered table-hover",
-        }
+        attrs = {"class": "table table-bordered table-hover"}
 
     def render_status(self, value, record):
         text_class = ""

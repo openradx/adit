@@ -1,9 +1,6 @@
 $(function () {
     // Enable Bootstrap tooltips everywhere
     $('[data-toggle="tooltip"]').tooltip();
-
-    // Enable Clipboard.js everywhere
-    new ClipboardJS(".clipboard");
 });
 
 function capitalize(s) {

@@ -48,10 +48,7 @@ class DicomTaskTable(tables.Table):
         template_name = "django_tables2/bootstrap4.html"
         fields = ("id", "status", "message", "end")
         empty_text = "No tasks to show"
-        attrs = {
-            "id": "dicom_task_table",
-            "class": "table table-bordered table-hover",
-        }
+        attrs = {"class": "table table-bordered table-hover"}
 
     def render_status(self, value, record):
         css_class = dicom_task_status_css_class(record.status)

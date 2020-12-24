@@ -61,14 +61,12 @@
             Tasks
             <a 
                 href="javascript:void(null);"
-                id="copy-table-link"
                 class="badge badge-light align-top"
-                data-clipboard-target="#dicom_task_table"
                 data-toggle="tooltip"
                 data-placement="top"
-                title="Copy table to clipboard"
+                title="Download task data (CSV file)"
             >
-                {% include "core/_clipboard.svg" %}
+                {% include "core/_download.svg" %}
             </a>
         </h5>
     </div>
@@ -85,11 +83,3 @@
 {% job_control_panel %}
 
 {% endblock container %}
-
-{% block script %}
-<script>
-$(function() {
-    new ClipboardJS('#copy-table-link');
-});
-</script>
-{% endblock script %}

@@ -16,7 +16,7 @@
     "alpinejs": "^2.7.0",
     "bootstrap": "^4.5.2",
     "bootstrap-icons": "^1.0.0",
-    "clipboard": "^2.0.6",
+    "bootswatch": "^4.5.3",
     "jquery": "^3.5.1",
     "js-cookie": "^2.2.1",
     "morphdom": "^2.6.1"
@@ -26,14 +26,14 @@
     "cpy-cli": "^3.1.1"
   },
   "scripts": {
-    "copy": "npm run copy:jquery && npm run copy:bootstrap && npm run copy:alpine && npm run copy:morphdom && npm run copy:clipboard && npm run copy:cookie",
+    "copy": "npm run copy:jquery && npm run copy:bootstrap && npm run copy:bootswatch && npm run copy:alpine && npm run copy:morphdom && npm run copy:cookie",
     "copy:jquery": "cpy node_modules/jquery/dist/jquery.js adit/static/vendor/",
     "copy:bootstrap_css": "cpy node_modules/bootstrap/dist/css/bootstrap.css* adit/static/vendor/",
     "copy:bootstrap_js": "cpy node_modules/bootstrap/dist/js/bootstrap.bundle.js* adit/static/vendor/",
     "copy:bootstrap": "npm run copy:bootstrap_css && npm run copy:bootstrap_js",
+    "copy:bootswatch": "cpy node_modules/bootswatch/dist/darkly/bootstrap.css adit/static/vendor/",
     "copy:alpine": "cpy node_modules/alpinejs/dist/alpine*.js adit/static/vendor/",
     "copy:morphdom": "cpy node_modules/morphdom/dist/morphdom-umd.js adit/static/vendor/",
-    "copy:clipboard": "cpy node_modules/clipboard/dist/clipboard.js adit/static/vendor/",
     "copy:cookie": "cpy node_modules/js-cookie/src/js.cookie.js adit/static/vendor/"
   }
 }
