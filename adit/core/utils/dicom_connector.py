@@ -10,6 +10,7 @@ only occur in higher level methods that uses lower level methods. As logger
 the Celery task logger is used as we intercept those messages and save them
 in TransferTask model object.
 """
+from typing import Dict, List, Union, Any
 import time
 import datetime
 from dataclasses import dataclass
@@ -59,7 +60,7 @@ logger = get_task_logger(__name__)
 pydicom_config.datetime_conversion = True
 
 
-def _make_query_dataset(query_dict):
+def _make_query_dataset(query_dict: Dict[str, Any]):
     """Turn a dict into a pydicom dataset for query."""
 
     ds = Dataset()
@@ -68,11 +69,11 @@ def _make_query_dataset(query_dict):
     return ds
 
 
-def _sanitize_unicode(s):
+def _sanitize_unicode(s: str):
     return s.replace("\u0000", "").strip()
 
 
-def _convert_value(v):
+def _convert_value(v: Any):
     """Converts a pydicom value to native Python value.
 
     Only works with date, time and datetime conversion when
@@ -107,7 +108,7 @@ def _convert_value(v):
     return cv
 
 
-def _dictify_dataset(ds):
+def _dictify_dataset(ds: Dataset):
     """Turn a pydicom Dataset into a dict with keys derived from the Element tags.
 
     Adapted from https://github.com/pydicom/pydicom/issues/319
@@ -132,7 +133,7 @@ def _dictify_dataset(ds):
     return output
 
 
-def _extract_pending_data(results):
+def _extract_pending_data(results: List[Dict[str, Any]]):
     """Extract the data from a DicomOperation result."""
     status_category = results[-1]["status"]["category"]
     status_code = results[-1]["status"]["code"]
@@ -525,12 +526,14 @@ class DicomConnector:
 
         query_modalities = query.get("ModalitiesInStudy")
 
-        if query_modalities is None:
+        if not query_modalities:
             return studies
 
         return self._filter_studies_by_modalities(studies, query_modalities)
 
-    def _filter_studies_by_modalities(self, studies, query_modalities):
+    def _filter_studies_by_modalities(
+        self, studies: List[Dict[str, Any]], query_modalities: Union[str, List[str]]
+    ) -> List[Dict[str, Any]]:
         filtered_studies = []
         for study in studies:
             study_modalities = study.get("ModalitiesInStudy")

@@ -1,24 +1,28 @@
 from django.utils.html import format_html
 import django_tables2 as tables
-from .models import BatchTransferRequest
+from adit.core.tables import TransferJobTable
+from .models import BatchTransferJob, BatchTransferRequest
+
+
+class BatchTransferJobTable(TransferJobTable):
+    class Meta(TransferJobTable.Meta):  # pylint: disable=too-few-public-methods
+        model = BatchTransferJob
 
 
 class BatchTransferRequestTable(tables.Table):
     transfer_tasks = tables.columns.TemplateColumn(
         verbose_name="Transfer Tasks",
-        template_name="batch_transfer/_transfer_tasks_column.html",
+        template_name="batch_transfer/_batch_transfer_tasks_column.html",
     )
     end = tables.DateTimeColumn(verbose_name="Finished at")
 
     class Meta:  # pylint: disable=too-few-public-methods
         model = BatchTransferRequest
-        order_by = ("row_number",)
+        order_by = ("row_id",)
         template_name = "django_tables2/bootstrap4.html"
-        fields = ("row_number", "status", "transfer_tasks", "end")
-        attrs = {
-            "id": "batch_transfer_request_table",
-            "class": "table table-bordered table-hover",
-        }
+        fields = ("row_id", "status", "transfer_tasks", "end")
+        empty_text = "No requests to show"
+        attrs = {"class": "table table-bordered table-hover"}
 
     def render_status(self, value, record):
         text_class = ""

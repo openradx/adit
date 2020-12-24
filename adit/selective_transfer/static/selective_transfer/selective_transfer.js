@@ -12,8 +12,8 @@ function selectiveTransferForm() {
 
             const self = this;
 
-            const $advanced_options = this.$form.find("#advanced_options");
-            $advanced_options
+            const $advancedOptions = this.$form.find("#advanced_options");
+            $advancedOptions
                 .on("hide.bs.collapse", function () {
                     self.updateCookie("hideOptions", true);
                 })
@@ -21,25 +21,7 @@ function selectiveTransferForm() {
                     self.updateCookie("hideOptions", false);
                 });
 
-            const cookie = JSON.parse(
-                Cookies.get("selectiveTransferForm") || "{}"
-            );
-            if ("hideOptions" in cookie) {
-                if (cookie.hideOptions) {
-                    $advanced_options.collapse("hide");
-                } else {
-                    $advanced_options.collapse("show");
-                }
-            }
-            if ("source" in cookie) {
-                const source = this.$form.find("[name=source]")[0];
-                this.setSelectOption(source, cookie.source);
-            }
-            if ("destination" in cookie) {
-                const destination = this.$form.find("[name=destination]")[0];
-                this.setSelectOption(destination, cookie.destination);
-                this.onDestinationChanged(destination);
-            }
+            this.restoreFromCookie($advancedOptions);
         },
         connect: function () {
             const self = this;
@@ -94,6 +76,35 @@ function selectiveTransferForm() {
             );
             cookie[key] = value;
             Cookies.set("selectiveTransferForm", JSON.stringify(cookie));
+        },
+        restoreFromCookie: function ($advancedOptions) {
+            const cookie = JSON.parse(
+                Cookies.get("selectiveTransferForm") || "{}"
+            );
+
+            if ("hideOptions" in cookie) {
+                if (cookie.hideOptions) {
+                    $advancedOptions.collapse("hide");
+                } else {
+                    $advancedOptions.collapse("show");
+                }
+            }
+
+            if ("source" in cookie) {
+                const source = this.$form.find("[name=source]")[0];
+                this.setSelectOption(source, cookie.source);
+            }
+
+            if ("destination" in cookie) {
+                const destination = this.$form.find("[name=destination]")[0];
+                this.setSelectOption(destination, cookie.destination);
+                this.onDestinationChanged(destination);
+            }
+
+            if ("urgent" in cookie) {
+                const urgent = this.$form.find("[name=urgent]")[0];
+                urgent.checked = cookie.urgent;
+            }
         },
         submitQuery: function () {
             this.showHelpMessage = false;
@@ -170,6 +181,11 @@ function selectiveTransferForm() {
         onDestinationChanged(selectEl) {
             const option = selectEl.options[selectEl.selectedIndex];
             this.isDestinationFolder = option.dataset.node_type === "folder";
+        },
+        onUrgencyChanged: function (event) {
+            const name = event.currentTarget.name;
+            const value = event.currentTarget.checked;
+            this.updateCookie(name, value);
         },
         reset: function () {
             this.showHelpMessage = true;

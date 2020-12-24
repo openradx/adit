@@ -1,10 +1,18 @@
 {% extends "core/base_generic.html" %}
 
+{% load dicom_job_status_css_class from core_extras %}
+{% load crispy from crispy_forms_tags %}
+{% load render_table from django_tables2 %}
+{% load job_control_panel from selective_transfer_extras %}
+
 {% block container %}
-
-{% load core_extras %}
-
-<h4 class="card-title">Selective Transfer Job</h4>
+<div class="d-flex justify-content-between align-items-start">
+    <h4 class="mb-3">Selective Transfer Job</h4>
+    <a href="{% url 'selective_transfer_job_list' %}">
+        {% include "core/_list.svg" %}
+        <span class="align-middle">Job List</span>
+    </a>
+</div>
 
 <dl class="row">
     <dt class="col-sm-3">Job ID</dt>
@@ -38,7 +46,7 @@
 
     <dt class="col-sm-3">Status</dt>
     <dd class="col-sm-9">
-        <span class="{{ job.status|transfer_job_status_css_class }}">
+        <span class="{{ job.status|dicom_job_status_css_class }}">
             {{ job.get_status_display }}
         </span>
     </dd>
@@ -47,21 +55,18 @@
     <dd class="col-sm-9">{{ job.message|default:"—" }}</dd>
 </dl>
 
-{% load crispy_forms_tags %}
 <div class="row justify-content-end mb-1">
     <div class="col-md">
         <h5 text-nowrap>
             Tasks
             <a 
                 href="javascript:void(null);"
-                id="copy-table-link"
                 class="badge badge-light align-top"
-                data-clipboard-target="#transfer_task_table"
                 data-toggle="tooltip"
                 data-placement="top"
-                title="Copy table to clipboard"
+                title="Download task data (CSV file)"
             >
-                {% include "core/_clipboard.svg" %}
+                {% include "core/_download.svg" %}
             </a>
         </h5>
     </div>
@@ -73,21 +78,8 @@
     </div>
 </div>
 
-{% load render_table from django_tables2 %}
-{% if table.data %}
-    {% render_table table %}
-{% else %}
-    No tasks to view.
-{% endif %}
+{% render_table table %}
 
-{% include "core/_job_control_panel.html" %}
+{% job_control_panel %}
 
 {% endblock container %}
-
-{% block script %}
-<script>
-$(function() {
-    new ClipboardJS('#copy-table-link');
-});
-</script>
-{% endblock script %}

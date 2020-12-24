@@ -33,15 +33,15 @@ class OwnerRequiredMixin(AccessMixin):
         return super().dispatch(request, *args, **kwargs)
 
 
-class TransferFormViewMixin:  # pylint: disable=too-few-public-methods
+class UrgentFormViewMixin:  # pylint: disable=too-few-public-methods
     def get_form_kwargs(self) -> Dict[str, Any]:
         kwargs = super().get_form_kwargs()
 
-        transfer_urgently_option = False
+        urgent_option = False
         user = self.request.user
-        if user and user.has_perm("core.can_transfer_urgently"):
-            transfer_urgently_option = True
-        kwargs.update({"transfer_urgently_option": transfer_urgently_option})
+        if user and user.has_perm("core.can_process_urgently"):
+            urgent_option = True
+        kwargs.update({"urgent_option": urgent_option})
 
         return kwargs
 
@@ -79,6 +79,7 @@ class RelatedFilterMixin(FilterMixin):
             or self.filterset.is_valid()
             or not self.get_strict()
         ):
+            # object_list is consumed by SingleTableMixin of django_tables2
             self.object_list = self.filterset.qs
         else:
             self.object_list = self.filterset.queryset.none()

@@ -66,9 +66,9 @@ RUN poetry install
 
 # Required folder for ADIT
 RUN mkdir -p /var/www/adit/logs \
-    /var/www/adit/static \
-    /var/www/adit/ssl \
-    /var/www/adit/celery
+    -p /var/www/adit/static \
+    -p /var/www/adit/ssl \
+    -p /var/www/adit/celery
 
 # will become mountpoint of our code
 WORKDIR /app

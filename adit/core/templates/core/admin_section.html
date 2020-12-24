@@ -1,0 +1,30 @@
+{% extends "core/base_generic.html" %}
+
+{% block container %}
+<h4 class="mb-3">
+    Admin Section
+</h4>
+
+<ul class="list-group">
+    <li class="list-group-item">
+        <a href="/admin-the-great/">
+            Django Admin
+        </a>
+    </li>
+    <li class="list-group-item">
+        <a href="/flower/">
+            Flower
+        </a>
+    </li>
+    <li class="list-group-item">
+        <a href="{{ request.META.HTTP_NAME }}:6501/">
+            Orthanc 1
+        </a>
+    </li>
+</ul>
+
+{{ request.META.HTTP_HOST }}
+{{ request.META.REMOTE_HOST }}
+{{ request.META.SERVER_NAME }}
+
+{% endblock container %}

@@ -25,7 +25,7 @@
 
             <dl>
                 <dt>
-                    <a href="{% url 'selective_transfer_job_form' %}">Selective Transfer</a>
+                    <a href="{% url 'selective_transfer_job_create' %}">Selective Transfer</a>
                 </dt>
                 <dd>
                     Search and select specific studies to transfer or download.
@@ -35,14 +35,28 @@
                     <a href="{% url 'batch_transfer_job_create' %}">Batch Transfer</a>
                 </dt>
                 <dd>
-                    Transfer or download multiple studies specified in a CSV file.
+                    Transfer or download multiple studies specified in a batch file.
                 </dd>
 
                 <dt>
-                    <a href="">Continuous Transfer</a>
+                    <a href="{% url 'continuous_transfer_job_create' %}">Continuous Transfer</a>
                 </dt>
                 <dd>
                     Continuously transfer studies from a certain point in time (TBR).
+                </dd>
+                
+                <dt>
+                    <a href="{% url 'study_finder_job_create' %}">Study Finder</a>
+                </dt>
+                <dd>
+                    Find studies of patients specified in a batch file.
+                </dd>
+
+                <dt>
+                    <a href="{% url 'dicom_explorer' %}">DICOM Explorer</a>
+                </dt>
+                <dd>
+                    Explore the DICOM data of a PACS server.
                 </dd>
             </dl>
 

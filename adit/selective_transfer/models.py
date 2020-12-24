@@ -1,5 +1,6 @@
+from django.db import models
 from django.urls import reverse
-from adit.core.models import AppSettings, TransferJob
+from adit.core.models import AppSettings, TransferJob, TransferTask
 
 
 class SelectiveTransferSettings(AppSettings):
@@ -8,8 +9,6 @@ class SelectiveTransferSettings(AppSettings):
 
 
 class SelectiveTransferJob(TransferJob):
-    JOB_TYPE = "ST"
-
     def delay(self):
         from .tasks import selective_transfer  # pylint: disable=import-outside-toplevel
 
@@ -17,3 +16,14 @@ class SelectiveTransferJob(TransferJob):
 
     def get_absolute_url(self):
         return reverse("selective_transfer_job_detail", args=[str(self.id)])
+
+
+class SelectiveTransferTask(TransferTask):
+    job = models.ForeignKey(
+        SelectiveTransferJob,
+        on_delete=models.CASCADE,
+        related_name="tasks",
+    )
+
+    def get_absolute_url(self):
+        return reverse("selective_transfer_task_detail", args=[str(self.id)])

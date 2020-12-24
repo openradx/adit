@@ -1,9 +1,7 @@
 from django.db import models
-from django.conf import settings
 from django.core.exceptions import ValidationError
-from django.contrib.contenttypes.fields import GenericRelation
 from django.urls import reverse
-from adit.core.models import AppSettings, TransferJob, TransferTask
+from adit.core.models import AppSettings, TransferJob, BatchTask, TransferTask
 from adit.core.validators import (
     no_backslash_char_validator,
     no_control_chars_validator,
@@ -17,8 +15,6 @@ class BatchTransferSettings(AppSettings):
 
 
 class BatchTransferJob(TransferJob):
-    JOB_TYPE = "BT"
-
     project_name = models.CharField(max_length=150)
     project_description = models.TextField(max_length=2000)
 
@@ -38,26 +34,13 @@ class BatchTransferJob(TransferJob):
         return reverse("batch_transfer_job_detail", args=[str(self.id)])
 
 
-class BatchTransferRequest(models.Model):
-    class Status(models.TextChoices):
-        PENDING = "PE", "Pending"
-        IN_PROGRESS = "IP", "In Progress"
-        CANCELED = "CA", "Canceled"
-        SUCCESS = "SU", "Success"
-        WARNING = "WA", "Warning"
-        FAILURE = "FA", "Failure"
-
-    class Meta:
-        unique_together = ("row_number", "job")
-        ordering = ("row_number",)
+class BatchTransferRequest(BatchTask):
+    class Meta(BatchTask.Meta):
+        unique_together = ("row_id", "job")
 
     job = models.ForeignKey(
         BatchTransferJob, on_delete=models.CASCADE, related_name="requests"
     )
-    transfer_tasks = GenericRelation(
-        TransferTask, related_query_name="batch_transfer_request"
-    )
-    row_number = models.PositiveIntegerField()
     patient_id = models.CharField(
         blank=True,
         max_length=64,
@@ -113,13 +96,6 @@ class BatchTransferRequest(models.Model):
             no_wildcard_chars_validator,
         ],
     )
-    status = models.CharField(
-        max_length=2, choices=Status.choices, default=Status.PENDING
-    )
-    message = models.TextField(blank=True, default="")
-    created = models.DateTimeField(auto_now_add=True)
-    start = models.DateTimeField(null=True, blank=True)
-    end = models.DateTimeField(null=True, blank=True)
 
     def clean(self):
         errors = []
@@ -142,3 +118,19 @@ class BatchTransferRequest(models.Model):
 
         if len(errors) > 0:
             raise ValidationError(errors)
+
+
+class BatchTransferTask(TransferTask):
+    job = models.ForeignKey(
+        BatchTransferJob,
+        on_delete=models.CASCADE,
+        related_name="tasks",
+    )
+    request = models.ForeignKey(
+        BatchTransferRequest,
+        on_delete=models.CASCADE,
+        related_name="tasks",
+    )
+
+    def get_absolute_url(self):
+        return reverse("batch_transfer_task_detail", args=[str(self.id)])

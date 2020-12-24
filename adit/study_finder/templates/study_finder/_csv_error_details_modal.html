@@ -1,0 +1,11 @@
+{% extends "core/_message_modal.html" %}
+
+{% block modal_title %}
+CSV Error Details
+{% endblock modal_title %}
+
+{% block modal_body %}
+<pre>
+{{ form.csv_error_details }}
+</pre>
+{% endblock modal_body %}

@@ -23,10 +23,11 @@ urlpatterns = [
     path("accounts/", include("adit.accounts.urls")),
     path("api/", include("adit.api.urls")),
     path("", include("adit.core.urls")),
-    path("", include("adit.selective_transfer.urls")),
-    path("", include("adit.batch_transfer.urls")),
-    path("", include("adit.continuous_transfer.urls")),
-    path("", include("adit.dicom_explorer.urls")),
+    path("selective-transfer/", include("adit.selective_transfer.urls")),
+    path("batch-transfer/", include("adit.batch_transfer.urls")),
+    path("continuous-transfer/", include("adit.continuous_transfer.urls")),
+    path("study-finder/", include("adit.study_finder.urls")),
+    path("dicom-explorer/", include("adit.dicom_explorer.urls")),
 ]
 
 # Django loginas

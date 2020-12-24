@@ -1,7 +1,7 @@
 {% extends "core/base_generic.html" %}
 
-{% load core_extras %}
-{% load dicom_explorer_extras %}
+{% load combine_datetime exclude_from_list from core_extras %}
+{% load build_study_params from dicom_explorer_extras %}
 
 {% block container %}
 

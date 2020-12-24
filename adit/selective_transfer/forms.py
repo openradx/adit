@@ -63,7 +63,7 @@ class SelectiveTransferJobForm(forms.ModelForm):
         fields = (
             "source",
             "destination",
-            "transfer_urgently",
+            "urgent",
             "trial_protocol_id",
             "trial_protocol_name",
             "pseudonym",
@@ -76,23 +76,23 @@ class SelectiveTransferJobForm(forms.ModelForm):
             "accession_number",
         )
         labels = {
-            "transfer_urgently": "Start transfer directly",
+            "urgent": "Start transfer directly",
             "trial_protocol_id": "Trial ID",
             "trial_protocol_name": "Trial name",
         }
         help_texts = {
-            "transfer_urgently": (
+            "urgent": (
                 "Start transfer directly (without scheduling) and prioritize it."
             ),
         }
 
     def __init__(self, *args, **kwargs):
-        transfer_urgently_option = kwargs.pop("transfer_urgently_option", False)
+        urgent_option = kwargs.pop("urgent_option", False)
 
         super().__init__(*args, **kwargs)
 
-        if not transfer_urgently_option:
-            del self.fields["transfer_urgently"]
+        if not urgent_option:
+            del self.fields["urgent"]
 
         self.helper = FormHelper(self)
         self.helper.form_tag = False
@@ -103,7 +103,10 @@ class SelectiveTransferJobForm(forms.ModelForm):
             ),
             Row(
                 Column(
-                    Field("transfer_urgently"),
+                    Field(
+                        "urgent",
+                        **{"@change": "onUrgencyChanged"},
+                    ),
                 ),
                 css_class="pl-1",
             ),

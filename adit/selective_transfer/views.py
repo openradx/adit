@@ -3,27 +3,44 @@ from django.contrib.auth.mixins import PermissionRequiredMixin
 from django.views.generic.edit import CreateView
 from django.views.generic import DetailView
 from django.http import HttpResponseBadRequest
+from django.urls import reverse_lazy
 from django_tables2 import SingleTableMixin
 from adit.core.mixins import (
     OwnerRequiredMixin,
-    TransferFormViewMixin,
+    UrgentFormViewMixin,
     RelatedFilterMixin,
     PageSizeSelectMixin,
 )
-from adit.core.filters import TransferTaskFilter
-from adit.core.tables import TransferTaskTable
+from adit.core.views import (
+    TransferJobListView,
+    DicomJobDeleteView,
+    DicomJobCancelView,
+    DicomJobVerifyView,
+    DicomTaskDetailView,
+)
 from .forms import SelectiveTransferJobForm
-from .models import SelectiveTransferJob
+from .models import SelectiveTransferJob, SelectiveTransferTask
 from .mixins import SelectiveTransferJobCreateMixin
+from .tables import SelectiveTransferJobTable, SelectiveTransferTaskTable
+from .filters import SelectiveTransferJobFilter, SelectiveTransferTaskFilter
 
 QUERY_RESULT_LIMIT = 101
+
+
+class SelectiveTransferJobListView(
+    TransferJobListView
+):  # pylint: disable=too-many-ancestors
+    model = SelectiveTransferJob
+    table_class = SelectiveTransferJobTable
+    filterset_class = SelectiveTransferJobFilter
+    template_name = "selective_transfer/selective_transfer_job_list.html"
 
 
 class SelectiveTransferJobCreateView(
     LoginRequiredMixin,
     PermissionRequiredMixin,
     SelectiveTransferJobCreateMixin,
-    TransferFormViewMixin,
+    UrgentFormViewMixin,
     CreateView,
 ):
     """A view class to render the selective transfer form.
@@ -84,8 +101,8 @@ class SelectiveTransferJobDetailView(
     DetailView,
 ):
     owner_accessor = "owner"
-    table_class = TransferTaskTable
-    filterset_class = TransferTaskFilter
+    table_class = SelectiveTransferTaskTable
+    filterset_class = SelectiveTransferTaskFilter
     model = SelectiveTransferJob
     context_object_name = "job"
     template_name = "selective_transfer/selective_transfer_job_detail.html"
@@ -93,3 +110,22 @@ class SelectiveTransferJobDetailView(
     def get_filter_queryset(self):
         job = self.get_object()
         return job.tasks
+
+
+class SelectiveTransferJobDeleteView(DicomJobDeleteView):
+    model = SelectiveTransferJob
+    success_url = reverse_lazy("selective_transfer_job_list")
+
+
+class SelectiveTransferJobCancelView(DicomJobCancelView):
+    model = SelectiveTransferJob
+
+
+class SelectiveTransferJobVerifyView(DicomJobVerifyView):
+    model = SelectiveTransferJob
+
+
+class SelectiveTransferTaskDetailView(DicomTaskDetailView):
+    model = SelectiveTransferTask
+    job_url_name = "selective_transfer_job_detail"
+    template_name = "selective_transfer/selective_transfer_task_detail.html"

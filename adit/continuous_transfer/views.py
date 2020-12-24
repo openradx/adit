@@ -1,31 +1,39 @@
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
 from django.views.generic import DetailView
 from django.conf import settings
-from adit.core.mixins import OwnerRequiredMixin, TransferFormViewMixin
+from django.urls import reverse_lazy
+from adit.core.mixins import OwnerRequiredMixin, UrgentFormViewMixin
+from adit.core.views import (
+    TransferJobListView,
+    DicomJobDeleteView,
+    DicomJobCancelView,
+    DicomJobVerifyView,
+    DicomTaskDetailView,
+)
 from adit.core.views import InlineFormSetCreateView
-from .models import ContinuousTransferJob
+from .models import ContinuousTransferJob, ContinuousTransferTask
 from .forms import (
     ContinuousTransferJobForm,
     DataElementFilterFormSet,
     DataElementFilterFormSetHelper,
 )
+from .tables import ContinuousTransferJobTable
+from .filters import ContinuousTransferJobFilter
 
 
-def clear_errors(form_or_formset):
-    # Hide all errors as we only add another form.
-    # Found only this hacky way.
-    # See https://stackoverflow.com/questions/64402527
-    # pylint: disable=protected-access
-    form_or_formset._errors = {}
-    if hasattr(form_or_formset, "forms"):
-        for form in form_or_formset.forms:
-            clear_errors(form)
+class ContinuousTransferJobListView(
+    TransferJobListView
+):  # pylint: disable=too-many-ancestors
+    model = ContinuousTransferJob
+    table_class = ContinuousTransferJobTable
+    filterset_class = ContinuousTransferJobFilter
+    template_name = "continuous_transfer/continuous_transfer_job_list.html"
 
 
 class ContinuousTransferJobCreateView(
     LoginRequiredMixin,
     PermissionRequiredMixin,
-    TransferFormViewMixin,
+    UrgentFormViewMixin,
     InlineFormSetCreateView,
 ):
     model = ContinuousTransferJob
@@ -62,3 +70,22 @@ class ContinuousTransferJobDetailView(
     context_object_name = "job"
     template_name = "continuous_transfer/continuous_transfer_job_detail.html"
     owner_accessor = "owner"
+
+
+class ContinuousTransferJobDeleteView(DicomJobDeleteView):
+    model = ContinuousTransferJob
+    success_url = reverse_lazy("continuous_transfer_job_list")
+
+
+class ContinuousTransferJobCancelView(DicomJobCancelView):
+    model = ContinuousTransferJob
+
+
+class ContinuousTransferJobVerifyView(DicomJobVerifyView):
+    model = ContinuousTransferJob
+
+
+class ContinuousTransferTaskDetailView(DicomTaskDetailView):
+    model = ContinuousTransferTask
+    job_url_name = "continuous_transfer_job_detail"
+    template_name = "continuous_transfer/continuous_transfer_task_detail.html"

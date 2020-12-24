@@ -2,17 +2,15 @@ from io import StringIO
 from django import forms
 from django.db import transaction
 from django.core.exceptions import ValidationError
-from django.conf import settings
-from django.utils import formats
 from django.utils.safestring import mark_safe
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Submit
 import cchardet as chardet
 from adit.core.forms import DicomNodeChoiceField
 from adit.core.models import DicomNode
+from adit.core.fields import RestrictedFileField
 from .models import BatchTransferJob, BatchTransferRequest
-from .fields import RestrictedFileField
-from .utils.parsers import RequestsParser, ParsingError
+from .utils.parsers import RequestsParser, ParserError
 
 
 class BatchTransferJobForm(forms.ModelForm):
@@ -26,7 +24,7 @@ class BatchTransferJobForm(forms.ModelForm):
         fields = (
             "source",
             "destination",
-            "transfer_urgently",
+            "urgent",
             "project_name",
             "project_description",
             "trial_protocol_id",
@@ -35,12 +33,12 @@ class BatchTransferJobForm(forms.ModelForm):
             "csv_file",
         )
         labels = {
-            "transfer_urgently": "Start transfer urgently",
+            "urgent": "Start transfer urgently",
             "trial_protocol_id": "Trial ID",
             "trial_protocol_name": "Trial name",
         }
         help_texts = {
-            "transfer_urgently": (
+            "urgent": (
                 "Start transfer directly (without scheduling) and prioritize it."
             ),
             "trial_protocol_id": (
@@ -53,7 +51,7 @@ class BatchTransferJobForm(forms.ModelForm):
             ),
             "csv_file": (
                 "The CSV file which contains the data to transfer between "
-                "two DICOM nodes. See [help] how to format the CSV file."
+                "two DICOM nodes. See [Help] how to format the CSV file."
             ),
             "ethics_committee_approval": (
                 "Only studies of an approved trial can be transferred!"
@@ -66,15 +64,15 @@ class BatchTransferJobForm(forms.ModelForm):
         self.requests = None
         self.save_requests = None
 
-        transfer_urgently_option = kwargs.pop("transfer_urgently_option", False)
+        urgent_option = kwargs.pop("urgent_option", False)
 
         super().__init__(*args, **kwargs)
 
         self.fields["source"].widget.attrs["class"] = "custom-select"
         self.fields["destination"].widget.attrs["class"] = "custom-select"
 
-        if not transfer_urgently_option:
-            del self.fields["transfer_urgently"]
+        if not urgent_option:
+            del self.fields["urgent"]
 
         self.fields["trial_protocol_id"].widget.attrs["placeholder"] = "Optional"
         self.fields["trial_protocol_name"].widget.attrs["placeholder"] = "Optional"
@@ -92,17 +90,14 @@ class BatchTransferJobForm(forms.ModelForm):
 
     def clean_csv_file(self):
         csv_file = self.cleaned_data["csv_file"]
-
-        delimiter = settings.BATCH_FILE_CSV_DELIMITER
-        date_input_formats = formats.get_format("DATE_INPUT_FORMATS")
-        parser = RequestsParser(delimiter, date_input_formats)
+        parser = RequestsParser()
 
         try:
             rawdata = csv_file.read()
             encoding = chardet.detect(rawdata)["encoding"]
             fp = StringIO(rawdata.decode(encoding))
             self.requests = parser.parse(fp)
-        except ParsingError as err:
+        except ParserError as err:
             self.csv_error_details = err
             raise ValidationError(
                 mark_safe(

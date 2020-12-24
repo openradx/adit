@@ -1,6 +1,6 @@
 from django.db import models
 from django.urls import reverse
-from adit.core.models import AppSettings, TransferJob
+from adit.core.models import AppSettings, TransferJob, TransferTask
 
 
 class ContinuousTransferSettings(AppSettings):
@@ -9,12 +9,11 @@ class ContinuousTransferSettings(AppSettings):
 
 
 class ContinuousTransferJob(TransferJob):
-    JOB_TYPE = "CT"
-
     project_name = models.CharField(max_length=150)
     project_description = models.TextField(max_length=2000)
     start_date = models.DateField()
     end_date = models.DateField(null=True, blank=True)
+    last_study_datetime = models.DateTimeField(null=True, blank=True)
 
     def delay(self):
         from .tasks import (  # pylint: disable=import-outside-toplevel
@@ -49,3 +48,14 @@ class DataElementFilter(models.Model):
     filter_value = models.CharField(max_length=200)
     case_sensitive = models.BooleanField(default=False)
     order = models.SmallIntegerField()
+
+
+class ContinuousTransferTask(TransferTask):
+    job = models.ForeignKey(
+        ContinuousTransferJob,
+        on_delete=models.CASCADE,
+        related_name="tasks",
+    )
+
+    def get_absolute_url(self):
+        return reverse("continuous_transfer_task_detail", args=[str(self.id)])

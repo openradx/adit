@@ -4,22 +4,32 @@ from django.contrib.auth.models import Group
 from faker import Faker
 import factory
 
-# pylint: disable=import-error,no-name-in-module
 from adit.accounts.models import User
 from adit.accounts.factories import AdminUserFactory, UserFactory
 from adit.core.factories import (
     DicomServerFactory,
     DicomFolderFactory,
-    TransferTaskFactory,
 )
 from adit.batch_transfer.factories import (
     BatchTransferJobFactory,
     BatchTransferRequestFactory,
+    BatchTransferTaskFactory,
 )
-from adit.selective_transfer.factories import SelectiveTransferJobFactory
+from adit.selective_transfer.factories import (
+    SelectiveTransferJobFactory,
+    SelectiveTransferTaskFactory,
+)
+from adit.study_finder.factories import (
+    StudyFinderJobFactory,
+    StudyFinderQueryFactory,
+    StudyFinderResultFactory,
+)
 
+
+SELECTIVE_TRANSFER_COUNT = 5
+BATCH_TRANSFER_COUNT = 3
+STUDY_FINDER_COUNT = 2
 CREATE_JOBS_FOR_ADMIN_ONLY = True
-PROBABILITY_OF_BATCH_JOB = 50
 
 fake = Faker()
 
@@ -78,29 +88,14 @@ def create_folder_nodes():
 
 
 def create_jobs(users, servers, folders):
-    for _ in range(10):
-        if fake.boolean(chance_of_getting_true=PROBABILITY_OF_BATCH_JOB):
-            create_batch_transfer_job(users, servers, folders)
-        else:
-            create_selective_transfer_job(users, servers, folders)
+    for _ in range(SELECTIVE_TRANSFER_COUNT):
+        create_selective_transfer_job(users, servers, folders)
 
+    for _ in range(BATCH_TRANSFER_COUNT):
+        create_batch_transfer_job(users, servers, folders)
 
-def create_batch_transfer_job(users, servers, folders):
-    servers_and_folders = servers + folders
-
-    job = BatchTransferJobFactory(
-        source=factory.Faker("random_element", elements=servers),
-        destination=factory.Faker("random_element", elements=servers_and_folders),
-        owner=factory.Faker("random_element", elements=users),
-    )
-
-    for row_number in range(fake.random_int(min=1, max=100)):
-        request = BatchTransferRequestFactory(job=job, row_number=row_number)
-
-        for _ in range(fake.random_int(min=1, max=3)):
-            TransferTaskFactory(content_object=request, job=job)
-
-    return job
+    for _ in range(STUDY_FINDER_COUNT):
+        create_study_finder_job(users)
 
 
 def create_selective_transfer_job(users, servers, folders):
@@ -113,7 +108,39 @@ def create_selective_transfer_job(users, servers, folders):
     )
 
     for _ in range(fake.random_int(min=1, max=120)):
-        TransferTaskFactory(job=job)
+        SelectiveTransferTaskFactory(job=job)
+
+
+def create_batch_transfer_job(users, servers, folders):
+    servers_and_folders = servers + folders
+
+    job = BatchTransferJobFactory(
+        source=factory.Faker("random_element", elements=servers),
+        destination=factory.Faker("random_element", elements=servers_and_folders),
+        owner=factory.Faker("random_element", elements=users),
+    )
+
+    for row_id in range(fake.random_int(min=1, max=100)):
+        request = BatchTransferRequestFactory(job=job, row_id=row_id)
+
+        for _ in range(fake.random_int(min=1, max=3)):
+            BatchTransferTaskFactory(job=job, request=request)
+
+    return job
+
+
+def create_study_finder_job(users):
+    job = StudyFinderJobFactory(
+        owner=factory.Faker("random_element", elements=users),
+    )
+
+    for row_id in range(fake.random_int(min=1, max=100)):
+        query = StudyFinderQueryFactory(job=job, row_id=row_id)
+
+        for _ in range(fake.random_int(min=1, max=3)):
+            StudyFinderResultFactory(job=job, query=query)
+
+    return job
 
 
 class Command(BaseCommand):

@@ -1,0 +1,17 @@
+{% load task_status_badge_class from batch_transfer_extras %}
+
+{% with record as request %}
+    {% for task in request.tasks.all %}
+        <a 
+            href="{% url 'batch_transfer_task_detail' task.id %}"
+            class="badge {{ task.status|task_status_badge_class }}"
+            data-toggle="tooltip"
+            data-placement="top"
+            title="{{ task.get_status_display }}"
+        >
+            {{ task.id }}
+        </a>
+    {% empty %}
+        {{ request.message|default:"—" }}
+    {% endfor %}
+{% endwith %}

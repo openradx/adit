@@ -2,23 +2,40 @@ from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMix
 from django.views.generic.edit import CreateView
 from django.views.generic import TemplateView, DetailView
 from django.conf import settings
+from django.urls import reverse_lazy
 from django_tables2 import SingleTableMixin
 from adit.core.mixins import (
     OwnerRequiredMixin,
-    TransferFormViewMixin,
+    UrgentFormViewMixin,
     RelatedFilterMixin,
     PageSizeSelectMixin,
 )
-from .models import BatchTransferSettings, BatchTransferJob
+from adit.core.views import (
+    TransferJobListView,
+    DicomJobDeleteView,
+    DicomJobCancelView,
+    DicomJobVerifyView,
+    DicomTaskDetailView,
+)
+from .models import BatchTransferSettings, BatchTransferJob, BatchTransferTask
 from .forms import BatchTransferJobForm
-from .tables import BatchTransferRequestTable
-from .filters import BatchTransferRequestFilter
+from .tables import BatchTransferJobTable, BatchTransferRequestTable
+from .filters import BatchTransferJobFilter, BatchTransferRequestFilter
+
+
+class BatchTransferJobListView(
+    TransferJobListView
+):  # pylint: disable=too-many-ancestors
+    model = BatchTransferJob
+    table_class = BatchTransferJobTable
+    filterset_class = BatchTransferJobFilter
+    template_name = "batch_transfer/batch_transfer_job_list.html"
 
 
 class BatchTransferJobCreateView(
     LoginRequiredMixin,
     PermissionRequiredMixin,
-    TransferFormViewMixin,
+    UrgentFormViewMixin,
     CreateView,
 ):
     model = BatchTransferJob
@@ -73,4 +90,23 @@ class BatchTransferJobDetailView(
 
     def get_filter_queryset(self):
         job = self.get_object()
-        return job.requests.prefetch_related("transfer_tasks")
+        return job.requests.prefetch_related("tasks")
+
+
+class BatchTransferJobDeleteView(DicomJobDeleteView):
+    model = BatchTransferJob
+    success_url = reverse_lazy("batch_transfer_job_list")
+
+
+class BatchTransferJobCancelView(DicomJobCancelView):
+    model = BatchTransferJob
+
+
+class BatchTransferJobVerifyView(DicomJobVerifyView):
+    model = BatchTransferJob
+
+
+class BatchTransferTaskDetailView(DicomTaskDetailView):
+    model = BatchTransferTask
+    job_url_name = "batch_transfer_job_detail"
+    template_name = "batch_transfer/batch_transfer_task_detail.html"

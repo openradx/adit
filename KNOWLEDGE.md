@@ -1,5 +1,12 @@
 # Django
 
+## `null=True` and `blank=True`
+
+-   On text and char fields use `blank=True` alone (without `null=True`)
+-   On non string fields always use `blank=True` together with `null=True`
+-   If the string field is initially not set directly use with `default=""`
+-   See also https://books.agiliq.com/projects/django-orm-cookbook/en/latest/null_vs_blank.html
+
 ## FilterMixin does not work in DetailView
 
 -   DetailView queries the object in get_object() using the get_queryset()
@@ -38,6 +45,15 @@
 -   So the images of multiple C-MOVE SCU requests go to the same destination and must be somehow routed there.
 -   The only option seems to use MoveOriginatorMessageID (see https://stackoverflow.com/q/14259852/166229), which unfortunately is option in the DICOM standard.
 -   Other systems have the same issue: 'Warning: the PACS station server must support the "Move Originator Message ID" (0000,1031) and "Move Originator Application Entity Title" (0000,1030) when sending CSTORE messages during processing CMOVE operations.', see http://www.onis-viewer.com/PluginInfo.aspx?id=42
+
+# Docker
+
+-   To deal with the below error message while starting docker containers just execute in WSL Ubuntu: `sudo hwclock -s`
+
+```
+E: Release file for http://security.debian.org/debian-security/dists/buster/updates/InRelease is not valid yet (invalid for another 1h 22min 32s). Updates for this repository will not be applied.
+E: Release file for http://deb.debian.org/debian/dists/buster-updates/InRelease is not valid yet (invalid for another 17h 37min 38s). Updates for this repository will not be applied.
+```
 
 # Gitpod
 

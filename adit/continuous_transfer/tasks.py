@@ -11,7 +11,7 @@ def continuous_transfer(job_id):
     job = ContinuousTransferJob.objects.get(id=job_id)
 
     priority = settings.CONTINUOUS_TRANSFER_DEFAULT_PRIORITY
-    if job.transfer_urgently:
+    if job.urgent:
         priority = settings.CONTINUOUS_TRANSFER_URGENT_PRIORITY
 
     logger.info("Prepare continuous transfer job [Job ID %d].", job_id)

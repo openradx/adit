@@ -47,6 +47,7 @@ INSTALLED_APPS = [
     "adit.selective_transfer.apps.SelectiveTransferConfig",
     "adit.batch_transfer.apps.BatchTransferConfig",
     "adit.continuous_transfer.apps.ContinuousTransferConfig",
+    "adit.study_finder.apps.StudyFinderConfig",
     "adit.dicom_explorer.apps.DicomExplorerConfig",
     "channels",
 ]
@@ -305,9 +306,13 @@ FILTERS_EMPTY_CHOICE_LABEL = "Show All"
 # General ADIT settings
 ADIT_AE_TITLE = env.str("ADIT_AE_TITLE", default="ADIT1")
 
-# The delimiter of the CSV file that contains the requests for
-# the batch transfer
-BATCH_FILE_CSV_DELIMITER = ";"
+# The delimiter of the CSV file for the requests of batch transfer and the
+# queries of study finder
+CSV_FILE_DELIMITER = ";"
+
+# The delimiter of a date range in a text field (or CSV file), e.g.
+# in "01.02.2019-09.03.2020" the delimiter is "-".
+DATE_RANGE_DELIMITER = "-"
 
 # ADIT uses a cache for patients so that not the DICOM server must not
 # always be queried. This is how many patients fit into the cache.
@@ -330,3 +335,5 @@ BATCH_TRANSFER_DEFAULT_PRIORITY = 3
 BATCH_TRANSFER_URGENT_PRIORITY = 7
 CONTINUOUS_TRANSFER_DEFAULT_PRIORITY = 2
 CONTINUOUS_TRANSFER_URGENT_PRIORITY = 6
+STUDY_TRANSFER_DEFAULT_PRIORITY = 5
+STUDY_TRANSFER_URGENT_PRIORITY = 9

@@ -1,0 +1,60 @@
+{% extends "core/_message_modal.html" %}
+
+{% block modal_title %}
+Batch Transfer Help
+{% endblock modal_title %}
+
+{% block modal_body %}
+<p>
+    With this form you can create a new batch transfer job to transfer studies
+    from a source to a destination. Batch transfer jobs are put into a queue
+    and will be processed by a worker when the time is right.
+    The status of a job can be viewed on the "All Jobs" page and you will
+    get an Email when the job is finished (or failed for some reason).
+</p>
+
+<p>
+    Each batch transfer job contains several transfer requests that define what 
+    to transfer. These requests must be provided in a CSV file. If your data
+    is in an Excel file then it can be exported as a CSV file.  
+    The first row of the CSV file must contain the header with the column
+    titles. The following rows contain the requests.
+</p>
+
+<p>
+    The following columns must be present in the CSV file:
+    <dl>
+        <dt>Row ID</dt>
+        <dd>A consecutive unique number that identifies the row.</dd>
+        <dt>Patient ID</dt>
+        <dd>The unique ID of the patient in the PACS (optional if Patient Name and Birth Date is present).</dd>
+        <dt>Patient Name</dt>
+        <dd>The name of the patient (optional if Patient ID is provided).</dd>
+        <dt>Birth Date</dt>
+        <dd>The birth date of the patient (optional if Patient ID is provided)</dd>
+        <dt>Accession Number</dt>
+        <dd>The unique ID of the study in the PACS</dd>
+        <dt>Study Date</dt>
+        <dd>The date when the study took place (optional if Accession Number is provided)</dd>
+        <dt>Modality</dt>
+        <dd>The modality of the study (optional if Accession Number is provided)</dd>
+        <dt>Pseudonym</dt>
+        <dd>An optional pseudonym to pseudonymize the images to transfer.</dd>
+    </dl>
+</p>
+
+<div class="mb-1">A valid CSV file may look like this:</div>
+<pre>
+Row ID;Patient ID;Patient Name;Birth Date;Accession Number;Study Date;Modality;Pseudonym
+1;10007;Papaya, Pamela;29.08.1976;;19.08.2018;MR;ABU5QZL9
+2;10002;Banana, Ben;18.02.1962;0062094291;;;DEDH6SVQ
+3;10002;;18.02.1962;;15.09.2019;MR;DEDH6SVQ
+</pre>
+
+<p>
+    The provided pseudonym will be set as Patient ID and Patient Name. So it is
+    best to use something cryptic like in the above example (and not another
+    person name).
+</p>
+
+{% endblock modal_body %}
