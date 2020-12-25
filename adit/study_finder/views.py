@@ -27,7 +27,11 @@ from .tables import (
     StudyFinderQueryTable,
     StudyFinderResultTable,
 )
-from .filters import StudyFinderJobFilter, StudyFinderQueryFilter
+from .filters import (
+    StudyFinderJobFilter,
+    StudyFinderQueryFilter,
+    StudyFinderResultFilter,
+)
 from .utils.exporters import export_results
 
 
@@ -83,6 +87,7 @@ class StudyFinderJobVerifyView(DicomJobVerifyView):
     model = StudyFinderJob
 
 
+# TODO remove
 class StudyFinderQueryDetailView(
     SingleTableMixin,
     PageSizeSelectMixin,
@@ -102,17 +107,19 @@ class StudyFinderResultListView(
     LoginRequiredMixin,
     OwnerRequiredMixin,
     SingleTableMixin,
+    RelatedFilterMixin,
     PageSizeSelectMixin,
     DetailView,
 ):
     owner_accessor = "owner"
     table_class = StudyFinderResultTable
+    filterset_class = StudyFinderResultFilter
     model = StudyFinderJob
     context_object_name = "job"
     template_name = "study_finder/study_finder_result_list.html"
 
-    def get_table_data(self):
-        return self.object.results.all()
+    def get_filter_queryset(self):
+        return self.object.results.select_related("query")
 
 
 class StudyFinderResultDownloadView(

@@ -1,6 +1,8 @@
-from typing import List
-from django.conf import settings
+from typing import List, Dict
+import csv
 from rest_framework.exceptions import ErrorDetail
+from django.conf import settings
+from adit.core.serializers import DicomTaskSerializer
 
 
 class ParserError(Exception):
@@ -37,8 +39,9 @@ class ParserError(Exception):
                     if row_id:
                         row_id = f" (Row ID {row_id})"
 
-                    # +2 because row begins at 1 and the first line is the header
-                    self.message += f"Invalid data in row #{num + 2}{row_id}:\n"
+                    line_num = self.data[num]["__line_num__"]
+
+                    self.message += f"Invalid data on line {line_num}{row_id}:\n"
 
                     non_field_errors = item_errors.pop("non_field_errors", None)
                     if non_field_errors:
@@ -60,5 +63,35 @@ class ParserError(Exception):
 
 
 class BaseParser:  # pylint: disable=too-few-public-methods
+    serializer_class: DicomTaskSerializer = None
+    field_to_column_mapping: Dict[str, str] = None
+
     def __init__(self):
         self.delimiter = settings.CSV_FILE_DELIMITER
+
+    def parse(self, csv_file):
+        data = []
+        reader = csv.DictReader(csv_file, delimiter=self.delimiter)
+        for row in reader:
+            data_row = {}
+
+            for field, column in self.field_to_column_mapping.items():
+                data_row[field] = row.get(column, "")
+
+            data_row["__line_num__"] = reader.line_num
+
+            data.append(data_row)
+
+        serializer = self.serializer_class(  # pylint: disable=not-callable
+            data=data, many=True
+        )
+        if not serializer.is_valid():
+            raise ParserError(
+                self.field_to_column_mapping,
+                data,
+                serializer.errors,
+            )
+
+        model_class = self.serializer_class.Meta.model
+
+        return [model_class(**item) for item in serializer.validated_data]

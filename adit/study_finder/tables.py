@@ -15,11 +15,14 @@ class StudyFinderQueryTable(DicomTaskTable):
 
 
 class StudyFinderResultTable(tables.Table):
+    row_id = tables.Column(accessor="query.row_id", verbose_name="Row ID")
+
     class Meta:  # pylint: disable=too-few-public-methods
         model = StudyFinderResult
         template_name = "django_tables2/bootstrap4.html"
         empty_text = "No results to show"
         fields = (
+            "row_id",
             "study_date",
             "study_description",
             "modalities",

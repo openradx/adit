@@ -97,7 +97,7 @@ def test_missing_row_id(columns, rows, create_csv_file):
     with pytest.raises(ParserError) as err:
         RequestsParser().parse(file)
 
-    assert err.match(r"Invalid data in row #2")
+    assert err.match(r"Invalid data on line 2")
     assert err.match(r"Row ID - A valid integer is required")
 
 
@@ -108,7 +108,7 @@ def test_invalid_row_id(columns, rows, create_csv_file):
     with pytest.raises(ParserError) as err:
         RequestsParser().parse(file)
 
-    assert err.match(r"Invalid data in row #2 \(Row ID ABC\)")
+    assert err.match(r"Invalid data on line 2 \(Row ID ABC\)")
     assert err.match(r"Row ID - A valid integer is required")
 
 
@@ -140,7 +140,7 @@ def test_invalid_patient_id(rows, columns, create_csv_file, create_random_str):
     with pytest.raises(ParserError) as err:
         RequestsParser().parse(file)
 
-    assert err.match(r"Invalid data in row #2 \(Row ID 1\)")
+    assert err.match(r"Invalid data on line 2 \(Row ID 1\)")
     assert err.match(r"Patient ID - Ensure this field has no more than 64 characters")
 
 
@@ -164,7 +164,7 @@ def test_invalid_patient_name(rows, columns, create_csv_file, create_random_str)
     with pytest.raises(ParserError) as err:
         RequestsParser().parse(file)
 
-    assert err.match(r"Invalid data in row #2 \(Row ID 1\)")
+    assert err.match(r"Invalid data on line 2 \(Row ID 1\)")
     assert err.match(
         r"Patient Name - Ensure this field has no more than 324 characters"
     )
@@ -188,7 +188,7 @@ def test_invalid_patient_birth_date(birth_date, rows, columns, create_csv_file):
     with pytest.raises(ParserError) as err:
         RequestsParser().parse(file)
 
-    assert err.match(r"Invalid data in row #2 \(Row ID 1\)")
+    assert err.match(r"Invalid data on line 2 \(Row ID 1\)")
     assert err.match(r"Birth Date - Date has wrong format.")
 
 
@@ -209,7 +209,7 @@ def test_invalid_accession_number(rows, columns, create_csv_file, create_random_
     with pytest.raises(ParserError) as err:
         RequestsParser().parse(file)
 
-    assert err.match(r"Invalid data in row #2 \(Row ID 1\)")
+    assert err.match(r"Invalid data on line 2 \(Row ID 1\)")
     assert err.match(
         r"Accession Number - Ensure this field has no more than 16 characters"
     )
@@ -232,7 +232,7 @@ def test_invalid_modality(rows, columns, create_csv_file, create_random_str):
     with pytest.raises(ParserError) as err:
         RequestsParser().parse(file)
 
-    assert err.match(r"Invalid data in row #2 \(Row ID 1\)")
+    assert err.match(r"Invalid data on line 2 \(Row ID 1\)")
     assert err.match(r"Modality - Ensure this field has no more than 16 characters")
 
 
@@ -253,7 +253,7 @@ def test_invalid_pseudonym(rows, columns, create_csv_file, create_random_str):
     with pytest.raises(ParserError) as err:
         RequestsParser().parse(file)
 
-    assert err.match(r"Invalid data in row #2 \(Row ID 1\)")
+    assert err.match(r"Invalid data on line 2 \(Row ID 1\)")
     assert err.match(r"Pseudonym - Ensure this field has no more than 64 characters")
 
 

@@ -61,21 +61,26 @@ class SingleFilterFormHelper(FormHelper):
     form_class = "form-inline"
     label_class = "mr-1"
 
-    def __init__(self, data, field_name, *args, **kwargs):
+    def __init__(self, data, field_name, select_widget=True, custom_style="", **kwargs):
         button_label = kwargs.pop("button_label", "Filter")
         button_id = kwargs.pop("button_id", "filter")
         at_url_end = kwargs.pop("at_url_end", False)
 
-        super().__init__(*args, **kwargs)
+        super().__init__(**kwargs)
 
         self.form_method = "get"
         self.disable_csrf = True
 
         layout = Layout()
 
+        if select_widget:
+            css_class = "custom-select custom-select-sm"
+        else:
+            css_class = "form-control-sm"
+
         layout.append(
             FieldWithButtons(
-                Field(field_name, css_class="custom-select custom-select-sm"),
+                Field(field_name, css_class=css_class, style=custom_style),
                 Submit(
                     "",
                     button_label,
