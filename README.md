@@ -33,8 +33,8 @@ Downloading data from a DICOM server can done by using a C-GET or C-MOVE operati
 
 # TODO list
 
+-   study finder -> batch finder
 -   prefetch results on study finder download view
--   Evaluate to use diffhtml instead of morphdom, see https://diffhtml.org/api.html#inner-html
 -   Better scheduler (with day in week and times)
 -   study_date -> study_datetime
 -   should we really save log to task this way
@@ -48,6 +48,7 @@ Downloading data from a DICOM server can done by using a C-GET or C-MOVE operati
 -   https://stackoverflow.com/questions/14259852/how-to-identify-image-receive-in-c-store-as-result-of-a-c-move-query
 -   https://www.yergler.net/2009/09/27/nested-formsets-with-django/
 -   Allow to search multiple source servers with one query
+-   Evaluate to use diffhtml instead of morphdom, see https://diffhtml.org/api.html#inner-html
 
 # Commands
 

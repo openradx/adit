@@ -131,11 +131,11 @@ class StudyFinderResultDownloadView(
     model = StudyFinderJob
     owner_accessor = "owner"
 
-    def get(self, request):
+    def get(self, request, *args, **kwargs):  # pylint: disable=unused-argument
         job = self.get_object()
         file = StringIO()
         export_results(job, file)
-        response = HttpResponse(file, content_type="text/csv")
+        response = HttpResponse(file.getvalue(), content_type="text/csv")
         filename = f"study_finder_job_{job.id}_results.csv"
         response["Content-Disposition"] = f"attachment;filename={filename}"
         return response
