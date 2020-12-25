@@ -1,6 +1,6 @@
 from datetime import datetime
 from django.template import Library
-from ..models import TransferJob, TransferTask
+from ..models import DicomJob, DicomTask
 
 register = Library()
 
@@ -35,21 +35,21 @@ def combine_datetime(date, time):
 @register.filter
 def dicom_job_status_css_class(status):
     text_class = ""
-    if status == TransferJob.Status.UNVERIFIED:
+    if status == DicomJob.Status.UNVERIFIED:
         text_class = "text-info"
-    elif status == TransferJob.Status.PENDING:
+    elif status == DicomJob.Status.PENDING:
         text_class = "text-secondary"
-    elif status == TransferJob.Status.IN_PROGRESS:
+    elif status == DicomJob.Status.IN_PROGRESS:
         text_class = "text-info"
-    elif status == TransferJob.Status.CANCELING:
+    elif status == DicomJob.Status.CANCELING:
         text_class = "text-muted"
-    elif status == TransferJob.Status.CANCELED:
+    elif status == DicomJob.Status.CANCELED:
         text_class = "text-muted"
-    elif status == TransferJob.Status.SUCCESS:
+    elif status == DicomJob.Status.SUCCESS:
         text_class = "text-success"
-    elif status == TransferJob.Status.WARNING:
+    elif status == DicomJob.Status.WARNING:
         text_class = "text-warning"
-    elif status == TransferJob.Status.FAILURE:
+    elif status == DicomJob.Status.FAILURE:
         text_class = "text-danger"
     return text_class
 
@@ -57,14 +57,16 @@ def dicom_job_status_css_class(status):
 @register.filter
 def dicom_task_status_css_class(status):
     text_class = ""
-    if status == TransferTask.Status.PENDING:
+    if status == DicomTask.Status.PENDING:
         text_class = "text-secondary"
-    elif status == TransferTask.Status.IN_PROGRESS:
+    elif status == DicomTask.Status.IN_PROGRESS:
         text_class = "text-info"
-    elif status == TransferTask.Status.CANCELED:
+    elif status == DicomTask.Status.CANCELED:
         text_class = "text-muted"
-    elif status == TransferTask.Status.SUCCESS:
+    elif status == DicomTask.Status.SUCCESS:
         text_class = "text-success"
-    elif status == TransferTask.Status.FAILURE:
+    elif status == DicomTask.Status.WARNING:
+        text_class = "text-warning"
+    elif status == DicomTask.Status.FAILURE:
         text_class = "text-danger"
     return text_class

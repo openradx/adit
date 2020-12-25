@@ -9,8 +9,12 @@ class StudyFinderJobTable(DicomJobTable):
 
 
 class StudyFinderQueryTable(DicomTaskTable):
+    id = None  # We don't use the id of the query object itself
+
     class Meta(DicomTaskTable.Meta):  # pylint: disable=too-few-public-methods
         model = StudyFinderQuery
+        order_by = ("row_id",)
+        fields = ("row_id", "status", "message", "end")
         empty_text = "No queries to show"
 
 
