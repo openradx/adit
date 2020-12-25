@@ -1,11 +1,12 @@
-from typing import List, Dict
+from typing import List, Dict, TextIO
 import csv
 from rest_framework.exceptions import ErrorDetail
 from django.conf import settings
+from adit.core.models import DicomTask
 from adit.core.serializers import DicomTaskSerializer
 
 
-class ParserError(Exception):
+class DicomTaskParserError(Exception):
     def __init__(self, field_to_column_mapping, data, errors) -> None:
         super().__init__("Invalid CSV data.")
 
@@ -62,14 +63,17 @@ class ParserError(Exception):
         self.message += " ".join(non_field_errors) + "\n"
 
 
-class BaseParser:  # pylint: disable=too-few-public-methods
-    serializer_class: DicomTaskSerializer = None
-    field_to_column_mapping: Dict[str, str] = None
-
-    def __init__(self):
+class DicomTaskParser:  # pylint: disable=too-few-public-methods
+    def __init__(
+        self,
+        serializer_class: DicomTaskSerializer,
+        field_to_column_mapping: Dict[str, str],
+    ) -> None:
+        self.serializer_class = serializer_class
+        self.field_to_column_mapping = field_to_column_mapping
         self.delimiter = settings.CSV_FILE_DELIMITER
 
-    def parse(self, csv_file):
+    def parse(self, csv_file: TextIO) -> List[DicomTask]:
         data = []
         reader = csv.DictReader(csv_file, delimiter=self.delimiter)
         for row in reader:
@@ -86,7 +90,7 @@ class BaseParser:  # pylint: disable=too-few-public-methods
             data=data, many=True
         )
         if not serializer.is_valid():
-            raise ParserError(
+            raise DicomTaskParserError(
                 self.field_to_column_mapping,
                 data,
                 serializer.errors,

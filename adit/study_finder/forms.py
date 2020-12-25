@@ -9,8 +9,9 @@ import cchardet as chardet
 from adit.core.forms import DicomNodeChoiceField
 from adit.core.models import DicomNode
 from adit.core.fields import RestrictedFileField
+from adit.core.utils.parsers import DicomTaskParser, DicomTaskParserError
 from .models import StudyFinderJob, StudyFinderQuery
-from .utils.parsers import QueriesParser, ParserError
+from .serializers import StudyFinderQuerySerializer
 
 
 class StudyFinderJobForm(forms.ModelForm):
@@ -56,14 +57,25 @@ class StudyFinderJobForm(forms.ModelForm):
 
     def clean_csv_file(self):
         csv_file = self.cleaned_data["csv_file"]
-        parser = QueriesParser()
+        parser = DicomTaskParser(
+            StudyFinderQuerySerializer,
+            {
+                "row_id": "Row ID",
+                "patient_id": "Patient ID",
+                "patient_name": "Patient Name",
+                "patient_birth_date": "Birth Date",
+                "study_date_start": "From",
+                "study_date_end": "Until",
+                "modalities": "Modalities",
+            },
+        )
 
         try:
             rawdata = csv_file.read()
             encoding = chardet.detect(rawdata)["encoding"]
             fp = StringIO(rawdata.decode(encoding))
             self.queries = parser.parse(fp)
-        except ParserError as err:
+        except DicomTaskParserError as err:
             self.csv_error_details = err
             raise ValidationError(
                 mark_safe(
