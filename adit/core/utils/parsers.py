@@ -3,10 +3,10 @@ import csv
 from rest_framework.exceptions import ErrorDetail
 from django.conf import settings
 from adit.core.models import DicomTask
-from adit.core.serializers import DicomTaskSerializer
+from adit.core.serializers import BatchTaskSerializer
 
 
-class DicomTaskParserError(Exception):
+class BatchTaskParserError(Exception):
     def __init__(self, field_to_column_mapping, data, errors) -> None:
         super().__init__("Invalid CSV data.")
 
@@ -63,10 +63,10 @@ class DicomTaskParserError(Exception):
         self.message += " ".join(non_field_errors) + "\n"
 
 
-class DicomTaskParser:  # pylint: disable=too-few-public-methods
+class BatchTaskParser:  # pylint: disable=too-few-public-methods
     def __init__(
         self,
-        serializer_class: DicomTaskSerializer,
+        serializer_class: BatchTaskSerializer,
         field_to_column_mapping: Dict[str, str],
     ) -> None:
         self.serializer_class = serializer_class
@@ -90,7 +90,7 @@ class DicomTaskParser:  # pylint: disable=too-few-public-methods
             data=data, many=True
         )
         if not serializer.is_valid():
-            raise DicomTaskParserError(
+            raise BatchTaskParserError(
                 self.field_to_column_mapping,
                 data,
                 serializer.errors,

@@ -4,7 +4,7 @@ from rest_framework import serializers
 from django.utils import formats
 
 
-class DicomTaskListSerializer(
+class BatchTaskListSerializer(
     serializers.ListSerializer
 ):  # pylint: disable=abstract-method
     def find_duplicates(self, items):
@@ -22,11 +22,11 @@ class DicomTaskListSerializer(
         return attrs
 
 
-class DicomTaskSerializer(serializers.ModelSerializer):
+class BatchTaskSerializer(serializers.ModelSerializer):
     class Meta:
         model = None
         fields = None
-        list_serializer_class = DicomTaskListSerializer
+        list_serializer_class = BatchTaskListSerializer
 
     def __init__(self, instance=None, data=None, **kwargs):
         super().__init__(instance=instance, data=data, **kwargs)

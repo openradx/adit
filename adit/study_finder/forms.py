@@ -9,7 +9,7 @@ import cchardet as chardet
 from adit.core.forms import DicomNodeChoiceField
 from adit.core.models import DicomNode
 from adit.core.fields import RestrictedFileField
-from adit.core.utils.parsers import DicomTaskParser, DicomTaskParserError
+from adit.core.utils.parsers import BatchTaskParser, BatchTaskParserError
 from .models import StudyFinderJob, StudyFinderQuery
 from .serializers import StudyFinderQuerySerializer
 
@@ -57,7 +57,7 @@ class StudyFinderJobForm(forms.ModelForm):
 
     def clean_csv_file(self):
         csv_file = self.cleaned_data["csv_file"]
-        parser = DicomTaskParser(
+        parser = BatchTaskParser(
             StudyFinderQuerySerializer,
             {
                 "row_id": "Row ID",
@@ -75,7 +75,7 @@ class StudyFinderJobForm(forms.ModelForm):
             encoding = chardet.detect(rawdata)["encoding"]
             fp = StringIO(rawdata.decode(encoding))
             self.queries = parser.parse(fp)
-        except DicomTaskParserError as err:
+        except BatchTaskParserError as err:
             self.csv_error_details = err
             raise ValidationError(
                 mark_safe(

@@ -9,7 +9,7 @@ import cchardet as chardet
 from adit.core.forms import DicomNodeChoiceField
 from adit.core.models import DicomNode
 from adit.core.fields import RestrictedFileField
-from adit.core.utils.parsers import DicomTaskParser, DicomTaskParserError
+from adit.core.utils.parsers import BatchTaskParser, BatchTaskParserError
 from .models import BatchTransferJob, BatchTransferRequest
 from .serializers import BatchTransferRequestSerializer
 
@@ -91,7 +91,7 @@ class BatchTransferJobForm(forms.ModelForm):
 
     def clean_csv_file(self):
         csv_file = self.cleaned_data["csv_file"]
-        parser = DicomTaskParser(
+        parser = BatchTaskParser(
             BatchTransferRequestSerializer,
             {
                 "row_id": "Row ID",
@@ -110,7 +110,7 @@ class BatchTransferJobForm(forms.ModelForm):
             encoding = chardet.detect(rawdata)["encoding"]
             fp = StringIO(rawdata.decode(encoding))
             self.requests = parser.parse(fp)
-        except DicomTaskParserError as err:
+        except BatchTaskParserError as err:
             self.csv_error_details = err
             raise ValidationError(
                 mark_safe(

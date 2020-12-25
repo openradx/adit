@@ -1,9 +1,9 @@
-from adit.core.serializers import DicomTaskSerializer
+from adit.core.serializers import BatchTaskSerializer
 from .models import StudyFinderQuery
 
 
-class StudyFinderQuerySerializer(DicomTaskSerializer):
-    class Meta(DicomTaskSerializer.Meta):
+class StudyFinderQuerySerializer(BatchTaskSerializer):
+    class Meta(BatchTaskSerializer.Meta):
         model = StudyFinderQuery
         fields = [
             "row_id",

@@ -1,9 +1,9 @@
-from adit.core.serializers import DicomTaskSerializer
+from adit.core.serializers import BatchTaskSerializer
 from .models import BatchTransferRequest
 
 
-class BatchTransferRequestSerializer(DicomTaskSerializer):
-    class Meta(DicomTaskSerializer.Meta):
+class BatchTransferRequestSerializer(BatchTaskSerializer):
+    class Meta(BatchTaskSerializer.Meta):
         model = BatchTransferRequest
         fields = [
             "row_id",
