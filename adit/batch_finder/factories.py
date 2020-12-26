@@ -49,6 +49,7 @@ class BatchFinderResultFactory(factory.django.DjangoModelFactory):
     study_uid = factory.Faker("uuid4")
     accession_number = factory.Faker("ean")
     study_date = factory.Faker("date_between", start_date="-2y", end_date="today")
+    study_time = factory.Faker("time_object")
     study_description = factory.Faker("street_name")
     modalities = factory.Faker(
         "random_elements", elements=("CT", "MR", "DX"), unique=True

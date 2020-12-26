@@ -1,3 +1,4 @@
+from datetime import datetime
 from django.db import models
 from django.urls import reverse
 from adit.core.models import AppSettings, DicomJob, BatchTask
@@ -95,9 +96,7 @@ class BatchFinderResult(models.Model):
             no_wildcard_chars_validator,
         ],
     )
-    patient_birth_date = models.DateField(
-        error_messages={"invalid": "Invalid date format."},
-    )
+    patient_birth_date = models.DateField()
     study_uid = models.CharField(
         max_length=64,
         validators=[
@@ -114,9 +113,8 @@ class BatchFinderResult(models.Model):
             no_wildcard_chars_validator,
         ],
     )
-    study_date = models.DateField(
-        error_messages={"invalid": "Invalid date format."},
-    )
+    study_date = models.DateField()
+    study_time = models.TimeField()
     study_description = models.CharField(
         max_length=64,
         validators=[
@@ -134,3 +132,7 @@ class BatchFinderResult(models.Model):
         null=True,
         blank=True,
     )
+
+    @property
+    def study_date_time(self):
+        return datetime.combine(self.study_date, self.study_time)

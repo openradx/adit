@@ -20,6 +20,9 @@ class BatchFinderQueryTable(DicomTaskTable):
 
 class BatchFinderResultTable(tables.Table):
     batch_id = tables.Column(accessor="query.batch_id", verbose_name="Batch ID")
+    study_date_time = tables.DateTimeColumn(
+        verbose_name="Study Date/Time", order_by=("study_date", "study_time")
+    )
 
     class Meta:  # pylint: disable=too-few-public-methods
         model = BatchFinderResult
@@ -27,7 +30,7 @@ class BatchFinderResultTable(tables.Table):
         empty_text = "No results to show"
         fields = (
             "batch_id",
-            "study_date",
+            "study_date_time",
             "study_description",
             "modalities",
             "image_count",
