@@ -16,40 +16,33 @@ logger = logging.getLogger(__name__)
 
 
 class TransferUtil:
-    def __init__(self, transfer_job: TransferJob, transfer_task: TransferTask) -> None:
-        self.transfer_job = transfer_job
+    def __init__(self, transfer_task: TransferTask) -> None:
         self.transfer_task = transfer_task
+        self.transfer_job: TransferJob = transfer_task.job
 
         self.source_connector = None
-        if transfer_job.source.node_type == DicomNode.NodeType.SERVER:
+        if self.transfer_job.source.node_type == DicomNode.NodeType.SERVER:
             self.source_connector: DicomConnector = (
-                transfer_job.source.dicomserver.create_connector()
+                self.transfer_job.source.dicomserver.create_connector()
             )
 
         self.dest_connector = None
-        if transfer_job.destination.node_type == DicomNode.NodeType.SERVER:
+        if self.transfer_job.destination.node_type == DicomNode.NodeType.SERVER:
             self.dest_connector: DicomConnector = (
-                transfer_job.destination.dicomserver.create_connector()
+                self.transfer_job.destination.dicomserver.create_connector()
             )
 
     def start_transfer(self):
         if self.transfer_task.status != TransferTask.Status.PENDING:
             raise AssertionError(
-                f"Invalid transfer task status {self.transfer_task.status} "
-                f"[Job ID {self.transfer_job.id}, Task ID {self.transfer_task.id}]."
+                f"Invalid status {self.transfer_task.status} of {self.transfer_task}"
             )
 
         self.transfer_task.status = TransferTask.Status.IN_PROGRESS
         self.transfer_task.start = timezone.now()
         self.transfer_task.save()
 
-        logger.debug(
-            "Transfer task started. [Job ID %d, Task ID %d, Source %s, Destination %s]",
-            self.transfer_job.id,
-            self.transfer_task.id,
-            self.transfer_job.source.name,
-            self.transfer_job.destination.name,
-        )
+        logger.info("Started %s.", self.transfer_job.id)
 
         handler, stream = self._setup_logger()
 
@@ -80,11 +73,7 @@ class TransferUtil:
             self.transfer_task.message = "Transfer task completed successfully."
 
         except Exception as err:  # pylint: disable=broad-except
-            logger.exception(
-                "Error during transfer task [Job ID %d, Task ID %d].",
-                self.transfer_job.id,
-                self.transfer_task.id,
-            )
+            logger.exception("Error occurred during %s.", self.transfer_job)
             self.transfer_task.status = TransferTask.Status.FAILURE
             self.transfer_task.message = str(err)
         finally:
@@ -167,13 +156,13 @@ class TransferUtil:
         )
         if len(studies) == 0:
             raise AssertionError(
-                f"No study found with Study Instance UID {self.transfer_task.study_uid}. "
-                f"[Job ID {self.transfer_job.id}, Task ID {self.transfer_task.id}]"
+                f"No study found with Study Instance UID {self.transfer_task.study_uid} "
+                f"of {self.transfer_task}."
             )
         if len(studies) > 1:
             raise AssertionError(
-                f"Multiple studies found with Study Instance UID {self.transfer_task.study_uid}. "
-                f"[Job ID {self.transfer_job.id}, Task ID {self.transfer_task.id}]"
+                f"Multiple studies found with Study Instance UID {self.transfer_task.study_uid} "
+                f"of {self.transfer_task}."
             )
         study = studies[0]
         study_date = study["StudyDate"]
@@ -200,8 +189,8 @@ class TransferUtil:
 
                 if not found_series:
                     raise AssertionError(
-                        f"No series found with Series Instance UID {series_uid}. "
-                        f"[Job ID {self.transfer_job.id}, Task ID {self.transfer_task.id}]"
+                        f"No series found with Series Instance UID {series_uid} "
+                        f"of {self.transfer_task}."
                     )
 
                 modalities.add(found_series["Modality"])

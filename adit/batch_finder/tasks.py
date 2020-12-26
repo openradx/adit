@@ -11,7 +11,12 @@ from adit.core.utils.task_utils import (
     handle_job_failure,
     fetch_patient_id_cached,
 )
-from .models import BatchFinderJob, BatchFinderQuery, BatchFinderSettings
+from .models import (
+    BatchFinderJob,
+    BatchFinderQuery,
+    BatchFinderResult,
+    BatchFinderSettings,
+)
 
 logger = get_task_logger(__name__)
 
@@ -84,14 +89,41 @@ def process_query(query: BatchFinderQuery):
             }
         )
 
+        results = []
         for study in studies:
-            pass
+            result = BatchFinderResult(
+                job=job,
+                query=query,
+                patient_id=study["PatientID"],
+                patient_name=study["PatientName"],
+                patient_birth_date=study["PatientBirthDate"],
+                study_uid=study["StudyInstanceUID"],
+                accession_number=study["AccessionNumber"],
+                study_date=study["StudyDate"],
+                study_time=study["StudyTime"],
+                study_description=study["StudyDescription"],
+                modalities=study["ModalitiesInStudy"],
+                image_count=study["NumberOfStudyRelatedInstances"],
+            )
+            results.append(result)
 
-    except Exception as err:
-        pass
+        BatchFinderResult.objects.bulk_create(results)
+
+        if results:
+            query.status = BatchFinderQuery.Status.SUCCESS
+            query.message = f"Found {len(results)} studies."
+        else:
+            query.status = BatchFinderQuery.Status.WARNING
+            query.message = "No studies found."
+    except Exception as err:  # pylint: disable=broad-except
+        logger.exception("Error during %s", query)
+        query.status = BatchFinderQuery.Status.FAILURE
+        query.message = str(err)
     finally:
         query.end = timezone.now()
         query.save()
+
+    return query.status
 
 
 @shared_task

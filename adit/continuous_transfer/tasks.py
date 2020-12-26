@@ -14,8 +14,6 @@ def continuous_transfer(job_id):
     if job.urgent:
         priority = settings.CONTINUOUS_TRANSFER_URGENT_PRIORITY
 
-    logger.info("Prepare continuous transfer job [Job ID %d].", job_id)
-
 
 @shared_task
 def transfer_next_dicoms(task_id):

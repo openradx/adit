@@ -33,10 +33,9 @@ Downloading data from a DICOM server can done by using a C-GET or C-MOVE operati
 
 # TODO list
 
--   study_date -> study_datetime (in BatchFinderResult)
--   Better scheduler (with day in week and times)
 -   should we really save log to task this way
 -   Allow to pause a job (Status.PAUSED)
+-   Better scheduler (with day in week and times)
 
 # Maybe features
 

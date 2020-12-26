@@ -210,6 +210,7 @@ class DicomTask(models.Model):
         abstract = True
         ordering = ("id",)
 
+    job = None
     status = models.CharField(
         max_length=2,
         choices=Status.choices,
@@ -222,7 +223,7 @@ class DicomTask(models.Model):
     end = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):
-        return f"{self.__class__.__name__} [ID {self.id}]"
+        return f"{self.__class__.__name__} [Task ID {self.id}, Job ID {self.job.id}]"
 
 
 class BatchTask(DicomTask):
@@ -231,6 +232,12 @@ class BatchTask(DicomTask):
         ordering = ("batch_id",)
 
     batch_id = models.PositiveIntegerField()
+
+    def __str__(self):
+        return (
+            f"{self.__class__.__name__} "
+            f"[Batch ID {self.batch_id}, Task ID {self.id}, Job ID {self.job.id}]"
+        )
 
 
 class TransferTask(DicomTask):
@@ -249,3 +256,11 @@ class TransferTask(DicomTask):
         max_length=64,
         validators=[no_backslash_char_validator, no_control_chars_validator],
     )
+
+    def __str__(self):
+        return (
+            f"{self.__class__.__name__} "
+            f"[Source {self.job.source.name}, "
+            f"Destination {self.job.destination}, "
+            f"Task ID {self.id}, Job ID {self.job.id}]"
+        )

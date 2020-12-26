@@ -79,8 +79,6 @@ class BatchTransferJobForm(forms.ModelForm):
         self.fields["trial_protocol_name"].widget.attrs["placeholder"] = "Optional"
 
         self.helper = FormHelper(self)
-        self.helper.attrs["x-data"] = "batchTransferForm()"
-
         self.helper.add_input(Submit("save", "Create Job"))
 
     def clean_ethics_committee_approval(self):

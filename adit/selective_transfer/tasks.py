@@ -39,7 +39,7 @@ def selective_transfer(transfer_job: SelectiveTransferJob):
 @shared_task(bind=True)
 @prepare_dicom_task(SelectiveTransferTask, SelectiveTransferSettings, logger)
 def transfer_selected_dicoms(transfer_task: SelectiveTransferTask):
-    transfer_util = TransferUtil(transfer_task.job, transfer_task)
+    transfer_util = TransferUtil(transfer_task)
     return transfer_util.start_transfer()
 
 

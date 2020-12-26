@@ -73,6 +73,7 @@ def test_transfer_to_server_succeeds(setup_abstract_factories):
     task = TestTransferTaskFactory(
         status=TransferTask.Status.PENDING, series_uids=[], pseudonym=""
     )
+    task.job = job
     study = {
         "PatientID": task.patient_id,
         "StudyInstanceUID": task.study_uid,
@@ -80,7 +81,7 @@ def test_transfer_to_server_succeeds(setup_abstract_factories):
         "StudyTime": datetime.time(8, 0),
         "ModalitiesInStudy": ["CT", "SR"],
     }
-    transfer_util = TransferUtil(job, task)
+    transfer_util = TransferUtil(task)
     transfer_util.source_connector = create_autospec(DicomConnector)
     transfer_util.dest_connector = create_autospec(DicomConnector)
     transfer_util.source_connector.find_studies.return_value = [study]
@@ -116,6 +117,7 @@ def test_transfer_to_folder_succeeds(_, setup_abstract_factories):
         series_uids=[],
         pseudonym="",
     )
+    task.job = job
     study = {
         "PatientID": task.patient_id,
         "StudyInstanceUID": task.study_uid,
@@ -123,7 +125,7 @@ def test_transfer_to_folder_succeeds(_, setup_abstract_factories):
         "StudyTime": datetime.time(8, 0),
         "ModalitiesInStudy": ["CT", "SR"],
     }
-    transfer_util = TransferUtil(job, task)
+    transfer_util = TransferUtil(task)
     transfer_util.source_connector = create_autospec(DicomConnector)
     transfer_util.source_connector.find_studies.return_value = [study]
 
@@ -154,6 +156,7 @@ def test_transfer_to_archive_succeeds(Popen, setup_abstract_factories):
     task = TestTransferTaskFactory(
         status=TransferTask.Status.PENDING, series_uids=[], pseudonym=""
     )
+    task.job = job
     study = {
         "PatientID": task.patient_id,
         "StudyInstanceUID": task.study_uid,
@@ -161,7 +164,7 @@ def test_transfer_to_archive_succeeds(Popen, setup_abstract_factories):
         "StudyTime": datetime.time(8, 0),
         "ModalitiesInStudy": ["CT", "SR"],
     }
-    transfer_util = TransferUtil(job, task)
+    transfer_util = TransferUtil(task)
     transfer_util.source_connector = create_autospec(DicomConnector)
     transfer_util.source_connector.find_studies.return_value = [study]
     Popen().returncode = 0

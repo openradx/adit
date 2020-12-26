@@ -77,14 +77,7 @@ def transfer_request(request: BatchTransferRequest):
             raise NoStudiesFoundError()
 
         study_str = "stud{}".format(pluralize(study_count, "y, ies"))
-        logger.debug(
-            "Found %d %s to transfer. [Job ID %d, Request ID %d, Batch ID %d]",
-            study_count,
-            study_str,
-            job.id,
-            request.id,
-            request.batch_id,
-        )
+        logger.debug("Found %d %s to transfer for %s.", study_count, study_str, request)
 
         has_success = False
         has_failure = False
@@ -110,7 +103,7 @@ def transfer_request(request: BatchTransferRequest):
                 pseudonym=request.pseudonym,
             )
 
-            transfer_util = TransferUtil(job, transfer_task)
+            transfer_util = TransferUtil(transfer_task)
             task_status = transfer_util.start_transfer()
 
             if task_status == BatchTransferTask.Status.SUCCESS:
@@ -128,28 +121,12 @@ def transfer_request(request: BatchTransferRequest):
         request.message = "All transfers succeeded."
 
     except NoStudiesFoundError:
-        logger.warning(
-            (
-                "No studies found for batch transfer request. "
-                "[Job ID %d, Request ID %d, Batch ID %d]"
-            ),
-            job.id,
-            request.id,
-            request.batch_id,
-        )
+        logger.warning("No studies found for %s. ", request)
         request.status = BatchTransferRequest.Status.WARNING
         request.message = "No studies found to transfer."
 
     except Exception as err:  # pylint: disable=broad-except
-        logger.exception(
-            (
-                "Error during transferring batch transfer request. "
-                "[Job ID %d, Request ID %d, Batch ID %d]"
-            ),
-            job.id,
-            request.id,
-            request.batch_id,
-        )
+        logger.exception("Error during %s.", request)
         request.status = BatchTransferRequest.Status.FAILURE
         request.message = str(err)
 
