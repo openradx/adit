@@ -73,6 +73,9 @@ class BatchTaskParser:  # pylint: disable=too-few-public-methods
         self.field_to_column_mapping = field_to_column_mapping
         self.delimiter = settings.CSV_FILE_DELIMITER
 
+        if not "batch_id" in self.field_to_column_mapping:
+            raise AssertionError("The mapping must contain a 'batch_id' field.")
+
     def parse(self, csv_file: TextIO) -> List[DicomTask]:
         data = []
         reader = csv.DictReader(csv_file, delimiter=self.delimiter)

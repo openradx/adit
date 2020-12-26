@@ -15,7 +15,7 @@ from .sanitize import sanitize_dirname
 logger = logging.getLogger(__name__)
 
 
-class TransferUtil:
+class TransferUtil:  # pylint: disable=too-few-public-methods
     def __init__(self, transfer_task: TransferTask) -> None:
         self.transfer_task = transfer_task
         self.transfer_job: TransferJob = transfer_task.job
