@@ -33,6 +33,10 @@ Downloading data from a DICOM server can done by using a C-GET or C-MOVE operati
 
 # TODO list
 
+-   batch_finder_query_detail needed?
+-   test all serializers (see test_parsers)
+-   test all views (as integration tests using real Orthanc)
+-   improve tests of transferutil
 -   should we really save log to task this way
 -   Allow to pause a job (Status.PAUSED)
 -   Better scheduler (with day in week and times)

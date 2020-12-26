@@ -53,3 +53,12 @@ class DicomTaskTable(tables.Table):
     def render_status(self, value, record):
         css_class = dicom_task_status_css_class(record.status)
         return format_html(f'<span class="{css_class}">{value}</span>')
+
+
+class BatchTaskTable(DicomTaskTable):
+    id = None  # We don't use the id of the request object itself
+    batch_id = tables.Column(verbose_name="Batch ID")
+
+    class Meta(DicomTaskTable.Meta):  # pylint: disable=too-few-public-methods
+        order_by = ("batch_id",)
+        fields = ("batch_id", "status", "message", "end")

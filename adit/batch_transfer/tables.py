@@ -1,5 +1,5 @@
 import django_tables2 as tables
-from adit.core.tables import TransferJobTable, DicomTaskTable
+from adit.core.tables import TransferJobTable, BatchTaskTable
 from .models import BatchTransferJob, BatchTransferRequest
 
 
@@ -8,16 +8,13 @@ class BatchTransferJobTable(TransferJobTable):
         model = BatchTransferJob
 
 
-class BatchTransferRequestTable(DicomTaskTable):
-    id = None  # We don't use the id of the request object itself
-
+class BatchTransferRequestTable(BatchTaskTable):
     transfer_tasks = tables.columns.TemplateColumn(
         verbose_name="Transfer Tasks",
         template_name="batch_transfer/_batch_transfer_tasks_column.html",
     )
 
-    class Meta(DicomTaskTable.Meta):  # pylint: disable=too-few-public-methods
+    class Meta(BatchTaskTable.Meta):  # pylint: disable=too-few-public-methods
         model = BatchTransferRequest
-        order_by = ("batch_id",)
         fields = ("batch_id", "status", "transfer_tasks", "end")
         empty_text = "No requests to show"
