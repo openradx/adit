@@ -8,8 +8,8 @@ x-app: &default-app
         - postgres
         - rabbit
         - redis
-        - orthanc_1
-        - orthanc_2
+        - orthanc1
+        - orthanc2
     volumes:
         - ../..:/app
         - /mnt:/mnt
@@ -29,8 +29,8 @@ x-app: &default-app
         LOG_FOLDER: "/var/www/adit/logs"
         FLOWER_HOST: "flower"
         FLOWER_PORT: "5555"
-        ORTHANC1_HOST: "orthanc_1"
-        ORTHANC2_HOST: "orthanc_2"
+        ORTHANC1_HOST: "orthanc1"
+        ORTHANC2_HOST: "orthanc2"
 
 services:
     web:
@@ -96,7 +96,7 @@ services:
         volumes:
             - redis_data:/data
 
-    orthanc_1:
+    orthanc1:
         image: jodogne/orthanc-plugins:1.8.1
         ports:
             - "6501:6501"
@@ -105,7 +105,7 @@ services:
             - ../orthanc1_config.json:/etc/orthanc/orthanc.json
             - orthanc1_data:/var/lib/orthanc/db
 
-    orthanc_2:
+    orthanc2:
         image: jodogne/orthanc-plugins:1.8.1
         ports:
             - "6502:6502"
