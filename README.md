@@ -33,10 +33,8 @@ Downloading data from a DICOM server can done by using a C-GET or C-MOVE operati
 
 # TODO list
 
--   study finder -> batch finder
--   prefetch results on study finder download view
--   Better scheduler (with day in week and times)
 -   study_date -> study_datetime
+-   Better scheduler (with day in week and times)
 -   should we really save log to task this way
 -   Allow to pause a job (Status.PAUSED)
 

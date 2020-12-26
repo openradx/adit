@@ -3,8 +3,8 @@ from django.db.models.signals import post_migrate
 from adit.core.site import register_main_menu_item
 
 
-class StudyFinderConfig(AppConfig):
-    name = "adit.study_finder"
+class BatchFinderConfig(AppConfig):
+    name = "adit.batch_finder"
 
     def ready(self):
         register_app()
@@ -15,8 +15,8 @@ class StudyFinderConfig(AppConfig):
 
 def register_app():
     register_main_menu_item(
-        url_name="study_finder_job_create",
-        label="Study Finder",
+        url_name="batch_finder_job_create",
+        label="Batch Finder",
     )
 
 
@@ -30,18 +30,18 @@ def create_group():
     from adit.accounts.utils import create_group_with_permissions
 
     create_group_with_permissions(
-        "study_finders",
+        "batch_finders",
         (
-            "study_finder.add_studyfinderjob",
-            "study_finder.view_studyfinderjob",
+            "batch_finder.add_batchfinderjob",
+            "batch_finder.view_batchfinderjob",
         ),
     )
 
 
 def create_app_settings():
     # pylint: disable=import-outside-toplevel
-    from .models import StudyFinderSettings
+    from .models import BatchFinderSettings
 
-    settings = StudyFinderSettings.get()
+    settings = BatchFinderSettings.get()
     if not settings:
-        StudyFinderSettings.objects.create()
+        BatchFinderSettings.objects.create()

@@ -47,7 +47,7 @@ INSTALLED_APPS = [
     "adit.selective_transfer.apps.SelectiveTransferConfig",
     "adit.batch_transfer.apps.BatchTransferConfig",
     "adit.continuous_transfer.apps.ContinuousTransferConfig",
-    "adit.study_finder.apps.StudyFinderConfig",
+    "adit.batch_finder.apps.BatchFinderConfig",
     "adit.dicom_explorer.apps.DicomExplorerConfig",
     "channels",
 ]
@@ -306,8 +306,7 @@ FILTERS_EMPTY_CHOICE_LABEL = "Show All"
 # General ADIT settings
 ADIT_AE_TITLE = env.str("ADIT_AE_TITLE", default="ADIT1")
 
-# The delimiter of the CSV file for the requests of batch transfer and the
-# queries of study finder
+# The delimiter of the CSV file for batch files
 CSV_FILE_DELIMITER = ";"
 
 # The delimiter of a date range in a text field (or CSV file), e.g.
@@ -335,5 +334,5 @@ BATCH_TRANSFER_DEFAULT_PRIORITY = 3
 BATCH_TRANSFER_URGENT_PRIORITY = 7
 CONTINUOUS_TRANSFER_DEFAULT_PRIORITY = 2
 CONTINUOUS_TRANSFER_URGENT_PRIORITY = 6
-STUDY_TRANSFER_DEFAULT_PRIORITY = 5
-STUDY_TRANSFER_URGENT_PRIORITY = 9
+BATCH_FINDER_DEFAULT_PRIORITY = 5
+BATCH_FINDER_URGENT_PRIORITY = 9

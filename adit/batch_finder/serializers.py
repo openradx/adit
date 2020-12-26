@@ -1,10 +1,10 @@
 from adit.core.serializers import BatchTaskSerializer
-from .models import StudyFinderQuery
+from .models import BatchFinderQuery
 
 
-class StudyFinderQuerySerializer(BatchTaskSerializer):
+class BatchFinderQuerySerializer(BatchTaskSerializer):
     class Meta(BatchTaskSerializer.Meta):
-        model = StudyFinderQuery
+        model = BatchFinderQuery
         fields = [
             "batch_id",
             "patient_id",
@@ -40,7 +40,7 @@ class StudyFinderQuerySerializer(BatchTaskSerializer):
 
         # In contrast to Django's ModelForm does a ModelSerializer not call
         # the model clean method itself (at leat in DRF v3).
-        query = StudyFinderQuery(**attrs)
+        query = BatchFinderQuery(**attrs)
         query.clean()
 
         return attrs

@@ -1,8 +1,8 @@
-from adit.core.utils.dicom_connector import DicomConnector
 from celery import shared_task, chord
 from celery.utils.log import get_task_logger
 from django.conf import settings
 from django.utils import timezone
+from adit.core.utils.dicom_connector import DicomConnector
 from adit.core.utils.mail import send_job_finished_mail
 from adit.core.utils.task_utils import (
     prepare_dicom_job,
@@ -11,7 +11,7 @@ from adit.core.utils.task_utils import (
     handle_job_failure,
     fetch_patient_id_cached,
 )
-from .models import StudyFinderJob, StudyFinderQuery, StudyFinderSettings
+from .models import BatchFinderJob, BatchFinderQuery, BatchFinderSettings
 
 logger = get_task_logger(__name__)
 
@@ -19,11 +19,11 @@ DICOM_DATE_FORMAT = "%Y%m%d"
 
 
 @shared_task(ignore_result=True)
-@prepare_dicom_job(StudyFinderJob, logger)
-def find_studies(finder_job: StudyFinderJob):
-    priority = settings.STUDY_TRANSFER_DEFAULT_PRIORITY
+@prepare_dicom_job(BatchFinderJob, logger)
+def find_studies(finder_job: BatchFinderJob):
+    priority = settings.BATCH_FINDER_DEFAULT_PRIORITY
     if finder_job.urgent:
-        priority = settings.STUDY_TRANSFER_URGENT_PRIORITY
+        priority = settings.BATCH_FINDER_URGENT_PRIORITY
 
     process_queries = [
         process_query.s(query.id).set(priority=priority)
@@ -36,11 +36,11 @@ def find_studies(finder_job: StudyFinderJob):
 
 
 @shared_task(bind=True)
-@prepare_dicom_task(StudyFinderQuery, StudyFinderSettings, logger)
-def process_query(query: StudyFinderQuery):
+@prepare_dicom_task(BatchFinderQuery, BatchFinderSettings, logger)
+def process_query(query: BatchFinderQuery):
     job = query.job
 
-    query.status = StudyFinderQuery.Status.IN_PROGRESS
+    query.status = BatchFinderQuery.Status.IN_PROGRESS
     query.start = timezone.now()
     query.save()
 
@@ -95,12 +95,12 @@ def process_query(query: StudyFinderQuery):
 
 
 @shared_task
-@finish_dicom_job(StudyFinderJob, logger)
-def on_job_finished(finder_job: StudyFinderJob):
+@finish_dicom_job(BatchFinderJob, logger)
+def on_job_finished(finder_job: BatchFinderJob):
     send_job_finished_mail(finder_job)
 
 
 @shared_task
-@handle_job_failure(StudyFinderJob, logger)
+@handle_job_failure(BatchFinderJob, logger)
 def on_job_failed(finder_job):  # pylint: disable=unused-argument
     pass

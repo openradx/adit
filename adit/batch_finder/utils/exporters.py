@@ -1,8 +1,8 @@
 import csv
-from ..models import StudyFinderJob
+from ..models import BatchFinderJob
 
 
-def export_results(job: StudyFinderJob, file):
+def export_results(job: BatchFinderJob, file):
     writer = csv.writer(file, delimiter=";")
 
     # Write column header

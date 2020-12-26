@@ -1,0 +1,61 @@
+from django.urls import path
+from .views import (
+    BatchFinderJobListView,
+    BatchFinderJobCreateView,
+    BatchFinderJobDetailView,
+    BatchFinderJobDeleteView,
+    BatchFinderJobCancelView,
+    BatchFinderJobVerifyView,
+    BatchFinderQueryDetailView,
+    BatchFinderResultListView,
+    BatchFinderResultDownloadView,
+)
+
+
+urlpatterns = [
+    path(
+        "jobs/",
+        BatchFinderJobListView.as_view(),
+        name="batch_finder_job_list",
+    ),
+    path(
+        "jobs/new/",
+        BatchFinderJobCreateView.as_view(),
+        name="batch_finder_job_create",
+    ),
+    path(
+        "jobs/<int:pk>/",
+        BatchFinderJobDetailView.as_view(),
+        name="batch_finder_job_detail",
+    ),
+    path(
+        "jobs/<int:pk>/delete/",
+        BatchFinderJobDeleteView.as_view(),
+        name="batch_finder_job_delete",
+    ),
+    path(
+        "jobs/<int:pk>/cancel/",
+        BatchFinderJobCancelView.as_view(),
+        name="batch_finder_job_cancel",
+    ),
+    path(
+        "jobs/<int:pk>/verify/",
+        BatchFinderJobVerifyView.as_view(),
+        name="batch_finder_job_verify",
+    ),
+    path(
+        "queries/<int:pk>/",
+        BatchFinderQueryDetailView.as_view(),
+        name="batch_finder_query_detail",
+    ),
+    path(
+        "jobs/<int:pk>/results/",
+        BatchFinderResultListView.as_view(),
+        name="batch_finder_result_list",
+    ),
+    path(
+        "jobs/<int:pk>/download/",
+        BatchFinderResultDownloadView.as_view(),
+        name="batch_finder_result_download",
+    ),
+]

@@ -19,16 +19,16 @@ from adit.selective_transfer.factories import (
     SelectiveTransferJobFactory,
     SelectiveTransferTaskFactory,
 )
-from adit.study_finder.factories import (
-    StudyFinderJobFactory,
-    StudyFinderQueryFactory,
-    StudyFinderResultFactory,
+from adit.batch_finder.factories import (
+    BatchFinderJobFactory,
+    BatchFinderQueryFactory,
+    BatchFinderResultFactory,
 )
 
 
-SELECTIVE_TRANSFER_COUNT = 5
-BATCH_TRANSFER_COUNT = 3
-STUDY_FINDER_COUNT = 2
+SELECTIVE_TRANSFER_JOB_COUNT = 5
+BATCH_TRANSFER_JOB_COUNT = 3
+BATCH_FINDER_JOB_COUNT = 2
 CREATE_JOBS_FOR_ADMIN_ONLY = True
 
 fake = Faker()
@@ -88,14 +88,14 @@ def create_folder_nodes():
 
 
 def create_jobs(users, servers, folders):
-    for _ in range(SELECTIVE_TRANSFER_COUNT):
+    for _ in range(SELECTIVE_TRANSFER_JOB_COUNT):
         create_selective_transfer_job(users, servers, folders)
 
-    for _ in range(BATCH_TRANSFER_COUNT):
+    for _ in range(BATCH_TRANSFER_JOB_COUNT):
         create_batch_transfer_job(users, servers, folders)
 
-    for _ in range(STUDY_FINDER_COUNT):
-        create_study_finder_job(users)
+    for _ in range(BATCH_FINDER_JOB_COUNT):
+        create_batch_finder_job(users)
 
 
 def create_selective_transfer_job(users, servers, folders):
@@ -129,16 +129,16 @@ def create_batch_transfer_job(users, servers, folders):
     return job
 
 
-def create_study_finder_job(users):
-    job = StudyFinderJobFactory(
+def create_batch_finder_job(users):
+    job = BatchFinderJobFactory(
         owner=factory.Faker("random_element", elements=users),
     )
 
     for batch_id in range(fake.random_int(min=1, max=100)):
-        query = StudyFinderQueryFactory(job=job, batch_id=batch_id)
+        query = BatchFinderQueryFactory(job=job, batch_id=batch_id)
 
         for _ in range(fake.random_int(min=1, max=3)):
-            StudyFinderResultFactory(job=job, query=query)
+            BatchFinderResultFactory(job=job, query=query)
 
     return job
 

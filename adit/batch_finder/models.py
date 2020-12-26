@@ -9,25 +9,25 @@ from adit.core.validators import (
 )
 
 
-class StudyFinderSettings(AppSettings):
+class BatchFinderSettings(AppSettings):
     class Meta:
-        verbose_name_plural = "Study finder settings"
+        verbose_name_plural = "Batch finder settings"
 
 
-class StudyFinderJob(DicomJob):
+class BatchFinderJob(DicomJob):
     project_name = models.CharField(max_length=150)
     project_description = models.TextField(max_length=2000)
 
     def get_absolute_url(self):
-        return reverse("study_finder_job_detail", args=[str(self.id)])
+        return reverse("batch_finder_job_detail", args=[str(self.id)])
 
 
-class StudyFinderQuery(BatchTask):
+class BatchFinderQuery(BatchTask):
     class Meta(BatchTask.Meta):
         unique_together = ("batch_id", "job")
 
     job = models.ForeignKey(
-        StudyFinderJob, on_delete=models.CASCADE, related_name="queries"
+        BatchFinderJob, on_delete=models.CASCADE, related_name="queries"
     )
     patient_id = models.CharField(
         blank=True,
@@ -69,15 +69,15 @@ class StudyFinderQuery(BatchTask):
     )
 
     def get_absolute_url(self):
-        return reverse("study_finder_query_detail", args=[str(self.id)])
+        return reverse("batch_finder_query_detail", args=[str(self.id)])
 
 
-class StudyFinderResult(models.Model):
+class BatchFinderResult(models.Model):
     job = models.ForeignKey(
-        StudyFinderJob, on_delete=models.CASCADE, related_name="results"
+        BatchFinderJob, on_delete=models.CASCADE, related_name="results"
     )
     query = models.ForeignKey(
-        StudyFinderQuery, on_delete=models.CASCADE, related_name="results"
+        BatchFinderQuery, on_delete=models.CASCADE, related_name="results"
     )
     patient_id = models.CharField(
         max_length=64,

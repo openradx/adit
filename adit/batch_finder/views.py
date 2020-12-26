@@ -20,41 +20,41 @@ from adit.core.views import (
     DicomJobVerifyView,
     DicomTaskDetailView,
 )
-from .models import StudyFinderJob, StudyFinderQuery
-from .forms import StudyFinderJobForm
+from .models import BatchFinderJob, BatchFinderQuery
+from .forms import BatchFinderJobForm
 from .tables import (
-    StudyFinderJobTable,
-    StudyFinderQueryTable,
-    StudyFinderResultTable,
+    BatchFinderJobTable,
+    BatchFinderQueryTable,
+    BatchFinderResultTable,
 )
 from .filters import (
-    StudyFinderJobFilter,
-    StudyFinderQueryFilter,
-    StudyFinderResultFilter,
+    BatchFinderJobFilter,
+    BatchFinderQueryFilter,
+    BatchFinderResultFilter,
 )
 from .utils.exporters import export_results
 
 
-class StudyFinderJobListView(DicomJobListView):  # pylint: disable=too-many-ancestors
-    model = StudyFinderJob
-    table_class = StudyFinderJobTable
-    filterset_class = StudyFinderJobFilter
-    template_name = "study_finder/study_finder_job_list.html"
+class BatchFinderJobListView(DicomJobListView):  # pylint: disable=too-many-ancestors
+    model = BatchFinderJob
+    table_class = BatchFinderJobTable
+    filterset_class = BatchFinderJobFilter
+    template_name = "batch_finder/batch_finder_job_list.html"
 
 
-class StudyFinderJobCreateView(
+class BatchFinderJobCreateView(
     LoginRequiredMixin,
     PermissionRequiredMixin,
     UrgentFormViewMixin,
     CreateView,
 ):
-    model = StudyFinderJob
-    form_class = StudyFinderJobForm
-    template_name = "study_finder/study_finder_job_form.html"
-    permission_required = "study_finder.add_studyfinderjob"
+    model = BatchFinderJob
+    form_class = BatchFinderJobForm
+    template_name = "batch_finder/batch_finder_job_form.html"
+    permission_required = "batch_finder.add_batchfinderjob"
 
 
-class StudyFinderJobDetailView(
+class BatchFinderJobDetailView(
     LoginRequiredMixin,
     OwnerRequiredMixin,
     SingleTableMixin,
@@ -63,47 +63,47 @@ class StudyFinderJobDetailView(
     DetailView,
 ):
     owner_accessor = "owner"
-    table_class = StudyFinderQueryTable
-    filterset_class = StudyFinderQueryFilter
-    model = StudyFinderJob
+    table_class = BatchFinderQueryTable
+    filterset_class = BatchFinderQueryFilter
+    model = BatchFinderJob
     context_object_name = "job"
-    template_name = "study_finder/study_finder_job_detail.html"
+    template_name = "batch_finder/batch_finder_job_detail.html"
 
     def get_filter_queryset(self):
         job = self.get_object()
         return job.queries.prefetch_related("results")
 
 
-class StudyFinderJobDeleteView(DicomJobDeleteView):
-    model = StudyFinderJob
+class BatchFinderJobDeleteView(DicomJobDeleteView):
+    model = BatchFinderJob
     success_url = reverse_lazy("batch_transfer_job_list")
 
 
-class StudyFinderJobCancelView(DicomJobCancelView):
-    model = StudyFinderJob
+class BatchFinderJobCancelView(DicomJobCancelView):
+    model = BatchFinderJob
 
 
-class StudyFinderJobVerifyView(DicomJobVerifyView):
-    model = StudyFinderJob
+class BatchFinderJobVerifyView(DicomJobVerifyView):
+    model = BatchFinderJob
 
 
 # TODO remove
-class StudyFinderQueryDetailView(
+class BatchFinderQueryDetailView(
     SingleTableMixin,
     PageSizeSelectMixin,
     DicomTaskDetailView,
 ):
-    model = StudyFinderQuery
+    model = BatchFinderQuery
     context_object_name = "query"
-    job_url_name = "study_finder_job_detail"
-    template_name = "study_finder/study_finder_query_detail.html"
-    table_class = StudyFinderResultTable
+    job_url_name = "batch_finder_job_detail"
+    template_name = "batch_finder/batch_finder_query_detail.html"
+    table_class = BatchFinderResultTable
 
     def get_table_data(self):
         return self.object.results.all()
 
 
-class StudyFinderResultListView(
+class BatchFinderResultListView(
     LoginRequiredMixin,
     OwnerRequiredMixin,
     SingleTableMixin,
@@ -112,23 +112,23 @@ class StudyFinderResultListView(
     DetailView,
 ):
     owner_accessor = "owner"
-    table_class = StudyFinderResultTable
-    filterset_class = StudyFinderResultFilter
-    model = StudyFinderJob
+    table_class = BatchFinderResultTable
+    filterset_class = BatchFinderResultFilter
+    model = BatchFinderJob
     context_object_name = "job"
-    template_name = "study_finder/study_finder_result_list.html"
+    template_name = "batch_finder/batch_finder_result_list.html"
 
     def get_filter_queryset(self):
         return self.object.results.select_related("query")
 
 
-class StudyFinderResultDownloadView(
+class BatchFinderResultDownloadView(
     LoginRequiredMixin,
     OwnerRequiredMixin,
     SingleObjectMixin,
     View,
 ):
-    model = StudyFinderJob
+    model = BatchFinderJob
     owner_accessor = "owner"
 
     def get(self, request, *args, **kwargs):  # pylint: disable=unused-argument
@@ -136,6 +136,6 @@ class StudyFinderResultDownloadView(
         file = StringIO()
         export_results(job, file)
         response = HttpResponse(file.getvalue(), content_type="text/csv")
-        filename = f"study_finder_job_{job.id}_results.csv"
+        filename = f"batch_finder_job_{job.id}_results.csv"
         response["Content-Disposition"] = f"attachment;filename={filename}"
         return response

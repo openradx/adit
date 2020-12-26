@@ -4,25 +4,25 @@ from adit.core.factories import (
     DicomJobFactory,
     BatchTaskFactory,
 )
-from .models import StudyFinderJob, StudyFinderQuery, StudyFinderResult
+from .models import BatchFinderJob, BatchFinderQuery, BatchFinderResult
 
 
 fake = Faker()
 
 
-class StudyFinderJobFactory(DicomJobFactory):
+class BatchFinderJobFactory(DicomJobFactory):
     class Meta:
-        model = StudyFinderJob
+        model = BatchFinderJob
 
     project_name = factory.Faker("sentence")
     project_description = factory.Faker("paragraph")
 
 
-class StudyFinderQueryFactory(BatchTaskFactory):
+class BatchFinderQueryFactory(BatchTaskFactory):
     class Meta:
-        model = StudyFinderQuery
+        model = BatchFinderQuery
 
-    job = factory.SubFactory(StudyFinderJobFactory)
+    job = factory.SubFactory(BatchFinderJobFactory)
     patient_id = factory.Faker("numerify", text="##########")
     patient_name = factory.LazyFunction(
         lambda: f"{fake.last_name()}, {fake.first_name()}"
@@ -35,12 +35,12 @@ class StudyFinderQueryFactory(BatchTaskFactory):
     study_date_end = factory.Faker("date_between", start_date="-1y", end_date="today")
 
 
-class StudyFinderResultFactory(factory.django.DjangoModelFactory):
+class BatchFinderResultFactory(factory.django.DjangoModelFactory):
     class Meta:
-        model = StudyFinderResult
+        model = BatchFinderResult
 
-    job = factory.SubFactory(StudyFinderJobFactory)
-    query = factory.SubFactory(StudyFinderQueryFactory)
+    job = factory.SubFactory(BatchFinderJobFactory)
+    query = factory.SubFactory(BatchFinderQueryFactory)
     patient_id = factory.Faker("numerify", text="##########")
     patient_name = factory.LazyFunction(
         lambda: f"{fake.last_name()}, {fake.first_name()}"
