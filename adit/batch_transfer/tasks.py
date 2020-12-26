@@ -42,10 +42,9 @@ def batch_transfer(transfer_job: BatchTransferJob):
     )
 
 
-# pylint: disable=too-many-locals
 @shared_task(bind=True)
 @prepare_dicom_task(BatchTransferRequest, BatchTransferSettings, logger)
-def transfer_request(request: BatchTransferRequest):
+def transfer_request(request: BatchTransferRequest):  # pylint: disable=too-many-locals
     job = request.job
 
     request.status = BatchTransferRequest.Status.IN_PROGRESS
