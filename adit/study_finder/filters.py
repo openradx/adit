@@ -1,5 +1,4 @@
 import django_filters
-from django_filters.utils import verbose_field_name
 from adit.core.filters import DicomJobFilter, DicomTaskFilter
 from adit.core.forms import SingleFilterFormHelper
 from .models import StudyFinderJob, StudyFinderQuery, StudyFinderResult
@@ -16,17 +15,19 @@ class StudyFinderQueryFilter(DicomTaskFilter):
 
 
 class StudyFinderResultFilter(django_filters.FilterSet):
-    row_id = django_filters.NumberFilter(field_name="query__row_id", label="Row ID")
+    batch_id = django_filters.NumberFilter(
+        field_name="query__batch_id", label="Batch ID"
+    )
 
     class Meta:
         model = StudyFinderResult
-        fields = ("row_id",)
+        fields = ("batch_id",)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.form.helper = SingleFilterFormHelper(
             self.request.GET,
-            "row_id",
+            "batch_id",
             select_widget=False,
             custom_style="width: 7em;",
         )

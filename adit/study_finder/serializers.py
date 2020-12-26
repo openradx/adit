@@ -6,7 +6,7 @@ class StudyFinderQuerySerializer(BatchTaskSerializer):
     class Meta(BatchTaskSerializer.Meta):
         model = StudyFinderQuery
         fields = [
-            "row_id",
+            "batch_id",
             "patient_id",
             "patient_name",
             "patient_birth_date",

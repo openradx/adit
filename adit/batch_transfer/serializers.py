@@ -6,7 +6,7 @@ class BatchTransferRequestSerializer(BatchTaskSerializer):
     class Meta(BatchTaskSerializer.Meta):
         model = BatchTransferRequest
         fields = [
-            "row_id",
+            "batch_id",
             "patient_id",
             "patient_name",
             "patient_birth_date",

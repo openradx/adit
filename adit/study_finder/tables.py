@@ -13,20 +13,20 @@ class StudyFinderQueryTable(DicomTaskTable):
 
     class Meta(DicomTaskTable.Meta):  # pylint: disable=too-few-public-methods
         model = StudyFinderQuery
-        order_by = ("row_id",)
-        fields = ("row_id", "status", "message", "end")
+        order_by = ("batch_id",)
+        fields = ("batch_id", "status", "message", "end")
         empty_text = "No queries to show"
 
 
 class StudyFinderResultTable(tables.Table):
-    row_id = tables.Column(accessor="query.row_id", verbose_name="Row ID")
+    batch_id = tables.Column(accessor="query.batch_id", verbose_name="Batch ID")
 
     class Meta:  # pylint: disable=too-few-public-methods
         model = StudyFinderResult
         template_name = "django_tables2/bootstrap4.html"
         empty_text = "No results to show"
         fields = (
-            "row_id",
+            "batch_id",
             "study_date",
             "study_description",
             "modalities",

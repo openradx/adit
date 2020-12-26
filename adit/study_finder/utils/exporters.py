@@ -8,7 +8,7 @@ def export_results(job: StudyFinderJob, file):
     # Write column header
     writer.writerow(
         [
-            "Row ID",
+            "Batch ID",
             "Patient ID",
             "Patient Name",
             "Birth Date",
@@ -33,7 +33,7 @@ def export_results(job: StudyFinderJob, file):
                 image_count = result.image_count
 
             csv_row = [
-                query.row_id,
+                query.batch_id,
                 result.patient_id,
                 result.patient_name,
                 result.patient_birth_date,

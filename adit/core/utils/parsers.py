@@ -36,13 +36,13 @@ class BatchTaskParserError(Exception):
                 if self.message:
                     self.message += "\n"
                 if item_errors:
-                    row_id = self.data[num].get("row_id", "").strip()
-                    if row_id:
-                        row_id = f" (Row ID {row_id})"
+                    batch_id = self.data[num].get("batch_id", "").strip()
+                    if batch_id:
+                        batch_id = f" (Batch ID {batch_id})"
 
                     line_num = self.data[num]["__line_num__"]
 
-                    self.message += f"Invalid data on line {line_num}{row_id}:\n"
+                    self.message += f"Invalid data on line {line_num}{batch_id}:\n"
 
                     non_field_errors = item_errors.pop("non_field_errors", None)
                     if non_field_errors:

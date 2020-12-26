@@ -228,9 +228,9 @@ class DicomTask(models.Model):
 class BatchTask(DicomTask):
     class Meta(DicomTask.Meta):
         abstract = True
-        ordering = ("row_id",)
+        ordering = ("batch_id",)
 
-    row_id = models.PositiveIntegerField()
+    batch_id = models.PositiveIntegerField()
 
 
 class TransferTask(DicomTask):

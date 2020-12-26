@@ -1,4 +1,4 @@
-Row ID;Patient ID;Patient Name;Birth Date;Accession Number;Study Date;Modality;Pseudonym;
+Batch ID;Patient ID;Patient Name;Birth Date;Accession Number;Study Date;Modality;Pseudonym;
 01;1001;Apple, Annie;27.04.1945;0062115936;04.06.2019;CT;WSOHMP4N;
 02;1002;Coconut, Coco;09.12.1976;0062094302;01.06.2019;CT;C2XJQ2AR;
 03;1003;Grapefruit, Graham;23.01.1957;0062094311;02.02.2020;MR;KRS8CZ3S;

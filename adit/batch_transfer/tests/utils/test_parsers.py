@@ -9,7 +9,7 @@ from adit.batch_transfer.utils.parsers import RequestsParser, ParserError
 @pytest.fixture
 def columns():
     return [
-        "Row ID",
+        "Batch ID",
         "Patient ID",
         "Patient Name",
         "Birth Date",
@@ -24,7 +24,7 @@ def columns():
 def rows():
     return [
         {
-            "Row ID": "1",
+            "Batch ID": "1",
             "Patient ID": "10002",
             "Patient Name": "Banana, Ben",
             "Birth Date": "18.02.1962",
@@ -34,7 +34,7 @@ def rows():
             "Pseudonym": "DEDH6SVQ",
         },
         {
-            "Row ID": "2",
+            "Batch ID": "2",
             "Patient ID": "10004",
             "Patient Name": "Coconut, Coco",
             "Birth Date": "09.12.1976",
@@ -82,7 +82,7 @@ def test_valid_csv_file(columns, rows, create_csv_file):
     assert requests[0].patient_name == "Banana^Ben"
     assert requests[0].modality == "CT"
     assert requests[1].patient_id == "10004"
-    assert requests[1].row_id == 2
+    assert requests[1].batch_id == 2
     study_date = date(2019, 6, 1)
     assert requests[1].study_date == study_date
     patient_birth_date = date(1976, 12, 9)
@@ -90,37 +90,37 @@ def test_valid_csv_file(columns, rows, create_csv_file):
     assert requests[1].pseudonym == "C2XJQ2AR"
 
 
-def test_missing_row_id(columns, rows, create_csv_file):
-    rows[0]["Row ID"] = ""
+def test_missing_batch_id(columns, rows, create_csv_file):
+    rows[0]["Batch ID"] = ""
     file = create_csv_file(columns, rows)
 
     with pytest.raises(ParserError) as err:
         RequestsParser().parse(file)
 
     assert err.match(r"Invalid data on line 2")
-    assert err.match(r"Row ID - A valid integer is required")
+    assert err.match(r"Batch ID - A valid integer is required")
 
 
-def test_invalid_row_id(columns, rows, create_csv_file):
-    rows[0]["Row ID"] = "ABC"
+def test_invalid_batch_id(columns, rows, create_csv_file):
+    rows[0]["Batch ID"] = "ABC"
     file = create_csv_file(columns, rows)
 
     with pytest.raises(ParserError) as err:
         RequestsParser().parse(file)
 
-    assert err.match(r"Invalid data on line 2 \(Row ID ABC\)")
-    assert err.match(r"Row ID - A valid integer is required")
+    assert err.match(r"Invalid data on line 2 \(Batch ID ABC\)")
+    assert err.match(r"Batch ID - A valid integer is required")
 
 
-def test_duplicate_row_id(rows, columns, create_csv_file):
-    row_id = rows[0]["Row ID"]
-    rows[1]["Row ID"] = row_id
+def test_duplicate_batch_id(rows, columns, create_csv_file):
+    batch_id = rows[0]["Batch ID"]
+    rows[1]["Batch ID"] = batch_id
     file = create_csv_file(columns, rows)
 
     with pytest.raises(ParserError) as err:
         RequestsParser().parse(file)
 
-    assert err.match(r"Duplicate 'Row ID': 1")
+    assert err.match(r"Duplicate 'Batch ID': 1")
 
 
 def test_valid_patient_id(rows, columns, create_csv_file, create_random_str):
@@ -140,7 +140,7 @@ def test_invalid_patient_id(rows, columns, create_csv_file, create_random_str):
     with pytest.raises(ParserError) as err:
         RequestsParser().parse(file)
 
-    assert err.match(r"Invalid data on line 2 \(Row ID 1\)")
+    assert err.match(r"Invalid data on line 2 \(Batch ID 1\)")
     assert err.match(r"Patient ID - Ensure this field has no more than 64 characters")
 
 
@@ -164,7 +164,7 @@ def test_invalid_patient_name(rows, columns, create_csv_file, create_random_str)
     with pytest.raises(ParserError) as err:
         RequestsParser().parse(file)
 
-    assert err.match(r"Invalid data on line 2 \(Row ID 1\)")
+    assert err.match(r"Invalid data on line 2 \(Batch ID 1\)")
     assert err.match(
         r"Patient Name - Ensure this field has no more than 324 characters"
     )
@@ -188,7 +188,7 @@ def test_invalid_patient_birth_date(birth_date, rows, columns, create_csv_file):
     with pytest.raises(ParserError) as err:
         RequestsParser().parse(file)
 
-    assert err.match(r"Invalid data on line 2 \(Row ID 1\)")
+    assert err.match(r"Invalid data on line 2 \(Batch ID 1\)")
     assert err.match(r"Birth Date - Date has wrong format.")
 
 
@@ -209,7 +209,7 @@ def test_invalid_accession_number(rows, columns, create_csv_file, create_random_
     with pytest.raises(ParserError) as err:
         RequestsParser().parse(file)
 
-    assert err.match(r"Invalid data on line 2 \(Row ID 1\)")
+    assert err.match(r"Invalid data on line 2 \(Batch ID 1\)")
     assert err.match(
         r"Accession Number - Ensure this field has no more than 16 characters"
     )
@@ -232,7 +232,7 @@ def test_invalid_modality(rows, columns, create_csv_file, create_random_str):
     with pytest.raises(ParserError) as err:
         RequestsParser().parse(file)
 
-    assert err.match(r"Invalid data on line 2 \(Row ID 1\)")
+    assert err.match(r"Invalid data on line 2 \(Batch ID 1\)")
     assert err.match(r"Modality - Ensure this field has no more than 16 characters")
 
 
@@ -253,7 +253,7 @@ def test_invalid_pseudonym(rows, columns, create_csv_file, create_random_str):
     with pytest.raises(ParserError) as err:
         RequestsParser().parse(file)
 
-    assert err.match(r"Invalid data on line 2 \(Row ID 1\)")
+    assert err.match(r"Invalid data on line 2 \(Batch ID 1\)")
     assert err.match(r"Pseudonym - Ensure this field has no more than 64 characters")
 
 

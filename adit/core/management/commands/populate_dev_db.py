@@ -120,8 +120,8 @@ def create_batch_transfer_job(users, servers, folders):
         owner=factory.Faker("random_element", elements=users),
     )
 
-    for row_id in range(fake.random_int(min=1, max=100)):
-        request = BatchTransferRequestFactory(job=job, row_id=row_id)
+    for batch_id in range(fake.random_int(min=1, max=100)):
+        request = BatchTransferRequestFactory(job=job, batch_id=batch_id)
 
         for _ in range(fake.random_int(min=1, max=3)):
             BatchTransferTaskFactory(job=job, request=request)
@@ -134,8 +134,8 @@ def create_study_finder_job(users):
         owner=factory.Faker("random_element", elements=users),
     )
 
-    for row_id in range(fake.random_int(min=1, max=100)):
-        query = StudyFinderQueryFactory(job=job, row_id=row_id)
+    for batch_id in range(fake.random_int(min=1, max=100)):
+        query = StudyFinderQueryFactory(job=job, batch_id=batch_id)
 
         for _ in range(fake.random_int(min=1, max=3)):
             StudyFinderResultFactory(job=job, query=query)

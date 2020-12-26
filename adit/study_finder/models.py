@@ -24,7 +24,7 @@ class StudyFinderJob(DicomJob):
 
 class StudyFinderQuery(BatchTask):
     class Meta(BatchTask.Meta):
-        unique_together = ("row_id", "job")
+        unique_together = ("batch_id", "job")
 
     job = models.ForeignKey(
         StudyFinderJob, on_delete=models.CASCADE, related_name="queries"

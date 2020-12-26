@@ -94,7 +94,7 @@ class BatchTransferJobForm(forms.ModelForm):
         parser = BatchTaskParser(
             BatchTransferRequestSerializer,
             {
-                "row_id": "Row ID",
+                "batch_id": "Batch ID",
                 "patient_id": "Patient ID",
                 "patient_name": "Patient Name",
                 "patient_birth_date": "Birth Date",

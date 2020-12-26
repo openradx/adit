@@ -18,6 +18,6 @@ class BatchTransferRequestTable(DicomTaskTable):
 
     class Meta(DicomTaskTable.Meta):  # pylint: disable=too-few-public-methods
         model = BatchTransferRequest
-        order_by = ("row_id",)
-        fields = ("row_id", "status", "transfer_tasks", "end")
+        order_by = ("batch_id",)
+        fields = ("batch_id", "status", "transfer_tasks", "end")
         empty_text = "No requests to show"

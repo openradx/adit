@@ -60,7 +60,7 @@ class StudyFinderJobForm(forms.ModelForm):
         parser = BatchTaskParser(
             StudyFinderQuerySerializer,
             {
-                "row_id": "Row ID",
+                "batch_id": "Batch ID",
                 "patient_id": "Patient ID",
                 "patient_name": "Patient Name",
                 "patient_birth_date": "Birth Date",

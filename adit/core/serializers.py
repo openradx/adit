@@ -13,11 +13,11 @@ class BatchTaskListSerializer(
     def validate(self, attrs):
         attrs = super().validate(attrs)
 
-        row_ids = [data["row_id"] for data in attrs]
-        duplicates = self.find_duplicates(row_ids)
+        batch_ids = [data["batch_id"] for data in attrs]
+        duplicates = self.find_duplicates(batch_ids)
         if len(duplicates) > 0:
             ds = ", ".join(str(i) for i in duplicates)
-            raise serializers.ValidationError(f"Duplicate 'Row ID': {ds}")
+            raise serializers.ValidationError(f"Duplicate 'Batch ID': {ds}")
 
         return attrs
 
