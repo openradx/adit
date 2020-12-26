@@ -16,7 +16,7 @@ class BatchFinderQueryTable(BatchTaskTable):
 
 
 class BatchFinderResultTable(tables.Table):
-    batch_id = tables.Column(accessor="query.batch_id", verbose_name="Batch ID")
+    batch_id = tables.Column(accessor="query__batch_id", verbose_name="Batch ID")
     study_date_time = tables.DateTimeColumn(
         verbose_name="Study Date/Time", order_by=("study_date", "study_time")
     )

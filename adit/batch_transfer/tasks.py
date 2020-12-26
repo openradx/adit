@@ -34,6 +34,7 @@ def batch_transfer(transfer_job: BatchTransferJob):
         transfer_request.s(request.id).set(priority=priority)
         for request in transfer_job.requests.all()
     ]
+    print(transfer_requests)
 
     chord(transfer_requests)(
         on_job_finished.s(transfer_job.id).on_error(

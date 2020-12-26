@@ -1,5 +1,6 @@
 from unittest.mock import patch, Mock, create_autospec
 import pytest
+from django.conf import settings
 from adit.core.models import TransferJob, TransferTask
 from adit.core.utils.dicom_connector import DicomConnector
 from adit.core.factories import DicomServerFactory
@@ -31,7 +32,7 @@ def test_batch_transfer_finished_with_success(
     )
 
     transfer_request_s_mock = Mock()
-    transfer_request_mock.s.return_value = transfer_request_s_mock
+    transfer_request_mock.s.return_value.set.return_value = transfer_request_s_mock
 
     header_mock = Mock()
     chord_mock.return_value = header_mock
@@ -44,11 +45,14 @@ def test_batch_transfer_finished_with_success(
     on_job_failed_mock_s_mock = Mock()
     on_job_failed_mock.s.return_value = on_job_failed_mock_s_mock
 
+    priority = settings.BATCH_TRANSFER_DEFAULT_PRIORITY
+
     # Act
     batch_transfer(job.id)
 
     # Assert
     transfer_request_mock.s.assert_called_once_with(request.id)
+    transfer_request_mock.s.return_value.set.assert_called_once_with(priority=priority)
     chord_mock.assert_called_once_with([transfer_request_s_mock])
     on_job_finished_mock.s.assert_called_once_with(job.id)
     on_job_failed_mock.s.assert_called_once_with(job_id=job.id)
@@ -58,16 +62,14 @@ def test_batch_transfer_finished_with_success(
 @pytest.mark.django_db
 @patch.object(Scheduler, "must_be_scheduled", return_value=False)
 @patch("adit.batch_transfer.tasks.TransferUtil.start_transfer")
-@patch("adit.batch_transfer.tasks._fetch_patient_id")
+@patch("adit.batch_transfer.tasks.fetch_patient_id_cached")
 def test_request_without_study_fails(
-    fetch_patient_id,
-    start_transfer,
-    must_be_scheduled,
+    fetch_patient_id_cached_mock,
+    start_transfer_mock,
+    must_be_scheduled_mock,
 ):
     # Arrange
-    job = BatchTransferJobFactory(
-        status=TransferJob.Status.PENDING,
-    )
+    job = BatchTransferJobFactory(status=TransferJob.Status.PENDING, urgent=False)
     request = BatchTransferRequestFactory(
         job=job, status=BatchTransferRequest.Status.PENDING
     )
@@ -81,14 +83,13 @@ def test_request_without_study_fails(
     connector.find_patients.return_value = [patient]
     connector.find_studies.return_value = []
 
-    fetch_patient_id.return_value = patient["PatientID"]
-    start_transfer.return_value = TransferTask.Status.SUCCESS
+    fetch_patient_id_cached_mock.return_value = patient["PatientID"]
+    start_transfer_mock.return_value = TransferTask.Status.SUCCESS
 
     with patch.object(BatchTransferJob, "source") as source_mock:
         source_mock.dicomserver.create_connector.return_value = connector
 
         # Act
-        # pylint: disable=no-value-for-parameter
         result = transfer_request(request.id)
 
         # Assert
@@ -97,4 +98,4 @@ def test_request_without_study_fails(
         assert result == request.status
         assert request.message == "No studies found to transfer."
         source_mock.dicomserver.create_connector.assert_called_once()
-        must_be_scheduled.assert_called_once()
+        must_be_scheduled_mock.assert_called_once()
