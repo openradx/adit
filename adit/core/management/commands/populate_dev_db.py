@@ -12,7 +12,6 @@ from adit.core.factories import (
 )
 from adit.batch_transfer.factories import (
     BatchTransferJobFactory,
-    BatchTransferRequestFactory,
     BatchTransferTaskFactory,
 )
 from adit.selective_transfer.factories import (
@@ -121,10 +120,7 @@ def create_batch_transfer_job(users, servers, folders):
     )
 
     for batch_id in range(fake.random_int(min=1, max=100)):
-        request = BatchTransferRequestFactory(job=job, batch_id=batch_id)
-
-        for _ in range(fake.random_int(min=1, max=3)):
-            BatchTransferTaskFactory(job=job, request=request)
+        BatchTransferTaskFactory(job=job, batch_id=batch_id)
 
     return job
 

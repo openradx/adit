@@ -11,7 +11,6 @@ class BatchFinderJobTable(DicomJobTable):
 class BatchFinderQueryTable(BatchTaskTable):
     class Meta(BatchTaskTable.Meta):  # pylint: disable=too-few-public-methods
         model = BatchFinderQuery
-        fields = ("batch_id", "status", "message", "end")
         empty_text = "No queries to show"
 
 

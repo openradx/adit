@@ -102,7 +102,7 @@ class BatchFinderJobForm(forms.ModelForm):
                 self._save_queries(job)
             else:
                 # If not committing, add a method to the form to allow deferred
-                # saving of requests.
+                # saving of queries.
                 self.save_queries = self._save_queries
 
         return job

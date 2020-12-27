@@ -34,13 +34,3 @@ class BatchFinderQuerySerializer(BatchTaskSerializer):
         self.clean_date_string(data, "study_date_end")
 
         return super().to_internal_value(data)
-
-    def validate(self, attrs):
-        attrs = super().validate(attrs)
-
-        # In contrast to Django's ModelForm does a ModelSerializer not call
-        # the model clean method itself (at leat in DRF v3).
-        query = BatchFinderQuery(**attrs)
-        query.clean()
-
-        return attrs

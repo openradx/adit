@@ -1,12 +1,14 @@
 from datetime import time
 from django.db import models
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
 from .utils.dicom_connector import DicomConnector
 from .validators import (
     no_backslash_char_validator,
     no_control_chars_validator,
-    validate_uids,
+    no_wildcard_chars_validator,
+    validate_uid_list,
 )
 
 
@@ -226,36 +228,54 @@ class DicomTask(models.Model):
         return f"{self.__class__.__name__} [Task ID {self.id}, Job ID {self.job.id}]"
 
 
-class BatchTask(DicomTask):
-    class Meta(DicomTask.Meta):
-        abstract = True
-        ordering = ("batch_id",)
-
-    batch_id = models.PositiveIntegerField()
-
-    def __str__(self):
-        return (
-            f"{self.__class__.__name__} "
-            f"[Batch ID {self.batch_id}, Task ID {self.id}, Job ID {self.job.id}]"
-        )
-
-
 class TransferTask(DicomTask):
     class Meta(DicomTask.Meta):
         abstract = True
 
-    patient_id = models.CharField(max_length=64)
-    study_uid = models.CharField(max_length=64)
+    patient_id = models.CharField(
+        blank=True,
+        max_length=64,
+        validators=[
+            no_backslash_char_validator,
+            no_control_chars_validator,
+            no_wildcard_chars_validator,
+        ],
+    )
+    accession_number = models.CharField(
+        blank=True,
+        max_length=16,
+        validators=[
+            no_backslash_char_validator,
+            no_control_chars_validator,
+            no_wildcard_chars_validator,
+        ],
+    )
+    study_uid = models.CharField(
+        blank=True,
+        max_length=64,
+        validators=[
+            no_backslash_char_validator,
+            no_control_chars_validator,
+            no_wildcard_chars_validator,
+        ],
+    )
     series_uids = models.JSONField(
         null=True,
         blank=True,
-        validators=[validate_uids],
+        validators=[validate_uid_list],
     )
     pseudonym = models.CharField(
         blank=True,
         max_length=64,
         validators=[no_backslash_char_validator, no_control_chars_validator],
     )
+
+    def clean(self):
+        if not (self.accession_number or self.study_uid):
+            raise ValidationError(
+                "A study must be identifiable by either an 'Accession Number' "
+                "or a 'Study Instance UID'."
+            )
 
     def __str__(self):
         return (

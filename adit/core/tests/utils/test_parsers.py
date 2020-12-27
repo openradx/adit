@@ -1,7 +1,7 @@
 from io import StringIO
 import pytest
 from django.db import models
-from ...models import BatchTask
+from ...models import DicomTask
 from ...serializers import BatchTaskSerializer
 from ...utils.parsers import BatchTaskParser, BatchTaskParserError
 
@@ -28,7 +28,8 @@ def create_csv_file():
 
 @pytest.fixture(scope="session")
 def parser():
-    class TestBatchTask(BatchTask):
+    class TestBatchTask(DicomTask):
+        batch_id = models.PositiveIntegerField()
         patient_name = models.CharField(max_length=324)
 
     class TestSerializer(BatchTaskSerializer):

@@ -1,7 +1,7 @@
 from datetime import datetime
 from django.db import models
 from django.urls import reverse
-from adit.core.models import AppSettings, DicomJob, BatchTask
+from adit.core.models import AppSettings, DicomJob, DicomTask
 from adit.core.validators import (
     no_backslash_char_validator,
     no_control_chars_validator,
@@ -23,13 +23,14 @@ class BatchFinderJob(DicomJob):
         return reverse("batch_finder_job_detail", args=[str(self.id)])
 
 
-class BatchFinderQuery(BatchTask):
-    class Meta(BatchTask.Meta):
+class BatchFinderQuery(DicomTask):
+    class Meta(DicomTask.Meta):
         unique_together = ("batch_id", "job")
 
     job = models.ForeignKey(
         BatchFinderJob, on_delete=models.CASCADE, related_name="queries"
     )
+    batch_id = models.PositiveIntegerField()
     patient_id = models.CharField(
         blank=True,
         max_length=64,

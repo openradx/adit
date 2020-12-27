@@ -66,13 +66,6 @@ class DicomTaskFactory(factory.django.DjangoModelFactory):
     log = factory.Faker("paragraph")
 
 
-class BatchTaskFactory(DicomTaskFactory):
-    class Meta:
-        model = None
-
-    batch_id = factory.Sequence(int)
-
-
 def generate_uids():
     if fake.boolean(chance_of_getting_true=25):
         return [fake.uuid4() for _ in range(fake.random_int(min=1, max=8))]
@@ -84,6 +77,7 @@ class TransferTaskFactory(DicomTaskFactory):
         model = None
 
     patient_id = factory.Faker("numerify", text="##########")
+    accession_number = factory.Faker("ean")
     study_uid = factory.Faker("uuid4")
     series_uids = factory.LazyFunction(generate_uids)
     pseudonym = factory.Faker("hexify", text="^^^^^^^^^^")

@@ -1,4 +1,4 @@
-Batch ID;Patient ID;Patient Name;Birth Date;From;Until;Modalities;
-01;;Apple, Annie;27.04.1945;03.06.2019;05.06.2019;CT;
-02;1002;;;;02.06.2019;CT;
-03;;Grapefruit, Graham;23.01.1957;;;MR;
+Batch ID;Patient ID;Patient Name;Birth Date;From;Until;Modalities
+01;;Apple, Annie;27.04.1945;03.06.2019;05.06.2019;CT
+02;1002;;;;02.06.2019;CT
+03;;Grapefruit, Graham;23.01.1957;;;MR

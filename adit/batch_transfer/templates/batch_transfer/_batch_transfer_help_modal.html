@@ -14,32 +14,27 @@ Batch Transfer Help
 </p>
 
 <p>
-    Each batch transfer job contains several transfer requests that define what 
-    to transfer. These requests must be provided in a CSV file. If your data
-    is in an Excel file then it can be exported as a CSV file.  
+    Each batch transfer job contains several transfer tasks that define what 
+    studies to transfer. This data must be specified in a CSV file.
+    If your data is in an Excel file then it can be exported to a CSV file.  
     The first row of the CSV file must contain the header with the column
-    titles. The following rows contain the requests.
+    titles. The following rows contain the data that identfies the studies
+    to transfer.
 </p>
 
 <p>
-    The following columns must be present in the CSV file:
+    A combination of the following columns must be defined in the CSV file:
     <dl>
         <dt>Batch ID</dt>
-        <dd>A consecutive unique number that identifies the row.</dd>
+        <dd>A consecutive unique number that identifies the transfer.</dd>
         <dt>Patient ID</dt>
-        <dd>The unique ID of the patient in the PACS (optional if Patient Name and Birth Date is present).</dd>
-        <dt>Patient Name</dt>
-        <dd>The name of the patient (optional if Patient ID is provided).</dd>
-        <dt>Birth Date</dt>
-        <dd>The birth date of the patient (optional if Patient ID is provided)</dd>
+        <dd>The unique ID of the patient in the PACS (optional, but some PACS server requires it).</dd>
         <dt>Accession Number</dt>
-        <dd>The unique ID of the study in the PACS</dd>
-        <dt>Study Date</dt>
-        <dd>The date when the study took place (optional if Accession Number is provided)</dd>
-        <dt>Modality</dt>
-        <dd>The modality of the study (optional if Accession Number is provided)</dd>
+        <dd>A unique ID that identifies the study in the PACS (optional if Study Instance UID is provided).</dd>
+        <dt>Study Instance UID</dt>
+        <dd>A unique ID that identifies the study everywhere (optional if Accession Number is provided)</dd>
         <dt>Pseudonym</dt>
-        <dd>An optional pseudonym to pseudonymize the images to transfer.</dd>
+        <dd>An optional pseudonym to pseudonymize the images to transfer (if not provided then the images won't be pseudonymized).</dd>
     </dl>
 </p>
 
@@ -53,7 +48,7 @@ Batch ID;Patient ID;Patient Name;Birth Date;Accession Number;Study Date;Modality
 
 <p>
     The provided pseudonym will be set as Patient ID and Patient Name. So it is
-    best to use something cryptic like in the above example (and not another
+    best to use some identifier like in the above example (and not another
     person name).
 </p>
 

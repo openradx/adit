@@ -5,18 +5,18 @@ from adit.core.models import TransferJob, TransferTask
 from adit.core.utils.dicom_connector import DicomConnector
 from adit.core.factories import DicomServerFactory
 from adit.core.utils.scheduler import Scheduler
-from ..factories import BatchTransferJobFactory, BatchTransferRequestFactory
-from ..models import BatchTransferJob, BatchTransferRequest
-from ..tasks import batch_transfer, transfer_request
+from ..factories import BatchTransferJobFactory, BatchTransferTaskFactory
+from ..models import BatchTransferJob, BatchTransferTask
+from ..tasks import batch_transfer, transfer_dicoms
 
 
 @pytest.mark.django_db
 @patch("adit.batch_transfer.tasks.on_job_failed")
 @patch("adit.batch_transfer.tasks.on_job_finished")
 @patch("adit.batch_transfer.tasks.chord")
-@patch("adit.batch_transfer.tasks.transfer_request")
+@patch("adit.batch_transfer.tasks.transfer_dicoms")
 def test_batch_transfer_finished_with_success(
-    transfer_request_mock,
+    transfer_dicoms_mock,
     chord_mock,
     on_job_finished_mock,
     on_job_failed_mock,
@@ -27,12 +27,12 @@ def test_batch_transfer_finished_with_success(
         destination=DicomServerFactory(),
         status=TransferJob.Status.PENDING,
     )
-    request = BatchTransferRequestFactory(
-        job=job, status=BatchTransferRequest.Status.PENDING
+    transfer_task = BatchTransferTaskFactory(
+        job=job, status=BatchTransferTask.Status.PENDING
     )
 
-    transfer_request_s_mock = Mock()
-    transfer_request_mock.s.return_value.set.return_value = transfer_request_s_mock
+    transfer_dicoms_s_mock = Mock()
+    transfer_dicoms_mock.s.return_value.set.return_value = transfer_dicoms_s_mock
 
     header_mock = Mock()
     chord_mock.return_value = header_mock
@@ -51,9 +51,9 @@ def test_batch_transfer_finished_with_success(
     batch_transfer(job.id)
 
     # Assert
-    transfer_request_mock.s.assert_called_once_with(request.id)
-    transfer_request_mock.s.return_value.set.assert_called_once_with(priority=priority)
-    chord_mock.assert_called_once_with([transfer_request_s_mock])
+    transfer_dicoms_mock.s.assert_called_once_with(transfer_task.id)
+    transfer_dicoms_mock.s.return_value.set.assert_called_once_with(priority=priority)
+    chord_mock.assert_called_once_with([transfer_dicoms_s_mock])
     on_job_finished_mock.s.assert_called_once_with(job.id)
     on_job_failed_mock.s.assert_called_once_with(job_id=job.id)
     header_mock.assert_called_once_with(on_job_finished_on_error_mock)
@@ -63,15 +63,15 @@ def test_batch_transfer_finished_with_success(
 @patch.object(Scheduler, "must_be_scheduled", return_value=False)
 @patch("adit.batch_transfer.tasks.TransferUtil.start_transfer")
 @patch("adit.batch_transfer.tasks.fetch_patient_id_cached")
-def test_request_without_study_fails(
+def test_transfer_task_without_study_fails(
     fetch_patient_id_cached_mock,
     start_transfer_mock,
     must_be_scheduled_mock,
 ):
     # Arrange
     job = BatchTransferJobFactory(status=TransferJob.Status.PENDING, urgent=False)
-    request = BatchTransferRequestFactory(
-        job=job, status=BatchTransferRequest.Status.PENDING
+    transfer_task = BatchTransferTaskFactory(
+        job=job, status=BatchTransferTask.Status.PENDING
     )
 
     patient = {
@@ -90,12 +90,12 @@ def test_request_without_study_fails(
         source_mock.dicomserver.create_connector.return_value = connector
 
         # Act
-        result = transfer_request(request.id)
+        result = transfer_dicoms(transfer_task.id)
 
         # Assert
-        request.refresh_from_db()
-        assert result == BatchTransferRequest.Status.WARNING
-        assert result == request.status
-        assert request.message == "No studies found to transfer."
+        transfer_task.refresh_from_db()
+        assert result == BatchTransferTask.Status.WARNING
+        assert result == transfer_task.status
+        assert transfer_task.message == "No studies found to transfer."
         source_mock.dicomserver.create_connector.assert_called_once()
         must_be_scheduled_mock.assert_called_once()
