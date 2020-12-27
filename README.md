@@ -33,6 +33,8 @@ Downloading data from a DICOM server can done by using a C-GET or C-MOVE operati
 
 # TODO list
 
+-   ConnectionError on invalid dicom explorer query
+-   remove DicomTaskDetailView (-> DicomTaskMixin)
 -   batch_finder_query_detail needed?
 -   test all serializers (see test_parsers)
 -   test all views (as integration tests using real Orthanc)
