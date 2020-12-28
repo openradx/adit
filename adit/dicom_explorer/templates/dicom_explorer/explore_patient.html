@@ -1,7 +1,7 @@
 {% extends "core/base_generic.html" %}
 
 {% load combine_datetime exclude_from_list from core_extras %}
-{% load build_study_params from dicom_explorer_extras %}
+{% load explorer_url from dicom_explorer_extras %}
 
 {% block container %}
 
@@ -41,9 +41,9 @@
                 <td>{{ modalities|join:", "|default:"—" }}</td>
                 <td>{{ study.NumberOfStudyRelatedInstances|default_if_none:"—" }}</td>
                 <td>
-                    {% build_study_params server.id patient.PatientID study.StudyInstanceUID as study_params %}
+                    {% explorer_url server.id patient.PatientID study.StudyInstanceUID as study_url %}
                     <a
-                        href="{% url 'dicom_explorer' %}?{{ study_params }}"
+                        href="{{ study_url }}"
                         title="{{ study.StudyInstanceUID }}"
                         data-toggle="tooltip"
                         data-placement="left"
