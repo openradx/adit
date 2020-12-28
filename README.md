@@ -33,7 +33,8 @@ Downloading data from a DICOM server can done by using a C-GET or C-MOVE operati
 
 # TODO list
 
--   batch_finder_query_detail needed?
+-   no task id but arrow in right
+-   batch_finder_query_detail --- detail for task everywhere
 -   test all serializers (see test_parsers)
 -   test all views (as integration tests using real Orthanc)
 -   improve tests of transferutil

@@ -1,11 +1,13 @@
+from typing import Dict, Any
 from datetime import datetime
+from adit.core.utils.dicom_connector import DicomConnector
 
 
 class DicomDataCollector:
-    def __init__(self, connector):
+    def __init__(self, connector: DicomConnector):
         self.connector = connector
 
-    def _fetch_patient(self, patient_id):
+    def _fetch_patient(self, patient_id: str) -> Dict[str, Any]:
         # http://dicom.nema.org/medical/dicom/current/output/chtml/part04/sect_C.6.html#table_C.6-1
 
         if not patient_id:
