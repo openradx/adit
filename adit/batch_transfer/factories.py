@@ -3,6 +3,7 @@ from faker import Faker
 from adit.core.factories import (
     DicomFolderFactory,
     TransferJobFactory,
+    BatchTaskFactory,
     TransferTaskFactory,
 )
 from .models import BatchTransferJob, BatchTransferTask
@@ -22,9 +23,8 @@ class BatchTransferJobToPathFactory(BatchTransferJobFactory):
     destination = factory.SubFactory(DicomFolderFactory)
 
 
-class BatchTransferTaskFactory(TransferTaskFactory):
+class BatchTransferTaskFactory(BatchTaskFactory, TransferTaskFactory):
     class Meta:
         model = BatchTransferTask
 
     job = factory.SubFactory(BatchTransferJobFactory)
-    batch_id = factory.Sequence(int)

@@ -284,3 +284,18 @@ class TransferTask(DicomTask):
             f"Destination {self.job.destination}, "
             f"Task ID {self.id}, Job ID {self.job.id}]"
         )
+
+
+class BatchTask(models.Model):
+    class Meta:
+        abstract = True
+        ordering = ("batch_id",)
+
+    job = None
+    batch_id = models.PositiveIntegerField()
+
+    def __str__(self):
+        return (
+            f"{self.__class__.__name__} "
+            f"[Batch ID {self.batch_id}, Task ID {self.id}, Job ID {self.job.id}]"
+        )
