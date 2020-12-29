@@ -1,5 +1,6 @@
 from urllib.parse import urlencode
 from django.template import Library
+from django.urls import reverse
 
 register = Library()
 
@@ -14,7 +15,7 @@ def build_patient_params(server_id, patient_id):
 
 
 @register.simple_tag
-def build_study_params(server_id, patient_id, study_uid):
+def build_study_params(server_id, patient_id, study_uid, accession_number):
     params = {
         "server": server_id,
         "patient_id": patient_id,
