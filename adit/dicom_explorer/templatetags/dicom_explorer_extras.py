@@ -27,4 +27,4 @@ def explorer_url(
     if series_uid is not None:
         params["series_uid"] = series_uid
 
-    return "%s?%s" % reverse("dicom_explorer"), urlencode(params)
+    return "%s?%s" % (reverse("dicom_explorer"), urlencode(params))
