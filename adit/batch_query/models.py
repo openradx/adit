@@ -10,25 +10,25 @@ from adit.core.validators import (
 )
 
 
-class BatchFinderSettings(AppSettings):
+class BatchQuerySettings(AppSettings):
     class Meta:
-        verbose_name_plural = "Batch finder settings"
+        verbose_name_plural = "Batch query settings"
 
 
-class BatchFinderJob(DicomJob):
+class BatchQueryJob(DicomJob):
     project_name = models.CharField(max_length=150)
     project_description = models.TextField(max_length=2000)
 
     def get_absolute_url(self):
-        return reverse("batch_finder_job_detail", args=[str(self.id)])
+        return reverse("batch_query_job_detail", args=[str(self.id)])
 
 
-class BatchFinderQuery(BatchTask, DicomTask):
+class BatchQueryTask(BatchTask, DicomTask):
     class Meta(BatchTask.Meta, DicomTask.Meta):
         unique_together = ("batch_id", "job")
 
     job = models.ForeignKey(
-        BatchFinderJob, on_delete=models.CASCADE, related_name="queries"
+        BatchQueryJob, on_delete=models.CASCADE, related_name="queries"
     )
     patient_id = models.CharField(
         blank=True,
@@ -70,15 +70,15 @@ class BatchFinderQuery(BatchTask, DicomTask):
     )
 
     def get_absolute_url(self):
-        return reverse("batch_finder_query_detail", args=[str(self.id)])
+        return reverse("batch_query_task_detail", args=[str(self.id)])
 
 
-class BatchFinderResult(models.Model):
+class BatchQueryResult(models.Model):
     job = models.ForeignKey(
-        BatchFinderJob, on_delete=models.CASCADE, related_name="results"
+        BatchQueryJob, on_delete=models.CASCADE, related_name="results"
     )
     query = models.ForeignKey(
-        BatchFinderQuery, on_delete=models.CASCADE, related_name="results"
+        BatchQueryTask, on_delete=models.CASCADE, related_name="results"
     )
     patient_id = models.CharField(
         max_length=64,

@@ -3,8 +3,8 @@ from django.db.models.signals import post_migrate
 from adit.core.site import register_main_menu_item
 
 
-class BatchFinderConfig(AppConfig):
-    name = "adit.batch_finder"
+class BatchQueryConfig(AppConfig):
+    name = "adit.batch_query"
 
     def ready(self):
         register_app()
@@ -15,8 +15,8 @@ class BatchFinderConfig(AppConfig):
 
 def register_app():
     register_main_menu_item(
-        url_name="batch_finder_job_create",
-        label="Batch Finder",
+        url_name="batch_query_job_create",
+        label="Batch Query",
     )
 
 
@@ -30,18 +30,18 @@ def create_group():
     from adit.accounts.utils import create_group_with_permissions
 
     create_group_with_permissions(
-        "batch_finders",
+        "batch_query_group",
         (
-            "batch_finder.add_batchfinderjob",
-            "batch_finder.view_batchfinderjob",
+            "batch_query.add_batchqueryjob",
+            "batch_query.view_batchqueryjob",
         ),
     )
 
 
 def create_app_settings():
     # pylint: disable=import-outside-toplevel
-    from .models import BatchFinderSettings
+    from .models import BatchQuerySettings
 
-    settings = BatchFinderSettings.get()
+    settings = BatchQuerySettings.get()
     if not settings:
-        BatchFinderSettings.objects.create()
+        BatchQuerySettings.objects.create()

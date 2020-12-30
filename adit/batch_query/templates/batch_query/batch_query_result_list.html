@@ -6,9 +6,9 @@
 {% block container %}
 <div class="d-flex justify-content-between align-items-start">
     <h4 class="mb-3">
-        Batch Finder Results
+        Batch Query Results
     </h4>
-    <a href="{% url 'batch_finder_job_detail' job.id %}">
+    <a href="{% url 'batch_query_job_detail' job.id %}">
         {% include "core/_arrow_return_left.svg" %}
         <span class="align-middle">View Job</span>
     </a>
@@ -18,7 +18,7 @@
     <div class="col-md">
         <h5 text-nowrap class="mb-0">
             <a 
-                href="{% url 'batch_finder_result_download' job.id %}"
+                href="{% url 'batch_query_result_download' job.id %}"
                 class="badge badge-light align-top"
             >
                 {% include "core/_download.svg" %}

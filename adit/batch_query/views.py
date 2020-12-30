@@ -20,41 +20,41 @@ from adit.core.views import (
     DicomJobVerifyView,
     DicomTaskDetailView,
 )
-from .models import BatchFinderJob, BatchFinderQuery
-from .forms import BatchFinderJobForm
+from .models import BatchQueryJob, BatchQueryTask
+from .forms import BatchQueryJobForm
 from .tables import (
-    BatchFinderJobTable,
-    BatchFinderQueryTable,
-    BatchFinderResultTable,
+    BatchQueryJobTable,
+    BatchQueryTaskTable,
+    BatchQueryResultTable,
 )
 from .filters import (
-    BatchFinderJobFilter,
-    BatchFinderQueryFilter,
-    BatchFinderResultFilter,
+    BatchQueryJobFilter,
+    BatchQueryTaskFilter,
+    BatchQueryResultFilter,
 )
 from .utils.exporters import export_results
 
 
-class BatchFinderJobListView(DicomJobListView):  # pylint: disable=too-many-ancestors
-    model = BatchFinderJob
-    table_class = BatchFinderJobTable
-    filterset_class = BatchFinderJobFilter
-    template_name = "batch_finder/batch_finder_job_list.html"
+class BatchQueryJobListView(DicomJobListView):  # pylint: disable=too-many-ancestors
+    model = BatchQueryJob
+    table_class = BatchQueryJobTable
+    filterset_class = BatchQueryJobFilter
+    template_name = "batch_query/batch_query_job_list.html"
 
 
-class BatchFinderJobCreateView(
+class BatchQueryJobCreateView(
     LoginRequiredMixin,
     PermissionRequiredMixin,
     UrgentFormViewMixin,
     CreateView,
 ):
-    model = BatchFinderJob
-    form_class = BatchFinderJobForm
-    template_name = "batch_finder/batch_finder_job_form.html"
-    permission_required = "batch_finder.add_batchfinderjob"
+    model = BatchQueryJob
+    form_class = BatchQueryJobForm
+    template_name = "batch_query/batch_query_job_form.html"
+    permission_required = "batch_query.add_batchqueryjob"
 
 
-class BatchFinderJobDetailView(
+class BatchQueryJobDetailView(
     LoginRequiredMixin,
     OwnerRequiredMixin,
     SingleTableMixin,
@@ -63,47 +63,46 @@ class BatchFinderJobDetailView(
     DetailView,
 ):
     owner_accessor = "owner"
-    table_class = BatchFinderQueryTable
-    filterset_class = BatchFinderQueryFilter
-    model = BatchFinderJob
+    table_class = BatchQueryTaskTable
+    filterset_class = BatchQueryTaskFilter
+    model = BatchQueryJob
     context_object_name = "job"
-    template_name = "batch_finder/batch_finder_job_detail.html"
+    template_name = "batch_query/batch_query_job_detail.html"
 
     def get_filter_queryset(self):
         job = self.get_object()
         return job.queries.prefetch_related("results")
 
 
-class BatchFinderJobDeleteView(DicomJobDeleteView):
-    model = BatchFinderJob
+class BatchQueryJobDeleteView(DicomJobDeleteView):
+    model = BatchQueryJob
     success_url = reverse_lazy("batch_transfer_job_list")
 
 
-class BatchFinderJobCancelView(DicomJobCancelView):
-    model = BatchFinderJob
+class BatchQueryJobCancelView(DicomJobCancelView):
+    model = BatchQueryJob
 
 
-class BatchFinderJobVerifyView(DicomJobVerifyView):
-    model = BatchFinderJob
+class BatchQueryJobVerifyView(DicomJobVerifyView):
+    model = BatchQueryJob
 
 
-# TODO remove
-class BatchFinderQueryDetailView(
+class BatchQueryTaskDetailView(
     SingleTableMixin,
     PageSizeSelectMixin,
     DicomTaskDetailView,
 ):
-    model = BatchFinderQuery
+    model = BatchQueryTask
     context_object_name = "query"
-    job_url_name = "batch_finder_job_detail"
-    template_name = "batch_finder/batch_finder_query_detail.html"
-    table_class = BatchFinderResultTable
+    job_url_name = "batch_query_job_detail"
+    template_name = "batch_query/batch_query_task_detail.html"
+    table_class = BatchQueryResultTable
 
     def get_table_data(self):
         return self.object.results.all()
 
 
-class BatchFinderResultListView(
+class BatchQueryResultListView(
     LoginRequiredMixin,
     OwnerRequiredMixin,
     SingleTableMixin,
@@ -112,23 +111,23 @@ class BatchFinderResultListView(
     DetailView,
 ):
     owner_accessor = "owner"
-    table_class = BatchFinderResultTable
-    filterset_class = BatchFinderResultFilter
-    model = BatchFinderJob
+    table_class = BatchQueryResultTable
+    filterset_class = BatchQueryResultFilter
+    model = BatchQueryJob
     context_object_name = "job"
-    template_name = "batch_finder/batch_finder_result_list.html"
+    template_name = "batch_query/batch_query_result_list.html"
 
     def get_filter_queryset(self):
         return self.object.results.select_related("query")
 
 
-class BatchFinderResultDownloadView(
+class BatchQueryResultDownloadView(
     LoginRequiredMixin,
     OwnerRequiredMixin,
     SingleObjectMixin,
     View,
 ):
-    model = BatchFinderJob
+    model = BatchQueryJob
     owner_accessor = "owner"
 
     def get(self, request, *args, **kwargs):  # pylint: disable=unused-argument
@@ -136,6 +135,6 @@ class BatchFinderResultDownloadView(
         file = StringIO()
         export_results(job, file)
         response = HttpResponse(file.getvalue(), content_type="text/csv")
-        filename = f"batch_finder_job_{job.id}_results.csv"
+        filename = f"batch_query_job_{job.id}_results.csv"
         response["Content-Disposition"] = f"attachment;filename={filename}"
         return response

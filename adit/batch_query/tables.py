@@ -1,27 +1,27 @@
 import django_tables2 as tables
 from adit.core.tables import DicomJobTable, BatchTaskTable
-from .models import BatchFinderJob, BatchFinderQuery, BatchFinderResult
+from .models import BatchQueryJob, BatchQueryTask, BatchQueryResult
 
 
-class BatchFinderJobTable(DicomJobTable):
+class BatchQueryJobTable(DicomJobTable):
     class Meta(DicomJobTable.Meta):  # pylint: disable=too-few-public-methods
-        model = BatchFinderJob
+        model = BatchQueryJob
 
 
-class BatchFinderQueryTable(BatchTaskTable):
+class BatchQueryTaskTable(BatchTaskTable):
     class Meta(BatchTaskTable.Meta):  # pylint: disable=too-few-public-methods
-        model = BatchFinderQuery
+        model = BatchQueryTask
         empty_text = "No queries to show"
 
 
-class BatchFinderResultTable(tables.Table):
+class BatchQueryResultTable(tables.Table):
     batch_id = tables.Column(accessor="query__batch_id", verbose_name="Batch ID")
     study_date_time = tables.DateTimeColumn(
         verbose_name="Study Date/Time", order_by=("study_date", "study_time")
     )
 
     class Meta:  # pylint: disable=too-few-public-methods
-        model = BatchFinderResult
+        model = BatchQueryResult
         template_name = "django_tables2/bootstrap4.html"
         empty_text = "No results to show"
         fields = (
@@ -33,7 +33,7 @@ class BatchFinderResultTable(tables.Table):
             "accession_number",
         )
         attrs = {
-            "id": "batch_finder_result_table",
+            "id": "batch_query_result_table",
             "class": "table table-bordered table-hover",
         }
 

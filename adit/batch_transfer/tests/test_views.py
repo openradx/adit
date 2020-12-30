@@ -41,8 +41,8 @@ def user_without_permission(db):
 @pytest.fixture
 def user_with_permission(db):
     user = UserFactory()
-    batch_transferrers_group = Group.objects.get(name="batch_transferrers")
-    user.groups.add(batch_transferrers_group)
+    batch_transfer_group = Group.objects.get(name="batch_transfer_group")
+    user.groups.add(batch_transfer_group)
     return user
 
 

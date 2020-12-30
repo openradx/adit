@@ -30,7 +30,7 @@ def create_group():
     from adit.accounts.utils import create_group_with_permissions
 
     create_group_with_permissions(
-        "selective_transferrers",
+        "selective_transfer_group",
         (
             "selective_transfer.add_selectivetransferjob",
             "selective_transfer.view_selectivetransferjob",

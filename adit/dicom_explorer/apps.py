@@ -25,6 +25,6 @@ def init_db(**kwargs):  # pylint: disable=unused-argument
     from adit.accounts.utils import create_group_with_permissions
 
     create_group_with_permissions(
-        "dicom_explorers",
+        "dicom_explorer_group",
         ("dicom_explorer.query_dicom_server",),
     )

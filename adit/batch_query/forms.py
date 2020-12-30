@@ -10,16 +10,16 @@ from adit.core.forms import DicomNodeChoiceField
 from adit.core.models import DicomNode
 from adit.core.fields import RestrictedFileField
 from adit.core.utils.parsers import BatchTaskParser, BatchTaskParserError
-from .models import BatchFinderJob, BatchFinderQuery
-from .serializers import BatchFinderQuerySerializer
+from .models import BatchQueryJob, BatchQueryTask
+from .serializers import BatchQueryTaskSerializer
 
 
-class BatchFinderJobForm(forms.ModelForm):
+class BatchQueryJobForm(forms.ModelForm):
     source = DicomNodeChoiceField(True, DicomNode.NodeType.SERVER)
     csv_file = RestrictedFileField(max_upload_size=5242880, label="CSV file")
 
     class Meta:
-        model = BatchFinderJob
+        model = BatchQueryJob
         fields = (
             "source",
             "urgent",
@@ -58,7 +58,7 @@ class BatchFinderJobForm(forms.ModelForm):
     def clean_csv_file(self):
         csv_file = self.cleaned_data["csv_file"]
         parser = BatchTaskParser(
-            BatchFinderQuerySerializer,
+            BatchQueryTaskSerializer,
             {
                 "batch_id": "Batch ID",
                 "patient_id": "Patient ID",
@@ -92,7 +92,7 @@ class BatchFinderJobForm(forms.ModelForm):
         for query in self.queries:
             query.job = job
 
-        BatchFinderQuery.objects.bulk_create(self.queries)
+        BatchQueryTask.objects.bulk_create(self.queries)
 
     def save(self, commit=True):
         with transaction.atomic():

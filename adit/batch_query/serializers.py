@@ -1,10 +1,10 @@
 from adit.core.serializers import BatchTaskSerializer
-from .models import BatchFinderQuery
+from .models import BatchQueryTask
 
 
-class BatchFinderQuerySerializer(BatchTaskSerializer):
+class BatchQueryTaskSerializer(BatchTaskSerializer):
     class Meta(BatchTaskSerializer.Meta):
-        model = BatchFinderQuery
+        model = BatchQueryTask
         fields = [
             "batch_id",
             "patient_id",

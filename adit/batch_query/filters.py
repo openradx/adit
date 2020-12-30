@@ -1,26 +1,26 @@
 import django_filters
 from adit.core.filters import DicomJobFilter, DicomTaskFilter
 from adit.core.forms import SingleFilterFormHelper
-from .models import BatchFinderJob, BatchFinderQuery, BatchFinderResult
+from .models import BatchQueryJob, BatchQueryTask, BatchQueryResult
 
 
-class BatchFinderJobFilter(DicomJobFilter):
+class BatchQueryJobFilter(DicomJobFilter):
     class Meta(DicomJobFilter.Meta):
-        model = BatchFinderJob
+        model = BatchQueryJob
 
 
-class BatchFinderQueryFilter(DicomTaskFilter):
+class BatchQueryTaskFilter(DicomTaskFilter):
     class Meta(DicomTaskFilter.Meta):
-        model = BatchFinderQuery
+        model = BatchQueryTask
 
 
-class BatchFinderResultFilter(django_filters.FilterSet):
+class BatchQueryResultFilter(django_filters.FilterSet):
     batch_id = django_filters.NumberFilter(
         field_name="query__batch_id", label="Batch ID"
     )
 
     class Meta:
-        model = BatchFinderResult
+        model = BatchQueryResult
         fields = ("batch_id",)
 
     def __init__(self, *args, **kwargs):

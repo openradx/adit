@@ -47,7 +47,7 @@ INSTALLED_APPS = [
     "adit.selective_transfer.apps.SelectiveTransferConfig",
     "adit.batch_transfer.apps.BatchTransferConfig",
     "adit.continuous_transfer.apps.ContinuousTransferConfig",
-    "adit.batch_finder.apps.BatchFinderConfig",
+    "adit.batch_query.apps.BatchQueryConfig",
     "adit.dicom_explorer.apps.DicomExplorerConfig",
     "channels",
 ]
@@ -334,5 +334,5 @@ BATCH_TRANSFER_DEFAULT_PRIORITY = 3
 BATCH_TRANSFER_URGENT_PRIORITY = 7
 CONTINUOUS_TRANSFER_DEFAULT_PRIORITY = 2
 CONTINUOUS_TRANSFER_URGENT_PRIORITY = 6
-BATCH_FINDER_DEFAULT_PRIORITY = 5
-BATCH_FINDER_URGENT_PRIORITY = 9
+BATCH_QUERY_DEFAULT_PRIORITY = 5
+BATCH_QUERY_URGENT_PRIORITY = 9
