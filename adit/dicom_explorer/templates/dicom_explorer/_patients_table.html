@@ -1,0 +1,36 @@
+{% load convert_dicom_person_name from core_extras %}
+{% load explorer_url from dicom_explorer_extras %}
+
+<table class="table">
+    <caption>Patients</caption>
+    <thead>
+        <tr>
+            <th scope="col">ID</th>
+            <th scope="col">Name</th>
+            <th scope="col">Birth Date</th>
+            <th scope="col">Sex</th>
+            <th scope="col"></th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for patient in patients %}
+            <tr>
+                <td>{{ patient.PatientID|default:"—" }}</td>
+                <td>{{ patient.PatientName|convert_dicom_person_name|title }}</td>
+                <td>{{ patient.PatientBirthDate|date:"SHORT_DATE_FORMAT"|default:"—" }}</td>
+                <td>{{ patient.PatientSex|default:"—" }}</td>
+                <td>
+                    {% explorer_url server.id patient.PatientID as patient_url %}
+                    <a
+                        href="{{ patient_url }}"
+                        title="{{ patient.PatientID }}"
+                        data-toggle="tooltip"
+                        data-placement="left"
+                    >
+                        {% include "dicom_explorer/box_arrow_in_right.svg" %}
+                    </a>
+                </td>
+            </tr>
+        {% endfor %}
+    </tbody>
+</table>

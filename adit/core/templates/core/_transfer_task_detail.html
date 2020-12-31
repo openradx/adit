@@ -69,7 +69,7 @@
     </dd>
 
     {% for series_uid in task.series_uids %}
-        {% explorer_url job.source.id task.patient_id task.study_uid series_uid=series_uid as series_uid %}
+        {% explorer_url job.source.id task.patient_id task.study_uid series_uid as series_url %}
         {% if forloop.first %}
             <dt class="col-sm-3">Series Instance UID</dt>
         {% else %}
@@ -78,7 +78,7 @@
         <dd class="col-sm-9">
             {{ series_uid }}
             <a
-                href="{{ series_uid }}"
+                href="{{ series_url }}"
                 title="Show in DICOM Explorer"
                 data-toggle="tooltip"
                 data-placement="left"

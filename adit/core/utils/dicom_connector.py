@@ -468,7 +468,7 @@ class DicomConnector:
         return sorted(list(modalities))
 
     @_connect_to_server
-    def find_patients(self, query):
+    def find_patients(self, query, limit_results=None):
         query["QueryRetrieveLevel"] = "PATIENT"
 
         if not self.config.patient_root_find_support:
@@ -477,7 +477,11 @@ class DicomConnector:
                 "Patient Root Query/Retrieve Information Model."
             )
 
-        patients = self._find(query, PatientRootQueryRetrieveInformationModelFind)
+        patients = self._find(
+            query,
+            PatientRootQueryRetrieveInformationModelFind,
+            limit_results=limit_results,
+        )
 
         # Some PACS servers (like our Synapse) don't support a query filter of PatientBirthDate
         # as it is optional in the Patient Root Query/Retrieve Information Model,
@@ -495,10 +499,16 @@ class DicomConnector:
         return patients
 
     def _select_query_model_find(self, query):
-        if query["PatientID"] and self.config.patient_root_find_support:
+        patient_id = query.get("PatientID")
+        valid_patient_id = (
+            patient_id and not "*" in patient_id and not "?" in patient_id
+        )
+        if valid_patient_id and self.config.patient_root_find_support:
             return PatientRootQueryRetrieveInformationModelFind
 
-        if query["StudyInstanceUID"] and self.config.study_root_find_support:
+        study_uid = query.get("StudyInstanceUID")
+        valid_study_uid = study_uid and not "*" in study_uid and not "?" in study_uid
+        if valid_study_uid and self.config.study_root_find_support:
             return StudyRootQueryRetrieveInformationModelFind
 
         raise ValueError(
@@ -580,7 +590,7 @@ class DicomConnector:
         return filtered_studies
 
     @_connect_to_server
-    def find_series(self, query):
+    def find_series(self, query, limit_results=None):
         """Fetch all series UIDs for a given study UID.
 
         The series can be filtered by a modality (or a list of modalities for
@@ -595,7 +605,9 @@ class DicomConnector:
         if modality:
             query["Modality"] = ""
 
-        series_list = self._find(query, self._select_query_model_find(query))
+        series_list = self._find(
+            query, self._select_query_model_find(query), limit_results=limit_results
+        )
 
         if not modality:
             return series_list

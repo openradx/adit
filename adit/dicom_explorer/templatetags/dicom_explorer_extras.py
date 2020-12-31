@@ -7,24 +7,44 @@ register = Library()
 
 @register.simple_tag
 def explorer_url(
-    server,
+    server_id,
     patient_id=None,
     study_uid=None,
-    accession_number=None,
     series_uid=None,
 ):
-    params = {"server": server}
+    params = {}
+    if patient_id and not study_uid:
+        resource_url = reverse(
+            "dicom_explorer_query_patients",
+            kwargs={
+                "server_id": server_id,
+                "patient_id": patient_id,
+            },
+        )
+    elif study_uid and not series_uid:
+        resource_url = reverse(
+            "dicom_explorer_query_studies",
+            kwargs={
+                "server_id": server_id,
+                "study_uid": study_uid,
+            },
+        )
+        if patient_id:
+            params["PatientID"] = patient_id
+    elif study_uid and series_uid:
+        resource_url = reverse(
+            "dicom_explorer_query_series",
+            kwargs={
+                "server_id": server_id,
+                "study_uid": study_uid,
+                "series_uid": series_uid,
+            },
+        )
+        if patient_id:
+            params["PatientID"] = patient_id
 
-    if patient_id is not None:
-        params["patient_id"] = patient_id
+    else:
+        # Should never happen as we validate the form
+        raise AssertionError("Invalid DICOM explorer query.")
 
-    if study_uid is not None:
-        params["study_uid"] = study_uid
-
-    if accession_number is not None:
-        params["accession_number"] = accession_number
-
-    if series_uid is not None:
-        params["series_uid"] = series_uid
-
-    return "%s?%s" % (reverse("dicom_explorer"), urlencode(params))
+    return "%s?%s" % (resource_url, urlencode(params))
