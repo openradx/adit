@@ -337,8 +337,11 @@ CONTINUOUS_TRANSFER_URGENT_PRIORITY = 6
 BATCH_QUERY_DEFAULT_PRIORITY = 5
 BATCH_QUERY_URGENT_PRIORITY = 9
 
-# The maximum number of resulting studies for selective transfer query
+# The maximum number of resulting studies for selective_transfer query
 SELECTIVE_TRANSFER_RESULT_LIMIT = 101
 
-# The maximum number of results (patients or studies) in dicom explorer
+# The maximum number of results (patients or studies) in dicom_explorer
 DICOM_EXPLORER_RESULT_LIMIT = 101
+
+# The timeout in dicom_explorer a DICOM server must respond
+DICOM_EXPLORER_RESPONSE_TIMEOUT = 3  # in seconds

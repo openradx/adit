@@ -28,17 +28,20 @@ def dicom_explorer_form_view(request):
     patient_id = query.get("patient_id")
     accession_number = query.get("accession_number")
 
-    if server and not patient_id and not accession_number:
-        return redirect("dicom_explorer_query_servers", server_id=server.id)
+    if server and not (patient_id or accession_number):
+        return redirect("dicom_explorer_server_detail", server_id=server.id)
 
     if patient_id and not accession_number:
         return redirect(
-            "dicom_explorer_query_patients", server_id=server.id, patient_id=patient_id
+            "dicom_explorer_patient_detail", server_id=server.id, patient_id=patient_id
         )
 
-    if patient_id and accession_number:
-        url = reverse("dicom_explorer_query_studies")
-        params = {"PatientID": patient_id, "AccessionNumber": accession_number}
+    if accession_number:
+        params = {"AccessionNumber": accession_number}
+        if patient_id:
+            params["PatientID"] = patient_id
+
+        url = reverse("dicom_explorer_patient_query")
         url = "%s?%s" % (url, urlencode(params))
         return redirect(url)
 
@@ -71,10 +74,13 @@ async def dicom_explorer_resources_view(
             study_uid,
             series_uid,
         )
-        response = await asyncio.wait_for(future, timeout=3.0)
+        timeout = settings.DICOM_EXPLORER_RESPONSE_TIMEOUT
+        response = await asyncio.wait_for(future, timeout=timeout)
         return response
     except asyncio.TimeoutError:
-        return render_error(request, "Connection to server with ID timed out.")
+        return render_error(
+            request, "Connection to server timed out. Please try again later."
+        )
 
 
 @sync_to_async

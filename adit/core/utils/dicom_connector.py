@@ -536,8 +536,15 @@ class DicomConnector:
             limit_results=limit_results,
         )
 
-        query_modalities = query.get("ModalitiesInStudy")
+        # When a study only contains one modality then ModalitiesInStudy returns a
+        # string, otherwise a list. To make it consistent we convert everything
+        # to a list. TODO check if this is a bug in pydicom
+        for study in studies:
+            modalities = study.get("ModalitiesInStudy")
+            if modalities and isinstance(modalities, str):
+                study["ModalitiesInStudy"] = [modalities]
 
+        query_modalities = query.get("ModalitiesInStudy")
         if not query_modalities:
             return studies
 
