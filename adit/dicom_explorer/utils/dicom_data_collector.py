@@ -1,12 +1,13 @@
 from datetime import datetime
+from adit.core.models import DicomServer
 from adit.core.utils.dicom_connector import DicomConnector
 
 
 class DicomDataCollector:
-    def __init__(self, connector: DicomConnector):
-        self.connector = connector
+    def __init__(self, server: DicomServer):
+        self.connector: DicomConnector = server.create_connector(connection_retries=1)
 
-    def collect_patient_data(self, patient_id=None, query=None):
+    def collect_patient_data(self, patient_id=None, query=None, limit_results=None):
         # http://dicom.nema.org/medical/dicom/current/output/chtml/part04/sect_C.6.html#table_C.6-1
 
         if query is None:
@@ -23,13 +24,13 @@ class DicomDataCollector:
         if patient_id is not None:
             query["PatientID"] = patient_id
 
-        patients = self.connector.find_patients(query)
+        patients = self.connector.find_patients(query, limit_results=limit_results)
 
-        patients = sorted(patients)
+        patients = sorted(patients, key=lambda patient: patient["PatientName"])
 
         return patients
 
-    def collect_study_data(self, study_uid=None, query=None):
+    def collect_study_data(self, study_uid=None, query=None, limit_results=None):
         # http://dicom.nema.org/medical/dicom/current/output/chtml/part04/sect_C.6.html#table_C.6-2
         # http://dicom.nema.org/medical/dicom/current/output/chtml/part04/sect_C.6.2.html#table_C.6-5
 
@@ -51,7 +52,7 @@ class DicomDataCollector:
         if study_uid is not None:
             query["StudyInstanceUID"] = study_uid
 
-        studies = self.connector.find_studies(query)
+        studies = self.connector.find_studies(query, limit_results=limit_results)
 
         studies = sorted(
             studies,

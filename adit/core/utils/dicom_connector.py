@@ -498,17 +498,25 @@ class DicomConnector:
 
         return patients
 
-    def _select_query_model_find(self, query):
+    def _select_query_model_find(self, query, force_study_root=False):
+        if force_study_root:
+            if not self.config.study_root_find_support:
+                raise ValueError(
+                    "Missing support for Study Root Query/Retrieve Information Model."
+                )
+            return StudyRootQueryRetrieveInformationModelFind
+
+        # If not Study Root Query/Retrieve Information Model is forced we prefer
+        # Patient Root Query/Retrieve Information Model, but a Patient ID # (without wildcards)
+        # must be present
         patient_id = query.get("PatientID")
-        valid_patient_id = (
+        patient_id_valid = (
             patient_id and not "*" in patient_id and not "?" in patient_id
         )
-        if valid_patient_id and self.config.patient_root_find_support:
+        if patient_id_valid and self.config.patient_root_find_support:
             return PatientRootQueryRetrieveInformationModelFind
 
-        study_uid = query.get("StudyInstanceUID")
-        valid_study_uid = study_uid and not "*" in study_uid and not "?" in study_uid
-        if valid_study_uid and self.config.study_root_find_support:
+        if self.config.study_root_find_support:
             return StudyRootQueryRetrieveInformationModelFind
 
         raise ValueError(
@@ -519,20 +527,14 @@ class DicomConnector:
     def find_studies(self, query, force_study_root=False, limit_results=None):
         query["QueryRetrieveLevel"] = "STUDY"
 
-        if force_study_root:
-            if not self.config.study_root_find_support:
-                raise ValueError(
-                    "Missing support for Study Root Query/Retrieve Information Model."
-                )
-
-            query_model = StudyRootQueryRetrieveInformationModelFind
-        else:
-            query_model = self._select_query_model_find(query)
-
         if not "NumberObStudyRelatedInstances" in query:
             query["NumberOfStudyRelatedInstances"] = ""
 
-        studies = self._find(query, query_model, limit_results=limit_results)
+        studies = self._find(
+            query,
+            self._select_query_model_find(query, force_study_root=force_study_root),
+            limit_results=limit_results,
+        )
 
         query_modalities = query.get("ModalitiesInStudy")
 
@@ -706,7 +708,7 @@ class DicomConnector:
 
     def _download_series_move(self, query, folder, modifier_callback=None):
         # Fetch all SOPInstanceUIDs in the series so that we can later
-        # evaluate if all images were downloaded.
+        # evaluate if all images were received.
         image_query = dict(
             query, **{"QueryRetrieveLevel": "IMAGE", "SOPInstanceUID": ""}
         )

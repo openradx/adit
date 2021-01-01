@@ -95,9 +95,10 @@ class DicomServer(DicomNode):
     study_root_get_support = models.BooleanField(default=True)
     study_root_move_support = models.BooleanField(default=True)
 
-    def create_connector(self, auto_connect=True):
+    def create_connector(self, **kwargs):
         return DicomConnector(
             DicomConnector.Config(
+                **kwargs,
                 client_ae_title=settings.ADIT_AE_TITLE,
                 server_ae_title=self.ae_title,
                 server_host=self.host,
@@ -109,7 +110,6 @@ class DicomServer(DicomNode):
                 study_root_find_support=self.study_root_find_support,
                 study_root_get_support=self.study_root_get_support,
                 study_root_move_support=self.study_root_move_support,
-                auto_connect=auto_connect,
             )
         )
 

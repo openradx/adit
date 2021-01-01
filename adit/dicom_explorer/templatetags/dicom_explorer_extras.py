@@ -13,17 +13,25 @@ def explorer_url(
     series_uid=None,
 ):
     params = {}
-    if patient_id and not study_uid:
+    if server_id and not (patient_id or study_uid or series_uid):
+        print("here")
         resource_url = reverse(
-            "dicom_explorer_query_patients",
+            "dicom_explorer_server_detail",
+            kwargs={
+                "server_id": server_id,
+            },
+        )
+    elif server_id and patient_id and not (study_uid or series_uid):
+        resource_url = reverse(
+            "dicom_explorer_patient_detail",
             kwargs={
                 "server_id": server_id,
                 "patient_id": patient_id,
             },
         )
-    elif study_uid and not series_uid:
+    elif server_id and study_uid and not series_uid:
         resource_url = reverse(
-            "dicom_explorer_query_studies",
+            "dicom_explorer_study_detail",
             kwargs={
                 "server_id": server_id,
                 "study_uid": study_uid,
@@ -31,9 +39,9 @@ def explorer_url(
         )
         if patient_id:
             params["PatientID"] = patient_id
-    elif study_uid and series_uid:
+    elif server_id and study_uid and series_uid:
         resource_url = reverse(
-            "dicom_explorer_query_series",
+            "dicom_explorer_series_detail",
             kwargs={
                 "server_id": server_id,
                 "study_uid": study_uid,
@@ -42,9 +50,10 @@ def explorer_url(
         )
         if patient_id:
             params["PatientID"] = patient_id
-
     else:
-        # Should never happen as we validate the form
-        raise AssertionError("Invalid DICOM explorer query.")
+        raise ValueError("Invalid DICOM explorer query.")
 
-    return "%s?%s" % (resource_url, urlencode(params))
+    if params:
+        return "%s?%s" % (resource_url, urlencode(params))
+
+    return resource_url

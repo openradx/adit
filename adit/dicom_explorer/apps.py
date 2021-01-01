@@ -15,7 +15,7 @@ class DicomExplorerConfig(AppConfig):
 
 def register_app():
     register_main_menu_item(
-        url_name="dicom_explorer",
+        url_name="dicom_explorer_form",
         label="DICOM Explorer",
     )
 
