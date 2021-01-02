@@ -1,2 +1,0 @@
-class NoStudiesFoundError(Exception):
-    pass

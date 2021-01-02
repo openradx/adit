@@ -1,0 +1,31 @@
+{% load explorer_url from dicom_explorer_extras %}
+
+<table class="table">
+    <caption>Server</caption>
+    <thead>
+        <tr>
+            <th scope="col">Server ID</th>
+            <th scope="col">Server Name</th>
+            <th scope="col"></th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for server in servers %}
+            <tr>
+                <td>{{ server.id }}</td>
+                <td>{{ server.name }}</td>
+                <td>
+                    {% explorer_url server.id as server_url %}
+                    <a
+                        href="{{ server_url }}"
+                        title="ID {{ study.id }}"
+                        data-toggle="tooltip"
+                        data-placement="left"
+                    >
+                        {% include "dicom_explorer/box_arrow_in_right.svg" %}
+                    </a>
+                </td>
+            </tr>
+        {% endfor %}
+    </tbody>
+</table>

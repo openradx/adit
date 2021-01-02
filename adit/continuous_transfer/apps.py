@@ -30,7 +30,7 @@ def create_group():
     from adit.accounts.utils import create_group_with_permissions
 
     create_group_with_permissions(
-        "continuous_transferrers",
+        "continuous_transfer_group",
         (
             "continuous_transfer.add_continuoustransferjob",
             "continuous_transfer.view_continuoustransferjob",

@@ -45,9 +45,9 @@ INSTALLED_APPS = [
     "adit.core.apps.CoreConfig",
     "adit.api.apps.ApiConfig",
     "adit.selective_transfer.apps.SelectiveTransferConfig",
+    "adit.batch_query.apps.BatchQueryConfig",
     "adit.batch_transfer.apps.BatchTransferConfig",
     "adit.continuous_transfer.apps.ContinuousTransferConfig",
-    "adit.batch_finder.apps.BatchFinderConfig",
     "adit.dicom_explorer.apps.DicomExplorerConfig",
     "channels",
 ]
@@ -334,5 +334,14 @@ BATCH_TRANSFER_DEFAULT_PRIORITY = 3
 BATCH_TRANSFER_URGENT_PRIORITY = 7
 CONTINUOUS_TRANSFER_DEFAULT_PRIORITY = 2
 CONTINUOUS_TRANSFER_URGENT_PRIORITY = 6
-BATCH_FINDER_DEFAULT_PRIORITY = 5
-BATCH_FINDER_URGENT_PRIORITY = 9
+BATCH_QUERY_DEFAULT_PRIORITY = 5
+BATCH_QUERY_URGENT_PRIORITY = 9
+
+# The maximum number of resulting studies for selective_transfer query
+SELECTIVE_TRANSFER_RESULT_LIMIT = 101
+
+# The maximum number of results (patients or studies) in dicom_explorer
+DICOM_EXPLORER_RESULT_LIMIT = 101
+
+# The timeout in dicom_explorer a DICOM server must respond
+DICOM_EXPLORER_RESPONSE_TIMEOUT = 3  # in seconds

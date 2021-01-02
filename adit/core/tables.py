@@ -7,8 +7,6 @@ from .templatetags.core_extras import (
 
 
 class RecordIdColumn(tables.Column):
-    attrs = {"td": {"class": "record-id"}}
-
     def render(self, record, value):  # pylint: disable=arguments-differ
         url = record.get_absolute_url()
         return format_html(f'<a href="{url}">{value}</a>')
@@ -56,9 +54,8 @@ class DicomTaskTable(tables.Table):
 
 
 class BatchTaskTable(DicomTaskTable):
-    id = None  # We don't use the id of the request object itself
     batch_id = tables.Column(verbose_name="Batch ID")
 
     class Meta(DicomTaskTable.Meta):  # pylint: disable=too-few-public-methods
         order_by = ("batch_id",)
-        fields = ("batch_id", "status", "message", "end")
+        fields = ("batch_id", "id", "status", "message", "end")

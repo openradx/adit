@@ -10,8 +10,8 @@ from adit.core.forms import DicomNodeChoiceField
 from adit.core.models import DicomNode
 from adit.core.fields import RestrictedFileField
 from adit.core.utils.parsers import BatchTaskParser, BatchTaskParserError
-from .models import BatchTransferJob, BatchTransferRequest
-from .serializers import BatchTransferRequestSerializer
+from .models import BatchTransferJob, BatchTransferTask
+from .serializers import BatchTransferTaskSerializer
 
 
 class BatchTransferJobForm(forms.ModelForm):
@@ -62,8 +62,8 @@ class BatchTransferJobForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         self.csv_error_details = None
-        self.requests = None
-        self.save_requests = None
+        self.tasks = None
+        self.save_tasks = None
 
         urgent_option = kwargs.pop("urgent_option", False)
 
@@ -90,15 +90,12 @@ class BatchTransferJobForm(forms.ModelForm):
     def clean_csv_file(self):
         csv_file = self.cleaned_data["csv_file"]
         parser = BatchTaskParser(
-            BatchTransferRequestSerializer,
+            BatchTransferTaskSerializer,
             {
                 "batch_id": "Batch ID",
                 "patient_id": "Patient ID",
-                "patient_name": "Patient Name",
-                "patient_birth_date": "Birth Date",
                 "accession_number": "Accession Number",
-                "study_date": "Study Date",
-                "modality": "Modality",
+                "study_uid": "Study Instance UID",
                 "pseudonym": "Pseudonym",
             },
         )
@@ -107,7 +104,7 @@ class BatchTransferJobForm(forms.ModelForm):
             rawdata = csv_file.read()
             encoding = chardet.detect(rawdata)["encoding"]
             fp = StringIO(rawdata.decode(encoding))
-            self.requests = parser.parse(fp)
+            self.tasks = parser.parse(fp)
         except BatchTaskParserError as err:
             self.csv_error_details = err
             raise ValidationError(
@@ -121,21 +118,21 @@ class BatchTransferJobForm(forms.ModelForm):
 
         return csv_file
 
-    def _save_requests(self, batch_job):
-        for request in self.requests:
-            request.job = batch_job
+    def _save_tasks(self, batch_job):
+        for task in self.tasks:
+            task.job = batch_job
 
-        BatchTransferRequest.objects.bulk_create(self.requests)
+        BatchTransferTask.objects.bulk_create(self.tasks)
 
     def save(self, commit=True):
         with transaction.atomic():
             batch_job = super().save(commit=commit)
 
             if commit:
-                self._save_requests(batch_job)
+                self._save_tasks(batch_job)
             else:
                 # If not committing, add a method to the form to allow deferred
-                # saving of requests.
-                self.save_requests = self._save_requests
+                # saving of tasks.
+                self.save_tasks = self._save_tasks
 
         return batch_job

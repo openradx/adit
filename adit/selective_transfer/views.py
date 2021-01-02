@@ -4,6 +4,7 @@ from django.views.generic.edit import CreateView
 from django.views.generic import DetailView
 from django.http import HttpResponseBadRequest
 from django.urls import reverse_lazy
+from django.conf import settings
 from django_tables2 import SingleTableMixin
 from adit.core.mixins import (
     OwnerRequiredMixin,
@@ -23,8 +24,6 @@ from .models import SelectiveTransferJob, SelectiveTransferTask
 from .mixins import SelectiveTransferJobCreateMixin
 from .tables import SelectiveTransferJobTable, SelectiveTransferTaskTable
 from .filters import SelectiveTransferJobFilter, SelectiveTransferTaskFilter
-
-QUERY_RESULT_LIMIT = 101
 
 
 class SelectiveTransferJobListView(
@@ -64,10 +63,9 @@ class SelectiveTransferJobCreateView(
 
         if action == "query":
             connector = self.create_source_connector(form)
-            studies = self.query_studies(connector, form, QUERY_RESULT_LIMIT)
-
-            max_query_results = len(studies) >= QUERY_RESULT_LIMIT
-
+            limit = settings.SELECTIVE_TRANSFER_RESULT_LIMIT
+            studies = self.query_studies(connector, form, limit)
+            max_query_results = len(studies) >= limit
             return self.render_to_response(
                 self.get_context_data(
                     query=True,

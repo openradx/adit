@@ -1,0 +1,44 @@
+{% extends "core/base_generic.html" %}
+
+{% load dicom_task_status_css_class from core_extras %}
+{% load crispy from crispy_forms_tags %}
+{% load render_table from django_tables2 %}
+
+{% block container %}
+<div class="d-flex justify-content-between align-items-start">
+    <h4 class="mb-3">Batch Query Task</h4>
+</div>
+
+{% with query.job as job %}
+<dl class="row">
+    <dt class="col-sm-3">Batch ID</dt>
+    <dd class="col-sm-9">{{ query.batch_id }}</dd>
+
+    <dt class="col-sm-3">Associated Job ID</dt>
+    <dd class="col-sm-9">
+        <a href="{% url job_url_name job.id %}">{{ job.id }}</a>
+    </dd>
+    
+    <dt class="col-sm-3">Status</dt>
+    <dd class="col-sm-9">
+        <span class="{{ query.status|dicom_task_status_css_class }}">
+            {{ query.get_status_display }}
+        </span>
+    </dd>
+</dl>
+{% endwith %}
+
+<div class="row justify-content-end mb-1">
+    <div class="col-md">
+        <h5 text-nowrap>
+            Results
+        </h5>
+    </div>
+    <div class="col col-md-auto">
+        {% crispy page_size_select %}
+    </div>
+</div>
+
+{% render_table table %}
+
+{% endblock container %}

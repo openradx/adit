@@ -1,0 +1,140 @@
+from io import StringIO
+from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
+from django.http.response import HttpResponse
+from django.views.generic.edit import CreateView
+from django.views.generic import DetailView
+from django.views.generic.detail import SingleObjectMixin
+from django.views.generic.base import View
+from django.urls import reverse_lazy
+from django_tables2 import SingleTableMixin
+from adit.core.mixins import (
+    OwnerRequiredMixin,
+    UrgentFormViewMixin,
+    RelatedFilterMixin,
+    PageSizeSelectMixin,
+)
+from adit.core.views import (
+    DicomJobListView,
+    DicomJobDeleteView,
+    DicomJobCancelView,
+    DicomJobVerifyView,
+    DicomTaskDetailView,
+)
+from .models import BatchQueryJob, BatchQueryTask
+from .forms import BatchQueryJobForm
+from .tables import (
+    BatchQueryJobTable,
+    BatchQueryTaskTable,
+    BatchQueryResultTable,
+)
+from .filters import (
+    BatchQueryJobFilter,
+    BatchQueryTaskFilter,
+    BatchQueryResultFilter,
+)
+from .utils.exporters import export_results
+
+
+class BatchQueryJobListView(DicomJobListView):  # pylint: disable=too-many-ancestors
+    model = BatchQueryJob
+    table_class = BatchQueryJobTable
+    filterset_class = BatchQueryJobFilter
+    template_name = "batch_query/batch_query_job_list.html"
+
+
+class BatchQueryJobCreateView(
+    LoginRequiredMixin,
+    PermissionRequiredMixin,
+    UrgentFormViewMixin,
+    CreateView,
+):
+    model = BatchQueryJob
+    form_class = BatchQueryJobForm
+    template_name = "batch_query/batch_query_job_form.html"
+    permission_required = "batch_query.add_batchqueryjob"
+
+
+class BatchQueryJobDetailView(
+    LoginRequiredMixin,
+    OwnerRequiredMixin,
+    SingleTableMixin,
+    RelatedFilterMixin,
+    PageSizeSelectMixin,
+    DetailView,
+):
+    owner_accessor = "owner"
+    table_class = BatchQueryTaskTable
+    filterset_class = BatchQueryTaskFilter
+    model = BatchQueryJob
+    context_object_name = "job"
+    template_name = "batch_query/batch_query_job_detail.html"
+
+    def get_filter_queryset(self):
+        job = self.get_object()
+        return job.queries.prefetch_related("results")
+
+
+class BatchQueryJobDeleteView(DicomJobDeleteView):
+    model = BatchQueryJob
+    success_url = reverse_lazy("batch_transfer_job_list")
+
+
+class BatchQueryJobCancelView(DicomJobCancelView):
+    model = BatchQueryJob
+
+
+class BatchQueryJobVerifyView(DicomJobVerifyView):
+    model = BatchQueryJob
+
+
+class BatchQueryTaskDetailView(
+    SingleTableMixin,
+    PageSizeSelectMixin,
+    DicomTaskDetailView,
+):
+    model = BatchQueryTask
+    context_object_name = "query"
+    job_url_name = "batch_query_job_detail"
+    template_name = "batch_query/batch_query_task_detail.html"
+    table_class = BatchQueryResultTable
+
+    def get_table_data(self):
+        return self.object.results.all()
+
+
+class BatchQueryResultListView(
+    LoginRequiredMixin,
+    OwnerRequiredMixin,
+    SingleTableMixin,
+    RelatedFilterMixin,
+    PageSizeSelectMixin,
+    DetailView,
+):
+    owner_accessor = "owner"
+    table_class = BatchQueryResultTable
+    filterset_class = BatchQueryResultFilter
+    model = BatchQueryJob
+    context_object_name = "job"
+    template_name = "batch_query/batch_query_result_list.html"
+
+    def get_filter_queryset(self):
+        return self.object.results.select_related("query")
+
+
+class BatchQueryResultDownloadView(
+    LoginRequiredMixin,
+    OwnerRequiredMixin,
+    SingleObjectMixin,
+    View,
+):
+    model = BatchQueryJob
+    owner_accessor = "owner"
+
+    def get(self, request, *args, **kwargs):  # pylint: disable=unused-argument
+        job = self.get_object()
+        file = StringIO()
+        export_results(job, file)
+        response = HttpResponse(file.getvalue(), content_type="text/csv")
+        filename = f"batch_query_job_{job.id}_results.csv"
+        response["Content-Disposition"] = f"attachment;filename={filename}"
+        return response

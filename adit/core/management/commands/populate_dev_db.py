@@ -12,23 +12,22 @@ from adit.core.factories import (
 )
 from adit.batch_transfer.factories import (
     BatchTransferJobFactory,
-    BatchTransferRequestFactory,
     BatchTransferTaskFactory,
 )
 from adit.selective_transfer.factories import (
     SelectiveTransferJobFactory,
     SelectiveTransferTaskFactory,
 )
-from adit.batch_finder.factories import (
-    BatchFinderJobFactory,
-    BatchFinderQueryFactory,
-    BatchFinderResultFactory,
+from adit.batch_query.factories import (
+    BatchQueryJobFactory,
+    BatchQueryTaskFactory,
+    BatchQueryResultFactory,
 )
 
 
 SELECTIVE_TRANSFER_JOB_COUNT = 5
 BATCH_TRANSFER_JOB_COUNT = 3
-BATCH_FINDER_JOB_COUNT = 2
+BATCH_QUERY_JOB_COUNT = 2
 CREATE_JOBS_FOR_ADMIN_ONLY = True
 
 fake = Faker()
@@ -45,14 +44,14 @@ def create_users():
     admin_data = {k: v for k, v in admin_data.items() if v is not None}
     admin = AdminUserFactory(**admin_data)
 
-    batch_transferrers_group = Group.objects.get(name="batch_transferrers")
-    selective_transferrers_group = Group.objects.get(name="selective_transferrers")
+    batch_transfer_group = Group.objects.get(name="batch_transfer_group")
+    selective_transfer_group = Group.objects.get(name="selective_transfer_group")
 
     users = [admin]
     for _ in range(10):
         user = UserFactory()
-        user.groups.add(batch_transferrers_group)
-        user.groups.add(selective_transferrers_group)
+        user.groups.add(batch_transfer_group)
+        user.groups.add(selective_transfer_group)
         users.append(user)
 
     return users
@@ -94,8 +93,8 @@ def create_jobs(users, servers, folders):
     for _ in range(BATCH_TRANSFER_JOB_COUNT):
         create_batch_transfer_job(users, servers, folders)
 
-    for _ in range(BATCH_FINDER_JOB_COUNT):
-        create_batch_finder_job(users)
+    for _ in range(BATCH_QUERY_JOB_COUNT):
+        create_batch_query_job(users)
 
 
 def create_selective_transfer_job(users, servers, folders):
@@ -121,24 +120,21 @@ def create_batch_transfer_job(users, servers, folders):
     )
 
     for batch_id in range(fake.random_int(min=1, max=100)):
-        request = BatchTransferRequestFactory(job=job, batch_id=batch_id)
-
-        for _ in range(fake.random_int(min=1, max=3)):
-            BatchTransferTaskFactory(job=job, request=request)
+        BatchTransferTaskFactory(job=job, batch_id=batch_id)
 
     return job
 
 
-def create_batch_finder_job(users):
-    job = BatchFinderJobFactory(
+def create_batch_query_job(users):
+    job = BatchQueryJobFactory(
         owner=factory.Faker("random_element", elements=users),
     )
 
     for batch_id in range(fake.random_int(min=1, max=100)):
-        query = BatchFinderQueryFactory(job=job, batch_id=batch_id)
+        query = BatchQueryTaskFactory(job=job, batch_id=batch_id)
 
         for _ in range(fake.random_int(min=1, max=3)):
-            BatchFinderResultFactory(job=job, query=query)
+            BatchQueryResultFactory(job=job, query=query)
 
     return job
 

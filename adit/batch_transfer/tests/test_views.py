@@ -11,10 +11,10 @@ from adit.core.factories import DicomServerFactory
 from ..models import BatchTransferJob
 
 csv_data = b"""\
-Batch ID;Patient ID;Patient Name;Birth Date;Study Date;Modality;Pseudonym;
-1;10007;Papaya, Pamela;29.08.1976;19.08.2018;MR;ABU5QZL9;
-2;10002;Banana, Ben;18.02.1962;27.03.2018;CT;DEDH6SVQ;
-3;10002;Banana, Ben;18.02.1962;15.09.2019;MR;DEDH6SVQ;
+Batch ID;Patient ID;Accession Number;Study Instance UID;Pseudonym
+1;1001;;1.2.840.113845.11.1000000001951524609.20200705182951.2689481;WSOHMP4N
+2;1002;0062094302;1.2.840.113845.11.1000000001951524609.20200705170836.2689469;C2XJQ2AR
+3;;0062094311;1.2.840.113845.11.1000000001951524609.20200705172608.2689471;KRS8CZ3S
 """
 
 # Somehow the form data must be always generated from scratch (maybe cause of the
@@ -41,8 +41,8 @@ def user_without_permission(db):
 @pytest.fixture
 def user_with_permission(db):
     user = UserFactory()
-    batch_transferrers_group = Group.objects.get(name="batch_transferrers")
-    user.groups.add(batch_transferrers_group)
+    batch_transfer_group = Group.objects.get(name="batch_transfer_group")
+    user.groups.add(batch_transfer_group)
     return user
 
 
@@ -77,7 +77,7 @@ def test_batch_job_created_and_enqueued_with_auto_verify(
     settings.BATCH_TRANSFER_UNVERIFIED = True
     client.post(reverse("batch_transfer_job_create"), form_data)
     job = BatchTransferJob.objects.first()
-    assert job.requests.count() == 3
+    assert job.tasks.count() == 3
     batch_transfer_delay_mock.assert_called_once_with(job.id)
 
 
@@ -89,7 +89,7 @@ def test_batch_job_created_and_not_enqueued_without_auto_verify(
     settings.BATCH_TRANSFER_UNVERIFIED = False
     client.post(reverse("batch_transfer_job_create"), form_data)
     job = BatchTransferJob.objects.first()
-    assert job.requests.count() == 3
+    assert job.tasks.count() == 3
     batch_transfer_delay_mock.assert_not_called()
 
 

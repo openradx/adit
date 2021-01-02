@@ -66,8 +66,3 @@ table.table thead th.desc.orderable {
 table.table thead th.orderable {
     min-width: 85px;
 }
-
-/* Align job ids to the right inside the column */
-table.table tbody td.record-id {
-    text-align: right;
-}

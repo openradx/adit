@@ -1,0 +1,24 @@
+{% extends "core/base_generic.html" %}
+
+{% load explorer_url from dicom_explorer_extras %}
+
+{% block container %}
+
+<h4 class="mb-3">
+    DICOM Explorer
+    <small class="text-muted">Study List</small>
+</h4>
+
+{% if max_query_results %}
+    <div class="alert alert-warning mt-3" role="alert">
+        Results limited to {{ studies|length|add:"-1" }} studies.
+    </div>
+{% endif %}
+
+<div class="card">
+    {% include "dicom_explorer/_server_infos.html" %}
+</div>
+
+{% include "dicom_explorer/_studies_table.html" %}
+
+{% endblock container %}

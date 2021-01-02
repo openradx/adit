@@ -46,3 +46,13 @@ class BatchTaskSerializer(serializers.ModelSerializer):
     def patient_name_to_dicom(self, data, field_name):
         if field_name in data:
             data[field_name] = re.sub(r"\s*,\s*", "^", data[field_name])
+
+    def validate(self, attrs):
+        attrs = super().validate(attrs)
+
+        # In contrast to Django's ModelForm does a ModelSerializer not call
+        # the model clean method itself (at leat in DRF v3).
+        batch_task = self.model(**attrs)
+        batch_task.clean()
+
+        return attrs

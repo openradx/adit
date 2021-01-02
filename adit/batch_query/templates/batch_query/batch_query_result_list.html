@@ -1,0 +1,38 @@
+{% extends "core/base_generic.html" %}
+
+{% load crispy from crispy_forms_tags %}
+{% load render_table from django_tables2 %}
+
+{% block container %}
+<div class="d-flex justify-content-between align-items-start">
+    <h4 class="mb-3">
+        Batch Query Results
+    </h4>
+    <a href="{% url 'batch_query_job_detail' job.id %}">
+        {% include "core/_arrow_return_left.svg" %}
+        <span class="align-middle">View Job</span>
+    </a>
+</div>
+
+<div class="row justify-content-start mb-1">
+    <div class="col-md">
+        <h5 text-nowrap class="mb-0">
+            <a 
+                href="{% url 'batch_query_result_download' job.id %}"
+                class="badge badge-light align-top"
+            >
+                {% include "core/_download.svg" %}
+                Download all results
+            </a>
+        </h5>
+    </div>
+    <div class="col col-md-auto">
+        {% crispy filter.form %}
+    </div>
+    <div class="col col-md-auto">
+        {% crispy page_size_select %}
+    </div>
+</div>
+
+{% render_table table %}
+{% endblock container %}

@@ -1,4 +1,3 @@
-from django.core import validators
 from django.core.validators import RegexValidator
 from django.core.exceptions import ValidationError
 
@@ -22,7 +21,7 @@ no_wildcard_chars_validator = RegexValidator(
 )
 
 
-def validate_uids(value):
+def validate_uid_list(value):
     if not isinstance(value, list):
         raise ValidationError(f"Invalid {value} UIDs type: {type(value)}")
 

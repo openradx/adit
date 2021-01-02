@@ -30,7 +30,7 @@ def create_group():
     from adit.accounts.utils import create_group_with_permissions
 
     create_group_with_permissions(
-        "batch_transferrers",
+        "batch_transfer_group",
         (
             "batch_transfer.add_batchtransferjob",
             "batch_transfer.view_batchtransferjob",

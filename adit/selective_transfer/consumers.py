@@ -4,14 +4,13 @@ import asyncio
 import threading
 from concurrent.futures import ThreadPoolExecutor
 from django.http import QueryDict
+from django.conf import settings
 from django.template.loader import render_to_string
 from channels.generic.websocket import AsyncJsonWebsocketConsumer
 from channels.db import database_sync_to_async
 from crispy_forms.utils import render_crispy_form
 from .forms import SelectiveTransferJobForm
 from .mixins import SelectiveTransferJobCreateMixin
-
-QUERY_RESULT_LIMIT = 101
 
 logger = logging.getLogger(__name__)
 
@@ -152,8 +151,9 @@ class SelectiveTransferConsumer(
             self.query_connectors.append(connector)
 
         try:
-            studies = self.query_studies(connector, form, QUERY_RESULT_LIMIT)
-            max_query_results = len(studies) >= QUERY_RESULT_LIMIT
+            limit = settings.SELECTIVE_TRANSFER_RESULT_LIMIT
+            studies = self.query_studies(connector, form, limit)
+            max_query_results = len(studies) >= limit
             if message_id == self.current_message_id:
                 return {
                     "#query_form": render_crispy_form(form),
