@@ -62,9 +62,7 @@ def test_batch_transfer_finished_with_success(
 @pytest.mark.django_db
 @patch.object(Scheduler, "must_be_scheduled", return_value=False)
 @patch("adit.batch_transfer.tasks.TransferUtil.start_transfer")
-@patch("adit.batch_transfer.tasks.fetch_patient_id_cached")
 def test_transfer_task_without_study_fails(
-    fetch_patient_id_cached_mock,
     start_transfer_mock,
     must_be_scheduled_mock,
 ):
@@ -83,7 +81,6 @@ def test_transfer_task_without_study_fails(
     connector.find_patients.return_value = [patient]
     connector.find_studies.return_value = []
 
-    fetch_patient_id_cached_mock.return_value = patient["PatientID"]
     start_transfer_mock.return_value = TransferTask.Status.SUCCESS
 
     with patch.object(BatchTransferJob, "source") as source_mock:

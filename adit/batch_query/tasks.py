@@ -1,3 +1,4 @@
+import re
 from celery import shared_task, chord
 from celery.utils.log import get_task_logger
 from django.conf import settings
@@ -9,7 +10,6 @@ from adit.core.utils.task_utils import (
     prepare_dicom_task,
     finish_dicom_job,
     handle_job_failure,
-    fetch_patient_id_cached,
 )
 from .models import (
     BatchQueryJob,
@@ -52,12 +52,7 @@ def process_query(query_task: BatchQueryTask):
     try:
         connector: DicomConnector = job.source.dicomserver.create_connector()
 
-        patient_id = fetch_patient_id_cached(
-            connector,
-            query_task.patient_id,
-            query_task.patient_name,
-            query_task.patient_birth_date,
-        )
+        patient_name = re.sub(r"\s*,\s*", "^", query_task.patient_name)
 
         study_date = ""
         if query_task.study_date_start:
@@ -78,11 +73,11 @@ def process_query(query_task: BatchQueryTask):
 
         studies = connector.find_studies(
             {
-                "PatientID": patient_id,
-                "PatientName": "",
-                "PatientBirthDate": "",
+                "PatientID": query_task.patient_id,
+                "PatientName": patient_name,
+                "PatientBirthDate": query_task.patient_birth_date,
                 "StudyInstanceUID": "",
-                "AccessionNumber": "",
+                "AccessionNumber": query_task.accession_number,
                 "StudyDate": study_date,
                 "StudyTime": "",
                 "StudyDescription": "",

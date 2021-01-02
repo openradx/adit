@@ -162,30 +162,3 @@ def handle_job_failure(dicom_job_class: Type[DicomJob], logger: Logger):
         return _wrapper
 
     return _decorator
-
-
-@redis_lru(capacity=10000, slicer=slice(3))
-def fetch_patient_id_cached(
-    connector: DicomConnector, patient_id: str, patient_name: str, birth_date: date
-):
-    """Fetch the patient for this request.
-
-    Raises an error if there is no patient or there are multiple patients for this request.
-    """
-    patients = connector.find_patients(
-        {
-            "PatientID": patient_id,
-            "PatientName": patient_name,
-            "PatientBirthDate": birth_date,
-        }
-    )
-
-    if len(patients) == 0:
-        raise ValueError("No patients found.")
-    if len(patients) > 1:
-        raise ValueError("Multiple patients found.")
-
-    return patients[0]["PatientID"]
-
-
-fetch_patient_id_cached.init(redis.Redis.from_url(settings.REDIS_URL))

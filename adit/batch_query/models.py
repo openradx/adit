@@ -53,6 +53,15 @@ class BatchQueryTask(BatchTask, DicomTask):
         blank=True,
         error_messages={"invalid": "Invalid date format."},
     )
+    accession_number = models.CharField(
+        blank=True,
+        max_length=16,
+        validators=[
+            no_backslash_char_validator,
+            no_control_chars_validator,
+            no_wildcard_chars_validator,
+        ],
+    )
     study_date_start = models.DateField(
         null=True,
         blank=True,

@@ -20,21 +20,23 @@ no_wildcard_chars_validator = RegexValidator(
     inverse_match=True,
 )
 
+uid_chars_validator = RegexValidator(
+    regex=r"^[\d\.]+$", message="Invalid character in UID."
+)
+
 
 def validate_uid_list(value):
     if not isinstance(value, list):
-        raise ValidationError(f"Invalid {value} UIDs type: {type(value)}")
+        raise ValidationError("Must be a list of UIDs.")
 
     for uid in value:
         if not isinstance(uid, str):
-            raise ValidationError(f"Invalid {uid} UID type: {type(uid)}")
+            raise ValidationError("Invalid UID type.")
 
         if len(uid) > 64:
-            raise ValidationError(f"UID string too long: {uid}")
+            raise ValidationError("UID string too long (max 64 characters).")
 
-        no_backslash_char_validator(uid)
-        no_control_chars_validator(uid)
-        no_wildcard_chars_validator(uid)
+        uid_chars_validator(uid)
 
 
 def validate_modalities(value):

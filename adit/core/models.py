@@ -1,13 +1,13 @@
 from datetime import time
 from django.db import models
 from django.conf import settings
-from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
 from .utils.dicom_connector import DicomConnector
 from .validators import (
     no_backslash_char_validator,
     no_control_chars_validator,
     no_wildcard_chars_validator,
+    uid_chars_validator,
     validate_uid_list,
 )
 
@@ -233,17 +233,7 @@ class TransferTask(DicomTask):
         abstract = True
 
     patient_id = models.CharField(
-        blank=True,
         max_length=64,
-        validators=[
-            no_backslash_char_validator,
-            no_control_chars_validator,
-            no_wildcard_chars_validator,
-        ],
-    )
-    accession_number = models.CharField(
-        blank=True,
-        max_length=16,
         validators=[
             no_backslash_char_validator,
             no_control_chars_validator,
@@ -251,13 +241,8 @@ class TransferTask(DicomTask):
         ],
     )
     study_uid = models.CharField(
-        blank=True,
         max_length=64,
-        validators=[
-            no_backslash_char_validator,
-            no_control_chars_validator,
-            no_wildcard_chars_validator,
-        ],
+        validators=[uid_chars_validator],
     )
     series_uids = models.JSONField(
         null=True,
@@ -269,13 +254,6 @@ class TransferTask(DicomTask):
         max_length=64,
         validators=[no_backslash_char_validator, no_control_chars_validator],
     )
-
-    def clean(self):
-        if not (self.accession_number or self.study_uid):
-            raise ValidationError(
-                "A study must be identifiable by either an 'Accession Number' "
-                "or a 'Study Instance UID'."
-            )
 
     def __str__(self):
         return (
