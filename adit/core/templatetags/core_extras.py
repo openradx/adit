@@ -6,7 +6,7 @@ register = Library()
 
 
 @register.filter
-def convert_dicom_person_name(value):
+def person_name_from_dicom(value):
     if not value:
         return value
 
