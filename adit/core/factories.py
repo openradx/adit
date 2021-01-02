@@ -84,7 +84,6 @@ class TransferTaskFactory(DicomTaskFactory):
         model = None
 
     patient_id = factory.Faker("numerify", text="##########")
-    accession_number = factory.Faker("ean")
     study_uid = factory.Faker("uuid4")
     series_uids = factory.LazyFunction(generate_uids)
     pseudonym = factory.Faker("hexify", text="^^^^^^^^^^")

@@ -1,13 +1,9 @@
 from logging import Logger
 from typing import Type, List, Callable
 from functools import wraps
-from datetime import date, timedelta
-import redis
+from datetime import timedelta
 from celery import Task as CeleryTask
-from django.conf import settings
 from django.utils import timezone
-from adit.core.utils.dicom_connector import DicomConnector
-from adit.core.utils.redis_lru import redis_lru
 from adit.core.utils.mail import send_job_failed_mail
 from ..models import AppSettings, DicomJob, DicomTask
 from ..utils.scheduler import Scheduler
