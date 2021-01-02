@@ -8,7 +8,6 @@ class BatchTransferTaskSerializer(BatchTaskSerializer):
         fields = [
             "batch_id",
             "patient_id",
-            "accession_number",
             "study_uid",
             "pseudonym",
         ]
