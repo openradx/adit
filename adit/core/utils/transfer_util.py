@@ -35,6 +35,9 @@ class TransferUtil:  # pylint: disable=too-few-public-methods
         self.anonymizer = Anonymizer()
 
     def start_transfer(self):
+        if self.transfer_task.status == TransferTask.Status.CANCELED:
+            return self.transfer_task.status
+
         if self.transfer_task.status != TransferTask.Status.PENDING:
             raise AssertionError(
                 f"Invalid status {self.transfer_task.status} of {self.transfer_task}"

@@ -6,6 +6,7 @@ from django.views.generic import DetailView
 from django.views.generic.detail import SingleObjectMixin
 from django.views.generic.base import View
 from django.urls import reverse_lazy
+from django.conf import settings
 from django_tables2 import SingleTableMixin
 from adit.core.mixins import (
     OwnerRequiredMixin,
@@ -52,6 +53,20 @@ class BatchQueryJobCreateView(
     form_class = BatchQueryJobForm
     template_name = "batch_query/batch_query_job_form.html"
     permission_required = "batch_query.add_batchqueryjob"
+
+    def form_valid(self, form):
+        user = self.request.user
+        form.instance.owner = user
+
+        response = super().form_valid(form)
+
+        job = self.object
+        if user.is_staff or settings.BATCH_QUERY_UNVERIFIED:
+            job.status = BatchQueryJob.Status.PENDING
+            job.save()
+            job.delay()
+
+        return response
 
 
 class BatchQueryJobDetailView(

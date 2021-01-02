@@ -19,6 +19,7 @@ import threading
 from concurrent.futures import ThreadPoolExecutor
 from io import BytesIO
 import errno
+from functools import wraps
 import pika
 from celery.utils.log import get_task_logger
 from pydicom import config as pydicom_config
@@ -214,6 +215,7 @@ def _connect_to_server(func):
     and the connection is closed by the most outer method automatically.
     """
 
+    @wraps(func)
     def wrapper(self, *args, **kwargs):
         opened_connection = False
 

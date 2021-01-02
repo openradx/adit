@@ -1,4 +1,6 @@
+from typing import List
 from celery import shared_task, chord
+from celery import Task as CeleryTask
 from celery.utils.log import get_task_logger
 from django.conf import settings
 from adit.core.utils.transfer_util import TransferUtil
@@ -19,14 +21,16 @@ logger = get_task_logger(__name__)
 
 
 @shared_task(ignore_result=True)
-@prepare_dicom_job(BatchTransferJob, logger)
-def batch_transfer(transfer_job: BatchTransferJob):
+def batch_transfer(transfer_job_id: int):
+    transfer_job = BatchTransferJob.objects.get(id=transfer_job_id)
+    prepare_dicom_job(transfer_job)
+
     priority = settings.BATCH_TRANSFER_DEFAULT_PRIORITY
     if transfer_job.urgent:
         priority = settings.BATCH_TRANSFER_URGENT_PRIORITY
 
     transfer_tasks = [
-        transfer_dicoms.s(transfer_task.id).set(priority=priority)
+        process_transfer.s(transfer_task.id).set(priority=priority)
         for transfer_task in transfer_job.tasks.all()
     ]
 
@@ -38,19 +42,26 @@ def batch_transfer(transfer_job: BatchTransferJob):
 
 
 @shared_task(bind=True)
-@prepare_dicom_task(BatchTransferTask, BatchTransferSettings, logger)
-def transfer_dicoms(transfer_task: BatchTransferTask):
+def process_transfer(self: CeleryTask, transfer_task_id: int):
+    transfer_task = BatchTransferTask.objects.get(id=transfer_task_id)
+    prepare_dicom_task(transfer_task, BatchTransferSettings.get(), self)
+
     transfer_util = TransferUtil(transfer_task)
     return transfer_util.start_transfer()
 
 
 @shared_task(ignore_result=True)
-@finish_dicom_job(BatchTransferJob, logger)
-def on_job_finished(transfer_job: BatchTransferJob):
+def on_job_finished(transfer_task_status_list: List[str], transfer_job_id: int):
+    transfer_job = BatchTransferJob.objects.get(id=transfer_job_id)
+    finish_dicom_job(transfer_task_status_list, transfer_job)
     send_job_finished_mail(transfer_job)
 
 
 @shared_task
-@handle_job_failure(BatchTransferJob, logger)
-def on_job_failed(transfer_job: BatchTransferJob):  # pylint: disable=unused-argument
-    pass
+def on_job_failed(*args, **kwargs):
+    # The Celery documentation is wrong about the provided parameters and when
+    # the callback is called. This function definition seems to work however.
+    # See https://github.com/celery/celery/issues/3709
+    celery_task_id = args[0]
+    transfer_job = BatchTransferJob.objects.get(id=kwargs["job_id"])
+    handle_job_failure(transfer_job, celery_task_id)

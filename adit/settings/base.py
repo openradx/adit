@@ -321,6 +321,7 @@ BATCH_PATIENT_CACHE_SIZE = 10000
 # this option to True ADIT will schedule unverified transfers
 # (and directly set the status of the job to PENDING).
 SELECTIVE_TRANSFER_UNVERIFIED = True
+BATCH_QUERY_UNVERIFIED = True
 BATCH_TRANSFER_UNVERIFIED = True
 CONTINUOUS_TRANSFER_UNVERIFIED = True
 
