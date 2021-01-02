@@ -60,10 +60,11 @@ class BatchQueryJobForm(forms.ModelForm):
         parser = BatchTaskParser(
             BatchQueryTaskSerializer,
             {
-                "batch_id": "Batch ID",
-                "patient_id": "Patient ID",
-                "patient_name": "Patient Name",
-                "patient_birth_date": "Birth Date",
+                "batch_id": "BatchID",
+                "patient_id": "PatientID",
+                "patient_name": "PatientName",
+                "patient_birth_date": "PatientBirthDate",
+                "accession_number": "AccessionNumber",
                 "study_date_start": "From",
                 "study_date_end": "Until",
                 "modalities": "Modalities",

@@ -8,17 +8,17 @@ def export_results(job: BatchQueryJob, file):
     # Write column header
     writer.writerow(
         [
-            "Batch ID",
-            "Patient ID",
-            "Patient Name",
-            "Birth Date",
-            "Study Date",
-            "Study Time",
-            "Study Description",
+            "BatchID",
+            "PatientID",
+            "PatientName",
+            "BirthDate",
+            "StudyDate",
+            "StudyTime",
+            "StudyDescription",
             "Modalities",
-            "Image Count",
-            "Accession Number",
-            "Study UID",
+            "ImageCount",
+            "AccessionNumber",
+            "StudyInstanceUID",
         ]
     )
 

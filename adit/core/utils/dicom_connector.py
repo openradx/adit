@@ -539,7 +539,7 @@ class DicomConnector:
     def find_studies(self, query, force_study_root=False, limit_results=None):
         query["QueryRetrieveLevel"] = "STUDY"
 
-        if not "NumberObStudyRelatedInstances" in query:
+        if not "NumberOfStudyRelatedInstances" in query:
             query["NumberOfStudyRelatedInstances"] = ""
 
         studies = self._find(
@@ -568,7 +568,7 @@ class DicomConnector:
         filtered_studies = []
         for study in studies:
             study_modalities = study.get("ModalitiesInStudy")
-            number_images = int(study.get("NumberObStudyRelatedInstances") or 1)
+            number_images = int(study.get("NumberOfStudyRelatedInstances") or 1)
 
             if study_modalities and isinstance(study_modalities, list):
                 filtered_studies.append(study)

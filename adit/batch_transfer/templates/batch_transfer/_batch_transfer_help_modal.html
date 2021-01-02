@@ -7,10 +7,9 @@ Batch Transfer Help
 {% block modal_body %}
 <p>
     With this form you can create a new batch transfer job to transfer studies
-    from a source to a destination. Batch transfer jobs are put into a queue
-    and will be processed by a worker when the time is right.
-    The status of a job can be viewed on the "All Jobs" page and you will
-    get an Email when the job is finished (or failed for some reason).
+    from a source server to a destination. Batch transfer jobs are put into a
+    queue and will be processed by a worker when the time is right.
+    You will get an Email when the job is finished (or failed for some reason).
 </p>
 
 <p>
@@ -23,33 +22,30 @@ Batch Transfer Help
 </p>
 
 <p>
-    A combination of the following columns must be defined in the CSV file:
+    The following columns must be defined in the CSV file:
     <dl>
-        <dt>Batch ID</dt>
-        <dd>A consecutive unique number that identifies the transfer.</dd>
-        <dt>Patient ID</dt>
-        <dd>The unique ID of the patient in the PACS (optional, but some PACS server requires it).</dd>
-        <dt>Accession Number</dt>
-        <dd>A unique ID that identifies the study in the PACS (optional if Study Instance UID is provided).</dd>
-        <dt>Study Instance UID</dt>
-        <dd>A unique ID that identifies the study everywhere (optional if Accession Number is provided)</dd>
+        <dt>BatchID</dt>
+        <dd>A consecutive unique number that identifies the transfer (required).</dd>
+        <dt>PatientID</dt>
+        <dd>The unique ID of the patient in the PACS.</dd>
+        <dt>StudyInstanceUID</dt>
+        <dd>A unique ID that identifies the study.</dd>
         <dt>Pseudonym</dt>
-        <dd>An optional pseudonym to pseudonymize the images to transfer (if not provided then the images won't be pseudonymized).</dd>
+        <dd>A pseudonym to pseudonymize the images during transfer.</dd>
     </dl>
 </p>
 
-<div class="mb-1">A valid CSV file may look like this:</div>
-<pre>
-Batch ID;Patient ID;Patient Name;Birth Date;Accession Number;Study Date;Modality;Pseudonym
-1;10007;Papaya, Pamela;29.08.1976;;19.08.2018;MR;ABU5QZL9
-2;10002;Banana, Ben;18.02.1962;0062094291;;;DEDH6SVQ
-3;10002;;18.02.1962;;15.09.2019;MR;DEDH6SVQ
-</pre>
-
 <p>
-    The provided pseudonym will be set as Patient ID and Patient Name. So it is
+    The provided pseudonym will be set as PatientID and PatientName. So it is
     best to use some identifier like in the above example (and not another
     person name).
 </p>
+
+<div class="mb-1">
+    <a href="{% static 'samples/batch_transfer_sample.csv' %}">
+        {% include "core/_download.svg" %}
+        Download a sample CSV batch transfer file (supported by Excel).
+    </a>
+</div>
 
 {% endblock modal_body %}
