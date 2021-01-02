@@ -32,6 +32,8 @@ class TransferUtil:  # pylint: disable=too-few-public-methods
                 self.transfer_job.destination.dicomserver.create_connector()
             )
 
+        self.anonymizer = Anonymizer()
+
     def start_transfer(self):
         if self.transfer_task.status != TransferTask.Status.PENDING:
             raise AssertionError(
@@ -127,8 +129,12 @@ class TransferUtil:  # pylint: disable=too-few-public-methods
     def _transfer_to_folder(self):
         dicom_folder = Path(self.transfer_job.destination.dicomfolder.path)
         download_folder = dicom_folder / self._create_destination_name()
-
         self._download_dicoms(download_folder)
+
+    def _create_destination_name(self):
+        dt = self.transfer_job.created.strftime("%Y%m%d")
+        username = self.transfer_job.owner.username
+        return sanitize_dirname(f"adit_job_{self.transfer_job.id}_{dt}_{username}")
 
     def _download_dicoms(
         self,
@@ -143,74 +149,34 @@ class TransferUtil:  # pylint: disable=too-few-public-methods
                 self.transfer_task.patient_id
             )
 
-        # Check if the Study Instance UID is correct and fetch some parameters to create
+        # Check if the Study Instance UID is correct and fetch some attributes to create
         # the study folder.
-        studies = self.source_connector.find_studies(
-            {
-                "PatientID": self.transfer_task.patient_id,
-                "StudyInstanceUID": self.transfer_task.study_uid,
-                "StudyDate": "",
-                "StudyTime": "",
-                "ModalitiesInStudy": "",
-            }
-        )
-        if len(studies) == 0:
-            raise AssertionError(
-                f"No study found with Study Instance UID {self.transfer_task.study_uid} "
-                f"of {self.transfer_task}."
-            )
-        if len(studies) > 1:
-            raise AssertionError(
-                f"Multiple studies found with Study Instance UID {self.transfer_task.study_uid} "
-                f"of {self.transfer_task}."
-            )
-        study = studies[0]
-        study_date = study["StudyDate"]
-        study_time = study["StudyTime"]
+        study = self._fetch_study()
         modalities = study["ModalitiesInStudy"]
 
         # If some series are explicitly chosen then check if their Series Instance UIDs
         # are correct and only use their modalities for the name of the study folder.
         if self.transfer_task.series_uids:
             modalities = set()
-            series_list = self.source_connector.find_series(
-                {
-                    "PatientID": self.transfer_task.patient_id,
-                    "StudyInstanceUID": self.transfer_task.study_uid,
-                    "SeriesInstanceUID": "",
-                    "Modality": "",
-                }
-            )
-            for series_uid in self.transfer_task.series_uids:
-                found_series = None
-                for series in series_list:
-                    if series["SeriesInstanceUID"] == series_uid:
-                        found_series = series
+            for series in self._fetch_series_list():
+                modalities.add(series["Modality"])
 
-                if not found_series:
-                    raise AssertionError(
-                        f"No series found with Series Instance UID {series_uid} "
-                        f"of {self.transfer_task}."
-                    )
-
-                modalities.add(found_series["Modality"])
+        study_date = study["StudyDate"]
+        study_time = study["StudyTime"]
         modalities = ",".join(modalities)
-
-        dt = f"{study_date.strftime('%Y%m%d')}-{study_time.strftime('%H%M%S')}"
-        study_folder = patient_folder / f"{dt}-{modalities}"
+        prefix = f"{study_date.strftime('%Y%m%d')}-{study_time.strftime('%H%M%S')}"
+        study_folder = patient_folder / f"{prefix}-{modalities}"
         study_folder.mkdir(parents=True, exist_ok=True)
 
-        anonymizer = Anonymizer()
         modifier_callback = partial(
             self._modify_dataset,
-            anonymizer,
             pseudonym,
             self.transfer_job.trial_protocol_id,
             self.transfer_job.trial_protocol_name,
         )
 
         if self.transfer_task.series_uids:
-            # Download specific series of a study only.
+            # Download only the specified series of a study.
             self._download_series(
                 study,
                 self.transfer_task.series_uids,
@@ -222,6 +188,58 @@ class TransferUtil:  # pylint: disable=too-few-public-methods
             self._download_study(study, study_folder, modifier_callback)
 
         return patient_folder
+
+    def _fetch_study(self):
+        studies = self.source_connector.find_studies(
+            {
+                "PatientID": self.transfer_task.patient_id,
+                "StudyInstanceUID": self.transfer_task.study_uid,
+                "StudyDate": "",
+                "StudyTime": "",
+                "ModalitiesInStudy": "",
+            }
+        )
+
+        if len(studies) == 0:
+            raise ValueError(
+                f"No study found with Study Instance UID {self.transfer_task.study_uid}."
+            )
+        if len(studies) > 1:
+            raise AssertionError(
+                f"Multiple studies found with Study Instance UID {self.transfer_task.study_uid}."
+            )
+
+        return studies[0]
+
+    def _fetch_series_list(self):
+        series_list = self.source_connector.find_series(
+            {
+                "PatientID": self.transfer_task.patient_id,
+                "StudyInstanceUID": self.transfer_task.study_uid,
+                "SeriesInstanceUID": "",
+                "Modality": "",
+            }
+        )
+
+        results = []
+        for series_uid in self.transfer_task.series_uids:
+            found = []
+            for series in series_list:
+                if series["SeriesInstanceUID"] == series_uid:
+                    found.append(series)
+
+            if len(found) == 0:
+                raise ValueError(
+                    f"No series found with Series Instance UID {series_uid}."
+                )
+            if len(found) > 1:
+                raise AssertionError(
+                    f"Multiple series found with Series Instance UID {series_uid}."
+                )
+
+            results.append(found[0])
+
+        return results
 
     def _download_study(self, study, study_folder, modifier_callback):
         self.source_connector.download_study(
@@ -267,13 +285,11 @@ class TransferUtil:  # pylint: disable=too-few-public-methods
                 modifier_callback,
             )
 
-    def _modify_dataset(
-        self, anonymizer, pseudonym, trial_protocol_id, trial_protocol_name, ds
-    ):
+    def _modify_dataset(self, pseudonym, trial_protocol_id, trial_protocol_name, ds):
         """Optionally pseudonymize an incoming dataset with the given pseudonym
         and add the trial ID and name to the DICOM header if specified."""
         if pseudonym:
-            anonymizer.anonymize(ds)
+            self.anonymizer.anonymize(ds)
             ds.PatientID = pseudonym
             ds.PatientName = pseudonym
 
@@ -319,8 +335,3 @@ class TransferUtil:  # pylint: disable=too-few-public-methods
         (_, stderr) = proc.communicate()
         if proc.returncode != 0:
             raise IOError("Failed to add path to archive (%s)" % stderr)
-
-    def _create_destination_name(self):
-        dt = self.transfer_job.created.strftime("%Y%m%d")
-        username = self.transfer_job.owner.username
-        return sanitize_dirname(f"adit_job_{self.transfer_job.id}_{dt}_{username}")
