@@ -1,11 +1,15 @@
 from datetime import datetime
+from django.conf import settings
 from adit.core.models import DicomServer
 from adit.core.utils.dicom_connector import DicomConnector
 
 
 class DicomDataCollector:
     def __init__(self, server: DicomServer):
-        self.connector: DicomConnector = server.create_connector(connection_retries=1)
+        self.connector: DicomConnector = server.create_connector(
+            connection_retries=1,
+            acse_timeout=settings.DICOM_EXPLORER_RESPONSE_TIMEOUT,
+        )
 
     def collect_patient_data(self, patient_id=None, query=None, limit_results=None):
         # http://dicom.nema.org/medical/dicom/current/output/chtml/part04/sect_C.6.html#table_C.6-1

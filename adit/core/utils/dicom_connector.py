@@ -248,9 +248,12 @@ class DicomConnector:
         study_root_get_support: bool = True
         study_root_move_support: bool = True
         debug_logger: bool = False
+        auto_connect: bool = True
         connection_retries: int = 3
         retry_timeout: int = 30  # in seconds
-        auto_connect: bool = True
+        acse_timeout: int = None
+        dimse_timeout: int = None
+        network_timeout: int = None
 
     def __init__(self, config: Config):
         self.config = config
@@ -262,6 +265,15 @@ class DicomConnector:
 
     def _associate(self):
         ae = AE(ae_title=self.config.client_ae_title)
+
+        if self.config.acse_timeout is not None:
+            ae.acse_timeout = self.config.acse_timeout
+
+        if self.config.dimse_timeout is not None:
+            ae.dimse_timeout = self.config.dimse_timeout
+
+        if self.config.network_timeout is not None:
+            ae.network_timeout = self.config.network_timeout
 
         # See https://github.com/pydicom/pynetdicom/issues/459
         # and https://github.com/pydicom/pynetdicom/blob/master/pynetdicom/apps/getscu/getscu.py#L222

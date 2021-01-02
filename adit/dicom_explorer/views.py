@@ -176,11 +176,11 @@ def render_patient_detail(request, server, patient_id):
     patients = collector.collect_patient_data(patient_id)
 
     if len(patients) == 0:
-        return render_error(request, f"No patient found for Patient ID {patient_id}.")
+        return render_error(request, f"No patient found with Patient ID {patient_id}.")
 
     if len(patients) > 1:
         return render_error(
-            request, f"Multiple patients found for Patient ID {patient_id}."
+            request, f"Multiple patients found with Patient ID {patient_id}."
         )
 
     studies = collector.collect_study_data(query={"PatientID": patient_id})
@@ -213,12 +213,12 @@ def render_study_detail(request, server, study_uid):
 
     if len(studies) == 0:
         return render_error(
-            request, f"No study found for Study Instance UID {study_uid}."
+            request, f"No study found with Study Instance UID {study_uid}."
         )
 
     if len(studies) > 1:
         return render_error(
-            request, f"Multiple studies found for Study Instance UID {study_uid}."
+            request, f"Multiple studies found with Study Instance UID {study_uid}."
         )
 
     patients = collector.collect_patient_data(studies[0]["PatientID"])
@@ -254,12 +254,12 @@ def render_series_query(request, server, study_uid, query):
 
     if len(studies) == 0:
         return render_error(
-            request, f"No study found for Study Instance UID {study_uid}."
+            request, f"No study found with Study Instance UID {study_uid}."
         )
 
     if len(studies) > 1:
         return render_error(
-            request, f"Multiple studies found for Study Instance UID {study_uid}."
+            request, f"Multiple studies found with Study Instance UID {study_uid}."
         )
 
     patients = collector.collect_patient_data(patient_id=studies[0]["PatientID"])
@@ -297,12 +297,12 @@ def render_series_detail(request, server, study_uid, series_uid):
 
     if len(studies) == 0:
         return render_error(
-            request, f"No study found for Study Instance UID {study_uid}."
+            request, f"No study found with Study Instance UID {study_uid}."
         )
 
     if len(studies) > 1:
         return render_error(
-            request, f"Multiple studies found for Study Instance UID {study_uid}."
+            request, f"Multiple studies found with Study Instance UID {study_uid}."
         )
 
     patients = collector.collect_patient_data(patient_id=studies[0]["PatientID"])
@@ -325,7 +325,7 @@ def render_series_detail(request, server, study_uid, series_uid):
         return render_error(
             request,
             (
-                f"No series found for Study Instance UID {study_uid} "
+                f"No series found with Study Instance UID {study_uid} "
                 f"and Series Instance UID {series_uid}."
             ),
         )
@@ -334,7 +334,7 @@ def render_series_detail(request, server, study_uid, series_uid):
         return render_error(
             request,
             (
-                f"Multiple series found for Study Instance UID {study_uid} "
+                f"Multiple series found with Study Instance UID {study_uid} "
                 f"and Series Instance UID {series_uid}."
             ),
         )
