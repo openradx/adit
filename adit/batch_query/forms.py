@@ -9,7 +9,7 @@ import cchardet as chardet
 from adit.core.forms import DicomNodeChoiceField
 from adit.core.models import DicomNode
 from adit.core.fields import RestrictedFileField
-from adit.core.utils.parsers import BatchTaskParser, BatchTaskParserError
+from adit.core.utils.batch_parsers import parse_csv_file, ParsingError
 from .models import BatchQueryJob, BatchQueryTask
 from .serializers import BatchQueryTaskSerializer
 
@@ -57,26 +57,26 @@ class BatchQueryJobForm(forms.ModelForm):
 
     def clean_csv_file(self):
         csv_file = self.cleaned_data["csv_file"]
-        parser = BatchTaskParser(
-            BatchQueryTaskSerializer,
-            {
-                "batch_id": "BatchID",
-                "patient_id": "PatientID",
-                "patient_name": "PatientName",
-                "patient_birth_date": "PatientBirthDate",
-                "accession_number": "AccessionNumber",
-                "study_date_start": "From",
-                "study_date_end": "Until",
-                "modalities": "Modalities",
-            },
-        )
+        rawdata = csv_file.read()
+        encoding = chardet.detect(rawdata)["encoding"]
+        fp = StringIO(rawdata.decode(encoding))
 
         try:
-            rawdata = csv_file.read()
-            encoding = chardet.detect(rawdata)["encoding"]
-            fp = StringIO(rawdata.decode(encoding))
-            self.queries = parser.parse(fp)
-        except BatchTaskParserError as err:
+            self.queries = parse_csv_file(
+                BatchQueryTaskSerializer,
+                {
+                    "batch_id": "BatchID",
+                    "patient_id": "PatientID",
+                    "patient_name": "PatientName",
+                    "patient_birth_date": "PatientBirthDate",
+                    "accession_number": "AccessionNumber",
+                    "study_date_start": "From",
+                    "study_date_end": "Until",
+                    "modalities": "Modalities",
+                },
+                fp,
+            )
+        except ParsingError as err:
             self.csv_error_details = err
             raise ValidationError(
                 mark_safe(

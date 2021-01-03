@@ -1,4 +1,4 @@
-from typing import List, Dict, TextIO
+from typing import List, Dict, TextIO, Type
 import csv
 from rest_framework.exceptions import ErrorDetail
 from django.conf import settings
@@ -6,7 +6,40 @@ from adit.core.models import DicomTask
 from adit.core.serializers import BatchTaskSerializer
 
 
-class BatchTaskParserError(Exception):
+def parse_csv_file(
+    serializer_class: Type[BatchTaskSerializer],
+    field_to_column_mapping: Dict[str, str],
+    csv_file: TextIO,
+) -> List[DicomTask]:
+    if not "batch_id" in field_to_column_mapping:
+        raise AssertionError("The mapping must contain a 'batch_id' field.")
+
+    data = []
+    reader = csv.DictReader(csv_file, delimiter=settings.CSV_FILE_DELIMITER)
+    for row in reader:
+        data_row = {}
+
+        for field, column in field_to_column_mapping.items():
+            data_row[field] = row.get(column, "")
+
+        data_row["__line_num__"] = reader.line_num
+
+        data.append(data_row)
+
+    serializer = serializer_class(data=data, many=True)  # pylint: disable=not-callable
+    if not serializer.is_valid():
+        raise ParsingError(
+            field_to_column_mapping,
+            data,
+            serializer.errors,
+        )
+
+    model_class = serializer_class.Meta.model
+
+    return [model_class(**item) for item in serializer.validated_data]
+
+
+class ParsingError(Exception):
     def __init__(self, field_to_column_mapping, data, errors) -> None:
         super().__init__("Invalid CSV data.")
 
@@ -61,44 +94,3 @@ class BatchTaskParserError(Exception):
 
     def _non_field_error_message(self, non_field_errors: List[ErrorDetail]):
         self.message += " ".join(non_field_errors) + "\n"
-
-
-class BatchTaskParser:  # pylint: disable=too-few-public-methods
-    def __init__(
-        self,
-        serializer_class: BatchTaskSerializer,
-        field_to_column_mapping: Dict[str, str],
-    ) -> None:
-        self.serializer_class = serializer_class
-        self.field_to_column_mapping = field_to_column_mapping
-        self.delimiter = settings.CSV_FILE_DELIMITER
-
-        if not "batch_id" in self.field_to_column_mapping:
-            raise AssertionError("The mapping must contain a 'batch_id' field.")
-
-    def parse(self, csv_file: TextIO) -> List[DicomTask]:
-        data = []
-        reader = csv.DictReader(csv_file, delimiter=self.delimiter)
-        for row in reader:
-            data_row = {}
-
-            for field, column in self.field_to_column_mapping.items():
-                data_row[field] = row.get(column, "")
-
-            data_row["__line_num__"] = reader.line_num
-
-            data.append(data_row)
-
-        serializer = self.serializer_class(  # pylint: disable=not-callable
-            data=data, many=True
-        )
-        if not serializer.is_valid():
-            raise BatchTaskParserError(
-                self.field_to_column_mapping,
-                data,
-                serializer.errors,
-            )
-
-        model_class = self.serializer_class.Meta.model
-
-        return [model_class(**item) for item in serializer.validated_data]

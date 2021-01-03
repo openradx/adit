@@ -1,9 +1,9 @@
 from io import StringIO
 import pytest
 from django.db import models
-from ...models import DicomTask, BatchTask
+from ...models import BatchTask
 from ...serializers import BatchTaskSerializer
-from ...utils.parsers import BatchTaskParser, BatchTaskParserError
+from ...utils.batch_parsers import parse_csv_file, ParsingError
 
 
 @pytest.fixture
@@ -36,21 +36,22 @@ def parser():
             model = TestTask
             fields = ["batch_id", "patient_name"]
 
-    return BatchTaskParser(
-        TestSerializer,
-        {
-            "batch_id": "Batch ID",
-            "patient_name": "Patient Name",
-        },
-    )
+    return TestSerializer
 
 
-def test_valid_csv_file_is_parsed(create_csv_file, data, parser):
+def test_valid_csv_file_is_parsed(create_csv_file, data, test_serializer_class):
     # Arrange
     file = create_csv_file(data)
 
     # Act
-    tasks = parser.parse(file)
+    tasks = parse_csv_file(
+        test_serializer_class,
+        {
+            "batch_id": "Batch ID",
+            "patient_name": "Patient Name",
+        },
+        file,
+    )
 
     # Assert
     assert tasks[0].batch_id == int(data[1][0])
@@ -65,7 +66,7 @@ def test_invalid_csv_file_raises(create_csv_file, data, parser):
     file = create_csv_file(data)
 
     # Act
-    with pytest.raises(BatchTaskParserError) as err:
+    with pytest.raises(ParsingError) as err:
         parser.parse(file)
 
     # Assert

@@ -9,7 +9,7 @@ import cchardet as chardet
 from adit.core.forms import DicomNodeChoiceField
 from adit.core.models import DicomNode
 from adit.core.fields import RestrictedFileField
-from adit.core.utils.parsers import BatchTaskParser, BatchTaskParserError
+from adit.core.utils.batch_parsers import parse_csv_file, ParsingError
 from .models import BatchTransferJob, BatchTransferTask
 from .serializers import BatchTransferTaskSerializer
 
@@ -89,22 +89,22 @@ class BatchTransferJobForm(forms.ModelForm):
 
     def clean_csv_file(self):
         csv_file = self.cleaned_data["csv_file"]
-        parser = BatchTaskParser(
-            BatchTransferTaskSerializer,
-            {
-                "batch_id": "BatchID",
-                "patient_id": "PatientID",
-                "study_uid": "StudyInstanceUID",
-                "pseudonym": "Pseudonym",
-            },
-        )
+        rawdata = csv_file.read()
+        encoding = chardet.detect(rawdata)["encoding"]
+        fp = StringIO(rawdata.decode(encoding))
 
         try:
-            rawdata = csv_file.read()
-            encoding = chardet.detect(rawdata)["encoding"]
-            fp = StringIO(rawdata.decode(encoding))
-            self.tasks = parser.parse(fp)
-        except BatchTaskParserError as err:
+            self.tasks = parse_csv_file(
+                BatchTransferTaskSerializer,
+                {
+                    "batch_id": "BatchID",
+                    "patient_id": "PatientID",
+                    "study_uid": "StudyInstanceUID",
+                    "pseudonym": "Pseudonym",
+                },
+                fp,
+            )
+        except ParsingError as err:
             self.csv_error_details = err
             raise ValidationError(
                 mark_safe(
