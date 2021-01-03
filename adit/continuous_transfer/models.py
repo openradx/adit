@@ -13,7 +13,7 @@ class ContinuousTransferJob(TransferJob):
     project_description = models.TextField(max_length=2000)
     start_date = models.DateField()
     end_date = models.DateField(null=True, blank=True)
-    last_study_datetime = models.DateTimeField(null=True, blank=True)
+    progress = models.DateTimeField(null=True, blank=True)
 
     def delay(self):
         from .tasks import (  # pylint: disable=import-outside-toplevel
