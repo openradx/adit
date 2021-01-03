@@ -335,6 +335,50 @@ class DicomConnector:
             )
 
     @connect_to_server
+    def send_study(self, patient_id, study_uid, destination, modality=None):
+        series_list = self.find_series(
+            {
+                "PatientID": patient_id,
+                "StudyInstanceUID": study_uid,
+                "Modality": modality,
+                "SeriesInstanceUID": "",
+                "SeriesDescription": "",
+            }
+        )
+
+        failed_series = []
+        for series in series_list:
+            series_uid = series["SeriesInstanceUID"]
+
+            try:
+                self.send_series(patient_id, study_uid, series, destination)
+            except ValueError:
+                failed_series.append(series_uid)
+
+        if len(failed_series) > 0:
+            raise ValueError(
+                "Problems occurred while sending series with UID: %s"
+                % ", ".join(failed_series)
+            )
+
+    @connect_to_server
+    def send_series(self, patient_id, study_uid, series_uid, destination):
+        query = {
+            "QueryRetrieveLevel": "SERIES",
+            "PatientID": patient_id,
+            "StudyInstanceUID": study_uid,
+            "SeriesInstanceUID": series_uid,
+        }
+
+        results = self.c_move(
+            query,
+            self._select_query_model_move(query),
+            destination,
+        )
+
+        _evaluate_get_move_results(results, query)
+
+    @connect_to_server
     def c_find(
         self,
         query_dict,
@@ -753,50 +797,6 @@ class DicomConnector:
         except OSError as err:
             if err.errno == errno.ENOSPC:  # No space left on device
                 raise IOError(f"Out of disk space while saving {file_path}.") from err
-
-    @connect_to_server
-    def _send_study(self, patient_id, study_uid, destination, modality=None):
-        series_list = self.find_series(
-            {
-                "PatientID": patient_id,
-                "StudyInstanceUID": study_uid,
-                "Modality": modality,
-                "SeriesInstanceUID": "",
-                "SeriesDescription": "",
-            }
-        )
-
-        failed_series = []
-        for series in series_list:
-            series_uid = series["SeriesInstanceUID"]
-
-            try:
-                self._send_series(patient_id, study_uid, series, destination)
-            except ValueError:
-                failed_series.append(series_uid)
-
-        if len(failed_series) > 0:
-            raise ValueError(
-                "Problems occurred while sending series with UID: %s"
-                % ", ".join(failed_series)
-            )
-
-    @connect_to_server
-    def _send_series(self, patient_id, study_uid, series_uid, destination):
-        query = {
-            "QueryRetrieveLevel": "SERIES",
-            "PatientID": patient_id,
-            "StudyInstanceUID": study_uid,
-            "SeriesInstanceUID": series_uid,
-        }
-
-        results = self.c_move(
-            query,
-            self._select_query_model_move(query),
-            destination,
-        )
-
-        _evaluate_get_move_results(results, query)
 
 
 def _make_query_dataset(query_dict: Dict[str, Any]):
