@@ -1,11 +1,8 @@
-import re
 from typing import List
 from celery import shared_task, chord
 from celery import Task as CeleryTask
 from celery.utils.log import get_task_logger
 from django.conf import settings
-from django.utils import timezone
-from adit.core.utils.dicom_connector import DicomConnector
 from adit.core.utils.mail import send_job_finished_mail
 from adit.core.utils.task_utils import (
     prepare_dicom_job,
@@ -16,9 +13,9 @@ from adit.core.utils.task_utils import (
 from .models import (
     BatchQueryJob,
     BatchQueryTask,
-    BatchQueryResult,
     BatchQuerySettings,
 )
+from .utils.query_util import QueryUtil
 
 logger = get_task_logger(__name__)
 
@@ -49,85 +46,8 @@ def process_query(self: CeleryTask, query_task_id: BatchQueryTask):
     query_task = BatchQueryTask.objects.get(id=query_task_id)
     prepare_dicom_task(query_task, BatchQuerySettings.get(), self)
 
-    if query_task.status == BatchQueryTask.Status.CANCELED:
-        return query_task.status
-
-    query_task.status = BatchQueryTask.Status.IN_PROGRESS
-    query_task.start = timezone.now()
-    query_task.save()
-
-    patient_name = re.sub(r"\s*,\s*", "^", query_task.patient_name)
-
-    study_date = ""
-    if query_task.study_date_start:
-        if not query_task.study_date_end:
-            study_date = query_task.study_date_start.strptime(DICOM_DATE_FORMAT) + "-"
-        elif query_task.study_date_start == query_task.study_date_end:
-            study_date = query_task.study_date_start.strptime(DICOM_DATE_FORMAT)
-        else:
-            study_date = (
-                query_task.study_date_start.strptime(DICOM_DATE_FORMAT)
-                + "-"
-                + query_task.study_date_end.strptime(DICOM_DATE_FORMAT)
-            )
-    elif query_task.study_date_end:
-        study_date = "-" + query_task.study_date_end.strptime(DICOM_DATE_FORMAT)
-
-    query_job = query_task.job
-
-    connector: DicomConnector = query_job.source.dicomserver.create_connector()
-
-    try:
-        studies = connector.find_studies(
-            {
-                "PatientID": query_task.patient_id,
-                "PatientName": patient_name,
-                "PatientBirthDate": query_task.patient_birth_date,
-                "StudyInstanceUID": "",
-                "AccessionNumber": query_task.accession_number,
-                "StudyDate": study_date,
-                "StudyTime": "",
-                "StudyDescription": "",
-                "ModalitiesInStudy": query_task.modalities,
-                "NumberOfStudyRelatedInstances": "",
-            }
-        )
-
-        results = []
-        for study in studies:
-            result = BatchQueryResult(
-                job=query_job,
-                query=query_task,
-                patient_id=study["PatientID"],
-                patient_name=study["PatientName"],
-                patient_birth_date=study["PatientBirthDate"],
-                study_uid=study["StudyInstanceUID"],
-                accession_number=study["AccessionNumber"],
-                study_date=study["StudyDate"],
-                study_time=study["StudyTime"],
-                study_description=study["StudyDescription"],
-                modalities=study["ModalitiesInStudy"],
-                image_count=study["NumberOfStudyRelatedInstances"],
-            )
-            results.append(result)
-
-        BatchQueryResult.objects.bulk_create(results)
-
-        if results:
-            query_task.status = BatchQueryTask.Status.SUCCESS
-            query_task.message = f"Found {len(results)} studies."
-        else:
-            query_task.status = BatchQueryTask.Status.WARNING
-            query_task.message = "No studies found."
-    except Exception as err:  # pylint: disable=broad-except
-        logger.exception("Error during %s", query_task)
-        query_task.status = BatchQueryTask.Status.FAILURE
-        query_task.message = str(err)
-    finally:
-        query_task.end = timezone.now()
-        query_task.save()
-
-    return query_task.status
+    query_util = QueryUtil(query_task)
+    return query_util.start_query()
 
 
 @shared_task
