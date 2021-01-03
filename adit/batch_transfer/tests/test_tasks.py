@@ -14,9 +14,9 @@ from ..tasks import process_transfer_job, process_transfer_task
 @patch("adit.batch_transfer.tasks.on_job_failed")
 @patch("adit.batch_transfer.tasks.on_job_finished")
 @patch("adit.batch_transfer.tasks.chord")
-@patch("adit.batch_transfer.tasks.transfer_dicoms")
+@patch("adit.batch_transfer.tasks.process_transfer_task")
 def test_process_transfer_job_succeeds(
-    transfer_dicoms_mock,
+    process_transfer_task_mock,
     chord_mock,
     on_job_finished_mock,
     on_job_failed_mock,
@@ -31,8 +31,10 @@ def test_process_transfer_job_succeeds(
         job=job, status=BatchTransferTask.Status.PENDING
     )
 
-    transfer_dicoms_s_mock = Mock()
-    transfer_dicoms_mock.s.return_value.set.return_value = transfer_dicoms_s_mock
+    process_transfer_task_s_mock = Mock()
+    process_transfer_task_mock.s.return_value.set.return_value = (
+        process_transfer_task_s_mock
+    )
 
     header_mock = Mock()
     chord_mock.return_value = header_mock
@@ -51,9 +53,11 @@ def test_process_transfer_job_succeeds(
     process_transfer_job(job.id)
 
     # Assert
-    transfer_dicoms_mock.s.assert_called_once_with(transfer_task.id)
-    transfer_dicoms_mock.s.return_value.set.assert_called_once_with(priority=priority)
-    chord_mock.assert_called_once_with([transfer_dicoms_s_mock])
+    process_transfer_task_mock.s.assert_called_once_with(transfer_task.id)
+    process_transfer_task_mock.s.return_value.set.assert_called_once_with(
+        priority=priority
+    )
+    chord_mock.assert_called_once_with([process_transfer_task_s_mock])
     on_job_finished_mock.s.assert_called_once_with(job.id)
     on_job_failed_mock.s.assert_called_once_with(job_id=job.id)
     header_mock.assert_called_once_with(on_job_finished_on_error_mock)
