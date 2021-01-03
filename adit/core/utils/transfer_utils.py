@@ -73,6 +73,16 @@ def execute_transfer(transfer_task: TransferTask) -> TransferTask.Status:
     return transfer_task.status
 
 
+def _create_source_connector(transfer_task: TransferTask) -> DicomConnector:
+    # An own function to easily mock the source connector in test_transfer_utils.py
+    return transfer_task.job.source.dicomserver.create_connector()
+
+
+def _create_dest_connector(transfer_task: TransferTask) -> DicomConnector:
+    # An own function to easily mock the destination connector in test_transfer_utils.py
+    return transfer_task.job.destination.dicomserver.create_connector()
+
+
 # TODO does this really work?
 def _setup_logger() -> Tuple[logging.StreamHandler, io.StringIO]:
     """Intercept all logger messages to save them later to the task."""
@@ -103,11 +113,6 @@ def _transfer_to_server(transfer_task: TransferTask) -> None:
         patient_folder = _download_dicoms(transfer_task, Path(tmpdir))
         connector = _create_dest_connector(transfer_task)
         connector.upload_folder(patient_folder)
-
-
-def _create_dest_connector(transfer_task: TransferTask) -> DicomConnector:
-    # An own method to easily mock the destination connector in the test
-    return transfer_task.job.destination.dicomserver.create_connector()
 
 
 def _transfer_to_archive(transfer_task: TransferTask) -> None:
@@ -195,11 +200,6 @@ def _download_dicoms(
         _download_study(connector, study, study_folder, modifier_callback)
 
     return patient_folder
-
-
-def _create_source_connector(transfer_task: TransferTask) -> DicomConnector:
-    # An own method to easily mock the source connector in the test
-    return transfer_task.job.source.dicomserver.create_connector()
 
 
 def _fetch_study(
