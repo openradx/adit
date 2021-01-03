@@ -7,7 +7,7 @@ from adit.core.factories import DicomServerFactory
 from adit.core.utils.scheduler import Scheduler
 from ..factories import BatchTransferJobFactory, BatchTransferTaskFactory
 from ..models import BatchTransferJob, BatchTransferTask
-from ..tasks import batch_transfer, transfer_dicoms
+from ..tasks import process_transfer_job, process_transfer_task
 
 
 @pytest.mark.django_db
@@ -15,7 +15,7 @@ from ..tasks import batch_transfer, transfer_dicoms
 @patch("adit.batch_transfer.tasks.on_job_finished")
 @patch("adit.batch_transfer.tasks.chord")
 @patch("adit.batch_transfer.tasks.transfer_dicoms")
-def test_batch_transfer_finished_with_success(
+def test_process_transfer_job_succeeds(
     transfer_dicoms_mock,
     chord_mock,
     on_job_finished_mock,
@@ -48,7 +48,7 @@ def test_batch_transfer_finished_with_success(
     priority = settings.BATCH_TRANSFER_DEFAULT_PRIORITY
 
     # Act
-    batch_transfer(job.id)
+    process_transfer_job(job.id)
 
     # Assert
     transfer_dicoms_mock.s.assert_called_once_with(transfer_task.id)
@@ -61,9 +61,9 @@ def test_batch_transfer_finished_with_success(
 
 @pytest.mark.django_db
 @patch.object(Scheduler, "must_be_scheduled", return_value=False)
-@patch("adit.batch_transfer.tasks.TransferUtil.start_transfer")
+@patch("adit.batch_transfer.tasks.execute_transfer")
 def test_transfer_task_without_study_fails(
-    start_transfer_mock,
+    execute_transfer_mock,
     must_be_scheduled_mock,
 ):
     # Arrange
@@ -81,13 +81,15 @@ def test_transfer_task_without_study_fails(
     connector.find_patients.return_value = [patient]
     connector.find_studies.return_value = []
 
-    start_transfer_mock.return_value = TransferTask.Status.SUCCESS
+    execute_transfer_mock.return_value = TransferTask.Status.SUCCESS
 
     with patch.object(BatchTransferJob, "source") as source_mock:
         source_mock.dicomserver.create_connector.return_value = connector
 
         # Act
-        result = transfer_dicoms(transfer_task.id)
+        result = process_transfer_task(  # pylint: disable=no-value-for-parameter
+            transfer_task.id
+        )
 
         # Assert
         transfer_task.refresh_from_db()

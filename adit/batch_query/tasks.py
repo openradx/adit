@@ -15,7 +15,7 @@ from .models import (
     BatchQueryTask,
     BatchQuerySettings,
 )
-from .utils.query_util import QueryUtil
+from .utils.query_utils import execute_query
 
 logger = get_task_logger(__name__)
 
@@ -23,7 +23,7 @@ DICOM_DATE_FORMAT = "%Y%m%d"
 
 
 @shared_task(ignore_result=True)
-def batch_query(query_job_id: int):
+def process_query_job(query_job_id: int):
     query_job = BatchQueryJob.objects.get(id=query_job_id)
     prepare_dicom_job(query_job)
 
@@ -32,7 +32,7 @@ def batch_query(query_job_id: int):
         priority = settings.BATCH_QUERY_URGENT_PRIORITY
 
     process_queries = [
-        process_query.s(query.id).set(priority=priority)
+        process_query_task.s(query.id).set(priority=priority)
         for query in query_job.queries.all()
     ]
 
@@ -42,12 +42,10 @@ def batch_query(query_job_id: int):
 
 
 @shared_task(bind=True)
-def process_query(self: CeleryTask, query_task_id: BatchQueryTask):
+def process_query_task(self: CeleryTask, query_task_id: BatchQueryTask):
     query_task = BatchQueryTask.objects.get(id=query_task_id)
     prepare_dicom_task(query_task, BatchQuerySettings.get(), self)
-
-    query_util = QueryUtil(query_task)
-    return query_util.start_query()
+    return execute_query(query_task)
 
 
 @shared_task

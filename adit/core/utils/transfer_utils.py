@@ -17,7 +17,7 @@ from .sanitize import sanitize_dirname
 logger = logging.getLogger(__name__)
 
 
-def start_transfer(transfer_task: TransferTask) -> TransferTask.Status:
+def execute_transfer(transfer_task: TransferTask) -> TransferTask.Status:
     if transfer_task.status == TransferTask.Status.CANCELED:
         return transfer_task.status
 

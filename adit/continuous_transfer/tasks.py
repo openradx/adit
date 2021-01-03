@@ -7,8 +7,8 @@ logger = get_task_logger(__name__)
 
 
 @shared_task(ignore_result=True)
-def continuous_transfer(job_id):
-    job = ContinuousTransferJob.objects.get(id=job_id)
+def process_transfer_job(transfer_job_id: int):
+    job = ContinuousTransferJob.objects.get(id=transfer_job_id)
 
     priority = settings.CONTINUOUS_TRANSFER_DEFAULT_PRIORITY
     if job.urgent:

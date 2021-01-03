@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 DICOM_DATE_FORMAT = "%Y%m%d"
 
 
-def start_query(query_task: BatchQueryTask) -> BatchQueryTask.Status:
+def execute_query(query_task: BatchQueryTask) -> BatchQueryTask.Status:
     if query_task.status == BatchQueryTask.Status.CANCELED:
         return query_task.status
 

@@ -79,9 +79,9 @@ class BatchQueryTask(BatchTask, DicomTask):
     )
 
     def delay(self):
-        from .tasks import batch_query  # pylint: disable=import-outside-toplevel
+        from .tasks import process_query_job  # pylint: disable=import-outside-toplevel
 
-        batch_query.delay(self.id)
+        process_query_job.delay(self.id)
 
     def get_absolute_url(self):
         return reverse("batch_query_task_detail", args=[str(self.id)])
