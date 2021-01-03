@@ -69,28 +69,28 @@ def test_logged_in_user_with_permission_can_access_form(client, user_with_permis
     assertTemplateUsed(response, "batch_transfer/batch_transfer_job_form.html")
 
 
-@patch("adit.batch_transfer.tasks.batch_transfer.delay")
+@patch("adit.batch_transfer.tasks.process_transfer_job.delay")
 def test_batch_job_created_and_enqueued_with_auto_verify(
-    batch_transfer_delay_mock, client, user_with_permission, settings, form_data
+    delay_mock, client, user_with_permission, settings, form_data
 ):
     client.force_login(user_with_permission)
     settings.BATCH_TRANSFER_UNVERIFIED = True
     client.post(reverse("batch_transfer_job_create"), form_data)
     job = BatchTransferJob.objects.first()
     assert job.tasks.count() == 3
-    batch_transfer_delay_mock.assert_called_once_with(job.id)
+    delay_mock.assert_called_once_with(job.id)
 
 
-@patch("adit.batch_transfer.tasks.batch_transfer.delay")
+@patch("adit.batch_transfer.tasks.process_transfer_job.delay")
 def test_batch_job_created_and_not_enqueued_without_auto_verify(
-    batch_transfer_delay_mock, client, user_with_permission, settings, form_data
+    delay_mock, client, user_with_permission, settings, form_data
 ):
     client.force_login(user_with_permission)
     settings.BATCH_TRANSFER_UNVERIFIED = False
     client.post(reverse("batch_transfer_job_create"), form_data)
     job = BatchTransferJob.objects.first()
     assert job.tasks.count() == 3
-    batch_transfer_delay_mock.assert_not_called()
+    delay_mock.assert_not_called()
 
 
 def test_job_cant_be_created_with_missing_fields(

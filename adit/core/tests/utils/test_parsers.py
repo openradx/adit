@@ -6,15 +6,6 @@ from ...serializers import BatchTaskSerializer
 from ...utils.batch_parsers import parse_csv_file, ParsingError
 
 
-@pytest.fixture
-def data():
-    return [
-        ["Batch ID", "Patient Name"],
-        ["1", "Apple, Annie"],
-        ["2", "Coconut, Coco"],
-    ]
-
-
 @pytest.fixture(scope="session")
 def create_csv_file():
     def _create_csv_file(csv_data):
@@ -26,8 +17,25 @@ def create_csv_file():
     return _create_csv_file
 
 
+@pytest.fixture
+def data():
+    return [
+        ["Batch ID", "Patient Name"],
+        ["1", "Apple, Annie"],
+        ["2", "Coconut, Coco"],
+    ]
+
+
+@pytest.fixture
+def field_to_column_mapping():
+    return {
+        "batch_id": "Batch ID",
+        "patient_name": "Patient Name",
+    }
+
+
 @pytest.fixture(scope="session")
-def parser():
+def test_serializer_class():
     class TestTask(BatchTask):
         patient_name = models.CharField(max_length=324)
 
@@ -39,17 +47,16 @@ def parser():
     return TestSerializer
 
 
-def test_valid_csv_file_is_parsed(create_csv_file, data, test_serializer_class):
+def test_valid_csv_file_is_parsed(
+    create_csv_file, data, field_to_column_mapping, test_serializer_class
+):
     # Arrange
     file = create_csv_file(data)
 
     # Act
     tasks = parse_csv_file(
         test_serializer_class,
-        {
-            "batch_id": "Batch ID",
-            "patient_name": "Patient Name",
-        },
+        field_to_column_mapping,
         file,
     )
 
@@ -60,14 +67,20 @@ def test_valid_csv_file_is_parsed(create_csv_file, data, test_serializer_class):
     assert tasks[1].patient_name == data[2][1]
 
 
-def test_invalid_csv_file_raises(create_csv_file, data, parser):
+def test_invalid_csv_file_raises(
+    create_csv_file, data, field_to_column_mapping, test_serializer_class
+):
     # Arrange
     data[2][1] = ""
     file = create_csv_file(data)
 
     # Act
     with pytest.raises(ParsingError) as err:
-        parser.parse(file)
+        parse_csv_file(
+            test_serializer_class,
+            field_to_column_mapping,
+            file,
+        )
 
     # Assert
     assert err.match(r"Invalid data on line 3 \(Batch ID 2\)")

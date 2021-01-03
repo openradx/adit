@@ -101,10 +101,13 @@ def _save_log_to_task(
 def _transfer_to_server(transfer_task: TransferTask) -> None:
     with tempfile.TemporaryDirectory(prefix="adit_") as tmpdir:
         patient_folder = _download_dicoms(transfer_task, Path(tmpdir))
-        connector: DicomConnector = (
-            transfer_task.job.destination.dicomserver.create_connector()
-        )
+        connector = _create_dest_connector(transfer_task)
         connector.upload_folder(patient_folder)
+
+
+def _create_dest_connector(transfer_task: TransferTask) -> DicomConnector:
+    # An own method to easily mock the destination connector in the test
+    return transfer_task.job.destination.dicomserver.create_connector()
 
 
 def _transfer_to_archive(transfer_task: TransferTask) -> None:
@@ -148,7 +151,7 @@ def _download_dicoms(
         pseudonym = None
         patient_folder = download_folder / sanitize_dirname(transfer_task.patient_id)
 
-    connector: DicomConnector = transfer_task.job.source.dicomserver.create_connector()
+    connector = _create_source_connector(transfer_task)
 
     # Check if the Study Instance UID is correct and fetch some attributes to create
     # the study folder.
@@ -192,6 +195,11 @@ def _download_dicoms(
         _download_study(connector, study, study_folder, modifier_callback)
 
     return patient_folder
+
+
+def _create_source_connector(transfer_task: TransferTask) -> DicomConnector:
+    # An own method to easily mock the source connector in the test
+    return transfer_task.job.source.dicomserver.create_connector()
 
 
 def _fetch_study(

@@ -4,7 +4,7 @@ import pytest
 from django.db import connection
 from django.db.utils import ProgrammingError
 from django.db.models.base import ModelBase
-from ...models import TransferJob, TransferTask
+from ...models import DicomNode, DicomServer, TransferJob, TransferTask
 from ...factories import (
     DicomServerFactory,
     DicomFolderFactory,
@@ -61,9 +61,16 @@ def setup_abstract_factories(setup_abstract_models):
 
 
 @pytest.mark.django_db
-def test_transfer_to_server_succeeds(setup_abstract_factories):
+@patch("adit.core.utils.transfer_utils._create_dest_connector")
+@patch("adit.core.utils.transfer_utils._create_source_connector")
+def test_transfer_to_server_succeeds(
+    create_source_connector_mock,
+    create_dest_connector_mock,
+    setup_abstract_factories,
+):
     # Arrange
     TestTransferJobFactory, TestTransferTaskFactory = setup_abstract_factories
+
     job = TestTransferJobFactory(
         status=TransferJob.Status.PENDING,
         source=DicomServerFactory(),
@@ -74,6 +81,7 @@ def test_transfer_to_server_succeeds(setup_abstract_factories):
         status=TransferTask.Status.PENDING, series_uids=[], pseudonym=""
     )
     task.job = job
+
     study = {
         "PatientID": task.patient_id,
         "StudyInstanceUID": task.study_uid,
@@ -81,23 +89,32 @@ def test_transfer_to_server_succeeds(setup_abstract_factories):
         "StudyTime": datetime.time(8, 0),
         "ModalitiesInStudy": ["CT", "SR"],
     }
-    # transfer_util.source_connector = create_autospec(DicomConnector)
-    # transfer_util.dest_connector = create_autospec(DicomConnector)
-    # transfer_util.source_connector.find_studies.return_value = [study]
+    source_connector_mock = create_autospec(DicomConnector)
+    source_connector_mock.find_studies.return_value = [study]
+    create_source_connector_mock.return_value = source_connector_mock
+    dest_connector_mock = create_autospec(DicomConnector)
+    create_dest_connector_mock.return_value = dest_connector_mock
 
-    # # Act
-    # execute_transfer(task)
+    # Act
+    status = execute_transfer(task)
 
-    # # Assert
-    # transfer_util.source_connector.download_study.assert_called_with(
-    #     task.patient_id, task.study_uid, ANY, modifier_callback=ANY
-    # )
-    # download_path = transfer_util.source_connector.download_study.call_args[0][2]
-    # dt = f"{study['StudyDate'].strftime('%Y%m%d')}-{study['StudyTime'].strftime('%H%M%S')}"
-    # expected_path = f"{study['PatientID']}/{dt}-{','.join(study['ModalitiesInStudy'])}"
-    # assert download_path.match(expected_path)
-    # upload_path = transfer_util.dest_connector.upload_folder.call_args[0][0]
-    # assert upload_path.match(f"*/{study['PatientID']}")
+    # Assert
+    source_connector_mock.download_study.assert_called_with(
+        task.patient_id, task.study_uid, ANY, modifier_callback=ANY
+    )
+
+    download_path = source_connector_mock.download_study.call_args[0][2]
+    assert download_path.match(
+        f"{study['PatientID']}/"
+        f"{study['StudyDate'].strftime('%Y%m%d')}"
+        f"-{study['StudyTime'].strftime('%H%M%S')}"
+        f"-{','.join(study['ModalitiesInStudy'])}"
+    )
+
+    upload_path = dest_connector_mock.upload_folder.call_args[0][0]
+    assert upload_path.match(f"*/{study['PatientID']}")
+
+    assert status == task.status
 
 
 # @pytest.mark.django_db

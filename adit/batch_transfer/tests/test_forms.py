@@ -40,7 +40,7 @@ def test_field_labels():
 
 
 @pytest.mark.django_db
-@patch("adit.batch_transfer.forms.parse_csv_batch_file", autospec=True)
+@patch("adit.batch_transfer.forms.parse_csv_file", autospec=True)
 @patch("adit.batch_transfer.forms.chardet.detect", return_value={"encoding": "UTF-8"})
 def test_with_valid_data(_, parse_mock, data_dict, file_dict):
     parse_mock.return_value = []
