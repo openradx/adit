@@ -2,30 +2,32 @@ from unittest.mock import patch, Mock, create_autospec
 import pytest
 from django.conf import settings
 from adit.core.models import TransferJob, TransferTask
-from adit.core.utils.dicom_connector import DicomConnector
 from adit.core.factories import DicomServerFactory
 from adit.core.utils.scheduler import Scheduler
 from ..factories import BatchTransferJobFactory, BatchTransferTaskFactory
-from ..models import BatchTransferJob, BatchTransferTask
+from ..models import BatchTransferTask
 from ..tasks import process_transfer_job, process_transfer_task
 
 
 @pytest.mark.django_db
-@patch("adit.batch_transfer.tasks.on_job_failed")
-@patch("adit.batch_transfer.tasks.on_job_finished")
-@patch("adit.batch_transfer.tasks.chord")
-@patch("adit.batch_transfer.tasks.process_transfer_task")
+@pytest.mark.parametrize("urgent", [True, False])
+@patch("adit.batch_transfer.tasks.on_job_failed", autospec=True)
+@patch("adit.batch_transfer.tasks.on_job_finished", autospec=True)
+@patch("adit.batch_transfer.tasks.chord", autospec=True)
+@patch("adit.batch_transfer.tasks.process_transfer_task", autospec=True)
 def test_process_transfer_job_succeeds(
     process_transfer_task_mock,
     chord_mock,
     on_job_finished_mock,
     on_job_failed_mock,
+    urgent,
 ):
     # Arrange
     job = BatchTransferJobFactory(
         source=DicomServerFactory(),
         destination=DicomServerFactory(),
         status=TransferJob.Status.PENDING,
+        urgent=urgent,
     )
     transfer_task = BatchTransferTaskFactory(
         job=job, status=BatchTransferTask.Status.PENDING
@@ -47,12 +49,15 @@ def test_process_transfer_job_succeeds(
     on_job_failed_mock_s_mock = Mock()
     on_job_failed_mock.s.return_value = on_job_failed_mock_s_mock
 
-    priority = settings.BATCH_TRANSFER_DEFAULT_PRIORITY
-
     # Act
     process_transfer_job(job.id)
 
     # Assert
+    if urgent:
+        priority = settings.BATCH_TRANSFER_URGENT_PRIORITY
+    else:
+        priority = settings.BATCH_TRANSFER_DEFAULT_PRIORITY
+
     process_transfer_task_mock.s.assert_called_once_with(transfer_task.id)
     process_transfer_task_mock.s.return_value.set.assert_called_once_with(
         priority=priority
@@ -64,41 +69,22 @@ def test_process_transfer_job_succeeds(
 
 
 @pytest.mark.django_db
-@patch.object(Scheduler, "must_be_scheduled", return_value=False)
-@patch("adit.batch_transfer.tasks.execute_transfer")
+@patch("adit.batch_transfer.tasks.prepare_dicom_task", autospec=True)
+@patch("adit.batch_transfer.tasks.execute_transfer", autospec=True)
 def test_transfer_task_without_study_fails(
     execute_transfer_mock,
-    must_be_scheduled_mock,
+    prepare_dicom_task_mock,
 ):
     # Arrange
-    job = BatchTransferJobFactory(status=TransferJob.Status.PENDING, urgent=False)
-    transfer_task = BatchTransferTaskFactory(
-        job=job, status=BatchTransferTask.Status.PENDING
-    )
-
-    patient = {
-        "PatientID": "1234",
-        "PatientName": "John^Doe",
-        "PatientBirthDate": "19801230",
-    }
-    connector = create_autospec(DicomConnector)
-    connector.find_patients.return_value = [patient]
-    connector.find_studies.return_value = []
-
+    transfer_task = BatchTransferTaskFactory(status=BatchTransferTask.Status.PENDING)
     execute_transfer_mock.return_value = TransferTask.Status.SUCCESS
 
-    with patch.object(BatchTransferJob, "source") as source_mock:
-        source_mock.dicomserver.create_connector.return_value = connector
+    # Act
+    status = process_transfer_task(  # pylint: disable=no-value-for-parameter
+        transfer_task.id
+    )
 
-        # Act
-        result = process_transfer_task(  # pylint: disable=no-value-for-parameter
-            transfer_task.id
-        )
-
-        # Assert
-        transfer_task.refresh_from_db()
-        assert result == BatchTransferTask.Status.WARNING
-        assert result == transfer_task.status
-        assert transfer_task.message == "No studies found to transfer."
-        source_mock.dicomserver.create_connector.assert_called_once()
-        must_be_scheduled_mock.assert_called_once()
+    # Assert
+    prepare_dicom_task_mock.assert_called_once_with(transfer_task)
+    execute_transfer_mock.assert_called_once_with(transfer_task)
+    assert status == TransferTask.Status.SUCCESS
