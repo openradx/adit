@@ -17,9 +17,8 @@ class ContinuousTransferJob(TransferJob):
     batch_size = models.PositiveIntegerField(default=10)
 
     def delay(self):
-        from .tasks import (  # pylint: disable=import-outside-toplevel
-            process_transfer_job,
-        )
+        # pylint: disable=import-outside-toplevel
+        from .tasks import process_transfer_job
 
         process_transfer_job.delay(self.id)
 

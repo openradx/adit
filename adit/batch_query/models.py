@@ -19,6 +19,12 @@ class BatchQueryJob(DicomJob):
     project_name = models.CharField(max_length=150)
     project_description = models.TextField(max_length=2000)
 
+    def delay(self):
+        # pylint: disable=import-outside-toplevel
+        from .tasks import process_query_job
+
+        process_query_job(self.id)
+
     def get_absolute_url(self):
         return reverse("batch_query_job_detail", args=[str(self.id)])
 
