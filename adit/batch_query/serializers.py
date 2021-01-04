@@ -27,7 +27,7 @@ class BatchQueryTaskSerializer(BatchTaskSerializer):
 
         if "modalities" in data:
             modalities = data["modalities"].split(",")
-            data["modalities"] = map(str.strip, modalities)
+            data["modalities"] = list(map(str.strip, modalities))
 
         self.clean_date_string(data, "patient_birth_date")
         self.clean_date_string(data, "study_date_start")
