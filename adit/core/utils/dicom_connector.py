@@ -203,14 +203,6 @@ class DicomConnector:
             limit_results=limit_results,
         )
 
-        # When a study only contains one modality then ModalitiesInStudy returns a
-        # string, otherwise a list. To make it consistent we convert everything
-        # to a list. TODO check if this is a bug in pydicom
-        for study in studies:
-            modalities = study.get("ModalitiesInStudy")
-            if modalities and isinstance(modalities, str):
-                study["ModalitiesInStudy"] = [modalities]
-
         query_modalities = query.get("ModalitiesInStudy")
         if not query_modalities:
             return studies
@@ -864,10 +856,20 @@ def _dictify_dataset(ds: Dataset):
         if elem.tag == (0x7FE0, 0x0010):  # discard PixelData
             continue
 
-        if elem.VR != "SQ":
-            output[elem.keyword] = _convert_value(elem.value)
-        else:
+        if elem.VR == "SQ":
             output[elem.keyword] = [_dictify_dataset(item) for item in elem]
+        else:
+            keyword = elem.keyword
+            value = _convert_value(elem.value)
+
+            # When a study only contains one modality then ModalitiesInStudy returns a
+            # string, otherwise a list (cause of valuerep.MultiValue, see _convert_value).
+            # To make it consistent we only use lists.
+            # TODO check if this is a bug in pydicom
+            if keyword == "ModalitiesInStudy" and isinstance(value, str):
+                value = list(value)
+
+            output[keyword] = value
 
     return output
 
