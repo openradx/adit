@@ -14,6 +14,7 @@ class ContinuousTransferJob(TransferJob):
     start_date = models.DateField()
     end_date = models.DateField(null=True, blank=True)
     progress = models.DateTimeField(null=True, blank=True)
+    batch_size = models.PositiveIntegerField(default=10)
 
     def delay(self):
         from .tasks import (  # pylint: disable=import-outside-toplevel
