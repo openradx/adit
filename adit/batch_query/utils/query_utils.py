@@ -39,25 +39,30 @@ def execute_query(query_task: BatchQueryTask) -> BatchQueryTask.Status:
     return query_task.status
 
 
+def _create_source_connector(query_task: BatchQueryTask) -> DicomConnector:
+    # An own function to easily mock the source connector in test_transfer_utils.py
+    return query_task.job.source.dicomserver.create_connector()
+
+
 def _query_studies(query_task: BatchQueryTask) -> List[Dict[str, Any]]:
     patient_name = re.sub(r"\s*,\s*", "^", query_task.patient_name)
 
     study_date = ""
     if query_task.study_date_start:
         if not query_task.study_date_end:
-            study_date = query_task.study_date_start.strptime(DICOM_DATE_FORMAT) + "-"
+            study_date = query_task.study_date_start.strftime(DICOM_DATE_FORMAT) + "-"
         elif query_task.study_date_start == query_task.study_date_end:
-            study_date = query_task.study_date_start.strptime(DICOM_DATE_FORMAT)
+            study_date = query_task.study_date_start.strftime(DICOM_DATE_FORMAT)
         else:
             study_date = (
-                query_task.study_date_start.strptime(DICOM_DATE_FORMAT)
+                query_task.study_date_start.strftime(DICOM_DATE_FORMAT)
                 + "-"
-                + query_task.study_date_end.strptime(DICOM_DATE_FORMAT)
+                + query_task.study_date_end.strftime(DICOM_DATE_FORMAT)
             )
     elif query_task.study_date_end:
-        study_date = "-" + query_task.study_date_end.strptime(DICOM_DATE_FORMAT)
+        study_date = "-" + query_task.study_date_end.strftime(DICOM_DATE_FORMAT)
 
-    connector: DicomConnector = query_task.job.source.dicomserver.create_connector()
+    connector: DicomConnector = _create_source_connector(query_task)
 
     studies = connector.find_studies(
         {

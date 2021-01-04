@@ -803,8 +803,8 @@ def _make_query_dataset(query_dict: Dict[str, Any]):
     """Turn a dict into a pydicom dataset for query."""
 
     ds = Dataset()
-    for i in query_dict:
-        setattr(ds, i, query_dict[i])
+    for keyword in query_dict:
+        setattr(ds, keyword, query_dict[keyword])
     return ds
 
 
