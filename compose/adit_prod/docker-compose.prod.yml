@@ -44,11 +44,11 @@ services:
 
     worker_default:
         <<: *default-app
-        command: python manage.py celery_worker -Q default
+        command: python manage.py celery_worker -Q default_queue
 
-    worker_transfer:
+    worker_dicom_task:
         <<: *default-app
-        command: python manage.py celery_worker -Q transfer
+        command: python manage.py celery_worker -Q dicom_task_queue
 
     celery_beat:
         <<: *default-app

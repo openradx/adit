@@ -50,11 +50,11 @@ services:
 
     worker_default:
         <<: *default-app
-        command: python manage.py celery_worker -Q default --autoreload
+        command: python manage.py celery_worker -Q default_queue --autoreload
 
-    worker_transfer:
+    worker_dicom_task:
         <<: *default-app
-        command: python manage.py celery_worker -Q transfer --autoreload
+        command: python manage.py celery_worker -Q dicom_task_queue --autoreload
 
     celery_beat:
         <<: *default-app

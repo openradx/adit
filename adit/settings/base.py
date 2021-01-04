@@ -267,11 +267,20 @@ if USE_TZ:
 CELERY_BROKER_URL = RABBITMQ_URL
 CELERY_RESULT_BACKEND = REDIS_URL
 CELERY_WORKER_HIJACK_ROOT_LOGGER = False
-CELERY_TASK_DEFAULT_QUEUE = "default"
+CELERY_TASK_DEFAULT_QUEUE = "default_queue"
 CELERY_TASK_ROUTES = {
-    "adit.selective_transfer.tasks.transfer_selected_dicoms": {"queue": "transfer"},
-    "adit.batch_transfer.tasks.transfer_request": {"queue": "transfer"},
-    "adit.continuous_transfer.tasks.transfer_next_dicoms": {"queue": "transfer"},
+    "adit.selective_transfer.tasks.process_transfer_task": {
+        "queue": "dicom_task_queue",
+    },
+    "adit.batch_query.tasks.process_query_task": {
+        "queue": "dicom_task_queue",
+    },
+    "adit.batch_transfer.tasks.process_transfer_task": {
+        "queue": "dicom_task_queue",
+    },
+    "adit.continuous_transfer.tasks.process_transfer_task": {
+        "queue": "dicom_task_queue",
+    },
 }
 CELERY_BEAT_SCHEDULE = {
     "check-disk-space": {
