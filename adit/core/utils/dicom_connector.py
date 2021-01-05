@@ -24,6 +24,7 @@ import pika
 from celery.utils.log import get_task_logger
 from pydicom.dataset import Dataset
 from pydicom import dcmread, valuerep, uid
+from pydicom.datadict import dictionary_VM
 from pydicom.errors import InvalidDicomError
 from pynetdicom import (
     AE,
@@ -816,19 +817,27 @@ def _dictify_dataset(ds: Dataset):
         if elem.VR == "SQ":
             output[elem.keyword] = [_dictify_dataset(item) for item in elem]
         else:
-            value = elem.value
+            v = elem.value
 
             # We don't use the optional automatic `pydicom.config.datetime_conversion` as
             # it is globally set and we can't use date ranges then anymore for the
             # queries. See https://github.com/pydicom/pydicom/issues/1293
             if elem.VR == "DA":
-                value = valuerep.DA(value)
+                v = valuerep.DA(v)
             elif elem.VR == "DT":
-                value = valuerep.DT(value)
+                v = valuerep.DT(v)
             elif elem.VR == "TM":
-                value = valuerep.TM(value)
+                v = valuerep.TM(v)
 
-            return _convert_value(value)
+            cv = _convert_value(v)
+
+            # An element with a (possible) multiplicity of > 1 should always be returned
+            # as list, even with only one element in it (e.g. ModalitiesInStudy)
+            vm = dictionary_VM(elem.tag)
+            if vm == "1-n" and not isinstance(cv, list):
+                cv = [cv]
+
+            output[elem.keyword] = cv
 
     return output
 

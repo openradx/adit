@@ -29,6 +29,9 @@ def exclude_from_list(value, *args):
     return value
 
 
+# TODO maybe we don't need this anymore as we convert all DICOM values
+# with VM 1-n to lists even if there is only one item in it
+# See :func:`adit.core.utils.dicom_connector._dictify_dataset`
 @register.filter(is_safe=True, needs_autoescape=True)
 def join_if_list(value, arg, autoescape=True):
     if isinstance(value, list):
