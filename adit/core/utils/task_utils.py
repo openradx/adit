@@ -3,6 +3,7 @@ from typing import List
 from datetime import timedelta
 from celery import Task as CeleryTask
 from django.utils import timezone
+from django.template.defaultfilters import pluralize
 from adit.core.utils.mail import send_job_failed_mail
 from ..models import AppSettings, DicomJob, DicomTask
 from ..utils.scheduler import Scheduler
@@ -64,37 +65,45 @@ def prepare_dicom_task(
 def finish_dicom_job(dicom_task_status_list: List[str], dicom_job: DicomJob):
     logger.info("%s finished.", dicom_job)
 
-    if (
-        dicom_job.status == DicomJob.Status.CANCELING
-        and DicomJob.Status.CANCELED in dicom_task_status_list
-    ):
+    if dicom_job.status == DicomJob.Status.CANCELING:
         dicom_job.status = DicomJob.Status.CANCELED
+        num = dicom_task_status_list.count(DicomTask.Status.CANCELED)
+        dicom_job.message = f"{num} task{pluralize(num)} canceled."
         dicom_job.save()
         return
 
-    has_success = False
-    has_failure = False
+    success = 0
+    warning = 0
+    failure = 0
     for status in dicom_task_status_list:
         if status == DicomTask.Status.SUCCESS:
-            has_success = True
+            success += 1
+        elif status == DicomTask.Status.WARNING:
+            warning += 1
         elif status == DicomTask.Status.FAILURE:
-            has_failure = True
+            failure += 1
         else:
             raise AssertionError(
                 f"Invalid dicom task result status in {dicom_job}: {status}"
             )
 
-    if has_success and has_failure:
-        dicom_job.status = DicomJob.Status.WARNING
-        dicom_job.message = "Some transfer tasks failed."
-    elif has_success:
+    if success and not warning and not failure:
         dicom_job.status = DicomJob.Status.SUCCESS
-        dicom_job.message = "All transfer tasks succeeded."
-    elif has_failure:
+        dicom_job.message = "All tasks succeeded."
+    elif success and warning and not failure:
+        dicom_job.status = DicomJob.Status.WARNING
+        dicom_job.message = "Some tasks with warnings."
+    elif not success and warning and not failure:
+        dicom_job.status = DicomJob.Status.WARNING
+        dicom_job.message = "All tasks with warnings."
+    elif success and failure or warning and failure:
         dicom_job.status = DicomJob.Status.FAILURE
-        dicom_job.message = "All transfer tasks failed."
+        dicom_job.message = "Some tasks failed."
+    elif not success and not warning and failure:
+        dicom_job.status = DicomJob.Status.FAILURE
+        dicom_job.message = "All tasks failed."
     else:
-        raise AssertionError(f"At least one task of {dicom_job} must succeed or fail.")
+        raise AssertionError(f"At least one task of {dicom_job} must a valid state.")
 
     dicom_job.save()
 
@@ -103,7 +112,7 @@ def handle_job_failure(dicom_job: DicomJob, celery_task_id: int):
     logger.error("%s failed unexpectedly.", dicom_job)
 
     dicom_job.status = DicomJob.Status.FAILURE
-    dicom_job.message = "Failed unexpectedly."
+    dicom_job.message = "Job failed unexpectedly."
     dicom_job.save()
 
     send_job_failed_mail(dicom_job, celery_task_id)
