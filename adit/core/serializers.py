@@ -43,10 +43,6 @@ class BatchTaskSerializer(serializers.ModelSerializer):
             if data[field_name] == "":
                 data[field_name] = None
 
-    def patient_name_to_dicom(self, data, field_name):
-        if field_name in data:
-            data[field_name] = re.sub(r"\s*,\s*", "^", data[field_name])
-
     def validate(self, attrs):
         attrs = super().validate(attrs)
 

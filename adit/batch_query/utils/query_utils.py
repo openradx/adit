@@ -45,8 +45,6 @@ def _create_source_connector(query_task: BatchQueryTask) -> DicomConnector:
 
 
 def _query_studies(query_task: BatchQueryTask) -> List[Dict[str, Any]]:
-    patient_name = re.sub(r"\s*,\s*", "^", query_task.patient_name)
-
     study_date = ""
     if query_task.study_date_start:
         if not query_task.study_date_end:
@@ -67,7 +65,7 @@ def _query_studies(query_task: BatchQueryTask) -> List[Dict[str, Any]]:
     studies = connector.find_studies(
         {
             "PatientID": query_task.patient_id,
-            "PatientName": patient_name,
+            "PatientName": query_task.patient_name,
             "PatientBirthDate": query_task.patient_birth_date,
             "StudyInstanceUID": "",
             "AccessionNumber": query_task.accession_number,

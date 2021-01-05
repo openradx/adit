@@ -23,8 +23,6 @@ class BatchQueryTaskSerializer(BatchTaskSerializer):
         self.adapt_date_field("study_date_end")
 
     def to_internal_value(self, data):
-        self.patient_name_to_dicom(data, "patient_name")
-
         if "modalities" in data:
             modalities = data["modalities"].split(",")
             data["modalities"] = list(map(str.strip, modalities))

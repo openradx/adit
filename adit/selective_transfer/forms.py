@@ -165,10 +165,6 @@ class SelectiveTransferJobForm(forms.ModelForm):
             archive_password = ""
         return archive_password
 
-    def clean_patient_name(self):
-        patient_name = self.cleaned_data["patient_name"]
-        return re.sub(r"\s*,\s*", "^", patient_name)
-
     def clean_modality(self):
         modality = self.cleaned_data["modality"]
         modilities = re.split(r"\s*,\s*", modality)
