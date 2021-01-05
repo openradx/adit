@@ -1,5 +1,5 @@
 {% load explorer_url from dicom_explorer_extras %}
-{% load combine_datetime from core_extras %}
+{% load combine_datetime join_if_list from core_extras %}
 
 <dl class="row card-body mb-0">
     <dt class="col-sm-3">Study Instance UID</dt>
@@ -24,7 +24,7 @@
     <dd class="col-sm-9">{{ study.StudyDescription|default:"—" }}</dd>
 
     <dt class="col-sm-3">Modalities</dt>
-    <dd class="col-sm-9">{{ study.ModalitiesInStudy|join:", "|default:"—" }}</dd>
+    <dd class="col-sm-9">{{ study.ModalitiesInStudy|join_if_list:", "|default:"—" }}</dd>
 
     <dt class="col-sm-3"># Images</dt>
     <dd class="col-sm-9">{{ study.NumberOfStudyRelatedInstances|default_if_none:"—" }}</dd>

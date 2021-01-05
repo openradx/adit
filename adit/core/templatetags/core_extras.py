@@ -1,5 +1,6 @@
 from datetime import datetime
 from django.template import Library
+from django.template.defaultfilters import join
 from ..models import DicomJob, DicomTask
 
 register = Library()
@@ -24,6 +25,14 @@ def exclude_from_list(value, *args):
 
     if value in args:
         return ""
+
+    return value
+
+
+@register.filter(is_safe=True, needs_autoescape=True)
+def join_if_list(value, arg, autoescape=True):
+    if isinstance(value, list):
+        return join(value, arg, autoescape)
 
     return value
 
