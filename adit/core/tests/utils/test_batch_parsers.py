@@ -20,7 +20,7 @@ def create_csv_file():
 @pytest.fixture
 def data():
     return [
-        ["Batch ID", "Patient Name"],
+        ["BatchID", "PatientName"],
         ["1", "Apple, Annie"],
         ["2", "Coconut, Coco"],
     ]
@@ -29,8 +29,8 @@ def data():
 @pytest.fixture
 def field_to_column_mapping():
     return {
-        "batch_id": "Batch ID",
-        "patient_name": "Patient Name",
+        "batch_id": "BatchID",
+        "patient_name": "PatientName",
     }
 
 
@@ -83,5 +83,5 @@ def test_invalid_csv_file_raises(
         )
 
     # Assert
-    assert err.match(r"Invalid data on line 3 \(Batch ID 2\)")
+    assert err.match(r"Invalid data on line 3 \(BatchID 2\)")
     assert err.match(r"Patient Name - This field may not be blank")

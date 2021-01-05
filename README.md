@@ -42,6 +42,13 @@ Downloading data from a DICOM server can done by using a C-GET or C-MOVE operati
 -   should we really save log to task this way
 -   Allow to pause a job (Status.PAUSED)
 -   Better scheduler (with day in week and times)
+-   Allow to specify alternative column names in field_to_column_mapping of batch_parsers.py, e.g.
+    ```
+    {
+        "batch_id": ("Batch ID", "BatchID"),
+        "patient_name": ("Patient Name", "PatientName"),
+    }
+    ```
 
 # Maybe features
 
