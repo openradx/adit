@@ -22,7 +22,6 @@ import errno
 from functools import wraps
 import pika
 from celery.utils.log import get_task_logger
-from pydicom import config as pydicom_config
 from pydicom.dataset import Dataset
 from pydicom import dcmread, valuerep, uid
 from pydicom.errors import InvalidDicomError
@@ -57,8 +56,6 @@ FORCE_DEBUG_LOGGER = False
 # See https://www.distributedpython.com/2018/08/28/celery-logging/
 # and https://www.distributedpython.com/2018/11/06/celery-task-logger-format/
 logger = get_task_logger(__name__)
-
-pydicom_config.datetime_conversion = True
 
 
 def connect_to_server(func):
@@ -793,60 +790,10 @@ class DicomConnector:
 
 def _make_query_dataset(query_dict: Dict[str, Any]):
     """Turn a dict into a pydicom dataset for query."""
-
-    # A workaround for https://github.com/pydicom/pydicom/issues/1293
-    # Unfortunately, it's more of a hack than a solution. It makes DicomConnector
-    # thread unsafe!
-    # TODO: Maybe we should convert manually to datetime in _dictify_dataset
-    # and use the default datetime_conversion == False
-    pydicom_config.datetime_conversion = False
-
     ds = Dataset()
     for keyword in query_dict:
         setattr(ds, keyword, query_dict[keyword])
-
-    pydicom_config.datetime_conversion = True
-
     return ds
-
-
-def _sanitize_unicode(s: str):
-    return s.replace("\u0000", "").strip()
-
-
-def _convert_value(v: Any):
-    """Converts a pydicom value to native Python value.
-
-    Only works with date, time and datetime conversion when
-    pydicom.conf.datetime_conversion is set to True.
-    """
-    t = type(v)
-    if t in (list, int, float, type(None)):
-        cv = v
-    elif t == str:
-        cv = _sanitize_unicode(v)
-    elif t == bytes:
-        s = v.decode("ascii", "replace")
-        cv = _sanitize_unicode(s)
-    elif t == uid.UID:
-        cv = str(v)
-    elif t == valuerep.IS:
-        cv = int(v)
-    elif t == valuerep.DSfloat:
-        cv = float(v)
-    elif t == valuerep.PersonName:
-        cv = str(v)
-    elif t == valuerep.DA:
-        cv = datetime.date.fromisoformat(v.isoformat())
-    elif t == valuerep.TM:
-        cv = datetime.time.fromisoformat(v.isoformat())
-    elif t == valuerep.DT:
-        cv = datetime.datetime.fromisoformat(v.isoformat())
-    elif t == valuerep.MultiValue:
-        cv = [_convert_value(i) for i in v]
-    else:
-        cv = repr(v)
-    return cv
 
 
 def _dictify_dataset(ds: Dataset):
@@ -866,12 +813,56 @@ def _dictify_dataset(ds: Dataset):
         if elem.tag == (0x7FE0, 0x0010):  # discard PixelData
             continue
 
-        if elem.VR != "SQ":
-            output[elem.keyword] = _convert_value(elem.value)
-        else:
+        if elem.VR == "SQ":
             output[elem.keyword] = [_dictify_dataset(item) for item in elem]
+        else:
+            value = elem.value
+
+            # We don't use the optional automatic `pydicom.config.datetime_conversion` as
+            # it is globally set and we can't use date ranges then anymore for the
+            # queries. See https://github.com/pydicom/pydicom/issues/1293
+            if elem.VR == "DA":
+                value = valuerep.DA(value)
+            elif elem.VR == "DT":
+                value = valuerep.DT(value)
+            elif elem.VR == "TM":
+                value = valuerep.TM(value)
+
+            return _convert_value(value)
 
     return output
+
+
+def _convert_value(v: Any):
+    """Converts a pydicom value to native Python value."""
+    t = type(v)
+    if t in (int, float, type(None)):
+        cv = v
+    elif t == str:
+        cv = _sanitize_unicode(v)
+    elif t == bytes:
+        cv = _sanitize_unicode(v.decode("ascii", "replace"))
+    elif t in (uid.UID, valuerep.PersonName):
+        cv = str(v)
+    elif t == valuerep.IS:
+        cv = int(v)
+    elif t == valuerep.DSfloat:
+        cv = float(v)
+    elif t == valuerep.DA:
+        cv = datetime.date.fromisoformat(v.isoformat())
+    elif t == valuerep.DT:
+        cv = datetime.datetime.fromisoformat(v.isoformat())
+    elif t == valuerep.TM:
+        cv = datetime.time.fromisoformat(v.isoformat())
+    elif t in (valuerep.MultiValue, list):
+        cv = [_convert_value(i) for i in v]
+    else:
+        cv = repr(v)
+    return cv
+
+
+def _sanitize_unicode(s: str):
+    return s.replace("\u0000", "").strip()
 
 
 def _extract_pending_data(results: List[Dict[str, Any]]):

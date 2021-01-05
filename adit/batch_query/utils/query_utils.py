@@ -1,5 +1,4 @@
 import logging
-import re
 from typing import Any, Dict, List
 from django.utils import timezone
 from adit.core.utils.dicom_connector import DicomConnector
