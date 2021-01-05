@@ -835,14 +835,14 @@ def _convert_value(v: Any):
     elif t == valuerep.PersonName:
         # Humanize a person name string from DICOM VR
         cv = str(v).replace("^", ", ")
-    elif t == valuerep.MultiValue:
-        cv = list(v)
     elif t == valuerep.DA:
         cv = datetime.date.fromisoformat(v.isoformat())
     elif t == valuerep.TM:
         cv = datetime.time.fromisoformat(v.isoformat())
     elif t == valuerep.DT:
         cv = datetime.datetime.fromisoformat(v.isoformat())
+    elif t == valuerep.MultiValue:
+        cv = [_convert_value(i) for i in v]
     else:
         cv = repr(v)
     return cv
