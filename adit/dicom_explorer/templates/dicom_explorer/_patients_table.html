@@ -1,3 +1,4 @@
+{% load person_name_from_dicom from core_extras %}
 {% load explorer_url from dicom_explorer_extras %}
 
 <table class="table">
@@ -15,7 +16,7 @@
         {% for patient in patients %}
             <tr>
                 <td>{{ patient.PatientID|default:"—" }}</td>
-                <td>{{ patient.PatientName|title }}</td>
+                <td>{{ patient.PatientName|person_name_from_dicom|title }}</td>
                 <td>{{ patient.PatientBirthDate|date:"SHORT_DATE_FORMAT"|default:"—" }}</td>
                 <td>{{ patient.PatientSex|default:"—" }}</td>
                 <td>

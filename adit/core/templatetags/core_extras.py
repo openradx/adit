@@ -5,6 +5,15 @@ from ..models import DicomJob, DicomTask
 register = Library()
 
 
+@register.filter
+def person_name_from_dicom(value):
+    """ See also :func:`adit.core.dicom_utils.person_name_to_dicom`"""
+    if not value:
+        return value
+
+    return value.replace("^", ", ")
+
+
 @register.simple_tag
 def exclude_from_list(value, *args):
     if not value:

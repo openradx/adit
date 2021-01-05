@@ -1,4 +1,5 @@
 from adit.core.serializers import BatchTaskSerializer
+from adit.core.utils.dicom_utils import person_name_to_dicom
 from .models import BatchQueryTask
 
 
@@ -17,6 +18,9 @@ class BatchQueryTaskSerializer(BatchTaskSerializer):
 
     def __init__(self, instance=None, data=None, **kwargs):
         super().__init__(instance, data, **kwargs)
+
+        if "patient_name" in data:
+            data["patient_name"] = person_name_to_dicom(data["patient_name"])
 
         self.adapt_date_field("patient_birth_date")
         self.adapt_date_field("study_date_start")

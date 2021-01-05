@@ -5,6 +5,7 @@ from crispy_forms.layout import Layout, Field, Row, Column, Div
 from crispy_forms.bootstrap import StrictButton
 from adit.core.forms import DicomNodeChoiceField
 from adit.core.models import DicomNode
+from adit.core.utils.dicom_utils import person_name_to_dicom
 from adit.core.validators import no_backslash_char_validator, no_control_chars_validator
 from .models import SelectiveTransferJob
 
@@ -164,6 +165,10 @@ class SelectiveTransferJobForm(forms.ModelForm):
         if not destination or destination.node_type != DicomNode.NodeType.FOLDER:
             archive_password = ""
         return archive_password
+
+    def clean_patient_name(self):
+        patient_name = self.cleaned_data["patient_name"]
+        return person_name_to_dicom(patient_name)
 
     def clean_modality(self):
         modality = self.cleaned_data["modality"]

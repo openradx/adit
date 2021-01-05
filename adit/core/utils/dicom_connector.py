@@ -20,14 +20,12 @@ from concurrent.futures import ThreadPoolExecutor
 from io import BytesIO
 import errno
 from functools import wraps
-import re
 import pika
 from celery.utils.log import get_task_logger
 from pydicom import config as pydicom_config
 from pydicom.dataset import Dataset
 from pydicom import dcmread, valuerep, uid
 from pydicom.errors import InvalidDicomError
-from pydicom.datadict import tag_for_keyword, dictionary_VR
 from pynetdicom import (
     AE,
     evt,
@@ -796,15 +794,8 @@ class DicomConnector:
 def _make_query_dataset(query_dict: Dict[str, Any]):
     """Turn a dict into a pydicom dataset for query."""
     ds = Dataset()
-    for keyword, value in query_dict.items():
-        tag = tag_for_keyword(keyword)
-        vr = dictionary_VR(tag)
-
-        if vr == "PN":
-            # Turn a human readable person name into its DICOM VR
-            value = re.sub(r"\s*,\s*", "^", value)
-
-        ds.add_new(tag, vr, value)
+    for keyword in query_dict:
+        setattr(ds, keyword, query_dict[keyword])
     return ds
 
 
@@ -833,8 +824,7 @@ def _convert_value(v: Any):
     elif t == valuerep.DSfloat:
         cv = float(v)
     elif t == valuerep.PersonName:
-        # Humanize a person name string from DICOM VR
-        cv = str(v).replace("^", ", ")
+        cv = str(v)
     elif t == valuerep.DA:
         cv = datetime.date.fromisoformat(v.isoformat())
     elif t == valuerep.TM:
