@@ -793,9 +793,20 @@ class DicomConnector:
 
 def _make_query_dataset(query_dict: Dict[str, Any]):
     """Turn a dict into a pydicom dataset for query."""
+
+    # A workaround for https://github.com/pydicom/pydicom/issues/1293
+    # Unfortunately, it's more of a hack than a solution. It makes DicomConnector
+    # thread unsafe!
+    # TODO: Maybe we should convert manually to datetime in _dictify_dataset
+    # and use the default datetime_conversion == False
+    pydicom_config.datetime_conversion = False
+
     ds = Dataset()
     for keyword in query_dict:
         setattr(ds, keyword, query_dict[keyword])
+
+    pydicom_config.datetime_conversion = True
+
     return ds
 
 
