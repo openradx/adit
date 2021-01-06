@@ -17,8 +17,8 @@ def export_results(job: BatchQueryJob, file):
             "StudyDate",
             "StudyTime",
             "StudyDescription",
-            "Modalities",
-            "ImageCount",
+            "ModalitiesInStudy",
+            "NumberOfStudyRelatedInstances",
             "AccessionNumber",
             "StudyInstanceUID",
         ]
@@ -39,8 +39,8 @@ def export_results(job: BatchQueryJob, file):
             study_time = time_format(result.study_time, "TIME_FORMAT")
 
             modalities = ""
-            if modalities is not None:
-                modalities = join_if_list(modalities, ",")
+            if result.modalities is not None:
+                modalities = join_if_list(result.modalities, ", ")
 
             image_count = ""
             if result.image_count is not None:

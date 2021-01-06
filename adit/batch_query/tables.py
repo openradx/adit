@@ -19,6 +19,7 @@ class BatchQueryResultTable(tables.Table):
     study_date_time = tables.DateTimeColumn(
         verbose_name="Study Date/Time", order_by=("study_date", "study_time")
     )
+    image_count = tables.Column(verbose_name="# Images")
 
     class Meta:  # pylint: disable=too-few-public-methods
         model = BatchQueryResult
