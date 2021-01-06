@@ -47,7 +47,9 @@ CELERY_TASK_EAGER_PROPAGATES = True
 
 INTERNAL_IPS = env.list("DJANGO_INTERNAL_IPS", default=["127.0.0.1"])
 
+LOGGING["handlers"]["console"]["level"] = "DEBUG"
 LOGGING["loggers"]["adit"]["level"] = "DEBUG"
+LOGGING["loggers"]["celery"]["level"] = "DEBUG"
 
 if env.bool("USE_DOCKER", default=False):
     import socket
