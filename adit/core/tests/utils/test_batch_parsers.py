@@ -47,7 +47,7 @@ def test_serializer_class():
     return TestSerializer
 
 
-def test_valid_csv_file_is_parsed(
+def test_valid_data_is_parsed_successfully(
     create_csv_file, data, field_to_column_mapping, test_serializer_class
 ):
     # Arrange
@@ -67,7 +67,7 @@ def test_valid_csv_file_is_parsed(
     assert tasks[1].patient_name == data[2][1]
 
 
-def test_invalid_csv_file_raises(
+def test_invalid_model_data_raises(
     create_csv_file, data, field_to_column_mapping, test_serializer_class
 ):
     # Arrange
@@ -84,4 +84,4 @@ def test_invalid_csv_file_raises(
 
     # Assert
     assert err.match(r"Invalid data on line 3 \(BatchID 2\)")
-    assert err.match(r"Patient Name - This field may not be blank")
+    assert err.match(r"PatientName - This field may not be blank")

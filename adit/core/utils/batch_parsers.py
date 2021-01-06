@@ -71,7 +71,7 @@ class ParsingError(Exception):
                 if item_errors:
                     batch_id = self.data[num].get("batch_id", "").strip()
                     if batch_id:
-                        batch_id = f" (Batch ID {batch_id})"
+                        batch_id = f" (BatchID {batch_id})"
 
                     line_num = self.data[num]["__line_num__"]
 
