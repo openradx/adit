@@ -72,38 +72,38 @@ def finish_dicom_job(dicom_task_status_list: List[str], dicom_job: DicomJob):
         dicom_job.save()
         return
 
-    success = 0
-    warning = 0
-    failure = 0
+    successes = 0
+    warnings = 0
+    failures = 0
     for status in dicom_task_status_list:
         if status == DicomTask.Status.SUCCESS:
-            success += 1
+            successes += 1
         elif status == DicomTask.Status.WARNING:
-            warning += 1
+            warnings += 1
         elif status == DicomTask.Status.FAILURE:
-            failure += 1
+            failures += 1
         else:
             raise AssertionError(
                 f"Invalid dicom task result status in {dicom_job}: {status}"
             )
 
-    if success and not warning and not failure:
+    if successes and not warnings and not failures:
         dicom_job.status = DicomJob.Status.SUCCESS
         dicom_job.message = "All tasks succeeded."
-    elif success and warning and not failure:
+    elif successes and warnings and not failures:
         dicom_job.status = DicomJob.Status.WARNING
         dicom_job.message = "Some tasks with warnings."
-    elif not success and warning and not failure:
+    elif not successes and warnings and not failures:
         dicom_job.status = DicomJob.Status.WARNING
         dicom_job.message = "All tasks with warnings."
-    elif success and failure or warning and failure:
+    elif successes and failures or warnings and failures:
         dicom_job.status = DicomJob.Status.FAILURE
         dicom_job.message = "Some tasks failed."
-    elif not success and not warning and failure:
+    elif not successes and not warnings and failures:
         dicom_job.status = DicomJob.Status.FAILURE
         dicom_job.message = "All tasks failed."
     else:
-        raise AssertionError(f"At least one task of {dicom_job} must a valid state.")
+        raise AssertionError(f"Invalid task status list of {dicom_job}.")
 
     dicom_job.save()
 
