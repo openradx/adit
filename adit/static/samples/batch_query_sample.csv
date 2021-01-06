@@ -1,4 +1,5 @@
 BatchID;PatientID;PatientName;PatientBirthDate;AccessionNumber;From;Until;Modalities
 1;;Apple, Annie;27.04.1945;;03.06.2019;05.06.2019;CT
-2;1002;;;;;02.06.2019;CT
-3;;Grapefruit, Graham;23.01.1957;;;;MR
+2;1004;;;0062115911;;;
+3;;Papaya, Pamela;29.08.1976;;01.01.2018;19.08.2018;MR
+4;1008;;;;;;

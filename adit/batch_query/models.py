@@ -86,7 +86,7 @@ class BatchQueryTask(BatchTask, DicomTask):
     )
 
     def clean(self) -> None:
-        if not self.patient_id or not (self.patient_name and self.patient_birth_date):
+        if not self.patient_id and not (self.patient_name and self.patient_birth_date):
             raise ValidationError(
                 "A patient must be identifiable by either PatientID or "
                 "PatientName and PatientBirthDate."
