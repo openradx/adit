@@ -1,9 +1,8 @@
-from unittest.mock import patch, Mock, create_autospec
+from unittest.mock import patch, Mock
 import pytest
 from django.conf import settings
 from adit.core.models import TransferJob, TransferTask
 from adit.core.factories import DicomServerFactory
-from adit.core.utils.scheduler import Scheduler
 from ..factories import BatchTransferJobFactory, BatchTransferTaskFactory
 from ..models import BatchTransferTask
 from ..tasks import process_transfer_job, process_transfer_task
