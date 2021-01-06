@@ -19,14 +19,14 @@ class BatchQueryTaskSerializer(BatchTaskSerializer):
     def __init__(self, instance=None, data=None, **kwargs):
         super().__init__(instance, data, **kwargs)
 
-        if "patient_name" in data:
-            data["patient_name"] = person_name_to_dicom(data["patient_name"])
-
         self.adapt_date_field("patient_birth_date")
         self.adapt_date_field("study_date_start")
         self.adapt_date_field("study_date_end")
 
     def to_internal_value(self, data):
+        if "patient_name" in data:
+            data["patient_name"] = person_name_to_dicom(data["patient_name"])
+
         if "modalities" in data:
             modalities = data["modalities"].split(",")
             data["modalities"] = list(map(str.strip, modalities))

@@ -1,6 +1,7 @@
 import logging
 from typing import Any, Dict, List
 from django.utils import timezone
+from django.template.defaultfilters import pluralize
 from adit.core.utils.dicom_connector import DicomConnector
 from ..models import BatchQueryTask, BatchQueryResult
 
@@ -23,7 +24,8 @@ def execute_query(query_task: BatchQueryTask) -> BatchQueryTask.Status:
 
         if results:
             query_task.status = BatchQueryTask.Status.SUCCESS
-            query_task.message = f"Found {len(results)} studies."
+            num = len(results)
+            query_task.message = f"{num} stud{pluralize(num, 'y,ies')} found."
         else:
             query_task.status = BatchQueryTask.Status.WARNING
             query_task.message = "No studies found."
