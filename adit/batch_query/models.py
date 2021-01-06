@@ -1,4 +1,5 @@
 from datetime import datetime
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.urls import reverse
 from adit.core.models import AppSettings, DicomJob, DicomTask, BatchTask
@@ -83,6 +84,15 @@ class BatchQueryTask(BatchTask, DicomTask):
         blank=True,
         validators=[validate_modalities],
     )
+
+    def clean(self) -> None:
+        if not self.patient_id or not (self.patient_name and self.patient_birth_date):
+            raise ValidationError(
+                "A patient must be identifiable by either PatientID or "
+                "PatientName and PatientBirthDate."
+            )
+
+        return super().clean()
 
     def delay(self):
         from .tasks import process_query_job  # pylint: disable=import-outside-toplevel
