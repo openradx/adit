@@ -48,7 +48,7 @@ class BatchTaskSerializer(serializers.ModelSerializer):
         # In contrast to Django's ModelForm does a ModelSerializer not call
         # the model clean method itself (at leat in DRF v3), so we must do
         # this manually
-        batch_task = self._meta.model(**attrs)  # pylint: disable=no-member
+        batch_task = self.Meta.model(**attrs)  # pylint: disable=not-callable
         batch_task.clean()
 
         return attrs
