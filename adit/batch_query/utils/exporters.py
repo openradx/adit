@@ -1,11 +1,13 @@
 import csv
+from django.conf import settings
 from django.utils.formats import date_format, time_format
 from adit.core.templatetags.core_extras import person_name_from_dicom, join_if_list
 from ..models import BatchQueryJob, BatchQueryResult
 
 
 def export_results(job: BatchQueryJob, file):
-    writer = csv.writer(file, delimiter=";")
+    delimiter = settings.CSV_FILE_DELIMITER
+    writer = csv.writer(file, delimiter=delimiter)
 
     # Write column header
     writer.writerow(
