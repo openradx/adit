@@ -42,14 +42,14 @@ def test_field_labels():
 @pytest.mark.django_db
 @patch("adit.batch_transfer.forms.parse_csv_file", autospec=True)
 @patch("adit.batch_transfer.forms.chardet.detect", return_value={"encoding": "UTF-8"})
-def test_with_valid_data(_, parse_mock, data_dict, file_dict):
-    parse_mock.return_value = []
+def test_with_valid_data(_, mock_parse, data_dict, file_dict):
+    mock_parse.return_value = []
 
     form = BatchTransferJobForm(data_dict, file_dict)
 
     assert form.is_valid()
-    parse_mock.assert_called_once()
-    assert isinstance(parse_mock.call_args.args[2], StringIO)
+    mock_parse.assert_called_once()
+    assert isinstance(mock_parse.call_args.args[2], StringIO)
 
 
 def test_with_missing_values():

@@ -64,8 +64,8 @@ def setup_abstract_factories(setup_abstract_models):
 @patch("adit.core.utils.transfer_utils._create_dest_connector", autospec=True)
 @patch("adit.core.utils.transfer_utils._create_source_connector", autospec=True)
 def test_transfer_to_server_succeeds(
-    create_source_connector_mock,
-    create_dest_connector_mock,
+    mock_create_source_connector,
+    mock_create_dest_connector,
     setup_abstract_factories,
 ):
     # Arrange
@@ -89,21 +89,21 @@ def test_transfer_to_server_succeeds(
         "StudyTime": datetime.time(8, 0),
         "ModalitiesInStudy": ["CT", "SR"],
     }
-    source_connector_mock = create_autospec(DicomConnector)
-    source_connector_mock.find_studies.return_value = [study]
-    create_source_connector_mock.return_value = source_connector_mock
-    dest_connector_mock = create_autospec(DicomConnector)
-    create_dest_connector_mock.return_value = dest_connector_mock
+    mock_source_connector = create_autospec(DicomConnector)
+    mock_source_connector.find_studies.return_value = [study]
+    mock_create_source_connector.return_value = mock_source_connector
+    mock_dest_connector = create_autospec(DicomConnector)
+    mock_create_dest_connector.return_value = mock_dest_connector
 
     # Act
     status = execute_transfer(task)
 
     # Assert
-    source_connector_mock.download_study.assert_called_with(
+    mock_source_connector.download_study.assert_called_with(
         task.patient_id, task.study_uid, ANY, modifier_callback=ANY
     )
 
-    upload_path = dest_connector_mock.upload_folder.call_args[0][0]
+    upload_path = mock_dest_connector.upload_folder.call_args[0][0]
     assert upload_path.match(f"*/{study['PatientID']}")
 
     assert status == task.status
@@ -112,7 +112,7 @@ def test_transfer_to_server_succeeds(
 @pytest.mark.django_db
 @patch("adit.core.utils.transfer_utils._create_source_connector", autospec=True)
 def test_transfer_to_folder_succeeds(
-    create_source_connector_mock, setup_abstract_factories
+    mock_create_source_connector, setup_abstract_factories
 ):
     # Arrange
     TestTransferJobFactory, TestTransferTaskFactory = setup_abstract_factories
@@ -136,16 +136,16 @@ def test_transfer_to_folder_succeeds(
         "StudyTime": datetime.time(8, 0),
         "ModalitiesInStudy": ["CT", "SR"],
     }
-    source_connector_mock = create_autospec(DicomConnector)
-    source_connector_mock.find_studies.return_value = [study]
-    create_source_connector_mock.return_value = source_connector_mock
+    mock_source_connector = create_autospec(DicomConnector)
+    mock_source_connector.find_studies.return_value = [study]
+    mock_create_source_connector.return_value = mock_source_connector
 
     # Act
     with patch("adit.core.utils.transfer_utils.Path.mkdir", autospec=True):
         status = execute_transfer(task)
 
     # Assert
-    download_path = source_connector_mock.download_study.call_args[0][2]
+    download_path = mock_source_connector.download_study.call_args[0][2]
     assert download_path.match(
         f"{study['PatientID']}/"
         f"{study['StudyDate'].strftime('%Y%m%d')}"
@@ -160,7 +160,7 @@ def test_transfer_to_folder_succeeds(
 @patch("subprocess.Popen")
 @patch("adit.core.utils.transfer_utils._create_source_connector", autospec=True)
 def test_transfer_to_archive_succeeds(
-    create_source_connector_mock, Popen_mock, setup_abstract_factories
+    mock_create_source_connector, mock_Popen, setup_abstract_factories
 ):
     # Arrange
     TestTransferJobFactory, TestTransferTaskFactory = setup_abstract_factories
@@ -182,17 +182,17 @@ def test_transfer_to_archive_succeeds(
         "StudyTime": datetime.time(8, 0),
         "ModalitiesInStudy": ["CT", "SR"],
     }
-    source_connector_mock = create_autospec(DicomConnector)
-    source_connector_mock.find_studies.return_value = [study]
-    create_source_connector_mock.return_value = source_connector_mock
+    mock_source_connector = create_autospec(DicomConnector)
+    mock_source_connector.find_studies.return_value = [study]
+    mock_create_source_connector.return_value = mock_source_connector
 
-    Popen_mock().returncode = 0
-    Popen_mock().communicate.return_value = ("", "")
+    mock_Popen().returncode = 0
+    mock_Popen().communicate.return_value = ("", "")
 
     # Act
     status = execute_transfer(task)
 
     # Assert
-    assert Popen_mock.call_args[0][0][0] == "7z"
+    assert mock_Popen.call_args[0][0][0] == "7z"
 
     assert status == task.status

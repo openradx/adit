@@ -73,7 +73,7 @@ def test_process_transfer_job_succeeds(
 @pytest.mark.django_db
 @patch("adit.batch_transfer.tasks.execute_transfer", autospec=True)
 def test_transfer_task_without_study_fails(
-    execute_transfer_mock,
+    mock_execute_transfer,
 ):
     # Arrange
     transfer_job = BatchTransferJobFactory(
@@ -82,7 +82,7 @@ def test_transfer_task_without_study_fails(
     transfer_task = BatchTransferTaskFactory(
         job=transfer_job, status=BatchTransferTask.Status.PENDING
     )
-    execute_transfer_mock.return_value = TransferTask.Status.SUCCESS
+    mock_execute_transfer.return_value = TransferTask.Status.SUCCESS
 
     # Act
     status = process_transfer_task(  # pylint: disable=no-value-for-parameter
@@ -90,5 +90,5 @@ def test_transfer_task_without_study_fails(
     )
 
     # Assert
-    execute_transfer_mock.assert_called_once_with(transfer_task)
+    mock_execute_transfer.assert_called_once_with(transfer_task)
     assert status == TransferTask.Status.SUCCESS
