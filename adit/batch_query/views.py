@@ -149,7 +149,12 @@ class BatchQueryResultDownloadView(
         job = self.get_object()
         file = StringIO()
         export_results(job, file)
-        response = HttpResponse(file.getvalue(), content_type="text/csv")
+
+        # We use CP-1252 (ANSI) charset so that the exported CSV files could be
+        # directly opened in Excel and Umlaute are correctly presented.
+        content = file.getvalue().encode("cp1252")
+
+        response = HttpResponse(content, content_type="text/csv")
         filename = f"batch_query_job_{job.id}_results.csv"
         response["Content-Disposition"] = f"attachment;filename={filename}"
         return response
