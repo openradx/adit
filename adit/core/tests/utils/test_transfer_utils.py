@@ -61,6 +61,23 @@ def setup_test_models(django_db_setup, django_db_blocker):
         connection.close()
 
 
+@pytest.fixture
+def create_resources():
+    def _create_resources(transfer_task):
+        patient = {"PatientID": transfer_task.patient_id}
+        study = {
+            "PatientID": transfer_task.patient_id,
+            "StudyInstanceUID": transfer_task.study_uid,
+            "StudyDate": datetime.date(2020, 10, 1),
+            "StudyTime": datetime.time(8, 0),
+            "ModalitiesInStudy": ["CT", "SR"],
+        }
+
+        return patient, study
+
+    return _create_resources
+
+
 @pytest.mark.django_db
 @patch("adit.core.utils.transfer_utils._create_dest_connector", autospec=True)
 @patch("adit.core.utils.transfer_utils._create_source_connector", autospec=True)
@@ -68,6 +85,7 @@ def test_transfer_to_server_succeeds(
     mock_create_source_connector,
     mock_create_dest_connector,
     setup_test_models,
+    create_resources,
 ):
     # Arrange
     job = MyTransferJobFactory(
@@ -80,14 +98,7 @@ def test_transfer_to_server_succeeds(
         status=TransferTask.Status.PENDING, series_uids=[], pseudonym="", job=job
     )
 
-    patient = {"PatientID": task.patient_id}
-    study = {
-        "PatientID": task.patient_id,
-        "StudyInstanceUID": task.study_uid,
-        "StudyDate": datetime.date(2020, 10, 1),
-        "StudyTime": datetime.time(8, 0),
-        "ModalitiesInStudy": ["CT", "SR"],
-    }
+    patient, study = create_resources(task)
 
     mock_source_connector = create_autospec(DicomConnector)
     mock_source_connector.find_patients.return_value = [patient]
@@ -113,7 +124,9 @@ def test_transfer_to_server_succeeds(
 
 @pytest.mark.django_db
 @patch("adit.core.utils.transfer_utils._create_source_connector", autospec=True)
-def test_transfer_to_folder_succeeds(mock_create_source_connector, setup_test_models):
+def test_transfer_to_folder_succeeds(
+    mock_create_source_connector, setup_test_models, create_resources
+):
     # Arrange
     job = MyTransferJobFactory(
         status=TransferJob.Status.PENDING,
@@ -128,14 +141,8 @@ def test_transfer_to_folder_succeeds(mock_create_source_connector, setup_test_mo
     )
     task.job = job
 
-    patient = {"PatientID": task.patient_id}
-    study = {
-        "PatientID": task.patient_id,
-        "StudyInstanceUID": task.study_uid,
-        "StudyDate": datetime.date(2020, 10, 1),
-        "StudyTime": datetime.time(8, 0),
-        "ModalitiesInStudy": ["CT", "SR"],
-    }
+    patient, study = create_resources(task)
+
     mock_source_connector = create_autospec(DicomConnector)
     mock_source_connector.find_patients.return_value = [patient]
     mock_source_connector.find_studies.return_value = [study]
@@ -162,7 +169,7 @@ def test_transfer_to_folder_succeeds(mock_create_source_connector, setup_test_mo
 @patch("subprocess.Popen")
 @patch("adit.core.utils.transfer_utils._create_source_connector", autospec=True)
 def test_transfer_to_archive_succeeds(
-    mock_create_source_connector, mock_Popen, setup_test_models
+    mock_create_source_connector, mock_Popen, setup_test_models, create_resources
 ):
     # Arrange
     job = MyTransferJobFactory(
@@ -176,14 +183,8 @@ def test_transfer_to_archive_succeeds(
     )
     task.job = job
 
-    patient = {"PatientID": task.patient_id}
-    study = {
-        "PatientID": task.patient_id,
-        "StudyInstanceUID": task.study_uid,
-        "StudyDate": datetime.date(2020, 10, 1),
-        "StudyTime": datetime.time(8, 0),
-        "ModalitiesInStudy": ["CT", "SR"],
-    }
+    patient, study = create_resources(task)
+
     mock_source_connector = create_autospec(DicomConnector)
     mock_source_connector.find_patients.return_value = [patient]
     mock_source_connector.find_studies.return_value = [study]
