@@ -1,7 +1,8 @@
 from unittest.mock import patch, create_autospec, ANY
 import datetime
 import pytest
-from django.db import connection
+import factory
+from django.db import models, connection
 from django.db.utils import ProgrammingError
 from ...models import TransferJob, TransferTask
 from ...factories import (
@@ -23,6 +24,10 @@ class MyTransferTask(TransferTask):
     class Meta:
         app_label = "adit.core"
 
+    job = models.ForeignKey(
+        MyTransferJob, on_delete=models.CASCADE, related_name="tasks"
+    )
+
 
 class MyTransferJobFactory(TransferJobFactory):
     class Meta:
@@ -32,6 +37,8 @@ class MyTransferJobFactory(TransferJobFactory):
 class MyTransferTaskFactory(TransferTaskFactory):
     class Meta:
         model = MyTransferTask
+
+    job = factory.SubFactory(MyTransferJobFactory)
 
 
 @pytest.fixture(scope="session")
@@ -70,9 +77,8 @@ def test_transfer_to_server_succeeds(
         archive_password="",
     )
     task = MyTransferTaskFactory(
-        status=TransferTask.Status.PENDING, series_uids=[], pseudonym=""
+        status=TransferTask.Status.PENDING, series_uids=[], pseudonym="", job=job
     )
-    task.job = job
 
     patient = {"PatientID": task.patient_id}
     study = {
