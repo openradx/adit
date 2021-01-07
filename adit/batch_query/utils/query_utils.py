@@ -1,5 +1,5 @@
 import logging
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 from django.utils import timezone
 from django.template.defaultfilters import pluralize
 from adit.core.utils.dicom_connector import DicomConnector
@@ -18,17 +18,26 @@ def execute_query(query_task: BatchQueryTask) -> BatchQueryTask.Status:
     query_task.start = timezone.now()
     query_task.save()
 
-    try:
-        studies = _query_studies(query_task)
-        results = _save_results(query_task, studies)
+    connector: DicomConnector = _create_source_connector(query_task)
 
-        if results:
-            query_task.status = BatchQueryTask.Status.SUCCESS
-            num = len(results)
-            query_task.message = f"{num} stud{pluralize(num, 'y,ies')} found."
-        else:
+    try:
+        patient = _fetch_patient(connector, query_task)
+
+        if not patient:
             query_task.status = BatchQueryTask.Status.WARNING
-            query_task.message = "No studies found."
+            query_task.message = "Patient not found."
+        else:
+            studies = _query_studies(connector, patient, query_task)
+
+            if not studies:
+                query_task.status = BatchQueryTask.Status.WARNING
+                query_task.message = "No studies found."
+            else:
+                results = _save_results(query_task, studies)
+                query_task.status = BatchQueryTask.Status.SUCCESS
+                num = len(results)
+                query_task.message = f"{num} stud{pluralize(num, 'y,ies')} found."
+
     except Exception as err:  # pylint: disable=broad-except
         logger.exception("Error during %s", query_task)
         query_task.status = BatchQueryTask.Status.FAILURE
@@ -45,7 +54,29 @@ def _create_source_connector(query_task: BatchQueryTask) -> DicomConnector:
     return query_task.job.source.dicomserver.create_connector()
 
 
-def _query_studies(query_task: BatchQueryTask) -> List[Dict[str, Any]]:
+def _fetch_patient(
+    connector: DicomConnector, query_task: BatchQueryTask
+) -> Optional[Dict[str, Any]]:
+    patients = connector.find_patients(
+        {
+            "PatientID": query_task.patient_id,
+            "PatientName": query_task.patient_name,
+            "PatientBirthDate": query_task.patient_birth_date,
+        }
+    )
+
+    if len(patients) > 1:
+        raise ValueError("Multiple patients found.")
+
+    if len(patients) == 0:
+        return patients[0]
+
+    return None
+
+
+def _query_studies(
+    connector: DicomConnector, patient: Dict[str, Any], query_task: BatchQueryTask
+) -> List[Dict[str, Any]]:
     study_date = ""
     if query_task.study_date_start:
         if not query_task.study_date_end:
@@ -61,13 +92,9 @@ def _query_studies(query_task: BatchQueryTask) -> List[Dict[str, Any]]:
     elif query_task.study_date_end:
         study_date = "-" + query_task.study_date_end.strftime(DICOM_DATE_FORMAT)
 
-    connector: DicomConnector = _create_source_connector(query_task)
-
     studies = connector.find_studies(
         {
-            "PatientID": query_task.patient_id,
-            "PatientName": query_task.patient_name,
-            "PatientBirthDate": query_task.patient_birth_date,
+            "PatientID": patient["PatientID"],
             "StudyInstanceUID": "",
             "AccessionNumber": query_task.accession_number,
             "StudyDate": study_date,

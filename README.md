@@ -49,6 +49,7 @@ Downloading data from a DICOM server can done by using a C-GET or C-MOVE operati
         "patient_name": ("Patient Name", "PatientName"),
     }
     ```
+-   Tests: test_query_utils,
 
 # Maybe features
 
