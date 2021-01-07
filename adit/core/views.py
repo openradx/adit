@@ -36,7 +36,7 @@ class DicomJobDeleteView(LoginRequiredMixin, OwnerRequiredMixin, DeleteView):
     model = None
     success_url = None
     owner_accessor = "owner"
-    success_message = "Job with ID %(id)s was deleted successfully"
+    success_message = "Job with ID %(id)d was deleted successfully"
 
     def delete(self, request, *args, **kwargs):
         job = self.get_object()
@@ -47,7 +47,7 @@ class DicomJobDeleteView(LoginRequiredMixin, OwnerRequiredMixin, DeleteView):
 
         # As SuccessMessageMixin does not work in DeleteView we have to do
         # it manually (https://code.djangoproject.com/ticket/21936)
-        messages.success(self.request, self.success_message % job.__dict__)
+        messages.success(request, self.success_message % job.__dict__)
         return super().delete(request, *args, **kwargs)
 
 
@@ -56,7 +56,7 @@ class DicomJobCancelView(
 ):
     model = None
     owner_accessor = "owner"
-    success_message = "Job with ID %(id)n was canceled"
+    success_message = "Job with ID %(id)d was canceled"
 
     def post(self, request, *args, **kwargs):  # pylint: disable=unused-argument
         job = self.get_object()
@@ -67,8 +67,8 @@ class DicomJobCancelView(
 
         job.status = DicomJob.Status.CANCELING
         job.save()
-        messages.success(self.request, self.success_message % job.__dict__)
-        redirect(job)
+        messages.success(request, self.success_message % job.__dict__)
+        return redirect(job)
 
 
 class DicomJobVerifyView(
@@ -76,7 +76,7 @@ class DicomJobVerifyView(
 ):
     model = None
     owner_accessor = "owner"
-    success_message = "Job with ID %(id)s was verified"
+    success_message = "Job with ID %(id)d was verified"
 
     def post(self, request, *args, **kwargs):  # pylint: disable=unused-argument
         job = self.get_object()
@@ -88,8 +88,8 @@ class DicomJobVerifyView(
         job.status = DicomJob.Status.PENDING
         job.save()
         job.delay()
-        messages.success(self.request, self.success_message % job.__dict__)
-        redirect(job)
+        messages.success(request, self.success_message % job.__dict__)
+        return redirect(job)
 
 
 class DicomTaskDetailView(LoginRequiredMixin, OwnerRequiredMixin, DetailView):
