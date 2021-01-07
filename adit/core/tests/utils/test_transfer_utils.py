@@ -3,7 +3,6 @@ import datetime
 import pytest
 from django.db import connection
 from django.db.utils import ProgrammingError
-from django.db.models.base import ModelBase
 from ...models import TransferJob, TransferTask
 from ...factories import (
     DicomServerFactory,
@@ -19,28 +18,25 @@ from ...utils.transfer_utils import execute_transfer
 def setup_abstract_models(django_db_setup, django_db_blocker):
     # Solution adapted from https://stackoverflow.com/q/4281670/166229
     with django_db_blocker.unblock():
-        transfer_job_model = ModelBase(
-            TransferJob.__name__,
-            (TransferJob,),
-            {"__module__": TransferJob.__module__},
-        )
-        transfer_task_model = ModelBase(
-            TransferTask.__name__,
-            (TransferTask,),
-            {"__module__": TransferTask.__module__},
-        )
+
+        class TestTransferJob(TransferJob):
+            pass
+
+        class TestTransferTask(TransferTask):
+            pass
+
         try:
             with connection.schema_editor() as schema_editor:
-                schema_editor.create_model(transfer_job_model)
-                schema_editor.create_model(transfer_task_model)
+                schema_editor.create_model(TestTransferJob)
+                schema_editor.create_model(TestTransferTask)
         except ProgrammingError:
             pass
 
-        yield transfer_job_model, transfer_task_model
+        yield TestTransferJob, TestTransferTask
 
         with connection.schema_editor() as schema_editor:
-            schema_editor.delete_model(transfer_job_model)
-            schema_editor.delete_model(transfer_task_model)
+            schema_editor.delete_model(TestTransferJob)
+            schema_editor.delete_model(TestTransferTask)
 
         connection.close()
 
