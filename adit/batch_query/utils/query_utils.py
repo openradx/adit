@@ -27,7 +27,7 @@ def execute_query(query_task: BatchQueryTask) -> BatchQueryTask.Status:
             query_task.status = BatchQueryTask.Status.WARNING
             query_task.message = "Patient not found."
         else:
-            studies = _query_studies(connector, patient, query_task)
+            studies = _query_studies(connector, patient["PatientID"], query_task)
 
             if not studies:
                 query_task.status = BatchQueryTask.Status.WARNING
@@ -75,7 +75,7 @@ def _fetch_patient(
 
 
 def _query_studies(
-    connector: DicomConnector, patient: Dict[str, Any], query_task: BatchQueryTask
+    connector: DicomConnector, patient_id: str, query_task: BatchQueryTask
 ) -> List[Dict[str, Any]]:
     study_date = ""
     if query_task.study_date_start:
@@ -94,7 +94,7 @@ def _query_studies(
 
     studies = connector.find_studies(
         {
-            "PatientID": patient["PatientID"],
+            "PatientID": patient_id,
             "StudyInstanceUID": "",
             "AccessionNumber": query_task.accession_number,
             "StudyDate": study_date,

@@ -160,7 +160,8 @@ def _download_dicoms(
 
     # Check if the Study Instance UID is correct and fetch some attributes to create
     # the study folder.
-    study = _fetch_study(connector, transfer_task)
+    patient = _fetch_patient(connector, transfer_task)
+    study = _fetch_study(connector, patient["PatientID"], transfer_task)
     modalities = study["ModalitiesInStudy"]
 
     # If some series are explicitly chosen then check if their Series Instance UIDs
@@ -202,12 +203,30 @@ def _download_dicoms(
     return patient_folder
 
 
-def _fetch_study(
+def _fetch_patient(
     connector: DicomConnector, transfer_task: TransferTask
+) -> Dict[str, Any]:
+    patients = connector.find_patients({"PatientID": transfer_task.patient_id})
+
+    if len(patients) == 0:
+        raise ValueError(
+            f"No patient found with Patient ID {transfer_task.patient_id}."
+        )
+
+    if len(patients) > 1:
+        raise AssertionError(
+            f"Multiple patients found with Patient ID {transfer_task.patient_id}."
+        )
+
+    return patients[0]
+
+
+def _fetch_study(
+    connector: DicomConnector, patient_id: str, transfer_task: TransferTask
 ) -> Dict[str, Any]:
     studies = connector.find_studies(
         {
-            "PatientID": transfer_task.patient_id,
+            "PatientID": patient_id,
             "StudyInstanceUID": transfer_task.study_uid,
             "StudyDate": "",
             "StudyTime": "",
