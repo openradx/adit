@@ -82,6 +82,7 @@ def test_transfer_to_server_succeeds(
     )
     task.job = job
 
+    patient = {"PatientID": task.patient_id}
     study = {
         "PatientID": task.patient_id,
         "StudyInstanceUID": task.study_uid,
@@ -89,7 +90,9 @@ def test_transfer_to_server_succeeds(
         "StudyTime": datetime.time(8, 0),
         "ModalitiesInStudy": ["CT", "SR"],
     }
+
     mock_source_connector = create_autospec(DicomConnector)
+    mock_source_connector.find_patients.return_value = [patient]
     mock_source_connector.find_studies.return_value = [study]
     mock_create_source_connector.return_value = mock_source_connector
     mock_dest_connector = create_autospec(DicomConnector)
@@ -129,6 +132,7 @@ def test_transfer_to_folder_succeeds(
     )
     task.job = job
 
+    patient = {"PatientID": task.patient_id}
     study = {
         "PatientID": task.patient_id,
         "StudyInstanceUID": task.study_uid,
@@ -137,6 +141,7 @@ def test_transfer_to_folder_succeeds(
         "ModalitiesInStudy": ["CT", "SR"],
     }
     mock_source_connector = create_autospec(DicomConnector)
+    mock_source_connector.find_patients.return_value = [patient]
     mock_source_connector.find_studies.return_value = [study]
     mock_create_source_connector.return_value = mock_source_connector
 
