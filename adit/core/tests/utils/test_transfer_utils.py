@@ -108,6 +108,7 @@ def test_transfer_to_server_succeeds(
     assert upload_path.match(f"*/{study['PatientID']}")
 
     assert status == task.status
+    assert status == MyTransferTask.Status.SUCCESS
 
 
 @pytest.mark.django_db
@@ -154,6 +155,7 @@ def test_transfer_to_folder_succeeds(mock_create_source_connector, setup_test_mo
     )
 
     assert status == task.status
+    assert status == MyTransferTask.Status.SUCCESS
 
 
 @pytest.mark.django_db
@@ -174,6 +176,7 @@ def test_transfer_to_archive_succeeds(
     )
     task.job = job
 
+    patient = {"PatientID": task.patient_id}
     study = {
         "PatientID": task.patient_id,
         "StudyInstanceUID": task.study_uid,
@@ -182,16 +185,20 @@ def test_transfer_to_archive_succeeds(
         "ModalitiesInStudy": ["CT", "SR"],
     }
     mock_source_connector = create_autospec(DicomConnector)
+    mock_source_connector.find_patients.return_value = [patient]
     mock_source_connector.find_studies.return_value = [study]
     mock_create_source_connector.return_value = mock_source_connector
 
-    mock_Popen().returncode = 0
-    mock_Popen().communicate.return_value = ("", "")
+    mock_Popen.return_value.returncode = 0
+    mock_Popen.return_value.communicate.return_value = ("", "")
 
     # Act
     status = execute_transfer(task)
 
     # Assert
+    mock_source_connector.find_patients.assert_called_once()
     assert mock_Popen.call_args[0][0][0] == "7z"
+    assert mock_Popen.call_count == 2
 
     assert status == task.status
+    assert status == MyTransferTask.Status.SUCCESS
