@@ -14,46 +14,44 @@ from ...utils.dicom_connector import DicomConnector
 from ...utils.transfer_utils import execute_transfer
 
 
+class MyTransferJob(TransferJob):
+    class Meta:
+        app_label = "adit.core"
+
+
+class MyTransferTask(TransferTask):
+    class Meta:
+        app_label = "adit.core"
+
+
+class MyTransferJobFactory(TransferJobFactory):
+    class Meta:
+        model = MyTransferJob
+
+
+class MyTransferTaskFactory(TransferTaskFactory):
+    class Meta:
+        model = MyTransferTask
+
+
 @pytest.fixture(scope="session")
-def setup_abstract_models(django_db_setup, django_db_blocker):
+def setup_test_models(django_db_setup, django_db_blocker):
     # Solution adapted from https://stackoverflow.com/q/4281670/166229
     with django_db_blocker.unblock():
-
-        class TestTransferJob(TransferJob):
-            pass
-
-        class TestTransferTask(TransferTask):
-            pass
-
         try:
             with connection.schema_editor() as schema_editor:
-                schema_editor.create_model(TestTransferJob)
-                schema_editor.create_model(TestTransferTask)
+                schema_editor.create_model(MyTransferJob)
+                schema_editor.create_model(MyTransferTask)
         except ProgrammingError:
             pass
 
-        yield TestTransferJob, TestTransferTask
+        yield
 
         with connection.schema_editor() as schema_editor:
-            schema_editor.delete_model(TestTransferJob)
-            schema_editor.delete_model(TestTransferTask)
+            schema_editor.delete_model(MyTransferJob)
+            schema_editor.delete_model(MyTransferTask)
 
         connection.close()
-
-
-@pytest.fixture(scope="session")
-def setup_abstract_factories(setup_abstract_models):
-    TestTransferJob, TestTransferTask = setup_abstract_models
-
-    class TestTransferJobFactory(TransferJobFactory):
-        class Meta:
-            model = TestTransferJob
-
-    class TestTransferTaskFactory(TransferTaskFactory):
-        class Meta:
-            model = TestTransferTask
-
-    yield TestTransferJobFactory, TestTransferTaskFactory
 
 
 @pytest.mark.django_db
@@ -62,18 +60,16 @@ def setup_abstract_factories(setup_abstract_models):
 def test_transfer_to_server_succeeds(
     mock_create_source_connector,
     mock_create_dest_connector,
-    setup_abstract_factories,
+    setup_test_models,
 ):
     # Arrange
-    TestTransferJobFactory, TestTransferTaskFactory = setup_abstract_factories
-
-    job = TestTransferJobFactory(
+    job = MyTransferJobFactory(
         status=TransferJob.Status.PENDING,
         source=DicomServerFactory(),
         destination=DicomServerFactory(),
         archive_password="",
     )
-    task = TestTransferTaskFactory(
+    task = MyTransferTaskFactory(
         status=TransferTask.Status.PENDING, series_uids=[], pseudonym=""
     )
     task.job = job
@@ -110,18 +106,15 @@ def test_transfer_to_server_succeeds(
 
 @pytest.mark.django_db
 @patch("adit.core.utils.transfer_utils._create_source_connector", autospec=True)
-def test_transfer_to_folder_succeeds(
-    mock_create_source_connector, setup_abstract_factories
-):
+def test_transfer_to_folder_succeeds(mock_create_source_connector, setup_test_models):
     # Arrange
-    TestTransferJobFactory, TestTransferTaskFactory = setup_abstract_factories
-    job = TestTransferJobFactory(
+    job = MyTransferJobFactory(
         status=TransferJob.Status.PENDING,
         source=DicomServerFactory(),
         destination=DicomFolderFactory(),
         archive_password="",
     )
-    task = TestTransferTaskFactory(
+    task = MyTransferTaskFactory(
         status=TransferTask.Status.PENDING,
         series_uids=[],
         pseudonym="",
@@ -161,17 +154,16 @@ def test_transfer_to_folder_succeeds(
 @patch("subprocess.Popen")
 @patch("adit.core.utils.transfer_utils._create_source_connector", autospec=True)
 def test_transfer_to_archive_succeeds(
-    mock_create_source_connector, mock_Popen, setup_abstract_factories
+    mock_create_source_connector, mock_Popen, setup_test_models
 ):
     # Arrange
-    TestTransferJobFactory, TestTransferTaskFactory = setup_abstract_factories
-    job = TestTransferJobFactory(
+    job = MyTransferJobFactory(
         status=TransferJob.Status.PENDING,
         source=DicomServerFactory(),
         destination=DicomFolderFactory(),
         archive_password="mysecret",
     )
-    task = TestTransferTaskFactory(
+    task = MyTransferTaskFactory(
         status=TransferTask.Status.PENDING, series_uids=[], pseudonym=""
     )
     task.job = job
