@@ -35,7 +35,7 @@ class BatchQueryTask(BatchTask, DicomTask):
         unique_together = ("batch_id", "job")
 
     job = models.ForeignKey(
-        BatchQueryJob, on_delete=models.CASCADE, related_name="queries"
+        BatchQueryJob, on_delete=models.CASCADE, related_name="tasks"
     )
     patient_id = models.CharField(
         blank=True,

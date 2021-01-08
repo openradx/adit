@@ -86,7 +86,7 @@ class BatchQueryJobDetailView(
 
     def get_filter_queryset(self):
         job = self.get_object()
-        return job.queries.prefetch_related("results")
+        return job.tasks.prefetch_related("results")
 
 
 class BatchQueryJobDeleteView(DicomJobDeleteView):

@@ -175,6 +175,14 @@ class DicomJob(models.Model):
     def is_verified(self):
         return self.status != self.Status.UNVERIFIED
 
+    @property
+    def processed_tasks(self):
+        non_processed = (
+            DicomTask.Status.PENDING,
+            DicomTask.Status.IN_PROGRESS,
+        )
+        return self.tasks.exclude(status__in=non_processed)
+
     def __str__(self):
         return f"{self.__class__.__name__} [ID {self.id}]"
 
@@ -193,10 +201,6 @@ class TransferJob(DicomJob):
         blank=True, max_length=64, validators=[no_backslash_char_validator]
     )
     archive_password = models.CharField(blank=True, max_length=50)
-
-    def get_processed_tasks(self):
-        non_processed = (TransferTask.Status.PENDING, TransferTask.Status.IN_PROGRESS)
-        return self.tasks.exclude(status__in=non_processed)
 
 
 class DicomTask(models.Model):

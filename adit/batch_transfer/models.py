@@ -12,14 +12,6 @@ class BatchTransferJob(TransferJob):
     project_name = models.CharField(max_length=150)
     project_description = models.TextField(max_length=2000)
 
-    @property
-    def processed_tasks(self):
-        non_processed = (
-            BatchTransferTask.Status.PENDING,
-            BatchTransferTask.Status.IN_PROGRESS,
-        )
-        return self.tasks.exclude(status__in=non_processed)
-
     def delay(self):
         # pylint: disable=import-outside-toplevel
         from .tasks import process_transfer_job

@@ -40,8 +40,8 @@ class BatchQueryJobForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         self.csv_error_details = None
-        self.queries = None
-        self.save_queries = None
+        self.tasks = None
+        self.save_tasks = None
 
         urgent_option = kwargs.pop("urgent_option", False)
 
@@ -62,7 +62,7 @@ class BatchQueryJobForm(forms.ModelForm):
         fp = StringIO(rawdata.decode(encoding))
 
         try:
-            self.queries = parse_csv_file(
+            self.tasks = parse_csv_file(
                 BatchQueryTaskSerializer,
                 {
                     "batch_id": "BatchID",
@@ -89,21 +89,21 @@ class BatchQueryJobForm(forms.ModelForm):
 
         return csv_file
 
-    def _save_queries(self, job):
-        for query in self.queries:
-            query.job = job
+    def _save_tasks(self, job):
+        for task in self.tasks:
+            task.job = job
 
-        BatchQueryTask.objects.bulk_create(self.queries)
+        BatchQueryTask.objects.bulk_create(self.tasks)
 
     def save(self, commit=True):
         with transaction.atomic():
             job = super().save(commit=commit)
 
             if commit:
-                self._save_queries(job)
+                self._save_tasks(job)
             else:
                 # If not committing, add a method to the form to allow deferred
-                # saving of queries.
-                self.save_queries = self._save_queries
+                # saving of query tasks.
+                self.save_tasks = self._save_tasks
 
         return job

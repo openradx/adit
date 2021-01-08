@@ -33,12 +33,9 @@ Downloading data from a DICOM server can done by using a C-GET or C-MOVE operati
 
 # TODO list
 
--   Make explorer more DicomWeb conform
--   Fix explorer_url templatetag
--   ConnectionError on invalid dicom explorer query
--   test all serializers (see test_parsers)
--   test all views (as integration tests using real Orthanc)
--   improve tests of transferutil
+-   Use LRU cache for dicom explorer / collector
+-   Auto refresh pages of in progress jobs
+-   Continuous Mode
 -   should we really save log to task this way
 -   Allow to pause a job (Status.PAUSED)
 -   Better scheduler (with day in week and times)
@@ -49,10 +46,11 @@ Downloading data from a DICOM server can done by using a C-GET or C-MOVE operati
         "patient_name": ("Patient Name", "PatientName"),
     }
     ```
--   Tests: test_query_utils,
+-   Tests: test_query_utils, test serializers, test all views (as integration tests using real Orthanc), improve tests of transferutil
 
 # Maybe features
 
+-   BatchQuery with custom DICOM keywords
 -   Allow provide a regex of StudyDescription in CSV batch file
 -   Allow to specify many modalities per row in CSV file
 -   move date parsing part in parsers.py and consumers.py to date_util.py

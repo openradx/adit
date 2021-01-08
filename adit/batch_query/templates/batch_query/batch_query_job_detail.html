@@ -32,6 +32,9 @@
     <dt class="col-sm-3">Project Name</dt>
     <dd class="col-sm-9">{{ job.project_name }}</dd>
 
+    <dt class="col-sm-3">Project Description</dt>
+    <dd class="col-sm-9">{{ job.project_description }}</dd>
+
     <dt class="col-sm-3">Status</dt>
     <dd class="col-sm-9">
         <span class="{{ job.status|dicom_job_status_css_class }}">

@@ -27,9 +27,9 @@ def export_results(job: BatchQueryJob, file):
     )
 
     # Write data
-    for query in job.queries.prefetch_related("results").all():
+    for query_task in job.tasks.prefetch_related("results").all():
         result: BatchQueryResult
-        for result in query.results.all():
+        for result in query_task.results.all():
             patient_name = person_name_from_dicom(result.patient_name)
 
             patient_birth_date = date_format(
@@ -49,7 +49,7 @@ def export_results(job: BatchQueryJob, file):
                 image_count = result.image_count
 
             csv_row = [
-                query.batch_id,
+                query_task.batch_id,
                 result.patient_id,
                 patient_name,
                 patient_birth_date,

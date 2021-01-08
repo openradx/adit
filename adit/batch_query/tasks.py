@@ -31,12 +31,12 @@ def process_query_job(query_job_id: int):
     if query_job.urgent:
         priority = settings.BATCH_QUERY_URGENT_PRIORITY
 
-    process_queries = [
-        process_query_task.s(query.id).set(priority=priority)
-        for query in query_job.queries.all()
+    process_query_tasks = [
+        process_query_task.s(query_task.id).set(priority=priority)
+        for query_task in query_job.tasks.all()
     ]
 
-    chord(process_queries)(
+    chord(process_query_tasks)(
         on_job_finished.s(query_job.id).on_error(on_job_failed.s(job_id=query_job.id))
     )
 
