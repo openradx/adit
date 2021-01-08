@@ -107,7 +107,7 @@ services:
             - "6501:6501"
             - "7501:7501"
         volumes:
-            - ../orthanc1_config.json:/etc/orthanc/orthanc.json
+            - ../orthanc1/orthanc.json:/etc/orthanc/orthanc.json
             - orthanc1_data:/var/lib/orthanc/db
 
     orthanc2:
@@ -116,7 +116,7 @@ services:
             - "6502:6502"
             - "7502:7502"
         volumes:
-            - ../orthanc2_config.json:/etc/orthanc/orthanc.json
+            - ../orthanc2/orthanc.json:/etc/orthanc/orthanc.json
             - orthanc2_data:/var/lib/orthanc/db
 
 volumes:
