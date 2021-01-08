@@ -68,7 +68,7 @@ def _fetch_patient(
     if len(patients) > 1:
         raise ValueError("Multiple patients found.")
 
-    if len(patients) == 0:
+    if len(patients) == 1:
         return patients[0]
 
     return None
