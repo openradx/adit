@@ -10,6 +10,7 @@ only occur in higher level methods that uses lower level methods. As logger
 the Celery task logger is used as we intercept those messages and save them
 in TransferTask model object.
 """
+import logging
 from typing import Dict, List, Union, Any
 import time
 import datetime
@@ -51,12 +52,8 @@ from ..utils.sanitize import sanitize_dirname
 
 FORCE_DEBUG_LOGGER = False
 
-# We must use this logger to intercept the logging messages and
-# store them in the task (see core.tasks.transfer_dicoms()).
-# TODO Maybe it would be better to use the standard python logger somehow.
-# See https://www.distributedpython.com/2018/08/28/celery-logging/
-# and https://www.distributedpython.com/2018/11/06/celery-task-logger-format/
-logger = get_task_logger(__name__)
+
+logger = logging.getLogger(__name__)
 
 
 def connect_to_server(func):
