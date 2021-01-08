@@ -1,3 +1,4 @@
+import logging
 import asyncio
 from urllib.parse import urlencode
 from asgiref.sync import sync_to_async
@@ -12,9 +13,12 @@ from adit.core import validators
 from .forms import DicomExplorerQueryForm
 from .utils.dicom_data_collector import DicomDataCollector
 
+logger = logging.getLogger(__name__)
+
 
 @login_required
 def dicom_explorer_form_view(request):
+    logger.warning("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
     if request.GET:
         form = DicomExplorerQueryForm(request.GET)
     else:
