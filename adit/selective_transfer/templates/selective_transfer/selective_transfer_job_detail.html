@@ -38,11 +38,8 @@
     <dt class="col-sm-3">Trial Protocol Name</dt>
     <dd class="col-sm-9">{{ job.trial_protocol_name|default:"—" }}</dd>
 
-    <dt class="col-sm-3">Total Transfer Tasks</dt>
-    <dd class="col-sm-9">{{ job.tasks.count }}</dd>
-
     <dt class="col-sm-3">Processed Transfer Tasks</dt>
-    <dd class="col-sm-9">{{ job.processed_tasks.count }}</dd>
+    <dd class="col-sm-9">{{ job.processed_tasks.count }} of {{ job.tasks.count }}</dd>
 
     <dt class="col-sm-3">Status</dt>
     <dd class="col-sm-9">
