@@ -60,6 +60,7 @@ Downloading data from a DICOM server can done by using a C-GET or C-MOVE operati
 -   https://www.yergler.net/2009/09/27/nested-formsets-with-django/
 -   Allow to search multiple source servers with one query
 -   Evaluate to use diffhtml instead of morphdom, see https://diffhtml.org/api.html#inner-html
+-   http://the-frey.github.io/2014/08/18/monitoring-docker-containers-with-monit
 
 # Commands
 
