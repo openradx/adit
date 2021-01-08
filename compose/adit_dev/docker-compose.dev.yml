@@ -29,6 +29,8 @@ x-app: &default-app
         LOG_FOLDER: "/var/www/adit/logs"
         FLOWER_HOST: "flower"
         FLOWER_PORT: "5555"
+        SYSLOG_HOST: "syslog"
+        SYSLOG_PORT: "514"
         ORTHANC1_HOST: "orthanc1"
         ORTHANC2_HOST: "orthanc2"
 
@@ -95,6 +97,9 @@ services:
             - "6379"
         volumes:
             - redis_data:/data
+
+    syslog:
+        image: balabit/syslog-ng:3.30.1
 
     orthanc1:
         image: jodogne/orthanc-plugins:1.8.1

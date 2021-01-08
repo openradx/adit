@@ -108,7 +108,8 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-LOG_FOLDER = Path(env.str("LOG_FOLDER", default="./"))
+SYSLOG_HOST = env.str("SYSLOG_HOST", default="localhost")
+SYSLOG_PORT = env.int("SYSLOG_PORT", default=514)
 
 # See following examples:
 # https://github.com/django/django/blob/master/django/utils/log.py
@@ -137,17 +138,15 @@ LOGGING = {
     },
     "handlers": {
         "console": {
-            "level": "INFO",
+            "level": "DEBUG",
             "class": "logging.StreamHandler",
             "formatter": "simple",
         },
-        "log_file": {
+        "syslog": {
             "level": "INFO",
-            "filters": ["require_debug_false"],
-            "class": "logging.handlers.RotatingFileHandler",
-            "filename": str(LOG_FOLDER / "adit.log"),
-            "maxBytes": 10 * 1024 * 1024,  # 10 MB
-            "backupCount": 10,
+            # "filters": ["require_debug_false"],
+            "class": "logging.handlers.SysLogHandler",
+            "address": (SYSLOG_HOST, SYSLOG_PORT),
             "formatter": "verbose",
         },
         "mail_admins": {
@@ -158,24 +157,32 @@ LOGGING = {
     },
     "loggers": {
         "adit": {
-            "handlers": ["console"],
+            "handlers": ["console", "syslog", "mail_admins"],
             "level": "INFO",
             "propagate": False,
         },
         "celery": {
-            "handlers": ["console"],
+            "handlers": ["console", "syslog", "mail_admins"],
             "level": "INFO",
             "propagate": False,
         },
         "django": {
-            "handlers": ["console"],
-            "level": "INFO",
+            "handlers": ["console", "syslog"],
+            "level": "WARNING",
             "propagate": False,
         },
-        "pynetdicom": {"handlers": ["console"], "level": "WARNING"},
-        "pydicom": {"handlers": ["console"], "level": "WARNING"},
+        "pydicom": {
+            "handlers": ["console", "syslog"],
+            "level": "WARNING",
+            "propagate": False,
+        },
+        "pynetdicom": {
+            "handlers": ["console", "syslog"],
+            "level": "WARNING",
+            "propagate": False,
+        },
     },
-    "root": {"handlers": ["console", "log_file"], "level": "WARNING"},
+    "root": {"handlers": ["console", "syslog"], "level": "ERROR"},
 }
 
 # Internationalization
