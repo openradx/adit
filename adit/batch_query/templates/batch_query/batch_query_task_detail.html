@@ -9,24 +9,7 @@
     <h4 class="mb-3">Batch Query Task</h4>
 </div>
 
-{% with query.job as job %}
-<dl class="row">
-    <dt class="col-sm-3">Batch ID</dt>
-    <dd class="col-sm-9">{{ query.batch_id }}</dd>
-
-    <dt class="col-sm-3">Associated Job ID</dt>
-    <dd class="col-sm-9">
-        <a href="{% url job_url_name job.id %}">{{ job.id }}</a>
-    </dd>
-    
-    <dt class="col-sm-3">Status</dt>
-    <dd class="col-sm-9">
-        <span class="{{ query.status|dicom_task_status_css_class }}">
-            {{ query.get_status_display }}
-        </span>
-    </dd>
-</dl>
-{% endwith %}
+{% include "core/_dicom_task_detail.html" %}
 
 <div class="row justify-content-end mb-1">
     <div class="col-md">

@@ -108,7 +108,6 @@ class BatchQueryTaskDetailView(
     DicomTaskDetailView,
 ):
     model = BatchQueryTask
-    context_object_name = "query"
     job_url_name = "batch_query_job_detail"
     template_name = "batch_query/batch_query_task_detail.html"
     table_class = BatchQueryResultTable
