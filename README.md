@@ -49,6 +49,7 @@ Downloading data from a DICOM server can done by using a C-GET or C-MOVE operati
 -   Tests: test_query_utils, test serializers, test all views (as integration tests using real Orthanc), improve tests of transferutil
 -   Link owner in templates to user profile
 -   Watchdog server
+-   Make logging analyze image with: http://crunchtools.com/software/petit/, less, vim, https://crypt.gen.nz/logsurfer/, ripgrep
 
 # Maybe features
 
