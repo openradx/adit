@@ -100,6 +100,10 @@ services:
 
     syslog:
         image: balabit/syslog-ng:3.30.1
+        volumes:
+            - ../syslog/logrotate.conf:/etc/logrotate.conf
+            - ../syslog/syslog-ng.conf:/etc/syslog-ng/syslog-ng.conf
+            - syslog_data:/var/log
 
     orthanc1:
         image: jodogne/orthanc-plugins:1.8.1
@@ -127,5 +131,6 @@ volumes:
     rabbit_data:
     redis_data:
     flower_data:
+    syslog_data:
     orthanc1_data:
     orthanc2_data:
