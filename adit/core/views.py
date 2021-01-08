@@ -40,7 +40,7 @@ class DicomJobDeleteView(LoginRequiredMixin, OwnerRequiredMixin, DeleteView):
 
     def delete(self, request, *args, **kwargs):
         job = self.get_object()
-        if not job.is_deletable():
+        if not job.is_deletable:
             raise SuspiciousOperation(
                 f"Job with ID {job.id} and status {job.get_status_display()} is not deletable."
             )
@@ -60,7 +60,7 @@ class DicomJobCancelView(
 
     def post(self, request, *args, **kwargs):  # pylint: disable=unused-argument
         job = self.get_object()
-        if not job.is_cancelable():
+        if not job.is_cancelable:
             raise SuspiciousOperation(
                 f"Job with ID {job.id} and status {job.get_status_display()} is not cancelable."
             )
@@ -80,7 +80,7 @@ class DicomJobVerifyView(
 
     def post(self, request, *args, **kwargs):  # pylint: disable=unused-argument
         job = self.get_object()
-        if job.is_verified():
+        if job.is_verified:
             raise SuspiciousOperation(
                 f"Job with ID {job.id} and status {job.get_status_display()} was already verified."
             )

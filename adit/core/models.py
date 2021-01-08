@@ -166,12 +166,15 @@ class DicomJob(models.Model):
     start = models.DateTimeField(null=True, blank=True)
     end = models.DateTimeField(null=True, blank=True)
 
+    @property
     def is_deletable(self):
         return self.status in (self.Status.UNVERIFIED, self.Status.PENDING)
 
+    @property
     def is_cancelable(self):
         return self.status in (self.Status.IN_PROGRESS,)
 
+    @property
     def is_verified(self):
         return self.status != self.Status.UNVERIFIED
 
