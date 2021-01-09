@@ -82,7 +82,7 @@ def create_server_nodes():
 
 def create_folder_nodes():
     folders = []
-    folders.append(DicomFolderFactory(name="tmp folder", path="/tmp/adit_dicom_folder"))
+    folders.append(DicomFolderFactory(name="Downloads", path="/app/dicom_downloads"))
     return folders
 
 

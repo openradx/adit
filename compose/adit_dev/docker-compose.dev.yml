@@ -13,7 +13,6 @@ x-app: &default-app
         - orthanc2
     volumes:
         - ../..:/app
-        - /mnt:/mnt
         - adit_data:/var/www/adit
         - vscode-server:/root/.vscode-server/extensions
         - vscode-server-insiders:/root/.vscode-server-insiders/extensions
@@ -27,7 +26,6 @@ x-app: &default-app
         RABBITMQ_URL: "amqp://rabbit"
         REDIS_URL: "redis://redis:6379/0"
         DJANGO_STATIC_ROOT: "/var/www/adit/static/"
-        LOG_FOLDER: "/var/www/adit/logs"
         FLOWER_HOST: "flower"
         FLOWER_PORT: "5555"
         SYSLOG_HOST: "syslog"
@@ -127,7 +125,7 @@ services:
             - orthanc2_data:/var/lib/orthanc/db
 
 volumes:
-    adit_data: # For statics, logs, Celery Beat db
+    adit_data:
     vscode-server:
     vscode-server-insiders:
     postgres_data:

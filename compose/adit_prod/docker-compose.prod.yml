@@ -106,7 +106,7 @@ services:
             - syslog_data:/var/log
 
 volumes:
-    adit_data: # For statics, SSL certs, logs, Celery Beat db
+    adit_data:
     postgres_data:
     rabbit_data:
     redis_data:
