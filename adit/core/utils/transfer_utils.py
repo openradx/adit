@@ -1,3 +1,4 @@
+from adit.batch_transfer.models import BatchTransferJob
 import io
 import logging
 from pathlib import Path
@@ -125,7 +126,7 @@ def _transfer_to_archive(transfer_task: TransferTask) -> None:
     archive_path = archive_folder / archive_name
 
     if not archive_path.is_file():
-        _create_archive(archive_path, transfer_job.id, archive_password)
+        _create_archive(archive_path, transfer_job, archive_password)
 
     with tempfile.TemporaryDirectory(prefix="adit_") as tmpdir:
         patient_folder = _download_dicoms(transfer_task, Path(tmpdir))
@@ -140,9 +141,12 @@ def _transfer_to_folder(transfer_task: TransferTask) -> None:
 
 
 def _create_destination_name(transfer_job) -> str:
-    dt = transfer_job.created.strftime("%Y%m%d")
-    username = transfer_job.owner.username
-    return sanitize_dirname(f"adit_job_{transfer_job.id}_{dt}_{username}")
+    name = "adit_"
+    name += transfer_job._meta.app_label + "_"
+    name += str(transfer_job.id) + "_"
+    name += transfer_job.created.strftime("%Y%m%d") + "_"
+    name += transfer_job.owner.username
+    return sanitize_dirname(name)
 
 
 def _download_dicoms(
@@ -349,7 +353,9 @@ def _modify_dataset(
         ds.ClinicalTrialProtocolName = trial_protocol_name
 
 
-def _create_archive(archive_path: Path, job_id: int, archive_password: str) -> None:
+def _create_archive(
+    archive_path: Path, job: BatchTransferJob, archive_password: str
+) -> None:
     """Create a new archive with just an INDEX.txt file in it."""
     if Path(archive_path).is_file():
         raise ValueError(f"Archive ${archive_path} already exists.")
@@ -357,7 +363,7 @@ def _create_archive(archive_path: Path, job_id: int, archive_password: str) -> N
     with tempfile.TemporaryDirectory(prefix="adit_") as tmpdir:
         readme_path = Path(tmpdir) / "INDEX.txt"
         readme_file = open(readme_path, "w")
-        readme_file.write(f"Archive created by Job {job_id} at {datetime.now()}.")
+        readme_file.write(f"Archive created by {job} at {datetime.now()}.")
         readme_file.close()
 
         _add_to_archive(archive_path, archive_password, readme_path)
