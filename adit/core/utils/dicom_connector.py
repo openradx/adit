@@ -50,8 +50,6 @@ from pynetdicom.status import (
 from django.conf import settings
 from ..utils.sanitize import sanitize_dirname
 
-FORCE_DEBUG_LOGGER = False
-
 
 logger = logging.getLogger(__name__)
 
@@ -100,7 +98,6 @@ class DicomConnector:
         study_root_find_support: bool = True
         study_root_get_support: bool = True
         study_root_move_support: bool = True
-        debug_logger: bool = False
         auto_connect: bool = True
         connection_retries: int = 3
         retry_timeout: int = 30  # in seconds
@@ -111,7 +108,7 @@ class DicomConnector:
     def __init__(self, config: Config):
         self.config = config
 
-        if self.config.debug_logger or FORCE_DEBUG_LOGGER:
+        if settings.DICOM_DEBUG_LOGGER:
             debug_logger()  # Debug mode of pynetdicom
 
         self.assoc = None
@@ -478,12 +475,11 @@ class DicomConnector:
     def _associate(self):
         ae = AE(ae_title=self.config.client_ae_title)
 
+        # We only use the timeouts if set, otherwise we leave the default timeouts
         if self.config.acse_timeout is not None:
             ae.acse_timeout = self.config.acse_timeout
-
         if self.config.dimse_timeout is not None:
             ae.dimse_timeout = self.config.dimse_timeout
-
         if self.config.network_timeout is not None:
             ae.network_timeout = self.config.network_timeout
 

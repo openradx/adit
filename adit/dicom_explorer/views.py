@@ -1,4 +1,3 @@
-import logging
 import asyncio
 from urllib.parse import urlencode
 from asgiref.sync import sync_to_async

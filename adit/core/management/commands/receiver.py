@@ -8,8 +8,6 @@ from pynetdicom import AE, evt, AllStoragePresentationContexts, debug_logger
 from pydicom.filewriter import dcmwrite
 from ..base.server_command import ServerCommand
 
-FORCE_DEBUG_LOGGER = False
-
 logger = logging.getLogger(__name__)
 
 
@@ -20,17 +18,8 @@ class Command(ServerCommand):
     default_addr = ""
     default_port = 11112
 
-    def add_arguments(self, parser):
-        super().add_arguments(parser)
-
-        parser.add_argument(
-            "--debug",
-            action="store_true",
-            help="Enable debug logger of pynetdicom.",
-        )
-
     def run_server(self, **options):
-        if options["debug"] or FORCE_DEBUG_LOGGER:
+        if settings.DICOM_DEBUG_LOGGER:
             debug_logger()
 
         ae = AE(ae_title=settings.ADIT_AE_TITLE)
