@@ -126,7 +126,9 @@ class DicomConnector:
                 self._associate()
                 break
             except ConnectionError as err:
-                logger.exception("Could not connect to server: %s", str(err))
+                logger.exception(
+                    "Could not connect to DICOM server %s.", self.config.server_ae_title
+                )
                 if i < self.config.connection_retries - 1:
                     logger.info(
                         "Retrying to connect in %d seconds.",
@@ -656,17 +658,20 @@ class DicomConnector:
                 move_stopped_event,
             )
 
-            results = self.c_move(
-                query,
-                self._select_query_model_move(query),
-                self.config.client_ae_title,
-            )
+            try:
+                results = self.c_move(
+                    query,
+                    self._select_query_model_move(query),
+                    self.config.client_ae_title,
+                )
+                _evaluate_get_move_results(results, query)
+            except ConnectionError:
+                logger.exception("Error while downloading images with C-MOVE.")
+            finally:
+                move_stopped_event.set()
 
-            move_stopped_event.set()
-
+            # Raises if _consume_dicoms raises
             future.result()
-
-            _evaluate_get_move_results(results, query)
 
     def _select_query_model_move(self, query):
         if query["PatientID"] and self.config.patient_root_move_support:
@@ -719,7 +724,7 @@ class DicomConnector:
             if remaining_image_uids == image_uids:
                 raise ValueError(f"No images of series with UID {series_uid} received.")
             raise ValueError(
-                f"Several images of series with UID {series_uid} were not received: "
+                f"Some images of series with UID {series_uid} were not received: "
                 f"{remaining_image_uids}"
             )
 
@@ -731,9 +736,15 @@ class DicomConnector:
             # If we are waiting without a message for more then a specified timeout
             # then we stop waiting anymore and also abort an established association
             time_since_last_consume = time.time() - last_consume_at
-            if time_since_last_consume > settings.C_MOVE_DOWNLOAD_TIMEOUT:
+            timeout = settings.C_MOVE_DOWNLOAD_TIMEOUT
+            if time_since_last_consume > timeout:
+                logger.warning(
+                    "C-MOVE download timed out after %d seconds without receiving images.",
+                    round(time_since_last_consume),
+                )
                 if not move_stopped_event.is_set():
-                    self.assoc.abort()
+                    logger.warning("Aborting not finished C-MOVE operation.")
+                    self.abort_connection()
 
                 break
 
