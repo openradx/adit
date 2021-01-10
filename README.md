@@ -33,6 +33,7 @@ Downloading data from a DICOM server can done by using a C-GET or C-MOVE operati
 
 # TODO list
 
+-   c-get download timeout
 -   implement \_download_study_move
 -   Use LRU cache for dicom explorer / collector
 -   Auto refresh pages of in progress jobs
