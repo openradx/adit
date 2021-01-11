@@ -2,8 +2,10 @@ from unittest.mock import patch, create_autospec, ANY
 import datetime
 import pytest
 import factory
+import time_machine
 from django.db import models, connection
 from django.db.utils import ProgrammingError
+from adit.accounts.factories import UserFactory
 from ...models import TransferJob, TransferTask
 from ...factories import (
     DicomServerFactory,
@@ -68,7 +70,7 @@ def create_resources():
         study = {
             "PatientID": transfer_task.patient_id,
             "StudyInstanceUID": transfer_task.study_uid,
-            "StudyDate": datetime.date(2020, 10, 1),
+            "StudyDate": datetime.date(2019, 9, 23),
             "StudyTime": datetime.time(8, 0),
             "ModalitiesInStudy": ["CT", "SR"],
         }
@@ -124,18 +126,22 @@ def test_transfer_to_server_succeeds(
 
 @pytest.mark.django_db
 @patch("adit.core.utils.transfer_utils._create_source_connector", autospec=True)
+@time_machine.travel("2020-01-01")
 def test_transfer_to_folder_succeeds(
     mock_create_source_connector, setup_test_models, create_resources
 ):
     # Arrange
+    user = UserFactory(username="kai")
     job = MyTransferJobFactory(
         status=TransferJob.Status.PENDING,
         source=DicomServerFactory(),
         destination=DicomFolderFactory(),
         archive_password="",
+        owner=user,
     )
     task = MyTransferTaskFactory(
         status=TransferTask.Status.PENDING,
+        patient_id="1001",
         series_uids=[],
         pseudonym="",
     )
@@ -155,10 +161,7 @@ def test_transfer_to_folder_succeeds(
     # Assert
     download_path = mock_source_connector.download_study.call_args[0][2]
     assert download_path.match(
-        f"{study['PatientID']}/"
-        f"{study['StudyDate'].strftime('%Y%m%d')}"
-        f"-{study['StudyTime'].strftime('%H%M%S')}"
-        f"-{','.join(study['ModalitiesInStudy'])}"
+        r"adit_adit.core_1_20200101_kai/1001/20190923-080000-CT,SR"
     )
 
     assert status == task.status

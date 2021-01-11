@@ -22,7 +22,6 @@ from io import BytesIO
 import errno
 from functools import wraps
 import pika
-from celery.utils.log import get_task_logger
 from pydicom.dataset import Dataset
 from pydicom import dcmread, valuerep, uid
 from pydicom.datadict import dictionary_VM

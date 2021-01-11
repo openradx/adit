@@ -1,4 +1,3 @@
-from adit.batch_transfer.models import BatchTransferJob
 import io
 import logging
 from pathlib import Path
@@ -354,7 +353,7 @@ def _modify_dataset(
 
 
 def _create_archive(
-    archive_path: Path, job: BatchTransferJob, archive_password: str
+    archive_path: Path, job: TransferJob, archive_password: str
 ) -> None:
     """Create a new archive with just an INDEX.txt file in it."""
     if Path(archive_path).is_file():
