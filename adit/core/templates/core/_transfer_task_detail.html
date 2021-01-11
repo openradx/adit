@@ -92,6 +92,6 @@
     <dd class="col-sm-9">{{ task.pseudonym|default:"—" }}</dd>
 
     <dt class="col-sm-3">Log</dt>
-    <dd class="col-sm-9">{{ task.log|default:"—" }}</dd>
+    <dd class="col-sm-9"><pre>{{ task.log|default:"—" }}</pre></dd>
 </dl>
 {% endwith %}
