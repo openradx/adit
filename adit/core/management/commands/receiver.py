@@ -13,7 +13,47 @@ FORCE_DEBUG_LOGGER = False
 logger = logging.getLogger(__name__)
 
 
+class Command(ServerCommand):
+    help = "Starts a C-STORE SCP for receiving DICOM files."
+
+    server_name = "ADIT DICOM C-STORE SCP Receiver"
+    default_addr = ""
+    default_port = 11112
+
+    def add_arguments(self, parser):
+        super().add_arguments(parser)
+
+        parser.add_argument(
+            "--debug",
+            action="store_true",
+            help="Enable debug logger of pynetdicom.",
+        )
+
+    def run_server(self, **options):
+        if options["debug"] or FORCE_DEBUG_LOGGER:
+            debug_logger()
+
+        ae = AE(ae_title=settings.ADIT_AE_TITLE)
+        ae.supported_contexts = AllStoragePresentationContexts
+        handlers = [
+            (evt.EVT_CONN_OPEN, on_connect),
+            (evt.EVT_CONN_CLOSE, on_close),
+            (evt.EVT_ESTABLISHED, on_established),
+            (evt.EVT_RELEASED, on_released),
+            (evt.EVT_ABORTED, on_aborted),
+            (evt.EVT_C_STORE, handle_store),
+        ]
+
+        ae.start_server((self.addr, self.port), evt_handlers=handlers)
+
+
 def on_connect(event):
+    address = event.assoc.remote["address"].strip()
+    port = event.assoc.remote["port"]
+    logger.info("Connection to remote %s:%d opened", address, port)
+
+    # TODO maybe we should connect to Rabbit when association is established and
+    # close on association release and abort (but check the lifecycle of an association)
     rabbit_url = settings.RABBITMQ_URL
     connection = None
     retries = 0
@@ -47,10 +87,35 @@ def on_connect(event):
 
 
 def on_close(event):
+    address = event.assoc.remote["address"].strip()
+    port = event.assoc.remote["port"]
+    logger.info("Connection to remote %s:%d closed", address, port)
+
     connection = event.assoc.rabbit_connection
     if connection and connection.is_open:
         rabbit_url = settings.RABBITMQ_URL
         logger.info("Disconnected from %s.", rabbit_url)
+
+
+def on_established(event):
+    calling_ae = event.assoc.remote["ae_title"].decode("utf-8").strip()
+    address = event.assoc.remote["address"].strip()
+    port = event.assoc.remote["port"]
+    logger.info("Assoication to %s [%s:%d] established.", calling_ae, address, port)
+
+
+def on_released(event):
+    calling_ae = event.assoc.remote["ae_title"].decode("utf-8").strip()
+    address = event.assoc.remote["address"].strip()
+    port = event.assoc.remote["port"]
+    logger.info("Assoication to %s [%s:%d] released.", calling_ae, address, port)
+
+
+def on_aborted(event):
+    calling_ae = event.assoc.remote["ae_title"].decode("utf-8").strip()
+    address = event.assoc.remote["address"].strip()
+    port = event.assoc.remote["port"]
+    logger.info("Assoication to %s [%s:%d] was aborted.", calling_ae, address, port)
 
 
 # Implement a handler for evt.EVT_C_STORE
@@ -94,34 +159,3 @@ def handle_store(event):
     channel.close()
 
     return 0x0000  # Return a 'Success' status
-
-
-class Command(ServerCommand):
-    help = "Starts a C-STORE SCP for receiving DICOM files."
-
-    server_name = "ADIT DICOM C-STORE SCP Receiver"
-    default_addr = ""
-    default_port = 11112
-
-    def add_arguments(self, parser):
-        super().add_arguments(parser)
-
-        parser.add_argument(
-            "--debug",
-            action="store_true",
-            help="Enable debug logger of pynetdicom.",
-        )
-
-    def run_server(self, **options):
-        if options["debug"] or FORCE_DEBUG_LOGGER:
-            debug_logger()
-
-        ae = AE(ae_title=settings.ADIT_AE_TITLE)
-        ae.supported_contexts = AllStoragePresentationContexts
-        handlers = [
-            (evt.EVT_CONN_OPEN, on_connect),
-            (evt.EVT_CONN_CLOSE, on_close),
-            (evt.EVT_C_STORE, handle_store),
-        ]
-
-        ae.start_server((self.addr, self.port), evt_handlers=handlers)

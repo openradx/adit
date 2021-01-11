@@ -63,8 +63,8 @@ services:
 
     receiver:
         <<: *default-app
-        expose:
-            - "11112"
+        ports:
+            - "11112:11112"
         command: python manage.py receiver --autoreload
 
     flower:
