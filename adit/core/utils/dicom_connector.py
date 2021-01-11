@@ -47,6 +47,7 @@ from pynetdicom.status import (
     STATUS_PENDING,
     STATUS_SUCCESS,
 )
+from django.conf import settings
 from ..utils.sanitize import sanitize_dirname
 
 FORCE_DEBUG_LOGGER = False
@@ -731,10 +732,13 @@ class DicomConnector:
         for message in self._consume_from_receiver(study_uid, series_uid):
             method, properties, body = message
 
-            # If we are waiting without a message for more than 60s
-            # after the move operation stopped then stop waiting anymore
+            # If we are waiting without a message for more then a specified timeout
+            # then we stop waiting anymore and also abort an established association
             time_since_last_consume = time.time() - last_consume_at
-            if move_stopped_event.is_set() and time_since_last_consume > 60:
+            if time_since_last_consume > settings.C_MOVE_DOWNLOAD_TIMEOUT:
+                if not move_stopped_event.is_set():
+                    self.assoc.abort()
+
                 break
 
             # We just reached an inactivity timeout
