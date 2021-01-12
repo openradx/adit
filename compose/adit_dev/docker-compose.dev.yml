@@ -64,7 +64,7 @@ services:
     receiver:
         <<: *default-app
         ports:
-            - "11112:11112"
+            - "11122:11112"
         command: python manage.py receiver --autoreload
 
     flower:
