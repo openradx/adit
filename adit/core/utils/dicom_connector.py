@@ -150,8 +150,15 @@ class DicomConnector:
         self.assoc = None
 
     def abort_connection(self):
-        if self.assoc and self.assoc.is_alive():
-            self.assoc.abort()
+        if not self.assoc:
+            raise AssertionError("No association to abort.")
+
+        logger.debug(
+            "Aborting connection to DICOM server %s.", self.config.server_ae_title
+        )
+
+        self.assoc.abort()
+        self.assoc = None
 
     @connect_to_server
     def find_patients(self, query, limit_results=None):
@@ -252,7 +259,6 @@ class DicomConnector:
             }
         )
 
-        failed_series = []
         for series in series_list:
             series_uid = series["SeriesInstanceUID"]
 
@@ -266,14 +272,10 @@ class DicomConnector:
                 self.download_series(
                     patient_id, study_uid, series_uid, download_path, modifier_callback
                 )
-            except ValueError:
-                failed_series.append(series_uid)
-
-        if len(failed_series) > 0:
-            raise ValueError(
-                "Problems occurred while downloading series with UID: %s"
-                % ", ".join(failed_series)
-            )
+                logger.debug("Successfully downloaded series %s.", series_uid)
+            except ValueError as err:
+                logger.error("Failed to download series %s.", series_uid)
+                raise ValueError("Download of study failed.") from err
 
     @connect_to_server
     def download_series(  # pylint: disable=too-many-arguments
@@ -466,10 +468,8 @@ class DicomConnector:
                 {"PatientID": patient_id, "StudyInstanceUID": study_uid, "Modality": ""}
             )
         except ValueError as err:
-            raise ValueError(
-                "A problem occurred while fetching the study modalities "
-                f"of study with UID {study_uid}."
-            ) from err
+            logger.error("Failed to fetch modalities of study %s.", study_uid)
+            raise ValueError("Failed to fetch modalities of study.") from err
 
         modalities = set(map(lambda x: x["Modality"], series_list))
         return sorted(list(modalities))
@@ -722,11 +722,14 @@ class DicomConnector:
 
         if remaining_image_uids:
             if remaining_image_uids == image_uids:
-                raise ValueError(f"No images of series with UID {series_uid} received.")
-            raise ValueError(
-                f"Some images of series with UID {series_uid} were not received: "
-                f"{remaining_image_uids}"
-            )
+                logger.error("No images of series %s received.", series_uid)
+            else:
+                logger.error(
+                    "Some images of series %s were not received: %s",
+                    series_uid,
+                    ", ".join(remaining_image_uids),
+                )
+            raise ValueError("Failed to download images with C-MOVE.")
 
     def _consume_with_timeout(self, study_uid, series_uid, move_stopped_event):
         last_consume_at = time.time()
@@ -738,7 +741,7 @@ class DicomConnector:
             time_since_last_consume = time.time() - last_consume_at
             timeout = settings.C_MOVE_DOWNLOAD_TIMEOUT
             if time_since_last_consume > timeout:
-                logger.warning(
+                logger.error(
                     "C-MOVE download timed out after %d seconds without receiving images.",
                     round(time_since_last_consume),
                 )
@@ -905,7 +908,8 @@ def _evaluate_get_move_results(results, query):
         )
         if failed_image_uids:
             error_msg += f" Failed images: {', '.join(failed_image_uids)}"
-        raise ValueError(error_msg)
+        logger.error(error_msg)
+        raise ValueError(f"Invalid status {status_category} during transfer.")
 
 
 def _handle_c_get_store(event, folder, modifier_callback, errors):
