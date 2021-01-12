@@ -4,6 +4,7 @@ ADIT (Automated DICOM Transfer) is a swiss army knife to exchange DICOM data bet
 
 # Features
 
+-   add support store_scp_support, dicomweb_quido_rs_support, ...
 -   Transfer DICOM data between DICOM / PACS servers
 -   Download DICOM data to a network folder
 -   Pseudonymize DICOM data on the fly

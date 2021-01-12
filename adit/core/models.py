@@ -88,12 +88,16 @@ class DicomServer(DicomNode):
     port = models.PositiveIntegerField(
         validators=[MinValueValidator(1), MaxValueValidator(65535)]
     )
-    patient_root_find_support = models.BooleanField(default=True)
-    patient_root_get_support = models.BooleanField(default=True)
-    patient_root_move_support = models.BooleanField(default=True)
-    study_root_find_support = models.BooleanField(default=True)
-    study_root_get_support = models.BooleanField(default=True)
-    study_root_move_support = models.BooleanField(default=True)
+    patient_root_find_support = models.BooleanField(default=False)
+    patient_root_get_support = models.BooleanField(default=False)
+    patient_root_move_support = models.BooleanField(default=False)
+    study_root_find_support = models.BooleanField(default=False)
+    study_root_get_support = models.BooleanField(default=False)
+    study_root_move_support = models.BooleanField(default=False)
+    store_scp_support = models.BooleanField(default=False)
+    dicomweb_qido_support = models.BooleanField(default=False)
+    dicomweb_wado_support = models.BooleanField(default=False)
+    dicomweb_stow_support = models.BooleanField(default=False)
 
     def create_connector(self, **kwargs):
         return DicomConnector(
