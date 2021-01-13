@@ -17,7 +17,7 @@ x-app: &default-app
         - vscode-server:/root/.vscode-server/extensions
         - vscode-server-insiders:/root/.vscode-server-insiders/extensions
     env_file:
-        - ../../.env
+        - .env
     environment:
         ENABLE_REMOTE_DEBUGGING: 0
         USE_DOCKER: 1
