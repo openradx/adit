@@ -83,6 +83,7 @@ class DicomNode(models.Model):
 class DicomServer(DicomNode):
     NODE_TYPE = DicomNode.NodeType.SERVER
 
+    # traditional DICOM support
     ae_title = models.CharField(unique=True, max_length=16)
     host = models.CharField(max_length=255)
     port = models.PositiveIntegerField(
@@ -95,6 +96,9 @@ class DicomServer(DicomNode):
     study_root_get_support = models.BooleanField(default=False)
     study_root_move_support = models.BooleanField(default=False)
     store_scp_support = models.BooleanField(default=False)
+
+    # DICOMweb support
+    dicomweb_root_url = models.CharField(max_length=2000)
     dicomweb_qido_support = models.BooleanField(default=False)
     dicomweb_wado_support = models.BooleanField(default=False)
     dicomweb_stow_support = models.BooleanField(default=False)
