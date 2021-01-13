@@ -104,5 +104,5 @@ Downloading data from a DICOM server can done by using a C-GET or C-MOVE operati
 # Deployment for production
 
 -   Copy cert.pem and key.pem from N:\Dokumente\Projekte\ADIT_Server\ssl_certificate to /var/www/adit/ssl/
--   Restart apit_prod_web container
--   Add Synapse DICOM server (Uncheck "Patient root get support"!!!)
+-   Restart adit_prod_web container
+-   Add the DICOM servers and folders
