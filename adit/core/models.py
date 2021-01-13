@@ -2,7 +2,6 @@ from datetime import time
 from django.db import models
 from django.conf import settings
 from django.core.validators import MaxValueValidator, MinValueValidator
-from .utils.dicom_connector import DicomConnector
 from .validators import (
     no_backslash_char_validator,
     no_control_chars_validator,
@@ -65,8 +64,8 @@ class DicomNode(models.Model):
 
     node_type = models.CharField(max_length=2, choices=NodeType.choices)
     name = models.CharField(unique=True, max_length=64)
-    source_active = models.BooleanField(default=True)
-    destination_active = models.BooleanField(default=True)
+    source_active = models.BooleanField(default=False)
+    destination_active = models.BooleanField(default=False)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -97,29 +96,11 @@ class DicomServer(DicomNode):
     study_root_move_support = models.BooleanField(default=False)
     store_scp_support = models.BooleanField(default=False)
 
-    # DICOMweb support
-    dicomweb_root_url = models.CharField(max_length=2000)
+    # (optional) DICOMweb support
+    dicomweb_root_url = models.CharField(blank=True, max_length=2000)
     dicomweb_qido_support = models.BooleanField(default=False)
     dicomweb_wado_support = models.BooleanField(default=False)
     dicomweb_stow_support = models.BooleanField(default=False)
-
-    def create_connector(self, **kwargs):
-        return DicomConnector(
-            DicomConnector.Config(
-                **kwargs,
-                client_ae_title=settings.ADIT_AE_TITLE,
-                server_ae_title=self.ae_title,
-                server_host=self.host,
-                server_port=self.port,
-                rabbitmq_url=settings.RABBITMQ_URL,
-                patient_root_find_support=self.patient_root_find_support,
-                patient_root_get_support=self.patient_root_get_support,
-                patient_root_move_support=self.patient_root_move_support,
-                study_root_find_support=self.study_root_find_support,
-                study_root_get_support=self.study_root_get_support,
-                study_root_move_support=self.study_root_move_support,
-            )
-        )
 
 
 class DicomFolder(DicomNode):

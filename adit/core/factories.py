@@ -11,23 +11,38 @@ from .models import (
 fake = Faker()
 
 
-class DicomServerFactory(factory.django.DjangoModelFactory):
+class DicomNodeFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = None
+
+    name = factory.Faker("domain_word")
+    source_active = True
+    destination_active = True
+
+
+class DicomServerFactory(DicomNodeFactory):
     class Meta:
         model = DicomServer
         django_get_or_create = ("name",)
 
-    name = factory.Faker("domain_word")
     ae_title = factory.Faker("pystr", min_chars=4, max_chars=12)
     host = factory.Faker("ipv4")
     port = factory.Faker("random_int", min=1, max=9999)
 
+    patient_root_find_support = True
+    patient_root_get_support = True
+    patient_root_move_support = True
+    study_root_find_support = True
+    study_root_get_support = True
+    study_root_move_support = True
+    store_scp_support = True
 
-class DicomFolderFactory(factory.django.DjangoModelFactory):
+
+class DicomFolderFactory(DicomNodeFactory):
     class Meta:
         model = DicomFolder
         django_get_or_create = ("name",)
 
-    name = factory.Faker("domain_word")
     path = factory.Faker("file_path")
 
 

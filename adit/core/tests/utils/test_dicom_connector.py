@@ -5,12 +5,9 @@ from pynetdicom import Association
 from pynetdicom.status import Status
 from pynetdicom.sop_class import (  # pylint: disable-msg=no-name-in-module
     PatientRootQueryRetrieveInformationModelFind,
-    PatientRootQueryRetrieveInformationModelGet,
-    PatientRootQueryRetrieveInformationModelMove,
     StudyRootQueryRetrieveInformationModelFind,
-    StudyRootQueryRetrieveInformationModelGet,
-    StudyRootQueryRetrieveInformationModelMove,
 )
+from adit.core.factories import DicomServerFactory
 from adit.core.utils.dicom_connector import DicomConnector
 
 
@@ -65,14 +62,9 @@ def association():
 
 
 @pytest.fixture
-def dicom_connector():
-    config = DicomConnector.Config(
-        client_ae_title="CLIENT_AE_TITLE",
-        server_ae_title="SERVER_AE_TITLE",
-        server_host="127.0.0.1",
-        server_port=104,
-    )
-    return DicomConnector(config)
+def dicom_connector(db):
+    server = DicomServerFactory()
+    return DicomConnector(server)
 
 
 @patch("adit.core.utils.dicom_connector.AE.associate")

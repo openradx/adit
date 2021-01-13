@@ -6,9 +6,15 @@ from adit.core.utils.dicom_connector import DicomConnector
 
 class DicomDataCollector:
     def __init__(self, server: DicomServer):
-        self.connector: DicomConnector = server.create_connector(
-            connection_retries=1,
-            acse_timeout=settings.DICOM_EXPLORER_RESPONSE_TIMEOUT,
+        timeout = settings.DICOM_EXPLORER_RESPONSE_TIMEOUT
+        self.connector = DicomConnector(
+            server,
+            DicomConnector.Config(
+                connection_retries=1,
+                acse_timeout=timeout,
+                dimse_timeout=timeout,
+                network_timeout=timeout,
+            ),
         )
 
     def collect_patient_data(self, patient_id=None, query=None, limit_results=None):

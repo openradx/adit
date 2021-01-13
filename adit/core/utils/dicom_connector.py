@@ -48,6 +48,7 @@ from pynetdicom.status import (
     STATUS_SUCCESS,
 )
 from django.conf import settings
+from adit.core.models import DicomServer
 from ..utils.sanitize import sanitize_dirname
 
 
@@ -86,18 +87,7 @@ def connect_to_server(func):
 
 class DicomConnector:
     @dataclass
-    class Config:  # pylint: disable=too-many-instance-attributes
-        client_ae_title: str
-        server_ae_title: str
-        server_host: str
-        server_port: int
-        rabbitmq_url: str = None
-        patient_root_find_support: bool = True
-        patient_root_get_support: bool = True
-        patient_root_move_support: bool = True
-        study_root_find_support: bool = True
-        study_root_get_support: bool = True
-        study_root_move_support: bool = True
+    class Config:
         auto_connect: bool = True
         connection_retries: int = 3
         retry_timeout: int = 30  # in seconds
@@ -105,8 +95,12 @@ class DicomConnector:
         dimse_timeout: int = None
         network_timeout: int = None
 
-    def __init__(self, config: Config):
-        self.config = config
+    def __init__(self, server: DicomServer, config: Config = None):
+        self.server = server
+        if config is None:
+            self.config = DicomConnector.Config()
+        else:
+            self.config = config
 
         if settings.DICOM_DEBUG_LOGGER:
             debug_logger()  # Debug mode of pynetdicom
@@ -117,9 +111,7 @@ class DicomConnector:
         if self.assoc:
             raise AssertionError("A former connection was not closed properly.")
 
-        logger.debug(
-            "Opening connection to DICOM server %s.", self.config.server_ae_title
-        )
+        logger.debug("Opening connection to DICOM server %s.", self.server.ae_title)
 
         for i in range(self.config.connection_retries):
             try:
@@ -127,7 +119,7 @@ class DicomConnector:
                 break
             except ConnectionError as err:
                 logger.exception(
-                    "Could not connect to DICOM server %s.", self.config.server_ae_title
+                    "Could not connect to DICOM server %s.", self.server.ae_title
                 )
                 if i < self.config.connection_retries - 1:
                     logger.info(
@@ -142,9 +134,7 @@ class DicomConnector:
         if not self.assoc:
             raise AssertionError("No association to release.")
 
-        logger.debug(
-            "Closing connection to DICOM server %s.", self.config.server_ae_title
-        )
+        logger.debug("Closing connection to DICOM server %s.", self.server.ae_title)
 
         self.assoc.release()
         self.assoc = None
@@ -153,9 +143,7 @@ class DicomConnector:
         if not self.assoc:
             raise AssertionError("No association to abort.")
 
-        logger.debug(
-            "Aborting connection to DICOM server %s.", self.config.server_ae_title
-        )
+        logger.debug("Aborting connection to DICOM server %s.", self.server.ae_title)
 
         self.assoc.abort()
         self.assoc = None
@@ -164,7 +152,7 @@ class DicomConnector:
     def find_patients(self, query, limit_results=None):
         query["QueryRetrieveLevel"] = "PATIENT"
 
-        if not self.config.patient_root_find_support:
+        if not self.server.patient_root_find_support:
             raise ValueError(
                 "Searching for patients is not supported without C-FIND support for "
                 "Patient Root Query/Retrieve Information Model."
@@ -291,10 +279,10 @@ class DicomConnector:
             "SeriesInstanceUID": series_uid,
         }
 
-        if self.config.patient_root_get_support or self.config.study_root_get_support:
+        if self.server.patient_root_get_support or self.server.study_root_get_support:
             self._download_series_get(query, folder, modifier_callback)
         elif (
-            self.config.patient_root_move_support or self.config.study_root_move_support
+            self.server.patient_root_move_support or self.server.study_root_move_support
         ):
             self._download_series_move(query, folder, modifier_callback)
         else:
@@ -305,6 +293,9 @@ class DicomConnector:
     @connect_to_server
     def upload_folder(self, folder):
         """Upload a specified folder to a DICOM server."""
+
+        if not self.server.store_scp_support:
+            raise ValueError("Server does not support C-STORE operations.")
 
         results = self.c_store(folder)
 
@@ -475,7 +466,7 @@ class DicomConnector:
         return sorted(list(modalities))
 
     def _associate(self):
-        ae = AE(ae_title=self.config.client_ae_title)
+        ae = AE(settings.ADIT_AE_TITLE)
 
         # We only use the timeouts if set, otherwise we leave the default timeouts
         if self.config.acse_timeout is not None:
@@ -497,18 +488,18 @@ class DicomConnector:
             negotiation_items.append(role)
 
         self.assoc = ae.associate(
-            self.config.server_host,
-            self.config.server_port,
-            ae_title=self.config.server_ae_title,
+            self.server.host,
+            self.server.port,
+            ae_title=self.server.ae_title,
             ext_neg=negotiation_items,
         )
 
         if not self.assoc.is_established:
             raise ConnectionError(
                 "Could not connect to DICOM server ["
-                f"AET {self.config.server_ae_title}, "
-                f"IP {self.config.server_host}, "
-                f"Port {self.config.server_port}]"
+                f"AET {self.server.ae_title}, "
+                f"IP {self.server.host}, "
+                f"Port {self.server.port}]"
             )
 
     def _fetch_results(self, responses, operation, query_dict, limit_results=None):
@@ -543,7 +534,7 @@ class DicomConnector:
 
     def _select_query_model_find(self, query, force_study_root=False):
         if force_study_root:
-            if not self.config.study_root_find_support:
+            if not self.server.study_root_find_support:
                 raise ValueError(
                     "Missing support for Study Root Query/Retrieve Information Model."
                 )
@@ -556,10 +547,10 @@ class DicomConnector:
         patient_id_valid = (
             patient_id and not "*" in patient_id and not "?" in patient_id
         )
-        if patient_id_valid and self.config.patient_root_find_support:
+        if patient_id_valid and self.server.patient_root_find_support:
             return PatientRootQueryRetrieveInformationModelFind
 
-        if self.config.study_root_find_support:
+        if self.server.study_root_find_support:
             return StudyRootQueryRetrieveInformationModelFind
 
         raise ValueError(
@@ -624,10 +615,10 @@ class DicomConnector:
         _evaluate_get_move_results(results, query)
 
     def _select_query_model_get(self, query):
-        if query["PatientID"] and self.config.patient_root_get_support:
+        if query["PatientID"] and self.server.patient_root_get_support:
             return PatientRootQueryRetrieveInformationModelGet
 
-        if query["StudyInstanceUID"] and self.config.study_root_get_support:
+        if query["StudyInstanceUID"] and self.server.study_root_get_support:
             return StudyRootQueryRetrieveInformationModelGet
 
         raise ValueError(
@@ -662,7 +653,7 @@ class DicomConnector:
                 results = self.c_move(
                     query,
                     self._select_query_model_move(query),
-                    self.config.client_ae_title,
+                    settings.ADIT_AE_TITLE,
                 )
                 _evaluate_get_move_results(results, query)
             except ConnectionError:
@@ -674,10 +665,10 @@ class DicomConnector:
             future.result()
 
     def _select_query_model_move(self, query):
-        if query["PatientID"] and self.config.patient_root_move_support:
+        if query["PatientID"] and self.server.patient_root_move_support:
             return PatientRootQueryRetrieveInformationModelMove
 
-        if query["StudyInstanceUID"] and self.config.study_root_move_support:
+        if query["StudyInstanceUID"] and self.server.study_root_move_support:
             return StudyRootQueryRetrieveInformationModelMove
 
         raise ValueError(
@@ -764,14 +755,12 @@ class DicomConnector:
             yield received_image_uid, data
 
     def _consume_from_receiver(self, study_uid, series_uid):
-        connection = pika.BlockingConnection(
-            pika.URLParameters(self.config.rabbitmq_url)
-        )
+        connection = pika.BlockingConnection(pika.URLParameters(settings.RABBITMQ_URL))
         channel = connection.channel()
         channel.exchange_declare(exchange="received_dicoms", exchange_type="direct")
         result = channel.queue_declare(queue="", exclusive=True)
         queue_name = result.method.queue
-        routing_key = f"{self.config.server_ae_title}\\{study_uid}\\{series_uid}"
+        routing_key = f"{self.server.ae_title}\\{study_uid}\\{series_uid}"
         channel.queue_bind(
             exchange="received_dicoms",
             queue=queue_name,

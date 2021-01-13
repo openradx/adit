@@ -51,7 +51,7 @@ def execute_query(query_task: BatchQueryTask) -> BatchQueryTask.Status:
 
 def _create_source_connector(query_task: BatchQueryTask) -> DicomConnector:
     # An own function to easily mock the source connector in test_transfer_utils.py
-    return query_task.job.source.dicomserver.create_connector()
+    return DicomConnector(query_task.job.source.dicomserver)
 
 
 def _fetch_patient(

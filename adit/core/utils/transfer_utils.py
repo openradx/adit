@@ -75,12 +75,12 @@ def execute_transfer(transfer_task: TransferTask) -> TransferTask.Status:
 
 def _create_source_connector(transfer_task: TransferTask) -> DicomConnector:
     # An own function to easily mock the source connector in test_transfer_utils.py
-    return transfer_task.job.source.dicomserver.create_connector()
+    return DicomConnector(transfer_task.job.source.dicomserver)
 
 
 def _create_dest_connector(transfer_task: TransferTask) -> DicomConnector:
     # An own function to easily mock the destination connector in test_transfer_utils.py
-    return transfer_task.job.destination.dicomserver.create_connector()
+    return DicomConnector(transfer_task.job.destination.dicomserver)
 
 
 # TODO does this really work?

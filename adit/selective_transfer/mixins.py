@@ -1,12 +1,12 @@
 from datetime import datetime
 from django.conf import settings
+from adit.core.utils.dicom_connector import DicomConnector
 from .models import SelectiveTransferJob, SelectiveTransferTask
 
 
 class SelectiveTransferJobCreateMixin:
     def create_source_connector(self, form):
-        server = form.instance.source.dicomserver
-        return server.create_connector()
+        return DicomConnector(form.instance.source.dicomserver)
 
     def query_studies(self, connector, form, limit_results):
         data = form.cleaned_data
