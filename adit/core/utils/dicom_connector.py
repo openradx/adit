@@ -158,7 +158,7 @@ class DicomConnector:
                 "Patient Root Query/Retrieve Information Model."
             )
 
-        patients = self.c_find(
+        patients = self._send_c_find(
             query,
             PatientRootQueryRetrieveInformationModelFind,
             limit_results=limit_results,
@@ -186,9 +186,9 @@ class DicomConnector:
         if not "NumberOfStudyRelatedInstances" in query:
             query["NumberOfStudyRelatedInstances"] = ""
 
-        studies = self.c_find(
+        studies = self._send_c_find(
             query,
-            self._select_query_model_find(query, force_study_root=force_study_root),
+            force_study_root=force_study_root,
             limit_results=limit_results,
         )
 
@@ -214,9 +214,7 @@ class DicomConnector:
         if modality:
             query["Modality"] = ""
 
-        series_list = self.c_find(
-            query, self._select_query_model_find(query), limit_results=limit_results
-        )
+        series_list = self._send_c_find(query, limit_results=limit_results)
 
         if not modality:
             return series_list
@@ -297,7 +295,7 @@ class DicomConnector:
         if not self.server.store_scp_support:
             raise ValueError("Server does not support C-STORE operations.")
 
-        results = self.c_store(folder)
+        results = self._send_c_store(folder)
 
         failed = []
         for result in results:
@@ -314,7 +312,7 @@ class DicomConnector:
             )
 
     @connect_to_server
-    def send_study(self, patient_id, study_uid, destination, modality=None):
+    def move_study(self, patient_id, study_uid, destination, modality=None):
         series_list = self.find_series(
             {
                 "PatientID": patient_id,
@@ -330,7 +328,7 @@ class DicomConnector:
             series_uid = series["SeriesInstanceUID"]
 
             try:
-                self.send_series(patient_id, study_uid, series, destination)
+                self.move_series(patient_id, study_uid, series, destination)
             except ValueError:
                 failed_series.append(series_uid)
 
@@ -341,7 +339,7 @@ class DicomConnector:
             )
 
     @connect_to_server
-    def send_series(self, patient_id, study_uid, series_uid, destination):
+    def move_series(self, patient_id, study_uid, series_uid, destination):
         query = {
             "QueryRetrieveLevel": "SERIES",
             "PatientID": patient_id,
@@ -349,106 +347,12 @@ class DicomConnector:
             "SeriesInstanceUID": series_uid,
         }
 
-        results = self.c_move(
+        results = self._send_c_move(
             query,
-            self._select_query_model_move(query),
             destination,
         )
 
         _evaluate_get_move_results(results, query)
-
-    @connect_to_server
-    def c_find(
-        self,
-        query_dict,
-        query_model,
-        limit_results=None,
-        msg_id=1,
-    ):
-        logger.debug("Sending C-FIND with query: %s", query_dict)
-        query_ds = _make_query_dataset(query_dict)
-        responses = self.assoc.send_c_find(query_ds, query_model, msg_id)
-        results = self._fetch_results(responses, "C-FIND", query_dict, limit_results)
-        return _extract_pending_data(results)
-
-    @connect_to_server
-    def c_get(  # pylint: disable=too-many-arguments
-        self, query_dict, query_model, folder, callback=None, msg_id=1
-    ):
-        logger.debug("Sending C-GET with query: %s", query_dict)
-        query_ds = _make_query_dataset(query_dict)
-        store_errors = []
-        self.assoc.bind(
-            evt.EVT_C_STORE, _handle_c_get_store, [folder, callback, store_errors]
-        )
-
-        try:
-            responses = self.assoc.send_c_get(query_ds, query_model, msg_id)
-            results = self._fetch_results(responses, "C-GET", query_dict)
-        except ConnectionError as err:
-            # Check if the connection error was triggered by our own store handler
-            # due to aborting the assocation.
-            if store_errors:
-                raise store_errors[0]
-
-            # If not just raise the original error.
-            raise err
-        finally:
-            self.assoc.unbind(evt.EVT_C_STORE, _handle_c_get_store)
-
-        return results
-
-    @connect_to_server
-    def c_move(self, query_dict, query_model, destination_ae_title, msg_id=1):
-        logger.debug("Sending C-MOVE with query: %s", query_dict)
-        query_ds = _make_query_dataset(query_dict)
-        responses = self.assoc.send_c_move(
-            query_ds, destination_ae_title, query_model, msg_id
-        )
-        return self._fetch_results(responses, "C-MOVE", query_dict)
-
-    @connect_to_server
-    def c_store(self, folder, callback=None, msg_id=1):
-        logger.debug("Sending C-STORE of folder: %s", str(folder))
-
-        results = []
-        for path in Path(folder).rglob("*"):
-            if not path.is_file():
-                continue
-
-            try:
-                ds = dcmread(str(path))
-            except InvalidDicomError:
-                logger.warning(
-                    "Tried to read invalid DICOM file %s. Skipping it.", path
-                )
-                continue
-
-            # Allow to manipuate the dataset by using a callback before storing to server
-            if callback:
-                callback(ds)
-
-            status = self.assoc.send_c_store(ds, msg_id)
-
-            if status:
-                results.append(
-                    {
-                        "status": {
-                            "code": status.Status,
-                            "category": code_to_category(status.Status),
-                        },
-                        "data": {"SOPInstanceUID": ds.SOPInstanceUID},
-                    }
-                )
-            else:
-                raise ConnectionError(
-                    (
-                        "Connection timed out, was aborted or received invalid "
-                        f"response during C-STORE of folder: {folder}"
-                    )
-                )
-
-        return results
 
     @connect_to_server
     def fetch_study_modalities(self, patient_id, study_uid):
@@ -502,6 +406,147 @@ class DicomConnector:
                 f"Port {self.server.port}]"
             )
 
+    @connect_to_server
+    def _send_c_find(
+        self,
+        query_dict,
+        force_study_root=False,
+        limit_results=None,
+        msg_id=1,
+    ):
+        logger.debug("Sending C-FIND with query: %s", query_dict)
+
+        if force_study_root:
+            if not self.server.study_root_find_support:
+                raise ValueError(
+                    "Missing support for Study Root Query/Retrieve Information Model."
+                )
+            query_model = StudyRootQueryRetrieveInformationModelFind
+
+        else:
+            # If not Study Root Query/Retrieve Information Model is forced we prefer
+            # Patient Root Query/Retrieve Information Model, but a Patient ID # (without wildcards)
+            # must be present
+            patient_id = query_dict.get("PatientID")
+            patient_id_valid = (
+                patient_id and not "*" in patient_id and not "?" in patient_id
+            )
+            if patient_id_valid and self.server.patient_root_find_support:
+                query_model = PatientRootQueryRetrieveInformationModelFind
+            elif self.server.study_root_find_support:
+                query_model = StudyRootQueryRetrieveInformationModelFind
+            else:
+                raise ValueError(
+                    "No valid Query/Retrieve Information Model for C-FIND could be found."
+                )
+
+        query_ds = _make_query_dataset(query_dict)
+        responses = self.assoc.send_c_find(query_ds, query_model, msg_id)
+        results = self._fetch_results(responses, "C-FIND", query_dict, limit_results)
+        return _extract_pending_data(results)
+
+    @connect_to_server
+    def _send_c_get(  # pylint: disable=too-many-arguments
+        self, query_dict, folder, callback=None, msg_id=1
+    ):
+        logger.debug("Sending C-GET with query: %s", query_dict)
+
+        if query_dict["PatientID"] and self.server.patient_root_get_support:
+            query_model = PatientRootQueryRetrieveInformationModelGet
+        elif query_dict["StudyInstanceUID"] and self.server.study_root_get_support:
+            query_model = StudyRootQueryRetrieveInformationModelGet
+        else:
+            raise ValueError(
+                "No valid Query/Retrieve Information Model for C-GET could be selected."
+            )
+
+        query_ds = _make_query_dataset(query_dict)
+        store_errors = []
+        self.assoc.bind(
+            evt.EVT_C_STORE, _handle_c_get_store, [folder, callback, store_errors]
+        )
+
+        try:
+            responses = self.assoc.send_c_get(query_ds, query_model, msg_id)
+            results = self._fetch_results(responses, "C-GET", query_dict)
+        except ConnectionError as err:
+            # Check if the connection error was triggered by our own store handler
+            # due to aborting the assocation.
+            if store_errors:
+                raise store_errors[0]
+
+            # If not just raise the original error.
+            raise err
+        finally:
+            self.assoc.unbind(evt.EVT_C_STORE, _handle_c_get_store)
+
+        return results
+
+    @connect_to_server
+    def _send_c_move(self, query_dict, destination_ae_title, msg_id=1):
+        logger.debug("Sending C-MOVE with query: %s", query_dict)
+
+        if query_dict["PatientID"] and self.server.patient_root_move_support:
+            query_model = PatientRootQueryRetrieveInformationModelMove
+        if query_dict["StudyInstanceUID"] and self.server.study_root_move_support:
+            query_model = StudyRootQueryRetrieveInformationModelMove
+        else:
+            raise ValueError(
+                "No valid Query/Retrieve Information Model for C-MOVE could be selected."
+            )
+
+        query_ds = _make_query_dataset(query_dict)
+        responses = self.assoc.send_c_move(
+            query_ds, destination_ae_title, query_model, msg_id
+        )
+        return self._fetch_results(responses, "C-MOVE", query_dict)
+
+    @connect_to_server
+    def _send_c_store(self, folder, callback=None, msg_id=1):
+        logger.debug("Sending C-STORE of folder: %s", str(folder))
+
+        if not self.server.store_scp_support:
+            raise ValueError("C-STORE operation not supported by server.")
+
+        results = []
+        for path in Path(folder).rglob("*"):
+            if not path.is_file():
+                continue
+
+            try:
+                ds = dcmread(str(path))
+            except InvalidDicomError:
+                logger.warning(
+                    "Tried to read invalid DICOM file %s. Skipping it.", path
+                )
+                continue
+
+            # Allow to manipuate the dataset by using a callback before storing to server
+            if callback:
+                callback(ds)
+
+            status = self.assoc.send_c_store(ds, msg_id)
+
+            if status:
+                results.append(
+                    {
+                        "status": {
+                            "code": status.Status,
+                            "category": code_to_category(status.Status),
+                        },
+                        "data": {"SOPInstanceUID": ds.SOPInstanceUID},
+                    }
+                )
+            else:
+                raise ConnectionError(
+                    (
+                        "Connection timed out, was aborted or received invalid "
+                        f"response during C-STORE of folder: {folder}"
+                    )
+                )
+
+        return results
+
     def _fetch_results(self, responses, operation, query_dict, limit_results=None):
         results = []
         for (status, identifier) in responses:
@@ -531,31 +576,6 @@ class DicomConnector:
                     )
                 )
         return results
-
-    def _select_query_model_find(self, query, force_study_root=False):
-        if force_study_root:
-            if not self.server.study_root_find_support:
-                raise ValueError(
-                    "Missing support for Study Root Query/Retrieve Information Model."
-                )
-            return StudyRootQueryRetrieveInformationModelFind
-
-        # If not Study Root Query/Retrieve Information Model is forced we prefer
-        # Patient Root Query/Retrieve Information Model, but a Patient ID # (without wildcards)
-        # must be present
-        patient_id = query.get("PatientID")
-        patient_id_valid = (
-            patient_id and not "*" in patient_id and not "?" in patient_id
-        )
-        if patient_id_valid and self.server.patient_root_find_support:
-            return PatientRootQueryRetrieveInformationModelFind
-
-        if self.server.study_root_find_support:
-            return StudyRootQueryRetrieveInformationModelFind
-
-        raise ValueError(
-            "No valid Query/Retrieve Information Model for C-FIND could be found."
-        )
 
     # TODO remove pylint disable, see https://github.com/PyCQA/pylint/issues/3882
     # pylint: disable=unsubscriptable-object
@@ -608,22 +628,9 @@ class DicomConnector:
         return filtered_studies
 
     def _download_series_get(self, query, folder, modifier_callback=None):
-        results = self.c_get(
-            query, self._select_query_model_get(query), folder, modifier_callback
-        )
+        results = self._send_c_get(query, folder, modifier_callback)
 
         _evaluate_get_move_results(results, query)
-
-    def _select_query_model_get(self, query):
-        if query["PatientID"] and self.server.patient_root_get_support:
-            return PatientRootQueryRetrieveInformationModelGet
-
-        if query["StudyInstanceUID"] and self.server.study_root_get_support:
-            return StudyRootQueryRetrieveInformationModelGet
-
-        raise ValueError(
-            "No valid Query/Retrieve Information Model for C-GET could be selected."
-        )
 
     def _download_series_move(self, query, folder, modifier_callback=None):
         # Fetch all SOPInstanceUIDs in the series so that we can later
@@ -631,7 +638,7 @@ class DicomConnector:
         image_query = dict(
             query, **{"QueryRetrieveLevel": "IMAGE", "SOPInstanceUID": ""}
         )
-        images = self.c_find(image_query, self._select_query_model_find(image_query))
+        images = self._send_c_find(image_query)
         image_uids = [image["SOPInstanceUID"] for image in images]
 
         # The images are sent to the receiver container (a C-STORE SCP server)
@@ -650,9 +657,8 @@ class DicomConnector:
             )
 
             try:
-                results = self.c_move(
+                results = self._send_c_move(
                     query,
-                    self._select_query_model_move(query),
                     settings.ADIT_AE_TITLE,
                 )
                 _evaluate_get_move_results(results, query)
@@ -663,17 +669,6 @@ class DicomConnector:
 
             # Raises if _consume_dicoms raises
             future.result()
-
-    def _select_query_model_move(self, query):
-        if query["PatientID"] and self.server.patient_root_move_support:
-            return PatientRootQueryRetrieveInformationModelMove
-
-        if query["StudyInstanceUID"] and self.server.study_root_move_support:
-            return StudyRootQueryRetrieveInformationModelMove
-
-        raise ValueError(
-            "No valid Query/Retrieve Information Model for C-MOVE could be selected."
-        )
 
     def _consume_dicoms(  # pylint: disable=too-many-arguments
         self,
