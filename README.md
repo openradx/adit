@@ -34,7 +34,7 @@ Downloading data from a DICOM server can done by using a C-GET or C-MOVE operati
 
 # TODO list
 
--   Think about splitting BatchID in QueryID and TransferID
+-   Think about splitting BatchID in QueryID and TransferID, see BatchTask and batch_id
 -   prefer study root
 -   c-get download timeout
 -   implement real \_download_study_move and not just do download_series_move
