@@ -34,12 +34,13 @@ Downloading data from a DICOM server can done by using a C-GET or C-MOVE operati
 
 # TODO list
 
+-   Think about splitting BatchID in QueryID and TransferID
+-   prefer study root
 -   c-get download timeout
--   implement \_download_study_move
+-   implement real \_download_study_move and not just do download_series_move
 -   Use LRU cache for dicom explorer / collector
 -   Auto refresh pages of in progress jobs
 -   Continuous Mode
--   should we really save log to task this way
 -   Allow to pause a job (Status.PAUSED)
 -   Better scheduler (with day in week and times)
 -   Allow to specify alternative column names in field_to_column_mapping of batch_parsers.py, e.g.

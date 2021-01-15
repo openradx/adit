@@ -83,7 +83,6 @@ def _create_dest_connector(transfer_task: TransferTask) -> DicomConnector:
     return DicomConnector(transfer_task.job.destination.dicomserver)
 
 
-# TODO does this really work?
 def _setup_logger() -> Tuple[logging.StreamHandler, io.StringIO]:
     """Intercept all logger messages to save them later to the task."""
     stream = io.StringIO()
