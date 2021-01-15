@@ -66,6 +66,13 @@ def create_server_nodes():
             ae_title="ORTHANC1",
             host=orthanc1_host,
             port=7501,
+            patient_root_find_support=True,
+            patient_root_get_support=True,
+            patient_root_move_support=True,
+            study_root_find_support=True,
+            study_root_get_support=True,
+            study_root_move_support=True,
+            store_scp_support=True,
         )
     )
     orthanc2_host = environ.get("ORTHANC2_HOST", "127.0.0.1")
@@ -75,6 +82,13 @@ def create_server_nodes():
             ae_title="ORTHANC2",
             host=orthanc2_host,
             port=7502,
+            patient_root_find_support=True,
+            patient_root_get_support=True,
+            patient_root_move_support=True,
+            study_root_find_support=True,
+            study_root_get_support=True,
+            study_root_move_support=True,
+            store_scp_support=True,
         )
     )
     return servers
