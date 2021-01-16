@@ -160,7 +160,6 @@ class DicomConnector:
 
         patients = self._send_c_find(
             query,
-            PatientRootQueryRetrieveInformationModelFind,
             limit_results=limit_results,
         )
 
@@ -415,9 +414,9 @@ class DicomConnector:
         logger.debug("Sending C-FIND with query: %s", query_dict)
 
         level = query_dict.get("QueryRetrieveLevel")
-        patient_id = _validate_id(query_dict.get("PatientID"))
+        patient_id = _check_required_id(query_dict.get("PatientID"))
 
-        if self.server.study_root_find_support:
+        if self.server.study_root_find_support and level != "PATIENT":
             query_model = StudyRootQueryRetrieveInformationModelFind
         elif self.server.patient_root_find_support and (
             level == "PATIENT" or patient_id
@@ -439,8 +438,9 @@ class DicomConnector:
     ):
         logger.debug("Sending C-GET with query: %s", query_dict)
 
-        patient_id = _validate_id(query_dict.get("PatientID"))
-        study_uid = _validate_id(query_dict.get("StudyInstanceUID"))
+        # Transfer of only one study at a time is supported by ADIT
+        patient_id = _check_required_id(query_dict.get("PatientID"))
+        study_uid = _check_required_id(query_dict.get("StudyInstanceUID"))
 
         if self.server.study_root_get_support and study_uid:
             query_model = StudyRootQueryRetrieveInformationModelGet
@@ -477,8 +477,9 @@ class DicomConnector:
     def _send_c_move(self, query_dict, destination_ae_title, msg_id=1):
         logger.debug("Sending C-MOVE with query: %s", query_dict)
 
-        patient_id = _validate_id(query_dict.get("PatientID"))
-        study_uid = _validate_id(query_dict.get("StudyInstanceUID"))
+        # Transfer of only one study at a time is supported by ADIT
+        patient_id = _check_required_id(query_dict.get("PatientID"))
+        study_uid = _check_required_id(query_dict.get("StudyInstanceUID"))
 
         if self.server.study_root_move_support and study_uid:
             query_model = StudyRootQueryRetrieveInformationModelMove
@@ -777,9 +778,9 @@ class DicomConnector:
                 raise IOError(f"Out of disk space while saving {file_path}.") from err
 
 
-def _validate_id(id):
-    if id and not "*" in id and not "?" in id:
-        return id
+def _check_required_id(value):
+    if value and not "*" in value and not "?" in value:
+        return value
     return None
 
 
