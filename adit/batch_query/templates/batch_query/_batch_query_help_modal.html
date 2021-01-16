@@ -8,25 +8,25 @@ Batch Query Help
 
 {% block modal_body %}
 <p>
-    With this form you can create a new batch query job to find studies
-    in a source DICOM server. 
-    The query jobs are put into a queue and will be processed by a worker
+    With a Batch Query you can create a job to find the data of multiple
+    studies in a source DICOM / PACS server. 
+    Batch query jobs are put into a queue and will be processed by a worker
     when the time is right. You will get an Email when the job is finished
     (or failed for some reason).
 </p>
 <p>
     Each batch query job contains several query tasks that define what 
-    studies to look for. The search terms must be specified in a CSV file.
-    If your data is in an Excel file then it can be exported to a CSV file.  
-    The first row of the CSV file must contain the header with the column
-    titles. The following rows contain the search terms.
+    studies to search for. The search terms must be specified in a CSV file.
+    If your data is in an Excel file then it must be exported to a CSV file
+    (by using the Excel built-in exporter). The first row of the CSV file 
+    must contain the header with the column titles (see below). Each following
+    row represents a query task.
 </p>
-
 <p>
-    The following columns may be present in the batch file:
+    These are the columns in the batch file to execute your queries:
     <dl>
         <dt>BatchID</dt>
-        <dd>A consecutive unique number that identifies the query (required).</dd>
+        <dd>A consecutive unique number that identifies the query.</dd>
         <dt>PatientID</dt>
         <dd>The unique ID of the patient in the PACS.</dd>
         <dt>PatientName</dt>
@@ -34,16 +34,27 @@ Batch Query Help
         <dt>PatientBirthDate</dt>
         <dd>The birth date of the patient.</dd>
         <dt>AccessionNumber</dt>
-        <dd>The Accession Number (a unique ID in the RIS) of the study.</dd>
+        <dd>The Accession Number (a unique ID) of the study.</dd>
         <dt>From</dt>
-        <dd>Only search for studies newer than or equal to this date.</dd>
+        <dd>Only include studies newer than or equal to this date.</dd>
         <dt>Until</dt>
-        <dd>Only search for studies older than or equal to this date.</dd>
-        <dt>Modalities</dt>
-        <dd>A comma separated list of modalities of which a study at least one must contain.</dd>
+        <dd>Only include studies older than or equal to this date.</dd>
+        <dt>Modality</dt>
+        <dd>The modality of the study.</dd>
     </dl>
 </p>
-
+<p>
+    BatchID is always required. The patient must be identifiable by either
+    "PatientID" or "PatientName" together with "PatientBirthDate". The remaining
+    fields are optional and may limit the results for what you really need.
+</p>
+<p>
+    The result of the batch query can viewed and downloaded from ADIT. The
+    downloaded CSV file contains more data then what can be viewed on the
+    website. Each result contains the "PatientID" and "StudyInstanceUID" which
+    is necessary for a batch tranfer job. So a batch query job is in most cases
+    the preperation step for a batch transfer.
+</p>
 <div class="mb-1">
     <a href="{% static 'samples/batch_query_sample.csv' %}">
         {% include "core/_download.svg" %}

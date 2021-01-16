@@ -1,4 +1,4 @@
-BatchID;PatientID;PatientName;PatientBirthDate;AccessionNumber;From;Until;Modalities
+BatchID;PatientID;PatientName;PatientBirthDate;AccessionNumber;From;Until;Modality
 1;;Apple, Annie;27.04.1945;;03.06.2019;05.06.2019;CT
 2;1004;;;0062115911;;;
 3;;Papaya, Pamela;29.08.1976;;01.01.2018;19.08.2018;MR

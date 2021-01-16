@@ -72,7 +72,7 @@ class BatchQueryJobForm(forms.ModelForm):
                     "accession_number": "AccessionNumber",
                     "study_date_start": "From",
                     "study_date_end": "Until",
-                    "modalities": "Modalities",
+                    "modalities": "Modality",
                 },
                 fp,
             )
