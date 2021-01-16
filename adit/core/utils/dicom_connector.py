@@ -180,7 +180,7 @@ class DicomConnector:
         return patients
 
     @connect_to_server
-    def find_studies(self, query, force_study_root=False, limit_results=None):
+    def find_studies(self, query, limit_results=None):
         query["QueryRetrieveLevel"] = "STUDY"
 
         if not "NumberOfStudyRelatedInstances" in query:
@@ -188,7 +188,6 @@ class DicomConnector:
 
         studies = self._send_c_find(
             query,
-            force_study_root=force_study_root,
             limit_results=limit_results,
         )
 
@@ -410,35 +409,24 @@ class DicomConnector:
     def _send_c_find(
         self,
         query_dict,
-        force_study_root=False,
         limit_results=None,
         msg_id=1,
     ):
         logger.debug("Sending C-FIND with query: %s", query_dict)
 
-        if force_study_root:
-            if not self.server.study_root_find_support:
-                raise ValueError(
-                    "Missing support for Study Root Query/Retrieve Information Model."
-                )
-            query_model = StudyRootQueryRetrieveInformationModelFind
+        level = query_dict.get("QueryRetrieveLevel")
+        patient_id = _validate_id(query_dict.get("PatientID"))
 
+        if self.server.study_root_find_support:
+            query_model = StudyRootQueryRetrieveInformationModelFind
+        elif self.server.patient_root_find_support and (
+            level == "PATIENT" or patient_id
+        ):
+            query_model = PatientRootQueryRetrieveInformationModelFind
         else:
-            # If not Study Root Query/Retrieve Information Model is forced we prefer
-            # Patient Root Query/Retrieve Information Model, but a Patient ID # (without wildcards)
-            # must be present
-            patient_id = query_dict.get("PatientID")
-            patient_id_valid = (
-                patient_id and not "*" in patient_id and not "?" in patient_id
+            raise ValueError(
+                "No valid Query/Retrieve Information Model for C-FIND could be found."
             )
-            if patient_id_valid and self.server.patient_root_find_support:
-                query_model = PatientRootQueryRetrieveInformationModelFind
-            elif self.server.study_root_find_support:
-                query_model = StudyRootQueryRetrieveInformationModelFind
-            else:
-                raise ValueError(
-                    "No valid Query/Retrieve Information Model for C-FIND could be found."
-                )
 
         query_ds = _make_query_dataset(query_dict)
         responses = self.assoc.send_c_find(query_ds, query_model, msg_id)
@@ -451,10 +439,13 @@ class DicomConnector:
     ):
         logger.debug("Sending C-GET with query: %s", query_dict)
 
-        if query_dict["PatientID"] and self.server.patient_root_get_support:
-            query_model = PatientRootQueryRetrieveInformationModelGet
-        elif query_dict["StudyInstanceUID"] and self.server.study_root_get_support:
+        patient_id = _validate_id(query_dict.get("PatientID"))
+        study_uid = _validate_id(query_dict.get("StudyInstanceUID"))
+
+        if self.server.study_root_get_support and study_uid:
             query_model = StudyRootQueryRetrieveInformationModelGet
+        elif self.server.patient_root_get_support and patient_id and study_uid:
+            query_model = PatientRootQueryRetrieveInformationModelGet
         else:
             raise ValueError(
                 "No valid Query/Retrieve Information Model for C-GET could be selected."
@@ -486,10 +477,13 @@ class DicomConnector:
     def _send_c_move(self, query_dict, destination_ae_title, msg_id=1):
         logger.debug("Sending C-MOVE with query: %s", query_dict)
 
-        if query_dict["PatientID"] and self.server.patient_root_move_support:
-            query_model = PatientRootQueryRetrieveInformationModelMove
-        if query_dict["StudyInstanceUID"] and self.server.study_root_move_support:
+        patient_id = _validate_id(query_dict.get("PatientID"))
+        study_uid = _validate_id(query_dict.get("StudyInstanceUID"))
+
+        if self.server.study_root_move_support and study_uid:
             query_model = StudyRootQueryRetrieveInformationModelMove
+        elif self.server.patient_root_move_support and patient_id and study_uid:
+            query_model = PatientRootQueryRetrieveInformationModelMove
         else:
             raise ValueError(
                 "No valid Query/Retrieve Information Model for C-MOVE could be selected."
@@ -781,6 +775,12 @@ class DicomConnector:
         except OSError as err:
             if err.errno == errno.ENOSPC:  # No space left on device
                 raise IOError(f"Out of disk space while saving {file_path}.") from err
+
+
+def _validate_id(id):
+    if id and not "*" in id and not "?" in id:
+        return id
+    return None
 
 
 def _make_query_dataset(query_dict: Dict[str, Any]):

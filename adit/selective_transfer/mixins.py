@@ -23,7 +23,6 @@ class SelectiveTransferJobCreateMixin:
                 "StudyTime": "",
                 "NumberOfStudyRelatedInstances": "",
             },
-            force_study_root=True,
             limit_results=limit_results,
         )
 
