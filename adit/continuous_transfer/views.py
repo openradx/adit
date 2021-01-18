@@ -1,16 +1,16 @@
-from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.generic import DetailView
 from django.conf import settings
 from django.urls import reverse_lazy
-from adit.core.mixins import OwnerRequiredMixin, UrgentFormViewMixin
+from adit.core.mixins import OwnerRequiredMixin, InlineFormSetMixin
 from adit.core.views import (
     TransferJobListView,
+    TransferJobCreateView,
     DicomJobDeleteView,
     DicomJobCancelView,
     DicomJobVerifyView,
     DicomTaskDetailView,
 )
-from adit.core.views import InlineFormSetCreateView
 from .models import ContinuousTransferJob, ContinuousTransferTask
 from .forms import (
     ContinuousTransferJobForm,
@@ -30,12 +30,7 @@ class ContinuousTransferJobListView(
     template_name = "continuous_transfer/continuous_transfer_job_list.html"
 
 
-class ContinuousTransferJobCreateView(
-    LoginRequiredMixin,
-    PermissionRequiredMixin,
-    UrgentFormViewMixin,
-    InlineFormSetCreateView,
-):
+class ContinuousTransferJobCreateView(InlineFormSetMixin, TransferJobCreateView):
     model = ContinuousTransferJob
     form_class = ContinuousTransferJobForm
     template_name = "continuous_transfer/continuous_transfer_job_form.html"

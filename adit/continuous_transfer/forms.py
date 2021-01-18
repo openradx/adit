@@ -38,14 +38,18 @@ class ContinuousTransferJobForm(forms.ModelForm):
         widgets = {"start_date": DateInput(), "end_date": DateInput()}
 
     def __init__(self, *args, **kwargs):
-        urgent_option = kwargs.pop("urgent_option", False)
+        can_process_urgently = kwargs.pop("can_process_urgently")
+
+        # Not needed for continuous transfer, but we have to remove it before
+        # calling the super __init__ method
+        kwargs.pop("can_transfer_unpseudonymized")
 
         super().__init__(*args, **kwargs)
 
         self.fields["source"].widget.attrs["class"] = "custom-select"
         self.fields["destination"].widget.attrs["class"] = "custom-select"
 
-        if not urgent_option:
+        if not can_process_urgently:
             del self.fields["urgent"]
 
         self.helper = FormHelper(self)

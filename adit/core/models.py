@@ -182,6 +182,12 @@ class DicomJob(models.Model):
 class TransferJob(DicomJob):
     class Meta(DicomJob.Meta):
         abstract = True
+        permissions = DicomJob.Meta.permissions + [
+            (
+                "can_transfer_unpseudonymized",
+                "Can transfer data without pseudonymization.",
+            )
+        ]
 
     destination = models.ForeignKey(
         DicomNode, related_name="+", on_delete=models.PROTECT

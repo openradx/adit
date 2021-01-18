@@ -1,7 +1,6 @@
 from io import StringIO
-from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http.response import HttpResponse
-from django.views.generic.edit import CreateView
 from django.views.generic import DetailView
 from django.views.generic.detail import SingleObjectMixin
 from django.views.generic.base import View
@@ -10,12 +9,12 @@ from django.conf import settings
 from django_tables2 import SingleTableMixin
 from adit.core.mixins import (
     OwnerRequiredMixin,
-    UrgentFormViewMixin,
     RelatedFilterMixin,
     PageSizeSelectMixin,
 )
 from adit.core.views import (
     DicomJobListView,
+    DicomJobCreateView,
     DicomJobDeleteView,
     DicomJobCancelView,
     DicomJobVerifyView,
@@ -43,12 +42,7 @@ class BatchQueryJobListView(DicomJobListView):  # pylint: disable=too-many-ances
     template_name = "batch_query/batch_query_job_list.html"
 
 
-class BatchQueryJobCreateView(
-    LoginRequiredMixin,
-    PermissionRequiredMixin,
-    UrgentFormViewMixin,
-    CreateView,
-):
+class BatchQueryJobCreateView(DicomJobCreateView):
     model = BatchQueryJob
     form_class = BatchQueryJobForm
     template_name = "batch_query/batch_query_job_form.html"

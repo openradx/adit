@@ -43,13 +43,13 @@ class BatchQueryJobForm(forms.ModelForm):
         self.tasks = None
         self.save_tasks = None
 
-        urgent_option = kwargs.pop("urgent_option", False)
+        can_process_urgently = kwargs.pop("can_process_urgently")
 
         super().__init__(*args, **kwargs)
 
         self.fields["source"].widget.attrs["class"] = "custom-select"
 
-        if not urgent_option:
+        if not can_process_urgently:
             del self.fields["urgent"]
 
         self.helper = FormHelper(self)

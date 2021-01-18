@@ -10,6 +10,7 @@ def parse_csv_file(
     serializer_class: Type[BatchTaskSerializer],
     field_to_column_mapping: Dict[str, str],
     csv_file: TextIO,
+    extra_serializer_params=None,
 ) -> List[DicomTask]:
     if not "batch_id" in field_to_column_mapping:
         raise AssertionError("The mapping must contain a 'batch_id' field.")
@@ -26,7 +27,11 @@ def parse_csv_file(
 
         data.append(data_row)
 
-    serializer = serializer_class(data=data, many=True)  # pylint: disable=not-callable
+    if extra_serializer_params:
+        serializer = serializer_class(data=data, many=True, **extra_serializer_params)
+    else:
+        serializer = serializer_class(data=data, many=True)
+
     if not serializer.is_valid():
         raise ParsingError(
             field_to_column_mapping,

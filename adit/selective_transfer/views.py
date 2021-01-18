@@ -1,6 +1,4 @@
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.contrib.auth.mixins import PermissionRequiredMixin
-from django.views.generic.edit import CreateView
 from django.views.generic import DetailView
 from django.http import HttpResponseBadRequest
 from django.urls import reverse_lazy
@@ -8,12 +6,12 @@ from django.conf import settings
 from django_tables2 import SingleTableMixin
 from adit.core.mixins import (
     OwnerRequiredMixin,
-    UrgentFormViewMixin,
     RelatedFilterMixin,
     PageSizeSelectMixin,
 )
 from adit.core.views import (
     TransferJobListView,
+    TransferJobCreateView,
     DicomJobDeleteView,
     DicomJobCancelView,
     DicomJobVerifyView,
@@ -36,11 +34,8 @@ class SelectiveTransferJobListView(
 
 
 class SelectiveTransferJobCreateView(
-    LoginRequiredMixin,
-    PermissionRequiredMixin,
     SelectiveTransferJobCreateMixin,
-    UrgentFormViewMixin,
-    CreateView,
+    TransferJobCreateView,
 ):
     """A view class to render the selective transfer form.
 
@@ -48,8 +43,8 @@ class SelectiveTransferJobCreateView(
     job itself is created by using the REST API and an AJAX call.
     """
 
-    template_name = "selective_transfer/selective_transfer_job_form.html"
     form_class = SelectiveTransferJobForm
+    template_name = "selective_transfer/selective_transfer_job_form.html"
     permission_required = "selective_transfer.add_selectivetransferjob"
 
     def form_invalid(self, form):

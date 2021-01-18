@@ -1,5 +1,7 @@
 import re
 from django import forms
+from django.core.exceptions import ValidationError
+from django.utils.translation import gettext_lazy as _
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Layout, Field, Row, Column, Div
 from crispy_forms.bootstrap import StrictButton
@@ -88,11 +90,12 @@ class SelectiveTransferJobForm(forms.ModelForm):
         }
 
     def __init__(self, *args, **kwargs):
-        urgent_option = kwargs.pop("urgent_option", False)
+        can_process_urgently = kwargs.pop("can_process_urgently")
+        self.can_transfer_unpseudonymized = kwargs.pop("can_transfer_unpseudonymized")
 
         super().__init__(*args, **kwargs)
 
-        if not urgent_option:
+        if not can_process_urgently:
             del self.fields["urgent"]
 
         self.helper = FormHelper(self)
@@ -158,6 +161,12 @@ class SelectiveTransferJobForm(forms.ModelForm):
                 query_field("accession_number"),
             ),
         )
+
+    def clean_pseudonym(self):
+        pseudonym = self.cleaned_data["pseudonym"]
+        if not pseudonym and not self.can_transfer_unpseudonymized:
+            raise ValidationError(_("This field is required."))
+        return pseudonym
 
     def clean_archive_password(self):
         archive_password = self.cleaned_data["archive_password"]

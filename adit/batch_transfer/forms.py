@@ -65,14 +65,15 @@ class BatchTransferJobForm(forms.ModelForm):
         self.tasks = None
         self.save_tasks = None
 
-        urgent_option = kwargs.pop("urgent_option", False)
+        can_process_urgently = kwargs.pop("can_process_urgently")
+        self.can_transfer_unpseudonymized = kwargs.pop("can_transfer_unpseudonymized")
 
         super().__init__(*args, **kwargs)
 
         self.fields["source"].widget.attrs["class"] = "custom-select"
         self.fields["destination"].widget.attrs["class"] = "custom-select"
 
-        if not urgent_option:
+        if not can_process_urgently:
             del self.fields["urgent"]
 
         self.fields["trial_protocol_id"].widget.attrs["placeholder"] = "Optional"
@@ -103,6 +104,9 @@ class BatchTransferJobForm(forms.ModelForm):
                     "pseudonym": "Pseudonym",
                 },
                 fp,
+                extra_serializer_params={
+                    "can_transfer_unpseudonymized": self.can_transfer_unpseudonymized
+                },
             )
         except ParsingError as err:
             self.csv_error_details = err
