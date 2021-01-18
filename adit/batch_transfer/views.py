@@ -10,7 +10,7 @@ from adit.core.mixins import (
 )
 from adit.core.views import (
     TransferJobListView,
-    TransferJobCreateView,
+    DicomJobCreateView,
     DicomJobDeleteView,
     DicomJobCancelView,
     DicomJobVerifyView,
@@ -31,7 +31,7 @@ class BatchTransferJobListView(
     template_name = "batch_transfer/batch_transfer_job_list.html"
 
 
-class BatchTransferJobCreateView(TransferJobCreateView):
+class BatchTransferJobCreateView(DicomJobCreateView):
     model = BatchTransferJob
     form_class = BatchTransferJobForm
     template_name = "batch_transfer/batch_transfer_job_form.html"

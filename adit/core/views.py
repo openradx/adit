@@ -47,28 +47,7 @@ class DicomJobCreateView(
 
     def get_form_kwargs(self) -> Dict[str, Any]:
         kwargs = super().get_form_kwargs()
-
-        user = self.request.user
-
-        can_process_urgently = False
-        if user and user.has_perm("core.can_process_urgently"):
-            can_process_urgently = True
-        kwargs.update({"can_process_urgently": can_process_urgently})
-
-        return kwargs
-
-
-class TransferJobCreateView(DicomJobCreateView):
-    def get_form_kwargs(self) -> Dict[str, Any]:
-        kwargs = super().get_form_kwargs()
-
-        user = self.request.user
-
-        can_transfer_unpseudonymized = False
-        if user and user.has_perm("core.can_transfer_unpseudonymized"):
-            can_transfer_unpseudonymized = True
-        kwargs.update({"can_transfer_unpseudonymized": can_transfer_unpseudonymized})
-
+        kwargs.update({"user": self.request.user})
         return kwargs
 
 

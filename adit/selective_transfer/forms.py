@@ -90,12 +90,12 @@ class SelectiveTransferJobForm(forms.ModelForm):
         }
 
     def __init__(self, *args, **kwargs):
-        can_process_urgently = kwargs.pop("can_process_urgently")
-        self.can_transfer_unpseudonymized = kwargs.pop("can_transfer_unpseudonymized")
+        self.user = kwargs.pop("user")
+        self.query_form = kwargs.pop("query_form")
 
         super().__init__(*args, **kwargs)
 
-        if not can_process_urgently:
+        if not self.user.has_perm("selective_transfer.can_process_urgently"):
             del self.fields["urgent"]
 
         self.helper = FormHelper(self)
@@ -164,8 +164,14 @@ class SelectiveTransferJobForm(forms.ModelForm):
 
     def clean_pseudonym(self):
         pseudonym = self.cleaned_data["pseudonym"]
-        if not pseudonym and not self.can_transfer_unpseudonymized:
-            raise ValidationError(_("This field is required."))
+        if not self.query_form:
+            # We only validate if a pseudonym must be set if the user starts
+            # to transfer and not when just querying for studies
+            can_transfer_unpseudonymized = self.user.has_perm(
+                "selective_transfer.can_transfer_unpseudonymized"
+            )
+            if not pseudonym and not can_transfer_unpseudonymized:
+                raise ValidationError(_("This field is required."))
         return pseudonym
 
     def clean_archive_password(self):

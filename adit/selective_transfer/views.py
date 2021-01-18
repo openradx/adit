@@ -1,3 +1,4 @@
+from typing import Any, Dict
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.generic import DetailView
 from django.http import HttpResponseBadRequest
@@ -11,7 +12,7 @@ from adit.core.mixins import (
 )
 from adit.core.views import (
     TransferJobListView,
-    TransferJobCreateView,
+    DicomJobCreateView,
     DicomJobDeleteView,
     DicomJobCancelView,
     DicomJobVerifyView,
@@ -35,7 +36,7 @@ class SelectiveTransferJobListView(
 
 class SelectiveTransferJobCreateView(
     SelectiveTransferJobCreateMixin,
-    TransferJobCreateView,
+    DicomJobCreateView,
 ):
     """A view class to render the selective transfer form.
 
@@ -46,6 +47,14 @@ class SelectiveTransferJobCreateView(
     form_class = SelectiveTransferJobForm
     template_name = "selective_transfer/selective_transfer_job_form.html"
     permission_required = "selective_transfer.add_selectivetransferjob"
+
+    def get_form_kwargs(self) -> Dict[str, Any]:
+        kwargs = super().get_form_kwargs()
+
+        action = self.request.POST.get("action")
+        kwargs.update({"query_form": action == "query"})
+
+        return kwargs
 
     def form_invalid(self, form):
         error_message = "Please correct the form errors and search again."

@@ -81,18 +81,12 @@ class SelectiveTransferConsumer(
             await self.send_json(error_response)
             return
 
-        can_process_urgently = False
-        if self.user and self.user.has_perm("core.can_process_urgently"):
-            can_process_urgently = True
-
-        can_transfer_unpseudonymized = False
-        if self.user and self.user.has_perm("core.can_transfer_unpseudonymized"):
-            can_transfer_unpseudonymized = True
+        query_form = content["action"] == "query"
 
         form = SelectiveTransferJobForm(
             QueryDict(content["data"]),
-            can_process_urgently=can_process_urgently,
-            can_transfer_unpseudonymized=can_transfer_unpseudonymized,
+            user=self.user,
+            query_form=query_form,
         )
         form_valid = await database_sync_to_async(form.is_valid)()
 
@@ -100,7 +94,7 @@ class SelectiveTransferConsumer(
             if form_valid:
                 asyncio.create_task(self.make_query(form, message_id))
             else:
-                response = self.get_form_error_response(
+                response = await self.get_form_error_response(
                     form, "Please correct the form errors and search again."
                 )
                 await self.send_json(response)
@@ -109,7 +103,7 @@ class SelectiveTransferConsumer(
             if form_valid:
                 asyncio.create_task(self.make_transfer(form))
             else:
-                response = self.get_form_error_response(
+                response = await self.get_form_error_response(
                     form, "Please correct the form errors and transfer again."
                 )
                 await self.send_json(response)

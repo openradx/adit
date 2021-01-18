@@ -5,7 +5,7 @@ from django.urls import reverse_lazy
 from adit.core.mixins import OwnerRequiredMixin, InlineFormSetMixin
 from adit.core.views import (
     TransferJobListView,
-    TransferJobCreateView,
+    DicomJobCreateView,
     DicomJobDeleteView,
     DicomJobCancelView,
     DicomJobVerifyView,
@@ -30,7 +30,7 @@ class ContinuousTransferJobListView(
     template_name = "continuous_transfer/continuous_transfer_job_list.html"
 
 
-class ContinuousTransferJobCreateView(InlineFormSetMixin, TransferJobCreateView):
+class ContinuousTransferJobCreateView(InlineFormSetMixin, DicomJobCreateView):
     model = ContinuousTransferJob
     form_class = ContinuousTransferJobForm
     template_name = "continuous_transfer/continuous_transfer_job_form.html"
