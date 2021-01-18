@@ -136,7 +136,7 @@ class DicomJob(models.Model):
         permissions = [
             (
                 "can_process_urgently",
-                "Can process urgently (prioritized and without scheduling).",
+                "Can process urgently",
             )
         ]
 
@@ -185,7 +185,7 @@ class TransferJob(DicomJob):
         permissions = DicomJob.Meta.permissions + [
             (
                 "can_transfer_unpseudonymized",
-                "Can transfer data without pseudonymization.",
+                "Can transfer unpseudonymized",
             )
         ]
 
