@@ -2,46 +2,45 @@ from typing import List, Dict, TextIO, Type
 import csv
 from rest_framework.exceptions import ErrorDetail
 from django.conf import settings
-from adit.core.models import DicomTask
 from adit.core.serializers import BatchTaskSerializer
 
 
-def parse_csv_file(
-    serializer_class: Type[BatchTaskSerializer],
-    field_to_column_mapping: Dict[str, str],
-    csv_file: TextIO,
-    extra_serializer_params=None,
-) -> List[DicomTask]:
-    if not "batch_id" in field_to_column_mapping:
-        raise AssertionError("The mapping must contain a 'batch_id' field.")
+class BatchFileParser:
+    serializer_class: Type[BatchTaskSerializer] = None
 
-    data = []
-    reader = csv.DictReader(csv_file, delimiter=settings.CSV_FILE_DELIMITER)
-    for row in reader:
-        data_row = {}
+    def __init__(self, field_to_column_mapping: Dict[str, str]) -> None:
+        self.field_to_column_mapping = field_to_column_mapping
 
-        for field, column in field_to_column_mapping.items():
-            data_row[field] = row.get(column, "")
+    def get_serializer(self, data: Dict[str, str]) -> BatchTaskSerializer:
+        # pylint: disable=not-callable
+        return self.serializer_class(data=data, many=True)
 
-        data_row["__line_num__"] = reader.line_num
+    def parse(self, csv_file: TextIO):
+        if not "batch_id" in self.field_to_column_mapping:
+            raise AssertionError("The mapping must contain a 'batch_id' field.")
 
-        data.append(data_row)
+        data = []
+        reader = csv.DictReader(csv_file, delimiter=settings.CSV_FILE_DELIMITER)
+        for row in reader:
+            data_row = {}
 
-    if extra_serializer_params:
-        serializer = serializer_class(data=data, many=True, **extra_serializer_params)
-    else:
-        serializer = serializer_class(data=data, many=True)
+            for field, column in self.field_to_column_mapping.items():
+                data_row[field] = row.get(column, "")
 
-    if not serializer.is_valid():
-        raise ParsingError(
-            field_to_column_mapping,
-            data,
-            serializer.errors,
-        )
+            data_row["__line_num__"] = reader.line_num
 
-    model_class = serializer_class.Meta.model
+            data.append(data_row)
 
-    return [model_class(**item) for item in serializer.validated_data]
+        serializer = self.get_serializer(data)
+
+        if not serializer.is_valid():
+            raise ParsingError(
+                self.field_to_column_mapping,
+                data,
+                serializer.errors,
+            )
+
+        return serializer.get_tasks()
 
 
 class ParsingError(Exception):

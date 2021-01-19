@@ -3,7 +3,7 @@ import pytest
 from django.db import models
 from ...models import BatchTask
 from ...serializers import BatchTaskSerializer
-from ...utils.batch_parsers import parse_csv_file, ParsingError
+from ...utils.batch_parsers import BatchFileParser, ParsingError
 
 
 @pytest.fixture(scope="session")
@@ -47,18 +47,20 @@ def test_serializer_class():
     return TestSerializer
 
 
-def test_valid_data_is_parsed_successfully(
-    create_csv_file, data, field_to_column_mapping, test_serializer_class
-):
+@pytest.fixture
+def test_parser(test_serializer_class, field_to_column_mapping):
+    class TestParser(BatchFileParser):
+        serializer_class = test_serializer_class
+
+    return TestParser(field_to_column_mapping)
+
+
+def test_valid_data_is_parsed_successfully(create_csv_file, data, test_parser):
     # Arrange
     file = create_csv_file(data)
 
     # Act
-    tasks = parse_csv_file(
-        test_serializer_class,
-        field_to_column_mapping,
-        file,
-    )
+    tasks = test_parser.parse(file)
 
     # Assert
     assert tasks[0].batch_id == int(data[1][0])
@@ -67,20 +69,14 @@ def test_valid_data_is_parsed_successfully(
     assert tasks[1].patient_name == data[2][1]
 
 
-def test_invalid_model_data_raises(
-    create_csv_file, data, field_to_column_mapping, test_serializer_class
-):
+def test_invalid_model_data_raises(create_csv_file, data, test_parser):
     # Arrange
     data[2][1] = ""
     file = create_csv_file(data)
 
     # Act
     with pytest.raises(ParsingError) as err:
-        parse_csv_file(
-            test_serializer_class,
-            field_to_column_mapping,
-            file,
-        )
+        test_parser.parse(file)
 
     # Assert
     assert err.match(r"Invalid data on line 3 \(BatchID 2\)")

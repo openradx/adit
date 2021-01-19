@@ -9,9 +9,9 @@ import cchardet as chardet
 from adit.core.forms import DicomNodeChoiceField
 from adit.core.models import DicomNode
 from adit.core.fields import RestrictedFileField
-from adit.core.utils.batch_parsers import parse_csv_file, ParsingError
+from adit.core.utils.batch_parsers import ParsingError
 from .models import BatchTransferJob, BatchTransferTask
-from .serializers import BatchTransferTaskSerializer
+from .utils.batch_parsers import BatchTransferFileParser
 
 
 class BatchTransferJobForm(forms.ModelForm):
@@ -91,25 +91,22 @@ class BatchTransferJobForm(forms.ModelForm):
         csv_file = self.cleaned_data["csv_file"]
         rawdata = csv_file.read()
         encoding = chardet.detect(rawdata)["encoding"]
-        fp = StringIO(rawdata.decode(encoding))
+        file = StringIO(rawdata.decode(encoding))
         can_transfer_unpseudonymized = self.user.has_perm(
             "batch_transfer.can_transfer_unpseudonymized"
         )
+        parser = BatchTransferFileParser(
+            {
+                "batch_id": "BatchID",
+                "patient_id": "PatientID",
+                "study_uid": "StudyInstanceUID",
+                "pseudonym": "Pseudonym",
+            },
+            can_transfer_unpseudonymized,
+        )
 
         try:
-            self.tasks = parse_csv_file(
-                BatchTransferTaskSerializer,
-                {
-                    "batch_id": "BatchID",
-                    "patient_id": "PatientID",
-                    "study_uid": "StudyInstanceUID",
-                    "pseudonym": "Pseudonym",
-                },
-                fp,
-                extra_serializer_params={
-                    "can_transfer_unpseudonymized": can_transfer_unpseudonymized
-                },
-            )
+            self.tasks = parser.parse(file)
         except ParsingError as err:
             self.csv_error_details = err
             raise ValidationError(

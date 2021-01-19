@@ -9,9 +9,9 @@ import cchardet as chardet
 from adit.core.forms import DicomNodeChoiceField
 from adit.core.models import DicomNode
 from adit.core.fields import RestrictedFileField
-from adit.core.utils.batch_parsers import parse_csv_file, ParsingError
+from adit.core.utils.batch_parsers import ParsingError
 from .models import BatchQueryJob, BatchQueryTask
-from .serializers import BatchQueryTaskSerializer
+from .utils.batch_parsers import BatchQueryFileParser
 
 
 class BatchQueryJobForm(forms.ModelForm):
@@ -59,23 +59,22 @@ class BatchQueryJobForm(forms.ModelForm):
         csv_file = self.cleaned_data["csv_file"]
         rawdata = csv_file.read()
         encoding = chardet.detect(rawdata)["encoding"]
-        fp = StringIO(rawdata.decode(encoding))
+        file = StringIO(rawdata.decode(encoding))
+        parser = BatchQueryFileParser(
+            {
+                "batch_id": "BatchID",
+                "patient_id": "PatientID",
+                "patient_name": "PatientName",
+                "patient_birth_date": "PatientBirthDate",
+                "accession_number": "AccessionNumber",
+                "study_date_start": "From",
+                "study_date_end": "Until",
+                "modalities": "Modality",
+            },
+        )
 
         try:
-            self.tasks = parse_csv_file(
-                BatchQueryTaskSerializer,
-                {
-                    "batch_id": "BatchID",
-                    "patient_id": "PatientID",
-                    "patient_name": "PatientName",
-                    "patient_birth_date": "PatientBirthDate",
-                    "accession_number": "AccessionNumber",
-                    "study_date_start": "From",
-                    "study_date_end": "Until",
-                    "modalities": "Modality",
-                },
-                fp,
-            )
+            self.tasks = parser.parse(file)
         except ParsingError as err:
             self.csv_error_details = err
             raise ValidationError(

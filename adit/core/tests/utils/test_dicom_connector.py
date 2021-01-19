@@ -77,8 +77,10 @@ def test_find_patients(
     association.send_c_find.return_value = dicom_test_helper.create_c_find_responses(
         responses
     )
+
     # Act
     patients = dicom_connector.find_patients({"PatientName": "Foo^Bar"})
+
     # Assert
     association.send_c_find.assert_called_once()
     assert isinstance(association.send_c_find.call_args.args[0], Dataset)
@@ -102,15 +104,17 @@ def test_find_studies_with_patient_root(
     association.send_c_find.return_value = dicom_test_helper.create_c_find_responses(
         responses
     )
+
     # Act
     patients = dicom_connector.find_studies({"PatientID": "12345"})
+
     # Assert
     association.send_c_find.assert_called_once()
     assert isinstance(association.send_c_find.call_args.args[0], Dataset)
     assert patients[0]["PatientID"] == responses[0]["PatientID"]
     assert (
         association.send_c_find.call_args.args[1]
-        == PatientRootQueryRetrieveInformationModelFind
+        == StudyRootQueryRetrieveInformationModelFind
     )
 
 
@@ -127,8 +131,10 @@ def test_find_studies_with_study_root(
     association.send_c_find.return_value = dicom_test_helper.create_c_find_responses(
         responses
     )
+
     # Act
     patients = dicom_connector.find_studies({"PatientName": "Foo^Bar"})
+
     # Assert
     association.send_c_find.assert_called_once()
     assert isinstance(association.send_c_find.call_args.args[0], Dataset)
@@ -152,15 +158,17 @@ def test_find_series(
     association.send_c_find.return_value = dicom_test_helper.create_c_find_responses(
         responses
     )
+
     # Act
     patients = dicom_connector.find_series(
         {"PatientID": "12345", "StudyInstanceUID": "1.123"}
     )
+
     # Assert
     association.send_c_find.assert_called_once()
     assert isinstance(association.send_c_find.call_args.args[0], Dataset)
     assert patients[0]["PatientID"] == responses[0]["PatientID"]
     assert (
         association.send_c_find.call_args.args[1]
-        == PatientRootQueryRetrieveInformationModelFind
+        == StudyRootQueryRetrieveInformationModelFind
     )
