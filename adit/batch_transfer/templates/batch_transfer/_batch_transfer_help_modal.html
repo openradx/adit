@@ -13,7 +13,6 @@ Batch Transfer Help
     queue and will be processed by a worker when the time is right.
     You will get an Email when the job is finished (or failed for some reason).
 </p>
-
 <p>
     Each batch transfer job contains several transfer tasks that define what 
     studies to transfer. This data must be specified in a CSV file.
@@ -22,7 +21,13 @@ Batch Transfer Help
     titles. The following rows contain the data that identfies the studies
     to transfer.
 </p>
-
+<p>
+    The required PatientID and StudyInstanceUID can be fetched by doing a
+    a "Batch Query". The resulting CSV file of a batch query can be used
+    with minimal modifications for a batch transfer. You just have to make
+    sure that the BatchID is unique (which may not be the case when batch
+    query returns multiple studies for one query task).
+</p>
 <p>
     The following columns must be defined in the CSV file:
     <dl>
@@ -36,11 +41,9 @@ Batch Transfer Help
         <dd>A pseudonym to pseudonymize the images during transfer.</dd>
     </dl>
 </p>
-
 <p>
     The provided pseudonym will be set as PatientID and PatientName. So it is
-    best to use some identifier like in the above example (and not another
-    person name).
+    best to use cryptic identifier strings like "XFE3TEW2N".
 </p>
 
 <div class="mb-1">
