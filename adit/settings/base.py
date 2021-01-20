@@ -144,13 +144,12 @@ LOGGING = {
         },
         "syslog": {
             "level": "INFO",
-            # "filters": ["require_debug_false"],
             "class": "logging.handlers.SysLogHandler",
             "address": (SYSLOG_HOST, SYSLOG_PORT),
             "formatter": "verbose",
         },
         "mail_admins": {
-            "level": "ERROR",
+            "level": "CRITICAL",
             "filters": ["require_debug_false"],
             "class": "django.utils.log.AdminEmailHandler",
         },
