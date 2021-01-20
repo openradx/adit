@@ -95,6 +95,8 @@ def _query_studies(
     studies = connector.find_studies(
         {
             "PatientID": patient_id,
+            "PatientName": query_task.patient_name,
+            "PatientBirthDate": query_task.patient_birth_date,
             "StudyInstanceUID": "",
             "AccessionNumber": query_task.accession_number,
             "StudyDate": study_date,
