@@ -25,7 +25,7 @@ class DicomExplorerQueryForm(forms.Form):
     )
     accession_number = forms.CharField(
         label="Accession Number",
-        max_length=16,
+        max_length=32,
         required=False,
         validators=id_validators,
     )

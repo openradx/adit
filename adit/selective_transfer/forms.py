@@ -58,7 +58,7 @@ class SelectiveTransferJobForm(forms.ModelForm):
     study_date = forms.DateField(required=False)
     modality = forms.CharField(required=False, max_length=16)
     accession_number = forms.CharField(
-        required=False, max_length=16, label="Accession #"
+        required=False, max_length=32, label="Accession #"
     )
 
     class Meta:

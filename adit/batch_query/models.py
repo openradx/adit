@@ -60,9 +60,12 @@ class BatchQueryTask(BatchTask, DicomTask):
         blank=True,
         error_messages={"invalid": "Invalid date format."},
     )
+    # Accession Number is of VR SH (Short String) and allows only 16 chars max.
+    # Unfortunately some accession numbers in our PACS are longer (not DICOM
+    # conform) so we use 32 characters.
     accession_number = models.CharField(
         blank=True,
-        max_length=16,
+        max_length=32,
         validators=[
             no_backslash_char_validator,
             no_control_chars_validator,
@@ -135,8 +138,9 @@ class BatchQueryResult(models.Model):
             no_wildcard_chars_validator,
         ],
     )
+    # See note of accession_number field in BatchQueryTask
     accession_number = models.CharField(
-        max_length=16,
+        max_length=32,
         validators=[
             no_backslash_char_validator,
             no_control_chars_validator,
