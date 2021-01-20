@@ -21,23 +21,38 @@ def execute_query(query_task: BatchQueryTask) -> BatchQueryTask.Status:
     connector: DicomConnector = _create_source_connector(query_task)
 
     try:
-        patient = _fetch_patient(connector, query_task)
+        patients = _fetch_patients(connector, query_task)
 
-        if not patient:
+        if len(patients) == 0:
             query_task.status = BatchQueryTask.Status.WARNING
             query_task.message = "Patient not found."
         else:
-            studies = _query_studies(connector, patient["PatientID"], query_task)
+            all_studies = []  # a list of study lists (per patient)
+            for patient in patients:
+                studies = _query_studies(connector, patient["PatientID"], query_task)
+                if studies:
+                    all_studies.append(studies)
 
-            if not studies:
+            if len(all_studies) == 0:
                 query_task.status = BatchQueryTask.Status.WARNING
-                query_task.message = "No studies found."
+                query_task.message = "No studies for patient found."
             else:
-                results = _save_results(query_task, studies)
-                query_task.status = BatchQueryTask.Status.SUCCESS
-                num = len(results)
-                query_task.message = f"{num} stud{pluralize(num, 'y,ies')} found."
+                all_studies_flattened = [
+                    study for studies in all_studies for study in studies
+                ]
+                results = _save_results(query_task, all_studies_flattened)
 
+                num = len(results)
+                study_count = f"{num} stud{pluralize(num, 'y,ies')}"
+
+                if len(all_studies) == 1:  # Only studies of one patient found
+                    query_task.status = BatchQueryTask.Status.SUCCESS
+                    query_task.message = f"{study_count} found."
+                else:  # Studies of multiple patients found
+                    query_task.status = BatchQueryTask.Status.WARNING
+                    query_task.message = (
+                        f"Multiple patients found with overall {study_count}."
+                    )
     except Exception as err:  # pylint: disable=broad-except
         logger.exception("Error during %s", query_task)
         query_task.status = BatchQueryTask.Status.FAILURE
@@ -54,24 +69,16 @@ def _create_source_connector(query_task: BatchQueryTask) -> DicomConnector:
     return DicomConnector(query_task.job.source.dicomserver)
 
 
-def _fetch_patient(
+def _fetch_patients(
     connector: DicomConnector, query_task: BatchQueryTask
 ) -> Optional[Dict[str, Any]]:
-    patients = connector.find_patients(
+    return connector.find_patients(
         {
             "PatientID": query_task.patient_id,
             "PatientName": query_task.patient_name,
             "PatientBirthDate": query_task.patient_birth_date,
         }
     )
-
-    if len(patients) > 1:
-        raise ValueError("Multiple patients found.")
-
-    if len(patients) == 1:
-        return patients[0]
-
-    return None
 
 
 def _query_studies(
