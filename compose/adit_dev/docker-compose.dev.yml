@@ -13,6 +13,7 @@ x-app: &default-app
         - orthanc2
     volumes:
         - ../..:/app
+        - /mnt:/mnt
         - adit_data:/var/www/adit
         - vscode-server:/root/.vscode-server/extensions
         - vscode-server-insiders:/root/.vscode-server-insiders/extensions
