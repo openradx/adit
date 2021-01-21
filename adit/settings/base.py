@@ -28,6 +28,11 @@ BASE_URL = env.str("BASE_URL", default="")
 
 SITE_ID = 1
 
+# Used by our custom migration adit.core.migrations.0002_UPDATE_SITE_NAME
+# to set the domain and name of the sites framework
+ADIT_SITE_DOMAIN = env.str("ADIT_SITE_DOMAIN", default="adit.org")
+ADIT_SITE_NAME = env.str("ADIT_SITE_NAME", default="adit.org")
+
 INSTALLED_APPS = [
     "whitenoise.runserver_nostatic",
     "adit.accounts.apps.AccountsConfig",
