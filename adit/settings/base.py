@@ -26,6 +26,8 @@ if READ_DOT_ENV_FILE:
 
 BASE_URL = env.str("BASE_URL", default="")
 
+SITE_ID = 1
+
 INSTALLED_APPS = [
     "whitenoise.runserver_nostatic",
     "adit.accounts.apps.AccountsConfig",
@@ -37,6 +39,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "django.contrib.humanize",
+    "django.contrib.sites",
     "revproxy",
     "loginas",
     "crispy_forms",
@@ -61,6 +64,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "django.contrib.sites.middleware.CurrentSiteMiddleware",
     "adit.core.middlewares.MaintenanceMiddleware",
     "adit.core.middlewares.TimezoneMiddleware",
 ]
