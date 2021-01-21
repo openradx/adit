@@ -1,4 +1,4 @@
-{% load i18n %}
+{% load blocktrans from i18n %}
 {% blocktrans %}
     You (or someone pretending to be you) have asked to register an account at
     ADIT.  If this wasn't you, please ignore this email

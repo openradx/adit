@@ -1,4 +1,4 @@
-{% load i18n %}
+{% load blocktrans from i18n %}
 {% blocktrans %}
     Your account is now approved. You can log in using the following link
 {% endblocktrans %}
