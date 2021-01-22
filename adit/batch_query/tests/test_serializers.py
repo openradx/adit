@@ -19,6 +19,11 @@ def data():
             "patient_birth_date": "09.12.1976",
             "modalities": "CT",
         },
+        {
+            "batch_id": "3",
+            "patient_id": "1003",
+            "accession_number": "0062094311",
+        },
     ]
 
 
@@ -37,3 +42,6 @@ def test_deserializes_query_task(data):
     assert serializer.validated_data[1]["patient_name"] == "Coconut^Coco"
     assert serializer.validated_data[1]["patient_birth_date"] == date(1976, 12, 9)
     assert serializer.validated_data[1]["modalities"] == ["CT"]
+
+    assert serializer.validated_data[2]["patient_id"] == "1003"
+    assert serializer.validated_data[2]["accession_number"] == "0062094311"
