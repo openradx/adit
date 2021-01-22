@@ -6,10 +6,15 @@ from .templatetags.core_extras import (
 )
 
 
-class RecordIdColumn(tables.Column):
-    def render(self, record, value):  # pylint: disable=arguments-differ
-        url = record.get_absolute_url()
-        return format_html(f'<a href="{url}">{value}</a>')
+class RecordIdColumn(tables.TemplateColumn):
+    def __init__(self, verbose_name):
+        template_code = (
+            '<a href="{{ record.get_absolute_url }}">'
+            "{{ value }} "
+            '{% include "core/_box_arrow_in_right.svg" %}'
+            "</a>"
+        )
+        super().__init__(template_code=template_code, verbose_name=verbose_name)
 
 
 class DicomJobTable(tables.Table):
