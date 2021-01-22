@@ -34,15 +34,14 @@ Downloading data from a DICOM server can done by using a C-GET or C-MOVE operati
 
 # TODO list
 
--   Fix not parsing AccessionNumber in QueryTask
+-   Make selective query without input work
+-   By default make selective query without \*
 -   Implement save logs in BatchQuery
 -   Only show own batch queries
 -   Retry on timeout
 -   Fix message box
--   Make Previous Jobs more prominent
 -   Hint for semicolon as delimiter in CSV in help
 -   Think about splitting BatchID in QueryID and TransferID, see BatchTask and batch_id
--   prefer study root
 -   c-get download timeout
 -   implement real \_download_study_move and not just do download_series_move
 -   Use LRU cache for dicom explorer / collector
