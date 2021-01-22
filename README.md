@@ -34,6 +34,8 @@ Downloading data from a DICOM server can done by using a C-GET or C-MOVE operati
 
 # TODO list
 
+-   Fix not parsing AccessionNumber in QueryTask
+-   Implement save logs in BatchQuery
 -   Only show own batch queries
 -   Retry on timeout
 -   Fix message box
