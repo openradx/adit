@@ -23,11 +23,12 @@ class BatchQueryTaskFactory(BatchTaskFactory):
         model = BatchQueryTask
 
     job = factory.SubFactory(BatchQueryJobFactory)
-    patient_id = factory.Faker("numerify", text="##########")
+    patient_id = factory.Faker("numerify", text="########")
     patient_name = factory.LazyFunction(
         lambda: f"{fake.last_name()}, {fake.first_name()}"
     )
     patient_birth_date = factory.Faker("date_of_birth", minimum_age=15)
+    accession_number = factory.Faker("numerify", text="############")
     modalities = factory.Faker(
         "random_elements", elements=("CT", "MR", "DX"), unique=True
     )

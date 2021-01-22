@@ -11,6 +11,7 @@ class BatchQueryTaskSerializer(BatchTaskSerializer):
             "patient_id",
             "patient_name",
             "patient_birth_date",
+            "accession_number",
             "study_date_start",
             "study_date_end",
             "modalities",
