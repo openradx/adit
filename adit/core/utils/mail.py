@@ -5,7 +5,7 @@ from django.template.loader import render_to_string
 
 
 def send_mail_to_admins(subject, text_content=None, html_content=None):
-    if html_content is None and html_content is None:
+    if text_content is None and html_content is None:
         raise Exception("Email must at have html_contant or text_content.")
 
     if text_content is None:
@@ -16,7 +16,7 @@ def send_mail_to_admins(subject, text_content=None, html_content=None):
 
 
 def send_mail_to_user(user, subject, text_content=None, html_content=None):
-    if html_content is None and html_content is None:
+    if text_content is None and html_content is None:
         raise Exception("Email must at have html_contant or text_content.")
 
     subject = settings.EMAIL_SUBJECT_PREFIX + subject
