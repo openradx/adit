@@ -11,6 +11,7 @@ from django.urls import re_path
 from django.shortcuts import redirect
 from django.core.exceptions import SuspiciousOperation
 from django.contrib import messages
+from django.db.models.query import QuerySet
 from django.conf import settings
 from django_tables2 import SingleTableMixin
 from django_filters.views import FilterView
@@ -27,9 +28,14 @@ class DicomJobListView(  # pylint: disable=too-many-ancestors
     filterset_class = None
     template_name = None
 
+    def get_queryset(self) -> QuerySet:
+        return self.model.objects.select_related("source").filter(
+            owner=self.request.user
+        )
+
 
 class TransferJobListView(DicomJobListView):  # pylint: disable=too-many-ancestors
-    def get_queryset(self):
+    def get_queryset(self) -> QuerySet:
         return self.model.objects.select_related("source", "destination").filter(
             owner=self.request.user
         )

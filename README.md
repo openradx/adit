@@ -37,7 +37,6 @@ Downloading data from a DICOM server can done by using a C-GET or C-MOVE operati
 -   Make selective query without input work
 -   By default make selective query without \*
 -   Implement save logs in BatchQuery
--   Only show own batch queries
 -   Retry on timeout
 -   Fix message box
 -   Hint for semicolon as delimiter in CSV in help
