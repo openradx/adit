@@ -183,7 +183,7 @@ class SelectiveTransferJobForm(forms.ModelForm):
 
     def clean_patient_name(self):
         patient_name = self.cleaned_data["patient_name"]
-        return person_name_to_dicom(patient_name)
+        return person_name_to_dicom(patient_name, add_wildcards=True)
 
     def clean_modality(self):
         modality = self.cleaned_data["modality"]
