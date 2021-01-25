@@ -8,25 +8,20 @@ Batch Transfer Help
 
 {% block modal_body %}
 <p>
-    With this form you can create a new batch transfer job to transfer studies
-    from a source server to a destination. Batch transfer jobs are put into a
-    queue and will be processed by a worker when the time is right.
-    You will get an Email when the job is finished (or failed for some reason).
+    With this form you can create a new batch transfer job to transfer studies from a source server to a destination.
+    Batch transfer jobs are put into a queue and will be processed by a worker when the time is right. You will get an
+    Email when the job is finished (or failed for some reason).
 </p>
 <p>
-    Each batch transfer job contains several transfer tasks that define what 
-    studies to transfer. This data must be specified in a CSV file.
-    If your data is in an Excel file then it can be exported to a CSV file.  
-    The first row of the CSV file must contain the header with the column
-    titles. The following rows contain the data that identfies the studies
-    to transfer.
+    Each batch transfer job contains several transfer tasks that define what studies to transfer. This data must be
+    specified in a CSV file with <strong>semicolons <mark>;</mark> as column separators</strong>. If your data is in an
+    Excel file then it can be exported to a CSV file. The first row of the CSV file must contain the header with the
+    column titles. The following rows contain the data that identfies the studies to transfer.
 </p>
 <p>
-    The required PatientID and StudyInstanceUID can be fetched by doing a
-    a "Batch Query". The resulting CSV file of a batch query can be used
-    with minimal modifications for a batch transfer. You just have to make
-    sure that the BatchID is unique (which may not be the case when batch
-    query returns multiple studies for one query task).
+    The required PatientID and StudyInstanceUID can be fetched by doing a "Batch Query". The resulting CSV file of a
+    batch query can be used with minimal modifications for a batch transfer. You just have to make sure that the BatchID
+    is unique (which may not be the case when batch query returns multiple studies for one query task).
 </p>
 <p>
     The following columns must be defined in the CSV file:
@@ -42,8 +37,13 @@ Batch Transfer Help
     </dl>
 </p>
 <p>
-    The provided pseudonym will be set as PatientID and PatientName. So it is
-    best to use cryptic identifier strings like "XFE3TEW2N".
+    The provided pseudonym will be set as PatientID and PatientName. So it is best to use cryptic identifier strings
+    like "XFE3TEW2N".
+</p>
+<p>
+    Make sure that your CSV file encoding is correct by opening it with a normal text editor (ideally under Windows).
+    Especially look that umlauts (äöü) are correct. If something is wrong then try to export your CSV file from Excel
+    with UTF-8 encondig.
 </p>
 
 <div class="mb-1">

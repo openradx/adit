@@ -8,19 +8,15 @@ Batch Query Help
 
 {% block modal_body %}
 <p>
-    With a Batch Query you can create a job to find the data of multiple
-    studies in a source DICOM / PACS server. 
-    Batch query jobs are put into a queue and will be processed by a worker
-    when the time is right. You will get an Email when the job is finished
-    (or failed for some reason).
+    With a Batch Query you can create a job to find the data of multiple studies in a source DICOM / PACS server. Batch
+    query jobs are put into a queue and will be processed by a worker when the time is right. You will get an Email when
+    the job is finished (or failed for some reason).
 </p>
 <p>
-    Each batch query job contains several query tasks that define what 
-    studies to search for. The search terms must be specified in a CSV file.
-    If your data is in an Excel file then it must be exported to a CSV file
-    (by using the Excel built-in exporter). The first row of the CSV file 
-    must contain the header with the column titles (see below). Each following
-    row represents a query task.
+    Each batch query job contains several query tasks that define what studies to search for. The search terms must be
+    specified in a CSV file with <strong>semicolons <mark>;</mark> as separators</strong>. If your data is in an Excel
+    file then it must be exported to a CSV file (by using the Excel built-in exporter). The first row of the CSV file
+    must contain the header with the column titles (see below). Each following row represents a query task.
 </p>
 <p>
     These are the columns in the batch file to execute your queries:
@@ -44,16 +40,18 @@ Batch Query Help
     </dl>
 </p>
 <p>
-    BatchID is always required. The patient must be identifiable by either
-    "PatientID" or "PatientName" together with "PatientBirthDate". The remaining
-    fields are optional and may limit the results for what you really need.
+    BatchID is always required. The patient must be identifiable by either "PatientID" or "PatientName" together with
+    "PatientBirthDate". The remaining fields are optional and may limit the results for what you really need.
 </p>
 <p>
-    The result of the batch query can viewed and downloaded from ADIT. The
-    downloaded CSV file contains more data then what can be viewed on the
-    website. Each result contains the "PatientID" and "StudyInstanceUID" which
-    is necessary for a batch tranfer job. So a batch query job is in most cases
-    the preperation step for a batch transfer.
+    Make sure that your CSV file encoding is correct by opening it with a normal text editor (ideally under Windows).
+    Especially look that umlauts (äöü) are correct. If something is wrong then try to export your CSV file from Excel
+    with UTF-8 encondig.
+</p>
+<p>
+    The result of the batch query can viewed and downloaded from ADIT. The downloaded CSV file contains more data then
+    what can be viewed on the website. Each result contains the "PatientID" and "StudyInstanceUID" which is necessary
+    for a batch tranfer job. So a batch query job is in most cases the preperation step for a batch transfer.
 </p>
 <div class="mb-1">
     <a href="{% static 'samples/batch_query_sample.csv' %}">
