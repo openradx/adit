@@ -71,7 +71,6 @@ class BatchQueryJobDetailView(
     PageSizeSelectMixin,
     DetailView,
 ):
-    owner_accessor = "owner"
     table_class = BatchQueryTaskTable
     filterset_class = BatchQueryTaskFilter
     model = BatchQueryJob
@@ -118,7 +117,6 @@ class BatchQueryResultListView(
     PageSizeSelectMixin,
     DetailView,
 ):
-    owner_accessor = "owner"
     table_class = BatchQueryResultTable
     filterset_class = BatchQueryResultFilter
     model = BatchQueryJob
@@ -136,7 +134,6 @@ class BatchQueryResultDownloadView(
     View,
 ):
     model = BatchQueryJob
-    owner_accessor = "owner"
 
     def get(self, request, *args, **kwargs):  # pylint: disable=unused-argument
         job = self.get_object()

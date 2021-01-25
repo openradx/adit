@@ -35,27 +35,16 @@ Downloading data from a DICOM server can done by using a C-GET or C-MOVE operati
 # TODO list
 
 -   Admin page that shows all running jobs
--   Make selective query without input work
--   By default make selective query without \*
 -   Implement save logs in BatchQuery
 -   Retry on timeout
 -   Fix message box
 -   Hint for semicolon as delimiter in CSV in help
--   Think about splitting BatchID in QueryID and TransferID, see BatchTask and batch_id
--   c-get download timeout
 -   implement real \_download_study_move and not just do download_series_move
 -   Use LRU cache for dicom explorer / collector
 -   Auto refresh pages of in progress jobs
 -   Continuous Mode
 -   Allow to pause a job (Status.PAUSED)
 -   Better scheduler (with day in week and times)
--   Allow to specify alternative column names in field_to_column_mapping of batch_parsers.py, e.g.
-    ```
-    {
-        "batch_id": ("Batch ID", "BatchID"),
-        "patient_name": ("Patient Name", "PatientName"),
-    }
-    ```
 -   Tests: test_query_utils, test serializers, test all views (as integration tests using real Orthanc), improve tests of transferutil
 -   Link owner in templates to user profile
 -   Watchdog server
@@ -66,6 +55,7 @@ Downloading data from a DICOM server can done by using a C-GET or C-MOVE operati
 -   BatchQuery with custom DICOM keywords
 -   Allow provide a regex of StudyDescription in CSV batch file
 -   Allow to specify many modalities per row in CSV file
+-   Think about splitting BatchID in QueryID and TransferID, see BatchTask and batch_id
 -   move date parsing part in parsers.py and consumers.py to date_util.py
 -   https://stackoverflow.com/questions/14259852/how-to-identify-image-receive-in-c-store-as-result-of-a-c-move-query
 -   https://www.yergler.net/2009/09/27/nested-formsets-with-django/

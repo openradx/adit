@@ -102,7 +102,6 @@ class SelectiveTransferJobDetailView(
     PageSizeSelectMixin,
     DetailView,
 ):
-    owner_accessor = "owner"
     table_class = SelectiveTransferTaskTable
     filterset_class = SelectiveTransferTaskFilter
     model = SelectiveTransferJob

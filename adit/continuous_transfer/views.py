@@ -64,7 +64,6 @@ class ContinuousTransferJobDetailView(
     model = ContinuousTransferJob
     context_object_name = "job"
     template_name = "continuous_transfer/continuous_transfer_job_detail.html"
-    owner_accessor = "owner"
 
 
 class ContinuousTransferJobDeleteView(DicomJobDeleteView):

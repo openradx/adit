@@ -75,7 +75,6 @@ class BatchTransferJobDetailView(
     PageSizeSelectMixin,
     DetailView,
 ):
-    owner_accessor = "owner"
     table_class = BatchTransferTaskTable
     filterset_class = BatchTransferTaskFilter
     model = BatchTransferJob

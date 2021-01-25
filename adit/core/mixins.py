@@ -1,4 +1,5 @@
 import re
+from functools import reduce
 from django.contrib.auth.mixins import AccessMixin
 from django.forms.formsets import ORDERING_FIELD_NAME
 from django_filters.views import FilterMixin
@@ -14,7 +15,7 @@ class OwnerRequiredMixin(AccessMixin):
 
     allow_superuser_access = True
     allow_staff_access = True
-    owner_accessor = "user"
+    owner_accessor = "owner"
 
     def dispatch(self, request, *args, **kwargs):
         self.object = self.get_object()
@@ -28,10 +29,17 @@ class OwnerRequiredMixin(AccessMixin):
         ):
             check_owner = False
 
-        if check_owner and request.user != getattr(self.object, self.owner_accessor):
+        if check_owner and request.user != deepgetattr(
+            self.object, self.owner_accessor
+        ):
             self.handle_no_permission()
 
         return super().dispatch(request, *args, **kwargs)
+
+
+def deepgetattr(obj, attr):
+    """Recurses through an attribute chain to get the ultimate value."""
+    return reduce(getattr, attr.split("."), obj)
 
 
 class RelatedFilterMixin(FilterMixin):

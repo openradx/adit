@@ -60,7 +60,6 @@ class DicomJobCreateView(
 class DicomJobDeleteView(LoginRequiredMixin, OwnerRequiredMixin, DeleteView):
     model = None
     success_url = None
-    owner_accessor = "owner"
     success_message = "Job with ID %(id)d was deleted successfully"
 
     def delete(self, request, *args, **kwargs):
@@ -80,7 +79,6 @@ class DicomJobCancelView(
     LoginRequiredMixin, OwnerRequiredMixin, SingleObjectMixin, View
 ):
     model = None
-    owner_accessor = "owner"
     success_message = "Job with ID %(id)d was canceled"
 
     def post(self, request, *args, **kwargs):  # pylint: disable=unused-argument
@@ -100,7 +98,6 @@ class DicomJobVerifyView(
     LoginRequiredMixin, OwnerRequiredMixin, SingleObjectMixin, View
 ):
     model = None
-    owner_accessor = "owner"
     success_message = "Job with ID %(id)d was verified"
 
     def post(self, request, *args, **kwargs):  # pylint: disable=unused-argument
@@ -122,7 +119,7 @@ class DicomTaskDetailView(LoginRequiredMixin, OwnerRequiredMixin, DetailView):
     job_url_name = None
     template_name = None
     context_object_name = "task"
-    owner_accessor = "owner"
+    owner_accessor = "job.owner"
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
