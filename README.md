@@ -34,6 +34,9 @@ Downloading data from a DICOM server can done by using a C-GET or C-MOVE operati
 
 # TODO list
 
+-   Umlaute
+-   Accesion Number Problem
+-   BatchQuery in Admin
 -   Make selective query without input work
 -   By default make selective query without \*
 -   Implement save logs in BatchQuery
