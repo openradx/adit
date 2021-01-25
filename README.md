@@ -38,7 +38,6 @@ Downloading data from a DICOM server can done by using a C-GET or C-MOVE operati
 -   Implement save logs in BatchQuery
 -   Retry on timeout
 -   Fix message box
--   Hint for semicolon as delimiter in CSV in help
 -   implement real \_download_study_move and not just do download_series_move
 -   Use LRU cache for dicom explorer / collector
 -   Auto refresh pages of in progress jobs
