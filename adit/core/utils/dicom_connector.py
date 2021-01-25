@@ -89,7 +89,7 @@ class DicomConnector:
     @dataclass
     class Config:
         auto_connect: bool = True
-        connection_retries: int = 3
+        connection_retries: int = 2
         retry_timeout: int = 30  # in seconds
         acse_timeout: int = None
         dimse_timeout: int = None
@@ -113,7 +113,7 @@ class DicomConnector:
 
         logger.debug("Opening connection to DICOM server %s.", self.server.ae_title)
 
-        for i in range(self.config.connection_retries):
+        for i in range(self.config.connection_retries + 1):
             try:
                 self._associate()
                 break
@@ -121,7 +121,7 @@ class DicomConnector:
                 logger.exception(
                     "Could not connect to DICOM server %s.", self.server.ae_title
                 )
-                if i < self.config.connection_retries - 1:
+                if i < self.config.connection_retries:
                     logger.info(
                         "Retrying to connect in %d seconds.",
                         self.config.retry_timeout,
