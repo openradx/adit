@@ -146,7 +146,6 @@ class DicomConnector:
         logger.debug("Aborting connection to DICOM server %s.", self.server.ae_title)
 
         self.assoc.abort()
-        self.assoc = None
 
     @connect_to_server
     def find_patients(self, query, limit_results=None):
