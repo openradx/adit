@@ -1,8 +1,5 @@
 {
     "editor.formatOnSave": true,
-    "html.format.enable": false,
-    "prettier.tabWidth": 4,
-    "prettier.disableLanguages": ["html", "django-html"],
     "python.formatting.provider": "black",
     "python.linting.pylintEnabled": true,
     "python.testing.pytestArgs": [
@@ -11,5 +8,28 @@
     "python.testing.unittestEnabled": false,
     "python.testing.nosetestsEnabled": false,
     "python.testing.pytestEnabled": true,
-    "svg.preview.background": "black"
+    "svg.preview.background": "black",
+    "beautify.language": {
+        "js": {
+            "type": [
+                "javascript",
+                "json",
+                "jsonc"
+            ],
+            "filename": [
+                ".jshintrc",
+                ".jsbeautifyrc"
+            ]
+        },
+        "css": [
+            "css",
+            "less",
+            "scss"
+        ],
+        "html": [
+            "htm",
+            "html",
+            "django-html"
+        ]
+    }
 }
