@@ -25,5 +25,4 @@ class BatchTransferJobAdmin(admin.ModelAdmin):
 
 admin.site.register(BatchTransferJob, BatchTransferJobAdmin)
 
-
 admin.site.register(BatchTransferSettings, admin.ModelAdmin)
