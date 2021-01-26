@@ -24,6 +24,13 @@ Batch Transfer Help
     is unique (which may not be the case when batch query returns multiple studies for one query task).
 </p>
 <p>
+    <strong class="text-danger">Cave!</strong><br />
+    If PatientID or AccessionNumber contains leading zeros those are relevant as it is not a number but a text
+    identifer. So make sure after loading or saving a CSV file with Excel those values are correct (by viewing the file
+    with a text editor). If not then you must use the Excel data importer to skip the automatic type conversion or use
+    another CSV editor!
+</p>
+<p>
     The following columns must be defined in the CSV file:
     <dl>
         <dt>BatchID</dt>
