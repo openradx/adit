@@ -34,12 +34,10 @@ Downloading data from a DICOM server can done by using a C-GET or C-MOVE operati
 
 # TODO list
 
--   log debug -> info in connector also in production
--   Make pseudonyms persist from query to transfer
 -   Use task_id field on all tasks and use this as key with urls like /job/4/tasks/9 for all jobs
+-   log debug -> info in connector also in production
 -   Admin page that shows all running jobs
 -   Implement save logs in BatchQuery
--   Retry on timeout
 -   Fix message box
 -   implement real \_download_study_move and not just do download_series_move
 -   Use LRU cache for dicom explorer / collector
