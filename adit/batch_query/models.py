@@ -87,6 +87,13 @@ class BatchQueryTask(BatchTask, DicomTask):
         blank=True,
         validators=[validate_modalities],
     )
+    pseudonym = (  # allow to pipe pseudonym through to a possible batch transfer
+        models.CharField(
+            blank=True,
+            max_length=64,
+            validators=[no_backslash_char_validator, no_control_chars_validator],
+        )
+    )
 
     def clean(self) -> None:
         if not self.patient_id and not (self.patient_name and self.patient_birth_date):
@@ -165,6 +172,13 @@ class BatchQueryResult(models.Model):
     image_count = models.PositiveIntegerField(
         null=True,
         blank=True,
+    )
+    pseudonym = (  # allow to pipe pseudonym through to a possible batch transfer
+        models.CharField(
+            blank=True,
+            max_length=64,
+            validators=[no_backslash_char_validator, no_control_chars_validator],
+        )
     )
 
     @property

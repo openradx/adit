@@ -9,25 +9,40 @@ def export_results(job: BatchQueryJob, file):
     delimiter = settings.CSV_FILE_DELIMITER
     writer = csv.writer(file, delimiter=delimiter)
 
-    # Write column header
-    writer.writerow(
-        [
-            "BatchID",
-            "PatientID",
-            "PatientName",
-            "BirthDate",
-            "StudyDate",
-            "StudyTime",
-            "StudyDescription",
-            "ModalitiesInStudy",
-            "NumberOfStudyRelatedInstances",
-            "AccessionNumber",
-            "StudyInstanceUID",
-        ]
-    )
+    query_tasks = job.tasks.prefetch_related("results").all()
 
-    # Write data
-    for query_task in job.tasks.prefetch_related("results").all():
+    has_pseudonyms = False
+    for query_task in query_tasks:
+        if query_task.pseudonym:
+            has_pseudonyms = True
+
+    write_header(writer, has_pseudonyms)
+    write_data(writer, query_tasks, has_pseudonyms)
+
+
+def write_header(writer, has_pseudonyms):
+    column_headers = [
+        "BatchID",
+        "PatientID",
+        "PatientName",
+        "BirthDate",
+        "StudyDate",
+        "StudyTime",
+        "StudyDescription",
+        "ModalitiesInStudy",
+        "NumberOfStudyRelatedInstances",
+        "AccessionNumber",
+        "StudyInstanceUID",
+    ]
+
+    if has_pseudonyms:
+        column_headers.append("Pseudonym")
+
+    writer.writerow(column_headers)
+
+
+def write_data(writer, query_tasks, has_pseudonyms):
+    for query_task in query_tasks:
         result: BatchQueryResult
         for result in query_task.results.all():
             patient_name = person_name_from_dicom(result.patient_name)
@@ -61,4 +76,8 @@ def export_results(job: BatchQueryJob, file):
                 result.accession_number,
                 result.study_uid,
             ]
+
+            if has_pseudonyms:
+                csv_row.append(result.pseudonym)
+
             writer.writerow(csv_row)

@@ -135,6 +135,7 @@ def _save_results(
             study_description=study["StudyDescription"],
             modalities=study["ModalitiesInStudy"],
             image_count=study["NumberOfStudyRelatedInstances"],
+            pseudonym=query_task.pseudonym,
         )
         results.append(result)
 

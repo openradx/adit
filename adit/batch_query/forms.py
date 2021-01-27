@@ -70,6 +70,7 @@ class BatchQueryJobForm(forms.ModelForm):
                 "study_date_start": "From",
                 "study_date_end": "Until",
                 "modalities": "Modality",
+                "pseudonym": "Pseudonym",
             },
         )
 
