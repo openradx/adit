@@ -34,6 +34,7 @@ Downloading data from a DICOM server can done by using a C-GET or C-MOVE operati
 
 # TODO list
 
+-   Make pseudonyms persist from query to transfer
 -   Use task_id field on all tasks and use this as key with urls like /job/4/tasks/9 for all jobs
 -   Use openpyxl instead of csv
 -   Admin page that shows all running jobs

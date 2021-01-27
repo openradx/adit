@@ -220,6 +220,7 @@ class DicomTask(models.Model):
         choices=Status.choices,
         default=Status.PENDING,
     )
+    retries = models.PositiveSmallIntegerField(default=0)
     message = models.TextField(blank=True, default="")
     log = models.TextField(blank=True, default="")
     created = models.DateTimeField(auto_now_add=True)

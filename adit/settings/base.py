@@ -369,10 +369,13 @@ SELECTIVE_TRANSFER_RESULT_LIMIT = 101
 DICOM_EXPLORER_RESULT_LIMIT = 101
 
 # The timeout in dicom_explorer a DICOM server must respond
-DICOM_EXPLORER_RESPONSE_TIMEOUT = 3  # in seconds
+DICOM_EXPLORER_RESPONSE_TIMEOUT = 3  # seconds
 
 # The timeout we wait for images of a C-MOVE download
-C_MOVE_DOWNLOAD_TIMEOUT = 60  # in seconds
+C_MOVE_DOWNLOAD_TIMEOUT = 60  # seconds
 
 # Show DICOM debug messages of pynetdicom
 DICOM_DEBUG_LOGGER = False
+
+# How often to retry a failed task before the task is definitively failed
+TASK_RETRIES = 2

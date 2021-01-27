@@ -6,18 +6,23 @@ import tempfile
 import subprocess
 from functools import partial
 from typing import Any, Callable, Dict, List, Tuple
+from celery import Task as CeleryTask
 from dicognito.anonymizer import Anonymizer
 from pydicom import Dataset
+import humanize
 from django.utils import timezone
-from adit.core.models import TransferJob, TransferTask
-from ..models import DicomNode
+from django.conf import settings
+from ..models import DicomNode, TransferJob, TransferTask
+from ..errors import RetriableTaskError
 from .dicom_connector import DicomConnector
 from .sanitize import sanitize_dirname
 
 logger = logging.getLogger(__name__)
 
 
-def execute_transfer(transfer_task: TransferTask) -> TransferTask.Status:
+def execute_transfer(
+    transfer_task: TransferTask, celery_task: CeleryTask
+) -> TransferTask.Status:
     if transfer_task.status == TransferTask.Status.CANCELED:
         return transfer_task.status
 
@@ -60,14 +65,33 @@ def execute_transfer(transfer_task: TransferTask) -> TransferTask.Status:
         transfer_task.status = TransferTask.Status.SUCCESS
         transfer_task.message = "Transfer task completed successfully."
 
-    except Exception as err:  # pylint: disable=broad-except
-        logger.exception("Error occurred during %s.", transfer_job)
+    except RetriableTaskError as err:
+        logger.exception("Retriable error occurred during %s.", transfer_task)
+
+        # We can't use the Celery built-in max_retries and celery_task.request.retries
+        # directly as we also use celery_task.retry() for scheduling tasks.
+        if transfer_task.retries < settings.TASK_RETRIES:
+            logger.info("Retrying task in %s.", humanize.naturaldelta(err.delay))
+            transfer_task.status = TransferTask.Status.PENDING
+            transfer_task.message = "Task failed and will be retried."
+            transfer_task.retries += 1
+            raise celery_task.retry(
+                eta=timezone.now() + err.delay,
+                exc=err,
+            )
+
+        logger.error("No more retries for finally failed %s.", transfer_task)
         transfer_task.status = TransferTask.Status.FAILURE
         transfer_task.message = str(err)
+        transfer_task.end = timezone.now()
+
+    except Exception as err:  # pylint: disable=broad-except
+        logger.exception("Unrecoverable failure occurred in %s.", transfer_task)
+        transfer_task.status = TransferTask.Status.FAILURE
+        transfer_task.message = str(err)
+        transfer_task.end = timezone.now()
     finally:
         _save_log_to_task(handler, stream, transfer_task)
-
-        transfer_task.end = timezone.now()
         transfer_task.save()
 
     return transfer_task.status

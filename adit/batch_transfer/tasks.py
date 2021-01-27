@@ -44,8 +44,8 @@ def process_transfer_job(transfer_job_id: int):
 @shared_task(bind=True)
 def process_transfer_task(self: CeleryTask, transfer_task_id: int):
     transfer_task = BatchTransferTask.objects.get(id=transfer_task_id)
-    prepare_dicom_task(transfer_task, BatchTransferSettings.get(), self)
-    return execute_transfer(transfer_task)
+    prepare_dicom_task(transfer_task, BatchTransferSettings.get(), celery_task=self)
+    return execute_transfer(transfer_task, celery_task=self)
 
 
 @shared_task(ignore_result=True)
