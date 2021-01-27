@@ -34,9 +34,9 @@ Downloading data from a DICOM server can done by using a C-GET or C-MOVE operati
 
 # TODO list
 
+-   log debug -> info in connector also in production
 -   Make pseudonyms persist from query to transfer
 -   Use task_id field on all tasks and use this as key with urls like /job/4/tasks/9 for all jobs
--   Use openpyxl instead of csv
 -   Admin page that shows all running jobs
 -   Implement save logs in BatchQuery
 -   Retry on timeout
@@ -51,9 +51,11 @@ Downloading data from a DICOM server can done by using a C-GET or C-MOVE operati
 -   Link owner in templates to user profile
 -   Watchdog server
 -   Make logging analyze image with: http://crunchtools.com/software/petit/, less, vim, https://crypt.gen.nz/logsurfer/, ripgrep
+-   Upgrade to Celery 5 when Flower is compatible again
 
 # Maybe features
 
+-   Use openpyxl instead of csv
 -   BatchQuery with custom DICOM keywords
 -   Allow provide a regex of StudyDescription in CSV batch file
 -   Allow to specify many modalities per row in CSV file
