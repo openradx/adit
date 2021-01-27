@@ -7,7 +7,7 @@ import os
 from datetime import datetime
 from django.core.management.base import BaseCommand, CommandError
 from django.utils.regex_helper import _lazy_re_compile
-from django.utils import autoreload
+from django.utils import autoreload as django_autoreload
 
 naiveip_re = _lazy_re_compile(
     r"""^(?:
@@ -29,6 +29,7 @@ class ServerCommand(BaseCommand):
     # Validation is called explicitly each time the server is reloaded.
     requires_system_checks = False
 
+    autoreload = False
     starting_message = True
     server_name = "custom server"
     default_addr = "127.0.0.1"
@@ -100,8 +101,8 @@ class ServerCommand(BaseCommand):
             # an exception.
             signal.signal(signal.SIGTERM, lambda *args: sys.exit(0))
 
-            if options["autoreload"]:
-                autoreload.run_with_reloader(self.inner_run, **options)
+            if options["autoreload"] or self.autoreload:
+                django_autoreload.run_with_reloader(self.inner_run, **options)
             else:
                 self.inner_run(**options)
         except OSError as e:
@@ -126,7 +127,7 @@ class ServerCommand(BaseCommand):
     def inner_run(self, **options):
         # If an exception was silenced in ManagementUtility.execute in order
         # to be raised in the child process, raise it now.
-        autoreload.raise_last_exception()
+        django_autoreload.raise_last_exception()
 
         self.stdout.write("Performing system checks...\n\n")
         self.check(display_num_errors=True)
