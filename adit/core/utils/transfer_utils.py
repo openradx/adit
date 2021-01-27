@@ -64,6 +64,7 @@ def execute_transfer(
 
         transfer_task.status = TransferTask.Status.SUCCESS
         transfer_task.message = "Transfer task completed successfully."
+        transfer_task.end = timezone.now()
 
     except RetriableTaskError as err:
         logger.exception("Retriable error occurred during %s.", transfer_task)
@@ -90,6 +91,7 @@ def execute_transfer(
         transfer_task.status = TransferTask.Status.FAILURE
         transfer_task.message = str(err)
         transfer_task.end = timezone.now()
+
     finally:
         _save_log_to_task(handler, stream, transfer_task)
         transfer_task.save()
