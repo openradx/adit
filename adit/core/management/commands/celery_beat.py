@@ -13,6 +13,10 @@ class Command(ServerCommand):
 
     starting_message = False
 
+    def __init__(self, *args, **kwargs):
+        self.beat_process = None
+        super().__init__(*args, **kwargs)
+
     def add_arguments(self, parser):
         super().add_arguments(parser)
 
@@ -52,4 +56,8 @@ class Command(ServerCommand):
             }
         )
 
-        subprocess.call(shlex.split(cmd))
+        self.beat_process = subprocess.Popen(shlex.split(cmd))
+        self.beat_process.wait()
+
+    def on_shutdown(self):
+        self.beat_process.terminate()
