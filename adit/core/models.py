@@ -212,9 +212,11 @@ class DicomTask(models.Model):
 
     class Meta:
         abstract = True
-        ordering = ("id",)
+        ordering = ("task_id",)
+        unique_together = ("job", "task_id")
 
     job = None
+    task_id = models.PositiveIntegerField()
     status = models.CharField(
         max_length=2,
         choices=Status.choices,
@@ -228,7 +230,9 @@ class DicomTask(models.Model):
     end = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):
-        return f"{self.__class__.__name__} [Task ID {self.id}, Job ID {self.job.id}]"
+        return (
+            f"{self.__class__.__name__} [Job ID {self.job.id}, Task ID {self.task_id}]"
+        )
 
 
 class TransferTask(DicomTask):
@@ -263,20 +267,5 @@ class TransferTask(DicomTask):
             f"{self.__class__.__name__} "
             f"[Source {self.job.source.name}, "
             f"Destination {self.job.destination}, "
-            f"Task ID {self.id}, Job ID {self.job.id}]"
-        )
-
-
-class BatchTask(models.Model):
-    class Meta:
-        abstract = True
-        ordering = ("batch_id",)
-
-    job = None
-    batch_id = models.PositiveIntegerField()
-
-    def __str__(self):
-        return (
-            f"{self.__class__.__name__} "
-            f"[Batch ID {self.batch_id}, Task ID {self.id}, Job ID {self.job.id}]"
+            f"Job ID {self.job.id}, Task ID {self.task_id}]"
         )

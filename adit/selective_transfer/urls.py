@@ -41,7 +41,7 @@ urlpatterns = [
         name="selective_transfer_job_verify",
     ),
     path(
-        "tasks/<int:pk>/",
+        "jobs/<int:job_id>/tasks/<int:task_id>/",
         SelectiveTransferTaskDetailView.as_view(),
         name="selective_transfer_task_detail",
     ),

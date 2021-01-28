@@ -23,7 +23,7 @@ class ContinuousTransferJob(TransferJob):
         process_transfer_job.delay(self.id)
 
     def get_absolute_url(self):
-        return reverse("continuous_transfer_job_detail", args=[str(self.id)])
+        return reverse("continuous_transfer_job_detail", args=[self.id])
 
 
 class DataElementFilter(models.Model):
@@ -58,4 +58,6 @@ class ContinuousTransferTask(TransferTask):
     )
 
     def get_absolute_url(self):
-        return reverse("continuous_transfer_task_detail", args=[str(self.id)])
+        return reverse(
+            "continuous_transfer_task_detail", args=[self.job.id, self.task_id]
+        )

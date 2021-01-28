@@ -22,7 +22,7 @@ def export_results(job: BatchQueryJob, file):
 
 def write_header(writer, has_pseudonyms):
     column_headers = [
-        "BatchID",
+        "TaskID",
         "PatientID",
         "PatientName",
         "BirthDate",
@@ -64,7 +64,7 @@ def write_data(writer, query_tasks, has_pseudonyms):
                 image_count = result.image_count
 
             csv_row = [
-                query_task.batch_id,
+                query_task.task_id,
                 result.patient_id,
                 patient_name,
                 patient_birth_date,

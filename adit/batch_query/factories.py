@@ -2,7 +2,7 @@ import factory
 from faker import Faker
 from adit.core.factories import (
     DicomJobFactory,
-    BatchTaskFactory,
+    DicomTaskFactory,
 )
 from .models import BatchQueryJob, BatchQueryTask, BatchQueryResult
 
@@ -18,7 +18,7 @@ class BatchQueryJobFactory(DicomJobFactory):
     project_description = factory.Faker("paragraph")
 
 
-class BatchQueryTaskFactory(BatchTaskFactory):
+class BatchQueryTaskFactory(DicomTaskFactory):
     class Meta:
         model = BatchQueryTask
 

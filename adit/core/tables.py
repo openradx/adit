@@ -42,25 +42,17 @@ class TransferJobTable(DicomJobTable):
 
 
 class DicomTaskTable(tables.Table):
-    id = RecordIdColumn(verbose_name="Task ID")
+    task_id = RecordIdColumn(verbose_name="Task ID")
     end = tables.DateTimeColumn(verbose_name="Finished At")
 
     class Meta:  # pylint: disable=too-few-public-methods
         model = None
-        order_by = ("-id",)
+        order_by = ("-task_id",)
         template_name = "django_tables2/bootstrap4.html"
-        fields = ("id", "status", "message", "end")
+        fields = ("task_id", "status", "message", "end")
         empty_text = "No tasks to show"
         attrs = {"class": "table table-bordered table-hover"}
 
     def render_status(self, value, record):
         css_class = dicom_task_status_css_class(record.status)
         return format_html(f'<span class="{css_class}">{value}</span>')
-
-
-class BatchTaskTable(DicomTaskTable):
-    batch_id = tables.Column(verbose_name="Batch ID")
-
-    class Meta(DicomTaskTable.Meta):  # pylint: disable=too-few-public-methods
-        order_by = ("batch_id",)
-        fields = ("batch_id", "id", "status", "message", "end")

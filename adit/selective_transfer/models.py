@@ -16,7 +16,7 @@ class SelectiveTransferJob(TransferJob):
         process_transfer_job.delay(self.id)
 
     def get_absolute_url(self):
-        return reverse("selective_transfer_job_detail", args=[str(self.id)])
+        return reverse("selective_transfer_job_detail", args=[self.id])
 
 
 class SelectiveTransferTask(TransferTask):
@@ -27,4 +27,6 @@ class SelectiveTransferTask(TransferTask):
     )
 
     def get_absolute_url(self):
-        return reverse("selective_transfer_task_detail", args=[str(self.id)])
+        return reverse(
+            "selective_transfer_task_detail", args=[self.job.id, self.task_id]
+        )

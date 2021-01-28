@@ -97,7 +97,7 @@ class BatchTransferJobForm(forms.ModelForm):
         )
         parser = BatchTransferFileParser(
             {
-                "batch_id": "BatchID",
+                "task_id": "TaskID",
                 "patient_id": "PatientID",
                 "study_uid": "StudyInstanceUID",
                 "pseudonym": "Pseudonym",
