@@ -1,17 +1,17 @@
-import io
 import logging
 from pathlib import Path
 from datetime import datetime
 import tempfile
 import subprocess
 from functools import partial
-from typing import Any, Callable, Dict, List, Tuple
+from typing import Any, Callable, Dict, List
 from celery import Task as CeleryTask
 from dicognito.anonymizer import Anonymizer
 from pydicom import Dataset
 import humanize
 from django.utils import timezone
 from django.conf import settings
+from adit.core.utils.task_utils import hijack_logger, store_log_in_task
 from ..models import DicomNode, TransferJob, TransferTask
 from ..errors import RetriableTaskError
 from .dicom_connector import DicomConnector
@@ -37,7 +37,7 @@ def execute_transfer(
 
     logger.info("Started %s.", transfer_task)
 
-    handler, stream = _setup_logger()
+    handler, stream = hijack_logger(logger)
 
     transfer_job: TransferJob = transfer_task.job
 
@@ -93,7 +93,7 @@ def execute_transfer(
         transfer_task.end = timezone.now()
 
     finally:
-        _save_log_to_task(handler, stream, transfer_task)
+        store_log_in_task(logger, handler, stream, transfer_task)
         transfer_task.save()
 
     return transfer_task.status
@@ -107,30 +107,6 @@ def _create_source_connector(transfer_task: TransferTask) -> DicomConnector:
 def _create_dest_connector(transfer_task: TransferTask) -> DicomConnector:
     # An own function to easily mock the destination connector in test_transfer_utils.py
     return DicomConnector(transfer_task.job.destination.dicomserver)
-
-
-def _setup_logger() -> Tuple[logging.StreamHandler, io.StringIO]:
-    """Intercept all logger messages to save them later to the task."""
-    stream = io.StringIO()
-    handler = logging.StreamHandler(stream)
-    handler.setLevel(logging.INFO)
-    formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
-    handler.setFormatter(formatter)
-    logger.parent.addHandler(handler)
-
-    return handler, stream
-
-
-def _save_log_to_task(
-    handler: logging.StreamHandler, stream: io.StringIO, transfer_task: TransferTask
-) -> None:
-    handler.flush()
-    if transfer_task.log:
-        transfer_task.log += "\n" + stream.getvalue()
-    else:
-        transfer_task.log = stream.getvalue()
-    stream.close()
-    logger.parent.removeHandler(handler)
 
 
 def _transfer_to_server(transfer_task: TransferTask) -> None:

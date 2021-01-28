@@ -3,6 +3,7 @@ from typing import Any, Dict, List, Optional
 from django.utils import timezone
 from django.template.defaultfilters import pluralize
 from adit.core.utils.dicom_connector import DicomConnector
+from adit.core.utils.task_utils import hijack_logger, store_log_in_task
 from ..models import BatchQueryTask, BatchQueryResult
 
 logger = logging.getLogger(__name__)
@@ -17,6 +18,10 @@ def execute_query(query_task: BatchQueryTask) -> BatchQueryTask.Status:
     query_task.status = BatchQueryTask.Status.IN_PROGRESS
     query_task.start = timezone.now()
     query_task.save()
+
+    logger.info("Started %s.", query_task)
+
+    handler, stream = hijack_logger(logger)
 
     connector: DicomConnector = _create_source_connector(query_task)
 
@@ -58,6 +63,7 @@ def execute_query(query_task: BatchQueryTask) -> BatchQueryTask.Status:
         query_task.status = BatchQueryTask.Status.FAILURE
         query_task.message = str(err)
     finally:
+        store_log_in_task(logger, handler, stream, query_task)
         query_task.end = timezone.now()
         query_task.save()
 
