@@ -110,12 +110,12 @@ class DicomFolder(DicomNode):
     quota = models.PositiveIntegerField(
         null=True,
         blank=True,
-        help_text="The disk quota of this folder in MB.",
+        help_text="The disk quota of this folder in GB.",
     )
     warn_size = models.PositiveIntegerField(
         null=True,
         blank=True,
-        help_text="When to warn the admins by Email (used space in MB).",
+        help_text="When to warn the admins by Email (used space in GB).",
     )
 
 

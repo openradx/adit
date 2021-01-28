@@ -38,6 +38,7 @@ Downloading data from a DICOM server can done by using a C-GET or C-MOVE operati
 -   log debug -> info in connector also in production
 -   Admin page that shows all running jobs
 -   Implement save logs in BatchQuery
+-   Sort folders and server in select box
 -   Fix message box
 -   implement real \_download_study_move and not just do download_series_move
 -   Use LRU cache for dicom explorer / collector
