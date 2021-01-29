@@ -47,7 +47,7 @@ class DicomTaskTable(tables.Table):
 
     class Meta:  # pylint: disable=too-few-public-methods
         model = None
-        order_by = ("-task_id",)
+        order_by = ("task_id",)
         template_name = "django_tables2/bootstrap4.html"
         fields = ("task_id", "status", "message", "end")
         empty_text = "No tasks to show"

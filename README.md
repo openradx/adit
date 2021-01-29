@@ -42,6 +42,7 @@ Downloading data from a DICOM server can done by using a C-GET or C-MOVE operati
 -   Use LRU cache for dicom explorer / collector
 -   Auto refresh pages of in progress jobs
 -   Continuous Mode
+-   Allow to retry a failed job / tasks
 -   Allow to pause a job (Status.PAUSED)
 -   Better scheduler (with day in week and times)
 -   Tests: test_query_utils, test serializers, test all views (as integration tests using real Orthanc), improve tests of transferutil

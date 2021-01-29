@@ -4,7 +4,7 @@
 {% with task.job as job %}
 <dl class="row">
     <dt class="col-sm-3">Task ID</dt>
-    <dd class="col-sm-9">{{ task.id }}</dd>
+    <dd class="col-sm-9">{{ task.task_id }}</dd>
 
     <dt class="col-sm-3">Job ID</dt>
     <dd class="col-sm-9">
@@ -20,6 +20,9 @@
             {{ task.get_status_display }}
         </span>
     </dd>
+
+    <dt class="col-sm-3">Retries</dt>
+    <dd class="col-sm-9">{{ task.retries|default:"—" }}</dd>
 
     <dt class="col-sm-3">Message</dt>
     <dd class="col-sm-9">{{ task.message }}</dd>
