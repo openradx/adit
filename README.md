@@ -34,7 +34,6 @@ Downloading data from a DICOM server can done by using a C-GET or C-MOVE operati
 
 # TODO list
 
--   Use task_id field on all tasks and use this as key with urls like /job/4/tasks/9 for all jobs
 -   log debug -> info in connector also in production
 -   Admin page that shows all running jobs
 -   Sort folders and server in select box
@@ -43,6 +42,7 @@ Downloading data from a DICOM server can done by using a C-GET or C-MOVE operati
 -   Use LRU cache for dicom explorer / collector
 -   Auto refresh pages of in progress jobs
 -   Continuous Mode
+-   Allow to retry a failed job / tasks
 -   Allow to pause a job (Status.PAUSED)
 -   Better scheduler (with day in week and times)
 -   Tests: test_query_utils, test serializers, test all views (as integration tests using real Orthanc), improve tests of transferutil
@@ -57,7 +57,6 @@ Downloading data from a DICOM server can done by using a C-GET or C-MOVE operati
 -   BatchQuery with custom DICOM keywords
 -   Allow provide a regex of StudyDescription in CSV batch file
 -   Allow to specify many modalities per row in CSV file
--   Think about splitting BatchID in QueryID and TransferID, see BatchTask and batch_id
 -   move date parsing part in parsers.py and consumers.py to date_util.py
 -   https://stackoverflow.com/questions/14259852/how-to-identify-image-receive-in-c-store-as-result-of-a-c-move-query
 -   https://www.yergler.net/2009/09/27/nested-formsets-with-django/

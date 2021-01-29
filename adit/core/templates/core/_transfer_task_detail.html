@@ -4,12 +4,7 @@
 {% with task.job as job %}
 <dl class="row">
     <dt class="col-sm-3">Task ID</dt>
-    <dd class="col-sm-9">{{ task.id }}</dd>
-
-    {% if task.batch_id != None %}
-        <dt class="col-sm-3">Batch ID</dt>
-        <dd class="col-sm-9">{{ task.batch_id }}</dd>
-    {% endif %}
+    <dd class="col-sm-9">{{ task.task_id }}</dd>
 
     <dt class="col-sm-3">Job ID</dt>
     <dd class="col-sm-9">
@@ -18,13 +13,16 @@
             {% include "core/_box_arrow_in_right.svg" %}
         </a>
     </dd>
-    
+
     <dt class="col-sm-3">Status</dt>
     <dd class="col-sm-9">
         <span class="{{ task.status|dicom_task_status_css_class }}">
             {{ task.get_status_display }}
         </span>
     </dd>
+
+    <dt class="col-sm-3">Retries</dt>
+    <dd class="col-sm-9">{{ task.retries|default:"—" }}</dd>
 
     <dt class="col-sm-3">Message</dt>
     <dd class="col-sm-9">{{ task.message }}</dd>
@@ -36,8 +34,8 @@
     <dd class="col-sm-9">{{ job.destination }}</dd>
 
     {% if user.is_staff %}
-        <dt class="col-sm-3">Created By</dt>
-        <dd class="col-sm-9">{{ job.owner }}</dd>
+    <dt class="col-sm-3">Created By</dt>
+    <dd class="col-sm-9">{{ job.owner }}</dd>
     {% endif %}
 
     <dt class="col-sm-3">Created At</dt>
@@ -59,42 +57,34 @@
     <dd class="col-sm-9">
         {{ task.study_uid|default:"—" }}
         {% if task.study_uid %}
-            {% explorer_url job.source.id task.patient_id task.study_uid as study_url %}
-            <a
-                href="{{ study_url }}"
-                title="Show in DICOM Explorer"
-                data-toggle="tooltip"
-                data-placement="left"
-            >
-                {% include "core/_box_arrow_in_right.svg" %}
-            </a>
+        {% explorer_url job.source.id task.patient_id task.study_uid as study_url %}
+        <a href="{{ study_url }}" title="Show in DICOM Explorer" data-toggle="tooltip" data-placement="left">
+            {% include "core/_box_arrow_in_right.svg" %}
+        </a>
         {% endif %}
     </dd>
 
     {% for series_uid in task.series_uids %}
-        {% explorer_url job.source.id task.patient_id task.study_uid series_uid as series_url %}
-        {% if forloop.first %}
-            <dt class="col-sm-3">Series Instance UID</dt>
-        {% else %}
-            <dt class="col-sm-3"></dt>
-        {% endif %}
-        <dd class="col-sm-9">
-            {{ series_uid }}
-            <a
-                href="{{ series_url }}"
-                title="Show in DICOM Explorer"
-                data-toggle="tooltip"
-                data-placement="left"
-            >
-                {% include "core/_box_arrow_in_right.svg" %}
-            </a>
-        </dd>
+    {% explorer_url job.source.id task.patient_id task.study_uid series_uid as series_url %}
+    {% if forloop.first %}
+    <dt class="col-sm-3">Series Instance UID</dt>
+    {% else %}
+    <dt class="col-sm-3"></dt>
+    {% endif %}
+    <dd class="col-sm-9">
+        {{ series_uid }}
+        <a href="{{ series_url }}" title="Show in DICOM Explorer" data-toggle="tooltip" data-placement="left">
+            {% include "core/_box_arrow_in_right.svg" %}
+        </a>
+    </dd>
     {% endfor %}
 
     <dt class="col-sm-3">Pseudonym</dt>
     <dd class="col-sm-9">{{ task.pseudonym|default:"—" }}</dd>
 
     <dt class="col-sm-3">Log</dt>
-    <dd class="col-sm-9"><pre>{{ task.log|default:"—" }}</pre></dd>
+    <dd class="col-sm-9">
+        <pre>{{ task.log|default:"—" }}</pre>
+    </dd>
 </dl>
 {% endwith %}

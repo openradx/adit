@@ -16,8 +16,8 @@ class BatchFileParser:
         return self.serializer_class(data=data, many=True)
 
     def parse(self, csv_file: TextIO):
-        if not "batch_id" in self.field_to_column_mapping:
-            raise AssertionError("The mapping must contain a 'batch_id' field.")
+        if not "task_id" in self.field_to_column_mapping:
+            raise AssertionError("The mapping must contain a 'task_id' field.")
 
         data = []
         reader = csv.DictReader(csv_file, delimiter=settings.CSV_FILE_DELIMITER)
@@ -73,13 +73,15 @@ class ParsingError(Exception):
                 if self.message:
                     self.message += "\n"
                 if item_errors:
-                    batch_id = self.data[num].get("batch_id", "").strip()
-                    if batch_id:
-                        batch_id = f" (BatchID {batch_id})"
-
+                    task_id = self.data[num].get("task_id", "").strip()
                     line_num = self.data[num]["__line_num__"]
 
-                    self.message += f"Invalid data on line {line_num}{batch_id}:\n"
+                    self.message += f"Invalid data on line {line_num}"
+
+                    if task_id:
+                        self.message += f" (TaskID {task_id})"
+
+                    self.message += ":\n"
 
                     non_field_errors = item_errors.pop("non_field_errors", None)
                     if non_field_errors:

@@ -62,7 +62,7 @@ class BatchQueryJobForm(forms.ModelForm):
         file = StringIO(rawdata.decode(encoding))
         parser = BatchQueryFileParser(
             {
-                "batch_id": "BatchID",
+                "task_id": "TaskID",
                 "patient_id": "PatientID",
                 "patient_name": "PatientName",
                 "patient_birth_date": "PatientBirthDate",

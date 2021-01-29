@@ -135,8 +135,8 @@ def create_selective_transfer_job(users, servers, folders):
         owner=factory.Faker("random_element", elements=users),
     )
 
-    for _ in range(fake.random_int(min=1, max=120)):
-        SelectiveTransferTaskFactory(job=job)
+    for task_id in range(fake.random_int(min=1, max=100)):
+        SelectiveTransferTaskFactory(job=job, task_id=task_id)
 
 
 def create_batch_transfer_job(users, servers, folders):
@@ -148,8 +148,8 @@ def create_batch_transfer_job(users, servers, folders):
         owner=factory.Faker("random_element", elements=users),
     )
 
-    for batch_id in range(fake.random_int(min=1, max=100)):
-        BatchTransferTaskFactory(job=job, batch_id=batch_id)
+    for task_id in range(fake.random_int(min=1, max=100)):
+        BatchTransferTaskFactory(job=job, task_id=task_id)
 
     return job
 
@@ -159,8 +159,8 @@ def create_batch_query_job(users):
         owner=factory.Faker("random_element", elements=users),
     )
 
-    for batch_id in range(fake.random_int(min=1, max=100)):
-        query = BatchQueryTaskFactory(job=job, batch_id=batch_id)
+    for task_id in range(fake.random_int(min=1, max=100)):
+        query = BatchQueryTaskFactory(job=job, task_id=task_id)
 
         for _ in range(fake.random_int(min=1, max=3)):
             BatchQueryResultFactory(job=job, query=query)

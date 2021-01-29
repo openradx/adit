@@ -1,4 +1,4 @@
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 from django.views.generic import View
 from django.views.generic.edit import DeleteView, CreateView
 from django.views.generic.detail import DetailView, SingleObjectMixin
@@ -10,7 +10,9 @@ from django.contrib.auth.mixins import (
 from django.urls import re_path
 from django.shortcuts import redirect
 from django.core.exceptions import SuspiciousOperation
+from django.http.response import Http404
 from django.contrib import messages
+from django.db import models
 from django.db.models.query import QuerySet
 from django.conf import settings
 from django_tables2 import SingleTableMixin
@@ -120,6 +122,32 @@ class DicomTaskDetailView(LoginRequiredMixin, OwnerRequiredMixin, DetailView):
     template_name = None
     context_object_name = "task"
     owner_accessor = "job.owner"
+
+    def get_object(
+        self, queryset: Optional[models.query.QuerySet] = None
+    ) -> models.Model:
+        if queryset is None:
+            queryset = self.get_queryset()
+
+        job_id = self.kwargs.get("job_id")
+        task_id = self.kwargs.get("task_id")
+
+        if job_id is None or task_id is None:
+            raise AttributeError(
+                "Dicom task detail view %s must be called with a job_id "
+                "and a task_id in the URLconf." % self.__class__.__name__
+            )
+
+        queryset = queryset.filter(job_id=job_id, task_id=task_id)
+
+        try:
+            obj = queryset.get()
+        except queryset.model.DoesNotExist as err:
+            raise Http404(
+                "No %(verbose_name)s found matching the query"
+                % {"verbose_name": queryset.model._meta.verbose_name}
+            ) from err
+        return obj
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)

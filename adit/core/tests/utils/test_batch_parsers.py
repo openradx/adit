@@ -1,7 +1,7 @@
 from io import StringIO
 import pytest
 from django.db import models
-from ...models import BatchTask
+from ...models import DicomTask
 from ...serializers import BatchTaskSerializer
 from ...utils.batch_parsers import BatchFileParser, ParsingError
 
@@ -20,7 +20,7 @@ def create_csv_file():
 @pytest.fixture
 def data():
     return [
-        ["BatchID", "PatientName"],
+        ["TaskID", "PatientName"],
         ["1", "Apple, Annie"],
         ["2", "Coconut, Coco"],
     ]
@@ -29,20 +29,20 @@ def data():
 @pytest.fixture
 def field_to_column_mapping():
     return {
-        "batch_id": "BatchID",
+        "task_id": "TaskID",
         "patient_name": "PatientName",
     }
 
 
 @pytest.fixture(scope="session")
 def test_serializer_class():
-    class TestTask(BatchTask):
+    class TestTask(DicomTask):  # pylint: disable=too-few-public-methods
         patient_name = models.CharField(max_length=324)
 
     class TestSerializer(BatchTaskSerializer):
         class Meta(BatchTaskSerializer.Meta):
             model = TestTask
-            fields = ["batch_id", "patient_name"]
+            fields = ["task_id", "patient_name"]
 
     return TestSerializer
 
@@ -63,8 +63,8 @@ def test_valid_data_is_parsed_successfully(create_csv_file, data, test_parser):
     tasks = test_parser.parse(file)
 
     # Assert
-    assert tasks[0].batch_id == int(data[1][0])
-    assert tasks[1].batch_id == int(data[2][0])
+    assert tasks[0].task_id == int(data[1][0])
+    assert tasks[1].task_id == int(data[2][0])
     assert tasks[0].patient_name == data[1][1]
     assert tasks[1].patient_name == data[2][1]
 
@@ -79,5 +79,5 @@ def test_invalid_model_data_raises(create_csv_file, data, test_parser):
         test_parser.parse(file)
 
     # Assert
-    assert err.match(r"Invalid data on line 3 \(BatchID 2\)")
+    assert err.match(r"Invalid data on line 3 \(TaskID 2\)")
     assert err.match(r"PatientName - This field may not be blank")

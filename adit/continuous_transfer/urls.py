@@ -41,7 +41,7 @@ urlpatterns = [
         name="continuous_transfer_job_verify",
     ),
     path(
-        "tasks/<int:pk>/",
+        "jobs/<int:job_id>/tasks/<int:task_id>/",
         ContinuousTransferTaskDetailView.as_view(),
         name="continuous_transfer_task_detail",
     ),

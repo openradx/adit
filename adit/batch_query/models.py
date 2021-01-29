@@ -2,7 +2,7 @@ from datetime import datetime
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.urls import reverse
-from adit.core.models import AppSettings, DicomJob, DicomTask, BatchTask
+from adit.core.models import AppSettings, DicomJob, DicomTask
 from adit.core.validators import (
     no_backslash_char_validator,
     no_control_chars_validator,
@@ -30,10 +30,7 @@ class BatchQueryJob(DicomJob):
         return reverse("batch_query_job_detail", args=[str(self.id)])
 
 
-class BatchQueryTask(BatchTask, DicomTask):
-    class Meta(BatchTask.Meta, DicomTask.Meta):
-        unique_together = ("batch_id", "job")
-
+class BatchQueryTask(DicomTask):
     job = models.ForeignKey(
         BatchQueryJob, on_delete=models.CASCADE, related_name="tasks"
     )
@@ -104,13 +101,8 @@ class BatchQueryTask(BatchTask, DicomTask):
 
         return super().clean()
 
-    def delay(self):
-        from .tasks import process_query_job  # pylint: disable=import-outside-toplevel
-
-        process_query_job.delay(self.id)
-
     def get_absolute_url(self):
-        return reverse("batch_query_task_detail", args=[str(self.id)])
+        return reverse("batch_query_task_detail", args=[self.job.id, self.task_id])
 
 
 class BatchQueryResult(models.Model):
