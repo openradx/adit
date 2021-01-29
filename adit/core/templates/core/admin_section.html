@@ -1,9 +1,39 @@
 {% extends "core/base_generic.html" %}
 
+{% load access_item from core_extras %}
+
 {% block container %}
 <h4 class="mb-3">
     Admin Section
 </h4>
+
+<table class="table table-bordered">
+    <caption>Job Overview</caption>
+    <thead>
+        <tr>
+            <th>Job</th>
+            {% for status in status_list %}
+            <th>
+                {{ status.1 }}
+            </th>
+            {% endfor %}
+        </tr>
+    </thead>
+    <tbody>
+        {% for item in job_stats %}
+        <tr>
+            <td>{{ item.job_name }}</td>
+            {% for status in status_list %}
+            <td>
+                <a href="{% url item.url_name %}?all=1&status={{ status.0 }}">
+                    {{ item.counts|access_item:status.0 }}
+                </a>
+            </td>
+            {% endfor %}
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
 
 <ul class="list-group">
     <li class="list-group-item">

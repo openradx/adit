@@ -1,6 +1,6 @@
 from django.apps import AppConfig
 from django.db.models.signals import post_migrate
-from adit.core.site import register_main_menu_item
+from adit.core.site import register_main_menu_item, register_job_stats_collector
 
 
 class BatchTransferConfig(AppConfig):
@@ -18,6 +18,23 @@ def register_app():
         url_name="batch_transfer_job_create",
         label="Batch Transfer",
     )
+
+    register_job_stats_collector(collect_job_stats)
+
+
+def collect_job_stats():
+    # pylint: disable=import-outside-toplevel
+    from .models import BatchTransferJob
+
+    counts = {}
+    for status in BatchTransferJob.Status:
+        counts[status] = BatchTransferJob.objects.filter(status=status).count()
+
+    return {
+        "job_name": "Batch Transfer",
+        "url_name": "batch_transfer_job_list",
+        "counts": counts,
+    }
 
 
 def init_db(**kwargs):  # pylint: disable=unused-argument

@@ -1,4 +1,6 @@
 from typing import Any, Dict, Optional
+from django.shortcuts import render
+from django.contrib.admin.views.decorators import staff_member_required
 from django.views.generic import View
 from django.views.generic.edit import DeleteView, CreateView
 from django.views.generic.detail import DetailView, SingleObjectMixin
@@ -18,8 +20,23 @@ from django.conf import settings
 from django_tables2 import SingleTableMixin
 from django_filters.views import FilterView
 from revproxy.views import ProxyView
+from .site import job_stats_collectors
 from .models import DicomJob
 from .mixins import OwnerRequiredMixin, PageSizeSelectMixin
+
+
+@staff_member_required
+def admin_section(request):
+    status_list = DicomJob.Status.choices
+    job_stats = [collector() for collector in job_stats_collectors]
+    return render(
+        request,
+        "core/admin_section.html",
+        {
+            "status_list": status_list,
+            "job_stats": job_stats,
+        },
+    )
 
 
 class DicomJobListView(  # pylint: disable=too-many-ancestors
@@ -31,16 +48,17 @@ class DicomJobListView(  # pylint: disable=too-many-ancestors
     template_name = None
 
     def get_queryset(self) -> QuerySet:
-        return self.model.objects.select_related("source").filter(
-            owner=self.request.user
-        )
+        if self.request.user.is_staff and self.request.GET.get("all"):
+            queryset = self.model.objects.all()
+        else:
+            queryset = self.model.objects.filter(owner=self.request.user)
+
+        return queryset.select_related("source")
 
 
 class TransferJobListView(DicomJobListView):  # pylint: disable=too-many-ancestors
     def get_queryset(self) -> QuerySet:
-        return self.model.objects.select_related("source", "destination").filter(
-            owner=self.request.user
-        )
+        return super().get_queryset().select_related("destination")
 
 
 class DicomJobCreateView(
