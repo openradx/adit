@@ -24,7 +24,8 @@ class DicomJobTable(tables.Table):
         model = None
         order_by = ("-id",)
         template_name = "django_tables2/bootstrap4.html"
-        fields = ("id", "status", "source", "created")
+        # owner is dynamically excluded for non staff users (see tables.py)
+        fields = ("id", "status", "source", "created", "owner")
         empty_text = "No jobs to show"
         attrs = {
             "id": "dicom_job_table",
@@ -38,7 +39,8 @@ class DicomJobTable(tables.Table):
 
 class TransferJobTable(DicomJobTable):
     class Meta(DicomJobTable.Meta):  # pylint: disable=too-few-public-methods
-        fields = ("id", "status", "source", "destination", "created")
+        # owner is dynamically excluded for non staff users (see tables.py)
+        fields = ("id", "status", "source", "destination", "created", "owner")
 
 
 class DicomTaskTable(tables.Table):

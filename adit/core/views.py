@@ -55,6 +55,14 @@ class DicomJobListView(  # pylint: disable=too-many-ancestors
 
         return queryset.select_related("source")
 
+    def get_table_kwargs(self):
+        kwargs = super().get_table_kwargs()
+
+        if not (self.request.user.is_staff and self.request.GET.get("all")):
+            kwargs["exclude"] = ("owner",)
+
+        return kwargs
+
 
 class TransferJobListView(DicomJobListView):  # pylint: disable=too-many-ancestors
     def get_queryset(self) -> QuerySet:

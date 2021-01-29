@@ -11,6 +11,13 @@ def access_item(dictionary, key):
     return dictionary[key]
 
 
+@register.simple_tag(takes_context=True)
+def url_replace(context, field, value):
+    dict_ = context["request"].GET.copy()
+    dict_[field] = value
+    return dict_.urlencode()
+
+
 @register.filter
 def person_name_from_dicom(value):
     """ See also :func:`adit.core.dicom_utils.person_name_to_dicom`"""
