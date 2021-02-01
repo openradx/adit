@@ -34,6 +34,7 @@ Downloading data from a DICOM server can done by using a C-GET or C-MOVE operati
 
 # TODO list
 
+-   Put PatientID in result query view
 -   log debug -> info in connector also in production
 -   Fix message box
 -   implement real \_download_study_move and not just do download_series_move
@@ -102,3 +103,18 @@ Downloading data from a DICOM server can done by using a C-GET or C-MOVE operati
 -   Copy cert.pem and key.pem from N:\Dokumente\Projekte\ADIT_Server\ssl_certificate to /var/www/adit/ssl/
 -   Restart adit_prod_web container
 -   Add the DICOM servers and folders
+
+
+# Announement
+
+Liebe Kolleginnen und Kollegen,
+
+ADIT ist das Ergebnis von weit über hundert Stunden Entwicklungsarbeit, die vorwiegend in meiner Freizeit statt fand. Ich habe es erschaffen mit der Intention die Arbeit bezüglich der Verarbeitung von radiologischen Bildern zu vereinfachen, so dass man sich wieder auf die eigentlichen wissenschaftlichen Tätigkeiten fokussieren kann. Umgekehrt bitte ich euch darum mich auf Publikationen zu berücksichtigen, für welche ADIT zum Einsatz kam.
+
+Euer Kai Schlamp
+
+Dear colleagues,
+
+ADIT is the result of well over a hundred hours of development work, most of which took place in my spare time. I created it with the intention to simplify the work related to the processing of radiological images, so that one can focus on the actual scientific activities again. Vice versa I ask you to consider me on publications for which ADIT was used.
+
+Yours, Kai Schlamp

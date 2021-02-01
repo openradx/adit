@@ -13,6 +13,7 @@ from .validators import (
 
 class CoreSettings(models.Model):
     maintenance_mode = models.BooleanField(default=False)
+    announcement = models.TextField(blank=True)
 
     class Meta:
         verbose_name_plural = "Core settings"

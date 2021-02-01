@@ -1,72 +1,71 @@
 {% extends "core/base_generic.html" %}
 
 {% block content %}
-    <div class="jumbotron">
-        <div class="container">
-            <h1 class="display-4 d-flex align-items-center">
-                <span class="mr-2">Welcome to ADIT</span>
-                {% include "core/_adit_logo.html" %}
-            </h1>
-            <p class="lead">
-                ADIT (Automated DICOM Transfer) is a swiss army knife to exchange 
-                DICOM data between various systems.
-            </p>
+<div class="jumbotron">
+    <div class="container">
+        <h1 class="display-4 d-flex align-items-center">
+            <span class="mr-2">Welcome to ADIT</span>
+            {% include "core/_adit_logo.html" %}
+        </h1>
+        <p class="lead">
+            A swiss army knife to exchange DICOM data between various systems.
+        </p>
 
-            <p>
-                Studies can be transferred between different DICOM / PACS servers
-                or can be downloaded to a network drive. The transferred / downloaded
-                data can be pseudonymized on the fly and can be tagged with trial
-                information. The files can also be downloaded to an encrypted 7zip
-                archive.
-            </p>
-            <p>
-                ADIT supports different modes to accomplish the transfer or download:
-            </p>
+        {{ announcement|safe }}
 
-            <dl>
-                <dt>
-                    <a href="{% url 'selective_transfer_job_create' %}">Selective Transfer</a>
-                </dt>
-                <dd>
-                    Search and select specific studies to transfer or download.
-                </dd>
+        <p>
+            ADIT (Automated DICOM Transfer) allows to transfer studies between different DICOM / PACS servers or
+            downloaded them to a network drive. The transferred / downloaded data can be pseudonymized on the fly and
+            can be tagged with trial information.
+        </p>
+        <p>
+            ADIT contains its functionalities in different modules:
+        </p>
 
-                <dt>
-                    <a href="{% url 'batch_transfer_job_create' %}">Batch Transfer</a>
-                </dt>
-                <dd>
-                    Transfer or download multiple studies specified in a batch file.
-                </dd>
+        <dl>
+            <dt>
+                <a href="{% url 'selective_transfer_job_create' %}">Selective Transfer</a>
+            </dt>
+            <dd>
+                Search and select specific studies to transfer or download.
+            </dd>
 
-                <dt>
-                    <a href="{% url 'continuous_transfer_job_create' %}">Continuous Transfer</a>
-                </dt>
-                <dd>
-                    Continuously transfer studies from a certain point in time (TBR).
-                </dd>
-                
-                <dt>
-                    <a href="{% url 'batch_query_job_create' %}">Batch Query</a>
-                </dt>
-                <dd>
-                    Query studies on a PACS server specified in a batch file.
-                </dd>
+            <dt>
+                <a href="{% url 'batch_query_job_create' %}">Batch Query</a>
+            </dt>
+            <dd>
+                Search for studies on a PACS server by using a batch file.
+            </dd>
 
-                <dt>
-                    <a href="{% url 'dicom_explorer_form' %}">DICOM Explorer</a>
-                </dt>
-                <dd>
-                    Explore the DICOM data of a PACS server.
-                </dd>
-            </dl>
+            <dt>
+                <a href="{% url 'batch_transfer_job_create' %}">Batch Transfer</a>
+            </dt>
+            <dd>
+                Transfer or download multiple studies specified in a batch file.
+            </dd>
 
-            {% if not user.is_authenticated %}
-                <p>
-                    <a class="btn btn-info" href="{% url 'auth_login' %}" role="button">Log in</a>
-                    <span class="ml-2">No account yet?</span>
-                    <a href="{% url 'registration_register' %}">Register</a>
-                </p>
-            {% endif %}
-        </div>
+            <dt>
+                <a href="{% url 'continuous_transfer_job_create' %}">Continuous Transfer</a>
+            </dt>
+            <dd>
+                Continuously transfer studies from a certain point in time (TBR).
+            </dd>
+
+            <dt>
+                <a href="{% url 'dicom_explorer_form' %}">DICOM Explorer</a>
+            </dt>
+            <dd>
+                Explore the DICOM data of a PACS server.
+            </dd>
+        </dl>
+
+        {% if not user.is_authenticated %}
+        <p>
+            <a class="btn btn-info" href="{% url 'auth_login' %}" role="button">Log in</a>
+            <span class="ml-2">No account yet?</span>
+            <a href="{% url 'registration_register' %}">Register</a>
+        </p>
+        {% endif %}
     </div>
+</div>
 {% endblock %}

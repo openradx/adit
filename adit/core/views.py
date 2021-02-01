@@ -2,6 +2,7 @@ from typing import Any, Dict, Optional
 from django.shortcuts import render
 from django.contrib.admin.views.decorators import staff_member_required
 from django.views.generic import View
+from django.views.generic.base import TemplateView
 from django.views.generic.edit import DeleteView, CreateView
 from django.views.generic.detail import DetailView, SingleObjectMixin
 from django.contrib.auth.mixins import (
@@ -21,7 +22,7 @@ from django_tables2 import SingleTableMixin
 from django_filters.views import FilterView
 from revproxy.views import ProxyView
 from .site import job_stats_collectors
-from .models import DicomJob
+from .models import CoreSettings, DicomJob
 from .mixins import OwnerRequiredMixin, PageSizeSelectMixin
 
 
@@ -37,6 +38,16 @@ def admin_section(request):
             "job_stats": job_stats,
         },
     )
+
+
+class HomeView(TemplateView):
+    template_name = "core/home.html"
+
+    def get_context_data(self, **kwargs: Any) -> Dict[str, Any]:
+        context = super().get_context_data(**kwargs)
+        core_settings = CoreSettings.get()
+        context["announcement"] = core_settings.announcement
+        return context
 
 
 class DicomJobListView(  # pylint: disable=too-many-ancestors

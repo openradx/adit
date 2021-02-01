@@ -1,6 +1,5 @@
 from django.urls import path
-from django.views.generic import TemplateView
-from .views import admin_section, FlowerProxyView
+from .views import admin_section, HomeView, FlowerProxyView
 
 urlpatterns = [
     path(
@@ -8,6 +7,6 @@ urlpatterns = [
         admin_section,
         name="admin_section",
     ),
-    path("", TemplateView.as_view(template_name="core/home.html"), name="home"),
+    path("", HomeView.as_view(), name="home"),
     FlowerProxyView.as_url(),
 ]
