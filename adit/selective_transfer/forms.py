@@ -98,6 +98,13 @@ class SelectiveTransferJobForm(forms.ModelForm):
         if not self.user.has_perm("selective_transfer.can_process_urgently"):
             del self.fields["urgent"]
 
+        self.fields["source"].queryset = self.fields["source"].queryset.order_by(
+            "-node_type", "name"
+        )
+        self.fields["destination"].queryset = self.fields[
+            "destination"
+        ].queryset.order_by("-node_type", "name")
+
         self.helper = FormHelper(self)
         self.helper.form_tag = False
         self.helper.layout = Layout(

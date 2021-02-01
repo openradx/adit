@@ -75,6 +75,13 @@ class BatchTransferJobForm(forms.ModelForm):
         if not self.user.has_perm("batch_transfer.can_process_urgently"):
             del self.fields["urgent"]
 
+        self.fields["source"].queryset = self.fields["source"].queryset.order_by(
+            "-node_type", "name"
+        )
+        self.fields["destination"].queryset = self.fields[
+            "destination"
+        ].queryset.order_by("-node_type", "name")
+
         self.fields["trial_protocol_id"].widget.attrs["placeholder"] = "Optional"
         self.fields["trial_protocol_name"].widget.attrs["placeholder"] = "Optional"
 

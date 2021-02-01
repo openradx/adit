@@ -52,6 +52,10 @@ class BatchQueryJobForm(forms.ModelForm):
         if not user.has_perm("batch_query.can_process_urgently"):
             del self.fields["urgent"]
 
+        self.fields["source"].queryset = self.fields["source"].queryset.order_by(
+            "-node_type", "name"
+        )
+
         self.helper = FormHelper(self)
         self.helper.add_input(Submit("save", "Create Job"))
 

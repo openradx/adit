@@ -48,6 +48,13 @@ class ContinuousTransferJobForm(forms.ModelForm):
         if not user.has_perm("continuous_transfer.can_process_urgently"):
             del self.fields["urgent"]
 
+        self.fields["source"].queryset = self.fields["source"].queryset.order_by(
+            "-node_type", "name"
+        )
+        self.fields["destination"].queryset = self.fields[
+            "destination"
+        ].queryset.order_by("-node_type", "name")
+
         self.helper = FormHelper(self)
         self.helper.form_tag = False
         self.helper.disable_csrf = True
