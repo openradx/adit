@@ -27,11 +27,11 @@ class BatchQueryResultTable(tables.Table):
         empty_text = "No results to show"
         fields = (
             "task_id",
+            "patient_id",
             "study_date_time",
             "study_description",
             "modalities",
             "image_count",
-            "accession_number",
         )
         attrs = {
             "id": "batch_query_result_table",

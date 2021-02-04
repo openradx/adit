@@ -34,20 +34,19 @@ Downloading data from a DICOM server can done by using a C-GET or C-MOVE operati
 
 # TODO list
 
--   Put PatientID in result query view
+-   Allow to retry a failed job / tasks
 -   log debug -> info in connector also in production
 -   Fix message box
 -   implement real \_download_study_move and not just do download_series_move
 -   Use LRU cache for dicom explorer / collector
 -   Auto refresh pages of in progress jobs
 -   Continuous Mode
--   Allow to retry a failed job / tasks
 -   Allow to pause a job (Status.PAUSED)
 -   Better scheduler (with day in week and times)
 -   Tests: test_query_utils, test serializers, test all views (as integration tests using real Orthanc), improve tests of transferutil
 -   Link owner in templates to user profile
 -   Watchdog server
--   Make logging analyze image with: http://crunchtools.com/software/petit/, less, vim, https://crypt.gen.nz/logsurfer/, ripgrep
+-   Make logging analyze Docker image with: http://crunchtools.com/software/petit/, less, vim, https://crypt.gen.nz/logsurfer/, ripgrep
 -   Upgrade to Celery 5 when Flower is compatible again
 
 # Maybe features
