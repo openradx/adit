@@ -1,0 +1,13 @@
+{% extends "core/base_generic.html" %}
+
+{% load static from static %}
+
+{% block script %}
+{{ block.super }}
+<script src="{% static 'core/sandbox.js' %}"></script>
+{% endblock %}
+
+{% block container %}
+<h4 class="mb-3">Sandbox</h4>
+
+{% endblock container %}

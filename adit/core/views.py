@@ -27,6 +27,11 @@ from .mixins import OwnerRequiredMixin, PageSizeSelectMixin
 
 
 @staff_member_required
+def sandbox(request):
+    return render(request, "core/sandbox.html", {})
+
+
+@staff_member_required
 def admin_section(request):
     status_list = DicomJob.Status.choices
     job_stats = [collector() for collector in job_stats_collectors]
