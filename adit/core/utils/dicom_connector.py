@@ -146,7 +146,6 @@ class DicomConnector:
 
         self.assoc.abort()
 
-    @connect_to_server
     def find_patients(self, query, limit_results=None):
         query["QueryRetrieveLevel"] = "PATIENT"
 
@@ -176,7 +175,6 @@ class DicomConnector:
 
         return patients
 
-    @connect_to_server
     def find_studies(self, query, limit_results=None):
         query["QueryRetrieveLevel"] = "STUDY"
 
@@ -194,7 +192,6 @@ class DicomConnector:
 
         return self._filter_studies_by_modalities(studies, query_modalities)
 
-    @connect_to_server
     def find_series(self, query, limit_results=None):
         """Fetch all series UIDs for a given study UID.
 
@@ -222,7 +219,6 @@ class DicomConnector:
             )
         )
 
-    @connect_to_server
     def download_study(  # pylint: disable=too-many-arguments
         self,
         patient_id,
@@ -256,7 +252,6 @@ class DicomConnector:
 
         logger.debug("Successfully downloaded study %s.", study_uid)
 
-    @connect_to_server
     def download_series(  # pylint: disable=too-many-arguments
         self, patient_id, study_uid, series_uid, folder, modifier_callback=None
     ):
@@ -287,7 +282,6 @@ class DicomConnector:
                 "No Query/Retrieve Information Model supported to download images."
             )
 
-    @connect_to_server
     def upload_folder(self, folder):
         """Upload a specified folder to a DICOM server."""
 
@@ -318,7 +312,6 @@ class DicomConnector:
                 raise RetriableTaskError("Failed to upload all images.")
             raise RetriableTaskError("Failed to upload some images.")
 
-    @connect_to_server
     def move_study(self, patient_id, study_uid, destination, modality=None):
         series_list = self.find_series(
             {
@@ -347,7 +340,6 @@ class DicomConnector:
                 raise RetriableTaskError("Failed to move all series.")
             raise RetriableTaskError("Failed to move some series.")
 
-    @connect_to_server
     def move_series(self, patient_id, study_uid, series_uid, destination):
         query = {
             "QueryRetrieveLevel": "SERIES",
@@ -363,7 +355,6 @@ class DicomConnector:
 
         _evaluate_get_move_results(results, query)
 
-    @connect_to_server
     def fetch_study_modalities(self, patient_id, study_uid):
         """Fetch all modalities of a study and return them in a list."""
 
