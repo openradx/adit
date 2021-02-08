@@ -48,6 +48,7 @@ Downloading data from a DICOM server can done by using a C-GET or C-MOVE operati
 -   Watchdog server
 -   Make logging analyze Docker image with: http://crunchtools.com/software/petit/, less, vim, https://crypt.gen.nz/logsurfer/, ripgrep
 -   Upgrade to Celery 5 when Flower is compatible again
+-   Cancel during transfer
 
 # Maybe features
 

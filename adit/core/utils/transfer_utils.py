@@ -71,14 +71,21 @@ def execute_transfer(
 
         # We can't use the Celery built-in max_retries and celery_task.request.retries
         # directly as we also use celery_task.retry() for scheduling tasks.
-        if transfer_task.retries < settings.TASK_RETRIES:
+        if transfer_task.retries < settings.TRANSFER_TASK_RETRIES:
             logger.info("Retrying task in %s.", humanize.naturaldelta(err.delay))
             transfer_task.status = TransferTask.Status.PENDING
             transfer_task.message = "Task failed and will be retried."
             transfer_task.retries += 1
+
+            # Increase the priority slightly to make sure images that were moved
+            # from the GE archive storage to the fast access storage are still there
+            # when we retry.
+            priority = celery_task.request.delivery_info["priority"]
+            if priority < settings.CELERY_TASK_QUEUE_MAX_PRIORITY:
+                priority += 1
+
             raise celery_task.retry(
-                eta=timezone.now() + err.delay,
-                exc=err,
+                eta=timezone.now() + err.delay, exc=err, priority=priority
             )
 
         logger.error("No more retries for finally failed %s.", transfer_task)

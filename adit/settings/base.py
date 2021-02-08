@@ -304,16 +304,28 @@ CELERY_BEAT_SCHEDULE = {
     }
 }
 
+# Max retries is normally 3. We have to overwrite this, see
+# https://github.com/celery/celery/issues/976
+# Retries happen when a DICOM server is not responding, a requested
+# study is currently offline, the scheduler is rescheduling (because
+# we are outside the time slot). So we have to set this quite high.
+# None would turn it off, but we make sure that no bug let retry it
+# forever.
+CELERY_TASK_ANNOTATIONS = {"*": {"max_retries": 100}}
+
 # For priority queues, see also apply_async calls in the models.
 # Requires RabbitMQ as the message broker!
 CELERY_TASK_QUEUE_MAX_PRIORITY = 10
 CELERY_TASK_DEFAULT_PRIORITY = 5
+
 # Only non prefetched tasks can be sorted by their priority. So we only
 # prefetch only one task at a time.
 CELERY_WORKER_PREFETCH_MULTIPLIER = 1
-# Not sure if this is helpful. Saw this mentioned at
+
+# Not sure if this is really necessary for priorities to work, but saw this mentioned
 # https://medium.com/better-programming/python-celery-best-practices-ae182730bb81
-# CELERY_TASK_ACKS_LATE = True
+# https://stackoverflow.com/a/47980598/166229
+CELERY_TASK_ACKS_LATE = True
 
 # Flower is integrated in ADIT by using an reverse proxy (django-revproxy).
 # This allows to use the authentication of ADIT.
@@ -353,14 +365,14 @@ CONTINUOUS_TRANSFER_UNVERIFIED = True
 USER_TIME_ZONE = env.str("USER_TIME_ZONE", default=None)
 
 # Celery / RabbitMQ queue priorities of transfer jobs
-SELECTIVE_TRANSFER_DEFAULT_PRIORITY = 4
-SELECTIVE_TRANSFER_URGENT_PRIORITY = 8
-BATCH_TRANSFER_DEFAULT_PRIORITY = 3
-BATCH_TRANSFER_URGENT_PRIORITY = 7
-CONTINUOUS_TRANSFER_DEFAULT_PRIORITY = 2
-CONTINUOUS_TRANSFER_URGENT_PRIORITY = 6
-BATCH_QUERY_DEFAULT_PRIORITY = 5
-BATCH_QUERY_URGENT_PRIORITY = 9
+SELECTIVE_TRANSFER_DEFAULT_PRIORITY = 3
+SELECTIVE_TRANSFER_URGENT_PRIORITY = 7
+BATCH_TRANSFER_DEFAULT_PRIORITY = 2
+BATCH_TRANSFER_URGENT_PRIORITY = 6
+CONTINUOUS_TRANSFER_DEFAULT_PRIORITY = 1
+CONTINUOUS_TRANSFER_URGENT_PRIORITY = 5
+BATCH_QUERY_DEFAULT_PRIORITY = 4
+BATCH_QUERY_URGENT_PRIORITY = 8
 
 # The maximum number of resulting studies for selective_transfer query
 SELECTIVE_TRANSFER_RESULT_LIMIT = 101
@@ -377,5 +389,5 @@ C_MOVE_DOWNLOAD_TIMEOUT = 60  # seconds
 # Show DICOM debug messages of pynetdicom
 DICOM_DEBUG_LOGGER = False
 
-# How often to retry a failed task before the task is definitively failed
-TASK_RETRIES = 2
+# How often to retry a failed transfer task before the task is definitively failed
+TRANSFER_TASK_RETRIES = 2
