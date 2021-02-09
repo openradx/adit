@@ -16,9 +16,10 @@ from adit.core.views import (
     DicomJobListView,
     DicomJobCreateView,
     DicomJobDeleteView,
-    DicomJobCancelView,
-    DicomJobRetryView,
     DicomJobVerifyView,
+    DicomJobCancelView,
+    DicomJobResumeView,
+    DicomJobRetryView,
     DicomTaskDetailView,
 )
 from .models import BatchQueryJob, BatchQueryTask
@@ -88,15 +89,19 @@ class BatchQueryJobDeleteView(DicomJobDeleteView):
     success_url = reverse_lazy("batch_transfer_job_list")
 
 
+class BatchQueryJobVerifyView(DicomJobVerifyView):
+    model = BatchQueryJob
+
+
 class BatchQueryJobCancelView(DicomJobCancelView):
     model = BatchQueryJob
 
 
-class BatchQueryJobRetryView(DicomJobRetryView):
+class BatchQueryJobResumeView(DicomJobResumeView):
     model = BatchQueryJob
 
 
-class BatchQueryJobVerifyView(DicomJobVerifyView):
+class BatchQueryJobRetryView(DicomJobRetryView):
     model = BatchQueryJob
 
 

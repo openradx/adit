@@ -7,9 +7,10 @@ register = Library()
 def job_control_panel(context):
     return {
         "delete_url": "selective_transfer_job_delete",
-        "cancel_url": "selective_transfer_job_cancel",
-        "retry_url": "selective_transfer_job_retry",
         "verify_url": "selective_transfer_job_verify",
+        "cancel_url": "selective_transfer_job_cancel",
+        "resume_url": "selective_transfer_job_resume",
+        "retry_url": "selective_transfer_job_retry",
         "user": context["user"],
         "job": context["job"],
     }

@@ -119,6 +119,28 @@ class DicomJobDeleteView(LoginRequiredMixin, OwnerRequiredMixin, DeleteView):
         return super().delete(request, *args, **kwargs)
 
 
+class DicomJobVerifyView(
+    LoginRequiredMixin, OwnerRequiredMixin, SingleObjectMixin, View
+):
+    model = None
+    success_message = "Job with ID %(id)d was verified"
+
+    def post(self, request, *args, **kwargs):  # pylint: disable=unused-argument
+        job = self.get_object()
+        if job.is_verified:
+            raise SuspiciousOperation(
+                f"Job with ID {job.id} and status {job.get_status_display()} was already verified."
+            )
+
+        job.status = DicomJob.Status.PENDING
+        job.save()
+
+        job.delay()
+
+        messages.success(request, self.success_message % job.__dict__)
+        return redirect(job)
+
+
 class DicomJobCancelView(
     LoginRequiredMixin, OwnerRequiredMixin, SingleObjectMixin, View
 ):
@@ -141,6 +163,32 @@ class DicomJobCancelView(
         return redirect(job)
 
 
+class DicomJobResumeView(
+    LoginRequiredMixin, OwnerRequiredMixin, SingleObjectMixin, View
+):
+    model = None
+    success_message = "Job with ID %(id)d will be resumed"
+
+    def post(self, request, *args, **kwargs):  # pylint: disable=unused-argument
+        job = self.get_object()
+        if not job.is_resumable:
+            raise SuspiciousOperation(
+                f"Job with ID {job.id} and status {job.get_status_display()} is not resumable."
+            )
+
+        for task in job.tasks.filter(status=DicomTask.Status.CANCELED):
+            task.status = DicomTask.Status.PENDING
+            task.save()
+
+        job.status = DicomJob.Status.PENDING
+        job.save()
+
+        job.delay()
+
+        messages.success(request, self.success_message % job.__dict__)
+        return redirect(job)
+
+
 class DicomJobRetryView(
     LoginRequiredMixin, OwnerRequiredMixin, SingleObjectMixin, View
 ):
@@ -157,28 +205,6 @@ class DicomJobRetryView(
         for task in job.tasks.filter(status=DicomTask.Status.FAILURE):
             task.status = DicomTask.Status.PENDING
             task.save()
-
-        job.status = DicomJob.Status.PENDING
-        job.save()
-
-        job.delay()
-
-        messages.success(request, self.success_message % job.__dict__)
-        return redirect(job)
-
-
-class DicomJobVerifyView(
-    LoginRequiredMixin, OwnerRequiredMixin, SingleObjectMixin, View
-):
-    model = None
-    success_message = "Job with ID %(id)d was verified"
-
-    def post(self, request, *args, **kwargs):  # pylint: disable=unused-argument
-        job = self.get_object()
-        if job.is_verified:
-            raise SuspiciousOperation(
-                f"Job with ID {job.id} and status {job.get_status_display()} was already verified."
-            )
 
         job.status = DicomJob.Status.PENDING
         job.save()

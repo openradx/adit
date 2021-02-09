@@ -7,9 +7,10 @@ from adit.core.views import (
     TransferJobListView,
     DicomJobCreateView,
     DicomJobDeleteView,
-    DicomJobCancelView,
-    DicomJobRetryView,
     DicomJobVerifyView,
+    DicomJobCancelView,
+    DicomJobResumeView,
+    DicomJobRetryView,
     DicomTaskDetailView,
 )
 from .models import ContinuousTransferJob, ContinuousTransferTask
@@ -72,15 +73,19 @@ class ContinuousTransferJobDeleteView(DicomJobDeleteView):
     success_url = reverse_lazy("continuous_transfer_job_list")
 
 
+class ContinuousTransferJobVerifyView(DicomJobVerifyView):
+    model = ContinuousTransferJob
+
+
 class ContinuousTransferJobCancelView(DicomJobCancelView):
     model = ContinuousTransferJob
 
 
-class ContinuousTransferJobRetryView(DicomJobRetryView):
+class ContinuousTransferJobResumeView(DicomJobResumeView):
     model = ContinuousTransferJob
 
 
-class ContinuousTransferJobVerifyView(DicomJobVerifyView):
+class ContinuousTransferJobRetryView(DicomJobRetryView):
     model = ContinuousTransferJob
 
 

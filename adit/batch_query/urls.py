@@ -4,9 +4,10 @@ from .views import (
     BatchQueryJobCreateView,
     BatchQueryJobDetailView,
     BatchQueryJobDeleteView,
-    BatchQueryJobCancelView,
-    BatchQueryJobRetryView,
     BatchQueryJobVerifyView,
+    BatchQueryJobCancelView,
+    BatchQueryJobResumeView,
+    BatchQueryJobRetryView,
     BatchQueryTaskDetailView,
     BatchQueryResultListView,
     BatchQueryResultDownloadView,
@@ -35,19 +36,24 @@ urlpatterns = [
         name="batch_query_job_delete",
     ),
     path(
+        "jobs/<int:pk>/verify/",
+        BatchQueryJobVerifyView.as_view(),
+        name="batch_query_job_verify",
+    ),
+    path(
         "jobs/<int:pk>/cancel/",
         BatchQueryJobCancelView.as_view(),
         name="batch_query_job_cancel",
     ),
     path(
+        "jobs/<int:pk>/resume/",
+        BatchQueryJobResumeView.as_view(),
+        name="batch_query_job_resume",
+    ),
+    path(
         "jobs/<int:pk>/retry/",
         BatchQueryJobRetryView.as_view(),
         name="batch_query_job_retry",
-    ),
-    path(
-        "jobs/<int:pk>/verify/",
-        BatchQueryJobVerifyView.as_view(),
-        name="batch_query_job_verify",
     ),
     path(
         "jobs/<int:pk>/results/",

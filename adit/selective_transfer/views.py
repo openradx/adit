@@ -14,9 +14,10 @@ from adit.core.views import (
     TransferJobListView,
     DicomJobCreateView,
     DicomJobDeleteView,
-    DicomJobCancelView,
-    DicomJobRetryView,
     DicomJobVerifyView,
+    DicomJobCancelView,
+    DicomJobResumeView,
+    DicomJobRetryView,
     DicomTaskDetailView,
 )
 from .forms import SelectiveTransferJobForm
@@ -119,15 +120,19 @@ class SelectiveTransferJobDeleteView(DicomJobDeleteView):
     success_url = reverse_lazy("selective_transfer_job_list")
 
 
+class SelectiveTransferJobVerifyView(DicomJobVerifyView):
+    model = SelectiveTransferJob
+
+
 class SelectiveTransferJobCancelView(DicomJobCancelView):
     model = SelectiveTransferJob
 
 
-class SelectiveTransferJobRetryView(DicomJobRetryView):
+class SelectiveTransferJobResumeView(DicomJobResumeView):
     model = SelectiveTransferJob
 
 
-class SelectiveTransferJobVerifyView(DicomJobVerifyView):
+class SelectiveTransferJobRetryView(DicomJobRetryView):
     model = SelectiveTransferJob
 
 
