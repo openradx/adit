@@ -31,9 +31,11 @@ def process_query_job(query_job_id: int):
     if query_job.urgent:
         priority = settings.BATCH_QUERY_URGENT_PRIORITY
 
+    query_tasks = query_job.tasks.filter(status=BatchQueryTask.Status.PENDING)
+
     process_query_tasks = [
         process_query_task.s(query_task.id).set(priority=priority)
-        for query_task in query_job.tasks.all()
+        for query_task in query_tasks
     ]
 
     chord(process_query_tasks)(

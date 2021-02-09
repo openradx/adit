@@ -5,6 +5,7 @@ from .views import (
     ContinuousTransferJobDetailView,
     ContinuousTransferJobDeleteView,
     ContinuousTransferJobCancelView,
+    ContinuousTransferJobRetryView,
     ContinuousTransferJobVerifyView,
     ContinuousTransferTaskDetailView,
 )
@@ -34,6 +35,11 @@ urlpatterns = [
         "jobs/<int:pk>/cancel/",
         ContinuousTransferJobCancelView.as_view(),
         name="continuous_transfer_job_cancel",
+    ),
+    path(
+        "jobs/<int:pk>/retry/",
+        ContinuousTransferJobRetryView.as_view(),
+        name="continuous_transfer_job_retry",
     ),
     path(
         "jobs/<int:pk>/verify/",

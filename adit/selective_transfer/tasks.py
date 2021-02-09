@@ -28,9 +28,13 @@ def process_transfer_job(transfer_job_id: int):
     if transfer_job.urgent:
         priority = settings.SELECTIVE_TRANSFER_URGENT_PRIORITY
 
+    transfer_tasks = transfer_job.tasks.filter(
+        status=SelectiveTransferTask.Status.PENDING
+    )
+
     transfers = [
         process_transfer_task.s(transfer_task.id).set(priority=priority)
-        for transfer_task in transfer_job.tasks.all()
+        for transfer_task in transfer_tasks
     ]
 
     chord(transfers)(

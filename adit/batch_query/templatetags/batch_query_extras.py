@@ -8,6 +8,7 @@ def job_control_panel(context):
     return {
         "delete_url": "batch_query_job_delete",
         "cancel_url": "batch_query_job_cancel",
+        "retry_url": "batch_query_job_retry",
         "verify_url": "batch_query_job_verify",
         "user": context["user"],
         "job": context["job"],

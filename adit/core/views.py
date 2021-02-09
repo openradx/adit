@@ -22,7 +22,7 @@ from django_tables2 import SingleTableMixin
 from django_filters.views import FilterView
 from revproxy.views import ProxyView
 from .site import job_stats_collectors
-from .models import CoreSettings, DicomJob
+from .models import CoreSettings, DicomJob, DicomTask
 from .mixins import OwnerRequiredMixin, PageSizeSelectMixin
 
 
@@ -134,6 +134,35 @@ class DicomJobCancelView(
 
         job.status = DicomJob.Status.CANCELING
         job.save()
+
+        # TODO revoke tasks
+
+        messages.success(request, self.success_message % job.__dict__)
+        return redirect(job)
+
+
+class DicomJobRetryView(
+    LoginRequiredMixin, OwnerRequiredMixin, SingleObjectMixin, View
+):
+    model = None
+    success_message = "Job with ID %(id)d will be retried"
+
+    def post(self, request, *args, **kwargs):  # pylint: disable=unused-argument
+        job = self.get_object()
+        if not job.is_retriable:
+            raise SuspiciousOperation(
+                f"Job with ID {job.id} and status {job.get_status_display()} is not retriable."
+            )
+
+        for task in job.tasks.filter(status=DicomTask.Status.FAILURE):
+            task.status = DicomTask.Status.PENDING
+            task.save()
+
+        job.status = DicomJob.Status.PENDING
+        job.save()
+
+        job.delay()
+
         messages.success(request, self.success_message % job.__dict__)
         return redirect(job)
 
@@ -153,7 +182,9 @@ class DicomJobVerifyView(
 
         job.status = DicomJob.Status.PENDING
         job.save()
+
         job.delay()
+
         messages.success(request, self.success_message % job.__dict__)
         return redirect(job)
 

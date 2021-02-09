@@ -1,7 +1,7 @@
 <div class="d-flex">
     {% if job.is_deletable %}
     <form class="mr-3" action="{% url delete_url job.pk %}" method="post"
-        onSubmit="return confirm('Are you sure you want to delete the job?');">
+        onSubmit="return confirm('Are you sure you want to delete this job?');">
         {% csrf_token %}
         <button type="submit" class="btn btn-danger">
             {% include "core/_x.svg" %}
@@ -12,7 +12,7 @@
 
     {% if job.is_cancelable %}
     <form class="mr-3" action="{% url cancel_url job.pk %}" method="post"
-        onSubmit="return confirm('Are you sure you want to cancel the job?');">
+        onSubmit="return confirm('Are you sure you want to cancel this job?');">
         {% csrf_token %}
         <button type="submit" class="btn btn-warning">
             {% include "core/_stop.svg" %}
@@ -21,9 +21,20 @@
     </form>
     {% endif %}
 
+    {% if job.is_retriable %}
+    <form class="mr-3" action="{% url retry_url job.pk %}" method="post"
+        onSubmit="return confirm('Are you sure you want to retry this job?');">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-warning">
+            {% include "core/_arrow_clockwise.svg" %}
+            Retry Job
+        </button>
+    </form>
+    {% endif %}
+
     {% if user.is_staff and not job.is_verified %}
     <form class="mr-3" action="{% url verify_url job.pk %}" method="post"
-        onSubmit="return confirm('Are you sure you want to verify the job?');">
+        onSubmit="return confirm('Are you sure you want to verify this job?');">
         {% csrf_token %}
         <button type="submit" class="btn btn-success">
             {% include "core/_check.svg" %}

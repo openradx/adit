@@ -8,6 +8,7 @@ from adit.core.views import (
     DicomJobCreateView,
     DicomJobDeleteView,
     DicomJobCancelView,
+    DicomJobRetryView,
     DicomJobVerifyView,
     DicomTaskDetailView,
 )
@@ -72,6 +73,10 @@ class ContinuousTransferJobDeleteView(DicomJobDeleteView):
 
 
 class ContinuousTransferJobCancelView(DicomJobCancelView):
+    model = ContinuousTransferJob
+
+
+class ContinuousTransferJobRetryView(DicomJobRetryView):
     model = ContinuousTransferJob
 
 

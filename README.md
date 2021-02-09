@@ -34,12 +34,13 @@ Downloading data from a DICOM server can done by using a C-GET or C-MOVE operati
 
 # TODO list
 
--   Allow to retry a failed job / tasks
--   log debug -> info in connector also in production
+-   Max batch size
 -   Fix message box
+-   Allow to retry a failed job / tasks
+-   Auto refresh pages of in progress jobs
+-   log debug -> info in connector also in production
 -   implement real \_download_study_move and not just do download_series_move
 -   Use LRU cache for dicom explorer / collector
--   Auto refresh pages of in progress jobs
 -   Continuous Mode
 -   Allow to pause a job (Status.PAUSED)
 -   Better scheduler (with day in week and times)
@@ -49,6 +50,10 @@ Downloading data from a DICOM server can done by using a C-GET or C-MOVE operati
 -   Make logging analyze Docker image with: http://crunchtools.com/software/petit/, less, vim, https://crypt.gen.nz/logsurfer/, ripgrep
 -   Upgrade to Celery 5 when Flower is compatible again
 -   Cancel during transfer
+-- https://docs.celeryproject.org/en/latest/reference/celery.contrib.abortable.html
+-- https://stackoverflow.com/questions/16493364/stopping-celery-task-gracefully
+-- https://docs.celeryproject.org/en/latest/userguide/workers.html#revoke-revoking-tasks
+- (0008, 0056) Instance Availability               CS: 'OFFLINE' ( (ONLINE,  NEARLINE,  OFFLINE, UNAVAILABLE)), see https://www.gehealthcare.com/-/jssmedia/1b62d771fb604ff7a4c8012498aea68b.pdf?la=en-us
 
 # Maybe features
 
