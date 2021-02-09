@@ -3,7 +3,7 @@ import pytest
 from django.db import models
 from ...models import DicomTask
 from ...serializers import BatchTaskSerializer
-from ...utils.batch_parsers import BatchFileParser, ParsingError
+from ...utils.batch_parsers import BatchFileParser, BatchFileFormatError
 
 
 @pytest.fixture(scope="session")
@@ -75,7 +75,7 @@ def test_invalid_model_data_raises(create_csv_file, data, test_parser):
     file = create_csv_file(data)
 
     # Act
-    with pytest.raises(ParsingError) as err:
+    with pytest.raises(BatchFileFormatError) as err:
         test_parser.parse(file)
 
     # Assert

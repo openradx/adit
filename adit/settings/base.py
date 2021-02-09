@@ -349,10 +349,6 @@ CSV_FILE_DELIMITER = ";"
 # in "01.02.2019-09.03.2020" the delimiter is "-".
 DATE_RANGE_DELIMITER = "-"
 
-# ADIT uses a cache for patients so that not the DICOM server must not
-# always be queried. This is how many patients fit into the cache.
-BATCH_PATIENT_CACHE_SIZE = 10000
-
 # Usually a transfer job must be verified by an admin. By setting
 # this option to True ADIT will schedule unverified transfers
 # (and directly set the status of the job to PENDING).
@@ -391,3 +387,6 @@ DICOM_DEBUG_LOGGER = False
 
 # How often to retry a failed transfer task before the task is definitively failed
 TRANSFER_TASK_RETRIES = 2
+
+MAX_BATCH_QUERY_SIZE = 1000
+MAX_BATCH_TRANSFER_SIZE = 200

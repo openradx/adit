@@ -2,6 +2,7 @@ from io import StringIO
 from django import forms
 from django.db import transaction
 from django.core.exceptions import ValidationError
+from django.conf import settings
 from django.utils.safestring import mark_safe
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Submit
@@ -9,7 +10,7 @@ import cchardet as chardet
 from adit.core.forms import DicomNodeChoiceField
 from adit.core.models import DicomNode
 from adit.core.fields import RestrictedFileField
-from adit.core.utils.batch_parsers import ParsingError
+from adit.core.utils.batch_parsers import BatchFileSizeError, BatchFileFormatError
 from .models import BatchTransferJob, BatchTransferTask
 from .utils.batch_parsers import BatchTransferFileParser
 
@@ -85,6 +86,12 @@ class BatchTransferJobForm(forms.ModelForm):
         self.fields["trial_protocol_id"].widget.attrs["placeholder"] = "Optional"
         self.fields["trial_protocol_name"].widget.attrs["placeholder"] = "Optional"
 
+        max_batch_size = settings.MAX_BATCH_TRANSFER_SIZE
+        if max_batch_size is not None:
+            self.fields[
+                "csv_file"
+            ].help_text = f"Maximum {max_batch_size} tasks per transfer job!"
+
         self.helper = FormHelper(self)
         self.helper.add_input(Submit("save", "Create Job"))
 
@@ -112,13 +119,21 @@ class BatchTransferJobForm(forms.ModelForm):
             can_transfer_unpseudonymized,
         )
 
+        max_batch_size = settings.MAX_BATCH_TRANSFER_SIZE
+
         try:
-            self.tasks = parser.parse(file)
-        except ParsingError as err:
+            self.tasks = parser.parse(file, max_batch_size)
+
+        except BatchFileSizeError as err:
+            raise ValidationError(
+                f"Too many batch tasks (max. {max_batch_size} tasks)"
+            ) from err
+
+        except BatchFileFormatError as err:
             self.csv_error_details = err
             raise ValidationError(
                 mark_safe(
-                    "Invalid format of CSV file. "
+                    "Invalid CSV file. "
                     '<a href="#" data-toggle="modal" data-target="#csv_error_details_modal">'
                     "[View details]"
                     "</a>"
