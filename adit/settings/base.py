@@ -272,6 +272,13 @@ ASGI_APPLICATION = "adit.asgi.application"
 # from the receiver to the workers.
 RABBITMQ_URL = env.str("RABBITMQ_URL", default="amqp://localhost")
 
+# Rabbit Management console is integrated in ADIT by using an reverse
+# proxy (django-revproxy).This allows to use the authentication of ADIT.
+# But as RabbitMQ authentication can't be disabled we have to login
+# there with "guest" as username and password again.
+RABBIT_MANAGEMENT_HOST = env.str("RABBIT_MANAGEMENT_HOST", default="localhost")
+RABBIT_MANAGEMENT_PORT = env.int("RABBIT_MANAGEMENT_PORT", default=15672)
+
 # Redis is used as Celery result backend and as LRU cache for patient IDs.
 REDIS_URL = env.str("REDIS_URL", default="redis://localhost:6379/0")
 

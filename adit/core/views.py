@@ -272,3 +272,25 @@ class FlowerProxyView(UserPassesTestMixin, ProxyView):
     @classmethod
     def as_url(cls):
         return re_path(r"^(?P<path>{}.*)$".format(cls.url_prefix), cls.as_view())
+
+
+class RabbitManagementProxyView(UserPassesTestMixin, ProxyView):
+    """A reverse proxy view to access the Rabbit Management admin tool.
+
+    By using a reverse proxy we can use the Django authentication
+    to check for an logged in admin user.
+    Code from https://stackoverflow.com/a/61997024/166229
+    """
+
+    upstream = "http://{}:{}".format(
+        settings.RABBIT_MANAGEMENT_HOST, settings.RABBIT_MANAGEMENT_PORT
+    )
+    url_prefix = "rabbit"
+    rewrite = ((r"^/{}$".format(url_prefix), r"/"),)
+
+    def test_func(self):
+        return self.request.user.is_staff
+
+    @classmethod
+    def as_url(cls):
+        return re_path(r"^{}/(?P<path>.*)$".format(cls.url_prefix), cls.as_view())
