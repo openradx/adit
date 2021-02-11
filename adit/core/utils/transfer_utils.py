@@ -74,7 +74,7 @@ def execute_transfer(
         if transfer_task.retries < settings.TRANSFER_TASK_RETRIES:
             logger.info("Retrying task in %s.", humanize.naturaldelta(err.delay))
             transfer_task.status = TransferTask.Status.PENDING
-            transfer_task.message = "Task failed and will be retried."
+            transfer_task.message = "Task timed out and will be retried."
             transfer_task.retries += 1
 
             # Increase the priority slightly to make sure images that were moved
