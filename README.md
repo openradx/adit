@@ -34,6 +34,10 @@ Downloading data from a DICOM server can done by using a C-GET or C-MOVE operati
 
 # TODO list
 
+-   Show if job was urgent in details
+-   Shorter timeout for offline studies
+-   Cancel pending tasks by revoking them
+-   Cancel during transfer
 -   Fix message box
 -   Auto refresh pages of in progress jobs
 -   log debug -> info in connector also in production
@@ -46,7 +50,6 @@ Downloading data from a DICOM server can done by using a C-GET or C-MOVE operati
 -   Watchdog server
 -   Make logging analyze Docker image with: http://crunchtools.com/software/petit/, less, vim, https://crypt.gen.nz/logsurfer/, ripgrep
 -   Upgrade to Celery 5 when Flower is compatible again
--   Cancel during transfer
 -- https://docs.celeryproject.org/en/latest/reference/celery.contrib.abortable.html
 -- https://stackoverflow.com/questions/16493364/stopping-celery-task-gracefully
 -- https://docs.celeryproject.org/en/latest/userguide/workers.html#revoke-revoking-tasks
@@ -105,18 +108,3 @@ Downloading data from a DICOM server can done by using a C-GET or C-MOVE operati
 -   Copy cert.pem and key.pem from N:\Dokumente\Projekte\ADIT_Server\ssl_certificate to /var/www/adit/ssl/
 -   Restart adit_prod_web container
 -   Add the DICOM servers and folders
-
-
-# Announement
-
-Liebe Kolleginnen und Kollegen,
-
-ADIT ist das Ergebnis von weit über hundert Stunden Entwicklungsarbeit, die vorwiegend in meiner Freizeit statt fand. Ich habe es erschaffen mit der Intention die Arbeit bezüglich der Verarbeitung von radiologischen Bildern zu vereinfachen, so dass man sich wieder auf die eigentlichen wissenschaftlichen Tätigkeiten fokussieren kann. Umgekehrt bitte ich euch darum mich auf Publikationen zu berücksichtigen, für welche ADIT zum Einsatz kam.
-
-Euer Kai Schlamp
-
-Dear colleagues,
-
-ADIT is the result of well over a hundred hours of development work, most of which took place in my spare time. I created it with the intention to simplify the work related to the processing of radiological images, so that one can focus on the actual scientific activities again. Vice versa I ask you to consider me on publications for which ADIT was used.
-
-Yours, Kai Schlamp
