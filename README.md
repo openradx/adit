@@ -40,13 +40,12 @@ Downloading data from a DICOM server can done by using a C-GET or C-MOVE operati
 -   Fix message box
 -   Auto refresh pages of in progress jobs
 -   log debug -> info in connector also in production
--   implement real \_download_study_move and not just do download_series_move
+-   implement real study download / move
 -   Use LRU cache for dicom explorer / collector
 -   Continuous Mode
 -   Better scheduler (with day in week and times)
 -   Tests: test_query_utils, test serializers, test all views (as integration tests using real Orthanc), improve tests of transferutil, BatchFileSizeError
 -   Link owner in templates to user profile
--   Watchdog server
 -   Make logging analyze Docker image with: http://crunchtools.com/software/petit/, less, vim, https://crypt.gen.nz/logsurfer/, ripgrep
 -   Upgrade to Celery 5 when Flower is compatible again
 -- https://docs.celeryproject.org/en/latest/reference/celery.contrib.abortable.html
@@ -56,8 +55,8 @@ Downloading data from a DICOM server can done by using a C-GET or C-MOVE operati
 
 # Maybe features
 
--   Use openpyxl instead of csv
 -   BatchQuery with custom DICOM keywords
+-   Watchdog server
 -   Allow provide a regex of StudyDescription in CSV batch file
 -   Allow to specify many modalities per row in CSV file
 -   move date parsing part in parsers.py and consumers.py to date_util.py
@@ -66,6 +65,7 @@ Downloading data from a DICOM server can done by using a C-GET or C-MOVE operati
 -   Allow to search multiple source servers with one query
 -   Evaluate to use diffhtml instead of morphdom, see https://diffhtml.org/api.html#inner-html
 -   http://the-frey.github.io/2014/08/18/monitoring-docker-containers-with-monit
+-   Use openpyxl instead of csv
 
 # Commands
 
@@ -107,3 +107,7 @@ Downloading data from a DICOM server can done by using a C-GET or C-MOVE operati
 -   Copy cert.pem and key.pem from N:\Dokumente\Projekte\ADIT_Server\ssl_certificate to /var/www/adit/ssl/
 -   Restart adit_prod_web container
 -   Add the DICOM servers and folders
+
+# License
+
+- GPLv3
