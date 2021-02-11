@@ -14,6 +14,7 @@ def register_job_stats_collector(job_stats):
 
 def base_context_processor(request):
     return {
+        "ADIT_VERSION": settings.ADIT_VERSION,
         "BASE_URL": settings.BASE_URL,
         "SUPPORT_EMAIL": settings.SUPPORT_EMAIL,
         "nav_menu_items": nav_menu_items,

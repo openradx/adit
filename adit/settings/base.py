@@ -12,12 +12,18 @@ https://docs.djangoproject.com/en/3.0/ref/settings/
 
 from pathlib import Path
 import environ
+import toml
 from celery.schedules import crontab
 
 env = environ.Env()
 
 # The base directory of the project (the root of the repository)
 BASE_DIR = Path(__file__).resolve(strict=True).parent.parent.parent
+
+# Read pyproject.toml file
+pyproject = toml.load(BASE_DIR / "pyproject.toml")
+
+ADIT_VERSION = pyproject["tool"]["poetry"]["version"]
 
 READ_DOT_ENV_FILE = env.bool("DJANGO_READ_DOT_ENV_FILE", default=False)
 if READ_DOT_ENV_FILE:

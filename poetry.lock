@@ -1211,7 +1211,7 @@ python-dateutil = "*"
 name = "toml"
 version = "0.10.2"
 description = "Python Library for Tom's Obvious, Minimal Language"
-category = "dev"
+category = "main"
 optional = false
 python-versions = ">=2.6, !=3.0.*, !=3.1.*, !=3.2.*"
 
@@ -1378,7 +1378,7 @@ testing = ["coverage (>=5.0.3)", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.9"
-content-hash = "8650a27b29faf9936b15ee9ce2f2e49bafd4ef5cae7628519b160601c00ee286"
+content-hash = "d228ea29488b28abc74200d47a6c516c09bf5213888d41ceae2c6b6a5b37923d"
 
 [metadata.files]
 amqp = [
