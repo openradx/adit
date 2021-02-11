@@ -34,7 +34,6 @@ Downloading data from a DICOM server can done by using a C-GET or C-MOVE operati
 
 # TODO list
 
--   Show if job was urgent in details
 -   Shorter timeout for offline studies
 -   Cancel pending tasks by revoking them
 -   Cancel during transfer
