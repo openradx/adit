@@ -1,5 +1,6 @@
 from typing import Any, Dict, Optional
 from django.shortcuts import render
+from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
 from django.views.generic import View
 from django.views.generic.base import TemplateView
@@ -14,7 +15,6 @@ from django.urls import re_path
 from django.shortcuts import redirect
 from django.core.exceptions import SuspiciousOperation
 from django.http.response import Http404
-from django.contrib import messages
 from django.db import models
 from django.db.models.query import QuerySet
 from django.conf import settings
@@ -28,6 +28,7 @@ from .mixins import OwnerRequiredMixin, PageSizeSelectMixin
 
 @staff_member_required
 def sandbox(request):
+    messages.add_message(request, messages.SUCCESS, "This message is server generated!")
     return render(request, "core/sandbox.html", {})
 
 

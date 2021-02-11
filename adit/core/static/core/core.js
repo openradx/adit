@@ -1,6 +1,9 @@
 $(function () {
     // Enable Bootstrap tooltips everywhere
     $('[data-toggle="tooltip"]').tooltip();
+
+    // Enable toasts everywhere.
+    $(".toast").toast();
 });
 
 function capitalize(s) {
@@ -8,11 +11,13 @@ function capitalize(s) {
     return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
+// Alpine JS data model connected in _messages_panel.html
+// A simple usage example can be found in sandbox.html and sandbox.js
 function messages() {
     return {
         options: {
             nextMessageId: 1,
-            duration: 10000,
+            duration: 30000,
         },
         messages: [],
         init: function ($el, $watch, $nextTick) {
@@ -30,11 +35,11 @@ function messages() {
         },
         addMessage: function (message) {
             message.id = this.options.nextMessageId++;
-            message.title = capitalize(message.level);
+            message.title = capitalize(message.title);
             this.messages.push(message);
             const self = this;
             setTimeout(function () {
-                //self.messages.splice(self.messages.indexOf(message), 1);
+                self.messages.splice(self.messages.indexOf(message), 1);
             }, this.options.duration);
         },
         removeMessage: function (message) {

@@ -10,4 +10,10 @@
 {% block container %}
 <h4 class="mb-3">Sandbox</h4>
 
+<div x-data="sandbox()">
+    <button @click="buttonClicked($dispatch)" class="btn btn-primary">
+        Show notification
+    </button>
+</div>
+
 {% endblock container %}
