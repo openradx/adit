@@ -85,8 +85,8 @@ def create_resources():
 @patch("adit.core.utils.transfer_utils._create_dest_connector", autospec=True)
 @patch("adit.core.utils.transfer_utils._create_source_connector", autospec=True)
 def test_transfer_to_server_succeeds(
-    mock_create_source_connector,
-    mock_create_dest_connector,
+    create_source_connector_mock,
+    create_dest_connector_mock,
     setup_test_models,
     create_resources,
 ):
@@ -103,12 +103,12 @@ def test_transfer_to_server_succeeds(
 
     patient, study = create_resources(task)
 
-    mock_source_connector = create_autospec(DicomConnector)
-    mock_source_connector.find_patients.return_value = [patient]
-    mock_source_connector.find_studies.return_value = [study]
-    mock_create_source_connector.return_value = mock_source_connector
-    mock_dest_connector = create_autospec(DicomConnector)
-    mock_create_dest_connector.return_value = mock_dest_connector
+    source_connector_mock = create_autospec(DicomConnector)
+    source_connector_mock.find_patients.return_value = [patient]
+    source_connector_mock.find_studies.return_value = [study]
+    create_source_connector_mock.return_value = source_connector_mock
+    dest_connector_mock = create_autospec(DicomConnector)
+    create_dest_connector_mock.return_value = dest_connector_mock
 
     celery_task_mock = create_autospec(CeleryTask)
 
@@ -116,11 +116,11 @@ def test_transfer_to_server_succeeds(
     status = execute_transfer(task, celery_task_mock)
 
     # Assert
-    mock_source_connector.download_study.assert_called_with(
+    source_connector_mock.download_study.assert_called_with(
         task.patient_id, task.study_uid, ANY, modifier_callback=ANY
     )
 
-    upload_path = mock_dest_connector.upload_folder.call_args[0][0]
+    upload_path = dest_connector_mock.upload_folder.call_args[0][0]
     assert upload_path.match(f"*/{study['PatientID']}")
 
     assert status == task.status
@@ -131,7 +131,7 @@ def test_transfer_to_server_succeeds(
 @patch("adit.core.utils.transfer_utils._create_source_connector", autospec=True)
 @time_machine.travel("2020-01-01")
 def test_transfer_to_folder_succeeds(
-    mock_create_source_connector, setup_test_models, create_resources
+    create_source_connector_mock, setup_test_models, create_resources
 ):
     # Arrange
     user = UserFactory(username="kai")
@@ -152,10 +152,10 @@ def test_transfer_to_folder_succeeds(
 
     patient, study = create_resources(task)
 
-    mock_source_connector = create_autospec(DicomConnector)
-    mock_source_connector.find_patients.return_value = [patient]
-    mock_source_connector.find_studies.return_value = [study]
-    mock_create_source_connector.return_value = mock_source_connector
+    source_connector_mock = create_autospec(DicomConnector)
+    source_connector_mock.find_patients.return_value = [patient]
+    source_connector_mock.find_studies.return_value = [study]
+    create_source_connector_mock.return_value = source_connector_mock
 
     celery_task_mock = create_autospec(CeleryTask)
 
@@ -164,7 +164,7 @@ def test_transfer_to_folder_succeeds(
         status = execute_transfer(task, celery_task_mock)
 
     # Assert
-    download_path = mock_source_connector.download_study.call_args[0][2]
+    download_path = source_connector_mock.download_study.call_args[0][2]
     assert download_path.match(
         r"adit_adit.core_1_20200101_kai/1001/20190923-080000-CT,SR"
     )
@@ -177,7 +177,7 @@ def test_transfer_to_folder_succeeds(
 @patch("subprocess.Popen")
 @patch("adit.core.utils.transfer_utils._create_source_connector", autospec=True)
 def test_transfer_to_archive_succeeds(
-    mock_create_source_connector, mock_Popen, setup_test_models, create_resources
+    create_source_connector_mock, Popen_mock, setup_test_models, create_resources
 ):
     # Arrange
     job = MyTransferJobFactory(
@@ -193,13 +193,13 @@ def test_transfer_to_archive_succeeds(
 
     patient, study = create_resources(task)
 
-    mock_source_connector = create_autospec(DicomConnector)
-    mock_source_connector.find_patients.return_value = [patient]
-    mock_source_connector.find_studies.return_value = [study]
-    mock_create_source_connector.return_value = mock_source_connector
+    source_connector_mock = create_autospec(DicomConnector)
+    source_connector_mock.find_patients.return_value = [patient]
+    source_connector_mock.find_studies.return_value = [study]
+    create_source_connector_mock.return_value = source_connector_mock
 
-    mock_Popen.return_value.returncode = 0
-    mock_Popen.return_value.communicate.return_value = ("", "")
+    Popen_mock.return_value.returncode = 0
+    Popen_mock.return_value.communicate.return_value = ("", "")
 
     celery_task_mock = create_autospec(CeleryTask)
 
@@ -207,9 +207,9 @@ def test_transfer_to_archive_succeeds(
     status = execute_transfer(task, celery_task_mock)
 
     # Assert
-    mock_source_connector.find_patients.assert_called_once()
-    assert mock_Popen.call_args[0][0][0] == "7z"
-    assert mock_Popen.call_count == 2
+    source_connector_mock.find_patients.assert_called_once()
+    assert Popen_mock.call_args[0][0][0] == "7z"
+    assert Popen_mock.call_count == 2
 
     assert status == task.status
     assert status == MyTransferTask.Status.SUCCESS
