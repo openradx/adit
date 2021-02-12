@@ -34,6 +34,8 @@ Downloading data from a DICOM server can done by using a C-GET or C-MOVE operati
 
 # TODO list
 
+-   Use openpyxl instead of csv
+-   Reset retries of task when job is retried
 -   Shorter timeout for offline studies
 -   Cancel pending tasks by revoking them
 -   Cancel during transfer
@@ -65,7 +67,6 @@ Downloading data from a DICOM server can done by using a C-GET or C-MOVE operati
 -   Allow to search multiple source servers with one query
 -   Evaluate to use diffhtml instead of morphdom, see https://diffhtml.org/api.html#inner-html
 -   http://the-frey.github.io/2014/08/18/monitoring-docker-containers-with-monit
--   Use openpyxl instead of csv
 
 # Commands
 

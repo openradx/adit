@@ -3,6 +3,7 @@ import datetime
 import pytest
 import factory
 import time_machine
+from celery import Task as CeleryTask
 from django.db import models, connection
 from django.db.utils import ProgrammingError
 from adit.accounts.factories import UserFactory
@@ -109,8 +110,10 @@ def test_transfer_to_server_succeeds(
     mock_dest_connector = create_autospec(DicomConnector)
     mock_create_dest_connector.return_value = mock_dest_connector
 
+    celery_task_mock = create_autospec(CeleryTask)
+
     # Act
-    status = execute_transfer(task)
+    status = execute_transfer(task, celery_task_mock)
 
     # Assert
     mock_source_connector.download_study.assert_called_with(
@@ -154,9 +157,11 @@ def test_transfer_to_folder_succeeds(
     mock_source_connector.find_studies.return_value = [study]
     mock_create_source_connector.return_value = mock_source_connector
 
+    celery_task_mock = create_autospec(CeleryTask)
+
     # Act
     with patch("adit.core.utils.transfer_utils.Path.mkdir", autospec=True):
-        status = execute_transfer(task)
+        status = execute_transfer(task, celery_task_mock)
 
     # Assert
     download_path = mock_source_connector.download_study.call_args[0][2]
@@ -196,8 +201,10 @@ def test_transfer_to_archive_succeeds(
     mock_Popen.return_value.returncode = 0
     mock_Popen.return_value.communicate.return_value = ("", "")
 
+    celery_task_mock = create_autospec(CeleryTask)
+
     # Act
-    status = execute_transfer(task)
+    status = execute_transfer(task, celery_task_mock)
 
     # Assert
     mock_source_connector.find_patients.assert_called_once()
