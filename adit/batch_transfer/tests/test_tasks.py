@@ -1,4 +1,4 @@
-from unittest.mock import patch, Mock
+from unittest.mock import patch, Mock, ANY
 import pytest
 from django.conf import settings
 from adit.core.models import TransferJob, TransferTask
@@ -90,5 +90,5 @@ def test_transfer_task_without_study_fails(
     )
 
     # Assert
-    mock_execute_transfer.assert_called_once_with(transfer_task)
+    mock_execute_transfer.assert_called_once_with(transfer_task, ANY)
     assert status == TransferTask.Status.SUCCESS

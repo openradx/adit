@@ -60,7 +60,7 @@ def test_valid_data_is_parsed_successfully(create_csv_file, data, test_parser):
     file = create_csv_file(data)
 
     # Act
-    tasks = test_parser.parse(file)
+    tasks = test_parser.parse(file, 100)
 
     # Assert
     assert tasks[0].task_id == int(data[1][0])
@@ -76,7 +76,7 @@ def test_invalid_model_data_raises(create_csv_file, data, test_parser):
 
     # Act
     with pytest.raises(BatchFileFormatError) as err:
-        test_parser.parse(file)
+        test_parser.parse(file, 100)
 
     # Assert
     assert err.match(r"Invalid data on line 3 \(TaskID 2\)")
