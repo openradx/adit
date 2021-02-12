@@ -205,6 +205,11 @@ class DicomJobRetryView(
 
         for task in job.tasks.filter(status=DicomTask.Status.FAILURE):
             task.status = DicomTask.Status.PENDING
+            task.retries = 0
+            task.message = ""
+            task.log = ""
+            task.start = None
+            task.end = None
             task.save()
 
         job.status = DicomJob.Status.PENDING

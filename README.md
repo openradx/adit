@@ -35,11 +35,9 @@ Downloading data from a DICOM server can done by using a C-GET or C-MOVE operati
 # TODO list
 
 -   Use openpyxl instead of csv
--   Reset retries of task when job is retried
 -   Shorter timeout for offline studies
 -   Cancel pending tasks by revoking them
 -   Cancel during transfer
--   Fix message box
 -   Auto refresh pages of in progress jobs
 -   log debug -> info in connector also in production
 -   implement real study download / move
