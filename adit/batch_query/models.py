@@ -93,6 +93,11 @@ class BatchQueryTask(DicomTask):
     )
 
     def clean(self) -> None:
+        print(self.__dict__)
+
+        if not self.accession_number and not self.modalities:
+            raise ValidationError("Missing Modality.")
+
         if not self.patient_id and not (self.patient_name and self.patient_birth_date):
             raise ValidationError(
                 "A patient must be identifiable by either PatientID or "

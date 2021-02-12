@@ -1,3 +1,4 @@
+from operator import mod
 from adit.core.serializers import BatchTaskSerializer
 from adit.core.utils.dicom_utils import person_name_to_dicom
 from .models import BatchQueryTask
@@ -31,7 +32,9 @@ class BatchQueryTaskSerializer(BatchTaskSerializer):
 
         if "modalities" in data:
             modalities = data["modalities"].split(",")
-            data["modalities"] = list(map(str.strip, modalities))
+            modalities = map(str.strip, modalities)
+            modalities = filter(len, modalities)
+            data["modalities"] = list(modalities)
 
         self.clean_date_string(data, "patient_birth_date")
         self.clean_date_string(data, "study_date_start")
