@@ -358,10 +358,6 @@ ADIT_AE_TITLE = env.str("ADIT_AE_TITLE", default="ADIT1")
 # The delimiter in CSV batch files
 CSV_DELIMITER = ";"
 
-# The delimiter of a date range in a text field (or CSV file), e.g.
-# in "01.02.2019-09.03.2020" the delimiter is "-".
-DATE_RANGE_DELIMITER = "-"
-
 # Usually a transfer job must be verified by an admin. By setting
 # this option to True ADIT will schedule unverified transfers
 # (and directly set the status of the job to PENDING).

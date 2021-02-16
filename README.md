@@ -34,9 +34,8 @@ Downloading data from a DICOM server can done by using a C-GET or C-MOVE operati
 
 # TODO list
 
--   Use openpyxl instead of csv
--   Shorter timeout for offline studies
 -   Cancel pending tasks by revoking them
+-   Shorter timeout for offline studies
 -   Cancel during transfer
 -   Auto refresh pages of in progress jobs
 -   log debug -> info in connector also in production
@@ -58,6 +57,7 @@ Downloading data from a DICOM server can done by using a C-GET or C-MOVE operati
 
 -   BatchQuery with custom DICOM keywords
 -   Watchdog server
+-   Support Excel batch files additionally to CSV files (best by using Pandas with openpyxl)
 -   Allow provide a regex of StudyDescription in CSV batch file
 -   Allow to specify many modalities per row in CSV file
 -   move date parsing part in parsers.py and consumers.py to date_util.py
