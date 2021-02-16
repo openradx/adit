@@ -1,7 +1,7 @@
 from typing import Dict
-from adit.core.utils.batch_parsers import BatchFileParser
+from adit.core.parsers import BatchFileParser
 from adit.core.serializers import BatchTaskSerializer
-from ..serializers import BatchTransferTaskSerializer
+from .serializers import BatchTransferTaskSerializer
 
 
 class BatchTransferFileParser(BatchFileParser):

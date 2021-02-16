@@ -1,9 +1,10 @@
 from io import StringIO
 import pytest
 from django.db import models
-from ...models import DicomTask
-from ...serializers import BatchTaskSerializer
-from ...utils.batch_parsers import BatchFileParser, BatchFileFormatError
+from ..models import DicomTask
+from ..serializers import BatchTaskSerializer
+from ..parsers import BatchFileParser
+from ..errors import BatchFileFormatError
 
 
 @pytest.fixture(scope="session")

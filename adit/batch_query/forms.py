@@ -10,9 +10,9 @@ import cchardet as chardet
 from adit.core.forms import DicomNodeChoiceField
 from adit.core.models import DicomNode
 from adit.core.fields import RestrictedFileField
-from adit.core.utils.batch_parsers import BatchFileSizeError, BatchFileFormatError
+from adit.core.errors import BatchFileSizeError, BatchFileFormatError
 from .models import BatchQueryJob, BatchQueryTask
-from .utils.batch_parsers import BatchQueryFileParser
+from .parsers import BatchQueryFileParser
 
 
 class BatchQueryJobForm(forms.ModelForm):
