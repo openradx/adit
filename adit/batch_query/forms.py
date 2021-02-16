@@ -70,6 +70,10 @@ class BatchQueryJobForm(forms.ModelForm):
         batch_file = self.cleaned_data["batch_file"]
         rawdata = batch_file.read()
         encoding = chardet.detect(rawdata)["encoding"]
+
+        if not encoding:
+            raise ValidationError("Invalid batch file (unknown encoding).")
+
         file = StringIO(rawdata.decode(encoding))
         parser = BatchQueryFileParser(
             {
