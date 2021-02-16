@@ -25,7 +25,7 @@
     <dd class="col-sm-9">{{ task.retries|default:"—" }}</dd>
 
     <dt class="col-sm-3">Message</dt>
-    <dd class="col-sm-9">{{ task.message }}</dd>
+    <dd class="col-sm-9">{{ task.message|default:"—" }}</dd>
 
     <dt class="col-sm-3">Source</dt>
     <dd class="col-sm-9">{{ job.source }}</dd>
@@ -78,6 +78,11 @@
 
     <dt class="col-sm-3">Pseudonym</dt>
     <dd class="col-sm-9">{{ task.pseudonym|default:"—" }}</dd>
+
+    {% if user.is_staff %}
+    <dt class="col-sm-3">Celery Task ID</dt>
+    <dd class="col-sm-9">{{ task.celery_task_id|default:"—" }}</dd>
+    {% endif %}
 
     <dt class="col-sm-3">Log</dt>
     <dd class="col-sm-9">
