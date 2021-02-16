@@ -1,4 +1,3 @@
-from operator import mod
 from adit.core.serializers import BatchTaskSerializer
 from adit.core.utils.dicom_utils import person_name_to_dicom
 from .models import BatchQueryTask

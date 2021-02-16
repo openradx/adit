@@ -6,7 +6,7 @@ from ..models import BatchQueryJob, BatchQueryResult
 
 
 def export_results(job: BatchQueryJob, file):
-    delimiter = settings.CSV_FILE_DELIMITER
+    delimiter = settings.CSV_DELIMITER
     writer = csv.writer(file, delimiter=delimiter)
 
     query_tasks = job.tasks.prefetch_related("results").all()

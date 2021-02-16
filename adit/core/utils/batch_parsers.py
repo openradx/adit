@@ -15,12 +15,12 @@ class BatchFileParser:
         # pylint: disable=not-callable
         return self.serializer_class(data=data, many=True)
 
-    def parse(self, csv_file: TextIO, max_batch_size: int):
+    def parse(self, batch_file: TextIO, max_batch_size: int):
         if not "task_id" in self.field_to_column_mapping:
             raise AssertionError("The mapping must contain a 'task_id' field.")
 
         data = []
-        reader = csv.DictReader(csv_file, delimiter=settings.CSV_FILE_DELIMITER)
+        reader = csv.DictReader(batch_file, delimiter=settings.CSV_DELIMITER)
         for row in reader:
             data_row = {}
 

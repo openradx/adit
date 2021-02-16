@@ -18,7 +18,7 @@ from .utils.batch_parsers import BatchTransferFileParser
 class BatchTransferJobForm(forms.ModelForm):
     source = DicomNodeChoiceField(True, DicomNode.NodeType.SERVER)
     destination = DicomNodeChoiceField(False)
-    csv_file = RestrictedFileField(max_upload_size=5242880, label="CSV file")
+    batch_file = RestrictedFileField(max_upload_size=5242880, label="Batch file")
     ethics_committee_approval = forms.BooleanField()
 
     class Meta:
@@ -32,7 +32,7 @@ class BatchTransferJobForm(forms.ModelForm):
             "trial_protocol_id",
             "trial_protocol_name",
             "ethics_committee_approval",
-            "csv_file",
+            "batch_file",
         )
         labels = {
             "urgent": "Start transfer urgently",
@@ -51,9 +51,9 @@ class BatchTransferJobForm(forms.ModelForm):
                 "Fill only when to modify the ClinicalTrialProtocolName tag "
                 "of all transfered DICOM files. Leave blank otherwise."
             ),
-            "csv_file": (
-                "The CSV file which contains the data to transfer between "
-                "two DICOM nodes. See [Help] how to format the CSV file."
+            "batch_file": (
+                "The batch file which contains the data to transfer between "
+                "two DICOM nodes. See [Help] for how to format this file."
             ),
             "ethics_committee_approval": (
                 "Only studies of an approved trial can be transferred!"
@@ -62,7 +62,7 @@ class BatchTransferJobForm(forms.ModelForm):
         }
 
     def __init__(self, *args, **kwargs):
-        self.csv_error_details = None
+        self.batch_file_errors = None
         self.tasks = None
         self.save_tasks = None
 
@@ -89,7 +89,7 @@ class BatchTransferJobForm(forms.ModelForm):
         max_batch_size = settings.MAX_BATCH_TRANSFER_SIZE
         if max_batch_size is not None:
             self.fields[
-                "csv_file"
+                "batch_file"
             ].help_text = f"Maximum {max_batch_size} tasks per transfer job!"
 
         self.helper = FormHelper(self)
@@ -101,9 +101,9 @@ class BatchTransferJobForm(forms.ModelForm):
             raise ValidationError("Your study must be approved by an ethics committee.")
         return approval
 
-    def clean_csv_file(self):
-        csv_file = self.cleaned_data["csv_file"]
-        rawdata = csv_file.read()
+    def clean_batch_file(self):
+        batch_file = self.cleaned_data["batch_file"]
+        rawdata = batch_file.read()
         encoding = chardet.detect(rawdata)["encoding"]
         file = StringIO(rawdata.decode(encoding))
         can_transfer_unpseudonymized = self.user.has_perm(
@@ -130,17 +130,17 @@ class BatchTransferJobForm(forms.ModelForm):
             ) from err
 
         except BatchFileFormatError as err:
-            self.csv_error_details = err
+            self.batch_file_errors = err
             raise ValidationError(
                 mark_safe(
-                    "Invalid CSV file. "
-                    '<a href="#" data-toggle="modal" data-target="#csv_error_details_modal">'
+                    "Invalid batch file. "
+                    '<a href="#" data-toggle="modal" data-target="#batch_file_errors_modal">'
                     "[View details]"
                     "</a>"
                 )
             ) from err
 
-        return csv_file
+        return batch_file
 
     def _save_tasks(self, batch_job):
         for task in self.tasks:

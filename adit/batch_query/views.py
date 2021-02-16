@@ -151,7 +151,7 @@ class BatchQueryResultDownloadView(
         export_results(job, file)
 
         # We use CP-1252 (ANSI) charset so that the exported CSV files could be
-        # directly opened in Excel and Umlaute are correctly presented.
+        # directly opened in Excel under Windows and Umlaute are correctly presented.
         content = file.getvalue().encode("cp1252")
 
         response = HttpResponse(content, content_type="text/csv")

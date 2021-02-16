@@ -7,14 +7,14 @@ from ...utils.batch_parsers import BatchFileParser, BatchFileFormatError
 
 
 @pytest.fixture(scope="session")
-def create_csv_file():
-    def _create_csv_file(csv_data):
+def create_batch_file():
+    def _create_batch_file(csv_data):
         csv_str = ""
         for row in csv_data:
             csv_str += ";".join(row) + "\n"
         return StringIO(csv_str)
 
-    return _create_csv_file
+    return _create_batch_file
 
 
 @pytest.fixture
@@ -55,9 +55,9 @@ def test_parser(test_serializer_class, field_to_column_mapping):
     return TestParser(field_to_column_mapping)
 
 
-def test_valid_data_is_parsed_successfully(create_csv_file, data, test_parser):
+def test_valid_data_is_parsed_successfully(create_batch_file, data, test_parser):
     # Arrange
-    file = create_csv_file(data)
+    file = create_batch_file(data)
 
     # Act
     tasks = test_parser.parse(file, 100)
@@ -69,10 +69,10 @@ def test_valid_data_is_parsed_successfully(create_csv_file, data, test_parser):
     assert tasks[1].patient_name == data[2][1]
 
 
-def test_invalid_model_data_raises(create_csv_file, data, test_parser):
+def test_invalid_model_data_raises(create_batch_file, data, test_parser):
     # Arrange
     data[2][1] = ""
-    file = create_csv_file(data)
+    file = create_batch_file(data)
 
     # Act
     with pytest.raises(BatchFileFormatError) as err:

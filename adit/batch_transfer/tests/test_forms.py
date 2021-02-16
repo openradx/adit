@@ -23,7 +23,7 @@ def file_dict():
     file = create_autospec(File, size=5242880)
     file.name = "sample_sheet.csv"
     file.read.return_value.decode.return_value = ""
-    return {"csv_file": file}
+    return {"batch_file": file}
 
 
 def test_field_labels():
@@ -44,7 +44,7 @@ def test_field_labels():
     assert form.fields["trial_protocol_id"].label == "Trial ID"
     assert form.fields["trial_protocol_name"].label == "Trial name"
     assert "ethics_committee_approval" in form.fields
-    assert form.fields["csv_file"].label == "CSV file"
+    assert form.fields["batch_file"].label == "Batch file"
 
 
 @pytest.mark.django_db
@@ -81,20 +81,20 @@ def test_with_missing_values():
     assert form.errors["project_name"] == ["This field is required."]
     assert form.errors["project_description"] == ["This field is required."]
     assert form.errors["ethics_committee_approval"] == ["This field is required."]
-    assert form.errors["csv_file"] == ["This field is required."]
+    assert form.errors["batch_file"] == ["This field is required."]
 
 
 @pytest.mark.django_db
 def test_disallow_too_large_file(data_dict):
     # Arrange
     file = create_autospec(File, size=5242881)
-    file.name = "sample_sheet.xlsx"
+    file.name = "sample_sheet.csv"
     user = create_autospec(User)
     user.has_perm.return_value = True
 
     # Act
-    form = BatchTransferJobForm(data_dict, {"csv_file": file}, user=user)
+    form = BatchTransferJobForm(data_dict, {"batch_file": file}, user=user)
 
     # Assert
     assert not form.is_valid()
-    assert "File too large" in form.errors["csv_file"][0]
+    assert "File too large" in form.errors["batch_file"][0]
