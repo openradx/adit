@@ -226,6 +226,7 @@ class DicomTask(models.Model):
 
     job = None
     task_id = models.PositiveIntegerField()
+    celery_task_id = models.CharField(max_length=255)
     status = models.CharField(
         max_length=2,
         choices=Status.choices,

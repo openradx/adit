@@ -27,18 +27,18 @@ def prepare_dicom_task(
 ):
     logger.info("Processing %s.", dicom_task)
 
-    if dicom_task.status != DicomTask.Status.PENDING:
+    if dicom_task.status not in [DicomTask.Status.PENDING, DicomTask.Status.CANCELED]:
         raise AssertionError(
             f"Invalid {dicom_task} status: {dicom_task.get_status_display()}"
         )
 
-    dicom_job = dicom_task.job
-
-    if dicom_job.status == DicomJob.Status.CANCELING:
-        dicom_task.status = DicomTask.Status.CANCELED
-        dicom_task.end = timezone.now()
-        dicom_task.save()
+    # Dicom tasks are canceled by the DicomJobCancelView and are also revoked there.
+    # But it could happen that the task was already fetched by a worker. We then just
+    # ignore that task.
+    if dicom_task.status == DicomTask.Status.CANCELED:
         return
+
+    dicom_job = dicom_task.job
 
     if not dicom_job.urgent:
         scheduler = Scheduler(
@@ -66,10 +66,12 @@ def prepare_dicom_task(
 def finish_dicom_job(dicom_task_status_list: List[str], dicom_job: DicomJob):
     logger.info("%s finished.", dicom_job)
 
+    # When no celery task had to be revoked when canceling the job then the normal
+    # callback is called in we end here (see also handle_job_failure).
     if dicom_job.status == DicomJob.Status.CANCELING:
         dicom_job.status = DicomJob.Status.CANCELED
-        num = dicom_task_status_list.count(DicomTask.Status.CANCELED)
-        dicom_job.message = f"{num} task{pluralize(num)} canceled."
+        count = dicom_job.tasks.filter(status=DicomTask.Status.CANCELED).count()
+        dicom_job.message = f"{count} task{pluralize(count)} canceled."
         dicom_job.save()
         return
 
@@ -110,7 +112,17 @@ def finish_dicom_job(dicom_task_status_list: List[str], dicom_job: DicomJob):
 
 
 def handle_job_failure(dicom_job: DicomJob, celery_task_id: int):
-    logger.error("%s failed unexpectedly.", dicom_job)
+    logger.error("%s failed.", dicom_job)
+
+    # When the job was canceled and celery tasks were revoked then
+    # the on_error callback of the chord is called and we have to
+    # handle the cancel here.
+    if dicom_job.status == DicomJob.Status.CANCELING:
+        dicom_job.status = DicomJob.Status.CANCELED
+        count = dicom_job.tasks.filter(status=DicomTask.Status.CANCELED).count()
+        dicom_job.message = f"{count} task{pluralize(count)} canceled."
+        dicom_job.save()
+        return
 
     dicom_job.status = DicomJob.Status.FAILURE
     dicom_job.message = "Job failed unexpectedly."

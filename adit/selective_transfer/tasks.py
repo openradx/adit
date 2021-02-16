@@ -37,11 +37,15 @@ def process_transfer_job(transfer_job_id: int):
         for transfer_task in transfer_tasks
     ]
 
-    chord(transfers)(
+    result = chord(transfers)(
         on_job_finished.s(transfer_job.id).on_error(
             on_job_failed.s(job_id=transfer_job.id)
         )
     )
+
+    for transfer_task, celery_task in zip(transfer_tasks, result.parent.results):
+        transfer_task.celery_task_id = celery_task.id
+        transfer_task.save()
 
 
 @shared_task(bind=True)
