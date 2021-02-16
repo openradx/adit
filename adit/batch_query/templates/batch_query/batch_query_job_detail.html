@@ -10,23 +10,26 @@
     <h4 class="mb-3">Batch Query Job</h4>
     <a href="{% url 'batch_query_job_list' %}">
         {% include "core/_list.svg" %}
-        <span class="align-middle">Job List</span>
+        <strong class="align-middle">Job List</strong>
     </a>
 </div>
 
 <dl class="row">
     <dt class="col-sm-3">Job ID</dt>
-    <dd class="col-sm-9">{{job.id}}</dd>
+    <dd class="col-sm-9">{{ job.id }}</dd>
+
+    <dt class="col-sm-3">Urgent</dt>
+    <dd class="col-sm-9">{{ job.urgent|yesno:"Yes,No" }}</dd>
 
     <dt class="col-sm-3">Source</dt>
-    <dd class="col-sm-9">{{job.source}}</dd>
+    <dd class="col-sm-9">{{ job.source }}</dd>
 
     <dt class="col-sm-3">Created At</dt>
     <dd class="col-sm-9">{{ job.created }}</dd>
 
     {% if user.is_staff %}
-        <dt class="col-sm-3">Created By</dt>
-        <dd class="col-sm-9">{{ job.owner }}</dd>
+    <dt class="col-sm-3">Created By</dt>
+    <dd class="col-sm-9">{{ job.owner }}</dd>
     {% endif %}
 
     <dt class="col-sm-3">Project Name</dt>
@@ -53,10 +56,7 @@
     <div class="col-md">
         <h5 text-nowrap>
             Study Queries
-            <a 
-                href="{% url 'batch_query_result_list' job.id %}"
-                class="badge badge-light align-top"
-            >
+            <a href="{% url 'batch_query_result_list' job.id %}" class="badge badge-light align-top">
                 {% include "core/_eye.svg" %}
                 View Results
             </a>

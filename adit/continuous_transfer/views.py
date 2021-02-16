@@ -1,16 +1,18 @@
-from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.generic import DetailView
 from django.conf import settings
 from django.urls import reverse_lazy
-from adit.core.mixins import OwnerRequiredMixin, UrgentFormViewMixin
+from adit.core.mixins import OwnerRequiredMixin, InlineFormSetMixin
 from adit.core.views import (
     TransferJobListView,
+    DicomJobCreateView,
     DicomJobDeleteView,
-    DicomJobCancelView,
     DicomJobVerifyView,
+    DicomJobCancelView,
+    DicomJobResumeView,
+    DicomJobRetryView,
     DicomTaskDetailView,
 )
-from adit.core.views import InlineFormSetCreateView
 from .models import ContinuousTransferJob, ContinuousTransferTask
 from .forms import (
     ContinuousTransferJobForm,
@@ -30,12 +32,7 @@ class ContinuousTransferJobListView(
     template_name = "continuous_transfer/continuous_transfer_job_list.html"
 
 
-class ContinuousTransferJobCreateView(
-    LoginRequiredMixin,
-    PermissionRequiredMixin,
-    UrgentFormViewMixin,
-    InlineFormSetCreateView,
-):
+class ContinuousTransferJobCreateView(InlineFormSetMixin, DicomJobCreateView):
     model = ContinuousTransferJob
     form_class = ContinuousTransferJobForm
     template_name = "continuous_transfer/continuous_transfer_job_form.html"
@@ -69,7 +66,6 @@ class ContinuousTransferJobDetailView(
     model = ContinuousTransferJob
     context_object_name = "job"
     template_name = "continuous_transfer/continuous_transfer_job_detail.html"
-    owner_accessor = "owner"
 
 
 class ContinuousTransferJobDeleteView(DicomJobDeleteView):
@@ -77,11 +73,19 @@ class ContinuousTransferJobDeleteView(DicomJobDeleteView):
     success_url = reverse_lazy("continuous_transfer_job_list")
 
 
+class ContinuousTransferJobVerifyView(DicomJobVerifyView):
+    model = ContinuousTransferJob
+
+
 class ContinuousTransferJobCancelView(DicomJobCancelView):
     model = ContinuousTransferJob
 
 
-class ContinuousTransferJobVerifyView(DicomJobVerifyView):
+class ContinuousTransferJobResumeView(DicomJobResumeView):
+    model = ContinuousTransferJob
+
+
+class ContinuousTransferJobRetryView(DicomJobRetryView):
     model = ContinuousTransferJob
 
 

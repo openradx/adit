@@ -2,7 +2,7 @@ from datetime import datetime
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.urls import reverse
-from adit.core.models import AppSettings, DicomJob, DicomTask, BatchTask
+from adit.core.models import AppSettings, DicomJob, DicomTask
 from adit.core.validators import (
     no_backslash_char_validator,
     no_control_chars_validator,
@@ -30,10 +30,7 @@ class BatchQueryJob(DicomJob):
         return reverse("batch_query_job_detail", args=[str(self.id)])
 
 
-class BatchQueryTask(BatchTask, DicomTask):
-    class Meta(BatchTask.Meta, DicomTask.Meta):
-        unique_together = ("batch_id", "job")
-
+class BatchQueryTask(DicomTask):
     job = models.ForeignKey(
         BatchQueryJob, on_delete=models.CASCADE, related_name="tasks"
     )
@@ -60,9 +57,12 @@ class BatchQueryTask(BatchTask, DicomTask):
         blank=True,
         error_messages={"invalid": "Invalid date format."},
     )
+    # Accession Number is of VR SH (Short String) and allows only 16 chars max.
+    # Unfortunately some accession numbers in our PACS are longer (not DICOM
+    # conform) so we use 32 characters.
     accession_number = models.CharField(
         blank=True,
-        max_length=16,
+        max_length=32,
         validators=[
             no_backslash_char_validator,
             no_control_chars_validator,
@@ -84,8 +84,20 @@ class BatchQueryTask(BatchTask, DicomTask):
         blank=True,
         validators=[validate_modalities],
     )
+    pseudonym = (  # allow to pipe pseudonym through to a possible batch transfer
+        models.CharField(
+            blank=True,
+            max_length=64,
+            validators=[no_backslash_char_validator, no_control_chars_validator],
+        )
+    )
 
     def clean(self) -> None:
+        print(self.__dict__)
+
+        if not self.accession_number and not self.modalities:
+            raise ValidationError("Missing Modality.")
+
         if not self.patient_id and not (self.patient_name and self.patient_birth_date):
             raise ValidationError(
                 "A patient must be identifiable by either PatientID or "
@@ -94,13 +106,8 @@ class BatchQueryTask(BatchTask, DicomTask):
 
         return super().clean()
 
-    def delay(self):
-        from .tasks import process_query_job  # pylint: disable=import-outside-toplevel
-
-        process_query_job.delay(self.id)
-
     def get_absolute_url(self):
-        return reverse("batch_query_task_detail", args=[str(self.id)])
+        return reverse("batch_query_task_detail", args=[self.job.id, self.task_id])
 
 
 class BatchQueryResult(models.Model):
@@ -135,8 +142,9 @@ class BatchQueryResult(models.Model):
             no_wildcard_chars_validator,
         ],
     )
+    # See note of accession_number field in BatchQueryTask
     accession_number = models.CharField(
-        max_length=16,
+        max_length=32,
         validators=[
             no_backslash_char_validator,
             no_control_chars_validator,
@@ -161,6 +169,13 @@ class BatchQueryResult(models.Model):
     image_count = models.PositiveIntegerField(
         null=True,
         blank=True,
+    )
+    pseudonym = (  # allow to pipe pseudonym through to a possible batch transfer
+        models.CharField(
+            blank=True,
+            max_length=64,
+            validators=[no_backslash_char_validator, no_control_chars_validator],
+        )
     )
 
     @property

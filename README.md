@@ -4,17 +4,17 @@ ADIT (Automated DICOM Transfer) is a swiss army knife to exchange DICOM data bet
 
 # Features
 
--   add support store_scp_support, dicomweb_quido_rs_support, ...
--   Transfer DICOM data between DICOM / PACS servers
--   Download DICOM data to a network folder
--   Pseudonymize DICOM data on the fly
--   Specify a trial name for the transfered data (stored in the DICOM header)
--   Use the web interface to select studies to transfer or download (Selective Transfer)
--   Upload a batch file to transfer or download multiple studies (Batch Transfer)
--   Download the data to an encrpyted 7-Zip archive (only in Selective Transfer mode)
--   Define when transfers should happen (to reduce PACS server load)
--   A continuous mode to transfer past and future studies automatically (Continuous Transfer) [TBA]
--   Check if a list of studies is present on a DICOM server [TBA]
+- add support store_scp_support, dicomweb_quido_rs_support, ...
+- Transfer DICOM data between DICOM / PACS servers
+- Download DICOM data to a network folder
+- Pseudonymize DICOM data on the fly
+- Specify a trial name for the transfered data (stored in the DICOM header)
+- Use the web interface to select studies to transfer or download (Selective Transfer)
+- Upload a batch file to transfer or download multiple studies (Batch Transfer)
+- Download the data to an encrpyted 7-Zip archive (only in Selective Transfer mode)
+- Define when transfers should happen (to reduce PACS server load)
+- A continuous mode to transfer past and future studies automatically (Continuous Transfer) [TBA]
+- Check if a list of studies is present on a DICOM server [TBA]
 
 # Architectural overview
 
@@ -34,74 +34,83 @@ Downloading data from a DICOM server can done by using a C-GET or C-MOVE operati
 
 # TODO list
 
--   c-get download timeout
--   implement real \_download_study_move and not just do download_series_move
--   Use LRU cache for dicom explorer / collector
--   Auto refresh pages of in progress jobs
--   Continuous Mode
--   Allow to pause a job (Status.PAUSED)
--   Better scheduler (with day in week and times)
--   Allow to specify alternative column names in field_to_column_mapping of batch_parsers.py, e.g.
-    ```
-    {
-        "batch_id": ("Batch ID", "BatchID"),
-        "patient_name": ("Patient Name", "PatientName"),
-    }
-    ```
--   Tests: test_query_utils, test serializers, test all views (as integration tests using real Orthanc), improve tests of transferutil
--   Link owner in templates to user profile
--   Watchdog server
--   Make logging analyze image with: http://crunchtools.com/software/petit/, less, vim, https://crypt.gen.nz/logsurfer/, ripgrep
+- c-get download timeout
+- implement real \_download_study_move and not just do download_series_move
+- Use LRU cache for dicom explorer / collector
+- Allow admin to kill a job (with task revoke(terminale=True))
+- Shorter timeout for offline studies
+- Cancel during transfer
+- Auto refresh pages of in progress jobs
+- log debug -> info in connector also in production
+- implement real study download / move
+- Use LRU cache for dicom explorer / collector
+- Continuous Mode
+- Better scheduler (with day in week and times)
+- Tests: test_query_utils, test serializers, test all views (as integration tests using real Orthanc), improve tests of transferutil, BatchFileSizeError
+- Link owner in templates to user profile
+- Choice to transfer all modalities of a studies or just the modalities which were searched for
+- Make logging analyze Docker image with: http://crunchtools.com/software/petit/, less, vim, https://crypt.gen.nz/logsurfer/, ripgrep
+- Upgrade to Celery 5 when Flower is compatible again
+  -- https://docs.celeryproject.org/en/latest/reference/celery.contrib.abortable.html
+  -- https://stackoverflow.com/questions/16493364/stopping-celery-task-gracefully
+  -- https://docs.celeryproject.org/en/latest/userguide/workers.html#revoke-revoking-tasks
+- (0008, 0056) Instance Availability CS: 'OFFLINE' ( (ONLINE, NEARLINE, OFFLINE, UNAVAILABLE)), see https://www.gehealthcare.com/-/jssmedia/1b62d771fb604ff7a4c8012498aea68b.pdf?la=en-us
 
 # Maybe features
 
--   BatchQuery with custom DICOM keywords
--   Allow provide a regex of StudyDescription in CSV batch file
--   Allow to specify many modalities per row in CSV file
--   move date parsing part in parsers.py and consumers.py to date_util.py
--   https://stackoverflow.com/questions/14259852/how-to-identify-image-receive-in-c-store-as-result-of-a-c-move-query
--   https://www.yergler.net/2009/09/27/nested-formsets-with-django/
--   Allow to search multiple source servers with one query
--   Evaluate to use diffhtml instead of morphdom, see https://diffhtml.org/api.html#inner-html
--   http://the-frey.github.io/2014/08/18/monitoring-docker-containers-with-monit
+- BatchQuery with custom DICOM keywords
+- Watchdog server
+- Support Excel batch files additionally to CSV files (best by using Pandas with openpyxl)
+- Allow provide a regex of StudyDescription in CSV batch file
+- Allow to specify many modalities per row in CSV file
+- move date parsing part in parsers.py and consumers.py to date_util.py
+- https://stackoverflow.com/questions/14259852/how-to-identify-image-receive-in-c-store-as-result-of-a-c-move-query
+- https://www.yergler.net/2009/09/27/nested-formsets-with-django/
+- Allow to search multiple source servers with one query
+- Evaluate to use diffhtml instead of morphdom, see https://diffhtml.org/api.html#inner-html
+- http://the-frey.github.io/2014/08/18/monitoring-docker-containers-with-monit
 
 # Commands
 
 ## Testing and coverage commands
 
--   docker exec -it adit_dev_web_1 pytest
--   ptw --runner 'pytest -s --testmon' # Watch only changed tests with pytest watch
--   python manage.py test -v 2 app_name # Show print outputs during test
--   coverage run --source=. -m pytest # Run coverage only
--   coverage report # Show coverage report
--   coverage annotate # Annotate files with coverage
--   pytest --cov=. # Run Pytest and report coverage (in one command)
--   find . -name "\*,cover" -type f -delete # Delete all cover files (from coverage annotate)
+- docker exec -it adit_dev_web_1 pytest
+- ptw --runner 'pytest -s --testmon' # Watch only changed tests with pytest watch
+- python manage.py test -v 2 app_name # Show print outputs during test
+- coverage run --source=. -m pytest # Run coverage only
+- coverage report # Show coverage report
+- coverage annotate # Annotate files with coverage
+- pytest --cov=. # Run Pytest and report coverage (in one command)
+- find . -name "\*,cover" -type f -delete # Delete all cover files (from coverage annotate)
 
 ## Django commands
 
--   python manage.py shell_plus --print-sql # Show all SQL statements (django_extensions required)
--   python .\manage.py startapp continuous_transfer .\adit\continuous_transfer # Folder must exist
+- python manage.py shell_plus --print-sql # Show all SQL statements (django_extensions required)
+- python .\manage.py startapp continuous_transfer .\adit\continuous_transfer # Folder must exist
 
 ## Docker comands
 
--   docker-compose -f "docker-compose.dev.yml" -p adit_dev exec web pytest # Run Pytest on web container
--   docker-compose -f "docker-compose.dev.yml" -p adit_dev exec web pytest --cov=./adit # Run Pytest with coverage report
--   docker build . --target development -t adit_dev # Build a volume from our Dockerfile
--   docker run -v C:\Users\kaisc\Projects\adit:/src -it adit_dev /bin/bash # Run the built container with src folder mounted from host
--   docker ps -a --filter volume=vol_name # Find container that mounts volume
--   docker run -v=adit_web_data:/var/www/adit -it busybox /bin/sh # Start interactive shell with named volume mounted
--   docker run --rm -i -v=adit_web_data:/foo busybox find /foo # List files in named volume
--   docker-compose -f "docker-compose.dev.yml" -p adit_dev up -d --build
--   docker-compose -f "docker-compose.prod.yml" -p adit_prod up -d --build
+- docker-compose -f "docker-compose.dev.yml" -p adit_dev exec web pytest # Run Pytest on web container
+- docker-compose -f "docker-compose.dev.yml" -p adit_dev exec web pytest --cov=./adit # Run Pytest with coverage report
+- docker build . --target development -t adit_dev # Build a volume from our Dockerfile
+- docker run -v C:\Users\kaisc\Projects\adit:/src -it adit_dev /bin/bash # Run the built container with src folder mounted from host
+- docker ps -a --filter volume=vol_name # Find container that mounts volume
+- docker run -v=adit_web_data:/var/www/adit -it busybox /bin/sh # Start interactive shell with named volume mounted
+- docker run --rm -i -v=adit_web_data:/foo busybox find /foo # List files in named volume
+- docker-compose -f "docker-compose.dev.yml" -p adit_dev up -d --build
+- docker-compose -f "docker-compose.prod.yml" -p adit_prod up -d --build
 
 ## Celery commands
 
--   celery -A adit purge -Q default,low
--   celery -A adit inspect scheduled
+- celery -A adit purge -Q default,low
+- celery -A adit inspect scheduled
 
 # Deployment for production
 
--   Copy cert.pem and key.pem from N:\Dokumente\Projekte\ADIT_Server\ssl_certificate to /var/www/adit/ssl/
--   Restart adit_prod_web container
--   Add the DICOM servers and folders
+- Copy cert.pem and key.pem from N:\Dokumente\Projekte\ADIT_Server\ssl_certificate to /var/www/adit/ssl/
+- Restart adit_prod_web container
+- Add the DICOM servers and folders
+
+# License
+
+- GPLv3

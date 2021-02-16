@@ -8,7 +8,7 @@
         {% if level != "study" %}
             {% explorer_url server.id patient.PatientID study.StudyInstanceUID as study_url %}
             <a href="{{ study_url }}">
-                {% include "dicom_explorer/box_arrow_in_right.svg" %}
+                {% include "core/_box_arrow_in_right.svg" %}
             </a>
         {% endif %}
     </dd>

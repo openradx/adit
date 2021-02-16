@@ -48,7 +48,8 @@ from pynetdicom.status import (
     STATUS_SUCCESS,
 )
 from django.conf import settings
-from adit.core.models import DicomServer
+from ..models import DicomServer
+from ..errors import RetriableTaskError
 from ..utils.sanitize import sanitize_dirname
 
 
@@ -89,7 +90,7 @@ class DicomConnector:
     @dataclass
     class Config:
         auto_connect: bool = True
-        connection_retries: int = 3
+        connection_retries: int = 2
         retry_timeout: int = 30  # in seconds
         acse_timeout: int = None
         dimse_timeout: int = None
@@ -113,15 +114,13 @@ class DicomConnector:
 
         logger.debug("Opening connection to DICOM server %s.", self.server.ae_title)
 
-        for i in range(self.config.connection_retries):
+        for i in range(self.config.connection_retries + 1):
             try:
                 self._associate()
                 break
             except ConnectionError as err:
-                logger.exception(
-                    "Could not connect to DICOM server %s.", self.server.ae_title
-                )
-                if i < self.config.connection_retries - 1:
+                logger.exception("Could not connect to %s.", self.server)
+                if i < self.config.connection_retries:
                     logger.info(
                         "Retrying to connect in %d seconds.",
                         self.config.retry_timeout,
@@ -146,9 +145,7 @@ class DicomConnector:
         logger.debug("Aborting connection to DICOM server %s.", self.server.ae_title)
 
         self.assoc.abort()
-        self.assoc = None
 
-    @connect_to_server
     def find_patients(self, query, limit_results=None):
         query["QueryRetrieveLevel"] = "PATIENT"
 
@@ -178,7 +175,6 @@ class DicomConnector:
 
         return patients
 
-    @connect_to_server
     def find_studies(self, query, limit_results=None):
         query["QueryRetrieveLevel"] = "STUDY"
 
@@ -196,7 +192,6 @@ class DicomConnector:
 
         return self._filter_studies_by_modalities(studies, query_modalities)
 
-    @connect_to_server
     def find_series(self, query, limit_results=None):
         """Fetch all series UIDs for a given study UID.
 
@@ -224,7 +219,6 @@ class DicomConnector:
             )
         )
 
-    @connect_to_server
     def download_study(  # pylint: disable=too-many-arguments
         self,
         patient_id,
@@ -252,16 +246,12 @@ class DicomConnector:
             series_folder_name = sanitize_dirname(series["SeriesDescription"])
             download_path = Path(folder) / series_folder_name
 
-            try:
-                self.download_series(
-                    patient_id, study_uid, series_uid, download_path, modifier_callback
-                )
-                logger.debug("Successfully downloaded series %s.", series_uid)
-            except ValueError as err:
-                logger.error("Failed to download series %s.", series_uid)
-                raise ValueError("Download of study failed.") from err
+            self.download_series(
+                patient_id, study_uid, series_uid, download_path, modifier_callback
+            )
 
-    @connect_to_server
+        logger.debug("Successfully downloaded study %s.", study_uid)
+
     def download_series(  # pylint: disable=too-many-arguments
         self, patient_id, study_uid, series_uid, folder, modifier_callback=None
     ):
@@ -277,16 +267,21 @@ class DicomConnector:
 
         if self.server.patient_root_get_support or self.server.study_root_get_support:
             self._download_series_get(query, folder, modifier_callback)
+            logger.debug(
+                "Successfully downloaded series %s of study %s.", series_uid, study_uid
+            )
         elif (
             self.server.patient_root_move_support or self.server.study_root_move_support
         ):
             self._download_series_move(query, folder, modifier_callback)
+            logger.debug(
+                "Successfully downloaded series %s of study %s.", series_uid, study_uid
+            )
         else:
             raise ValueError(
                 "No Query/Retrieve Information Model supported to download images."
             )
 
-    @connect_to_server
     def upload_folder(self, folder):
         """Upload a specified folder to a DICOM server."""
 
@@ -295,21 +290,28 @@ class DicomConnector:
 
         results = self._send_c_store(folder)
 
-        failed = []
+        has_success = False
+        has_failure = False
         for result in results:
             status_category = result["status"]["category"]
             status_code = result["status"]["code"]
             image_uid = result["data"]["SOPInstanceUID"]
+            if status_category == STATUS_SUCCESS:
+                has_success = True
             if status_category != STATUS_SUCCESS:
-                failed.append((image_uid, status_category, status_code))
+                has_failure = True
+                logger.error(
+                    "Failed to upload image %s with status %s (%s).",
+                    image_uid,
+                    status_category,
+                    status_code,
+                )
 
-        if failed:
-            failed = [f"{i[0]} ({i[1]} {i[2]}" for i in failed]
-            raise ValueError(
-                "Problems while uploading the following images: %s" % ", ".join(failed)
-            )
+        if results and has_failure:
+            if not has_success:
+                raise RetriableTaskError("Failed to upload all images.")
+            raise RetriableTaskError("Failed to upload some images.")
 
-    @connect_to_server
     def move_study(self, patient_id, study_uid, destination, modality=None):
         series_list = self.find_series(
             {
@@ -321,22 +323,23 @@ class DicomConnector:
             }
         )
 
-        failed_series = []
+        has_success = False
+        has_failure = False
         for series in series_list:
             series_uid = series["SeriesInstanceUID"]
 
             try:
                 self.move_series(patient_id, study_uid, series, destination)
+                has_success = True
             except ValueError:
-                failed_series.append(series_uid)
+                logger.exception("Failed to move series %s.", series_uid)
+                has_failure = True
 
-        if len(failed_series) > 0:
-            raise ValueError(
-                "Problems occurred while sending series with UID: %s"
-                % ", ".join(failed_series)
-            )
+        if series_list and has_failure:
+            if not has_success:
+                raise RetriableTaskError("Failed to move all series.")
+            raise RetriableTaskError("Failed to move some series.")
 
-    @connect_to_server
     def move_series(self, patient_id, study_uid, series_uid, destination):
         query = {
             "QueryRetrieveLevel": "SERIES",
@@ -352,7 +355,6 @@ class DicomConnector:
 
         _evaluate_get_move_results(results, query)
 
-    @connect_to_server
     def fetch_study_modalities(self, patient_id, study_uid):
         """Fetch all modalities of a study and return them in a list."""
 
@@ -361,8 +363,8 @@ class DicomConnector:
                 {"PatientID": patient_id, "StudyInstanceUID": study_uid, "Modality": ""}
             )
         except ValueError as err:
-            logger.error("Failed to fetch modalities of study %s.", study_uid)
-            raise ValueError("Failed to fetch modalities of study.") from err
+            logger.exception("Failed to fetch modalities of study %s.", study_uid)
+            raise RetriableTaskError("Failed to fetch modalities of study.") from err
 
         modalities = set(map(lambda x: x["Modality"], series_list))
         return sorted(list(modalities))
@@ -397,12 +399,8 @@ class DicomConnector:
         )
 
         if not self.assoc.is_established:
-            raise ConnectionError(
-                "Could not connect to DICOM server ["
-                f"AET {self.server.ae_title}, "
-                f"IP {self.server.host}, "
-                f"Port {self.server.port}]"
-            )
+            logger.error("Could not connect to %s.", self.server)
+            raise RetriableTaskError(f"Could not connect to {self.server}.")
 
     @connect_to_server
     def _send_c_find(
@@ -460,9 +458,9 @@ class DicomConnector:
         try:
             responses = self.assoc.send_c_get(query_ds, query_model, msg_id)
             results = self._fetch_results(responses, "C-GET", query_dict)
-        except ConnectionError as err:
-            # Check if the connection error was triggered by our own store handler
-            # due to aborting the assocation.
+        except Exception as err:
+            # Check if an error was triggered by our own store handler due to
+            # aborting the assocation.
             if store_errors:
                 raise store_errors[0]
 
@@ -533,11 +531,14 @@ class DicomConnector:
                     }
                 )
             else:
-                raise ConnectionError(
-                    (
-                        "Connection timed out, was aborted or received invalid "
-                        f"response during C-STORE of folder: {folder}"
-                    )
+                logger.error(
+                    "Connection timed out, was aborted or received invalid "
+                    "response during C-STORE of folder: %s",
+                    folder,
+                )
+                raise RetriableTaskError(
+                    "Connection timed out, was aborted or received invalid "
+                    "during C-STORE."
                 )
 
         return results
@@ -564,11 +565,15 @@ class DicomConnector:
                     }
                 )
             else:
-                raise ConnectionError(
-                    (
-                        "Connection timed out, was aborted or received invalid "
-                        f"response during {operation} with query: {str(query_dict)}"
-                    )
+                logger.error(
+                    "Connection timed out, was aborted or received invalid "
+                    "response during %s with query: {%s}",
+                    operation,
+                    query_dict,
+                )
+                raise RetriableTaskError(
+                    "Connection timed out, was aborted or received invalid "
+                    f"during {operation}."
                 )
         return results
 
@@ -657,8 +662,6 @@ class DicomConnector:
                     settings.ADIT_AE_TITLE,
                 )
                 _evaluate_get_move_results(results, query)
-            except ConnectionError:
-                logger.exception("Error while downloading images with C-MOVE.")
             finally:
                 move_stopped_event.set()
 
@@ -693,7 +696,7 @@ class DicomConnector:
                 if modifier_callback:
                     modifier_callback(ds)
 
-                self._save_dicom_from_receiver(ds, folder)
+                _save_dicom_from_receiver(ds, folder)
 
                 remaining_image_uids.remove(received_image_uid)
 
@@ -704,13 +707,14 @@ class DicomConnector:
         if remaining_image_uids:
             if remaining_image_uids == image_uids:
                 logger.error("No images of series %s received.", series_uid)
-            else:
-                logger.error(
-                    "Some images of series %s were not received: %s",
-                    series_uid,
-                    ", ".join(remaining_image_uids),
-                )
-            raise ValueError("Failed to download images with C-MOVE.")
+                raise RetriableTaskError("Failed to download all images with C-MOVE.")
+
+            logger.error(
+                "These images of series %s were not received: %s",
+                series_uid,
+                ", ".join(remaining_image_uids),
+            )
+            raise RetriableTaskError("Failed to download some images with C-MOVE.")
 
     def _consume_with_timeout(self, study_uid, series_uid, move_stopped_event):
         last_consume_at = time.time()
@@ -762,20 +766,6 @@ class DicomConnector:
         finally:
             channel.close()
             connection.close()
-
-    def _save_dicom_from_receiver(self, ds, folder):
-        folder_path = Path(folder)
-        folder_path.mkdir(parents=True, exist_ok=True)
-
-        file_path = folder_path / ds.SOPInstanceUID
-
-        # In this case we don't need to save with `write_like_original=False` as it
-        # saved already saved it this way to the buffer in the receiver
-        try:
-            ds.save_as(str(file_path), write_like_original=False)
-        except OSError as err:
-            if err.errno == errno.ENOSPC:  # No space left on device
-                raise IOError(f"Out of disk space while saving {file_path}.") from err
 
 
 def _check_required_id(value):
@@ -894,7 +884,9 @@ def _evaluate_get_move_results(results, query):
         if failed_image_uids:
             error_msg += f" Failed images: {', '.join(failed_image_uids)}"
         logger.error(error_msg)
-        raise ValueError(f"Invalid status {status_category} during transfer.")
+        raise RetriableTaskError(
+            f"Failed to transfer images with status {status_category}."
+        )
 
 
 def _handle_c_get_store(event, folder, modifier_callback, errors):
@@ -922,8 +914,12 @@ def _handle_c_get_store(event, folder, modifier_callback, errors):
     try:
         ds.save_as(str(file_path), write_like_original=False)
     except OSError as err:
-        if err.errno == errno.ENOSPC:  # No space left on device
-            no_space_error = IOError(f"Out of disk space while saving {file_path}.")
+        if err.errno == errno.ENOSPC:
+            # No space left on destination
+            logger.exception("Out of disk space while saving %s.", file_path)
+            no_space_error = RetriableTaskError(
+                "Out of disk space on destination.", long_delay=True
+            )
             no_space_error.__cause__ = err
             errors.append(no_space_error)
 
@@ -939,3 +935,23 @@ def _handle_c_get_store(event, folder, modifier_callback, errors):
 
     # Return a 'Success' status
     return 0x0000
+
+
+def _save_dicom_from_receiver(ds, folder):
+    folder_path = Path(folder)
+    folder_path.mkdir(parents=True, exist_ok=True)
+
+    file_path = folder_path / ds.SOPInstanceUID
+
+    # In this case we don't need to save with `write_like_original=False` as it
+    # saved already saved it this way to the buffer in the receiver
+    try:
+        ds.save_as(str(file_path), write_like_original=False)
+    except OSError as err:
+        if err.errno == errno.ENOSPC:  # No space left on device
+            logger.exception("Out of disk space while saving %s.", file_path)
+            raise RetriableTaskError(
+                "Out of disk space on destination.", long_delay=True
+            ) from err
+
+        raise err

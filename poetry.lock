@@ -335,14 +335,14 @@ python-versions = ">=2.6, !=3.0.*, !=3.1.*"
 
 [[package]]
 name = "dicognito"
-version = "0.11.0"
+version = "0.12.0"
 description = "A tool for anonymizing DICOM files"
 category = "main"
 optional = false
 python-versions = "*"
 
 [package.dependencies]
-pydicom = ">=2.0.0"
+pydicom = ">=2.1.1"
 
 [[package]]
 name = "django"
@@ -402,9 +402,9 @@ python-versions = "*"
 
 [[package]]
 name = "django-extensions"
-version = "3.0.9"
+version = "3.1.0"
 description = "Extensions for Django"
-category = "dev"
+category = "main"
 optional = false
 python-versions = ">=3.5"
 
@@ -547,7 +547,7 @@ python-versions = "*"
 
 [[package]]
 name = "humanize"
-version = "3.1.0"
+version = "3.2.0"
 description = "Python humanize utilities"
 category = "main"
 optional = false
@@ -1211,7 +1211,7 @@ python-dateutil = "*"
 name = "toml"
 version = "0.10.2"
 description = "Python Library for Tom's Obvious, Minimal Language"
-category = "dev"
+category = "main"
 optional = false
 python-versions = ">=2.6, !=3.0.*, !=3.1.*, !=3.2.*"
 
@@ -1378,7 +1378,7 @@ testing = ["coverage (>=5.0.3)", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.9"
-content-hash = "79e8f959932b7ff01fba852a959d2b67379ccea80814168b8659538a70fea01e"
+content-hash = "d228ea29488b28abc74200d47a6c516c09bf5213888d41ceae2c6b6a5b37923d"
 
 [metadata.files]
 amqp = [
@@ -1650,8 +1650,8 @@ decorator = [
     {file = "decorator-4.4.2.tar.gz", hash = "sha256:e3a62f0520172440ca0dcc823749319382e377f37f140a0b99ef45fecb84bfe7"},
 ]
 dicognito = [
-    {file = "dicognito-0.11.0-py3-none-any.whl", hash = "sha256:c86ebcae973b20137cd5b5db5d26d3a70a8a0dad5a08c9f4834e52349aa7f3c3"},
-    {file = "dicognito-0.11.0.tar.gz", hash = "sha256:3fc8f5f5ec209e8b779e85762d5930ccf5a729a6240a07d4ccd02b21d9bba69b"},
+    {file = "dicognito-0.12.0-py3-none-any.whl", hash = "sha256:2226c64bba6cd730b0e6489509c8202fb9bd700ed260cd968d34f41d20d10e54"},
+    {file = "dicognito-0.12.0.tar.gz", hash = "sha256:b29b3b98b498f5b27d86787a8df811daeec3fbdb12bec45b9f2205f14acf87f6"},
 ]
 django = [
     {file = "Django-3.1.3-py3-none-any.whl", hash = "sha256:14a4b7cd77297fba516fc0d92444cc2e2e388aa9de32d7a68d4a83d58f5a4927"},
@@ -1673,8 +1673,8 @@ django-environ = [
     {file = "django_environ-0.4.5-py2.py3-none-any.whl", hash = "sha256:c57b3c11ec1f319d9474e3e5a79134f40174b17c7cc024bbb2fad84646b120c4"},
 ]
 django-extensions = [
-    {file = "django-extensions-3.0.9.tar.gz", hash = "sha256:6809c89ca952f0e08d4e0766bc0101dfaf508d7649aced1180c091d737046ea7"},
-    {file = "django_extensions-3.0.9-py3-none-any.whl", hash = "sha256:dc663652ac9460fd06580a973576820430c6d428720e874ae46b041fa63e0efa"},
+    {file = "django-extensions-3.1.0.tar.gz", hash = "sha256:7cd002495ff0a0e5eb6cdd6be759600905b4e4079232ea27618fc46bdd853651"},
+    {file = "django_extensions-3.1.0-py3-none-any.whl", hash = "sha256:c7f88625a53f631745d4f2bef9ec4dcb999ed59476393bdbbe99db8596778846"},
 ]
 django-filter = [
     {file = "django-filter-2.4.0.tar.gz", hash = "sha256:84e9d5bb93f237e451db814ed422a3a625751cbc9968b484ecc74964a8696b06"},
@@ -1723,8 +1723,8 @@ hpack = [
     {file = "hpack-3.0.0.tar.gz", hash = "sha256:8eec9c1f4bfae3408a3f30500261f7e6a65912dc138526ea054f9ad98892e9d2"},
 ]
 humanize = [
-    {file = "humanize-3.1.0-py3-none-any.whl", hash = "sha256:6790d9ba139ce09761ae901be9b22bd32a131fa65ecc82cdfc4d86f377f7395d"},
-    {file = "humanize-3.1.0.tar.gz", hash = "sha256:fd3eb915310335c63a54d4507289ecc7b3a7454cd2c22ac5086d061a3cbfd592"},
+    {file = "humanize-3.2.0-py3-none-any.whl", hash = "sha256:d47d80cd47c1511ed3e49ca5f10c82ed940ea020b45b49ab106ed77fa8bb9d22"},
+    {file = "humanize-3.2.0.tar.gz", hash = "sha256:ab69004895689951b79f2ae4fdd6b8127ff0c180aff107856d5d98119a33f026"},
 ]
 hyperframe = [
     {file = "hyperframe-5.2.0-py2.py3-none-any.whl", hash = "sha256:5187962cb16dcc078f23cb5a4b110098d546c3f41ff2d4038a9896893bbd0b40"},

@@ -1,45 +1,27 @@
-from typing import List, Dict, TextIO, Type
-import csv
+from typing import List
+from datetime import timedelta
 from rest_framework.exceptions import ErrorDetail
-from django.conf import settings
-from adit.core.models import DicomTask
-from adit.core.serializers import BatchTaskSerializer
 
 
-def parse_csv_file(
-    serializer_class: Type[BatchTaskSerializer],
-    field_to_column_mapping: Dict[str, str],
-    csv_file: TextIO,
-) -> List[DicomTask]:
-    if not "batch_id" in field_to_column_mapping:
-        raise AssertionError("The mapping must contain a 'batch_id' field.")
+class RetriableTaskError(Exception):
+    def __init__(self, message: str, long_delay: bool = False) -> None:
+        if long_delay:
+            self.delay = timedelta(hours=24)
+        else:
+            self.delay = timedelta(minutes=10)
 
-    data = []
-    reader = csv.DictReader(csv_file, delimiter=settings.CSV_FILE_DELIMITER)
-    for row in reader:
-        data_row = {}
-
-        for field, column in field_to_column_mapping.items():
-            data_row[field] = row.get(column, "")
-
-        data_row["__line_num__"] = reader.line_num
-
-        data.append(data_row)
-
-    serializer = serializer_class(data=data, many=True)  # pylint: disable=not-callable
-    if not serializer.is_valid():
-        raise ParsingError(
-            field_to_column_mapping,
-            data,
-            serializer.errors,
-        )
-
-    model_class = serializer_class.Meta.model
-
-    return [model_class(**item) for item in serializer.validated_data]
+        super().__init__(message)
 
 
-class ParsingError(Exception):
+class BatchFileSizeError(Exception):
+    def __init__(self, batch_tasks_count: int, max_batch_size: int) -> None:
+        super().__init__("Too many batch tasks.")
+
+        self.batch_tasks_count = batch_tasks_count
+        self.max_batch_size = max_batch_size
+
+
+class BatchFileFormatError(Exception):
     def __init__(self, field_to_column_mapping, data, errors) -> None:
         super().__init__("Invalid CSV data.")
 
@@ -69,13 +51,15 @@ class ParsingError(Exception):
                 if self.message:
                     self.message += "\n"
                 if item_errors:
-                    batch_id = self.data[num].get("batch_id", "").strip()
-                    if batch_id:
-                        batch_id = f" (BatchID {batch_id})"
-
+                    task_id = self.data[num].get("task_id", "").strip()
                     line_num = self.data[num]["__line_num__"]
 
-                    self.message += f"Invalid data on line {line_num}{batch_id}:\n"
+                    self.message += f"Invalid data on line {line_num}"
+
+                    if task_id:
+                        self.message += f" (TaskID {task_id})"
+
+                    self.message += ":\n"
 
                     non_field_errors = item_errors.pop("non_field_errors", None)
                     if non_field_errors:

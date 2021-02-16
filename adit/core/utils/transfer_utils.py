@@ -1,23 +1,28 @@
-import io
 import logging
 from pathlib import Path
 from datetime import datetime
 import tempfile
 import subprocess
 from functools import partial
-from typing import Any, Callable, Dict, List, Tuple
+from typing import Any, Callable, Dict, List
+from celery import Task as CeleryTask
 from dicognito.anonymizer import Anonymizer
 from pydicom import Dataset
+import humanize
 from django.utils import timezone
-from adit.core.models import TransferJob, TransferTask
-from ..models import DicomNode
+from django.conf import settings
+from adit.core.utils.task_utils import hijack_logger, store_log_in_task
+from ..models import DicomNode, TransferJob, TransferTask
+from ..errors import RetriableTaskError
 from .dicom_connector import DicomConnector
 from .sanitize import sanitize_dirname
 
 logger = logging.getLogger(__name__)
 
 
-def execute_transfer(transfer_task: TransferTask) -> TransferTask.Status:
+def execute_transfer(
+    transfer_task: TransferTask, celery_task: CeleryTask
+) -> TransferTask.Status:
     if transfer_task.status == TransferTask.Status.CANCELED:
         return transfer_task.status
 
@@ -32,7 +37,7 @@ def execute_transfer(transfer_task: TransferTask) -> TransferTask.Status:
 
     logger.info("Started %s.", transfer_task)
 
-    handler, stream = _setup_logger()
+    handler, stream = hijack_logger(logger)
 
     transfer_job: TransferJob = transfer_task.job
 
@@ -59,15 +64,43 @@ def execute_transfer(transfer_task: TransferTask) -> TransferTask.Status:
 
         transfer_task.status = TransferTask.Status.SUCCESS
         transfer_task.message = "Transfer task completed successfully."
+        transfer_task.end = timezone.now()
 
-    except Exception as err:  # pylint: disable=broad-except
-        logger.exception("Error occurred during %s.", transfer_job)
+    except RetriableTaskError as err:
+        logger.exception("Retriable error occurred during %s.", transfer_task)
+
+        # We can't use the Celery built-in max_retries and celery_task.request.retries
+        # directly as we also use celery_task.retry() for scheduling tasks.
+        if transfer_task.retries < settings.TRANSFER_TASK_RETRIES:
+            logger.info("Retrying task in %s.", humanize.naturaldelta(err.delay))
+            transfer_task.status = TransferTask.Status.PENDING
+            transfer_task.message = "Task timed out and will be retried."
+            transfer_task.retries += 1
+
+            # Increase the priority slightly to make sure images that were moved
+            # from the GE archive storage to the fast access storage are still there
+            # when we retry.
+            priority = celery_task.request.delivery_info["priority"]
+            if priority < settings.CELERY_TASK_QUEUE_MAX_PRIORITY:
+                priority += 1
+
+            raise celery_task.retry(
+                eta=timezone.now() + err.delay, exc=err, priority=priority
+            )
+
+        logger.error("No more retries for finally failed %s.", transfer_task)
         transfer_task.status = TransferTask.Status.FAILURE
         transfer_task.message = str(err)
-    finally:
-        _save_log_to_task(handler, stream, transfer_task)
-
         transfer_task.end = timezone.now()
+
+    except Exception as err:  # pylint: disable=broad-except
+        logger.exception("Unrecoverable failure occurred in %s.", transfer_task)
+        transfer_task.status = TransferTask.Status.FAILURE
+        transfer_task.message = str(err)
+        transfer_task.end = timezone.now()
+
+    finally:
+        store_log_in_task(logger, handler, stream, transfer_task)
         transfer_task.save()
 
     return transfer_task.status
@@ -81,30 +114,6 @@ def _create_source_connector(transfer_task: TransferTask) -> DicomConnector:
 def _create_dest_connector(transfer_task: TransferTask) -> DicomConnector:
     # An own function to easily mock the destination connector in test_transfer_utils.py
     return DicomConnector(transfer_task.job.destination.dicomserver)
-
-
-def _setup_logger() -> Tuple[logging.StreamHandler, io.StringIO]:
-    """Intercept all logger messages to save them later to the task."""
-    stream = io.StringIO()
-    handler = logging.StreamHandler(stream)
-    handler.setLevel(logging.INFO)
-    formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
-    handler.setFormatter(formatter)
-    logger.parent.addHandler(handler)
-
-    return handler, stream
-
-
-def _save_log_to_task(
-    handler: logging.StreamHandler, stream: io.StringIO, transfer_task: TransferTask
-) -> None:
-    handler.flush()
-    if transfer_task.log:
-        transfer_task.log += "\n" + stream.getvalue()
-    else:
-        transfer_task.log = stream.getvalue()
-    stream.close()
-    logger.parent.removeHandler(handler)
 
 
 def _transfer_to_server(transfer_task: TransferTask) -> None:

@@ -13,6 +13,7 @@ x-app: &default-app
         - orthanc2
     volumes:
         - ../..:/app
+        - /mnt:/mnt
         - adit_data:/var/www/adit
         - vscode-server:/root/.vscode-server/extensions
         - vscode-server-insiders:/root/.vscode-server-insiders/extensions
@@ -26,6 +27,8 @@ x-app: &default-app
         RABBITMQ_URL: "amqp://rabbit"
         REDIS_URL: "redis://redis:6379/0"
         DJANGO_STATIC_ROOT: "/var/www/adit/static/"
+        RABBIT_MANAGEMENT_HOST: "rabbit"
+        RABBIT_MANAGEMENT_PORT: "15672"
         FLOWER_HOST: "flower"
         FLOWER_PORT: "5555"
         SYSLOG_HOST: "syslog"
@@ -51,21 +54,21 @@ services:
 
     worker_default:
         <<: *default-app
-        command: python manage.py celery_worker -Q default_queue --autoreload
+        command: python manage.py celery_worker -Q default_queue
 
     worker_dicom_task:
         <<: *default-app
-        command: python manage.py celery_worker -Q dicom_task_queue --autoreload
+        command: python manage.py celery_worker -Q dicom_task_queue
 
     celery_beat:
         <<: *default-app
-        command: python manage.py celery_beat --autoreload
+        command: python manage.py celery_beat
 
     receiver:
         <<: *default-app
         ports:
             - "11122:11112"
-        command: python manage.py receiver --autoreload
+        command: python manage.py receiver
 
     flower:
         <<: *default-app
@@ -82,6 +85,10 @@ services:
         volumes:
             - postgres_data:/var/lib/postgresql/data
 
+    # RabbitMQ authentication can't be disabled. So when we try to log into
+    # the management console we have to use "guest" as username and password.
+    # The real authentication happens by ADIT itself, because the management
+    # console is behind a ProxyView.
     rabbit:
         image: rabbitmq:3.8-management
         expose:

@@ -38,15 +38,22 @@ class ContinuousTransferJobForm(forms.ModelForm):
         widgets = {"start_date": DateInput(), "end_date": DateInput()}
 
     def __init__(self, *args, **kwargs):
-        urgent_option = kwargs.pop("urgent_option", False)
+        user = kwargs.pop("user")
 
         super().__init__(*args, **kwargs)
 
         self.fields["source"].widget.attrs["class"] = "custom-select"
         self.fields["destination"].widget.attrs["class"] = "custom-select"
 
-        if not urgent_option:
+        if not user.has_perm("continuous_transfer.can_process_urgently"):
             del self.fields["urgent"]
+
+        self.fields["source"].queryset = self.fields["source"].queryset.order_by(
+            "-node_type", "name"
+        )
+        self.fields["destination"].queryset = self.fields[
+            "destination"
+        ].queryset.order_by("-node_type", "name")
 
         self.helper = FormHelper(self)
         self.helper.form_tag = False

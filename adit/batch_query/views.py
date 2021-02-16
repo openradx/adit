@@ -1,7 +1,6 @@
 from io import StringIO
-from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http.response import HttpResponse
-from django.views.generic.edit import CreateView
 from django.views.generic import DetailView
 from django.views.generic.detail import SingleObjectMixin
 from django.views.generic.base import View
@@ -10,15 +9,17 @@ from django.conf import settings
 from django_tables2 import SingleTableMixin
 from adit.core.mixins import (
     OwnerRequiredMixin,
-    UrgentFormViewMixin,
     RelatedFilterMixin,
     PageSizeSelectMixin,
 )
 from adit.core.views import (
     DicomJobListView,
+    DicomJobCreateView,
     DicomJobDeleteView,
-    DicomJobCancelView,
     DicomJobVerifyView,
+    DicomJobCancelView,
+    DicomJobResumeView,
+    DicomJobRetryView,
     DicomTaskDetailView,
 )
 from .models import BatchQueryJob, BatchQueryTask
@@ -43,12 +44,7 @@ class BatchQueryJobListView(DicomJobListView):  # pylint: disable=too-many-ances
     template_name = "batch_query/batch_query_job_list.html"
 
 
-class BatchQueryJobCreateView(
-    LoginRequiredMixin,
-    PermissionRequiredMixin,
-    UrgentFormViewMixin,
-    CreateView,
-):
+class BatchQueryJobCreateView(DicomJobCreateView):
     model = BatchQueryJob
     form_class = BatchQueryJobForm
     template_name = "batch_query/batch_query_job_form.html"
@@ -77,7 +73,6 @@ class BatchQueryJobDetailView(
     PageSizeSelectMixin,
     DetailView,
 ):
-    owner_accessor = "owner"
     table_class = BatchQueryTaskTable
     filterset_class = BatchQueryTaskFilter
     model = BatchQueryJob
@@ -94,11 +89,19 @@ class BatchQueryJobDeleteView(DicomJobDeleteView):
     success_url = reverse_lazy("batch_transfer_job_list")
 
 
+class BatchQueryJobVerifyView(DicomJobVerifyView):
+    model = BatchQueryJob
+
+
 class BatchQueryJobCancelView(DicomJobCancelView):
     model = BatchQueryJob
 
 
-class BatchQueryJobVerifyView(DicomJobVerifyView):
+class BatchQueryJobResumeView(DicomJobResumeView):
+    model = BatchQueryJob
+
+
+class BatchQueryJobRetryView(DicomJobRetryView):
     model = BatchQueryJob
 
 
@@ -124,7 +127,6 @@ class BatchQueryResultListView(
     PageSizeSelectMixin,
     DetailView,
 ):
-    owner_accessor = "owner"
     table_class = BatchQueryResultTable
     filterset_class = BatchQueryResultFilter
     model = BatchQueryJob
@@ -142,7 +144,6 @@ class BatchQueryResultDownloadView(
     View,
 ):
     model = BatchQueryJob
-    owner_accessor = "owner"
 
     def get(self, request, *args, **kwargs):  # pylint: disable=unused-argument
         job = self.get_object()
@@ -150,7 +151,7 @@ class BatchQueryResultDownloadView(
         export_results(job, file)
 
         # We use CP-1252 (ANSI) charset so that the exported CSV files could be
-        # directly opened in Excel and Umlaute are correctly presented.
+        # directly opened in Excel under Windows and Umlaute are correctly presented.
         content = file.getvalue().encode("cp1252")
 
         response = HttpResponse(content, content_type="text/csv")

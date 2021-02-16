@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/3.0/ref/settings/
 
 from pathlib import Path
 import environ
+import toml
 from celery.schedules import crontab
 
 env = environ.Env()
@@ -19,12 +20,24 @@ env = environ.Env()
 # The base directory of the project (the root of the repository)
 BASE_DIR = Path(__file__).resolve(strict=True).parent.parent.parent
 
+# Read pyproject.toml file
+pyproject = toml.load(BASE_DIR / "pyproject.toml")
+
+ADIT_VERSION = pyproject["tool"]["poetry"]["version"]
+
 READ_DOT_ENV_FILE = env.bool("DJANGO_READ_DOT_ENV_FILE", default=False)
 if READ_DOT_ENV_FILE:
     # OS environment variables take precedence over variables from .env
     env.read_env(str(BASE_DIR / ".env"))
 
 BASE_URL = env.str("BASE_URL", default="")
+
+SITE_ID = 1
+
+# Used by our custom migration adit.core.migrations.0002_UPDATE_SITE_NAME
+# to set the domain and name of the sites framework
+ADIT_SITE_DOMAIN = env.str("ADIT_SITE_DOMAIN", default="adit.org")
+ADIT_SITE_NAME = env.str("ADIT_SITE_NAME", default="adit.org")
 
 INSTALLED_APPS = [
     "whitenoise.runserver_nostatic",
@@ -37,6 +50,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "django.contrib.humanize",
+    "django.contrib.sites",
     "revproxy",
     "loginas",
     "crispy_forms",
@@ -61,6 +75,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "django.contrib.sites.middleware.CurrentSiteMiddleware",
     "adit.core.middlewares.MaintenanceMiddleware",
     "adit.core.middlewares.TimezoneMiddleware",
 ]
@@ -144,13 +159,12 @@ LOGGING = {
         },
         "syslog": {
             "level": "INFO",
-            # "filters": ["require_debug_false"],
             "class": "logging.handlers.SysLogHandler",
             "address": (SYSLOG_HOST, SYSLOG_PORT),
             "formatter": "verbose",
         },
         "mail_admins": {
-            "level": "ERROR",
+            "level": "CRITICAL",
             "filters": ["require_debug_false"],
             "class": "django.utils.log.AdminEmailHandler",
         },
@@ -264,6 +278,13 @@ ASGI_APPLICATION = "adit.asgi.application"
 # from the receiver to the workers.
 RABBITMQ_URL = env.str("RABBITMQ_URL", default="amqp://localhost")
 
+# Rabbit Management console is integrated in ADIT by using an reverse
+# proxy (django-revproxy).This allows to use the authentication of ADIT.
+# But as RabbitMQ authentication can't be disabled we have to login
+# there with "guest" as username and password again.
+RABBIT_MANAGEMENT_HOST = env.str("RABBIT_MANAGEMENT_HOST", default="localhost")
+RABBIT_MANAGEMENT_PORT = env.int("RABBIT_MANAGEMENT_PORT", default=15672)
+
 # Redis is used as Celery result backend and as LRU cache for patient IDs.
 REDIS_URL = env.str("REDIS_URL", default="redis://localhost:6379/0")
 
@@ -296,16 +317,28 @@ CELERY_BEAT_SCHEDULE = {
     }
 }
 
+# Max retries is normally 3. We have to overwrite this, see
+# https://github.com/celery/celery/issues/976
+# Retries happen when a DICOM server is not responding, a requested
+# study is currently offline, the scheduler is rescheduling (because
+# we are outside the time slot). So we have to set this quite high.
+# None would turn it off, but we make sure that no bug let retry it
+# forever.
+CELERY_TASK_ANNOTATIONS = {"*": {"max_retries": 100}}
+
 # For priority queues, see also apply_async calls in the models.
 # Requires RabbitMQ as the message broker!
 CELERY_TASK_QUEUE_MAX_PRIORITY = 10
 CELERY_TASK_DEFAULT_PRIORITY = 5
+
 # Only non prefetched tasks can be sorted by their priority. So we only
 # prefetch only one task at a time.
 CELERY_WORKER_PREFETCH_MULTIPLIER = 1
-# Not sure if this is helpful. Saw this mentioned at
+
+# Not sure if this is really necessary for priorities to work, but saw this mentioned
 # https://medium.com/better-programming/python-celery-best-practices-ae182730bb81
-# CELERY_TASK_ACKS_LATE = True
+# https://stackoverflow.com/a/47980598/166229
+CELERY_TASK_ACKS_LATE = True
 
 # Flower is integrated in ADIT by using an reverse proxy (django-revproxy).
 # This allows to use the authentication of ADIT.
@@ -322,16 +355,8 @@ FILTERS_EMPTY_CHOICE_LABEL = "Show All"
 # General ADIT settings
 ADIT_AE_TITLE = env.str("ADIT_AE_TITLE", default="ADIT1")
 
-# The delimiter of the CSV file for batch files
-CSV_FILE_DELIMITER = ";"
-
-# The delimiter of a date range in a text field (or CSV file), e.g.
-# in "01.02.2019-09.03.2020" the delimiter is "-".
-DATE_RANGE_DELIMITER = "-"
-
-# ADIT uses a cache for patients so that not the DICOM server must not
-# always be queried. This is how many patients fit into the cache.
-BATCH_PATIENT_CACHE_SIZE = 10000
+# The delimiter in CSV batch files
+CSV_DELIMITER = ";"
 
 # Usually a transfer job must be verified by an admin. By setting
 # this option to True ADIT will schedule unverified transfers
@@ -345,14 +370,14 @@ CONTINUOUS_TRANSFER_UNVERIFIED = True
 USER_TIME_ZONE = env.str("USER_TIME_ZONE", default=None)
 
 # Celery / RabbitMQ queue priorities of transfer jobs
-SELECTIVE_TRANSFER_DEFAULT_PRIORITY = 4
-SELECTIVE_TRANSFER_URGENT_PRIORITY = 8
-BATCH_TRANSFER_DEFAULT_PRIORITY = 3
-BATCH_TRANSFER_URGENT_PRIORITY = 7
-CONTINUOUS_TRANSFER_DEFAULT_PRIORITY = 2
-CONTINUOUS_TRANSFER_URGENT_PRIORITY = 6
-BATCH_QUERY_DEFAULT_PRIORITY = 5
-BATCH_QUERY_URGENT_PRIORITY = 9
+SELECTIVE_TRANSFER_DEFAULT_PRIORITY = 3
+SELECTIVE_TRANSFER_URGENT_PRIORITY = 7
+BATCH_TRANSFER_DEFAULT_PRIORITY = 2
+BATCH_TRANSFER_URGENT_PRIORITY = 6
+CONTINUOUS_TRANSFER_DEFAULT_PRIORITY = 1
+CONTINUOUS_TRANSFER_URGENT_PRIORITY = 5
+BATCH_QUERY_DEFAULT_PRIORITY = 4
+BATCH_QUERY_URGENT_PRIORITY = 8
 
 # The maximum number of resulting studies for selective_transfer query
 SELECTIVE_TRANSFER_RESULT_LIMIT = 101
@@ -361,10 +386,16 @@ SELECTIVE_TRANSFER_RESULT_LIMIT = 101
 DICOM_EXPLORER_RESULT_LIMIT = 101
 
 # The timeout in dicom_explorer a DICOM server must respond
-DICOM_EXPLORER_RESPONSE_TIMEOUT = 3  # in seconds
+DICOM_EXPLORER_RESPONSE_TIMEOUT = 3  # seconds
 
 # The timeout we wait for images of a C-MOVE download
-C_MOVE_DOWNLOAD_TIMEOUT = 60  # in seconds
+C_MOVE_DOWNLOAD_TIMEOUT = 60  # seconds
 
 # Show DICOM debug messages of pynetdicom
 DICOM_DEBUG_LOGGER = False
+
+# How often to retry a failed transfer task before the task is definitively failed
+TRANSFER_TASK_RETRIES = 2
+
+MAX_BATCH_QUERY_SIZE = 1000
+MAX_BATCH_TRANSFER_SIZE = 200

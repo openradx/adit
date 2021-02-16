@@ -1,4 +1,4 @@
-from unittest.mock import patch, Mock
+from unittest.mock import patch, Mock, ANY
 import pytest
 from django.conf import settings
 from adit.core.models import TransferJob, TransferTask
@@ -15,10 +15,10 @@ from ..tasks import process_transfer_job, process_transfer_task
 @patch("adit.batch_transfer.tasks.process_transfer_task.s", autospec=True)
 @patch("adit.batch_transfer.tasks.chord", autospec=True)
 def test_process_transfer_job_succeeds(
-    mock_chord,
-    mock_process_transfer_task_s,
-    mock_on_job_finished_s,
-    mock_on_job_failed_s,
+    chord_mock,
+    process_transfer_task_s_mock,
+    on_job_finished_s_mock,
+    on_job_failed_s_mock,
     urgent,
 ):
     # Arrange
@@ -32,20 +32,20 @@ def test_process_transfer_job_succeeds(
         job=job, status=BatchTransferTask.Status.PENDING
     )
 
-    mock_process_transfer_task_signature = Mock()
-    mock_process_transfer_task_s.return_value.set.return_value = (
-        mock_process_transfer_task_signature
+    process_transfer_task_signature_mock = Mock()
+    process_transfer_task_s_mock.return_value.set.return_value = (
+        process_transfer_task_signature_mock
     )
 
-    mock_header = Mock()
-    mock_chord.return_value = mock_header
+    header_mock = Mock()
+    chord_mock.return_value = header_mock
 
-    mock_on_job_failed_signature = Mock()
-    mock_on_job_failed_s.return_value = mock_on_job_failed_signature
+    on_job_failed_signature_mock = Mock()
+    on_job_failed_s_mock.return_value = on_job_failed_signature_mock
 
-    mock_on_job_finished_signature = Mock()
-    mock_on_job_finished_s.return_value.on_error.return_value = (
-        mock_on_job_finished_signature
+    on_job_finished_signature_mock = Mock()
+    on_job_finished_s_mock.return_value.on_error.return_value = (
+        on_job_finished_signature_mock
     )
 
     # Act
@@ -57,23 +57,23 @@ def test_process_transfer_job_succeeds(
     else:
         priority = settings.BATCH_TRANSFER_DEFAULT_PRIORITY
 
-    mock_process_transfer_task_s.assert_called_once_with(transfer_task.id)
-    mock_process_transfer_task_s.return_value.set.assert_called_once_with(
+    process_transfer_task_s_mock.assert_called_once_with(transfer_task.id)
+    process_transfer_task_s_mock.return_value.set.assert_called_once_with(
         priority=priority
     )
-    mock_chord.assert_called_once_with([mock_process_transfer_task_signature])
-    mock_on_job_finished_s.assert_called_once_with(job.id)
-    mock_on_job_finished_s.return_value.on_error.assert_called_once_with(
-        mock_on_job_failed_signature
+    chord_mock.assert_called_once_with([process_transfer_task_signature_mock])
+    on_job_finished_s_mock.assert_called_once_with(job.id)
+    on_job_finished_s_mock.return_value.on_error.assert_called_once_with(
+        on_job_failed_signature_mock
     )
-    mock_on_job_failed_s.assert_called_once_with(job_id=job.id)
-    mock_header.assert_called_once_with(mock_on_job_finished_signature)
+    on_job_failed_s_mock.assert_called_once_with(job_id=job.id)
+    header_mock.assert_called_once_with(on_job_finished_signature_mock)
 
 
 @pytest.mark.django_db
 @patch("adit.batch_transfer.tasks.execute_transfer", autospec=True)
 def test_transfer_task_without_study_fails(
-    mock_execute_transfer,
+    execute_transfer_mock,
 ):
     # Arrange
     transfer_job = BatchTransferJobFactory(
@@ -82,7 +82,7 @@ def test_transfer_task_without_study_fails(
     transfer_task = BatchTransferTaskFactory(
         job=transfer_job, status=BatchTransferTask.Status.PENDING
     )
-    mock_execute_transfer.return_value = TransferTask.Status.SUCCESS
+    execute_transfer_mock.return_value = TransferTask.Status.SUCCESS
 
     # Act
     status = process_transfer_task(  # pylint: disable=no-value-for-parameter
@@ -90,5 +90,5 @@ def test_transfer_task_without_study_fails(
     )
 
     # Assert
-    mock_execute_transfer.assert_called_once_with(transfer_task)
+    execute_transfer_mock.assert_called_once_with(transfer_task, ANY)
     assert status == TransferTask.Status.SUCCESS

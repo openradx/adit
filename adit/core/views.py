@@ -1,19 +1,60 @@
-import re
+from typing import Any, Dict, Optional
+from django.shortcuts import render
+from django.contrib import messages
+from django.contrib.admin.views.decorators import staff_member_required
 from django.views.generic import View
+from django.views.generic.base import TemplateView
 from django.views.generic.edit import DeleteView, CreateView
 from django.views.generic.detail import DetailView, SingleObjectMixin
-from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
+from django.contrib.auth.mixins import (
+    LoginRequiredMixin,
+    UserPassesTestMixin,
+    PermissionRequiredMixin,
+)
 from django.urls import re_path
 from django.shortcuts import redirect
 from django.core.exceptions import SuspiciousOperation
-from django.contrib import messages
+from django.http.response import Http404
+from django.db import models
+from django.db.models.query import QuerySet
 from django.conf import settings
-from django.forms.formsets import ORDERING_FIELD_NAME
 from django_tables2 import SingleTableMixin
 from django_filters.views import FilterView
 from revproxy.views import ProxyView
-from .models import DicomJob
+from ..celery import app
+from .site import job_stats_collectors
+from .models import CoreSettings, DicomJob, DicomTask
 from .mixins import OwnerRequiredMixin, PageSizeSelectMixin
+
+
+@staff_member_required
+def sandbox(request):
+    messages.add_message(request, messages.SUCCESS, "This message is server generated!")
+    return render(request, "core/sandbox.html", {})
+
+
+@staff_member_required
+def admin_section(request):
+    status_list = DicomJob.Status.choices
+    job_stats = [collector() for collector in job_stats_collectors]
+    return render(
+        request,
+        "core/admin_section.html",
+        {
+            "status_list": status_list,
+            "job_stats": job_stats,
+        },
+    )
+
+
+class HomeView(TemplateView):
+    template_name = "core/home.html"
+
+    def get_context_data(self, **kwargs: Any) -> Dict[str, Any]:
+        context = super().get_context_data(**kwargs)
+        core_settings = CoreSettings.get()
+        context["announcement"] = core_settings.announcement
+        return context
 
 
 class DicomJobListView(  # pylint: disable=too-many-ancestors
@@ -24,18 +65,47 @@ class DicomJobListView(  # pylint: disable=too-many-ancestors
     filterset_class = None
     template_name = None
 
+    def get_queryset(self) -> QuerySet:
+        if self.request.user.is_staff and self.request.GET.get("all"):
+            queryset = self.model.objects.all()
+        else:
+            queryset = self.model.objects.filter(owner=self.request.user)
+
+        return queryset.select_related("source")
+
+    def get_table_kwargs(self):
+        kwargs = super().get_table_kwargs()
+
+        if not (self.request.user.is_staff and self.request.GET.get("all")):
+            kwargs["exclude"] = ("owner",)
+
+        return kwargs
+
 
 class TransferJobListView(DicomJobListView):  # pylint: disable=too-many-ancestors
-    def get_queryset(self):
-        return self.model.objects.select_related("source", "destination").filter(
-            owner=self.request.user
-        )
+    def get_queryset(self) -> QuerySet:
+        return super().get_queryset().select_related("destination")
+
+
+class DicomJobCreateView(
+    LoginRequiredMixin,
+    PermissionRequiredMixin,
+    CreateView,
+):
+    model = None
+    form_class = None
+    template_name = None
+    permission_required = None
+
+    def get_form_kwargs(self) -> Dict[str, Any]:
+        kwargs = super().get_form_kwargs()
+        kwargs.update({"user": self.request.user})
+        return kwargs
 
 
 class DicomJobDeleteView(LoginRequiredMixin, OwnerRequiredMixin, DeleteView):
     model = None
     success_url = None
-    owner_accessor = "owner"
     success_message = "Job with ID %(id)d was deleted successfully"
 
     def delete(self, request, *args, **kwargs):
@@ -51,31 +121,10 @@ class DicomJobDeleteView(LoginRequiredMixin, OwnerRequiredMixin, DeleteView):
         return super().delete(request, *args, **kwargs)
 
 
-class DicomJobCancelView(
-    LoginRequiredMixin, OwnerRequiredMixin, SingleObjectMixin, View
-):
-    model = None
-    owner_accessor = "owner"
-    success_message = "Job with ID %(id)d was canceled"
-
-    def post(self, request, *args, **kwargs):  # pylint: disable=unused-argument
-        job = self.get_object()
-        if not job.is_cancelable:
-            raise SuspiciousOperation(
-                f"Job with ID {job.id} and status {job.get_status_display()} is not cancelable."
-            )
-
-        job.status = DicomJob.Status.CANCELING
-        job.save()
-        messages.success(request, self.success_message % job.__dict__)
-        return redirect(job)
-
-
 class DicomJobVerifyView(
     LoginRequiredMixin, OwnerRequiredMixin, SingleObjectMixin, View
 ):
     model = None
-    owner_accessor = "owner"
     success_message = "Job with ID %(id)d was verified"
 
     def post(self, request, *args, **kwargs):  # pylint: disable=unused-argument
@@ -87,7 +136,91 @@ class DicomJobVerifyView(
 
         job.status = DicomJob.Status.PENDING
         job.save()
+
         job.delay()
+
+        messages.success(request, self.success_message % job.__dict__)
+        return redirect(job)
+
+
+class DicomJobCancelView(
+    LoginRequiredMixin, OwnerRequiredMixin, SingleObjectMixin, View
+):
+    model = None
+    success_message = "Job with ID %(id)d was canceled"
+
+    def post(self, request, *args, **kwargs):  # pylint: disable=unused-argument
+        job = self.get_object()
+        if not job.is_cancelable:
+            raise SuspiciousOperation(
+                f"Job with ID {job.id} and status {job.get_status_display()} is not cancelable."
+            )
+
+        job.status = DicomJob.Status.CANCELING
+        job.save()
+
+        for dicom_task in job.tasks.filter(status=DicomTask.Status.PENDING):
+            app.control.revoke(dicom_task.celery_task_id)
+            dicom_task.status = DicomTask.Status.CANCELED
+            dicom_task.save()
+
+        messages.success(request, self.success_message % job.__dict__)
+        return redirect(job)
+
+
+class DicomJobResumeView(
+    LoginRequiredMixin, OwnerRequiredMixin, SingleObjectMixin, View
+):
+    model = None
+    success_message = "Job with ID %(id)d will be resumed"
+
+    def post(self, request, *args, **kwargs):  # pylint: disable=unused-argument
+        job = self.get_object()
+        if not job.is_resumable:
+            raise SuspiciousOperation(
+                f"Job with ID {job.id} and status {job.get_status_display()} is not resumable."
+            )
+
+        for task in job.tasks.filter(status=DicomTask.Status.CANCELED):
+            task.status = DicomTask.Status.PENDING
+            task.save()
+
+        job.status = DicomJob.Status.PENDING
+        job.save()
+
+        job.delay()
+
+        messages.success(request, self.success_message % job.__dict__)
+        return redirect(job)
+
+
+class DicomJobRetryView(
+    LoginRequiredMixin, OwnerRequiredMixin, SingleObjectMixin, View
+):
+    model = None
+    success_message = "Job with ID %(id)d will be retried"
+
+    def post(self, request, *args, **kwargs):  # pylint: disable=unused-argument
+        job = self.get_object()
+        if not job.is_retriable:
+            raise SuspiciousOperation(
+                f"Job with ID {job.id} and status {job.get_status_display()} is not retriable."
+            )
+
+        for task in job.tasks.filter(status=DicomTask.Status.FAILURE):
+            task.status = DicomTask.Status.PENDING
+            task.retries = 0
+            task.message = ""
+            task.log = ""
+            task.start = None
+            task.end = None
+            task.save()
+
+        job.status = DicomJob.Status.PENDING
+        job.save()
+
+        job.delay()
+
         messages.success(request, self.success_message % job.__dict__)
         return redirect(job)
 
@@ -97,7 +230,33 @@ class DicomTaskDetailView(LoginRequiredMixin, OwnerRequiredMixin, DetailView):
     job_url_name = None
     template_name = None
     context_object_name = "task"
-    owner_accessor = "owner"
+    owner_accessor = "job.owner"
+
+    def get_object(
+        self, queryset: Optional[models.query.QuerySet] = None
+    ) -> models.Model:
+        if queryset is None:
+            queryset = self.get_queryset()
+
+        job_id = self.kwargs.get("job_id")
+        task_id = self.kwargs.get("task_id")
+
+        if job_id is None or task_id is None:
+            raise AttributeError(
+                "Dicom task detail view %s must be called with a job_id "
+                "and a task_id in the URLconf." % self.__class__.__name__
+            )
+
+        queryset = queryset.filter(job_id=job_id, task_id=task_id)
+
+        try:
+            obj = queryset.get()
+        except queryset.model.DoesNotExist as err:
+            raise Http404(
+                "No %(verbose_name)s found matching the query"
+                % {"verbose_name": queryset.model._meta.verbose_name}
+            ) from err
+        return obj
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -125,98 +284,23 @@ class FlowerProxyView(UserPassesTestMixin, ProxyView):
         return re_path(r"^(?P<path>{}.*)$".format(cls.url_prefix), cls.as_view())
 
 
-class InlineFormSetCreateView(CreateView):
-    formset_class = None
-    formset_prefix = None
+class RabbitManagementProxyView(UserPassesTestMixin, ProxyView):
+    """A reverse proxy view to access the Rabbit Management admin tool.
 
-    def add_formset_form(self, prefix):
-        cp = self.request.POST.copy()
-        cp[f"{prefix}-TOTAL_FORMS"] = int(cp[f"{prefix}-TOTAL_FORMS"]) + 1
-        return cp
+    By using a reverse proxy we can use the Django authentication
+    to check for an logged in admin user.
+    Code from https://stackoverflow.com/a/61997024/166229
+    """
 
-    def delete_formset_form(self, idx_to_delete, prefix):
-        cp = self.request.POST.copy()
-        cp[f"{prefix}-TOTAL_FORMS"] = int(cp[f"{prefix}-TOTAL_FORMS"]) - 1
-        regex = prefix + r"-(\d+)-"
-        filtered = {}
-        for k, v in cp.items():
-            match = re.findall(regex, k)
-            if match:
-                idx = int(match[0])
-                if idx == idx_to_delete:
-                    continue
-                if idx > idx_to_delete:
-                    k = re.sub(regex, f"{prefix}-{idx-1}-", k)
-                filtered[k] = v
-            else:
-                filtered[k] = v
-        return filtered
+    upstream = "http://{}:{}".format(
+        settings.RABBIT_MANAGEMENT_HOST, settings.RABBIT_MANAGEMENT_PORT
+    )
+    url_prefix = "rabbit"
+    rewrite = ((r"^/{}$".format(url_prefix), r"/"),)
 
-    def clear_errors(self, form_or_formset):
-        # Hide all errors of a form or formset.
-        # Found only this hacky way.
-        # See https://stackoverflow.com/questions/64402527
-        # pylint: disable=protected-access
-        form_or_formset._errors = {}
-        if hasattr(form_or_formset, "forms"):
-            for form in form_or_formset.forms:
-                self.clear_errors(form)
+    def test_func(self):
+        return self.request.user.is_staff
 
-    def post(self, request, *args, **kwargs):
-        self.object = None  # pylint: disable=attribute-defined-outside-init
-
-        form = self.get_form()
-
-        if request.POST.get("add_formset_form"):
-            post_data = self.add_formset_form(self.formset_prefix)
-            formset = self.formset_class(post_data)  # pylint: disable=not-callable
-            return self.render_changed_formset(form, formset)
-
-        if request.POST.get("delete_formset_form"):
-            idx_to_delete = int(request.POST.get("delete_formset_form"))
-            post_data = self.delete_formset_form(idx_to_delete, self.formset_prefix)
-            formset = self.formset_class(post_data)  # pylint: disable=not-callable
-            return self.render_changed_formset(form, formset)
-
-        formset = self.formset_class(request.POST)  # pylint: disable=not-callable
-        if form.is_valid() and formset.is_valid():
-            return self.form_and_formset_valid(form, formset)
-
-        return self.form_or_formset_invalid(form, formset)
-
-    def render_changed_formset(self, form, formset):
-        self.clear_errors(form)
-        self.clear_errors(formset)
-        return self.form_or_formset_invalid(form, formset)
-
-    def form_invalid(self, form):
-        raise AttributeError(
-            "A 'InlineFormSetCreateView' does not have a 'form_invalid' attribute. "
-            "Use 'form_or_formset_invalid' instead."
-        )
-
-    def form_valid(self, form):
-        raise AttributeError(
-            "A 'InlineFormSetCreateView' does not have a 'form_valid' attribute. "
-            "Use 'form_and_formset_valid' instead."
-        )
-
-    def form_or_formset_invalid(self, form, formset):
-        return self.render_to_response(
-            self.get_context_data(form=form, formset=formset)
-        )
-
-    def form_and_formset_valid(self, form, formset):
-        response = super().form_valid(form)
-        formset.instance = self.object
-        for idx, formset_form in enumerate(formset.ordered_forms):
-            formset_form.instance.order = (
-                formset_form.cleaned_data.get(ORDERING_FIELD_NAME) or idx + 1
-            )
-        formset.save()
-        return response
-
-    def get_context_data(self, **kwargs):
-        if "formset" not in kwargs:
-            kwargs["formset"] = self.formset_class()  # pylint: disable=not-callable
-        return super().get_context_data(**kwargs)
+    @classmethod
+    def as_url(cls):
+        return re_path(r"^{}/(?P<path>.*)$".format(cls.url_prefix), cls.as_view())

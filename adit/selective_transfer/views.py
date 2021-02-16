@@ -1,6 +1,5 @@
+from typing import Any, Dict
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.contrib.auth.mixins import PermissionRequiredMixin
-from django.views.generic.edit import CreateView
 from django.views.generic import DetailView
 from django.http import HttpResponseBadRequest
 from django.urls import reverse_lazy
@@ -8,15 +7,17 @@ from django.conf import settings
 from django_tables2 import SingleTableMixin
 from adit.core.mixins import (
     OwnerRequiredMixin,
-    UrgentFormViewMixin,
     RelatedFilterMixin,
     PageSizeSelectMixin,
 )
 from adit.core.views import (
     TransferJobListView,
+    DicomJobCreateView,
     DicomJobDeleteView,
-    DicomJobCancelView,
     DicomJobVerifyView,
+    DicomJobCancelView,
+    DicomJobResumeView,
+    DicomJobRetryView,
     DicomTaskDetailView,
 )
 from .forms import SelectiveTransferJobForm
@@ -36,11 +37,8 @@ class SelectiveTransferJobListView(
 
 
 class SelectiveTransferJobCreateView(
-    LoginRequiredMixin,
-    PermissionRequiredMixin,
     SelectiveTransferJobCreateMixin,
-    UrgentFormViewMixin,
-    CreateView,
+    DicomJobCreateView,
 ):
     """A view class to render the selective transfer form.
 
@@ -48,9 +46,17 @@ class SelectiveTransferJobCreateView(
     job itself is created by using the REST API and an AJAX call.
     """
 
-    template_name = "selective_transfer/selective_transfer_job_form.html"
     form_class = SelectiveTransferJobForm
+    template_name = "selective_transfer/selective_transfer_job_form.html"
     permission_required = "selective_transfer.add_selectivetransferjob"
+
+    def get_form_kwargs(self) -> Dict[str, Any]:
+        kwargs = super().get_form_kwargs()
+
+        action = self.request.POST.get("action")
+        kwargs.update({"query_form": action == "query"})
+
+        return kwargs
 
     def form_invalid(self, form):
         error_message = "Please correct the form errors and search again."
@@ -98,7 +104,6 @@ class SelectiveTransferJobDetailView(
     PageSizeSelectMixin,
     DetailView,
 ):
-    owner_accessor = "owner"
     table_class = SelectiveTransferTaskTable
     filterset_class = SelectiveTransferTaskFilter
     model = SelectiveTransferJob
@@ -115,11 +120,19 @@ class SelectiveTransferJobDeleteView(DicomJobDeleteView):
     success_url = reverse_lazy("selective_transfer_job_list")
 
 
+class SelectiveTransferJobVerifyView(DicomJobVerifyView):
+    model = SelectiveTransferJob
+
+
 class SelectiveTransferJobCancelView(DicomJobCancelView):
     model = SelectiveTransferJob
 
 
-class SelectiveTransferJobVerifyView(DicomJobVerifyView):
+class SelectiveTransferJobResumeView(DicomJobResumeView):
+    model = SelectiveTransferJob
+
+
+class SelectiveTransferJobRetryView(DicomJobRetryView):
     model = SelectiveTransferJob
 
 

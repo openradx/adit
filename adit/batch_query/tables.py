@@ -1,5 +1,5 @@
 import django_tables2 as tables
-from adit.core.tables import DicomJobTable, BatchTaskTable
+from adit.core.tables import DicomJobTable, DicomTaskTable
 from .models import BatchQueryJob, BatchQueryTask, BatchQueryResult
 
 
@@ -8,14 +8,14 @@ class BatchQueryJobTable(DicomJobTable):
         model = BatchQueryJob
 
 
-class BatchQueryTaskTable(BatchTaskTable):
-    class Meta(BatchTaskTable.Meta):  # pylint: disable=too-few-public-methods
+class BatchQueryTaskTable(DicomTaskTable):
+    class Meta(DicomTaskTable.Meta):  # pylint: disable=too-few-public-methods
         model = BatchQueryTask
         empty_text = "No queries to show"
 
 
 class BatchQueryResultTable(tables.Table):
-    batch_id = tables.Column(accessor="query__batch_id", verbose_name="Batch ID")
+    task_id = tables.Column(accessor="query__task_id", verbose_name="Task ID")
     study_date_time = tables.DateTimeColumn(
         verbose_name="Study Date/Time", order_by=("study_date", "study_time")
     )
@@ -26,12 +26,12 @@ class BatchQueryResultTable(tables.Table):
         template_name = "django_tables2/bootstrap4.html"
         empty_text = "No results to show"
         fields = (
-            "batch_id",
+            "task_id",
+            "patient_id",
             "study_date_time",
             "study_description",
             "modalities",
             "image_count",
-            "accession_number",
         )
         attrs = {
             "id": "batch_query_result_table",

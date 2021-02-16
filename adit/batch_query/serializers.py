@@ -7,13 +7,15 @@ class BatchQueryTaskSerializer(BatchTaskSerializer):
     class Meta(BatchTaskSerializer.Meta):
         model = BatchQueryTask
         fields = [
-            "batch_id",
+            "task_id",
             "patient_id",
             "patient_name",
             "patient_birth_date",
+            "accession_number",
             "study_date_start",
             "study_date_end",
             "modalities",
+            "pseudonym",
         ]
 
     def __init__(self, instance=None, data=None, **kwargs):
@@ -29,7 +31,9 @@ class BatchQueryTaskSerializer(BatchTaskSerializer):
 
         if "modalities" in data:
             modalities = data["modalities"].split(",")
-            data["modalities"] = list(map(str.strip, modalities))
+            modalities = map(str.strip, modalities)
+            modalities = filter(len, modalities)
+            data["modalities"] = list(modalities)
 
         self.clean_date_string(data, "patient_birth_date")
         self.clean_date_string(data, "study_date_start")

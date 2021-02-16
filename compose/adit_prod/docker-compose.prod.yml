@@ -24,6 +24,8 @@ x-app: &default-app
         DJANGO_STATIC_ROOT: "/var/www/adit/static/"
         SSL_CERT_FILE: "/var/www/adit/ssl/cert.pem"
         SSL_KEY_FILE: "/var/www/adit/ssl/key.pem"
+        RABBIT_MANAGEMENT_HOST: "rabbit"
+        RABBIT_MANAGEMENT_PORT: "15672"
         FLOWER_HOST: "flower"
         FLOWER_PORT: "5555"
         SYSLOG_HOST: "syslog"
@@ -74,17 +76,21 @@ services:
         image: postgres:13.1
         expose:
             - "5432"
-            - "15672"
         env_file:
             - .env
         volumes:
             - postgres_data:/var/lib/postgresql/data
 
+    # RabbitMQ authentication can't be disabled. So when we try to log into
+    # the management console we have to use "guest" as username and password.
+    # The real authentication happens by ADIT itself, because the management
+    # console is behind a ProxyView.
     rabbit:
         restart: always
         image: rabbitmq:3.8-management
         expose:
             - "5672"
+            - "15672"
         volumes:
             - rabbit_data:/var/lib/rabbitmq
 

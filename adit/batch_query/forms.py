@@ -2,6 +2,7 @@ from io import StringIO
 from django import forms
 from django.db import transaction
 from django.core.exceptions import ValidationError
+from django.conf import settings
 from django.utils.safestring import mark_safe
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Submit
@@ -9,14 +10,14 @@ import cchardet as chardet
 from adit.core.forms import DicomNodeChoiceField
 from adit.core.models import DicomNode
 from adit.core.fields import RestrictedFileField
-from adit.core.utils.batch_parsers import parse_csv_file, ParsingError
+from adit.core.errors import BatchFileSizeError, BatchFileFormatError
 from .models import BatchQueryJob, BatchQueryTask
-from .serializers import BatchQueryTaskSerializer
+from .parsers import BatchQueryFileParser
 
 
 class BatchQueryJobForm(forms.ModelForm):
     source = DicomNodeChoiceField(True, DicomNode.NodeType.SERVER)
-    csv_file = RestrictedFileField(max_upload_size=5242880, label="CSV file")
+    batch_file = RestrictedFileField(max_upload_size=5242880, label="Batch file")
 
     class Meta:
         model = BatchQueryJob
@@ -25,69 +26,91 @@ class BatchQueryJobForm(forms.ModelForm):
             "urgent",
             "project_name",
             "project_description",
-            "csv_file",
+            "batch_file",
         )
         labels = {
             "urgent": "Start query urgently",
         }
         help_texts = {
             "urgent": ("Prioritize and start directly (without scheduling)."),
-            "csv_file": (
-                "The CSV file which contains the data for the queries. "
-                "See [Help] how to format the CSV file."
+            "batch_file": (
+                "The batch file which contains the data for the queries. "
+                "See [Help] for how to format this file."
             ),
         }
 
     def __init__(self, *args, **kwargs):
-        self.csv_error_details = None
+        self.batch_file_errors = None
         self.tasks = None
         self.save_tasks = None
 
-        urgent_option = kwargs.pop("urgent_option", False)
+        user = kwargs.pop("user")
 
         super().__init__(*args, **kwargs)
 
         self.fields["source"].widget.attrs["class"] = "custom-select"
 
-        if not urgent_option:
+        if not user.has_perm("batch_query.can_process_urgently"):
             del self.fields["urgent"]
+
+        self.fields["source"].queryset = self.fields["source"].queryset.order_by(
+            "-node_type", "name"
+        )
+
+        max_batch_size = settings.MAX_BATCH_QUERY_SIZE
+        if max_batch_size is not None:
+            self.fields[
+                "batch_file"
+            ].help_text = f"Maximum {max_batch_size} tasks per query job!"
 
         self.helper = FormHelper(self)
         self.helper.add_input(Submit("save", "Create Job"))
 
-    def clean_csv_file(self):
-        csv_file = self.cleaned_data["csv_file"]
-        rawdata = csv_file.read()
+    def clean_batch_file(self):
+        batch_file = self.cleaned_data["batch_file"]
+        rawdata = batch_file.read()
         encoding = chardet.detect(rawdata)["encoding"]
-        fp = StringIO(rawdata.decode(encoding))
+
+        if not encoding:
+            raise ValidationError("Invalid batch file (unknown encoding).")
+
+        file = StringIO(rawdata.decode(encoding))
+        parser = BatchQueryFileParser(
+            {
+                "task_id": "TaskID",
+                "patient_id": "PatientID",
+                "patient_name": "PatientName",
+                "patient_birth_date": "PatientBirthDate",
+                "accession_number": "AccessionNumber",
+                "study_date_start": "From",
+                "study_date_end": "Until",
+                "modalities": "Modality",
+                "pseudonym": "Pseudonym",
+            },
+        )
+
+        max_batch_size = settings.MAX_BATCH_QUERY_SIZE
 
         try:
-            self.tasks = parse_csv_file(
-                BatchQueryTaskSerializer,
-                {
-                    "batch_id": "BatchID",
-                    "patient_id": "PatientID",
-                    "patient_name": "PatientName",
-                    "patient_birth_date": "PatientBirthDate",
-                    "accession_number": "AccessionNumber",
-                    "study_date_start": "From",
-                    "study_date_end": "Until",
-                    "modalities": "Modality",
-                },
-                fp,
-            )
-        except ParsingError as err:
-            self.csv_error_details = err
+            self.tasks = parser.parse(file, max_batch_size)
+
+        except BatchFileSizeError as err:
+            raise ValidationError(
+                f"Too many batch tasks (max. {max_batch_size} tasks)"
+            ) from err
+
+        except BatchFileFormatError as err:
+            self.batch_file_errors = err
             raise ValidationError(
                 mark_safe(
-                    "Invalid format of CSV file. "
-                    '<a href="#" data-toggle="modal" data-target="#csv_error_details_modal">'
+                    "Invalid batch file. "
+                    '<a href="#" data-toggle="modal" data-target="#batch_file_errors_modal">'
                     "[View details]"
                     "</a>"
                 )
             ) from err
 
-        return csv_file
+        return batch_file
 
     def _save_tasks(self, job):
         for task in self.tasks:

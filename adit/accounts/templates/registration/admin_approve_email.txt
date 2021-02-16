@@ -1,4 +1,4 @@
-{% load i18n %}
+{% load blocktrans from i18n %}
 {% blocktrans %}
     The user ({{ user }}) has asked to register an account at ADIT.
     To approve the account, please click the following link.

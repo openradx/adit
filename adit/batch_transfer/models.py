@@ -1,6 +1,6 @@
 from django.db import models
 from django.urls import reverse
-from adit.core.models import AppSettings, TransferJob, BatchTask, TransferTask
+from adit.core.models import AppSettings, TransferJob, TransferTask
 
 
 class BatchTransferSettings(AppSettings):
@@ -19,13 +19,10 @@ class BatchTransferJob(TransferJob):
         process_transfer_job.delay(self.id)
 
     def get_absolute_url(self):
-        return reverse("batch_transfer_job_detail", args=[str(self.id)])
+        return reverse("batch_transfer_job_detail", args=[self.id])
 
 
-class BatchTransferTask(BatchTask, TransferTask):
-    class Meta(BatchTask.Meta, TransferTask.Meta):
-        unique_together = ("batch_id", "job")
-
+class BatchTransferTask(TransferTask):
     job = models.ForeignKey(
         BatchTransferJob,
         on_delete=models.CASCADE,
@@ -33,4 +30,4 @@ class BatchTransferTask(BatchTask, TransferTask):
     )
 
     def get_absolute_url(self):
-        return reverse("batch_transfer_task_detail", args=[str(self.id)])
+        return reverse("batch_transfer_task_detail", args=[self.job.id, self.task_id])

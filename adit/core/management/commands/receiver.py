@@ -18,6 +18,10 @@ class Command(ServerCommand):
     default_addr = ""
     default_port = 11112
 
+    def __init__(self, *args, **kwargs):
+        self.assoc_server = None
+        super().__init__(*args, **kwargs)
+
     def run_server(self, **options):
         if settings.DICOM_DEBUG_LOGGER:
             debug_logger()
@@ -33,7 +37,13 @@ class Command(ServerCommand):
             (evt.EVT_C_STORE, handle_store),
         ]
 
-        ae.start_server((self.addr, self.port), evt_handlers=handlers)
+        self.assoc_server = ae.start_server(
+            (self.addr, self.port), evt_handlers=handlers, block=False
+        )
+        self.assoc_server.serve_forever()
+
+    def on_shutdown(self):
+        self.assoc_server.shutdown()
 
 
 def on_connect(event):

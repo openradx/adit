@@ -1,6 +1,6 @@
 from os import environ
 from django.core.management.base import BaseCommand
-from django.contrib.auth.models import Group
+from django.contrib.auth.models import Permission, Group
 from faker import Faker
 import factory
 
@@ -25,10 +25,10 @@ from adit.batch_query.factories import (
 )
 
 
+USER_COUNT = 3
 SELECTIVE_TRANSFER_JOB_COUNT = 5
 BATCH_TRANSFER_JOB_COUNT = 3
 BATCH_QUERY_JOB_COUNT = 2
-CREATE_JOBS_FOR_ADMIN_ONLY = True
 
 fake = Faker()
 
@@ -46,12 +46,27 @@ def create_users():
 
     batch_transfer_group = Group.objects.get(name="batch_transfer_group")
     selective_transfer_group = Group.objects.get(name="selective_transfer_group")
+    continuous_transfer_group = Group.objects.get(name="continuous_transfer_group")
 
     users = [admin]
-    for _ in range(10):
+
+    urgent_permissions = Permission.objects.filter(
+        codename="can_process_urgently",
+    )
+    unpseudonymized_permissions = Permission.objects.filter(
+        codename="can_transfer_unpseudonymized",
+    )
+
+    for i in range(USER_COUNT):
         user = UserFactory()
         user.groups.add(batch_transfer_group)
         user.groups.add(selective_transfer_group)
+        user.groups.add(continuous_transfer_group)
+
+        if i > 0:
+            user.user_permissions.add(*urgent_permissions)
+            user.user_permissions.add(*unpseudonymized_permissions)
+
         users.append(user)
 
     return users
@@ -120,8 +135,8 @@ def create_selective_transfer_job(users, servers, folders):
         owner=factory.Faker("random_element", elements=users),
     )
 
-    for _ in range(fake.random_int(min=1, max=120)):
-        SelectiveTransferTaskFactory(job=job)
+    for task_id in range(fake.random_int(min=1, max=100)):
+        SelectiveTransferTaskFactory(job=job, task_id=task_id)
 
 
 def create_batch_transfer_job(users, servers, folders):
@@ -133,8 +148,8 @@ def create_batch_transfer_job(users, servers, folders):
         owner=factory.Faker("random_element", elements=users),
     )
 
-    for batch_id in range(fake.random_int(min=1, max=100)):
-        BatchTransferTaskFactory(job=job, batch_id=batch_id)
+    for task_id in range(fake.random_int(min=1, max=100)):
+        BatchTransferTaskFactory(job=job, task_id=task_id)
 
     return job
 
@@ -144,8 +159,8 @@ def create_batch_query_job(users):
         owner=factory.Faker("random_element", elements=users),
     )
 
-    for batch_id in range(fake.random_int(min=1, max=100)):
-        query = BatchQueryTaskFactory(job=job, batch_id=batch_id)
+    for task_id in range(fake.random_int(min=1, max=100)):
+        query = BatchQueryTaskFactory(job=job, task_id=task_id)
 
         for _ in range(fake.random_int(min=1, max=3)):
             BatchQueryResultFactory(job=job, query=query)
@@ -168,8 +183,5 @@ class Command(BaseCommand):
             users = create_users()
             servers = create_server_nodes()
             folders = create_folder_nodes()
-
-            if CREATE_JOBS_FOR_ADMIN_ONLY:
-                users = [users[0]]
 
             create_jobs(users, servers, folders)

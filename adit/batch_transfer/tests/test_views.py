@@ -11,7 +11,7 @@ from adit.core.factories import DicomServerFactory
 from ..models import BatchTransferJob
 
 csv_data = b"""\
-BatchID;PatientID;StudyInstanceUID;Pseudonym
+TaskID;PatientID;StudyInstanceUID;Pseudonym
 1;1001;1.2.840.113845.11.1000000001951524609.20200705182951.2689481;WSOHMP4N
 2;1002;1.2.840.113845.11.1000000001951524609.20200705170836.2689469;C2XJQ2AR
 3;1003;1.2.840.113845.11.1000000001951524609.20200705172608.2689471;KRS8CZ3S
@@ -27,7 +27,7 @@ def form_data(db):
         "project_name": "Apollo project",
         "project_description": "Fly to the moon",
         "ethics_committee_approval": "on",
-        "csv_file": SimpleUploadedFile(
+        "batch_file": SimpleUploadedFile(
             name="sample_sheet.csv", content=csv_data, content_type="text/csv"
         ),
     }
@@ -71,26 +71,26 @@ def test_logged_in_user_with_permission_can_access_form(client, user_with_permis
 
 @patch("adit.batch_transfer.tasks.process_transfer_job.delay")
 def test_batch_job_created_and_enqueued_with_auto_verify(
-    mock_delay, client, user_with_permission, settings, form_data
+    delay_mock, client, user_with_permission, settings, form_data
 ):
     client.force_login(user_with_permission)
     settings.BATCH_TRANSFER_UNVERIFIED = True
     client.post(reverse("batch_transfer_job_create"), form_data)
     job = BatchTransferJob.objects.first()
     assert job.tasks.count() == 3
-    mock_delay.assert_called_once_with(job.id)
+    delay_mock.assert_called_once_with(job.id)
 
 
 @patch("adit.batch_transfer.tasks.process_transfer_job.delay")
 def test_batch_job_created_and_not_enqueued_without_auto_verify(
-    mock_delay, client, user_with_permission, settings, form_data
+    delay_mock, client, user_with_permission, settings, form_data
 ):
     client.force_login(user_with_permission)
     settings.BATCH_TRANSFER_UNVERIFIED = False
     client.post(reverse("batch_transfer_job_create"), form_data)
     job = BatchTransferJob.objects.first()
     assert job.tasks.count() == 3
-    mock_delay.assert_not_called()
+    delay_mock.assert_not_called()
 
 
 def test_job_cant_be_created_with_missing_fields(

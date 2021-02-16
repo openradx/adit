@@ -76,16 +76,10 @@ class DicomTaskFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = None
 
+    task_id = factory.Sequence(int)
     status = factory.Faker("random_element", elements=task_status_keys)
     message = factory.Faker("sentence")
     log = factory.Faker("paragraph")
-
-
-class BatchTaskFactory(DicomTaskFactory):
-    class Meta:
-        model = None
-
-    batch_id = factory.Sequence(int)
 
 
 def generate_uids():

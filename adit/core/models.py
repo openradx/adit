@@ -13,6 +13,7 @@ from .validators import (
 
 class CoreSettings(models.Model):
     maintenance_mode = models.BooleanField(default=False)
+    announcement = models.TextField(blank=True)
 
     class Meta:
         verbose_name_plural = "Core settings"
@@ -110,12 +111,12 @@ class DicomFolder(DicomNode):
     quota = models.PositiveIntegerField(
         null=True,
         blank=True,
-        help_text="The disk quota of this folder in MB.",
+        help_text="The disk quota of this folder in GB.",
     )
     warn_size = models.PositiveIntegerField(
         null=True,
         blank=True,
-        help_text="When to warn the admins by Email (used space in MB).",
+        help_text="When to warn the admins by Email (used space in GB).",
     )
 
 
@@ -136,7 +137,7 @@ class DicomJob(models.Model):
         permissions = [
             (
                 "can_process_urgently",
-                "Can process urgently (prioritized and without scheduling).",
+                "Can process urgently",
             )
         ]
 
@@ -160,12 +161,20 @@ class DicomJob(models.Model):
         return self.status in (self.Status.UNVERIFIED, self.Status.PENDING)
 
     @property
-    def is_cancelable(self):
-        return self.status in (self.Status.IN_PROGRESS,)
-
-    @property
     def is_verified(self):
         return self.status != self.Status.UNVERIFIED
+
+    @property
+    def is_cancelable(self):
+        return self.status == self.Status.IN_PROGRESS
+
+    @property
+    def is_resumable(self):
+        return self.status == self.Status.CANCELED
+
+    @property
+    def is_retriable(self):
+        return self.status == self.Status.FAILURE
 
     @property
     def processed_tasks(self):
@@ -182,6 +191,12 @@ class DicomJob(models.Model):
 class TransferJob(DicomJob):
     class Meta(DicomJob.Meta):
         abstract = True
+        permissions = DicomJob.Meta.permissions + [
+            (
+                "can_transfer_unpseudonymized",
+                "Can transfer unpseudonymized",
+            )
+        ]
 
     destination = models.ForeignKey(
         DicomNode, related_name="+", on_delete=models.PROTECT
@@ -206,14 +221,18 @@ class DicomTask(models.Model):
 
     class Meta:
         abstract = True
-        ordering = ("id",)
+        ordering = ("task_id",)
+        unique_together = ("job", "task_id")
 
     job = None
+    task_id = models.PositiveIntegerField()
+    celery_task_id = models.CharField(max_length=255)
     status = models.CharField(
         max_length=2,
         choices=Status.choices,
         default=Status.PENDING,
     )
+    retries = models.PositiveSmallIntegerField(default=0)
     message = models.TextField(blank=True, default="")
     log = models.TextField(blank=True, default="")
     created = models.DateTimeField(auto_now_add=True)
@@ -221,7 +240,9 @@ class DicomTask(models.Model):
     end = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):
-        return f"{self.__class__.__name__} [Task ID {self.id}, Job ID {self.job.id}]"
+        return (
+            f"{self.__class__.__name__} [Job ID {self.job.id}, Task ID {self.task_id}]"
+        )
 
 
 class TransferTask(DicomTask):
@@ -256,20 +277,5 @@ class TransferTask(DicomTask):
             f"{self.__class__.__name__} "
             f"[Source {self.job.source.name}, "
             f"Destination {self.job.destination}, "
-            f"Task ID {self.id}, Job ID {self.job.id}]"
-        )
-
-
-class BatchTask(models.Model):
-    class Meta:
-        abstract = True
-        ordering = ("batch_id",)
-
-    job = None
-    batch_id = models.PositiveIntegerField()
-
-    def __str__(self):
-        return (
-            f"{self.__class__.__name__} "
-            f"[Batch ID {self.batch_id}, Task ID {self.id}, Job ID {self.job.id}]"
+            f"Job ID {self.job.id}, Task ID {self.task_id}]"
         )

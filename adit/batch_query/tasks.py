@@ -31,14 +31,20 @@ def process_query_job(query_job_id: int):
     if query_job.urgent:
         priority = settings.BATCH_QUERY_URGENT_PRIORITY
 
+    query_tasks = query_job.tasks.filter(status=BatchQueryTask.Status.PENDING)
+
     process_query_tasks = [
         process_query_task.s(query_task.id).set(priority=priority)
-        for query_task in query_job.tasks.all()
+        for query_task in query_tasks
     ]
 
-    chord(process_query_tasks)(
+    result = chord(process_query_tasks)(
         on_job_finished.s(query_job.id).on_error(on_job_failed.s(job_id=query_job.id))
     )
+
+    for query_task, celery_task in zip(query_tasks, result.parent.results):
+        query_task.celery_task_id = celery_task.id
+        query_task.save()
 
 
 @shared_task(bind=True)

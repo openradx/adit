@@ -1,20 +1,21 @@
-from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
-from django.views.generic.edit import CreateView
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.generic import TemplateView, DetailView
 from django.conf import settings
 from django.urls import reverse_lazy
 from django_tables2 import SingleTableMixin
 from adit.core.mixins import (
     OwnerRequiredMixin,
-    UrgentFormViewMixin,
     RelatedFilterMixin,
     PageSizeSelectMixin,
 )
 from adit.core.views import (
     TransferJobListView,
+    DicomJobCreateView,
     DicomJobDeleteView,
-    DicomJobCancelView,
     DicomJobVerifyView,
+    DicomJobCancelView,
+    DicomJobResumeView,
+    DicomJobRetryView,
     DicomTaskDetailView,
 )
 from .models import BatchTransferSettings, BatchTransferJob, BatchTransferTask
@@ -32,12 +33,7 @@ class BatchTransferJobListView(
     template_name = "batch_transfer/batch_transfer_job_list.html"
 
 
-class BatchTransferJobCreateView(
-    LoginRequiredMixin,
-    PermissionRequiredMixin,
-    UrgentFormViewMixin,
-    CreateView,
-):
+class BatchTransferJobCreateView(DicomJobCreateView):
     model = BatchTransferJob
     form_class = BatchTransferJobForm
     template_name = "batch_transfer/batch_transfer_job_form.html"
@@ -81,7 +77,6 @@ class BatchTransferJobDetailView(
     PageSizeSelectMixin,
     DetailView,
 ):
-    owner_accessor = "owner"
     table_class = BatchTransferTaskTable
     filterset_class = BatchTransferTaskFilter
     model = BatchTransferJob
@@ -98,11 +93,19 @@ class BatchTransferJobDeleteView(DicomJobDeleteView):
     success_url = reverse_lazy("batch_transfer_job_list")
 
 
+class BatchTransferJobVerifyView(DicomJobVerifyView):
+    model = BatchTransferJob
+
+
 class BatchTransferJobCancelView(DicomJobCancelView):
     model = BatchTransferJob
 
 
-class BatchTransferJobVerifyView(DicomJobVerifyView):
+class BatchTransferJobResumeView(DicomJobResumeView):
+    model = BatchTransferJob
+
+
+class BatchTransferJobRetryView(DicomJobRetryView):
     model = BatchTransferJob
 
 

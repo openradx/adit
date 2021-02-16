@@ -15,6 +15,9 @@ app = Celery("adit")
 #   should have a `CELERY_` prefix.
 app.config_from_object("django.conf:settings", namespace="CELERY")
 
+# If priority queues do not work this might be another option, see
+# https://stackoverflow.com/a/47980598/166229
+# app.conf.task_queue_max_priority = 10
 
 from celery.signals import setup_logging  # pylint: disable=wrong-import-position
 

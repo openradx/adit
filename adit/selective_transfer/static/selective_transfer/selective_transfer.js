@@ -102,8 +102,10 @@ function selectiveTransferForm() {
             }
 
             if ("urgent" in cookie) {
-                const urgent = this.$form.find("[name=urgent]")[0];
-                urgent.checked = cookie.urgent;
+                const urgentEl = this.$form.find("[name=urgent]")[0];
+                if (urgentEl) {
+                    urgentEl.checked = cookie.urgent;
+                }
             }
         },
         submitQuery: function () {
@@ -137,7 +139,7 @@ function selectiveTransferForm() {
             );
         },
         handleMessage: function (msg) {
-            console.debug("Received message:", msg);
+            //console.debug("Received message:", msg);
 
             this.queryInProgress = false;
             this.transferInProgress = false;

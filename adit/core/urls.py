@@ -1,13 +1,28 @@
 from django.urls import path
-from django.views.generic import TemplateView
-from .views import FlowerProxyView
+from .views import (
+    sandbox,
+    admin_section,
+    HomeView,
+    FlowerProxyView,
+    RabbitManagementProxyView,
+)
 
 urlpatterns = [
     path(
+        "sandbox/",
+        sandbox,
+        name="sandbox",
+    ),
+    path(
         "admin-section/",
-        TemplateView.as_view(template_name="core/admin_section.html"),
+        admin_section,
         name="admin_section",
     ),
-    path("", TemplateView.as_view(template_name="core/home.html"), name="home"),
+    path(
+        "",
+        HomeView.as_view(),
+        name="home",
+    ),
     FlowerProxyView.as_url(),
+    RabbitManagementProxyView.as_url(),
 ]

@@ -1,5 +1,7 @@
 import re
 from django import forms
+from django.core.exceptions import ValidationError
+from django.utils.translation import gettext_lazy as _
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Layout, Field, Row, Column, Div
 from crispy_forms.bootstrap import StrictButton
@@ -56,7 +58,7 @@ class SelectiveTransferJobForm(forms.ModelForm):
     study_date = forms.DateField(required=False)
     modality = forms.CharField(required=False, max_length=16)
     accession_number = forms.CharField(
-        required=False, max_length=16, label="Accession #"
+        required=False, max_length=32, label="Accession #"
     )
 
     class Meta:
@@ -88,12 +90,20 @@ class SelectiveTransferJobForm(forms.ModelForm):
         }
 
     def __init__(self, *args, **kwargs):
-        urgent_option = kwargs.pop("urgent_option", False)
+        self.user = kwargs.pop("user")
+        self.query_form = kwargs.pop("query_form")
 
         super().__init__(*args, **kwargs)
 
-        if not urgent_option:
+        if not self.user.has_perm("selective_transfer.can_process_urgently"):
             del self.fields["urgent"]
+
+        self.fields["source"].queryset = self.fields["source"].queryset.order_by(
+            "-node_type", "name"
+        )
+        self.fields["destination"].queryset = self.fields[
+            "destination"
+        ].queryset.order_by("-node_type", "name")
 
         self.helper = FormHelper(self)
         self.helper.form_tag = False
@@ -159,6 +169,18 @@ class SelectiveTransferJobForm(forms.ModelForm):
             ),
         )
 
+    def clean_pseudonym(self):
+        pseudonym = self.cleaned_data["pseudonym"]
+        if not self.query_form:
+            # We only validate if a pseudonym must be set if the user starts
+            # to transfer and not when just querying for studies
+            can_transfer_unpseudonymized = self.user.has_perm(
+                "selective_transfer.can_transfer_unpseudonymized"
+            )
+            if not pseudonym and not can_transfer_unpseudonymized:
+                raise ValidationError(_("This field is required."))
+        return pseudonym
+
     def clean_archive_password(self):
         archive_password = self.cleaned_data["archive_password"]
         destination = self.cleaned_data.get("destination")
@@ -168,7 +190,7 @@ class SelectiveTransferJobForm(forms.ModelForm):
 
     def clean_patient_name(self):
         patient_name = self.cleaned_data["patient_name"]
-        return person_name_to_dicom(patient_name)
+        return person_name_to_dicom(patient_name, add_wildcards=True)
 
     def clean_modality(self):
         modality = self.cleaned_data["modality"]

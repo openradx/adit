@@ -29,23 +29,29 @@ def process_transfer_job(transfer_job_id: int):
     if transfer_job.urgent:
         priority = settings.BATCH_TRANSFER_URGENT_PRIORITY
 
+    transfer_tasks = transfer_job.tasks.filter(status=BatchTransferTask.Status.PENDING)
+
     process_transfer_tasks = [
         process_transfer_task.s(transfer_task.id).set(priority=priority)
-        for transfer_task in transfer_job.tasks.all()
+        for transfer_task in transfer_tasks
     ]
 
-    chord(process_transfer_tasks)(
+    result = chord(process_transfer_tasks)(
         on_job_finished.s(transfer_job.id).on_error(
             on_job_failed.s(job_id=transfer_job.id)
         )
     )
 
+    for transfer_task, celery_task in zip(transfer_tasks, result.parent.results):
+        transfer_task.celery_task_id = celery_task.id
+        transfer_task.save()
+
 
 @shared_task(bind=True)
 def process_transfer_task(self: CeleryTask, transfer_task_id: int):
     transfer_task = BatchTransferTask.objects.get(id=transfer_task_id)
-    prepare_dicom_task(transfer_task, BatchTransferSettings.get(), self)
-    return execute_transfer(transfer_task)
+    prepare_dicom_task(transfer_task, BatchTransferSettings.get(), celery_task=self)
+    return execute_transfer(transfer_task, celery_task=self)
 
 
 @shared_task(ignore_result=True)
