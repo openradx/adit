@@ -297,16 +297,16 @@ CELERY_RESULT_BACKEND = REDIS_URL
 CELERY_WORKER_HIJACK_ROOT_LOGGER = False
 CELERY_TASK_DEFAULT_QUEUE = "default_queue"
 CELERY_TASK_ROUTES = {
-    "adit.selective_transfer.tasks.process_transfer_task": {
+    "adit.selective_transfer.tasks.ProcessSelectiveTransferTask": {
         "queue": "dicom_task_queue",
     },
-    "adit.batch_query.tasks.process_query_task": {
+    "adit.batch_query.tasks.ProcessBatchQueryTask": {
         "queue": "dicom_task_queue",
     },
-    "adit.batch_transfer.tasks.process_transfer_task": {
+    "adit.batch_transfer.tasks.ProcessBatchTransferTask": {
         "queue": "dicom_task_queue",
     },
-    "adit.continuous_transfer.tasks.process_transfer_task": {
+    "adit.continuous_transfer.tasks.ProcessContinuousTransferTask": {
         "queue": "dicom_task_queue",
     },
 }

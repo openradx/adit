@@ -14,9 +14,9 @@ class BatchTransferJob(TransferJob):
 
     def delay(self):
         # pylint: disable=import-outside-toplevel
-        from .tasks import process_transfer_job
+        from .tasks import process_batch_transfer_job
 
-        process_transfer_job.delay(self.id)
+        process_batch_transfer_job.delay(self.id)
 
     def get_absolute_url(self):
         return reverse("batch_transfer_job_detail", args=[self.id])

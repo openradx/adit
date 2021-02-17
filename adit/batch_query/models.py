@@ -22,9 +22,9 @@ class BatchQueryJob(DicomJob):
 
     def delay(self):
         # pylint: disable=import-outside-toplevel
-        from .tasks import process_query_job
+        from .tasks import process_batch_query_job
 
-        process_query_job(self.id)
+        process_batch_query_job.delay(self.id)
 
     def get_absolute_url(self):
         return reverse("batch_query_job_detail", args=[str(self.id)])

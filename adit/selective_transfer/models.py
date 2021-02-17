@@ -11,9 +11,9 @@ class SelectiveTransferSettings(AppSettings):
 class SelectiveTransferJob(TransferJob):
     def delay(self):
         # pylint: disable=import-outside-toplevel
-        from .tasks import process_transfer_job
+        from .tasks import process_selective_transfer_job
 
-        process_transfer_job.delay(self.id)
+        process_selective_transfer_job.delay(self.id)
 
     def get_absolute_url(self):
         return reverse("selective_transfer_job_detail", args=[self.id])

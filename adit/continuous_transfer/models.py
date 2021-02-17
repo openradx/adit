@@ -18,9 +18,9 @@ class ContinuousTransferJob(TransferJob):
 
     def delay(self):
         # pylint: disable=import-outside-toplevel
-        from .tasks import process_transfer_job
+        from .tasks import process_continuous_transfer_job
 
-        process_transfer_job.delay(self.id)
+        process_continuous_transfer_job.delay(self.id)
 
     def get_absolute_url(self):
         return reverse("continuous_transfer_job_detail", args=[self.id])
