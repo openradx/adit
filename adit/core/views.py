@@ -21,7 +21,7 @@ from django.conf import settings
 from django_tables2 import SingleTableMixin
 from django_filters.views import FilterView
 from revproxy.views import ProxyView
-from ..celery import app
+from ..celery import app as celery_app
 from .site import job_stats_collectors
 from .models import CoreSettings, DicomJob, DicomTask
 from .mixins import OwnerRequiredMixin, PageSizeSelectMixin
@@ -160,7 +160,7 @@ class DicomJobCancelView(
         job.save()
 
         for dicom_task in job.tasks.filter(status=DicomTask.Status.PENDING):
-            app.control.revoke(dicom_task.celery_task_id)
+            celery_app.control.revoke(dicom_task.celery_task_id)
             dicom_task.status = DicomTask.Status.CANCELED
             dicom_task.save()
 

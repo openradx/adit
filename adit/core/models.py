@@ -166,7 +166,7 @@ class DicomJob(models.Model):
 
     @property
     def is_cancelable(self):
-        return self.status == self.Status.IN_PROGRESS
+        return self.status in [self.Status.PENDING, self.Status.IN_PROGRESS]
 
     @property
     def is_resumable(self):
