@@ -115,6 +115,10 @@ class DicomJobDeleteView(LoginRequiredMixin, OwnerRequiredMixin, DeleteView):
                 f"Job with ID {job.id} and status {job.get_status_display()} is not deletable."
             )
 
+        for dicom_task in job.tasks.all():
+            if dicom_task.celery_task_id:
+                celery_app.control.revoke(dicom_task.celery_task_id)
+
         # As SuccessMessageMixin does not work in DeleteView we have to do
         # it manually (https://code.djangoproject.com/ticket/21936)
         messages.success(request, self.success_message % job.__dict__)
@@ -160,7 +164,8 @@ class DicomJobCancelView(
         job.save()
 
         for dicom_task in job.tasks.filter(status=DicomTask.Status.PENDING):
-            celery_app.control.revoke(dicom_task.celery_task_id)
+            if dicom_task.celery_task_id:
+                celery_app.control.revoke(dicom_task.celery_task_id)
             dicom_task.status = DicomTask.Status.CANCELED
             dicom_task.save()
 

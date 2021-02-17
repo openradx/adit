@@ -158,7 +158,11 @@ class DicomJob(models.Model):
 
     @property
     def is_deletable(self):
-        return self.status in (self.Status.UNVERIFIED, self.Status.PENDING)
+        non_pending_tasks = self.tasks.exclude(status=DicomTask.Status.PENDING)
+        return (
+            self.status in [self.Status.UNVERIFIED, self.Status.PENDING]
+            and non_pending_tasks.count() == 0
+        )
 
     @property
     def is_verified(self):
