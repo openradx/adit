@@ -22,7 +22,7 @@ class ProcessContinuousTransferTask(ProcessDicomTask):
     dicom_task_class = ContinuousTransferTask
     app_settings_class = ContinuousTransferSettings
 
-    def process_task(self, dicom_task):
+    def handle_dicom_task(self, dicom_task):
         raise NotImplementedError()
 
 

@@ -21,7 +21,7 @@ class ProcessBatchQueryTask(ProcessDicomTask):
     dicom_task_class = BatchQueryTask
     app_settings_class = BatchQuerySettings
 
-    def process_task(self, dicom_task):
+    def handle_dicom_task(self, dicom_task):
         return execute_query(dicom_task)
 
 

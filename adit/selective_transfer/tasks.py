@@ -21,7 +21,7 @@ class ProcessSelectiveTransferTask(ProcessDicomTask):
     dicom_task_class = SelectiveTransferTask
     app_settings_class = SelectiveTransferSettings
 
-    def process_task(self, dicom_task):
+    def handle_dicom_task(self, dicom_task):
         return execute_transfer(dicom_task, celery_task=self)
 
 

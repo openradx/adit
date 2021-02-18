@@ -75,6 +75,7 @@ class ProcessDicomJob(CeleryTask):
             )
         )
 
+        # Save Celery task IDs to dicom tasks (for revoking them if necessary)
         for query_task, celery_task in zip(pending_dicom_tasks, result.parent.results):
             query_task.celery_task_id = celery_task.id
             query_task.save()
@@ -129,10 +130,10 @@ class ProcessDicomTask(CeleryTask):
             dicom_job.start = timezone.now()
             dicom_job.save()
 
-        return self.process_task(dicom_task)
+        return self.handle_dicom_task(dicom_task)
 
-    def process_task(self, dicom_task):
-        raise NotImplementedError("Subclasses must define the process_task method.")
+    def handle_dicom_task(self, dicom_task):
+        raise NotImplementedError("Subclasses must implement this method.")
 
 
 class HandleFinishedDicomJob(CeleryTask):
