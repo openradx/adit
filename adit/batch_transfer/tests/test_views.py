@@ -69,7 +69,7 @@ def test_logged_in_user_with_permission_can_access_form(client, user_with_permis
     assertTemplateUsed(response, "batch_transfer/batch_transfer_job_form.html")
 
 
-@patch("adit.batch_transfer.tasks.process_transfer_job.delay")
+@patch("adit.batch_transfer.tasks.process_batch_transfer_job.delay")
 def test_batch_job_created_and_enqueued_with_auto_verify(
     delay_mock, client, user_with_permission, settings, form_data
 ):
@@ -81,7 +81,7 @@ def test_batch_job_created_and_enqueued_with_auto_verify(
     delay_mock.assert_called_once_with(job.id)
 
 
-@patch("adit.batch_transfer.tasks.process_transfer_job.delay")
+@patch("adit.batch_transfer.tasks.process_batch_transfer_job.delay")
 def test_batch_job_created_and_not_enqueued_without_auto_verify(
     delay_mock, client, user_with_permission, settings, form_data
 ):
