@@ -34,6 +34,7 @@ Downloading data from a DICOM server can done by using a C-GET or C-MOVE operati
 
 # TODO list
 
+-   Store all uploaded files
 -   split urgent to urgent and prioritize
 -   move or get rid of hijack_logger and store_log_in_task in task_utils
 -   pull celery_task stuff out of transfer_utils

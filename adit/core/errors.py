@@ -8,7 +8,7 @@ class RetriableTaskError(Exception):
         if long_delay:
             self.delay = timedelta(hours=24)
         else:
-            self.delay = timedelta(minutes=10)
+            self.delay = timedelta(minutes=15)
 
         super().__init__(message)
 
