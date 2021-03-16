@@ -349,7 +349,13 @@ def _modify_dataset(
     """Optionally pseudonymize an incoming dataset with the given pseudonym
     and add the trial ID and name to the DICOM header if specified."""
     if pseudonym:
+        # All dates get pseudonymized, but we want to retain the study date.
+        study_date = ds.StudyDate
+
         anonymizer.anonymize(ds)
+
+        ds.StudyDate = study_date
+
         ds.PatientID = pseudonym
         ds.PatientName = pseudonym
 
