@@ -142,3 +142,6 @@ dump.rdb
 
 # SQLite databases
 *.db
+
+#PyCharm
+.idea/
