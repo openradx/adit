@@ -365,6 +365,9 @@ def _modify_dataset(
     if trial_protocol_name:
         ds.ClinicalTrialProtocolName = trial_protocol_name
 
+    if pseudonym and trial_protocol_id:
+        session_id = f"{ds.StudyDate}-{ds.StudyTime}-{ds.ModalitiesinStudy}"
+        ds.PatientComments = f"Project:{trial_protocol_id} Subject:{pseudonym} Session:{pseudonym}_{session_id}"
 
 def _create_archive(
     archive_path: Path, job: TransferJob, archive_password: str
