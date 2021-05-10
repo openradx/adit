@@ -105,6 +105,10 @@ WSGI_APPLICATION = "adit.wsgi.application"
 # environment variable set in in docker-compose.prod.yml.
 DATABASES = {"default": env.db(default="sqlite:///./adit-sqlite.db")}
 
+# Django 3.2 switched to BigAutoField for primary keys. It must be set explicitly
+# and requires a migration.
+DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
 # Password validation
 # https://docs.djangoproject.com/en/3.0/ref/settings/#auth-password-validators
 
