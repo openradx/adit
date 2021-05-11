@@ -57,7 +57,7 @@ class BatchQueryJobForm(forms.ModelForm):
             "-node_type", "name"
         )
 
-        max_batch_size = settings.MAX_BATCH_QUERY_SIZE
+        max_batch_size = settings.MAX_BATCH_QUERY_SIZE if not user.is_staff else None
         if max_batch_size is not None:
             self.fields[
                 "batch_file"

@@ -119,7 +119,9 @@ class BatchTransferJobForm(forms.ModelForm):
             can_transfer_unpseudonymized,
         )
 
-        max_batch_size = settings.MAX_BATCH_TRANSFER_SIZE
+        max_batch_size = (
+            settings.MAX_BATCH_TRANSFER_SIZE if not self.user.is_staff else None
+        )
 
         try:
             self.tasks = parser.parse(file, max_batch_size)

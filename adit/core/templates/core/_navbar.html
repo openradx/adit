@@ -1,6 +1,7 @@
 <nav class="navbar sticky-top navbar-expand-sm navbar-dark bg-primary">
     <a class="navbar-brand" href="{% url 'home'%}">ADIT</a>
-    <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+    <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent"
+        aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
         <span class="navbar-toggler-icon"></span>
     </button>
 
@@ -8,22 +9,22 @@
         <ul class="navbar-nav mr-auto">
             {% with request.resolver_match.url_name as url_name %}
             {% for item in nav_menu_items %}
-                <li class="nav-item {% if url_name == item.name %} active {% endif %}">
-                    <a class="nav-link" href="{% url item.url_name %}">
-                        {{ item.label }}
-                        {% if url_name == item.url_name %}
-                        <span class="sr-only">(current)</span>
-                        {% endif %}
-                    </a>
-                </li>
+            <li class="nav-item {% if url_name == item.name %} active {% endif %}">
+                <a class="nav-link" href="{% url item.url_name %}">
+                    {{ item.label }}
+                    {% if url_name == item.url_name %}
+                    <span class="sr-only">(current)</span>
+                    {% endif %}
+                </a>
+            </li>
             {% endfor %}
             {% endwith %}
-            {% if user.is_superuser or user.is_staff %}
-                <li class="nav-item">
-                    <a class="nav-link" href="{% url 'admin_section' %}">
-                        Admin Section
-                    </a>
-                </li>
+            {% if user.is_staff %}
+            <li class="nav-item">
+                <a class="nav-link" href="{% url 'admin_section' %}">
+                    Admin Section
+                </a>
+            </li>
             {% endif %}
         </ul>
 
