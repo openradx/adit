@@ -240,6 +240,37 @@ class DicomJobRetryView(
         return redirect(job)
 
 
+class DicomJobRestartView(
+    LoginRequiredMixin, OwnerRequiredMixin, SingleObjectMixin, View
+):
+    model = None
+    success_message = "Job with ID %(id)d will be restarted"
+
+    def post(self, request, *args, **kwargs):  # pylint: disable=unused-argument
+        job = self.get_object()
+        if not request.user.is_staff or not job.is_restartable:
+            raise SuspiciousOperation(
+                f"Job with ID {job.id} and status {job.get_status_display()} is not restartable."
+            )
+
+        for task in job.tasks.all():
+            task.status = DicomTask.Status.PENDING
+            task.retries = 0
+            task.message = ""
+            task.log = ""
+            task.start = None
+            task.end = None
+            task.save()
+
+        job.status = DicomJob.Status.PENDING
+        job.save()
+
+        job.delay()
+
+        messages.success(request, self.success_message % job.__dict__)
+        return redirect(job)
+
+
 class DicomTaskDetailView(LoginRequiredMixin, OwnerRequiredMixin, DetailView):
     model = None
     job_url_name = None

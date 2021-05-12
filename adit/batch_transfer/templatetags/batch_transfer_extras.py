@@ -12,6 +12,7 @@ def job_control_panel(context):
         "cancel_url": "batch_transfer_job_cancel",
         "resume_url": "batch_transfer_job_resume",
         "retry_url": "batch_transfer_job_retry",
+        "restart_url": "batch_transfer_job_restart",
         "user": context["user"],
         "job": context["job"],
     }

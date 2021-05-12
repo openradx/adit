@@ -18,6 +18,7 @@ from adit.core.views import (
     DicomJobCancelView,
     DicomJobResumeView,
     DicomJobRetryView,
+    DicomJobRestartView,
     DicomTaskDetailView,
 )
 from .forms import SelectiveTransferJobForm
@@ -133,6 +134,10 @@ class SelectiveTransferJobResumeView(DicomJobResumeView):
 
 
 class SelectiveTransferJobRetryView(DicomJobRetryView):
+    model = SelectiveTransferJob
+
+
+class SelectiveTransferJobRestartView(DicomJobRestartView):
     model = SelectiveTransferJob
 
 
