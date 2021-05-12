@@ -181,7 +181,7 @@ class HandleFinishedDicomJob(CeleryTask):
             dicom_job.status = DicomJob.Status.WARNING
             dicom_job.message = "All tasks with warnings."
         elif successes and failures or warnings and failures:
-            dicom_job.status = DicomJob.Status.FAILURE
+            dicom_job.status = DicomJob.Status.WARNING
             dicom_job.message = "Some tasks failed."
         elif not successes and not warnings and failures:
             dicom_job.status = DicomJob.Status.FAILURE
