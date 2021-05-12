@@ -160,14 +160,24 @@ class DicomJobCancelView(
                 f"Job with ID {job.id} and status {job.get_status_display()} is not cancelable."
             )
 
-        job.status = DicomJob.Status.CANCELING
-        job.save()
-
         for dicom_task in job.tasks.filter(status=DicomTask.Status.PENDING):
             if dicom_task.celery_task_id:
                 celery_app.control.revoke(dicom_task.celery_task_id)
             dicom_task.status = DicomTask.Status.CANCELED
             dicom_task.save()
+
+        tasks_in_progress_count = job.tasks.filter(
+            status=DicomTask.Status.IN_PROGRESS
+        ).count()
+
+        # If there is a still in progress task then the job will be set to canceled when
+        # the processing of the task is finished (see core.tasks.HandleFinishedDicomJob)
+        if tasks_in_progress_count > 0:
+            job.status = DicomJob.Status.CANCELING
+        else:
+            job.status = DicomJob.Status.CANCELED
+
+        job.save()
 
         messages.success(request, self.success_message % job.__dict__)
         return redirect(job)
