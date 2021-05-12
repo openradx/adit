@@ -45,11 +45,11 @@
 
     {% if job.is_retriable %}
     <form class="mr-3" action="{% url retry_url job.pk %}" method="post"
-        onSubmit="return confirm('Are you sure you want to retry this job?');">
+        onSubmit="return confirm('Are you sure you want to retry the failed tasks?');">
         {% csrf_token %}
         <button type="submit" class="btn btn-secondary">
             {% include "core/_arrow_clockwise.svg" %}
-            Retry Job
+            Retry Failed Tasks
         </button>
     </form>
     {% endif %}
