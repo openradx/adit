@@ -29,6 +29,10 @@ class BatchFileParser:
 
             data_row["__line_num__"] = reader.line_num
 
+            # Skip rows without a task ID
+            if not data_row["task_id"]:
+                continue
+
             data.append(data_row)
 
         if max_batch_size is not None and len(data) > max_batch_size:
