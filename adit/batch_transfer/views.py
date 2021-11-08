@@ -16,6 +16,7 @@ from adit.core.views import (
     DicomJobCancelView,
     DicomJobResumeView,
     DicomJobRetryView,
+    DicomJobRestartView,
     DicomTaskDetailView,
 )
 from .models import BatchTransferSettings, BatchTransferJob, BatchTransferTask
@@ -106,6 +107,10 @@ class BatchTransferJobResumeView(DicomJobResumeView):
 
 
 class BatchTransferJobRetryView(DicomJobRetryView):
+    model = BatchTransferJob
+
+
+class BatchTransferJobRestartView(DicomJobRestartView):
     model = BatchTransferJob
 
 

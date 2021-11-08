@@ -101,9 +101,14 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "adit.wsgi.application"
 
-# In production a PostgreSQL (psql://...) URL is passed by using an
-# environment variable set in in docker-compose.prod.yml.
+# env.db() loads the DB setup from the DATABASE_URL environment variable using
+# Django-environ.
+# The sqlite database is still used for pytest tests.
 DATABASES = {"default": env.db(default="sqlite:///./adit-sqlite.db")}
+
+# Django 3.2 switched to BigAutoField for primary keys. It must be set explicitly
+# and requires a migration.
+DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # Password validation
 # https://docs.djangoproject.com/en/3.0/ref/settings/#auth-password-validators
@@ -397,5 +402,10 @@ DICOM_DEBUG_LOGGER = False
 # How often to retry a failed transfer task before the task is definitively failed
 TRANSFER_TASK_RETRIES = 2
 
+# The maximum number of batch queries a normal user can process in one job
+# (staff user are not limited)
 MAX_BATCH_QUERY_SIZE = 1000
-MAX_BATCH_TRANSFER_SIZE = 200
+
+# The maximum number of batch transfers a normal user can process in one job
+# (staff users are not limited)
+MAX_BATCH_TRANSFER_SIZE = 500

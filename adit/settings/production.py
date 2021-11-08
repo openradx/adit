@@ -10,6 +10,8 @@ SECRET_KEY = env("DJANGO_SECRET_KEY")
 
 ALLOWED_HOSTS = env.list("DJANGO_ALLOWED_HOSTS")
 
+DATABASES["default"]["PASSWORD"] = env.str("POSTGRES_PASSWORD")
+
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 EMAIL_TIMEOUT = 60
 EMAIL_HOST = env.str("DJANGO_EMAIL_HOST")

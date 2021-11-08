@@ -8,6 +8,7 @@ from .views import (
     BatchQueryJobCancelView,
     BatchQueryJobResumeView,
     BatchQueryJobRetryView,
+    BatchQueryJobRestartView,
     BatchQueryTaskDetailView,
     BatchQueryResultListView,
     BatchQueryResultDownloadView,
@@ -54,6 +55,11 @@ urlpatterns = [
         "jobs/<int:pk>/retry/",
         BatchQueryJobRetryView.as_view(),
         name="batch_query_job_retry",
+    ),
+    path(
+        "jobs/<int:pk>/restart/",
+        BatchQueryJobRestartView.as_view(),
+        name="batch_query_job_restart",
     ),
     path(
         "jobs/<int:pk>/results/",

@@ -1,6 +1,6 @@
 # About
 
-ADIT (Automated DICOM Transfer) is a swiss army knife to exchange DICOM data between various systems.
+ADIT (Automated DICOM Transfer) is a swiss army knife to exchange DICOM data between various systems by using a convenient web frontend.
 
 # Features
 
@@ -34,6 +34,7 @@ Downloading data from a DICOM server can done by using a C-GET or C-MOVE operati
 
 # TODO list
 
+-   Do some prechecks before trying the task (is source and destination online?)
 -   Store all uploaded files
 -   split urgent to urgent and prioritize
 -   move or get rid of hijack_logger and store_log_in_task in task_utils

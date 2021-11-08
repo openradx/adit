@@ -4,27 +4,30 @@ from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
 from django.views.generic import View
 from django.views.generic.base import TemplateView
-from django.views.generic.edit import DeleteView, CreateView
+from django.views.generic.edit import DeleteView, CreateView, FormView
 from django.views.generic.detail import DetailView, SingleObjectMixin
 from django.contrib.auth.mixins import (
     LoginRequiredMixin,
     UserPassesTestMixin,
     PermissionRequiredMixin,
 )
-from django.urls import re_path
+from django.urls import re_path, reverse_lazy
 from django.shortcuts import redirect
 from django.core.exceptions import SuspiciousOperation
+from django.core.mail import send_mail
+from django.conf import settings
 from django.http.response import Http404
 from django.db import models
 from django.db.models.query import QuerySet
-from django.conf import settings
 from django_tables2 import SingleTableMixin
 from django_filters.views import FilterView
 from revproxy.views import ProxyView
 from ..celery import app as celery_app
+from ..accounts.models import User
 from .site import job_stats_collectors
 from .models import CoreSettings, DicomJob, DicomTask
 from .mixins import OwnerRequiredMixin, PageSizeSelectMixin
+from .forms import BroadcastForm
 
 
 @staff_member_required
@@ -45,6 +48,34 @@ def admin_section(request):
             "job_stats": job_stats,
         },
     )
+
+
+class BroadcastView(UserPassesTestMixin, FormView):
+    template_name = "core/broadcast.html"
+    form_class = BroadcastForm
+    success_url = reverse_lazy("broadcast")
+
+    def test_func(self):
+        return self.request.user.is_staff
+
+    def form_valid(self, form):
+        subject = form.cleaned_data["subject"]
+        message = form.cleaned_data["message"]
+
+        recipients = []
+        for user in User.objects.all():
+            if user.email:
+                recipients.append(user.email)
+
+        send_mail(subject, message, settings.SUPPORT_EMAIL, recipients)
+
+        messages.add_message(
+            self.request,
+            messages.SUCCESS,
+            f"Successfully sent and Email to {len(recipients)} recipients!",
+        )
+
+        return super().form_valid(form)
 
 
 class HomeView(TemplateView):
@@ -160,14 +191,24 @@ class DicomJobCancelView(
                 f"Job with ID {job.id} and status {job.get_status_display()} is not cancelable."
             )
 
-        job.status = DicomJob.Status.CANCELING
-        job.save()
-
         for dicom_task in job.tasks.filter(status=DicomTask.Status.PENDING):
             if dicom_task.celery_task_id:
                 celery_app.control.revoke(dicom_task.celery_task_id)
             dicom_task.status = DicomTask.Status.CANCELED
             dicom_task.save()
+
+        tasks_in_progress_count = job.tasks.filter(
+            status=DicomTask.Status.IN_PROGRESS
+        ).count()
+
+        # If there is a still in progress task then the job will be set to canceled when
+        # the processing of the task is finished (see core.tasks.HandleFinishedDicomJob)
+        if tasks_in_progress_count > 0:
+            job.status = DicomJob.Status.CANCELING
+        else:
+            job.status = DicomJob.Status.CANCELED
+
+        job.save()
 
         messages.success(request, self.success_message % job.__dict__)
         return redirect(job)
@@ -213,6 +254,37 @@ class DicomJobRetryView(
             )
 
         for task in job.tasks.filter(status=DicomTask.Status.FAILURE):
+            task.status = DicomTask.Status.PENDING
+            task.retries = 0
+            task.message = ""
+            task.log = ""
+            task.start = None
+            task.end = None
+            task.save()
+
+        job.status = DicomJob.Status.PENDING
+        job.save()
+
+        job.delay()
+
+        messages.success(request, self.success_message % job.__dict__)
+        return redirect(job)
+
+
+class DicomJobRestartView(
+    LoginRequiredMixin, OwnerRequiredMixin, SingleObjectMixin, View
+):
+    model = None
+    success_message = "Job with ID %(id)d will be restarted"
+
+    def post(self, request, *args, **kwargs):  # pylint: disable=unused-argument
+        job = self.get_object()
+        if not request.user.is_staff or not job.is_restartable:
+            raise SuspiciousOperation(
+                f"Job with ID {job.id} and status {job.get_status_display()} is not restartable."
+            )
+
+        for task in job.tasks.all():
             task.status = DicomTask.Status.PENDING
             task.retries = 0
             task.message = ""

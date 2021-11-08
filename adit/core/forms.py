@@ -7,6 +7,11 @@ from crispy_forms.bootstrap import FieldWithButtons
 from .models import DicomNode
 
 
+class BroadcastForm(forms.Form):
+    subject = forms.CharField(label="Subject", max_length=200)
+    message = forms.CharField(label="Message", max_length=10000, widget=forms.Textarea)
+
+
 class DicomNodeSelect(Select):
     def create_option(  # pylint: disable=too-many-arguments
         self, name, value, label, selected, index, subindex=None, attrs=None

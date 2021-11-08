@@ -86,11 +86,14 @@ class BatchTransferJobForm(forms.ModelForm):
         self.fields["trial_protocol_id"].widget.attrs["placeholder"] = "Optional"
         self.fields["trial_protocol_name"].widget.attrs["placeholder"] = "Optional"
 
-        max_batch_size = settings.MAX_BATCH_TRANSFER_SIZE
-        if max_batch_size is not None:
+        self.max_batch_size = (
+            settings.MAX_BATCH_TRANSFER_SIZE if not self.user.is_staff else None
+        )
+
+        if self.max_batch_size is not None:
             self.fields[
                 "batch_file"
-            ].help_text = f"Maximum {max_batch_size} tasks per transfer job!"
+            ].help_text = f"Maximum {self.max_batch_size} tasks per transfer job!"
 
         self.helper = FormHelper(self)
         self.helper.add_input(Submit("save", "Create Job"))
@@ -119,14 +122,12 @@ class BatchTransferJobForm(forms.ModelForm):
             can_transfer_unpseudonymized,
         )
 
-        max_batch_size = settings.MAX_BATCH_TRANSFER_SIZE
-
         try:
-            self.tasks = parser.parse(file, max_batch_size)
+            self.tasks = parser.parse(file, self.max_batch_size)
 
         except BatchFileSizeError as err:
             raise ValidationError(
-                f"Too many batch tasks (max. {max_batch_size} tasks)"
+                f"Too many batch tasks (max. {self.max_batch_size} tasks)"
             ) from err
 
         except BatchFileFormatError as err:

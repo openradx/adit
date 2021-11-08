@@ -10,9 +10,9 @@ class UserProfileView(LoginRequiredMixin, AccessMixin, DetailView):
     template_name = "accounts/user_profile.html"
 
     def dispatch(self, request, *args, **kwargs):
-        """Only superuser, staff and the user himself has access."""
+        """Only staff and the user himself has access."""
         check_access = True
-        if request.user.is_superuser or request.user.is_staff:
+        if request.user.is_staff:
             check_access = False
 
         if check_access and request.user.pk != kwargs["pk"]:

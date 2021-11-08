@@ -11,6 +11,7 @@ def job_control_panel(context):
         "cancel_url": "continuous_transfer_job_cancel",
         "resume_url": "continuous_transfer_job_resume",
         "retry_url": "continuous_transfer_job_retry",
+        "restart_url": "continuous_transfer_job_restart",
         "user": context["user"],
         "job": context["job"],
     }

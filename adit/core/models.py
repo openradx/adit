@@ -181,6 +181,10 @@ class DicomJob(models.Model):
         return self.status == self.Status.FAILURE
 
     @property
+    def is_restartable(self):
+        return self.status not in [self.Status.UNVERIFIED, self.Status.IN_PROGRESS]
+
+    @property
     def processed_tasks(self):
         non_processed = (
             DicomTask.Status.PENDING,

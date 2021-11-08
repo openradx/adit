@@ -57,11 +57,14 @@ class BatchQueryJobForm(forms.ModelForm):
             "-node_type", "name"
         )
 
-        max_batch_size = settings.MAX_BATCH_QUERY_SIZE
-        if max_batch_size is not None:
+        self.max_batch_size = (
+            settings.MAX_BATCH_QUERY_SIZE if not user.is_staff else None
+        )
+
+        if self.max_batch_size is not None:
             self.fields[
                 "batch_file"
-            ].help_text = f"Maximum {max_batch_size} tasks per query job!"
+            ].help_text = f"Maximum {self.max_batch_size} tasks per query job!"
 
         self.helper = FormHelper(self)
         self.helper.add_input(Submit("save", "Create Job"))
@@ -89,14 +92,12 @@ class BatchQueryJobForm(forms.ModelForm):
             },
         )
 
-        max_batch_size = settings.MAX_BATCH_QUERY_SIZE
-
         try:
-            self.tasks = parser.parse(file, max_batch_size)
+            self.tasks = parser.parse(file, self.max_batch_size)
 
         except BatchFileSizeError as err:
             raise ValidationError(
-                f"Too many batch tasks (max. {max_batch_size} tasks)"
+                f"Too many batch tasks (max. {self.max_batch_size} tasks)"
             ) from err
 
         except BatchFileFormatError as err:
