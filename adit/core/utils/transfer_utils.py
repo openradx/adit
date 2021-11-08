@@ -360,7 +360,7 @@ def _modify_dataset(
         ds.ClinicalTrialProtocolName = trial_protocol_name
 
     if pseudonym and trial_protocol_id:
-        session_id = f"{ds.StudyDate}-{ds.StudyTime}-{ds.ModalitiesinStudy}"
+        session_id = f"{ds.StudyDate}-{ds.StudyTime}"
         ds.PatientComments = f"Project:{trial_protocol_id} Subject:{pseudonym} Session:{pseudonym}_{session_id}"
 
 def _create_archive(
