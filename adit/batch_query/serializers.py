@@ -16,6 +16,7 @@ class BatchQueryTaskSerializer(BatchTaskSerializer):
             "study_date_end",
             "modalities",
             "pseudonym",
+            "series_description",
         ]
 
     def __init__(self, instance=None, data=None, **kwargs):
