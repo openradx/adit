@@ -269,10 +269,10 @@ class TransferTask(DicomTask):
         max_length=64,
         validators=[uid_chars_validator],
     )
-    series_uids = models.JSONField(
-        null=True,
+    series_uid = models.CharField(
         blank=True,
-        validators=[validate_uid_list],
+        max_length=64,
+        validators=[uid_chars_validator],
     )
     pseudonym = models.CharField(
         blank=True,

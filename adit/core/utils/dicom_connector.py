@@ -212,13 +212,13 @@ class DicomConnector:
             query["SeriesDescription"] = ""
 
         series_list = self._send_c_find(query, limit_results=limit_results)
-
-        series_list = list(
-            filter(
-                lambda x: re.search(series_description, x["SeriesDescription"]),
-                series_list,
+        if series_description:
+            series_list = list(
+                filter(
+                    lambda x: re.search(series_description, x["SeriesDescription"]),
+                    series_list,
+                )
             )
-        )
 
         if not modality:
             return series_list
