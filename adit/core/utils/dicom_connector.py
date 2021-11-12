@@ -209,13 +209,14 @@ class DicomConnector:
 
         series_description = query.get("SeriesDescription")
         if series_description:
+            series_description = series_description.lower()
             query["SeriesDescription"] = ""
 
         series_list = self._send_c_find(query, limit_results=limit_results)
         if series_description:
             series_list = list(
                 filter(
-                    lambda x: re.search(series_description, x["SeriesDescription"]),
+                    lambda x: re.search(series_description, x["SeriesDescription"].lower()),
                     series_list,
                 )
             )
