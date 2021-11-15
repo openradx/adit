@@ -36,7 +36,12 @@ def execute_query(query_task: BatchQueryTask) -> BatchQueryTask.Status:
             for patient in patients:
                 studies = _query_studies(connector, patient["PatientID"], query_task)
                 if studies:
-                    all_studies.append(studies)
+                    if query_task.series_description:
+                        for study in studies:
+                            series = _query_series(connector, study, query_task)
+                            all_studies.append(series)
+                    else:
+                        all_studies.append(studies)
 
             if len(all_studies) == 0:
                 query_task.status = BatchQueryTask.Status.WARNING
@@ -48,7 +53,10 @@ def execute_query(query_task: BatchQueryTask) -> BatchQueryTask.Status:
                 results = _save_results(query_task, all_studies_flattened)
 
                 num = len(results)
-                study_count = f"{num} stud{pluralize(num, 'y,ies')}"
+                if query_task.series_description:
+                    study_count = f"{num} series"
+                else:
+                    study_count = f"{num} stud{pluralize(num, 'y,ies')}"
 
                 if len(all_studies) == 1:  # Only studies of one patient found
                     query_task.status = BatchQueryTask.Status.SUCCESS
@@ -123,11 +131,35 @@ def _query_studies(
     return studies
 
 
+def _query_series(
+    connector: DicomConnector, study: List[Dict[str, Any]],query_task: BatchQueryTask
+) -> List[Dict[str, Any]]:
+
+    series = connector.find_series(
+        {
+            "PatientID": study["PatientID"],
+            "StudyInstanceUID": study["StudyInstanceUID"],
+            "SeriesInstanceUID": "",
+            "SeriesDescription": query_task.series_description,
+        }
+    )
+    for i in range(len(series)):
+        series[i].update(study)
+    return series
+
+
 def _save_results(
     query_task: BatchQueryTask, studies: List[Dict[str, Any]]
 ) -> List[BatchQueryResult]:
     results = []
     for study in studies:
+        series_uid = ""
+        if "SeriesInstanceUID" in study:
+            series_uid = study["SeriesInstanceUID"]
+        series_description = ""
+        if "SeriesDescription" in study:
+            series_description = study["SeriesDescription"]
+
         result = BatchQueryResult(
             job=query_task.job,
             query=query_task,
@@ -142,6 +174,8 @@ def _save_results(
             modalities=study["ModalitiesInStudy"],
             image_count=study["NumberOfStudyRelatedInstances"],
             pseudonym=query_task.pseudonym,
+            series_uid=series_uid,
+            series_description=series_description,
         )
         results.append(result)
 

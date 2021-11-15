@@ -11,6 +11,7 @@ class BatchTransferTaskSerializer(BatchTaskSerializer):
             "patient_id",
             "study_uid",
             "pseudonym",
+            "series_uid",
         ]
 
     @classmethod

@@ -11,6 +11,7 @@ the Celery task logger is used as we intercept those messages and save them
 in TransferTask model object.
 """
 import logging
+import re
 from typing import Dict, List, Union, Any
 import time
 import datetime
@@ -185,7 +186,6 @@ class DicomConnector:
             query,
             limit_results=limit_results,
         )
-
         query_modalities = query.get("ModalitiesInStudy")
         if not query_modalities:
             return studies
@@ -207,7 +207,19 @@ class DicomConnector:
         if modality:
             query["Modality"] = ""
 
+        series_description = query.get("SeriesDescription")
+        if series_description:
+            series_description = series_description.lower()
+            query["SeriesDescription"] = ""
+
         series_list = self._send_c_find(query, limit_results=limit_results)
+        if series_description:
+            series_list = list(
+                filter(
+                    lambda x: re.search(series_description, x["SeriesDescription"].lower()),
+                    series_list,
+                )
+            )
 
         if not modality:
             return series_list

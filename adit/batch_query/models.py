@@ -91,6 +91,10 @@ class BatchQueryTask(DicomTask):
             validators=[no_backslash_char_validator, no_control_chars_validator],
         )
     )
+    series_description = models.CharField(
+        blank=True,
+        max_length=64,
+    )
 
     def clean(self) -> None:
         print(self.__dict__)
@@ -176,6 +180,24 @@ class BatchQueryResult(models.Model):
             max_length=64,
             validators=[no_backslash_char_validator, no_control_chars_validator],
         )
+    )
+    series_uid = models.CharField(
+        blank=True,
+        max_length=64,
+        validators=[
+            no_backslash_char_validator,
+            no_control_chars_validator,
+            no_wildcard_chars_validator,
+        ],
+    )
+    series_description = models.CharField(
+        blank=True,
+        max_length=64,
+        validators=[
+            no_backslash_char_validator,
+            no_control_chars_validator,
+            no_wildcard_chars_validator,
+        ],
     )
 
     @property
