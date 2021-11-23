@@ -98,7 +98,7 @@ def test_transfer_to_server_succeeds(
         archive_password="",
     )
     task = MyTransferTaskFactory(
-        status=TransferTask.Status.PENDING, series_uid="", pseudonym="", job=job
+        status=TransferTask.Status.PENDING, series_uids=[], pseudonym="", job=job
     )
 
     patient, study = create_resources(task)
@@ -145,7 +145,7 @@ def test_transfer_to_folder_succeeds(
     task = MyTransferTaskFactory(
         status=TransferTask.Status.PENDING,
         patient_id="1001",
-        series_uid="",
+        series_uids=[],
         pseudonym="",
     )
     task.job = job
@@ -187,7 +187,7 @@ def test_transfer_to_archive_succeeds(
         archive_password="mysecret",
     )
     task = MyTransferTaskFactory(
-        status=TransferTask.Status.PENDING, series_uid="", pseudonym=""
+        status=TransferTask.Status.PENDING, series_uids=[], pseudonym=""
     )
     task.job = job
 
