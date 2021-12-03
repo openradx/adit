@@ -29,7 +29,7 @@ class BatchFileParser:
 
             for field, column in self.field_to_column_mapping.items():
                 data_row[field] = row.get(column, "")
-            if data_row["series_uids"] == "":
+            if "series_uids" in data_row and data_row["series_uids"] == "":
                 del data_row["series_uids"]
             data_row["__line_num__"] = reader.line_num
 
@@ -37,9 +37,10 @@ class BatchFileParser:
             if not data_row["task_id"]:
                 continue
             series_uids.append("series_uids" in data_row)
-            study_uids.append(data_row["study_uid"])
+            if "study_uid" in data_row:
+                study_uids.append(data_row["study_uid"])
             data.append(data_row)
-        if any(series_uids):
+        if len(series_uids) and any(series_uids):
             study_uids = list(set(study_uids))
             squeezed_data = []
             for study_uid in study_uids:
