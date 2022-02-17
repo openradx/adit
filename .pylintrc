@@ -1,5 +1,6 @@
 [MASTER]
 load-plugins=pylint_pytest, pylint_django, pylint_celery
+django-settings-module=adit.settings.development
 
 [FORMAT]
 max-line-length=120
