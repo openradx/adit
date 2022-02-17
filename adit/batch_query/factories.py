@@ -34,6 +34,7 @@ class BatchQueryTaskFactory(DicomTaskFactory):
     )
     study_date_start = factory.Faker("date_between", start_date="-2y", end_date="-1y")
     study_date_end = factory.Faker("date_between", start_date="-1y", end_date="today")
+    series_description = factory.Faker("street_name")
 
 
 class BatchQueryResultFactory(factory.django.DjangoModelFactory):
@@ -56,3 +57,6 @@ class BatchQueryResultFactory(factory.django.DjangoModelFactory):
         "random_elements", elements=("CT", "MR", "DX"), unique=True
     )
     image_count = factory.Faker("random_int", min=3, max=1500)
+    series_uid = factory.Faker("uuid4")
+    series_description = factory.Faker("street_name")
+

@@ -12,15 +12,17 @@ def export_results(job: BatchQueryJob, file):
     query_tasks = job.tasks.prefetch_related("results").all()
 
     has_pseudonyms = False
+    has_series = False
     for query_task in query_tasks:
         if query_task.pseudonym:
             has_pseudonyms = True
+        if query_task.series_description:
+            has_series = True
+    write_header(writer, has_pseudonyms, has_series)
+    write_data(writer, query_tasks, has_pseudonyms, has_series)
 
-    write_header(writer, has_pseudonyms)
-    write_data(writer, query_tasks, has_pseudonyms)
 
-
-def write_header(writer, has_pseudonyms):
+def write_header(writer, has_pseudonyms, has_series):
     column_headers = [
         "TaskID",
         "PatientID",
@@ -38,10 +40,18 @@ def write_header(writer, has_pseudonyms):
     if has_pseudonyms:
         column_headers.append("Pseudonym")
 
+    if has_series:
+        column_headers.extend(
+            [
+                "SeriesInstanceUID",
+                "SeriesDescription",
+            ]
+        )
+
     writer.writerow(column_headers)
 
 
-def write_data(writer, query_tasks, has_pseudonyms):
+def write_data(writer, query_tasks, has_pseudonyms, has_series):
     for query_task in query_tasks:
         result: BatchQueryResult
         for result in query_task.results.all():
@@ -79,5 +89,13 @@ def write_data(writer, query_tasks, has_pseudonyms):
 
             if has_pseudonyms:
                 csv_row.append(result.pseudonym)
+
+            if has_series:
+                csv_row.extend(
+                    [
+                        result.series_uid,
+                        result.series_description,
+                    ]
+                )
 
             writer.writerow(csv_row)

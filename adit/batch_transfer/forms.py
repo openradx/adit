@@ -118,6 +118,7 @@ class BatchTransferJobForm(forms.ModelForm):
                 "patient_id": "PatientID",
                 "study_uid": "StudyInstanceUID",
                 "pseudonym": "Pseudonym",
+                "series_uids": "SeriesInstanceUID",
             },
             can_transfer_unpseudonymized,
         )

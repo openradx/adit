@@ -179,8 +179,9 @@ def _download_dicoms(
     # are correct and only use their modalities for the name of the study folder.
     if transfer_task.series_uids:
         modalities = set()
-        for series in _fetch_series_list(connector, transfer_task):
-            modalities.add(series["Modality"])
+        for series_uid in transfer_task.series_uids:
+            for series in _fetch_series_list(connector, transfer_task, series_uid):
+                modalities.add(series["Modality"])
 
     study_date = study["StudyDate"]
     study_time = study["StudyTime"]
@@ -199,16 +200,8 @@ def _download_dicoms(
     )
 
     if transfer_task.series_uids:
-        # Download only the specified series of a study.
-        _download_series(
-            connector,
-            study,
-            transfer_task.series_uids,
-            study_folder,
-            modifier_callback,
-        )
+        _download_study(connector, study, study_folder, modifier_callback, series_uids=transfer_task.series_uids)
     else:
-        # Download the whole study.
         _download_study(connector, study, study_folder, modifier_callback)
 
     return patient_folder
@@ -258,7 +251,7 @@ def _fetch_study(
 
 
 def _fetch_series_list(
-    connector: DicomConnector, transfer_task: TransferTask
+    connector: DicomConnector, transfer_task: TransferTask, series_uid: str
 ) -> List[Dict[str, Any]]:
     series_list = connector.find_series(
         {
@@ -270,20 +263,16 @@ def _fetch_series_list(
     )
 
     results = []
-    for series_uid in transfer_task.series_uids:
-        found = []
-        for series in series_list:
-            if series["SeriesInstanceUID"] == series_uid:
-                found.append(series)
+    for series in series_list:
+        if series["SeriesInstanceUID"] == series_uid:
+            results.append(series)
 
-        if len(found) == 0:
-            raise ValueError(f"No series found with Series Instance UID {series_uid}.")
-        if len(found) > 1:
-            raise AssertionError(
-                f"Multiple series found with Series Instance UID {series_uid}."
-            )
-
-        results.append(found[0])
+    if len(results) == 0:
+        raise ValueError(f"No series found with Series Instance UID {series_uid}.")
+    if len(results) > 1:
+        raise AssertionError(
+            f"Multiple series found with Series Instance UID {series_uid}."
+        )
 
     return results
 
@@ -293,50 +282,60 @@ def _download_study(
     study: Dict[str, Any],
     study_folder: Path,
     modifier_callback: Callable,
+    series_uids: List[str]=None,
 ) -> None:
-    connector.download_study(
-        study["PatientID"],
-        study["StudyInstanceUID"],
-        study_folder,
-        modifier_callback=modifier_callback,
-    )
+    if series_uids:
+        for series_uid in series_uids:
+            connector.download_series(
+                study["PatientID"],
+                study["StudyInstanceUID"],
+                series_uid,
+                study_folder,
+                modifier_callback=modifier_callback,
+            )
+    else:
+        connector.download_study(
+            study["PatientID"],
+            study["StudyInstanceUID"],
+            study_folder,
+            modifier_callback=modifier_callback,
+        )
 
 
 def _download_series(
     connector: DicomConnector,
     study: Dict[str, Any],
-    series_uids: List[str],
+    series_uid: str,
     study_folder: Path,
     modifier_callback: Callable,
 ) -> None:
-    for series_uid in series_uids:
-        series_list = connector.find_series(
-            {
-                "PatientID": study["PatientID"],
-                "StudyInstanceUID": study["StudyInstanceUID"],
-                "SeriesInstanceUID": series_uid,
-                "SeriesDescription": "",
-            }
+    series_list = connector.find_series(
+        {
+            "PatientID": study["PatientID"],
+            "StudyInstanceUID": study["StudyInstanceUID"],
+            "SeriesInstanceUID": series_uid,
+            "SeriesDescription": "",
+        }
+    )
+    if len(series_list) == 0:
+        raise AssertionError(
+            f"No series found with Series Instance UID: {series_uid}"
         )
-        if len(series_list) == 0:
-            raise AssertionError(
-                f"No series found with Series Instance UID: {series_uid}"
-            )
-        if len(series_list) > 1:
-            raise AssertionError(
-                f"Multiple series found with Series Instance UID {series_uid}."
-            )
-        series = series_list[0]
-        series_folder_name = sanitize_dirname(series["SeriesDescription"])
-        series_folder = study_folder / series_folder_name
+    if len(series_list) > 1:
+        raise AssertionError(
+            f"Multiple series found with Series Instance UID {series_uid}."
+        )
+    series = series_list[0]
+    series_folder_name = sanitize_dirname(series["SeriesDescription"])
+    series_folder = study_folder / series_folder_name
 
-        connector.download_series(
-            series["PatientID"],
-            series["StudyInstanceUID"],
-            series["SeriesInstanceUID"],
-            series_folder,
-            modifier_callback,
-        )
+    connector.download_series(
+        series["PatientID"],
+        series["StudyInstanceUID"],
+        series["SeriesInstanceUID"],
+        series_folder,
+        modifier_callback,
+    )
 
 
 def _modify_dataset(
@@ -366,9 +365,8 @@ def _modify_dataset(
         ds.ClinicalTrialProtocolName = trial_protocol_name
 
     if pseudonym and trial_protocol_id:
-        session_id = f"{ds.PatientID}-{ds.StudyDate}-{ds.StudyTime}"
+        session_id = f"{ds.StudyDate}-{ds.StudyTime}"
         ds.PatientComments = f"Project:{trial_protocol_id} Subject:{pseudonym} Session:{pseudonym}_{session_id}"
-
 
 def _create_archive(
     archive_path: Path, job: TransferJob, archive_password: str

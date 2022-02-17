@@ -21,9 +21,9 @@ def create_batch_file():
 @pytest.fixture
 def data():
     return [
-        ["TaskID", "PatientName"],
-        ["1", "Apple, Annie"],
-        ["2", "Coconut, Coco"],
+        ["TaskID", "PatientName","StudyInstanceUID", "SeriesInstanceUID"],
+        ["1", "Apple, Annie", "1.2.3", "1.2.3.1"],
+        ["2", "Coconut, Coco", "1.2.4", "1.2.4.1"],
     ]
 
 
@@ -32,6 +32,8 @@ def field_to_column_mapping():
     return {
         "task_id": "TaskID",
         "patient_name": "PatientName",
+        "study_uid": "StudyInstanceUID",
+        "series_uids": "SeriesInstanceUID",
     }
 
 
@@ -39,11 +41,13 @@ def field_to_column_mapping():
 def test_serializer_class():
     class TestTask(DicomTask):  # pylint: disable=too-few-public-methods
         patient_name = models.CharField(max_length=324)
+        study_uid = models.CharField(max_length=64)
+        series_uids = models.JSONField()
 
     class TestSerializer(BatchTaskSerializer):
         class Meta(BatchTaskSerializer.Meta):
             model = TestTask
-            fields = ["task_id", "patient_name"]
+            fields = ["task_id", "patient_name", "study_uid", "series_uids"]
 
     return TestSerializer
 
