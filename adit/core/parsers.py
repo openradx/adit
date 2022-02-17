@@ -40,7 +40,10 @@ class BatchFileParser:
             if "study_uid" in data_row:
                 study_uids.append(data_row["study_uid"])
             data.append(data_row)
-        if len(series_uids) and any(series_uids):
+
+        if len(series_uids) > 0 and any(series_uids):
+            # By using "set" the order of the serialized data is independent of the parsed data.
+            # This makes sense as many rows of the raw data may be collected to one task.
             study_uids = list(set(study_uids))
             squeezed_data = []
             for study_uid in study_uids:
@@ -68,4 +71,3 @@ class BatchFileParser:
             )
 
         return serializer.get_tasks()
-

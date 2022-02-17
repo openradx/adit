@@ -21,7 +21,7 @@ def create_batch_file():
 @pytest.fixture
 def data():
     return [
-        ["TaskID", "PatientName","StudyInstanceUID", "SeriesInstanceUID"],
+        ["TaskID", "PatientName", "StudyInstanceUID", "SeriesInstanceUID"],
         ["1", "Apple, Annie", "1.2.3", "1.2.3.1"],
         ["2", "Coconut, Coco", "1.2.4", "1.2.4.1"],
     ]
@@ -68,10 +68,16 @@ def test_valid_data_is_parsed_successfully(create_batch_file, data, test_parser)
     tasks = test_parser.parse(file, 100)
 
     # Assert
-    assert tasks[0].task_id == int(data[1][0])
-    assert tasks[1].task_id == int(data[2][0])
-    assert tasks[0].patient_name == data[1][1]
-    assert tasks[1].patient_name == data[2][1]
+
+    # Cave, the parsed tasks may have a different order then the original data
+
+    assert len(tasks) == 2
+
+    task1 = next(task for task in tasks if task.task_id == 1)
+    assert task1.patient_name == data[1][1]
+
+    task2 = next(task for task in tasks if task.task_id == 2)
+    assert task2.patient_name == data[2][1]
 
 
 def test_invalid_model_data_raises(create_batch_file, data, test_parser):
