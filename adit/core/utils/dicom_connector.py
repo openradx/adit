@@ -64,7 +64,7 @@ from ..utils.sanitize import sanitize_dirname
 logger = logging.getLogger(__name__)
 
 
-def connect_to_server(command: Literal["find", "get", "move", "store"]):
+def connect_to_server(context: Literal["find", "get", "move", "store"]):
     """Automatically handles the connection when `auto_config` option is set.
 
     Opens and closes the connecition to the DICOM server when a method is
@@ -81,7 +81,7 @@ def connect_to_server(command: Literal["find", "get", "move", "store"]):
 
             is_connected = self.assoc and self.assoc.is_alive()
             if self.config.auto_connect and not is_connected:
-                self.open_connection(command)
+                self.open_connection(context)
                 opened_connection = True
 
             result = func(self, *args, **kwargs)
