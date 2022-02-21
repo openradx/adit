@@ -12,7 +12,7 @@ in TransferTask model object.
 """
 import logging
 import re
-from typing import Dict, List, Union, Any
+from typing import Dict, List, Literal, Union, Any
 import time
 import datetime
 from dataclasses import dataclass
@@ -32,17 +32,24 @@ from pynetdicom import (
     evt,
     build_role,
     debug_logger,
+    BasicWorklistManagementPresentationContexts,
     QueryRetrievePresentationContexts,
     StoragePresentationContexts,
 )
-from pynetdicom.sop_class import (  # pylint: disable-msg=no-name-in-module
+
+# pylint: disable=no-name-in-module
+from pynetdicom.sop_class import (
     PatientRootQueryRetrieveInformationModelFind,
     PatientRootQueryRetrieveInformationModelGet,
     PatientRootQueryRetrieveInformationModelMove,
     StudyRootQueryRetrieveInformationModelFind,
     StudyRootQueryRetrieveInformationModelGet,
     StudyRootQueryRetrieveInformationModelMove,
+    EncapsulatedSTLStorage,
+    EncapsulatedOBJStorage,
+    EncapsulatedMTLStorage,
 )
+
 from pynetdicom.status import (
     code_to_category,
     STATUS_PENDING,
@@ -57,7 +64,7 @@ from ..utils.sanitize import sanitize_dirname
 logger = logging.getLogger(__name__)
 
 
-def connect_to_server(func):
+def connect_to_server(command: Literal["find", "get", "move", "store"]):
     """Automatically handles the connection when `auto_config` option is set.
 
     Opens and closes the connecition to the DICOM server when a method is
@@ -67,24 +74,27 @@ def connect_to_server(func):
     and the connection is closed by the most outer method automatically.
     """
 
-    @wraps(func)
-    def wrapper(self, *args, **kwargs):
-        opened_connection = False
-
-        is_connected = self.assoc and self.assoc.is_alive()
-        if self.config.auto_connect and not is_connected:
-            self.open_connection()
-            opened_connection = True
-
-        result = func(self, *args, **kwargs)
-
-        if opened_connection and self.config.auto_connect:
-            self.close_connection()
+    def decorator(func):
+        @wraps(func)
+        def wrapper(self, *args, **kwargs):
             opened_connection = False
 
-        return result
+            is_connected = self.assoc and self.assoc.is_alive()
+            if self.config.auto_connect and not is_connected:
+                self.open_connection(command)
+                opened_connection = True
 
-    return wrapper
+            result = func(self, *args, **kwargs)
+
+            if opened_connection and self.config.auto_connect:
+                self.close_connection()
+                opened_connection = False
+
+            return result
+
+        return wrapper
+
+    return decorator
 
 
 class DicomConnector:
@@ -109,7 +119,7 @@ class DicomConnector:
 
         self.assoc = None
 
-    def open_connection(self):
+    def open_connection(self, command: Literal["find", "get", "move", "store"]):
         if self.assoc:
             raise AssertionError("A former connection was not closed properly.")
 
@@ -117,7 +127,7 @@ class DicomConnector:
 
         for i in range(self.config.connection_retries + 1):
             try:
-                self._associate()
+                self._associate(command)
                 break
             except ConnectionError as err:
                 logger.exception("Could not connect to %s.", self.server)
@@ -216,7 +226,9 @@ class DicomConnector:
         if series_description:
             series_list = list(
                 filter(
-                    lambda x: re.search(series_description, x["SeriesDescription"].lower()),
+                    lambda x: re.search(
+                        series_description, x["SeriesDescription"].lower()
+                    ),
                     series_list,
                 )
             )
@@ -381,7 +393,7 @@ class DicomConnector:
         modalities = set(map(lambda x: x["Modality"], series_list))
         return sorted(list(modalities))
 
-    def _associate(self):
+    def _associate(self, command: Literal["find", "get", "move", "store"]):
         ae = AE(settings.ADIT_AE_TITLE)
 
         # We only use the timeouts if set, otherwise we leave the default timeouts
@@ -392,29 +404,53 @@ class DicomConnector:
         if self.config.network_timeout is not None:
             ae.network_timeout = self.config.network_timeout
 
-        # See https://github.com/pydicom/pynetdicom/issues/459
-        # and https://github.com/pydicom/pynetdicom/blob/master/pynetdicom/apps/getscu/getscu.py#L222
-        cx = list(QueryRetrievePresentationContexts)
-        nr_pc = len(QueryRetrievePresentationContexts)
-        cx += StoragePresentationContexts[: 128 - nr_pc]
-        ae.requested_contexts = cx
-        negotiation_items = []
-        for context in StoragePresentationContexts[: 128 - nr_pc]:
-            role = build_role(context.abstract_syntax, scp_role=True, scu_role=True)
-            negotiation_items.append(role)
+        # Setup the contexts (inspired by https://github.com/pydicom/pynetdicom/blob/master/pynetdicom/apps)
+        ext_neg = []
+        if command == "find":
+            ae.requested_contexts = (
+                QueryRetrievePresentationContexts
+                + BasicWorklistManagementPresentationContexts
+            )
+        elif command == "get":
+            # We must exclude as many storage contexts as how many query/retrieve contexts we add
+            # because the maximum requested contexts is 128. "StoragePresentationContexts" is a list
+            # that contains 128 storage contexts itself.
+            exclude = [
+                EncapsulatedSTLStorage,
+                EncapsulatedOBJStorage,
+                EncapsulatedMTLStorage,
+            ]
+            store_contexts = [
+                cx
+                for cx in StoragePresentationContexts
+                if cx.abstract_syntax not in exclude
+            ]
+            ae.add_requested_context(PatientRootQueryRetrieveInformationModelGet)
+            ae.add_requested_context(StudyRootQueryRetrieveInformationModelGet)
+            for cx in store_contexts:
+                ae.add_requested_context(cx.abstract_syntax)
+                ext_neg.append(build_role(cx.abstract_syntax, scp_role=True))
+        elif command == "move":
+            ae.requested_contexts = QueryRetrievePresentationContexts
+        elif command == "store":
+            ae.requested_contexts = StoragePresentationContexts
+        else:
+            raise ValueError(
+                f"Invalid command type for creating the association: {command}"
+            )
 
         self.assoc = ae.associate(
             self.server.host,
             self.server.port,
             ae_title=self.server.ae_title,
-            ext_neg=negotiation_items,
+            ext_neg=ext_neg,
         )
 
         if not self.assoc.is_established:
             logger.error("Could not connect to %s.", self.server)
             raise RetriableTaskError(f"Could not connect to {self.server}.")
 
-    @connect_to_server
+    @connect_to_server("find")
     def _send_c_find(
         self,
         query_dict,
@@ -442,7 +478,7 @@ class DicomConnector:
         results = self._fetch_results(responses, "C-FIND", query_dict, limit_results)
         return _extract_pending_data(results)
 
-    @connect_to_server
+    @connect_to_server("get")
     def _send_c_get(  # pylint: disable=too-many-arguments
         self, query_dict, folder, callback=None, msg_id=1
     ):
@@ -483,7 +519,7 @@ class DicomConnector:
 
         return results
 
-    @connect_to_server
+    @connect_to_server("move")
     def _send_c_move(self, query_dict, destination_ae_title, msg_id=1):
         logger.debug("Sending C-MOVE with query: %s", query_dict)
 
@@ -506,7 +542,7 @@ class DicomConnector:
         )
         return self._fetch_results(responses, "C-MOVE", query_dict)
 
-    @connect_to_server
+    @connect_to_server("store")
     def _send_c_store(self, folder, callback=None, msg_id=1):
         logger.debug("Sending C-STORE of folder: %s", str(folder))
 

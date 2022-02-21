@@ -62,10 +62,10 @@ class SelectiveTransferConsumer(
 
         await self.accept()
 
-    async def disconnect(self, close_code):  # pylint: disable=arguments-differ
+    async def disconnect(self, code):
         self.abort_connectors()
         self.pool.shutdown(wait=False, cancel_futures=True)
-        logger.debug("Disconnected from WebSocket client with code: %s", close_code)
+        logger.debug("Disconnected from WebSocket client with code: %s", code)
 
     async def receive_json(self, content, **kwargs):
         async with async_lock(lock):

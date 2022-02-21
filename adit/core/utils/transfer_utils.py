@@ -200,7 +200,13 @@ def _download_dicoms(
     )
 
     if transfer_task.series_uids:
-        _download_study(connector, study, study_folder, modifier_callback, series_uids=transfer_task.series_uids)
+        _download_study(
+            connector,
+            study,
+            study_folder,
+            modifier_callback,
+            series_uids=transfer_task.series_uids,
+        )
     else:
         _download_study(connector, study, study_folder, modifier_callback)
 
@@ -282,7 +288,7 @@ def _download_study(
     study: Dict[str, Any],
     study_folder: Path,
     modifier_callback: Callable,
-    series_uids: List[str]=None,
+    series_uids: List[str] = None,
 ) -> None:
     if series_uids:
         for series_uid in series_uids:
@@ -300,42 +306,6 @@ def _download_study(
             study_folder,
             modifier_callback=modifier_callback,
         )
-
-
-def _download_series(
-    connector: DicomConnector,
-    study: Dict[str, Any],
-    series_uid: str,
-    study_folder: Path,
-    modifier_callback: Callable,
-) -> None:
-    series_list = connector.find_series(
-        {
-            "PatientID": study["PatientID"],
-            "StudyInstanceUID": study["StudyInstanceUID"],
-            "SeriesInstanceUID": series_uid,
-            "SeriesDescription": "",
-        }
-    )
-    if len(series_list) == 0:
-        raise AssertionError(
-            f"No series found with Series Instance UID: {series_uid}"
-        )
-    if len(series_list) > 1:
-        raise AssertionError(
-            f"Multiple series found with Series Instance UID {series_uid}."
-        )
-    series = series_list[0]
-    series_folder_name = sanitize_dirname(series["SeriesDescription"])
-    series_folder = study_folder / series_folder_name
-
-    connector.download_series(
-        series["PatientID"],
-        series["StudyInstanceUID"],
-        series["SeriesInstanceUID"],
-        series_folder,
-        modifier_callback,
-    )
 
 
 def _modify_dataset(
@@ -368,6 +338,7 @@ def _modify_dataset(
         session_id = f"{ds.StudyDate}-{ds.StudyTime}"
         ds.PatientComments = f"Project:{trial_protocol_id} Subject:{pseudonym} Session:{pseudonym}_{session_id}"
 
+
 def _create_archive(
     archive_path: Path, job: TransferJob, archive_password: str
 ) -> None:
@@ -377,10 +348,8 @@ def _create_archive(
 
     with tempfile.TemporaryDirectory(prefix="adit_") as tmpdir:
         readme_path = Path(tmpdir) / "INDEX.txt"
-        readme_file = open(readme_path, "w")
-        readme_file.write(f"Archive created by {job} at {datetime.now()}.")
-        readme_file.close()
-
+        with open(readme_path, "w", encoding="utf-8") as readme_file:
+            readme_file.write(f"Archive created by {job} at {datetime.now()}.")
         _add_to_archive(archive_path, archive_password, readme_path)
 
 
@@ -404,4 +373,4 @@ def _add_to_archive(
     proc.wait()
     (_, stderr) = proc.communicate()
     if proc.returncode != 0:
-        raise IOError("Failed to add path to archive (%s)" % stderr)
+        raise IOError(f"Failed to add path to archive {stderr}")
