@@ -28,6 +28,7 @@ class BatchTransferTask(TransferTask):
         on_delete=models.CASCADE,
         related_name="tasks",
     )
+    batch_ids = models.JSONField(default=list)
 
     def get_absolute_url(self):
         return reverse("batch_transfer_task_detail", args=[self.job.id, self.task_id])

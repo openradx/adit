@@ -34,6 +34,7 @@ class BatchQueryTask(DicomTask):
     job = models.ForeignKey(
         BatchQueryJob, on_delete=models.CASCADE, related_name="tasks"
     )
+    batch_ids = models.JSONField(default=list)
     patient_id = models.CharField(
         blank=True,
         max_length=64,
