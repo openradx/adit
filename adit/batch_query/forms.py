@@ -78,20 +78,8 @@ class BatchQueryJobForm(forms.ModelForm):
             raise ValidationError("Invalid batch file (unknown encoding).")
 
         file = StringIO(rawdata.decode(encoding))
-        parser = BatchQueryFileParser(
-            {
-                "task_id": "TaskID",
-                "patient_id": "PatientID",
-                "patient_name": "PatientName",
-                "patient_birth_date": "PatientBirthDate",
-                "accession_number": "AccessionNumber",
-                "study_date_start": "From",
-                "study_date_end": "Until",
-                "modalities": "Modality",
-                "pseudonym": "Pseudonym",
-                "series_description": "SeriesDescription",
-            },
-        )
+
+        parser = BatchQueryFileParser()
 
         try:
             self.tasks = parser.parse(file, self.max_batch_size)

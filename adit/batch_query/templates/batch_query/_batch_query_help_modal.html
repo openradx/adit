@@ -30,8 +30,6 @@ Batch Query Help
 <p>
     These are the columns in the batch file to execute your queries:
     <dl>
-        <dt>TaskID</dt>
-        <dd>A consecutive unique number that identifies the query task.</dd>
         <dt>PatientID</dt>
         <dd>The unique ID of the patient in the PACS.</dd>
         <dt>PatientName</dt>
@@ -49,14 +47,14 @@ Batch Query Help
         <dt>SeriesDescription</dt>
         <dd>Only include series of the study, whose series description match a certain case insensitive regular
             expression pattern (see <a
-                    href="https://medium.com/factory-mind/regex-tutorial-a-simple-cheatsheet-by-examples-649dc1c3f285/">
-            introduction into using a regular expression</a> and <a href="https://regex101.com/"> testing your regular
-                expression</a>).</dd>
+                href="https://medium.com/factory-mind/regex-tutorial-a-simple-cheatsheet-by-examples-649dc1c3f285/">
+                introduction into using a regular expression</a> and <a href="https://regex101.com/"> testing your
+                regular expression</a>).</dd>
     </dl>
 </p>
 <p>
-    TaskID is always required. The patient must be identifiable by either "PatientID" or "PatientName" together with
-    "PatientBirthDate". The remaining fields are optional and may limit the results for what you really need.
+    The patient must be identifiable by either "PatientID" or "PatientName" together with "PatientBirthDate".
+    The remaining fields are optional and may limit the results for what you really need.
 </p>
 <p>
     Make sure that your CSV file encoding is correct by opening it with a normal text editor (ideally under Windows).

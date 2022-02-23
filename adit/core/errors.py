@@ -51,15 +51,8 @@ class BatchFileFormatError(Exception):
                 if self.message:
                     self.message += "\n"
                 if item_errors:
-                    task_id = self.data[num].get("task_id", "").strip()
-                    line_num = self.data[num]["__line_num__"]
-
-                    self.message += f"Invalid data on line {line_num}"
-
-                    if task_id:
-                        self.message += f" (TaskID {task_id})"
-
-                    self.message += ":\n"
+                    lines = ", ".join([str(line) for line in self.data[num]["lines"]])
+                    self.message += f"Invalid data on line(s) {lines}:\n"
 
                     non_field_errors = item_errors.pop("non_field_errors", None)
                     if non_field_errors:

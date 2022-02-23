@@ -16,53 +16,34 @@ class BatchFileParser:
         return self.serializer_class(data=data, many=True)
 
     def parse(self, batch_file: TextIO, max_batch_size: int):
-        if not "task_id" in self.field_to_column_mapping:
-            raise AssertionError("The mapping must contain a 'task_id' field.")
-
         data = []
+        counter = 1
         reader = csv.DictReader(batch_file, delimiter=settings.CSV_DELIMITER)
-
-        study_uids = []
-        series_uids = []
         for row in reader:
             data_row = {}
 
+            row_empty = True
             for field, column in self.field_to_column_mapping.items():
-                data_row[field] = row.get(column, "")
-            if "series_uids" in data_row and data_row["series_uids"] == "":
-                del data_row["series_uids"]
-            data_row["__line_num__"] = reader.line_num
+                value = row.get(column, "").strip()
+                if value:
+                    row_empty = False
+                    data_row[field] = self.transform_value(field, value)
 
-            # Skip rows without a task ID
-            if not data_row["task_id"]:
+            if row_empty:
                 continue
-            series_uids.append("series_uids" in data_row)
-            if "study_uid" in data_row:
-                study_uids.append(data_row["study_uid"])
+
+            data_row["task_id"] = counter
+            counter += 1
+
+            data_row["lines"] = [reader.line_num]
+
             data.append(data_row)
 
-        if len(series_uids) > 0 and any(series_uids):
-            # By using "set" the order of the serialized data is independent of the parsed data.
-            # This makes sense as many rows of the raw data may be collected to one task.
-            study_uids = list(set(study_uids))
-            squeezed_data = []
-            for study_uid in study_uids:
-                tmp_data_row = {}
-                for data_row in data:
-                    if data_row["study_uid"] == study_uid:
-                        if not tmp_data_row:
-                            tmp_data_row = data_row
-                            series_uid = tmp_data_row["series_uids"]
-                            tmp_data_row["series_uids"] = list()
-                            tmp_data_row["series_uids"].append(series_uid)
-                        else:
-                            tmp_data_row["series_uids"].append(data_row["series_uids"])
-                squeezed_data.append(tmp_data_row)
-            data = squeezed_data
-        if max_batch_size is not None and len(study_uids) > max_batch_size:
-            raise BatchFileSizeError(len(study_uids), max_batch_size)
+        if max_batch_size is not None and len(data) > max_batch_size:
+            raise BatchFileSizeError(len(data), max_batch_size)
 
         serializer = self.get_serializer(data)
+
         if not serializer.is_valid():
             raise BatchFileFormatError(
                 self.field_to_column_mapping,
@@ -71,3 +52,8 @@ class BatchFileParser:
             )
 
         return serializer.get_tasks()
+
+    # Method that can be overridden to adapt the value for a specific field
+    # pylint: disable=unused-argument
+    def transform_value(self, field: str, value):
+        return value

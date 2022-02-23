@@ -1,4 +1,3 @@
-from collections import Counter
 from rest_framework import serializers
 from django.utils import formats
 
@@ -9,20 +8,6 @@ class BatchTaskListSerializer(
     def __init__(self, *args, **kwargs):
         self.model = kwargs.pop("model")
         super().__init__(*args, **kwargs)
-
-    def find_duplicates(self, items):
-        return [item for item, count in Counter(items).items() if count > 1]
-
-    def validate(self, attrs):
-        attrs = super().validate(attrs)
-
-        task_ids = [data["task_id"] for data in attrs]
-        duplicates = self.find_duplicates(task_ids)
-        if len(duplicates) > 0:
-            ds = ", ".join(str(i) for i in duplicates)
-            raise serializers.ValidationError(f"Duplicate 'TaskID': {ds}")
-
-        return attrs
 
     def get_tasks(self):
         # pylint: disable=not-callable

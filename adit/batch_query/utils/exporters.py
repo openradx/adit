@@ -24,7 +24,6 @@ def export_results(job: BatchQueryJob, file):
 
 def write_header(writer, has_pseudonyms, has_series):
     column_headers = [
-        "TaskID",
         "PatientID",
         "PatientName",
         "BirthDate",

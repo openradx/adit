@@ -20,8 +20,7 @@ Batch Transfer Help
 </p>
 <p>
     The required PatientID and StudyInstanceUID can be fetched by doing a "Batch Query". The resulting CSV file of a
-    batch query can be used with minimal modifications for a batch transfer. You just have to make sure that the TaskID
-    is unique (which may not be the case when batch query returns multiple studies for one query task).
+    batch query can be used with minimal modifications for a batch transfer.
 </p>
 <p>
     <strong class="text-danger">Cave!</strong><br />
@@ -35,8 +34,6 @@ Batch Transfer Help
 <p>
     The following columns must be defined in the CSV file:
     <dl>
-        <dt>TaskID</dt>
-        <dd>A consecutive unique number that identifies the transfer task.</dd>
         <dt>PatientID</dt>
         <dd>The unique ID of the patient in the PACS.</dd>
         <dt>StudyInstanceUID</dt>

@@ -112,16 +112,8 @@ class BatchTransferJobForm(forms.ModelForm):
         can_transfer_unpseudonymized = self.user.has_perm(
             "batch_transfer.can_transfer_unpseudonymized"
         )
-        parser = BatchTransferFileParser(
-            {
-                "task_id": "TaskID",
-                "patient_id": "PatientID",
-                "study_uid": "StudyInstanceUID",
-                "pseudonym": "Pseudonym",
-                "series_uids": "SeriesInstanceUID",
-            },
-            can_transfer_unpseudonymized,
-        )
+
+        parser = BatchTransferFileParser(can_transfer_unpseudonymized)
 
         try:
             self.tasks = parser.parse(file, self.max_batch_size)
