@@ -1,6 +1,7 @@
 version: "3.8"
 
-x-app: &default-app
+x-app:
+    &default-app
     build:
         context: ../..
         target: development
@@ -70,11 +71,12 @@ services:
             - "11122:11112"
         command: python manage.py receiver
 
-    flower:
-        <<: *default-app
-        expose:
-            - "5555"
-        command: celery flower -A adit --url_prefix=flower
+    # TODO: Disable Flower 1.0.0 for now as it is not fully compatible with Celery 5
+    # flower:
+    #     <<: *default-app
+    #     expose:
+    #         - "5555"
+    #     command: celery -A adit flower --url_prefix=flower
 
     postgres:
         image: postgres:13.1
