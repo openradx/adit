@@ -61,7 +61,6 @@ INSTALLED_APPS = [
     "adit.selective_transfer.apps.SelectiveTransferConfig",
     "adit.batch_query.apps.BatchQueryConfig",
     "adit.batch_transfer.apps.BatchTransferConfig",
-    "adit.continuous_transfer.apps.ContinuousTransferConfig",
     "adit.dicom_explorer.apps.DicomExplorerConfig",
     "channels",
 ]
@@ -311,9 +310,6 @@ CELERY_TASK_ROUTES = {
     "adit.batch_transfer.tasks.ProcessBatchTransferTask": {
         "queue": "dicom_task_queue",
     },
-    "adit.continuous_transfer.tasks.ProcessContinuousTransferTask": {
-        "queue": "dicom_task_queue",
-    },
 }
 CELERY_BEAT_SCHEDULE = {
     "check-disk-space": {
@@ -369,7 +365,6 @@ CSV_DELIMITER = ";"
 SELECTIVE_TRANSFER_UNVERIFIED = True
 BATCH_QUERY_UNVERIFIED = True
 BATCH_TRANSFER_UNVERIFIED = True
-CONTINUOUS_TRANSFER_UNVERIFIED = True
 
 # A timezone that is used for users of the web interface.
 USER_TIME_ZONE = env.str("USER_TIME_ZONE", default=None)
@@ -379,8 +374,6 @@ SELECTIVE_TRANSFER_DEFAULT_PRIORITY = 3
 SELECTIVE_TRANSFER_URGENT_PRIORITY = 7
 BATCH_TRANSFER_DEFAULT_PRIORITY = 2
 BATCH_TRANSFER_URGENT_PRIORITY = 6
-CONTINUOUS_TRANSFER_DEFAULT_PRIORITY = 1
-CONTINUOUS_TRANSFER_URGENT_PRIORITY = 5
 BATCH_QUERY_DEFAULT_PRIORITY = 4
 BATCH_QUERY_URGENT_PRIORITY = 8
 

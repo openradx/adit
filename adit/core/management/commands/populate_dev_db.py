@@ -46,7 +46,6 @@ def create_users():
 
     batch_transfer_group = Group.objects.get(name="batch_transfer_group")
     selective_transfer_group = Group.objects.get(name="selective_transfer_group")
-    continuous_transfer_group = Group.objects.get(name="continuous_transfer_group")
 
     users = [admin]
 
@@ -61,7 +60,6 @@ def create_users():
         user = UserFactory()
         user.groups.add(batch_transfer_group)
         user.groups.add(selective_transfer_group)
-        user.groups.add(continuous_transfer_group)
 
         if i > 0:
             user.user_permissions.add(*urgent_permissions)

@@ -13,7 +13,6 @@ ADIT (Automated DICOM Transfer) is a swiss army knife to exchange DICOM data bet
 - Upload a batch file to transfer or download multiple studies (Batch Transfer)
 - Download the data to an encrpyted 7-Zip archive (only in Selective Transfer mode)
 - Define when transfers should happen (to reduce PACS server load)
-- A continuous mode to transfer past and future studies automatically (Continuous Transfer) [TBA]
 - Check if a list of studies is present on a DICOM server [TBA]
 
 # Architectural overview
@@ -46,7 +45,6 @@ Downloading data from a DICOM server can done by using a C-GET or C-MOVE operati
 -   log debug -> info in connector also in production
 -   implement real study download / move
 -   Use LRU cache for dicom explorer / collector
--   Continuous Mode
 -   Better scheduler (with day in week and times)
 -   Tests: test_query_utils, test serializers, test all views (as integration tests using real Orthanc), improve tests of transferutil, BatchFileSizeError
 -   Link owner in templates to user profile
@@ -89,7 +87,7 @@ Downloading data from a DICOM server can done by using a C-GET or C-MOVE operati
 ## Django commands
 
 - python manage.py shell_plus --print-sql # Show all SQL statements (django_extensions required)
-- python .\manage.py startapp continuous_transfer .\adit\continuous_transfer # Folder must exist
+- python .\manage.py startapp new_app .\adit\new_app # Folder must already exist
 
 ## Docker comands
 
