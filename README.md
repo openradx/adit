@@ -4,113 +4,34 @@ ADIT (Automated DICOM Transfer) is a swiss army knife to exchange DICOM data bet
 
 # Features
 
-- add support store_scp_support, dicomweb_quido_rs_support, ...
 - Transfer DICOM data between DICOM / PACS servers
-- Download DICOM data to a network folder
+- Download DICOM data to a local or network folder
 - Pseudonymize DICOM data on the fly
 - Specify a trial name for the transfered data (stored in the DICOM header)
 - Use the web interface to select studies to transfer or download (Selective Transfer)
-- Upload a batch file to transfer or download multiple studies (Batch Transfer)
 - Download the data to an encrpyted 7-Zip archive (only in Selective Transfer mode)
-- Define when transfers should happen (to reduce PACS server load)
-- Check if a list of studies is present on a DICOM server [TBA]
+- Upload a batch file to make multiple queries on a DICOM server (Batch Query)
+- Upload a batch file to transfer or download multiple studies (Batch Transfer)
+- Define when transfers should happen, e.g. on at night (to reduce PACS server load)
+- Fine-grained control of what users can do or can't do
+- Help modals with detailed information for the most important features
+
+# Upcoming features
+
+- A REST API to manage transfers programmatically from a third party program.
 
 # Architectural overview
 
-The frontend of ADIT is built using the Django web framework and data is stored in a PostgreSQL database. The frontend is fully functional without Javascript, but is progressively enhanced with Javascript.
+The backend of ADIT is built using the Django web framework and data is stored in a PostgreSQL database. For DICOM transfer pynetdicom of the pydicom project is used. The frontend is progressively enhanced with Javascript, but also works without it.
 
-A transfer job contains one or more transfer tasks that describe what DICOM data to transfer and how to transfer it (source, destination, pseudonymized, and so on).
-A transfer task is processed by a Celery worker (a task scheduler) in the background running in its own Docker container.
-Celery internally uses RabbitMQ to send new tasks to the worker and Redis to store the results (if needed).
+A transfer job contains one or more transfer tasks that describe what DICOM data to transfer and how to transfer it (source, destination, pseudonym, and so on).
+A transfer task is processed by a Celery worker (a task scheduler) in the background running in its own Docker container. Celery internally uses RabbitMQ to send new tasks to the worker and Redis to store the results (if needed).
 
 Redis is also used as a caching layer to relieve the PACS server of already done queries (e.g. querying for the Patient ID by using Patient Name and Patient Birth Date).
 
 When the DICOM data to transfer needs to be modified (e.g. pseudonymized) it is downloaded temporarily to the ADIT webserver, then transformed and uploaded to the destination server resp. moved to the destination folder.
 
-DICOM data that does not need to be modified can be directly transferred between the source and destination server. The only exception is when source and destination server are the same, then the data will still be downloaded and uploaded again. This may be helpful when the PACS server treats the data somehow differently when sent by ADIT.
-
-Downloading data from a DICOM server can done by using a C-GET or C-MOVE operation. C-GET is prioritized as a worker can fetch the DICOM data directly from the server. Unfortunately, C-GET is not supported by many DICOM servers. When downloading data using a C-MOVE operation, ADIT commands the DICOM server to send the data to DICOM C-STORE SCP server (named Receiver) that receives the DICOM data and sends it back to the worker using a RabbitMQ message.
-
-# TODO list
-
--   Do some prechecks before trying the task (is source and destination online?)
--   Store all uploaded files
--   split urgent to urgent and prioritize
--   move or get rid of hijack_logger and store_log_in_task in task_utils
--   pull celery_task stuff out of transfer_utils
--   Allow admin to kill a job (with task revoke(terminale=True))
--   Shorter timeout for offline studies
--   Cancel during transfer
--   Auto refresh pages of in progress jobs
--   log debug -> info in connector also in production
--   implement real study download / move
--   Use LRU cache for dicom explorer / collector
--   Better scheduler (with day in week and times)
--   Tests: test_query_utils, test serializers, test all views (as integration tests using real Orthanc), improve tests of transferutil, BatchFileSizeError
--   Link owner in templates to user profile
--   c-get download timeout
--   Choice to transfer all modalities of a studies or just the modalities which were searched for
--   Make logging analyze Docker image with: http://crunchtools.com/software/petit/, less, vim, https://crypt.gen.nz/logsurfer/, ripgrep
--   Upgrade to Celery 5 when Flower is compatible again
--- https://docs.celeryproject.org/en/latest/reference/celery.contrib.abortable.html
--- https://stackoverflow.com/questions/16493364/stopping-celery-task-gracefully
--- https://docs.celeryproject.org/en/latest/userguide/workers.html#revoke-revoking-tasks
-- (0008, 0056) Instance Availability               CS: 'OFFLINE' ( (ONLINE,  NEARLINE,  OFFLINE, UNAVAILABLE)), see https://www.gehealthcare.com/-/jssmedia/1b62d771fb604ff7a4c8012498aea68b.pdf?la=en-us
-
-# Maybe features
-
-- BatchQuery with custom DICOM keywords
-- Watchdog server
-- Support Excel batch files additionally to CSV files (best by using Pandas with openpyxl)
-- Allow provide a regex of StudyDescription in CSV batch file
-- Allow to specify many modalities per row in CSV file
-- move date parsing part in parsers.py and consumers.py to date_util.py
-- https://stackoverflow.com/questions/14259852/how-to-identify-image-receive-in-c-store-as-result-of-a-c-move-query
-- https://www.yergler.net/2009/09/27/nested-formsets-with-django/
-- Allow to search multiple source servers with one query
-- Evaluate to use diffhtml instead of morphdom, see https://diffhtml.org/api.html#inner-html
-- http://the-frey.github.io/2014/08/18/monitoring-docker-containers-with-monit
-
-# Commands
-
-## Testing and coverage commands
-
-- docker exec -it adit_dev_web_1 pytest
-- ptw --runner 'pytest -s --testmon' # Watch only changed tests with pytest watch
-- python manage.py test -v 2 app_name # Show print outputs during test
-- coverage run --source=. -m pytest # Run coverage only
-- coverage report # Show coverage report
-- coverage annotate # Annotate files with coverage
-- pytest --cov=. # Run Pytest and report coverage (in one command)
-- find . -name "\*,cover" -type f -delete # Delete all cover files (from coverage annotate)
-
-## Django commands
-
-- python manage.py shell_plus --print-sql # Show all SQL statements (django_extensions required)
-- python .\manage.py startapp new_app .\adit\new_app # Folder must already exist
-
-## Docker comands
-
-- docker-compose -f "docker-compose.dev.yml" -p adit_dev exec web pytest # Run Pytest on web container
-- docker-compose -f "docker-compose.dev.yml" -p adit_dev exec web pytest --cov=./adit # Run Pytest with coverage report
-- docker build . --target development -t adit_dev # Build a volume from our Dockerfile
-- docker run -v C:\Users\kaisc\Projects\adit:/src -it adit_dev /bin/bash # Run the built container with src folder mounted from host
-- docker ps -a --filter volume=vol_name # Find container that mounts volume
-- docker run -v=adit_web_data:/var/www/adit -it busybox /bin/sh # Start interactive shell with named volume mounted
-- docker run --rm -i -v=adit_web_data:/foo busybox find /foo # List files in named volume
-- docker-compose -f "docker-compose.dev.yml" -p adit_dev up -d --build
-- docker-compose -f "docker-compose.prod.yml" -p adit_prod up -d --build
-
-## Celery commands
-
-- celery -A adit purge -Q default,low
-- celery -A adit inspect scheduled
-
-# Deployment for production
-
-- Copy cert.pem and key.pem from N:\Dokumente\Projekte\ADIT_Server\ssl_certificate to /var/www/adit/ssl/
-- Restart adit_prod_web container
-- Add the DICOM servers and folders
+Downloading data from a DICOM server can done by using a C-GET or C-MOVE operation. C-GET is prioritized as a worker can fetch the DICOM data directly from the server. Unfortunately, C-GET is not supported by many DICOM servers. When downloading data using a C-MOVE operation, ADIT commands the source DICOM server to send the data to a C-STORE SCP server running in a separate container (named Receiver) that receives the DICOM data and sends it back to the worker using a RabbitMQ message.
 
 # License
 
