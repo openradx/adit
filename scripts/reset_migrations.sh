@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # TODO delete if not needed anymore cause of reset_migrations command
 

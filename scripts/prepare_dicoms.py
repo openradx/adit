@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 """Sorts and modifies DICOM files.
 
 Examples:

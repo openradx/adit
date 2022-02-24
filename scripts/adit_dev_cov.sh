@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 PROJECT_DIR="$(dirname $(dirname $(readlink -f $0)))"
 
