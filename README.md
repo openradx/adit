@@ -20,6 +20,16 @@ ADIT (Automated DICOM Transfer) is a swiss army knife to exchange DICOM data bet
 
 - A REST API to manage transfers programmatically from a third party program.
 
+# Screenshots
+
+![Screenshot1](https://user-images.githubusercontent.com/120626/155511207-d3bdf595-d3ec-4dfb-a606-660b7b30fa5b.png)
+
+![Screenshot2](https://user-images.githubusercontent.com/120626/155511254-95adbed7-ef2e-44bd-aa3b-6e055be527a5.png)
+
+![Screenshot3](https://user-images.githubusercontent.com/120626/155511300-4dafe29f-748f-4d69-81af-89afe63197a0.png)
+
+![Screenshot4](https://user-images.githubusercontent.com/120626/155511342-e64cd37d-4e92-4a9a-bbb0-4e88ea136d3c.png)
+
 # Architectural overview
 
 The backend of ADIT is built using the Django web framework and data is stored in a PostgreSQL database. For DICOM transfer pynetdicom of the pydicom project is used. The frontend is progressively enhanced with Javascript, but also works without it.
