@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "adit"
-version = "0.17.0"
+version = "0.18.0"
 description = ""
 authors = ["medihack <kai.schlamp@gmail.com>"]
 license = "GPLv3"
