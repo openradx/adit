@@ -3,8 +3,11 @@ import subprocess
 from datetime import timedelta
 from celery import shared_task, Task as CeleryTask, chord
 from celery.utils.log import get_task_logger
+from django.conf import settings
+from django.core.mail import send_mail
 from django.utils import timezone
 from django.template.defaultfilters import pluralize
+from ..accounts.models import User
 from .models import AppSettings, DicomFolder, DicomJob, DicomTask
 from .utils.mail import (
     send_job_failed_mail,
@@ -14,6 +17,18 @@ from .utils.mail import (
 from .utils.scheduler import Scheduler
 
 logger = get_task_logger(__name__)
+
+
+@shared_task(ignore_result=True)
+def broadcast_mail(subject: str, message: str):
+    recipients = []
+    for user in User.objects.all():
+        if user.email:
+            recipients.append(user.email)
+
+    send_mail(subject, message, settings.SUPPORT_EMAIL, recipients)
+
+    logger.info("Successfully sent an Email to %d recipents.", len(recipients))
 
 
 @shared_task(ignore_result=True)

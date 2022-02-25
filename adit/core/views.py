@@ -14,7 +14,6 @@ from django.contrib.auth.mixins import (
 from django.urls import re_path, reverse_lazy
 from django.shortcuts import redirect
 from django.core.exceptions import SuspiciousOperation
-from django.core.mail import send_mail
 from django.conf import settings
 from django.http.response import Http404
 from django.db import models
@@ -22,8 +21,9 @@ from django.db.models.query import QuerySet
 from django_tables2 import SingleTableMixin
 from django_filters.views import FilterView
 from revproxy.views import ProxyView
+
+from adit.core.tasks import broadcast_mail
 from ..celery import app as celery_app
-from ..accounts.models import User
 from .site import job_stats_collectors
 from .models import CoreSettings, DicomJob, DicomTask
 from .mixins import OwnerRequiredMixin, PageSizeSelectMixin
@@ -62,17 +62,12 @@ class BroadcastView(UserPassesTestMixin, FormView):
         subject = form.cleaned_data["subject"]
         message = form.cleaned_data["message"]
 
-        recipients = []
-        for user in User.objects.all():
-            if user.email:
-                recipients.append(user.email)
-
-        send_mail(subject, message, settings.SUPPORT_EMAIL, recipients)
+        broadcast_mail.delay(subject, message)
 
         messages.add_message(
             self.request,
             messages.SUCCESS,
-            f"Successfully sent and Email to {len(recipients)} recipients!",
+            "Mail queued for sending successfully",
         )
 
         return super().form_valid(form)
