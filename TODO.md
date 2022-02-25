@@ -1,5 +1,9 @@
 # TODO
 
+- Remove download hint from front page
+- Fix mail all users
+- Auto refresh batch transfer job page if not finished automagically
+- Write test_parsers.py
 - DICOM data that does not need to be modified can be directly transferred between the source and destination server. The only exception is when source and destination server are the same, then the data will still be downloaded and uploaded again. This may be helpful when the PACS server treats the data somehow differently when sent by ADIT.
 - Do some prechecks before trying the task (is source and destination online?)
 - Store all uploaded files
@@ -20,7 +24,7 @@
 - Choice to transfer all modalities of a studies or just the modalities which were searched for
 - Make logging analyze Docker image with: http://crunchtools.com/software/petit/, less, vim, https://crypt.gen.nz/logsurfer/, ripgrep
 - Get Flower running again
-- (0008, 0056) Instance Availability CS: 'OFFLINE' ( (ONLINE, NEARLINE, OFFLINE, UNAVAILABLE)), see https://www.gehealthcare.com/-/jssmedia/1b62d771fb604ff7a4c8012498aea68b.pdf?la=en-us
+- Evaluate (0008, 0056) Instance Availability CS: 'OFFLINE' ( (ONLINE, NEARLINE, OFFLINE, UNAVAILABLE)), see https://www.gehealthcare.com/-/jssmedia/1b62d771fb604ff7a4c8012498aea68b.pdf?la=en-us
 
 # Maybe
 
