@@ -43,6 +43,11 @@ When the DICOM data to transfer needs to be modified (e.g. pseudonymized) it is 
 
 Downloading data from a DICOM server can done by using a C-GET or C-MOVE operation. C-GET is prioritized as a worker can fetch the DICOM data directly from the server. Unfortunately, C-GET is not supported by many DICOM servers. When downloading data using a C-MOVE operation, ADIT commands the source DICOM server to send the data to a C-STORE SCP server running in a separate container (named Receiver) that receives the DICOM data and sends it back to the worker using a RabbitMQ message.
 
+# Contributors
+
+[![](https://github.com/medihack.png?size=50)](https://github.com/medihack)
+[![](https://github.com/mdebic.png?size=50)](https://github.com/mdebic)
+
 # License
 
 - GPLv3
