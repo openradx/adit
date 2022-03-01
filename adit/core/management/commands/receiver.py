@@ -104,7 +104,6 @@ def on_established(event):
 
 
 def on_released(event):
-    print(event.assoc.remote)
     calling_ae = event.assoc.remote["ae_title"]
     address = event.assoc.remote["address"]
     port = event.assoc.remote["port"]
