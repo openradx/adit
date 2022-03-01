@@ -47,7 +47,7 @@ class Command(ServerCommand):
 
 
 def on_connect(event):
-    address = event.assoc.remote["address"].strip()
+    address = event.assoc.remote["address"]
     port = event.assoc.remote["port"]
     logger.info("Connection to remote %s:%d opened", address, port)
 
@@ -86,7 +86,7 @@ def on_connect(event):
 
 
 def on_close(event):
-    address = event.assoc.remote["address"].strip()
+    address = event.assoc.remote["address"]
     port = event.assoc.remote["port"]
     logger.info("Connection to remote %s:%d closed", address, port)
 
@@ -97,22 +97,23 @@ def on_close(event):
 
 
 def on_established(event):
-    calling_ae = event.assoc.remote["ae_title"].decode("utf-8").strip()
-    address = event.assoc.remote["address"].strip()
+    calling_ae = event.assoc.remote["ae_title"]
+    address = event.assoc.remote["address"]
     port = event.assoc.remote["port"]
     logger.info("Assoication to %s [%s:%d] established.", calling_ae, address, port)
 
 
 def on_released(event):
-    calling_ae = event.assoc.remote["ae_title"].decode("utf-8").strip()
-    address = event.assoc.remote["address"].strip()
+    print(event.assoc.remote)
+    calling_ae = event.assoc.remote["ae_title"]
+    address = event.assoc.remote["address"]
     port = event.assoc.remote["port"]
     logger.info("Assoication to %s [%s:%d] released.", calling_ae, address, port)
 
 
 def on_aborted(event):
-    calling_ae = event.assoc.remote["ae_title"].decode("utf-8").strip()
-    address = event.assoc.remote["address"].strip()
+    calling_ae = event.assoc.remote["ae_title"]
+    address = event.assoc.remote["address"]
     port = event.assoc.remote["port"]
     logger.info("Assoication to %s [%s:%d] was aborted.", calling_ae, address, port)
 
@@ -128,7 +129,6 @@ def handle_store(event):
     ds.file_meta = event.file_meta
 
     called_ae = event.assoc.acceptor.primitive.called_ae_title
-    called_ae = called_ae.decode("utf-8").strip()
     if called_ae != settings.ADIT_AE_TITLE:
         raise AssertionError(f"Invalid called AE title: {called_ae}")
 
@@ -144,7 +144,7 @@ def handle_store(event):
     channel.exchange_declare(exchange="received", exchange_type="direct")
 
     # Send the dataset to the workers using RabbitMQ
-    calling_ae = event.assoc.remote["ae_title"].decode("utf-8").strip()
+    calling_ae = event.assoc.remote["ae_title"]
     routing_key = f"{calling_ae}\\{ds.StudyInstanceUID}\\{ds.SeriesInstanceUID}"
     properties = pika.BasicProperties(message_id=ds.SOPInstanceUID)
     channel.basic_publish(
