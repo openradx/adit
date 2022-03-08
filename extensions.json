@@ -1,0 +1,9 @@
+{
+  "recommendations": [
+    "ms-python.python",
+    "batisteo.vscode-django",
+    "ms-azuretools.vscode-docker",
+    "wayou.vscode-todo-highlight"
+  ],
+  "unwantedRecommendations": []
+}

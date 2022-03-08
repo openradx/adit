@@ -1,0 +1,21 @@
+image:
+  file: .gitpod.Dockerfile
+
+tasks:
+  - init: |
+      poetry install
+      npm install
+      ./scripts/init_gitpod.sh
+      ./scripts/adit_dev_up.sh
+
+ports:
+  - port: 8000
+    onOpen: notify
+  - port: 6501-6502
+    onOpen: ignore
+  - port: 7501-7502
+    onOpen: ignore
+  - port: 11122
+    onOpen: ignore
+  - port: 5678
+    onOpen: ignore
