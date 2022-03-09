@@ -2,11 +2,12 @@ image:
   file: .gitpod.Dockerfile
 
 tasks:
-  - init: |
+  - name: setup
+    init: |
       poetry install
       npm install
       ./scripts/init_gitpod.sh
-      ./scripts/adit_dev_up.sh
+    command: ./scripts/adit_dev_up.sh
 
 ports:
   - port: 8000
