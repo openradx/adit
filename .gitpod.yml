@@ -9,8 +9,8 @@ tasks:
       poetry install
       npm install
     command: |
-      ./scripts/init_gitpod.sh
-      ./scripts/adit_dev_up.sh
+      #./scripts/init_gitpod.sh
+      #./scripts/adit_dev_up.sh
 
 ports:
   - port: 8000
