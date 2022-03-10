@@ -4,6 +4,8 @@ image:
 tasks:
   - name: setup
     init: |
+      curl -sSL https://install.python-poetry.org | python -
+      poetry config virtualenvs.in-project true
       poetry install
       npm install
     command: |
