@@ -158,19 +158,22 @@ class DicomConnector:
         self.assoc.abort()
 
     def find_patients(self, query, limit_results=None):
-        query["QueryRetrieveLevel"] = "PATIENT"
-
-        if not self.server.patient_root_find_support:
-            raise ValueError(
-                "Searching for patients is not supported without C-FIND support for "
-                "Patient Root Query/Retrieve Information Model."
-            )
-
+        if self.server.patient_root_find_support:
+            query["QueryRetrieveLevel"] = "PATIENT"
+        else:
+            query["QueryRetrieveLevel"] = "STUDY"
+            
         patients = self._send_c_find(
             query,
             limit_results=limit_results,
         )
-
+        
+        # Make patients unique, since querying on study level will return all studies for one patient, resulting in duplicate patients
+        if query["QueryRetrieveLevel"] == "STUDY":
+            seen = set()
+            unique_patients = [patient for patient in patients if patient["PatientID"] not in seen and not seen.add(patient["PatientID"])]
+            patients = unique_patients
+            
         # Some PACS servers (like our Synapse) don't support a query filter of PatientBirthDate
         # as it is optional in the Patient Root Query/Retrieve Information Model,
         # see https://groups.google.com/g/comp.protocols.dicom/c/h28r_znomEw
