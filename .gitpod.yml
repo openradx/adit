@@ -1,0 +1,25 @@
+image:
+  file: .gitpod.Dockerfile
+
+tasks:
+  - name: setup
+    init: |
+      mkdir -p /workspace/.pip-modules/bin
+      ln -s /home/gitpod/.local/share/pypoetry/venv/bin/poetry /workspace/.pip-modules/bin/poetry
+      poetry install
+      npm install
+    command: |
+      ./scripts/init_gitpod.sh
+      ./scripts/adit_dev_up.sh
+
+ports:
+  - port: 8000
+    onOpen: notify
+  - port: 6501-6502
+    onOpen: ignore
+  - port: 7501-7502
+    onOpen: ignore
+  - port: 11122
+    onOpen: ignore
+  - port: 5678
+    onOpen: ignore
