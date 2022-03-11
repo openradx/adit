@@ -73,7 +73,6 @@ def write_data(writer, query_tasks, has_pseudonyms, has_series):
                 image_count = result.image_count
 
             csv_row = [
-                query_task.task_id,
                 result.patient_id,
                 patient_name,
                 patient_birth_date,
