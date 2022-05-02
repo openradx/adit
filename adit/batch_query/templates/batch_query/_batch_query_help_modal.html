@@ -29,28 +29,30 @@ Batch Query Help
 </p>
 <p>
     These are the columns in the batch file to execute your queries:
-    <dl>
-        <dt>PatientID</dt>
-        <dd>The unique ID of the patient in the PACS.</dd>
-        <dt>PatientName</dt>
-        <dd>The name of the patient.</dd>
-        <dt>PatientBirthDate</dt>
-        <dd>The birth date of the patient.</dd>
-        <dt>AccessionNumber</dt>
-        <dd>The Accession Number (a unique ID) of the study.</dd>
-        <dt>From</dt>
-        <dd>Only include studies newer than or equal to this date.</dd>
-        <dt>Until</dt>
-        <dd>Only include studies older than or equal to this date.</dd>
-        <dt>Modality</dt>
-        <dd>The modality of the study.</dd>
-        <dt>SeriesDescription</dt>
-        <dd>Only include series of the study, whose series description match a certain case insensitive regular
-            expression pattern (see <a
-                href="https://medium.com/factory-mind/regex-tutorial-a-simple-cheatsheet-by-examples-649dc1c3f285/">
-                introduction into using a regular expression</a> and <a href="https://regex101.com/"> testing your
-                regular expression</a>).</dd>
-    </dl>
+<dl>
+    <dt>PatientID</dt>
+    <dd>The unique ID of the patient in the PACS.</dd>
+    <dt>PatientName</dt>
+    <dd>The name of the patient.</dd>
+    <dt>PatientBirthDate</dt>
+    <dd>The birth date of the patient.</dd>
+    <dt>AccessionNumber</dt>
+    <dd>The Accession Number (a unique ID) of the study.</dd>
+    <dt>From</dt>
+    <dd>Only include studies newer than or equal to this date.</dd>
+    <dt>Until</dt>
+    <dd>Only include studies older than or equal to this date.</dd>
+    <dt>Modality</dt>
+    <dd>The modality of the study.</dd>
+    <dt>SeriesDescription</dt>
+    <dd>Only include series of the study, whose series description match a certain case insensitive regular
+        expression pattern (see <a
+            href="https://medium.com/factory-mind/regex-tutorial-a-simple-cheatsheet-by-examples-649dc1c3f285/">
+            introduction into using a regular expression</a> and <a href="https://regex101.com/"> testing your
+            regular expression</a>).</dd>
+    <dt>SeriesNumber</dt>
+    <dd>Only include series of the study, whose series number is equal to the specified series number.</dd>
+</dl>
 </p>
 <p>
     The patient must be identifiable by either "PatientID" or "PatientName" together with "PatientBirthDate".
@@ -64,8 +66,8 @@ Batch Query Help
 <p>
     The result of the batch query can be viewed and downloaded from ADIT. The downloaded CSV file contains more data
     then what can be viewed on the website. Each result contains the "PatientID" and "StudyInstanceUID", which is
-    necessary for a batch transfer job. If a "SeriesDescription" was provided, the result will also contain the
-    "SeriesInstanceUID". So a batch query job is in most cases the preparation step for a batch transfer.
+    necessary for a batch transfer job. If a "SeriesDescription" or a "SeriesNumber" was provided, the result will also
+    contain the "SeriesInstanceUID". So a batch query job is in most cases the preparation step for a batch transfer.
 </p>
 <div class="mb-1">
     <a href="{% static 'samples/batch_query_sample.csv' %}">

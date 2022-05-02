@@ -24,7 +24,7 @@ def execute_query(query_task: BatchQueryTask) -> BatchQueryTask.Status:
     handler, stream = hijack_logger(logger)
 
     connector: DicomConnector = _create_source_connector(query_task)
-
+    
     try:
         patients = _fetch_patients(connector, query_task)
 
@@ -36,7 +36,7 @@ def execute_query(query_task: BatchQueryTask) -> BatchQueryTask.Status:
             for patient in patients:
                 studies = _query_studies(connector, patient["PatientID"], query_task)
                 if studies:
-                    if query_task.series_description:
+                    if query_task.series_description or query_task.series_number:
                         for study in studies:
                             series = _query_series(connector, study, query_task)
                             all_studies.append(series)
@@ -141,6 +141,7 @@ def _query_series(
             "StudyInstanceUID": study["StudyInstanceUID"],
             "SeriesInstanceUID": "",
             "SeriesDescription": query_task.series_description,
+            "SeriesNumber": query_task.series_number,
         }
     )
     for i in range(len(series)):
@@ -159,7 +160,9 @@ def _save_results(
         series_description = ""
         if "SeriesDescription" in study:
             series_description = study["SeriesDescription"]
-
+        series_number = ""
+        if "SeriesNumber" in study:
+            series_number = study["SeriesNumber"]
         result = BatchQueryResult(
             job=query_task.job,
             query=query_task,
@@ -176,6 +179,7 @@ def _save_results(
             pseudonym=query_task.pseudonym,
             series_uid=series_uid,
             series_description=series_description,
+            series_number=series_number,
         )
         results.append(result)
 

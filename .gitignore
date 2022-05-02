@@ -145,3 +145,8 @@ dump.rdb
 
 #PyCharm
 .idea/
+
+#virtualenv
+bin/
+share/
+pyvenv.cfg

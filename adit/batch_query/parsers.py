@@ -11,6 +11,7 @@ mapping = {
     "modalities": "Modality",
     "pseudonym": "Pseudonym",
     "series_description": "SeriesDescription",
+    "series_number": "SeriesNumber",
 }
 
 

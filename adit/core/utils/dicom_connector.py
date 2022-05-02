@@ -162,18 +162,23 @@ class DicomConnector:
             query["QueryRetrieveLevel"] = "PATIENT"
         else:
             query["QueryRetrieveLevel"] = "STUDY"
-            
+
         patients = self._send_c_find(
             query,
             limit_results=limit_results,
         )
-        
+
         # Make patients unique, since querying on study level will return all studies for one patient, resulting in duplicate patients
         if query["QueryRetrieveLevel"] == "STUDY":
             seen = set()
-            unique_patients = [patient for patient in patients if patient["PatientID"] not in seen and not seen.add(patient["PatientID"])]
+            unique_patients = [
+                patient
+                for patient in patients
+                if patient["PatientID"] not in seen
+                and not seen.add(patient["PatientID"])
+            ]
             patients = unique_patients
-            
+
         # Some PACS servers (like our Synapse) don't support a query filter of PatientBirthDate
         # as it is optional in the Patient Root Query/Retrieve Information Model,
         # see https://groups.google.com/g/comp.protocols.dicom/c/h28r_znomEw
@@ -225,6 +230,11 @@ class DicomConnector:
             series_description = series_description.lower()
             query["SeriesDescription"] = ""
 
+        series_number = query.get("SeriesNumber")
+        if series_number:
+            series_number = int(series_number)
+            query["SeriesNumber"] = ""
+
         series_list = self._send_c_find(query, limit_results=limit_results)
         if series_description:
             series_list = list(
@@ -235,7 +245,15 @@ class DicomConnector:
                     series_list,
                 )
             )
-
+        if series_number:
+            series_list = list(
+                filter(
+                    lambda x: x["SeriesNumber"] == series_number,
+                    series_list,
+                )
+            )
+            for series in series_list:
+                series["SeriesNumber"] = str(series["SeriesNumber"])
         if not modality:
             return series_list
 
@@ -261,6 +279,7 @@ class DicomConnector:
                 "Modality": modality,
                 "SeriesInstanceUID": "",
                 "SeriesDescription": "",
+                "SeriesNumber": "",
             }
         )
 
@@ -347,6 +366,7 @@ class DicomConnector:
                 "Modality": modality,
                 "SeriesInstanceUID": "",
                 "SeriesDescription": "",
+                "SeriesNumber": "",
             }
         )
 
