@@ -1,0 +1,65 @@
+<!-- list of all tokens INNER-->
+{% for token in Tokens reversed %}
+    {% with token_str=token.token_string %}
+    <div 
+        class="row"
+        style="border-bottom: 1px solid rgb(0, 0, 0); padding: 10px"
+    >
+        <div class="col-md-4">
+            <b>Token:</b>
+            <br>
+            <span 
+                id='token-{{ token_str }}' 
+                style='font-size: medium;'
+            >
+                {{ token_str }}
+            </span>
+        </div>
+        <div 
+            class="col-md-8" 
+            id="token_actions"
+        >   
+            <div class="row">
+                <div class="col-md-4">
+                    <b>Validity</b>
+                    <br>from:
+                    {{ token.created_time }}
+                    <br> to:
+                    {{ token.expiry_time }}
+                </div>
+                <div class="col-md-2">
+                    <b>Client:</b> 
+                    <br>{{ token.client }}
+                </div>
+                <div class="col-md-2">
+                    <button 
+                        id="copy-token-button-{{ token_str }}" 
+                        class="btn btn-secondary" 
+                        onclick="copyToken('{{ token_str }}')"
+                    >
+                        Copy
+                    </button>
+                </div>
+                <div class="col-md-2">
+                    <button 
+                        id="delete-token-button-{{ token_str }}" 
+                        class="btn btn-danger" 
+                        onclick="deleteToken('{{ token_str }}')"   
+                    >
+                        Delete
+                    </button>
+                </div>
+                <div class="col-md-2">
+                    <button 
+                        id="download-token-button-{{ token_str }}" 
+                        class="btn btn-primary" 
+                        onclick="downloadToken('{{ token_str }}')"   
+                    >
+                        Download
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endwith %}
+    {% endfor %}
