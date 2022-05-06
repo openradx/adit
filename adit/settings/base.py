@@ -62,7 +62,9 @@ INSTALLED_APPS = [
     "adit.batch_query.apps.BatchQueryConfig",
     "adit.batch_transfer.apps.BatchTransferConfig",
     "adit.dicom_explorer.apps.DicomExplorerConfig",
+    "adit.token_authentication.apps.RestAuthenticationConfig",
     "channels",
+    "rest_framework.authtoken",
 ]
 
 MIDDLEWARE = [
@@ -222,7 +224,10 @@ TIME_ZONE = "UTC"
 REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.IsAuthenticated",
-    ]
+    ],
+    # "DEFAULT_AUTHENTICATION_CLASSES": [
+    #    "adit.token_authentication.auth.RestTokenAuthentication",
+    # ],
 }
 
 # Static files (CSS, JavaScript, Images)
