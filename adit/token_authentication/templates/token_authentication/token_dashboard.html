@@ -1,0 +1,74 @@
+{% extends "core/base_generic.html" %}
+
+{% load static from static %}
+
+{% block script %}
+    <script>
+        var csrf_token = "{{ csrf_token }}"
+    </script>
+    <script src="{% static 'token_authentication/token_authentication.js' %}"></script>
+{% endblock %}
+
+
+{% block container %}
+    <div class="d-flex justify-content-between align-items-start">
+        <h4 class="mb-3">
+            Generate a REST authentication token
+        </h4>
+        {% include "core/_help_button.html" with target="#generate_token_help_modal" only %}
+    </div>
+    <div>
+        {% csrf_token %}
+        <div class="form-group">
+            <label for="select-expiry-time">
+                Choose an expiry time:
+            </label>
+            <select 
+                id="select-expiry-time"
+                class="form-control"
+            >   
+                {% for time_string, hours in ExpiryTimes.items %}
+                <option id="{{ hours }}">{{ time_string }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="specify-client">
+                Specify the client that is going to use the token:
+            </label>
+            <input 
+                id="specify-client"
+                type="text"
+                class="form-control"
+                required
+            >
+        </div>
+        <button 
+            id="generate-token-button" 
+            class="btn btn-primary"
+            style="margin: 10px; float: right;"
+            type="submit"
+        >
+        Generate new token
+        </button>
+    </div>
+    
+    <!-- list of all tokens -->
+    <div 
+        class="row"
+        style="margin-top: 50px;"
+    >
+        <div class="col-md-12">
+            <h4>Your tokens:</h4>
+        </div>
+    </div>
+    <div 
+        id="token-list-wrapper"
+    >
+    </div>
+    
+{% endblock container %}
+
+{% block bottom %}
+{% include 'token_authentication/_generate_token_help_modal.html' with modal_id="generate_token_help_modal" %}
+{% endblock bottom %}
