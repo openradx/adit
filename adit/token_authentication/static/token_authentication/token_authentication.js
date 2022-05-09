@@ -4,7 +4,6 @@ window.onload = loadTokenList();
 function generateToken() {
     var expiry_time = document.getElementById("select-expiry-time").value;
     var client = document.getElementById("specify-client").value;
-
     const URL = window.location.href + "/generate_token";
     $.ajax({
         type: "POST",
@@ -12,6 +11,7 @@ function generateToken() {
         data: {
             "expiry_time": expiry_time,
             "client": client,
+            csrfmiddlewaretoken: csrf_token,
         },
         success: generate_token_callback,
     });
@@ -29,6 +29,7 @@ function deleteToken(token_str) {
             url: URL,
             data: {
                 "token_str": token_str,
+                csrfmiddlewaretoken: csrf_token,
             },
             success: delete_token_callback,
         });

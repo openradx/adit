@@ -6,11 +6,15 @@ from rest_framework import permissions
 from django.http import HttpResponse
 from adit.token_authentication.auth import RestTokenAuthentication
 
+from rest_framework import generics
+from adit.core.models import TransferJob
 
 # Create your views here.
 class TestView(APIView):
-    authentication_classes = [RestTokenAuthentication]
+    #authentication_classes = [RestTokenAuthentication]
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
         return HttpResponse("HI")
+
+#class TransferJobListRestApiView(generics.ListAPIView):

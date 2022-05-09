@@ -3,6 +3,9 @@
 {% load static from static %}
 
 {% block script %}
+    <script>
+        var csrf_token = "{{ csrf_token }}"
+    </script>
     <script src="{% static 'token_authentication/token_authentication.js' %}"></script>
 {% endblock %}
 
@@ -15,6 +18,7 @@
         {% include "core/_help_button.html" with target="#generate_token_help_modal" only %}
     </div>
     <div>
+        {% csrf_token %}
         <div class="form-group">
             <label for="select-expiry-time">
                 Choose an expiry time:

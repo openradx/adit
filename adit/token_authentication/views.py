@@ -51,7 +51,6 @@ class RestAuthTokenListView(
         return render(request, template, context=context)
 
 
-@method_decorator(csrf_exempt, name='dispatch')
 class RestAuthGenerateTokenView(
     LoginRequiredMixin,
     PermissionRequiredMixin,
@@ -79,7 +78,6 @@ class RestAuthGenerateTokenView(
         return HttpResponse(token_string)
 
 
-@method_decorator(csrf_exempt, name='dispatch')
 class RestAuthDeleteTokenView(
     LoginRequiredMixin,
     PermissionRequiredMixin,

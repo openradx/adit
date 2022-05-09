@@ -11,11 +11,13 @@ class RestTokenAuthentication(BaseAuthentication):
         if token_str is None:
             message = "Invalid token header. Please provide credentials in the request header."
             raise exceptions.AuthenticationFailed(message)
-        
+
         is_valid, message, user, token = self.verify_token(token_str)
 
         if not is_valid:
             raise exceptions.AuthenticationFailed(message)
+
+        token.save()  # updates the last-used attribute
 
         return (user, token)
 
@@ -32,7 +34,7 @@ class RestTokenAuthentication(BaseAuthentication):
             token = None
             user = None
             message = "Invalid token provided." + e
-        
+
         # constrains
         if token.is_expired():
             is_valid = False

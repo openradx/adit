@@ -2,13 +2,17 @@ from django.db import models
 from django.utils import timezone
 
 from adit.accounts.models import User
+from adit.core.models import AppSettings
 
 import datetime
 import binascii
 from os import urandom
 
-# Settings
-TOKEN_LENGHT = 20
+
+class RestAuthSettings(AppSettings):
+    token_lenght = 20
+    class Meta:
+        verbose_name_plural = "Rest authentication settings"
 
 
 class RestAuthTokenManager(models.Manager):
@@ -47,7 +51,7 @@ class RestAuthToken(models.Model):
             )
         ]
 
-    token_string = models.TextField(max_length=TOKEN_LENGHT + 10)
+    token_string = models.TextField(max_length=RestAuthSettings.token_lenght + 10)
     author = models.ForeignKey(User, on_delete=models.CASCADE)
     created_time = models.DateTimeField(auto_now_add=True)
     client = models.TextField(max_length=100)
@@ -68,4 +72,4 @@ class RestAuthToken(models.Model):
 
 
 def _create_token_string():
-    return binascii.hexlify(urandom(int(TOKEN_LENGHT))).decode()
+    return binascii.hexlify(urandom(int(RestAuthSettings.token_lenght))).decode()
