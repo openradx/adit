@@ -11,7 +11,7 @@ from adit.core.models import TransferJob
 
 # Create your views here.
 class TestView(APIView):
-    #authentication_classes = [RestTokenAuthentication]
+    authentication_classes = [RestTokenAuthentication]
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):

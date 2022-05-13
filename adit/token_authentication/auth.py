@@ -1,3 +1,5 @@
+from django.http import HttpResponse
+from redis import AuthenticationError
 from rest_framework.authentication import BaseAuthentication
 from rest_framework import exceptions
 
@@ -6,10 +8,14 @@ from .models import RestAuthToken
 
 class RestTokenAuthentication(BaseAuthentication):
     def authenticate(self, request):
-        token_str = request.META.get("Authorization", None)
-        print(request.META)
-        if token_str is None:
+        try:
+            protocol, token_str = request.META["HTTP_AUTHORIZATION"].split(" ")
+        except Exception as e:
             message = "Invalid token header. Please provide credentials in the request header."
+            raise exceptions.AuthenticationFailed(message)
+
+        if not protocol == "Token":
+            message = "Please use the token authentication protocol to access the REST API."
             raise exceptions.AuthenticationFailed(message)
 
         is_valid, message, user, token = self.verify_token(token_str)
@@ -22,22 +28,22 @@ class RestTokenAuthentication(BaseAuthentication):
         return (user, token)
 
     def verify_token(self, token_str):
+        
         message = ""
         is_valid = True
 
-        try:
-            token = RestAuthToken.objects.filter(token_string=token_str)
-            user = token.author
+        tokens = RestAuthToken.objects.filter(token_string=token_str)
 
-        except Exception as e:
-            is_valid = False
-            token = None
-            user = None
-            message = "Invalid token provided." + e
+        if not len(tokens) == 1:
+            message = "Invalid Token. Please make sure exactly one matching token entity exists."
+            raise exceptions.AuthenticationFailed(message)
+
+        token = tokens[0]
+        user = token.author
 
         # constrains
         if token.is_expired():
             is_valid = False
-            message = "Token is expired."
+            message = "Invalid Token. Token is expired."
 
         return is_valid, message, user, token
