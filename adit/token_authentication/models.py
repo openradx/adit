@@ -6,6 +6,7 @@ from adit.core.models import AppSettings
 
 import datetime
 import binascii
+import pytz
 from os import urandom
 
 
@@ -18,6 +19,7 @@ class RestAuthSettings(AppSettings):
 class RestAuthTokenManager(models.Manager):
     
     expiry_times = {
+        "1 Minute": 1/60,
         "1 Hour": 1,
         "1 Day": 24,
         "7 Days": 168,
@@ -65,7 +67,8 @@ class RestAuthToken(models.Model):
         return self.token_string
 
     def is_expired(self):
-        return self.expiry_time < datetime.datetime.now()
+        utc = pytz.UTC
+        return self.expiry_time < utc.localize(datetime.datetime.now())
 
     # def __repr__(self):
     #    return self.token_string, f"{self.author.get_username()}"
