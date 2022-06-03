@@ -225,9 +225,9 @@ REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.IsAuthenticated",
     ],
-    # "DEFAULT_AUTHENTICATION_CLASSES": [
-    #    "adit.token_authentication.auth.RestTokenAuthentication",
-    # ],
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "adit.token_authentication.auth.RestTokenAuthentication",
+    ],
 }
 
 # Static files (CSS, JavaScript, Images)

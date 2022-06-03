@@ -238,7 +238,6 @@ class DicomConnector:
 
         if not modality:
             return series_list
-
         return list(
             filter(
                 lambda x: x["Modality"] == modality or x["Modality"] in modality,
