@@ -1,5 +1,12 @@
 from django.urls import path
-from .views import SelectiveTransferJobListAPIView, TestView, SelectiveTransferJobDetailAPIView, QueryAPIView
+from .views import (
+    SelectiveTransferJobListAPIView, 
+    SelectiveTransferJobDetailAPIView,
+    QueryStudyAPIView, 
+    QuerySeriesAPIView,
+    RetrieveStudyAPIView,
+    RetrieveSeriesAPIView,
+)
 
 urlpatterns = [
     path(
@@ -11,19 +18,39 @@ urlpatterns = [
         SelectiveTransferJobDetailAPIView.as_view(),
     ),
     path(
-        "test/",
-        TestView.as_view(),
-    ),
-    path(
         "query/<str:pacs>/studies/",
-        QueryAPIView.as_view(),
+        QueryStudyAPIView.as_view(),
     ),
     path(
-        "query/<str:pacs>/series/",
-        QueryAPIView.as_view(),
+        "query/<str:pacs>/studies/<str:StudyInstanceUID>/",
+        QueryStudyAPIView.as_view(),
     ),
     path(
         "query/<str:pacs>/studies/<str:StudyInstanceUID>/series/",
-        QueryAPIView.as_view(),
+        QuerySeriesAPIView.as_view(),
+    ),
+    path(
+        "query/<str:pacs>/studies/<str:StudyInstanceUID>/series/<str:SeriesInstanceUID>/",
+        QuerySeriesAPIView.as_view(),
+    ),
+    path(
+        "retrieve/<str:pacs>/studies/",
+        RetrieveStudyAPIView.as_view(),
+    ),
+    path(
+        "retrieve/<str:pacs>/studies/<str:StudyInstanceUID>/",
+        RetrieveStudyAPIView.as_view(),
+    ),
+    path(
+        "retrieve/<str:pacs>/studies/<str:StudyInstanceUID>/<str:mode>/",
+        RetrieveStudyAPIView.as_view(),
+    ),
+    path(
+        "retrieve/<str:pacs>/series/",
+        RetrieveSeriesAPIView.as_view(),
+    ),
+    path(
+        "retrieve/<str:pacs>/studies/<str:StudyInstanceUID>/series/<str:SeriesInstanceUID>/",
+        RetrieveSeriesAPIView.as_view(),
     ),
 ]
