@@ -228,6 +228,10 @@ REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
         "adit.token_authentication.auth.RestTokenAuthentication",
     ],
+    'DEFAULT_RENDERER_CLASSES': [
+        "adit.rest_api.renderers.DicomMultipartRenderer",
+        "adit.rest_api.renderers.DicomJsonRenderer"
+    ]
 }
 
 # Static files (CSS, JavaScript, Images)

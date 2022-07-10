@@ -1,26 +1,18 @@
 
-from executing import Source
-from requests import RequestException
 import os
+from pathlib import Path
 
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework import status
-from rest_framework import permissions
 from rest_framework import generics
 
-from django.http import HttpResponse, JsonResponse, FileResponse
+from django.http import JsonResponse, FileResponse
 from django.shortcuts import render
-from django.core import serializers
 
-from adit.token_authentication.auth import RestTokenAuthentication
 from adit.selective_transfer.models import SelectiveTransferJob
-from adit.core.models import TransferJob, DicomNode, DicomServer
 from adit.core.utils.dicom_connector import DicomConnector
 
-from .serializers import SelectiveTransferJobListSerializer, DicomStudySerializer
+from .serializers import SelectiveTransferJobListSerializer, DicomSerializer
 from .utils.dicom_web_utils import DicomWebAPIView, DicomWebConnector
-from .models import DicomStudyResponseBodyWriter
+from .renderers import DicomMultipartRenderer, DicomJsonRenderer
 
 
 # QIDO-RS
@@ -34,36 +26,43 @@ class QueryAPIView(DicomWebAPIView):
         "StudyDate": "",
         "ModalitiesInStudy": "",
         "NumberOfStudyRelatedInstances": "",
+        "NumberOfSeriesRelatedInstances": "",
         "SeriesInstanceUID": "",
+        "SOPInstaceUID": "",
         "SeriesDescription": "",
     }
     LEVEL = None
+    renderer_classes = [DicomJsonRenderer]
+
 
 class QueryStudyAPIView(QueryAPIView):
     LEVEL = "STUDY"
     def get(self, request, *args, **kwargs):
         # Find DICOM Server and create query
         SourceServer, query = self.handle_request(request, *args, **kwargs)
-        
+
         connector = DicomConnector(SourceServer)
 
         # C-find study instance with dicom connector
         StudyInstance = connector.find_studies(query)
         
-        return JsonResponse(StudyInstance, safe=False)
+        response = self.request.accepted_renderer.create_response(file=StudyInstance)
+
+        return response
 
 class QuerySeriesAPIView(QueryAPIView):
     LEVEL = "SERIES"
     def get(self, request, *args, **kwargs):
         # Connect to DICOM Server and create query
         SourceServer, query = self.handle_request(request, *args, **kwargs)
-
         connector = DicomConnector(SourceServer)
 
         # C-find study instance with dicom connector
         SeriesInstance = connector.find_series(query)
 
-        return JsonResponse(SeriesInstance, safe=False)
+        response = self.request.accepted_renderer.create_response(file=SeriesInstance)
+
+        return response
 
 
 # WADO-RS
@@ -76,58 +75,75 @@ class RetrieveAPIView(DicomWebAPIView):
         "SeriesDescription": "",
     }
     LEVEL = None
-    FOLDER_ADIT = "./temp_dicom_files/"
+    FOLDER_ADIT = "./temp_WADO-RS_files/"
+    renderer_classes = [DicomMultipartRenderer, DicomJsonRenderer]
+    Serializer = DicomSerializer
+
 
 class RetrieveStudyAPIView(RetrieveAPIView):
     LEVEL = "STUDY"
-    ResponseBodySerializer = DicomStudySerializer
     
     def get(self, request, *args, **kwargs):
         SourceServer, query = self.handle_request(request, *args, **kwargs)
         
-        connector = DicomWebConnector(SourceServer)
+        format = self.handle_accept_header(request, *args, **kwargs)
 
+        connector = DicomWebConnector(SourceServer)
         series_list = connector.find_series(query)
 
-        folders = connector.retrieve_study(
+        folder_path = Path(self.FOLDER_ADIT) / ("study_"+query["StudyInstanceUID"])
+        os.makedirs(folder_path, exist_ok=True)
+        file_path = folder_path / "multipart.txt"
+
+        self.Serializer.start_file(self.Serializer, file_path, format["file_format"])
+        connector.retrieve_study(
             query["StudyInstanceUID"], 
             series_list,
-            folder = self.FOLDER_ADIT,
+            format,
+            folder_path,
+            self.Serializer,
         )
-        study = []
-        for folder in folders:
-            for instance in os.listdir(folder):
-                study.append(folder / instance)
+        self.Serializer.end_file(self.Serializer, file_path, format["file_format"])
+        
+        response = request.accepted_renderer.create_response(file_path=file_path, type=format["file_format"], boundary=self.Serializer.BOUNDARY)
+       
+        os.remove(file_path)
+        os.rmdir(folder_path)
 
-        response_body, boundary = self.ResponseBodySerializer.write(
-            self.ResponseBodySerializer,
-            study,
-            "temp_binary_files/example.txt",
-            mode = kwargs.get("mode"),
-        )
-        
-        response = FileResponse(
-            open(response_body, 'rb'),
-            content_type = "multipart/related; boundary=boundary"
-        )
-        
         return response
 
 class RetrieveSeriesAPIView(RetrieveAPIView):
     LEVEL = "SERIES"
+
     def get(self, request, *args, **kwargs):
         SourceServer, query = self.handle_request(request, *args, **kwargs)
+        
+        format = self.handle_accept_header(request, *args, **kwargs)
 
         connector = DicomWebConnector(SourceServer)
+        series_uid = query["SeriesInstanceUID"]
+        study_uid = query["StudyInstanceUID"]
 
+        folder_path = Path(self.FOLDER_ADIT) / ("series_"+series_uid)
+        os.makedirs(folder_path, exist_ok=True)
+        file_path = folder_path / "multipart.txt"
+
+        self.Serializer.start_file(self.Serializer, file_path, format["file_format"])
         connector.retrieve_series(
-            query["StudyInstanceUID"],
-            query["SeriesInstanceUID"],
-            folder = self.FOLDER_ADIT,
+            study_uid, 
+            series_uid,
+            format,
+            folder_path,
+            self.Serializer,
         )
-
-        #return HttpResponse(data, content_type='application/octet-stream')
-        return HttpResponse("0x0000")
+        self.Serializer.end_file(self.Serializer, file_path, format["file_format"])
+        
+        response = FileResponse(
+            open(file_path, 'rb'),
+            content_type = "multipart/related"
+        )
+        
+        return response
 
 
 # Selective transfer

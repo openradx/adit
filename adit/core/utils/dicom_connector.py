@@ -474,7 +474,6 @@ class DicomConnector:
             raise ValueError(
                 "No valid Query/Retrieve Information Model for C-FIND could be found."
             )
-
         query_ds = _make_query_dataset(query_dict)
         responses = self.assoc.send_c_find(query_ds, query_model, msg_id)
         results = self._fetch_results(responses, "C-FIND", query_dict, limit_results)
@@ -681,6 +680,7 @@ class DicomConnector:
         results = self._send_c_get(query, folder, modifier_callback)
 
         _evaluate_get_move_results(results, query)
+        
 
     def _download_series_move(self, query, folder, modifier_callback=None):
         # Fetch all SOPInstanceUIDs in the series so that we can later
