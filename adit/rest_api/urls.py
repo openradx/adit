@@ -18,39 +18,39 @@ urlpatterns = [
         SelectiveTransferJobDetailAPIView.as_view(),
     ),
     path(
-        "query/<str:pacs>/studies/",
+        "<str:pacs>/qidors/studies/",
         QueryStudyAPIView.as_view(),
     ),
     path(
-        "query/<str:pacs>/studies/<str:StudyInstanceUID>/",
+        "<str:pacs>/qidors/studies/<str:StudyInstanceUID>/",
         QueryStudyAPIView.as_view(),
     ),
     path(
-        "query/<str:pacs>/studies/<str:StudyInstanceUID>/series/",
+        "<str:pacs>/qidors/studies/<str:StudyInstanceUID>/series/",
         QuerySeriesAPIView.as_view(),
     ),
     path(
-        "query/<str:pacs>/studies/<str:StudyInstanceUID>/series/<str:SeriesInstanceUID>/",
+        "<str:pacs>/quidors/studies/<str:StudyInstanceUID>/series/<str:SeriesInstanceUID>/",
         QuerySeriesAPIView.as_view(),
     ),
     path(
-        "retrieve/<str:pacs>/studies/",
+        "<str:pacs>/wadors/studies/",
         RetrieveStudyAPIView.as_view(),
     ),
     path(
-        "retrieve/<str:pacs>/studies/<str:StudyInstanceUID>/",
+        "<str:pacs>/wadors/studies/<str:StudyInstanceUID>/",
         RetrieveStudyAPIView.as_view(),
     ),
     path(
-        "retrieve/<str:pacs>/studies/<str:StudyInstanceUID>/<str:mode>/",
+        "<str:pacs>/wadors/studies/<str:StudyInstanceUID>/<str:mode>/",
         RetrieveStudyAPIView.as_view(),
     ),
     path(
-        "retrieve/<str:pacs>/series/",
+        "<str:pacs>/wadors/series/",
         RetrieveSeriesAPIView.as_view(),
     ),
     path(
-        "retrieve/<str:pacs>/studies/<str:StudyInstanceUID>/series/<str:SeriesInstanceUID>/",
+        "<str:pacs>/wadors/studies/<str:StudyInstanceUID>/series/<str:SeriesInstanceUID>/",
         RetrieveSeriesAPIView.as_view(),
     ),
 ]
