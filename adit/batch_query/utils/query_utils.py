@@ -132,10 +132,10 @@ def _query_studies(
 
 
 def _query_series(
-    connector: DicomConnector, study: List[Dict[str, Any]],query_task: BatchQueryTask
+    connector: DicomConnector, study: List[Dict[str, Any]], query_task: BatchQueryTask
 ) -> List[Dict[str, Any]]:
 
-    series = connector.find_series(
+    found_series = connector.find_series(
         {
             "PatientID": study["PatientID"],
             "StudyInstanceUID": study["StudyInstanceUID"],
@@ -143,9 +143,11 @@ def _query_series(
             "SeriesDescription": query_task.series_description,
         }
     )
-    for i in range(len(series)):
-        series[i].update(study)
-    return series
+
+    for series in found_series:
+        series.update(study)
+
+    return found_series
 
 
 def _save_results(
