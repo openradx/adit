@@ -162,6 +162,7 @@ class SelectiveTransferConsumer(
                             "query": True,
                             "query_results": studies,
                             "max_query_results": max_query_results,
+                            "exclude_modalities": settings.EXCLUDE_MODALITIES,
                         },
                     ),
                     "#error_message": "",

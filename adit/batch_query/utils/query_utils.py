@@ -1,10 +1,12 @@
 import logging
 from typing import Any, Dict, List, Optional
-from django.utils import timezone
+from django.conf import settings
 from django.template.defaultfilters import pluralize
+from django.utils import timezone
 from adit.core.utils.dicom_connector import DicomConnector
 from adit.core.utils.task_utils import hijack_logger, store_log_in_task
-from ..models import BatchQueryTask, BatchQueryResult
+from ..models import BatchQueryResult, BatchQueryTask
+
 
 logger = logging.getLogger(__name__)
 
@@ -113,6 +115,12 @@ def _query_studies(
     elif query_task.study_date_end:
         study_date = "-" + query_task.study_date_end.strftime(DICOM_DATE_FORMAT)
 
+    filtered_modalities = [
+        modality
+        for modality in query_task.modalities
+        if not modality in settings.EXCLUDE_MODALITIES
+    ]
+
     studies = connector.find_studies(
         {
             "PatientID": patient_id,
@@ -123,7 +131,7 @@ def _query_studies(
             "StudyDate": study_date,
             "StudyTime": "",
             "StudyDescription": "",
-            "ModalitiesInStudy": query_task.modalities,
+            "ModalitiesInStudy": filtered_modalities,
             "NumberOfStudyRelatedInstances": "",
         }
     )

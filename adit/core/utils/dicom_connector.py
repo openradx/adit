@@ -162,18 +162,24 @@ class DicomConnector:
             query["QueryRetrieveLevel"] = "PATIENT"
         else:
             query["QueryRetrieveLevel"] = "STUDY"
-            
+
         patients = self._send_c_find(
             query,
             limit_results=limit_results,
         )
-        
-        # Make patients unique, since querying on study level will return all studies for one patient, resulting in duplicate patients
+
+        # Make patients unique, since querying on study level will return all studies for one patient,
+        # resulting in duplicate patients
         if query["QueryRetrieveLevel"] == "STUDY":
             seen = set()
-            unique_patients = [patient for patient in patients if patient["PatientID"] not in seen and not seen.add(patient["PatientID"])]
+            unique_patients = [
+                patient
+                for patient in patients
+                if patient["PatientID"] not in seen
+                and not seen.add(patient["PatientID"])
+            ]
             patients = unique_patients
-            
+
         # Some PACS servers (like our Synapse) don't support a query filter of PatientBirthDate
         # as it is optional in the Patient Root Query/Retrieve Information Model,
         # see https://groups.google.com/g/comp.protocols.dicom/c/h28r_znomEw
@@ -253,6 +259,7 @@ class DicomConnector:
         folder,
         modality=None,
         modifier_callback=None,
+        exclude_modalities=None,
     ):
         series_list = self.find_series(
             {
@@ -266,6 +273,10 @@ class DicomConnector:
 
         for series in series_list:
             series_uid = series["SeriesInstanceUID"]
+            modality = series["Modality"]
+
+            if exclude_modalities and modality in exclude_modalities:
+                continue
 
             # TODO maybe we should move the series folder name creation to the
             # store handler as it is not guaranteed that all PACS servers
@@ -339,7 +350,9 @@ class DicomConnector:
                 raise RetriableTaskError("Failed to upload all images.")
             raise RetriableTaskError("Failed to upload some images.")
 
-    def move_study(self, patient_id, study_uid, destination, modality=None):
+    def move_study(
+        self, patient_id, study_uid, destination, modality=None, exclude_modalities=None
+    ):
         series_list = self.find_series(
             {
                 "PatientID": patient_id,
@@ -354,6 +367,10 @@ class DicomConnector:
         has_failure = False
         for series in series_list:
             series_uid = series["SeriesInstanceUID"]
+            modality = series["Modality"]
+
+            if exclude_modalities and modality in exclude_modalities:
+                continue
 
             try:
                 self.move_series(patient_id, study_uid, series, destination)

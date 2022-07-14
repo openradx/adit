@@ -1,4 +1,4 @@
-{% load combine_datetime exclude_from_list join_if_list from core_extras %}
+{% load combine_datetime filter_modalities join_if_list from core_extras %}
 {% load explorer_url from dicom_explorer_extras %}
 
 <table class="table">
@@ -20,7 +20,7 @@
                 <td>{{ study.StudyDescription|default:"—" }}</td>
                 {% combine_datetime study.StudyDate study.StudyTime as study_datetime %}
                 <td>{{ study_datetime|date:"SHORT_DATETIME_FORMAT" }}</td>
-                {% exclude_from_list study.ModalitiesInStudy "SR" "PR" as modalities %}
+                {% filter_modalities study.ModalitiesInStudy as modalities %}
                 <td>{{ modalities|join_if_list:", "|default:"—" }}</td>
                 <td>{{ study.NumberOfStudyRelatedInstances|default_if_none:"—" }}</td>
                 <td>

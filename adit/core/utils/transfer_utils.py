@@ -180,6 +180,9 @@ def _download_dicoms(
     if transfer_task.series_uids:
         modalities = set()
         for series_uid in transfer_task.series_uids:
+            # TODO: this seems to be very ineffective as we do a c-find for every series
+            # in a study and check if it is a wanted series. Better fetch all series of
+            # a study and check then.
             for series in _fetch_series_list(connector, transfer_task, series_uid):
                 modalities.add(series["Modality"])
 
@@ -305,6 +308,7 @@ def _download_study(
             study["StudyInstanceUID"],
             study_folder,
             modifier_callback=modifier_callback,
+            exclude_modalities=settings.EXCLUDE_MODALITIES,
         )
 
 
