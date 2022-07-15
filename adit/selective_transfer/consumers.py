@@ -135,10 +135,9 @@ class SelectiveTransferConsumer(
 
     async def make_query(self, form, message_id):
         loop = asyncio.get_event_loop()
-        future = loop.run_in_executor(
+        response = await loop.run_in_executor(
             self.pool, self.get_query_response, form, message_id
         )
-        response = await future
         if response:
             await self.send_json(response)
 
