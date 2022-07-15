@@ -175,6 +175,12 @@ def _download_dicoms(
     study = _fetch_study(connector, patient["PatientID"], transfer_task)
     modalities = study["ModalitiesInStudy"]
 
+    modalities = [
+        modality
+        for modality in modalities
+        if modality not in settings.EXCLUDE_MODALITIES
+    ]
+
     # If some series are explicitly chosen then check if their Series Instance UIDs
     # are correct and only use their modalities for the name of the study folder.
     if transfer_task.series_uids:
