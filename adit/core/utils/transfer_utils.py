@@ -1,6 +1,7 @@
 import logging
 from pathlib import Path
 from datetime import datetime
+import os
 import tempfile
 import subprocess
 from functools import partial
@@ -197,7 +198,7 @@ def _download_dicoms(
     modalities = ",".join(modalities)
     prefix = f"{study_date.strftime('%Y%m%d')}-{study_time.strftime('%H%M%S')}"
     study_folder = patient_folder / f"{prefix}-{modalities}"
-    study_folder.mkdir(parents=True, exist_ok=True)
+    os.makedirs(study_folder, exist_ok=True)
 
     anonymizer = Anonymizer()
     modifier_callback = partial(
