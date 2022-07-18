@@ -36,6 +36,10 @@
 
 # Maybe
 
+- Save last search parameters in session instead js-cookie
+- When only downloading still only download to temp folder first (on ADIT itself) and then copy over to final destination
+- Fix the ineffective stuff in transfer_utils, see TODO there
+- Get rid of dicom_connector.download_study/move_study. Do everything at the series level. That way filtering series (e.g. exlcude modalities) is much easier.
 - BatchQuery with custom DICOM keywords
 - Watchdog server
 - Support Excel batch files additionally to CSV files (best by using Pandas with openpyxl)
