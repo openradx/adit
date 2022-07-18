@@ -5,12 +5,7 @@ from celery import Task as CeleryTask
 from celery.canvas import Signature
 from celery.result import AsyncResult, ResultBase
 from django.db.models.query import QuerySet
-from ..tasks import (
-    ProcessDicomJob,
-    ProcessDicomTask,
-    HandleFinishedDicomJob,
-    HandleFailedDicomJob,
-)
+from ..tasks import ProcessDicomJob, ProcessDicomTask
 from ..models import AppSettings, DicomJob, DicomTask
 
 
