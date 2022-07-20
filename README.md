@@ -18,7 +18,8 @@ ADIT (Automated DICOM Transfer) is a swiss army knife to exchange DICOM data bet
 
 # Upcoming features
 
-- A REST API to manage transfers programmatically from a third party program.
+- A REST API to manage transfers programmatically from a third party application
+- An upload portal to upload DICOM images through a web interface
 
 # Screenshots
 

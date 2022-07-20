@@ -1,21 +1,16 @@
-# Fix and refactor
+# Fix
 
+- Fix the ineffective stuff in transfer_utils, see TODO there
 - Auto refresh batch transfer job page if not finished automagically
 - Write test_parsers.py
 - DICOM data that does not need to be modified can be directly transferred between the source and destination server. The only exception is when source and destination server are the same, then the data will still be downloaded and uploaded again. This may be helpful when the PACS server treats the data somehow differently when sent by ADIT.
 - Do some prechecks before trying the task (is source and destination online?)
-- Store all uploaded files
-- split urgent to urgent and prioritize
-- move or get rid of hijack_logger and store_log_in_task in task_utils
 - pull celery_task stuff out of transfer_utils
 - Allow admin to kill a job (with task revoke(terminale=True))
 - Shorter timeout for offline studies
-- Cancel during transfer
+- Improve cancel during transfer
 - Auto refresh pages of in progress jobs
 - log debug -> info in connector also in production
-- Implement real study download / move (currently everything is tranferred and downloaded at the series level)
-- Use LRU cache for dicom explorer / collector
-- Better scheduler (with day in week and times)
 - Tests: test_query_utils, test serializers, test all views (as integration tests using real Orthanc), improve tests of transferutil, BatchFileSizeError
 - Link owner in templates to user profile
 - c-get download timeout
@@ -24,7 +19,7 @@
 - Get Flower running again
 - Evaluate (0008, 0056) Instance Availability CS: 'OFFLINE' ( (ONLINE, NEARLINE, OFFLINE, UNAVAILABLE)), see https://www.gehealthcare.com/-/jssmedia/1b62d771fb604ff7a4c8012498aea68b.pdf?la=en-us
 
-# New features
+# Features
 
 - REST API interface
   -- Maybe implement a DICOMweb interface (see https://book.orthanc-server.com/plugins/dicomweb.html)
@@ -32,13 +27,12 @@
   -- Store those files perhaps in ORTHANC
   -- Preview uploaded images
   -- Allow to transfer thow uploaded image to a PACS
+- Better scheduler (with day in week and times)
 - Continuous transfer mode
 
 # Maybe
 
 - Save last search parameters in session instead js-cookie
-- When only downloading still only download to temp folder first (on ADIT itself) and then copy over to final destination
-- Fix the ineffective stuff in transfer_utils, see TODO there
 - Get rid of dicom_connector.download_study/move_study. Do everything at the series level. That way filtering series (e.g. exlcude modalities) is much easier.
 - BatchQuery with custom DICOM keywords
 - Watchdog server
@@ -51,3 +45,6 @@
 - Allow to search multiple source servers with one query
 - Evaluate to use diffhtml instead of morphdom, see https://diffhtml.org/api.html#inner-html
 - http://the-frey.github.io/2014/08/18/monitoring-docker-containers-with-monit
+- split urgent to urgent and prioritize
+- move or get rid of hijack_logger and store_log_in_task in task_utils
+- Use LRU cache for dicom explorer / collector (don't we already do this?!)
