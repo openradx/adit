@@ -405,3 +405,6 @@ MAX_BATCH_TRANSFER_SIZE = 500
 
 # Exclude modalities when listing studies and during queries or transfers
 EXCLUDE_MODALITIES = ["PR", "SR"]
+
+# If an ethics committee approval is required for batch transfer
+ETHICS_COMMITTEE_APPROVAL_REQUIRED = True

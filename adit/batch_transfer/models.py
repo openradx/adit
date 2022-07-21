@@ -11,6 +11,7 @@ class BatchTransferSettings(AppSettings):
 class BatchTransferJob(TransferJob):
     project_name = models.CharField(max_length=150)
     project_description = models.TextField(max_length=2000)
+    ethics_application_id = models.CharField(blank=True, max_length=100)
 
     def delay(self):
         # pylint: disable=import-outside-toplevel
