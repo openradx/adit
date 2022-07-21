@@ -193,19 +193,20 @@ class HandleFinishedDicomJob(CeleryTask):
         if successes and not warnings and not failures:
             dicom_job.status = DicomJob.Status.SUCCESS
             dicom_job.message = "All tasks succeeded."
-        elif successes and warnings and not failures:
+        elif successes and failures or warnings and failures:
+            dicom_job.status = DicomJob.Status.WARNING
+            dicom_job.message = "Some tasks failed."
+        elif successes and warnings:
             dicom_job.status = DicomJob.Status.WARNING
             dicom_job.message = "Some tasks with warnings."
-        elif not successes and warnings and not failures:
+        elif warnings:
             dicom_job.status = DicomJob.Status.WARNING
             dicom_job.message = "All tasks with warnings."
-        elif successes and failures or warnings and failures:
-            dicom_job.status = DicomJob.Status.FAILURE
-            dicom_job.message = "Some tasks failed."
-        elif not successes and not warnings and failures:
+        elif failures:
             dicom_job.status = DicomJob.Status.FAILURE
             dicom_job.message = "All tasks failed."
         else:
+            # at least one of success, warnings or failures must be > 0
             raise AssertionError(f"Invalid task status list of {dicom_job}.")
 
         dicom_job.save()
