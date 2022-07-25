@@ -30,7 +30,7 @@ class DicomJsonRenderer(renderers.BaseRenderer):
     media_type = "application/dicom+json"
     format = "json"
 
-    def create_response(self, file_path=None, file=None):
+    def create_response(self, file_path=None, file=None, type=None, boundary=None):
         if not file_path is None:
             with open(file_path, "r") as f:
                 response = JsonResponse(json.load(f), safe=False)

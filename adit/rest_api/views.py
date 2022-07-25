@@ -14,6 +14,10 @@ from .serializers import SelectiveTransferJobListSerializer, DicomSerializer
 from .utils.dicom_web_utils import DicomWebAPIView, DicomWebConnector
 from .renderers import DicomMultipartRenderer, DicomJsonRenderer
 
+from .models import (
+    DicomWebQIDOJob, 
+    DicomWebQIDOTask,
+) 
 
 # QIDO-RS
 class QueryAPIView(DicomWebAPIView):
@@ -40,6 +44,23 @@ class QueryStudyAPIView(QueryAPIView):
     def get(self, request, *args, **kwargs):
         # Find DICOM Server and create query
         SourceServer, query = self.handle_request(request, *args, **kwargs)
+        
+        job = DicomWebQIDOJob(
+            source = SourceServer,
+            owner = request.user,
+            status = DicomWebQIDOJob.Status.PENDING,
+        )
+        job.save()
+
+        task = DicomWebQIDOTask(
+            study_uid = query.get("StudyInstanceUID"),
+            series_uid = query.get("SeriesInstanceUID"),
+            job = job,
+            task_id = 0,
+        )
+        task.save()        
+
+        job.run()
 
         connector = DicomConnector(SourceServer)
 
@@ -84,10 +105,7 @@ class RetrieveStudyAPIView(RetrieveAPIView):
     LEVEL = "STUDY"
     
     def get(self, request, *args, **kwargs):
-        SourceServer, query = self.handle_request(request, *args, **kwargs)
-        
-        format = self.handle_accept_header(request, *args, **kwargs)
-
+        SourceServer, query, format = self.handle_request(request, accept_header=True, *args, **kwargs)
         connector = DicomWebConnector(SourceServer)
         series_list = connector.find_series(query)
 
@@ -106,7 +124,6 @@ class RetrieveStudyAPIView(RetrieveAPIView):
         self.Serializer.end_file(self.Serializer, file_path, format["file_format"])
         
         response = request.accepted_renderer.create_response(file_path=file_path, type=format["file_format"], boundary=self.Serializer.BOUNDARY)
-       
         os.remove(file_path)
         os.rmdir(folder_path)
 
@@ -116,32 +133,26 @@ class RetrieveSeriesAPIView(RetrieveAPIView):
     LEVEL = "SERIES"
 
     def get(self, request, *args, **kwargs):
-        SourceServer, query = self.handle_request(request, *args, **kwargs)
-        
-        format = self.handle_accept_header(request, *args, **kwargs)
-
+        SourceServer, query, format = self.handle_request(request, accept_header=True, *args, **kwargs)
         connector = DicomWebConnector(SourceServer)
-        series_uid = query["SeriesInstanceUID"]
-        study_uid = query["StudyInstanceUID"]
 
-        folder_path = Path(self.FOLDER_ADIT) / ("series_"+series_uid)
+        folder_path = Path(self.FOLDER_ADIT) / ("series_"+query["SeriesInstanceUID"])
         os.makedirs(folder_path, exist_ok=True)
         file_path = folder_path / "multipart.txt"
 
         self.Serializer.start_file(self.Serializer, file_path, format["file_format"])
         connector.retrieve_series(
-            study_uid, 
-            series_uid,
+            query["StudyInstanceUID"], 
+            query["SeriesInstanceUID"],
             format,
             folder_path,
             self.Serializer,
         )
         self.Serializer.end_file(self.Serializer, file_path, format["file_format"])
         
-        response = FileResponse(
-            open(file_path, 'rb'),
-            content_type = "multipart/related"
-        )
+        response = request.accepted_renderer.create_response(file_path=file_path, type=format["file_format"], boundary=self.Serializer.BOUNDARY)
+        os.remove(file_path)
+        os.remove(folder_path)
         
         return response
 
