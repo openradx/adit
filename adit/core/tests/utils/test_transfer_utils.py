@@ -15,7 +15,7 @@ from ...factories import (
     TransferTaskFactory,
 )
 from ...utils.dicom_connector import DicomConnector
-from ...utils.transfer_utils import execute_transfer
+from ...utils.transfer_utils import TransferExecutor
 
 
 class MyTransferJob(TransferJob):
@@ -113,11 +113,15 @@ def test_transfer_to_server_succeeds(
     celery_task_mock = create_autospec(CeleryTask)
 
     # Act
-    status = execute_transfer(task, celery_task_mock)
+    status = TransferExecutor(task, celery_task_mock).start()
 
     # Assert
     source_connector_mock.download_study.assert_called_with(
-        task.patient_id, task.study_uid, ANY, modifier_callback=ANY
+        task.patient_id,
+        task.study_uid,
+        ANY,
+        modifier_callback=ANY,
+        exclude_modalities=ANY,
     )
 
     upload_path = dest_connector_mock.upload_folder.call_args[0][0]
@@ -160,14 +164,12 @@ def test_transfer_to_folder_succeeds(
     celery_task_mock = create_autospec(CeleryTask)
 
     # Act
-    with patch("adit.core.utils.transfer_utils.Path.mkdir", autospec=True):
-        status = execute_transfer(task, celery_task_mock)
+    with patch("adit.core.utils.transfer_utils.os.mkdir", autospec=True):
+        status = TransferExecutor(task, celery_task_mock).start()
 
     # Assert
     download_path = source_connector_mock.download_study.call_args[0][2]
-    assert download_path.match(
-        r"adit_adit.core_1_20200101_kai/1001/20190923-080000-CT,SR"
-    )
+    assert download_path.match(r"adit_adit.core_1_20200101_kai/1001/20190923-080000-CT")
 
     assert status == task.status
     assert status == MyTransferTask.Status.SUCCESS
@@ -204,7 +206,7 @@ def test_transfer_to_archive_succeeds(
     celery_task_mock = create_autospec(CeleryTask)
 
     # Act
-    status = execute_transfer(task, celery_task_mock)
+    status = TransferExecutor(task, celery_task_mock).start()
 
     # Assert
     source_connector_mock.find_patients.assert_called_once()

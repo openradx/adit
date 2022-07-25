@@ -1,110 +1,24 @@
 import logging
-from pathlib import Path
-from datetime import datetime
 import os
-import tempfile
 import subprocess
+import tempfile
+from datetime import datetime
 from functools import partial
+from pathlib import Path
 from typing import Any, Callable, Dict, List
-from celery import Task as CeleryTask
-from dicognito.anonymizer import Anonymizer
-from pydicom import Dataset
 import humanize
-from django.utils import timezone
+from celery.contrib.abortable import AbortableTask as AbortableCeleryTask
+from dicognito.anonymizer import Anonymizer
 from django.conf import settings
+from django.utils import timezone
+from pydicom import Dataset
 from adit.core.utils.task_utils import hijack_logger, store_log_in_task
-from ..models import DicomNode, TransferJob, TransferTask
 from ..errors import RetriableTaskError
+from ..models import DicomNode, TransferJob, TransferTask
 from .dicom_connector import DicomConnector
 from .sanitize import sanitize_dirname
 
 logger = logging.getLogger(__name__)
-
-
-def execute_transfer(
-    transfer_task: TransferTask, celery_task: CeleryTask
-) -> TransferTask.Status:
-    if transfer_task.status == TransferTask.Status.CANCELED:
-        return transfer_task.status
-
-    if transfer_task.status != TransferTask.Status.PENDING:
-        raise AssertionError(
-            f"Invalid status {transfer_task.status} of {transfer_task}"
-        )
-
-    transfer_task.status = TransferTask.Status.IN_PROGRESS
-    transfer_task.start = timezone.now()
-    transfer_task.save()
-
-    logger.info("Started %s.", transfer_task)
-
-    handler, stream = hijack_logger(logger)
-
-    transfer_job: TransferJob = transfer_task.job
-
-    try:
-        if not transfer_job.source.source_active:
-            raise ValueError(
-                f"Source DICOM node not active: {transfer_job.source.name}"
-            )
-
-        if not transfer_job.destination.destination_active:
-            raise ValueError(
-                f"Destination DICOM node not active: {transfer_job.destination.name}"
-            )
-
-        if transfer_job.destination.node_type == DicomNode.NodeType.SERVER:
-            _transfer_to_server(transfer_task)
-        elif transfer_job.destination.node_type == DicomNode.NodeType.FOLDER:
-            if transfer_job.archive_password:
-                _transfer_to_archive(transfer_task)
-            else:
-                _transfer_to_folder(transfer_task)
-        else:
-            raise AssertionError(f"Invalid node type: {transfer_job.destination}")
-
-        transfer_task.status = TransferTask.Status.SUCCESS
-        transfer_task.message = "Transfer task completed successfully."
-        transfer_task.end = timezone.now()
-
-    except RetriableTaskError as err:
-        logger.exception("Retriable error occurred during %s.", transfer_task)
-
-        # We can't use the Celery built-in max_retries and celery_task.request.retries
-        # directly as we also use celery_task.retry() for scheduling tasks.
-        if transfer_task.retries < settings.TRANSFER_TASK_RETRIES:
-            logger.info("Retrying task in %s.", humanize.naturaldelta(err.delay))
-            transfer_task.status = TransferTask.Status.PENDING
-            transfer_task.message = "Task timed out and will be retried."
-            transfer_task.retries += 1
-
-            # Increase the priority slightly to make sure images that were moved
-            # from the GE archive storage to the fast access storage are still there
-            # when we retry.
-            priority = celery_task.request.delivery_info["priority"]
-            if priority < settings.CELERY_TASK_QUEUE_MAX_PRIORITY:
-                priority += 1
-
-            raise celery_task.retry(
-                eta=timezone.now() + err.delay, exc=err, priority=priority
-            )
-
-        logger.error("No more retries for finally failed %s.", transfer_task)
-        transfer_task.status = TransferTask.Status.FAILURE
-        transfer_task.message = str(err)
-        transfer_task.end = timezone.now()
-
-    except Exception as err:  # pylint: disable=broad-except
-        logger.exception("Unrecoverable failure occurred in %s.", transfer_task)
-        transfer_task.status = TransferTask.Status.FAILURE
-        transfer_task.message = str(err)
-        transfer_task.end = timezone.now()
-
-    finally:
-        store_log_in_task(logger, handler, stream, transfer_task)
-        transfer_task.save()
-
-    return transfer_task.status
 
 
 def _create_source_connector(transfer_task: TransferTask) -> DicomConnector:
@@ -117,251 +31,332 @@ def _create_dest_connector(transfer_task: TransferTask) -> DicomConnector:
     return DicomConnector(transfer_task.job.destination.dicomserver)
 
 
-def _transfer_to_server(transfer_task: TransferTask) -> None:
-    with tempfile.TemporaryDirectory(prefix="adit_") as tmpdir:
-        patient_folder = _download_dicoms(transfer_task, Path(tmpdir))
-        connector = _create_dest_connector(transfer_task)
-        connector.upload_folder(patient_folder)
+class TransferExecutor:
+    def __init__(
+        self, transfer_task: TransferTask, celery_task: AbortableCeleryTask
+    ) -> None:
+        self.transfer_task = transfer_task
+        self.celery_task = celery_task
 
+        self.source_connector = _create_source_connector(transfer_task)
 
-def _transfer_to_archive(transfer_task: TransferTask) -> None:
-    transfer_job: TransferJob = transfer_task.job
+        self.dest_connector = None
+        if self.transfer_task.job.destination.node_type == DicomNode.NodeType.SERVER:
+            self.dest_connector = _create_dest_connector(transfer_task)
 
-    archive_folder = Path(transfer_job.destination.dicomfolder.path)
-    archive_password = transfer_job.archive_password
+    def start(self) -> TransferTask.Status:
+        if self.transfer_task.status == TransferTask.Status.CANCELED:
+            return self.transfer_task.status
 
-    archive_name = f"{_create_destination_name(transfer_job)}.7z"
-    archive_path = archive_folder / archive_name
+        if self.transfer_task.status != TransferTask.Status.PENDING:
+            raise AssertionError(
+                f"Invalid status {self.transfer_task.status} of {self.transfer_task}"
+            )
 
-    if not archive_path.is_file():
-        _create_archive(archive_path, transfer_job, archive_password)
+        self.transfer_task.status = TransferTask.Status.IN_PROGRESS
+        self.transfer_task.start = timezone.now()
+        self.transfer_task.save()
 
-    with tempfile.TemporaryDirectory(prefix="adit_") as tmpdir:
-        patient_folder = _download_dicoms(transfer_task, Path(tmpdir))
-        _add_to_archive(archive_path, archive_password, patient_folder)
+        logger.info("Started %s.", self.transfer_task)
 
+        handler, stream = hijack_logger(logger)
 
-def _transfer_to_folder(transfer_task: TransferTask) -> None:
-    transfer_job: TransferJob = transfer_task.job
-    dicom_folder = Path(transfer_job.destination.dicomfolder.path)
-    download_folder = dicom_folder / _create_destination_name(transfer_job)
-    _download_dicoms(transfer_task, download_folder)
+        transfer_job: TransferJob = self.transfer_task.job
 
+        try:
+            if not transfer_job.source.source_active:
+                raise ValueError(
+                    f"Source DICOM node not active: {transfer_job.source.name}"
+                )
 
-def _create_destination_name(transfer_job) -> str:
-    name = "adit_"
-    name += transfer_job._meta.app_label + "_"
-    name += str(transfer_job.id) + "_"
-    name += transfer_job.created.strftime("%Y%m%d") + "_"
-    name += transfer_job.owner.username
-    return sanitize_dirname(name)
+            if not transfer_job.destination.destination_active:
+                raise ValueError(
+                    f"Destination DICOM node not active: {transfer_job.destination.name}"
+                )
 
+            if self.dest_connector:
+                self._transfer_to_server()
+            else:
+                if transfer_job.archive_password:
+                    self._transfer_to_archive()
+                else:
+                    self._transfer_to_folder()
 
-def _download_dicoms(
-    transfer_task: TransferTask,
-    download_folder: Path,
-) -> Path:
-    pseudonym = transfer_task.pseudonym
-    if pseudonym:
-        patient_folder = download_folder / sanitize_dirname(pseudonym)
-    else:
-        pseudonym = None
-        patient_folder = download_folder / sanitize_dirname(transfer_task.patient_id)
+            self.transfer_task.status = TransferTask.Status.SUCCESS
+            self.transfer_task.message = "Transfer task completed successfully."
+            self.transfer_task.end = timezone.now()
 
-    connector = _create_source_connector(transfer_task)
+        except RetriableTaskError as err:
+            logger.exception("Retriable error occurred during %s.", self.transfer_task)
 
-    # Check if the Study Instance UID is correct and fetch some attributes to create
-    # the study folder.
-    patient = _fetch_patient(connector, transfer_task)
-    study = _fetch_study(connector, patient["PatientID"], transfer_task)
-    modalities = study["ModalitiesInStudy"]
+            # We can't use the Celery built-in max_retries and celery_task.request.retries
+            # directly as we also use celery_task.retry() for scheduling tasks.
+            if self.transfer_task.retries < settings.TRANSFER_TASK_RETRIES:
+                logger.info("Retrying task in %s.", humanize.naturaldelta(err.delay))
+                self.transfer_task.status = TransferTask.Status.PENDING
+                self.transfer_task.message = "Task timed out and will be retried."
+                self.transfer_task.retries += 1
 
-    modalities = [
-        modality
-        for modality in modalities
-        if modality not in settings.EXCLUDE_MODALITIES
-    ]
+                # Increase the priority slightly to make sure images that were moved
+                # from the GE archive storage to the fast access storage are still there
+                # when we retry.
+                priority = self.celery_task.request.delivery_info["priority"]
+                if priority < settings.CELERY_TASK_QUEUE_MAX_PRIORITY:
+                    priority += 1
 
-    # If some series are explicitly chosen then check if their Series Instance UIDs
-    # are correct and only use their modalities for the name of the study folder.
-    if transfer_task.series_uids:
-        modalities = set()
-        for series_uid in transfer_task.series_uids:
-            # TODO: this seems to be very ineffective as we do a c-find for every series
-            # in a study and check if it is a wanted series. Better fetch all series of
-            # a study and check then.
-            for series in _fetch_series_list(connector, transfer_task, series_uid):
-                modalities.add(series["Modality"])
+                raise self.celery_task.retry(
+                    eta=timezone.now() + err.delay, exc=err, priority=priority
+                )
 
-    study_date = study["StudyDate"]
-    study_time = study["StudyTime"]
-    modalities = ",".join(modalities)
-    prefix = f"{study_date.strftime('%Y%m%d')}-{study_time.strftime('%H%M%S')}"
-    study_folder = patient_folder / f"{prefix}-{modalities}"
-    os.makedirs(study_folder, exist_ok=True)
+            logger.error("No more retries for finally failed %s.", self.transfer_task)
+            self.transfer_task.status = TransferTask.Status.FAILURE
+            self.transfer_task.message = str(err)
+            self.transfer_task.end = timezone.now()
 
-    anonymizer = Anonymizer()
-    modifier_callback = partial(
-        _modify_dataset,
-        anonymizer,
-        pseudonym,
-        transfer_task.job.trial_protocol_id,
-        transfer_task.job.trial_protocol_name,
-    )
+        except Exception as err:  # pylint: disable=broad-except
+            logger.exception(
+                "Unrecoverable failure occurred in %s.", self.transfer_task
+            )
+            self.transfer_task.status = TransferTask.Status.FAILURE
+            self.transfer_task.message = str(err)
+            self.transfer_task.end = timezone.now()
 
-    if transfer_task.series_uids:
-        _download_study(
-            connector,
-            study,
-            study_folder,
-            modifier_callback,
-            series_uids=transfer_task.series_uids,
+        finally:
+            store_log_in_task(logger, handler, stream, self.transfer_task)
+            self.transfer_task.save()
+
+        return self.transfer_task.status
+
+    def _transfer_to_server(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="adit_") as tmpdir:
+            patient_folder = self._download_dicoms(Path(tmpdir))
+            self.dest_connector.upload_folder(patient_folder)
+
+    def _transfer_to_archive(self) -> None:
+        transfer_job: TransferJob = self.transfer_task.job
+
+        archive_folder = Path(transfer_job.destination.dicomfolder.path)
+        archive_password = transfer_job.archive_password
+
+        archive_name = f"{self._create_destination_name()}.7z"
+        archive_path = archive_folder / archive_name
+
+        if not archive_path.is_file():
+            self._create_archive(archive_path, archive_password)
+
+        with tempfile.TemporaryDirectory(prefix="adit_") as tmpdir:
+            patient_folder = self._download_dicoms(Path(tmpdir))
+            _add_to_archive(archive_path, archive_password, patient_folder)
+
+    def _transfer_to_folder(self) -> None:
+        transfer_job: TransferJob = self.transfer_task.job
+        dicom_folder = Path(transfer_job.destination.dicomfolder.path)
+        download_folder = dicom_folder / self._create_destination_name()
+        self._download_dicoms(download_folder)
+
+    def _download_dicoms(
+        self,
+        download_folder: Path,
+    ) -> Path:
+        pseudonym = self.transfer_task.pseudonym
+        if pseudonym:
+            patient_folder = download_folder / sanitize_dirname(pseudonym)
+        else:
+            pseudonym = None
+            patient_folder = download_folder / sanitize_dirname(
+                self.transfer_task.patient_id
+            )
+
+        # Check if the Study Instance UID is correct and fetch some attributes to create
+        # the study folder.
+        patient = self._fetch_patient()
+        study = self._fetch_study(patient["PatientID"])
+        modalities = study["ModalitiesInStudy"]
+
+        modalities = [
+            modality
+            for modality in modalities
+            if modality not in settings.EXCLUDE_MODALITIES
+        ]
+
+        # If some series are explicitly chosen then check if their Series Instance UIDs
+        # are correct and only use their modalities for the name of the study folder.
+        if self.transfer_task.series_uids:
+            modalities = set()
+            for series_uid in self.transfer_task.series_uids:
+                # TODO: this seems to be very ineffective as we do a c-find for every series
+                # in a study and check if it is a wanted series. Better fetch all series of
+                # a study and check then.
+                for series in self._fetch_series_list(series_uid):
+                    modalities.add(series["Modality"])
+
+        study_date = study["StudyDate"]
+        study_time = study["StudyTime"]
+        modalities = ",".join(modalities)
+        prefix = f"{study_date.strftime('%Y%m%d')}-{study_time.strftime('%H%M%S')}"
+        study_folder = patient_folder / f"{prefix}-{modalities}"
+        os.makedirs(study_folder, exist_ok=True)
+
+        anonymizer = Anonymizer()
+        modifier_callback = partial(
+            self._modify_dataset,
+            anonymizer,
+            pseudonym,
         )
-    else:
-        _download_study(connector, study, study_folder, modifier_callback)
 
-    return patient_folder
+        if self.transfer_task.series_uids:
+            self._download_study(
+                study,
+                study_folder,
+                modifier_callback,
+                series_uids=self.transfer_task.series_uids,
+            )
+        else:
+            self._download_study(study, study_folder, modifier_callback)
 
+        return patient_folder
 
-def _fetch_patient(
-    connector: DicomConnector, transfer_task: TransferTask
-) -> Dict[str, Any]:
-    patients = connector.find_patients({"PatientID": transfer_task.patient_id})
+    def _create_destination_name(self) -> str:
+        transfer_job = self.transfer_task.job
+        name = "adit_"
+        name += transfer_job._meta.app_label + "_"
+        name += str(transfer_job.id) + "_"
+        name += transfer_job.created.strftime("%Y%m%d") + "_"
+        name += transfer_job.owner.username
+        return sanitize_dirname(name)
 
-    if len(patients) == 0:
-        raise ValueError(
-            f"No patient found with Patient ID {transfer_task.patient_id}."
+    def _fetch_patient(self) -> Dict[str, Any]:
+        patients = self.source_connector.find_patients(
+            {"PatientID": self.transfer_task.patient_id}
         )
 
-    if len(patients) > 1:
-        raise AssertionError(
-            f"Multiple patients found with Patient ID {transfer_task.patient_id}."
+        if len(patients) == 0:
+            raise ValueError(
+                f"No patient found with Patient ID {self.transfer_task.patient_id}."
+            )
+
+        if len(patients) > 1:
+            raise AssertionError(
+                f"Multiple patients found with Patient ID {self.transfer_task.patient_id}."
+            )
+
+        return patients[0]
+
+    def _fetch_study(self, patient_id: str) -> Dict[str, Any]:
+        studies = self.source_connector.find_studies(
+            {
+                "PatientID": patient_id,
+                "StudyInstanceUID": self.transfer_task.study_uid,
+                "StudyDate": "",
+                "StudyTime": "",
+                "ModalitiesInStudy": "",
+            }
         )
 
-    return patients[0]
+        if len(studies) == 0:
+            raise ValueError(
+                f"No study found with Study Instance UID {self.transfer_task.study_uid}."
+            )
+        if len(studies) > 1:
+            raise AssertionError(
+                f"Multiple studies found with Study Instance UID {self.transfer_task.study_uid}."
+            )
 
+        return studies[0]
 
-def _fetch_study(
-    connector: DicomConnector, patient_id: str, transfer_task: TransferTask
-) -> Dict[str, Any]:
-    studies = connector.find_studies(
-        {
-            "PatientID": patient_id,
-            "StudyInstanceUID": transfer_task.study_uid,
-            "StudyDate": "",
-            "StudyTime": "",
-            "ModalitiesInStudy": "",
-        }
-    )
-
-    if len(studies) == 0:
-        raise ValueError(
-            f"No study found with Study Instance UID {transfer_task.study_uid}."
-        )
-    if len(studies) > 1:
-        raise AssertionError(
-            f"Multiple studies found with Study Instance UID {transfer_task.study_uid}."
+    def _fetch_series_list(self, series_uid: str) -> List[Dict[str, Any]]:
+        series_list = self.source_connector.find_series(
+            {
+                "PatientID": self.transfer_task.patient_id,
+                "StudyInstanceUID": self.transfer_task.study_uid,
+                "SeriesInstanceUID": "",
+                "Modality": "",
+            }
         )
 
-    return studies[0]
+        results = []
+        for series in series_list:
+            if series["SeriesInstanceUID"] == series_uid:
+                results.append(series)
 
+        if len(results) == 0:
+            raise ValueError(f"No series found with Series Instance UID {series_uid}.")
+        if len(results) > 1:
+            raise AssertionError(
+                f"Multiple series found with Series Instance UID {series_uid}."
+            )
 
-def _fetch_series_list(
-    connector: DicomConnector, transfer_task: TransferTask, series_uid: str
-) -> List[Dict[str, Any]]:
-    series_list = connector.find_series(
-        {
-            "PatientID": transfer_task.patient_id,
-            "StudyInstanceUID": transfer_task.study_uid,
-            "SeriesInstanceUID": "",
-            "Modality": "",
-        }
-    )
+        return results
 
-    results = []
-    for series in series_list:
-        if series["SeriesInstanceUID"] == series_uid:
-            results.append(series)
-
-    if len(results) == 0:
-        raise ValueError(f"No series found with Series Instance UID {series_uid}.")
-    if len(results) > 1:
-        raise AssertionError(
-            f"Multiple series found with Series Instance UID {series_uid}."
-        )
-
-    return results
-
-
-def _download_study(
-    connector: DicomConnector,
-    study: Dict[str, Any],
-    study_folder: Path,
-    modifier_callback: Callable,
-    series_uids: List[str] = None,
-) -> None:
-    if series_uids:
-        for series_uid in series_uids:
-            connector.download_series(
+    def _download_study(
+        self,
+        study: Dict[str, Any],
+        study_folder: Path,
+        modifier_callback: Callable,
+        series_uids: List[str] = None,
+    ) -> None:
+        if series_uids:
+            for series_uid in series_uids:
+                self.source_connector.download_series(
+                    study["PatientID"],
+                    study["StudyInstanceUID"],
+                    series_uid,
+                    study_folder,
+                    modifier_callback=modifier_callback,
+                )
+        else:
+            self.source_connector.download_study(
                 study["PatientID"],
                 study["StudyInstanceUID"],
-                series_uid,
                 study_folder,
                 modifier_callback=modifier_callback,
+                exclude_modalities=settings.EXCLUDE_MODALITIES,
             )
-    else:
-        connector.download_study(
-            study["PatientID"],
-            study["StudyInstanceUID"],
-            study_folder,
-            modifier_callback=modifier_callback,
-            exclude_modalities=settings.EXCLUDE_MODALITIES,
-        )
 
+    def _modify_dataset(
+        self,
+        anonymizer: Anonymizer,
+        pseudonym: str,
+        ds: Dataset,
+    ) -> None:
+        """Optionally pseudonymize an incoming dataset with the given pseudonym
+        and add the trial ID and name to the DICOM header if specified."""
+        if pseudonym:
+            # All dates get pseudonymized, but we want to retain the study date.
+            study_date = ds.StudyDate
 
-def _modify_dataset(
-    anonymizer: Anonymizer,
-    pseudonym: str,
-    trial_protocol_id: str,
-    trial_protocol_name: str,
-    ds: Dataset,
-) -> None:
-    """Optionally pseudonymize an incoming dataset with the given pseudonym
-    and add the trial ID and name to the DICOM header if specified."""
-    if pseudonym:
-        # All dates get pseudonymized, but we want to retain the study date.
-        study_date = ds.StudyDate
+            anonymizer.anonymize(ds)
 
-        anonymizer.anonymize(ds)
+            ds.StudyDate = study_date
 
-        ds.StudyDate = study_date
+            ds.PatientID = pseudonym
+            ds.PatientName = pseudonym
 
-        ds.PatientID = pseudonym
-        ds.PatientName = pseudonym
+        trial_protocol_id = (self.transfer_task.job.trial_protocol_id,)
+        trial_protocol_name = self.transfer_task.job.trial_protocol_name
 
-    if trial_protocol_id:
-        ds.ClinicalTrialProtocolID = trial_protocol_id
+        if trial_protocol_id:
+            ds.ClinicalTrialProtocolID = trial_protocol_id
 
-    if trial_protocol_name:
-        ds.ClinicalTrialProtocolName = trial_protocol_name
+        if trial_protocol_name:
+            ds.ClinicalTrialProtocolName = trial_protocol_name
 
-    if pseudonym and trial_protocol_id:
-        session_id = f"{ds.StudyDate}-{ds.StudyTime}"
-        ds.PatientComments = f"Project:{trial_protocol_id} Subject:{pseudonym} Session:{pseudonym}_{session_id}"
+        if pseudonym and trial_protocol_id:
+            session_id = f"{ds.StudyDate}-{ds.StudyTime}"
+            ds.PatientComments = f"Project:{trial_protocol_id} Subject:{pseudonym} Session:{pseudonym}_{session_id}"
 
+    def _create_archive(self, archive_path: Path, archive_password: str) -> None:
+        """Create a new archive with just an INDEX.txt file in it."""
+        if Path(archive_path).is_file():
+            raise ValueError(f"Archive ${archive_path} already exists.")
 
-def _create_archive(
-    archive_path: Path, job: TransferJob, archive_password: str
-) -> None:
-    """Create a new archive with just an INDEX.txt file in it."""
-    if Path(archive_path).is_file():
-        raise ValueError(f"Archive ${archive_path} already exists.")
-
-    with tempfile.TemporaryDirectory(prefix="adit_") as tmpdir:
-        readme_path = Path(tmpdir) / "INDEX.txt"
-        with open(readme_path, "w", encoding="utf-8") as readme_file:
-            readme_file.write(f"Archive created by {job} at {datetime.now()}.")
-        _add_to_archive(archive_path, archive_password, readme_path)
+        with tempfile.TemporaryDirectory(prefix="adit_") as tmpdir:
+            readme_path = Path(tmpdir) / "INDEX.txt"
+            with open(readme_path, "w", encoding="utf-8") as readme_file:
+                readme_file.write(
+                    f"Archive created by {self.transfer_task.job} at {datetime.now()}."
+                )
+            _add_to_archive(archive_path, archive_password, readme_path)
 
 
 def _add_to_archive(
