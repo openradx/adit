@@ -324,7 +324,7 @@ class DicomConnector:
         """Upload a specified folder to a DICOM server."""
 
         if not self.server.store_scp_support:
-            raise ValueError("Server does not support C-STORE operations.")
+            raise ValueError("Destination server doesn't support C-STORE operations.")
 
         results = self._send_c_store(folder)
 
