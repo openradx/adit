@@ -35,7 +35,7 @@ class DicomWebAPIView(APIView):
     MODE = None
     query = None
 
-    def handle_request(self, request, *args, **kwargs):
+    def handle_request(self, request, accept_header=False, *args, **kwargs):
         # Find PACS and connect
         pacs_ae_title = kwargs.get("pacs", None)
         SourceServerSet = DicomServer.objects.filter(ae_title=pacs_ae_title)
@@ -56,7 +56,12 @@ class DicomWebAPIView(APIView):
         if not SeriesInstanceUID is None:
             query["SeriesInstanceUID"] = StudyInstanceUID
         
+        if accept_header:
+            format = self.handle_accept_header(request, *args, **kwargs)
+            return SourceServer, query, format
+
         return SourceServer, query
+
 
     def handle_accept_header(self, request, *args, **kwargs):
         if kwargs.get("mode") == "metadata":
@@ -69,17 +74,14 @@ class DicomWebAPIView(APIView):
             default_file_format = self.Serializer.FILE_D_FORMAT
         
         accept_headers = self._format_accept_header(request.META["HTTP_ACCEPT"])
-        
         for header in accept_headers:
             if header["media_type"] in self.Serializer.MULTIPART_MEDIA_TYPES:
                 if header["type"] in supported_file_formats and header["type"] in self.Serializer.MULTIPART_FORMATS:
                     file_format = header["type"]
                     if not header.get("boundary") is None:
                         self.Serializer.BOUNDARY = header["boundary"]
-                    
             elif header["media_type"] in self.Serializer.MEDIA_TYPES:
                 file_format = header["media_type"]
-                
             elif header["media_type"] == "*/*":
                 file_format = default_file_format
 
@@ -192,7 +194,6 @@ class DicomWebConnector(DicomConnector):
             )
 
         query_ds = _make_query_dataset(query_dict)
-
         store_errors = []
         self.assoc.bind(
             evt.EVT_C_STORE, _handle_c_get_retrieve, [format, folder_path, serializer, callback, store_errors]
