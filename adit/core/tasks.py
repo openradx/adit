@@ -2,6 +2,7 @@ from typing import Type, List
 import subprocess
 from datetime import timedelta
 from celery import shared_task, Task as CeleryTask, chord
+from celery.contrib.abortable import AbortableTask as AbortableCeleryTask
 from celery.utils.log import get_task_logger
 from django.conf import settings
 from django.core.mail import send_mail
@@ -90,7 +91,7 @@ class ProcessDicomJob(CeleryTask):
             )
         )
 
-        # Save Celery task IDs to dicom tasks (for revoking them if necessary)
+        # Save Celery task IDs to dicom tasks (for revoking them later if necessary)
         # Only works in when not in eager mode (used to debug Celery stuff)
         if not settings.CELERY_TASK_ALWAYS_EAGER:
             for query_task, celery_task in zip(
@@ -100,7 +101,7 @@ class ProcessDicomJob(CeleryTask):
                 query_task.save()
 
 
-class ProcessDicomTask(CeleryTask):
+class ProcessDicomTask(AbortableCeleryTask):
     dicom_task_class: Type[DicomTask] = None
     app_settings_class: Type[AppSettings] = None
 
