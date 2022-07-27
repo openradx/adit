@@ -32,6 +32,13 @@ def _create_dest_connector(transfer_task: TransferTask) -> DicomConnector:
 
 
 class TransferExecutor:
+    """
+    Executes a transfer task of a selective transfer or batch transfer by utilizing the
+    DICOM connector. Transfers only one study or some selected series of one study from
+    one patient.
+    A long running transfer task can be aborted.
+    """
+
     def __init__(
         self, transfer_task: TransferTask, celery_task: AbortableCeleryTask
     ) -> None:
@@ -310,7 +317,6 @@ class TransferExecutor:
                 study["StudyInstanceUID"],
                 study_folder,
                 modifier_callback=modifier_callback,
-                exclude_modalities=settings.EXCLUDE_MODALITIES,
             )
 
     def _modify_dataset(

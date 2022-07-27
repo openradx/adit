@@ -23,6 +23,7 @@ from io import BytesIO
 import errno
 from functools import wraps
 import pika
+from django.conf import settings
 from pydicom.dataset import Dataset
 from pydicom import dcmread, valuerep, uid
 from pydicom.datadict import dictionary_VM
@@ -55,7 +56,6 @@ from pynetdicom.status import (
     STATUS_PENDING,
     STATUS_SUCCESS,
 )
-from django.conf import settings
 from ..models import DicomServer
 from ..errors import RetriableTaskError
 from ..utils.sanitize import sanitize_dirname
@@ -259,7 +259,6 @@ class DicomConnector:
         folder,
         modality=None,
         modifier_callback=None,
-        exclude_modalities=None,
     ):
         series_list = self.find_series(
             {
@@ -275,7 +274,7 @@ class DicomConnector:
             series_uid = series["SeriesInstanceUID"]
             modality = series["Modality"]
 
-            if exclude_modalities and modality in exclude_modalities:
+            if modality in settings.EXCLUDE_MODALITIES:
                 continue
 
             # TODO maybe we should move the series folder name creation to the
@@ -350,9 +349,7 @@ class DicomConnector:
                 raise RetriableTaskError("Failed to upload all images.")
             raise RetriableTaskError("Failed to upload some images.")
 
-    def move_study(
-        self, patient_id, study_uid, destination, modality=None, exclude_modalities=None
-    ):
+    def move_study(self, patient_id, study_uid, destination, modality=None):
         series_list = self.find_series(
             {
                 "PatientID": patient_id,
@@ -369,7 +366,7 @@ class DicomConnector:
             series_uid = series["SeriesInstanceUID"]
             modality = series["Modality"]
 
-            if exclude_modalities and modality in exclude_modalities:
+            if modality in settings.EXCLUDE_MODALITIES:
                 continue
 
             try:
