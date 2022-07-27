@@ -44,7 +44,7 @@ class QueryExecutor:
             patients = self._fetch_patients()
 
             if len(patients) == 0:
-                self.query_task.status = BatchQueryTask.Status.WARNING
+                self.query_task.status = BatchQueryTask.Status.FAILURE
                 self.query_task.message = "Patient not found."
             else:
                 all_studies = []  # a list of study lists (per patient)
@@ -77,6 +77,9 @@ class QueryExecutor:
                         self.query_task.status = BatchQueryTask.Status.SUCCESS
                         self.query_task.message = f"{study_count} found."
                     else:  # Studies of multiple patients found
+                        # We still allow multiple patient IDs as the same patient
+                        # may have different Patient IDs if the studies were imported
+                        # from external.
                         self.query_task.status = BatchQueryTask.Status.WARNING
                         self.query_task.message = (
                             f"Multiple patients found with overall {study_count}."
