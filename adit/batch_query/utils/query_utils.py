@@ -20,6 +20,12 @@ def _create_source_connector(query_task: BatchQueryTask) -> DicomConnector:
 
 
 class QueryExecutor:
+    """
+    Executes a batch query task (one line in a batch query file) by utilizing the
+    DICOM connector.
+    Currently we don't make it abortable in between as it is fast enough.
+    """
+
     def __init__(
         self, query_task: BatchQueryTask, celery_task: AbortableCeleryTask
     ) -> None:
@@ -149,7 +155,7 @@ class QueryExecutor:
 
         return studies
 
-    def _query_series(self, study: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    def _query_series(self, study: Dict[str, Any]) -> List[Dict[str, Any]]:
         found_series = self.connector.find_series(
             {
                 "PatientID": study["PatientID"],
