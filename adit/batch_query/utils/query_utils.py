@@ -132,11 +132,13 @@ class QueryExecutor:
                 DICOM_DATE_FORMAT
             )
 
-        filtered_modalities = [
-            modality
-            for modality in self.query_task.modalities
-            if not modality in settings.EXCLUDE_MODALITIES
-        ]
+        modalities = []
+        if self.query_task.modalities:
+            modalities = [
+                modality
+                for modality in self.query_task.modalities
+                if not modality in settings.EXCLUDE_MODALITIES
+            ]
 
         studies = self.connector.find_studies(
             {
@@ -148,7 +150,7 @@ class QueryExecutor:
                 "StudyDate": study_date,
                 "StudyTime": "",
                 "StudyDescription": "",
-                "ModalitiesInStudy": filtered_modalities,
+                "ModalitiesInStudy": modalities,
                 "NumberOfStudyRelatedInstances": "",
             }
         )
