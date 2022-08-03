@@ -14,7 +14,7 @@ def data_dict():
         "destination": DicomServerFactory(),
         "project_name": "Apollo project",
         "project_description": "Fly to the moon",
-        "ethics_committee_approval": "on",
+        "ethics_application_id": "12345",
     }
 
 
@@ -43,7 +43,7 @@ def test_field_labels():
     assert form.fields["project_description"].label == "Project description"
     assert form.fields["trial_protocol_id"].label == "Trial ID"
     assert form.fields["trial_protocol_name"].label == "Trial name"
-    assert "ethics_committee_approval" in form.fields
+    assert form.fields["ethics_application_id"].label == "Ethics committee approval"
     assert form.fields["batch_file"].label == "Batch file"
 
 
@@ -80,7 +80,7 @@ def test_with_missing_values():
     assert form.errors["destination"] == ["This field is required."]
     assert form.errors["project_name"] == ["This field is required."]
     assert form.errors["project_description"] == ["This field is required."]
-    assert form.errors["ethics_committee_approval"] == ["This field is required."]
+    assert form.errors["ethics_application_id"] == ["This field is required."]
     assert form.errors["batch_file"] == ["This field is required."]
 
 

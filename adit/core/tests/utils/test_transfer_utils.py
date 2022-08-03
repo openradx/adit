@@ -121,7 +121,6 @@ def test_transfer_to_server_succeeds(
         task.study_uid,
         ANY,
         modifier_callback=ANY,
-        exclude_modalities=ANY,
     )
 
     upload_path = dest_connector_mock.upload_folder.call_args[0][0]
