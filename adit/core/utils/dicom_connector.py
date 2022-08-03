@@ -1,3 +1,4 @@
+# pyright: basic
 """
 The connector directly communicates with the DICOM servers by using pynetdicom.
 

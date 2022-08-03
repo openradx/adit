@@ -10,5 +10,5 @@
         "adit"
     ],
     "python.testing.unittestEnabled": false,
-    "python.analysis.typeCheckingMode": "basic"
+    "python.analysis.typeCheckingMode": "off"
 }
