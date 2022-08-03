@@ -22,8 +22,7 @@ class ProcessSelectiveTransferTask(ProcessDicomTask):
     app_settings_class = SelectiveTransferSettings
 
     def handle_dicom_task(self, dicom_task):
-        transfer_executor = TransferExecutor(dicom_task, self)
-        transfer_executor.start()
+        return TransferExecutor(dicom_task, self).start()
 
 
 process_selective_transfer_task = ProcessSelectiveTransferTask()
