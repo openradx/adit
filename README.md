@@ -49,6 +49,10 @@ Downloading data from a DICOM server can done by using a C-GET or C-MOVE operati
 [![](https://github.com/medihack.png?size=50)](https://github.com/medihack)
 [![](https://github.com/mdebic.png?size=50)](https://github.com/mdebic)
 
+# Disclaimer
+
+ADIT is not a certified medical product. So use at your own risk.
+
 # License
 
 - GPLv3
