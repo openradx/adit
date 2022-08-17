@@ -1,160 +1,125 @@
 
 import os
 from pathlib import Path
+import logging
+from typing import Type
+
+from django.http import HttpRequest
+from django.conf import settings
 
 from rest_framework import generics
+from rest_framework.views import APIView
+from rest_framework.exceptions import NotAcceptable, ParseError
 
-from django.http import JsonResponse, FileResponse
-from django.shortcuts import render
-
+from adit.core.models import DicomServer
 from adit.selective_transfer.models import SelectiveTransferJob
-from adit.core.utils.dicom_connector import DicomConnector
-
-from .serializers import SelectiveTransferJobListSerializer, DicomSerializer
-from .utils.dicom_web_utils import DicomWebAPIView, DicomWebConnector
-from .renderers import DicomMultipartRenderer, DicomJsonRenderer
-
-from .models import (
-    DicomWebQIDOJob, 
-    DicomWebQIDOTask,
-) 
-
-# QIDO-RS
-class QueryAPIView(DicomWebAPIView):
-    query = {
-        "StudyInstanceUID": "",
-        "PatientID": "",
-        "PatientName": "",
-        "PatientBithDate": "",
-        "AccessionNumber": "",
-        "StudyDate": "",
-        "ModalitiesInStudy": "",
-        "NumberOfStudyRelatedInstances": "",
-        "NumberOfSeriesRelatedInstances": "",
-        "SeriesInstanceUID": "",
-        "SOPInstaceUID": "",
-        "SeriesDescription": "",
-    }
-    LEVEL = None
-    renderer_classes = [DicomJsonRenderer]
+from .serializers import DicomWebSerializer, SelectiveTransferJobListSerializer
 
 
-class QueryStudyAPIView(QueryAPIView):
-    LEVEL = "STUDY"
-    def get(self, request, *args, **kwargs):
-        # Find DICOM Server and create query
-        SourceServer, query = self.handle_request(request, *args, **kwargs)
+logger = logging.getLogger(__name__)
+
+
+class DicomWebAPIView(APIView):
+    MODE = None
+    query = None
+
+    def handle_request(
+        self, request: Type[HttpRequest], accept_header=False, *args: dict, **kwargs: dict
+    ) -> tuple:
+        # Find PACS and connect
+        pacs_ae_title = kwargs.get("pacs", None)
+        SourceServerSet = DicomServer.objects.filter(ae_title=pacs_ae_title)
+        if len(SourceServerSet) != 1:
+            raise ParseError(f"The specified PACS with AE title: {pacs_ae_title} does not exist or multiple Entities with this title exist.")
+        SourceServer = SourceServerSet[0]
+
+        # update query
+        query = self.query.copy()
+        query.update(request.query_params.copy())
+
+        StudyInstanceUID = kwargs.get("StudyInstanceUID")
+        if self.LEVEL == "SERIES" and StudyInstanceUID is None:
+            raise NotImplementedError("Query for series without specified study is not yet supported.")
+        SeriesInstanceUID = kwargs.get("SeriesInstanceUID")
+        if not StudyInstanceUID is None:
+            query["StudyInstanceUID"] = StudyInstanceUID
+        if not SeriesInstanceUID is None:
+            query["SeriesInstanceUID"] = StudyInstanceUID
         
-        job = DicomWebQIDOJob(
-            source = SourceServer,
-            owner = request.user,
-            status = DicomWebQIDOJob.Status.PENDING,
-        )
-        job.save()
+        if accept_header:
+            mode, content_type, boundary = self._handle_accept_header(request, *args, **kwargs)
+            return SourceServer, query, mode, content_type, boundary
 
-        task = DicomWebQIDOTask(
-            study_uid = query.get("StudyInstanceUID"),
-            series_uid = query.get("SeriesInstanceUID"),
-            job = job,
-            task_id = 0,
-        )
-        task.save()        
+        return SourceServer, query
 
-        job.run()
+    def _handle_accept_header(
+        self, request: Type[HttpRequest], *args: dict, **kwargs: dict
+    ) -> tuple:
+        serializer = DicomWebSerializer()
+        try:
+            if kwargs.get("mode") == "metadata":
+                mode = "meta"
+                supported_content_types = serializer.meta_content_types
+                default_content_type = serializer.meta_d_content_type
+            else:
+                mode = "bulk"
+                supported_content_types = serializer.bulk_content_types
+                default_content_type = serializer.bulk_d_content_type
+                    
+            accept_headers = self._format_accept_header(request.META["HTTP_ACCEPT"])
+            for header in accept_headers:
+                boundary = settings.DEFAULT_BOUNDARY
+                if header["media_type"] in serializer.MULTIPART_MEDIA_TYPES:
+                    if header["type"] in supported_content_types and header["type"] in serializer.multipart_content_types:
+                        content_type = header["type"]
+                        if header.get("boundary") is not None:
+                            boundary = header["boundary"]
+                elif header["media_type"] in serializer.MEDIA_TYPES:
+                    content_type = header["media_type"]
+                elif header["media_type"] == "*/*":
+                    content_type = default_content_type
+                    
+        except SystemError:
+            raise NotAcceptable()
 
-        connector = DicomConnector(SourceServer)
-
-        # C-find study instance with dicom connector
-        StudyInstance = connector.find_studies(query)
+        if content_type is None:
+            raise NotAcceptable()
         
-        response = self.request.accepted_renderer.create_response(file=StudyInstance)
+        logger.debug(f"Accepted file format: {content_type} for retrieve mode: {mode}.")
 
-        return response
-
-class QuerySeriesAPIView(QueryAPIView):
-    LEVEL = "SERIES"
-    def get(self, request, *args, **kwargs):
-        # Connect to DICOM Server and create query
-        SourceServer, query = self.handle_request(request, *args, **kwargs)
-        connector = DicomConnector(SourceServer)
-
-        # C-find study instance with dicom connector
-        SeriesInstance = connector.find_series(query)
-
-        response = self.request.accepted_renderer.create_response(file=SeriesInstance)
-
-        return response
-
-
-# WADO-RS
-class RetrieveAPIView(DicomWebAPIView):
-    MODE = "move"
-    query = {
-        "StudyInstanceUID": "",
-        "PatientID": "",
-        "SeriesInstanceUID": "",
-        "SeriesDescription": "",
-    }
-    LEVEL = None
-    FOLDER_ADIT = "./temp_WADO-RS_files/"
-    renderer_classes = [DicomMultipartRenderer, DicomJsonRenderer]
-    Serializer = DicomSerializer
-
-
-class RetrieveStudyAPIView(RetrieveAPIView):
-    LEVEL = "STUDY"
-    
-    def get(self, request, *args, **kwargs):
-        SourceServer, query, format = self.handle_request(request, accept_header=True, *args, **kwargs)
-        connector = DicomWebConnector(SourceServer)
-        series_list = connector.find_series(query)
-
-        folder_path = Path(self.FOLDER_ADIT) / ("study_"+query["StudyInstanceUID"])
-        os.makedirs(folder_path, exist_ok=True)
-        file_path = folder_path / "multipart.txt"
-
-        self.Serializer.start_file(self.Serializer, file_path, format["file_format"])
-        connector.retrieve_study(
-            query["StudyInstanceUID"], 
-            series_list,
-            format,
-            folder_path,
-            self.Serializer,
-        )
-        self.Serializer.end_file(self.Serializer, file_path, format["file_format"])
+        return mode, content_type, boundary
+                
+    def _format_accept_header(
+        self, accept_header_str: str
+    ) -> tuple:
+        chars_to_remove = [" ", "'", '"']
+        for char in chars_to_remove:
+            accept_header_str = accept_header_str.replace(char, "")
+        accept_headers = [header.split(";") for header in accept_header_str.split(",")]
+        accept_headers_formated = [{} for i in range(len(accept_headers))]
+        for j in range(len(accept_headers)):
+            accept_header = accept_headers[j]
+            accept_headers_formated[j]["media_type"] = accept_header[0]
+            for i in range(1, len(accept_header)):
+                key, value = accept_header[i].split("=")
+                accept_headers_formated[j][key] = value
         
-        response = request.accepted_renderer.create_response(file_path=file_path, type=format["file_format"], boundary=self.Serializer.BOUNDARY)
-        os.remove(file_path)
-        os.rmdir(folder_path)
+        return accept_headers_formated
 
-        return response
+    def generate_temp_files(
+        self, query: dict, level: str
+    ) -> tuple:
+        folder_path = Path(self.FOLDER_ADIT)
+        if level == "STUDY":
+            folder_path =  folder_path / ("study_"+query.get("StudyInstanceUID"))
+            os.makedirs(folder_path, exist_ok=True)
+            file_path = folder_path / "response.txt"
+        elif level == "SERIES":
+            folder_path = folder_path / ("series_"+query.get("SeriesInstanceUID"))
+            os.makedirs(folder_path, exist_ok=True)
+            file_path = folder_path / "response.txt"
 
-class RetrieveSeriesAPIView(RetrieveAPIView):
-    LEVEL = "SERIES"
-
-    def get(self, request, *args, **kwargs):
-        SourceServer, query, format = self.handle_request(request, accept_header=True, *args, **kwargs)
-        connector = DicomWebConnector(SourceServer)
-
-        folder_path = Path(self.FOLDER_ADIT) / ("series_"+query["SeriesInstanceUID"])
-        os.makedirs(folder_path, exist_ok=True)
-        file_path = folder_path / "multipart.txt"
-
-        self.Serializer.start_file(self.Serializer, file_path, format["file_format"])
-        connector.retrieve_series(
-            query["StudyInstanceUID"], 
-            query["SeriesInstanceUID"],
-            format,
-            folder_path,
-            self.Serializer,
-        )
-        self.Serializer.end_file(self.Serializer, file_path, format["file_format"])
-        
-        response = request.accepted_renderer.create_response(file_path=file_path, type=format["file_format"], boundary=self.Serializer.BOUNDARY)
-        os.remove(file_path)
-        os.remove(folder_path)
-        
-        return response
+        return folder_path, file_path
 
 
 # Selective transfer

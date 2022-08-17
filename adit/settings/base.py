@@ -64,6 +64,8 @@ INSTALLED_APPS = [
     "adit.dicom_explorer.apps.DicomExplorerConfig",
     "adit.token_authentication.apps.RestAuthenticationConfig",
     "adit.rest_api.apps.RestApiConfig",
+    "adit.rest_api.qido_rs.apps.QidoRsConfig",
+    "adit.rest_api.wado_rs.apps.WadoRsConfig",
     "channels",
     "rest_framework.authtoken",
 ]
@@ -320,6 +322,9 @@ CELERY_TASK_ROUTES = {
     "adit.batch_transfer.tasks.ProcessBatchTransferTask": {
         "queue": "dicom_task_queue",
     },
+    "adit.rest_api.wado_rs.tasks.ProcessDicomWadoTask": {
+        "queue": "dicom_task_queue",
+    },
 }
 CELERY_BEAT_SCHEDULE = {
     "check-disk-space": {
@@ -388,6 +393,8 @@ BATCH_QUERY_DEFAULT_PRIORITY = 4
 BATCH_QUERY_URGENT_PRIORITY = 8
 QIDO_DEFAULT_PRIORITY = 4
 QIDO_URGENT_PRIORITY = 8
+WADO_DEFAULT_PRIORITY = 3
+WADO_URGENT_PRIORITY = 7
 
 # The maximum number of resulting studies for selective_transfer query
 SELECTIVE_TRANSFER_RESULT_LIMIT = 101
@@ -414,3 +421,6 @@ MAX_BATCH_QUERY_SIZE = 1000
 # The maximum number of batch transfers a normal user can process in one job
 # (staff users are not limited)
 MAX_BATCH_TRANSFER_SIZE = 500
+
+# Default multipart boundary for wado-rs service
+DEFAULT_BOUNDARY = "adit-boundary"

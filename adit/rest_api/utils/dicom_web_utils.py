@@ -1,137 +1,49 @@
-from requests import RequestException
 from pathlib import Path
 import logging
 import errno
+from typing import Type
 
-from rest_framework.views import APIView
-from rest_framework.exceptions import NotAcceptable
-
-from adit.core.models import DicomServer
+from adit.core.errors import RetriableTaskError
 from adit.core.utils.dicom_connector import (
     DicomConnector, 
-    sanitize_dirname, 
     connect_to_server,
     _evaluate_get_move_results, 
     _check_required_id,
     _make_query_dataset, 
 )
+from ..serializers import DicomWebSerializer
 
 from pynetdicom import evt
-
-# pylint: disable=no-name-in-module
+from pynetdicom.events import Event
 from pynetdicom.sop_class import (
     PatientRootQueryRetrieveInformationModelGet,
     StudyRootQueryRetrieveInformationModelGet,
 )
 
-from adit.core.errors import RetriableTaskError
-
 
 logger = logging.getLogger(__name__)
 
 
-
-class DicomWebAPIView(APIView):
-    MODE = None
-    query = None
-
-    def handle_request(self, request, accept_header=False, *args, **kwargs):
-        # Find PACS and connect
-        pacs_ae_title = kwargs.get("pacs", None)
-        SourceServerSet = DicomServer.objects.filter(ae_title=pacs_ae_title)
-        if len(SourceServerSet) != 1:
-            raise RequestException(f"The specified PACS with AE title: {pacs_ae_title} does not exist or multiple Entities with this title exist.")
-        SourceServer = SourceServerSet[0]
-
-        # update query
-        query = self.query.copy()
-        query.update(request.query_params.copy())
-
-        StudyInstanceUID = kwargs.get("StudyInstanceUID")
-        if self.LEVEL == "SERIES" and StudyInstanceUID is None:
-            raise NotImplementedError("Query for series without specified study is not yet supported.")
-        SeriesInstanceUID = kwargs.get("SeriesInstanceUID")
-        if not StudyInstanceUID is None:
-            query["StudyInstanceUID"] = StudyInstanceUID
-        if not SeriesInstanceUID is None:
-            query["SeriesInstanceUID"] = StudyInstanceUID
-        
-        if accept_header:
-            format = self.handle_accept_header(request, *args, **kwargs)
-            return SourceServer, query, format
-
-        return SourceServer, query
-
-
-    def handle_accept_header(self, request, *args, **kwargs):
-        if kwargs.get("mode") == "metadata":
-            mode = "meta"
-            supported_file_formats = self.Serializer.META_DATA_FORMATS
-            default_file_format = self.Serializer.META_DATA_D_FORMAT
-        else:
-            mode = "bulk"
-            supported_file_formats = self.Serializer.FILE_FORMATS
-            default_file_format = self.Serializer.FILE_D_FORMAT
-        
-        accept_headers = self._format_accept_header(request.META["HTTP_ACCEPT"])
-        for header in accept_headers:
-            if header["media_type"] in self.Serializer.MULTIPART_MEDIA_TYPES:
-                if header["type"] in supported_file_formats and header["type"] in self.Serializer.MULTIPART_FORMATS:
-                    file_format = header["type"]
-                    if not header.get("boundary") is None:
-                        self.Serializer.BOUNDARY = header["boundary"]
-            elif header["media_type"] in self.Serializer.MEDIA_TYPES:
-                file_format = header["media_type"]
-            elif header["media_type"] == "*/*":
-                file_format = default_file_format
-
-        if file_format is None:
-            raise NotAcceptable()
-        
-        logger.debug(f"Accepted file format: {file_format} for retrieve mode: {mode}.")
-
-        format = {
-            "mode": mode,
-            "file_format": file_format,
-        }
-
-        return format
-
-                    
-    def _format_accept_header(self, accept_header_str):
-        chars_to_remove = [" ", "'", '"']
-        for char in chars_to_remove:
-            accept_header_str = accept_header_str.replace(char, "")
-        accept_headers = [header.split(";") for header in accept_header_str.split(",")]
-        accept_headers_formated = [{} for i in range(len(accept_headers))]
-        for j in range(len(accept_headers)):
-            accept_header = accept_headers[j]
-            accept_headers_formated[j]["media_type"] = accept_header[0]
-            for i in range(1, len(accept_header)):
-                key, value = accept_header[i].split("=")
-                accept_headers_formated[j][key] = value
-        
-        return accept_headers_formated
-
-
-
 class DicomWebConnector(DicomConnector):
-    def retrieve_study(
+    def retrieve_series_list(
         self, 
-        study_uid, 
-        series_list,
-        format,
-        folder_path,
-        serializer,
-        patient_id = "",
-        modality = None,
+        study_uid: str, 
+        series_list: str,
+        mode: str,
+        content_type: str,
+        folder_path: str,
+        serializer: Type[DicomWebSerializer],
         modifier_callback = None,
-    ):
+    ) -> None:
         for series in series_list:
             series_uid = series["SeriesInstanceUID"]
 
             multipart_folder_path = self.retrieve_series(
-                study_uid, series_uid, format, folder_path, serializer, modifier_callback=modifier_callback
+                study_uid, 
+                series_uid, mode, 
+                content_type, 
+                folder_path, serializer, 
+                modifier_callback=modifier_callback,
             )
         
         logger.debug("Successfully downloaded study %s to ADIT.", study_uid)
@@ -139,25 +51,31 @@ class DicomWebConnector(DicomConnector):
     
     def retrieve_series(
         self,
-        study_uid,
-        series_uid,
-        format,
-        folder_path,
-        serializer,
-        patient_id = "",
-        modality=None,
+        study_uid: str,
+        series_uid: str,
+        mode: str,
+        content_type: str,
+        folder_path: str,
+        serializer: Type[DicomWebSerializer],
         modifier_callback=None,
-    ):
+    ) -> str:
 
-        query = {
+        query_dict = {
             "QueryRetrieveLevel": "SERIES",
-            "PatientID": patient_id,
             "StudyInstanceUID": study_uid,
             "SeriesInstanceUID": series_uid,
         }
  
         if self.server.patient_root_get_support or self.server.study_root_get_support:
-            self._retrieve_series_get(query, format, folder_path, serializer, modifier_callback)
+            self._retrieve_series_get(
+                query_dict, 
+                mode, 
+                content_type, 
+                folder_path, 
+                serializer, 
+                modifier_callback
+            )
+
             logger.debug(
                 "Successfully downloaded series %s of study %s.", series_uid, study_uid
             )
@@ -168,15 +86,37 @@ class DicomWebConnector(DicomConnector):
 
         return folder_path
 
-    def _retrieve_series_get(self, query, format, folder_path, serializer, modifier_callback=None):
-        results = self._send_c_get_retrieve(query, format, folder_path, serializer, modifier_callback)
+    def _retrieve_series_get(
+        self, 
+        query_dict: dict, 
+        mode: str, 
+        content_type: str, 
+        folder_path: str, 
+        serializer: Type[DicomWebSerializer], 
+        modifier_callback=None
+    ) -> None:
+        results = self._send_c_get_retrieve(
+            query_dict, 
+            mode, 
+            content_type, 
+            folder_path, 
+            serializer, 
+            modifier_callback
+        )
 
-        _evaluate_get_move_results(results, query)
+        _evaluate_get_move_results(results, query_dict)
 
 
     @connect_to_server("get")
     def _send_c_get_retrieve(  # pylint: disable=too-many-arguments
-        self, query_dict, format, folder_path, serializer, callback=None, msg_id=1
+        self, 
+        query_dict: dict, 
+        mode: str, 
+        content_type: str, 
+        folder_path: str, 
+        serializer: Type[DicomWebSerializer], 
+        callback=None, 
+        msg_id=1
     ):
         logger.debug("Sending C-GET with query: %s", query_dict)
 
@@ -196,7 +136,7 @@ class DicomWebConnector(DicomConnector):
         query_ds = _make_query_dataset(query_dict)
         store_errors = []
         self.assoc.bind(
-            evt.EVT_C_STORE, _handle_c_get_retrieve, [format, folder_path, serializer, callback, store_errors]
+            evt.EVT_C_STORE, _handle_c_get_retrieve, [mode, content_type, folder_path, serializer, callback, store_errors]
         )
 
         try:
@@ -215,10 +155,16 @@ class DicomWebConnector(DicomConnector):
 
         return results
 
-def _handle_c_get_retrieve(event, format, folder_path, serializer, modifier_callback, errors):
+def _handle_c_get_retrieve(
+    event: Type[Event], 
+    mode: str, 
+    content_type: str, 
+    folder_path: str, 
+    serializer: Type[DicomWebSerializer], 
+    modifier_callback, 
+    errors
+):
     """Handle a C-STORE request event."""
-    mode, file_format = format["mode"], format["file_format"]
-
     ds = event.dataset
     context = event.context
 
@@ -236,15 +182,10 @@ def _handle_c_get_retrieve(event, format, folder_path, serializer, modifier_call
     if modifier_callback:
         modifier_callback(ds)
 
-    file_path = folder_path / "multipart.txt"
+    file_path = folder_path / "response.txt"
 
     try:
-        serializer.write(
-            serializer,
-            ds,
-            file_path,
-            file_format = file_format,
-        )
+        serializer.write(ds)
     except OSError as err:
         if err.errno == errno.ENOSPC:
             # No space left on destination

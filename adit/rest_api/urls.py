@@ -1,56 +1,10 @@
-from django.urls import path
+from django.urls import path, include
 from .views import (
     SelectiveTransferJobListAPIView, 
     SelectiveTransferJobDetailAPIView,
-    QueryStudyAPIView, 
-    QuerySeriesAPIView,
-    RetrieveStudyAPIView,
-    RetrieveSeriesAPIView,
 )
 
 urlpatterns = [
-    path(
-        "selective-transfer-jobs/",
-        SelectiveTransferJobListAPIView.as_view(),
-    ),
-    path(
-        "selective-transfer-jobs/<int:id>/",
-        SelectiveTransferJobDetailAPIView.as_view(),
-    ),
-    path(
-        "<str:pacs>/qidors/studies/",
-        QueryStudyAPIView.as_view(),
-    ),
-    path(
-        "<str:pacs>/qidors/studies/<str:StudyInstanceUID>/",
-        QueryStudyAPIView.as_view(),
-    ),
-    path(
-        "<str:pacs>/qidors/studies/<str:StudyInstanceUID>/series/",
-        QuerySeriesAPIView.as_view(),
-    ),
-    path(
-        "<str:pacs>/quidors/studies/<str:StudyInstanceUID>/series/<str:SeriesInstanceUID>/",
-        QuerySeriesAPIView.as_view(),
-    ),
-    path(
-        "<str:pacs>/wadors/studies/",
-        RetrieveStudyAPIView.as_view(),
-    ),
-    path(
-        "<str:pacs>/wadors/studies/<str:StudyInstanceUID>/",
-        RetrieveStudyAPIView.as_view(),
-    ),
-    path(
-        "<str:pacs>/wadors/studies/<str:StudyInstanceUID>/<str:mode>/",
-        RetrieveStudyAPIView.as_view(),
-    ),
-    path(
-        "<str:pacs>/wadors/series/",
-        RetrieveSeriesAPIView.as_view(),
-    ),
-    path(
-        "<str:pacs>/wadors/studies/<str:StudyInstanceUID>/series/<str:SeriesInstanceUID>/",
-        RetrieveSeriesAPIView.as_view(),
-    ),
+    path("", include("adit.rest_api.qido_rs.urls")),
+    path("", include("adit.rest_api.wado_rs.urls"))
 ]
