@@ -1,163 +1,105 @@
-from asyncore import write
 from rest_framework import serializers
 from rest_framework.fields import empty
+
+from django.conf import settings
+
 from adit.core.models import DicomNode, TransferTask
 from adit.selective_transfer.models import SelectiveTransferJob
 
-from pydicom.filewriter import dcmwrite, write_dataset, write_data_element, write_file_meta_info
-from pydicom.uid import RLELossless
-from pydicom.dataset import FileMetaDataset
+from .formats import ApplicationDicom, ApplicationDicomJson
+from .writers import ElementWriter
 
-import json
+from typing import Type
+from pydicom import DataElement
+
 
 # WADO-RS
-class DicomSerializer():
-    BOUNDARY = "adit-boundary"
-    FILE_FORMATS = ["application/dicom","image/dicom+jpeg",]
-    FILE_D_FORMAT = "application/dicom"
-    META_DATA_FORMATS = ["application/dicom+json", "application/dicom+xml",]
-    META_DATA_D_FORMAT = "application/dicom+json"
-    
+class DicomWebSerializer():
+    FORMATS = [ApplicationDicom, ApplicationDicomJson]
     MULTIPART_MEDIA_TYPES = ["multipart/related"]
-    MULTIPART_FORMATS = ["application/dicom", "image/dicom+jpeg", "application/dicom+xml"]
     MEDIA_TYPES = ["application/dicom+json"]
 
-    list = []
+    @property
+    def bulk_content_types(self):
+        return self._get_content_types("bulk")
 
+    @property
+    def meta_content_types(self):
+        return self._get_content_types("meta")
     
-    class DicomDataElementWriter():
-        def __init__(self, file, BOUNDARY):
-            self.file = file
-            self.BOUNDARY = BOUNDARY
-            self.CONTENT_TYPE = "application/dicom"
+    @property
+    def bulk_d_content_type(self):
+        return self._get_d_content_type("bulk")
+    
+    @property
+    def meta_d_content_type(self):
+        return self._get_d_content_type("meta")
 
-        def write(self, ds):
-            _write_boundary(self.file, self.BOUNDARY)
-            _write_header(self.file, content_type=self.CONTENT_TYPE)
-            #_write_dicom_header(self.file)
-            if ds.is_little_endian:
-                dcmwrite(self.file, ds, write_like_original=False)
-            self.file.write(b"\r\n")
+    @property
+    def multipart_content_types(self):
+        list = []
+        for supported_format in self.FORMATS:
+            if supported_format.multipart:
+                list.append(supported_format.content_type)
+        return list
 
+    def setup_writer(
+        self, fpath: str, mode: str, content_type: str, boundary=settings.DEFAULT_BOUNDARY
+    ) -> None:
+        self.boundary = boundary
+        self.writer = self._get_writer(fpath, mode, content_type)
 
-    class JSONDataElementWriter():
-        def __init__(self, file, BOUNDARY):
-            self.file = file
-            self.BOUNDARY = BOUNDARY
-            self.CONTENT_TYPE = "application/dicom+json"
-            self.list = []
-            
-        def write(self, list):
-            json.dump(list, self.file)
-
-
-    class XMLDataElementWriter():
-        def __init__(self, file, BOUNDARY):
-            self.file = file
-            self.BOUNDARY = BOUNDARY
-            self.CONTENT_TYPE = "application/dicom+xml"
-
-        def write(self, ds):
-            self.file.write("--" + self.BOUNDARY + "\r\n")
-            _write_header(self.file, content_type=self.CONTENT_TYPE)
-            write_file_meta_info(self.file, ds.file_meta)
-
-
-    class JPEGDataElementWriter():
-        def __init__(self, file, BOUNDARY):
-            self.file = file
-            self.BOUNDARY = BOUNDARY
-            self.CONTENT_TYPE = "image/dicom+jpeg"
-
-        def write(self, ds):
-            ds.compress(RLELossless, encoding_plugin='pylibjpeg')
-            self.file.write(b"--" + self.BOUNDARY + b"\r\n")
-            _write_header(self.file, content_type=self.CONTENT_TYPE)
-            self.file.write(ds.PixelData)
-            self.file.write(b"\r\n")
-
-
-    def write(self, ds, fpath, file_format=None):
-        if file_format == "application/dicom":
-            return self._write_full(self, ds, fpath)
-        if file_format == "application/dicom+json":
-            return self._write_json(self, ds, fpath)
-        if file_format == "application/dicom+xml":
-            return self._write_xml(self, ds, fpath)
-        if file_format == "image/dicom+jpeg":
-            return self._write_jpeg(self, ds, fpath)
-
-
-    def _write_jpeg(self, ds, fpath):
-        BOUNDARY = self.BOUNDARY.encode('ascii') 
-        with open(fpath, "ab") as file:
-            instance_writer = self.JPEGDataElementWriter(file, BOUNDARY)
-            instance_writer.write(ds)                
-        return fpath, instance_writer.BOUNDARY
-
-
-    def _write_full(self, ds, fpath):
-        BOUNDARY = self.BOUNDARY.encode('ascii') 
-        with open(fpath, "ab") as file:
-            instance_writer = self.DicomDataElementWriter(file, BOUNDARY)
-            instance_writer.write(ds)
-        return fpath, instance_writer.BOUNDARY
-
-
-    def _write_json(self, ds, fpath):
-        json_meta = ds.file_meta.to_json_dict()
-        self.list.append(json_meta)
-        with open(fpath, "w") as file:
-            instance_writer = self.JSONDataElementWriter(file, self.BOUNDARY)
-            instance_writer.write(self.list)
-        return fpath, instance_writer.BOUNDARY
-
-
-    def _write_xml(self, ds, fpath):
-        with open(fpath, "a") as file:
-            instance_writer = self.XMLDataElementWriter(file, self.BOUNDARY)
-            instance_writer.write(ds)
-        return fpath, instance_writer.BOUNDARY
-
-
-    def end_file(self, fpath, file_format):
-        if file_format in self.MULTIPART_FORMATS:
-            if file_format in self.FILE_FORMATS:
-                BOUNDARY = self.BOUNDARY.encode('ascii') 
-                with open(fpath, "ab") as file:
-                    file.write(b"--"+BOUNDARY+b"--")
-            else:
-                with open(fpath, "a") as file:
-                    file.write("--"+self.BOUNDARY+"--")
-
-
-    def start_file(self, fpath, file_format):
-        if file_format in self.MULTIPART_FORMATS:
+    def start_file(
+        self, fpath: str, content_type:str
+    ) -> None:
+        if content_type in self.multipart_content_types:
             with open(fpath, "wb") as file:
                 file.write(b"")
 
+    def end_file(
+        self, fpath: str, content_type: str
+    ) -> None:
+        if content_type in self.multipart_content_types:
+            if content_type in self.bulk_content_types:
+                boundary = self.boundary.encode('ascii') 
+                with open(fpath, "ab") as file:
+                    file.write(b"--"+boundary+b"--")
+            else:
+                with open(fpath, "a") as file:
+                    file.write("--"+self.boundary+"--")
 
-def _write_header(file, content_type, boundary=None, binary=True):
-    content = f"Content-Type: {content_type}"
-    if not boundary is None:
-        bound = f"; boundary={boundary}"
-    else:
-        bound = ""
-    if binary:
-        header = (content+bound).encode('ascii')
-    else:
-        header = (content+bound)
-    file.write(header)
-    file.write(b"\r\n")
-    file.write(b"\r\n")
+    def write(
+        self, ds: Type[DataElement]
+    ) -> tuple:
+        return self.writer.write_ds(ds)
 
-def _write_boundary(file, boundary, binary=True):
-    file.write(b"\r\n")
-    file.write(b"--" + boundary + b"\r\n")
+    def _get_content_types(
+        self, mode: str
+    ) -> list:
+        list = []
+        for supported_format in self.FORMATS:
+            if supported_format.mode==mode:
+                list.append(supported_format.content_type)
+        return list
 
-def _write_dicom_header(file):
-    file.write(b'\x00' * 128)
-    file.write(b'DICM')
+    def _get_d_content_type(
+        self, mode: str
+    ) -> str:
+        for supported_format in self.FORMATS:
+            if supported_format.mode==mode:
+                if supported_format.mode_default:
+                    return supported_format.content_type
+        raise SystemError("No default content type for mode: {mode} provided.")
+
+    def _get_writer(
+        self, fpath: str, mode: str, content_type: str
+    ) -> Type[ElementWriter]:
+        for supported_format in self.FORMATS:
+            if supported_format.mode==mode:
+                if supported_format.content_type==content_type:
+                    writer = supported_format.writer(fpath, self.boundary)
+                    return writer
+        raise SystemError(f"No writer found for mode: {mode} and content_type: {content_type}")
 
 
 
