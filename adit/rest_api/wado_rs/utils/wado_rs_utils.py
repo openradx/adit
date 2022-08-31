@@ -109,9 +109,12 @@ def _serialize_and_transfer_to_adit(
         dicom_wado_task.job.content_type,
         dicom_wado_task.job.boundary,
     )
+
+    logger.info("Set up a serializer and writer for content type %s.", dicom_wado_task.job.content_type)
+
     connector = DicomWebConnector(dicom_wado_task.job.source.dicomserver)
 
-    logger.info("connected to server %s.", dicom_wado_task.job.source.dicomserver.ae_title)
+    logger.info("Connected to server %s.", dicom_wado_task.job.source.dicomserver.ae_title)
 
     series_list = connector.find_series(query)
     

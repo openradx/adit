@@ -4,7 +4,8 @@ import json
 from django.conf import settings
 from django.utils import timezone
 
-from adit.core.utils.dicom_connector import DicomConnector
+from ...utils.dicom_web_utils import DicomWebConnector
+from adit.core.utils.dicom_utils import format_datetime_attributes
 from adit.core.utils.task_utils import hijack_logger, store_log_in_task
 from adit.core.errors import RetriableTaskError
 from adit.core.models import DicomServer
@@ -67,14 +68,14 @@ def execute_qido(
 def _c_get_to_result(
     dicom_qido_task: DicomQidoTask
 ) -> None:
-    connector = DicomConnector(dicom_qido_task.job.source.dicomserver)
+    connector = DicomWebConnector(dicom_qido_task.job.source.dicomserver)
     
     query = _create_query(dicom_qido_task)
 
     if dicom_qido_task.job.level == "STUDY":    
-        c_get_result = connector.find_studies(query)
+        c_get_result = connector.query_studies(query)
     elif dicom_qido_task.job.level == "SERIES":
-        c_get_result = connector.find_series(query)
+        c_get_result = connector.query_series(query)
 
     result = DicomQidoResult(
         job = dicom_qido_task.job,
@@ -92,13 +93,25 @@ def _create_query(
 
         "PatientID": "",
         "PatientName": "",
-        "PatientBithDate": "",
+        "PatientBirthDate": "",
+        "PatientSex": "",
         "AccessionNumber": "",
         "StudyDate": "",
+        "StudyTime": "",
         "ModalitiesInStudy": "",
+        "Modality":"",
         "NumberOfStudyRelatedInstances": "",
         "NumberOfSeriesRelatedInstances": "",
         "SOPInstaceUID": "",
+        "StudyDescription":"",
         "SeriesDescription": "",
+        "SeriesNumber":"",
     }
+
+    request_query = eval(dicom_task.query)
+    for attribute, value in request_query.items():
+        query[attribute] = value
+
+    query = format_datetime_attributes([query])[0]
+
     return query

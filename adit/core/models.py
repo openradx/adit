@@ -99,6 +99,10 @@ class DicomServer(DicomNode):
 
     # (optional) DICOMweb support
     dicomweb_root_url = models.CharField(blank=True, max_length=2000)
+    dicomweb_auth_token = models.CharField(blank=True, max_length=2000)
+    dicomweb_qido_url_prefix = models.CharField(default="qidors", max_length=64)
+    dicomweb_wado_url_prefix = models.CharField(default="wadors", max_length=64)
+    dicomweb_stow_url_prefix = models.CharField(default="stowrs", max_length=64)
     dicomweb_qido_support = models.BooleanField(default=False)
     dicomweb_wado_support = models.BooleanField(default=False)
     dicomweb_stow_support = models.BooleanField(default=False)

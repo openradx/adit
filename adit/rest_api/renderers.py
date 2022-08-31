@@ -36,7 +36,7 @@ class DicomJsonRenderer(renderers.BaseRenderer):
                 response = JsonResponse(json.load(f), safe=False)
             return response
         elif not file is None:
-            return JsonResponse(file, safe=False)
+            return JsonResponse(json.loads(file), safe=False)
 
     def render(self, data, accepted_media_type=None, renderer_context=None):
         return data
