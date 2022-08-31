@@ -48,6 +48,11 @@ class DicomQidoTask(DicomTask):
             no_wildcard_chars_validator,
         ],
     )
+    query = models.CharField(
+        blank=True,
+        max_length=2000
+    )
+
 
 class DicomQidoResult(models.Model):
     job = job = models.ForeignKey(

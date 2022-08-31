@@ -31,9 +31,18 @@ class RetrieveStudyAPIView(RetrieveAPIView):
     LEVEL = "STUDY"
     
     def get(self, request, *args, **kwargs):
-        SourceServer, query, mode, content_type, boundary \
-            = self.handle_request(request, accept_header=True, *args, **kwargs)
-        folder_path, file_path = self.generate_temp_files(query, self.LEVEL)
+        SourceServer, study_uid, series_uid, mode, content_type, boundary \
+            = self.handle_request(
+                request, 
+                "WADO-RS", 
+                *args, 
+                **kwargs
+            )
+        folder_path, file_path = self.generate_temp_files(
+            study_uid, 
+            series_uid, 
+            self.LEVEL,
+        )
 
         job = DicomWadoJob(
             source = SourceServer,
@@ -48,8 +57,8 @@ class RetrieveStudyAPIView(RetrieveAPIView):
         job.save()
     
         task = DicomWadoTask(
-            study_uid = query.get("StudyInstanceUID"),
-            series_uid = query.get("SeriesInstanceUID"),
+            study_uid = study_uid,
+            series_uid = series_uid,
             job = job,
             task_id = 0,
         )

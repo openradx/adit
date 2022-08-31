@@ -7,6 +7,9 @@ from .models import RestAuthToken
 
 
 class RestTokenAuthentication(BaseAuthentication):
+    def authenticate_header(self, request):
+        return "Authentication failed."
+
     def authenticate(self, request):
         try:
             protocol, token_str = request.META["HTTP_AUTHORIZATION"].split(" ")

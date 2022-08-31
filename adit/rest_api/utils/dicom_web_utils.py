@@ -25,6 +25,56 @@ logger = logging.getLogger(__name__)
 
 
 class DicomWebConnector(DicomConnector):
+    def query_studies(self, query: dict, limit_results=None) -> list:
+        query["QueryRetrieveLevel"] = "STUDY"
+
+        if not "NumberOfStudyRelatedInstances" in query:
+            query["NumberOfStudyRelatedInstances"] = ""
+        
+        if self.server.study_root_find_support:
+            studies = self._send_c_find(
+                query,
+                limit_results=limit_results,
+            )
+            
+        query_modalities = query.get("ModalitiesInStudy")
+        if not query_modalities:
+            return studies
+
+        return self._filter_studies_by_modalities(studies, query_modalities)
+    
+    def query_series(self, query: dict, limit_results=None) -> list:
+        query["QueryRetrieveLevel"] = "SERIES"
+
+        modality = query.get("Modality")
+        if modality:
+            query["Modality"] = ""
+
+        series_description = query.get("SeriesDescription")
+        if series_description:
+            series_description = series_description.lower()
+            query["SeriesDescription"] = ""
+
+        series_list = self._send_c_find(query, limit_results=limit_results)
+        if series_description:
+            series_list = list(
+                filter(
+                    lambda x: re.search(
+                        series_description, x["SeriesDescription"].lower()
+                    ),
+                    series_list,
+                )
+            )
+
+        if not modality:
+            return series_list
+        return list(
+            filter(
+                lambda x: x["Modality"] == modality or x["Modality"] in modality,
+                series_list,
+            )
+        )
+
     def retrieve_series_list(
         self, 
         study_uid: str, 
@@ -208,3 +258,4 @@ def _handle_c_get_retrieve(
 
     # Return a 'Success' status
     return 0x0000
+

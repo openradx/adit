@@ -24,33 +24,27 @@ class DicomWebAPIView(APIView):
     query = None
 
     def handle_request(
-        self, request: Type[HttpRequest], accept_header=False, *args: dict, **kwargs: dict
+        self, request: Type[HttpRequest], mode: str, *args: dict, **kwargs: dict
     ) -> tuple:
-        # Find PACS and connect
         pacs_ae_title = kwargs.get("pacs", None)
         SourceServerSet = DicomServer.objects.filter(ae_title=pacs_ae_title)
         if len(SourceServerSet) != 1:
             raise ParseError(f"The specified PACS with AE title: {pacs_ae_title} does not exist or multiple Entities with this title exist.")
         SourceServer = SourceServerSet[0]
 
-        # update query
-        query = self.query.copy()
-        query.update(request.query_params.copy())
+        study_uid = kwargs.get("StudyInstanceUID", "")
+        series_uid = kwargs.get("SeriesInstanceUID", "")
 
-        StudyInstanceUID = kwargs.get("StudyInstanceUID")
-        if self.LEVEL == "SERIES" and StudyInstanceUID is None:
-            raise NotImplementedError("Query for series without specified study is not yet supported.")
-        SeriesInstanceUID = kwargs.get("SeriesInstanceUID")
-        if not StudyInstanceUID is None:
-            query["StudyInstanceUID"] = StudyInstanceUID
-        if not SeriesInstanceUID is None:
-            query["SeriesInstanceUID"] = StudyInstanceUID
+        if self.LEVEL == "SERIES" and study_uid is None:
+            raise NotImplementedError("Query for series without specified study is not supported.")
         
-        if accept_header:
+        if mode=="WADO-RS":
             mode, content_type, boundary = self._handle_accept_header(request, *args, **kwargs)
-            return SourceServer, query, mode, content_type, boundary
+            return SourceServer, study_uid, series_uid, mode, content_type, boundary
 
-        return SourceServer, query
+        if mode=="QIDO-RS":
+            query = str(request.GET.dict())
+            return SourceServer, study_uid, series_uid, query
 
     def _handle_accept_header(
         self, request: Type[HttpRequest], *args: dict, **kwargs: dict
@@ -107,15 +101,15 @@ class DicomWebAPIView(APIView):
         return accept_headers_formated
 
     def generate_temp_files(
-        self, query: dict, level: str
+        self, study_uid: str, series_uid: str, level: str
     ) -> tuple:
         folder_path = Path(self.FOLDER_ADIT)
         if level == "STUDY":
-            folder_path =  folder_path / ("study_"+query.get("StudyInstanceUID"))
+            folder_path =  folder_path / ("study_"+study_uid)
             os.makedirs(folder_path, exist_ok=True)
             file_path = folder_path / "response.txt"
         elif level == "SERIES":
-            folder_path = folder_path / ("series_"+query.get("SeriesInstanceUID"))
+            folder_path = folder_path / ("series_"+series_uid)
             os.makedirs(folder_path, exist_ok=True)
             file_path = folder_path / "response.txt"
 
