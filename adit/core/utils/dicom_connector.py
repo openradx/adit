@@ -10,6 +10,7 @@ only occur in higher level methods that uses lower level methods. As logger
 the Celery task logger is used as we intercept those messages and save them
 in TransferTask model object.
 """
+from doctest import Example
 import logging
 import re
 from typing import Dict, List, Literal, Union, Any
@@ -27,6 +28,7 @@ from pydicom.dataset import Dataset
 from pydicom import dcmread, valuerep, uid
 from pydicom.datadict import dictionary_VM
 from pydicom.errors import InvalidDicomError
+from pydicom.filereader import dcmread
 from pynetdicom import (
     AE,
     evt,
@@ -114,6 +116,7 @@ def connect_to_dicomweb_server():
             )
             result = func(self, *args, **kwargs)
 
+            logger.info("Set up dicomweb server with url %s", self.server.dicomweb_root_url)
             return result
         
         return wrapper
@@ -341,7 +344,10 @@ class DicomConnector:
             "SeriesInstanceUID": series_uid,
         }
 
-        if self.server.patient_root_get_support or self.server.study_root_get_support:
+        if self.server.dicomweb_wado_support:
+            self._send_wado_rs(query, folder, modifier_callback)
+
+        elif self.server.patient_root_get_support or self.server.study_root_get_support:
             self._download_series_get(query, folder, modifier_callback)
             logger.debug(
                 "Successfully downloaded series %s of study %s.", series_uid, study_uid
@@ -539,12 +545,13 @@ class DicomConnector:
         logger.debug("Sending QIDO-RS request with query: %s", query_dict)
 
         level = query_dict.get("QueryRetrieveLevel")
-               
+        query_dict = _sanitize_query_dict(query_dict)
+
         if level=="PATIENT":
             query_results = self.dicomweb_client.search_for_studies(
-                search_filters = query_dict
+                search_filters = query_dict,
             )
-
+        
         elif level=="STUDY":
             query_results = self.dicomweb_client.search_for_studies(
                 search_filters = query_dict
@@ -556,7 +563,8 @@ class DicomConnector:
                 search_filters = query_dict
             )
 
-        query_results = format_datetime_attributes(query_results)
+        query_results = _dicom_json_to_adit_json(query_results)
+        #query_results = format_datetime_attributes(query_results)
         #query_results = _filter_by_query(query_dict, query_results)
         return query_results
 
@@ -579,6 +587,7 @@ class DicomConnector:
             raise ValueError(
                 "No valid Query/Retrieve Information Model for C-GET could be selected."
             )
+
 
         query_ds = _make_query_dataset(query_dict)
         store_errors = []
@@ -624,6 +633,20 @@ class DicomConnector:
             query_ds, destination_ae_title, query_model, msg_id
         )
         return self._fetch_results(responses, "C-MOVE", query_dict)
+
+    @connect_to_dicomweb_server()
+    def _send_wado_rs(self, query_dict, folder, modifier_callback=None):
+        logger.debug("Sending WADO-RS request with query: %s", query_dict)
+        study_uid = _check_required_id(query_dict.get("StudyInstanceUID"))
+        series_uid = _check_required_id(query_dict.get("SeriesInstanceUID"))
+
+        series = self.dicomweb_client.retrieve_series(study_uid, series_uid)
+
+        for ds in series:
+            _save_dicom_from_receiver(ds, folder)
+            
+        # Return a 'Success' status
+        return 0x0000
 
     @connect_to_server("store")
     def _send_c_store(self, folder, callback=None, msg_id=1):
@@ -958,6 +981,13 @@ def _dictify_dataset(ds: Dataset):
 
     return output
 
+def _dicom_json_to_adit_json(results: list) -> list:
+    adit_results = []
+    for instance in results:
+        ds = Dataset.from_json(instance)
+        adit_results.append(_dictify_dataset(ds))
+    return adit_results
+
 
 def _convert_value(v: Any):
     """Converts a pydicom value to native Python value."""
@@ -1108,5 +1138,13 @@ def _filter_by_attribute(attribute: str, value: str, unfiltered_list: list) -> l
             filtered_list.append(instance)
     return filtered_list
 
+def _sanitize_query_dict(query_dict: dict) -> dict:
+    filter_values = ["*", None]
+    for attribute, value in query_dict.items():
+        if value in filter_values:
+            query_dict[attribute] = ""
+    
+    del query_dict["QueryRetrieveLevel"]
 
-
+    return query_dict
+    

@@ -19,8 +19,21 @@
     },
     "Plugins": [
         "/usr/share/orthanc/plugins",
-        "/usr/local/share/orthanc/plugins"
+        "/usr/local/share/orthanc/plugins",
+        "/Documents/DIR/Adit/orthanc_plugins/OrthancDicomWeb-1.8/"
     ],
     "RemoteAccessAllowed": true,
-    "AuthenticationEnabled": false
+    "AuthenticationEnabled": false,
+    "DicomWeb": {
+        "Enable": true,
+        "Root": "dicom-web",
+        "EnableWado": true,
+        "WadoRoot": "/wadors",
+        "Ssl": false,
+        "QidoCaseSensitive": true,
+        "Host": "",
+        "StudiesMetadata": "Full",
+        "SeriesMetadata": "Full",
+        "PublicRoot": "/dicom-web/"
+    }
 }

@@ -120,6 +120,7 @@ services:
         ports:
             - "6501:6501"
             - "7501:7501"
+
         volumes:
             - ./orthanc1/orthanc.json:/etc/orthanc/orthanc.json
             - orthanc1_data:/var/lib/orthanc/db

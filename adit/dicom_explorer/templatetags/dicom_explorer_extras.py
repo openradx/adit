@@ -14,7 +14,6 @@ def explorer_url(
 ):
     params = {}
     if server_id and not (patient_id or study_uid or series_uid):
-        print("here")
         resource_url = reverse(
             "dicom_explorer_server_detail",
             kwargs={

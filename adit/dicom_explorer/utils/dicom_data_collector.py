@@ -64,11 +64,14 @@ class DicomDataCollector:
 
         studies = self.connector.find_studies(query, limit_results=limit_results)
 
-        studies = sorted(
-            studies,
-            key=lambda study: datetime.combine(study["StudyDate"], study["StudyTime"]),
-            reverse=True,
-        )
+        try:
+            studies = sorted(
+                studies,
+                key=lambda study: datetime.combine(study["StudyDate"], study["StudyTime"]),
+                reverse=True,
+            )
+        except KeyError:
+            pass
 
         return studies
 
