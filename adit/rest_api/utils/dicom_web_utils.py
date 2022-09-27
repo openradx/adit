@@ -10,6 +10,7 @@ from adit.core.utils.dicom_connector import (
     _evaluate_get_move_results, 
     _check_required_id,
     _make_query_dataset, 
+    _extract_pending_data,
 )
 from ..serializers import DicomWebSerializer
 
@@ -18,6 +19,14 @@ from pynetdicom.events import Event
 from pynetdicom.sop_class import (
     PatientRootQueryRetrieveInformationModelGet,
     StudyRootQueryRetrieveInformationModelGet,
+    PatientRootQueryRetrieveInformationModelFind,
+    PatientRootQueryRetrieveInformationModelGet,
+    StudyRootQueryRetrieveInformationModelFind,
+)
+from pynetdicom.status import (
+    code_to_category,
+    STATUS_PENDING,
+    STATUS_SUCCESS,
 )
 
 
@@ -25,14 +34,14 @@ logger = logging.getLogger(__name__)
 
 
 class DicomWebConnector(DicomConnector):
-    def query_studies(self, query: dict, limit_results=None) -> list:
+    def qido_query_studies(self, query: dict, limit_results=None) -> list:
         query["QueryRetrieveLevel"] = "STUDY"
 
         if not "NumberOfStudyRelatedInstances" in query:
             query["NumberOfStudyRelatedInstances"] = ""
         
         if self.server.study_root_find_support:
-            studies = self._send_c_find(
+            studies = self._qido_send_c_find(
                 query,
                 limit_results=limit_results,
             )
@@ -43,7 +52,7 @@ class DicomWebConnector(DicomConnector):
 
         return self._filter_studies_by_modalities(studies, query_modalities)
     
-    def query_series(self, query: dict, limit_results=None) -> list:
+    def qido_query_series(self, query: dict, limit_results=None) -> list:
         query["QueryRetrieveLevel"] = "SERIES"
 
         modality = query.get("Modality")
@@ -55,7 +64,7 @@ class DicomWebConnector(DicomConnector):
             series_description = series_description.lower()
             query["SeriesDescription"] = ""
 
-        series_list = self._send_c_find(query, limit_results=limit_results)
+        series_list = self._qido_send_c_find(query, limit_results=limit_results)
         if series_description:
             series_list = list(
                 filter(
@@ -117,7 +126,7 @@ class DicomWebConnector(DicomConnector):
         }
  
         if self.server.patient_root_get_support or self.server.study_root_get_support:
-            self._retrieve_series_get(
+            self._wado_series_get(
                 query_dict, 
                 mode, 
                 content_type, 
@@ -136,7 +145,7 @@ class DicomWebConnector(DicomConnector):
 
         return folder_path
 
-    def _retrieve_series_get(
+    def _wado_series_get(
         self, 
         query_dict: dict, 
         mode: str, 
@@ -203,6 +212,68 @@ class DicomWebConnector(DicomConnector):
         finally:
             self.assoc.unbind(evt.EVT_C_STORE, _handle_c_get_retrieve)
 
+        return results
+
+    @connect_to_server("find")
+    def _qido_send_c_find(
+        self,
+        query_dict,
+        limit_results=None,
+        msg_id=1,
+    ):
+        logger.debug("Sending C-FIND with query: %s", query_dict)
+
+        level = query_dict.get("QueryRetrieveLevel")
+        patient_id = _check_required_id(query_dict.get("PatientID"))
+
+        if self.server.study_root_find_support and level != "PATIENT":
+            query_model = StudyRootQueryRetrieveInformationModelFind
+        elif self.server.patient_root_find_support and (
+            level == "PATIENT" or patient_id
+        ):
+            query_model = PatientRootQueryRetrieveInformationModelFind
+        else:
+            raise ValueError(
+                "No valid Query/Retrieve Information Model for C-FIND could be found."
+            )
+        query_ds = _make_query_dataset(query_dict)
+        responses = self.assoc.send_c_find(query_ds, query_model, msg_id)
+        results = self._fetch_qido_results(responses, "C-FIND", query_dict, limit_results)
+        return _extract_pending_data(results)
+
+    def _fetch_qido_results(self, responses, operation, query_dict, limit_results=None):
+        results = []
+        for (status, identifier) in responses:
+            if limit_results is not None and len(results) >= limit_results:
+                self.abort_connection()
+                break
+
+            if status:
+                if identifier:
+                    data = identifier.to_json()
+                else: 
+                    data = {}
+
+                results.append(
+                    {
+                        "status": {
+                            "code": status.Status,
+                            "category": code_to_category(status.Status),
+                        },
+                        "data": data,
+                    }
+                )
+            else:
+                logger.error(
+                    "Connection timed out, was aborted or received invalid "
+                    "response during %s with query: {%s}",
+                    operation,
+                    query_dict,
+                )
+                raise RetriableTaskError(
+                    "Connection timed out, was aborted or received invalid "
+                    f"during {operation}."
+                )
         return results
 
 def _handle_c_get_retrieve(
