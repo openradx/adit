@@ -107,8 +107,6 @@ class BatchQueryTask(DicomTask):
     )
 
     def clean(self) -> None:
-        print(self.__dict__)
-
         if not self.accession_number and not self.modalities:
             raise ValidationError("Missing Modality.")
 

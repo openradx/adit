@@ -1,7 +1,7 @@
 from celery.utils.log import get_task_logger
 from django.conf import settings
 from adit.celery import app as celery_app
-from adit.core.utils.transfer_utils import execute_transfer
+from adit.core.utils.transfer_utils import TransferExecutor
 from adit.core.tasks import (
     ProcessDicomJob,
     ProcessDicomTask,
@@ -22,7 +22,7 @@ class ProcessSelectiveTransferTask(ProcessDicomTask):
     app_settings_class = SelectiveTransferSettings
 
     def handle_dicom_task(self, dicom_task):
-        return execute_transfer(dicom_task, celery_task=self)
+        return TransferExecutor(dicom_task, self).start()
 
 
 process_selective_transfer_task = ProcessSelectiveTransferTask()

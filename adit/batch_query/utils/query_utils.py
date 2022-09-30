@@ -1,81 +1,17 @@
 import logging
 from typing import Any, Dict, List, Optional
-from django.utils import timezone
+from django.conf import settings
 from django.template.defaultfilters import pluralize
+from django.utils import timezone
+from celery.contrib.abortable import AbortableTask as AbortableCeleryTask
 from adit.core.utils.dicom_connector import DicomConnector
 from adit.core.utils.task_utils import hijack_logger, store_log_in_task
-from ..models import BatchQueryTask, BatchQueryResult
+from ..models import BatchQueryResult, BatchQueryTask
+
 
 logger = logging.getLogger(__name__)
 
 DICOM_DATE_FORMAT = "%Y%m%d"
-
-
-def execute_query(query_task: BatchQueryTask) -> BatchQueryTask.Status:
-    if query_task.status == BatchQueryTask.Status.CANCELED:
-        return query_task.status
-
-    query_task.status = BatchQueryTask.Status.IN_PROGRESS
-    query_task.start = timezone.now()
-    query_task.save()
-
-    logger.info("Started %s.", query_task)
-
-    handler, stream = hijack_logger(logger)
-
-    connector: DicomConnector = _create_source_connector(query_task)
-    
-    try:
-        patients = _fetch_patients(connector, query_task)
-
-        if len(patients) == 0:
-            query_task.status = BatchQueryTask.Status.WARNING
-            query_task.message = "Patient not found."
-        else:
-            all_studies = []  # a list of study lists (per patient)
-            for patient in patients:
-                studies = _query_studies(connector, patient["PatientID"], query_task)
-                if studies:
-                    if query_task.series_description or query_task.series_number:
-                        for study in studies:
-                            series = _query_series(connector, study, query_task)
-                            all_studies.append(series)
-                    else:
-                        all_studies.append(studies)
-
-            if len(all_studies) == 0:
-                query_task.status = BatchQueryTask.Status.WARNING
-                query_task.message = "No studies for patient found."
-            else:
-                all_studies_flattened = [
-                    study for studies in all_studies for study in studies
-                ]
-                results = _save_results(query_task, all_studies_flattened)
-
-                num = len(results)
-                if query_task.series_description:
-                    study_count = f"{num} series"
-                else:
-                    study_count = f"{num} stud{pluralize(num, 'y,ies')}"
-
-                if len(all_studies) == 1:  # Only studies of one patient found
-                    query_task.status = BatchQueryTask.Status.SUCCESS
-                    query_task.message = f"{study_count} found."
-                else:  # Studies of multiple patients found
-                    query_task.status = BatchQueryTask.Status.WARNING
-                    query_task.message = (
-                        f"Multiple patients found with overall {study_count}."
-                    )
-    except Exception as err:  # pylint: disable=broad-except
-        logger.exception("Error during %s", query_task)
-        query_task.status = BatchQueryTask.Status.FAILURE
-        query_task.message = str(err)
-    finally:
-        store_log_in_task(logger, handler, stream, query_task)
-        query_task.end = timezone.now()
-        query_task.save()
-
-    return query_task.status
 
 
 def _create_source_connector(query_task: BatchQueryTask) -> DicomConnector:
@@ -83,106 +19,192 @@ def _create_source_connector(query_task: BatchQueryTask) -> DicomConnector:
     return DicomConnector(query_task.job.source.dicomserver)
 
 
-def _fetch_patients(
-    connector: DicomConnector, query_task: BatchQueryTask
-) -> Optional[Dict[str, Any]]:
-    return connector.find_patients(
-        {
-            "PatientID": query_task.patient_id,
-            "PatientName": query_task.patient_name,
-            "PatientBirthDate": query_task.patient_birth_date,
-        }
-    )
+class QueryExecutor:
+    """
+    Executes a batch query task (one line in a batch query file) by utilizing the
+    DICOM connector.
+    Currently we don't make it abortable in between as it is fast enough.
+    """
 
+    def __init__(
+        self, query_task: BatchQueryTask, celery_task: AbortableCeleryTask
+    ) -> None:
+        self.query_task = query_task
+        self.celery_task = celery_task
+        
+        connector: DicomConnector = _create_source_connector(query_task)
 
-def _query_studies(
-    connector: DicomConnector, patient_id: str, query_task: BatchQueryTask
-) -> List[Dict[str, Any]]:
-    study_date = ""
-    if query_task.study_date_start:
-        if not query_task.study_date_end:
-            study_date = query_task.study_date_start.strftime(DICOM_DATE_FORMAT) + "-"
-        elif query_task.study_date_start == query_task.study_date_end:
-            study_date = query_task.study_date_start.strftime(DICOM_DATE_FORMAT)
-        else:
-            study_date = (
-                query_task.study_date_start.strftime(DICOM_DATE_FORMAT)
-                + "-"
-                + query_task.study_date_end.strftime(DICOM_DATE_FORMAT)
-            )
-    elif query_task.study_date_end:
-        study_date = "-" + query_task.study_date_end.strftime(DICOM_DATE_FORMAT)
+    def start(self) -> BatchQueryTask.Status:
+        if self.query_task.status == BatchQueryTask.Status.CANCELED:
+            return self.query_task.status
 
-    studies = connector.find_studies(
-        {
-            "PatientID": patient_id,
-            "PatientName": query_task.patient_name,
-            "PatientBirthDate": query_task.patient_birth_date,
-            "StudyInstanceUID": "",
-            "AccessionNumber": query_task.accession_number,
-            "StudyDate": study_date,
-            "StudyTime": "",
-            "StudyDescription": "",
-            "ModalitiesInStudy": query_task.modalities,
-            "NumberOfStudyRelatedInstances": "",
-        }
-    )
+        self.query_task.status = BatchQueryTask.Status.IN_PROGRESS
+        self.query_task.start = timezone.now()
+        self.query_task.save()
 
-    return studies
+        logger.info("Started %s.", self.query_task)
 
+        handler, stream = hijack_logger(logger)
 
-def _query_series(
-    connector: DicomConnector, study: List[Dict[str, Any]],query_task: BatchQueryTask
-) -> List[Dict[str, Any]]:
+        try:
+            patients = self._fetch_patients()
 
-    series = connector.find_series(
-        {
-            "PatientID": study["PatientID"],
-            "StudyInstanceUID": study["StudyInstanceUID"],
-            "SeriesInstanceUID": "",
-            "SeriesDescription": query_task.series_description,
-            "SeriesNumber": query_task.series_number,
-        }
-    )
-    for i in range(len(series)):
-        series[i].update(study)
-    return series
+            if len(patients) == 0:
+                self.query_task.status = BatchQueryTask.Status.FAILURE
+                self.query_task.message = "Patient not found."
+            else:
+                all_studies = []  # a list of study lists (per patient)
+                for patient in patients:
+                    studies = self._query_studies(patient["PatientID"])
+                    if studies:
+                        if self.query_task.series_description or self.query_task.series_number:
+                            for study in studies:
+                                series = self._query_series(study)
+                                all_studies.append(series)
+                        else:
+                            all_studies.append(studies)
 
+                if len(all_studies) == 0:
+                    self.query_task.status = BatchQueryTask.Status.WARNING
+                    self.query_task.message = "No studies for patient found."
+                else:
+                    all_studies_flattened = [
+                        study for studies in all_studies for study in studies
+                    ]
+                    results = self._save_results(all_studies_flattened)
 
-def _save_results(
-    query_task: BatchQueryTask, studies: List[Dict[str, Any]]
-) -> List[BatchQueryResult]:
-    results = []
-    for study in studies:
-        series_uid = ""
-        if "SeriesInstanceUID" in study:
-            series_uid = study["SeriesInstanceUID"]
-        series_description = ""
-        if "SeriesDescription" in study:
-            series_description = study["SeriesDescription"]
-        series_number = ""
-        if "SeriesNumber" in study:
-            series_number = study["SeriesNumber"]
-        result = BatchQueryResult(
-            job=query_task.job,
-            query=query_task,
-            patient_id=study["PatientID"],
-            patient_name=study["PatientName"],
-            patient_birth_date=study["PatientBirthDate"],
-            study_uid=study["StudyInstanceUID"],
-            accession_number=study["AccessionNumber"],
-            study_date=study["StudyDate"],
-            study_time=study["StudyTime"],
-            study_description=study["StudyDescription"],
-            modalities=study["ModalitiesInStudy"],
-            image_count=study["NumberOfStudyRelatedInstances"],
-            pseudonym=query_task.pseudonym,
-            series_uid=series_uid,
-            series_description=series_description,
-            series_number=series_number,
+                    num = len(results)
+                    if self.query_task.series_description:
+                        study_count = f"{num} series"
+                    else:
+                        study_count = f"{num} stud{pluralize(num, 'y,ies')}"
+
+                    if len(all_studies) == 1:  # Only studies of one patient found
+                        self.query_task.status = BatchQueryTask.Status.SUCCESS
+                        self.query_task.message = f"{study_count} found."
+                    else:  # Studies of multiple patients found
+                        # We still allow multiple patient IDs as the same patient
+                        # may have different Patient IDs if the studies were imported
+                        # from external.
+                        self.query_task.status = BatchQueryTask.Status.WARNING
+                        self.query_task.message = (
+                            f"Multiple patients found with overall {study_count}."
+                        )
+        except Exception as err:  # pylint: disable=broad-except
+            logger.exception("Error during %s", self.query_task)
+            self.query_task.status = BatchQueryTask.Status.FAILURE
+            self.query_task.message = str(err)
+        finally:
+            store_log_in_task(logger, handler, stream, self.query_task)
+            self.query_task.end = timezone.now()
+            self.query_task.save()
+
+        return self.query_task.status
+
+    def _fetch_patients(self) -> Optional[Dict[str, Any]]:
+        return self.connector.find_patients(
+            {
+                "PatientID": self.query_task.patient_id,
+                "PatientName": self.query_task.patient_name,
+                "PatientBirthDate": self.query_task.patient_birth_date,
+            }
         )
-        results.append(result)
 
-    BatchQueryResult.objects.bulk_create(results)
+    def _query_studies(self, patient_id: str) -> List[Dict[str, Any]]:
+        study_date = ""
+        if self.query_task.study_date_start:
+            if not self.query_task.study_date_end:
+                study_date = (
+                    self.query_task.study_date_start.strftime(DICOM_DATE_FORMAT) + "-"
+                )
+            elif self.query_task.study_date_start == self.query_task.study_date_end:
+                study_date = self.query_task.study_date_start.strftime(
+                    DICOM_DATE_FORMAT
+                )
+            else:
+                study_date = (
+                    self.query_task.study_date_start.strftime(DICOM_DATE_FORMAT)
+                    + "-"
+                    + self.query_task.study_date_end.strftime(DICOM_DATE_FORMAT)
+                )
+        elif self.query_task.study_date_end:
+            study_date = "-" + self.query_task.study_date_end.strftime(
+                DICOM_DATE_FORMAT
+            )
 
-    return results
+        modalities = []
+        if self.query_task.modalities:
+            modalities = [
+                modality
+                for modality in self.query_task.modalities
+                if not modality in settings.EXCLUDE_MODALITIES
+            ]
+
+        studies = self.connector.find_studies(
+            {
+                "PatientID": patient_id,
+                "PatientName": self.query_task.patient_name,
+                "PatientBirthDate": self.query_task.patient_birth_date,
+                "StudyInstanceUID": "",
+                "AccessionNumber": self.query_task.accession_number,
+                "StudyDate": study_date,
+                "StudyTime": "",
+                "StudyDescription": "",
+                "ModalitiesInStudy": modalities,
+                "NumberOfStudyRelatedInstances": "",
+            }
+        )
+
+        return studies
+
+    def _query_series(self, study: Dict[str, Any]) -> List[Dict[str, Any]]:
+        found_series = self.connector.find_series(
+            {
+                "PatientID": study["PatientID"],
+                "StudyInstanceUID": study["StudyInstanceUID"],
+                "SeriesInstanceUID": "",
+                "SeriesDescription": self.query_task.series_description,
+                "SeriesNumber": self.query_task.series_number,
+            }
+        )
+
+        for series in found_series:
+            series.update(study)
+
+        return found_series
+
+    def _save_results(self, studies: List[Dict[str, Any]]) -> List[BatchQueryResult]:
+        results = []
+        for study in studies:
+            series_uid = ""
+            if "SeriesInstanceUID" in study:
+                series_uid = study["SeriesInstanceUID"]
+            series_description = ""
+            if "SeriesDescription" in study:
+                series_description = study["SeriesDescription"]
+            series_number = ""
+            if "SeriesNumber" in study:
+                series_number = study["SeriesNumber"]
+            result = BatchQueryResult(
+                job=self.query_task.job,
+                query=self.query_task,
+                patient_id=study["PatientID"],
+                patient_name=study["PatientName"],
+                patient_birth_date=study["PatientBirthDate"],
+                study_uid=study["StudyInstanceUID"],
+                accession_number=study["AccessionNumber"],
+                study_date=study["StudyDate"],
+                study_time=study["StudyTime"],
+                study_description=study["StudyDescription"],
+                modalities=study["ModalitiesInStudy"],
+                image_count=study["NumberOfStudyRelatedInstances"],
+                pseudonym=self.query_task.pseudonym,
+                series_uid=series_uid,
+                series_description=series_description,
+                series_number=series_number,
+            )
+            results.append(result)
+
+        BatchQueryResult.objects.bulk_create(results)
+
+        return results

@@ -402,3 +402,9 @@ MAX_BATCH_QUERY_SIZE = 1000
 # The maximum number of batch transfers a normal user can process in one job
 # (staff users are not limited)
 MAX_BATCH_TRANSFER_SIZE = 500
+
+# Exclude modalities when listing studies and during queries or transfers
+EXCLUDE_MODALITIES = ["PR", "SR"]
+
+# If an ethics committee approval is required for batch transfer
+ETHICS_COMMITTEE_APPROVAL_REQUIRED = True

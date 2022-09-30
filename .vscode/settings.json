@@ -10,29 +10,5 @@
         "adit"
     ],
     "python.testing.unittestEnabled": false,
-    "python.testing.nosetestsEnabled": false,
-    "svg.preview.background": "black",
-    "beautify.language": {
-        "js": {
-            "type": [
-                "javascript",
-                "json",
-                "jsonc"
-            ],
-            "filename": [
-                ".jshintrc",
-                ".jsbeautifyrc"
-            ]
-        },
-        "css": [
-            "css",
-            "less",
-            "scss"
-        ],
-        "html": [
-            "htm",
-            "html",
-            "django-html"
-        ]
-    }
+    "python.analysis.typeCheckingMode": "off"
 }

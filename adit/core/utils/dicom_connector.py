@@ -1,4 +1,6 @@
-"""The heart of ADIT that communicates diretly with the DICOM servers.
+# pyright: basic
+"""
+The connector directly communicates with the DICOM servers by using pynetdicom.
 
 Error handling and logging is quite complex here. All lower level methods
 (_find, _get, _move, _store) only raise a ConnectionError if the connection
@@ -12,7 +14,19 @@ in TransferTask model object.
 """
 import logging
 import re
-from typing import Dict, List, Literal, Union, Any
+from typing import (
+    Callable,
+    Dict,
+    Generator,
+    Iterator,
+    List,
+    Literal,
+    Optional,
+    Tuple,
+    Union,
+    Any,
+    cast,
+)
 import time
 import datetime
 from dataclasses import dataclass
@@ -23,39 +37,41 @@ from io import BytesIO
 import errno
 from functools import wraps
 import pika
+from django.conf import settings
 from pydicom.dataset import Dataset
 from pydicom import dcmread, valuerep, uid
 from pydicom.datadict import dictionary_VM
 from pydicom.errors import InvalidDicomError
 from pynetdicom import (
-    AE,
     evt,
-    build_role,
     debug_logger,
+)
+from pynetdicom.ae import ApplicationEntity as AE
+from pynetdicom.presentation import (
+    build_role,
     BasicWorklistManagementPresentationContexts,
     QueryRetrievePresentationContexts,
     StoragePresentationContexts,
 )
+from pynetdicom.status import (
+    code_to_category,
+    STATUS_PENDING,  # type: ignore
+    STATUS_SUCCESS,  # type: ignore
+)
 
 # pylint: disable=no-name-in-module
 from pynetdicom.sop_class import (
-    PatientRootQueryRetrieveInformationModelFind,
-    PatientRootQueryRetrieveInformationModelGet,
-    PatientRootQueryRetrieveInformationModelMove,
-    StudyRootQueryRetrieveInformationModelFind,
-    StudyRootQueryRetrieveInformationModelGet,
-    StudyRootQueryRetrieveInformationModelMove,
-    EncapsulatedSTLStorage,
-    EncapsulatedOBJStorage,
-    EncapsulatedMTLStorage,
+    PatientRootQueryRetrieveInformationModelFind,  # type: ignore
+    PatientRootQueryRetrieveInformationModelGet,  # type: ignore
+    PatientRootQueryRetrieveInformationModelMove,  # type: ignore
+    StudyRootQueryRetrieveInformationModelFind,  # type: ignore
+    StudyRootQueryRetrieveInformationModelGet,  # type: ignore
+    StudyRootQueryRetrieveInformationModelMove,  # type: ignore
+    EncapsulatedSTLStorage,  # type: ignore
+    EncapsulatedOBJStorage,  # type: ignore
+    EncapsulatedMTLStorage,  # type: ignore
 )
 
-from pynetdicom.status import (
-    code_to_category,
-    STATUS_PENDING,
-    STATUS_SUCCESS,
-)
-from django.conf import settings
 from ..models import DicomServer
 from ..errors import RetriableTaskError
 from ..utils.sanitize import sanitize_dirname
@@ -103,11 +119,15 @@ class DicomConnector:
         auto_connect: bool = True
         connection_retries: int = 2
         retry_timeout: int = 30  # in seconds
-        acse_timeout: int = None
-        dimse_timeout: int = None
-        network_timeout: int = None
+        acse_timeout: Optional[int] = None
+        dimse_timeout: Optional[int] = None
+        network_timeout: Optional[int] = None
 
-    def __init__(self, server: DicomServer, config: Config = None):
+    def __init__(
+        self,
+        server: DicomServer,
+        config: Optional[Config] = None,
+    ):
         self.server = server
         if config is None:
             self.config = DicomConnector.Config()
@@ -157,7 +177,7 @@ class DicomConnector:
 
         self.assoc.abort()
 
-    def find_patients(self, query, limit_results=None):
+    def find_patients(self, query: dict[str, Any], limit_results: Optional[int] = None):
         if self.server.patient_root_find_support:
             query["QueryRetrieveLevel"] = "PATIENT"
         else:
@@ -168,7 +188,9 @@ class DicomConnector:
             limit_results=limit_results,
         )
 
-        # Make patients unique, since querying on study level will return all studies for one patient, resulting in duplicate patients
+
+        # Make patients unique, since querying on study level will return all studies for one patient,
+        # resulting in duplicate patients
         if query["QueryRetrieveLevel"] == "STUDY":
             seen = set()
             unique_patients = [
@@ -194,7 +216,7 @@ class DicomConnector:
 
         return patients
 
-    def find_studies(self, query, limit_results=None):
+    def find_studies(self, query: dict[str, Any], limit_results: Optional[int] = None):
         query["QueryRetrieveLevel"] = "STUDY"
 
         if not "NumberOfStudyRelatedInstances" in query:
@@ -210,7 +232,7 @@ class DicomConnector:
 
         return self._filter_studies_by_modalities(studies, query_modalities)
 
-    def find_series(self, query, limit_results=None):
+    def find_series(self, query: dict[str, Any], limit_results=None):
         """Fetch all series UIDs for a given study UID.
 
         The series can be filtered by a modality (or a list of modalities for
@@ -266,11 +288,11 @@ class DicomConnector:
 
     def download_study(  # pylint: disable=too-many-arguments
         self,
-        patient_id,
-        study_uid,
-        folder,
-        modality=None,
-        modifier_callback=None,
+        patient_id: str,
+        study_uid: str,
+        folder: Path,
+        modality: Optional[str] = None,
+        modifier_callback: Optional[Callable[[Dataset], None]] = None,
     ):
         series_list = self.find_series(
             {
@@ -285,6 +307,10 @@ class DicomConnector:
 
         for series in series_list:
             series_uid = series["SeriesInstanceUID"]
+            modality = series["Modality"]
+
+            if modality in settings.EXCLUDE_MODALITIES:
+                continue
 
             # TODO maybe we should move the series folder name creation to the
             # store handler as it is not guaranteed that all PACS servers
@@ -298,8 +324,13 @@ class DicomConnector:
 
         logger.debug("Successfully downloaded study %s.", study_uid)
 
-    def download_series(  # pylint: disable=too-many-arguments
-        self, patient_id, study_uid, series_uid, folder, modifier_callback=None
+    def download_series(
+        self,
+        patient_id: str,
+        study_uid: str,
+        series_uid: str,
+        folder: Path,
+        modifier_callback: Optional[Callable[[Dataset], None]] = None,
     ):
         """Download all series to a specified folder for given series UIDs and pseudonymize
         the dataset before storing it to disk."""
@@ -328,11 +359,11 @@ class DicomConnector:
                 "No Query/Retrieve Information Model supported to download images."
             )
 
-    def upload_folder(self, folder):
+    def upload_folder(self, folder: Path):
         """Upload a specified folder to a DICOM server."""
 
         if not self.server.store_scp_support:
-            raise ValueError("Server does not support C-STORE operations.")
+            raise ValueError("Destination server doesn't support C-STORE operations.")
 
         results = self._send_c_store(folder)
 
@@ -358,7 +389,13 @@ class DicomConnector:
                 raise RetriableTaskError("Failed to upload all images.")
             raise RetriableTaskError("Failed to upload some images.")
 
-    def move_study(self, patient_id, study_uid, destination, modality=None):
+    def move_study(
+        self,
+        patient_id: str,
+        study_uid: str,
+        destination,
+        modality: Optional[str] = None,
+    ):
         series_list = self.find_series(
             {
                 "PatientID": patient_id,
@@ -374,6 +411,10 @@ class DicomConnector:
         has_failure = False
         for series in series_list:
             series_uid = series["SeriesInstanceUID"]
+            modality = series["Modality"]
+
+            if modality in settings.EXCLUDE_MODALITIES:
+                continue
 
             try:
                 self.move_series(patient_id, study_uid, series, destination)
@@ -387,7 +428,9 @@ class DicomConnector:
                 raise RetriableTaskError("Failed to move all series.")
             raise RetriableTaskError("Failed to move some series.")
 
-    def move_series(self, patient_id, study_uid, series_uid, destination):
+    def move_series(
+        self, patient_id: str, study_uid: str, series_uid: str, destination
+    ):
         query = {
             "QueryRetrieveLevel": "SERIES",
             "PatientID": patient_id,
@@ -402,7 +445,7 @@ class DicomConnector:
 
         _evaluate_get_move_results(results, query)
 
-    def fetch_study_modalities(self, patient_id, study_uid):
+    def fetch_study_modalities(self, patient_id: str, study_uid: str):
         """Fetch all modalities of a study and return them in a list."""
 
         try:
@@ -451,6 +494,7 @@ class DicomConnector:
             ae.add_requested_context(PatientRootQueryRetrieveInformationModelGet)
             ae.add_requested_context(StudyRootQueryRetrieveInformationModelGet)
             for cx in store_contexts:
+                assert cx.abstract_syntax is not None
                 ae.add_requested_context(cx.abstract_syntax)
                 ext_neg.append(build_role(cx.abstract_syntax, scp_role=True))
         elif command == "move":
@@ -476,14 +520,14 @@ class DicomConnector:
     @connect_to_server("find")
     def _send_c_find(
         self,
-        query_dict,
-        limit_results=None,
-        msg_id=1,
+        query_dict: dict[str, Any],
+        limit_results: Optional[int] = None,
+        msg_id: int = 1,
     ):
         logger.debug("Sending C-FIND with query: %s", query_dict)
 
         level = query_dict.get("QueryRetrieveLevel")
-        patient_id = _check_required_id(query_dict.get("PatientID"))
+        patient_id = _check_required_id(cast(str, query_dict.get("PatientID")))
 
         if self.server.study_root_find_support and level != "PATIENT":
             query_model = StudyRootQueryRetrieveInformationModelFind
@@ -497,19 +541,24 @@ class DicomConnector:
             )
 
         query_ds = _make_query_dataset(query_dict)
+        assert self.assoc is not None
         responses = self.assoc.send_c_find(query_ds, query_model, msg_id)
         results = self._fetch_results(responses, "C-FIND", query_dict, limit_results)
         return _extract_pending_data(results)
 
     @connect_to_server("get")
     def _send_c_get(  # pylint: disable=too-many-arguments
-        self, query_dict, folder, callback=None, msg_id=1
+        self,
+        query_dict: dict[str, Any],
+        folder: Path,
+        callback: Optional[Callable[[Dataset], None]] = None,
+        msg_id: int = 1,
     ):
         logger.debug("Sending C-GET with query: %s", query_dict)
 
         # Transfer of only one study at a time is supported by ADIT
-        patient_id = _check_required_id(query_dict.get("PatientID"))
-        study_uid = _check_required_id(query_dict.get("StudyInstanceUID"))
+        patient_id = _check_required_id(cast(str, query_dict.get("PatientID")))
+        study_uid = _check_required_id(cast(str, query_dict.get("StudyInstanceUID")))
 
         if self.server.study_root_get_support and study_uid:
             query_model = StudyRootQueryRetrieveInformationModelGet
@@ -522,11 +571,13 @@ class DicomConnector:
 
         query_ds = _make_query_dataset(query_dict)
         store_errors = []
+        assert self.assoc is not None
         self.assoc.bind(
-            evt.EVT_C_STORE, _handle_c_get_store, [folder, callback, store_errors]
+            evt.EVT_C_STORE, _handle_c_get_store, [folder, store_errors, callback]
         )
 
         try:
+            assert self.assoc is not None
             responses = self.assoc.send_c_get(query_ds, query_model, msg_id)
             results = self._fetch_results(responses, "C-GET", query_dict)
         except Exception as err:
@@ -543,12 +594,14 @@ class DicomConnector:
         return results
 
     @connect_to_server("move")
-    def _send_c_move(self, query_dict, destination_ae_title, msg_id=1):
+    def _send_c_move(
+        self, query_dict: dict[str, Any], destination_ae_title: str, msg_id: int = 1
+    ):
         logger.debug("Sending C-MOVE with query: %s", query_dict)
 
         # Transfer of only one study at a time is supported by ADIT
-        patient_id = _check_required_id(query_dict.get("PatientID"))
-        study_uid = _check_required_id(query_dict.get("StudyInstanceUID"))
+        patient_id = _check_required_id(cast(str, query_dict.get("PatientID")))
+        study_uid = _check_required_id(cast(str, query_dict.get("StudyInstanceUID")))
 
         if self.server.study_root_move_support and study_uid:
             query_model = StudyRootQueryRetrieveInformationModelMove
@@ -560,13 +613,19 @@ class DicomConnector:
             )
 
         query_ds = _make_query_dataset(query_dict)
+        assert self.assoc is not None
         responses = self.assoc.send_c_move(
             query_ds, destination_ae_title, query_model, msg_id
         )
         return self._fetch_results(responses, "C-MOVE", query_dict)
 
     @connect_to_server("store")
-    def _send_c_store(self, folder, callback=None, msg_id=1):
+    def _send_c_store(
+        self,
+        folder: Path,
+        callback: Optional[Callable[[Dataset], None]] = None,
+        msg_id: int = 1,
+    ):
         logger.debug("Sending C-STORE of folder: %s", str(folder))
 
         if not self.server.store_scp_support:
@@ -589,6 +648,7 @@ class DicomConnector:
             if callback:
                 callback(ds)
 
+            assert self.assoc is not None
             status = self.assoc.send_c_store(ds, msg_id)
 
             if status:
@@ -614,7 +674,13 @@ class DicomConnector:
 
         return results
 
-    def _fetch_results(self, responses, operation, query_dict, limit_results=None):
+    def _fetch_results(
+        self,
+        responses: Iterator[Tuple[Dataset, Dataset | None]],
+        operation: str,
+        query_dict: dict[str, Any],
+        limit_results: Optional[int] = None,
+    ):
         results = []
         for (status, identifier) in responses:
             if limit_results is not None and len(results) >= limit_results:
@@ -698,12 +764,22 @@ class DicomConnector:
 
         return filtered_studies
 
-    def _download_series_get(self, query, folder, modifier_callback=None):
+    def _download_series_get(
+        self,
+        query: dict[str, Any],
+        folder: Path,
+        modifier_callback: Optional[Callable[[Dataset], None]] = None,
+    ):
         results = self._send_c_get(query, folder, modifier_callback)
 
         _evaluate_get_move_results(results, query)
 
-    def _download_series_move(self, query, folder, modifier_callback=None):
+    def _download_series_move(
+        self,
+        query: dict[str, Any],
+        folder: Path,
+        modifier_callback: Optional[Callable[[Dataset], None]] = None,
+    ):
         # Fetch all SOPInstanceUIDs in the series so that we can later
         # evaluate if all images were received.
         image_query = dict(
@@ -723,8 +799,8 @@ class DicomConnector:
                 query["SeriesInstanceUID"],
                 image_uids,
                 folder,
-                modifier_callback,
                 move_stopped_event,
+                modifier_callback,
             )
 
             try:
@@ -741,12 +817,12 @@ class DicomConnector:
 
     def _consume_dicoms(  # pylint: disable=too-many-arguments
         self,
-        study_uid,
-        series_uid,
-        image_uids,
-        folder,
-        modifier_callback,
+        study_uid: str,
+        series_uid: str,
+        image_uids: List[str],
+        folder: Path,
         move_stopped_event: threading.Event,
+        modifier_callback: Optional[Callable[[Dataset], None]] = None,
     ):
         remaining_image_uids = image_uids[:]
 
@@ -787,7 +863,9 @@ class DicomConnector:
             )
             raise RetriableTaskError("Failed to download some images with C-MOVE.")
 
-    def _consume_with_timeout(self, study_uid, series_uid, move_stopped_event):
+    def _consume_with_timeout(
+        self, study_uid: str, series_uid: str, move_stopped_event: threading.Event
+    ):
         last_consume_at = time.time()
         for message in self._consume_from_receiver(study_uid, series_uid):
             method, properties, body = message
@@ -819,10 +897,10 @@ class DicomConnector:
 
             yield received_image_uid, data
 
-    def _consume_from_receiver(self, study_uid, series_uid):
+    def _consume_from_receiver(self, study_uid: str, series_uid: str) -> Generator:
         connection = pika.BlockingConnection(pika.URLParameters(settings.RABBITMQ_URL))
         channel = connection.channel()
-        channel.exchange_declare(exchange="received_dicoms", exchange_type="direct")
+        channel.exchange_declare(exchange="received_dicoms")
         result = channel.queue_declare(queue="", exclusive=True)
         queue_name = result.method.queue
         routing_key = f"{self.server.ae_title}\\{study_uid}\\{series_uid}"
@@ -839,7 +917,7 @@ class DicomConnector:
             connection.close()
 
 
-def _check_required_id(value):
+def _check_required_id(value: str) -> Union[str, None]:
     if value and not "*" in value and not "?" in value:
         return value
     return None
@@ -919,7 +997,7 @@ def _convert_value(v: Any):
         cv = datetime.datetime.fromisoformat(v.isoformat())
     elif t == valuerep.TM:
         cv = datetime.time.fromisoformat(v.isoformat())
-    elif t in (valuerep.MultiValue, list):
+    elif t in (valuerep.MultiValue, list):  # type: ignore
         cv = [_convert_value(i) for i in v]
     else:
         cv = repr(v)
@@ -942,7 +1020,7 @@ def _extract_pending_data(results: List[Dict[str, Any]]):
     return list(data)
 
 
-def _evaluate_get_move_results(results, query):
+def _evaluate_get_move_results(results, query: dict[str, Any]):
     status_category = results[-1]["status"]["category"]
     status_code = results[-1]["status"]["code"]
     if status_category not in [STATUS_PENDING, STATUS_SUCCESS]:
@@ -960,14 +1038,19 @@ def _evaluate_get_move_results(results, query):
         )
 
 
-def _handle_c_get_store(event, folder, modifier_callback, errors):
+def _handle_c_get_store(
+    event: evt.InterventionEvent,
+    folder: Path,
+    errors: List[Exception],
+    modifier_callback: Optional[Callable[[Dataset], None]] = None,
+):
     """Handle a C-STORE request event."""
 
-    ds = event.dataset
-    context = event.context
+    ds = event.dataset  # type: ignore
+    context = event.context  # type: ignore
 
     # Add DICOM File Meta Information
-    ds.file_meta = event.file_meta
+    ds.file_meta = event.file_meta  # type: ignore
 
     # Set the transfer syntax attributes of the dataset
     ds.is_little_endian = context.transfer_syntax.is_little_endian
@@ -998,7 +1081,7 @@ def _handle_c_get_store(event, folder, modifier_callback, errors):
             # so we just abort the association.
             # See https://github.com/pydicom/pynetdicom/issues/553
             # and https://groups.google.com/g/orthanc-users/c/tS826iEzHb0
-            event.assoc.abort()
+            event.assoc.abort()  # type: ignore
 
             # Answert with "Out of Resources"
             # see https://pydicom.github.io/pynetdicom/stable/service_classes/defined_procedure_service_class.html
@@ -1008,7 +1091,7 @@ def _handle_c_get_store(event, folder, modifier_callback, errors):
     return 0x0000
 
 
-def _save_dicom_from_receiver(ds, folder):
+def _save_dicom_from_receiver(ds: Dataset, folder: Path) -> None:
     folder_path = Path(folder)
     folder_path.mkdir(parents=True, exist_ok=True)
 

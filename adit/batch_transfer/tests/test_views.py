@@ -26,7 +26,7 @@ def form_data(db):
         "destination": DicomServerFactory().id,
         "project_name": "Apollo project",
         "project_description": "Fly to the moon",
-        "ethics_committee_approval": "on",
+        "ethics_application_id": "12345",
         "batch_file": SimpleUploadedFile(
             name="sample_sheet.csv", content=csv_data, content_type="text/csv"
         ),

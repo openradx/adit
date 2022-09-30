@@ -2,6 +2,7 @@ from typing import Type, List
 import subprocess
 from datetime import timedelta
 from celery import shared_task, Task as CeleryTask, chord
+from celery.contrib.abortable import AbortableTask as AbortableCeleryTask
 from celery.utils.log import get_task_logger
 from django.conf import settings
 from django.core.mail import send_mail
@@ -90,13 +91,17 @@ class ProcessDicomJob(CeleryTask):
             )
         )
 
-        # Save Celery task IDs to dicom tasks (for revoking them if necessary)
-        for query_task, celery_task in zip(pending_dicom_tasks, result.parent.results):
-            query_task.celery_task_id = celery_task.id
-            query_task.save()
+        # Save Celery task IDs to dicom tasks (for revoking them later if necessary)
+        # Only works in when not in eager mode (used to debug Celery stuff)
+        if not settings.CELERY_TASK_ALWAYS_EAGER:
+            for query_task, celery_task in zip(
+                pending_dicom_tasks, result.parent.results
+            ):
+                query_task.celery_task_id = celery_task.id
+                query_task.save()
 
 
-class ProcessDicomTask(CeleryTask):
+class ProcessDicomTask(AbortableCeleryTask):
     dicom_task_class: Type[DicomTask] = None
     app_settings_class: Type[AppSettings] = None
 
@@ -189,19 +194,20 @@ class HandleFinishedDicomJob(CeleryTask):
         if successes and not warnings and not failures:
             dicom_job.status = DicomJob.Status.SUCCESS
             dicom_job.message = "All tasks succeeded."
-        elif successes and warnings and not failures:
+        elif successes and failures or warnings and failures:
+            dicom_job.status = DicomJob.Status.WARNING
+            dicom_job.message = "Some tasks failed."
+        elif successes and warnings:
             dicom_job.status = DicomJob.Status.WARNING
             dicom_job.message = "Some tasks with warnings."
-        elif not successes and warnings and not failures:
+        elif warnings:
             dicom_job.status = DicomJob.Status.WARNING
             dicom_job.message = "All tasks with warnings."
-        elif successes and failures or warnings and failures:
-            dicom_job.status = DicomJob.Status.FAILURE
-            dicom_job.message = "Some tasks failed."
-        elif not successes and not warnings and failures:
+        elif failures:
             dicom_job.status = DicomJob.Status.FAILURE
             dicom_job.message = "All tasks failed."
         else:
+            # at least one of success, warnings or failures must be > 0
             raise AssertionError(f"Invalid task status list of {dicom_job}.")
 
         dicom_job.save()
