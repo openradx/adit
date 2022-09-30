@@ -75,9 +75,9 @@ def _c_get_to_result(
     query = _create_query(dicom_qido_task)
 
     if dicom_qido_task.job.level == "STUDY":    
-        c_get_result = connector.qido_query_studies(query)
+        c_get_result = connector.qido_find_studies(query)
     elif dicom_qido_task.job.level == "SERIES":
-        c_get_result = connector.qido_query_series(query)
+        c_get_result = connector.qido_find_series(query)
 
     result = DicomQidoResult(
         job = dicom_qido_task.job,

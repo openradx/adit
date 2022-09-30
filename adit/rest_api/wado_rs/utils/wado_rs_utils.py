@@ -124,7 +124,7 @@ def _serialize_and_transfer_to_adit(
     file_path = dicom_wado_task.job.file_path
 
     serializer.start_file(file_path, dicom_wado_task.job.content_type)
-    connector.retrieve_series_list(
+    connector.wado_download_study(
         dicom_wado_task.study_uid,
         series_list,
         dicom_wado_task.job.mode,

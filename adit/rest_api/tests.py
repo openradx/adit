@@ -55,3 +55,10 @@ class RequestHandlerTestCase(TestCase):
         )
         self.assertEqual(response.status_code, 400)
 
+    def test_invalid_study_uid(self):
+        response = requests.get(
+            BASE_URL+PACS_AE_TITLE+"/qidors/studies/invalid_study_uid/series",
+            headers = {"Authorization": f"Token {TOKEN}"}
+        )
+        self.assertEqual(response.status_code, 404)
+
