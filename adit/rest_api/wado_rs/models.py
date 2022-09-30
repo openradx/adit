@@ -42,6 +42,9 @@ class DicomWadoJob(DicomJob):
         blank=True,
         max_length=128,
     )
+    status_code = models.IntegerField(
+        blank = True,
+    )
 
     
 

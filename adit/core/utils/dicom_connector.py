@@ -640,11 +640,13 @@ class DicomConnector:
         study_uid = _check_required_id(query_dict.get("StudyInstanceUID"))
         series_uid = _check_required_id(query_dict.get("SeriesInstanceUID"))
 
-        series = self.dicomweb_client.retrieve_series(study_uid, series_uid)
+        series = self.dicomweb_client.wado_download_series(study_uid, series_uid)
 
         for ds in series:
+            if modifier_callback:
+                modifier_callback(ds)
             _save_dicom_from_receiver(ds, folder)
-            
+
         # Return a 'Success' status
         return 0x0000
 

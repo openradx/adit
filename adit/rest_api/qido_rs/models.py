@@ -50,7 +50,10 @@ class DicomQidoTask(DicomTask):
     )
     query = models.CharField(
         blank=True,
-        max_length=2000
+        max_length=2000,
+    )
+    status_code = models.IntegerField(
+        blank=True,
     )
 
 

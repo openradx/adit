@@ -34,7 +34,7 @@ logger = logging.getLogger(__name__)
 
 
 class DicomWebConnector(DicomConnector):
-    def qido_query_studies(self, query: dict, limit_results=None) -> list:
+    def qido_find_studies(self, query: dict, limit_results=None) -> list:
         query["QueryRetrieveLevel"] = "STUDY"
 
         if not "NumberOfStudyRelatedInstances" in query:
@@ -52,7 +52,7 @@ class DicomWebConnector(DicomConnector):
 
         return self._filter_studies_by_modalities(studies, query_modalities)
     
-    def qido_query_series(self, query: dict, limit_results=None) -> list:
+    def qido_find_series(self, query: dict, limit_results=None) -> list:
         query["QueryRetrieveLevel"] = "SERIES"
 
         modality = query.get("Modality")
@@ -84,7 +84,7 @@ class DicomWebConnector(DicomConnector):
             )
         )
 
-    def retrieve_series_list(
+    def wado_download_study(
         self, 
         study_uid: str, 
         series_list: str,
@@ -97,7 +97,7 @@ class DicomWebConnector(DicomConnector):
         for series in series_list:
             series_uid = series["SeriesInstanceUID"]
 
-            multipart_folder_path = self.retrieve_series(
+            multipart_folder_path = self.wado_download_series(
                 study_uid, 
                 series_uid, mode, 
                 content_type, 
@@ -108,7 +108,7 @@ class DicomWebConnector(DicomConnector):
         logger.debug("Successfully downloaded study %s to ADIT.", study_uid)
         
     
-    def retrieve_series(
+    def wado_download_series(
         self,
         study_uid: str,
         series_uid: str,
@@ -126,7 +126,7 @@ class DicomWebConnector(DicomConnector):
         }
  
         if self.server.patient_root_get_support or self.server.study_root_get_support:
-            self._wado_series_get(
+            self._wado_download_series_get(
                 query_dict, 
                 mode, 
                 content_type, 
@@ -145,7 +145,7 @@ class DicomWebConnector(DicomConnector):
 
         return folder_path
 
-    def _wado_series_get(
+    def _wado_download_series_get(
         self, 
         query_dict: dict, 
         mode: str, 
@@ -154,7 +154,7 @@ class DicomWebConnector(DicomConnector):
         serializer: Type[DicomWebSerializer], 
         modifier_callback=None
     ) -> None:
-        results = self._send_c_get_retrieve(
+        results = self._wado_send_c_get(
             query_dict, 
             mode, 
             content_type, 
@@ -167,7 +167,7 @@ class DicomWebConnector(DicomConnector):
 
 
     @connect_to_server("get")
-    def _send_c_get_retrieve(  # pylint: disable=too-many-arguments
+    def _wado_send_c_get(  # pylint: disable=too-many-arguments
         self, 
         query_dict: dict, 
         mode: str, 
@@ -195,7 +195,7 @@ class DicomWebConnector(DicomConnector):
         query_ds = _make_query_dataset(query_dict)
         store_errors = []
         self.assoc.bind(
-            evt.EVT_C_STORE, _handle_c_get_retrieve, [mode, content_type, folder_path, serializer, callback, store_errors]
+            evt.EVT_C_STORE, _wado_handle_c_get, [mode, content_type, folder_path, serializer, callback, store_errors]
         )
 
         try:
@@ -210,7 +210,7 @@ class DicomWebConnector(DicomConnector):
             # If not just raise the original error.
             raise err
         finally:
-            self.assoc.unbind(evt.EVT_C_STORE, _handle_c_get_retrieve)
+            self.assoc.unbind(evt.EVT_C_STORE, _wado_handle_c_get)
 
         return results
 
@@ -276,7 +276,7 @@ class DicomWebConnector(DicomConnector):
                 )
         return results
 
-def _handle_c_get_retrieve(
+def _wado_handle_c_get(
     event: Type[Event], 
     mode: str, 
     content_type: str, 
