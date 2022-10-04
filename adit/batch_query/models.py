@@ -96,6 +96,15 @@ class BatchQueryTask(DicomTask):
         blank=True,
         max_length=64,
     )
+    series_number = models.CharField(
+        blank=True,
+        max_length=32,
+        validators=[
+            no_backslash_char_validator,
+            no_control_chars_validator,
+            no_wildcard_chars_validator,
+        ],
+    )
 
     def clean(self) -> None:
         if not self.accession_number and not self.modalities:
@@ -192,6 +201,15 @@ class BatchQueryResult(models.Model):
     series_description = models.CharField(
         blank=True,
         max_length=64,
+        validators=[
+            no_backslash_char_validator,
+            no_control_chars_validator,
+            no_wildcard_chars_validator,
+        ],
+    )
+    series_number = models.CharField(
+        blank=True,
+        max_length=32,
         validators=[
             no_backslash_char_validator,
             no_control_chars_validator,

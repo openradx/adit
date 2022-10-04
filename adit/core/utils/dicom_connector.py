@@ -188,6 +188,7 @@ class DicomConnector:
             limit_results=limit_results,
         )
 
+
         # Make patients unique, since querying on study level will return all studies for one patient,
         # resulting in duplicate patients
         if query["QueryRetrieveLevel"] == "STUDY":
@@ -251,6 +252,11 @@ class DicomConnector:
             series_description = series_description.lower()
             query["SeriesDescription"] = ""
 
+        series_number = query.get("SeriesNumber")
+        if series_number:
+            series_number = int(series_number)
+            query["SeriesNumber"] = ""
+
         series_list = self._send_c_find(query, limit_results=limit_results)
         if series_description:
             series_list = list(
@@ -261,7 +267,15 @@ class DicomConnector:
                     series_list,
                 )
             )
-
+        if series_number:
+            series_list = list(
+                filter(
+                    lambda x: x["SeriesNumber"] == series_number,
+                    series_list,
+                )
+            )
+            for series in series_list:
+                series["SeriesNumber"] = str(series["SeriesNumber"])
         if not modality:
             return series_list
 
@@ -287,6 +301,7 @@ class DicomConnector:
                 "Modality": modality,
                 "SeriesInstanceUID": "",
                 "SeriesDescription": "",
+                "SeriesNumber": "",
             }
         )
 
@@ -388,6 +403,7 @@ class DicomConnector:
                 "Modality": modality,
                 "SeriesInstanceUID": "",
                 "SeriesDescription": "",
+                "SeriesNumber": "",
             }
         )
 

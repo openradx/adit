@@ -16,7 +16,7 @@ def export_results(job: BatchQueryJob, file):
     for query_task in query_tasks:
         if query_task.pseudonym:
             has_pseudonyms = True
-        if query_task.series_description:
+        if query_task.series_description or query_task.series_number:
             has_series = True
     write_header(writer, has_pseudonyms, has_series)
     write_data(writer, query_tasks, has_pseudonyms, has_series)
@@ -44,6 +44,7 @@ def write_header(writer, has_pseudonyms, has_series):
             [
                 "SeriesInstanceUID",
                 "SeriesDescription",
+                "SeriesNumber",
             ]
         )
 
@@ -93,6 +94,7 @@ def write_data(writer, query_tasks, has_pseudonyms, has_series):
                     [
                         result.series_uid,
                         result.series_description,
+                        result.series_number,
                     ]
                 )
 

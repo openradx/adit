@@ -31,8 +31,8 @@ class QueryExecutor:
     ) -> None:
         self.query_task = query_task
         self.celery_task = celery_task
-
-        self.connector = _create_source_connector(query_task)
+        
+        connector: DicomConnector = _create_source_connector(query_task)
 
     def start(self) -> BatchQueryTask.Status:
         if self.query_task.status == BatchQueryTask.Status.CANCELED:
@@ -57,7 +57,7 @@ class QueryExecutor:
                 for patient in patients:
                     studies = self._query_studies(patient["PatientID"])
                     if studies:
-                        if self.query_task.series_description:
+                        if self.query_task.series_description or self.query_task.series_number:
                             for study in studies:
                                 series = self._query_series(study)
                                 all_studies.append(series)
@@ -164,6 +164,7 @@ class QueryExecutor:
                 "StudyInstanceUID": study["StudyInstanceUID"],
                 "SeriesInstanceUID": "",
                 "SeriesDescription": self.query_task.series_description,
+                "SeriesNumber": self.query_task.series_number,
             }
         )
 
@@ -181,7 +182,9 @@ class QueryExecutor:
             series_description = ""
             if "SeriesDescription" in study:
                 series_description = study["SeriesDescription"]
-
+            series_number = ""
+            if "SeriesNumber" in study:
+                series_number = study["SeriesNumber"]
             result = BatchQueryResult(
                 job=self.query_task.job,
                 query=self.query_task,
@@ -198,6 +201,7 @@ class QueryExecutor:
                 pseudonym=self.query_task.pseudonym,
                 series_uid=series_uid,
                 series_description=series_description,
+                series_number=series_number,
             )
             results.append(result)
 
