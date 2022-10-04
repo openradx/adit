@@ -32,7 +32,7 @@ class QueryExecutor:
         self.query_task = query_task
         self.celery_task = celery_task
         
-        connector: DicomConnector = _create_source_connector(query_task)
+        self.connector = _create_source_connector(query_task)
 
     def start(self) -> BatchQueryTask.Status:
         if self.query_task.status == BatchQueryTask.Status.CANCELED:
