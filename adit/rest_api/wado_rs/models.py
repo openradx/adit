@@ -10,7 +10,8 @@ from adit.core.validators import (
 
 from adit.core.models import DicomJob, DicomTask, AppSettings
 
-# Wado  
+# Wado
+
 
 class DicomWadoSettings(AppSettings):
     class Meta:
@@ -25,7 +26,7 @@ class DicomWadoJob(DicomJob):
 
     mode = models.CharField(
         blank=True,
-        max_length=64,        
+        max_length=64,
     )
 
     boundary = models.CharField(
@@ -42,19 +43,14 @@ class DicomWadoJob(DicomJob):
         blank=True,
         max_length=128,
     )
-    status_code = models.IntegerField(
-        blank = True,
-    )
-
-    
 
     def delay(self):
         from .tasks import process_dicom_wado_job
+
         process_dicom_wado_job.delay(self.id)
-    
+
     def get_absolute_url(self):
         return reverse("dicom_wado_job_detail", args=[self.job.id, self.task_id])
-
 
 
 class DicomWadoTask(DicomTask):

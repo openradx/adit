@@ -60,6 +60,7 @@ from pynetdicom.status import (
 from django.conf import settings
 from ..models import DicomServer
 from ..errors import RetriableTaskError
+
 from dicomweb_client.api import DICOMwebClient
 from ..utils.sanitize import sanitize_dirname
 from ..utils.dicom_utils import format_datetime_attributes
@@ -104,8 +105,8 @@ def connect_to_server(context: Literal["find", "get", "move", "store"]):
 def connect_to_dicomweb_server():
     def decorator(func):
         def wrapper(self, *args, **kwargs):
-            headers={}
-            if not self.server.dicomweb_auth_token=="":
+            headers = {}
+            if not self.server.dicomweb_auth_token == "":
                 headers["Authorization"] = f"Token {self.server.dicomweb_auth_token}"
             self.dicomweb_client = DICOMwebClient(
                 url=self.server.dicomweb_root_url,
@@ -116,9 +117,11 @@ def connect_to_dicomweb_server():
             )
             result = func(self, *args, **kwargs)
 
-            logger.info("Set up dicomweb server with url %s", self.server.dicomweb_root_url)
+            logger.info(
+                "Set up dicomweb server with url %s", self.server.dicomweb_root_url
+            )
             return result
-        
+
         return wrapper
 
     return decorator
@@ -186,13 +189,13 @@ class DicomConnector:
 
     def find_patients(self, query, limit_results=None):
         if self.server.dicomweb_qido_support:
-            query["QueryRetrieveLevel"] = "PATIENT"
+            query["QueryRetrieveLevel"] = "STUDY"
             patients = self._send_qido_rs(
                 query,
                 limit_results=limit_results,
             )
-            
-        if self.server.patient_root_find_support:
+
+        elif self.server.patient_root_find_support:
             query["QueryRetrieveLevel"] = "PATIENT"
             patients = self._send_c_find(
                 query,
@@ -205,13 +208,18 @@ class DicomConnector:
                 query,
                 limit_results=limit_results,
             )
-        
+
         # Make patients unique, since querying on study level will return all studies for one patient, resulting in duplicate patients
         if query["QueryRetrieveLevel"] == "STUDY":
             seen = set()
-            unique_patients = [patient for patient in patients if patient["PatientID"] not in seen and not seen.add(patient["PatientID"])]
+            unique_patients = [
+                patient
+                for patient in patients
+                if patient["PatientID"] not in seen
+                and not seen.add(patient["PatientID"])
+            ]
             patients = unique_patients
-            
+
         # Some PACS servers (like our Synapse) don't support a query filter of PatientBirthDate
         # as it is optional in the Patient Root Query/Retrieve Information Model,
         # see https://groups.google.com/g/comp.protocols.dicom/c/h28r_znomEw
@@ -231,7 +239,7 @@ class DicomConnector:
 
         if not "NumberOfStudyRelatedInstances" in query:
             query["NumberOfStudyRelatedInstances"] = ""
-        
+
         if self.server.dicomweb_qido_support:
             studies = self._send_qido_rs(
                 query,
@@ -243,8 +251,7 @@ class DicomConnector:
                 query,
                 limit_results=limit_results,
             )
-        
-            
+
         query_modalities = query.get("ModalitiesInStudy")
         if not query_modalities:
             return studies
@@ -279,7 +286,7 @@ class DicomConnector:
 
         elif self.server.study_root_find_support:
             series_list = self._send_c_find(query, limit_results=limit_results)
-        
+
         if series_description:
             series_list = list(
                 filter(
@@ -346,6 +353,9 @@ class DicomConnector:
 
         if self.server.dicomweb_wado_support:
             self._send_wado_rs(query, folder, modifier_callback)
+            logger.debug(
+                "Successfully downloaded series %s of study %s.", series_uid, study_uid
+            )
 
         elif self.server.patient_root_get_support or self.server.study_root_get_support:
             self._download_series_get(query, folder, modifier_callback)
@@ -536,38 +546,30 @@ class DicomConnector:
         return _extract_pending_data(results)
 
     @connect_to_dicomweb_server()
-    def _send_qido_rs(
-        self, 
-        query_dict, 
-        limit_results=None, 
-        msg_id=1
-    ):
+    def _send_qido_rs(self, query_dict, limit_results=None, msg_id=1):
         logger.debug("Sending QIDO-RS request with query: %s", query_dict)
 
         level = query_dict.get("QueryRetrieveLevel")
         query_dict = _sanitize_query_dict(query_dict)
 
-        if level=="PATIENT":
+        if level == "PATIENT":
             query_results = self.dicomweb_client.search_for_studies(
-                search_filters = query_dict,
-            )
-        
-        elif level=="STUDY":
-            query_results = self.dicomweb_client.search_for_studies(
-                search_filters = query_dict
+                search_filters=query_dict
             )
 
-        elif level=="SERIES":
+        elif level == "STUDY":
+            query_results = self.dicomweb_client.search_for_studies(
+                search_filters=query_dict
+            )
+
+        elif level == "SERIES":
             query_results = self.dicomweb_client.search_for_series(
-                query_dict["StudyInstanceUID"],
-                search_filters = query_dict
+                query_dict["StudyInstanceUID"], search_filters=query_dict
             )
 
         query_results = _dicom_json_to_adit_json(query_results)
-        #query_results = format_datetime_attributes(query_results)
-        #query_results = _filter_by_query(query_dict, query_results)
-        return query_results
 
+        return query_results
 
     @connect_to_server("get")
     def _send_c_get(  # pylint: disable=too-many-arguments
@@ -587,7 +589,6 @@ class DicomConnector:
             raise ValueError(
                 "No valid Query/Retrieve Information Model for C-GET could be selected."
             )
-
 
         query_ds = _make_query_dataset(query_dict)
         store_errors = []
@@ -640,15 +641,12 @@ class DicomConnector:
         study_uid = _check_required_id(query_dict.get("StudyInstanceUID"))
         series_uid = _check_required_id(query_dict.get("SeriesInstanceUID"))
 
-        series = self.dicomweb_client.wado_download_series(study_uid, series_uid)
+        series = self.dicomweb_client.retrieve_series(study_uid, series_uid)
 
         for ds in series:
             if modifier_callback:
                 modifier_callback(ds)
             _save_dicom_from_receiver(ds, folder)
-
-        # Return a 'Success' status
-        return 0x0000
 
     @connect_to_server("store")
     def _send_c_store(self, folder, callback=None, msg_id=1):
@@ -787,7 +785,6 @@ class DicomConnector:
         results = self._send_c_get(query, folder, modifier_callback)
 
         _evaluate_get_move_results(results, query)
-        
 
     def _download_series_move(self, query, folder, modifier_callback=None):
         # Fetch all SOPInstanceUIDs in the series so that we can later
@@ -983,6 +980,7 @@ def _dictify_dataset(ds: Dataset):
 
     return output
 
+
 def _dicom_json_to_adit_json(results: list) -> list:
     adit_results = []
     for instance in results:
@@ -1125,7 +1123,7 @@ def _filter_by_query(query: dict, unfiltered_list: list) -> list:
     filter_attributes = ["PatientID", "StudyInstanceUID", "SeriesInstanceUID"]
     filterd_list = unfiltered_list
     for attribute, value in query.items():
-        if attribute in filter_attributes and not value=="":
+        if attribute in filter_attributes and not value == "":
             filterd_list = _filter_by_attribute(attribute, value, filterd_list)
     return filterd_list
 
@@ -1133,20 +1131,21 @@ def _filter_by_query(query: dict, unfiltered_list: list) -> list:
 def _filter_by_attribute(attribute: str, value: str, unfiltered_list: list) -> list:
     filtered_list = []
     for instance in unfiltered_list:
-        if attribute in list(instance.keys()): #can filter by that attribute
-            if instance[attribute]==value:
+        if attribute in list(instance.keys()):  # can filter by that attribute
+            if instance[attribute] == value:
                 filtered_list.append(instance)
-        else: #cannot filter by that attribute
+        else:  # cannot filter by that attribute
             filtered_list.append(instance)
     return filtered_list
 
+
 def _sanitize_query_dict(query_dict: dict) -> dict:
+    query = query_dict.copy()
     filter_values = ["*", None]
     for attribute, value in query_dict.items():
         if value in filter_values:
-            query_dict[attribute] = ""
-    
-    del query_dict["QueryRetrieveLevel"]
+            query[attribute] = ""
 
-    return query_dict
-    
+    del query["QueryRetrieveLevel"]
+
+    return query

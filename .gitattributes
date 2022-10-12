@@ -1,2 +1,7 @@
 # Ensure shell script files use LF.
 *.sh text eol=lf
+
+#XNAT
+* text=auto
+*.sh text eol=lf
+*.conf text eol=lf
