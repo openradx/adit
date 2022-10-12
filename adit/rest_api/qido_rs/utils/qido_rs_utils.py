@@ -1,3 +1,4 @@
+import logging
 import humanize
 import json
 
@@ -23,7 +24,7 @@ logger = get_task_logger(__name__)
 
 def execute_qido(
     dicom_qido_task: DicomQidoTask, celery_task: CeleryTask
-) -> DicomQidoTask.Status:   
+) -> DicomQidoTask.Status:
     if dicom_qido_task.status == DicomQidoTask.Status.CANCELED:
         return dicom_qido_task.status
 
@@ -48,7 +49,7 @@ def execute_qido(
                 f"Source DICOM node not active: {dicom_qido_job.source.name}"
             )
 
-        _c_get_to_result(dicom_qido_task)
+        _c_find_to_result(dicom_qido_task)
 
         dicom_qido_task.status = DicomQidoTask.Status.SUCCESS
         dicom_qido_task.message = "Query task completed successfully."
@@ -67,32 +68,30 @@ def execute_qido(
     return dicom_qido_task.status
 
 
-def _c_get_to_result(
-    dicom_qido_task: DicomQidoTask
-) -> None:
+def _c_find_to_result(dicom_qido_task: DicomQidoTask) -> None:
     connector = DicomWebConnector(dicom_qido_task.job.source.dicomserver)
-    
+
     query = _create_query(dicom_qido_task)
 
-    if dicom_qido_task.job.level == "STUDY":    
-        c_get_result = connector.qido_find_studies(query)
+    if dicom_qido_task.job.level == "STUDY":
+        c_find_result = connector.qido_find_studies(query)
     elif dicom_qido_task.job.level == "SERIES":
-        c_get_result = connector.qido_find_series(query)
+        c_find_result = connector.qido_find_series(query)
+
+    if len(c_find_result) <= 0:
+        raise ValueError("No query results found.")
 
     result = DicomQidoResult(
-        job = dicom_qido_task.job,
-        query_results = json.dumps(c_get_result, default=str),
+        job=dicom_qido_task.job,
+        query_results=json.dumps(c_find_result, default=str),
     )
     result.save()
 
 
-def _create_query(
-    dicom_task: DicomQidoTask
-) -> dict:
+def _create_query(dicom_task: DicomQidoTask) -> dict:
     query = {
         "StudyInstanceUID": dicom_task.study_uid,
         "SeriesInstanceUID": dicom_task.series_uid,
-
         "PatientID": "",
         "PatientName": "",
         "PatientBirthDate": "",
@@ -101,13 +100,13 @@ def _create_query(
         "StudyDate": "",
         "StudyTime": "",
         "ModalitiesInStudy": "",
-        "Modality":"",
+        "Modality": "",
         "NumberOfStudyRelatedInstances": "",
         "NumberOfSeriesRelatedInstances": "",
         "SOPInstaceUID": "",
-        "StudyDescription":"",
+        "StudyDescription": "",
         "SeriesDescription": "",
-        "SeriesNumber":"",
+        "SeriesNumber": "",
     }
 
     request_query = eval(dicom_task.query)
