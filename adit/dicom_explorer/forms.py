@@ -35,6 +35,13 @@ class DicomExplorerQueryForm(forms.Form):
         validators=id_validators,
     )
 
+    # (optional) XNAT
+    project_id = forms.CharField(
+        label="XNAT Project ID",
+        max_length=64,
+        required=False,
+    )
+
     def __init__(self, *args, **kwargs):
         self.user = kwargs.pop("user")
 

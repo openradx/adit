@@ -141,9 +141,15 @@ class DicomServer(DicomNode):
     # (optional) DICOMweb support
     dicomweb_root_url = models.CharField(blank=True, max_length=2000)
     dicomweb_auth_token = models.CharField(blank=True, max_length=2000)
-    dicomweb_qido_url_prefix = models.CharField(blank=True, default="qidors", max_length=64)
-    dicomweb_wado_url_prefix = models.CharField(blank=True, default="wadors", max_length=64)
-    dicomweb_stow_url_prefix = models.CharField(blank=True, default="stowrs", max_length=64)
+    dicomweb_qido_url_prefix = models.CharField(
+        blank=True, default="qidors", max_length=64
+    )
+    dicomweb_wado_url_prefix = models.CharField(
+        blank=True, default="wadors", max_length=64
+    )
+    dicomweb_stow_url_prefix = models.CharField(
+        blank=True, default="stowrs", max_length=64
+    )
     dicomweb_qido_support = models.BooleanField(default=False)
     dicomweb_wado_support = models.BooleanField(default=False)
     dicomweb_stow_support = models.BooleanField(default=False)
@@ -153,6 +159,12 @@ class DicomServer(DicomNode):
     dicomweb_authorization_header = models.CharField(blank=True, max_length=2000)
 
     objects: DicomNodeManager["DicomServer"] = DicomNodeManager["DicomServer"]()
+
+    # (optional) XNAT rest support
+    xnat_rest_source = models.BooleanField(default=False)
+    xnat_root_url = models.CharField(blank=True, max_length=2000)
+    xnat_username = models.CharField(blank=True, max_length=2000)
+    xnat_password = models.CharField(blank=True, max_length=2000)
 
 
 class DicomFolder(DicomNode):
