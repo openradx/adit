@@ -1,4 +1,3 @@
-
 import os
 from pathlib import Path
 import logging
@@ -24,29 +23,27 @@ class DicomWebAPIView(APIView):
     query = None
 
     def handle_request(
-        self, request: Type[HttpRequest], mode: str, *args: dict, **kwargs: dict
+        self, request: Type[HttpRequest], *args: dict, **kwargs: dict
     ) -> tuple:
         pacs_ae_title = kwargs.get("pacs", None)
         SourceServerSet = DicomServer.objects.filter(ae_title=pacs_ae_title)
-        if len(SourceServerSet) != 1:
-            raise ParseError(f"The specified PACS with AE title: {pacs_ae_title} does not exist or multiple Entities with this title exist.")
+        if len(SourceServerSet) < 1:
+            raise ParseError(
+                f"The specified PACS with AE title: {pacs_ae_title} does not exist."
+            )
         SourceServer = SourceServerSet[0]
 
         study_uid = kwargs.get("StudyInstanceUID", "")
         series_uid = kwargs.get("SeriesInstanceUID", "")
 
         if self.LEVEL == "SERIES" and study_uid is None:
-            raise NotImplementedError("Query for series without specified study is not supported.")
-        
-        if mode=="WADO-RS":
-            mode, content_type, boundary = self._handle_accept_header(request, *args, **kwargs)
-            return SourceServer, study_uid, series_uid, mode, content_type, boundary
+            raise ParseError(
+                "To access a series, the corresponding Study Instance UID must be specified."
+            )
 
-        if mode=="QIDO-RS":
-            query = str(request.GET.dict())
-            return SourceServer, study_uid, series_uid, query
+        return SourceServer, study_uid, series_uid
 
-    def _handle_accept_header(
+    def handle_accept_header(
         self, request: Type[HttpRequest], *args: dict, **kwargs: dict
     ) -> tuple:
         serializer = DicomWebSerializer()
@@ -59,12 +56,15 @@ class DicomWebAPIView(APIView):
                 mode = "bulk"
                 supported_content_types = serializer.bulk_content_types
                 default_content_type = serializer.bulk_d_content_type
-                    
+
             accept_headers = self._format_accept_header(request.META["HTTP_ACCEPT"])
             for header in accept_headers:
                 boundary = settings.DEFAULT_BOUNDARY
                 if header["media_type"] in serializer.MULTIPART_MEDIA_TYPES:
-                    if header["type"] in supported_content_types and header["type"] in serializer.multipart_content_types:
+                    if (
+                        header["type"] in supported_content_types
+                        and header["type"] in serializer.multipart_content_types
+                    ):
                         content_type = header["type"]
                         if header.get("boundary") is not None:
                             boundary = header["boundary"]
@@ -72,20 +72,24 @@ class DicomWebAPIView(APIView):
                     content_type = header["media_type"]
                 elif header["media_type"] == "*/*":
                     content_type = default_content_type
-                    
-        except SystemError:
-            raise NotAcceptable()
 
-        if content_type is None:
-            raise NotAcceptable()
-        
+        except SystemError:
+            raise NotAcceptable(
+                f"Media type not accepted. Supported media types for retrieve mode {mode} are: {supported_content_types}."
+            )
+
+        try:
+            content_type
+        except NameError:
+            raise NotAcceptable(
+                f"Media type not accepted. Supported media types for retrieve mode {mode} are: {supported_content_types}."
+            )
+
         logger.debug(f"Accepted file format: {content_type} for retrieve mode: {mode}.")
 
         return mode, content_type, boundary
-                
-    def _format_accept_header(
-        self, accept_header_str: str
-    ) -> tuple:
+
+    def _format_accept_header(self, accept_header_str: str) -> tuple:
         chars_to_remove = [" ", "'", '"']
         for char in chars_to_remove:
             accept_header_str = accept_header_str.replace(char, "")
@@ -97,19 +101,17 @@ class DicomWebAPIView(APIView):
             for i in range(1, len(accept_header)):
                 key, value = accept_header[i].split("=")
                 accept_headers_formated[j][key] = value
-        
+
         return accept_headers_formated
 
-    def generate_temp_files(
-        self, study_uid: str, series_uid: str, level: str
-    ) -> tuple:
+    def generate_temp_files(self, study_uid: str, series_uid: str, level: str) -> tuple:
         folder_path = Path(self.FOLDER_ADIT)
         if level == "STUDY":
-            folder_path =  folder_path / ("study_"+study_uid)
+            folder_path = folder_path / ("study_" + study_uid)
             os.makedirs(folder_path, exist_ok=True)
             file_path = folder_path / "response.txt"
         elif level == "SERIES":
-            folder_path = folder_path / ("series_"+series_uid)
+            folder_path = folder_path / ("series_" + series_uid)
             os.makedirs(folder_path, exist_ok=True)
             file_path = folder_path / "response.txt"
 
@@ -128,5 +130,3 @@ class SelectiveTransferJobDetailAPIView(generics.RetrieveAPIView):
     lookup_field = "id"
     queryset = SelectiveTransferJob.objects.all()
     serializer_class = SelectiveTransferJobListSerializer
-
-

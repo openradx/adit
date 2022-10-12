@@ -29,6 +29,7 @@ urlpatterns = [
     path("dicom-explorer/", include("adit.dicom_explorer.urls")),
     path("token_auth/", include("adit.token_authentication.urls")),
     path("rest_api/", include("adit.rest_api.urls")),
+    path("xnat-support/", include("adit.xnat_support.urls")),
 ]
 
 # Django loginas

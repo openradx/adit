@@ -231,10 +231,11 @@ REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
         "adit.token_authentication.auth.RestTokenAuthentication",
     ],
-    'DEFAULT_RENDERER_CLASSES': [
+    "DEFAULT_RENDERER_CLASSES": [
         "adit.rest_api.renderers.DicomMultipartRenderer",
-        "adit.rest_api.renderers.DicomJsonRenderer"
-    ]
+        "adit.rest_api.renderers.DicomJsonRenderer",
+    ],
+    "EXCEPTION_HANDLER": "rest_framework.views.exception_handler",
 }
 
 # Static files (CSS, JavaScript, Images)
@@ -422,5 +423,6 @@ MAX_BATCH_QUERY_SIZE = 1000
 # (staff users are not limited)
 MAX_BATCH_TRANSFER_SIZE = 500
 
-# Default multipart boundary for wado-rs service
+# DicomWeb Settings
 DEFAULT_BOUNDARY = "adit-boundary"
+ERROR_MESSAGE = "Processing your DicomWeb request failed."

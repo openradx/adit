@@ -5,6 +5,7 @@
 
 {% block script %}
 {{ block.super }}
+<script>var csrf_token = "{{ csrf_token }}"</script>
 <script src="{% static 'dicom_explorer/dicom_explorer.js' %}"></script>
 {% endblock script %}
 
