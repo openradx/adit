@@ -8,6 +8,7 @@ from adit.core.validators import (
     no_wildcard_chars_validator,
 )
 
+
 class DicomQidoSettings(AppSettings):
     class Meta:
         verbose_name_plural = "Dicom  Qido settings"
@@ -18,10 +19,12 @@ class DicomQidoJob(DicomJob):
         blank=True,
         max_length=64,
     )
+
     def delay(self):
         from .tasks import process_dicom_qido_job
+
         process_dicom_qido_job.delay(self.id)
- 
+
     def get_absolute_url(self):
         return reverse("dicom_qido_job_detail", args=[self.job.id, self.task_id])
 
@@ -51,9 +54,6 @@ class DicomQidoTask(DicomTask):
     query = models.CharField(
         blank=True,
         max_length=2000,
-    )
-    status_code = models.IntegerField(
-        blank=True,
     )
 
 

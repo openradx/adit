@@ -16,7 +16,9 @@ id_validators = [
 
 
 class DicomExplorerQueryForm(forms.Form):
-    server = forms.ModelChoiceField(queryset=DicomServer.objects.all())
+    server = forms.ModelChoiceField(
+        queryset=DicomServer.objects.all(), to_field_name="ae_title"
+    )
     patient_id = forms.CharField(
         label="Patient ID",
         max_length=64,
@@ -28,6 +30,13 @@ class DicomExplorerQueryForm(forms.Form):
         max_length=32,
         required=False,
         validators=id_validators,
+    )
+
+    # (optional) XNAT
+    project_id = forms.CharField(
+        label="XNAT Project ID",
+        max_length=64,
+        required=False,
     )
 
     def __init__(self, *args, **kwargs):
