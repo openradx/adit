@@ -32,9 +32,20 @@ def dicom_explorer_form_view(request: AuthenticatedHttpRequest) -> HttpResponse:
     server = query["server"]
     patient_id = query.get("patient_id")
     accession_number = query.get("accession_number")
+    
+    # optional query handling
+    opt_query = {}
+    for key, value in query.items():
+        if not key in ["server", "patient_id", "accession_number"] and not value == "":
+            opt_query[key] = value
+    if opt_query:
+        opt_query_url_suffix = urlencode(opt_query)
 
     if server and not (patient_id or accession_number):
-        return redirect("dicom_explorer_server_detail", server_id=server.id)
+        url = reverse("dicom_explorer_server_detail", args=[server.id])
+        if opt_query:
+            url += "?" + opt_query_url_suffix
+        return redirect(url)
 
     if patient_id and not accession_number:
         return redirect("dicom_explorer_patient_detail", server_id=server.id, patient_id=patient_id)
@@ -210,7 +221,7 @@ def render_patient_detail(
     return render(
         request,
         "dicom_explorer/patient_detail.html",
-        {"server": server, "patient": patients[0], "studies": studies},
+        {"server": server, "patient": patients[0], "studies": studies, "query": query},
     )
 
 
@@ -264,6 +275,7 @@ def render_study_detail(request: HttpRequest, server: DicomServer, study_uid: st
             "patient": patients[0],
             "study": studies[0],
             "series_list": series_list,
+            "query": query
         },
     )
 

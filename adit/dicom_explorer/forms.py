@@ -41,6 +41,11 @@ class DicomExplorerQueryForm(forms.Form):
         max_length=64,
         required=False,
     )
+    experiment_id = forms.CharField(
+        label="XNAT Experiment ID",
+        max_length=64,
+        required=False,
+    )
 
     def __init__(self, *args, **kwargs):
         self.user = kwargs.pop("user")
