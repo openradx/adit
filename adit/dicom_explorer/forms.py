@@ -1,6 +1,9 @@
 from django import forms
 from crispy_forms.helper import FormHelper
-from crispy_forms.layout import Submit
+from crispy_forms.layout import Submit, Layout, Field, Row, Column, Div
+from crispy_forms.bootstrap import StrictButton
+
+from adit.xnat_support.forms import xnat_options_field
 from adit.core.models import DicomServer
 from adit.core.validators import (
     no_backslash_char_validator,
@@ -38,6 +41,11 @@ class DicomExplorerQueryForm(forms.Form):
         max_length=64,
         required=False,
     )
+    experiment_id = forms.CharField(
+        label="XNAT Experiment ID",
+        max_length=64,
+        required=False,
+    )
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -51,3 +59,22 @@ class DicomExplorerQueryForm(forms.Form):
         self.helper.label_class = "col-md-2"
         self.helper.field_class = "col-md-10"
         self.helper.add_input(Submit("query", "Query"))
+
+        self.helper.layout = Layout(
+            Row(Column(Field("server", css_class="custom-select"))),
+            Row(
+                Column(
+                    Field(
+                        "patient_id",
+                    )
+                )
+            ),
+            Row(
+                Column(
+                    Field(
+                        "accession_number",
+                    )
+                )
+            ),
+            xnat_options_field(["project_id", "experiment_id"]),
+        )

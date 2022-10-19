@@ -1,4 +1,5 @@
 {% load explorer_url from dicom_explorer_extras %}
+{% load append_xnat_query from dicom_xnat_explorer_extras %}
 
 <table class="table">
     <caption>Series</caption>
@@ -14,6 +15,9 @@
     <tbody>
         {% for series in series_list %}
             {% explorer_url server.id patient.PatientID study.StudyInstanceUID series.SeriesInstanceUID as series_url %}
+            {% if server.xnat_rest_source %}
+                {% append_xnat_query series_url query.project_id query.experiment_id as series_url %}
+            {% endif %}
             <tr>
                 <td>{{ series.SeriesNumber|default_if_none:"—" }}</td>
                 <td>{{ series.SeriesDescription|default:"—" }}</td>

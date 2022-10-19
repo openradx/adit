@@ -27,14 +27,26 @@ def dicom_explorer_form_view(request):
     server = query["server"]
     patient_id = query.get("patient_id")
     accession_number = query.get("accession_number")
+    
+    # optional query handling
+    opt_query = {}
+    for key, value in query.items():
+        if not key in ["server", "patient_id", "accession_number"] and not value == "":
+            opt_query[key] = value
+    if opt_query:
+        opt_query_url_suffix = urlencode(opt_query)
 
     if server and not (patient_id or accession_number):
-        return redirect("dicom_explorer_server_detail", server_id=server.id)
+        url = reverse("dicom_explorer_server_detail", args=[server.id])
+        if opt_query:
+            url += "?" + opt_query_url_suffix
+        return redirect(url)
 
     if patient_id and not accession_number:
-        return redirect(
-            "dicom_explorer_patient_detail", server_id=server.id, patient_id=patient_id
-        )
+        url = reverse("dicom_explorer_patient_detail", args=[server.id, patient_id])
+        if opt_query:
+            url += "?" + opt_query_url_suffix
+        return redirect(url)
 
     if accession_number:
         params = {"AccessionNumber": accession_number}
@@ -43,6 +55,8 @@ def dicom_explorer_form_view(request):
 
         url = reverse("dicom_explorer_patient_query")
         url = "%s?%s" % (url, urlencode(params))
+        if opt_query:
+            url += opt_query_url_suffix
         return redirect(url)
 
     # Should never happen as we validate the form
@@ -111,7 +125,9 @@ def render_query_result(request, server_id, patient_id, study_uid, series_uid):
     query = {}
     if request.GET:
         query.update(request.GET)
-
+    for key, value in query.items():
+        if type(value)==list and len(value)==1:
+            query[key] = value[0]
     url_name = resolve(request.path_info).url_name
 
     if url_name == "dicom_explorer_server_query":
@@ -127,15 +143,15 @@ def render_query_result(request, server_id, patient_id, study_uid, series_uid):
     elif url_name == "dicom_explorer_patient_query":
         response = render_patient_query(request, server, query)
     elif url_name == "dicom_explorer_patient_detail":
-        response = render_patient_detail(request, server, patient_id)
+        response = render_patient_detail(request, server, patient_id, query)
     elif url_name == "dicom_explorer_study_query":
         response = render_study_query(request, server, query)
     elif url_name == "dicom_explorer_study_detail":
-        response = render_study_detail(request, server, study_uid)
+        response = render_study_detail(request, server, study_uid, query)
     elif url_name == "dicom_explorer_series_query":
         response = render_series_query(request, server, study_uid, query)
     elif url_name == "dicom_explorer_series_detail":
-        response = render_series_detail(request, server, study_uid, series_uid)
+        response = render_series_detail(request, server, study_uid, series_uid, query)
     else:
         raise AssertionError(f"Invalid URL name {url_name}.")
 
@@ -171,9 +187,9 @@ def render_patient_query(request, server, query):
     )
 
 
-def render_patient_detail(request, server, patient_id):
+def render_patient_detail(request, server, patient_id, query):
     collector = DicomDataCollector(server)
-    patients = collector.collect_patient_data(patient_id)
+    patients = collector.collect_patient_data(patient_id=patient_id, query=query)
 
     if len(patients) == 0:
         return render_error(request, f"No patient found with Patient ID {patient_id}.")
@@ -182,12 +198,12 @@ def render_patient_detail(request, server, patient_id):
         return render_error(
             request, f"Multiple patients found with Patient ID {patient_id}."
         )
-
-    studies = collector.collect_study_data(query={"PatientID": patient_id})
+    query.update({"PatientID": patient_id})
+    studies = collector.collect_study_data(query=query)
     return render(
         request,
         "dicom_explorer/patient_detail.html",
-        {"server": server, "patient": patients[0], "studies": studies},
+        {"server": server, "patient": patients[0], "studies": studies, "query": query},
     )
 
 
@@ -207,9 +223,9 @@ def render_study_query(request, server, query):
     )
 
 
-def render_study_detail(request, server, study_uid):
+def render_study_detail(request, server, study_uid, query):
     collector = DicomDataCollector(server)
-    studies = collector.collect_study_data(study_uid)
+    studies = collector.collect_study_data(study_uid=study_uid, query=query)
 
     if len(studies) == 0:
         return render_error(
@@ -221,7 +237,7 @@ def render_study_detail(request, server, study_uid):
             request, f"Multiple studies found with Study Instance UID {study_uid}."
         )
 
-    patients = collector.collect_patient_data(studies[0]["PatientID"])
+    patients = collector.collect_patient_data(patient_id=studies[0]["PatientID"], query=query)
 
     if len(patients) == 0:
         # Should never happen as we already found a valid study with this UID
@@ -235,7 +251,7 @@ def render_study_detail(request, server, study_uid):
             f"Multiple patients found for study with Study Instance UID {study_uid}.",
         )
 
-    series_list = collector.collect_series_data(study_uid)
+    series_list = collector.collect_series_data(study_uid, query=query)
     return render(
         request,
         "dicom_explorer/study_detail.html",
@@ -244,6 +260,7 @@ def render_study_detail(request, server, study_uid):
             "patient": patients[0],
             "study": studies[0],
             "series_list": series_list,
+            "query": query
         },
     )
 
@@ -290,10 +307,9 @@ def render_series_query(request, server, study_uid, query):
     )
 
 
-def render_series_detail(request, server, study_uid, series_uid):
+def render_series_detail(request, server, study_uid, series_uid, query):
     collector = DicomDataCollector(server)
-
-    studies = collector.collect_study_data(study_uid)
+    studies = collector.collect_study_data(study_uid=study_uid, query=query)
 
     if len(studies) == 0:
         return render_error(
@@ -305,7 +321,7 @@ def render_series_detail(request, server, study_uid, series_uid):
             request, f"Multiple studies found with Study Instance UID {study_uid}."
         )
 
-    patients = collector.collect_patient_data(patient_id=studies[0]["PatientID"])
+    patients = collector.collect_patient_data(patient_id=studies[0]["PatientID"], query=query)
 
     if len(patients) == 0:
         # Should never happen as we already found a valid study with this UID
@@ -319,7 +335,7 @@ def render_series_detail(request, server, study_uid, series_uid):
             f"Multiple patients found for study with Study Instance UID {study_uid}.",
         )
 
-    series_list = collector.collect_series_data(study_uid, series_uid)
+    series_list = collector.collect_series_data(study_uid=study_uid, series_uid=series_uid, query=query)
 
     if len(series_list) == 0:
         return render_error(

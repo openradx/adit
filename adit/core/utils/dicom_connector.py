@@ -13,6 +13,8 @@ in TransferTask model object.
 from doctest import Example
 import logging
 import re
+
+import xnat
 from typing import Dict, List, Literal, Union, Any
 import time
 import datetime
@@ -195,6 +197,16 @@ class DicomConnector:
                 limit_results=limit_results,
             )
 
+        elif self.server.xnat_rest_source:
+            query["QueryRetrieveLevel"] = "STUDY"
+            project_id, experiment_id = _get_xnat_query_params(query)
+            patients = self._send_xnat_find(
+                query,
+                project_id=project_id,
+                experiment_id=experiment_id,
+                limit_results=limit_results,
+            )
+
         elif self.server.patient_root_find_support:
             query["QueryRetrieveLevel"] = "PATIENT"
             patients = self._send_c_find(
@@ -246,6 +258,26 @@ class DicomConnector:
                 limit_results=limit_results,
             )
 
+        elif self.server.xnat_rest_source:
+            query["QueryRetrieveLevel"] = "STUDY"
+            project_id, experiment_id = _get_xnat_query_params(query)
+            studies = self._send_xnat_find(
+                query,
+                project_id,
+                experiment_id,
+                limit_results=limit_results,
+            )
+
+            #seen = set()
+            #unique_studies = [
+            #    study
+            #    for study in studies
+            #    if study["StudyInstanceUID"] not in seen
+            #    and not seen.add(study["StudyInstanceUID"])
+            #]
+            
+            #studies = unique_studies
+
         elif self.server.study_root_find_support:
             studies = self._send_c_find(
                 query,
@@ -284,6 +316,15 @@ class DicomConnector:
                 limit_results=limit_results,
             )
 
+        elif self.server.xnat_rest_source:
+            query["QueryRetrieveLevel"] = "SERIES"
+            project_id, experiment_id = _get_xnat_query_params(query)
+            series_list = self._send_xnat_find(
+                query,
+                project_id=project_id,
+                experiment_id=experiment_id,
+                limit_results=limit_results,
+            )
         elif self.server.study_root_find_support:
             series_list = self._send_c_find(query, limit_results=limit_results)
 
@@ -569,6 +610,38 @@ class DicomConnector:
 
         query_results = _dicom_json_to_adit_json(query_results)
 
+        return query_results
+
+    def _send_xnat_find(
+        self,
+        query_dict,
+        project_id=None,
+        experiment_id=None,
+        limit_results=None,
+        msg_id=1,
+    ):
+  
+        logger.debug("Sending XNAT find requerst with query: %s", query_dict)
+        level = query_dict.get("QueryRetreiveLevel")
+
+        session = xnat.connect(
+            self.server.xnat_root_url,
+            user=self.server.xnat_username,
+            password=self.server.xnat_password,
+        )
+        xnat_results = _find_xnat_location(
+            query_dict, session, project_id=project_id, experiment_id=experiment_id
+        )
+        query_results = []
+        for xnat_result in xnat_results:
+            query_results.append(
+                _dictify_dataset(
+                    session.projects[xnat_result["project_id"]]
+                    .experiments[xnat_result["experiment_id"]]
+                    .scans[xnat_result["scan_id"]]
+                    .read_dicom()
+                )
+            )
         return query_results
 
     @connect_to_server("get")
@@ -1149,3 +1222,69 @@ def _sanitize_query_dict(query_dict: dict) -> dict:
     del query["QueryRetrieveLevel"]
 
     return query
+
+    return results
+
+
+def _xnat_query(query, session):
+    results = []
+    for project_id in session.projects:
+        project_results = _xnat_query_projects(query, session, project_id)
+        results.extend(project_results)
+    return results
+
+
+def _xnat_query_projects(query, session, project_id):
+    results = []
+    for experiment_id in session.projects[project_id].experiments:
+        experiment_results = _xnat_query_experiments(
+            query, session, project_id, experiment_id
+        )
+        results.extend(experiment_results)
+    return results
+
+
+def _xnat_query_experiments(query, session, project_id, experiment_id):
+    results = []
+    for scan_id in session.projects[project_id].experiments[experiment_id].scans:
+        print(project_id)
+        scan_results = (
+            session.projects[project_id]
+            .experiments[experiment_id]
+            .scans[scan_id]
+            .read_dicom()
+        )
+        match = True
+        for attribute, value in query.items():
+            try:
+                if value != "" and value != scan_results[attribute].value:
+                    match = False
+                    break
+            except KeyError:
+                break
+        if match:
+            results.append(
+                {
+                    "project_id": project_id,
+                    "experiment_id": experiment_id,
+                    "scan_id": scan_id,
+                }
+            )
+    return results
+
+
+def _find_xnat_location(query, session, project_id=None, experiment_id=None):
+    if not project_id:
+        return _xnat_query(query, session)
+    elif not experiment_id:
+        return _xnat_query_projects(query, session, project_id)
+    else:
+        return _xnat_query_experiments(query, session, project_id, experiment_id)
+
+
+def _get_xnat_query_params(query):
+    patient_id = query.get("project_id",None)
+    experiment_id = query.get("experiment_id",None)
+    query.pop("project_id", None)
+    query.pop("experiment_id", None)
+    return patient_id, experiment_id

@@ -67,7 +67,9 @@ class DicomDataCollector:
         try:
             studies = sorted(
                 studies,
-                key=lambda study: datetime.combine(study["StudyDate"], study["StudyTime"]),
+                key=lambda study: datetime.combine(
+                    study["StudyDate"], study["StudyTime"]
+                ),
                 reverse=True,
             )
         except KeyError:
