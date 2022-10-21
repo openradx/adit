@@ -29,7 +29,7 @@ def dicom_explorer_form_view(request: AuthenticatedHttpRequest) -> HttpResponse:
         return render(request, "dicom_explorer/query_form.html", {"form": form})
 
     query = form.cleaned_data
-    server = query["server"]
+    server = query["source"]
     patient_id = query.get("patient_id")
     accession_number = query.get("accession_number")
     
@@ -221,7 +221,7 @@ def render_patient_detail(
     return render(
         request,
         "dicom_explorer/patient_detail.html",
-        {"server": server, "patient": patients[0], "studies": studies, "query": query},
+        {"server": server, "patient": patients[0], "studies": studies},
     )
 
 
@@ -275,7 +275,6 @@ def render_study_detail(request: HttpRequest, server: DicomServer, study_uid: st
             "patient": patients[0],
             "study": studies[0],
             "series_list": series_list,
-            "query": query
         },
     )
 

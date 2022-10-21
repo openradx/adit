@@ -27,6 +27,14 @@ class BatchQueryJob(DicomJob):
 
     project_name = models.CharField(max_length=150)
     project_description = models.TextField(max_length=2000)
+    project_id = models.CharField(
+        blank=True,
+        max_length=64
+    )
+    experiment_id = models.CharField(
+        blank=True, 
+        max_length=64
+    )
 
     tasks: models.QuerySet["BatchQueryTask"]
     results: models.QuerySet["BatchQueryResult"]
