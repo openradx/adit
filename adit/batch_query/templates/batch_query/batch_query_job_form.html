@@ -1,5 +1,10 @@
 {% extends "core/base_generic.html" %}
 
+{% load static from static %}
+{% block script %}
+    <script src="{% static 'xnat_support/xnat_support.js' %}"></script>
+{% endblock script %}
+
 {% load crispy from crispy_forms_tags %}
 
 {% block container %}

@@ -66,6 +66,7 @@ INSTALLED_APPS = [
     "adit.rest_api.apps.RestApiConfig",
     "adit.rest_api.qido_rs.apps.QidoRsConfig",
     "adit.rest_api.wado_rs.apps.WadoRsConfig",
+    "adit.xnat_support.apps.XnatSupportConfig",
     "channels",
     "rest_framework.authtoken",
 ]
@@ -374,6 +375,9 @@ ADIT_AE_TITLE = env.str("ADIT_AE_TITLE", default="ADIT1")
 
 # The delimiter in CSV batch files
 CSV_DELIMITER = ";"
+
+# Default dicom date format
+DICOM_DATE_FORMAT = "%Y%m%d"
 
 # Usually a transfer job must be verified by an admin. By setting
 # this option to True ADIT will schedule unverified transfers

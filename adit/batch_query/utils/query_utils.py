@@ -3,12 +3,13 @@ from typing import Any, Dict, List, Optional
 from django.utils import timezone
 from django.template.defaultfilters import pluralize
 from adit.core.utils.dicom_connector import DicomConnector
+from adit.xnat_support.utils.xnat_connector import XnatConnector
 from adit.core.utils.task_utils import hijack_logger, store_log_in_task
 from ..models import BatchQueryTask, BatchQueryResult
+from django.conf import settings
 
 logger = logging.getLogger(__name__)
 
-DICOM_DATE_FORMAT = "%Y%m%d"
 
 
 def execute_query(query_task: BatchQueryTask) -> BatchQueryTask.Status:
@@ -34,10 +35,12 @@ def execute_query(query_task: BatchQueryTask) -> BatchQueryTask.Status:
         else:
             all_studies = []  # a list of study lists (per patient)
             for patient in patients:
+                logger.debug("at execute query, before _query_studies")
                 studies = _query_studies(connector, patient["PatientID"], query_task)
                 if studies:
                     if query_task.series_description:
                         for study in studies:
+                            logger.debug("at execute_query, before _query_studies")
                             series = _query_series(connector, study, query_task)
                             all_studies.append(series)
                     else:
@@ -80,19 +83,25 @@ def execute_query(query_task: BatchQueryTask) -> BatchQueryTask.Status:
 
 def _create_source_connector(query_task: BatchQueryTask) -> DicomConnector:
     # An own function to easily mock the source connector in test_transfer_utils.py
+    if query_task.job.source.dicomserver.xnat_rest_source:
+        return XnatConnector(
+            query_task.job.source.dicomserver, 
+            project_id=query_task.job.project_id,
+            experiment_id=query_task.job.experiment_id,
+        )
     return DicomConnector(query_task.job.source.dicomserver)
 
 
 def _fetch_patients(
     connector: DicomConnector, query_task: BatchQueryTask
 ) -> Optional[Dict[str, Any]]:
-    return connector.find_patients(
-        {
-            "PatientID": query_task.patient_id,
-            "PatientName": query_task.patient_name,
-            "PatientBirthDate": query_task.patient_birth_date,
-        }
-    )
+    query = {
+        "PatientID": query_task.patient_id,
+        "PatientName": query_task.patient_name,
+        "PatientBirthDate": query_task.patient_birth_date,
+    }
+    
+    return connector.find_patients(query)
 
 
 def _query_studies(
@@ -101,20 +110,19 @@ def _query_studies(
     study_date = ""
     if query_task.study_date_start:
         if not query_task.study_date_end:
-            study_date = query_task.study_date_start.strftime(DICOM_DATE_FORMAT) + "-"
+            study_date = query_task.study_date_start.strftime(settings.DICOM_DATE_FORMAT) + "-"
         elif query_task.study_date_start == query_task.study_date_end:
-            study_date = query_task.study_date_start.strftime(DICOM_DATE_FORMAT)
+            study_date = query_task.study_date_start.strftime(settings.DICOM_DATE_FORMAT)
         else:
             study_date = (
-                query_task.study_date_start.strftime(DICOM_DATE_FORMAT)
+                query_task.study_date_start.strftime(settings.DICOM_DATE_FORMAT)
                 + "-"
-                + query_task.study_date_end.strftime(DICOM_DATE_FORMAT)
+                + query_task.study_date_end.strftime(settings.DICOM_DATE_FORMAT)
             )
     elif query_task.study_date_end:
-        study_date = "-" + query_task.study_date_end.strftime(DICOM_DATE_FORMAT)
-
-    studies = connector.find_studies(
-        {
+        study_date = "-" + query_task.study_date_end.strftime(settings.DICOM_DATE_FORMAT)
+    
+    query = {
             "PatientID": patient_id,
             "PatientName": query_task.patient_name,
             "PatientBirthDate": query_task.patient_birth_date,
@@ -126,23 +134,27 @@ def _query_studies(
             "ModalitiesInStudy": query_task.modalities,
             "NumberOfStudyRelatedInstances": "",
         }
-    )
+    
+    logger.debug("at query_studies")
+    studies = connector.find_studies(query)
 
     return studies
 
 
 def _query_series(
-    connector: DicomConnector, study: List[Dict[str, Any]],query_task: BatchQueryTask
+    connector: DicomConnector, study: List[Dict[str, Any]], query_task: BatchQueryTask
 ) -> List[Dict[str, Any]]:
 
-    series = connector.find_series(
-        {
-            "PatientID": study["PatientID"],
-            "StudyInstanceUID": study["StudyInstanceUID"],
-            "SeriesInstanceUID": "",
-            "SeriesDescription": query_task.series_description,
-        }
-    )
+    query = {
+        "PatientID": study["PatientID"],
+        "StudyInstanceUID": study["StudyInstanceUID"],
+        "SeriesInstanceUID": "",
+        "SeriesDescription": query_task.series_description,
+    }
+    
+    logger.debug("at_query_series")
+    series = connector.find_series(query)
+
     for i in range(len(series)):
         series[i].update(study)
     return series
@@ -159,6 +171,8 @@ def _save_results(
         series_description = ""
         if "SeriesDescription" in study:
             series_description = study["SeriesDescription"]
+        if not "NumberOfStudyRelatedInstances" in study:
+            study["NumberOfStudyRelatedInstances"] = 0
 
         result = BatchQueryResult(
             job=query_task.job,

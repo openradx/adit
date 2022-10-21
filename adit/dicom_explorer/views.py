@@ -24,7 +24,7 @@ def dicom_explorer_form_view(request):
         return render(request, "dicom_explorer/query_form.html", {"form": form})
 
     query = form.cleaned_data
-    server = query["server"]
+    server = query["source"]
     patient_id = query.get("patient_id")
     accession_number = query.get("accession_number")
     
@@ -172,7 +172,7 @@ def render_server_detail(request, server):
 
 
 def render_patient_query(request, server, query):
-    collector = DicomDataCollector(server)
+    collector = DicomDataCollector(server, project_id=query.pop("project_id", ""), experiment_id=query.pop("experiment_id", ""))
     limit = settings.DICOM_EXPLORER_RESULT_LIMIT
     patients = collector.collect_patient_data(query=query, limit_results=limit)
     max_query_results = len(patients) >= limit
@@ -188,8 +188,8 @@ def render_patient_query(request, server, query):
 
 
 def render_patient_detail(request, server, patient_id, query):
-    collector = DicomDataCollector(server)
-    patients = collector.collect_patient_data(patient_id=patient_id, query=query)
+    collector = DicomDataCollector(server, project_id=query.pop("project_id", ""), experiment_id=query.pop("experiment_id", ""))
+    patients = collector.collect_patient_data(patient_id=patient_id)
 
     if len(patients) == 0:
         return render_error(request, f"No patient found with Patient ID {patient_id}.")
@@ -203,12 +203,12 @@ def render_patient_detail(request, server, patient_id, query):
     return render(
         request,
         "dicom_explorer/patient_detail.html",
-        {"server": server, "patient": patients[0], "studies": studies, "query": query},
+        {"server": server, "patient": patients[0], "studies": studies},
     )
 
 
 def render_study_query(request, server, query):
-    collector = DicomDataCollector(server)
+    collector = DicomDataCollector(server, project_id=query.pop("project_id", ""), experiment_id=query.pop("experiment_id", ""))
     limit = settings.DICOM_EXPLORER_RESULT_LIMIT
     studies = collector.collect_study_data(query=query, limit_results=limit)
     max_query_results = len(studies) >= limit
@@ -224,8 +224,8 @@ def render_study_query(request, server, query):
 
 
 def render_study_detail(request, server, study_uid, query):
-    collector = DicomDataCollector(server)
-    studies = collector.collect_study_data(study_uid=study_uid, query=query)
+    collector = DicomDataCollector(server, project_id=query.pop("project_id", ""), experiment_id=query.pop("experiment_id", ""))
+    studies = collector.collect_study_data(study_uid=study_uid)
 
     if len(studies) == 0:
         return render_error(
@@ -260,13 +260,12 @@ def render_study_detail(request, server, study_uid, query):
             "patient": patients[0],
             "study": studies[0],
             "series_list": series_list,
-            "query": query
         },
     )
 
 
 def render_series_query(request, server, study_uid, query):
-    collector = DicomDataCollector(server)
+    collector = DicomDataCollector(server, project_id=query.pop("project_id", ""), experiment_id=query.pop("experiment_id", ""))
     studies = collector.collect_study_data(study_uid)
 
     if len(studies) == 0:
@@ -308,8 +307,8 @@ def render_series_query(request, server, study_uid, query):
 
 
 def render_series_detail(request, server, study_uid, series_uid, query):
-    collector = DicomDataCollector(server)
-    studies = collector.collect_study_data(study_uid=study_uid, query=query)
+    collector = DicomDataCollector(server, project_id=query.pop("project_id", ""), experiment_id=query.pop("experiment_id", ""))
+    studies = collector.collect_study_data(study_uid=study_uid)
 
     if len(studies) == 0:
         return render_error(

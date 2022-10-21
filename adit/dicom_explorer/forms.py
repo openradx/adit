@@ -4,7 +4,8 @@ from crispy_forms.layout import Submit, Layout, Field, Row, Column, Div
 from crispy_forms.bootstrap import StrictButton
 
 from adit.xnat_support.forms import xnat_options_field
-from adit.core.models import DicomServer
+from adit.core.models import DicomServer, DicomNode
+from adit.core.forms import DicomNodeChoiceField
 from adit.core.validators import (
     no_backslash_char_validator,
     no_control_chars_validator,
@@ -19,8 +20,9 @@ id_validators = [
 
 
 class DicomExplorerQueryForm(forms.Form):
-    server = forms.ModelChoiceField(
-        queryset=DicomServer.objects.all(), to_field_name="ae_title"
+    source = DicomNodeChoiceField(
+        True, 
+        DicomNode.NodeType.SERVER, 
     )
     patient_id = forms.CharField(
         label="Patient ID",
@@ -50,7 +52,7 @@ class DicomExplorerQueryForm(forms.Form):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.fields["server"].widget.attrs["class"] = "custom-select"
+        self.fields["source"].widget.attrs["class"] = "custom-select"
 
         self.helper = FormHelper(self)
         self.helper.form_id = "dicom_explorer"
@@ -61,7 +63,7 @@ class DicomExplorerQueryForm(forms.Form):
         self.helper.add_input(Submit("query", "Query"))
 
         self.helper.layout = Layout(
-            Row(Column(Field("server", css_class="custom-select"))),
+            Row(Column(Field("source", css_class="custom-select"))),
             Row(
                 Column(
                     Field(

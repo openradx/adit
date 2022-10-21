@@ -41,7 +41,7 @@ class DicomNodeChoiceField(ModelChoiceField):
         elif node_type is not None:
             raise AssertionError(f"Invalid node type: {node_type}")
 
-        super().__init__(queryset=queryset, widget=DicomNodeSelect)
+        super().__init__(queryset=queryset, widget=DicomNodeSelect, to_field_name="name")
 
 
 class PageSizeSelectForm(forms.Form):

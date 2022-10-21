@@ -2,20 +2,34 @@ from datetime import datetime
 from django.conf import settings
 from adit.core.models import DicomServer
 from adit.core.utils.dicom_connector import DicomConnector
+from adit.xnat_support.utils.xnat_connector import XnatConnector
 
 
 class DicomDataCollector:
-    def __init__(self, server: DicomServer):
+    def __init__(self, server: DicomServer, project_id: str = "", experiment_id: str = ""):
         timeout = settings.DICOM_EXPLORER_RESPONSE_TIMEOUT
-        self.connector = DicomConnector(
-            server,
-            DicomConnector.Config(
-                connection_retries=1,
-                acse_timeout=timeout,
-                dimse_timeout=timeout,
-                network_timeout=timeout,
-            ),
-        )
+        if server.xnat_rest_source:
+            self.connector = XnatConnector(
+                server,
+                config = DicomConnector.Config(
+                    connection_retries=1,
+                    acse_timeout=timeout,
+                    dimse_timeout=timeout,
+                    network_timeout=timeout,
+                ),
+                project_id=project_id,
+                experiment_id=experiment_id,
+            )
+        else:
+            self.connector = DicomConnector(
+                server,
+                DicomConnector.Config(
+                    connection_retries=1,
+                    acse_timeout=timeout,
+                    dimse_timeout=timeout,
+                    network_timeout=timeout,
+                ),
+            )
 
     def collect_patient_data(self, patient_id=None, query=None, limit_results=None):
         # http://dicom.nema.org/medical/dicom/current/output/chtml/part04/sect_C.6.html#table_C.6-1

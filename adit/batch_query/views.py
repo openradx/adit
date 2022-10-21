@@ -56,7 +56,6 @@ class BatchQueryJobCreateView(DicomJobCreateView):
         form.instance.owner = user
 
         response = super().form_valid(form)
-
         job = self.object
         if user.is_staff or settings.BATCH_QUERY_UNVERIFIED:
             job.status = BatchQueryJob.Status.PENDING

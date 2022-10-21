@@ -5,7 +5,7 @@ from django.core.exceptions import ValidationError
 from django.conf import settings
 from django.utils.safestring import mark_safe
 from crispy_forms.helper import FormHelper
-from crispy_forms.layout import Submit
+from crispy_forms.layout import Submit, Layout, Field, Row, Column, Div
 import cchardet as chardet
 from adit.core.forms import DicomNodeChoiceField
 from adit.core.models import DicomNode
@@ -14,10 +14,18 @@ from adit.core.errors import BatchFileSizeError, BatchFileFormatError
 from .models import BatchQueryJob, BatchQueryTask
 from .parsers import BatchQueryFileParser
 
+from adit.xnat_support.forms import xnat_options_field
+
 
 class BatchQueryJobForm(forms.ModelForm):
-    source = DicomNodeChoiceField(True, DicomNode.NodeType.SERVER)
-    batch_file = RestrictedFileField(max_upload_size=5242880, label="Batch file")
+    source = DicomNodeChoiceField(
+        True, 
+        DicomNode.NodeType.SERVER, 
+    )
+    batch_file = RestrictedFileField(
+        max_upload_size=5242880, 
+        label="Batch file"
+    )
 
     class Meta:
         model = BatchQueryJob
@@ -27,6 +35,8 @@ class BatchQueryJobForm(forms.ModelForm):
             "project_name",
             "project_description",
             "batch_file",
+            "project_id",
+            "experiment_id",
         )
         labels = {
             "urgent": "Start query urgently",
@@ -68,6 +78,46 @@ class BatchQueryJobForm(forms.ModelForm):
 
         self.helper = FormHelper(self)
         self.helper.add_input(Submit("save", "Create Job"))
+
+        self.helper.layout = Layout(
+            Row(
+                Column(
+                    Field(
+                        "source", 
+                        css_class="custom-select"
+                    )
+                )
+            ),
+            Row(
+                Column(
+                    Field(
+                        "urgent",
+                    )
+                )
+            ),
+            Row(
+                Column(
+                    Field(
+                        "project_name",
+                    )
+                )
+            ),
+            Row(
+                Column(
+                    Field(
+                        "project_description",
+                    )
+                )
+            ),
+            Row(
+                Column(
+                    Field(
+                        "batch_file",
+                    )
+                )
+            ),
+            xnat_options_field(["project_id", "experiment_id"]),
+        )
 
     def clean_batch_file(self):
         batch_file = self.cleaned_data["batch_file"]
