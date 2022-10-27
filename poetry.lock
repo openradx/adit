@@ -546,13 +546,20 @@ description = "Yet another Django reverse proxy application."
 category = "main"
 optional = false
 python-versions = "*"
+develop = false
 
 [package.dependencies]
 django = ">=1.7"
 urllib3 = ">=1.12"
 
 [package.extras]
-diazo = ["lxml (>=3.4)", "diazo (>=1.0.5)"]
+diazo = ["diazo (>=1.0.5)", "lxml (>=3.4)"]
+
+[package.source]
+type = "git"
+url = "https://github.com/jazzband/django-revproxy.git"
+reference = "master"
+resolved_reference = "9517fc26120e93e1a947f55b9dc571e68178efc0"
 
 [[package]]
 name = "django-tables2"
@@ -1628,7 +1635,7 @@ testing = ["coverage (>=5.0.3)", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.9"
-content-hash = "5aae178cb28e0c2c161afe695141a2b0db1028ae773a842ab0574597db9f3f6e"
+content-hash = "c1b72daf7f32704230f376f7d6b95e2892015c0badf8e9f29ac153bcdaa59778"
 
 [metadata.files]
 amqp = []

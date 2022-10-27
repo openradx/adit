@@ -18,7 +18,6 @@
 - c-get download timeout
 - Choice to transfer all modalities of a studies or just the modalities which were searched for
 - Make logging analyze Docker image with: http://crunchtools.com/software/petit/, less, vim, https://crypt.gen.nz/logsurfer/, ripgrep
-- Get Flower running again
 - Evaluate (0008, 0056) Instance Availability CS: 'OFFLINE' ( (ONLINE, NEARLINE, OFFLINE, UNAVAILABLE)), see https://www.gehealthcare.com/-/jssmedia/1b62d771fb604ff7a4c8012498aea68b.pdf?la=en-us
 
 # Features
@@ -52,3 +51,8 @@
 - Use LRU cache for dicom explorer / collector (don't we already do this?!)
 - log debug -> info in connector also in production
 - Link owner in templates to user profile
+- Look out for a django-revproxy fix (see https://github.com/jazzband/django-revproxy/issues/144)
+  -- Flower is running behind a Django internal reverse proxy (django-revproxy) so that only admins can access it
+  -- Unfortunately the last released django-revproxy is broken with latest Django
+  -- So we use the master branch here directly from Github (see pyproject.toml)
+  -- Alternatively we could use https://github.com/thomasw/djproxy

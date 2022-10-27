@@ -18,7 +18,7 @@ django-extensions = "^3.1.5"
 django-filter = "^22.1"
 django-loginas = "^0.3.9"
 django-registration-redux = "^2.10"
-django-revproxy = "^0.10.0"
+django-revproxy = {git = "https://github.com/jazzband/django-revproxy.git"}
 django-tables2 = "^2.3.3"
 djangorestframework = "^3.13.1"
 flower = "^1.0.0"

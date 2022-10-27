@@ -71,12 +71,11 @@ services:
             - "11122:11112"
         command: python manage.py receiver
 
-    # TODO: Disable Flower 1.0.0 for now as it is not fully compatible with Celery 5
-    # flower:
-    #     <<: *default-app
-    #     expose:
-    #         - "5555"
-    #     command: celery -A adit flower --url_prefix=flower
+    flower:
+        <<: *default-app
+        expose:
+            - "5555"
+        command: celery --broker=amqp://rabbit/ flower --url_prefix=flower
 
     postgres:
         image: postgres:13.1
