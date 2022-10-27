@@ -75,19 +75,19 @@ class ServerCommand(BaseCommand):
             m = re.match(naiveip_re, options["addrport"])
             if m is None:
                 raise CommandError(
-                    '"%s" is not a valid port number '
-                    "or address:port pair." % options["addrport"]
+                    f'"{options["addrport"]}" is not a valid port number '
+                    "or address:port pair."
                 )
             self.addr, _ipv4, _ipv6, _fqdn, self.port = m.groups()
             if not self.port.isdigit():
-                raise CommandError("%r is not a valid port number." % self.port)
+                raise CommandError(f"{self.port} is not a valid port number.")
             if self.addr:
                 if _ipv6:
                     self.addr = self.addr[1:-1]
                     self.use_ipv6 = True
                     self._raw_ipv6 = True
                 elif self.use_ipv6 and not _fqdn:
-                    raise CommandError('"%s" is not a valid IPv6 address.' % self.addr)
+                    raise CommandError(f'"{self.addr}" is not a valid IPv6 address.')
         if not self.addr:
             self.addr = self.default_addr_ipv6 if self.use_ipv6 else self.default_addr
             self._raw_ipv6 = self.use_ipv6
@@ -116,7 +116,7 @@ class ServerCommand(BaseCommand):
                 error_text = ERRORS[e.errno]
             except KeyError:
                 error_text = e
-            self.stderr.write("Error: %s" % error_text)
+            self.stderr.write(f"Error: {error_text}")
             # Need to use an OS exit because sys.exit doesn't work in a thread
             os._exit(1)  # pylint: disable=protected-access
         except KeyboardInterrupt:
@@ -143,7 +143,7 @@ class ServerCommand(BaseCommand):
                 % {
                     "name": self.server_name,
                     "protocol": self.protocol,
-                    "addr": "[%s]" % self.addr if self._raw_ipv6 else self.addr,
+                    "addr": f"[{self.addr if self._raw_ipv6 else self.addr}]",
                     "port": self.port,
                     "quit_command": self.quit_command,
                 }
