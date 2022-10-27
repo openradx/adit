@@ -2,9 +2,6 @@
   "editor.formatOnSave": true,
   "python.formatting.provider": "black",
   "python.linting.prospectorEnabled": true,
-  "python.linting.pylintArgs": [
-    "--django-settings-module=adit.settings.development"
-  ],
   "python.testing.pytestEnabled": true,
   "python.testing.pytestArgs": ["adit"],
   "python.testing.unittestEnabled": false

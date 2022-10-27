@@ -1291,6 +1291,18 @@ python-versions = ">=3.6.2"
 pylint = ">=1.7"
 
 [[package]]
+name = "pylint-pytest"
+version = "1.1.2"
+description = "A Pylint plugin to suppress pytest-related false positives."
+category = "dev"
+optional = false
+python-versions = ">=3.6"
+
+[package.dependencies]
+pylint = "*"
+pytest = ">=4.6"
+
+[[package]]
 name = "pynetdicom"
 version = "2.0.2"
 description = "A Python implementation of the DICOM networking protocol"
@@ -1786,7 +1798,7 @@ testing = ["coverage (>=5.0.3)", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.9"
-content-hash = "690a0db4873ddf679c84f53690e38a69c308ddf18c85854e1924c201d916d0a7"
+content-hash = "24aad6d1bfb9a1a5c7db1568dab4fcc8aa330ba8087e0a7f322765fdf082a0c7"
 
 [metadata.files]
 amqp = []
@@ -1893,6 +1905,7 @@ pylint-celery = []
 pylint-django = []
 pylint-flask = []
 pylint-plugin-utils = []
+pylint-pytest = []
 pynetdicom = []
 pyopenssl = []
 pyparsing = []
