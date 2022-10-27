@@ -27,7 +27,7 @@ class ServerCommand(BaseCommand):
     """
 
     # Validation is called explicitly each time the server is reloaded.
-    requires_system_checks = False
+    requires_system_checks = "__all__"
 
     autoreload = False
     starting_message = True
