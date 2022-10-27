@@ -52,7 +52,7 @@
 - log debug -> info in connector also in production
 - Link owner in templates to user profile
 - Look out for a django-revproxy fix (see https://github.com/jazzband/django-revproxy/issues/144)
-  -- Flower is running behind a Django internal reverse proxy (django-revproxy) so that only admins can access it
+  -- Flower and Rabbit Management Console are running behind a Django internal reverse proxy (django-revproxy) so that only admins can access them
   -- Unfortunately the last released django-revproxy is broken with latest Django
   -- So we use the master branch here directly from Github (see pyproject.toml)
   -- Alternatively we could use https://github.com/thomasw/djproxy
