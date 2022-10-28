@@ -1,8 +1,6 @@
 from unittest.mock import patch
 import pytest
-from pytest_django.asserts import (  # pylint: disable=no-name-in-module
-    assertTemplateUsed,
-)
+from pytest_django.asserts import assertTemplateUsed
 from django.contrib.auth.models import Group
 from django.urls import reverse
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -69,28 +67,30 @@ def test_logged_in_user_with_permission_can_access_form(client, user_with_permis
     assertTemplateUsed(response, "batch_transfer/batch_transfer_job_form.html")
 
 
-@patch("adit.batch_transfer.tasks.process_batch_transfer_job.delay")
+@patch("celery.current_app.send_task")
 def test_batch_job_created_and_enqueued_with_auto_verify(
-    delay_mock, client, user_with_permission, settings, form_data
+    send_task_mock, client, user_with_permission, settings, form_data
 ):
     client.force_login(user_with_permission)
     settings.BATCH_TRANSFER_UNVERIFIED = True
     client.post(reverse("batch_transfer_job_create"), form_data)
     job = BatchTransferJob.objects.first()
     assert job.tasks.count() == 3
-    delay_mock.assert_called_once_with(job.id)
+    send_task_mock.assert_called_once_with(
+        "adit.selective_transfer.tasks.ProcessBatchTransferJob", (1,)
+    )
 
 
-@patch("adit.batch_transfer.tasks.process_batch_transfer_job.delay")
+@patch("celery.current_app.send_task")
 def test_batch_job_created_and_not_enqueued_without_auto_verify(
-    delay_mock, client, user_with_permission, settings, form_data
+    send_task_mock, client, user_with_permission, settings, form_data
 ):
     client.force_login(user_with_permission)
     settings.BATCH_TRANSFER_UNVERIFIED = False
     client.post(reverse("batch_transfer_job_create"), form_data)
     job = BatchTransferJob.objects.first()
     assert job.tasks.count() == 3
-    delay_mock.assert_not_called()
+    send_task_mock.assert_not_called()
 
 
 def test_job_cant_be_created_with_missing_fields(

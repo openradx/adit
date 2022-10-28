@@ -3,7 +3,7 @@ import pytest
 from pydicom.dataset import Dataset
 from pynetdicom import Association
 from pynetdicom.status import Status
-from pynetdicom.sop_class import (  # pylint: disable-msg=no-name-in-module
+from pynetdicom.sop_class import (
     PatientRootQueryRetrieveInformationModelFind,
     StudyRootQueryRetrieveInformationModelFind,
 )

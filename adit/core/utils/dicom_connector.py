@@ -46,7 +46,7 @@ from pynetdicom import (
     evt,
     debug_logger,
 )
-from pynetdicom.ae import ApplicationEntity
+from pynetdicom.ae import ApplicationEntity as AE  # noqa: N817
 from pynetdicom.presentation import (
     build_role,
     BasicWorklistManagementPresentationContexts,
@@ -456,7 +456,7 @@ class DicomConnector:
         return sorted(list(modalities))
 
     def _associate(self, command: Literal["find", "get", "move", "store"]):
-        ae = ApplicationEntity(settings.ADIT_AE_TITLE)
+        ae = AE(settings.ADIT_AE_TITLE)
 
         # We only use the timeouts if set, otherwise we leave the default timeouts
         if self.config.acse_timeout is not None:
