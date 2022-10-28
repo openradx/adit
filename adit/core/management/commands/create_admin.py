@@ -1,6 +1,6 @@
 import os
 from django.core.management.base import BaseCommand
-from adit.accounts.models import User  # pylint: disable=import-error
+from adit.accounts.models import User
 
 
 class Command(BaseCommand):

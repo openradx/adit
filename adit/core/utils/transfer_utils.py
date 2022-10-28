@@ -381,6 +381,8 @@ def _add_to_archive(
         archive_path,
         path_to_add,
     ]
+
+    # pylint: disable=consider-using-with
     proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL)
     proc.wait()
     (_, stderr) = proc.communicate()

@@ -1,4 +1,5 @@
 from datetime import datetime
+from celery import current_app
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.urls import reverse
@@ -21,10 +22,9 @@ class BatchQueryJob(DicomJob):
     project_description = models.TextField(max_length=2000)
 
     def delay(self):
-        # pylint: disable=import-outside-toplevel
-        from .tasks import process_batch_query_job
-
-        process_batch_query_job.delay(self.id)
+        current_app.send_task(
+            "adit.selective_transfer.tasks.ProcessBatchQueryJob", (self.id,)
+        )
 
     def get_absolute_url(self):
         return reverse("batch_query_job_detail", args=[str(self.id)])

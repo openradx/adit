@@ -67,6 +67,7 @@ class Command(ServerCommand):
             }
         )
 
+        # pylint: disable=consider-using-with
         self.worker_process = subprocess.Popen(shlex.split(cmd))
         self.worker_process.wait()
 

@@ -28,8 +28,8 @@ class RestrictedFileField(forms.FileField):
 
         if file.size > self.max_upload_size:
             raise forms.ValidationError(
-                "File too large. Please keep filesize under %s."
-                % (filesizeformat(self.max_upload_size))
+                "File too large. Please keep filesize "
+                f"under {filesizeformat(self.max_upload_size)}."
             )
 
         return file

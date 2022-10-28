@@ -37,7 +37,7 @@ def collect_job_stats():
     }
 
 
-def init_db(**kwargs):  # pylint: disable=unused-argument
+def init_db(**kwargs):
     create_group()
     create_app_settings()
 

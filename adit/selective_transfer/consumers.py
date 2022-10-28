@@ -54,7 +54,6 @@ class SelectiveTransferConsumer(
     async def connect(self):
         logger.debug("Connected to WebSocket client.")
 
-        # pylint: disable=attribute-defined-outside-init
         self.user = self.scope["user"]
         self.query_connectors = []
         self.current_message_id = 0

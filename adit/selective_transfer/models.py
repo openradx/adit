@@ -1,3 +1,4 @@
+from celery import current_app
 from django.db import models
 from django.urls import reverse
 from adit.core.models import AppSettings, TransferJob, TransferTask
@@ -10,10 +11,9 @@ class SelectiveTransferSettings(AppSettings):
 
 class SelectiveTransferJob(TransferJob):
     def delay(self):
-        # pylint: disable=import-outside-toplevel
-        from .tasks import process_selective_transfer_job
-
-        process_selective_transfer_job.delay(self.id)
+        current_app.send_task(
+            "adit.selective_transfer.tasks.ProcessSelectiveTransferJob", (self.id,)
+        )
 
     def get_absolute_url(self):
         return reverse("selective_transfer_job_detail", args=[self.id])

@@ -10,7 +10,6 @@ class BatchTaskListSerializer(
         super().__init__(*args, **kwargs)
 
     def get_tasks(self):
-        # pylint: disable=not-callable
         return [self.model(**item) for item in self.validated_data]
 
 

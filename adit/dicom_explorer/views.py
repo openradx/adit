@@ -42,7 +42,7 @@ def dicom_explorer_form_view(request):
             params["PatientID"] = patient_id
 
         url = reverse("dicom_explorer_patient_query")
-        url = "%s?%s" % (url, urlencode(params))
+        url = f"{url}?{urlencode(params)}"
         return redirect(url)
 
     # Should never happen as we validate the form

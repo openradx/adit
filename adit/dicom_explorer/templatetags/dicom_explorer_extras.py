@@ -53,6 +53,6 @@ def explorer_url(
         raise ValueError("Invalid DICOM explorer query.")
 
     if params:
-        return "%s?%s" % (resource_url, urlencode(params))
+        return f"{resource_url}?{urlencode(params)}"
 
     return resource_url

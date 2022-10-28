@@ -20,7 +20,7 @@ def register_app():
     )
 
 
-def init_db(**kwargs):  # pylint: disable=unused-argument
+def init_db(**kwargs):
     # pylint: disable=import-outside-toplevel
     from adit.accounts.utils import create_group_with_permissions
 

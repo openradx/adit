@@ -85,7 +85,7 @@ class RelatedFilterMixin(FilterMixin):
         return context
 
 
-class PageSizeSelectMixin:  # pylint: disable=too-few-public-methods
+class PageSizeSelectMixin:
     """A mixin to show a page size selector.
 
     Must be placed after the SingleTableMixin as it sets self.paginated_by
@@ -98,8 +98,8 @@ class PageSizeSelectMixin:  # pylint: disable=too-few-public-methods
             per_page = int(self.request.GET.get("per_page", 50))
         except ValueError:
             per_page = 50
-        if per_page > 1000:
-            per_page = 1000
+
+        per_page = min(per_page, 1000)
         self.paginate_by = per_page  # Used by django_tables2
 
         context["page_size_select"] = PageSizeSelectForm(
@@ -145,8 +145,8 @@ class InlineFormSetMixin:
             for form in form_or_formset.forms:
                 self.clear_errors(form)
 
-    def post(self, request, *args, **kwargs):  # pylint: disable=unused-argument
-        self.object = None  # pylint: disable=attribute-defined-outside-init
+    def post(self, request, *args, **kwargs):
+        self.object = None
 
         form = self.get_form()
 

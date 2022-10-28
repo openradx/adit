@@ -150,7 +150,7 @@ class BatchQueryResultDownloadView(
 ):
     model = BatchQueryJob
 
-    def get(self, request, *args, **kwargs):  # pylint: disable=unused-argument
+    def get(self, request, *args, **kwargs):
         job = self.get_object()
         file = StringIO()
         export_results(job, file)

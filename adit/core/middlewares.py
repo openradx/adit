@@ -11,7 +11,7 @@ def is_html_response(response):
     return response["Content-Type"].startswith("text/html")
 
 
-class MaintenanceMiddleware:  # pylint: disable=too-few-public-methods
+class MaintenanceMiddleware:
     """Render a maintenance template if in maintenance mode.
 
     Adapted from http://blog.ankitjaiswal.tech/put-your-django-site-on-maintenanceoffline-mode/
@@ -43,7 +43,7 @@ class MaintenanceMiddleware:  # pylint: disable=too-few-public-methods
         return response
 
 
-class TimezoneMiddleware:  # pylint: disable=too-few-public-methods
+class TimezoneMiddleware:
     def __init__(self, get_response):
         self.get_response = get_response
 

@@ -21,9 +21,13 @@ if sys.argv and ("test" in sys.argv or "pytest" in sys.argv[0]):
 
 EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 
-INSTALLED_APPS += ["debug_toolbar", "debug_permissions", "django_extensions"]
+INSTALLED_APPS += [  # noqa: F405
+    "debug_toolbar",
+    "debug_permissions",
+    "django_extensions",
+]
 
-MIDDLEWARE += ["debug_toolbar.middleware.DebugToolbarMiddleware"]
+MIDDLEWARE += ["debug_toolbar.middleware.DebugToolbarMiddleware"]  # noqa: f405
 
 DEBUG_TOOLBAR_PANELS = [
     "debug_toolbar.panels.versions.VersionsPanel",
@@ -51,8 +55,8 @@ DICOM_DEBUG_LOGGER = False
 
 INTERNAL_IPS = env.list("DJANGO_INTERNAL_IPS", default=["127.0.0.1"])
 
-LOGGING["loggers"]["adit"]["level"] = "DEBUG"
-LOGGING["loggers"]["celery"]["level"] = "DEBUG"
+LOGGING["loggers"]["adit"]["level"] = "DEBUG"  # noqa: F405
+LOGGING["loggers"]["celery"]["level"] = "DEBUG"  # noqa: F405
 
 if env.bool("USE_DOCKER", default=False):
     import socket

@@ -1,11 +1,7 @@
 import factory
 from faker import Faker
-from adit.core.factories import (
-    DicomJobFactory,
-    DicomTaskFactory,
-)
-from .models import BatchQueryJob, BatchQueryTask, BatchQueryResult
-
+from adit.core.factories import DicomJobFactory, DicomTaskFactory
+from .models import BatchQueryJob, BatchQueryResult, BatchQueryTask
 
 fake = Faker()
 
@@ -60,4 +56,3 @@ class BatchQueryResultFactory(factory.django.DjangoModelFactory):
     series_uid = factory.Faker("uuid4")
     series_description = factory.Faker("street_name")
     series_number = factory.Faker("ean")
-

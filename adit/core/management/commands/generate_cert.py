@@ -8,7 +8,7 @@ from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
-from adit.settings.base import env  # pylint: disable=import-error
+from adit.settings.base import env
 
 
 def generate_selfsigned_cert(hostname, ip_addresses=None, key=None):

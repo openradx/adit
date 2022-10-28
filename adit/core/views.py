@@ -83,7 +83,7 @@ class HomeView(TemplateView):
         return context
 
 
-class DicomJobListView(  # pylint: disable=too-many-ancestors
+class DicomJobListView(
     LoginRequiredMixin, SingleTableMixin, PageSizeSelectMixin, FilterView
 ):
     model = None
@@ -157,7 +157,7 @@ class DicomJobVerifyView(
     model = None
     success_message = "Job with ID %(id)d was verified"
 
-    def post(self, request, *args, **kwargs):  # pylint: disable=unused-argument
+    def post(self, request, *args, **kwargs):
         job = self.get_object()
         if job.is_verified:
             raise SuspiciousOperation(
@@ -179,7 +179,7 @@ class DicomJobCancelView(
     model = None
     success_message = "Job with ID %(id)d was canceled"
 
-    def post(self, request, *args, **kwargs):  # pylint: disable=unused-argument
+    def post(self, request, *args, **kwargs):
         job = self.get_object()
         if not job.is_cancelable:
             raise SuspiciousOperation(
@@ -215,7 +215,7 @@ class DicomJobResumeView(
     model = None
     success_message = "Job with ID %(id)d will be resumed"
 
-    def post(self, request, *args, **kwargs):  # pylint: disable=unused-argument
+    def post(self, request, *args, **kwargs):
         job = self.get_object()
         if not job.is_resumable:
             raise SuspiciousOperation(
@@ -241,7 +241,7 @@ class DicomJobRetryView(
     model = None
     success_message = "Job with ID %(id)d will be retried"
 
-    def post(self, request, *args, **kwargs):  # pylint: disable=unused-argument
+    def post(self, request, *args, **kwargs):
         job = self.get_object()
         if not job.is_retriable:
             raise SuspiciousOperation(
@@ -272,7 +272,7 @@ class DicomJobRestartView(
     model = None
     success_message = "Job with ID %(id)d will be restarted"
 
-    def post(self, request, *args, **kwargs):  # pylint: disable=unused-argument
+    def post(self, request, *args, **kwargs):
         job = self.get_object()
         if not request.user.is_staff or not job.is_restartable:
             raise SuspiciousOperation(
@@ -315,8 +315,8 @@ class DicomTaskDetailView(LoginRequiredMixin, OwnerRequiredMixin, DetailView):
 
         if job_id is None or task_id is None:
             raise AttributeError(
-                "Dicom task detail view %s must be called with a job_id "
-                "and a task_id in the URLconf." % self.__class__.__name__
+                f"Dicom task detail view {self.__class__.__name__} must "
+                "be called with a job_id and a task_id in the URLconf."
             )
 
         queryset = queryset.filter(job_id=job_id, task_id=task_id)
@@ -325,8 +325,7 @@ class DicomTaskDetailView(LoginRequiredMixin, OwnerRequiredMixin, DetailView):
             obj = queryset.get()
         except queryset.model.DoesNotExist as err:
             raise Http404(
-                "No %(verbose_name)s found matching the query"
-                % {"verbose_name": queryset.model._meta.verbose_name}
+                f"No {queryset.model._meta.verbose_name} found matching the query"
             ) from err
         return obj
 
@@ -344,16 +343,16 @@ class FlowerProxyView(UserPassesTestMixin, ProxyView):
     Code from https://stackoverflow.com/a/61997024/166229
     """
 
-    upstream = "http://{}:{}".format(settings.FLOWER_HOST, settings.FLOWER_PORT)
+    upstream = f"http://{settings.FLOWER_HOST}:{settings.FLOWER_PORT}"
     url_prefix = "flower"
-    rewrite = ((r"^/{}$".format(url_prefix), r"/{}/".format(url_prefix)),)
+    rewrite = ((rf"^/{url_prefix}$", rf"/{url_prefix}/"),)
 
     def test_func(self):
         return self.request.user.is_staff
 
     @classmethod
     def as_url(cls):
-        return re_path(r"^(?P<path>{}.*)$".format(cls.url_prefix), cls.as_view())
+        return re_path(rf"^(?P<path>{cls.url_prefix}.*)$", cls.as_view())
 
 
 class RabbitManagementProxyView(UserPassesTestMixin, ProxyView):
@@ -364,15 +363,15 @@ class RabbitManagementProxyView(UserPassesTestMixin, ProxyView):
     Code from https://stackoverflow.com/a/61997024/166229
     """
 
-    upstream = "http://{}:{}".format(
-        settings.RABBIT_MANAGEMENT_HOST, settings.RABBIT_MANAGEMENT_PORT
+    upstream = (
+        f"http://{settings.RABBIT_MANAGEMENT_HOST}:{settings.RABBIT_MANAGEMENT_PORT}"
     )
     url_prefix = "rabbit"
-    rewrite = ((r"^/{}$".format(url_prefix), r"/"),)
+    rewrite = ((rf"^/{url_prefix}$", r"/"),)
 
     def test_func(self):
         return self.request.user.is_staff
 
     @classmethod
     def as_url(cls):
-        return re_path(r"^{}/(?P<path>.*)$".format(cls.url_prefix), cls.as_view())
+        return re_path(rf"^{cls.url_prefix}/(?P<path>.*)$", cls.as_view())

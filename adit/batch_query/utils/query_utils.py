@@ -31,9 +31,10 @@ class QueryExecutor:
     ) -> None:
         self.query_task = query_task
         self.celery_task = celery_task
-        
+
         self.connector = _create_source_connector(query_task)
 
+    # pylint: disable=too-many-branches
     def start(self) -> BatchQueryTask.Status:
         if self.query_task.status == BatchQueryTask.Status.CANCELED:
             return self.query_task.status
@@ -46,6 +47,7 @@ class QueryExecutor:
 
         handler, stream = hijack_logger(logger)
 
+        # pylint: disable=too-many-nested-blocks
         try:
             patients = self._fetch_patients()
 
@@ -57,7 +59,10 @@ class QueryExecutor:
                 for patient in patients:
                     studies = self._query_studies(patient["PatientID"])
                     if studies:
-                        if self.query_task.series_description or self.query_task.series_number:
+                        if (
+                            self.query_task.series_description
+                            or self.query_task.series_number
+                        ):
                             for study in studies:
                                 series = self._query_series(study)
                                 all_studies.append(series)
@@ -137,7 +142,7 @@ class QueryExecutor:
             modalities = [
                 modality
                 for modality in self.query_task.modalities
-                if not modality in settings.EXCLUDE_MODALITIES
+                if modality not in settings.EXCLUDE_MODALITIES
             ]
 
         studies = self.connector.find_studies(

@@ -71,7 +71,7 @@ class DicomNode(models.Model):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         if not self.node_type:
-            if not self.NODE_TYPE in dict(self.NodeType.choices):
+            if self.NODE_TYPE not in dict(self.NodeType.choices):
                 raise AssertionError(f"Invalid node type: {self.NODE_TYPE}")
             self.node_type = self.NODE_TYPE
 

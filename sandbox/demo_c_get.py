@@ -1,7 +1,6 @@
 from pydicom.dataset import Dataset
 from pynetdicom import AE, evt, build_role, debug_logger
 
-# pylint: disable=no-name-in-module
 from pynetdicom.sop_class import (
     PatientRootQueryRetrieveInformationModelGet,
     EncapsulatedSTLStorage,
@@ -67,7 +66,7 @@ if assoc.is_established:
     responses = assoc.send_c_get(ds, PatientRootQueryRetrieveInformationModelGet)
     for (status, identifier) in responses:
         if status:
-            print("C-GET query status: 0x{0:04x}".format(status.Status))
+            print(f"C-GET query status: 0x{status.Status:04x}")
         else:
             print("Connection timed out, was aborted or received invalid response")
 

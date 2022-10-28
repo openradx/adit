@@ -23,7 +23,7 @@ from celery.signals import setup_logging  # pylint: disable=wrong-import-positio
 
 
 @setup_logging.connect
-def config_loggers(*args, **kwargs):  # pylint: disable=unused-argument
+def config_loggers(*args, **kwargs):
     from logging.config import dictConfig  # pylint: disable=import-outside-toplevel
     from django.conf import settings  # pylint: disable=import-outside-toplevel
 

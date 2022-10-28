@@ -18,7 +18,7 @@ class TransferTaskSerializer(serializers.ModelSerializer):
         self.max_series_count = max_series_count
         super().__init__(instance=instance, data=data, **kwargs)
 
-    def validate_series_uids(self, series_uids):  # pylint: disable=no-self-use
+    def validate_series_uids(self, series_uids):
         # TODO validate the series UID itself
         if len(series_uids) > self.max_series_count:
             raise serializers.ValidationError(

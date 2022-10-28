@@ -46,7 +46,7 @@ from pynetdicom import (
     evt,
     debug_logger,
 )
-from pynetdicom.ae import ApplicationEntity as AE
+from pynetdicom.ae import ApplicationEntity
 from pynetdicom.presentation import (
     build_role,
     BasicWorklistManagementPresentationContexts,
@@ -58,8 +58,6 @@ from pynetdicom.status import (
     STATUS_PENDING,  # type: ignore
     STATUS_SUCCESS,  # type: ignore
 )
-
-# pylint: disable=no-name-in-module
 from pynetdicom.sop_class import (
     PatientRootQueryRetrieveInformationModelFind,  # type: ignore
     PatientRootQueryRetrieveInformationModelGet,  # type: ignore
@@ -71,7 +69,6 @@ from pynetdicom.sop_class import (
     EncapsulatedOBJStorage,  # type: ignore
     EncapsulatedMTLStorage,  # type: ignore
 )
-
 from ..models import DicomServer
 from ..errors import RetriableTaskError
 from ..utils.sanitize import sanitize_dirname
@@ -188,7 +185,6 @@ class DicomConnector:
             limit_results=limit_results,
         )
 
-
         # Make patients unique, since querying on study level will return all studies for one patient,
         # resulting in duplicate patients
         if query["QueryRetrieveLevel"] == "STUDY":
@@ -219,7 +215,7 @@ class DicomConnector:
     def find_studies(self, query: dict[str, Any], limit_results: Optional[int] = None):
         query["QueryRetrieveLevel"] = "STUDY"
 
-        if not "NumberOfStudyRelatedInstances" in query:
+        if "NumberOfStudyRelatedInstances" not in query:
             query["NumberOfStudyRelatedInstances"] = ""
 
         studies = self._send_c_find(
@@ -324,7 +320,7 @@ class DicomConnector:
 
         logger.debug("Successfully downloaded study %s.", study_uid)
 
-    def download_series(
+    def download_series(  # pylint: disable=too-many-arguments
         self,
         patient_id: str,
         study_uid: str,
@@ -460,7 +456,7 @@ class DicomConnector:
         return sorted(list(modalities))
 
     def _associate(self, command: Literal["find", "get", "move", "store"]):
-        ae = AE(settings.ADIT_AE_TITLE)
+        ae = ApplicationEntity(settings.ADIT_AE_TITLE)
 
         # We only use the timeouts if set, otherwise we leave the default timeouts
         if self.config.acse_timeout is not None:
@@ -547,7 +543,7 @@ class DicomConnector:
         return _extract_pending_data(results)
 
     @connect_to_server("get")
-    def _send_c_get(  # pylint: disable=too-many-arguments
+    def _send_c_get(
         self,
         query_dict: dict[str, Any],
         folder: Path,
@@ -714,8 +710,6 @@ class DicomConnector:
                 )
         return results
 
-    # TODO remove pylint disable, see https://github.com/PyCQA/pylint/issues/3882
-    # pylint: disable=unsubscriptable-object
     def _filter_studies_by_modalities(
         self, studies: List[Dict[str, Any]], query_modalities: Union[str, List[str]]
     ) -> List[Dict[str, Any]]:
@@ -918,7 +912,7 @@ class DicomConnector:
 
 
 def _check_required_id(value: str) -> Union[str, None]:
-    if value and not "*" in value and not "?" in value:
+    if value and "*" not in value and "?" not in value:
         return value
     return None
 
@@ -936,7 +930,7 @@ def _dictify_dataset(ds: Dataset):
 
     Adapted from https://github.com/pydicom/pydicom/issues/319
     """
-    output = dict()
+    output = {}
 
     for elem in ds:
         # We only use non private tags as keywords may not be unique when
