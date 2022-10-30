@@ -27,7 +27,7 @@ jobs:
         run: cp example.env compose/adit_dev/.env
 
       - name: Start Docker containers
-        run: docker-compose -p adit_ci -f "compose/adit_dev/docker-compose.dev.yml" up -d --build
+        run: docker-compose -p adit_ci -f "compose/adit_dev/docker-compose.dev.yml" up -d
 
       - name: Run linting with prospector
         run: docker-compose -p adit_ci -f "compose/adit_dev/docker-compose.dev.yml" exec -T web python -m prospector
