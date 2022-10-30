@@ -21,6 +21,7 @@ x-app:
     environment:
         ENABLE_REMOTE_DEBUGGING: 0
         USE_DOCKER: 1
+        ADIT_FULLSTACK: 1
         DJANGO_SETTINGS_MODULE: "adit.settings.development"
         DATABASE_URL: "psql://postgres:postgres@postgres:5432/postgres"
         RABBITMQ_URL: "amqp://rabbit"

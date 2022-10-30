@@ -34,6 +34,8 @@ BASE_URL = env.str("BASE_URL", default="")
 
 SITE_ID = 1
 
+ADIT_FULLSTACK = env.bool("ADIT_FULLSTACK", default=False)
+
 # Used by our custom migration adit.core.migrations.0002_UPDATE_SITE_NAME
 # to set the domain and name of the sites framework
 ADIT_SITE_DOMAIN = env.str("ADIT_SITE_DOMAIN", default="adit.org")

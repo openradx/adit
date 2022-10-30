@@ -1,7 +1,6 @@
-from django.conf import settings
 import pytest
 import redis
-from adit.core.tests.helpers import is_fullstack
+from django.conf import settings
 from adit.core.utils.redis_lru import redis_lru
 
 
@@ -11,7 +10,7 @@ def redis_client():
     return redis.Redis.from_url(redis_url)
 
 
-@pytest.mark.skipif(not is_fullstack(), reason="Needs a running Redis server.")
+@pytest.mark.skipif(not settings.ADIT_FULLSTACK, reason="Needs a running Redis server.")
 def test_lru_caches_successfully(redis_client):
     times_called = [0]
 
@@ -40,7 +39,7 @@ def test_lru_caches_successfully(redis_client):
     func.clear()
 
 
-@pytest.mark.skipif(not is_fullstack(), reason="Needs a running Redis server.")
+@pytest.mark.skipif(not settings.ADIT_FULLSTACK, reason="Needs a running Redis server.")
 def test_lru_caches_successfully_with_slicer(redis_client):
     times_called = [0]
 

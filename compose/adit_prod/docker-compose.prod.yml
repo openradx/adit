@@ -18,6 +18,7 @@ x-app:
         - ./.env
     environment:
         USE_DOCKER: 1
+        ADIT_FULLSTACK: 1
         DJANGO_SETTINGS_MODULE: "adit.settings.production"
         DATABASE_URL: "psql://postgres:postgres@postgres:5432/postgres"
         RABBITMQ_URL: "amqp://rabbit"
