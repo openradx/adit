@@ -1,5 +1,10 @@
 #!/usr/bin/env bash
 
+if [[ ! -z `docker-compose ls | grep "adit_dev\s*running"` ]]; then
+    echo "'adit_dev' containers must not be running when using this script."
+    exit 1
+fi
+
 scripts_path=$( cd "$(dirname "${BASH_SOURCE[0]}")" ; pwd -P )
 project_path=$( realpath "$scripts_path/.." )
 act_path="$project_path/bin/act"
