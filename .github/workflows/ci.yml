@@ -20,8 +20,12 @@ jobs:
         with:
           context: .
           load: true
+          tags: adit_ci_web:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - name: Debug images
+        run: docker image ls
 
       - name: Configure environment
         run: cp example.env compose/adit_dev/.env
