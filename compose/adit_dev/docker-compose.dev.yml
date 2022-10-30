@@ -6,6 +6,9 @@ x-app:
         context: ../..
         target: development
     image: adit_dev:latest
+    volumes:
+        - ../..:/app
+        - /mnt:/mnt
     depends_on:
         - syslog
         - postgres
@@ -56,36 +59,26 @@ services:
 
     worker_default:
         <<: *default-app
-        volumes:
-            - ../..:/app
         command: python manage.py celery_worker -Q default_queue
 
     worker_dicom_task:
         <<: *default-app
-        volumes:
-            - ../..:/app
         command: python manage.py celery_worker -Q dicom_task_queue
 
     celery_beat:
         <<: *default-app
-        volumes:
-            - ../..:/app
         command: python manage.py celery_beat
 
     receiver:
         <<: *default-app
         ports:
             - "11122:11112"
-        volumes:
-            - ../..:/app
         command: python manage.py receiver
 
     flower:
         <<: *default-app
         expose:
             - "5555"
-        volumes:
-            - ../..:/app
         command: celery --broker=amqp://rabbit/ flower --url_prefix=flower
 
     postgres:
