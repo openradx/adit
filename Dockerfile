@@ -64,7 +64,10 @@ COPY --from=builder-base $PYSETUP_PATH $PYSETUP_PATH
 # quicker install as runtime deps are already installed
 RUN poetry install
 
-# Required folder for ADIT
+# Install requirements for end-to-end testing
+RUN playwright install && playwright install-deps
+
+# Required folders for ADIT
 RUN mkdir -p /var/www/adit/logs \
     -p /var/www/adit/static \
     -p /var/www/adit/ssl \
