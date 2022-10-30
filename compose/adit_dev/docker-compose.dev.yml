@@ -5,6 +5,7 @@ x-app:
     build:
         context: ../..
         target: development
+    image: adit_dev:latest
     depends_on:
         - syslog
         - postgres
@@ -12,12 +13,6 @@ x-app:
         - redis
         - orthanc1
         - orthanc2
-    volumes:
-        - ../..:/app
-        - /mnt:/mnt
-        - adit_data:/var/www/adit
-        - vscode-server:/root/.vscode-server/extensions
-        - vscode-server-insiders:/root/.vscode-server-insiders/extensions
     env_file:
         - ./.env
     environment:
@@ -43,6 +38,12 @@ services:
         ports:
             - "8000:8000"
             - "5678:5678"
+        volumes:
+            - ../..:/app
+            - /mnt:/mnt
+            - adit_data:/var/www/adit
+            - vscode-server:/root/.vscode-server/extensions
+            - vscode-server-insiders:/root/.vscode-server-insiders/extensions
         command: >
             bash -c "
               ./scripts/wait-for-it.sh postgres:5432 -t 30 &&
@@ -55,26 +56,36 @@ services:
 
     worker_default:
         <<: *default-app
+        volumes:
+            - ../..:/app
         command: python manage.py celery_worker -Q default_queue
 
     worker_dicom_task:
         <<: *default-app
+        volumes:
+            - ../..:/app
         command: python manage.py celery_worker -Q dicom_task_queue
 
     celery_beat:
         <<: *default-app
+        volumes:
+            - ../..:/app
         command: python manage.py celery_beat
 
     receiver:
         <<: *default-app
         ports:
             - "11122:11112"
+        volumes:
+            - ../..:/app
         command: python manage.py receiver
 
     flower:
         <<: *default-app
         expose:
             - "5555"
+        volumes:
+            - ../..:/app
         command: celery --broker=amqp://rabbit/ flower --url_prefix=flower
 
     postgres:

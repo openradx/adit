@@ -20,7 +20,7 @@ jobs:
         with:
           context: .
           load: true
-          tags: adit_ci_web:latest
+          tags: adit_dev:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
