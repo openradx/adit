@@ -1,5 +1,6 @@
 # High Priority
 
+- Upgrade poetry
 - QueryUtil -> QueryExecutor
 - Improve cancel during transfer
 - Allow admin to kill a job (with task revoke(terminale=True))

@@ -12,4 +12,6 @@ if [ ! -f "$act_path" ]; then
 fi
 
 echo "Running act ..."
-eval $act_path
+# We use a custom image as the medium image of act does not support docker-compose
+# see https://github.com/nektos/act/issues/112
+eval $act_path -P ubuntu-latest=lucasalt/act_base:latest
