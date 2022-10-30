@@ -1,12 +1,12 @@
 # High Priority
 
+- Convert of what's possible from Alpine.js to HTMX
 - Upgrade poetry
 - QueryUtil -> QueryExecutor
 - Improve cancel during transfer
 - Allow admin to kill a job (with task revoke(terminale=True))
 - Fix the ineffective stuff in transfer_utils, see TODO there
 - Write test_parsers.py
-- Support Excel batch files additionally to CSV files (best by using Pandas with openpyxl)
 - DICOM data that does not need to be modified can be directly transferred between the source and destination server. The only exception is when source and destination server are the same, then the data will still be downloaded and uploaded again. This may be helpful when the PACS server treats the data somehow differently when sent by ADIT.
 
 # Fix
@@ -34,6 +34,13 @@
 
 # Maybe
 
+- Support Excel batch files additionally to CSV files (best by using Pandas with openpyxl)
+- Bring everything behind Nginx as reverse proxy
+  -- Orthanc, Flower, Rabbit Management Console should then be directly behind Nginx (without Django-revproxy)
+  -- Use authentication module of nginx
+  -- http://nginx.org/en/docs/http/ngx_http_auth_request_module.html
+  -- https://stackoverflow.com/a/70961666/166229
+  -- Evaluate Nginx vs Traefik
 - Save last search parameters in session instead js-cookie
 - Get rid of dicom_connector.download_study/move_study. Do everything at the series level. That way filtering series (e.g. exlcude modalities) is much easier.
 - BatchQuery with custom DICOM keywords

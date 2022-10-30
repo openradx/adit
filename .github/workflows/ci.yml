@@ -12,10 +12,20 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Build and cache Docker images
+        uses: docker/build-push-action@v3
+        with:
+          context: .
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
       - name: Configure environment
         run: cp example.env compose/adit_dev/.env
 
-      - name: Start containers
+      - name: Start Docker containers
         run: docker-compose -p adit_ci -f "compose/adit_dev/docker-compose.dev.yml" up -d --build
 
       - name: Run linting with prospector
@@ -24,6 +34,6 @@ jobs:
       - name: Run tests with pytest
         run: docker-compose -p adit_ci -f "compose/adit_dev/docker-compose.dev.yml" exec -T web python -m pytest --cov=adit
 
-      - name: Stop containers
+      - name: Stop Docker containers
         if: ${{ always() }}
-        run: docker-compose -p adit_ci -f "compose/adit_dev/docker-compose.dev.yml" down --remove-orphans
+        run: docker-compose -p adit_ci -f "compose/adit_dev/docker-compose.dev.yml" down --remove-orphans --volumes
