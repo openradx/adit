@@ -1,6 +1,7 @@
 from os import environ
 from django.core.management.base import BaseCommand
 from django.contrib.auth.models import Permission, Group
+from django.conf import settings
 from faker import Faker
 import factory
 
@@ -72,13 +73,12 @@ def create_users():
 
 def create_server_nodes():
     servers = []
-    orthanc1_host = environ.get("ORTHANC1_HOST", "127.0.0.1")
     servers.append(
         DicomServerFactory(
             name="Orthanc Test Server 1",
             ae_title="ORTHANC1",
-            host=orthanc1_host,
-            port=7501,
+            host=settings.ORTHANC1_HOST,
+            port=settings.ORTHANC1_DICOM_PORT,
             patient_root_find_support=True,
             patient_root_get_support=True,
             patient_root_move_support=True,
@@ -88,13 +88,12 @@ def create_server_nodes():
             store_scp_support=True,
         )
     )
-    orthanc2_host = environ.get("ORTHANC2_HOST", "127.0.0.1")
     servers.append(
         DicomServerFactory(
             name="Orthanc Test Server 2",
             ae_title="ORTHANC2",
-            host=orthanc2_host,
-            port=7502,
+            host=settings.ORTHANC2_HOST,
+            port=settings.ORTHANC2_DICOM_PORT,
             patient_root_find_support=True,
             patient_root_get_support=True,
             patient_root_move_support=True,

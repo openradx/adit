@@ -12,6 +12,8 @@ x-app:
         - postgres
         - rabbit
         - redis
+        - orthanc1
+        - orthanc2
     volumes:
         - /mnt:/mnt
     env_file:
@@ -32,6 +34,12 @@ x-app:
         FLOWER_PORT: "5555"
         SYSLOG_HOST: "syslog"
         SYSLOG_PORT: "514"
+        ORTHANC1_HOST: "orthanc1"
+        ORTHANC1_HTTP_PORT: 6501
+        ORTHANC1_DICOM_PORT: 7501
+        ORTHANC2_HOST: "orthanc2"
+        ORTHANC2_HTTP_PORT: 6502
+        ORTHANC2_DICOM_PORT: 7502
 
 services:
     web:
@@ -116,6 +124,24 @@ services:
             - ../syslog/syslog-ng.conf:/etc/syslog-ng/syslog-ng.conf
             - syslog_data:/var/log
 
+    orthanc1:
+        image: jodogne/orthanc-plugins:1.8.1
+        expose:
+            - "6501"
+            - "7501"
+        volumes:
+            - ../orthanc1/orthanc.json:/etc/orthanc/orthanc.json
+            - orthanc1_data:/var/lib/orthanc/db
+
+    orthanc2:
+        image: jodogne/orthanc-plugins:1.8.1
+        expose:
+            - "6502"
+            - "7502"
+        volumes:
+            - ../orthanc2/orthanc.json:/etc/orthanc/orthanc.json
+            - orthanc2_data:/var/lib/orthanc/db
+
 volumes:
     adit_data:
     postgres_data:
@@ -123,3 +149,5 @@ volumes:
     redis_data:
     flower_data:
     syslog_data:
+    orthanc1_data:
+    orthanc2_data:

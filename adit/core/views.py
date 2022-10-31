@@ -335,39 +335,13 @@ class DicomTaskDetailView(LoginRequiredMixin, OwnerRequiredMixin, DetailView):
         return context
 
 
-class FlowerProxyView(UserPassesTestMixin, ProxyView):
-    """A reverse proxy view to access the Flower Celery admin tool.
+class AdminProxyView(UserPassesTestMixin, ProxyView):
+    """A reverse proxy view to hide other services behind that only an admin can access.
 
     By using a reverse proxy we can use the Django authentication
     to check for an logged in admin user.
     Code from https://stackoverflow.com/a/61997024/166229
     """
-
-    upstream = f"http://{settings.FLOWER_HOST}:{settings.FLOWER_PORT}"
-    url_prefix = "flower"
-    rewrite = ((rf"^/{url_prefix}$", rf"/{url_prefix}/"),)
-
-    def test_func(self):
-        return self.request.user.is_staff
-
-    @classmethod
-    def as_url(cls):
-        return re_path(rf"^(?P<path>{cls.url_prefix}.*)$", cls.as_view())
-
-
-class RabbitManagementProxyView(UserPassesTestMixin, ProxyView):
-    """A reverse proxy view to access the Rabbit Management admin tool.
-
-    By using a reverse proxy we can use the Django authentication
-    to check for an logged in admin user.
-    Code from https://stackoverflow.com/a/61997024/166229
-    """
-
-    upstream = (
-        f"http://{settings.RABBIT_MANAGEMENT_HOST}:{settings.RABBIT_MANAGEMENT_PORT}"
-    )
-    url_prefix = "rabbit"
-    rewrite = ((rf"^/{url_prefix}$", r"/"),)
 
     def test_func(self):
         return self.request.user.is_staff
@@ -375,3 +349,35 @@ class RabbitManagementProxyView(UserPassesTestMixin, ProxyView):
     @classmethod
     def as_url(cls):
         return re_path(rf"^{cls.url_prefix}/(?P<path>.*)$", cls.as_view())
+
+
+class RabbitManagementProxyView(AdminProxyView):
+    upstream = (
+        f"http://{settings.RABBIT_MANAGEMENT_HOST}:{settings.RABBIT_MANAGEMENT_PORT}"
+    )
+    url_prefix = "rabbit"
+    rewrite = ((rf"^/{url_prefix}$", r"/"),)
+
+
+class FlowerProxyView(AdminProxyView):
+    upstream = f"http://{settings.FLOWER_HOST}:{settings.FLOWER_PORT}"
+    url_prefix = "flower"
+    rewrite = ((rf"^/{url_prefix}$", rf"/{url_prefix}/"),)
+
+    @classmethod
+    def as_url(cls):
+        # Flower needs a bit different setup then the other proxy views as flower
+        # uses a prefix itself (see docker compose service)
+        return re_path(rf"^(?P<path>{cls.url_prefix}.*)$", cls.as_view())
+
+
+class Orthanc1ProxyView(AdminProxyView):
+    upstream = f"http://{settings.ORTHANC1_HOST}:{settings.ORTHANC1_HTTP_PORT}"
+    url_prefix = "orthanc1"
+    rewrite = ((rf"^/{url_prefix}$", r"/"),)
+
+
+class Orthanc2ProxyView(AdminProxyView):
+    upstream = f"http://{settings.ORTHANC2_HOST}:{settings.ORTHANC2_HTTP_PORT}"
+    url_prefix = "orthanc2"
+    rewrite = ((rf"^/{url_prefix}$", r"/"),)

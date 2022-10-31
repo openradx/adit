@@ -4,8 +4,10 @@ from .views import (
     admin_section,
     BroadcastView,
     HomeView,
-    FlowerProxyView,
     RabbitManagementProxyView,
+    FlowerProxyView,
+    Orthanc1ProxyView,
+    Orthanc2ProxyView,
 )
 
 urlpatterns = [
@@ -29,6 +31,8 @@ urlpatterns = [
         HomeView.as_view(),
         name="home",
     ),
-    FlowerProxyView.as_url(),
     RabbitManagementProxyView.as_url(),
+    FlowerProxyView.as_url(),
+    Orthanc1ProxyView.as_url(),
+    Orthanc2ProxyView.as_url(),
 ]
