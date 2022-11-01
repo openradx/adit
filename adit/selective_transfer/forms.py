@@ -114,15 +114,6 @@ class SelectiveTransferJobForm(forms.ModelForm):
             ),
             Row(
                 Column(
-                    Field(
-                        "urgent",
-                        **{"@change": "onUrgencyChanged"},
-                    ),
-                ),
-                css_class="pl-1",
-            ),
-            Row(
-                Column(
                     Div(
                         Div(
                             StrictButton(
@@ -168,6 +159,20 @@ class SelectiveTransferJobForm(forms.ModelForm):
                 query_field("accession_number"),
             ),
         )
+
+        if "urgent" in self.fields:
+            self.helper.layout.insert(
+                1,
+                Row(
+                    Column(
+                        Field(
+                            "urgent",
+                            **{"@change": "onUrgencyChanged"},
+                        ),
+                    ),
+                    css_class="pl-1",
+                ),
+            )
 
     def clean_pseudonym(self):
         pseudonym = self.cleaned_data["pseudonym"]
