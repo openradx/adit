@@ -351,10 +351,10 @@ FLOWER_PORT = env.int("FLOWER_PORT", default=5555)
 # Orthanc servers are integrated in ADIT by using a reverse proxy (django-revproxy).
 ORTHANC1_HOST = env.str("ORTHANC1_HOST", default="localhost")
 ORTHANC1_HTTP_PORT = env.int("ORTHANC1_HTTP_PORT", default=6501)
-ORTHANC1_DICOM_PORT = env.int("ORTHANC1_HTTP_PORT", default=7501)
+ORTHANC1_DICOM_PORT = env.int("ORTHANC1_DICOM_PORT", default=7501)
 ORTHANC2_HOST = env.str("ORTHANC2_HOST", default="localhost")
 ORTHANC2_HTTP_PORT = env.int("ORTHANC2_HTTP_PORT", default=6502)
-ORTHANC2_DICOM_PORT = env.int("ORTHANC2_HTTP_PORT", default=7502)
+ORTHANC2_DICOM_PORT = env.int("ORTHANC2_DICOM_PORT", default=7502)
 
 # For django-filter
 FILTERS_EMPTY_CHOICE_LABEL = "Show All"
