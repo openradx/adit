@@ -39,9 +39,7 @@ class TransferExecutor:
     A long running transfer task can be aborted.
     """
 
-    def __init__(
-        self, transfer_task: TransferTask, celery_task: AbortableCeleryTask
-    ) -> None:
+    def __init__(self, transfer_task: TransferTask, celery_task: AbortableCeleryTask) -> None:
         self.transfer_task = transfer_task
         self.celery_task = celery_task
 
@@ -72,9 +70,7 @@ class TransferExecutor:
 
         try:
             if not transfer_job.source.source_active:
-                raise ValueError(
-                    f"Source DICOM node not active: {transfer_job.source.name}"
-                )
+                raise ValueError(f"Source DICOM node not active: {transfer_job.source.name}")
 
             if not transfer_job.destination.destination_active:
                 raise ValueError(
@@ -121,9 +117,7 @@ class TransferExecutor:
             self.transfer_task.end = timezone.now()
 
         except Exception as err:  # pylint: disable=broad-except
-            logger.exception(
-                "Unrecoverable failure occurred in %s.", self.transfer_task
-            )
+            logger.exception("Unrecoverable failure occurred in %s.", self.transfer_task)
             self.transfer_task.status = TransferTask.Status.FAILURE
             self.transfer_task.message = str(err)
             self.transfer_task.end = timezone.now()
@@ -170,9 +164,7 @@ class TransferExecutor:
             patient_folder = download_folder / sanitize_dirname(pseudonym)
         else:
             pseudonym = None
-            patient_folder = download_folder / sanitize_dirname(
-                self.transfer_task.patient_id
-            )
+            patient_folder = download_folder / sanitize_dirname(self.transfer_task.patient_id)
 
         # Check if the Study Instance UID is correct and fetch some attributes to create
         # the study folder.
@@ -181,9 +173,7 @@ class TransferExecutor:
         modalities = study["ModalitiesInStudy"]
 
         modalities = [
-            modality
-            for modality in modalities
-            if modality not in settings.EXCLUDE_MODALITIES
+            modality for modality in modalities if modality not in settings.EXCLUDE_MODALITIES
         ]
 
         # If some series are explicitly chosen then check if their Series Instance UIDs
@@ -233,14 +223,10 @@ class TransferExecutor:
         return sanitize_dirname(name)
 
     def _fetch_patient(self) -> Dict[str, Any]:
-        patients = self.source_connector.find_patients(
-            {"PatientID": self.transfer_task.patient_id}
-        )
+        patients = self.source_connector.find_patients({"PatientID": self.transfer_task.patient_id})
 
         if len(patients) == 0:
-            raise ValueError(
-                f"No patient found with Patient ID {self.transfer_task.patient_id}."
-            )
+            raise ValueError(f"No patient found with Patient ID {self.transfer_task.patient_id}.")
 
         if len(patients) > 1:
             raise AssertionError(
@@ -289,9 +275,7 @@ class TransferExecutor:
         if len(results) == 0:
             raise ValueError(f"No series found with Series Instance UID {series_uid}.")
         if len(results) > 1:
-            raise AssertionError(
-                f"Multiple series found with Series Instance UID {series_uid}."
-            )
+            raise AssertionError(f"Multiple series found with Series Instance UID {series_uid}.")
 
         return results
 
@@ -349,7 +333,9 @@ class TransferExecutor:
 
         if pseudonym and trial_protocol_id:
             session_id = f"{ds.StudyDate}-{ds.StudyTime}"
-            ds.PatientComments = f"Project:{trial_protocol_id} Subject:{pseudonym} Session:{pseudonym}_{session_id}"
+            ds.PatientComments = (
+                f"Project:{trial_protocol_id} Subject:{pseudonym} Session:{pseudonym}_{session_id}"
+            )
 
     def _create_archive(self, archive_path: Path, archive_password: str) -> None:
         """Create a new archive with just an INDEX.txt file in it."""
@@ -365,9 +351,7 @@ class TransferExecutor:
             _add_to_archive(archive_path, archive_password, readme_path)
 
 
-def _add_to_archive(
-    archive_path: Path, archive_password: str, path_to_add: Path
-) -> None:
+def _add_to_archive(archive_path: Path, archive_password: str, path_to_add: Path) -> None:
     """Add a file or folder to an archive. If the archive does not exist
     it will be created."""
     # TODO catch error like https://stackoverflow.com/a/46098513/166229

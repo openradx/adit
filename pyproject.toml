@@ -61,7 +61,7 @@ pytest-playwright = "^0.3.0"
 isort = "^5.10.1"
 
 [tool.black]
-line-length = 120
+line-length = 100
 
 [tool.isort]
 profile = "black" 
