@@ -41,6 +41,10 @@
   -- http://nginx.org/en/docs/http/ngx_http_auth_request_module.html
   -- https://stackoverflow.com/a/70961666/166229
   -- Evaluate Nginx vs Traefik
+- Reuse authentication in integration tests
+  -- https://playwright.dev/python/docs/auth
+  -- Unfortunately, we can't use live_server fixture inside session fixtures
+  -- example https://github.com/automationneemo/PlaywrightDemoYt
 - Save last search parameters in session instead js-cookie
 - Get rid of dicom_connector.download_study/move_study. Do everything at the series level. That way filtering series (e.g. exlcude modalities) is much easier.
 - BatchQuery with custom DICOM keywords
