@@ -43,7 +43,10 @@ def check_disk_space():
             quota = "?"
             if folder.quota is not None:
                 quota = folder.quota
-            msg = f"Low disk space of destination folder: {folder.name}\n" f"{size} GB of {quota} GB used."
+            msg = (
+                f"Low disk space of destination folder: {folder.name}\n"
+                f"{size} GB of {quota} GB used."
+            )
             logger.warning(msg)
             send_mail_to_admins("Warning, low disk space!", msg)
 
@@ -73,11 +76,14 @@ class ProcessDicomJob(CeleryTask):
         pending_dicom_tasks = dicom_job.tasks.filter(status=DicomTask.Status.PENDING)
 
         process_dicom_tasks = [
-            self.process_dicom_task.s(dicom_task.id).set(priority=priority) for dicom_task in pending_dicom_tasks
+            self.process_dicom_task.s(dicom_task.id).set(priority=priority)
+            for dicom_task in pending_dicom_tasks
         ]
 
         result = chord(process_dicom_tasks)(
-            self.handle_finished_dicom_job.s(dicom_job.id).on_error(self.handle_failed_dicom_job.s(job_id=dicom_job.id))
+            self.handle_finished_dicom_job.s(dicom_job.id).on_error(
+                self.handle_failed_dicom_job.s(job_id=dicom_job.id)
+            )
         )
 
         # Save Celery task IDs to dicom tasks (for revoking them later if necessary)

@@ -7,7 +7,9 @@ DEBUG = True
 
 ENABLE_REMOTE_DEBUGGING = env.bool("ENABLE_REMOTE_DEBUGGING", default=False)
 
-SECRET_KEY = env.str("DJANGO_SECRET_KEY", default="ug+cbde301nelb)(di0^p21osy3h=t$%2$-8d&0#xlyfj8&==5")
+SECRET_KEY = env.str(
+    "DJANGO_SECRET_KEY", default="ug+cbde301nelb)(di0^p21osy3h=t$%2$-8d&0#xlyfj8&==5"
+)
 
 ALLOWED_HOSTS = env.list("DJANGO_ALLOWED_HOSTS", default=[])
 

@@ -1,13 +1,12 @@
 import ipaddress
-from pathlib import Path
 from datetime import datetime, timedelta
-from django.core.management.base import BaseCommand
+from pathlib import Path
 from cryptography import x509
-from cryptography.x509.oid import NameOID
-from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.backends import default_backend
-from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
+from cryptography.x509.oid import NameOID
+from django.core.management.base import BaseCommand
 from adit.settings.base import env
 
 
@@ -24,7 +23,8 @@ def generate_selfsigned_cert(hostname, ip_addresses=None, key=None):
 
     name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, hostname)])
 
-    # best practice seem to be to include the hostname in the SAN, which *SHOULD* mean COMMON_NAME is ignored.
+    # best practice seem to be to include the hostname in the SAN,
+    # which *SHOULD* mean COMMON_NAME is ignored.
     alt_names = [x509.DNSName(hostname)]
 
     # allow addressing by IP, for when you don't have real DNS (common in most testing scenarios

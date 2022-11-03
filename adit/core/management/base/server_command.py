@@ -72,7 +72,9 @@ class ServerCommand(BaseCommand):
         else:
             m = re.match(naiveip_re, options["addrport"])
             if m is None:
-                raise CommandError(f'"{options["addrport"]}" is not a valid port number ' "or address:port pair.")
+                raise CommandError(
+                    f'"{options["addrport"]}" is not a valid port number ' "or address:port pair."
+                )
             self.addr, _ipv4, _ipv6, _fqdn, self.port = m.groups()
             if not self.port.isdigit():
                 raise CommandError(f"{self.port} is not a valid port number.")
@@ -131,7 +133,10 @@ class ServerCommand(BaseCommand):
             now = datetime.now().strftime("%B %d, %Y - %X")
             self.stdout.write(now)
             self.stdout.write(
-                ("Starting %(name)s at %(protocol)s://%(addr)s:%(port)s/\n" "Quit with %(quit_command)s.")
+                (
+                    "Starting %(name)s at %(protocol)s://%(addr)s:%(port)s/\n"
+                    "Quit with %(quit_command)s."
+                )
                 % {
                     "name": self.server_name,
                     "protocol": self.protocol,

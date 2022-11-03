@@ -40,7 +40,9 @@ class TestProcessDicomJob:
         process_dicom_job.handle_failed_dicom_job = create_autospec(CeleryTask)
 
         process_dicom_task_sig_mock = create_autospec(Signature)
-        process_dicom_job.process_dicom_task.s.return_value.set.return_value = process_dicom_task_sig_mock
+        process_dicom_job.process_dicom_task.s.return_value.set.return_value = (
+            process_dicom_task_sig_mock
+        )
 
         handle_finished_dicom_task_sig_mock = create_autospec(Signature)
         process_dicom_job.handle_finished_dicom_job.s.return_value.on_error.return_value = (
@@ -66,9 +68,13 @@ class TestProcessDicomJob:
         process_dicom_job.process_dicom_task.s.assert_called_once_with(dicom_task_id)
 
         if urgent:
-            process_dicom_job.process_dicom_task.s.return_value.set.assert_called_once_with(priority=urgent_priority)
+            process_dicom_job.process_dicom_task.s.return_value.set.assert_called_once_with(
+                priority=urgent_priority
+            )
         else:
-            process_dicom_job.process_dicom_task.s.return_value.set.assert_called_once_with(priority=default_priority)
+            process_dicom_job.process_dicom_task.s.return_value.set.assert_called_once_with(
+                priority=default_priority
+            )
 
         chord_mock.assert_called_once_with([process_dicom_task_sig_mock])
 

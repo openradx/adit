@@ -62,9 +62,7 @@ class BatchFileFormatError(Exception):
                         field_errors = item_errors[field_name]
                         self._field_error_message(field_name, field_errors)
 
-    def _field_error_message(
-        self, field_name: str, field_errors: List[ErrorDetail]
-    ) -> None:
+    def _field_error_message(self, field_name: str, field_errors: List[ErrorDetail]) -> None:
         column_name = self.field_to_column_mapping[field_name]
         self.message += f"{column_name} - "
         self.message += " ".join(field_errors) + "\n"

@@ -133,7 +133,9 @@ class DicomJobDeleteView(LoginRequiredMixin, OwnerRequiredMixin, DeleteView):
     def delete(self, request, *args, **kwargs):
         job = self.get_object()
         if not job.is_deletable:
-            raise SuspiciousOperation(f"Job with ID {job.id} and status {job.get_status_display()} is not deletable.")
+            raise SuspiciousOperation(
+                f"Job with ID {job.id} and status {job.get_status_display()} is not deletable."
+            )
 
         for dicom_task in job.tasks.all():
             if dicom_task.celery_task_id:
@@ -172,7 +174,9 @@ class DicomJobCancelView(LoginRequiredMixin, OwnerRequiredMixin, SingleObjectMix
     def post(self, request, *args, **kwargs):
         job = self.get_object()
         if not job.is_cancelable:
-            raise SuspiciousOperation(f"Job with ID {job.id} and status {job.get_status_display()} is not cancelable.")
+            raise SuspiciousOperation(
+                f"Job with ID {job.id} and status {job.get_status_display()} is not cancelable."
+            )
 
         for dicom_task in job.tasks.filter(status=DicomTask.Status.PENDING):
             if dicom_task.celery_task_id:
@@ -202,7 +206,9 @@ class DicomJobResumeView(LoginRequiredMixin, OwnerRequiredMixin, SingleObjectMix
     def post(self, request, *args, **kwargs):
         job = self.get_object()
         if not job.is_resumable:
-            raise SuspiciousOperation(f"Job with ID {job.id} and status {job.get_status_display()} is not resumable.")
+            raise SuspiciousOperation(
+                f"Job with ID {job.id} and status {job.get_status_display()} is not resumable."
+            )
 
         for task in job.tasks.filter(status=DicomTask.Status.CANCELED):
             task.status = DicomTask.Status.PENDING
@@ -224,7 +230,9 @@ class DicomJobRetryView(LoginRequiredMixin, OwnerRequiredMixin, SingleObjectMixi
     def post(self, request, *args, **kwargs):
         job = self.get_object()
         if not job.is_retriable:
-            raise SuspiciousOperation(f"Job with ID {job.id} and status {job.get_status_display()} is not retriable.")
+            raise SuspiciousOperation(
+                f"Job with ID {job.id} and status {job.get_status_display()} is not retriable."
+            )
 
         for task in job.tasks.filter(status=DicomTask.Status.FAILURE):
             task.status = DicomTask.Status.PENDING
@@ -251,7 +259,9 @@ class DicomJobRestartView(LoginRequiredMixin, OwnerRequiredMixin, SingleObjectMi
     def post(self, request, *args, **kwargs):
         job = self.get_object()
         if not request.user.is_staff or not job.is_restartable:
-            raise SuspiciousOperation(f"Job with ID {job.id} and status {job.get_status_display()} is not restartable.")
+            raise SuspiciousOperation(
+                f"Job with ID {job.id} and status {job.get_status_display()} is not restartable."
+            )
 
         for task in job.tasks.all():
             task.status = DicomTask.Status.PENDING
@@ -296,7 +306,9 @@ class DicomTaskDetailView(LoginRequiredMixin, OwnerRequiredMixin, DetailView):
         try:
             obj = queryset.get()
         except queryset.model.DoesNotExist as err:
-            raise Http404(f"No {queryset.model._meta.verbose_name} found matching the query") from err
+            raise Http404(
+                f"No {queryset.model._meta.verbose_name} found matching the query"
+            ) from err
         return obj
 
     def get_context_data(self, **kwargs):

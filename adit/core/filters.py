@@ -9,9 +9,7 @@ class DicomJobFilter(django_filters.FilterSet):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.form.helper = MultiInlineFilterFormHelper(
-            self.request.GET, self.Meta.fields
-        )
+        self.form.helper = MultiInlineFilterFormHelper(self.request.GET, self.Meta.fields)
 
 
 class DicomTaskFilter(django_filters.FilterSet):

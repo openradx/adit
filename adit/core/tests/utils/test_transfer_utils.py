@@ -27,9 +27,7 @@ class MyTransferTask(TransferTask):
     class Meta:
         app_label = "adit.core"
 
-    job = models.ForeignKey(
-        MyTransferJob, on_delete=models.CASCADE, related_name="tasks"
-    )
+    job = models.ForeignKey(MyTransferJob, on_delete=models.CASCADE, related_name="tasks")
 
 
 class MyTransferJobFactory(TransferJobFactory):
@@ -187,9 +185,7 @@ def test_transfer_to_archive_succeeds(
         destination=DicomFolderFactory(),
         archive_password="mysecret",
     )
-    task = MyTransferTaskFactory(
-        status=TransferTask.Status.PENDING, series_uids=[], pseudonym=""
-    )
+    task = MyTransferTaskFactory(status=TransferTask.Status.PENDING, series_uids=[], pseudonym="")
     task.job = job
 
     patient, study = create_resources(task)

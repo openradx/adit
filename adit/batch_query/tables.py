@@ -16,7 +16,9 @@ class BatchQueryTaskTable(DicomTaskTable):
 
 class BatchQueryResultTable(tables.Table):
     task_id = tables.Column(accessor="query__task_id", verbose_name="Task ID")
-    study_date_time = tables.DateTimeColumn(verbose_name="Study Date/Time", order_by=("study_date", "study_time"))
+    study_date_time = tables.DateTimeColumn(
+        verbose_name="Study Date/Time", order_by=("study_date", "study_time")
+    )
     image_count = tables.Column(verbose_name="# Images")
 
     class Meta:

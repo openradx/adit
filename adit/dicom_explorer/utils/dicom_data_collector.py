@@ -105,15 +105,11 @@ class DicomDataCollector:
             )
 
         if series_uid and len(series_list) > 1:
-            raise ValueError(
-                f"Multiple series found for Series Instance UID {series_uid}"
-            )
+            raise ValueError(f"Multiple series found for Series Instance UID {series_uid}")
 
         series_list = sorted(
             series_list,
-            key=lambda x: float("inf")
-            if x["SeriesNumber"] is None
-            else x["SeriesNumber"],
+            key=lambda x: float("inf") if x["SeriesNumber"] is None else x["SeriesNumber"],
         )
 
         return series_list

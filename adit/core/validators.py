@@ -20,9 +20,7 @@ no_wildcard_chars_validator = RegexValidator(
     inverse_match=True,
 )
 
-uid_chars_validator = RegexValidator(
-    regex=r"^[\d\.]+$", message="Invalid character in UID."
-)
+uid_chars_validator = RegexValidator(regex=r"^[\d\.]+$", message="Invalid character in UID.")
 
 
 def validate_uid_list(value):

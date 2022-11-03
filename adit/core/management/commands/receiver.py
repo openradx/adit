@@ -70,9 +70,7 @@ def on_connect(event):
                 )
                 time.sleep(2)
             else:
-                logger.exception(
-                    "Could not connect to %s. No more retries.", rabbit_url
-                )
+                logger.exception("Could not connect to %s. No more retries.", rabbit_url)
                 raise err
 
     if connection and connection.is_open:

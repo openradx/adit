@@ -57,9 +57,7 @@ class SelectiveTransferJobForm(forms.ModelForm):
     patient_birth_date = forms.DateField(required=False, label="Birth date")
     study_date = forms.DateField(required=False)
     modality = forms.CharField(required=False, max_length=16)
-    accession_number = forms.CharField(
-        required=False, max_length=32, label="Accession #"
-    )
+    accession_number = forms.CharField(required=False, max_length=32, label="Accession #")
 
     class Meta:
         model = SelectiveTransferJob
@@ -84,9 +82,7 @@ class SelectiveTransferJobForm(forms.ModelForm):
             "trial_protocol_name": "Trial name",
         }
         help_texts = {
-            "urgent": (
-                "Start transfer directly (without scheduling) and prioritize it."
-            ),
+            "urgent": ("Start transfer directly (without scheduling) and prioritize it."),
         }
 
     def __init__(self, *args, **kwargs):
@@ -101,9 +97,9 @@ class SelectiveTransferJobForm(forms.ModelForm):
         self.fields["source"].queryset = self.fields["source"].queryset.order_by(
             "-node_type", "name"
         )
-        self.fields["destination"].queryset = self.fields[
-            "destination"
-        ].queryset.order_by("-node_type", "name")
+        self.fields["destination"].queryset = self.fields["destination"].queryset.order_by(
+            "-node_type", "name"
+        )
 
         self.helper = FormHelper(self)
         self.helper.form_tag = False

@@ -6,7 +6,8 @@ class RestrictedFileField(forms.FileField):
     """File field with restrictions.
 
     Same as FileField, but you can specify:
-        * content_types - list containing allowed content_types. Example: ['application/pdf', 'image/jpeg']
+        * content_types - list containing allowed content_types.
+          Example: ['application/pdf', 'image/jpeg']
             1MB - 1048576
             2.5MB - 2621440
             5MB - 5242880

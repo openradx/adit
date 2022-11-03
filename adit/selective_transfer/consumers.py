@@ -48,9 +48,7 @@ def create_error_response(error_message):
     }
 
 
-class SelectiveTransferConsumer(
-    SelectiveTransferJobCreateMixin, AsyncJsonWebsocketConsumer
-):
+class SelectiveTransferConsumer(SelectiveTransferJobCreateMixin, AsyncJsonWebsocketConsumer):
     async def connect(self):
         logger.debug("Connected to WebSocket client.")
 
@@ -119,9 +117,7 @@ class SelectiveTransferConsumer(
             return create_error_response("Access denied. You must be logged in.")
 
         if not self.user.has_perm("selective_transfer.add_selectivetransferjob"):
-            return create_error_response(
-                "Access denied. You don't have the proper permission."
-            )
+            return create_error_response("Access denied. You don't have the proper permission.")
 
         return None
 
@@ -134,9 +130,7 @@ class SelectiveTransferConsumer(
 
     async def make_query(self, form, message_id):
         loop = asyncio.get_event_loop()
-        response = await loop.run_in_executor(
-            self.pool, self.get_query_response, form, message_id
-        )
+        response = await loop.run_in_executor(self.pool, self.get_query_response, form, message_id)
         if response:
             await self.send_json(response)
 

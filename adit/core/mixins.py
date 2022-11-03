@@ -182,7 +182,9 @@ class InlineFormSetMixin:
         response = super().form_valid(form)
         formset.instance = self.object
         for idx, formset_form in enumerate(formset.ordered_forms):
-            formset_form.instance.order = formset_form.cleaned_data.get(ORDERING_FIELD_NAME) or idx + 1
+            formset_form.instance.order = (
+                formset_form.cleaned_data.get(ORDERING_FIELD_NAME) or idx + 1
+            )
         formset.save()
         return response
 

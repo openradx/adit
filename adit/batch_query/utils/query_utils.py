@@ -82,7 +82,9 @@ class QueryExecutor:
                         # may have different Patient IDs if the studies were imported
                         # from external.
                         self.query_task.status = BatchQueryTask.Status.WARNING
-                        self.query_task.message = f"Multiple patients found with overall {study_count}."
+                        self.query_task.message = (
+                            f"Multiple patients found with overall {study_count}."
+                        )
         except Exception as err:
             logger.exception("Error during %s", self.query_task)
             self.query_task.status = BatchQueryTask.Status.FAILURE
@@ -122,7 +124,9 @@ class QueryExecutor:
         modalities = []
         if self.query_task.modalities:
             modalities = [
-                modality for modality in self.query_task.modalities if modality not in settings.EXCLUDE_MODALITIES
+                modality
+                for modality in self.query_task.modalities
+                if modality not in settings.EXCLUDE_MODALITIES
             ]
 
         studies = self.connector.find_studies(

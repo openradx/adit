@@ -23,6 +23,8 @@ from adit.selective_transfer import routing as selective_transfer_routing  # noq
 application = ProtocolTypeRouter(
     {
         "http": django_asgi_app,
-        "websocket": AuthMiddlewareStack(URLRouter(selective_transfer_routing.websocket_urlpatterns)),
+        "websocket": AuthMiddlewareStack(
+            URLRouter(selective_transfer_routing.websocket_urlpatterns)
+        ),
     }
 )

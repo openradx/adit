@@ -58,7 +58,9 @@ class BatchTransferJobCreateView(DicomJobCreateView):
     def dispatch(self, request, *args, **kwargs):
         batch_transfer_settings = BatchTransferSettings.get()
         if batch_transfer_settings.locked and not request.user.is_staff:
-            return TemplateView.as_view(template_name="batch_transfer/batch_transfer_locked.html")(request)
+            return TemplateView.as_view(template_name="batch_transfer/batch_transfer_locked.html")(
+                request
+            )
         return super().dispatch(request, *args, **kwargs)
 
 

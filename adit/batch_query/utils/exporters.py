@@ -57,9 +57,7 @@ def write_data(writer, query_tasks, has_pseudonyms, has_series):
         for result in query_task.results.all():
             patient_name = person_name_from_dicom(result.patient_name)
 
-            patient_birth_date = date_format(
-                result.patient_birth_date, "SHORT_DATE_FORMAT"
-            )
+            patient_birth_date = date_format(result.patient_birth_date, "SHORT_DATE_FORMAT")
 
             study_date = date_format(result.study_date, "SHORT_DATE_FORMAT")
 

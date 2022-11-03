@@ -24,9 +24,7 @@ class OrthancRestHandler:
 
             with open(path, "rb") as f:
                 payload = f.read()
-                r = self.session.post(
-                    f"http://{self.host}:{self.port}/instances", data=payload
-                )
+                r = self.session.post(f"http://{self.host}:{self.port}/instances", data=payload)
                 r.raise_for_status()
 
     def list(self, resource_type=STUDIES_RESOURCE):
@@ -36,9 +34,7 @@ class OrthancRestHandler:
 
     def delete(self, res_ids, resource_type=STUDIES_RESOURCE):
         for res_id in res_ids:
-            r = self.session.delete(
-                f"http://{self.host}:{self.port}/{resource_type}/{res_id}"
-            )
+            r = self.session.delete(f"http://{self.host}:{self.port}/{resource_type}/{res_id}")
             r.raise_for_status()
 
     def clear(self, full_clear=False):

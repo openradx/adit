@@ -27,7 +27,9 @@ class BatchTransferTaskListSerializer(BatchTaskListSerializer):
             if patient_id not in patient_id_to_pseudonym:
                 patient_id_to_pseudonym[patient_id] = pseudonym
             if patient_id_to_pseudonym[patient_id] != pseudonym:
-                raise serializers.ValidationError(f"Same Patient ID {patient_id} can't have different pseudonyms.")
+                raise serializers.ValidationError(
+                    f"Same Patient ID {patient_id} can't have different pseudonyms."
+                )
 
         return attrs
 
@@ -62,6 +64,8 @@ class BatchTransferTaskSerializer(BatchTaskSerializer):
         data = super().validate(attrs)
 
         if not self.can_transfer_unpseudonymized and not data.get("pseudonym", ""):
-            raise serializers.ValidationError({"pseudonym": "You are only allowed to transfer pseudonymized."})
+            raise serializers.ValidationError(
+                {"pseudonym": "You are only allowed to transfer pseudonymized."}
+            )
 
         return data

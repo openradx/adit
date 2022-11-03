@@ -55,7 +55,9 @@ class SelectiveTransferJobCreateView(
 
     def form_invalid(self, form):
         error_message = "Please correct the form errors and search again."
-        return self.render_to_response(self.get_context_data(form=form, error_message=error_message))
+        return self.render_to_response(
+            self.get_context_data(form=form, error_message=error_message)
+        )
 
     def form_valid(self, form):
         action = self.request.POST.get("action")
@@ -79,7 +81,9 @@ class SelectiveTransferJobCreateView(
             try:
                 job = self.transfer_selected_studies(user, form, selected_studies)
             except ValueError as err:
-                return self.render_to_response(self.get_context_data(transfer=True, error_message=str(err)))
+                return self.render_to_response(
+                    self.get_context_data(transfer=True, error_message=str(err))
+                )
             return self.render_to_response(self.get_context_data(transfer=True, created_job=job))
 
         return HttpResponseBadRequest()

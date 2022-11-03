@@ -15,9 +15,7 @@ class BatchTransferJob(TransferJob):
     ethics_application_id = models.CharField(blank=True, max_length=100)
 
     def delay(self):
-        current_app.send_task(
-            "adit.selective_transfer.tasks.ProcessBatchTransferJob", (self.id,)
-        )
+        current_app.send_task("adit.selective_transfer.tasks.ProcessBatchTransferJob", (self.id,))
 
     def get_absolute_url(self):
         return reverse("batch_transfer_job_detail", args=[self.id])

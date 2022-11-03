@@ -299,7 +299,9 @@ class DicomConnector:
             series_folder_name = sanitize_dirname(series["SeriesDescription"])
             download_path = Path(folder) / series_folder_name
 
-            self.download_series(patient_id, study_uid, series_uid, download_path, modifier_callback)
+            self.download_series(
+                patient_id, study_uid, series_uid, download_path, modifier_callback
+            )
 
         logger.debug("Successfully downloaded study %s.", study_uid)
 
@@ -418,7 +420,9 @@ class DicomConnector:
         """Fetch all modalities of a study and return them in a list."""
 
         try:
-            series_list = self.find_series({"PatientID": patient_id, "StudyInstanceUID": study_uid, "Modality": ""})
+            series_list = self.find_series(
+                {"PatientID": patient_id, "StudyInstanceUID": study_uid, "Modality": ""}
+            )
         except ValueError as err:
             logger.exception("Failed to fetch modalities of study %s.", study_uid)
             raise RetriableTaskError("Failed to fetch modalities of study.") from err
@@ -441,7 +445,9 @@ class DicomConnector:
         # (inspired by https://github.com/pydicom/pynetdicom/blob/master/pynetdicom/apps)
         ext_neg = []
         if command == "find":
-            ae.requested_contexts = QueryRetrievePresentationContexts + BasicWorklistManagementPresentationContexts
+            ae.requested_contexts = (
+                QueryRetrievePresentationContexts + BasicWorklistManagementPresentationContexts
+            )
         elif command == "get":
             # We must exclude as many storage contexts as how many query/retrieve contexts we add
             # because the maximum requested contexts is 128. "StoragePresentationContexts" is a list
@@ -451,7 +457,9 @@ class DicomConnector:
                 EncapsulatedOBJStorage,
                 EncapsulatedMTLStorage,
             ]
-            store_contexts = [cx for cx in StoragePresentationContexts if cx.abstract_syntax not in exclude]
+            store_contexts = [
+                cx for cx in StoragePresentationContexts if cx.abstract_syntax not in exclude
+            ]
             ae.add_requested_context(PatientRootQueryRetrieveInformationModelGet)
             ae.add_requested_context(StudyRootQueryRetrieveInformationModelGet)
             for cx in store_contexts:
@@ -520,7 +528,9 @@ class DicomConnector:
         elif self.server.patient_root_get_support and patient_id and study_uid:
             query_model = PatientRootQueryRetrieveInformationModelGet
         else:
-            raise ValueError("No valid Query/Retrieve Information Model for C-GET could be selected.")
+            raise ValueError(
+                "No valid Query/Retrieve Information Model for C-GET could be selected."
+            )
 
         query_ds = _make_query_dataset(query_dict)
         store_errors = []
@@ -557,7 +567,9 @@ class DicomConnector:
         elif self.server.patient_root_move_support and patient_id and study_uid:
             query_model = PatientRootQueryRetrieveInformationModelMove
         else:
-            raise ValueError("No valid Query/Retrieve Information Model for C-MOVE could be selected.")
+            raise ValueError(
+                "No valid Query/Retrieve Information Model for C-MOVE could be selected."
+            )
 
         query_ds = _make_query_dataset(query_dict)
         assert self.assoc is not None
@@ -606,10 +618,13 @@ class DicomConnector:
                 )
             else:
                 logger.error(
-                    "Connection timed out, was aborted or received invalid " "response during C-STORE of folder: %s",
+                    "Connection timed out, was aborted or received invalid "
+                    "response during C-STORE of folder: %s",
                     folder,
                 )
-                raise RetriableTaskError("Connection timed out, was aborted or received invalid during C-STORE.")
+                raise RetriableTaskError(
+                    "Connection timed out, was aborted or received invalid during C-STORE."
+                )
 
         return results
 
@@ -642,7 +657,8 @@ class DicomConnector:
                 )
             else:
                 logger.error(
-                    "Connection timed out, was aborted or received invalid " "response during %s with query: {%s}",
+                    "Connection timed out, was aborted or received invalid "
+                    "response during %s with query: {%s}",
                     operation,
                     query_dict,
                 )
@@ -676,15 +692,22 @@ class DicomConnector:
                 # Modalities In Study is not supported by all PACS servers. If it is
                 # supported then it should be not empty. Otherwise we fetch the modalities
                 # of all the series of this study manually.
-                study["ModalitiesInStudy"] = self.fetch_study_modalities(study["PatientID"], study["StudyInstanceUID"])
+                study["ModalitiesInStudy"] = self.fetch_study_modalities(
+                    study["PatientID"], study["StudyInstanceUID"]
+                )
 
                 # When modalities were fetched manually then the studies must also be
                 # filtered manually. Cave, when limit_results is used this may lead to less
                 # studies then there really exist.
-                if isinstance(query_modalities, str) and query_modalities in study["ModalitiesInStudy"]:
+                if (
+                    isinstance(query_modalities, str)
+                    and query_modalities in study["ModalitiesInStudy"]
+                ):
                     filtered_studies.append(study)
 
-                if isinstance(query_modalities, list) and (set(query_modalities) & set(study["ModalitiesInStudy"])):
+                if isinstance(query_modalities, list) and (
+                    set(query_modalities) & set(study["ModalitiesInStudy"])
+                ):
                     filtered_studies.append(study)
 
             else:
@@ -760,7 +783,8 @@ class DicomConnector:
 
                 if received_image_uid != ds.SOPInstanceUID:
                     raise AssertionError(
-                        f"Received wrong image with UID {ds.SOPInstanceUID}. " f"Expected UID {received_image_uid}."
+                        f"Received wrong image with UID {ds.SOPInstanceUID}. "
+                        f"Expected UID {received_image_uid}."
                     )
 
                 if modifier_callback:
@@ -786,7 +810,9 @@ class DicomConnector:
             )
             raise RetriableTaskError("Failed to download some images with C-MOVE.")
 
-    def _consume_with_timeout(self, study_uid: str, series_uid: str, move_stopped_event: threading.Event):
+    def _consume_with_timeout(
+        self, study_uid: str, series_uid: str, move_stopped_event: threading.Event
+    ):
         last_consume_at = time.time()
         for message in self._consume_from_receiver(study_uid, series_uid):
             method, properties, body = message
@@ -990,7 +1016,9 @@ def _handle_c_get_store(
         if err.errno == errno.ENOSPC:
             # No space left on destination
             logger.exception("Out of disk space while saving %s.", file_path)
-            no_space_error = RetriableTaskError("Out of disk space on destination.", long_delay=True)
+            no_space_error = RetriableTaskError(
+                "Out of disk space on destination.", long_delay=True
+            )
             no_space_error.__cause__ = err
             errors.append(no_space_error)
 
@@ -1001,7 +1029,7 @@ def _handle_c_get_store(
             event.assoc.abort()
 
             # Answert with "Out of Resources"
-            # see https://pydicom.github.io/pynetdicom/stable/service_classes/defined_procedure_service_class.html
+            # see https://pydicom.github.io/pynetdicom/stable/service_classes/defined_procedure_service_class.html # noqa: E501
             return 0xA702
 
     # Return a 'Success' status

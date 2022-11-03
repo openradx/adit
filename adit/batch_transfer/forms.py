@@ -40,9 +40,7 @@ class BatchTransferJobForm(forms.ModelForm):
             "ethics_application_id": "Ethics committee approval",
         }
         help_texts = {
-            "urgent": (
-                "Start transfer directly (without scheduling) and prioritize it."
-            ),
+            "urgent": ("Start transfer directly (without scheduling) and prioritize it."),
             "batch_file": (
                 "The batch file which contains the data to transfer between "
                 "two DICOM nodes. See [Help] for how to format this file."
@@ -78,16 +76,14 @@ class BatchTransferJobForm(forms.ModelForm):
         self.fields["source"].queryset = self.fields["source"].queryset.order_by(
             "-node_type", "name"
         )
-        self.fields["destination"].queryset = self.fields[
-            "destination"
-        ].queryset.order_by("-node_type", "name")
+        self.fields["destination"].queryset = self.fields["destination"].queryset.order_by(
+            "-node_type", "name"
+        )
 
         if settings.ETHICS_COMMITTEE_APPROVAL_REQUIRED:
             self.fields["ethics_application_id"].required = True
 
-        self.max_batch_size = (
-            settings.MAX_BATCH_TRANSFER_SIZE if not self.user.is_staff else None
-        )
+        self.max_batch_size = settings.MAX_BATCH_TRANSFER_SIZE if not self.user.is_staff else None
 
         if self.max_batch_size is not None:
             self.fields[
