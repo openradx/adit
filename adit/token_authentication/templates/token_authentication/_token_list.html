@@ -1,69 +1,51 @@
 <!-- list of all tokens INNER-->
-{% for token in Tokens reversed %}
-    {% with token_str=token.token_string %}
-    <div 
-        style="border-bottom: 1px solid rgb(0, 0, 0); padding: 10px"
-    >
-        <div class="row">
-            <div class="col-md-12">
-                <b>Token:</b>
-                <span 
-                    id='token-{{ token_str }}' 
-                    style='font-size: medium;'
+<thead>
+    <tr>
+        <th>Client</th>
+        <th>Validity</th>
+        <th>Last Used</th>
+        <th>Actions</th>
+    </tr>
+</thead>
+<tbody>
+    {% for token in Tokens reversed %}
+        {% with token_str=token.token_string %}
+        <tr>
+            <td>
+                {{ token.client }}
+            </td>
+            <td>
+                {{ token.created_time }}
+                <br> -
+                {{ token.expiry_time }}
+            </td>
+            <td>
+                {{ token.last_used }}
+            </td>
+            <td>
+                <button 
+                    id="copy-token-button-{{ token_str }}" 
+                    class="btn btn-secondary btn-sm ml-1" 
+                    onclick="copyToken('{{ token_str }}')"
                 >
-                    {{ token_str }}
-                </span>
-            </div>
-        </div>
-        <div 
-            class="row" 
-            id="token_actions"
-            style="padding:10px"
-        >   
-                <div class="col-md-3">
-                    <b>Validity</b>
-                    <br>from:
-                    {{ token.created_time }}
-                    <br> to:
-                    {{ token.expiry_time }}
-                </div>
-                <div class="col-md-3">
-                    <b>Last used:</b>
-                    <br>
-                    {{ token.last_used }}
-                </div>
-                <div class="col-md-2">
-                    <b>Client:</b> 
-                    <br>{{ token.client }}
-                </div>
-                <div class="col-md-1">
-                    <button 
-                        id="copy-token-button-{{ token_str }}" 
-                        class="btn btn-secondary" 
-                        onclick="copyToken('{{ token_str }}')"
-                    >
-                        Copy
-                    </button>
-                </div>
-                <div class="col-md-1">
-                    <button 
-                        id="delete-token-button-{{ token_str }}" 
-                        class="btn btn-danger" 
-                        onclick="deleteToken('{{ token_str }}')"   
-                    >
-                        Delete
-                    </button>
-                </div>
-                <div class="col-md-1">
-                    <button 
-                        id="download-token-button-{{ token_str }}" 
-                        class="btn btn-primary" 
-                        onclick="downloadToken('{{ token_str }}')"   
-                    >
-                        Download
-                    </button>
-                </div>
-        </div>
-    </div>
-    {% endwith %}
+                    {% include "core/_clipboard.svg" %}
+                </button>
+                <button 
+                    id="delete-token-button-{{ token_str }}" 
+                    class="btn btn-danger btn-sm ml-1" 
+                    onclick="deleteToken('{{ token_str }}')"   
+                >
+                {% include "core/_trash_can.svg" %}
+                </button>
+                <button 
+                    id="download-token-button-{{ token_str }}" 
+                    class="btn btn-primary btn-sm ml-1" 
+                    onclick="downloadToken('{{ token_str }}')"   
+                >   
+                    {% include "core/_download.svg" %}
+                </button>
+                </td>
+        </tr>
+        {% endwith %}
     {% endfor %}
+</tbody>

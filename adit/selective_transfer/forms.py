@@ -44,6 +44,9 @@ class SelectiveTransferJobForm(forms.ModelForm):
             "study_date",
             "modality",
             "accession_number",
+            "xnat_source_project_id",
+            "xnat_destination_project_id",
+            "xnat_destination_subject_id",
         )
         labels = {
             "trial_protocol_id": "Trial ID",

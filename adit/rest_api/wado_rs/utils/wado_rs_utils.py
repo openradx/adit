@@ -1,5 +1,5 @@
 from time import timezone
-from ...utils.dicom_web_utils import DicomWebConnector
+from ...utils.dicom_web_utils import DicomWebApi
 from ...serializers import DicomWebSerializer
 from adit.core.utils.task_utils import hijack_logger, store_log_in_task
 from adit.core.errors import RetriableTaskError
@@ -10,6 +10,8 @@ from django.utils import timezone
 from django.conf import settings
 from django.core.exceptions import EmptyResultSet
 from celery.utils.log import get_task_logger
+from adit.core.utils.dicom_connector import DicomConnector
+from adit.xnat_support.utils.xnat_connector import XnatConnector
 
 
 logger = get_task_logger(__name__)
@@ -112,7 +114,12 @@ def _serialize_and_transfer_to_adit(
 
     logger.info("Set up a serializer and writer for content type %s.", dicom_wado_task.job.content_type)
 
-    connector = DicomWebConnector(dicom_wado_task.job.source.dicomserver)
+    if dicom_wado_task.job.source.dicomserver.xnat_rest_source:
+        connector = XnatConnector(dicom_wado_task.job.source.dicomserver)
+    else:
+        connector = DicomConnector(dicom_wado_task.job.source.dicomserver)
+    
+    dicom_web_api = DicomWebApi(connector)
 
     logger.info("Connected to server %s.", dicom_wado_task.job.source.dicomserver.ae_title)
 
@@ -124,7 +131,7 @@ def _serialize_and_transfer_to_adit(
     file_path = dicom_wado_task.job.file_path
 
     serializer.start_file(file_path, dicom_wado_task.job.content_type)
-    connector.wado_download_study(
+    dicom_web_api.wado_download_study(
         dicom_wado_task.study_uid,
         series_list,
         dicom_wado_task.job.mode,

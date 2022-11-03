@@ -29,7 +29,7 @@ def dicom_explorer_form_view(request: AuthenticatedHttpRequest) -> HttpResponse:
         return render(request, "dicom_explorer/query_form.html", {"form": form})
 
     query = form.cleaned_data
-    server = query["source"]
+    server = query["server"]
     patient_id = query.get("patient_id")
     accession_number = query.get("accession_number")
     

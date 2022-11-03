@@ -1,5 +1,6 @@
 {% extends "core/base_generic.html" %}
 
+{% load render_table from django_tables2 %}
 {% load static from static %}
 
 {% block script %}
@@ -25,7 +26,7 @@
             </label>
             <select 
                 id="select-expiry-time"
-                class="form-control"
+                class="form-control custom-select"
             >   
                 {% for time_string, hours in ExpiryTimes.items %}
                 <option id="{{ hours }}">{{ time_string }}</option>
@@ -59,12 +60,18 @@
         style="margin-top: 50px;"
     >
         <div class="col-md-12">
-            <h4>Your tokens:</h4>
+            <h4 class="mb-3">Your tokens:</h4>
         </div>
     </div>
     <div 
-        id="token-list-wrapper"
+        class="table-container"
     >
+        <table 
+            class="table table-bordered table-hover"
+            id="token-list-wrapper"
+        >
+
+        </table>
     </div>
     
 {% endblock container %}

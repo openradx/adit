@@ -6,12 +6,12 @@ register = Library()
 @register.simple_tag
 def append_xnat_query(
     url,
-    project_id=None,
+    xnat_project_id=None,
     experiment_id=None,
 ):
     params = {}
-    if project_id:
-        params["project_id"] = project_id
+    if xnat_project_id:
+        params["xnat_project_id"] = xnat_project_id
     if experiment_id:
         params["experiment_id"] = experiment_id
 

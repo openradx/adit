@@ -160,7 +160,8 @@ class DicomServer(DicomNode):
 
     objects: DicomNodeManager["DicomServer"] = DicomNodeManager["DicomServer"]()
 
-    # (optional) XNAT rest support
+    # (optional) XNAT support
+    xnat_server = models.BooleanField(default=False)
     xnat_rest_source = models.BooleanField(default=False)
     xnat_root_url = models.CharField(blank=True, max_length=2000)
     xnat_username = models.CharField(blank=True, max_length=2000)

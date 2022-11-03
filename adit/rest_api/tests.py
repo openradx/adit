@@ -3,7 +3,7 @@ from django.test import TestCase
 import requests
 
 
-TOKEN = "67de33da68eb68cd46416c8d2e4d4535e9c2b9cc"
+TOKEN = "fe66ec53edea328afa8605affe7d38101583e145"
 BASE_URL = "http://localhost:8000/rest_api/"
 PACS_AE_TITLE = "ORTHANC1"
 

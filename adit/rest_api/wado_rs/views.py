@@ -78,6 +78,7 @@ class RetrieveStudyAPIView(RetrieveAPIView):
             file_path=file_path, type=content_type, boundary=boundary
         )
         os.remove(file_path)
+        os.rmdir(folder_path/"dicom_files")
         os.rmdir(folder_path)
 
         return response

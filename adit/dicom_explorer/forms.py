@@ -36,15 +36,11 @@ class DicomExplorerQueryForm(forms.Form):
     )
 
     # (optional) XNAT
-    project_id = forms.CharField(
+    xnat_project_id = forms.CharField(
         label="XNAT Project ID",
         max_length=64,
         required=False,
-    )
-    experiment_id = forms.CharField(
-        label="XNAT Experiment ID",
-        max_length=64,
-        required=False,
+        help_text="Providing a XNAT Project ID significantly loweres the query time."
     )
 
     def __init__(self, *args, **kwargs):

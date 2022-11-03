@@ -16,6 +16,8 @@ from adit.core.models import DicomNode
 from .models import BatchTransferJob, BatchTransferTask
 from .parsers import BatchTransferFileParser
 
+from adit.xnat_support.forms import xnat_options_field
+
 
 class BatchTransferJobForm(forms.ModelForm):
     batch_file = RestrictedFileField(

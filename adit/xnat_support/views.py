@@ -11,9 +11,11 @@ class CheckXnatSourceView(View):
         name = kwargs.get("name", False)
         if not name:
             return HttpResponse(False)
-        server = DicomServer.objects.filter(name=name)[0]
-
-        if server.xnat_rest_source:
+        server = DicomServer.objects.filter(name=name)
+        
+        if len(server) < 1:
+            return HttpResponse(False)
+        elif server[0].xnat_server:
             return HttpResponse(True)
         else:
             return HttpResponse(False)
