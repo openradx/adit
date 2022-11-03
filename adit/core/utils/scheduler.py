@@ -8,7 +8,6 @@ def is_time_between(begin_time, end_time, check_time):
     If the time to check is not provided then use the current time.
     Adapted from https://stackoverflow.com/a/10048290/166229
     """
-    # pylint: disable=no-else-return, chained-comparison
     if begin_time < end_time:
         return check_time >= begin_time and check_time <= end_time
     else:  # crosses midnight

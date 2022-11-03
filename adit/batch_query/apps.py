@@ -1,6 +1,6 @@
 from django.apps import AppConfig
 from django.db.models.signals import post_migrate
-from adit.core.site import register_main_menu_item, register_job_stats_collector
+from adit.core.site import register_job_stats_collector, register_main_menu_item
 
 
 class BatchQueryConfig(AppConfig):
@@ -23,7 +23,6 @@ def register_app():
 
 
 def collect_job_stats():
-    # pylint: disable=import-outside-toplevel
     from .models import BatchQueryJob
 
     counts = {}
@@ -43,7 +42,6 @@ def init_db(**kwargs):
 
 
 def create_group():
-    # pylint: disable=import-outside-toplevel
     from adit.accounts.utils import create_group_with_permissions
 
     create_group_with_permissions(
@@ -56,7 +54,6 @@ def create_group():
 
 
 def create_app_settings():
-    # pylint: disable=import-outside-toplevel
     from .models import BatchQuerySettings
 
     settings = BatchQuerySettings.get()

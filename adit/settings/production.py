@@ -1,4 +1,4 @@
-from .base import *  # pylint: disable=wildcard-import,unused-wildcard-import
+from .base import *  # noqa: F403
 from .base import env
 
 # Production settings, see

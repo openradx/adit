@@ -1,36 +1,30 @@
 from typing import Any, Dict
+from django.conf import settings
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.views.generic import DetailView
 from django.http import HttpResponseBadRequest
 from django.urls import reverse_lazy
-from django.conf import settings
+from django.views.generic import DetailView
 from django_tables2 import SingleTableMixin
-from adit.core.mixins import (
-    OwnerRequiredMixin,
-    RelatedFilterMixin,
-    PageSizeSelectMixin,
-)
+from adit.core.mixins import OwnerRequiredMixin, PageSizeSelectMixin, RelatedFilterMixin
 from adit.core.views import (
-    TransferJobListView,
+    DicomJobCancelView,
     DicomJobCreateView,
     DicomJobDeleteView,
-    DicomJobVerifyView,
-    DicomJobCancelView,
+    DicomJobRestartView,
     DicomJobResumeView,
     DicomJobRetryView,
-    DicomJobRestartView,
+    DicomJobVerifyView,
     DicomTaskDetailView,
+    TransferJobListView,
 )
-from .forms import SelectiveTransferJobForm
-from .models import SelectiveTransferJob, SelectiveTransferTask
-from .mixins import SelectiveTransferJobCreateMixin
-from .tables import SelectiveTransferJobTable, SelectiveTransferTaskTable
 from .filters import SelectiveTransferJobFilter, SelectiveTransferTaskFilter
+from .forms import SelectiveTransferJobForm
+from .mixins import SelectiveTransferJobCreateMixin
+from .models import SelectiveTransferJob, SelectiveTransferTask
+from .tables import SelectiveTransferJobTable, SelectiveTransferTaskTable
 
 
-class SelectiveTransferJobListView(
-    TransferJobListView
-):  # pylint: disable=too-many-ancestors
+class SelectiveTransferJobListView(TransferJobListView):
     model = SelectiveTransferJob
     table_class = SelectiveTransferJobTable
     filterset_class = SelectiveTransferJobFilter
@@ -61,9 +55,7 @@ class SelectiveTransferJobCreateView(
 
     def form_invalid(self, form):
         error_message = "Please correct the form errors and search again."
-        return self.render_to_response(
-            self.get_context_data(form=form, error_message=error_message)
-        )
+        return self.render_to_response(self.get_context_data(form=form, error_message=error_message))
 
     def form_valid(self, form):
         action = self.request.POST.get("action")
@@ -87,12 +79,8 @@ class SelectiveTransferJobCreateView(
             try:
                 job = self.transfer_selected_studies(user, form, selected_studies)
             except ValueError as err:
-                return self.render_to_response(
-                    self.get_context_data(transfer=True, error_message=str(err))
-                )
-            return self.render_to_response(
-                self.get_context_data(transfer=True, created_job=job)
-            )
+                return self.render_to_response(self.get_context_data(transfer=True, error_message=str(err)))
+            return self.render_to_response(self.get_context_data(transfer=True, created_job=job))
 
         return HttpResponseBadRequest()
 

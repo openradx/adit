@@ -1,5 +1,5 @@
-from django.utils.html import format_html
 import django_tables2 as tables
+from django.utils.html import format_html
 from .templatetags.core_extras import (
     dicom_job_status_css_class,
     dicom_task_status_css_class,
@@ -20,7 +20,7 @@ class RecordIdColumn(tables.TemplateColumn):
 class DicomJobTable(tables.Table):
     id = RecordIdColumn(verbose_name="Job ID")
 
-    class Meta:  # pylint: disable=too-few-public-methods
+    class Meta:
         model = None
         order_by = ("-id",)
         template_name = "django_tables2/bootstrap4.html"
@@ -38,7 +38,7 @@ class DicomJobTable(tables.Table):
 
 
 class TransferJobTable(DicomJobTable):
-    class Meta(DicomJobTable.Meta):  # pylint: disable=too-few-public-methods
+    class Meta(DicomJobTable.Meta):
         # owner is dynamically excluded for non staff users (see tables.py)
         fields = ("id", "status", "source", "destination", "created", "owner")
 
@@ -47,7 +47,7 @@ class DicomTaskTable(tables.Table):
     task_id = RecordIdColumn(verbose_name="Task ID")
     end = tables.DateTimeColumn(verbose_name="Finished At")
 
-    class Meta:  # pylint: disable=too-few-public-methods
+    class Meta:
         model = None
         order_by = ("task_id",)
         template_name = "django_tables2/bootstrap4.html"

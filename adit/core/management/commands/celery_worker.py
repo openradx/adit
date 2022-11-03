@@ -1,7 +1,7 @@
-import shlex
-import subprocess
 import logging
+import shlex
 import socket
+import subprocess
 from datetime import datetime
 from ..base.server_command import ServerCommand
 
@@ -56,18 +56,13 @@ class Command(ServerCommand):
         now = datetime.now().strftime("%B %d, %Y - %X")
         self.stdout.write(now)
         self.stdout.write(
-            (
-                "Starting Celery worker with command:\n"
-                "%(cmd)s\n"
-                "Quit with %(quit_command)s."
-            )
+            ("Starting Celery worker with command:\n" "%(cmd)s\n" "Quit with %(quit_command)s.")
             % {
                 "cmd": cmd,
                 "quit_command": self.quit_command,
             }
         )
 
-        # pylint: disable=consider-using-with
         self.worker_process = subprocess.Popen(shlex.split(cmd))
         self.worker_process.wait()
 

@@ -58,14 +58,14 @@ flake8 = "^5.0.4"
 Flake8-pyproject = "^1.1.0"
 
 [tool.black]
-line-length = 100
+line-length = 120
 
 [tool.isort]
 profile = "black" 
 lines_between_sections = 0
 
 [tool.flake8]
-max-line-length = 100
+max-line-length = 120
 exclude = "migrations"
 
 [build-system]

@@ -1,7 +1,6 @@
 import re
-import pytest
 from channels.testing import ChannelsLiveServerTestCase
-from playwright.sync_api import BrowserContext, Page, expect, sync_playwright
+from playwright.sync_api import expect, sync_playwright
 from adit.accounts.factories import UserFactory
 
 

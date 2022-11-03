@@ -1,7 +1,5 @@
 from __future__ import absolute_import, unicode_literals
-
 import os
-
 from celery import Celery
 
 # set the default Django settings module for the 'celery' program.
@@ -19,13 +17,13 @@ app.config_from_object("django.conf:settings", namespace="CELERY")
 # https://stackoverflow.com/a/47980598/166229
 # app.conf.task_queue_max_priority = 10
 
-from celery.signals import setup_logging  # pylint: disable=wrong-import-position
+from celery.signals import setup_logging  # noqa: E402
 
 
 @setup_logging.connect
 def config_loggers(*args, **kwargs):
-    from logging.config import dictConfig  # pylint: disable=import-outside-toplevel
-    from django.conf import settings  # pylint: disable=import-outside-toplevel
+    from logging.config import dictConfig
+    from django.conf import settings
 
     dictConfig(settings.LOGGING)
 

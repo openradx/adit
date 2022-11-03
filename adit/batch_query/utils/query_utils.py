@@ -1,13 +1,12 @@
 import logging
 from typing import Any, Dict, List, Optional
+from celery.contrib.abortable import AbortableTask as AbortableCeleryTask
 from django.conf import settings
 from django.template.defaultfilters import pluralize
 from django.utils import timezone
-from celery.contrib.abortable import AbortableTask as AbortableCeleryTask
 from adit.core.utils.dicom_connector import DicomConnector
 from adit.core.utils.task_utils import hijack_logger, store_log_in_task
 from ..models import BatchQueryResult, BatchQueryTask
-
 
 logger = logging.getLogger(__name__)
 
@@ -26,15 +25,12 @@ class QueryExecutor:
     Currently we don't make it abortable in between as it is fast enough.
     """
 
-    def __init__(
-        self, query_task: BatchQueryTask, celery_task: AbortableCeleryTask
-    ) -> None:
+    def __init__(self, query_task: BatchQueryTask, celery_task: AbortableCeleryTask) -> None:
         self.query_task = query_task
         self.celery_task = celery_task
 
         self.connector = _create_source_connector(query_task)
 
-    # pylint: disable=too-many-branches
     def start(self) -> BatchQueryTask.Status:
         if self.query_task.status == BatchQueryTask.Status.CANCELED:
             return self.query_task.status
@@ -47,7 +43,6 @@ class QueryExecutor:
 
         handler, stream = hijack_logger(logger)
 
-        # pylint: disable=too-many-nested-blocks
         try:
             patients = self._fetch_patients()
 
@@ -59,10 +54,7 @@ class QueryExecutor:
                 for patient in patients:
                     studies = self._query_studies(patient["PatientID"])
                     if studies:
-                        if (
-                            self.query_task.series_description
-                            or self.query_task.series_number
-                        ):
+                        if self.query_task.series_description or self.query_task.series_number:
                             for study in studies:
                                 series = self._query_series(study)
                                 all_studies.append(series)
@@ -73,9 +65,7 @@ class QueryExecutor:
                     self.query_task.status = BatchQueryTask.Status.WARNING
                     self.query_task.message = "No studies for patient found."
                 else:
-                    all_studies_flattened = [
-                        study for studies in all_studies for study in studies
-                    ]
+                    all_studies_flattened = [study for studies in all_studies for study in studies]
                     results = self._save_results(all_studies_flattened)
 
                     num = len(results)
@@ -92,10 +82,8 @@ class QueryExecutor:
                         # may have different Patient IDs if the studies were imported
                         # from external.
                         self.query_task.status = BatchQueryTask.Status.WARNING
-                        self.query_task.message = (
-                            f"Multiple patients found with overall {study_count}."
-                        )
-        except Exception as err:  # pylint: disable=broad-except
+                        self.query_task.message = f"Multiple patients found with overall {study_count}."
+        except Exception as err:
             logger.exception("Error during %s", self.query_task)
             self.query_task.status = BatchQueryTask.Status.FAILURE
             self.query_task.message = str(err)
@@ -119,13 +107,9 @@ class QueryExecutor:
         study_date = ""
         if self.query_task.study_date_start:
             if not self.query_task.study_date_end:
-                study_date = (
-                    self.query_task.study_date_start.strftime(DICOM_DATE_FORMAT) + "-"
-                )
+                study_date = self.query_task.study_date_start.strftime(DICOM_DATE_FORMAT) + "-"
             elif self.query_task.study_date_start == self.query_task.study_date_end:
-                study_date = self.query_task.study_date_start.strftime(
-                    DICOM_DATE_FORMAT
-                )
+                study_date = self.query_task.study_date_start.strftime(DICOM_DATE_FORMAT)
             else:
                 study_date = (
                     self.query_task.study_date_start.strftime(DICOM_DATE_FORMAT)
@@ -133,16 +117,12 @@ class QueryExecutor:
                     + self.query_task.study_date_end.strftime(DICOM_DATE_FORMAT)
                 )
         elif self.query_task.study_date_end:
-            study_date = "-" + self.query_task.study_date_end.strftime(
-                DICOM_DATE_FORMAT
-            )
+            study_date = "-" + self.query_task.study_date_end.strftime(DICOM_DATE_FORMAT)
 
         modalities = []
         if self.query_task.modalities:
             modalities = [
-                modality
-                for modality in self.query_task.modalities
-                if modality not in settings.EXCLUDE_MODALITIES
+                modality for modality in self.query_task.modalities if modality not in settings.EXCLUDE_MODALITIES
             ]
 
         studies = self.connector.find_studies(

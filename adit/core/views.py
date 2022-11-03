@@ -1,33 +1,31 @@
 from typing import Any, Dict, Optional
-from django.shortcuts import render
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
-from django.views.generic import View
-from django.views.generic.base import TemplateView
-from django.views.generic.edit import DeleteView, CreateView, FormView
-from django.views.generic.detail import DetailView, SingleObjectMixin
 from django.contrib.auth.mixins import (
     LoginRequiredMixin,
-    UserPassesTestMixin,
     PermissionRequiredMixin,
+    UserPassesTestMixin,
 )
-from django.urls import re_path, reverse_lazy
-from django.shortcuts import redirect
 from django.core.exceptions import SuspiciousOperation
-from django.conf import settings
-from django.http.response import Http404
 from django.db import models
 from django.db.models.query import QuerySet
-from django_tables2 import SingleTableMixin
+from django.http.response import Http404
+from django.shortcuts import redirect, render
+from django.urls import re_path, reverse_lazy
+from django.views.generic import View
+from django.views.generic.base import TemplateView
+from django.views.generic.detail import DetailView, SingleObjectMixin
+from django.views.generic.edit import CreateView, DeleteView, FormView
 from django_filters.views import FilterView
+from django_tables2 import SingleTableMixin
 from revproxy.views import ProxyView
-
 from adit.core.tasks import broadcast_mail
 from ..celery import app as celery_app
-from .site import job_stats_collectors
-from .models import CoreSettings, DicomJob, DicomTask
-from .mixins import OwnerRequiredMixin, PageSizeSelectMixin
 from .forms import BroadcastForm
+from .mixins import OwnerRequiredMixin, PageSizeSelectMixin
+from .models import CoreSettings, DicomJob, DicomTask
+from .site import job_stats_collectors
 
 
 @staff_member_required
@@ -83,9 +81,7 @@ class HomeView(TemplateView):
         return context
 
 
-class DicomJobListView(
-    LoginRequiredMixin, SingleTableMixin, PageSizeSelectMixin, FilterView
-):
+class DicomJobListView(LoginRequiredMixin, SingleTableMixin, PageSizeSelectMixin, FilterView):
     model = None
     table_class = None
     filterset_class = None
@@ -108,7 +104,7 @@ class DicomJobListView(
         return kwargs
 
 
-class TransferJobListView(DicomJobListView):  # pylint: disable=too-many-ancestors
+class TransferJobListView(DicomJobListView):
     def get_queryset(self) -> QuerySet:
         return super().get_queryset().select_related("destination")
 
@@ -137,9 +133,7 @@ class DicomJobDeleteView(LoginRequiredMixin, OwnerRequiredMixin, DeleteView):
     def delete(self, request, *args, **kwargs):
         job = self.get_object()
         if not job.is_deletable:
-            raise SuspiciousOperation(
-                f"Job with ID {job.id} and status {job.get_status_display()} is not deletable."
-            )
+            raise SuspiciousOperation(f"Job with ID {job.id} and status {job.get_status_display()} is not deletable.")
 
         for dicom_task in job.tasks.all():
             if dicom_task.celery_task_id:
@@ -151,9 +145,7 @@ class DicomJobDeleteView(LoginRequiredMixin, OwnerRequiredMixin, DeleteView):
         return super().delete(request, *args, **kwargs)
 
 
-class DicomJobVerifyView(
-    LoginRequiredMixin, OwnerRequiredMixin, SingleObjectMixin, View
-):
+class DicomJobVerifyView(LoginRequiredMixin, OwnerRequiredMixin, SingleObjectMixin, View):
     model = None
     success_message = "Job with ID %(id)d was verified"
 
@@ -173,18 +165,14 @@ class DicomJobVerifyView(
         return redirect(job)
 
 
-class DicomJobCancelView(
-    LoginRequiredMixin, OwnerRequiredMixin, SingleObjectMixin, View
-):
+class DicomJobCancelView(LoginRequiredMixin, OwnerRequiredMixin, SingleObjectMixin, View):
     model = None
     success_message = "Job with ID %(id)d was canceled"
 
     def post(self, request, *args, **kwargs):
         job = self.get_object()
         if not job.is_cancelable:
-            raise SuspiciousOperation(
-                f"Job with ID {job.id} and status {job.get_status_display()} is not cancelable."
-            )
+            raise SuspiciousOperation(f"Job with ID {job.id} and status {job.get_status_display()} is not cancelable.")
 
         for dicom_task in job.tasks.filter(status=DicomTask.Status.PENDING):
             if dicom_task.celery_task_id:
@@ -192,9 +180,7 @@ class DicomJobCancelView(
             dicom_task.status = DicomTask.Status.CANCELED
             dicom_task.save()
 
-        tasks_in_progress_count = job.tasks.filter(
-            status=DicomTask.Status.IN_PROGRESS
-        ).count()
+        tasks_in_progress_count = job.tasks.filter(status=DicomTask.Status.IN_PROGRESS).count()
 
         # If there is a still in progress task then the job will be set to canceled when
         # the processing of the task is finished (see core.tasks.HandleFinishedDicomJob)
@@ -209,18 +195,14 @@ class DicomJobCancelView(
         return redirect(job)
 
 
-class DicomJobResumeView(
-    LoginRequiredMixin, OwnerRequiredMixin, SingleObjectMixin, View
-):
+class DicomJobResumeView(LoginRequiredMixin, OwnerRequiredMixin, SingleObjectMixin, View):
     model = None
     success_message = "Job with ID %(id)d will be resumed"
 
     def post(self, request, *args, **kwargs):
         job = self.get_object()
         if not job.is_resumable:
-            raise SuspiciousOperation(
-                f"Job with ID {job.id} and status {job.get_status_display()} is not resumable."
-            )
+            raise SuspiciousOperation(f"Job with ID {job.id} and status {job.get_status_display()} is not resumable.")
 
         for task in job.tasks.filter(status=DicomTask.Status.CANCELED):
             task.status = DicomTask.Status.PENDING
@@ -235,18 +217,14 @@ class DicomJobResumeView(
         return redirect(job)
 
 
-class DicomJobRetryView(
-    LoginRequiredMixin, OwnerRequiredMixin, SingleObjectMixin, View
-):
+class DicomJobRetryView(LoginRequiredMixin, OwnerRequiredMixin, SingleObjectMixin, View):
     model = None
     success_message = "Job with ID %(id)d will be retried"
 
     def post(self, request, *args, **kwargs):
         job = self.get_object()
         if not job.is_retriable:
-            raise SuspiciousOperation(
-                f"Job with ID {job.id} and status {job.get_status_display()} is not retriable."
-            )
+            raise SuspiciousOperation(f"Job with ID {job.id} and status {job.get_status_display()} is not retriable.")
 
         for task in job.tasks.filter(status=DicomTask.Status.FAILURE):
             task.status = DicomTask.Status.PENDING
@@ -266,18 +244,14 @@ class DicomJobRetryView(
         return redirect(job)
 
 
-class DicomJobRestartView(
-    LoginRequiredMixin, OwnerRequiredMixin, SingleObjectMixin, View
-):
+class DicomJobRestartView(LoginRequiredMixin, OwnerRequiredMixin, SingleObjectMixin, View):
     model = None
     success_message = "Job with ID %(id)d will be restarted"
 
     def post(self, request, *args, **kwargs):
         job = self.get_object()
         if not request.user.is_staff or not job.is_restartable:
-            raise SuspiciousOperation(
-                f"Job with ID {job.id} and status {job.get_status_display()} is not restartable."
-            )
+            raise SuspiciousOperation(f"Job with ID {job.id} and status {job.get_status_display()} is not restartable.")
 
         for task in job.tasks.all():
             task.status = DicomTask.Status.PENDING
@@ -304,9 +278,7 @@ class DicomTaskDetailView(LoginRequiredMixin, OwnerRequiredMixin, DetailView):
     context_object_name = "task"
     owner_accessor = "job.owner"
 
-    def get_object(
-        self, queryset: Optional[models.query.QuerySet] = None
-    ) -> models.Model:
+    def get_object(self, queryset: Optional[models.query.QuerySet] = None) -> models.Model:
         if queryset is None:
             queryset = self.get_queryset()
 
@@ -324,9 +296,7 @@ class DicomTaskDetailView(LoginRequiredMixin, OwnerRequiredMixin, DetailView):
         try:
             obj = queryset.get()
         except queryset.model.DoesNotExist as err:
-            raise Http404(
-                f"No {queryset.model._meta.verbose_name} found matching the query"
-            ) from err
+            raise Http404(f"No {queryset.model._meta.verbose_name} found matching the query") from err
         return obj
 
     def get_context_data(self, **kwargs):
@@ -352,9 +322,7 @@ class AdminProxyView(UserPassesTestMixin, ProxyView):
 
 
 class RabbitManagementProxyView(AdminProxyView):
-    upstream = (
-        f"http://{settings.RABBIT_MANAGEMENT_HOST}:{settings.RABBIT_MANAGEMENT_PORT}"
-    )
+    upstream = f"http://{settings.RABBIT_MANAGEMENT_HOST}:{settings.RABBIT_MANAGEMENT_PORT}"
     url_prefix = "rabbit"
     rewrite = ((rf"^/{url_prefix}$", r"/"),)
 

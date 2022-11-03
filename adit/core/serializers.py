@@ -1,10 +1,8 @@
-from rest_framework import serializers
 from django.utils import formats
+from rest_framework import serializers
 
 
-class BatchTaskListSerializer(
-    serializers.ListSerializer
-):  # pylint: disable=abstract-method
+class BatchTaskListSerializer(serializers.ListSerializer):
     def __init__(self, *args, **kwargs):
         self.model = kwargs.pop("model")
         super().__init__(*args, **kwargs)
@@ -46,7 +44,7 @@ class BatchTaskSerializer(serializers.ModelSerializer):
         # In contrast to Django's ModelForm does a ModelSerializer not call
         # the model clean method itself (at leat in DRF v3), so we must do
         # this manually
-        batch_task = self.Meta.model(**attrs)  # pylint: disable=not-callable
+        batch_task = self.Meta.model(**attrs)
         batch_task.clean()
 
         return attrs

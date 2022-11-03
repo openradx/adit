@@ -1,44 +1,32 @@
 from io import StringIO
+from django.conf import settings
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http.response import HttpResponse
-from django.views.generic import DetailView
-from django.views.generic.detail import SingleObjectMixin
-from django.views.generic.base import View
 from django.urls import reverse_lazy
-from django.conf import settings
+from django.views.generic import DetailView
+from django.views.generic.base import View
+from django.views.generic.detail import SingleObjectMixin
 from django_tables2 import SingleTableMixin
-from adit.core.mixins import (
-    OwnerRequiredMixin,
-    RelatedFilterMixin,
-    PageSizeSelectMixin,
-)
+from adit.core.mixins import OwnerRequiredMixin, PageSizeSelectMixin, RelatedFilterMixin
 from adit.core.views import (
-    DicomJobListView,
+    DicomJobCancelView,
     DicomJobCreateView,
     DicomJobDeleteView,
-    DicomJobVerifyView,
-    DicomJobCancelView,
+    DicomJobListView,
+    DicomJobRestartView,
     DicomJobResumeView,
     DicomJobRetryView,
-    DicomJobRestartView,
+    DicomJobVerifyView,
     DicomTaskDetailView,
 )
-from .models import BatchQueryJob, BatchQueryTask
+from .filters import BatchQueryJobFilter, BatchQueryResultFilter, BatchQueryTaskFilter
 from .forms import BatchQueryJobForm
-from .tables import (
-    BatchQueryJobTable,
-    BatchQueryTaskTable,
-    BatchQueryResultTable,
-)
-from .filters import (
-    BatchQueryJobFilter,
-    BatchQueryTaskFilter,
-    BatchQueryResultFilter,
-)
+from .models import BatchQueryJob, BatchQueryTask
+from .tables import BatchQueryJobTable, BatchQueryResultTable, BatchQueryTaskTable
 from .utils.exporters import export_results
 
 
-class BatchQueryJobListView(DicomJobListView):  # pylint: disable=too-many-ancestors
+class BatchQueryJobListView(DicomJobListView):
     model = BatchQueryJob
     table_class = BatchQueryJobTable
     filterset_class = BatchQueryJobFilter

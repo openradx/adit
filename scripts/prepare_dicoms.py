@@ -10,7 +10,7 @@ from pathlib import Path
 import pydicom
 
 
-def main():  # pylint: disable=too-many-locals
+def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("input_folder", help="The DICOM input folder.")
     parser.add_argument("output_folder", help="The DICOM output folder.")

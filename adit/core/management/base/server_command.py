@@ -1,13 +1,13 @@
-import re
-import socket
-import signal
-import sys
 import errno
 import os
+import re
+import signal
+import socket
+import sys
 from datetime import datetime
 from django.core.management.base import BaseCommand, CommandError
-from django.utils.regex_helper import _lazy_re_compile
 from django.utils import autoreload as django_autoreload
+from django.utils.regex_helper import _lazy_re_compile
 
 naiveip_re = _lazy_re_compile(
     r"""^(?:
@@ -46,9 +46,7 @@ class ServerCommand(BaseCommand):
         super().__init__(*args, **kwargs)
 
     def add_arguments(self, parser):
-        parser.add_argument(
-            "addrport", nargs="?", help="Optional port number, or ipaddr:port"
-        )
+        parser.add_argument("addrport", nargs="?", help="Optional port number, or ipaddr:port")
         parser.add_argument(
             "--ipv6",
             "-6",
@@ -74,10 +72,7 @@ class ServerCommand(BaseCommand):
         else:
             m = re.match(naiveip_re, options["addrport"])
             if m is None:
-                raise CommandError(
-                    f'"{options["addrport"]}" is not a valid port number '
-                    "or address:port pair."
-                )
+                raise CommandError(f'"{options["addrport"]}" is not a valid port number ' "or address:port pair.")
             self.addr, _ipv4, _ipv6, _fqdn, self.port = m.groups()
             if not self.port.isdigit():
                 raise CommandError(f"{self.port} is not a valid port number.")
@@ -118,7 +113,7 @@ class ServerCommand(BaseCommand):
                 error_text = e
             self.stderr.write(f"Error: {error_text}")
             # Need to use an OS exit because sys.exit doesn't work in a thread
-            os._exit(1)  # pylint: disable=protected-access
+            os._exit(1)
         except KeyboardInterrupt:
             sys.exit(0)
         finally:
@@ -136,10 +131,7 @@ class ServerCommand(BaseCommand):
             now = datetime.now().strftime("%B %d, %Y - %X")
             self.stdout.write(now)
             self.stdout.write(
-                (
-                    "Starting %(name)s at %(protocol)s://%(addr)s:%(port)s/\n"
-                    "Quit with %(quit_command)s."
-                )
+                ("Starting %(name)s at %(protocol)s://%(addr)s:%(port)s/\n" "Quit with %(quit_command)s.")
                 % {
                     "name": self.server_name,
                     "protocol": self.protocol,

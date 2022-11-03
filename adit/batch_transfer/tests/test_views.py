@@ -1,9 +1,9 @@
 from unittest.mock import patch
 import pytest
-from pytest_django.asserts import assertTemplateUsed
 from django.contrib.auth.models import Group
-from django.urls import reverse
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.urls import reverse
+from pytest_django.asserts import assertTemplateUsed
 from adit.accounts.factories import UserFactory
 from adit.core.factories import DicomServerFactory
 from ..models import BatchTransferJob
@@ -15,6 +15,7 @@ PatientID;StudyInstanceUID;Pseudonym
 1003;1.2.840.113845.11.1000000001951524609.20200705172608.2689471;KRS8CZ3S
 """
 
+
 # Somehow the form data must be always generated from scratch (maybe cause of the
 # SimpleUploadedFile) otherwise tests fail.
 @pytest.fixture
@@ -25,9 +26,7 @@ def form_data(db):
         "project_name": "Apollo project",
         "project_description": "Fly to the moon",
         "ethics_application_id": "12345",
-        "batch_file": SimpleUploadedFile(
-            name="sample_sheet.csv", content=csv_data, content_type="text/csv"
-        ),
+        "batch_file": SimpleUploadedFile(name="sample_sheet.csv", content=csv_data, content_type="text/csv"),
     }
 
 
@@ -76,9 +75,7 @@ def test_batch_job_created_and_enqueued_with_auto_verify(
     client.post(reverse("batch_transfer_job_create"), form_data)
     job = BatchTransferJob.objects.first()
     assert job.tasks.count() == 3
-    send_task_mock.assert_called_once_with(
-        "adit.selective_transfer.tasks.ProcessBatchTransferJob", (1,)
-    )
+    send_task_mock.assert_called_once_with("adit.selective_transfer.tasks.ProcessBatchTransferJob", (1,))
 
 
 @patch("celery.current_app.send_task")
@@ -93,9 +90,7 @@ def test_batch_job_created_and_not_enqueued_without_auto_verify(
     send_task_mock.assert_not_called()
 
 
-def test_job_cant_be_created_with_missing_fields(
-    client, user_with_permission, form_data
-):
+def test_job_cant_be_created_with_missing_fields(client, user_with_permission, form_data):
     client.force_login(user_with_permission)
     for key_to_exclude in form_data:
         invalid_form_data = form_data.copy()

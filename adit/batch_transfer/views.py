@@ -1,33 +1,27 @@
-from django.contrib.auth.mixins import LoginRequiredMixin
-from django.views.generic import TemplateView, DetailView
 from django.conf import settings
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.urls import reverse_lazy
+from django.views.generic import DetailView, TemplateView
 from django_tables2 import SingleTableMixin
-from adit.core.mixins import (
-    OwnerRequiredMixin,
-    RelatedFilterMixin,
-    PageSizeSelectMixin,
-)
+from adit.core.mixins import OwnerRequiredMixin, PageSizeSelectMixin, RelatedFilterMixin
 from adit.core.views import (
-    TransferJobListView,
+    DicomJobCancelView,
     DicomJobCreateView,
     DicomJobDeleteView,
-    DicomJobVerifyView,
-    DicomJobCancelView,
+    DicomJobRestartView,
     DicomJobResumeView,
     DicomJobRetryView,
-    DicomJobRestartView,
+    DicomJobVerifyView,
     DicomTaskDetailView,
+    TransferJobListView,
 )
-from .models import BatchTransferSettings, BatchTransferJob, BatchTransferTask
-from .forms import BatchTransferJobForm
-from .tables import BatchTransferJobTable, BatchTransferTaskTable
 from .filters import BatchTransferJobFilter, BatchTransferTaskFilter
+from .forms import BatchTransferJobForm
+from .models import BatchTransferJob, BatchTransferSettings, BatchTransferTask
+from .tables import BatchTransferJobTable, BatchTransferTaskTable
 
 
-class BatchTransferJobListView(
-    TransferJobListView
-):  # pylint: disable=too-many-ancestors
+class BatchTransferJobListView(TransferJobListView):
     model = BatchTransferJob
     table_class = BatchTransferJobTable
     filterset_class = BatchTransferJobFilter
@@ -64,9 +58,7 @@ class BatchTransferJobCreateView(DicomJobCreateView):
     def dispatch(self, request, *args, **kwargs):
         batch_transfer_settings = BatchTransferSettings.get()
         if batch_transfer_settings.locked and not request.user.is_staff:
-            return TemplateView.as_view(
-                template_name="batch_transfer/batch_transfer_locked.html"
-            )(request)
+            return TemplateView.as_view(template_name="batch_transfer/batch_transfer_locked.html")(request)
         return super().dispatch(request, *args, **kwargs)
 
 

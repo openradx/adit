@@ -1,6 +1,6 @@
+import logging
 import shlex
 import subprocess
-import logging
 from datetime import datetime
 from pathlib import Path
 from ..base.server_command import ServerCommand
@@ -45,18 +45,13 @@ class Command(ServerCommand):
         now = datetime.now().strftime("%B %d, %Y - %X")
         self.stdout.write(now)
         self.stdout.write(
-            (
-                "Starting Celery beat with command:\n"
-                "%(cmd)s\n"
-                "Quit with %(quit_command)s."
-            )
+            ("Starting Celery beat with command:\n" "%(cmd)s\n" "Quit with %(quit_command)s.")
             % {
                 "cmd": cmd,
                 "quit_command": self.quit_command,
             }
         )
 
-        # pylint: disable=consider-using-with
         self.beat_process = subprocess.Popen(shlex.split(cmd))
         self.beat_process.wait()
 

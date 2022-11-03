@@ -1,12 +1,12 @@
-from adit.core.tables import TransferJobTable, DicomTaskTable
+from adit.core.tables import DicomTaskTable, TransferJobTable
 from .models import SelectiveTransferJob, SelectiveTransferTask
 
 
 class SelectiveTransferJobTable(TransferJobTable):
-    class Meta(TransferJobTable.Meta):  # pylint: disable=too-few-public-methods
+    class Meta(TransferJobTable.Meta):
         model = SelectiveTransferJob
 
 
 class SelectiveTransferTaskTable(DicomTaskTable):
-    class Meta(DicomTaskTable.Meta):  # pylint: disable=too-few-public-methods
+    class Meta(DicomTaskTable.Meta):
         model = SelectiveTransferTask

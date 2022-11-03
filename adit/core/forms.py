@@ -1,9 +1,9 @@
+from crispy_forms.bootstrap import FieldWithButtons
+from crispy_forms.helper import FormHelper
+from crispy_forms.layout import Div, Field, Hidden, Layout, Submit
 from django import forms
 from django.forms.models import ModelChoiceField
 from django.forms.widgets import Select
-from crispy_forms.helper import FormHelper
-from crispy_forms.layout import Layout, Submit, Field, Div, Hidden
-from crispy_forms.bootstrap import FieldWithButtons
 from .models import DicomNode
 
 
@@ -13,12 +13,8 @@ class BroadcastForm(forms.Form):
 
 
 class DicomNodeSelect(Select):
-    def create_option(  # pylint: disable=too-many-arguments
-        self, name, value, label, selected, index, subindex=None, attrs=None
-    ):
-        option = super().create_option(
-            name, value, label, selected, index, subindex, attrs
-        )
+    def create_option(self, name, value, label, selected, index, subindex=None, attrs=None):
+        option = super().create_option(name, value, label, selected, index, subindex, attrs)
         if hasattr(value, "instance"):
             dicom_node = value.instance
             if dicom_node.node_type == DicomNode.NodeType.SERVER:

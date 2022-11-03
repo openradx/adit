@@ -1,5 +1,4 @@
-import sys
-from .base import *  # pylint: disable=wildcard-import,unused-wildcard-import
+from .base import *  # noqa: F403
 from .base import env
 
 # Development settings
@@ -8,16 +7,14 @@ DEBUG = True
 
 ENABLE_REMOTE_DEBUGGING = env.bool("ENABLE_REMOTE_DEBUGGING", default=False)
 
-SECRET_KEY = env.str(
-    "DJANGO_SECRET_KEY", default="ug+cbde301nelb)(di0^p21osy3h=t$%2$-8d&0#xlyfj8&==5"
-)
+SECRET_KEY = env.str("DJANGO_SECRET_KEY", default="ug+cbde301nelb)(di0^p21osy3h=t$%2$-8d&0#xlyfj8&==5")
 
 ALLOWED_HOSTS = env.list("DJANGO_ALLOWED_HOSTS", default=[])
 
 CSRF_TRUSTED_ORIGINS = env.list("DJANGO_CSRF_TRUSTED_ORIGINS", default=[])
 
-if sys.argv and ("test" in sys.argv or "pytest" in sys.argv[0]):
-    DATABASES = {"default": env.db("SQLITE_URL", default="sqlite:///./adit-sqlite.db")}
+# if not ADIT_FULLSTACK and sys.argv and ("test" in sys.argv or "pytest" in sys.argv[0]):
+#     DATABASES = {"default": env.db("SQLITE_URL", default="sqlite:///./adit-sqlite.db")}
 
 EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 
@@ -27,7 +24,7 @@ INSTALLED_APPS += [  # noqa: F405
     "django_extensions",
 ]
 
-MIDDLEWARE += ["debug_toolbar.middleware.DebugToolbarMiddleware"]  # noqa: f405
+MIDDLEWARE += ["debug_toolbar.middleware.DebugToolbarMiddleware"]  # noqa: F405
 
 DEBUG_TOOLBAR_PANELS = [
     "debug_toolbar.panels.versions.VersionsPanel",

@@ -29,9 +29,7 @@ class OwnerRequiredMixin(AccessMixin):
         ):
             check_owner = False
 
-        if check_owner and request.user != deepgetattr(
-            self.object, self.owner_accessor
-        ):
+        if check_owner and request.user != deepgetattr(self.object, self.owner_accessor):
             self.handle_no_permission()
 
         return super().dispatch(request, *args, **kwargs)
@@ -70,11 +68,7 @@ class RelatedFilterMixin(FilterMixin):
         filterset_class = self.get_filterset_class()
         self.filterset = self.get_filterset(filterset_class)
 
-        if (
-            not self.filterset.is_bound
-            or self.filterset.is_valid()
-            or not self.get_strict()
-        ):
+        if not self.filterset.is_bound or self.filterset.is_valid() or not self.get_strict():
             # object_list is consumed by SingleTableMixin of django_tables2
             self.object_list = self.filterset.qs
         else:
@@ -102,9 +96,7 @@ class PageSizeSelectMixin:
         per_page = min(per_page, 1000)
         self.paginate_by = per_page  # Used by django_tables2
 
-        context["page_size_select"] = PageSizeSelectForm(
-            self.request.GET, [50, 100, 250, 500]
-        )
+        context["page_size_select"] = PageSizeSelectForm(self.request.GET, [50, 100, 250, 500])
         return context
 
 
@@ -139,7 +131,6 @@ class InlineFormSetMixin:
         # Hide all errors of a form or formset.
         # Found only this hacky way.
         # See https://stackoverflow.com/questions/64402527
-        # pylint: disable=protected-access
         form_or_formset._errors = {}
         if hasattr(form_or_formset, "forms"):
             for form in form_or_formset.forms:
@@ -152,16 +143,16 @@ class InlineFormSetMixin:
 
         if request.POST.get("add_formset_form"):
             post_data = self.add_formset_form(self.formset_prefix)
-            formset = self.formset_class(post_data)  # pylint: disable=not-callable
+            formset = self.formset_class(post_data)
             return self.render_changed_formset(form, formset)
 
         if request.POST.get("delete_formset_form"):
             idx_to_delete = int(request.POST.get("delete_formset_form"))
             post_data = self.delete_formset_form(idx_to_delete, self.formset_prefix)
-            formset = self.formset_class(post_data)  # pylint: disable=not-callable
+            formset = self.formset_class(post_data)
             return self.render_changed_formset(form, formset)
 
-        formset = self.formset_class(request.POST)  # pylint: disable=not-callable
+        formset = self.formset_class(request.POST)
         if form.is_valid() and formset.is_valid():
             return self.form_and_formset_valid(form, formset)
 
@@ -185,21 +176,17 @@ class InlineFormSetMixin:
         )
 
     def form_or_formset_invalid(self, form, formset):
-        return self.render_to_response(
-            self.get_context_data(form=form, formset=formset)
-        )
+        return self.render_to_response(self.get_context_data(form=form, formset=formset))
 
     def form_and_formset_valid(self, form, formset):
         response = super().form_valid(form)
         formset.instance = self.object
         for idx, formset_form in enumerate(formset.ordered_forms):
-            formset_form.instance.order = (
-                formset_form.cleaned_data.get(ORDERING_FIELD_NAME) or idx + 1
-            )
+            formset_form.instance.order = formset_form.cleaned_data.get(ORDERING_FIELD_NAME) or idx + 1
         formset.save()
         return response
 
     def get_context_data(self, **kwargs):
         if "formset" not in kwargs:
-            kwargs["formset"] = self.formset_class()  # pylint: disable=not-callable
+            kwargs["formset"] = self.formset_class()
         return super().get_context_data(**kwargs)

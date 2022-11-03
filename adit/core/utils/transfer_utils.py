@@ -54,9 +54,7 @@ class TransferExecutor:
             return self.transfer_task.status
 
         if self.transfer_task.status != TransferTask.Status.PENDING:
-            raise AssertionError(
-                f"Invalid status {self.transfer_task.status} of {self.transfer_task}"
-            )
+            raise AssertionError(f"Invalid status {self.transfer_task.status} of {self.transfer_task}")
 
         self.transfer_task.status = TransferTask.Status.IN_PROGRESS
         self.transfer_task.start = timezone.now()
@@ -73,9 +71,7 @@ class TransferExecutor:
                 raise ValueError(f"Source DICOM node not active: {transfer_job.source.name}")
 
             if not transfer_job.destination.destination_active:
-                raise ValueError(
-                    f"Destination DICOM node not active: {transfer_job.destination.name}"
-                )
+                raise ValueError(f"Destination DICOM node not active: {transfer_job.destination.name}")
 
             if self.dest_connector:
                 self._transfer_to_server()
@@ -107,16 +103,14 @@ class TransferExecutor:
                 if priority < settings.CELERY_TASK_QUEUE_MAX_PRIORITY:
                     priority += 1
 
-                raise self.celery_task.retry(
-                    eta=timezone.now() + err.delay, exc=err, priority=priority
-                )
+                raise self.celery_task.retry(eta=timezone.now() + err.delay, exc=err, priority=priority)
 
             logger.error("No more retries for finally failed %s.", self.transfer_task)
             self.transfer_task.status = TransferTask.Status.FAILURE
             self.transfer_task.message = str(err)
             self.transfer_task.end = timezone.now()
 
-        except Exception as err:  # pylint: disable=broad-except
+        except Exception as err:
             logger.exception("Unrecoverable failure occurred in %s.", self.transfer_task)
             self.transfer_task.status = TransferTask.Status.FAILURE
             self.transfer_task.message = str(err)
@@ -172,9 +166,7 @@ class TransferExecutor:
         study = self._fetch_study(patient["PatientID"])
         modalities = study["ModalitiesInStudy"]
 
-        modalities = [
-            modality for modality in modalities if modality not in settings.EXCLUDE_MODALITIES
-        ]
+        modalities = [modality for modality in modalities if modality not in settings.EXCLUDE_MODALITIES]
 
         # If some series are explicitly chosen then check if their Series Instance UIDs
         # are correct and only use their modalities for the name of the study folder.
@@ -229,9 +221,7 @@ class TransferExecutor:
             raise ValueError(f"No patient found with Patient ID {self.transfer_task.patient_id}.")
 
         if len(patients) > 1:
-            raise AssertionError(
-                f"Multiple patients found with Patient ID {self.transfer_task.patient_id}."
-            )
+            raise AssertionError(f"Multiple patients found with Patient ID {self.transfer_task.patient_id}.")
 
         return patients[0]
 
@@ -247,13 +237,9 @@ class TransferExecutor:
         )
 
         if len(studies) == 0:
-            raise ValueError(
-                f"No study found with Study Instance UID {self.transfer_task.study_uid}."
-            )
+            raise ValueError(f"No study found with Study Instance UID {self.transfer_task.study_uid}.")
         if len(studies) > 1:
-            raise AssertionError(
-                f"Multiple studies found with Study Instance UID {self.transfer_task.study_uid}."
-            )
+            raise AssertionError(f"Multiple studies found with Study Instance UID {self.transfer_task.study_uid}.")
 
         return studies[0]
 
@@ -333,9 +319,7 @@ class TransferExecutor:
 
         if pseudonym and trial_protocol_id:
             session_id = f"{ds.StudyDate}-{ds.StudyTime}"
-            ds.PatientComments = (
-                f"Project:{trial_protocol_id} Subject:{pseudonym} Session:{pseudonym}_{session_id}"
-            )
+            ds.PatientComments = f"Project:{trial_protocol_id} Subject:{pseudonym} Session:{pseudonym}_{session_id}"
 
     def _create_archive(self, archive_path: Path, archive_password: str) -> None:
         """Create a new archive with just an INDEX.txt file in it."""
@@ -345,9 +329,7 @@ class TransferExecutor:
         with tempfile.TemporaryDirectory(prefix="adit_") as tmpdir:
             readme_path = Path(tmpdir) / "INDEX.txt"
             with open(readme_path, "w", encoding="utf-8") as readme_file:
-                readme_file.write(
-                    f"Archive created by {self.transfer_task.job} at {datetime.now()}."
-                )
+                readme_file.write(f"Archive created by {self.transfer_task.job} at {datetime.now()}.")
             _add_to_archive(archive_path, archive_password, readme_path)
 
 
@@ -366,7 +348,6 @@ def _add_to_archive(archive_path: Path, archive_password: str, path_to_add: Path
         path_to_add,
     ]
 
-    # pylint: disable=consider-using-with
     proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL)
     proc.wait()
     (_, stderr) = proc.communicate()

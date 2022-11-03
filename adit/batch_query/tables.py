@@ -1,27 +1,25 @@
 import django_tables2 as tables
 from adit.core.tables import DicomJobTable, DicomTaskTable
-from .models import BatchQueryJob, BatchQueryTask, BatchQueryResult
+from .models import BatchQueryJob, BatchQueryResult, BatchQueryTask
 
 
 class BatchQueryJobTable(DicomJobTable):
-    class Meta(DicomJobTable.Meta):  # pylint: disable=too-few-public-methods
+    class Meta(DicomJobTable.Meta):
         model = BatchQueryJob
 
 
 class BatchQueryTaskTable(DicomTaskTable):
-    class Meta(DicomTaskTable.Meta):  # pylint: disable=too-few-public-methods
+    class Meta(DicomTaskTable.Meta):
         model = BatchQueryTask
         empty_text = "No queries to show"
 
 
 class BatchQueryResultTable(tables.Table):
     task_id = tables.Column(accessor="query__task_id", verbose_name="Task ID")
-    study_date_time = tables.DateTimeColumn(
-        verbose_name="Study Date/Time", order_by=("study_date", "study_time")
-    )
+    study_date_time = tables.DateTimeColumn(verbose_name="Study Date/Time", order_by=("study_date", "study_time"))
     image_count = tables.Column(verbose_name="# Images")
 
-    class Meta:  # pylint: disable=too-few-public-methods
+    class Meta:
         model = BatchQueryResult
         template_name = "django_tables2/bootstrap4.html"
         empty_text = "No results to show"
