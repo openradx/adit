@@ -31,11 +31,11 @@ jobs:
       - name: Start Docker containers
         run: docker-compose -p adit_ci -f "compose/adit_dev/docker-compose.dev.yml" up --no-build -d
 
-      - name: Run linting with prospector
-        run: docker-compose -p adit_ci -f "compose/adit_dev/docker-compose.dev.yml" exec -T web python -m prospector
+      - name: Run linting with flake8
+        run: docker-compose -p adit_ci -f "compose/adit_dev/docker-compose.dev.yml" exec -T web flake8 ./adit
 
       - name: Run tests with pytest
-        run: docker-compose -p adit_ci -f "compose/adit_dev/docker-compose.dev.yml" exec -T web python -m pytest --cov=adit
+        run: docker-compose -p adit_ci -f "compose/adit_dev/docker-compose.dev.yml" exec -T web pytest --cov=adit ./adit
 
       - name: Stop Docker containers
         if: ${{ always() }}
