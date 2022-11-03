@@ -5,7 +5,6 @@ import pytest
 import time_machine
 from celery import Task as CeleryTask
 from django.db import connection, models
-from django.db.utils import ProgrammingError
 from adit.accounts.factories import UserFactory
 from ...factories import (
     DicomFolderFactory,
@@ -42,24 +41,19 @@ class MyTransferTaskFactory(TransferTaskFactory):
     job = factory.SubFactory(MyTransferJobFactory)
 
 
-@pytest.fixture(scope="session")
-def setup_test_models(django_db_setup, django_db_blocker):
+@pytest.fixture
+def setup_test_models(transactional_db):
+    # TODO: Find out why we can't use a session or module fixture here.
     # Solution adapted from https://stackoverflow.com/q/4281670/166229
-    with django_db_blocker.unblock():
-        try:
-            with connection.schema_editor() as schema_editor:
-                schema_editor.create_model(MyTransferJob)
-                schema_editor.create_model(MyTransferTask)
-        except ProgrammingError:
-            pass
+    with connection.schema_editor() as schema_editor:
+        schema_editor.create_model(MyTransferJob)
+        schema_editor.create_model(MyTransferTask)
 
-        yield
+    yield
 
-        with connection.schema_editor() as schema_editor:
-            schema_editor.delete_model(MyTransferJob)
-            schema_editor.delete_model(MyTransferTask)
-
-        connection.close()
+    with connection.schema_editor() as schema_editor:
+        schema_editor.delete_model(MyTransferJob)
+        schema_editor.delete_model(MyTransferTask)
 
 
 @pytest.fixture
