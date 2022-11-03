@@ -15,6 +15,7 @@ ALLOWED_HOSTS = env.list("DJANGO_ALLOWED_HOSTS", default=[])
 
 CSRF_TRUSTED_ORIGINS = env.list("DJANGO_CSRF_TRUSTED_ORIGINS", default=[])
 
+# TODO: We also use Postgres for tests now. So tests can only run in the fullstack setup.
 # if not ADIT_FULLSTACK and sys.argv and ("test" in sys.argv or "pytest" in sys.argv[0]):
 #     DATABASES = {"default": env.db("SQLITE_URL", default="sqlite:///./adit-sqlite.db")}
 
