@@ -42,10 +42,6 @@ django-debug-toolbar = "^3.2.4"
 factory-boy = "^3.1.0"
 Faker = "^15.1.1"
 ipython = "^8.1.1"
-pylint = "^2.12.2"
-pylint-celery = "^0.3"
-pylint-django = "^2.5.2"
-pylint-pytest = "^1.1.2"
 pytest = "^7.1.2"
 pytest-cov = "^4.0.0"
 pytest-django = "^4.5.2"
@@ -56,9 +52,10 @@ time-machine = "^2.1.0"
 pyright = "^1.1.264"
 django-types = "^0.16.0"
 celery-types = "^0.14.0"
-prospector = "^1.7.7"
 pytest-playwright = "^0.3.0"
 isort = "^5.10.1"
+flake8 = "^5.0.4"
+Flake8-pyproject = "^1.1.0"
 
 [tool.black]
 line-length = 100
@@ -66,6 +63,10 @@ line-length = 100
 [tool.isort]
 profile = "black" 
 lines_between_sections = 0
+
+[tool.flake8]
+max-line-length = 100
+exclude = "migrations"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

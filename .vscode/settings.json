@@ -1,7 +1,7 @@
 {
   "editor.formatOnSave": true,
   "python.formatting.provider": "black",
-  "python.linting.pylintEnabled": true,
+  "python.linting.flake8Enabled": true,
   "python.testing.pytestEnabled": true,
   "python.testing.pytestArgs": ["adit"],
   "python.testing.unittestEnabled": false,
