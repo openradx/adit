@@ -1,5 +1,8 @@
 import re
 import datetime
+from typing import Type
+from pydicom.dataset import Dataset
+from pydicom import Sequence
 
 def person_name_to_dicom(value, add_wildcards=False):
     """ See also :func:`adit.core.templatetags.core_extras.person_name_from_dicom`"""
@@ -21,3 +24,35 @@ def format_datetime_attributes(results: list) -> list:
         if not instance.get("PatientBirthDate", "")=="":
             instance["PatientBirthDate"] = datetime.datetime.strptime(instance["PatientBirthDate"], "%Y-%m-%d")
     return results
+
+def adit_dict_to_dicom_json(dict_list: list) -> list:
+    list = []
+    for dict in dict_list:
+        ds = Dataset()
+        for key, value in dict.items():           
+            try:
+                setattr(ds, key, value)
+            except TypeError:
+                try:
+                    for seq_value in value:
+                        seq = Sequence()
+                        for seq_key, seq_value in seq_value.items():
+                            seq_ds = Dataset()
+                            setattr(seq_ds, seq_key, seq_value)
+                            seq.append(seq_ds)
+                        setattr(ds, key, seq)
+                except Exception as e:
+                    raise Exception(e)
+        ds = strftime_dataset(ds)
+        list.append(ds.to_json(suppress_invalid_tags=True))
+    return list
+
+def strftime_dataset(ds: Type[Dataset]) -> Type[Dataset]:
+    for elem in ds:
+        if elem.VR=="DA":
+            elem.value = elem.value.strftime("%Y%m%d")
+        elif elem.VR=="TM":
+            elem.value = elem.value.strftime("%H%M%S")
+        elif elem.VR=="DT":
+            elem.value = elem.value.strftime("%Y%m%d%H%M%S")
+    return ds

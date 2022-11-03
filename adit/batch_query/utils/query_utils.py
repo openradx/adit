@@ -86,7 +86,7 @@ def _create_source_connector(query_task: BatchQueryTask) -> DicomConnector:
     if query_task.job.source.dicomserver.xnat_rest_source:
         return XnatConnector(
             query_task.job.source.dicomserver, 
-            project_id=query_task.job.project_id,
+            xnat_project_id=query_task.job.xnat_project_id,
             experiment_id=query_task.job.experiment_id,
         )
     return DicomConnector(query_task.job.source.dicomserver)

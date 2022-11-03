@@ -94,5 +94,4 @@ class QuerySeriesAPIView(QueryAPIView):
         response = self.request.accepted_renderer.create_response(
             file=job.results.get().query_results
         )
-
         return response

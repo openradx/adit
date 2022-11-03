@@ -2,7 +2,12 @@
 
 {% load static from static %}
 {% block script %}
-    <script src="{% static 'xnat_support/xnat_support.js' %}"></script>
+    <script 
+        src="{% static 'xnat_support/xnat_support.js' %}" 
+        SOURCE_OPTIONS_ID = "xnat-options"
+        SOURCE_SELECT_ID = "id_source"
+    >
+    </script>
 {% endblock script %}
 
 {% load crispy from crispy_forms_tags %}

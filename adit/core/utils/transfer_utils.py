@@ -1,10 +1,13 @@
 import logging
 from pathlib import Path
 from datetime import datetime
+from typing import Type
 import tempfile
 import subprocess
 from functools import partial
 from typing import Any, Callable, Dict, List
+
+from attr import Attribute
 from celery import Task as CeleryTask
 from dicognito.anonymizer import Anonymizer
 from pydicom import Dataset
@@ -15,6 +18,7 @@ from adit.core.utils.task_utils import hijack_logger, store_log_in_task
 from ..models import DicomNode, TransferJob, TransferTask
 from ..errors import RetriableTaskError
 from .dicom_connector import DicomConnector
+from adit.xnat_support.utils.xnat_connector import XnatConnector
 from .sanitize import sanitize_dirname
 
 logger = logging.getLogger(__name__)
@@ -108,6 +112,11 @@ def execute_transfer(
 
 def _create_source_connector(transfer_task: TransferTask) -> DicomConnector:
     # An own function to easily mock the source connector in test_transfer_utils.py
+    if transfer_task.job.source.dicomserver.xnat_rest_source:           
+        return XnatConnector(
+            transfer_task.job.source.dicomserver, 
+            xnat_project_id=transfer_task.job.xnat_source_project_id, 
+        )
     return DicomConnector(transfer_task.job.source.dicomserver)
 
 
@@ -195,8 +204,7 @@ def _download_dicoms(
         _modify_dataset,
         anonymizer,
         pseudonym,
-        transfer_task.job.trial_protocol_id,
-        transfer_task.job.trial_protocol_name,
+        transfer_task,
     )
 
     if transfer_task.series_uids:
@@ -311,12 +319,14 @@ def _download_study(
 def _modify_dataset(
     anonymizer: Anonymizer,
     pseudonym: str,
-    trial_protocol_id: str,
-    trial_protocol_name: str,
+    transfer_task: Type[TransferTask],
     ds: Dataset,
 ) -> None:
     """Optionally pseudonymize an incoming dataset with the given pseudonym
     and add the trial ID and name to the DICOM header if specified."""
+    trial_protocol_id =  transfer_task.job.trial_protocol_id
+    trial_protocol_name = transfer_task.job.trial_protocol_name,
+
     if pseudonym:
         # All dates get pseudonymized, but we want to retain the study date.
         study_date = ds.StudyDate
@@ -334,9 +344,18 @@ def _modify_dataset(
     if trial_protocol_name:
         ds.ClinicalTrialProtocolName = trial_protocol_name
 
-    if pseudonym and trial_protocol_id:
-        session_id = f"{ds.StudyDate}-{ds.StudyTime}"
-        ds.PatientComments = f"Project:{trial_protocol_id} Subject:{pseudonym} Session:{pseudonym}_{session_id}"
+    try:
+        if transfer_task.job.destination.dicomserver.xnat_server:
+            session_id = f"{ds.StudyDate}-{ds.StudyTime}"
+            project_id = transfer_task.job.xnat_destination_project_id
+            subject_id = transfer_task.job.xnat_destination_subject_id
+            ds.PatientComments = f"Project:{project_id} Subject:{subject_id} Session:{subject_id}_{session_id}"
+    except AttributeError:
+        pass
+
+    #if pseudonym and trial_protocol_id:
+    #    session_id = f"{ds.StudyDate}-{ds.StudyTime}"
+    #    ds.PatientComments = f"Project:{trial_protocol_id} Subject:{pseudonym} Session:{pseudonym}_{session_id}"
 
 
 def _create_archive(

@@ -5,7 +5,8 @@ from django.core.exceptions import ValidationError
 from django.conf import settings
 from django.utils.safestring import mark_safe
 from crispy_forms.helper import FormHelper
-from crispy_forms.layout import Submit
+from crispy_forms.layout import Submit, Layout, Field, Row, Column, Div
+from crispy_forms.bootstrap import StrictButton
 import cchardet as chardet
 from adit.core.forms import DicomNodeChoiceField
 from adit.core.models import DicomNode
@@ -14,12 +15,33 @@ from adit.core.errors import BatchFileSizeError, BatchFileFormatError
 from .models import BatchTransferJob, BatchTransferTask
 from .parsers import BatchTransferFileParser
 
+from adit.xnat_support.forms import xnat_options_field
+
 
 class BatchTransferJobForm(forms.ModelForm):
     source = DicomNodeChoiceField(True, DicomNode.NodeType.SERVER)
     destination = DicomNodeChoiceField(False)
     batch_file = RestrictedFileField(max_upload_size=5242880, label="Batch file")
     ethics_committee_approval = forms.BooleanField()
+
+    # (optional) XNAT
+    xnat_source_project_id = forms.CharField(
+        label="XNAT Project ID",
+        max_length=64,
+        required=False,
+        help_text="Providing a XNAT Project ID significantly loweres the query time.",
+    )
+    xnat_destination_project_id = forms.CharField(
+        label="XNAT Project ID",
+        max_length=64,
+        required=False,
+        help_text="Providing a XNAT Project ID significantly loweres the query time.",
+    )   
+    xnat_destination_subject_id = forms.CharField(
+        label="XNAT Subject ID",
+        max_length=64,
+        required=False,
+    )
 
     class Meta:
         model = BatchTransferJob
@@ -33,6 +55,9 @@ class BatchTransferJobForm(forms.ModelForm):
             "trial_protocol_name",
             "ethics_committee_approval",
             "batch_file",
+            "xnat_source_project_id",
+            "xnat_destination_project_id",
+            "xnat_destination_subject_id",
         )
         labels = {
             "urgent": "Start transfer urgently",
@@ -83,9 +108,6 @@ class BatchTransferJobForm(forms.ModelForm):
             "destination"
         ].queryset.order_by("-node_type", "name")
 
-        self.fields["trial_protocol_id"].widget.attrs["placeholder"] = "Optional"
-        self.fields["trial_protocol_name"].widget.attrs["placeholder"] = "Optional"
-
         self.max_batch_size = (
             settings.MAX_BATCH_TRANSFER_SIZE if not self.user.is_staff else None
         )
@@ -97,6 +119,109 @@ class BatchTransferJobForm(forms.ModelForm):
 
         self.helper = FormHelper(self)
         self.helper.add_input(Submit("save", "Create Job"))
+
+        self.helper.layout = Layout(
+            Row(
+                Column(
+                    Field(
+                        "source", 
+                        css_class="custom-select"
+                    )
+                )
+            ),
+            xnat_options_field(
+                ["xnat_source_project_id"], 
+                area_css_id="xnat-source-options"
+            ),
+            Row(
+                Column(
+                    Field(
+                        "destination", 
+                        css_class="custom-select"
+                    )
+                )
+            ),
+            xnat_options_field(
+                ["xnat_destination_project_id", "xnat_destination_subject_id"], 
+                area_css_id="xnat-destination-options",
+            ),
+            Row(
+                Column(
+                    Field(
+                        "urgent",
+                    )
+                )
+            ),
+            Row(
+                Column(
+                    Field(
+                        "project_name",
+                    )
+                )
+            ),
+            Row(
+                Column(
+                    Field(
+                        "project_description",
+                    )
+                )
+            ),
+            Row(
+                Column(
+                    Div(
+                        Div(
+                            StrictButton(
+                                "Advanced transfer options (optional)",
+                                css_class="btn-link px-0",
+                                css_id="advanced_options_toggle",
+                                **{
+                                    "data-toggle": "collapse",
+                                    "data-target": "#advanced_options",
+                                    "aria-expanded": "true",
+                                    "aria-controls": "advancedOptions",
+                                },
+                            ),
+                            css_class="card-title mb-0",
+                        ),
+                        Div(
+                            Row(
+                                Column(
+                                    Field(
+                                        "trial_protocol_id",
+                                    )
+                                )
+                            ),
+                            Row(
+                                Column(
+                                    Field(
+                                        "trial_protocol_name",
+                                    )
+                                )
+                            ),
+                            css_class="show pt-1",
+                            css_id="advanced_options",
+                        ),
+                        css_class="card-body p-2",
+                    ),
+                    css_class="card",
+                ),
+                css_class="px-1 mb-3",
+            ),
+            Row(
+                Column(
+                    Field(
+                        "ethics_committee_approval",
+                    )
+                )
+            ),
+            Row(
+                Column(
+                    Field(
+                        "batch_file",
+                    )
+                )
+            ),
+        )
 
     def clean_ethics_committee_approval(self):
         approval = self.cleaned_data["ethics_committee_approval"]

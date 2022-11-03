@@ -1,7 +1,7 @@
 from django.shortcuts import render
 from django.http import HttpResponse
 from django.utils import timezone
-from django.views.generic import TemplateView, View
+from django.views.generic import TemplateView, View, ListView
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 from django.contrib.auth.mixins import (
@@ -38,7 +38,7 @@ class RestAuthView(
 
 class RestAuthTokenListView(
     LoginRequiredMixin,
-    View,
+    ListView,
 ):
     def get(self, request):
         template = "token_authentication/_token_list.html"

@@ -1,15 +1,13 @@
-import logging
-import humanize
 import json
 
-from django.conf import settings
 from django.utils import timezone
 
-from ...utils.dicom_web_utils import DicomWebConnector
+from ...utils.dicom_web_utils import DicomWebApi
+from adit.core.utils.dicom_connector import DicomConnector
+from adit.xnat_support.utils.xnat_connector import XnatConnector
 from adit.core.utils.dicom_utils import format_datetime_attributes
 from adit.core.utils.task_utils import hijack_logger, store_log_in_task
-from adit.core.errors import RetriableTaskError
-from adit.core.models import DicomServer
+
 
 from celery import Task as CeleryTask
 from celery.utils.log import get_task_logger
@@ -25,6 +23,7 @@ logger = get_task_logger(__name__)
 def execute_qido(
     dicom_qido_task: DicomQidoTask, celery_task: CeleryTask
 ) -> DicomQidoTask.Status:
+    logger.debug("hi0")
     if dicom_qido_task.status == DicomQidoTask.Status.CANCELED:
         return dicom_qido_task.status
 
@@ -69,14 +68,19 @@ def execute_qido(
 
 
 def _c_find_to_result(dicom_qido_task: DicomQidoTask) -> None:
-    connector = DicomWebConnector(dicom_qido_task.job.source.dicomserver)
+    if dicom_qido_task.job.source.dicomserver.xnat_rest_source:
+        connector = XnatConnector(dicom_qido_task.job.source.dicomserver)
+    else:
+        connector = DicomConnector(dicom_qido_task.job.source.dicomserver)
+    
+    dicom_web_api = DicomWebApi(connector)
 
     query = _create_query(dicom_qido_task)
 
     if dicom_qido_task.job.level == "STUDY":
-        c_find_result = connector.qido_find_studies(query)
+        c_find_result = dicom_web_api.qido_find_studies(query)
     elif dicom_qido_task.job.level == "SERIES":
-        c_find_result = connector.qido_find_series(query)
+        c_find_result = dicom_web_api.qido_find_series(query)
 
     if len(c_find_result) <= 0:
         raise ValueError("No query results found.")

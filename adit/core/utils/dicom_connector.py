@@ -288,7 +288,10 @@ class DicomConnector:
             )
 
         elif self.server.study_root_find_support:
-            series_list = self._send_c_find(query, limit_results=limit_results)
+            series_list = self._send_c_find(
+                query, 
+                limit_results=limit_results,
+            )
 
         if series_description:
             series_list = list(
@@ -545,11 +548,21 @@ class DicomConnector:
             )
         query_ds = _make_query_dataset(query_dict)
         responses = self.assoc.send_c_find(query_ds, query_model, msg_id)
-        results = self._fetch_results(responses, "C-FIND", query_dict, limit_results)
+        results = self._fetch_results(
+            responses, 
+            "C-FIND", 
+            query_dict, 
+            limit_results, 
+        )
         return _extract_pending_data(results)
 
     @connect_to_dicomweb_server()
-    def _send_qido_rs(self, query_dict, limit_results=None, msg_id=1):
+    def _send_qido_rs(
+        self, 
+        query_dict, 
+        limit_results=None, 
+        msg_id=1, 
+    ):
         logger.debug("Sending QIDO-RS request with query: %s", query_dict)
 
 
@@ -711,7 +724,7 @@ class DicomConnector:
             if status:
                 data = {}
                 if identifier:
-                    data.update(_dictify_dataset(identifier))
+                    data.update(identifier.to_json())
 
                 results.append(
                     {

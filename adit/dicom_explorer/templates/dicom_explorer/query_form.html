@@ -7,7 +7,12 @@
 {{ block.super }}
 <script>var csrf_token = "{{ csrf_token }}"</script>
 <script src="{% static 'dicom_explorer/dicom_explorer.js' %}"></script>
-<script src="{% static 'xnat_support/xnat_support.js' %}"></script>
+<script 
+    src="{% static 'xnat_support/xnat_support.js' %}"
+    SOURCE_OPTIONS_ID="xnat-options"
+    SOURCE_SELECT_ID="id_server"
+>
+</script>
 {% endblock script %}
 
 {% block container %}

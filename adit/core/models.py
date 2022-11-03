@@ -114,7 +114,8 @@ class DicomServer(DicomNode):
     dicomweb_wado_support = models.BooleanField(default=False)
     dicomweb_stow_support = models.BooleanField(default=False)
 
-    # (optional) XNAT rest support
+    # (optional) XNAT support
+    xnat_server = models.BooleanField(default=False)
     xnat_rest_source = models.BooleanField(default=False)
     xnat_root_url = models.CharField(blank=True, max_length=2000)
     xnat_username = models.CharField(blank=True, max_length=2000)
@@ -233,6 +234,20 @@ class TransferJob(DicomJob):
         blank=True, max_length=64, validators=[no_backslash_char_validator]
     )
     archive_password = models.CharField(blank=True, max_length=50)
+
+    # Xnat fields
+    xnat_source_project_id = models.CharField(
+        blank=True,
+        max_length=64
+    )
+    xnat_destination_project_id = models.CharField(
+        blank=True,
+        max_length=64
+    ) 
+    xnat_destination_subject_id = models.CharField(
+        blank=True,
+        max_length=64
+    )
 
 
 class DicomTask(models.Model):

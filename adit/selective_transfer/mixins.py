@@ -1,11 +1,17 @@
 from datetime import datetime
 from django.conf import settings
 from adit.core.utils.dicom_connector import DicomConnector
+from adit.xnat_support.utils.xnat_connector import XnatConnector
 from .models import SelectiveTransferJob, SelectiveTransferTask
 
 
 class SelectiveTransferJobCreateMixin:
     def create_source_connector(self, form):
+        if form.instance.source.dicomserver.xnat_rest_source:           
+            return XnatConnector(
+                form.instance.source.dicomserver, 
+                xnat_project_id=form.instance.xnat_source_project_id, 
+            )
         return DicomConnector(form.instance.source.dicomserver)
 
     def query_studies(self, connector, form, limit_results):

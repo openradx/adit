@@ -108,11 +108,15 @@ class DicomWebAPIView(APIView):
         folder_path = Path(self.FOLDER_ADIT)
         if level == "STUDY":
             folder_path = folder_path / ("study_" + study_uid)
+            dicom_files_path = folder_path / "dicom_files"
             os.makedirs(folder_path, exist_ok=True)
+            os.makedirs(dicom_files_path, exist_ok=True)
             file_path = folder_path / "response.txt"
         elif level == "SERIES":
             folder_path = folder_path / ("series_" + series_uid)
+            dicom_files_path = folder_path / "dicom_files"
             os.makedirs(folder_path, exist_ok=True)
+            os.makedirs(dicom_files_path, exist_ok=True)
             file_path = folder_path / "response.txt"
 
         return folder_path, file_path

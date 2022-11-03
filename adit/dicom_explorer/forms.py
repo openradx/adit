@@ -20,7 +20,7 @@ id_validators = [
 
 
 class DicomExplorerQueryForm(forms.Form):
-    source = DicomNodeChoiceField(
+    server = DicomNodeChoiceField(
         True, 
         DicomNode.NodeType.SERVER, 
     )
@@ -38,21 +38,17 @@ class DicomExplorerQueryForm(forms.Form):
     )
 
     # (optional) XNAT
-    project_id = forms.CharField(
+    xnat_project_id = forms.CharField(
         label="XNAT Project ID",
         max_length=64,
         required=False,
-    )
-    experiment_id = forms.CharField(
-        label="XNAT Experiment ID",
-        max_length=64,
-        required=False,
+        help_text="Providing a XNAT Project ID significantly loweres the query time."
     )
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.fields["source"].widget.attrs["class"] = "custom-select"
+        self.fields["server"].widget.attrs["class"] = "custom-select"
 
         self.helper = FormHelper(self)
         self.helper.form_id = "dicom_explorer"
@@ -63,7 +59,8 @@ class DicomExplorerQueryForm(forms.Form):
         self.helper.add_input(Submit("query", "Query"))
 
         self.helper.layout = Layout(
-            Row(Column(Field("source", css_class="custom-select"))),
+            Row(Column(Field("server", css_class="custom-select"))),
+            xnat_options_field(["xnat_project_id"]),
             Row(
                 Column(
                     Field(
@@ -78,5 +75,4 @@ class DicomExplorerQueryForm(forms.Form):
                     )
                 )
             ),
-            xnat_options_field(["project_id", "experiment_id"]),
         )

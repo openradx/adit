@@ -35,8 +35,7 @@ class BatchQueryJobForm(forms.ModelForm):
             "project_name",
             "project_description",
             "batch_file",
-            "project_id",
-            "experiment_id",
+            "xnat_project_id",
         )
         labels = {
             "urgent": "Start query urgently",
@@ -47,6 +46,7 @@ class BatchQueryJobForm(forms.ModelForm):
                 "The batch file which contains the data for the queries. "
                 "See [Help] for how to format this file."
             ),
+            "xnat_project_id": "Providing a XNAT Project ID significantly loweres the query time."
         }
 
     def __init__(self, *args, **kwargs):
@@ -88,6 +88,7 @@ class BatchQueryJobForm(forms.ModelForm):
                     )
                 )
             ),
+            xnat_options_field(["xnat_project_id"]),
             Row(
                 Column(
                     Field(
@@ -116,7 +117,7 @@ class BatchQueryJobForm(forms.ModelForm):
                     )
                 )
             ),
-            xnat_options_field(["project_id", "experiment_id"]),
+            xnat_options_field(["xnat_project_id", "experiment_id"]),
         )
 
     def clean_batch_file(self):

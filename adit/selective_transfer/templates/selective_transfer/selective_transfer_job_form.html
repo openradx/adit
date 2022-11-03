@@ -6,7 +6,15 @@
 {% block script %}
 {{ block.super }}
 <script src="{% static 'selective_transfer/selective_transfer.js' %}"></script>
-{% endblock %}
+<script 
+    src="{% static 'xnat_support/xnat_support.js' %}"
+    SOURCE_OPTIONS_ID = "xnat-source-options"
+    SOURCE_SELECT_ID = "id_source"
+    DEST_OPTIONS_ID = "xnat-destination-options"
+    DEST_SELECT_ID = "id_destination"
+>
+</script>
+{% endblock script %}
 
 {% block container %}
 <div class="d-flex justify-content-between align-items-start">

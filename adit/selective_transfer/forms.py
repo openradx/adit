@@ -11,6 +11,8 @@ from adit.core.utils.dicom_utils import person_name_to_dicom
 from adit.core.validators import no_backslash_char_validator, no_control_chars_validator
 from .models import SelectiveTransferJob
 
+from adit.xnat_support.forms import xnat_options_field
+
 
 def server_field(field_name):
     return Column(
@@ -61,6 +63,25 @@ class SelectiveTransferJobForm(forms.ModelForm):
         required=False, max_length=32, label="Accession #"
     )
 
+    # (optional) XNAT
+    xnat_source_project_id = forms.CharField(
+        label="XNAT Project ID",
+        max_length=64,
+        required=False,
+        help_text="Providing a XNAT Project ID significantly loweres the query time.",
+    )
+    xnat_destination_project_id = forms.CharField(
+        label="XNAT Project ID",
+        max_length=64,
+        required=False,
+        help_text="Providing a XNAT Project ID significantly loweres the query time.",
+    )   
+    xnat_destination_subject_id = forms.CharField(
+        label="XNAT Subject ID",
+        max_length=64,
+        required=False,
+    )     
+
     class Meta:
         model = SelectiveTransferJob
         fields = (
@@ -77,6 +98,9 @@ class SelectiveTransferJobForm(forms.ModelForm):
             "study_date",
             "modality",
             "accession_number",
+            "xnat_source_project_id",
+            "xnat_destination_project_id",
+            "xnat_destination_subject_id",
         )
         labels = {
             "urgent": "Start transfer directly",
@@ -110,7 +134,17 @@ class SelectiveTransferJobForm(forms.ModelForm):
         self.helper.layout = Layout(
             Row(
                 server_field("source"),
+            ),
+            xnat_options_field(
+                ["xnat_source_project_id"], 
+                area_css_id="xnat-source-options"
+            ),
+            Row(
                 server_field("destination"),
+            ),
+            xnat_options_field(
+                ["xnat_destination_project_id", "xnat_destination_subject_id"], 
+                area_css_id="xnat-destination-options",
             ),
             Row(
                 Column(
