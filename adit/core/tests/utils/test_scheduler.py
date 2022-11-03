@@ -1,4 +1,4 @@
-from datetime import time, datetime
+from datetime import datetime, time
 import pytest
 import time_machine
 from django.utils import timezone

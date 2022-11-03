@@ -1,14 +1,14 @@
 from django.urls import path
 from .views import (
-    BatchTransferJobListView,
-    BatchTransferJobCreateView,
-    BatchTransferJobDetailView,
-    BatchTransferJobDeleteView,
-    BatchTransferJobVerifyView,
     BatchTransferJobCancelView,
+    BatchTransferJobCreateView,
+    BatchTransferJobDeleteView,
+    BatchTransferJobDetailView,
+    BatchTransferJobListView,
+    BatchTransferJobRestartView,
     BatchTransferJobResumeView,
     BatchTransferJobRetryView,
-    BatchTransferJobRestartView,
+    BatchTransferJobVerifyView,
     BatchTransferTaskDetailView,
 )
 

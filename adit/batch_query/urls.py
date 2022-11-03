@@ -1,19 +1,18 @@
 from django.urls import path
 from .views import (
-    BatchQueryJobListView,
-    BatchQueryJobCreateView,
-    BatchQueryJobDetailView,
-    BatchQueryJobDeleteView,
-    BatchQueryJobVerifyView,
     BatchQueryJobCancelView,
+    BatchQueryJobCreateView,
+    BatchQueryJobDeleteView,
+    BatchQueryJobDetailView,
+    BatchQueryJobListView,
+    BatchQueryJobRestartView,
     BatchQueryJobResumeView,
     BatchQueryJobRetryView,
-    BatchQueryJobRestartView,
-    BatchQueryTaskDetailView,
-    BatchQueryResultListView,
+    BatchQueryJobVerifyView,
     BatchQueryResultDownloadView,
+    BatchQueryResultListView,
+    BatchQueryTaskDetailView,
 )
-
 
 urlpatterns = [
     path(

@@ -1,7 +1,7 @@
 from django.conf import settings
 from django.core.mail import mail_admins, send_mail
-from django.utils.html import strip_tags
 from django.template.loader import render_to_string
+from django.utils.html import strip_tags
 
 
 def send_mail_to_admins(subject, text_content=None, html_content=None):

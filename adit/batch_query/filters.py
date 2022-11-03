@@ -1,7 +1,7 @@
 import django_filters
 from adit.core.filters import DicomJobFilter, DicomTaskFilter
 from adit.core.forms import SingleFilterFormHelper
-from .models import BatchQueryJob, BatchQueryTask, BatchQueryResult
+from .models import BatchQueryJob, BatchQueryResult, BatchQueryTask
 
 
 class BatchQueryJobFilter(DicomJobFilter):

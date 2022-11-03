@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import SelectiveTransferSettings, SelectiveTransferJob
+from .models import SelectiveTransferJob, SelectiveTransferSettings
 
 
 class SelectiveTransferJobAdmin(admin.ModelAdmin):

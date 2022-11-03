@@ -1,11 +1,11 @@
 import logging
-from io import BytesIO
 import time
+from io import BytesIO
 import pika
-from pika.exceptions import AMQPConnectionError
 from django.conf import settings
-from pynetdicom import AE, evt, AllStoragePresentationContexts, debug_logger
+from pika.exceptions import AMQPConnectionError
 from pydicom.filewriter import dcmwrite
+from pynetdicom import AE, AllStoragePresentationContexts, debug_logger, evt
 from ..base.server_command import ServerCommand
 
 logger = logging.getLogger(__name__)

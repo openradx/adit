@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import BatchQuerySettings, BatchQueryJob
+from .models import BatchQueryJob, BatchQuerySettings
 
 
 class BatchQueryJobAdmin(admin.ModelAdmin):

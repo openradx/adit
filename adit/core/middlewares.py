@@ -1,9 +1,9 @@
 import re
 import pytz
-from django.views.generic import TemplateView
-from django.urls import reverse
 from django.conf import settings
+from django.urls import reverse
 from django.utils import timezone
+from django.views.generic import TemplateView
 from .models import CoreSettings
 
 

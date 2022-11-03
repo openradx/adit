@@ -1,18 +1,14 @@
 from celery.utils.log import get_task_logger
 from django.conf import settings
 from adit.celery import app as celery_app
-from adit.core.utils.transfer_utils import TransferExecutor
 from adit.core.tasks import (
+    HandleFailedDicomJob,
+    HandleFinishedDicomJob,
     ProcessDicomJob,
     ProcessDicomTask,
-    HandleFinishedDicomJob,
-    HandleFailedDicomJob,
 )
-from .models import (
-    BatchTransferSettings,
-    BatchTransferJob,
-    BatchTransferTask,
-)
+from adit.core.utils.transfer_utils import TransferExecutor
+from .models import BatchTransferJob, BatchTransferSettings, BatchTransferTask
 
 logger = get_task_logger(__name__)
 

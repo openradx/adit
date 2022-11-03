@@ -1,19 +1,19 @@
-from unittest.mock import patch, create_autospec, ANY
 import datetime
-import pytest
+from unittest.mock import ANY, create_autospec, patch
 import factory
+import pytest
 import time_machine
 from celery import Task as CeleryTask
-from django.db import models, connection
+from django.db import connection, models
 from django.db.utils import ProgrammingError
 from adit.accounts.factories import UserFactory
-from ...models import TransferJob, TransferTask
 from ...factories import (
-    DicomServerFactory,
     DicomFolderFactory,
+    DicomServerFactory,
     TransferJobFactory,
     TransferTaskFactory,
 )
+from ...models import TransferJob, TransferTask
 from ...utils.dicom_connector import DicomConnector
 from ...utils.transfer_utils import TransferExecutor
 

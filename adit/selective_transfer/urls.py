@@ -1,14 +1,14 @@
 from django.urls import path
 from .views import (
-    SelectiveTransferJobListView,
-    SelectiveTransferJobCreateView,
-    SelectiveTransferJobDetailView,
-    SelectiveTransferJobDeleteView,
-    SelectiveTransferJobVerifyView,
     SelectiveTransferJobCancelView,
+    SelectiveTransferJobCreateView,
+    SelectiveTransferJobDeleteView,
+    SelectiveTransferJobDetailView,
+    SelectiveTransferJobListView,
+    SelectiveTransferJobRestartView,
     SelectiveTransferJobResumeView,
     SelectiveTransferJobRetryView,
-    SelectiveTransferJobRestartView,
+    SelectiveTransferJobVerifyView,
     SelectiveTransferTaskDetailView,
 )
 

@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import BatchTransferSettings, BatchTransferJob
+from .models import BatchTransferJob, BatchTransferSettings
 
 
 class BatchTransferJobAdmin(admin.ModelAdmin):

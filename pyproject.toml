@@ -64,6 +64,7 @@ exclude = "migrations"
 [tool.isort]
 profile = "black" 
 lines_between_sections = 0
+skip = "migrations"
 
 [tool.flake8]
 max-line-length = 100

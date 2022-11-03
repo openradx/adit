@@ -1,16 +1,16 @@
 from io import StringIO
-from django import forms
-from django.db import transaction
-from django.core.exceptions import ValidationError
-from django.conf import settings
-from django.utils.safestring import mark_safe
+import cchardet as chardet
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Submit
-import cchardet as chardet
+from django import forms
+from django.conf import settings
+from django.core.exceptions import ValidationError
+from django.db import transaction
+from django.utils.safestring import mark_safe
+from adit.core.errors import BatchFileFormatError, BatchFileSizeError
+from adit.core.fields import RestrictedFileField
 from adit.core.forms import DicomNodeChoiceField
 from adit.core.models import DicomNode
-from adit.core.fields import RestrictedFileField
-from adit.core.errors import BatchFileSizeError, BatchFileFormatError
 from .models import BatchTransferJob, BatchTransferTask
 from .parsers import BatchTransferFileParser
 

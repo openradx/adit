@@ -1,30 +1,25 @@
 from os import environ
-from django.core.management.base import BaseCommand
-from django.contrib.auth.models import Permission, Group
-from django.conf import settings
-from faker import Faker
 import factory
-
-from adit.accounts.models import User
+from django.conf import settings
+from django.contrib.auth.models import Group, Permission
+from django.core.management.base import BaseCommand
+from faker import Faker
 from adit.accounts.factories import AdminUserFactory, UserFactory
-from adit.core.factories import (
-    DicomServerFactory,
-    DicomFolderFactory,
+from adit.accounts.models import User
+from adit.batch_query.factories import (
+    BatchQueryJobFactory,
+    BatchQueryResultFactory,
+    BatchQueryTaskFactory,
 )
 from adit.batch_transfer.factories import (
     BatchTransferJobFactory,
     BatchTransferTaskFactory,
 )
+from adit.core.factories import DicomFolderFactory, DicomServerFactory
 from adit.selective_transfer.factories import (
     SelectiveTransferJobFactory,
     SelectiveTransferTaskFactory,
 )
-from adit.batch_query.factories import (
-    BatchQueryJobFactory,
-    BatchQueryTaskFactory,
-    BatchQueryResultFactory,
-)
-
 
 USER_COUNT = 3
 SELECTIVE_TRANSFER_JOB_COUNT = 5
