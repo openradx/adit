@@ -74,13 +74,6 @@ def create_server_nodes():
             ae_title="ORTHANC1",
             host=settings.ORTHANC1_HOST,
             port=settings.ORTHANC1_DICOM_PORT,
-            patient_root_find_support=True,
-            patient_root_get_support=True,
-            patient_root_move_support=True,
-            study_root_find_support=True,
-            study_root_get_support=True,
-            study_root_move_support=True,
-            store_scp_support=True,
         )
     )
     servers.append(
@@ -89,13 +82,6 @@ def create_server_nodes():
             ae_title="ORTHANC2",
             host=settings.ORTHANC2_HOST,
             port=settings.ORTHANC2_DICOM_PORT,
-            patient_root_find_support=True,
-            patient_root_get_support=True,
-            patient_root_move_support=True,
-            study_root_find_support=True,
-            study_root_get_support=True,
-            study_root_move_support=True,
-            store_scp_support=True,
         )
     )
     return servers
