@@ -5,10 +5,8 @@ from daphne.testing import DaphneProcess
 from django.contrib.staticfiles.handlers import ASGIStaticFilesHandler
 from django.core.exceptions import ImproperlyConfigured
 from django.db import connections
-from django.test import TransactionTestCase
 from django.test.utils import modify_settings
 from playwright.sync_api import Page
-from adit.asgi import application
 
 
 def make_application(*, static_wrapper):
@@ -26,15 +24,11 @@ class ChannelsLiveServer:
     serve_static = True
 
     def __init__(self) -> None:
-        test_case = TransactionTestCase()
-
         for connection in connections.all():
             if connection.vendor == "sqlite" and connection.is_in_memory_db():
                 raise ImproperlyConfigured(
                     "ChannelsLiveServer can not be used with in memory databases"
                 )
-
-        test_case._pre_setup()
 
         self._live_server_modified_settings = modify_settings(ALLOWED_HOSTS={"append": self.host})
         self._live_server_modified_settings.enable()
@@ -44,7 +38,7 @@ class ChannelsLiveServer:
             static_wrapper=self.static_wrapper if self.serve_static else None,
         )
 
-        self._server_process = self.ProtocolServerProcess(self.host, application)
+        self._server_process = self.ProtocolServerProcess(self.host, get_application)
         self._server_process.start()
         self._server_process.ready.wait()
         self._port = self._server_process.port.value
@@ -70,4 +64,4 @@ def channels_liver_server(request, db):
 def test_worker(page: Page, channels_liver_server):
     print(channels_liver_server.url)
     page.goto(channels_liver_server.url)
-    # page.screenshot(path="foobar.png", full_page=True)
+    page.screenshot(path="foobar.png", full_page=True)
