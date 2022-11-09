@@ -1,3 +1,4 @@
+import re
 import time
 from multiprocessing import Process
 import pytest
@@ -6,43 +7,14 @@ from django.contrib.auth.models import Group, Permission
 from django.contrib.contenttypes.models import ContentType
 from django.core.management import call_command
 from playwright.sync_api import Page, expect
-from adit.accounts.models import User
 from adit.core.factories import DicomServerFactory
 from adit.selective_transfer.models import SelectiveTransferJob
-
-# @pytest.fixture(autouse=True)
-# def use_test_worker(settings):
-#     settings.CELERY_TASK_DEFAULT_QUEUE = "foobar"
-#     settings.CELERY_TASK_ROUTES = {}
-
-
-# @pytest.fixture(scope="session")
-# def celery_worker_parameters():
-#     return {
-#         # "queues": ("foobar",),
-#         # "exclude_queues": ("celery"),
-#     }
-
-
-# @pytest.fixture(scope="session")
-# def celery_config():
-#     return {
-#         "broker_url": settings.CELERY_BROKER_URL,
-#         "result_backend": settings.CELERY_RESULT_BACKEND,
-#     }
-
-
-# @pytest.fixture(scope="session")
-# def celery_enable_logging():
-#     return True
 
 
 @pytest.fixture
 def adit_celery_worker():
     def start_worker():
-        print("+++++++++++++++++++++++++++++++++++")
-        print(settings.DATABASES["default"])
-        call_command("celery_worker", "-Q", "default_queue,dicom_task_queue")
+        call_command("celery_worker", "-Q", "test_queue")
 
     p = Process(target=start_worker)
     p.start()
@@ -90,12 +62,8 @@ def test_worker(page: Page, adit_celery_worker, channels_liver_server, login_use
     page.locator('button:has-text("Start transfer")').click()
 
     page.locator('a:has-text("ID")').click()
-    # page.wait_for_timeout(5000)
-    time.sleep(10)
+    time.sleep(5)
     page.reload()
-    expect(page.locator("dl")).to_have_text("Success")
+    expect(page.locator("dl")).to_have_text(re.compile("Success"))
 
-    print("------------------")
-    print(settings.DATABASES["default"])
-    print(settings.CELERY_TASK_DEFAULT_QUEUE)
     page.screenshot(path="foobar.png", full_page=True)
