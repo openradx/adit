@@ -1,67 +1,101 @@
-from functools import partial
+import time
+from multiprocessing import Process
 import pytest
-from channels.routing import get_default_application
-from daphne.testing import DaphneProcess
-from django.contrib.staticfiles.handlers import ASGIStaticFilesHandler
-from django.core.exceptions import ImproperlyConfigured
-from django.db import connections
-from django.test.utils import modify_settings
-from playwright.sync_api import Page
+from django.conf import settings
+from django.contrib.auth.models import Group, Permission
+from django.contrib.contenttypes.models import ContentType
+from django.core.management import call_command
+from playwright.sync_api import Page, expect
+from adit.accounts.models import User
+from adit.core.factories import DicomServerFactory
+from adit.selective_transfer.models import SelectiveTransferJob
+
+# @pytest.fixture(autouse=True)
+# def use_test_worker(settings):
+#     settings.CELERY_TASK_DEFAULT_QUEUE = "foobar"
+#     settings.CELERY_TASK_ROUTES = {}
 
 
-def make_application(*, static_wrapper):
-    # Module-level function for pickle-ability
-    application = get_default_application()
-    if static_wrapper is not None:
-        application = static_wrapper(application)
-    return application
+# @pytest.fixture(scope="session")
+# def celery_worker_parameters():
+#     return {
+#         # "queues": ("foobar",),
+#         # "exclude_queues": ("celery"),
+#     }
 
 
-class ChannelsLiveServer:
-    host = "localhost"
-    ProtocolServerProcess = DaphneProcess
-    static_wrapper = ASGIStaticFilesHandler
-    serve_static = True
+# @pytest.fixture(scope="session")
+# def celery_config():
+#     return {
+#         "broker_url": settings.CELERY_BROKER_URL,
+#         "result_backend": settings.CELERY_RESULT_BACKEND,
+#     }
 
-    def __init__(self) -> None:
-        for connection in connections.all():
-            if connection.vendor == "sqlite" and connection.is_in_memory_db():
-                raise ImproperlyConfigured(
-                    "ChannelsLiveServer can not be used with in memory databases"
-                )
 
-        self._live_server_modified_settings = modify_settings(ALLOWED_HOSTS={"append": self.host})
-        self._live_server_modified_settings.enable()
-
-        get_application = partial(
-            make_application,
-            static_wrapper=self.static_wrapper if self.serve_static else None,
-        )
-
-        self._server_process = self.ProtocolServerProcess(self.host, get_application)
-        self._server_process.start()
-        self._server_process.ready.wait()
-        self._port = self._server_process.port.value
-
-    def stop(self) -> None:
-        self._server_process.terminate()
-        self._server_process.join()
-        self._live_server_modified_settings.disable()
-
-    @property
-    def url(self) -> str:
-        return f"http://{self.host}:{self._port}"
+# @pytest.fixture(scope="session")
+# def celery_enable_logging():
+#     return True
 
 
 @pytest.fixture
-def channels_liver_server(request, db):
-    server = ChannelsLiveServer()
-    request.addfinalizer(server.stop)
-    return server
+def adit_celery_worker():
+    def start_worker():
+        print("+++++++++++++++++++++++++++++++++++")
+        print(settings.DATABASES["default"])
+        call_command("celery_worker", "-Q", "default_queue,dicom_task_queue")
+
+    p = Process(target=start_worker)
+    p.start()
+    yield
+    p.terminate()
 
 
 @pytest.mark.integration
-def test_worker(page: Page, channels_liver_server):
-    print(channels_liver_server.url)
-    page.goto(channels_liver_server.url)
+@pytest.mark.django_db(transaction=True)
+def test_worker(page: Page, adit_celery_worker, channels_liver_server, login_user):
+
+    DicomServerFactory(
+        name="Orthanc Test Server 1",
+        ae_title="ORTHANC1",
+        host=settings.ORTHANC1_HOST,
+        port=settings.ORTHANC1_DICOM_PORT,
+    )
+
+    DicomServerFactory(
+        name="Orthanc Test Server 2",
+        ae_title="ORTHANC2",
+        host=settings.ORTHANC2_HOST,
+        port=settings.ORTHANC2_DICOM_PORT,
+    )
+
+    user = login_user(channels_liver_server.url)
+
+    selective_transfer_group = Group.objects.get(name="selective_transfer_group")
+    user.groups.add(selective_transfer_group)
+    content_type = ContentType.objects.get_for_model(SelectiveTransferJob())
+    permission_urgently = Permission.objects.get(
+        codename="can_process_urgently", content_type=content_type
+    )
+    permission_unpseudonymized = Permission.objects.get(
+        codename="can_transfer_unpseudonymized", content_type=content_type
+    )
+    user.user_permissions.add(permission_urgently, permission_unpseudonymized)
+
+    page.goto(channels_liver_server.url + "/selective-transfer/jobs/new/")
+    page.get_by_label("Start transfer directly").click(force=True)
+    page.get_by_label("Source").select_option("1")
+    page.get_by_label("Destination").select_option("2")
+    page.get_by_label("Patient ID").press("Enter")
+    page.locator('tr:has-text("1008"):has-text("2020") input').click()
+    page.locator('button:has-text("Start transfer")').click()
+
+    page.locator('a:has-text("ID")').click()
+    # page.wait_for_timeout(5000)
+    time.sleep(10)
+    page.reload()
+    expect(page.locator("dl")).to_have_text("Success")
+
+    print("------------------")
+    print(settings.DATABASES["default"])
+    print(settings.CELERY_TASK_DEFAULT_QUEUE)
     page.screenshot(path="foobar.png", full_page=True)

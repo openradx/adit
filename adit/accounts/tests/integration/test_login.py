@@ -1,11 +1,10 @@
 import pytest
-from django.conf import settings
-from playwright.sync_api import expect
+from playwright.sync_api import Page, expect
 
 
 @pytest.mark.integration
-@pytest.mark.skipif(not settings.ADIT_FULLSTACK, reason="Needs full webstack.")
-def test_login(page_user, live_server):
-    page, user = page_user
+@pytest.mark.django_db(transaction=True)
+def test_login(page: Page, live_server, login_user):
+    user = login_user(live_server.url)
 
     expect(page.locator("#navbarDropdown")).to_have_text(user.username)

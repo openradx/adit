@@ -1,17 +1,27 @@
 import pytest
-from playwright.sync_api import BrowserContext
+from playwright.sync_api import Page
 from adit.accounts.factories import UserFactory
+from adit.testing import ChannelsLiveServer
 
 
 @pytest.fixture
-def page_user(context: BrowserContext, live_server):
-    password = "mysecret"
-    user = UserFactory(password=password)
+def channels_liver_server(request):
+    server = ChannelsLiveServer()
+    request.addfinalizer(server.stop)
+    return server
 
-    page = context.new_page()
-    page.goto(live_server.url + "/accounts/login")
-    page.get_by_label("Username").fill(user.username)
-    page.get_by_label("Password").fill(password)
-    page.get_by_text("Log in").click()
 
-    return page, user
+@pytest.fixture
+def login_user(page: Page):
+    def _login_user(server_url: str):
+        password = "mysecret"
+        user = UserFactory(password=password)
+
+        page.goto(server_url + "/accounts/login")
+        page.get_by_label("Username").fill(user.username)
+        page.get_by_label("Password").fill(password)
+        page.get_by_text("Log in").click()
+
+        return user
+
+    return _login_user
