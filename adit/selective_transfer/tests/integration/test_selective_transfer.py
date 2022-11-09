@@ -8,6 +8,7 @@ from django.db import connections
 from django.test import TransactionTestCase
 from django.test.utils import modify_settings
 from playwright.sync_api import Page
+from adit.asgi import application
 
 
 def make_application(*, static_wrapper):
@@ -43,7 +44,7 @@ class ChannelsLiveServer:
             static_wrapper=self.static_wrapper if self.serve_static else None,
         )
 
-        self._server_process = self.ProtocolServerProcess(self.host, get_application)
+        self._server_process = self.ProtocolServerProcess(self.host, application)
         self._server_process.start()
         self._server_process.ready.wait()
         self._port = self._server_process.port.value
@@ -58,8 +59,8 @@ class ChannelsLiveServer:
         return f"http://{self.host}:{self._port}"
 
 
-@pytest.fixture(scope="session")
-def channels_liver_server(request):
+@pytest.fixture
+def channels_liver_server(request, db):
     server = ChannelsLiveServer()
     request.addfinalizer(server.stop)
     return server
