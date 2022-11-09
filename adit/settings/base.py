@@ -42,6 +42,7 @@ ADIT_SITE_DOMAIN = env.str("ADIT_SITE_DOMAIN", default="adit.org")
 ADIT_SITE_NAME = env.str("ADIT_SITE_NAME", default="adit.org")
 
 INSTALLED_APPS = [
+    "daphne",
     "whitenoise.runserver_nostatic",
     "adit.accounts.apps.AccountsConfig",
     "registration",

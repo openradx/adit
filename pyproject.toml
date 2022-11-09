@@ -8,7 +8,7 @@ license = "GPLv3"
 [tool.poetry.dependencies]
 cchardet = "^2.1.7"
 celery = "^5.2.7"
-channels = "^3.0.5"
+channels = "^4.0.0"
 cryptography = "^38.0.2"
 dicognito = "^0.15.0"
 Django = "^4.0.6"
@@ -33,6 +33,8 @@ redis = "4.3.4"
 toml = "^0.10.2"
 Twisted = {extras = ["tls", "http2"], version = "^22.2.0"}
 whitenoise = "^6.0.0"
+daphne = "^4.0.0"
+channels-redis = "^4.0.0"
 
 [tool.poetry.dev-dependencies]
 black = "^22.1.0"
