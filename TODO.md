@@ -36,6 +36,12 @@
 
 # Maybe
 
+- Write channels_liver_server fixture
+  -- https://github.com/pytest-dev/pytest-django/blob/master/pytest_django/fixtures.py#L514
+  -- https://github.com/pytest-dev/pytest-django/blob/42b7db2f4f5dbe785e57652d1d4ea9eda39e56e3/pytest_django/live_server_helper.py#L4
+  -- https://github.com/django/channels/blob/main/channels/testing/live.py#L21
+  -- https://github.com/django/daphne/blob/main/daphne/testing.py#L123
+  -- https://github.com/django/django/blob/main/django/test/testcases.py#L1810
 - Support Excel batch files additionally to CSV files (best by using Pandas with openpyxl)
 - Bring everything behind Nginx as reverse proxy
   -- Orthanc, Flower, Rabbit Management Console should then be directly behind Nginx (without Django-revproxy)

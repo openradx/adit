@@ -56,6 +56,7 @@ pytest-playwright = "^0.3.0"
 isort = "^5.10.1"
 flake8 = "^5.0.4"
 Flake8-pyproject = "^1.1.0"
+pytest-celery = "^0.0.0"
 
 [tool.black]
 line-length = 100

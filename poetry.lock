@@ -1232,6 +1232,17 @@ pytest = ">=3.0.0,<8.0.0"
 requests = ">=2.9"
 
 [[package]]
+name = "pytest-celery"
+version = "0.0.0"
+description = "pytest-celery a shim pytest plugin to enable celery.contrib.pytest"
+category = "dev"
+optional = false
+python-versions = "*"
+
+[package.dependencies]
+celery = ">=4.4.0"
+
+[[package]]
 name = "pytest-cov"
 version = "4.0.0"
 description = "Pytest plugin for measuring coverage."
@@ -1640,7 +1651,7 @@ testing = ["coverage (>=5.0.3)", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.9"
-content-hash = "6a5ef52e5b4b5edd12af2a8f219ace787a123a064d0a17f4db24d0a6edadade5"
+content-hash = "aafb47dd893f1a8cec841fcb39926f3ab75adc563e75f3087cccbfae1e875d1b"
 
 [metadata.files]
 amqp = []
@@ -1743,6 +1754,7 @@ pyparsing = []
 pyright = []
 pytest = []
 pytest-base-url = []
+pytest-celery = []
 pytest-cov = []
 pytest-django = []
 pytest-picked = []
