@@ -1,3 +1,4 @@
+import re
 import time
 from multiprocessing import Process
 import pytest
@@ -54,13 +55,8 @@ def test_worker(page: Page, adit_celery_worker, channels_liver_server, login_use
 
     page.goto(channels_liver_server.url + "/selective-transfer/jobs/new/")
     page.get_by_label("Start transfer directly").click(force=True)
-
-    print("+++++++++++++++++++++++++++++++++++++")
-    el = page.get_by_label("Source")
-    print(el.inner_html())
-
-    page.get_by_label("Source").select_option("1")
-    page.get_by_label("Destination").select_option("2")
+    page.get_by_label("Source").select_option(label="DICOM Server Orthanc Test Server 1")
+    page.get_by_label("Destination").select_option(label="DICOM Server Orthanc Test Server 2")
     page.get_by_label("Patient ID").press("Enter")
     page.locator('tr:has-text("1008"):has-text("2020") input').click()
     page.locator('button:has-text("Start transfer")').click()
