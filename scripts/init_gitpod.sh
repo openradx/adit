@@ -1,11 +1,14 @@
 #!/usr/bin/env bash
 
-PROJECT_DIR="$(dirname $(dirname $(readlink -f $0)))"
-cp -a $PROJECT_DIR/example.env $PROJECT_DIR/compose/adit_dev/.env
+source "$(dirname "$0")/common.sh"
+
+ENV_DEV_FILE="$COMPOSE_DIR/.env.dev"
+
+cp -a $PROJECT_DIR/example.env $ENV_DEV_FILE
 
 BASE_URL=$(gp url 8000)
-sed -i "s#\(BASE_URL=\).*#\1$BASE_URL#" compose/adit_dev/.env
-sed -i "s#\(DJANGO_CSRF_TRUSTED_ORIGINS=\).*#\1$BASE_URL#" compose/adit_dev/.env
+sed -i "s#\(BASE_URL=\).*#\1$BASE_URL#" $ENV_DEV_FILE
+sed -i "s#\(DJANGO_CSRF_TRUSTED_ORIGINS=\).*#\1$BASE_URL#" $ENV_DEV_FILE
 
 HOST=${BASE_URL#https://}
-sed -i "s#DJANGO_ALLOWED_HOSTS=#&$HOST,#" compose/adit_dev/.env
+sed -i "s#DJANGO_ALLOWED_HOSTS=#&$HOST,#" $ENV_DEV_FILE

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-PROJECT_DIR="$(dirname $(dirname $(readlink -f $0)))"
+source "$(dirname "$0")/common.sh"
 
-docker-compose -f "$PROJECT_DIR/compose/adit_dev/docker-compose.dev.yml" exec web black ./adit
-docker-compose -f "$PROJECT_DIR/compose/adit_dev/docker-compose.dev.yml" exec web isort ./adit
+eval $COMPOSE_COMMAND_DEV exec web black ./adit
+eval $COMPOSE_COMMAND_DEV exec web isort ./adit

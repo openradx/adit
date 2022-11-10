@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
 
-PROJECT_DIR="$(dirname $(dirname $(readlink -f $0)))"
+source "$(dirname "$0")/common.sh"
 
-docker-compose -f "$PROJECT_DIR/compose/adit_dev/docker-compose.dev.yml" down --remove-orphans --volumes
+eval $COMPOSE_COMMAND_DEV down --remove-orphans --volumes

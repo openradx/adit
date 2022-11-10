@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
 
-PROJECT_DIR="$(dirname $(dirname $(readlink -f $0)))"
+source "$(dirname "$0")/common.sh"
 
-docker-compose -f "$PROJECT_DIR/compose/adit_prod/docker-compose.prod.yml" logs -f
+eval $COMPOSE_COMMAND_PROD logs -f

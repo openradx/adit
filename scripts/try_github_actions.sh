@@ -1,17 +1,17 @@
 #!/usr/bin/env bash
 
-if [[ ! -z `docker-compose ls | grep "adit_dev\s*running"` ]]; then
+source "$(dirname "$0")/common.sh"
+
+if $ADIT_DEV_RUNNING; then
     echo "'adit_dev' containers must not be running when using this script."
     exit 1
 fi
 
-scripts_path=$( cd "$(dirname "${BASH_SOURCE[0]}")" ; pwd -P )
-project_path=$( realpath "$scripts_path/.." )
-act_path="$project_path/bin/act"
+ACT_PATH="$PROJECT_DIR/bin/act"
 
-cd $project_path
+cd $PROJECT_DIR
 
-if [ ! -f "$act_path" ]; then
+if [ ! -f "$ACT_PATH" ]; then
     echo "Installing act ..."
     curl https://raw.githubusercontent.com/nektos/act/master/install.sh | sudo bash
 fi
@@ -19,4 +19,4 @@ fi
 echo "Running act ..."
 # We use a custom image as the medium image of act does not support docker-compose
 # see https://github.com/nektos/act/issues/112
-eval $act_path -P ubuntu-latest=lucasalt/act_base:latest
+eval $ACT_PATH -P ubuntu-latest=lucasalt/act_base:latest
