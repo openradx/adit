@@ -14,7 +14,6 @@ x-app: &default-app
     - orthanc2
   environment:
     USE_DOCKER: 1
-    ADIT_FULLSTACK: 1
     DATABASE_URL: "psql://postgres:postgres@postgres:5432/postgres"
     RABBITMQ_URL: "amqp://rabbit"
     REDIS_URL: "redis://redis:6379/0"
