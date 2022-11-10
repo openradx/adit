@@ -26,8 +26,16 @@ ports:
 
 vscode:
   extensions:
-    - "ms-python.python"
     - "batisteo.vscode-django"
+    - "davidanson.vscode-markdownlint"
+    - "eamodio.gitlens"
+    - "esbenp.prettier-vscode"
+    - "formulahendry.auto-rename-tag"
+    - "foxundermoon.shell-format"
+    - "mhutchie.git-graph"
+    - "mikestead.dotenv"
     - "ms-azuretools.vscode-docker"
+    - "ms-python.python"
+    - "streetsidesoftware.code-spell-checker"
+    - "tomoki1207.pdf"
     - "wayou.vscode-todo-highlight"
-    - "ms-azuretools.vscode-docker"
