@@ -1,4 +1,3 @@
-import re
 import time
 from multiprocessing import Process
 import pytest
