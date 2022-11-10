@@ -64,6 +64,6 @@ def test_worker(page: Page, adit_celery_worker, channels_liver_server, login_use
     page.locator('a:has-text("ID")').click()
     time.sleep(5)
     page.reload()
-    expect(page.locator("dl")).to_have_text(re.compile("Success"))
+    expect(page.locator('dl:has-text("Success")')).to_be_visible()
 
     page.screenshot(path="foobar.png", full_page=True)

@@ -35,7 +35,7 @@ jobs:
         run: docker-compose -p adit_ci -f "compose/adit_dev/docker-compose.dev.yml" exec -T web flake8 ./adit
 
       - name: Run tests with pytest
-        run: docker-compose -p adit_ci -f "compose/adit_dev/docker-compose.dev.yml" exec -T web pytest --cov=adit ./adit
+        run: docker-compose -p adit_ci -f "compose/adit_dev/docker-compose.dev.yml" exec --env DJANGO_SETTINGS_MODULE=adit.settings.test -T web pytest --cov=adit ./adit
 
       - name: Stop Docker containers
         if: ${{ always() }}
