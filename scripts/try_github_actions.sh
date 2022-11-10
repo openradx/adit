@@ -2,7 +2,7 @@
 
 source "$(dirname "$0")/common.sh"
 
-if $ADIT_DEV_RUNNING; then
+if [[ ! -z $(docker-compose ls | grep "$ADIT_DEV_PROJ\s*running") ]]; then
     echo "'adit_dev' containers must not be running when using this script."
     exit 1
 fi

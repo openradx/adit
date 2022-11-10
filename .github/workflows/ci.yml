@@ -32,9 +32,12 @@ jobs:
         run: ./scripts/adit_dev_up.sh --no-build
 
       - name: Run linting with flake8
+        # https://github.com/actions/runner/issues/241#issuecomment-745902718
+        shell: 'script -q -e -c "bash {0}"'
         run: ./scripts/adit_dev_lint.sh
 
       - name: Run tests with pytest
+        shell: 'script -q -e -c "bash {0}"'
         run: ./scripts/adit_dev_cov.sh
 
       - name: Stop Docker containers
