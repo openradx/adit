@@ -2,4 +2,4 @@
 
 source "$(dirname "$0")/common.sh"
 
-eval $COMPOSE_COMMAND_PROD logs -f
+eval $COMPOSE_COMMAND_PROD logs -f "$@"

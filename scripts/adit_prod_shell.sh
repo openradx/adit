@@ -2,4 +2,4 @@
 
 source "$(dirname "$0")/common.sh"
 
-eval $COMPOSE_COMMAND_PROD exec web python manage.py shell_plus
+eval $COMPOSE_COMMAND_PROD exec web python manage.py shell_plus "$@"

@@ -26,17 +26,17 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Configure environment
-        run: cp example.env compose/adit_dev/.env
+        run: cp example.env compose/.env.dev
 
       - name: Start Docker containers
-        run: docker-compose -p adit_ci -f "compose/adit_dev/docker-compose.dev.yml" up --no-build -d
+        run: ./scripts/adit_dev_up.sh --no-build
 
       - name: Run linting with flake8
-        run: docker-compose -p adit_ci -f "compose/adit_dev/docker-compose.dev.yml" exec -T web flake8 ./adit
+        run: ./scripts/adit_dev_lint.sh
 
       - name: Run tests with pytest
-        run: docker-compose -p adit_ci -f "compose/adit_dev/docker-compose.dev.yml" exec --env DJANGO_SETTINGS_MODULE=adit.settings.test -T web pytest --cov=adit ./adit
+        run: ./scripts/adit_dev_cov.sh
 
       - name: Stop Docker containers
         if: ${{ always() }}
-        run: docker-compose -p adit_ci -f "compose/adit_dev/docker-compose.dev.yml" down --remove-orphans --volumes
+        run: ./scripts/adit_dev_down.sh

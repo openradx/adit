@@ -2,4 +2,4 @@
 
 source "$(dirname "$0")/common.sh"
 
-eval $COMPOSE_COMMAND_DEV restart
+eval $COMPOSE_COMMAND_DEV restart "$@"

@@ -2,4 +2,4 @@
 
 source "$(dirname "$0")/common.sh"
 
-eval $COMPOSE_COMMAND_DEV up -d
+eval $COMPOSE_COMMAND_DEV up -d "$@"
