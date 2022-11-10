@@ -30,7 +30,10 @@ INSTALLED_APPS += [  # noqa: F405
 MIDDLEWARE += ["debug_toolbar.middleware.DebugToolbarMiddleware"]  # noqa: F405
 
 if env.bool("FORCE_DEBUG_TOOLBAR", default=False):
-    DEBUG_TOOLBAR_CONFIG = {"SHOW_TOOLBAR_CALLBACK": lambda request: DEBUG}
+    # https://github.com/jazzband/django-debug-toolbar/issues/1035
+    from django.conf import settings
+
+    DEBUG_TOOLBAR_CONFIG = {"SHOW_TOOLBAR_CALLBACK": lambda request: settings.DEBUG}
 
 CELERY_TASK_ALWAYS_EAGER = False
 CELERY_TASK_EAGER_PROPAGATES = False
