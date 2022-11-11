@@ -9,7 +9,10 @@ class User(AbstractUser):
     department = models.CharField(max_length=128)
     misc_settings = models.JSONField(null=True, blank=True)
 
-    def add_to_group(self, group_name: str):
+    def is_group_member(self, group_name: str):
+        return self.groups.filter(name=group_name).exists()
+
+    def join_group(self, group_name: str):
         group = Group.objects.get(name=group_name)
         self.groups.add(group)
 

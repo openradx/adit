@@ -9,7 +9,7 @@ def test_unpseudonymized_urgent_selective_transfer(
     page: Page, setup_orthancs, adit_celery_worker, channels_liver_server, create_and_login_user
 ):
     user = create_and_login_user(channels_liver_server.url)
-    user.add_to_group("selective_transfer_group")
+    user.join_group("selective_transfer_group")
     user.add_permission("can_process_urgently", SelectiveTransferJob)
     user.add_permission("can_transfer_unpseudonymized", SelectiveTransferJob)
 
