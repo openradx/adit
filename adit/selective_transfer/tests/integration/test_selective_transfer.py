@@ -1,10 +1,9 @@
 from multiprocessing import Process
 import pytest
 from django.conf import settings
-from django.contrib.auth.models import Group, Permission
-from django.contrib.contenttypes.models import ContentType
 from django.core.management import call_command
 from playwright.sync_api import Page, expect
+from adit.accounts.utils import UserPermissionManager
 from adit.core.factories import DicomServerFactory
 from adit.selective_transfer.models import SelectiveTransferJob
 
@@ -25,14 +24,12 @@ def adit_celery_worker():
 def test_selective_transfer(
     page: Page, adit_celery_worker, channels_liver_server, create_and_login_user
 ):
-
     DicomServerFactory(
         name="Orthanc Test Server 1",
         ae_title="ORTHANC1",
         host=settings.ORTHANC1_HOST,
         port=settings.ORTHANC1_DICOM_PORT,
     )
-
     DicomServerFactory(
         name="Orthanc Test Server 2",
         ae_title="ORTHANC2",
@@ -42,16 +39,10 @@ def test_selective_transfer(
 
     user = create_and_login_user(channels_liver_server.url)
 
-    selective_transfer_group = Group.objects.get(name="selective_transfer_group")
-    user.groups.add(selective_transfer_group)
-    content_type = ContentType.objects.get_for_model(SelectiveTransferJob)
-    permission_urgently = Permission.objects.get(
-        codename="can_process_urgently", content_type=content_type
-    )
-    permission_unpseudonymized = Permission.objects.get(
-        codename="can_transfer_unpseudonymized", content_type=content_type
-    )
-    user.user_permissions.add(permission_urgently, permission_unpseudonymized)
+    manager = UserPermissionManager(user)
+    manager.add_group("selective_transfer_group")
+    manager.add_permission("can_process_urgently", SelectiveTransferJob)
+    manager.add_permission("can_transfer_unpseudonymized", SelectiveTransferJob)
 
     page.goto(channels_liver_server.url + "/selective-transfer/jobs/new/")
     page.get_by_label("Start transfer directly").click(force=True)

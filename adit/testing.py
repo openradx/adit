@@ -7,7 +7,7 @@ from django.db import connections
 from django.test.utils import modify_settings
 
 
-def make_application(*, static_wrapper):
+def _make_application(*, static_wrapper):
     # Module-level function for pickle-ability
     application = get_default_application()
     if static_wrapper is not None:
@@ -32,7 +32,7 @@ class ChannelsLiveServer:
         self._live_server_modified_settings.enable()
 
         get_application = partial(
-            make_application,
+            _make_application,
             static_wrapper=self.static_wrapper if self.serve_static else None,
         )
 
