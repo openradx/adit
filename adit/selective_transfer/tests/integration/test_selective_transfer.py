@@ -1,4 +1,3 @@
-import time
 from multiprocessing import Process
 import pytest
 from django.conf import settings
@@ -23,7 +22,7 @@ def adit_celery_worker():
 
 @pytest.mark.integration
 @pytest.mark.django_db(transaction=True)
-def test_worker(page: Page, adit_celery_worker, channels_liver_server, login_user):
+def test_selective_transfer(page: Page, adit_celery_worker, channels_liver_server, login_user):
 
     DicomServerFactory(
         name="Orthanc Test Server 1",
@@ -59,10 +58,7 @@ def test_worker(page: Page, adit_celery_worker, channels_liver_server, login_use
     page.get_by_label("Patient ID").press("Enter")
     page.locator('tr:has-text("1008"):has-text("2020") input').click()
     page.locator('button:has-text("Start transfer")').click()
-
     page.locator('a:has-text("ID")').click()
-    time.sleep(5)
-    page.reload()
-    expect(page.locator('dl:has-text("Success")')).to_be_visible()
+    expect(page.locator('dl:has-text("Success")').poll()).to_be_visible()
 
     page.screenshot(path="foobar.png", full_page=True)

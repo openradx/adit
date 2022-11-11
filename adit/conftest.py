@@ -1,7 +1,31 @@
+import time
+from typing import Callable
 import pytest
-from playwright.sync_api import Page
+from playwright.sync_api import Locator, Page
 from adit.accounts.factories import UserFactory
 from adit.testing import ChannelsLiveServer
+
+
+def poll(
+    self: Locator,
+    func: Callable[[Locator], None] = lambda loc: loc.page.reload(),
+    interval: int = 1_000,
+    timeout: int = 10_000,
+):
+    start_time = time.time()
+    while True:
+        try:
+            self.wait_for(timeout=interval)
+            return self
+        except Exception as err:
+            elapsed_time = (time.time() - start_time) * 1000
+            if elapsed_time > timeout:
+                raise err
+
+        func(self)
+
+
+Locator.poll = poll
 
 
 @pytest.fixture
