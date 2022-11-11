@@ -25,5 +25,3 @@ def test_unpseudonymized_urgent_selective_transfer(
     page.locator('button:has-text("Start transfer")').click()
     page.locator('a:has-text("ID")').click()
     expect(page.locator('dl:has-text("Success")').poll()).to_be_visible()
-
-    page.screenshot(path="foobar.png", full_page=True)
