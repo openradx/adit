@@ -22,7 +22,9 @@ def adit_celery_worker():
 
 @pytest.mark.integration
 @pytest.mark.django_db(transaction=True)
-def test_selective_transfer(page: Page, adit_celery_worker, channels_liver_server, login_user):
+def test_selective_transfer(
+    page: Page, adit_celery_worker, channels_liver_server, create_and_login_user
+):
 
     DicomServerFactory(
         name="Orthanc Test Server 1",
@@ -38,7 +40,7 @@ def test_selective_transfer(page: Page, adit_celery_worker, channels_liver_serve
         port=settings.ORTHANC2_DICOM_PORT,
     )
 
-    user = login_user(channels_liver_server.url)
+    user = create_and_login_user(channels_liver_server.url)
 
     selective_transfer_group = Group.objects.get(name="selective_transfer_group")
     user.groups.add(selective_transfer_group)

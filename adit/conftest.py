@@ -37,15 +37,23 @@ def channels_liver_server(request):
 
 @pytest.fixture
 def login_user(page: Page):
-    def _login_user(server_url: str):
-        password = "mysecret"
-        user = UserFactory(password=password)
-
+    def _login_user(server_url: str, username: str, password: str):
         page.goto(server_url + "/accounts/login")
-        page.get_by_label("Username").fill(user.username)
+        page.get_by_label("Username").fill(username)
         page.get_by_label("Password").fill(password)
         page.get_by_text("Log in").click()
 
+    return _login_user
+
+
+@pytest.fixture
+def create_and_login_user(page: Page, login_user):
+    def _create_and_login_user(server_url: str):
+        password = "mysecret"
+        user = UserFactory(password=password)
+
+        login_user(server_url, user.username, password)
+
         return user
 
-    return _login_user
+    return _create_and_login_user
