@@ -1,6 +1,8 @@
 import time
+from multiprocessing import Process
 from typing import Callable
 import pytest
+from django.core.management import call_command
 from playwright.sync_api import Locator, Page
 from adit.accounts.factories import UserFactory
 from adit.testing import ChannelsLiveServer
@@ -33,6 +35,17 @@ def channels_liver_server(request):
     server = ChannelsLiveServer()
     request.addfinalizer(server.stop)
     return server
+
+
+@pytest.fixture
+def adit_celery_worker():
+    def start_worker():
+        call_command("celery_worker", "-Q", "test_queue")
+
+    p = Process(target=start_worker)
+    p.start()
+    yield
+    p.terminate()
 
 
 @pytest.fixture

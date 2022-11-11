@@ -1,22 +1,9 @@
-from multiprocessing import Process
 import pytest
 from django.conf import settings
-from django.core.management import call_command
 from playwright.sync_api import Page, expect
 from adit.accounts.utils import UserPermissionManager
 from adit.core.factories import DicomServerFactory
 from adit.selective_transfer.models import SelectiveTransferJob
-
-
-@pytest.fixture
-def adit_celery_worker():
-    def start_worker():
-        call_command("celery_worker", "-Q", "test_queue")
-
-    p = Process(target=start_worker)
-    p.start()
-    yield
-    p.terminate()
 
 
 @pytest.mark.integration
