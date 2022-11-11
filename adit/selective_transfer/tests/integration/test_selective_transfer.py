@@ -1,29 +1,14 @@
 import pytest
-from django.conf import settings
 from playwright.sync_api import Page, expect
 from adit.accounts.utils import UserPermissionManager
-from adit.core.factories import DicomServerFactory
 from adit.selective_transfer.models import SelectiveTransferJob
 
 
 @pytest.mark.integration
 @pytest.mark.django_db(transaction=True)
-def test_selective_transfer(
-    page: Page, adit_celery_worker, channels_liver_server, create_and_login_user
+def test_unpseudonymized_urgent_selective_transfer(
+    page: Page, setup_orthancs, adit_celery_worker, channels_liver_server, create_and_login_user
 ):
-    DicomServerFactory(
-        name="Orthanc Test Server 1",
-        ae_title="ORTHANC1",
-        host=settings.ORTHANC1_HOST,
-        port=settings.ORTHANC1_DICOM_PORT,
-    )
-    DicomServerFactory(
-        name="Orthanc Test Server 2",
-        ae_title="ORTHANC2",
-        host=settings.ORTHANC2_HOST,
-        port=settings.ORTHANC2_DICOM_PORT,
-    )
-
     user = create_and_login_user(channels_liver_server.url)
 
     manager = UserPermissionManager(user)

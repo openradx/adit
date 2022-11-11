@@ -2,9 +2,11 @@ import time
 from multiprocessing import Process
 from typing import Callable
 import pytest
+from django.conf import settings
 from django.core.management import call_command
 from playwright.sync_api import Locator, Page
 from adit.accounts.factories import UserFactory
+from adit.core.factories import DicomServerFactory
 from adit.testing import ChannelsLiveServer
 
 
@@ -46,6 +48,24 @@ def adit_celery_worker():
     p.start()
     yield
     p.terminate()
+
+
+@pytest.fixture
+def setup_orthancs():
+    call_command("reset_orthancs")
+
+    DicomServerFactory(
+        name="Orthanc Test Server 1",
+        ae_title="ORTHANC1",
+        host=settings.ORTHANC1_HOST,
+        port=settings.ORTHANC1_DICOM_PORT,
+    )
+    DicomServerFactory(
+        name="Orthanc Test Server 2",
+        ae_title="ORTHANC2",
+        host=settings.ORTHANC2_HOST,
+        port=settings.ORTHANC2_DICOM_PORT,
+    )
 
 
 @pytest.fixture
