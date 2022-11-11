@@ -44,7 +44,7 @@ def test_selective_transfer(
 
     selective_transfer_group = Group.objects.get(name="selective_transfer_group")
     user.groups.add(selective_transfer_group)
-    content_type = ContentType.objects.get_for_model(SelectiveTransferJob())
+    content_type = ContentType.objects.get_for_model(SelectiveTransferJob)
     permission_urgently = Permission.objects.get(
         codename="can_process_urgently", content_type=content_type
     )
