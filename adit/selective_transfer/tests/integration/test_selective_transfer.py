@@ -1,6 +1,5 @@
 import pytest
 from playwright.sync_api import Page, expect
-from adit.accounts.utils import UserPermissionManager
 from adit.selective_transfer.models import SelectiveTransferJob
 
 
@@ -10,11 +9,9 @@ def test_unpseudonymized_urgent_selective_transfer(
     page: Page, setup_orthancs, adit_celery_worker, channels_liver_server, create_and_login_user
 ):
     user = create_and_login_user(channels_liver_server.url)
-
-    manager = UserPermissionManager(user)
-    manager.add_group("selective_transfer_group")
-    manager.add_permission("can_process_urgently", SelectiveTransferJob)
-    manager.add_permission("can_transfer_unpseudonymized", SelectiveTransferJob)
+    user.add_to_group("selective_transfer_group")
+    user.add_permission("can_process_urgently", SelectiveTransferJob)
+    user.add_permission("can_transfer_unpseudonymized", SelectiveTransferJob)
 
     page.goto(channels_liver_server.url + "/selective-transfer/jobs/new/")
     page.get_by_label("Start transfer directly").click(force=True)
@@ -24,4 +21,5 @@ def test_unpseudonymized_urgent_selective_transfer(
     page.locator('tr:has-text("1008"):has-text("2020") input').click()
     page.locator('button:has-text("Start transfer")').click()
     page.locator('a:has-text("ID")').click()
+
     expect(page.locator('dl:has-text("Success")').poll()).to_be_visible()
