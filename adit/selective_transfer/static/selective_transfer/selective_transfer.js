@@ -1,6 +1,6 @@
 function selectiveTransferForm() {
   const config = getAditConfig();
-  const storageKey = "selectiveTransfer-" + config.user_id;
+  const storageKey = "selectiveTransferForm-" + config.user_id;
 
   return {
     showHelpMessage: true,
