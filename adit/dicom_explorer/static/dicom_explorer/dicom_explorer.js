@@ -1,5 +1,5 @@
-$(document).ready(function () {
-  $("form#dicom_explorer").submit(function () {
+$(function () {
+  $("form#dicom_explorer").on("submit", function () {
     $(this)
       .find("input[name]")
       .filter(function () {

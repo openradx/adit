@@ -18,4 +18,9 @@ def base_context_processor(request):
         "BASE_URL": settings.BASE_URL,
         "SUPPORT_EMAIL": settings.SUPPORT_EMAIL,
         "nav_menu_items": nav_menu_items,
+        "adit_config": {
+            "user_id": request.user.id,
+            "username": request.user.username,
+            "adit_version": settings.ADIT_VERSION,
+        },
     }

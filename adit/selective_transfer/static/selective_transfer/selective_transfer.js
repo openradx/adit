@@ -1,4 +1,7 @@
 function selectiveTransferForm() {
+  const config = getAditConfig();
+  const storageKey = "selectiveTransfer-" + config.user_id;
+
   return {
     showHelpMessage: true,
     queryInProgress: false,
@@ -15,13 +18,13 @@ function selectiveTransferForm() {
       const $advancedOptions = this.$form.find("#advanced_options");
       $advancedOptions
         .on("hide.bs.collapse", function () {
-          self.updateCookie("hideOptions", true);
+          self.updateStorage("hideOptions", true);
         })
         .on("show.bs.collapse", function () {
-          self.updateCookie("hideOptions", false);
+          self.updateStorage("hideOptions", false);
         });
 
-      this.restoreFromCookie($advancedOptions);
+      this.restoreFromStorage($advancedOptions);
     },
     connect: function () {
       const self = this;
@@ -66,37 +69,49 @@ function selectiveTransferForm() {
       }
       select.value = valueToSet;
     },
-    updateCookie: function (key, value) {
-      const cookie = JSON.parse(Cookies.get("selectiveTransferForm") || "{}");
-      cookie[key] = value;
-      Cookies.set("selectiveTransferForm", JSON.stringify(cookie));
+    loadFromStorage: function () {
+      let item;
+      try {
+        item = JSON.parse(window.localStorage.getItem(storageKey) || "{}");
+        if (typeof item !== "object") {
+          item = {};
+        }
+      } catch {
+        item = {};
+      }
+      return item;
     },
-    restoreFromCookie: function ($advancedOptions) {
-      const cookie = JSON.parse(Cookies.get("selectiveTransferForm") || "{}");
+    updateStorage: function (key, value) {
+      const item = this.loadFromStorage();
+      item[key] = value;
+      window.localStorage.setItem(storageKey, JSON.stringify(item));
+    },
+    restoreFromStorage: function ($advancedOptions) {
+      const item = this.loadFromStorage();
 
-      if ("hideOptions" in cookie) {
-        if (cookie.hideOptions) {
+      if ("hideOptions" in item) {
+        if (item.hideOptions) {
           $advancedOptions.collapse("hide");
         } else {
           $advancedOptions.collapse("show");
         }
       }
 
-      if ("source" in cookie) {
+      if ("source" in item) {
         const source = this.$form.find("[name=source]")[0];
-        this.setSelectOption(source, cookie.source);
+        this.setSelectOption(source, item.source);
       }
 
-      if ("destination" in cookie) {
+      if ("destination" in item) {
         const destination = this.$form.find("[name=destination]")[0];
-        this.setSelectOption(destination, cookie.destination);
+        this.setSelectOption(destination, item.destination);
         this.onDestinationChanged(destination);
       }
 
-      if ("urgent" in cookie) {
+      if ("urgent" in item) {
         const urgentEl = this.$form.find("[name=urgent]")[0];
         if (urgentEl) {
-          urgentEl.checked = cookie.urgent;
+          urgentEl.checked = item.urgent;
         }
       }
     },
@@ -162,7 +177,7 @@ function selectiveTransferForm() {
     onServerChanged: function (event) {
       const name = event.currentTarget.name;
       const value = event.currentTarget.value;
-      this.updateCookie(name, value);
+      this.updateStorage(name, value);
 
       if (name === "destination") {
         this.onDestinationChanged(event.currentTarget);
@@ -179,7 +194,7 @@ function selectiveTransferForm() {
     onUrgencyChanged: function (event) {
       const name = event.currentTarget.name;
       const value = event.currentTarget.checked;
-      this.updateCookie(name, value);
+      this.updateStorage(name, value);
     },
     reset: function () {
       this.showHelpMessage = true;

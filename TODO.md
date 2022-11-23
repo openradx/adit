@@ -53,7 +53,6 @@
   -- https://playwright.dev/python/docs/auth
   -- Unfortunately, we can't use live_server fixture inside session fixtures
   -- example https://github.com/automationneemo/PlaywrightDemoYt
-- Save last search parameters in session instead js-cookie
 - Get rid of dicom_connector.download_study/move_study. Do everything at the series level. That way filtering series (e.g. exlcude modalities) is much easier.
 - BatchQuery with custom DICOM keywords
 - Watchdog server

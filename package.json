@@ -18,18 +18,16 @@
     "bootstrap-icons": "^1.8.1",
     "bootswatch": "^4.6.1",
     "jquery": "^3.6.0",
-    "js-cookie": "^3.0.1",
     "morphdom": "^2.6.1"
   },
   "scripts": {
-    "copy": "npm run copy:jquery && npm run copy:bootstrap && npm run copy:bootswatch && npm run copy:alpine && npm run copy:morphdom && npm run copy:cookie",
+    "copy": "npm run copy:jquery && npm run copy:bootstrap && npm run copy:bootswatch && npm run copy:alpine && npm run copy:morphdom",
     "copy:jquery": "cp node_modules/jquery/dist/jquery.js adit/static/vendor/",
     "copy:bootstrap_css": "cp node_modules/bootstrap/dist/css/bootstrap.css* adit/static/vendor/",
     "copy:bootstrap_js": "cp node_modules/bootstrap/dist/js/bootstrap.bundle.js* adit/static/vendor/",
     "copy:bootstrap": "npm run copy:bootstrap_css && npm run copy:bootstrap_js",
     "copy:bootswatch": "cp node_modules/bootswatch/dist/flatly/bootstrap.css adit/static/vendor/",
     "copy:alpine": "cp node_modules/alpinejs/dist/alpine*.js adit/static/vendor/",
-    "copy:morphdom": "cp node_modules/morphdom/dist/morphdom-umd.js adit/static/vendor/",
-    "copy:cookie": "cp node_modules/js-cookie/dist/js.cookie.js adit/static/vendor/"
+    "copy:morphdom": "cp node_modules/morphdom/dist/morphdom-umd.js adit/static/vendor/"
   }
 }

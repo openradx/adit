@@ -6,14 +6,20 @@ $(function () {
   $(".toast").toast();
 });
 
-function capitalize(s) {
-  if (typeof s !== "string") return "";
-  return s.charAt(0).toUpperCase() + s.slice(1);
+// A site wide config that is added to the context by adit.core.site.base_context_processor
+// and that can be accessed by Javascript
+function getAditConfig() {
+  return JSON.parse(document.getElementById("adit_config").textContent);
 }
 
 // Alpine JS data model connected in _messages_panel.html
 // A simple usage example can be found in sandbox.html and sandbox.js
 function messages() {
+  function capitalize(s) {
+    if (typeof s !== "string") return "";
+    return s.charAt(0).toUpperCase() + s.slice(1);
+  }
+
   return {
     options: {
       nextMessageId: 1,
