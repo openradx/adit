@@ -6,9 +6,33 @@
   "python.testing.pytestArgs": ["adit"],
   "python.testing.unittestEnabled": false,
   "python.sortImports.args": ["--profile", "black"],
+  "docker.containers.label": "ContainerName",
+  "javascript.validate.enable": true,
+  "cSpell.diagnosticLevel": "Hint",
   "[python]": {
     "editor.codeActionsOnSave": {
       "source.organizeImports": true
     }
+  },
+  "[typescript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[javascript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[jsonc]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[json]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[html]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[markdown]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[dockercompose]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
   }
 }
