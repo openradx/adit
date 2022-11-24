@@ -2,7 +2,7 @@
 
 source "$(dirname "$0")/common.sh"
 
-if [[ ! -z $(docker-compose ls | grep "$ADIT_DEV_PROJ\s*running") ]]; then
+if [[ ! -z $(docker compose ls | grep "$ADIT_DEV_PROJ\s*running") ]]; then
     echo "'adit_dev' containers must not be running when using this script."
     exit 1
 fi
@@ -17,6 +17,6 @@ if [ ! -f "$ACT_PATH" ]; then
 fi
 
 echo "Running act ..."
-# We use a custom image as the medium image of act does not support docker-compose
+# We use a custom image as the medium image of act does not support docker compose
 # see https://github.com/nektos/act/issues/112
 eval $ACT_PATH -P ubuntu-latest=lucasalt/act_base:latest
