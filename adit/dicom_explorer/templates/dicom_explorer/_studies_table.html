@@ -27,7 +27,7 @@
             <td>
                 {% explorer_url server.id patient.PatientID study.StudyInstanceUID as study_url %}
                 {% if server.xnat_rest_source %}
-                    {% append_xnat_query study_url request.GET.xnat_project_id request.GET.experiment_id as study_url %}
+                    {% append_xnat_query study_url request.GET.xnat_project_id as study_url %}
                 {% endif %}
                 <a 
                     href="{{ study_url }}" 

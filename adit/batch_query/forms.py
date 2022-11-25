@@ -117,7 +117,7 @@ class BatchQueryJobForm(forms.ModelForm):
                     )
                 )
             ),
-            xnat_options_field(["xnat_project_id", "experiment_id"]),
+            xnat_options_field(["xnat_project_id"]),
         )
 
     def clean_batch_file(self):

@@ -326,7 +326,6 @@ def _modify_dataset(
     and add the trial ID and name to the DICOM header if specified."""
     trial_protocol_id =  transfer_task.job.trial_protocol_id
     trial_protocol_name = transfer_task.job.trial_protocol_name,
-
     if pseudonym:
         # All dates get pseudonymized, but we want to retain the study date.
         study_date = ds.StudyDate
@@ -344,19 +343,19 @@ def _modify_dataset(
     if trial_protocol_name:
         ds.ClinicalTrialProtocolName = trial_protocol_name
 
-    try:
-        if transfer_task.job.destination.dicomserver.xnat_server:
-            session_id = f"{ds.StudyDate}-{ds.StudyTime}"
+    if hasattr(transfer_task.job.destination, "dicomserver") and transfer_task.job.destination.dicomserver.xnat_server:
+        session_id = f"{ds.StudyDate}-{ds.StudyTime}"
+        project_id = ""
+        subject_id = ""
+        if transfer_task.job.xnat_destination_project_id:
             project_id = transfer_task.job.xnat_destination_project_id
+        elif trial_protocol_id:
+            project_id = trial_protocol_id
+        if transfer_task.job.xnat_destination_subject_id:
             subject_id = transfer_task.job.xnat_destination_subject_id
-            ds.PatientComments = f"Project:{project_id} Subject:{subject_id} Session:{subject_id}_{session_id}"
-    except AttributeError:
-        pass
-
-    #if pseudonym and trial_protocol_id:
-    #    session_id = f"{ds.StudyDate}-{ds.StudyTime}"
-    #    ds.PatientComments = f"Project:{trial_protocol_id} Subject:{pseudonym} Session:{pseudonym}_{session_id}"
-
+        elif pseudonym:
+            subject_id = pseudonym
+        ds.PatientComments = f"Project:{project_id} Subject:{subject_id} Session:{subject_id}_{session_id}"
 
 def _create_archive(
     archive_path: Path, job: TransferJob, archive_password: str

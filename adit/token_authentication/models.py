@@ -17,14 +17,6 @@ class RestAuthSettings(AppSettings):
 
 
 class RestAuthTokenManager(models.Manager):
-    
-    expiry_times = {
-        "1 Minute": 1/60,
-        "1 Hour": 1,
-        "1 Day": 24,
-        "7 Days": 168,
-        "30 Days": 720,
-    }
 
     def create_token(self, user, client="", expiry_time=datetime.datetime.now()):
         token = _create_token_string()

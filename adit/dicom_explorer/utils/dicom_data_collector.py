@@ -6,7 +6,7 @@ from adit.xnat_support.utils.xnat_connector import XnatConnector
 
 
 class DicomDataCollector:
-    def __init__(self, server: DicomServer, xnat_project_id: str = "", experiment_id: str = ""):
+    def __init__(self, server: DicomServer, xnat_project_id: str = ""):
         timeout = settings.DICOM_EXPLORER_RESPONSE_TIMEOUT
         if server.xnat_rest_source:
             self.connector = XnatConnector(
@@ -18,7 +18,6 @@ class DicomDataCollector:
                     network_timeout=timeout,
                 ),
                 xnat_project_id=xnat_project_id,
-                experiment_id=experiment_id,
             )
         else:
             self.connector = DicomConnector(

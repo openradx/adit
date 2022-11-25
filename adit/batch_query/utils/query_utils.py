@@ -35,12 +35,10 @@ def execute_query(query_task: BatchQueryTask) -> BatchQueryTask.Status:
         else:
             all_studies = []  # a list of study lists (per patient)
             for patient in patients:
-                logger.debug("at execute query, before _query_studies")
                 studies = _query_studies(connector, patient["PatientID"], query_task)
                 if studies:
                     if query_task.series_description:
                         for study in studies:
-                            logger.debug("at execute_query, before _query_studies")
                             series = _query_series(connector, study, query_task)
                             all_studies.append(series)
                     else:
@@ -87,7 +85,6 @@ def _create_source_connector(query_task: BatchQueryTask) -> DicomConnector:
         return XnatConnector(
             query_task.job.source.dicomserver, 
             xnat_project_id=query_task.job.xnat_project_id,
-            experiment_id=query_task.job.experiment_id,
         )
     return DicomConnector(query_task.job.source.dicomserver)
 
@@ -135,7 +132,6 @@ def _query_studies(
             "NumberOfStudyRelatedInstances": "",
         }
     
-    logger.debug("at query_studies")
     studies = connector.find_studies(query)
 
     return studies
@@ -152,7 +148,6 @@ def _query_series(
         "SeriesDescription": query_task.series_description,
     }
     
-    logger.debug("at_query_series")
     series = connector.find_series(query)
 
     for i in range(len(series)):

@@ -1,25 +1,30 @@
-document.getElementById("generate-token-button").addEventListener("click", generateToken);
+//document.getElementById("generate-token-button").addEventListener("click", generateToken);
 window.onload = loadTokenList();
 
 function generateToken() {
-    var expiry_time = document.getElementById("select-expiry-time").value;
-    var client = document.getElementById("specify-client").value;
-    const URL = window.location.href + "/generate_token";
-    $.ajax({
-        type: "POST",
-        url: URL,
-        data: {
-            "expiry_time": expiry_time,
-            "client": client,
-            csrfmiddlewaretoken: csrf_token,
-        },
-        success: generate_token_callback,
-    });
+    if (!$('#token_form')[0].checkValidity()) {
+        $('#token_form')[0].reportValidity();
+    } else {
+        var expiry_time = document.getElementById("id_expiry_time").value;
+        var client = document.getElementById("id_client").value;
+        const URL = window.location.href + "/generate_token";
+        $.ajax({
+            type: "POST",
+            url: URL,
+            data: {
+                "expiry_time": expiry_time,
+                "client": client,
+                csrfmiddlewaretoken: csrf_token,
+            },
+            success: generate_token_callback,
+        });
+    };
 };
 
 function generate_token_callback(response) {
     loadTokenList();
-}
+    $('#token_form')[0].reset();
+};
 
 function deleteToken(token_str) {
     const URL = window.location.href + "/delete_token";

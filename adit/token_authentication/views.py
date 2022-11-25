@@ -16,24 +16,28 @@ import datetime
 import json
 import urllib.parse
 
+from .forms import GenerateRestAuthTokenForm
+
 
 class RestAuthView(
     LoginRequiredMixin,
     View,
 ):
     def get(self, request):
-        template = "token_authentication/token_dashboard.html"
-
         tokens = RestAuthToken.objects.filter(author=request.user)
-        expiry_times = RestAuthToken.objects.expiry_times
+        form = GenerateRestAuthTokenForm()
 
         context = {
             "User": request.user,
             "Tokens": tokens,
-            "ExpiryTimes": expiry_times,
+            "Form": form,
         }
 
-        return render(request, template_name=template, context=context)
+        return render(
+            request, 
+            template_name="token_authentication/token_dashboard.html", 
+            context=context
+        )
 
 
 class RestAuthTokenListView(
@@ -60,7 +64,7 @@ class RestAuthGenerateTokenView(
     
     def post(self, request):
         data = urllib.parse.parse_qs(request.body.decode("utf-8"))
-        time_delta = RestAuthToken.objects.expiry_times[data["expiry_time"][0]]
+        time_delta = float(data["expiry_time"][0])
         if not data["expiry_time"] == "never":
             expiry_time = datetime.datetime.now() + datetime.timedelta(hours=time_delta)
         

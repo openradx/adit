@@ -37,11 +37,6 @@ class BatchTransferJobForm(forms.ModelForm):
         required=False,
         help_text="Providing a XNAT Project ID significantly loweres the query time.",
     )   
-    xnat_destination_subject_id = forms.CharField(
-        label="XNAT Subject ID",
-        max_length=64,
-        required=False,
-    )
 
     class Meta:
         model = BatchTransferJob
@@ -57,7 +52,6 @@ class BatchTransferJobForm(forms.ModelForm):
             "batch_file",
             "xnat_source_project_id",
             "xnat_destination_project_id",
-            "xnat_destination_subject_id",
         )
         labels = {
             "urgent": "Start transfer urgently",
@@ -142,7 +136,7 @@ class BatchTransferJobForm(forms.ModelForm):
                 )
             ),
             xnat_options_field(
-                ["xnat_destination_project_id", "xnat_destination_subject_id"], 
+                ["xnat_destination_project_id"], 
                 area_css_id="xnat-destination-options",
             ),
             Row(

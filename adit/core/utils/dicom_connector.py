@@ -688,7 +688,7 @@ class DicomConnector:
             # Allow to manipuate the dataset by using a callback before storing to server
             if callback:
                 callback(ds)
-
+                
             status = self.assoc.send_c_store(ds, msg_id)
 
             if status:
