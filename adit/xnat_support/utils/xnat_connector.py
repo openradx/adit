@@ -49,7 +49,7 @@ class XnatConnector:
         dimse_timeout: int = None
         network_timeout: int = None
 
-    def __init__(self, server: DicomServer, config: Config = None, xnat_project_id: str = "", experiment_id: str = ""):
+    def __init__(self, server: DicomServer, config: Config = None, xnat_project_id: str = ""):
         self.server = server
         if config is None:
             self.config = XnatConnector.Config()
@@ -60,7 +60,6 @@ class XnatConnector:
             debug_logger()  # Debug mode of pynetdicom
 
         self.xnat_project_id = xnat_project_id
-        self.experiment_id = experiment_id
         
         # Setting up the connection at connector initialization saves ~1-2s per connector usage.
         self.session = _connect_to_xnat_server(self.server)
@@ -144,8 +143,6 @@ class XnatConnector:
             query["SeriesDescription"] = ""
 
         query["QueryRetrieveLevel"] = "SERIES"
-        logger.debug("at find_series")
-        logger.debug(query)
         series_list = self._send_xnat_find(
             query,
             limit_results=limit_results,
@@ -164,7 +161,6 @@ class XnatConnector:
         if not modality:
             return series_list
         
-        logger.debug(series_list)
         return list(
             filter(
                 lambda x: x["Modality"] == modality or x["Modality"] in modality,
@@ -256,7 +252,6 @@ class XnatConnector:
             query, 
             self.session, 
             xnat_project_id=self.xnat_project_id, 
-            experiment_id=self.experiment_id,
         )
 
         query_results = []
@@ -279,7 +274,6 @@ class XnatConnector:
             {"StudyInstanceUID": study_uid, "SeriesInstanceUID": series_uid},
             self.session,
             xnat_project_id=self.xnat_project_id,
-            experiment_id=self.experiment_id
         )
 
         for ds in series:
@@ -352,7 +346,6 @@ def _xnat_query(query, session, download_path=None):
 def _xnat_query_projects(query, session, xnat_project_id, download_path=None):
     results = []
     for experiment_id in session.projects[xnat_project_id].experiments:
-    #for experiment_id in session.select.projects(xnat_project_id).subjects().experiments().get():
         experiment_results = _xnat_query_experiments(
             query, session, xnat_project_id, experiment_id, download_path=download_path,
         )
@@ -363,7 +356,6 @@ def _xnat_query_projects(query, session, xnat_project_id, download_path=None):
 def _xnat_query_experiments(query, session, xnat_project_id, experiment_id, download_path=None):
     results = []
     for scan_id in session.projects[xnat_project_id].experiments[experiment_id].scans:
-        logger.debug(xnat_project_id)
         scan_results = (
             session.projects[xnat_project_id]
             .experiments[experiment_id]
@@ -374,30 +366,9 @@ def _xnat_query_experiments(query, session, xnat_project_id, experiment_id, down
         for attribute, value in query.items():
             try:
                 if value!="" and attribute=="StudyDate":
-                    time = datetime.datetime.strptime(scan_results[attribute].value, settings.DICOM_DATE_FORMAT)
-                    times = value.split("-")
-                    if len(times)==2:
-                        start_time = datetime.datetime.strptime(times[0], settings.DICOM_DATE_FORMAT)
-                        end_time = datetime.datetime.strptime(times[1], settings.DICOM_DATE_FORMAT)
-                        if time<start_time or time>end_time:
-                            match = False
-                            break
-                    elif len(times)==1:
-                        if value[0]=="-":
-                            end_time = datetime.datetime.strptime(times[0], settings.DICOM_DATE_FORMAT)
-                            if time>end_time:
-                                match = False
-                                break
-                        elif value[-1]=="-":
-                            start_time = start_time = datetime.datetime.strptime(times[0], settings.DICOM_DATE_FORMAT)
-                            if time<start_time:
-                                match = False
-                                break
-                        else:
-                            if time!=datetime.datetime.strptime(times[0], settings.DICOM_DATE_FORMAT):
-                                match = False
-                                break
-
+                    if not studydate_in_range(value, scan_results[attribute].value):
+                        match = False
+                        break
                 elif value != "" and value != scan_results[attribute].value:
                         match = False
                         break
@@ -428,7 +399,7 @@ def _find_xnat_scan(query, session, xnat_project_id=None, experiment_id=None):
 
 
 def _get_xnat_scan(query, session, xnat_project_id=None, experiment_id=None):
-    download_path = Path("./temp_xnat_files") / (query["StudyInstanceUID"]+query["SeriesInstanceUID"])
+    download_path = Path("adit/xnat_support/tmp") / (query["StudyInstanceUID"]+query["SeriesInstanceUID"])
     download_path.mkdir(parents=True, exist_ok=True)
 
     if not xnat_project_id:
@@ -448,3 +419,25 @@ def _get_xnat_scan(query, session, xnat_project_id=None, experiment_id=None):
     os.rmdir(download_path)
 
     return series
+
+def studydate_in_range(value, scan_study_date):
+    time = datetime.datetime.strptime(scan_study_date, settings.DICOM_DATE_FORMAT)
+    times = value.split("-")
+    if len(times)==2:
+        start_time = datetime.datetime.strptime(times[0], settings.DICOM_DATE_FORMAT)
+        end_time = datetime.datetime.strptime(times[1], settings.DICOM_DATE_FORMAT)
+        if time<start_time or time>end_time:
+            return False
+    elif len(times)==1:
+        if value[0]=="-":
+            end_time = datetime.datetime.strptime(times[0], settings.DICOM_DATE_FORMAT)
+            if time>end_time:
+                return False
+        elif value[-1]=="-":
+            start_time = start_time = datetime.datetime.strptime(times[0], settings.DICOM_DATE_FORMAT)
+            if time<start_time:
+                return False
+        else:
+            if time!=datetime.datetime.strptime(times[0], settings.DICOM_DATE_FORMAT):
+                return False
+    return True

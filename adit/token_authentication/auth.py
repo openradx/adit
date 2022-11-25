@@ -11,12 +11,12 @@ class RestTokenAuthentication(BaseAuthentication):
         return "Authentication failed."
 
     def authenticate(self, request):
+
         try:
             protocol, token_str = request.META["HTTP_AUTHORIZATION"].split(" ")
         except Exception as e:
             message = "Invalid token header. Please provide credentials in the request header."
             raise exceptions.AuthenticationFailed(message)
-
         if not protocol == "Token":
             message = "Please use the token authentication protocol to access the REST API."
             raise exceptions.AuthenticationFailed(message)
@@ -27,7 +27,6 @@ class RestTokenAuthentication(BaseAuthentication):
             raise exceptions.AuthenticationFailed(message)
 
         token.save()  # updates the last-used attribute
-
         return (user, token)
 
     def verify_token(self, token_str):
@@ -39,8 +38,10 @@ class RestTokenAuthentication(BaseAuthentication):
 
         if not len(tokens) == 1:
             message = "Invalid Token. Please make sure exactly one matching token entity exists."
-            raise exceptions.AuthenticationFailed(message)
-
+            Exc = exceptions.AuthenticationFailed(detail=message)
+            print(Exc.detail)
+            raise Exc
+        
         token = tokens[0]
         user = token.author
 

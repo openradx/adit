@@ -8,7 +8,7 @@ from adit.core.utils.dicom_operator import DicomOperator
 
 
 class DicomDataCollector:
-    def __init__(self, server: DicomServer, xnat_project_id: str = "", experiment_id: str = ""):
+    def __init__(self, server: DicomServer, xnat_project_id: str = ""):
         timeout = settings.DICOM_EXPLORER_RESPONSE_TIMEOUT
         self.operator = DicomOperator(server, connection_retries=1, dimse_timeout=timeout)
 

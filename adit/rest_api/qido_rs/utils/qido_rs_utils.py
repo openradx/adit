@@ -23,7 +23,6 @@ logger = get_task_logger(__name__)
 def execute_qido(
     dicom_qido_task: DicomQidoTask, celery_task: CeleryTask
 ) -> DicomQidoTask.Status:
-    logger.debug("hi0")
     if dicom_qido_task.status == DicomQidoTask.Status.CANCELED:
         return dicom_qido_task.status
 
@@ -76,7 +75,6 @@ def _c_find_to_result(dicom_qido_task: DicomQidoTask) -> None:
     dicom_web_api = DicomWebApi(connector)
 
     query = _create_query(dicom_qido_task)
-
     if dicom_qido_task.job.level == "STUDY":
         c_find_result = dicom_web_api.qido_find_studies(query)
     elif dicom_qido_task.job.level == "SERIES":

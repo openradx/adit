@@ -25,7 +25,7 @@ class RetrieveAPIView(DicomWebAPIView):
     }
     LEVEL = None
     renderer_classes = [DicomMultipartRenderer, DicomJsonRenderer]
-    FOLDER_ADIT = "./temp_wado_rs_files"
+    FOLDER_ADIT = "adit/rest_api/wado_rs/tmp"
 
 
 class RetrieveStudyAPIView(RetrieveAPIView):

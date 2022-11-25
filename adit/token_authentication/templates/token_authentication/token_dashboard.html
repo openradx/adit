@@ -1,6 +1,7 @@
 {% extends "core/base_generic.html" %}
 
 {% load render_table from django_tables2 %}
+{% load crispy from crispy_forms_tags %}
 {% load static from static %}
 
 {% block script %}
@@ -14,41 +15,19 @@
 {% block container %}
     <div class="d-flex justify-content-between align-items-start">
         <h4 class="mb-3">
-            Generate a REST authentication token
+            Generate a REST Authentication Token
         </h4>
         {% include "core/_help_button.html" with target="#generate_token_help_modal" only %}
     </div>
     <div>
         {% csrf_token %}
-        <div class="form-group">
-            <label for="select-expiry-time">
-                Choose an expiry time:
-            </label>
-            <select 
-                id="select-expiry-time"
-                class="form-control custom-select"
-            >   
-                {% for time_string, hours in ExpiryTimes.items %}
-                <option id="{{ hours }}">{{ time_string }}</option>
-                {% endfor %}
-            </select>
-        </div>
-        <div class="form-group">
-            <label for="specify-client">
-                Specify the client that is going to use the token:
-            </label>
-            <input 
-                id="specify-client"
-                type="text"
-                class="form-control"
-                required
-            >
-        </div>
+        <p>{% crispy Form %}</p>
         <button 
             id="generate-token-button" 
             class="btn btn-primary"
-            style="margin: 10px; float: right;"
+            style="float: left;"
             type="submit"
+            onclick="generateToken()"
         >
         Generate new token
         </button>
@@ -57,7 +36,7 @@
     <!-- list of all tokens -->
     <div 
         class="row"
-        style="margin-top: 50px;"
+        style="margin-top: 100px;"
     >
         <div class="col-md-12">
             <h4 class="mb-3">Your tokens:</h4>

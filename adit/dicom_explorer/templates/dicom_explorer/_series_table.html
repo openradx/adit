@@ -15,7 +15,7 @@
         {% for series in series_list %}
             {% explorer_url server.id patient.PatientID study.StudyInstanceUID series.SeriesInstanceUID as series_url %}
             {% if server.xnat_rest_source %}
-                {% append_xnat_query series_url request.GET.xnat_project_id request.GET.experiment_id as series_url %}
+                {% append_xnat_query series_url request.GET.xnat_project_id as series_url %}
             {% endif %}
             <tr>
                 <td>{{ series.SeriesNumber|default_if_none:"—" }}</td>
