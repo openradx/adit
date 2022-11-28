@@ -128,9 +128,6 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-SYSLOG_HOST = env.str("SYSLOG_HOST", default="localhost")
-SYSLOG_PORT = env.int("SYSLOG_PORT", default=514)
-
 # See following examples:
 # https://github.com/django/django/blob/master/django/utils/log.py
 # https://cheat.readthedocs.io/en/latest/django/logging.html
@@ -162,12 +159,6 @@ LOGGING = {
             "class": "logging.StreamHandler",
             "formatter": "simple",
         },
-        "syslog": {
-            "level": "INFO",
-            "class": "logging.handlers.SysLogHandler",
-            "address": (SYSLOG_HOST, SYSLOG_PORT),
-            "formatter": "verbose",
-        },
         "mail_admins": {
             "level": "CRITICAL",
             "filters": ["require_debug_false"],
@@ -176,32 +167,32 @@ LOGGING = {
     },
     "loggers": {
         "adit": {
-            "handlers": ["console", "syslog", "mail_admins"],
+            "handlers": ["console", "mail_admins"],
             "level": "INFO",
             "propagate": False,
         },
         "celery": {
-            "handlers": ["console", "syslog", "mail_admins"],
+            "handlers": ["console", "mail_admins"],
             "level": "INFO",
             "propagate": False,
         },
         "django": {
-            "handlers": ["console", "syslog"],
+            "handlers": ["console"],
             "level": "WARNING",
             "propagate": False,
         },
         "pydicom": {
-            "handlers": ["console", "syslog"],
+            "handlers": ["console"],
             "level": "WARNING",
             "propagate": False,
         },
         "pynetdicom": {
-            "handlers": ["console", "syslog"],
+            "handlers": ["console"],
             "level": "WARNING",
             "propagate": False,
         },
     },
-    "root": {"handlers": ["console", "syslog"], "level": "ERROR"},
+    "root": {"handlers": ["console"], "level": "ERROR"},
 }
 
 # Internationalization

@@ -6,7 +6,6 @@ x-app: &default-app
   volumes:
     - /mnt:/mnt
   depends_on:
-    - syslog
     - postgres
     - rabbit
     - redis
@@ -22,8 +21,6 @@ x-app: &default-app
     RABBIT_MANAGEMENT_PORT: "15672"
     FLOWER_HOST: "flower"
     FLOWER_PORT: "5555"
-    SYSLOG_HOST: "syslog"
-    SYSLOG_PORT: "514"
     ORTHANC1_HOST: "orthanc1"
     ORTHANC1_HTTP_PORT: 6501
     ORTHANC1_DICOM_PORT: 7501
@@ -86,15 +83,6 @@ services:
     volumes:
       - redis_data:/data
 
-  syslog:
-    image: balabit/syslog-ng:3.30.1
-    expose:
-      - "514"
-    volumes:
-      - ./syslog/logrotate.conf:/etc/logrotate.conf
-      - ./syslog/syslog-ng.conf:/etc/syslog-ng/syslog-ng.conf
-      - syslog_data:/var/log
-
   orthanc1:
     image: jodogne/orthanc-plugins:1.8.1
     expose:
@@ -119,6 +107,5 @@ volumes:
   rabbit_data:
   redis_data:
   flower_data:
-  syslog_data:
   orthanc1_data:
   orthanc2_data:
