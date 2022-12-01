@@ -78,7 +78,7 @@ def test_batch_job_created_and_enqueued_with_auto_verify(
     job = BatchTransferJob.objects.first()
     assert job.tasks.count() == 3
     send_task_mock.assert_called_once_with(
-        "adit.selective_transfer.tasks.ProcessBatchTransferJob", (1,)
+        "adit.batch_transfer.tasks.ProcessBatchTransferJob", (1,)
     )
 
 
