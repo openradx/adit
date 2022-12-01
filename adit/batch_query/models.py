@@ -22,7 +22,7 @@ class BatchQueryJob(DicomJob):
     project_description = models.TextField(max_length=2000)
 
     def delay(self):
-        current_app.send_task("adit.selective_transfer.tasks.ProcessBatchQueryJob", (self.id,))
+        current_app.send_task("adit.batch_transfer.tasks.ProcessBatchQueryJob", (self.id,))
 
     def get_absolute_url(self):
         return reverse("batch_query_job_detail", args=[str(self.id)])
