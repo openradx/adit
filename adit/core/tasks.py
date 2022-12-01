@@ -88,7 +88,7 @@ class ProcessDicomJob(CeleryTask):
 
         # Save Celery task IDs to dicom tasks (for revoking them later if necessary)
         # Only works in when not in eager mode (used to debug Celery stuff)
-        if not settings.CELERY_TASK_ALWAYS_EAGER:
+        if not getattr(settings, "CELERY_TASK_ALWAYS_EAGER", False):
             for query_task, celery_task in zip(pending_dicom_tasks, result.parent.results):
                 query_task.celery_task_id = celery_task.id
                 query_task.save()
