@@ -16,8 +16,6 @@ from .parsers import BatchTransferFileParser
 
 
 class BatchTransferJobForm(forms.ModelForm):
-    source = DicomNodeChoiceField(True, DicomNode.NodeType.SERVER)
-    destination = DicomNodeChoiceField(False)
     batch_file = RestrictedFileField(max_upload_size=5242880, label="Batch file")
 
     class Meta:
@@ -66,6 +64,8 @@ class BatchTransferJobForm(forms.ModelForm):
         self.user = kwargs.pop("user")
 
         super().__init__(*args, **kwargs)
+        self.fields["source"] = DicomNodeChoiceField(True, self.user, DicomNode.NodeType.SERVER)
+        self.fields["destination"] = DicomNodeChoiceField(False, self.user)
 
         self.fields["source"].widget.attrs["class"] = "custom-select"
         self.fields["destination"].widget.attrs["class"] = "custom-select"

@@ -16,7 +16,6 @@ from .parsers import BatchQueryFileParser
 
 
 class BatchQueryJobForm(forms.ModelForm):
-    source = DicomNodeChoiceField(True, DicomNode.NodeType.SERVER)
     batch_file = RestrictedFileField(max_upload_size=5242880, label="Batch file")
 
     class Meta:
@@ -44,20 +43,20 @@ class BatchQueryJobForm(forms.ModelForm):
         self.tasks = None
         self.save_tasks = None
 
-        user = kwargs.pop("user")
+        self.user = kwargs.pop("user")
 
         super().__init__(*args, **kwargs)
-
+        self.fields["source"] = DicomNodeChoiceField(True, self.user, DicomNode.NodeType.SERVER)
         self.fields["source"].widget.attrs["class"] = "custom-select"
 
-        if not user.has_perm("batch_query.can_process_urgently"):
+        if not self.user.has_perm("batch_query.can_process_urgently"):
             del self.fields["urgent"]
 
         self.fields["source"].queryset = self.fields["source"].queryset.order_by(
             "-node_type", "name"
         )
 
-        self.max_batch_size = settings.MAX_BATCH_QUERY_SIZE if not user.is_staff else None
+        self.max_batch_size = settings.MAX_BATCH_QUERY_SIZE if not self.user.is_staff else None
 
         if self.max_batch_size is not None:
             self.fields[

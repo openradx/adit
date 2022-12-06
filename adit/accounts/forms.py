@@ -1,7 +1,34 @@
+from django import forms
+from django.contrib import admin
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Submit
 from django.contrib.auth.forms import AuthenticationForm, UserCreationForm
+from django.contrib.auth.models import Group
 from .models import User
+from ..groups.models import Access
+
+
+class GroupForm(forms.ModelForm):
+    users = forms.ModelMultipleChoiceField(
+        label='Users',
+        queryset=User.objects.all(),
+        required=False,
+        widget=admin.widgets.FilteredSelectMultiple(
+            "users", is_stacked=False))
+    accesses = forms.ModelMultipleChoiceField(
+        label='Access',
+        queryset=Access.objects.all(),
+        required=False,
+        widget=admin.widgets.FilteredSelectMultiple(
+            "accesses", is_stacked=False))
+    
+    class Meta:
+        model = Group
+        exclude = ()  # since Django 1.8 this is needed
+        widgets = {
+            'permissions': admin.widgets.FilteredSelectMultiple(
+                "permissions", is_stacked=False),
+        }
 
 
 class CrispyAuthentificationForm(AuthenticationForm):

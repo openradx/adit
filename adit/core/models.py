@@ -9,6 +9,7 @@ from .validators import (
     uid_chars_validator,
     validate_uid_list,
 )
+from ..groups.models import Access
 
 
 class CoreSettings(models.Model):
@@ -101,6 +102,35 @@ class DicomServer(DicomNode):
     dicomweb_wado_support = models.BooleanField(default=False)
     dicomweb_stow_support = models.BooleanField(default=False)
 
+    def save(self, *args, **kwargs):
+        super(DicomServer, self).save(*args, **kwargs)
+        if self.source_active is True and self.destination_active is False:
+            print("created src access")  
+            
+            Access.objects.create(
+                access_type="src",
+                node=self
+            )
+                           
+        elif self.source_active is False and self.destination_active is True:
+            Access.objects.create(
+                access_type="dst",
+                node=self
+                )
+            
+        elif self.source_active is True and self.destination_active is True:
+            Access.objects.create(
+                access_type="dst",
+                node=self
+                )
+            Access.objects.create(
+                access_type="src",
+                node=self
+            )
+            
+        else:
+            print("Access creation did not work")
+
 
 class DicomFolder(DicomNode):
     NODE_TYPE = DicomNode.NodeType.FOLDER
@@ -117,7 +147,28 @@ class DicomFolder(DicomNode):
         help_text="When to warn the admins by Email (used space in GB).",
     )
 
+    def save(self, *args, **kwargs):
+        super(DicomServer, self).save(*args, **kwargs)
+        if self.source_active is True and self.destination_active is False:
+            pass
+                                       
+        elif self.source_active is False and self.destination_active is True:
+            Access.objects.create(
+                access_type="dst",
+                node=self
+                )
+            
+        elif self.source_active is True and self.destination_active is True:
+            
+            Access.objects.create(
+                access_type="dst",
+                node=self
+                )
+                        
+        else:
+            print("Access creation did not work")
 
+    
 class DicomJob(models.Model):
     class Status(models.TextChoices):
         UNVERIFIED = "UV", "Unverified"

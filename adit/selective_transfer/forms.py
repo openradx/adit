@@ -45,8 +45,6 @@ def query_field(field_name):
 
 
 class SelectiveTransferJobForm(forms.ModelForm):
-    source = DicomNodeChoiceField(True, DicomNode.NodeType.SERVER)
-    destination = DicomNodeChoiceField(False)
     pseudonym = forms.CharField(
         required=False,
         max_length=64,
@@ -90,7 +88,9 @@ class SelectiveTransferJobForm(forms.ModelForm):
         self.query_form = kwargs.pop("query_form")
 
         super().__init__(*args, **kwargs)
-
+        self.fields["source"] = DicomNodeChoiceField(True, self.user, DicomNode.NodeType.SERVER)
+        self.fields["destination"] = DicomNodeChoiceField(False, self.user)
+        
         if not self.user.has_perm("selective_transfer.can_process_urgently"):
             del self.fields["urgent"]
 

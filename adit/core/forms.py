@@ -26,12 +26,28 @@ class DicomNodeSelect(Select):
 
 
 class DicomNodeChoiceField(ModelChoiceField):
-    def __init__(self, source, node_type=None):
+    def __init__(self, source, user, node_type=None,):
+        self.user = user
         if source:
-            queryset = DicomNode.objects.filter(source_active=True)
+            myquery = []
+             
+            for gruppe in self.user.groups.all():
+                accesses = gruppe.GroupAccess.filter(access_type="src")
+                for access in accesses.all():
+                    myquery.append(access.node.name)
+            myNodes = DicomNode.objects.filter(name__in=myquery)
+            queryset = myNodes
+            
         else:
-            queryset = DicomNode.objects.filter(destination_active=True)
-
+            myquery = []
+            
+            for gruppe in self.user.groups.all():
+                accesses = gruppe.GroupAccess.filter(access_type="dst")
+                for access in accesses.all():
+                    myquery.append(access.node.name)
+            myNodes = DicomNode.objects.filter(name__in=myquery)
+            queryset = myNodes
+            
         if node_type and node_type in dict(DicomNode.NodeType.choices):
             queryset = queryset.filter(node_type=node_type)
         elif node_type is not None:
