@@ -87,7 +87,8 @@ class DicomServer(DicomNode):
     # traditional DICOM support
     ae_title = models.CharField(unique=True, max_length=16)
     host = models.CharField(max_length=255)
-    port = models.PositiveIntegerField(validators=[MinValueValidator(1), MaxValueValidator(65535)])
+    port = models.PositiveIntegerField(validators=[MinValueValidator(1),
+                                                   MaxValueValidator(65535)])
     patient_root_find_support = models.BooleanField(default=False)
     patient_root_get_support = models.BooleanField(default=False)
     patient_root_move_support = models.BooleanField(default=False)
@@ -148,7 +149,12 @@ class DicomFolder(DicomNode):
     )
 
     def save(self, *args, **kwargs):
-        super(DicomServer, self).save(*args, **kwargs)
+        # if this Error occurs:
+        # TypeError: super(type, obj): 
+        # obj must be an instance or subtype of type
+        # restart kernel to solve error
+        # super(DicomServer, self).save(*args, **kwargs)
+        super().save(*args, **kwargs)
         if self.source_active is True and self.destination_active is False:
             pass
                                        
@@ -190,8 +196,10 @@ class DicomJob(models.Model):
             )
         ]
 
-    source = models.ForeignKey(DicomNode, related_name="+", on_delete=models.PROTECT)
-    status = models.CharField(max_length=2, choices=Status.choices, default=Status.UNVERIFIED)
+    source = models.ForeignKey(DicomNode, related_name="+",
+                               on_delete=models.PROTECT)
+    status = models.CharField(max_length=2, choices=Status.choices,
+                              default=Status.UNVERIFIED)
     urgent = models.BooleanField(default=False)
     message = models.TextField(blank=True, default="")
     owner = models.ForeignKey(
@@ -229,7 +237,8 @@ class DicomJob(models.Model):
 
     @property
     def is_restartable(self):
-        return self.status not in [self.Status.UNVERIFIED, self.Status.IN_PROGRESS]
+        return self.status not in [self.Status.UNVERIFIED, 
+                                   self.Status.IN_PROGRESS]
 
     @property
     def processed_tasks(self):
@@ -253,7 +262,8 @@ class TransferJob(DicomJob):
             )
         ]
 
-    destination = models.ForeignKey(DicomNode, related_name="+", on_delete=models.PROTECT)
+    destination = models.ForeignKey(DicomNode, related_name="+", 
+                                    on_delete=models.PROTECT)
     trial_protocol_id = models.CharField(
         blank=True, max_length=64, validators=[no_backslash_char_validator]
     )

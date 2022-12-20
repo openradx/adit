@@ -15,9 +15,9 @@ from .utils.dicom_data_collector import DicomDataCollector
 @login_required
 def dicom_explorer_form_view(request):
     if request.GET:
-        form = DicomExplorerQueryForm(request.GET)
+        form = DicomExplorerQueryForm(request.user, request.GET)
     else:
-        form = DicomExplorerQueryForm()
+        form = DicomExplorerQueryForm(request.user)
 
     if not request.GET or not form.is_valid():
         return render(request, "dicom_explorer/query_form.html", {"form": form})

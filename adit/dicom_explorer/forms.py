@@ -1,12 +1,13 @@
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Submit
 from django import forms
-from adit.core.models import DicomServer
+# from adit.core.models import DicomServer
 from adit.core.validators import (
     no_backslash_char_validator,
     no_control_chars_validator,
     no_wildcard_chars_validator,
 )
+from ..core.models import DicomNode
 
 id_validators = [
     no_backslash_char_validator,
@@ -16,7 +17,7 @@ id_validators = [
 
 
 class DicomExplorerQueryForm(forms.Form):
-    server = forms.ModelChoiceField(queryset=DicomServer.objects.all())
+    # server = forms.ModelChoiceField(queryset=DicomServer.objects.all())
     patient_id = forms.CharField(
         label="Patient ID",
         max_length=64,
@@ -30,9 +31,18 @@ class DicomExplorerQueryForm(forms.Form):
         validators=id_validators,
     )
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, user, *args, **kwargs):
         super().__init__(*args, **kwargs)
-
+        
+        self.user = user
+        myquery = []
+        for gruppe in self.user.groups.all():
+            accesses = gruppe.GroupAccess.filter(access_type="src")
+            for access in accesses.all():
+                myquery.append(access.node.name)
+        myNodes = DicomNode.objects.filter(name__in=myquery)
+        queryset = myNodes
+        self.fields["server"] = forms.ModelChoiceField(queryset=queryset)
         self.fields["server"].widget.attrs["class"] = "custom-select"
 
         self.helper = FormHelper(self)
