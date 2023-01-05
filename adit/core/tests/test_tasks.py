@@ -1,23 +1,18 @@
 from datetime import datetime
-from unittest.mock import create_autospec, Mock, patch
+from unittest.mock import Mock, create_autospec, patch
 import pytest
 from celery import Task as CeleryTask
 from celery.canvas import Signature
 from celery.result import AsyncResult, ResultBase
 from django.db.models.query import QuerySet
-from ..tasks import (
-    ProcessDicomJob,
-    ProcessDicomTask,
-    HandleFinishedDicomJob,
-    HandleFailedDicomJob,
-)
 from ..models import AppSettings, DicomJob, DicomTask
+from ..tasks import ProcessDicomJob, ProcessDicomTask
 
 
 class TestProcessDicomJob:
     @pytest.mark.parametrize("urgent", [True, False])
     @patch("adit.core.tasks.chord", autospec=True)
-    def test_run_succeeds(self, chord_mock, urgent):  # pylint: disable=too-many-locals
+    def test_run_succeeds(self, chord_mock, urgent):
         # Arrange
         dicom_job_id = 9
         dicom_task_id = 8
@@ -55,9 +50,7 @@ class TestProcessDicomJob:
         )
 
         handle_failed_dicom_task_sig_mock = create_autospec(Signature)
-        process_dicom_job.handle_failed_dicom_job.s.return_value = (
-            handle_failed_dicom_task_sig_mock
-        )
+        process_dicom_job.handle_failed_dicom_job.s.return_value = handle_failed_dicom_task_sig_mock
 
         async_result_mock = create_autospec(AsyncResult)
         async_result_mock.id = celery_task_id
@@ -71,9 +64,7 @@ class TestProcessDicomJob:
 
         # Assert
         dicom_job_class_mock.objects.get.assert_called_once_with(id=dicom_job_id)
-        dicom_job_mock.tasks.filter.assert_called_once_with(
-            status=DicomTask.Status.PENDING
-        )
+        dicom_job_mock.tasks.filter.assert_called_once_with(status=DicomTask.Status.PENDING)
         process_dicom_job.process_dicom_task.s.assert_called_once_with(dicom_task_id)
 
         if urgent:
@@ -87,19 +78,13 @@ class TestProcessDicomJob:
 
         chord_mock.assert_called_once_with([process_dicom_task_sig_mock])
 
-        process_dicom_job.handle_finished_dicom_job.s.assert_called_once_with(
-            dicom_job_id
-        )
-        process_dicom_job.handle_failed_dicom_job.s.assert_called_once_with(
-            job_id=dicom_job_id
-        )
+        process_dicom_job.handle_finished_dicom_job.s.assert_called_once_with(dicom_job_id)
+        process_dicom_job.handle_failed_dicom_job.s.assert_called_once_with(job_id=dicom_job_id)
         process_dicom_job.handle_finished_dicom_job.s.return_value.on_error.assert_called_once_with(
             handle_failed_dicom_task_sig_mock
         )
 
-        chord_mock.return_value.assert_called_once_with(
-            handle_finished_dicom_task_sig_mock
-        )
+        chord_mock.return_value.assert_called_once_with(handle_finished_dicom_task_sig_mock)
 
         assert dicom_task_mock.celery_task_id == celery_task_id
         dicom_task_mock.save.assert_called_once()
@@ -130,9 +115,7 @@ class TestProcessDicomTask:
         process_dicom_task.dicom_task_class = dicom_task_class_mock
         process_dicom_task.app_settings_class = app_settings_class_mock
 
-        with patch.object(
-            ProcessDicomTask, "handle_dicom_task"
-        ) as handle_dicom_task_mock:
+        with patch.object(ProcessDicomTask, "handle_dicom_task") as handle_dicom_task_mock:
             handle_dicom_task_mock.return_value = DicomTask.Status.SUCCESS
 
             # Act

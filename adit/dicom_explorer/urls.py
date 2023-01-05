@@ -1,5 +1,4 @@
 from django.urls import path
-
 from .views import dicom_explorer_form_view, dicom_explorer_resources_view
 
 # See DICOMweb RESTful resources

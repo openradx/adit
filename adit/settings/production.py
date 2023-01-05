@@ -1,4 +1,4 @@
-from .base import *  # pylint: disable=wildcard-import,unused-wildcard-import
+from .base import *  # noqa: F403
 from .base import env
 
 # Production settings, see
@@ -10,7 +10,7 @@ SECRET_KEY = env("DJANGO_SECRET_KEY")
 
 ALLOWED_HOSTS = env.list("DJANGO_ALLOWED_HOSTS")
 
-DATABASES["default"]["PASSWORD"] = env.str("POSTGRES_PASSWORD")
+DATABASES["default"]["PASSWORD"] = env.str("POSTGRES_PASSWORD")  # noqa: F405
 
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 EMAIL_TIMEOUT = 60

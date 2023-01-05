@@ -1,4 +1,4 @@
-{% load combine_datetime exclude_from_list join_if_list from core_extras %}
+{% load combine_datetime filter_modalities join_if_list from core_extras %}
 {% load explorer_url from dicom_explorer_extras %}
 {% load append_xnat_query from dicom_xnat_explorer_extras %}
 
@@ -27,12 +27,9 @@
             <td>
                 {% explorer_url server.id patient.PatientID study.StudyInstanceUID as study_url %}
                 {% if server.xnat_rest_source %}
-                    {% append_xnat_query study_url request.GET.xnat_project_id as study_url %}
+                {% append_xnat_query study_url request.GET.xnat_project_id as study_url %}
                 {% endif %}
-                <a 
-                    href="{{ study_url }}" 
-                    title="{{ study.StudyInstanceUID }}" 
-                    data-toggle="tooltip"
+                <a href="{{ study_url }}" title="{{ study.StudyInstanceUID }}" data-toggle="tooltip"
                     data-placement="left">
                     {% include "core/_box_arrow_in_right.svg" %}
                 </a>

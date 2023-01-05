@@ -1,3 +1,4 @@
+from celery import current_app
 from django.db import models
 from django.urls import reverse
 from adit.core.models import AppSettings, TransferJob, TransferTask
@@ -11,12 +12,10 @@ class BatchTransferSettings(AppSettings):
 class BatchTransferJob(TransferJob):
     project_name = models.CharField(max_length=150)
     project_description = models.TextField(max_length=2000)
+    ethics_application_id = models.CharField(blank=True, max_length=100)
 
     def delay(self):
-        # pylint: disable=import-outside-toplevel
-        from .tasks import process_batch_transfer_job
-
-        process_batch_transfer_job.delay(self.id)
+        current_app.send_task("adit.selective_transfer.tasks.ProcessBatchTransferJob", (self.id,))
 
     def get_absolute_url(self):
         return reverse("batch_transfer_job_detail", args=[self.id])

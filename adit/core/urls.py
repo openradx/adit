@@ -1,11 +1,13 @@
 from django.urls import path
 from .views import (
-    sandbox,
-    admin_section,
     BroadcastView,
-    HomeView,
     FlowerProxyView,
+    HomeView,
+    Orthanc1ProxyView,
+    Orthanc2ProxyView,
     RabbitManagementProxyView,
+    admin_section,
+    sandbox,
 )
 
 urlpatterns = [
@@ -29,6 +31,8 @@ urlpatterns = [
         HomeView.as_view(),
         name="home",
     ),
-    FlowerProxyView.as_url(),
     RabbitManagementProxyView.as_url(),
+    FlowerProxyView.as_url(),
+    Orthanc1ProxyView.as_url(),
+    Orthanc2ProxyView.as_url(),
 ]

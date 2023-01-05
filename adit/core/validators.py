@@ -1,5 +1,5 @@
-from django.core.validators import RegexValidator
 from django.core.exceptions import ValidationError
+from django.core.validators import RegexValidator
 
 no_backslash_char_validator = RegexValidator(
     regex=r"\\",
@@ -20,9 +20,7 @@ no_wildcard_chars_validator = RegexValidator(
     inverse_match=True,
 )
 
-uid_chars_validator = RegexValidator(
-    regex=r"^[\d\.]+$", message="Invalid character in UID."
-)
+uid_chars_validator = RegexValidator(regex=r"^[\d\.]+$", message="Invalid character in UID.")
 
 
 def validate_uid_list(value):

@@ -1,16 +1,14 @@
-from django import forms
 from crispy_forms.helper import FormHelper
-from crispy_forms.layout import Submit, Layout, Field, Row, Column, Div
-from crispy_forms.bootstrap import StrictButton
-
-from adit.xnat_support.forms import xnat_options_field
-from adit.core.models import DicomServer, DicomNode
+from crispy_forms.layout import Column, Field, Layout, Row, Submit
+from django import forms
 from adit.core.forms import DicomNodeChoiceField
+from adit.core.models import DicomNode, DicomServer
 from adit.core.validators import (
     no_backslash_char_validator,
     no_control_chars_validator,
     no_wildcard_chars_validator,
 )
+from adit.xnat_support.forms import xnat_options_field
 
 id_validators = [
     no_backslash_char_validator,
@@ -21,8 +19,8 @@ id_validators = [
 
 class DicomExplorerQueryForm(forms.Form):
     server = DicomNodeChoiceField(
-        True, 
-        DicomNode.NodeType.SERVER, 
+        True,
+        DicomNode.NodeType.SERVER,
     )
     patient_id = forms.CharField(
         label="Patient ID",
@@ -42,7 +40,7 @@ class DicomExplorerQueryForm(forms.Form):
         label="XNAT Project ID",
         max_length=64,
         required=False,
-        help_text="Providing a XNAT Project ID significantly loweres the query time."
+        help_text="Providing a XNAT Project ID significantly loweres the query time.",
     )
 
     def __init__(self, *args, **kwargs):

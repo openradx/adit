@@ -1,21 +1,20 @@
-from unittest.mock import patch, create_autospec, ANY
 import datetime
-import pytest
+from unittest.mock import ANY, create_autospec, patch
 import factory
+import pytest
 import time_machine
 from celery import Task as CeleryTask
-from django.db import models, connection
-from django.db.utils import ProgrammingError
+from django.db import connection, models
 from adit.accounts.factories import UserFactory
-from ...models import TransferJob, TransferTask
 from ...factories import (
-    DicomServerFactory,
     DicomFolderFactory,
+    DicomServerFactory,
     TransferJobFactory,
     TransferTaskFactory,
 )
+from ...models import TransferJob, TransferTask
 from ...utils.dicom_connector import DicomConnector
-from ...utils.transfer_utils import execute_transfer
+from ...utils.transfer_utils import TransferExecutor
 
 
 class MyTransferJob(TransferJob):
@@ -27,9 +26,7 @@ class MyTransferTask(TransferTask):
     class Meta:
         app_label = "adit.core"
 
-    job = models.ForeignKey(
-        MyTransferJob, on_delete=models.CASCADE, related_name="tasks"
-    )
+    job = models.ForeignKey(MyTransferJob, on_delete=models.CASCADE, related_name="tasks")
 
 
 class MyTransferJobFactory(TransferJobFactory):
@@ -44,24 +41,19 @@ class MyTransferTaskFactory(TransferTaskFactory):
     job = factory.SubFactory(MyTransferJobFactory)
 
 
-@pytest.fixture(scope="session")
-def setup_test_models(django_db_setup, django_db_blocker):
+@pytest.fixture
+def setup_test_models(transactional_db):
+    # TODO: Find out why we can't use a session or module fixture here.
     # Solution adapted from https://stackoverflow.com/q/4281670/166229
-    with django_db_blocker.unblock():
-        try:
-            with connection.schema_editor() as schema_editor:
-                schema_editor.create_model(MyTransferJob)
-                schema_editor.create_model(MyTransferTask)
-        except ProgrammingError:
-            pass
+    with connection.schema_editor() as schema_editor:
+        schema_editor.create_model(MyTransferJob)
+        schema_editor.create_model(MyTransferTask)
 
-        yield
+    yield
 
-        with connection.schema_editor() as schema_editor:
-            schema_editor.delete_model(MyTransferJob)
-            schema_editor.delete_model(MyTransferTask)
-
-        connection.close()
+    with connection.schema_editor() as schema_editor:
+        schema_editor.delete_model(MyTransferJob)
+        schema_editor.delete_model(MyTransferTask)
 
 
 @pytest.fixture
@@ -113,11 +105,14 @@ def test_transfer_to_server_succeeds(
     celery_task_mock = create_autospec(CeleryTask)
 
     # Act
-    status = execute_transfer(task, celery_task_mock)
+    status = TransferExecutor(task, celery_task_mock).start()
 
     # Assert
     source_connector_mock.download_study.assert_called_with(
-        task.patient_id, task.study_uid, ANY, modifier_callback=ANY
+        task.patient_id,
+        task.study_uid,
+        ANY,
+        modifier_callback=ANY,
     )
 
     upload_path = dest_connector_mock.upload_folder.call_args[0][0]
@@ -160,14 +155,12 @@ def test_transfer_to_folder_succeeds(
     celery_task_mock = create_autospec(CeleryTask)
 
     # Act
-    with patch("adit.core.utils.transfer_utils.Path.mkdir", autospec=True):
-        status = execute_transfer(task, celery_task_mock)
+    with patch("adit.core.utils.transfer_utils.os.mkdir", autospec=True):
+        status = TransferExecutor(task, celery_task_mock).start()
 
     # Assert
     download_path = source_connector_mock.download_study.call_args[0][2]
-    assert download_path.match(
-        r"adit_adit.core_1_20200101_kai/1001/20190923-080000-CT,SR"
-    )
+    assert download_path.match(r"adit_adit.core_1_20200101_kai/1001/20190923-080000-CT")
 
     assert status == task.status
     assert status == MyTransferTask.Status.SUCCESS
@@ -186,9 +179,7 @@ def test_transfer_to_archive_succeeds(
         destination=DicomFolderFactory(),
         archive_password="mysecret",
     )
-    task = MyTransferTaskFactory(
-        status=TransferTask.Status.PENDING, series_uids=[], pseudonym=""
-    )
+    task = MyTransferTaskFactory(status=TransferTask.Status.PENDING, series_uids=[], pseudonym="")
     task.job = job
 
     patient, study = create_resources(task)
@@ -204,7 +195,7 @@ def test_transfer_to_archive_succeeds(
     celery_task_mock = create_autospec(CeleryTask)
 
     # Act
-    status = execute_transfer(task, celery_task_mock)
+    status = TransferExecutor(task, celery_task_mock).start()
 
     # Assert
     source_connector_mock.find_patients.assert_called_once()

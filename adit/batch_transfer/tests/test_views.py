@@ -1,11 +1,9 @@
 from unittest.mock import patch
 import pytest
-from pytest_django.asserts import (  # pylint: disable=no-name-in-module
-    assertTemplateUsed,
-)
 from django.contrib.auth.models import Group
-from django.urls import reverse
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.urls import reverse
+from pytest_django.asserts import assertTemplateUsed
 from adit.accounts.factories import UserFactory
 from adit.core.factories import DicomServerFactory
 from ..models import BatchTransferJob
@@ -17,6 +15,7 @@ PatientID;StudyInstanceUID;Pseudonym
 1003;1.2.840.113845.11.1000000001951524609.20200705172608.2689471;KRS8CZ3S
 """
 
+
 # Somehow the form data must be always generated from scratch (maybe cause of the
 # SimpleUploadedFile) otherwise tests fail.
 @pytest.fixture
@@ -26,7 +25,7 @@ def form_data(db):
         "destination": DicomServerFactory().id,
         "project_name": "Apollo project",
         "project_description": "Fly to the moon",
-        "ethics_committee_approval": "on",
+        "ethics_application_id": "12345",
         "batch_file": SimpleUploadedFile(
             name="sample_sheet.csv", content=csv_data, content_type="text/csv"
         ),
@@ -69,33 +68,33 @@ def test_logged_in_user_with_permission_can_access_form(client, user_with_permis
     assertTemplateUsed(response, "batch_transfer/batch_transfer_job_form.html")
 
 
-@patch("adit.batch_transfer.tasks.process_batch_transfer_job.delay")
+@patch("celery.current_app.send_task")
 def test_batch_job_created_and_enqueued_with_auto_verify(
-    delay_mock, client, user_with_permission, settings, form_data
+    send_task_mock, client, user_with_permission, settings, form_data
 ):
     client.force_login(user_with_permission)
     settings.BATCH_TRANSFER_UNVERIFIED = True
     client.post(reverse("batch_transfer_job_create"), form_data)
     job = BatchTransferJob.objects.first()
     assert job.tasks.count() == 3
-    delay_mock.assert_called_once_with(job.id)
+    send_task_mock.assert_called_once_with(
+        "adit.selective_transfer.tasks.ProcessBatchTransferJob", (1,)
+    )
 
 
-@patch("adit.batch_transfer.tasks.process_batch_transfer_job.delay")
+@patch("celery.current_app.send_task")
 def test_batch_job_created_and_not_enqueued_without_auto_verify(
-    delay_mock, client, user_with_permission, settings, form_data
+    send_task_mock, client, user_with_permission, settings, form_data
 ):
     client.force_login(user_with_permission)
     settings.BATCH_TRANSFER_UNVERIFIED = False
     client.post(reverse("batch_transfer_job_create"), form_data)
     job = BatchTransferJob.objects.first()
     assert job.tasks.count() == 3
-    delay_mock.assert_not_called()
+    send_task_mock.assert_not_called()
 
 
-def test_job_cant_be_created_with_missing_fields(
-    client, user_with_permission, form_data
-):
+def test_job_cant_be_created_with_missing_fields(client, user_with_permission, form_data):
     client.force_login(user_with_permission)
     for key_to_exclude in form_data:
         invalid_form_data = form_data.copy()

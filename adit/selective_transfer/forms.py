@@ -1,10 +1,10 @@
 import re
+from crispy_forms.bootstrap import StrictButton
+from crispy_forms.helper import FormHelper
+from crispy_forms.layout import Column, Div, Field, Layout, Row
 from django import forms
 from django.core.exceptions import ValidationError
 from django.utils.translation import gettext_lazy as _
-from crispy_forms.helper import FormHelper
-from crispy_forms.layout import Layout, Field, Row, Column, Div
-from crispy_forms.bootstrap import StrictButton
 from adit.core.forms import DicomNodeChoiceField
 from adit.core.models import DicomNode
 from adit.core.utils.dicom_utils import person_name_to_dicom
@@ -59,9 +59,7 @@ class SelectiveTransferJobForm(forms.ModelForm):
     patient_birth_date = forms.DateField(required=False, label="Birth date")
     study_date = forms.DateField(required=False)
     modality = forms.CharField(required=False, max_length=16)
-    accession_number = forms.CharField(
-        required=False, max_length=32, label="Accession #"
-    )
+    accession_number = forms.CharField(required=False, max_length=32, label="Accession #")
 
     # (optional) XNAT
     xnat_source_project_id = forms.CharField(
@@ -108,9 +106,7 @@ class SelectiveTransferJobForm(forms.ModelForm):
             "trial_protocol_name": "Trial name",
         }
         help_texts = {
-            "urgent": (
-                "Start transfer directly (without scheduling) and prioritize it."
-            ),
+            "urgent": ("Start transfer directly (without scheduling) and prioritize it."),
         }
 
     def __init__(self, *args, **kwargs):
@@ -125,9 +121,9 @@ class SelectiveTransferJobForm(forms.ModelForm):
         self.fields["source"].queryset = self.fields["source"].queryset.order_by(
             "-node_type", "name"
         )
-        self.fields["destination"].queryset = self.fields[
-            "destination"
-        ].queryset.order_by("-node_type", "name")
+        self.fields["destination"].queryset = self.fields["destination"].queryset.order_by(
+            "-node_type", "name"
+        )
 
         self.helper = FormHelper(self)
         self.helper.form_tag = False
@@ -145,15 +141,6 @@ class SelectiveTransferJobForm(forms.ModelForm):
             xnat_options_field(
                 ["xnat_destination_project_id", "xnat_destination_subject_id"], 
                 area_css_id="xnat-destination-options",
-            ),
-            Row(
-                Column(
-                    Field(
-                        "urgent",
-                        **{"@change": "onUrgencyChanged"},
-                    ),
-                ),
-                css_class="pl-1",
             ),
             Row(
                 Column(
@@ -202,6 +189,20 @@ class SelectiveTransferJobForm(forms.ModelForm):
                 query_field("accession_number"),
             ),
         )
+
+        if "urgent" in self.fields:
+            self.helper.layout.insert(
+                1,
+                Row(
+                    Column(
+                        Field(
+                            "urgent",
+                            **{"@change": "onUrgencyChanged"},
+                        ),
+                    ),
+                    css_class="pl-1",
+                ),
+            )
 
     def clean_pseudonym(self):
         pseudonym = self.cleaned_data["pseudonym"]

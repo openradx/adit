@@ -40,6 +40,7 @@ ADIT_SITE_DOMAIN = env.str("ADIT_SITE_DOMAIN", default="adit.org")
 ADIT_SITE_NAME = env.str("ADIT_SITE_NAME", default="adit.org")
 
 INSTALLED_APPS = [
+    "daphne",
     "whitenoise.runserver_nostatic",
     "adit.accounts.apps.AccountsConfig",
     "registration",
@@ -358,10 +359,18 @@ CELERY_WORKER_PREFETCH_MULTIPLIER = 1
 # https://stackoverflow.com/a/47980598/166229
 CELERY_TASK_ACKS_LATE = True
 
-# Flower is integrated in ADIT by using an reverse proxy (django-revproxy).
+# Flower is integrated in ADIT by using a reverse proxy (django-revproxy).
 # This allows to use the authentication of ADIT.
 FLOWER_HOST = env.str("FLOWER_HOST", default="localhost")
 FLOWER_PORT = env.int("FLOWER_PORT", default=5555)
+
+# Orthanc servers are integrated in ADIT by using a reverse proxy (django-revproxy).
+ORTHANC1_HOST = env.str("ORTHANC1_HOST", default="localhost")
+ORTHANC1_HTTP_PORT = env.int("ORTHANC1_HTTP_PORT", default=6501)
+ORTHANC1_DICOM_PORT = env.int("ORTHANC1_DICOM_PORT", default=7501)
+ORTHANC2_HOST = env.str("ORTHANC2_HOST", default="localhost")
+ORTHANC2_HTTP_PORT = env.int("ORTHANC2_HTTP_PORT", default=6502)
+ORTHANC2_DICOM_PORT = env.int("ORTHANC2_DICOM_PORT", default=7502)
 
 # For django-filter
 FILTERS_EMPTY_CHOICE_LABEL = "Show All"
@@ -430,3 +439,8 @@ MAX_BATCH_TRANSFER_SIZE = 500
 # DicomWeb Settings
 DEFAULT_BOUNDARY = "adit-boundary"
 ERROR_MESSAGE = "Processing your DicomWeb request failed."
+# Exclude modalities when listing studies and during queries or transfers
+EXCLUDE_MODALITIES = ["PR", "SR"]
+
+# If an ethics committee approval is required for batch transfer
+ETHICS_COMMITTEE_APPROVAL_REQUIRED = True

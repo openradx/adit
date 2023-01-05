@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import BatchTransferSettings, BatchTransferJob
+from .models import BatchTransferJob, BatchTransferSettings
 
 
 class BatchTransferJobAdmin(admin.ModelAdmin):
@@ -16,7 +16,7 @@ class BatchTransferJobAdmin(admin.ModelAdmin):
     list_filter = ("status", "created", "owner")
     search_fields = ("project_name", "owner__username")
 
-    def get_owner(self, obj):  # pylint: disable=no-self-use
+    def get_owner(self, obj):
         return obj.owner.username
 
     get_owner.short_description = "Owner"

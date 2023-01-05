@@ -1,8 +1,8 @@
 from datetime import date
 import pytest
 from django.core.exceptions import ValidationError
-from ..models import BatchQueryTask
 from ..factories import BatchQueryTaskFactory
+from ..models import BatchQueryTask
 
 
 class TestBatchQueryTask:
@@ -35,9 +35,7 @@ class TestBatchQueryTask:
         "patient_name,patient_birth_date",
         [("", None), ("Apple, Peter", None), ("", date(1976, 8, 31))],
     )
-    def test_invalid_without_identfiable_patient(
-        self, patient_name, patient_birth_date
-    ):
+    def test_invalid_without_identfiable_patient(self, patient_name, patient_birth_date):
         task: BatchQueryTask = BatchQueryTaskFactory()
         task.patient_id = ""
         task.patient_name = patient_name

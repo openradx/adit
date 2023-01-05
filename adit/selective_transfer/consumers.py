@@ -1,14 +1,14 @@
-import logging
-import contextlib
 import asyncio
+import contextlib
+import logging
 import threading
 from concurrent.futures import ThreadPoolExecutor
-from django.http import QueryDict
-from django.conf import settings
-from django.template.loader import render_to_string
-from channels.generic.websocket import AsyncJsonWebsocketConsumer
 from channels.db import database_sync_to_async
+from channels.generic.websocket import AsyncJsonWebsocketConsumer
 from crispy_forms.utils import render_crispy_form
+from django.conf import settings
+from django.http import QueryDict
+from django.template.loader import render_to_string
 from .forms import SelectiveTransferJobForm
 from .mixins import SelectiveTransferJobCreateMixin
 
@@ -48,13 +48,10 @@ def create_error_response(error_message):
     }
 
 
-class SelectiveTransferConsumer(
-    SelectiveTransferJobCreateMixin, AsyncJsonWebsocketConsumer
-):
+class SelectiveTransferConsumer(SelectiveTransferJobCreateMixin, AsyncJsonWebsocketConsumer):
     async def connect(self):
         logger.debug("Connected to WebSocket client.")
 
-        # pylint: disable=attribute-defined-outside-init
         self.user = self.scope["user"]
         self.query_connectors = []
         self.current_message_id = 0
@@ -120,9 +117,7 @@ class SelectiveTransferConsumer(
             return create_error_response("Access denied. You must be logged in.")
 
         if not self.user.has_perm("selective_transfer.add_selectivetransferjob"):
-            return create_error_response(
-                "Access denied. You don't have the proper permission."
-            )
+            return create_error_response("Access denied. You don't have the proper permission.")
 
         return None
 
@@ -135,10 +130,7 @@ class SelectiveTransferConsumer(
 
     async def make_query(self, form, message_id):
         loop = asyncio.get_event_loop()
-        future = loop.run_in_executor(
-            self.pool, self.get_query_response, form, message_id
-        )
-        response = await future
+        response = await loop.run_in_executor(self.pool, self.get_query_response, form, message_id)
         if response:
             await self.send_json(response)
 
@@ -162,6 +154,7 @@ class SelectiveTransferConsumer(
                             "query": True,
                             "query_results": studies,
                             "max_query_results": max_query_results,
+                            "exclude_modalities": settings.EXCLUDE_MODALITIES,
                         },
                     ),
                     "#error_message": "",

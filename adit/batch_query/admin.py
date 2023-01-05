@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import BatchQuerySettings, BatchQueryJob
+from .models import BatchQueryJob, BatchQuerySettings
 
 
 class BatchQueryJobAdmin(admin.ModelAdmin):
@@ -15,7 +15,7 @@ class BatchQueryJobAdmin(admin.ModelAdmin):
     list_filter = ("status", "created", "owner")
     search_fields = ("project_name", "owner__username")
 
-    def get_owner(self, obj):  # pylint: disable=no-self-use
+    def get_owner(self, obj):
         return obj.owner.username
 
     get_owner.short_description = "Owner"

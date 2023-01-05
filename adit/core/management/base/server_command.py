@@ -1,13 +1,13 @@
-import re
-import socket
-import signal
-import sys
 import errno
 import os
+import re
+import signal
+import socket
+import sys
 from datetime import datetime
 from django.core.management.base import BaseCommand, CommandError
-from django.utils.regex_helper import _lazy_re_compile
 from django.utils import autoreload as django_autoreload
+from django.utils.regex_helper import _lazy_re_compile
 
 naiveip_re = _lazy_re_compile(
     r"""^(?:
@@ -27,7 +27,7 @@ class ServerCommand(BaseCommand):
     """
 
     # Validation is called explicitly each time the server is reloaded.
-    requires_system_checks = False
+    requires_system_checks = "__all__"
 
     autoreload = False
     starting_message = True
@@ -46,9 +46,7 @@ class ServerCommand(BaseCommand):
         super().__init__(*args, **kwargs)
 
     def add_arguments(self, parser):
-        parser.add_argument(
-            "addrport", nargs="?", help="Optional port number, or ipaddr:port"
-        )
+        parser.add_argument("addrport", nargs="?", help="Optional port number, or ipaddr:port")
         parser.add_argument(
             "--ipv6",
             "-6",
@@ -75,19 +73,18 @@ class ServerCommand(BaseCommand):
             m = re.match(naiveip_re, options["addrport"])
             if m is None:
                 raise CommandError(
-                    '"%s" is not a valid port number '
-                    "or address:port pair." % options["addrport"]
+                    f'"{options["addrport"]}" is not a valid port number ' "or address:port pair."
                 )
             self.addr, _ipv4, _ipv6, _fqdn, self.port = m.groups()
             if not self.port.isdigit():
-                raise CommandError("%r is not a valid port number." % self.port)
+                raise CommandError(f"{self.port} is not a valid port number.")
             if self.addr:
                 if _ipv6:
                     self.addr = self.addr[1:-1]
                     self.use_ipv6 = True
                     self._raw_ipv6 = True
                 elif self.use_ipv6 and not _fqdn:
-                    raise CommandError('"%s" is not a valid IPv6 address.' % self.addr)
+                    raise CommandError(f'"{self.addr}" is not a valid IPv6 address.')
         if not self.addr:
             self.addr = self.default_addr_ipv6 if self.use_ipv6 else self.default_addr
             self._raw_ipv6 = self.use_ipv6
@@ -116,9 +113,9 @@ class ServerCommand(BaseCommand):
                 error_text = ERRORS[e.errno]
             except KeyError:
                 error_text = e
-            self.stderr.write("Error: %s" % error_text)
+            self.stderr.write(f"Error: {error_text}")
             # Need to use an OS exit because sys.exit doesn't work in a thread
-            os._exit(1)  # pylint: disable=protected-access
+            os._exit(1)
         except KeyboardInterrupt:
             sys.exit(0)
         finally:
@@ -143,7 +140,7 @@ class ServerCommand(BaseCommand):
                 % {
                     "name": self.server_name,
                     "protocol": self.protocol,
-                    "addr": "[%s]" % self.addr if self._raw_ipv6 else self.addr,
+                    "addr": f"[{self.addr if self._raw_ipv6 else self.addr}]",
                     "port": self.port,
                     "quit_command": self.quit_command,
                 }

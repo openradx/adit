@@ -1,8 +1,8 @@
-from typing import Dict, TextIO, Type
 import csv
+from typing import Dict, TextIO, Type
 from django.conf import settings
+from .errors import BatchFileFormatError, BatchFileSizeError
 from .serializers import BatchTaskSerializer
-from .errors import BatchFileSizeError, BatchFileFormatError
 
 
 class BatchFileParser:
@@ -12,7 +12,6 @@ class BatchFileParser:
         self.field_to_column_mapping = field_to_column_mapping
 
     def get_serializer(self, data: Dict[str, str]) -> BatchTaskSerializer:
-        # pylint: disable=not-callable
         return self.serializer_class(data=data, many=True)
 
     def parse(self, batch_file: TextIO, max_batch_size: int):
@@ -54,6 +53,5 @@ class BatchFileParser:
         return serializer.get_tasks()
 
     # Method that can be overridden to adapt the value for a specific field
-    # pylint: disable=unused-argument
     def transform_value(self, field: str, value):
         return value

@@ -16,9 +16,7 @@ def _permission_names_to_objects(names):
         app_label, codename = name.split(".", 1)
         try:
             result.append(
-                Permission.objects.get(
-                    content_type__app_label=app_label, codename=codename
-                )
+                Permission.objects.get(content_type__app_label=app_label, codename=codename)
             )
         except Permission.DoesNotExist:
             logger.exception("NO SUCH PERMISSION: %s, %s", app_label, codename)

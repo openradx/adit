@@ -10,12 +10,12 @@ class CoreConfig(AppConfig):
         post_migrate.connect(init_db, sender=self)
 
 
-def init_db(sender, **kwargs):  # pylint: disable=unused-argument
+def init_db(sender, **kwargs):
     create_app_settings()
 
 
 def create_app_settings():
-    from .models import CoreSettings  # pylint: disable=import-outside-toplevel
+    from .models import CoreSettings
 
     settings = CoreSettings.get()
     if not settings:

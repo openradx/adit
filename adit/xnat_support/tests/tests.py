@@ -1,36 +1,32 @@
-from django.test import TestCase
-from datetime import datetime
 import os
+from datetime import datetime
 from pathlib import Path
 import requests
-
+from django.test import TestCase
 from pydicom import dcmread
-
-from adit.core.models import DicomServer, DicomNode, DicomFolder
-
-from adit.batch_query.models import BatchQueryJob, BatchQueryTask
 from adit.batch_query.factories import BatchQueryJobFactory
+from adit.batch_query.models import BatchQueryJob, BatchQueryTask
 from adit.batch_query.tasks import ProcessBatchQueryTask
-
-from adit.batch_transfer.models import BatchTransferJob, BatchTransferTask
 from adit.batch_transfer.factories import BatchTransferJobFactory
+from adit.batch_transfer.models import BatchTransferJob, BatchTransferTask
 from adit.batch_transfer.tasks import ProcessBatchTransferTask
-
+from adit.core.models import DicomFolder, DicomNode, DicomServer
 from adit.rest_api.tests.tests import get_test_result
 
-TOKEN = "555240a9fc96541d5109fd4a8447c60da10f669f"
-BASE_URL = "http://localhost:8000/rest_api/"
+TOKEN = ""  # generate rest_api token and enter
+BASE_URL = ""  # enter dicom web url of adit
 
+# A XNAT test server must be running and setup here
 XNAT_TEST_SERVER = DicomServer(
     ae_title="xnat",
-    host="xnat-web",
-    port=8104,
+    host="",  # enter hostname
+    port="",  # enter port
     store_scp_support=True,
     xnat_server=True,
     xnat_rest_source=True,
-    xnat_root_url="http://localhost:80/",
-    xnat_username="admin",
-    xnat_password="admin",
+    xnat_root_url="",  # enter url of xnat service
+    xnat_username="",  # enter username
+    xnat_password="",  # enter password
 )
 
 XNAT_TEST_NODE = DicomNode(
@@ -55,12 +51,12 @@ DEST_TEST_NODE = DicomNode(
 
 TEST_INSTANCE = {
     "xnat_project_id": "TP2",
-    "study_uid": "1.2.840.113845.11.1000000001951524609.20200705182951.2689481", 
+    "study_uid": "1.2.840.113845.11.1000000001951524609.20200705182951.2689481",
     "patient_id": "1001",
     "study_date_start": datetime.strptime("03062019", "%d%m%Y"),
     "study_date_end": datetime.strptime("05062019", "%d%m%Y"),
     "modalities": ["CT"],
-    "NumberOfStudyRelatedInstances":11,
+    "NumberOfStudyRelatedInstances": 11,
 }
 
 
@@ -88,15 +84,11 @@ class BatchQueryTaskTestCase(TestCase):
         results = job.results.get()
 
         # test that correct study is retrieved
-        self.assertEqual(
-            TEST_INSTANCE["study_uid"], results.study_uid
-        )
+        self.assertEqual(TEST_INSTANCE["study_uid"], results.study_uid)
 
         # test image count reconstruction
-        self.assertEqual(
-            TEST_INSTANCE["NumberOfStudyRelatedInstances"], results.image_count
-        )
-    
+        self.assertEqual(TEST_INSTANCE["NumberOfStudyRelatedInstances"], results.image_count)
+
     def test_date_range(self):
         job: BatchQueryJob = BatchQueryJobFactory()
         job.source = XNAT_TEST_NODE
@@ -124,9 +116,7 @@ class DicomWebXnatTestCase(TestCase):
     def test_qido_from_adit_xnat(self):
         _, test_study_uid = get_test_result()
         response = requests.get(
-            BASE_URL
-            + "XNAT"
-            + f"/qidors/studies/",
+            BASE_URL + "XNAT" + f"/qidors/studies/",
             headers={
                 "Authorization": f"Token {TOKEN}",
             },
@@ -136,7 +126,7 @@ class DicomWebXnatTestCase(TestCase):
             eval(query_result[i])["0020000D"]["Value"][0] for i in range(len(query_result))
         ]
         self.assertTrue(test_study_uid in result_study_uids)
-        
+
 
 class BatchTransferTaskTestCase(TestCase):
     def test_batch_transfer_from_xnat(self):
@@ -161,18 +151,9 @@ class BatchTransferTaskTestCase(TestCase):
         path = Path(job.destination.dicomfolder.path)
         for subpath, subdirs, files in os.walk(path):
             for fname in files:
-                fpath = os.path.join(subpath,fname)
+                fpath = os.path.join(subpath, fname)
                 ds = dcmread(fpath)
 
-                self.assertEqual(
-                    TEST_INSTANCE["study_uid"], ds.StudyInstanceUID
-                )
+                self.assertEqual(TEST_INSTANCE["study_uid"], ds.StudyInstanceUID)
 
-                self.assertEqual(
-                    TEST_INSTANCE["patient_id"], ds.PatientID
-                )
-
-
-
-
-
+                self.assertEqual(TEST_INSTANCE["patient_id"], ds.PatientID)

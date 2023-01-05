@@ -1,28 +1,26 @@
 from io import StringIO
-from django import forms
-from django.db import transaction
-from django.core.exceptions import ValidationError
-from django.conf import settings
-from django.utils.safestring import mark_safe
-from crispy_forms.helper import FormHelper
-from crispy_forms.layout import Submit, Layout, Field, Row, Column, Div
-from crispy_forms.bootstrap import StrictButton
 import cchardet as chardet
+from crispy_forms.bootstrap import StrictButton
+from crispy_forms.helper import FormHelper
+from crispy_forms.layout import Column, Div, Field, Layout, Row, Submit
+from django import forms
+from django.conf import settings
+from django.core.exceptions import ValidationError
+from django.db import transaction
+from django.utils.safestring import mark_safe
+from adit.core.errors import BatchFileFormatError, BatchFileSizeError
+from adit.core.fields import RestrictedFileField
 from adit.core.forms import DicomNodeChoiceField
 from adit.core.models import DicomNode
-from adit.core.fields import RestrictedFileField
-from adit.core.errors import BatchFileSizeError, BatchFileFormatError
+from adit.xnat_support.forms import xnat_options_field
 from .models import BatchTransferJob, BatchTransferTask
 from .parsers import BatchTransferFileParser
-
-from adit.xnat_support.forms import xnat_options_field
 
 
 class BatchTransferJobForm(forms.ModelForm):
     source = DicomNodeChoiceField(True, DicomNode.NodeType.SERVER)
     destination = DicomNodeChoiceField(False)
     batch_file = RestrictedFileField(max_upload_size=5242880, label="Batch file")
-    ethics_committee_approval = forms.BooleanField()
 
     # (optional) XNAT
     xnat_source_project_id = forms.CharField(
@@ -36,7 +34,7 @@ class BatchTransferJobForm(forms.ModelForm):
         max_length=64,
         required=False,
         help_text="Providing a XNAT Project ID significantly loweres the query time.",
-    )   
+    )
 
     class Meta:
         model = BatchTransferJob
@@ -46,9 +44,10 @@ class BatchTransferJobForm(forms.ModelForm):
             "urgent",
             "project_name",
             "project_description",
+            "ethics_application_id",
+            "batch_file",
             "trial_protocol_id",
             "trial_protocol_name",
-            "ethics_committee_approval",
             "batch_file",
             "xnat_source_project_id",
             "xnat_destination_project_id",
@@ -57,10 +56,16 @@ class BatchTransferJobForm(forms.ModelForm):
             "urgent": "Start transfer urgently",
             "trial_protocol_id": "Trial ID",
             "trial_protocol_name": "Trial name",
+            "ethics_application_id": "Ethics committee approval",
         }
         help_texts = {
-            "urgent": (
-                "Start transfer directly (without scheduling) and prioritize it."
+            "urgent": ("Start transfer directly (without scheduling) and prioritize it."),
+            "batch_file": (
+                "The batch file which contains the data to transfer between "
+                "two DICOM nodes. See [Help] for how to format this file."
+            ),
+            "ethics_application_id": (
+                "The identification number of the ethics application for this trial."
             ),
             "trial_protocol_id": (
                 "Fill only when to modify the ClinicalTrialProtocolID tag "
@@ -69,14 +74,6 @@ class BatchTransferJobForm(forms.ModelForm):
             "trial_protocol_name": (
                 "Fill only when to modify the ClinicalTrialProtocolName tag "
                 "of all transfered DICOM files. Leave blank otherwise."
-            ),
-            "batch_file": (
-                "The batch file which contains the data to transfer between "
-                "two DICOM nodes. See [Help] for how to format this file."
-            ),
-            "ethics_committee_approval": (
-                "Only studies of an approved trial can be transferred!"
-                "If unsure contact the support."
             ),
         }
 
@@ -98,45 +95,32 @@ class BatchTransferJobForm(forms.ModelForm):
         self.fields["source"].queryset = self.fields["source"].queryset.order_by(
             "-node_type", "name"
         )
-        self.fields["destination"].queryset = self.fields[
-            "destination"
-        ].queryset.order_by("-node_type", "name")
-
-        self.max_batch_size = (
-            settings.MAX_BATCH_TRANSFER_SIZE if not self.user.is_staff else None
+        self.fields["destination"].queryset = self.fields["destination"].queryset.order_by(
+            "-node_type", "name"
         )
+
+        if settings.ETHICS_COMMITTEE_APPROVAL_REQUIRED:
+            self.fields["ethics_application_id"].required = True
+
+        self.max_batch_size = settings.MAX_BATCH_TRANSFER_SIZE if not self.user.is_staff else None
 
         if self.max_batch_size is not None:
             self.fields[
                 "batch_file"
             ].help_text = f"Maximum {self.max_batch_size} tasks per transfer job!"
 
+        self.fields["trial_protocol_id"].widget.attrs["placeholder"] = "Optional"
+        self.fields["trial_protocol_name"].widget.attrs["placeholder"] = "Optional"
+
         self.helper = FormHelper(self)
         self.helper.add_input(Submit("save", "Create Job"))
 
         self.helper.layout = Layout(
-            Row(
-                Column(
-                    Field(
-                        "source", 
-                        css_class="custom-select"
-                    )
-                )
-            ),
+            Row(Column(Field("source", css_class="custom-select"))),
+            xnat_options_field(["xnat_source_project_id"], area_css_id="xnat-source-options"),
+            Row(Column(Field("destination", css_class="custom-select"))),
             xnat_options_field(
-                ["xnat_source_project_id"], 
-                area_css_id="xnat-source-options"
-            ),
-            Row(
-                Column(
-                    Field(
-                        "destination", 
-                        css_class="custom-select"
-                    )
-                )
-            ),
-            xnat_options_field(
-                ["xnat_destination_project_id"], 
+                ["xnat_destination_project_id"],
                 area_css_id="xnat-destination-options",
             ),
             Row(

@@ -1,11 +1,9 @@
 from rest_framework import serializers
-from adit.core.serializers import BatchTaskSerializer, BatchTaskListSerializer
+from adit.core.serializers import BatchTaskListSerializer, BatchTaskSerializer
 from .models import BatchTransferTask
 
 
-class BatchTransferTaskListSerializer(
-    BatchTaskListSerializer
-):  # pylint: disable=abstract-method
+class BatchTransferTaskListSerializer(BatchTaskListSerializer):
     def validate(self, attrs):
         attrs = super().validate(attrs)
 

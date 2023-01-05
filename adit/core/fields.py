@@ -6,7 +6,8 @@ class RestrictedFileField(forms.FileField):
     """File field with restrictions.
 
     Same as FileField, but you can specify:
-        * content_types - list containing allowed content_types. Example: ['application/pdf', 'image/jpeg']
+        * content_types - list containing allowed content_types.
+          Example: ['application/pdf', 'image/jpeg']
             1MB - 1048576
             2.5MB - 2621440
             5MB - 5242880
@@ -28,8 +29,8 @@ class RestrictedFileField(forms.FileField):
 
         if file.size > self.max_upload_size:
             raise forms.ValidationError(
-                "File too large. Please keep filesize under %s."
-                % (filesizeformat(self.max_upload_size))
+                "File too large. Please keep filesize "
+                f"under {filesizeformat(self.max_upload_size)}."
             )
 
         return file

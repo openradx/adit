@@ -1,4 +1,5 @@
 from datetime import datetime
+from django.conf import settings
 from django.template import Library
 from django.template.defaultfilters import join
 from ..models import DicomJob, DicomTask
@@ -20,7 +21,7 @@ def url_replace(context, field, value):
 
 @register.filter
 def person_name_from_dicom(value):
-    """ See also :func:`adit.core.dicom_utils.person_name_to_dicom`"""
+    """See also :func:`adit.core.dicom_utils.person_name_to_dicom`"""
     if not value:
         return value
 
@@ -28,17 +29,9 @@ def person_name_from_dicom(value):
 
 
 @register.simple_tag
-def exclude_from_list(value, *args):
-    if not value:
-        return value
-
-    if isinstance(value, list):
-        return [item for item in value if item not in args]
-
-    if value in args:
-        return ""
-
-    return value
+def filter_modalities(modalities):
+    exclude_modalities = settings.EXCLUDE_MODALITIES
+    return [modality for modality in modalities if modality not in exclude_modalities]
 
 
 # TODO maybe we don't need this anymore as we convert all DICOM values

@@ -1,31 +1,27 @@
 from io import StringIO
-from django import forms
-from django.db import transaction
-from django.core.exceptions import ValidationError
-from django.conf import settings
-from django.utils.safestring import mark_safe
-from crispy_forms.helper import FormHelper
-from crispy_forms.layout import Submit, Layout, Field, Row, Column, Div
 import cchardet as chardet
+from crispy_forms.helper import FormHelper
+from crispy_forms.layout import Column, Field, Layout, Row, Submit
+from django import forms
+from django.conf import settings
+from django.core.exceptions import ValidationError
+from django.db import transaction
+from django.utils.safestring import mark_safe
+from adit.core.errors import BatchFileFormatError, BatchFileSizeError
+from adit.core.fields import RestrictedFileField
 from adit.core.forms import DicomNodeChoiceField
 from adit.core.models import DicomNode
-from adit.core.fields import RestrictedFileField
-from adit.core.errors import BatchFileSizeError, BatchFileFormatError
+from adit.xnat_support.forms import xnat_options_field
 from .models import BatchQueryJob, BatchQueryTask
 from .parsers import BatchQueryFileParser
-
-from adit.xnat_support.forms import xnat_options_field
 
 
 class BatchQueryJobForm(forms.ModelForm):
     source = DicomNodeChoiceField(
-        True, 
-        DicomNode.NodeType.SERVER, 
+        True,
+        DicomNode.NodeType.SERVER,
     )
-    batch_file = RestrictedFileField(
-        max_upload_size=5242880, 
-        label="Batch file"
-    )
+    batch_file = RestrictedFileField(max_upload_size=5242880, label="Batch file")
 
     class Meta:
         model = BatchQueryJob
@@ -46,7 +42,7 @@ class BatchQueryJobForm(forms.ModelForm):
                 "The batch file which contains the data for the queries. "
                 "See [Help] for how to format this file."
             ),
-            "xnat_project_id": "Providing a XNAT Project ID significantly loweres the query time."
+            "xnat_project_id": "Providing a XNAT Project ID significantly loweres the query time.",
         }
 
     def __init__(self, *args, **kwargs):
@@ -67,9 +63,7 @@ class BatchQueryJobForm(forms.ModelForm):
             "-node_type", "name"
         )
 
-        self.max_batch_size = (
-            settings.MAX_BATCH_QUERY_SIZE if not user.is_staff else None
-        )
+        self.max_batch_size = settings.MAX_BATCH_QUERY_SIZE if not user.is_staff else None
 
         if self.max_batch_size is not None:
             self.fields[
@@ -80,14 +74,7 @@ class BatchQueryJobForm(forms.ModelForm):
         self.helper.add_input(Submit("save", "Create Job"))
 
         self.helper.layout = Layout(
-            Row(
-                Column(
-                    Field(
-                        "source", 
-                        css_class="custom-select"
-                    )
-                )
-            ),
+            Row(Column(Field("source", css_class="custom-select"))),
             xnat_options_field(["xnat_project_id"]),
             Row(
                 Column(

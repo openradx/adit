@@ -1,14 +1,13 @@
 import asyncio
 from urllib.parse import urlencode
 from asgiref.sync import sync_to_async
-from django.urls import reverse
-from django.core.exceptions import ValidationError
-from django.shortcuts import render, redirect
-from django.urls import resolve
-from django.contrib.auth.decorators import login_required
 from django.conf import settings
-from adit.core.models import DicomServer
+from django.contrib.auth.decorators import login_required
+from django.core.exceptions import ValidationError
+from django.shortcuts import redirect, render
+from django.urls import resolve, reverse
 from adit.core import validators
+from adit.core.models import DicomServer
 from .forms import DicomExplorerQueryForm
 from .utils.dicom_data_collector import DicomDataCollector
 
@@ -27,7 +26,7 @@ def dicom_explorer_form_view(request):
     server = query["server"]
     patient_id = query.get("patient_id")
     accession_number = query.get("accession_number")
-    
+
     # optional query handling
     opt_query = {}
     for key, value in query.items():
@@ -92,9 +91,7 @@ async def dicom_explorer_resources_view(
         response = await asyncio.wait_for(future, timeout=timeout)
         return response
     except asyncio.TimeoutError:
-        return render_error(
-            request, "Connection to server timed out. Please try again later."
-        )
+        return render_error(request, "Connection to server timed out. Please try again later.")
 
 
 @sync_to_async
@@ -116,9 +113,7 @@ def is_valid_id(value):
 
 
 def render_error(request, error_message):
-    return render(
-        request, "dicom_explorer/error_message.html", {"error_message": error_message}
-    )
+    return render(request, "dicom_explorer/error_message.html", {"error_message": error_message})
 
 
 def render_query_result(request, server_id, patient_id, study_uid, series_uid):
@@ -126,7 +121,7 @@ def render_query_result(request, server_id, patient_id, study_uid, series_uid):
     if request.GET:
         query.update(request.GET)
     for key, value in query.items():
-        if type(value)==list and len(value)==1:
+        if type(value) == list and len(value) == 1:
             query[key] = value[0]
     url_name = resolve(request.path_info).url_name
 
@@ -195,9 +190,7 @@ def render_patient_detail(request, server, patient_id, query):
         return render_error(request, f"No patient found with Patient ID {patient_id}.")
 
     if len(patients) > 1:
-        return render_error(
-            request, f"Multiple patients found with Patient ID {patient_id}."
-        )
+        return render_error(request, f"Multiple patients found with Patient ID {patient_id}.")
     query.update({"PatientID": patient_id})
     studies = collector.collect_study_data(query=query)
     return render(
@@ -228,22 +221,16 @@ def render_study_detail(request, server, study_uid, query):
     studies = collector.collect_study_data(study_uid=study_uid)
 
     if len(studies) == 0:
-        return render_error(
-            request, f"No study found with Study Instance UID {study_uid}."
-        )
+        return render_error(request, f"No study found with Study Instance UID {study_uid}.")
 
     if len(studies) > 1:
-        return render_error(
-            request, f"Multiple studies found with Study Instance UID {study_uid}."
-        )
+        return render_error(request, f"Multiple studies found with Study Instance UID {study_uid}.")
 
     patients = collector.collect_patient_data(patient_id=studies[0]["PatientID"], query=query)
 
     if len(patients) == 0:
         # Should never happen as we already found a valid study with this UID
-        raise AssertionError(
-            f"No patient found for study with Study Instance UID {study_uid}."
-        )
+        raise AssertionError(f"No patient found for study with Study Instance UID {study_uid}.")
 
     if len(patients) > 1:
         # Should never happen as we already found a valid study with this UID
@@ -269,22 +256,16 @@ def render_series_query(request, server, study_uid, query):
     studies = collector.collect_study_data(study_uid)
 
     if len(studies) == 0:
-        return render_error(
-            request, f"No study found with Study Instance UID {study_uid}."
-        )
+        return render_error(request, f"No study found with Study Instance UID {study_uid}.")
 
     if len(studies) > 1:
-        return render_error(
-            request, f"Multiple studies found with Study Instance UID {study_uid}."
-        )
+        return render_error(request, f"Multiple studies found with Study Instance UID {study_uid}.")
 
     patients = collector.collect_patient_data(patient_id=studies[0]["PatientID"])
 
     if len(patients) == 0:
         # Should never happen as we already found a valid study with this UID
-        raise AssertionError(
-            f"No patient found for study with Study Instance UID {study_uid}."
-        )
+        raise AssertionError(f"No patient found for study with Study Instance UID {study_uid}.")
 
     if len(patients) > 1:
         # Should never happen as we already found a valid study with this UID
@@ -311,22 +292,16 @@ def render_series_detail(request, server, study_uid, series_uid, query):
     studies = collector.collect_study_data(study_uid=study_uid)
 
     if len(studies) == 0:
-        return render_error(
-            request, f"No study found with Study Instance UID {study_uid}."
-        )
+        return render_error(request, f"No study found with Study Instance UID {study_uid}.")
 
     if len(studies) > 1:
-        return render_error(
-            request, f"Multiple studies found with Study Instance UID {study_uid}."
-        )
+        return render_error(request, f"Multiple studies found with Study Instance UID {study_uid}.")
 
     patients = collector.collect_patient_data(patient_id=studies[0]["PatientID"], query=query)
 
     if len(patients) == 0:
         # Should never happen as we already found a valid study with this UID
-        raise AssertionError(
-            f"No patient found for study with Study Instance UID {study_uid}."
-        )
+        raise AssertionError(f"No patient found for study with Study Instance UID {study_uid}.")
 
     if len(patients) > 1:
         # Should never happen as we already found a valid study with this UID
@@ -334,7 +309,9 @@ def render_series_detail(request, server, study_uid, series_uid, query):
             f"Multiple patients found for study with Study Instance UID {study_uid}.",
         )
 
-    series_list = collector.collect_series_data(study_uid=study_uid, series_uid=series_uid, query=query)
+    series_list = collector.collect_series_data(
+        study_uid=study_uid, series_uid=series_uid, query=query
+    )
 
     if len(series_list) == 0:
         return render_error(

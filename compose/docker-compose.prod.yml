@@ -1,0 +1,65 @@
+x-app: &default-app
+  restart: always
+  build:
+    target: production
+  image: adit_prod:latest
+  env_file:
+    - ./.env.prod
+  environment:
+    ENABLE_REMOTE_DEBUGGING: 0
+    DJANGO_SETTINGS_MODULE: "adit.settings.production"
+    SSL_CERT_FILE: "/var/www/adit/ssl/cert.pem"
+    SSL_KEY_FILE: "/var/www/adit/ssl/key.pem"
+
+services:
+  web:
+    <<: *default-app
+    ports:
+      - "80:80"
+      - "443:443"
+    command: >
+      bash -c "
+        ./scripts/wait-for-it.sh postgres:5432 -t 30 &&
+        python ./manage.py migrate &&
+        python ./manage.py collectstatic --no-input &&
+        python ./manage.py create_admin &&
+        python ./manage.py generate_cert &&
+        daphne -b 0.0.0.0 -p 80 -e ssl:443:privateKey=/var/www/adit/ssl/key.pem:certKey=/var/www/adit/ssl/cert.pem adit.asgi:application
+      "
+
+  worker_default:
+    <<: *default-app
+
+  worker_dicom_task:
+    <<: *default-app
+
+  celery_beat:
+    <<: *default-app
+
+  receiver:
+    <<: *default-app
+    ports:
+      - "11112:11112"
+
+  flower:
+    <<: *default-app
+
+  postgres:
+    restart: always
+    env_file:
+      - ./.env.prod
+
+  rabbit:
+    restart: always
+
+  redis:
+    restart: always
+
+  syslog:
+    restart: always
+
+  orthanc1:
+    restart: always
+
+  orthanc2:
+    restart: always

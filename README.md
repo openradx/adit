@@ -18,7 +18,8 @@ ADIT (Automated DICOM Transfer) is a swiss army knife to exchange DICOM data bet
 
 # Upcoming features
 
-- A REST API to manage transfers programmatically from a third party program.
+- A REST API to manage transfers programmatically from a third party application
+- An upload portal to upload DICOM images through a web interface
 
 # Screenshots
 
@@ -47,6 +48,10 @@ Downloading data from a DICOM server can done by using a C-GET or C-MOVE operati
 
 [![](https://github.com/medihack.png?size=50)](https://github.com/medihack)
 [![](https://github.com/mdebic.png?size=50)](https://github.com/mdebic)
+
+# Disclaimer
+
+ADIT is not a certified medical product. So use at your own risk.
 
 # License
 

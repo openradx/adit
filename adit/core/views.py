@@ -1,33 +1,31 @@
 from typing import Any, Dict, Optional
-from django.shortcuts import render
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
-from django.views.generic import View
-from django.views.generic.base import TemplateView
-from django.views.generic.edit import DeleteView, CreateView, FormView
-from django.views.generic.detail import DetailView, SingleObjectMixin
 from django.contrib.auth.mixins import (
     LoginRequiredMixin,
-    UserPassesTestMixin,
     PermissionRequiredMixin,
+    UserPassesTestMixin,
 )
-from django.urls import re_path, reverse_lazy
-from django.shortcuts import redirect
 from django.core.exceptions import SuspiciousOperation
-from django.conf import settings
-from django.http.response import Http404
 from django.db import models
 from django.db.models.query import QuerySet
-from django_tables2 import SingleTableMixin
+from django.http.response import Http404
+from django.shortcuts import redirect, render
+from django.urls import re_path, reverse_lazy
+from django.views.generic import View
+from django.views.generic.base import TemplateView
+from django.views.generic.detail import DetailView, SingleObjectMixin
+from django.views.generic.edit import CreateView, DeleteView, FormView
 from django_filters.views import FilterView
+from django_tables2 import SingleTableMixin
 from revproxy.views import ProxyView
-
 from adit.core.tasks import broadcast_mail
 from ..celery import app as celery_app
-from .site import job_stats_collectors
-from .models import CoreSettings, DicomJob, DicomTask
-from .mixins import OwnerRequiredMixin, PageSizeSelectMixin
 from .forms import BroadcastForm
+from .mixins import OwnerRequiredMixin, PageSizeSelectMixin
+from .models import CoreSettings, DicomJob, DicomTask
+from .site import job_stats_collectors
 
 
 @staff_member_required
@@ -83,9 +81,7 @@ class HomeView(TemplateView):
         return context
 
 
-class DicomJobListView(  # pylint: disable=too-many-ancestors
-    LoginRequiredMixin, SingleTableMixin, PageSizeSelectMixin, FilterView
-):
+class DicomJobListView(LoginRequiredMixin, SingleTableMixin, PageSizeSelectMixin, FilterView):
     model = None
     table_class = None
     filterset_class = None
@@ -108,7 +104,7 @@ class DicomJobListView(  # pylint: disable=too-many-ancestors
         return kwargs
 
 
-class TransferJobListView(DicomJobListView):  # pylint: disable=too-many-ancestors
+class TransferJobListView(DicomJobListView):
     def get_queryset(self) -> QuerySet:
         return super().get_queryset().select_related("destination")
 
@@ -151,13 +147,11 @@ class DicomJobDeleteView(LoginRequiredMixin, OwnerRequiredMixin, DeleteView):
         return super().delete(request, *args, **kwargs)
 
 
-class DicomJobVerifyView(
-    LoginRequiredMixin, OwnerRequiredMixin, SingleObjectMixin, View
-):
+class DicomJobVerifyView(LoginRequiredMixin, OwnerRequiredMixin, SingleObjectMixin, View):
     model = None
     success_message = "Job with ID %(id)d was verified"
 
-    def post(self, request, *args, **kwargs):  # pylint: disable=unused-argument
+    def post(self, request, *args, **kwargs):
         job = self.get_object()
         if job.is_verified:
             raise SuspiciousOperation(
@@ -173,13 +167,11 @@ class DicomJobVerifyView(
         return redirect(job)
 
 
-class DicomJobCancelView(
-    LoginRequiredMixin, OwnerRequiredMixin, SingleObjectMixin, View
-):
+class DicomJobCancelView(LoginRequiredMixin, OwnerRequiredMixin, SingleObjectMixin, View):
     model = None
     success_message = "Job with ID %(id)d was canceled"
 
-    def post(self, request, *args, **kwargs):  # pylint: disable=unused-argument
+    def post(self, request, *args, **kwargs):
         job = self.get_object()
         if not job.is_cancelable:
             raise SuspiciousOperation(
@@ -192,9 +184,7 @@ class DicomJobCancelView(
             dicom_task.status = DicomTask.Status.CANCELED
             dicom_task.save()
 
-        tasks_in_progress_count = job.tasks.filter(
-            status=DicomTask.Status.IN_PROGRESS
-        ).count()
+        tasks_in_progress_count = job.tasks.filter(status=DicomTask.Status.IN_PROGRESS).count()
 
         # If there is a still in progress task then the job will be set to canceled when
         # the processing of the task is finished (see core.tasks.HandleFinishedDicomJob)
@@ -209,13 +199,11 @@ class DicomJobCancelView(
         return redirect(job)
 
 
-class DicomJobResumeView(
-    LoginRequiredMixin, OwnerRequiredMixin, SingleObjectMixin, View
-):
+class DicomJobResumeView(LoginRequiredMixin, OwnerRequiredMixin, SingleObjectMixin, View):
     model = None
     success_message = "Job with ID %(id)d will be resumed"
 
-    def post(self, request, *args, **kwargs):  # pylint: disable=unused-argument
+    def post(self, request, *args, **kwargs):
         job = self.get_object()
         if not job.is_resumable:
             raise SuspiciousOperation(
@@ -235,13 +223,11 @@ class DicomJobResumeView(
         return redirect(job)
 
 
-class DicomJobRetryView(
-    LoginRequiredMixin, OwnerRequiredMixin, SingleObjectMixin, View
-):
+class DicomJobRetryView(LoginRequiredMixin, OwnerRequiredMixin, SingleObjectMixin, View):
     model = None
     success_message = "Job with ID %(id)d will be retried"
 
-    def post(self, request, *args, **kwargs):  # pylint: disable=unused-argument
+    def post(self, request, *args, **kwargs):
         job = self.get_object()
         if not job.is_retriable:
             raise SuspiciousOperation(
@@ -266,13 +252,11 @@ class DicomJobRetryView(
         return redirect(job)
 
 
-class DicomJobRestartView(
-    LoginRequiredMixin, OwnerRequiredMixin, SingleObjectMixin, View
-):
+class DicomJobRestartView(LoginRequiredMixin, OwnerRequiredMixin, SingleObjectMixin, View):
     model = None
     success_message = "Job with ID %(id)d will be restarted"
 
-    def post(self, request, *args, **kwargs):  # pylint: disable=unused-argument
+    def post(self, request, *args, **kwargs):
         job = self.get_object()
         if not request.user.is_staff or not job.is_restartable:
             raise SuspiciousOperation(
@@ -304,9 +288,7 @@ class DicomTaskDetailView(LoginRequiredMixin, OwnerRequiredMixin, DetailView):
     context_object_name = "task"
     owner_accessor = "job.owner"
 
-    def get_object(
-        self, queryset: Optional[models.query.QuerySet] = None
-    ) -> models.Model:
+    def get_object(self, queryset: Optional[models.query.QuerySet] = None) -> models.Model:
         if queryset is None:
             queryset = self.get_queryset()
 
@@ -315,8 +297,8 @@ class DicomTaskDetailView(LoginRequiredMixin, OwnerRequiredMixin, DetailView):
 
         if job_id is None or task_id is None:
             raise AttributeError(
-                "Dicom task detail view %s must be called with a job_id "
-                "and a task_id in the URLconf." % self.__class__.__name__
+                f"Dicom task detail view {self.__class__.__name__} must "
+                "be called with a job_id and a task_id in the URLconf."
             )
 
         queryset = queryset.filter(job_id=job_id, task_id=task_id)
@@ -325,8 +307,7 @@ class DicomTaskDetailView(LoginRequiredMixin, OwnerRequiredMixin, DetailView):
             obj = queryset.get()
         except queryset.model.DoesNotExist as err:
             raise Http404(
-                "No %(verbose_name)s found matching the query"
-                % {"verbose_name": queryset.model._meta.verbose_name}
+                f"No {queryset.model._meta.verbose_name} found matching the query"
             ) from err
         return obj
 
@@ -336,43 +317,47 @@ class DicomTaskDetailView(LoginRequiredMixin, OwnerRequiredMixin, DetailView):
         return context
 
 
-class FlowerProxyView(UserPassesTestMixin, ProxyView):
-    """A reverse proxy view to access the Flower Celery admin tool.
+class AdminProxyView(UserPassesTestMixin, ProxyView):
+    """A reverse proxy view to hide other services behind that only an admin can access.
 
     By using a reverse proxy we can use the Django authentication
     to check for an logged in admin user.
     Code from https://stackoverflow.com/a/61997024/166229
     """
-
-    upstream = "http://{}:{}".format(settings.FLOWER_HOST, settings.FLOWER_PORT)
-    url_prefix = "flower"
-    rewrite = ((r"^/{}$".format(url_prefix), r"/{}/".format(url_prefix)),)
 
     def test_func(self):
         return self.request.user.is_staff
 
     @classmethod
     def as_url(cls):
-        return re_path(r"^(?P<path>{}.*)$".format(cls.url_prefix), cls.as_view())
+        return re_path(rf"^{cls.url_prefix}/(?P<path>.*)$", cls.as_view())
 
 
-class RabbitManagementProxyView(UserPassesTestMixin, ProxyView):
-    """A reverse proxy view to access the Rabbit Management admin tool.
-
-    By using a reverse proxy we can use the Django authentication
-    to check for an logged in admin user.
-    Code from https://stackoverflow.com/a/61997024/166229
-    """
-
-    upstream = "http://{}:{}".format(
-        settings.RABBIT_MANAGEMENT_HOST, settings.RABBIT_MANAGEMENT_PORT
-    )
+class RabbitManagementProxyView(AdminProxyView):
+    upstream = f"http://{settings.RABBIT_MANAGEMENT_HOST}:{settings.RABBIT_MANAGEMENT_PORT}"
     url_prefix = "rabbit"
-    rewrite = ((r"^/{}$".format(url_prefix), r"/"),)
+    rewrite = ((rf"^/{url_prefix}$", r"/"),)
 
-    def test_func(self):
-        return self.request.user.is_staff
+
+class FlowerProxyView(AdminProxyView):
+    upstream = f"http://{settings.FLOWER_HOST}:{settings.FLOWER_PORT}"
+    url_prefix = "flower"
+    rewrite = ((rf"^/{url_prefix}$", rf"/{url_prefix}/"),)
 
     @classmethod
     def as_url(cls):
-        return re_path(r"^{}/(?P<path>.*)$".format(cls.url_prefix), cls.as_view())
+        # Flower needs a bit different setup then the other proxy views as flower
+        # uses a prefix itself (see docker compose service)
+        return re_path(rf"^(?P<path>{cls.url_prefix}.*)$", cls.as_view())
+
+
+class Orthanc1ProxyView(AdminProxyView):
+    upstream = f"http://{settings.ORTHANC1_HOST}:{settings.ORTHANC1_HTTP_PORT}"
+    url_prefix = "orthanc1"
+    rewrite = ((rf"^/{url_prefix}$", r"/"),)
+
+
+class Orthanc2ProxyView(AdminProxyView):
+    upstream = f"http://{settings.ORTHANC2_HOST}:{settings.ORTHANC2_HTTP_PORT}"
+    url_prefix = "orthanc2"
+    rewrite = ((rf"^/{url_prefix}$", r"/"),)

@@ -2,17 +2,13 @@ from celery.utils.log import get_task_logger
 from django.conf import settings
 from adit.celery import app as celery_app
 from adit.core.tasks import (
+    HandleFailedDicomJob,
+    HandleFinishedDicomJob,
     ProcessDicomJob,
     ProcessDicomTask,
-    HandleFinishedDicomJob,
-    HandleFailedDicomJob,
 )
-from .models import (
-    BatchQuerySettings,
-    BatchQueryJob,
-    BatchQueryTask,
-)
-from .utils.query_utils import execute_query
+from .models import BatchQueryJob, BatchQuerySettings, BatchQueryTask
+from .utils.query_utils import QueryExecutor
 
 logger = get_task_logger(__name__)
 
@@ -22,7 +18,7 @@ class ProcessBatchQueryTask(ProcessDicomTask):
     app_settings_class = BatchQuerySettings
 
     def handle_dicom_task(self, dicom_task):
-        return execute_query(dicom_task)
+        return QueryExecutor(dicom_task, self).start()
 
 
 process_batch_query_task = ProcessBatchQueryTask()

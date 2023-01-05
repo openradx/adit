@@ -1,0 +1,45 @@
+name: CI
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Build and cache Docker images
+        uses: docker/build-push-action@v3
+        with:
+          context: .
+          target: development
+          load: true
+          tags: adit_dev:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Configure environment
+        run: cp example.env compose/.env.dev
+
+      - name: Start Docker containers
+        run: ./scripts/adit_dev_up.sh --no-build
+
+      - name: Run linting with flake8
+        # https://github.com/actions/runner/issues/241#issuecomment-745902718
+        shell: 'script -q -e -c "bash {0}"'
+        run: ./scripts/adit_dev_lint.sh
+
+      - name: Run tests with pytest
+        shell: 'script -q -e -c "bash {0}"'
+        run: ./scripts/adit_dev_cov.sh
+
+      - name: Stop Docker containers
+        if: ${{ always() }}
+        run: ./scripts/adit_dev_down.sh

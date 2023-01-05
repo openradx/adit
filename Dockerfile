@@ -1,4 +1,4 @@
-FROM python:3.9 as python-base
+FROM python:3.10 as python-base
 
 # python
 # ENV variables are also available in the later build stages
@@ -13,7 +13,7 @@ ENV PYTHONUNBUFFERED=1 \
     \
     # poetry
     # https://python-poetry.org/docs/configuration/#using-environment-variables
-    POETRY_VERSION=1.1.13 \
+    POETRY_VERSION=1.1.14 \
     # make poetry install to this location
     POETRY_HOME="/opt/poetry" \
     # make poetry create the virtual environment in the project's root
@@ -64,7 +64,10 @@ COPY --from=builder-base $PYSETUP_PATH $PYSETUP_PATH
 # quicker install as runtime deps are already installed
 RUN poetry install
 
-# Required folder for ADIT
+# Install requirements for end-to-end testing
+RUN playwright install && playwright install-deps
+
+# Required folders for ADIT
 RUN mkdir -p /var/www/adit/logs \
     -p /var/www/adit/static \
     -p /var/www/adit/ssl \

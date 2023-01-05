@@ -32,10 +32,10 @@ def redis_lru(capacity=5000, slicer=slice(None)):
     """
 
     def decorator(func):
-        cache_keys = "lru:keys:%s" % (func.__name__,)
-        cache_vals = "lru:vals:%s" % (func.__name__,)
-        cache_hits = "lru:hits:%s" % (func.__name__,)
-        cache_miss = "lru:miss:%s" % (func.__name__,)
+        cache_keys = f"lru:keys:{func.__name__}"
+        cache_vals = f"lru:vals:{func.__name__}"
+        cache_hits = f"lru:hits:{func.__name__}"
+        cache_miss = f"lru:miss:{func.__name__}"
 
         lvars = [None]  # closure mutable
 
@@ -77,9 +77,7 @@ def redis_lru(capacity=5000, slicer=slice(None)):
         def info():
             conn = lvars[0]
             size = int(conn.zcard(cache_keys) or 0)
-            hits, misses = int(conn.get(cache_hits) or 0), int(
-                conn.get(cache_miss) or 0
-            )
+            hits, misses = int(conn.get(cache_hits) or 0), int(conn.get(cache_miss) or 0)
             return hits, misses, capacity, size
 
         def clear():

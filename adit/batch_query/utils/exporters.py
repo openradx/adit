@@ -1,7 +1,7 @@
 import csv
 from django.conf import settings
 from django.utils.formats import date_format, time_format
-from adit.core.templatetags.core_extras import person_name_from_dicom, join_if_list
+from adit.core.templatetags.core_extras import join_if_list, person_name_from_dicom
 from ..models import BatchQueryJob, BatchQueryResult
 
 
@@ -16,7 +16,7 @@ def export_results(job: BatchQueryJob, file):
     for query_task in query_tasks:
         if query_task.pseudonym:
             has_pseudonyms = True
-        if query_task.series_description:
+        if query_task.series_description or query_task.series_number:
             has_series = True
     write_header(writer, has_pseudonyms, has_series)
     write_data(writer, query_tasks, has_pseudonyms, has_series)
@@ -44,6 +44,7 @@ def write_header(writer, has_pseudonyms, has_series):
             [
                 "SeriesInstanceUID",
                 "SeriesDescription",
+                "SeriesNumber",
             ]
         )
 
@@ -56,9 +57,7 @@ def write_data(writer, query_tasks, has_pseudonyms, has_series):
         for result in query_task.results.all():
             patient_name = person_name_from_dicom(result.patient_name)
 
-            patient_birth_date = date_format(
-                result.patient_birth_date, "SHORT_DATE_FORMAT"
-            )
+            patient_birth_date = date_format(result.patient_birth_date, "SHORT_DATE_FORMAT")
 
             study_date = date_format(result.study_date, "SHORT_DATE_FORMAT")
 
@@ -93,6 +92,7 @@ def write_data(writer, query_tasks, has_pseudonyms, has_series):
                     [
                         result.series_uid,
                         result.series_description,
+                        result.series_number,
                     ]
                 )
 

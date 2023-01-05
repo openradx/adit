@@ -1,7 +1,7 @@
 from datetime import time
-from django.db import models
 from django.conf import settings
 from django.core.validators import MaxValueValidator, MinValueValidator
+from django.db import models
 from traitlets import default
 from .validators import (
     no_backslash_char_validator,
@@ -72,7 +72,7 @@ class DicomNode(models.Model):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         if not self.node_type:
-            if not self.NODE_TYPE in dict(self.NodeType.choices):
+            if self.NODE_TYPE not in dict(self.NodeType.choices):
                 raise AssertionError(f"Invalid node type: {self.NODE_TYPE}")
             self.node_type = self.NODE_TYPE
 
@@ -87,9 +87,7 @@ class DicomServer(DicomNode):
     # traditional DICOM support
     ae_title = models.CharField(unique=True, max_length=16)
     host = models.CharField(max_length=255)
-    port = models.PositiveIntegerField(
-        validators=[MinValueValidator(1), MaxValueValidator(65535)]
-    )
+    port = models.PositiveIntegerField(validators=[MinValueValidator(1), MaxValueValidator(65535)])
     patient_root_find_support = models.BooleanField(default=False)
     patient_root_get_support = models.BooleanField(default=False)
     patient_root_move_support = models.BooleanField(default=False)
@@ -101,15 +99,9 @@ class DicomServer(DicomNode):
     # (optional) DICOMweb support
     dicomweb_root_url = models.CharField(blank=True, max_length=2000)
     dicomweb_auth_token = models.CharField(blank=True, max_length=2000)
-    dicomweb_qido_url_prefix = models.CharField(
-        blank=True, default="qidors", max_length=64
-    )
-    dicomweb_wado_url_prefix = models.CharField(
-        blank=True, default="wadors", max_length=64
-    )
-    dicomweb_stow_url_prefix = models.CharField(
-        blank=True, default="stowrs", max_length=64
-    )
+    dicomweb_qido_url_prefix = models.CharField(blank=True, default="qidors", max_length=64)
+    dicomweb_wado_url_prefix = models.CharField(blank=True, default="wadors", max_length=64)
+    dicomweb_stow_url_prefix = models.CharField(blank=True, default="stowrs", max_length=64)
     dicomweb_qido_support = models.BooleanField(default=False)
     dicomweb_wado_support = models.BooleanField(default=False)
     dicomweb_stow_support = models.BooleanField(default=False)
@@ -160,9 +152,7 @@ class DicomJob(models.Model):
         ]
 
     source = models.ForeignKey(DicomNode, related_name="+", on_delete=models.PROTECT)
-    status = models.CharField(
-        max_length=2, choices=Status.choices, default=Status.UNVERIFIED
-    )
+    status = models.CharField(max_length=2, choices=Status.choices, default=Status.UNVERIFIED)
     urgent = models.BooleanField(default=False)
     message = models.TextField(blank=True, default="")
     owner = models.ForeignKey(
@@ -224,9 +214,7 @@ class TransferJob(DicomJob):
             )
         ]
 
-    destination = models.ForeignKey(
-        DicomNode, related_name="+", on_delete=models.PROTECT
-    )
+    destination = models.ForeignKey(DicomNode, related_name="+", on_delete=models.PROTECT)
     trial_protocol_id = models.CharField(
         blank=True, max_length=64, validators=[no_backslash_char_validator]
     )
@@ -236,18 +224,9 @@ class TransferJob(DicomJob):
     archive_password = models.CharField(blank=True, max_length=50)
 
     # Xnat fields
-    xnat_source_project_id = models.CharField(
-        blank=True,
-        max_length=64
-    )
-    xnat_destination_project_id = models.CharField(
-        blank=True,
-        max_length=64
-    ) 
-    xnat_destination_subject_id = models.CharField(
-        blank=True,
-        max_length=64
-    )
+    xnat_source_project_id = models.CharField(blank=True, max_length=64)
+    xnat_destination_project_id = models.CharField(blank=True, max_length=64)
+    xnat_destination_subject_id = models.CharField(blank=True, max_length=64)
 
 
 class DicomTask(models.Model):
@@ -280,9 +259,7 @@ class DicomTask(models.Model):
     end = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):
-        return (
-            f"{self.__class__.__name__} [Job ID {self.job.id}, Task ID {self.task_id}]"
-        )
+        return f"{self.__class__.__name__} [Job ID {self.job.id}, Task ID {self.task_id}]"
 
 
 class TransferTask(DicomTask):

@@ -1,4 +1,5 @@
 from datetime import datetime
+from celery import current_app
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.urls import reverse
@@ -27,19 +28,14 @@ class BatchQueryJob(DicomJob):
     )
 
     def delay(self):
-        # pylint: disable=import-outside-toplevel
-        from .tasks import process_batch_query_job
-
-        process_batch_query_job.delay(self.id)
+        current_app.send_task("adit.selective_transfer.tasks.ProcessBatchQueryJob", (self.id,))
 
     def get_absolute_url(self):
         return reverse("batch_query_job_detail", args=[str(self.id)])
 
 
 class BatchQueryTask(DicomTask):
-    job = models.ForeignKey(
-        BatchQueryJob, on_delete=models.CASCADE, related_name="tasks"
-    )
+    job = models.ForeignKey(BatchQueryJob, on_delete=models.CASCADE, related_name="tasks")
     lines = models.JSONField(default=list)
     patient_id = models.CharField(
         blank=True,
@@ -91,21 +87,26 @@ class BatchQueryTask(DicomTask):
         blank=True,
         validators=[validate_modalities],
     )
-    pseudonym = (  # allow to pipe pseudonym through to a possible batch transfer
-        models.CharField(
-            blank=True,
-            max_length=64,
-            validators=[no_backslash_char_validator, no_control_chars_validator],
-        )
+    pseudonym = models.CharField(  # allow to pipe pseudonym through to a possible batch transfer
+        blank=True,
+        max_length=64,
+        validators=[no_backslash_char_validator, no_control_chars_validator],
     )
     series_description = models.CharField(
         blank=True,
         max_length=64,
     )
+    series_number = models.CharField(
+        blank=True,
+        max_length=32,
+        validators=[
+            no_backslash_char_validator,
+            no_control_chars_validator,
+            no_wildcard_chars_validator,
+        ],
+    )
 
     def clean(self) -> None:
-        print(self.__dict__)
-
         if not self.accession_number and not self.modalities:
             raise ValidationError("Missing Modality.")
 
@@ -122,12 +123,8 @@ class BatchQueryTask(DicomTask):
 
 
 class BatchQueryResult(models.Model):
-    job = models.ForeignKey(
-        BatchQueryJob, on_delete=models.CASCADE, related_name="results"
-    )
-    query = models.ForeignKey(
-        BatchQueryTask, on_delete=models.CASCADE, related_name="results"
-    )
+    job = models.ForeignKey(BatchQueryJob, on_delete=models.CASCADE, related_name="results")
+    query = models.ForeignKey(BatchQueryTask, on_delete=models.CASCADE, related_name="results")
     patient_id = models.CharField(
         max_length=64,
         validators=[
@@ -181,12 +178,10 @@ class BatchQueryResult(models.Model):
         null=True,
         blank=True,
     )
-    pseudonym = (  # allow to pipe pseudonym through to a possible batch transfer
-        models.CharField(
-            blank=True,
-            max_length=64,
-            validators=[no_backslash_char_validator, no_control_chars_validator],
-        )
+    pseudonym = models.CharField(  # allow to pipe pseudonym through to a possible batch transfer
+        blank=True,
+        max_length=64,
+        validators=[no_backslash_char_validator, no_control_chars_validator],
     )
     series_uid = models.CharField(
         blank=True,
@@ -200,6 +195,15 @@ class BatchQueryResult(models.Model):
     series_description = models.CharField(
         blank=True,
         max_length=64,
+        validators=[
+            no_backslash_char_validator,
+            no_control_chars_validator,
+            no_wildcard_chars_validator,
+        ],
+    )
+    series_number = models.CharField(
+        blank=True,
+        max_length=32,
         validators=[
             no_backslash_char_validator,
             no_control_chars_validator,
