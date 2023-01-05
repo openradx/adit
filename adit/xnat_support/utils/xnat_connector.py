@@ -4,7 +4,6 @@ import re
 import os
 
 import xnat
-import pyxnat
 from typing import Dict, List, Literal, Union, Any
 import time
 import datetime
