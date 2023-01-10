@@ -1,6 +1,10 @@
 import pytest
 from playwright.sync_api import Page, expect
 from adit.selective_transfer.models import SelectiveTransferJob
+from adit.groups.models import Access
+from adit.core.models import DicomNode
+from django.contrib.auth.models import Group
+
 
 
 @pytest.mark.integration
@@ -8,7 +12,13 @@ from adit.selective_transfer.models import SelectiveTransferJob
 def test_unpseudonymized_urgent_selective_transfer(
     page: Page, setup_orthancs, adit_celery_worker, channels_liver_server, create_and_login_user
 ):
+    
+    Group.objects.create(name="DIR")
+    Access.objects.create(access_type="src", group=Group.objects.get(name="DIR"), node=DicomNode.objects.get(name="Orthanc Test Server 1"))
+    Access.objects.create(access_type="dst", group=Group.objects.get(name="DIR"), node=DicomNode.objects.get(name="Orthanc Test Server 2"))
+    
     user = create_and_login_user(channels_liver_server.url)
+    user.join_group("DIR")
     user.join_group("selective_transfer_group")
     user.add_permission("can_process_urgently", SelectiveTransferJob)
     user.add_permission("can_transfer_unpseudonymized", SelectiveTransferJob)
