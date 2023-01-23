@@ -7,7 +7,13 @@ from django.core.management import call_command
 from playwright.sync_api import Locator, Page
 from adit.accounts.factories import UserFactory
 from adit.core.factories import DicomServerFactory
+from adit.accounts.models import User
 from adit.testing import ChannelsLiveServer
+from django.contrib.auth.models import Group
+from adit.core.models import DicomNode
+from adit.groups.models import Access
+# from adit.groups.factories import GroupFactory, AccessFactory
+
 
 
 def poll(
@@ -37,6 +43,28 @@ def channels_liver_server(request):
     server = ChannelsLiveServer()
     request.addfinalizer(server.stop)
     return server
+
+
+@pytest.fixture
+def user_with_permission(db):
+    user = UserFactory()
+    batch_transfer_group = Group.objects.get(name="batch_transfer_group")
+    user.groups.add(batch_transfer_group)
+    return user
+
+
+@pytest.fixture
+def user_with_permission_and_general_access(db):
+    user = UserFactory()
+    batch_transfer_group = Group.objects.get(name="batch_transfer_group")
+    user.groups.add(batch_transfer_group)
+    Group.objects.create(name="test_group")
+    for node in DicomNode.objects.all():
+        Access.objects.create(access_type="src", group=Group.objects.get(name="test_group"), node=node)
+        Access.objects.create(access_type="dst", group=Group.objects.get(name="test_group"), node=node)
+    user.join_group("test_group")
+
+    return user
 
 
 @pytest.fixture
@@ -90,3 +118,40 @@ def create_and_login_user(page: Page, login_user):
         return user
 
     return _create_and_login_user
+
+
+# @pytest.fixture
+# def add_source_access_to_group(db, group: str, server: str):
+#     Access.objects.create(
+#         access_type="src",
+#         group=Group.objects.get(name=group),
+#         node=DicomNode.objects.get(name=server),
+#     )
+
+
+# @pytest.fixture
+# def add_destination_access_to_group(group: str, server: str):
+#     Access.objects.create(
+#         access_type="dst",
+#         group=Group.objects.get(name=group),
+#         node=DicomNode.objects.get(name=server),
+#     )
+
+
+# @pytest.fixture
+# def remove_source_access_from_group(group: str, server: str):
+#     Access.objects.filter(
+#         access_type="dst",
+#         group=Group.objects.get(name=group),
+#         node=DicomNode.objects.get(name=server),
+#     ).delete()
+
+
+# @pytest.fixture
+# def remove_destination_access_from_group(group: str, server: str):
+#     Access.objects.filter(
+#         access_type="dst",
+#         group=Group.objects.get(name=group),
+#         node=DicomNode.objects.get(name=server),
+#     ).delete()
+    

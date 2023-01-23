@@ -7,6 +7,9 @@ from pytest_django.asserts import assertTemplateUsed
 from adit.accounts.factories import UserFactory
 from adit.core.factories import DicomServerFactory
 from ..models import BatchTransferJob
+from adit.groups.models import Access
+from adit.core.models import DicomNode
+
 
 csv_data = b"""\
 PatientID;StudyInstanceUID;Pseudonym
@@ -72,7 +75,16 @@ def test_logged_in_user_with_permission_can_access_form(client, user_with_permis
 def test_batch_job_created_and_enqueued_with_auto_verify(
     send_task_mock, client, user_with_permission, settings, form_data
 ):
-    client.force_login(user_with_permission)
+    user = user_with_permission
+    client.force_login(user)
+    
+    Group.objects.create(name="DIR")
+    for node in DicomNode.objects.all():
+        Access.objects.create(access_type="src", group=Group.objects.get(name="DIR"), node=node)
+        Access.objects.create(access_type="dst", group=Group.objects.get(name="DIR"), node=node)
+    
+    user.join_group("DIR")
+    # client.force_login(user_with_permission)
     settings.BATCH_TRANSFER_UNVERIFIED = True
     client.post(reverse("batch_transfer_job_create"), form_data)
     job = BatchTransferJob.objects.first()
@@ -86,7 +98,16 @@ def test_batch_job_created_and_enqueued_with_auto_verify(
 def test_batch_job_created_and_not_enqueued_without_auto_verify(
     send_task_mock, client, user_with_permission, settings, form_data
 ):
-    client.force_login(user_with_permission)
+    user = user_with_permission
+    client.force_login(user)
+
+    Group.objects.create(name="DIR")
+    for node in DicomNode.objects.all():
+        Access.objects.create(access_type="src", group=Group.objects.get(name="DIR"), node=node)
+        Access.objects.create(access_type="dst", group=Group.objects.get(name="DIR"), node=node)
+    
+    user.join_group("DIR")
+    
     settings.BATCH_TRANSFER_UNVERIFIED = False
     client.post(reverse("batch_transfer_job_create"), form_data)
     job = BatchTransferJob.objects.first()

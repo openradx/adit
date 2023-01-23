@@ -50,15 +50,14 @@ def test_field_labels():
 @pytest.mark.django_db
 @patch("adit.batch_transfer.forms.BatchTransferFileParser.parse", autospec=True)
 @patch("adit.batch_transfer.forms.chardet.detect", return_value={"encoding": "UTF-8"})
-def test_with_valid_data(_, parse_mock, data_dict, file_dict):
+def test_with_valid_data(_, parse_mock, data_dict, file_dict, user_with_permission_and_general_access):
     # Arrange
     parse_mock.return_value = []
-    user = create_autospec(User)
-    user.has_perm.return_value = True
-
+    user = user_with_permission_and_general_access
+    
     # Act
     form = BatchTransferJobForm(data_dict, file_dict, user=user)
-
+    
     # Assert
     assert form.is_valid()
     parse_mock.assert_called_once()
@@ -98,3 +97,4 @@ def test_disallow_too_large_file(data_dict):
     # Assert
     assert not form.is_valid()
     assert "File too large" in form.errors["batch_file"][0]
+

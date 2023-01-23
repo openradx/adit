@@ -91,3 +91,10 @@ class TransferTaskFactory(DicomTaskFactory):
     study_uid = factory.Faker("uuid4")
     series_uids = factory.LazyFunction(generate_uids)
     pseudonym = factory.Faker("hexify", text="^^^^^^^^^^")
+
+# class AccessFactory(factory.django.DjangoModelFactory):
+    
+#     class Meta:
+#         model = None
+    
+    
