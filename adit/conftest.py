@@ -12,8 +12,6 @@ from adit.testing import ChannelsLiveServer
 from django.contrib.auth.models import Group
 from adit.core.models import DicomNode
 from adit.groups.models import Access
-# from adit.groups.factories import GroupFactory, AccessFactory
-
 
 
 def poll(
@@ -118,40 +116,3 @@ def create_and_login_user(page: Page, login_user):
         return user
 
     return _create_and_login_user
-
-
-# @pytest.fixture
-# def add_source_access_to_group(db, group: str, server: str):
-#     Access.objects.create(
-#         access_type="src",
-#         group=Group.objects.get(name=group),
-#         node=DicomNode.objects.get(name=server),
-#     )
-
-
-# @pytest.fixture
-# def add_destination_access_to_group(group: str, server: str):
-#     Access.objects.create(
-#         access_type="dst",
-#         group=Group.objects.get(name=group),
-#         node=DicomNode.objects.get(name=server),
-#     )
-
-
-# @pytest.fixture
-# def remove_source_access_from_group(group: str, server: str):
-#     Access.objects.filter(
-#         access_type="dst",
-#         group=Group.objects.get(name=group),
-#         node=DicomNode.objects.get(name=server),
-#     ).delete()
-
-
-# @pytest.fixture
-# def remove_destination_access_from_group(group: str, server: str):
-#     Access.objects.filter(
-#         access_type="dst",
-#         group=Group.objects.get(name=group),
-#         node=DicomNode.objects.get(name=server),
-#     ).delete()
-    
