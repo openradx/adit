@@ -124,7 +124,7 @@ python-versions = "*"
 
 [[package]]
 name = "black"
-version = "22.12.0"
+version = "23.1.0"
 description = "The uncompromising code formatter."
 category = "dev"
 optional = false
@@ -133,9 +133,10 @@ python-versions = ">=3.7"
 [package.dependencies]
 click = ">=8.0.0"
 mypy-extensions = ">=0.4.3"
+packaging = ">=22.0"
 pathspec = ">=0.9.0"
 platformdirs = ">=2"
-tomli = {version = ">=1.1.0", markers = "python_full_version < \"3.11.0a7\""}
+tomli = {version = ">=1.1.0", markers = "python_version < \"3.11\""}
 typing-extensions = {version = ">=3.10.0.0", markers = "python_version < \"3.10\""}
 
 [package.extras]
@@ -370,7 +371,7 @@ toml = ["tomli"]
 
 [[package]]
 name = "cryptography"
-version = "38.0.4"
+version = "39.0.2"
 description = "cryptography is a package which provides cryptographic recipes and primitives to Python developers."
 category = "main"
 optional = false
@@ -380,12 +381,14 @@ python-versions = ">=3.6"
 cffi = ">=1.12"
 
 [package.extras]
-docs = ["sphinx (>=1.6.5,!=1.8.0,!=3.1.0,!=3.1.1)", "sphinx-rtd-theme"]
+docs = ["sphinx (>=5.3.0)", "sphinx-rtd-theme (>=1.1.1)"]
 docstest = ["pyenchant (>=1.6.11)", "twine (>=1.12.0)", "sphinxcontrib-spelling (>=4.0.1)"]
-pep8test = ["black", "flake8", "flake8-import-order", "pep8-naming"]
+pep8test = ["black", "ruff", "mypy", "types-pytz", "types-requests", "check-manifest"]
 sdist = ["setuptools-rust (>=0.11.4)"]
 ssh = ["bcrypt (>=3.1.5)"]
-test = ["pytest (>=6.2.0)", "pytest-benchmark", "pytest-cov", "pytest-subtests", "pytest-xdist", "pretend", "iso8601", "pytz", "hypothesis (>=1.11.4,!=3.79.2)"]
+test = ["pytest (>=6.2.0)", "pytest-shard (>=0.1.2)", "pytest-benchmark", "pytest-cov", "pytest-subtests", "pytest-xdist", "pretend", "iso8601", "pytz", "hypothesis (>=1.11.4,!=3.79.2)"]
+test-randomorder = ["pytest-randomly"]
+tox = ["tox"]
 
 [[package]]
 name = "daphne"
@@ -449,11 +452,14 @@ bcrypt = ["bcrypt"]
 
 [[package]]
 name = "django-crispy-forms"
-version = "1.14.0"
+version = "2.0"
 description = "Best way to have Django DRY forms"
 category = "main"
 optional = false
 python-versions = ">=3.7"
+
+[package.dependencies]
+django = ">=3.2"
 
 [[package]]
 name = "django-debug-permissions"
@@ -480,11 +486,11 @@ sqlparse = ">=0.2"
 
 [[package]]
 name = "django-environ"
-version = "0.9.0"
+version = "0.10.0"
 description = "A package that allows you to utilize 12factor inspired environment variables to configure your Django application."
 category = "main"
 optional = false
-python-versions = ">=3.4,<4"
+python-versions = ">=3.5,<4"
 
 [package.extras]
 develop = ["coverage[toml] (>=5.0a4)", "pytest (>=4.6.11)", "furo (>=2021.8.17b43,<2021.9.0)", "sphinx (>=3.5.0)", "sphinx-notfound-page"]
@@ -567,7 +573,7 @@ tablib = ["tablib"]
 
 [[package]]
 name = "django-types"
-version = "0.16.0"
+version = "0.17.0"
 description = "Type stubs for Django"
 category = "dev"
 optional = false
@@ -595,7 +601,7 @@ python-versions = "*"
 
 [[package]]
 name = "exceptiongroup"
-version = "1.1.0"
+version = "1.1.1"
 description = "Backport of PEP 654 (exception groups)"
 category = "dev"
 optional = false
@@ -632,7 +638,7 @@ doc = ["sphinx", "sphinx-rtd-theme", "sphinxcontrib-spelling"]
 
 [[package]]
 name = "faker"
-version = "15.3.4"
+version = "17.6.0"
 description = "Faker is a Python package that generates fake data for you."
 category = "dev"
 optional = false
@@ -643,16 +649,16 @@ python-dateutil = ">=2.4"
 
 [[package]]
 name = "flake8"
-version = "5.0.4"
+version = "6.0.0"
 description = "the modular source code checker: pep8 pyflakes and co"
 category = "dev"
 optional = false
-python-versions = ">=3.6.1"
+python-versions = ">=3.8.1"
 
 [package.dependencies]
 mccabe = ">=0.7.0,<0.8.0"
-pycodestyle = ">=2.9.0,<2.10.0"
-pyflakes = ">=2.5.0,<2.6.0"
+pycodestyle = ">=2.10.0,<2.11.0"
+pyflakes = ">=3.0.0,<3.1.0"
 
 [[package]]
 name = "flake8-pyproject"
@@ -1200,7 +1206,7 @@ pyasn1 = ">=0.4.6,<0.5.0"
 
 [[package]]
 name = "pycodestyle"
-version = "2.9.1"
+version = "2.10.0"
 description = "Python style guide checker"
 category = "dev"
 optional = false
@@ -1238,7 +1244,7 @@ typing-extensions = "*"
 
 [[package]]
 name = "pyflakes"
-version = "2.5.0"
+version = "3.0.1"
 description = "passive checker of Python programs"
 category = "dev"
 optional = false
@@ -1762,7 +1768,7 @@ testing = ["coverage (>=5.0.3)", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.9"
-content-hash = "5b68092ef6885bdef17c3f258b14375f605b40598ee0d3cd2046b1a7f38700c7"
+content-hash = "56edc87dcf21f7cf24049ba7e209f1ce28b43990d18d8accb4e651fefad66eb2"
 
 [metadata.files]
 amqp = []
