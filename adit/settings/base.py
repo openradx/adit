@@ -55,6 +55,7 @@ INSTALLED_APPS = [
     "revproxy",
     "loginas",
     "crispy_forms",
+    "crispy_bootstrap4",
     "django_tables2",
     "rest_framework",
     "adit.core.apps.CoreConfig",
@@ -233,6 +234,7 @@ AUTH_USER_MODEL = "accounts.User"
 LOGIN_REDIRECT_URL = "home"
 
 # For crispy forms
+CRISPY_ALLOWED_TEMPLATE_PACKS = "bootstrap4"
 CRISPY_TEMPLATE_PACK = "bootstrap4"
 
 # This seems to be imporant for development on Gitpod as CookieStorage

@@ -370,6 +370,18 @@ tomli = {version = "*", optional = true, markers = "python_full_version <= \"3.1
 toml = ["tomli"]
 
 [[package]]
+name = "crispy-bootstrap4"
+version = "2022.1"
+description = "Bootstrap4 template pack for django-crispy-forms"
+category = "main"
+optional = false
+python-versions = ">=3.7"
+
+[package.dependencies]
+django = ">=3.2"
+django-crispy-forms = ">=1.14.0"
+
+[[package]]
 name = "cryptography"
 version = "39.0.2"
 description = "cryptography is a package which provides cryptographic recipes and primitives to Python developers."
@@ -452,11 +464,14 @@ bcrypt = ["bcrypt"]
 
 [[package]]
 name = "django-crispy-forms"
-version = "1.14.0"
+version = "2.0"
 description = "Best way to have Django DRY forms"
 category = "main"
 optional = false
 python-versions = ">=3.7"
+
+[package.dependencies]
+django = ">=3.2"
 
 [[package]]
 name = "django-debug-permissions"
@@ -1765,7 +1780,7 @@ testing = ["coverage (>=5.0.3)", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.9"
-content-hash = "f12a689e6bf6aef86799f620f608f73e5e05c734963da6dbba7c35822f9ca2fa"
+content-hash = "d1480026fc29b9b694042c0e143376a3d90210828e93d400f57f1a6e7bcf7776"
 
 [metadata.files]
 amqp = []
@@ -1795,6 +1810,7 @@ colorama = []
 comm = []
 constantly = []
 coverage = []
+crispy-bootstrap4 = []
 cryptography = []
 daphne = []
 debugpy = []
