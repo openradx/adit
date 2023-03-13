@@ -532,6 +532,17 @@ python-versions = ">=3.7"
 Django = ">=3.2"
 
 [[package]]
+name = "django-htmx"
+version = "1.14.0"
+description = "Extensions for using Django with htmx."
+category = "main"
+optional = false
+python-versions = ">=3.7"
+
+[package.dependencies]
+Django = ">=3.2"
+
+[[package]]
 name = "django-loginas"
 version = "0.3.11"
 description = "An app to add a \"Log in as user\" button in the Django user admin page."
@@ -1780,7 +1791,7 @@ testing = ["coverage (>=5.0.3)", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.9"
-content-hash = "d1480026fc29b9b694042c0e143376a3d90210828e93d400f57f1a6e7bcf7776"
+content-hash = "7d1bfd6d68b3ce43c4d4b886858ecd6034c69087a48f6789a806464bca12c362"
 
 [metadata.files]
 amqp = []
@@ -1823,6 +1834,7 @@ django-debug-toolbar = []
 django-environ = []
 django-extensions = []
 django-filter = []
+django-htmx = []
 django-loginas = []
 django-registration-redux = []
 django-revproxy = []

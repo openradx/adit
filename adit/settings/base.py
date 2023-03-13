@@ -56,6 +56,7 @@ INSTALLED_APPS = [
     "loginas",
     "crispy_forms",
     "crispy_bootstrap4",
+    "django_htmx",
     "django_tables2",
     "rest_framework",
     "adit.core.apps.CoreConfig",
@@ -77,6 +78,7 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "django.contrib.sites.middleware.CurrentSiteMiddleware",
+    "django_htmx.middleware.HtmxMiddleware",
     "adit.core.middlewares.MaintenanceMiddleware",
     "adit.core.middlewares.TimezoneMiddleware",
 ]

@@ -36,6 +36,7 @@ whitenoise = "^6.0.0"
 daphne = "^4.0.0"
 channels-redis = "^4.0.0"
 crispy-bootstrap4 = "^2022.1"
+django-htmx = "^1.14.0"
 
 [tool.poetry.dev-dependencies]
 black = "^23.1.0"
