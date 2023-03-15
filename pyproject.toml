@@ -64,7 +64,7 @@ ruff = "^0.0.255"
 [tool.ruff]
 exclude = ["migrations"]
 line-length = 100
-select = ["E", "F", "I"]
+select = ["E", "F", "I", "DJ"]
 
 [tool.black]
 exclude = "migrations"

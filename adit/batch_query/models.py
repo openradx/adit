@@ -210,3 +210,6 @@ class BatchQueryResult(models.Model):
     @property
     def study_date_time(self):
         return datetime.combine(self.study_date, self.study_time)
+
+    def __str__(self):
+        return f"{self.__class__.__name__} [ID {self.id}]"

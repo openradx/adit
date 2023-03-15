@@ -24,6 +24,9 @@ class CoreSettings(models.Model):
     def get(cls):
         return cls.objects.first()
 
+    def __str__(self):
+        return f"{self.__class__.__name__} [ID {self.id}]"
+
 
 def slot_time(hour, minute):
     return time(hour, minute)
