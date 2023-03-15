@@ -1,10 +1,12 @@
 import time
 from multiprocessing import Process
 from typing import Callable
+
 import pytest
 from django.conf import settings
 from django.core.management import call_command
 from playwright.sync_api import Locator, Page
+
 from adit.accounts.factories import UserFactory
 from adit.core.factories import DicomServerFactory
 from adit.testing import ChannelsLiveServer

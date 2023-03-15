@@ -1,4 +1,5 @@
 from django.urls import path
+
 from .consumers import SelectiveTransferConsumer
 
 websocket_urlpatterns = [

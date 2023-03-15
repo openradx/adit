@@ -1,5 +1,6 @@
 import django_tables2 as tables
 from django.utils.html import format_html
+
 from .templatetags.core_extras import (
     dicom_job_status_css_class,
     dicom_task_status_css_class,

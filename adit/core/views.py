@@ -1,4 +1,5 @@
 from typing import Any, Dict, Optional
+
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
@@ -20,7 +21,9 @@ from django.views.generic.edit import CreateView, DeleteView, FormView
 from django_filters.views import FilterView
 from django_tables2 import SingleTableMixin
 from revproxy.views import ProxyView
+
 from adit.core.tasks import broadcast_mail
+
 from ..celery import app as celery_app
 from .forms import BroadcastForm
 from .mixins import OwnerRequiredMixin, PageSizeSelectMixin

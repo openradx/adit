@@ -1,8 +1,10 @@
 from datetime import datetime
+
 from celery import current_app
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.urls import reverse
+
 from adit.core.models import AppSettings, DicomJob, DicomTask
 from adit.core.validators import (
     no_backslash_char_validator,

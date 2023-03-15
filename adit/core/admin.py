@@ -1,4 +1,5 @@
 from django.contrib import admin
+
 from .models import CoreSettings, DicomFolder, DicomServer
 
 admin.site.site_header = "ADIT administration"

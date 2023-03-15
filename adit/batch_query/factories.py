@@ -1,6 +1,8 @@
 import factory
 from faker import Faker
+
 from adit.core.factories import DicomJobFactory, DicomTaskFactory
+
 from .models import BatchQueryJob, BatchQueryResult, BatchQueryTask
 
 fake = Faker()

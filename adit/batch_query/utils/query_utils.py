@@ -1,11 +1,14 @@
 import logging
 from typing import Any, Dict, List, Optional
+
 from celery.contrib.abortable import AbortableTask as AbortableCeleryTask
 from django.conf import settings
 from django.template.defaultfilters import pluralize
 from django.utils import timezone
+
 from adit.core.utils.dicom_connector import DicomConnector
 from adit.core.utils.task_utils import hijack_logger, store_log_in_task
+
 from ..models import BatchQueryResult, BatchQueryTask
 
 logger = logging.getLogger(__name__)

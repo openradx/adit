@@ -1,7 +1,9 @@
 from datetime import time
+
 from django.conf import settings
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
+
 from .validators import (
     no_backslash_char_validator,
     no_control_chars_validator,

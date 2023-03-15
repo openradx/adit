@@ -1,4 +1,5 @@
 from adit.core.parsers import BatchFileParser
+
 from .serializers import BatchQueryTaskSerializer
 
 mapping = {

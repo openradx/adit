@@ -6,13 +6,16 @@ from datetime import datetime
 from functools import partial
 from pathlib import Path
 from typing import Any, Callable, Dict, List
+
 import humanize
 from celery.contrib.abortable import AbortableTask as AbortableCeleryTask
 from dicognito.anonymizer import Anonymizer
 from django.conf import settings
 from django.utils import timezone
 from pydicom import Dataset
+
 from adit.core.utils.task_utils import hijack_logger, store_log_in_task
+
 from ..errors import RetriableTaskError
 from ..models import DicomNode, TransferJob, TransferTask
 from .dicom_connector import DicomConnector

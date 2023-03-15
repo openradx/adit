@@ -1,10 +1,12 @@
 from typing import Any, Dict
+
 from django.conf import settings
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import HttpResponseBadRequest
 from django.urls import reverse_lazy
 from django.views.generic import DetailView
 from django_tables2 import SingleTableMixin
+
 from adit.core.mixins import OwnerRequiredMixin, PageSizeSelectMixin, RelatedFilterMixin
 from adit.core.views import (
     DicomJobCancelView,
@@ -17,6 +19,7 @@ from adit.core.views import (
     DicomTaskDetailView,
     TransferJobListView,
 )
+
 from .filters import SelectiveTransferJobFilter, SelectiveTransferTaskFilter
 from .forms import SelectiveTransferJobForm
 from .mixins import SelectiveTransferJobCreateMixin

@@ -1,4 +1,5 @@
 from io import StringIO
+
 from django.conf import settings
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http.response import HttpResponse
@@ -7,6 +8,7 @@ from django.views.generic import DetailView
 from django.views.generic.base import View
 from django.views.generic.detail import SingleObjectMixin
 from django_tables2 import SingleTableMixin
+
 from adit.core.mixins import OwnerRequiredMixin, PageSizeSelectMixin, RelatedFilterMixin
 from adit.core.views import (
     DicomJobCancelView,
@@ -19,6 +21,7 @@ from adit.core.views import (
     DicomJobVerifyView,
     DicomTaskDetailView,
 )
+
 from .filters import BatchQueryJobFilter, BatchQueryResultFilter, BatchQueryTaskFilter
 from .forms import BatchQueryJobForm
 from .models import BatchQueryJob, BatchQueryTask

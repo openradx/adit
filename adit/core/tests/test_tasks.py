@@ -1,10 +1,12 @@
 from datetime import datetime
 from unittest.mock import Mock, create_autospec, patch
+
 import pytest
 from celery import Task as CeleryTask
 from celery.canvas import Signature
 from celery.result import AsyncResult, ResultBase
 from django.db.models.query import QuerySet
+
 from ..models import AppSettings, DicomJob, DicomTask
 from ..tasks import ProcessDicomJob, ProcessDicomTask
 

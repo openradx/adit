@@ -1,6 +1,8 @@
 from datetime import date
+
 import pytest
 from django.core.exceptions import ValidationError
+
 from ..factories import BatchQueryTaskFactory
 from ..models import BatchQueryTask
 

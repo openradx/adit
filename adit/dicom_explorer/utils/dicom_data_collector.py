@@ -1,5 +1,7 @@
 from datetime import datetime
+
 from django.conf import settings
+
 from adit.core.models import DicomServer
 from adit.core.utils.dicom_connector import DicomConnector
 

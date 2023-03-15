@@ -1,5 +1,7 @@
 from __future__ import absolute_import, unicode_literals
+
 import os
+
 from celery import Celery
 
 # set the default Django settings module for the 'celery' program.
@@ -23,6 +25,7 @@ from celery.signals import setup_logging  # noqa: E402
 @setup_logging.connect
 def config_loggers(*args, **kwargs):
     from logging.config import dictConfig
+
     from django.conf import settings
 
     dictConfig(settings.LOGGING)

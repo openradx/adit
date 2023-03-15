@@ -1,7 +1,9 @@
 from collections import defaultdict
 from typing import Dict, TextIO
+
 from adit.core.parsers import BatchFileParser
 from adit.core.serializers import BatchTaskSerializer
+
 from .models import BatchTransferTask
 from .serializers import BatchTransferTaskSerializer
 

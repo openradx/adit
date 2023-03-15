@@ -1,8 +1,10 @@
 import re
 from functools import reduce
+
 from django.contrib.auth.mixins import AccessMixin
 from django.forms.formsets import ORDERING_FIELD_NAME
 from django_filters.views import FilterMixin
+
 from adit.core.forms import PageSizeSelectForm
 
 

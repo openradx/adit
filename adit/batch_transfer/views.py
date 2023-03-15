@@ -3,6 +3,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.urls import reverse_lazy
 from django.views.generic import DetailView, TemplateView
 from django_tables2 import SingleTableMixin
+
 from adit.core.mixins import OwnerRequiredMixin, PageSizeSelectMixin, RelatedFilterMixin
 from adit.core.views import (
     DicomJobCancelView,
@@ -15,6 +16,7 @@ from adit.core.views import (
     DicomTaskDetailView,
     TransferJobListView,
 )
+
 from .filters import BatchTransferJobFilter, BatchTransferTaskFilter
 from .forms import BatchTransferJobForm
 from .models import BatchTransferJob, BatchTransferSettings, BatchTransferTask

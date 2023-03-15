@@ -1,4 +1,5 @@
 from io import StringIO
+
 import cchardet as chardet
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Submit
@@ -7,10 +8,12 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.utils.safestring import mark_safe
+
 from adit.core.errors import BatchFileFormatError, BatchFileSizeError
 from adit.core.fields import RestrictedFileField
 from adit.core.forms import DicomNodeChoiceField
 from adit.core.models import DicomNode
+
 from .models import BatchTransferJob, BatchTransferTask
 from .parsers import BatchTransferFileParser
 

@@ -1,6 +1,8 @@
 import csv
 from typing import Dict, TextIO, Type
+
 from django.conf import settings
+
 from .errors import BatchFileFormatError, BatchFileSizeError
 from .serializers import BatchTaskSerializer
 

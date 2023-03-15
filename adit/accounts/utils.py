@@ -1,4 +1,5 @@
 import logging
+
 from django.contrib.auth.models import Group, Permission
 
 logger = logging.getLogger(__name__)

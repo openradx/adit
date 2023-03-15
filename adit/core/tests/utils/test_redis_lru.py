@@ -1,6 +1,7 @@
 import pytest
 import redis
 from django.conf import settings
+
 from adit.core.utils.redis_lru import redis_lru
 
 

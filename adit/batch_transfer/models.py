@@ -1,6 +1,7 @@
 from celery import current_app
 from django.db import models
 from django.urls import reverse
+
 from adit.core.models import AppSettings, TransferJob, TransferTask
 
 

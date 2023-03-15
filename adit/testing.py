@@ -1,4 +1,5 @@
 from functools import partial
+
 from channels.routing import get_default_application
 from daphne.testing import DaphneProcess
 from django.contrib.staticfiles.handlers import ASGIStaticFilesHandler

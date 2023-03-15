@@ -1,6 +1,7 @@
 from django.contrib.auth.mixins import AccessMixin, LoginRequiredMixin
 from django.views.generic import DetailView
 from django.views.generic.edit import CreateView
+
 from .forms import RegistrationForm
 from .models import User
 

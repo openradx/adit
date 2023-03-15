@@ -1,5 +1,7 @@
 import django_tables2 as tables
+
 from adit.core.tables import DicomJobTable, DicomTaskTable
+
 from .models import BatchQueryJob, BatchQueryResult, BatchQueryTask
 
 

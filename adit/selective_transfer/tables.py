@@ -1,4 +1,5 @@
 from adit.core.tables import DicomTaskTable, TransferJobTable
+
 from .models import SelectiveTransferJob, SelectiveTransferTask
 
 

@@ -1,5 +1,7 @@
 from datetime import date
+
 import pytest
+
 from ..serializers import BatchQueryTaskSerializer
 
 

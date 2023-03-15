@@ -1,7 +1,9 @@
 from datetime import datetime
+
 from django.conf import settings
 from django.template import Library
 from django.template.defaultfilters import join
+
 from ..models import DicomJob, DicomTask
 
 register = Library()

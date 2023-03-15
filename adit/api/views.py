@@ -1,5 +1,7 @@
 from rest_framework import generics
+
 from adit.core.models import TransferJob
+
 from .serializers import TransferJobListSerializer
 
 

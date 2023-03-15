@@ -1,7 +1,9 @@
 from datetime import datetime, time
+
 import pytest
 import time_machine
 from django.utils import timezone
+
 from ...utils.scheduler import Scheduler, is_time_between
 
 

@@ -1,10 +1,12 @@
 import factory
 from faker import Faker
+
 from adit.core.factories import (
     DicomFolderFactory,
     TransferJobFactory,
     TransferTaskFactory,
 )
+
 from .models import BatchTransferJob, BatchTransferTask
 
 fake = Faker()

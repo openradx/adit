@@ -1,15 +1,16 @@
 from pydicom.dataset import Dataset
-from pynetdicom import AE, evt, build_role, debug_logger
-
-from pynetdicom.sop_class import (
-    PatientRootQueryRetrieveInformationModelGet,
-    EncapsulatedSTLStorage,
-    EncapsulatedOBJStorage,
-    EncapsulatedMTLStorage,
-)
-
 from pynetdicom import (
+    AE,
     StoragePresentationContexts,
+    build_role,
+    debug_logger,
+    evt,
+)
+from pynetdicom.sop_class import (
+    EncapsulatedMTLStorage,
+    EncapsulatedOBJStorage,
+    EncapsulatedSTLStorage,
+    PatientRootQueryRetrieveInformationModelGet,
 )
 
 debug_logger()

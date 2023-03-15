@@ -1,7 +1,10 @@
 import csv
+
 from django.conf import settings
 from django.utils.formats import date_format, time_format
+
 from adit.core.templatetags.core_extras import join_if_list, person_name_from_dicom
+
 from ..models import BatchQueryJob, BatchQueryResult
 
 

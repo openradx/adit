@@ -1,9 +1,11 @@
 from os import environ
+
 import factory
 from django.conf import settings
 from django.contrib.auth.models import Group, Permission
 from django.core.management.base import BaseCommand
 from faker import Faker
+
 from adit.accounts.factories import AdminUserFactory, UserFactory
 from adit.accounts.models import User
 from adit.batch_query.factories import (

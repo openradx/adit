@@ -1,6 +1,7 @@
 import subprocess
 from datetime import timedelta
 from typing import List, Type
+
 from celery import Task as CeleryTask
 from celery import chord, shared_task
 from celery.contrib.abortable import AbortableTask as AbortableCeleryTask
@@ -9,6 +10,7 @@ from django.conf import settings
 from django.core.mail import send_mail
 from django.template.defaultfilters import pluralize
 from django.utils import timezone
+
 from ..accounts.models import User
 from .models import AppSettings, DicomFolder, DicomJob, DicomTask
 from .utils.mail import (

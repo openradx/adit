@@ -1,9 +1,12 @@
 from io import StringIO
 from unittest.mock import create_autospec, patch
+
 import pytest
 from django.core.files import File
+
 from adit.accounts.models import User
 from adit.core.factories import DicomServerFactory
+
 from ..forms import BatchTransferJobForm
 
 

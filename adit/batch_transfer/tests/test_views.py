@@ -1,11 +1,14 @@
 from unittest.mock import patch
+
 import pytest
 from django.contrib.auth.models import Group
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.urls import reverse
 from pytest_django.asserts import assertTemplateUsed
+
 from adit.accounts.factories import UserFactory
 from adit.core.factories import DicomServerFactory
+
 from ..models import BatchTransferJob
 
 csv_data = b"""\

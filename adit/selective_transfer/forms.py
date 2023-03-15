@@ -1,14 +1,17 @@
 import re
+
 from crispy_forms.bootstrap import StrictButton
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Column, Div, Field, Layout, Row
 from django import forms
 from django.core.exceptions import ValidationError
 from django.utils.translation import gettext_lazy as _
+
 from adit.core.forms import DicomNodeChoiceField
 from adit.core.models import DicomNode
 from adit.core.utils.dicom_utils import person_name_to_dicom
 from adit.core.validators import no_backslash_char_validator, no_control_chars_validator
+
 from .models import SelectiveTransferJob
 
 
