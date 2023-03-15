@@ -671,34 +671,6 @@ python-versions = ">=3.7"
 python-dateutil = ">=2.4"
 
 [[package]]
-name = "flake8"
-version = "6.0.0"
-description = "the modular source code checker: pep8 pyflakes and co"
-category = "dev"
-optional = false
-python-versions = ">=3.8.1"
-
-[package.dependencies]
-mccabe = ">=0.7.0,<0.8.0"
-pycodestyle = ">=2.10.0,<2.11.0"
-pyflakes = ">=3.0.0,<3.1.0"
-
-[[package]]
-name = "flake8-pyproject"
-version = "1.2.2"
-description = "Flake8 plug-in loading the configuration from pyproject.toml"
-category = "dev"
-optional = false
-python-versions = ">= 3.6"
-
-[package.dependencies]
-Flake8 = ">=5"
-TOMLi = {version = "*", markers = "python_version < \"3.11\""}
-
-[package.extras]
-dev = ["pytest", "pytest-cov"]
-
-[[package]]
 name = "flower"
 version = "1.2.0"
 description = "Celery Flower"
@@ -885,20 +857,6 @@ test = ["pytest (<7.1)", "pytest-asyncio", "testpath"]
 test_extra = ["pytest (<7.1)", "pytest-asyncio", "testpath", "curio", "matplotlib (!=3.2.0)", "nbformat", "numpy (>=1.21)", "pandas", "trio"]
 
 [[package]]
-name = "isort"
-version = "5.12.0"
-description = "A Python utility / library to sort Python imports."
-category = "dev"
-optional = false
-python-versions = ">=3.8.0"
-
-[package.extras]
-colors = ["colorama (>=0.4.3)"]
-requirements-deprecated-finder = ["pip-api", "pipreqs"]
-pipfile-deprecated-finder = ["pip-shims (>=0.5.2)", "pipreqs", "requirementslib"]
-plugins = ["setuptools"]
-
-[[package]]
 name = "jedi"
 version = "0.18.2"
 description = "An autocompletion tool for Python that can be used for text editors."
@@ -1003,14 +961,6 @@ python-versions = ">=3.5"
 
 [package.dependencies]
 traitlets = "*"
-
-[[package]]
-name = "mccabe"
-version = "0.7.0"
-description = "McCabe checker, plugin for flake8"
-category = "dev"
-optional = false
-python-versions = ">=3.6"
 
 [[package]]
 name = "msgpack"
@@ -1228,14 +1178,6 @@ python-versions = "*"
 pyasn1 = ">=0.4.6,<0.5.0"
 
 [[package]]
-name = "pycodestyle"
-version = "2.10.0"
-description = "Python style guide checker"
-category = "dev"
-optional = false
-python-versions = ">=3.6"
-
-[[package]]
 name = "pycparser"
 version = "2.21"
 description = "C parser in Python"
@@ -1264,14 +1206,6 @@ python-versions = "*"
 
 [package.dependencies]
 typing-extensions = "*"
-
-[[package]]
-name = "pyflakes"
-version = "3.0.1"
-description = "passive checker of Python programs"
-category = "dev"
-optional = false
-python-versions = ">=3.6"
 
 [[package]]
 name = "pygments"
@@ -1526,6 +1460,14 @@ urllib3 = ">=1.21.1,<1.27"
 [package.extras]
 socks = ["PySocks (>=1.5.6,!=1.5.7)"]
 use_chardet_on_py3 = ["chardet (>=3.0.2,<6)"]
+
+[[package]]
+name = "ruff"
+version = "0.0.255"
+description = "An extremely fast Python linter, written in Rust."
+category = "dev"
+optional = false
+python-versions = ">=3.7"
 
 [[package]]
 name = "service-identity"
@@ -1791,7 +1733,7 @@ testing = ["coverage (>=5.0.3)", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.9"
-content-hash = "7d1bfd6d68b3ce43c4d4b886858ecd6034c69087a48f6789a806464bca12c362"
+content-hash = "461ae927b28763da90e24134225fb55a38552f8e55fe7e4a5af7fc45a5d68d39"
 
 [metadata.files]
 amqp = []
@@ -1846,8 +1788,6 @@ exceptiongroup = []
 executing = []
 factory-boy = []
 faker = []
-flake8 = []
-flake8-pyproject = []
 flower = []
 greenlet = []
 h2 = []
@@ -1861,14 +1801,12 @@ incremental = []
 iniconfig = []
 ipykernel = []
 ipython = []
-isort = []
 jedi = []
 jupyter-client = []
 jupyter-core = []
 kombu = []
 markdown = []
 matplotlib-inline = []
-mccabe = []
 msgpack = []
 mypy-extensions = []
 nest-asyncio = []
@@ -1891,11 +1829,9 @@ ptyprocess = []
 pure-eval = []
 pyasn1 = []
 pyasn1-modules = []
-pycodestyle = []
 pycparser = []
 pydicom = []
 pyee = []
-pyflakes = []
 pygments = []
 pynetdicom = []
 pyopenssl = []
@@ -1915,6 +1851,7 @@ pywin32 = []
 pyzmq = []
 redis = []
 requests = []
+ruff = []
 service-identity = []
 six = []
 sqlparse = []

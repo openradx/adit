@@ -1,6 +1,7 @@
 {
   "recommendations": [
     "batisteo.vscode-django",
+    "charliermarsh.ruff",
     "davidanson.vscode-markdownlint",
     "eamodio.gitlens",
     "esbenp.prettier-vscode",
@@ -11,7 +12,6 @@
     "ms-azuretools.vscode-docker",
     "ms-python.python",
     "streetsidesoftware.code-spell-checker",
-    "tomoki1207.pdf",
     "wayou.vscode-todo-highlight"
   ],
   "unwantedRecommendations": []

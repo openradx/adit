@@ -31,7 +31,7 @@ jobs:
       - name: Start Docker containers
         run: ./scripts/adit_dev_up_no_build.sh
 
-      - name: Run linting with flake8
+      - name: Run linting with ruff
         # https://github.com/actions/runner/issues/241#issuecomment-745902718
         shell: 'script -q -e -c "bash {0}"'
         run: ./scripts/adit_dev_lint.sh
