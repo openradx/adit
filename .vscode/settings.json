@@ -32,5 +32,8 @@
   },
   "[dockercompose]": {
     "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[html][django-html]": {
+    "editor.defaultFormatter": "monosans.djlint"
   }
 }

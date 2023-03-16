@@ -9,6 +9,7 @@
     "foxundermoon.shell-format",
     "mhutchie.git-graph",
     "mikestead.dotenv",
+    "monosans.djlint",
     "ms-azuretools.vscode-docker",
     "ms-python.python",
     "streetsidesoftware.code-spell-checker",
