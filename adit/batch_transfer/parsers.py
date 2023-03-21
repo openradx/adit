@@ -10,8 +10,8 @@ from .serializers import BatchTransferTaskSerializer
 mapping = {
     "patient_id": "PatientID",
     "study_uid": "StudyInstanceUID",
-    "pseudonym": "Pseudonym",
     "series_uids": "SeriesInstanceUID",
+    "pseudonym": "Pseudonym",
 }
 
 
@@ -33,9 +33,10 @@ class BatchTransferFileParser(BatchFileParser):
     def parse(self, batch_file: TextIO, max_batch_size: int):
         tasks: list[BatchTransferTask] = super().parse(batch_file, max_batch_size)
 
-        # Tasks with different series of same study must be grouped togehter.
-        # This is even necessary for pseudonymization that all the series get
-        # the same pseudonymized Study Instance UID.
+        # Tasks with different series of the same study must be grouped together.
+        # This is necessary for pseudonymization, so that the whole study
+        # (with its series) are processed by one to worker and get the same
+        # pseudonymized Study Instance UID.
         tasks_by_study = defaultdict(list)
         for task in tasks:
             tasks_by_study[task.study_uid].append(task)
@@ -66,6 +67,9 @@ class BatchTransferFileParser(BatchFileParser):
         return tasks_to_transfer
 
     def transform_value(self, field: str, value):
+        # Model field series_uids is a list of Series Instance UIDs, so we
+        # have to convert our UIDs to a list first that are later grouped
+        # together to the correct study (see above).
         if field == "series_uids":
             return [value]
 
