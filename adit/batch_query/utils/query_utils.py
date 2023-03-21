@@ -145,7 +145,7 @@ class QueryExecutor:
                 "AccessionNumber": self.query_task.accession_number,
                 "StudyDate": study_date,
                 "StudyTime": "",
-                "StudyDescription": "",
+                "StudyDescription": self.query_task.study_description,
                 "ModalitiesInStudy": modalities,
                 "NumberOfStudyRelatedInstances": "",
             }

@@ -207,10 +207,23 @@ class DicomConnector:
         if "NumberOfStudyRelatedInstances" not in query:
             query["NumberOfStudyRelatedInstances"] = ""
 
-        studies = self._send_c_find(
-            query,
-            limit_results=limit_results,
-        )
+        # We filter for StudyDescription programmatically, so that we can use
+        # more advanced regular expressions.
+        study_description = query.get("StudyDescription")
+        if study_description:
+            study_description = study_description.lower()
+            query["StudyDescription"] = ""
+
+        studies = self._send_c_find(query, limit_results=limit_results)
+
+        if study_description:
+            studies = list(
+                filter(
+                    lambda x: re.search(study_description, x["StudyDescription"].lower()),
+                    studies,
+                )
+            )
+
         query_modalities = query.get("ModalitiesInStudy")
         if not query_modalities:
             return studies
