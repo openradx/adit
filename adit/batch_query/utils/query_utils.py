@@ -53,31 +53,35 @@ class QueryExecutor:
                 self.query_task.status = BatchQueryTask.Status.FAILURE
                 self.query_task.message = "Patient not found."
             else:
-                all_studies = []  # a list of study lists (per patient)
+                all_results = []  # a list of studies and/or series (per patient)
                 for patient in patients:
                     studies = self._query_studies(patient["PatientID"])
                     if studies:
-                        if self.query_task.series_description or self.query_task.series_number:
+                        if self.query_task.series_description or self.query_task.series_numbers:
                             for study in studies:
                                 series = self._query_series(study)
-                                all_studies.append(series)
+                                all_results.append(series)
                         else:
-                            all_studies.append(studies)
+                            all_results.append(studies)
 
-                if len(all_studies) == 0:
+                if len(all_results) == 0:
                     self.query_task.status = BatchQueryTask.Status.WARNING
                     self.query_task.message = "No studies for patient found."
                 else:
-                    all_studies_flattened = [study for studies in all_studies for study in studies]
-                    results = self._save_results(all_studies_flattened)
+                    flattened_results = [
+                        study_or_series
+                        for studies_or_series in all_results
+                        for study_or_series in studies_or_series
+                    ]
+                    saved_results = self._save_results(flattened_results)
 
-                    num = len(results)
+                    num = len(saved_results)
                     if self.query_task.series_description:
                         study_count = f"{num} series"
                     else:
                         study_count = f"{num} stud{pluralize(num, 'y,ies')}"
 
-                    if len(all_studies) == 1:  # Only studies of one patient found
+                    if len(saved_results) == 1:  # Only studies of one patient found
                         self.query_task.status = BatchQueryTask.Status.SUCCESS
                         self.query_task.message = f"{study_count} found."
                     else:  # Studies of multiple patients found
@@ -156,7 +160,7 @@ class QueryExecutor:
                 "StudyInstanceUID": study["StudyInstanceUID"],
                 "SeriesInstanceUID": "",
                 "SeriesDescription": self.query_task.series_description,
-                "SeriesNumber": self.query_task.series_number,
+                "SeriesNumber": self.query_task.series_numbers,
             }
         )
 
@@ -165,38 +169,46 @@ class QueryExecutor:
 
         return found_series
 
-    def _save_results(self, studies: List[Dict[str, Any]]) -> List[BatchQueryResult]:
-        results = []
-        for study in studies:
+    def _save_results(self, results: List[Dict[str, Any]]) -> List[BatchQueryResult]:
+        results_to_save = []
+        for result in results:
             series_uid = ""
-            if "SeriesInstanceUID" in study:
-                series_uid = study["SeriesInstanceUID"]
+            if "SeriesInstanceUID" in result:
+                series_uid = result["SeriesInstanceUID"]
+
+            study_description = ""
+            if "StudyDescription" in result:
+                study_description = result["StudyDescription"]
+
             series_description = ""
-            if "SeriesDescription" in study:
-                series_description = study["SeriesDescription"]
+            if "SeriesDescription" in result:
+                series_description = result["SeriesDescription"]
+
             series_number = ""
-            if "SeriesNumber" in study:
-                series_number = study["SeriesNumber"]
-            result = BatchQueryResult(
+            if "SeriesNumber" in result:
+                series_number = result["SeriesNumber"]
+
+            result_to_save = BatchQueryResult(
                 job=self.query_task.job,
                 query=self.query_task,
-                patient_id=study["PatientID"],
-                patient_name=study["PatientName"],
-                patient_birth_date=study["PatientBirthDate"],
-                study_uid=study["StudyInstanceUID"],
-                accession_number=study["AccessionNumber"],
-                study_date=study["StudyDate"],
-                study_time=study["StudyTime"],
-                study_description=study["StudyDescription"],
-                modalities=study["ModalitiesInStudy"],
-                image_count=study["NumberOfStudyRelatedInstances"],
+                patient_id=result["PatientID"],
+                patient_name=result["PatientName"],
+                patient_birth_date=result["PatientBirthDate"],
+                study_uid=result["StudyInstanceUID"],
+                accession_number=result["AccessionNumber"],
+                study_date=result["StudyDate"],
+                study_time=result["StudyTime"],
+                study_description=study_description,
+                modalities=result["ModalitiesInStudy"],
+                image_count=result["NumberOfStudyRelatedInstances"],
                 pseudonym=self.query_task.pseudonym,
                 series_uid=series_uid,
                 series_description=series_description,
                 series_number=series_number,
             )
-            results.append(result)
 
-        BatchQueryResult.objects.bulk_create(results)
+            results_to_save.append(result_to_save)
 
-        return results
+        BatchQueryResult.objects.bulk_create(results_to_save)
+
+        return results_to_save

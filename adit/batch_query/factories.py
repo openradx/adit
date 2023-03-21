@@ -49,4 +49,4 @@ class BatchQueryResultFactory(factory.django.DjangoModelFactory):
     image_count = factory.Faker("random_int", min=3, max=1500)
     series_uid = factory.Faker("uuid4")
     series_description = factory.Faker("street_name")
-    series_number = factory.Faker("ean")
+    series_number = factory.Faker("pyint")

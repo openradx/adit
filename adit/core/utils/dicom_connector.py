@@ -226,23 +226,42 @@ class DicomConnector:
         """
         query["QueryRetrieveLevel"] = "SERIES"
 
-        # We handle query filter for Modality programmatically because we allow
-        # to filter for multiple modalities.
+        # We filter for Modality and SeriesNumber programmatically because we allow
+        # to filter for multiple modalities resp. series numbers.
         modality = query.get("Modality")
         if modality:
             query["Modality"] = ""
 
+        series_number = query.get("SeriesNumber")
+        if series_number:
+            query["SeriesNumber"] = ""
+
+        # We also filter for SeriesDescription programmatically, so that way we can use
+        # more advanced regular expressions.
         series_description = query.get("SeriesDescription")
         if series_description:
             series_description = series_description.lower()
             query["SeriesDescription"] = ""
 
-        series_number = query.get("SeriesNumber")
-        if series_number:
-            series_number = int(series_number)
-            query["SeriesNumber"] = ""
-
         series_list = self._send_c_find(query, limit_results=limit_results)
+
+        if modality:
+            series_list = list(
+                filter(
+                    lambda x: x["Modality"] == modality or x["Modality"] in modality,
+                    series_list,
+                )
+            )
+
+        if series_number:
+            series_list = list(
+                filter(
+                    lambda x: x["SeriesNumber"] == series_number
+                    or x["SeriesNumber"] in series_number,
+                    series_list,
+                )
+            )
+
         if series_description:
             series_list = list(
                 filter(
@@ -250,24 +269,8 @@ class DicomConnector:
                     series_list,
                 )
             )
-        if series_number:
-            series_list = list(
-                filter(
-                    lambda x: x["SeriesNumber"] == series_number,
-                    series_list,
-                )
-            )
-            for series in series_list:
-                series["SeriesNumber"] = str(series["SeriesNumber"])
-        if not modality:
-            return series_list
 
-        return list(
-            filter(
-                lambda x: x["Modality"] == modality or x["Modality"] in modality,
-                series_list,
-            )
-        )
+        return series_list
 
     def download_study(
         self,
@@ -638,7 +641,7 @@ class DicomConnector:
         limit_results: Optional[int] = None,
     ):
         results = []
-        for (status, identifier) in responses:
+        for status, identifier in responses:
             if limit_results is not None and len(results) >= limit_results:
                 self.abort_connection()
                 break

@@ -11,6 +11,7 @@ from adit.core.validators import (
     no_control_chars_validator,
     no_wildcard_chars_validator,
     validate_modalities,
+    validate_series_numbers,
 )
 
 
@@ -83,23 +84,23 @@ class BatchQueryTask(DicomTask):
         blank=True,
         validators=[validate_modalities],
     )
-    pseudonym = models.CharField(  # allow to pipe pseudonym through to a possible batch transfer
+    study_description = models.CharField(
         blank=True,
         max_length=64,
-        validators=[no_backslash_char_validator, no_control_chars_validator],
     )
     series_description = models.CharField(
         blank=True,
         max_length=64,
     )
-    series_number = models.CharField(
+    series_numbers = models.JSONField(
+        null=True,
         blank=True,
-        max_length=32,
-        validators=[
-            no_backslash_char_validator,
-            no_control_chars_validator,
-            no_wildcard_chars_validator,
-        ],
+        validators=[validate_series_numbers],
+    )
+    pseudonym = models.CharField(  # allow to pipe pseudonym to batch transfer task
+        blank=True,
+        max_length=64,
+        validators=[no_backslash_char_validator, no_control_chars_validator],
     )
 
     def clean(self) -> None:
@@ -138,14 +139,6 @@ class BatchQueryResult(models.Model):
         ],
     )
     patient_birth_date = models.DateField()
-    study_uid = models.CharField(
-        max_length=64,
-        validators=[
-            no_backslash_char_validator,
-            no_control_chars_validator,
-            no_wildcard_chars_validator,
-        ],
-    )
     # See note of accession_number field in BatchQueryTask
     accession_number = models.CharField(
         max_length=32,
@@ -157,14 +150,6 @@ class BatchQueryResult(models.Model):
     )
     study_date = models.DateField()
     study_time = models.TimeField()
-    study_description = models.CharField(
-        max_length=64,
-        validators=[
-            no_backslash_char_validator,
-            no_control_chars_validator,
-            no_wildcard_chars_validator,
-        ],
-    )
     modalities = models.JSONField(
         null=True,
         blank=True,
@@ -174,12 +159,7 @@ class BatchQueryResult(models.Model):
         null=True,
         blank=True,
     )
-    pseudonym = models.CharField(  # allow to pipe pseudonym through to a possible batch transfer
-        blank=True,
-        max_length=64,
-        validators=[no_backslash_char_validator, no_control_chars_validator],
-    )
-    series_uid = models.CharField(
+    study_description = models.CharField(
         blank=True,
         max_length=64,
         validators=[
@@ -197,9 +177,26 @@ class BatchQueryResult(models.Model):
             no_wildcard_chars_validator,
         ],
     )
-    series_number = models.CharField(
+    series_number = models.PositiveSmallIntegerField(
+        null=True,
         blank=True,
-        max_length=32,
+    )
+    pseudonym = models.CharField(  # allow to pipe pseudonym through to a possible batch transfer
+        blank=True,
+        max_length=64,
+        validators=[no_backslash_char_validator, no_control_chars_validator],
+    )
+    study_uid = models.CharField(
+        max_length=64,
+        validators=[
+            no_backslash_char_validator,
+            no_control_chars_validator,
+            no_wildcard_chars_validator,
+        ],
+    )
+    series_uid = models.CharField(
+        blank=True,
+        max_length=64,
         validators=[
             no_backslash_char_validator,
             no_control_chars_validator,

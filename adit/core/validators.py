@@ -39,15 +39,21 @@ def validate_uid_list(value):
 
 def validate_modalities(value):
     if not isinstance(value, list):
-        raise ValidationError(f"Invalid {value} modalities type: {type(value)}")
+        raise ValidationError(f"Invalid modalities: {value} [{type(value)}]")
 
     for modality in value:
-        if not isinstance(modality, str):
-            raise ValidationError(f"Invalid {modality} modality type: {type(modality)}")
-
-        if len(modality) > 16:
-            raise ValidationError(f"Modality string too long: {modality}")
+        if not isinstance(modality, str) or len(modality) > 16:
+            raise ValidationError(f"Invalid modality: {modality} [{type(modality)}]")
 
         no_backslash_char_validator(modality)
         no_control_chars_validator(modality)
         no_wildcard_chars_validator(modality)
+
+
+def validate_series_numbers(value):
+    if not isinstance(value, list):
+        raise ValidationError(f"Invalid series numbers: {value} [{type(value)}]")
+
+    for series_number in value:
+        if not isinstance(series_number, int):
+            raise ValidationError(f"Invalid series number: {series_number} [{type(series_number)}]")

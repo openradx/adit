@@ -38,6 +38,12 @@ class BatchTaskSerializer(serializers.ModelSerializer):
             if data[field_name] == "":
                 data[field_name] = None
 
+    def parse_csv_field(self, field_value: str):
+        parsed = field_value.split(",")
+        parsed = map(str.strip, parsed)
+        parsed = filter(len, parsed)
+        return list(parsed)
+
     def validate(self, attrs):
         attrs = super().validate(attrs)
 

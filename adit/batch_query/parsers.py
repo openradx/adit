@@ -10,9 +10,10 @@ mapping = {
     "study_date_start": "From",
     "study_date_end": "Until",
     "modalities": "Modality",
-    "pseudonym": "Pseudonym",
+    "study_description": "StudyDescription",
     "series_description": "SeriesDescription",
-    "series_number": "SeriesNumber",
+    "series_numbers": "SeriesNumber",
+    "pseudonym": "Pseudonym",
 }
 
 

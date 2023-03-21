@@ -19,23 +19,25 @@ def export_results(job: BatchQueryJob, file):
     for query_task in query_tasks:
         if query_task.pseudonym:
             has_pseudonyms = True
-        if query_task.series_description or query_task.series_number:
+        if query_task.series_description or query_task.series_numbers:
             has_series = True
     write_header(writer, has_pseudonyms, has_series)
     write_data(writer, query_tasks, has_pseudonyms, has_series)
 
 
 def write_header(writer, has_pseudonyms, has_series):
+    # TODO: Improve order
+
     column_headers = [
         "PatientID",
         "PatientName",
         "BirthDate",
+        "AccessionNumber",
         "StudyDate",
         "StudyTime",
-        "StudyDescription",
         "ModalitiesInStudy",
         "NumberOfStudyRelatedInstances",
-        "AccessionNumber",
+        "StudyDescription",
         "StudyInstanceUID",
     ]
 

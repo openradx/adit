@@ -8,7 +8,7 @@ class BatchQueryTaskSerializer(BatchTaskSerializer):
     class Meta(BatchTaskSerializer.Meta):
         model = BatchQueryTask
         fields = [
-            "task_id",
+            "task_id",  # TODO: still needed?
             "patient_id",
             "patient_name",
             "patient_birth_date",
@@ -16,9 +16,10 @@ class BatchQueryTaskSerializer(BatchTaskSerializer):
             "study_date_start",
             "study_date_end",
             "modalities",
-            "pseudonym",
+            "study_description",
             "series_description",
-            "series_number",
+            "series_numbers",
+            "pseudonym",
         ]
 
     def __init__(self, instance=None, data=None, **kwargs):
@@ -33,10 +34,10 @@ class BatchQueryTaskSerializer(BatchTaskSerializer):
             data["patient_name"] = person_name_to_dicom(data["patient_name"])
 
         if "modalities" in data:
-            modalities = data["modalities"].split(",")
-            modalities = map(str.strip, modalities)
-            modalities = filter(len, modalities)
-            data["modalities"] = list(modalities)
+            data["modalities"] = self.parse_csv_field(data["modalities"])
+
+        if "series_numbers" in data:
+            data["series_numbers"] = self.parse_csv_field(data["series_numbers"])
 
         self.clean_date_string(data, "patient_birth_date")
         self.clean_date_string(data, "study_date_start")
