@@ -22,13 +22,12 @@ from django_filters.views import FilterView
 from django_tables2 import SingleTableMixin
 from revproxy.views import ProxyView
 
-from adit.core.tasks import broadcast_mail
-
 from ..celery import app as celery_app
 from .forms import BroadcastForm
-from .mixins import OwnerRequiredMixin, PageSizeSelectMixin
+from .mixins import OwnerRequiredMixin, PageSizeSelectMixin, RelatedFilterMixin
 from .models import CoreSettings, DicomJob, DicomTask
 from .site import job_stats_collectors
+from .tasks import broadcast_mail
 
 
 @staff_member_required
@@ -126,6 +125,25 @@ class DicomJobCreateView(
         kwargs = super().get_form_kwargs()
         kwargs.update({"user": self.request.user})
         return kwargs
+
+
+class DicomJobDetailView(
+    LoginRequiredMixin,
+    OwnerRequiredMixin,
+    SingleTableMixin,
+    RelatedFilterMixin,
+    PageSizeSelectMixin,
+    DetailView,
+):
+    table_class = None
+    filterset_class = None
+    model = None
+    context_object_name = None
+    template_name = None
+
+    def get_filter_queryset(self):
+        job = self.get_object()
+        return job.tasks
 
 
 class DicomJobDeleteView(LoginRequiredMixin, OwnerRequiredMixin, DeleteView):

@@ -1,17 +1,14 @@
 from typing import Any, Dict
 
 from django.conf import settings
-from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import HttpResponseBadRequest
 from django.urls import reverse_lazy
-from django.views.generic import DetailView
-from django_tables2 import SingleTableMixin
 
-from adit.core.mixins import OwnerRequiredMixin, PageSizeSelectMixin, RelatedFilterMixin
 from adit.core.views import (
     DicomJobCancelView,
     DicomJobCreateView,
     DicomJobDeleteView,
+    DicomJobDetailView,
     DicomJobRestartView,
     DicomJobResumeView,
     DicomJobRetryView,
@@ -92,23 +89,12 @@ class SelectiveTransferJobCreateView(
         return HttpResponseBadRequest()
 
 
-class SelectiveTransferJobDetailView(
-    LoginRequiredMixin,
-    OwnerRequiredMixin,
-    SingleTableMixin,
-    RelatedFilterMixin,
-    PageSizeSelectMixin,
-    DetailView,
-):
+class SelectiveTransferJobDetailView(DicomJobDetailView):
     table_class = SelectiveTransferTaskTable
     filterset_class = SelectiveTransferTaskFilter
     model = SelectiveTransferJob
     context_object_name = "job"
     template_name = "selective_transfer/selective_transfer_job_detail.html"
-
-    def get_filter_queryset(self):
-        job = self.get_object()
-        return job.tasks
 
 
 class SelectiveTransferJobDeleteView(DicomJobDeleteView):

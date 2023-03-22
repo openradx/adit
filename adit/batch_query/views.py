@@ -14,6 +14,7 @@ from adit.core.views import (
     DicomJobCancelView,
     DicomJobCreateView,
     DicomJobDeleteView,
+    DicomJobDetailView,
     DicomJobListView,
     DicomJobRestartView,
     DicomJobResumeView,
@@ -57,20 +58,14 @@ class BatchQueryJobCreateView(DicomJobCreateView):
         return response
 
 
-class BatchQueryJobDetailView(
-    LoginRequiredMixin,
-    OwnerRequiredMixin,
-    SingleTableMixin,
-    RelatedFilterMixin,
-    PageSizeSelectMixin,
-    DetailView,
-):
+class BatchQueryJobDetailView(DicomJobDetailView):
     table_class = BatchQueryTaskTable
     filterset_class = BatchQueryTaskFilter
     model = BatchQueryJob
     context_object_name = "job"
     template_name = "batch_query/batch_query_job_detail.html"
 
+    # Overwrite method to also prefetch related results
     def get_filter_queryset(self):
         job = self.get_object()
         return job.tasks.prefetch_related("results")

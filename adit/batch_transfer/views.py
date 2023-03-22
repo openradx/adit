@@ -1,14 +1,12 @@
 from django.conf import settings
-from django.contrib.auth.mixins import LoginRequiredMixin
 from django.urls import reverse_lazy
-from django.views.generic import DetailView, TemplateView
-from django_tables2 import SingleTableMixin
+from django.views.generic import TemplateView
 
-from adit.core.mixins import OwnerRequiredMixin, PageSizeSelectMixin, RelatedFilterMixin
 from adit.core.views import (
     DicomJobCancelView,
     DicomJobCreateView,
     DicomJobDeleteView,
+    DicomJobDetailView,
     DicomJobRestartView,
     DicomJobResumeView,
     DicomJobRetryView,
@@ -66,23 +64,12 @@ class BatchTransferJobCreateView(DicomJobCreateView):
         return super().dispatch(request, *args, **kwargs)
 
 
-class BatchTransferJobDetailView(
-    LoginRequiredMixin,
-    OwnerRequiredMixin,
-    SingleTableMixin,
-    RelatedFilterMixin,
-    PageSizeSelectMixin,
-    DetailView,
-):
+class BatchTransferJobDetailView(DicomJobDetailView):
     table_class = BatchTransferTaskTable
     filterset_class = BatchTransferTaskFilter
     model = BatchTransferJob
     context_object_name = "job"
     template_name = "batch_transfer/batch_transfer_job_detail.html"
-
-    def get_filter_queryset(self):
-        job = self.get_object()
-        return job.tasks
 
 
 class BatchTransferJobDeleteView(DicomJobDeleteView):
