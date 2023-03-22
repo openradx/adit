@@ -1,15 +1,12 @@
 {% extends "registration/registration_base.html" %}
-
 {% load trans from i18n %}
-
-{% block title %}{% trans "Activation email sent - ADIT" %}{% endblock %}
-
+{% block title %}
+    {% trans "Activation email sent - ADIT" %}
+{% endblock title %}
 {% block container %}
     <h5>{% trans "Registration complete" %}</h5>
     <p>{% trans "Please check your email to complete the registration process." %}</p>
-{% endblock %}
-
-
+{% endblock container %}
 {% comment %}
 **registration/registration_complete.html**
 

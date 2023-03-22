@@ -1,9 +1,9 @@
 {% extends "registration/registration_base.html" %}
 {% load trans from i18n %}
-
-{% block title %}{% trans "Account Activation Failure - ADIT" %}{% endblock %}
-
+{% block title %}
+    {% trans "Account Activation Failure - ADIT" %}
+{% endblock title %}
 {% block container %}
     <h5>{% trans "Account activation failed" %}</h5>
     <p>{% trans "Please contact the support if the problem persists." %}</p>
-{% endblock %}
+{% endblock container %}

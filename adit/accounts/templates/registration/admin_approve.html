@@ -1,8 +1,8 @@
 {% extends "registration/registration_base.html" %}
 {% load trans from i18n %}
-
-{% block title %}{% trans "Approval Failure - ADIT" %}{% endblock %}
-
+{% block title %}
+    {% trans "Approval Failure - ADIT" %}
+{% endblock title %}
 {% block container %}
     <p>{% trans "Account Approval failed." %}</p>
-{% endblock %}
+{% endblock container %}

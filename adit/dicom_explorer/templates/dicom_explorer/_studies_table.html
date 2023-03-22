@@ -1,6 +1,5 @@
 {% load combine_datetime filter_modalities join_if_list from core_extras %}
 {% load explorer_url from dicom_explorer_extras %}
-
 <table class="table">
     <caption>Studies</caption>
     <thead>
@@ -21,20 +20,18 @@
                 {% combine_datetime study.StudyDate study.StudyTime as study_datetime %}
                 <td>{{ study_datetime|date:"SHORT_DATETIME_FORMAT" }}</td>
                 {% filter_modalities study.ModalitiesInStudy as modalities %}
-                <td>{{ modalities|join_if_list:", "|default:"—" }}</td>
-                <td>{{ study.NumberOfStudyRelatedInstances|default_if_none:"—" }}</td>
-                <td>
-                    {% explorer_url server.id patient.PatientID study.StudyInstanceUID as study_url %}
-                    <a
-                        href="{{ study_url }}"
-                        title="{{ study.StudyInstanceUID }}"
-                        data-toggle="tooltip"
-                        data-placement="left"
-                    >
-                        {% include "core/_box_arrow_in_right.svg" %}
-                    </a>
-                </td>
-            </tr>
-        {% endfor %}
-    </tbody>
-</table>
+                    <td>{{ modalities|join_if_list:", "|default:"—" }}</td>
+                    <td>{{ study.NumberOfStudyRelatedInstances|default_if_none:"—" }}</td>
+                    <td>
+                        {% explorer_url server.id patient.PatientID study.StudyInstanceUID as study_url %}
+                        <a href="{{ study_url }}"
+                           title="{{ study.StudyInstanceUID }}"
+                           data-toggle="tooltip"
+                           data-placement="left">
+                            {% include "core/_box_arrow_in_right.svg" %}
+                        </a>
+                    </td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>

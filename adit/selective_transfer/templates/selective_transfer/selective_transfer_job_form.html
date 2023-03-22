@@ -1,74 +1,54 @@
 {% extends "core/base_generic.html" %}
-
 {% load static from static %}
 {% load crispy from crispy_forms_tags %}
-
 {% block script %}
-{{ block.super }}
-<script src="{% static 'selective_transfer/selective_transfer.js' %}"></script>
-{% endblock %}
-
+    {{ block.super }}
+    <script src="{% static 'selective_transfer/selective_transfer.js' %}"></script>
+{% endblock script %}
 {% block container %}
-<div class="d-flex justify-content-between align-items-start">
-    <h4 class="mb-3">
-        Select studies to transfer
-        {% include "core/_help_button.html" with target="#selective_form_help_modal" only %}
-    </h4>
-    <a href="{% url 'selective_transfer_job_list' %}">
-        {% include "core/_list.svg" %}
-        <strong class="align-middle">Previous Jobs</strong>
-    </a>
-</div>
-
-<form
-    method="POST"
-    action=""
-    novalidate="true"
-    x-data="selectiveTransferForm()"
-    x-init="init($el, $refs)"
->
-    <div id="query_form">
-        {% crispy form %}
+    <div class="d-flex justify-content-between align-items-start">
+        <h4 class="mb-3">
+            Select studies to transfer
+            {% include "core/_help_button.html" with target="#selective_form_help_modal" only %}
+        </h4>
+        <a href="{% url 'selective_transfer_job_list' %}">
+            {% include "core/_list.svg" %}
+            <strong class="align-middle">Previous Jobs</strong>
+        </a>
     </div>
-
-    <input type="submit" class="d-none" name="action" value="query" />
-
-    {% if request.method == "GET" %}
-        <div x-show="showHelpMessage" class="alert alert-primary mt-3" role="alert">
-            Choose a DICOM source and destination, then input your search and press Enter
-        </div>
-    {% endif %}
-
-    <div x-show="queryInProgress" class="mt-3" x-cloak>
-        <div class="d-flex justify-content-center">
-            <div class="d-flex flex-column align-items-center">
-                <div class="spinner-border" style="width: 3rem; height: 3rem;" role="status">
-                    <span class="sr-only">Loading...</span>
+    <form method="post"
+          action=""
+          novalidate="true"
+          x-data="selectiveTransferForm()"
+          x-init="init($el, $refs)">
+        <div id="query_form">{% crispy form %}</div>
+        <input type="submit" class="d-none" name="action" value="query" />
+        {% if request.method == "GET" %}
+            <div x-show="showHelpMessage"
+                 class="alert alert-primary mt-3"
+                 role="alert">
+                Choose a DICOM source and destination, then input your search and press Enter
+            </div>
+        {% endif %}
+        <div x-show="queryInProgress" class="mt-3" x-cloak>
+            <div class="d-flex justify-content-center">
+                <div class="d-flex flex-column align-items-center">
+                    <div class="spinner-border"
+                         style="width: 3rem;
+                                height: 3rem"
+                         role="status">
+                        <span class="sr-only">Loading...</span>
+                    </div>
+                    <div class="mt-2">Searching ...</div>
+                    <button @click="cancelQuery" type="button" class="btn btn-light">Cancel</button>
                 </div>
-                <div class="mt-2">
-                    Searching ...
-                </div>
-                <button @click="cancelQuery" type="button" class="btn btn-light">
-                    Cancel
-                </button>
             </div>
         </div>
-    </div>
-
-    <div id="error_message">
-        {% include "selective_transfer/_error_message.html" %}
-    </div>
-
-    <div id="created_job">
-        {% include "selective_transfer/_created_job.html" %}
-    </div>
-
-    <div id="query_results">
-        {% include "selective_transfer/_query_results.html" %}
-    </div>
-</form>
+        <div id="error_message">{% include "selective_transfer/_error_message.html" %}</div>
+        <div id="created_job">{% include "selective_transfer/_created_job.html" %}</div>
+        <div id="query_results">{% include "selective_transfer/_query_results.html" %}</div>
+    </form>
 {% endblock container %}
-
 {% block bottom %}
-{% include 'selective_transfer/_selective_form_help_modal.html' with modal_id="selective_form_help_modal" %}
+    {% include "selective_transfer/_selective_form_help_modal.html" with modal_id="selective_form_help_modal" %}
 {% endblock bottom %}

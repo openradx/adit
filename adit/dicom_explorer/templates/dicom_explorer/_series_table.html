@@ -1,5 +1,4 @@
 {% load explorer_url from dicom_explorer_extras %}
-
 <table class="table">
     <caption>Series</caption>
     <thead>
@@ -20,12 +19,10 @@
                 <td>{{ series.Modality|default:"—" }}</td>
                 <td>{{ series.NumberOfSeriesRelatedInstances|default_if_none:"—" }}</td>
                 <td>
-                    <a
-                        href="{{ series_url }}"
-                        title="{{ series.SeriesInstanceUID }}"
-                        data-toggle="tooltip"
-                        data-placement="left"
-                    >
+                    <a href="{{ series_url }}"
+                       title="{{ series.SeriesInstanceUID }}"
+                       data-toggle="tooltip"
+                       data-placement="left">
                         {% include "core/_box_arrow_in_right.svg" %}
                     </a>
                 </td>

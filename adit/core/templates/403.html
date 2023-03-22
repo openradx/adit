@@ -1,16 +1,13 @@
 {% extends "core/base_generic.html" %}
-
 {% block container %}
-
-<div class="card bg-light mb-3">
-    <div class="card-header">403</div>
-    <div class="card-body">
-        <h5 class="card-title">Permission Denied</h5>
-        <p class="card-text">
-            You are not allowed to access this page. If you need some permission contact the
-            <a href="mailto:{{ SUPPORT_EMAIL }}">ADIT Support</a>.
-        </p>
+    <div class="card bg-light mb-3">
+        <div class="card-header">403</div>
+        <div class="card-body">
+            <h5 class="card-title">Permission Denied</h5>
+            <p class="card-text">
+                You are not allowed to access this page. If you need some permission contact the
+                <a href="mailto:{{ SUPPORT_EMAIL }}">ADIT Support</a>.
+            </p>
+        </div>
     </div>
-</div>
-
 {% endblock container %}

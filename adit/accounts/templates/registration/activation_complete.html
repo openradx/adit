@@ -1,8 +1,8 @@
 {% extends "registration/registration_base.html" %}
 {% load trans from i18n %}
-
-{% block title %}{% trans "Account Activated - ADIT" %}{% endblock %}
-
+{% block title %}
+    {% trans "Account Activated - ADIT" %}
+{% endblock title %}
 {% block container %}
     <h5>{% trans "Account activated" %}</h5>
     <p>
@@ -11,4 +11,4 @@
             {% trans "You can log in." %}
         {% endif %}
     </p>
-{% endblock %}
+{% endblock container %}

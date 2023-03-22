@@ -1,17 +1,11 @@
 {% extends "core/base_generic.html" %}
-
 {% load static from static %}
 {% load crispy from crispy_forms_tags %}
-
 {% block script %}
-{{ block.super }}
-<script src="{% static 'dicom_explorer/dicom_explorer.js' %}"></script>
+    {{ block.super }}
+    <script src="{% static 'dicom_explorer/dicom_explorer.js' %}"></script>
 {% endblock script %}
-
 {% block container %}
-
-<h4>DICOM Explorer</h4>
-
-<p>{% crispy form %}</p>
-
+    <h4>DICOM Explorer</h4>
+    <p>{% crispy form %}</p>
 {% endblock container %}

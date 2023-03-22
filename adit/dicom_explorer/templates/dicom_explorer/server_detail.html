@@ -1,14 +1,8 @@
 {% extends "core/base_generic.html" %}
-
 {% block container %}
-
-<h4 class="mb-3">
-    DICOM Explorer
-    <small class="text-muted">Server Details</small>
-</h4>
-
-<div class="card">
-    {% include "dicom_explorer/_server_infos.html" %}
-</div>
-
+    <h4 class="mb-3">
+        DICOM Explorer
+        <small class="text-muted">Server Details</small>
+    </h4>
+    <div class="card">{% include "dicom_explorer/_server_infos.html" %}</div>
 {% endblock container %}

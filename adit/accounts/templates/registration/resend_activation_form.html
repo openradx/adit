@@ -1,10 +1,9 @@
 {% extends "registration/registration_base.html" %}
-
 {% load trans from i18n %}
 {% load crispy from crispy_forms_tags %}
-
-{% block title %}{% trans "Resend Activation Email - ADIT" %}{% endblock %}
-
+{% block title %}
+    {% trans "Resend Activation Email - ADIT" %}
+{% endblock title %}
 {% block container %}
     <h5>{% trans "Resend activation mail" %}</h5>
     <form method="post" action="">
@@ -12,4 +11,4 @@
         {{ form|crispy }}
         <input type="submit" value="{% trans 'Submit' %}" />
     </form>
-{% endblock %}
+{% endblock container %}

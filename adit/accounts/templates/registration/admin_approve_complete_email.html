@@ -1,18 +1,17 @@
 {% load trans blocktrans from i18n %}
 <!doctype html>
 <html lang="en">
-
-<head>
-    <title>{% trans "ADIT admin approval" %}</title>
-</head>
-
-<body>
-    <p>
-        {% blocktrans %}
+    <head>
+        <title>{% trans "ADIT admin approval" %}</title>
+        <meta name="keywords" content="ADIT,DICOM,Radiology,Medicine,Tool" />
+        <meta name="description" content="Account approved on ADIT."/>
+    </head>
+    <body>
+        <p>
+            {% blocktrans %}
             Your account is now approved. You can 
         {% endblocktrans %}
-        <a href="http://{{site.domain}}{% url 'auth_login' %}">{% trans "log in." %}</a>
-    </p>
-</body>
-
+            <a href="https://{{ site.domain }}{% url 'auth_login' %}">{% trans "log in." %}</a>
+        </p>
+    </body>
 </html>

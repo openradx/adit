@@ -1,6 +1,5 @@
 {% load person_name_from_dicom from core_extras %}
 {% load explorer_url from dicom_explorer_extras %}
-
 <table class="table">
     <caption>Patients</caption>
     <thead>
@@ -21,12 +20,10 @@
                 <td>{{ patient.PatientSex|default:"—" }}</td>
                 <td>
                     {% explorer_url server.id patient.PatientID as patient_url %}
-                    <a
-                        href="{{ patient_url }}"
-                        title="{{ patient.PatientID }}"
-                        data-toggle="tooltip"
-                        data-placement="left"
-                    >
+                    <a href="{{ patient_url }}"
+                       title="{{ patient.PatientID }}"
+                       data-toggle="tooltip"
+                       data-placement="left">
                         {% include "core/_box_arrow_in_right.svg" %}
                     </a>
                 </td>

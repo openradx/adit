@@ -1,9 +1,8 @@
 {% extends "registration/registration_base.html" %}
-
 {% load trans blocktrans from i18n %}
-
-{% block title %}{% trans "Account Activation Resent - ADIT" %}{% endblock %}
-
+{% block title %}
+    {% trans "Account Activation Resent - ADIT" %}
+{% endblock title %}
 {% block container %}
     <h5>{% trans "Account activation resent" %}</h5>
     <p>
@@ -11,9 +10,7 @@
             We have sent an email to {{ email }} with further instructions.
         {% endblocktrans %}
     </p>
-{% endblock %}
-
-
+{% endblock container %}
 {% comment %}
 **registration/resend_activation_complete.html**
 Used after form for resending account activation is submitted. By default has

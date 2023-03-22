@@ -1,81 +1,116 @@
 {% extends "core/_message_modal.html" %}
-
 {% load static from static %}
-
 {% block modal_title %}
-Batch Query Help
+    Batch Query Help
 {% endblock modal_title %}
-
 {% block modal_body %}
-<p>
-    With a Batch Query you can create a job to find the data of multiple studies in a source DICOM / PACS server. Batch
-    query jobs are put into a queue and will be processed by a worker when the time is right. You will get an Email when
-    the job is finished (or failed for some reason).
-</p>
-<p>
-    Each batch query job contains several query tasks that define what studies to search for. The search terms must be
-    specified in a CSV file with <strong>semicolons <mark>;</mark> as separators</strong>. If your data is in an Excel
-    file then it must be exported to a CSV file (by using the Excel built-in exporter). The first row of the CSV file
-    must contain the header with the column titles (see below). Each following row represents a query task.
-</p>
-<p>
-    <strong class="text-danger">Cave!</strong><br />
-    If PatientID or AccessionNumber contains leading zeros those are relevant as it is not a number but a text
-    identifier. So make sure after loading or saving a CSV file with Excel those values are correct. It's always a good
-    idea to view the CSV file with a text editor and check if the format is correct. If not then you must use another
-    CSV editor or force the Excel data importer to skip the automatic type conversion (see <a
-        href="https://www.winhelponline.com/blog/stop-excel-convert-text-to-number-date-format-csv-file/">Stop Excel
+    <p>
+        With a Batch Query you can create a job to find the data of multiple studies in a source DICOM / PACS server. Batch
+        query jobs are put into a queue and will be processed by a worker when the time is right. You will get an Email when
+        the job is finished (or failed for some reason).
+    </p>
+    <p>
+        Each batch query job contains several query tasks that define what studies to search for. The search terms must be
+        specified in a CSV file with <strong>semicolons <mark>;</mark> as separators</strong>. If your data is in an Excel
+        file then it must be exported to a CSV file (by using the Excel built-in exporter). The first row of the CSV file
+        must contain the header with the column titles (see below). Each following row represents a query task.
+    </p>
+    <p>
+        <strong class="text-danger">Cave!</strong>
+        <br />
+        If PatientID or AccessionNumber contains leading zeros those are relevant as it is not a number but a text
+        identifier. So make sure after loading or saving a CSV file with Excel those values are correct. It's always a good
+        idea to view the CSV file with a text editor and check if the format is correct. If not then you must use another
+        CSV editor or force the Excel data importer to skip the automatic type conversion (see <a href="https://www.winhelponline.com/blog/stop-excel-convert-text-to-number-date-format-csv-file/">Stop Excel
         from Converting Text to Number</a>).
-</p>
-<p>
-    These are the columns in the batch file to execute your queries:
-<dl>
-    <dt>PatientID</dt>
-    <dd>The unique ID of the patient in the PACS.</dd>
-    <dt>PatientName</dt>
-    <dd>The name of the patient.</dd>
-    <dt>PatientBirthDate</dt>
-    <dd>The birth date of the patient.</dd>
-    <dt>AccessionNumber</dt>
-    <dd>The Accession Number (a unique ID) of the study.</dd>
-    <dt>From</dt>
-    <dd>Only include studies newer than or equal to this date.</dd>
-    <dt>Until</dt>
-    <dd>Only include studies older than or equal to this date.</dd>
-    <dt>Modality</dt>
-    <dd>The modality of the study.</dd>
-    <dt>SeriesDescription</dt>
-    <dd>Only include series of the study, whose series description match a certain case insensitive regular
-        expression pattern (see <a
-            href="https://medium.com/factory-mind/regex-tutorial-a-simple-cheatsheet-by-examples-649dc1c3f285/">
-            introduction into using a regular expression</a> and <a href="https://regex101.com/"> testing your
-            regular expression</a>).</dd>
-    <dt>SeriesNumber</dt>
-    <dd>Only include series of the study, whose series number is equal to the specified series number.</dd>
-    <dt>Pseudonym</dt>
-    <dd>A pseudonym to pseudonymize the images during a suceeding transfer with Batch Transfer.</dd>
-</dl>
-</p>
-<p>
-    The patient must be identifiable by either "PatientID" or "PatientName" together with "PatientBirthDate".
-    The remaining fields are optional and may limit the results for what you really need.
-</p>
-<p>
-    Make sure that your CSV file encoding is correct by opening it with a normal text editor (ideally under Windows).
-    Especially look that umlauts (äöü) are correct. If something is wrong then try to export your CSV file from Excel
-    with UTF-8 encoding.
-</p>
-<p>
-    The result of the batch query can be viewed and downloaded from ADIT. The downloaded CSV file contains more data
-    then what can be viewed on the website. Each result contains the "PatientID" and "StudyInstanceUID", which is
-    necessary for a batch transfer job. If a "SeriesDescription" or a "SeriesNumber" was provided, the result will also
-    contain the "SeriesInstanceUID". So a batch query job is in most cases the preparation step for a batch transfer.
-</p>
-<div class="mb-1">
-    <a href="{% static 'samples/batch_query_sample.csv' %}">
-        {% include "core/_download.svg" %}
-        Download a sample CSV batch query file (supported by Excel).
-    </a>
-</div>
-
+    </p>
+    <p>
+        These are the columns in the batch file to execute your queries:
+        <dl>
+            <dt>
+                PatientID
+            </dt>
+            <dd>
+                The unique ID of the patient in the PACS.
+            </dd>
+            <dt>
+                PatientName
+            </dt>
+            <dd>
+                The name of the patient.
+            </dd>
+            <dt>
+                PatientBirthDate
+            </dt>
+            <dd>
+                The birth date of the patient.
+            </dd>
+            <dt>
+                AccessionNumber
+            </dt>
+            <dd>
+                The Accession Number (a unique ID) of the study.
+            </dd>
+            <dt>
+                From
+            </dt>
+            <dd>
+                Only include studies newer than or equal to this date.
+            </dd>
+            <dt>
+                Until
+            </dt>
+            <dd>
+                Only include studies older than or equal to this date.
+            </dd>
+            <dt>
+                Modality
+            </dt>
+            <dd>
+                The modality of the study.
+            </dd>
+            <dt>
+                SeriesDescription
+            </dt>
+            <dd>
+                Only include series of the study, whose series description match a certain case insensitive regular
+                expression pattern (see <a href="https://medium.com/factory-mind/regex-tutorial-a-simple-cheatsheet-by-examples-649dc1c3f285/">
+                introduction into using a regular expression</a> and <a href="https://regex101.com/"> testing your
+                regular expression</a>).
+            </dd>
+            <dt>
+                SeriesNumber
+            </dt>
+            <dd>
+                Only include series of the study, whose series number is equal to the specified series number.
+            </dd>
+            <dt>
+                Pseudonym
+            </dt>
+            <dd>
+                A pseudonym to pseudonymize the images during a suceeding transfer with Batch Transfer.
+            </dd>
+        </dl>
+    </p>
+    <p>
+        The patient must be identifiable by either "PatientID" or "PatientName" together with "PatientBirthDate".
+        The remaining fields are optional and may limit the results for what you really need.
+    </p>
+    <p>
+        Make sure that your CSV file encoding is correct by opening it with a normal text editor (ideally under Windows).
+        Especially look that umlauts (äöü) are correct. If something is wrong then try to export your CSV file from Excel
+        with UTF-8 encoding.
+    </p>
+    <p>
+        The result of the batch query can be viewed and downloaded from ADIT. The downloaded CSV file contains more data
+        then what can be viewed on the website. Each result contains the "PatientID" and "StudyInstanceUID", which is
+        necessary for a batch transfer job. If a "SeriesDescription" or a "SeriesNumber" was provided, the result will also
+        contain the "SeriesInstanceUID". So a batch query job is in most cases the preparation step for a batch transfer.
+    </p>
+    <div class="mb-1">
+        <a href="{% static 'samples/batch_query_sample.csv' %}">
+            {% include "core/_download.svg" %}
+            Download a sample CSV batch query file (supported by Excel).
+        </a>
+    </div>
 {% endblock modal_body %}

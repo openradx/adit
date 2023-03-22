@@ -1,24 +1,21 @@
 {% extends "registration/registration_base.html" %}
-
 {% load trans from i18n %}
 {% load crispy from crispy_forms_tags %}
-
-{% block title %}{% trans "Log in - ADIT" %}{% endblock %}
-
+{% block title %}
+    {% trans "Log in - ADIT" %}
+{% endblock title %}
 {% block container %}
-    {% if form.errors %}
-        <p>Your username or password is incorrect. Try again?</p>
-    {% endif %}
-    
+    {% if form.errors %}<p>Your username or password is incorrect. Try again?</p>{% endif %}
     {% if next %}
         {% if user.is_authenticated %}
-            <p>Your account doesn't have access to this page. To proceed,
-            please login with an account that has access.</p>
+            <p>
+                Your account doesn't have access to this page. To proceed,
+                please login with an account that has access.
+            </p>
         {% else %}
             <p>You muss login to access this page.</p>
         {% endif %}
     {% endif %}
-
     <h5>Login</h5>
     <p>
         <form method="post" action="">
@@ -37,4 +34,4 @@
         {% trans "No account yet?" %}
         <a href="{% url 'registration_register' %}">{% trans "Register" %}</a>
     </p>
-{% endblock %}
+{% endblock container %}

@@ -1,14 +1,12 @@
 {% extends "core/base_generic.html" %}
-
 {% load crispy from crispy_forms_tags %}
-
 {% block container %}
-<h4 class="mb-3">Send a message to all signed up users</h4>
-<form action="{% url 'broadcast' %}" method="post">
-    {% csrf_token %}
-    {{ form|crispy }}
-    <div class="form-group">
-        <input type="submit" name="send" value="Send" class="btn btn-primary">
-    </div>
-</form>
+    <h4 class="mb-3">Send a message to all signed up users</h4>
+    <form action="{% url 'broadcast' %}" method="post">
+        {% csrf_token %}
+        {{ form|crispy }}
+        <div class="form-group">
+            <input type="submit" name="send" value="Send" class="btn btn-primary" />
+        </div>
+    </form>
 {% endblock container %}
