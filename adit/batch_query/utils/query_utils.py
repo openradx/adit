@@ -11,6 +11,8 @@ from ..models import BatchQueryResult, BatchQueryTask
 
 logger = logging.getLogger(__name__)
 
+DICOM_DATE_FORMAT = "%Y%m%d"
+
 
 def _create_source_connector(query_task: BatchQueryTask) -> DicomConnector:
     # An own function to easily mock the source connector in test_transfer_utils.py

@@ -75,10 +75,11 @@ def test_batch_job_created_and_enqueued_with_auto_verify(
     client.force_login(user_with_permission)
     settings.BATCH_TRANSFER_UNVERIFIED = True
     client.post(reverse("batch_transfer_job_create"), form_data)
+    print(BatchTransferJob.objects.all())
     job = BatchTransferJob.objects.first()
     assert job.tasks.count() == 3
     send_task_mock.assert_called_once_with(
-        "adit.selective_transfer.tasks.ProcessBatchTransferJob", (1,)
+        "adit.batch_transfer.tasks.ProcessBatchTransferJob", (1,)
     )
 
 

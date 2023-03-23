@@ -48,7 +48,6 @@ class BatchTransferJobForm(forms.ModelForm):
             "batch_file",
             "trial_protocol_id",
             "trial_protocol_name",
-            "batch_file",
             "xnat_source_project_id",
             "xnat_destination_project_id",
         )
@@ -120,30 +119,10 @@ class BatchTransferJobForm(forms.ModelForm):
             xnat_options_field(["xnat_source_project_id"], area_css_id="xnat-source-options"),
             Row(Column(Field("destination", css_class="custom-select"))),
             xnat_options_field(
-                ["xnat_destination_project_id"],
-                area_css_id="xnat-destination-options",
+                ["xnat_destination_project_id"], area_css_id="xnat-destination-options"
             ),
-            Row(
-                Column(
-                    Field(
-                        "urgent",
-                    )
-                )
-            ),
-            Row(
-                Column(
-                    Field(
-                        "project_name",
-                    )
-                )
-            ),
-            Row(
-                Column(
-                    Field(
-                        "project_description",
-                    )
-                )
-            ),
+            Row(Column(Field("project_name"))),
+            Row(Column(Field("project_description"))),
             Row(
                 Column(
                     Div(
@@ -185,27 +164,29 @@ class BatchTransferJobForm(forms.ModelForm):
                 ),
                 css_class="px-1 mb-3",
             ),
-            Row(
-                Column(
-                    Field(
-                        "ethics_committee_approval",
-                    )
-                )
-            ),
-            Row(
-                Column(
-                    Field(
-                        "batch_file",
-                    )
-                )
-            ),
+            Row(Column(Field("ethics_application_id"))),
+            Row(Column(Field("batch_file"))),
         )
 
-    def clean_ethics_committee_approval(self):
-        approval = self.cleaned_data["ethics_committee_approval"]
-        if not approval:
-            raise ValidationError("Your study must be approved by an ethics committee.")
-        return approval
+        if "urgent" in self.fields:
+            self.helper.layout.insert(
+                1,
+                Row(
+                    Column(
+                        Field(
+                            "urgent",
+                            **{"@change": "onUrgencyChanged"},
+                        ),
+                    ),
+                    css_class="pl-1",
+                ),
+            )
+
+    # def clean_ethics_committee_approval(self):
+    #    approval = self.cleaned_data["ethics_committee_approval"]
+    #    if not approval:
+    #        raise ValidationError("Your study must be approved by an ethics committee.")
+    #    return approval
 
     def clean_batch_file(self):
         batch_file = self.cleaned_data["batch_file"]

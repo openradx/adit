@@ -152,3 +152,15 @@ dump.rdb
 bin/
 share/
 pyvenv.cfg
+
+#xnat
+*.swo
+*.swp
+.gradle/
+manifest*.json
+gradle.properties
+*.log
+*-data/
+xnat/plugins
+xnat/webapps
+

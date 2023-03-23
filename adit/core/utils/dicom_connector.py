@@ -746,7 +746,7 @@ class DicomConnector:
             if status:
                 data = {}
                 if identifier:
-                    data.update(identifier.to_json())
+                    data.update(_dictify_dataset(identifier))
 
                 results.append(
                     {

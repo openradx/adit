@@ -1,6 +1,7 @@
 version: "3.8"
 
-x-app: &default-app
+x-app:
+  &default-app
   build:
     context: ..
   volumes:
@@ -34,7 +35,8 @@ x-app: &default-app
 services:
   web:
     <<: *default-app
-    volumes: # Cave, overwrites the above anchor
+    volumes:
+      # Cave, overwrites the above anchor
       - /mnt:/mnt
       - adit_data:/var/www/adit
 
@@ -112,6 +114,49 @@ services:
     volumes:
       - ./orthanc/orthanc2.json:/etc/orthanc/orthanc.json
       - orthanc2_data:/var/lib/orthanc/db
+
+  xnat-web:
+    build:
+      context: ./xnat-docker-compose/xnat
+      args:
+        XNAT_VERSION: 1.8.7
+        XNAT_SMTP_ENABLED: "false"
+        XNAT_DATASOURCE_DRIVER: org.postgresql
+        XNAT_DATASOURCE_URL: jdbc:postgresql://xnat-db/xnat
+        XNAT_DATASOURCE_USERNAME: xnat
+        XNAT_DATASOURCE_PASSWORD: xnat
+        TOMCAT_XNAT_FOLDER: ROOT
+        XNAT_ROOT: /data/xnat
+        XNAT_HOME: /data/xnat/home
+        XNAT_EMAIL: wilhelm.roentgen@example.org
+    ports:
+      - 8080:8080
+    volumes:
+      - ./xnat-docker-compose/xnat/plugins:/data/xnat/home/plugins
+      - ./xnat-docker-compose/xnat-data/home/logs:/data/xnat/home/logs
+      - ./xnat-docker-compose/xnat-data/archive:/data/xnat/archive
+      - ./xnat-docker-compose/xnat-data/build:/data/xnat/build
+      - ./xnat-docker-compose/xnat-data/cache:/data/xnat/cache
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - CATALINA_OPTS=-Xms256m -Xmx4g -Dxnat.home=/data/xnat/home
+      - XNAT_HOME=/data/xnat/home
+    depends_on:
+      - xnat-db
+
+  xnat-db:
+    image: postgres:12.2-alpine
+    expose:
+      - 5432
+    volumes:
+      - ./xnat-docker-compose/postgres-data:/var/lib/postgresql/data
+      - ./xnat-docker-compose/postgres:/docker-entrypoint-initdb.d
+    environment:
+      - POSTGRES_PASSWORD=xnat123456789abcdef0
+      - POSTGRES_DB=xnat
+      # variables for the sql script
+      - XNAT_DATASOURCE_USERNAME=xnat
+      - XNAT_DATASOURCE_PASSWORD=xnat
 
 volumes:
   adit_data:

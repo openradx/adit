@@ -69,7 +69,6 @@ INSTALLED_APPS = [
     "adit.rest_api.wado_rs.apps.WadoRsConfig",
     "adit.xnat_support.apps.XnatSupportConfig",
     "channels",
-    "rest_framework.authtoken",
 ]
 
 MIDDLEWARE = [

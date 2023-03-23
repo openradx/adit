@@ -11,7 +11,6 @@ from adit.batch_transfer.factories import BatchTransferJobFactory
 from adit.batch_transfer.models import BatchTransferJob, BatchTransferTask
 from adit.batch_transfer.tasks import ProcessBatchTransferTask
 from adit.core.models import DicomFolder, DicomNode, DicomServer
-from adit.rest_api.tests.tests import get_test_result
 
 TOKEN = ""  # generate rest_api token and enter
 BASE_URL = ""  # enter dicom web url of adit

@@ -20,15 +20,12 @@ class BatchQuerySettings(AppSettings):
 class BatchQueryJob(DicomJob):
     project_name = models.CharField(max_length=150)
     project_description = models.TextField(max_length=2000)
-    
+
     # Xnat support
-    xnat_project_id = models.CharField(
-        blank=True,
-        max_length=64
-    )
+    xnat_project_id = models.CharField(blank=True, max_length=64)
 
     def delay(self):
-        current_app.send_task("adit.selective_transfer.tasks.ProcessBatchQueryJob", (self.id,))
+        current_app.send_task("adit.batch_query.tasks.ProcessBatchQueryJob", (self.id,))
 
     def get_absolute_url(self):
         return reverse("batch_query_job_detail", args=[str(self.id)])

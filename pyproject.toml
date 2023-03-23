@@ -25,7 +25,6 @@ flower = "^1.0.0"
 humanize = "^4.0.0"
 Markdown = "^3.3.7"
 pika = "^1.1.0"
-psycopg2 = "^2.9.3"
 pydicom = "2.3.0"
 pynetdicom = "^2.0.2"
 python = "^3.9"
@@ -35,6 +34,10 @@ Twisted = {extras = ["tls", "http2"], version = "^22.2.0"}
 whitenoise = "^6.0.0"
 daphne = "^4.0.0"
 channels-redis = "^4.0.0"
+psycopg2-binary = "^2.9.5"
+dicomweb-client = "^0.59.0"
+xnat = "^0.4.3"
+werkzeug = "^2.2.3"
 
 [tool.poetry.dev-dependencies]
 black = "^22.1.0"

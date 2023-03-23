@@ -1,22 +1,16 @@
-from django.shortcuts import render
-from django.http import HttpResponse
-from django.utils import timezone
-from django.views.generic import TemplateView, View, ListView
-from django.views.decorators.csrf import csrf_exempt
-from django.utils.decorators import method_decorator
-from django.contrib.auth.mixins import (
-    PermissionRequiredMixin,
-    LoginRequiredMixin,
-)
-from rest_framework.authtoken.views import ObtainAuthToken
-
-from .models import RestAuthToken
-
 import datetime
 import json
 import urllib.parse
-
+from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
+from django.http import HttpResponse
+from django.shortcuts import render
+from django.utils import timezone
+from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import csrf_exempt
+from django.views.generic import ListView, TemplateView, View
+from rest_framework.authtoken.views import ObtainAuthToken
 from .forms import GenerateRestAuthTokenForm
+from .models import RestAuthToken
 
 
 class RestAuthView(
@@ -34,9 +28,7 @@ class RestAuthView(
         }
 
         return render(
-            request, 
-            template_name="token_authentication/token_dashboard.html", 
-            context=context
+            request, template_name="token_authentication/token_dashboard.html", context=context
         )
 
 
@@ -61,21 +53,19 @@ class RestAuthGenerateTokenView(
     View,
 ):
     permission_required = "token_authentication.manage_auth_tokens"
-    
+
     def post(self, request):
         data = urllib.parse.parse_qs(request.body.decode("utf-8"))
         time_delta = float(data["expiry_time"][0])
         if not data["expiry_time"] == "never":
             expiry_time = datetime.datetime.now() + datetime.timedelta(hours=time_delta)
-        
-        if not "client" in list(data.keys()):
+
+        if "client" not in list(data.keys()):
             # here: raise exception if client is required
             data["client"] = ["Undefined"]
-      
+
         token = RestAuthToken.objects.create_token(
-            user=request.user, 
-            client=data["client"][0], 
-            expiry_time=expiry_time
+            user=request.user, client=data["client"][0], expiry_time=expiry_time
         )
 
         token_string = token.__str__()
@@ -86,9 +76,9 @@ class RestAuthDeleteTokenView(
     LoginRequiredMixin,
     PermissionRequiredMixin,
     View,
-): 
+):
     permission_required = "token_authentication.manage_auth_tokens"
-    
+
     def post(self, request):
         data = urllib.parse.parse_qs(request.body.decode("utf-8"))
         token_strs = data["token_str"]
@@ -100,8 +90,7 @@ class RestAuthDeleteTokenView(
                     json.dumps(
                         {
                             "sucess": False,
-                            "message": "Did not find a matching token with ID: "
-                            + token_str,
+                            "message": "Did not find a matching token with ID: " + token_str,
                         }
                     )
                 )
