@@ -1,16 +1,12 @@
+import os
 from django.db import models
 from django.urls import reverse
-
-import os
+from adit.core.models import AppSettings, DicomJob, DicomTask
 from adit.core.validators import (
     no_backslash_char_validator,
     no_control_chars_validator,
     no_wildcard_chars_validator,
 )
-
-from adit.core.models import DicomJob, DicomTask, AppSettings
-
-# Wado
 
 
 class DicomWadoSettings(AppSettings):
@@ -54,9 +50,7 @@ class DicomWadoJob(DicomJob):
 
 
 class DicomWadoTask(DicomTask):
-    job = models.ForeignKey(
-        DicomWadoJob, on_delete=models.CASCADE, related_name="tasks"
-    )
+    job = models.ForeignKey(DicomWadoJob, on_delete=models.CASCADE, related_name="tasks")
     study_uid = models.CharField(
         blank=True,
         max_length=64,

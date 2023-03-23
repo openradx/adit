@@ -79,7 +79,6 @@ INSTALLED_APPS = [
     "adit.dicom_explorer.apps.DicomExplorerConfig",
     "adit.dicom_web.apps.DicomWebConfig",
     "channels",
-    "rest_framework.authtoken",
 ]
 
 MIDDLEWARE = [

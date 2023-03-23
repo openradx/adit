@@ -1,14 +1,13 @@
+import logging
+from django.conf import settings
+from rest_framework import status
 from rest_framework.exceptions import NotFound
 from rest_framework.response import Response
-from rest_framework import status
-from django.conf import settings
-
-from ..views import DicomWebAPIView
 from ..renderers import DicomJsonRenderer
-from .models import (
-    DicomQidoJob,
-    DicomQidoTask,
-)
+from ..views import DicomWebAPIView
+from .models import DicomQidoJob, DicomQidoTask
+
+logger = logging.getLogger(__name__)
 
 # QIDO-RS
 class QueryAPIView(DicomWebAPIView):
@@ -20,10 +19,9 @@ class QueryStudyAPIView(QueryAPIView):
     LEVEL = "STUDY"
 
     def get(self, request, *args, **kwargs):
+        logger.debug("hi0")
         query = str(request.GET.dict())
-        SourceServer, study_uid, series_uid = self.handle_request(
-            request, *args, **kwargs
-        )
+        SourceServer, study_uid, series_uid = self.handle_request(request, *args, **kwargs)
 
         job = DicomQidoJob(
             level=self.LEVEL,
@@ -41,7 +39,6 @@ class QueryStudyAPIView(QueryAPIView):
             task_id=0,
         )
         task.save()
-
         job.delay()
 
         while task.status != "SU":

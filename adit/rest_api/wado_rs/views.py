@@ -1,17 +1,10 @@
 import os
-from rest_framework.exceptions import NotFound
 from django.conf import settings
-
-from ..views import DicomWebAPIView
-from .models import (
-    DicomWadoJob,
-    DicomWadoTask,
-)
-from ..renderers import (
-    DicomJsonRenderer,
-    DicomMultipartRenderer,
-)
+from rest_framework.exceptions import NotFound
 from ..formats import *
+from ..renderers import DicomJsonRenderer, DicomMultipartRenderer
+from ..views import DicomWebAPIView
+from .models import DicomWadoJob, DicomWadoTask
 
 
 # Wado-RS
@@ -36,9 +29,7 @@ class RetrieveStudyAPIView(RetrieveAPIView):
             request, "WADO-RS", *args, **kwargs
         )
 
-        mode, content_type, boundary = self.handle_accept_header(
-            request, *args, **kwargs
-        )
+        mode, content_type, boundary = self.handle_accept_header(request, *args, **kwargs)
         folder_path, file_path = self.generate_temp_files(
             study_uid,
             series_uid,
@@ -78,7 +69,7 @@ class RetrieveStudyAPIView(RetrieveAPIView):
             file_path=file_path, type=content_type, boundary=boundary
         )
         os.remove(file_path)
-        os.rmdir(folder_path/"dicom_files")
+        os.rmdir(folder_path / "dicom_files")
         os.rmdir(folder_path)
 
         return response
@@ -91,9 +82,7 @@ class RetrieveSeriesAPIView(RetrieveAPIView):
         SourceServer, study_uid, series_uid = self.handle_request(
             request, "WADO-RS", *args, **kwargs
         )
-        mode, content_type, boundary = self.handle_accept_header(
-            request, *args, **kwargs
-        )
+        mode, content_type, boundary = self.handle_accept_header(request, *args, **kwargs)
         folder_path, file_path = self.generate_temp_files(
             study_uid,
             series_uid,
@@ -134,6 +123,7 @@ class RetrieveSeriesAPIView(RetrieveAPIView):
             file_path=file_path, type=content_type, boundary=boundary
         )
         os.remove(file_path)
+        os.rmdir(folder_path / "dicom_files")
         os.rmdir(folder_path)
 
         return response

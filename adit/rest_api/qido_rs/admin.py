@@ -1,5 +1,6 @@
 from django.contrib import admin
-from .models import DicomQidoSettings, DicomQidoJob
+from .models import DicomQidoJob, DicomQidoSettings
+
 
 class DicomQidoJobAdmin(admin.ModelAdmin):
     list_display = (
@@ -12,7 +13,7 @@ class DicomQidoJobAdmin(admin.ModelAdmin):
     list_filter = ("status", "owner", "source")
     search_fields = ("owner", "source")
 
-    def get_owner(self, obj):  # pylint: disable=no-self-use
+    def get_owner(self, obj):
         return obj.owner.username
 
     get_owner.short_description = "Owner"

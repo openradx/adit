@@ -1,25 +1,23 @@
+import binascii
+import datetime
+from os import urandom
+import pytz
 from django.db import models
 from django.utils import timezone
-
 from adit.accounts.models import User
 from adit.core.models import AppSettings
-
-import datetime
-import binascii
-import pytz
-from os import urandom
 
 
 class RestAuthSettings(AppSettings):
     token_lenght = 20
+
     class Meta:
         verbose_name_plural = "Rest authentication settings"
 
 
 class RestAuthTokenManager(models.Manager):
-
     def create_token(self, user, client="", expiry_time=datetime.datetime.now()):
-        token = _create_token_string()
+        token = create_token_string()
         token = self.create(
             token_string=token,
             author=user,
@@ -66,5 +64,5 @@ class RestAuthToken(models.Model):
     #    return self.token_string, f"{self.author.get_username()}"
 
 
-def _create_token_string():
+def create_token_string():
     return binascii.hexlify(urandom(int(RestAuthSettings.token_lenght))).decode()
