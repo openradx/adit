@@ -98,8 +98,17 @@ function selectiveTransferForm() {
       updateState(name, value);
     },
     onStartTransfer: function (event) {
+      const formEl = this.formEl;
       const buttonEl = event.currentTarget;
-      buttonEl.disabled = true;
+      buttonEl.style.pointerEvents = "none";
+
+      function disableTransferButton() {
+        // We can only disable the button after the message was send as otherwise
+        // htmx won't send the message.
+        buttonEl.disabled = true;
+        formEl.removeEventListener("htmx:wsAfterSend", disableTransferButton);
+      }
+      formEl.addEventListener("htmx:wsAfterSend", disableTransferButton);
     },
   };
 }
