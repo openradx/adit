@@ -16,37 +16,27 @@
             <strong class="align-middle">Previous Jobs</strong>
         </a>
     </div>
-    <form method="post"
-          action=""
-          novalidate="true"
+    <!--
+        In contrast to the documentation we put hx-ext directly on the form
+        as otherwise the submit button values are not in the sent form data.
+        https://github.com/bigskysoftware/htmx/issues/1337
+     -->
+    <form hx-ext="ws, morphdom-swap"
+          ws-connect="/ws/selective-transfer"
+          ws-send
           x-data="selectiveTransferForm()"
-          x-init="init($el, $refs)">
-        <div id="query_form">{% crispy form %}</div>
-        <input type="submit" class="d-none" name="action" value="query" />
-        {% if request.method == "GET" %}
-            <div x-show="showHelpMessage"
-                 class="alert alert-primary mt-3"
-                 role="alert">
-                Choose a DICOM source and destination, then input your search and press Enter
-            </div>
-        {% endif %}
-        <div x-show="queryInProgress" class="mt-3" x-cloak>
-            <div class="d-flex justify-content-center">
-                <div class="d-flex flex-column align-items-center">
-                    <div class="spinner-border"
-                         style="width: 3rem;
-                                height: 3rem"
-                         role="status">
-                        <span class="sr-only">Loading...</span>
-                    </div>
-                    <div class="mt-2">Searching ...</div>
-                    <button @click="cancelQuery" type="button" class="btn btn-light">Cancel</button>
-                </div>
-            </div>
+          x-init="init($el)"
+          method="post"
+          action=""
+          novalidate>
+        {% crispy form %}
+        <input type="submit" name="action" value="query" class="d-none" />
+        <input type="submit" name="action" value="reset" class="d-none" />
+        <div id="response">
+            {% if request.method == "GET" %}
+                {% include "selective_transfer/_query_hint.html" %}
+            {% endif %}
         </div>
-        <div id="error_message">{% include "selective_transfer/_error_message.html" %}</div>
-        <div id="created_job">{% include "selective_transfer/_created_job.html" %}</div>
-        <div id="query_results">{% include "selective_transfer/_query_results.html" %}</div>
     </form>
 {% endblock container %}
 {% block bottom %}

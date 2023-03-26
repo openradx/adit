@@ -49,7 +49,7 @@ class SelectiveTransferJobCreateView(
         kwargs = super().get_form_kwargs()
 
         action = self.request.POST.get("action")
-        kwargs.update({"query_form": action == "query"})
+        kwargs.update({"action": action})
 
         return kwargs
 

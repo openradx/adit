@@ -2,6 +2,9 @@
 
 ## High Priority
 
+- Refactor \_message_panel.html
+- Move stuff from parser to serializer
+- Test batch views
 - Convert of what's possible from Alpine.js to HTMX
 - Upgrade poetry
 - QueryUtil -> QueryExecutor

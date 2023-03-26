@@ -15,12 +15,12 @@ from adit.core.validators import no_backslash_char_validator, no_control_chars_v
 from .models import SelectiveTransferJob
 
 
-def server_field(field_name):
+def dicom_node_field(field_name):
     return Column(
         Field(
             field_name,
             css_class="custom-select",
-            **{"@change": "onServerChanged"},
+            **{"@change": "onDicomNodeChanged"},
         )
     )
 
@@ -30,20 +30,89 @@ def option_field(field_name, additional_attrs=None):
     if additional_attrs:
         attrs = {**additional_attrs, **attrs}
 
-    return Column(
-        Field(
-            field_name,
-            **attrs,
-        )
-    )
+    return Column(Field(field_name, **attrs))
 
 
 def query_field(field_name):
-    return Column(
-        Field(
-            field_name,
-            **{"@keydown.enter.prevent": "submitQuery"},
-        )
+    return Column(Field(field_name))
+
+
+def advanced_options_layout():
+    return Layout(
+        Div(
+            Div(
+                StrictButton(
+                    "Advanced transfer options (optional)",
+                    css_class="btn-link px-0",
+                    css_id="advanced_options_toggle",
+                    **{
+                        "data-toggle": "collapse",
+                        "data-target": "#advanced_options",
+                        "aria-expanded": "true",
+                        "aria-controls": "advanced_options",
+                    },
+                ),
+                css_class="card-title mb-0",
+            ),
+            Div(
+                Row(
+                    option_field("trial_protocol_id"),
+                    option_field("trial_protocol_name"),
+                ),
+                Row(
+                    option_field("pseudonym"),
+                    option_field(
+                        "archive_password",
+                        {":disabled": "!isDestinationFolder"},
+                    ),
+                ),
+                css_class="show pt-1",
+                css_id="advanced_options",
+            ),
+            css_class="card-body p-2",
+        ),
+    )
+
+
+def search_inputs_layout():
+    return Layout(
+        query_field("patient_id"),
+        query_field("patient_name"),
+        query_field("patient_birth_date"),
+        query_field("study_date"),
+        query_field("modality"),
+        query_field("accession_number"),
+    )
+
+
+def query_form_layout():
+    return Layout(
+        Row(
+            dicom_node_field("source"),
+            dicom_node_field("destination"),
+        ),
+        Row(
+            Column(
+                advanced_options_layout(),
+                css_class="card",
+            ),
+            css_class="px-1 mb-3",
+        ),
+        Row(
+            search_inputs_layout(),
+        ),
+    )
+
+
+def urgency_field():
+    return Row(
+        Column(
+            Field(
+                "urgent",
+                **{"@change": "onUrgencyChanged"},
+            ),
+        ),
+        css_class="pl-1",
     )
 
 
@@ -90,7 +159,7 @@ class SelectiveTransferJobForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         self.user = kwargs.pop("user")
-        self.query_form = kwargs.pop("query_form")
+        self.action = kwargs.pop("action")
 
         super().__init__(*args, **kwargs)
 
@@ -106,76 +175,20 @@ class SelectiveTransferJobForm(forms.ModelForm):
 
         self.helper = FormHelper(self)
         self.helper.form_tag = False
-        self.helper.layout = Layout(
-            Row(
-                server_field("source"),
-                server_field("destination"),
-            ),
-            Row(
-                Column(
-                    Div(
-                        Div(
-                            StrictButton(
-                                "Advanced transfer options (optional)",
-                                css_class="btn-link px-0",
-                                css_id="advanced_options_toggle",
-                                **{
-                                    "data-toggle": "collapse",
-                                    "data-target": "#advanced_options",
-                                    "aria-expanded": "true",
-                                    "aria-controls": "advancedOptions",
-                                },
-                            ),
-                            css_class="card-title mb-0",
-                        ),
-                        Div(
-                            Row(
-                                option_field("trial_protocol_id"),
-                                option_field("trial_protocol_name"),
-                            ),
-                            Row(
-                                option_field("pseudonym"),
-                                option_field(
-                                    "archive_password",
-                                    {":disabled": "!isDestinationFolder"},
-                                ),
-                            ),
-                            css_class="show pt-1",
-                            css_id="advanced_options",
-                        ),
-                        css_class="card-body p-2",
-                    ),
-                    css_class="card",
-                ),
-                css_class="px-1 mb-3",
-            ),
-            Row(
-                query_field("patient_id"),
-                query_field("patient_name"),
-                query_field("patient_birth_date"),
-                query_field("study_date"),
-                query_field("modality"),
-                query_field("accession_number"),
-            ),
-        )
+
+        query_form = query_form_layout()
 
         if "urgent" in self.fields:
-            self.helper.layout.insert(
-                1,
-                Row(
-                    Column(
-                        Field(
-                            "urgent",
-                            **{"@change": "onUrgencyChanged"},
-                        ),
-                    ),
-                    css_class="pl-1",
-                ),
-            )
+            query_form.insert(1, urgency_field())
+
+        # We swap the form using the htmx morphdom extension to retain the focus on the input
+        self.helper.layout = Layout(
+            Div(query_form, css_id="query_form", **{"hx-swap-oob": "morphdom"})
+        )
 
     def clean_pseudonym(self):
         pseudonym = self.cleaned_data["pseudonym"]
-        if not self.query_form:
+        if self.action == "transfer":
             # We only validate if a pseudonym must be set if the user starts
             # to transfer and not when just querying for studies
             can_transfer_unpseudonymized = self.user.has_perm(
