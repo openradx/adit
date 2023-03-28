@@ -2,6 +2,8 @@
 
 ## High Priority
 
+- Use more workers
+- Query with StudyDateStart, StudyDateEnd, StudyDate
 - Refactor \_message_panel.html
 - Move stuff from parser to serializer
 - Test batch views
