@@ -1,3 +1,5 @@
+import csv
+import io
 import time
 from multiprocessing import Process
 from typing import Callable
@@ -92,3 +94,20 @@ def create_and_login_user(page: Page, login_user):
         return user
 
     return _create_and_login_user
+
+
+@pytest.fixture
+def create_csv_file():
+    def _create_csv_file(data: list[list[str]]):
+        output = io.StringIO()
+        writer = csv.writer(output, delimiter=settings.CSV_DELIMITER)
+        for row in data:
+            writer.writerow(row)
+
+        return {
+            "name": "batch_file.csv",
+            "mimeType": "text/plain",
+            "buffer": output.getvalue().encode("utf-8"),
+        }
+
+    return _create_csv_file

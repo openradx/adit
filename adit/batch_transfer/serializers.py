@@ -9,7 +9,7 @@ class BatchTransferTaskListSerializer(BatchTaskListSerializer):
     def validate(self, attrs):
         attrs = super().validate(attrs)
 
-        # Check that the same study_uid belongt to only one patient_id
+        # Check that the same study_uid belongs to only one patient_id
         study_uid_to_patient_id = {}
         for data in attrs:
             study_uid = data["study_uid"]
