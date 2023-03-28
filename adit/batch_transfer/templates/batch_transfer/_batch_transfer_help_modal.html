@@ -35,25 +35,27 @@
                 PatientID
             </dt>
             <dd>
-                The unique ID of the patient in the PACS.
+                The unique ID of the patient in the PACS. This column is required.
             </dd>
             <dt>
                 StudyInstanceUID
             </dt>
             <dd>
-                A unique ID that identifies the study.
+                A unique ID that identifies the study. This column is required.
             </dd>
             <dt>
                 SeriesInstanceUID
             </dt>
             <dd>
-                A unique ID that identifies the series.
+                An unique ID that identifies the series. This column is optional to only transfer
+                specific series of a study.
             </dd>
             <dt>
                 Pseudonym
             </dt>
             <dd>
-                A pseudonym to pseudonymize the images during transfer.
+                A pseudonym to pseudonymize the images during transfer. This field is required
+                if you don't have the permission to transfer unpseudonymized (the default).
             </dd>
         </dl>
     </p>
