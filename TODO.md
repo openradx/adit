@@ -4,6 +4,8 @@
 
 - Use more workers
 - Query with StudyDateStart, StudyDateEnd, StudyDate
+- Common search query Websocket component
+- DICOM Explorer localstorage source
 - Refactor \_message_panel.html
 - Move stuff from parser to serializer
 - Test batch views
