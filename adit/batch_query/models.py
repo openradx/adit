@@ -11,6 +11,7 @@ from adit.core.validators import (
     no_control_chars_validator,
     no_wildcard_chars_validator,
     validate_modalities,
+    validate_series_number,
     validate_series_numbers,
 )
 
@@ -177,9 +178,15 @@ class BatchQueryResult(models.Model):
             no_wildcard_chars_validator,
         ],
     )
-    series_number = models.PositiveSmallIntegerField(
-        null=True,
+    # Series Number has a VR of Integer String (IS)
+    # https://groups.google.com/g/comp.protocols.dicom/c/JNsg7upVJ08
+    # https://dicom.nema.org/dicom/2013/output/chtml/part05/sect_6.2.html
+    series_number = models.CharField(
         blank=True,
+        max_length=12,
+        validators=[
+            validate_series_number,
+        ],
     )
     pseudonym = models.CharField(  # allow to pipe pseudonym through to a possible batch transfer
         blank=True,

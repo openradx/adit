@@ -25,10 +25,15 @@ class BatchQueryTaskFactory(DicomTaskFactory):
     patient_name = factory.LazyFunction(lambda: f"{fake.last_name()}, {fake.first_name()}")
     patient_birth_date = factory.Faker("date_of_birth", minimum_age=15)
     accession_number = factory.Faker("numerify", text="############")
-    modalities = factory.Faker("random_elements", elements=("CT", "MR", "DX"), unique=True)
     study_date_start = factory.Faker("date_between", start_date="-2y", end_date="-1y")
     study_date_end = factory.Faker("date_between", start_date="-1y", end_date="today")
+    modalities = factory.Faker("random_elements", elements=("CT", "MR", "DX"), unique=True)
+    study_description = factory.Faker("street_name")
     series_description = factory.Faker("street_name")
+    series_numbers = factory.Faker(
+        "random_elements", elements=list(map(str, range(8))), unique=True
+    )
+    pseudonym = factory.Faker("ssn")
 
 
 class BatchQueryResultFactory(factory.django.DjangoModelFactory):
@@ -40,13 +45,14 @@ class BatchQueryResultFactory(factory.django.DjangoModelFactory):
     patient_id = factory.Faker("numerify", text="##########")
     patient_name = factory.LazyFunction(lambda: f"{fake.last_name()}, {fake.first_name()}")
     patient_birth_date = factory.Faker("date_of_birth", minimum_age=15)
-    study_uid = factory.Faker("uuid4")
     accession_number = factory.Faker("ean")
     study_date = factory.Faker("date_between", start_date="-2y", end_date="today")
     study_time = factory.Faker("time_object")
-    study_description = factory.Faker("street_name")
     modalities = factory.Faker("random_elements", elements=("CT", "MR", "DX"), unique=True)
     image_count = factory.Faker("random_int", min=3, max=1500)
-    series_uid = factory.Faker("uuid4")
+    study_description = factory.Faker("street_name")
     series_description = factory.Faker("street_name")
-    series_number = factory.Faker("pyint")
+    series_number = str(factory.Faker("pyint"))
+    pseudonym = factory.Faker("ssn")
+    study_uid = factory.Faker("uuid4")
+    series_uid = factory.Faker("uuid4")

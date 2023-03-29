@@ -50,10 +50,23 @@ def validate_modalities(value):
         no_wildcard_chars_validator(modality)
 
 
+def validate_series_number(value):
+    # Series Number uses a Value Representation (VR) of Integer String (IS)
+    # https://dicom.nema.org/dicom/2013/output/chtml/part05/sect_6.2.html
+    if not isinstance(value, str):
+        raise ValidationError(f"Invalid type of series number: {value} [{type(value)}]")
+
+    try:
+        snr = int(value.strip())
+        if snr < -(2**31) or snr > 2**31 - 1:
+            raise ValueError()
+    except ValueError:
+        raise ValidationError(f"Invalid series number: {value}")
+
+
 def validate_series_numbers(value):
     if not isinstance(value, list):
         raise ValidationError(f"Invalid series numbers: {value} [{type(value)}]")
 
     for series_number in value:
-        if not isinstance(series_number, int):
-            raise ValidationError(f"Invalid series number: {series_number} [{type(series_number)}]")
+        validate_series_number(series_number)

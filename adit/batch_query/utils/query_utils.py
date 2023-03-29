@@ -184,13 +184,9 @@ class QueryExecutor:
             if "SeriesDescription" in result:
                 series_description = result["SeriesDescription"]
 
-            series_number = None
+            series_number = ""
             if "SeriesNumber" in result:
-                series_number = result["SeriesNumber"].strip()
-                if not series_number:
-                    series_number = None
-                else:
-                    series_number = int(series_number)
+                series_number = result["SeriesNumber"]
 
             result_to_save = BatchQueryResult(
                 job=self.query_task.job,

@@ -240,13 +240,24 @@ class DicomConnector:
         query["QueryRetrieveLevel"] = "SERIES"
 
         # We filter for Modality and SeriesNumber programmatically because we allow
-        # to filter for multiple modalities resp. series numbers.
-        modality = query.get("Modality")
-        if modality:
+        # to filter for multiple modalities resp. series numbers. So we have to
+        # cache them in a variable and set them to a blank string for the C-Find query.
+        modalities = query.get("Modality")
+        if modalities:
+            if not isinstance(modalities, list):
+                modalities = [modalities]
+
             query["Modality"] = ""
 
-        series_number = query.get("SeriesNumber")
-        if series_number:
+        series_numbers = query.get("SeriesNumber")
+        if series_numbers:
+            # Series Number is of VR Integer String (see batch query model). We convert it here
+            # to an integer for better comparison.
+            if not isinstance(series_numbers, list):
+                series_numbers = [int(series_numbers)]
+            else:
+                series_numbers = map(lambda x: int(x), series_numbers)
+
             query["SeriesNumber"] = ""
 
         # We also filter for SeriesDescription programmatically, so that way we can use
@@ -258,19 +269,18 @@ class DicomConnector:
 
         series_list = self._send_c_find(query, limit_results=limit_results)
 
-        if modality:
+        if modalities:
             series_list = list(
                 filter(
-                    lambda x: x["Modality"] == modality or x["Modality"] in modality,
+                    lambda x: x["Modality"] in modalities,
                     series_list,
                 )
             )
 
-        if series_number:
+        if series_numbers:
             series_list = list(
                 filter(
-                    lambda x: x["SeriesNumber"] == series_number
-                    or x["SeriesNumber"] in series_number,
+                    lambda x: int(x["SeriesNumber"]) in series_numbers,
                     series_list,
                 )
             )
