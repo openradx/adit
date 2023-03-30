@@ -259,7 +259,7 @@ class DicomConnector:
             if not isinstance(series_numbers, list):
                 series_numbers = [int(series_numbers)]
             else:
-                series_numbers = map(lambda x: int(x), series_numbers)
+                series_numbers = map(int, series_numbers)
 
             query["SeriesNumber"] = ""
 
