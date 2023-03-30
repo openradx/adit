@@ -7,6 +7,8 @@ from .models import BatchQueryJob, BatchQueryResult, BatchQueryTask
 
 fake = Faker()
 
+SERIES_NUMBER = ("+1", "2", "3", "+4", "5", "6", "7", "8")
+
 
 class BatchQueryJobFactory(DicomJobFactory):
     class Meta:
@@ -30,10 +32,8 @@ class BatchQueryTaskFactory(DicomTaskFactory):
     modalities = factory.Faker("random_elements", elements=("CT", "MR", "DX"), unique=True)
     study_description = factory.Faker("street_name")
     series_description = factory.Faker("street_name")
-    series_numbers = factory.Faker(
-        "random_elements", elements=("1", "+2", "3", "4", "+5", "6"), unique=True
-    )
-    pseudonym = factory.Faker("ssn")
+    series_numbers = factory.Faker("random_elements", elements=SERIES_NUMBER, unique=True)
+    pseudonym = factory.Faker("pystr", min_chars=10, max_chars=10)
 
 
 class BatchQueryResultFactory(factory.django.DjangoModelFactory):
@@ -52,7 +52,7 @@ class BatchQueryResultFactory(factory.django.DjangoModelFactory):
     image_count = factory.Faker("random_int", min=3, max=1500)
     study_description = factory.Faker("street_name")
     series_description = factory.Faker("street_name")
-    series_number = str(factory.Faker("pyint"))
-    pseudonym = factory.Faker("ssn")
+    series_number = factory.Faker("random_element", elements=SERIES_NUMBER)
+    pseudonym = factory.Faker("pystr", min_chars=10, max_chars=10)
     study_uid = factory.Faker("uuid4")
     series_uid = factory.Faker("uuid4")
