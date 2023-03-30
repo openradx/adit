@@ -206,7 +206,7 @@ zstd = ["zstandard"]
 
 [[package]]
 name = "celery-types"
-version = "0.14.0"
+version = "0.15.0"
 description = "Type stubs for Celery and its related packages"
 category = "dev"
 optional = false
@@ -385,7 +385,7 @@ django-crispy-forms = ">=1.14.0"
 
 [[package]]
 name = "cryptography"
-version = "39.0.2"
+version = "40.0.1"
 description = "cryptography is a package which provides cryptographic recipes and primitives to Python developers."
 category = "main"
 optional = false
@@ -397,10 +397,10 @@ cffi = ">=1.12"
 [package.extras]
 docs = ["sphinx (>=5.3.0)", "sphinx-rtd-theme (>=1.1.1)"]
 docstest = ["pyenchant (>=1.6.11)", "twine (>=1.12.0)", "sphinxcontrib-spelling (>=4.0.1)"]
-pep8test = ["black", "ruff", "mypy", "types-pytz", "types-requests", "check-manifest"]
+pep8test = ["black", "ruff", "mypy", "check-manifest"]
 sdist = ["setuptools-rust (>=0.11.4)"]
 ssh = ["bcrypt (>=3.1.5)"]
-test = ["pytest (>=6.2.0)", "pytest-shard (>=0.1.2)", "pytest-benchmark", "pytest-cov", "pytest-subtests", "pytest-xdist", "pretend", "iso8601", "pytz", "hypothesis (>=1.11.4,!=3.79.2)"]
+test = ["pytest (>=6.2.0)", "pytest-shard (>=0.1.2)", "pytest-benchmark", "pytest-cov", "pytest-subtests", "pytest-xdist", "pretend", "iso8601"]
 test-randomorder = ["pytest-randomly"]
 tox = ["tox"]
 
@@ -537,7 +537,7 @@ Django = ">=3.2"
 
 [[package]]
 name = "django-filter"
-version = "22.1"
+version = "23.1"
 description = "Django-filter is a reusable Django application for allowing users to filter querysets dynamically."
 category = "main"
 optional = false
@@ -705,7 +705,7 @@ doc = ["sphinx", "sphinx-rtd-theme", "sphinxcontrib-spelling"]
 
 [[package]]
 name = "faker"
-version = "17.6.0"
+version = "18.3.1"
 description = "Faker is a Python package that generates fake data for you."
 category = "dev"
 optional = false
@@ -1551,7 +1551,7 @@ use_chardet_on_py3 = ["chardet (>=3.0.2,<6)"]
 
 [[package]]
 name = "ruff"
-version = "0.0.255"
+version = "0.0.260"
 description = "An extremely fast Python linter, written in Rust."
 category = "dev"
 optional = false
@@ -1838,7 +1838,7 @@ testing = ["coverage (>=5.0.3)", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.9"
-content-hash = "fc7dfbe1710a208fbbf8b1381ea213f1e28a043a2e0ff5676743ba6a6aa3923b"
+content-hash = "b2d85821d40debdb07601aaa477fcf1e96a44b548f530b5bcfcf2c495d1e3650"
 
 [metadata.files]
 amqp = []
