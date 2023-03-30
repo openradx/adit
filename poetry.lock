@@ -124,7 +124,7 @@ python-versions = "*"
 
 [[package]]
 name = "black"
-version = "23.1.0"
+version = "23.3.0"
 description = "The uncompromising code formatter."
 category = "dev"
 optional = false
@@ -252,7 +252,7 @@ tests = ["pytest", "pytest-django", "pytest-asyncio", "async-timeout", "coverage
 
 [[package]]
 name = "channels-redis"
-version = "4.0.0"
+version = "4.1.0"
 description = "Redis-backed ASGI channel layer implementation"
 category = "main"
 optional = false
@@ -262,11 +262,11 @@ python-versions = ">=3.7"
 asgiref = ">=3.2.10,<4"
 channels = "*"
 msgpack = ">=1.0,<2.0"
-redis = ">=4.2.0"
+redis = ">=4.5.3"
 
 [package.extras]
 cryptography = ["cryptography (>=1.3.0)"]
-tests = ["cryptography (>=1.3.0)", "pytest", "pytest-asyncio", "async-timeout"]
+tests = ["cryptography (>=1.3.0)", "pytest", "pytest-asyncio", "async-timeout", "pytest-timeout"]
 
 [[package]]
 name = "charset-normalizer"
@@ -335,7 +335,7 @@ python-versions = "!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,!=3.5.*,!=3.6.*,>=2.7
 
 [[package]]
 name = "comm"
-version = "0.1.2"
+version = "0.1.3"
 description = "Jupyter Python Comm implementation, for usage in ipykernel, xeus-python etc."
 category = "dev"
 optional = false
@@ -345,7 +345,9 @@ python-versions = ">=3.6"
 traitlets = ">=5.3"
 
 [package.extras]
+lint = ["black (>=22.6.0)", "mdformat-gfm (>=0.3.5)", "mdformat (>0.7)", "ruff (>=0.0.156)"]
 test = ["pytest"]
+typing = ["mypy (>=0.990)"]
 
 [[package]]
 name = "constantly"
@@ -357,7 +359,7 @@ python-versions = "*"
 
 [[package]]
 name = "coverage"
-version = "7.2.1"
+version = "7.2.2"
 description = "Code coverage measurement for Python"
 category = "dev"
 optional = false
@@ -815,7 +817,7 @@ python-versions = ">=3.5"
 
 [[package]]
 name = "importlib-metadata"
-version = "6.0.0"
+version = "6.1.0"
 description = "Read metadata from Python packages"
 category = "main"
 optional = false
@@ -851,7 +853,7 @@ python-versions = ">=3.7"
 
 [[package]]
 name = "ipykernel"
-version = "6.21.3"
+version = "6.22.0"
 description = "IPython Kernel for Jupyter"
 category = "dev"
 optional = false
@@ -944,7 +946,7 @@ six = ">=1.13.0"
 
 [[package]]
 name = "jupyter-client"
-version = "8.0.3"
+version = "8.1.0"
 description = "Jupyter protocol implementation and client libraries"
 category = "dev"
 optional = false
@@ -964,7 +966,7 @@ test = ["codecov", "coverage", "ipykernel (>=6.14)", "mypy", "paramiko", "pre-co
 
 [[package]]
 name = "jupyter-core"
-version = "5.2.0"
+version = "5.3.0"
 description = "Jupyter core package. A base package on which Jupyter projects rely."
 category = "dev"
 optional = false
@@ -972,7 +974,7 @@ python-versions = ">=3.8"
 
 [package.dependencies]
 platformdirs = ">=2.5"
-pywin32 = {version = ">=1.0", markers = "sys_platform == \"win32\" and platform_python_implementation != \"PyPy\""}
+pywin32 = {version = ">=300", markers = "sys_platform == \"win32\" and platform_python_implementation != \"PyPy\""}
 traitlets = ">=5.3"
 
 [package.extras]
@@ -1009,8 +1011,8 @@ zookeeper = ["kazoo (>=1.3.1)"]
 
 [[package]]
 name = "markdown"
-version = "3.4.1"
-description = "Python implementation of Markdown."
+version = "3.4.3"
+description = "Python implementation of John Gruber's Markdown."
 category = "main"
 optional = false
 python-versions = ">=3.7"
@@ -1086,7 +1088,7 @@ testing = ["docopt", "pytest (<6.0.0)"]
 
 [[package]]
 name = "pathspec"
-version = "0.11.0"
+version = "0.11.1"
 description = "Utility library for gitignore style pattern matching of file paths."
 category = "dev"
 optional = false
@@ -1126,7 +1128,7 @@ twisted = ["twisted"]
 
 [[package]]
 name = "platformdirs"
-version = "3.1.1"
+version = "3.2.0"
 description = "A small Python package for determining appropriate platform-specific dirs, e.g. a \"user data dir\"."
 category = "dev"
 optional = false
@@ -1134,11 +1136,11 @@ python-versions = ">=3.7"
 
 [package.extras]
 docs = ["furo (>=2022.12.7)", "proselint (>=0.13)", "sphinx-autodoc-typehints (>=1.22,!=1.23.4)", "sphinx (>=6.1.3)"]
-test = ["appdirs (==1.4.4)", "covdefaults (>=2.2.2)", "pytest-cov (>=4)", "pytest-mock (>=3.10)", "pytest (>=7.2.1)"]
+test = ["appdirs (==1.4.4)", "covdefaults (>=2.3)", "pytest-cov (>=4)", "pytest-mock (>=3.10)", "pytest (>=7.2.2)"]
 
 [[package]]
 name = "playwright"
-version = "1.31.1"
+version = "1.32.1"
 description = "A high-level API to automate web browsers"
 category = "dev"
 optional = false
@@ -1306,14 +1308,14 @@ tests = ["pytest", "pyfakefs", "sqlalchemy"]
 
 [[package]]
 name = "pyopenssl"
-version = "23.0.0"
+version = "23.1.1"
 description = "Python wrapper module around the OpenSSL library"
 category = "main"
 optional = false
 python-versions = ">=3.6"
 
 [package.dependencies]
-cryptography = ">=38.0.0,<40"
+cryptography = ">=38.0.0,<41"
 
 [package.extras]
 docs = ["sphinx (!=5.2.0,!=5.2.0.post0)", "sphinx-rtd-theme"]
@@ -1321,7 +1323,7 @@ test = ["flaky", "pretend", "pytest (>=3.0.1)"]
 
 [[package]]
 name = "pyright"
-version = "1.1.298"
+version = "1.1.301"
 description = "Command line wrapper for pyright"
 category = "dev"
 optional = false
@@ -1473,7 +1475,7 @@ unidecode = ["Unidecode (>=1.1.1)"]
 
 [[package]]
 name = "pytz"
-version = "2022.7.1"
+version = "2023.3"
 description = "World timezone definitions, modern and historical"
 category = "main"
 optional = false
@@ -1481,7 +1483,7 @@ python-versions = "*"
 
 [[package]]
 name = "pywin32"
-version = "305"
+version = "306"
 description = "Python for Window Extensions"
 category = "dev"
 optional = false
@@ -1497,7 +1499,7 @@ python-versions = ">=3.6"
 
 [[package]]
 name = "pyzmq"
-version = "25.0.1"
+version = "25.0.2"
 description = "Python bindings for 0MQ"
 category = "dev"
 optional = false
@@ -1508,14 +1510,14 @@ cffi = {version = "*", markers = "implementation_name == \"pypy\""}
 
 [[package]]
 name = "redis"
-version = "4.5.1"
+version = "4.5.4"
 description = "Python client for Redis database and key-value store"
 category = "main"
 optional = false
 python-versions = ">=3.7"
 
 [package.dependencies]
-async-timeout = ">=4.0.2"
+async-timeout = {version = ">=4.0.2", markers = "python_version <= \"3.11.2\""}
 
 [package.extras]
 hiredis = ["hiredis (>=1.0.0)"]
@@ -1751,7 +1753,7 @@ python-versions = ">=3.7"
 
 [[package]]
 name = "tzdata"
-version = "2022.7"
+version = "2023.3"
 description = "Provider of IANA time zone data"
 category = "main"
 optional = false
@@ -1780,11 +1782,11 @@ python-versions = ">=3.6"
 
 [[package]]
 name = "watchdog"
-version = "2.3.1"
+version = "3.0.0"
 description = "Filesystem events monitoring"
 category = "dev"
 optional = false
-python-versions = ">=3.6"
+python-versions = ">=3.7"
 
 [package.extras]
 watchmedo = ["PyYAML (>=3.10)"]
@@ -1822,11 +1824,11 @@ testing = ["pytest (>=6)", "pytest-checkdocs (>=2.4)", "flake8 (<5)", "pytest-co
 
 [[package]]
 name = "zope.interface"
-version = "5.5.2"
+version = "6.0"
 description = "Interfaces for Python"
 category = "main"
 optional = false
-python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*"
+python-versions = ">=3.7"
 
 [package.extras]
 docs = ["sphinx", "repoze.sphinx.autointerface"]
