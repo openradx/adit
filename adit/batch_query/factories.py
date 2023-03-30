@@ -31,7 +31,7 @@ class BatchQueryTaskFactory(DicomTaskFactory):
     study_description = factory.Faker("street_name")
     series_description = factory.Faker("street_name")
     series_numbers = factory.Faker(
-        "random_elements", elements=list(map(str, range(8))), unique=True
+        "random_elements", elements=("1", "+2", "3", "4", "+5", "6"), unique=True
     )
     pseudonym = factory.Faker("ssn")
 
