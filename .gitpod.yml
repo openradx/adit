@@ -26,6 +26,7 @@ ports:
 
 vscode:
   extensions:
+    # Python / Django stuff
     - "batisteo.vscode-django"
     - "charliermarsh.ruff"
     - "davidanson.vscode-markdownlint"
@@ -40,3 +41,11 @@ vscode:
     - "ms-python.python"
     - "streetsidesoftware.code-spell-checker"
     - "wayou.vscode-todo-highlight"
+    # C++ stuff
+    - bbenoist.doxygen
+    - cheshirekow.cmake-format
+    - llvm-vs-code-extensions.vscode-clangd
+    - ms-vscode.cmake-tools
+    - ms-vscode.makefile-tools
+    - twxs.cmake
+    - webfreak.debug
