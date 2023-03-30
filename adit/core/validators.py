@@ -57,7 +57,7 @@ def validate_series_number(value):
         raise ValidationError(f"Invalid type of series number: {value} [{type(value)}]")
 
     try:
-        snr = int(value.strip())
+        snr = int(value)
         if snr < -(2**31) or snr > 2**31 - 1:
             raise ValueError()
     except ValueError:
