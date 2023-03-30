@@ -249,10 +249,13 @@ class DicomConnector:
 
             query["Modality"] = ""
 
+        # It's also better to filter Series Number programmatically, because it's of
+        # VR Integer String and with just a C-Find it's not guaranteed that e.g.
+        # "4" is the same as "+4"
+        # https://groups.google.com/g/comp.protocols.dicom/c/JNsg7upVJ08
         series_numbers = query.get("SeriesNumber")
         if series_numbers:
-            # Series Number is of VR Integer String (see batch query model). We convert it here
-            # to an integer for better comparison.
+            # Convert to an integer for better comparison.
             if not isinstance(series_numbers, list):
                 series_numbers = [int(series_numbers)]
             else:
