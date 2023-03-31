@@ -1,11 +1,14 @@
 #include "dcmtk/config/osconfig.h"
 #include "dcmtk/dcmdata/dctk.h"
+#include "dimconnector.h"
 #include <iostream>
 
 using namespace std;
 
 int main(int argc, char *argv[]) {
-  cout << "yooo";
+  DimConnector dimConnector;
+  dimConnector.findPatients();
+
   /* iterate over all command line parameters */
   for (int i = 1; i < argc; i++) {
     /* load the specified DICOM file */
