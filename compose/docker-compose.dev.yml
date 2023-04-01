@@ -53,6 +53,11 @@ services:
     environment:
       POSTGRES_PASSWORD: "postgres"
 
+  orthanc1:
+    ports:
+      - "6501:6501"
+      - "7501:7501"
+
 volumes:
   vscode-server:
   vscode-server-insiders:
