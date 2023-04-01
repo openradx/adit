@@ -1,6 +1,15 @@
+#include "connector.h"
 #include <napi.h>
 
 static Napi::String Method(const Napi::CallbackInfo &info) {
+  DcmServer server;
+  server.ourAETitle = "ADIT1DEV";
+  server.peerHostName = "127.0.0.1";
+  server.peerPort = 7501;
+  server.peerAETitle = "ORTHANC1";
+  DcmConnector connector = DcmConnector(server);
+  connector.findPatients("1005", "", "");
+
   // Napi::Env is the opaque data structure containing the environment in which
   // the request is being run. We will need this env when we want to create any
   // new objects inside of the node.js environment

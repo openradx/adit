@@ -8,13 +8,14 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 add_definitions(-DNAPI_VERSION=4)
 
-include_directories(${CMAKE_JS_INC})
+include_directories(${CMAKE_JS_INC} /workspace/dcmtk-3.6.7-install/usr/local/include /workspace/adit/dcmtk/includes)
 
 file(GLOB SOURCE_FILES "hello.cc")
 
 add_library(${PROJECT_NAME} SHARED ${SOURCE_FILES} ${CMAKE_JS_SRC})
 set_target_properties(${PROJECT_NAME} PROPERTIES PREFIX "" SUFFIX ".node")
-target_link_libraries(${PROJECT_NAME} ${CMAKE_JS_LIB})
+target_link_directories(${PROJECT_NAME} PUBLIC /workspace/adit/dcmtk/build)
+target_link_libraries(${PROJECT_NAME} ${CMAKE_JS_LIB} connector)
 
 # Include Node-API wrappers
 execute_process(COMMAND node -p "require('node-addon-api').include"
