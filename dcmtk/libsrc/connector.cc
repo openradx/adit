@@ -1,9 +1,4 @@
 #include "connector.h"
-#include "dcmtk/dcmdata/dcdeftag.h"
-#include "dcmtk/dcmdata/dcuid.h"
-#include "dcmtk/dcmnet/scu.h"
-#include "dcmtk/ofstd/oflist.h"
-#include "dcmtk/ofstd/ofstring.h"
 #include "iostream"
 
 const int ASCE_TIMEOUT = 30;
