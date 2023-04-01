@@ -1,0 +1,12 @@
+[
+{
+"command": "c++ \"-DNODE_GYP_MODULE_NAME=testaddon\" \"-DUSING_UV_SHARED=1\" \"-DUSING_V8_SHARED=1\" \"-DV8_DEPRECATION_WARNINGS=1\" -DV8_DEPRECATION_WARNINGS -DV8_IMMINENT_DEPRECATION_WARNINGS \"-D_GLIBCXX_USE_CXX11_ABI=1\" -D_LARGEFILE_SOURCE \"-D_FILE_OFFSET_BITS=64\" -D__STDC_FORMAT_MACROS -DOPENSSL_NO_PINSHARED -DOPENSSL_THREADS -DNAPI_DISABLE_CPP_EXCEPTIONS -DBUILDING_NODE_EXTENSION -I/home/gitpod/.cache/node-gyp/16.13.2/include/node -I/home/gitpod/.cache/node-gyp/16.13.2/src -I/home/gitpod/.cache/node-gyp/16.13.2/deps/openssl/config -I/home/gitpod/.cache/node-gyp/16.13.2/deps/openssl/openssl/include -I/home/gitpod/.cache/node-gyp/16.13.2/deps/uv/include -I/home/gitpod/.cache/node-gyp/16.13.2/deps/zlib -I/home/gitpod/.cache/node-gyp/16.13.2/deps/v8/include -I/workspace/adit/dcmtk-addon/node_modules/node-addon-api -fPIC -pthread -Wall -Wextra -Wno-unused-parameter -m64 -O3 -fno-omit-frame-pointer -fno-rtti \"-std=gnu++14\" -c /workspace/adit/dcmtk-addon/cppsrc/main.cpp",
+"directory": ".",
+"file": "/workspace/adit/dcmtk-addon/cppsrc/main.cpp"
+},
+{
+"command": "cc \"-DNODE_GYP_MODULE_NAME=nothing\" \"-DUSING_UV_SHARED=1\" \"-DUSING_V8_SHARED=1\" \"-DV8_DEPRECATION_WARNINGS=1\" -DV8_DEPRECATION_WARNINGS -DV8_IMMINENT_DEPRECATION_WARNINGS \"-D_GLIBCXX_USE_CXX11_ABI=1\" -D_LARGEFILE_SOURCE \"-D_FILE_OFFSET_BITS=64\" -D__STDC_FORMAT_MACROS -DOPENSSL_NO_PINSHARED -DOPENSSL_THREADS -I/home/gitpod/.cache/node-gyp/16.13.2/include/node -I/home/gitpod/.cache/node-gyp/16.13.2/src -I/home/gitpod/.cache/node-gyp/16.13.2/deps/openssl/config -I/home/gitpod/.cache/node-gyp/16.13.2/deps/openssl/openssl/include -I/home/gitpod/.cache/node-gyp/16.13.2/deps/uv/include -I/home/gitpod/.cache/node-gyp/16.13.2/deps/zlib -I/home/gitpod/.cache/node-gyp/16.13.2/deps/v8/include -fPIC -pthread -Wall -Wextra -Wno-unused-parameter -m64 -O3 -fno-omit-frame-pointer -c /workspace/adit/dcmtk-addon/node_modules/node-addon-api/nothing.c",
+"directory": ".",
+"file": "/workspace/adit/dcmtk-addon/node_modules/node-addon-api/nothing.c"
+}
+]
