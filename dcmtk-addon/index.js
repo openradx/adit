@@ -1,3 +1,4 @@
-const testAddon = require("./build/Release/testaddon.node");
+// var addon = require("bindings")("dcmconnector-addon");
+const addon = require("./build/Release/dcmconnector-addon");
 
-module.exports = testAddon;
+console.log(addon.hello()); // 'world'

@@ -4,15 +4,15 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "install": "cmake-js compile",
-    "test": "node index.js"
+    "build": "node-gyp rebuild",
+    "clean": "node-gyp clean"
   },
   "author": "",
   "license": "ISC",
+  "devDependencies": {
+    "node-gyp": "^9.3.1"
+  },
   "dependencies": {
     "node-addon-api": "^6.0.0"
-  },
-  "devDependencies": {
-    "cmake-js": "^7.2.1"
   }
 }
