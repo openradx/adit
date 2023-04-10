@@ -1,4 +1,5 @@
 {
+  "initializeCommand": "./scripts/init_codespaces.sh",
   "dockerComposeFile": [
     "../compose/docker-compose.base.yml",
     "../compose/docker-compose.dev.yml"
