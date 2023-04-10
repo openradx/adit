@@ -1,48 +1,28 @@
-// TODO: Cave, devcontainer is not up-to-date and not working currently!
-
-// If you want to run as a non-root user in the container, see .devcontainer/docker-compose.yml.
 {
-  "name": "Existing Docker Compose (Extend)",
-
-  // Update the 'dockerComposeFile' list if you have more compose files or use different names.
-  // The .devcontainer/docker-compose.yml file contains any overrides you need/want to make.
-  "dockerComposeFile": ["../compose/adit_dev/docker-compose.dev.yml"],
-
-  // The 'service' property is the name of the service for the container that VS Code should
-  // use. Update this value and .devcontainer/docker-compose.yml to the real service name.
+  "dockerComposeFile": [
+    "../compose/docker-compose.base.yml",
+    "../compose/docker-compose.dev.yml"
+  ],
   "service": "web",
-
-  // The optional 'workspaceFolder' property is the path VS Code should open by default when
-  // connected. This is typically a file mount in .devcontainer/docker-compose.yml
-  "workspaceFolder": "/app",
-
-  // Set *default* container specific settings.json values on container create.
-  "settings": {
-    "terminal.integrated.shell.linux": null
-  },
-
-  // Add the IDs of extensions you want installed when the container is created.
-  "extensions": [
-    "batisteo.vscode-django",
-    "ms-toolsai.jupyter",
-    "esbenp.prettier-vscode",
-    "ms-python.vscode-pylance",
-    "ms-python.python",
-    "visualstudioexptteam.vscodeintellicode"
-  ]
-
-  // Use 'forwardPorts' to make a list of ports inside the container available locally.
-  // "forwardPorts": [],
-
-  // Uncomment the next line if you want start specific services in your Docker Compose config.
-  // "runServices": [],
-
-  // Uncomment the next line if you want to keep your containers running after VS Code shuts down.
-  // "shutdownAction": "none",
-
-  // Uncomment the next line to run commands after the container is created - for example installing curl.
-  // "postCreateCommand": "apt-get update && apt-get install -y curl",
-
-  // Uncomment to connect as a non-root user if you've added one. See https://aka.ms/vscode-remote/containers/non-root.
-  // "remoteUser": "vscode"
+  "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "batisteo.vscode-django",
+        "charliermarsh.ruff",
+        "davidanson.vscode-markdownlint",
+        "eamodio.gitlens",
+        "esbenp.prettier-vscode",
+        "formulahendry.auto-rename-tag",
+        "foxundermoon.shell-format",
+        "mhutchie.git-graph",
+        "mikestead.dotenv",
+        "monosans.djlint",
+        "ms-azuretools.vscode-docker",
+        "ms-python.python",
+        "streetsidesoftware.code-spell-checker",
+        "wayou.vscode-todo-highlight"
+      ]
+    }
+  }
 }
