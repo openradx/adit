@@ -1,0 +1,13 @@
+{
+  "name": "dcmcore",
+  "version": "0.0.1",
+  "description": "Radit DICOM core library using DCMTK",
+  "author": "Kai Schlamp <kai.schlamp@gmail.com>",
+  "license": "GPL-3.0-or-later",
+  "scripts": {
+    "clean": "rm -rf ./build",
+    "build": "cmake -S. -Bbuild && cmake --build build --target all",
+    "receiver": "export DCMDICTPATH=/usr/local/share/dcmtk/dicom.dic && ./build/receiver 9000",
+    "demo": "export DCMDICTPATH=/usr/local/share/dcmtk/dicom.dic && ./build/demo"
+  }
+}
