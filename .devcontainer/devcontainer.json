@@ -1,5 +1,5 @@
 {
-  "build": { "dockerfile": ".codespaces.Dockerfile" },
+  "build": { "dockerfile": "Dockerfile" },
   "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
   "customizations": {
     "vscode": {
