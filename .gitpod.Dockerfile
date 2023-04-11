@@ -1,12 +1,12 @@
 FROM gitpod/workspace-full
 
-# C++ stuff
+# C++ and DCMTK stuff
+
+RUN apt-get update && apt-get -y install cmake libtiff-dev libsndfile1-dev libwrap0-dev libopenjp2-7-dev doxygen libboost-all-dev catch
 
 WORKDIR /usr/src/dcmtk
 
-RUN apt-get -y update \
-  && apt-get -y install cmake libtiff-dev libsndfile1-dev libwrap0-dev libopenjp2-7-dev doxygen libboost-all-dev catch \
-  && wget https://github.com/DCMTK/dcmtk/archive/refs/tags/DCMTK-3.6.7.tar.gz \
+RUN wget https://github.com/DCMTK/dcmtk/archive/refs/tags/DCMTK-3.6.7.tar.gz \
   && tar xvzf DCMTK-3.6.7.tar.gz \
   && mv dcmtk-DCMTK-3.6.7 dcmtk-3.6.7 \
   && mkdir dcmtk-3.6.7-build \
