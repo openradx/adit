@@ -1,10 +1,5 @@
 {
-  "initializeCommand": "./scripts/init_codespaces.sh",
-  "dockerComposeFile": [
-    "../compose/docker-compose.base.yml",
-    "../compose/docker-compose.dev.yml"
-  ],
-  "service": "web",
+  "build": { "dockerfile": ".codespaces.Dockerfile" },
   "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
   "customizations": {
     "vscode": {
