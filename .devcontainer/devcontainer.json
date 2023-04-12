@@ -1,8 +1,12 @@
 {
   "build": {
     "dockerfile": "Dockerfile",
+    // TODO: Temporary fix for "error reading from server: EOF" when starting
+    // ADIT with docker compose. Can be removed in the future.
     "args": { "BUILDKIT_INLINE_CACHE": "0" }
   },
+  "postCreateCommand": "poetry install && npm install",
+  "postStartCommand": "./scripts/init_codespaces.sh && ./scripts/adit_dev_up.sh",
   "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
   "customizations": {
     "vscode": {
