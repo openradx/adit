@@ -1,11 +1,11 @@
 {
-  "initializeCommand": "./scripts/init_codespaces.sh",
-  "dockerComposeFile": [
-    "../compose/docker-compose.base.yml",
-    "../compose/docker-compose.dev.yml"
-  ],
-  "service": "web",
-  "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
+  "build": {
+    "dockerfile": "Dockerfile",
+    // https://github.com/microsoft/vscode-remote-release/issues/7958
+    "args": {"BUILDKIT_INLINE_CACHE": "0"}
+  },
+  "postCreateCommand": "poetry install && npm install",
+  "postStartCommand": "./scripts/init_codespaces.sh",
   "customizations": {
     "vscode": {
       "extensions": [
