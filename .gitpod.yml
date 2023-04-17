@@ -3,11 +3,11 @@ image:
 
 tasks:
   - name: setup
-    # init: |
-    #   poetry install
-    #   npm install
-    # command: |
-    #   ./scripts/init_gitpod.sh
+    init: |
+      poetry install
+      npm install
+    command: |
+      ./scripts/init_gitpod.sh
 
 ports:
   - port: 8000
