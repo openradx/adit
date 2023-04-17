@@ -3,13 +3,11 @@ image:
 
 tasks:
   - name: setup
-    init: |
-      mkdir -p /workspace/.pip-modules/bin
-      ln -s /home/gitpod/.local/share/pypoetry/venv/bin/poetry /workspace/.pip-modules/bin/poetry
-      poetry install
-      npm install
-    command: |
-      ./scripts/init_gitpod.sh
+    # init: |
+    #   poetry install
+    #   npm install
+    # command: |
+    #   ./scripts/init_gitpod.sh
 
 ports:
   - port: 8000
