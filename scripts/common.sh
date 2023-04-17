@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-// https://github.com/microsoft/vscode-remote-release/issues/7958
+# https://github.com/microsoft/vscode-remote-release/issues/7958
 if [ "$CODESPACES" = true ]; then
     export DOCKER_BUILDKIT=0
     export BUILDKIT_INLINE_CACHE=0
