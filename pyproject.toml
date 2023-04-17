@@ -38,7 +38,7 @@ toml = "^0.10.2"
 Twisted = {extras = ["tls", "http2"], version = "^22.2.0"}
 whitenoise = "^6.0.0"
 
-[tool.poetry.dev-dependencies]
+[tool.poetry.group.dev.dependencies]
 black = "^23.1.0"
 celery-types = "^0.15.0"
 debugpy = "^1.6.2"
@@ -52,6 +52,7 @@ ipykernel = "^6.17.1"
 ipython = "^8.1.1"
 pyright = "^1.1.264"
 pytest = "^7.1.2"
+pytest-asyncio = "^0.21.0"
 pytest-celery = "^0.0.0"
 pytest-cov = "^4.0.0"
 pytest-django = "^4.5.2"
