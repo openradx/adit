@@ -13,8 +13,4 @@ RUN mkdir $NVM_DIR && \
 ENV NODE_PATH $NVM_DIR/v$NODE_VERSION/lib/node_modules
 ENV PATH $NVM_DIR/versions/node/v$NODE_VERSION/bin:$PATH
 
-# RUN pyenv update && \
-#   pyenv install 3.10.2 && \
-#   pyenv global 3.10.2 && \
-#   curl -sSL https://install.python-poetry.org | python - && \
-#   poetry config virtualenvs.in-project true
+RUN poetry config virtualenvs.in-project true
