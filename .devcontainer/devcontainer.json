@@ -2,7 +2,11 @@
   "build": {
     "dockerfile": "Dockerfile",
     // https://github.com/microsoft/vscode-remote-release/issues/7958
-    "args": {"BUILDKIT_INLINE_CACHE": "0"}
+    "args": { "BUILDKIT_INLINE_CACHE": "0" }
+  },
+  "features": {
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {},
+    "ghcr.io/devcontainers/features/node:1": {}
   },
   // https://github.com/orgs/community/discussions/50403
   "initializeCommand": "docker system prune --all --force",
