@@ -12,7 +12,7 @@
     "ghcr.io/devcontainers/features/node:1": {}
   },
   // https://github.com/orgs/community/discussions/50403
-  "initializeCommand": "docker system prune --all --force",
+  // "initializeCommand": "docker system prune --all --force",
   "postCreateCommand": "poetry install && npm install",
   "postStartCommand": "./scripts/init_codespaces.sh",
   "customizations": {
