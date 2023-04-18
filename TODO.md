@@ -2,6 +2,7 @@
 
 ## High Priority
 
+- move pytest.ini stuff to pyproject.toml
 - modalities and series_numbers in batch query model should never be null but an empty array
 - Use more workers
 - Query with StudyDateStart, StudyDateEnd, StudyDate

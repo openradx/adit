@@ -37,6 +37,7 @@ redis = "^4.3.4"
 toml = "^0.10.2"
 Twisted = { extras = ["tls", "http2"], version = "^22.2.0" }
 whitenoise = "^6.0.0"
+aiofiles = "^23.1.0"
 
 [tool.poetry.group.dev.dependencies]
 black = "^23.1.0"
@@ -62,6 +63,7 @@ pytest-watch = "^4.2.0"
 requests = "^2.27.1"
 ruff = "^0.0.260"
 time-machine = "^2.1.0"
+pytest-timeout = "^2.1.0"
 
 [tool.pyright]
 typeCheckingMode = "off"
