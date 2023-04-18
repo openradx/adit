@@ -38,6 +38,7 @@ toml = "^0.10.2"
 Twisted = { extras = ["tls", "http2"], version = "^22.2.0" }
 whitenoise = "^6.0.0"
 aiofiles = "^23.1.0"
+aiopath = "^0.6.11"
 
 [tool.poetry.group.dev.dependencies]
 black = "^23.1.0"
