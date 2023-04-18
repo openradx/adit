@@ -1,11 +1,5 @@
 #!/usr/bin/env bash
 
-# https://github.com/microsoft/vscode-remote-release/issues/7958
-# if [ "$CODESPACES" = true ]; then
-#     export DOCKER_BUILDKIT=0
-#     export BUILDKIT_INLINE_CACHE=0
-# fi
-
 ADIT_DEV_PROJ="adit_dev"
 ADIT_PROD_PROJ="adit_prod"
 
