@@ -1,17 +1,22 @@
 {
   "build": {
     "dockerfile": "Dockerfile"
+    // https://github.com/microsoft/vscode-remote-release/issues/7958
+    // "args": {
+    //   "DOCKER_BUILDKIT": "0",
+    //   "BUILDKIT_INLINE_CACHE": "0"
+    // }
   },
   "features": {
     "ghcr.io/devcontainers/features/docker-in-docker:2": {
-      // Docker CE v23 solves those issues:
-      // https://github.com/microsoft/vscode-remote-release/issues/7958
-      // https://github.com/orgs/community/discussions/50403
+      // Install Docker CE instead of an (by default) older Moby version
       "moby": false,
       "version": "23.0.4"
     },
     "ghcr.io/devcontainers/features/node:1": {}
   },
+  // https://github.com/orgs/community/discussions/50403
+  // "initializeCommand": "docker system prune --all --force",
   "postCreateCommand": "poetry install && npm install",
   "postStartCommand": "./scripts/init_codespaces.sh",
   "customizations": {
