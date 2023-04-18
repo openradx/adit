@@ -1,11 +1,11 @@
 {
   "build": {
-    "dockerfile": "Dockerfile",
+    "dockerfile": "Dockerfile"
     // https://github.com/microsoft/vscode-remote-release/issues/7958
-    "args": { "BUILDKIT_INLINE_CACHE": "0" }
+    // "args": { "BUILDKIT_INLINE_CACHE": "0" }
   },
   // https://github.com/orgs/community/discussions/50403
-  "initializeCommand": "docker system prune --all --force",
+  // "initializeCommand": "docker system prune --all --force",
   "postCreateCommand": "poetry install && npm install",
   "postStartCommand": "./scripts/init_codespaces.sh",
   "customizations": {
