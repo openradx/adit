@@ -1,8 +1,6 @@
 version: "3.8"
 
 x-app: &default-app
-  build:
-    target: development
   image: adit_dev:latest
   volumes:
     - ..:/app
@@ -15,6 +13,8 @@ x-app: &default-app
 services:
   web:
     <<: *default-app
+    build:
+      target: development
     ports:
       - "8000:8000"
       - "5678:5678"
