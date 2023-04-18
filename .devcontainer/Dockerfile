@@ -1,6 +1,6 @@
-FROM mcr.microsoft.com/devcontainers/universal:2.2.9
+FROM mcr.microsoft.com/devcontainers/python:3.10
 
-USER codespace
+USER vscode
 
 RUN curl -sSL https://install.python-poetry.org | python - && \
-    poetry config virtualenvs.in-project true
+    $HOME/.local/bin/poetry config virtualenvs.in-project true
