@@ -8,7 +8,10 @@
     // }
   },
   "features": {
-    "ghcr.io/devcontainers/features/docker-in-docker:2": {},
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {
+      "moby": false,
+      "version": "23.0.4"
+    },
     "ghcr.io/devcontainers/features/node:1": {}
   },
   // https://github.com/orgs/community/discussions/50403
