@@ -2,8 +2,6 @@ version: "3.8"
 
 x-app: &default-app
   restart: always
-  build:
-    target: production
   image: adit_prod:latest
   env_file:
     - ./.env.prod
@@ -16,6 +14,8 @@ x-app: &default-app
 services:
   web:
     <<: *default-app
+    build:
+      target: production
     ports:
       - "80:80"
       - "443:443"

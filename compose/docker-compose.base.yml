@@ -1,8 +1,7 @@
 version: "3.8"
 
 x-app: &default-app
-  build:
-    context: ..
+  pull_policy: never
   volumes:
     - /mnt:/mnt
   depends_on:
@@ -31,7 +30,10 @@ x-app: &default-app
 services:
   web:
     <<: *default-app
-    volumes: # Cave, overwrites the above anchor
+    build:
+      context: ..
+    volumes:
+      # Cave, overwrites the above anchor
       - /mnt:/mnt
       - adit_data:/var/www/adit
 
