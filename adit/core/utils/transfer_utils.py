@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any, Callable, Dict, List
 
 import humanize
-from celery.contrib.abortable import AbortableTask as AbortableCeleryTask
+from celery.contrib.abortable import AbortableTask as AbortableCeleryTask  # pyright: ignore
 from dicognito.anonymizer import Anonymizer
 from django.conf import settings
 from django.utils import timezone

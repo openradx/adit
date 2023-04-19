@@ -1,7 +1,7 @@
 import logging
 from typing import Any, Dict, List, Optional
 
-from celery.contrib.abortable import AbortableTask as AbortableCeleryTask
+from celery.contrib.abortable import AbortableTask as AbortableCeleryTask  # pyright: ignore
 from django.conf import settings
 from django.template.defaultfilters import pluralize
 from django.utils import timezone

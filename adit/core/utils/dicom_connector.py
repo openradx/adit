@@ -44,6 +44,7 @@ from pydicom.datadict import dictionary_VM
 from pydicom.dataset import Dataset
 from pydicom.errors import InvalidDicomError
 from pynetdicom import debug_logger, evt
+from pynetdicom._globals import STATUS_PENDING, STATUS_SUCCESS
 from pynetdicom.ae import ApplicationEntity as AE  # noqa: N817
 from pynetdicom.presentation import (
     BasicWorklistManagementPresentationContexts,
@@ -52,17 +53,17 @@ from pynetdicom.presentation import (
     build_role,
 )
 from pynetdicom.sop_class import (
-    EncapsulatedMTLStorage,
-    EncapsulatedOBJStorage,
-    EncapsulatedSTLStorage,
-    PatientRootQueryRetrieveInformationModelFind,
-    PatientRootQueryRetrieveInformationModelGet,
-    PatientRootQueryRetrieveInformationModelMove,
-    StudyRootQueryRetrieveInformationModelFind,
-    StudyRootQueryRetrieveInformationModelGet,
-    StudyRootQueryRetrieveInformationModelMove,
+    EncapsulatedMTLStorage,  # pyright: ignore
+    EncapsulatedOBJStorage,  # pyright: ignore
+    EncapsulatedSTLStorage,  # pyright: ignore
+    PatientRootQueryRetrieveInformationModelFind,  # pyright: ignore
+    PatientRootQueryRetrieveInformationModelGet,  # pyright: ignore
+    PatientRootQueryRetrieveInformationModelMove,  # pyright: ignore
+    StudyRootQueryRetrieveInformationModelFind,  # pyright: ignore
+    StudyRootQueryRetrieveInformationModelGet,  # pyright: ignore
+    StudyRootQueryRetrieveInformationModelMove,  # pyright: ignore
 )
-from pynetdicom.status import STATUS_PENDING, STATUS_SUCCESS, code_to_category
+from pynetdicom.status import code_to_category
 
 from ..errors import RetriableTaskError
 from ..models import DicomServer
@@ -975,7 +976,7 @@ def _convert_value(v: Any):
         cv = datetime.datetime.fromisoformat(v.isoformat())
     elif t == valuerep.TM:
         cv = datetime.time.fromisoformat(v.isoformat())
-    elif t in (valuerep.MultiValue, list):
+    elif t in (valuerep.MultiValue, list): # pyright: ignore
         cv = [_convert_value(i) for i in v]
     else:
         cv = repr(v)
@@ -1022,11 +1023,11 @@ def _handle_c_get_store(
 ):
     """Handle a C-STORE request event."""
 
-    ds = event.dataset
-    context = event.context
+    ds = event.dataset  # pyright: ignore
+    context = event.context  # pyright: ignore
 
     # Add DICOM File Meta Information
-    ds.file_meta = event.file_meta
+    ds.file_meta = event.file_meta  # pyright: ignore
 
     # Set the transfer syntax attributes of the dataset
     ds.is_little_endian = context.transfer_syntax.is_little_endian
@@ -1057,7 +1058,7 @@ def _handle_c_get_store(
             # so we just abort the association.
             # See https://github.com/pydicom/pynetdicom/issues/553
             # and https://groups.google.com/g/orthanc-users/c/tS826iEzHb0
-            event.assoc.abort()
+            event.assoc.abort()  # pyright: ignore
 
             # Answert with "Out of Resources"
             # see https://pydicom.github.io/pynetdicom/stable/service_classes/defined_procedure_service_class.html # noqa: E501

@@ -63,6 +63,10 @@ requests = "^2.27.1"
 ruff = "^0.0.260"
 time-machine = "^2.1.0"
 
+[tool.pyright]
+typeCheckingMode = "off"
+reportUnnecessaryTypeIgnoreComment = true
+
 [tool.pytest.ini_options]
 DJANGO_SETTINGS_MODULE = "adit.settings.development"
 python_files = ["tests.py", "test_*.py", "*_tests.py"]

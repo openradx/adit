@@ -35,6 +35,7 @@ vscode:
     - "monosans.djlint"
     - "ms-azuretools.vscode-docker"
     - "ms-python.python"
+    - "ms-python.vscode-pylance"
     - "streetsidesoftware.code-spell-checker"
     - "tamasfe.even-better-toml"
     - "wayou.vscode-todo-highlight"

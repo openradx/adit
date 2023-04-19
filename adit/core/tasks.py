@@ -4,7 +4,7 @@ from typing import List, Type
 
 from celery import Task as CeleryTask
 from celery import chord, shared_task
-from celery.contrib.abortable import AbortableTask as AbortableCeleryTask
+from celery.contrib.abortable import AbortableTask as AbortableCeleryTask  # pyright: ignore
 from celery.utils.log import get_task_logger
 from django.conf import settings
 from django.core.mail import send_mail
