@@ -65,7 +65,7 @@ COPY --from=builder-base $PYSETUP_PATH $PYSETUP_PATH
 RUN poetry install
 
 # Install requirements for end-to-end testing
-RUN playwright install && playwright install-deps
+RUN playwright install --with-deps chromium
 
 # Required folders for ADIT
 RUN mkdir -p /var/www/adit/logs \
