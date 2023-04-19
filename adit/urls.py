@@ -27,6 +27,7 @@ urlpatterns = [
     path("batch-transfer/", include("adit.batch_transfer.urls")),
     path("batch-query/", include("adit.batch_query.urls")),
     path("dicom-explorer/", include("adit.dicom_explorer.urls")),
+    path("upload/", include("adit.upload.urls")),
 ]
 
 # Django loginas

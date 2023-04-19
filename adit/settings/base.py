@@ -25,10 +25,11 @@ pyproject = toml.load(BASE_DIR / "pyproject.toml")
 
 ADIT_VERSION = pyproject["tool"]["poetry"]["version"]
 
-READ_DOT_ENV_FILE = env.bool("DJANGO_READ_DOT_ENV_FILE", default=False)
+READ_DOT_ENV_FILE = env.bool("DJANGO_READ_DOT_ENV_FILE", default=True)
+
 if READ_DOT_ENV_FILE:
     # OS environment variables take precedence over variables from .env
-    env.read_env(str(BASE_DIR / ".env"))
+    env.read_env(str(BASE_DIR / "compose/.env.prod"))
 
 BASE_URL = env.str("BASE_URL", default="")
 
@@ -63,6 +64,7 @@ INSTALLED_APPS = [
     "adit.batch_query.apps.BatchQueryConfig",
     "adit.batch_transfer.apps.BatchTransferConfig",
     "adit.dicom_explorer.apps.DicomExplorerConfig",
+    "adit.upload.apps.UploadConfig",
     "channels",
 ]
 

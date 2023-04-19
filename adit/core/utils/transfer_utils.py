@@ -2,6 +2,7 @@ import logging
 import os
 import subprocess
 import tempfile
+import shutil
 from datetime import datetime
 from functools import partial
 from pathlib import Path
@@ -43,7 +44,11 @@ class TransferExecutor:
         self.transfer_task = transfer_task
         self.celery_task = celery_task
 
-        self.source_connector = _create_source_connector(transfer_task)
+        self.source_connector = None
+        if self.transfer_task.job.source.node_type == DicomNode.NodeType.SERVER:
+            self.source_connector = _create_source_connector(transfer_task)
+        else:
+            self.source_connector = transfer_task.job.source
 
         self.dest_connector = None
         if self.transfer_task.job.destination.node_type == DicomNode.NodeType.SERVER:
@@ -78,7 +83,10 @@ class TransferExecutor:
                 )
 
             if self.dest_connector:
-                self._transfer_to_server()
+                if transfer_job.source.node_type == DicomNode.NodeType.SERVER:
+                    self._transfer_to_server()
+                else:
+                    self._upload_to_server()
             else:
                 if transfer_job.archive_password:
                     self._transfer_to_archive()
@@ -127,6 +135,13 @@ class TransferExecutor:
             self.transfer_task.save()
 
         return self.transfer_task.status
+
+    def _upload_to_server(self) -> None:
+        self.dest_connector.upload_folder(self.source_connector.path) #TODO add exception handling and all that good stuff
+        try:
+            shutil.rmtree(self.source_connector.path)
+        except OSError as e:
+            logger.error("Could not delete folder after upload: %s.", e.sterror)
 
     def _transfer_to_server(self) -> None:
         with tempfile.TemporaryDirectory(prefix="adit_") as tmpdir:

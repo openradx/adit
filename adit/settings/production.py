@@ -21,3 +21,4 @@ EMAIL_HOST_PASSWORD = env.str("DJANGO_EMAIL_HOST_PASSWORD", default="")
 EMAIL_USE_TLS = env.bool("DJANGO_EMAIL_USE_TLS", default=False)
 
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+SECURE_SSL_REDIRECT = True
