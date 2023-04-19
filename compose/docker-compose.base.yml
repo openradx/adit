@@ -37,6 +37,7 @@ services:
       # Cave, overwrites the above anchor
       - /mnt:/mnt
       - adit_data:/var/www/adit
+      - /home/ubuntu/certs:/var/www/adit/ssl
 
   worker_default:
     <<: *default-app
