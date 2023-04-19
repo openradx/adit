@@ -2,7 +2,7 @@
   "editor.formatOnSave": true,
   "python.analysis.typeCheckingMode": "off",
   "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
-  "python.formatting.provider": "black",
+  "python.formatting.provider": "none",
   "python.testing.pytestEnabled": true,
   "python.testing.pytestArgs": ["adit"],
   "python.testing.unittestEnabled": false,
@@ -10,6 +10,7 @@
   "javascript.validate.enable": true,
   "cSpell.diagnosticLevel": "Hint",
   "[python]": {
+    "editor.defaultFormatter": "ms-python.black-formatter",
     "editor.codeActionsOnSave": {
       "source.organizeImports": true
     }
