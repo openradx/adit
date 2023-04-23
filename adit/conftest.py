@@ -2,16 +2,20 @@ import csv
 import io
 import time
 from multiprocessing import Process
+from tempfile import NamedTemporaryFile
 from typing import Callable
 
 import pytest
 from django.conf import settings
 from django.core.management import call_command
+from faker import Faker
 from playwright.sync_api import Locator, Page
 
 from adit.accounts.factories import UserFactory
 from adit.core.factories import DicomServerFactory
 from adit.testing import ChannelsLiveServer
+
+fake = Faker()
 
 
 def poll(
@@ -111,3 +115,13 @@ def create_csv_file():
         }
 
     return _create_csv_file
+
+
+@pytest.fixture
+def create_dummy_file():
+    def _create_dummy_file(folder: str | None = None, suffix: str = "", size: int = 1024):
+        file = NamedTemporaryFile(dir=folder, suffix=suffix, delete=False)
+        file.write(fake.binary(size))
+        file.close()
+
+    return _create_dummy_file

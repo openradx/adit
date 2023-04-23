@@ -2,9 +2,9 @@
 
 ## High Priority
 
-- move pytest.ini stuff to pyproject.toml
 - modalities and series_numbers in batch query model should never be null but an empty array
-- Use more workers
+- Use different workers for selective transfer, batch query and batch transfer
+- Use Excel files directly instead of CSV files
 - Query with StudyDateStart, StudyDateEnd, StudyDate
 - Common search query Websocket component
 - DICOM Explorer localstorage source
