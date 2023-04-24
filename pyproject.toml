@@ -83,6 +83,7 @@ filterwarnings = [
     "ignore:SelectableGroups dict interface is deprecated:DeprecationWarning",
     "ignore:The USE_L10N setting is deprecated:django.utils.deprecation.RemovedInDjango50Warning",
 ]
+timeout = 60
 
 [tool.ruff]
 exclude = ["migrations"]
