@@ -24,8 +24,10 @@ async def test_file_monitor_detects_file_and_removes_it(create_dummy_file):
             await monitor.stop()
             return True
 
+        monitor.set_file_handler(handle_file)
+
         try:
-            await monitor.start(handle_file)
+            await monitor.start()
         except asyncio.CancelledError:
             assert is_folder_empty(temp_dir)
 
@@ -37,13 +39,12 @@ async def test_file_monitor_deletes_empty_subfolders():
             assert is_folder_empty(temp_dir) is False
             monitor = FileMonitor(temp_dir)
 
-            async def handle_file(filepath: str):
-                pass
-
             async def handle_scan():
                 await monitor.stop()
 
+            monitor.set_after_scan_handler(handle_scan)
+
             try:
-                await monitor.start(handle_file, handle_scan)
+                await monitor.start()
             except asyncio.CancelledError:
                 assert is_folder_empty(temp_dir) is True

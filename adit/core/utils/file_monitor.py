@@ -1,27 +1,45 @@
 import asyncio
 from os import DirEntry
-from typing import Callable
+from typing import Awaitable, Callable
 
 from aiofiles import os
 from asyncinotify import Inotify, Mask
 
-FileHandler = Callable[[str], bool | None]
-ScanHandler = Callable[[], None]
+FileHandler = Callable[[str], bool | None | Awaitable[bool] | Awaitable[None]]
+BeforeScanHandler = Callable[[], None | Awaitable[None]]
+AfterScanHandler = Callable[[], None | Awaitable[None]]
 
 
 class FileMonitor:
     def __init__(self, folder: str):
         self._root_folder = folder
         self._queue = asyncio.Queue(maxsize=2)
+        self._file_handler: FileHandler | None = None
+        self._before_scan_handler: BeforeScanHandler | None = None
+        self._after_scan_handler: AfterScanHandler | None = None
+        self._scan_counter = 0
         self._task_group: asyncio.Future | None = None
 
-    async def _scan_path(self, path: str, file_handler: FileHandler):
+    def set_file_handler(self, file_handler: FileHandler):
+        self._file_handler = file_handler
+
+    def set_before_scan_handler(self, before_scan_handler: BeforeScanHandler):
+        self._before_scan_handler = before_scan_handler
+
+    def set_after_scan_handler(self, after_scan_handler: AfterScanHandler):
+        self._after_scan_handler = after_scan_handler
+
+    @property
+    def scan_count(self):
+        self._scan_counter
+
+    async def _scan_path(self, path: str):
         if await os.path.isfile(path):
             is_processed = False
-            if asyncio.iscoroutinefunction(file_handler):
-                is_processed = await file_handler(path)
+            if asyncio.iscoroutinefunction(self._file_handler):
+                is_processed = await self._file_handler(path)
             else:
-                is_processed = file_handler(path)
+                is_processed = self._file_handler(path)
 
             if is_processed:
                 await os.unlink(path)
@@ -29,7 +47,7 @@ class FileMonitor:
         elif await os.path.isdir(path):
             entries: list[DirEntry] = await os.scandir(path)
             for entry in entries:
-                await self._scan_path(entry.path, file_handler)
+                await self._scan_path(entry.path)
 
             # Clean up empty directories
             is_empty = not any(await os.scandir(path))
@@ -42,17 +60,25 @@ class FileMonitor:
                     # not empty anymore
                     pass
 
-    async def _worker(self, file_handler: FileHandler, scan_handler: ScanHandler | None):
+    async def _worker(self):
         while True:
+            if self._before_scan_handler:
+                if asyncio.iscoroutinefunction(self._before_scan_handler):
+                    await self._before_scan_handler()
+                else:
+                    self._before_scan_handler()
+
             await self._queue.get()
-            await self._scan_path(self._root_folder, file_handler)
+            await self._scan_path(self._root_folder)
             self._queue.task_done()
 
-            if scan_handler:
-                if asyncio.iscoroutinefunction(scan_handler):
-                    await scan_handler()
+            self._scan_counter += 1
+
+            if self._after_scan_handler:
+                if asyncio.iscoroutinefunction(self._after_scan_handler):
+                    await self._after_scan_handler()
                 else:
-                    scan_handler()
+                    self._after_scan_handler()
 
     async def _schedule_scan(self):
         try:
@@ -73,13 +99,13 @@ class FileMonitor:
             await asyncio.sleep(60)
             await self._schedule_scan()
 
-    async def start(self, file_handler: FileHandler, scan_handler: ScanHandler | None = None):
+    async def start(self):
         exists = await os.path.exists(self._root_folder)
         is_dir = await os.path.isdir(self._root_folder)
         if not exists or not is_dir:
             raise IOError(f"Invalid directory to monitor: {self._root_folder}")
 
-        worker_task = asyncio.create_task(self._worker(file_handler, scan_handler))
+        worker_task = asyncio.create_task(self._worker())
 
         watch_folder_task = asyncio.create_task(self._watch_folder())
 
