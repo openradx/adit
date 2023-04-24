@@ -11,8 +11,15 @@ AfterScanHandler = Callable[[], None | Awaitable[None]]
 
 
 class FileMonitor:
+    """Monitors a folder for new files and processes them."""
+
     def __init__(self, folder: str):
         self._root_folder = folder
+
+        # We use a queue to make sure that only one scan is running at a time.
+        # A max size of 2 is enough as we only have to make sure that a succeeding
+        # scan is started after the current one is finished (when a new file was
+        # added to the folder during the running scan)
         self._queue = asyncio.Queue(maxsize=2)
         self._file_handler: FileHandler | None = None
         self._before_scan_handler: BeforeScanHandler | None = None
@@ -21,16 +28,24 @@ class FileMonitor:
         self._task_group: asyncio.Future | None = None
 
     def set_file_handler(self, file_handler: FileHandler):
+        """Sets the file handler that is called for each new file.
+
+        It should return True if the file was processed successfully and False.
+        If it returns True the file will be deleted afterwards.
+        """
         self._file_handler = file_handler
 
     def set_before_scan_handler(self, before_scan_handler: BeforeScanHandler):
+        """A callback that is called before a scan is started."""
         self._before_scan_handler = before_scan_handler
 
     def set_after_scan_handler(self, after_scan_handler: AfterScanHandler):
+        """A callback that is called after a scan is finished."""
         self._after_scan_handler = after_scan_handler
 
     @property
     def scan_count(self):
+        """Returns the number of scans that were performed since start."""
         self._scan_counter
 
     async def _scan_path(self, path: str):
@@ -96,6 +111,7 @@ class FileMonitor:
 
     async def _periodic_scan(self):
         while True:
+            # Force a re-scan every minute
             await asyncio.sleep(60)
             await self._schedule_scan()
 
@@ -104,6 +120,8 @@ class FileMonitor:
         is_dir = await os.path.isdir(self._root_folder)
         if not exists or not is_dir:
             raise IOError(f"Invalid directory to monitor: {self._root_folder}")
+
+        self._scan_counter = 0
 
         worker_task = asyncio.create_task(self._worker())
 

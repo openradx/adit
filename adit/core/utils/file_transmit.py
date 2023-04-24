@@ -15,6 +15,8 @@ FileReceivedHandler = Callable[[str], Awaitable[bool] | bool]
 
 
 class FileTransmitSession:
+    """Each client connection to the server is represented by a session."""
+
     def __init__(self, topic: str, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
         self.topic = topic
         self._reader = reader
@@ -41,23 +43,32 @@ class FileTransmitSession:
 
 
 class FileTransmitServer:
+    """A file transmit server that can be used to send files to clients.
+
+    Clients can subscribe to a topic and will receive all files that are published
+    to this topic.
+    """
+
     def __init__(self, hostname: str, port: int):
         self._hostname = hostname
         self._port = port
         self._server = None
         self._subscribe_handler = None
         self._unsubscribe_handler = None
-        self._sessions: [FileTransmitSession] = []
+        self._sessions: list[FileTransmitSession] = []
 
     def set_subscribe_handler(self, subscribe_handler: SubscribeHandler):
+        """Called when a client subscribes to a topic."""
         self._subscribe_handler = subscribe_handler
 
     def set_unsubscribe_handler(self, unsubscribe_handler: UnsubscribeHandler):
+        """Called when a client unsubscribes from a topic."""
         self._unsubscribe_handler = unsubscribe_handler
 
     async def publish_file(
         self, topic: str, filepath: Path, file_sent_handler: FileSentHandler | None = None
     ):
+        """Publishes a file to all clients that subscribed to the given topic."""
         for session in self._sessions:
             if session.topic == topic:
                 await session.send_file(filepath, file_sent_handler)
@@ -112,11 +123,20 @@ class FileTransmitServer:
 
 
 class FileTransmitClient:
+    """A file transmit client that can be used to receive files from a server."""
+
     def __init__(self, hostname: str, port: int):
         self._hostname = hostname
         self._port = port
 
     async def subscribe(self, topic: str, file_received_handler: FileReceivedHandler):
+        """Subscribes to a topic and receives all files that are published to this topic.
+
+        The file_received_handler is called for each file that is received. It is passed the
+        path to the file received. The handler should process the file, maybe move it to a
+        new location or delete it afterward. If the file_received_handler returns True,
+        the client will unsubscribe from the topic.
+        """
         reader, writer = await asyncio.open_connection(self._hostname, self._port)
 
         # Send the topic to the server
