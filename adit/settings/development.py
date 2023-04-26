@@ -30,6 +30,8 @@ INSTALLED_APPS += [  # noqa: F405
 
 MIDDLEWARE += ["debug_toolbar.middleware.DebugToolbarMiddleware"]  # noqa: F405
 
+MEDIA_ROOT = "/tmp"
+
 if env.bool("FORCE_DEBUG_TOOLBAR", default=False):  # type: ignore
     # https://github.com/jazzband/django-debug-toolbar/issues/1035
     from django.conf import settings
