@@ -1,13 +1,13 @@
+import asyncio
 import logging
-import time
-from io import BytesIO
 
-import pika
+import aiofiles
 from django.conf import settings
-from pika.exceptions import AMQPConnectionError
-from pydicom.filewriter import dcmwrite
-from pynetdicom import AE, AllStoragePresentationContexts, debug_logger, evt
+from pydicom import Dataset, dcmread
 
+from ...utils.file_monitor import FileMonitor
+from ...utils.file_transmit import FileTransmitServer
+from ...utils.store_scp import StoreScp
 from ..base.server_command import ServerCommand
 
 logger = logging.getLogger(__name__)
@@ -15,145 +15,43 @@ logger = logging.getLogger(__name__)
 
 class Command(ServerCommand):
     help = "Starts a C-STORE SCP for receiving DICOM files."
-
     server_name = "ADIT DICOM C-STORE SCP Receiver"
-    default_addr = ""
-    default_port = 11112
-
-    def __init__(self, *args, **kwargs):
-        self.assoc_server = None
-        super().__init__(*args, **kwargs)
 
     def run_server(self, **options):
-        if settings.DICOM_DEBUG_LOGGER:
-            debug_logger()
+        asyncio.run(self.run_server_async())
 
-        ae = AE(ae_title=settings.ADIT_AE_TITLE)
-        ae.supported_contexts = AllStoragePresentationContexts
-        handlers = [
-            (evt.EVT_CONN_OPEN, on_connect),
-            (evt.EVT_CONN_CLOSE, on_close),
-            (evt.EVT_ESTABLISHED, on_established),
-            (evt.EVT_RELEASED, on_released),
-            (evt.EVT_ABORTED, on_aborted),
-            (evt.EVT_C_STORE, handle_store),
-        ]
+    async def run_server_async(self):
+        async with aiofiles.tempfile.TemporaryDirectory(dir=settings.DICOM_DIR) as temp_dir:
+            self.stdout.write(f"Using temporary directory: {temp_dir}")
 
-        self.assoc_server = ae.start_server(
-            (self.addr, self.port), evt_handlers=handlers, block=False
-        )
-        self.assoc_server.serve_forever()
+            store_scp = StoreScp(
+                folder=temp_dir,
+                ae_title=settings.ADIT_AE_TITLE,
+                host=settings.STORE_SCP_HOST,
+                port=settings.STORE_SCP_PORT,
+                debug=settings.DICOM_DEBUG_LOGGER,
+            )
+            store_scp_thread = asyncio.to_thread(store_scp.start)
+
+            file_monitor = FileMonitor(temp_dir)
+            file_transmit = FileTransmitServer(
+                settings.FILE_TRANSMIT_HOST, settings.FILE_TRANSMIT_PORT
+            )
+
+            async def handle_received_file(file_path):
+                ds: Dataset = await asyncio.to_thread(dcmread(file_path))
+                study_uid = ds.StudyInstanceUID
+                await file_transmit.publish_file(study_uid, file_path)
+                return True
+
+            file_monitor.set_file_handler(handle_received_file)
+
+            file_transmit_server_task = asyncio.create_task(file_transmit.start())
+            file_monitor_task = asyncio.create_task(file_monitor.start())
+
+            await asyncio.gather(store_scp_thread, file_transmit_server_task, file_monitor_task)
 
     def on_shutdown(self):
-        self.assoc_server.shutdown()
-
-
-def on_connect(event):
-    address = event.assoc.remote["address"]
-    port = event.assoc.remote["port"]
-    logger.info("Connection to remote %s:%d opened", address, port)
-
-    # TODO maybe we should connect to Rabbit when association is established and
-    # close on association release and abort (but check the lifecycle of an association)
-    rabbit_url = settings.RABBITMQ_URL
-    connection = None
-    retries = 0
-    while True:
-        try:
-            connection = pika.BlockingConnection(pika.URLParameters(rabbit_url))
-            break
-        except AMQPConnectionError as err:
-            retries += 1
-            if retries <= 30:
-                logger.error(
-                    "Cannot connect to %s. Trying again in 2 seconds... (%d/30).",
-                    rabbit_url,
-                    retries,
-                )
-                time.sleep(2)
-            else:
-                logger.exception("Could not connect to %s. No more retries.", rabbit_url)
-                raise err
-
-    if connection and connection.is_open:
-        logger.info("Connected to %s.", rabbit_url)
-    else:
-        raise AssertionError("No connection to RabbitMQ server established.")
-
-    # We bind the RabbitMQ connection to assoc as this is the only object that is
-    # shared between all events.
-    event.assoc.rabbit_connection = connection
-
-
-def on_close(event):
-    address = event.assoc.remote["address"]
-    port = event.assoc.remote["port"]
-    logger.info("Connection to remote %s:%d closed", address, port)
-
-    connection = event.assoc.rabbit_connection
-    if connection and connection.is_open:
-        rabbit_url = settings.RABBITMQ_URL
-        logger.info("Disconnected from %s.", rabbit_url)
-
-
-def on_established(event):
-    calling_ae = event.assoc.remote["ae_title"]
-    address = event.assoc.remote["address"]
-    port = event.assoc.remote["port"]
-    logger.info("Assoication to %s [%s:%d] established.", calling_ae, address, port)
-
-
-def on_released(event):
-    calling_ae = event.assoc.remote["ae_title"]
-    address = event.assoc.remote["address"]
-    port = event.assoc.remote["port"]
-    logger.info("Assoication to %s [%s:%d] released.", calling_ae, address, port)
-
-
-def on_aborted(event):
-    calling_ae = event.assoc.remote["ae_title"]
-    address = event.assoc.remote["address"]
-    port = event.assoc.remote["port"]
-    logger.info("Assoication to %s [%s:%d] was aborted.", calling_ae, address, port)
-
-
-# Implement a handler for evt.EVT_C_STORE
-def handle_store(event):
-    """Handle a C-STORE request event.
-
-    The request is initiated with a C-MOVE request by ADIT itself to
-    fetch images from a DICOM server that doesn't support C-GET requests.
-    """
-    ds = event.dataset
-    ds.file_meta = event.file_meta
-
-    called_ae = event.assoc.acceptor.primitive.called_ae_title
-    if called_ae != settings.ADIT_AE_TITLE:
-        raise AssertionError(f"Invalid called AE title: {called_ae}")
-
-    buffer = BytesIO()
-    dcmwrite(buffer, ds, write_like_original=False)
-
-    connection = event.assoc.rabbit_connection
-
-    if not connection or not connection.is_open:
-        raise AssertionError("No connection to RabbitMQ server established.")
-
-    channel = connection.channel()
-    channel.exchange_declare(exchange="received", exchange_type="direct")
-
-    # Send the dataset to the workers using RabbitMQ
-    calling_ae = event.assoc.remote["ae_title"]
-    routing_key = f"{calling_ae}\\{ds.StudyInstanceUID}\\{ds.SeriesInstanceUID}"
-    properties = pika.BasicProperties(message_id=ds.SOPInstanceUID)
-    channel.basic_publish(
-        exchange="received_dicoms",
-        routing_key=routing_key,
-        properties=properties,
-        body=buffer.getvalue(),
-    )
-
-    buffer.close()
-    channel.close()
-
-    return 0x0000  # Return a 'Success' status
+        # CONTROL-C (with sys.exit(0), see server_command.py) cancels the
+        # asyncio tasks by itself. So nothing to do here.
+        pass

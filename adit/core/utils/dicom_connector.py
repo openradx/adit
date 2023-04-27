@@ -12,6 +12,7 @@ only occur in higher level methods that uses lower level methods. As logger
 the Celery task logger is used as we intercept those messages and save them
 in TransferTask model object.
 """
+import asyncio
 import datetime
 import errno
 import logging
@@ -27,7 +28,6 @@ from typing import (
     Any,
     Callable,
     Dict,
-    Generator,
     Iterator,
     List,
     Literal,
@@ -37,7 +37,6 @@ from typing import (
     cast,
 )
 
-import pika
 from django.conf import settings
 from pydicom import dcmread, uid, valuerep
 from pydicom.datadict import dictionary_VM
@@ -67,7 +66,8 @@ from pynetdicom.status import code_to_category
 
 from ..errors import RetriableTaskError
 from ..models import DicomServer
-from ..utils.sanitize import sanitize_dirname
+from .file_transmit import FileTransmitClient
+from .sanitize import sanitize_dirname
 
 logger = logging.getLogger(__name__)
 
@@ -772,128 +772,99 @@ class DicomConnector:
         # The images are sent to the receiver container (a C-STORE SCP server)
         # by the move operation. Then those are send to a RabbitMQ queue from
         # which we consume them in a separate thread.
-        move_stopped_event = threading.Event()
         with ThreadPoolExecutor() as executor:
             future = executor.submit(
-                self._consume_dicoms,
+                self._consume_from_receiver,
                 query["StudyInstanceUID"],
                 query["SeriesInstanceUID"],
                 image_uids,
                 folder,
-                move_stopped_event,
                 modifier_callback,
             )
 
-            try:
-                results = self._send_c_move(
-                    query,
-                    settings.ADIT_AE_TITLE,
-                )
-                _evaluate_get_move_results(results, query)
-            finally:
-                move_stopped_event.set()
+            results = self._send_c_move(
+                query,
+                settings.ADIT_AE_TITLE,
+            )
+            _evaluate_get_move_results(results, query)
 
-            # Raises if _consume_dicoms raises
+            # Raises if thread raises
             future.result()
 
-    def _consume_dicoms(
+    def _consume_from_receiver(
         self,
         study_uid: str,
         series_uid: str,
         image_uids: List[str],
         folder: Path,
-        move_stopped_event: threading.Event,
-        modifier_callback: Optional[Callable[[Dataset], None]] = None,
+        modifier_callback: Optional[Callable[[Dataset], None]] = None,  # TODO: use it
     ):
-        remaining_image_uids = image_uids[:]
+        async def consume():
+            remaining_image_uids = image_uids[:]
+            last_image_at = time.time()
 
-        for message in self._consume_with_timeout(study_uid, series_uid, move_stopped_event):
-            received_image_uid, data = message
+            file_transmit = FileTransmitClient(
+                settings.FILE_TRANSMIT_HOST,
+                settings.FILE_TRANSMIT_PORT,
+                # TODO: store in tranmit folder
+                folder.as_posix(),
+            )
 
-            if received_image_uid in remaining_image_uids:
-                ds = dcmread(data)
+            async def handle_file(file_path: str):
+                nonlocal last_image_at
+                last_image_at = time.time()
 
-                if received_image_uid != ds.SOPInstanceUID:
-                    raise AssertionError(
-                        f"Received wrong image with UID {ds.SOPInstanceUID}. "
-                        f"Expected UID {received_image_uid}."
-                    )
+                ds: Dataset = await asyncio.to_thread(dcmread, file_path)
 
                 if modifier_callback:
                     modifier_callback(ds)
+                    ds.save_as(file_path)
 
-                _save_dicom_from_receiver(ds, folder)
+                if ds.StudyInstanceUID != study_uid:
+                    raise AssertionError(
+                        f"Received image with wrong StudyInstanceUID: {ds.StudyInstanceUID}"
+                    )
+                if ds.SeriesInstanceUID != series_uid:
+                    raise AssertionError(
+                        f"Received image with wrong SeriesInstanceUID: {ds.SeriesInstanceUID}"
+                    )
 
-                remaining_image_uids.remove(received_image_uid)
+                if ds.SOPInstanceUID in remaining_image_uids:
+                    remaining_image_uids.remove(ds.SOPInstanceUID)
 
-                # Stop if all images of this series were received
                 if not remaining_image_uids:
+                    return True
+
+                return False
+
+            topic = f"{self.server.ae_title}\\{study_uid}\\{series_uid}"
+            subscription_task = asyncio.create_task(file_transmit.subscribe(topic, handle_file))
+
+            while True:
+                await asyncio.sleep(1)
+                time_since_last_image = time.time() - last_image_at if last_image_at else 0
+                if time_since_last_image > settings.C_MOVE_DOWNLOAD_TIMEOUT:
+                    logger.error(
+                        "C-MOVE download timed out after %d seconds without receiving images.",
+                        round(time_since_last_image),
+                    )
+                    self.abort_connection()
+                    subscription_task.cancel()
                     break
 
-        if remaining_image_uids:
-            if remaining_image_uids == image_uids:
-                logger.error("No images of series %s received.", series_uid)
-                raise RetriableTaskError("Failed to download all images with C-MOVE.")
+            if remaining_image_uids:
+                if remaining_image_uids == image_uids:
+                    logger.error("No images of series %s received.", series_uid)
+                    raise RetriableTaskError("Failed to download all images with C-MOVE.")
 
-            logger.error(
-                "These images of series %s were not received: %s",
-                series_uid,
-                ", ".join(remaining_image_uids),
-            )
-            raise RetriableTaskError("Failed to download some images with C-MOVE.")
-
-    def _consume_with_timeout(
-        self, study_uid: str, series_uid: str, move_stopped_event: threading.Event
-    ):
-        last_consume_at = time.time()
-        for message in self._consume_from_receiver(study_uid, series_uid):
-            method, properties, body = message
-
-            # If we are waiting without a message for more then a specified timeout
-            # then we stop waiting anymore and also abort an established association
-            time_since_last_consume = time.time() - last_consume_at
-            timeout = settings.C_MOVE_DOWNLOAD_TIMEOUT
-            if time_since_last_consume > timeout:
                 logger.error(
-                    "C-MOVE download timed out after %d seconds without receiving images.",
-                    round(time_since_last_consume),
+                    "These images of series %s were not received: %s",
+                    series_uid,
+                    ", ".join(remaining_image_uids),
                 )
-                if not move_stopped_event.is_set():
-                    logger.warning("Aborting not finished C-MOVE operation.")
-                    self.abort_connection()
+                raise RetriableTaskError("Failed to download some images with C-MOVE.")
 
-                break
-
-            # We just reached an inactivity timeout
-            if not method:
-                continue
-
-            # Reset our timer if a real new message arrives
-            last_consume_at = time.time()
-
-            received_image_uid = properties.message_id
-            data = BytesIO(body)
-
-            yield received_image_uid, data
-
-    def _consume_from_receiver(self, study_uid: str, series_uid: str) -> Generator:
-        connection = pika.BlockingConnection(pika.URLParameters(settings.RABBITMQ_URL))
-        channel = connection.channel()
-        channel.exchange_declare(exchange="received_dicoms")
-        result = channel.queue_declare(queue="", exclusive=True)
-        queue_name = result.method.queue
-        routing_key = f"{self.server.ae_title}\\{study_uid}\\{series_uid}"
-        channel.queue_bind(
-            exchange="received_dicoms",
-            queue=queue_name,
-            routing_key=routing_key,
-        )
-
-        try:
-            yield from channel.consume(queue_name, auto_ack=True, inactivity_timeout=1)
-        finally:
-            channel.close()
-            connection.close()
+        asyncio.run(consume())
 
 
 def _check_required_id(value: str) -> Union[str, None]:
@@ -976,7 +947,7 @@ def _convert_value(v: Any):
         cv = datetime.datetime.fromisoformat(v.isoformat())
     elif t == valuerep.TM:
         cv = datetime.time.fromisoformat(v.isoformat())
-    elif t in (valuerep.MultiValue, list): # pyright: ignore
+    elif t in (valuerep.MultiValue, list):  # pyright: ignore
         cv = [_convert_value(i) for i in v]
     else:
         cv = repr(v)

@@ -6,7 +6,7 @@ from django.conf import settings
 
 from adit.core.utils.file_transmit import FileTransmitClient, FileTransmitServer
 
-HOSTNAME = "127.0.0.1"
+HOST = "127.0.0.1"
 PORT = 9999
 
 
@@ -15,7 +15,7 @@ async def test_start_transmit_file():
     samples_path = Path(f"{settings.BASE_DIR}/samples/dicoms")
     sample_files = list(samples_path.rglob("*.dcm"))
 
-    server = FileTransmitServer(HOSTNAME, PORT)
+    server = FileTransmitServer(HOST, PORT)
 
     async def subscribe_handler(topic: str):
         for file in sample_files:
@@ -31,7 +31,7 @@ async def test_start_transmit_file():
 
     await asyncio.sleep(0.1)  # wait until server is ready to accept connections
 
-    client = FileTransmitClient(HOSTNAME, PORT)
+    client = FileTransmitClient(HOST, PORT)
 
     async def file_handler(filepath: str):
         print(f"we have it {filepath}")

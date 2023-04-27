@@ -316,6 +316,7 @@ class TransferExecutor:
         and add the trial ID and name to the DICOM header if specified."""
         if pseudonym:
             # All dates get pseudonymized, but we want to retain the study date.
+            # TODO: Make this configurable.
             study_date = ds.StudyDate
 
             anonymizer.anonymize(ds)

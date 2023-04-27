@@ -152,3 +152,6 @@ dump.rdb
 bin/
 share/
 pyvenv.cfg
+
+# ADIT specific
+.dicoms

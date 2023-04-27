@@ -1,6 +1,5 @@
 import asyncio
 import struct
-from pathlib import Path
 from typing import Awaitable, Callable
 
 import aiofiles
@@ -22,14 +21,14 @@ class FileTransmitSession:
         self._reader = reader
         self._writer = writer
 
-    async def send_file(self, filepath: str, file_sent_handler: FileSentHandler | None):
-        file_size = await os.path.getsize(filepath)
+    async def send_file(self, file_path: str, file_sent_handler: FileSentHandler | None):
+        file_size = await os.path.getsize(file_path)
         data = struct.pack("!I", file_size)
         self._writer.write(data)
         await self._writer.drain()
 
         remaining_bytes = file_size
-        async with aiofiles.open(filepath, mode="rb") as file:
+        async with aiofiles.open(file_path, mode="rb") as file:
             # The client writes an eof if it is well served and doesn't need files anymore
             while remaining_bytes > 0 and not self._reader.at_eof():
                 chunk_size = min(remaining_bytes, BUFFER_SIZE)
@@ -49,8 +48,8 @@ class FileTransmitServer:
     to this topic.
     """
 
-    def __init__(self, hostname: str, port: int):
-        self._hostname = hostname
+    def __init__(self, host: str, port: int):
+        self._host = host
         self._port = port
         self._server = None
         self._subscribe_handler = None
@@ -66,17 +65,15 @@ class FileTransmitServer:
         self._unsubscribe_handler = unsubscribe_handler
 
     async def publish_file(
-        self, topic: str, filepath: Path, file_sent_handler: FileSentHandler | None = None
+        self, topic: str, file_path: str, file_sent_handler: FileSentHandler | None = None
     ):
         """Publishes a file to all clients that subscribed to the given topic."""
         for session in self._sessions:
             if session.topic == topic:
-                await session.send_file(filepath, file_sent_handler)
+                await session.send_file(file_path, file_sent_handler)
 
     async def start(self):
-        self._server = await asyncio.start_server(
-            self._handle_connection, self._hostname, self._port
-        )
+        self._server = await asyncio.start_server(self._handle_connection, self._host, self._port)
         addresses = ", ".join(str(sock.getsockname()) for sock in self._server.sockets)
         print(f"File transmit server serving on {addresses}")
 
@@ -125,9 +122,12 @@ class FileTransmitServer:
 class FileTransmitClient:
     """A file transmit client that can be used to receive files from a server."""
 
-    def __init__(self, hostname: str, port: int):
-        self._hostname = hostname
+    _last_read_at: int | None = None
+
+    def __init__(self, host: str, port: int, folder: str):
+        self._host = host
         self._port = port
+        self._folder = folder
 
     async def subscribe(self, topic: str, file_received_handler: FileReceivedHandler):
         """Subscribes to a topic and receives all files that are published to this topic.
@@ -137,35 +137,38 @@ class FileTransmitClient:
         new location or delete it afterward. If the file_received_handler returns True,
         the client will unsubscribe from the topic.
         """
-        reader, writer = await asyncio.open_connection(self._hostname, self._port)
+        reader, writer = await asyncio.open_connection(self._host, self._port)
 
         # Send the topic to the server
-        writer.write(f"{topic}\n".encode())
-        await writer.drain()
+        try:
+            writer.write(f"{topic}\n".encode())
+            await writer.drain()
 
-        # And wait for the server to send files regarding this topic
-        while True:
-            data = await reader.readexactly(4)
-            file_size = struct.unpack("!I", data)[0]
+            # And wait for the server to send files regarding this topic
+            while True:
+                data = await reader.readexactly(4)
+                file_size = struct.unpack("!I", data)[0]
 
-            remaining_bytes = file_size
-            async with aiofiles.tempfile.NamedTemporaryFile("wb+", delete=False) as file:
-                while remaining_bytes > 0:
-                    chunk_size = min(remaining_bytes, BUFFER_SIZE)
-                    data = await reader.read(chunk_size)
-                    await file.write(data)
-                    remaining_bytes -= len(data)
+                remaining_bytes = file_size
+                async with aiofiles.tempfile.NamedTemporaryFile(
+                    "wb+", dir=self._folder, delete=False
+                ) as file:
+                    while remaining_bytes > 0:
+                        chunk_size = min(remaining_bytes, BUFFER_SIZE)
+                        data = await reader.read(chunk_size)
+                        await file.write(data)
+                        remaining_bytes -= len(data)
 
-            # The file handler can report that no further files are needed by
-            # returning True
-            finished = (
-                await file_received_handler(file.name)
-                if asyncio.iscoroutinefunction(file_received_handler)
-                else file_received_handler(file.name)
-            )
-            if finished:
-                break
-
-        # The client reports that is well served and doesn't need any  further
-        # files by writing an eof.
-        writer.write_eof()
+                # The file handler can report that no further files are needed by
+                # returning True
+                finished = (
+                    await file_received_handler(file.name)
+                    if asyncio.iscoroutinefunction(file_received_handler)
+                    else file_received_handler(file.name)
+                )
+                if finished:
+                    break
+        finally:
+            # The client reports that is well served and doesn't need any  further
+            # files by writing an eof.
+            writer.write_eof()

@@ -2,6 +2,8 @@
 
 ## High Priority
 
+- Rewrite dicom_connector to use asyncio (wrap all pynetdicom calls in asyncio.to_thread)
+- rename ADIT_AE_TITLE to RECEIVER_AE_TITLE
 - modalities and series_numbers in batch query model should never be null but an empty array
 - Use different workers for selective transfer, batch query and batch transfer
 - Use Excel files directly instead of CSV files

@@ -275,8 +275,7 @@ REGISTRATION_OPEN = True
 # Channels
 ASGI_APPLICATION = "adit.asgi.application"
 
-# RabbitMQ is used as Celery message broker and to send incoming images
-# from the receiver to the workers.
+# RabbitMQ is used as Celery message broker
 RABBITMQ_URL = env.str("RABBITMQ_URL", default="amqp://localhost")
 
 # Rabbit Management console is integrated in ADIT by using an reverse
@@ -351,15 +350,33 @@ ORTHANC2_HOST = env.str("ORTHANC2_HOST", default="localhost")
 ORTHANC2_HTTP_PORT = env.int("ORTHANC2_HTTP_PORT", default=6502)
 ORTHANC2_DICOM_PORT = env.int("ORTHANC2_DICOM_PORT", default=7502)
 
-# For django-filter
+# Used by django-filter
 FILTERS_EMPTY_CHOICE_LABEL = "Show All"
 
 ###
 # ADIT specific settings
 ###
 
-# General ADIT settings
+# The AE Tile for the ADIT STORE SCP server
 ADIT_AE_TITLE = env.str("ADIT_AE_TITLE", default="ADIT1")
+
+# The address and port of the STORE SCP server (part of the receiver).
+# By default the STORE SCP server listens to all interfaces
+STORE_SCP_HOST = env.str("STORE_SCP_HOST", default="")
+STORE_SCP_PORT = env.int("STORE_SCP_PORT", default=11112)
+
+# The address and port of the file transmit socket server (part of the receiver)
+# that is used to transfer DICOM files from the receiver to the workers (when
+# the PACS server does not support C-GET).
+# By default the file transmit socket server listens to all interfaces (should
+# not be a problem as it is inside the docker network).
+FILE_TRANSMIT_HOST = env.str("FILE_TRANSMIT_SERVER_HOST", default="")
+FILE_TRANSMIT_PORT = env.int("FILE_TRANSMIT_SERVER_PORT", default=27312)
+
+# A folder to cache DICOM files.
+# Receiver and transmit client do create temporary directories in this folder
+# and cache their received DICOM files there.
+DICOM_DIR = env.str("DICOM_DIR", default=str(BASE_DIR / ".dicoms"))
 
 # The delimiter in CSV batch files
 CSV_DELIMITER = ";"
@@ -395,7 +412,7 @@ DICOM_EXPLORER_RESPONSE_TIMEOUT = 3  # seconds
 C_MOVE_DOWNLOAD_TIMEOUT = 60  # seconds
 
 # Show DICOM debug messages of pynetdicom
-DICOM_DEBUG_LOGGER = False
+DICOM_DEBUG_LOGGER = False  # TODO: rename to ENABLE_DICOM_DEBUG_LOGGER
 
 # How often to retry a failed transfer task before the task is definitively failed
 TRANSFER_TASK_RETRIES = 2
