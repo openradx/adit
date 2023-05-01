@@ -64,6 +64,8 @@ requests = "^2.27.1"
 ruff = "^0.0.260"
 time-machine = "^2.1.0"
 pytest-timeout = "^2.1.0"
+pytest-only = "^2.0.0"
+pytest-mock = "^3.10.0"
 
 [tool.pyright]
 typeCheckingMode = "off"
