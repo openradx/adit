@@ -14,7 +14,7 @@ class SelectiveTransferJobCreateMixin:
     def query_studies(self, connector, form, limit_results):
         data = form.cleaned_data
 
-        if data["modality"] in settings.EXCLUDE_MODALITIES:
+        if data["modality"] in settings.EXCLUDED_MODALITIES:
             return []
 
         studies = connector.find_studies(
@@ -38,7 +38,7 @@ class SelectiveTransferJobCreateMixin:
                 return False
 
             modalities_in_study = set(study["ModalitiesInStudy"])
-            excluded_modalities = set(settings.EXCLUDE_MODALITIES)
+            excluded_modalities = set(settings.EXCLUDED_MODALITIES)
             not_excluded_modalities = list(modalities_in_study - excluded_modalities)
             return len(not_excluded_modalities) > 0
 

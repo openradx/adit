@@ -17,12 +17,11 @@ import datetime
 import errno
 import logging
 import re
-import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from functools import wraps
-from io import BytesIO
+from os import PathLike
 from pathlib import Path
 from typing import (
     Any,
@@ -118,7 +117,7 @@ class DicomConnector:
     def __init__(
         self,
         server: DicomServer,
-        config: Optional[Config] = None,
+        config: Config | None = None,
     ):
         self.server = server
         if config is None:
@@ -126,7 +125,7 @@ class DicomConnector:
         else:
             self.config = config
 
-        if settings.DICOM_DEBUG_LOGGER:
+        if settings.DICOM_DEBUG_LOGGING:
             debug_logger()  # Debug mode of pynetdicom
 
         self.assoc = None
@@ -303,7 +302,7 @@ class DicomConnector:
         self,
         patient_id: str,
         study_uid: str,
-        folder: Path,
+        folder: PathLike,
         modality: Optional[str] = None,
         modifier_callback: Optional[Callable[[Dataset], None]] = None,
     ):
@@ -322,7 +321,7 @@ class DicomConnector:
             series_uid = series["SeriesInstanceUID"]
             modality = series["Modality"]
 
-            if modality in settings.EXCLUDE_MODALITIES:
+            if modality in settings.EXCLUDED_MODALITIES:
                 continue
 
             # TODO maybe we should move the series folder name creation to the
@@ -342,7 +341,7 @@ class DicomConnector:
         patient_id: str,
         study_uid: str,
         series_uid: str,
-        folder: Path,
+        folder: PathLike,
         modifier_callback: Optional[Callable[[Dataset], None]] = None,
     ):
         """Download all series to a specified folder for given series UIDs and pseudonymize
@@ -356,15 +355,15 @@ class DicomConnector:
         }
 
         if self.server.patient_root_get_support or self.server.study_root_get_support:
-            self._download_series_get(query, folder, modifier_callback)
+            self._download_series_with_c_get(query, folder, modifier_callback)
             logger.debug("Successfully downloaded series %s of study %s.", series_uid, study_uid)
         elif self.server.patient_root_move_support or self.server.study_root_move_support:
-            self._download_series_move(query, folder, modifier_callback)
+            self._download_series_with_c_move(query, folder, modifier_callback)
             logger.debug("Successfully downloaded series %s of study %s.", series_uid, study_uid)
         else:
             raise ValueError("No Query/Retrieve Information Model supported to download images.")
 
-    def upload_folder(self, folder: Path):
+    def upload_folder(self, folder: PathLike):
         """Upload a specified folder to a DICOM server."""
 
         if not self.server.store_scp_support:
@@ -418,7 +417,7 @@ class DicomConnector:
             series_uid = series["SeriesInstanceUID"]
             modality = series["Modality"]
 
-            if modality in settings.EXCLUDE_MODALITIES:
+            if modality in settings.EXCLUDED_MODALITIES:
                 continue
 
             try:
@@ -481,7 +480,7 @@ class DicomConnector:
                 QueryRetrievePresentationContexts + BasicWorklistManagementPresentationContexts
             )
         elif command == "get":
-            # We must exclude as many storage contexts as how many query/retrieve contexts we add
+            # We must exclude as many storage contexts as query/retrieve contexts we add
             # because the maximum requested contexts is 128. "StoragePresentationContexts" is a list
             # that contains 128 storage contexts itself.
             exclude = [
@@ -545,8 +544,8 @@ class DicomConnector:
     def _send_c_get(
         self,
         query_dict: dict[str, Any],
-        folder: Path,
-        callback: Optional[Callable[[Dataset], None]] = None,
+        folder: PathLike,
+        modifier_callback: Optional[Callable[[Dataset], None]] = None,
         msg_id: int = 1,
     ):
         logger.debug("Sending C-GET with query: %s", query_dict)
@@ -564,10 +563,56 @@ class DicomConnector:
                 "No valid Query/Retrieve Information Model for C-GET could be selected."
             )
 
-        query_ds = _make_query_dataset(query_dict)
         store_errors = []
+
+        def handle_c_get_store(event: evt.InterventionEvent):
+            ds = event.dataset  # pyright: ignore
+            context = event.context  # pyright: ignore
+
+            # Add DICOM File Meta Information
+            ds.file_meta = event.file_meta  # pyright: ignore
+
+            # Set the transfer syntax attributes of the dataset
+            ds.is_little_endian = context.transfer_syntax.is_little_endian
+            ds.is_implicit_VR = context.transfer_syntax.is_implicit_VR
+
+            folder_path = Path(folder)
+            folder_path.mkdir(parents=True, exist_ok=True)
+
+            # Allow to manipuate the dataset by using a callback before saving to disk
+            if modifier_callback:
+                modifier_callback(ds)
+
+            file_path = folder_path / ds.SOPInstanceUID
+
+            try:
+                ds.save_as(str(file_path), write_like_original=False)
+            except OSError as err:
+                if err.errno == errno.ENOSPC:
+                    # No space left on destination
+                    logger.exception("Out of disk space while saving %s.", file_path)
+                    no_space_error = RetriableTaskError(
+                        "Out of disk space on destination.", long_delay=True
+                    )
+                    no_space_error.__cause__ = err
+                    store_errors.append(no_space_error)
+
+                    # Unfortunately not all PACS servers support or respect a C-CANCEL request,
+                    # so we just abort the association.
+                    # See https://github.com/pydicom/pynetdicom/issues/553
+                    # and https://groups.google.com/g/orthanc-users/c/tS826iEzHb0
+                    event.assoc.abort()  # pyright: ignore
+
+                    # Answer with "Out of Resources"
+                    # see https://pydicom.github.io/pynetdicom/stable/service_classes/defined_procedure_service_class.html # noqa: E501
+                    return 0xA702
+
+            # Return a 'Success' status
+            return 0x0000
+
+        query_ds = _make_query_dataset(query_dict)
         assert self.assoc is not None
-        self.assoc.bind(evt.EVT_C_STORE, _handle_c_get_store, [folder, store_errors, callback])
+        self.assoc.bind(evt.EVT_C_STORE, handle_c_get_store)
 
         try:
             assert self.assoc is not None
@@ -582,11 +627,11 @@ class DicomConnector:
             # If not just raise the original error.
             raise err
         finally:
-            self.assoc.unbind(evt.EVT_C_STORE, _handle_c_get_store)
+            self.assoc.unbind(evt.EVT_C_STORE, handle_c_get_store)
 
         return results
 
-    @connect_to_server("move")
+    @connect_to_server("move")  # TODO: rename to C-MOVE
     def _send_c_move(self, query_dict: dict[str, Any], destination_ae_title: str, msg_id: int = 1):
         logger.debug("Sending C-MOVE with query: %s", query_dict)
 
@@ -608,10 +653,10 @@ class DicomConnector:
         responses = self.assoc.send_c_move(query_ds, destination_ae_title, query_model, msg_id)
         return self._fetch_results(responses, "C-MOVE", query_dict)
 
-    @connect_to_server("store")
+    @connect_to_server("store")  # TODO: rename to C-STORE
     def _send_c_store(
         self,
-        folder: Path,
+        folder: PathLike,
         callback: Optional[Callable[[Dataset], None]] = None,
         msg_id: int = 1,
     ):
@@ -747,20 +792,20 @@ class DicomConnector:
 
         return filtered_studies
 
-    def _download_series_get(
+    def _download_series_with_c_get(
         self,
         query: dict[str, Any],
-        folder: Path,
+        folder: PathLike,
         modifier_callback: Optional[Callable[[Dataset], None]] = None,
     ):
         results = self._send_c_get(query, folder, modifier_callback)
 
         _evaluate_get_move_results(results, query)
 
-    def _download_series_move(
+    def _download_series_with_c_move(
         self,
         query: dict[str, Any],
-        folder: Path,
+        folder: PathLike,
         modifier_callback: Optional[Callable[[Dataset], None]] = None,
     ):
         # Fetch all SOPInstanceUIDs in the series so that we can later
@@ -782,10 +827,7 @@ class DicomConnector:
                 modifier_callback,
             )
 
-            results = self._send_c_move(
-                query,
-                settings.ADIT_AE_TITLE,
-            )
+            results = self._send_c_move(query, settings.ADIT_AE_TITLE)
             _evaluate_get_move_results(results, query)
 
             # Raises if thread raises
@@ -796,8 +838,8 @@ class DicomConnector:
         study_uid: str,
         series_uid: str,
         image_uids: List[str],
-        folder: Path,
-        modifier_callback: Optional[Callable[[Dataset], None]] = None,  # TODO: use it
+        folder: PathLike,
+        modifier_callback: Optional[Callable[[Dataset], None]] = None,
     ):
         async def consume():
             remaining_image_uids = image_uids[:]
@@ -806,11 +848,10 @@ class DicomConnector:
             file_transmit = FileTransmitClient(
                 settings.FILE_TRANSMIT_HOST,
                 settings.FILE_TRANSMIT_PORT,
-                # TODO: store in tranmit folder
-                folder.as_posix(),
+                folder,
             )
 
-            async def handle_file(file_path: str):
+            async def handle_received_file(file_path: str):
                 nonlocal last_image_at
                 last_image_at = time.time()
 
@@ -838,10 +879,18 @@ class DicomConnector:
                 return False
 
             topic = f"{self.server.ae_title}\\{study_uid}\\{series_uid}"
-            subscription_task = asyncio.create_task(file_transmit.subscribe(topic, handle_file))
+            subscribe_task = asyncio.create_task(
+                file_transmit.subscribe(
+                    topic, handle_received_file, lambda metadata: metadata["SOPInstanceUID"]
+                )
+            )
 
             while True:
                 await asyncio.sleep(1)
+
+                if subscribe_task.done():
+                    break
+
                 time_since_last_image = time.time() - last_image_at if last_image_at else 0
                 if time_since_last_image > settings.C_MOVE_DOWNLOAD_TIMEOUT:
                     logger.error(
@@ -849,7 +898,7 @@ class DicomConnector:
                         round(time_since_last_image),
                     )
                     self.abort_connection()
-                    subscription_task.cancel()
+                    subscribe_task.cancel()
                     break
 
             if remaining_image_uids:
@@ -975,7 +1024,7 @@ def _evaluate_get_move_results(results, query: dict[str, Any]):
     status_code = results[-1]["status"]["code"]
     if status_category not in [STATUS_PENDING, STATUS_SUCCESS]:
         data = results[-1]["data"]
-        failed_image_uids = data or data.get("FailedSOPInstanceList")
+        failed_image_uids = data and data.get("FailedSOPInstanceList")
         error_msg = (
             f"{status_category} ({status_code}) occurred while transferring "
             f"the series with UID {query['SeriesInstanceUID']}."
@@ -986,60 +1035,8 @@ def _evaluate_get_move_results(results, query: dict[str, Any]):
         raise RetriableTaskError(f"Failed to transfer images with status {status_category}.")
 
 
-def _handle_c_get_store(
-    event: evt.InterventionEvent,
-    folder: Path,
-    errors: List[Exception],
-    modifier_callback: Optional[Callable[[Dataset], None]] = None,
-):
-    """Handle a C-STORE request event."""
-
-    ds = event.dataset  # pyright: ignore
-    context = event.context  # pyright: ignore
-
-    # Add DICOM File Meta Information
-    ds.file_meta = event.file_meta  # pyright: ignore
-
-    # Set the transfer syntax attributes of the dataset
-    ds.is_little_endian = context.transfer_syntax.is_little_endian
-    ds.is_implicit_VR = context.transfer_syntax.is_implicit_VR
-
-    folder_path = Path(folder)
-    folder_path.mkdir(parents=True, exist_ok=True)
-
-    # Allow to manipuate the dataset by using a callback before saving to disk
-    if modifier_callback:
-        modifier_callback(ds)
-
-    file_path = folder_path / ds.SOPInstanceUID
-
-    try:
-        ds.save_as(str(file_path), write_like_original=False)
-    except OSError as err:
-        if err.errno == errno.ENOSPC:
-            # No space left on destination
-            logger.exception("Out of disk space while saving %s.", file_path)
-            no_space_error = RetriableTaskError(
-                "Out of disk space on destination.", long_delay=True
-            )
-            no_space_error.__cause__ = err
-            errors.append(no_space_error)
-
-            # Unfortunately not all PACS servers support or respect a C-CANCEL request,
-            # so we just abort the association.
-            # See https://github.com/pydicom/pynetdicom/issues/553
-            # and https://groups.google.com/g/orthanc-users/c/tS826iEzHb0
-            event.assoc.abort()  # pyright: ignore
-
-            # Answert with "Out of Resources"
-            # see https://pydicom.github.io/pynetdicom/stable/service_classes/defined_procedure_service_class.html # noqa: E501
-            return 0xA702
-
-    # Return a 'Success' status
-    return 0x0000
-
-
-def _save_dicom_from_receiver(ds: Dataset, folder: Path) -> None:
+# TODO: delete
+def _save_dicom_from_receiver(ds: Dataset, folder: PathLike) -> None:
     folder_path = Path(folder)
     folder_path.mkdir(parents=True, exist_ok=True)
 
@@ -1048,6 +1045,7 @@ def _save_dicom_from_receiver(ds: Dataset, folder: Path) -> None:
     # In this case we don't need to save with `write_like_original=False` as it
     # saved already saved it this way to the buffer in the receiver
     try:
+        # TODO: really save with write_like_original=False?
         ds.save_as(str(file_path), write_like_original=False)
     except OSError as err:
         if err.errno == errno.ENOSPC:  # No space left on device

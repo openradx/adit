@@ -176,7 +176,7 @@ class TransferExecutor:
         modalities = study["ModalitiesInStudy"]
 
         modalities = [
-            modality for modality in modalities if modality not in settings.EXCLUDE_MODALITIES
+            modality for modality in modalities if modality not in settings.EXCLUDED_MODALITIES
         ]
 
         # If some series are explicitly chosen then check if their Series Instance UIDs

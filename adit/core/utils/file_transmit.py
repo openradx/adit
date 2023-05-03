@@ -1,16 +1,24 @@
 import asyncio
+import json
+import logging
 import struct
+from os import PathLike
+from pathlib import Path
 from typing import Awaitable, Callable
 
 import aiofiles
 from aiofiles import os
+from aiofiles.threadpool.binary import AsyncBufferedReader
 
 BUFFER_SIZE = 1024
 
 SubscribeHandler = Callable[[str], None | Awaitable[None]]
 UnsubscribeHandler = Callable[[str], None | Awaitable[None]]
 FileSentHandler = Callable[[], None]
-FileReceivedHandler = Callable[[str], Awaitable[bool] | bool]
+FilenameGenerator = Callable[[dict[str, str]], str | None]
+FileReceivedHandler = Callable[[str], Awaitable[bool | None] | bool | None]
+
+logger = logging.getLogger(__name__)
 
 
 class FileTransmitSession:
@@ -21,12 +29,21 @@ class FileTransmitSession:
         self._reader = reader
         self._writer = writer
 
-    async def send_file(self, file_path: str, file_sent_handler: FileSentHandler | None):
+    async def send_file(self, file_path: str, metadata: dict[str, str] | None = None):
+        # Send file size
         file_size = await os.path.getsize(file_path)
-        data = struct.pack("!I", file_size)
+        data = struct.pack("!I", file_size)  # encodes unsigned int to exactly 4 bytes
         self._writer.write(data)
         await self._writer.drain()
 
+        # Send metadata
+        if not metadata:
+            metadata = {}
+        metadata_bytes = (json.dumps(metadata) + "\n").encode()
+        self._writer.write(metadata_bytes)
+        await self._writer.drain()
+
+        # Send the file itself
         remaining_bytes = file_size
         async with aiofiles.open(file_path, mode="rb") as file:
             # The client writes an eof if it is well served and doesn't need files anymore
@@ -36,9 +53,6 @@ class FileTransmitSession:
                 self._writer.write(chunk)
                 await self._writer.drain()
                 remaining_bytes -= chunk_size
-
-        if file_sent_handler and remaining_bytes == 0:
-            file_sent_handler()
 
 
 class FileTransmitServer:
@@ -52,33 +66,39 @@ class FileTransmitServer:
         self._host = host
         self._port = port
         self._server = None
-        self._subscribe_handler = None
-        self._unsubscribe_handler = None
+        self._subscribe_handler: SubscribeHandler | None = None
+        self._unsubscribe_handler: UnsubscribeHandler | None = None
         self._sessions: list[FileTransmitSession] = []
 
-    def set_subscribe_handler(self, subscribe_handler: SubscribeHandler):
+    def set_subscribe_handler(self, subscribe_handler: SubscribeHandler | None):
         """Called when a client subscribes to a topic."""
         self._subscribe_handler = subscribe_handler
 
-    def set_unsubscribe_handler(self, unsubscribe_handler: UnsubscribeHandler):
+    def set_unsubscribe_handler(self, unsubscribe_handler: UnsubscribeHandler | None):
         """Called when a client unsubscribes from a topic."""
         self._unsubscribe_handler = unsubscribe_handler
 
     async def publish_file(
-        self, topic: str, file_path: str, file_sent_handler: FileSentHandler | None = None
+        self,
+        topic: str,
+        file_path: PathLike,
+        metadata: dict[str, str] | None = None,
     ):
         """Publishes a file to all clients that subscribed to the given topic."""
         for session in self._sessions:
             if session.topic == topic:
-                await session.send_file(file_path, file_sent_handler)
+                await session.send_file(file_path, metadata)
 
     async def start(self):
         self._server = await asyncio.start_server(self._handle_connection, self._host, self._port)
         addresses = ", ".join(str(sock.getsockname()) for sock in self._server.sockets)
-        print(f"File transmit server serving on {addresses}")
+        logger.info(f"File transmit server serving on {addresses}")
 
         async with self._server:
-            await self._server.serve_forever()
+            try:
+                await self._server.serve_forever()
+            except asyncio.CancelledError:
+                logger.info("File transmit server stopped")
 
     async def stop(self):
         self._server.close()
@@ -105,7 +125,7 @@ class FileTransmitServer:
                 if not data and reader.at_eof():
                     break
         except Exception as err:
-            print(f"Exception occurred on topic {topic}: {err}")
+            logger.error(f"Exception occurred on topic {topic}: {err}")
         finally:
             self._sessions.remove(session)
             if not writer.is_closing():
@@ -124,19 +144,30 @@ class FileTransmitClient:
 
     _last_read_at: int | None = None
 
-    def __init__(self, host: str, port: int, folder: str):
+    def __init__(self, host: str, port: int, folder: PathLike):
         self._host = host
         self._port = port
         self._folder = folder
 
-    async def subscribe(self, topic: str, file_received_handler: FileReceivedHandler):
+    async def subscribe(
+        self,
+        topic: str,
+        file_received_handler: FileReceivedHandler,
+        filename_generator: FilenameGenerator | None = None,
+    ):
         """Subscribes to a topic and receives all files that are published to this topic.
 
         The file_received_handler is called for each file that is received. It is passed the
         path to the file received. The handler should process the file, maybe move it to a
         new location or delete it afterward. If the file_received_handler returns True,
         the client will unsubscribe from the topic.
+        The filename generator is called when the metadata is received and should return
+        the filename to use for the file that is received. If no filename generator is
+        set, the filename is randomly generated.
         """
+        if not await os.path.exists(self._folder) or not await os.path.isdir(self._folder):
+            raise IOError(f"Invalid directory to store received files: {self._folder}")
+
         reader, writer = await asyncio.open_connection(self._host, self._port)
 
         # Send the topic to the server
@@ -146,21 +177,41 @@ class FileTransmitClient:
 
             # And wait for the server to send files regarding this topic
             while True:
+                # Receive file size
                 data = await reader.readexactly(4)
                 file_size = struct.unpack("!I", data)[0]
 
+                # Receive metadata
+                metadata_bytes = await reader.readline()
+                metadata = json.loads(metadata_bytes.decode().strip())
+
+                # Generate an optional filename
+                filename = None
+                if filename_generator:
+                    filename = filename_generator(metadata)
+
+                # Receive the file itself
+                file: AsyncBufferedReader
+                if filename:
+                    file = await aiofiles.open(Path(self._folder) / filename, "wb+")
+                else:
+                    file = await aiofiles.tempfile.NamedTemporaryFile(
+                        "wb+", dir=self._folder, delete=False
+                    )
+
                 remaining_bytes = file_size
-                async with aiofiles.tempfile.NamedTemporaryFile(
-                    "wb+", dir=self._folder, delete=False
-                ) as file:
+
+                try:
                     while remaining_bytes > 0:
                         chunk_size = min(remaining_bytes, BUFFER_SIZE)
                         data = await reader.read(chunk_size)
                         await file.write(data)
                         remaining_bytes -= len(data)
+                finally:
+                    await file.close()
 
                 # The file handler can report that no further files are needed by
-                # returning True
+                # returning True which stops reading further data from the server.
                 finished = (
                     await file_received_handler(file.name)
                     if asyncio.iscoroutinefunction(file_received_handler)

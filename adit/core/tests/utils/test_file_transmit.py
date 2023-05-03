@@ -1,6 +1,7 @@
 import asyncio
 from pathlib import Path
 
+import aiofiles
 import pytest
 from django.conf import settings
 
@@ -19,7 +20,7 @@ async def test_start_transmit_file():
 
     async def subscribe_handler(topic: str):
         for file in sample_files:
-            await server.publish_file("foobar", file)
+            await server.publish_file("foobar", file, {"filename": file.name})
 
     async def unsubscribe_handler(topic: str):
         print(f"Unsubscribed from {topic}")
@@ -31,15 +32,18 @@ async def test_start_transmit_file():
 
     await asyncio.sleep(0.1)  # wait until server is ready to accept connections
 
-    client = FileTransmitClient(HOST, PORT)
+    async with aiofiles.tempfile.TemporaryDirectory() as temp_dir:
+        client = FileTransmitClient(HOST, PORT, temp_dir)
 
-    async def file_handler(filepath: str):
-        print(f"we have it {filepath}")
-        return True
+        def filename_generator(metadata: dict[str, str]):
+            return metadata["filename"]
 
-    client_task = asyncio.create_task(client.subscribe("foobar", file_handler))
+        async def file_received_handler(filepath: str):
+            print(f"we have it {filepath}")
+            return True
 
-    try:
+        client_task = asyncio.create_task(
+            client.subscribe("foobar", file_received_handler, filename_generator)
+        )
+
         await asyncio.gather(client_task, server_task)
-    except asyncio.CancelledError:
-        pass

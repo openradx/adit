@@ -2,6 +2,10 @@
 
 ## High Priority
 
+- Get rid of all write_like_original=False
+- Use PathLike instead of Path in dicom connector
+- Rewrite tests to use mocker fixture instead of patch
+- Fix model.py warnings
 - Rewrite dicom_connector to use asyncio (wrap all pynetdicom calls in asyncio.to_thread)
 - rename ADIT_AE_TITLE to RECEIVER_AE_TITLE
 - modalities and series_numbers in batch query model should never be null but an empty array

@@ -133,7 +133,7 @@ class QueryExecutor:
             modalities = [
                 modality
                 for modality in self.query_task.modalities
-                if modality not in settings.EXCLUDE_MODALITIES
+                if modality not in settings.EXCLUDED_MODALITIES
             ]
 
         studies = self.connector.find_studies(

@@ -1,5 +1,6 @@
 import asyncio
-from os import DirEntry
+import logging
+from os import DirEntry, PathLike
 from typing import Awaitable, Callable
 
 from aiofiles import os
@@ -9,12 +10,14 @@ FileHandler = Callable[[str], bool | None | Awaitable[bool] | Awaitable[None]]
 BeforeScanHandler = Callable[[], None | Awaitable[None]]
 AfterScanHandler = Callable[[], None | Awaitable[None]]
 
+logger = logging.getLogger(__name__)
+
 
 class FileMonitor:
     """Monitors a folder for new files and processes them."""
 
-    def __init__(self, folder: str):
-        self._root_folder = folder
+    def __init__(self, folder: PathLike):
+        self._folder = folder
 
         # We use a queue to make sure that only one scan is running at a time.
         # A max size of 2 is enough as we only have to make sure that a succeeding
@@ -66,7 +69,7 @@ class FileMonitor:
 
             # Clean up empty directories
             is_empty = not any(await os.scandir(path))
-            if path != self._root_folder and is_empty:
+            if path != self._folder and is_empty:
                 try:
                     await os.rmdir(path)
                 except OSError:
@@ -84,7 +87,7 @@ class FileMonitor:
                     self._before_scan_handler()
 
             await self._queue.get()
-            await self._scan_path(self._root_folder)
+            await self._scan_path(self._folder)
             self._queue.task_done()
 
             self._scan_counter += 1
@@ -105,7 +108,7 @@ class FileMonitor:
 
     async def _watch_folder(self):
         with Inotify() as inotify:
-            inotify.add_watch(self._root_folder, Mask.CREATE | Mask.DELETE | Mask.MODIFY)
+            inotify.add_watch(self._folder, Mask.CREATE | Mask.DELETE | Mask.MODIFY)
             async for event in inotify:
                 await self._schedule_scan()
 
@@ -116,12 +119,12 @@ class FileMonitor:
             await self._schedule_scan()
 
     async def start(self):
-        exists = await os.path.exists(self._root_folder)
-        is_dir = await os.path.isdir(self._root_folder)
-        if not exists or not is_dir:
-            raise IOError(f"Invalid directory to monitor: {self._root_folder}")
+        if not await os.path.exists(self._folder) or not await os.path.isdir(self._folder):
+            raise IOError(f"Invalid directory to monitor: {self._folder}")
 
         self._scan_counter = 0
+
+        logger.info(f"Start monitoring folder {self._folder}")
 
         worker_task = asyncio.create_task(self._worker())
 
@@ -138,3 +141,5 @@ class FileMonitor:
     async def stop(self):
         if self._task_group:
             self._task_group.cancel()
+
+        logger.info("File monitor stopped")

@@ -412,7 +412,7 @@ DICOM_EXPLORER_RESPONSE_TIMEOUT = 3  # seconds
 C_MOVE_DOWNLOAD_TIMEOUT = 60  # seconds
 
 # Show DICOM debug messages of pynetdicom
-DICOM_DEBUG_LOGGER = False  # TODO: rename to ENABLE_DICOM_DEBUG_LOGGER
+DICOM_DEBUG_LOGGING = False  # TODO: rename to ENABLE_DICOM_DEBUG_LOGGER
 
 # How often to retry a failed transfer task before the task is definitively failed
 TRANSFER_TASK_RETRIES = 2
@@ -426,7 +426,7 @@ MAX_BATCH_QUERY_SIZE = 1000
 MAX_BATCH_TRANSFER_SIZE = 500
 
 # Exclude modalities when listing studies and during queries or transfers
-EXCLUDE_MODALITIES = ["PR", "SR"]
+EXCLUDED_MODALITIES = ["PR", "SR"]
 
 # If an ethics committee approval is required for batch transfer
 ETHICS_COMMITTEE_APPROVAL_REQUIRED = True

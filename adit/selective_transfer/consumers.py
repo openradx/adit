@@ -159,7 +159,7 @@ class SelectiveTransferConsumer(SelectiveTransferJobCreateMixin, AsyncJsonWebsoc
                         "query": True,
                         "query_results": studies,
                         "max_query_results": max_query_results,
-                        "exclude_modalities": settings.EXCLUDE_MODALITIES,
+                        "exclude_modalities": settings.EXCLUDED_MODALITIES,
                     },
                 )
                 return rendered_form + rendered_query_results

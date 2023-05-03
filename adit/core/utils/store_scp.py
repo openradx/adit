@@ -61,6 +61,7 @@ class StoreScp:
 
         called_ae = event.assoc.acceptor.primitive.called_ae_title
         if called_ae != self._ae_title:
+            logger.error(f"Invalid called AE title: {called_ae}")
             event.assoc.abort()
 
     def _on_close(self, event: Event):
@@ -95,8 +96,12 @@ class StoreScp:
         ds = event.dataset
         ds.file_meta = event.file_meta
 
-        # TODO: store in receiver folder
-        file = NamedTemporaryFile(suffix=".dcm", dir=self._folder, delete=False)
+        # We retain the calling AE title in the filename so that we can use it in the
+        # transmitter for the topic.
+        calling_ae = event.assoc.remote["ae_title"]
+        file_prefix = calling_ae + "_"
+
+        file = NamedTemporaryFile(prefix=file_prefix, suffix=".dcm", dir=self._folder, delete=False)
         dcmwrite(file, ds)
         self._file_received_handler(file.name)
 
