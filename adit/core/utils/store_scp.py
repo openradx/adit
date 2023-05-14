@@ -1,3 +1,4 @@
+import errno
 import logging
 import os
 from socketserver import BaseServer
@@ -101,8 +102,27 @@ class StoreScp:
         calling_ae = event.assoc.remote["ae_title"]
         file_prefix = calling_ae + "_"
 
-        file = NamedTemporaryFile(prefix=file_prefix, suffix=".dcm", dir=self._folder, delete=False)
-        dcmwrite(file, ds)
+        try:
+            file = NamedTemporaryFile(
+                prefix=file_prefix, suffix=".dcm", dir=self._folder, delete=False
+            )
+            dcmwrite(file, ds, write_like_original=False)
+        except Exception as err:
+            if isinstance(err, OSError) and err.errno == errno.ENOSPC:
+                logger.error("Out of disc space while saving received file.")
+            else:
+                logger.error("Unable to write file to disc: %s", err)
+
+            # We abort the association as don't want to get more images.
+            # We can't use C-CANCEL as not all PACS servers support or respect it.
+            # See https://github.com/pydicom/pynetdicom/issues/553
+            # and https://groups.google.com/g/orthanc-users/c/tS826iEzHb0
+            event.assoc.abort()
+
+            # Answer with "Out of Resources"
+            # see https://pydicom.github.io/pynetdicom/stable/service_classes/defined_procedure_service_class.html # noqa: E501
+            return 0xA702
+
         self._file_received_handler(file.name)
 
         return 0x0000  # Return 'Success' status
