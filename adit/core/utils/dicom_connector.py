@@ -21,6 +21,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from functools import wraps
+from io import BytesIO
 from os import PathLike
 from pathlib import Path
 from typing import (
@@ -44,6 +45,7 @@ from pydicom.errors import InvalidDicomError
 from pynetdicom import debug_logger, evt
 from pynetdicom._globals import STATUS_PENDING, STATUS_SUCCESS
 from pynetdicom.ae import ApplicationEntity as AE  # noqa: N817
+from pynetdicom.events import Event
 from pynetdicom.presentation import (
     BasicWorklistManagementPresentationContexts,
     QueryRetrievePresentationContexts,
@@ -65,13 +67,16 @@ from pynetdicom.status import code_to_category
 
 from ..errors import RetriableTaskError
 from ..models import DicomServer
-from .file_transmit import FileTransmitClient
+from .file_transmit import FileTransmitClient, Metadata
 from .sanitize import sanitize_dirname
 
 logger = logging.getLogger(__name__)
 
+DimseService = Literal["C_FIND", "C_GET", "C_MOVE", "C_STORE"]
+Modifier = Callable[[Dataset], None]
 
-def connect_to_server(context: Literal["find", "get", "move", "store"]):
+
+def connect_to_server(service: DimseService):
     """Automatically handles the connection when `auto_config` option is set.
 
     Opens and closes the connecition to the DICOM server when a method is
@@ -88,7 +93,7 @@ def connect_to_server(context: Literal["find", "get", "move", "store"]):
 
             is_connected = self.assoc and self.assoc.is_alive()
             if self.config.auto_connect and not is_connected:
-                self.open_connection(context)
+                self.open_connection(service)
                 opened_connection = True
 
             result = func(self, *args, **kwargs)
@@ -130,7 +135,7 @@ class DicomConnector:
 
         self.assoc = None
 
-    def open_connection(self, command: Literal["find", "get", "move", "store"]):
+    def open_connection(self, service: DimseService):
         if self.assoc:
             raise AssertionError("A former connection was not closed properly.")
 
@@ -138,7 +143,7 @@ class DicomConnector:
 
         for i in range(self.config.connection_retries + 1):
             try:
-                self._associate(command)
+                self._associate(service)
                 break
             except ConnectionError as err:
                 logger.exception("Could not connect to %s.", self.server)
@@ -302,9 +307,9 @@ class DicomConnector:
         self,
         patient_id: str,
         study_uid: str,
-        folder: PathLike,
+        dest_folder: PathLike,
         modality: Optional[str] = None,
-        modifier_callback: Optional[Callable[[Dataset], None]] = None,
+        modifier: Modifier | None = None,
     ):
         series_list = self.find_series(
             {
@@ -328,11 +333,9 @@ class DicomConnector:
             # store handler as it is not guaranteed that all PACS servers
             # do return the SeriesDescription with C-FIND
             series_folder_name = sanitize_dirname(series["SeriesDescription"])
-            download_path = Path(folder) / series_folder_name
+            download_path = Path(dest_folder) / series_folder_name
 
-            self.download_series(
-                patient_id, study_uid, series_uid, download_path, modifier_callback
-            )
+            self.download_series(patient_id, study_uid, series_uid, download_path, modifier)
 
         logger.debug("Successfully downloaded study %s.", study_uid)
 
@@ -341,8 +344,8 @@ class DicomConnector:
         patient_id: str,
         study_uid: str,
         series_uid: str,
-        folder: PathLike,
-        modifier_callback: Optional[Callable[[Dataset], None]] = None,
+        dest_folder: PathLike,
+        modifier: Modifier | None = None,
     ):
         """Download all series to a specified folder for given series UIDs and pseudonymize
         the dataset before storing it to disk."""
@@ -355,21 +358,21 @@ class DicomConnector:
         }
 
         if self.server.patient_root_get_support or self.server.study_root_get_support:
-            self._download_series_with_c_get(query, folder, modifier_callback)
+            self._download_series_with_c_get(query, dest_folder, modifier)
             logger.debug("Successfully downloaded series %s of study %s.", series_uid, study_uid)
         elif self.server.patient_root_move_support or self.server.study_root_move_support:
-            self._download_series_with_c_move(query, folder, modifier_callback)
+            self._download_series_with_c_move(query, dest_folder, modifier)
             logger.debug("Successfully downloaded series %s of study %s.", series_uid, study_uid)
         else:
             raise ValueError("No Query/Retrieve Information Model supported to download images.")
 
-    def upload_folder(self, folder: PathLike):
+    def upload_folder(self, source_folder: PathLike):
         """Upload a specified folder to a DICOM server."""
 
         if not self.server.store_scp_support:
             raise ValueError("Destination server doesn't support C-STORE operations.")
 
-        results = self._send_c_store(folder)
+        results = self._send_c_store(source_folder)
 
         has_success = False
         has_failure = False
@@ -397,7 +400,7 @@ class DicomConnector:
         self,
         patient_id: str,
         study_uid: str,
-        destination,
+        dest_aet: str,
         modality: Optional[str] = None,
     ):
         series_list = self.find_series(
@@ -421,7 +424,7 @@ class DicomConnector:
                 continue
 
             try:
-                self.move_series(patient_id, study_uid, series, destination)
+                self.move_series(patient_id, study_uid, series, dest_aet)
                 has_success = True
             except ValueError:
                 logger.exception("Failed to move series %s.", series_uid)
@@ -432,7 +435,7 @@ class DicomConnector:
                 raise RetriableTaskError("Failed to move all series.")
             raise RetriableTaskError("Failed to move some series.")
 
-    def move_series(self, patient_id: str, study_uid: str, series_uid: str, destination):
+    def move_series(self, patient_id: str, study_uid: str, series_uid: str, dest_aet: str):
         query = {
             "QueryRetrieveLevel": "SERIES",
             "PatientID": patient_id,
@@ -442,7 +445,7 @@ class DicomConnector:
 
         results = self._send_c_move(
             query,
-            destination,
+            dest_aet,
         )
 
         _evaluate_get_move_results(results, query)
@@ -461,7 +464,7 @@ class DicomConnector:
         modalities = set(map(lambda x: x["Modality"], series_list))
         return sorted(list(modalities))
 
-    def _associate(self, command: Literal["find", "get", "move", "store"]):
+    def _associate(self, service: DimseService):
         ae = AE(settings.ADIT_AE_TITLE)
 
         # We only use the timeouts if set, otherwise we leave the default timeouts
@@ -475,11 +478,11 @@ class DicomConnector:
         # Setup the contexts
         # (inspired by https://github.com/pydicom/pynetdicom/blob/master/pynetdicom/apps)
         ext_neg = []
-        if command == "find":
+        if service == "C_FIND":
             ae.requested_contexts = (
                 QueryRetrievePresentationContexts + BasicWorklistManagementPresentationContexts
             )
-        elif command == "get":
+        elif service == "C_GET":
             # We must exclude as many storage contexts as query/retrieve contexts we add
             # because the maximum requested contexts is 128. "StoragePresentationContexts" is a list
             # that contains 128 storage contexts itself.
@@ -497,12 +500,12 @@ class DicomConnector:
                 assert cx.abstract_syntax is not None
                 ae.add_requested_context(cx.abstract_syntax)
                 ext_neg.append(build_role(cx.abstract_syntax, scp_role=True))
-        elif command == "move":
+        elif service == "C_MOVE":
             ae.requested_contexts = QueryRetrievePresentationContexts
-        elif command == "store":
+        elif service == "C_STORE":
             ae.requested_contexts = StoragePresentationContexts
         else:
-            raise ValueError(f"Invalid command type for creating the association: {command}")
+            raise ValueError(f"Invalid DIMSE service: {service}")
 
         self.assoc = ae.associate(
             self.server.host,
@@ -515,7 +518,7 @@ class DicomConnector:
             logger.error("Could not connect to %s.", self.server)
             raise RetriableTaskError(f"Could not connect to {self.server}.")
 
-    @connect_to_server("find")
+    @connect_to_server("C_FIND")
     def _send_c_find(
         self,
         query_dict: dict[str, Any],
@@ -540,12 +543,11 @@ class DicomConnector:
         results = self._fetch_results(responses, "C-FIND", query_dict, limit_results)
         return _extract_pending_data(results)
 
-    @connect_to_server("get")
+    @connect_to_server("C_GET")
     def _send_c_get(
         self,
         query_dict: dict[str, Any],
-        folder: PathLike,
-        modifier_callback: Optional[Callable[[Dataset], None]] = None,
+        store_handler: Callable[[Event, list[Exception]], int],
         msg_id: int = 1,
     ):
         logger.debug("Sending C-GET with query: %s", query_dict)
@@ -563,76 +565,33 @@ class DicomConnector:
                 "No valid Query/Retrieve Information Model for C-GET could be selected."
             )
 
-        store_errors = []
-
-        def handle_c_get_store(event: evt.InterventionEvent):
-            ds = event.dataset  # pyright: ignore
-            context = event.context  # pyright: ignore
-
-            # Add DICOM File Meta Information
-            ds.file_meta = event.file_meta  # pyright: ignore
-
-            # Set the transfer syntax attributes of the dataset
-            ds.is_little_endian = context.transfer_syntax.is_little_endian
-            ds.is_implicit_VR = context.transfer_syntax.is_implicit_VR
-
-            folder_path = Path(folder)
-            folder_path.mkdir(parents=True, exist_ok=True)
-
-            # Allow to manipuate the dataset by using a callback before saving to disk
-            if modifier_callback:
-                modifier_callback(ds)
-
-            file_path = folder_path / ds.SOPInstanceUID
-
-            try:
-                ds.save_as(str(file_path), write_like_original=False)
-            except OSError as err:
-                if err.errno == errno.ENOSPC:
-                    # No space left on destination
-                    logger.exception("Out of disk space while saving %s.", file_path)
-                    no_space_error = RetriableTaskError(
-                        "Out of disk space on destination.", long_delay=True
-                    )
-                    no_space_error.__cause__ = err
-                    store_errors.append(no_space_error)
-
-                    # Unfortunately not all PACS servers support or respect a C-CANCEL request,
-                    # so we just abort the association.
-                    # See https://github.com/pydicom/pynetdicom/issues/553
-                    # and https://groups.google.com/g/orthanc-users/c/tS826iEzHb0
-                    event.assoc.abort()  # pyright: ignore
-
-                    # Answer with "Out of Resources"
-                    # see https://pydicom.github.io/pynetdicom/stable/service_classes/defined_procedure_service_class.html # noqa: E501
-                    return 0xA702
-
-            # Return a 'Success' status
-            return 0x0000
+        # A list to store errors that might be raised by the store handler
+        store_errors: list[Exception] = []
 
         query_ds = _make_query_dataset(query_dict)
         assert self.assoc is not None
-        self.assoc.bind(evt.EVT_C_STORE, handle_c_get_store)
+
+        self.assoc.bind(evt.EVT_C_STORE, store_handler, [store_errors])
 
         try:
             assert self.assoc is not None
             responses = self.assoc.send_c_get(query_ds, query_model, msg_id)
             results = self._fetch_results(responses, "C-GET", query_dict)
         except Exception as err:
-            # Check if an error was triggered by our own store handler due to
-            # aborting the assocation.
+            # The exception might happen cause of an abort by the store handler, so we
+            # check if an error was added in the store handler.
             if store_errors:
                 raise store_errors[0]
 
-            # If not just raise the original error.
+            # Otherwise just raise the original error
             raise err
         finally:
-            self.assoc.unbind(evt.EVT_C_STORE, handle_c_get_store)
+            self.assoc.unbind(evt.EVT_C_STORE, store_handler)
 
         return results
 
-    @connect_to_server("move")  # TODO: rename to C-MOVE
-    def _send_c_move(self, query_dict: dict[str, Any], destination_ae_title: str, msg_id: int = 1):
+    @connect_to_server("C_MOVE")
+    def _send_c_move(self, query_dict: dict[str, Any], dest_aet: str, msg_id: int = 1):
         logger.debug("Sending C-MOVE with query: %s", query_dict)
 
         # Transfer of only one study at a time is supported by ADIT
@@ -650,35 +609,35 @@ class DicomConnector:
 
         query_ds = _make_query_dataset(query_dict)
         assert self.assoc is not None
-        responses = self.assoc.send_c_move(query_ds, destination_ae_title, query_model, msg_id)
+        responses = self.assoc.send_c_move(query_ds, dest_aet, query_model, msg_id)
         return self._fetch_results(responses, "C-MOVE", query_dict)
 
-    @connect_to_server("store")  # TODO: rename to C-STORE
+    @connect_to_server("C_STORE")
     def _send_c_store(
         self,
-        folder: PathLike,
-        callback: Optional[Callable[[Dataset], None]] = None,
+        source_folder: PathLike,
+        modifier: Modifier | None = None,
         msg_id: int = 1,
     ):
-        logger.debug("Sending C-STORE of folder: %s", str(folder))
+        logger.debug("Sending C-STORE of folder: %s", source_folder)
 
         if not self.server.store_scp_support:
             raise ValueError("C-STORE operation not supported by server.")
 
         results = []
-        for path in Path(folder).rglob("*"):
+        for path in Path(source_folder).rglob("*"):
             if not path.is_file():
                 continue
 
             try:
-                ds = dcmread(str(path))
+                ds = dcmread(path)
             except InvalidDicomError:
                 logger.warning("Tried to read invalid DICOM file %s. Skipping it.", path)
                 continue
 
-            # Allow to manipuate the dataset by using a callback before storing to server
-            if callback:
-                callback(ds)
+            # Allow to manipulate the dataset by a modifier function
+            if modifier:
+                modifier(ds)
 
             assert self.assoc is not None
             status = self.assoc.send_c_store(ds, msg_id)
@@ -697,7 +656,7 @@ class DicomConnector:
                 logger.error(
                     "Connection timed out, was aborted or received invalid "
                     "response during C-STORE of folder: %s",
-                    folder,
+                    source_folder,
                 )
                 raise RetriableTaskError(
                     "Connection timed out, was aborted or received invalid during C-STORE."
@@ -795,24 +754,53 @@ class DicomConnector:
     def _download_series_with_c_get(
         self,
         query: dict[str, Any],
-        folder: PathLike,
-        modifier_callback: Optional[Callable[[Dataset], None]] = None,
+        dest_folder: PathLike,
+        modifier: Modifier | None = None,
     ):
-        results = self._send_c_get(query, folder, modifier_callback)
+        def handle_c_get_store(event: Event, store_errors: list[Exception]):
+            ds = event.dataset
+            context = event.context
 
+            # Add DICOM File Meta Information
+            ds.file_meta = event.file_meta  # pyright: ignore
+
+            # Set the transfer syntax attributes of the dataset
+            ds.is_little_endian = context.transfer_syntax.is_little_endian
+            ds.is_implicit_VR = context.transfer_syntax.is_implicit_VR
+
+            try:
+                self._handle_downloaded_image(ds, dest_folder, modifier)
+            except Exception as err:
+                store_errors.append(err)
+
+                # Unfortunately not all PACS servers support or respect a C-CANCEL request,
+                # so we abort the association of the C-STORE and C-GET requests manually.
+                # See https://github.com/pydicom/pynetdicom/issues/553
+                # and https://groups.google.com/g/orthanc-users/c/tS826iEzHb0
+                event.assoc.abort()
+                self.abort_connection()
+
+                return 0xA702  # Out of resources
+
+            return 0x0000  # Success
+
+        results = self._send_c_get(query, handle_c_get_store)
         _evaluate_get_move_results(results, query)
 
     def _download_series_with_c_move(
         self,
         query: dict[str, Any],
-        folder: PathLike,
-        modifier_callback: Optional[Callable[[Dataset], None]] = None,
+        dest_folder: PathLike,
+        modifier: Modifier | None = None,
     ):
         # Fetch all SOPInstanceUIDs in the series so that we can later
         # evaluate if all images were received.
         image_query = dict(query, **{"QueryRetrieveLevel": "IMAGE", "SOPInstanceUID": ""})
         images = self._send_c_find(image_query)
         image_uids = [image["SOPInstanceUID"] for image in images]
+
+        # A list of errors that may occur while receiving the images
+        receiving_errors: list[Exception] = []
 
         # The images are sent to the receiver container (a C-STORE SCP server)
         # by the move operation. Then those are send to a RabbitMQ queue from
@@ -823,23 +811,40 @@ class DicomConnector:
                 query["StudyInstanceUID"],
                 query["SeriesInstanceUID"],
                 image_uids,
-                folder,
-                modifier_callback,
+                dest_folder,
+                receiving_errors,
+                modifier,
             )
 
-            results = self._send_c_move(query, settings.ADIT_AE_TITLE)
-            _evaluate_get_move_results(results, query)
+            try:
+                results = self._send_c_move(query, settings.ADIT_AE_TITLE)
+                _evaluate_get_move_results(results, query)
 
-            # Raises if thread raises
-            future.result()
+                # We have to check the result of the future here, otherwise
+                # exceptions in the thread would be ignored.
+                future.result()
+            except Exception as err:
+                # We check here if an error occurred in the consumer thread and
+                # then do nothing here but handle it in the finally block.
+                # The consumer might also have aborted the connection which then raises
+                # an exception during C-MOVE.
+                if receiving_errors:
+                    pass
+
+                # Otherwise just raise the original error
+                raise err
+            finally:
+                if receiving_errors:
+                    raise receiving_errors[0]
 
     def _consume_from_receiver(
         self,
         study_uid: str,
         series_uid: str,
         image_uids: List[str],
-        folder: PathLike,
-        modifier_callback: Optional[Callable[[Dataset], None]] = None,
+        dest_folder: PathLike,
+        receiving_errors: list[Exception],
+        modifier: Modifier | None = None,
     ):
         async def consume():
             remaining_image_uids = image_uids[:]
@@ -848,30 +853,43 @@ class DicomConnector:
             file_transmit = FileTransmitClient(
                 settings.FILE_TRANSMIT_HOST,
                 settings.FILE_TRANSMIT_PORT,
-                folder,
+                dest_folder,
             )
 
-            async def handle_received_file(file_path: str):
+            def eval_images_received():
+                if remaining_image_uids:
+                    if remaining_image_uids == image_uids:
+                        logger.error("No images of series %s received.", series_uid)
+                        receiving_errors.append(
+                            RetriableTaskError("Failed to download all images with C-MOVE.")
+                        )
+
+                    logger.error(
+                        "These images of series %s were not received: %s",
+                        series_uid,
+                        ", ".join(remaining_image_uids),
+                    )
+                    receiving_errors.append(
+                        RetriableTaskError("Failed to download some images with C-MOVE.")
+                    )
+
+            async def handle_received_file(buffer: BytesIO, metadata: Metadata):
                 nonlocal last_image_at
                 last_image_at = time.time()
 
-                ds: Dataset = await asyncio.to_thread(dcmread, file_path)
+                image_uid = metadata["SOPInstanceUID"]
 
-                if modifier_callback:
-                    modifier_callback(ds)
-                    ds.save_as(file_path)
+                if image_uid in remaining_image_uids:
+                    ds = dcmread(buffer)
+                    remaining_image_uids.remove(image_uid)
 
-                if ds.StudyInstanceUID != study_uid:
-                    raise AssertionError(
-                        f"Received image with wrong StudyInstanceUID: {ds.StudyInstanceUID}"
-                    )
-                if ds.SeriesInstanceUID != series_uid:
-                    raise AssertionError(
-                        f"Received image with wrong SeriesInstanceUID: {ds.SeriesInstanceUID}"
-                    )
+                    try:
+                        self._handle_downloaded_image(ds, dest_folder, modifier)
+                    except Exception as err:
+                        receiving_errors.append(err)
 
-                if ds.SOPInstanceUID in remaining_image_uids:
-                    remaining_image_uids.remove(ds.SOPInstanceUID)
+                if image_uid in remaining_image_uids:
+                    remaining_image_uids.remove(image_uid)
 
                 if not remaining_image_uids:
                     return True
@@ -880,40 +898,70 @@ class DicomConnector:
 
             topic = f"{self.server.ae_title}\\{study_uid}\\{series_uid}"
             subscribe_task = asyncio.create_task(
-                file_transmit.subscribe(
-                    topic, handle_received_file, lambda metadata: metadata["SOPInstanceUID"]
-                )
+                file_transmit.subscribe(topic, handle_received_file)
             )
 
-            while True:
-                await asyncio.sleep(1)
+            async def check_timeout():
+                while True:
+                    await asyncio.sleep(1)
 
-                if subscribe_task.done():
-                    break
+                    if subscribe_task.done():
+                        break
 
-                time_since_last_image = time.time() - last_image_at if last_image_at else 0
-                if time_since_last_image > settings.C_MOVE_DOWNLOAD_TIMEOUT:
-                    logger.error(
-                        "C-MOVE download timed out after %d seconds without receiving images.",
-                        round(time_since_last_image),
-                    )
-                    self.abort_connection()
-                    subscribe_task.cancel()
-                    break
+                    time_since_last_image = time.time() - last_image_at if last_image_at else 0
+                    if time_since_last_image > settings.C_MOVE_DOWNLOAD_TIMEOUT:
+                        # Don't accept any more images
+                        subscribe_task.cancel()
 
-            if remaining_image_uids:
-                if remaining_image_uids == image_uids:
-                    logger.error("No images of series %s received.", series_uid)
-                    raise RetriableTaskError("Failed to download all images with C-MOVE.")
+                        logger.error(
+                            "C-MOVE download timed out after %d seconds.",
+                            round(time_since_last_image),
+                        )
 
-                logger.error(
-                    "These images of series %s were not received: %s",
-                    series_uid,
-                    ", ".join(remaining_image_uids),
-                )
-                raise RetriableTaskError("Failed to download some images with C-MOVE.")
+                        # We have to call this before aborting the connection because this
+                        # can raise an exception with C-MOVE and we need the info then
+                        # if all images were received or not.
+                        eval_images_received()
+
+                        self.abort_connection()
+                        break
+
+            check_timeout_task = asyncio.create_task(check_timeout())
+
+            await asyncio.gather(subscribe_task, check_timeout_task)
+
+            if not receiving_errors:
+                eval_images_received()
 
         asyncio.run(consume())
+
+    def _handle_downloaded_image(
+        self,
+        ds: Dataset,
+        dest_folder: PathLike,
+        modifier: Modifier | None,
+    ):
+        if modifier:
+            modifier(ds)
+
+        folder_path = Path(dest_folder)
+        file_path = folder_path / ds.SOPInstanceUID
+
+        try:
+            folder_path.mkdir(parents=True, exist_ok=True)
+            ds.save_as(file_path, write_like_original=False)
+        except Exception as err:
+            if isinstance(err, OSError) and err.errno == errno.ENOSPC:
+                # No space left on destination
+                logger.exception("Out of disk space while saving %s.", file_path)
+                no_space_error = RetriableTaskError(
+                    "Out of disk space on destination.", long_delay=True
+                )
+                no_space_error.__cause__ = err
+                raise no_space_error
+            else:
+                logger.exception("Failed to save %s.", file_path)
+                raise err
 
 
 def _check_required_id(value: str) -> Union[str, None]:
@@ -1033,23 +1081,3 @@ def _evaluate_get_move_results(results, query: dict[str, Any]):
             error_msg += f" Failed images: {', '.join(failed_image_uids)}"
         logger.error(error_msg)
         raise RetriableTaskError(f"Failed to transfer images with status {status_category}.")
-
-
-# TODO: delete
-def _save_dicom_from_receiver(ds: Dataset, folder: PathLike) -> None:
-    folder_path = Path(folder)
-    folder_path.mkdir(parents=True, exist_ok=True)
-
-    file_path = folder_path / ds.SOPInstanceUID
-
-    # In this case we don't need to save with `write_like_original=False` as it
-    # saved already saved it this way to the buffer in the receiver
-    try:
-        # TODO: really save with write_like_original=False?
-        ds.save_as(str(file_path), write_like_original=False)
-    except OSError as err:
-        if err.errno == errno.ENOSPC:  # No space left on device
-            logger.exception("Out of disk space while saving %s.", file_path)
-            raise RetriableTaskError("Out of disk space on destination.", long_delay=True) from err
-
-        raise err

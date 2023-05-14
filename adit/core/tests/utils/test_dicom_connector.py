@@ -167,7 +167,9 @@ def test_download_series_with_c_move(
         async def on_subscribe(topic: str):
             nonlocal subscribed_topic
             subscribed_topic = topic
-            await transmit_server.publish_file(topic, file_path)
+            await transmit_server.publish_file(
+                topic, file_path, {"SOPInstanceUID": ds.SOPInstanceUID}
+            )
 
         transmit_server = FileTransmitServer("127.0.0.1", 17999)
         transmit_server.set_subscribe_handler(on_subscribe)
