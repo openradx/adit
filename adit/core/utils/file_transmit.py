@@ -2,21 +2,20 @@ import asyncio
 import json
 import logging
 import struct
+from io import BytesIO
 from os import PathLike
-from pathlib import Path
 from typing import Awaitable, Callable
 
 import aiofiles
 from aiofiles import os
-from aiofiles.threadpool.binary import AsyncBufferedReader
 
 BUFFER_SIZE = 1024
 
 SubscribeHandler = Callable[[str], None | Awaitable[None]]
 UnsubscribeHandler = Callable[[str], None | Awaitable[None]]
 FileSentHandler = Callable[[], None]
-FilenameGenerator = Callable[[dict[str, str]], str | None]
-FileReceivedHandler = Callable[[str], Awaitable[bool | None] | bool | None]
+Metadata = dict[str, str]
+FileReceivedHandler = Callable[[BytesIO, Metadata], Awaitable[bool | None] | bool | None]
 
 logger = logging.getLogger(__name__)
 
@@ -153,7 +152,6 @@ class FileTransmitClient:
         self,
         topic: str,
         file_received_handler: FileReceivedHandler,
-        filename_generator: FilenameGenerator | None = None,
     ):
         """Subscribes to a topic and receives all files that are published to this topic.
 
@@ -183,39 +181,28 @@ class FileTransmitClient:
 
                 # Receive metadata
                 metadata_bytes = await reader.readline()
-                metadata = json.loads(metadata_bytes.decode().strip())
+                metadata: Metadata = json.loads(metadata_bytes.decode().strip())
 
-                # Generate an optional filename
-                filename = None
-                if filename_generator:
-                    filename = filename_generator(metadata)
-
-                # Receive the file itself
-                file: AsyncBufferedReader
-                if filename:
-                    file = await aiofiles.open(Path(self._folder) / filename, "wb+")
-                else:
-                    file = await aiofiles.tempfile.NamedTemporaryFile(
-                        "wb+", dir=self._folder, delete=False
-                    )
+                buffer = BytesIO()
 
                 remaining_bytes = file_size
 
-                try:
-                    while remaining_bytes > 0:
-                        chunk_size = min(remaining_bytes, BUFFER_SIZE)
-                        data = await reader.read(chunk_size)
-                        await file.write(data)
-                        remaining_bytes -= len(data)
-                finally:
-                    await file.close()
+                while remaining_bytes > 0:
+                    chunk_size = min(remaining_bytes, BUFFER_SIZE)
+                    data = await reader.read(chunk_size)
+                    buffer.write(data)
+                    remaining_bytes -= len(data)
+
+                # Reset the buffer to the beginning so that it can be read like a file.
+                # Also don't close the buffer as this would loose the data.
+                buffer.seek(0)
 
                 # The file handler can report that no further files are needed by
                 # returning True which stops reading further data from the server.
                 finished = (
-                    await file_received_handler(file.name)
+                    await file_received_handler(buffer, metadata)
                     if asyncio.iscoroutinefunction(file_received_handler)
-                    else file_received_handler(file.name)
+                    else file_received_handler(buffer, metadata)
                 )
                 if finished:
                     break

@@ -1,14 +1,18 @@
 import asyncio
+from io import BytesIO
 from pathlib import Path
 
 import aiofiles
 import pytest
+from aiofiles import os
 from django.conf import settings
+from pydicom import dcmread
 
-from adit.core.utils.file_transmit import FileTransmitClient, FileTransmitServer
+from adit.core.utils.file_transmit import FileTransmitClient, FileTransmitServer, Metadata
 
 HOST = "127.0.0.1"
 PORT = 9999
+NUM_TRANSFER_FILES = 5
 
 
 @pytest.mark.asyncio
@@ -30,20 +34,28 @@ async def test_start_transmit_file():
     server.set_unsubscribe_handler(unsubscribe_handler)
     server_task = asyncio.create_task(server.start())
 
-    await asyncio.sleep(0.1)  # wait until server is ready to accept connections
+    # TODO: not sure if this is needed
+    # await asyncio.sleep(0.1)  # wait until server is ready to accept connections
 
     async with aiofiles.tempfile.TemporaryDirectory() as temp_dir:
         client = FileTransmitClient(HOST, PORT, temp_dir)
 
-        def filename_generator(metadata: dict[str, str]):
-            return metadata["filename"]
+        counter = 0
 
-        async def file_received_handler(filepath: str):
-            print(f"we have it {filepath}")
-            return True
+        async def file_received_handler(buffer: BytesIO, metadata: Metadata):
+            nonlocal counter
 
-        client_task = asyncio.create_task(
-            client.subscribe("foobar", file_received_handler, filename_generator)
-        )
+            buffer_size = buffer.getbuffer().nbytes
+            file_size = await os.path.getsize(sample_files[counter])
+            assert buffer_size == file_size
+            assert metadata["filename"] == sample_files[counter].name
+            assert dcmread(buffer).SOPInstanceUID == dcmread(sample_files[counter]).SOPInstanceUID
+
+            counter += 1
+            return counter == NUM_TRANSFER_FILES
+
+        client_task = asyncio.create_task(client.subscribe("foobar", file_received_handler))
 
         await asyncio.gather(client_task, server_task)
+
+        assert counter == NUM_TRANSFER_FILES
