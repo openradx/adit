@@ -33,4 +33,4 @@ def test_urgent_batch_query_succeeds(
     page.get_by_label("Batch file").set_input_files(files=[batch_file])
     page.locator('input:has-text("Create job")').click()
     expect(page.locator('dl:has-text("Success")').poll()).to_be_visible()
-    page.screenshot(path="foo.png")
+    # page.screenshot(path="foo.png")

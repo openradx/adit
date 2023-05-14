@@ -2,6 +2,10 @@
 
 ## High Priority
 
+- Evaluate dev task runners
+  -- <https://github.com/taskipy/taskipy>
+  -- <https://www.pyinvoke.org/>
+  -- <https://github.com/nat-n/poethepoet>
 - Get rid of all write_like_original=False
 - Use PathLike instead of Path in dicom connector
 - Rewrite tests to use mocker fixture instead of patch

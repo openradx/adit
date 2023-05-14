@@ -373,10 +373,10 @@ STORE_SCP_PORT = env.int("STORE_SCP_PORT", default=11112)
 FILE_TRANSMIT_HOST = env.str("FILE_TRANSMIT_SERVER_HOST", default="")
 FILE_TRANSMIT_PORT = env.int("FILE_TRANSMIT_SERVER_PORT", default=27312)
 
-# A folder to cache DICOM files.
-# Receiver and transmit client do create temporary directories in this folder
-# and cache their received DICOM files there.
-DICOM_DIR = env.str("DICOM_DIR", default=str(BASE_DIR / ".dicoms"))
+# A folder to cache temporary DICOM files.
+# Receiver and file transmit client do create temporary directories in this
+# folder and cache their received DICOM files there.
+TEMP_DICOM_DIR = env.str("TEMP_DICOM_DIR", default=str(BASE_DIR / ".dicoms"))
 
 # The delimiter in CSV batch files
 CSV_DELIMITER = ";"
