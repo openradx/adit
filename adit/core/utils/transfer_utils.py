@@ -296,14 +296,14 @@ class TransferExecutor:
                     study["StudyInstanceUID"],
                     series_uid,
                     study_folder,
-                    modifier_callback=modifier_callback,
+                    modifier=modifier_callback,
                 )
         else:
             self.source_connector.download_study(
                 study["PatientID"],
                 study["StudyInstanceUID"],
                 study_folder,
-                modifier_callback=modifier_callback,
+                modifier=modifier_callback,
             )
 
     def _modify_dataset(
