@@ -10,7 +10,13 @@ RUN mkdir $NVM_DIR && \
   nvm alias default $NODE_VERSION && \
   nvm use default
 
+RUN python3 -m pip install --user pipx && \
+  python3 -m pipx ensurepath && \
+  pipx install poethepoet && \
+  poe _bash_completion > $HOME/bash_completion
+
 ENV NODE_PATH $NVM_DIR/v$NODE_VERSION/lib/node_modules
 ENV PATH $NVM_DIR/versions/node/v$NODE_VERSION/bin:$PATH
 
+# Poetry is already installed in the base Gitpod Python image
 RUN poetry config virtualenvs.in-project true
