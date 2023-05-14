@@ -14,6 +14,7 @@ class ServerCommand(BaseCommand):
     https://github.com/django/django/blob/master/django/core/management/commands/runserver.py
     """
 
+    help = "Starts a custom server"
     autoreload = False
     server_name = "custom server"
 

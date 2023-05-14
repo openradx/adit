@@ -2,7 +2,6 @@ import logging
 import shlex
 import socket
 import subprocess
-from datetime import datetime
 
 from ..base.server_command import ServerCommand
 
@@ -11,8 +10,7 @@ logger = logging.getLogger(__name__)
 
 class Command(ServerCommand):
     help = "Starts a Celery worker"
-
-    starting_message = True
+    server_name = "Celery worker"
 
     def __init__(self, *args, **kwargs):
         self.worker_process = None
@@ -53,16 +51,6 @@ class Command(ServerCommand):
         concurrency = options["concurrency"]
         hostname = f"worker_{queue}_{socket.gethostname()}"
         cmd = f"celery -A adit worker -Q {queue} -l {loglevel} -c {concurrency} -n {hostname}"
-
-        now = datetime.now().strftime("%B %d, %Y - %X")
-        self.stdout.write(now)
-        self.stdout.write(
-            ("Starting Celery worker with command:\n" "%(cmd)s\n" "Quit with %(quit_command)s.")
-            % {
-                "cmd": cmd,
-                "quit_command": self.quit_command,
-            }
-        )
 
         self.worker_process = subprocess.Popen(shlex.split(cmd))
         self.worker_process.wait()

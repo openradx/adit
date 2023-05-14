@@ -10,9 +10,8 @@ logger = logging.getLogger(__name__)
 
 
 class Command(ServerCommand):
-    help = "Starts Celery beat"
-
-    starting_message = False
+    help = "Starts Celery beat scheduler"
+    server_name = "Celery beat scheduler"
 
     def __init__(self, *args, **kwargs):
         self.beat_process = None
@@ -42,16 +41,6 @@ class Command(ServerCommand):
         pid_path = folder_path / "celerybeat.pid"
         loglevel = options["loglevel"]
         cmd = f"celery -A adit beat -l {loglevel} -s {str(schedule_path)} --pidfile {str(pid_path)}"
-
-        now = datetime.now().strftime("%B %d, %Y - %X")
-        self.stdout.write(now)
-        self.stdout.write(
-            ("Starting Celery beat with command:\n" "%(cmd)s\n" "Quit with %(quit_command)s.")
-            % {
-                "cmd": cmd,
-                "quit_command": self.quit_command,
-            }
-        )
 
         self.beat_process = subprocess.Popen(shlex.split(cmd))
         self.beat_process.wait()
