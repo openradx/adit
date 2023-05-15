@@ -23,7 +23,7 @@ class Command(ServerCommand):
 
     async def _run_server_async(self):
         # No need for an async path library as we only do it once at startup.
-        receiver_dir = Path(settings.TEMP_DICOM_DIR / "receiver")
+        receiver_dir = Path(settings.TEMP_DICOM_DIR) / "receiver"
         receiver_dir.mkdir(parents=True, exist_ok=True)
 
         self.stdout.write(f"Using receiver directory: {receiver_dir}")
