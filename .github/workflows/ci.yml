@@ -29,17 +29,17 @@ jobs:
         run: cp example.env compose/.env.dev
 
       - name: Start Docker containers
-        run: ./scripts/adit_dev_up_no_build.sh
+        run: invoke compose-up --no-build
 
       - name: Run linting with ruff
         # https://github.com/actions/runner/issues/241#issuecomment-745902718
         shell: 'script -q -e -c "bash {0}"'
-        run: ./scripts/adit_dev_lint.sh
+        run: invoke adit-dev-lint
 
-      - name: Run tests with pytest
+      - name: Run tests with pytest (and coverage)
         shell: 'script -q -e -c "bash {0}"'
-        run: ./scripts/adit_dev_cov.sh
+        run: invoke adit-dev-test --cov
 
       - name: Stop Docker containers
         if: ${{ always() }}
-        run: ./scripts/adit_dev_down.sh
+        run: invoke compose-down

@@ -67,7 +67,7 @@ pytest-timeout = "^2.1.0"
 pytest-only = "^2.0.0"
 pytest-mock = "^3.10.0"
 nest-asyncio = "^1.5.6"
-poethepoet = "^0.20.0"
+invoke = "^2.1.2"
 
 [tool.pyright]
 typeCheckingMode = "off"
@@ -105,6 +105,3 @@ ignore = "T002"
 [build-system]
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
-
-[tool.poe.tasks]
-test = "./scripts/adit_dev_test.sh"

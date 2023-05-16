@@ -22,6 +22,6 @@
     "morphdom": "^2.6.1"
   },
   "scripts": {
-    "copy_statics": "bash ./scripts/copy_statics.sh"
+    "copy-statics": "invoke copy-statics"
   }
 }

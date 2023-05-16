@@ -12,8 +12,8 @@ RUN mkdir $NVM_DIR && \
 
 RUN python3 -m pip install --user pipx && \
   python3 -m pipx ensurepath && \
-  pipx install poethepoet && \
-  poe _bash_completion > $HOME/bash_completion
+  pipx install invoke && \
+  invoke --print-completion-script=bash > $HOME/.bash_completion
 
 ENV NODE_PATH $NVM_DIR/v$NODE_VERSION/lib/node_modules
 ENV PATH $NVM_DIR/versions/node/v$NODE_VERSION/bin:$PATH
