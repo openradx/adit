@@ -18,7 +18,7 @@ from .parsers import UploadBatchFileParser
 
 
 class UploadJobForm(forms.ModelForm):
-#    source = forms.CharField(required=False)
+    source = forms.CharField(required=False)
     destination = DicomNodeChoiceField(False)
 #    batch_file = RestrictedFileField(max_upload_size=5242880, label="Batch file")
     upload_files = RestrictedFileField(label="Upload files")
@@ -28,7 +28,7 @@ class UploadJobForm(forms.ModelForm):
     class Meta:
         model = UploadJob
         fields = (
-#            "source",
+            "source",
             "destination",
             "project_name",
             "project_description",
@@ -67,8 +67,8 @@ class UploadJobForm(forms.ModelForm):
 
         super().__init__(*args, **kwargs)
 
-#        pathuid = str(uuid.uuid1())
-#        self.fields["source"].initial = pathuid
+        pathuid = str(uuid.uuid1())
+        self.fields["source"].initial = pathuid
         #self.fields["source"].widget.attrs['readonly'] = 'readonly'
         self.fields["destination"].widget.attrs["class"] = "custom-select"
 
@@ -91,10 +91,11 @@ class UploadJobForm(forms.ModelForm):
         self.helper = FormHelper(self)
         self.helper.add_input(Submit("save", "Create Job"))
 
-#    def clean_source(self):
-#        folderpath = "upload" + self.cleaned_data["source"]
-#        source = DicomFolder(path=folderpath)
-#        return source
+    def clean_source(self):
+        folderpath = "upload" + self.cleaned_data["source"]
+        source = DicomFolder(path=folderpath)
+        source.save()
+        return source
     
     # def clean_batch_file(self):
     #     batch_file = self.cleaned_data["batch_file"]

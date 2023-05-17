@@ -20,12 +20,12 @@ class UploadJobCreateView(DicomJobCreateView):
         user = self.request.user
         form.instance.owner = user
 
+        response = super().form_valid(form)
+
         upload_folder = "upload" + str(uuid.uuid1())
         job = self.object
         job.source = DicomFolder(path=upload_folder)
-        
-        response = super().form_valid(form)
-    
+            
         if form.is_valid():
             for f in self.request.FILES.getlist('upload_files'):
                 handle_uploaded_file(f, upload_folder)
