@@ -20,12 +20,12 @@ class CoreSettings(models.Model):
     class Meta:
         verbose_name_plural = "Core settings"
 
+    def __str__(self):
+        return f"{self.__class__.__name__} [ID {self.id}]"
+
     @classmethod
     def get(cls):
         return cls.objects.first()
-
-    def __str__(self):
-        return f"{self.__class__.__name__} [ID {self.id}]"
 
 
 def slot_time(hour, minute):
@@ -65,13 +65,17 @@ class DicomNode(models.Model):
         SERVER = "SV", "Server"
         FOLDER = "FO", "Folder"
 
-    class Meta:
-        ordering = ("name",)
-
     node_type = models.CharField(max_length=2, choices=NodeType.choices)
     name = models.CharField(unique=True, max_length=64)
     source_active = models.BooleanField(default=False)
     destination_active = models.BooleanField(default=False)
+
+    class Meta:
+        ordering = ("name",)
+
+    def __str__(self):
+        node_types_dict = dict(self.NodeType.choices)
+        return f"DICOM {node_types_dict[self.node_type]} {self.name}"
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -79,10 +83,6 @@ class DicomNode(models.Model):
             if self.NODE_TYPE not in dict(self.NodeType.choices):
                 raise AssertionError(f"Invalid node type: {self.NODE_TYPE}")
             self.node_type = self.NODE_TYPE
-
-    def __str__(self):
-        node_types_dict = dict(self.NodeType.choices)
-        return f"DICOM {node_types_dict[self.node_type]} {self.name}"
 
 
 class DicomServer(DicomNode):
@@ -134,16 +134,6 @@ class DicomJob(models.Model):
         WARNING = "WA", "Warning"
         FAILURE = "FA", "Failure"
 
-    class Meta:
-        abstract = True
-        indexes = [models.Index(fields=["owner", "status"])]
-        permissions = [
-            (
-                "can_process_urgently",
-                "Can process urgently",
-            )
-        ]
-
     source = models.ForeignKey(DicomNode, related_name="+", on_delete=models.PROTECT)
     status = models.CharField(max_length=2, choices=Status.choices, default=Status.UNVERIFIED)
     urgent = models.BooleanField(default=False)
@@ -156,6 +146,19 @@ class DicomJob(models.Model):
     created = models.DateTimeField(auto_now_add=True)
     start = models.DateTimeField(null=True, blank=True)
     end = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        abstract = True
+        indexes = [models.Index(fields=["owner", "status"])]
+        permissions = [
+            (
+                "can_process_urgently",
+                "Can process urgently",
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.__class__.__name__} [ID {self.id}]"
 
     @property
     def is_deletable(self):
@@ -193,9 +196,6 @@ class DicomJob(models.Model):
         )
         return self.tasks.exclude(status__in=non_processed)
 
-    def __str__(self):
-        return f"{self.__class__.__name__} [ID {self.id}]"
-
 
 class TransferJob(DicomJob):
     class Meta(DicomJob.Meta):
@@ -226,11 +226,6 @@ class DicomTask(models.Model):
         WARNING = "WA", "Warning"
         FAILURE = "FA", "Failure"
 
-    class Meta:
-        abstract = True
-        ordering = ("task_id",)
-        unique_together = ("job", "task_id")
-
     job = None
     task_id = models.PositiveIntegerField()
     celery_task_id = models.CharField(max_length=255)
@@ -245,6 +240,11 @@ class DicomTask(models.Model):
     created = models.DateTimeField(auto_now_add=True)
     start = models.DateTimeField(null=True, blank=True)
     end = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        abstract = True
+        ordering = ("task_id",)
+        unique_together = ("job", "task_id")
 
     def __str__(self):
         return f"{self.__class__.__name__} [Job ID {self.job.id}, Task ID {self.task_id}]"
