@@ -1,11 +1,14 @@
+import sys
 from glob import glob
 from os import environ
 from pathlib import Path
-from shutil import copyfile
+from shutil import copy
 from typing import Literal
 
+from dotenv import set_key
 from invoke import task
 from invoke.context import Context
+from invoke.runners import Result
 
 Environments = Literal["dev", "prod"]
 
@@ -34,9 +37,9 @@ def check_dev_up(ctx: Context):
     return False
 
 
-def run_cmd(ctx: Context, cmd: str):
+def run_cmd(ctx: Context, cmd: str) -> Result:
     print(f"Running: {cmd}")
-    ctx.run(cmd, pty=True)
+    return ctx.run(cmd, pty=True)
 
 
 @task
@@ -102,8 +105,13 @@ def lint(ctx: Context):
 
 
 @task
-def adit_dev_test(ctx: Context, cov: bool = False, path: str = "./adit"):
+def test(ctx: Context, cov: bool = False, path: str = "./adit"):
     """Run tests"""
+    if not check_dev_up(ctx):
+        sys.exit(
+            "Integration tests need ADIT dev containers running.\nRun 'invoke compose-up' first."
+        )
+
     cmd = f"{compose_cmd()} exec --env DJANGO_SETTINGS_MODULE=adit.settings.test web pytest "
     if cov:
         cmd += "--cov=adit "
@@ -115,7 +123,7 @@ def adit_dev_test(ctx: Context, cov: bool = False, path: str = "./adit"):
 def ci(ctx: Context):
     """Run continuous integration"""
     lint(ctx)
-    adit_dev_test(ctx, cov=True)
+    test(ctx, cov=True)
 
 
 @task
@@ -141,18 +149,18 @@ def copy_statics(ctx: Context):
     """Copy JS and CSS dependencies from node_modules to static vendor folder"""
     print("Copying statics...")
 
-    copyfile("node_modules/jquery/dist/jquery.js", "adit/static/vendor/")
+    copy("node_modules/jquery/dist/jquery.js", "adit/static/vendor/")
     for file in glob("node_modules/bootstrap/dist/css/bootstrap.css*"):
-        copyfile(file, "adit/static/vendor/")
+        copy(file, "adit/static/vendor/")
     for file in glob("node_modules/bootstrap/dist/js/bootstrap.bundle.js*"):
-        copyfile(file, "adit/static/vendor/")
-    copyfile("node_modules/bootswatch/dist/flatly/bootstrap.css", "adit/static/vendor/")
+        copy(file, "adit/static/vendor/")
+    copy("node_modules/bootswatch/dist/flatly/bootstrap.css", "adit/static/vendor/")
     for file in glob("node_modules/alpinejs/dist/alpine*.js"):
-        copyfile(file, "adit/static/vendor/")
-    copyfile("node_modules/morphdom/dist/morphdom-umd.js", "adit/static/vendor/")
-    copyfile("node_modules/htmx.org/dist/htmx.js", "adit/static/vendor/")
-    copyfile("node_modules/htmx.org/dist/ext/ws.js", "adit/static/vendor/htmx-ws.js")
-    copyfile(
+        copy(file, "adit/static/vendor/")
+    copy("node_modules/morphdom/dist/morphdom-umd.js", "adit/static/vendor/")
+    copy("node_modules/htmx.org/dist/htmx.js", "adit/static/vendor/")
+    copy("node_modules/htmx.org/dist/ext/ws.js", "adit/static/vendor/htmx-ws.js")
+    copy(
         "node_modules/htmx.org/dist/ext/morphdom-swap.js",
         "adit/static/vendor/htmx-morphdom-swap.js",
     )
@@ -162,46 +170,49 @@ def copy_statics(ctx: Context):
 def init_codespaces(ctx: Context):
     """Initialize Github Codespaces dev environment"""
     env_dev_file = f"{compose_dir}/.env.dev"
-    copyfile(f"{project_dir}/example.env", env_dev_file)
+    copy(f"{project_dir}/example.env", env_dev_file)
 
     base_url = f"https://{environ['CODESPACE_NAME']}-8000.preview.app.github.dev"
-    ctx.run(f'sed -i "s#\(BASE_URL=\).*#\1{base_url}#" {env_dev_file}')
-    ctx.run(f'sed -i "s#\(DJANGO_CSRF_TRUSTED_ORIGINS=\).*#\1{base_url}#" {env_dev_file}')
+    set_key(env_dev_file, "BASE_URL", base_url, quote_mode="never")
+    set_key(env_dev_file, "DJANGO_CSRF_TRUSTED_ORIGINS", base_url, quote_mode="never")
 
     host = base_url.removeprefix("https://")
-    ctx.run(f'sed -i "s#DJANGO_ALLOWED_HOSTS=#&{host},#" {env_dev_file}')
-    ctx.run(f'sed -i "s#DJANGO_INTERNAL_IPS=#&{host},#" {env_dev_file}')
+    set_key(env_dev_file, "DJANGO_ALLOWED_HOSTS", host, quote_mode="never")
+    set_key(env_dev_file, "DJANGO_INTERNAL_IPS", host, quote_mode="never")
 
-    ctx.run(f'sed -i "s#\(FORCE_DEBUG_TOOLBAR=\).*#\1true#" {env_dev_file}')
+    set_key(env_dev_file, "FORCE_DEBUG_TOOLBAR", "true", quote_mode="never")
 
 
 @task
 def init_gitpod(ctx: Context):
     """Initialize Gitpod dev environment"""
     env_dev_file = f"{compose_dir}/.env.dev"
-    copyfile(f"{project_dir}/example.env", env_dev_file)
+    copy(f"{project_dir}/example.env", env_dev_file)
 
     result = ctx.run("gp url 8000", hide=True)
     base_url = result.stdout.strip()
-    ctx.run(f'sed -i "s#\(BASE_URL=\).*#\1{base_url}#" {env_dev_file}')
-    ctx.run(f'sed -i "s#\(DJANGO_CSRF_TRUSTED_ORIGINS=\).*#\1{base_url}#" {env_dev_file}')
+    set_key(env_dev_file, "BASE_URL", base_url, quote_mode="never")
+    set_key(env_dev_file, "DJANGO_CSRF_TRUSTED_ORIGINS", base_url, quote_mode="never")
 
     host = base_url.removeprefix("https://")
-    ctx.run(f'sed -i "s#DJANGO_ALLOWED_HOSTS=#&{host},#" {env_dev_file}')
-    ctx.run(f'sed -i "s#DJANGO_INTERNAL_IPS=#&{host},#" {env_dev_file}')
+    set_key(env_dev_file, "DJANGO_ALLOWED_HOSTS", host, quote_mode="never")
+    set_key(env_dev_file, "DJANGO_INTERNAL_IPS", host, quote_mode="never")
 
-    ctx.run(f'sed -i "s#\(FORCE_DEBUG_TOOLBAR=\).*#\1true#" {env_dev_file}')
+    set_key(env_dev_file, "FORCE_DEBUG_TOOLBAR", "true", quote_mode="never")
 
 
 @task
 def show_outdated(ctx: Context):
     """Show outdated dependencies"""
     print("### Outdated Python dependencies ###")
+    # TODO: Can use --top-level option after new Poetry release
+    # https://github.com/python-poetry/poetry/pull/7415
     poetry_cmd = (
-        "poetry show --outdated | grep --file=<(poetry show --tree | grep '^\w' | "
-        "sed 's/^\([^ ]*\).*/^\1/')"
+        "poetry show --outdated | grep --file=<(poetry show --tree | "
+        "grep '^\w' | sed 's/^\([^ ]*\).*/^\\1/')"
     )
-    run_cmd(ctx, poetry_cmd)
+    result = run_cmd(ctx, poetry_cmd)
+    print(result.stderr.strip())
 
     print("### Outdated NPM dependencies ###")
     npm_cmd = "npm outdated"
@@ -219,7 +230,7 @@ def poetry_sync(ctx: Context):
 def try_github_actions(ctx: Context):
     """Try Github Actions locally using Act"""
     if not check_dev_up(ctx):
-        print("ADIT dev containers are not running. Run 'invoke compose-up' first.")
+        sys.exit("ADIT dev containers must be running. Run 'invoke compose-up' first.")
         return
 
     act_path = project_dir / "bin" / "act"

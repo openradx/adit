@@ -108,7 +108,7 @@ WSGI_APPLICATION = "adit.wsgi.application"
 # env.db() loads the DB setup from the DATABASE_URL environment variable using
 # Django-environ.
 # The sqlite database is still used for pytest tests.
-DATABASES = {"default": env.db(default="sqlite:///./adit-sqlite.db")}
+DATABASES = {"default": env.db(default="sqlite:///adit-sqlite.db")}
 
 # Django 3.2 switched to BigAutoField for primary keys. It must be set explicitly
 # and requires a migration.

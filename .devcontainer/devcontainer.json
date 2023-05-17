@@ -1,11 +1,6 @@
 {
   "build": {
     "dockerfile": "Dockerfile"
-    // https://github.com/microsoft/vscode-remote-release/issues/7958
-    // "args": {
-    //   "DOCKER_BUILDKIT": "0",
-    //   "BUILDKIT_INLINE_CACHE": "0"
-    // }
   },
   "features": {
     "ghcr.io/devcontainers/features/docker-in-docker:2": {
