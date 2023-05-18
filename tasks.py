@@ -167,37 +167,25 @@ def copy_statics(ctx: Context):
 
 
 @task
-def init_codespaces(ctx: Context):
-    """Initialize Github Codespaces dev environment"""
+def init_workspace(ctx: Context, type: Literal["codespaces", "gitpod"]):
+    """Initialize workspace for Github Codespaces or Gitpod"""
     env_dev_file = f"{compose_dir}/.env.dev"
     copy(f"{project_dir}/example.env", env_dev_file)
 
-    base_url = f"https://{environ['CODESPACE_NAME']}-8000.preview.app.github.dev"
-    set_key(env_dev_file, "BASE_URL", base_url, quote_mode="never")
-    set_key(env_dev_file, "DJANGO_CSRF_TRUSTED_ORIGINS", base_url, quote_mode="never")
+    if type == "codespaces":
+        base_url = f"https://{environ['CODESPACE_NAME']}-8000.preview.app.github.dev"
+    elif type == "gitpod":
+        result = ctx.run("gp url 8000", hide=True)
+        base_url = result.stdout.strip()
+    else:
+        raise ValueError(f"Invalid workspace type: {type}")
 
     host = base_url.removeprefix("https://")
-    set_key(env_dev_file, "DJANGO_ALLOWED_HOSTS", host, quote_mode="never")
-    set_key(env_dev_file, "DJANGO_INTERNAL_IPS", host, quote_mode="never")
 
-    set_key(env_dev_file, "FORCE_DEBUG_TOOLBAR", "true", quote_mode="never")
-
-
-@task
-def init_gitpod(ctx: Context):
-    """Initialize Gitpod dev environment"""
-    env_dev_file = f"{compose_dir}/.env.dev"
-    copy(f"{project_dir}/example.env", env_dev_file)
-
-    result = ctx.run("gp url 8000", hide=True)
-    base_url = result.stdout.strip()
     set_key(env_dev_file, "BASE_URL", base_url, quote_mode="never")
     set_key(env_dev_file, "DJANGO_CSRF_TRUSTED_ORIGINS", base_url, quote_mode="never")
-
-    host = base_url.removeprefix("https://")
     set_key(env_dev_file, "DJANGO_ALLOWED_HOSTS", host, quote_mode="never")
     set_key(env_dev_file, "DJANGO_INTERNAL_IPS", host, quote_mode="never")
-
     set_key(env_dev_file, "FORCE_DEBUG_TOOLBAR", "true", quote_mode="never")
 
 

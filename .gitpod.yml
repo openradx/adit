@@ -7,7 +7,7 @@ tasks:
       poetry install
       npm install
     command: |
-      invoke init-gitpod
+      poetry run invoke init-workspace --type gitpod
 
 ports:
   - port: 8000
