@@ -6,6 +6,7 @@ from tempfile import NamedTemporaryFile
 from typing import Callable
 
 from pydicom import dcmwrite
+from pydicom.filewriter import write_file_meta_info
 from pynetdicom import AE, AllStoragePresentationContexts, debug_logger, evt
 from pynetdicom.events import Event
 
@@ -34,6 +35,11 @@ class StoreScp:
             raise IOError(f"Invalid folder to store DICOM files: {self._folder}")
 
         ae = AE(ae_title=self._ae_title)
+
+        # Speed up by reducing the number of required DIMSE messages
+        # https://pydicom.github.io/pynetdicom/stable/examples/storage.html#storage-scp
+        ae.maximum_pdu_size = 0
+
         ae.supported_contexts = AllStoragePresentationContexts
         handlers = [
             (evt.EVT_CONN_OPEN, self._on_connect),
@@ -94,19 +100,25 @@ class StoreScp:
         The request is initiated with a C-MOVE request by ADIT itself to
         fetch images from a DICOM server that doesn't support C-GET requests.
         """
-        ds = event.dataset
-        ds.file_meta = event.file_meta
-
         # We retain the calling AE title in the filename so that we can use it in the
         # transmitter for the topic.
         calling_ae = event.assoc.remote["ae_title"]
         file_prefix = calling_ae + "_"
 
         try:
-            file = NamedTemporaryFile(
+            with NamedTemporaryFile(
                 prefix=file_prefix, suffix=".dcm", dir=self._folder, delete=False
-            )
-            dcmwrite(file, ds, write_like_original=False)
+            ) as file:
+                # Write dataset directly to file without re-encoding.
+                # https://pydicom.github.io/pynetdicom/stable/examples/storage.html#storage-scp
+
+                # Write the preamble and prefix
+                file.write(b"\x00" * 128)
+                file.write(b"DICM")
+                # Encode and write the File Meta Information
+                write_file_meta_info(file, event.file_meta)
+                # Write the encoded dataset
+                file.write(event.request.DataSet.getvalue())
         except Exception as err:
             if isinstance(err, OSError) and err.errno == errno.ENOSPC:
                 logger.error("Out of disc space while saving received file.")
