@@ -5,7 +5,6 @@ from socketserver import BaseServer
 from tempfile import NamedTemporaryFile
 from typing import Callable
 
-from pydicom import dcmwrite
 from pydicom.filewriter import write_file_meta_info
 from pynetdicom import AE, AllStoragePresentationContexts, debug_logger, evt
 from pynetdicom.events import Event
