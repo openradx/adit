@@ -75,9 +75,11 @@ def compose_restart(ctx: Context, env: Environments = "dev"):
 
 
 @task
-def compose_logs(ctx: Context, env: Environments = "dev"):
+def compose_logs(ctx: Context, env: Environments = "dev", service: str | None = None):
     """Show logs of ADIT containers in specified environment"""
     cmd = f"{compose_cmd(env)} logs --follow"
+    if service:
+        cmd += f" {service}"
     run_cmd(ctx, cmd)
 
 
@@ -208,26 +210,12 @@ def show_outdated(ctx: Context):
 
 
 @task
-def poetry_sync(ctx: Context):
-    """Sync Poetry dependencies (after manual changes in pyproject.toml)"""
-    cmd = "poetry install --remove-untracked"
-    run_cmd(ctx, cmd)
-
-
-@task
 def try_github_actions(ctx: Context):
     """Try Github Actions locally using Act"""
-    if not check_dev_up(ctx):
-        sys.exit("ADIT dev containers must be running. Run 'invoke compose-up' first.")
-        return
-
     act_path = project_dir / "bin" / "act"
-
     if not act_path.exists():
         print("Installing act...")
         ctx.run("curl https://raw.githubusercontent.com/nektos/act/master/install.sh | sudo bash")
 
     print("Running act...")
-    # We use a custom image as the medium image of act does not support docker compose
-    # see https://github.com/nektos/act/issues/112
-    ctx.run(f"{act_path} -P ubuntu-latest=lucasalt/act_base:latest")
+    ctx.run(f"{act_path} -P ubuntu-latest=catthehacker/ubuntu:act-latest")
