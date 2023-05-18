@@ -467,6 +467,10 @@ class DicomConnector:
     def _associate(self, service: DimseService):
         ae = AE(settings.ADIT_AE_TITLE)
 
+        # Speed up by reducing the number of required DIMSE messages
+        # https://pydicom.github.io/pynetdicom/stable/examples/storage.html#storage-scp
+        ae.maximum_pdu_size = 0
+
         # We only use the timeouts if set, otherwise we leave the default timeouts
         if self.config.acse_timeout is not None:
             ae.acse_timeout = self.config.acse_timeout
