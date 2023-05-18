@@ -1,6 +1,7 @@
 version: "3.8"
 
-x-app: &default-app
+x-app:
+  &default-app
   pull_policy: never
   volumes:
     - /mnt:/mnt

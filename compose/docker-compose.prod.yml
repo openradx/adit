@@ -1,6 +1,7 @@
 version: "3.8"
 
-x-app: &default-app
+x-app:
+  &default-app
   restart: always
   image: adit_prod:latest
   env_file:
@@ -21,7 +22,7 @@ services:
       - "443:443"
     command: >
       bash -c "
-        ./scripts/wait-for-it.sh postgres:5432 -t 30 &&
+        wait-for-it -s postgres:5432 -t 60 && 
         python ./manage.py migrate &&
         python ./manage.py collectstatic --no-input &&
         python ./manage.py create_admin &&

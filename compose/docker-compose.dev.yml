@@ -1,6 +1,7 @@
 version: "3.8"
 
-x-app: &default-app
+x-app:
+  &default-app
   image: adit_dev:latest
   volumes:
     - ..:/app
@@ -18,13 +19,14 @@ services:
     ports:
       - "8000:8000"
       - "5678:5678"
-    volumes: # Cave, overwrites the above anchor
+    volumes:
+      # Cave, overwrites the above anchor
       - ..:/app
       - vscode-server:/root/.vscode-server/extensions
       - vscode-server-insiders:/root/.vscode-server-insiders/extensions
     command: >
       bash -c "
-        ./scripts/wait-for-it.sh postgres:5432 -t 30 &&
+        wait-for-it -s postgres:5432 -t 60 && 
         python ./manage.py reset_orthancs &&
         python ./manage.py migrate &&
         python ./manage.py collectstatic --no-input &&
