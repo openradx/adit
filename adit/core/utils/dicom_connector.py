@@ -877,14 +877,14 @@ class DicomConnector:
                         RetriableTaskError("Failed to download some images with C-MOVE.")
                     )
 
-            async def handle_received_file(buffer: BytesIO, metadata: Metadata):
+            async def handle_received_file(data: bytes, metadata: Metadata):
                 nonlocal last_image_at
                 last_image_at = time.time()
 
                 image_uid = metadata["SOPInstanceUID"]
 
                 if image_uid in remaining_image_uids:
-                    ds = dcmread(buffer)
+                    ds = dcmread(BytesIO(data))
                     remaining_image_uids.remove(image_uid)
 
                     try:

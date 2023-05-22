@@ -15,7 +15,7 @@ SubscribeHandler = Callable[[str], None | Awaitable[None]]
 UnsubscribeHandler = Callable[[str], None | Awaitable[None]]
 FileSentHandler = Callable[[], None]
 Metadata = dict[str, str]
-FileReceivedHandler = Callable[[BytesIO, Metadata], Awaitable[bool | None] | bool | None]
+FileReceivedHandler = Callable[[bytes, Metadata], Awaitable[bool | None] | bool | None]
 
 logger = logging.getLogger(__name__)
 
@@ -193,16 +193,12 @@ class FileTransmitClient:
                     buffer.write(data)
                     remaining_bytes -= len(data)
 
-                # Reset the buffer to the beginning so that it can be read like a file.
-                # Also don't close the buffer as this would loose the data.
-                buffer.seek(0)
-
                 # The file handler can report that no further files are needed by
                 # returning True which stops reading further data from the server.
                 finished = (
-                    await file_received_handler(buffer, metadata)
+                    await file_received_handler(buffer.getvalue(), metadata)
                     if asyncio.iscoroutinefunction(file_received_handler)
-                    else file_received_handler(buffer, metadata)
+                    else file_received_handler(buffer.getvalue(), metadata)
                 )
                 if finished:
                     break
