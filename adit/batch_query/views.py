@@ -1,4 +1,4 @@
-from io import StringIO
+from io import BytesIO
 
 from django.conf import settings
 from django.contrib.auth.mixins import LoginRequiredMixin
@@ -138,14 +138,13 @@ class BatchQueryResultDownloadView(
 
     def get(self, request, *args, **kwargs):
         job = self.get_object()
-        file = StringIO()
+        file = BytesIO()
         export_results(job, file)
 
-        # We use CP-1252 (ANSI) charset so that the exported CSV files could be
-        # directly opened in Excel under Windows and Umlaute are correctly presented.
-        content = file.getvalue().encode("cp1252")
-
-        response = HttpResponse(content, content_type="text/csv")
-        filename = f"batch_query_job_{job.id}_results.csv"
+        response = HttpResponse(
+            content=file.getvalue(),
+            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+        filename = f"batch_query_job_{job.id}_results.xlsx"
         response["Content-Disposition"] = f"attachment;filename={filename}"
         return response

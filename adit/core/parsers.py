@@ -1,7 +1,8 @@
-import csv
-from typing import Dict, TextIO, Type
+from typing import Dict, Type
 
-from django.conf import settings
+import numpy as np
+import pandas as pd
+from django.core.files import File
 
 from .errors import BatchFileFormatError, BatchFileSizeError
 from .serializers import BatchTaskSerializer
@@ -16,11 +17,12 @@ class BatchFileParser:
     def get_serializer(self, data: Dict[str, str]) -> BatchTaskSerializer:
         return self.serializer_class(data=data, many=True)
 
-    def parse(self, batch_file: TextIO, max_batch_size: int):
+    def parse(self, batch_file: File, max_batch_size: int):
         data = []
         counter = 1
-        reader = csv.DictReader(batch_file, delimiter=settings.CSV_DELIMITER)
-        for row in reader:
+        df = pd.read_excel(batch_file, dtype=str)
+        df.replace({np.nan: ""}, inplace=True)
+        for idx, row in df.iterrows():
             data_row = {}
 
             row_empty = True
@@ -36,7 +38,8 @@ class BatchFileParser:
             data_row["task_id"] = counter
             counter += 1
 
-            data_row["lines"] = [reader.line_num]
+            # + 2 because the first row is the header and the index starts at 0
+            data_row["lines"] = [idx + 2]
 
             data.append(data_row)
 

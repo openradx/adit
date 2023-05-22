@@ -1,6 +1,4 @@
-import csv
-
-from django.conf import settings
+import pandas as pd
 from django.utils.formats import date_format, time_format
 
 from adit.core.templatetags.core_extras import join_if_list, person_name_from_dicom
@@ -9,9 +7,6 @@ from ..models import BatchQueryJob, BatchQueryResult
 
 
 def export_results(job: BatchQueryJob, file):
-    delimiter = settings.CSV_DELIMITER
-    writer = csv.writer(file, delimiter=delimiter)
-
     query_tasks = job.tasks.prefetch_related("results").all()
 
     has_pseudonyms = False
@@ -21,14 +16,21 @@ def export_results(job: BatchQueryJob, file):
             has_pseudonyms = True
         if query_task.series_description or query_task.series_numbers:
             has_series = True
-    write_header(writer, has_pseudonyms, has_series)
-    write_data(writer, query_tasks, has_pseudonyms, has_series)
+
+    header = get_header(has_pseudonyms, has_series)
+    data = []
+    for query_task in query_tasks:
+        result_rows = get_result_rows(query_task, has_pseudonyms, has_series)
+        data += result_rows
+
+    df = pd.DataFrame(data, columns=header)
+    df.to_excel(file, index=False)
 
 
-def write_header(writer, has_pseudonyms, has_series):
+def get_header(writer, has_pseudonyms, has_series):
     # TODO: Improve order
 
-    column_headers = [
+    header = [
         "PatientID",
         "PatientName",
         "BirthDate",
@@ -42,10 +44,10 @@ def write_header(writer, has_pseudonyms, has_series):
     ]
 
     if has_pseudonyms:
-        column_headers.append("Pseudonym")
+        header.append("Pseudonym")
 
     if has_series:
-        column_headers.extend(
+        header.extend(
             [
                 "SeriesInstanceUID",
                 "SeriesDescription",
@@ -53,52 +55,55 @@ def write_header(writer, has_pseudonyms, has_series):
             ]
         )
 
-    writer.writerow(column_headers)
+    return header
 
 
-def write_data(writer, query_tasks, has_pseudonyms, has_series):
-    for query_task in query_tasks:
-        result: BatchQueryResult
-        for result in query_task.results.all():
-            patient_name = person_name_from_dicom(result.patient_name)
+def get_result_rows(query_task, has_pseudonyms, has_series):
+    result_rows = []
 
-            patient_birth_date = date_format(result.patient_birth_date, "SHORT_DATE_FORMAT")
+    result: BatchQueryResult
+    for result in query_task.results.all():
+        patient_name = person_name_from_dicom(result.patient_name)
 
-            study_date = date_format(result.study_date, "SHORT_DATE_FORMAT")
+        patient_birth_date = date_format(result.patient_birth_date, "SHORT_DATE_FORMAT")
 
-            study_time = time_format(result.study_time, "TIME_FORMAT")
+        study_date = date_format(result.study_date, "SHORT_DATE_FORMAT")
 
-            modalities = ""
-            if result.modalities is not None:
-                modalities = join_if_list(result.modalities, ", ")
+        study_time = time_format(result.study_time, "TIME_FORMAT")
 
-            image_count = ""
-            if result.image_count is not None:
-                image_count = result.image_count
+        modalities = ""
+        if result.modalities is not None:
+            modalities = join_if_list(result.modalities, ", ")
 
-            csv_row = [
-                result.patient_id,
-                patient_name,
-                patient_birth_date,
-                study_date,
-                study_time,
-                result.study_description,
-                modalities,
-                image_count,
-                result.accession_number,
-                result.study_uid,
-            ]
+        image_count = ""
+        if result.image_count is not None:
+            image_count = result.image_count
 
-            if has_pseudonyms:
-                csv_row.append(result.pseudonym)
+        result_row = [
+            result.patient_id,
+            patient_name,
+            patient_birth_date,
+            study_date,
+            study_time,
+            result.study_description,
+            modalities,
+            image_count,
+            result.accession_number,
+            result.study_uid,
+        ]
 
-            if has_series:
-                csv_row.extend(
-                    [
-                        result.series_uid,
-                        result.series_description,
-                        result.series_number,
-                    ]
-                )
+        if has_pseudonyms:
+            result_row.append(result.pseudonym)
 
-            writer.writerow(csv_row)
+        if has_series:
+            result_row.extend(
+                [
+                    result.series_uid,
+                    result.series_description,
+                    result.series_number,
+                ]
+            )
+
+        result_rows.append(result_row)
+
+    return result_rows

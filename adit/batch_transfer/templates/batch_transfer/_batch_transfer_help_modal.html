@@ -11,48 +11,37 @@
     </p>
     <p>
         Each batch transfer job contains several transfer tasks that define what studies to transfer. This data must be
-        specified in a CSV file with <strong>semicolons <mark>;</mark> as column separators</strong>. If your data is in an
-        Excel file then it can be exported to a CSV file. The first row of the CSV file must contain the header with the
+        specified in an Excel file (.xlsx). The first row of the Excel file must contain the header with the
         column titles. The following rows contain the data that identifies the studies to transfer.
     </p>
     <p>
-        The required PatientID and StudyInstanceUID can be fetched by doing a "Batch Query". The resulting CSV file of a
-        batch query can be used with minimal modifications for a batch transfer.
+        The required PatientID and StudyInstanceUID can be fetched by doing a "Batch Query". The resulting file of a
+        batch query can be used for the batch transfer. So a batch query is usually a preparation step for a batch transfer.
     </p>
     <p>
         <strong class="text-danger">Cave!</strong>
         <br />
         If PatientID or AccessionNumber contains leading zeros those are relevant as it is not a number but a text
-        identifier. So make sure after loading or saving a CSV file with Excel those values are correct. It's always a good
-        idea to view the CSV file with a text editor and check if the format is correct. If not then you must use another
-        CSV editor or force the Excel data importer to skip the automatic type conversion (see <a href="https://www.winhelponline.com/blog/stop-excel-convert-text-to-number-date-format-csv-file/">Stop Excel
-        from Converting Text to Number</a>).
+        identifier. So make sure that your Excel file does not remove those leading zeros by setting the column type to text or
+        add a single quote ' as prefix to the text cell itself.
     </p>
     <p>
-        The following columns must be defined in the CSV file:
+        The following columns must be defined in the batch file:
         <dl>
-            <dt>
-                PatientID
-            </dt>
+            <dt>PatientID</dt>
             <dd>
                 The unique ID of the patient in the PACS. This column is required.
             </dd>
-            <dt>
-                StudyInstanceUID
-            </dt>
+            <dt>StudyInstanceUID</dt>
             <dd>
                 A unique ID that identifies the study. This column is required.
             </dd>
-            <dt>
-                SeriesInstanceUID
-            </dt>
+            <dt>SeriesInstanceUID</dt>
             <dd>
                 An unique ID that identifies the series. This column is optional to only transfer
                 specific series of a study.
             </dd>
-            <dt>
-                Pseudonym
-            </dt>
+            <dt>Pseudonym</dt>
             <dd>
                 A pseudonym to pseudonymize the images during transfer. This field is required
                 if you don't have the permission to transfer unpseudonymized (the default).
@@ -64,15 +53,10 @@
         provided pseudonym is optional if you have the permissions to transfer unpseudonymized. It will be set as PatientID
         and PatientName. So it is recommended to use cryptic identifier strings (e.g. "XFE3TEW2N").
     </p>
-    <p>
-        Make sure that your CSV file encoding is correct by opening it with a normal text editor (ideally under Windows).
-        Especially look that umlauts (äöü) are correct. If something is wrong then try to export your CSV file from Excel
-        with UTF-8 encondig.
-    </p>
     <div class="mb-1">
-        <a href="{% static 'samples/batch_transfer_sample.csv' %}">
+        <a href="{% static 'samples/batch_transfer_sample.xlsx' %}">
             {% include "core/_download.svg" %}
-            Download a sample CSV batch transfer file (supported by Excel).
+            Download a sample batch transfer file (Excel format).
         </a>
     </div>
 {% endblock modal_body %}

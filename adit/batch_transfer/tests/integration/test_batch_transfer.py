@@ -1,3 +1,4 @@
+import pandas as pd
 import pytest
 from playwright.sync_api import Page, expect
 
@@ -12,14 +13,13 @@ def test_unpseudonymized_urgent_batch_transfer_succeeds(
     adit_celery_worker,
     channels_liver_server,
     create_and_login_user,
-    create_csv_file,
+    create_excel_file,
 ):
-    batch_file = create_csv_file(
-        [
-            ["PatientID", "StudyInstanceUID"],
-            ["1005", "1.2.840.113845.11.1000000001951524609.20200705173311.2689472"],
-        ]
+    df = pd.DataFrame(
+        [["1005", "1.2.840.113845.11.1000000001951524609.20200705173311.2689472"]],
+        columns=["PatientID", "StudyInstanceUID"],
     )
+    batch_file = create_excel_file(df)
 
     user = create_and_login_user(channels_liver_server.url)
     user.join_group("batch_transfer_group")

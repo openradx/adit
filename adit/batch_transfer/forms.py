@@ -1,6 +1,3 @@
-from io import StringIO
-
-import cchardet as chardet
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Submit
 from django import forms
@@ -45,7 +42,7 @@ class BatchTransferJobForm(forms.ModelForm):
         help_texts = {
             "urgent": ("Start transfer directly (without scheduling) and prioritize it."),
             "batch_file": (
-                "The batch file which contains the data to transfer between "
+                "The batch file (Excel) which contains the data to transfer between "
                 "two DICOM nodes. See [Help] for how to format this file."
             ),
             "ethics_application_id": (
@@ -101,17 +98,13 @@ class BatchTransferJobForm(forms.ModelForm):
 
     def clean_batch_file(self):
         batch_file = self.cleaned_data["batch_file"]
-        rawdata = batch_file.read()
-        encoding = chardet.detect(rawdata)["encoding"]
-        file = StringIO(rawdata.decode(encoding))
         can_transfer_unpseudonymized = self.user.has_perm(
             "batch_transfer.can_transfer_unpseudonymized"
         )
-
         parser = BatchTransferFileParser(can_transfer_unpseudonymized)
 
         try:
-            self.tasks = parser.parse(file, self.max_batch_size)
+            self.tasks = parser.parse(batch_file, self.max_batch_size)
 
         except BatchFileSizeError as err:
             raise ValidationError(

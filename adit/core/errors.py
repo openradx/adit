@@ -24,7 +24,7 @@ class BatchFileSizeError(Exception):
 
 class BatchFileFormatError(Exception):
     def __init__(self, field_to_column_mapping, data, errors) -> None:
-        super().__init__("Invalid CSV data.")
+        super().__init__("Invalid batch data.")
 
         self.field_to_column_mapping = field_to_column_mapping
         self.data = data

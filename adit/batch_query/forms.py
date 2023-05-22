@@ -1,11 +1,9 @@
-from io import StringIO
-
-import cchardet as chardet
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Submit
 from django import forms
 from django.conf import settings
 from django.core.exceptions import ValidationError
+from django.core.files import File
 from django.db import transaction
 from django.utils.safestring import mark_safe
 
@@ -37,7 +35,7 @@ class BatchQueryJobForm(forms.ModelForm):
         help_texts = {
             "urgent": ("Prioritize and start directly (without scheduling)."),
             "batch_file": (
-                "The batch file which contains the data for the queries. "
+                "The Excel batch file (Excel) which contains the data for the queries. "
                 "See [Help] for how to format this file."
             ),
         }
@@ -71,19 +69,11 @@ class BatchQueryJobForm(forms.ModelForm):
         self.helper.add_input(Submit("save", "Create Job"))
 
     def clean_batch_file(self):
-        batch_file = self.cleaned_data["batch_file"]
-        rawdata = batch_file.read()
-        encoding = chardet.detect(rawdata)["encoding"]
-
-        if not encoding:
-            raise ValidationError("Invalid batch file (unknown encoding).")
-
-        file = StringIO(rawdata.decode(encoding))
-
+        batch_file: File = self.cleaned_data["batch_file"]
         parser = BatchQueryFileParser()
 
         try:
-            self.tasks = parser.parse(file, self.max_batch_size)
+            self.tasks = parser.parse(batch_file, self.max_batch_size)
 
         except BatchFileSizeError as err:
             raise ValidationError(

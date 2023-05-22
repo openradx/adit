@@ -1,3 +1,4 @@
+import pandas as pd
 import pytest
 from playwright.sync_api import Page, expect
 
@@ -12,14 +13,10 @@ def test_urgent_batch_query_succeeds(
     adit_celery_worker,
     channels_liver_server,
     create_and_login_user,
-    create_csv_file,
+    create_excel_file,
 ):
-    batch_file = create_csv_file(
-        [
-            ["PatientID", "AccessionNumber"],
-            ["1005", "0062115904"],
-        ]
-    )
+    df = pd.DataFrame([["1005", "0062115904"]], columns=["PatientID", "AccessionNumber"])
+    batch_file = create_excel_file(df)
 
     user = create_and_login_user(channels_liver_server.url)
     user.join_group("batch_query_group")

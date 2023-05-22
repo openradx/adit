@@ -378,9 +378,6 @@ FILE_TRANSMIT_PORT = env.int("FILE_TRANSMIT_SERVER_PORT", default=27312)
 # folder and cache their received DICOM files there.
 TEMP_DICOM_DIR = env.str("TEMP_DICOM_DIR", default=str(BASE_DIR / ".dicoms"))
 
-# The delimiter in CSV batch files
-CSV_DELIMITER = ";"
-
 # Usually a transfer job must be verified by an admin. By setting
 # this option to True ADIT will schedule unverified transfers
 # (and directly set the status of the job to PENDING).

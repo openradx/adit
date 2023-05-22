@@ -1,4 +1,3 @@
-from io import StringIO
 from unittest.mock import create_autospec, patch
 
 import pytest
@@ -24,7 +23,7 @@ def data_dict():
 @pytest.fixture
 def file_dict():
     file = create_autospec(File, size=5242880)
-    file.name = "sample_sheet.csv"
+    file.name = "sample_sheet.xlsx"
     file.read.return_value.decode.return_value = ""
     return {"batch_file": file}
 
@@ -52,8 +51,7 @@ def test_field_labels():
 
 @pytest.mark.django_db
 @patch("adit.batch_transfer.forms.BatchTransferFileParser.parse", autospec=True)
-@patch("adit.batch_transfer.forms.chardet.detect", return_value={"encoding": "UTF-8"})
-def test_with_valid_data(_, parse_mock, data_dict, file_dict):
+def test_with_valid_data(parse_mock, data_dict, file_dict):
     # Arrange
     parse_mock.return_value = []
     user = create_autospec(User)
@@ -65,7 +63,7 @@ def test_with_valid_data(_, parse_mock, data_dict, file_dict):
     # Assert
     assert form.is_valid()
     parse_mock.assert_called_once()
-    assert isinstance(parse_mock.call_args.args[1], StringIO)
+    assert parse_mock.call_args.args[1] == file_dict["batch_file"]
 
 
 def test_with_missing_values():
@@ -91,7 +89,7 @@ def test_with_missing_values():
 def test_disallow_too_large_file(data_dict):
     # Arrange
     file = create_autospec(File, size=5242881)
-    file.name = "sample_sheet.csv"
+    file.name = "sample_sheet.xlsx"
     user = create_autospec(User)
     user.has_perm.return_value = True
 

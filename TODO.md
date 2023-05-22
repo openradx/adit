@@ -2,6 +2,8 @@
 
 ## High Priority
 
+- Evaluate using <https://just.systems/> instead of pyinvoke
+- Fix typo channels_liver_server
 - Evaluate dev task runners
   -- <https://github.com/taskipy/taskipy>
   -- <https://www.pyinvoke.org/>
@@ -14,7 +16,6 @@
 - rename ADIT_AE_TITLE to RECEIVER_AE_TITLE
 - modalities and series_numbers in batch query model should never be null but an empty array
 - Use different workers for selective transfer, batch query and batch transfer
-- Use Excel files directly instead of CSV files
 - Query with StudyDateStart, StudyDateEnd, StudyDate
 - Common search query Websocket component
 - DICOM Explorer localstorage source
@@ -48,7 +49,7 @@
 
 - New batch transfer
   -- Create new batch transfer job and allow to add tasks
-  -- Add tasks manually or using a CSV file
+  -- Add tasks manually or using a Excel file
   -- Query tasks directly using new dicom_query_queue
   -- New status: QUERYING, READY
   -- Button: Start Transfer (only when no task is querying)
@@ -71,7 +72,6 @@
   -- <https://github.com/django/channels/blob/main/channels/testing/live.py#L21>
   -- <https://github.com/django/daphne/blob/main/daphne/testing.py#L123>
   -- <https://github.com/django/django/blob/main/django/test/testcases.py#L1810>
-- Support Excel batch files additionally to CSV files (best by using Pandas with openpyxl)
 - Bring everything behind Nginx as reverse proxy
   -- Orthanc, Flower, Rabbit Management Console should then be directly behind Nginx (without Django-revproxy)
   -- Use authentication module of nginx
@@ -86,8 +86,8 @@
 - BatchQuery with custom DICOM keywords
 - Watchdog server
 - pull celery_task stuff out of transfer_utils
-- Allow provide a regex of StudyDescription in CSV batch file
-- Allow to specify many modalities per row in CSV file
+- Allow provide a regex of StudyDescription in batch file
+- Allow to specify many modalities per row in file
 - move date parsing part in parsers.py and consumers.py to date_util.py
 - <https://stackoverflow.com/questions/14259852/how-to-identify-image-receive-in-c-store-as-result-of-a-c-move-query>
 - <https://www.yergler.net/2009/09/27/nested-formsets-with-django/>

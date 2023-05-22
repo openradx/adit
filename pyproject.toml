@@ -39,6 +39,8 @@ whitenoise = "^6.0.0"
 aiofiles = "^23.1.0"
 asyncinotify = "^4.0.1"
 wait-for-it = "^2.2.2"
+pandas = "^2.0.1"
+openpyxl = "^3.1.2"
 
 [tool.poetry.group.dev.dependencies]
 black = "^23.1.0"

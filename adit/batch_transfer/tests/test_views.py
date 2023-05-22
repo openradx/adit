@@ -1,5 +1,7 @@
+from io import BytesIO
 from unittest.mock import patch
 
+import pandas as pd
 import pytest
 from django.contrib.auth.models import Group
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -11,18 +13,22 @@ from adit.core.factories import DicomServerFactory
 
 from ..models import BatchTransferJob
 
-csv_data = b"""\
-PatientID;StudyInstanceUID;Pseudonym
-1001;1.2.840.113845.11.1000000001951524609.20200705182951.2689481;WSOHMP4N
-1002;1.2.840.113845.11.1000000001951524609.20200705170836.2689469;C2XJQ2AR
-1003;1.2.840.113845.11.1000000001951524609.20200705172608.2689471;KRS8CZ3S
-"""
-
 
 # Somehow the form data must be always generated from scratch (maybe cause of the
 # SimpleUploadedFile) otherwise tests fail.
 @pytest.fixture
 def form_data(db):
+    buffer = BytesIO()
+    data = pd.DataFrame(
+        [
+            ["1001", "1.2.840.113845.11.1000000001951524609.20200705182951.2689481", "WSOHMP4N"],
+            ["1002", "1.2.840.113845.11.1000000001951524609.20200705170836.2689469", "C2XJQ2AR"],
+            ["1003", "1.2.840.113845.11.1000000001951524609.20200705172608.2689471", "KRS8CZ3S"],
+        ],
+        columns=["PatientID", "StudyInstanceUID", "Pseudonym"],
+    )
+    data.to_excel(buffer, index=False)
+
     return {
         "source": DicomServerFactory().id,
         "destination": DicomServerFactory().id,
@@ -30,7 +36,9 @@ def form_data(db):
         "project_description": "Fly to the moon",
         "ethics_application_id": "12345",
         "batch_file": SimpleUploadedFile(
-            name="sample_sheet.csv", content=csv_data, content_type="text/csv"
+            name="sample_sheet.xlsx",
+            content=buffer.getvalue(),
+            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         ),
     }
 

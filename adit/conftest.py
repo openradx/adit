@@ -1,4 +1,3 @@
-import csv
 import io
 import time
 from multiprocessing import Process
@@ -6,6 +5,7 @@ from tempfile import NamedTemporaryFile
 from typing import Callable
 
 import nest_asyncio
+import pandas as pd
 import pytest
 from django.conf import settings
 from django.core.management import call_command
@@ -112,20 +112,18 @@ def create_and_login_user(page: Page, login_user):
 
 
 @pytest.fixture
-def create_csv_file():
-    def _create_csv_file(data: list[list[str]]):
-        output = io.StringIO()
-        writer = csv.writer(output, delimiter=settings.CSV_DELIMITER)
-        for row in data:
-            writer.writerow(row)
+def create_excel_file():
+    def _create_excel_file(df: pd.DataFrame):
+        output = io.BytesIO()
+        df.to_excel(output)
 
         return {
-            "name": "batch_file.csv",
-            "mimeType": "text/plain",
-            "buffer": output.getvalue().encode("utf-8"),
+            "name": "batch_file.xlsx",
+            "mimeType": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            "buffer": output.getvalue(),
         }
 
-    return _create_csv_file
+    return _create_excel_file
 
 
 @pytest.fixture
