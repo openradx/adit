@@ -54,8 +54,8 @@ celery_app.register_task(handle_failed_selective_transfer_job)
 
 class ProcessSelectiveTransferJob(ProcessDicomJob):
     dicom_job_class = SelectiveTransferJob
-    default_priority = settings.SELECTIVE_TRANSFER_DEFAULT_PRIORITY
-    urgent_priority = settings.SELECTIVE_TRANSFER_URGENT_PRIORITY
+    default_priority = settings.CELERY_TASK_DEFAULT_PRIORITY
+    urgent_priority = settings.CELERY_TASK_URGENT_PRIORITY
     process_dicom_task = process_selective_transfer_task
     handle_finished_dicom_job = handle_finished_selective_transfer_job
     handle_failed_dicom_job = handle_failed_selective_transfer_job

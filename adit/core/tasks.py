@@ -73,6 +73,7 @@ class ProcessDicomJob(CeleryTask):
 
         priority = self.default_priority
         if dicom_job.urgent:
+            # Tasks of urgent jobs get a higher priority
             priority = self.urgent_priority
 
         pending_dicom_tasks = dicom_job.tasks.filter(status=DicomTask.Status.PENDING)

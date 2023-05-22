@@ -50,8 +50,8 @@ celery_app.register_task(handle_failed_batch_transfer_job)
 
 class ProcessBatchTransferJob(ProcessDicomJob):
     dicom_job_class = BatchTransferJob
-    default_priority = settings.BATCH_TRANSFER_DEFAULT_PRIORITY
-    urgent_priority = settings.BATCH_TRANSFER_URGENT_PRIORITY
+    default_priority = settings.CELERY_TASK_DEFAULT_PRIORITY
+    urgent_priority = settings.CELERY_TASK_URGENT_PRIORITY
     process_dicom_task = process_batch_transfer_task
     handle_finished_dicom_job = handle_finished_batch_transfer_job
     handle_failed_dicom_job = handle_failed_batch_transfer_job
