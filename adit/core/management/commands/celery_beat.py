@@ -37,9 +37,10 @@ class Command(ServerCommand):
         folder_path = Path("/var/www/adit/celery/")
         folder_path.mkdir(parents=True, exist_ok=True)
         schedule_path = folder_path / "celerybeat-schedule"
-        pid_path = folder_path / "celerybeat.pid"
         loglevel = options["loglevel"]
-        cmd = f"celery -A adit beat -l {loglevel} -s {str(schedule_path)} --pidfile {str(pid_path)}"
+
+        # --pidfile= disables pidfile creation as we can control the process with subprocess
+        cmd = f"celery -A adit beat -l {loglevel} -s {str(schedule_path)} --pidfile="
 
         self.beat_process = subprocess.Popen(shlex.split(cmd))
         self.beat_process.wait()
