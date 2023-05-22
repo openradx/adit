@@ -107,7 +107,14 @@ def lint(ctx: Context):
 
 
 @task
-def test(ctx: Context, cov: bool = False, path: str = "./adit"):
+def test(
+    ctx: Context,
+    path: str = "./adit",
+    cov: bool = False,
+    keyword: str | None = None,
+    mark: str | None = None,
+    stdout: bool = False,
+):
     """Run tests"""
     if not check_dev_up(ctx):
         sys.exit(
@@ -117,6 +124,13 @@ def test(ctx: Context, cov: bool = False, path: str = "./adit"):
     cmd = f"{compose_cmd()} exec --env DJANGO_SETTINGS_MODULE=adit.settings.test web pytest "
     if cov:
         cmd += "--cov=adit "
+    if keyword:
+        cmd += f"-k {keyword} "
+    if mark:
+        cmd += f"-m {mark} "
+    if stdout:
+        cmd += "-s "
+
     cmd += path
     run_cmd(ctx, cmd)
 
