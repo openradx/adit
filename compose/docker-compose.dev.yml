@@ -37,13 +37,7 @@ services:
   worker_default:
     <<: *default-app
 
-  worker_selective_transfer:
-    <<: *default-app
-
-  worker_batch_query:
-    <<: *default-app
-
-  worker_batch_transfer:
+  worker_dicom_task:
     <<: *default-app
 
   celery_beat:

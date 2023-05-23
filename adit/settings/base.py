@@ -323,14 +323,10 @@ CELERY_BEAT_SCHEDULE = {
 # forever.
 CELERY_TASK_ANNOTATIONS = {"*": {"max_retries": 100}}
 
-# For priority queues, see also apply_async calls in the models.
+# Settings for priority queues, see also apply_async calls in the models.
 # Requires RabbitMQ as the message broker!
-# CELERY_TASK_QUEUE_MAX_PRIORITY and CELERY_TASK_DEFAULT_PRIORITY
-# are predefined options of Celery. CELERY_TASK_URGENT_PRIORITY is
-# a custom setting of ADIT.
 CELERY_TASK_QUEUE_MAX_PRIORITY = 10
-CELERY_TASK_DEFAULT_PRIORITY = 1
-CELERY_TASK_URGENT_PRIORITY = 3
+CELERY_TASK_DEFAULT_PRIORITY = 5
 
 # Only non prefetched tasks can be sorted by their priority. So we only
 # prefetch only one task at a time.
@@ -391,6 +387,17 @@ BATCH_TRANSFER_UNVERIFIED = True
 
 # A timezone that is used for users of the web interface.
 USER_TIME_ZONE = env.str("USER_TIME_ZONE", default=None)
+
+# Priorities of dicom tasks
+# Selective transfers have the highest priority as those are
+# normally fewer than the other tasks. Batch transfers have the lowest
+# priority as there are mostly numerous and long running. 
+SELECTIVE_TRANSFER_DEFAULT_PRIORITY = 4
+SELECTIVE_TRANSFER_URGENT_PRIORITY = 8
+BATCH_TRANSFER_DEFAULT_PRIORITY = 2
+BATCH_TRANSFER_URGENT_PRIORITY = 6
+BATCH_QUERY_DEFAULT_PRIORITY = 3
+BATCH_QUERY_URGENT_PRIORITY = 7
 
 # The maximum number of resulting studies for selective_transfer query
 SELECTIVE_TRANSFER_RESULT_LIMIT = 101

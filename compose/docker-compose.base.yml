@@ -42,17 +42,9 @@ services:
     <<: *default-app
     command: python manage.py celery_worker -Q default_queue
 
-  worker_selective_transfer:
+  worker_dicom_task:
     <<: *default-app
-    command: python manage.py celery_worker -Q selective_transfer_queue
-
-  worker_batch_query:
-    <<: *default-app
-    command: python manage.py celery_worker -Q batch_query_queue
-
-  worker_batch_transfer:
-    <<: *default-app
-    command: python manage.py celery_worker -Q batch_transfer_queue
+    command: python manage.py celery_worker -Q dicom_task_queue
 
   celery_beat:
     <<: *default-app

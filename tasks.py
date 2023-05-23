@@ -22,7 +22,7 @@ compose_dir = project_dir / "compose"
 def compose_cmd(env: Environments = "dev"):
     base_compose_cmd = f"docker compose -f '{compose_dir}/docker-compose.base.yml'"
     if env == "dev":
-        return f"{base_compose_cmd}  -f '{compose_dir}/docker-compose.dev.yml' -p {proj_adit_dev}"
+        return f"{base_compose_cmd} -f '{compose_dir}/docker-compose.dev.yml' -p {proj_adit_dev}"
     elif env == "prod":
         return f"{base_compose_cmd} -f '{compose_dir}/docker-compose.prod.yml' -p {proj_adit_prod}"
     else:

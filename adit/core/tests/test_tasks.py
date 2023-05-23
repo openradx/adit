@@ -14,12 +14,12 @@ from ..tasks import ProcessDicomJob, ProcessDicomTask
 class TestProcessDicomJob:
     @pytest.mark.parametrize("urgent", [True, False])
     @patch("adit.core.tasks.chord", autospec=True)
-    def test_run_succeeds(self, chord_mock, urgent, settings):
+    def test_run_succeeds(self, chord_mock, urgent):
         # Arrange
         dicom_job_id = 9
         dicom_task_id = 8
-        default_priority = settings.CELERY_TASK_DEFAULT_PRIORITY
-        urgent_priority = settings.CELERY_TASK_URGENT_PRIORITY
+        default_priority = 2
+        urgent_priority = 4
         celery_task_id = "d2548e15-6597-4127-ab2f-98bae1bbf3f2"
 
         dicom_job_class_mock = Mock()

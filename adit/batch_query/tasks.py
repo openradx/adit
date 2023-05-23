@@ -50,8 +50,8 @@ celery_app.register_task(handle_failed_batch_query_job)
 
 class ProcessBatchQueryJob(ProcessDicomJob):
     dicom_job_class = BatchQueryJob
-    default_priority = settings.CELERY_TASK_DEFAULT_PRIORITY
-    urgent_priority = settings.CELERY_TASK_URGENT_PRIORITY
+    default_priority = settings.BATCH_QUERY_DEFAULT_PRIORITY
+    urgent_priority = settings.BATCH_QUERY_URGENT_PRIORITY
     process_dicom_task = process_batch_query_task
     handle_finished_dicom_job = handle_finished_batch_query_job
     handle_failed_dicom_job = handle_failed_batch_query_job
