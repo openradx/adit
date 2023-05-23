@@ -33,7 +33,7 @@ class Command(ServerCommand):
             ae_title=settings.ADIT_AE_TITLE,
             host=settings.STORE_SCP_HOST,
             port=settings.STORE_SCP_PORT,
-            debug=settings.DICOM_DEBUG_LOGGING,
+            debug=settings.ENABLE_DICOM_DEBUG_LOGGER,
         )
         store_scp_thread = asyncio.to_thread(store_scp.start)
 

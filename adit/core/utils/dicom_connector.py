@@ -130,7 +130,7 @@ class DicomConnector:
         else:
             self.config = config
 
-        if settings.DICOM_DEBUG_LOGGING:
+        if settings.ENABLE_DICOM_DEBUG_LOGGER:
             debug_logger()  # Debug mode of pynetdicom
 
         self.assoc = None
@@ -766,7 +766,7 @@ class DicomConnector:
             context = event.context
 
             # Add DICOM File Meta Information
-            ds.file_meta = event.file_meta  # pyright: ignore
+            ds.file_meta = event.file_meta
 
             # Set the transfer syntax attributes of the dataset
             ds.is_little_endian = context.transfer_syntax.is_little_endian

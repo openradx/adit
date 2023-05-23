@@ -412,7 +412,7 @@ DICOM_EXPLORER_RESPONSE_TIMEOUT = 3  # seconds
 C_MOVE_DOWNLOAD_TIMEOUT = 60  # seconds
 
 # Show DICOM debug messages of pynetdicom
-DICOM_DEBUG_LOGGING = False  # TODO: rename to ENABLE_DICOM_DEBUG_LOGGER
+ENABLE_DICOM_DEBUG_LOGGER = False
 
 # How often to retry a failed transfer task before the task is definitively failed
 TRANSFER_TASK_RETRIES = 2
