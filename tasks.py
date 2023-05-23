@@ -209,12 +209,7 @@ def init_workspace(ctx: Context, type: Literal["codespaces", "gitpod"]):
 def show_outdated(ctx: Context):
     """Show outdated dependencies"""
     print("### Outdated Python dependencies ###")
-    # TODO: Can use --top-level option after new Poetry release
-    # https://github.com/python-poetry/poetry/pull/7415
-    poetry_cmd = (
-        "poetry show --outdated | grep --file=<(poetry show --tree | "
-        "grep '^\w' | sed 's/^\([^ ]*\).*/^\\1/')"
-    )
+    poetry_cmd = "poetry show --outdated --top-level"
     result = run_cmd(ctx, poetry_cmd)
     print(result.stderr.strip())
 
