@@ -21,8 +21,10 @@ class BatchFileSizeError(Exception):
         self.batch_tasks_count = batch_tasks_count
         self.max_batch_size = max_batch_size
 
-
 class BatchFileFormatError(Exception):
+    pass
+
+class BatchFileContentError(Exception):
     def __init__(self, field_to_column_mapping, data, errors) -> None:
         super().__init__("Invalid batch data.")
 

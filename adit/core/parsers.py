@@ -4,7 +4,8 @@ import numpy as np
 import pandas as pd
 from django.core.files import File
 
-from .errors import BatchFileFormatError, BatchFileSizeError
+from .errors import (BatchFileContentError, BatchFileFormatError,
+                     BatchFileSizeError)
 from .serializers import BatchTaskSerializer
 
 
@@ -20,7 +21,12 @@ class BatchFileParser:
     def parse(self, batch_file: File, max_batch_size: int):
         data = []
         counter = 1
-        df = pd.read_excel(batch_file, dtype=str)
+
+        try:
+            df = pd.read_excel(batch_file, dtype=str)
+        except ValueError:
+            raise BatchFileFormatError()
+            
         df.replace({np.nan: ""}, inplace=True)
         for idx, row in df.iterrows():
             data_row = {}
@@ -49,7 +55,7 @@ class BatchFileParser:
         serializer = self.get_serializer(data)
 
         if not serializer.is_valid():
-            raise BatchFileFormatError(
+            raise BatchFileContentError(
                 self.field_to_column_mapping,
                 data,
                 serializer.errors,

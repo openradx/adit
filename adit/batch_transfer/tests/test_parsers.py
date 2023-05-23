@@ -3,7 +3,7 @@ from io import BytesIO
 import pandas as pd
 import pytest
 
-from adit.core.errors import BatchFileFormatError
+from adit.core.errors import BatchFileContentError
 
 from ..parsers import BatchTransferFileParser
 
@@ -69,7 +69,7 @@ def test_can_not_transfer_unpseudonymized_without_permission(create_batch_file, 
 
     parser = BatchTransferFileParser(can_transfer_unpseudonymized=False)
 
-    with pytest.raises(BatchFileFormatError):
+    with pytest.raises(BatchFileContentError):
         parser.parse(file, 100)
 
 
