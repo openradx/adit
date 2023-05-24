@@ -4,8 +4,7 @@ import numpy as np
 import pandas as pd
 from django.core.files import File
 
-from .errors import (BatchFileContentError, BatchFileFormatError,
-                     BatchFileSizeError)
+from .errors import BatchFileContentError, BatchFileFormatError, BatchFileSizeError
 from .serializers import BatchTaskSerializer
 
 
@@ -26,7 +25,7 @@ class BatchFileParser:
             df = pd.read_excel(batch_file, dtype=str)
         except ValueError:
             raise BatchFileFormatError()
-            
+
         df.replace({np.nan: ""}, inplace=True)
         for idx, row in df.iterrows():
             data_row = {}
