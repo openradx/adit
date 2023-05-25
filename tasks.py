@@ -106,10 +106,10 @@ def lint(ctx: Context):
     run_cmd(ctx, cmd_djlint)
 
 
-@task
+@task(iterable=["path"])
 def test(
     ctx: Context,
-    path: str = "./adit",
+    path: list[str] = ["./adit"],
     cov: bool = False,
     keyword: str | None = None,
     mark: str | None = None,
@@ -131,7 +131,7 @@ def test(
     if stdout:
         cmd += "-s "
 
-    cmd += path
+    cmd += " ".join(path)
     run_cmd(ctx, cmd)
 
 
