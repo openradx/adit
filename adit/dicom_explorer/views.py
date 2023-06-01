@@ -5,6 +5,7 @@ from asgiref.sync import sync_to_async
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
+from django.http import HttpRequest
 from django.shortcuts import redirect, render
 from django.urls import resolve, reverse
 
@@ -82,10 +83,10 @@ async def dicom_explorer_resources_view(
 
 
 @sync_to_async
-@login_required
-def check_permission(request):
+@login_required  # type: ignore
+def check_permission(request: HttpRequest):
     # A dummy function for the permission decorators
-    pass
+    return None
 
 
 def is_valid_id(value):

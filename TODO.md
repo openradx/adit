@@ -3,7 +3,6 @@
 ## High Priority
 
 - Evaluate using <https://just.systems/> instead of pyinvoke
-- Fix typo channels_liver_server
 - Evaluate dev task runners
   -- <https://github.com/taskipy/taskipy>
   -- <https://www.pyinvoke.org/>

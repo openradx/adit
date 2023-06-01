@@ -1,9 +1,11 @@
 import django_filters
+from django.views import View
 
 from adit.core.forms import MultiInlineFilterFormHelper, SingleFilterFormHelper
+from adit.core.utils.type_utils import with_type_hint
 
 
-class DicomJobFilter(django_filters.FilterSet):
+class DicomJobFilter(django_filters.FilterSet, with_type_hint(View)):
     class Meta:
         model = None
         fields = ("status",)
@@ -13,7 +15,7 @@ class DicomJobFilter(django_filters.FilterSet):
         self.form.helper = MultiInlineFilterFormHelper(self.request.GET, self.Meta.fields)
 
 
-class DicomTaskFilter(django_filters.FilterSet):
+class DicomTaskFilter(django_filters.FilterSet, with_type_hint(View)):
     class Meta:
         model = None
         fields = ("status",)

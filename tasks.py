@@ -6,9 +6,9 @@ from shutil import copy
 from typing import Literal
 
 from dotenv import set_key
-from invoke import task
 from invoke.context import Context
 from invoke.runners import Result
+from invoke.tasks import task
 
 Environments = Literal["dev", "prod"]
 
@@ -31,6 +31,7 @@ def compose_cmd(env: Environments = "dev"):
 
 def check_dev_up(ctx: Context):
     result = ctx.run("docker compose ls", hide=True, warn=True)
+    assert result and result.ok
     for line in result.stdout.splitlines():
         if line.startswith(proj_adit_dev) and line.find("running") != -1:
             return True
@@ -39,7 +40,9 @@ def check_dev_up(ctx: Context):
 
 def run_cmd(ctx: Context, cmd: str) -> Result:
     print(f"Running: {cmd}")
-    return ctx.run(cmd, pty=True)
+    result = ctx.run(cmd, pty=True)
+    assert result and result.ok
+    return result
 
 
 @task
@@ -99,11 +102,13 @@ def format(ctx: Context):
 
 @task
 def lint(ctx: Context):
-    """Run linting (ruff and djlint)"""
+    """Run linting (ruff, djlint, pyright)"""
     cmd_ruff = "poetry run ruff ."
     run_cmd(ctx, cmd_ruff)
     cmd_djlint = "poetry run djlint . --lint"
     run_cmd(ctx, cmd_djlint)
+    cmd_pyright = "poetry run pyright"
+    run_cmd(ctx, cmd_pyright)
 
 
 @task
@@ -192,6 +197,7 @@ def init_workspace(ctx: Context, type: Literal["codespaces", "gitpod"]):
         base_url = f"https://{environ['CODESPACE_NAME']}-8000.preview.app.github.dev"
     elif type == "gitpod":
         result = ctx.run("gp url 8000", hide=True)
+        assert result and result.ok
         base_url = result.stdout.strip()
     else:
         raise ValueError(f"Invalid workspace type: {type}")

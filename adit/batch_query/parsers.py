@@ -1,5 +1,6 @@
 from adit.core.parsers import BatchFileParser
 
+from .models import BatchQueryTask
 from .serializers import BatchQueryTaskSerializer
 
 mapping = {
@@ -17,7 +18,7 @@ mapping = {
 }
 
 
-class BatchQueryFileParser(BatchFileParser):
+class BatchQueryFileParser(BatchFileParser[BatchQueryTask]):
     serializer_class = BatchQueryTaskSerializer
 
     def __init__(self) -> None:

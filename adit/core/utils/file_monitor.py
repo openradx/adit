@@ -6,7 +6,7 @@ from typing import Awaitable, Callable
 from aiofiles import os
 from asyncinotify import Inotify, Mask
 
-FileHandler = Callable[[str], bool | None | Awaitable[bool] | Awaitable[None]]
+FileHandler = Callable[[PathLike], bool | None | Awaitable[bool] | Awaitable[None]]
 BeforeScanHandler = Callable[[], None | Awaitable[None]]
 AfterScanHandler = Callable[[], None | Awaitable[None]]
 
@@ -51,19 +51,20 @@ class FileMonitor:
         """Returns the number of scans that were performed since start."""
         self._scan_counter
 
-    async def _scan_path(self, path: str):
+    async def _scan_path(self, path: PathLike):
         if await os.path.isfile(path):
             is_processed = False
-            if asyncio.iscoroutinefunction(self._file_handler):
-                is_processed = await self._file_handler(path)
-            else:
-                is_processed = self._file_handler(path)
+            if self._file_handler:
+                if asyncio.iscoroutinefunction(self._file_handler):
+                    is_processed = await self._file_handler(path)
+                else:
+                    is_processed = self._file_handler(path)
 
             if is_processed:
-                await os.unlink(path)
+                await os.unlink(path)  # type: ignore
 
         elif await os.path.isdir(path):
-            entries: list[DirEntry] = await os.scandir(path)
+            entries: list[DirEntry] = await os.scandir(path)  # type: ignore
             for entry in entries:
                 await self._scan_path(entry.path)
 

@@ -8,10 +8,10 @@ from unittest.mock import patch
 from django.conf import settings
 from pydicom import dcmread
 from pydicom.dataset import Dataset
-from pynetdicom import Association
+from pynetdicom.association import Association
 from pynetdicom.sop_class import (
-    PatientRootQueryRetrieveInformationModelFind,
-    StudyRootQueryRetrieveInformationModelFind,
+    PatientRootQueryRetrieveInformationModelFind,  # type: ignore
+    StudyRootQueryRetrieveInformationModelFind,  # type: ignore
 )
 from pytest_django.fixtures import SettingsWrapper
 from pytest_mock import MockerFixture
@@ -132,7 +132,7 @@ def test_download_series_with_c_get(
     with TemporaryDirectory() as tmp_dir:
         # Act
         dicom_connector.download_series(
-            ds.PatientID, ds.StudyInstanceUID, ds.SeriesInstanceUID, tmp_dir
+            ds.PatientID, ds.StudyInstanceUID, ds.SeriesInstanceUID, Path(tmp_dir)
         )
 
         # Assert
@@ -180,7 +180,7 @@ def test_download_series_with_c_move(
     with TemporaryDirectory() as tmp_dir:
         # Act
         dicom_connector.download_series(
-            ds.PatientID, ds.StudyInstanceUID, ds.SeriesInstanceUID, tmp_dir
+            ds.PatientID, ds.StudyInstanceUID, ds.SeriesInstanceUID, Path(tmp_dir)
         )
 
         # Assert

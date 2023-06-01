@@ -12,7 +12,9 @@ from django.core.management.base import BaseCommand
 from adit.settings.base import env
 
 
-def generate_selfsigned_cert(hostname, ip_addresses=None, key=None):
+def generate_selfsigned_cert(
+    hostname: str, ip_addresses: list[str] | None = None, key: rsa.RSAPrivateKey | None = None
+):
     """Generates self signed certificate for a hostname, and optional IP addresses."""
 
     # Generate our key
@@ -27,7 +29,7 @@ def generate_selfsigned_cert(hostname, ip_addresses=None, key=None):
 
     # best practice seem to be to include the hostname in the SAN,
     # which *SHOULD* mean COMMON_NAME is ignored.
-    alt_names = [x509.DNSName(hostname)]
+    alt_names: list[x509.GeneralName] = [x509.DNSName(hostname)]
 
     # allow addressing by IP, for when you don't have real DNS (common in most testing scenarios
     if ip_addresses:
@@ -70,7 +72,10 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         hostname = env.str("SSL_HOSTNAME")
-        ip_addresses = env.list("SSL_IP_ADDRESSES", default=[])
+        ip_addresses: list[str] | None = env.list("SSL_IP_ADDRESSES", default=[])  # type: ignore
+
+        if not hostname:
+            raise ValueError("SSL_HOSTNAME must be set.")
 
         (cert_pem, key_pem) = generate_selfsigned_cert(hostname, ip_addresses)
 

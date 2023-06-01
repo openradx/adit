@@ -1,8 +1,7 @@
 from collections import defaultdict
-from typing import Dict, TextIO
+from typing import IO, DefaultDict
 
 from adit.core.parsers import BatchFileParser
-from adit.core.serializers import BatchTaskSerializer
 
 from .models import BatchTransferTask
 from .serializers import BatchTransferTaskSerializer
@@ -15,7 +14,7 @@ mapping = {
 }
 
 
-class BatchTransferFileParser(BatchFileParser):
+class BatchTransferFileParser(BatchFileParser[BatchTransferTask]):
     def __init__(
         self,
         can_transfer_unpseudonymized: bool,
@@ -23,28 +22,28 @@ class BatchTransferFileParser(BatchFileParser):
         self.can_transfer_unpseudonymized = can_transfer_unpseudonymized
         super().__init__(mapping)
 
-    def get_serializer(self, data: Dict[str, str]) -> BatchTaskSerializer:
+    def get_serializer(self, data: dict[str, str]):
         return BatchTransferTaskSerializer(
             data=data,
             many=True,
             can_transfer_unpseudonymized=self.can_transfer_unpseudonymized,
         )
 
-    def parse(self, batch_file: TextIO, max_batch_size: int):
-        tasks: list[BatchTransferTask] = super().parse(batch_file, max_batch_size)
+    def parse(self, batch_file: IO, max_batch_size: int | None) -> list[BatchTransferTask]:
+        tasks = super().parse(batch_file, max_batch_size)
 
         # Tasks with different series of the same study must be grouped together.
         # This is necessary for pseudonymization, so that the whole study
         # (with its series) are processed by one to worker and get the same
         # pseudonymized Study Instance UID.
-        tasks_by_study = defaultdict(list)
+        tasks_by_study: DefaultDict[str, list[BatchTransferTask]] = defaultdict(list)
         for task in tasks:
             tasks_by_study[task.study_uid].append(task)
 
-        tasks_to_transfer = []
+        tasks_to_transfer: list[BatchTransferTask] = []
         for index, tasks_with_same_study in enumerate(tasks_by_study.values()):
             transfer_whole_study = False
-            selective_series_to_transfer = []
+            selective_series_to_transfer: list[str] = []
             lines_in_batch_file = []
             for task in tasks_with_same_study:
                 lines_in_batch_file.extend(task.lines)
@@ -60,7 +59,7 @@ class BatchTransferFileParser(BatchFileParser):
             if transfer_whole_study:
                 task.series_uids = None
             else:
-                task.series_uids = list(set(selective_series_to_transfer))
+                task.series_uids = list(set(selective_series_to_transfer))  # type: ignore
 
             tasks_to_transfer.append(task)
 

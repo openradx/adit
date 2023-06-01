@@ -1,9 +1,20 @@
+from typing import Generic, TypeVar
+
 import factory
 
 from .models import User
 
+T = TypeVar("T")
 
-class UserFactory(factory.django.DjangoModelFactory):
+
+# We can't use BaseDjangoModelFactory of adit.core.factories because of circular imports
+class BaseDjangoModelFactory(Generic[T], factory.django.DjangoModelFactory):
+    @classmethod
+    def create(cls, *args, **kwargs) -> T:
+        return super().create(*args, **kwargs)
+
+
+class UserFactory(BaseDjangoModelFactory[User]):
     class Meta:
         model = User
         django_get_or_create = ("username",)

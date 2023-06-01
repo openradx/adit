@@ -1,4 +1,5 @@
 from io import BytesIO
+from typing import cast
 
 from django.conf import settings
 from django.contrib.auth.mixins import LoginRequiredMixin
@@ -10,6 +11,7 @@ from django.views.generic.detail import SingleObjectMixin
 from django_tables2 import SingleTableMixin
 
 from adit.core.mixins import OwnerRequiredMixin, PageSizeSelectMixin, RelatedFilterMixin
+from adit.core.utils.permission_utils import is_logged_in_user
 from adit.core.views import (
     DicomJobCancelView,
     DicomJobCreateView,
@@ -27,7 +29,7 @@ from .filters import BatchQueryJobFilter, BatchQueryResultFilter, BatchQueryTask
 from .forms import BatchQueryJobForm
 from .models import BatchQueryJob, BatchQueryTask
 from .tables import BatchQueryJobTable, BatchQueryResultTable, BatchQueryTaskTable
-from .utils.exporters import export_results
+from .utils.exporters import write_results
 
 
 class BatchQueryJobListView(DicomJobListView):
@@ -42,14 +44,17 @@ class BatchQueryJobCreateView(DicomJobCreateView):
     form_class = BatchQueryJobForm
     template_name = "batch_query/batch_query_job_form.html"
     permission_required = "batch_query.add_batchqueryjob"
+    object: BatchQueryJob
 
     def form_valid(self, form):
         user = self.request.user
-        form.instance.owner = user
+        if not is_logged_in_user(user):
+            raise AssertionError("User is not logged in.")
 
+        form.instance.owner = user
         response = super().form_valid(form)
 
-        job = self.object
+        job = self.object  # set by super().form_valid(form)
         if user.is_staff or settings.BATCH_QUERY_UNVERIFIED:
             job.status = BatchQueryJob.Status.PENDING
             job.save()
@@ -67,7 +72,7 @@ class BatchQueryJobDetailView(DicomJobDetailView):
 
     # Overwrite method to also prefetch related results
     def get_filter_queryset(self):
-        job = self.get_object()
+        job = cast(BatchQueryJob, self.get_object())
         return job.tasks.prefetch_related("results")
 
 
@@ -107,7 +112,8 @@ class BatchQueryTaskDetailView(
     table_class = BatchQueryResultTable
 
     def get_table_data(self):
-        return self.object.results.all()
+        task = cast(BatchQueryTask, self.get_object())
+        return task.results.all()
 
 
 class BatchQueryResultListView(
@@ -125,7 +131,8 @@ class BatchQueryResultListView(
     template_name = "batch_query/batch_query_result_list.html"
 
     def get_filter_queryset(self):
-        return self.object.results.select_related("query")
+        job = cast(BatchQueryJob, self.get_object())
+        return job.results.select_related("query")
 
 
 class BatchQueryResultDownloadView(
@@ -137,9 +144,12 @@ class BatchQueryResultDownloadView(
     model = BatchQueryJob
 
     def get(self, request, *args, **kwargs):
-        job = self.get_object()
+        # by overriding get() we have to call get_object() ourselves
+        job = cast(BatchQueryJob, self.get_object())
+        self.object = job
+
         file = BytesIO()
-        export_results(job, file)
+        write_results(job, file)
 
         response = HttpResponse(
             content=file.getvalue(),

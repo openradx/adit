@@ -46,7 +46,7 @@ class Command(ServerCommand):
             filename: str = os.path.basename(file_path)
             calling_ae = filename.split("_")[0]
 
-            ds: Dataset = await asyncio.to_thread(dcmread(file_path))
+            ds: Dataset = await asyncio.to_thread(dcmread, file_path)
             study_uid = ds.StudyInstanceUID
             series_uid = ds.SeriesInstanceUID
             instance_uid = ds.SOPInstanceUID

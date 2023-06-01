@@ -1,22 +1,22 @@
 from pydicom.dataset import Dataset
 from pynetdicom import (
-    AE,
-    StoragePresentationContexts,
-    build_role,
     debug_logger,
     evt,
 )
+from pynetdicom.ae import ApplicationEntity as AE
+from pynetdicom.events import Event
+from pynetdicom.presentation import PresentationContext, StoragePresentationContexts, build_role
 from pynetdicom.sop_class import (
-    EncapsulatedMTLStorage,
-    EncapsulatedOBJStorage,
-    EncapsulatedSTLStorage,
-    PatientRootQueryRetrieveInformationModelGet,
+    EncapsulatedMTLStorage,  # type: ignore
+    EncapsulatedOBJStorage,  # type: ignore
+    EncapsulatedSTLStorage,  # type: ignore
+    PatientRootQueryRetrieveInformationModelGet,  # type: ignore
 )
 
 debug_logger()
 
 
-def handle_store(event):
+def handle_store(event: Event):
     """Handle a C-STORE request event."""
     ds = event.dataset
     ds.file_meta = event.file_meta
@@ -40,13 +40,14 @@ def main():
         EncapsulatedOBJStorage,
         EncapsulatedMTLStorage,
     ]
-    store_contexts = [
+    store_contexts: list[PresentationContext] = [
         cx for cx in StoragePresentationContexts if cx.abstract_syntax not in _exclusion
     ]
 
     ext_neg = []
     ae.add_requested_context(PatientRootQueryRetrieveInformationModelGet)
     for cx in store_contexts:
+        assert cx.abstract_syntax
         ae.add_requested_context(cx.abstract_syntax)
         # Add SCP/SCU Role Selection Negotiation to the extended negotiation
         # We want to act as a Storage SCP
@@ -57,17 +58,15 @@ def main():
     ds.PatientID = "101"
     ds.StudyInstanceUID = "1.2.840.113845.11.1000000001951524609.20200705182951.2689481"
     # ds.SeriesInstanceUID = "1.3.12.2.1107.5.1.4.66002.30000020070514400054400005512"
-    ds.SeriesInstanceUID = (
-        "1.2.840.113845.11.2000000001951524609.20200705191841.1919177"
-    )
+    ds.SeriesInstanceUID = "1.2.840.113845.11.2000000001951524609.20200705191841.1919177"
 
     # Associate with Orthanc1
-    assoc = ae.associate("127.0.0.1", 7501, ext_neg=ext_neg, evt_handlers=handlers)
+    assoc = ae.associate("127.0.0.1", 7501, ext_neg=ext_neg, evt_handlers=handlers)  # type: ignore
 
     if assoc.is_established:
         # Use the C-GET service to send the identifier
         responses = assoc.send_c_get(ds, PatientRootQueryRetrieveInformationModelGet)
-        for (status, _) in responses:
+        for status, _ in responses:
             if status:
                 print(f"C-GET query status: 0x{status.Status:04x}")
             else:

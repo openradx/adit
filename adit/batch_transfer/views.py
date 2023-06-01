@@ -2,6 +2,7 @@ from django.conf import settings
 from django.urls import reverse_lazy
 from django.views.generic import TemplateView
 
+from adit.core.utils.permission_utils import is_logged_in_user, is_staff_user
 from adit.core.views import (
     DicomJobCancelView,
     DicomJobCreateView,
@@ -33,11 +34,14 @@ class BatchTransferJobCreateView(DicomJobCreateView):
     form_class = BatchTransferJobForm
     template_name = "batch_transfer/batch_transfer_job_form.html"
     permission_required = "batch_transfer.add_batchtransferjob"
+    object: BatchTransferJob
 
     def form_valid(self, form):
         user = self.request.user
-        form.instance.owner = user
+        if not is_logged_in_user(user):
+            raise AssertionError("User is not logged in.")
 
+        form.instance.owner = user
         response = super().form_valid(form)
 
         # Do it after an ongoing transaction (even if it is currently
@@ -47,7 +51,7 @@ class BatchTransferJobCreateView(DicomJobCreateView):
         # it is already fixed in an upcoming release, see
         # https://code.djangoproject.com/ticket/30457
         # TODO transaction.on_commit(lambda: enqueue_batch_job(self.object.id))
-        job = self.object
+        job = self.object  # set by super().form_valid(form)
         if user.is_staff or settings.BATCH_TRANSFER_UNVERIFIED:
             job.status = BatchTransferJob.Status.PENDING
             job.save()
@@ -57,7 +61,10 @@ class BatchTransferJobCreateView(DicomJobCreateView):
 
     def dispatch(self, request, *args, **kwargs):
         batch_transfer_settings = BatchTransferSettings.get()
-        if batch_transfer_settings.locked and not request.user.is_staff:
+        assert batch_transfer_settings
+
+        user = request.user
+        if batch_transfer_settings.locked and not is_staff_user(user):
             return TemplateView.as_view(template_name="batch_transfer/batch_transfer_locked.html")(
                 request
             )

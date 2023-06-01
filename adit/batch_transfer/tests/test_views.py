@@ -30,8 +30,8 @@ def form_data(db):
     data.to_excel(buffer, index=False)
 
     return {
-        "source": DicomServerFactory().id,
-        "destination": DicomServerFactory().id,
+        "source": DicomServerFactory.create().id,
+        "destination": DicomServerFactory.create().id,
         "project_name": "Apollo project",
         "project_description": "Fly to the moon",
         "ethics_application_id": "12345",
@@ -50,7 +50,7 @@ def user_without_permission(db):
 
 @pytest.fixture
 def user_with_permission(db):
-    user = UserFactory()
+    user = UserFactory.create()
     batch_transfer_group = Group.objects.get(name="batch_transfer_group")
     user.groups.add(batch_transfer_group)
     return user
@@ -87,7 +87,7 @@ def test_batch_job_created_and_enqueued_with_auto_verify(
     settings.BATCH_TRANSFER_UNVERIFIED = True
     client.post(reverse("batch_transfer_job_create"), form_data)
     job = BatchTransferJob.objects.first()
-    assert job.tasks.count() == 3
+    assert job and job.tasks.count() == 3
     send_task_mock.assert_called_once_with(
         "adit.batch_transfer.tasks.ProcessBatchTransferJob", (1,)
     )
@@ -101,7 +101,7 @@ def test_batch_job_created_and_not_enqueued_without_auto_verify(
     settings.BATCH_TRANSFER_UNVERIFIED = False
     client.post(reverse("batch_transfer_job_create"), form_data)
     job = BatchTransferJob.objects.first()
-    assert job.tasks.count() == 3
+    assert job and job.tasks.count() == 3
     send_task_mock.assert_not_called()
 
 

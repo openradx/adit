@@ -19,6 +19,8 @@ class BatchTransferJobForm(forms.ModelForm):
     source = DicomNodeChoiceField(True, DicomNode.NodeType.SERVER)
     destination = DicomNodeChoiceField(False)
     batch_file = RestrictedFileField(max_upload_size=5242880, label="Batch file")
+    max_batch_size: int | None = None
+    tasks: list[BatchTransferTask]
 
     class Meta:
         model = BatchTransferJob
@@ -60,7 +62,7 @@ class BatchTransferJobForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         self.batch_file_errors = None
-        self.tasks = None
+        self.tasks = []
         self.save_tasks = None
 
         self.user = kwargs.pop("user")
@@ -124,7 +126,7 @@ class BatchTransferJobForm(forms.ModelForm):
 
         return batch_file
 
-    def _save_tasks(self, batch_job):
+    def _save_tasks(self, batch_job: BatchTransferJob):
         for task in self.tasks:
             task.job = batch_job
 

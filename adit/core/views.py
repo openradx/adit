@@ -1,4 +1,4 @@
-from typing import Any, Dict, Optional
+from typing import Any, cast
 
 from django.conf import settings
 from django.contrib import messages
@@ -9,8 +9,9 @@ from django.contrib.auth.mixins import (
     UserPassesTestMixin,
 )
 from django.core.exceptions import SuspiciousOperation
-from django.db import models
+from django.db.models import Model
 from django.db.models.query import QuerySet
+from django.forms import ModelForm
 from django.http.response import Http404
 from django.shortcuts import redirect, render
 from django.urls import re_path, reverse_lazy
@@ -18,9 +19,13 @@ from django.views.generic import View
 from django.views.generic.base import TemplateView
 from django.views.generic.detail import DetailView, SingleObjectMixin
 from django.views.generic.edit import CreateView, DeleteView, FormView
+from django_filters import FilterSet
 from django_filters.views import FilterView
 from django_tables2 import SingleTableMixin
+from django_tables2.tables import Table
 from revproxy.views import ProxyView
+
+from adit.core.utils.permission_utils import is_logged_in_user
 
 from ..celery import app as celery_app
 from .forms import BroadcastForm
@@ -56,7 +61,11 @@ class BroadcastView(UserPassesTestMixin, FormView):
     success_url = reverse_lazy("broadcast")
 
     def test_func(self):
-        return self.request.user.is_staff
+        user = self.request.user
+        if is_logged_in_user(user):
+            return user.is_staff
+
+        return False
 
     def form_valid(self, form):
         subject = form.cleaned_data["subject"]
@@ -76,21 +85,26 @@ class BroadcastView(UserPassesTestMixin, FormView):
 class HomeView(TemplateView):
     template_name = "core/home.html"
 
-    def get_context_data(self, **kwargs: Any) -> Dict[str, Any]:
+    def get_context_data(self, **kwargs: Any) -> dict[str, Any]:
         context = super().get_context_data(**kwargs)
         core_settings = CoreSettings.get()
+        assert core_settings
         context["announcement"] = core_settings.announcement
         return context
 
 
 class DicomJobListView(LoginRequiredMixin, SingleTableMixin, PageSizeSelectMixin, FilterView):
-    model = None
-    table_class = None
-    filterset_class = None
-    template_name = None
+    model: type[DicomJob]
+    table_class: type[Table]
+    filterset_class: type[FilterSet]
+    template_name: str
 
     def get_queryset(self) -> QuerySet:
-        if self.request.user.is_staff and self.request.GET.get("all"):
+        user = self.request.user
+        if not is_logged_in_user(user):
+            raise AssertionError("User is not logged in.")
+
+        if user.is_staff and self.request.GET.get("all"):
             queryset = self.model.objects.all()
         else:
             queryset = self.model.objects.filter(owner=self.request.user)
@@ -100,7 +114,11 @@ class DicomJobListView(LoginRequiredMixin, SingleTableMixin, PageSizeSelectMixin
     def get_table_kwargs(self):
         kwargs = super().get_table_kwargs()
 
-        if not (self.request.user.is_staff and self.request.GET.get("all")):
+        user = self.request.user
+        if not is_logged_in_user(user):
+            raise AssertionError("User is not logged in.")
+
+        if not (user.is_staff and self.request.GET.get("all")):
             kwargs["exclude"] = ("owner",)
 
         return kwargs
@@ -116,12 +134,12 @@ class DicomJobCreateView(
     PermissionRequiredMixin,
     CreateView,
 ):
-    model = None
-    form_class = None
-    template_name = None
-    permission_required = None
+    model: type[DicomJob]
+    form_class: type[ModelForm]
+    template_name: str
+    permission_required: str
 
-    def get_form_kwargs(self) -> Dict[str, Any]:
+    def get_form_kwargs(self) -> dict[str, Any]:
         kwargs = super().get_form_kwargs()
         kwargs.update({"user": self.request.user})
         return kwargs
@@ -135,24 +153,24 @@ class DicomJobDetailView(
     PageSizeSelectMixin,
     DetailView,
 ):
-    table_class = None
-    filterset_class = None
-    model = None
-    context_object_name = None
-    template_name = None
+    table_class: type[Table]
+    filterset_class: type[FilterSet]
+    model: type[DicomJob]
+    context_object_name: str
+    template_name: str
 
     def get_filter_queryset(self):
-        job = self.get_object()
+        job = cast(DicomJob, self.get_object())
         return job.tasks
 
 
 class DicomJobDeleteView(LoginRequiredMixin, OwnerRequiredMixin, DeleteView):
-    model = None
-    success_url = None
+    model: type[DicomJob]
+    success_url: str
     success_message = "Job with ID %(id)d was deleted successfully"
 
     def delete(self, request, *args, **kwargs):
-        job = self.get_object()
+        job = cast(DicomJob, self.get_object())
         if not job.is_deletable:
             raise SuspiciousOperation(
                 f"Job with ID {job.id} and status {job.get_status_display()} is not deletable."
@@ -169,11 +187,11 @@ class DicomJobDeleteView(LoginRequiredMixin, OwnerRequiredMixin, DeleteView):
 
 
 class DicomJobVerifyView(LoginRequiredMixin, OwnerRequiredMixin, SingleObjectMixin, View):
-    model = None
+    model: type[DicomJob]
     success_message = "Job with ID %(id)d was verified"
 
     def post(self, request, *args, **kwargs):
-        job = self.get_object()
+        job = cast(DicomJob, self.get_object())
         if job.is_verified:
             raise SuspiciousOperation(
                 f"Job with ID {job.id} and status {job.get_status_display()} was already verified."
@@ -189,11 +207,11 @@ class DicomJobVerifyView(LoginRequiredMixin, OwnerRequiredMixin, SingleObjectMix
 
 
 class DicomJobCancelView(LoginRequiredMixin, OwnerRequiredMixin, SingleObjectMixin, View):
-    model = None
+    model: type[DicomJob]
     success_message = "Job with ID %(id)d was canceled"
 
     def post(self, request, *args, **kwargs):
-        job = self.get_object()
+        job = cast(DicomJob, self.get_object())
         if not job.is_cancelable:
             raise SuspiciousOperation(
                 f"Job with ID {job.id} and status {job.get_status_display()} is not cancelable."
@@ -221,11 +239,11 @@ class DicomJobCancelView(LoginRequiredMixin, OwnerRequiredMixin, SingleObjectMix
 
 
 class DicomJobResumeView(LoginRequiredMixin, OwnerRequiredMixin, SingleObjectMixin, View):
-    model = None
+    model: type[DicomJob]
     success_message = "Job with ID %(id)d will be resumed"
 
     def post(self, request, *args, **kwargs):
-        job = self.get_object()
+        job = cast(DicomJob, self.get_object())
         if not job.is_resumable:
             raise SuspiciousOperation(
                 f"Job with ID {job.id} and status {job.get_status_display()} is not resumable."
@@ -245,11 +263,11 @@ class DicomJobResumeView(LoginRequiredMixin, OwnerRequiredMixin, SingleObjectMix
 
 
 class DicomJobRetryView(LoginRequiredMixin, OwnerRequiredMixin, SingleObjectMixin, View):
-    model = None
+    model: type[DicomJob]
     success_message = "Job with ID %(id)d will be retried"
 
     def post(self, request, *args, **kwargs):
-        job = self.get_object()
+        job = cast(DicomJob, self.get_object())
         if not job.is_retriable:
             raise SuspiciousOperation(
                 f"Job with ID {job.id} and status {job.get_status_display()} is not retriable."
@@ -274,11 +292,11 @@ class DicomJobRetryView(LoginRequiredMixin, OwnerRequiredMixin, SingleObjectMixi
 
 
 class DicomJobRestartView(LoginRequiredMixin, OwnerRequiredMixin, SingleObjectMixin, View):
-    model = None
+    model: type[DicomJob]
     success_message = "Job with ID %(id)d will be restarted"
 
     def post(self, request, *args, **kwargs):
-        job = self.get_object()
+        job = cast(DicomJob, self.get_object())
         if not request.user.is_staff or not job.is_restartable:
             raise SuspiciousOperation(
                 f"Job with ID {job.id} and status {job.get_status_display()} is not restartable."
@@ -303,13 +321,13 @@ class DicomJobRestartView(LoginRequiredMixin, OwnerRequiredMixin, SingleObjectMi
 
 
 class DicomTaskDetailView(LoginRequiredMixin, OwnerRequiredMixin, DetailView):
-    model = None
-    job_url_name = None
-    template_name = None
+    model: type[DicomTask]
+    job_url_name: str
+    template_name: str
     context_object_name = "task"
     owner_accessor = "job.owner"
 
-    def get_object(self, queryset: Optional[models.query.QuerySet] = None) -> models.Model:
+    def get_object(self, queryset: QuerySet | None = None) -> Model:
         if queryset is None:
             queryset = self.get_queryset()
 
@@ -347,21 +365,28 @@ class AdminProxyView(UserPassesTestMixin, ProxyView):
     """
 
     def test_func(self):
-        return self.request.user.is_staff
+        user = self.request.user
+        if is_logged_in_user(user):
+            return user.is_staff
+
+        return False
 
     @classmethod
     def as_url(cls):
-        return re_path(rf"^{cls.url_prefix}/(?P<path>.*)$", cls.as_view())
+        return re_path(rf"^{cls.url_prefix}/(?P<path>.*)$", cls.as_view())  # type: ignore
 
 
 class RabbitManagementProxyView(AdminProxyView):
-    upstream = f"http://{settings.RABBIT_MANAGEMENT_HOST}:{settings.RABBIT_MANAGEMENT_PORT}"
+    upstream = (
+        f"http://{settings.RABBIT_MANAGEMENT_HOST}:",
+        f"{settings.RABBIT_MANAGEMENT_PORT}",  # type: ignore
+    )
     url_prefix = "rabbit"
     rewrite = ((rf"^/{url_prefix}$", r"/"),)
 
 
 class FlowerProxyView(AdminProxyView):
-    upstream = f"http://{settings.FLOWER_HOST}:{settings.FLOWER_PORT}"
+    upstream = f"http://{settings.FLOWER_HOST}:{settings.FLOWER_PORT}"  # type: ignore
     url_prefix = "flower"
     rewrite = ((rf"^/{url_prefix}$", rf"/{url_prefix}/"),)
 
@@ -373,12 +398,12 @@ class FlowerProxyView(AdminProxyView):
 
 
 class Orthanc1ProxyView(AdminProxyView):
-    upstream = f"http://{settings.ORTHANC1_HOST}:{settings.ORTHANC1_HTTP_PORT}"
+    upstream = f"http://{settings.ORTHANC1_HOST}:{settings.ORTHANC1_HTTP_PORT}"  # type: ignore
     url_prefix = "orthanc1"
     rewrite = ((rf"^/{url_prefix}$", r"/"),)
 
 
 class Orthanc2ProxyView(AdminProxyView):
-    upstream = f"http://{settings.ORTHANC2_HOST}:{settings.ORTHANC2_HTTP_PORT}"
+    upstream = f"http://{settings.ORTHANC2_HOST}:{settings.ORTHANC2_HTTP_PORT}"  # type: ignore
     url_prefix = "orthanc2"
     rewrite = ((rf"^/{url_prefix}$", r"/"),)

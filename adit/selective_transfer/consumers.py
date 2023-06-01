@@ -105,10 +105,13 @@ class SelectiveTransferConsumer(SelectiveTransferJobCreateMixin, AsyncJsonWebsoc
             if form_valid:
                 asyncio.create_task(self.make_transfer(form))
             else:
-                form_error_response = await self.get_form_error_response(
+                form_error_response = await self.build_form_error_response(
                     form, "Please correct the form errors and transfer again."
                 )
                 await self.send(form_error_response)
+
+        else:
+            raise ValueError(f"Invalid action to process: {action}")
 
     def abort_connectors(self):
         while self.query_connectors:

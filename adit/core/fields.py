@@ -1,8 +1,8 @@
-from django.forms import forms
+from django.forms import fields, forms
 from django.template.defaultfilters import filesizeformat
 
 
-class RestrictedFileField(forms.FileField):
+class RestrictedFileField(fields.FileField):
     """File field with restrictions.
 
     Same as FileField, but you can specify:

@@ -5,7 +5,7 @@ import tempfile
 from datetime import datetime
 from functools import partial
 from pathlib import Path
-from typing import Any, Callable, Dict, List
+from typing import Any, Callable, cast
 
 import humanize
 from celery.contrib.abortable import AbortableTask as AbortableCeleryTask  # pyright: ignore
@@ -26,11 +26,13 @@ logger = logging.getLogger(__name__)
 
 def _create_source_connector(transfer_task: TransferTask) -> DicomConnector:
     # An own function to easily mock the source connector in test_transfer_utils.py
+    assert transfer_task.job.source.node_type == DicomNode.NodeType.SERVER
     return DicomConnector(transfer_task.job.source.dicomserver)
 
 
 def _create_dest_connector(transfer_task: TransferTask) -> DicomConnector:
     # An own function to easily mock the destination connector in test_transfer_utils.py
+    assert transfer_task.job.destination.node_type == DicomNode.NodeType.SERVER
     return DicomConnector(transfer_task.job.destination.dicomserver)
 
 
@@ -54,7 +56,7 @@ class TransferExecutor:
 
     def start(self) -> TransferTask.Status:
         if self.transfer_task.status == TransferTask.Status.CANCELED:
-            return self.transfer_task.status
+            return cast(TransferTask.Status, self.transfer_task.status)
 
         if self.transfer_task.status != TransferTask.Status.PENDING:
             raise AssertionError(
@@ -134,11 +136,13 @@ class TransferExecutor:
     def _transfer_to_server(self) -> None:
         with tempfile.TemporaryDirectory(prefix="adit_") as tmpdir:
             patient_folder = self._download_dicoms(Path(tmpdir))
+            assert self.dest_connector
             self.dest_connector.upload_folder(patient_folder)
 
     def _transfer_to_archive(self) -> None:
         transfer_job: TransferJob = self.transfer_task.job
 
+        assert transfer_job.destination.node_type == DicomNode.NodeType.FOLDER
         archive_folder = Path(transfer_job.destination.dicomfolder.path)
         archive_password = transfer_job.archive_password
 
@@ -154,6 +158,8 @@ class TransferExecutor:
 
     def _transfer_to_folder(self) -> None:
         transfer_job: TransferJob = self.transfer_task.job
+
+        assert transfer_job.destination.node_type == DicomNode.NodeType.FOLDER
         dicom_folder = Path(transfer_job.destination.dicomfolder.path)
         download_folder = dicom_folder / self._create_destination_name()
         self._download_dicoms(download_folder)
@@ -181,9 +187,11 @@ class TransferExecutor:
 
         # If some series are explicitly chosen then check if their Series Instance UIDs
         # are correct and only use their modalities for the name of the study folder.
-        if self.transfer_task.series_uids:
+        # We must cast as JSONField can't be type hinted.
+        series_uids = cast(list[str] | None, self.transfer_task.series_uids)
+        if series_uids:
             modalities = set()
-            for series_uid in self.transfer_task.series_uids:
+            for series_uid in series_uids:
                 # TODO: this seems to be very ineffective as we do a c-find for every series
                 # in a study and check if it is a wanted series. Better fetch all series of
                 # a study and check then.
@@ -225,7 +233,7 @@ class TransferExecutor:
         name += transfer_job.owner.username
         return sanitize_dirname(name)
 
-    def _fetch_patient(self) -> Dict[str, Any]:
+    def _fetch_patient(self) -> dict[str, Any]:
         patients = self.source_connector.find_patients({"PatientID": self.transfer_task.patient_id})
 
         if len(patients) == 0:
@@ -238,7 +246,7 @@ class TransferExecutor:
 
         return patients[0]
 
-    def _fetch_study(self, patient_id: str) -> Dict[str, Any]:
+    def _fetch_study(self, patient_id: str) -> dict[str, Any]:
         studies = self.source_connector.find_studies(
             {
                 "PatientID": patient_id,
@@ -260,7 +268,7 @@ class TransferExecutor:
 
         return studies[0]
 
-    def _fetch_series_list(self, series_uid: str) -> List[Dict[str, Any]]:
+    def _fetch_series_list(self, series_uid: str) -> list[dict[str, Any]]:
         series_list = self.source_connector.find_series(
             {
                 "PatientID": self.transfer_task.patient_id,
@@ -284,10 +292,10 @@ class TransferExecutor:
 
     def _download_study(
         self,
-        study: Dict[str, Any],
+        study: dict[str, Any],
         study_folder: Path,
         modifier_callback: Callable,
-        series_uids: List[str] = None,
+        series_uids: list[str] = [],
     ) -> None:
         if series_uids:
             for series_uid in series_uids:
@@ -309,7 +317,7 @@ class TransferExecutor:
     def _modify_dataset(
         self,
         anonymizer: Anonymizer,
-        pseudonym: str,
+        pseudonym: str | None,
         ds: Dataset,
     ) -> None:
         """Optionally pseudonymize an incoming dataset with the given pseudonym

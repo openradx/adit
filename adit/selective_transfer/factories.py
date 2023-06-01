@@ -2,9 +2,9 @@ import factory
 from faker import Faker
 
 from adit.core.factories import (
+    AbstractTransferJobFactory,
+    AbstractTransferTaskFactory,
     DicomFolderFactory,
-    TransferJobFactory,
-    TransferTaskFactory,
 )
 
 from .models import SelectiveTransferJob, SelectiveTransferTask
@@ -18,7 +18,7 @@ def generate_archive_password():
     return ""
 
 
-class SelectiveTransferJobFactory(TransferJobFactory):
+class SelectiveTransferJobFactory(AbstractTransferJobFactory[SelectiveTransferJob]):
     class Meta:
         model = SelectiveTransferJob
 
@@ -29,7 +29,7 @@ class SelectiveTransferJobToPathFactory(SelectiveTransferJobFactory):
     destination = factory.SubFactory(DicomFolderFactory)
 
 
-class SelectiveTransferTaskFactory(TransferTaskFactory):
+class SelectiveTransferTaskFactory(AbstractTransferTaskFactory[SelectiveTransferTask]):
     class Meta:
         model = SelectiveTransferTask
 

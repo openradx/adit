@@ -1,5 +1,7 @@
 import os
+from typing import cast
 
+from django.contrib.auth.models import UserManager
 from django.core.management.base import BaseCommand
 
 from adit.accounts.models import User
@@ -20,7 +22,8 @@ class Command(BaseCommand):
                 User.objects.get(username=username)
                 print(f"Admin user {username} already exists. Skipping admin creation.")
             except User.DoesNotExist:
-                User.objects.create_superuser(
+                manager = cast(UserManager, User.objects)
+                manager.create_superuser(
                     username,
                     email,
                     password,
@@ -30,4 +33,4 @@ class Command(BaseCommand):
                 print(f"Created admin user {username}.")
 
         except KeyError as err:
-            print("Missing environment variable for creating admin user: " + err)
+            print(f"Missing environment variable for creating admin user: {err}")

@@ -1,6 +1,8 @@
 import pickle
 from functools import wraps
 
+from redis import Redis
+
 
 def redis_lru(capacity=5000, slicer=slice(None)):
     """
@@ -37,18 +39,20 @@ def redis_lru(capacity=5000, slicer=slice(None)):
         cache_hits = f"lru:hits:{func.__name__}"
         cache_miss = f"lru:miss:{func.__name__}"
 
-        lvars = [None]  # closure mutable
+        lvars: list[Redis]  # closure mutable
 
         def add(key, value):
             eject()
-            conn = lvars[0]
+            nonlocal lvars
+            conn: Redis = lvars[0]
             conn.incr(cache_miss)
             conn.hset(cache_vals, key, pickle.dumps(value))
             conn.zadd(cache_keys, {key: 0})
             return value
 
         def get(key):
-            conn = lvars[0]
+            nonlocal lvars
+            conn: Redis = lvars[0]
             value = conn.hget(cache_vals, key)
             if value:
                 conn.incr(cache_hits)
@@ -57,8 +61,9 @@ def redis_lru(capacity=5000, slicer=slice(None)):
             return value
 
         def eject():
-            conn = lvars[0]
-            count = min((capacity / 10) or 1, 1000)
+            nonlocal lvars
+            conn: Redis = lvars[0]
+            count = int(min((capacity / 10) or 1, 1000))
             if conn.zcard(cache_keys) >= capacity:
                 eject = conn.zrange(cache_keys, 0, count)
                 conn.zremrangebyrank(cache_keys, 0, count)
@@ -66,6 +71,7 @@ def redis_lru(capacity=5000, slicer=slice(None)):
 
         @wraps(func)
         def wrapper(*args, **kwargs):
+            nonlocal lvars
             conn = lvars[0]
             if conn:
                 items = args + tuple(sorted(kwargs.items()))
@@ -75,22 +81,26 @@ def redis_lru(capacity=5000, slicer=slice(None)):
             return func(*args, **kwargs)
 
         def info():
-            conn = lvars[0]
+            nonlocal lvars
+            conn: Redis = lvars[0]
             size = int(conn.zcard(cache_keys) or 0)
             hits, misses = int(conn.get(cache_hits) or 0), int(conn.get(cache_miss) or 0)
             return hits, misses, capacity, size
 
         def clear():
-            conn = lvars[0]
+            nonlocal lvars
+            conn: Redis = lvars[0]
             conn.delete(cache_keys, cache_vals)
             conn.delete(cache_hits, cache_miss)
 
-        def init(conn):
-            lvars[0] = conn
+        def init(conn: Redis):
+            nonlocal lvars
+            lvars = [conn]
 
-        wrapper.init = init
-        wrapper.info = info
-        wrapper.clear = clear
+        # TODO: improve typing (not monkey patching)
+        wrapper.init = init  # type: ignore
+        wrapper.info = info  # type: ignore
+        wrapper.clear = clear  # type: ignore
         return wrapper
 
     return decorator

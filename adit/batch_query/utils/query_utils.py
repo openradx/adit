@@ -1,5 +1,5 @@
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any, cast
 
 from celery.contrib.abortable import AbortableTask as AbortableCeleryTask  # pyright: ignore
 from django.conf import settings
@@ -36,7 +36,7 @@ class QueryExecutor:
 
     def start(self) -> BatchQueryTask.Status:
         if self.query_task.status == BatchQueryTask.Status.CANCELED:
-            return self.query_task.status
+            return cast(BatchQueryTask.Status, self.query_task.status)
 
         self.query_task.status = BatchQueryTask.Status.IN_PROGRESS
         self.query_task.start = timezone.now()
@@ -103,7 +103,7 @@ class QueryExecutor:
 
         return self.query_task.status
 
-    def _fetch_patients(self) -> Optional[Dict[str, Any]]:
+    def _fetch_patients(self) -> list[dict[str, Any]]:
         return self.connector.find_patients(
             {
                 "PatientID": self.query_task.patient_id,
@@ -112,7 +112,7 @@ class QueryExecutor:
             }
         )
 
-    def _query_studies(self, patient_id: str) -> List[Dict[str, Any]]:
+    def _query_studies(self, patient_id: str) -> list[dict[str, Any]]:
         study_date = ""
         if self.query_task.study_date_start:
             if not self.query_task.study_date_end:
@@ -128,11 +128,12 @@ class QueryExecutor:
         elif self.query_task.study_date_end:
             study_date = "-" + self.query_task.study_date_end.strftime(DICOM_DATE_FORMAT)
 
-        modalities = []
+        task_modalities = cast(list[str], self.query_task.modalities)
+        modalities_to_query: list[str] = []
         if self.query_task.modalities:
-            modalities = [
+            modalities_to_query = [
                 modality
-                for modality in self.query_task.modalities
+                for modality in task_modalities
                 if modality not in settings.EXCLUDED_MODALITIES
             ]
 
@@ -146,14 +147,14 @@ class QueryExecutor:
                 "StudyDate": study_date,
                 "StudyTime": "",
                 "StudyDescription": self.query_task.study_description,
-                "ModalitiesInStudy": modalities,
+                "ModalitiesInStudy": modalities_to_query,
                 "NumberOfStudyRelatedInstances": "",
             }
         )
 
         return studies
 
-    def _query_series(self, study: Dict[str, Any]) -> List[Dict[str, Any]]:
+    def _query_series(self, study: dict[str, Any]) -> list[dict[str, Any]]:
         found_series = self.connector.find_series(
             {
                 "PatientID": study["PatientID"],
@@ -169,7 +170,7 @@ class QueryExecutor:
 
         return found_series
 
-    def _save_results(self, results: List[Dict[str, Any]]) -> List[BatchQueryResult]:
+    def _save_results(self, results: list[dict[str, Any]]) -> list[BatchQueryResult]:
         results_to_save = []
         for result in results:
             series_uid = ""

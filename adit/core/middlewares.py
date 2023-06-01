@@ -29,9 +29,10 @@ class MaintenanceMiddleware:
             return self.get_response(request)
 
         core_settings = CoreSettings.get()
+        assert core_settings
         in_maintenance = core_settings.maintenance_mode
         if in_maintenance and not request.user.is_staff:
-            return TemplateView.as_view(template_name="core/maintenance.html")(request).render()
+            return TemplateView.as_view(template_name="core/maintenance.html")(request)
 
         response = self.get_response(request)
         if is_html_response(response) and in_maintenance and request.user.is_staff:

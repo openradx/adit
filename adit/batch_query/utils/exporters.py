@@ -1,12 +1,14 @@
+from typing import IO
+
 import pandas as pd
 from django.utils.formats import date_format, time_format
 
 from adit.core.templatetags.core_extras import join_if_list, person_name_from_dicom
 
-from ..models import BatchQueryJob, BatchQueryResult
+from ..models import BatchQueryJob, BatchQueryResult, BatchQueryTask
 
 
-def export_results(job: BatchQueryJob, file):
+def write_results(job: BatchQueryJob, file: IO) -> None:
     query_tasks = job.tasks.prefetch_related("results").all()
 
     has_pseudonyms = False
@@ -27,7 +29,7 @@ def export_results(job: BatchQueryJob, file):
     df.to_excel(file, index=False)
 
 
-def get_header(writer, has_pseudonyms, has_series):
+def get_header(has_pseudonyms: bool, has_series: bool) -> list[str]:
     # TODO: Improve order
 
     header = [
@@ -58,17 +60,18 @@ def get_header(writer, has_pseudonyms, has_series):
     return header
 
 
-def get_result_rows(query_task, has_pseudonyms, has_series):
+def get_result_rows(
+    query_task: BatchQueryTask, has_pseudonyms: bool, has_series: bool
+) -> list[list[str]]:
     result_rows = []
 
     result: BatchQueryResult
     for result in query_task.results.all():
         patient_name = person_name_from_dicom(result.patient_name)
 
+        # TODO: check if we can use datetime directly (without string conversion)
         patient_birth_date = date_format(result.patient_birth_date, "SHORT_DATE_FORMAT")
-
         study_date = date_format(result.study_date, "SHORT_DATE_FORMAT")
-
         study_time = time_format(result.study_time, "TIME_FORMAT")
 
         modalities = ""

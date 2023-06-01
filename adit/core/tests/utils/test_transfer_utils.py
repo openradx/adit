@@ -10,10 +10,10 @@ from django.db import connection, models
 from adit.accounts.factories import UserFactory
 
 from ...factories import (
+    AbstractTransferJobFactory,
+    AbstractTransferTaskFactory,
     DicomFolderFactory,
     DicomServerFactory,
-    TransferJobFactory,
-    TransferTaskFactory,
 )
 from ...models import TransferJob, TransferTask
 from ...utils.dicom_connector import DicomConnector
@@ -32,12 +32,12 @@ class MyTransferTask(TransferTask):
     job = models.ForeignKey(MyTransferJob, on_delete=models.CASCADE, related_name="tasks")
 
 
-class MyTransferJobFactory(TransferJobFactory):
+class MyTransferJobFactory(AbstractTransferJobFactory[MyTransferJob]):
     class Meta:
         model = MyTransferJob
 
 
-class MyTransferTaskFactory(TransferTaskFactory):
+class MyTransferTaskFactory(AbstractTransferTaskFactory[MyTransferTask]):
     class Meta:
         model = MyTransferTask
 
@@ -86,14 +86,14 @@ def test_transfer_to_server_succeeds(
     create_resources,
 ):
     # Arrange
-    job = MyTransferJobFactory(
+    job = MyTransferJobFactory.create(
         status=TransferJob.Status.PENDING,
         source=DicomServerFactory(),
         destination=DicomServerFactory(),
         archive_password="",
     )
-    task = MyTransferTaskFactory(
-        status=TransferTask.Status.PENDING, series_uids=[], pseudonym="", job=job
+    task = MyTransferTaskFactory.create(
+        status=MyTransferTask.Status.PENDING, series_uids=[], pseudonym="", job=job
     )
 
     patient, study = create_resources(task)
@@ -132,15 +132,15 @@ def test_transfer_to_folder_succeeds(
     create_source_connector_mock, setup_test_models, create_resources
 ):
     # Arrange
-    user = UserFactory(username="kai")
-    job = MyTransferJobFactory(
+    user = UserFactory.create(username="kai")
+    job = MyTransferJobFactory.create(
         status=TransferJob.Status.PENDING,
         source=DicomServerFactory(),
         destination=DicomFolderFactory(),
         archive_password="",
         owner=user,
     )
-    task = MyTransferTaskFactory(
+    task = MyTransferTaskFactory.create(
         status=TransferTask.Status.PENDING,
         patient_id="1001",
         series_uids=[],
@@ -176,13 +176,15 @@ def test_transfer_to_archive_succeeds(
     create_source_connector_mock, Popen_mock, setup_test_models, create_resources
 ):
     # Arrange
-    job = MyTransferJobFactory(
+    job = MyTransferJobFactory.create(
         status=TransferJob.Status.PENDING,
         source=DicomServerFactory(),
         destination=DicomFolderFactory(),
         archive_password="mysecret",
     )
-    task = MyTransferTaskFactory(status=TransferTask.Status.PENDING, series_uids=[], pseudonym="")
+    task = MyTransferTaskFactory.create(
+        status=TransferTask.Status.PENDING, series_uids=[], pseudonym=""
+    )
     task.job = job
 
     patient, study = create_resources(task)

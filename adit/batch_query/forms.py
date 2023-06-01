@@ -19,6 +19,7 @@ from .parsers import BatchQueryFileParser
 class BatchQueryJobForm(forms.ModelForm):
     source = DicomNodeChoiceField(True, DicomNode.NodeType.SERVER)
     batch_file = RestrictedFileField(max_upload_size=5242880, label="Batch file")
+    tasks: list[BatchQueryTask]
 
     class Meta:
         model = BatchQueryJob
@@ -42,7 +43,7 @@ class BatchQueryJobForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         self.batch_file_errors = None
-        self.tasks = None
+        self.tasks = []
         self.save_tasks = None
 
         user = kwargs.pop("user")

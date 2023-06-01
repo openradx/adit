@@ -26,19 +26,19 @@ pyproject = toml.load(BASE_DIR / "pyproject.toml")
 
 ADIT_VERSION = pyproject["tool"]["poetry"]["version"]
 
-READ_DOT_ENV_FILE = env.bool("DJANGO_READ_DOT_ENV_FILE", default=False)
+READ_DOT_ENV_FILE = env.bool("DJANGO_READ_DOT_ENV_FILE", default=False)  # type: ignore
 if READ_DOT_ENV_FILE:
     # OS environment variables take precedence over variables from .env
     env.read_env(str(BASE_DIR / ".env"))
 
-BASE_URL = env.str("BASE_URL", default="")
+BASE_URL = env.str("BASE_URL", default="http://localhost")  # type: ignore
 
 SITE_ID = 1
 
 # Used by our custom migration adit.core.migrations.0002_UPDATE_SITE_NAME
 # to set the domain and name of the sites framework
-ADIT_SITE_DOMAIN = env.str("ADIT_SITE_DOMAIN", default="adit.org")
-ADIT_SITE_NAME = env.str("ADIT_SITE_NAME", default="adit.org")
+ADIT_SITE_DOMAIN = env.str("ADIT_SITE_DOMAIN", default="adit.org")  # type: ignore
+ADIT_SITE_NAME = env.str("ADIT_SITE_NAME", default="adit.org")  # type: ignore
 
 INSTALLED_APPS = [
     "daphne",
@@ -108,7 +108,7 @@ WSGI_APPLICATION = "adit.wsgi.application"
 # env.db() loads the DB setup from the DATABASE_URL environment variable using
 # Django-environ.
 # The sqlite database is still used for pytest tests.
-DATABASES = {"default": env.db(default="sqlite:///adit-sqlite.db")}
+DATABASES = {"default": env.db(default="sqlite:///adit-sqlite.db")}  # type: ignore
 
 # Django 3.2 switched to BigAutoField for primary keys. It must be set explicitly
 # and requires a migration.
@@ -228,7 +228,7 @@ STATICFILES_DIRS = (BASE_DIR / "adit" / "static",)
 
 STATIC_URL = "/static/"
 
-STATIC_ROOT = env.str("DJANGO_STATIC_ROOT", default=(BASE_DIR / "staticfiles"))
+STATIC_ROOT = env.str("DJANGO_STATIC_ROOT", default=(BASE_DIR / "staticfiles"))  # type: ignore
 
 # Custom user model
 AUTH_USER_MODEL = "accounts.User"
@@ -249,21 +249,21 @@ EMAIL_SUBJECT_PREFIX = "[ADIT] "
 
 # An Email address used by the ADIT server to notify about finished jobs and
 # management notifications.
-SERVER_EMAIL = env.str("DJANGO_SERVER_EMAIL", default="support@adit.test")
+SERVER_EMAIL = env.str("DJANGO_SERVER_EMAIL", default="support@adit.test")  # type: ignore
 DEFAULT_FROM_EMAIL = SERVER_EMAIL
 
 # A support Email address that is presented to the users where
 # they can get support.
-SUPPORT_EMAIL = env.str("SUPPORT_EMAIL", default=SERVER_EMAIL)
+SUPPORT_EMAIL = env.str("SUPPORT_EMAIL", default=SERVER_EMAIL)  # type: ignore
 
 # Also used by django-registration-redux to send account approval emails
-admin_first_name = env.str("ADMIN_FIRST_NAME", default="ADIT")
-admin_last_name = env.str("ADMIN_LAST_NAME", default="Admin")
+admin_first_name = env.str("ADMIN_FIRST_NAME", default="ADIT")  # type: ignore
+admin_last_name = env.str("ADMIN_LAST_NAME", default="Admin")  # type: ignore
 admin_full_name = admin_first_name + " " + admin_last_name
 ADMINS = [
     (
         admin_full_name,
-        env.str("ADMIN_EMAIL", default="admin@adit.test"),
+        env.str("ADMIN_EMAIL", default="admin@adit.test"),  # type: ignore
     )
 ]
 
@@ -276,17 +276,17 @@ REGISTRATION_OPEN = True
 ASGI_APPLICATION = "adit.asgi.application"
 
 # RabbitMQ is used as Celery message broker
-RABBITMQ_URL = env.str("RABBITMQ_URL", default="amqp://localhost")
+RABBITMQ_URL = env.str("RABBITMQ_URL", default="amqp://localhost")  # type: ignore
 
 # Rabbit Management console is integrated in ADIT by using an reverse
 # proxy (django-revproxy).This allows to use the authentication of ADIT.
 # But as RabbitMQ authentication can't be disabled we have to login
 # there with "guest" as username and password again.
-RABBIT_MANAGEMENT_HOST = env.str("RABBIT_MANAGEMENT_HOST", default="localhost")
-RABBIT_MANAGEMENT_PORT = env.int("RABBIT_MANAGEMENT_PORT", default=15672)
+RABBIT_MANAGEMENT_HOST = env.str("RABBIT_MANAGEMENT_HOST", default="localhost")  # type: ignore
+RABBIT_MANAGEMENT_PORT = env.int("RABBIT_MANAGEMENT_PORT", default=15672)  # type: ignore
 
 # Redis is used as Celery result backend and as LRU cache for patient IDs.
-REDIS_URL = env.str("REDIS_URL", default="redis://localhost:6379/0")
+REDIS_URL = env.str("REDIS_URL", default="redis://localhost:6379/0")  # type: ignore
 
 # Celery
 # see https://github.com/celery/celery/issues/5026 for how to name configs
@@ -339,16 +339,16 @@ CELERY_TASK_ACKS_LATE = True
 
 # Flower is integrated in ADIT by using a reverse proxy (django-revproxy).
 # This allows to use the authentication of ADIT.
-FLOWER_HOST = env.str("FLOWER_HOST", default="localhost")
-FLOWER_PORT = env.int("FLOWER_PORT", default=5555)
+FLOWER_HOST = env.str("FLOWER_HOST", default="localhost")  # type: ignore
+FLOWER_PORT = env.int("FLOWER_PORT", default=5555)  # type: ignore
 
 # Orthanc servers are integrated in ADIT by using a reverse proxy (django-revproxy).
-ORTHANC1_HOST = env.str("ORTHANC1_HOST", default="localhost")
-ORTHANC1_HTTP_PORT = env.int("ORTHANC1_HTTP_PORT", default=6501)
-ORTHANC1_DICOM_PORT = env.int("ORTHANC1_DICOM_PORT", default=7501)
-ORTHANC2_HOST = env.str("ORTHANC2_HOST", default="localhost")
-ORTHANC2_HTTP_PORT = env.int("ORTHANC2_HTTP_PORT", default=6502)
-ORTHANC2_DICOM_PORT = env.int("ORTHANC2_DICOM_PORT", default=7502)
+ORTHANC1_HOST = env.str("ORTHANC1_HOST", default="localhost")  # type: ignore
+ORTHANC1_HTTP_PORT = env.int("ORTHANC1_HTTP_PORT", default=6501)  # type: ignore
+ORTHANC1_DICOM_PORT = env.int("ORTHANC1_DICOM_PORT", default=7501)  # type: ignore
+ORTHANC2_HOST = env.str("ORTHANC2_HOST", default="localhost")  # type: ignore
+ORTHANC2_HTTP_PORT = env.int("ORTHANC2_HTTP_PORT", default=6502)  # type: ignore
+ORTHANC2_DICOM_PORT = env.int("ORTHANC2_DICOM_PORT", default=7502)  # type: ignore
 
 # Used by django-filter
 FILTERS_EMPTY_CHOICE_LABEL = "Show All"
@@ -358,25 +358,25 @@ FILTERS_EMPTY_CHOICE_LABEL = "Show All"
 ###
 
 # The AE Tile for the ADIT STORE SCP server
-ADIT_AE_TITLE = env.str("ADIT_AE_TITLE", default="ADIT1")
+ADIT_AE_TITLE = env.str("ADIT_AE_TITLE", default="ADIT1")  # type: ignore
 
 # The address and port of the STORE SCP server (part of the receiver).
 # By default the STORE SCP server listens to all interfaces
-STORE_SCP_HOST = env.str("STORE_SCP_HOST", default="")
-STORE_SCP_PORT = env.int("STORE_SCP_PORT", default=11112)
+STORE_SCP_HOST = env.str("STORE_SCP_HOST", default="127.0.0.1")  # type: ignore
+STORE_SCP_PORT = env.int("STORE_SCP_PORT", default=11112)  # type: ignore
 
 # The address and port of the file transmit socket server (part of the receiver)
 # that is used to transfer DICOM files from the receiver to the workers (when
 # the PACS server does not support C-GET).
 # By default the file transmit socket server listens to all interfaces (should
 # not be a problem as it is inside the docker network).
-FILE_TRANSMIT_HOST = env.str("FILE_TRANSMIT_SERVER_HOST", default="")
-FILE_TRANSMIT_PORT = env.int("FILE_TRANSMIT_SERVER_PORT", default=27312)
+FILE_TRANSMIT_HOST = env.str("FILE_TRANSMIT_SERVER_HOST", default="127.0.0.1")  # type: ignore
+FILE_TRANSMIT_PORT = env.int("FILE_TRANSMIT_SERVER_PORT", default=27312)  # type: ignore
 
 # A folder to cache temporary DICOM files.
 # Receiver and file transmit client do create temporary directories in this
 # folder and cache their received DICOM files there.
-TEMP_DICOM_DIR = env.str("TEMP_DICOM_DIR", default=str(BASE_DIR / ".dicoms"))
+TEMP_DICOM_DIR = env.str("TEMP_DICOM_DIR", default=str(BASE_DIR / ".dicoms"))  # type: ignore
 
 # Usually a transfer job must be verified by an admin. By setting
 # this option to True ADIT will schedule unverified transfers
@@ -386,12 +386,12 @@ BATCH_QUERY_UNVERIFIED = True
 BATCH_TRANSFER_UNVERIFIED = True
 
 # A timezone that is used for users of the web interface.
-USER_TIME_ZONE = env.str("USER_TIME_ZONE", default=None)
+USER_TIME_ZONE = env.str("USER_TIME_ZONE", default="Europe/Berlin")  # type: ignore
 
 # Priorities of dicom tasks
 # Selective transfers have the highest priority as those are
 # normally fewer than the other tasks. Batch transfers have the lowest
-# priority as there are mostly numerous and long running. 
+# priority as there are mostly numerous and long running.
 SELECTIVE_TRANSFER_DEFAULT_PRIORITY = 4
 SELECTIVE_TRANSFER_URGENT_PRIORITY = 8
 BATCH_TRANSFER_DEFAULT_PRIORITY = 2

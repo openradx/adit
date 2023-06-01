@@ -44,7 +44,7 @@ from pydicom.dataset import Dataset
 from pydicom.errors import InvalidDicomError
 from pynetdicom import debug_logger, evt
 from pynetdicom._globals import STATUS_PENDING, STATUS_SUCCESS
-from pynetdicom.ae import ApplicationEntity as AE  # noqa: N817
+from pynetdicom.ae import ApplicationEntity as AE
 from pynetdicom.events import Event
 from pynetdicom.presentation import (
     BasicWorklistManagementPresentationContexts,
@@ -173,7 +173,9 @@ class DicomConnector:
 
         self.assoc.abort()
 
-    def find_patients(self, query: dict[str, Any], limit_results: Optional[int] = None):
+    def find_patients(
+        self, query: dict[str, Any], limit_results: int | None = None
+    ) -> list[dict[str, Any]]:
         if self.server.patient_root_find_support:
             query["QueryRetrieveLevel"] = "PATIENT"
         else:

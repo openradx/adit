@@ -36,6 +36,8 @@ def test_deserializes_query_task(data):
     # Assert
     assert serializer.is_valid()
 
+    assert isinstance(serializer.validated_data, list)
+
     assert serializer.validated_data[0]["task_id"] == 1
     assert serializer.validated_data[0]["study_date_start"] == date(2019, 6, 3)
     assert serializer.validated_data[0]["study_date_end"] == date(2019, 6, 5)

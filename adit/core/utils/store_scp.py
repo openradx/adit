@@ -3,11 +3,14 @@ import logging
 import os
 from socketserver import BaseServer
 from tempfile import NamedTemporaryFile
-from typing import Callable
+from typing import Callable, cast
 
 from pydicom.filewriter import write_file_meta_info
-from pynetdicom import AE, AllStoragePresentationContexts, debug_logger, evt
+from pynetdicom import debug_logger, evt
+from pynetdicom.ae import ApplicationEntity as AE
+from pynetdicom.dimse_primitives import C_STORE
 from pynetdicom.events import Event
+from pynetdicom.presentation import AllStoragePresentationContexts
 
 logger = logging.getLogger(__name__)
 
@@ -17,7 +20,7 @@ FileReceivedHandler = Callable[[str], None]
 class StoreScp:
     _assoc_server: BaseServer | None = None
 
-    def __init__(self, folder: str, ae_title: str, host: str, port: int, debug=False):
+    def __init__(self, folder: os.PathLike, ae_title: str, host: str, port: int, debug=False):
         self._folder = folder
         self._ae_title = ae_title
         self._host = host
@@ -52,9 +55,11 @@ class StoreScp:
         self._assoc_server = ae.start_server(
             (self._host, self._port), evt_handlers=handlers, block=False
         )
+        assert self._assoc_server
         self._assoc_server.serve_forever()
 
     def stop(self):
+        assert self._assoc_server
         self._assoc_server.shutdown()
 
     def set_file_received_handler(self, handler: FileReceivedHandler):
@@ -65,6 +70,7 @@ class StoreScp:
         port = event.assoc.remote["port"]
         logger.info("Connection to remote %s:%d opened", address, port)
 
+        assert event.assoc.acceptor.primitive
         called_ae = event.assoc.acceptor.primitive.called_ae_title
         if called_ae != self._ae_title:
             logger.error(f"Invalid called AE title: {called_ae}")
@@ -115,9 +121,11 @@ class StoreScp:
                 file.write(b"\x00" * 128)
                 file.write(b"DICM")
                 # Encode and write the File Meta Information
-                write_file_meta_info(file, event.file_meta)
+                write_file_meta_info(file, event.file_meta)  # type: ignore
                 # Write the encoded dataset
-                file.write(event.request.DataSet.getvalue())
+                request = cast(C_STORE, event.request)
+                assert request.DataSet
+                file.write(request.DataSet.getvalue())
         except Exception as err:
             if isinstance(err, OSError) and err.errno == errno.ENOSPC:
                 logger.error("Out of disc space while saving received file.")

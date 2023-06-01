@@ -1,23 +1,41 @@
+from typing import Generic, TypeVar
+
 import factory
 from faker import Faker
 
 from adit.accounts.factories import UserFactory
 
-from .models import DicomFolder, DicomServer, TransferJob, TransferTask
+from .models import (
+    DicomFolder,
+    DicomJob,
+    DicomNode,
+    DicomServer,
+    DicomTask,
+    TransferJob,
+    TransferTask,
+)
 
 fake = Faker()
 
+T = TypeVar("T")
 
-class DicomNodeFactory(factory.django.DjangoModelFactory):
+
+class BaseDjangoModelFactory(Generic[T], factory.django.DjangoModelFactory):
+    @classmethod
+    def create(cls, *args, **kwargs) -> T:
+        return super().create(*args, **kwargs)
+
+
+class AbstractDicomNodeFactory(Generic[T], BaseDjangoModelFactory[T]):
     class Meta:
-        model = None
+        model: DicomNode
 
     name = factory.Faker("domain_word")
     source_active = True
     destination_active = True
 
 
-class DicomServerFactory(DicomNodeFactory):
+class DicomServerFactory(AbstractDicomNodeFactory[DicomServer]):
     class Meta:
         model = DicomServer
         django_get_or_create = ("name",)
@@ -35,7 +53,7 @@ class DicomServerFactory(DicomNodeFactory):
     store_scp_support = True
 
 
-class DicomFolderFactory(DicomNodeFactory):
+class DicomFolderFactory(AbstractDicomNodeFactory[DicomFolder]):
     class Meta:
         model = DicomFolder
         django_get_or_create = ("name",)
@@ -46,9 +64,9 @@ class DicomFolderFactory(DicomNodeFactory):
 job_status_keys = [key for key, value in TransferJob.Status.choices]
 
 
-class DicomJobFactory(factory.django.DjangoModelFactory):
+class AbstractDicomJobFactory(Generic[T], BaseDjangoModelFactory[T]):
     class Meta:
-        model = None
+        model: DicomJob
 
     source = factory.SubFactory(DicomServerFactory)
     status = factory.Faker("random_element", elements=job_status_keys)
@@ -57,9 +75,9 @@ class DicomJobFactory(factory.django.DjangoModelFactory):
     owner = factory.SubFactory(UserFactory)
 
 
-class TransferJobFactory(DicomJobFactory):
+class AbstractTransferJobFactory(Generic[T], AbstractDicomJobFactory[T]):
     class Meta:
-        model = None
+        model: TransferJob
 
     destination = factory.SubFactory(DicomServerFactory)
     trial_protocol_id = factory.Faker("word")
@@ -69,9 +87,9 @@ class TransferJobFactory(DicomJobFactory):
 task_status_keys = [key for key, value in TransferTask.Status.choices]
 
 
-class DicomTaskFactory(factory.django.DjangoModelFactory):
+class AbstractDicomTaskFactory(Generic[T], BaseDjangoModelFactory[T]):
     class Meta:
-        model = None
+        model: DicomTask
 
     task_id = factory.Sequence(int)
     status = factory.Faker("random_element", elements=task_status_keys)
@@ -85,9 +103,9 @@ def generate_uids():
     return None
 
 
-class TransferTaskFactory(DicomTaskFactory):
+class AbstractTransferTaskFactory(Generic[T], AbstractDicomTaskFactory[T]):
     class Meta:
-        model = None
+        model: TransferTask
 
     patient_id = factory.Faker("numerify", text="##########")
     study_uid = factory.Faker("uuid4")

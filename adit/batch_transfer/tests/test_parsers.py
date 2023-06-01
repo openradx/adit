@@ -46,7 +46,7 @@ def test_same_studies_are_grouped_together(create_batch_file, data):
     assert tasks[1].task_id == 2
     assert tasks[1].patient_id == data["PatientID"][1]
     assert tasks[1].study_uid == data["StudyInstanceUID"][1]
-    assert sorted(tasks[1].series_uids) == sorted(
+    assert sorted(tasks[1].series_uids) == sorted(  # type: ignore
         [data["SeriesInstanceUID"][1], data["SeriesInstanceUID"][2]]
     )
 

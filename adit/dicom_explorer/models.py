@@ -4,6 +4,8 @@ from django.db import models
 # A dummy model for permissions that depend on no real model
 # Adapted from https://stackoverflow.com/a/37988537/166229
 class PermissionSupport(models.Model):
+    id: int
+
     class Meta:
         managed = False
         default_permissions = ()

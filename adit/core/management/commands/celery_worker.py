@@ -11,6 +11,7 @@ logger = logging.getLogger(__name__)
 class Command(ServerCommand):
     help = "Starts a Celery worker"
     server_name = "Celery worker"
+    worker_process: subprocess.Popen | None
 
     def __init__(self, *args, **kwargs):
         self.worker_process = None
@@ -56,4 +57,5 @@ class Command(ServerCommand):
         self.worker_process.wait()
 
     def on_shutdown(self):
+        assert self.worker_process
         self.worker_process.terminate()

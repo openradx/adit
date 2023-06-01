@@ -40,7 +40,7 @@ def create_users():
         "password": environ.get("ADMIN_PASSWORD"),
     }
     admin_data = {k: v for k, v in admin_data.items() if v is not None}
-    admin = AdminUserFactory(**admin_data)
+    admin = AdminUserFactory.create(**admin_data)
 
     batch_transfer_group = Group.objects.get(name="batch_transfer_group")
     selective_transfer_group = Group.objects.get(name="selective_transfer_group")
@@ -55,7 +55,7 @@ def create_users():
     )
 
     for i in range(USER_COUNT):
-        user = UserFactory()
+        user = UserFactory.create()
         user.groups.add(batch_transfer_group)
         user.groups.add(selective_transfer_group)
 

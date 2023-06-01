@@ -46,4 +46,5 @@ class Command(ServerCommand):
         self.beat_process.wait()
 
     def on_shutdown(self):
+        assert self.beat_process
         self.beat_process.terminate()

@@ -2,9 +2,9 @@ import factory
 from faker import Faker
 
 from adit.core.factories import (
+    AbstractTransferJobFactory,
+    AbstractTransferTaskFactory,
     DicomFolderFactory,
-    TransferJobFactory,
-    TransferTaskFactory,
 )
 
 from .models import BatchTransferJob, BatchTransferTask
@@ -12,7 +12,7 @@ from .models import BatchTransferJob, BatchTransferTask
 fake = Faker()
 
 
-class BatchTransferJobFactory(TransferJobFactory):
+class BatchTransferJobFactory(AbstractTransferJobFactory[BatchTransferJob]):
     class Meta:
         model = BatchTransferJob
 
@@ -24,7 +24,7 @@ class BatchTransferJobToPathFactory(BatchTransferJobFactory):
     destination = factory.SubFactory(DicomFolderFactory)
 
 
-class BatchTransferTaskFactory(TransferTaskFactory):
+class BatchTransferTaskFactory(AbstractTransferTaskFactory[BatchTransferTask]):
     class Meta:
         model = BatchTransferTask
 

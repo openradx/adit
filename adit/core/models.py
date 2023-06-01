@@ -1,4 +1,6 @@
+from abc import abstractmethod
 from datetime import time
+from typing import TYPE_CHECKING, Callable
 
 from django.conf import settings
 from django.core.validators import MaxValueValidator, MinValueValidator
@@ -12,8 +14,12 @@ from .validators import (
     validate_uid_list,
 )
 
+if TYPE_CHECKING:
+    from django.db.models.manager import RelatedManager
+
 
 class CoreSettings(models.Model):
+    id: int
     maintenance_mode = models.BooleanField(default=False)
     announcement = models.TextField(blank=True)
 
@@ -33,6 +39,7 @@ def slot_time(hour, minute):
 
 
 class AppSettings(models.Model):
+    id: int
     # Lock the creation of new jobs
     locked = models.BooleanField(default=False)
     # Suspend the background processing.
@@ -59,12 +66,16 @@ class AppSettings(models.Model):
 
 
 class DicomNode(models.Model):
-    NODE_TYPE = None
-
     class NodeType(models.TextChoices):
         SERVER = "SV", "Server"
         FOLDER = "FO", "Folder"
 
+    NODE_TYPE: NodeType
+
+    dicomserver: "DicomServer"
+    dicomfolder: "DicomFolder"
+
+    id: int
     node_type = models.CharField(max_length=2, choices=NodeType.choices)
     name = models.CharField(unique=True, max_length=64)
     source_active = models.BooleanField(default=False)
@@ -134,10 +145,17 @@ class DicomJob(models.Model):
         WARNING = "WA", "Warning"
         FAILURE = "FA", "Failure"
 
+    if TYPE_CHECKING:
+        tasks = RelatedManager["DicomTask"]()
+
+    id: int
+    source_id: int
     source = models.ForeignKey(DicomNode, related_name="+", on_delete=models.PROTECT)
+    get_status_display: Callable[[], str]
     status = models.CharField(max_length=2, choices=Status.choices, default=Status.UNVERIFIED)
     urgent = models.BooleanField(default=False)
     message = models.TextField(blank=True, default="")
+    owner_id: int
     owner = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
@@ -196,6 +214,10 @@ class DicomJob(models.Model):
         )
         return self.tasks.exclude(status__in=non_processed)
 
+    @abstractmethod
+    def delay(self):
+        raise NotImplementedError()
+
 
 class TransferJob(DicomJob):
     class Meta(DicomJob.Meta):
@@ -207,6 +229,7 @@ class TransferJob(DicomJob):
             )
         ]
 
+    destination_id: int
     destination = models.ForeignKey(DicomNode, related_name="+", on_delete=models.PROTECT)
     trial_protocol_id = models.CharField(
         blank=True, max_length=64, validators=[no_backslash_char_validator]
@@ -226,9 +249,12 @@ class DicomTask(models.Model):
         WARNING = "WA", "Warning"
         FAILURE = "FA", "Failure"
 
-    job = None
+    id: int
+    job_id: int
+    job = models.ForeignKey(DicomJob, on_delete=models.CASCADE, related_name="tasks")
     task_id = models.PositiveIntegerField()
     celery_task_id = models.CharField(max_length=255)
+    get_status_display: Callable[[], str]
     status = models.CharField(
         max_length=2,
         choices=Status.choices,
@@ -254,6 +280,11 @@ class TransferTask(DicomTask):
     class Meta(DicomTask.Meta):
         abstract = True
 
+    job = models.ForeignKey(
+        TransferJob,
+        on_delete=models.CASCADE,
+        related_name="tasks",
+    )
     patient_id = models.CharField(
         max_length=64,
         validators=[

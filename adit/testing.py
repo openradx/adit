@@ -2,7 +2,7 @@ from functools import partial
 
 from channels.routing import get_default_application
 from daphne.testing import DaphneProcess
-from django.contrib.staticfiles.handlers import ASGIStaticFilesHandler
+from django.contrib.staticfiles.handlers import ASGIStaticFilesHandler  # type: ignore
 from django.core.exceptions import ImproperlyConfigured
 from django.db import connections
 from django.test.utils import modify_settings
@@ -40,7 +40,7 @@ class ChannelsLiveServer:
         self._server_process = self.ProtocolServerProcess(self.host, get_application)
         self._server_process.start()
         self._server_process.ready.wait()
-        self._port = self._server_process.port.value
+        self._port = self._server_process.port.value  # type: ignore
 
     def stop(self) -> None:
         self._server_process.terminate()

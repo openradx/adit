@@ -28,7 +28,7 @@ class FileTransmitSession:
         self._reader = reader
         self._writer = writer
 
-    async def send_file(self, file_path: str, metadata: dict[str, str] | None = None):
+    async def send_file(self, file_path: PathLike, metadata: dict[str, str] | None = None):
         # Send file size
         file_size = await os.path.getsize(file_path)
         data = struct.pack("!I", file_size)  # encodes unsigned int to exactly 4 bytes
@@ -100,6 +100,7 @@ class FileTransmitServer:
                 logger.info("File transmit server stopped")
 
     async def stop(self):
+        assert self._server
         self._server.close()
         await self._server.wait_closed()
 

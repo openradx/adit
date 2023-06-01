@@ -1,5 +1,9 @@
+from typing import Type
+
 from django.utils import formats
 from rest_framework import serializers
+
+from adit.core.models import DicomTask
 
 
 class BatchTaskListSerializer(serializers.ListSerializer):
@@ -8,13 +12,14 @@ class BatchTaskListSerializer(serializers.ListSerializer):
         super().__init__(*args, **kwargs)
 
     def get_tasks(self):
+        assert type(self.validated_data) == list
         return [self.model(**item) for item in self.validated_data]
 
 
 class BatchTaskSerializer(serializers.ModelSerializer):
     class Meta:
-        model = None
-        fields = None
+        model: Type[DicomTask]
+        fields: list[str]
         list_serializer_class = BatchTaskListSerializer
 
     @classmethod
@@ -24,7 +29,7 @@ class BatchTaskSerializer(serializers.ModelSerializer):
         return BatchTaskListSerializer(*args, **kwargs)
 
     def __init__(self, instance=None, data=None, **kwargs):
-        super().__init__(instance=instance, data=data, **kwargs)
+        super().__init__(instance=instance, data=data, **kwargs)  # type: ignore
         self.date_input_formats = formats.get_format("DATE_INPUT_FORMATS")
 
     def adapt_date_field(self, field_name):

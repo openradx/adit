@@ -10,7 +10,7 @@ import pytest
 from django.conf import settings
 from django.core.management import call_command
 from faker import Faker
-from playwright.sync_api import Locator, Page
+from playwright.sync_api import Locator, Page, Response
 
 from adit.accounts.factories import UserFactory
 from adit.core.factories import DicomServerFactory
@@ -29,30 +29,31 @@ def pytest_configure():
     nest_asyncio.apply()
 
 
-def poll(
-    self: Locator,
-    func: Callable[[Locator], None] = lambda loc: loc.page.reload(),
-    interval: int = 1_000,
-    timeout: int = 10_000,
-):
-    start_time = time.time()
-    while True:
-        try:
-            self.wait_for(timeout=interval)
-            return self
-        except Exception as err:
-            elapsed_time = (time.time() - start_time) * 1000
-            if elapsed_time > timeout:
-                raise err
+@pytest.fixture
+def poll():
+    def _poll(
+        locator: Locator,
+        func: Callable[[Locator], Response | None] = lambda loc: loc.page.reload(),
+        interval: int = 1_000,
+        timeout: int = 10_000,
+    ):
+        start_time = time.time()
+        while True:
+            try:
+                locator.wait_for(timeout=interval)
+                return locator
+            except Exception as err:
+                elapsed_time = (time.time() - start_time) * 1000
+                if elapsed_time > timeout:
+                    raise err
 
-        func(self)
+            func(locator)
 
-
-Locator.poll = poll
+    return _poll
 
 
 @pytest.fixture
-def channels_liver_server(request):
+def channels_live_server(request):
     server = ChannelsLiveServer()
     request.addfinalizer(server.stop)
     return server

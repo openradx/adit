@@ -21,8 +21,10 @@ class BatchFileSizeError(Exception):
         self.batch_tasks_count = batch_tasks_count
         self.max_batch_size = max_batch_size
 
+
 class BatchFileFormatError(Exception):
     pass
+
 
 class BatchFileContentError(Exception):
     def __init__(self, field_to_column_mapping, data, errors) -> None:
@@ -38,9 +40,10 @@ class BatchFileContentError(Exception):
         if self.message is None:
             self.build_error_message()
 
+        assert self.message is not None
         return self.message
 
-    def build_error_message(self) -> str:
+    def build_error_message(self) -> None:
         self.message = ""
 
         if isinstance(self.errors, dict):
@@ -67,8 +70,10 @@ class BatchFileContentError(Exception):
 
     def _field_error_message(self, field_name: str, field_errors: List[ErrorDetail]) -> None:
         column_name = self.field_to_column_mapping[field_name]
+        assert self.message is not None
         self.message += f"{column_name} - "
         self.message += " ".join(field_errors) + "\n"
 
     def _non_field_error_message(self, non_field_errors: List[ErrorDetail]):
+        assert self.message is not None
         self.message += " ".join(non_field_errors) + "\n"

@@ -7,14 +7,15 @@ from ..models import DicomTask
 logger = logging.getLogger(__name__)
 
 
-def hijack_logger(my_logger) -> Tuple[logging.StreamHandler, io.StringIO]:
+def hijack_logger(my_logger: logging.Logger) -> Tuple[logging.StreamHandler, io.StringIO]:
     """Intercept all logger messages to save them later to the task."""
     stream = io.StringIO()
     handler = logging.StreamHandler(stream)
     handler.setLevel(logging.INFO)
     formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
     handler.setFormatter(formatter)
-    my_logger.parent.addHandler(handler)
+    if my_logger.parent:
+        my_logger.parent.addHandler(handler)
     return handler, stream
 
 
@@ -30,4 +31,5 @@ def store_log_in_task(
     else:
         dicom_task.log = stream.getvalue()
     stream.close()
-    my_logger.parent.removeHandler(handler)
+    if my_logger.parent:
+        my_logger.parent.removeHandler(handler)

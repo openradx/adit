@@ -1,6 +1,8 @@
+from typing import Callable
+
 import pandas as pd
 import pytest
-from playwright.sync_api import Page, expect
+from playwright.sync_api import Locator, Page, expect
 
 from adit.batch_transfer.models import BatchTransferJob
 
@@ -9,9 +11,10 @@ from adit.batch_transfer.models import BatchTransferJob
 @pytest.mark.django_db(transaction=True)
 def test_unpseudonymized_urgent_batch_transfer_succeeds(
     page: Page,
+    poll: Callable[[Locator], Locator],
     setup_orthancs,
     adit_celery_worker,
-    channels_liver_server,
+    channels_live_server,
     create_and_login_user,
     create_excel_file,
 ):
@@ -21,12 +24,12 @@ def test_unpseudonymized_urgent_batch_transfer_succeeds(
     )
     batch_file = create_excel_file(df)
 
-    user = create_and_login_user(channels_liver_server.url)
+    user = create_and_login_user(channels_live_server.url)
     user.join_group("batch_transfer_group")
     user.add_permission("can_process_urgently", BatchTransferJob)
     user.add_permission("can_transfer_unpseudonymized", BatchTransferJob)
 
-    page.goto(channels_liver_server.url + "/batch-transfer/jobs/new/")
+    page.goto(channels_live_server.url + "/batch-transfer/jobs/new/")
     page.get_by_label("Source").select_option(label="DICOM Server Orthanc Test Server 1")
     page.get_by_label("Destination").select_option(label="DICOM Server Orthanc Test Server 2")
     page.get_by_label("Start transfer urgently").click(force=True)
@@ -35,5 +38,5 @@ def test_unpseudonymized_urgent_batch_transfer_succeeds(
     page.get_by_label("Ethics committee approval").fill("I have it, I swear.")
     page.get_by_label("Batch file").set_input_files(files=[batch_file])
     page.locator('input:has-text("Create job")').click()
-    expect(page.locator('dl:has-text("Success")').poll()).to_be_visible()
+    expect(poll(page.locator('dl:has-text("Success")'))).to_be_visible()
     # page.screenshot(path="foo.png")

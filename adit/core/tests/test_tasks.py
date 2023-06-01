@@ -34,7 +34,7 @@ class TestProcessDicomJob:
         dicom_job_class_mock.objects.get.return_value = dicom_job_mock
 
         process_dicom_job = ProcessDicomJob()
-        process_dicom_job.dicom_job_class = dicom_job_class_mock
+        process_dicom_job.dicom_job_class = dicom_job_class_mock  # type: ignore
         process_dicom_job.default_priority = default_priority
         process_dicom_job.urgent_priority = urgent_priority
         process_dicom_job.process_dicom_task = create_autospec(CeleryTask)
@@ -108,14 +108,14 @@ class TestProcessDicomTask:
         dicom_task_mock.job = dicom_job_mock
         dicom_task_class_mock.objects.get.return_value = dicom_task_mock
 
-        app_settings_class_mock = Mock()
+        app_settings_class_mock = Mock(spec=AppSettings)
         app_settings_mock = create_autospec(AppSettings)
         app_settings_mock.suspended = False
         app_settings_class_mock.get.return_value = app_settings_mock
 
         process_dicom_task = ProcessDicomTask()
-        process_dicom_task.dicom_task_class = dicom_task_class_mock
-        process_dicom_task.app_settings_class = app_settings_class_mock
+        process_dicom_task.dicom_task_class = dicom_task_class_mock  # type: ignore
+        process_dicom_task.app_settings_class = app_settings_class_mock  # type: ignore
 
         with patch.object(ProcessDicomTask, "handle_dicom_task") as handle_dicom_task_mock:
             handle_dicom_task_mock.return_value = DicomTask.Status.SUCCESS

@@ -16,7 +16,7 @@ class User(AbstractUser):
         group = Group.objects.get(name=group_name)
         self.groups.add(group)
 
-    def add_permission(self, permission_codename: str, model: models.Model = None):
+    def add_permission(self, permission_codename: str, model: models.Model | None = None):
         if model:
             content_type = ContentType.objects.get_for_model(model)
             permission = Permission.objects.get(

@@ -6,6 +6,7 @@
   "python.testing.pytestEnabled": true,
   "python.testing.pytestArgs": ["adit"],
   "python.testing.unittestEnabled": false,
+  "python.terminal.activateEnvInCurrentTerminal": true,
   "docker.containers.label": "ContainerName",
   "javascript.validate.enable": true,
   "cSpell.diagnosticLevel": "Hint",

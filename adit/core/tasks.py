@@ -1,6 +1,5 @@
 import subprocess
 from datetime import timedelta
-from typing import List, Type
 
 from celery import Task as CeleryTask
 from celery import chord, shared_task
@@ -56,14 +55,14 @@ def check_disk_space():
 class ProcessDicomJob(CeleryTask):
     ignore_result = True
 
-    dicom_job_class: Type[DicomJob] = None
-    default_priority: int = None
-    urgent_priority: int = None
-    process_dicom_task: CeleryTask = None
-    handle_finished_dicom_job: CeleryTask = None
-    handle_failed_dicom_job: CeleryTask = None
+    dicom_job_class: type[DicomJob]
+    default_priority: int
+    urgent_priority: int
+    process_dicom_task: CeleryTask
+    handle_finished_dicom_job: CeleryTask
+    handle_failed_dicom_job: CeleryTask
 
-    def run(self, dicom_job_id: str):
+    def run(self, dicom_job_id: int):
         dicom_job = self.dicom_job_class.objects.get(id=dicom_job_id)
 
         logger.info("Proccessing %s.", dicom_job)
@@ -90,16 +89,21 @@ class ProcessDicomJob(CeleryTask):
         )
 
         # Save Celery task IDs to dicom tasks (for revoking them later if necessary)
-        # Only works in when not in eager mode (used to debug Celery stuff)
+        # Only works when not in eager mode (which is used to debug Celery stuff)
+        assert result.parent
         if not getattr(settings, "CELERY_TASK_ALWAYS_EAGER", False):
-            for query_task, celery_task in zip(pending_dicom_tasks, result.parent.results):
+            # TODO: check if result.parent.results is really correct
+            for query_task, celery_task in zip(
+                pending_dicom_tasks,
+                result.parent.results,  # type: ignore
+            ):
                 query_task.celery_task_id = celery_task.id
                 query_task.save()
 
 
 class ProcessDicomTask(AbortableCeleryTask):
-    dicom_task_class: Type[DicomTask] = None
-    app_settings_class: Type[AppSettings] = None
+    dicom_task_class: type[DicomTask]
+    app_settings_class: type[AppSettings]
 
     def run(self, dicom_task_id: int):
         dicom_task = self.dicom_task_class.objects.get(id=dicom_task_id)
@@ -121,6 +125,7 @@ class ProcessDicomTask(AbortableCeleryTask):
         dicom_job = dicom_task.job
 
         app_settings = self.app_settings_class.get()
+        assert app_settings
 
         if not dicom_job.urgent:
             scheduler = Scheduler(
@@ -151,10 +156,10 @@ class ProcessDicomTask(AbortableCeleryTask):
 
 
 class HandleFinishedDicomJob(CeleryTask):
-    dicom_job_class: Type[DicomJob] = None
-    send_job_finished_mail: bool = None
+    dicom_job_class: type[DicomJob]
+    send_job_finished_mail: bool = False
 
-    def run(self, dicom_task_status_list: List[str], dicom_job_id: int):
+    def run(self, dicom_task_status_list: list[str], dicom_job_id: int):
         dicom_job = self.dicom_job_class.objects.get(id=dicom_job_id)
 
         logger.info("%s finished.", dicom_job)
@@ -207,8 +212,8 @@ class HandleFinishedDicomJob(CeleryTask):
 
 
 class HandleFailedDicomJob(CeleryTask):
-    dicom_job_class: Type[DicomJob] = None
-    send_job_failed_mail: bool = None
+    dicom_job_class: type[DicomJob]
+    send_job_failed_mail: bool = False
 
     def run(self, *args, **kwargs):
         # The Celery documentation is wrong about the provided parameters and when

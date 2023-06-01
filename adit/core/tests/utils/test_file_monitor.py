@@ -1,5 +1,6 @@
 import asyncio
 import os
+from pathlib import Path
 from tempfile import TemporaryDirectory
 
 import pytest
@@ -17,9 +18,9 @@ async def test_file_monitor_detects_file_and_removes_it(create_dummy_file):
         dummy_size = 10240  # 10kb
         create_dummy_file(temp_dir, ".dcm", dummy_size)
 
-        monitor = FileMonitor(temp_dir)
+        monitor = FileMonitor(Path(temp_dir))
 
-        async def handle_file(filepath: str):
+        async def handle_file(filepath: os.PathLike):
             assert os.path.getsize(filepath) == dummy_size
             await monitor.stop()
             return True
@@ -37,7 +38,7 @@ async def test_file_monitor_deletes_empty_subfolders():
     with TemporaryDirectory() as temp_dir:
         with TemporaryDirectory(dir=temp_dir):
             assert is_folder_empty(temp_dir) is False
-            monitor = FileMonitor(temp_dir)
+            monitor = FileMonitor(Path(temp_dir))
 
             async def handle_scan():
                 await monitor.stop()

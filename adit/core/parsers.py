@@ -1,24 +1,30 @@
-from typing import Dict, Type
+from abc import ABC
+from typing import IO, Generic, Type, TypeVar, cast
 
 import numpy as np
 import pandas as pd
-from django.core.files import File
 
 from .errors import BatchFileContentError, BatchFileFormatError, BatchFileSizeError
-from .serializers import BatchTaskSerializer
+from .models import DicomTask
+from .serializers import BatchTaskListSerializer, BatchTaskSerializer
+
+T = TypeVar("T", bound=DicomTask)
 
 
-class BatchFileParser:
-    serializer_class: Type[BatchTaskSerializer] = None
+class BatchFileParser(Generic[T], ABC):
+    serializer_class: Type[BatchTaskSerializer] | None = None
 
-    def __init__(self, field_to_column_mapping: Dict[str, str]) -> None:
+    def __init__(self, field_to_column_mapping: dict[str, str]) -> None:
         self.field_to_column_mapping = field_to_column_mapping
 
-    def get_serializer(self, data: Dict[str, str]) -> BatchTaskSerializer:
-        return self.serializer_class(data=data, many=True)
+    def get_serializer(self, data: list[dict[str, str]]) -> BatchTaskListSerializer:
+        if not self.serializer_class:
+            raise ValueError("Unknown serializer class.")
+        # many=True automatically returns the list serializer
+        return cast(BatchTaskListSerializer, self.serializer_class(data=data, many=True))
 
-    def parse(self, batch_file: File, max_batch_size: int):
-        data = []
+    def parse(self, batch_file: IO, max_batch_size: int | None) -> list[T]:
+        data: list[dict[str, str]] = []
         counter = 1
 
         try:
@@ -27,12 +33,12 @@ class BatchFileParser:
             raise BatchFileFormatError()
 
         df.replace({np.nan: ""}, inplace=True)
-        for idx, row in df.iterrows():
+        for idx, (_, row) in enumerate(df.iterrows()):
             data_row = {}
 
             row_empty = True
             for field, column in self.field_to_column_mapping.items():
-                value = row.get(column, "").strip()
+                value = str(row.get(column, "")).strip()
                 if value:
                     row_empty = False
                     data_row[field] = self.transform_value(field, value)

@@ -2,7 +2,7 @@ from unittest.mock import create_autospec
 
 import pytest
 from pydicom.dataset import Dataset
-from pynetdicom import Association
+from pynetdicom.association import Association
 from pynetdicom.status import Status
 
 from adit.core.factories import DicomServerFactory
@@ -65,5 +65,5 @@ def association():
 
 @pytest.fixture
 def dicom_connector(db):
-    server = DicomServerFactory()
+    server = DicomServerFactory.create()
     return DicomConnector(server)
