@@ -1058,6 +1058,17 @@ django = ">=3.0"
 pytz = "*"
 
 [[package]]
+name = "djangorestframework-types"
+version = "0.8.0"
+description = "Type stubs for Django Rest Framework"
+optional = false
+python-versions = ">=3.7,<4.0"
+files = [
+    {file = "djangorestframework-types-0.8.0.tar.gz", hash = "sha256:bed5dc8ce4f3500a4d29632e333262059e2218f2291c88313ce8443c24e50a76"},
+    {file = "djangorestframework_types-0.8.0-py3-none-any.whl", hash = "sha256:5136212ec0df2c11d5ebcf217246f606e68f1d46a770419de84ed676bdab0113"},
+]
+
+[[package]]
 name = "djlint"
 version = "1.27.2"
 description = "HTML Template Linter and Formatter"
@@ -3281,4 +3292,4 @@ testing = ["coverage (>=5.0.3)", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "cb2deb0c1d52adf26b7294b1ba6c9866e77c7781d762456f339982f13827b608"
+content-hash = "1f3abcdd887180203d86eee844473895d79af0500be0f0df3c257dcec25ca883"

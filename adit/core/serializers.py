@@ -29,7 +29,7 @@ class BatchTaskSerializer(serializers.ModelSerializer):
         return BatchTaskListSerializer(*args, **kwargs)
 
     def __init__(self, instance=None, data=None, **kwargs):
-        super().__init__(instance=instance, data=data, **kwargs)  # type: ignore
+        super().__init__(instance=instance, data=data, **kwargs)
         self.date_input_formats = formats.get_format("DATE_INPUT_FORMATS")
 
     def adapt_date_field(self, field_name):

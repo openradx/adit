@@ -1,3 +1,5 @@
+from typing import Any
+
 from adit.core.serializers import BatchTaskSerializer
 from adit.core.utils.dicom_utils import person_name_to_dicom
 
@@ -29,7 +31,7 @@ class BatchQueryTaskSerializer(BatchTaskSerializer):
         self.adapt_date_field("study_date_start")
         self.adapt_date_field("study_date_end")
 
-    def to_internal_value(self, data):
+    def to_internal_value(self, data: dict[str, Any]):
         if "patient_name" in data:
             data["patient_name"] = person_name_to_dicom(data["patient_name"])
 
