@@ -13,7 +13,7 @@ RUN mkdir $NVM_DIR && \
   nvm use default
 
 RUN python3 -m pip install --user pipx && \
-  python3 -m pipx ensurepath && \
+  python3 -m pipx ensurepath --force && \
   pipx install invoke && \
   invoke --print-completion-script=bash >> $HOME/.bash_completion
 
