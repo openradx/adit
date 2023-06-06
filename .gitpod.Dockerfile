@@ -1,5 +1,7 @@
 FROM gitpod/workspace-python-3.10
 
+USER gitpod
+
 ENV NVM_DIR $HOME/.nvm
 ENV NODE_VERSION 18.16.0
 
