@@ -1,8 +1,46 @@
 from django.contrib import admin
 
-from .models import CoreSettings, DicomFolder, DicomServer
+from .models import CoreSettings, DicomFolder, DicomJob, DicomServer, DicomTask
 
 admin.site.site_header = "ADIT administration"
+
+
+class DicomJobAdmin(admin.ModelAdmin):
+    list_display = (
+        "id",
+        "status",
+        "created",
+        "get_owner",
+    )
+
+    list_filter = ("status", "created", "owner")
+    search_fields = ("owner__username",)
+
+    def get_owner(self, obj: DicomJob):
+        return obj.owner.username
+
+    get_owner.short_description = "Owner"
+    get_owner.admin_order_field = "owner__username"
+
+
+class DicomTaskAdmin(admin.ModelAdmin):
+    list_display = (
+        "id",
+        "status",
+        "created",
+        "start",
+        "end",
+        "get_owner",
+    )
+
+    list_filter = ("status", "created")
+    search_fields = ("job__id",)
+
+    def get_owner(self, obj: DicomTask):
+        return obj.job.owner.username
+
+    get_owner.short_description = "Owner"
+    get_owner.admin_order_field = "job__owner__username"
 
 
 class DicomServerAdmin(admin.ModelAdmin):

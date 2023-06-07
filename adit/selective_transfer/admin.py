@@ -1,29 +1,11 @@
 from django.contrib import admin
 
-from .models import SelectiveTransferJob, SelectiveTransferSettings
+from adit.core.admin import DicomJobAdmin, DicomTaskAdmin
 
+from .models import SelectiveTransferJob, SelectiveTransferSettings, SelectiveTransferTask
 
-class SelectiveTransferJobAdmin(admin.ModelAdmin):
-    list_display = (
-        "id",
-        "source",
-        "destination",
-        "status",
-        "created",
-        "get_owner",
-    )
+admin.site.register(SelectiveTransferJob, DicomJobAdmin)
 
-    list_filter = ("status", "created", "owner")
-    search_fields = ("owner__username",)
-
-    def get_owner(self, obj):
-        return obj.owner.username
-
-    get_owner.short_description = "Owner"
-    get_owner.admin_order_field = "owner__username"
-
-
-admin.site.register(SelectiveTransferJob, SelectiveTransferJobAdmin)
-
+admin.site.register(SelectiveTransferTask, DicomTaskAdmin)
 
 admin.site.register(SelectiveTransferSettings, admin.ModelAdmin)
