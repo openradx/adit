@@ -65,11 +65,11 @@ class BatchTransferFileParser(BatchFileParser[BatchTransferTask]):
 
         return tasks_to_transfer
 
-    def transform_value(self, field: str, value):
+    def transform_value(self, field: str, value: str):
         # Model field series_uids is a list of Series Instance UIDs, so we
         # have to convert our UIDs to a list first that are later grouped
         # together to the correct study (see above).
         if field == "series_uids":
-            return [value]
+            return [value] if value else []
 
         return value

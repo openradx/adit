@@ -116,7 +116,7 @@ def create_and_login_user(page: Page, login_user):
 def create_excel_file():
     def _create_excel_file(df: pd.DataFrame):
         output = io.BytesIO()
-        df.to_excel(output)
+        df.to_excel(output, index=False, engine="openpyxl")
 
         return {
             "name": "batch_file.xlsx",

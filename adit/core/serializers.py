@@ -1,6 +1,5 @@
 from typing import Type
 
-from django.utils import formats
 from rest_framework import serializers
 
 from adit.core.models import DicomTask
@@ -28,26 +27,9 @@ class BatchTaskSerializer(serializers.ModelSerializer):
         kwargs["model"] = cls.Meta.model
         return BatchTaskListSerializer(*args, **kwargs)
 
-    def __init__(self, instance=None, data=None, **kwargs):
-        super().__init__(instance=instance, data=data, **kwargs)
-        self.date_input_formats = formats.get_format("DATE_INPUT_FORMATS")
-
     def adapt_date_field(self, field_name):
         field = self.fields[field_name]
-        field.input_formats = self.date_input_formats
         field.error_messages["invalid"] = "Date has wrong format."
-
-    def clean_date_string(self, data, field_name):
-        if field_name in data:
-            data[field_name] = data[field_name].strip()
-            if data[field_name] == "":
-                data[field_name] = None
-
-    def parse_csv_field(self, field_value: str):
-        parsed = field_value.split(",")
-        parsed = map(str.strip, parsed)
-        parsed = filter(len, parsed)
-        return list(parsed)
 
     def validate(self, attrs):
         attrs = super().validate(attrs)

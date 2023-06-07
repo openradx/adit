@@ -1,7 +1,6 @@
 from abc import ABC
 from typing import IO, Generic, Type, TypeVar, cast
 
-import numpy as np
 import pandas as pd
 
 from .errors import BatchFileContentError, BatchFileFormatError, BatchFileSizeError
@@ -14,8 +13,8 @@ T = TypeVar("T", bound=DicomTask)
 class BatchFileParser(Generic[T], ABC):
     serializer_class: Type[BatchTaskSerializer] | None = None
 
-    def __init__(self, field_to_column_mapping: dict[str, str]) -> None:
-        self.field_to_column_mapping = field_to_column_mapping
+    def __init__(self, mapping: dict[str, str]) -> None:
+        self.mapping = mapping
 
     def get_serializer(self, data: list[dict[str, str]]) -> BatchTaskListSerializer:
         if not self.serializer_class:
@@ -28,17 +27,21 @@ class BatchFileParser(Generic[T], ABC):
         counter = 1
 
         try:
-            df = pd.read_excel(batch_file, dtype=str)
+            # We only extract strings and let the serializer handle the parsing
+            # of the dates so that all errors are handled there.
+            df = pd.read_excel(batch_file, dtype="string", engine="openpyxl")
+            df.fillna("", inplace=True)
+            for col in df:
+                df[col] = df[col].str.strip()
         except ValueError:
             raise BatchFileFormatError()
 
-        df.replace({np.nan: ""}, inplace=True)
         for idx, (_, row) in enumerate(df.iterrows()):
             data_row = {}
 
             row_empty = True
-            for field, column in self.field_to_column_mapping.items():
-                value = str(row.get(column, "")).strip()
+            for field, column in self.mapping.items():
+                value = str(row.get(column, ""))
                 if value:
                     row_empty = False
                     data_row[field] = self.transform_value(field, value)
@@ -61,7 +64,7 @@ class BatchFileParser(Generic[T], ABC):
 
         if not serializer.is_valid():
             raise BatchFileContentError(
-                self.field_to_column_mapping,
+                self.mapping,
                 data,
                 serializer.errors,
             )
@@ -69,5 +72,5 @@ class BatchFileParser(Generic[T], ABC):
         return serializer.get_tasks()
 
     # Method that can be overridden to adapt the value for a specific field
-    def transform_value(self, field: str, value):
+    def transform_value(self, field: str, value: str):
         return value

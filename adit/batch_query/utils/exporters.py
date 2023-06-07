@@ -26,7 +26,7 @@ def write_results(job: BatchQueryJob, file: IO) -> None:
         data += result_rows
 
     df = pd.DataFrame(data, columns=header)
-    df.to_excel(file, index=False)
+    df.to_excel(file, index=False, engine="openpyxl")
 
 
 def get_header(has_pseudonyms: bool, has_series: bool) -> list[str]:

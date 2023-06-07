@@ -27,10 +27,10 @@ class BatchFileFormatError(Exception):
 
 
 class BatchFileContentError(Exception):
-    def __init__(self, field_to_column_mapping, data, errors) -> None:
+    def __init__(self, mapping, data, errors) -> None:
         super().__init__("Invalid batch data.")
 
-        self.field_to_column_mapping = field_to_column_mapping
+        self.mapping = mapping
         self.data = data
         self.errors = errors
 
@@ -57,8 +57,9 @@ class BatchFileContentError(Exception):
                 if self.message:
                     self.message += "\n"
                 if item_errors:
+                    line_str = "line" if len(self.data[num]["lines"]) == 1 else "lines"
                     lines = ", ".join([str(line) for line in self.data[num]["lines"]])
-                    self.message += f"Invalid data on line(s) {lines}:\n"
+                    self.message += f"Invalid data on {line_str} {lines}:\n"
 
                     non_field_errors = item_errors.pop("non_field_errors", None)
                     if non_field_errors:
@@ -69,7 +70,7 @@ class BatchFileContentError(Exception):
                         self._field_error_message(field_name, field_errors)
 
     def _field_error_message(self, field_name: str, field_errors: List[ErrorDetail]) -> None:
-        column_name = self.field_to_column_mapping[field_name]
+        column_name = self.mapping[field_name]
         assert self.message is not None
         self.message += f"{column_name} - "
         self.message += " ".join(field_errors) + "\n"
