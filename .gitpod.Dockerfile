@@ -1,5 +1,7 @@
 FROM gitpod/workspace-python-3.10
 
+USER gitpod
+
 ENV NVM_DIR $HOME/.nvm
 ENV NODE_VERSION 18.16.0
 
@@ -12,7 +14,7 @@ RUN mkdir $NVM_DIR && \
 
 RUN python3 -m pip install --user pipx && \
   python3 -m pipx ensurepath && \
-  pipx install invoke && \
+  python3 -m pipx install invoke && \
   invoke --print-completion-script=bash >> $HOME/.bash_completion
 
 ENV NODE_PATH $NVM_DIR/v$NODE_VERSION/lib/node_modules

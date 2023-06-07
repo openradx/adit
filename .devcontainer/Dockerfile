@@ -9,14 +9,10 @@ RUN apt-get update && \
 
 USER vscode
 
-ENV BASH_COMPLETION_DIR ~/.local/share/bash-completion/completions
-
-RUN echo $BASH_COMPLETION_DIR
-
 # pipx is already installed in the base devcontainers Python image
 RUN pipx install invoke && \
-  invoke --print-completion-script=bash >> $HOME/.bash_completion
+  invoke --print-completion-script=bash >> ~/.bash_completion
 
-RUN curl -sSL https://install.python-poetry.org | python - && \
+RUN pipx install poetry && \
   poetry completions bash >> ~/.bash_completion && \
-  $HOME/.local/bin/poetry config virtualenvs.in-project true
+  poetry config virtualenvs.in-project true
