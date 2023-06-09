@@ -30,10 +30,12 @@ vscode:
     - "esbenp.prettier-vscode"
     - "formulahendry.auto-rename-tag"
     - "foxundermoon.shell-format"
+    - "grapecity.gc-excelviewer"
     - "mhutchie.git-graph"
     - "mikestead.dotenv"
     - "monosans.djlint"
     - "ms-azuretools.vscode-docker"
+    - "ms-pyright.pyright"
     - "ms-python.black-formatter"
     - "ms-python.python"
     # - "ms-python.vscode-pylance" # Pylance not available in Open VSX
