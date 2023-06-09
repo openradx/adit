@@ -47,51 +47,38 @@ class QueryExecutor:
         handler, stream = hijack_logger(logger)
 
         try:
-            patients = self._fetch_patients()
+            patient = self._fetch_patient()
 
-            if len(patients) == 0:
-                self.query_task.status = BatchQueryTask.Status.FAILURE
-                self.query_task.message = "Patient not found."
-            else:
-                all_results = []  # a list of studies and/or series (per patient)
-                for patient in patients:
-                    studies = self._query_studies(patient["PatientID"])
-                    if studies:
-                        if self.query_task.series_description or self.query_task.series_numbers:
-                            for study in studies:
-                                series = self._query_series(study)
-                                all_results.append(series)
-                        else:
-                            all_results.append(studies)
-
-                if len(all_results) == 0:
-                    self.query_task.status = BatchQueryTask.Status.WARNING
-                    self.query_task.message = "No studies for patient found."
+            all_results: list[list[dict[str, Any]]] = []  # a list of studies or series
+            studies = self._query_studies(patient["PatientID"])
+            is_series_query = self.query_task.series_description or self.query_task.series_numbers
+            if studies:
+                if is_series_query:
+                    for study in studies:
+                        series = self._query_series(study)
+                        all_results.append(series)
                 else:
-                    flattened_results = [
-                        study_or_series
-                        for studies_or_series in all_results
-                        for study_or_series in studies_or_series
-                    ]
-                    saved_results = self._save_results(flattened_results)
+                    all_results.append(studies)
 
-                    num = len(saved_results)
-                    if self.query_task.series_description:
-                        study_count = f"{num} series"
-                    else:
-                        study_count = f"{num} stud{pluralize(num, 'y,ies')}"
+            if len(all_results) == 0:
+                self.query_task.status = BatchQueryTask.Status.WARNING
+                self.query_task.message = "No studies / series found"
+            else:
+                flattened_results = [
+                    study_or_series
+                    for studies_or_series in all_results
+                    for study_or_series in studies_or_series
+                ]
 
-                    if len(saved_results) == 1:  # Only studies of one patient found
-                        self.query_task.status = BatchQueryTask.Status.SUCCESS
-                        self.query_task.message = f"{study_count} found."
-                    else:  # Studies of multiple patients found
-                        # We still allow multiple patient IDs as the same patient
-                        # may have different Patient IDs if the studies were imported
-                        # from external.
-                        self.query_task.status = BatchQueryTask.Status.WARNING
-                        self.query_task.message = (
-                            f"Multiple patients found with overall {study_count}."
-                        )
+                saved_results = self._save_results(flattened_results)
+
+                self.query_task.status = BatchQueryTask.Status.SUCCESS
+                num = len(saved_results)
+                if is_series_query:
+                    message = f"{num} series"
+                else:
+                    message = f"{num} stud{pluralize(num, 'y,ies')}"
+                self.query_task.message = f"{message} found"
         except Exception as err:
             logger.exception("Error during %s", self.query_task)
             self.query_task.status = BatchQueryTask.Status.FAILURE
@@ -103,14 +90,22 @@ class QueryExecutor:
 
         return self.query_task.status
 
-    def _fetch_patients(self) -> list[dict[str, Any]]:
-        return self.connector.find_patients(
+    def _fetch_patient(self) -> dict[str, Any]:
+        patients = self.connector.find_patients(
             {
                 "PatientID": self.query_task.patient_id,
                 "PatientName": self.query_task.patient_name,
                 "PatientBirthDate": self.query_task.patient_birth_date,
             }
         )
+
+        if len(patients) == 0:
+            raise ValueError("Patient not found.")
+
+        if len(patients) > 1:
+            raise ValueError("Multiple patients found.")
+
+        return patients[0]
 
     def _query_studies(self, patient_id: str) -> list[dict[str, Any]]:
         study_date = ""
