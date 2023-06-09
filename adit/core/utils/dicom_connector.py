@@ -266,7 +266,7 @@ class DicomConnector:
             if not isinstance(series_numbers, list):
                 series_numbers = [int(series_numbers)]
             else:
-                series_numbers = map(int, series_numbers)
+                series_numbers = list(map(int, series_numbers))
 
             query["SeriesNumber"] = ""
 
@@ -1069,8 +1069,7 @@ def _extract_pending_data(results: List[Dict[str, Any]]):
         raise ValueError(f"{status_category} ({status_code}) occurred during C-FIND.")
 
     filtered = filter(lambda x: x["status"]["category"] == STATUS_PENDING, results)
-    data = map(lambda x: x["data"], filtered)
-    return list(data)
+    return list(map(lambda x: x["data"], filtered))
 
 
 def _evaluate_get_move_results(results, query: dict[str, Any]):
