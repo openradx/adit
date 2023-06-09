@@ -71,18 +71,24 @@ def compose_down(ctx: Context, env: Environments = "dev"):
 
 
 @task
-def compose_restart(ctx: Context, env: Environments = "dev"):
+def compose_restart(ctx: Context, env: Environments = "dev", service: str | None = None):
     """Restart ADIT containers in specified environment"""
     cmd = f"{compose_cmd(env)} restart"
+    if service:
+        cmd += f" {service}"
     run_cmd(ctx, cmd)
 
 
 @task
-def compose_logs(ctx: Context, env: Environments = "dev", service: str | None = None):
+def compose_logs(
+    ctx: Context, env: Environments = "dev", service: str | None = None, follow: bool = False
+):
     """Show logs of ADIT containers in specified environment"""
-    cmd = f"{compose_cmd(env)} logs --follow"
+    cmd = f"{compose_cmd(env)} logs"
     if service:
         cmd += f" {service}"
+    if follow:
+        cmd += " --follow --tail 1000"
     run_cmd(ctx, cmd)
 
 

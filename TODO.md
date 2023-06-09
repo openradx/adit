@@ -2,6 +2,7 @@
 
 ## High Priority
 
+- Autoreload ServerCommand
 - Auto refresh job pages und success or failure
 - Check why receiver container hangs shortly during shutdown
 - Rewrite tests to use mocker fixture instead of patch
