@@ -2,13 +2,14 @@ import errno
 import os
 import signal
 import sys
+from abc import ABC, abstractmethod
 from datetime import datetime
 
 from django.core.management.base import BaseCommand
 from django.utils import autoreload as django_autoreload
 
 
-class ServerCommand(BaseCommand):
+class ServerCommand(BaseCommand, ABC):
     """See Django's runserver.py command.
 
     https://github.com/django/django/blob/master/django/core/management/commands/runserver.py
@@ -29,12 +30,15 @@ class ServerCommand(BaseCommand):
         self.run(**options)
 
     def run(self, **options):
-        try:
-            # Listens for the SIGTERM signal from stopping the Docker container. Only
-            # with this listener the finally block is executed as sys.exit(0) throws
-            # an exception.
-            signal.signal(signal.SIGTERM, lambda *args: sys.exit(0))
+        def handle_shutdown(*args):
+            self.on_shutdown()
+            raise KeyboardInterrupt()
 
+        # SIGINT is sent by CTRL-C and SIGTERM when stopping a Docker container.
+        signal.signal(signal.SIGINT, handle_shutdown)
+        signal.signal(signal.SIGTERM, handle_shutdown)
+
+        try:
             if options["autoreload"] or self.autoreload:
                 django_autoreload.run_with_reloader(self.inner_run, **options)
             else:
@@ -55,8 +59,6 @@ class ServerCommand(BaseCommand):
             os._exit(1)
         except KeyboardInterrupt:
             sys.exit(0)
-        finally:
-            self.on_shutdown()
 
     def inner_run(self, **options):
         # If an exception was silenced in ManagementUtility.execute in order
@@ -76,5 +78,6 @@ class ServerCommand(BaseCommand):
     def run_server(self, **options):
         raise NotImplementedError()
 
+    @abstractmethod
     def on_shutdown(self):
         pass

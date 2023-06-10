@@ -28,14 +28,14 @@ class Command(ServerCommand):
 
         self.stdout.write(f"Using receiver directory: {receiver_dir}")
 
-        store_scp = StoreScp(
+        self.store_scp = StoreScp(
             folder=receiver_dir,
             ae_title=settings.ADIT_AE_TITLE,
             host=settings.STORE_SCP_HOST,
             port=settings.STORE_SCP_PORT,
             debug=settings.ENABLE_DICOM_DEBUG_LOGGER,
         )
-        store_scp_thread = asyncio.to_thread(store_scp.start)
+        store_scp_thread = asyncio.to_thread(self.store_scp.start)
 
         file_monitor = FileMonitor(receiver_dir)
         file_transmit = FileTransmitServer(settings.FILE_TRANSMIT_HOST, settings.FILE_TRANSMIT_PORT)
@@ -67,6 +67,6 @@ class Command(ServerCommand):
         asyncio.run(self._run_server_async())
 
     def on_shutdown(self):
-        # CONTROL-C (with sys.exit(0), see server_command.py) cancels the
-        # asyncio tasks by itself. So nothing to do here.
-        pass
+        # We have to stop the StoreScp explicitly. The coroutine tasks in contrast will get stopped
+        # automatically.
+        self.store_scp.stop()
