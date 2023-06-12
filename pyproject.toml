@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "adit"
-version = "0.23.3"
+version = "0.24.0"
 description = "ADIT (Automated DICOM Transfer) is a swiss army knife to exchange DICOM data between various systems by using a convenient web frontend."
 authors = ["medihack <kai.schlamp@gmail.com>"]
 license = "GPLv3"
