@@ -34,8 +34,8 @@ def poll():
     def _poll(
         locator: Locator,
         func: Callable[[Locator], Response | None] = lambda loc: loc.page.reload(),
-        interval: int = 1_000,
-        timeout: int = 10_000,
+        interval: int = 1_500,
+        timeout: int = 15_000,
     ):
         start_time = time.time()
         while True:
