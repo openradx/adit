@@ -2,11 +2,8 @@
 
 ## High Priority
 
-- Autoreload ServerCommand
 - Auto refresh job pages und success or failure
-- Check why receiver container hangs shortly during shutdown
 - Rewrite tests to use mocker fixture instead of patch
-- Rewrite dicom_connector to use asyncio (wrap all pynetdicom calls in asyncio.to_thread)
 - rename ADIT_AE_TITLE to RECEIVER_AE_TITLE
 - Query with StudyDateStart, StudyDateEnd, StudyDate
 - Common search query Websocket component
@@ -64,6 +61,10 @@
   -- Unfortunately, we can't use live_server fixture inside session fixtures
   -- example <https://github.com/automationneemo/PlaywrightDemoYt>
 - Get rid of dicom_connector.download_study/move_study. Do everything at the series level. That way filtering series (e.g. exlcude modalities) is much easier.
+- Evaluate if services should be better restarted with pywatchman instead of watchdog and watchmedo
+  -- pywatchman is used by Django autoreload
+  -- See <https://github.com/django/django/blob/main/django/utils/autoreload.py>
+  -- Unfortunately, I could not get it to work with Django autoreload itself, but we can use something similiar by using watchman directly and integrate it in ServerCommand
 - BatchQuery with custom DICOM keywords
 - Watchdog server
 - pull celery_task stuff out of transfer_utils
@@ -76,6 +77,8 @@
 - Use LRU cache for dicom explorer / collector (don't we already do this?!)
 - log debug -> info in connector also in production
 - Link owner in templates to user profile
+- Rewrite dicom_connector to use asyncio (wrap all pynetdicom calls in asyncio.to_thread)
+  -- I don't think that this will gain any performance improvements, so maybe not worth it
 - Look out for a django-revproxy fix (see <https://github.com/jazzband/django-revproxy/issues/144>)
   -- Flower and Rabbit Management Console are running behind a Django internal reverse proxy (django-revproxy) so that only admins can access them
   -- Unfortunately the last released django-revproxy is broken with latest Django
