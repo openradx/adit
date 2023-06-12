@@ -23,26 +23,30 @@ services:
     command: >
       bash -c "
         wait-for-it -s postgres:5432 -t 60 && 
-        python ./manage.py migrate &&
-        python ./manage.py collectstatic --no-input &&
-        python ./manage.py create_admin &&
-        python ./manage.py generate_cert &&
+        ./manage.py migrate &&
+        ./manage.py collectstatic --no-input &&
+        ./manage.py create_admin &&
+        ./manage.py generate_cert &&
         daphne -b 0.0.0.0 -p 80 -e ssl:443:privateKey=/var/www/adit/ssl/key.pem:certKey=/var/www/adit/ssl/cert.pem adit.asgi:application
       "
 
   worker_default:
     <<: *default-app
+    command: ./manage.py celery_worker -Q default_queue
 
   worker_dicom_task:
     <<: *default-app
+    command: ./manage.py celery_worker -Q dicom_task_queue
 
   celery_beat:
     <<: *default-app
+    command: ./manage.py celery_beat
 
   receiver:
     <<: *default-app
     ports:
       - "11112:11112"
+    command: ./manage.py receiver
 
   flower:
     <<: *default-app

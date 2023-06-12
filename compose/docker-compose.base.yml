@@ -40,19 +40,15 @@ services:
 
   worker_default:
     <<: *default-app
-    command: python manage.py celery_worker -Q default_queue
 
   worker_dicom_task:
     <<: *default-app
-    command: python manage.py celery_worker -Q dicom_task_queue
 
   celery_beat:
     <<: *default-app
-    command: python manage.py celery_beat
 
   receiver:
     <<: *default-app
-    command: python manage.py receiver
 
   flower:
     <<: *default-app
