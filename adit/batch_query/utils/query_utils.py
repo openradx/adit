@@ -91,13 +91,31 @@ class QueryExecutor:
         return self.query_task.status
 
     def _fetch_patient(self) -> dict[str, Any]:
-        patients = self.connector.find_patients(
-            {
-                "PatientID": self.query_task.patient_id,
-                "PatientName": self.query_task.patient_name,
-                "PatientBirthDate": self.query_task.patient_birth_date,
-            }
-        )
+        patient_id = self.query_task.patient_id
+        patient_name = self.query_task.patient_name
+        birth_date = self.query_task.patient_birth_date
+
+        # PatientID has priority over PatientName and PatientBirthDate, but we check later
+        # (see below) that the returned patient has the same PatientName and PatientBirthDate
+        # if those were provided beside the PatientID
+        if patient_id:
+            patients = self.connector.find_patients(
+                {
+                    "PatientID": patient_id,
+                    "PatientName": "",
+                    "PatientBirthDate": "",
+                }
+            )
+        else:
+            assert patient_name
+            assert birth_date
+            patients = self.connector.find_patients(
+                {
+                    "PatientID": "",
+                    "PatientName": patient_name,
+                    "PatientBirthDate": birth_date,
+                }
+            )
 
         if len(patients) == 0:
             raise ValueError("Patient not found.")
@@ -105,7 +123,17 @@ class QueryExecutor:
         if len(patients) > 1:
             raise ValueError("Multiple patients found.")
 
-        return patients[0]
+        patient = patients[0]
+
+        # We can test for equality cause wildcards are not allowed during
+        # batch query (only in selective transfer)
+        if patient_id and patient_name and patient["PatientName"] != patient_name:
+            raise ValueError("PatientName doesn't match found patient by PatientID.")
+
+        if patient_id and birth_date and patient["PatientBirthDate"] != birth_date:
+            raise ValueError("PatientBirthDate doesn't match found patient by PatientID.")
+
+        return patient
 
     def _query_studies(self, patient_id: str) -> list[dict[str, Any]]:
         study_date = ""
