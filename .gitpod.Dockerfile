@@ -20,6 +20,8 @@ RUN python3 -m pip install --user pipx && \
 ENV NODE_PATH $NVM_DIR/v$NODE_VERSION/lib/node_modules
 ENV PATH $NVM_DIR/versions/node/v$NODE_VERSION/bin:$PATH
 
-# Poetry is already installed in the base Gitpod Python image
-RUN poetry completions bash >> ~/.bash_completion && \
+# Poetry is already installed in the base Gitpod Python image,
+# but we need to upgrade it
+RUN poetry self update && \
+  poetry completions bash >> ~/.bash_completion && \
   poetry config virtualenvs.in-project true
