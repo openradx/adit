@@ -25,8 +25,6 @@
 - Choice to transfer all modalities of a studies or just the modalities which were searched for
 - Make logging analyze Docker image with: <http://crunchtools.com/software/petit/>, less, vim, <https://crypt.gen.nz/logsurfer/>, ripgrep
 - Evaluate (0008, 0056) Instance Availability CS: 'OFFLINE' ( (ONLINE, NEARLINE, OFFLINE, UNAVAILABLE)), see <https://www.gehealthcare.com/-/jssmedia/1b62d771fb604ff7a4c8012498aea68b.pdf?la=en-us>
-- Use ruff for linting when VS Code extension is ready
-  -- <https://github.com/charliermarsh/ruff>
 
 ## Features
 
@@ -49,7 +47,7 @@
 
 ## Maybe
 
-- Allow to search multiple source servers with one query
+- Allow to search multiple source servers with one query (maybe only in dicom explorer)
 - Bring everything behind Nginx as reverse proxy
   -- Orthanc, Flower, Rabbit Management Console should then be directly behind Nginx (without Django-revproxy)
   -- Use authentication module of nginx
