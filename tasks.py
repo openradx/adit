@@ -232,6 +232,14 @@ def show_outdated(ctx: Context):
 
 
 @task
+def upgrade(ctx: Context):
+    """Upgrade Python and JS packages"""
+    run_cmd(ctx, "poetry update")
+    run_cmd(ctx, "npm update")
+    copy_statics(ctx)
+
+
+@task
 def try_github_actions(ctx: Context):
     """Try Github Actions locally using Act"""
     act_path = project_dir / "bin" / "act"
