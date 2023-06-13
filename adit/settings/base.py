@@ -15,6 +15,7 @@ from pathlib import Path
 import environ
 import toml
 from celery.schedules import crontab
+from pydicom import config as pydicom_config
 
 env = environ.Env()
 
@@ -352,6 +353,9 @@ ORTHANC2_DICOM_PORT = env.int("ORTHANC2_DICOM_PORT", default=7502)  # type: igno
 
 # Used by django-filter
 FILTERS_EMPTY_CHOICE_LABEL = "Show All"
+
+# Global pydicom settings
+pydicom_config.convert_wrong_length_to_UN = True
 
 ###
 # ADIT specific settings
