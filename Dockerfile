@@ -1,4 +1,4 @@
-FROM python:3.10 as python-base
+FROM python:3.10-bullseye as python-base
 
 # python
 # ENV variables are also available in the later build stages
