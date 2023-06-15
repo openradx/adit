@@ -184,7 +184,10 @@ def test(
             "Integration tests need ADIT dev containers running.\nRun 'invoke compose-up' first."
         )
 
-    cmd = f"{build_compose_cmd('dev')} exec --env DJANGO_SETTINGS_MODULE=adit.settings.test web pytest "
+    cmd = (
+        f"{build_compose_cmd('dev')} exec "
+        "--env DJANGO_SETTINGS_MODULE=adit.settings.test web pytest "
+    )
     if cov:
         cmd += "--cov=adit "
     if keyword:
