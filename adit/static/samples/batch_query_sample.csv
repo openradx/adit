@@ -1,5 +1,0 @@
-PatientID;PatientName;PatientBirthDate;AccessionNumber;From;Until;Modality;SeriesDescription;SeriesNumber
-;Apple, Annie;27.04.1945;;03.06.2019;05.06.2019;CT;;1
-1004;;;62115911;;;;;
-;Papaya, Pamela;29.08.1976;;01.01.2018;19.08.2018;MR;T2|Haste;
-1008;;;;;;;;
