@@ -12,43 +12,71 @@ from invoke.tasks import task
 
 Environments = Literal["dev", "prod"]
 
-proj_adit_dev = "adit_dev"
-proj_adit_prod = "adit_prod"
+stack_name_dev = "adit_dev"
+stack_name_prod = "adit_prod"
 
 project_dir = Path(__file__).resolve().parent
 compose_dir = project_dir / "compose"
 
+compose_file_base = compose_dir / "docker-compose.base.yml"
+compose_file_dev = compose_dir / "docker-compose.dev.yml"
+compose_file_prod = compose_dir / "docker-compose.prod.yml"
 
-def compose_cmd(env: Environments = "dev"):
-    base_compose_cmd = f"docker compose -f '{compose_dir}/docker-compose.base.yml'"
+###
+# Helper functions
+###
+
+
+def get_stack_name(env: Environments):
     if env == "dev":
-        return f"{base_compose_cmd} -f '{compose_dir}/docker-compose.dev.yml' -p {proj_adit_dev}"
+        return stack_name_dev
     elif env == "prod":
-        return f"{base_compose_cmd} -f '{compose_dir}/docker-compose.prod.yml' -p {proj_adit_prod}"
+        return stack_name_prod
     else:
         raise ValueError(f"Unknown environment: {env}")
 
 
-def check_dev_up(ctx: Context):
+def build_compose_cmd(env: Environments):
+    base_compose_cmd = f"docker compose -f '{compose_file_base}'"
+    stack_name = get_stack_name(env)
+    if env == "dev":
+        return f"{base_compose_cmd} -f '{compose_file_dev}' -p {stack_name}"
+    elif env == "prod":
+        return f"{base_compose_cmd} -f '{compose_file_prod}' -p {stack_name}"
+    else:
+        raise ValueError(f"Unknown environment: {env}")
+
+
+def check_compose_up(ctx: Context, env: Environments):
+    stack_name = get_stack_name(env)
     result = ctx.run("docker compose ls", hide=True, warn=True)
     assert result and result.ok
     for line in result.stdout.splitlines():
-        if line.startswith(proj_adit_dev) and line.find("running") != -1:
+        if line.startswith(stack_name) and line.find("running") != -1:
             return True
     return False
 
 
-def run_cmd(ctx: Context, cmd: str) -> Result:
-    print(f"Running: {cmd}")
-    result = ctx.run(cmd, pty=True)
+def run_cmd(ctx: Context, cmd: str, silent=False) -> Result:
+    if not silent:
+        print(f"Running: {cmd}")
+
+    hide = True if silent else None
+
+    result = ctx.run(cmd, pty=True, hide=hide)
     assert result and result.ok
     return result
 
 
+###
+# Tasks
+###
+
+
 @task
 def compose_build(ctx: Context, env: Environments = "dev"):
-    """Build ADIT containers in specified environment"""
-    cmd = f"{compose_cmd(env)} build"
+    """Build ADIT image for specified environment"""
+    cmd = f"{build_compose_cmd(env)} build"
     run_cmd(ctx, cmd)
 
 
@@ -56,14 +84,14 @@ def compose_build(ctx: Context, env: Environments = "dev"):
 def compose_up(ctx: Context, env: Environments = "dev", no_build: bool = False):
     """Start ADIT containers in specified environment"""
     build_opt = "--no-build" if no_build else "--build"
-    cmd = f"{compose_cmd(env)} up {build_opt} --detach"
+    cmd = f"{build_compose_cmd(env)} up {build_opt} --detach"
     run_cmd(ctx, cmd)
 
 
 @task
 def compose_down(ctx: Context, env: Environments = "dev"):
     """Stop ADIT containers in specified environment"""
-    cmd = f"{compose_cmd(env)} down --remove-orphans"
+    cmd = f"{build_compose_cmd(env)} down --remove-orphans"
     if env == "dev":
         # In dev environment, remove volumes as well
         cmd += " --volumes"
@@ -73,7 +101,7 @@ def compose_down(ctx: Context, env: Environments = "dev"):
 @task
 def compose_restart(ctx: Context, env: Environments = "dev", service: str | None = None):
     """Restart ADIT containers in specified environment"""
-    cmd = f"{compose_cmd(env)} restart"
+    cmd = f"{build_compose_cmd(env)} restart"
     if service:
         cmd += f" {service}"
     run_cmd(ctx, cmd)
@@ -84,7 +112,7 @@ def compose_logs(
     ctx: Context, env: Environments = "dev", service: str | None = None, follow: bool = False
 ):
     """Show logs of ADIT containers in specified environment"""
-    cmd = f"{compose_cmd(env)} logs"
+    cmd = f"{build_compose_cmd(env)} logs"
     if service:
         cmd += f" {service}"
     if follow:
@@ -93,8 +121,32 @@ def compose_logs(
 
 
 @task
+def swarm_deploy(ctx: Context, env: Environments = "prod"):
+    """Deploy the stack to Docker Swarm (prod by default!)."""
+    stack_name = get_stack_name(env)
+    suffix = f"-c {compose_file_base}"
+    if env == "dev":
+        suffix += f" -c {compose_file_dev} {stack_name}"
+    elif env == "prod":
+        suffix += f" -c {compose_file_prod} {stack_name}"
+    else:
+        raise ValueError(f"Unknown environment: {env}")
+
+    cmd = f"docker stack deploy {suffix}"
+    run_cmd(ctx, cmd)
+
+
+@task
+def swarm_rm(ctx: Context, env: Environments = "prod"):
+    """Remove the stack from Docker Swarm (prod by default!)."""
+    stack_name = get_stack_name(env)
+    cmd = f"docker stack rm {stack_name}"
+    run_cmd(ctx, cmd)
+
+
+@task
 def format(ctx: Context):
-    """Run formatting (black, ruff, djlint)"""
+    """Format the source code (black, ruff, djlint)"""
     # Format Python code
     black_cmd = "poetry run black ./adit"
     run_cmd(ctx, black_cmd)
@@ -108,7 +160,7 @@ def format(ctx: Context):
 
 @task
 def lint(ctx: Context):
-    """Run linting (ruff, djlint, pyright)"""
+    """Lint the source code (ruff, djlint, pyright)"""
     cmd_ruff = "poetry run ruff ."
     run_cmd(ctx, cmd_ruff)
     cmd_djlint = "poetry run djlint . --lint"
@@ -126,13 +178,13 @@ def test(
     mark: str | None = None,
     stdout: bool = False,
 ):
-    """Run tests"""
-    if not check_dev_up(ctx):
+    """Run the test suite"""
+    if not check_compose_up(ctx, "dev"):
         sys.exit(
             "Integration tests need ADIT dev containers running.\nRun 'invoke compose-up' first."
         )
 
-    cmd = f"{compose_cmd()} exec --env DJANGO_SETTINGS_MODULE=adit.settings.test web pytest "
+    cmd = f"{build_compose_cmd('dev')} exec --env DJANGO_SETTINGS_MODULE=adit.settings.test web pytest "
     if cov:
         cmd += "--cov=adit "
     if keyword:
@@ -148,7 +200,7 @@ def test(
 
 @task
 def ci(ctx: Context):
-    """Run continuous integration"""
+    """Run the continuous integration (linting and tests)"""
     lint(ctx)
     test(ctx, cov=True)
 
@@ -156,18 +208,21 @@ def ci(ctx: Context):
 @task
 def reset_adit_dev(ctx: Context):
     """Reset ADIT dev container environment"""
-    reset_orthancs_cmd = f"{compose_cmd()} exec web python manage.py reset_orthancs"
+    # Reset Orthancs
+    reset_orthancs_cmd = f"{build_compose_cmd('dev')} exec web python manage.py reset_orthancs"
     run_cmd(ctx, reset_orthancs_cmd)
-    flush_cmd = f"{compose_cmd()} exec web python manage.py flush --noinput"
+    # Wipe the database
+    flush_cmd = f"{build_compose_cmd('dev')} exec web python manage.py flush --noinput"
     run_cmd(ctx, flush_cmd)
-    populate_dev_db_cmd = f"{compose_cmd()} exec web python manage.py populate_dev_db"
+    # Populate the database with example data
+    populate_dev_db_cmd = f"{build_compose_cmd('dev')} exec web python manage.py populate_dev_db"
     run_cmd(ctx, populate_dev_db_cmd)
 
 
 @task
 def adit_web_shell(ctx: Context, env: Environments = "dev"):
     """Open Python shell in ADIT web container of specified environment"""
-    cmd = f"{compose_cmd(env)} exec web python manage.py shell_plus"
+    cmd = f"{build_compose_cmd(env)} exec web python manage.py shell_plus"
     run_cmd(ctx, cmd)
 
 
@@ -202,7 +257,7 @@ def init_workspace(ctx: Context, type: Literal["codespaces", "gitpod"]):
     if type == "codespaces":
         base_url = f"https://{environ['CODESPACE_NAME']}-8000.preview.app.github.dev"
     elif type == "gitpod":
-        result = ctx.run("gp url 8000", hide=True)
+        result = run_cmd(ctx, "gp url 8000", silent=True)
         assert result and result.ok
         base_url = result.stdout.strip()
     else:
@@ -245,7 +300,10 @@ def try_github_actions(ctx: Context):
     act_path = project_dir / "bin" / "act"
     if not act_path.exists():
         print("Installing act...")
-        ctx.run("curl https://raw.githubusercontent.com/nektos/act/master/install.sh | sudo bash")
+        run_cmd(
+            ctx,
+            "curl https://raw.githubusercontent.com/nektos/act/master/install.sh | sudo bash",
+            silent=True,
+        )
 
-    print("Running act...")
-    ctx.run(f"{act_path} -P ubuntu-latest=catthehacker/ubuntu:act-latest")
+    run_cmd(ctx, f"{act_path} -P ubuntu-latest=catthehacker/ubuntu:act-latest")

@@ -82,17 +82,33 @@ E: Release file for http://deb.debian.org/debian/dists/buster-updates/InRelease 
 - python manage.py shell_plus --print-sql # Show all SQL statements (django_extensions required)
 - python .\manage.py startapp new_app .\adit\new_app # Folder must already exist
 
-### Docker comands
+### Docker commands
 
-- docker compose -f "docker-compose.dev.yml" -p adit_dev exec web pytest # Run Pytest on web container
-- docker compose -f "docker-compose.dev.yml" -p adit_dev exec web pytest --cov=./adit # Run Pytest with coverage report
 - docker build . --target development -t adit_dev # Build a volume from our Dockerfile
 - docker run -v C:\Users\kaisc\Projects\adit:/src -it adit_dev /bin/bash # Run the built container with src folder mounted from host
 - docker ps -a --filter volume=vol_name # Find container that mounts volume
 - docker run -v=adit_web_data:/var/www/adit -it busybox /bin/sh # Start interactive shell with named volume mounted
 - docker run --rm -i -v=adit_web_data:/foo busybox find /foo # List files in named volume
+- docker volume ls -f "name=adit_dev-\*" # Show all volumes that begin with "adit_dev-"
+- docker volume rm $(docker volume ls -f "name=foobar-\*" -q) # Delete all volumes that begin with "foobar-", cave delete the \
+
+### Docker compose comands
+
+- docker compose -f "docker-compose.dev.yml" -p adit_dev exec web pytest # Run Pytest on web container
+- docker compose -f "docker-compose.dev.yml" -p adit_dev exec web pytest --cov=./adit # Run Pytest with coverage report
 - docker compose -f "docker-compose.dev.yml" -p adit_dev up -d --build
 - docker compose -f "docker-compose.prod.yml" -p adit_prod up -d --build
+
+### Docker swarm commands
+
+- docker swarm init
+- docker swarm join --token SWMTKN-1-3x8erolqchsrbia8u0kkrgbd8ny9e9kdv1nl83q9xxipee5buw-9f5ax65llltbx3eiq3nsbaouw 161.42.235.115:2377
+- docker node ls
+- docker stack deploy -c compose/docker-compose.base.yml -c compose/docker-compose.dev.yml foobar
+- docker stack ls
+- docker stack ps foobar
+- docker stack services foobar
+- docker stack rm foobar
 
 ### Celery commands
 
