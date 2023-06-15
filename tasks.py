@@ -121,7 +121,7 @@ def compose_logs(
 
 
 @task
-def swarm_deploy(ctx: Context, env: Environments = "prod"):
+def stack_deploy(ctx: Context, env: Environments = "prod"):
     """Deploy the stack to Docker Swarm (prod by default!)."""
     stack_name = get_stack_name(env)
     suffix = f"-c {compose_file_base}"
@@ -137,7 +137,7 @@ def swarm_deploy(ctx: Context, env: Environments = "prod"):
 
 
 @task
-def swarm_rm(ctx: Context, env: Environments = "prod"):
+def stack_rm(ctx: Context, env: Environments = "prod"):
     """Remove the stack from Docker Swarm (prod by default!)."""
     stack_name = get_stack_name(env)
     cmd = f"docker stack rm {stack_name}"
