@@ -29,11 +29,6 @@ class Migration(migrations.Migration):
         ),
         migrations.AlterField(
             model_name="batchqueryresult",
-            name="series_number",
-            field=models.PositiveSmallIntegerField(blank=True, null=True),
-        ),
-        migrations.AlterField(
-            model_name="batchqueryresult",
             name="study_description",
             field=models.CharField(
                 blank=True,
