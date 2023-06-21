@@ -66,6 +66,7 @@ INSTALLED_APPS = [
     "adit.selective_transfer.apps.SelectiveTransferConfig",
     "adit.batch_query.apps.BatchQueryConfig",
     "adit.batch_transfer.apps.BatchTransferConfig",
+    "adit.continuous_transfer.apps.ContinuousTransferConfig",
     "adit.dicom_explorer.apps.DicomExplorerConfig",
     "channels",
     "django_celery_beat",
@@ -308,6 +309,9 @@ CELERY_TASK_ROUTES = {
     "adit.batch_transfer.tasks.ProcessBatchTransferTask": {
         "queue": "dicom_task_queue",
     },
+    "adit.continuous_transfer.tasks.ProcessContinuousTransferTask": {
+        "queue": "dicom_task_queue",
+    },
 }
 CELERY_BEAT_SCHEDULER = "django_celery_beat.schedulers:DatabaseScheduler"
 CELERY_BEAT_SCHEDULE = {
@@ -390,20 +394,23 @@ TEMP_DICOM_DIR = env.str("TEMP_DICOM_DIR", default=str(BASE_DIR / ".dicoms"))  #
 SELECTIVE_TRANSFER_UNVERIFIED = True
 BATCH_QUERY_UNVERIFIED = True
 BATCH_TRANSFER_UNVERIFIED = True
+CONTINUOUS_TRANSFER_UNVERIFIED = True
 
 # A timezone that is used for users of the web interface.
 USER_TIME_ZONE = env.str("USER_TIME_ZONE", default="Europe/Berlin")  # type: ignore
 
 # Priorities of dicom tasks
 # Selective transfers have the highest priority as those are
-# normally fewer than the other tasks. Batch transfers have the lowest
+# normally fewer than the other tasks. Continuous transfers have the lowest
 # priority as there are mostly numerous and long running.
 SELECTIVE_TRANSFER_DEFAULT_PRIORITY = 4
 SELECTIVE_TRANSFER_URGENT_PRIORITY = 8
-BATCH_TRANSFER_DEFAULT_PRIORITY = 2
-BATCH_TRANSFER_URGENT_PRIORITY = 6
 BATCH_QUERY_DEFAULT_PRIORITY = 3
 BATCH_QUERY_URGENT_PRIORITY = 7
+BATCH_TRANSFER_DEFAULT_PRIORITY = 2
+BATCH_TRANSFER_URGENT_PRIORITY = 6
+CONTINUOUS_TRANSFER_DEFAULT_PRIORITY = 1
+CONTINUOUS_TRANSFER_URGENT_PRIORITY = 5
 
 # The maximum number of resulting studies for selective_transfer query
 SELECTIVE_TRANSFER_RESULT_LIMIT = 101
@@ -436,3 +443,7 @@ EXCLUDED_MODALITIES = ["PR", "SR"]
 
 # If an ethics committee approval is required for batch transfer
 ETHICS_COMMITTEE_APPROVAL_REQUIRED = True
+
+# The maximum number of studies that can be transferred during one cycle of
+# a continuous transfer
+MAX_CONTINUOUS_TRANSFER_SIZE = 10

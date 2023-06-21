@@ -29,10 +29,12 @@
 
 ## DICOM
 
-### General
+### Interesting DICOM sections
 
 - Query/Retrieve optional and required tags
-  -- <https://dicom.nema.org/dicom/2013/output/chtml/part04/sect_C.6.html>
+  -- <https://dicom.nema.org/medical/dicom/current/output/chtml/part04/sect_C.6.html>
+- Wildcard matching
+  -- <https://dicom.nema.org/medical/dicom/current/output/chtml/part04/sect_C.2.2.2.4.html>
 
 ### pydicom and datetime
 
