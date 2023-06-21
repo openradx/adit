@@ -29,6 +29,11 @@
 
 ## DICOM
 
+### General
+
+- Query/Retrieve optional and required tags
+  -- <https://dicom.nema.org/dicom/2013/output/chtml/part04/sect_C.6.html>
+
 ### pydicom and datetime
 
 - To automatically convert dates to the datetime.date class this config must be set explicitly (default is False): config.datetime_conversion = True

@@ -68,6 +68,7 @@ INSTALLED_APPS = [
     "adit.batch_transfer.apps.BatchTransferConfig",
     "adit.dicom_explorer.apps.DicomExplorerConfig",
     "channels",
+    "django_celery_beat",
 ]
 
 MIDDLEWARE = [
@@ -308,6 +309,7 @@ CELERY_TASK_ROUTES = {
         "queue": "dicom_task_queue",
     },
 }
+CELERY_BEAT_SCHEDULER = "django_celery_beat.schedulers:DatabaseScheduler"
 CELERY_BEAT_SCHEDULE = {
     "check-disk-space": {
         "task": "adit.core.tasks.check_disk_space",

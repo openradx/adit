@@ -18,6 +18,7 @@
 - Fix the ineffective stuff in transfer_utils, see TODO there
 - Write test_parsers.py
 - DICOM data that does not need to be modified can be directly transferred between the source and destination server (C-MOVE). The only exception is when source and destination server are the same, then the data will still be downloaded and uploaded again. This may be helpful when the PACS server treats the data somehow differently when sent by ADIT.
+- Introduce QueryID, TransferID
 
 ## Fix
 

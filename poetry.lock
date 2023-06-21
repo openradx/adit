@@ -711,6 +711,19 @@ django = ">=3.2"
 django-crispy-forms = ">=1.14.0"
 
 [[package]]
+name = "cron-descriptor"
+version = "1.4.0"
+description = "A Python library that converts cron expressions into human readable strings."
+optional = false
+python-versions = "*"
+files = [
+    {file = "cron_descriptor-1.4.0.tar.gz", hash = "sha256:b6ff4e3a988d7ca04a4ab150248e9f166fb7a5c828a85090e75bcc25aa93b4dd"},
+]
+
+[package.extras]
+dev = ["polib"]
+
+[[package]]
 name = "cryptography"
 version = "41.0.2"
 description = "cryptography is a package which provides cryptographic recipes and primitives to Python developers."
@@ -860,6 +873,25 @@ tzdata = {version = "*", markers = "sys_platform == \"win32\""}
 [package.extras]
 argon2 = ["argon2-cffi (>=19.1.0)"]
 bcrypt = ["bcrypt"]
+
+[[package]]
+name = "django-celery-beat"
+version = "2.5.0"
+description = "Database-backed Periodic Tasks."
+optional = false
+python-versions = "*"
+files = [
+    {file = "django-celery-beat-2.5.0.tar.gz", hash = "sha256:cd0a47f5958402f51ac0c715bc942ae33d7b50b4e48cba91bc3f2712be505df1"},
+    {file = "django_celery_beat-2.5.0-py3-none-any.whl", hash = "sha256:ae460faa5ea142fba0875409095d22f6bd7bcc7377889b85e8cab5c0dfb781fe"},
+]
+
+[package.dependencies]
+celery = ">=5.2.3,<6.0"
+cron-descriptor = ">=1.2.32"
+Django = ">=2.2,<5.0"
+django-timezone-field = ">=5.0"
+python-crontab = ">=2.3.4"
+tzdata = "*"
 
 [[package]]
 name = "django-crispy-forms"
@@ -1035,6 +1067,21 @@ files = [
 
 [package.dependencies]
 typing_extensions = ">=3.6,<5"
+
+[[package]]
+name = "django-timezone-field"
+version = "5.1"
+description = "A Django app providing DB, form, and REST framework fields for zoneinfo and pytz timezone objects."
+optional = false
+python-versions = ">=3.7,<4.0"
+files = [
+    {file = "django_timezone_field-5.1-py3-none-any.whl", hash = "sha256:16ca9955a4e16064e32168b1a0d1cdb2839679c6cb56856c1f49f506e2ca4281"},
+    {file = "django_timezone_field-5.1.tar.gz", hash = "sha256:73fc49519273cd5da1c7f16abc04a4bcad87b00cc02968d0d384c0fecf9a8a86"},
+]
+
+[package.dependencies]
+Django = ">=2.2,<3.0.dev0 || >=3.2.dev0,<5.0"
+pytz = "*"
 
 [[package]]
 name = "django-types"
@@ -1907,13 +1954,13 @@ files = [
 
 [[package]]
 name = "platformdirs"
-version = "3.8.1"
+version = "3.9.0"
 description = "A small Python package for determining appropriate platform-specific dirs, e.g. a \"user data dir\"."
 optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "platformdirs-3.8.1-py3-none-any.whl", hash = "sha256:cec7b889196b9144d088e4c57d9ceef7374f6c39694ad1577a0aab50d27ea28c"},
-    {file = "platformdirs-3.8.1.tar.gz", hash = "sha256:f87ca4fcff7d2b0f81c6a748a77973d7af0f4d526f98f308477c3c436c74d528"},
+    {file = "platformdirs-3.9.0-py3-none-any.whl", hash = "sha256:16a642e216f72f16a0bf0026468135d8ffd34a3e17ad0875b030f16f3cba5cbb"},
+    {file = "platformdirs-3.9.0.tar.gz", hash = "sha256:363fe3800e9c0227721c56eea50ae30c52c57ca7865def61ea9ebad133fe4445"},
 ]
 
 [package.extras]
@@ -2394,6 +2441,24 @@ colorama = ">=0.3.3"
 docopt = ">=0.4.0"
 pytest = ">=2.6.4"
 watchdog = ">=0.6.0"
+
+[[package]]
+name = "python-crontab"
+version = "3.0.0"
+description = "Python Crontab API"
+optional = false
+python-versions = "*"
+files = [
+    {file = "python-crontab-3.0.0.tar.gz", hash = "sha256:79fb7465039ddfd4fb93d072d6ee0d45c1ac8bf1597f0686ea14fd4361dba379"},
+    {file = "python_crontab-3.0.0-py3-none-any.whl", hash = "sha256:6d5ba3c190ec76e4d252989a1644fcb233dbf53fbc8fceeb9febe1657b9fb1d4"},
+]
+
+[package.dependencies]
+python-dateutil = "*"
+
+[package.extras]
+cron-description = ["cron-descriptor"]
+cron-schedule = ["croniter"]
 
 [[package]]
 name = "python-dateutil"
@@ -3323,4 +3388,4 @@ testing = ["coverage (>=5.0.3)", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "a9a6178f2a81950cb759ae2a7afc9cd067396a47d327a42071028ac0a555a506"
+content-hash = "33b05745e0c8b8a206c08858a2a76256eeea7d64ad34b30e9d06e1d330bec313"
