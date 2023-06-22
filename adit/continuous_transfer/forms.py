@@ -1,17 +1,16 @@
 from crispy_forms.helper import FormHelper
-from crispy_forms.layout import Submit
+from crispy_forms.layout import Field, Fieldset, Layout, Submit
 from django import forms
 
 from adit.core.forms import DicomNodeChoiceField
 from adit.core.models import DicomNode
 
-from .models import ContinuousTransferJob, ContinuousTransferTask
+from .models import ContinuousTransferJob
 
 
 class ContinuousTransferJobForm(forms.ModelForm):
     source = DicomNodeChoiceField(True, DicomNode.NodeType.SERVER)
     destination = DicomNodeChoiceField(False)
-    tasks: list[ContinuousTransferTask]
 
     class Meta:
         model = ContinuousTransferJob
@@ -37,6 +36,8 @@ class ContinuousTransferJobForm(forms.ModelForm):
             "urgent": "Start transfer urgently",
             "trial_protocol_id": "Trial ID",
             "trial_protocol_name": "Trial name",
+            "study_date_end": "If not provided then the query will be open-ended",
+            "patient_id": "Patient ID",
         }
         help_texts = {
             "urgent": ("Start transfer directly (without scheduling) and prioritize it."),
@@ -48,15 +49,18 @@ class ContinuousTransferJobForm(forms.ModelForm):
                 "Fill only when to modify the ClinicalTrialProtocolName tag "
                 "of all transfered DICOM files. Leave blank otherwise."
             ),
-            "modalities": "Multiple values separated by comma.",
-            "series_numbers": "Multiple values separated by comma.",
+            "modalities": "Multiple values can be separated by commas",
+            "series_numbers": "Multiple values can be separated by commas",
+        }
+        widgets = {
+            "study_date_start": forms.DateInput(attrs={"type": "date"}),
+            "study_date_end": forms.DateInput(attrs={"type": "date"}),
+            "patient_birth_date": forms.DateInput(attrs={"type": "date"}),
+            "modalities": forms.TextInput(),
+            "series_numbers": forms.TextInput(),
         }
 
     def __init__(self, *args, **kwargs):
-        self.batch_file_errors = None
-        self.tasks = []
-        self.save_tasks = None
-
         self.user = kwargs.pop("user")
 
         super().__init__(*args, **kwargs)
@@ -78,7 +82,29 @@ class ContinuousTransferJobForm(forms.ModelForm):
         self.fields["trial_protocol_name"].widget.attrs["placeholder"] = "Optional"
 
         self.helper = FormHelper(self)
-        self.helper.add_input(Submit("save", "Create Job"))
+
+        self.helper.layout = Layout(
+            Field("source"),
+            Field("destination"),
+            Field("urgent"),
+            Field("project_name"),
+            Field("project_description"),
+            Field("trial_protocol_id"),
+            Field("trial_protocol_name"),
+            Field("study_date_start"),
+            Field("study_date_end"),
+            Fieldset(
+                "Query",
+                "patient_id",
+                "patient_name",
+                "patient_birth_date",
+                "modalities",
+                "study_description",
+                "series_description",
+                "series_numbers",
+            ),
+            Submit("save", "Create Job"),
+        )
 
     def clean_modalities(self):
         modalities = self.cleaned_data["modalities"]
