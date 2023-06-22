@@ -67,6 +67,10 @@ INSTALLED_APPS = [
     "adit.batch_query.apps.BatchQueryConfig",
     "adit.batch_transfer.apps.BatchTransferConfig",
     "adit.dicom_explorer.apps.DicomExplorerConfig",
+    "adit.token_authentication.apps.TokenAuthenticationConfig",
+    "adit.dicom_web.apps.DicomWebConfig",
+    "adit.dicom_web.qidors.apps.QidorsConfig",
+    "adit.dicom_web.wadors.apps.WadorsConfig",
     "channels",
 ]
 
@@ -219,8 +223,13 @@ TIME_ZONE = "UTC"
 REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.IsAuthenticated",
-    ]
+    ],
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "adit.token_authentication.auth.RestTokenAuthentication",
+    ],
+    "EXCEPTION_HANDLER": "rest_framework.views.exception_handler",
 }
+
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/3.0/howto/static-files/
@@ -402,6 +411,10 @@ BATCH_TRANSFER_DEFAULT_PRIORITY = 2
 BATCH_TRANSFER_URGENT_PRIORITY = 6
 BATCH_QUERY_DEFAULT_PRIORITY = 3
 BATCH_QUERY_URGENT_PRIORITY = 7
+QIDO_DEFAULT_PRIORITY = 4
+QIDO_URGENT_PRIORITY = 8
+WADO_DEFAULT_PRIORITY = 3
+WADO_URGENT_PRIORITY = 7
 
 # The maximum number of resulting studies for selective_transfer query
 SELECTIVE_TRANSFER_RESULT_LIMIT = 101
@@ -434,3 +447,8 @@ EXCLUDED_MODALITIES = ["PR", "SR"]
 
 # If an ethics committee approval is required for batch transfer
 ETHICS_COMMITTEE_APPROVAL_REQUIRED = True
+
+# DicomWeb Settings
+WADO_TMP_FOLDER = "adit/dicom_web/wadors/tmp"
+DEFAULT_BOUNDARY = "adit-boundary"
+ERROR_MESSAGE = "Processing your DicomWeb request failed."

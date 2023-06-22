@@ -1,0 +1,15 @@
+{% extends "core/_message_modal.html" %}
+{% block modal_title %}
+    REST Authentication Token Help
+{% endblock modal_title %}
+{% block modal_body %}
+    <p>
+        With this feature you can generate an authentication token to authenticate
+        your third party REST application.
+    </p>
+    <p>
+        The token should be included in the HTTPS header like this:
+        <br>
+        <code>Authorization: Token 9944b09199c62bcf9418ad846dd0e4bbdfc6ee4b</code>
+    </p>
+{% endblock modal_body %}

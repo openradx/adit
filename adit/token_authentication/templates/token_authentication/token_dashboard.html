@@ -1,0 +1,36 @@
+{% extends "core/base_generic.html" %}
+{% load render_table from django_tables2 %}
+{% load crispy from crispy_forms_tags %}
+{% load static from static %}
+{% block script %}
+    <script>var csrf_token = "{{ csrf_token }}"</script>
+    <script src="{% static 'token_authentication/token_authentication.js' %}"></script>
+{% endblock %}
+{% block container %}
+    <div class="d-flex justify-content-between align-items-start">
+        <h4 class="mb-3">Generate a REST Authentication Token</h4>
+        {% include "core/_help_button.html" with target="#generate_token_help_modal" only %}
+    </div>
+    <div>
+        {% csrf_token %}
+        <p>{% crispy Form %}</p>
+        <button id="generate-token-button"
+                class="btn btn-primary"
+                style="float: left"
+                type="submit"
+                onclick="generateToken()">Generate new token</button>
+    </div>
+    <!-- list of all tokens -->
+    <div class="row" style="margin-top: 100px;">
+        <div class="col-md-12">
+            <h4 class="mb-3">Your tokens:</h4>
+        </div>
+    </div>
+    <div class="table-container">
+        <table class="table table-bordered table-hover" id="token-list-wrapper">
+        </table>
+    </div>
+{% endblock container %}
+{% block bottom %}
+    {% include 'token_authentication/_generate_token_help_modal.html' with modal_id="generate_token_help_modal" %}
+{% endblock bottom %}

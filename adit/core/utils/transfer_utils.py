@@ -206,7 +206,7 @@ class TransferExecutor:
         os.makedirs(study_folder, exist_ok=True)
 
         anonymizer = Anonymizer()
-        modifier_callback = partial(
+        modifier = partial(
             self._modify_dataset,
             anonymizer,
             pseudonym,
@@ -216,11 +216,11 @@ class TransferExecutor:
             self._download_study(
                 study,
                 study_folder,
-                modifier_callback,
+                modifier,
                 series_uids=self.transfer_task.series_uids,
             )
         else:
-            self._download_study(study, study_folder, modifier_callback)
+            self._download_study(study, study_folder, modifier)
 
         return patient_folder
 
@@ -294,7 +294,7 @@ class TransferExecutor:
         self,
         study: dict[str, Any],
         study_folder: Path,
-        modifier_callback: Callable,
+        modifier: Callable,
         series_uids: list[str] = [],
     ) -> None:
         if series_uids:
@@ -304,14 +304,14 @@ class TransferExecutor:
                     study["StudyInstanceUID"],
                     series_uid,
                     study_folder,
-                    modifier=modifier_callback,
+                    modifier=modifier,
                 )
         else:
             self.source_connector.download_study(
                 study["PatientID"],
                 study["StudyInstanceUID"],
                 study_folder,
-                modifier=modifier_callback,
+                modifier=modifier,
             )
 
     def _modify_dataset(

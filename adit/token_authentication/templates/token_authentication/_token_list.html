@@ -1,0 +1,36 @@
+<!-- list of all tokens INNER-->
+<thead>
+    <tr>
+        <th>Client</th>
+        <th>Validity</th>
+        <th>Last Used</th>
+        <th>Actions</th>
+    </tr>
+</thead>
+<tbody>
+    {% for token in Tokens reversed %}
+        {% with token_str=token.token_string %}
+            <tr>
+                <td>{{ token.client }}</td>
+                <td>
+                    {{ token.created_time }}
+                    <br>
+                    -
+                    {{ token.expiry_time }}
+                </td>
+                <td>{{ token.last_used }}</td>
+                <td>
+                    <button id="copy-token-button-{{ token_str }}"
+                            class="btn btn-secondary btn-sm ml-1"
+                            onclick="copyToken('{{ token_str }}')">{% include "core/_clipboard.svg" %}</button>
+                    <button id="delete-token-button-{{ token_str }}"
+                            class="btn btn-danger btn-sm ml-1"
+                            onclick="deleteToken('{{ token_str }}')">{% include "core/_trash_can.svg" %}</button>
+                    <button id="download-token-button-{{ token_str }}"
+                            class="btn btn-primary btn-sm ml-1"
+                            onclick="downloadToken('{{ token_str }}')">{% include "core/_download.svg" %}</button>
+                </td>
+            </tr>
+        {% endwith %}
+    {% endfor %}
+</tbody>
