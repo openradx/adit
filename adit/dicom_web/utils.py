@@ -1,4 +1,5 @@
 import logging
+from os import PathLike
 from typing import Callable, Dict, List, Optional
 
 from adit.core.utils.dicom_connector import DicomConnector
@@ -31,7 +32,7 @@ class DicomWebApi:
         self,
         study_uid: str,
         series_list: List[Dict],
-        folder_path: str,
+        folder_path: PathLike,
         modifier: Optional[Callable] = None,
     ) -> None:
         for series in series_list:
@@ -50,7 +51,7 @@ class DicomWebApi:
         self,
         study_uid: str,
         series_uid: str,
-        folder_path: str,
+        folder_path: PathLike,
         modifier: Optional[Callable] = None,
     ) -> None:
         self.connector.download_series(

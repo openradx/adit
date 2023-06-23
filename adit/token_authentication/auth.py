@@ -35,7 +35,8 @@ class RestTokenAuthentication(BaseAuthentication):
             print("token is not valid")
             raise AuthenticationFailed(message)
 
-        token.save()  # updates the last-used attribute
+        if token is not None:
+            token.save()  # updates the last-used attribute
         return (user, token)
 
     def verify_token(self, token_str: str):

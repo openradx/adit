@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import humanize
 from celery.contrib.abortable import AbortableTask as AbortableCeleryTask  # pyright: ignore
 from celery.utils.log import get_task_logger
@@ -90,6 +92,7 @@ def _create_query(dicom_wado_task: DicomWadoTask) -> dict:
 
 def _serialize_and_transfer_to_adit(dicom_wado_task: DicomWadoTask) -> None:
     query = _create_query(dicom_wado_task)
+    folder_path = Path(dicom_wado_task.job.folder_path)
 
     connector = DicomConnector(dicom_wado_task.job.source.dicomserver)
 
@@ -105,5 +108,5 @@ def _serialize_and_transfer_to_adit(dicom_wado_task: DicomWadoTask) -> None:
     dicom_web_api.wado_download_study(
         dicom_wado_task.study_uid,
         series_list,
-        dicom_wado_task.job.folder_path,
+        folder_path,
     )
