@@ -6,6 +6,9 @@ from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMix
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import render
 from django.views.generic import ListView, View
+from rest_framework.request import Request
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
 from .forms import GenerateTokenForm
 from .models import Token
@@ -110,3 +113,8 @@ class DeleteTokenView(
                         }
                     )
                 )
+
+
+class TestView(APIView):
+    def get(self, request: Request):
+        return Response({"message": "OK"})

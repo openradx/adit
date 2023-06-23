@@ -1,15 +1,22 @@
-from rest_framework import exceptions
 from rest_framework.authentication import BaseAuthentication
+from rest_framework.exceptions import AuthenticationFailed
 from rest_framework.request import Request
 
 from .models import Token
 
 
 class RestTokenAuthentication(BaseAuthentication):
+    """
+    This class is used to authenticate users via a json web token.
+    The token is expected to be provided in the request header as follows:
+    Authorization: Token <token_string>
+    """
+
     def authenticate_header(self, request: Request):
         return "Authentication failed."
 
     def authenticate(self, request: Request):
+        print(request.META)
         try:
             auth = request.META.get("HTTP_AUTHORIZATION", None)
             if auth is None:
@@ -17,14 +24,17 @@ class RestTokenAuthentication(BaseAuthentication):
             protocol, token_str = auth.split(" ")
         except Exception:
             message = "Invalid token header. Please provide credentials in the request header."
-            raise exceptions.AuthenticationFailed(message)
+            raise AuthenticationFailed(message)
+
         if not protocol == "Token":
             message = "Please use the token authentication protocol to access the REST API."
-            raise exceptions.AuthenticationFailed(message)
-        is_valid, message, user, token = self.verify_token(token_str)
+            raise AuthenticationFailed(message)
 
+        is_valid, message, user, token = self.verify_token(token_str)
         if not is_valid:
-            raise exceptions.AuthenticationFailed(message)
+            print("token is not valid")
+            raise AuthenticationFailed(message)
+
         token.save()  # updates the last-used attribute
         return (user, token)
 
@@ -33,11 +43,10 @@ class RestTokenAuthentication(BaseAuthentication):
         is_valid = True
 
         tokens = Token.objects.filter(token_string=token_str)
-
-        if not len(tokens) == 1:
-            message = "Invalid Token. Please make sure exactly one matching token entity exists."
-            Exc = exceptions.AuthenticationFailed(detail=message)
-            raise Exc
+        if len(tokens) == 0:
+            is_valid = False
+            message = "Invalid Token. Token does not exist."
+            return is_valid, message, None, None
 
         token = tokens[0]
         user = token.author

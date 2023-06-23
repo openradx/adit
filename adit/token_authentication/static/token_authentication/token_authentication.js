@@ -6,7 +6,7 @@ function generateToken() {
   } else {
     var expiry_time = document.getElementById("id_expiry_time").value;
     var client = document.getElementById("id_client").value;
-    const URL = window.location.href + "/generate_token";
+    const URL = window.location.href + "generate_token";
     $.ajax({
       type: "POST",
       url: URL,
@@ -26,7 +26,7 @@ function generate_token_callback(response) {
 }
 
 function deleteToken(token_str) {
-  const URL = window.location.href + "/delete_token";
+  const URL = window.location.href + "delete_token";
   if (
     confirm("Are You sure you want to delete the token with ID: " + token_str)
   ) {
@@ -79,7 +79,7 @@ function loadTokenList() {
         this.responseText;
     }
   };
-  var URL = window.location + "/_token_list";
+  var URL = window.location + "_token_list";
   xhttp.open("GET", URL, true);
   xhttp.send();
 }

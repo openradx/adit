@@ -227,7 +227,7 @@ REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
         "adit.token_authentication.auth.RestTokenAuthentication",
     ],
-    "EXCEPTION_HANDLER": "rest_framework.views.exception_handler",
+    "EXCEPTION_HANDLER": "adit.dicom_web.exceptions.dicom_web_exception_handler",
 }
 
 

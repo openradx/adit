@@ -27,8 +27,8 @@ urlpatterns = [
     path("batch-transfer/", include("adit.batch_transfer.urls")),
     path("batch-query/", include("adit.batch_query.urls")),
     path("dicom-explorer/", include("adit.dicom_explorer.urls")),
-    path("token_authentication/", include("adit.token_authentication.urls")),
-    path("dicom_web/", include("adit.dicom_web.urls")),
+    path("token-authentication/", include("adit.token_authentication.urls")),
+    path("dicom-web/", include("adit.dicom_web.urls")),
 ]
 
 # Django loginas
