@@ -1,5 +1,5 @@
 import humanize
-from celery import Task as CeleryTask
+from celery.contrib.abortable import AbortableTask as AbortableCeleryTask  # pyright: ignore
 from celery.utils.log import get_task_logger
 from django.conf import settings
 from django.core.exceptions import EmptyResultSet
@@ -15,7 +15,7 @@ from .models import DicomWadoJob, DicomWadoTask
 logger = get_task_logger(__name__)
 
 
-def execute_wado(dicom_wado_task: DicomWadoTask, celery_task: CeleryTask) -> str:
+def execute_wado(dicom_wado_task: DicomWadoTask, celery_task: AbortableCeleryTask) -> str:
     if dicom_wado_task.status == DicomWadoTask.Status.CANCELED:
         return dicom_wado_task.status
 

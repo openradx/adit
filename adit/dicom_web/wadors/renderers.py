@@ -9,6 +9,7 @@ from rest_framework.renderers import BaseRenderer
 
 class DicomWebWadoRenderer(BaseRenderer):
     media_type: str
+    format: str
     subtype: Optional[str]
     boundary: Optional[str]
     charset: Optional[str]
@@ -89,7 +90,7 @@ class ApplicationDicomJsonRenderer(DicomWebWadoRenderer):
         json_meta = ds.file_meta.to_json_dict()
         self.file_meta_list.append(json_meta)
 
-    def render(self, data, *args, **kwargs):
+    def render(self, data, accepted_media_type=None, renderer_context=None):
         self.start_file_meta_list()
         for file in os.listdir(data["folder_path"]):
             file_path = data["folder_path"] / file

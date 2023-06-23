@@ -1,17 +1,6 @@
-import datetime
-import errno
 import logging
-import os
-import re
-from datetime import date, datetime, time
-from pathlib import Path
-from typing import Dict, List
+from typing import Callable, Dict, List, Optional
 
-from pydicom import Sequence, dcmread
-from pydicom.dataset import Dataset
-
-from adit.core.errors import RetriableTaskError
-from adit.core.utils.dicom_connector import DicomConnector
 from adit.core.utils.dicom_utils import adit_dict_to_dicom_json
 
 logger = logging.getLogger(__name__)
@@ -36,7 +25,7 @@ class DicomWebApi:
         study_uid: str,
         series_list: List[Dict],
         folder_path: str,
-        modifier=None,
+        modifier: Optional[Callable] = None,
     ) -> None:
         for series in series_list:
             series_uid = series["SeriesInstanceUID"]
@@ -55,7 +44,7 @@ class DicomWebApi:
         study_uid: str,
         series_uid: str,
         folder_path: str,
-        modifier=None,
+        modifier: Optional[Callable] = None,
     ) -> None:
         self.connector.download_series(
             patient_id="",

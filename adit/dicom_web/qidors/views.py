@@ -1,34 +1,44 @@
 import logging
 
-from django.conf import settings
-from rest_framework import status
-from rest_framework.exceptions import NotFound
+from rest_framework.exceptions import NotFound, ParseError
+from rest_framework.request import Request
 from rest_framework.response import Response
 
+from adit.core.models import DicomServer
 from adit.dicom_web.views import DicomWebAPIView
 
-from .models import DicomQidoJob, DicomQidoTask
+from .models import DicomQidoJob, DicomQidoResult, DicomQidoTask
 from .renderers import ApplicationDicomJsonRenderer
 
 logger = logging.getLogger(__name__)
 
 
 class QueryAPIView(DicomWebAPIView):
-    level = None
     renderer_classes = [ApplicationDicomJsonRenderer]
+
+    def handle_request(self, pacs_ae_title: str) -> DicomServer:
+        SourceServerSet = DicomServer.objects.filter(ae_title=pacs_ae_title)
+
+        if len(SourceServerSet) < 1:
+            raise ParseError(f"The specified PACS with AE title: {pacs_ae_title} does not exist.")
+        SourceServer = SourceServerSet[0]
+
+        return SourceServer
 
 
 class QueryStudyAPIView(QueryAPIView):
     level = "STUDY"
 
-    def get(self, request, *args, **kwargs):
+    def get(
+        self,
+        request: Request,
+        pacs: str,
+        study_uid: str = "",
+        series_uid: str = "",
+    ):
         query = str(request.GET.dict())
-        SourceServer, study_uid, series_uid = self.handle_request(
-            request,
-            pacs_ae_title=kwargs.get("pacs", ""),
-            study_uid=kwargs.get("StudyInstanceUID", ""),
-            series_uid=kwargs.get("SeriesInstanceUID", ""),
-        )
+        SourceServer = self.handle_request(pacs)
+
         job = DicomQidoJob(
             level=self.level,
             source=SourceServer,
@@ -36,7 +46,6 @@ class QueryStudyAPIView(QueryAPIView):
             status=DicomQidoJob.Status.PENDING,
         )
         job.save()
-
         task = DicomQidoTask(
             study_uid=study_uid,
             series_uid=series_uid,
@@ -52,20 +61,22 @@ class QueryStudyAPIView(QueryAPIView):
                 raise NotFound("No dicom objects matching the query exist.")
             task.refresh_from_db()
 
-        return Response(job.results.get().query_results)
+        results = DicomQidoResult.objects.get(job=job)
+        return Response(results.query_results)
 
 
 class QuerySeriesAPIView(QueryAPIView):
     level = "SERIES"
 
-    def get(self, request, *args, **kwargs):
+    def get(
+        self,
+        request: Request,
+        pacs: str,
+        study_uid: str,
+        series_uid: str = "",
+    ):
         query = str(request.GET.dict())
-        SourceServer, study_uid, series_uid = self.handle_request(
-            request,
-            pacs_ae_title=kwargs.get("pacs", ""),
-            study_uid=kwargs.get("StudyInstanceUID", ""),
-            series_uid=kwargs.get("SeriesInstanceUID", ""),
-        )
+        SourceServer = self.handle_request(pacs)
 
         job = DicomQidoJob(
             level=self.level,
@@ -74,7 +85,6 @@ class QuerySeriesAPIView(QueryAPIView):
             status=DicomQidoJob.Status.PENDING,
         )
         job.save()
-
         task = DicomQidoTask(
             study_uid=study_uid,
             series_uid=series_uid,
@@ -83,7 +93,6 @@ class QuerySeriesAPIView(QueryAPIView):
             task_id=0,
         )
         task.save()
-
         job.delay()
 
         while task.status != "SU":
@@ -91,4 +100,5 @@ class QuerySeriesAPIView(QueryAPIView):
                 raise NotFound("No dicom objects matching the query exist.")
             task.refresh_from_db()
 
-        return Response(job.results.get().query_results)
+        results = DicomQidoResult.objects.get(job=job)
+        return Response(results.query_results)

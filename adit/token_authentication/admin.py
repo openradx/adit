@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Token, TokenManager, TokenSettings
+from .models import Token, TokenSettings
 
 
 class TokenAdmin(admin.ModelAdmin):

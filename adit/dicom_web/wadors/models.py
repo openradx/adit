@@ -26,7 +26,7 @@ class DicomWadoJob(DicomJob):
         process_dicom_wado_job.delay(self.id)
 
     def get_absolute_url(self):
-        return reverse("dicom_wado_job_detail", args=[self.job.id, self.task_id])
+        return reverse("dicom_wado_job_detail", args=[self.id])
 
 
 class DicomWadoTask(DicomTask):

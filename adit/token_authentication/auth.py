@@ -1,16 +1,15 @@
-from django.http import HttpResponse
-from redis import AuthenticationError
 from rest_framework import exceptions
 from rest_framework.authentication import BaseAuthentication
+from rest_framework.request import Request
 
 from .models import Token
 
 
 class RestTokenAuthentication(BaseAuthentication):
-    def authenticate_header(self, request):
+    def authenticate_header(self, request: Request):
         return "Authentication failed."
 
-    def authenticate(self, request):
+    def authenticate(self, request: Request):
         try:
             auth = request.META.get("HTTP_AUTHORIZATION", None)
             if auth is None:
@@ -29,7 +28,7 @@ class RestTokenAuthentication(BaseAuthentication):
         token.save()  # updates the last-used attribute
         return (user, token)
 
-    def verify_token(self, token_str):
+    def verify_token(self, token_str: str):
         message = ""
         is_valid = True
 

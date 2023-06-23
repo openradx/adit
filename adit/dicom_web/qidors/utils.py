@@ -1,7 +1,7 @@
 import json
 
 import humanize
-from celery import Task as CeleryTask
+from celery.contrib.abortable import AbortableTask as AbortableCeleryTask  # pyright: ignore
 from celery.utils.log import get_task_logger
 from django.conf import settings
 from django.utils import timezone
@@ -17,7 +17,7 @@ from .models import DicomQidoJob, DicomQidoResult, DicomQidoTask
 logger = get_task_logger(__name__)
 
 
-def execute_qido(dicom_qido_task: DicomQidoTask, celery_task: CeleryTask) -> str:
+def execute_qido(dicom_qido_task: DicomQidoTask, celery_task: AbortableCeleryTask) -> str:
     if dicom_qido_task.status == DicomQidoTask.Status.CANCELED:
         return dicom_qido_task.status
 
@@ -58,7 +58,7 @@ def execute_qido(dicom_qido_task: DicomQidoTask, celery_task: CeleryTask) -> str
             # Increase the priority slightly to make sure images that were moved
             # from the GE archive storage to the fast access storage are still there
             # when we retry.
-            priority = celery_task.request.delivery_info.get("priority", 0)
+            priority = celery_task.request.delivery_info["priority"]
             if priority < settings.CELERY_TASK_QUEUE_MAX_PRIORITY:
                 priority += 1
 
@@ -92,6 +92,8 @@ def _c_find_to_result(dicom_qido_task: DicomQidoTask) -> None:
         c_find_result = dicom_web_api.qido_find_studies(query)
     elif dicom_qido_task.job.level == "SERIES":
         c_find_result = dicom_web_api.qido_find_series(query)
+    else:
+        raise ValueError(f"Invalid job level: {dicom_qido_task.job.level}")
 
     if len(c_find_result) <= 0:
         raise ValueError("No query results found.")

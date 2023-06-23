@@ -26,7 +26,7 @@ class DicomQidoJob(DicomJob):
         process_dicom_qido_job.delay(self.id)
 
     def get_absolute_url(self):
-        return reverse("dicom_qido_job_detail", args=[self.job.id, self.task_id])
+        return reverse("dicom_qido_job_detail", args=[self.id])
 
 
 class DicomQidoTask(DicomTask):
@@ -56,5 +56,8 @@ class DicomQidoTask(DicomTask):
 
 
 class DicomQidoResult(models.Model):
-    job = job = models.ForeignKey(DicomQidoJob, on_delete=models.CASCADE, related_name="results")
+    job = models.ForeignKey(DicomQidoJob, on_delete=models.CASCADE, related_name="results")
     query_results = models.JSONField(default=list)
+
+    def __str__(self):
+        return f"{self.job} [ID: {self.job.id}] - results"

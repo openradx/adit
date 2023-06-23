@@ -4,28 +4,23 @@ from .views import RetrieveSeriesAPIView, RetrieveStudyAPIView
 
 urlpatterns = [
     path(
-        "<str:pacs>/wadors/studies/",
-        RetrieveStudyAPIView.as_view(),
-        name="wado_rs-studies",
-    ),
-    path(
-        "<str:pacs>/wadors/studies/<str:StudyInstanceUID>/",
+        "<str:pacs>/wadors/studies/<str:study_uid>/",
         RetrieveStudyAPIView.as_view(),
         name="wado_rs-studies_with_id",
     ),
     path(
-        "<str:pacs>/wadors/studies/<str:StudyInstanceUID>/<str:mode>/",
+        "<str:pacs>/wadors/studies/<str:study_uid>/<str:mode>/",
         RetrieveStudyAPIView.as_view(),
         name="wado_rs-studies_with_id_and_mode",
     ),
     path(
-        "<str:pacs>/wadors/series/",
-        RetrieveSeriesAPIView.as_view(),
-        name="wado_rs-series",
-    ),
-    path(
-        "<str:pacs>/wadors/studies/<str:StudyInstanceUID>/series/<str:SeriesInstanceUID>/",
+        "<str:pacs>/wadors/studies/<str:study_uid>/series/<str:series_uid>/",
         RetrieveSeriesAPIView.as_view(),
         name="wado_rs-series_with_id",
+    ),
+    path(
+        "<str:pacs>/wadors/studies/<str:study_uid>/series/<str:series_uid>/<str:mode>/",
+        RetrieveSeriesAPIView.as_view(),
+        name="wado_rs-series_with_id_and_mode",
     ),
 ]

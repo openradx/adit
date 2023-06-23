@@ -1,10 +1,10 @@
 import binascii
-import datetime
+from datetime import datetime
 from os import urandom
 
 import pytz
+from django.contrib.auth.models import AbstractBaseUser, AnonymousUser
 from django.db import models
-from django.utils import timezone
 
 from adit.accounts.models import User
 from adit.core.models import AppSettings
@@ -18,7 +18,12 @@ class TokenSettings(AppSettings):
 
 
 class TokenManager(models.Manager):
-    def create_token(self, user, client="", expiry_time=datetime.datetime.now()):
+    def create_token(
+        self,
+        user: AbstractBaseUser | AnonymousUser,
+        client: str = "",
+        expiry_time: datetime = datetime.now(),
+    ):
         token = create_token_string()
         token = self.create(
             token_string=token,
@@ -28,8 +33,8 @@ class TokenManager(models.Manager):
         )
         return token
 
-    def user_is_owner(self, user, token_str):
-        token = self.filter(token_string=token_str)
+    def user_is_owner(self, user: AbstractBaseUser | AnonymousUser, token_str: str):
+        token = self.get(token_string=token_str)
         if token.author == user:
             return True
         else:
@@ -60,7 +65,7 @@ class Token(models.Model):
 
     def is_expired(self):
         utc = pytz.UTC
-        return self.expiry_time < utc.localize(datetime.datetime.now())
+        return self.expiry_time < utc.localize(datetime.now())
 
     # def __repr__(self):
     #    return self.token_string, f"{self.author.get_username()}"
