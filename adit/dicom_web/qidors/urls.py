@@ -9,18 +9,13 @@ urlpatterns = [
         name="qido_rs-studies",
     ),
     path(
-        "<str:pacs>/qidors/studies/<str:StudyInstanceUID>/",
-        QueryStudyAPIView.as_view(),
-        name="qido_rs-studies_with_id",
-    ),
-    path(
-        "<str:pacs>/qidors/studies/<str:StudyInstanceUID>/series/",
+        "<str:pacs>/qidors/series/",
         QuerySeriesAPIView.as_view(),
         name="qido_rs-series",
     ),
     path(
-        "<str:pacs>/quidors/studies/<str:StudyInstanceUID>/series/<str:SeriesInstanceUID>/",
+        "<str:pacs>/qidors/studies/<str:study_uid>/series/",
         QuerySeriesAPIView.as_view(),
-        name="qido_rs-series-with_id",
+        name="qido_rs-series_with_study_uid",
     ),
 ]

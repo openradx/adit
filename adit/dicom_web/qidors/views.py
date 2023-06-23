@@ -33,8 +33,6 @@ class QueryStudyAPIView(QueryAPIView):
         self,
         request: Request,
         pacs: str,
-        study_uid: str = "",
-        series_uid: str = "",
     ):
         query = str(request.GET.dict())
         SourceServer = self.handle_request(pacs)
@@ -47,8 +45,6 @@ class QueryStudyAPIView(QueryAPIView):
         )
         job.save()
         task = DicomQidoTask(
-            study_uid=study_uid,
-            series_uid=series_uid,
             query=query,
             job=job,
             task_id=0,
@@ -72,8 +68,7 @@ class QuerySeriesAPIView(QueryAPIView):
         self,
         request: Request,
         pacs: str,
-        study_uid: str,
-        series_uid: str = "",
+        study_uid: str = "",
     ):
         query = str(request.GET.dict())
         SourceServer = self.handle_request(pacs)
@@ -87,7 +82,6 @@ class QuerySeriesAPIView(QueryAPIView):
         job.save()
         task = DicomQidoTask(
             study_uid=study_uid,
-            series_uid=series_uid,
             query=query,
             job=job,
             task_id=0,
