@@ -1,6 +1,7 @@
 from typing import TYPE_CHECKING
 
 from celery import current_app
+from django.core.validators import validate_comma_separated_integer_list
 from django.db import models
 from django.urls import reverse
 
@@ -36,7 +37,15 @@ class BatchTransferTask(TransferTask):
         on_delete=models.CASCADE,
         related_name="tasks",
     )
-    lines = models.JSONField(default=list)
+    lines = models.TextField(validators=[validate_comma_separated_integer_list])
+
+    @property
+    def lines_list(self) -> list[str]:
+        return list(filter(len, map(str.strip, self.lines.split(","))))
+
+    @lines_list.setter
+    def lines_list(self, value: list[str]) -> None:
+        self.lines = ",".join(value)
 
     def get_absolute_url(self):
         return reverse("batch_transfer_task_detail", args=[self.job.id, self.task_id])

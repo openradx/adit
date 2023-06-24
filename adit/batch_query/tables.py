@@ -39,6 +39,3 @@ class BatchQueryResultTable(tables.Table):
             "id": "batch_query_result_table",
             "class": "table table-bordered table-hover",
         }
-
-    def render_modalities(self, value):
-        return ", ".join(value)

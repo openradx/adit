@@ -29,10 +29,14 @@ class BatchQueryTaskFactory(AbstractDicomTaskFactory[BatchQueryTask]):
     accession_number = factory.Faker("numerify", text="############")
     study_date_start = factory.Faker("date_between", start_date="-2y", end_date="-1y")
     study_date_end = factory.Faker("date_between", start_date="-1y", end_date="today")
-    modalities = factory.Faker("random_elements", elements=("CT", "MR", "DX"), unique=True)
+    modalities = factory.LazyFunction(
+        lambda: ", ".join(fake.random_elements(elements=("CT", "MR", "DX"), unique=True))
+    )
     study_description = factory.Faker("street_name")
     series_description = factory.Faker("street_name")
-    series_numbers = factory.Faker("random_elements", elements=SERIES_NUMBER, unique=True)
+    series_numbers = factory.LazyFunction(
+        lambda: ", ".join(fake.random_elements(elements=SERIES_NUMBER, unique=True))
+    )
     pseudonym = factory.Faker("pystr", min_chars=10, max_chars=10)
 
 
@@ -48,7 +52,9 @@ class BatchQueryResultFactory(factory.django.DjangoModelFactory):
     accession_number = factory.Faker("ean")
     study_date = factory.Faker("date_between", start_date="-2y", end_date="today")
     study_time = factory.Faker("time_object")
-    modalities = factory.Faker("random_elements", elements=("CT", "MR", "DX"), unique=True)
+    modalities = factory.LazyFunction(
+        lambda: ", ".join(fake.random_elements(elements=("CT", "MR", "DX"), unique=True))
+    )
     image_count = factory.Faker("random_int", min=3, max=1500)
     study_description = factory.Faker("street_name")
     series_description = factory.Faker("street_name")

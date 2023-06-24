@@ -13,13 +13,13 @@ def data():
             "patient_id": "1001",
             "study_date_start": "2019-06-03",
             "study_date_end": "2019-06-05",
-            "modalities": ["CT", "SR"],
+            "modalities": " CT,  SR   ",
         },
         {
             "task_id": "2",
             "patient_name": "Coconut^Coco",
             "patient_birth_date": "1976-12-09",
-            "modalities": ["CT"],
+            "modalities": "CT",
         },
         {
             "task_id": "3",
@@ -41,12 +41,12 @@ def test_deserializes_query_task(data):
     assert serializer.validated_data[0]["task_id"] == 1
     assert serializer.validated_data[0]["study_date_start"] == date(2019, 6, 3)
     assert serializer.validated_data[0]["study_date_end"] == date(2019, 6, 5)
-    assert serializer.validated_data[0]["modalities"] == ["CT", "SR"]
+    assert serializer.validated_data[0]["modalities"] == "CT,  SR"
 
     assert serializer.validated_data[1]["task_id"] == 2
     assert serializer.validated_data[1]["patient_name"] == "Coconut^Coco"
     assert serializer.validated_data[1]["patient_birth_date"] == date(1976, 12, 9)
-    assert serializer.validated_data[1]["modalities"] == ["CT"]
+    assert serializer.validated_data[1]["modalities"] == "CT"
 
     assert serializer.validated_data[2]["task_id"] == 3
     assert serializer.validated_data[2]["patient_id"] == "1003"

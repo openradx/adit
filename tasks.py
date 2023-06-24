@@ -89,12 +89,11 @@ def compose_up(ctx: Context, env: Environments = "dev", no_build: bool = False):
 
 
 @task
-def compose_down(ctx: Context, env: Environments = "dev"):
+def compose_down(ctx: Context, env: Environments = "dev", cleanup: bool = False):
     """Stop ADIT containers in specified environment"""
-    cmd = f"{build_compose_cmd(env)} down --remove-orphans"
-    if env == "dev":
-        # In dev environment, remove volumes as well
-        cmd += " --volumes"
+    cmd = f"{build_compose_cmd(env)} down"
+    if cleanup:
+        cmd += " --remove-orphans --volumes"
     run_cmd(ctx, cmd)
 
 

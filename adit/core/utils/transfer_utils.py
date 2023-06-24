@@ -186,9 +186,8 @@ class TransferExecutor:
         ]
 
         # If some series are explicitly chosen then check if their Series Instance UIDs
-        # are correct and only use their modalities for the name of the study folder.
-        # We must cast as JSONField can't be type hinted.
-        series_uids = cast(list[str] | None, self.transfer_task.series_uids)
+        # are correct and only use those modalities for the name of the study folder.
+        series_uids = self.transfer_task.series_uids_list
         if series_uids:
             modalities = set()
             for series_uid in series_uids:
@@ -212,12 +211,12 @@ class TransferExecutor:
             pseudonym,
         )
 
-        if self.transfer_task.series_uids:
+        if series_uids:
             self._download_study(
                 study,
                 study_folder,
                 modifier_callback,
-                series_uids=self.transfer_task.series_uids,
+                series_uids=series_uids,
             )
         else:
             self._download_study(study, study_folder, modifier_callback)

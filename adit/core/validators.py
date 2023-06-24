@@ -23,27 +23,21 @@ no_wildcard_chars_validator = RegexValidator(
 uid_chars_validator = RegexValidator(regex=r"^[\d\.]+$", message="Invalid character in UID.")
 
 
+# TODO: Rename to validate_uids
 def validate_uid_list(value):
-    if not isinstance(value, list):
-        raise ValidationError("Must be a list of UIDs.")
-
-    for uid in value:
-        if not isinstance(uid, str):
-            raise ValidationError("Invalid UID type.")
-
+    uids = map(str.strip, value.split(","))
+    for uid in uids:
         if len(uid) > 64:
             raise ValidationError("UID string too long (max 64 characters).")
 
         uid_chars_validator(uid)
 
 
-def validate_modalities(value):
-    if not isinstance(value, list):
-        raise ValidationError(f"Invalid modalities: {value} [{type(value)}]")
-
-    for modality in value:
-        if not isinstance(modality, str) or len(modality) > 16:
-            raise ValidationError(f"Invalid modality: {modality} [{type(modality)}]")
+def validate_modalities(value: str):
+    modalities = map(str.strip, value.split(","))
+    for modality in modalities:
+        if len(modality) > 16:
+            raise ValidationError(f"Invalid modality: {modality}")
 
         no_backslash_char_validator(modality)
         no_control_chars_validator(modality)
@@ -65,8 +59,6 @@ def validate_series_number(value):
 
 
 def validate_series_numbers(value):
-    if not isinstance(value, list):
-        raise ValidationError(f"Invalid series numbers: {value} [{type(value)}]")
-
-    for series_number in value:
+    series_numbers = map(str.strip, value.split(","))
+    for series_number in series_numbers:
         validate_series_number(series_number)

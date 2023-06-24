@@ -1,7 +1,9 @@
+from django.core import exceptions
 from rest_framework import serializers
 from rest_framework.fields import empty
 
 from adit.core.models import DicomNode, TransferJob, TransferTask
+from adit.core.validators import validate_uid_list
 
 
 class DicomNodeSerializer(serializers.ModelSerializer):
@@ -20,11 +22,17 @@ class TransferTaskSerializer(serializers.ModelSerializer):
         super().__init__(instance=instance, data=data, **kwargs)
 
     def validate_series_uids(self, series_uids):
-        # TODO validate the series UID itself
-        if len(series_uids) > self.max_series_count:
+        try:
+            validate_uid_list(series_uids)
+        except exceptions.ValidationError as err:
+            raise serializers.ValidationError(err.message)
+
+        series_uid_list = list(filter(len, map(str.strip, series_uids.split(","))))
+        if len(series_uid_list) > self.max_series_count:
             raise serializers.ValidationError(
                 f"Maximum {self.max_series_count} series per task allowed."
             )
+
         return series_uids
 
 
