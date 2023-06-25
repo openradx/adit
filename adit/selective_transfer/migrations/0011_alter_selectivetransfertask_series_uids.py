@@ -14,7 +14,7 @@ class Migration(migrations.Migration):
             model_name="selectivetransfertask",
             name="series_uids",
             field=models.TextField(
-                blank=True, default="", validators=[adit.core.validators.validate_uid_list]
+                blank=True, default="", validators=[adit.core.validators.validate_uids]
             ),
             preserve_default=False,
         ),

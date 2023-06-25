@@ -23,8 +23,7 @@ no_wildcard_chars_validator = RegexValidator(
 uid_chars_validator = RegexValidator(regex=r"^[\d\.]+$", message="Invalid character in UID.")
 
 
-# TODO: Rename to validate_uids
-def validate_uid_list(value):
+def validate_uids(value):
     uids = map(str.strip, value.split(","))
     for uid in uids:
         if len(uid) > 64:

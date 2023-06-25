@@ -3,7 +3,7 @@ from rest_framework import serializers
 from rest_framework.fields import empty
 
 from adit.core.models import DicomNode, TransferJob, TransferTask
-from adit.core.validators import validate_uid_list
+from adit.core.validators import validate_uids
 
 
 class DicomNodeSerializer(serializers.ModelSerializer):
@@ -23,7 +23,7 @@ class TransferTaskSerializer(serializers.ModelSerializer):
 
     def validate_series_uids(self, series_uids):
         try:
-            validate_uid_list(series_uids)
+            validate_uids(series_uids)
         except exceptions.ValidationError as err:
             raise serializers.ValidationError(err.message)
 

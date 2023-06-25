@@ -18,6 +18,6 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='selectivetransfertask',
             name='series_uids',
-            field=models.JSONField(blank=True, null=True, validators=[adit.core.validators.validate_uid_list]),
+            field=models.JSONField(blank=True, null=True, validators=[adit.core.validators.validate_uids]),
         ),
     ]
