@@ -6,6 +6,25 @@ from django.db import migrations
 
 
 def convert_json_to_text(apps: AppConfig, schema_editor):
+    BatchQueryTask = apps.get_model("batch_query.BatchQueryTask")
+    for query in BatchQueryTask.objects.all():
+        if not query.lines:
+            query.lines = ""
+        else:
+            query.lines = ", ".join(json.loads(query.lines))
+
+        if not query.modalities:
+            query.modalities = ""
+        else:
+            query.modalities = ", ".join(json.loads(query.modalities))
+
+        if not query.series_numbers:
+            query.series_number = ""
+        else:
+            query.series_numbers = ", ".join(json.loads(query.series_numbers))
+
+        query.save()
+
     BatchQueryResult = apps.get_model("batch_query.BatchQueryResult")
     for result in BatchQueryResult.objects.all():
         if not result.modalities:
@@ -15,27 +34,27 @@ def convert_json_to_text(apps: AppConfig, schema_editor):
 
         result.save()
 
-    BatchQueryTask = apps.get_model("batch_query.BatchQueryTask")
-    for task in BatchQueryTask.objects.all():
-        if not task.lines:
-            task.lines = ""
-        else:
-            task.lines = ", ".join(json.loads(task.lines))
-
-        if not task.modalities:
-            task.modalities = ""
-        else:
-            task.modalities = ", ".join(json.loads(task.modalities))
-
-        if not task.series_numbers:
-            task.series_number = ""
-        else:
-            task.series_numbers = ", ".join(json.loads(task.series_numbers))
-
-        task.save()
-
 
 def convert_text_to_json(apps: AppConfig, schema_editor):
+    BatchQueryTask = apps.get_model("batch_query.BatchQueryTask")
+    for query in BatchQueryTask.objects.all():
+        if not query.lines:
+            query.lines = "[]"
+        else:
+            query.lines = json.dumps(list(map(str.strip, query.lines.split(","))))
+
+        if not query.modalities:
+            query.modalities = "null"
+        else:
+            query.modalities = json.dumps(list(map(str.strip, query.modalities.split(","))))
+
+        if not query.series_numbers:
+            query.series_number = "null"
+        else:
+            query.series_numbers = json.dumps(list(map(str.strip, query.series_numbers.split(","))))
+
+        query.save()
+
     BatchQueryResult = apps.get_model("batch_query.BatchQueryResult")
     for result in BatchQueryResult.objects.all():
         if not result.modalities:
@@ -44,25 +63,6 @@ def convert_text_to_json(apps: AppConfig, schema_editor):
             result.modalities = json.dumps(list(map(str.strip, result.modalities.split(","))))
 
         result.save()
-
-    BatchQueryTask = apps.get_model("batch_query.BatchQueryTask")
-    for task in BatchQueryTask.objects.all():
-        if not task.lines:
-            task.lines = "[]"
-        else:
-            task.lines = json.dumps(list(map(str.strip, task.lines.split(","))))
-
-        if not task.modalities:
-            task.modalities = "null"
-        else:
-            task.modalities = json.dumps(list(map(str.strip, task.modalities.split(","))))
-
-        if not task.series_numbers:
-            task.series_number = "null"
-        else:
-            task.series_numbers = json.dumps(list(map(str.strip, task.series_numbers.split(","))))
-
-        task.save()
 
 
 class Migration(migrations.Migration):

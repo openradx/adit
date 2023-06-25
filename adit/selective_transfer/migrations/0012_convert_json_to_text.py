@@ -11,7 +11,7 @@ def convert_json_to_text(apps: AppConfig, schema_editor):
         if not task.series_uids:
             task.series_uids = ""
         else:
-            task.series_uids = ", ".join(json.loads(result.series_uids))
+            task.series_uids = ", ".join(json.loads(task.series_uids))
 
         task.save()
 

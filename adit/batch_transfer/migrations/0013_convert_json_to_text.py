@@ -11,12 +11,12 @@ def convert_json_to_text(apps: AppConfig, schema_editor):
         if not task.lines:
             task.lines = ""
         else:
-            task.lines = ", ".join(json.loads(result.lines))
+            task.lines = ", ".join(json.loads(task.lines))
 
         if not task.series_uids:
             task.series_uids = ""
         else:
-            task.series_uids = ", ".join(json.loads(result.series_uids))
+            task.series_uids = ", ".join(json.loads(task.series_uids))
 
         task.save()
 
