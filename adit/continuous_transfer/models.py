@@ -61,8 +61,7 @@ class ContinuousTransferJob(TransferJob):
         blank=True,
         error_messages={"invalid": "Invalid date format."},
     )
-    modalities = models.JSONField(
-        null=True,
+    modalities = models.TextField(
         blank=True,
         validators=[validate_modalities],
     )
@@ -74,8 +73,7 @@ class ContinuousTransferJob(TransferJob):
         blank=True,
         max_length=64,
     )
-    series_numbers = models.JSONField(
-        null=True,
+    series_numbers = models.TextField(
         blank=True,
         validators=[validate_series_numbers],
     )
