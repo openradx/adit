@@ -3,7 +3,7 @@ from typing import IO
 import pandas as pd
 from django.utils.formats import date_format, time_format
 
-from adit.core.templatetags.core_extras import join_if_list, person_name_from_dicom
+from adit.core.templatetags.core_extras import person_name_from_dicom
 
 from ..models import BatchQueryJob, BatchQueryResult, BatchQueryTask
 
@@ -74,10 +74,6 @@ def get_result_rows(
         study_date = date_format(result.study_date, "SHORT_DATE_FORMAT")
         study_time = time_format(result.study_time, "TIME_FORMAT")
 
-        modalities = ""
-        if result.modalities is not None:
-            modalities = join_if_list(result.modalities, ", ")
-
         image_count = ""
         if result.image_count is not None:
             image_count = result.image_count
@@ -89,7 +85,7 @@ def get_result_rows(
             study_date,
             study_time,
             result.study_description,
-            modalities,
+            result.modalities,
             image_count,
             result.accession_number,
             result.study_uid,

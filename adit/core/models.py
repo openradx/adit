@@ -11,7 +11,7 @@ from .validators import (
     no_control_chars_validator,
     no_wildcard_chars_validator,
     uid_chars_validator,
-    validate_uid_list,
+    validate_uids,
 )
 
 if TYPE_CHECKING:
@@ -297,10 +297,9 @@ class TransferTask(DicomTask):
         max_length=64,
         validators=[uid_chars_validator],
     )
-    series_uids = models.JSONField(
-        null=True,
+    series_uids = models.TextField(
         blank=True,
-        validators=[validate_uid_list],
+        validators=[validate_uids],
     )
     pseudonym = models.CharField(
         blank=True,
@@ -315,3 +314,11 @@ class TransferTask(DicomTask):
             f"Destination {self.job.destination}, "
             f"Job ID {self.job.id}, Task ID {self.task_id}]"
         )
+
+    @property
+    def series_uids_list(self) -> list[str]:
+        return list(filter(len, map(str.strip, self.series_uids.split(","))))
+
+    @series_uids_list.setter
+    def series_uids_list(self, value: list[str]) -> None:
+        self.series_uids = ", ".join(value)

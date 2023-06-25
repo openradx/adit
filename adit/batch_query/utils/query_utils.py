@@ -151,12 +151,11 @@ class QueryExecutor:
         elif self.query_task.study_date_end:
             study_date = "-" + self.query_task.study_date_end.strftime(DICOM_DATE_FORMAT)
 
-        task_modalities = cast(list[str], self.query_task.modalities)
         modalities_to_query: list[str] = []
-        if self.query_task.modalities:
+        if self.query_task.modalities_list:
             modalities_to_query = [
                 modality
-                for modality in task_modalities
+                for modality in self.query_task.modalities_list
                 if modality not in settings.EXCLUDED_MODALITIES
             ]
 
@@ -184,7 +183,7 @@ class QueryExecutor:
                 "StudyInstanceUID": study["StudyInstanceUID"],
                 "SeriesInstanceUID": "",
                 "SeriesDescription": self.query_task.series_description,
-                "SeriesNumber": self.query_task.series_numbers,
+                "SeriesNumber": self.query_task.series_numbers_list,
             }
         )
 
