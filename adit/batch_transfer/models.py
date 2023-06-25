@@ -1,11 +1,11 @@
 from typing import TYPE_CHECKING
 
 from celery import current_app
-from django.core.validators import validate_comma_separated_integer_list
 from django.db import models
 from django.urls import reverse
 
 from adit.core.models import AppSettings, TransferJob, TransferTask
+from adit.core.validators import pos_int_list_validator
 
 if TYPE_CHECKING:
     from django.db.models.manager import RelatedManager
@@ -37,7 +37,7 @@ class BatchTransferTask(TransferTask):
         on_delete=models.CASCADE,
         related_name="tasks",
     )
-    lines = models.TextField(validators=[validate_comma_separated_integer_list])
+    lines = models.TextField(validators=[pos_int_list_validator])
 
     @property
     def lines_list(self) -> list[str]:

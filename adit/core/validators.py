@@ -1,6 +1,11 @@
 from django.core.exceptions import ValidationError
 from django.core.validators import RegexValidator
 
+pos_int_list_validator = RegexValidator(
+    regex=r"^\s*\d+(?:\s*,\s*\d+)*\s*\Z",
+    message="Enter only digits separated by commas.",
+)
+
 no_backslash_char_validator = RegexValidator(
     regex=r"\\",
     message="Contains invalid backslash character",

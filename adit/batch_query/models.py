@@ -3,7 +3,6 @@ from typing import TYPE_CHECKING
 
 from celery import current_app
 from django.core.exceptions import ValidationError
-from django.core.validators import validate_comma_separated_integer_list
 from django.db import models
 from django.urls import reverse
 
@@ -12,6 +11,7 @@ from adit.core.validators import (
     no_backslash_char_validator,
     no_control_chars_validator,
     no_wildcard_chars_validator,
+    pos_int_list_validator,
     validate_modalities,
     validate_series_number,
     validate_series_numbers,
@@ -43,7 +43,7 @@ class BatchQueryJob(DicomJob):
 
 class BatchQueryTask(DicomTask):
     job = models.ForeignKey(BatchQueryJob, on_delete=models.CASCADE, related_name="tasks")
-    lines = models.TextField(validators=[validate_comma_separated_integer_list])
+    lines = models.TextField(validators=[pos_int_list_validator])
     patient_id = models.CharField(
         blank=True,
         max_length=64,
