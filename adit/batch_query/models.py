@@ -120,7 +120,7 @@ class BatchQueryTask(DicomTask):
 
     @lines_list.setter
     def lines_list(self, value: list[str]) -> None:
-        self.lines = ",".join(value)
+        self.lines = ", ".join(value)
 
     @property
     def modalities_list(self) -> list[str]:

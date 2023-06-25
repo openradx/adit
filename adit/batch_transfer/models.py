@@ -45,7 +45,7 @@ class BatchTransferTask(TransferTask):
 
     @lines_list.setter
     def lines_list(self, value: list[str]) -> None:
-        self.lines = ",".join(value)
+        self.lines = ", ".join(value)
 
     def get_absolute_url(self):
         return reverse("batch_transfer_task_detail", args=[self.job.id, self.task_id])
