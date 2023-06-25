@@ -10,7 +10,7 @@
 <tbody>
     {% for token in Tokens reversed %}
         {% with token_str=token.token_string %}
-            <tr>
+            <tr id="token-str-{{ token_str }}">
                 <td>{{ token.client }}</td>
                 <td>
                     {{ token.created_time }}

@@ -67,9 +67,6 @@ class Token(models.Model):
         utc = pytz.UTC
         return self.expiry_time < utc.localize(datetime.now())
 
-    # def __repr__(self):
-    #    return self.token_string, f"{self.author.get_username()}"
-
 
 def create_token_string():
     return binascii.hexlify(urandom(int(TokenSettings.token_lenght))).decode()
