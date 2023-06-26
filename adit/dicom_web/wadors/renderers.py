@@ -87,7 +87,9 @@ class ApplicationDicomJsonRenderer(DicomWebWadoRenderer):
         self.file_meta_list = []
 
     def append_file_meta(self, ds: Dataset):
-        json_meta = ds.file_meta.to_json_dict()
+        if hasattr(ds, "PixelData"):
+            del ds.PixelData
+        json_meta = ds.to_json_dict()
         self.file_meta_list.append(json_meta)
 
     def render(self, data, accepted_media_type=None, renderer_context=None):

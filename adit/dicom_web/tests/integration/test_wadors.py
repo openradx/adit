@@ -1,3 +1,4 @@
+import pydicom
 import pytest
 
 
@@ -27,6 +28,23 @@ def test_wado_study(
         ]
     ), "The WADO request on study level did not return all associated series."
 
+    results = orthanc1_client.retrieve_study_metadata(study_uid)
+    series_instance_uids = set()
+    for result_json in results:
+        result = pydicom.Dataset.from_json(result_json)
+        assert not hasattr(
+            result, "PixelData"
+        ), "The WADO metadata request on study level returned pixel data."
+        assert (
+            result.StudyInstanceUID == study_uid
+        ), "The WADO metadata request on study level returned series instances of the wrong study."
+        series_instance_uids.add(result.SeriesInstanceUID)
+    assert series_instance_uids == set(
+        extended_data_sheet[extended_data_sheet["StudyInstanceUID"] == study_uid][
+            "SeriesInstanceUID"
+        ]
+    ), "The WADO metadata request on study level did not return all associated series."
+
 
 @pytest.mark.integration
 @pytest.mark.django_db(transaction=True)
@@ -54,3 +72,16 @@ def test_wado_series(
         assert (
             result.SeriesInstanceUID == series_uid
         ), "The WADO request on series level returned instances of the wrong series"
+
+    results = orthanc1_client.retrieve_series_metadata(study_uid, series_uid)
+    for result_json in results:
+        result = pydicom.Dataset.from_json(result_json)
+        assert not hasattr(
+            result, "PixelData"
+        ), "The WADO metadata request on series level returned pixel data."
+        assert (
+            result.StudyInstanceUID == study_uid
+        ), "The WADO metadata request on series level returned instances of the wrong study."
+        assert (
+            result.SeriesInstanceUID == series_uid
+        ), "The WADO metadata request on series level returned instances of the wrong series"
