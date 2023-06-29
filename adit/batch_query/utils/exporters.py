@@ -30,23 +30,25 @@ def write_results(job: BatchQueryJob, file: IO) -> None:
 
 
 def get_header(has_pseudonyms: bool, has_series: bool) -> list[str]:
-    # TODO: Improve order
-
-    header = [
-        "PatientID",
-        "PatientName",
-        "BirthDate",
-        "AccessionNumber",
-        "StudyDate",
-        "StudyTime",
-        "ModalitiesInStudy",
-        "NumberOfStudyRelatedInstances",
-        "StudyDescription",
-        "StudyInstanceUID",
-    ]
+    header = []
 
     if has_pseudonyms:
         header.append("Pseudonym")
+
+    header.extend(
+        [
+            "PatientID",
+            "PatientName",
+            "BirthDate",
+            "ModalitiesInStudy",
+            "StudyDate",
+            "StudyTime",
+            "StudyDescription",
+            "NumberOfStudyRelatedInstances",
+            "AccessionNumber",
+            "StudyInstanceUID",
+        ]
+    )
 
     if has_series:
         header.extend(
@@ -78,21 +80,23 @@ def get_result_rows(
         if result.image_count is not None:
             image_count = result.image_count
 
+        result_row = []
+
+        if has_pseudonyms:
+            result_row.append(result.pseudonym)
+
         result_row = [
             result.patient_id,
             patient_name,
             patient_birth_date,
+            result.modalities,
             study_date,
             study_time,
             result.study_description,
-            result.modalities,
             image_count,
             result.accession_number,
             result.study_uid,
         ]
-
-        if has_pseudonyms:
-            result_row.append(result.pseudonym)
 
         if has_series:
             result_row.extend(
