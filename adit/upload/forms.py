@@ -98,7 +98,7 @@ class UploadJobForm(forms.ModelForm):
         
         self.tasks = []
         # Todo find way to get the study uid on client side
-        utask = UploadTask(task_id=1 patient_id="uploadtestptid", study_uid=folderpath)
+        utask = UploadTask(task_id=1, patient_id="uploadtestptid", study_uid=folderpath)
         self.tasks.append(utask)
 
         return source
