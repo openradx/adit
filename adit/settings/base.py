@@ -61,6 +61,7 @@ INSTALLED_APPS = [
     "django_htmx",
     "django_tables2",
     "rest_framework",
+    "adrf",
     "adit.core.apps.CoreConfig",
     "adit.api.apps.ApiConfig",
     "adit.selective_transfer.apps.SelectiveTransferConfig",
@@ -69,8 +70,6 @@ INSTALLED_APPS = [
     "adit.dicom_explorer.apps.DicomExplorerConfig",
     "adit.token_authentication.apps.TokenAuthenticationConfig",
     "adit.dicom_web.apps.DicomWebConfig",
-    "adit.dicom_web.qidors.apps.QidorsConfig",
-    "adit.dicom_web.wadors.apps.WadorsConfig",
     "channels",
 ]
 
@@ -449,6 +448,6 @@ EXCLUDED_MODALITIES = ["PR", "SR"]
 ETHICS_COMMITTEE_APPROVAL_REQUIRED = True
 
 # DicomWeb Settings
-WADO_TMP_FOLDER = "adit/dicom_web/wadors/tmp"
+WADO_TMP_FOLDER = "adit/dicom_web/tmp"
 DEFAULT_BOUNDARY = "adit-boundary"
 ERROR_MESSAGE = "Processing your DicomWeb request failed."

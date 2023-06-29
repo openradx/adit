@@ -7,6 +7,14 @@ from pydicom import Dataset, dcmread, dcmwrite
 from rest_framework.renderers import BaseRenderer
 
 
+class QidoApplicationDicomJsonRenderer(BaseRenderer):
+    media_type = "application/dicom+json"
+    format = "json"
+
+    def render(self, data, accepted_media_type=None, renderer_context=None):
+        return json.dumps(data)
+
+
 class DicomWebWadoRenderer(BaseRenderer):
     media_type: str
     format: str
@@ -27,7 +35,7 @@ class DicomWebWadoRenderer(BaseRenderer):
         return str
 
 
-class MultipartApplicationDicomRenderer(DicomWebWadoRenderer):
+class WadoMultipartApplicationDicomRenderer(DicomWebWadoRenderer):
     media_type = "multipart/related; type=application/dicom"
     format = "multipart"
 
@@ -77,7 +85,7 @@ class MultipartApplicationDicomRenderer(DicomWebWadoRenderer):
         return self.stream
 
 
-class ApplicationDicomJsonRenderer(DicomWebWadoRenderer):
+class WadoApplicationDicomJsonRenderer(DicomWebWadoRenderer):
     media_type = "application/dicom+json"
     format = "json"
 
