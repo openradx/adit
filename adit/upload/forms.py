@@ -93,8 +93,14 @@ class UploadJobForm(forms.ModelForm):
 
     def clean_source(self):
         folderpath = "upload" + self.cleaned_data["source"]
-        source = DicomFolder(path=folderpath)
+        source = DicomFolder(name=folderpath, path=folderpath)
         source.save()
+        
+        self.tasks = []
+        # Todo find way to get the study uid on client side
+        utask = UploadTask(task_id=1 patient_id="uploadtestptid", study_uid=folderpath)
+        self.tasks.append(utask)
+
         return source
     
     # def clean_batch_file(self):
