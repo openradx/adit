@@ -64,7 +64,7 @@ class Command(ServerCommand):
         await asyncio.gather(store_scp_thread, file_transmit_server_task, file_monitor_task)
 
     def run_server(self, **options):
-        asyncio.run(self._run_server_async())
+        asyncio.run(self._run_server_async(), debug=settings.DEBUG)
 
     def on_shutdown(self):
         # We have to stop the StoreScp explicitly. The coroutine tasks in contrast will get stopped

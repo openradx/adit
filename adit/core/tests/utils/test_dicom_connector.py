@@ -173,7 +173,7 @@ def test_download_series_with_c_move(
 
         transmit_server = FileTransmitServer("127.0.0.1", 17999)
         transmit_server.set_subscribe_handler(on_subscribe)
-        asyncio.run(transmit_server.start())
+        asyncio.run(transmit_server.start(), debug=True)
 
     threading.Thread(target=start_transmit_server, daemon=True).start()
 

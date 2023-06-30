@@ -939,7 +939,7 @@ class DicomConnector:
             if not receiving_errors:
                 eval_images_received()
 
-        asyncio.run(consume())
+        asyncio.run(consume(), debug=settings.DEBUG)
 
     def _handle_downloaded_image(
         self,
