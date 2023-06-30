@@ -30,37 +30,3 @@ def format_datetime_attributes(results: List) -> List:
                 instance["PatientBirthDate"], "%Y-%m-%d"
             )
     return results
-
-
-def adit_dict_to_dicom_json(dict_list: List) -> List:
-    list = []
-    for dict in dict_list:
-        ds = Dataset()
-        for key, value in dict.items():
-            try:
-                setattr(ds, key, value)
-            except TypeError:
-                try:
-                    for seq_value in value:
-                        seq = Sequence()
-                        for seq_key, seq_value in seq_value.items():
-                            seq_ds = Dataset()
-                            setattr(seq_ds, seq_key, seq_value)
-                            seq.append(seq_ds)
-                        setattr(ds, key, seq)
-                except Exception as e:
-                    raise Exception(e)
-        ds = strftime_dataset(ds)
-        list.append(ds.to_json(suppress_invalid_tags=True))
-    return list
-
-
-def strftime_dataset(ds: Dataset) -> Dataset:
-    for elem in ds:
-        if elem.VR == "DA":
-            elem.value = elem.value.strftime("%Y%m%d")
-        elif elem.VR == "TM":
-            elem.value = elem.value.strftime("%H%M%S")
-        elif elem.VR == "DT":
-            elem.value = elem.value.strftime("%Y%m%d%H%M%S")
-    return ds

@@ -25,6 +25,25 @@ logger = logging.getLogger(__name__)
 
 class QueryAPIView(AsyncApiView):
     level: str
+    query: dict = {
+        "StudyInstanceUID": "",
+        "SeriesInstanceUID": "",
+        "PatientID": "",
+        "PatientName": "",
+        "PatientBirthDate": "",
+        "PatientSex": "",
+        "AccessionNumber": "",
+        "StudyDate": "",
+        "StudyTime": "",
+        "ModalitiesInStudy": "",
+        "Modality": "",
+        "NumberOfStudyRelatedInstances": "",
+        "NumberOfSeriesRelatedInstances": "",
+        "SOPInstaceUID": "",
+        "StudyDescription": "",
+        "SeriesDescription": "",
+        "SeriesNumber": "",
+    }
     renderer_classes = [QidoApplicationDicomJsonRenderer]
 
     async def handle_request(self, pacs_ae_title: str) -> DicomServer:
@@ -44,9 +63,10 @@ class QueryStudyAPIView(QueryAPIView):
         request: Request,
         pacs: str,
     ):
-        query = request.GET.dict()
+        request_query = request.GET.dict()
+        self.query.update(request_query)
         source_server = await self.handle_request(pacs)
-        results = await qido_find(source_server, query, self.level)
+        results = await qido_find(source_server, self.query, self.level)
 
         return Response(results)
 
@@ -60,10 +80,11 @@ class QuerySeriesAPIView(QueryAPIView):
         pacs: str,
         study_uid: str = "",
     ):
-        query = request.GET.dict()
-        query["StudyInstanceUID"] = study_uid
+        request_query = request.GET.dict()
+        self.query.update(request_query)
+        self.query["StudyInstanceUID"] = study_uid
         source_server = await self.handle_request(pacs)
-        results = await qido_find(source_server, query, self.level)
+        results = await qido_find(source_server, self.query, self.level)
 
         return Response(results)
 

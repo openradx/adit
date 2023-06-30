@@ -1,3 +1,5 @@
+import time
+
 import pytest
 import requests
 from playwright.sync_api import Page
@@ -29,6 +31,7 @@ def test_create_and_delete_authentication_token(
     page.on("dialog", lambda dialog: dialog.accept())
     page.query_selector('[id*="delete-token-button"]').click()  # type: ignore
     page.reload()
+    time.sleep(5)
     response = requests.get(
         channels_live_server.url + "/token-authentication/test",
         headers={"Authorization": f"Token {token_str}"},

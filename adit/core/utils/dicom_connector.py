@@ -37,8 +37,9 @@ from typing import (
     cast,
 )
 
+from dicomweb_client import DICOMwebClient
 from django.conf import settings
-from pydicom import dcmread, uid, valuerep
+from pydicom import datadict, dcmread, uid, valuerep
 from pydicom.datadict import dictionary_VM
 from pydicom.dataset import Dataset
 from pydicom.errors import InvalidDicomError
@@ -64,6 +65,7 @@ from pynetdicom.sop_class import (
     StudyRootQueryRetrieveInformationModelMove,  # pyright: ignore
 )
 from pynetdicom.status import code_to_category
+from requests import HTTPError
 
 from ..errors import RetriableTaskError
 from ..models import DicomServer
@@ -103,6 +105,41 @@ def connect_to_server(service: DimseService):
                 opened_connection = False
 
             return result
+
+        return wrapper
+
+    return decorator
+
+
+def connect_to_dicomweb_server():
+    """
+    Creates a DICOMwebClient instance and makes it available as
+    `self.dicomweb_client` in the decorated method.
+    """
+
+    def decorator(func):
+        def wrapper(self, *args, **kwargs):
+            assert self.server.dicomweb_root_url, "DICOMweb root url is not set."
+            headers = {}
+            if self.server.dicomweb_authorization_header:
+                headers["Authorization"] = self.server.dicomweb_authorization_header
+
+            self.dicomweb_client = DICOMwebClient(
+                url=self.server.dicomweb_root_url,
+                qido_url_prefix=(
+                    self.server.dicomweb_qido_prefix if self.server.dicomweb_qido_prefix else None
+                ),
+                wado_url_prefix=(
+                    self.server.dicomweb_wado_prefix if self.server.dicomweb_wado_prefix else None
+                ),
+                stow_url_prefix=(
+                    self.server.dicomweb_stow_prefix if self.server.dicomweb_stow_prefix else None
+                ),
+                headers=headers,
+            )
+            logger.debug("Set up dicomweb server with url %s", self.server.dicomweb_root_url)
+
+            return func(self, *args, **kwargs)
 
         return wrapper
 
@@ -176,15 +213,20 @@ class DicomConnector:
     def find_patients(
         self, query: dict[str, Any], limit_results: int | None = None
     ) -> list[dict[str, Any]]:
-        if self.server.patient_root_find_support:
-            query["QueryRetrieveLevel"] = "PATIENT"
-        else:
+        if self.server.dicomweb_qido_support:
             query["QueryRetrieveLevel"] = "STUDY"
+            patients = self._send_qido(query, limit_results=limit_results)
 
-        patients = self._send_c_find(
-            query,
-            limit_results=limit_results,
-        )
+        else:
+            if self.server.patient_root_find_support:
+                query["QueryRetrieveLevel"] = "PATIENT"
+            else:
+                query["QueryRetrieveLevel"] = "STUDY"
+
+            patients = self._send_c_find(
+                query,
+                limit_results=limit_results,
+            )
 
         # Make patients unique, since querying on study level will
         # return all studies for one patient, resulting in duplicate patients
@@ -221,7 +263,10 @@ class DicomConnector:
             study_description = study_description.lower()
             query["StudyDescription"] = ""
 
-        studies = self._send_c_find(query, limit_results=limit_results)
+        if self.server.dicomweb_qido_support:
+            studies = self._send_qido(query, limit_results=limit_results)
+        else:
+            studies = self._send_c_find(query, limit_results=limit_results)
 
         if study_description:
             studies = list(
@@ -277,7 +322,10 @@ class DicomConnector:
             series_description = series_description.lower()
             query["SeriesDescription"] = ""
 
-        series_list = self._send_c_find(query, limit_results=limit_results)
+        if self.server.dicomweb_qido_support:
+            series_list = self._send_qido(query, limit_results=limit_results)
+        else:
+            series_list = self._send_c_find(query, limit_results=limit_results)
 
         if modalities:
             series_list = list(
@@ -359,7 +407,10 @@ class DicomConnector:
             "SeriesInstanceUID": series_uid,
         }
 
-        if self.server.patient_root_get_support or self.server.study_root_get_support:
+        if self.server.dicomweb_wado_support:
+            self._download_series_with_wado(query, dest_folder, modifier)
+            logger.debug("Successfully downloaded series %s of study %s.", series_uid, study_uid)
+        elif self.server.patient_root_get_support or self.server.study_root_get_support:
             self._download_series_with_c_get(query, dest_folder, modifier)
             logger.debug("Successfully downloaded series %s of study %s.", series_uid, study_uid)
         elif self.server.patient_root_move_support or self.server.study_root_move_support:
@@ -523,6 +574,65 @@ class DicomConnector:
         if not self.assoc.is_established:
             logger.error("Could not connect to %s.", self.server)
             raise RetriableTaskError(f"Could not connect to {self.server}.")
+
+    @connect_to_dicomweb_server()
+    def _send_qido(self, query_dict: dict[str, Any], limit_results: Optional[int] = None):
+        logger.debug("Sending QIDO with query: %s", query_dict)
+
+        level = query_dict["QueryRetrieveLevel"]
+        query = _convert_to_dicomweb_query(query_dict)
+        logger.debug("converted query: %s", query)
+
+        try:
+            if level == "STUDY":
+                query_results = self.dicomweb_client.search_for_studies(  # type: ignore
+                    search_filters=query, limit=limit_results
+                )
+            elif level == "SERIES":
+                query_results = self.dicomweb_client.search_for_series(  # type: ignore
+                    query.pop("StudyInstanceUID"), search_filters=query, limit=limit_results
+                )
+            else:
+                raise ValueError(f"Invalid QueryRetrieveLevel: {level}")
+            results = self._fetch_dicomweb_results([Dataset.from_json(qr) for qr in query_results])
+        except HTTPError as err:
+            exception = self._handle_dicomweb_error(err)
+            raise exception
+
+        return results
+
+    @connect_to_dicomweb_server()
+    def _send_wado(self, query_dict: dict[str, Any], limit_results: Optional[int] = None):
+        logger.debug("Sending WADO with query: %s", query_dict)
+
+        level = query_dict["QueryRetrieveLevel"]
+        query = _convert_to_dicomweb_query(query_dict)
+
+        try:
+            if level == "STUDY":
+                assert (
+                    "StudyInstanceUID" in query
+                ), "StudyInstanceUID is required for WADO on study level"
+                query_results = self.dicomweb_client.retrieve_study(  # type: ignore
+                    query.pop("StudyInstanceUID")
+                )
+            elif level == "SERIES":
+                assert (
+                    "StudyInstanceUID" in query
+                ), "StudyInstanceUID is required for WADO on series level"
+                assert (
+                    "SeriesInstanceUID" in query
+                ), "SeriesInstanceUID is required for WADO on series level"
+                query_results = self.dicomweb_client.retrieve_series(  # type: ignore
+                    query.pop("StudyInstanceUID"), query.pop("SeriesInstanceUID")
+                )
+            else:
+                raise ValueError(f"Invalid QueryRetrieveLevel: {level}")
+        except HTTPError as err:
+            exception = self._handle_dicomweb_error(err)
+            raise exception
+
+        return query_results
 
     @connect_to_server("C_FIND")
     def _send_c_find(
@@ -709,6 +819,12 @@ class DicomConnector:
                 )
         return results
 
+    def _fetch_dicomweb_results(self, ds_results: List[Dataset]) -> List:
+        results = []
+        for ds in ds_results:
+            results.append(_dictify_dataset(ds))
+        return results
+
     def _filter_studies_by_modalities(
         self, studies: List[Dict[str, Any]], query_modalities: Union[str, List[str]]
     ) -> List[Dict[str, Any]]:
@@ -756,6 +872,14 @@ class DicomConnector:
                 raise AssertionError(f"Invalid study modalities: {study_modalities}")
 
         return filtered_studies
+
+    def _download_series_with_wado(
+        self, query: dict[str, Any], dest_folder: PathLike, modifier: Modifier | None = None
+    ):
+        results = self._send_wado(query)
+
+        for ds in results:
+            self._handle_downloaded_image(ds, dest_folder, modifier)
 
     def _download_series_with_c_get(
         self,
@@ -969,6 +1093,15 @@ class DicomConnector:
                 logger.exception("Failed to save %s.", file_path)
                 raise err
 
+    def _handle_dicomweb_error(self, err: HTTPError) -> Exception:
+        retriable_status_codes = [408, 409, 429, 500, 503, 504]
+        if err.response.status_code in retriable_status_codes:
+            logger.error("DICOMweb request failed with %d.", err.response.status_code)
+            return RetriableTaskError("DICOMweb request failed.")
+        else:
+            logger.exception("DICOMweb request failed with %d.", err.response.status_code)
+            return err
+
 
 def _check_required_id(value: str) -> Union[str, None]:
     if value and "*" not in value and "?" not in value:
@@ -1086,3 +1219,35 @@ def _evaluate_get_move_results(results, query: dict[str, Any]):
             error_msg += f" Failed images: {', '.join(failed_image_uids)}"
         logger.error(error_msg)
         raise RetriableTaskError(f"Failed to transfer images with status {status_category}.")
+
+
+def _convert_to_dicomweb_query(query_dict: dict[str, Any]) -> dict[str, Any]:
+    """
+    Convert a query dict to a dict that can be used for a DICOMweb query.
+    This method does not operate in-place.
+    """
+    dicomweb_query = query_dict.copy()
+    if "QueryRetrieveLevel" in dicomweb_query:
+        del dicomweb_query["QueryRetrieveLevel"]
+
+    empty_values = ["*", "?", None]
+    for k, v in dicomweb_query.items():
+        if v in empty_values:
+            dicomweb_query[k] = ""
+            continue
+
+        if not v:
+            continue
+
+        t = datadict.tag_for_keyword(k)
+        if t is None:
+            continue
+        vr = datadict.dictionary_VR(t)
+        if vr == "DA":
+            dicomweb_query[k] = str(valuerep.DA(v))
+        elif vr == "DT":
+            dicomweb_query[k] = str(valuerep.DT(v))
+        elif vr == "TM":
+            dicomweb_query[k] = str(valuerep.TM(v))
+
+    return dicomweb_query

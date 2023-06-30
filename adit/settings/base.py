@@ -355,6 +355,7 @@ FLOWER_PORT = env.int("FLOWER_PORT", default=5555)  # type: ignore
 ORTHANC1_HOST = env.str("ORTHANC1_HOST", default="localhost")  # type: ignore
 ORTHANC1_HTTP_PORT = env.int("ORTHANC1_HTTP_PORT", default=6501)  # type: ignore
 ORTHANC1_DICOM_PORT = env.int("ORTHANC1_DICOM_PORT", default=7501)  # type: ignore
+ORTHANC1_DICOMWEB_ROOT = env.str("ORTHANC1_DICOMWEB_ROOT", default="dicom-web")  # type: ignore
 ORTHANC2_HOST = env.str("ORTHANC2_HOST", default="localhost")  # type: ignore
 ORTHANC2_HTTP_PORT = env.int("ORTHANC2_HTTP_PORT", default=6502)  # type: ignore
 ORTHANC2_DICOM_PORT = env.int("ORTHANC2_DICOM_PORT", default=7502)  # type: ignore
