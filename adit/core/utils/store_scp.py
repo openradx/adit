@@ -1,8 +1,11 @@
 import errno
 import logging
 import os
+import signal
+from pathlib import Path
 from socketserver import BaseServer
 from tempfile import NamedTemporaryFile
+from threading import Thread
 from typing import Callable, cast
 
 from pydicom.filewriter import write_file_meta_info
@@ -145,3 +148,16 @@ class StoreScp:
         self._file_received_handler(file.name)
 
         return 0x0000  # Return 'Success' status
+
+
+if __name__ == "__main__":
+    store_scp = StoreScp(Path("./temp"), "ADIT", "127.0.0.1", 32323)
+
+    def handle_shutdown(*args):
+        store_scp.stop()
+
+    signal.signal(signal.SIGINT, handle_shutdown)
+    signal.signal(signal.SIGTERM, handle_shutdown)
+
+    thread = Thread(target=store_scp.start)
+    thread.start()

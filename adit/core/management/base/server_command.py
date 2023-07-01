@@ -25,8 +25,9 @@ class ServerCommand(BaseCommand, ABC):
             self.on_shutdown()
             raise KeyboardInterrupt()
 
-        # SIGINT is sent by CTRL-C and SIGTERM when stopping a Docker container.
+        # SIGINT is sent by CTRL-C
         signal.signal(signal.SIGINT, handle_shutdown)
+        # SIGTERM is sent when stopping a Docker container
         signal.signal(signal.SIGTERM, handle_shutdown)
 
         try:

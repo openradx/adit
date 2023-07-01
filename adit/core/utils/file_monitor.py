@@ -61,7 +61,7 @@ class FileMonitor:
                     is_processed = self._file_handler(path)
 
             if is_processed:
-                await os.unlink(path)  # type: ignore
+                await os.unlink(path)
 
         elif await os.path.isdir(path):
             entries: list[DirEntry] = await os.scandir(path)  # type: ignore
