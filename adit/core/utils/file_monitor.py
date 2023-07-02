@@ -125,22 +125,22 @@ class FileMonitor:
 
         self._scan_counter = 0
 
-        logger.info(f"Start monitoring folder {self._folder}")
+        logger.info(f"Monitoring files in folder {self._folder}")
 
-        worker_task = asyncio.create_task(self._worker())
+        try:
+            async with asyncio.TaskGroup() as tg:
+                self.worker_task = tg.create_task(self._worker())
+                self.watch_folder_task = tg.create_task(self._watch_folder())
+                self.periodic_scan_task = tg.create_task(self._periodic_scan())
 
-        watch_folder_task = asyncio.create_task(self._watch_folder())
+                # Force one initial scan when the file monitor starts
+                await self._schedule_scan()
+        except asyncio.CancelledError:
+            pass
+        finally:
+            logger.info("File monitoring stopped")
 
-        periodic_scan_task = asyncio.create_task(self._periodic_scan())
-
-        # Force one initial scan when the file monitor starts
-        await self._schedule_scan()
-
-        self._task_group = asyncio.gather(worker_task, watch_folder_task, periodic_scan_task)
-        await self._task_group
-
-    async def stop(self):
-        if self._task_group:
-            self._task_group.cancel()
-
-        logger.info("File monitor stopped")
+    def stop(self):
+        self.worker_task.cancel()
+        self.watch_folder_task.cancel()
+        self.periodic_scan_task.cancel()

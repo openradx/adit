@@ -1,11 +1,8 @@
 import errno
 import logging
 import os
-import signal
-from pathlib import Path
-from socketserver import BaseServer
+import threading
 from tempfile import NamedTemporaryFile
-from threading import Thread
 from typing import Callable, cast
 
 from pydicom.filewriter import write_file_meta_info
@@ -21,14 +18,13 @@ FileReceivedHandler = Callable[[str], None]
 
 
 class StoreScp:
-    _assoc_server: BaseServer | None = None
-
     def __init__(self, folder: os.PathLike, ae_title: str, host: str, port: int, debug=False):
         self._folder = folder
         self._ae_title = ae_title
         self._host = host
         self._port = port
         self._debug = debug
+        self._stopped = threading.Event()
 
     def start(self):
         if self._debug:
@@ -39,13 +35,13 @@ class StoreScp:
         if not exists or not is_dir:
             raise IOError(f"Invalid folder to store DICOM files: {self._folder}")
 
-        ae = AE(ae_title=self._ae_title)
+        self._ae = AE(ae_title=self._ae_title)
 
         # Speed up by reducing the number of required DIMSE messages
         # https://pydicom.github.io/pynetdicom/stable/examples/storage.html#storage-scp
-        ae.maximum_pdu_size = 0
+        self._ae.maximum_pdu_size = 0
 
-        ae.supported_contexts = AllStoragePresentationContexts
+        self._ae.supported_contexts = AllStoragePresentationContexts
         handlers = [
             (evt.EVT_CONN_OPEN, self._on_connect),
             (evt.EVT_CONN_CLOSE, self._on_close),
@@ -55,15 +51,17 @@ class StoreScp:
             (evt.EVT_C_STORE, self._handle_store),
         ]
 
-        self._assoc_server = ae.start_server(
-            (self._host, self._port), evt_handlers=handlers, block=False
-        )
-        assert self._assoc_server
-        self._assoc_server.serve_forever()
+        logger.info(f"Store SCP server serving on {self._host}:{self._port}")
+
+        self._ae.start_server((self._host, self._port), evt_handlers=handlers, block=False)
+
+        self._stopped.wait()
+
+        logger.info("Store SCP server stopped")
 
     def stop(self):
-        assert self._assoc_server
-        self._assoc_server.shutdown()
+        self._ae.shutdown()
+        self._stopped.set()
 
     def set_file_received_handler(self, handler: FileReceivedHandler):
         self._file_received_handler = handler
@@ -88,19 +86,19 @@ class StoreScp:
         calling_ae = event.assoc.remote["ae_title"]
         address = event.assoc.remote["address"]
         port = event.assoc.remote["port"]
-        logger.info("Assoication to %s [%s:%d] established.", calling_ae, address, port)
+        logger.info("Association to %s [%s:%d] established.", calling_ae, address, port)
 
     def _on_released(self, event: Event):
         calling_ae = event.assoc.remote["ae_title"]
         address = event.assoc.remote["address"]
         port = event.assoc.remote["port"]
-        logger.info("Assoication to %s [%s:%d] released.", calling_ae, address, port)
+        logger.info("Association to %s [%s:%d] released.", calling_ae, address, port)
 
     def _on_aborted(self, event: Event):
         calling_ae = event.assoc.remote["ae_title"]
         address = event.assoc.remote["address"]
         port = event.assoc.remote["port"]
-        logger.info("Assoication to %s [%s:%d] was aborted.", calling_ae, address, port)
+        logger.info("Association to %s [%s:%d] was aborted.", calling_ae, address, port)
 
     def _handle_store(self, event: Event):
         """Handle a C-STORE request event.
@@ -148,16 +146,3 @@ class StoreScp:
         self._file_received_handler(file.name)
 
         return 0x0000  # Return 'Success' status
-
-
-if __name__ == "__main__":
-    store_scp = StoreScp(Path("./temp"), "ADIT", "127.0.0.1", 32323)
-
-    def handle_shutdown(*args):
-        store_scp.stop()
-
-    signal.signal(signal.SIGINT, handle_shutdown)
-    signal.signal(signal.SIGTERM, handle_shutdown)
-
-    thread = Thread(target=store_scp.start)
-    thread.start()
