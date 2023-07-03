@@ -85,18 +85,20 @@ def get_result_rows(
         if has_pseudonyms:
             result_row.append(result.pseudonym)
 
-        result_row = [
-            result.patient_id,
-            patient_name,
-            patient_birth_date,
-            result.modalities,
-            study_date,
-            study_time,
-            result.study_description,
-            image_count,
-            result.accession_number,
-            result.study_uid,
-        ]
+        result_row.extend(
+            [
+                result.patient_id,
+                patient_name,
+                patient_birth_date,
+                result.modalities,
+                study_date,
+                study_time,
+                result.study_description,
+                image_count,
+                result.accession_number,
+                result.study_uid,
+            ]
+        )
 
         if has_series:
             result_row.extend(
