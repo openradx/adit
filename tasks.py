@@ -120,8 +120,11 @@ def compose_logs(
 
 
 @task
-def stack_deploy(ctx: Context, env: Environments = "prod"):
-    """Deploy the stack to Docker Swarm (prod by default!)."""
+def stack_deploy(ctx: Context, env: Environments = "prod", build: bool = False):
+    """Deploy the stack to Docker Swarm (prod by default!). Optional build it before."""
+    if build:
+        compose_build(ctx, env)
+
     stack_name = get_stack_name(env)
     suffix = f"-c {compose_file_base}"
     if env == "dev":
