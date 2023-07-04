@@ -857,9 +857,7 @@ class DicomConnector:
             last_image_at = time.time()
 
             file_transmit = FileTransmitClient(
-                settings.FILE_TRANSMIT_HOST,
-                settings.FILE_TRANSMIT_PORT,
-                dest_folder,
+                settings.FILE_TRANSMIT_HOST, settings.FILE_TRANSMIT_PORT
             )
 
             def eval_images_received():

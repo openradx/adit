@@ -146,10 +146,9 @@ class FileTransmitClient:
 
     _last_read_at: int | None = None
 
-    def __init__(self, host: str, port: int, folder: PathLike):
+    def __init__(self, host: str, port: int):
         self._host = host
         self._port = port
-        self._folder = folder
 
     async def subscribe(
         self,
@@ -166,9 +165,6 @@ class FileTransmitClient:
         the filename to use for the file that is received. If no filename generator is
         set, the filename is randomly generated.
         """
-        if not await os.path.exists(self._folder) or not await os.path.isdir(self._folder):
-            raise IOError(f"Invalid directory to store received files: {self._folder}")
-
         reader, writer = await asyncio.open_connection(self._host, self._port)
 
         # Send the topic to the server
