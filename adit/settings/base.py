@@ -365,8 +365,8 @@ pydicom_config.convert_wrong_length_to_UN = True
 ADIT_AE_TITLE = env.str("ADIT_AE_TITLE", default="ADIT1")  # type: ignore
 
 # The address and port of the STORE SCP server (part of the receiver).
-# By default the STORE SCP server listens to all interfaces
-STORE_SCP_HOST = env.str("STORE_SCP_HOST", default="127.0.0.1")  # type: ignore
+# By default the STORE SCP server listens to all interfaces (empty string)
+STORE_SCP_HOST = env.str("STORE_SCP_HOST", default="")  # type: ignore
 STORE_SCP_PORT = env.int("STORE_SCP_PORT", default=11112)  # type: ignore
 
 # The address and port of the file transmit socket server (part of the receiver)
