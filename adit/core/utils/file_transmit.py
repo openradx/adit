@@ -97,6 +97,8 @@ class FileTransmitServer:
             try:
                 await self._server.serve_forever()
             except asyncio.CancelledError:
+                pass
+            finally:
                 logger.info("File transmit server stopped")
 
     async def stop(self):

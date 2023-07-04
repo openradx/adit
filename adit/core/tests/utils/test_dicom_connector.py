@@ -3,6 +3,7 @@ import filecmp
 import threading
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from time import sleep
 from unittest.mock import patch
 
 from django.conf import settings
@@ -164,6 +165,8 @@ def test_download_series_with_c_move(
     subscribed_topic = ""
 
     def start_transmit_server():
+        transmit_server = FileTransmitServer("127.0.0.1", 17999)
+
         async def on_subscribe(topic: str):
             nonlocal subscribed_topic
             subscribed_topic = topic
@@ -171,11 +174,13 @@ def test_download_series_with_c_move(
                 topic, file_path, {"SOPInstanceUID": ds.SOPInstanceUID}
             )
 
-        transmit_server = FileTransmitServer("127.0.0.1", 17999)
         transmit_server.set_subscribe_handler(on_subscribe)
         asyncio.run(transmit_server.start(), debug=True)
 
     threading.Thread(target=start_transmit_server, daemon=True).start()
+
+    # Make sure transmit server is started
+    sleep(0.5)
 
     with TemporaryDirectory() as tmp_dir:
         # Act

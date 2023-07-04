@@ -6,12 +6,11 @@ authors = ["medihack <kai.schlamp@gmail.com>"]
 license = "GPLv3"
 
 [tool.poetry.dependencies]
-cchardet = "^2.1.7"
 celery = "^5.2.7"
 channels = "^4.0.0"
 channels-redis = "^4.0.0"
 crispy-bootstrap4 = "^2022.1"
-cryptography = "^40.0.1"
+cryptography = "^41.0.1"
 daphne = "^4.0.0"
 dicognito = "^0.15.0"
 Django = "^4.0.6"
@@ -25,13 +24,13 @@ django-registration-redux = "^2.10"
 django-revproxy = { git = "https://github.com/jazzband/django-revproxy.git" }
 django-tables2 = "^2.3.3"
 djangorestframework = "^3.13.1"
-flower = "^1.0.0"
+flower = "^2.0.0"
 humanize = "^4.0.0"
 Markdown = "^3.3.7"
 psycopg2 = "^2.9.3"
 pydicom = "^2.3.0"
 pynetdicom = "^2.0.2"
-python = "^3.10"
+python = "^3.11"
 redis = "^4.3.4"
 toml = "^0.10.2"
 Twisted = { extras = ["tls", "http2"], version = "^22.2.0" }
@@ -44,10 +43,10 @@ openpyxl = "^3.1.2"
 
 [tool.poetry.group.dev.dependencies]
 black = "^23.1.0"
-celery-types = "^0.15.0"
+celery-types = "^0.18.0"
 debugpy = "^1.6.2"
 django-debug-permissions = "^1.0.0"
-django-debug-toolbar = "^3.2.4"
+django-debug-toolbar = "^4.1.0"
 django-types = "^0.17.0"
 djlint = "^1.19.16"
 factory-boy = "^3.1.0"
@@ -64,7 +63,7 @@ pytest-picked = "^0.4.4"
 pytest-playwright = "^0.3.0"
 pytest-watch = "^4.2.0"
 requests = "^2.27.1"
-ruff = "^0.0.260"
+ruff = "^0.0.275"
 time-machine = "^2.1.0"
 pytest-timeout = "^2.1.0"
 pytest-only = "^2.0.0"
@@ -93,6 +92,7 @@ markers = ["integration: mark a test as an integration test."]
 filterwarnings = [
     "ignore:SelectableGroups dict interface is deprecated:DeprecationWarning",
     "ignore:The USE_L10N setting is deprecated:django.utils.deprecation.RemovedInDjango50Warning",
+    "ignore:'cgi' is deprecated:DeprecationWarning",
 ]
 timeout = 60
 
