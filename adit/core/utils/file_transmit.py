@@ -90,8 +90,7 @@ class FileTransmitServer:
 
     async def start(self):
         self._server = await asyncio.start_server(self._handle_connection, self._host, self._port)
-        addresses = ", ".join(str(sock.getsockname()) for sock in self._server.sockets)
-        logger.info(f"File transmit server serving on {addresses}")
+        logger.info(f"File transmit server serving on {self._host or '*'}:{self._port}")
 
         async with self._server:
             try:

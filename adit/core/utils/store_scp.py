@@ -55,7 +55,9 @@ class StoreScp:
             (evt.EVT_C_STORE, self._handle_store),
         ]
 
-        logger.info(f"Store SCP server [{self._ae_title}] serving on {self._host}:{self._port}")
+        logger.info(
+            f"Store SCP server [{self._ae_title}] serving on {self._host or '*'}:{self._port}"
+        )
 
         try:
             self._ae.start_server((self._host, self._port), evt_handlers=handlers, block=False)
@@ -148,11 +150,11 @@ class StoreScp:
 
 
 def main():
-    logging.basicConfig(level=logging.DEBUG)
+    logging.basicConfig(level=logging.INFO)
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--dir", required=True)
-    parser.add_argument("--aet", default="ADIT")
+    parser.add_argument("--aet", default="ADIT1")
     parser.add_argument("--host", default="")
     parser.add_argument("--port", type=int, default=11112)
     args = parser.parse_args()
