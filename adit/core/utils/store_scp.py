@@ -1,7 +1,9 @@
+import argparse
 import errno
 import logging
 import os
 import threading
+from pathlib import Path
 from tempfile import NamedTemporaryFile
 from typing import Callable, cast
 
@@ -18,6 +20,8 @@ FileReceivedHandler = Callable[[str], None]
 
 
 class StoreScp:
+    _file_received_handler: FileReceivedHandler | None = None
+
     def __init__(self, folder: os.PathLike, ae_title: str, host: str, port: int, debug=False):
         self._folder = folder
         self._ae_title = ae_title
@@ -51,13 +55,13 @@ class StoreScp:
             (evt.EVT_C_STORE, self._handle_store),
         ]
 
-        logger.info(f"Store SCP server serving on {self._host}:{self._port}")
+        logger.info(f"Store SCP server [{self._ae_title}] serving on {self._host}:{self._port}")
 
-        self._ae.start_server((self._host, self._port), evt_handlers=handlers, block=False)
-
-        self._stopped.wait()
-
-        logger.info("Store SCP server stopped")
+        try:
+            self._ae.start_server((self._host, self._port), evt_handlers=handlers, block=False)
+            self._stopped.wait()
+        finally:
+            logger.info("Store SCP server stopped")
 
     def stop(self):
         self._ae.shutdown()
@@ -143,6 +147,29 @@ class StoreScp:
             # see https://pydicom.github.io/pynetdicom/stable/service_classes/defined_procedure_service_class.html # noqa: E501
             return 0xA702
 
-        self._file_received_handler(file.name)
+        if self._file_received_handler:
+            self._file_received_handler(file.name)
 
         return 0x0000  # Return 'Success' status
+
+
+def main():
+    logging.basicConfig(level=logging.DEBUG)
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--dir", required=True)
+    parser.add_argument("--aet", default="ADIT")
+    parser.add_argument("--host", default="")
+    parser.add_argument("--port", type=int, default=11112)
+    args = parser.parse_args()
+
+    store_scp = StoreScp(Path(args.dir), args.aet, args.host, args.port)
+
+    try:
+        store_scp.start()
+    except KeyboardInterrupt:
+        store_scp.stop()
+
+
+if __name__ == "__main__":
+    main()
