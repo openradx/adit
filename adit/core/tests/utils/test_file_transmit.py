@@ -2,7 +2,6 @@ import asyncio
 from io import BytesIO
 from pathlib import Path
 
-import aiofiles
 import pytest
 from aiofiles import os
 from django.conf import settings
