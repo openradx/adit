@@ -58,7 +58,11 @@ services:
     <<: *default-app
     expose:
       - "5555"
-    command: celery --broker=amqp://rabbit/ flower --url_prefix=flower
+    command: >
+      bash -c "
+        wait-for-it -s rabbit:5672 -t 60 &&
+        celery --broker=amqp://rabbit/ flower --url_prefix=flower
+      "
 
   postgres:
     image: postgres:13.1
