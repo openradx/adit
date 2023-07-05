@@ -75,12 +75,6 @@ class StoreScp:
         port = event.assoc.remote["port"]
         logger.info("Connection to remote %s:%d opened", address, port)
 
-        assert event.assoc.acceptor.primitive
-        called_ae = event.assoc.acceptor.primitive.called_ae_title
-        if called_ae != self._ae_title:
-            logger.error(f"Invalid called AE title: {called_ae}")
-            event.assoc.abort()
-
     def _on_close(self, event: Event):
         address = event.assoc.remote["address"]
         port = event.assoc.remote["port"]
