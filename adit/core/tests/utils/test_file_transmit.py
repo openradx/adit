@@ -33,6 +33,9 @@ async def test_start_transmit_file():
     server.set_unsubscribe_handler(unsubscribe_handler)
     server_task = asyncio.create_task(server.start())
 
+    # Make sure transmit server is started
+    await asyncio.sleep(0.5)
+
     client = FileTransmitClient(HOST, PORT)
 
     counter = 0
