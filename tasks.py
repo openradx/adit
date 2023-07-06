@@ -188,7 +188,7 @@ def test(
 
     cmd = (
         f"{build_compose_cmd('dev')} exec "
-        "--env DJANGO_SETTINGS_MODULE=adit.settings.test test pytest "
+        "--env DJANGO_SETTINGS_MODULE=adit.settings.test web pytest "
     )
     if cov:
         cmd += "--cov=adit "

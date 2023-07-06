@@ -42,10 +42,6 @@ services:
       - /mnt:/mnt
       - adit_data:/var/www/adit
 
-  test:
-    <<: *default-app
-    tty: true # keep container running
-
   worker_default:
     <<: *default-app
 
