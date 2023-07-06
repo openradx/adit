@@ -9,13 +9,7 @@ class TokenAuthenticationConfig(AppConfig):
     name = "adit.token_authentication"
 
     def ready(self):
-        register_app()
-
         post_migrate.connect(init_db, sender=self)
-
-
-def register_app():
-    register_main_menu_item(url_name="token_authentication", label="Token Authentication")
 
 
 def init_db(**kwargs):
