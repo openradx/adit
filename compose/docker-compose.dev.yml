@@ -63,6 +63,9 @@ services:
     environment:
       POSTGRES_PASSWORD: "postgres"
 
+  test:
+    <<: *default-app
+
 volumes:
   vscode-server:
   vscode-server-insiders:

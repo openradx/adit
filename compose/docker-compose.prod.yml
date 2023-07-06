@@ -67,3 +67,7 @@ services:
 
   orthanc2:
     restart: always
+
+  test:
+    profiles:
+      - donotstart

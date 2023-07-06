@@ -108,6 +108,10 @@ services:
       - ./orthanc/orthanc2.json:/etc/orthanc/orthanc.json
       - orthanc2_data:/var/lib/orthanc/db
 
+  test:
+    <<: *default-app
+    tty: true # keep container running
+
 volumes:
   adit_data:
   postgres_data:
