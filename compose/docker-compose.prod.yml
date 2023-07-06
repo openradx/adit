@@ -30,6 +30,11 @@ services:
         daphne -b 0.0.0.0 -p 80 -e ssl:443:privateKey=/var/www/adit/ssl/key.pem:certKey=/var/www/adit/ssl/cert.pem adit.asgi:application
       "
 
+  test:
+    <<: *default-app
+    profiles:
+      - donotstart
+
   worker_default:
     <<: *default-app
     command: ./manage.py celery_worker -Q default_queue
@@ -67,7 +72,3 @@ services:
 
   orthanc2:
     restart: always
-
-  test:
-    profiles:
-      - donotstart

@@ -42,6 +42,10 @@ services:
       - /mnt:/mnt
       - adit_data:/var/www/adit
 
+  test:
+    <<: *default-app
+    tty: true # keep container running
+
   worker_default:
     <<: *default-app
 
@@ -107,10 +111,6 @@ services:
     volumes:
       - ./orthanc/orthanc2.json:/etc/orthanc/orthanc.json
       - orthanc2_data:/var/lib/orthanc/db
-
-  test:
-    <<: *default-app
-    tty: true # keep container running
 
 volumes:
   adit_data:
