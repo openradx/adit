@@ -28,19 +28,23 @@ class Command(AsyncServerCommand):
 
         self.stdout.write(f"Using receiver directory: {receiver_dir}")
 
+        # In Docker swarm mode the host "receiver" resolves to a virtual IP address as multiple
+        # replicas can be behind a service (each with its own real IP). So the virtual IP forwards
+        # the data to those read IPs. But we can't start a server on such an virtual IP inside
+        # the container. We could figure out the read hostname / IP or just use 0.0.0.0 to
+        # listen on all interfaces (what we do now).
+
         self._store_scp = StoreScp(
             folder=receiver_dir,
             ae_title=settings.ADIT_AE_TITLE,
-            host=settings.STORE_SCP_HOST,
+            host="0.0.0.0",
             port=settings.STORE_SCP_PORT,
             debug=settings.ENABLE_DICOM_DEBUG_LOGGER,
         )
         store_scp_thread = asyncio.to_thread(self._store_scp.start)
 
         self._file_monitor = FileMonitor(receiver_dir)
-        self._file_transmit = FileTransmitServer(
-            settings.FILE_TRANSMIT_HOST, settings.FILE_TRANSMIT_PORT
-        )
+        self._file_transmit = FileTransmitServer("0.0.0.0", settings.FILE_TRANSMIT_PORT)
 
         async def handle_received_file(file_path):
             # The calling AE title is retained by the StoreScp class in the filename so
