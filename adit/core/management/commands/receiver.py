@@ -52,14 +52,26 @@ class Command(AsyncServerCommand):
             filename: str = os.path.basename(file_path)
             calling_ae = filename.split("_")[0]
 
-            ds: Dataset = await asyncio.to_thread(dcmread, file_path)
-            study_uid = ds.StudyInstanceUID
-            series_uid = ds.SeriesInstanceUID
-            instance_uid = ds.SOPInstanceUID
-            topic = f"{calling_ae}\\{study_uid}\\{series_uid}"
-            await self._file_transmit.publish_file(
-                topic, file_path, {"SOPInstanceUID": instance_uid}
-            )
+            study_uid = "Unknown"
+            series_uid = "Unknown"
+            instance_uid = "Unknown"
+            try:
+                ds: Dataset = await asyncio.to_thread(dcmread, file_path)
+                study_uid = ds.StudyInstanceUID
+                series_uid = ds.SeriesInstanceUID
+                instance_uid = ds.SOPInstanceUID
+                topic = f"{calling_ae}\\{study_uid}\\{series_uid}"
+                await self._file_transmit.publish_file(
+                    topic, file_path, {"SOPInstanceUID": instance_uid}
+                )
+            except Exception as err:
+                # TODO: Store unreadable files in some special folder for later analysis
+                logger.error(
+                    f"Error while reading and transmitting received DICOM file '{filename}' with "
+                    f"StudyInstanceUID '{study_uid}', SeriesInstanceUID '{series_uid}', "
+                    f"SOPInstanceUID '{instance_uid}'."
+                )
+                logger.exception(err)
 
             # allow the monitor to delete the file after it has been transmitted
             return True
