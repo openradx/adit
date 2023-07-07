@@ -1,6 +1,7 @@
 import os
 
 import pandas as pd
+import pydicom
 import pytest
 from dicomweb_client import DICOMwebClient
 from django.conf import settings
@@ -32,6 +33,7 @@ def create_dicom_web_client(authentication_token):
             url=f"{server_url}/dicom-web/{ae_title}",
             qido_url_prefix="qidors",
             wado_url_prefix="wadors",
+            stow_url_prefix="stowrs",
             headers={"Authorization": f"Token {authentication_token.token_string}"},
         )
         return client
@@ -49,3 +51,20 @@ def full_data_sheet():
 def extended_data_sheet():
     extended_data_sheet_path = settings.BASE_DIR / "samples" / "extended_data_sheet.xlsx"
     return pd.read_excel(extended_data_sheet_path)
+
+
+@pytest.fixture
+def test_dicoms():
+    test_dicoms_path = settings.BASE_DIR / "samples" / "dicoms"
+    dicoms = []
+    for root, _, files in os.walk(test_dicoms_path):
+        if len(files) != 0:
+            try:
+                dicoms.extend(
+                    [pydicom.dcmread(os.path.join(root, files[i])) for i in range(len(files))]
+                )
+            except Exception:
+                continue
+    if len(dicoms) == 0:
+        raise Exception("No DICOM files found in samples/dicoms")
+    return dicoms

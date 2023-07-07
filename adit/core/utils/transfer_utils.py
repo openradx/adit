@@ -137,7 +137,7 @@ class TransferExecutor:
         with tempfile.TemporaryDirectory(prefix="adit_") as tmpdir:
             patient_folder = self._download_dicoms(Path(tmpdir))
             assert self.dest_connector
-            self.dest_connector.upload_folder(patient_folder)
+            self.dest_connector.upload_instances(patient_folder)
 
     def _transfer_to_archive(self) -> None:
         transfer_job: TransferJob = self.transfer_task.job

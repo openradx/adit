@@ -359,6 +359,7 @@ ORTHANC1_DICOMWEB_ROOT = env.str("ORTHANC1_DICOMWEB_ROOT", default="dicom-web") 
 ORTHANC2_HOST = env.str("ORTHANC2_HOST", default="localhost")  # type: ignore
 ORTHANC2_HTTP_PORT = env.int("ORTHANC2_HTTP_PORT", default=6502)  # type: ignore
 ORTHANC2_DICOM_PORT = env.int("ORTHANC2_DICOM_PORT", default=7502)  # type: ignore
+ORTHANC2_DICOMWEB_ROOT = env.str("ORTHANC2_DICOMWEB_ROOT", default="dicom-web")  # type: ignore
 
 # Used by django-filter
 FILTERS_EMPTY_CHOICE_LABEL = "Show All"

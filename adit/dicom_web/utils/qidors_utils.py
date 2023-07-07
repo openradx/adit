@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime
 from typing import Any, Dict
 
@@ -8,10 +9,15 @@ from rest_framework.exceptions import NotFound
 from adit.core.models import DicomServer
 from adit.core.utils.dicom_connector import DicomConnector
 
+logger = logging.getLogger(__name__)
+
 
 async def qido_find(source_server: DicomServer, query: dict, level: str):
     query = await sync_to_async(convert_datetime_strings)(query)
     connector = DicomConnector(source_server)
+
+    logger.info("Connected to server %s.", source_server.ae_title)
+
     if level == "STUDY":
         results = await sync_to_async(connector.find_studies)(query)
     elif level == "SERIES":

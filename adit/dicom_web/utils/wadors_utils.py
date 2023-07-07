@@ -1,13 +1,13 @@
+import logging
 from os import PathLike
 
 from adrf.views import sync_to_async
-from celery.utils.log import get_task_logger
 from rest_framework.exceptions import NotFound
 
 from adit.core.models import DicomServer
 from adit.core.utils.dicom_connector import DicomConnector
 
-logger = get_task_logger(__name__)
+logger = logging.getLogger(__name__)
 
 
 async def wado_retrieve(source_server: DicomServer, query: dict, dest_folder: PathLike) -> None:

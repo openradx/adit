@@ -95,14 +95,12 @@ def setup_dicomweb_orthancs():
     DicomWebServerFactory(
         name="Orthanc Test Server 1",
         ae_title="ORTHANC1",
-        dicomweb_stow_support=False,
         dicomweb_root_url=f"http://{settings.ORTHANC1_HOST}:{settings.ORTHANC1_HTTP_PORT}/{settings.ORTHANC1_DICOMWEB_ROOT}/",
     )
-    DicomServerFactory(
+    DicomWebServerFactory(
         name="Orthanc Test Server 2",
         ae_title="ORTHANC2",
-        host=settings.ORTHANC2_HOST,
-        port=settings.ORTHANC2_DICOM_PORT,
+        dicomweb_root_url=f"http://{settings.ORTHANC2_HOST}:{settings.ORTHANC2_HTTP_PORT}/{settings.ORTHANC2_DICOMWEB_ROOT}/",
     )
 
 

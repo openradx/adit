@@ -1,8 +1,6 @@
 from django.apps import AppConfig
 from django.db.models.signals import post_migrate
 
-from adit.core.site import register_main_menu_item
-
 
 class TokenAuthenticationConfig(AppConfig):
     default_auto_field = "django.db.models.BigAutoField"

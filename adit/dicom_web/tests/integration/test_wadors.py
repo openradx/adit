@@ -5,7 +5,6 @@ import pytest
 @pytest.mark.integration
 @pytest.mark.django_db(transaction=True)
 def test_wado_study(
-    adit_celery_worker,
     setup_orthancs,
     channels_live_server,
     create_dicom_web_client,
@@ -49,7 +48,6 @@ def test_wado_study(
 @pytest.mark.integration
 @pytest.mark.django_db(transaction=True)
 def test_wado_series(
-    adit_celery_worker,
     setup_orthancs,
     channels_live_server,
     create_dicom_web_client,

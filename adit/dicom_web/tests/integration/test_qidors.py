@@ -5,7 +5,6 @@ import pytest
 @pytest.mark.integration
 @pytest.mark.django_db(transaction=True)
 def test_qido_study(
-    adit_celery_worker,
     setup_orthancs,
     channels_live_server,
     create_dicom_web_client,
@@ -33,7 +32,6 @@ def test_qido_study(
 @pytest.mark.integration
 @pytest.mark.django_db(transaction=True)
 def test_qido_series(
-    adit_celery_worker,
     setup_orthancs,
     channels_live_server,
     create_dicom_web_client,
@@ -51,14 +49,22 @@ def test_qido_series(
 
     study_uid = list(extended_data_sheet["StudyInstanceUID"])[0]
     results = orthanc1_client.search_for_series(study_uid)
-    results_series_uids = set()
-    for result_json in results:
-        results_series_uids.add(pydicom.Dataset.from_json(result_json).SeriesInstanceUID)
+    results_series_uids = set(
+        [pydicom.Dataset.from_json(result_json).SeriesInstanceUID for result_json in results]
+    )
     assert results_series_uids == set(
         extended_data_sheet[extended_data_sheet["StudyInstanceUID"] == study_uid][
             "SeriesInstanceUID"
         ]
     ), "QIDO request with StudyInstanceUID on series level failed"
+
+    results = orthanc1_client.search_for_series()
+    results_series_uids = set(
+        [pydicom.Dataset.from_json(result_json).SeriesInstanceUID for result_json in results]
+    )
+    assert results_series_uids == set(
+        extended_data_sheet["SeriesInstanceUID"]
+    ), "QIDO request with empty StudyInstanceUID on series level failed"
 
     results = orthanc1_client.search_for_series(search_filters={"Modality": "MR"})
     results_series_uids = set()

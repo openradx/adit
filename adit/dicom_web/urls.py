@@ -5,6 +5,7 @@ from .views import (
     QueryStudyAPIView,
     RetrieveSeriesAPIView,
     RetrieveStudyAPIView,
+    StoreAPIView,
 )
 
 urlpatterns = [
@@ -42,5 +43,15 @@ urlpatterns = [
         "<str:pacs>/wadors/studies/<str:study_uid>/series/<str:series_uid>/<str:mode>/",
         RetrieveSeriesAPIView.as_view(),
         name="wado_rs-series_with_study_uid_and_series_uid_and_mode",
+    ),
+    path(
+        "<str:pacs>/stowrs/studies",
+        StoreAPIView.as_view(),
+        name="stow_rs-series",
+    ),
+    path(
+        "<str:pacs>/stowrs/studies/<str:study_uid>",
+        StoreAPIView.as_view(),
+        name="stow_rs-series_with_study_uid",
     ),
 ]

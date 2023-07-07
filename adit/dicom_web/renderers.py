@@ -109,3 +109,17 @@ class WadoApplicationDicomJsonRenderer(DicomWebWadoRenderer):
             os.remove(file_path)
         os.rmdir(data["folder_path"])
         return json.dumps(self.file_meta_list)
+
+
+class StowApplicationDicomJsonRenderer(BaseRenderer):
+    media_type = "application/dicom+json"
+    format = "json"
+
+    def render(self, data, accepted_media_type=None, renderer_context=None):
+        result_list = []
+        for ds in data:
+            result_list.append(ds.to_json_dict())
+
+        if len(result_list) == 1:
+            return json.dumps(result_list[0])
+        return json.dumps(result_list)

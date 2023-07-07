@@ -2,9 +2,6 @@ import datetime
 import re
 from typing import List
 
-from pydicom import Sequence
-from pydicom.dataset import Dataset
-
 
 def person_name_to_dicom(value, add_wildcards=False):
     """See also :func:`adit.core.templatetags.core_extras.person_name_from_dicom`"""
