@@ -2,6 +2,9 @@
 
 ## High Priority
 
+- Make whole receiver crash if one asyncio task crashes
+- Introduce "rescheduled" property in task model and check periodically (retry is not intended for executing tasks in a distant future)
+- Make a job urgent retrospectively
 - Auto refresh job pages und success or failure
 - Rewrite tests to use mocker fixture instead of patch
 - rename ADIT_AE_TITLE to RECEIVER_AE_TITLE

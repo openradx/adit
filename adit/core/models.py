@@ -178,6 +178,21 @@ class DicomJob(models.Model):
     def __str__(self):
         return f"{self.__class__.__name__} [ID {self.id}]"
 
+    def reset_tasks(self, only_failed=False):
+        if only_failed:
+            dicom_tasks = self.tasks.filter(status=DicomTask.Status.FAILURE)
+        else:
+            dicom_tasks = self.tasks.all()
+
+        dicom_tasks.update(
+            status=DicomJob.Status.PENDING,
+            retries=0,
+            message="",
+            log="",
+            start=None,
+            end=None,
+        )
+
     @property
     def is_deletable(self):
         non_pending_tasks = self.tasks.exclude(status=DicomTask.Status.PENDING)

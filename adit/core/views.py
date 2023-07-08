@@ -217,11 +217,11 @@ class DicomJobCancelView(LoginRequiredMixin, OwnerRequiredMixin, SingleObjectMix
                 f"Job with ID {job.id} and status {job.get_status_display()} is not cancelable."
             )
 
-        for dicom_task in job.tasks.filter(status=DicomTask.Status.PENDING):
+        dicom_tasks = job.tasks.filter(status=DicomTask.Status.PENDING)
+        for dicom_task in dicom_tasks.only("celery_task_id"):
             if dicom_task.celery_task_id:
                 celery_app.control.revoke(dicom_task.celery_task_id)
-            dicom_task.status = DicomTask.Status.CANCELED
-            dicom_task.save()
+        dicom_tasks.update(status=DicomTask.Status.CANCELED)
 
         tasks_in_progress_count = job.tasks.filter(status=DicomTask.Status.IN_PROGRESS).count()
 
@@ -249,9 +249,7 @@ class DicomJobResumeView(LoginRequiredMixin, OwnerRequiredMixin, SingleObjectMix
                 f"Job with ID {job.id} and status {job.get_status_display()} is not resumable."
             )
 
-        for task in job.tasks.filter(status=DicomTask.Status.CANCELED):
-            task.status = DicomTask.Status.PENDING
-            task.save()
+        job.tasks.filter(status=DicomTask.Status.CANCELED).update(status=DicomTask.Status.PENDING)
 
         job.status = DicomJob.Status.PENDING
         job.save()
@@ -273,14 +271,7 @@ class DicomJobRetryView(LoginRequiredMixin, OwnerRequiredMixin, SingleObjectMixi
                 f"Job with ID {job.id} and status {job.get_status_display()} is not retriable."
             )
 
-        for task in job.tasks.filter(status=DicomTask.Status.FAILURE):
-            task.status = DicomTask.Status.PENDING
-            task.retries = 0
-            task.message = ""
-            task.log = ""
-            task.start = None
-            task.end = None
-            task.save()
+        job.reset_tasks(only_failed=True)
 
         job.status = DicomJob.Status.PENDING
         job.save()
@@ -302,14 +293,7 @@ class DicomJobRestartView(LoginRequiredMixin, OwnerRequiredMixin, SingleObjectMi
                 f"Job with ID {job.id} and status {job.get_status_display()} is not restartable."
             )
 
-        for task in job.tasks.all():
-            task.status = DicomTask.Status.PENDING
-            task.retries = 0
-            task.message = ""
-            task.log = ""
-            task.start = None
-            task.end = None
-            task.save()
+        job.reset_tasks()
 
         job.status = DicomJob.Status.PENDING
         job.save()
