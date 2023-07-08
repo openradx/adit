@@ -3,8 +3,6 @@
 ## High Priority
 
 - Make whole receiver crash if one asyncio task crashes
-- Introduce "rescheduled" property in task model and check periodically (retry is not intended for executing tasks in a distant future)
-- Make a job urgent retrospectively
 - Auto refresh job pages und success or failure
 - Rewrite tests to use mocker fixture instead of patch
 - rename ADIT_AE_TITLE to RECEIVER_AE_TITLE
@@ -14,10 +12,10 @@
 - Refactor \_message_panel.html
 - QueryUtil -> QueryExecutor, and TransferUtil -> TransferExecutor
 - Improve cancel during transfer
-- Allow admin to kill a job (with task revoke(terminale=True))
+- Allow admin to kill a job (with task revoke(terminate=True))
 - Fix the ineffective stuff in transfer_utils, see TODO there
 - Write test_parsers.py
-- DICOM data that does not need to be modified can be directly transferred between the source and destination server. The only exception is when source and destination server are the same, then the data will still be downloaded and uploaded again. This may be helpful when the PACS server treats the data somehow differently when sent by ADIT.
+- DICOM data that does not need to be modified can be directly transferred between the source and destination server (C-MOVE). The only exception is when source and destination server are the same, then the data will still be downloaded and uploaded again. This may be helpful when the PACS server treats the data somehow differently when sent by ADIT.
 
 ## Fix
 
@@ -85,11 +83,19 @@
   -- Unfortunately the last released django-revproxy is broken with latest Django
   -- So we use the master branch here directly from Github (see pyproject.toml)
   -- Alternatively we could use <https://github.com/thomasw/djproxy>
+- Rethink task queues and rescheduling
+  -- Currently we use Celery to schedule tasks in the future using Celery's ETA feature, but this is not recommended for tasks in the distant future (see <https://docs.celeryq.dev/en/stable/userguide/calling.html#eta-and-countdown>)
+  -- Another option would be to introduce a "rescheduled" property in task model and reschedule them by checking periodically using Celery Beat PeriodicTasks (maybe every hour or so)
+  -- But then we can't use Celery Canvas anymore as tasks in a worker finish with such a rescheduling outside of the Celery system. Then we have to check after each finished task if the job is finished and so on.
+  -- Maybe it isn't even a big problem as in a hospital site we never accumulate such many Celery tasks on a worker and ETA is totally fine (just keep it in mind that it could get a problem).
+  -- Another solution would be to use Temporal.io as soon as they implement task priorities <https://github.com/temporalio/temporal/issues/1507>
 - Evaluate other task runners
   -- <https://www.pyinvoke.org/> # used currently
   -- <https://github.com/taskipy/taskipy>
   -- <https://github.com/nat-n/poethepoet>
   -- <https://just.systems/>
+- Make a job urgent retrospectively (maybe only staff members can do this)
+  -- A current workaround is to cancel the job, change urgency with Django Admin and then resume the job
 - Try to bring channels_liver_server in official pytest_django release
   -- <https://github.com/pytest-dev/pytest-django/blob/master/pytest_django/fixtures.py#L514>
   -- <https://github.com/pytest-dev/pytest-django/blob/42b7db2f4f5dbe785e57652d1d4ea9eda39e56e3/pytest_django/live_server_helper.py#L4>
