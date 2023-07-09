@@ -5,12 +5,10 @@ import os
 import threading
 from pathlib import Path
 from tempfile import NamedTemporaryFile
-from typing import Callable, cast
+from typing import Callable
 
-from pydicom.filewriter import write_file_meta_info
 from pynetdicom import debug_logger, evt
 from pynetdicom.ae import ApplicationEntity as AE
-from pynetdicom.dimse_primitives import C_STORE
 from pynetdicom.events import Event
 from pynetdicom.presentation import AllStoragePresentationContexts
 
@@ -119,18 +117,12 @@ class StoreScp:
             with NamedTemporaryFile(
                 prefix=file_prefix, suffix=".dcm", dir=self._folder, delete=False
             ) as file:
-                # Write dataset directly to file without re-encoding.
+                # There are two ways to save the file. We use the first one and prefer
+                # reliability over speed. (See file history for second method.)
                 # https://pydicom.github.io/pynetdicom/stable/examples/storage.html#storage-scp
-
-                # Write the preamble and prefix
-                file.write(b"\x00" * 128)
-                file.write(b"DICM")
-                # Encode and write the File Meta Information
-                write_file_meta_info(file, event.file_meta)  # type: ignore
-                # Write the encoded dataset
-                request = cast(C_STORE, event.request)
-                assert request.DataSet
-                file.write(request.DataSet.getvalue())
+                df = event.dataset
+                df.file_meta = event.file_meta
+                df.save_as(file.name, write_like_original=False)
         except Exception as err:
             if isinstance(err, OSError) and err.errno == errno.ENOSPC:
                 logger.error("Out of disc space while saving received file.")

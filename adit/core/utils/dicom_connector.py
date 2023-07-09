@@ -765,14 +765,7 @@ class DicomConnector:
     ):
         def handle_c_get_store(event: Event, store_errors: list[Exception]):
             ds = event.dataset
-            context = event.context
-
-            # Add DICOM File Meta Information
             ds.file_meta = event.file_meta
-
-            # Set the transfer syntax attributes of the dataset
-            ds.is_little_endian = context.transfer_syntax.is_little_endian
-            ds.is_implicit_VR = context.transfer_syntax.is_implicit_VR
 
             try:
                 self._handle_downloaded_image(ds, dest_folder, modifier)
