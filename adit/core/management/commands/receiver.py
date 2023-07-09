@@ -65,7 +65,7 @@ class Command(AsyncServerCommand):
                     topic, file_path, {"SOPInstanceUID": instance_uid}
                 )
             except Exception as err:
-                # TODO: Store unreadable files in some special folder for later analysis
+                # TODO: Maybe store unreadable files in some special folder for later analysis
                 logger.error(
                     f"Error while reading and transmitting received DICOM file '{filename}' with "
                     f"StudyInstanceUID '{study_uid}', SeriesInstanceUID '{series_uid}', "
@@ -78,10 +78,17 @@ class Command(AsyncServerCommand):
 
         self._file_monitor.set_file_handler(handle_received_file)
 
-        async with asyncio.TaskGroup() as tg:
-            tg.create_task(store_scp_thread)
-            tg.create_task(self._file_transmit.start())
-            tg.create_task(self._file_monitor.start())
+        try:
+            async with asyncio.TaskGroup() as tg:
+                tg.create_task(store_scp_thread)
+                tg.create_task(self._file_transmit.start())
+                tg.create_task(self._file_monitor.start())
+        except ExceptionGroup as err:
+            # Explicitly stop the  Store SCP server as it is running in a separate thread not
+            # using asyncio and can't be stopped by the task group using a CancelledError.
+            self._store_scp.stop()
+
+            logger.exception(err)
 
     def on_shutdown(self):
         self._store_scp.stop()

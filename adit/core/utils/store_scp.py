@@ -20,6 +20,7 @@ FileReceivedHandler = Callable[[str], None]
 
 
 class StoreScp:
+    _ae: AE | None = None
     _file_received_handler: FileReceivedHandler | None = None
 
     def __init__(self, folder: os.PathLike, ae_title: str, host: str, port: int, debug=False):
@@ -66,8 +67,11 @@ class StoreScp:
             logger.info("Store SCP server stopped")
 
     def stop(self):
-        self._ae.shutdown()
-        self._stopped.set()
+        if self._ae:
+            self._ae.shutdown()
+            self._stopped.set()
+
+        self._ae = None
 
     def set_file_received_handler(self, handler: FileReceivedHandler):
         self._file_received_handler = handler
@@ -132,6 +136,7 @@ class StoreScp:
                 logger.error("Out of disc space while saving received file.")
             else:
                 logger.error("Unable to write file to disc: %s", err)
+            logger.exception(err)
 
             # We abort the association as don't want to get more images.
             # We can't use C-CANCEL as not all PACS servers support or respect it.
@@ -143,8 +148,12 @@ class StoreScp:
             # see https://pydicom.github.io/pynetdicom/stable/service_classes/defined_procedure_service_class.html # noqa: E501
             return 0xA702
 
-        if self._file_received_handler:
-            self._file_received_handler(file.name)
+        try:
+            if self._file_received_handler:
+                self._file_received_handler(file.name)
+        except Exception as err:
+            logger.error("Unable to handle received file %s: %s", file.name, err)
+            logger.exception(err)
 
         return 0x0000  # Return 'Success' status
 
