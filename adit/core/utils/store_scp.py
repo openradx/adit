@@ -122,7 +122,7 @@ class StoreScp:
                 # https://pydicom.github.io/pynetdicom/stable/examples/storage.html#storage-scp
                 df = event.dataset
                 df.file_meta = event.file_meta
-                df.save_as(file.name, write_like_original=False)
+                df.save_as(file.name)
         except Exception as err:
             if isinstance(err, OSError) and err.errno == errno.ENOSPC:
                 logger.error("Out of disc space while saving received file.")

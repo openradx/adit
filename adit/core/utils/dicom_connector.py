@@ -946,7 +946,7 @@ class DicomConnector:
 
         try:
             folder_path.mkdir(parents=True, exist_ok=True)
-            ds.save_as(file_path, write_like_original=False)
+            ds.save_as(file_path)
         except Exception as err:
             if isinstance(err, OSError) and err.errno == errno.ENOSPC:
                 # No space left on destination
