@@ -636,7 +636,7 @@ class DicomConnector:
                 continue
 
             try:
-                ds = dcmread(path)
+                ds = dcmread(path, force=True)
             except InvalidDicomError:
                 logger.warning("Tried to read invalid DICOM file %s. Skipping it.", path)
                 continue
@@ -884,7 +884,7 @@ class DicomConnector:
                 image_uid = metadata["SOPInstanceUID"]
 
                 if image_uid in remaining_image_uids:
-                    ds = dcmread(BytesIO(data))
+                    ds = dcmread(BytesIO(data), force=True)
                     remaining_image_uids.remove(image_uid)
 
                     try:

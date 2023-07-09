@@ -56,7 +56,7 @@ class Command(AsyncServerCommand):
             series_uid = "Unknown"
             instance_uid = "Unknown"
             try:
-                ds: Dataset = await asyncio.to_thread(dcmread, file_path)
+                ds: Dataset = await asyncio.to_thread(dcmread, file_path, force=True)
                 study_uid = ds.StudyInstanceUID
                 series_uid = ds.SeriesInstanceUID
                 instance_uid = ds.SOPInstanceUID
