@@ -61,13 +61,14 @@ class FileTransmitServer:
     to this topic.
     """
 
+    _server: asyncio.Server | None = None
+    _subscribe_handler: SubscribeHandler | None = None
+    _unsubscribe_handler: UnsubscribeHandler | None = None
+    _sessions: list[FileTransmitSession] = []
+
     def __init__(self, host: str, port: int):
         self._host = host
         self._port = port
-        self._server = None
-        self._subscribe_handler: SubscribeHandler | None = None
-        self._unsubscribe_handler: UnsubscribeHandler | None = None
-        self._sessions: list[FileTransmitSession] = []
 
     def set_subscribe_handler(self, subscribe_handler: SubscribeHandler | None):
         """Called when a client subscribes to a topic."""
@@ -101,9 +102,11 @@ class FileTransmitServer:
                 logger.info("File transmit server stopped")
 
     async def stop(self):
-        assert self._server
-        self._server.close()
-        await self._server.wait_closed()
+        if self._server:
+            self._server.close()
+            await self._server.wait_closed()
+
+        self._server = None
 
     async def _handle_connection(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
         line = await reader.readline()
