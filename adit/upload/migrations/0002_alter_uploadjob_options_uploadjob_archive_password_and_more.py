@@ -138,7 +138,7 @@ class Migration(migrations.Migration):
                 (
                     "series_uids",
                     models.JSONField(
-                        blank=True, null=True, validators=[adit.core.validators.validate_uid_list]
+                        blank=True, null=True, validators=[adit.core.validators.validate_uids]
                     ),
                 ),
                 (

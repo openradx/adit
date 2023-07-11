@@ -1,5 +1,4 @@
 from django import forms
-import cchardet as chardet
 from io import StringIO
 import uuid
 import os
@@ -17,12 +16,15 @@ from .models import UploadJob, UploadTask
 from .parsers import UploadBatchFileParser
 
 
+"""
+Allows upload of Dicom files to a destination PACS or folder. Pseudonymization currently based on site-specific
+chosen pseudonym upon patient upload. As singular uploads are expected, batch pseudonymization currently not 
+implemented.
+"""
 class UploadJobForm(forms.ModelForm):
     source = forms.CharField(required=False)
     destination = DicomNodeChoiceField(False)
-#    batch_file = RestrictedFileField(max_upload_size=5242880, label="Batch file")
-    upload_files = RestrictedFileField(label="Upload files")
-    upload_files = forms.FileField(widget=forms.ClearableFileInput(attrs={'multiple': True}))
+    upload_files = forms.FileField(widget=forms.ClearableFileInput(attrs={'allow_multiple_selected': True}))
     pseudonym = forms.CharField()
 
     class Meta:
@@ -69,7 +71,6 @@ class UploadJobForm(forms.ModelForm):
 
         pathuid = str(uuid.uuid1())
         self.fields["source"].initial = pathuid
-        #self.fields["source"].widget.attrs['readonly'] = 'readonly'
         self.fields["destination"].widget.attrs["class"] = "custom-select"
 
         self.fields["destination"].queryset = self.fields["destination"].queryset.order_by(
@@ -77,11 +78,6 @@ class UploadJobForm(forms.ModelForm):
         )
 
         self.max_batch_size = settings.MAX_BATCH_QUERY_SIZE if not user.is_staff else None
-
-#        if self.max_batch_size is not None:
-#            self.fields[
-#                "batch_file"
-#            ].help_text = f"Maximum {self.max_batch_size} tasks per query job!"
 
 #        self.fields["batch_file"].required = False
 
@@ -93,12 +89,16 @@ class UploadJobForm(forms.ModelForm):
 
     def clean_source(self):
         folderpath = "upload" + self.cleaned_data["source"]
+        psn = self.cleaned_data["pseudonym"]
         source = DicomFolder(name=folderpath, path=folderpath)
         source.save()
         
         self.tasks = []
-        # Todo find way to get the study uid on client side
-        utask = UploadTask(task_id=1, patient_id="uploadtestptid", study_uid=folderpath)
+
+        # Todo : replace this placeholder study_uid with the pseudonymized study_uid once 
+        # the pseudonymization is functional. Task IDs can then sequentially be set 
+        # should multiple studies arrive
+        utask = UploadTask(task_id=1, patient_id=psn, study_uid=folderpath)
         self.tasks.append(utask)
 
         return source

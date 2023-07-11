@@ -3,7 +3,6 @@ from adit.core.models import AppSettings, DicomJob, DicomTask, TransferJob, Tran
 from adit.batch_transfer.models import BatchTransferJob
 from adit.batch_transfer.tasks import ProcessBatchTransferJob
 
-# Create your models here.
 class UploadSettings(AppSettings):
     class Meta:
         verbose_name_plural = "Upload settings"
@@ -12,6 +11,7 @@ class UploadJob(TransferJob):
     project_name = models.CharField(max_length=150)
     project_description = models.TextField(max_length=2000)
 
+    # Send as batch transfer to reuse existent infrastructure
     def delay(self):
         current_app.send_task("adit.batch_transfer.tasks.ProcessBatchTransferJob", (self.id,))
 
