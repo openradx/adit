@@ -2,12 +2,11 @@ import asyncio
 import json
 import logging
 import struct
-from io import BytesIO
 from os import PathLike
 from typing import Awaitable, Callable
 
 import aiofiles
-from aiofiles import os
+from aiofiles import os, tempfile
 
 BUFFER_SIZE = 1024
 
@@ -15,7 +14,7 @@ SubscribeHandler = Callable[[str], None | Awaitable[None]]
 UnsubscribeHandler = Callable[[str], None | Awaitable[None]]
 FileSentHandler = Callable[[], None]
 Metadata = dict[str, str]
-FileReceivedHandler = Callable[[bytes, Metadata], Awaitable[bool | None] | bool | None]
+FileReceivedHandler = Callable[[str, Metadata], Awaitable[bool | None] | bool | None]
 
 logger = logging.getLogger(__name__)
 
@@ -184,22 +183,20 @@ class FileTransmitClient:
                 metadata_bytes = await reader.readline()
                 metadata: Metadata = json.loads(metadata_bytes.decode().strip())
 
-                buffer = BytesIO()
-
-                remaining_bytes = file_size
-
-                while remaining_bytes > 0:
-                    chunk_size = min(remaining_bytes, BUFFER_SIZE)
-                    data = await reader.read(chunk_size)
-                    buffer.write(data)
-                    remaining_bytes -= len(data)
+                async with tempfile.NamedTemporaryFile(delete=False) as f:
+                    remaining_bytes = file_size
+                    while remaining_bytes > 0:
+                        chunk_size = min(remaining_bytes, BUFFER_SIZE)
+                        data = await reader.read(chunk_size)
+                        await f.write(data)
+                        remaining_bytes -= len(data)
 
                 # The file handler can report that no further files are needed by
                 # returning True which stops reading further data from the server.
                 finished = (
-                    await file_received_handler(buffer.getvalue(), metadata)
+                    await file_received_handler(f.name, metadata)  # type: ignore
                     if asyncio.iscoroutinefunction(file_received_handler)
-                    else file_received_handler(buffer.getvalue(), metadata)
+                    else file_received_handler(f.name, metadata)  # type: ignore
                 )
                 if finished:
                     break

@@ -21,7 +21,6 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from functools import wraps
-from io import BytesIO
 from os import PathLike
 from pathlib import Path
 from typing import (
@@ -37,6 +36,7 @@ from typing import (
     cast,
 )
 
+from aiofiles import os as async_os
 from django.conf import settings
 from pydicom import dcmread, uid, valuerep
 from pydicom.datadict import dictionary_VM
@@ -870,23 +870,21 @@ class DicomConnector:
                         RetriableTaskError("Failed to download some images with C-MOVE.")
                     )
 
-            async def handle_received_file(data: bytes, metadata: Metadata):
+            async def handle_received_file(filename: str, metadata: Metadata):
                 nonlocal last_image_at
                 last_image_at = time.time()
 
                 image_uid = metadata["SOPInstanceUID"]
 
-                if image_uid in remaining_image_uids:
-                    ds = dcmread(BytesIO(data), force=True)
-                    remaining_image_uids.remove(image_uid)
-
-                    try:
+                try:
+                    if image_uid in remaining_image_uids:
+                        remaining_image_uids.remove(image_uid)
+                        ds = dcmread(filename, force=True)
                         self._handle_downloaded_image(ds, dest_folder, modifier)
-                    except Exception as err:
-                        receiving_errors.append(err)
-
-                if image_uid in remaining_image_uids:
-                    remaining_image_uids.remove(image_uid)
+                except Exception as err:
+                    receiving_errors.append(err)
+                finally:
+                    await async_os.remove(filename)
 
                 if not remaining_image_uids:
                     return True
