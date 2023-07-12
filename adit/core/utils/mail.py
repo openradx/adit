@@ -49,6 +49,7 @@ def send_job_finished_mail(job):
     send_mail_to_user(job.owner, subject, html_content=html_content)
 
 
+# TODO: This is not used anymore.
 def send_job_failed_mail(job, celery_task_id):
     subject = "Job failed"
     html_content = render_to_string(

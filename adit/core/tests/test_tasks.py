@@ -1,136 +1,110 @@
-from datetime import datetime
-from unittest.mock import Mock, create_autospec, patch
+from unittest.mock import create_autospec, patch
 
 import pytest
 from celery import Task as CeleryTask
 from celery.canvas import Signature
-from celery.result import AsyncResult, ResultBase
-from django.db.models.query import QuerySet
+from celery.result import AsyncResult
 
-from ..models import AppSettings, DicomJob, DicomTask
+from ..factories import DicomServerFactory
+from ..models import DicomJob, DicomTask
 from ..tasks import ProcessDicomJob, ProcessDicomTask
+from .conftest import ExampleModels
 
 
 class TestProcessDicomJob:
     @pytest.mark.parametrize("urgent", [True, False])
-    @patch("adit.core.tasks.chord", autospec=True)
-    def test_run_succeeds(self, chord_mock, urgent):
+    def test_run_succeeds(self, urgent, example_models: ExampleModels):
         # Arrange
-        dicom_job_id = 9
-        dicom_task_id = 8
+        dicom_job = example_models.dicom_job_factory_class.create(
+            status=DicomJob.Status.PENDING,
+            source=DicomServerFactory(),
+            urgent=urgent,
+        )
+        dicom_task = example_models.dicom_task_factory_class.create(
+            status=DicomTask.Status.PENDING,
+            job=dicom_job,
+        )
+
         default_priority = 2
         urgent_priority = 4
         celery_task_id = "d2548e15-6597-4127-ab2f-98bae1bbf3f2"
 
-        dicom_job_class_mock = Mock()
-        dicom_job_mock = create_autospec(DicomJob)
-        dicom_job_mock.id = dicom_job_id
-        dicom_job_mock.urgent = urgent
-        dicom_job_mock.status = DicomJob.Status.PENDING
-        dicom_task_mock = create_autospec(DicomTask)
-        dicom_task_mock.id = dicom_task_id
-        dicom_job_mock.tasks = create_autospec(QuerySet)
-        dicom_job_mock.tasks.filter.return_value = [dicom_task_mock]
-        dicom_job_class_mock.objects.get.return_value = dicom_job_mock
-
         process_dicom_job = ProcessDicomJob()
-        process_dicom_job.dicom_job_class = dicom_job_class_mock  # type: ignore
+        process_dicom_job.dicom_job_class = example_models.dicom_job_class
         process_dicom_job.default_priority = default_priority
         process_dicom_job.urgent_priority = urgent_priority
-        process_dicom_job.process_dicom_task = create_autospec(CeleryTask)
-        process_dicom_job.handle_finished_dicom_job = create_autospec(CeleryTask)
-        process_dicom_job.handle_failed_dicom_job = create_autospec(CeleryTask)
 
-        process_dicom_task_sig_mock = create_autospec(Signature)
-        process_dicom_job.process_dicom_task.s.return_value.set.return_value = (
-            process_dicom_task_sig_mock
-        )
+        process_dicom_task = create_autospec(CeleryTask)
+        process_dicom_job.process_dicom_task = process_dicom_task
 
-        handle_finished_dicom_task_sig_mock = create_autospec(Signature)
-        process_dicom_job.handle_finished_dicom_job.s.return_value.on_error.return_value = (
-            handle_finished_dicom_task_sig_mock
-        )
-
-        handle_failed_dicom_task_sig_mock = create_autospec(Signature)
-        process_dicom_job.handle_failed_dicom_job.s.return_value = handle_failed_dicom_task_sig_mock
+        signature_mock = create_autospec(Signature)
+        process_dicom_task.s.return_value = signature_mock
+        signature_mock.set.return_value = signature_mock
 
         async_result_mock = create_autospec(AsyncResult)
         async_result_mock.id = celery_task_id
-
-        chain_result_mock = create_autospec(ResultBase)
-        chain_result_mock.parent.results = [async_result_mock]
-        chord_mock.return_value.return_value = chain_result_mock
+        signature_mock.delay.return_value = async_result_mock
 
         # Act
-        process_dicom_job.run(dicom_job_id)
+        process_dicom_job.run(dicom_job.id)
 
         # Assert
-        dicom_job_class_mock.objects.get.assert_called_once_with(id=dicom_job_id)
-        dicom_job_mock.tasks.filter.assert_called_once_with(status=DicomTask.Status.PENDING)
-        process_dicom_job.process_dicom_task.s.assert_called_once_with(dicom_task_id)
+        process_dicom_task.s.assert_called_once_with(dicom_task.id)
 
         if urgent:
-            process_dicom_job.process_dicom_task.s.return_value.set.assert_called_once_with(
-                priority=urgent_priority
-            )
+            signature_mock.set.assert_called_once_with(priority=urgent_priority)
         else:
-            process_dicom_job.process_dicom_task.s.return_value.set.assert_called_once_with(
-                priority=default_priority
-            )
+            signature_mock.set.assert_called_once_with(priority=default_priority)
 
-        chord_mock.assert_called_once_with([process_dicom_task_sig_mock])
+        signature_mock.delay.assert_called_once()
 
-        process_dicom_job.handle_finished_dicom_job.s.assert_called_once_with(dicom_job_id)
-        process_dicom_job.handle_failed_dicom_job.s.assert_called_once_with(job_id=dicom_job_id)
-        process_dicom_job.handle_finished_dicom_job.s.return_value.on_error.assert_called_once_with(
-            handle_failed_dicom_task_sig_mock
-        )
-
-        chord_mock.return_value.assert_called_once_with(handle_finished_dicom_task_sig_mock)
-
-        assert dicom_task_mock.celery_task_id == celery_task_id
-        dicom_task_mock.save.assert_called_once()
+        dicom_task.refresh_from_db()
+        assert dicom_task.celery_task_id == celery_task_id
 
 
 class TestProcessDicomTask:
+    @pytest.mark.parametrize("urgent", [True, False])
     @patch("adit.core.tasks.Scheduler", autospec=True)
-    def test_run_urgent_task_succeeds(self, scheduler_mock):
+    def test_process_dicom_task_succeeds(
+        self, scheduler_mock, urgent, example_models: ExampleModels
+    ):
         # Arrange
-        dicom_task_id = 8
+        dicom_job = example_models.dicom_job_factory_class.create(
+            status=DicomJob.Status.PENDING,
+            source=DicomServerFactory(),
+            urgent=urgent,
+        )
+        dicom_task = example_models.dicom_task_factory_class.create(
+            status=DicomTask.Status.PENDING,
+            job=dicom_job,
+        )
 
-        dicom_task_class_mock = Mock()
-        dicom_task_mock = create_autospec(DicomTask)
-        dicom_task_mock.id = dicom_task_id
-        dicom_task_mock.status = DicomTask.Status.PENDING
-        dicom_job_mock = create_autospec(DicomJob)
-        dicom_job_mock.status = DicomJob.Status.PENDING
-        dicom_job_mock.urgent = True
-        dicom_task_mock.job = dicom_job_mock
-        dicom_task_class_mock.objects.get.return_value = dicom_task_mock
-
-        app_settings_class_mock = Mock(spec=AppSettings)
-        app_settings_mock = create_autospec(AppSettings)
-        app_settings_mock.suspended = False
-        app_settings_class_mock.get.return_value = app_settings_mock
+        scheduler_mock.return_value.must_be_scheduled.return_value = False
 
         process_dicom_task = ProcessDicomTask()
-        process_dicom_task.dicom_task_class = dicom_task_class_mock  # type: ignore
-        process_dicom_task.app_settings_class = app_settings_class_mock  # type: ignore
+        process_dicom_task.dicom_task_class = example_models.dicom_task_class
+        process_dicom_task.app_settings_class = example_models.app_settings_class
 
-        with patch.object(ProcessDicomTask, "handle_dicom_task") as handle_dicom_task_mock:
-            handle_dicom_task_mock.return_value = DicomTask.Status.SUCCESS
+        def handle_dicom_task(self, dicom_task):
+            dicom_task.status = DicomTask.Status.SUCCESS
+            dicom_task.save()
 
+        with patch.object(ProcessDicomTask, "handle_dicom_task", handle_dicom_task):
             # Act
-            result = process_dicom_task.run(dicom_task_id)
+            result = process_dicom_task.run(dicom_task.id)
 
         # Assert
-        dicom_task_class_mock.objects.get.assert_called_once_with(id=dicom_task_id)
-        assert not scheduler_mock.must_be_scheduled.called
-        assert dicom_job_mock.status == DicomJob.Status.IN_PROGRESS
-        dicom_job_mock.save.assert_called_once()
-        assert isinstance(dicom_job_mock.start, datetime)
-        handle_dicom_task_mock.assert_called_once_with(dicom_task_mock)
+        if urgent:
+            scheduler_mock.return_value.must_be_scheduled.assert_not_called()
+        else:
+            scheduler_mock.return_value.must_be_scheduled.assert_called_once()
+
+        dicom_job.refresh_from_db()
+        assert dicom_job.status == DicomJob.Status.SUCCESS
+
+        dicom_task.refresh_from_db()
         assert result == DicomTask.Status.SUCCESS
+        assert result == dicom_task.status
 
     @pytest.mark.skip  # TODO
     def test_canceled_task_returns_canceled(self):
@@ -146,16 +120,4 @@ class TestProcessDicomTask:
 
     @pytest.mark.skip  # TODO
     def test_when_suspended_gets_rescheduled(self):
-        pass
-
-
-class TestHandleFinishedDicomJob:
-    @pytest.mark.skip  # TODO
-    def test_handles_finshed_job_successfully(self):
-        pass
-
-
-class TestHandleFailedDicomJob:
-    @pytest.mark.skip  # TODO
-    def test_handles_failed_job_successfully(self):
         pass
