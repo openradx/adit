@@ -18,9 +18,9 @@ class ServerCommand(BaseCommand, ABC):
 
     def handle(self, *args, **options):
         # SIGINT is sent by CTRL-C
-        signal.signal(signal.SIGINT, self.on_shutdown)
+        signal.signal(signal.SIGINT, lambda signum, frame: self.on_shutdown())
         # SIGTERM is sent when stopping a Docker container
-        signal.signal(signal.SIGTERM, self.on_shutdown)
+        signal.signal(signal.SIGTERM, lambda signum, frame: self.on_shutdown())
 
         self.run(**options)
 
@@ -42,7 +42,7 @@ class ServerCommand(BaseCommand, ABC):
     def run_server(self, **options):
         raise NotImplementedError
 
-    def on_shutdown(self, *args):
+    def on_shutdown(self):
         raise KeyboardInterrupt
 
 
@@ -54,9 +54,9 @@ class AsyncServerCommand(ServerCommand, ABC):
         loop = asyncio.get_event_loop()
 
         # SIGINT is sent by CTRL-C
-        loop.add_signal_handler(signal.SIGINT, self.on_shutdown)
+        loop.add_signal_handler(signal.SIGINT, lambda: self.on_shutdown())
         # SIGTERM is sent when stopping a Docker container
-        loop.add_signal_handler(signal.SIGTERM, self.on_shutdown)
+        loop.add_signal_handler(signal.SIGTERM, lambda: self.on_shutdown())
 
         try:
             loop.run_until_complete(self.run_server_async())
