@@ -216,7 +216,7 @@ class TransferExecutor:
                 study,
                 study_folder,
                 modifier,
-                series_uids=self.transfer_task.series_uids,
+                series_uids=series_uids,
             )
         else:
             self._download_study(study, study_folder, modifier)

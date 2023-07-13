@@ -36,8 +36,8 @@ from typing import (
     cast,
 )
 
-from dicomweb_client import DICOMwebClient
 from aiofiles import os as async_os
+from dicomweb_client import DICOMwebClient
 from django.conf import settings
 from pydicom import datadict, dcmread, uid, valuerep
 from pydicom.datadict import dictionary_VM

@@ -77,7 +77,7 @@ class WadoMultipartApplicationDicomRenderer(DicomWebWadoRenderer):
         self.start_stream()
         for file in os.listdir(folder_path):
             file_path = folder_path / file
-            ds = dcmread(file_path)
+            ds = dcmread(file_path, force=True)
             self.write_ds(ds)
             os.remove(file_path)
         self.end_stream()
@@ -104,7 +104,7 @@ class WadoApplicationDicomJsonRenderer(DicomWebWadoRenderer):
         self.start_file_meta_list()
         for file in os.listdir(data["folder_path"]):
             file_path = data["folder_path"] / file
-            ds = dcmread(file_path)
+            ds = dcmread(file_path, force=True)
             self.append_file_meta(ds)
             os.remove(file_path)
         os.rmdir(data["folder_path"])
