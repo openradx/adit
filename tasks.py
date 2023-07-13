@@ -108,14 +108,26 @@ def compose_restart(ctx: Context, env: Environments = "dev", service: str | None
 
 @task
 def compose_logs(
-    ctx: Context, env: Environments = "dev", service: str | None = None, follow: bool = False
+    ctx: Context,
+    env: Environments = "dev",
+    service: str | None = None,
+    follow: bool = False,
+    since: str | None = None,
+    until: str | None = None,
+    tail: int | None = None,
 ):
     """Show logs of ADIT containers in specified environment"""
     cmd = f"{build_compose_cmd(env)} logs"
     if service:
         cmd += f" {service}"
     if follow:
-        cmd += " --follow --tail 1000"
+        cmd += " --follow"
+    if since:
+        cmd += f" --since {since}"
+    if until:
+        cmd += f" --until {until}"
+    if tail:
+        cmd += f" --tail {tail}"
     run_cmd(ctx, cmd)
 
 
