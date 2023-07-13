@@ -17,7 +17,7 @@ class ProcessBatchQueryTask(ProcessDicomTask):
     dicom_task_class = BatchQueryTask
     app_settings_class = BatchQuerySettings
 
-    def handle_dicom_task(self, dicom_task):
+    def handle_dicom_task(self, dicom_task) -> tuple[BatchQueryTask.Status, str]:
         return QueryExecutor(dicom_task, self).start()
 
 

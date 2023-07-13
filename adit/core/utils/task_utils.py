@@ -27,9 +27,8 @@ def store_log_in_task(
 ) -> None:
     handler.flush()
     if dicom_task.log:
-        dicom_task.log += "\n" + stream.getvalue()
-    else:
-        dicom_task.log = stream.getvalue()
+        dicom_task.log += "\n"
+    dicom_task.log += stream.getvalue()
     stream.close()
     if my_logger.parent:
         my_logger.parent.removeHandler(handler)

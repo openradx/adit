@@ -2,6 +2,7 @@
 
 ## High Priority
 
+- Allow to terminate a specific Celery task with revoke(task_id, terminate=True)
 - Make whole receiver crash if one asyncio task crashes
 - Auto refresh job pages und success or failure
 - Rewrite tests to use mocker fixture instead of patch
@@ -88,6 +89,7 @@
   -- An option would be to introduce a "rescheduled" property in task model and reschedule them by checking periodically using Celery Beat PeriodicTasks (maybe every hour or so) or using "one_off" PeriodicTasks.
   -- But then we can't use Celery Canvas anymore as tasks in a worker finish with such a rescheduling outside of the Celery queue system. We then have to check at the end of each task if the job is finished or erroneous (by checking all the other sibling tasks). This should be done with a distributed lock (e.g. using <https://sher-lock.readthedocs.io/en/latest/>) so that if we have multiple workers there are no race conditions.
   -- Maybe it isn't even a big problem as in a hospital site we never accumulate such many Celery tasks on a worker and ETA is totally fine (just keep it in mind that it could get a problem).
+  -- Make sure if using PeriodicTask that those are also cancelled when job is cancelled.
   -- Another solution would be to use Temporal.io as soon as they implement task priorities <https://github.com/temporalio/temporal/issues/1507>
 - Evaluate other task runners
   -- <https://www.pyinvoke.org/> # used currently

@@ -1,6 +1,8 @@
 import subprocess
+import traceback
 from datetime import timedelta
 
+import humanize
 import redis
 import sherlock
 from celery import Task as CeleryTask
@@ -12,13 +14,16 @@ from django.core.mail import send_mail
 from django.utils import timezone
 from sherlock import Lock
 
-from ..accounts.models import User
+from adit.accounts.models import User
+
+from .errors import RetriableTaskError
 from .models import AppSettings, DicomFolder, DicomJob, DicomTask
 from .utils.mail import (
     send_job_finished_mail,
     send_mail_to_admins,
 )
 from .utils.scheduler import Scheduler
+from .utils.task_utils import hijack_logger, store_log_in_task
 
 logger = get_task_logger(__name__)
 
@@ -95,16 +100,59 @@ class ProcessDicomTask(AbortableCeleryTask):
 
     def run(self, dicom_task_id: int):
         dicom_task = self.dicom_task_class.objects.get(id=dicom_task_id)
+        handler, stream = hijack_logger(logger)
 
         try:
-            self.process_task(dicom_task)
+            dicom_task.start = timezone.now()
+            status, message = self.process_task(dicom_task)
+            dicom_task.status = status
+            dicom_task.message = message
+        except RetriableTaskError as err:
+            logger.exception("Retriable error occurred during %s.", dicom_task)
+
+            # We can't use the Celery built-in max_retries and celery_task.request.retries
+            # directly as we also use celery_task.retry() for scheduling tasks.
+            if dicom_task.retries < settings.DICOM_TASK_RETRIES:
+                logger.info("Retrying task in %s.", humanize.naturaldelta(err.delay))
+
+                dicom_task.status = DicomTask.Status.PENDING
+                dicom_task.message = "Task timed out and will be retried."
+                dicom_task.retries += 1
+
+                # Increase the priority slightly to make sure images that were moved
+                # from the GE archive storage to the fast access storage are still there
+                # when we retry.
+                priority = self.request.delivery_info["priority"]
+                if priority < settings.CELERY_TASK_QUEUE_MAX_PRIORITY:
+                    priority += 1
+
+                raise self.retry(eta=timezone.now() + err.delay, exc=err, priority=priority)
+
+            logger.error("No more retries for finally failed %s.", dicom_task)
+
+            dicom_task.status = DicomTask.Status.FAILURE
+            dicom_task.message = str(err)
+        except Exception as err:
+            dicom_task.status = DicomTask.Status.FAILURE
+            dicom_task.message = str(err)
+
+            logger.exception("Unexpected error during %s.", dicom_task)
+            if dicom_task.log:
+                dicom_task.log += "\n"
+            dicom_task.log += traceback.format_exc()
         finally:
+            # TODO: check if this really works for sub loggers
+            store_log_in_task(logger, handler, stream, dicom_task)
+
+            dicom_task.end = timezone.now()
+            dicom_task.save()
+
             with Lock("update_job_after"):
                 self.update_job_after(dicom_task.job)
 
         return dicom_task.status
 
-    def process_task(self, dicom_task: DicomTask):
+    def process_task(self, dicom_task: DicomTask) -> tuple[DicomTask.Status, str]:
         logger.info("Processing %s.", dicom_task)
 
         if dicom_task.status not in [
@@ -122,7 +170,7 @@ class ProcessDicomTask(AbortableCeleryTask):
             dicom_job.status == DicomJob.Status.CANCELING
             or dicom_task.status == DicomTask.Status.CANCELED
         ):
-            return DicomTask.Status.CANCELED
+            return (DicomTask.Status.CANCELED, "Task was canceled.")
 
         app_settings = self.app_settings_class.get()
         assert app_settings
@@ -151,10 +199,10 @@ class ProcessDicomTask(AbortableCeleryTask):
             dicom_job.start = timezone.now()
             dicom_job.save()
 
-        self.handle_dicom_task(dicom_task)
+        dicom_task.status = DicomTask.Status.IN_PROGRESS
 
-    # TODO: Call after task finished (and status of task is already updated). It should also be
-    # called in an distributed lock to prevent race conditions between multiple workers.
+        return self.handle_dicom_task(dicom_task)
+
     def update_job_after(self, dicom_job: DicomJob, job_finished_mail: bool = True):
         """Evaluates all the tasks of a dicom job and sets the job status accordingly."""
 
@@ -200,10 +248,10 @@ class ProcessDicomTask(AbortableCeleryTask):
             if job_finished_mail:
                 send_job_finished_mail(dicom_job)
 
-    def handle_dicom_task(self, dicom_task):
+    def handle_dicom_task(self, dicom_task) -> tuple[DicomTask.Status, str]:
         """Does the actual work of the dicom task.
 
-        Should also update the status of the dicom task (on start and end) and should also
-        set start and end datetime.
+        Should return a tuple of the final status of that task and a message that is
+        stored in the task model.
         """
         raise NotImplementedError("Subclasses must implement this method.")

@@ -86,8 +86,7 @@ class TestProcessDicomTask:
         process_dicom_task.app_settings_class = example_models.app_settings_class
 
         def handle_dicom_task(self, dicom_task):
-            dicom_task.status = DicomTask.Status.SUCCESS
-            dicom_task.save()
+            return (DicomTask.Status.SUCCESS, "Success!")
 
         with patch.object(ProcessDicomTask, "handle_dicom_task", handle_dicom_task):
             # Act
@@ -104,11 +103,116 @@ class TestProcessDicomTask:
 
         dicom_task.refresh_from_db()
         assert result == DicomTask.Status.SUCCESS
-        assert result == dicom_task.status
+        assert dicom_task.status == result
+        assert dicom_task.message == "Success!"
 
-    @pytest.mark.skip  # TODO
-    def test_canceled_task_returns_canceled(self):
-        pass
+    @patch("adit.core.tasks.Scheduler", autospec=True)
+    def test_dicom_job_fails_when_dicom_task_fails(
+        self, scheduler_mock, example_models: ExampleModels
+    ):
+        # Arrange
+        dicom_job = example_models.dicom_job_factory_class.create(
+            status=DicomJob.Status.PENDING,
+            source=DicomServerFactory(),
+        )
+        dicom_task = example_models.dicom_task_factory_class.create(
+            status=DicomTask.Status.PENDING,
+            job=dicom_job,
+        )
+
+        scheduler_mock.return_value.must_be_scheduled.return_value = False
+
+        process_dicom_task = ProcessDicomTask()
+        process_dicom_task.dicom_task_class = example_models.dicom_task_class
+        process_dicom_task.app_settings_class = example_models.app_settings_class
+
+        def handle_dicom_task(self, dicom_task):
+            return (DicomTask.Status.FAILURE, "Failure!")
+
+        with patch.object(ProcessDicomTask, "handle_dicom_task", handle_dicom_task):
+            # Act
+            result = process_dicom_task.run(dicom_task.id)
+
+        # Assert
+        dicom_job.refresh_from_db()
+        assert dicom_job.status == DicomJob.Status.FAILURE
+
+        dicom_task.refresh_from_db()
+        assert result == DicomTask.Status.FAILURE
+        assert dicom_task.status == result
+        assert dicom_task.message == "Failure!"
+
+    @patch("adit.core.tasks.Scheduler", autospec=True)
+    def test_dicom_job_fails_when_dicom_task_raises(
+        self, scheduler_mock, example_models: ExampleModels
+    ):
+        # Arrange
+        dicom_job = example_models.dicom_job_factory_class.create(
+            status=DicomJob.Status.PENDING,
+            source=DicomServerFactory(),
+        )
+        dicom_task = example_models.dicom_task_factory_class.create(
+            status=DicomTask.Status.PENDING,
+            job=dicom_job,
+        )
+
+        scheduler_mock.return_value.must_be_scheduled.return_value = False
+
+        process_dicom_task = ProcessDicomTask()
+        process_dicom_task.dicom_task_class = example_models.dicom_task_class
+        process_dicom_task.app_settings_class = example_models.app_settings_class
+
+        def handle_dicom_task(self, dicom_task):
+            raise Exception("Unexpected error!")
+
+        with patch.object(ProcessDicomTask, "handle_dicom_task", handle_dicom_task):
+            # Act
+            result = process_dicom_task.run(dicom_task.id)
+
+        # Assert
+        dicom_job.refresh_from_db()
+        assert dicom_job.status == DicomJob.Status.FAILURE
+
+        dicom_task.refresh_from_db()
+        assert result == DicomTask.Status.FAILURE
+        assert dicom_task.status == result
+        assert dicom_task.message == "Unexpected error!"
+
+    @patch("adit.core.tasks.Scheduler", autospec=True)
+    def test_dicom_job_canceled_when_dicom_task_canceled(
+        self, scheduler_mock, example_models: ExampleModels
+    ):
+        # Arrange
+        dicom_job = example_models.dicom_job_factory_class.create(
+            status=DicomJob.Status.CANCELING,
+            source=DicomServerFactory(),
+        )
+        dicom_task = example_models.dicom_task_factory_class.create(
+            status=DicomTask.Status.PENDING,
+            job=dicom_job,
+        )
+
+        scheduler_mock.return_value.must_be_scheduled.return_value = False
+
+        process_dicom_task = ProcessDicomTask()
+        process_dicom_task.dicom_task_class = example_models.dicom_task_class
+        process_dicom_task.app_settings_class = example_models.app_settings_class
+
+        def handle_dicom_task(self, dicom_task):
+            raise Exception("Should never raise!")
+
+        with patch.object(ProcessDicomTask, "handle_dicom_task", handle_dicom_task):
+            # Act
+            result = process_dicom_task.run(dicom_task.id)
+
+        # Assert
+        dicom_job.refresh_from_db()
+        assert dicom_job.status == DicomJob.Status.CANCELED
+
+        dicom_task.refresh_from_db()
+        assert result == DicomTask.Status.CANCELED
+        assert dicom_task.status == result
+        assert dicom_task.message == "Task was canceled."
 
     @pytest.mark.skip  # TODO
     def test_non_urgent_task_in_time_slot_succeeds(self):

@@ -17,7 +17,7 @@ class ProcessBatchTransferTask(ProcessDicomTask):
     dicom_task_class = BatchTransferTask
     app_settings_class = BatchTransferSettings
 
-    def handle_dicom_task(self, dicom_task):
+    def handle_dicom_task(self, dicom_task) -> tuple[BatchTransferTask.Status, str]:
         return TransferExecutor(dicom_task, self).start()
 
 
