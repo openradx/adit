@@ -35,10 +35,9 @@ vscode:
     - "mikestead.dotenv"
     - "monosans.djlint"
     - "ms-azuretools.vscode-docker"
-    - "ms-pyright.pyright"
+    - "ms-pyright.pyright" # Replaces pylance as it is not available in Open VSX
     - "ms-python.black-formatter"
     - "ms-python.python"
-    # - "ms-python.vscode-pylance" # Pylance not available in Open VSX
     - "streetsidesoftware.code-spell-checker"
     - "tamasfe.even-better-toml"
     - "wayou.vscode-todo-highlight"

@@ -21,7 +21,6 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from functools import wraps
-from io import BytesIO
 from os import PathLike
 from pathlib import Path
 from typing import (
@@ -38,6 +37,7 @@ from typing import (
 )
 
 from dicomweb_client import DICOMwebClient
+from aiofiles import os as async_os
 from django.conf import settings
 from pydicom import datadict, dcmread, uid, valuerep
 from pydicom.datadict import dictionary_VM
@@ -812,13 +812,13 @@ class DicomConnector:
                     "Connection timed out, was aborted or received invalid during C-STORE."
                 )
 
+        if not self.server.store_scp_support:
+            raise ValueError("C-STORE operation not supported by server.")
+
         results = []
         if isinstance(resource, PathLike):
             source_folder = resource
             logger.debug("Sending C-STORE of folder: %s", source_folder)
-
-            if not self.server.store_scp_support:
-                raise ValueError("C-STORE operation not supported by server.")
 
             for path in Path(source_folder).rglob("*"):
                 if not path.is_file():
@@ -950,14 +950,7 @@ class DicomConnector:
     ):
         def handle_c_get_store(event: Event, store_errors: list[Exception]):
             ds = event.dataset
-            context = event.context
-
-            # Add DICOM File Meta Information
             ds.file_meta = event.file_meta
-
-            # Set the transfer syntax attributes of the dataset
-            ds.is_little_endian = context.transfer_syntax.is_little_endian
-            ds.is_implicit_VR = context.transfer_syntax.is_implicit_VR
 
             try:
                 self._handle_downloaded_image(ds, dest_folder, modifier)
@@ -1042,9 +1035,7 @@ class DicomConnector:
             last_image_at = time.time()
 
             file_transmit = FileTransmitClient(
-                settings.FILE_TRANSMIT_HOST,
-                settings.FILE_TRANSMIT_PORT,
-                dest_folder,
+                settings.FILE_TRANSMIT_HOST, settings.FILE_TRANSMIT_PORT
             )
 
             def eval_images_received():
@@ -1064,23 +1055,21 @@ class DicomConnector:
                         RetriableTaskError("Failed to download some images with C-MOVE.")
                     )
 
-            async def handle_received_file(data: bytes, metadata: Metadata):
+            async def handle_received_file(filename: str, metadata: Metadata):
                 nonlocal last_image_at
                 last_image_at = time.time()
 
                 image_uid = metadata["SOPInstanceUID"]
 
-                if image_uid in remaining_image_uids:
-                    ds = dcmread(BytesIO(data))
-                    remaining_image_uids.remove(image_uid)
-
-                    try:
+                try:
+                    if image_uid in remaining_image_uids:
+                        remaining_image_uids.remove(image_uid)
+                        ds = dcmread(filename, force=True)
                         self._handle_downloaded_image(ds, dest_folder, modifier)
-                    except Exception as err:
-                        receiving_errors.append(err)
-
-                if image_uid in remaining_image_uids:
-                    remaining_image_uids.remove(image_uid)
+                except Exception as err:
+                    receiving_errors.append(err)
+                finally:
+                    await async_os.remove(filename)
 
                 if not remaining_image_uids:
                     return True
@@ -1124,7 +1113,7 @@ class DicomConnector:
             if not receiving_errors:
                 eval_images_received()
 
-        asyncio.run(consume())
+        asyncio.run(consume(), debug=settings.DEBUG)
 
     def _handle_downloaded_image(
         self,
@@ -1140,7 +1129,7 @@ class DicomConnector:
 
         try:
             folder_path.mkdir(parents=True, exist_ok=True)
-            ds.save_as(file_path, write_like_original=False)
+            ds.save_as(file_path)
         except Exception as err:
             if isinstance(err, OSError) and err.errno == errno.ENOSPC:
                 # No space left on destination

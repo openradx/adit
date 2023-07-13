@@ -89,12 +89,11 @@ def compose_up(ctx: Context, env: Environments = "dev", no_build: bool = False):
 
 
 @task
-def compose_down(ctx: Context, env: Environments = "dev"):
+def compose_down(ctx: Context, env: Environments = "dev", cleanup: bool = False):
     """Stop ADIT containers in specified environment"""
-    cmd = f"{build_compose_cmd(env)} down --remove-orphans"
-    if env == "dev":
-        # In dev environment, remove volumes as well
-        cmd += " --volumes"
+    cmd = f"{build_compose_cmd(env)} down"
+    if cleanup:
+        cmd += " --remove-orphans --volumes"
     run_cmd(ctx, cmd)
 
 
@@ -121,8 +120,11 @@ def compose_logs(
 
 
 @task
-def stack_deploy(ctx: Context, env: Environments = "prod"):
-    """Deploy the stack to Docker Swarm (prod by default!)."""
+def stack_deploy(ctx: Context, env: Environments = "prod", build: bool = False):
+    """Deploy the stack to Docker Swarm (prod by default!). Optional build it before."""
+    if build:
+        compose_build(ctx, env)
+
     stack_name = get_stack_name(env)
     suffix = f"-c {compose_file_base}"
     if env == "dev":

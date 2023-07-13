@@ -46,7 +46,7 @@ def main():
         ds = pydicom.dcmread(path)
         modalities.append(ds.Modality)
 
-    modalities = ",".join(sorted(list(set(modalities))))
+    modalities = ", ".join(sorted(list(set(modalities))))
 
     for path in Path(args.input_folder).rglob("*"):
         if not path.is_file():

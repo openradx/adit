@@ -2,12 +2,11 @@ import asyncio
 import json
 import logging
 import struct
-from io import BytesIO
 from os import PathLike
 from typing import Awaitable, Callable
 
 import aiofiles
-from aiofiles import os
+from aiofiles import os, tempfile
 
 BUFFER_SIZE = 1024
 
@@ -15,7 +14,7 @@ SubscribeHandler = Callable[[str], None | Awaitable[None]]
 UnsubscribeHandler = Callable[[str], None | Awaitable[None]]
 FileSentHandler = Callable[[], None]
 Metadata = dict[str, str]
-FileReceivedHandler = Callable[[bytes, Metadata], Awaitable[bool | None] | bool | None]
+FileReceivedHandler = Callable[[str, Metadata], Awaitable[bool | None] | bool | None]
 
 logger = logging.getLogger(__name__)
 
@@ -61,13 +60,14 @@ class FileTransmitServer:
     to this topic.
     """
 
+    _server: asyncio.Server | None = None
+    _subscribe_handler: SubscribeHandler | None = None
+    _unsubscribe_handler: UnsubscribeHandler | None = None
+    _sessions: list[FileTransmitSession] = []
+
     def __init__(self, host: str, port: int):
         self._host = host
         self._port = port
-        self._server = None
-        self._subscribe_handler: SubscribeHandler | None = None
-        self._unsubscribe_handler: UnsubscribeHandler | None = None
-        self._sessions: list[FileTransmitSession] = []
 
     def set_subscribe_handler(self, subscribe_handler: SubscribeHandler | None):
         """Called when a client subscribes to a topic."""
@@ -90,19 +90,22 @@ class FileTransmitServer:
 
     async def start(self):
         self._server = await asyncio.start_server(self._handle_connection, self._host, self._port)
-        addresses = ", ".join(str(sock.getsockname()) for sock in self._server.sockets)
-        logger.info(f"File transmit server serving on {addresses}")
+        logger.info(f"File transmit server serving on {self._host or '*'}:{self._port}")
 
         async with self._server:
             try:
                 await self._server.serve_forever()
             except asyncio.CancelledError:
+                pass
+            finally:
                 logger.info("File transmit server stopped")
 
     async def stop(self):
-        assert self._server
-        self._server.close()
-        await self._server.wait_closed()
+        if self._server:
+            self._server.close()
+            await self._server.wait_closed()
+
+        self._server = None
 
     async def _handle_connection(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
         line = await reader.readline()
@@ -144,10 +147,9 @@ class FileTransmitClient:
 
     _last_read_at: int | None = None
 
-    def __init__(self, host: str, port: int, folder: PathLike):
+    def __init__(self, host: str, port: int):
         self._host = host
         self._port = port
-        self._folder = folder
 
     async def subscribe(
         self,
@@ -164,9 +166,6 @@ class FileTransmitClient:
         the filename to use for the file that is received. If no filename generator is
         set, the filename is randomly generated.
         """
-        if not await os.path.exists(self._folder) or not await os.path.isdir(self._folder):
-            raise IOError(f"Invalid directory to store received files: {self._folder}")
-
         reader, writer = await asyncio.open_connection(self._host, self._port)
 
         # Send the topic to the server
@@ -184,22 +183,20 @@ class FileTransmitClient:
                 metadata_bytes = await reader.readline()
                 metadata: Metadata = json.loads(metadata_bytes.decode().strip())
 
-                buffer = BytesIO()
-
-                remaining_bytes = file_size
-
-                while remaining_bytes > 0:
-                    chunk_size = min(remaining_bytes, BUFFER_SIZE)
-                    data = await reader.read(chunk_size)
-                    buffer.write(data)
-                    remaining_bytes -= len(data)
+                async with tempfile.NamedTemporaryFile(delete=False) as f:
+                    remaining_bytes = file_size
+                    while remaining_bytes > 0:
+                        chunk_size = min(remaining_bytes, BUFFER_SIZE)
+                        data = await reader.read(chunk_size)
+                        await f.write(data)
+                        remaining_bytes -= len(data)
 
                 # The file handler can report that no further files are needed by
                 # returning True which stops reading further data from the server.
                 finished = (
-                    await file_received_handler(buffer.getvalue(), metadata)
+                    await file_received_handler(f.name, metadata)  # type: ignore
                     if asyncio.iscoroutinefunction(file_received_handler)
-                    else file_received_handler(buffer.getvalue(), metadata)
+                    else file_received_handler(f.name, metadata)  # type: ignore
                 )
                 if finished:
                     break

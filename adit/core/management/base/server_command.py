@@ -1,5 +1,4 @@
-import errno
-import os
+import asyncio
 import signal
 import sys
 from abc import ABC, abstractmethod
@@ -18,50 +17,52 @@ class ServerCommand(BaseCommand, ABC):
     server_name = "custom server"
 
     def handle(self, *args, **options):
+        # SIGINT is sent by CTRL-C
+        signal.signal(signal.SIGINT, self.on_shutdown)
+        # SIGTERM is sent when stopping a Docker container
+        signal.signal(signal.SIGTERM, self.on_shutdown)
+
         self.run(**options)
 
     def run(self, **options):
-        def handle_shutdown(*args):
-            self.on_shutdown()
-            raise KeyboardInterrupt()
-
-        # SIGINT is sent by CTRL-C and SIGTERM when stopping a Docker container.
-        signal.signal(signal.SIGINT, handle_shutdown)
-        signal.signal(signal.SIGTERM, handle_shutdown)
-
         try:
-            self.inner_run(**options)
-        except OSError as e:
-            # Use helpful error messages instead of ugly tracebacks.
-            ERRORS = {
-                errno.EACCES: "You don't have permission to access that port.",
-                errno.EADDRINUSE: "That port is already in use.",
-                errno.EADDRNOTAVAIL: "That IP address can't be assigned to.",
-            }
-            try:
-                error_text = ERRORS[e.errno]
-            except KeyError:
-                error_text = e
-            self.stderr.write(f"Error: {error_text}")
-            # Need to use an OS exit because sys.exit doesn't work in a thread
-            os._exit(1)
+            self.stdout.write("Performing system checks...\n\n")
+            self.check(display_num_errors=True)
+
+            now = datetime.now().strftime("%B %d, %Y - %X")
+            self.stdout.write(now)
+            self.stdout.write(f"Starting {self.server_name}")
+            self.stdout.write("Quit with CONTROL-C.")
+
+            self.run_server(**options)
         except KeyboardInterrupt:
             sys.exit(0)
 
-    def inner_run(self, **options):
-        self.stdout.write("Performing system checks...\n\n")
-        self.check(display_num_errors=True)
+    @abstractmethod
+    def run_server(self, **options):
+        raise NotImplementedError
 
-        now = datetime.now().strftime("%B %d, %Y - %X")
-        self.stdout.write(now)
-        self.stdout.write(f"Starting {self.server_name}")
-        self.stdout.write("Quit with CONTROL-C.")
+    def on_shutdown(self, *args):
+        raise KeyboardInterrupt
 
-        self.run_server(**options)
+
+class AsyncServerCommand(ServerCommand, ABC):
+    def handle(self, *args, **options):
+        self.run(**options)
 
     def run_server(self, **options):
-        raise NotImplementedError()
+        loop = asyncio.get_event_loop()
+
+        # SIGINT is sent by CTRL-C
+        loop.add_signal_handler(signal.SIGINT, self.on_shutdown)
+        # SIGTERM is sent when stopping a Docker container
+        loop.add_signal_handler(signal.SIGTERM, self.on_shutdown)
+
+        try:
+            loop.run_until_complete(self.run_server_async())
+        except asyncio.CancelledError:
+            sys.exit(0)
 
     @abstractmethod
-    def on_shutdown(self):
-        pass
+    async def run_server_async(self, **options):
+        raise NotImplementedError

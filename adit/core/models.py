@@ -11,7 +11,7 @@ from .validators import (
     no_control_chars_validator,
     no_wildcard_chars_validator,
     uid_chars_validator,
-    validate_uid_list,
+    validate_uids,
 )
 
 if TYPE_CHECKING:
@@ -182,6 +182,21 @@ class DicomJob(models.Model):
     def __str__(self):
         return f"{self.__class__.__name__} [ID {self.id}]"
 
+    def reset_tasks(self, only_failed=False):
+        if only_failed:
+            dicom_tasks = self.tasks.filter(status=DicomTask.Status.FAILURE)
+        else:
+            dicom_tasks = self.tasks.all()
+
+        dicom_tasks.update(
+            status=DicomJob.Status.PENDING,
+            retries=0,
+            message="",
+            log="",
+            start=None,
+            end=None,
+        )
+
     @property
     def is_deletable(self):
         non_pending_tasks = self.tasks.exclude(status=DicomTask.Status.PENDING)
@@ -301,10 +316,9 @@ class TransferTask(DicomTask):
         max_length=64,
         validators=[uid_chars_validator],
     )
-    series_uids = models.JSONField(
-        null=True,
+    series_uids = models.TextField(
         blank=True,
-        validators=[validate_uid_list],
+        validators=[validate_uids],
     )
     pseudonym = models.CharField(
         blank=True,
@@ -319,3 +333,11 @@ class TransferTask(DicomTask):
             f"Destination {self.job.destination}, "
             f"Job ID {self.job.id}, Task ID {self.task_id}]"
         )
+
+    @property
+    def series_uids_list(self) -> list[str]:
+        return list(filter(len, map(str.strip, self.series_uids.split(","))))
+
+    @series_uids_list.setter
+    def series_uids_list(self, value: list[str]) -> None:
+        self.series_uids = ", ".join(value)

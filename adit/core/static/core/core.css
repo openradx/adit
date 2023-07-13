@@ -18,6 +18,14 @@ caption {
     cursor: help;
 }
 
+/* When maintenance mode is active. */
+.maintenance-hint {
+    background-color: orange;
+    padding: 4px;
+    font-size: 1.5rem;
+    text-align: center;
+}
+
 /***
 * Alpine.js
 ***/

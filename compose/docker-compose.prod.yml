@@ -29,41 +29,63 @@ services:
         ./manage.py generate_cert &&
         daphne -b 0.0.0.0 -p 80 -e ssl:443:privateKey=/var/www/adit/ssl/key.pem:certKey=/var/www/adit/ssl/cert.pem adit.asgi:application
       "
+    deploy:
+      replicas: 1
 
   worker_default:
     <<: *default-app
     command: ./manage.py celery_worker -Q default_queue
+    deploy:
+      replicas: 1
 
   worker_dicom_task:
     <<: *default-app
     command: ./manage.py celery_worker -Q dicom_task_queue
+    deploy:
+      replicas: 1
 
   celery_beat:
     <<: *default-app
     command: ./manage.py celery_beat
+    deploy:
+      replicas: 1
 
   receiver:
     <<: *default-app
     ports:
       - "11112:11112"
     command: ./manage.py receiver
+    deploy:
+      replicas: 1
 
   flower:
     <<: *default-app
+    deploy:
+      replicas: 1
 
   postgres:
     restart: always
     env_file:
       - ./.env.prod
+    deploy:
+      replicas: 1
 
   rabbit:
     restart: always
+    deploy:
+      replicas: 1
 
   redis:
     restart: always
+    deploy:
+      replicas: 1
 
   orthanc1:
     restart: always
+    deploy:
+      replicas: 1
 
   orthanc2:
     restart: always
+    deploy:
+      replicas: 1

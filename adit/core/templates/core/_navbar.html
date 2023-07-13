@@ -13,7 +13,7 @@
         <ul class="navbar-nav mr-auto">
             {% with request.resolver_match.url_name as url_name %}
                 {% for item in nav_menu_items %}
-                    <li class="nav-item {% if url_name == item.name %} active{% endif %}">
+                    <li class="nav-item {% if url_name == item.name %}active{% endif %}">
                         <a class="nav-link" href="{% url item.url_name %}">
                             {{ item.label }}
                             {% if url_name == item.url_name %}<span class="sr-only">(current)</span>{% endif %}
@@ -29,9 +29,7 @@
             <li class="nav-item d-flex">
                 <a class="nav-link d-flex align-items-center"
                    href="https://github.com/radexperts/adit"
-                   target="_blank">
-                    {% include "core/_github.svg" %}
-                </a>
+                   target="_blank">{% include "core/_github.svg" %}</a>
             </li>
         </ul>
         <ul class="navbar-nav">
@@ -44,8 +42,10 @@
                        data-toggle="dropdown"
                        aria-haspopup="true"
                        aria-expanded="false">
-                        {{ user.username }}
-                        {% include "core/_person_square.svg" %}
+                        <span id="logged_in_username">
+                            {{ user.username }}
+                            {% include "core/_person_square.svg" %}
+                        </span>
                     </a>
                     <div class="dropdown-menu dropdown-menu-right"
                          aria-labelledby="navbarDropdown">

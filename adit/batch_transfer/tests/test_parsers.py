@@ -41,14 +41,12 @@ def test_same_studies_are_grouped_together(create_batch_file, data):
     assert tasks[0].task_id == 1
     assert tasks[0].patient_id == data["PatientID"][0]
     assert tasks[0].study_uid == data["StudyInstanceUID"][0]
-    assert tasks[0].series_uids == [data["SeriesInstanceUID"][0]]
+    assert tasks[0].series_uids == data["SeriesInstanceUID"][0]
 
     assert tasks[1].task_id == 2
     assert tasks[1].patient_id == data["PatientID"][1]
     assert tasks[1].study_uid == data["StudyInstanceUID"][1]
-    assert sorted(tasks[1].series_uids) == sorted(  # type: ignore
-        [data["SeriesInstanceUID"][1], data["SeriesInstanceUID"][2]]
-    )
+    assert tasks[1].series_uids == f"{data['SeriesInstanceUID'][1]}, {data['SeriesInstanceUID'][2]}"
 
 
 def test_can_parse_without_series_uid(create_batch_file, data):
@@ -59,8 +57,7 @@ def test_can_parse_without_series_uid(create_batch_file, data):
     tasks = parser.parse(file, 100)
 
     assert len(tasks) == 2
-
-    assert tasks[0].series_uids is None
+    assert tasks[0].series_uids == ""
 
 
 def test_can_not_transfer_unpseudonymized_without_permission(create_batch_file, data):

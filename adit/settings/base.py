@@ -375,8 +375,8 @@ pydicom_config.convert_wrong_length_to_UN = True
 ADIT_AE_TITLE = env.str("ADIT_AE_TITLE", default="ADIT1")  # type: ignore
 
 # The address and port of the STORE SCP server (part of the receiver).
-# By default the STORE SCP server listens to all interfaces
-STORE_SCP_HOST = env.str("STORE_SCP_HOST", default="127.0.0.1")  # type: ignore
+# By default the STORE SCP server listens to all interfaces (empty string)
+STORE_SCP_HOST = env.str("STORE_SCP_HOST", default="localhost")  # type: ignore
 STORE_SCP_PORT = env.int("STORE_SCP_PORT", default=11112)  # type: ignore
 
 # The address and port of the file transmit socket server (part of the receiver)
@@ -384,8 +384,8 @@ STORE_SCP_PORT = env.int("STORE_SCP_PORT", default=11112)  # type: ignore
 # the PACS server does not support C-GET).
 # By default the file transmit socket server listens to all interfaces (should
 # not be a problem as it is inside the docker network).
-FILE_TRANSMIT_HOST = env.str("FILE_TRANSMIT_SERVER_HOST", default="127.0.0.1")  # type: ignore
-FILE_TRANSMIT_PORT = env.int("FILE_TRANSMIT_SERVER_PORT", default=27312)  # type: ignore
+FILE_TRANSMIT_HOST = env.str("FILE_TRANSMIT_HOST", default="localhost")  # type: ignore
+FILE_TRANSMIT_PORT = env.int("FILE_TRANSMIT_PORT", default=14638)  # type: ignore
 
 # A folder to cache temporary DICOM files.
 # Receiver and file transmit client do create temporary directories in this

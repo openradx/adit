@@ -1,8 +1,6 @@
 import asyncio
-from io import BytesIO
 from pathlib import Path
 
-import aiofiles
 import pytest
 from aiofiles import os
 from django.conf import settings
@@ -34,27 +32,27 @@ async def test_start_transmit_file():
     server.set_unsubscribe_handler(unsubscribe_handler)
     server_task = asyncio.create_task(server.start())
 
-    async with aiofiles.tempfile.TemporaryDirectory() as temp_dir:
-        client = FileTransmitClient(HOST, PORT, temp_dir)
+    # Make sure transmit server is started
+    await asyncio.sleep(0.5)
 
-        counter = 0
+    client = FileTransmitClient(HOST, PORT)
 
-        async def file_received_handler(data: bytes, metadata: Metadata):
-            nonlocal counter
+    counter = 0
 
-            file_size = await os.path.getsize(sample_files[counter])
-            assert len(data) == file_size
-            assert metadata["filename"] == sample_files[counter].name
-            assert (
-                dcmread(BytesIO(data)).SOPInstanceUID
-                == dcmread(sample_files[counter]).SOPInstanceUID
-            )
+    async def file_received_handler(filename: str, metadata: Metadata):
+        nonlocal counter
 
-            counter += 1
-            return counter == NUM_TRANSFER_FILES
+        expected_file_size = await os.path.getsize(sample_files[counter])
+        actual_file_size = await os.path.getsize(filename)
+        assert actual_file_size == expected_file_size
+        assert metadata["filename"] == sample_files[counter].name
+        assert dcmread(filename).SOPInstanceUID == dcmread(sample_files[counter]).SOPInstanceUID
 
-        client_task = asyncio.create_task(client.subscribe("foobar", file_received_handler))
+        counter += 1
+        return counter == NUM_TRANSFER_FILES
 
-        await asyncio.gather(client_task, server_task)
+    client_task = asyncio.create_task(client.subscribe("foobar", file_received_handler))
 
-        assert counter == NUM_TRANSFER_FILES
+    await asyncio.gather(client_task, server_task)
+
+    assert counter == NUM_TRANSFER_FILES

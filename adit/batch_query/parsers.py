@@ -41,10 +41,7 @@ class BatchQueryFileParser(BatchFileParser[BatchQueryTask]):
                 return m.group(1)
 
         if field in ["modalities", "series_numbers"]:
-            values = value.split(",")
-            values = map(str.strip, values)
-            values = filter(len, values)
-            return list(values)
+            return ", ".join(filter(len, map(str.strip, value.split(","))))
 
         if field == "patient_name":
             return person_name_to_dicom(value)

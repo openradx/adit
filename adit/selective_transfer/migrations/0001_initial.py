@@ -66,7 +66,7 @@ class Migration(migrations.Migration):
                 ('end', models.DateTimeField(blank=True, null=True)),
                 ('patient_id', models.CharField(max_length=64, validators=[django.core.validators.RegexValidator(inverse_match=True, message='Contains invalid backslash character', regex='\\\\'), django.core.validators.RegexValidator(inverse_match=True, message='Contains invalid control characters.', regex='[\\f\\n\\r]'), django.core.validators.RegexValidator(inverse_match=True, message='Contains invalid wildcard characters.', regex='[\\*\\?]')])),
                 ('study_uid', models.CharField(max_length=64, validators=[django.core.validators.RegexValidator(message='Invalid character in UID.', regex='^[\\d\\.]+$')])),
-                ('series_uids', models.JSONField(blank=True, null=True, validators=[adit.core.validators.validate_uid_list])),
+                ('series_uids', models.JSONField(blank=True, null=True, validators=[adit.core.validators.validate_uids])),
                 ('pseudonym', models.CharField(blank=True, max_length=64, validators=[django.core.validators.RegexValidator(inverse_match=True, message='Contains invalid backslash character', regex='\\\\'), django.core.validators.RegexValidator(inverse_match=True, message='Contains invalid control characters.', regex='[\\f\\n\\r]')])),
                 ('job', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='tasks', to='selective_transfer.selectivetransferjob')),
             ],

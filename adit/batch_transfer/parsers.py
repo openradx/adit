@@ -43,33 +43,25 @@ class BatchTransferFileParser(BatchFileParser[BatchTransferTask]):
         tasks_to_transfer: list[BatchTransferTask] = []
         for index, tasks_with_same_study in enumerate(tasks_by_study.values()):
             transfer_whole_study = False
-            selective_series_to_transfer: list[str] = []
-            lines_in_batch_file = []
+            explicit_series_to_transfer: list[str] = []
+            cumulative_lines = []
             for task in tasks_with_same_study:
-                lines_in_batch_file.extend(task.lines)
-                if task.series_uids is None:
+                cumulative_lines.extend(task.lines_list)
+                if not task.series_uids_list:
                     transfer_whole_study = True
                 else:
-                    selective_series_to_transfer.extend(task.series_uids)
+                    explicit_series_to_transfer.extend(task.series_uids_list)
 
             task: BatchTransferTask = tasks_with_same_study[0]
             task.task_id = index + 1
-            task.lines = lines_in_batch_file
+            task.lines_list = cumulative_lines
 
             if transfer_whole_study:
-                task.series_uids = None
+                task.series_uids = ""
             else:
-                task.series_uids = list(set(selective_series_to_transfer))  # type: ignore
+                # Remove duplicates, but keep order
+                task.series_uids_list = list(dict.fromkeys(explicit_series_to_transfer))
 
             tasks_to_transfer.append(task)
 
         return tasks_to_transfer
-
-    def transform_value(self, field: str, value: str):
-        # Model field series_uids is a list of Series Instance UIDs, so we
-        # have to convert our UIDs to a list first that are later grouped
-        # together to the correct study (see above).
-        if field == "series_uids":
-            return [value] if value else []
-
-        return value

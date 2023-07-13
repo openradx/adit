@@ -5,6 +5,7 @@ from django.db import models
 from django.urls import reverse
 
 from adit.core.models import AppSettings, TransferJob, TransferTask
+from adit.core.validators import pos_int_list_validator
 
 if TYPE_CHECKING:
     from django.db.models.manager import RelatedManager
@@ -36,7 +37,15 @@ class BatchTransferTask(TransferTask):
         on_delete=models.CASCADE,
         related_name="tasks",
     )
-    lines = models.JSONField(default=list)
+    lines = models.TextField(validators=[pos_int_list_validator])
+
+    @property
+    def lines_list(self) -> list[str]:
+        return list(filter(len, map(str.strip, self.lines.split(","))))
+
+    @lines_list.setter
+    def lines_list(self, value: list[str]) -> None:
+        self.lines = ", ".join(value)
 
     def get_absolute_url(self):
         return reverse("batch_transfer_task_detail", args=[self.job.id, self.task_id])

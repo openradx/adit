@@ -20,9 +20,9 @@ async def test_file_monitor_detects_file_and_removes_it(create_dummy_file):
 
         monitor = FileMonitor(Path(temp_dir))
 
-        async def handle_file(filepath: os.PathLike):
+        def handle_file(filepath: os.PathLike):
             assert os.path.getsize(filepath) == dummy_size
-            await monitor.stop()
+            monitor.stop()
             return True
 
         monitor.set_file_handler(handle_file)
@@ -40,12 +40,11 @@ async def test_file_monitor_deletes_empty_subfolders():
             assert is_folder_empty(temp_dir) is False
             monitor = FileMonitor(Path(temp_dir))
 
-            async def handle_scan():
-                await monitor.stop()
+            def handle_scan():
+                monitor.stop()
 
             monitor.set_after_scan_handler(handle_scan)
 
-            try:
-                await monitor.start()
-            except asyncio.CancelledError:
-                assert is_folder_empty(temp_dir) is True
+            await monitor.start()
+
+            assert is_folder_empty(temp_dir) is True

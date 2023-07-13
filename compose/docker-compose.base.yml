@@ -28,6 +28,10 @@ x-app:
     ORTHANC2_HTTP_PORT: 6502
     ORTHANC2_DICOM_PORT: 7502
     ORTHANC2_DICOMWEB_ROOT: "dicom-web"
+    FILE_TRANSMIT_HOST: "receiver"
+    FILE_TRANSMIT_PORT: 14638
+    STORE_SCP_HOST: "receiver"
+    STORE_SCP_PORT: 11112
   # pull_policy: never ## Does work with Docker Swarm
 
 services:
@@ -56,7 +60,11 @@ services:
     <<: *default-app
     expose:
       - "5555"
-    command: celery --broker=amqp://rabbit/ flower --url_prefix=flower
+    command: >
+      bash -c "
+        wait-for-it -s rabbit:5672 -t 60 &&
+        celery --broker=amqp://rabbit/ flower --url_prefix=flower
+      "
 
   postgres:
     image: postgres:13.1

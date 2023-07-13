@@ -1,14 +1,14 @@
+import argparse
 import errno
 import logging
 import os
-from socketserver import BaseServer
+import threading
+from pathlib import Path
 from tempfile import NamedTemporaryFile
-from typing import Callable, cast
+from typing import Callable
 
-from pydicom.filewriter import write_file_meta_info
 from pynetdicom import debug_logger, evt
 from pynetdicom.ae import ApplicationEntity as AE
-from pynetdicom.dimse_primitives import C_STORE
 from pynetdicom.events import Event
 from pynetdicom.presentation import AllStoragePresentationContexts
 
@@ -18,7 +18,8 @@ FileReceivedHandler = Callable[[str], None]
 
 
 class StoreScp:
-    _assoc_server: BaseServer | None = None
+    _ae: AE | None = None
+    _file_received_handler: FileReceivedHandler | None = None
 
     def __init__(self, folder: os.PathLike, ae_title: str, host: str, port: int, debug=False):
         self._folder = folder
@@ -26,6 +27,7 @@ class StoreScp:
         self._host = host
         self._port = port
         self._debug = debug
+        self._stopped = threading.Event()
 
     def start(self):
         if self._debug:
@@ -36,13 +38,13 @@ class StoreScp:
         if not exists or not is_dir:
             raise IOError(f"Invalid folder to store DICOM files: {self._folder}")
 
-        ae = AE(ae_title=self._ae_title)
+        self._ae = AE(ae_title=self._ae_title)
 
         # Speed up by reducing the number of required DIMSE messages
         # https://pydicom.github.io/pynetdicom/stable/examples/storage.html#storage-scp
-        ae.maximum_pdu_size = 0
+        self._ae.maximum_pdu_size = 0
 
-        ae.supported_contexts = AllStoragePresentationContexts
+        self._ae.supported_contexts = AllStoragePresentationContexts
         handlers = [
             (evt.EVT_CONN_OPEN, self._on_connect),
             (evt.EVT_CONN_CLOSE, self._on_close),
@@ -52,15 +54,22 @@ class StoreScp:
             (evt.EVT_C_STORE, self._handle_store),
         ]
 
-        self._assoc_server = ae.start_server(
-            (self._host, self._port), evt_handlers=handlers, block=False
+        logger.info(
+            f"Store SCP server [{self._ae_title}] serving on {self._host or '*'}:{self._port}"
         )
-        assert self._assoc_server
-        self._assoc_server.serve_forever()
+
+        try:
+            self._ae.start_server((self._host, self._port), evt_handlers=handlers, block=False)
+            self._stopped.wait()
+        finally:
+            logger.info("Store SCP server stopped")
 
     def stop(self):
-        assert self._assoc_server
-        self._assoc_server.shutdown()
+        if self._ae:
+            self._ae.shutdown()
+            self._stopped.set()
+
+        self._ae = None
 
     def set_file_received_handler(self, handler: FileReceivedHandler):
         self._file_received_handler = handler
@@ -69,12 +78,6 @@ class StoreScp:
         address = event.assoc.remote["address"]
         port = event.assoc.remote["port"]
         logger.info("Connection to remote %s:%d opened", address, port)
-
-        assert event.assoc.acceptor.primitive
-        called_ae = event.assoc.acceptor.primitive.called_ae_title
-        if called_ae != self._ae_title:
-            logger.error(f"Invalid called AE title: {called_ae}")
-            event.assoc.abort()
 
     def _on_close(self, event: Event):
         address = event.assoc.remote["address"]
@@ -85,19 +88,19 @@ class StoreScp:
         calling_ae = event.assoc.remote["ae_title"]
         address = event.assoc.remote["address"]
         port = event.assoc.remote["port"]
-        logger.info("Assoication to %s [%s:%d] established.", calling_ae, address, port)
+        logger.info("Association to %s [%s:%d] established.", calling_ae, address, port)
 
     def _on_released(self, event: Event):
         calling_ae = event.assoc.remote["ae_title"]
         address = event.assoc.remote["address"]
         port = event.assoc.remote["port"]
-        logger.info("Assoication to %s [%s:%d] released.", calling_ae, address, port)
+        logger.info("Association to %s [%s:%d] released.", calling_ae, address, port)
 
     def _on_aborted(self, event: Event):
         calling_ae = event.assoc.remote["ae_title"]
         address = event.assoc.remote["address"]
         port = event.assoc.remote["port"]
-        logger.info("Assoication to %s [%s:%d] was aborted.", calling_ae, address, port)
+        logger.info("Association to %s [%s:%d] was aborted.", calling_ae, address, port)
 
     def _handle_store(self, event: Event):
         """Handle a C-STORE request event.
@@ -114,23 +117,18 @@ class StoreScp:
             with NamedTemporaryFile(
                 prefix=file_prefix, suffix=".dcm", dir=self._folder, delete=False
             ) as file:
-                # Write dataset directly to file without re-encoding.
+                # There are two ways to save the file. We use the first one and prefer
+                # reliability over speed. (See file history for second method.)
                 # https://pydicom.github.io/pynetdicom/stable/examples/storage.html#storage-scp
-
-                # Write the preamble and prefix
-                file.write(b"\x00" * 128)
-                file.write(b"DICM")
-                # Encode and write the File Meta Information
-                write_file_meta_info(file, event.file_meta)  # type: ignore
-                # Write the encoded dataset
-                request = cast(C_STORE, event.request)
-                assert request.DataSet
-                file.write(request.DataSet.getvalue())
+                df = event.dataset
+                df.file_meta = event.file_meta
+                df.save_as(file.name)
         except Exception as err:
             if isinstance(err, OSError) and err.errno == errno.ENOSPC:
                 logger.error("Out of disc space while saving received file.")
             else:
                 logger.error("Unable to write file to disc: %s", err)
+            logger.exception(err)
 
             # We abort the association as don't want to get more images.
             # We can't use C-CANCEL as not all PACS servers support or respect it.
@@ -142,6 +140,33 @@ class StoreScp:
             # see https://pydicom.github.io/pynetdicom/stable/service_classes/defined_procedure_service_class.html # noqa: E501
             return 0xA702
 
-        self._file_received_handler(file.name)
+        try:
+            if self._file_received_handler:
+                self._file_received_handler(file.name)
+        except Exception as err:
+            logger.error("Unable to handle received file %s: %s", file.name, err)
+            logger.exception(err)
 
         return 0x0000  # Return 'Success' status
+
+
+def main():
+    logging.basicConfig(level=logging.INFO)
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--dir", required=True)
+    parser.add_argument("--aet", default="ADIT1")
+    parser.add_argument("--host", default="")
+    parser.add_argument("--port", type=int, default=11112)
+    args = parser.parse_args()
+
+    store_scp = StoreScp(Path(args.dir), args.aet, args.host, args.port)
+
+    try:
+        store_scp.start()
+    except KeyboardInterrupt:
+        store_scp.stop()
+
+
+if __name__ == "__main__":
+    main()

@@ -57,9 +57,9 @@ class BatchFileContentError(Exception):
                 if self.message:
                     self.message += "\n"
                 if item_errors:
-                    line_str = "line" if len(self.data[num]["lines"]) == 1 else "lines"
-                    lines = ", ".join([str(line) for line in self.data[num]["lines"]])
-                    self.message += f"Invalid data on {line_str} {lines}:\n"
+                    lines: str = self.data[num]["lines"]
+                    lines_label = "lines" if "," in lines else "line"
+                    self.message += f"Invalid data on {lines_label} {lines}:\n"
 
                     non_field_errors = item_errors.pop("non_field_errors", None)
                     if non_field_errors:
