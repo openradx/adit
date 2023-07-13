@@ -3,18 +3,33 @@
 import pytest
 from django_test_migrations.migrator import Migrator
 
-from ..factories import BatchQueryJobFactory
-
 
 @pytest.mark.django_db
 def test_0016_convert_json_to_text(migrator: Migrator):
     old_state = migrator.apply_initial_migration(
         ("batch_query", "0015_alter_batchqueryresult_modalities_and_more")
     )
+
+    # Historical models are reconstructed from the migration files. We can't use our factories here.
+    User = old_state.apps.get_model("accounts", "User")
+    DicomServer = old_state.apps.get_model("core", "DicomServer")
+    BatchQueryJob = old_state.apps.get_model("batch_query", "BatchQueryJob")
     BatchQueryTask = old_state.apps.get_model("batch_query", "BatchQueryTask")
     BatchQueryResult = old_state.apps.get_model("batch_query", "BatchQueryResult")
 
-    job = BatchQueryJobFactory.create()
+    server1 = DicomServer.objects.create(
+        ae_title="server1",
+        name="server1",
+        host="server1",
+        port=11112,
+    )
+    user = User.objects.create(
+        username="user",
+    )
+    job = BatchQueryJob.objects.create(
+        source_id=server1.id,
+        owner_id=user.id,
+    )
     query = BatchQueryTask.objects.create(
         job_id=job.id,
         task_id="123",
