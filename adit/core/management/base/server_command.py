@@ -30,25 +30,16 @@ class ServerCommand(BaseCommand, ABC):
 
     def handle(self, *args, **options):
         # SIGINT is sent by CTRL-C
-        signal.signal(signal.SIGINT, lambda signum, frame: self.on_shutdown())
+        signal.signal(signal.SIGINT, lambda signum, frame: self.terminate())
         # SIGTERM is sent when stopping a Docker container
-        signal.signal(signal.SIGTERM, lambda signum, frame: self.on_shutdown())
+        signal.signal(signal.SIGTERM, lambda signum, frame: self.terminate())
 
         self.run(**options)
 
     def run(self, **options):
         try:
-            self.stdout.write("Performing system checks...\n\n")
-            self.check(display_num_errors=True)
-
-            now = datetime.now().strftime("%B %d, %Y - %X")
-            self.stdout.write(now)
-            self.stdout.write(f"Starting {self.server_name}")
-            self.stdout.write("Quit with CONTROL-C.")
-
             if options["autoreload"]:
-                print("Autoreload enabled.")
-                print("sys.argv", sys.argv)
+                self.stdout.write(f"Autoreload enabled for {self.server_name}.")
 
                 def inner_run():
                     if self._popen:
@@ -61,19 +52,34 @@ class ServerCommand(BaseCommand, ABC):
                 inner_run()
 
                 for changes in watch(settings.BASE_DIR / "adit", watch_filter=PythonFilter()):
+                    self.stdout.write("Changes detected. Restarting server...")
                     inner_run()
             else:
+                self.stdout.write("Performing system checks...")
+                self.check(display_num_errors=True)
+
+                self.stdout.write(datetime.now().strftime("%B %d, %Y - %X"))
+                self.stdout.write(f"Starting {self.server_name}")
+                self.stdout.write("Quit with CONTROL-C.")
+
                 self.run_server(**options)
 
         except KeyboardInterrupt:
             sys.exit(0)
 
+    def terminate(self):
+        if self._popen:
+            self._popen.terminate()
+
+        self.on_shutdown()
+
     @abstractmethod
     def run_server(self, **options):
         raise NotImplementedError
 
+    @abstractmethod
     def on_shutdown(self):
-        raise KeyboardInterrupt
+        raise NotImplementedError
 
 
 class AsyncServerCommand(ServerCommand, ABC):
@@ -84,9 +90,9 @@ class AsyncServerCommand(ServerCommand, ABC):
         loop = asyncio.get_event_loop()
 
         # SIGINT is sent by CTRL-C
-        loop.add_signal_handler(signal.SIGINT, lambda: self.on_shutdown())
+        loop.add_signal_handler(signal.SIGINT, lambda: self.terminate())
         # SIGTERM is sent when stopping a Docker container
-        loop.add_signal_handler(signal.SIGTERM, lambda: self.on_shutdown())
+        loop.add_signal_handler(signal.SIGTERM, lambda: self.terminate())
 
         try:
             loop.run_until_complete(self.run_server_async())
