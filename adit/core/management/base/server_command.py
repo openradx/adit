@@ -1,10 +1,13 @@
 import asyncio
 import signal
+import subprocess
 import sys
 from abc import ABC, abstractmethod
 from datetime import datetime
 
+from django.conf import settings
 from django.core.management.base import BaseCommand
+from watchfiles import PythonFilter, watch
 
 
 class ServerCommand(BaseCommand, ABC):
@@ -15,6 +18,15 @@ class ServerCommand(BaseCommand, ABC):
 
     help = "Starts a custom server"
     server_name = "custom server"
+
+    _popen: subprocess.Popen | None = None
+
+    def add_arguments(self, parser):
+        parser.add_argument(
+            "--autoreload",
+            action="store_true",
+            help="Autoreload server on code change.",
+        )
 
     def handle(self, *args, **options):
         # SIGINT is sent by CTRL-C
@@ -34,7 +46,25 @@ class ServerCommand(BaseCommand, ABC):
             self.stdout.write(f"Starting {self.server_name}")
             self.stdout.write("Quit with CONTROL-C.")
 
-            self.run_server(**options)
+            if options["autoreload"]:
+                print("Autoreload enabled.")
+                print("sys.argv", sys.argv)
+
+                def inner_run():
+                    if self._popen:
+                        self._popen.terminate()
+
+                    args = sys.argv.copy()
+                    args.remove("--autoreload")
+                    self._popen = subprocess.Popen(args, close_fds=False)
+
+                inner_run()
+
+                for changes in watch(settings.BASE_DIR / "adit", watch_filter=PythonFilter()):
+                    inner_run()
+            else:
+                self.run_server(**options)
+
         except KeyboardInterrupt:
             sys.exit(0)
 

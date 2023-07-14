@@ -37,24 +37,24 @@ services:
   worker_default:
     <<: *default-app
     command: |
-      watchmedo auto-restart -d ./adit -R -p '*.py' -- ./manage.py celery_worker -Q default_queue
+      ./manage.py celery_worker -Q default_queue --autoreload
 
   worker_dicom_task:
     <<: *default-app
     command: |
-      watchmedo auto-restart -d ./adit -R -p '*.py' -- ./manage.py celery_worker -Q dicom_task_queue
+      ./manage.py celery_worker -Q dicom_task_queue --autoreload
 
   celery_beat:
     <<: *default-app
     command: |
-      watchmedo auto-restart -d ./adit -R -p '*.py' -- ./manage.py celery_beat
+      ./manage.py celery_beat --autoreload
 
   receiver:
     <<: *default-app
     ports:
       - "11122:11112"
     command: |
-      watchmedo auto-restart -d ./adit -R -p '*.py' -- ./manage.py receiver
+      ./manage.py receiver --autoreload
 
   flower:
     <<: *default-app
