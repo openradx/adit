@@ -2,7 +2,7 @@ import time
 
 import pytest
 import requests
-from playwright.sync_api import Page
+from playwright.sync_api import Page, expect
 
 
 @pytest.mark.integration
@@ -19,9 +19,10 @@ def test_create_and_delete_authentication_token(
     page.get_by_label("Client").fill("test_client")
     page.get_by_text("Generate new token").click()
     page.reload()
+    expect(page.locator('[id*="token-str"]')).to_be_visible()
     token = page.query_selector('[id*="token-str"]')
-    assert token is not None
     token_str = token.get_attribute("id").split("-")[-1]  # type: ignore
+
     response = requests.get(
         channels_live_server.url + "/token-authentication/test",
         headers={"Authorization": f"Token {token_str}"},
