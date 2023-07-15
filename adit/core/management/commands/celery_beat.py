@@ -28,12 +28,6 @@ class Command(ServerCommand):
         )
 
     def run_server(self, **options):
-        # Kill previous running beat
-        logger.debug("Killing Celery beat.")
-        cmd = "pkill celery"
-        subprocess.call(shlex.split(cmd))
-
-        # Start new Celery beat
         folder_path = Path("/var/www/adit/celery/")
         folder_path.mkdir(parents=True, exist_ok=True)
         schedule_path = folder_path / "celerybeat-schedule"

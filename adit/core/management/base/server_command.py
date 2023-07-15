@@ -4,6 +4,7 @@ import subprocess
 import sys
 from abc import ABC, abstractmethod
 from datetime import datetime
+from threading import Event
 
 from django.conf import settings
 from django.core.management.base import BaseCommand
@@ -20,6 +21,7 @@ class ServerCommand(BaseCommand, ABC):
     server_name = "custom server"
 
     _popen: subprocess.Popen | None = None
+    _stop = Event()
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -30,48 +32,58 @@ class ServerCommand(BaseCommand, ABC):
 
     def handle(self, *args, **options):
         # SIGINT is sent by CTRL-C
-        signal.signal(signal.SIGINT, lambda signum, frame: self.terminate())
+        signal.signal(
+            signal.SIGINT, lambda signum, frame: (self._on_terminate(), self.on_shutdown())
+        )
         # SIGTERM is sent when stopping a Docker container
-        signal.signal(signal.SIGTERM, lambda signum, frame: self.terminate())
+        signal.signal(
+            signal.SIGTERM, lambda signum, frame: (self._on_terminate(), self.on_shutdown())
+        )
 
         self.run(**options)
 
     def run(self, **options):
-        try:
-            if options["autoreload"]:
-                self.stdout.write(f"Autoreload enabled for {self.server_name}.")
+        if options["autoreload"]:
+            self.stdout.write(f"Autoreload enabled for {self.server_name}.")
 
-                def inner_run():
-                    if self._popen:
-                        self._popen.terminate()
+            def inner_run():
+                if self._popen:
+                    self._popen.terminate()
 
-                    args = sys.argv.copy()
-                    args.remove("--autoreload")
-                    self._popen = subprocess.Popen(args, close_fds=False)
+                args = sys.argv.copy()
+                args.remove("--autoreload")
+                self._popen = subprocess.Popen(args, close_fds=False)
 
-                inner_run()
+            inner_run()
 
-                for changes in watch(settings.BASE_DIR / "adit", watch_filter=PythonFilter()):
+            try:
+                for changes in watch(
+                    settings.BASE_DIR / "adit", watch_filter=PythonFilter(), stop_event=self._stop
+                ):
                     self.stdout.write("Changes detected. Restarting server...")
                     inner_run()
-            else:
-                self.stdout.write("Performing system checks...")
-                self.check(display_num_errors=True)
+            except KeyboardInterrupt:
+                # watch itself tries to catch signals and may raise a KeyboardInterrupt, but we
+                # handle all signals ourselves
+                pass
 
-                self.stdout.write(datetime.now().strftime("%B %d, %Y - %X"))
-                self.stdout.write(f"Starting {self.server_name}")
-                self.stdout.write("Quit with CONTROL-C.")
+            if self._popen:
+                self._popen.wait()
+        else:
+            self.stdout.write("Performing system checks...")
+            self.check(display_num_errors=True)
 
-                self.run_server(**options)
+            self.stdout.write(datetime.now().strftime("%B %d, %Y - %X"))
+            self.stdout.write(f"Starting {self.server_name}")
+            self.stdout.write("Quit with CONTROL-C.")
 
-        except KeyboardInterrupt:
-            sys.exit(0)
+            self.run_server(**options)
 
-    def terminate(self):
+    def _on_terminate(self):
         if self._popen:
             self._popen.terminate()
 
-        self.on_shutdown()
+        self._stop.set()
 
     @abstractmethod
     def run_server(self, **options):
@@ -84,20 +96,21 @@ class ServerCommand(BaseCommand, ABC):
 
 class AsyncServerCommand(ServerCommand, ABC):
     def handle(self, *args, **options):
+        # SIGINT is sent by CTRL-C
+        signal.signal(signal.SIGINT, lambda signum, frame: self._on_terminate())
+        # SIGTERM is sent when stopping a Docker container
+        signal.signal(signal.SIGTERM, lambda signum, frame: self._on_terminate())
+
         self.run(**options)
 
     def run_server(self, **options):
         loop = asyncio.get_event_loop()
 
-        # SIGINT is sent by CTRL-C
-        loop.add_signal_handler(signal.SIGINT, lambda: self.terminate())
-        # SIGTERM is sent when stopping a Docker container
-        loop.add_signal_handler(signal.SIGTERM, lambda: self.terminate())
+        # Shutdown in asyncio loop must be handled by a different signal handler
+        loop.add_signal_handler(signal.SIGINT, lambda: self.on_shutdown())
+        loop.add_signal_handler(signal.SIGTERM, lambda: self.on_shutdown())
 
-        try:
-            loop.run_until_complete(self.run_server_async())
-        except asyncio.CancelledError:
-            sys.exit(0)
+        loop.run_until_complete(self.run_server_async())
 
     @abstractmethod
     async def run_server_async(self, **options):
