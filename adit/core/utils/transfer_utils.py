@@ -5,18 +5,13 @@ import tempfile
 from datetime import datetime
 from functools import partial
 from pathlib import Path
-from typing import Any, Callable, cast
+from typing import Any, Callable
 
-import humanize
 from celery.contrib.abortable import AbortableTask as AbortableCeleryTask  # pyright: ignore
 from dicognito.anonymizer import Anonymizer
 from django.conf import settings
-from django.utils import timezone
 from pydicom import Dataset
 
-from adit.core.utils.task_utils import hijack_logger, store_log_in_task
-
-from ..errors import RetriableTaskError
 from ..models import DicomNode, TransferJob, TransferTask
 from .dicom_connector import DicomConnector
 from .sanitize import sanitize_dirname
@@ -54,84 +49,24 @@ class TransferExecutor:
         if self.transfer_task.job.destination.node_type == DicomNode.NodeType.SERVER:
             self.dest_connector = _create_dest_connector(transfer_task)
 
-    def start(self) -> TransferTask.Status:
-        if self.transfer_task.status == TransferTask.Status.CANCELED:
-            return cast(TransferTask.Status, self.transfer_task.status)
-
-        if self.transfer_task.status != TransferTask.Status.PENDING:
-            raise AssertionError(
-                f"Invalid status {self.transfer_task.status} of {self.transfer_task}"
-            )
-
-        self.transfer_task.status = TransferTask.Status.IN_PROGRESS
-        self.transfer_task.start = timezone.now()
-        self.transfer_task.save()
-
-        logger.info("Started %s.", self.transfer_task)
-
-        handler, stream = hijack_logger(logger)
-
+    def start(self) -> tuple[TransferTask.Status, str]:
         transfer_job: TransferJob = self.transfer_task.job
 
-        try:
-            if not transfer_job.source.source_active:
-                raise ValueError(f"Source DICOM node not active: {transfer_job.source.name}")
+        if not transfer_job.source.source_active:
+            raise ValueError(f"Source DICOM node not active: {transfer_job.source.name}")
 
-            if not transfer_job.destination.destination_active:
-                raise ValueError(
-                    f"Destination DICOM node not active: {transfer_job.destination.name}"
-                )
+        if not transfer_job.destination.destination_active:
+            raise ValueError(f"Destination DICOM node not active: {transfer_job.destination.name}")
 
-            if self.dest_connector:
-                self._transfer_to_server()
+        if self.dest_connector:
+            self._transfer_to_server()
+        else:
+            if transfer_job.archive_password:
+                self._transfer_to_archive()
             else:
-                if transfer_job.archive_password:
-                    self._transfer_to_archive()
-                else:
-                    self._transfer_to_folder()
+                self._transfer_to_folder()
 
-            self.transfer_task.status = TransferTask.Status.SUCCESS
-            self.transfer_task.message = "Transfer task completed successfully."
-            self.transfer_task.end = timezone.now()
-
-        except RetriableTaskError as err:
-            logger.exception("Retriable error occurred during %s.", self.transfer_task)
-
-            # We can't use the Celery built-in max_retries and celery_task.request.retries
-            # directly as we also use celery_task.retry() for scheduling tasks.
-            if self.transfer_task.retries < settings.TRANSFER_TASK_RETRIES:
-                logger.info("Retrying task in %s.", humanize.naturaldelta(err.delay))
-                self.transfer_task.status = TransferTask.Status.PENDING
-                self.transfer_task.message = "Task timed out and will be retried."
-                self.transfer_task.retries += 1
-
-                # Increase the priority slightly to make sure images that were moved
-                # from the GE archive storage to the fast access storage are still there
-                # when we retry.
-                priority = self.celery_task.request.delivery_info["priority"]
-                if priority < settings.CELERY_TASK_QUEUE_MAX_PRIORITY:
-                    priority += 1
-
-                raise self.celery_task.retry(
-                    eta=timezone.now() + err.delay, exc=err, priority=priority
-                )
-
-            logger.error("No more retries for finally failed %s.", self.transfer_task)
-            self.transfer_task.status = TransferTask.Status.FAILURE
-            self.transfer_task.message = str(err)
-            self.transfer_task.end = timezone.now()
-
-        except Exception as err:
-            logger.exception("Unrecoverable failure occurred in %s.", self.transfer_task)
-            self.transfer_task.status = TransferTask.Status.FAILURE
-            self.transfer_task.message = str(err)
-            self.transfer_task.end = timezone.now()
-
-        finally:
-            store_log_in_task(logger, handler, stream, self.transfer_task)
-            self.transfer_task.save()
-
-        return self.transfer_task.status
+        return (TransferTask.Status.SUCCESS, "Transfer task completed successfully.")
 
     def _transfer_to_server(self) -> None:
         with tempfile.TemporaryDirectory(prefix="adit_") as tmpdir:

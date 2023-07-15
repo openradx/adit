@@ -418,8 +418,8 @@ C_MOVE_DOWNLOAD_TIMEOUT = 60  # seconds
 # Show DICOM debug messages of pynetdicom
 ENABLE_DICOM_DEBUG_LOGGER = False
 
-# How often to retry a failed transfer task before the task is definitively failed
-TRANSFER_TASK_RETRIES = 2
+# How often to retry a failed dicom task before it is definitively failed
+DICOM_TASK_RETRIES = 2
 
 # The maximum number of batch queries a normal user can process in one job
 # (staff user are not limited)

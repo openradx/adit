@@ -1,13 +1,11 @@
 import logging
-from typing import Any, cast
+from typing import Any
 
 from celery.contrib.abortable import AbortableTask as AbortableCeleryTask  # pyright: ignore
 from django.conf import settings
 from django.template.defaultfilters import pluralize
-from django.utils import timezone
 
 from adit.core.utils.dicom_connector import DicomConnector
-from adit.core.utils.task_utils import hijack_logger, store_log_in_task
 
 from ..models import BatchQueryResult, BatchQueryTask
 
@@ -34,61 +32,39 @@ class QueryExecutor:
 
         self.connector = _create_source_connector(query_task)
 
-    def start(self) -> BatchQueryTask.Status:
-        if self.query_task.status == BatchQueryTask.Status.CANCELED:
-            return cast(BatchQueryTask.Status, self.query_task.status)
+    def start(self) -> tuple[BatchQueryTask.Status, str]:
+        patient = self._fetch_patient()
 
-        self.query_task.status = BatchQueryTask.Status.IN_PROGRESS
-        self.query_task.start = timezone.now()
-        self.query_task.save()
-
-        logger.info("Started %s.", self.query_task)
-
-        handler, stream = hijack_logger(logger)
-
-        try:
-            patient = self._fetch_patient()
-
-            all_results: list[list[dict[str, Any]]] = []  # a list of studies or series
-            studies = self._query_studies(patient["PatientID"])
-            is_series_query = self.query_task.series_description or self.query_task.series_numbers
-            if studies:
-                if is_series_query:
-                    for study in studies:
-                        series = self._query_series(study)
-                        all_results.append(series)
-                else:
-                    all_results.append(studies)
-
-            if len(all_results) == 0:
-                self.query_task.status = BatchQueryTask.Status.WARNING
-                self.query_task.message = "No studies / series found"
+        all_results: list[list[dict[str, Any]]] = []  # a list of studies or series
+        studies = self._query_studies(patient["PatientID"])
+        is_series_query = self.query_task.series_description or self.query_task.series_numbers
+        if studies:
+            if is_series_query:
+                for study in studies:
+                    series = self._query_series(study)
+                    all_results.append(series)
             else:
-                flattened_results = [
-                    study_or_series
-                    for studies_or_series in all_results
-                    for study_or_series in studies_or_series
-                ]
+                all_results.append(studies)
 
-                saved_results = self._save_results(flattened_results)
+        if len(all_results) == 0:
+            return (BatchQueryTask.Status.WARNING, "No studies / series found")
 
-                self.query_task.status = BatchQueryTask.Status.SUCCESS
-                num = len(saved_results)
-                if is_series_query:
-                    message = f"{num} series"
-                else:
-                    message = f"{num} stud{pluralize(num, 'y,ies')}"
-                self.query_task.message = f"{message} found"
-        except Exception as err:
-            logger.exception("Error during %s", self.query_task)
-            self.query_task.status = BatchQueryTask.Status.FAILURE
-            self.query_task.message = str(err)
-        finally:
-            store_log_in_task(logger, handler, stream, self.query_task)
-            self.query_task.end = timezone.now()
-            self.query_task.save()
+        flattened_results = [
+            study_or_series
+            for studies_or_series in all_results
+            for study_or_series in studies_or_series
+        ]
 
-        return self.query_task.status
+        saved_results = self._save_results(flattened_results)
+
+        num = len(saved_results)
+        if is_series_query:
+            message = f"{num} series"
+        else:
+            message = f"{num} stud{pluralize(num, 'y,ies')}"
+        message = f"{message} found"
+
+        return (BatchQueryTask.Status.SUCCESS, message)
 
     def _fetch_patient(self) -> dict[str, Any]:
         patient_id = self.query_task.patient_id
