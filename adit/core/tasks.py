@@ -23,7 +23,6 @@ from .utils.mail import (
     send_mail_to_admins,
 )
 from .utils.scheduler import Scheduler
-from .utils.task_utils import hijack_logger, store_log_in_task
 
 logger = get_task_logger(__name__)
 
@@ -100,7 +99,6 @@ class ProcessDicomTask(AbortableCeleryTask):
 
     def run(self, dicom_task_id: int):
         dicom_task = self.dicom_task_class.objects.get(id=dicom_task_id)
-        handler, stream = hijack_logger(logger)
 
         try:
             dicom_task.start = timezone.now()
@@ -128,7 +126,7 @@ class ProcessDicomTask(AbortableCeleryTask):
 
                 raise self.retry(eta=timezone.now() + err.delay, exc=err, priority=priority)
 
-            logger.error("No more retries for finally failed %s.", dicom_task)
+            logger.error("No more retries for finally failed %s: %s", dicom_task, str(err))
 
             dicom_task.status = DicomTask.Status.FAILURE
             dicom_task.message = str(err)
@@ -141,9 +139,6 @@ class ProcessDicomTask(AbortableCeleryTask):
                 dicom_task.log += "\n"
             dicom_task.log += traceback.format_exc()
         finally:
-            # TODO: check if this really works for sub loggers
-            store_log_in_task(logger, handler, stream, dicom_task)
-
             dicom_task.end = timezone.now()
             dicom_task.save()
 

@@ -1,4 +1,3 @@
-from celery.utils.log import get_task_logger
 from django.conf import settings
 
 from adit.celery import app as celery_app
@@ -9,8 +8,6 @@ from adit.core.tasks import (
 
 from .models import BatchQueryJob, BatchQuerySettings, BatchQueryTask
 from .utils.query_utils import QueryExecutor
-
-logger = get_task_logger(__name__)
 
 
 class ProcessBatchQueryTask(ProcessDicomTask):

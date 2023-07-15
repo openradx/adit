@@ -2,6 +2,7 @@
 
 ## High Priority
 
+- Option in batch query to query whole study or explicit series
 - Allow to terminate a specific Celery task with revoke(task_id, terminate=True)
 - Make whole receiver crash if one asyncio task crashes
 - Auto refresh job pages und success or failure
@@ -21,6 +22,7 @@
 ## Fix
 
 - Do some prechecks before trying the task (is source and destination online?)
+- Fix Celery logging (task ids are not appended to logging messages even as we use get_task_logger)
 - Shorter timeout for offline studies
 - Tests: test_query_utils, test serializers, test all views (as integration tests using real Orthanc), improve tests of transferutil, BatchFileSizeError
 - c-get download timeout

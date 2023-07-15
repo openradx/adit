@@ -1,4 +1,3 @@
-from celery.utils.log import get_task_logger
 from django.conf import settings
 
 from adit.celery import app as celery_app
@@ -13,8 +12,6 @@ from .models import (
     SelectiveTransferSettings,
     SelectiveTransferTask,
 )
-
-logger = get_task_logger(__name__)
 
 
 class ProcessSelectiveTransferTask(ProcessDicomTask):
