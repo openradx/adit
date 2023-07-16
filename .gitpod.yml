@@ -31,6 +31,7 @@ vscode:
     - "formulahendry.auto-rename-tag"
     - "foxundermoon.shell-format"
     - "grapecity.gc-excelviewer"
+    - "jock.svg"
     - "mhutchie.git-graph"
     - "mikestead.dotenv"
     - "monosans.djlint"

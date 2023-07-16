@@ -12,8 +12,8 @@ from invoke.tasks import task
 
 Environments = Literal["dev", "prod"]
 
-stack_name_dev = "adit_dev"
-stack_name_prod = "adit_prod"
+stack_name_dev = "radis_dev"
+stack_name_prod = "radis_prod"
 
 project_dir = Path(__file__).resolve().parent
 compose_dir = project_dir / "compose"
@@ -75,14 +75,14 @@ def run_cmd(ctx: Context, cmd: str, silent=False) -> Result:
 
 @task
 def compose_build(ctx: Context, env: Environments = "dev"):
-    """Build ADIT image for specified environment"""
+    """Build RADIS image for specified environment"""
     cmd = f"{build_compose_cmd(env)} build"
     run_cmd(ctx, cmd)
 
 
 @task
 def compose_up(ctx: Context, env: Environments = "dev", no_build: bool = False):
-    """Start ADIT containers in specified environment"""
+    """Start RADIS containers in specified environment"""
     build_opt = "--no-build" if no_build else "--build"
     cmd = f"{build_compose_cmd(env)} up {build_opt} --detach"
     run_cmd(ctx, cmd)
@@ -90,7 +90,7 @@ def compose_up(ctx: Context, env: Environments = "dev", no_build: bool = False):
 
 @task
 def compose_down(ctx: Context, env: Environments = "dev", cleanup: bool = False):
-    """Stop ADIT containers in specified environment"""
+    """Stop RADIS containers in specified environment"""
     cmd = f"{build_compose_cmd(env)} down"
     if cleanup:
         cmd += " --remove-orphans --volumes"
@@ -99,7 +99,7 @@ def compose_down(ctx: Context, env: Environments = "dev", cleanup: bool = False)
 
 @task
 def compose_restart(ctx: Context, env: Environments = "dev", service: str | None = None):
-    """Restart ADIT containers in specified environment"""
+    """Restart RADIS containers in specified environment"""
     cmd = f"{build_compose_cmd(env)} restart"
     if service:
         cmd += f" {service}"
@@ -116,7 +116,7 @@ def compose_logs(
     until: str | None = None,
     tail: int | None = None,
 ):
-    """Show logs of ADIT containers in specified environment"""
+    """Show logs of RADIS containers in specified environment"""
     cmd = f"{build_compose_cmd(env)} logs"
     if service:
         cmd += f" {service}"
@@ -162,7 +162,7 @@ def stack_rm(ctx: Context, env: Environments = "prod"):
 def format(ctx: Context):
     """Format the source code (black, ruff, djlint)"""
     # Format Python code
-    black_cmd = "poetry run black ./adit"
+    black_cmd = "poetry run black ./radis"
     run_cmd(ctx, black_cmd)
     # Sort Python imports
     ruff_cmd = "poetry run ruff . --fix --select I"
@@ -186,7 +186,7 @@ def lint(ctx: Context):
 @task
 def test(
     ctx: Context,
-    path: str = "./adit",
+    path: str = "./radis",
     cov: bool = False,
     keyword: str | None = None,
     mark: str | None = None,
@@ -195,15 +195,15 @@ def test(
     """Run the test suite"""
     if not check_compose_up(ctx, "dev"):
         sys.exit(
-            "Integration tests need ADIT dev containers running.\nRun 'invoke compose-up' first."
+            "Integration tests need RADIS dev containers running.\nRun 'invoke compose-up' first."
         )
 
     cmd = (
         f"{build_compose_cmd('dev')} exec "
-        "--env DJANGO_SETTINGS_MODULE=adit.settings.test web pytest "
+        "--env DJANGO_SETTINGS_MODULE=radis.settings.test web pytest "
     )
     if cov:
-        cmd += "--cov=adit "
+        cmd += "--cov=radis "
     if keyword:
         cmd += f"-k {keyword} "
     if mark:
@@ -223,11 +223,8 @@ def ci(ctx: Context):
 
 
 @task
-def reset_adit_dev(ctx: Context):
-    """Reset ADIT dev container environment"""
-    # Reset Orthancs
-    reset_orthancs_cmd = f"{build_compose_cmd('dev')} exec web python manage.py reset_orthancs"
-    run_cmd(ctx, reset_orthancs_cmd)
+def reset_radis_dev(ctx: Context):
+    """Reset RADIS dev container environment"""
     # Wipe the database
     flush_cmd = f"{build_compose_cmd('dev')} exec web python manage.py flush --noinput"
     run_cmd(ctx, flush_cmd)
@@ -237,8 +234,8 @@ def reset_adit_dev(ctx: Context):
 
 
 @task
-def adit_web_shell(ctx: Context, env: Environments = "dev"):
-    """Open Python shell in ADIT web container of specified environment"""
+def radis_web_shell(ctx: Context, env: Environments = "dev"):
+    """Open Python shell in RADIS web container of specified environment"""
     cmd = f"{build_compose_cmd(env)} exec web python manage.py shell_plus"
     run_cmd(ctx, cmd)
 
@@ -248,20 +245,20 @@ def copy_statics(ctx: Context):
     """Copy JS and CSS dependencies from node_modules to static vendor folder"""
     print("Copying statics...")
 
-    copy("node_modules/jquery/dist/jquery.js", "adit/static/vendor/")
+    copy("node_modules/jquery/dist/jquery.js", "radis/static/vendor/")
     for file in glob("node_modules/bootstrap/dist/css/bootstrap.css*"):
-        copy(file, "adit/static/vendor/")
+        copy(file, "radis/static/vendor/")
     for file in glob("node_modules/bootstrap/dist/js/bootstrap.bundle.js*"):
-        copy(file, "adit/static/vendor/")
-    copy("node_modules/bootswatch/dist/flatly/bootstrap.css", "adit/static/vendor/")
+        copy(file, "radis/static/vendor/")
+    copy("node_modules/bootswatch/dist/flatly/bootstrap.css", "radis/static/vendor/")
     for file in glob("node_modules/alpinejs/dist/alpine*.js"):
-        copy(file, "adit/static/vendor/")
-    copy("node_modules/morphdom/dist/morphdom-umd.js", "adit/static/vendor/")
-    copy("node_modules/htmx.org/dist/htmx.js", "adit/static/vendor/")
-    copy("node_modules/htmx.org/dist/ext/ws.js", "adit/static/vendor/htmx-ws.js")
+        copy(file, "radis/static/vendor/")
+    copy("node_modules/morphdom/dist/morphdom-umd.js", "radis/static/vendor/")
+    copy("node_modules/htmx.org/dist/htmx.js", "radis/static/vendor/")
+    copy("node_modules/htmx.org/dist/ext/ws.js", "radis/static/vendor/htmx-ws.js")
     copy(
         "node_modules/htmx.org/dist/ext/morphdom-swap.js",
-        "adit/static/vendor/htmx-morphdom-swap.js",
+        "radis/static/vendor/htmx-morphdom-swap.js",
     )
 
 

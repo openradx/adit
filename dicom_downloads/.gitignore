@@ -1,5 +1,0 @@
-# A test download folder for ADIT development server.
-# Ignore everything in this directory
-*
-# Except this file
-!.gitignore

@@ -1,0 +1,17 @@
+{% extends "registration/registration_base.html" %}
+{% load trans from i18n %}
+{% block title %}
+    {% trans "Activation email sent - RADIS" %}
+{% endblock title %}
+{% block container %}
+    <h5>{% trans "Registration complete" %}</h5>
+    <p>{% trans "Please check your email to complete the registration process." %}</p>
+{% endblock container %}
+{% comment %}
+**registration/registration_complete.html**
+
+Used after successful completion of the registration form. This
+template has no context variables of its own, and should simply inform
+the user that an email containing account-activation information has
+been sent.
+{% endcomment %}

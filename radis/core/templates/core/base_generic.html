@@ -1,0 +1,68 @@
+{% load static from static %}
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta http-equiv="x-ua-compatible" content="ie=edge" />
+        <title>
+            {% block title %}
+                RADIS - Radiology Report Archive and Discovery System
+            {% endblock title %}
+        </title>
+        <meta name="keywords"
+              content="RADIS,DICOM,Radiology,Report,Search,Medicine,Tool" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <meta name="description"
+              content="RADIS is a tool for archive and search radiolgy reports" />
+        <meta name="author" content="Kai Schlamp" />
+        {% block meta %}
+        {% endblock meta %}
+        <link rel="apple-touch-icon"
+              sizes="180x180"
+              href="{% static 'favicon/apple-touch-icon.png' %}" />
+        <link rel="icon"
+              type="image/png"
+              sizes="32x32"
+              href="{% static 'favicon/favicon-32x32.png' %}" />
+        <link rel="icon"
+              type="image/png"
+              sizes="16x16"
+              href="{% static 'favicon/favicon-16x16.png' %}" />
+        <link rel="manifest" href="{% static 'favicon/site.webmanifest' %}" />
+        <link rel="stylesheet"
+              type="text/css"
+              href="{% static 'vendor/bootstrap.css' %}" />
+        <link rel="stylesheet" type="text/css" href="{% static 'core/core.css' %}" />
+        {% block css %}
+        {% endblock css %}
+        {{ radis_config|json_script:"radis_config" }}
+    </head>
+    <body id="{{ request.resolver_match.url_name }}">
+        <script>document.body.className="js";</script>
+        {% include "core/_navbar.html" %}
+        <main role="main">
+            {% block content %}
+                <div class="top container my-3">
+                    {% block container %}
+                    {% endblock container %}
+                </div>
+            {% endblock content %}
+            {% include "core/_footer.html" %}
+        </main>
+        {% include "core/_messages_panel.html" %}
+        {% block bottom %}
+        {% endblock bottom %}
+        <script src="{% static 'vendor/jquery.js' %}"></script>
+        <script src="{% static 'vendor/bootstrap.bundle.js' %}"></script>
+        <script src="{% static 'vendor/htmx.js' %}"></script>
+        <script src="{% static 'vendor/htmx-ws.js' %}"></script>
+        <!-- TODO: Replace with Alpine morphdom after upgrading to Alpine v3 -->
+        <script src="{% static 'vendor/morphdom-umd.js' %}"></script>
+        <script src="{% static 'vendor/htmx-morphdom-swap.js' %}"></script>
+        <script type="module" src="{% static 'vendor/alpine.js' %}"></script>
+        <script nomodule src="{% static 'vendor/alpine-ie11.js' %}" defer></script>
+        <script src="{% static 'core/core.js' %}"></script>
+        {% block script %}
+        {% endblock script %}
+    </body>
+</html>

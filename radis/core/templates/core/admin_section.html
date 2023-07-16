@@ -1,0 +1,23 @@
+{% extends "core/base_generic.html" %}
+{% load access_item from core_extras %}
+{% block container %}
+    <h4 class="mb-3">Admin Section</h4>
+    <h5>Report Overview</h5>
+    <h5>Admin Tools</h5>
+    <ul class="list-group">
+        <li class="list-group-item">
+            <a href="{% url "broadcast" %}">Send Email to all users</a>
+        </li>
+        <!-- djlint:off D018 -->
+        <li class="list-group-item">
+            <a href="/admin-the-great/">Django Admin</a>
+        </li>
+        <li class="list-group-item">
+            <a href="/flower/">Flower (Celery Monitoring)</a>
+        </li>
+        <li class="list-group-item">
+            <a href="/rabbit/">RabbitMQ Management Console</a>
+        </li>
+        <!-- djlint:on-->
+    </ul>
+{% endblock container %}

@@ -2,14 +2,14 @@ version: "3.8"
 
 x-app:
   &default-app
-  image: adit_dev:latest
+  image: radis_dev:latest
   volumes:
     - ..:/app
   env_file:
     - ./.env.dev
   environment:
     ENABLE_REMOTE_DEBUGGING: 0
-    DJANGO_SETTINGS_MODULE: "adit.settings.development"
+    DJANGO_SETTINGS_MODULE: "radis.settings.development"
 
 services:
   web:
@@ -27,7 +27,6 @@ services:
     command: >
       bash -c "
         wait-for-it -s postgres:5432 -t 60 && 
-        ./manage.py reset_orthancs &&
         ./manage.py migrate &&
         ./manage.py collectstatic --no-input &&
         ./manage.py populate_dev_db &&
@@ -39,10 +38,10 @@ services:
     command: |
       ./manage.py celery_worker -Q default_queue --autoreload
 
-  worker_dicom_task:
+  worker_report:
     <<: *default-app
     command: |
-      ./manage.py celery_worker -Q dicom_task_queue --autoreload
+      ./manage.py celery_worker -Q report_queue --autoreload
 
   celery_beat:
     <<: *default-app

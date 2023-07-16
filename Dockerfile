@@ -38,9 +38,7 @@ RUN apt-get update \
     # deps for installing poetry
     curl \
     # deps for building python deps
-    build-essential \
-    # deps for ADIT
-    p7zip-full
+    build-essential
 
 # install poetry - respects $POETRY_VERSION & $POETRY_HOME
 RUN curl -sSL https://install.python-poetry.org | python3 -
@@ -67,11 +65,11 @@ RUN poetry install
 # Install requirements for end-to-end testing
 RUN playwright install --with-deps chromium
 
-# Required folders for ADIT
-RUN mkdir -p /var/www/adit/logs \
-    /var/www/adit/static \
-    /var/www/adit/ssl \
-    /var/www/adit/celery
+# Required folders for RADIS
+RUN mkdir -p /var/www/radis/logs \
+    /var/www/radis/static \
+    /var/www/radis/ssl \
+    /var/www/radis/celery
 
 # will become mountpoint of our code
 WORKDIR /app
@@ -82,10 +80,10 @@ FROM python-base as production
 COPY --from=builder-base $PYSETUP_PATH $PYSETUP_PATH
 COPY . /app/
 
-# Required folders for ADIT
-RUN mkdir -p /var/www/adit/logs \
-    /var/www/adit/static \
-    /var/www/adit/ssl \
-    /var/www/adit/celery
+# Required folders for RADIS
+RUN mkdir -p /var/www/radis/logs \
+    /var/www/radis/static \
+    /var/www/radis/ssl \
+    /var/www/radis/celery
 
 WORKDIR /app

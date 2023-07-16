@@ -1,0 +1,26 @@
+{% extends "core/base_generic.html" %}
+{% load static from static %}
+{% block content %}
+    <div class="jumbotron">
+        <div class="container">
+            <h1 class="display-4 d-flex align-items-center">
+                <span class="mr-2">Welcome to RADIS</span>
+                {% include "core/_radis_logo.html" %}
+            </h1>
+            {{ announcement|safe }}
+            <p>
+                RADIS (Radiology Report Archive and Discovery System) helps you to find the reports
+                (and corresponding studies) you are looking for. You can add those reports to a
+                personal collection and even generate batch files for ADIT (Automated Dicom Transfer)
+                to transfer the corresponding studies.
+            </p>
+            {% if not user.is_authenticated %}
+                <p>
+                    <a class="btn btn-info" href="{% url 'auth_login' %}" role="button">Log in</a>
+                    <span class="ml-2">No account yet?</span>
+                    <a href="{% url 'registration_register' %}">Register</a>
+                </p>
+            {% endif %}
+        </div>
+    </div>
+{% endblock content %}
