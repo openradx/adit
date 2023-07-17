@@ -33,6 +33,7 @@
         "ms-python.black-formatter",
         "ms-python.python",
         "ms-python.vscode-pylance",
+        "ms-toolsai.jupyter",
         "streetsidesoftware.code-spell-checker",
         "tamasfe.even-better-toml",
         "wayou.vscode-todo-highlight"

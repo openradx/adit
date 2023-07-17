@@ -39,6 +39,7 @@ vscode:
     - "ms-pyright.pyright" # Replaces pylance as it is not available in Open VSX
     - "ms-python.black-formatter"
     - "ms-python.python"
+    - "ms-toolsai.jupyter"
     - "streetsidesoftware.code-spell-checker"
     - "tamasfe.even-better-toml"
     - "wayou.vscode-todo-highlight"
