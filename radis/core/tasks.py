@@ -1,27 +1,11 @@
-import subprocess
-import traceback
-
-import redis
-import sherlock
 from celery import shared_task
 from celery.utils.log import get_task_logger
 from django.conf import settings
 from django.core.mail import send_mail
-from django.utils import timezone
-from sherlock import Lock
 
 from radis.accounts.models import User
-from radis.core.utils.report_utils import Report
-
-from .utils.mail import (
-    send_mail_to_admins,
-)
 
 logger = get_task_logger(__name__)
-
-# TODO: delete, and maybe also remove sherlock from toml
-sherlock.configure(backend=sherlock.backends.REDIS)
-sherlock.configure(client=redis.Redis.from_url(settings.REDIS_URL))
 
 
 @shared_task(ignore_result=True)
@@ -59,4 +43,5 @@ def check_disk_space():
 @shared_task(ignore_result=True)
 def process_report(**kwargs):
     # TODO: send to vespa
-    report = Report(**kwargs)
+    # report = Report(**kwargs)
+    pass

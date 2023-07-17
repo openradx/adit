@@ -1,18 +1,14 @@
-import io
 import time
 from multiprocessing import Process
-from tempfile import NamedTemporaryFile
 from typing import Callable
 
 import nest_asyncio
-import pandas as pd
 import pytest
-from django.conf import settings
 from django.core.management import call_command
 from faker import Faker
 from playwright.sync_api import Locator, Page, Response
+
 from radis.accounts.factories import UserFactory
-from radis.core.factories import DicomServerFactory
 from radis.testing import ChannelsLiveServer
 
 fake = Faker()
@@ -91,13 +87,3 @@ def create_and_login_user(page: Page, login_user):
         return user
 
     return _create_and_login_user
-
-
-@pytest.fixture
-def create_dummy_file():
-    def _create_dummy_file(folder: str | None = None, suffix: str = "", size: int = 1024):
-        file = NamedTemporaryFile(dir=folder, suffix=suffix, delete=False)
-        file.write(fake.binary(size))
-        file.close()
-
-    return _create_dummy_file

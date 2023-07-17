@@ -18,11 +18,8 @@ x-app:
     RABBIT_MANAGEMENT_PORT: "15672"
     FLOWER_HOST: "flower"
     FLOWER_PORT: "5555"
-    FILE_TRANSMIT_HOST: "receiver"
-    FILE_TRANSMIT_PORT: 14638
-    STORE_SCP_HOST: "receiver"
-    STORE_SCP_PORT: 11112
-  # pull_policy: never ## Does work with Docker Swarm
+    VESPA_HOST: "vespa"
+    VESPA_PORT: "19071"
 
 services:
   web:
@@ -41,9 +38,6 @@ services:
     <<: *default-app
 
   celery_beat:
-    <<: *default-app
-
-  receiver:
     <<: *default-app
 
   flower:
@@ -81,6 +75,19 @@ services:
       - "6379"
     volumes:
       - redis_data:/data
+
+  vespa:
+    image: vespaengine/vespa
+    healthcheck:
+      test: curl http://localhost:19071/state/v1/health
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    ports:
+      - 19071:19071
+      - 19100:19100
+      - 19050:19050
+      - 20092:19092
 
 volumes:
   radis_data:

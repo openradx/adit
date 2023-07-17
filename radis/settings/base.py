@@ -15,7 +15,6 @@ from pathlib import Path
 import environ
 import toml
 from celery.schedules import crontab
-from pydicom import config as pydicom_config
 
 env = environ.Env()
 
@@ -182,16 +181,6 @@ LOGGING = {
             "level": "WARNING",
             "propagate": False,
         },
-        "pydicom": {
-            "handlers": ["console"],
-            "level": "WARNING",
-            "propagate": False,
-        },
-        "pynetdicom": {
-            "handlers": ["console"],
-            "level": "WARNING",
-            "propagate": False,
-        },
     },
     "root": {"handlers": ["console"], "level": "ERROR"},
 }
@@ -305,15 +294,6 @@ CELERY_BEAT_SCHEDULE = {
     }
 }
 
-# Max retries is normally 3. We have to overwrite this, see
-# https://github.com/celery/celery/issues/976
-# Retries happen when a DICOM server is not responding, a requested
-# study is currently offline, the scheduler is rescheduling (because
-# we are outside the time slot). So we have to set this quite high.
-# None would turn it off, but we make sure that no bug let retry it
-# forever.
-CELERY_TASK_ANNOTATIONS = {"*": {"max_retries": 100}}
-
 # Settings for priority queues, see also apply_async calls in the models.
 # Requires RabbitMQ as the message broker!
 CELERY_TASK_QUEUE_MAX_PRIORITY = 10
@@ -336,36 +316,9 @@ FLOWER_PORT = env.int("FLOWER_PORT", default=5555)  # type: ignore
 # Used by django-filter
 FILTERS_EMPTY_CHOICE_LABEL = "Show All"
 
-# Global pydicom settings
-pydicom_config.convert_wrong_length_to_UN = True
-
-###
-# RADIS specific settings
-###
-
-# The AE Tile for the RADIS STORE SCP server
-RADIS_AE_TITLE = env.str("RADIS_AE_TITLE", default="RADIS1")  # type: ignore
-
-# The address and port of the STORE SCP server (part of the receiver).
-# By default the STORE SCP server listens to all interfaces (empty string)
-STORE_SCP_HOST = env.str("STORE_SCP_HOST", default="localhost")  # type: ignore
-STORE_SCP_PORT = env.int("STORE_SCP_PORT", default=11112)  # type: ignore
-
-# The address and port of the file transmit socket server (part of the receiver)
-# that is used to transfer DICOM files from the receiver to the workers (when
-# the PACS server does not support C-GET).
-# By default the file transmit socket server listens to all interfaces (should
-# not be a problem as it is inside the docker network).
-FILE_TRANSMIT_HOST = env.str("FILE_TRANSMIT_HOST", default="localhost")  # type: ignore
-FILE_TRANSMIT_PORT = env.int("FILE_TRANSMIT_PORT", default=14638)  # type: ignore
-
-# A folder to cache temporary DICOM files.
-# Receiver and file transmit client do create temporary directories in this
-# folder and cache their received DICOM files there.
-TEMP_DICOM_DIR = env.str("TEMP_DICOM_DIR", default=str(BASE_DIR / ".dicoms"))  # type: ignore
+# Vespa
+VESPA_HOST = env.str("VESPA_HOST", default="localhost")  # type: ignore
+VESPA_PORT = env.int("VESPA_PORT", default=8080)  # type: ignore
 
 # A timezone that is used for users of the web interface.
 USER_TIME_ZONE = env.str("USER_TIME_ZONE", default="Europe/Berlin")  # type: ignore
-
-# Show DICOM debug messages of pynetdicom
-ENABLE_DICOM_DEBUG_LOGGER = False

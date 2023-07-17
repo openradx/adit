@@ -48,19 +48,19 @@ services:
     command: |
       ./manage.py celery_beat --autoreload
 
-  receiver:
-    <<: *default-app
-    ports:
-      - "11122:11112"
-    command: |
-      ./manage.py receiver --autoreload
-
   flower:
     <<: *default-app
 
   postgres:
     environment:
       POSTGRES_PASSWORD: "postgres"
+
+  vespa:
+    environment:
+      # Reduce memory usage of Vespa during development (espcially on Cloud IDEs), see
+      # https://docs.vespa.ai/en/operations/node-setup.html#memory-settings
+      VESPA_CONFIGSERVER_JVMARGS: "-Xms32M -Xmx128M"
+      VESPA_CONFIGPROXY_JVMARGS: "-Xms32M -Xmx32M"
 
 volumes:
   vscode-server:

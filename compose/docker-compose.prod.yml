@@ -50,14 +50,6 @@ services:
     deploy:
       replicas: 1
 
-  receiver:
-    <<: *default-app
-    ports:
-      - "11112:11112"
-    command: ./manage.py receiver
-    deploy:
-      replicas: 1
-
   flower:
     <<: *default-app
     deploy:
@@ -76,6 +68,11 @@ services:
       replicas: 1
 
   redis:
+    restart: always
+    deploy:
+      replicas: 1
+
+  vespa:
     restart: always
     deploy:
       replicas: 1

@@ -36,8 +36,7 @@ class ReportSerializer(serializers.Serializer):
         required=False,
     )
     study_description = serializers.CharField(max_length=64)
-    study_date = serializers.DateField()
-    study_time = serializers.TimeField()
+    study_datetime = serializers.DateTimeField()
     series_uid = serializers.CharField(
         max_length=64,
         validators=[
