@@ -38,10 +38,3 @@ def check_disk_space():
     #         logger.warning(msg)
     #         send_mail_to_admins("Warning, low disk space!", msg)
     pass
-
-
-@shared_task(ignore_result=True)
-def process_report(**kwargs):
-    # TODO: send to vespa
-    # report = Report(**kwargs)
-    pass
