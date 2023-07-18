@@ -29,7 +29,7 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
       - name: Configure environment
-        run: cp example.env compose/.env.dev
+        run: cp example.env .env.dev
       - uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
