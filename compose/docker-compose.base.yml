@@ -8,6 +8,7 @@ x-app:
     - postgres
     - rabbit
     - redis
+    - vespa
   environment:
     USE_DOCKER: 1
     DATABASE_URL: "psql://postgres:postgres@postgres:5432/postgres"
@@ -19,7 +20,8 @@ x-app:
     FLOWER_HOST: "flower"
     FLOWER_PORT: "5555"
     VESPA_HOST: "vespa"
-    VESPA_PORT: "19071"
+    VESPA_CONFIG_PORT: "19071"
+    VESPA_DATA_PORT: "8080"
 
 services:
   web:
@@ -84,10 +86,11 @@ services:
       retries: 3
       start_period: 40s
     ports:
+      - 8080:8080
       - 19071:19071
-      - 19100:19100
-      - 19050:19050
-      - 20092:19092
+    volumes:
+      - vespa_data:/opt/vespa/var
+      - vespa_logs:/opt/vespa/logs
 
 volumes:
   radis_data:
@@ -95,3 +98,5 @@ volumes:
   rabbit_data:
   redis_data:
   flower_data:
+  vespa_data:
+  vespa_logs:

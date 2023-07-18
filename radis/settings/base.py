@@ -318,7 +318,8 @@ FILTERS_EMPTY_CHOICE_LABEL = "Show All"
 
 # Vespa
 VESPA_HOST = env.str("VESPA_HOST", default="localhost")  # type: ignore
-VESPA_PORT = env.int("VESPA_PORT", default=8080)  # type: ignore
+VESPA_CONFIG_PORT = env.int("VESPA_CONFIG_PORT", default=19071)  # type: ignore
+VESPA_DATA_PORT = env.int("VESPA_DATA_PORT", default=8080)  # type: ignore
 
 # A timezone that is used for users of the web interface.
 USER_TIME_ZONE = env.str("USER_TIME_ZONE", default="Europe/Berlin")  # type: ignore
