@@ -13,3 +13,7 @@
 
 - Multi node Vespa example setup
   -- <https://github.com/vespa-engine/sample-apps/blob/master/examples/operations/multinode-HA/>
+
+## Transfer to ADIT
+
+- .env files in project dir (instead of compose dir)

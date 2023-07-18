@@ -6,7 +6,7 @@ x-app:
   volumes:
     - ..:/app
   env_file:
-    - ./.env.dev
+    - ../.env.dev
   environment:
     ENABLE_REMOTE_DEBUGGING: 0
     DJANGO_SETTINGS_MODULE: "radis.settings.development"
