@@ -5,7 +5,7 @@ from .views import ReportDetail, ReportList
 
 urlpatterns = [
     path("reports/", ReportList.as_view()),
-    path("reports/<int:pk>/", ReportDetail.as_view()),
+    path("reports/<str:pk>/", ReportDetail.as_view()),
 ]
 
 urlpatterns = format_suffix_patterns(urlpatterns)

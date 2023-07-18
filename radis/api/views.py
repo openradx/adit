@@ -1,44 +1,57 @@
+from typing import Any
+
 import shortuuid
 from adrf.views import APIView, Response, status
+from vespa.io import VespaResponse
 
-from radis.vespa_app import get_async_vespa_client
+from radis.vespa_app import get_vespa_client
 
 from .serializers import ReportSerializer
 
 
+def adjust_fields(fields: dict[str, Any]):
+    # Vespa can't store datetimes natively, so we store it as a number,
+    # see schema in vespa_app.py
+    fields["study_datetime"] = int(fields["study_datetime"].timestamp())
+
+
 class ReportList(APIView):
     async def post(self, request):
-        serializer = ReportSerializer(data=request.data, many=True)
+        serializer = ReportSerializer(data=request.data)
         if serializer.is_valid():
-            batch = []
-            for fields in serializer.validated_data:
-                batch.append(
-                    {
-                        "id": shortuuid.uuid(),
-                        "fields": fields,
-                    }
-                )
-            client = get_async_vespa_client()
-            result = await client.feed_batch("radis", batch)
-            return Response(result, status=status.HTTP_201_CREATED)
+            fields = serializer.validated_data
+            adjust_fields(fields)
+
+            app = get_vespa_client()
+            async with app.asyncio() as client:
+                response = await client.feed_data_point("radis", shortuuid.uuid(), fields)
+            if response.get_status_code() != status.HTTP_200_OK:
+                return Response(response.get_json(), status=response.get_status_code())
+            return Response(response.get_json(), status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 class ReportDetail(APIView):
     async def get(self, request, pk):
-        client = get_async_vespa_client()
-        # TODO: I guess we have to translate this to an Http Response
-        return await client.get_data("radis", pk)
+        app = get_vespa_client()
+        async with app.asyncio() as client:
+            response: VespaResponse = await client.get_data("radis", pk)
+        return Response(response.get_json(), status=response.get_status_code())
 
     async def put(self, request, pk):
         serializer = ReportSerializer(data=request.data)
         if serializer.is_valid():
-            client = get_async_vespa_client()
-            result = await client.update_data("radis", pk, serializer.validated_data)
-            return Response(result)
+            fields = serializer.validated_data
+            adjust_fields(fields)
+
+            app = get_vespa_client()
+            async with app.asyncio() as client:
+                response = await client.update_data("radis", pk, fields)
+            return Response(response.get_json(), response.get_status_code())
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     async def delete(self, request, pk):
-        client = get_async_vespa_client()
-        # TODO: I guess we have to translate this to an Http Response
-        return client.delete_data("radis", pk)
+        app = get_vespa_client()
+        async with app.asyncio() as client:
+            response = await client.delete_data("radis", pk)
+        return Response(response.get_json(), response.get_status_code())

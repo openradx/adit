@@ -74,8 +74,3 @@ def get_vespa_client() -> Vespa:
     vespa_data_port = settings.VESPA_DATA_PORT
     client = Vespa(f"http://{vespa_host}", vespa_data_port)
     return client
-
-
-def get_async_vespa_client() -> VespaAsync:
-    client = get_vespa_client()
-    return client.asyncio()
