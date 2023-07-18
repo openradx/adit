@@ -1,24 +1,68 @@
 import subprocess
+import tempfile
 from pathlib import Path
 
 from django.conf import settings
 from django.core.management.base import BaseCommand
 
-from ...utils.vespa_utils import app_package
+from radis.vespa_app import app_package
 
 
 class Command(BaseCommand):
     help = "Setup the Vespa schema for the RADIS app"
 
-    def handle(self, *args, **options):
-        vespa_dir = Path("/tmp/radis_vespa")
-        vespa_dir.mkdir(exist_ok=True)
-        app_package.to_files(vespa_dir)
+    def add_arguments(self, parser):
+        parser.add_argument(
+            "--host",
+            default=None,
+            help="Host of the Vespa config server (overwrites VESPA_HOST setting).",
+        )
+        parser.add_argument(
+            "--port",
+            default=None,
+            type=int,
+            help="Port of the Vespa config server (overwrites VESPA_CONFIG_PORT setting).",
+        )
+        parser.add_argument(
+            "--folder",
+            default=None,
+            help=(
+                "Explicit app package folder for deployment files, which is not deleted after "
+                "deployment. Otherwise a temporary folder is used which gets cleaned up."
+            ),
+        )
 
-        vespa_host = settings.VESPA_HOST
-        vespa_config_port = settings.VESPA_CONFIG_PORT
+    def handle(self, *args, **options):
+        app_folder: Path
+        tmp_dir: tempfile.TemporaryDirectory | None = None
+        if options["folder"]:
+            app_folder = Path(options["folder"])
+            app_folder.mkdir(parents=True, exist_ok=True)
+        else:
+            tmp_dir = tempfile.TemporaryDirectory(prefix="radis_")
+            app_folder = Path(tmp_dir.name)
+
+        app_package.to_files(app_folder)
+
+        vespa_host: str
+        if options["host"]:
+            vespa_host = options["host"]
+        else:
+            vespa_host = settings.VESPA_HOST
+
+        vespa_config_port: int
+        if options["port"]:
+            vespa_config_port = options["port"]
+        else:
+            vespa_config_port = settings.VESPA_CONFIG_PORT
+
         vespa_url = f"http://{vespa_host}:{vespa_config_port}/"
-        cmd = f"vespa deploy --wait 300 -t {vespa_url} {vespa_dir.as_posix()}"
+
+        cmd = f"vespa deploy --wait 300 -t {vespa_url} {app_folder.as_posix()}"
         print(f"Running: {cmd}")
         subprocess.run(cmd, shell=True, check=True)
+
+        if tmp_dir:
+            tmp_dir.cleanup()
+
         print("RADIS Vespa app deployed successfully!")
