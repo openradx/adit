@@ -34,6 +34,7 @@ Twisted = { extras = ["tls", "http2"], version = "^22.2.0" }
 whitenoise = "^6.0.0"
 wait-for-it = "^2.2.2"
 pyvespa = "^0.34.0"
+pandas = "^2.0.3"
 
 [tool.poetry.group.dev.dependencies]
 black = "^23.1.0"
