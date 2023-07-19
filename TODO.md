@@ -17,3 +17,5 @@
 ## Transfer to ADIT
 
 - .env files in project dir (instead of compose dir)
+- Correct help in populate_dev_db command
+- Delete reset_dev_db and add reset option to populate_dev_db

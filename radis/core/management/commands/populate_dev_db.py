@@ -1,7 +1,8 @@
 from os import environ
 
 import factory
-from django.core.management.base import BaseCommand
+from django.core.management import call_command
+from django.core.management.base import BaseCommand, CommandParser
 from faker import Faker
 
 from radis.accounts.factories import AdminUserFactory, UserFactory
@@ -49,9 +50,16 @@ def create_report_collections(users):
 
 
 class Command(BaseCommand):
-    help = "Copies vendor files from node_modues folder"
+    help = "Populates development database with example data."
+
+    def add_arguments(self, parser: CommandParser) -> None:
+        parser.add_argument("--reset", action="store_true")
 
     def handle(self, *args, **options):
+        if options["reset"]:
+            call_command("reset_db", "--noinput")  # needs django_extensions installed
+            call_command("migrate")
+
         do_populate = True
         if User.objects.count() > 0:
             print("Development database already populated. Skipping.")

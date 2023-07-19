@@ -4,7 +4,7 @@ import shortuuid
 from adrf.views import APIView, Response, status
 from vespa.io import VespaResponse
 
-from radis.vespa_app import get_vespa_client
+from radis.vespa_app import vespa_client
 
 from .serializers import ReportSerializer
 
@@ -22,8 +22,7 @@ class ReportList(APIView):
             fields = serializer.validated_data
             adjust_fields(fields)
 
-            app = get_vespa_client()
-            async with app.asyncio() as client:
+            async with vespa_client.asyncio() as client:
                 response = await client.feed_data_point("radis", shortuuid.uuid(), fields)
             if response.get_status_code() != status.HTTP_200_OK:
                 return Response(response.get_json(), status=response.get_status_code())
@@ -33,8 +32,7 @@ class ReportList(APIView):
 
 class ReportDetail(APIView):
     async def get(self, request, pk):
-        app = get_vespa_client()
-        async with app.asyncio() as client:
+        async with vespa_client.asyncio() as client:
             response: VespaResponse = await client.get_data("radis", pk)
         return Response(response.get_json(), status=response.get_status_code())
 
@@ -44,14 +42,12 @@ class ReportDetail(APIView):
             fields = serializer.validated_data
             adjust_fields(fields)
 
-            app = get_vespa_client()
-            async with app.asyncio() as client:
+            async with vespa_client.asyncio() as client:
                 response = await client.update_data("radis", pk, fields)
             return Response(response.get_json(), response.get_status_code())
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     async def delete(self, request, pk):
-        app = get_vespa_client()
-        async with app.asyncio() as client:
+        async with vespa_client.asyncio() as client:
             response = await client.delete_data("radis", pk)
         return Response(response.get_json(), response.get_status_code())
