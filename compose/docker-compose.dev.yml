@@ -32,6 +32,7 @@ services:
         ./manage.py collectstatic --no-input &&
         ./manage.py populate_dev_db &&
         ./manage.py deploy_vespa_app &&
+        ./manage.py populate_dev_vespa &&
         ./manage.py runserver 0.0.0.0:8000
       "
 
