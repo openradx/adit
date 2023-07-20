@@ -3,5 +3,13 @@
 {% block container %}
     <h4 class="mb-3">Search reports</h4>
     {% crispy form %}
-    {% for hit in hits %}{{ hit.fields.patient_id }}{% endfor %}
+    <div>
+        {% for hit in hits %}
+            <div class="card">
+                <div class="card-body">
+                    <div class="text-wrap">{{ hit.fields.content }}</div>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
 {% endblock container %}

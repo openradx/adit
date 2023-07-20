@@ -1,6 +1,14 @@
 from django.conf import settings
 from vespa.application import Vespa
-from vespa.package import ApplicationPackage, Document, Field, FieldSet, RankProfile, Schema
+from vespa.package import (
+    ApplicationPackage,
+    Document,
+    Field,
+    FieldSet,
+    RankProfile,
+    Schema,
+    Summary,
+)
 
 _report_schema = Schema(
     "report",
@@ -81,6 +89,7 @@ _report_schema = Schema(
                 type="string",
                 indexing=["summary", "index"],
                 index="enable-bm25",
+                summary=Summary(None, None, ["dynamic"]),
             ),
         ]
     ),

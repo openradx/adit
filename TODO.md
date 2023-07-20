@@ -11,6 +11,15 @@
 
 ## Maybe
 
+- Adjust the summary dynamic snippets of the search results
+  -- <https://docs.vespa.ai/en/document-summaries.html>
+  -- Unfortunately, ApplicationConfiguration does not allow to put the configuration inside the content cluster (see link above)
+  --- <https://github.com/vespa-engine/pyvespa/blob/75c64ab144f98155387ff1f461632b889c19bd6e/vespa/package.py#L1490>
+  --- <https://github.com/vespa-engine/pyvespa/blob/master/vespa/templates/services.xml>
+  -- That's why we would need to manipulate the XML files ourselves (maybe with <https://docs.python.org/3/library/xml.etree.elementtree.html>)
+  -- or simply wait for <https://github.com/vespa-engine/pyvespa/issues/520>
+- Put an extra "indication" field into the schema
+  -- Also must be included in the ranking expression, see <https://pyvespa.readthedocs.io/en/latest/getting-started-pyvespa.html#Define-ranking>
 - Multi node Vespa example setup
   -- <https://github.com/vespa-engine/sample-apps/blob/master/examples/operations/multinode-HA/>
 
