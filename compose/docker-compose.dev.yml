@@ -27,10 +27,10 @@ services:
     command: >
       bash -c "
         wait-for-it -s postgres:5432 -t 60 && 
-        wait-for-it -s vespa:19071 -t 60 &&
         ./manage.py migrate &&
         ./manage.py collectstatic --no-input &&
         ./manage.py populate_dev_db &&
+        wait-for-it -s vespa:19071 -t 60 &&
         ./manage.py deploy_vespa_app &&
         ./manage.py populate_dev_vespa &&
         ./manage.py runserver 0.0.0.0:8000
