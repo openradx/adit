@@ -4,6 +4,8 @@ from radis.core.validators import (
     no_backslash_char_validator,
     no_control_chars_validator,
     no_wildcard_chars_validator,
+    validate_gender,
+    validate_year_of_birth,
 )
 
 
@@ -17,6 +19,15 @@ class ReportSerializer(serializers.Serializer):
             no_control_chars_validator,
             no_wildcard_chars_validator,
         ],
+    )
+    year_of_birth = (
+        serializers.IntegerField(
+            validators=[validate_year_of_birth],
+        ),
+    )
+    gender = serializers.CharField(
+        max_length=1,
+        validators=[validate_gender],
     )
     study_uid = serializers.CharField(
         max_length=64,

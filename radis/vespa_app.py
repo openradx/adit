@@ -27,6 +27,16 @@ _report_schema = Schema(
                 indexing=["summary", "attribute"],
             ),
             Field(
+                name="year_of_birth",
+                type="int",
+                indexing=["summary", "attribute"],
+            ),
+            Field(
+                name="gender",
+                type="string",
+                indexing=["summary", "attribute"],
+            ),
+            Field(
                 name="study_uid",
                 type="string",
                 indexing=["attribute"],
@@ -74,9 +84,15 @@ _report_schema = Schema(
         ]
     ),
 )
+
 app_package = ApplicationPackage(name="radis", schema=[_report_schema])
 
 
 _vespa_host = settings.VESPA_HOST
 _vespa_data_port = settings.VESPA_DATA_PORT
-vespa_client = Vespa(f"http://{_vespa_host}", _vespa_data_port, application_package=app_package)
+
+vespa_client = Vespa(
+    f"http://{_vespa_host}",
+    _vespa_data_port,
+    application_package=app_package,
+)

@@ -30,6 +30,8 @@ def feed_report(content: str):
             "pacs_aet": pacs["pacs_aet"],
             "pacs_name": pacs["pacs_name"],
             "patient_id": fake.ean(length=8),
+            "year_of_birth": int(fake.year()),
+            "gender": fake.random_element(elements=["F", "M"]),
             "study_uid": fake.uuid4(),
             "accession_number": fake.ean(length=13),
             "study_description": fake.sentence(),

@@ -1,3 +1,6 @@
+from datetime import datetime
+
+from django.core.exceptions import ValidationError
 from django.core.validators import RegexValidator
 
 no_backslash_char_validator = RegexValidator(
@@ -18,3 +21,14 @@ no_wildcard_chars_validator = RegexValidator(
     message="Contains invalid wildcard characters.",
     inverse_match=True,
 )
+
+
+def validate_year_of_birth(year: int):
+    currentYear = datetime.now().year
+    if year > currentYear:
+        raise ValidationError(f"Year of birth can't be in the future: {year}")
+
+
+def validate_gender(gender: str):
+    if gender not in ["F", "M"]:
+        raise ValidationError(f"Invalid gender: {gender}")
