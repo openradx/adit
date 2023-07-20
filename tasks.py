@@ -245,20 +245,40 @@ def copy_statics(ctx: Context):
     """Copy JS and CSS dependencies from node_modules to static vendor folder"""
     print("Copying statics...")
 
-    copy("node_modules/jquery/dist/jquery.js", "radis/static/vendor/")
+    vendor_dir = Path("radis/static/vendor")
+    vendor_dir.mkdir(exist_ok=True)
+
+    # jQuery
+    copy("node_modules/jquery/dist/jquery.js", vendor_dir)
+
+    # Bootstrap
     for file in glob("node_modules/bootstrap/dist/css/bootstrap.css*"):
-        copy(file, "radis/static/vendor/")
+        copy(file, vendor_dir)
     for file in glob("node_modules/bootstrap/dist/js/bootstrap.bundle.js*"):
-        copy(file, "radis/static/vendor/")
+        copy(file, vendor_dir)
+
+    # Bootstrap icon font
+    copy(
+        "node_modules/bootstrap-icons/font/bootstrap-icons.css",
+        vendor_dir,
+    )
+    fonts_dir = vendor_dir / "fonts"
+    fonts_dir.mkdir(exist_ok=True)
+    for file in glob("node_modules/bootstrap-icons/font/fonts/bootstrap-icons.woff*"):
+        copy(file, fonts_dir)
+
+    # Bootswatch
     copy("node_modules/bootswatch/dist/flatly/bootstrap.css", "radis/static/vendor/")
     for file in glob("node_modules/alpinejs/dist/alpine*.js"):
-        copy(file, "radis/static/vendor/")
-    copy("node_modules/morphdom/dist/morphdom-umd.js", "radis/static/vendor/")
-    copy("node_modules/htmx.org/dist/htmx.js", "radis/static/vendor/")
-    copy("node_modules/htmx.org/dist/ext/ws.js", "radis/static/vendor/htmx-ws.js")
+        copy(file, vendor_dir)
+
+    # HTMX and extensions
+    copy("node_modules/morphdom/dist/morphdom-umd.js", vendor_dir)
+    copy("node_modules/htmx.org/dist/htmx.js", vendor_dir)
+    copy("node_modules/htmx.org/dist/ext/ws.js", vendor_dir / "htmx-ws.js")
     copy(
         "node_modules/htmx.org/dist/ext/morphdom-swap.js",
-        "radis/static/vendor/htmx-morphdom-swap.js",
+        vendor_dir / "htmx-morphdom-swap.js",
     )
 
 

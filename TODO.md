@@ -21,3 +21,4 @@
 - Delete reset_dev_db and add reset option to populate_dev_db
 - default_auto_field = "django.db.models.BigAutoField" in apps.py
 - Use bootstrap icons font instead of SVGs
+- Improve copy-statics task
