@@ -3,4 +3,5 @@
 {% block container %}
     <h4 class="mb-3">Search reports</h4>
     {% crispy form %}
+    {% for hit in hits %}{{ hit.fields.patient_id }}{% endfor %}
 {% endblock container %}

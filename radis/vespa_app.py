@@ -1,11 +1,11 @@
 from django.conf import settings
 from vespa.application import Vespa
-from vespa.package import ApplicationPackage, Document, Field, Schema
+from vespa.package import ApplicationPackage, Document, Field, FieldSet, RankProfile, Schema
 
 _report_schema = Schema(
     "report",
-    Document(
-        [
+    document=Document(
+        fields=[
             Field(
                 name="organizations",
                 type="array<string>",
@@ -79,10 +79,17 @@ _report_schema = Schema(
             Field(
                 name="content",
                 type="string",
-                indexing=["summary, index"],
+                indexing=["summary", "index"],
+                index="enable-bm25",
             ),
         ]
     ),
+    fieldsets=[
+        FieldSet(name="default", fields=["content"]),
+    ],
+    rank_profiles=[
+        RankProfile(name="bm25", first_phase="bm25(content)"),
+    ],
 )
 
 app_package = ApplicationPackage(name="radis", schema=[_report_schema])
