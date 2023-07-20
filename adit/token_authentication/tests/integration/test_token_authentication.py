@@ -1,14 +1,15 @@
-import time
+from typing import Callable
 
 import pytest
 import requests
-from playwright.sync_api import Page, expect
+from playwright.sync_api import Locator, Page, expect
 
 
 @pytest.mark.integration
 @pytest.mark.django_db(transaction=True)
 def test_create_and_delete_authentication_token(
     page: Page,
+    poll: Callable[[Locator], Locator],
     channels_live_server,
     create_and_login_user,
 ):
@@ -31,8 +32,7 @@ def test_create_and_delete_authentication_token(
 
     page.on("dialog", lambda dialog: dialog.accept())
     page.query_selector('[id*="delete-token-button"]').click()  # type: ignore
-    page.reload()
-    time.sleep(5)
+    expect(poll(page.locator('[id*="token-str"]'))).not_to_be_visible()
     response = requests.get(
         channels_live_server.url + "/token-authentication/test",
         headers={"Authorization": f"Token {token_str}"},

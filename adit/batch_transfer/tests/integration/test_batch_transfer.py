@@ -39,7 +39,6 @@ def test_unpseudonymized_urgent_batch_transfer_succeeds(
     page.get_by_label("Batch file").set_input_files(files=[batch_file])
     page.locator('input:has-text("Create job")').click()
     expect(poll(page.locator('dl:has-text("Success")'))).to_be_visible()
-    # page.screenshot(path="foo.png")
 
 
 @pytest.mark.integration
@@ -74,4 +73,3 @@ def test_unpseudonymized_urgent_batch_transfer_succeeds_dicomweb(
     page.get_by_label("Batch file").set_input_files(files=[batch_file])
     page.locator('input:has-text("Create job")').click()
     expect(poll(page.locator('dl:has-text("Success")'))).to_be_visible()
-    # page.screenshot(path="foo.png")
