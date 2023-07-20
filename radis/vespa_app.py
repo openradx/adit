@@ -79,7 +79,7 @@ _report_schema = Schema(
             Field(
                 name="content",
                 type="string",
-                indexing=["index"],
+                indexing=["summary, index"],
             ),
         ]
     ),

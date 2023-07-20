@@ -62,6 +62,7 @@ INSTALLED_APPS = [
     "rest_framework",
     "radis.core.apps.CoreConfig",
     "radis.api.apps.ApiConfig",
+    "radis.search.apps.SearchConfig",
     "channels",
 ]
 

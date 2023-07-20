@@ -19,3 +19,5 @@
 - .env files in project dir (instead of compose dir)
 - Correct help in populate_dev_db command
 - Delete reset_dev_db and add reset option to populate_dev_db
+- default_auto_field = "django.db.models.BigAutoField" in apps.py
+- Use bootstrap icons font instead of SVGs
