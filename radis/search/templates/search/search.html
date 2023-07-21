@@ -1,5 +1,11 @@
 {% extends "core/base_generic.html" %}
+{% load static from static %}
 {% load crispy from crispy_forms_tags %}
+{% block css %}
+    <link rel="stylesheet"
+          type="text/css"
+          href="{% static 'search/search.css' %}" />
+{% endblock css %}
 {% block container %}
     <h4 class="mb-3">Search reports</h4>
     {% crispy form %}
@@ -7,7 +13,7 @@
         {% for hit in hits %}
             <div class="card">
                 <div class="card-body">
-                    <div class="text-wrap">{{ hit.fields.content }}</div>
+                    <div class="report-text">{{ hit.fields.content }}</div>
                 </div>
             </div>
         {% endfor %}
