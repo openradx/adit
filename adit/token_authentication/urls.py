@@ -1,27 +1,22 @@
 from django.urls import path
 
-from .views import DeleteTokenView, GenerateTokenView, ListTokenView, TestView, TokenDashboardView
+from .views import DeleteTokenView, GenerateTokenView, TestView, TokenDashboardView
 
 urlpatterns = [
     path(
         "",
         TokenDashboardView.as_view(),
-        name="token_authentication",
+        name="token_dashboard",
     ),
     path(
-        "generate_token",
+        "generate-token",
         GenerateTokenView.as_view(),
-        name="token_authentication_generate_token",
+        name="generate_token",
     ),
     path(
-        "delete_token",
+        "delete-token",
         DeleteTokenView.as_view(),
-        name="token_authentication_delete_token",
-    ),
-    path(
-        "_token_list",
-        ListTokenView.as_view(),
-        name="token_authentication_token_list",
+        name="delete_token",
     ),
     path("test", TestView.as_view(), name="test_view"),
 ]

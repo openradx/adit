@@ -1,8 +1,16 @@
+import logging
+from typing import Tuple
+
+from django.contrib.auth.hashers import check_password
 from rest_framework.authentication import BaseAuthentication
 from rest_framework.exceptions import AuthenticationFailed
 from rest_framework.request import Request
 
+from adit.accounts.models import User
+
 from .models import Token
+
+logger = logging.getLogger(__name__)
 
 
 class RestTokenAuthentication(BaseAuthentication):
@@ -16,12 +24,11 @@ class RestTokenAuthentication(BaseAuthentication):
         return "Authentication failed."
 
     def authenticate(self, request: Request):
-        print(request.META)
         try:
             auth = request.META.get("HTTP_AUTHORIZATION", None)
             if auth is None:
                 auth = request.META["headers"].get("Authorization", None)
-            protocol, token_str = auth.split(" ")
+            protocol, token_string = auth.split(" ")
         except Exception:
             message = "Invalid token header. Please provide credentials in the request header."
             raise AuthenticationFailed(message)
@@ -30,31 +37,43 @@ class RestTokenAuthentication(BaseAuthentication):
             message = "Please use the token authentication protocol to access the REST API."
             raise AuthenticationFailed(message)
 
-        is_valid, message, user, token = self.verify_token(token_str)
-        if not is_valid:
-            print("token is not valid")
+        message, user, token = self.verify_token(token_string)
+        if token is None:
             raise AuthenticationFailed(message)
 
-        if token is not None:
-            token.save()  # updates the last-used attribute
+        token.save()  # updates the last-used attribute
+
         return (user, token)
 
-    def verify_token(self, token_str: str):
+    def verify_token(self, token_string: str) -> Tuple[str, User | None, Token | None]:
+        """
+        This method verifies the token string by checking if the token
+        exists in the database and if the token is not expired.
+
+        :param token_string: The token string to be verified.
+        :return: A tuple containing a message describing the result of the
+        verification, the user associated with the token, and the token
+        object itself. If the token is invalid, the user and token objects
+        are None.
+        """
         message = ""
-        is_valid = True
 
-        tokens = Token.objects.filter(token_string=token_str)
-        if len(tokens) == 0:
-            is_valid = False
+        tokens = Token.objects.all()
+
+        matching_token = None
+        for token in tokens:
+            if check_password(token_string, token.token_string):
+                matching_token = token
+                break
+        if matching_token is None:
             message = "Invalid Token. Token does not exist."
-            return is_valid, message, None, None
+            return message, None, None
 
-        token = tokens[0]
+        token = matching_token
         user = token.author
 
-        # constrains
         if token.is_expired():
-            is_valid = False
             message = "Invalid Token. Token is expired."
+            return message, None, None
 
-        return is_valid, message, user, token
+        return message, user, token
