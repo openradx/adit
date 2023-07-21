@@ -20,8 +20,7 @@ def authentication_token():
     user = UserFactory.create()
     token_authentication_group = Group.objects.get(name="token_authentication_group")
     user.groups.add(token_authentication_group)
-    token = TokenFactory(author=user)
-    return token
+    TokenFactory.create(author=user)
 
 
 @pytest.fixture
@@ -34,7 +33,7 @@ def create_dicom_web_client(authentication_token):
             qido_url_prefix="qidors",
             wado_url_prefix="wadors",
             stow_url_prefix="stowrs",
-            headers={"Authorization": f"Token {authentication_token.token_string}"},
+            headers={"Authorization": "Token test_token_string"},
         )
         return client
 

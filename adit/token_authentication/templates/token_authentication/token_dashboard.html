@@ -3,7 +3,7 @@
 {% load crispy from crispy_forms_tags %}
 {% load static from static %}
 {% block script %}
-    <script>function copyToken(token_str) {navigator.clipboard.writeText(token_str);}</script>
+    <script>function copyToken(token_string) {navigator.clipboard.writeText(token_string);}</script>
 {% endblock script %}
 {% block container %}
     <div class="d-flex justify-content-between align-items-start">
@@ -26,7 +26,7 @@
             </thead>
             <tbody>
                 {% for token in Tokens reversed %}
-                    <tr id="token-str-{{ token.client }}">
+                    <tr id="table-row-{{ token.client }}">
                         <td>{{ token.client }}</td>
                         <td>{{ token.fraction }} ...</td>
                         <td>{{ token.created_time }}</td>
@@ -36,7 +36,11 @@
                             <form action="{% url "delete_token" %}" method="post">
                                 {% csrf_token %}
                                 <input type="hidden" name="client" value="{{ token.client }}">
-                                <button type="submit" class="btn btn-danger btn-sm">{% include "core/_trash_can.svg" %}</button>
+                                <button type="submit"
+                                        class="btn btn-danger btn-sm"
+                                        id="delete-token-button-{{ token.client }}">
+                                    {% include "core/_trash_can.svg" %}
+                                </button>
                             </form>
                         </td>
                     </tr>
@@ -64,13 +68,12 @@
                             <br>
                             <br>
                             <h3>
-                                <span class="badge badge-light">{{ message }}
-                                    <button id="copy-token-button"
-                                            class="btn btn-light btn-sm ml-1"
-                                            onclick="copyToken('{{ message }}')">
-                                        {% include "core/_clipboard.svg" %}
-                                    </button>
-                                </span>
+                                <span class="badge badge-light" id="unhashed-token-string">{{ message }}</span>
+                                <button id="copy-token-button"
+                                        class="btn btn-light btn-sm"
+                                        onclick="copyToken('{{ message }}')">
+                                    {% include "core/_clipboard.svg" %}
+                                </button>
                             </h3>
                         </div>
                     </div>
