@@ -24,8 +24,10 @@ class SearchView(View):
             results = vespa_client.query(
                 {
                     "yql": "select * from sources * where userQuery()",
-                    "hits": 100,
                     "query": query,
+                    "ranking": "bm25",
+                    "type": "web",
+                    "hits": 100,
                 }
             )
             print(results)
