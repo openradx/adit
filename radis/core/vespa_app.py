@@ -131,21 +131,22 @@ class VespaApp:
             )
         return self._client
 
-    def query_reports(
+    async def query_reports(
         self, query: str, page_number: int = 1, page_size: int = 100
     ) -> VespaQueryResponse:
         offset = (page_number - 1) * page_size
 
-        # TODO: filter organizations
-        return self.get_client().query(
-            {
-                "yql": "select * from report where userQuery()",
-                "query": query,
-                "type": "web",
-                "hits": page_size,
-                "offset": offset,
-            }
-        )
+        async with self.get_client().asyncio() as client:
+            # TODO: filter organizations
+            return await client.query(
+                {
+                    "yql": "select * from report where userQuery()",
+                    "query": query,
+                    "type": "web",
+                    "hits": page_size,
+                    "offset": offset,
+                }
+            )
 
 
 vespa_app = VespaApp()

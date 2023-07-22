@@ -22,6 +22,10 @@
   -- Also must be included in the ranking expression, see <https://pyvespa.readthedocs.io/en/latest/getting-started-pyvespa.html#Define-ranking>
 - Multi node Vespa example setup
   -- <https://github.com/vespa-engine/sample-apps/blob/master/examples/operations/multinode-HA/>
+- Standalone logging server
+  -- SigNoz <https://github.com/signoz/signoz>
+  -- Loki <https://github.com/grafana/loki>
+  -- ELK stack <https://github.com/deviantony/docker-elk>
 
 ## Transfer to ADIT
 

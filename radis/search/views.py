@@ -17,7 +17,7 @@ class SearchView(View):
 
         query = request.GET.get("q")
         if query:
-            results = vespa_app.query_reports(query)
+            results = await vespa_app.query_reports(query)
             context["searched"] = True
             context["hits"] = results.hits
 
