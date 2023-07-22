@@ -25,7 +25,6 @@ class SearchView(View):
                 {
                     "yql": "select * from sources * where userQuery()",
                     "query": query,
-                    "ranking": "bm25",
                     "type": "web",
                     "hits": 100,
                 }

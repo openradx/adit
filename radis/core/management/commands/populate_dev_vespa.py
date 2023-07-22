@@ -18,7 +18,7 @@ pacs_items = [
 modalities = ["CT", "MR", "PET", "CR", "US"]
 
 
-def feed_report(content: str):
+def feed_report(body: str):
     data_id = shortuuid.uuid()
     pacs = fake.random_element(elements=pacs_items)
 
@@ -40,7 +40,7 @@ def feed_report(content: str):
             "modalities": [fake.random_element(elements=modalities)],
             "instance_uid": fake.uuid4(),
             "references": [],
-            "content": content,
+            "body": body,
         },
     )
 

@@ -85,7 +85,7 @@ _report_schema = Schema(
                 indexing=["summary"],
             ),
             Field(
-                name="content",
+                name="body",
                 type="string",
                 indexing=["summary", "index"],
                 index="enable-bm25",
@@ -94,10 +94,10 @@ _report_schema = Schema(
         ]
     ),
     fieldsets=[
-        FieldSet(name="default", fields=["content"]),
+        FieldSet(name="default", fields=["body"]),
     ],
     rank_profiles=[
-        RankProfile(name="bm25", first_phase="bm25(content)"),
+        RankProfile(name="default", first_phase="bm25(body)"),
     ],
 )
 
