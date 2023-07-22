@@ -5,7 +5,7 @@ from pathlib import Path
 from django.conf import settings
 from django.core.management.base import BaseCommand
 
-from radis.vespa_app import app_package
+from radis.core.vespa_app import vespa_app
 
 
 class Command(BaseCommand):
@@ -42,7 +42,7 @@ class Command(BaseCommand):
             tmp_dir = tempfile.TemporaryDirectory(prefix="radis_")
             app_folder = Path(tmp_dir.name)
 
-        app_package.to_files(app_folder)
+        vespa_app.get_app_package().to_files(app_folder)
 
         vespa_host: str
         if options["host"]:

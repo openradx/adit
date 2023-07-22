@@ -6,7 +6,7 @@ from django.conf import settings
 from django.core.management.base import BaseCommand, CommandParser
 from faker import Faker
 
-from radis.vespa_app import vespa_client
+from radis.core.vespa_app import vespa_app
 
 fake = Faker()
 
@@ -22,7 +22,7 @@ def feed_report(body: str):
     data_id = shortuuid.uuid()
     pacs = fake.random_element(elements=pacs_items)
 
-    response = vespa_client.feed_data_point(
+    response = vespa_app.get_client().feed_data_point(
         schema="report",
         data_id=data_id,
         fields={
@@ -68,9 +68,11 @@ class Command(BaseCommand):
             print("Resetting Vespa.")
             # pyvespa creates a content cluster name by using the app name
             # and adding the suffix "_content"
-            vespa_client.delete_all_docs("radis_content", "report")
+            vespa_app.get_client().delete_all_docs("radis_content", "report")
 
-        results = vespa_client.query({"yql": "select * from sources * where true", "hits": 1})
+        results = vespa_app.get_client().query(
+            {"yql": "select * from sources * where true", "hits": 1}
+        )
         if results.number_documents_retrieved > 0:
             print("Vespa already populated. Skipping.")
         else:

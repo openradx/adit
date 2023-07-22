@@ -1,11 +1,7 @@
-from typing import Any, Dict
-
-from django.http import HttpResponse
 from django.shortcuts import render
-from django.urls import reverse_lazy
 from django.views import View
 
-from radis.vespa_app import vespa_client
+from radis.core.vespa_app import vespa_app
 
 from .forms import SearchForm
 
@@ -21,15 +17,7 @@ class SearchView(View):
 
         query = request.GET.get("q")
         if query:
-            results = vespa_client.query(
-                {
-                    "yql": "select * from sources * where userQuery()",
-                    "query": query,
-                    "type": "web",
-                    "hits": 100,
-                }
-            )
-            print(results)
+            results = vespa_app.query_reports(query)
             context["searched"] = True
             context["hits"] = results.hits
 
