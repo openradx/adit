@@ -49,7 +49,7 @@
                         <td>{{ token.fraction }} ...</td>
                         <td>{{ token.created_time }}</td>
                         <td>{{ token.expires|default_if_none:"Never" }}</td>
-                        <td>{{ token.last_used }}</td>
+                        <td>{{ token.last_used|default_if_none:"Never" }}</td>
                         <td>
                             <form action="{% url "delete_token" %}" method="post">
                                 {% csrf_token %}

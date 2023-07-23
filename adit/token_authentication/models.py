@@ -46,7 +46,7 @@ class Token(models.Model):
     created_time = models.DateTimeField(auto_now_add=True)
     client = models.TextField(max_length=100, unique=True)
     expires = models.DateTimeField(blank=True, null=True)
-    last_used = models.DateTimeField(auto_now=True)  # TODO: no auto
+    last_used = models.DateTimeField(blank=True, null=True)
 
     objects = TokenManager()
 

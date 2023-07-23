@@ -1,6 +1,7 @@
 import logging
 from typing import Tuple
 
+from django.utils import timezone
 from rest_framework.authentication import BaseAuthentication
 from rest_framework.exceptions import AuthenticationFailed
 from rest_framework.request import Request
@@ -41,7 +42,8 @@ class RestTokenAuthentication(BaseAuthentication):
         if token is None:
             raise AuthenticationFailed(message)
 
-        token.save()  # updates the last-used attribute
+        token.last_used = timezone.now()
+        token.save()
 
         return (user, token)
 
