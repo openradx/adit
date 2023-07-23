@@ -49,13 +49,13 @@ class GenerateTokenView(
             messages.error(self.request, "The token client must be unique.")
             return redirect("token_dashboard")
         try:
-            _, token_string_unhashed = Token.objects.create_token(
+            _, token_string = Token.objects.create_token(
                 user=self.request.user, client=data["client"], expiry_time=expiry_time
             )
         except Exception as e:
             messages.error(self.request, str(e))
             return redirect("token_dashboard")
-        messages.success(self.request, token_string_unhashed)
+        messages.success(self.request, token_string)
         return redirect("token_dashboard")
 
 

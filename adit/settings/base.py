@@ -445,6 +445,13 @@ EXCLUDED_MODALITIES = ["PR", "SR"]
 # If an ethics committee approval is required for batch transfer
 ETHICS_COMMITTEE_APPROVAL_REQUIRED = True
 
+# The salt that is used for hashing new tokens in the token authentication app.
+# Cave, changing the salt after some tokens were already generated makes them all invalid!
+TOKEN_AUTHENTICATION_SALT = env.str(
+    "TOKEN_AUTHENTICATION_SALT",
+    default="Rn4YNfgAar5dYbPu",  # type: ignore
+)
+
 # DicomWeb Settings
 WADO_TMP_FOLDER = "adit/dicom_web/tmp"
 DEFAULT_BOUNDARY = "adit-boundary"

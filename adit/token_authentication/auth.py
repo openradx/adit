@@ -1,7 +1,6 @@
 import logging
 from typing import Tuple
 
-from django.contrib.auth.hashers import check_password
 from rest_framework.authentication import BaseAuthentication
 from rest_framework.exceptions import AuthenticationFailed
 from rest_framework.request import Request
@@ -9,6 +8,7 @@ from rest_framework.request import Request
 from adit.accounts.models import User
 
 from .models import Token
+from .utils.crypto import hash_token, verify_token
 
 logger = logging.getLogger(__name__)
 
@@ -56,24 +56,27 @@ class RestTokenAuthentication(BaseAuthentication):
         object itself. If the token is invalid, the user and token objects
         are None.
         """
-        message = ""
+        token_hashed = hash_token(token_string)
+        tokens = Token.objects.filter(token_hashed=token_hashed)
+        tokens_count = tokens.count()
 
-        tokens = Token.objects.all()
+        if tokens_count == 0:
+            return "Invalid token. Token does not exist.", None, None
 
-        matching_token = None
-        for token in tokens:
-            if check_password(token_string, token.token_string):
-                matching_token = token
-                break
-        if matching_token is None:
-            message = "Invalid Token. Token does not exist."
-            return message, None, None
+        if tokens_count > 1:
+            raise AssertionError(f"Internal token error. Multiple tokens with hash {token_hashed}.")
 
-        token = matching_token
-        user = token.author
+        token = tokens.first()
+
+        if not token:
+            raise AssertionError("Internal token error. Token could not be retrieved from the db.")
+
+        # Just a double check as check_password also checks if the raw token string
+        # was valid in the first place and not empty (see make_password documentation).
+        if not verify_token(token_string, token.token_hashed):
+            raise AssertionError(f"Internal token error. Invalid token hash {token_hashed}.")
 
         if token.is_expired():
-            message = "Invalid Token. Token is expired."
-            return message, None, None
+            return "Invalid Token. Token is expired.", None, None
 
-        return message, user, token
+        return "", token.author, token

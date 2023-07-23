@@ -5,7 +5,7 @@ from .models import Token, TokenSettings
 
 class TokenAdmin(admin.ModelAdmin):
     list_display = (
-        "token_string",
+        "token_hashed",
         "author",
         "created_time",
         "client",
