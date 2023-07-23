@@ -322,5 +322,18 @@ def try_github_actions(ctx: Context):
             "curl https://raw.githubusercontent.com/nektos/act/master/install.sh | sudo bash",
             silent=True,
         )
-
     run_cmd(ctx, f"{act_path} -P ubuntu-latest=catthehacker/ubuntu:act-latest")
+
+
+@task
+def purge_celery(
+    ctx: Context,
+    env: Environments = "dev",
+    queues: str = "default_queue,dicom_task_queue",
+    force=False,
+):
+    """Purge Celery queues"""
+    cmd = f"{build_compose_cmd(env)} exec web celery -A adit purge -Q {queues}"
+    if force:
+        cmd += " -f"
+    run_cmd(ctx, cmd)
