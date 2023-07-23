@@ -18,6 +18,5 @@ class TokenFactory(factory.django.DjangoModelFactory):
     author = factory.SubFactory(UserFactory)
     created_time = timezone.now()
     client = factory.Faker("word")
-    expiry_time = timezone.now() + timedelta(hours=24)
-    expires = True
+    expires = timezone.now() + timedelta(hours=24)
     last_used = timezone.now()

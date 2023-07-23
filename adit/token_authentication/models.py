@@ -25,7 +25,7 @@ class TokenManager(models.Manager["Token"]):
         self,
         user: AbstractBaseUser | AnonymousUser,
         client: str,
-        expiry_time: datetime = datetime.now(),
+        expires: datetime | None,
     ):
         token_string = create_token_string()
         token_hashed = hash_token(token_string)
@@ -34,7 +34,7 @@ class TokenManager(models.Manager["Token"]):
             fraction=token_string[: TokenSettings.fraction_length],
             author=user,
             client=client,
-            expiry_time=expiry_time,
+            expires=expires,
         )
         return token, token_string
 
@@ -45,17 +45,16 @@ class Token(models.Model):
     author = models.ForeignKey(User, on_delete=models.CASCADE)
     created_time = models.DateTimeField(auto_now_add=True)
     client = models.TextField(max_length=100, unique=True)
-    expiry_time = models.DateTimeField()
-    expires = models.BooleanField(default=True)
-    last_used = models.DateTimeField(auto_now=True)
+    expires = models.DateTimeField(blank=True, null=True)
+    last_used = models.DateTimeField(auto_now=True)  # TODO: no auto
 
     objects = TokenManager()
 
     class Meta:
         permissions = [
             (
-                "manage_auth_tokens",
-                "Can manage REST authentication tokens",
+                "can_generate_never_expiring_token",
+                "Can generate never expiring token",
             )
         ]
 
@@ -64,7 +63,7 @@ class Token(models.Model):
 
     def is_expired(self):
         utc = pytz.UTC
-        return self.expiry_time < utc.localize(datetime.now())
+        return self.expires and self.expires < utc.localize(datetime.now())
 
 
 def create_token_string():

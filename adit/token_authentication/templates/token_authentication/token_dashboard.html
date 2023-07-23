@@ -48,7 +48,7 @@
                         <td>{{ token.client }}</td>
                         <td>{{ token.fraction }} ...</td>
                         <td>{{ token.created_time }}</td>
-                        <td>{{ token.expiry_time }}</td>
+                        <td>{{ token.expires|default_if_none:"Never" }}</td>
                         <td>{{ token.last_used }}</td>
                         <td>
                             <form action="{% url "delete_token" %}" method="post">

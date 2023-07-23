@@ -9,13 +9,12 @@ class TokenAdmin(admin.ModelAdmin):
         "author",
         "created_time",
         "client",
-        "expiry_time",
         "expires",
         "last_used",
         "get_owner",
     )
 
-    list_filter = ("author", "created_time", "expires", "last_used", "expiry_time")
+    list_filter = ("author", "created_time", "last_used", "expires")
     search_fields = ("author",)
 
     def get_owner(self, obj):  # pylint: disable=no-self-use

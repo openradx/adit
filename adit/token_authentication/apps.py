@@ -18,5 +18,10 @@ def create_group():
     from adit.accounts.utils import create_group_with_permissions
 
     create_group_with_permissions(
-        "token_authentication_group", ("token_authentication.manage_auth_tokens",)
+        "token_authentication_group",
+        (
+            "token_authentication.add_token",
+            "token_authentication.delete_token",
+            "token_authentication.view_token",
+        ),
     )
