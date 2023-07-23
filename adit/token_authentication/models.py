@@ -20,7 +20,7 @@ class TokenSettings(AppSettings):
         verbose_name_plural = "Token settings"
 
 
-class TokenManager(models.Manager):
+class TokenManager(models.Manager["Token"]):
     def create_token(
         self,
         user: AbstractBaseUser | AnonymousUser,
