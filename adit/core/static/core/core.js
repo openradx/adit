@@ -13,7 +13,8 @@ function getAditConfig() {
 }
 
 // Alpine JS data model connected in _messages_panel.html
-// A simple usage example can be found in sandbox.html and sandbox.js
+// A simple usage example of how to add messages on the client by dispatching
+// a custom event can be found in sandbox.html and sandbox.js.
 function messages() {
   function capitalize(s) {
     if (typeof s !== "string") return "";
@@ -29,7 +30,7 @@ function messages() {
     init: function ($el, $watch, $nextTick) {
       this.$el = $el;
 
-      // Auto hide server messages
+      // Auto hide already added messages by the server
       const serverMessages = this.$el.getElementsByClassName("server-message");
       for (let i = 0; i < serverMessages.length; i++) {
         setTimeout(function () {
@@ -37,11 +38,19 @@ function messages() {
         }, this.options.duration);
       }
     },
+    /**
+     * Add a message to the message list
+     * @param {object} message
+     * @param {("success"|"warning"|"error")} message.level
+     * @param {string} message.title
+     * @param {string} message.text
+     */
     addMessage: function (message) {
       message.id = this.options.nextMessageId++;
       message.title = capitalize(message.title);
       this.messages.push(message);
       const self = this;
+      // Auto hide client message
       setTimeout(function () {
         self.messages.splice(self.messages.indexOf(message), 1);
       }, this.options.duration);

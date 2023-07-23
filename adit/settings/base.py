@@ -249,7 +249,7 @@ LOGIN_REDIRECT_URL = "home"
 CRISPY_ALLOWED_TEMPLATE_PACKS = "bootstrap4"
 CRISPY_TEMPLATE_PACK = "bootstrap4"
 
-# This seems to be imporant for development on Gitpod as CookieStorage
+# This seems to be important for development on Gitpod as CookieStorage
 # and FallbackStorage does not work there.
 # Seems to be the same problem with Cloud9 https://stackoverflow.com/a/34828308/166229
 MESSAGE_STORAGE = "django.contrib.messages.storage.session.SessionStorage"

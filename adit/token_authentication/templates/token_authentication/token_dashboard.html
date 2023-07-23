@@ -1,16 +1,34 @@
-{% extends "core/base_generic.html" %}
+{% extends "token_authentication/base_generic.html" %}
 {% load render_table from django_tables2 %}
 {% load crispy from crispy_forms_tags %}
-{% load static from static %}
-{% block script %}
-    <script>function copyToken(token_string) {navigator.clipboard.writeText(token_string);}</script>
-{% endblock script %}
 {% block container %}
     <div class="d-flex justify-content-between align-items-start">
         <h4 class="mb-3">REST Authentication Tokens</h4>
         {% include "core/_help_button.html" with target="#generate_token_help_modal" only %}
     </div>
-    <!-- list of all tokens -->
+    <!-- Show a possible newly generated token -->
+    {% if new_token %}
+        <div class="card mb-3" x-data="newToken()">
+            <div class="card-body">
+                <h5>Sucessfully generated a REST authentication token.</h5>
+                This token will only be visible once, so make sure to copy it
+                now and store it in a safe place. As you will not be able to
+                see it again, you will have to generate a new token if you lose
+                it.
+                <br />
+                <br />
+                <h3>
+                    <span class="badge badge-light" id="unhashed-token-string">{{ new_token }}</span>
+                    <button id="copy-token-button"
+                            class="btn btn-light btn-sm"
+                            @click="copyTokenToClipboard($dispatch, '{{ new_token }}')">
+                        {% include "core/_clipboard.svg" %}
+                    </button>
+                </h3>
+            </div>
+        </div>
+    {% endif %}
+    <!-- List of all tokens by this user -->
     <div style="margin-top: 40px;">
         <h5>Existing tokens</h5>
         <table class="table table-hover" id="token-list-wrapper">
@@ -25,7 +43,7 @@
                 </tr>
             </thead>
             <tbody>
-                {% for token in Tokens reversed %}
+                {% for token in tokens reversed %}
                     <tr id="table-row-{{ token.client }}">
                         <td>{{ token.client }}</td>
                         <td>{{ token.fraction }} ...</td>
@@ -48,38 +66,13 @@
             </tbody>
         </table>
     </div>
-    <!-- generate token form -->
+    <!-- Form to generate new tokens -->
     <div style="margin-top: 40px;">
         <h5>Generate a new token</h5>
         <form action={% url "generate_token" %} method="post">
             {% csrf_token %}
-            {% crispy GenerateTokenForm %}
+            {% crispy generate_token_form %}
         </form>
-        {% if messages %}
-            {% for message in messages %}
-                {% if message.tags == "success" %}
-                    <div class="card mb-3">
-                        <div class="card-body">
-                            <h5>Sucessfully generated a REST authentication token.</h5>
-                            This token will only be visible once, so make sure to copy it
-                            now and store it in a safe place. As you will not be able to
-                            see it again, you will have to generate a new token if you lose
-                            it.
-                            <br>
-                            <br>
-                            <h3>
-                                <span class="badge badge-light" id="unhashed-token-string">{{ message }}</span>
-                                <button id="copy-token-button"
-                                        class="btn btn-light btn-sm"
-                                        onclick="copyToken('{{ message }}')">
-                                    {% include "core/_clipboard.svg" %}
-                                </button>
-                            </h3>
-                        </div>
-                    </div>
-                {% endif %}
-            {% endfor %}
-        {% endif %}
     </div>
 {% endblock container %}
 {% block bottom %}

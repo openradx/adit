@@ -30,7 +30,7 @@
             <div class="toast-body">{{ message }}</div>
         </div>
     {% endfor %}
-    {# Messages placed by the client (Javascript). See also core.js #}
+    {# Messages added by the client (Javascript). See also core.js #}
     <template x-for="message in messages" :key="message.id">
         <div x-ref="message.id"
              :class="{[message.level]: true}"

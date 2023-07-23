@@ -20,12 +20,13 @@ class TokenDashboardView(
     generate_token_form = GenerateTokenForm
 
     def get(self, request: HttpRequest):
+        new_token = request.session.pop("new_token", None)
         tokens = Token.objects.filter(author=request.user)
 
         context = {
-            "User": request.user,
-            "Tokens": tokens,
-            "GenerateTokenForm": self.generate_token_form,
+            "new_token": new_token,
+            "tokens": tokens,
+            "generate_token_form": self.generate_token_form,
         }
 
         return render(
@@ -55,7 +56,8 @@ class GenerateTokenView(
         except Exception as e:
             messages.error(self.request, str(e))
             return redirect("token_dashboard")
-        messages.success(self.request, token_string)
+
+        self.request.session["new_token"] = token_string
         return redirect("token_dashboard")
 
 
