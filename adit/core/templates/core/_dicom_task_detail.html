@@ -1,82 +1,58 @@
 {% load dicom_task_status_css_class from core_extras %}
 {% with task.job as job %}
     <dl class="row">
-        <dt class="col-sm-3">
-            Task ID
-        </dt>
+        <dt class="col-sm-3">Task ID</dt>
         <dd class="col-sm-9">
             {{ task.task_id }}
         </dd>
-        <dt class="col-sm-3">
-            Job ID
-        </dt>
+        <dt class="col-sm-3">Job ID</dt>
         <dd class="col-sm-9">
             <a href="{% url job_url_name job.id %}">
                 {{ job.id }}
-                {% include "core/_box_arrow_in_right.svg" %}
+                {% include "core/icons/goto.svg" %}
             </a>
         </dd>
-        <dt class="col-sm-3">
-            Status
-        </dt>
+        <dt class="col-sm-3">Status</dt>
         <dd class="col-sm-9">
             <span class="{{ task.status|dicom_task_status_css_class }}">{{ task.get_status_display }}</span>
         </dd>
-        <dt class="col-sm-3">
-            Retries
-        </dt>
+        <dt class="col-sm-3">Retries</dt>
         <dd class="col-sm-9">
             {{ task.retries|default:"—" }}
         </dd>
-        <dt class="col-sm-3">
-            Message
-        </dt>
+        <dt class="col-sm-3">Message</dt>
         <dd class="col-sm-9">
             {{ task.message|default:"—" }}
         </dd>
-        <dt class="col-sm-3">
-            Source
-        </dt>
+        <dt class="col-sm-3">Source</dt>
         <dd class="col-sm-9">
             {{ job.source }}
         </dd>
         {% if user.is_staff %}
-            <dt class="col-sm-3">
-                Created By
-            </dt>
+            <dt class="col-sm-3">Created By</dt>
             <dd class="col-sm-9">
                 {{ job.owner }}
             </dd>
         {% endif %}
-        <dt class="col-sm-3">
-            Created At
-        </dt>
+        <dt class="col-sm-3">Created At</dt>
         <dd class="col-sm-9">
             {{ task.created }}
         </dd>
-        <dt class="col-sm-3">
-            Started At
-        </dt>
+        <dt class="col-sm-3">Started At</dt>
         <dd class="col-sm-9">
             {{ task.start|default:"—" }}
         </dd>
-        <dt class="col-sm-3">
-            Finished At
-        </dt>
+        <dt class="col-sm-3">Finished At</dt>
         <dd class="col-sm-9">
             {{ task.end|default:"—" }}
         </dd>
         {% if user.is_staff %}
-            <dt class="col-sm-3">
-                Celery Task ID
-            </dt>
+            <dt class="col-sm-3">Celery Task ID</dt>
             <dd class="col-sm-9">
                 {{ task.celery_task_id|default:"—" }}
             </dd>
         {% endif %}
-        <dt class="col-sm-3">
-            Log
-        </dt>
+        <dt class="col-sm-3">Log</dt>
         <dd class="col-sm-9">
             <pre>{{ task.log|default:"—" }}</pre>
         </dd>

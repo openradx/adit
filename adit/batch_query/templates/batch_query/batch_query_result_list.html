@@ -5,7 +5,7 @@
     <div class="d-flex justify-content-between align-items-start">
         <h4 class="mb-3">Batch Query Results</h4>
         <a href="{% url 'batch_query_job_detail' job.id %}">
-            {% include "core/_arrow_return_left.svg" %}
+            {% include "core/icons/back.svg" %}
             <strong class="align-middle">View Job</strong>
         </a>
     </div>
@@ -14,7 +14,7 @@
             <h5 text-nowrap class="mb-0">
                 <a href="{% url 'batch_query_result_download' job.id %}"
                    class="badge badge-light align-top">
-                    {% include "core/_download.svg" %}
+                    {% include "core/icons/download.svg" %}
                     Download all results
                 </a>
             </h5>

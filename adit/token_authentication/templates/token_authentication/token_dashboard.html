@@ -22,7 +22,7 @@
                     <button id="copy-token-button"
                             class="btn btn-light btn-sm"
                             @click="copyTokenToClipboard($dispatch, '{{ new_token }}')">
-                        {% include "core/_clipboard.svg" %}
+                        {% include "core/icons/clipboard.svg" %}
                     </button>
                 </h3>
             </div>
@@ -57,7 +57,7 @@
                                 <button type="submit"
                                         class="btn btn-danger btn-sm"
                                         id="delete-token-button-{{ token.client }}">
-                                    {% include "core/_trash_can.svg" %}
+                                    {% include "core/icons/delete.svg" %}
                                 </button>
                             </form>
                         </td>
