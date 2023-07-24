@@ -4,7 +4,7 @@ from celery import current_app
 from django.db import models
 from django.urls import reverse
 
-from adit.core.models import AppSettings, TransferJob, TransferTask
+from adit.core.models import AppSettings, DicomTask, TransferJob, TransferTask
 from adit.core.validators import (
     no_backslash_char_validator,
     no_control_chars_validator,
@@ -33,10 +33,9 @@ class ContinuousTransferJob(TransferJob):
         blank=True,
         error_messages={"invalid": "Invalid date format."},
     )
-    last_transfer = models.DateTimeField(
+    last_processed = models.DateTimeField(
         null=True,
         blank=True,
-        error_messages={"invalid": "Invalid date format."},
     )
     patient_id = models.CharField(
         blank=True,
@@ -88,6 +87,20 @@ class ContinuousTransferJob(TransferJob):
 
     def get_absolute_url(self):
         return reverse("continuous_transfer_job_detail", args=[self.id])
+
+
+class ContinuousQueryTask(DicomTask):
+    """A helper task to query for studies to transfer.
+
+    The query parameters are from the ContinuousTransferJob. The same task is used
+    over and over again.
+    """
+
+    job = models.OneToOneField(
+        ContinuousTransferJob,
+        on_delete=models.CASCADE,
+        related_name="query",
+    )
 
 
 class ContinuousTransferTask(TransferTask):

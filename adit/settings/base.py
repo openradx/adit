@@ -309,6 +309,9 @@ CELERY_TASK_ROUTES = {
     "adit.batch_transfer.tasks.ProcessBatchTransferTask": {
         "queue": "dicom_task_queue",
     },
+    "adit.continuous_transfer.tasks.ProcessContinuousQueryTask": {
+        "queue": "dicom_task_queue",
+    },
     "adit.continuous_transfer.tasks.ProcessContinuousTransferTask": {
         "queue": "dicom_task_queue",
     },

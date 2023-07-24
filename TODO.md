@@ -5,6 +5,7 @@
 - Option in batch query to query whole study or explicit series
 - Allow to terminate a specific Celery task with revoke(task_id, terminate=True)
 - Make whole receiver crash if one asyncio task crashes
+- Rename query_utils and transfer_utils to executors
 - Auto refresh job pages und success or failure
 - Rewrite tests to use mocker fixture instead of patch
 - rename ADIT_AE_TITLE to RECEIVER_AE_TITLE

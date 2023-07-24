@@ -2,6 +2,7 @@ from celery.utils.log import get_task_logger
 from django.conf import settings
 
 from adit.celery import app as celery_app
+from adit.core.models import DicomJob
 from adit.core.tasks import (
     HandleFailedDicomJob,
     HandleFinishedDicomJob,
@@ -10,9 +11,22 @@ from adit.core.tasks import (
 )
 from adit.core.utils.transfer_utils import TransferExecutor
 
-from .models import ContinuousTransferJob, ContinuousTransferSettings, ContinuousTransferTask
+from .models import (
+    ContinuousQueryTask,
+    ContinuousTransferJob,
+    ContinuousTransferSettings,
+    ContinuousTransferTask,
+)
 
 logger = get_task_logger(__name__)
+
+
+class ProcessContinuousQueryTask(ProcessDicomTask):
+    dicom_task_class = ContinuousQueryTask
+    app_settings_class = ContinuousTransferSettings
+
+    def handle_dicom_task(self, dicom_task: ContinuousQueryTask):
+        last_processed = dicom_task.job.last_processed
 
 
 class ProcessContinuousTransferTask(ProcessDicomTask):
@@ -58,9 +72,12 @@ class ProcessContinuousTransferJob(ProcessDicomJob):
     handle_failed_dicom_job = handle_failed_continuous_transfer_job
 
     def run(self, dicom_job_id: int):
-        dicom_job = self.dicom_job_class.objects.get(id=dicom_job_id)
+        dicom_job = ContinuousTransferJob.objects.get(id=dicom_job_id)
 
         logger.info("Proccessing %s.", dicom_job)
+
+        if dicom_job.status != ContinuousTransferJob.Status.PENDING:
+            raise AssertionError(f"Invalid {dicom_job} status: {dicom_job.get_status_display()}")
 
         # TODO:
         # - Make query and get first result (respect last_transfer)
