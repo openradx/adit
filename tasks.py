@@ -257,16 +257,6 @@ def copy_statics(ctx: Context):
     for file in glob("node_modules/bootstrap/dist/js/bootstrap.bundle.js*"):
         copy(file, vendor_dir)
 
-    # Bootstrap icon font
-    copy(
-        "node_modules/bootstrap-icons/font/bootstrap-icons.css",
-        vendor_dir,
-    )
-    fonts_dir = vendor_dir / "fonts"
-    fonts_dir.mkdir(exist_ok=True)
-    for file in glob("node_modules/bootstrap-icons/font/fonts/bootstrap-icons.woff*"):
-        copy(file, fonts_dir)
-
     # Bootswatch
     copy("node_modules/bootswatch/dist/flatly/bootstrap.css", "radis/static/vendor/")
     for file in glob("node_modules/alpinejs/dist/alpine*.js"):

@@ -2,8 +2,12 @@
 
 ## High Priority
 
-- Cleanup icons and rename images from .html to .svg
 - <https://docs.vespa.ai/en/operations/docker-containers.html#mounting-persistent-volumes>
+- Switch to Bootstrap 5 (RADIS + ADIT)
+  -- Add theme toggler
+- Change maxHits and maxOffset for farer pagination
+  -- <https://docs.vespa.ai/en/reference/query-api-reference.html#native-execution-parameters>
+  -- <https://pyvespa.readthedocs.io/en/latest/reference-api.html#queryprofile>
 
 ## Fix
 
@@ -33,5 +37,5 @@
 - Correct help in populate_dev_db command
 - Delete reset_dev_db and add reset option to populate_dev_db
 - default_auto_field = "django.db.models.BigAutoField" in apps.py
-- Use bootstrap icons font instead of SVGs
 - Improve copy-statics task
+- Cleanup icons and rename images from .html to .svg

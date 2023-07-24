@@ -2,6 +2,7 @@ from crispy_forms.bootstrap import FieldWithButtons, StrictButton
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Field, Layout
 from django import forms
+from django.template.loader import render_to_string
 
 
 class SearchForm(forms.Form):
@@ -15,7 +16,7 @@ class SearchForm(forms.Form):
             FieldWithButtons(
                 Field("q", placeholder="Search"),
                 StrictButton(
-                    "<i class='bi bi-search'></i>",
+                    render_to_string("core/icons/search.svg"),
                     css_class="btn-success",
                     type="submit",
                 ),
