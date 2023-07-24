@@ -41,12 +41,6 @@ class Command(ServerCommand):
         )
 
     def run_server(self, **options):
-        # Kill previous running worker
-        logger.debug("Killing Celery worker.")
-        cmd = "pkill celery"
-        subprocess.call(shlex.split(cmd))
-
-        # Start a new worker
         queue = options["queue"]
         loglevel = options["loglevel"]
         concurrency = options["concurrency"]
