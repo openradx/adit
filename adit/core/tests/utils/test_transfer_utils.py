@@ -79,7 +79,7 @@ def test_transfer_to_server_succeeds(
         modifier=ANY,
     )
 
-    upload_path = dest_connector_mock.upload_folder.call_args[0][0]
+    upload_path = dest_connector_mock.upload_instances.call_args[0][0]
     assert upload_path.match(f"*/{study['PatientID']}")
 
     assert status == TransferTask.Status.SUCCESS

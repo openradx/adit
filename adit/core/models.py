@@ -116,6 +116,10 @@ class DicomServer(DicomNode):
     dicomweb_qido_support = models.BooleanField(default=False)
     dicomweb_wado_support = models.BooleanField(default=False)
     dicomweb_stow_support = models.BooleanField(default=False)
+    dicomweb_qido_prefix = models.CharField(blank=True, max_length=2000)
+    dicomweb_wado_prefix = models.CharField(blank=True, max_length=2000)
+    dicomweb_stow_prefix = models.CharField(blank=True, max_length=2000)
+    dicomweb_authorization_header = models.CharField(blank=True, max_length=2000)
 
 
 class DicomFolder(DicomNode):

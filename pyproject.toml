@@ -41,6 +41,8 @@ wait-for-it = "^2.2.2"
 pandas = "^2.0.1"
 openpyxl = "^3.1.2"
 sherlock = "^0.4.1"
+dicomweb-client = "^0.59.1"
+adrf = "^0.1.1"
 
 [tool.poetry.group.dev.dependencies]
 black = "^23.1.0"

@@ -61,12 +61,15 @@ INSTALLED_APPS = [
     "django_htmx",
     "django_tables2",
     "rest_framework",
+    "adrf",
     "adit.core.apps.CoreConfig",
     "adit.api.apps.ApiConfig",
     "adit.selective_transfer.apps.SelectiveTransferConfig",
     "adit.batch_query.apps.BatchQueryConfig",
     "adit.batch_transfer.apps.BatchTransferConfig",
     "adit.dicom_explorer.apps.DicomExplorerConfig",
+    "adit.token_authentication.apps.TokenAuthenticationConfig",
+    "adit.dicom_web.apps.DicomWebConfig",
     "channels",
 ]
 
@@ -219,8 +222,13 @@ TIME_ZONE = "UTC"
 REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.IsAuthenticated",
-    ]
+    ],
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "adit.token_authentication.auth.RestTokenAuthentication",
+    ],
+    "EXCEPTION_HANDLER": "adit.dicom_web.exceptions.dicom_web_exception_handler",
 }
+
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/3.0/howto/static-files/
@@ -241,7 +249,7 @@ LOGIN_REDIRECT_URL = "home"
 CRISPY_ALLOWED_TEMPLATE_PACKS = "bootstrap4"
 CRISPY_TEMPLATE_PACK = "bootstrap4"
 
-# This seems to be imporant for development on Gitpod as CookieStorage
+# This seems to be important for development on Gitpod as CookieStorage
 # and FallbackStorage does not work there.
 # Seems to be the same problem with Cloud9 https://stackoverflow.com/a/34828308/166229
 MESSAGE_STORAGE = "django.contrib.messages.storage.session.SessionStorage"
@@ -347,9 +355,11 @@ FLOWER_PORT = env.int("FLOWER_PORT", default=5555)  # type: ignore
 ORTHANC1_HOST = env.str("ORTHANC1_HOST", default="localhost")  # type: ignore
 ORTHANC1_HTTP_PORT = env.int("ORTHANC1_HTTP_PORT", default=6501)  # type: ignore
 ORTHANC1_DICOM_PORT = env.int("ORTHANC1_DICOM_PORT", default=7501)  # type: ignore
+ORTHANC1_DICOMWEB_ROOT = env.str("ORTHANC1_DICOMWEB_ROOT", default="dicom-web")  # type: ignore
 ORTHANC2_HOST = env.str("ORTHANC2_HOST", default="localhost")  # type: ignore
 ORTHANC2_HTTP_PORT = env.int("ORTHANC2_HTTP_PORT", default=6502)  # type: ignore
 ORTHANC2_DICOM_PORT = env.int("ORTHANC2_DICOM_PORT", default=7502)  # type: ignore
+ORTHANC2_DICOMWEB_ROOT = env.str("ORTHANC2_DICOMWEB_ROOT", default="dicom-web")  # type: ignore
 
 # Used by django-filter
 FILTERS_EMPTY_CHOICE_LABEL = "Show All"
@@ -434,3 +444,15 @@ EXCLUDED_MODALITIES = ["PR", "SR"]
 
 # If an ethics committee approval is required for batch transfer
 ETHICS_COMMITTEE_APPROVAL_REQUIRED = True
+
+# The salt that is used for hashing new tokens in the token authentication app.
+# Cave, changing the salt after some tokens were already generated makes them all invalid!
+TOKEN_AUTHENTICATION_SALT = env.str(
+    "TOKEN_AUTHENTICATION_SALT",
+    default="Rn4YNfgAar5dYbPu",  # type: ignore
+)
+
+# DicomWeb Settings
+WADO_TMP_FOLDER = "adit/dicom_web/tmp"
+DEFAULT_BOUNDARY = "adit-boundary"
+ERROR_MESSAGE = "Processing your DicomWeb request failed."

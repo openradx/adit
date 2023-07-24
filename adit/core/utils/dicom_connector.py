@@ -37,8 +37,9 @@ from typing import (
 )
 
 from aiofiles import os as async_os
+from dicomweb_client import DICOMwebClient
 from django.conf import settings
-from pydicom import dcmread, uid, valuerep
+from pydicom import datadict, dcmread, uid, valuerep
 from pydicom.datadict import dictionary_VM
 from pydicom.dataset import Dataset
 from pydicom.errors import InvalidDicomError
@@ -64,6 +65,7 @@ from pynetdicom.sop_class import (
     StudyRootQueryRetrieveInformationModelMove,  # pyright: ignore
 )
 from pynetdicom.status import code_to_category
+from requests import HTTPError
 
 from ..errors import RetriableTaskError
 from ..models import DicomServer
@@ -109,6 +111,41 @@ def connect_to_server(service: DimseService):
     return decorator
 
 
+def connect_to_dicomweb_server():
+    """
+    Creates a DICOMwebClient instance and makes it available as
+    `self.dicomweb_client` in the decorated method.
+    """
+
+    def decorator(func):
+        def wrapper(self, *args, **kwargs):
+            assert self.server.dicomweb_root_url, "DICOMweb root url is not set."
+            headers = {}
+            if self.server.dicomweb_authorization_header:
+                headers["Authorization"] = self.server.dicomweb_authorization_header
+
+            self.dicomweb_client = DICOMwebClient(
+                url=self.server.dicomweb_root_url,
+                qido_url_prefix=(
+                    self.server.dicomweb_qido_prefix if self.server.dicomweb_qido_prefix else None
+                ),
+                wado_url_prefix=(
+                    self.server.dicomweb_wado_prefix if self.server.dicomweb_wado_prefix else None
+                ),
+                stow_url_prefix=(
+                    self.server.dicomweb_stow_prefix if self.server.dicomweb_stow_prefix else None
+                ),
+                headers=headers,
+            )
+            logger.debug("Set up dicomweb client with url %s", self.server.dicomweb_root_url)
+
+            return func(self, *args, **kwargs)
+
+        return wrapper
+
+    return decorator
+
+
 class DicomConnector:
     @dataclass
     class Config:
@@ -134,6 +171,7 @@ class DicomConnector:
             debug_logger()  # Debug mode of pynetdicom
 
         self.assoc = None
+        self.dicomweb_client: Optional[DICOMwebClient] = None
 
     def open_connection(self, service: DimseService):
         if self.assoc:
@@ -176,15 +214,20 @@ class DicomConnector:
     def find_patients(
         self, query: dict[str, Any], limit_results: int | None = None
     ) -> list[dict[str, Any]]:
-        if self.server.patient_root_find_support:
-            query["QueryRetrieveLevel"] = "PATIENT"
-        else:
+        if self.server.dicomweb_qido_support:
             query["QueryRetrieveLevel"] = "STUDY"
+            patients = self._send_qido(query, limit_results=limit_results)
 
-        patients = self._send_c_find(
-            query,
-            limit_results=limit_results,
-        )
+        else:
+            if self.server.patient_root_find_support:
+                query["QueryRetrieveLevel"] = "PATIENT"
+            else:
+                query["QueryRetrieveLevel"] = "STUDY"
+
+            patients = self._send_c_find(
+                query,
+                limit_results=limit_results,
+            )
 
         # Make patients unique, since querying on study level will
         # return all studies for one patient, resulting in duplicate patients
@@ -221,7 +264,10 @@ class DicomConnector:
             study_description = study_description.lower()
             query["StudyDescription"] = ""
 
-        studies = self._send_c_find(query, limit_results=limit_results)
+        if self.server.dicomweb_qido_support:
+            studies = self._send_qido(query, limit_results=limit_results)
+        else:
+            studies = self._send_c_find(query, limit_results=limit_results)
 
         if study_description:
             studies = list(
@@ -277,7 +323,10 @@ class DicomConnector:
             series_description = series_description.lower()
             query["SeriesDescription"] = ""
 
-        series_list = self._send_c_find(query, limit_results=limit_results)
+        if self.server.dicomweb_qido_support:
+            series_list = self._send_qido(query, limit_results=limit_results)
+        else:
+            series_list = self._send_c_find(query, limit_results=limit_results)
 
         if modalities:
             series_list = list(
@@ -359,7 +408,10 @@ class DicomConnector:
             "SeriesInstanceUID": series_uid,
         }
 
-        if self.server.patient_root_get_support or self.server.study_root_get_support:
+        if self.server.dicomweb_wado_support:
+            self._download_series_with_wado(query, dest_folder, modifier)
+            logger.debug("Successfully downloaded series %s of study %s.", series_uid, study_uid)
+        elif self.server.patient_root_get_support or self.server.study_root_get_support:
             self._download_series_with_c_get(query, dest_folder, modifier)
             logger.debug("Successfully downloaded series %s of study %s.", series_uid, study_uid)
         elif self.server.patient_root_move_support or self.server.study_root_move_support:
@@ -368,35 +420,36 @@ class DicomConnector:
         else:
             raise ValueError("No Query/Retrieve Information Model supported to download images.")
 
-    def upload_folder(self, source_folder: PathLike):
-        """Upload a specified folder to a DICOM server."""
+    def upload_instances(self, resource: PathLike | List[Dataset]):
+        """Upload instances from a specified folder or list of instances in memory"""
 
-        if not self.server.store_scp_support:
-            raise ValueError("Destination server doesn't support C-STORE operations.")
+        if self.server.dicomweb_stow_support:
+            results = self._send_stow(resource)
+        elif self.server.store_scp_support:
+            results = self._send_c_store(resource)
+            has_success = False
+            has_failure = False
+            for result in results:
+                status_category = result["status"]["category"]
+                status_code = result["status"]["code"]
+                image_uid = result["data"]["SOPInstanceUID"]
+                if status_category == STATUS_SUCCESS:
+                    has_success = True
+                if status_category != STATUS_SUCCESS:
+                    has_failure = True
+                    logger.error(
+                        "Failed to upload image %s with status %s (%s).",
+                        image_uid,
+                        status_category,
+                        status_code,
+                    )
 
-        results = self._send_c_store(source_folder)
-
-        has_success = False
-        has_failure = False
-        for result in results:
-            status_category = result["status"]["category"]
-            status_code = result["status"]["code"]
-            image_uid = result["data"]["SOPInstanceUID"]
-            if status_category == STATUS_SUCCESS:
-                has_success = True
-            if status_category != STATUS_SUCCESS:
-                has_failure = True
-                logger.error(
-                    "Failed to upload image %s with status %s (%s).",
-                    image_uid,
-                    status_category,
-                    status_code,
-                )
-
-        if results and has_failure:
-            if not has_success:
-                raise RetriableTaskError("Failed to upload all images.")
-            raise RetriableTaskError("Failed to upload some images.")
+            if results and has_failure:
+                if not has_success:
+                    raise RetriableTaskError("Failed to upload all images.")
+                raise RetriableTaskError("Failed to upload some images.")
+        else:
+            raise ValueError("Destination server doesn't support C-STORE or STOW-RS operations.")
 
     def move_study(
         self,
@@ -524,6 +577,113 @@ class DicomConnector:
             logger.error("Could not connect to %s.", self.server)
             raise RetriableTaskError(f"Could not connect to {self.server}.")
 
+    @connect_to_dicomweb_server()
+    def _send_qido(self, query_dict: dict[str, Any], limit_results: Optional[int] = None):
+        logger.debug("Sending QIDO with query: %s", query_dict)
+
+        assert self.dicomweb_client is not None
+        level = query_dict["QueryRetrieveLevel"]
+        query = _convert_to_dicomweb_query(query_dict)
+        logger.debug("converted query: %s", query)
+
+        try:
+            if level == "STUDY":
+                query_results = self.dicomweb_client.search_for_studies(
+                    search_filters=query, limit=limit_results
+                )
+            elif level == "SERIES":
+                if query.get("StudyInstanceUID"):
+                    query_results = self.dicomweb_client.search_for_series(
+                        query.pop("StudyInstanceUID"), search_filters=query, limit=limit_results
+                    )
+                else:
+                    query_results = self.dicomweb_client.search_for_series(
+                        search_filters=query, limit=limit_results
+                    )
+            else:
+                raise ValueError(f"Invalid QueryRetrieveLevel: {level}")
+            results = self._fetch_dicomweb_results([Dataset.from_json(qr) for qr in query_results])
+        except HTTPError as err:
+            exception = self._handle_dicomweb_error(err)
+            raise exception
+
+        return results
+
+    @connect_to_dicomweb_server()
+    def _send_wado(self, query_dict: dict[str, Any]):
+        logger.debug("Sending WADO with query: %s", query_dict)
+
+        assert self.dicomweb_client is not None
+        level = query_dict["QueryRetrieveLevel"]
+        query = _convert_to_dicomweb_query(query_dict)
+
+        try:
+            if level == "STUDY":
+                assert (
+                    "StudyInstanceUID" in query
+                ), "StudyInstanceUID is required for WADO on study level"
+                query_results = self.dicomweb_client.retrieve_study(query.pop("StudyInstanceUID"))
+            elif level == "SERIES":
+                assert (
+                    "StudyInstanceUID" in query
+                ), "StudyInstanceUID is required for WADO on series level"
+                assert (
+                    "SeriesInstanceUID" in query
+                ), "SeriesInstanceUID is required for WADO on series level"
+                query_results = self.dicomweb_client.retrieve_series(
+                    query.pop("StudyInstanceUID"), query.pop("SeriesInstanceUID")
+                )
+            else:
+                raise ValueError(f"Invalid QueryRetrieveLevel: {level}")
+        except HTTPError as err:
+            exception = self._handle_dicomweb_error(err)
+            raise exception
+
+        return query_results
+
+    @connect_to_dicomweb_server()
+    def _send_stow(
+        self,
+        resource: PathLike | List[Dataset],
+        modifier: Modifier | None = None,
+    ):
+        def _modify_and_send_ds(ds: Dataset) -> Dict[str, Any]:
+            if modifier:
+                modifier(ds)
+
+            assert self.dicomweb_client is not None
+            try:
+                result = self.dicomweb_client.store_instances([ds])
+            except HTTPError as err:
+                exception = self._handle_dicomweb_error(err)
+                raise exception
+            return result
+
+        results = []
+        if isinstance(resource, PathLike):
+            source_folder = resource
+            logger.debug("Sending STOW of folder: %s", source_folder)
+            for path in Path(source_folder).rglob("*"):
+                if not path.is_file():
+                    continue
+
+                try:
+                    ds = dcmread(path)
+                except InvalidDicomError:
+                    logger.warning("Tried to read invalid DICOM file %s. Skipping it.", path)
+                    continue
+
+                results.append(_modify_and_send_ds(ds))
+
+        elif isinstance(resource, List):
+            datasets = resource
+            logger.debug("Sending STOW of %d datasets.", len(datasets))
+            for ds in datasets:
+                logger.debug("Sending C-STORE of SOP instance %s.", str(ds.SOPInstanceUID))
+                results.append(_modify_and_send_ds(ds))
+
+        return results
+
     @connect_to_server("C_FIND")
     def _send_c_find(
         self,
@@ -621,26 +781,11 @@ class DicomConnector:
     @connect_to_server("C_STORE")
     def _send_c_store(
         self,
-        source_folder: PathLike,
+        resource: PathLike | List[Dataset],
         modifier: Modifier | None = None,
         msg_id: int = 1,
     ):
-        logger.debug("Sending C-STORE of folder: %s", source_folder)
-
-        if not self.server.store_scp_support:
-            raise ValueError("C-STORE operation not supported by server.")
-
-        results = []
-        for path in Path(source_folder).rglob("*"):
-            if not path.is_file():
-                continue
-
-            try:
-                ds = dcmread(path, force=True)
-            except InvalidDicomError:
-                logger.warning("Tried to read invalid DICOM file %s. Skipping it.", path)
-                continue
-
+        def _modify_and_send_ds(ds: Dataset) -> Dict[str, Any]:
             # Allow to manipulate the dataset by a modifier function
             if modifier:
                 modifier(ds)
@@ -649,15 +794,14 @@ class DicomConnector:
             status = self.assoc.send_c_store(ds, msg_id)
 
             if status:
-                results.append(
-                    {
-                        "status": {
-                            "code": status.Status,
-                            "category": code_to_category(status.Status),
-                        },
-                        "data": {"SOPInstanceUID": ds.SOPInstanceUID},
-                    }
-                )
+                result = {
+                    "status": {
+                        "code": status.Status,
+                        "category": code_to_category(status.Status),
+                    },
+                    "data": {"SOPInstanceUID": ds.SOPInstanceUID},
+                }
+                return result
             else:
                 logger.error(
                     "Connection timed out, was aborted or received invalid "
@@ -667,6 +811,33 @@ class DicomConnector:
                 raise RetriableTaskError(
                     "Connection timed out, was aborted or received invalid during C-STORE."
                 )
+
+        if not self.server.store_scp_support:
+            raise ValueError("C-STORE operation not supported by server.")
+
+        results = []
+        if isinstance(resource, PathLike):
+            source_folder = resource
+            logger.debug("Sending C-STORE of folder: %s", source_folder)
+
+            for path in Path(source_folder).rglob("*"):
+                if not path.is_file():
+                    continue
+
+                try:
+                    ds = dcmread(path)
+                except InvalidDicomError:
+                    logger.warning("Tried to read invalid DICOM file %s. Skipping it.", path)
+                    continue
+
+                results.append(_modify_and_send_ds(ds))
+
+        elif isinstance(resource, List):
+            datasets = resource
+            logger.debug("Sending C-STORE of %d datasets.", len(datasets))
+            for ds in datasets:
+                logger.debug("Sending C-STORE of SOP instance %s.", str(ds.SOPInstanceUID))
+                results.append(_modify_and_send_ds(ds))
 
         return results
 
@@ -707,6 +878,12 @@ class DicomConnector:
                 raise RetriableTaskError(
                     "Connection timed out, was aborted or received invalid " f"during {operation}."
                 )
+        return results
+
+    def _fetch_dicomweb_results(self, ds_results: List[Dataset]) -> List:
+        results = []
+        for ds in ds_results:
+            results.append(_dictify_dataset(ds))
         return results
 
     def _filter_studies_by_modalities(
@@ -756,6 +933,14 @@ class DicomConnector:
                 raise AssertionError(f"Invalid study modalities: {study_modalities}")
 
         return filtered_studies
+
+    def _download_series_with_wado(
+        self, query: dict[str, Any], dest_folder: PathLike, modifier: Modifier | None = None
+    ):
+        results = self._send_wado(query)
+
+        for ds in results:
+            self._handle_downloaded_image(ds, dest_folder, modifier)
 
     def _download_series_with_c_get(
         self,
@@ -958,6 +1143,15 @@ class DicomConnector:
                 logger.exception("Failed to save %s.", file_path)
                 raise err
 
+    def _handle_dicomweb_error(self, err: HTTPError) -> Exception:
+        retriable_status_codes = [408, 409, 429, 500, 503, 504]
+        if err.response.status_code in retriable_status_codes:
+            logger.error("DICOMweb request failed with %d.", err.response.status_code)
+            return RetriableTaskError("DICOMweb request failed.")
+        else:
+            logger.exception("DICOMweb request failed with %d.", err.response.status_code)
+            return err
+
 
 def _check_required_id(value: str) -> Union[str, None]:
     if value and "*" not in value and "?" not in value:
@@ -1075,3 +1269,35 @@ def _evaluate_get_move_results(results, query: dict[str, Any]):
             error_msg += f" Failed images: {', '.join(failed_image_uids)}"
         logger.error(error_msg)
         raise RetriableTaskError(f"Failed to transfer images with status {status_category}.")
+
+
+def _convert_to_dicomweb_query(query_dict: dict[str, Any]) -> dict[str, Any]:
+    """
+    Convert a query dict to a dict that can be used for a DICOMweb query.
+    This method does not operate in-place.
+    """
+    dicomweb_query = query_dict.copy()
+    if "QueryRetrieveLevel" in dicomweb_query:
+        del dicomweb_query["QueryRetrieveLevel"]
+
+    empty_values = ["*", "?", None]
+    for k, v in dicomweb_query.items():
+        if v in empty_values:
+            dicomweb_query[k] = ""
+            continue
+
+        if not v:
+            continue
+
+        t = datadict.tag_for_keyword(k)
+        if t is None:
+            continue
+        vr = datadict.dictionary_VR(t)
+        if vr == "DA":
+            dicomweb_query[k] = str(valuerep.DA(v))
+        elif vr == "DT":
+            dicomweb_query[k] = str(valuerep.DT(v))
+        elif vr == "TM":
+            dicomweb_query[k] = str(valuerep.TM(v))
+
+    return dicomweb_query

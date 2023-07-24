@@ -1,0 +1,80 @@
+{% extends "token_authentication/base_generic.html" %}
+{% load render_table from django_tables2 %}
+{% load crispy from crispy_forms_tags %}
+{% block container %}
+    <div class="d-flex justify-content-between align-items-start">
+        <h4 class="mb-3">REST Authentication Tokens</h4>
+        {% include "core/_help_button.html" with target="#generate_token_help_modal" only %}
+    </div>
+    <!-- Show a possible newly generated token -->
+    {% if new_token %}
+        <div class="card mb-3" x-data="newToken()">
+            <div class="card-body">
+                <h5>Sucessfully generated a REST authentication token.</h5>
+                This token will only be visible once, so make sure to copy it
+                now and store it in a safe place. As you will not be able to
+                see it again, you will have to generate a new token if you lose
+                it.
+                <br />
+                <br />
+                <h3>
+                    <span class="badge badge-light" id="unhashed-token-string">{{ new_token }}</span>
+                    <button id="copy-token-button"
+                            class="btn btn-light btn-sm"
+                            @click="copyTokenToClipboard($dispatch, '{{ new_token }}')">
+                        {% include "core/_clipboard.svg" %}
+                    </button>
+                </h3>
+            </div>
+        </div>
+    {% endif %}
+    <!-- List of all tokens by this user -->
+    <div style="margin-top: 40px;">
+        <h5>Existing tokens</h5>
+        <table class="table table-hover" id="token-list-wrapper">
+            <thead>
+                <tr>
+                    <th>Client</th>
+                    <th>Token</th>
+                    <th>Created</th>
+                    <th>Expires</th>
+                    <th>Last Used</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for token in tokens reversed %}
+                    <tr id="table-row-{{ token.client }}">
+                        <td>{{ token.client }}</td>
+                        <td>{{ token.fraction }} ...</td>
+                        <td>{{ token.created_time }}</td>
+                        <td>{{ token.expires|default_if_none:"Never" }}</td>
+                        <td>{{ token.last_used|default_if_none:"Never" }}</td>
+                        <td>
+                            <form action="{% url "delete_token" %}" method="post">
+                                {% csrf_token %}
+                                <input type="hidden" name="client" value="{{ token.client }}">
+                                <button type="submit"
+                                        class="btn btn-danger btn-sm"
+                                        id="delete-token-button-{{ token.client }}">
+                                    {% include "core/_trash_can.svg" %}
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <!-- Form to generate new tokens -->
+    <div style="margin-top: 40px;">
+        <h5>Generate a new token</h5>
+        <form action={% url "generate_token" %} method="post">
+            {% csrf_token %}
+            {% crispy generate_token_form %}
+        </form>
+    </div>
+{% endblock container %}
+{% block bottom %}
+    {% include 'token_authentication/_generate_token_help_modal.html' with modal_id="generate_token_help_modal" %}
+{% endblock bottom %}

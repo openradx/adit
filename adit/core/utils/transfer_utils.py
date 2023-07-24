@@ -72,7 +72,7 @@ class TransferExecutor:
         with tempfile.TemporaryDirectory(prefix="adit_") as tmpdir:
             patient_folder = self._download_dicoms(Path(tmpdir))
             assert self.dest_connector
-            self.dest_connector.upload_folder(patient_folder)
+            self.dest_connector.upload_instances(patient_folder)
 
     def _transfer_to_archive(self) -> None:
         transfer_job: TransferJob = self.transfer_task.job
@@ -140,7 +140,7 @@ class TransferExecutor:
         os.makedirs(study_folder, exist_ok=True)
 
         anonymizer = Anonymizer()
-        modifier_callback = partial(
+        modifier = partial(
             self._modify_dataset,
             anonymizer,
             pseudonym,
@@ -150,11 +150,11 @@ class TransferExecutor:
             self._download_study(
                 study,
                 study_folder,
-                modifier_callback,
+                modifier,
                 series_uids=series_uids,
             )
         else:
-            self._download_study(study, study_folder, modifier_callback)
+            self._download_study(study, study_folder, modifier)
 
         return patient_folder
 
@@ -228,7 +228,7 @@ class TransferExecutor:
         self,
         study: dict[str, Any],
         study_folder: Path,
-        modifier_callback: Callable,
+        modifier: Callable,
         series_uids: list[str] = [],
     ) -> None:
         if series_uids:
@@ -238,14 +238,14 @@ class TransferExecutor:
                     study["StudyInstanceUID"],
                     series_uid,
                     study_folder,
-                    modifier=modifier_callback,
+                    modifier=modifier,
                 )
         else:
             self.source_connector.download_study(
                 study["PatientID"],
                 study["StudyInstanceUID"],
                 study_folder,
-                modifier=modifier_callback,
+                modifier=modifier,
             )
 
     def _modify_dataset(
