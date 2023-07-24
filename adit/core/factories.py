@@ -53,6 +53,29 @@ class DicomServerFactory(AbstractDicomNodeFactory[DicomServer]):
     store_scp_support = True
 
 
+class DicomWebServerFactory(DicomServerFactory):
+    class Meta:
+        model = DicomServer
+        django_get_or_create = ("name",)
+
+    ae_title = factory.Faker("pystr", min_chars=4, max_chars=12)
+    host = factory.Faker("ipv4")
+    port = factory.Faker("random_int", min=1, max=9999)
+
+    patient_root_find_support = False
+    patient_root_get_support = False
+    patient_root_move_support = False
+    study_root_find_support = False
+    study_root_get_support = False
+    study_root_move_support = False
+    store_scp_support = False
+
+    dicomweb_qido_support = True
+    dicomweb_wado_support = True
+    dicomweb_stow_support = True
+    dicomweb_root_url = factory.Faker("url")
+
+
 class DicomFolderFactory(AbstractDicomNodeFactory[DicomFolder]):
     class Meta:
         model = DicomFolder

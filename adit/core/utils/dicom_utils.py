@@ -1,4 +1,6 @@
+import datetime
 import re
+from typing import List
 
 
 def person_name_to_dicom(value, add_wildcards=False):
@@ -10,3 +12,18 @@ def person_name_to_dicom(value, add_wildcards=False):
         return "^".join(name)
 
     return re.sub(r"\s*,\s*", "^", value)
+
+
+def format_datetime_attributes(results: List) -> List:
+    for instance in results:
+        if not instance.get("StudyTime", "") == "":
+            instance["StudyTime"] = datetime.datetime.strptime(
+                instance["StudyTime"], "%H:%M:%S"
+            ).time()
+        if not instance.get("StudyDate", "") == "":
+            instance["StudyDate"] = datetime.datetime.strptime(instance["StudyDate"], "%Y-%m-%d")
+        if not instance.get("PatientBirthDate", "") == "":
+            instance["PatientBirthDate"] = datetime.datetime.strptime(
+                instance["PatientBirthDate"], "%Y-%m-%d"
+            )
+    return results
