@@ -1,3 +1,4 @@
+from django.core.paginator import Paginator
 from django.shortcuts import render
 from django.views import View
 
@@ -16,9 +17,16 @@ class SearchView(View):
         }
 
         query = request.GET.get("q")
+        page = request.GET.get("page", 10)
+        per_page = request.GET.get("per_page", 100)
         if query:
-            results = await vespa_app.query_reports(query)
+            response = await vespa_app.query_reports(query, page, per_page)
+            total_count = response.json["root"]["fields"]["totalCount"]
+            paginator = Paginator(range(total_count), per_page)
+            page = paginator.get_page(page)
+            context["paginator"] = paginator
+            context["page"] = page
             context["searched"] = True
-            context["hits"] = results.hits
+            context["hits"] = response.hits
 
         return render(request, "search/search.html", context)
