@@ -69,9 +69,9 @@ RUN playwright install --with-deps chromium
 
 # Required folders for ADIT
 RUN mkdir -p /var/www/adit/logs \
-    -p /var/www/adit/static \
-    -p /var/www/adit/ssl \
-    -p /var/www/adit/celery
+    /var/www/adit/static \
+    /var/www/adit/ssl \
+    /var/www/adit/celery
 
 # will become mountpoint of our code
 WORKDIR /app
