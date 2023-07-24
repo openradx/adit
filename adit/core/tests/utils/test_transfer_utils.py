@@ -1,62 +1,24 @@
 import datetime
 from unittest.mock import ANY, create_autospec, patch
 
-import factory
 import pytest
 import time_machine
 from celery import Task as CeleryTask
-from django.db import connection, models
 
 from adit.accounts.factories import UserFactory
 
 from ...factories import (
     DicomFolderFactory,
     DicomServerFactory,
-    TransferJobFactory,
-    TransferTaskFactory,
 )
-from ...models import TransferJob, TransferTask
 from ...utils.dicom_connector import DicomConnector
 from ...utils.transfer_utils import TransferExecutor
-
-
-class MyTransferJob(TransferJob):
-    class Meta:
-        app_label = "adit.core"
-
-
-class MyTransferTask(TransferTask):
-    class Meta:
-        app_label = "adit.core"
-
-    job = models.ForeignKey(MyTransferJob, on_delete=models.CASCADE, related_name="tasks")
-
-
-class MyTransferJobFactory(TransferJobFactory):
-    class Meta:
-        model = MyTransferJob
-
-
-class MyTransferTaskFactory(TransferTaskFactory):
-    class Meta:
-        model = MyTransferTask
-
-    job = factory.SubFactory(MyTransferJobFactory)
-
-
-@pytest.fixture
-def setup_test_models(transactional_db):
-    # TODO: Find out why we can't use a session or module fixture here.
-    # Solution adapted from https://stackoverflow.com/q/4281670/166229
-    with connection.schema_editor() as schema_editor:
-        schema_editor.create_model(MyTransferJob)
-        schema_editor.create_model(MyTransferTask)
-
-    yield
-
-    with connection.schema_editor() as schema_editor:
-        schema_editor.delete_model(MyTransferJob)
-        schema_editor.delete_model(MyTransferTask)
+from ..conftest import (
+    DummyTransferJob,
+    DummyTransferJobFactory,
+    DummyTransferTask,
+    DummyTransferTaskFactory,
+)
 
 
 @pytest.fixture
@@ -82,18 +44,17 @@ def create_resources():
 def test_transfer_to_server_succeeds(
     create_source_connector_mock,
     create_dest_connector_mock,
-    setup_test_models,
     create_resources,
 ):
     # Arrange
-    job = MyTransferJobFactory(
-        status=TransferJob.Status.PENDING,
+    job = DummyTransferJobFactory(
+        status=DummyTransferJob.Status.PENDING,
         source=DicomServerFactory(),
         destination=DicomServerFactory(),
         archive_password="",
     )
-    task = MyTransferTaskFactory(
-        status=TransferTask.Status.PENDING, series_uids=[], pseudonym="", job=job
+    task = DummyTransferTaskFactory(
+        status=DummyTransferTask.Status.PENDING, series_uids=[], pseudonym="", job=job
     )
 
     patient, study = create_resources(task)
@@ -122,26 +83,24 @@ def test_transfer_to_server_succeeds(
     assert upload_path.match(f"*/{study['PatientID']}")
 
     assert status == task.status
-    assert status == MyTransferTask.Status.SUCCESS
+    assert status == DummyTransferTask.Status.SUCCESS
 
 
 @pytest.mark.django_db
 @patch("adit.core.utils.transfer_utils._create_source_connector", autospec=True)
 @time_machine.travel("2020-01-01")
-def test_transfer_to_folder_succeeds(
-    create_source_connector_mock, setup_test_models, create_resources
-):
+def test_transfer_to_folder_succeeds(create_source_connector_mock, create_resources):
     # Arrange
     user = UserFactory(username="kai")
-    job = MyTransferJobFactory(
-        status=TransferJob.Status.PENDING,
+    job = DummyTransferJobFactory(
+        status=DummyTransferJob.Status.PENDING,
         source=DicomServerFactory(),
         destination=DicomFolderFactory(),
         archive_password="",
         owner=user,
     )
-    task = MyTransferTaskFactory(
-        status=TransferTask.Status.PENDING,
+    task = DummyTransferTaskFactory(
+        status=DummyTransferTask.Status.PENDING,
         patient_id="1001",
         series_uids=[],
         pseudonym="",
@@ -166,23 +125,23 @@ def test_transfer_to_folder_succeeds(
     assert download_path.match(r"adit_adit.core_1_20200101_kai/1001/20190923-080000-CT")
 
     assert status == task.status
-    assert status == MyTransferTask.Status.SUCCESS
+    assert status == DummyTransferTask.Status.SUCCESS
 
 
 @pytest.mark.django_db
 @patch("subprocess.Popen")
 @patch("adit.core.utils.transfer_utils._create_source_connector", autospec=True)
-def test_transfer_to_archive_succeeds(
-    create_source_connector_mock, Popen_mock, setup_test_models, create_resources
-):
+def test_transfer_to_archive_succeeds(create_source_connector_mock, Popen_mock, create_resources):
     # Arrange
-    job = MyTransferJobFactory(
-        status=TransferJob.Status.PENDING,
+    job = DummyTransferJobFactory(
+        status=DummyTransferJob.Status.PENDING,
         source=DicomServerFactory(),
         destination=DicomFolderFactory(),
         archive_password="mysecret",
     )
-    task = MyTransferTaskFactory(status=TransferTask.Status.PENDING, series_uids=[], pseudonym="")
+    task = DummyTransferTaskFactory(
+        status=DummyTransferTask.Status.PENDING, series_uids=[], pseudonym=""
+    )
     task.job = job
 
     patient, study = create_resources(task)
@@ -206,4 +165,4 @@ def test_transfer_to_archive_succeeds(
     assert Popen_mock.call_count == 2
 
     assert status == task.status
-    assert status == MyTransferTask.Status.SUCCESS
+    assert status == DummyTransferTask.Status.SUCCESS

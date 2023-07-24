@@ -75,6 +75,9 @@ class ProcessDicomJob(CeleryTask):
         if dicom_job.urgent:
             # Tasks of urgent jobs get a higher priority
             priority = self.urgent_priority
+        if dicom_job.owner.is_staff and priority < settings.CELERY_TASK_QUEUE_MAX_PRIORITY:
+            # Job tasks of staff members get a higher priority
+            priority += 1
 
         pending_dicom_tasks = dicom_job.tasks.filter(status=DicomTask.Status.PENDING)
 
