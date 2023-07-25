@@ -1,10 +1,13 @@
+from django.core.exceptions import BadRequest
 from django.core.paginator import Paginator
+from django.http import HttpResponseBadRequest
 from django.shortcuts import render
 from django.views import View
 
 from radis.core.vespa_app import vespa_app
 
 from .forms import SearchForm
+from .serializers import SearchParamsSerializer
 
 
 class SearchView(View):
@@ -16,9 +19,17 @@ class SearchView(View):
             "hits": [],
         }
 
-        query = request.GET.get("q")
-        page = request.GET.get("page", 10)
-        per_page = request.GET.get("per_page", 100)
+        serializer = SearchParamsSerializer(data=request.GET)
+
+        if not serializer.is_valid():
+            raise BadRequest("Invalid GET parameters.")
+
+        query = serializer.validated_data["query"]
+        page = serializer.validated_data["page"]
+        per_page = serializer.validated_data["per_page"]
+
+        print(query)
+
         if query:
             response = await vespa_app.query_reports(query, page, per_page)
             total_count = response.json["root"]["fields"]["totalCount"]
