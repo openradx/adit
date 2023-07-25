@@ -26,13 +26,8 @@ from pathlib import Path
 from typing import (
     Any,
     Callable,
-    Dict,
     Iterator,
-    List,
     Literal,
-    Optional,
-    Tuple,
-    Union,
     cast,
 )
 
@@ -152,9 +147,9 @@ class DicomConnector:
         auto_connect: bool = True
         connection_retries: int = 2
         retry_timeout: int = 30  # in seconds
-        acse_timeout: Optional[int] = None
-        dimse_timeout: Optional[int] = None
-        network_timeout: Optional[int] = None
+        acse_timeout: int | None = None
+        dimse_timeout: int | None = None
+        network_timeout: int | None = None
 
     def __init__(
         self,
@@ -171,7 +166,7 @@ class DicomConnector:
             debug_logger()  # Debug mode of pynetdicom
 
         self.assoc = None
-        self.dicomweb_client: Optional[DICOMwebClient] = None
+        self.dicomweb_client: DICOMwebClient | None = None
 
     def open_connection(self, service: DimseService):
         if self.assoc:
@@ -251,7 +246,7 @@ class DicomConnector:
 
         return patients
 
-    def find_studies(self, query: dict[str, Any], limit_results: Optional[int] = None):
+    def find_studies(self, query: dict[str, Any], limit_results: int | None = None):
         query["QueryRetrieveLevel"] = "STUDY"
 
         if "NumberOfStudyRelatedInstances" not in query:
@@ -359,7 +354,7 @@ class DicomConnector:
         patient_id: str,
         study_uid: str,
         dest_folder: PathLike,
-        modality: Optional[str] = None,
+        modality: str | None = None,
         modifier: Modifier | None = None,
     ):
         series_list = self.find_series(
@@ -420,7 +415,7 @@ class DicomConnector:
         else:
             raise ValueError("No Query/Retrieve Information Model supported to download images.")
 
-    def upload_instances(self, resource: PathLike | List[Dataset]):
+    def upload_instances(self, resource: PathLike | list[Dataset]):
         """Upload instances from a specified folder or list of instances in memory"""
 
         if self.server.dicomweb_stow_support:
@@ -456,7 +451,7 @@ class DicomConnector:
         patient_id: str,
         study_uid: str,
         dest_aet: str,
-        modality: Optional[str] = None,
+        modality: str | None = None,
     ):
         series_list = self.find_series(
             {
@@ -578,7 +573,7 @@ class DicomConnector:
             raise RetriableTaskError(f"Could not connect to {self.server}.")
 
     @connect_to_dicomweb_server()
-    def _send_qido(self, query_dict: dict[str, Any], limit_results: Optional[int] = None):
+    def _send_qido(self, query_dict: dict[str, Any], limit_results: int | None = None):
         logger.debug("Sending QIDO with query: %s", query_dict)
 
         assert self.dicomweb_client is not None
@@ -644,10 +639,10 @@ class DicomConnector:
     @connect_to_dicomweb_server()
     def _send_stow(
         self,
-        resource: PathLike | List[Dataset],
+        resource: PathLike | list[Dataset],
         modifier: Modifier | None = None,
     ):
-        def _modify_and_send_ds(ds: Dataset) -> Dict[str, Any]:
+        def _modify_and_send_ds(ds: Dataset) -> dict[str, Any]:
             if modifier:
                 modifier(ds)
 
@@ -660,7 +655,13 @@ class DicomConnector:
             return result
 
         results = []
-        if isinstance(resource, PathLike):
+        if isinstance(resource, list):
+            datasets = resource
+            logger.debug("Sending STOW of %d datasets.", len(datasets))
+            for ds in datasets:
+                logger.debug("Sending C-STORE of SOP instance %s.", str(ds.SOPInstanceUID))
+                results.append(_modify_and_send_ds(ds))
+        else:
             source_folder = resource
             logger.debug("Sending STOW of folder: %s", source_folder)
             for path in Path(source_folder).rglob("*"):
@@ -675,20 +676,13 @@ class DicomConnector:
 
                 results.append(_modify_and_send_ds(ds))
 
-        elif isinstance(resource, List):
-            datasets = resource
-            logger.debug("Sending STOW of %d datasets.", len(datasets))
-            for ds in datasets:
-                logger.debug("Sending C-STORE of SOP instance %s.", str(ds.SOPInstanceUID))
-                results.append(_modify_and_send_ds(ds))
-
         return results
 
     @connect_to_server("C_FIND")
     def _send_c_find(
         self,
         query_dict: dict[str, Any],
-        limit_results: Optional[int] = None,
+        limit_results: int | None = None,
         msg_id: int = 1,
     ):
         logger.debug("Sending C-FIND with query: %s", query_dict)
@@ -781,11 +775,11 @@ class DicomConnector:
     @connect_to_server("C_STORE")
     def _send_c_store(
         self,
-        resource: PathLike | List[Dataset],
+        resource: PathLike | list[Dataset],
         modifier: Modifier | None = None,
         msg_id: int = 1,
     ):
-        def _modify_and_send_ds(ds: Dataset) -> Dict[str, Any]:
+        def _modify_and_send_ds(ds: Dataset) -> dict[str, Any]:
             # Allow to manipulate the dataset by a modifier function
             if modifier:
                 modifier(ds)
@@ -816,7 +810,13 @@ class DicomConnector:
             raise ValueError("C-STORE operation not supported by server.")
 
         results = []
-        if isinstance(resource, PathLike):
+        if isinstance(resource, list):
+            datasets = resource
+            logger.debug("Sending C-STORE of %d datasets.", len(datasets))
+            for ds in datasets:
+                logger.debug("Sending C-STORE of SOP instance %s.", str(ds.SOPInstanceUID))
+                results.append(_modify_and_send_ds(ds))
+        else:
             source_folder = resource
             logger.debug("Sending C-STORE of folder: %s", source_folder)
 
@@ -832,21 +832,14 @@ class DicomConnector:
 
                 results.append(_modify_and_send_ds(ds))
 
-        elif isinstance(resource, List):
-            datasets = resource
-            logger.debug("Sending C-STORE of %d datasets.", len(datasets))
-            for ds in datasets:
-                logger.debug("Sending C-STORE of SOP instance %s.", str(ds.SOPInstanceUID))
-                results.append(_modify_and_send_ds(ds))
-
         return results
 
     def _fetch_results(
         self,
-        responses: Iterator[Tuple[Dataset, Dataset | None]],
+        responses: Iterator[tuple[Dataset, Dataset | None]],
         operation: str,
         query_dict: dict[str, Any],
-        limit_results: Optional[int] = None,
+        limit_results: int | None = None,
     ):
         results = []
         for status, identifier in responses:
@@ -880,15 +873,15 @@ class DicomConnector:
                 )
         return results
 
-    def _fetch_dicomweb_results(self, ds_results: List[Dataset]) -> List:
+    def _fetch_dicomweb_results(self, ds_results: list[Dataset]) -> list:
         results = []
         for ds in ds_results:
             results.append(_dictify_dataset(ds))
         return results
 
     def _filter_studies_by_modalities(
-        self, studies: List[Dict[str, Any]], query_modalities: Union[str, List[str]]
-    ) -> List[Dict[str, Any]]:
+        self, studies: list[dict[str, Any]], query_modalities: str | list[str]
+    ) -> list[dict[str, Any]]:
         filtered_studies = []
         for study in studies:
             study_modalities = study.get("ModalitiesInStudy")
@@ -1025,7 +1018,7 @@ class DicomConnector:
         self,
         study_uid: str,
         series_uid: str,
-        image_uids: List[str],
+        image_uids: list[str],
         dest_folder: PathLike,
         receiving_errors: list[Exception],
         modifier: Modifier | None = None,
@@ -1153,13 +1146,13 @@ class DicomConnector:
             return err
 
 
-def _check_required_id(value: str) -> Union[str, None]:
+def _check_required_id(value: str) -> str | None:
     if value and "*" not in value and "?" not in value:
         return value
     return None
 
 
-def _make_query_dataset(query_dict: Dict[str, Any]):
+def _make_query_dataset(query_dict: dict[str, Any]):
     """Turn a dict into a pydicom dataset for query."""
     ds = Dataset()
     for keyword in query_dict:
@@ -1244,7 +1237,7 @@ def _sanitize_unicode(s: str):
     return s.replace("\u0000", "").strip()
 
 
-def _extract_pending_data(results: List[Dict[str, Any]]):
+def _extract_pending_data(results: list[dict[str, Any]]):
     """Extract the data from a DicomOperation result."""
     status_category = results[-1]["status"]["category"]
     status_code = results[-1]["status"]["code"]
