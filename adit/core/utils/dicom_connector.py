@@ -656,25 +656,33 @@ class DicomConnector:
 
         results = []
         if isinstance(resource, list):
-            datasets = resource
-            logger.debug("Sending STOW of %d datasets.", len(datasets))
-            for ds in datasets:
+            logger.debug("Sending STOW of %d datasets.", len(resource))
+
+            for ds in resource:
                 logger.debug("Sending C-STORE of SOP instance %s.", str(ds.SOPInstanceUID))
                 results.append(_modify_and_send_ds(ds))
         else:
-            source_folder = resource
-            logger.debug("Sending STOW of folder: %s", source_folder)
-            for path in Path(source_folder).rglob("*"):
+            logger.debug("Sending STOW of folder: %s", resource)
+
+            invalid_dicoms: list[PathLike] = []
+            for path in Path(resource).rglob("*"):
                 if not path.is_file():
                     continue
 
                 try:
                     ds = dcmread(path)
-                except InvalidDicomError:
-                    logger.warning("Tried to read invalid DICOM file %s. Skipping it.", path)
-                    continue
+                except InvalidDicomError as err:
+                    logger.error("Failed to read DICOM file %s: %s", path, err)
+                    invalid_dicoms.append(path)
+                    continue  # We try to handle the rest of the instances and raise the error later
 
                 results.append(_modify_and_send_ds(ds))
+
+            if invalid_dicoms:
+                raise IOError(
+                    f"{len(invalid_dicoms)} DICOM file{'s' if len(invalid_dicoms) > 1 else ''} "
+                    " could not be read for STOW-RS."
+                )
 
         return results
 
@@ -797,40 +805,45 @@ class DicomConnector:
                 }
                 return result
             else:
-                logger.error(
-                    "Connection timed out, was aborted or received invalid "
-                    "response during C-STORE of folder: %s",
-                    source_folder,
+                message = (
+                    "Connection timed out, was aborted or received "
+                    "invalid response during C-STORE."
                 )
-                raise RetriableTaskError(
-                    "Connection timed out, was aborted or received invalid during C-STORE."
-                )
+                logger.error(message)
+                raise RetriableTaskError(message)
 
         if not self.server.store_scp_support:
             raise ValueError("C-STORE operation not supported by server.")
 
         results = []
         if isinstance(resource, list):
-            datasets = resource
-            logger.debug("Sending C-STORE of %d datasets.", len(datasets))
-            for ds in datasets:
+            logger.debug("Sending C-STORE of %d datasets.", len(resource))
+
+            for ds in resource:
                 logger.debug("Sending C-STORE of SOP instance %s.", str(ds.SOPInstanceUID))
                 results.append(_modify_and_send_ds(ds))
         else:
-            source_folder = resource
-            logger.debug("Sending C-STORE of folder: %s", source_folder)
+            logger.debug("Sending C-STORE of folder: %s", resource)
 
-            for path in Path(source_folder).rglob("*"):
+            invalid_dicoms: list[PathLike] = []
+            for path in Path(resource).rglob("*"):
                 if not path.is_file():
                     continue
 
                 try:
                     ds = dcmread(path)
-                except InvalidDicomError:
-                    logger.warning("Tried to read invalid DICOM file %s. Skipping it.", path)
-                    continue
+                except InvalidDicomError as err:
+                    logger.error("Failed to read DICOM file %s: %s", path, err)
+                    invalid_dicoms.append(path)
+                    continue  # We try to handle the rest of the instances and raise the error later
 
                 results.append(_modify_and_send_ds(ds))
+
+            if invalid_dicoms:
+                raise IOError(
+                    f"{len(invalid_dicoms)} DICOM file{'s' if len(invalid_dicoms) > 1 else ''} "
+                    " could not be read for C-STORE."
+                )
 
         return results
 
