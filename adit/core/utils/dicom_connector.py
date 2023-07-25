@@ -670,7 +670,7 @@ class DicomConnector:
                     continue
 
                 try:
-                    ds = dcmread(path)
+                    ds = dcmread(path, force=True)
                 except InvalidDicomError as err:
                     logger.error("Failed to read DICOM file %s: %s", path, err)
                     invalid_dicoms.append(path)
@@ -831,7 +831,7 @@ class DicomConnector:
                     continue
 
                 try:
-                    ds = dcmread(path)
+                    ds = dcmread(path, force=True)
                 except InvalidDicomError as err:
                     logger.error("Failed to read DICOM file %s: %s", path, err)
                     invalid_dicoms.append(path)
