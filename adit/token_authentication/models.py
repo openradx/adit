@@ -40,7 +40,7 @@ class TokenManager(models.Manager["Token"]):
 
 
 class Token(models.Model):
-    token_hashed = models.TextField(max_length=128)
+    token_hashed = models.TextField(max_length=128, unique=True)
     fraction = models.TextField(max_length=TokenSettings.fraction_length)
     author = models.ForeignKey(User, on_delete=models.CASCADE)
     created_time = models.DateTimeField(auto_now_add=True)

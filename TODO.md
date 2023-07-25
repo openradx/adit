@@ -51,6 +51,7 @@
 
 ## Maybe
 
+- Get rid of 7z archive feature. It think it was never used.
 - Allow to search multiple source servers with one query (maybe only in dicom explorer)
 - Bring everything behind Nginx as reverse proxy
   -- Orthanc, Flower, Rabbit Management Console should then be directly behind Nginx (without Django-revproxy)
