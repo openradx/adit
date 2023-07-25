@@ -43,6 +43,7 @@ openpyxl = "^3.1.2"
 sherlock = "^0.4.1"
 dicomweb-client = "^0.59.1"
 adrf = "^0.1.1"
+watchfiles = "^0.19.0"
 
 [tool.poetry.group.dev.dependencies]
 black = "^23.1.0"
@@ -76,7 +77,6 @@ invoke = "^2.1.2"
 python-dotenv = "^1.0.0"
 djangorestframework-types = "^0.8.0"
 django-test-migrations = "^1.3.0"
-watchfiles = "^0.19.0"
 
 [tool.pyright]
 ignore = ["**/migrations"]
