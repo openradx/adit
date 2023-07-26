@@ -294,7 +294,7 @@ RABBITMQ_URL = env.str("RABBITMQ_URL", default="amqp://localhost")  # type: igno
 RABBIT_MANAGEMENT_HOST = env.str("RABBIT_MANAGEMENT_HOST", default="localhost")  # type: ignore
 RABBIT_MANAGEMENT_PORT = env.int("RABBIT_MANAGEMENT_PORT", default=15672)  # type: ignore
 
-# Redis is used as Celery result backend and as LRU cache for patient IDs.
+# Redis is used as Celery result backend, LRU cache and for distributed locks (sherlock).
 REDIS_URL = env.str("REDIS_URL", default="redis://localhost:6379/0")  # type: ignore
 
 # Celery
