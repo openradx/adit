@@ -31,7 +31,7 @@ services:
         ./manage.py collectstatic --no-input &&
         ./manage.py populate_dev_db &&
         wait-for-it -s vespa:19071 -t 60 &&
-        ./manage.py deploy_vespa_app &&
+        ./manage.py setup_vespa --generate --deploy &&
         ./manage.py populate_dev_vespa &&
         ./manage.py runserver 0.0.0.0:8000
       "

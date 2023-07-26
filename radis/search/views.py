@@ -1,6 +1,5 @@
 from django.core.exceptions import BadRequest
 from django.core.paginator import Paginator
-from django.http import HttpResponseBadRequest
 from django.shortcuts import render
 from django.views import View
 

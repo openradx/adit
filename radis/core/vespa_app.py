@@ -1,3 +1,7 @@
+import xml.etree.ElementTree as ET
+from os import PathLike
+from pathlib import Path
+
 from django.conf import settings
 from vespa.application import Vespa
 from vespa.io import VespaQueryResponse
@@ -107,6 +111,51 @@ def _create_report_schema():
 
 def _create_app_package(schemas: list[Schema]):
     return ApplicationPackage(name="radis", schema=schemas)
+
+
+# https://docs.vespa.ai/en/reference/schema-reference.html#bolding
+def add_bolding_config(app_folder: PathLike):
+    services_file = Path(app_folder) / "services.xml"
+    tree = ET.parse(services_file)
+    root = tree.getroot()
+    container_el = root.find("container")
+    assert container_el is not None
+    search_el = container_el.find("search")
+    assert search_el is not None
+    config_el = ET.Element("config", {"name": "container.qr-searchers"})
+    search_el.append(config_el)
+    tag_el = ET.Element("tag")
+    config_el.append(tag_el)
+    bold_el = ET.Element("bold")
+    tag_el.append(bold_el)
+    open_el = ET.Element("open")
+    bold_el.append(open_el)
+    open_el.text = "<strong>"
+    close_el = ET.Element("close")
+    bold_el.append(close_el)
+    close_el.text = "</strong>"
+    separator_el = ET.Element("separator")
+    tag_el.append(separator_el)
+    separator_el.text = "<em>...</em>"
+    ET.indent(tree, "    ")
+    tree.write(services_file, encoding="UTF-8", xml_declaration=True)
+
+
+# https://docs.vespa.ai/en/document-summaries.html#dynamic-snippet-configuration
+# https://github.com/vespa-engine/vespa/blob/master/searchsummary/src/vespa/searchsummary/config/juniperrc.def
+def add_dynamic_snippet_config(app_folder: PathLike):
+    services_file = Path(app_folder) / "services.xml"
+    tree = ET.parse(services_file)
+    root = tree.getroot()
+    content_el = root.find("content")
+    assert content_el is not None
+    config_el = ET.Element("config", {"name": "vespa.config.search.summary.juniperrc"})
+    content_el.append(config_el)
+    surround_max_el = ET.Element("length")
+    config_el.append(surround_max_el)
+    surround_max_el.text = "500"
+    ET.indent(tree, "    ")
+    tree.write(services_file, encoding="UTF-8", xml_declaration=True)
 
 
 class VespaApp:
