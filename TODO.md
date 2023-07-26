@@ -2,6 +2,7 @@
 
 ## High Priority
 
+- Option if you want an Email when job ends (make it optional)
 - Option in batch query to query whole study or explicit series
 - Allow to terminate a specific Celery task with revoke(task_id, terminate=True)
 - Make whole receiver crash if one asyncio task crashes
@@ -18,6 +19,14 @@
 - Fix the ineffective stuff in transfer_utils, see TODO there
 - Write test_parsers.py
 - DICOM data that does not need to be modified can be directly transferred between the source and destination server (C-MOVE). The only exception is when source and destination server are the same, then the data will still be downloaded and uploaded again. This may be helpful when the PACS server treats the data somehow differently when sent by ADIT.
+- Move source and target from DICOM job to DICOM task
+  -- That way we can transfer from multiple sources to a destination in one job
+- Check if we still need Abortable Celery Tasks (and just use Task)
+  -- Currently we don't use this functionality to abort running task, but we could
+  -- <https://docs.celeryq.dev/en/stable/reference/celery.contrib.abortable.html>
+  -- <https://docs.celeryq.dev/en/latest/faq.html#how-do-i-get-the-result-of-a-task-if-i-have-the-id-that-points-there>
+- Use Django ORM as Celery result backend (currently we use Redis for that)
+  -- <https://docs.celeryq.dev/en/stable/django/first-steps-with-django.html#django-celery-results-using-the-django-orm-cache-as-a-result-backend>
 
 ## Fix
 
