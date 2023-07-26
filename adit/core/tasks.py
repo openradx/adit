@@ -71,7 +71,7 @@ class ProcessDicomJob(CeleryTask):
     def run(self, dicom_job_id: int):
         dicom_job = self.dicom_job_class.objects.get(id=dicom_job_id)
 
-        logger.info("Proccessing %s.", dicom_job)
+        logger.info("%s started.", dicom_job)
 
         if dicom_job.status != DicomJob.Status.PENDING:
             raise AssertionError(f"Invalid {dicom_job} status: {dicom_job.get_status_display()}")
@@ -142,13 +142,15 @@ class ProcessDicomTask(AbortableCeleryTask):
             dicom_task.end = timezone.now()
             dicom_task.save()
 
-            with Lock("update_job_after"):
-                self.update_job_after(dicom_task.job)
+            logger.info("%s ended.", dicom_task)
+
+            with Lock("update_job_after_task"):
+                self.update_job_after_task(dicom_task.job)
 
         return dicom_task.status
 
     def process_task(self, dicom_task: DicomTask) -> tuple[DicomTask.Status, str]:
-        logger.info("Processing %s.", dicom_task)
+        logger.info("%s started.", dicom_task)
 
         if dicom_task.status not in [
             DicomTask.Status.PENDING,
@@ -189,16 +191,21 @@ class ProcessDicomTask(AbortableCeleryTask):
                 exc=Warning(f"App suspended. Rescheduling {dicom_task}."),
             )
 
+        # When the first DICOM task is really processed then the status of the DICOM
+        # job switches from PENDING to IN_PROGRESS
+        # TODO: Maybe it would be nicer if the job is only IN_PROGRESS as long as a
+        # DICOM task is currently IN_PROGRESS (cave, must be handled in a distributed lock)
         if dicom_job.status == DicomJob.Status.PENDING:
             dicom_job.status = DicomJob.Status.IN_PROGRESS
             dicom_job.start = timezone.now()
             dicom_job.save()
 
         dicom_task.status = DicomTask.Status.IN_PROGRESS
+        dicom_task.save()
 
         return self.handle_dicom_task(dicom_task)
 
-    def update_job_after(self, dicom_job: DicomJob, job_finished_mail: bool = True):
+    def update_job_after_task(self, dicom_job: DicomJob, job_finished_mail: bool = True):
         """Evaluates all the tasks of a dicom job and sets the job status accordingly."""
 
         if dicom_job.status == DicomJob.Status.CANCELING:
@@ -238,7 +245,7 @@ class ProcessDicomTask(AbortableCeleryTask):
             dicom_job.end = timezone.now()
             dicom_job.save()
 
-            logger.info("%s finished.", dicom_job)
+            logger.info("%s ended.", dicom_job)
 
             if job_finished_mail:
                 send_job_finished_mail(dicom_job)
