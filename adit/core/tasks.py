@@ -8,6 +8,7 @@ import sherlock
 from celery import Task as CeleryTask
 from celery import shared_task
 from celery.contrib.abortable import AbortableTask as AbortableCeleryTask  # pyright: ignore
+from celery.exceptions import Retry
 from celery.utils.log import get_task_logger
 from django.conf import settings
 from django.core.mail import send_mail
@@ -100,15 +101,17 @@ class ProcessDicomTask(AbortableCeleryTask):
     def run(self, dicom_task_id: int):
         dicom_task = self.dicom_task_class.objects.get(id=dicom_task_id)
 
-        # Cave, must be called outside the below try except block as it may raise
-        # itself a Retry error that must be passed through to Celery.
-        self.prepare_dicom_task(dicom_task)
-
         try:
-            status, message = self.handle_dicom_task(dicom_task)
+            status, message = self.process_dicom_task(dicom_task)
             dicom_task.status = status
             dicom_task.message = message
+        except Retry as err:
+            # When the task is rescheduled a Retry will be raised that must be
+            # passed through to Celery.
+            raise err
         except RetriableTaskError as err:
+            # Inside the handle_dicom_task errors of kind RetriableTaskError can be raised
+            # which are handled here and also raise a Retry in the end.
             logger.exception("Retriable error occurred during %s.", dicom_task)
 
             # We can't use the Celery built-in max_retries and celery_task.request.retries
@@ -138,6 +141,7 @@ class ProcessDicomTask(AbortableCeleryTask):
             dicom_task.status = DicomTask.Status.FAILURE
             dicom_task.message = str(err)
         except Exception as err:
+            # All other errors are handled here and won't be retried.
             logger.exception("Unexpected error during %s.", dicom_task)
 
             dicom_task.status = DicomTask.Status.FAILURE
@@ -156,14 +160,8 @@ class ProcessDicomTask(AbortableCeleryTask):
 
         return dicom_task.status
 
-    def prepare_dicom_task(self, dicom_task: DicomTask):
+    def process_dicom_task(self, dicom_task: DicomTask) -> tuple[DicomTask.Status, str]:
         logger.info("%s started.", dicom_task)
-
-        if dicom_task.status not in [
-            DicomTask.Status.PENDING,
-            DicomTask.Status.CANCELED,
-        ]:
-            raise AssertionError(f"Invalid {dicom_task} status: {dicom_task.get_status_display()}")
 
         dicom_job = dicom_task.job
 
@@ -175,6 +173,9 @@ class ProcessDicomTask(AbortableCeleryTask):
             or dicom_task.status == DicomTask.Status.CANCELED
         ):
             return (DicomTask.Status.CANCELED, "Task was canceled.")
+
+        if dicom_task.status != dicom_task.Status.PENDING:
+            raise AssertionError(f"Invalid {dicom_task} status: {dicom_task.get_status_display()}")
 
         app_settings = self.app_settings_class.get()
         assert app_settings
@@ -210,6 +211,8 @@ class ProcessDicomTask(AbortableCeleryTask):
         dicom_task.status = DicomTask.Status.IN_PROGRESS
         dicom_task.start = timezone.now()
         dicom_task.save()
+
+        return self.handle_dicom_task(dicom_task)
 
     def handle_dicom_task(self, dicom_task) -> tuple[DicomTask.Status, str]:
         """Does the actual work of the dicom task.
