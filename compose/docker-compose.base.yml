@@ -1,7 +1,6 @@
 version: "3.8"
 
-x-app:
-  &default-app
+x-app: &default-app
   volumes:
     - /mnt:/mnt
   depends_on:
@@ -83,6 +82,7 @@ services:
       - "5672"
       - "15672"
     volumes:
+      - ./rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf
       - rabbit_data:/var/lib/rabbitmq
 
   redis:
