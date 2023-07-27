@@ -111,7 +111,6 @@ def login_user(page: Page):
         page.get_by_label("Username").fill(username)
         page.get_by_label("Password").fill(password)
         page.get_by_text("Log in").click()
-        page.locator("#logged_in_username").element_handle()
 
     return _login_user
 

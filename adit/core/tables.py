@@ -12,7 +12,7 @@ class RecordIdColumn(tables.TemplateColumn):
         template_code = (
             '<a href="{{ record.get_absolute_url }}">'
             "{{ value }} "
-            '{% include "core/_box_arrow_in_right.svg" %}'
+            '{% include "core/icons/goto.svg" %}'
             "</a>"
         )
         super().__init__(template_code=template_code, verbose_name=verbose_name)

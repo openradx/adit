@@ -33,7 +33,6 @@ def test_urgent_batch_query_succeeds(
     page.get_by_label("Batch file").set_input_files(files=[batch_file])
     page.locator('input:has-text("Create job")').click()
     expect(poll(page.locator('dl:has-text("Success")'))).to_be_visible()
-    # page.screenshot(path="foo.png")
 
 
 @pytest.mark.integration

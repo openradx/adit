@@ -29,7 +29,7 @@
             <li class="nav-item d-flex">
                 <a class="nav-link d-flex align-items-center"
                    href="https://github.com/radexperts/adit"
-                   target="_blank">{% include "core/_github.svg" %}</a>
+                   target="_blank">{% include "core/icons/github.svg" %}</a>
             </li>
         </ul>
         <ul class="navbar-nav">
@@ -44,7 +44,7 @@
                        aria-expanded="false">
                         <span id="logged_in_username">
                             {{ user.username }}
-                            {% include "core/_person_square.svg" %}
+                            {% include "core/icons/user.svg" %}
                         </span>
                     </a>
                     <div class="dropdown-menu dropdown-menu-right"
@@ -57,7 +57,7 @@
             {% else %}
                 <li class="nav-item">
                     <a class="nav-link" href="{% url 'auth_login' %}">
-                        {% include "core/_box_arrow_in_right.svg" %}
+                        {% include "core/icons/login.svg" %}
                         Login
                     </a>
                 </li>

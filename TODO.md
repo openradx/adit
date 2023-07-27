@@ -2,6 +2,9 @@
 
 ## High Priority
 
+- Option if you want an Email when job ends (make it optional)
+- Option in batch query to query whole study or explicit series
+- Allow to terminate a specific Celery task with revoke(task_id, terminate=True)
 - Make whole receiver crash if one asyncio task crashes
 - Auto refresh job pages und success or failure
 - Rewrite tests to use mocker fixture instead of patch
@@ -16,10 +19,19 @@
 - Fix the ineffective stuff in transfer_utils, see TODO there
 - Write test_parsers.py
 - DICOM data that does not need to be modified can be directly transferred between the source and destination server (C-MOVE). The only exception is when source and destination server are the same, then the data will still be downloaded and uploaded again. This may be helpful when the PACS server treats the data somehow differently when sent by ADIT.
+- Move source and target from DICOM job to DICOM task
+  -- That way we can transfer from multiple sources to a destination in one job
+- Check if we still need Abortable Celery Tasks (and just use Task)
+  -- Currently we don't use this functionality to abort running task, but we could
+  -- <https://docs.celeryq.dev/en/stable/reference/celery.contrib.abortable.html>
+  -- <https://docs.celeryq.dev/en/latest/faq.html#how-do-i-get-the-result-of-a-task-if-i-have-the-id-that-points-there>
+- Use Django ORM as Celery result backend (currently we use Redis for that)
+  -- <https://docs.celeryq.dev/en/stable/django/first-steps-with-django.html#django-celery-results-using-the-django-orm-cache-as-a-result-backend>
 
 ## Fix
 
 - Do some prechecks before trying the task (is source and destination online?)
+- Fix Celery logging (task ids are not appended to logging messages even as we use get_task_logger)
 - Shorter timeout for offline studies
 - Tests: test_query_utils, test serializers, test all views (as integration tests using real Orthanc), improve tests of transferutil, BatchFileSizeError
 - c-get download timeout
@@ -48,6 +60,7 @@
 
 ## Maybe
 
+- Get rid of 7z archive feature. It think it was never used.
 - Allow to search multiple source servers with one query (maybe only in dicom explorer)
 - Bring everything behind Nginx as reverse proxy
   -- Orthanc, Flower, Rabbit Management Console should then be directly behind Nginx (without Django-revproxy)
@@ -88,6 +101,7 @@
   -- An option would be to introduce a "rescheduled" property in task model and reschedule them by checking periodically using Celery Beat PeriodicTasks (maybe every hour or so) or using "one_off" PeriodicTasks.
   -- But then we can't use Celery Canvas anymore as tasks in a worker finish with such a rescheduling outside of the Celery queue system. We then have to check at the end of each task if the job is finished or erroneous (by checking all the other sibling tasks). This should be done with a distributed lock (e.g. using <https://sher-lock.readthedocs.io/en/latest/>) so that if we have multiple workers there are no race conditions.
   -- Maybe it isn't even a big problem as in a hospital site we never accumulate such many Celery tasks on a worker and ETA is totally fine (just keep it in mind that it could get a problem).
+  -- Make sure if using PeriodicTask that those are also cancelled when job is cancelled.
   -- Another solution would be to use Temporal.io as soon as they implement task priorities <https://github.com/temporalio/temporal/issues/1507>
 - Evaluate other task runners
   -- <https://www.pyinvoke.org/> # used currently

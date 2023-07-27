@@ -112,8 +112,10 @@ E: Release file for http://deb.debian.org/debian/dists/buster-updates/InRelease 
 
 ### Celery commands
 
-- celery -A adit purge -Q default,low
+- celery -A adit purge -Q default_queue,dicom_task_queue
+- celery -A adit inspect active_queues
 - celery -A adit inspect scheduled
+- celery -A adit inspect stats
 
 ## Deployment for production
 

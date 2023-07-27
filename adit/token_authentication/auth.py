@@ -59,22 +59,13 @@ class RestTokenAuthentication(BaseAuthentication):
         are None.
         """
         token_hashed = hash_token(token_string)
-        tokens = Token.objects.filter(token_hashed=token_hashed)
-        tokens_count = tokens.count()
 
-        if tokens_count == 0:
+        try:
+            token = Token.objects.get(token_hashed=token_hashed)
+        except Token.DoesNotExist:
             return "Invalid token. Token does not exist.", None, None
 
-        if tokens_count > 1:
-            raise AssertionError(f"Internal token error. Multiple tokens with hash {token_hashed}.")
-
-        token = tokens.first()
-
-        if not token:
-            raise AssertionError("Internal token error. Token could not be retrieved from the db.")
-
-        # Just a double check as check_password also checks if the raw token string
-        # was valid in the first place and not empty (see make_password documentation).
+        # Double check that the token hash is correct.
         if not verify_token(token_string, token.token_hashed):
             raise AssertionError(f"Internal token error. Invalid token hash {token_hashed}.")
 
