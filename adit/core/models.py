@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Callable
 from django.conf import settings
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
+from django.db.models.constraints import UniqueConstraint
 
 from .validators import (
     no_backslash_char_validator,
@@ -289,7 +290,9 @@ class DicomTask(models.Model):
     class Meta:
         abstract = True
         ordering = ("task_id",)
-        unique_together = ("job", "task_id")
+        constraints = [
+            UniqueConstraint(fields=["job", "task_id"], name="%(class)s_unique_task_id_per_job")
+        ]
 
     def __str__(self):
         return f"{self.__class__.__name__} [Job ID {self.job.id}, Task ID {self.task_id}]"
