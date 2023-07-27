@@ -100,9 +100,12 @@ class ProcessDicomTask(AbortableCeleryTask):
     def run(self, dicom_task_id: int):
         dicom_task = self.dicom_task_class.objects.get(id=dicom_task_id)
 
+        # Cave, must be called outside the below try except block as it may raise
+        # itself a Retry error that must be passed through to Celery.
+        self.prepare_dicom_task(dicom_task)
+
         try:
-            dicom_task.start = timezone.now()
-            status, message = self.process_task(dicom_task)
+            status, message = self.handle_dicom_task(dicom_task)
             dicom_task.status = status
             dicom_task.message = message
         except RetriableTaskError as err:
@@ -115,6 +118,10 @@ class ProcessDicomTask(AbortableCeleryTask):
 
                 dicom_task.status = DicomTask.Status.PENDING
                 dicom_task.message = "Task timed out and will be retried."
+                if dicom_task.log:
+                    dicom_task.log += "\n"
+                dicom_task.log += str(err)
+
                 dicom_task.retries += 1
 
                 # Increase the priority slightly to make sure images that were moved
@@ -131,10 +138,10 @@ class ProcessDicomTask(AbortableCeleryTask):
             dicom_task.status = DicomTask.Status.FAILURE
             dicom_task.message = str(err)
         except Exception as err:
+            logger.exception("Unexpected error during %s.", dicom_task)
+
             dicom_task.status = DicomTask.Status.FAILURE
             dicom_task.message = str(err)
-
-            logger.exception("Unexpected error during %s.", dicom_task)
             if dicom_task.log:
                 dicom_task.log += "\n"
             dicom_task.log += traceback.format_exc()
@@ -149,7 +156,7 @@ class ProcessDicomTask(AbortableCeleryTask):
 
         return dicom_task.status
 
-    def process_task(self, dicom_task: DicomTask) -> tuple[DicomTask.Status, str]:
+    def prepare_dicom_task(self, dicom_task: DicomTask):
         logger.info("%s started.", dicom_task)
 
         if dicom_task.status not in [
@@ -201,9 +208,16 @@ class ProcessDicomTask(AbortableCeleryTask):
             dicom_job.save()
 
         dicom_task.status = DicomTask.Status.IN_PROGRESS
+        dicom_task.start = timezone.now()
         dicom_task.save()
 
-        return self.handle_dicom_task(dicom_task)
+    def handle_dicom_task(self, dicom_task) -> tuple[DicomTask.Status, str]:
+        """Does the actual work of the dicom task.
+
+        Should return a tuple of the final status of that task and a message that is
+        stored in the task model.
+        """
+        raise NotImplementedError("Subclasses must implement this method.")
 
     def update_job_after_task(self, dicom_job: DicomJob, job_finished_mail: bool = True):
         """Evaluates all the tasks of a dicom job and sets the job status accordingly."""
@@ -249,11 +263,3 @@ class ProcessDicomTask(AbortableCeleryTask):
 
             if job_finished_mail:
                 send_job_finished_mail(dicom_job)
-
-    def handle_dicom_task(self, dicom_task) -> tuple[DicomTask.Status, str]:
-        """Does the actual work of the dicom task.
-
-        Should return a tuple of the final status of that task and a message that is
-        stored in the task model.
-        """
-        raise NotImplementedError("Subclasses must implement this method.")
