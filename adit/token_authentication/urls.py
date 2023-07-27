@@ -14,7 +14,7 @@ urlpatterns = [
         name="generate_token",
     ),
     path(
-        "delete-token",
+        "<int:pk>/delete-token",
         DeleteTokenView.as_view(),
         name="delete_token",
     ),

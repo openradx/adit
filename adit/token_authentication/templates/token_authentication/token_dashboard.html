@@ -51,7 +51,7 @@
                         <td>{{ token.expires|default_if_none:"Never" }}</td>
                         <td>{{ token.last_used|default_if_none:"Never" }}</td>
                         <td>
-                            <form action="{% url "delete_token" %}" method="post">
+                            <form action="{% url "delete_token" token.pk %}" method="post">
                                 {% csrf_token %}
                                 <input type="hidden" name="client" value="{{ token.client }}">
                                 <button type="submit"
