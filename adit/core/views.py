@@ -362,8 +362,8 @@ class AdminProxyView(UserPassesTestMixin, ProxyView):
 
 class RabbitManagementProxyView(AdminProxyView):
     upstream = (
-        f"http://{settings.RABBIT_MANAGEMENT_HOST}:",
-        f"{settings.RABBIT_MANAGEMENT_PORT}",  # type: ignore
+        f"http://{settings.RABBIT_MANAGEMENT_HOST}:"
+        f"{settings.RABBIT_MANAGEMENT_PORT}"  # type: ignore
     )
     url_prefix = "rabbit"
     rewrite = ((rf"^/{url_prefix}$", r"/"),)
