@@ -2,6 +2,7 @@
 
 ## High Priority
 
+- Redirect after restart/retry/delete job
 - Option if you want an Email when job ends (make it optional)
 - Option in batch query to query whole study or explicit series
 - Allow to terminate a specific Celery task with revoke(task_id, terminate=True)
