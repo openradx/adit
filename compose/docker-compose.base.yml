@@ -81,8 +81,10 @@ services:
     expose:
       - "5672"
       - "15672"
+    configs:
+      - source: rabbit_config
+        target: /etc/rabbitmq/rabbitmq.conf
     volumes:
-      - ./rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf
       - rabbit_data:/var/lib/rabbitmq
 
   redis:
@@ -97,8 +99,10 @@ services:
     expose:
       - "6501"
       - "7501"
+    configs:
+      - source: orthanc1_config
+        target: /etc/orthanc/orthanc.json
     volumes:
-      - ./orthanc/orthanc1.json:/etc/orthanc/orthanc.json
       - orthanc1_data:/var/lib/orthanc/db
 
   orthanc2:
@@ -106,9 +110,19 @@ services:
     expose:
       - "6502"
       - "7502"
+    configs:
+      - source: orthanc2_config
+        target: /etc/orthanc/orthanc.json
     volumes:
-      - ./orthanc/orthanc2.json:/etc/orthanc/orthanc.json
       - orthanc2_data:/var/lib/orthanc/db
+
+configs:
+  rabbit_config:
+    file: ./rabbitmq/rabbitmq.conf
+  orthanc1_config:
+    file: ./orthanc/orthanc1.json
+  orthanc2_config:
+    file: ./orthanc/orthanc2.json
 
 volumes:
   adit_data:
