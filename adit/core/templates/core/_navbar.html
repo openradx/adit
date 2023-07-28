@@ -42,10 +42,8 @@
                        data-toggle="dropdown"
                        aria-haspopup="true"
                        aria-expanded="false">
-                        <span id="logged_in_username">
-                            {{ user.username }}
-                            {% include "core/icons/user.svg" %}
-                        </span>
+                        <span id="logged_in_username">{{ user.username }}</span>
+                        {% include "core/icons/user.svg" %}
                     </a>
                     <div class="dropdown-menu dropdown-menu-right"
                          aria-labelledby="navbarDropdown">
