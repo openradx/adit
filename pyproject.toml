@@ -93,6 +93,7 @@ log_cli_format = "%(asctime)s [%(levelname)8s] %(message)s (%(filename)s:%(linen
 log_cli_date_format = "%Y-%m-%d %H:%M:%S"
 markers = ["integration: mark a test as an integration test."]
 filterwarnings = [
+    "ignore:.*Factory._after_postgeneration will stop saving the instance:DeprecationWarning",
     "ignore:SelectableGroups dict interface is deprecated:DeprecationWarning",
     "ignore:The USE_L10N setting is deprecated:django.utils.deprecation.RemovedInDjango50Warning",
     "ignore:'cgi' is deprecated:DeprecationWarning",
