@@ -61,6 +61,11 @@
 
 ## Maybe
 
+- Upgrade postgres server to v15, but we have to migrate the data then as the database files are incompatible a newer version
+  -- <https://hollo.me/devops/upgrade-postgresql-database-with-docker.html>
+  -- <https://thomasbandt.com/postgres-docker-major-version-upgrade>
+  -- <https://betterprogramming.pub/how-to-upgrade-your-postgresql-version-using-docker-d1e81dbbbdf9>
+  -- look into <https://github.com/tianon/docker-postgres-upgrade>
 - Get rid of 7z archive feature. It think it was never used.
 - Allow to search multiple source servers with one query (maybe only in dicom explorer)
 - Bring everything behind Nginx as reverse proxy

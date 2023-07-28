@@ -66,7 +66,7 @@ services:
       "
 
   postgres:
-    image: postgres:15.3
+    image: postgres:13.11
     expose:
       - "5432"
     volumes:
