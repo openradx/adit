@@ -3,6 +3,7 @@ from django.core.paginator import Paginator
 from django.shortcuts import render
 from django.views import View
 
+from radis.core.models import QueryResult
 from radis.core.vespa_app import vespa_app
 
 from .forms import SearchForm
@@ -10,7 +11,7 @@ from .serializers import SearchParamsSerializer
 
 
 class SearchView(View):
-    async def get(self, request, *args, **kwargs):
+    def get(self, request, *args, **kwargs):
         form = SearchForm(request.GET)
         context = {
             "form": form,
@@ -27,16 +28,15 @@ class SearchView(View):
         page = serializer.validated_data["page"]
         per_page = serializer.validated_data["per_page"]
 
-        print(query)
-
         if query:
-            response = await vespa_app.query_reports(query, page, per_page)
-            total_count = response.json["root"]["fields"]["totalCount"]
+            response = vespa_app.query_reports(query, page, per_page)
+            result = QueryResult.from_response(response)
+            total_count = result.total_count
             paginator = Paginator(range(total_count), per_page)
             page = paginator.get_page(page)
             context["paginator"] = paginator
             context["page"] = page
             context["searched"] = True
-            context["hits"] = response.hits
+            context["reports"] = result.reports
 
         return render(request, "search/search.html", context)

@@ -5,11 +5,11 @@ from radis.core.validators import (
     no_control_chars_validator,
     no_wildcard_chars_validator,
     validate_gender,
-    validate_year_of_birth,
 )
 
 
 class ReportSerializer(serializers.Serializer):
+    institutes = serializers.ListField(child=serializers.CharField())
     pacs_aet = serializers.CharField(max_length=16)
     pacs_name = serializers.CharField(max_length=64)
     patient_id = serializers.CharField(
@@ -20,11 +20,7 @@ class ReportSerializer(serializers.Serializer):
             no_wildcard_chars_validator,
         ],
     )
-    year_of_birth = (
-        serializers.IntegerField(
-            validators=[validate_year_of_birth],
-        ),
-    )
+    age = serializers.IntegerField(min_value=0)
     gender = serializers.CharField(
         max_length=1,
         validators=[validate_gender],
@@ -38,15 +34,15 @@ class ReportSerializer(serializers.Serializer):
         ],
     )
     accession_number = serializers.CharField(
+        allow_blank=True,
         max_length=64,
         validators=[
             no_backslash_char_validator,
             no_control_chars_validator,
             no_wildcard_chars_validator,
         ],
-        required=False,
     )
-    study_description = serializers.CharField(max_length=64)
+    study_description = serializers.CharField(allow_blank=True, max_length=64)
     study_datetime = serializers.DateTimeField()
     series_uid = serializers.CharField(
         max_length=64,
@@ -66,4 +62,4 @@ class ReportSerializer(serializers.Serializer):
         ],
     )
     references = serializers.ListField(child=serializers.URLField())
-    content = serializers.CharField()
+    body = serializers.CharField()

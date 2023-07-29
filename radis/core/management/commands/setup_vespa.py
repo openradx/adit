@@ -5,7 +5,7 @@ from pathlib import Path
 from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
 
-from radis.core.vespa_app import add_bolding_config, add_dynamic_snippet_config, vespa_app
+from radis.core.vespa_app import VespaConfigurator, vespa_app
 
 
 class Command(BaseCommand):
@@ -81,8 +81,9 @@ class Command(BaseCommand):
 
             print(f"Generating deployment files in {app_folder.absolute()}")
             vespa_app.get_app_package().to_files(app_folder)
-            add_bolding_config(app_folder)
-            add_dynamic_snippet_config(app_folder)
+
+            configurator = VespaConfigurator(app_folder)
+            configurator.apply()
 
         if options["deploy"]:
             vespa_host: str

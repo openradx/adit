@@ -22,7 +22,7 @@ def _create_report_schema():
         document=Document(
             fields=[
                 Field(
-                    name="organizations",
+                    name="institutes",
                     type="array<string>",
                     indexing=["attribute"],
                 ),
@@ -42,7 +42,7 @@ def _create_report_schema():
                     indexing=["summary", "attribute"],
                 ),
                 Field(
-                    name="year_of_birth",
+                    name="age",
                     type="int",
                     indexing=["summary", "attribute"],
                 ),
@@ -113,49 +113,52 @@ def _create_app_package(schemas: list[Schema]):
     return ApplicationPackage(name="radis", schema=schemas)
 
 
-# https://docs.vespa.ai/en/reference/schema-reference.html#bolding
-def add_bolding_config(app_folder: PathLike):
-    services_file = Path(app_folder) / "services.xml"
-    tree = ET.parse(services_file)
-    root = tree.getroot()
-    container_el = root.find("container")
-    assert container_el is not None
-    search_el = container_el.find("search")
-    assert search_el is not None
-    config_el = ET.Element("config", {"name": "container.qr-searchers"})
-    search_el.append(config_el)
-    tag_el = ET.Element("tag")
-    config_el.append(tag_el)
-    bold_el = ET.Element("bold")
-    tag_el.append(bold_el)
-    open_el = ET.Element("open")
-    bold_el.append(open_el)
-    open_el.text = "<strong>"
-    close_el = ET.Element("close")
-    bold_el.append(close_el)
-    close_el.text = "</strong>"
-    separator_el = ET.Element("separator")
-    tag_el.append(separator_el)
-    separator_el.text = "<em>...</em>"
-    ET.indent(tree, "    ")
-    tree.write(services_file, encoding="UTF-8", xml_declaration=True)
+class VespaConfigurator:
+    def __init__(self, app_folder: PathLike) -> None:
+        self.services_file = Path(app_folder) / "services.xml"
+        self.services_doc = ET.parse(self.services_file)
 
+    # https://docs.vespa.ai/en/reference/schema-reference.html#bolding
+    def _add_bolding_config(self):
+        config_el = ET.fromstring(
+            """
+            <config name="container.qr-searchers">
+                <tag>
+                    <bold>
+                        <open>&lt;strong&gt;</open>
+                        <close>&lt;/strong&gt;</close>
+                    </bold>
+                    <separator>&lt;em&gt;...&lt;/em&gt;</separator>
+                </tag>
+            </config>
+        """
+        )
+        search_el = self.services_doc.find("./container/search")
+        assert search_el is not None
+        search_el.append(config_el)
 
-# https://docs.vespa.ai/en/document-summaries.html#dynamic-snippet-configuration
-# https://github.com/vespa-engine/vespa/blob/master/searchsummary/src/vespa/searchsummary/config/juniperrc.def
-def add_dynamic_snippet_config(app_folder: PathLike):
-    services_file = Path(app_folder) / "services.xml"
-    tree = ET.parse(services_file)
-    root = tree.getroot()
-    content_el = root.find("content")
-    assert content_el is not None
-    config_el = ET.Element("config", {"name": "vespa.config.search.summary.juniperrc"})
-    content_el.append(config_el)
-    surround_max_el = ET.Element("length")
-    config_el.append(surround_max_el)
-    surround_max_el.text = "500"
-    ET.indent(tree, "    ")
-    tree.write(services_file, encoding="UTF-8", xml_declaration=True)
+    # https://docs.vespa.ai/en/document-summaries.html#dynamic-snippet-configuration
+    # https://github.com/vespa-engine/vespa/blob/master/searchsummary/src/vespa/searchsummary/config/juniperrc.def
+    def _add_dynamic_snippet_config(self):
+        config_el = ET.fromstring(
+            """
+            <config name="vespa.config.search.summary.juniperrc">
+                <length>500</length>
+            </config>
+        """
+        )
+        content_el = self.services_doc.find("./content")
+        assert content_el is not None
+        content_el.append(config_el)
+
+    def _write(self):
+        ET.indent(self.services_doc, "    ")
+        self.services_doc.write(self.services_file, encoding="UTF-8", xml_declaration=True)
+
+    def apply(self):
+        self._add_bolding_config()
+        self._add_dynamic_snippet_config()
+        self._write()
 
 
 class VespaApp:
@@ -180,22 +183,21 @@ class VespaApp:
             )
         return self._client
 
-    async def query_reports(
+    def query_reports(
         self, query: str, page_number: int = 1, page_size: int = 100
     ) -> VespaQueryResponse:
         offset = (page_number - 1) * page_size
 
-        async with self.get_client().asyncio() as client:
-            # TODO: filter organizations
-            return await client.query(
-                {
-                    "yql": "select * from report where userQuery()",
-                    "query": query,
-                    "type": "web",
-                    "hits": page_size,
-                    "offset": offset,
-                }
-            )
+        client = self.get_client()
+        return client.query(
+            {
+                "yql": "select * from report where userQuery()",
+                "query": query,
+                "type": "web",
+                "hits": page_size,
+                "offset": offset,
+            }
+        )
 
 
 vespa_app = VespaApp()

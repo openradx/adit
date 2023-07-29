@@ -4,7 +4,7 @@ import factory
 from faker import Faker
 
 from radis.accounts.factories import UserFactory
-from radis.core.models import ReportCollection, SavedReport
+from radis.core.models import CollectedReport, ReportCollection
 
 fake = Faker()
 
@@ -26,9 +26,9 @@ class ReportCollectionFactory(BaseDjangoModelFactory[ReportCollection]):
     owner = factory.SubFactory(UserFactory)
 
 
-class SavedReportFactory(BaseDjangoModelFactory[SavedReport]):
+class SavedReportFactory(BaseDjangoModelFactory[CollectedReport]):
     class Meta:
-        model = SavedReport
+        model = CollectedReport
 
     report_id = factory.Faker("uuid4")
     note = factory.Faker("paragraph")

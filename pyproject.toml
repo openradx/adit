@@ -36,7 +36,7 @@ wait-for-it = "^2.2.2"
 pyvespa = "^0.34.0"
 adrf = "^0.1.1"
 shortuuid = "^1.0.11"
-nh3 = "^0.2.14"
+html-sanitizer = "^2.2.0"
 
 [tool.poetry.group.dev.dependencies]
 black = "^23.1.0"

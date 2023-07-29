@@ -6,11 +6,12 @@ from django.conf import settings
 from django.core.management.base import BaseCommand, CommandParser
 from faker import Faker
 
+from radis.api.serializers import ReportSerializer
 from radis.core.vespa_app import vespa_app
 
 fake = Faker()
 
-organizations = ["allrad", "neurorad", "thoraxrad"]
+institutes = ["allrad", "neurorad", "thoraxrad"]
 pacs_items = [
     {"pacs_aet": "gepacs", "pacs_name": "GE PACS"},
     {"pacs_aet": "synapse", "pacs_name": "Synapse"},
@@ -26,11 +27,11 @@ def feed_report(body: str):
         schema="report",
         data_id=data_id,
         fields={
-            "organizations": fake.random_elements(elements=organizations, unique=True),
+            "institutes": fake.random_elements(elements=institutes, unique=True),
             "pacs_aet": pacs["pacs_aet"],
             "pacs_name": pacs["pacs_name"],
             "patient_id": fake.ean(length=8),
-            "year_of_birth": int(fake.year()),
+            "age": fake.random_int(min=0, max=120),
             "gender": fake.random_element(elements=["F", "M"]),
             "study_uid": fake.uuid4(),
             "accession_number": fake.ean(length=13),

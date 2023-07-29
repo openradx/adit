@@ -10,10 +10,11 @@
     <h4 class="mb-3">Search reports</h4>
     {% crispy form %}
     <div>
-        {% for hit in hits %}
-            <div class="card">
+        {% for report in reports %}
+            <div class="card mb-3">
                 <div class="card-body">
-                    <div class="report-text">{{ hit.fields.body|safe }}</div>
+                    <div class="report-text">{{ report.body|safe }}</div>
+                    <a href="{% url 'report_detail' report.doc_id %}">{{ report.doc_id }}</a>
                 </div>
             </div>
         {% endfor %}

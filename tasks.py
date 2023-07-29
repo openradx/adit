@@ -229,8 +229,8 @@ def reset_radis_dev(ctx: Context):
     flush_cmd = f"{build_compose_cmd('dev')} exec web python manage.py flush --noinput"
     run_cmd(ctx, flush_cmd)
     # Populate the database with example data
-    populate_dev_db_cmd = f"{build_compose_cmd('dev')} exec web python manage.py populate_dev_db"
-    run_cmd(ctx, populate_dev_db_cmd)
+    populate_db_cmd = f"{build_compose_cmd('dev')} exec web python manage.py populate_db"
+    run_cmd(ctx, populate_db_cmd)
 
 
 @task

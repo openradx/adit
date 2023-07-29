@@ -8,4 +8,4 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         call_command("reset_db", "--noinput")  # needs django_extensions installed
         call_command("migrate")
-        call_command("populate_dev_db")
+        call_command("populate_db")
