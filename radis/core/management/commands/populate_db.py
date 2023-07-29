@@ -7,7 +7,7 @@ from faker import Faker
 
 from radis.accounts.factories import AdminUserFactory, UserFactory
 from radis.accounts.models import User
-from radis.core.factories import (
+from radis.collections.factories import (
     ReportCollectionFactory,
     SavedReportFactory,
 )

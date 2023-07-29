@@ -4,7 +4,8 @@ import factory
 from faker import Faker
 
 from radis.accounts.factories import UserFactory
-from radis.core.models import CollectedReport, ReportCollection
+
+from .models import CollectedReport, ReportCollection
 
 fake = Faker()
 

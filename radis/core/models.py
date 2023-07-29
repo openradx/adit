@@ -1,15 +1,10 @@
 from dataclasses import dataclass
 from datetime import datetime
-from typing import TYPE_CHECKING
 
-from django.conf import settings
 from django.db import models
 from vespa.io import VespaQueryResponse
 
 from radis.core.utils.report_utils import extract_doc_id, sanitize_report_summary
-
-if TYPE_CHECKING:
-    from django.db.models.manager import RelatedManager
 
 
 class CoreSettings(models.Model):
@@ -41,39 +36,6 @@ class AppSettings(models.Model):
     @classmethod
     def get(cls):
         return cls.objects.first()
-
-
-class ReportCollection(models.Model):
-    if TYPE_CHECKING:
-        reports = RelatedManager["CollectedReport"]()
-
-    id: int
-    name = models.CharField(max_length=255, unique=True)
-    note = models.TextField(blank=True)
-    owner_id: int
-    owner = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        related_name="report_collections",
-    )
-    created = models.DateTimeField(auto_now_add=True)
-
-    def __str__(self):
-        return f'Collection "{self.name}"'
-
-
-class CollectedReport(models.Model):
-    id: int
-    report_id = models.CharField(max_length=36, unique=True)  # uuid
-    note = models.TextField(blank=True)
-    collection_id: int
-    collection = models.ForeignKey(
-        ReportCollection, on_delete=models.CASCADE, related_name="reports"
-    )
-    created = models.DateTimeField(auto_now_add=True)
-
-    def __str__(self):
-        return f'Report "{self.report_id}"'
 
 
 @dataclass(kw_only=True)

@@ -13,8 +13,26 @@
         {% for report in reports %}
             <div class="card mb-3">
                 <div class="card-body">
-                    <div class="report-text">{{ report.body|safe }}</div>
-                    <a href="{% url 'report_detail' report.doc_id %}">{{ report.doc_id }}</a>
+                    <div class="d-flex flex-column">
+                        <div class="report-text">{{ report.body|safe }}</div>
+                        <div class="d-flex">
+                            <a href="{% url 'report_detail' report.doc_id %}"
+                               class="btn btn-light btn-sm">
+                                {% include "core/icons/goto.svg" %}
+                                View
+                            </a>
+                            <a href="{% url 'report_detail' report.doc_id %}"
+                               class="btn btn-light btn-sm">
+                                {% include "core/icons/preview.svg" %}
+                                Preview
+                            </a>
+                            <a href="{% url 'report_detail' report.doc_id %}"
+                               class="btn btn-light btn-sm">
+                                {% include "core/icons/add.svg" %}
+                                Collection
+                            </a>
+                        </div>
+                    </div>
                 </div>
             </div>
         {% endfor %}

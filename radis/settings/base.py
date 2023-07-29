@@ -64,6 +64,7 @@ INSTALLED_APPS = [
     "radis.api.apps.ApiConfig",
     "radis.reports.apps.ReportsConfig",
     "radis.search.apps.SearchConfig",
+    "radis.collections.apps.CollectionsConfig",
     "channels",
 ]
 

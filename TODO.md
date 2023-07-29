@@ -8,6 +8,11 @@
 - Change maxHits and maxOffset for farer pagination
   -- <https://docs.vespa.ai/en/reference/query-api-reference.html#native-execution-parameters>
   -- <https://pyvespa.readthedocs.io/en/latest/reference-api.html#queryprofile>
+- Check if we can get rid of wsgi.py (also in ADIT)
+  -- <https://forum.djangoproject.com/t/adding-asgi-support-to-runserver/2446/26>
+  -- <https://github.com/django/django/pull/16634/files>
+- Allow to configure reference names using a database model
+  -- Reference: name (unique), match (unique)
 
 ## Fix
 
