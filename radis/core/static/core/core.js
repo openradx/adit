@@ -1,9 +1,40 @@
-$(function () {
-  // Enable Bootstrap tooltips everywhere
-  $('[data-toggle="tooltip"]').tooltip();
+function ready(fn) {
+  if (document.readyState !== "loading") {
+    fn();
+    return;
+  }
+  document.addEventListener("DOMContentLoaded", fn);
+}
 
-  // Enable toasts everywhere.
-  $(".toast").toast();
+ready(function () {
+  // Enable Bootstrap tooltips
+  const tooltips = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+  for (const tooltip of tooltips) {
+    new bootstrap.Tooltip(tooltip);
+  }
+
+  // Enable toasts
+  const toasts = document.querySelectorAll(".toast");
+  for (const toast of toasts) {
+    new bootstrap.Toast(toast);
+  }
+
+  // Show and hide Bootstrap modal when using HTMX
+  // https://blog.benoitblanchon.fr/django-htmx-modal-form/
+  const modal = new bootstrap.Modal(document.getElementById("modal"));
+  htmx.on("htmx:afterSwap", (e) => {
+    // Response targeting #dialog => show the modal
+    if (e.detail.target.id == "dialog") {
+      modal.show();
+    }
+  });
+  htmx.on("htmx:beforeSwap", (e) => {
+    // Empty response targeting #dialog => hide the modal
+    if (e.detail.target.id == "dialog" && !e.detail.xhr.response) {
+      modal.hide();
+      e.detail.shouldSwap = false;
+    }
+  });
 });
 
 // A site wide config that is added to the context by radis.core.site.base_context_processor
