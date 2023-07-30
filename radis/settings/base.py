@@ -56,7 +56,7 @@ INSTALLED_APPS = [
     "revproxy",
     "loginas",
     "crispy_forms",
-    "crispy_bootstrap4",
+    "crispy_bootstrap5",
     "django_htmx",
     "django_tables2",
     "rest_framework",
@@ -226,8 +226,8 @@ AUTH_USER_MODEL = "accounts.User"
 LOGIN_REDIRECT_URL = "home"
 
 # For crispy forms
-CRISPY_ALLOWED_TEMPLATE_PACKS = "bootstrap4"
-CRISPY_TEMPLATE_PACK = "bootstrap4"
+CRISPY_ALLOWED_TEMPLATE_PACKS = "bootstrap5"
+CRISPY_TEMPLATE_PACK = "bootstrap5"
 
 # This seems to be imporant for development on Gitpod as CookieStorage
 # and FallbackStorage does not work there.
@@ -315,6 +315,9 @@ CELERY_TASK_ACKS_LATE = True
 # This allows to use the authentication of RADIS.
 FLOWER_HOST = env.str("FLOWER_HOST", default="localhost")  # type: ignore
 FLOWER_PORT = env.int("FLOWER_PORT", default=5555)  # type: ignore
+
+# django-templates2
+DJANGO_TABLES2_TEMPLATE = "django_tables2/bootstrap5.html"
 
 # Used by django-filter
 FILTERS_EMPTY_CHOICE_LABEL = "Show All"
