@@ -184,11 +184,7 @@ class VespaApp:
             )
         return self._client
 
-    def query_reports(
-        self, query: str, page_number: int = 1, page_size: int = 100
-    ) -> ReportQueryResult:
-        offset = (page_number - 1) * page_size
-
+    def query_reports(self, query: str, offset: int = 0, page_size: int = 100) -> ReportQueryResult:
         client = self.get_client()
         response = client.query(
             {

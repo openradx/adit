@@ -10,6 +10,9 @@
         </div>
     </div>
     <div>
-        <small>Relevance: {{ report.relevance|floatformat:3 }}</small>
+        <div class="d-flex flex-column">
+            <small>Result: #{{ counter|add:offset }}</small>
+            <small>Relevance: {{ report.relevance|floatformat:3 }}</small>
+        </div>
     </div>
 </div>

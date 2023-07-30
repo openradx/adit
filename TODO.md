@@ -15,6 +15,7 @@
   -- <https://github.com/django/django/pull/16634/files>
 - Allow to configure reference names using a database model
   -- Reference: name (unique), match (unique)
+- Sidebar like in <https://cord19.vespa.ai/search?query=pain> with filters: Age, Gender, Modality, Study Description
 
 ## Fix
 

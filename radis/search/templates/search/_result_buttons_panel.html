@@ -24,7 +24,10 @@
     </div>
     <div class="d-flex gap-1">
         {% for reference in report.references %}
-            <a href="{{ reference }}" class="btn btn-light btn-sm">
+            <a href="{{ reference }}"
+               target="_blank"
+               rel="noopener noreferrer"
+               class="btn btn-light btn-sm">
                 {% url_abbreviation reference %}
                 {% include "core/icons/link.svg" %}
             </a>
