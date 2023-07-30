@@ -39,6 +39,12 @@ class AppSettings(models.Model):
 
 
 @dataclass(kw_only=True)
+class Reference:
+    name: str
+    url: str
+
+
+@dataclass(kw_only=True)
 class ReportBase:
     doc_id: str
     pacs_name: str
@@ -101,18 +107,23 @@ class ReportDetail(ReportBase):
             modalities=record["fields"].get("modalities", []),
             instance_uid=record["fields"]["instance_uid"],
             references=record["fields"].get("references", []),
-            body=sanitize_report_summary(record["fields"]["body"]),
+            body=record["fields"]["body"],
         )
 
 
 @dataclass
-class QueryResult:
+class ReportQueryResult:
     total_count: int
+    coverage: float
+    documents: int
     reports: list[ReportSummary]
 
     @staticmethod
     def from_response(response: VespaQueryResponse):
-        return QueryResult(
-            total_count=response.json["root"]["fields"]["totalCount"],
+        json = response.json
+        return ReportQueryResult(
+            total_count=json["root"]["fields"]["totalCount"],
+            coverage=json["root"]["coverage"]["coverage"],
+            documents=json["root"]["coverage"]["documents"],
             reports=[ReportSummary.from_response(hit) for hit in response.hits],
         )

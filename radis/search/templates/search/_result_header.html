@@ -1,0 +1,15 @@
+<div class="d-flex justify-content-between">
+    <div class="d-flex gap-4">
+        <div class="d-flex flex-column">
+            <small>Age: {{ report.age }}</small>
+            <small>Gender: {{ report.gender }}</small>
+        </div>
+        <div class="d-flex flex-column">
+            <small>Modalities: {{ report.modalities|join:", " }}</small>
+            <small>Study Description: {{ report.study_description }}</small>
+        </div>
+    </div>
+    <div>
+        <small>Relevance: {{ report.relevance|floatformat:3 }}</small>
+    </div>
+</div>

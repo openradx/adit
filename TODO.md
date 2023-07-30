@@ -2,6 +2,8 @@
 
 ## High Priority
 
+- Get rid of jQuery (also ADIT)
+  -- Use ready function (see core.js) (also ADIT)
 - <https://docs.vespa.ai/en/operations/docker-containers.html#mounting-persistent-volumes>
 - Switch to Bootstrap 5 (RADIS + ADIT)
   -- Add theme toggler

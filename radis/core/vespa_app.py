@@ -4,7 +4,6 @@ from pathlib import Path
 
 from django.conf import settings
 from vespa.application import Vespa
-from vespa.io import VespaQueryResponse
 from vespa.package import (
     ApplicationPackage,
     Document,
@@ -14,6 +13,8 @@ from vespa.package import (
     Schema,
     Summary,
 )
+
+from .models import ReportDetail, ReportQueryResult
 
 
 def _create_report_schema():
@@ -185,11 +186,11 @@ class VespaApp:
 
     def query_reports(
         self, query: str, page_number: int = 1, page_size: int = 100
-    ) -> VespaQueryResponse:
+    ) -> ReportQueryResult:
         offset = (page_number - 1) * page_size
 
         client = self.get_client()
-        return client.query(
+        response = client.query(
             {
                 "yql": "select * from report where userQuery()",
                 "query": query,
@@ -198,6 +199,12 @@ class VespaApp:
                 "offset": offset,
             }
         )
+        return ReportQueryResult.from_response(response)
+
+    def get_report(self, doc_id: str) -> ReportDetail:
+        client = self.get_client()
+        response = client.get_data(schema="report", data_id=doc_id)
+        return ReportDetail.from_response(response.get_json())
 
 
 vespa_app = VespaApp()

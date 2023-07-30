@@ -26,6 +26,11 @@ caption {
     text-align: center;
 }
 
+/* Report text */
+.report-text {
+    white-space: pre-wrap;
+}
+
 /***
 * Alpine.js
 ***/

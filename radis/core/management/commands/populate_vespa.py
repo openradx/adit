@@ -6,7 +6,6 @@ from django.conf import settings
 from django.core.management.base import BaseCommand, CommandParser
 from faker import Faker
 
-from radis.api.serializers import ReportSerializer
 from radis.core.vespa_app import vespa_app
 
 fake = Faker()
@@ -22,6 +21,7 @@ modalities = ["CT", "MR", "PET", "CR", "US"]
 def feed_report(body: str):
     data_id = shortuuid.uuid()
     pacs = fake.random_element(elements=pacs_items)
+    references = [fake.uri() for _ in range(fake.random_int(min=0, max=3))]
 
     response = vespa_app.get_client().feed_data_point(
         schema="report",
@@ -40,7 +40,7 @@ def feed_report(body: str):
             "series_uid": fake.uuid4(),
             "modalities": [fake.random_element(elements=modalities)],
             "instance_uid": fake.uuid4(),
-            "references": [],
+            "references": references,
             "body": body,
         },
     )

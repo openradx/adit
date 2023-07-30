@@ -8,37 +8,40 @@
 {% endblock css %}
 {% block container %}
     <h4 class="mb-3">Search reports</h4>
-    {% crispy form %}
+    <div class="d-flex flex-column mb-3">
+        <form method="get">
+            <div class="input-group">
+                <input type="text"
+                       name="query"
+                       value="{{ query }}"
+                       maxlength="200"
+                       placeholder="Search"
+                       class="form-control" />
+                <button type="submit" class="btn btn-success">{% include "core/icons/search.svg" %}</button>
+            </div>
+        </form>
+        {% if query and total_count %}
+            <small class="ms-2">Ranked {{ total_count }} report{{ total_count|pluralize }}.</small>
+        {% endif %}
+    </div>
     <div>
-        {% for report in reports %}
-            <div class="card mb-3">
-                <div class="card-body">
-                    <div class="d-flex flex-column gap-1">
-                        <div class="report-text">{{ report.body|safe }}</div>
-                        <div class="d-flex justify-content-between">
-                            <div class="d-flex gap-1">
-                                <a href="{% url 'report_detail' report.doc_id %}"
-                                   class="btn btn-light btn-sm">
-                                    {% include "core/icons/goto.svg" %}
-                                    View
-                                </a>
-                                <a href="{% url 'report_detail' report.doc_id %}"
-                                   class="btn btn-light btn-sm">
-                                    {% include "core/icons/preview.svg" %}
-                                    Preview
-                                </a>
-                                <a href="{% url 'report_detail' report.doc_id %}"
-                                   class="btn btn-light btn-sm">
-                                    {% include "core/icons/add.svg" %}
-                                    Collection
-                                </a>
-                            </div>
-                            <div class="d-flex gap-1">refs</div>
+        {% if query %}
+            {% for report in reports %}
+                <div class="card mb-2">
+                    <div class="card-body">
+                        <div class="d-flex flex-column gap-1">
+                            {% include "search/_result_header.html" %}
+                            <div class="report-text">{{ report.body|safe }}</div>
+                            {% include "search/_result_buttons_panel.html" %}
                         </div>
                     </div>
                 </div>
-            </div>
-        {% endfor %}
+            {% empty %}
+                <div class="alert alert-light" role="alert">No results found</div>
+            {% endfor %}
+        {% else %}
+            <div class="alert alert-light" role="alert">TODO: Help</div>
+        {% endif %}
     </div>
     {% include "core/_pagination.html" %}
 {% endblock container %}
