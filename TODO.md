@@ -40,6 +40,7 @@
 
 ## Transfer to ADIT
 
+- Remove bootstrap-icons from package.json
 - Rename populate_dev_db to populate_db
 - .env files in project dir (instead of compose dir)
 - Correct help in populate_dev_db command
