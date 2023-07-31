@@ -2,6 +2,7 @@ import datetime
 from typing import Any, Dict
 
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
+from django.db import IntegrityError
 from django.views.generic import DeleteView, FormView
 from rest_framework.request import Request
 from rest_framework.response import Response
@@ -37,13 +38,13 @@ class TokenDashboardView(
         expires = None
         if expiry_time > 0:
             expires = datetime.datetime.now() + datetime.timedelta(hours=expiry_time)
-        if Token.objects.filter(owner=self.request.user, client=data["client"]).exists():
-            form.add_error("client", "The token client must be unique")
-            return super().form_invalid(form)
         try:
             _, token_string = Token.objects.create_token(
                 user=self.request.user, client=data["client"], expires=expires
             )
+        except IntegrityError:
+            form.add_error("client", "The token client must be unique")
+            return super().form_invalid(form)
         except Exception as err:
             form.add_error(None, str(err))
             return super().form_invalid(form)
