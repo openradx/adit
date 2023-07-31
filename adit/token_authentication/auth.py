@@ -72,4 +72,4 @@ class RestTokenAuthentication(BaseAuthentication):
         if token.is_expired():
             return "Invalid Token. Token is expired.", None, None
 
-        return "", token.author, token
+        return "", token.owner, token

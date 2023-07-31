@@ -53,7 +53,7 @@
                         <td>{{ token.expires|default_if_none:"Never" }}</td>
                         <td>{{ token.last_used|default_if_none:"Never" }}</td>
                         <td>
-                            <form action="{% url "delete_token" %}" method="post">
+                            <form action="{% url "delete_token" token.pk %}" method="post">
                                 {% csrf_token %}
                                 <input type="hidden" name="client" value="{{ token.client }}">
                                 <button type="submit"
@@ -71,9 +71,9 @@
     <!-- Form to generate new tokens -->
     <div style="margin-top: 40px;">
         <h5>Generate a new token</h5>
-        <form action={% url "generate_token" %} method="post">
+        <form action={% url "token_dashboard" %} method="post">
             {% csrf_token %}
-            {% crispy generate_token_form %}
+            {% crispy form %}
         </form>
     </div>
 {% endblock container %}

@@ -1,6 +1,6 @@
 from django.urls import path
 
-from .views import DeleteTokenView, GenerateTokenView, TestView, TokenDashboardView
+from .views import DeleteTokenView, TestView, TokenDashboardView
 
 urlpatterns = [
     path(
@@ -9,12 +9,7 @@ urlpatterns = [
         name="token_dashboard",
     ),
     path(
-        "generate-token",
-        GenerateTokenView.as_view(),
-        name="generate_token",
-    ),
-    path(
-        "delete-token",
+        "<int:pk>/delete-token",
         DeleteTokenView.as_view(),
         name="delete_token",
     ),

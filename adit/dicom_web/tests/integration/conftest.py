@@ -20,7 +20,7 @@ def authentication_token():
     user = UserFactory.create()
     token_authentication_group = Group.objects.get(name="token_authentication_group")
     user.groups.add(token_authentication_group)
-    TokenFactory.create(author=user)
+    TokenFactory.create(owner=user)
 
 
 @pytest.fixture

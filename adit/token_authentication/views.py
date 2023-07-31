@@ -1,14 +1,14 @@
 import datetime
 from typing import Any, Dict
 
-from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
-from django.http import HttpRequest
-from django.shortcuts import redirect, render
-from django.views.generic import FormView, View
+from django.db import IntegrityError
+from django.views.generic import DeleteView, FormView
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
+
+from adit.core.mixins import OwnerRequiredMixin
 
 from .forms import GenerateTokenForm
 from .models import Token
@@ -17,32 +17,15 @@ from .models import Token
 class TokenDashboardView(
     LoginRequiredMixin,
     PermissionRequiredMixin,
-    View,
-):
-    permission_required = "token_authentication.view_token"
-
-    def get(self, request: HttpRequest):
-        new_token = request.session.pop("new_token", None)
-        tokens = Token.objects.filter(author=request.user)
-
-        context = {
-            "new_token": new_token,
-            "tokens": tokens,
-            "generate_token_form": GenerateTokenForm(user=request.user),
-        }
-
-        return render(
-            request, template_name="token_authentication/token_dashboard.html", context=context
-        )
-
-
-class GenerateTokenView(
-    LoginRequiredMixin,
-    PermissionRequiredMixin,
     FormView,
 ):
-    permission_required = "token_authentication.add_token"
+    template_name = "token_authentication/token_dashboard.html"
     form_class = GenerateTokenForm
+    success_url = "/token-authentication/"
+    permission_required = (
+        "token_authentication.view_token",
+        "token_authentication.add_token",
+    )
 
     def get_form_kwargs(self) -> Dict[str, Any]:
         kwargs = super().get_form_kwargs()
@@ -55,36 +38,40 @@ class GenerateTokenView(
         expires = None
         if expiry_time > 0:
             expires = datetime.datetime.now() + datetime.timedelta(hours=expiry_time)
-        if Token.objects.filter(author=self.request.user, client=data["client"]).exists():
-            messages.error(self.request, "The token client must be unique.")
-            return redirect("token_dashboard")
         try:
             _, token_string = Token.objects.create_token(
                 user=self.request.user, client=data["client"], expires=expires
             )
+        except IntegrityError:
+            form.add_error("client", "The token client must be unique")
+            return super().form_invalid(form)
         except Exception as err:
-            messages.error(self.request, str(err))
-            return redirect("token_dashboard")
+            form.add_error(None, str(err))
+            return super().form_invalid(form)
 
         self.request.session["new_token"] = token_string
-        return redirect("token_dashboard")
+        return super().form_valid(form)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+
+        new_token = self.request.session.pop("new_token", None)
+        tokens = Token.objects.filter(owner=self.request.user)
+
+        context.update({"new_token": new_token, "tokens": tokens})
+
+        return context
 
 
 class DeleteTokenView(
     LoginRequiredMixin,
     PermissionRequiredMixin,
-    View,
+    OwnerRequiredMixin,
+    DeleteView,
 ):
     permission_required = "token_authentication.delete_token"
-
-    def post(self, request: HttpRequest):
-        data = request.POST
-        client = data["client"]
-        token = Token.objects.get(client=client)
-        client = token.client
-
-        token.delete()
-        return redirect("token_dashboard")
+    model = Token
+    success_url = "/token-authentication/"
 
 
 class TestView(APIView):
