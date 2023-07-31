@@ -29,9 +29,11 @@ class BatchQueryJobForm(forms.ModelForm):
             "project_name",
             "project_description",
             "batch_file",
+            "send_finished_mail",
         )
         labels = {
             "urgent": "Start query urgently",
+            "send_finished_mail": "Send Email when job is finished",
         }
         help_texts = {
             "urgent": ("Prioritize and start directly (without scheduling)."),

@@ -12,6 +12,7 @@ from .models import SelectiveTransferJob, SelectiveTransferTask
 SAVED_SOURCE_FIELD = "selective_transfer_source"
 SAVED_DESTINATION_FIELD = "selective_transfer_destination"
 SAVED_URGENT_FIELD = "selective_transfer_urgent"
+SAVED_SEND_FINISHED_MAIL_FIELD = "selective_transfer_send_finished_mail"
 
 
 class SelectiveTransferJobCreateMixin:
@@ -19,6 +20,7 @@ class SelectiveTransferJobCreateMixin:
         session[SAVED_SOURCE_FIELD] = form.instance.source.id
         session[SAVED_DESTINATION_FIELD] = form.instance.destination.id
         session[SAVED_URGENT_FIELD] = form.instance.urgent
+        session[SAVED_SEND_FINISHED_MAIL_FIELD] = form.instance.send_finished_mail
 
     def create_source_connector(self, form: SelectiveTransferJobForm) -> DicomConnector:
         return DicomConnector(form.instance.source.dicomserver)

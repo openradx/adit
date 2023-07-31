@@ -122,3 +122,4 @@
   -- <https://github.com/django/channels/blob/main/channels/testing/live.py#L21>
   -- <https://github.com/django/daphne/blob/main/daphne/testing.py#L123>
   -- <https://github.com/django/django/blob/main/django/test/testcases.py#L1810>
+- Maybe move label from from form to models using "verbose_name" and also the help_text

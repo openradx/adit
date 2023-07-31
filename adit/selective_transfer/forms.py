@@ -38,7 +38,7 @@ def advanced_options_layout():
         Div(
             Div(
                 StrictButton(
-                    "Advanced transfer options (optional)",
+                    "Advanced options (optional)",
                     css_class="btn-link px-0",
                     css_id="advanced_options_toggle",
                     **{
@@ -61,6 +61,9 @@ def advanced_options_layout():
                         "archive_password",
                         {":disabled": "!isDestinationFolder"},
                     ),
+                ),
+                Row(
+                    option_field("send_finished_mail"),
                 ),
                 css_class="show pt-1",
                 css_id="advanced_options",
@@ -132,6 +135,7 @@ class SelectiveTransferJobForm(forms.ModelForm):
             "trial_protocol_name",
             "pseudonym",
             "archive_password",
+            "send_finished_mail",
             "patient_id",
             "patient_name",
             "patient_birth_date",
@@ -143,6 +147,7 @@ class SelectiveTransferJobForm(forms.ModelForm):
             "urgent": "Start transfer directly",
             "trial_protocol_id": "Trial ID",
             "trial_protocol_name": "Trial name",
+            "send_finished_mail": "Send Email when job is finished",
         }
         help_texts = {
             "urgent": ("Start transfer directly (without scheduling) and prioritize it."),

@@ -222,7 +222,7 @@ class ProcessDicomTask(AbortableCeleryTask):
         """
         raise NotImplementedError("Subclasses must implement this method.")
 
-    def update_job_after_task(self, dicom_job: DicomJob, job_finished_mail: bool = True):
+    def update_job_after_task(self, dicom_job: DicomJob):
         """Evaluates all the tasks of a dicom job and sets the job status accordingly."""
 
         if dicom_job.status == DicomJob.Status.CANCELING:
@@ -264,5 +264,5 @@ class ProcessDicomTask(AbortableCeleryTask):
 
             logger.info("%s ended.", dicom_job)
 
-            if job_finished_mail:
+            if dicom_job.send_finished_mail:
                 send_job_finished_mail(dicom_job)

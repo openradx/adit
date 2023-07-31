@@ -1,3 +1,5 @@
+from typing import Any
+
 from django.conf import settings
 from django.urls import reverse_lazy
 from django.views.generic import TemplateView
@@ -21,6 +23,8 @@ from .forms import BatchTransferJobForm
 from .models import BatchTransferJob, BatchTransferSettings, BatchTransferTask
 from .tables import BatchTransferJobTable, BatchTransferTaskTable
 
+SAVED_SEND_FINISHED_MAIL_FIELD = "batch_transfer_send_finished_mail"
+
 
 class BatchTransferJobListView(TransferJobListView):
     model = BatchTransferJob
@@ -36,7 +40,18 @@ class BatchTransferJobCreateView(DicomJobCreateView):
     permission_required = "batch_transfer.add_batchtransferjob"
     object: BatchTransferJob
 
+    def get_initial(self) -> dict[str, Any]:
+        initial = super().get_initial()
+
+        saved_finished_mail = self.request.session.get(SAVED_SEND_FINISHED_MAIL_FIELD)
+        if saved_finished_mail is not None:
+            initial["send_finished_mail"] = saved_finished_mail
+
+        return initial
+
     def form_valid(self, form):
+        self.request.session[SAVED_SEND_FINISHED_MAIL_FIELD] = form.instance.send_finished_mail
+
         user = self.request.user
         if not is_logged_in_user(user):
             raise AssertionError("User is not logged in.")

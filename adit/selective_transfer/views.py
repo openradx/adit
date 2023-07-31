@@ -21,6 +21,7 @@ from .filters import SelectiveTransferJobFilter, SelectiveTransferTaskFilter
 from .forms import SelectiveTransferJobForm
 from .mixins import (
     SAVED_DESTINATION_FIELD,
+    SAVED_SEND_FINISHED_MAIL_FIELD,
     SAVED_SOURCE_FIELD,
     SAVED_URGENT_FIELD,
     SelectiveTransferJobCreateMixin,
@@ -61,7 +62,7 @@ class SelectiveTransferJobCreateView(
     def get_initial(self):
         initial = super().get_initial()
 
-        # Restore source, destination and urgency from last submit
+        # Restore some fields from last submit
 
         saved_source = self.request.session.get(SAVED_SOURCE_FIELD)
         if saved_source is not None:
@@ -74,6 +75,10 @@ class SelectiveTransferJobCreateView(
         urgent = self.request.session.get(SAVED_URGENT_FIELD)
         if urgent is not None:
             initial.update({"urgent": urgent})
+
+        send_finished_mail = self.request.session.get(SAVED_SEND_FINISHED_MAIL_FIELD)
+        if send_finished_mail is not None:
+            initial.update({"send_finished_mail": send_finished_mail})
 
         return initial
 
