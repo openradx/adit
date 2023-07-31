@@ -3,8 +3,10 @@ from datetime import datetime
 from django.conf import settings
 from django.contrib.sessions.backends.base import SessionBase
 
+from adit.accounts.models import User
 from adit.core.utils.dicom_connector import DicomConnector
 
+from .forms import SelectiveTransferJobForm
 from .models import SelectiveTransferJob, SelectiveTransferTask
 
 SAVED_SOURCE_FIELD = "selective_transfer_source"
@@ -18,10 +20,12 @@ class SelectiveTransferJobCreateMixin:
         session[SAVED_DESTINATION_FIELD] = form.instance.destination.id
         session[SAVED_URGENT_FIELD] = form.instance.urgent
 
-    def create_source_connector(self, form):
+    def create_source_connector(self, form: SelectiveTransferJobForm) -> DicomConnector:
         return DicomConnector(form.instance.source.dicomserver)
 
-    def query_studies(self, connector, form, limit_results):
+    def query_studies(
+        self, connector: DicomConnector, form: SelectiveTransferJobForm, limit_results: int
+    ) -> list[dict]:
         data = form.cleaned_data
 
         if data["modality"] in settings.EXCLUDED_MODALITIES:
@@ -63,7 +67,9 @@ class SelectiveTransferJobCreateMixin:
 
         return studies
 
-    def transfer_selected_studies(self, user, form, selected_studies):
+    def transfer_selected_studies(
+        self, user: User, form: SelectiveTransferJobForm, selected_studies: list[str]
+    ) -> SelectiveTransferJob:
         if not selected_studies:
             raise ValueError("At least one study to transfer must be selected.")
         if len(selected_studies) > 10 and not user.is_staff:

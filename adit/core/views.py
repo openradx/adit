@@ -33,6 +33,7 @@ from .mixins import OwnerRequiredMixin, PageSizeSelectMixin, RelatedFilterMixin
 from .models import CoreSettings, DicomJob, DicomTask
 from .site import job_stats_collectors
 from .tasks import broadcast_mail
+from .types import AuthenticatedHttpRequest
 
 
 @staff_member_required
@@ -138,6 +139,7 @@ class DicomJobCreateView(
     form_class: type[ModelForm]
     template_name: str
     permission_required: str
+    request: AuthenticatedHttpRequest
 
     def get_form_kwargs(self) -> dict[str, Any]:
         kwargs = super().get_form_kwargs()
