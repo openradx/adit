@@ -71,9 +71,9 @@
     <!-- Form to generate new tokens -->
     <div style="margin-top: 40px;">
         <h5>Generate a new token</h5>
-        <form action={% url "generate_token" %} method="post">
+        <form action={% url "token_dashboard" %} method="post">
             {% csrf_token %}
-            {% crispy generate_token_form %}
+            {% crispy form %}
         </form>
     </div>
 {% endblock container %}
