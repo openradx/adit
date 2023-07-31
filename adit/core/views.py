@@ -25,8 +25,6 @@ from django_tables2 import SingleTableMixin
 from django_tables2.tables import Table
 from revproxy.views import ProxyView
 
-from adit.core.utils.permission_utils import is_logged_in_user
-
 from ..celery import app as celery_app
 from .forms import BroadcastForm
 from .mixins import OwnerRequiredMixin, PageSizeSelectMixin, RelatedFilterMixin
@@ -56,17 +54,14 @@ def admin_section(request):
     )
 
 
-class BroadcastView(UserPassesTestMixin, FormView):
+class BroadcastView(LoginRequiredMixin, UserPassesTestMixin, FormView):
     template_name = "core/broadcast.html"
     form_class = BroadcastForm
     success_url = reverse_lazy("broadcast")
+    request: AuthenticatedHttpRequest
 
     def test_func(self):
-        user = self.request.user
-        if is_logged_in_user(user):
-            return user.is_staff
-
-        return False
+        return self.request.user.is_staff
 
     def form_valid(self, form):
         subject = form.cleaned_data["subject"]
@@ -99,13 +94,10 @@ class DicomJobListView(LoginRequiredMixin, SingleTableMixin, PageSizeSelectMixin
     table_class: type[Table]
     filterset_class: type[FilterSet]
     template_name: str
+    request: AuthenticatedHttpRequest
 
     def get_queryset(self) -> QuerySet:
-        user = self.request.user
-        if not is_logged_in_user(user):
-            raise AssertionError("User is not logged in.")
-
-        if user.is_staff and self.request.GET.get("all"):
+        if self.request.user.is_staff and self.request.GET.get("all"):
             queryset = self.model.objects.all()
         else:
             queryset = self.model.objects.filter(owner=self.request.user)
@@ -115,11 +107,7 @@ class DicomJobListView(LoginRequiredMixin, SingleTableMixin, PageSizeSelectMixin
     def get_table_kwargs(self):
         kwargs = super().get_table_kwargs()
 
-        user = self.request.user
-        if not is_logged_in_user(user):
-            raise AssertionError("User is not logged in.")
-
-        if not (user.is_staff and self.request.GET.get("all")):
+        if not (self.request.user.is_staff and self.request.GET.get("all")):
             kwargs["exclude"] = ("owner",)
 
         return kwargs
@@ -342,7 +330,7 @@ class DicomTaskDetailView(LoginRequiredMixin, OwnerRequiredMixin, DetailView):
         return context
 
 
-class AdminProxyView(UserPassesTestMixin, ProxyView):
+class AdminProxyView(LoginRequiredMixin, UserPassesTestMixin, ProxyView):
     """A reverse proxy view to hide other services behind that only an admin can access.
 
     By using a reverse proxy we can use the Django authentication
@@ -350,12 +338,10 @@ class AdminProxyView(UserPassesTestMixin, ProxyView):
     Code from https://stackoverflow.com/a/61997024/166229
     """
 
-    def test_func(self):
-        user = self.request.user
-        if is_logged_in_user(user):
-            return user.is_staff
+    request: AuthenticatedHttpRequest
 
-        return False
+    def test_func(self):
+        return self.request.user.is_staff
 
     @classmethod
     def as_url(cls):

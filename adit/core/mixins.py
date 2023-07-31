@@ -7,7 +7,7 @@ from django.views.generic import DetailView, ListView
 from django_filters.views import FilterMixin
 
 from adit.core.forms import PageSizeSelectForm
-from adit.core.utils.permission_utils import is_staff_user, is_superuser
+from adit.core.types import AuthenticatedHttpRequest
 from adit.core.utils.type_utils import with_type_hint
 
 
@@ -27,19 +27,23 @@ class OwnerRequiredMixin(AccessMixin, with_type_hint(DetailView)):
     allow_staff_access = True
     owner_accessor = "owner"
 
-    def dispatch(self, request, *args, **kwargs):
+    def dispatch(self, request: AuthenticatedHttpRequest, *args, **kwargs):
         obj = self.get_object()
+
+        user = request.user
+        if not user.is_authenticated:
+            raise AssertionError("The user must be authenticated to check if he is the owner.")
 
         check_owner = True
         if (
             self.allow_superuser_access
-            and is_superuser(request.user)
+            and user.is_superuser
             or self.allow_staff_access
-            and is_staff_user(request.user)
+            and user.is_staff
         ):
             check_owner = False
 
-        if check_owner and request.user != deepgetattr(obj, self.owner_accessor):
+        if check_owner and user != deepgetattr(obj, self.owner_accessor):
             return self.handle_no_permission()
 
         return super().dispatch(request, *args, **kwargs)

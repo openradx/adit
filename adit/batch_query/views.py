@@ -11,7 +11,6 @@ from django.views.generic.detail import SingleObjectMixin
 from django_tables2 import SingleTableMixin
 
 from adit.core.mixins import OwnerRequiredMixin, PageSizeSelectMixin, RelatedFilterMixin
-from adit.core.utils.permission_utils import is_logged_in_user
 from adit.core.views import (
     DicomJobCancelView,
     DicomJobCreateView,
@@ -61,9 +60,6 @@ class BatchQueryJobCreateView(DicomJobCreateView):
         self.request.session[SAVED_SEND_FINISHED_MAIL_FIELD] = form.instance.send_finished_mail
 
         user = self.request.user
-        if not is_logged_in_user(user):
-            raise AssertionError("User is not logged in.")
-
         form.instance.owner = user
         response = super().form_valid(form)
 

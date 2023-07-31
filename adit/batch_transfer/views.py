@@ -4,7 +4,6 @@ from django.conf import settings
 from django.urls import reverse_lazy
 from django.views.generic import TemplateView
 
-from adit.core.utils.permission_utils import is_logged_in_user, is_staff_user
 from adit.core.views import (
     DicomJobCancelView,
     DicomJobCreateView,
@@ -53,9 +52,6 @@ class BatchTransferJobCreateView(DicomJobCreateView):
         self.request.session[SAVED_SEND_FINISHED_MAIL_FIELD] = form.instance.send_finished_mail
 
         user = self.request.user
-        if not is_logged_in_user(user):
-            raise AssertionError("User is not logged in.")
-
         form.instance.owner = user
         response = super().form_valid(form)
 
@@ -78,8 +74,7 @@ class BatchTransferJobCreateView(DicomJobCreateView):
         batch_transfer_settings = BatchTransferSettings.get()
         assert batch_transfer_settings
 
-        user = request.user
-        if batch_transfer_settings.locked and not is_staff_user(user):
+        if batch_transfer_settings.locked and not self.request.user.is_staff:
             return TemplateView.as_view(template_name="batch_transfer/batch_transfer_locked.html")(
                 request
             )
