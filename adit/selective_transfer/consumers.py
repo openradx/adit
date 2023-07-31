@@ -4,6 +4,7 @@ import logging
 import threading
 from concurrent.futures import ThreadPoolExecutor
 
+from asgiref.sync import sync_to_async
 from channels.db import database_sync_to_async
 from channels.generic.websocket import AsyncJsonWebsocketConsumer
 from crispy_forms.utils import render_crispy_form
@@ -52,6 +53,7 @@ class SelectiveTransferConsumer(SelectiveTransferJobCreateMixin, AsyncJsonWebsoc
         logger.debug("Connected to WebSocket client.")
 
         self.user = self.scope["user"]
+        self.session = self.scope["session"]
         self.query_connectors = []
         self.current_message_id = 0
         self.pool = ThreadPoolExecutor()
@@ -90,6 +92,12 @@ class SelectiveTransferConsumer(SelectiveTransferJobCreateMixin, AsyncJsonWebsoc
             action=action,
         )
         form_valid = await database_sync_to_async(form.is_valid)()
+
+        if form_valid:
+            self.save_initial_form_data(self.session, form)
+            # Sessions must be explicitly saved in an Channels consumer
+            # https://channels.readthedocs.io/en/stable/topics/sessions.html#session-persistence
+            await sync_to_async(self.session.save)()
 
         if action == "query":
             if form_valid:

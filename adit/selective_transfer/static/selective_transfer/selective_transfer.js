@@ -1,10 +1,7 @@
 function selectiveTransferForm() {
   const config = getAditConfig();
   const STORAGE_KEY = "selectiveTransferForm-" + config.user_id;
-  const SOURCE_KEY = "source";
-  const DESTINATION_KEY = "destination";
   const ADVANCED_OPTIONS_COLLAPSED_KEY = "advancedOptionsCollapsed";
-  const URGENT_KEY = "urgent";
 
   function loadState() {
     let state = {};
@@ -49,53 +46,6 @@ function selectiveTransferForm() {
           advancedOptionsEl.collapse("hide");
         else advancedOptionsEl.collapse("show");
       }
-
-      function setSelectedOption(selectEl, value) {
-        const optionEls = selectEl.options;
-        let valueToSet = "";
-        for (let i = 0, len = optionEls.length; i < len; i++) {
-          if (i == 0) valueToSet = optionEls[i].value;
-          if (optionEls[i].value === value) valueToSet = value;
-        }
-        selectEl.value = valueToSet;
-      }
-
-      if (SOURCE_KEY in state) {
-        const sourceEl = this.formEl.querySelector("[name=source]");
-        setSelectedOption(sourceEl, state[SOURCE_KEY]);
-      }
-
-      if (DESTINATION_KEY in state) {
-        const destinationEl = this.formEl.querySelector("[name=destination]");
-        setSelectedOption(destinationEl, state[DESTINATION_KEY]);
-        this._checkDestination(destinationEl);
-      }
-
-      if (URGENT_KEY in state) {
-        const urgentEl = this.formEl.querySelector("[name=urgent]");
-        if (urgentEl) urgentEl.checked = state[URGENT_KEY];
-      }
-    },
-    _reset: function () {
-      const buttonEl = this.formEl.querySelector("[value=reset]");
-      buttonEl.click();
-    },
-    onDicomNodeChanged: function (event) {
-      const name = event.currentTarget.name;
-      const value = event.currentTarget.value;
-      updateState(name, value);
-
-      if (name === "source") this._reset();
-      if (name === "destination") this._checkDestination(event.currentTarget);
-    },
-    _checkDestination(selectEl) {
-      const option = selectEl.options[selectEl.selectedIndex];
-      this.isDestinationFolder = option.dataset.node_type === "folder";
-    },
-    onUrgencyChanged: function (event) {
-      const name = event.currentTarget.name;
-      const value = event.currentTarget.checked;
-      updateState(name, value);
     },
     onStartTransfer: function (event) {
       const formEl = this.formEl;

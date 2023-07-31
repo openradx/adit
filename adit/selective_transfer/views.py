@@ -19,7 +19,12 @@ from adit.core.views import (
 
 from .filters import SelectiveTransferJobFilter, SelectiveTransferTaskFilter
 from .forms import SelectiveTransferJobForm
-from .mixins import SelectiveTransferJobCreateMixin
+from .mixins import (
+    SAVED_DESTINATION_FIELD,
+    SAVED_SOURCE_FIELD,
+    SAVED_URGENT_FIELD,
+    SelectiveTransferJobCreateMixin,
+)
 from .models import SelectiveTransferJob, SelectiveTransferTask
 from .tables import SelectiveTransferJobTable, SelectiveTransferTaskTable
 
@@ -53,13 +58,34 @@ class SelectiveTransferJobCreateView(
 
         return kwargs
 
+    def get_initial(self):
+        initial = super().get_initial()
+
+        # Restore source, destination and urgency from last submit
+
+        saved_source = self.request.session.get(SAVED_SOURCE_FIELD)
+        if saved_source is not None:
+            initial.update({"source": saved_source})
+
+        saved_destination = self.request.session.get(SAVED_DESTINATION_FIELD)
+        if saved_destination is not None:
+            initial.update({"destination": saved_destination})
+
+        urgent = self.request.session.get(SAVED_URGENT_FIELD)
+        if urgent is not None:
+            initial.update({"urgent": urgent})
+
+        return initial
+
     def form_invalid(self, form):
         error_message = "Please correct the form errors and search again."
         return self.render_to_response(
             self.get_context_data(form=form, error_message=error_message)
         )
 
-    def form_valid(self, form):
+    def form_valid(self, form: SelectiveTransferJobForm):
+        self.save_initial_form_data(self.request.session, form)
+
         action = self.request.POST.get("action")
 
         if action == "query":

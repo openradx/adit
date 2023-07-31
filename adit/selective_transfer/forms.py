@@ -17,11 +17,7 @@ from .models import SelectiveTransferJob
 
 def dicom_node_field(field_name):
     return Column(
-        Field(
-            field_name,
-            css_class="custom-select",
-            **{"@change": "onDicomNodeChanged"},
-        )
+        Field(field_name, css_class="custom-select"),
     )
 
 
@@ -106,12 +102,7 @@ def query_form_layout():
 
 def urgency_field():
     return Row(
-        Column(
-            Field(
-                "urgent",
-                **{"@change": "onUrgencyChanged"},
-            ),
-        ),
+        Column(Field("urgent")),
         css_class="pl-1",
     )
 
