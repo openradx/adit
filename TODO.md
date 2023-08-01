@@ -5,6 +5,7 @@
 - Make job urgent (as staff member)
 - Bootstrap 5 Upgrade
 - Selective transfer choose series
+- Locked info for other apps like batch_transfer_locked.html
 - Hint when app is locked for admin user
 
 ## High Priority
