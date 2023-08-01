@@ -27,10 +27,10 @@ function selectiveTransferForm() {
       this.formEl = formEl;
 
       const advancedOptionsEl = this.formEl.querySelector("#advanced_options");
-      advancedOptionsEl.addEventListener("hide.bs.collapse", function () {
+      $(advancedOptionsEl).on("hide.bs.collapse", function () {
         updateState(ADVANCED_OPTIONS_COLLAPSED_KEY, true);
       });
-      advancedOptionsEl.addEventListener("show.bs.collapse", function () {
+      $(advancedOptionsEl).on("show.bs.collapse", function () {
         updateState(ADVANCED_OPTIONS_COLLAPSED_KEY, false);
       });
 
@@ -43,8 +43,8 @@ function selectiveTransferForm() {
         const advancedOptionsEl =
           this.formEl.querySelector("#advanced_options");
         if (state[ADVANCED_OPTIONS_COLLAPSED_KEY])
-          advancedOptionsEl.collapse("hide");
-        else advancedOptionsEl.collapse("show");
+          $(advancedOptionsEl).collapse("hide");
+        else $(advancedOptionsEl).collapse("show");
       }
     },
     onStartTransfer: function (event) {

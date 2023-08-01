@@ -5,6 +5,8 @@
 - Make job urgent (as staff member)
 - Bootstrap 5 Upgrade
 - Selective transfer choose series
+- Hint when app is locked for admin user
+- Save initial form fields with HTMX
 
 ## High Priority
 
