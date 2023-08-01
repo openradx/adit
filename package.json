@@ -15,7 +15,6 @@
   "dependencies": {
     "alpinejs": "^2.8.2",
     "bootstrap": "^4.6.1",
-    "bootstrap-icons": "^1.8.1",
     "bootswatch": "^4.6.1",
     "htmx.org": "^1.8.6",
     "jquery": "^3.6.0",
