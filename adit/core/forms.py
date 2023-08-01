@@ -17,6 +17,8 @@ class DicomNodeSelect(Select):
     def create_option(self, name, value, label, selected, index, subindex=None, attrs=None):
         option = super().create_option(name, value, label, selected, index, subindex, attrs)
         if hasattr(value, "instance"):
+            # TODO: Remove, not needed anymore as it was used for setting initial
+            # values using JavaScript
             dicom_node = value.instance
             if dicom_node.node_type == DicomNode.NodeType.SERVER:
                 option["attrs"]["data-node_type"] = "server"
@@ -61,7 +63,7 @@ class PageSizeSelectForm(forms.Form):
 
 class SingleFilterFormHelper(FormHelper):
     form_class = "form-inline"
-    label_class = "mr-1"
+    label_class = "me-1"
 
     def __init__(self, data, field_name, select_widget=True, custom_style="", **kwargs):
         button_label = kwargs.pop("button_label", "Filter")
@@ -76,7 +78,7 @@ class SingleFilterFormHelper(FormHelper):
         layout = Layout()
 
         if select_widget:
-            css_class = "custom-select custom-select-sm"
+            css_class = "form-select form-select-sm"
         else:
             css_class = "form-control-sm"
 
@@ -108,7 +110,7 @@ class SingleFilterFormHelper(FormHelper):
 
 class MultiInlineFilterFormHelper(FormHelper):
     form_class = "form-inline"
-    label_class = "mr-1"
+    label_class = "me-1"
 
     def __init__(self, data, field_names, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -118,7 +120,7 @@ class MultiInlineFilterFormHelper(FormHelper):
         layout = Layout()
 
         for idx, field_name in enumerate(field_names):
-            wrapper_class = "ml-2" if idx > 0 else ""
+            wrapper_class = "ms-2" if idx > 0 else ""
             layout.append(
                 Field(
                     field_name,
@@ -135,7 +137,7 @@ class MultiInlineFilterFormHelper(FormHelper):
             Submit(
                 "",
                 "Filter",
-                css_class="btn-secondary btn-sm ml-1",
+                css_class="btn-secondary btn-sm ms-1",
                 css_id="filter",
             )
         )

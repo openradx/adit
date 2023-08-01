@@ -55,7 +55,7 @@ class BatchQueryJobForm(forms.ModelForm):
 
         super().__init__(*args, **kwargs)
 
-        self.fields["source"].widget.attrs["class"] = "custom-select"
+        self.fields["source"].widget.attrs["class"] = "form-select"
 
         if not user.has_perm("batch_query.can_process_urgently"):
             del self.fields["urgent"]
@@ -91,7 +91,7 @@ class BatchQueryJobForm(forms.ModelForm):
             raise ValidationError(
                 mark_safe(
                     "Invalid batch file. "
-                    '<a href="#" data-toggle="modal" data-target="#batch_file_errors_modal">'
+                    '<a href="#" data-bs-toggle="modal" data-bs-target="#batch_file_errors_modal">'
                     "[View details]"
                     "</a>"
                 )

@@ -249,6 +249,8 @@ def copy_statics(ctx: Context):
     print("Copying statics...")
 
     copy("node_modules/jquery/dist/jquery.js", "adit/static/vendor/")
+    for file in glob("node_modules/@popperjs/core/dist/umd/popper.js*"):
+        copy(file, "adit/static/vendor/")
     for file in glob("node_modules/bootstrap/dist/css/bootstrap.css*"):
         copy(file, "adit/static/vendor/")
     for file in glob("node_modules/bootstrap/dist/js/bootstrap.bundle.js*"):

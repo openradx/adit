@@ -1,6 +1,6 @@
 $(function () {
   // Enable Bootstrap tooltips everywhere
-  $('[data-toggle="tooltip"]').tooltip();
+  $('[data-bs-toggle="tooltip"]').tooltip();
 
   // Enable toasts everywhere.
   $(".toast").toast();

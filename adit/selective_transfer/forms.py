@@ -17,7 +17,7 @@ from .models import SelectiveTransferJob
 
 def dicom_node_field(field_name):
     return Column(
-        Field(field_name, css_class="custom-select"),
+        Field(field_name, css_class="form-select"),
     )
 
 
@@ -42,8 +42,8 @@ def advanced_options_layout():
                     css_class="btn-link px-0",
                     css_id="advanced_options_toggle",
                     **{
-                        "data-toggle": "collapse",
-                        "data-target": "#advanced_options",
+                        "data-bs-toggle": "collapse",
+                        "data-bs-target": "#advanced_options",
                         "aria-expanded": "true",
                         "aria-controls": "advanced_options",
                     },

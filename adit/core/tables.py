@@ -24,7 +24,6 @@ class DicomJobTable(tables.Table):
     class Meta:
         model = None
         order_by = ("-id",)
-        template_name = "django_tables2/bootstrap4.html"
         # owner is dynamically excluded for non staff users (see tables.py)
         fields = ("id", "status", "source", "created", "owner")
         empty_text = "No jobs to show"
@@ -51,7 +50,6 @@ class DicomTaskTable(tables.Table):
     class Meta:
         model = None
         order_by = ("task_id",)
-        template_name = "django_tables2/bootstrap4.html"
         fields = ("task_id", "status", "message", "end")
         empty_text = "No tasks to show"
         attrs = {"class": "table table-bordered table-hover"}

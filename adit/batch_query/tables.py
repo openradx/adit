@@ -25,7 +25,6 @@ class BatchQueryResultTable(tables.Table):
 
     class Meta:
         model = BatchQueryResult
-        template_name = "django_tables2/bootstrap4.html"
         empty_text = "No results to show"
         fields = (
             "task_id",

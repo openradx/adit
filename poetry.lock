@@ -711,19 +711,22 @@ files = [
 toml = ["tomli"]
 
 [[package]]
-name = "crispy-bootstrap4"
-version = "2022.1"
-description = "Bootstrap4 template pack for django-crispy-forms"
+name = "crispy-bootstrap5"
+version = "0.7"
+description = "Bootstrap5 template pack for django-crispy-forms"
 optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "crispy-bootstrap4-2022.1.tar.gz", hash = "sha256:f18386c4d96180c1bb1212487d6e8f5a3dd1a9bb58d3032183973d4d130b55f9"},
-    {file = "crispy_bootstrap4-2022.1-py3-none-any.whl", hash = "sha256:5241ab1dc2188c95560aa786439bcbedec7416e6b0f5a52dded82380810367ec"},
+    {file = "crispy-bootstrap5-0.7.tar.gz", hash = "sha256:0745a67199619149b7feca87dab7a45664876ed50fb582b38fd2aeb3f8a8d869"},
+    {file = "crispy_bootstrap5-0.7-py3-none-any.whl", hash = "sha256:f3ff1ef5cb379fe80b1b02e245008f276444098a4bdb8d855bed84c623798a85"},
 ]
 
 [package.dependencies]
 django = ">=3.2"
-django-crispy-forms = ">=1.14.0"
+django-crispy-forms = ">=1.13.0"
+
+[package.extras]
+test = ["pytest", "pytest-django"]
 
 [[package]]
 name = "cryptography"
@@ -3442,4 +3445,4 @@ testing = ["coverage (>=5.0.3)", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "f0017a42701623e8956738831c49bc48c65edc63a25728eaa812d4478f1437ae"
+content-hash = "b9d768876332aa76619d23d0ce813ac89efb9bec9d0cadd3ea35a80b1b6ab9ed"

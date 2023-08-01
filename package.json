@@ -13,9 +13,10 @@
   },
   "homepage": "https://github.com/medihack/adit#readme",
   "dependencies": {
+    "@popperjs/core": "^2.11.8",
     "alpinejs": "^2.8.2",
-    "bootstrap": "^4.6.1",
-    "bootswatch": "^4.6.1",
+    "bootstrap": "^5.3.1",
+    "bootswatch": "^5.3.1",
     "htmx.org": "^1.8.6",
     "jquery": "^3.6.0",
     "morphdom": "^2.6.1"

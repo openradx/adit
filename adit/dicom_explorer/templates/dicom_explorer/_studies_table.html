@@ -26,8 +26,8 @@
                     {% explorer_url server.id patient.PatientID study.StudyInstanceUID as study_url %}
                     <a href="{{ study_url }}"
                        title="{{ study.StudyInstanceUID }}"
-                       data-toggle="tooltip"
-                       data-placement="left">{% include "core/icons/goto.svg" %}</a>
+                       data-bs-toggle="tooltip"
+                       data-bs-placement="left">{% include "core/icons/goto.svg" %}</a>
                 </td>
             </tr>
         {% endfor %}

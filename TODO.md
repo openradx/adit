@@ -131,3 +131,8 @@
   -- <https://github.com/django/django/blob/main/django/test/testcases.py#L1810>
 - Maybe move label from from form to models using "verbose_name" and also the help_text
 - Save specific form fields for later use with HTMX, currently we only save them in the post handler when the form is valid.
+
+## RADIS
+
+- Get rid of jQuery in ADIT and RADIS
+- Get rid of Jumbotron
