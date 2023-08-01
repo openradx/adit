@@ -23,15 +23,15 @@ def job_control_panel(context):
 def task_status_badge_class(status):
     css_class = ""
     if status == TransferTask.Status.PENDING:
-        css_class = "badge-secondary"
+        css_class = "text-bg-secondary"
     elif status == TransferTask.Status.IN_PROGRESS:
-        css_class = "badge-info"
+        css_class = "text-bg-info"
     elif status == TransferTask.Status.CANCELED:
-        css_class = "badge-dark"
+        css_class = "text-bg-dark"
     elif status == TransferTask.Status.SUCCESS:
-        css_class = "badge-success"
+        css_class = "text-bg-success"
     elif status == TransferTask.Status.WARNING:
-        css_class = "badge-warning"
+        css_class = "text-bg-warning"
     elif status == TransferTask.Status.FAILURE:
-        css_class = "badge-danger"
+        css_class = "text-bg-danger"
     return css_class
