@@ -1,5 +1,4 @@
 import logging
-from typing import Tuple
 
 from django.utils import timezone
 from rest_framework.authentication import BaseAuthentication
@@ -47,7 +46,7 @@ class RestTokenAuthentication(BaseAuthentication):
 
         return (user, token)
 
-    def verify_token(self, token_string: str) -> Tuple[str, User | None, Token | None]:
+    def verify_token(self, token_string: str) -> tuple[str, User | None, Token | None]:
         """
         This method verifies the token string by checking if the token
         exists in the database and if the token is not expired.

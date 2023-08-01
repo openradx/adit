@@ -1,6 +1,6 @@
 import logging
 from datetime import datetime
-from typing import Any, Dict
+from typing import Any
 
 from adrf.views import sync_to_async
 from pydicom import Dataset, datadict, valuerep
@@ -32,7 +32,7 @@ async def qido_find(source_server: DicomServer, query: dict, level: str):
     return results
 
 
-def convert_datetime_strings(query: Dict[str, Any]) -> Dict[str, Any]:
+def convert_datetime_strings(query: dict[str, Any]) -> dict[str, Any]:
     """Converts all datetime strings in a query to datetime objects."""
     for k, v in query.items():
         if not v:

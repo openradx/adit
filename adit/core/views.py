@@ -11,7 +11,8 @@ from django.contrib.auth.mixins import (
 from django.core.exceptions import SuspiciousOperation
 from django.db.models import Model
 from django.db.models.query import QuerySet
-from django.forms import ModelForm
+from django.forms import Form, ModelForm
+from django.http import HttpRequest, HttpResponse
 from django.http.response import Http404
 from django.shortcuts import redirect, render
 from django.urls import re_path, reverse_lazy
@@ -35,13 +36,13 @@ from .types import AuthenticatedHttpRequest
 
 
 @staff_member_required
-def sandbox(request):
+def sandbox(request: HttpRequest) -> HttpResponse:
     messages.add_message(request, messages.SUCCESS, "This message is server generated!")
     return render(request, "core/sandbox.html", {})
 
 
 @staff_member_required
-def admin_section(request):
+def admin_section(request: HttpRequest) -> HttpResponse:
     status_list = DicomJob.Status.choices
     job_stats = [collector() for collector in job_stats_collectors]
     return render(
@@ -60,10 +61,10 @@ class BroadcastView(LoginRequiredMixin, UserPassesTestMixin, FormView):
     success_url = reverse_lazy("broadcast")
     request: AuthenticatedHttpRequest
 
-    def test_func(self):
+    def test_func(self) -> bool:
         return self.request.user.is_staff
 
-    def form_valid(self, form):
+    def form_valid(self, form: Form) -> HttpResponse:
         subject = form.cleaned_data["subject"]
         message = form.cleaned_data["message"]
 
@@ -81,7 +82,7 @@ class BroadcastView(LoginRequiredMixin, UserPassesTestMixin, FormView):
 class HomeView(TemplateView):
     template_name = "core/home.html"
 
-    def get_context_data(self, **kwargs: Any) -> dict[str, Any]:
+    def get_context_data(self, **kwargs) -> dict[str, Any]:
         context = super().get_context_data(**kwargs)
         core_settings = CoreSettings.get()
         assert core_settings
@@ -104,7 +105,7 @@ class DicomJobListView(LoginRequiredMixin, SingleTableMixin, PageSizeSelectMixin
 
         return queryset.select_related("source")
 
-    def get_table_kwargs(self):
+    def get_table_kwargs(self) -> dict[str, Any]:
         kwargs = super().get_table_kwargs()
 
         if not (self.request.user.is_staff and self.request.GET.get("all")):
@@ -149,7 +150,7 @@ class DicomJobDetailView(
     context_object_name: str
     template_name: str
 
-    def get_filter_queryset(self):
+    def get_filter_queryset(self) -> QuerySet:
         job = cast(DicomJob, self.get_object())
         return job.tasks
 
@@ -159,7 +160,7 @@ class DicomJobDeleteView(LoginRequiredMixin, OwnerRequiredMixin, DeleteView):
     success_url: str
     success_message = "Job with ID %(id)d was deleted successfully"
 
-    def delete(self, request, *args, **kwargs):
+    def delete(self, request, *args, **kwargs) -> HttpResponse:
         job = cast(DicomJob, self.get_object())
         if not job.is_deletable:
             raise SuspiciousOperation(
@@ -180,7 +181,7 @@ class DicomJobVerifyView(LoginRequiredMixin, OwnerRequiredMixin, SingleObjectMix
     model: type[DicomJob]
     success_message = "Job with ID %(id)d was verified"
 
-    def post(self, request, *args, **kwargs):
+    def post(self, request: AuthenticatedHttpRequest, *args, **kwargs) -> HttpResponse:
         job = cast(DicomJob, self.get_object())
         if job.is_verified:
             raise SuspiciousOperation(
@@ -200,7 +201,7 @@ class DicomJobCancelView(LoginRequiredMixin, OwnerRequiredMixin, SingleObjectMix
     model: type[DicomJob]
     success_message = "Job with ID %(id)d was canceled"
 
-    def post(self, request, *args, **kwargs):
+    def post(self, request: AuthenticatedHttpRequest, *args, **kwargs) -> HttpResponse:
         job = cast(DicomJob, self.get_object())
         if not job.is_cancelable:
             raise SuspiciousOperation(
@@ -232,7 +233,7 @@ class DicomJobResumeView(LoginRequiredMixin, OwnerRequiredMixin, SingleObjectMix
     model: type[DicomJob]
     success_message = "Job with ID %(id)d will be resumed"
 
-    def post(self, request, *args, **kwargs):
+    def post(self, request: AuthenticatedHttpRequest, *args, **kwargs) -> HttpResponse:
         job = cast(DicomJob, self.get_object())
         if not job.is_resumable:
             raise SuspiciousOperation(
@@ -254,7 +255,7 @@ class DicomJobRetryView(LoginRequiredMixin, OwnerRequiredMixin, SingleObjectMixi
     model: type[DicomJob]
     success_message = "Job with ID %(id)d will be retried"
 
-    def post(self, request, *args, **kwargs):
+    def post(self, request: AuthenticatedHttpRequest, *args, **kwargs) -> HttpResponse:
         job = cast(DicomJob, self.get_object())
         if not job.is_retriable:
             raise SuspiciousOperation(
@@ -276,7 +277,7 @@ class DicomJobRestartView(LoginRequiredMixin, OwnerRequiredMixin, SingleObjectMi
     model: type[DicomJob]
     success_message = "Job with ID %(id)d will be restarted"
 
-    def post(self, request, *args, **kwargs):
+    def post(self, request: AuthenticatedHttpRequest, *args, **kwargs) -> HttpResponse:
         job = cast(DicomJob, self.get_object())
         if not request.user.is_staff or not job.is_restartable:
             raise SuspiciousOperation(
@@ -324,7 +325,7 @@ class DicomTaskDetailView(LoginRequiredMixin, OwnerRequiredMixin, DetailView):
             ) from err
         return obj
 
-    def get_context_data(self, **kwargs):
+    def get_context_data(self, **kwargs) -> dict[str, Any]:
         context = super().get_context_data(**kwargs)
         context["job_url_name"] = self.job_url_name
         return context

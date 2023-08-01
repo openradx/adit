@@ -1,7 +1,6 @@
 import logging
 import os
 from pathlib import Path
-from typing import Tuple
 
 from adrf.views import APIView as AsyncApiView
 from adrf.views import sync_to_async
@@ -107,7 +106,7 @@ class RetrieveAPIView(AsyncApiView):
 
     async def handle_request(
         self, request: Request, pacs_ae_title: str, mode: str, study_uid: str, series_uid: str = ""
-    ) -> Tuple[DicomServer, Path]:
+    ) -> tuple[DicomServer, Path]:
         await self._check_renderer_mode(request, mode)
 
         try:

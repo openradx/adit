@@ -1,9 +1,8 @@
 import datetime
 import re
-from typing import List
 
 
-def person_name_to_dicom(value, add_wildcards=False):
+def person_name_to_dicom(value: str, add_wildcards=False) -> str:
     """See also :func:`adit.core.templatetags.core_extras.person_name_from_dicom`"""
 
     if add_wildcards:
@@ -14,7 +13,7 @@ def person_name_to_dicom(value, add_wildcards=False):
     return re.sub(r"\s*,\s*", "^", value)
 
 
-def format_datetime_attributes(results: List) -> List:
+def format_datetime_attributes(results: list) -> list:
     for instance in results:
         if not instance.get("StudyTime", "") == "":
             instance["StudyTime"] = datetime.datetime.strptime(

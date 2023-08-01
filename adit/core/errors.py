@@ -1,5 +1,4 @@
 from datetime import timedelta
-from typing import List
 
 from rest_framework.exceptions import ErrorDetail
 
@@ -69,12 +68,12 @@ class BatchFileContentError(Exception):
                         field_errors = item_errors[field_name]
                         self._field_error_message(field_name, field_errors)
 
-    def _field_error_message(self, field_name: str, field_errors: List[ErrorDetail]) -> None:
+    def _field_error_message(self, field_name: str, field_errors: list[ErrorDetail]) -> None:
         column_name = self.mapping[field_name]
         assert self.message is not None
         self.message += f"{column_name} - "
         self.message += " ".join(field_errors) + "\n"
 
-    def _non_field_error_message(self, non_field_errors: List[ErrorDetail]):
+    def _non_field_error_message(self, non_field_errors: list[ErrorDetail]):
         assert self.message is not None
         self.message += " ".join(non_field_errors) + "\n"

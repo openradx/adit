@@ -1,5 +1,11 @@
 # TODO
 
+## Top
+
+- Make job urgent (as staff member)
+- Bootstrap 5 Upgrade
+- Selective transfer choose series
+
 ## High Priority
 
 - Redirect after restart/retry/delete job

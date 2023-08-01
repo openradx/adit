@@ -1,4 +1,4 @@
-from typing import Any, Dict
+from typing import Any
 
 from django.conf import settings
 from django.http import HttpResponseBadRequest
@@ -51,7 +51,7 @@ class SelectiveTransferJobCreateView(
     template_name = "selective_transfer/selective_transfer_job_form.html"
     permission_required = "selective_transfer.add_selectivetransferjob"
 
-    def get_form_kwargs(self) -> Dict[str, Any]:
+    def get_form_kwargs(self) -> dict[str, Any]:
         kwargs = super().get_form_kwargs()
 
         action = self.request.POST.get("action")

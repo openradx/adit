@@ -1,6 +1,5 @@
 import logging
 from datetime import datetime
-from typing import List
 
 import pydicom
 from adrf.views import sync_to_async
@@ -14,7 +13,7 @@ from adit.core.utils.dicom_connector import DicomConnector
 logger = logging.getLogger(__name__)
 
 
-async def stow_store(dest_server: DicomServer, datasets: List[Dataset]):
+async def stow_store(dest_server: DicomServer, datasets: list[Dataset]):
     connector = DicomConnector(dest_server)
 
     logger.info("Connected to server %s", dest_server.ae_title)

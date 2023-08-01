@@ -1,3 +1,5 @@
+from typing import Any
+
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Submit
 from django.contrib.auth.forms import AuthenticationForm, UserCreationForm
@@ -6,7 +8,7 @@ from .models import User
 
 
 class CrispyAuthentificationForm(AuthenticationForm):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         self.helper = FormHelper(self)
         self.helper.form_class = "form-horizontal"
@@ -29,7 +31,7 @@ class RegistrationForm(UserCreationForm):
             "department",
         )
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
 
         self.fields["email"].required = True
