@@ -18,7 +18,14 @@ from .parsers import BatchQueryFileParser
 
 class BatchQueryJobForm(forms.ModelForm):
     source = DicomNodeChoiceField(True, DicomNode.NodeType.SERVER)
-    batch_file = RestrictedFileField(max_upload_size=5242880, label="Batch file")
+    batch_file = RestrictedFileField(
+        max_upload_size=5242880,
+        label="Batch file",
+        help_text=(
+            "The Excel file (*.xlsx) which contains the data for the queries. "
+            "See [Help] for how to format this file."
+        ),
+    )
     tasks: list[BatchQueryTask]
 
     class Meta:
@@ -37,10 +44,6 @@ class BatchQueryJobForm(forms.ModelForm):
         }
         help_texts = {
             "urgent": ("Prioritize and start directly (without scheduling)."),
-            "batch_file": (
-                "The Excel batch file (Excel) which contains the data for the queries. "
-                "See [Help] for how to format this file."
-            ),
         }
 
     def __init__(self, *args, **kwargs):

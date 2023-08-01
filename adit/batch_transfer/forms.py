@@ -18,7 +18,14 @@ from .parsers import BatchTransferFileParser
 class BatchTransferJobForm(forms.ModelForm):
     source = DicomNodeChoiceField(True, DicomNode.NodeType.SERVER)
     destination = DicomNodeChoiceField(False)
-    batch_file = RestrictedFileField(max_upload_size=5242880, label="Batch file")
+    batch_file = RestrictedFileField(
+        max_upload_size=5242880,
+        label="Batch file",
+        help_text=(
+            "The Excel file (*.xlsx) which contains the data to transfer between "
+            "two DICOM nodes. See [Help] for how to format this file."
+        ),
+    )
     max_batch_size: int | None = None
     tasks: list[BatchTransferTask]
 
@@ -45,10 +52,6 @@ class BatchTransferJobForm(forms.ModelForm):
         }
         help_texts = {
             "urgent": ("Start transfer directly (without scheduling) and prioritize it."),
-            "batch_file": (
-                "The batch file (Excel) which contains the data to transfer between "
-                "two DICOM nodes. See [Help] for how to format this file."
-            ),
             "ethics_application_id": (
                 "The identification number of the ethics application for this trial."
             ),

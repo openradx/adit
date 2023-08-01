@@ -6,7 +6,6 @@
 - Bootstrap 5 Upgrade
 - Selective transfer choose series
 - Hint when app is locked for admin user
-- Save initial form fields with HTMX
 
 ## High Priority
 
@@ -131,3 +130,4 @@
   -- <https://github.com/django/daphne/blob/main/daphne/testing.py#L123>
   -- <https://github.com/django/django/blob/main/django/test/testcases.py#L1810>
 - Maybe move label from from form to models using "verbose_name" and also the help_text
+- Save specific form fields for later use with HTMX, currently we only save them in the post handler when the form is valid.
