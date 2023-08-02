@@ -1,6 +1,7 @@
 import django_tables2 as tables
 from django.utils.html import format_html
 
+from .models import DicomJob, DicomTask
 from .templatetags.core_extras import (
     dicom_job_status_css_class,
     dicom_task_status_css_class,
@@ -22,7 +23,7 @@ class DicomJobTable(tables.Table):
     id = RecordIdColumn(verbose_name="Job ID")
 
     class Meta:
-        model = None
+        model: type[DicomJob]
         order_by = ("-id",)
         # owner is dynamically excluded for non staff users (see tables.py)
         fields = ("id", "status", "source", "created", "owner")
@@ -48,7 +49,7 @@ class DicomTaskTable(tables.Table):
     end = tables.DateTimeColumn(verbose_name="Finished At")
 
     class Meta:
-        model = None
+        model: type[DicomTask]
         order_by = ("task_id",)
         fields = ("task_id", "status", "message", "end")
         empty_text = "No tasks to show"

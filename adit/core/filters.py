@@ -4,10 +4,12 @@ from django.views import View
 from adit.core.forms import MultiInlineFilterFormHelper, SingleFilterFormHelper
 from adit.core.utils.type_utils import with_type_hint
 
+from .models import DicomJob, DicomTask
+
 
 class DicomJobFilter(django_filters.FilterSet, with_type_hint(View)):
     class Meta:
-        model = None
+        model: type[DicomJob]
         fields = ("status",)
 
     def __init__(self, *args, **kwargs):
@@ -17,7 +19,7 @@ class DicomJobFilter(django_filters.FilterSet, with_type_hint(View)):
 
 class DicomTaskFilter(django_filters.FilterSet, with_type_hint(View)):
     class Meta:
-        model = None
+        model: type[DicomTask]
         fields = ("status",)
 
     def __init__(self, *args, **kwargs):
