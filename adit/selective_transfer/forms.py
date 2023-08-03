@@ -106,7 +106,7 @@ def query_form_layout():
 def urgency_field():
     return Row(
         Column(Field("urgent")),
-        css_class="pl-1",
+        css_class="ps-1",
     )
 
 

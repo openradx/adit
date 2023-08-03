@@ -1,5 +1,4 @@
 {% extends "core/base_generic.html" %}
-{% load crispy from crispy_forms_tags %}
 {% load render_table from django_tables2 %}
 {% block container %}
     <div class="d-flex justify-content-between align-items-start">
@@ -9,18 +8,15 @@
             View Job
         </a>
     </div>
-    <div class="row justify-content-start mb-1">
-        <div class="col-md">
-            <h5 text-nowrap class="mb-0">
-                <a href="{% url 'batch_query_result_download' job.id %}"
-                   class="badge text-bg-light align-top">
-                    {% include "core/icons/download.svg" %}
-                    Download all results
-                </a>
-            </h5>
-        </div>
-        <div class="col col-md-auto">{% crispy filter.form %}</div>
-        <div class="col col-md-auto">{% crispy page_size_select %}</div>
+    <div class="d-flex justify-content-between">
+        <h5 text-nowrap class="mb-0">
+            <a href="{% url 'batch_query_result_download' job.id %}"
+               class="badge text-bg-light align-top">
+                {% include "core/icons/download.svg" %}
+                Download all results
+            </a>
+        </h5>
+        {% include "core/_table_filters.html" %}
     </div>
     {% render_table table %}
 {% endblock container %}
