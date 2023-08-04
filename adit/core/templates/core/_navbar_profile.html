@@ -1,0 +1,32 @@
+<ul class="navbar-nav">
+    {% if user.is_authenticated %}
+        <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle"
+               href="#"
+               role="button"
+               data-bs-toggle="dropdown"
+               aria-expanded="false">
+                <span id="logged_in_username">{{ user.username }}</span>
+                {% include "core/icons/user.svg" %}
+            </a>
+            <ul class="dropdown-menu dropdown-menu-end">
+                <li>
+                    <a class="dropdown-item" href="{% url 'user_profile' pk=user.pk %}">Profile</a>
+                </li>
+                <li>
+                    <hr class="dropdown-divider" />
+                </li>
+                <li>
+                    <a class="dropdown-item" href="{% url 'auth_logout' %}">Logout</a>
+                </li>
+            </ul>
+        </li>
+    {% else %}
+        <li class="nav-item">
+            <a class="nav-link" href="{% url 'auth_login' %}">
+                {% include "core/icons/login.svg" %}
+                Login
+            </a>
+        </li>
+    {% endif %}
+</ul>
