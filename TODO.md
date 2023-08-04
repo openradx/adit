@@ -137,3 +137,4 @@
 
 - Get rid of jQuery in ADIT and RADIS
 - Get rid of Jumbotron
+- Get rid of those not used accounts views and login form
