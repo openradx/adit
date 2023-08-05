@@ -92,11 +92,20 @@ class HomeView(TemplateView):
 
 
 class BaseUpdateSessionView(ABC, LoginRequiredMixin, View):
-    properties: list[str]
+    """Allows the client to update chosen session properties.
+
+    We use this to retain some form state the user has chosen between browser
+    refreshes. The implementations of this view is called by some AJAX requests
+    when specific form fields are changed. (We also save the form state of those
+    fields to the session when the form is submitted, see appropiate view classes, mixins
+    and consumer.)
+    """
+
+    allowed_keys: list[str]
 
     def post(self, request: AuthenticatedHttpRequest) -> HttpResponse:
         for key in request.POST.keys():
-            if key not in self.properties:
+            if key not in self.allowed_keys:
                 raise SuspiciousOperation(f"Property {key} is not allowed to be updated.")
 
         for key, value in request.POST.items():

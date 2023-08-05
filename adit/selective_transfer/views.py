@@ -21,6 +21,7 @@ from adit.core.views import (
 from .filters import SelectiveTransferJobFilter, SelectiveTransferTaskFilter
 from .forms import SelectiveTransferJobForm
 from .mixins import (
+    SELECTIVE_TRANSFER_ADVANCED_OPTIONS_COLLAPSED,
     SELECTIVE_TRANSFER_DESTINATION,
     SELECTIVE_TRANSFER_SEND_FINISHED_MAIL,
     SELECTIVE_TRANSFER_SOURCE,
@@ -30,11 +31,15 @@ from .mixins import (
 from .models import SelectiveTransferJob, SelectiveTransferTask
 from .tables import SelectiveTransferJobTable, SelectiveTransferTaskTable
 
-SELECTIVE_TRANSFER_ADVANCED_OPTIONS_COLLAPSED = "selective_transfer_advanced_options_collapsed"
-
 
 class SelectiveTransferUpdateSessionView(BaseUpdateSessionView):
-    properties = [SELECTIVE_TRANSFER_ADVANCED_OPTIONS_COLLAPSED]
+    allowed_keys = [
+        SELECTIVE_TRANSFER_ADVANCED_OPTIONS_COLLAPSED,
+        SELECTIVE_TRANSFER_DESTINATION,
+        SELECTIVE_TRANSFER_SEND_FINISHED_MAIL,
+        SELECTIVE_TRANSFER_SOURCE,
+        SELECTIVE_TRANSFER_URGENT,
+    ]
 
 
 class SelectiveTransferJobListView(TransferJobListView):
@@ -61,11 +66,6 @@ class SelectiveTransferJobCreateView(
     def get_form_kwargs(self) -> dict[str, Any]:
         kwargs = super().get_form_kwargs()
 
-        advanced_options_collapsed = self.request.session.get(
-            SELECTIVE_TRANSFER_ADVANCED_OPTIONS_COLLAPSED, False
-        )
-        kwargs.update({"advanced_options_collapsed": advanced_options_collapsed})
-
         action = self.request.POST.get("action")
         kwargs.update({"action": action})
 
@@ -91,6 +91,11 @@ class SelectiveTransferJobCreateView(
         send_finished_mail = self.request.session.get(SELECTIVE_TRANSFER_SEND_FINISHED_MAIL)
         if send_finished_mail is not None:
             initial.update({"send_finished_mail": send_finished_mail})
+
+        advanced_options_collapsed = self.request.session.get(
+            SELECTIVE_TRANSFER_ADVANCED_OPTIONS_COLLAPSED, False
+        )
+        initial.update({"advanced_options_collapsed": advanced_options_collapsed})
 
         return initial
 

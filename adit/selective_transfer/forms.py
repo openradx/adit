@@ -29,6 +29,7 @@ class SelectiveTransferJobForm(forms.ModelForm):
     study_date = forms.DateField(required=False)
     modality = forms.CharField(required=False, max_length=16)
     accession_number = forms.CharField(required=False, max_length=32, label="Accession #")
+    advanced_options_collapsed = forms.BooleanField(required=False)
 
     class Meta:
         model = SelectiveTransferJob
@@ -47,6 +48,7 @@ class SelectiveTransferJobForm(forms.ModelForm):
             "study_date",
             "modality",
             "accession_number",
+            "advanced_options_collapsed",
         )
         labels = {
             "urgent": "Start transfer directly",
@@ -61,7 +63,6 @@ class SelectiveTransferJobForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         self.user = kwargs.pop("user")
         self.action = kwargs.pop("action")
-        self.advanced_options_collapsed = kwargs.pop("advanced_options_collapsed")
 
         super().__init__(*args, **kwargs)
 
@@ -151,11 +152,25 @@ class SelectiveTransferJobForm(forms.ModelForm):
         )
 
     def build_advanced_options_layout(self):
-        aria_expanded = "true" if not self.advanced_options_collapsed else "false"
+        # We use a hidden field to store the collapsed state of the advanced options
+        # and restore it here with the appropriate css classes.
+        # When this a newly created form without data to be submitted then we use the
+        # initial value which is restored from the session (see the view that uses
+        # this form).
+        advanced_options_collapsed = False
+        if "advanced_options_collapsed" in self.data:
+            if self.data["advanced_options_collapsed"].lower() == "true":
+                advanced_options_collapsed = True
+        elif "advanced_options_collapsed" in self.initial:
+            if self.initial["advanced_options_collapsed"]:
+                advanced_options_collapsed = True
 
-        advanced_options_class = "pt-1 collapse"
-        if not self.advanced_options_collapsed:
-            advanced_options_class += " show"
+        if advanced_options_collapsed:
+            aria_expanded = "false"
+            advanced_options_class = "pt-1 collapse"
+        else:
+            aria_expanded = "true"
+            advanced_options_class = "pt-1 collapse show"
 
         return Layout(
             Div(
@@ -171,6 +186,7 @@ class SelectiveTransferJobForm(forms.ModelForm):
                             "aria-controls": "advanced_options",
                         },
                     ),
+                    Field("advanced_options_collapsed", type="hidden"),
                     css_class="card-title mb-0",
                 ),
                 Div(

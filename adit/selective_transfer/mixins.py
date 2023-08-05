@@ -13,6 +13,7 @@ SELECTIVE_TRANSFER_SOURCE = "selective_transfer_source"
 SELECTIVE_TRANSFER_DESTINATION = "selective_transfer_destination"
 SELECTIVE_TRANSFER_URGENT = "selective_transfer_urgent"
 SELECTIVE_TRANSFER_SEND_FINISHED_MAIL = "selective_transfer_send_finished_mail"
+SELECTIVE_TRANSFER_ADVANCED_OPTIONS_COLLAPSED = "selective_transfer_advanced_options_collapsed"
 
 
 class SelectiveTransferJobCreateMixin:
@@ -21,6 +22,9 @@ class SelectiveTransferJobCreateMixin:
         session[SELECTIVE_TRANSFER_DESTINATION] = form.instance.destination.id
         session[SELECTIVE_TRANSFER_URGENT] = form.instance.urgent
         session[SELECTIVE_TRANSFER_SEND_FINISHED_MAIL] = form.instance.send_finished_mail
+        session[
+            SELECTIVE_TRANSFER_ADVANCED_OPTIONS_COLLAPSED
+        ] = form.instance.advanced_options_collapsed
 
     def create_source_connector(self, form: SelectiveTransferJobForm) -> DicomConnector:
         return DicomConnector(form.instance.source.dicomserver)

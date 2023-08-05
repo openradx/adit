@@ -9,7 +9,11 @@ from channels.db import database_sync_to_async
 from channels.generic.websocket import AsyncJsonWebsocketConsumer
 from crispy_forms.utils import render_crispy_form
 from django.conf import settings
+from django.contrib.sessions.backends.db import SessionStore
 from django.template.loader import render_to_string
+
+from adit.accounts.models import User
+from adit.core.utils.dicom_connector import DicomConnector
 
 from .forms import SelectiveTransferJobForm
 from .mixins import SelectiveTransferJobCreateMixin
@@ -52,10 +56,10 @@ class SelectiveTransferConsumer(SelectiveTransferJobCreateMixin, AsyncJsonWebsoc
     async def connect(self):
         logger.debug("Connected to WebSocket client.")
 
-        self.user = self.scope["user"]
-        self.session = self.scope["session"]
-        self.query_connectors = []
-        self.current_message_id = 0
+        self.user: User = self.scope["user"]
+        self.session: SessionStore = self.scope["session"]
+        self.query_connectors: list[DicomConnector] = []
+        self.current_message_id: int = 0
         self.pool = ThreadPoolExecutor()
 
         await self.accept()
@@ -86,12 +90,8 @@ class SelectiveTransferConsumer(SelectiveTransferJobCreateMixin, AsyncJsonWebsoc
             await self.send(render_query_hint())
             return
 
-        form = SelectiveTransferJobForm(
-            content,
-            user=self.user,
-            action=action,
-        )
-        form_valid = await database_sync_to_async(form.is_valid)()
+        form = SelectiveTransferJobForm(content, user=self.user, action=action)
+        form_valid: bool = await database_sync_to_async(form.is_valid)()
 
         if form_valid:
             self.save_initial_form_data(self.session, form)
