@@ -5,6 +5,7 @@ from django.http import HttpResponseBadRequest
 from django.urls import reverse_lazy
 
 from adit.core.views import (
+    BaseUpdateSessionView,
     DicomJobCancelView,
     DicomJobCreateView,
     DicomJobDeleteView,
@@ -20,14 +21,20 @@ from adit.core.views import (
 from .filters import SelectiveTransferJobFilter, SelectiveTransferTaskFilter
 from .forms import SelectiveTransferJobForm
 from .mixins import (
-    SAVED_DESTINATION_FIELD,
-    SAVED_SEND_FINISHED_MAIL_FIELD,
-    SAVED_SOURCE_FIELD,
-    SAVED_URGENT_FIELD,
+    SELECTIVE_TRANSFER_DESTINATION,
+    SELECTIVE_TRANSFER_SEND_FINISHED_MAIL,
+    SELECTIVE_TRANSFER_SOURCE,
+    SELECTIVE_TRANSFER_URGENT,
     SelectiveTransferJobCreateMixin,
 )
 from .models import SelectiveTransferJob, SelectiveTransferTask
 from .tables import SelectiveTransferJobTable, SelectiveTransferTaskTable
+
+SELECTIVE_TRANSFER_ADVANCED_OPTIONS_COLLAPSED = "selective_transfer_advanced_options_collapsed"
+
+
+class SelectiveTransferUpdateSessionView(BaseUpdateSessionView):
+    properties = [SELECTIVE_TRANSFER_ADVANCED_OPTIONS_COLLAPSED]
 
 
 class SelectiveTransferJobListView(TransferJobListView):
@@ -54,6 +61,11 @@ class SelectiveTransferJobCreateView(
     def get_form_kwargs(self) -> dict[str, Any]:
         kwargs = super().get_form_kwargs()
 
+        advanced_options_collapsed = self.request.session.get(
+            SELECTIVE_TRANSFER_ADVANCED_OPTIONS_COLLAPSED, False
+        )
+        kwargs.update({"advanced_options_collapsed": advanced_options_collapsed})
+
         action = self.request.POST.get("action")
         kwargs.update({"action": action})
 
@@ -64,19 +76,19 @@ class SelectiveTransferJobCreateView(
 
         # Restore some fields from last submit
 
-        saved_source = self.request.session.get(SAVED_SOURCE_FIELD)
-        if saved_source is not None:
-            initial.update({"source": saved_source})
+        source = self.request.session.get(SELECTIVE_TRANSFER_SOURCE)
+        if source is not None:
+            initial.update({"source": source})
 
-        saved_destination = self.request.session.get(SAVED_DESTINATION_FIELD)
-        if saved_destination is not None:
-            initial.update({"destination": saved_destination})
+        destination = self.request.session.get(SELECTIVE_TRANSFER_DESTINATION)
+        if destination is not None:
+            initial.update({"destination": destination})
 
-        urgent = self.request.session.get(SAVED_URGENT_FIELD)
+        urgent = self.request.session.get(SELECTIVE_TRANSFER_URGENT)
         if urgent is not None:
             initial.update({"urgent": urgent})
 
-        send_finished_mail = self.request.session.get(SAVED_SEND_FINISHED_MAIL_FIELD)
+        send_finished_mail = self.request.session.get(SELECTIVE_TRANSFER_SEND_FINISHED_MAIL)
         if send_finished_mail is not None:
             initial.update({"send_finished_mail": send_finished_mail})
 

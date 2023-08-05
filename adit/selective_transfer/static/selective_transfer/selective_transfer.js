@@ -1,25 +1,7 @@
+const SELECTIVE_TRANSFER_ADVANCED_OPTIONS_COLLAPSED =
+  "selective_transfer_advanced_options_collapsed";
+
 function selectiveTransferForm() {
-  const config = getAditConfig();
-  const STORAGE_KEY = "selectiveTransferForm-" + config.user_id;
-  const ADVANCED_OPTIONS_COLLAPSED_KEY = "advancedOptionsCollapsed";
-
-  function loadState() {
-    let state = {};
-    try {
-      state = JSON.parse(window.localStorage.getItem(STORAGE_KEY) || "{}");
-      if (typeof state !== "object") state = {};
-    } catch (error) {
-      console.error(`Invalid state from local storage: ${error}`);
-    }
-    return state;
-  }
-
-  function updateState(key, value) {
-    const state = loadState();
-    state[key] = value;
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  }
-
   return {
     isDestinationFolder: false,
 
@@ -28,24 +10,15 @@ function selectiveTransferForm() {
 
       const advancedOptionsEl = this.formEl.querySelector("#advanced_options");
       $(advancedOptionsEl).on("hide.bs.collapse", function () {
-        updateState(ADVANCED_OPTIONS_COLLAPSED_KEY, true);
+        updateSession("selective-transfer", {
+          [SELECTIVE_TRANSFER_ADVANCED_OPTIONS_COLLAPSED]: true,
+        });
       });
       $(advancedOptionsEl).on("show.bs.collapse", function () {
-        updateState(ADVANCED_OPTIONS_COLLAPSED_KEY, false);
+        updateSession("selective-transfer", {
+          [SELECTIVE_TRANSFER_ADVANCED_OPTIONS_COLLAPSED]: false,
+        });
       });
-
-      this._restoreState();
-    },
-    _restoreState: function () {
-      const state = loadState();
-
-      if (ADVANCED_OPTIONS_COLLAPSED_KEY in state) {
-        const advancedOptionsEl =
-          this.formEl.querySelector("#advanced_options");
-        if (state[ADVANCED_OPTIONS_COLLAPSED_KEY])
-          $(advancedOptionsEl).collapse("hide");
-        else $(advancedOptionsEl).collapse("show");
-      }
     },
     onStartTransfer: function (event) {
       const formEl = this.formEl;

@@ -15,101 +15,6 @@ from adit.core.validators import no_backslash_char_validator, no_control_chars_v
 from .models import SelectiveTransferJob
 
 
-def dicom_node_field(field_name):
-    return Column(
-        Field(field_name, css_class="form-select"),
-    )
-
-
-def option_field(field_name, additional_attrs=None):
-    attrs = {"@keydown.enter.prevent": ""}
-    if additional_attrs:
-        attrs = {**additional_attrs, **attrs}
-
-    return Column(Field(field_name, **attrs))
-
-
-def query_field(field_name):
-    return Column(Field(field_name))
-
-
-def advanced_options_layout():
-    return Layout(
-        Div(
-            Div(
-                StrictButton(
-                    "Advanced options (optional)",
-                    css_class="btn-link px-0",
-                    css_id="advanced_options_toggle",
-                    **{
-                        "data-bs-toggle": "collapse",
-                        "data-bs-target": "#advanced_options",
-                        "aria-expanded": "true",
-                        "aria-controls": "advanced_options",
-                    },
-                ),
-                css_class="card-title mb-0",
-            ),
-            Div(
-                Row(
-                    option_field("trial_protocol_id"),
-                    option_field("trial_protocol_name"),
-                ),
-                Row(
-                    option_field("pseudonym"),
-                    option_field(
-                        "archive_password",
-                        {":disabled": "!isDestinationFolder"},
-                    ),
-                ),
-                Row(
-                    option_field("send_finished_mail"),
-                ),
-                css_class="show pt-1",
-                css_id="advanced_options",
-            ),
-            css_class="card-body p-2",
-        ),
-    )
-
-
-def search_inputs_layout():
-    return Layout(
-        query_field("patient_id"),
-        query_field("patient_name"),
-        query_field("patient_birth_date"),
-        query_field("study_date"),
-        query_field("modality"),
-        query_field("accession_number"),
-    )
-
-
-def query_form_layout():
-    return Layout(
-        Row(
-            dicom_node_field("source"),
-            dicom_node_field("destination"),
-        ),
-        Row(
-            Column(
-                advanced_options_layout(),
-                css_class="card",
-            ),
-            css_class="px-1 mb-3",
-        ),
-        Row(
-            search_inputs_layout(),
-        ),
-    )
-
-
-def urgency_field():
-    return Row(
-        Column(Field("urgent")),
-        css_class="ps-1",
-    )
-
-
 class SelectiveTransferJobForm(forms.ModelForm):
     source = DicomNodeChoiceField(True, DicomNode.NodeType.SERVER)
     destination = DicomNodeChoiceField(False)
@@ -156,6 +61,7 @@ class SelectiveTransferJobForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         self.user = kwargs.pop("user")
         self.action = kwargs.pop("action")
+        self.advanced_options_collapsed = kwargs.pop("advanced_options_collapsed")
 
         super().__init__(*args, **kwargs)
 
@@ -172,14 +78,20 @@ class SelectiveTransferJobForm(forms.ModelForm):
         self.helper = FormHelper(self)
         self.helper.form_tag = False
 
-        query_form = query_form_layout()
+        query_form_layout = self.build_query_form_layout()
 
         if "urgent" in self.fields:
-            query_form.insert(1, urgency_field())
+            query_form_layout.insert(1, self.build_urgency_field())
 
         # We swap the form using the htmx morphdom extension to retain the focus on the input
         self.helper.layout = Layout(
-            Div(query_form, css_id="query_form", **{"hx-swap-oob": "morphdom"})
+            Div(query_form_layout, css_id="query_form", **{"hx-swap-oob": "morphdom"})
+        )
+
+    def build_urgency_field(self):
+        return Row(
+            Column(Field("urgent")),
+            css_class="ps-1",
         )
 
     def clean_pseudonym(self):
@@ -214,3 +126,91 @@ class SelectiveTransferJobForm(forms.ModelForm):
         if len(modilities) == 1:
             return modilities[0]
         return modilities
+
+    def build_query_form_layout(self):
+        return Layout(
+            Row(
+                self.build_dicom_node_field("source"),
+                self.build_dicom_node_field("destination"),
+            ),
+            Row(
+                Column(
+                    self.build_advanced_options_layout(),
+                    css_class="card",
+                ),
+                css_class="px-1 mb-3",
+            ),
+            Row(
+                self.build_search_inputs_layout(),
+            ),
+        )
+
+    def build_dicom_node_field(self, field_name):
+        return Column(
+            Field(field_name, css_class="form-select"),
+        )
+
+    def build_advanced_options_layout(self):
+        aria_expanded = "true" if not self.advanced_options_collapsed else "false"
+
+        advanced_options_class = "pt-1 collapse"
+        if not self.advanced_options_collapsed:
+            advanced_options_class += " show"
+
+        return Layout(
+            Div(
+                Div(
+                    StrictButton(
+                        "Advanced options",
+                        css_class="btn-link px-0",
+                        css_id="advanced_options_toggle",
+                        **{
+                            "data-bs-toggle": "collapse",
+                            "data-bs-target": "#advanced_options",
+                            "aria-expanded": aria_expanded,
+                            "aria-controls": "advanced_options",
+                        },
+                    ),
+                    css_class="card-title mb-0",
+                ),
+                Div(
+                    Row(
+                        self.build_option_field("trial_protocol_id"),
+                        self.build_option_field("trial_protocol_name"),
+                    ),
+                    Row(
+                        self.build_option_field("pseudonym"),
+                        self.build_option_field(
+                            "archive_password",
+                            {":disabled": "!isDestinationFolder"},
+                        ),
+                    ),
+                    Row(
+                        self.build_option_field("send_finished_mail"),
+                    ),
+                    css_class=advanced_options_class,
+                    css_id="advanced_options",
+                ),
+                css_class="card-body p-2",
+            ),
+        )
+
+    def build_option_field(self, field_name, additional_attrs=None):
+        attrs = {"@keydown.enter.prevent": ""}
+        if additional_attrs:
+            attrs = {**additional_attrs, **attrs}
+
+        return Column(Field(field_name, **attrs))
+
+    def build_search_inputs_layout(self):
+        return Layout(
+            self.build_query_field("patient_id"),
+            self.build_query_field("patient_name"),
+            self.build_query_field("patient_birth_date"),
+            self.build_query_field("study_date"),
+            self.build_query_field("modality"),
+            self.build_query_field("accession_number"),
+        )
+
+    def build_query_field(self, field_name):
+        return Column(Field(field_name))

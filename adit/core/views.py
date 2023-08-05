@@ -1,3 +1,4 @@
+from abc import ABC
 from typing import Any, cast
 
 from django.conf import settings
@@ -88,6 +89,25 @@ class HomeView(TemplateView):
         assert core_settings
         context["announcement"] = core_settings.announcement
         return context
+
+
+class BaseUpdateSessionView(ABC, LoginRequiredMixin, View):
+    properties: list[str]
+
+    def post(self, request: AuthenticatedHttpRequest) -> HttpResponse:
+        for key in request.POST.keys():
+            if key not in self.properties:
+                raise SuspiciousOperation(f"Property {key} is not allowed to be updated.")
+
+        for key, value in request.POST.items():
+            if value == "true":
+                value = True
+            elif value == "false":
+                value = False
+
+            request.session[key] = value
+
+        return HttpResponse()
 
 
 class DicomJobListView(LoginRequiredMixin, SingleTableMixin, PageSizeSelectMixin, FilterView):

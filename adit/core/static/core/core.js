@@ -8,8 +8,30 @@ $(function () {
 
 // A site wide config that is added to the context by adit.core.site.base_context_processor
 // and that can be accessed by Javascript
-function getAditConfig() {
-  return JSON.parse(document.getElementById("adit_config").textContent);
+function getConfig() {
+  return JSON.parse(document.getElementById("public").textContent);
+}
+
+function updateSession(route, data) {
+  const formData = new FormData();
+  for (const key in data) {
+    formData.append(key, data[key]);
+  }
+
+  const config = getConfig();
+  const request = new Request(`/${route}/update-session/`, {
+    method: "POST",
+    headers: { "X-CSRFToken": config.csrf_token },
+    mode: "same-origin", // Do not send CSRF token to another domain.
+    body: formData,
+  });
+
+  fetch(request).then(function () {
+    const config = getConfig();
+    if (config.debug) {
+      console.log("Saved properties to session", data);
+    }
+  });
 }
 
 // Alpine JS data model connected in _messages_panel.html

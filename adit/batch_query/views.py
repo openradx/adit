@@ -30,7 +30,7 @@ from .models import BatchQueryJob, BatchQueryTask
 from .tables import BatchQueryJobTable, BatchQueryResultTable, BatchQueryTaskTable
 from .utils.exporters import write_results
 
-SAVED_SEND_FINISHED_MAIL_FIELD = "batch_query_send_finished_mail"
+BATCH_QUERY_SEND_FINISHED_MAIL = "batch_query_send_finished_mail"
 
 
 class BatchQueryJobListView(DicomJobListView):
@@ -50,14 +50,14 @@ class BatchQueryJobCreateView(DicomJobCreateView):
     def get_initial(self) -> dict[str, Any]:
         initial = super().get_initial()
 
-        saved_finished_mail = self.request.session.get(SAVED_SEND_FINISHED_MAIL_FIELD)
-        if saved_finished_mail is not None:
-            initial["send_finished_mail"] = saved_finished_mail
+        send_finished_mail = self.request.session.get(BATCH_QUERY_SEND_FINISHED_MAIL)
+        if send_finished_mail is not None:
+            initial["send_finished_mail"] = send_finished_mail
 
         return initial
 
     def form_valid(self, form):
-        self.request.session[SAVED_SEND_FINISHED_MAIL_FIELD] = form.instance.send_finished_mail
+        self.request.session[BATCH_QUERY_SEND_FINISHED_MAIL] = form.instance.send_finished_mail
 
         user = self.request.user
         form.instance.owner = user
