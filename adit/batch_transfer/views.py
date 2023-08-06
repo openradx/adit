@@ -5,6 +5,7 @@ from django.urls import reverse_lazy
 from django.views.generic import TemplateView
 
 from adit.core.views import (
+    BaseUpdatePreferencesView,
     DicomJobCancelView,
     DicomJobCreateView,
     DicomJobDeleteView,
@@ -22,7 +23,19 @@ from .forms import BatchTransferJobForm
 from .models import BatchTransferJob, BatchTransferSettings, BatchTransferTask
 from .tables import BatchTransferJobTable, BatchTransferTaskTable
 
-SAVED_SEND_FINISHED_MAIL_FIELD = "batch_transfer_send_finished_mail"
+BATCH_TRANSFER_SOURCE = "batch_transfer_source"
+BATCH_TRANSFER_DESTINATION = "batch_transfer_destination"
+BATCH_TRANSFER_URGENT = "batch_transfer_urgent"
+BATCH_TRANSFER_SEND_FINISHED_MAIL = "batch_transfer_send_finished_mail"
+
+
+class BatchTransferUpdatePreferencesView(BaseUpdatePreferencesView):
+    allowed_keys = [
+        BATCH_TRANSFER_SOURCE,
+        BATCH_TRANSFER_DESTINATION,
+        BATCH_TRANSFER_URGENT,
+        BATCH_TRANSFER_SEND_FINISHED_MAIL,
+    ]
 
 
 class BatchTransferJobListView(TransferJobListView):
@@ -42,15 +55,27 @@ class BatchTransferJobCreateView(DicomJobCreateView):
     def get_initial(self) -> dict[str, Any]:
         initial = super().get_initial()
 
-        saved_finished_mail = self.request.session.get(SAVED_SEND_FINISHED_MAIL_FIELD)
-        if saved_finished_mail is not None:
-            initial["send_finished_mail"] = saved_finished_mail
+        preferences: dict[str, Any] = self.request.user.preferences
+
+        source = preferences.get(BATCH_TRANSFER_SOURCE)
+        if source is not None:
+            initial["source"] = source
+
+        destination = preferences.get(BATCH_TRANSFER_DESTINATION)
+        if destination is not None:
+            initial["destination"] = destination
+
+        urgent = preferences.get(BATCH_TRANSFER_URGENT)
+        if urgent is not None:
+            initial["urgent"] = urgent
+
+        send_finished_mail = preferences.get(BATCH_TRANSFER_SEND_FINISHED_MAIL)
+        if send_finished_mail is not None:
+            initial["send_finished_mail"] = send_finished_mail
 
         return initial
 
     def form_valid(self, form):
-        self.request.session[SAVED_SEND_FINISHED_MAIL_FIELD] = form.instance.send_finished_mail
-
         user = self.request.user
         form.instance.owner = user
         response = super().form_valid(form)

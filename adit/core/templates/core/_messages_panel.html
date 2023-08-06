@@ -1,15 +1,14 @@
-<div class="messages-panel"
-     x-data="messages()"
-     x-init="init($el, $watch, $nextTick)"
+<div class="messages-panel toast-container"
+     x-data="messagesPanel($el)"
      @core:add-message.window="addMessage($event.detail)">
-    {# Messages placed by the server (server side rendered) #}
+    {# Messages placed by the server (server side added by the view) #}
     {% for message in messages %}
-        <div class="{{ message.level_tag }} toast show server-message"
+        <div class="{{ message.level_tag }} toast server-message"
              role="alert"
              aria-live="assertive"
              aria-atomic="true">
             <div class="toast-header">
-                <svg class="bd-placeholder-img rounded mr-2"
+                <svg class="bd-placeholder-img rounded me-2"
                      width="20"
                      height="20"
                      xmlns="http://www.w3.org/2000/svg"
@@ -18,28 +17,26 @@
                      role="img">
                     <rect width="100%" height="100%" fill="#007aff"></rect>
                 </svg>
-                <strong class="mr-auto">{{ message.level_tag|capfirst }}</strong>
+                <strong class="me-auto">{{ message.level_tag|capfirst }}</strong>
                 <small class="text-muted">just now</small>
                 <button type="button"
-                        class="ml-2 mb-1 close"
-                        data-dismiss="toast"
-                        aria-label="Close">
-                    <span aria-hidden="true">×</span>
-                </button>
+                        class="ms-2 mb-1 btn-close"
+                        data-bs-dismiss="toast"
+                        aria-label="Close"></button>
             </div>
             <div class="toast-body">{{ message }}</div>
         </div>
     {% endfor %}
-    {# Messages added by the client (Javascript). See also core.js #}
-    <template x-for="message in messages" :key="message.id">
-        <div x-ref="message.id"
+    {# Messages added by the client (using Javascript, see core.js) #}
+    <template x-for="message in messages">
+        <div x-init="initMessage($el)"
              :class="{[message.level]: true}"
-             class="toast show client-message"
+             class="toast client-message"
              role="alert"
              aria-live="assertive"
              aria-atomic="true">
             <div class="toast-header">
-                <svg class="bd-placeholder-img rounded mr-2"
+                <svg class="bd-placeholder-img rounded me-2"
                      width="20"
                      height="20"
                      xmlns="http://www.w3.org/2000/svg"
@@ -48,14 +45,12 @@
                      role="img">
                     <rect width="100%" height="100%" fill="#007aff"></rect>
                 </svg>
-                <strong x-text="message.title" class="mr-auto"></strong>
+                <strong x-text="message.title" class="me-auto"></strong>
                 <small class="text-muted">just now</small>
-                <button @click="removeMessage(message)"
-                        type="button"
-                        class="ml-2 mb-1 close"
-                        aria-label="Close">
-                    <span aria-hidden="true">×</span>
-                </button>
+                <button type="button"
+                        class="ms-2 mb-1 btn-close"
+                        data-bs-dismiss="toast"
+                        aria-label="Close"></button>
             </div>
             <div x-text="message.text" class="toast-body"></div>
         </div>

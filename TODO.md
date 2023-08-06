@@ -5,6 +5,7 @@
 - Make job urgent (as staff member)
 - Bootstrap 5 Upgrade
 - Selective transfer choose series
+- Locked info for other apps like batch_transfer_locked.html
 - Hint when app is locked for admin user
 
 ## High Priority
@@ -131,3 +132,9 @@
   -- <https://github.com/django/django/blob/main/django/test/testcases.py#L1810>
 - Maybe move label from from form to models using "verbose_name" and also the help_text
 - Save specific form fields for later use with HTMX, currently we only save them in the post handler when the form is valid.
+
+## RADIS
+
+- Get rid of jQuery in ADIT and RADIS
+- Get rid of Jumbotron
+- Get rid of those not used accounts views and login form

@@ -10,31 +10,31 @@
             {% endblock title %}
         </title>
         <meta name="keywords" content="ADIT,DICOM,Radiology,Medicine,Tool" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <meta name="charset" content="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
         <meta name="description"
-              content="ADIT is a tool for automated DICOM transfer"/>
+              content="ADIT is a tool for automated DICOM transfer" />
         <meta name="author" content="Kai Schlamp" />
         {% block meta %}
         {% endblock meta %}
         <link rel="apple-touch-icon"
               sizes="180x180"
-              href="{% static 'favicon/apple-touch-icon.png' %}"/>
+              href="{% static 'favicon/apple-touch-icon.png' %}" />
         <link rel="icon"
               type="image/png"
               sizes="32x32"
-              href="{% static 'favicon/favicon-32x32.png' %}"/>
+              href="{% static 'favicon/favicon-32x32.png' %}" />
         <link rel="icon"
               type="image/png"
               sizes="16x16"
-              href="{% static 'favicon/favicon-16x16.png' %}"/>
+              href="{% static 'favicon/favicon-16x16.png' %}" />
         <link rel="manifest" href="{% static 'favicon/site.webmanifest' %}" />
         <link rel="stylesheet"
               type="text/css"
-              href="{% static 'vendor/bootstrap.css' %}"/>
+              href="{% static 'vendor/bootstrap.css' %}" />
         <link rel="stylesheet" type="text/css" href="{% static 'core/core.css' %}" />
         {% block css %}
         {% endblock css %}
-        {{ adit_config|json_script:"adit_config" }}
     </head>
     <body id="{{ request.resolver_match.url_name }}">
         <script>document.body.className="js";</script>
@@ -51,15 +51,16 @@
         {% include "core/_messages_panel.html" %}
         {% block bottom %}
         {% endblock bottom %}
-        <script src="{% static 'vendor/jquery.js' %}"></script>
+        <!-- Vendor Javascript stuff -->
+        <script src="{% static 'vendor/popper.js' %}"></script>
         <script src="{% static 'vendor/bootstrap.bundle.js' %}"></script>
         <script src="{% static 'vendor/htmx.js' %}"></script>
         <script src="{% static 'vendor/htmx-ws.js' %}"></script>
-        <!-- TODO: Replace with Alpine morphdom after upgrading to Alpine v3 -->
-        <script src="{% static 'vendor/morphdom-umd.js' %}"></script>
-        <script src="{% static 'vendor/htmx-morphdom-swap.js' %}"></script>
+        <script src="{% static 'vendor/htmx-alpine-morph.js' %}"></script>
+        <script src="{% static 'vendor/alpine-morph.js' %}"></script>
         <script type="module" src="{% static 'vendor/alpine.js' %}"></script>
-        <script nomodule src="{% static 'vendor/alpine-ie11.js' %}" defer></script>
+        <!-- Our Javascript stuff -->
+        {{ public|json_script:"public" }}
         <script src="{% static 'core/core.js' %}"></script>
         {% block script %}
         {% endblock script %}

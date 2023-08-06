@@ -34,7 +34,7 @@ class DicomExplorerQueryForm(forms.Form):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.fields["server"].widget.attrs["class"] = "custom-select"
+        self.fields["server"].widget.attrs["class"] = "form-select"
 
         self.helper = FormHelper(self)
         self.helper.form_id = "dicom_explorer"

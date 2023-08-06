@@ -3,7 +3,7 @@
 {% load crispy from crispy_forms_tags %}
 {% block script %}
     {{ block.super }}
-    <script src="{% static 'selective_transfer/selective_transfer.js' %}"></script>
+    <script src="{% static 'selective_transfer/selective_transfer_job_form.js' %}"></script>
 {% endblock script %}
 {% block container %}
     <div class="d-flex justify-content-between align-items-start">
@@ -13,7 +13,7 @@
         </h4>
         <a href="{% url 'selective_transfer_job_list' %}">
             {% include "core/icons/list.svg" %}
-            <strong class="align-middle">Previous Jobs</strong>
+            Previous Jobs
         </a>
     </div>
     <!--
@@ -21,11 +21,10 @@
         as otherwise the submit button values are not in the sent form data.
         https://github.com/bigskysoftware/htmx/issues/1337
      -->
-    <form hx-ext="ws, morphdom-swap"
+    <form hx-ext="ws, alpine-morph"
           ws-connect="/ws/selective-transfer"
           ws-send
-          x-data="selectiveTransferForm()"
-          x-init="init($el)"
+          x-data="selectiveTransferJobForm($el)"
           method="post"
           action=""
           novalidate>

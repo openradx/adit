@@ -5,8 +5,6 @@
     <form action="{% url 'broadcast' %}" method="post">
         {% csrf_token %}
         {{ form|crispy }}
-        <div class="form-group">
-            <input type="submit" name="send" value="Send" class="btn btn-primary" />
-        </div>
+        <input type="submit" name="send" value="Send" class="btn btn-primary" />
     </form>
 {% endblock container %}

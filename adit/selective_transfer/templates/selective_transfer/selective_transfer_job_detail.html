@@ -1,6 +1,5 @@
 {% extends "core/base_generic.html" %}
 {% load dicom_job_status_css_class from core_extras %}
-{% load crispy from crispy_forms_tags %}
 {% load render_table from django_tables2 %}
 {% load job_control_panel from selective_transfer_extras %}
 {% block container %}
@@ -8,7 +7,7 @@
         <h4 class="mb-3">Selective Transfer Job</h4>
         <a href="{% url 'selective_transfer_job_list' %}">
             {% include "core/icons/list.svg" %}
-            <strong class="align-middle">Job List</strong>
+            Job List
         </a>
     </div>
     <dl class="row">
@@ -60,12 +59,9 @@
             {{ job.message|default:"—" }}
         </dd>
     </dl>
-    <div class="row justify-content-end mb-1">
-        <div class="col-md">
-            <h5 text-nowrap>Transfer Tasks</h5>
-        </div>
-        <div class="col col-md-auto">{% crispy filter.form %}</div>
-        <div class="col col-md-auto">{% crispy page_size_select %}</div>
+    <div class="d-flex justify-content-between">
+        <h5 text-nowrap>Transfer Tasks</h5>
+        {% include "core/_table_filters.html" %}
     </div>
     {% render_table table %}
     {% job_control_panel %}

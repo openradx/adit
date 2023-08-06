@@ -62,8 +62,8 @@
                 {% explorer_url job.source.id task.patient_id task.study_uid as study_url %}
                 <a href="{{ study_url }}"
                    title="Show in DICOM Explorer"
-                   data-toggle="tooltip"
-                   data-placement="left">{% include "core/icons/goto.svg" %}</a>
+                   data-bs-toggle="tooltip"
+                   data-bs-placement="left">{% include "core/icons/goto.svg" %}</a>
             {% endif %}
         </dd>
         {% for series_uid in task.series_uids %}
@@ -77,8 +77,8 @@
                 {{ series_uid }}
                 <a href="{{ series_url }}"
                    title="Show in DICOM Explorer"
-                   data-toggle="tooltip"
-                   data-placement="left">{% include "core/icons/goto.svg" %}</a>
+                   data-bs-toggle="tooltip"
+                   data-bs-placement="left">{% include "core/icons/goto.svg" %}</a>
             </dd>
         {% endfor %}
         <dt class="col-sm-3">Pseudonym</dt>

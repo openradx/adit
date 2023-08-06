@@ -248,20 +248,20 @@ def copy_statics(ctx: Context):
     """Copy JS and CSS dependencies from node_modules to static vendor folder"""
     print("Copying statics...")
 
-    copy("node_modules/jquery/dist/jquery.js", "adit/static/vendor/")
+    for file in glob("node_modules/@popperjs/core/dist/umd/popper.js*"):
+        copy(file, "adit/static/vendor/")
     for file in glob("node_modules/bootstrap/dist/css/bootstrap.css*"):
         copy(file, "adit/static/vendor/")
     for file in glob("node_modules/bootstrap/dist/js/bootstrap.bundle.js*"):
         copy(file, "adit/static/vendor/")
     copy("node_modules/bootswatch/dist/flatly/bootstrap.css", "adit/static/vendor/")
-    for file in glob("node_modules/alpinejs/dist/alpine*.js"):
-        copy(file, "adit/static/vendor/")
-    copy("node_modules/morphdom/dist/morphdom-umd.js", "adit/static/vendor/")
+    copy("node_modules/alpinejs/dist/cdn.js", "adit/static/vendor/alpine.js")
+    copy("node_modules/@alpinejs/morph/dist/cdn.js", "adit/static/vendor/alpine-morph.js")
     copy("node_modules/htmx.org/dist/htmx.js", "adit/static/vendor/")
     copy("node_modules/htmx.org/dist/ext/ws.js", "adit/static/vendor/htmx-ws.js")
     copy(
-        "node_modules/htmx.org/dist/ext/morphdom-swap.js",
-        "adit/static/vendor/htmx-morphdom-swap.js",
+        "node_modules/htmx.org/dist/ext/alpine-morph.js",
+        "adit/static/vendor/htmx-alpine-morph.js",
     )
 
 

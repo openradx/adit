@@ -3,7 +3,7 @@
 {% load crispy from crispy_forms_tags %}
 {% block script %}
     {{ block.super }}
-    <script src="{% static 'batch_transfer/batch_transfer.js' %}"></script>
+    <script src="{% static 'batch_transfer/batch_transfer_job_form.js' %}"></script>
 {% endblock script %}
 {% block container %}
     <div class="d-flex justify-content-between align-items-start">
@@ -13,7 +13,7 @@
         </h4>
         <a href="{% url 'batch_transfer_job_list' %}">
             {% include "core/icons/list.svg" %}
-            <strong class="align-middle">Previous Jobs</strong>
+            Previous Jobs
         </a>
     </div>
     {% crispy form %}

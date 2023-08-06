@@ -1,21 +1,64 @@
-$(function () {
-  // Enable Bootstrap tooltips everywhere
-  $('[data-toggle="tooltip"]').tooltip();
+function ready(fn) {
+  if (document.readyState !== "loading") {
+    fn();
+    return;
+  }
+  document.addEventListener("DOMContentLoaded", fn);
+}
 
-  // Enable toasts everywhere.
-  $(".toast").toast();
+ready(function () {
+  // Enable Bootstrap tooltips
+  const tooltips = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+  for (const tooltip of tooltips) {
+    new bootstrap.Tooltip(tooltip);
+  }
 });
 
 // A site wide config that is added to the context by adit.core.site.base_context_processor
 // and that can be accessed by Javascript
-function getAditConfig() {
-  return JSON.parse(document.getElementById("adit_config").textContent);
+function getConfig() {
+  return JSON.parse(document.getElementById("public").textContent);
 }
 
-// Alpine JS data model connected in _messages_panel.html
-// A simple usage example of how to add messages on the client by dispatching
-// a custom event can be found in sandbox.html and sandbox.js.
-function messages() {
+// Update session properties on the server (used to retain specific form fields on page reload)
+function updatePreferences(route, data) {
+  const formData = new FormData();
+  for (const key in data) {
+    formData.append(key, data[key]);
+  }
+
+  const config = getConfig();
+  const request = new Request(`/${route}/update-preferences/`, {
+    method: "POST",
+    headers: { "X-CSRFToken": config.csrf_token },
+    mode: "same-origin", // Do not send CSRF token to another domain.
+    body: formData,
+  });
+
+  fetch(request).then(function () {
+    const config = getConfig();
+    if (config.debug) {
+      console.log("Saved properties to session", data);
+    }
+  });
+}
+
+// Add message to the messages panel
+function showMessage(level, title, text) {
+  window.dispatchEvent(
+    new CustomEvent("core:add-message", {
+      detail: {
+        level: level,
+        title: title,
+        text: text,
+      },
+    })
+  );
+}
+
+// Alpine data model connected in _messages_panel.html to show and
+// interact with messages in the messages panel.
+function messagesPanel(panelEl) {
   function capitalize(s) {
     if (typeof s !== "string") return "";
     return s.charAt(0).toUpperCase() + s.slice(1);
@@ -23,40 +66,33 @@ function messages() {
 
   return {
     options: {
-      nextMessageId: 1,
-      duration: 30000,
+      duration: 30000, // 30 seconds
     },
-    messages: [],
-    init: function ($el, $watch, $nextTick) {
-      this.$el = $el;
-
-      // Auto hide already added messages by the server
-      const serverMessages = this.$el.getElementsByClassName("server-message");
-      for (let i = 0; i < serverMessages.length; i++) {
-        setTimeout(function () {
-          serverMessages[i].remove();
-        }, this.options.duration);
+    messages: [], // List of messages created by the client
+    init: function () {
+      // Initialize messages created by the server
+      const messageEls = panelEl.getElementsByClassName("server-message");
+      for (const messageEl of messageEls) {
+        this.initMessage(messageEl);
       }
     },
+    // Also called for every messaged created by the client
+    initMessage: function (messageEl) {
+      new bootstrap.Toast(messageEl, {
+        delay: this.options.duration,
+      }).show();
+    },
     /**
-     * Add a message to the message list
+     * Add a message to the message list. Call the showMessage function above to
+     * add messages to the list from another function or script.
      * @param {object} message
      * @param {("success"|"warning"|"error")} message.level
      * @param {string} message.title
      * @param {string} message.text
      */
     addMessage: function (message) {
-      message.id = this.options.nextMessageId++;
       message.title = capitalize(message.title);
       this.messages.push(message);
-      const self = this;
-      // Auto hide client message
-      setTimeout(function () {
-        self.messages.splice(self.messages.indexOf(message), 1);
-      }, this.options.duration);
-    },
-    removeMessage: function (message) {
-      this.messages.splice(this.messages.indexOf(message), 1);
     },
   };
 }

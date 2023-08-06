@@ -17,8 +17,8 @@
                     {% explorer_url server.id as server_url %}
                     <a href="{{ server_url }}"
                        title="ID {{ study.id }}"
-                       data-toggle="tooltip"
-                       data-placement="left">{% include "core/icons/goto.svg" %}</a>
+                       data-bs-toggle="tooltip"
+                       data-bs-placement="left">{% include "core/icons/goto.svg" %}</a>
                 </td>
             </tr>
         {% endfor %}

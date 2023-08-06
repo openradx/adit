@@ -22,8 +22,8 @@
                     {% explorer_url server.id patient.PatientID as patient_url %}
                     <a href="{{ patient_url }}"
                        title="{{ patient.PatientID }}"
-                       data-toggle="tooltip"
-                       data-placement="left">{% include "core/icons/goto.svg" %}</a>
+                       data-bs-toggle="tooltip"
+                       data-bs-placement="left">{% include "core/icons/goto.svg" %}</a>
                 </td>
             </tr>
         {% endfor %}

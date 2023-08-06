@@ -11,9 +11,14 @@ from .views import (
     SelectiveTransferJobRetryView,
     SelectiveTransferJobVerifyView,
     SelectiveTransferTaskDetailView,
+    SelectiveTransferUpdatePreferencesView,
 )
 
 urlpatterns = [
+    path(
+        "update-preferences/",
+        SelectiveTransferUpdatePreferencesView.as_view(),
+    ),
     path(
         "jobs/",
         SelectiveTransferJobListView.as_view(),

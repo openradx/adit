@@ -12,7 +12,6 @@ asyncinotify = "^4.0.1"
 celery = "^5.2.7"
 channels = "^4.0.0"
 channels-redis = "^4.0.0"
-crispy-bootstrap4 = "^2022.1"
 cryptography = "^41.0.1"
 daphne = "^4.0.0"
 dicognito = "^0.15.0"
@@ -44,6 +43,7 @@ Twisted = { extras = ["tls", "http2"], version = "^22.2.0" }
 wait-for-it = "^2.2.2"
 watchfiles = "^0.19.0"
 whitenoise = "^6.0.0"
+crispy-bootstrap5 = "^0.7"
 
 [tool.poetry.group.dev.dependencies]
 black = "^23.1.0"

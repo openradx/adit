@@ -11,9 +11,14 @@ from .views import (
     BatchTransferJobRetryView,
     BatchTransferJobVerifyView,
     BatchTransferTaskDetailView,
+    BatchTransferUpdatePreferencesView,
 )
 
 urlpatterns = [
+    path(
+        "update-preferences/",
+        BatchTransferUpdatePreferencesView.as_view(),
+    ),
     path(
         "jobs/",
         BatchTransferJobListView.as_view(),

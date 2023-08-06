@@ -1,7 +1,6 @@
 from datetime import datetime
 
 from django.conf import settings
-from django.contrib.sessions.backends.base import SessionBase
 
 from adit.accounts.models import User
 from adit.core.utils.dicom_connector import DicomConnector
@@ -9,19 +8,8 @@ from adit.core.utils.dicom_connector import DicomConnector
 from .forms import SelectiveTransferJobForm
 from .models import SelectiveTransferJob, SelectiveTransferTask
 
-SAVED_SOURCE_FIELD = "selective_transfer_source"
-SAVED_DESTINATION_FIELD = "selective_transfer_destination"
-SAVED_URGENT_FIELD = "selective_transfer_urgent"
-SAVED_SEND_FINISHED_MAIL_FIELD = "selective_transfer_send_finished_mail"
-
 
 class SelectiveTransferJobCreateMixin:
-    def save_initial_form_data(self, session: SessionBase, form: SelectiveTransferJobForm) -> None:
-        session[SAVED_SOURCE_FIELD] = form.instance.source.id
-        session[SAVED_DESTINATION_FIELD] = form.instance.destination.id
-        session[SAVED_URGENT_FIELD] = form.instance.urgent
-        session[SAVED_SEND_FINISHED_MAIL_FIELD] = form.instance.send_finished_mail
-
     def create_source_connector(self, form: SelectiveTransferJobForm) -> DicomConnector:
         return DicomConnector(form.instance.source.dicomserver)
 
