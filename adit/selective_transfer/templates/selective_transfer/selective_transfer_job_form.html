@@ -21,7 +21,7 @@
         as otherwise the submit button values are not in the sent form data.
         https://github.com/bigskysoftware/htmx/issues/1337
      -->
-    <form hx-ext="ws, morphdom-swap"
+    <form hx-ext="ws, alpine-morph"
           ws-connect="/ws/selective-transfer"
           ws-send
           x-data="selectiveTransferForm($el)"

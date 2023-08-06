@@ -56,9 +56,8 @@
         <script src="{% static 'vendor/bootstrap.bundle.js' %}"></script>
         <script src="{% static 'vendor/htmx.js' %}"></script>
         <script src="{% static 'vendor/htmx-ws.js' %}"></script>
-        <!-- TODO: Replace with Alpine morphdom after upgrading to Alpine v3 -->
-        <script src="{% static 'vendor/morphdom-umd.js' %}"></script>
-        <script src="{% static 'vendor/htmx-morphdom-swap.js' %}"></script>
+        <script src="{% static 'vendor/htmx-alpine-morph.js' %}"></script>
+        <script src="{% static 'vendor/alpine-morph.js' %}"></script>
         <script type="module" src="{% static 'vendor/alpine.js' %}"></script>
         <!-- Our Javascript stuff -->
         {{ public|json_script:"public" }}

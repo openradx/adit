@@ -84,9 +84,9 @@ class SelectiveTransferJobForm(forms.ModelForm):
         if "urgent" in self.fields:
             query_form_layout.insert(1, self.build_urgency_field())
 
-        # We swap the form using the htmx morphdom extension to retain the focus on the input
+        # We swap the form using the htmx alpine-morph extension to retain the focus on the input
         self.helper.layout = Layout(
-            Div(query_form_layout, css_id="query_form", **{"hx-swap-oob": "morphdom"})
+            Div(query_form_layout, css_id="query_form", **{"hx-swap-oob": "morph"})
         )
 
     def build_urgency_field(self):
