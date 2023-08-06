@@ -45,10 +45,6 @@ caption {
     right: 1em;
 }
 
-.toast {
-    min-width: 250px;
-}
-
 .toast.success svg rect {
     fill: green;
 }

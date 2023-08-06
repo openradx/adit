@@ -1,3 +1,4 @@
+// Keep those variables in sync with the ones one the server.
 const SELECTIVE_TRANSFER_SOURCE = "selective_transfer_source";
 const SELECTIVE_TRANSFER_DESTINATION = "selective_transfer_destination";
 const SELECTIVE_TRANSFER_URGENT = "selective_transfer_urgent";
@@ -6,15 +7,13 @@ const SELECTIVE_TRANSFER_SEND_FINISHED_MAIL =
 const SELECTIVE_TRANSFER_ADVANCED_OPTIONS_COLLAPSED =
   "selective_transfer_advanced_options_collapsed";
 
-function selectiveTransferForm() {
+function selectiveTransferForm(formEl) {
   return {
     isDestinationFolder: false,
 
-    init: function (formEl) {
-      this.formEl = formEl;
-
+    init: function () {
       // Retain source
-      const sourceInputEl = this.formEl.querySelector("#id_source");
+      const sourceInputEl = formEl.querySelector("#id_source");
       sourceInputEl.addEventListener("change", function (e) {
         sourceId = e.target.value;
         updateSession("selective-transfer", {
@@ -23,7 +22,7 @@ function selectiveTransferForm() {
       });
 
       // Retain destination
-      const destinationInputEl = this.formEl.querySelector("#id_destination");
+      const destinationInputEl = formEl.querySelector("#id_destination");
       destinationInputEl.addEventListener("change", function (e) {
         destinationId = e.target.value;
         updateSession("selective-transfer", {
@@ -32,7 +31,7 @@ function selectiveTransferForm() {
       });
 
       // Retain urgent
-      const urgentInputEl = this.formEl.querySelector("#id_urgent");
+      const urgentInputEl = formEl.querySelector("#id_urgent");
       urgentInputEl.addEventListener("change", function (e) {
         urgent = e.target.checked;
         updateSession("selective-transfer", {
@@ -41,7 +40,7 @@ function selectiveTransferForm() {
       });
 
       // Retain send finished mail
-      const sendFinishedMailInputEl = this.formEl.querySelector(
+      const sendFinishedMailInputEl = formEl.querySelector(
         "#id_send_finished_mail"
       );
       sendFinishedMailInputEl.addEventListener("change", function (e) {
@@ -52,10 +51,10 @@ function selectiveTransferForm() {
       });
 
       // Retain if the advanced options are collapsed
-      const advancedOptionsCollapsedInputEl = this.formEl.querySelector(
+      const advancedOptionsCollapsedInputEl = formEl.querySelector(
         "#id_advanced_options_collapsed"
       );
-      const advancedOptionsEl = this.formEl.querySelector("#advanced_options");
+      const advancedOptionsEl = formEl.querySelector("#advanced_options");
       advancedOptionsEl.addEventListener("hide.bs.collapse", function () {
         advancedOptionsCollapsedInputEl.value = "true";
         updateSession("selective-transfer", {
@@ -69,8 +68,8 @@ function selectiveTransferForm() {
         });
       });
     },
+
     onStartTransfer: function (event) {
-      const formEl = this.formEl;
       const buttonEl = event.currentTarget;
       buttonEl.style.pointerEvents = "none";
 

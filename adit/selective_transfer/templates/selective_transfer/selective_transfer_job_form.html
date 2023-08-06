@@ -24,8 +24,7 @@
     <form hx-ext="ws, morphdom-swap"
           ws-connect="/ws/selective-transfer"
           ws-send
-          x-data="selectiveTransferForm()"
-          x-init="init($el)"
+          x-data="selectiveTransferForm($el)"
           method="post"
           action=""
           novalidate>

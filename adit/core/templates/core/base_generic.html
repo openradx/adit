@@ -52,7 +52,6 @@
         {% block bottom %}
         {% endblock bottom %}
         <!-- Vendor Javascript stuff -->
-        <script src="{% static 'vendor/jquery.js' %}"></script>
         <script src="{% static 'vendor/popper.js' %}"></script>
         <script src="{% static 'vendor/bootstrap.bundle.js' %}"></script>
         <script src="{% static 'vendor/htmx.js' %}"></script>
@@ -61,7 +60,6 @@
         <script src="{% static 'vendor/morphdom-umd.js' %}"></script>
         <script src="{% static 'vendor/htmx-morphdom-swap.js' %}"></script>
         <script type="module" src="{% static 'vendor/alpine.js' %}"></script>
-        <script nomodule src="{% static 'vendor/alpine-ie11.js' %}" defer></script>
         <!-- Our Javascript stuff -->
         {{ public|json_script:"public" }}
         <script src="{% static 'core/core.js' %}"></script>

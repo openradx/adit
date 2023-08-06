@@ -22,9 +22,12 @@ class SelectiveTransferJobCreateMixin:
         session[SELECTIVE_TRANSFER_DESTINATION] = form.instance.destination.id
         session[SELECTIVE_TRANSFER_URGENT] = form.instance.urgent
         session[SELECTIVE_TRANSFER_SEND_FINISHED_MAIL] = form.instance.send_finished_mail
-        session[
-            SELECTIVE_TRANSFER_ADVANCED_OPTIONS_COLLAPSED
-        ] = form.instance.advanced_options_collapsed
+
+        # advanced_options_collapsed is not part of the model so we get it from the
+        # cleaned_data dict.
+        session[SELECTIVE_TRANSFER_ADVANCED_OPTIONS_COLLAPSED] = form.cleaned_data[
+            "advanced_options_collapsed"
+        ]
 
     def create_source_connector(self, form: SelectiveTransferJobForm) -> DicomConnector:
         return DicomConnector(form.instance.source.dicomserver)
