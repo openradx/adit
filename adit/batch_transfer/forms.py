@@ -75,7 +75,12 @@ class BatchTransferJobForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
 
         self.fields["source"].widget.attrs["class"] = "form-select"
+        self.fields["source"].widget.attrs["@change"] = "onSourceChange($event)"
+
         self.fields["destination"].widget.attrs["class"] = "form-select"
+        self.fields["destination"].widget.attrs["@change"] = "onDestinationChange($event)"
+
+        self.fields["urgent"].widget.attrs["@change"] = "onUrgentChange($event)"
 
         if not self.user.has_perm("batch_transfer.can_process_urgently"):
             del self.fields["urgent"]
@@ -100,7 +105,12 @@ class BatchTransferJobForm(forms.ModelForm):
         self.fields["trial_protocol_id"].widget.attrs["placeholder"] = "Optional"
         self.fields["trial_protocol_name"].widget.attrs["placeholder"] = "Optional"
 
+        self.fields["send_finished_mail"].widget.attrs[
+            "@change"
+        ] = "onSendFinishedMailChange($event)"
+
         self.helper = FormHelper(self)
+        self.helper.attrs["x-data"] = "batchTransferJobForm()"
         self.helper.add_input(Submit("save", "Create Job"))
 
     def clean_batch_file(self):

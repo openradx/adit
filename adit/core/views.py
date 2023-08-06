@@ -91,14 +91,12 @@ class HomeView(TemplateView):
         return context
 
 
-class BaseUpdateSessionView(ABC, LoginRequiredMixin, View):
-    """Allows the client to update chosen session properties.
+class BaseUpdatePreferencesView(ABC, LoginRequiredMixin, View):
+    """Allows the client to update the user preferences.
 
-    We use this to retain some form state the user has chosen between browser
-    refreshes. The implementations of this view is called by some AJAX requests
-    when specific form fields are changed. (We also save the form state of those
-    fields to the session when the form is submitted, see appropiate view classes, mixins
-    and consumer.)
+    We use this to retain some form state between browser refreshes.
+    The implementations of this view is called by some AJAX requests when specific
+    form fields are changed.
     """
 
     allowed_keys: list[str]
@@ -106,7 +104,9 @@ class BaseUpdateSessionView(ABC, LoginRequiredMixin, View):
     def post(self, request: AuthenticatedHttpRequest) -> HttpResponse:
         for key in request.POST.keys():
             if key not in self.allowed_keys:
-                raise SuspiciousOperation(f"Property {key} is not allowed to be updated.")
+                raise SuspiciousOperation(f'Invalid preference "{key}" to update.')
+
+        preferences = request.user.preferences
 
         for key, value in request.POST.items():
             if value == "true":
@@ -114,7 +114,9 @@ class BaseUpdateSessionView(ABC, LoginRequiredMixin, View):
             elif value == "false":
                 value = False
 
-            request.session[key] = value
+            preferences[key] = value
+
+        request.user.save()
 
         return HttpResponse()
 
@@ -161,7 +163,9 @@ class DicomJobCreateView(
 
     def get_form_kwargs(self) -> dict[str, Any]:
         kwargs = super().get_form_kwargs()
-        kwargs.update({"user": self.request.user})
+
+        kwargs["user"] = self.request.user
+
         return kwargs
 
 

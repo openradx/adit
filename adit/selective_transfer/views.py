@@ -5,7 +5,7 @@ from django.http import HttpResponseBadRequest
 from django.urls import reverse_lazy
 
 from adit.core.views import (
-    BaseUpdateSessionView,
+    BaseUpdatePreferencesView,
     DicomJobCancelView,
     DicomJobCreateView,
     DicomJobDeleteView,
@@ -20,25 +20,24 @@ from adit.core.views import (
 
 from .filters import SelectiveTransferJobFilter, SelectiveTransferTaskFilter
 from .forms import SelectiveTransferJobForm
-from .mixins import (
-    SELECTIVE_TRANSFER_ADVANCED_OPTIONS_COLLAPSED,
-    SELECTIVE_TRANSFER_DESTINATION,
-    SELECTIVE_TRANSFER_SEND_FINISHED_MAIL,
-    SELECTIVE_TRANSFER_SOURCE,
-    SELECTIVE_TRANSFER_URGENT,
-    SelectiveTransferJobCreateMixin,
-)
+from .mixins import SelectiveTransferJobCreateMixin
 from .models import SelectiveTransferJob, SelectiveTransferTask
 from .tables import SelectiveTransferJobTable, SelectiveTransferTaskTable
 
+SELECTIVE_TRANSFER_SOURCE = "selective_transfer_source"
+SELECTIVE_TRANSFER_DESTINATION = "selective_transfer_destination"
+SELECTIVE_TRANSFER_URGENT = "selective_transfer_urgent"
+SELECTIVE_TRANSFER_SEND_FINISHED_MAIL = "selective_transfer_send_finished_mail"
+SELECTIVE_TRANSFER_ADVANCED_OPTIONS_COLLAPSED = "selective_transfer_advanced_options_collapsed"
 
-class SelectiveTransferUpdateSessionView(BaseUpdateSessionView):
+
+class SelectiveTransferUpdatePreferencesView(BaseUpdatePreferencesView):
     allowed_keys = [
-        SELECTIVE_TRANSFER_ADVANCED_OPTIONS_COLLAPSED,
-        SELECTIVE_TRANSFER_DESTINATION,
-        SELECTIVE_TRANSFER_SEND_FINISHED_MAIL,
         SELECTIVE_TRANSFER_SOURCE,
+        SELECTIVE_TRANSFER_DESTINATION,
         SELECTIVE_TRANSFER_URGENT,
+        SELECTIVE_TRANSFER_SEND_FINISHED_MAIL,
+        SELECTIVE_TRANSFER_ADVANCED_OPTIONS_COLLAPSED,
     ]
 
 
@@ -66,36 +65,35 @@ class SelectiveTransferJobCreateView(
     def get_form_kwargs(self) -> dict[str, Any]:
         kwargs = super().get_form_kwargs()
 
-        action = self.request.POST.get("action")
-        kwargs.update({"action": action})
+        kwargs["action"] = self.request.POST.get("action")
+
+        preferences: dict[str, Any] = self.request.user.preferences
+        kwargs["advanced_options_collapsed"] = preferences.get(
+            SELECTIVE_TRANSFER_ADVANCED_OPTIONS_COLLAPSED, False
+        )
 
         return kwargs
 
     def get_initial(self):
         initial = super().get_initial()
 
-        # Restore some fields from last submit
+        preferences: dict[str, Any] = self.request.user.preferences
 
-        source = self.request.session.get(SELECTIVE_TRANSFER_SOURCE)
+        source = preferences.get(SELECTIVE_TRANSFER_SOURCE)
         if source is not None:
-            initial.update({"source": source})
+            initial["source"] = source
 
-        destination = self.request.session.get(SELECTIVE_TRANSFER_DESTINATION)
+        destination = preferences.get(SELECTIVE_TRANSFER_DESTINATION)
         if destination is not None:
-            initial.update({"destination": destination})
+            initial["destination"] = destination
 
-        urgent = self.request.session.get(SELECTIVE_TRANSFER_URGENT)
+        urgent = preferences.get(SELECTIVE_TRANSFER_URGENT)
         if urgent is not None:
-            initial.update({"urgent": urgent})
+            initial["urgent"] = urgent
 
-        send_finished_mail = self.request.session.get(SELECTIVE_TRANSFER_SEND_FINISHED_MAIL)
+        send_finished_mail = preferences.get(SELECTIVE_TRANSFER_SEND_FINISHED_MAIL)
         if send_finished_mail is not None:
-            initial.update({"send_finished_mail": send_finished_mail})
-
-        advanced_options_collapsed = self.request.session.get(
-            SELECTIVE_TRANSFER_ADVANCED_OPTIONS_COLLAPSED, False
-        )
-        initial.update({"advanced_options_collapsed": advanced_options_collapsed})
+            initial["send_finished_mail"] = send_finished_mail
 
         return initial
 
@@ -106,8 +104,6 @@ class SelectiveTransferJobCreateView(
         )
 
     def form_valid(self, form: SelectiveTransferJobForm):
-        self.save_initial_form_data(self.request.session, form)
-
         action = self.request.POST.get("action")
 
         if action == "query":

@@ -13,9 +13,14 @@ from .views import (
     BatchQueryResultDownloadView,
     BatchQueryResultListView,
     BatchQueryTaskDetailView,
+    BatchQueryUpdatePreferencesView,
 )
 
 urlpatterns = [
+    path(
+        "update-preferences/",
+        BatchQueryUpdatePreferencesView.as_view(),
+    ),
     path(
         "jobs/",
         BatchQueryJobListView.as_view(),

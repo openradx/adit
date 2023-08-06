@@ -29,7 +29,6 @@ class SelectiveTransferJobForm(forms.ModelForm):
     study_date = forms.DateField(required=False)
     modality = forms.CharField(required=False, max_length=16)
     accession_number = forms.CharField(required=False, max_length=32, label="Accession #")
-    advanced_options_collapsed = forms.BooleanField(required=False)
 
     class Meta:
         model = SelectiveTransferJob
@@ -48,7 +47,6 @@ class SelectiveTransferJobForm(forms.ModelForm):
             "study_date",
             "modality",
             "accession_number",
-            "advanced_options_collapsed",
         )
         labels = {
             "urgent": "Start transfer directly",
@@ -63,6 +61,7 @@ class SelectiveTransferJobForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         self.user = kwargs.pop("user")
         self.action = kwargs.pop("action")
+        self.advanced_options_collapsed = kwargs.pop("advanced_options_collapsed")
 
         super().__init__(*args, **kwargs)
 
@@ -81,18 +80,9 @@ class SelectiveTransferJobForm(forms.ModelForm):
 
         query_form_layout = self.build_query_form_layout()
 
-        if "urgent" in self.fields:
-            query_form_layout.insert(1, self.build_urgency_field())
-
         # We swap the form using the htmx alpine-morph extension to retain the focus on the input
         self.helper.layout = Layout(
             Div(query_form_layout, css_id="query_form", **{"hx-swap-oob": "morph"})
-        )
-
-    def build_urgency_field(self):
-        return Row(
-            Column(Field("urgent")),
-            css_class="ps-1",
         )
 
     def clean_pseudonym(self):
@@ -129,10 +119,25 @@ class SelectiveTransferJobForm(forms.ModelForm):
         return modilities
 
     def build_query_form_layout(self):
-        return Layout(
+        query_form_layout = Layout(
             Row(
-                self.build_dicom_node_field("source"),
-                self.build_dicom_node_field("destination"),
+                Column(
+                    Field(
+                        "source",
+                        css_class="form-select",
+                        **{"@change": "onSourceChange($event)"},
+                    )
+                ),
+                Column(
+                    Field(
+                        "destination",
+                        css_class="form-select",
+                        **{
+                            "x-init": "initDestination($el)",
+                            "@change": "onDestinationChange($event)",
+                        },
+                    )
+                ),
             ),
             Row(
                 Column(
@@ -146,26 +151,19 @@ class SelectiveTransferJobForm(forms.ModelForm):
             ),
         )
 
-    def build_dicom_node_field(self, field_name):
-        return Column(
-            Field(field_name, css_class="form-select"),
-        )
+        if "urgent" in self.fields:
+            query_form_layout.insert(
+                1,
+                Row(
+                    Column(Field("urgent", **{"@change": "onUrgentChange($event)"})),
+                    css_class="ps-1",
+                ),
+            )
+
+        return query_form_layout
 
     def build_advanced_options_layout(self):
-        # We use a hidden field to store the collapsed state of the advanced options
-        # and restore it here with the appropriate css classes.
-        # When this a newly created form without data to be submitted then we use the
-        # initial value which is restored from the session (see the view that uses
-        # this form).
-        advanced_options_collapsed = False
-        if "advanced_options_collapsed" in self.data:
-            if self.data["advanced_options_collapsed"].lower() == "true":
-                advanced_options_collapsed = True
-        elif "advanced_options_collapsed" in self.initial:
-            if self.initial["advanced_options_collapsed"]:
-                advanced_options_collapsed = True
-
-        if advanced_options_collapsed:
+        if self.advanced_options_collapsed:
             aria_expanded = "false"
             advanced_options_class = "pt-1 collapse"
         else:
@@ -186,7 +184,6 @@ class SelectiveTransferJobForm(forms.ModelForm):
                             "aria-controls": "advanced_options",
                         },
                     ),
-                    Field("advanced_options_collapsed", type="hidden"),
                     css_class="card-title mb-0",
                 ),
                 Div(
@@ -202,7 +199,10 @@ class SelectiveTransferJobForm(forms.ModelForm):
                         ),
                     ),
                     Row(
-                        self.build_option_field("send_finished_mail"),
+                        self.build_option_field(
+                            "send_finished_mail",
+                            {"@change": "onSendFinishedMailChange($event)"},
+                        ),
                     ),
                     css_class=advanced_options_class,
                     css_id="advanced_options",

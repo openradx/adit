@@ -7,7 +7,7 @@ from django.db import models
 class User(AbstractUser):
     phone_number = models.CharField(max_length=64)
     department = models.CharField(max_length=128)
-    misc_settings = models.JSONField(null=True, blank=True)
+    preferences = models.JSONField(default=dict)
 
     def is_group_member(self, group_name: str):
         return self.groups.filter(name=group_name).exists()

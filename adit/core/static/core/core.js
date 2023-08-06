@@ -21,14 +21,14 @@ function getConfig() {
 }
 
 // Update session properties on the server (used to retain specific form fields on page reload)
-function updateSession(route, data) {
+function updatePreferences(route, data) {
   const formData = new FormData();
   for (const key in data) {
     formData.append(key, data[key]);
   }
 
   const config = getConfig();
-  const request = new Request(`/${route}/update-session/`, {
+  const request = new Request(`/${route}/update-preferences/`, {
     method: "POST",
     headers: { "X-CSRFToken": config.csrf_token },
     mode: "same-origin", // Do not send CSRF token to another domain.

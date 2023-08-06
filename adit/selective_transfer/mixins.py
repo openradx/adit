@@ -1,7 +1,6 @@
 from datetime import datetime
 
 from django.conf import settings
-from django.contrib.sessions.backends.base import SessionBase
 
 from adit.accounts.models import User
 from adit.core.utils.dicom_connector import DicomConnector
@@ -9,26 +8,8 @@ from adit.core.utils.dicom_connector import DicomConnector
 from .forms import SelectiveTransferJobForm
 from .models import SelectiveTransferJob, SelectiveTransferTask
 
-SELECTIVE_TRANSFER_SOURCE = "selective_transfer_source"
-SELECTIVE_TRANSFER_DESTINATION = "selective_transfer_destination"
-SELECTIVE_TRANSFER_URGENT = "selective_transfer_urgent"
-SELECTIVE_TRANSFER_SEND_FINISHED_MAIL = "selective_transfer_send_finished_mail"
-SELECTIVE_TRANSFER_ADVANCED_OPTIONS_COLLAPSED = "selective_transfer_advanced_options_collapsed"
-
 
 class SelectiveTransferJobCreateMixin:
-    def save_initial_form_data(self, session: SessionBase, form: SelectiveTransferJobForm) -> None:
-        session[SELECTIVE_TRANSFER_SOURCE] = form.instance.source.id
-        session[SELECTIVE_TRANSFER_DESTINATION] = form.instance.destination.id
-        session[SELECTIVE_TRANSFER_URGENT] = form.instance.urgent
-        session[SELECTIVE_TRANSFER_SEND_FINISHED_MAIL] = form.instance.send_finished_mail
-
-        # advanced_options_collapsed is not part of the model so we get it from the
-        # cleaned_data dict.
-        session[SELECTIVE_TRANSFER_ADVANCED_OPTIONS_COLLAPSED] = form.cleaned_data[
-            "advanced_options_collapsed"
-        ]
-
     def create_source_connector(self, form: SelectiveTransferJobForm) -> DicomConnector:
         return DicomConnector(form.instance.source.dicomserver)
 

@@ -56,6 +56,9 @@ class BatchQueryJobForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
 
         self.fields["source"].widget.attrs["class"] = "form-select"
+        self.fields["source"].widget.attrs["@change"] = "onSourceChange($event)"
+
+        self.fields["urgent"].widget.attrs["@change"] = "onUrgentChange($event)"
 
         if not user.has_perm("batch_query.can_process_urgently"):
             del self.fields["urgent"]
@@ -71,7 +74,12 @@ class BatchQueryJobForm(forms.ModelForm):
                 "batch_file"
             ].help_text = f"Maximum {self.max_batch_size} tasks per query job!"
 
+        self.fields["send_finished_mail"].widget.attrs[
+            "@change"
+        ] = "onSendFinishedMailChange($event)"
+
         self.helper = FormHelper(self)
+        self.helper.attrs["x-data"] = "batchQueryJobForm()"
         self.helper.add_input(Submit("save", "Create Job"))
 
     def clean_batch_file(self):
