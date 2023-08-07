@@ -51,10 +51,10 @@
             <dd class="col-sm-9">
                 {{ task.celery_task_id|default:"—" }}
             </dd>
+            <dt class="col-sm-3">Log</dt>
+            <dd class="col-sm-9">
+                <pre>{{ task.log|default:"—" }}</pre>
+            </dd>
         {% endif %}
-        <dt class="col-sm-3">Log</dt>
-        <dd class="col-sm-9">
-            <pre>{{ task.log|default:"—" }}</pre>
-        </dd>
     </dl>
 {% endwith %}
