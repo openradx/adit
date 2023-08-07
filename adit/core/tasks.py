@@ -147,7 +147,7 @@ class ProcessDicomTask(AbortableCeleryTask):
             dicom_task.status = DicomTask.Status.FAILURE
             dicom_task.message = str(err)
             if dicom_task.log:
-                dicom_task.log += "\n"
+                dicom_task.log += "\n---\n"
             dicom_task.log += traceback.format_exc()
         except Exception as err:
             # Unexpected errors are handled here
@@ -156,7 +156,7 @@ class ProcessDicomTask(AbortableCeleryTask):
             dicom_task.status = DicomTask.Status.FAILURE
             dicom_task.message = str(err)
             if dicom_task.log:
-                dicom_task.log += "\n"
+                dicom_task.log += "\n-----\n"
             dicom_task.log += traceback.format_exc()
         finally:
             dicom_task.end = timezone.now()
