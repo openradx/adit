@@ -17,9 +17,9 @@
         <meta name="author" content="Kai Schlamp" />
         {% block meta %}
         {% endblock meta %}
-        <link rel="apple-touch-icon"
-              sizes="180x180"
-              href="{% static 'favicon/apple-touch-icon.png' %}" />
+        {# We put the theme JavaScript stuff on top to avoid flickering #}
+        <script src="{% static 'core/theme.js' %}"></script>
+        {# Favicons #}
         <link rel="icon"
               type="image/png"
               sizes="32x32"
@@ -28,7 +28,7 @@
               type="image/png"
               sizes="16x16"
               href="{% static 'favicon/favicon-16x16.png' %}" />
-        <link rel="manifest" href="{% static 'favicon/site.webmanifest' %}" />
+        {# CSS stuff #}
         <link rel="stylesheet"
               type="text/css"
               href="{% static 'vendor/bootstrap.css' %}" />
