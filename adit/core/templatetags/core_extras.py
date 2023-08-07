@@ -1,12 +1,42 @@
 from datetime import datetime
+from typing import Any, Literal
 
 from django.conf import settings
+from django.http import HttpRequest
 from django.template import Library
 from django.template.defaultfilters import join
 
 from ..models import DicomJob, DicomTask
+from ..utils.auth_utils import is_logged_in_user
 
 register = Library()
+
+
+@register.simple_tag(takes_context=True)
+def theme(context: dict[str, Any]) -> Literal["light", "dark", "auto"]:
+    request: HttpRequest = context["request"]
+
+    theme = "auto"
+    if is_logged_in_user(request.user):
+        theme = request.user.preferences.get("theme", "auto")
+
+    return theme
+
+
+@register.simple_tag(takes_context=True)
+def theme_color(
+    context: dict[str, Any], theme: Literal["light", "dark", "auto"]
+) -> Literal["light", "dark"]:
+    # If the theme is auto we have to render something on the server, but the real theme
+    # schema will be media queried on the client side.
+    # TODO: Sec-CH-Prefers-Color-Scheme does not work yet,
+    # see https://stackoverflow.com/q/76855062/166229
+    request: HttpRequest = context["request"]
+    color = request.headers.get("Sec-CH-Prefers-Color-Scheme", "light")
+    if theme == "auto":
+        return color  # type: ignore
+
+    return theme
 
 
 @register.filter
