@@ -183,6 +183,8 @@ class QueryExecutor:
             if "SeriesDescription" in result:
                 series_description = result["SeriesDescription"]
 
+            modalities = ", ".join(result["ModalitiesInStudy"])
+
             series_number = ""
             if "SeriesNumber" in result:
                 series_number = result["SeriesNumber"]
@@ -198,7 +200,7 @@ class QueryExecutor:
                 study_date=result["StudyDate"],
                 study_time=result["StudyTime"],
                 study_description=study_description,
-                modalities=result["ModalitiesInStudy"],
+                modalities=modalities,
                 image_count=result["NumberOfStudyRelatedInstances"],
                 pseudonym=self.query_task.pseudonym,
                 series_uid=series_uid,
