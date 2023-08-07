@@ -237,34 +237,43 @@ class DicomConnector:
     def find_studies(self, query: dict[str, Any], limit_results: int | None = None):
         query["QueryRetrieveLevel"] = "STUDY"
 
-        if "NumberOfStudyRelatedInstances" not in query:
-            query["NumberOfStudyRelatedInstances"] = ""
+        # Always fetch the number of images in a study (we can never filter by that)
+        query["NumberOfStudyRelatedInstances"] = ""
+
+        # Always fetch the modalities in the study (if supported)
+        if "ModalitiesInStudy" not in query:
+            query["ModalitiesInStudy"] = ""
 
         # We filter for StudyDescription programmatically, so that we can use
-        # more advanced regular expressions.
-        study_description = query.get("StudyDescription")
-        if study_description:
-            study_description = study_description.lower()
+        # regular expressions
+        study_description_query = query.get("StudyDescription")
+        if study_description_query:
             query["StudyDescription"] = ""
 
+        # If the server supports DICOMweb and DIMSE then we prefer DICOMweb
         if self.server.dicomweb_qido_support:
             studies = self._send_qido(query, limit_results=limit_results)
         else:
             studies = self._send_c_find(query, limit_results=limit_results)
 
-        if study_description:
+        # Optionally filter the study by its study description
+        if study_description_query:
             studies = list(
                 filter(
-                    lambda x: re.search(study_description, x["StudyDescription"].lower()),
+                    lambda study: re.search(
+                        study_description_query,
+                        study["StudyDescription"],
+                        re.IGNORECASE,
+                    ),
                     studies,
                 )
             )
 
-        query_modalities = query.get("ModalitiesInStudy")
-        if not query_modalities:
+        modalities_query = query.get("ModalitiesInStudy")
+        if not modalities_query:
             return studies
 
-        return self._filter_studies_by_modalities(studies, query_modalities)
+        return self._filter_studies_by_modalities(studies, modalities_query)
 
     def find_series(self, query: dict[str, Any], limit_results=None):
         """Fetch all series UIDs for a given study UID.
@@ -278,59 +287,61 @@ class DicomConnector:
         # We filter for Modality and SeriesNumber programmatically because we allow
         # to filter for multiple modalities resp. series numbers. So we have to
         # cache them in a variable and set them to a blank string for the C-Find query.
-        modalities = query.get("Modality")
-        if modalities:
-            if not isinstance(modalities, list):
-                modalities = [modalities]
-
+        modalities_query = query.get("Modality")
+        if modalities_query:
+            if not isinstance(modalities_query, list):
+                modalities_query = [modalities_query]
             query["Modality"] = ""
 
         # It's also better to filter Series Number programmatically, because it's of
         # VR Integer String and with just a C-Find it's not guaranteed that e.g.
         # "4" is the same as "+4"
         # https://groups.google.com/g/comp.protocols.dicom/c/JNsg7upVJ08
-        series_numbers = query.get("SeriesNumber")
-        if series_numbers:
+        series_numbers_query = query.get("SeriesNumber")
+        if series_numbers_query:
             # Convert to an integer for better comparison.
-            if not isinstance(series_numbers, list):
-                series_numbers = [int(series_numbers)]
+            if not isinstance(series_numbers_query, list):
+                series_numbers_query = [int(series_numbers_query)]
             else:
-                series_numbers = list(map(int, series_numbers))
-
+                series_numbers_query = list(map(int, series_numbers_query))
             query["SeriesNumber"] = ""
 
         # We also filter for SeriesDescription programmatically, so that way we can use
         # more advanced regular expressions.
-        series_description = query.get("SeriesDescription")
-        if series_description:
-            series_description = series_description.lower()
+        series_description_query = query.get("SeriesDescription")
+        if series_description_query:
             query["SeriesDescription"] = ""
 
+        # If the server supports DICOMweb and DIMSE then we prefer DICOMweb
         if self.server.dicomweb_qido_support:
             series_list = self._send_qido(query, limit_results=limit_results)
         else:
             series_list = self._send_c_find(query, limit_results=limit_results)
 
-        if modalities:
+        if modalities_query:
             series_list = list(
                 filter(
-                    lambda x: x["Modality"] in modalities,
+                    lambda series: series["Modality"] in modalities_query,
                     series_list,
                 )
             )
 
-        if series_numbers:
+        if series_numbers_query:
             series_list = list(
                 filter(
-                    lambda x: int(x["SeriesNumber"]) in series_numbers,
+                    lambda series: int(series["SeriesNumber"]) in series_numbers_query,
                     series_list,
                 )
             )
 
-        if series_description:
+        if series_description_query:
             series_list = list(
                 filter(
-                    lambda x: re.search(series_description, x["SeriesDescription"].lower()),
+                    lambda series: re.search(
+                        series_description_query,
+                        series["SeriesDescription"],
+                        re.IGNORECASE,
+                    ),
                     series_list,
                 )
             )
