@@ -53,7 +53,7 @@ function selectiveTransferJobForm(formEl) {
       });
     },
 
-    onSendFinishedMailChange: function () {
+    onSendFinishedMailChange: function (ev) {
       updatePreferences("selective-transfer", {
         [SELECTIVE_TRANSFER_SEND_FINISHED_MAIL]: ev.target.checked,
       });
