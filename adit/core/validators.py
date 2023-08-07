@@ -40,12 +40,8 @@ def validate_uids(value):
 def validate_modalities(value: str):
     modalities = map(str.strip, value.split(","))
     for modality in modalities:
-        if len(modality) > 16:
+        if not modality.isalpha() or len(modality) > 16:
             raise ValidationError(f"Invalid modality: {modality}")
-
-        no_backslash_char_validator(modality)
-        no_control_chars_validator(modality)
-        no_wildcard_chars_validator(modality)
 
 
 def validate_series_number(value):
