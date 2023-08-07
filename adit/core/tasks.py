@@ -17,7 +17,7 @@ from sherlock import Lock
 
 from adit.accounts.models import User
 
-from .errors import RetriableTaskError
+from .errors import RetriableError
 from .models import AppSettings, DicomFolder, DicomJob, DicomTask
 from .utils.mail import (
     send_job_finished_mail,
@@ -109,7 +109,7 @@ class ProcessDicomTask(AbortableCeleryTask):
             # When the task is rescheduled a Retry will be raised that must be
             # passed through to Celery.
             raise err
-        except RetriableTaskError as err:
+        except RetriableError as err:
             # Inside the handle_dicom_task errors of kind RetriableTaskError can be raised
             # which are handled here and also raise a Retry in the end.
             logger.exception("Retriable error occurred during %s.", dicom_task)
@@ -140,8 +140,17 @@ class ProcessDicomTask(AbortableCeleryTask):
 
             dicom_task.status = DicomTask.Status.FAILURE
             dicom_task.message = str(err)
+        except ValueError as err:
+            # We raise ValueError for expected errors
+            logger.exception("Error during %s.", dicom_task)
+
+            dicom_task.status = DicomTask.Status.FAILURE
+            dicom_task.message = str(err)
+            if dicom_task.log:
+                dicom_task.log += "\n"
+            dicom_task.log += traceback.format_exc()
         except Exception as err:
-            # All other errors are handled here and won't be retried.
+            # Unexpected errors are handled here
             logger.exception("Unexpected error during %s.", dicom_task)
 
             dicom_task.status = DicomTask.Status.FAILURE

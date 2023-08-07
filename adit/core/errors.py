@@ -3,7 +3,7 @@ from datetime import timedelta
 from rest_framework.exceptions import ErrorDetail
 
 
-class RetriableTaskError(Exception):
+class RetriableError(Exception):
     def __init__(self, message: str, long_delay: bool = False) -> None:
         if long_delay:
             self.delay = timedelta(hours=24)

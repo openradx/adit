@@ -1,17 +1,5 @@
-# pyright: basic
-"""
-The connector directly communicates with the DICOM servers by using pynetdicom.
+"""The connector directly communicates with the DICOM servers by using pynetdicom."""
 
-Error handling and logging is quite complex here. All lower level methods
-(_find, _get, _move, _store) only raise a ConnectionError if the connection
-itself fails, but not if some operation itself (inside a working connection)
-fails. Those failures are recognized and raised in all higher level methods
-(find_patients, download_study, ...). A higher level method that uses another
-higher level method does catch the exception and raises one itself. Loggings
-only occur in higher level methods that uses lower level methods. As logger
-the Celery task logger is used as we intercept those messages and save them
-in TransferTask model object.
-"""
 import asyncio
 import datetime
 import errno
@@ -62,7 +50,7 @@ from pynetdicom.sop_class import (
 from pynetdicom.status import code_to_category
 from requests import HTTPError
 
-from ..errors import RetriableTaskError
+from ..errors import RetriableError
 from ..models import DicomServer
 from .file_transmit import FileTransmitClient, Metadata
 from .sanitize import sanitize_dirname
@@ -441,8 +429,8 @@ class DicomConnector:
 
             if results and has_failure:
                 if not has_success:
-                    raise RetriableTaskError("Failed to upload all images.")
-                raise RetriableTaskError("Failed to upload some images.")
+                    raise RetriableError("Failed to upload all images.")
+                raise RetriableError("Failed to upload some images.")
         else:
             raise ValueError("Destination server doesn't support C-STORE or STOW-RS operations.")
 
@@ -482,8 +470,8 @@ class DicomConnector:
 
         if series_list and has_failure:
             if not has_success:
-                raise RetriableTaskError("Failed to move all series.")
-            raise RetriableTaskError("Failed to move some series.")
+                raise RetriableError("Failed to move all series.")
+            raise RetriableError("Failed to move some series.")
 
     def move_series(self, patient_id: str, study_uid: str, series_uid: str, dest_aet: str):
         query = {
@@ -509,7 +497,7 @@ class DicomConnector:
             )
         except ValueError as err:
             logger.exception("Failed to fetch modalities of study %s.", study_uid)
-            raise RetriableTaskError("Failed to fetch modalities of study.") from err
+            raise RetriableError("Failed to fetch modalities of study.") from err
 
         modalities = set(map(lambda x: x["Modality"], series_list))
         return sorted(list(modalities))
@@ -570,7 +558,7 @@ class DicomConnector:
 
         if not self.assoc.is_established:
             logger.error("Could not connect to %s.", self.server)
-            raise RetriableTaskError(f"Could not connect to {self.server}.")
+            raise RetriableError(f"Could not connect to {self.server}.")
 
     @connect_to_dicomweb_server()
     def _send_qido(self, query_dict: dict[str, Any], limit_results: int | None = None):
@@ -810,7 +798,7 @@ class DicomConnector:
                     "invalid response during C-STORE."
                 )
                 logger.error(message)
-                raise RetriableTaskError(message)
+                raise RetriableError(message)
 
         if not self.server.store_scp_support:
             raise ValueError("C-STORE operation not supported by server.")
@@ -881,7 +869,7 @@ class DicomConnector:
                     operation,
                     query_dict,
                 )
-                raise RetriableTaskError(
+                raise RetriableError(
                     "Connection timed out, was aborted or received invalid " f"during {operation}."
                 )
         return results
@@ -1049,7 +1037,7 @@ class DicomConnector:
                     if remaining_image_uids == image_uids:
                         logger.error("No images of series %s received.", series_uid)
                         receiving_errors.append(
-                            RetriableTaskError("Failed to download all images with C-MOVE.")
+                            RetriableError("Failed to download all images with C-MOVE.")
                         )
 
                     logger.error(
@@ -1058,7 +1046,7 @@ class DicomConnector:
                         ", ".join(remaining_image_uids),
                     )
                     receiving_errors.append(
-                        RetriableTaskError("Failed to download some images with C-MOVE.")
+                        RetriableError("Failed to download some images with C-MOVE.")
                     )
 
             async def handle_received_file(filename: str, metadata: Metadata):
@@ -1140,7 +1128,7 @@ class DicomConnector:
             if isinstance(err, OSError) and err.errno == errno.ENOSPC:
                 # No space left on destination
                 logger.exception("Out of disk space while saving %s.", file_path)
-                no_space_error = RetriableTaskError(
+                no_space_error = RetriableError(
                     "Out of disk space on destination.", long_delay=True
                 )
                 no_space_error.__cause__ = err
@@ -1153,7 +1141,7 @@ class DicomConnector:
         retriable_status_codes = [408, 409, 429, 500, 503, 504]
         if err.response.status_code in retriable_status_codes:
             logger.error("DICOMweb request failed with %d.", err.response.status_code)
-            return RetriableTaskError("DICOMweb request failed.")
+            return RetriableError("DICOMweb request failed.")
         else:
             logger.exception("DICOMweb request failed with %d.", err.response.status_code)
             return err
@@ -1274,7 +1262,7 @@ def _evaluate_get_move_results(results, query: dict[str, Any]):
         if failed_image_uids:
             error_msg += f" Failed images: {', '.join(failed_image_uids)}"
         logger.error(error_msg)
-        raise RetriableTaskError(f"Failed to transfer images with status {status_category}.")
+        raise RetriableError(f"Failed to transfer images with status {status_category}.")
 
 
 def _convert_to_dicomweb_query(query_dict: dict[str, Any]) -> dict[str, Any]:
