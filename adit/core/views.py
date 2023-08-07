@@ -35,6 +35,8 @@ from .site import job_stats_collectors
 from .tasks import broadcast_mail
 from .types import AuthenticatedHttpRequest
 
+THEME = "theme"
+
 
 @staff_member_required
 def sandbox(request: HttpRequest) -> HttpResponse:
@@ -119,6 +121,10 @@ class BaseUpdatePreferencesView(ABC, LoginRequiredMixin, View):
         request.user.save()
 
         return HttpResponse()
+
+
+class UpdatePreferencesView(BaseUpdatePreferencesView):
+    allowed_keys = [THEME]
 
 
 class DicomJobListView(LoginRequiredMixin, SingleTableMixin, PageSizeSelectMixin, FilterView):

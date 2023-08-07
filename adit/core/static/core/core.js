@@ -1,3 +1,5 @@
+"use strict";
+
 function ready(fn) {
   if (document.readyState !== "loading") {
     fn();
@@ -27,8 +29,15 @@ function updatePreferences(route, data) {
     formData.append(key, data[key]);
   }
 
+  let url;
+  if (route) {
+    url = `/${route}/update-preferences/`;
+  } else {
+    url = "/update-preferences/";
+  }
+
   const config = getConfig();
-  const request = new Request(`/${route}/update-preferences/`, {
+  const request = new Request(url, {
     method: "POST",
     headers: { "X-CSRFToken": config.csrf_token },
     mode: "same-origin", // Do not send CSRF token to another domain.

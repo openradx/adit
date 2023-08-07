@@ -7,11 +7,16 @@ from .views import (
     Orthanc1ProxyView,
     Orthanc2ProxyView,
     RabbitManagementProxyView,
+    UpdatePreferencesView,
     admin_section,
     sandbox,
 )
 
 urlpatterns = [
+    path(
+        "update-preferences/",
+        UpdatePreferencesView.as_view(),
+    ),
     path(
         "sandbox/",
         sandbox,

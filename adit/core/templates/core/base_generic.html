@@ -1,6 +1,10 @@
 {% load static from static %}
+{% load theme theme_color from core_extras %}
 <!DOCTYPE html>
-<html lang="en">
+{% theme as theme %}{# Make theme also available as context in all sub-templates #}
+<html lang="en"
+      data-bs-theme="{% theme_color theme %}"
+      data-theme-preference="{{ theme }}">
     <head>
         <meta charset="utf-8" />
         <meta http-equiv="x-ua-compatible" content="ie=edge" />
@@ -17,9 +21,9 @@
         <meta name="author" content="Kai Schlamp" />
         {% block meta %}
         {% endblock meta %}
-        <link rel="apple-touch-icon"
-              sizes="180x180"
-              href="{% static 'favicon/apple-touch-icon.png' %}" />
+        {# We put the theme JavaScript stuff on top to avoid flickering #}
+        <script src="{% static 'core/theme.js' %}"></script>
+        {# Favicons #}
         <link rel="icon"
               type="image/png"
               sizes="32x32"
@@ -28,7 +32,7 @@
               type="image/png"
               sizes="16x16"
               href="{% static 'favicon/favicon-16x16.png' %}" />
-        <link rel="manifest" href="{% static 'favicon/site.webmanifest' %}" />
+        {# CSS stuff #}
         <link rel="stylesheet"
               type="text/css"
               href="{% static 'vendor/bootstrap.css' %}" />
@@ -51,7 +55,7 @@
         {% include "core/_messages_panel.html" %}
         {% block bottom %}
         {% endblock bottom %}
-        <!-- Vendor Javascript stuff -->
+        {# Vendor Javascript stuff #}
         <script src="{% static 'vendor/popper.js' %}"></script>
         <script src="{% static 'vendor/bootstrap.bundle.js' %}"></script>
         <script src="{% static 'vendor/htmx.js' %}"></script>
@@ -59,7 +63,7 @@
         <script src="{% static 'vendor/htmx-alpine-morph.js' %}"></script>
         <script src="{% static 'vendor/alpine-morph.js' %}"></script>
         <script type="module" src="{% static 'vendor/alpine.js' %}"></script>
-        <!-- Our Javascript stuff -->
+        {# Our Javascript stuff #}
         {{ public|json_script:"public" }}
         <script src="{% static 'core/core.js' %}"></script>
         {% block script %}
