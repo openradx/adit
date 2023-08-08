@@ -2,6 +2,8 @@
 
 ## Top
 
+- Check why Alpine script must used as type="module"
+- Introduce jsconfig.json file
 - Make job urgent (as staff member)
 - Bootstrap 5 Upgrade
 - Selective transfer choose series

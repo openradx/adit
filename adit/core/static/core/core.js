@@ -19,7 +19,11 @@ ready(function () {
 // A site wide config that is added to the context by adit.core.site.base_context_processor
 // and that can be accessed by Javascript
 function getConfig() {
-  return JSON.parse(document.getElementById("public").textContent);
+  const configNode = document.getElementById("public");
+  if (!configNode || !configNode.textContent) {
+    throw new Error("Missing app config.");
+  }
+  return JSON.parse(configNode.textContent);
 }
 
 // Update session properties on the server (used to retain specific form fields on page reload)
@@ -77,6 +81,7 @@ function messagesPanel(panelEl) {
     options: {
       duration: 30000, // 30 seconds
     },
+    /** @type{Array} */
     messages: [], // List of messages created by the client
     init: function () {
       // Initialize messages created by the server
