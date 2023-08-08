@@ -5,10 +5,6 @@ x-app: &default-app
     - /mnt:/mnt
   depends_on:
     - postgres
-    - rabbit
-    - redis
-    - orthanc1
-    - orthanc2
   environment:
     USE_DOCKER: 1
     DATABASE_URL: "psql://postgres:postgres@postgres:5432/postgres"
@@ -31,7 +27,6 @@ x-app: &default-app
     FILE_TRANSMIT_PORT: 14638
     STORE_SCP_HOST: "receiver"
     STORE_SCP_PORT: 11112
-  # pull_policy: never ## Does work with Docker Swarm
 
 services:
   web:
@@ -42,6 +37,13 @@ services:
       # Cave, overwrites the above anchor
       - /mnt:/mnt
       - adit_data:/var/www/adit
+
+  postgres:
+    image: postgres:13.11
+    expose:
+      - "5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
 
   worker_default:
     <<: *default-app
@@ -64,13 +66,6 @@ services:
         wait-for-it -s rabbit:5672 -t 60 &&
         celery --broker=amqp://rabbit/ flower --url_prefix=flower
       "
-
-  postgres:
-    image: postgres:13.11
-    expose:
-      - "5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
 
   # RabbitMQ authentication can't be disabled. So when we try to log into
   # the management console we have to use "guest" as username and password.

@@ -10,6 +10,7 @@ x-app:
   environment:
     ENABLE_REMOTE_DEBUGGING: 0
     DJANGO_SETTINGS_MODULE: "adit.settings.development"
+  pull_policy: never # only works with Docker Compose and not Docker Swarm
 
 services:
   web:
@@ -27,27 +28,45 @@ services:
     command: >
       bash -c "
         wait-for-it -s postgres:5432 -t 60 && 
-        ./manage.py reset_orthancs &&
         ./manage.py migrate &&
         ./manage.py collectstatic --no-input &&
         ./manage.py populate_dev_db &&
         ./manage.py runserver 0.0.0.0:8000
       "
+    profiles:
+      - full
+      - web
+
+  postgres:
+    environment:
+      POSTGRES_PASSWORD: "postgres"
+    profiles:
+      - full
+      - web
 
   worker_default:
     <<: *default-app
     command: |
       ./manage.py celery_worker -Q default_queue --autoreload
+    profiles:
+      - full
+      - extra
 
   worker_dicom_task:
     <<: *default-app
     command: |
       ./manage.py celery_worker -Q dicom_task_queue --autoreload
+    profiles:
+      - full
+      - extra
 
   celery_beat:
     <<: *default-app
     command: |
       ./manage.py celery_beat --autoreload
+    profiles:
+      - full
+      - extra
 
   receiver:
     <<: *default-app
@@ -55,13 +74,35 @@ services:
       - "11122:11112"
     command: |
       ./manage.py receiver --autoreload
+    profiles:
+      - full
+      - extra
 
   flower:
     <<: *default-app
+    profiles:
+      - full
+      - extra
 
-  postgres:
-    environment:
-      POSTGRES_PASSWORD: "postgres"
+  rabbit:
+    profiles:
+      - full
+      - extra
+
+  redis:
+    profiles:
+      - full
+      - extra
+
+  orthanc1:
+    profiles:
+      - full
+      - extra
+
+  orthanc2:
+    profiles:
+      - full
+      - extra
 
 volumes:
   vscode-server:

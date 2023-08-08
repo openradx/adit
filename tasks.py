@@ -81,17 +81,27 @@ def compose_build(ctx: Context, env: Environments = "dev"):
 
 
 @task
-def compose_up(ctx: Context, env: Environments = "dev", no_build: bool = False):
+def compose_up(
+    ctx: Context,
+    env: Environments = "dev",
+    no_build: bool = False,
+    profile: Literal["full", "web", "extra"] = "full",
+):
     """Start ADIT containers in specified environment"""
     build_opt = "--no-build" if no_build else "--build"
-    cmd = f"{build_compose_cmd(env)} up {build_opt} --detach"
+    cmd = f"{build_compose_cmd(env)} --profile {profile} up {build_opt} --detach"
     run_cmd(ctx, cmd)
 
 
 @task
-def compose_down(ctx: Context, env: Environments = "dev", cleanup: bool = False):
+def compose_down(
+    ctx: Context,
+    env: Environments = "dev",
+    profile: Literal["full", "web", "extra"] = "full",
+    cleanup: bool = False,
+):
     """Stop ADIT containers in specified environment"""
-    cmd = f"{build_compose_cmd(env)} down"
+    cmd = f"{build_compose_cmd(env)} --profile {profile} down"
     if cleanup:
         cmd += " --remove-orphans --volumes"
     run_cmd(ctx, cmd)
