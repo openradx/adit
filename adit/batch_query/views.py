@@ -27,6 +27,7 @@ from adit.core.views import (
 
 from .filters import BatchQueryJobFilter, BatchQueryResultFilter, BatchQueryTaskFilter
 from .forms import BatchQueryJobForm
+from .mixins import BatchQueryLockedMixin
 from .models import BatchQueryJob, BatchQueryTask
 from .tables import BatchQueryJobTable, BatchQueryResultTable, BatchQueryTaskTable
 from .utils.exporters import write_results
@@ -36,7 +37,7 @@ BATCH_QUERY_URGENT = "batch_query_urgent"
 BATCH_QUERY_SEND_FINISHED_MAIL = "batch_query_send_finished_mail"
 
 
-class BatchQueryUpdatePreferencesView(BaseUpdatePreferencesView):
+class BatchQueryUpdatePreferencesView(BatchQueryLockedMixin, BaseUpdatePreferencesView):
     allowed_keys = [
         BATCH_QUERY_SOURCE,
         BATCH_QUERY_URGENT,
@@ -44,14 +45,14 @@ class BatchQueryUpdatePreferencesView(BaseUpdatePreferencesView):
     ]
 
 
-class BatchQueryJobListView(DicomJobListView):
+class BatchQueryJobListView(BatchQueryLockedMixin, DicomJobListView):
     model = BatchQueryJob
     table_class = BatchQueryJobTable
     filterset_class = BatchQueryJobFilter
     template_name = "batch_query/batch_query_job_list.html"
 
 
-class BatchQueryJobCreateView(DicomJobCreateView):
+class BatchQueryJobCreateView(BatchQueryLockedMixin, DicomJobCreateView):
     model = BatchQueryJob
     form_class = BatchQueryJobForm
     template_name = "batch_query/batch_query_job_form.html"
@@ -91,7 +92,7 @@ class BatchQueryJobCreateView(DicomJobCreateView):
         return response
 
 
-class BatchQueryJobDetailView(DicomJobDetailView):
+class BatchQueryJobDetailView(BatchQueryLockedMixin, DicomJobDetailView):
     table_class = BatchQueryTaskTable
     filterset_class = BatchQueryTaskFilter
     model = BatchQueryJob
@@ -104,32 +105,33 @@ class BatchQueryJobDetailView(DicomJobDetailView):
         return job.tasks.prefetch_related("results")
 
 
-class BatchQueryJobDeleteView(DicomJobDeleteView):
+class BatchQueryJobDeleteView(BatchQueryLockedMixin, DicomJobDeleteView):
     model = BatchQueryJob
     success_url = reverse_lazy("batch_transfer_job_list")
 
 
-class BatchQueryJobVerifyView(DicomJobVerifyView):
+class BatchQueryJobVerifyView(BatchQueryLockedMixin, DicomJobVerifyView):
     model = BatchQueryJob
 
 
-class BatchQueryJobCancelView(DicomJobCancelView):
+class BatchQueryJobCancelView(BatchQueryLockedMixin, DicomJobCancelView):
     model = BatchQueryJob
 
 
-class BatchQueryJobResumeView(DicomJobResumeView):
+class BatchQueryJobResumeView(BatchQueryLockedMixin, DicomJobResumeView):
     model = BatchQueryJob
 
 
-class BatchQueryJobRetryView(DicomJobRetryView):
+class BatchQueryJobRetryView(BatchQueryLockedMixin, DicomJobRetryView):
     model = BatchQueryJob
 
 
-class BatchQueryJobRestartView(DicomJobRestartView):
+class BatchQueryJobRestartView(BatchQueryLockedMixin, DicomJobRestartView):
     model = BatchQueryJob
 
 
 class BatchQueryTaskDetailView(
+    BatchQueryLockedMixin,
     SingleTableMixin,
     PageSizeSelectMixin,
     DicomTaskDetailView,
@@ -145,6 +147,7 @@ class BatchQueryTaskDetailView(
 
 
 class BatchQueryResultListView(
+    BatchQueryLockedMixin,
     LoginRequiredMixin,
     OwnerRequiredMixin,
     SingleTableMixin,
@@ -164,6 +167,7 @@ class BatchQueryResultListView(
 
 
 class BatchQueryResultDownloadView(
+    BatchQueryLockedMixin,
     LoginRequiredMixin,
     OwnerRequiredMixin,
     SingleObjectMixin,

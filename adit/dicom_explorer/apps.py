@@ -3,6 +3,8 @@ from django.db.models.signals import post_migrate
 
 from adit.core.site import register_main_menu_item
 
+SECTION_NAME = "DICOM Explorer"
+
 
 class DicomExplorerConfig(AppConfig):
     name = "adit.dicom_explorer"
@@ -17,7 +19,7 @@ class DicomExplorerConfig(AppConfig):
 def register_app():
     register_main_menu_item(
         url_name="dicom_explorer_form",
-        label="DICOM Explorer",
+        label=SECTION_NAME,
     )
 
 

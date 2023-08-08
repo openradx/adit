@@ -3,6 +3,8 @@ from django.db.models.signals import post_migrate
 
 from adit.core.site import register_job_stats_collector, register_main_menu_item
 
+SECTION_NAME = "Batch Query"
+
 
 class BatchQueryConfig(AppConfig):
     name = "adit.batch_query"
@@ -17,7 +19,7 @@ class BatchQueryConfig(AppConfig):
 def register_app():
     register_main_menu_item(
         url_name="batch_query_job_create",
-        label="Batch Query",
+        label=SECTION_NAME,
     )
 
     register_job_stats_collector(collect_job_stats)

@@ -20,7 +20,7 @@ from adit.core.views import (
 
 from .filters import SelectiveTransferJobFilter, SelectiveTransferTaskFilter
 from .forms import SelectiveTransferJobForm
-from .mixins import SelectiveTransferJobCreateMixin
+from .mixins import SelectiveTransferJobCreateMixin, SelectiveTransferLockedMixin
 from .models import SelectiveTransferJob, SelectiveTransferTask
 from .tables import SelectiveTransferJobTable, SelectiveTransferTaskTable
 
@@ -31,7 +31,9 @@ SELECTIVE_TRANSFER_SEND_FINISHED_MAIL = "selective_transfer_send_finished_mail"
 SELECTIVE_TRANSFER_ADVANCED_OPTIONS_COLLAPSED = "selective_transfer_advanced_options_collapsed"
 
 
-class SelectiveTransferUpdatePreferencesView(BaseUpdatePreferencesView):
+class SelectiveTransferUpdatePreferencesView(
+    SelectiveTransferLockedMixin, BaseUpdatePreferencesView
+):
     allowed_keys = [
         SELECTIVE_TRANSFER_SOURCE,
         SELECTIVE_TRANSFER_DESTINATION,
@@ -41,7 +43,7 @@ class SelectiveTransferUpdatePreferencesView(BaseUpdatePreferencesView):
     ]
 
 
-class SelectiveTransferJobListView(TransferJobListView):
+class SelectiveTransferJobListView(SelectiveTransferLockedMixin, TransferJobListView):
     model = SelectiveTransferJob
     table_class = SelectiveTransferJobTable
     filterset_class = SelectiveTransferJobFilter
@@ -49,8 +51,7 @@ class SelectiveTransferJobListView(TransferJobListView):
 
 
 class SelectiveTransferJobCreateView(
-    SelectiveTransferJobCreateMixin,
-    DicomJobCreateView,
+    SelectiveTransferLockedMixin, SelectiveTransferJobCreateMixin, DicomJobCreateView
 ):
     """A view class to render the selective transfer form.
 
@@ -133,7 +134,7 @@ class SelectiveTransferJobCreateView(
         return HttpResponseBadRequest()
 
 
-class SelectiveTransferJobDetailView(DicomJobDetailView):
+class SelectiveTransferJobDetailView(SelectiveTransferLockedMixin, DicomJobDetailView):
     table_class = SelectiveTransferTaskTable
     filterset_class = SelectiveTransferTaskFilter
     model = SelectiveTransferJob
@@ -141,32 +142,32 @@ class SelectiveTransferJobDetailView(DicomJobDetailView):
     template_name = "selective_transfer/selective_transfer_job_detail.html"
 
 
-class SelectiveTransferJobDeleteView(DicomJobDeleteView):
+class SelectiveTransferJobDeleteView(SelectiveTransferLockedMixin, DicomJobDeleteView):
     model = SelectiveTransferJob
     success_url = reverse_lazy("selective_transfer_job_list")
 
 
-class SelectiveTransferJobVerifyView(DicomJobVerifyView):
+class SelectiveTransferJobVerifyView(SelectiveTransferLockedMixin, DicomJobVerifyView):
     model = SelectiveTransferJob
 
 
-class SelectiveTransferJobCancelView(DicomJobCancelView):
+class SelectiveTransferJobCancelView(SelectiveTransferLockedMixin, DicomJobCancelView):
     model = SelectiveTransferJob
 
 
-class SelectiveTransferJobResumeView(DicomJobResumeView):
+class SelectiveTransferJobResumeView(SelectiveTransferLockedMixin, DicomJobResumeView):
     model = SelectiveTransferJob
 
 
-class SelectiveTransferJobRetryView(DicomJobRetryView):
+class SelectiveTransferJobRetryView(SelectiveTransferLockedMixin, DicomJobRetryView):
     model = SelectiveTransferJob
 
 
-class SelectiveTransferJobRestartView(DicomJobRestartView):
+class SelectiveTransferJobRestartView(SelectiveTransferLockedMixin, DicomJobRestartView):
     model = SelectiveTransferJob
 
 
-class SelectiveTransferTaskDetailView(DicomTaskDetailView):
+class SelectiveTransferTaskDetailView(SelectiveTransferLockedMixin, DicomTaskDetailView):
     model = SelectiveTransferTask
     job_url_name = "selective_transfer_job_detail"
     template_name = "selective_transfer/selective_transfer_task_detail.html"
