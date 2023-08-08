@@ -236,14 +236,20 @@ def ci(ctx: Context):
 def reset_adit_dev(ctx: Context):
     """Reset ADIT dev container environment"""
     # Reset Orthancs
-    reset_orthancs_cmd = f"{build_compose_cmd('dev')} exec web python manage.py reset_orthancs"
-    run_cmd(ctx, reset_orthancs_cmd)
+    reset_orthancs(ctx, "dev")
     # Wipe the database
     flush_cmd = f"{build_compose_cmd('dev')} exec web python manage.py flush --noinput"
     run_cmd(ctx, flush_cmd)
-    # Populate the database with example data
+    # Re-populate the database with example data
     populate_dev_db_cmd = f"{build_compose_cmd('dev')} exec web python manage.py populate_dev_db"
     run_cmd(ctx, populate_dev_db_cmd)
+
+
+@task
+def reset_orthancs(ctx: Context, env: Environments = "dev"):
+    """Reset Orthancs"""
+    cmd = f"{build_compose_cmd(env)} exec web python manage.py reset_orthancs"
+    run_cmd(ctx, cmd)
 
 
 @task
