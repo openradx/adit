@@ -1,0 +1,9 @@
+{% extends "core/base_generic.html" %}
+{% block container %}
+    <h4 class="mb-3">Sandboxes</h4>
+    <ul class="list-group">
+        <li class="list-group-item">
+            <a href="{% url 'sandbox_messages' %}">Messages</a>
+        </li>
+    </ul>
+{% endblock container %}

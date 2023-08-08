@@ -39,12 +39,6 @@ THEME = "theme"
 
 
 @staff_member_required
-def sandbox(request: HttpRequest) -> HttpResponse:
-    messages.add_message(request, messages.SUCCESS, "This message is server generated!")
-    return render(request, "core/sandbox.html", {})
-
-
-@staff_member_required
 def admin_section(request: HttpRequest) -> HttpResponse:
     status_list = DicomJob.Status.choices
     job_stats = [collector() for collector in job_stats_collectors]

@@ -9,18 +9,12 @@ from .views import (
     RabbitManagementProxyView,
     UpdatePreferencesView,
     admin_section,
-    sandbox,
 )
 
 urlpatterns = [
     path(
         "update-preferences/",
         UpdatePreferencesView.as_view(),
-    ),
-    path(
-        "sandbox/",
-        sandbox,
-        name="sandbox",
     ),
     path(
         "admin-section/",
