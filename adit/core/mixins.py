@@ -1,19 +1,45 @@
 from functools import reduce
+from typing import Any
 
 from django.contrib.auth.mixins import AccessMixin
+from django.core.exceptions import SuspiciousOperation
+from django.http import HttpRequest, HttpResponse
+from django.views import View
 
 # from django.forms.formsets import ORDERING_FIELD_NAME
-from django.views.generic import DetailView, ListView
+from django.views.generic import DetailView, ListView, TemplateView
 from django_filters.views import FilterMixin
 
-from adit.core.forms import PageSizeSelectForm
-from adit.core.types import AuthenticatedHttpRequest
-from adit.core.utils.type_utils import with_type_hint
+from .forms import PageSizeSelectForm
+from .models import AppSettings
+from .types import AuthenticatedHttpRequest
+from .utils.auth_utils import is_logged_in_user
+from .utils.type_utils import with_type_hint
 
 
 def deepgetattr(obj: object, attr: str):
     """Recurses through an attribute chain to get the ultimate value."""
     return reduce(getattr, attr.split("."), obj)
+
+
+class LockedMixin(with_type_hint(View)):
+    settings_model: type[AppSettings]
+    section_name = "Section"
+
+    def dispatch(self, request: HttpRequest, *args: Any, **kwargs: Any) -> HttpResponse:
+        settings = self.settings_model.get()
+        assert settings
+
+        if settings.locked and not (is_logged_in_user(request.user) and request.user.is_superuser):
+            if request.method != "GET":
+                raise SuspiciousOperation()
+
+            return TemplateView.as_view(
+                template_name="core/section_locked.html",
+                extra_context={"section_name": self.section_name},
+            )(request)
+
+        return super().dispatch(request, *args, **kwargs)
 
 
 class OwnerRequiredMixin(AccessMixin, with_type_hint(DetailView)):

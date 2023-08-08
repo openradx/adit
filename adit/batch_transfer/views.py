@@ -2,7 +2,6 @@ from typing import Any
 
 from django.conf import settings
 from django.urls import reverse_lazy
-from django.views.generic import TemplateView
 
 from adit.core.views import (
     BaseUpdatePreferencesView,
@@ -20,7 +19,8 @@ from adit.core.views import (
 
 from .filters import BatchTransferJobFilter, BatchTransferTaskFilter
 from .forms import BatchTransferJobForm
-from .models import BatchTransferJob, BatchTransferSettings, BatchTransferTask
+from .mixins import BatchTransferLockedMixin
+from .models import BatchTransferJob, BatchTransferTask
 from .tables import BatchTransferJobTable, BatchTransferTaskTable
 
 BATCH_TRANSFER_SOURCE = "batch_transfer_source"
@@ -29,7 +29,7 @@ BATCH_TRANSFER_URGENT = "batch_transfer_urgent"
 BATCH_TRANSFER_SEND_FINISHED_MAIL = "batch_transfer_send_finished_mail"
 
 
-class BatchTransferUpdatePreferencesView(BaseUpdatePreferencesView):
+class BatchTransferUpdatePreferencesView(BatchTransferLockedMixin, BaseUpdatePreferencesView):
     allowed_keys = [
         BATCH_TRANSFER_SOURCE,
         BATCH_TRANSFER_DESTINATION,
@@ -38,14 +38,14 @@ class BatchTransferUpdatePreferencesView(BaseUpdatePreferencesView):
     ]
 
 
-class BatchTransferJobListView(TransferJobListView):
+class BatchTransferJobListView(BatchTransferLockedMixin, TransferJobListView):
     model = BatchTransferJob
     table_class = BatchTransferJobTable
     filterset_class = BatchTransferJobFilter
     template_name = "batch_transfer/batch_transfer_job_list.html"
 
 
-class BatchTransferJobCreateView(DicomJobCreateView):
+class BatchTransferJobCreateView(BatchTransferLockedMixin, DicomJobCreateView):
     model = BatchTransferJob
     form_class = BatchTransferJobForm
     template_name = "batch_transfer/batch_transfer_job_form.html"
@@ -95,18 +95,8 @@ class BatchTransferJobCreateView(DicomJobCreateView):
 
         return response
 
-    def dispatch(self, request, *args, **kwargs):
-        batch_transfer_settings = BatchTransferSettings.get()
-        assert batch_transfer_settings
 
-        if batch_transfer_settings.locked and not self.request.user.is_staff:
-            return TemplateView.as_view(template_name="batch_transfer/batch_transfer_locked.html")(
-                request
-            )
-        return super().dispatch(request, *args, **kwargs)
-
-
-class BatchTransferJobDetailView(DicomJobDetailView):
+class BatchTransferJobDetailView(BatchTransferLockedMixin, DicomJobDetailView):
     table_class = BatchTransferTaskTable
     filterset_class = BatchTransferTaskFilter
     model = BatchTransferJob
@@ -114,32 +104,32 @@ class BatchTransferJobDetailView(DicomJobDetailView):
     template_name = "batch_transfer/batch_transfer_job_detail.html"
 
 
-class BatchTransferJobDeleteView(DicomJobDeleteView):
+class BatchTransferJobDeleteView(BatchTransferLockedMixin, DicomJobDeleteView):
     model = BatchTransferJob
     success_url = reverse_lazy("batch_transfer_job_list")
 
 
-class BatchTransferJobVerifyView(DicomJobVerifyView):
+class BatchTransferJobVerifyView(BatchTransferLockedMixin, DicomJobVerifyView):
     model = BatchTransferJob
 
 
-class BatchTransferJobCancelView(DicomJobCancelView):
+class BatchTransferJobCancelView(BatchTransferLockedMixin, DicomJobCancelView):
     model = BatchTransferJob
 
 
-class BatchTransferJobResumeView(DicomJobResumeView):
+class BatchTransferJobResumeView(BatchTransferLockedMixin, DicomJobResumeView):
     model = BatchTransferJob
 
 
-class BatchTransferJobRetryView(DicomJobRetryView):
+class BatchTransferJobRetryView(BatchTransferLockedMixin, DicomJobRetryView):
     model = BatchTransferJob
 
 
-class BatchTransferJobRestartView(DicomJobRestartView):
+class BatchTransferJobRestartView(BatchTransferLockedMixin, DicomJobRestartView):
     model = BatchTransferJob
 
 
-class BatchTransferTaskDetailView(DicomTaskDetailView):
+class BatchTransferTaskDetailView(BatchTransferLockedMixin, DicomTaskDetailView):
     model = BatchTransferTask
     job_url_name = "batch_transfer_job_detail"
     template_name = "batch_transfer/batch_transfer_task_detail.html"

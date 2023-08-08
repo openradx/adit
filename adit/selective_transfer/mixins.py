@@ -3,10 +3,17 @@ from datetime import datetime
 from django.conf import settings
 
 from adit.accounts.models import User
+from adit.core.mixins import LockedMixin
 from adit.core.utils.dicom_connector import DicomConnector
 
+from .apps import SECTION_NAME
 from .forms import SelectiveTransferJobForm
-from .models import SelectiveTransferJob, SelectiveTransferTask
+from .models import SelectiveTransferJob, SelectiveTransferSettings, SelectiveTransferTask
+
+
+class SelectiveTransferLockedMixin(LockedMixin):
+    settings_model = SelectiveTransferSettings
+    section_name = SECTION_NAME
 
 
 class SelectiveTransferJobCreateMixin:
