@@ -22,6 +22,7 @@
         "davidanson.vscode-markdownlint",
         "eamodio.gitlens",
         "esbenp.prettier-vscode",
+        "formulahendry.auto-close-tag",
         "formulahendry.auto-rename-tag",
         "foxundermoon.shell-format",
         "grapecity.gc-excelviewer",

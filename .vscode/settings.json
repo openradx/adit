@@ -39,5 +39,27 @@
   },
   "[html][django-html]": {
     "editor.defaultFormatter": "monosans.djlint"
-  }
+  },
+  "auto-close-tag.activationOnLanguage": [
+    "django-html",
+    "xml",
+    "php",
+    "blade",
+    "ejs",
+    "jinja",
+    "javascript",
+    "javascriptreact",
+    "typescript",
+    "typescriptreact",
+    "plaintext",
+    "markdown",
+    "vue",
+    "liquid",
+    "erb",
+    "lang-cfml",
+    "cfml",
+    "HTML (EEx)",
+    "HTML (Eex)",
+    "plist"
+  ]
 }
