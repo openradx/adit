@@ -77,6 +77,8 @@ python-dotenv = "^1.0.0"
 requests = "^2.27.1"
 ruff = "^0.0.277"
 time-machine = "^2.1.0"
+django-browser-reload = "^1.11.0"
+pywatchman = "^1.4.1"
 
 [tool.pyright]
 ignore = ["**/migrations"]

@@ -26,10 +26,14 @@ INSTALLED_APPS += [  # noqa: F405
     "debug_toolbar",
     "debug_permissions",
     "django_extensions",
+    "django_browser_reload",
     "adit.sandbox.apps.SandboxConfig",
 ]
 
-MIDDLEWARE += ["debug_toolbar.middleware.DebugToolbarMiddleware"]  # noqa: F405
+MIDDLEWARE += [  # noqa: F405
+    "debug_toolbar.middleware.DebugToolbarMiddleware",
+    "django_browser_reload.middleware.BrowserReloadMiddleware",
+]
 
 if env.bool("FORCE_DEBUG_TOOLBAR", default=False):  # type: ignore
     # https://github.com/jazzband/django-debug-toolbar/issues/1035
