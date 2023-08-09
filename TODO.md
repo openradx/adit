@@ -2,6 +2,8 @@
 
 ## Top
 
+- Rewrite dicom connector without converting DataSet to dict
+  -- Make Unit test using pynetdicom test dummy servers
 - Check why Alpine script must used as type="module"
 - Introduce jsconfig.json file
 - Make job urgent (as staff member)
@@ -9,6 +11,11 @@
 - Selective transfer choose series
 - Locked info for other apps like batch_transfer_locked.html
 - Hint when app is locked for admin user
+- Setup pgadmin
+  -- <https://stackoverflow.com/questions/64620446/adding-postgress-connections-to-pgadmin-in-docker-file>
+- Split messages into toasts (client only) and messages from server (using Bootstrap alerts)
+- Rewrite Celery unit tests using the official test helpers
+- Check why this dicomweb test takes so long
 
 ## High Priority
 

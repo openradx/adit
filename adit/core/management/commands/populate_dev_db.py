@@ -32,14 +32,16 @@ fake = Faker()
 
 
 def create_users():
+    if "username" not in environ or "password" not in environ:
+        print("Cave! No admin credentials found in environment. Using default ones.")
+
     admin_data = {
-        "username": environ.get("ADMIN_USERNAME"),
-        "first_name": environ.get("ADMIN_FIRST_NAME"),
-        "last_name": environ.get("ADMIN_LAST_NAME"),
-        "email": environ.get("ADMIN_EMAIL"),
-        "password": environ.get("ADMIN_PASSWORD"),
+        "username": environ.get("ADMIN_USERNAME", "admin"),
+        "first_name": environ.get("ADMIN_FIRST_NAME", "Wilhelm"),
+        "last_name": environ.get("ADMIN_LAST_NAME", "Röntgen"),
+        "email": environ.get("ADMIN_EMAIL", "wilhelm.roentgen@example.org"),
+        "password": environ.get("ADMIN_PASSWORD", "mysecret"),
     }
-    admin_data = {k: v for k, v in admin_data.items() if v is not None}
     admin = AdminUserFactory.create(**admin_data)
 
     batch_transfer_group = Group.objects.get(name="batch_transfer_group")
