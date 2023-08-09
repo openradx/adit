@@ -38,11 +38,14 @@ services:
       - web
 
   postgres:
+    ports:
+      - "5432:5432"
     environment:
       POSTGRES_PASSWORD: "postgres"
     profiles:
       - full
       - web
+      - db
 
   worker_default:
     <<: *default-app

@@ -85,7 +85,7 @@ def compose_up(
     ctx: Context,
     env: Environments = "dev",
     no_build: bool = False,
-    profile: Literal["full", "web", "extra"] = "full",
+    profile: Literal["full", "web", "extra", "db"] = "full",
 ):
     """Start ADIT containers in specified environment"""
     build_opt = "--no-build" if no_build else "--build"
@@ -97,7 +97,7 @@ def compose_up(
 def compose_down(
     ctx: Context,
     env: Environments = "dev",
-    profile: Literal["full", "web", "extra"] = "full",
+    profile: Literal["full", "web", "extra", "db"] = "full",
     cleanup: bool = False,
 ):
     """Stop ADIT containers in specified environment"""
