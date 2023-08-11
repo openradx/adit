@@ -13,7 +13,7 @@ ADIT (Automated DICOM Transfer) is a swiss army knife to exchange DICOM data bet
 - Use the web interface to select studies to transfer or download (Selective Transfer)
 - Upload a batch file to make multiple queries on a DICOM server (Batch Query)
 - Upload a batch file to transfer or download multiple studies (Batch Transfer)
-- A REST API to manage transfers programmatically by an external script
+- A REST API to manage transfers programmatically by an external script (See [here](https://pypi.org/project/adit-dicomweb-client/) for a python client)
 - Define when transfers should happen, e.g. on at night (to reduce PACS server load)
 - Fine-grained control of what users can do or can't do
 - Help modals with detailed information for the most important features
