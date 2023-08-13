@@ -7,8 +7,7 @@ from pathlib import Path
 from typing import Callable, Iterator, Literal
 
 from django.conf import settings
-from pydicom import dcmread
-from pydicom.dataset import Dataset
+from pydicom import Dataset, dcmread
 from pydicom.errors import InvalidDicomError
 from pynetdicom import debug_logger
 from pynetdicom._globals import STATUS_PENDING, STATUS_SUCCESS, STATUS_WARNING
@@ -34,10 +33,10 @@ from pynetdicom.sop_class import (
 )
 from pynetdicom.status import code_to_category
 
-from adit.core.utils.dicom_utils import has_wildcards
-
 from ..errors import RetriableError
 from ..models import DicomServer
+from ..utils.dicom_dataset import QueryDataset, ResultDataset
+from ..utils.dicom_utils import has_wildcards
 
 logger = logging.getLogger(__name__)
 
@@ -220,8 +219,8 @@ class DimseConnector:
 
     @connect_to_server("C_FIND")
     def send_c_find(
-        self, query: Dataset, limit_results: int | None = None, msg_id: int = 1
-    ) -> Iterator[Dataset]:
+        self, query: QueryDataset, limit_results: int | None = None, msg_id: int = 1
+    ) -> Iterator[ResultDataset]:
         logger.debug("Sending C-FIND with query:\n%s", query)
 
         level: str | None = query.get("QueryRetrieveLevel")
@@ -241,7 +240,7 @@ class DimseConnector:
         if not self.assoc or not self.assoc.is_alive():
             raise AssertionError("No association for sending C-FIND.")
 
-        responses = self.assoc.send_c_find(query, query_model, msg_id)
+        responses = self.assoc.send_c_find(query.dataset, query_model, msg_id)
 
         result_counter = 0
         for status, identifier in responses:
@@ -259,7 +258,7 @@ class DimseConnector:
                 if not identifier:
                     raise AssertionError("Missing identifier for pending C-FIND.")
 
-                yield identifier
+                yield ResultDataset(identifier)
 
                 result_counter += 1
                 if result_counter == limit_results:
@@ -274,7 +273,7 @@ class DimseConnector:
     @connect_to_server("C_GET")
     def send_c_get(
         self,
-        query: Dataset,
+        query: QueryDataset,
         store_handler: Callable[[Event, list[Exception]], int],
         msg_id: int = 1,
     ) -> None:
@@ -303,12 +302,12 @@ class DimseConnector:
 
         self.assoc.bind(EVT_C_STORE, store_handler, [store_errors])
 
-        responses = self.assoc.send_c_get(query, query_model, msg_id)
+        responses = self.assoc.send_c_get(query.dataset, query_model, msg_id)
 
         self._handle_get_and_move_responses(responses, "C-GET")
 
     @connect_to_server("C_MOVE")
-    def send_c_move(self, query: Dataset, dest_aet: str, msg_id: int = 1) -> None:
+    def send_c_move(self, query: QueryDataset, dest_aet: str, msg_id: int = 1) -> None:
         logger.debug("Sending C-MOVE with query:\n%s", query)
 
         # Transfer of only one study at a time is supported by ADIT
@@ -329,7 +328,7 @@ class DimseConnector:
         if not self.assoc or not self.assoc.is_alive():
             raise AssertionError("No association for sending C-MOVE.")
 
-        responses = self.assoc.send_c_move(query, dest_aet, query_model, msg_id)
+        responses = self.assoc.send_c_move(query.dataset, dest_aet, query_model, msg_id)
 
         self._handle_get_and_move_responses(responses, "C-MOVE")
 

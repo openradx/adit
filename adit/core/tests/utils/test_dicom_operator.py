@@ -7,8 +7,7 @@ from time import sleep
 from unittest.mock import patch
 
 from django.conf import settings
-from pydicom import dcmread
-from pydicom.dataset import Dataset
+from pydicom import Dataset, dcmread
 from pynetdicom.association import Association
 from pynetdicom.sop_class import (
     PatientRootQueryRetrieveInformationModelFind,  # type: ignore
@@ -17,8 +16,8 @@ from pynetdicom.sop_class import (
 from pytest_django.fixtures import SettingsWrapper
 from pytest_mock import MockerFixture
 
+from adit.core.utils.dicom_dataset import QueryDataset
 from adit.core.utils.dicom_operator import DicomOperator
-from adit.core.utils.dicom_utils import create_query_dataset
 from adit.core.utils.file_transmit import FileTransmitServer
 
 from .conftest import DicomTestHelper
@@ -39,12 +38,12 @@ def test_find_patients(
     )
 
     # Act
-    patients = dicom_operator.find_patients(create_query_dataset(PatientName="Foo^Bar"))
+    patients = dicom_operator.find_patients(QueryDataset.create(PatientName="Foo^Bar"))
 
     # Assert
     association.send_c_find.assert_called_once()
-    assert isinstance(association.send_c_find.call_args.args[0], Dataset)
-    assert next(patients)["PatientID"] == responses[0]["PatientID"]
+    assert isinstance(association.send_c_find.call_args.args[0], QueryDataset)
+    assert next(patients).PatientID == responses[0]["PatientID"]
     assert association.send_c_find.call_args.args[1] == PatientRootQueryRetrieveInformationModelFind
 
 
@@ -63,12 +62,12 @@ def test_find_studies_with_patient_root(
     )
 
     # Act
-    patients = dicom_operator.find_studies(create_query_dataset(PatientID="12345"))
+    patients = dicom_operator.find_studies(QueryDataset.create(PatientID="12345"))
 
     # Assert
     association.send_c_find.assert_called_once()
     assert isinstance(association.send_c_find.call_args.args[0], Dataset)
-    assert next(patients)["PatientID"] == responses[0]["PatientID"]
+    assert next(patients).PatientID == responses[0]["PatientID"]
     assert association.send_c_find.call_args.args[1] == StudyRootQueryRetrieveInformationModelFind
 
 
@@ -87,12 +86,12 @@ def test_find_studies_with_study_root(
     )
 
     # Act
-    patients = dicom_operator.find_studies(create_query_dataset(PatientName="Foo^Bar"))
+    patients = dicom_operator.find_studies(QueryDataset.create(PatientName="Foo^Bar"))
 
     # Assert
     association.send_c_find.assert_called_once()
     assert isinstance(association.send_c_find.call_args.args[0], Dataset)
-    assert next(patients)["PatientName"] == responses[0]["PatientName"]
+    assert next(patients).PatientName == responses[0]["PatientName"]
     assert association.send_c_find.call_args.args[1] == StudyRootQueryRetrieveInformationModelFind
 
 
@@ -112,13 +111,13 @@ def test_find_series(
 
     # Act
     patients = dicom_operator.find_series(
-        create_query_dataset(PatientID="12345", StudyInstanceUID="1.123")
+        QueryDataset.create(PatientID="12345", StudyInstanceUID="1.123")
     )
 
     # Assert
     association.send_c_find.assert_called_once()
     assert isinstance(association.send_c_find.call_args.args[0], Dataset)
-    assert next(patients)["PatientID"] == responses[0]["PatientID"]
+    assert next(patients).PatientID == responses[0]["PatientID"]
     assert association.send_c_find.call_args.args[1] == StudyRootQueryRetrieveInformationModelFind
 
 

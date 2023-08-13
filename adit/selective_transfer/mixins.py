@@ -2,12 +2,11 @@ from datetime import datetime
 from typing import Iterator
 
 from django.conf import settings
-from pydicom import Dataset
 
 from adit.accounts.models import User
 from adit.core.mixins import LockedMixin
+from adit.core.utils.dicom_dataset import QueryDataset, ResultDataset
 from adit.core.utils.dicom_operator import DicomOperator
-from adit.core.utils.dicom_utils import create_query_dataset
 
 from .apps import SECTION_NAME
 from .forms import SelectiveTransferJobForm
@@ -36,14 +35,14 @@ class SelectiveTransferJobCreateMixin:
 
     def query_studies(
         self, operator: DicomOperator, form: SelectiveTransferJobForm, limit_results: int
-    ) -> Iterator[Dataset]:
+    ) -> Iterator[ResultDataset]:
         data = form.cleaned_data
 
         if data["modality"] in settings.EXCLUDED_MODALITIES:
             return []
 
         studies = operator.find_studies(
-            create_query_dataset(
+            QueryDataset.create(
                 PatientID=data["patient_id"],
                 PatientName=data["patient_name"],
                 PatientBirthDate=data["patient_birth_date"],
@@ -54,7 +53,7 @@ class SelectiveTransferJobCreateMixin:
             limit_results=limit_results,
         )
 
-        def has_only_excluded_modalities(study: Dataset):
+        def has_only_excluded_modalities(study: ResultDataset):
             modalities_in_study = set(study.ModalitiesInStudy)
             excluded_modalities = set(settings.EXCLUDED_MODALITIES)
             not_excluded_modalities = list(modalities_in_study - excluded_modalities)
@@ -66,7 +65,7 @@ class SelectiveTransferJobCreateMixin:
 
             yield study
 
-    def sort_studies(self, studies: list[Dataset]) -> list[Dataset]:
+    def sort_studies(self, studies: list[ResultDataset]) -> list[ResultDataset]:
         return sorted(
             studies,
             key=lambda study: datetime.combine(study.StudyDate, study.StudyTime),

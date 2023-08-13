@@ -11,7 +11,7 @@ from django.urls import resolve, reverse
 
 from adit.core import validators
 from adit.core.models import DicomServer
-from adit.core.utils.dicom_utils import convert_query_dict_to_dataset, create_query_dataset
+from adit.core.utils.dicom_dataset import QueryDataset
 
 from .forms import DicomExplorerQueryForm
 from .utils.dicom_data_collector import DicomDataCollector
@@ -186,7 +186,7 @@ def render_patient_query(
 ) -> HttpResponse:
     """Query patients and render the result."""
     collector = DicomDataCollector(server)
-    query_ds = convert_query_dict_to_dataset(query)
+    query_ds = QueryDataset.from_dict(query)
     limit = settings.DICOM_EXPLORER_RESULT_LIMIT
     patients = collector.collect_patients(query_ds, limit_results=limit)
     max_results_reached = len(patients) >= limit
@@ -206,7 +206,7 @@ def render_patient_detail(
 ) -> HttpResponse:
     """Render patient data and his studies."""
     collector = DicomDataCollector(server)
-    patients = collector.collect_patients(create_query_dataset(PatientID=patient_id))
+    patients = collector.collect_patients(QueryDataset.create(PatientID=patient_id))
 
     if len(patients) == 0:
         return render_error(request, f"No patient found with Patient ID {patient_id}.")
@@ -214,7 +214,7 @@ def render_patient_detail(
     if len(patients) > 1:
         return render_error(request, f"Multiple patients found with Patient ID {patient_id}.")
 
-    studies = collector.collect_studies(create_query_dataset(PatientID=patient_id))
+    studies = collector.collect_studies(QueryDataset.create(PatientID=patient_id))
     return render(
         request,
         "dicom_explorer/patient_detail.html",
@@ -226,7 +226,7 @@ def render_study_query(
     request: HttpRequest, server: DicomServer, query: dict[str, str]
 ) -> HttpResponse:
     collector = DicomDataCollector(server)
-    query_ds = convert_query_dict_to_dataset(query)
+    query_ds = QueryDataset.from_dict(query)
     limit = settings.DICOM_EXPLORER_RESULT_LIMIT
     studies = collector.collect_studies(query_ds, limit_results=limit)
     max_results_reached = len(studies) >= limit
@@ -243,7 +243,7 @@ def render_study_query(
 
 def render_study_detail(request: HttpRequest, server: DicomServer, study_uid: str) -> HttpResponse:
     collector = DicomDataCollector(server)
-    studies = collector.collect_studies(create_query_dataset(StudyInstanceUID=study_uid))
+    studies = collector.collect_studies(QueryDataset.create(StudyInstanceUID=study_uid))
 
     if len(studies) == 0:
         return render_error(request, f"No study found with Study Instance UID {study_uid}.")
@@ -251,7 +251,7 @@ def render_study_detail(request: HttpRequest, server: DicomServer, study_uid: st
     if len(studies) > 1:
         return render_error(request, f"Multiple studies found with Study Instance UID {study_uid}.")
 
-    patients = collector.collect_patients(create_query_dataset(PatientID=studies[0].PatientID))
+    patients = collector.collect_patients(QueryDataset.create(PatientID=studies[0].PatientID))
 
     if len(patients) == 0:
         # Should never happen as we already found a valid study with this UID
@@ -263,7 +263,7 @@ def render_study_detail(request: HttpRequest, server: DicomServer, study_uid: st
             f"Multiple patients found for study with Study Instance UID {study_uid}.",
         )
 
-    series_list = collector.collect_series(create_query_dataset(StudyInstanceUID=study_uid))
+    series_list = collector.collect_series(QueryDataset.create(StudyInstanceUID=study_uid))
     return render(
         request,
         "dicom_explorer/study_detail.html",
@@ -280,7 +280,7 @@ def render_series_query(
     request: HttpRequest, server: DicomServer, study_uid: str, query: dict[str, str]
 ) -> HttpResponse:
     collector = DicomDataCollector(server)
-    studies = collector.collect_studies(create_query_dataset(StudyInstanceUID=study_uid))
+    studies = collector.collect_studies(QueryDataset.create(StudyInstanceUID=study_uid))
 
     if len(studies) == 0:
         return render_error(request, f"No study found with Study Instance UID {study_uid}.")
@@ -288,7 +288,7 @@ def render_series_query(
     if len(studies) > 1:
         return render_error(request, f"Multiple studies found with Study Instance UID {study_uid}.")
 
-    patients = collector.collect_patients(create_query_dataset(PatientID=studies[0].PatientID))
+    patients = collector.collect_patients(QueryDataset.create(PatientID=studies[0].PatientID))
 
     if len(patients) == 0:
         # Should never happen as we already found a valid study with this UID
@@ -301,7 +301,7 @@ def render_series_query(
         )
 
     series_list = collector.collect_series(
-        convert_query_dict_to_dataset(query, StudyInstanceUID=study_uid)
+        QueryDataset.from_dict(query, StudyInstanceUID=study_uid)
     )
 
     return render(
@@ -321,7 +321,7 @@ def render_series_detail(
 ) -> HttpResponse:
     collector = DicomDataCollector(server)
 
-    studies = collector.collect_studies(create_query_dataset(StudyInstanceUID=study_uid))
+    studies = collector.collect_studies(QueryDataset.create(StudyInstanceUID=study_uid))
 
     if len(studies) == 0:
         return render_error(request, f"No study found with Study Instance UID {study_uid}.")
@@ -329,7 +329,7 @@ def render_series_detail(
     if len(studies) > 1:
         return render_error(request, f"Multiple studies found with Study Instance UID {study_uid}.")
 
-    patients = collector.collect_patients(create_query_dataset(PatientID=studies[0].PatientID))
+    patients = collector.collect_patients(QueryDataset.create(PatientID=studies[0].PatientID))
 
     if len(patients) == 0:
         # Should never happen as we already found a valid study with this UID
@@ -342,7 +342,7 @@ def render_series_detail(
         )
 
     series_list = collector.collect_series(
-        create_query_dataset(StudyInstanceUID=study_uid, SeriesInstanceUID=series_uid)
+        QueryDataset.create(StudyInstanceUID=study_uid, SeriesInstanceUID=series_uid)
     )
 
     if len(series_list) == 0:

@@ -20,16 +20,14 @@ from typing import Callable, Iterable, Iterator
 
 from aiofiles import os as async_os
 from django.conf import settings
-from pydicom import dcmread
-from pydicom.dataset import Dataset
+from pydicom import Dataset, dcmread
 from pynetdicom.events import Event
 
 from ..errors import RetriableError
 from ..models import DicomServer
+from .dicom_dataset import QueryDataset, ResultDataset
 from .dicom_utils import (
     convert_to_python_regex,
-    create_query_dataset,
-    ensure_elements,
     has_wildcards,
 )
 from .dicom_web_connector import DicomWebConnector
@@ -66,9 +64,9 @@ class DicomOperator:
 
     def find_patients(
         self,
-        query: Dataset,
+        query: QueryDataset,
         limit_results: int | None = None,
-    ) -> Iterator[Dataset]:
+    ) -> Iterator[ResultDataset]:
         """Find patients for given query and return a list of patient datasets.
 
         For patient level patient root C-FIND query see:
@@ -85,8 +83,7 @@ class DicomOperator:
         https://dicom.nema.org/medical/dicom/current/output/html/part18.html#table_10.6.1-5
         https://dicom.nema.org/medical/dicom/current/output/html/part18.html#table_10.6.3-3
         """
-        ensure_elements(
-            query,
+        query.ensure_elements(
             "PatientID",
             "PatientName",
             "PatientBirthDate",
@@ -113,8 +110,8 @@ class DicomOperator:
             raise ValueError("No supported method to find patients.")
 
     def _handle_found_patients(
-        self, query: Dataset, results: Iterable[Dataset]
-    ) -> Iterator[Dataset]:
+        self, query: QueryDataset, results: Iterable[ResultDataset]
+    ) -> Iterator[ResultDataset]:
         # When querying on study level we have to make patients unique since it then
         # returns all studies for one patient, resulting in duplicate patients
         seen: set[str] = set()
@@ -145,9 +142,9 @@ class DicomOperator:
 
     def find_studies(
         self,
-        query: Dataset,
+        query: QueryDataset,
         limit_results: int | None = None,
-    ) -> Iterator[Dataset]:
+    ) -> Iterator[ResultDataset]:
         """Find studies for given query and return a list of study datasets.
 
         For study level patient root query see:
@@ -160,8 +157,7 @@ class DicomOperator:
         https://dicom.nema.org/medical/dicom/current/output/html/part18.html#table_10.6.1-5
         https://dicom.nema.org/medical/dicom/current/output/html/part18.html#table_10.6.3-3
         """
-        ensure_elements(
-            query,
+        query.ensure_elements(
             "PatientID",
             "PatientName",
             "PatientBirthDate",
@@ -188,9 +184,9 @@ class DicomOperator:
 
     def _handle_found_studies(
         self,
-        query: Dataset,
-        results: Iterable[Dataset],
-    ) -> Iterator[Dataset]:
+        query: QueryDataset,
+        results: Iterable[ResultDataset],
+    ) -> Iterator[ResultDataset]:
         for result in results:
             # Optionally filter by its study description, if the server doesn't support it
             study_description_query = query.StudyDescription
@@ -218,18 +214,21 @@ class DicomOperator:
 
     def _fetch_study_modalities(self, patient_id: str, study_uid: str) -> list[str]:
         series_list = self.find_series(
-            create_query_dataset(PatientID=patient_id, StudyInstanceUID=study_uid)
+            QueryDataset.create(
+                PatientID=patient_id,
+                StudyInstanceUID=study_uid,
+            )
         )
         modalities = set()
         for series in series_list:
-            modalities.add(series["Modality"])
+            modalities.add(series.Modality)
         return sorted(list(modalities))
 
     def find_series(
         self,
-        query: Dataset,
+        query: QueryDataset,
         limit_results=None,
-    ) -> Iterator[Dataset]:
+    ) -> Iterator[ResultDataset]:
         """Find series for given query and return a list of series datasets.
 
         For series level patient root query and study root query support the same attributes:
@@ -239,8 +238,7 @@ class DicomOperator:
         https://dicom.nema.org/medical/dicom/current/output/html/part18.html#table_10.6.1-5
         https://dicom.nema.org/medical/dicom/current/output/html/part18.html#table_10.6.3-4
         """
-        ensure_elements(
-            query,
+        query.ensure_elements(
             "PatientID",
             "StudyInstanceUID",
             "SeriesInstanceUID",
@@ -274,9 +272,9 @@ class DicomOperator:
 
     def _handle_found_series(
         self,
-        query: Dataset,
-        results: Iterable[Dataset],
-    ) -> Iterator[Dataset]:
+        query: QueryDataset,
+        results: Iterable[ResultDataset],
+    ) -> Iterator[ResultDataset]:
         for result in results:
             # It's also better to filter Series Number programmatically, because it's of
             # VR Integer String and with just a C-Find it's not guaranteed that e.g.
@@ -303,7 +301,9 @@ class DicomOperator:
 
             yield result
 
-    def find_images(self, query: Dataset, limit_results: int | None = None) -> Iterator[Dataset]:
+    def find_images(
+        self, query: QueryDataset, limit_results: int | None = None
+    ) -> Iterator[ResultDataset]:
         """Find images for given query and return a list of image datasets.
 
         For image level patient root query and study root query support the same attributes:
@@ -313,8 +313,7 @@ class DicomOperator:
         https://dicom.nema.org/medical/dicom/current/output/html/part18.html#table_10.6.1-5
         https://dicom.nema.org/medical/dicom/current/output/html/part18.html#table_10.6.3-5
         """
-        ensure_elements(
-            query,
+        query.ensure_elements(
             "PatientID",
             "StudyInstanceUID",
             "SeriesInstanceUID",
@@ -358,7 +357,7 @@ class DicomOperator:
         modifier: Modifier | None = None,
     ):
         series_list = self.find_series(
-            create_query_dataset(
+            QueryDataset.create(
                 PatientID=patient_id,
                 StudyInstanceUID=study_uid,
                 Modality=modality,
@@ -393,7 +392,7 @@ class DicomOperator:
         """Download all series to a specified folder for given series UIDs and pseudonymize
         the dataset before storing it to disk."""
 
-        query = create_query_dataset(
+        query = QueryDataset.create(
             QueryRetrieveLevel="SERIES",
             PatientID=patient_id,
             StudyInstanceUID=study_uid,
@@ -431,7 +430,7 @@ class DicomOperator:
         modality: str = "",
     ):
         series_list = self.find_series(
-            create_query_dataset(
+            QueryDataset.create(
                 PatientID=patient_id,
                 StudyInstanceUID=study_uid,
                 Modality=modality,
@@ -466,7 +465,7 @@ class DicomOperator:
 
     def move_series(self, patient_id: str, study_uid: str, series_uid: str, dest_aet: str):
         self.dimse_connector.send_c_move(
-            create_query_dataset(
+            QueryDataset.create(
                 QueryRetrieveLevel="SERIES",
                 PatientID=patient_id,
                 StudyInstanceUID=study_uid,
@@ -476,7 +475,7 @@ class DicomOperator:
         )
 
     def _download_series_with_wado(
-        self, query: Dataset, dest_folder: PathLike, modifier: Modifier | None = None
+        self, query: QueryDataset, dest_folder: PathLike, modifier: Modifier | None = None
     ):
         instances = self.dicom_web_connector.send_wado_rs(query)
 
@@ -485,7 +484,7 @@ class DicomOperator:
 
     def _download_series_with_c_get(
         self,
-        query: Dataset,
+        query: QueryDataset,
         dest_folder: PathLike,
         modifier: Modifier | None = None,
     ):
@@ -513,12 +512,12 @@ class DicomOperator:
 
     def _download_series_with_c_move(
         self,
-        query: Dataset,
+        query: QueryDataset,
         dest_folder: PathLike,
         modifier: Modifier | None = None,
     ):
         images = self.find_images(
-            create_query_dataset(
+            QueryDataset.create(
                 PatientID=query.PatientID,
                 StudyInstanceUID=query.StudyInstanceUID,
                 SeriesInstanceUID=query.SeriesInstanceUID,

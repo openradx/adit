@@ -1,9 +1,9 @@
 from datetime import datetime
 
 from django.conf import settings
-from pydicom import Dataset
 
 from adit.core.models import DicomServer
+from adit.core.utils.dicom_dataset import QueryDataset, ResultDataset
 from adit.core.utils.dicom_operator import DicomOperator
 
 
@@ -14,13 +14,13 @@ class DicomDataCollector:
 
     def collect_patients(
         self,
-        query: Dataset,
+        query: QueryDataset,
         limit_results: int | None = None,
-    ):
+    ) -> list[ResultDataset]:
         patients = self.operator.find_patients(query, limit_results=limit_results)
         return sorted(patients, key=lambda patient: patient.PatientName)
 
-    def collect_studies(self, query: Dataset, limit_results: int | None = None):
+    def collect_studies(self, query: QueryDataset, limit_results: int | None = None):
         studies = self.operator.find_studies(query, limit_results=limit_results)
 
         return sorted(
@@ -29,7 +29,7 @@ class DicomDataCollector:
             reverse=True,
         )
 
-    def collect_series(self, query: Dataset):
+    def collect_series(self, query: QueryDataset) -> list[ResultDataset]:
         if "StudyInstanceUID" not in query:
             raise AssertionError("Missing Study Instance UID for querying series.")
 

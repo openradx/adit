@@ -1,13 +1,11 @@
 import logging
-from typing import Iterable
 
 from celery.contrib.abortable import AbortableTask as AbortableCeleryTask  # pyright: ignore
 from django.conf import settings
 from django.template.defaultfilters import pluralize
-from pydicom import Dataset
 
+from adit.core.utils.dicom_dataset import QueryDataset, ResultDataset
 from adit.core.utils.dicom_operator import DicomOperator
-from adit.core.utils.dicom_utils import create_query_dataset
 
 from ..models import BatchQueryResult, BatchQueryTask
 
@@ -47,7 +45,7 @@ class QueryExecutor:
 
         return (BatchQueryTask.Status.SUCCESS, msg)
 
-    def _fetch_patient(self) -> Dataset:
+    def _fetch_patient(self) -> ResultDataset:
         patient_id = self.query_task.patient_id
         patient_name = self.query_task.patient_name
         birth_date = self.query_task.patient_birth_date
@@ -56,11 +54,11 @@ class QueryExecutor:
         # (see below) that the returned patient has the same PatientName and PatientBirthDate
         # if those were provided beside the PatientID
         if patient_id:
-            patients = list(self.operator.find_patients(create_query_dataset(PatientID=patient_id)))
+            patients = list(self.operator.find_patients(QueryDataset.create(PatientID=patient_id)))
         elif patient_name and birth_date:
             patients = list(
                 self.operator.find_patients(
-                    create_query_dataset(PatientName=patient_name, PatientBirthDate=birth_date)
+                    QueryDataset.create(PatientName=patient_name, PatientBirthDate=birth_date)
                 )
             )
         else:
@@ -84,7 +82,7 @@ class QueryExecutor:
 
         return patient
 
-    def _fetch_studies(self, patient_id: str) -> list[Dataset]:
+    def _fetch_studies(self, patient_id: str) -> list[ResultDataset]:
         start_date = self.query_task.study_date_start
         end_date = self.query_task.study_date_end
         study_date = (start_date, end_date)
@@ -97,23 +95,34 @@ class QueryExecutor:
                 if modality not in settings.EXCLUDED_MODALITIES
             ]
 
-        study_query = create_query_dataset(
-            PatientID=patient_id,
-            PatientName=self.query_task.patient_name,
-            PatientBirthDate=self.query_task.patient_birth_date,
-            AccessionNumber=self.query_task.accession_number,
-            StudyDate=study_date,
-            StudyDescription=self.query_task.study_description,
-        )
-
         if not modalities_query:
-            study_results = list(self.operator.find_studies(study_query))
+            study_results = list(
+                self.operator.find_studies(
+                    QueryDataset.create(
+                        PatientID=patient_id,
+                        PatientName=self.query_task.patient_name,
+                        PatientBirthDate=self.query_task.patient_birth_date,
+                        AccessionNumber=self.query_task.accession_number,
+                        StudyDate=study_date,
+                        StudyDescription=self.query_task.study_description,
+                    )
+                )
+            )
         else:
             seen: set[str] = set()
-            study_results: list[Dataset] = []
+            study_results: list[ResultDataset] = []
             for modality in modalities_query:
-                study_query.ModalitiesInStudy = modality
-                studies = self.operator.find_studies(study_query)
+                studies = self.operator.find_studies(
+                    QueryDataset.create(
+                        PatientID=patient_id,
+                        PatientName=self.query_task.patient_name,
+                        PatientBirthDate=self.query_task.patient_birth_date,
+                        AccessionNumber=self.query_task.accession_number,
+                        StudyDate=study_date,
+                        StudyDescription=self.query_task.study_description,
+                        ModalitiesInStudy=modality,
+                    )
+                )
                 for study in studies:
                     if study.StudyInstanceUID not in seen:
                         seen.add(study.StudyInstanceUID)
@@ -121,22 +130,26 @@ class QueryExecutor:
 
         return sorted(study_results, key=lambda study: study.StudyDate)
 
-    def _fetch_series(self, patient_id: str, study_uid: str) -> list[Dataset]:
+    def _fetch_series(self, patient_id: str, study_uid: str) -> list[ResultDataset]:
         series_numbers = self.query_task.series_numbers_list
 
-        series_query = create_query_dataset(
-            PatientID=patient_id,
-            StudyInstanceUID=study_uid,
-            SeriesDescription=self.query_task.series_description,
-        )
-
         if not series_numbers:
+            series_query = QueryDataset.create(
+                PatientID=patient_id,
+                StudyInstanceUID=study_uid,
+                SeriesDescription=self.query_task.series_description,
+            )
             series_results = list(self.operator.find_series(series_query))
         else:
             seen: set[str] = set()
-            series_results: list[Dataset] = []
+            series_results: list[ResultDataset] = []
             for series_number in series_numbers:
-                series_query.SeriesNumber = series_number
+                series_query = QueryDataset.create(
+                    PatientID=patient_id,
+                    StudyInstanceUID=study_uid,
+                    SeriesDescription=self.query_task.series_description,
+                    SeriesNumber=series_number,
+                )
                 series_list = self.operator.find_series(series_query)
                 for series in series_list:
                     if series.SeriesInstanceUID not in seen:
@@ -149,10 +162,6 @@ class QueryExecutor:
         studies = self._fetch_studies(patient_id)
         results: list[BatchQueryResult] = []
         for study in studies:
-            modalities = study.get("ModalitiesInStudy", "")
-            if isinstance(modalities, Iterable):
-                modalities = ", ".join(modalities)
-
             batch_query_result = BatchQueryResult(
                 job=self.query_task.job,
                 query=self.query_task,
@@ -165,9 +174,8 @@ class QueryExecutor:
                 study_time=study.StudyTime,
                 study_description=study.StudyDescription,
                 # Modalities of all series in this study
-                modalities=modalities,
-                # Optional in the DICOM standard
-                image_count=study.get("NumberOfStudyRelatedInstances"),
+                modalities=", ".join(study.ModalitiesInStudy),
+                image_count=study.NumberOfStudyRelatedInstances,
                 pseudonym=self.query_task.pseudonym,
                 series_uid="",
                 series_description="",
@@ -197,12 +205,11 @@ class QueryExecutor:
                     study_description=study.StudyDescription,
                     # Modality only of this series
                     modalities=series.Modality,
-                    # Optional in the DICOM standard
-                    image_count=study.get("NumberOfStudyRelatedInstances", None),
+                    image_count=study.NumberOfStudyRelatedInstances,
                     pseudonym=self.query_task.pseudonym,
                     series_uid=series.SeriesInstanceUID,
                     series_description=series.SeriesDescription,
-                    series_number=str(series.get("SeriesNumber", "")),
+                    series_number=str(series.SeriesNumber),
                 )
                 results.append(batch_query_result)
 

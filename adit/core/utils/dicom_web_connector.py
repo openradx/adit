@@ -11,7 +11,7 @@ from requests import HTTPError
 
 from ..errors import RetriableError
 from ..models import DicomServer
-from ..utils.dicom_utils import create_dicomweb_query
+from ..utils.dicom_dataset import QueryDataset, ResultDataset
 
 logger = logging.getLogger(__name__)
 
@@ -75,10 +75,12 @@ class DicomWebConnector:
 
     # TODO: How about fields
     @connect_to_server()
-    def send_qido_rs(self, query: Dataset, limit_results: int | None = None) -> list[Dataset]:
+    def send_qido_rs(
+        self, query: QueryDataset, limit_results: int | None = None
+    ) -> list[ResultDataset]:
         logger.debug("Sending QIDO-RS with query: %s", query)
 
-        dw_query = create_dicomweb_query(query)
+        dw_query = query.to_dicomweb()
 
         level = dw_query.pop("QueryRetrieveLevel", "")
         if not level:
@@ -108,16 +110,16 @@ class DicomWebConnector:
             else:
                 raise ValueError(f"Invalid QueryRetrieveLevel: {level}")
 
-            return [Dataset.from_json(result) for result in results]
+            return [ResultDataset(Dataset.from_json(result)) for result in results]
         except HTTPError as err:
             _handle_dicomweb_error(err, "QIDO-RS")
 
     @connect_to_server()
-    def send_wado_rs(self, query: Dataset) -> list[Dataset]:
+    def send_wado_rs(self, query: QueryDataset) -> list[Dataset]:
         logger.debug("Sending WADO-RS with query: %s", query)
 
         # TODO: Do we really need the conversion?
-        dw_query = create_dicomweb_query(query)
+        dw_query = query.to_dicomweb()
 
         level = dw_query.pop("QueryRetrieveLevel", "")
         if not level:

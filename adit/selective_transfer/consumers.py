@@ -11,9 +11,9 @@ from channels.generic.websocket import AsyncJsonWebsocketConsumer
 from crispy_forms.utils import render_crispy_form
 from django.conf import settings
 from django.template.loader import render_to_string
-from pydicom import Dataset
 
 from adit.accounts.models import User
+from adit.core.utils.dicom_dataset import ResultDataset
 from adit.core.utils.dicom_operator import DicomOperator
 
 from .forms import SelectiveTransferJobForm
@@ -167,7 +167,7 @@ class SelectiveTransferConsumer(SelectiveTransferJobCreateMixin, AsyncJsonWebsoc
 
             studies = self.query_studies(operator, form, limit)
 
-            received_studies: list[Dataset] = []
+            received_studies: list[ResultDataset] = []
             for study in studies:
                 received_studies.append(study)
                 max_results_reached = len(received_studies) >= limit
@@ -187,7 +187,10 @@ class SelectiveTransferConsumer(SelectiveTransferJobCreateMixin, AsyncJsonWebsoc
 
     @debounce()
     def send_query_response(
-        self, form: SelectiveTransferJobForm, studies: list[Dataset], max_results_reached: bool
+        self,
+        form: SelectiveTransferJobForm,
+        studies: list[ResultDataset],
+        max_results_reached: bool,
     ) -> None:
         # Rerender form to remove potential previous error messages
         rendered_form = render_crispy_form(form)

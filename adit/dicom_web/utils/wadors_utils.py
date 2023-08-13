@@ -4,8 +4,8 @@ from adrf.views import sync_to_async
 from rest_framework.exceptions import NotFound
 
 from adit.core.models import DicomServer
+from adit.core.utils.dicom_dataset import QueryDataset
 from adit.core.utils.dicom_operator import DicomOperator
-from adit.core.utils.dicom_utils import convert_query_dict_to_dataset
 
 
 async def wado_retrieve(
@@ -14,7 +14,7 @@ async def wado_retrieve(
     dest_folder: PathLike,
 ) -> None:
     connector = DicomOperator(source_server)
-    query_ds = convert_query_dict_to_dataset(query)
+    query_ds = QueryDataset.from_dict(query)
 
     series_list = list(await sync_to_async(connector.find_series)(query_ds))
 
@@ -23,8 +23,8 @@ async def wado_retrieve(
 
     for series in series_list:
         await sync_to_async(connector.download_series)(
-            patient_id=series.patient_id,
-            study_uid=series.study_uid,
-            series_uid=series.series_uid,
+            patient_id=series.PatientID,
+            study_uid=series.StudyInstanceUID,
+            series_uid=series.SeriesInstanceUID,
             dest_folder=dest_folder,
         )

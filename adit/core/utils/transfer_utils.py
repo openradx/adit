@@ -12,9 +12,8 @@ from dicognito.anonymizer import Anonymizer
 from django.conf import settings
 from pydicom import Dataset
 
-from adit.core.utils.dicom_utils import create_query_dataset
-
 from ..models import DicomNode, TransferJob, TransferTask
+from .dicom_dataset import QueryDataset, ResultDataset
 from .dicom_operator import DicomOperator
 from .sanitize import sanitize_dirname
 
@@ -173,10 +172,10 @@ class TransferExecutor:
         name += transfer_job.owner.username
         return sanitize_dirname(name)
 
-    def _fetch_patient(self) -> Dataset:
+    def _fetch_patient(self) -> ResultDataset:
         patients = list(
             self.source_operator.find_patients(
-                create_query_dataset(PatientID=self.transfer_task.patient_id)
+                QueryDataset.create(PatientID=self.transfer_task.patient_id)
             )
         )
 
@@ -190,11 +189,11 @@ class TransferExecutor:
 
         return patients[0]
 
-    def _fetch_study(self, patient_id: str) -> Dataset:
+    def _fetch_study(self, patient_id: str) -> ResultDataset:
         studies = list(
             self.source_operator.find_studies(
-                create_query_dataset(
-                    PatientID=self.transfer_task.patient_id,
+                QueryDataset.create(
+                    PatientID=patient_id,
                     StudyInstanceUID=self.transfer_task.study_uid,
                 )
             )
@@ -211,9 +210,9 @@ class TransferExecutor:
 
         return studies[0]
 
-    def _fetch_series_list(self, series_uid: str) -> list[Dataset]:
+    def _fetch_series_list(self, series_uid: str) -> list[ResultDataset]:
         series_list = self.source_operator.find_series(
-            create_query_dataset(
+            QueryDataset.create(
                 PatientID=self.transfer_task.patient_id,
                 StudyInstanceUID=self.transfer_task.study_uid,
             )

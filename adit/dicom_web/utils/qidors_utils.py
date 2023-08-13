@@ -1,18 +1,17 @@
 from typing import Literal
 
 from adrf.views import sync_to_async
-from pydicom import Dataset
 
 from adit.core.models import DicomServer
+from adit.core.utils.dicom_dataset import QueryDataset, ResultDataset
 from adit.core.utils.dicom_operator import DicomOperator
-from adit.core.utils.dicom_utils import convert_query_dict_to_dataset
 
 
 async def qido_find(
     source_server: DicomServer, query: dict[str, str], level: Literal["STUDY", "SERIES"]
-) -> list[Dataset]:
+) -> list[ResultDataset]:
     operator = DicomOperator(source_server)
-    query_ds = convert_query_dict_to_dataset(query)
+    query_ds = QueryDataset.from_dict(query)
 
     if level == "STUDY":
         results = list(await sync_to_async(operator.find_studies)(query_ds))
