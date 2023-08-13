@@ -213,10 +213,12 @@ class DicomOperator:
             yield result
 
     def _fetch_study_modalities(self, patient_id: str, study_uid: str) -> list[str]:
-        series_list = self.find_series(
-            QueryDataset.create(
-                PatientID=patient_id,
-                StudyInstanceUID=study_uid,
+        series_list = list(
+            self.find_series(
+                QueryDataset.create(
+                    PatientID=patient_id,
+                    StudyInstanceUID=study_uid,
+                )
             )
         )
         modalities = set()
@@ -353,11 +355,13 @@ class DicomOperator:
         modality: str = "",
         modifier: Modifier | None = None,
     ):
-        series_list = self.find_series(
-            QueryDataset.create(
-                PatientID=patient_id,
-                StudyInstanceUID=study_uid,
-                Modality=modality,
+        series_list = list(
+            self.find_series(
+                QueryDataset.create(
+                    PatientID=patient_id,
+                    StudyInstanceUID=study_uid,
+                    Modality=modality,
+                )
             )
         )
 
@@ -426,11 +430,13 @@ class DicomOperator:
         dest_aet: str,
         modality: str = "",
     ):
-        series_list = self.find_series(
-            QueryDataset.create(
-                PatientID=patient_id,
-                StudyInstanceUID=study_uid,
-                Modality=modality,
+        series_list = list(
+            self.find_series(
+                QueryDataset.create(
+                    PatientID=patient_id,
+                    StudyInstanceUID=study_uid,
+                    Modality=modality,
+                )
             )
         )
 
@@ -513,11 +519,13 @@ class DicomOperator:
         dest_folder: PathLike,
         modifier: Modifier | None = None,
     ):
-        images = self.find_images(
-            QueryDataset.create(
-                PatientID=query.PatientID,
-                StudyInstanceUID=query.StudyInstanceUID,
-                SeriesInstanceUID=query.SeriesInstanceUID,
+        images = list(
+            self.find_images(
+                QueryDataset.create(
+                    PatientID=query.PatientID,
+                    StudyInstanceUID=query.StudyInstanceUID,
+                    SeriesInstanceUID=query.SeriesInstanceUID,
+                )
             )
         )
         image_uids = [image.SOPInstanceUID for image in images]

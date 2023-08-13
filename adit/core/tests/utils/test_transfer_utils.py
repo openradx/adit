@@ -60,8 +60,8 @@ def test_transfer_to_server_succeeds(
     patient, study = create_resources(task)
 
     source_operator_mock = create_autospec(DicomOperator)
-    source_operator_mock.find_patients.return_value = [patient]
-    source_operator_mock.find_studies.return_value = [study]
+    source_operator_mock.find_patients.return_value = iter([patient])
+    source_operator_mock.find_studies.return_value = iter([study])
     create_source_operator_mock.return_value = source_operator_mock
     dest_operator_mock = create_autospec(DicomOperator)
     create_dest_operator_mock.return_value = dest_operator_mock
@@ -112,8 +112,8 @@ def test_transfer_to_folder_succeeds(
     patient, study = create_resources(task)
 
     source_operator_mock = create_autospec(DicomOperator)
-    source_operator_mock.find_patients.return_value = [patient]
-    source_operator_mock.find_studies.return_value = [study]
+    source_operator_mock.find_patients.return_value = iter([patient])
+    source_operator_mock.find_studies.return_value = iter([study])
     create_source_operator_mock.return_value = source_operator_mock
 
     celery_task_mock = create_autospec(CeleryTask)
@@ -153,8 +153,8 @@ def test_transfer_to_archive_succeeds(
     patient, study = create_resources(task)
 
     source_operator_mock = create_autospec(DicomOperator)
-    source_operator_mock.find_patients.return_value = [patient]
-    source_operator_mock.find_studies.return_value = [study]
+    source_operator_mock.find_patients.return_value = iter([patient])
+    source_operator_mock.find_studies.return_value = iter([study])
     create_source_operator_mock.return_value = source_operator_mock
 
     Popen_mock.return_value.returncode = 0

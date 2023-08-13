@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Iterable
 from unittest.mock import create_autospec
 
 import pytest
@@ -8,6 +8,8 @@ from pynetdicom.status import Status
 
 from adit.core.factories import DicomServerFactory
 from adit.core.utils.dicom_operator import DicomOperator
+
+Response = tuple[Dataset, Dataset | None]
 
 
 class DicomTestHelper:
@@ -19,8 +21,8 @@ class DicomTestHelper:
         return ds
 
     @staticmethod
-    def create_successful_c_find_responses(data_dicts: list[dict[str, Any]]) -> list[Dataset]:
-        responses = []
+    def create_successful_c_find_responses(data_dicts: list[dict[str, Any]]) -> Iterable[Response]:
+        responses: list[tuple[Dataset, Dataset | None]] = []
         for data_dict in data_dicts:
             identifier = DicomTestHelper.create_dataset_from_dict(data_dict)
             pending_status = Dataset()
@@ -31,18 +33,18 @@ class DicomTestHelper:
         success_status.Status = Status.SUCCESS
         responses.append((success_status, None))
 
-        return responses
+        return iter(responses)
 
     @staticmethod
-    def create_successful_c_get_response() -> list[Dataset]:
-        responses = []
+    def create_successful_c_get_response() -> Iterable[Response]:
+        responses: list[Response] = []
         success_status = Dataset()
         success_status.Status = Status.SUCCESS
         responses.append((success_status, None))
-        return responses
+        return iter(responses)
 
     @staticmethod
-    def create_successful_c_move_response() -> list[Dataset]:
+    def create_successful_c_move_response() -> Iterable[Response]:
         return DicomTestHelper.create_successful_c_get_response()
 
     @staticmethod

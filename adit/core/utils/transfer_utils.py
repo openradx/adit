@@ -211,10 +211,12 @@ class TransferExecutor:
         return studies[0]
 
     def _fetch_series_list(self, series_uid: str) -> list[ResultDataset]:
-        series_list = self.source_operator.find_series(
-            QueryDataset.create(
-                PatientID=self.transfer_task.patient_id,
-                StudyInstanceUID=self.transfer_task.study_uid,
+        series_list = list(
+            self.source_operator.find_series(
+                QueryDataset.create(
+                    PatientID=self.transfer_task.patient_id,
+                    StudyInstanceUID=self.transfer_task.study_uid,
+                )
             )
         )
 

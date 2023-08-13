@@ -38,12 +38,12 @@ def test_find_patients(
     )
 
     # Act
-    patients = dicom_operator.find_patients(QueryDataset.create(PatientName="Foo^Bar"))
+    patients = list(dicom_operator.find_patients(QueryDataset.create(PatientName="Foo^Bar")))
 
     # Assert
     association.send_c_find.assert_called_once()
     assert isinstance(association.send_c_find.call_args.args[0], QueryDataset)
-    assert next(patients).PatientID == responses[0]["PatientID"]
+    assert patients[0].PatientID == responses[0]["PatientID"]
     assert association.send_c_find.call_args.args[1] == PatientRootQueryRetrieveInformationModelFind
 
 
@@ -62,12 +62,12 @@ def test_find_studies_with_patient_root(
     )
 
     # Act
-    patients = dicom_operator.find_studies(QueryDataset.create(PatientID="12345"))
+    patients = list(dicom_operator.find_studies(QueryDataset.create(PatientID="12345")))
 
     # Assert
     association.send_c_find.assert_called_once()
     assert isinstance(association.send_c_find.call_args.args[0], Dataset)
-    assert next(patients).PatientID == responses[0]["PatientID"]
+    assert patients[0].PatientID == responses[0]["PatientID"]
     assert association.send_c_find.call_args.args[1] == StudyRootQueryRetrieveInformationModelFind
 
 
@@ -86,12 +86,12 @@ def test_find_studies_with_study_root(
     )
 
     # Act
-    patients = dicom_operator.find_studies(QueryDataset.create(PatientName="Foo^Bar"))
+    patients = list(dicom_operator.find_studies(QueryDataset.create(PatientName="Foo^Bar")))
 
     # Assert
     association.send_c_find.assert_called_once()
     assert isinstance(association.send_c_find.call_args.args[0], Dataset)
-    assert next(patients).PatientName == responses[0]["PatientName"]
+    assert patients[0].PatientName == responses[0]["PatientName"]
     assert association.send_c_find.call_args.args[1] == StudyRootQueryRetrieveInformationModelFind
 
 
@@ -110,14 +110,14 @@ def test_find_series(
     )
 
     # Act
-    patients = dicom_operator.find_series(
-        QueryDataset.create(PatientID="12345", StudyInstanceUID="1.123")
+    patients = list(
+        dicom_operator.find_series(QueryDataset.create(PatientID="12345", StudyInstanceUID="1.123"))
     )
 
     # Assert
     association.send_c_find.assert_called_once()
     assert isinstance(association.send_c_find.call_args.args[0], Dataset)
-    assert next(patients).PatientID == responses[0]["PatientID"]
+    assert patients[0].PatientID == responses[0]["PatientID"]
     assert association.send_c_find.call_args.args[1] == StudyRootQueryRetrieveInformationModelFind
 
 

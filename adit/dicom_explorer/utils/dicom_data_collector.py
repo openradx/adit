@@ -17,11 +17,11 @@ class DicomDataCollector:
         query: QueryDataset,
         limit_results: int | None = None,
     ) -> list[ResultDataset]:
-        patients = self.operator.find_patients(query, limit_results=limit_results)
+        patients = list(self.operator.find_patients(query, limit_results=limit_results))
         return sorted(patients, key=lambda patient: patient.PatientName)
 
     def collect_studies(self, query: QueryDataset, limit_results: int | None = None):
-        studies = self.operator.find_studies(query, limit_results=limit_results)
+        studies = list(self.operator.find_studies(query, limit_results=limit_results))
 
         return sorted(
             studies,
@@ -33,7 +33,7 @@ class DicomDataCollector:
         if not query.has("StudyInstanceUID"):
             raise AssertionError("Missing Study Instance UID for querying series.")
 
-        series_list = self.operator.find_series(query)
+        series_list = list(self.operator.find_series(query))
 
         return sorted(
             series_list,

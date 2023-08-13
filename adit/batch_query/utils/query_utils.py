@@ -112,15 +112,17 @@ class QueryExecutor:
             seen: set[str] = set()
             study_results: list[ResultDataset] = []
             for modality in modalities_query:
-                studies = self.operator.find_studies(
-                    QueryDataset.create(
-                        PatientID=patient_id,
-                        PatientName=self.query_task.patient_name,
-                        PatientBirthDate=self.query_task.patient_birth_date,
-                        AccessionNumber=self.query_task.accession_number,
-                        StudyDate=study_date,
-                        StudyDescription=self.query_task.study_description,
-                        ModalitiesInStudy=modality,
+                studies = list(
+                    self.operator.find_studies(
+                        QueryDataset.create(
+                            PatientID=patient_id,
+                            PatientName=self.query_task.patient_name,
+                            PatientBirthDate=self.query_task.patient_birth_date,
+                            AccessionNumber=self.query_task.accession_number,
+                            StudyDate=study_date,
+                            StudyDescription=self.query_task.study_description,
+                            ModalitiesInStudy=modality,
+                        )
                     )
                 )
                 for study in studies:
@@ -150,7 +152,7 @@ class QueryExecutor:
                     SeriesDescription=self.query_task.series_description,
                     SeriesNumber=series_number,
                 )
-                series_list = self.operator.find_series(series_query)
+                series_list = list(self.operator.find_series(series_query))
                 for series in series_list:
                     if series.SeriesInstanceUID not in seen:
                         seen.add(series.SeriesInstanceUID)
