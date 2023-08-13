@@ -112,9 +112,6 @@ class BaseDataset:
     def get(self, keyword: str, default: Any | None = None) -> Any:
         return self._ds.get(keyword, default)
 
-    def __contains__(self, keyword: str) -> bool:
-        return keyword in self._ds
-
     def __repr__(self) -> str:
         return str(self._ds)
 
@@ -141,6 +138,11 @@ class QueryDataset(BaseDataset):
     @property
     def dataset(self) -> Dataset:
         return self._ds
+
+    def has(self, keyword: str) -> bool:
+        """Checks that the key exists in the dataset and is not empty."""
+        v = self._ds.get(keyword, None)
+        return bool(v)
 
     @classmethod
     def create(
@@ -224,6 +226,9 @@ class ResultDataset(BaseDataset):
     @BaseDataset.ModalitiesInStudy.setter
     def ModalitiesInStudy(self, value: str | list[str]) -> None:
         self._ds.ModalitiesInStudy = value
+
+    def __contains__(self, keyword: str) -> bool:
+        return keyword in self._ds
 
 
 def _set_dataset_value(

@@ -122,20 +122,17 @@ class DicomOperator:
             seen.add(result.PatientID)
 
             # Currently we don't allow a range filter for PatientBirthDate
-            patient_birth_date_query = query.PatientBirthDate
-            if patient_birth_date_query:
-                if patient_birth_date_query != result.PatientBirthDate:
+            if query.has("PatientBirthDate"):
+                if query.PatientBirthDate != result.PatientBirthDate:
                     continue
 
-            patient_name_query = query.PatientName
-            if patient_name_query:
-                patient_name_pattern = convert_to_python_regex(patient_name_query)
+            if query.has("PatientName"):
+                patient_name_pattern = convert_to_python_regex(query.PatientName)
                 if patient_name_pattern.search(result.PatientName):
                     continue
 
-            patient_sex_query = query.PatientSex
-            if patient_sex_query:
-                if patient_sex_query != result.PatientSex:
+            if query.has("PatientSex"):
+                if query.PatientSex != result.PatientSex:
                     continue
 
             yield result
@@ -280,22 +277,19 @@ class DicomOperator:
             # VR Integer String and with just a C-Find it's not guaranteed that e.g.
             # "4" is the same as "+4"
             # https://groups.google.com/g/comp.protocols.dicom/c/JNsg7upVJ08
-            series_number_query = query.SeriesNumber
-            if series_number_query:
-                series_number_query = int(series_number_query)
-                if series_number_query != int(result.SeriesNumber):
+            if query.has("SeriesNumber"):
+                series_number_query = query.SeriesNumber
+                if series_number_query != result.SeriesNumber:
                     continue
 
             # Optionally filter by modality, if the server doesn't support it
-            modality_query = query.Modality
-            if modality_query:
-                if modality_query != result.Modality:
+            if query.has("Modality"):
+                if query.Modality != result.Modality:
                     continue
 
             # Optionally filter by series description, if the server doesn't support it
-            series_description_query = query.SeriesDescription
-            if series_description_query:
-                series_description_pattern = convert_to_python_regex(series_description_query)
+            if query.has("SeriesDescription"):
+                series_description_pattern = convert_to_python_regex(query.SeriesDescription)
                 if series_description_pattern.search(result.SeriesDescription):
                     continue
 

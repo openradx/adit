@@ -30,7 +30,7 @@ class DicomDataCollector:
         )
 
     def collect_series(self, query: QueryDataset) -> list[ResultDataset]:
-        if "StudyInstanceUID" not in query:
+        if not query.has("StudyInstanceUID"):
             raise AssertionError("Missing Study Instance UID for querying series.")
 
         series_list = self.operator.find_series(query)
