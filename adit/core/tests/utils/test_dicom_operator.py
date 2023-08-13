@@ -42,7 +42,7 @@ def test_find_patients(
 
     # Assert
     association.send_c_find.assert_called_once()
-    assert isinstance(association.send_c_find.call_args.args[0], QueryDataset)
+    assert isinstance(association.send_c_find.call_args.args[0], Dataset)
     assert patients[0].PatientID == responses[0]["PatientID"]
     assert association.send_c_find.call_args.args[1] == PatientRootQueryRetrieveInformationModelFind
 
