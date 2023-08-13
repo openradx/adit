@@ -5,7 +5,7 @@
         DICOM Explorer
         <small class="text-muted">Study List</small>
     </h4>
-    {% if max_query_results %}
+    {% if max_results_reached %}
         <div class="alert alert-warning mt-3" role="alert">Results limited to {{ studies|length|add:"-1" }} studies.</div>
     {% endif %}
     <div class="card">{% include "dicom_explorer/_server_infos.html" %}</div>

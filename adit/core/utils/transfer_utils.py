@@ -5,49 +5,49 @@ import tempfile
 from datetime import datetime
 from functools import partial
 from pathlib import Path
-from typing import Any, Callable
+from typing import Callable
 
 from celery.contrib.abortable import AbortableTask as AbortableCeleryTask  # pyright: ignore
 from dicognito.anonymizer import Anonymizer
 from django.conf import settings
 from pydicom import Dataset
 
+from adit.core.utils.dicom_utils import create_query_dataset
+
 from ..models import DicomNode, TransferJob, TransferTask
-from .dicom_connector import DicomConnector
+from .dicom_operator import DicomOperator
 from .sanitize import sanitize_dirname
 
 logger = logging.getLogger(__name__)
 
 
-def _create_source_connector(transfer_task: TransferTask) -> DicomConnector:
-    # An own function to easily mock the source connector in test_transfer_utils.py
+def _create_source_operator(transfer_task: TransferTask) -> DicomOperator:
+    # An own function to easily mock the source operator in test_transfer_utils.py
     assert transfer_task.job.source.node_type == DicomNode.NodeType.SERVER
-    return DicomConnector(transfer_task.job.source.dicomserver)
+    return DicomOperator(transfer_task.job.source.dicomserver)
 
 
-def _create_dest_connector(transfer_task: TransferTask) -> DicomConnector:
-    # An own function to easily mock the destination connector in test_transfer_utils.py
+def _create_dest_operator(transfer_task: TransferTask) -> DicomOperator:
+    # An own function to easily mock the destination operator in test_transfer_utils.py
     assert transfer_task.job.destination.node_type == DicomNode.NodeType.SERVER
-    return DicomConnector(transfer_task.job.destination.dicomserver)
+    return DicomOperator(transfer_task.job.destination.dicomserver)
 
 
 class TransferExecutor:
     """
     Executes a transfer task of a selective transfer or batch transfer by utilizing the
-    DICOM connector. Transfers only one study or some selected series of one study from
-    one patient.
-    A long running transfer task can be aborted.
+    DICOM operator. Transfers only a single study or some selected series of a single study.
     """
 
     def __init__(self, transfer_task: TransferTask, celery_task: AbortableCeleryTask) -> None:
         self.transfer_task = transfer_task
         self.celery_task = celery_task
 
-        self.source_connector = _create_source_connector(transfer_task)
+        self.source_operator = _create_source_operator(transfer_task)
 
-        self.dest_connector = None
+        self.dest_operator = None
         if self.transfer_task.job.destination.node_type == DicomNode.NodeType.SERVER:
-            self.dest_connector = _create_dest_connector(transfer_task)
+            self.dest_operator = _create_dest_operator(transfer_task)
 
     def start(self) -> tuple[TransferTask.Status, str]:
         transfer_job: TransferJob = self.transfer_task.job
@@ -58,7 +58,7 @@ class TransferExecutor:
         if not transfer_job.destination.destination_active:
             raise ValueError(f"Destination DICOM node not active: {transfer_job.destination.name}")
 
-        if self.dest_connector:
+        if self.dest_operator:
             self._transfer_to_server()
         else:
             if transfer_job.archive_password:
@@ -71,8 +71,8 @@ class TransferExecutor:
     def _transfer_to_server(self) -> None:
         with tempfile.TemporaryDirectory(prefix="adit_") as tmpdir:
             patient_folder = self._download_dicoms(Path(tmpdir))
-            assert self.dest_connector
-            self.dest_connector.upload_instances(patient_folder)
+            assert self.dest_operator
+            self.dest_operator.upload_instances(patient_folder)
 
     def _transfer_to_archive(self) -> None:
         transfer_job: TransferJob = self.transfer_task.job
@@ -113,8 +113,8 @@ class TransferExecutor:
         # Check if the Study Instance UID is correct and fetch some attributes to create
         # the study folder.
         patient = self._fetch_patient()
-        study = self._fetch_study(patient["PatientID"])
-        modalities = study["ModalitiesInStudy"]
+        study = self._fetch_study(patient_id=patient.PatientID)
+        modalities = study.ModalitiesInStudy
 
         modalities = [
             modality for modality in modalities if modality not in settings.EXCLUDED_MODALITIES
@@ -129,11 +129,11 @@ class TransferExecutor:
                 # TODO: this seems to be very ineffective as we do a c-find for every series
                 # in a study and check if it is a wanted series. Better fetch all series of
                 # a study and check then.
-                for series in self._fetch_series_list(series_uid):
-                    modalities.add(series["Modality"])
+                for series in self._fetch_series_list(series_uid=series_uid):
+                    modalities.add(series.Modality)
 
-        study_date = study["StudyDate"]
-        study_time = study["StudyTime"]
+        study_date = study.StudyDate
+        study_time = study.StudyTime
         modalities = ",".join(modalities)
         prefix = f"{study_date.strftime('%Y%m%d')}-{study_time.strftime('%H%M%S')}"
         study_folder = patient_folder / f"{prefix}-{modalities}"
@@ -148,13 +148,19 @@ class TransferExecutor:
 
         if series_uids:
             self._download_study(
-                study,
+                study.PatientID,
+                study.StudyInstanceUID,
                 study_folder,
                 modifier,
                 series_uids=series_uids,
             )
         else:
-            self._download_study(study, study_folder, modifier)
+            self._download_study(
+                study.PatientID,
+                study.StudyInstanceUID,
+                study_folder,
+                modifier,
+            )
 
         return patient_folder
 
@@ -167,8 +173,12 @@ class TransferExecutor:
         name += transfer_job.owner.username
         return sanitize_dirname(name)
 
-    def _fetch_patient(self) -> dict[str, Any]:
-        patients = self.source_connector.find_patients({"PatientID": self.transfer_task.patient_id})
+    def _fetch_patient(self) -> Dataset:
+        patients = list(
+            self.source_operator.find_patients(
+                create_query_dataset(PatientID=self.transfer_task.patient_id)
+            )
+        )
 
         if len(patients) == 0:
             raise ValueError(f"No patient found with Patient ID {self.transfer_task.patient_id}.")
@@ -180,15 +190,14 @@ class TransferExecutor:
 
         return patients[0]
 
-    def _fetch_study(self, patient_id: str) -> dict[str, Any]:
-        studies = self.source_connector.find_studies(
-            {
-                "PatientID": patient_id,
-                "StudyInstanceUID": self.transfer_task.study_uid,
-                "StudyDate": "",
-                "StudyTime": "",
-                "ModalitiesInStudy": "",
-            }
+    def _fetch_study(self, patient_id: str) -> Dataset:
+        studies = list(
+            self.source_operator.find_studies(
+                create_query_dataset(
+                    PatientID=self.transfer_task.patient_id,
+                    StudyInstanceUID=self.transfer_task.study_uid,
+                )
+            )
         )
 
         if len(studies) == 0:
@@ -202,19 +211,17 @@ class TransferExecutor:
 
         return studies[0]
 
-    def _fetch_series_list(self, series_uid: str) -> list[dict[str, Any]]:
-        series_list = self.source_connector.find_series(
-            {
-                "PatientID": self.transfer_task.patient_id,
-                "StudyInstanceUID": self.transfer_task.study_uid,
-                "SeriesInstanceUID": "",
-                "Modality": "",
-            }
+    def _fetch_series_list(self, series_uid: str) -> list[Dataset]:
+        series_list = self.source_operator.find_series(
+            create_query_dataset(
+                PatientID=self.transfer_task.patient_id,
+                StudyInstanceUID=self.transfer_task.study_uid,
+            )
         )
 
         results = []
         for series in series_list:
-            if series["SeriesInstanceUID"] == series_uid:
+            if series.SeriesInstanceUID == series_uid:
                 results.append(series)
 
         if len(results) == 0:
@@ -226,25 +233,26 @@ class TransferExecutor:
 
     def _download_study(
         self,
-        study: dict[str, Any],
+        patient_id: str,
+        study_uid: str,
         study_folder: Path,
         modifier: Callable,
         series_uids: list[str] = [],
     ) -> None:
         if series_uids:
             for series_uid in series_uids:
-                self.source_connector.download_series(
-                    study["PatientID"],
-                    study["StudyInstanceUID"],
-                    series_uid,
-                    study_folder,
+                self.source_operator.download_series(
+                    patient_id=patient_id,
+                    study_uid=study_uid,
+                    series_uid=series_uid,
+                    dest_folder=study_folder,
                     modifier=modifier,
                 )
         else:
-            self.source_connector.download_study(
-                study["PatientID"],
-                study["StudyInstanceUID"],
-                study_folder,
+            self.source_operator.download_study(
+                patient_id=patient_id,
+                study_uid=study_uid,
+                dest_folder=study_folder,
                 modifier=modifier,
             )
 

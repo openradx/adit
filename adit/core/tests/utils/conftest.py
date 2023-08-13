@@ -6,7 +6,7 @@ from pynetdicom.association import Association
 from pynetdicom.status import Status
 
 from adit.core.factories import DicomServerFactory
-from adit.core.utils.dicom_connector import DicomConnector
+from adit.core.utils.dicom_operator import DicomOperator
 
 
 class DicomTestHelper:
@@ -64,6 +64,6 @@ def association():
 
 
 @pytest.fixture
-def dicom_connector(db):
+def dicom_operator(db):
     server = DicomServerFactory.create()
-    return DicomConnector(server)
+    return DicomOperator(server)

@@ -58,37 +58,37 @@ class QueryAPIView(AsyncApiView):
 
 
 class QueryStudyAPIView(QueryAPIView):
-    level = "STUDY"
+    LEVEL = "STUDY"
 
     async def get(
         self,
         request: Request,
         pacs: str,
-    ):
+    ) -> Response:
         request_query = request.GET.dict()
         query = self.query.copy()
         query.update(request_query)
         source_server = await self.handle_request(pacs)
-        results = await qido_find(source_server, query, self.level)
+        results = await qido_find(source_server, query, self.LEVEL)
 
         return Response(results)
 
 
 class QuerySeriesAPIView(QueryAPIView):
-    level = "SERIES"
+    LEVEL = "SERIES"
 
     async def get(
         self,
         request: Request,
         pacs: str,
         study_uid: str = "",
-    ):
+    ) -> Response:
         request_query = request.GET.dict()
         query = self.query.copy()
         query.update(request_query)
         query["StudyInstanceUID"] = study_uid
         source_server = await self.handle_request(pacs)
-        results = await qido_find(source_server, query, self.level)
+        results = await qido_find(source_server, query, self.LEVEL)
 
         return Response(results)
 
@@ -147,7 +147,7 @@ class RetrieveStudyAPIView(RetrieveAPIView):
         pacs: str,
         study_uid: str,
         mode: str = "bulk",
-    ):
+    ) -> Response:
         source_server, folder_path = await self.handle_request(request, pacs, mode, study_uid)
         query = self.query.copy()
         query["StudyInstanceUID"] = study_uid
@@ -170,7 +170,7 @@ class RetrieveSeriesAPIView(RetrieveAPIView):
         study_uid: str,
         series_uid: str,
         mode: str = "bulk",
-    ):
+    ) -> Response:
         source_server, folder_path = await self.handle_request(
             request, pacs, mode, study_uid, series_uid
         )
@@ -202,7 +202,7 @@ class StoreAPIView(AsyncApiView):
         request: Request,
         pacs: str,
         study_uid: str = "",
-    ):
+    ) -> Response:
         dest_server = await self.handle_request(pacs)
 
         if study_uid:

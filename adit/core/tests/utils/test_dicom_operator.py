@@ -17,17 +17,18 @@ from pynetdicom.sop_class import (
 from pytest_django.fixtures import SettingsWrapper
 from pytest_mock import MockerFixture
 
-from adit.core.utils.dicom_connector import DicomConnector
+from adit.core.utils.dicom_operator import DicomOperator
+from adit.core.utils.dicom_utils import create_query_dataset
 from adit.core.utils.file_transmit import FileTransmitServer
 
 from .conftest import DicomTestHelper
 
 
-@patch("adit.core.utils.dicom_connector.AE.associate")
+@patch("adit.core.utils.dimse_connector.AE.associate")
 def test_find_patients(
     associate,
     association: Association,
-    dicom_connector: DicomConnector,
+    dicom_operator: DicomOperator,
     dicom_test_helper: DicomTestHelper,
 ):
     # Arrange
@@ -38,20 +39,20 @@ def test_find_patients(
     )
 
     # Act
-    patients = dicom_connector.find_patients({"PatientName": "Foo^Bar"})
+    patients = dicom_operator.find_patients(create_query_dataset(PatientName="Foo^Bar"))
 
     # Assert
     association.send_c_find.assert_called_once()
     assert isinstance(association.send_c_find.call_args.args[0], Dataset)
-    assert patients[0]["PatientID"] == responses[0]["PatientID"]
+    assert next(patients)["PatientID"] == responses[0]["PatientID"]
     assert association.send_c_find.call_args.args[1] == PatientRootQueryRetrieveInformationModelFind
 
 
-@patch("adit.core.utils.dicom_connector.AE.associate")
+@patch("adit.core.utils.dimse_connector.AE.associate")
 def test_find_studies_with_patient_root(
     associate,
     association: Association,
-    dicom_connector: DicomConnector,
+    dicom_operator: DicomOperator,
     dicom_test_helper: DicomTestHelper,
 ):
     # Arrange
@@ -62,20 +63,20 @@ def test_find_studies_with_patient_root(
     )
 
     # Act
-    patients = dicom_connector.find_studies({"PatientID": "12345"})
+    patients = dicom_operator.find_studies(create_query_dataset(PatientID="12345"))
 
     # Assert
     association.send_c_find.assert_called_once()
     assert isinstance(association.send_c_find.call_args.args[0], Dataset)
-    assert patients[0]["PatientID"] == responses[0]["PatientID"]
+    assert next(patients)["PatientID"] == responses[0]["PatientID"]
     assert association.send_c_find.call_args.args[1] == StudyRootQueryRetrieveInformationModelFind
 
 
-@patch("adit.core.utils.dicom_connector.AE.associate")
+@patch("adit.core.utils.dimse_connector.AE.associate")
 def test_find_studies_with_study_root(
     associate,
     association: Association,
-    dicom_connector: DicomConnector,
+    dicom_operator: DicomOperator,
     dicom_test_helper: DicomTestHelper,
 ):
     # Arrange
@@ -86,20 +87,20 @@ def test_find_studies_with_study_root(
     )
 
     # Act
-    patients = dicom_connector.find_studies({"PatientName": "Foo^Bar"})
+    patients = dicom_operator.find_studies(create_query_dataset(PatientName="Foo^Bar"))
 
     # Assert
     association.send_c_find.assert_called_once()
     assert isinstance(association.send_c_find.call_args.args[0], Dataset)
-    assert patients[0]["PatientName"] == responses[0]["PatientName"]
+    assert next(patients)["PatientName"] == responses[0]["PatientName"]
     assert association.send_c_find.call_args.args[1] == StudyRootQueryRetrieveInformationModelFind
 
 
-@patch("adit.core.utils.dicom_connector.AE.associate")
+@patch("adit.core.utils.dimse_connector.AE.associate")
 def test_find_series(
     associate,
     association: Association,
-    dicom_connector: DicomConnector,
+    dicom_operator: DicomOperator,
     dicom_test_helper: DicomTestHelper,
 ):
     # Arrange
@@ -110,29 +111,31 @@ def test_find_series(
     )
 
     # Act
-    patients = dicom_connector.find_series({"PatientID": "12345", "StudyInstanceUID": "1.123"})
+    patients = dicom_operator.find_series(
+        create_query_dataset(PatientID="12345", StudyInstanceUID="1.123")
+    )
 
     # Assert
     association.send_c_find.assert_called_once()
     assert isinstance(association.send_c_find.call_args.args[0], Dataset)
-    assert patients[0]["PatientID"] == responses[0]["PatientID"]
+    assert next(patients)["PatientID"] == responses[0]["PatientID"]
     assert association.send_c_find.call_args.args[1] == StudyRootQueryRetrieveInformationModelFind
 
 
 def test_download_series_with_c_get(
     mocker: MockerFixture,
     association: Association,
-    dicom_connector: DicomConnector,
+    dicom_operator: DicomOperator,
     dicom_test_helper: DicomTestHelper,
 ):
     # Arrange
-    mocker.patch("adit.core.utils.dicom_connector.AE.associate", return_value=association)
+    mocker.patch("adit.core.utils.dimse_connector.AE.associate", return_value=association)
     association.send_c_get.return_value = dicom_test_helper.create_successful_c_get_response()
     path = Path(settings.BASE_DIR) / "samples" / "dicoms"
     ds = dcmread(next(path.rglob("*.dcm")))
     with TemporaryDirectory() as tmp_dir:
         # Act
-        dicom_connector.download_series(
+        dicom_operator.download_series(
             ds.PatientID, ds.StudyInstanceUID, ds.SeriesInstanceUID, Path(tmp_dir)
         )
 
@@ -144,16 +147,16 @@ def test_download_series_with_c_move(
     settings: SettingsWrapper,
     mocker: MockerFixture,
     association: Association,
-    dicom_connector: DicomConnector,
+    dicom_operator: DicomOperator,
     dicom_test_helper: DicomTestHelper,
 ):
     # Arrange
     settings.FILE_TRANSMIT_HOST = "127.0.0.1"
     settings.FILE_TRANSMIT_PORT = 17999
-    mocker.patch("adit.core.utils.dicom_connector.AE.associate", return_value=association)
+    mocker.patch("adit.core.utils.dimse_connector.AE.associate", return_value=association)
     association.send_c_move.return_value = dicom_test_helper.create_successful_c_move_response()
-    dicom_connector.server.study_root_get_support = False
-    dicom_connector.server.patient_root_get_support = False
+    dicom_operator.server.study_root_get_support = False
+    dicom_operator.server.patient_root_get_support = False
     path = Path(settings.BASE_DIR) / "samples" / "dicoms"
     file_path = next(path.rglob("*.dcm"))
     ds = dcmread(file_path)
@@ -184,13 +187,13 @@ def test_download_series_with_c_move(
 
     with TemporaryDirectory() as tmp_dir:
         # Act
-        dicom_connector.download_series(
+        dicom_operator.download_series(
             ds.PatientID, ds.StudyInstanceUID, ds.SeriesInstanceUID, Path(tmp_dir)
         )
 
         # Assert
         assert subscribed_topic == (
-            f"{dicom_connector.server.ae_title}\\{ds.StudyInstanceUID}\\{ds.SeriesInstanceUID}"
+            f"{dicom_operator.server.ae_title}\\{ds.StudyInstanceUID}\\{ds.SeriesInstanceUID}"
         )
         association.send_c_move.assert_called_once()
         assert filecmp.cmp(next(Path(tmp_dir).iterdir()), file_path)

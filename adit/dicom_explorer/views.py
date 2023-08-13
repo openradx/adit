@@ -5,19 +5,20 @@ from asgiref.sync import sync_to_async
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
-from django.http import HttpRequest
+from django.http import HttpRequest, HttpResponse
 from django.shortcuts import redirect, render
 from django.urls import resolve, reverse
 
 from adit.core import validators
 from adit.core.models import DicomServer
+from adit.core.utils.dicom_utils import convert_query_dict_to_dataset, create_query_dataset
 
 from .forms import DicomExplorerQueryForm
 from .utils.dicom_data_collector import DicomDataCollector
 
 
 @login_required
-def dicom_explorer_form_view(request):
+def dicom_explorer_form_view(request: HttpRequest) -> HttpResponse:
     if request.GET:
         form = DicomExplorerQueryForm(request.GET)
     else:
@@ -51,8 +52,12 @@ def dicom_explorer_form_view(request):
 
 
 async def dicom_explorer_resources_view(
-    request, server_id=None, patient_id=None, study_uid=None, series_uid=None
-):
+    request: HttpRequest,
+    server_id: str | None = None,
+    patient_id: str | None = None,
+    study_uid: str | None = None,
+    series_uid: str | None = None,
+) -> HttpResponse:
     denied_response = await check_permission(request)
     if denied_response:
         return denied_response
@@ -84,9 +89,10 @@ async def dicom_explorer_resources_view(
 
 @sync_to_async
 @login_required  # type: ignore
-def check_permission(request: HttpRequest):
+def check_permission(request: HttpRequest) -> None:
     # A dummy function for the permission decorators
-    return None
+    # TODO: check if user really has permission to access dicom explorer
+    pass
 
 
 def is_valid_id(value):
@@ -100,14 +106,25 @@ def is_valid_id(value):
     return True
 
 
-def render_error(request, error_message):
+def render_error(request: HttpRequest, error_message: str) -> HttpResponse:
     return render(request, "dicom_explorer/error_message.html", {"error_message": error_message})
 
 
-def render_query_result(request, server_id, patient_id, study_uid, series_uid):
-    query = {}
-    if request.GET:
-        query.update(request.GET)
+def render_query_result(
+    request: HttpRequest,
+    server_id: str | None = None,
+    patient_id: str | None = None,
+    study_uid: str | None = None,
+    series_uid: str | None = None,
+) -> HttpResponse:
+    """Calls other functions to render specific data.
+
+    One can presume that the parameters are correctly set as they are checked
+    when the URL is resolved.
+    """
+    query: dict[str, str] = {}
+    for key, value in request.GET.items():
+        query[key] = value
 
     url_name = resolve(request.path_info).url_name
 
@@ -124,14 +141,24 @@ def render_query_result(request, server_id, patient_id, study_uid, series_uid):
     elif url_name == "dicom_explorer_patient_query":
         response = render_patient_query(request, server, query)
     elif url_name == "dicom_explorer_patient_detail":
+        if not patient_id:
+            raise AssertionError("Missing patient ID.")
         response = render_patient_detail(request, server, patient_id)
     elif url_name == "dicom_explorer_study_query":
         response = render_study_query(request, server, query)
     elif url_name == "dicom_explorer_study_detail":
+        if not study_uid:
+            raise AssertionError("Missing study UID.")
         response = render_study_detail(request, server, study_uid)
     elif url_name == "dicom_explorer_series_query":
+        if not study_uid:
+            raise AssertionError("Missing study UID.")
         response = render_series_query(request, server, study_uid, query)
     elif url_name == "dicom_explorer_series_detail":
+        if not study_uid:
+            raise AssertionError("Missing study UID.")
+        if not series_uid:
+            raise AssertionError("Missing series UID.")
         response = render_series_detail(request, server, study_uid, series_uid)
     else:
         raise AssertionError(f"Invalid URL name {url_name}.")
@@ -139,38 +166,47 @@ def render_query_result(request, server_id, patient_id, study_uid, series_uid):
     return response
 
 
-def render_server_query(request, query):
-    query["source_active"] = True
-    servers = DicomServer.objects.filter(**query).order_by("id")
+def render_server_query(request: HttpRequest, query: dict[str, str]) -> HttpResponse:
+    """Query servers and render the result."""
+    final_query = query | {"source_active": True}
+    servers = DicomServer.objects.filter(**final_query).order_by("id")
     return render(request, "dicom_explorer/server_query.html", {"servers": servers})
 
 
-def render_server_detail(request, server):
+def render_server_detail(request: HttpRequest, server: DicomServer) -> HttpResponse:
+    """Render server details."""
     if not server:
         return render_error(request, f"Invalid server ID {server.id}.")
 
     return render(request, "dicom_explorer/server_detail.html", {"server": server})
 
 
-def render_patient_query(request, server, query):
+def render_patient_query(
+    request: HttpRequest, server: DicomServer, query: dict[str, str]
+) -> HttpResponse:
+    """Query patients and render the result."""
     collector = DicomDataCollector(server)
+    query_ds = convert_query_dict_to_dataset(query)
     limit = settings.DICOM_EXPLORER_RESULT_LIMIT
-    patients = collector.collect_patient_data(query=query, limit_results=limit)
-    max_query_results = len(patients) >= limit
+    patients = collector.collect_patients(query_ds, limit_results=limit)
+    max_results_reached = len(patients) >= limit
     return render(
         request,
         "dicom_explorer/patient_query.html",
         {
             "server": server,
             "patients": patients,
-            "max_query_results": max_query_results,
+            "max_results_reached": max_results_reached,
         },
     )
 
 
-def render_patient_detail(request, server, patient_id):
+def render_patient_detail(
+    request: HttpRequest, server: DicomServer, patient_id: str
+) -> HttpResponse:
+    """Render patient data and his studies."""
     collector = DicomDataCollector(server)
-    patients = collector.collect_patient_data(patient_id)
+    patients = collector.collect_patients(create_query_dataset(PatientID=patient_id))
 
     if len(patients) == 0:
         return render_error(request, f"No patient found with Patient ID {patient_id}.")
@@ -178,7 +214,7 @@ def render_patient_detail(request, server, patient_id):
     if len(patients) > 1:
         return render_error(request, f"Multiple patients found with Patient ID {patient_id}.")
 
-    studies = collector.collect_study_data(query={"PatientID": patient_id})
+    studies = collector.collect_studies(create_query_dataset(PatientID=patient_id))
     return render(
         request,
         "dicom_explorer/patient_detail.html",
@@ -186,25 +222,28 @@ def render_patient_detail(request, server, patient_id):
     )
 
 
-def render_study_query(request, server, query):
+def render_study_query(
+    request: HttpRequest, server: DicomServer, query: dict[str, str]
+) -> HttpResponse:
     collector = DicomDataCollector(server)
+    query_ds = convert_query_dict_to_dataset(query)
     limit = settings.DICOM_EXPLORER_RESULT_LIMIT
-    studies = collector.collect_study_data(query=query, limit_results=limit)
-    max_query_results = len(studies) >= limit
+    studies = collector.collect_studies(query_ds, limit_results=limit)
+    max_results_reached = len(studies) >= limit
     return render(
         request,
         "dicom_explorer/study_query.html",
         {
             "server": server,
             "studies": studies,
-            "max_query_results": max_query_results,
+            "max_results_reached": max_results_reached,
         },
     )
 
 
-def render_study_detail(request, server, study_uid):
+def render_study_detail(request: HttpRequest, server: DicomServer, study_uid: str) -> HttpResponse:
     collector = DicomDataCollector(server)
-    studies = collector.collect_study_data(study_uid)
+    studies = collector.collect_studies(create_query_dataset(StudyInstanceUID=study_uid))
 
     if len(studies) == 0:
         return render_error(request, f"No study found with Study Instance UID {study_uid}.")
@@ -212,7 +251,7 @@ def render_study_detail(request, server, study_uid):
     if len(studies) > 1:
         return render_error(request, f"Multiple studies found with Study Instance UID {study_uid}.")
 
-    patients = collector.collect_patient_data(studies[0]["PatientID"])
+    patients = collector.collect_patients(create_query_dataset(PatientID=studies[0].PatientID))
 
     if len(patients) == 0:
         # Should never happen as we already found a valid study with this UID
@@ -224,7 +263,7 @@ def render_study_detail(request, server, study_uid):
             f"Multiple patients found for study with Study Instance UID {study_uid}.",
         )
 
-    series_list = collector.collect_series_data(study_uid)
+    series_list = collector.collect_series(create_query_dataset(StudyInstanceUID=study_uid))
     return render(
         request,
         "dicom_explorer/study_detail.html",
@@ -237,9 +276,11 @@ def render_study_detail(request, server, study_uid):
     )
 
 
-def render_series_query(request, server, study_uid, query):
+def render_series_query(
+    request: HttpRequest, server: DicomServer, study_uid: str, query: dict[str, str]
+) -> HttpResponse:
     collector = DicomDataCollector(server)
-    studies = collector.collect_study_data(study_uid)
+    studies = collector.collect_studies(create_query_dataset(StudyInstanceUID=study_uid))
 
     if len(studies) == 0:
         return render_error(request, f"No study found with Study Instance UID {study_uid}.")
@@ -247,7 +288,7 @@ def render_series_query(request, server, study_uid, query):
     if len(studies) > 1:
         return render_error(request, f"Multiple studies found with Study Instance UID {study_uid}.")
 
-    patients = collector.collect_patient_data(patient_id=studies[0]["PatientID"])
+    patients = collector.collect_patients(create_query_dataset(PatientID=studies[0].PatientID))
 
     if len(patients) == 0:
         # Should never happen as we already found a valid study with this UID
@@ -259,7 +300,9 @@ def render_series_query(request, server, study_uid, query):
             f"Multiple patients found for study with Study Instance UID {study_uid}.",
         )
 
-    series_list = collector.collect_series_data(study_uid, query=query)
+    series_list = collector.collect_series(
+        convert_query_dict_to_dataset(query, StudyInstanceUID=study_uid)
+    )
 
     return render(
         request,
@@ -273,10 +316,12 @@ def render_series_query(request, server, study_uid, query):
     )
 
 
-def render_series_detail(request, server, study_uid, series_uid):
+def render_series_detail(
+    request: HttpRequest, server: DicomServer, study_uid: str, series_uid: str
+) -> HttpResponse:
     collector = DicomDataCollector(server)
 
-    studies = collector.collect_study_data(study_uid)
+    studies = collector.collect_studies(create_query_dataset(StudyInstanceUID=study_uid))
 
     if len(studies) == 0:
         return render_error(request, f"No study found with Study Instance UID {study_uid}.")
@@ -284,7 +329,7 @@ def render_series_detail(request, server, study_uid, series_uid):
     if len(studies) > 1:
         return render_error(request, f"Multiple studies found with Study Instance UID {study_uid}.")
 
-    patients = collector.collect_patient_data(patient_id=studies[0]["PatientID"])
+    patients = collector.collect_patients(create_query_dataset(PatientID=studies[0].PatientID))
 
     if len(patients) == 0:
         # Should never happen as we already found a valid study with this UID
@@ -296,7 +341,9 @@ def render_series_detail(request, server, study_uid, series_uid):
             f"Multiple patients found for study with Study Instance UID {study_uid}.",
         )
 
-    series_list = collector.collect_series_data(study_uid, series_uid)
+    series_list = collector.collect_series(
+        create_query_dataset(StudyInstanceUID=study_uid, SeriesInstanceUID=series_uid)
+    )
 
     if len(series_list) == 0:
         return render_error(
