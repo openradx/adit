@@ -1,6 +1,6 @@
 <div id="response">
     {% if query and not query_results %}
-        <div class="alert alert-warning mt-3" role="alert">No studies for your query found. Try with other search terms.</div>
+        <div class="alert alert-warning mt-3" role="alert">No studies found for your query.</div>
     {% endif %}
     {% if query and max_results_reached %}
         <div class="alert alert-warning mt-3" role="alert">

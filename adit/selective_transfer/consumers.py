@@ -174,6 +174,10 @@ class SelectiveTransferConsumer(SelectiveTransferJobCreateMixin, AsyncJsonWebsoc
                 if message_id == self.current_message_id:
                     self.send_query_response(form, received_studies, max_results_reached)
 
+            if not received_studies:
+                if message_id == self.current_message_id:
+                    self.send_query_response(form, received_studies, False)
+
         except ConnectionError:
             # Ignore connection aborts (most probably from ourself)
             # Maybe we should check here if we really aborted the connection
