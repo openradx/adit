@@ -128,7 +128,7 @@ class DicomOperator:
 
             if query.has("PatientName"):
                 patient_name_pattern = convert_to_python_regex(query.PatientName)
-                if patient_name_pattern.search(result.PatientName):
+                if not patient_name_pattern.search(result.PatientName):
                     continue
 
             if query.has("PatientSex"):
