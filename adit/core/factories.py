@@ -2,6 +2,7 @@ from typing import Generic, TypeVar
 
 import factory
 from faker import Faker
+from pydicom.uid import generate_uid
 
 from adit.accounts.factories import UserFactory
 
@@ -122,7 +123,7 @@ class AbstractDicomTaskFactory(Generic[T], BaseDjangoModelFactory[T]):
 
 def generate_uids():
     if fake.boolean(chance_of_getting_true=25):
-        uids = [fake.uuid4() for _ in range(fake.random_int(min=1, max=8))]
+        uids = [generate_uid() for _ in range(fake.random_int(min=1, max=8))]
         return ", ".join(uids)
     return ""
 
@@ -132,6 +133,6 @@ class AbstractTransferTaskFactory(Generic[T], AbstractDicomTaskFactory[T]):
         model: TransferTask
 
     patient_id = factory.Faker("numerify", text="##########")
-    study_uid = factory.Faker("uuid4")
+    study_uid = factory.LazyFunction(generate_uid)
     series_uids = factory.LazyFunction(generate_uids)
     pseudonym = factory.Faker("hexify", text="^^^^^^^^^^")

@@ -1,5 +1,6 @@
 import factory
 from faker import Faker
+from pydicom.uid import generate_uid
 
 from adit.core.factories import AbstractDicomJobFactory, AbstractDicomTaskFactory
 
@@ -60,5 +61,5 @@ class BatchQueryResultFactory(factory.django.DjangoModelFactory):
     series_description = factory.Faker("street_name")
     series_number = factory.Faker("random_element", elements=SERIES_NUMBER)
     pseudonym = factory.Faker("pystr", min_chars=10, max_chars=10)
-    study_uid = factory.Faker("uuid4")
-    series_uid = factory.Faker("uuid4")
+    study_uid = factory.LazyFunction(generate_uid)
+    series_uid = factory.LazyFunction(generate_uid)
