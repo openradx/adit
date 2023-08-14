@@ -14,11 +14,18 @@ register = Library()
 
 @register.simple_tag(takes_context=True)
 def theme(context: dict[str, Any]) -> Literal["light", "dark", "auto"]:
-    request: HttpRequest = context["request"]
+    default_theme = "auto"
 
+    # Internal errors don't have a request object in the context.
+    # TODO: Investigate this further, it happens when when an exception occurs
+    # in API routes of a dicom_web request
+    if "request" not in context:
+        return default_theme
+
+    request: HttpRequest = context["request"]
     theme = "auto"
     if is_logged_in_user(request.user):
-        theme = request.user.preferences.get("theme", "auto")
+        theme = request.user.preferences.get("theme", default_theme)
 
     return theme
 
@@ -27,14 +34,22 @@ def theme(context: dict[str, Any]) -> Literal["light", "dark", "auto"]:
 def theme_color(
     context: dict[str, Any], theme: Literal["light", "dark", "auto"]
 ) -> Literal["light", "dark"]:
+    default_color = "light"
+
+    # Internal errors don't have a request object in the context.
+    # TODO: Investigate this further, it happens when when an exception occurs
+    # in API routes of a dicom_web request
+    if "request" not in context:
+        return default_color
+
     # If the theme is auto we have to render something on the server, but the real theme
     # schema will be media queried on the client side.
     # TODO: Sec-CH-Prefers-Color-Scheme does not work yet,
     # see https://stackoverflow.com/q/76855062/166229
     request: HttpRequest = context["request"]
-    color = request.headers.get("Sec-CH-Prefers-Color-Scheme", "light")
+    preferred_color = request.headers.get("Sec-CH-Prefers-Color-Scheme", default_color)
     if theme == "auto":
-        return color  # type: ignore
+        return preferred_color  # type: ignore
 
     return theme
 
