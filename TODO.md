@@ -17,6 +17,8 @@
 - Split messages into toasts (client only) and messages from server (using Bootstrap alerts)
 - Rewrite Celery unit tests using the official test helpers
 - Check why this dicomweb test takes so long
+- Use pynetdicom SCPs instead of Orthancs in integrations tests
+  -- Find those tests by looking for "setup_orthancs" fixture
 
 ## High Priority
 

@@ -195,10 +195,10 @@ class DicomOperator:
             # TODO: I guess this won't work as we are in the middle of a C-FIND request (we
             # are using generators now) and we can't do another C-FIND request here.
             # But we could use a new Connector instance for this. Fix this later.
-            if "ModalitiesInStudy" not in result:
-                result.ModalitiesInStudy = self._fetch_study_modalities(
-                    result.PatientID, result.StudyInstanceUID
-                )
+            # if "ModalitiesInStudy" not in result:
+            #     result.ModalitiesInStudy = self._fetch_study_modalities(
+            #         result.PatientID, result.StudyInstanceUID
+            #     )
 
             modality_query = query.ModalitiesInStudy
             if modality_query:
