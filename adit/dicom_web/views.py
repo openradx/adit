@@ -1,6 +1,7 @@
 import logging
 import os
 from pathlib import Path
+from typing import Literal
 
 from adrf.views import APIView as AsyncApiView
 from adrf.views import sync_to_async
@@ -26,26 +27,7 @@ logger = logging.getLogger(__name__)
 
 
 class QueryAPIView(AsyncApiView):
-    level: str
-    query: dict = {
-        "StudyInstanceUID": "",
-        "SeriesInstanceUID": "",
-        "PatientID": "",
-        "PatientName": "",
-        "PatientBirthDate": "",
-        "PatientSex": "",
-        "AccessionNumber": "",
-        "StudyDate": "",
-        "StudyTime": "",
-        "ModalitiesInStudy": "",
-        "Modality": "",
-        "NumberOfStudyRelatedInstances": "",
-        "NumberOfSeriesRelatedInstances": "",
-        "SOPInstaceUID": "",
-        "StudyDescription": "",
-        "SeriesDescription": "",
-        "SeriesNumber": "",
-    }
+    level: Literal["STUDY", "SERIES"]
     renderer_classes = [QidoApplicationDicomJsonRenderer]
 
     async def handle_request(self, pacs_ae_title: str) -> DicomServer:
@@ -58,24 +40,25 @@ class QueryAPIView(AsyncApiView):
 
 
 class QueryStudyAPIView(QueryAPIView):
-    LEVEL = "STUDY"
+    level = "STUDY"
 
     async def get(
         self,
         request: Request,
         pacs: str,
     ) -> Response:
-        request_query = request.GET.dict()
-        query = self.query.copy()
-        query.update(request_query)
-        source_server = await self.handle_request(pacs)
-        results = await qido_find(source_server, query, self.LEVEL)
+        query: dict[str, str] = {}
+        for key, value in request.GET.items():
+            query[key] = value
 
-        return Response(results)
+        source_server = await self.handle_request(pacs)
+        results = await qido_find(source_server, query, self.level)
+
+        return Response([result.dataset.to_json_dict() for result in results])
 
 
 class QuerySeriesAPIView(QueryAPIView):
-    LEVEL = "SERIES"
+    level = "SERIES"
 
     async def get(
         self,
@@ -83,18 +66,19 @@ class QuerySeriesAPIView(QueryAPIView):
         pacs: str,
         study_uid: str = "",
     ) -> Response:
-        request_query = request.GET.dict()
-        query = self.query.copy()
-        query.update(request_query)
+        query: dict[str, str] = {}
+        for key, value in request.GET.items():
+            query[key] = value
+
         query["StudyInstanceUID"] = study_uid
         source_server = await self.handle_request(pacs)
-        results = await qido_find(source_server, query, self.LEVEL)
+        results = await qido_find(source_server, query, self.level)
 
         return Response(results)
 
 
 class RetrieveAPIView(AsyncApiView):
-    level: str
+    level: Literal["STUDY", "SERIES"]
     TMP_FOLDER: str = settings.WADO_TMP_FOLDER
     query: dict = {
         "StudyInstanceUID": "",

@@ -2,6 +2,8 @@
 
 ## Top
 
+- Look into how we can improve STOW (do we have to upload one file at a time, can we stream it somehow)
+- Look into how we can stream the file with WADO
 - Remove files in test folders from autoreload
 - Split messages in toast and messages
 - Rewrite dicom connector without converting DataSet to dict

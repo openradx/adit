@@ -14,9 +14,9 @@ async def qido_find(
     query_ds = QueryDataset.from_dict(query)
 
     if level == "STUDY":
-        results = list(await sync_to_async(operator.find_studies)(query_ds))
+        results: list[ResultDataset] = list(await sync_to_async(operator.find_studies)(query_ds))
     elif level == "SERIES":
-        results = list(await sync_to_async(operator.find_series)(query_ds))
+        results: list[ResultDataset] = list(await sync_to_async(operator.find_series)(query_ds))
     else:
         raise ValueError(f"Invalid QIDO-RS level: {level}.")
 
