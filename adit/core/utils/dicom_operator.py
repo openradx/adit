@@ -186,10 +186,9 @@ class DicomOperator:
     ) -> Iterator[ResultDataset]:
         for result in results:
             # Optionally filter by its study description, if the server doesn't support it
-            study_description_query = query.StudyDescription
-            if study_description_query:
-                study_description_pattern = convert_to_python_regex(study_description_query)
-                if study_description_pattern.search(result.StudyDescription):
+            if query.has("StudyDescription"):
+                study_description_pattern = convert_to_python_regex(query.StudyDescription)
+                if not study_description_pattern.search(result.StudyDescription):
                     continue
 
             # TODO: I guess this won't work as we are in the middle of a C-FIND request (we
@@ -200,15 +199,11 @@ class DicomOperator:
             #         result.PatientID, result.StudyInstanceUID
             #     )
 
-            modality_query = query.ModalitiesInStudy
-            if modality_query:
+            if query.has("ModalitiesInStudy"):
                 modalities = result.ModalitiesInStudy
-                if isinstance(modalities, list):
-                    if not any(modality_query == modality for modality in modalities):
-                        continue
-                else:
-                    if modality_query != modalities:
-                        continue
+                # It's ok if any of the searched modalities is in this study
+                if not any(modality in modalities for modality in query.ModalitiesInStudy):
+                    continue
 
             yield result
 
@@ -295,7 +290,7 @@ class DicomOperator:
             # Optionally filter by series description, if the server doesn't support it
             if query.has("SeriesDescription"):
                 series_description_pattern = convert_to_python_regex(query.SeriesDescription)
-                if series_description_pattern.search(result.SeriesDescription):
+                if not series_description_pattern.search(result.SeriesDescription):
                     continue
 
             yield result
