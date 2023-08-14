@@ -80,9 +80,9 @@ class DicomWebConnector:
     ) -> list[ResultDataset]:
         logger.debug("Sending QIDO-RS with query: %s", query)
 
-        dw_query = query.to_dicomweb()
+        query_dict = query.dictify()
 
-        level = dw_query.pop("QueryRetrieveLevel", "")
+        level = query_dict.pop("QueryRetrieveLevel", "")
         if not level:
             raise ValueError("Missing QueryRetrieveLevel.")
 
@@ -95,17 +95,17 @@ class DicomWebConnector:
         try:
             if level == "STUDY":
                 results = self.dicomweb_client.search_for_studies(
-                    search_filters=dw_query, limit=limit_results
+                    search_filters=query_dict, limit=limit_results
                 )
             elif level == "SERIES":
-                study_uid = dw_query.pop("StudyInstanceUID", "")
+                study_uid = query_dict.pop("StudyInstanceUID", "")
                 if study_uid:
                     results = self.dicomweb_client.search_for_series(
-                        study_uid, search_filters=dw_query, limit=limit_results
+                        study_uid, search_filters=query_dict, limit=limit_results
                     )
                 else:
                     results = self.dicomweb_client.search_for_series(
-                        search_filters=dw_query, limit=limit_results
+                        search_filters=query_dict, limit=limit_results
                     )
             else:
                 raise ValueError(f"Invalid QueryRetrieveLevel: {level}")
@@ -119,9 +119,9 @@ class DicomWebConnector:
         logger.debug("Sending WADO-RS with query: %s", query)
 
         # TODO: Do we really need the conversion?
-        dw_query = query.to_dicomweb()
+        query_dict = query.dictify()
 
-        level = dw_query.pop("QueryRetrieveLevel", "")
+        level = query_dict.pop("QueryRetrieveLevel", "")
         if not level:
             raise ValueError("Missing QueryRetrieveLevel.")
 
@@ -133,13 +133,13 @@ class DicomWebConnector:
 
         try:
             if level == "STUDY":
-                study_uid = dw_query.pop("StudyInstanceUID", "")
+                study_uid = query_dict.pop("StudyInstanceUID", "")
                 if not study_uid:
                     raise ValueError("Missing StudyInstanceUID for WADO-RS on study level.")
                 return self.dicomweb_client.retrieve_study(study_uid)
             elif level == "SERIES":
-                study_uid = dw_query.pop("StudyInstanceUID", "")
-                series_uid = dw_query.pop("SeriesInstanceUID", "")
+                study_uid = query_dict.pop("StudyInstanceUID", "")
+                series_uid = query_dict.pop("SeriesInstanceUID", "")
                 if not study_uid:
                     raise ValueError("Missing StudyInstanceUID for WADO-RS on series level.")
                 if not series_uid:

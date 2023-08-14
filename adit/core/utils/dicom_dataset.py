@@ -59,11 +59,12 @@ class BaseDataset:
     @property
     def ModalitiesInStudy(self) -> list[str]:
         modalities = self._ds.ModalitiesInStudy
-        if not modalities:
-            return []
+        # Cave, in Python string are also iterable, so we test it first
+        if isinstance(modalities, str):
+            return [modalities]
         if isinstance(modalities, Iterable):
             return [str(modality) for modality in modalities]
-        return [str(modalities)]
+        return []
 
     @property
     def NumberOfStudyRelatedSeries(self) -> int:
@@ -190,7 +191,7 @@ class QueryDataset(BaseDataset):
 
         return QueryDataset(ds)
 
-    def to_dicomweb(self) -> dict[str, str]:
+    def dictify(self) -> dict[str, str]:
         """Create DICOMweb compatible query dict.
 
         Convert a query dataset to a DICOMweb compatible query dict.
@@ -213,7 +214,7 @@ class QueryDataset(BaseDataset):
 
             if val in ("*", "?", None):
                 query[key] = ""
-            elif isinstance(val, Iterable):
+            elif not isinstance(val, str) and isinstance(val, Iterable):
                 query[key] = ",".join(val)
             else:
                 # VR of DA, TM, DT are already in string format
