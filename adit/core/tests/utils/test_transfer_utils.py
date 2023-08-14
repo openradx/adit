@@ -1,11 +1,12 @@
-import datetime
 from unittest.mock import ANY, create_autospec, patch
 
 import pytest
 import time_machine
 from celery import Task as CeleryTask
+from pydicom import Dataset
 
 from adit.accounts.factories import UserFactory
+from adit.core.utils.dicom_dataset import ResultDataset
 
 from ...factories import (
     DicomFolderFactory,
@@ -20,14 +21,17 @@ from ..conftest import ExampleModels
 @pytest.fixture
 def create_resources():
     def _create_resources(transfer_task):
-        patient = {"PatientID": transfer_task.patient_id}
-        study = {
-            "PatientID": transfer_task.patient_id,
-            "StudyInstanceUID": transfer_task.study_uid,
-            "StudyDate": datetime.date(2019, 9, 23),
-            "StudyTime": datetime.time(8, 0),
-            "ModalitiesInStudy": ["CT", "SR"],
-        }
+        ds = Dataset()
+        ds.PatientID = transfer_task.patient_id
+        patient = ResultDataset(ds)
+
+        ds = Dataset()
+        ds.PatientID = transfer_task.patient_id
+        ds.StudyInstanceUID = transfer_task.study_uid
+        ds.StudyDate = "20190923"
+        ds.StudyTime = "080000"
+        ds.ModalitiesInStudy = ["CT", "SR"]
+        study = ResultDataset(ds)
 
         return patient, study
 
@@ -79,8 +83,8 @@ def test_transfer_to_server_succeeds(
         modifier=ANY,
     )
 
-    upload_path = dest_operator_mock.upload_instances.call_args[0][0]
-    assert upload_path.match(f"*/{study['PatientID']}")
+    upload_path = dest_operator_mock.upload_instances.call_args.args[0]
+    assert upload_path.match(f"*/{study.PatientID}")
 
     assert status == TransferTask.Status.SUCCESS
     assert message == "Transfer task completed successfully."
@@ -123,7 +127,7 @@ def test_transfer_to_folder_succeeds(
         (status, message) = TransferExecutor(task, celery_task_mock).start()
 
     # Assert
-    download_path = source_operator_mock.download_study.call_args[0][2]
+    download_path = source_operator_mock.download_study.call_args.kwargs["dest_folder"]
     assert download_path.match(r"adit_adit.core_1_20200101_kai/1001/20190923-080000-CT")
 
     assert status == TransferTask.Status.SUCCESS
@@ -167,7 +171,7 @@ def test_transfer_to_archive_succeeds(
 
     # Assert
     source_operator_mock.find_patients.assert_called_once()
-    assert Popen_mock.call_args[0][0][0] == "7z"
+    assert Popen_mock.call_args.args[0][0] == "7z"
     assert Popen_mock.call_count == 2
 
     assert status == TransferTask.Status.SUCCESS

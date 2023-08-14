@@ -2,6 +2,7 @@
 
 ## Top
 
+- Remove files in test folders from autoreload
 - Split messages in toast and messages
 - Rewrite dicom connector without converting DataSet to dict
   -- Make Unit test using pynetdicom test dummy servers
