@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime
 from typing import Any, Literal
 
@@ -9,6 +10,8 @@ from django.template.defaultfilters import join
 from ..models import DicomJob, DicomTask
 from ..utils.auth_utils import is_logged_in_user
 
+logger = logging.getLogger(__name__)
+
 register = Library()
 
 
@@ -16,10 +19,9 @@ register = Library()
 def theme(context: dict[str, Any]) -> Literal["light", "dark", "auto"]:
     default_theme = "auto"
 
-    # Internal errors don't have a request object in the context.
-    # TODO: Investigate this further, it happens when when an exception occurs
-    # in API routes of a dicom_web request
+    # Some internal errors (of API routes) don't have a request object in the context.
     if "request" not in context:
+        logger.warning("No request object in context, returning default theme.")
         return default_theme
 
     request: HttpRequest = context["request"]
@@ -36,10 +38,9 @@ def theme_color(
 ) -> Literal["light", "dark"]:
     default_color = "light"
 
-    # Internal errors don't have a request object in the context.
-    # TODO: Investigate this further, it happens when when an exception occurs
-    # in API routes of a dicom_web request
+    # Some internal errors (of API routes) don't have a request object in the context.
     if "request" not in context:
+        logger.warning("No request object in context, returning default theme color.")
         return default_color
 
     # If the theme is auto we have to render something on the server, but the real theme
