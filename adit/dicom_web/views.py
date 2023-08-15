@@ -6,7 +6,7 @@ from typing import Literal
 from adrf.views import APIView as AsyncApiView
 from adrf.views import sync_to_async
 from django.conf import settings
-from rest_framework.exceptions import NotAcceptable, ParseError
+from rest_framework.exceptions import NotAcceptable, ParseError, ValidationError
 from rest_framework.request import Request
 from rest_framework.response import Response
 
@@ -70,11 +70,19 @@ class QuerySeriesAPIView(QueryAPIView):
         for key, value in request.GET.items():
             query[key] = value
 
+        if not study_uid:
+            # In contrast to the DICOMweb standard, ADIT can't support querying series without
+            # a StudyInstanceUID as the data may be fetched from a DIMSE source which doesn't
+            # support querying series without a StudyInstanceUID.
+            raise ValidationError(
+                "ADIT does not support querying series without a StudyInstanceUID."
+            )
+
         query["StudyInstanceUID"] = study_uid
         source_server = await self.handle_request(pacs)
         results = await qido_find(source_server, query, self.level)
 
-        return Response(results)
+        return Response([result.dataset.to_json_dict() for result in results])
 
 
 class RetrieveAPIView(AsyncApiView):

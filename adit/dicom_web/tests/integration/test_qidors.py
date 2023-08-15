@@ -49,7 +49,7 @@ def test_qido_series(
         orthanc1_client.search_for_series()
     except HTTPError as err:
         error_details = err.response.json()
-        assert re.search("StudyInstanceUID is required", error_details[0])
+        assert re.search("without a StudyInstanceUID", error_details[0])
 
     study_uid = list(extended_data_sheet["StudyInstanceUID"])[0]
     results = orthanc1_client.search_for_series(study_uid)
