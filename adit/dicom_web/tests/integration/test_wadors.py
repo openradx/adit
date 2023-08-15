@@ -1,5 +1,6 @@
 import pydicom
 import pytest
+from dicomweb_client import DICOMwebClient
 
 
 @pytest.mark.integration
@@ -53,7 +54,7 @@ def test_wado_series(
     create_dicom_web_client,
     extended_data_sheet,
 ):
-    orthanc1_client = create_dicom_web_client(channels_live_server.url, "ORTHANC1")
+    orthanc1_client: DICOMwebClient = create_dicom_web_client(channels_live_server.url, "ORTHANC1")
 
     study_uid = list(extended_data_sheet["StudyInstanceUID"])[0]
     series_uid = list(

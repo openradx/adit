@@ -54,7 +54,7 @@ def extended_data_sheet():
 
 @pytest.fixture
 def test_dicoms():
-    test_dicoms_path = settings.BASE_DIR / "samples" / "dicoms"
+    test_dicoms_path = settings.BASE_DIR / "samples" / "dicoms" / "1001"
     dicoms = []
     for root, _, files in os.walk(test_dicoms_path):
         if len(files) != 0:

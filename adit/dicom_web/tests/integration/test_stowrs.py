@@ -1,5 +1,6 @@
 import pydicom
 import pytest
+from dicomweb_client import DICOMwebClient
 
 
 @pytest.mark.integration
@@ -10,7 +11,7 @@ def test_stow(
     create_dicom_web_client,
     test_dicoms,
 ):
-    orthanc2_client = create_dicom_web_client(channels_live_server.url, "ORTHANC2")
+    orthanc2_client: DICOMwebClient = create_dicom_web_client(channels_live_server.url, "ORTHANC2")
 
     studies = orthanc2_client.search_for_studies()
     assert len(studies) == 0, "Orthanc2 should be empty."
