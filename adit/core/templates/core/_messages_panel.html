@@ -1,58 +1,23 @@
-<div class="messages-panel toast-container"
-     x-data="messagesPanel($el)"
-     @core:add-message.window="addMessage($event.detail)">
-    {# Messages placed by the server (server side added by the view) #}
+{# Messages are placed by the server using the Django messages framework #}
+{% load alert_class message_symbol from core_extras %}
+<div class="messages-panel">
+    {% include "core/icons/alert_icons.svg" %}
     {% for message in messages %}
-        <div class="{{ message.level_tag }} toast server-message"
-             role="alert"
-             aria-live="assertive"
-             aria-atomic="true">
-            <div class="toast-header">
-                <svg class="bd-placeholder-img rounded me-2"
-                     width="20"
-                     height="20"
-                     xmlns="http://www.w3.org/2000/svg"
-                     preserveAspectRatio="xMidYMid slice"
-                     focusable="false"
-                     role="img">
-                    <rect width="100%" height="100%" fill="#007aff"></rect>
-                </svg>
-                <strong class="me-auto">{{ message.level_tag|capfirst }}</strong>
-                <small class="text-muted">just now</small>
-                <button type="button"
-                        class="ms-2 mb-1 btn-close"
-                        data-bs-dismiss="toast"
-                        aria-label="Close"></button>
-            </div>
-            <div class="toast-body">{{ message }}</div>
+        <div class="alert {{ message.level_tag|alert_class }} d-flex align-items-center alert-dismissible fade show"
+             role="alert">
+            <svg class="me-2"
+                 width="24"
+                 height="24"
+                 fill="currentColor"
+                 role="img"
+                 aria-label="Success:">
+                <use xlink:href="#{{ message.level_tag|message_symbol }}" />
+            </svg>
+            <div>{{ message }}</div>
+            <button type="button"
+                    class="btn-close"
+                    data-bs-dismiss="alert"
+                    aria-label="Close" />
         </div>
     {% endfor %}
-    {# Messages added by the client (using Javascript, see core.js) #}
-    <template x-for="message in messages">
-        <div x-init="initMessage($el)"
-             :class="{[message.level]: true}"
-             class="toast client-message"
-             role="alert"
-             aria-live="assertive"
-             aria-atomic="true">
-            <div class="toast-header">
-                <svg class="bd-placeholder-img rounded me-2"
-                     width="20"
-                     height="20"
-                     xmlns="http://www.w3.org/2000/svg"
-                     preserveAspectRatio="xMidYMid slice"
-                     focusable="false"
-                     role="img">
-                    <rect width="100%" height="100%" fill="#007aff"></rect>
-                </svg>
-                <strong x-text="message.title" class="me-auto"></strong>
-                <small class="text-muted">just now</small>
-                <button type="button"
-                        class="ms-2 mb-1 btn-close"
-                        data-bs-dismiss="toast"
-                        aria-label="Close"></button>
-            </div>
-            <div x-text="message.text" class="toast-body"></div>
-        </div>
-    </template>
 </div>

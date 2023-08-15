@@ -1,3 +1,5 @@
+"use strict";
+
 // Keep those variables in sync with the ones in the Django view
 const BATCH_QUERY_SOURCE = "batch_query_source";
 const BATCH_QUERY_URGENT = "batch_query_urgent";

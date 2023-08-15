@@ -35,11 +35,11 @@ caption {
 }
 
 /***
-* Toast message panel
+* Toasts panel
 ***/
 
 /* Floating panel for toast messages */
-.messages-panel {
+.toasts-panel {
     position: fixed;
     top: 5em;
     right: 1em;

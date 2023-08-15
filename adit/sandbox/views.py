@@ -12,12 +12,21 @@ class SandboxListView(TemplateView):
 
 
 @staff_member_required
+def sandbox_toasts(request: HttpRequest) -> HttpResponse:
+    return render(request, "sandbox/sandbox_toasts.html", {})
+
+
+@staff_member_required
 def sandbox_messages(request: HttpRequest) -> HttpResponse:
-    messages.add_message(request, messages.SUCCESS, "This message is server generated!")
+    messages.add_message(request, messages.INFO, "This is a info message that is server generated!")
+    messages.add_message(request, messages.SUCCESS, "And one when something succeeded!")
+    messages.add_message(request, messages.WARNING, "Or how about a warning?")
+    messages.add_message(request, messages.ERROR, "And this is another one if something failed!")
+
     return render(request, "sandbox/sandbox_messages.html", {})
 
 
 # Cave, LoginRequiredMixin won't work with async views! One has to implement it himself.
 class AsyncSandboxClassView(View):
     async def get(self, request: HttpRequest) -> HttpResponse:
-        return await sync_to_async(render)(request, "sandbox/sandbox_test.html")
+        return await sync_to_async(render)(request, "sandbox/sandbox_async_view.html")

@@ -1,11 +1,9 @@
-ready(function () {
-  showMessage("success", "Sandbox", "This message is Javascript generated!");
-});
+"use strict";
 
-function sandbox() {
+function toastSandbox() {
   return {
     buttonClicked: function () {
-      showMessage("warning", "Sandbox", "You clicked a button!");
+      showToast("warning", "Sandbox", "You clicked a button!");
     },
   };
 }

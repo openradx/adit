@@ -47,7 +47,7 @@
     const themeMenu = document.querySelector("#theme-switcher > ul");
 
     // Unselect all theme items in the dropdown menu
-    themeMenu.querySelectorAll(["[data-bs-theme-value]"]).forEach((element) => {
+    themeMenu.querySelectorAll("[data-bs-theme-value]").forEach((element) => {
       element.classList.remove("active");
       element.setAttribute("aria-pressed", "false");
     });
@@ -68,6 +68,7 @@
       .setAttribute("href", href);
 
     if (focus) {
+      // @ts-ignore
       themeSwitcher.focus();
     }
   };

@@ -1,3 +1,5 @@
+"use strict";
+
 // Keep those variables in sync with the ones in the Django view
 const SELECTIVE_TRANSFER_SOURCE = "selective_transfer_source";
 const SELECTIVE_TRANSFER_DESTINATION = "selective_transfer_destination";
@@ -7,6 +9,11 @@ const SELECTIVE_TRANSFER_SEND_FINISHED_MAIL =
 const SELECTIVE_TRANSFER_ADVANCED_OPTIONS_COLLAPSED =
   "selective_transfer_advanced_options_collapsed";
 
+/**
+ * Alpine.js component for the selective transfer job form.
+ * @param {HTMLElement} formEl
+ * @returns {object} Alpine data model
+ */
 function selectiveTransferJobForm(formEl) {
   return {
     isDestinationFolder: false,
@@ -79,6 +86,7 @@ function selectiveTransferJobForm(formEl) {
 
     _resetQueryResults: function () {
       const resetButtonEl = formEl.querySelector("[value=reset]");
+      // @ts-ignore
       resetButtonEl.click();
     },
   };

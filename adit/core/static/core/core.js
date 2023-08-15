@@ -1,13 +1,22 @@
 "use strict";
 
+/**
+ * Execute a function when the DOM is ready.
+ * @param {Function} fn
+ * @returns {void}
+ */
 function ready(fn) {
   if (document.readyState !== "loading") {
     fn();
     return;
   }
+  // @ts-ignore
   document.addEventListener("DOMContentLoaded", fn);
 }
 
+/**
+ * Initialize Bootstrap stuff.
+ */
 ready(function () {
   // Enable Bootstrap tooltips
   const tooltips = document.querySelectorAll('[data-bs-toggle="tooltip"]');
@@ -16,8 +25,11 @@ ready(function () {
   }
 });
 
-// A site wide config that is added to the context by adit.core.site.base_context_processor
-// and that can be accessed by Javascript
+/**
+ * Get the app config from the DOM that was added by the Django context processor:
+ * adit.core.site.base_context_processor (public key)
+ * @returns {object} config
+ */
 function getConfig() {
   const configNode = document.getElementById("public");
   if (!configNode || !configNode.textContent) {
@@ -26,7 +38,12 @@ function getConfig() {
   return JSON.parse(configNode.textContent);
 }
 
-// Update session properties on the server (used to retain specific form fields on page reload)
+/**
+ * Update user preferences on the server (sends an AJAX request to the server).
+ * @param {string} route
+ * @param {object} data
+ * @returns {void}
+ */
 function updatePreferences(route, data) {
   const formData = new FormData();
   for (const key in data) {
@@ -56,10 +73,16 @@ function updatePreferences(route, data) {
   });
 }
 
-// Add message to the messages panel
-function showMessage(level, title, text) {
+/**
+ * Show a new toast (put on top of the toasts stack).
+ * @param {("success"|"warning"|"error")} level
+ * @param {string} title
+ * @param {string} text
+ * @returns {void}
+ */
+function showToast(level, title, text) {
   window.dispatchEvent(
-    new CustomEvent("core:add-message", {
+    new CustomEvent("core:add-toast", {
       detail: {
         level: level,
         title: title,
@@ -69,44 +92,56 @@ function showMessage(level, title, text) {
   );
 }
 
-// Alpine data model connected in _messages_panel.html to show and
-// interact with messages in the messages panel.
-function messagesPanel(panelEl) {
-  function capitalize(s) {
-    if (typeof s !== "string") return "";
-    return s.charAt(0).toUpperCase() + s.slice(1);
+/**
+ * Alpine data model for the toasts panel.
+ * @param {HTMLElement} panelEl
+ * @returns {object} Alpine data model
+ */
+function toastsPanel(panelEl) {
+  /**
+   * Helper function to capitalize a string
+   * @param {string} str
+   * @returns {string}
+   */
+  function capitalize(str) {
+    if (typeof str !== "string") return "";
+    return str.charAt(0).toUpperCase() + str.slice(1);
   }
 
   return {
     options: {
       duration: 30000, // 30 seconds
     },
-    /** @type{Array} */
-    messages: [], // List of messages created by the client
-    init: function () {
-      // Initialize messages created by the server
-      const messageEls = panelEl.getElementsByClassName("server-message");
-      for (const messageEl of messageEls) {
-        this.initMessage(messageEl);
-      }
-    },
-    // Also called for every messaged created by the client
-    initMessage: function (messageEl) {
-      new bootstrap.Toast(messageEl, {
+    /**
+     * An array of toasts created by the client.
+     * @type{Array}
+     * @property {("success"|"warning"|"error")} level
+     * @property {string} title
+     * @property {string} text
+     */
+    toasts: [],
+    /**
+     * Called for every new toast to initialize it.
+     * @param {HTMLElement} toastEl
+     * @returns {void}
+     */
+    initToast: function (toastEl) {
+      new bootstrap.Toast(toastEl, {
         delay: this.options.duration,
       }).show();
     },
     /**
-     * Add a message to the message list. Call the showMessage function above to
-     * add messages to the list from another function or script.
-     * @param {object} message
-     * @param {("success"|"warning"|"error")} message.level
-     * @param {string} message.title
-     * @param {string} message.text
+     * Add a toast to the toasts list. Call the showToast function above to
+     * add toasts to the list from another function or script.
+     * @param {object} toast
+     * @param {("success"|"warning"|"error")} toast.level
+     * @param {string} toast.title
+     * @param {string} toast.text
+     * @returns {void}
      */
-    addMessage: function (message) {
-      message.title = capitalize(message.title);
-      this.messages.push(message);
+    addToast: function (toast) {
+      toast.title = capitalize(toast.title);
+      this.toasts.push(toast);
     },
   };
 }

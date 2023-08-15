@@ -1,3 +1,5 @@
+"use strict";
+
 // Keep those variables in sync with the ones in the Django view
 const BATCH_TRANSFER_SOURCE = "batch_transfer_source";
 const BATCH_TRANSFER_DESTINATION = "batch_transfer_destination";

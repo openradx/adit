@@ -56,6 +56,28 @@ def combine_datetime(date, time):
 
 
 @register.filter
+def alert_class(tag: str) -> str:
+    tag_map = {
+        "info": "alert-info",
+        "success": "alert-success",
+        "warning": "alert-warning",
+        "error": "alert-danger",
+    }
+    return tag_map.get(tag, "alert-secondary")
+
+
+@register.filter
+def message_symbol(tag: str) -> str:
+    tag_map = {
+        "info": "info",
+        "success": "success",
+        "warning": "warning",
+        "error": "error",
+    }
+    return tag_map.get(tag, "bug")
+
+
+@register.filter
 def dicom_job_status_css_class(status):
     text_class = ""
     if status == DicomJob.Status.UNVERIFIED:

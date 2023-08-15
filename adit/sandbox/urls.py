@@ -1,6 +1,6 @@
 from django.urls import path
 
-from .views import AsyncSandboxClassView, SandboxListView, sandbox_messages
+from .views import AsyncSandboxClassView, SandboxListView, sandbox_messages, sandbox_toasts
 
 urlpatterns = [
     path(
@@ -12,6 +12,11 @@ urlpatterns = [
         "messages/",
         sandbox_messages,
         name="sandbox_messages",
+    ),
+    path(
+        "toasts/",
+        sandbox_toasts,
+        name="sandbox_toasts",
     ),
     path(
         "async-class-view/",
