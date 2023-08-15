@@ -1,58 +1,15 @@
 import logging
 from datetime import datetime
-from typing import Any, Literal
 
 from django.conf import settings
-from django.http import HttpRequest
 from django.template import Library
 from django.template.defaultfilters import join
 
 from ..models import DicomJob, DicomTask
-from ..utils.auth_utils import is_logged_in_user
 
 logger = logging.getLogger(__name__)
 
 register = Library()
-
-
-@register.simple_tag(takes_context=True)
-def theme(context: dict[str, Any]) -> Literal["light", "dark", "auto"]:
-    default_theme = "auto"
-
-    # Some internal errors (of API routes) don't have a request object in the context.
-    if "request" not in context:
-        logger.warning("No request object in context, returning default theme.")
-        return default_theme
-
-    request: HttpRequest = context["request"]
-    theme = "auto"
-    if is_logged_in_user(request.user):
-        theme = request.user.preferences.get("theme", default_theme)
-
-    return theme
-
-
-@register.simple_tag(takes_context=True)
-def theme_color(
-    context: dict[str, Any], theme: Literal["light", "dark", "auto"]
-) -> Literal["light", "dark"]:
-    default_color = "light"
-
-    # Some internal errors (of API routes) don't have a request object in the context.
-    if "request" not in context:
-        logger.warning("No request object in context, returning default theme color.")
-        return default_color
-
-    # If the theme is auto we have to render something on the server, but the real theme
-    # schema will be media queried on the client side.
-    # TODO: Sec-CH-Prefers-Color-Scheme does not work yet,
-    # see https://stackoverflow.com/q/76855062/166229
-    request: HttpRequest = context["request"]
-    preferred_color = request.headers.get("Sec-CH-Prefers-Color-Scheme", default_color)
-    if theme == "auto":
-        return preferred_color  # type: ignore
-
-    return theme
 
 
 @register.filter

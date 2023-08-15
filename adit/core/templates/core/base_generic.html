@@ -1,9 +1,7 @@
 {% load static from static %}
-{% load theme theme_color from core_extras %}
 <!DOCTYPE html>
-{% theme as theme %}{# Make theme also available as context in all sub-templates #}
 <html lang="en"
-      data-bs-theme="{% theme_color theme %}"
+      data-bs-theme="{{ theme_color }}"
       data-theme-preference="{{ theme }}">
     <head>
         <meta charset="utf-8" />
