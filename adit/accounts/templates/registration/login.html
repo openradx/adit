@@ -4,7 +4,10 @@
 {% block title %}
     {% trans "Log in - ADIT" %}
 {% endblock title %}
-{% block container %}
+{% block heading %}
+    <h4>Login</h4>
+{% endblock heading %}
+{% block content %}
     {% if form.errors %}<p>Your username or password is incorrect. Try again?</p>{% endif %}
     {% if next %}
         {% if user.is_authenticated %}
@@ -16,7 +19,6 @@
             <p>You muss login to access this page.</p>
         {% endif %}
     {% endif %}
-    <h5>Login</h5>
     <p>
         <form method="post" action="">
             {% csrf_token %}
@@ -34,4 +36,4 @@
         {% trans "No account yet?" %}
         <a href="{% url 'registration_register' %}">{% trans "Register" %}</a>
     </p>
-{% endblock container %}
+{% endblock content %}

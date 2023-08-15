@@ -3,8 +3,10 @@
 {% block title %}
     {% trans "Logged out - ADIT" %}
 {% endblock title %}
-{% block container %}
-    <h5>{% trans "Logged out" %}</h5>
+{% block heading %}
+    <h4>{% trans "Logged out" %}</h4>
+{% endblock heading %}
+{% block content %}
     <p class="lead">{% trans "You were successfully logged out." %}</p>
     <a class="btn btn-primary" href="{% url 'auth_login' %}" role="button">{% trans "Log in again" %}</a>
-{% endblock container %}
+{% endblock content %}

@@ -4,7 +4,9 @@
 {% block title %}
     {% trans "Register for an account - ADIT" %}
 {% endblock title %}
-{% block container %}
-    <h5>{% trans "User registration" %}</h5>
+{% block heading %}
+    <h4>{% trans "User registration" %}</h4>
+{% endblock heading %}
+{% block content %}
     <p>{% crispy form %}</p>
-{% endblock container %}
+{% endblock content %}

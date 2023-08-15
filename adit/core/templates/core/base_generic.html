@@ -42,15 +42,16 @@
         <script>document.body.className="js";</script>
         {% include "core/_navbar.html" %}
         <main role="main">
-            {% block content %}
-                <div class="top container my-3">
-                    {% block container %}
-                    {% endblock container %}
-                </div>
-            {% endblock content %}
+            <div class="top container my-3">
+                {% block heading %}
+                {% endblock heading %}
+                {% include "core/_messages_panel.html" %}
+                {% block content %}
+                {% endblock content %}
+            </div>
             {% include "core/_footer.html" %}
         </main>
-        {% include "core/_messages_panel.html" %}
+        {% include "core/_toasts_panel.html" %}
         {% block bottom %}
         {% endblock bottom %}
         {# Vendor Javascript stuff #}

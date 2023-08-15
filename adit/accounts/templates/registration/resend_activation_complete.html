@@ -3,14 +3,16 @@
 {% block title %}
     {% trans "Account Activation Resent - ADIT" %}
 {% endblock title %}
-{% block container %}
-    <h5>{% trans "Account activation resent" %}</h5>
+{% block heading %}
+    <h4>{% trans "Account activation resent" %}</h4>
+{% endblock heading %}
+{% block content %}
     <p>
         {% blocktrans %}
             We have sent an email to {{ email }} with further instructions.
         {% endblocktrans %}
     </p>
-{% endblock container %}
+{% endblock content %}
 {% comment %}
 **registration/resend_activation_complete.html**
 Used after form for resending account activation is submitted. By default has

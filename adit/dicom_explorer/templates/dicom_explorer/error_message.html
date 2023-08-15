@@ -1,8 +1,10 @@
 {% extends "core/base_generic.html" %}
-{% block container %}
+{% block heading %}
     <h4 class="mb-3">
         DICOM Explorer
         <small class="text-muted">Failure</small>
     </h4>
+{% endblock heading %}
+{% block content %}
     {{ error_message }}
-{% endblock container %}
+{% endblock content %}

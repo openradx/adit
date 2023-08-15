@@ -2,7 +2,7 @@
 {% load dicom_job_status_css_class from core_extras %}
 {% load render_table from django_tables2 %}
 {% load job_control_panel from batch_transfer_extras %}
-{% block container %}
+{% block heading %}
     <div class="d-flex justify-content-between align-items-start">
         <h4 class="mb-3">Batch Transfer Job</h4>
         <a href="{% url 'batch_transfer_job_list' %}">
@@ -10,6 +10,8 @@
             Job List
         </a>
     </div>
+{% endblock heading %}
+{% block content %}
     <dl class="row">
         <dt class="col-sm-3">Job ID</dt>
         <dd class="col-sm-9">
@@ -73,4 +75,4 @@
     </div>
     {% render_table table %}
     {% job_control_panel %}
-{% endblock container %}
+{% endblock content %}

@@ -1,53 +1,51 @@
 {% extends "core/base_generic.html" %}
 {% load static from static %}
+{% block heading %}
+    <h1 class="display-4 d-flex align-items-center">
+        <span class="me-2">Welcome to ADIT</span>
+        {% include "core/icons/adit_logo.svg" %}
+    </h1>
+    <p class="lead">A swiss army knife to exchange DICOM data between various systems.</p>
+{% endblock heading %}
 {% block content %}
-    <div class="mt-3">
-        <div class="container">
-            <h1 class="display-4 d-flex align-items-center">
-                <span class="me-2">Welcome to ADIT</span>
-                {% include "core/icons/adit_logo.svg" %}
-            </h1>
-            <p class="lead">A swiss army knife to exchange DICOM data between various systems.</p>
-            {{ announcement|safe }}
-            <p>
-                ADIT (Automated DICOM Transfer) allows to transfer studies between different DICOM / PACS servers or
-                download them to a network drive. The transferred resp. downloaded data can be pseudonymized on the fly
-                and can be tagged with trial information.
-            </p>
-            <p>ADIT contains its functionalities in different modules:</p>
-            <dl>
-                <dt>
-                    <a href="{% url 'selective_transfer_job_create' %}">Selective Transfer</a>
-                </dt>
-                <dd>
-                    Search and select specific studies to transfer or download.
-                </dd>
-                <dt>
-                    <a href="{% url 'batch_query_job_create' %}">Batch Query</a>
-                </dt>
-                <dd>
-                    Search for studies on a PACS server by using a batch file.
-                </dd>
-                <dt>
-                    <a href="{% url 'batch_transfer_job_create' %}">Batch Transfer</a>
-                </dt>
-                <dd>
-                    Transfer or download multiple studies specified in a batch file.
-                </dd>
-                <dt>
-                    <a href="{% url 'dicom_explorer_form' %}">DICOM Explorer</a>
-                </dt>
-                <dd>
-                    Explore the DICOM data of a PACS server.
-                </dd>
-            </dl>
-            {% if not user.is_authenticated %}
-                <p>
-                    <a class="btn btn-info" href="{% url 'auth_login' %}" role="button">Log in</a>
-                    <span class="ms-2">No account yet?</span>
-                    <a href="{% url 'registration_register' %}">Register</a>
-                </p>
-            {% endif %}
-        </div>
-    </div>
+    {{ announcement|safe }}
+    <p>
+        ADIT (Automated DICOM Transfer) allows to transfer studies between different DICOM / PACS servers or
+        download them to a network drive. The transferred resp. downloaded data can be pseudonymized on the fly
+        and can be tagged with trial information.
+    </p>
+    <p>ADIT contains its functionalities in different modules:</p>
+    <dl>
+        <dt>
+            <a href="{% url 'selective_transfer_job_create' %}">Selective Transfer</a>
+        </dt>
+        <dd>
+            Search and select specific studies to transfer or download.
+        </dd>
+        <dt>
+            <a href="{% url 'batch_query_job_create' %}">Batch Query</a>
+        </dt>
+        <dd>
+            Search for studies on a PACS server by using a batch file.
+        </dd>
+        <dt>
+            <a href="{% url 'batch_transfer_job_create' %}">Batch Transfer</a>
+        </dt>
+        <dd>
+            Transfer or download multiple studies specified in a batch file.
+        </dd>
+        <dt>
+            <a href="{% url 'dicom_explorer_form' %}">DICOM Explorer</a>
+        </dt>
+        <dd>
+            Explore the DICOM data of a PACS server.
+        </dd>
+    </dl>
+    {% if not user.is_authenticated %}
+        <p>
+            <a class="btn btn-info" href="{% url 'auth_login' %}" role="button">Log in</a>
+            <span class="ms-2">No account yet?</span>
+            <a href="{% url 'registration_register' %}">Register</a>
+        </p>
+    {% endif %}
 {% endblock content %}

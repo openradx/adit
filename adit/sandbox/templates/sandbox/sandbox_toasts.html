@@ -8,5 +8,7 @@
     <h4 class="mb-3">Message Sandbox</h4>
 {% endblock heading %}
 {% block content %}
-    Nothing else to see here.
+    <div x-data="toastSandbox()">
+        <button @click="buttonClicked()" class="btn btn-primary">Show toast</button>
+    </div>
 {% endblock content %}

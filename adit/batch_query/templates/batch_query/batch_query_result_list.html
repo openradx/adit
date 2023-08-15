@@ -1,6 +1,6 @@
 {% extends "core/base_generic.html" %}
 {% load render_table from django_tables2 %}
-{% block container %}
+{% block heading %}
     <div class="d-flex justify-content-between align-items-start">
         <h4 class="mb-3">Batch Query Results</h4>
         <a href="{% url 'batch_query_job_detail' job.id %}">
@@ -8,6 +8,8 @@
             View Job
         </a>
     </div>
+{% endblock heading %}
+{% block content %}
     <div class="d-flex justify-content-between">
         <h5 text-nowrap class="mb-0">
             <a href="{% url 'batch_query_result_download' job.id %}"
@@ -19,4 +21,4 @@
         {% include "core/_table_filters.html" %}
     </div>
     {% render_table table %}
-{% endblock container %}
+{% endblock content %}

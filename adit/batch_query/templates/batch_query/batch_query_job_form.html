@@ -5,7 +5,7 @@
     {{ block.super }}
     <script src="{% static 'batch_query/batch_query_job_form.js' %}"></script>
 {% endblock script %}
-{% block container %}
+{% block heading %}
     <div class="d-flex justify-content-between align-items-start">
         <h4 class="mb-3">
             New Batch Query Job
@@ -16,8 +16,10 @@
             Previous Jobs
         </a>
     </div>
+{% endblock heading %}
+{% block content %}
     {% crispy form %}
-{% endblock container %}
+{% endblock content %}
 {% block bottom %}
     {% include "batch_query/_batch_query_help_modal.html" with modal_id="batch_query_help_modal" %}
     {% include "batch_query/_batch_file_errors_modal.html" with modal_id="batch_file_errors_modal" %}

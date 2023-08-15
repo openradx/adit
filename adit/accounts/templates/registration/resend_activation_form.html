@@ -4,11 +4,13 @@
 {% block title %}
     {% trans "Resend Activation Email - ADIT" %}
 {% endblock title %}
-{% block container %}
-    <h5>{% trans "Resend activation mail" %}</h5>
+{% block heading %}
+    <h4>{% trans "Resend activation mail" %}</h4>
+{% endblock heading %}
+{% block content %}
     <form method="post" action="">
         {% csrf_token %}
         {{ form|crispy }}
         <input type="submit" value="{% trans 'Submit' %}" />
     </form>
-{% endblock container %}
+{% endblock content %}

@@ -1,7 +1,9 @@
 {% extends "core/base_generic.html" %}
 {% load access_item from core_extras %}
-{% block container %}
+{% block heading %}
     <h4 class="mb-3">Admin Section</h4>
+{% endblock heading %}
+{% block content %}
     <h5>Job Overview</h5>
     <table class="table table-bordered">
         <thead>
@@ -46,4 +48,4 @@
         </li>
         <!-- djlint:on-->
     </ul>
-{% endblock container %}
+{% endblock content %}

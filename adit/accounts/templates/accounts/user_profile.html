@@ -1,6 +1,8 @@
 {% extends "core/base_generic.html" %}
-{% block container %}
+{% block heading %}
     <h4>Profile information</h4>
+{% endblock heading %}
+{% block content %}
     <dl class="row">
         <dt class="col-sm-3">Username</dt>
         <dd class="col-sm-9">
@@ -42,4 +44,4 @@
         <a class="btn btn-secondary" href="{% url 'auth_password_change' %}">Change Password</a>
         <a class="btn btn-secondary ms-2" href="{% url 'auth_logout' %}">Logout</a>
     </div>
-{% endblock container %}
+{% endblock content %}
