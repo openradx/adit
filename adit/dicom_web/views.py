@@ -1,11 +1,12 @@
 import logging
 import os
 from pathlib import Path
+from typing import Literal
 
 from adrf.views import APIView as AsyncApiView
 from adrf.views import sync_to_async
 from django.conf import settings
-from rest_framework.exceptions import NotAcceptable, ParseError
+from rest_framework.exceptions import NotAcceptable, ParseError, ValidationError
 from rest_framework.request import Request
 from rest_framework.response import Response
 
@@ -26,26 +27,7 @@ logger = logging.getLogger(__name__)
 
 
 class QueryAPIView(AsyncApiView):
-    level: str
-    query: dict = {
-        "StudyInstanceUID": "",
-        "SeriesInstanceUID": "",
-        "PatientID": "",
-        "PatientName": "",
-        "PatientBirthDate": "",
-        "PatientSex": "",
-        "AccessionNumber": "",
-        "StudyDate": "",
-        "StudyTime": "",
-        "ModalitiesInStudy": "",
-        "Modality": "",
-        "NumberOfStudyRelatedInstances": "",
-        "NumberOfSeriesRelatedInstances": "",
-        "SOPInstaceUID": "",
-        "StudyDescription": "",
-        "SeriesDescription": "",
-        "SeriesNumber": "",
-    }
+    level: Literal["STUDY", "SERIES"]
     renderer_classes = [QidoApplicationDicomJsonRenderer]
 
     async def handle_request(self, pacs_ae_title: str) -> DicomServer:
@@ -64,14 +46,15 @@ class QueryStudyAPIView(QueryAPIView):
         self,
         request: Request,
         pacs: str,
-    ):
-        request_query = request.GET.dict()
-        query = self.query.copy()
-        query.update(request_query)
+    ) -> Response:
+        query: dict[str, str] = {}
+        for key, value in request.GET.items():
+            query[key] = value
+
         source_server = await self.handle_request(pacs)
         results = await qido_find(source_server, query, self.level)
 
-        return Response(results)
+        return Response([result.dataset.to_json_dict() for result in results])
 
 
 class QuerySeriesAPIView(QueryAPIView):
@@ -82,19 +65,28 @@ class QuerySeriesAPIView(QueryAPIView):
         request: Request,
         pacs: str,
         study_uid: str = "",
-    ):
-        request_query = request.GET.dict()
-        query = self.query.copy()
-        query.update(request_query)
+    ) -> Response:
+        query: dict[str, str] = {}
+        for key, value in request.GET.items():
+            query[key] = value
+
+        if not study_uid:
+            # In contrast to the DICOMweb standard, ADIT can't support querying series without
+            # a StudyInstanceUID as the data may be fetched from a DIMSE source which doesn't
+            # support querying series without a StudyInstanceUID.
+            raise ValidationError(
+                "ADIT does not support querying series without a StudyInstanceUID."
+            )
+
         query["StudyInstanceUID"] = study_uid
         source_server = await self.handle_request(pacs)
         results = await qido_find(source_server, query, self.level)
 
-        return Response(results)
+        return Response([result.dataset.to_json_dict() for result in results])
 
 
 class RetrieveAPIView(AsyncApiView):
-    level: str
+    level: Literal["STUDY", "SERIES"]
     TMP_FOLDER: str = settings.WADO_TMP_FOLDER
     query: dict = {
         "StudyInstanceUID": "",
@@ -147,7 +139,7 @@ class RetrieveStudyAPIView(RetrieveAPIView):
         pacs: str,
         study_uid: str,
         mode: str = "bulk",
-    ):
+    ) -> Response:
         source_server, folder_path = await self.handle_request(request, pacs, mode, study_uid)
         query = self.query.copy()
         query["StudyInstanceUID"] = study_uid
@@ -170,7 +162,7 @@ class RetrieveSeriesAPIView(RetrieveAPIView):
         study_uid: str,
         series_uid: str,
         mode: str = "bulk",
-    ):
+    ) -> Response:
         source_server, folder_path = await self.handle_request(
             request, pacs, mode, study_uid, series_uid
         )
@@ -202,7 +194,7 @@ class StoreAPIView(AsyncApiView):
         request: Request,
         pacs: str,
         study_uid: str = "",
-    ):
+    ) -> Response:
         dest_server = await self.handle_request(pacs)
 
         if study_uid:

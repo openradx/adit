@@ -1,6 +1,5 @@
 import pydicom
 import pytest
-from requests.exceptions import HTTPError
 
 
 @pytest.mark.integration
@@ -13,9 +12,8 @@ def test_stow(
 ):
     orthanc2_client = create_dicom_web_client(channels_live_server.url, "ORTHANC2")
 
-    with pytest.raises(HTTPError) as err:
-        orthanc2_client.search_for_series()
-    assert err.value.response.status_code == 404, "Orthanc2 should be empty."
+    studies = orthanc2_client.search_for_studies()
+    assert len(studies) == 0, "Orthanc2 should be empty."
 
     uploaded_series = {}
     for ds in test_dicoms:

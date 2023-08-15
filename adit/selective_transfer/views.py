@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Any
 
 from django.conf import settings
@@ -57,6 +58,10 @@ class SelectiveTransferJobCreateView(
 
     POST (and the creation of the job) is not handled by this view because the
     job itself is created by using the REST API and an AJAX call.
+
+    TODO: Maybe we should only use this view to render the form and not for processing
+    it as normally we use the WebSocket consumer for that. It is a relict and a
+    fallback when no JavaScript or WebSockets are available.
     """
 
     form_class = SelectiveTransferJobForm
@@ -108,15 +113,20 @@ class SelectiveTransferJobCreateView(
         action = self.request.POST.get("action")
 
         if action == "query":
-            connector = self.create_source_connector(form)
+            connector = self.create_source_operator(form)
             limit = settings.SELECTIVE_TRANSFER_RESULT_LIMIT
-            studies = self.query_studies(connector, form, limit)
-            max_query_results = len(studies) >= limit
+            studies = list(self.query_studies(connector, form, limit))
+            studies = sorted(
+                studies,
+                key=lambda study: datetime.combine(study.StudyDate, study.StudyTime),
+                reverse=True,
+            )
+            max_results_reached = len(studies) >= limit
             return self.render_to_response(
                 self.get_context_data(
                     query=True,
                     query_results=studies,
-                    max_query_results=max_query_results,
+                    max_results_reached=max_results_reached,
                 )
             )
 

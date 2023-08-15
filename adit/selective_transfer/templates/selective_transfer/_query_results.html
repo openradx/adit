@@ -1,8 +1,8 @@
 <div id="response">
     {% if query and not query_results %}
-        <div class="alert alert-warning mt-3" role="alert">No studies for your query found. Try with other search terms.</div>
+        <div class="alert alert-warning mt-3" role="alert">No studies found for your query.</div>
     {% endif %}
-    {% if query and max_query_results %}
+    {% if query and max_results_reached %}
         <div class="alert alert-warning mt-3" role="alert">
             More then {{ query_results|length|add:"-1" }} studies found.
             Try to limit the results by more precise search terms.

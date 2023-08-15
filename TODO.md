@@ -2,6 +2,13 @@
 
 ## Top
 
+- Change DICOMwebClient so that it returns iterables instead of lists
+  -- <https://github.com/ImagingDataCommons/dicomweb-client/issues/88>
+- Look into how we can improve STOW (do we have to upload one file at a time, can we stream it somehow)
+  -- test_stowrs takes forever as many files get uploaded ... reduce this
+- Look into how we can stream the file with WADO
+- Remove files in test folders from autoreload
+- Split messages in toast and messages
 - Rewrite dicom connector without converting DataSet to dict
   -- Make Unit test using pynetdicom test dummy servers
 - Check why Alpine script must used as type="module"
@@ -16,6 +23,8 @@
 - Split messages into toasts (client only) and messages from server (using Bootstrap alerts)
 - Rewrite Celery unit tests using the official test helpers
 - Check why this dicomweb test takes so long
+- Use pynetdicom SCPs instead of Orthancs in integrations tests
+  -- Find those tests by looking for "setup_orthancs" fixture
 
 ## High Priority
 

@@ -4,7 +4,7 @@
         DICOM Explorer
         <small class="text-muted">Patient List</small>
     </h4>
-    {% if max_query_results %}
+    {% if max_results_reached %}
         <div class="alert alert-warning mt-3" role="alert">Results limited to {{ patients|length|add:"-1" }} patients.</div>
     {% endif %}
     <div class="card">{% include "dicom_explorer/_server_infos.html" %}</div>
