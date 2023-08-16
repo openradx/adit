@@ -2,11 +2,17 @@ import datetime
 from datetime import date, time
 from typing import Any, Iterable, Literal
 
-from pydicom import DataElement, Dataset, config, datadict, valuerep
+from pydicom import DataElement, Dataset, config, datadict
 
-DateRange = tuple[datetime.date | None, datetime.date | None]
-TimeRange = tuple[datetime.time | None, datetime.time | None]
-DateTimeRange = tuple[datetime.datetime | None, datetime.datetime | None]
+from .dicom_utils import (
+    DateRange,
+    TimeRange,
+    convert_to_dicom_date,
+    convert_to_dicom_datetime,
+    convert_to_dicom_time,
+    convert_to_python_date,
+    convert_to_python_time,
+)
 
 
 class BaseDataset:
@@ -24,7 +30,7 @@ class BaseDataset:
     @property
     def PatientBirthDate(self) -> date:
         birth_date = self._ds.PatientBirthDate
-        return _convert_to_python_date(birth_date)
+        return convert_to_python_date(birth_date)
 
     @property
     def PatientSex(self) -> Literal["M", "F", "O"]:
@@ -45,12 +51,12 @@ class BaseDataset:
     @property
     def StudyDate(self) -> date:
         study_date = self._ds.StudyDate
-        return _convert_to_python_date(study_date)
+        return convert_to_python_date(study_date)
 
     @property
     def StudyTime(self) -> time:
         study_time = self._ds.StudyTime
-        return _convert_to_python_time(study_time)
+        return convert_to_python_time(study_time)
 
     @property
     def StudyDescription(self) -> str:
@@ -247,13 +253,13 @@ def _set_dataset_value(
         if v is None:
             setattr(ds, k, "")
         elif vr == "DA":
-            date = _convert_to_dicom_date(v)
+            date = convert_to_dicom_date(v)
             setattr(ds, k, date)
         elif vr == "DT":
-            time = _convert_to_dicom_time(v)
+            time = convert_to_dicom_time(v)
             setattr(ds, k, time)
         elif vr == "TM":
-            datetime = _convert_to_dicom_datetime(v)
+            datetime = convert_to_dicom_datetime(v)
             setattr(ds, k, datetime)
         else:
             elem = DataElement(t, vr, v, validation_mode=config.RAISE)
@@ -261,70 +267,3 @@ def _set_dataset_value(
     except ValueError as err:
         if not ignore_invalid_values:
             raise ValueError(f"Invalid value for DICOM tag {t} ({vr}): {v}") from err
-
-
-def _build_date_time_range(
-    start: str | datetime.date | datetime.time | datetime.datetime | None,
-    end: str | datetime.date | datetime.time | datetime.datetime | None,
-    vr_class: type[valuerep.DA] | type[valuerep.TM] | type[valuerep.DT],
-):
-    start_date = str(vr_class(start)) if start else ""
-    end_date = str(vr_class(end)) if end else ""
-    return f"{start_date}-{end_date}"
-
-
-def _convert_to_dicom_date_time_datetime(
-    value: Any,
-    vr_class: type[valuerep.DA] | type[valuerep.TM] | type[valuerep.DT],
-) -> str:
-    """Convert a value to a DICOM compatible string representation.
-
-    The value can be a string already in the DICOM format, but also a
-    Python date, time, datetime object or a date, time, datetime range
-    (tuple of two of them).
-    """
-    if isinstance(value, str):
-        if "-" in value:
-            start, end = value.split("-")
-            return _build_date_time_range(start, end, vr_class)
-        else:
-            return str(vr_class(value))
-    elif isinstance(value, tuple):
-        start, end = value
-        return _build_date_time_range(start, end, vr_class)
-    else:
-        return str(vr_class(value))
-
-
-def _convert_to_dicom_date(value: str | datetime.date | DateRange) -> str:
-    """Convert a date or date range to a DICOM compatible string representation."""
-    try:
-        return _convert_to_dicom_date_time_datetime(value, valuerep.DA)
-    except ValueError:
-        raise ValueError(f"Invalid date format: {value}")
-
-
-def _convert_to_dicom_time(value: str | datetime.time | TimeRange) -> str:
-    """Convert a time or time range to a DICOM compatible string representation."""
-    try:
-        return _convert_to_dicom_date_time_datetime(value, valuerep.TM)
-    except ValueError:
-        raise ValueError(f"Invalid time format: {value}")
-
-
-def _convert_to_dicom_datetime(value: str | datetime.datetime | DateTimeRange) -> str:
-    """Convert a datetime or datetime range to a DICOM compatible string representation."""
-    try:
-        return _convert_to_dicom_date_time_datetime(value, valuerep.DT)
-    except ValueError:
-        raise ValueError(f"Invalid datetime format: {value}")
-
-
-def _convert_to_python_date(value: str) -> datetime.date:
-    """Convert a DICOM date string to a Python date object."""
-    return datetime.date.fromisoformat(valuerep.DA(value).isoformat())
-
-
-def _convert_to_python_time(value: str) -> datetime.time:
-    """Convert a DICOM date string to a Python date object."""
-    return datetime.time.fromisoformat(valuerep.TM(value).isoformat())
