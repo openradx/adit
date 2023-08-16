@@ -1,10 +1,5 @@
-{% extends "core/core_layout.html" %}
-{% load static from static %}
+{% extends "dicom_explorer/dicom_explorer_layout.html" %}
 {% load crispy from crispy_forms_tags %}
-{% block script %}
-    {{ block.super }}
-    <script src="{% static 'dicom_explorer/dicom_explorer.js' %}"></script>
-{% endblock script %}
 {% block heading %}
     <h4>DICOM Explorer</h4>
 {% endblock heading %}
