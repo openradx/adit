@@ -54,18 +54,19 @@
         {% include "core/_toasts_panel.html" %}
         {% block bottom %}
         {% endblock bottom %}
-        {# Vendor Javascript stuff #}
+        {# Vendor Javascript dependencies (except Alpine.js, see below) #}
         <script src="{% static 'vendor/popper.js' %}"></script>
         <script src="{% static 'vendor/bootstrap.bundle.js' %}"></script>
         <script src="{% static 'vendor/htmx.js' %}"></script>
         <script src="{% static 'vendor/htmx-ws.js' %}"></script>
         <script src="{% static 'vendor/htmx-alpine-morph.js' %}"></script>
         <script src="{% static 'vendor/alpine-morph.js' %}"></script>
-        <script type="module" src="{% static 'vendor/alpine.js' %}"></script>
         {# Our Javascript stuff #}
         {{ public|json_script:"public" }}
         <script src="{% static 'core/core.js' %}"></script>
         {% block script %}
         {% endblock script %}
+        {# Load Alpine.js last to make sure our components are available #}
+        <script src="{% static 'vendor/alpine.js' %}"></script>
     </body>
 </html>
