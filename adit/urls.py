@@ -19,7 +19,6 @@ from django.urls import include, path
 
 urlpatterns = [
     path("admin-the-great/", admin.site.urls),
-    path("__reload__/", include("django_browser_reload.urls")),
     path("api-auth/", include("rest_framework.urls")),
     path("accounts/", include("adit.accounts.urls")),
     path("api/", include("adit.api.urls")),
@@ -30,7 +29,6 @@ urlpatterns = [
     path("dicom-explorer/", include("adit.dicom_explorer.urls")),
     path("token-authentication/", include("adit.token_authentication.urls")),
     path("dicom-web/", include("adit.dicom_web.urls")),
-    path("sandbox/", include("adit.sandbox.urls")),
 ]
 
 # Django loginas
@@ -41,5 +39,7 @@ if settings.DEBUG:
     import debug_toolbar
 
     urlpatterns = [
+        path("sandbox/", include("adit.sandbox.urls")),
+        path("__reload__/", include("django_browser_reload.urls")),
         path("__debug__/", include(debug_toolbar.urls)),
     ] + urlpatterns
