@@ -3,7 +3,9 @@ name = "adit-client"
 version = "0.1.0"
 description = "ADIT Client library to connect to an ADIT server."
 authors = ["Kai Schlamp <kai.schlamp@gmail.com>"]
+license = "GPLv3"
 readme = "README.md"
+packages = [{ include = "adit-client" }]
 
 [tool.poetry.dependencies]
 python = "^3.11"
