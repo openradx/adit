@@ -87,7 +87,6 @@ class QuerySeriesAPIView(QueryAPIView):
 
 class RetrieveAPIView(AsyncApiView):
     level: Literal["STUDY", "SERIES"]
-    TMP_FOLDER: str = settings.WADO_TMP_FOLDER
     query: dict = {
         "StudyInstanceUID": "",
         "PatientID": "",
@@ -111,7 +110,7 @@ class RetrieveAPIView(AsyncApiView):
         return source_server, folder_path
 
     async def _generate_temp_files(self, study_uid: str, series_uid: str, level: str) -> Path:
-        folder_path = Path(self.TMP_FOLDER)
+        folder_path = Path(settings.TEMP_DICOM_DIR) / "wado"
         if level == "STUDY":
             folder_path = folder_path / ("study_" + study_uid)
             await sync_to_async(os.makedirs)(folder_path, exist_ok=True)

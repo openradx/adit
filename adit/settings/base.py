@@ -456,6 +456,5 @@ TOKEN_AUTHENTICATION_SALT = env.str(
 )
 
 # DicomWeb Settings
-WADO_TMP_FOLDER = "adit/dicom_web/tmp"
 DEFAULT_BOUNDARY = "adit-boundary"
 ERROR_MESSAGE = "Processing your DicomWeb request failed."
