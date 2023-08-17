@@ -97,6 +97,7 @@ class DicomOperator:
             if self.server.patient_root_find_support:
                 query.QueryRetrieveLevel = "PATIENT"
             else:
+                # If no patient root is supported we have to emulate the query on study root
                 query.QueryRetrieveLevel = "STUDY"
 
             results = self.dimse_connector.send_c_find(query, limit_results=limit_results)

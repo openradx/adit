@@ -105,6 +105,18 @@ class RetrieveAPIView(AsyncApiView):
         except DicomServer.DoesNotExist:
             raise ParseError(f"The specified PACS with AE title: {pacs_ae_title} does not exist.")
 
+        # A PACS without the below capabilities is not supported. Even when it has Patient Root GET
+        # or MOVE support, because the DICOMweb client can't provide a PatientID. DICOMweb never
+        # works on the Patient level.
+        if not (
+            source_server.study_root_get_support
+            or source_server.study_root_move_support
+            or source_server.dicomweb_wado_support
+        ):
+            raise ParseError(
+                f"The specified PACS with AE title {pacs_ae_title} does not support WADO-RS."
+            )
+
         folder_path = await self._generate_temp_folder(study_uid, series_uid, self.level)
 
         return source_server, folder_path
