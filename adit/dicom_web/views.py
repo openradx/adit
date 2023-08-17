@@ -105,11 +105,11 @@ class RetrieveAPIView(AsyncApiView):
         except DicomServer.DoesNotExist:
             raise ParseError(f"The specified PACS with AE title: {pacs_ae_title} does not exist.")
 
-        folder_path = await self._generate_temp_files(study_uid, series_uid, self.level)
+        folder_path = await self._generate_temp_folder(study_uid, series_uid, self.level)
 
         return source_server, folder_path
 
-    async def _generate_temp_files(self, study_uid: str, series_uid: str, level: str) -> Path:
+    async def _generate_temp_folder(self, study_uid: str, series_uid: str, level: str) -> Path:
         folder_path = Path(settings.TEMP_DICOM_DIR) / "wado"
         if level == "STUDY":
             folder_path = folder_path / ("study_" + study_uid)
@@ -169,6 +169,7 @@ class RetrieveSeriesAPIView(RetrieveAPIView):
         query["StudyInstanceUID"] = study_uid
         query["SeriesInstanceUID"] = series_uid
 
+        # TODO: We should make sure in a finally block that the folder is deleted.
         await wado_retrieve(source_server, query, folder_path)
 
         return Response(

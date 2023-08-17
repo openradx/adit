@@ -14,7 +14,7 @@ def test_qido_study(
     create_dicom_web_client,
     full_data_sheet,
 ):
-    orthanc1_client = create_dicom_web_client(channels_live_server.url, "ORTHANC1")
+    orthanc1_client: DICOMwebClient = create_dicom_web_client(channels_live_server.url, "ORTHANC1")
 
     results = orthanc1_client.search_for_studies()
     results_study_uids = set()
