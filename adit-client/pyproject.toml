@@ -1,0 +1,16 @@
+[tool.poetry]
+name = "adit-client"
+version = "0.1.0"
+description = "ADIT Client library to connect to an ADIT server."
+authors = ["Kai Schlamp <kai.schlamp@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+dicomweb-client = "^0.59.1"
+pydicom = "^2.4.3"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
