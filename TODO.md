@@ -2,30 +2,24 @@
 
 ## Top
 
+- Update documentation
 - Fix some stuff and use our fork then of DICOMwebClient
   -- <https://github.com/ImagingDataCommons/dicomweb-client/issues/88>
   -- <https://github.com/ImagingDataCommons/dicomweb-client/issues/89>
 - Look into how we can improve STOW (do we have to upload one file at a time, can we stream it somehow)
-  -- test_stowrs takes forever as many files get uploaded ... reduce this
 - Look into how we can stream the file with WADO
 - Remove files in test folders from autoreload
-- Rewrite dicom connector without converting DataSet to dict
-  -- Make Unit test using pynetdicom test dummy servers
-- Check why Alpine script must used as type="module"
 - Make job urgent (as staff member)
 - Selective transfer choose series
 - Locked info for other apps like batch_transfer_locked.html
 - Hint when app is locked for admin user
-- Split messages into toasts (client only) and messages from server (using Bootstrap alerts)
 - Rewrite Celery unit tests using the official test helpers
-- Check why this dicomweb test takes so long
 - Use pynetdicom SCPs instead of Orthancs in integrations tests
   -- Find those tests by looking for "setup_orthancs" fixture
 
 ## High Priority
 
 - Redirect after restart/retry/delete job
-- Option if you want an Email when job ends (make it optional)
 - Option in batch query to query whole study or explicit series
 - Allow to terminate a specific Celery task with revoke(task_id, terminate=True)
 - Make whole receiver crash if one asyncio task crashes
@@ -34,8 +28,6 @@
 - rename ADIT_AE_TITLE to RECEIVER_AE_TITLE
 - Query with StudyDateStart, StudyDateEnd, StudyDate
 - Common search query Websocket component
-- DICOM Explorer localstorage source
-- Refactor \_message_panel.html
 - QueryUtil -> QueryExecutor, and TransferUtil -> TransferExecutor
 - Improve cancel during transfer
 - Allow admin to kill a job (with task revoke(terminate=True))
@@ -72,14 +64,11 @@
   -- Button: Start Transfer (only when no task is querying)
   -- Allow to add tasks to an already existing job (even if already transferred)
   -- Delete batch query
-- REST API interface
-  -- Maybe implement a DICOMweb interface (see <https://book.orthanc-server.com/plugins/dicomweb.html>)
 - Upload portal with drag&drop
   -- Store those files perhaps in ORTHANC
   -- Preview uploaded images
   -- Allow to transfer thow uploaded image to a PACS
 - Better scheduler (with day in week and times)
-- Continuous transfer mode
 
 ## Maybe
 
