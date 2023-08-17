@@ -1,5 +1,6 @@
 import logging
-from datetime import datetime
+from datetime import date, datetime, time
+from typing import Any
 
 from django.conf import settings
 from django.template import Library
@@ -13,19 +14,19 @@ register = Library()
 
 
 @register.filter
-def access_item(dictionary, key):
+def access_item(dictionary: dict[str, Any], key: str) -> Any:
     return dictionary[key]
 
 
 @register.simple_tag(takes_context=True)
-def url_replace(context, field, value):
+def url_replace(context: dict[str, Any], field: str, value: Any) -> str:
     dict_ = context["request"].GET.copy()
     dict_[field] = value
     return dict_.urlencode()
 
 
 @register.filter
-def person_name_from_dicom(value):
+def person_name_from_dicom(value: str) -> str:
     """See also :func:`adit.core.dicom_utils.person_name_to_dicom`"""
     if not value:
         return value
@@ -34,7 +35,7 @@ def person_name_from_dicom(value):
 
 
 @register.simple_tag
-def filter_modalities(modalities):
+def filter_modalities(modalities: list[str]) -> list[str]:
     exclude_modalities = settings.EXCLUDED_MODALITIES
     return [modality for modality in modalities if modality not in exclude_modalities]
 
@@ -43,7 +44,7 @@ def filter_modalities(modalities):
 # with VM 1-n to lists even if there is only one item in it
 # See :func:`adit.core.utils.dicom_connector._dictify_dataset`
 @register.filter(is_safe=True, needs_autoescape=True)
-def join_if_list(value, arg, autoescape=True):
+def join_if_list(value: Any, arg: str, autoescape=True) -> Any:
     if isinstance(value, list):
         return join(value, arg, autoescape)
 
@@ -51,7 +52,7 @@ def join_if_list(value, arg, autoescape=True):
 
 
 @register.simple_tag
-def combine_datetime(date, time):
+def combine_datetime(date: date, time: time) -> datetime:
     return datetime.combine(date, time)
 
 
@@ -78,40 +79,28 @@ def message_symbol(tag: str) -> str:
 
 
 @register.filter
-def dicom_job_status_css_class(status):
-    text_class = ""
-    if status == DicomJob.Status.UNVERIFIED:
-        text_class = "text-info"
-    elif status == DicomJob.Status.PENDING:
-        text_class = "text-secondary"
-    elif status == DicomJob.Status.IN_PROGRESS:
-        text_class = "text-info"
-    elif status == DicomJob.Status.CANCELING:
-        text_class = "text-muted"
-    elif status == DicomJob.Status.CANCELED:
-        text_class = "text-muted"
-    elif status == DicomJob.Status.SUCCESS:
-        text_class = "text-success"
-    elif status == DicomJob.Status.WARNING:
-        text_class = "text-warning"
-    elif status == DicomJob.Status.FAILURE:
-        text_class = "text-danger"
-    return text_class
+def dicom_job_status_css_class(status: DicomJob.Status) -> str:
+    css_classes = {
+        DicomJob.Status.UNVERIFIED: "text-info",
+        DicomJob.Status.PENDING: "text-secondary",
+        DicomJob.Status.IN_PROGRESS: "text-info",
+        DicomJob.Status.CANCELING: "text-muted",
+        DicomJob.Status.CANCELED: "text-muted",
+        DicomJob.Status.SUCCESS: "text-success",
+        DicomJob.Status.WARNING: "text-warning",
+        DicomJob.Status.FAILURE: "text-danger",
+    }
+    return css_classes[status]
 
 
 @register.filter
-def dicom_task_status_css_class(status):
-    text_class = ""
-    if status == DicomTask.Status.PENDING:
-        text_class = "text-secondary"
-    elif status == DicomTask.Status.IN_PROGRESS:
-        text_class = "text-info"
-    elif status == DicomTask.Status.CANCELED:
-        text_class = "text-muted"
-    elif status == DicomTask.Status.SUCCESS:
-        text_class = "text-success"
-    elif status == DicomTask.Status.WARNING:
-        text_class = "text-warning"
-    elif status == DicomTask.Status.FAILURE:
-        text_class = "text-danger"
-    return text_class
+def dicom_task_status_css_class(status: DicomTask.Status) -> str:
+    css_classes = {
+        DicomTask.Status.PENDING: "text-secondary",
+        DicomTask.Status.IN_PROGRESS: "text-info",
+        DicomTask.Status.CANCELED: "text-muted",
+        DicomTask.Status.SUCCESS: "text-success",
+        DicomTask.Status.WARNING: "text-warning",
+        DicomTask.Status.FAILURE: "text-danger",
+    }
+    return css_classes[status]

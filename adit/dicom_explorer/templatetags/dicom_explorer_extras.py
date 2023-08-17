@@ -8,11 +8,11 @@ register = Library()
 
 @register.simple_tag
 def explorer_url(
-    server_id,
-    patient_id=None,
-    study_uid=None,
-    series_uid=None,
-):
+    server_id: str,
+    patient_id: str | None = None,
+    study_uid: str | None = None,
+    series_uid: str | None = None,
+) -> str:
     params = {}
     if server_id and not (patient_id or study_uid or series_uid):
         resource_url = reverse(

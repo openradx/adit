@@ -2,7 +2,6 @@
 
 ## Top
 
-- Type hints of template tags
 - Fix some stuff and use our fork then of DICOMwebClient
   -- <https://github.com/ImagingDataCommons/dicomweb-client/issues/88>
   -- <https://github.com/ImagingDataCommons/dicomweb-client/issues/89>
