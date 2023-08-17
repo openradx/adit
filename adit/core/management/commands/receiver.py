@@ -4,8 +4,8 @@ import os
 from pathlib import Path
 
 from django.conf import settings
-from pydicom import Dataset, dcmread
 
+from ...utils.dicom_utils import read_dataset
 from ...utils.file_monitor import FileMonitor
 from ...utils.file_transmit import FileTransmitServer
 from ...utils.store_scp import StoreScp
@@ -56,7 +56,7 @@ class Command(AsyncServerCommand):
             series_uid = "Unknown"
             instance_uid = "Unknown"
             try:
-                ds: Dataset = await asyncio.to_thread(dcmread, file_path, force=True)
+                ds = await asyncio.to_thread(read_dataset, file_path)
                 study_uid = ds.StudyInstanceUID
                 series_uid = ds.SeriesInstanceUID
                 instance_uid = ds.SOPInstanceUID

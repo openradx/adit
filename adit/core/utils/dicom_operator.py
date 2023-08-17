@@ -20,7 +20,7 @@ from typing import Callable, Iterable, Iterator
 
 from aiofiles import os as async_os
 from django.conf import settings
-from pydicom import Dataset, dcmread
+from pydicom import Dataset
 from pynetdicom.events import Event
 
 from ..errors import RetriableError
@@ -29,6 +29,8 @@ from .dicom_dataset import QueryDataset, ResultDataset
 from .dicom_utils import (
     convert_to_python_regex,
     has_wildcards,
+    read_dataset,
+    write_dataset,
 )
 from .dicom_web_connector import DicomWebConnector
 from .dimse_connector import DimseConnector
@@ -605,7 +607,7 @@ class DicomOperator:
                 try:
                     if image_uid in remaining_image_uids:
                         remaining_image_uids.remove(image_uid)
-                        ds = dcmread(filename, force=True)
+                        ds = read_dataset(filename)
                         self._handle_downloaded_image(ds, dest_folder, modifier)
                 except Exception as err:
                     receiving_errors.append(err)
@@ -670,7 +672,7 @@ class DicomOperator:
 
         try:
             folder_path.mkdir(parents=True, exist_ok=True)
-            ds.save_as(file_path)
+            write_dataset(ds, file_path)
         except Exception as err:
             if isinstance(err, OSError) and err.errno == errno.ENOSPC:
                 # No space left on destination

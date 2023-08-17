@@ -5,13 +5,14 @@ from pathlib import Path
 from typing import Callable, NoReturn
 
 from dicomweb_client import DICOMwebClient
-from pydicom import Dataset, dcmread
+from pydicom import Dataset
 from pydicom.errors import InvalidDicomError
 from requests import HTTPError
 
 from ..errors import RetriableError
 from ..models import DicomServer
 from ..utils.dicom_dataset import QueryDataset, ResultDataset
+from ..utils.dicom_utils import read_dataset
 
 logger = logging.getLogger(__name__)
 
@@ -197,7 +198,7 @@ class DicomWebConnector:
                     continue
 
                 try:
-                    ds = dcmread(path, force=True)
+                    ds = read_dataset(path)
                 except InvalidDicomError as err:
                     logger.error("Failed to read DICOM file %s: %s", path, err)
                     invalid_dicoms.append(path)

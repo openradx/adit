@@ -7,7 +7,7 @@ from time import sleep
 from unittest.mock import patch
 
 from django.conf import settings
-from pydicom import Dataset, dcmread
+from pydicom import Dataset
 from pynetdicom.association import Association
 from pynetdicom.sop_class import (
     PatientRootQueryRetrieveInformationModelFind,  # type: ignore
@@ -18,6 +18,7 @@ from pytest_mock import MockerFixture
 
 from adit.core.utils.dicom_dataset import QueryDataset
 from adit.core.utils.dicom_operator import DicomOperator
+from adit.core.utils.dicom_utils import read_dataset
 from adit.core.utils.file_transmit import FileTransmitServer
 
 from .conftest import DicomTestHelper
@@ -131,7 +132,7 @@ def test_download_series_with_c_get(
     mocker.patch("adit.core.utils.dimse_connector.AE.associate", return_value=association)
     association.send_c_get.return_value = dicom_test_helper.create_successful_c_get_response()
     path = Path(settings.BASE_DIR) / "samples" / "dicoms"
-    ds = dcmread(next(path.rglob("*.dcm")))
+    ds = read_dataset(next(path.rglob("*.dcm")))
     with TemporaryDirectory() as tmp_dir:
         # Act
         dicom_operator.download_series(
@@ -158,7 +159,7 @@ def test_download_series_with_c_move(
     dicom_operator.server.patient_root_get_support = False
     path = Path(settings.BASE_DIR) / "samples" / "dicoms"
     file_path = next(path.rglob("*.dcm"))
-    ds = dcmread(file_path)
+    ds = read_dataset(file_path)
     responses = [{"SOPInstanceUID": ds.SOPInstanceUID}]
     association.send_c_find.return_value = dicom_test_helper.create_successful_c_find_responses(
         responses

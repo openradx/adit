@@ -3,8 +3,9 @@
 ## Top
 
 - Type hints of template tags
-- Change DICOMwebClient so that it returns iterables instead of lists
+- Fix some stuff and use our fork then of DICOMwebClient
   -- <https://github.com/ImagingDataCommons/dicomweb-client/issues/88>
+  -- <https://github.com/ImagingDataCommons/dicomweb-client/issues/89>
 - Look into how we can improve STOW (do we have to upload one file at a time, can we stream it somehow)
   -- test_stowrs takes forever as many files get uploaded ... reduce this
 - Look into how we can stream the file with WADO

@@ -4,8 +4,8 @@ from pathlib import Path
 import pytest
 from aiofiles import os
 from django.conf import settings
-from pydicom import dcmread
 
+from adit.core.utils.dicom_utils import read_dataset
 from adit.core.utils.file_transmit import FileTransmitClient, FileTransmitServer, Metadata
 
 HOST = "127.0.0.1"
@@ -46,7 +46,10 @@ async def test_start_transmit_file():
         actual_file_size = await os.path.getsize(filename)
         assert actual_file_size == expected_file_size
         assert metadata["filename"] == sample_files[counter].name
-        assert dcmread(filename).SOPInstanceUID == dcmread(sample_files[counter]).SOPInstanceUID
+        assert (
+            read_dataset(filename).SOPInstanceUID
+            == read_dataset(sample_files[counter]).SOPInstanceUID
+        )
 
         counter += 1
         return counter == NUM_TRANSFER_FILES

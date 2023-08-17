@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Callable, Iterator, Literal
 
 from django.conf import settings
-from pydicom import Dataset, dcmread
+from pydicom import Dataset
 from pydicom.errors import InvalidDicomError
 from pynetdicom import debug_logger
 from pynetdicom._globals import STATUS_PENDING, STATUS_SUCCESS, STATUS_WARNING
@@ -36,7 +36,7 @@ from pynetdicom.status import code_to_category
 from ..errors import RetriableError
 from ..models import DicomServer
 from ..utils.dicom_dataset import QueryDataset, ResultDataset
-from ..utils.dicom_utils import has_wildcards
+from ..utils.dicom_utils import has_wildcards, read_dataset
 
 logger = logging.getLogger(__name__)
 
@@ -389,7 +389,7 @@ class DimseConnector:
                     continue
 
                 try:
-                    ds = dcmread(path, force=True)
+                    ds = read_dataset(path)
                 except InvalidDicomError as err:
                     logger.error("Failed to read DICOM file %s: %s", path, err)
                     invalid_dicoms.append(path)

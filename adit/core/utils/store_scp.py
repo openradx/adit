@@ -12,6 +12,8 @@ from pynetdicom.ae import ApplicationEntity as AE
 from pynetdicom.events import Event
 from pynetdicom.presentation import AllStoragePresentationContexts
 
+from .dicom_utils import write_dataset
+
 logger = logging.getLogger(__name__)
 
 FileReceivedHandler = Callable[[str], None]
@@ -120,9 +122,9 @@ class StoreScp:
                 # There are two ways to save the file. We use the first one and prefer
                 # reliability over speed. (See file history for second method.)
                 # https://pydicom.github.io/pynetdicom/stable/examples/storage.html#storage-scp
-                df = event.dataset
-                df.file_meta = event.file_meta
-                df.save_as(file.name)
+                ds = event.dataset
+                ds.file_meta = event.file_meta
+                write_dataset(ds, file.name)
         except Exception as err:
             if isinstance(err, OSError) and err.errno == errno.ENOSPC:
                 logger.error("Out of disc space while saving received file.")

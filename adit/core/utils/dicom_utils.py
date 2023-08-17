@@ -1,15 +1,36 @@
 import datetime
 import logging
 import re
-from typing import Any
+from os import PathLike
+from typing import Any, BinaryIO
 
-from pydicom import valuerep
+from pydicom import Dataset, dcmread, dcmwrite, valuerep
 
 logger = logging.getLogger(__name__)
 
 DateRange = tuple[datetime.date | None, datetime.date | None]
 TimeRange = tuple[datetime.time | None, datetime.time | None]
 DateTimeRange = tuple[datetime.datetime | None, datetime.datetime | None]
+
+
+def write_dataset(
+    ds: Dataset, fn: str | bytes | PathLike | BinaryIO, write_like_original=True
+) -> None:
+    """Write a DICOM dataset to a file or buffer.
+
+    This function is a wrapper around pydicom's dcmwrite function to make sure
+    that the dataset is written in a consistent way.
+    """
+    dcmwrite(fn, ds, write_like_original)
+
+
+def read_dataset(fp: str | bytes | PathLike | BinaryIO) -> Dataset:
+    """Read a DICOM dataset from a file or buffer.
+
+    This function is a wrapper around pydicom's dcmread function to make sure
+    that the dataset is read in a consistent way.
+    """
+    return dcmread(fp, force=True)
 
 
 def has_wildcards(value: str) -> bool:

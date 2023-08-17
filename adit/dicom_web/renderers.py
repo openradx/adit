@@ -3,8 +3,10 @@ import os
 from io import BytesIO
 from typing import Optional
 
-from pydicom import Dataset, dcmread, dcmwrite
+from pydicom import Dataset
 from rest_framework.renderers import BaseRenderer
+
+from adit.core.utils.dicom_utils import read_dataset, write_dataset
 
 
 class QidoApplicationDicomJsonRenderer(BaseRenderer):
@@ -60,7 +62,13 @@ class WadoMultipartApplicationDicomRenderer(DicomWebWadoRenderer):
             self._write_part(ds)
 
     def _write_part(self, ds: Dataset) -> None:
-        dcmwrite(self.stream, ds, write_like_original=False)
+        # We have to write the dataset with write_like_original=False to
+        # make sure that DICOMweb Client can read it as it doesn't use
+        # the force option of dcmread internally.
+        # https://github.com/ImagingDataCommons/dicomweb-client/issues/89
+        # TODO: Maybe we should check if there is a better way to write the DICOM
+        # file (how about the metadata?!).
+        write_dataset(ds, self.stream, write_like_original=False)
         self.stream.write(b"\r\n")
 
     def _write_header(self) -> None:
@@ -77,7 +85,7 @@ class WadoMultipartApplicationDicomRenderer(DicomWebWadoRenderer):
         self.start_stream()
         for file in os.listdir(folder_path):
             file_path = folder_path / file
-            ds = dcmread(file_path, force=True)
+            ds = read_dataset(file_path)
             self.write_ds(ds)
             os.remove(file_path)
         self.end_stream()
@@ -104,7 +112,7 @@ class WadoApplicationDicomJsonRenderer(DicomWebWadoRenderer):
         self.start_file_meta_list()
         for file in os.listdir(data["folder_path"]):
             file_path = data["folder_path"] / file
-            ds = dcmread(file_path, force=True)
+            ds = read_dataset(file_path)
             self.append_file_meta(ds)
             os.remove(file_path)
         os.rmdir(data["folder_path"])

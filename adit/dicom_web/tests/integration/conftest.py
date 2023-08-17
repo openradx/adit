@@ -1,13 +1,13 @@
 import os
 
 import pandas as pd
-import pydicom
 import pytest
 from dicomweb_client import DICOMwebClient
 from django.conf import settings
 from django.contrib.auth.models import Group
 
 from adit.accounts.factories import UserFactory
+from adit.core.utils.dicom_utils import read_dataset
 from adit.token_authentication.factories import TokenFactory
 
 # Workaround to make playwright work with Django
@@ -60,7 +60,7 @@ def test_dicoms():
         if len(files) != 0:
             try:
                 dicoms.extend(
-                    [pydicom.dcmread(os.path.join(root, files[i])) for i in range(len(files))]
+                    [read_dataset(os.path.join(root, files[i])) for i in range(len(files))]
                 )
             except Exception:
                 continue

@@ -1,9 +1,10 @@
 import io
 
-from pydicom import dcmread
 from pydicom.errors import InvalidDicomError
 from rest_framework.exceptions import NotAcceptable
 from rest_framework.parsers import BaseParser
+
+from adit.core.utils.dicom_utils import read_dataset
 
 
 class StowMultipartApplicationDicomParser(BaseParser):
@@ -22,7 +23,7 @@ class StowMultipartApplicationDicomParser(BaseParser):
             content = self._get_part_content(part)
             if content:
                 try:
-                    ds = dcmread(io.BytesIO(content), force=True)
+                    ds = read_dataset(io.BytesIO(content))
                     datasets.append(ds)
                 except InvalidDicomError:
                     pass
