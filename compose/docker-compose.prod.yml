@@ -1,11 +1,10 @@
 version: "3.8"
 
-x-app:
-  &default-app
+x-app: &default-app
   restart: always
   image: adit_prod:latest
   env_file:
-    - ./.env.prod
+    - ../.env.prod
   environment:
     ENABLE_REMOTE_DEBUGGING: 0
     DJANGO_SETTINGS_MODULE: "adit.settings.production"
@@ -35,7 +34,7 @@ services:
   postgres:
     restart: always
     env_file:
-      - ./.env.prod
+      - ../.env.prod
     deploy:
       replicas: 1
 

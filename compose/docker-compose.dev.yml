@@ -1,12 +1,11 @@
 version: "3.8"
 
-x-app:
-  &default-app
+x-app: &default-app
   image: adit_dev:latest
   volumes:
     - ..:/app
   env_file:
-    - ./.env.dev
+    - ../.env.dev
   environment:
     ENABLE_REMOTE_DEBUGGING: 0
     DJANGO_SETTINGS_MODULE: "adit.settings.development"
