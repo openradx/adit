@@ -284,7 +284,7 @@ def copy_statics(ctx: Context):
 @task
 def init_workspace(ctx: Context, type: Literal["codespaces", "gitpod"]):
     """Initialize workspace for Github Codespaces or Gitpod"""
-    env_dev_file = f"{compose_dir}/.env.dev"
+    env_dev_file = f"{project_dir}/.env.dev"
     copy(f"{project_dir}/example.env", env_dev_file)
 
     if type == "codespaces":
