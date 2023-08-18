@@ -3,7 +3,7 @@ name = "adit-client"
 version = "0.1.0"
 description = "ADIT Client library to connect to an ADIT server."
 authors = ["Kai Schlamp <kai.schlamp@gmail.com>"]
-license = "GPLv3"
+license = "GPL-3.0-or-later"
 readme = "README.md"
 packages = [{ include = "adit-client" }]
 
