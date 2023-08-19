@@ -1,5 +1,25 @@
-from django.forms import fields, forms
+from django.forms import ModelChoiceField, fields, forms
 from django.template.defaultfilters import filesizeformat
+
+from .models import DicomNode
+from .widgets import DicomNodeSelect
+
+
+class DicomNodeChoiceField(ModelChoiceField):
+    """Field for selecting a DicomNode."""
+
+    def __init__(self, source, node_type=None):
+        if source:
+            queryset = DicomNode.objects.filter(source_active=True)
+        else:
+            queryset = DicomNode.objects.filter(destination_active=True)
+
+        if node_type and node_type in dict(DicomNode.NodeType.choices):
+            queryset = queryset.filter(node_type=node_type)
+        elif node_type is not None:
+            raise AssertionError(f"Invalid node type: {node_type}")
+
+        super().__init__(queryset=queryset, widget=DicomNodeSelect)
 
 
 class RestrictedFileField(fields.FileField):

@@ -7,8 +7,7 @@ from django.db import transaction
 from django.utils.safestring import mark_safe
 
 from adit.core.errors import BatchFileContentError, BatchFileFormatError, BatchFileSizeError
-from adit.core.fields import RestrictedFileField
-from adit.core.forms import DicomNodeChoiceField
+from adit.core.fields import DicomNodeChoiceField, RestrictedFileField
 from adit.core.models import DicomNode
 
 from .models import BatchTransferJob, BatchTransferTask

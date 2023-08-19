@@ -4,46 +4,12 @@ from crispy_forms.bootstrap import FieldWithButtons
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Div, Field, Hidden, Layout, Submit
 from django import forms
-from django.forms.models import ModelChoiceField
-from django.forms.widgets import Select
 from django.http.request import QueryDict
-
-from .models import DicomNode
 
 
 class BroadcastForm(forms.Form):
     subject = forms.CharField(label="Subject", max_length=200)
     message = forms.CharField(label="Message", max_length=10000, widget=forms.Textarea)
-
-
-class DicomNodeSelect(Select):
-    def create_option(self, name, value, label, selected, index, subindex=None, attrs=None):
-        option = super().create_option(name, value, label, selected, index, subindex, attrs)
-        if hasattr(value, "instance"):
-            # TODO: Remove, not needed anymore as it was used for setting initial
-            # values using JavaScript
-            dicom_node = value.instance
-            if dicom_node.node_type == DicomNode.NodeType.SERVER:
-                option["attrs"]["data-node_type"] = "server"
-            elif dicom_node.node_type == DicomNode.NodeType.FOLDER:
-                option["attrs"]["data-node_type"] = "folder"
-
-        return option
-
-
-class DicomNodeChoiceField(ModelChoiceField):
-    def __init__(self, source, node_type=None):
-        if source:
-            queryset = DicomNode.objects.filter(source_active=True)
-        else:
-            queryset = DicomNode.objects.filter(destination_active=True)
-
-        if node_type and node_type in dict(DicomNode.NodeType.choices):
-            queryset = queryset.filter(node_type=node_type)
-        elif node_type is not None:
-            raise AssertionError(f"Invalid node type: {node_type}")
-
-        super().__init__(queryset=queryset, widget=DicomNodeSelect)
 
 
 class PageSizeSelectForm(forms.Form):
