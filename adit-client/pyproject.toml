@@ -1,11 +1,11 @@
 [tool.poetry]
 name = "adit-client"
-version = "0.1.0"
+version = "0.2.0"
 description = "ADIT Client library to connect to an ADIT server."
 authors = ["Kai Schlamp <kai.schlamp@gmail.com>"]
 license = "GPL-3.0-or-later"
 readme = "README.md"
-packages = [{ include = "adit-client" }]
+packages = [{ include = "adit_client" }]
 
 [tool.poetry.dependencies]
 python = "^3.11"
