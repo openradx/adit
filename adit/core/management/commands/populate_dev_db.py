@@ -6,8 +6,8 @@ from django.contrib.auth.models import Group, Permission
 from django.core.management.base import BaseCommand
 from faker import Faker
 
-from adit.accounts.factories import AdminUserFactory, UserFactory
-from adit.accounts.models import User
+from adit.accounts.factories import AdminUserFactory, InstituteFactory, UserFactory
+from adit.accounts.models import Institute, User
 from adit.batch_query.factories import (
     BatchQueryJobFactory,
     BatchQueryResultFactory,
@@ -17,22 +17,30 @@ from adit.batch_transfer.factories import (
     BatchTransferJobFactory,
     BatchTransferTaskFactory,
 )
-from adit.core.factories import DicomFolderFactory, DicomServerFactory
+from adit.core.factories import (
+    DicomFolderFactory,
+    DicomNodeInstituteAccessFactory,
+    DicomServerFactory,
+)
+from adit.core.models import DicomFolder, DicomServer
 from adit.selective_transfer.factories import (
     SelectiveTransferJobFactory,
     SelectiveTransferTaskFactory,
 )
 
-USER_COUNT = 3
-SELECTIVE_TRANSFER_JOB_COUNT = 5
-BATCH_TRANSFER_JOB_COUNT = 3
-BATCH_QUERY_JOB_COUNT = 2
+USER_COUNT = 20
+INSTITUTE_COUNT = 3
+DICOM_SERVER_COUNT = 5
+DICOM_FOLDER_COUNT = 3
+SELECTIVE_TRANSFER_JOB_COUNT = 20
+BATCH_QUERY_JOB_COUNT = 10
+BATCH_TRANSFER_JOB_COUNT = 10
 
 fake = Faker()
 
 
-def create_users():
-    if "username" not in environ or "password" not in environ:
+def create_users() -> list[User]:
+    if "ADMIN_USERNAME" not in environ or "ADMIN_PASSWORD" not in environ:
         print("Cave! No admin credentials found in environment. Using default ones.")
 
     admin_data = {
@@ -56,7 +64,8 @@ def create_users():
         codename="can_transfer_unpseudonymized",
     )
 
-    for i in range(USER_COUNT):
+    user_count = USER_COUNT - 1  # -1 for admin
+    for i in range(user_count):
         user = UserFactory.create()
         user.groups.add(batch_transfer_group)
         user.groups.add(selective_transfer_group)
@@ -70,34 +79,96 @@ def create_users():
     return users
 
 
-def create_server_nodes():
-    servers = []
-    servers.append(
-        DicomServerFactory(
-            name="Orthanc Test Server 1",
-            ae_title="ORTHANC1",
-            host=settings.ORTHANC1_HOST,
-            port=settings.ORTHANC1_DICOM_PORT,
-        )
+def create_institutes(users: list[User]) -> list[Institute]:
+    institutes: list[Institute] = []
+
+    for _ in range(INSTITUTE_COUNT):
+        institute = InstituteFactory.create()
+        institutes.append(institute)
+
+    for user in users:
+        institute: Institute = fake.random_element(elements=institutes)
+        institute.users.add(user)
+
+    return institutes
+
+
+def create_server_nodes(institutes: list[Institute]) -> list[DicomServer]:
+    servers: list[DicomServer] = []
+
+    orthanc1 = DicomServerFactory.create(
+        name="Orthanc Test Server 1",
+        ae_title="ORTHANC1",
+        host=settings.ORTHANC1_HOST,
+        port=settings.ORTHANC1_DICOM_PORT,
     )
-    servers.append(
-        DicomServerFactory(
-            name="Orthanc Test Server 2",
-            ae_title="ORTHANC2",
-            host=settings.ORTHANC2_HOST,
-            port=settings.ORTHANC2_DICOM_PORT,
-        )
+
+    servers.append(orthanc1)
+
+    DicomNodeInstituteAccessFactory.create(
+        dicom_node=orthanc1,
+        institute=institutes[0],
+        source=True,
+        destination=True,
     )
+
+    orthanc2 = DicomServerFactory.create(
+        name="Orthanc Test Server 2",
+        ae_title="ORTHANC2",
+        host=settings.ORTHANC2_HOST,
+        port=settings.ORTHANC2_DICOM_PORT,
+    )
+
+    servers.append(orthanc2)
+
+    DicomNodeInstituteAccessFactory.create(
+        dicom_node=orthanc2,
+        institute=institutes[0],
+        source=False,
+        destination=True,
+    )
+
+    server_count = DICOM_SERVER_COUNT - 2  # -2 for Orthanc servers
+    for _ in range(server_count):
+        server = DicomServerFactory.create()
+        servers.append(server)
+
+        DicomNodeInstituteAccessFactory.create(
+            dicom_node=server, institute=fake.random_element(elements=institutes)
+        )
+
     return servers
 
 
-def create_folder_nodes():
-    folders = []
-    folders.append(DicomFolderFactory(name="Downloads", path="/app/dicom_downloads"))
+def create_folder_nodes(institutes: list[Institute]) -> list[DicomFolder]:
+    folders: list[DicomFolder] = []
+
+    download_folder = DicomFolderFactory.create(name="Downloads", path="/app/dicom_downloads")
+    folders.append(download_folder)
+
+    DicomNodeInstituteAccessFactory.create(
+        dicom_node=download_folder,
+        institute=institutes[0],
+        source=False,
+        destination=True,
+    )
+
+    folder_count = DICOM_FOLDER_COUNT - 1  # -1 for Downloads folder
+    for _ in range(folder_count):
+        folder = DicomFolderFactory.create()
+        folders.append(folder)
+
+        DicomNodeInstituteAccessFactory.create(
+            dicom_node=folder,
+            institute=fake.random_element(elements=institutes),
+            source=False,
+            destination=True,
+        )
+
     return folders
 
 
-def create_jobs(users, servers, folders):
+def create_jobs(users: list[User], servers: list[DicomServer], folders: list[DicomFolder]) -> None:
     for _ in range(SELECTIVE_TRANSFER_JOB_COUNT):
         create_selective_transfer_job(users, servers, folders)
 
@@ -105,49 +176,50 @@ def create_jobs(users, servers, folders):
         create_batch_transfer_job(users, servers, folders)
 
     for _ in range(BATCH_QUERY_JOB_COUNT):
-        create_batch_query_job(users)
+        create_batch_query_job(users, servers)
 
 
-def create_selective_transfer_job(users, servers, folders):
+def create_selective_transfer_job(
+    users: list[User], servers: list[DicomServer], folders: list[DicomFolder]
+) -> None:
     servers_and_folders = servers + folders
 
-    job = SelectiveTransferJobFactory(
+    job = SelectiveTransferJobFactory.create(
         source=factory.Faker("random_element", elements=servers),
         destination=factory.Faker("random_element", elements=servers_and_folders),
         owner=factory.Faker("random_element", elements=users),
     )
 
     for task_id in range(fake.random_int(min=1, max=100)):
-        SelectiveTransferTaskFactory(job=job, task_id=task_id)
+        SelectiveTransferTaskFactory.create(job=job, task_id=task_id)
 
 
-def create_batch_transfer_job(users, servers, folders):
+def create_batch_transfer_job(
+    users: list[User], servers: list[DicomServer], folders: list[DicomFolder]
+) -> None:
     servers_and_folders = servers + folders
 
-    job = BatchTransferJobFactory(
+    job = BatchTransferJobFactory.create(
         source=factory.Faker("random_element", elements=servers),
         destination=factory.Faker("random_element", elements=servers_and_folders),
         owner=factory.Faker("random_element", elements=users),
     )
 
     for task_id in range(fake.random_int(min=1, max=100)):
-        BatchTransferTaskFactory(job=job, task_id=task_id)
-
-    return job
+        BatchTransferTaskFactory.create(job=job, task_id=task_id)
 
 
-def create_batch_query_job(users):
-    job = BatchQueryJobFactory(
+def create_batch_query_job(users: list[User], servers: list[DicomServer]) -> None:
+    job = BatchQueryJobFactory.create(
+        source=factory.Faker("random_element", elements=servers),
         owner=factory.Faker("random_element", elements=users),
     )
 
     for task_id in range(fake.random_int(min=1, max=100)):
-        query = BatchQueryTaskFactory(job=job, task_id=task_id)
+        query = BatchQueryTaskFactory.create(job=job, task_id=task_id)
 
         for _ in range(fake.random_int(min=1, max=3)):
-            BatchQueryResultFactory(job=job, query=query)
-
-    return job
+            BatchQueryResultFactory.create(job=job, query=query)
 
 
 class Command(BaseCommand):
@@ -163,7 +235,8 @@ class Command(BaseCommand):
             print("Populating development database with test data.")
 
             users = create_users()
-            servers = create_server_nodes()
-            folders = create_folder_nodes()
+            institutes = create_institutes(users)
+            servers = create_server_nodes(institutes)
+            folders = create_folder_nodes(institutes)
 
             create_jobs(users, servers, folders)

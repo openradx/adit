@@ -1,11 +1,13 @@
 from abc import abstractmethod
 from datetime import time
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING, Callable, Literal
 
 from django.conf import settings
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.db.models.constraints import UniqueConstraint
+
+from adit.accounts.models import Institute, User
 
 from .validators import (
     no_backslash_char_validator,
@@ -66,6 +68,25 @@ class AppSettings(models.Model):
         return cls.objects.first()
 
 
+class DicomNodeManager(models.Manager):
+    def accessible_by_user(
+        self, user: User, access_type: Literal["source", "destination"]
+    ) -> "DicomNodeManager":
+        # Also staff users can only use nodes that are assigned to an institute (but they
+        # must not be a member of that institute in contrast to normal users).
+        if user.is_staff:
+            accessible_nodes = self.all()
+        else:
+            accessible_nodes = self.filter(accesses__institute__in=user.institutes.all())
+
+        if access_type == "source":
+            return accessible_nodes.filter(accesses__source=True)
+        elif access_type == "destination":
+            return accessible_nodes.filter(accesses__destination=True)
+        else:
+            raise AssertionError(f"Invalid node type: {access_type}")
+
+
 class DicomNode(models.Model):
     class NodeType(models.TextChoices):
         SERVER = "SV", "Server"
@@ -79,8 +100,14 @@ class DicomNode(models.Model):
     id: int
     node_type = models.CharField(max_length=2, choices=NodeType.choices)
     name = models.CharField(unique=True, max_length=64)
-    source_active = models.BooleanField(default=False)
-    destination_active = models.BooleanField(default=False)
+    institutes = models.ManyToManyField(
+        Institute,
+        blank=True,
+        related_name="dicom_nodes",
+        through="DicomNodeInstituteAccess",
+    )
+
+    objects = DicomNodeManager()
 
     class Meta:
         ordering = ("name",)
@@ -95,6 +122,26 @@ class DicomNode(models.Model):
             if self.NODE_TYPE not in dict(self.NodeType.choices):
                 raise AssertionError(f"Invalid node type: {self.NODE_TYPE}")
             self.node_type = self.NODE_TYPE
+
+
+class DicomNodeInstituteAccess(models.Model):
+    id: int
+    dicom_node = models.ForeignKey(DicomNode, on_delete=models.CASCADE, related_name="accesses")
+    institute = models.ForeignKey(Institute, on_delete=models.CASCADE)
+    source = models.BooleanField(default=False)
+    destination = models.BooleanField(default=False)
+
+    class Meta:
+        verbose_name_plural = "DICOM node institute accesses"
+        constraints = [
+            UniqueConstraint(
+                fields=["dicom_node", "institute"],
+                name="unique_dicom_node_per_institute",
+            )
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.__class__.__name__} [ID {self.id}]"
 
 
 class DicomServer(DicomNode):

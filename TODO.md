@@ -14,8 +14,6 @@
 - Locked info for other apps like batch_transfer_locked.html
 - Hint when app is locked for admin user
 - Rewrite Celery unit tests using the official test helpers
-- Use pynetdicom SCPs instead of Orthancs in integrations tests
-  -- Find those tests by looking for "setup_orthancs" fixture
 
 ## High Priority
 

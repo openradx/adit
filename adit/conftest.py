@@ -14,6 +14,7 @@ from playwright.sync_api import Locator, Page, Response
 
 from adit.accounts.factories import UserFactory
 from adit.core.factories import DicomServerFactory, DicomWebServerFactory
+from adit.core.models import DicomServer
 from adit.testing import ChannelsLiveServer
 
 fake = Faker()
@@ -71,37 +72,41 @@ def adit_celery_worker():
 
 
 @pytest.fixture
-def setup_orthancs():
+def dimse_orthancs() -> tuple[DicomServer, DicomServer]:
     call_command("reset_orthancs")
 
-    DicomServerFactory(
+    orthanc1 = DicomServerFactory.create(
         name="Orthanc Test Server 1",
         ae_title="ORTHANC1",
         host=settings.ORTHANC1_HOST,
         port=settings.ORTHANC1_DICOM_PORT,
     )
-    DicomServerFactory(
+    orthanc2 = DicomServerFactory.create(
         name="Orthanc Test Server 2",
         ae_title="ORTHANC2",
         host=settings.ORTHANC2_HOST,
         port=settings.ORTHANC2_DICOM_PORT,
     )
 
+    return orthanc1, orthanc2
+
 
 @pytest.fixture
-def setup_dicomweb_orthancs():
+def dicomweb_orthancs() -> tuple[DicomServer, DicomServer]:
     call_command("reset_orthancs")
 
-    DicomWebServerFactory(
+    orthanc1 = DicomWebServerFactory.create(
         name="Orthanc Test Server 1",
         ae_title="ORTHANC1",
         dicomweb_root_url=f"http://{settings.ORTHANC1_HOST}:{settings.ORTHANC1_HTTP_PORT}/{settings.ORTHANC1_DICOMWEB_ROOT}/",
     )
-    DicomWebServerFactory(
+    orthanc2 = DicomWebServerFactory.create(
         name="Orthanc Test Server 2",
         ae_title="ORTHANC2",
         dicomweb_root_url=f"http://{settings.ORTHANC2_HOST}:{settings.ORTHANC2_HTTP_PORT}/{settings.ORTHANC2_DICOMWEB_ROOT}/",
     )
+
+    return orthanc1, orthanc2
 
 
 @pytest.fixture
@@ -115,6 +120,7 @@ def login_user(page: Page):
     return _login_user
 
 
+# TODO: See if we can make it a yield fixture with name logged_in_user
 @pytest.fixture
 def create_and_login_user(page: Page, login_user):
     def _create_and_login_user(server_url: str):

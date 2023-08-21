@@ -2,7 +2,7 @@ from typing import Generic, TypeVar
 
 import factory
 
-from .models import User
+from .models import Institute, User
 
 T = TypeVar("T")
 
@@ -34,3 +34,12 @@ class AdminUserFactory(UserFactory):
     password = factory.PostGenerationMethodCall("set_password", "admin")
     is_superuser = True
     is_staff = True
+
+
+class InstituteFactory(BaseDjangoModelFactory[Institute]):
+    class Meta:
+        model = Institute
+        django_get_or_create = ("name",)
+
+    name = factory.Sequence(lambda n: f"Institute {n}")
+    description = factory.Faker("text", max_nb_chars=200)

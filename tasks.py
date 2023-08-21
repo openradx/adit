@@ -233,8 +233,8 @@ def ci(ctx: Context):
 
 
 @task
-def reset_adit_dev(ctx: Context):
-    """Reset ADIT dev container environment"""
+def reset_dev(ctx: Context):
+    """Reset dev container environment"""
     # Reset Orthancs
     reset_orthancs(ctx, "dev")
     # Wipe the database
@@ -296,13 +296,13 @@ def init_workspace(ctx: Context, type: Literal["codespaces", "gitpod"]):
     else:
         raise ValueError(f"Invalid workspace type: {type}")
 
-    host = base_url.removeprefix("https://")
-    host += ",localhost"
+    hosts = ".localhost,127.0.0.1,[::1],"
+    hosts += base_url.removeprefix("https://")
 
     set_key(env_dev_file, "BASE_URL", base_url, quote_mode="never")
     set_key(env_dev_file, "DJANGO_CSRF_TRUSTED_ORIGINS", base_url, quote_mode="never")
-    set_key(env_dev_file, "DJANGO_ALLOWED_HOSTS", host, quote_mode="never")
-    set_key(env_dev_file, "DJANGO_INTERNAL_IPS", host, quote_mode="never")
+    set_key(env_dev_file, "DJANGO_ALLOWED_HOSTS", hosts, quote_mode="never")
+    set_key(env_dev_file, "DJANGO_INTERNAL_IPS", hosts, quote_mode="never")
     set_key(env_dev_file, "FORCE_DEBUG_TOOLBAR", "true", quote_mode="never")
 
 

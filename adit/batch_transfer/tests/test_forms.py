@@ -3,8 +3,9 @@ from unittest.mock import create_autospec, patch
 import pytest
 from django.core.files import File
 
+from adit.accounts.factories import InstituteFactory, UserFactory
 from adit.accounts.models import User
-from adit.core.factories import DicomServerFactory
+from adit.core.factories import DicomNodeInstituteAccessFactory, DicomServerFactory
 
 from ..forms import BatchTransferJobForm
 
@@ -53,9 +54,16 @@ def test_field_labels():
 @patch("adit.batch_transfer.forms.BatchTransferFileParser.parse", autospec=True)
 def test_with_valid_data(parse_mock, data_dict, file_dict):
     # Arrange
+    user = UserFactory.create()
+    institute = InstituteFactory.create()
+    institute.users.add(user)
+    DicomNodeInstituteAccessFactory.create(
+        dicom_node=data_dict["source"], institute=institute, source=True
+    )
+    DicomNodeInstituteAccessFactory.create(
+        dicom_node=data_dict["destination"], institute=institute, destination=True
+    )
     parse_mock.return_value = []
-    user = create_autospec(User)
-    user.has_perm.return_value = True
 
     # Act
     form = BatchTransferJobForm(data_dict, file_dict, user=user)

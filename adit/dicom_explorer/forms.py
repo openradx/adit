@@ -2,7 +2,7 @@ from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Submit
 from django import forms
 
-from adit.core.models import DicomServer
+from adit.core.fields import DicomNodeChoiceField
 from adit.core.validators import (
     no_backslash_char_validator,
     no_control_chars_validator,
@@ -17,7 +17,6 @@ id_validators = [
 
 
 class DicomExplorerQueryForm(forms.Form):
-    server = forms.ModelChoiceField(queryset=DicomServer.objects.all())
     patient_id = forms.CharField(
         label="Patient ID",
         max_length=64,
@@ -32,9 +31,11 @@ class DicomExplorerQueryForm(forms.Form):
     )
 
     def __init__(self, *args, **kwargs):
+        user = kwargs.pop("user")
+
         super().__init__(*args, **kwargs)
 
-        self.fields["server"].widget.attrs["class"] = "form-select"
+        self.fields["server"] = DicomNodeChoiceField("source", user)
 
         self.helper = FormHelper(self)
         self.helper.form_id = "dicom_explorer"

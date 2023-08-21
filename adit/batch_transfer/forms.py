@@ -6,18 +6,15 @@ from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.utils.safestring import mark_safe
 
+from adit.accounts.models import User
 from adit.core.errors import BatchFileContentError, BatchFileFormatError, BatchFileSizeError
-from adit.core.fields import RestrictedFileField
-from adit.core.forms import DicomNodeChoiceField
-from adit.core.models import DicomNode
+from adit.core.fields import DicomNodeChoiceField, RestrictedFileField
 
 from .models import BatchTransferJob, BatchTransferTask
 from .parsers import BatchTransferFileParser
 
 
 class BatchTransferJobForm(forms.ModelForm):
-    source = DicomNodeChoiceField(True, DicomNode.NodeType.SERVER)
-    destination = DicomNodeChoiceField(False)
     batch_file = RestrictedFileField(
         max_upload_size=5242880,
         label="Batch file",
@@ -70,27 +67,20 @@ class BatchTransferJobForm(forms.ModelForm):
         self.tasks = []
         self.save_tasks = None
 
-        self.user = kwargs.pop("user")
+        self.user: User = kwargs.pop("user")
 
         super().__init__(*args, **kwargs)
 
-        self.fields["source"].widget.attrs["class"] = "form-select"
+        self.fields["source"] = DicomNodeChoiceField("source", self.user)
         self.fields["source"].widget.attrs["@change"] = "onSourceChange($event)"
 
-        self.fields["destination"].widget.attrs["class"] = "form-select"
+        self.fields["destination"] = DicomNodeChoiceField("destination", self.user)
         self.fields["destination"].widget.attrs["@change"] = "onDestinationChange($event)"
 
         self.fields["urgent"].widget.attrs["@change"] = "onUrgentChange($event)"
 
         if not self.user.has_perm("batch_transfer.can_process_urgently"):
             del self.fields["urgent"]
-
-        self.fields["source"].queryset = self.fields["source"].queryset.order_by(
-            "-node_type", "name"
-        )
-        self.fields["destination"].queryset = self.fields["destination"].queryset.order_by(
-            "-node_type", "name"
-        )
 
         if settings.ETHICS_COMMITTEE_APPROVAL_REQUIRED:
             self.fields["ethics_application_id"].required = True

@@ -1,5 +1,21 @@
-from django.forms import fields, forms
+from typing import Literal
+
+from django.forms import ModelChoiceField, fields, forms
 from django.template.defaultfilters import filesizeformat
+
+from adit.accounts.models import User
+
+from .models import DicomNode
+from .widgets import DicomNodeSelect
+
+
+class DicomNodeChoiceField(ModelChoiceField):
+    """Field for selecting a DicomNode."""
+
+    def __init__(self, access_type: Literal["source", "destination"], user: User):
+        queryset = DicomNode.objects.accessible_by_user(user, access_type)
+        queryset = queryset.order_by("-node_type", "name")
+        super().__init__(queryset=queryset, widget=DicomNodeSelect)
 
 
 class RestrictedFileField(fields.FileField):

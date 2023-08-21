@@ -1,6 +1,13 @@
 from django.contrib import admin
 
-from .models import CoreSettings, DicomFolder, DicomJob, DicomServer, DicomTask
+from .models import (
+    CoreSettings,
+    DicomFolder,
+    DicomJob,
+    DicomNodeInstituteAccess,
+    DicomServer,
+    DicomTask,
+)
 
 admin.site.site_header = "ADIT administration"
 
@@ -43,9 +50,16 @@ class DicomTaskAdmin(admin.ModelAdmin):
     get_owner.admin_order_field = "job__owner__username"
 
 
+class DicomNodeInstituteAccessInline(admin.TabularInline):
+    model = DicomNodeInstituteAccess
+    extra = 1
+    ordering = ("institute__name",)
+
+
 class DicomServerAdmin(admin.ModelAdmin):
     list_display = ("name", "ae_title", "host", "port")
     exclude = ("node_type",)
+    inlines = (DicomNodeInstituteAccessInline,)
 
 
 admin.site.register(DicomServer, DicomServerAdmin)
@@ -54,6 +68,7 @@ admin.site.register(DicomServer, DicomServerAdmin)
 class DicomFolderAdmin(admin.ModelAdmin):
     list_display = ("name", "path")
     exclude = ("node_type",)
+    inlines = (DicomNodeInstituteAccessInline,)
 
 
 admin.site.register(DicomFolder, DicomFolderAdmin)
