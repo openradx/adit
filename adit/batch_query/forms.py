@@ -9,14 +9,12 @@ from django.utils.safestring import mark_safe
 
 from adit.core.errors import BatchFileContentError, BatchFileFormatError, BatchFileSizeError
 from adit.core.fields import DicomNodeChoiceField, RestrictedFileField
-from adit.core.models import DicomNode
 
 from .models import BatchQueryJob, BatchQueryTask
 from .parsers import BatchQueryFileParser
 
 
 class BatchQueryJobForm(forms.ModelForm):
-    source = DicomNodeChoiceField(True, DicomNode.NodeType.SERVER)
     batch_file = RestrictedFileField(
         max_upload_size=5242880,
         label="Batch file",
@@ -54,17 +52,13 @@ class BatchQueryJobForm(forms.ModelForm):
 
         super().__init__(*args, **kwargs)
 
-        self.fields["source"].widget.attrs["class"] = "form-select"
+        self.fields["source"] = DicomNodeChoiceField("source", user)
         self.fields["source"].widget.attrs["@change"] = "onSourceChange($event)"
 
         self.fields["urgent"].widget.attrs["@change"] = "onUrgentChange($event)"
 
         if not user.has_perm("batch_query.can_process_urgently"):
             del self.fields["urgent"]
-
-        self.fields["source"].queryset = self.fields["source"].queryset.order_by(
-            "-node_type", "name"
-        )
 
         self.max_batch_size = settings.MAX_BATCH_QUERY_SIZE if not user.is_staff else None
 

@@ -4,20 +4,23 @@ import pandas as pd
 import pytest
 from playwright.sync_api import Locator, Page, expect
 
+from adit.accounts.factories import InstituteFactory
 from adit.batch_transfer.models import BatchTransferJob
+from adit.core.factories import DicomNodeInstituteAccessFactory
 
 
 @pytest.mark.integration
 @pytest.mark.django_db(transaction=True)
-def test_unpseudonymized_urgent_batch_transfer_succeeds(
+def test_unpseudonymized_urgent_batch_transfer_with_dimse_server(
     page: Page,
     poll: Callable[[Locator], Locator],
-    setup_orthancs,
+    dimse_orthancs,
     adit_celery_worker,
     channels_live_server,
     create_and_login_user,
     create_excel_file,
 ):
+    # Arrange
     df = pd.DataFrame(
         [["1005", "1.2.840.113845.11.1000000001951524609.20200705173311.2689472"]],
         columns=["PatientID", "StudyInstanceUID"],
@@ -28,7 +31,16 @@ def test_unpseudonymized_urgent_batch_transfer_succeeds(
     user.join_group("batch_transfer_group")
     user.add_permission("can_process_urgently", BatchTransferJob)
     user.add_permission("can_transfer_unpseudonymized", BatchTransferJob)
+    institute = InstituteFactory.create()
+    institute.users.add(user)
+    DicomNodeInstituteAccessFactory.create(
+        dicom_node=dimse_orthancs[0], institute=institute, source=True
+    )
+    DicomNodeInstituteAccessFactory.create(
+        dicom_node=dimse_orthancs[1], institute=institute, destination=True
+    )
 
+    # Act
     page.goto(channels_live_server.url + "/batch-transfer/jobs/new/")
     page.get_by_label("Source").select_option(label="DICOM Server Orthanc Test Server 1")
     page.get_by_label("Destination").select_option(label="DICOM Server Orthanc Test Server 2")
@@ -38,20 +50,23 @@ def test_unpseudonymized_urgent_batch_transfer_succeeds(
     page.get_by_label("Ethics committee approval").fill("I have it, I swear.")
     page.get_by_label("Batch file").set_input_files(files=[batch_file])
     page.locator('input:has-text("Create job")').click()
+
+    # Assert
     expect(poll(page.locator('dl:has-text("Success")'))).to_be_visible()
 
 
 @pytest.mark.integration
 @pytest.mark.django_db(transaction=True)
-def test_unpseudonymized_urgent_batch_transfer_succeeds_dicomweb(
+def test_unpseudonymized_urgent_batch_transfer_with_dicomweb_server(
     page: Page,
     poll: Callable[[Locator], Locator],
-    setup_dicomweb_orthancs,
+    dicomweb_orthancs,
     adit_celery_worker,
     channels_live_server,
     create_and_login_user,
     create_excel_file,
 ):
+    # Arrange
     df = pd.DataFrame(
         [["1005", "1.2.840.113845.11.1000000001951524609.20200705173311.2689472"]],
         columns=["PatientID", "StudyInstanceUID"],
@@ -62,7 +77,16 @@ def test_unpseudonymized_urgent_batch_transfer_succeeds_dicomweb(
     user.join_group("batch_transfer_group")
     user.add_permission("can_process_urgently", BatchTransferJob)
     user.add_permission("can_transfer_unpseudonymized", BatchTransferJob)
+    institute = InstituteFactory.create()
+    institute.users.add(user)
+    DicomNodeInstituteAccessFactory.create(
+        dicom_node=dicomweb_orthancs[0], institute=institute, source=True
+    )
+    DicomNodeInstituteAccessFactory.create(
+        dicom_node=dicomweb_orthancs[1], institute=institute, destination=True
+    )
 
+    # Act
     page.goto(channels_live_server.url + "/batch-transfer/jobs/new/")
     page.get_by_label("Source").select_option(label="DICOM Server Orthanc Test Server 1")
     page.get_by_label("Destination").select_option(label="DICOM Server Orthanc Test Server 2")
@@ -72,4 +96,6 @@ def test_unpseudonymized_urgent_batch_transfer_succeeds_dicomweb(
     page.get_by_label("Ethics committee approval").fill("I have it, I swear.")
     page.get_by_label("Batch file").set_input_files(files=[batch_file])
     page.locator('input:has-text("Create job")').click()
+
+    # Assert
     expect(poll(page.locator('dl:has-text("Success")'))).to_be_visible()

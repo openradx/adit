@@ -8,8 +8,9 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.urls import reverse
 from pytest_django.asserts import assertTemplateUsed
 
-from adit.accounts.factories import UserFactory
-from adit.core.factories import DicomServerFactory
+from adit.accounts.factories import InstituteFactory, UserFactory
+from adit.core.factories import DicomNodeInstituteAccessFactory, DicomServerFactory
+from adit.core.models import DicomServer
 
 from ..models import BatchTransferJob
 
@@ -43,19 +44,6 @@ def form_data(db):
     }
 
 
-@pytest.fixture
-def user_without_permission(db):
-    return UserFactory()
-
-
-@pytest.fixture
-def user_with_permission(db):
-    user = UserFactory.create()
-    batch_transfer_group = Group.objects.get(name="batch_transfer_group")
-    user.groups.add(batch_transfer_group)
-    return user
-
-
 @pytest.mark.django_db
 def test_user_must_be_logged_in_to_access_view(client):
     response = client.get(reverse("batch_transfer_job_create"))
@@ -64,16 +52,22 @@ def test_user_must_be_logged_in_to_access_view(client):
     assert response.status_code == 302
 
 
-def test_user_must_have_permission_to_access_view(client, user_without_permission):
-    client.force_login(user_without_permission)
+@pytest.mark.django_db
+def test_user_must_have_permission_to_access_view(client):
+    user = UserFactory.create()
+    client.force_login(user)
     response = client.get(reverse("batch_transfer_job_create"))
     assert response.status_code == 403
     response = client.post(reverse("batch_transfer_job_create"))
     assert response.status_code == 403
 
 
-def test_logged_in_user_with_permission_can_access_form(client, user_with_permission):
-    client.force_login(user_with_permission)
+@pytest.mark.django_db
+def test_logged_in_user_with_permission_can_access_form(client):
+    user = UserFactory.create()
+    batch_transfer_group = Group.objects.get(name="batch_transfer_group")
+    user.groups.add(batch_transfer_group)
+    client.force_login(user)
     response = client.get(reverse("batch_transfer_job_create"))
     assert response.status_code == 200
     assertTemplateUsed(response, "batch_transfer/batch_transfer_job_form.html")
@@ -81,10 +75,23 @@ def test_logged_in_user_with_permission_can_access_form(client, user_with_permis
 
 @patch("celery.current_app.send_task")
 def test_batch_job_created_and_enqueued_with_auto_verify(
-    send_task_mock, client, user_with_permission, settings, form_data
+    send_task_mock, client, settings, form_data
 ):
-    client.force_login(user_with_permission)
     settings.BATCH_TRANSFER_UNVERIFIED = True
+    user = UserFactory.create()
+    batch_transfer_group = Group.objects.get(name="batch_transfer_group")
+    user.groups.add(batch_transfer_group)
+    client.force_login(user)
+    institute = InstituteFactory.create()
+    institute.users.add(user)
+    source_server = DicomServer.objects.get(pk=form_data["source"])
+    DicomNodeInstituteAccessFactory.create(
+        dicom_node=source_server, institute=institute, source=True
+    )
+    destination_server = DicomServer.objects.get(pk=form_data["destination"])
+    DicomNodeInstituteAccessFactory.create(
+        dicom_node=destination_server, institute=institute, destination=True
+    )
     client.post(reverse("batch_transfer_job_create"), form_data)
     job = BatchTransferJob.objects.first()
     assert job and job.tasks.count() == 3
@@ -95,18 +102,34 @@ def test_batch_job_created_and_enqueued_with_auto_verify(
 
 @patch("celery.current_app.send_task")
 def test_batch_job_created_and_not_enqueued_without_auto_verify(
-    send_task_mock, client, user_with_permission, settings, form_data
+    send_task_mock, client, settings, form_data
 ):
-    client.force_login(user_with_permission)
     settings.BATCH_TRANSFER_UNVERIFIED = False
+    user = UserFactory.create()
+    batch_transfer_group = Group.objects.get(name="batch_transfer_group")
+    user.groups.add(batch_transfer_group)
+    client.force_login(user)
+    institute = InstituteFactory.create()
+    institute.users.add(user)
+    source_server = DicomServer.objects.get(pk=form_data["source"])
+    DicomNodeInstituteAccessFactory.create(
+        dicom_node=source_server, institute=institute, source=True
+    )
+    destination_server = DicomServer.objects.get(pk=form_data["destination"])
+    DicomNodeInstituteAccessFactory.create(
+        dicom_node=destination_server, institute=institute, destination=True
+    )
     client.post(reverse("batch_transfer_job_create"), form_data)
     job = BatchTransferJob.objects.first()
     assert job and job.tasks.count() == 3
     send_task_mock.assert_not_called()
 
 
-def test_job_cant_be_created_with_missing_fields(client, user_with_permission, form_data):
-    client.force_login(user_with_permission)
+def test_job_cant_be_created_with_missing_fields(client, form_data):
+    user = UserFactory.create()
+    batch_transfer_group = Group.objects.get(name="batch_transfer_group")
+    user.groups.add(batch_transfer_group)
+    client.force_login(user)
     for key_to_exclude in form_data:
         invalid_form_data = form_data.copy()
         del invalid_form_data[key_to_exclude]

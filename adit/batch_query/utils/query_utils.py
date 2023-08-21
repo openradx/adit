@@ -4,6 +4,7 @@ from celery.contrib.abortable import AbortableTask as AbortableCeleryTask  # pyr
 from django.conf import settings
 from django.template.defaultfilters import pluralize
 
+from adit.core.models import DicomNode
 from adit.core.utils.dicom_dataset import QueryDataset, ResultDataset
 from adit.core.utils.dicom_operator import DicomOperator
 
@@ -30,6 +31,11 @@ class QueryExecutor:
         self.operator = _create_source_operator(query_task)
 
     def start(self) -> tuple[BatchQueryTask.Status, str]:
+        query_job = self.query_task.job
+        accessible_source_nodes = DicomNode.objects.accessible_by_user(query_job.owner, "source")
+        if not accessible_source_nodes.filter(pk=query_job.source.pk).exists():
+            raise ValueError(f"Not accessible DICOM source node: {query_job.source}")
+
         patient = self._fetch_patient()
 
         is_series_query = self.query_task.series_description or self.query_task.series_numbers

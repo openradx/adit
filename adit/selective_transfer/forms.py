@@ -16,8 +16,6 @@ from .models import SelectiveTransferJob
 
 
 class SelectiveTransferJobForm(forms.ModelForm):
-    source = DicomNodeChoiceField(True, DicomNode.NodeType.SERVER)
-    destination = DicomNodeChoiceField(False)
     pseudonym = forms.CharField(
         required=False,
         max_length=64,
@@ -68,12 +66,8 @@ class SelectiveTransferJobForm(forms.ModelForm):
         if not self.user.has_perm("selective_transfer.can_process_urgently"):
             del self.fields["urgent"]
 
-        self.fields["source"].queryset = self.fields["source"].queryset.order_by(
-            "-node_type", "name"
-        )
-        self.fields["destination"].queryset = self.fields["destination"].queryset.order_by(
-            "-node_type", "name"
-        )
+        self.fields["source"] = DicomNodeChoiceField("source", self.user)
+        self.fields["destination"] = DicomNodeChoiceField("destination", self.user)
 
         self.helper = FormHelper(self)
         self.helper.form_tag = False
@@ -124,14 +118,12 @@ class SelectiveTransferJobForm(forms.ModelForm):
                 Column(
                     Field(
                         "source",
-                        css_class="form-select",
                         **{"@change": "onSourceChange($event)"},
                     )
                 ),
                 Column(
                     Field(
                         "destination",
-                        css_class="form-select",
                         **{
                             "x-init": "initDestination($el)",
                             "@change": "onDestinationChange($event)",

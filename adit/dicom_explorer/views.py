@@ -1,7 +1,6 @@
 import asyncio
 from urllib.parse import urlencode
 
-from asgiref.sync import sync_to_async
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
@@ -10,7 +9,9 @@ from django.shortcuts import redirect, render
 from django.urls import resolve, reverse
 
 from adit.core import validators
+from adit.core.decorators import login_required_async, permission_required_async
 from adit.core.models import DicomServer
+from adit.core.types import AuthenticatedHttpRequest
 from adit.core.utils.dicom_dataset import QueryDataset
 
 from .forms import DicomExplorerQueryForm
@@ -18,11 +19,11 @@ from .utils.dicom_data_collector import DicomDataCollector
 
 
 @login_required
-def dicom_explorer_form_view(request: HttpRequest) -> HttpResponse:
+def dicom_explorer_form_view(request: AuthenticatedHttpRequest) -> HttpResponse:
     if request.GET:
-        form = DicomExplorerQueryForm(request.GET)
+        form = DicomExplorerQueryForm(request.GET, user=request.user)
     else:
-        form = DicomExplorerQueryForm()
+        form = DicomExplorerQueryForm(user=request.user)
 
     if not request.GET or not form.is_valid():
         return render(request, "dicom_explorer/query_form.html", {"form": form})
@@ -51,17 +52,15 @@ def dicom_explorer_form_view(request: HttpRequest) -> HttpResponse:
     raise AssertionError("Invalid DICOM explorer query.")
 
 
+@login_required_async
+@permission_required_async("dicom_explorer.query_dicom_server")
 async def dicom_explorer_resources_view(
-    request: HttpRequest,
+    request: AuthenticatedHttpRequest,
     server_id: str | None = None,
     patient_id: str | None = None,
     study_uid: str | None = None,
     series_uid: str | None = None,
 ) -> HttpResponse:
-    denied_response = await check_permission(request)
-    if denied_response:
-        return denied_response
-
     if patient_id is not None and not is_valid_id(patient_id):
         render_error(request, f"Invalid Patient ID {patient_id}.")
     if study_uid is not None and not is_valid_id(study_uid):
@@ -87,14 +86,6 @@ async def dicom_explorer_resources_view(
         return render_error(request, "Connection to server timed out. Please try again later.")
 
 
-@sync_to_async
-@login_required  # type: ignore
-def check_permission(request: HttpRequest) -> None:
-    # A dummy function for the permission decorators
-    # TODO: check if user really has permission to access dicom explorer
-    pass
-
-
 def is_valid_id(value):
     try:
         validators.no_backslash_char_validator(value)
@@ -111,7 +102,7 @@ def render_error(request: HttpRequest, error_message: str) -> HttpResponse:
 
 
 def render_query_result(
-    request: HttpRequest,
+    request: AuthenticatedHttpRequest,
     server_id: str | None = None,
     patient_id: str | None = None,
     study_uid: str | None = None,
@@ -132,7 +123,7 @@ def render_query_result(
         return render_server_query(request, query)
 
     try:
-        server = DicomServer.objects.get(id=server_id, source_active=True)
+        server = DicomServer.objects.accessible_by_user(request.user, "source").get(id=server_id)
     except DicomServer.DoesNotExist:
         return render_error(request, f"Invalid DICOM server with ID {server_id}.")
 
@@ -168,7 +159,7 @@ def render_query_result(
 
 def render_server_query(request: HttpRequest, query: dict[str, str]) -> HttpResponse:
     """Query servers and render the result."""
-    final_query = query | {"source_active": True}
+    final_query = query | {"accesses_source": True}
     servers = DicomServer.objects.filter(**final_query).order_by("id")
     return render(request, "dicom_explorer/server_query.html", {"servers": servers})
 

@@ -5,11 +5,12 @@ import time_machine
 from celery import Task as CeleryTask
 from pydicom import Dataset
 
-from adit.accounts.factories import UserFactory
+from adit.accounts.factories import InstituteFactory, UserFactory
 from adit.core.utils.dicom_dataset import ResultDataset
 
 from ...factories import (
     DicomFolderFactory,
+    DicomNodeInstituteAccessFactory,
     DicomServerFactory,
 )
 from ...models import TransferJob, TransferTask
@@ -59,6 +60,12 @@ def test_transfer_to_server_succeeds(
         series_uids="",
         pseudonym="",
         job=job,
+    )
+    institute = InstituteFactory.create()
+    institute.users.add(job.owner)
+    DicomNodeInstituteAccessFactory.create(dicom_node=job.source, institute=institute, source=True)
+    DicomNodeInstituteAccessFactory.create(
+        dicom_node=job.destination, institute=institute, destination=True
     )
 
     patient, study = create_resources(task)
@@ -110,8 +117,14 @@ def test_transfer_to_folder_succeeds(
         patient_id="1001",
         series_uids="",
         pseudonym="",
+        job=job,
     )
-    task.job = job
+    institute = InstituteFactory.create()
+    institute.users.add(job.owner)
+    DicomNodeInstituteAccessFactory.create(dicom_node=job.source, institute=institute, source=True)
+    DicomNodeInstituteAccessFactory.create(
+        dicom_node=job.destination, institute=institute, destination=True
+    )
 
     patient, study = create_resources(task)
 
@@ -148,11 +161,14 @@ def test_transfer_to_archive_succeeds(
         archive_password="mysecret",
     )
     task = example_models.transfer_task_factory_class.create(
-        status=TransferTask.Status.PENDING,
-        series_uids="",
-        pseudonym="",
+        status=TransferTask.Status.PENDING, series_uids="", pseudonym="", job=job
     )
-    task.job = job
+    institute = InstituteFactory.create()
+    institute.users.add(job.owner)
+    DicomNodeInstituteAccessFactory.create(dicom_node=job.source, institute=institute, source=True)
+    DicomNodeInstituteAccessFactory.create(
+        dicom_node=job.destination, institute=institute, destination=True
+    )
 
     patient, study = create_resources(task)
 

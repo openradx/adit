@@ -9,7 +9,7 @@ from requests import HTTPError
 @pytest.mark.integration
 @pytest.mark.django_db(transaction=True)
 def test_qido_study(
-    setup_orthancs,
+    dimse_orthancs,
     channels_live_server,
     create_dicom_web_client,
     full_data_sheet,
@@ -36,7 +36,7 @@ def test_qido_study(
 @pytest.mark.integration
 @pytest.mark.django_db(transaction=True)
 def test_qido_series(
-    setup_orthancs,
+    dimse_orthancs,
     channels_live_server,
     create_dicom_web_client,
     extended_data_sheet,

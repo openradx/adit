@@ -233,8 +233,8 @@ def ci(ctx: Context):
 
 
 @task
-def reset_adit_dev(ctx: Context):
-    """Reset ADIT dev container environment"""
+def reset_dev(ctx: Context):
+    """Reset dev container environment"""
     # Reset Orthancs
     reset_orthancs(ctx, "dev")
     # Wipe the database

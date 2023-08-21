@@ -45,7 +45,9 @@ def broadcast_mail(subject: str, message: str):
 
 @shared_task(ignore_result=True)
 def check_disk_space():
-    folders = DicomFolder.objects.filter(destination_active=True)
+    # TODO: Maybe only check active folders (that belong to an institute and are active
+    # as a destination)
+    folders = DicomFolder.objects.all()
     for folder in folders:
         size = int(subprocess.check_output(["du", "-sm", folder.path]).split()[0].decode("utf-8"))
         size = size / 1024  # convert MB to GB

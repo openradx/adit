@@ -10,6 +10,7 @@ from .models import (
     DicomFolder,
     DicomJob,
     DicomNode,
+    DicomNodeInstituteAccess,
     DicomServer,
     DicomTask,
     TransferJob,
@@ -32,8 +33,21 @@ class AbstractDicomNodeFactory(Generic[T], BaseDjangoModelFactory[T]):
         model: DicomNode
 
     name = factory.Faker("domain_word")
-    source_active = True
-    destination_active = True
+
+
+def random_dicom_node_factory():
+    return fake.random_element(elements=[DicomServerFactory, DicomFolderFactory])
+
+
+class DicomNodeInstituteAccessFactory(BaseDjangoModelFactory[DicomNodeInstituteAccess]):
+    class Meta:
+        model = DicomNodeInstituteAccess
+        django_get_or_create = ("dicom_node", "institute")
+
+    dicom_node = factory.LazyFunction(random_dicom_node_factory)
+    institute = factory.SubFactory(UserFactory)
+    source = factory.Faker("boolean", chance_of_getting_true=50)
+    destination = factory.Faker("boolean", chance_of_getting_true=50)
 
 
 class DicomServerFactory(AbstractDicomNodeFactory[DicomServer]):

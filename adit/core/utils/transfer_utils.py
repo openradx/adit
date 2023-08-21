@@ -51,11 +51,17 @@ class TransferExecutor:
     def start(self) -> tuple[TransferTask.Status, str]:
         transfer_job: TransferJob = self.transfer_task.job
 
-        if not transfer_job.source.source_active:
-            raise ValueError(f"Source DICOM node not active: {transfer_job.source.name}")
+        accessible_source_nodes = DicomNode.objects.accessible_by_user(transfer_job.owner, "source")
+        if not accessible_source_nodes.filter(pk=transfer_job.source.pk).exists():
+            raise ValueError(f"Not accessible DICOM source node: {transfer_job.source.name}")
 
-        if not transfer_job.destination.destination_active:
-            raise ValueError(f"Destination DICOM node not active: {transfer_job.destination.name}")
+        accessible_destination_nodes = DicomNode.objects.accessible_by_user(
+            transfer_job.owner, "destination"
+        )
+        if not accessible_destination_nodes.filter(pk=transfer_job.destination.pk).exists():
+            raise ValueError(
+                f"Not accessible DICOM destination node: {transfer_job.destination.name}"
+            )
 
         if self.dest_operator:
             self._transfer_to_server()
