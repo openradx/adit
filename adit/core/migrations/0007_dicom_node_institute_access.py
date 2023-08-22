@@ -7,7 +7,7 @@ import django.db.models.deletion
 class Migration(migrations.Migration):
     dependencies = [
         ("accounts", "0005_institute"),
-        ("core", "0006_dicomweb_config"),
+        ("core", "0006_dicomserver_dicomweb_authorization_header_and_more"),
     ]
 
     operations = [
