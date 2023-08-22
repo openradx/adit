@@ -7,24 +7,28 @@ class AditClient:
         self.server_url = server_url
         self.auth_token = auth_token
 
-    def search_for_studies(self, ae_title: str, filters: dict[str, str]) -> list[Dataset]:
-        results = self._create_dicom_web_client(ae_title).search_for_studies(search_filters=filters)
+    def search_for_studies(
+        self, ae_title: str, query: dict[str, str] | None = None
+    ) -> list[Dataset]:
+        """Query an ADIT server for studies."""
+        results = self._create_dicom_web_client(ae_title).search_for_studies(search_filters=query)
         return [Dataset.from_json(result) for result in results]
 
     def search_for_series(
-        self, ae_title: str, study_instance_uid: str, filters: dict[str, str]
+        self, ae_title: str, study_instance_uid: str, query: dict[str, str] | None = None
     ) -> list[Dataset]:
+        """Query an ADIT server for series."""
         results = self._create_dicom_web_client(ae_title).search_for_series(
-            study_instance_uid, search_filters=filters
+            study_instance_uid, search_filters=query
         )
         return [Dataset.from_json(result) for result in results]
 
     def retrieve_study(self, ae_title: str, study_instance_uid: str) -> list[Dataset]:
+        """Retrieve a study from an ADIT server."""
         if not study_instance_uid:
             raise ValueError("Study instance UID must be provided to retrieve study.")
 
-        results = self._create_dicom_web_client(ae_title).retrieve_study(study_instance_uid)
-        return [Dataset.from_json(result) for result in results]
+        return self._create_dicom_web_client(ae_title).retrieve_study(study_instance_uid)
 
     def retrieve_series(
         self,
@@ -32,18 +36,19 @@ class AditClient:
         study_instance_uid: str,
         series_instance_uid: str,
     ) -> list[Dataset]:
+        """Retrieve a series from an ADIT server."""
         if not study_instance_uid:
             raise ValueError("Study instance UID must be provided to retrieve series.")
 
         if not series_instance_uid:
             raise ValueError("Series instance UID must be provided to retrieve series.")
 
-        results = self._create_dicom_web_client(ae_title).retrieve_series(
+        return self._create_dicom_web_client(ae_title).retrieve_series(
             study_instance_uid, series_instance_uid=series_instance_uid
         )
-        return [Dataset.from_json(result) for result in results]
 
     def store_instances(self, ae_title: str, instances: list[Dataset]) -> None:
+        """Store some instances on an ADIT server."""
         self._create_dicom_web_client(ae_title).store_instances(instances)
 
     def _create_dicom_web_client(self, ae_title: str) -> DICOMwebClient:
@@ -52,5 +57,5 @@ class AditClient:
             qido_url_prefix="qidors",
             wado_url_prefix="wadors",
             stow_url_prefix="stowrs",
-            headers={"Authorization": self.auth_token},
+            headers={"Authorization": f"Token {self.auth_token}"},
         )
