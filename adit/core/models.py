@@ -80,11 +80,13 @@ class DicomNodeManager(models.Manager):
             accessible_nodes = self.filter(accesses__institute__in=user.institutes.all())
 
         if access_type == "source":
-            return accessible_nodes.filter(accesses__source=True)
+            accessible_nodes = accessible_nodes.filter(accesses__source=True)
         elif access_type == "destination":
-            return accessible_nodes.filter(accesses__destination=True)
+            accessible_nodes = accessible_nodes.filter(accesses__destination=True)
         else:
             raise AssertionError(f"Invalid node type: {access_type}")
+
+        return accessible_nodes.distinct()
 
 
 class DicomNode(models.Model):
