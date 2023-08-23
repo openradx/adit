@@ -1,7 +1,6 @@
 import json
 import os
 from io import BytesIO
-from typing import Optional
 
 from pydicom import Dataset
 from rest_framework.renderers import BaseRenderer
@@ -20,10 +19,10 @@ class QidoApplicationDicomJsonRenderer(BaseRenderer):
 class DicomWebWadoRenderer(BaseRenderer):
     media_type: str
     format: str
-    subtype: Optional[str]
-    boundary: Optional[str]
-    charset: Optional[str]
-    mode: Optional[str]
+    subtype: str | None
+    boundary: str | None
+    charset: str | None
+    mode: str | None
 
     @property
     def content_type(self) -> str:
@@ -96,7 +95,6 @@ class WadoMultipartApplicationDicomRenderer(DicomWebWadoRenderer):
 class WadoApplicationDicomJsonRenderer(DicomWebWadoRenderer):
     media_type = "application/dicom+json"
     format = "json"
-
     mode = "metadata"
 
     def start_file_meta_list(self):
@@ -128,6 +126,9 @@ class StowApplicationDicomJsonRenderer(BaseRenderer):
         for ds in data:
             result_list.append(ds.to_json_dict())
 
+        # TODO: We currently don't respect the DICOM standard here. We should respect
+        # https://dicom.nema.org/medical/dicom/current/output/html/part18.html#table_10.5.3-1
+        # and evaluate the response status codes correctly.
         if len(result_list) == 1:
             return json.dumps(result_list[0])
         return json.dumps(result_list)

@@ -50,7 +50,9 @@ async def stow_store(dest_server: DicomServer, datasets: list[Dataset]) -> list[
         except Exception as e:
             logger.error("Failed to upload dataset %s", ds.SOPInstanceUID)
             logger.error(e)
-            result_ds.FailureReason = "0110"
+
+            # https://dicom.nema.org/medical/dicom/current/output/html/part18.html#sect_I.2.2
+            result_ds.FailureReason = "0110"  # Processing failure
             result_dict[ds.StudyInstanceUID].FailedSOPSequence.append(result_ds)
 
     return list(result_dict.values())

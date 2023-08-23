@@ -11,6 +11,7 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 
 from adit.core.models import DicomServer
+from adit.core.types import AuthenticatedRequest
 
 from .parsers import StowMultipartApplicationDicomParser
 from .renderers import (
@@ -26,17 +27,26 @@ from .utils.wadors_utils import wado_retrieve
 logger = logging.getLogger(__name__)
 
 
-class QueryAPIView(AsyncApiView):
+class WebDicomAPIView(AsyncApiView):
+    @sync_to_async
+    def _fetch_dicom_server(
+        self,
+        request: AuthenticatedRequest,
+        ae_title: str,
+        access_type: Literal["source", "destination"],
+    ) -> DicomServer:
+        try:
+            accessible_servers = DicomServer.objects.accessible_by_user(request.user, access_type)
+            return accessible_servers.get(ae_title=ae_title)
+        except DicomServer.DoesNotExist:
+            raise ParseError(
+                f'Server with AE title "{ae_title}" does not exist or is not accessible.'
+            )
+
+
+class QueryAPIView(WebDicomAPIView):
     level: Literal["STUDY", "SERIES"]
     renderer_classes = [QidoApplicationDicomJsonRenderer]
-
-    async def handle_request(self, pacs_ae_title: str) -> DicomServer:
-        try:
-            source_server = await DicomServer.objects.aget(ae_title=pacs_ae_title)
-        except DicomServer.DoesNotExist:
-            raise ParseError(f"The specified PACS with AE title: {pacs_ae_title} does not exist.")
-
-        return source_server
 
 
 class QueryStudyAPIView(QueryAPIView):
@@ -44,14 +54,14 @@ class QueryStudyAPIView(QueryAPIView):
 
     async def get(
         self,
-        request: Request,
-        pacs: str,
+        request: AuthenticatedRequest,
+        ae_title: str,
     ) -> Response:
         query: dict[str, str] = {}
         for key, value in request.GET.items():
             query[key] = value
 
-        source_server = await self.handle_request(pacs)
+        source_server = await self._fetch_dicom_server(request, ae_title, "source")
         results = await qido_find(source_server, query, self.level)
 
         return Response([result.dataset.to_json_dict() for result in results])
@@ -62,8 +72,8 @@ class QuerySeriesAPIView(QueryAPIView):
 
     async def get(
         self,
-        request: Request,
-        pacs: str,
+        request: AuthenticatedRequest,
+        ae_title: str,
         study_uid: str = "",
     ) -> Response:
         query: dict[str, str] = {}
@@ -79,13 +89,13 @@ class QuerySeriesAPIView(QueryAPIView):
             )
 
         query["StudyInstanceUID"] = study_uid
-        source_server = await self.handle_request(pacs)
+        source_server = await self._fetch_dicom_server(request, ae_title, "source")
         results = await qido_find(source_server, query, self.level)
 
         return Response([result.dataset.to_json_dict() for result in results])
 
 
-class RetrieveAPIView(AsyncApiView):
+class RetrieveAPIView(WebDicomAPIView):
     level: Literal["STUDY", "SERIES"]
     query: dict = {
         "StudyInstanceUID": "",
@@ -96,32 +106,44 @@ class RetrieveAPIView(AsyncApiView):
     renderer_classes = [WadoMultipartApplicationDicomRenderer, WadoApplicationDicomJsonRenderer]
 
     async def handle_request(
-        self, request: Request, pacs_ae_title: str, mode: str, study_uid: str, series_uid: str = ""
+        self,
+        request: AuthenticatedRequest,
+        ae_title: str,
+        mode: str,
+        study_uid: str,
+        series_uid: str = "",
     ) -> tuple[DicomServer, Path]:
         await self._check_renderer_mode(request, mode)
 
-        try:
-            source_server = await DicomServer.objects.aget(ae_title=pacs_ae_title)
-        except DicomServer.DoesNotExist:
-            raise ParseError(f"The specified PACS with AE title: {pacs_ae_title} does not exist.")
+        source_server = await self._fetch_dicom_server(request, ae_title, "source")
 
         # A PACS without the below capabilities is not supported. Even when it has Patient Root GET
-        # or MOVE support, because the DICOMweb client can't provide a PatientID. DICOMweb never
-        # works on the Patient level.
+        # or MOVE support, because the DICOMweb client can't provide a PatientID in a WADO request.
+        # DICOMweb does never seem to work on the Patient level.
         if not (
             source_server.study_root_get_support
             or source_server.study_root_move_support
             or source_server.dicomweb_wado_support
         ):
             raise ParseError(
-                f"The specified PACS with AE title {pacs_ae_title} does not support WADO-RS."
+                f"The specified server with AE title '{ae_title}' does not support WADO-RS."
             )
 
         folder_path = await self._generate_temp_folder(study_uid, series_uid, self.level)
 
         return source_server, folder_path
 
-    async def _generate_temp_folder(self, study_uid: str, series_uid: str, level: str) -> Path:
+    async def _check_renderer_mode(self, request: Request, mode: str):
+        if mode != request.accepted_renderer.mode:  # type: ignore
+            raise NotAcceptable(
+                "Media type {} is not supported for retrieve mode {}".format(
+                    request.accepted_renderer.media_type, mode  # type: ignore
+                )
+            )
+
+    async def _generate_temp_folder(
+        self, study_uid: str, series_uid: str, level: Literal["STUDY", "SERIES"]
+    ) -> Path:
         folder_path = Path(settings.TEMP_DICOM_DIR) / "wado"
         if level == "STUDY":
             folder_path = folder_path / ("study_" + study_uid)
@@ -132,26 +154,18 @@ class RetrieveAPIView(AsyncApiView):
 
         return folder_path
 
-    async def _check_renderer_mode(self, request: Request, mode: str):
-        if mode != request.accepted_renderer.mode:  # type: ignore
-            raise NotAcceptable(
-                "Media type {} is not supported for retrieve mode {}".format(
-                    request.accepted_renderer.media_type, mode  # type: ignore
-                )
-            )
-
 
 class RetrieveStudyAPIView(RetrieveAPIView):
     level = "STUDY"
 
     async def get(
         self,
-        request: Request,
-        pacs: str,
+        request: AuthenticatedRequest,
+        ae_title: str,
         study_uid: str,
         mode: str = "bulk",
     ) -> Response:
-        source_server, folder_path = await self.handle_request(request, pacs, mode, study_uid)
+        source_server, folder_path = await self.handle_request(request, ae_title, mode, study_uid)
         query = self.query.copy()
         query["StudyInstanceUID"] = study_uid
 
@@ -168,14 +182,14 @@ class RetrieveSeriesAPIView(RetrieveAPIView):
 
     async def get(
         self,
-        request: Request,
-        pacs: str,
+        request: AuthenticatedRequest,
+        ae_title: str,
         study_uid: str,
         series_uid: str,
         mode: str = "bulk",
     ) -> Response:
         source_server, folder_path = await self.handle_request(
-            request, pacs, mode, study_uid, series_uid
+            request, ae_title, mode, study_uid, series_uid
         )
         query = self.query.copy()
         query["StudyInstanceUID"] = study_uid
@@ -190,24 +204,20 @@ class RetrieveSeriesAPIView(RetrieveAPIView):
         )
 
 
-class StoreAPIView(AsyncApiView):
+class StoreAPIView(WebDicomAPIView):
     parser_classes = [StowMultipartApplicationDicomParser]
     renderer_classes = [StowApplicationDicomJsonRenderer]
 
-    async def handle_request(self, pacs_ae_title: str) -> DicomServer:
-        try:
-            dest_server = await DicomServer.objects.aget(ae_title=pacs_ae_title)
-        except DicomServer.DoesNotExist:
-            raise ParseError(f"The specified PACS with AE title: {pacs_ae_title} does not exist.")
-        return dest_server
+    async def handle_request(self, request: AuthenticatedRequest, ae_title: str) -> DicomServer:
+        return await self._fetch_dicom_server(request, ae_title, "destination")
 
     async def post(
         self,
-        request: Request,
-        pacs: str,
+        request: AuthenticatedRequest,
+        ae_title: str,
         study_uid: str = "",
     ) -> Response:
-        dest_server = await self.handle_request(pacs)
+        dest_server = await self.handle_request(request, ae_title)
 
         if study_uid:
             datasets = [
