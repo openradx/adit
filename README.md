@@ -2,20 +2,20 @@
 
 ## About
 
-ADIT (Automated DICOM Transfer) is a swiss army knife to exchange DICOM data between various systems by using a convenient web frontend.
+ADIT (Automated DICOM Transfer) is a Swiss army knife to exchange DICOM data between various systems by using a convenient web frontend.
 
 ## Features
 
-- Transfer DICOM data between DICOM compatible servers
+- Transfer DICOM data between DICOM-compatible servers
 - Download DICOM data to a specified folder
 - Pseudonymize DICOM data on the fly
-- Specify a trial name for the transfered data (stored in the DICOM header)
+- Specify a trial name for the transferred data (stored in the DICOM header)
 - Easy web interface to select which studies to transfer or download
 - Upload a batch file to make multiple queries on a DICOM server
 - Upload a batch file to transfer or download multiple studies
-- A REST API and API client to manage transfers programmatically by an external script (see below) (See [here](https://pypi.org/project/adit-dicomweb-client/) for a python client)
-- Define when transfers should happen, e.g. on at night (to reduce server load on the PACS)
-- Fine-grained control of what users can do or can't do and what they can access
+- A REST API and API client to manage transfers programmatically by an external script (see below)
+- Define when transfers should happen (for example, at night to reduce server load on the PACS)
+- Fine-grained control of what users can or can't do and what they can access
 - Help modals with detailed information for the most important features
 
 ## Upcoming features
@@ -28,17 +28,19 @@ ADIT client is a Python library to query, retrieve and upload DICOM images progr
 
 ## Screenshots
 
-![Screenshot1](https://user-images.githubusercontent.com/120626/155511207-d3bdf595-d3ec-4dfb-a606-660b7b30fa5b.png)
+![Screenshot1](https://github.com/radexperts/adit/assets/120626/f03d6af0-510f-4324-95f4-10bf8522fce2)
 
-![Screenshot2](https://user-images.githubusercontent.com/120626/155511254-95adbed7-ef2e-44bd-aa3b-6e055be527a5.png)
+![Screenshot2](https://github.com/radexperts/adit/assets/120626/2b322dd9-0ce3-4e8f-9ca3-a10e00842c62)
 
-![Screenshot3](https://user-images.githubusercontent.com/120626/155511300-4dafe29f-748f-4d69-81af-89afe63197a0.png)
+![Screenshot3](https://user-images.githubusercontent.com/120626/155511254-95adbed7-ef2e-44bd-aa3b-6e055be527a5.png)
 
-![Screenshot4](https://user-images.githubusercontent.com/120626/155511342-e64cd37d-4e92-4a9a-bbb0-4e88ea136d3c.png)
+![Screenshot4](https://user-images.githubusercontent.com/120626/155511300-4dafe29f-748f-4d69-81af-89afe63197a0.png)
+
+![Screenshot5](https://user-images.githubusercontent.com/120626/155511342-e64cd37d-4e92-4a9a-bbb0-4e88ea136d3c.png)
 
 ## Architectural overview
 
-The backend of ADIT is built using the Django web framework and data is stored in a PostgreSQL database. For DICOM transfer [pynetdicom](https://pydicom.github.io/pynetdicom/stable/) of the [pydicom](https://pydicom.github.io/) project is used.
+The backend of ADIT is built using the Django web framework, and data is stored in a PostgreSQL database. For DICOM transfer [pynetdicom](https://pydicom.github.io/pynetdicom/stable/) of the [pydicom](https://pydicom.github.io/) project is used.
 
 A transfer job contains one or more transfer tasks that describe what DICOM data to transfer and how to transfer it (source, destination, pseudonym).
 A transfer task is processed by a Celery worker (a task scheduler) in the background running in its own Docker container. Celery internally uses RabbitMQ to send new tasks to the worker and Redis to store the results (if needed).
@@ -59,4 +61,4 @@ ADIT is not a certified medical product. So use at your own risk.
 
 ## License
 
-- GPLv3
+- GPL 3.0 or later
