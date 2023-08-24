@@ -2,16 +2,28 @@ import pydicom
 import pytest
 from dicomweb_client import DICOMwebClient
 
+from adit.accounts.factories import InstituteFactory
+from adit.core.factories import DicomNodeInstituteAccessFactory
+from adit.core.models import DicomServer
+
 
 @pytest.mark.integration
 @pytest.mark.django_db(transaction=True)
 def test_wado_study(
     dimse_orthancs,
     channels_live_server,
+    user_with_token,
     create_dicom_web_client,
     extended_data_sheet,
 ):
-    orthanc1_client: DICOMwebClient = create_dicom_web_client(channels_live_server.url, "ORTHANC1")
+    user, token = user_with_token
+    institute = InstituteFactory.create()
+    institute.users.add(user)
+    server = DicomServer.objects.get(ae_title="ORTHANC1")
+    DicomNodeInstituteAccessFactory.create(dicom_node=server, institute=institute, source=True)
+    orthanc1_client: DICOMwebClient = create_dicom_web_client(
+        channels_live_server.url, server.ae_title
+    )
 
     study_uid = list(extended_data_sheet["StudyInstanceUID"])[0]
 
@@ -51,10 +63,18 @@ def test_wado_study(
 def test_wado_series(
     dimse_orthancs,
     channels_live_server,
+    user_with_token,
     create_dicom_web_client,
     extended_data_sheet,
 ):
-    orthanc1_client: DICOMwebClient = create_dicom_web_client(channels_live_server.url, "ORTHANC1")
+    user, token = user_with_token
+    institute = InstituteFactory.create()
+    institute.users.add(user)
+    server = DicomServer.objects.get(ae_title="ORTHANC1")
+    DicomNodeInstituteAccessFactory.create(dicom_node=server, institute=institute, source=True)
+    orthanc1_client: DICOMwebClient = create_dicom_web_client(
+        channels_live_server.url, server.ae_title
+    )
 
     study_uid = list(extended_data_sheet["StudyInstanceUID"])[0]
     series_uid = list(

@@ -16,18 +16,17 @@ os.environ.setdefault("DJANGO_ALLOW_ASYNC_UNSAFE", "true")
 
 
 @pytest.fixture
-def authentication_token():
+def user_with_token():
     user = UserFactory.create()
     token_authentication_group = Group.objects.get(name="token_authentication_group")
     user.groups.add(token_authentication_group)
-    TokenFactory.create(owner=user)
+    token = TokenFactory.create(owner=user)
+    return user, token
 
 
 @pytest.fixture
-def create_dicom_web_client(authentication_token):
+def create_dicom_web_client():
     def _create_dicom_web_client(server_url: str, ae_title: str):
-        print(f"{server_url}/dicom-web/{ae_title}")
-
         client = DICOMwebClient(
             url=f"{server_url}/dicom-web/{ae_title}",
             qido_url_prefix="qidors",

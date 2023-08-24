@@ -5,16 +5,28 @@ import pytest
 from dicomweb_client import DICOMwebClient
 from requests import HTTPError
 
+from adit.accounts.factories import InstituteFactory
+from adit.core.factories import DicomNodeInstituteAccessFactory
+from adit.core.models import DicomServer
+
 
 @pytest.mark.integration
 @pytest.mark.django_db(transaction=True)
 def test_qido_study(
     dimse_orthancs,
     channels_live_server,
+    user_with_token,
     create_dicom_web_client,
     full_data_sheet,
 ):
-    orthanc1_client: DICOMwebClient = create_dicom_web_client(channels_live_server.url, "ORTHANC1")
+    user, token = user_with_token
+    institute = InstituteFactory.create()
+    institute.users.add(user)
+    server = DicomServer.objects.get(ae_title="ORTHANC1")
+    DicomNodeInstituteAccessFactory.create(dicom_node=server, institute=institute, source=True)
+    orthanc1_client: DICOMwebClient = create_dicom_web_client(
+        channels_live_server.url, server.ae_title
+    )
 
     results = orthanc1_client.search_for_studies()
     results_study_uids = set()
@@ -38,10 +50,18 @@ def test_qido_study(
 def test_qido_series(
     dimse_orthancs,
     channels_live_server,
+    user_with_token,
     create_dicom_web_client,
     extended_data_sheet,
 ):
-    orthanc1_client: DICOMwebClient = create_dicom_web_client(channels_live_server.url, "ORTHANC1")
+    user, token = user_with_token
+    institute = InstituteFactory.create()
+    institute.users.add(user)
+    server = DicomServer.objects.get(ae_title="ORTHANC1")
+    DicomNodeInstituteAccessFactory.create(dicom_node=server, institute=institute, source=True)
+    orthanc1_client: DICOMwebClient = create_dicom_web_client(
+        channels_live_server.url, server.ae_title
+    )
 
     try:
         # Even DICOMweb standard does allow this we don't support it querying all series

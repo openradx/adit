@@ -6,7 +6,7 @@ from typing import Literal
 from adrf.views import APIView as AsyncApiView
 from adrf.views import sync_to_async
 from django.conf import settings
-from rest_framework.exceptions import NotAcceptable, ParseError, ValidationError
+from rest_framework.exceptions import NotAcceptable, NotFound, ParseError, ValidationError
 from rest_framework.request import Request
 from rest_framework.response import Response
 
@@ -39,7 +39,7 @@ class WebDicomAPIView(AsyncApiView):
             accessible_servers = DicomServer.objects.accessible_by_user(request.user, access_type)
             return accessible_servers.get(ae_title=ae_title)
         except DicomServer.DoesNotExist:
-            raise ParseError(
+            raise NotFound(
                 f'Server with AE title "{ae_title}" does not exist or is not accessible.'
             )
 

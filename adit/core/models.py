@@ -1,6 +1,6 @@
 from abc import abstractmethod
 from datetime import time
-from typing import TYPE_CHECKING, Callable, Literal
+from typing import TYPE_CHECKING, Callable, Generic, Literal, TypeVar
 
 from django.conf import settings
 from django.core.validators import MaxValueValidator, MinValueValidator
@@ -68,7 +68,10 @@ class AppSettings(models.Model):
         return cls.objects.first()
 
 
-class DicomNodeManager(models.Manager):
+TModel = TypeVar("TModel", bound=models.Model)
+
+
+class DicomNodeManager(Generic[TModel], models.Manager[TModel]):
     def accessible_by_user(
         self, user: User, access_type: Literal["source", "destination"]
     ) -> "DicomNodeManager":
@@ -109,7 +112,7 @@ class DicomNode(models.Model):
         through="DicomNodeInstituteAccess",
     )
 
-    objects = DicomNodeManager()
+    objects = DicomNodeManager["DicomNode"]()
 
     class Meta:
         ordering = ("name",)
@@ -171,6 +174,8 @@ class DicomServer(DicomNode):
     dicomweb_stow_prefix = models.CharField(blank=True, max_length=2000)
     dicomweb_authorization_header = models.CharField(blank=True, max_length=2000)
 
+    objects = DicomNodeManager["DicomServer"]()
+
 
 class DicomFolder(DicomNode):
     NODE_TYPE = DicomNode.NodeType.FOLDER
@@ -186,6 +191,8 @@ class DicomFolder(DicomNode):
         blank=True,
         help_text="When to warn the admins by Email (used space in GB).",
     )
+
+    objects = DicomNodeManager["DicomFolder"]()
 
 
 class DicomJob(models.Model):

@@ -2,16 +2,28 @@ import pydicom
 import pytest
 from dicomweb_client import DICOMwebClient
 
+from adit.accounts.factories import InstituteFactory
+from adit.core.factories import DicomNodeInstituteAccessFactory
+from adit.core.models import DicomServer
+
 
 @pytest.mark.integration
 @pytest.mark.django_db(transaction=True)
 def test_stow(
     dimse_orthancs,
     channels_live_server,
+    user_with_token,
     create_dicom_web_client,
     test_dicoms,
 ):
-    orthanc2_client: DICOMwebClient = create_dicom_web_client(channels_live_server.url, "ORTHANC2")
+    user, token = user_with_token
+    institute = InstituteFactory.create()
+    institute.users.add(user)
+    server = DicomServer.objects.get(ae_title="ORTHANC2")
+    DicomNodeInstituteAccessFactory.create(dicom_node=server, institute=institute, destination=True)
+    orthanc2_client: DICOMwebClient = create_dicom_web_client(
+        channels_live_server.url, server.ae_title
+    )
 
     studies = orthanc2_client.search_for_studies()
     assert len(studies) == 0, "Orthanc2 should be empty."

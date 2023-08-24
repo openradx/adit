@@ -4,12 +4,13 @@ import factory
 from django.utils import timezone
 
 from adit.accounts.factories import UserFactory
+from adit.core.factories import BaseDjangoModelFactory
 
 from .models import Token
 from .utils.crypto import hash_token
 
 
-class TokenFactory(factory.django.DjangoModelFactory):
+class TokenFactory(BaseDjangoModelFactory[Token]):
     class Meta:
         model = Token
         django_get_or_create = ("token_hashed",)
