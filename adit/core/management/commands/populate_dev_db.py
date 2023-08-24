@@ -124,7 +124,6 @@ def create_server_nodes(institutes: list[Institute]) -> list[DicomServer]:
     DicomNodeInstituteAccessFactory.create(
         dicom_node=orthanc2,
         institute=institutes[0],
-        source=False,
         destination=True,
     )
 
@@ -134,7 +133,10 @@ def create_server_nodes(institutes: list[Institute]) -> list[DicomServer]:
         servers.append(server)
 
         DicomNodeInstituteAccessFactory.create(
-            dicom_node=server, institute=fake.random_element(elements=institutes)
+            dicom_node=server,
+            institute=fake.random_element(elements=institutes),
+            source=fake.boolean(),
+            destination=fake.boolean(),
         )
 
     return servers
@@ -149,7 +151,6 @@ def create_folder_nodes(institutes: list[Institute]) -> list[DicomFolder]:
     DicomNodeInstituteAccessFactory.create(
         dicom_node=download_folder,
         institute=institutes[0],
-        source=False,
         destination=True,
     )
 
@@ -161,7 +162,6 @@ def create_folder_nodes(institutes: list[Institute]) -> list[DicomFolder]:
         DicomNodeInstituteAccessFactory.create(
             dicom_node=folder,
             institute=fake.random_element(elements=institutes),
-            source=False,
             destination=True,
         )
 

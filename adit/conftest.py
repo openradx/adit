@@ -177,12 +177,14 @@ def grant_access():
         institute.users.add(user)
 
         if access_type == "source":
-            kwargs = {"source": True}
+            DicomNodeInstituteAccessFactory.create(
+                dicom_node=dicom_node, institute=institute, source=True
+            )
         elif access_type == "destination":
-            kwargs = {"destination": True}
+            DicomNodeInstituteAccessFactory.create(
+                dicom_node=dicom_node, institute=institute, destination=True
+            )
         else:
             raise AssertionError(f"Invalid access type: {access_type}")
-
-        DicomNodeInstituteAccessFactory.create(dicom_node=dicom_node, institute=institute, **kwargs)
 
     return _grant_access

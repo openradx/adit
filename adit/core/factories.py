@@ -46,8 +46,11 @@ class DicomNodeInstituteAccessFactory(BaseDjangoModelFactory[DicomNodeInstituteA
 
     dicom_node = factory.LazyFunction(random_dicom_node_factory)
     institute = factory.SubFactory(UserFactory)
-    source = factory.Faker("boolean", chance_of_getting_true=50)
-    destination = factory.Faker("boolean", chance_of_getting_true=50)
+
+    # Tests using this factory must explicitly set source and/or destination to
+    # avoid hard discoverable access errors
+    source = False
+    destination = False
 
 
 class DicomServerFactory(AbstractDicomNodeFactory[DicomServer]):

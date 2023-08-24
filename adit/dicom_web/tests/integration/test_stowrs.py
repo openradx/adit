@@ -17,6 +17,9 @@ def test_stow(
 ):
     user, token = user_with_token
     server = DicomServer.objects.get(ae_title="ORTHANC2")
+    # We must also grant access as source as we query the server after
+    # the upload if the images are there
+    grant_access(user, server, "source")
     grant_access(user, server, "destination")
     orthanc2_client: DICOMwebClient = create_dicom_web_client(
         channels_live_server.url, server.ae_title
