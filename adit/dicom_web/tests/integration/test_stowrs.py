@@ -2,8 +2,6 @@ import pydicom
 import pytest
 from dicomweb_client import DICOMwebClient
 
-from adit.accounts.factories import InstituteFactory
-from adit.core.factories import DicomNodeInstituteAccessFactory
 from adit.core.models import DicomServer
 
 
@@ -13,14 +11,13 @@ def test_stow(
     dimse_orthancs,
     channels_live_server,
     user_with_token,
+    grant_access,
     create_dicom_web_client,
     test_dicoms,
 ):
     user, token = user_with_token
-    institute = InstituteFactory.create()
-    institute.users.add(user)
     server = DicomServer.objects.get(ae_title="ORTHANC2")
-    DicomNodeInstituteAccessFactory.create(dicom_node=server, institute=institute, destination=True)
+    grant_access(user, server, "destination")
     orthanc2_client: DICOMwebClient = create_dicom_web_client(
         channels_live_server.url, server.ae_title
     )

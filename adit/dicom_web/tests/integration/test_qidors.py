@@ -5,8 +5,6 @@ import pytest
 from dicomweb_client import DICOMwebClient
 from requests import HTTPError
 
-from adit.accounts.factories import InstituteFactory
-from adit.core.factories import DicomNodeInstituteAccessFactory
 from adit.core.models import DicomServer
 
 
@@ -16,14 +14,13 @@ def test_qido_study(
     dimse_orthancs,
     channels_live_server,
     user_with_token,
+    grant_access,
     create_dicom_web_client,
     full_data_sheet,
 ):
     user, token = user_with_token
-    institute = InstituteFactory.create()
-    institute.users.add(user)
     server = DicomServer.objects.get(ae_title="ORTHANC1")
-    DicomNodeInstituteAccessFactory.create(dicom_node=server, institute=institute, source=True)
+    grant_access(user, server, "source")
     orthanc1_client: DICOMwebClient = create_dicom_web_client(
         channels_live_server.url, server.ae_title
     )
@@ -51,14 +48,13 @@ def test_qido_series(
     dimse_orthancs,
     channels_live_server,
     user_with_token,
+    grant_access,
     create_dicom_web_client,
     extended_data_sheet,
 ):
     user, token = user_with_token
-    institute = InstituteFactory.create()
-    institute.users.add(user)
     server = DicomServer.objects.get(ae_title="ORTHANC1")
-    DicomNodeInstituteAccessFactory.create(dicom_node=server, institute=institute, source=True)
+    grant_access(user, server, "source")
     orthanc1_client: DICOMwebClient = create_dicom_web_client(
         channels_live_server.url, server.ae_title
     )

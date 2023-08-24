@@ -8,8 +8,8 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.urls import reverse
 from pytest_django.asserts import assertTemplateUsed
 
-from adit.accounts.factories import InstituteFactory, UserFactory
-from adit.core.factories import DicomNodeInstituteAccessFactory, DicomServerFactory
+from adit.accounts.factories import UserFactory
+from adit.core.factories import DicomServerFactory
 from adit.core.models import DicomServer
 
 from ..models import BatchTransferJob
@@ -75,24 +75,20 @@ def test_logged_in_user_with_permission_can_access_form(client):
 
 @patch("celery.current_app.send_task")
 def test_batch_job_created_and_enqueued_with_auto_verify(
-    send_task_mock, client, settings, form_data
+    send_task_mock, client, settings, grant_access, form_data
 ):
     settings.BATCH_TRANSFER_UNVERIFIED = True
     user = UserFactory.create()
     batch_transfer_group = Group.objects.get(name="batch_transfer_group")
     user.groups.add(batch_transfer_group)
     client.force_login(user)
-    institute = InstituteFactory.create()
-    institute.users.add(user)
     source_server = DicomServer.objects.get(pk=form_data["source"])
-    DicomNodeInstituteAccessFactory.create(
-        dicom_node=source_server, institute=institute, source=True
-    )
     destination_server = DicomServer.objects.get(pk=form_data["destination"])
-    DicomNodeInstituteAccessFactory.create(
-        dicom_node=destination_server, institute=institute, destination=True
-    )
+    grant_access(user, source_server, "source")
+    grant_access(user, destination_server, "destination")
+
     client.post(reverse("batch_transfer_job_create"), form_data)
+
     job = BatchTransferJob.objects.first()
     assert job and job.tasks.count() == 3
     send_task_mock.assert_called_once_with(
@@ -102,24 +98,20 @@ def test_batch_job_created_and_enqueued_with_auto_verify(
 
 @patch("celery.current_app.send_task")
 def test_batch_job_created_and_not_enqueued_without_auto_verify(
-    send_task_mock, client, settings, form_data
+    send_task_mock, client, settings, grant_access, form_data
 ):
     settings.BATCH_TRANSFER_UNVERIFIED = False
     user = UserFactory.create()
     batch_transfer_group = Group.objects.get(name="batch_transfer_group")
     user.groups.add(batch_transfer_group)
     client.force_login(user)
-    institute = InstituteFactory.create()
-    institute.users.add(user)
     source_server = DicomServer.objects.get(pk=form_data["source"])
-    DicomNodeInstituteAccessFactory.create(
-        dicom_node=source_server, institute=institute, source=True
-    )
     destination_server = DicomServer.objects.get(pk=form_data["destination"])
-    DicomNodeInstituteAccessFactory.create(
-        dicom_node=destination_server, institute=institute, destination=True
-    )
+    grant_access(user, source_server, "source")
+    grant_access(user, destination_server, "destination")
+
     client.post(reverse("batch_transfer_job_create"), form_data)
+
     job = BatchTransferJob.objects.first()
     assert job and job.tasks.count() == 3
     send_task_mock.assert_not_called()

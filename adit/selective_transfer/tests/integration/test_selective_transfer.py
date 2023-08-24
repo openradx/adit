@@ -3,8 +3,6 @@ from typing import Callable
 import pytest
 from playwright.sync_api import Locator, Page, expect
 
-from adit.accounts.factories import InstituteFactory
-from adit.core.factories import DicomNodeInstituteAccessFactory
 from adit.selective_transfer.models import SelectiveTransferJob
 
 
@@ -17,20 +15,15 @@ def test_unpseudonymized_urgent_selective_transfer_with_dimse_server(
     adit_celery_worker,
     channels_live_server,
     create_and_login_user,
+    grant_access,
 ):
     # Arrange
     user = create_and_login_user(channels_live_server.url)
     user.join_group("selective_transfer_group")
     user.add_permission("can_process_urgently", SelectiveTransferJob)
     user.add_permission("can_transfer_unpseudonymized", SelectiveTransferJob)
-    institute = InstituteFactory.create()
-    institute.users.add(user)
-    DicomNodeInstituteAccessFactory.create(
-        dicom_node=dimse_orthancs[0], institute=institute, source=True
-    )
-    DicomNodeInstituteAccessFactory.create(
-        dicom_node=dimse_orthancs[1], institute=institute, destination=True
-    )
+    grant_access(user, dimse_orthancs[0], "source")
+    grant_access(user, dimse_orthancs[1], "destination")
 
     # Act
     page.goto(channels_live_server.url + "/selective-transfer/jobs/new/")
@@ -55,20 +48,15 @@ def test_unpseudonymized_urgent_selective_transfer_with_dicomweb_server(
     adit_celery_worker,
     channels_live_server,
     create_and_login_user,
+    grant_access,
 ):
     # Arrange
     user = create_and_login_user(channels_live_server.url)
     user.join_group("selective_transfer_group")
     user.add_permission("can_process_urgently", SelectiveTransferJob)
     user.add_permission("can_transfer_unpseudonymized", SelectiveTransferJob)
-    institute = InstituteFactory.create()
-    institute.users.add(user)
-    DicomNodeInstituteAccessFactory.create(
-        dicom_node=dicomweb_orthancs[0], institute=institute, source=True
-    )
-    DicomNodeInstituteAccessFactory.create(
-        dicom_node=dicomweb_orthancs[1], institute=institute, destination=True
-    )
+    grant_access(user, dicomweb_orthancs[0], "source")
+    grant_access(user, dicomweb_orthancs[1], "destination")
 
     # Act
     page.goto(channels_live_server.url + "/selective-transfer/jobs/new/")

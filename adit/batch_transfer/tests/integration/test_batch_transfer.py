@@ -4,9 +4,7 @@ import pandas as pd
 import pytest
 from playwright.sync_api import Locator, Page, expect
 
-from adit.accounts.factories import InstituteFactory
 from adit.batch_transfer.models import BatchTransferJob
-from adit.core.factories import DicomNodeInstituteAccessFactory
 
 
 @pytest.mark.integration
@@ -18,6 +16,7 @@ def test_unpseudonymized_urgent_batch_transfer_with_dimse_server(
     adit_celery_worker,
     channels_live_server,
     create_and_login_user,
+    grant_access,
     create_excel_file,
 ):
     # Arrange
@@ -31,14 +30,8 @@ def test_unpseudonymized_urgent_batch_transfer_with_dimse_server(
     user.join_group("batch_transfer_group")
     user.add_permission("can_process_urgently", BatchTransferJob)
     user.add_permission("can_transfer_unpseudonymized", BatchTransferJob)
-    institute = InstituteFactory.create()
-    institute.users.add(user)
-    DicomNodeInstituteAccessFactory.create(
-        dicom_node=dimse_orthancs[0], institute=institute, source=True
-    )
-    DicomNodeInstituteAccessFactory.create(
-        dicom_node=dimse_orthancs[1], institute=institute, destination=True
-    )
+    grant_access(user, dimse_orthancs[0], "source")
+    grant_access(user, dimse_orthancs[1], "destination")
 
     # Act
     page.goto(channels_live_server.url + "/batch-transfer/jobs/new/")
@@ -64,6 +57,7 @@ def test_unpseudonymized_urgent_batch_transfer_with_dicomweb_server(
     adit_celery_worker,
     channels_live_server,
     create_and_login_user,
+    grant_access,
     create_excel_file,
 ):
     # Arrange
@@ -77,14 +71,8 @@ def test_unpseudonymized_urgent_batch_transfer_with_dicomweb_server(
     user.join_group("batch_transfer_group")
     user.add_permission("can_process_urgently", BatchTransferJob)
     user.add_permission("can_transfer_unpseudonymized", BatchTransferJob)
-    institute = InstituteFactory.create()
-    institute.users.add(user)
-    DicomNodeInstituteAccessFactory.create(
-        dicom_node=dicomweb_orthancs[0], institute=institute, source=True
-    )
-    DicomNodeInstituteAccessFactory.create(
-        dicom_node=dicomweb_orthancs[1], institute=institute, destination=True
-    )
+    grant_access(user, dicomweb_orthancs[0], "source")
+    grant_access(user, dicomweb_orthancs[1], "destination")
 
     # Act
     page.goto(channels_live_server.url + "/batch-transfer/jobs/new/")

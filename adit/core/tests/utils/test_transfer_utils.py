@@ -5,12 +5,11 @@ import time_machine
 from celery import Task as CeleryTask
 from pydicom import Dataset
 
-from adit.accounts.factories import InstituteFactory, UserFactory
+from adit.accounts.factories import UserFactory
 from adit.core.utils.dicom_dataset import ResultDataset
 
 from ...factories import (
     DicomFolderFactory,
-    DicomNodeInstituteAccessFactory,
     DicomServerFactory,
 )
 from ...models import TransferJob, TransferTask
@@ -46,6 +45,7 @@ def test_transfer_to_server_succeeds(
     create_source_operator_mock,
     create_dest_operator_mock,
     example_models: ExampleModels,
+    grant_access,
     create_resources,
 ):
     # Arrange
@@ -61,12 +61,8 @@ def test_transfer_to_server_succeeds(
         pseudonym="",
         job=job,
     )
-    institute = InstituteFactory.create()
-    institute.users.add(job.owner)
-    DicomNodeInstituteAccessFactory.create(dicom_node=job.source, institute=institute, source=True)
-    DicomNodeInstituteAccessFactory.create(
-        dicom_node=job.destination, institute=institute, destination=True
-    )
+    grant_access(job.owner, job.source, "source")
+    grant_access(job.owner, job.destination, "destination")
 
     patient, study = create_resources(task)
 
@@ -101,7 +97,10 @@ def test_transfer_to_server_succeeds(
 @patch("adit.core.utils.transfer_utils._create_source_operator", autospec=True)
 @time_machine.travel("2020-01-01")
 def test_transfer_to_folder_succeeds(
-    create_source_operator_mock, example_models: ExampleModels, create_resources
+    create_source_operator_mock,
+    example_models: ExampleModels,
+    grant_access,
+    create_resources,
 ):
     # Arrange
     user = UserFactory.create(username="kai")
@@ -119,12 +118,8 @@ def test_transfer_to_folder_succeeds(
         pseudonym="",
         job=job,
     )
-    institute = InstituteFactory.create()
-    institute.users.add(job.owner)
-    DicomNodeInstituteAccessFactory.create(dicom_node=job.source, institute=institute, source=True)
-    DicomNodeInstituteAccessFactory.create(
-        dicom_node=job.destination, institute=institute, destination=True
-    )
+    grant_access(job.owner, job.source, "source")
+    grant_access(job.owner, job.destination, "destination")
 
     patient, study = create_resources(task)
 
@@ -151,7 +146,11 @@ def test_transfer_to_folder_succeeds(
 @patch("subprocess.Popen")
 @patch("adit.core.utils.transfer_utils._create_source_operator", autospec=True)
 def test_transfer_to_archive_succeeds(
-    create_source_operator_mock, Popen_mock, example_models: ExampleModels, create_resources
+    create_source_operator_mock,
+    Popen_mock,
+    example_models: ExampleModels,
+    grant_access,
+    create_resources,
 ):
     # Arrange
     job = example_models.transfer_job_factory_class.create(
@@ -163,12 +162,8 @@ def test_transfer_to_archive_succeeds(
     task = example_models.transfer_task_factory_class.create(
         status=TransferTask.Status.PENDING, series_uids="", pseudonym="", job=job
     )
-    institute = InstituteFactory.create()
-    institute.users.add(job.owner)
-    DicomNodeInstituteAccessFactory.create(dicom_node=job.source, institute=institute, source=True)
-    DicomNodeInstituteAccessFactory.create(
-        dicom_node=job.destination, institute=institute, destination=True
-    )
+    grant_access(job.owner, job.source, "source")
+    grant_access(job.owner, job.destination, "destination")
 
     patient, study = create_resources(task)
 
