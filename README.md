@@ -6,21 +6,25 @@ ADIT (Automated DICOM Transfer) is a swiss army knife to exchange DICOM data bet
 
 ## Features
 
-- Transfer DICOM data between DICOM / PACS servers
-- Download DICOM data to a local or network folder
+- Transfer DICOM data between DICOM compatible servers
+- Download DICOM data to a specified folder
 - Pseudonymize DICOM data on the fly
 - Specify a trial name for the transfered data (stored in the DICOM header)
-- Use the web interface to select studies to transfer or download (Selective Transfer)
-- Upload a batch file to make multiple queries on a DICOM server (Batch Query)
-- Upload a batch file to transfer or download multiple studies (Batch Transfer)
-- A REST API to manage transfers programmatically by an external script (See [here](https://pypi.org/project/adit-dicomweb-client/) for a python client)
-- Define when transfers should happen, e.g. on at night (to reduce PACS server load)
-- Fine-grained control of what users can do or can't do
+- Easy web interface to select which studies to transfer or download
+- Upload a batch file to make multiple queries on a DICOM server
+- Upload a batch file to transfer or download multiple studies
+- A REST API and API client to manage transfers programmatically by an external script (see below) (See [here](https://pypi.org/project/adit-dicomweb-client/) for a python client)
+- Define when transfers should happen, e.g. on at night (to reduce server load on the PACS)
+- Fine-grained control of what users can do or can't do and what they can access
 - Help modals with detailed information for the most important features
 
 ## Upcoming features
 
-- An upload portal to upload DICOM images through a web interface
+- An upload portal to upload DICOM images through a web interface that can be pseudonymized on the client (before the transfer happens)
+
+## API Client
+
+ADIT client is a Python library to query, retrieve and upload DICOM images programmatically from Python script from PACS servers connected to an ADIT server. More information can be found in the [README of the client](./adit_client/README.md).
 
 ## Screenshots
 
@@ -34,16 +38,14 @@ ADIT (Automated DICOM Transfer) is a swiss army knife to exchange DICOM data bet
 
 ## Architectural overview
 
-The backend of ADIT is built using the Django web framework and data is stored in a PostgreSQL database. For DICOM transfer pynetdicom of the pydicom project is used. The frontend is progressively enhanced with Javascript, but also works without it.
+The backend of ADIT is built using the Django web framework and data is stored in a PostgreSQL database. For DICOM transfer [pynetdicom](https://pydicom.github.io/pynetdicom/stable/) of the [pydicom](https://pydicom.github.io/) project is used.
 
-A transfer job contains one or more transfer tasks that describe what DICOM data to transfer and how to transfer it (source, destination, pseudonym, and so on).
+A transfer job contains one or more transfer tasks that describe what DICOM data to transfer and how to transfer it (source, destination, pseudonym).
 A transfer task is processed by a Celery worker (a task scheduler) in the background running in its own Docker container. Celery internally uses RabbitMQ to send new tasks to the worker and Redis to store the results (if needed).
 
-Redis is also used as a caching layer to relieve the PACS server of already done queries (e.g. querying for the Patient ID by using Patient Name and Patient Birth Date).
+When the DICOM data to transfer needs to be modified (e.g. pseudonymized) it is downloaded temporarily to the ADIT web server, then transformed and uploaded to the destination server resp. moved to the destination folder.
 
-When the DICOM data to transfer needs to be modified (e.g. pseudonymized) it is downloaded temporarily to the ADIT webserver, then transformed and uploaded to the destination server resp. moved to the destination folder.
-
-Downloading data from a DICOM server can done by using a C-GET or C-MOVE operation. C-GET is prioritized as a worker can fetch the DICOM data directly from the server. Unfortunately, C-GET is not supported by many DICOM servers. When downloading data using a C-MOVE operation, ADIT commands the source DICOM server to send the data to a C-STORE SCP server running in a separate container (named Receiver) that receives the DICOM data and sends it back to the worker using a RabbitMQ message.
+Downloading data from a DICOM server can done by using a C-GET, C-MOVE operation or by using DICOMweb REST calls. C-GET is prioritized over C-MOVE as a worker can fetch the DICOM data directly from the server. When downloading data using a C-MOVE operation, ADIT commands the source DICOM server to send the data to a C-STORE SCP server running in a separate container (`Receiver`) that receives the DICOM data and sends it back to the worker using TCP Socket connection (`FileTransmitter`).
 
 ## Contributors
 
