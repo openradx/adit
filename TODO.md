@@ -2,7 +2,6 @@
 
 ## Top
 
-- Respect accesses in dicom_web
 - Update documentation
 - Fix some stuff and use our fork then of DICOMwebClient
   -- <https://github.com/ImagingDataCommons/dicomweb-client/issues/88>
