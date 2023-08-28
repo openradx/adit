@@ -15,6 +15,15 @@
   "postCreateCommand": "poetry install && npm install",
   "postStartCommand": "poetry run invoke init-workspace --type codespaces",
   "customizations": {
+    "codespaces": {
+      "repositories": {
+        "radexperts/django-shared": {
+          "permissions": {
+            "permissions": "write-all"
+          }
+        }
+      }
+    },
     "vscode": {
       "extensions": [
         "batisteo.vscode-django",
