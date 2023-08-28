@@ -8,17 +8,11 @@ from django.db import models
 from django.db.models.constraints import UniqueConstraint
 
 from adit.accounts.models import User
-from adit.core.models import AppSettings
 
 from .utils.crypto import hash_token
 
-
-class TokenSettings(AppSettings):
-    token_length = 20
-    fraction_length = 4
-
-    class Meta:
-        verbose_name_plural = "Token settings"
+TOKEN_LENGTH = 20  # Length of the unhashed token
+FRACTION_LENGTH = 4  # Length of the token hint visible to the user in the table
 
 
 class TokenManager(models.Manager["Token"]):
@@ -28,11 +22,11 @@ class TokenManager(models.Manager["Token"]):
         client: str,
         expires: datetime | None,
     ):
-        token_string = create_token_string()
+        token_string = binascii.hexlify(urandom(TOKEN_LENGTH)).decode()
         token_hashed = hash_token(token_string)
         token = self.create(
             token_hashed=token_hashed,
-            fraction=token_string[: TokenSettings.fraction_length],
+            fraction=token_string[:FRACTION_LENGTH],
             owner=user,
             client=client,
             expires=expires,
@@ -41,11 +35,11 @@ class TokenManager(models.Manager["Token"]):
 
 
 class Token(models.Model):
-    token_hashed = models.TextField(max_length=128, unique=True)
-    fraction = models.TextField(max_length=TokenSettings.fraction_length)
+    token_hashed = models.CharField(max_length=128, unique=True)
+    fraction = models.CharField(max_length=FRACTION_LENGTH)
     owner = models.ForeignKey(User, on_delete=models.CASCADE)
     created_time = models.DateTimeField(auto_now_add=True)
-    client = models.TextField(max_length=100)
+    client = models.CharField(max_length=100)
     expires = models.DateTimeField(blank=True, null=True)
     last_used = models.DateTimeField(blank=True, null=True)
 
@@ -66,7 +60,3 @@ class Token(models.Model):
     def is_expired(self):
         utc = pytz.UTC
         return self.expires and self.expires < utc.localize(datetime.now())
-
-
-def create_token_string():
-    return binascii.hexlify(urandom(int(TokenSettings.token_length))).decode()

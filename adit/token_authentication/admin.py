@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Token, TokenSettings
+from .models import Token
 
 
 class TokenAdmin(admin.ModelAdmin):
@@ -25,4 +25,3 @@ class TokenAdmin(admin.ModelAdmin):
 
 
 admin.site.register(Token, TokenAdmin)
-admin.site.register(TokenSettings, admin.ModelAdmin)
