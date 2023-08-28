@@ -4,7 +4,7 @@ import factory
 from faker import Faker
 from pydicom.uid import generate_uid
 
-from adit.accounts.factories import UserFactory
+from adit.shared.accounts.factories import UserFactory
 
 from .models import (
     DicomFolder,
