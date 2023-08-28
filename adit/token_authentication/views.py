@@ -3,6 +3,7 @@ from typing import Any
 
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
 from django.db import IntegrityError
+from django.urls import reverse_lazy
 from django.views.generic import DeleteView, FormView
 from rest_framework.request import Request
 from rest_framework.response import Response
@@ -21,7 +22,7 @@ class TokenDashboardView(
 ):
     template_name = "token_authentication/token_dashboard.html"
     form_class = GenerateTokenForm
-    success_url = "/token-authentication/"
+    success_url = reverse_lazy("token_dashboard")
     permission_required = (
         "token_authentication.view_token",
         "token_authentication.add_token",
@@ -71,7 +72,7 @@ class DeleteTokenView(
 ):
     permission_required = "token_authentication.delete_token"
     model = Token
-    success_url = "/token-authentication/"
+    success_url = reverse_lazy("token_dashboard")
 
 
 class TestView(APIView):
