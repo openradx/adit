@@ -1,0 +1,5 @@
+{% load blocktrans from i18n %}
+{% blocktrans %}
+    Your account is now approved. You can log in using the following link
+{% endblocktrans %}
+http://{{site.domain}}{% url 'auth_login' %}
