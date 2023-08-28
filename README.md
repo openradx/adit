@@ -1,7 +1,5 @@
 # ADIT
 
-Test
-
 ## About
 
 ADIT (Automated DICOM Transfer) is a Swiss army knife to exchange DICOM data between various systems by using a convenient web frontend.

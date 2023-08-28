@@ -11,8 +11,6 @@ Push updates to shared:
 Pull updates from shared:
 `git subtree pull --prefix adit/shared shared main --squash`
 
-Test
-
 ## License
 
 - GPL 3.0 or later
