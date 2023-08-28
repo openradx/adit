@@ -287,6 +287,8 @@ def init_workspace(ctx: Context, type: Literal["codespaces", "gitpod"]):
     env_dev_file = f"{project_dir}/.env.dev"
     copy(f"{project_dir}/example.env", env_dev_file)
 
+    run_cmd(ctx, "git remote add shared https://github.com/radexperts/django-shared.git")
+
     if type == "codespaces":
         base_url = f"https://{environ['CODESPACE_NAME']}-8000.preview.app.github.dev"
     elif type == "gitpod":
