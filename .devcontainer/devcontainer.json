@@ -18,9 +18,7 @@
     "codespaces": {
       "repositories": {
         "radexperts/django-shared": {
-          "permissions": {
-            "permissions": "write-all"
-          }
+          "permissions": "write-all"
         }
       }
     },
