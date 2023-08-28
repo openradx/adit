@@ -57,10 +57,7 @@
                         <td>
                             <form action="{% url "delete_token" token.pk %}" method="post">
                                 {% csrf_token %}
-                                <input type="hidden" name="client" value="{{ token.client }}">
-                                <button type="submit"
-                                        class="btn btn-danger btn-sm"
-                                        id="delete-token-button-{{ token.client }}">
+                                <button type="submit" class="btn btn-danger btn-sm" aria-label="Delete token">
                                     {% include "core/icons/delete.svg" %}
                                 </button>
                             </form>

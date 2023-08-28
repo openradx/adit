@@ -1,15 +1,12 @@
-from typing import Callable
-
 import pytest
 import requests
-from playwright.sync_api import Locator, Page, expect
+from playwright.sync_api import Page, expect
 
 
 @pytest.mark.integration
 @pytest.mark.django_db(transaction=True)
 def test_create_and_delete_authentication_token(
     page: Page,
-    poll: Callable[[Locator], Locator],
     channels_live_server,
     create_and_login_user,
 ):
@@ -19,8 +16,8 @@ def test_create_and_delete_authentication_token(
 
     page.get_by_label("Client").fill("test_client")
     page.get_by_text("Generate Token").click()
-    expect(poll(page.locator("#unhashed-token-string"))).to_be_visible()
-    token = page.query_selector("#unhashed-token-string").inner_text()  # type: ignore
+    expect(page.locator("#unhashed-token-string")).to_be_visible()
+    token = page.locator("#unhashed-token-string").inner_text()
 
     response = requests.get(
         channels_live_server.url + "/token-authentication/test",
@@ -28,10 +25,10 @@ def test_create_and_delete_authentication_token(
     )
     assert response.status_code == 200
 
-    page.on("dialog", lambda dialog: dialog.accept())
-    expect(poll(page.locator("#delete-token-button-test_client"))).to_be_visible()
-    page.query_selector("#delete-token-button-test_client").click()  # type: ignore
-    expect(page.locator("#table-row-test_client")).not_to_be_visible()
+    expect(page.locator("table").get_by_text("test_client")).to_be_visible()
+    page.get_by_label("Delete token").click()
+    expect(page.locator("table").get_by_text("test_client")).not_to_be_visible()
+
     response = requests.get(
         channels_live_server.url + "/token-authentication/test",
         headers={"Authorization": f"Token {token}"},
