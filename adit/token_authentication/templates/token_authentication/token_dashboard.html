@@ -34,38 +34,42 @@
     {% endif %}
     <!-- List of all tokens by this user -->
     <div style="margin-top: 40px;">
-        <h5>Existing tokens</h5>
-        <table class="table table-hover" id="token-list-wrapper">
-            <thead>
-                <tr>
-                    <th>Client</th>
-                    <th>Token</th>
-                    <th>Created</th>
-                    <th>Expires</th>
-                    <th>Last Used</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for token in tokens reversed %}
-                    <tr id="table-row-{{ token.client }}">
-                        <td>{{ token.client }}</td>
-                        <td>{{ token.fraction }} ...</td>
-                        <td>{{ token.created_time }}</td>
-                        <td>{{ token.expires|default_if_none:"Never" }}</td>
-                        <td>{{ token.last_used|default_if_none:"Never" }}</td>
-                        <td>
-                            <form action="{% url "delete_token" token.pk %}" method="post">
-                                {% csrf_token %}
-                                <button type="submit" class="btn btn-danger btn-sm" aria-label="Delete token">
-                                    {% include "core/icons/delete.svg" %}
-                                </button>
-                            </form>
-                        </td>
+        {% if tokens %}
+            <h5>Existing tokens</h5>
+            <table class="table table-hover" id="token-list-wrapper">
+                <thead>
+                    <tr>
+                        <th>Token</th>
+                        <th>Description</th>
+                        <th>Created</th>
+                        <th>Expires</th>
+                        <th>Last Used</th>
+                        <th>Actions</th>
                     </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+                </thead>
+                <tbody>
+                    {% for token in tokens reversed %}
+                        <tr>
+                            <td class="text-nowrap">{{ token.fraction }}...</td>
+                            <td>{{ token.description|default:"—" }}</td>
+                            <td>{{ token.created_time }}</td>
+                            <td>{{ token.expires|default_if_none:"Never" }}</td>
+                            <td>{{ token.last_used|default_if_none:"Never" }}</td>
+                            <td>
+                                <form action="{% url "delete_token" token.pk %}" method="post">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-danger btn-sm" aria-label="Delete token">
+                                        {% include "core/icons/delete.svg" %}
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <h5>No generated tokens</h5>
+        {% endif %}
     </div>
     <!-- Form to generate new tokens -->
     <div style="margin-top: 40px;">

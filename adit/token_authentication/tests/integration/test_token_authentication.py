@@ -14,7 +14,7 @@ def test_create_and_delete_authentication_token(
     user.join_group("token_authentication_group")
     page.goto(channels_live_server.url + "/token-authentication/")
 
-    page.get_by_label("Client").fill("test_client")
+    page.get_by_label("Description").fill("Just a test token")
     page.get_by_text("Generate Token").click()
     expect(page.locator("#unhashed-token-string")).to_be_visible()
     token = page.locator("#unhashed-token-string").inner_text()
@@ -25,9 +25,9 @@ def test_create_and_delete_authentication_token(
     )
     assert response.status_code == 200
 
-    expect(page.locator("table").get_by_text("test_client")).to_be_visible()
+    expect(page.locator("table").get_by_text("Just a test token")).to_be_visible()
     page.get_by_label("Delete token").click()
-    expect(page.locator("table").get_by_text("test_client")).not_to_be_visible()
+    expect(page.locator("table").get_by_text("Just a test token")).not_to_be_visible()
 
     response = requests.get(
         channels_live_server.url + "/token-authentication/test",

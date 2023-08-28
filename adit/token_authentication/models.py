@@ -5,7 +5,6 @@ from os import urandom
 import pytz
 from django.contrib.auth.models import AbstractBaseUser, AnonymousUser
 from django.db import models
-from django.db.models.constraints import UniqueConstraint
 
 from adit.accounts.models import User
 
@@ -19,28 +18,28 @@ class TokenManager(models.Manager["Token"]):
     def create_token(
         self,
         user: AbstractBaseUser | AnonymousUser,
-        client: str,
+        description: str,
         expires: datetime | None,
     ):
         token_string = binascii.hexlify(urandom(TOKEN_LENGTH)).decode()
         token_hashed = hash_token(token_string)
         token = self.create(
+            owner=user,
             token_hashed=token_hashed,
             fraction=token_string[:FRACTION_LENGTH],
-            owner=user,
-            client=client,
+            description=description,
             expires=expires,
         )
         return token, token_string
 
 
 class Token(models.Model):
+    owner = models.ForeignKey(User, on_delete=models.CASCADE)
     token_hashed = models.CharField(max_length=128, unique=True)
     fraction = models.CharField(max_length=FRACTION_LENGTH)
-    owner = models.ForeignKey(User, on_delete=models.CASCADE)
-    created_time = models.DateTimeField(auto_now_add=True)
-    client = models.CharField(max_length=100)
+    description = models.CharField(blank=True, max_length=120)
     expires = models.DateTimeField(blank=True, null=True)
+    created_time = models.DateTimeField(auto_now_add=True)
     last_used = models.DateTimeField(blank=True, null=True)
 
     objects = TokenManager()
@@ -52,7 +51,6 @@ class Token(models.Model):
                 "Can generate never expiring token",
             )
         ]
-        constraints = [UniqueConstraint(fields=["client", "owner"], name="unique_client_per_user")]
 
     def __str__(self):
         return self.token_hashed

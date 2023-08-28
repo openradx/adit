@@ -4,6 +4,8 @@ from django import forms
 
 from adit.accounts.models import User
 
+from .models import Token
+
 EXPIRY_TIMES = (
     (24, "1 Day"),
     (7 * 24, "7 Days"),
@@ -12,11 +14,10 @@ EXPIRY_TIMES = (
 )
 
 
-class GenerateTokenForm(forms.Form):
-    client = forms.CharField(
-        max_length=64,
-        required=True,
-    )
+class GenerateTokenForm(forms.ModelForm):
+    class Meta:
+        model = Token
+        fields = ["description"]
 
     def __init__(self, *args, **kwargs):
         self.user: User = kwargs.pop("user")
@@ -27,9 +28,9 @@ class GenerateTokenForm(forms.Form):
         if self.user.has_perm("token_authentication.can_generate_never_expiring_token"):
             expiry_times = expiry_times + ((0, "Never"),)
 
-        self.fields["expiry_time"] = forms.ChoiceField(
-            choices=expiry_times, required=True, label="Expiry Time"
-        )
+        self.fields["expiry_time"] = forms.ChoiceField(choices=expiry_times, label="Expiry Time")
+
+        self.fields["description"].widget.attrs["placeholder"] = "Optional"
 
         self.helper = FormHelper(self)
         self.helper.form_id = "generate_token_form"
@@ -38,11 +39,11 @@ class GenerateTokenForm(forms.Form):
             Div(
                 Div(
                     Field("expiry_time"),
-                    css_class="col-6",
+                    css_class="col-3",
                 ),
                 Div(
-                    Field("client"),
-                    css_class="col-6",
+                    Field("description"),
+                    css_class="col-9",
                 ),
                 css_class="row",
             ),

@@ -16,8 +16,8 @@ class TokenFactory(BaseDjangoModelFactory[Token]):
         django_get_or_create = ("token_hashed",)
 
     token_hashed = factory.LazyFunction(lambda: hash_token("test_token_string"))
+    description = factory.Faker("sentence", nb_words=3)
     owner = factory.SubFactory(UserFactory)
     created_time = timezone.now()
-    client = factory.Faker("word")
     expires = timezone.now() + timedelta(hours=24)
     last_used = timezone.now()
