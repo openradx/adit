@@ -1,6 +1,8 @@
+from typing import Any
+
 from django.contrib.auth.mixins import AccessMixin, LoginRequiredMixin
 from django.http import HttpResponse
-from django.views.generic import DetailView
+from django.views.generic import TemplateView
 from django.views.generic.edit import CreateView
 
 from adit.core.types import AuthenticatedHttpRequest
@@ -9,19 +11,14 @@ from .forms import RegistrationForm
 from .models import User
 
 
-class UserProfileView(LoginRequiredMixin, AccessMixin, DetailView):
-    model = User
-    template_name = "accounts/user_profile.html"
+class UserProfileView(LoginRequiredMixin, AccessMixin, TemplateView):
+    template_name = "accounts/profile.html"
+    request: AuthenticatedHttpRequest
 
-    def dispatch(self, request: AuthenticatedHttpRequest, *args, **kwargs) -> HttpResponse:
-        """Only staff and the user himself has access."""
-        check_access = True
-        if request.user.is_staff:
-            check_access = False
-        if check_access and request.user.pk != kwargs["pk"]:
-            return self.handle_no_permission()
-
-        return super().dispatch(request, *args, **kwargs)
+    def get_context_data(self, **kwargs: Any) -> dict[str, Any]:
+        context = super().get_context_data(**kwargs)
+        context["user"] = self.request.user
+        return context
 
 
 class RegistrationView(CreateView):

@@ -33,15 +33,10 @@
             {{ user.date_joined }}
         </dd>
     </dl>
-    <br>
-    <div>
-        <h4>Token Authentication</h4>
-        <a class="btn btn-link ms-2" href="{% url 'token_dashboard' %}">Manage Authentication Tokens</a>
-    </div>
-    <br>
-    <div>
-        <h4>Actions</h4>
+    <div class="mt-4">
+        <h5>Actions</h5>
         <a class="btn btn-secondary" href="{% url 'auth_password_change' %}">Change Password</a>
+        <a class="btn btn-secondary ms-2" href="{% url 'token_dashboard' %}">Manage API Tokens</a>
         <a class="btn btn-secondary ms-2" href="{% url 'auth_logout' %}">Logout</a>
     </div>
 {% endblock content %}
