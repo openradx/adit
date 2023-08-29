@@ -3,7 +3,7 @@ from django.core.mail import mail_admins, send_mail
 from django.template.loader import render_to_string
 from django.utils.html import strip_tags
 
-from adit.accounts.models import User
+from adit.shared.accounts.models import User
 
 
 def send_mail_to_admins(

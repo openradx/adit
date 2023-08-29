@@ -12,9 +12,9 @@ from crispy_forms.utils import render_crispy_form
 from django.conf import settings
 from django.template.loader import render_to_string
 
-from adit.accounts.models import User
 from adit.core.utils.dicom_dataset import ResultDataset
 from adit.core.utils.dicom_operator import DicomOperator
+from adit.shared.accounts.models import User
 
 from .forms import SelectiveTransferJobForm
 from .mixins import SelectiveTransferJobCreateMixin

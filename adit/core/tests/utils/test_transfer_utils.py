@@ -5,8 +5,8 @@ import time_machine
 from celery import Task as CeleryTask
 from pydicom import Dataset
 
-from adit.accounts.factories import UserFactory
 from adit.core.utils.dicom_dataset import ResultDataset
+from adit.shared.accounts.factories import UserFactory
 
 from ...factories import (
     DicomFolderFactory,

@@ -15,7 +15,7 @@ def init_db(**kwargs):
 
 
 def create_group():
-    from adit.accounts.utils import create_group_with_permissions
+    from adit.shared.accounts.utils import create_group_with_permissions
 
     create_group_with_permissions(
         "token_authentication_group",

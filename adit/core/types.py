@@ -1,7 +1,7 @@
 from django.http import HttpRequest
 from rest_framework.request import Request
 
-from adit.accounts.models import User
+from adit.shared.accounts.models import User
 
 
 class AuthenticatedHttpRequest(HttpRequest):

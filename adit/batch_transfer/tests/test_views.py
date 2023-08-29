@@ -8,9 +8,9 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.urls import reverse
 from pytest_django.asserts import assertTemplateUsed
 
-from adit.accounts.factories import UserFactory
 from adit.core.factories import DicomServerFactory
 from adit.core.models import DicomServer
+from adit.shared.accounts.factories import UserFactory
 
 from ..models import BatchTransferJob
 

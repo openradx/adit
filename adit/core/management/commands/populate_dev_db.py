@@ -6,8 +6,6 @@ from django.contrib.auth.models import Group, Permission
 from django.core.management.base import BaseCommand
 from faker import Faker
 
-from adit.accounts.factories import AdminUserFactory, InstituteFactory, UserFactory
-from adit.accounts.models import Institute, User
 from adit.batch_query.factories import (
     BatchQueryJobFactory,
     BatchQueryResultFactory,
@@ -27,6 +25,8 @@ from adit.selective_transfer.factories import (
     SelectiveTransferJobFactory,
     SelectiveTransferTaskFactory,
 )
+from adit.shared.accounts.factories import AdminUserFactory, InstituteFactory, UserFactory
+from adit.shared.accounts.models import Institute, User
 
 USER_COUNT = 20
 INSTITUTE_COUNT = 3
