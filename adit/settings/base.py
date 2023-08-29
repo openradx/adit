@@ -44,7 +44,6 @@ ADIT_SITE_NAME = env.str("ADIT_SITE_NAME", default="adit.org")  # type: ignore
 INSTALLED_APPS = [
     "daphne",
     "whitenoise.runserver_nostatic",
-    "adit.shared.accounts.apps.AccountsConfig",
     "registration",
     "django.contrib.admin",
     "django.contrib.auth",
@@ -63,12 +62,13 @@ INSTALLED_APPS = [
     "rest_framework",
     "adrf",
     "adit.core.apps.CoreConfig",
-    "adit.api.apps.ApiConfig",
+    "adit.shared.accounts.apps.AccountsConfig",
+    "adit.shared.token_authentication.apps.TokenAuthenticationConfig",
     "adit.selective_transfer.apps.SelectiveTransferConfig",
     "adit.batch_query.apps.BatchQueryConfig",
     "adit.batch_transfer.apps.BatchTransferConfig",
     "adit.dicom_explorer.apps.DicomExplorerConfig",
-    "adit.shared.token_authentication.apps.TokenAuthenticationConfig",
+    "adit.api.apps.ApiConfig",
     "adit.dicom_web.apps.DicomWebConfig",
     "channels",
 ]
