@@ -7,6 +7,9 @@ RUN apt-get update && \
   apt-get clean && \
   rm -rf /var/lib/apt/lists/*
 
+# Make git subtree available
+RUN cp -a /usr/lib/git-core/git-subtree /usr/local/bin/
+
 USER vscode
 
 # pipx is already installed in the base devcontainers Python image
