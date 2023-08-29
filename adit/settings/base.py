@@ -44,7 +44,7 @@ ADIT_SITE_NAME = env.str("ADIT_SITE_NAME", default="adit.org")  # type: ignore
 INSTALLED_APPS = [
     "daphne",
     "whitenoise.runserver_nostatic",
-    "adit.accounts.apps.AccountsConfig",
+    "adit.shared.accounts.apps.AccountsConfig",
     "registration",
     "django.contrib.admin",
     "django.contrib.auth",
@@ -68,7 +68,7 @@ INSTALLED_APPS = [
     "adit.batch_query.apps.BatchQueryConfig",
     "adit.batch_transfer.apps.BatchTransferConfig",
     "adit.dicom_explorer.apps.DicomExplorerConfig",
-    "adit.token_authentication.apps.TokenAuthenticationConfig",
+    "adit.shared.token_authentication.apps.TokenAuthenticationConfig",
     "adit.dicom_web.apps.DicomWebConfig",
     "channels",
 ]
@@ -224,7 +224,7 @@ REST_FRAMEWORK = {
         "rest_framework.permissions.IsAuthenticated",
     ],
     "DEFAULT_AUTHENTICATION_CLASSES": [
-        "adit.token_authentication.auth.RestTokenAuthentication",
+        "adit.shared.token_authentication.auth.RestTokenAuthentication",
     ],
     "EXCEPTION_HANDLER": "adit.dicom_web.exceptions.dicom_web_exception_handler",
 }
@@ -280,7 +280,7 @@ ADMINS = [
 ]
 
 # Settings for django-registration-redux
-REGISTRATION_FORM = "adit.accounts.forms.RegistrationForm"
+REGISTRATION_FORM = "adit.shared.accounts.forms.RegistrationForm"
 ACCOUNT_ACTIVATION_DAYS = 14
 REGISTRATION_OPEN = True
 

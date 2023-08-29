@@ -4,7 +4,7 @@ from django.db.models.signals import post_migrate
 
 class TokenAuthenticationConfig(AppConfig):
     default_auto_field = "django.db.models.BigAutoField"
-    name = "adit.token_authentication"
+    name = "adit.shared.token_authentication"
 
     def ready(self):
         post_migrate.connect(init_db, sender=self)
