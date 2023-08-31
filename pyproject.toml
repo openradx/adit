@@ -111,7 +111,7 @@ line-length = 100
 select = ["E", "F", "I", "DJ"]
 
 [tool.black]
-exclude = "migrations"
+extend-exclude = "migrations"
 line-length = 100
 
 [tool.djlint]
