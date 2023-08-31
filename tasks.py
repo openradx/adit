@@ -172,7 +172,7 @@ def stack_rm(ctx: Context, env: Environments = "prod"):
 def format(ctx: Context):
     """Format the source code (black, ruff, djlint)"""
     # Format Python code
-    black_cmd = "poetry run black ./adit"
+    black_cmd = "poetry run black ."
     run_cmd(ctx, black_cmd)
     # Sort Python imports
     ruff_cmd = "poetry run ruff . --fix --select I"
