@@ -45,7 +45,7 @@ def init_db(**kwargs):
 
 
 def create_group():
-    from adit.accounts.utils import create_group_with_permissions
+    from shared.accounts.utils import create_group_with_permissions
 
     create_group_with_permissions(
         "selective_transfer_group",

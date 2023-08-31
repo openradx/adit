@@ -7,7 +7,7 @@ from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.db.models.constraints import UniqueConstraint
 
-from adit.accounts.models import Institute, User
+from shared.accounts.models import Institute, User
 
 from .validators import (
     no_backslash_char_validator,

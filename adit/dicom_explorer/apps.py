@@ -24,7 +24,7 @@ def register_app():
 
 
 def init_db(**kwargs):
-    from adit.accounts.utils import create_group_with_permissions
+    from shared.accounts.utils import create_group_with_permissions
 
     create_group_with_permissions(
         "dicom_explorer_group",

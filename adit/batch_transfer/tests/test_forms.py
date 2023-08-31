@@ -3,9 +3,9 @@ from unittest.mock import create_autospec, patch
 import pytest
 from django.core.files import File
 
-from adit.accounts.factories import UserFactory
-from adit.accounts.models import User
 from adit.core.factories import DicomServerFactory
+from shared.accounts.factories import UserFactory
+from shared.accounts.models import User
 
 from ..forms import BatchTransferJobForm
 

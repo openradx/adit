@@ -4,7 +4,7 @@ from django.db.models.signals import post_migrate
 
 class TokenAuthenticationConfig(AppConfig):
     default_auto_field = "django.db.models.BigAutoField"
-    name = "adit.shared.token_authentication"
+    name = "shared.token_authentication"
 
     def ready(self):
         post_migrate.connect(init_db, sender=self)
@@ -15,7 +15,7 @@ def init_db(**kwargs):
 
 
 def create_group():
-    from adit.shared.accounts.utils import create_group_with_permissions
+    from shared.accounts.utils import create_group_with_permissions
 
     create_group_with_permissions(
         "token_authentication_group",

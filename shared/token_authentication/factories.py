@@ -4,7 +4,7 @@ import factory
 from django.utils import timezone
 
 from adit.core.factories import BaseDjangoModelFactory
-from adit.shared.accounts.factories import UserFactory
+from shared.accounts.factories import UserFactory
 
 from .models import Token
 from .utils.crypto import hash_token

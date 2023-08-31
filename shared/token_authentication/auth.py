@@ -5,7 +5,7 @@ from rest_framework.authentication import BaseAuthentication
 from rest_framework.exceptions import AuthenticationFailed
 from rest_framework.request import Request
 
-from adit.shared.accounts.models import User
+from shared.accounts.models import User
 
 from .models import Token
 from .utils.crypto import hash_token, verify_token

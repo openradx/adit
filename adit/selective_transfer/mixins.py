@@ -3,10 +3,10 @@ from typing import Iterator
 
 from django.conf import settings
 
-from adit.accounts.models import User
 from adit.core.mixins import LockedMixin
 from adit.core.utils.dicom_dataset import QueryDataset, ResultDataset
 from adit.core.utils.dicom_operator import DicomOperator
+from shared.accounts.models import User
 
 from .apps import SECTION_NAME
 from .forms import SelectiveTransferJobForm

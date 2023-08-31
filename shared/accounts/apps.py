@@ -2,4 +2,4 @@ from django.apps import AppConfig
 
 
 class AccountsConfig(AppConfig):
-    name = "adit.shared.accounts"
+    name = "shared.accounts"

@@ -12,8 +12,6 @@ from django.core.management import call_command
 from faker import Faker
 from playwright.sync_api import Locator, Page, Response
 
-from adit.accounts.factories import InstituteFactory, UserFactory
-from adit.accounts.models import Institute, User
 from adit.core.factories import (
     DicomNodeInstituteAccessFactory,
     DicomServerFactory,
@@ -21,6 +19,8 @@ from adit.core.factories import (
 )
 from adit.core.models import DicomNode, DicomServer
 from adit.testing import ChannelsLiveServer
+from shared.accounts.factories import InstituteFactory, UserFactory
+from shared.accounts.models import Institute, User
 
 fake = Faker()
 

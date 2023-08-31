@@ -6,9 +6,9 @@ from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.utils.safestring import mark_safe
 
-from adit.accounts.models import User
 from adit.core.errors import BatchFileContentError, BatchFileFormatError, BatchFileSizeError
 from adit.core.fields import DicomNodeChoiceField, RestrictedFileField
+from shared.accounts.models import User
 
 from .models import BatchTransferJob, BatchTransferTask
 from .parsers import BatchTransferFileParser
