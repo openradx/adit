@@ -197,7 +197,8 @@ def lint(ctx: Context):
 def test(
     ctx: Context,
     path: str | None = None,
-    cov: bool = False,
+    cov: bool | str = False,
+    html: bool = False,
     keyword: str | None = None,
     mark: str | None = None,
     stdout: bool = False,
@@ -214,6 +215,10 @@ def test(
     )
     if cov:
         cmd += "--cov "
+        if isinstance(cov, str):
+            cmd += f"{cov} "
+        if html:
+            cmd += "--cov-report html"
     if keyword:
         cmd += f"-k {keyword} "
     if mark:
