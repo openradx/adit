@@ -196,8 +196,9 @@ def lint(ctx: Context):
 @task
 def test(
     ctx: Context,
-    path: str = "./adit",
-    cov: bool = False,
+    path: str | None = None,
+    cov: bool | str = False,
+    html: bool = False,
     keyword: str | None = None,
     mark: str | None = None,
     stdout: bool = False,
@@ -213,15 +214,19 @@ def test(
         "--env DJANGO_SETTINGS_MODULE=adit.settings.test web pytest "
     )
     if cov:
-        cmd += "--cov=adit "
+        cmd += "--cov "
+        if isinstance(cov, str):
+            cmd += f"={cov} "
+        if html:
+            cmd += "--cov-report=html"
     if keyword:
         cmd += f"-k {keyword} "
     if mark:
         cmd += f"-m {mark} "
     if stdout:
         cmd += "-s "
-
-    cmd += path
+    if path:
+        cmd += path
     run_cmd(ctx, cmd)
 
 

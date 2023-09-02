@@ -102,6 +102,14 @@ filterwarnings = [
 ]
 timeout = 60
 
+[tool.coverage.run]
+branch = true
+source = "adit"
+
+[tool.coverage.report]
+skip_empty = true
+show_missing = true
+
 [tool.ruff]
 exclude = ["migrations"]
 line-length = 100
