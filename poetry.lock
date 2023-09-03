@@ -907,21 +907,6 @@ files = [
 Django = ">=3.2"
 
 [[package]]
-name = "django-celery-results"
-version = "2.5.1"
-description = "Celery result backends for Django."
-optional = false
-python-versions = "*"
-files = [
-    {file = "django_celery_results-2.5.1-py3-none-any.whl", hash = "sha256:0da4cd5ecc049333e4524a23fcfc3460dfae91aa0a60f1fae4b6b2889c254e01"},
-    {file = "django_celery_results-2.5.1.tar.gz", hash = "sha256:3ecb7147f773f34d0381bac6246337ce4cf88a2ea7b82774ed48e518b67bb8fd"},
-]
-
-[package.dependencies]
-celery = ">=5.2.7,<6.0"
-Django = ">=3.2.18"
-
-[[package]]
 name = "django-crispy-forms"
 version = "2.0"
 description = "Best way to have Django DRY forms"
@@ -3519,4 +3504,4 @@ testing = ["coverage (>=5.0.3)", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "af7b79f70a759c8d591a55de9ec062891d7df06413d9585a6c55ee97d0d6c211"
+content-hash = "367a416c59def7559225dd2c2dd15062be45b65df412b401e7adf7767e464c9c"

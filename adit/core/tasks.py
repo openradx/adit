@@ -31,7 +31,7 @@ sherlock.configure(backend=sherlock.backends.REDIS)
 sherlock.configure(client=redis.Redis.from_url(settings.REDIS_URL))
 
 
-@shared_task(ignore_result=True)
+@shared_task
 def broadcast_mail(subject: str, message: str):
     recipients = []
     for user in User.objects.all():
@@ -43,7 +43,7 @@ def broadcast_mail(subject: str, message: str):
     logger.info("Successfully sent an Email to %d recipents.", len(recipients))
 
 
-@shared_task(ignore_result=True)
+@shared_task
 def check_disk_space():
     # TODO: Maybe only check active folders (that belong to an institute and are active
     # as a destination)
@@ -64,8 +64,6 @@ def check_disk_space():
 
 
 class ProcessDicomJob(CeleryTask):
-    ignore_result = True
-
     dicom_job_class: type[DicomJob]
     default_priority: int
     urgent_priority: int
@@ -168,8 +166,6 @@ class ProcessDicomTask(AbortableCeleryTask):
 
             with Lock("update_job_after_task"):
                 self.update_job_after_task(dicom_task.job)
-
-        return dicom_task.status
 
     def process_dicom_task(self, dicom_task: DicomTask) -> tuple[DicomTask.Status, str]:
         logger.info("%s started.", dicom_task)

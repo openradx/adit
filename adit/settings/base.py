@@ -53,7 +53,6 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "django.contrib.humanize",
     "django.contrib.sites",
-    "django_celery_results",
     "revproxy",
     "loginas",
     "crispy_forms",
@@ -303,7 +302,7 @@ RABBIT_MANAGEMENT_PORT = env.int("RABBIT_MANAGEMENT_PORT", default=15672)  # typ
 if USE_TZ:
     CELERY_TIMEZONE = TIME_ZONE
 CELERY_BROKER_URL = RABBITMQ_URL
-CELERY_RESULT_BACKEND = "django-db"
+CELERY_IGNORE_RESULT = True
 CELERY_WORKER_HIJACK_ROOT_LOGGER = False
 CELERY_TASK_DEFAULT_QUEUE = "default_queue"
 CELERY_TASK_ROUTES = {
