@@ -53,6 +53,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "django.contrib.humanize",
     "django.contrib.sites",
+    "django_celery_results",
     "revproxy",
     "loginas",
     "crispy_forms",
@@ -297,7 +298,7 @@ RABBITMQ_URL = env.str("RABBITMQ_URL", default="amqp://localhost")  # type: igno
 RABBIT_MANAGEMENT_HOST = env.str("RABBIT_MANAGEMENT_HOST", default="localhost")  # type: ignore
 RABBIT_MANAGEMENT_PORT = env.int("RABBIT_MANAGEMENT_PORT", default=15672)  # type: ignore
 
-# Redis is used as Celery result backend, LRU cache and for distributed locks (sherlock).
+# Redis is used as LRU cache and for distributed locks (sherlock).
 REDIS_URL = env.str("REDIS_URL", default="redis://localhost:6379/0")  # type: ignore
 
 # Celery
@@ -305,7 +306,7 @@ REDIS_URL = env.str("REDIS_URL", default="redis://localhost:6379/0")  # type: ig
 if USE_TZ:
     CELERY_TIMEZONE = TIME_ZONE
 CELERY_BROKER_URL = RABBITMQ_URL
-CELERY_RESULT_BACKEND = REDIS_URL
+CELERY_RESULT_BACKEND = "django-db"
 CELERY_WORKER_HIJACK_ROOT_LOGGER = False
 CELERY_TASK_DEFAULT_QUEUE = "default_queue"
 CELERY_TASK_ROUTES = {
