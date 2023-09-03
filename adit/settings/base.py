@@ -302,7 +302,6 @@ RABBIT_MANAGEMENT_PORT = env.int("RABBIT_MANAGEMENT_PORT", default=15672)  # typ
 if USE_TZ:
     CELERY_TIMEZONE = TIME_ZONE
 CELERY_BROKER_URL = RABBITMQ_URL
-CELERY_IGNORE_RESULT = True
 CELERY_WORKER_HIJACK_ROOT_LOGGER = False
 CELERY_TASK_DEFAULT_QUEUE = "default_queue"
 CELERY_TASK_ROUTES = {
@@ -322,6 +321,10 @@ CELERY_BEAT_SCHEDULE = {
         "schedule": crontab(minute=0, hour=7),  # execute daily at 7 o'clock UTC
     }
 }
+
+# No need for a result backend as Celery Canvas is not used anymore and
+# we also log all info in the database inside the dicom task.
+CELERY_IGNORE_RESULT = True
 
 # Max retries is normally 3. We have to overwrite this, see
 # https://github.com/celery/celery/issues/976
