@@ -1,10 +1,10 @@
 from typing import Any, Iterable
-from unittest.mock import create_autospec
 
 import pytest
 from pydicom.dataset import Dataset
 from pynetdicom.association import Association
 from pynetdicom.status import Status
+from pytest_mock import MockerFixture
 
 from adit.core.factories import DicomServerFactory
 from adit.core.utils.dicom_operator import DicomOperator
@@ -60,8 +60,8 @@ def dicom_test_helper():
 
 
 @pytest.fixture
-def association():
-    assoc = create_autospec(Association)
+def association(mocker: MockerFixture):
+    assoc = mocker.create_autospec(Association)
     assoc.is_established = True
     return assoc
 

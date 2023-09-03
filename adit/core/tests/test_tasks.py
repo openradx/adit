@@ -1,9 +1,8 @@
-from unittest.mock import create_autospec, patch
-
 import pytest
 from celery import Task as CeleryTask
 from celery.canvas import Signature
 from celery.result import AsyncResult
+from pytest_mock import MockerFixture
 
 from ..factories import DicomServerFactory
 from ..models import DicomJob, DicomTask
@@ -13,7 +12,7 @@ from .conftest import ExampleModels
 
 class TestProcessDicomJob:
     @pytest.mark.parametrize("urgent", [True, False])
-    def test_run_succeeds(self, urgent, example_models: ExampleModels):
+    def test_run_succeeds(self, urgent, mocker: MockerFixture, example_models: ExampleModels):
         # Arrange
         dicom_job = example_models.dicom_job_factory_class.create(
             status=DicomJob.Status.PENDING,
@@ -34,14 +33,14 @@ class TestProcessDicomJob:
         process_dicom_job.default_priority = default_priority
         process_dicom_job.urgent_priority = urgent_priority
 
-        process_dicom_task = create_autospec(CeleryTask)
+        process_dicom_task = mocker.create_autospec(CeleryTask)
         process_dicom_job.process_dicom_task = process_dicom_task
 
-        signature_mock = create_autospec(Signature)
+        signature_mock = mocker.create_autospec(Signature)
         process_dicom_task.s.return_value = signature_mock
         signature_mock.set.return_value = signature_mock
 
-        async_result_mock = create_autospec(AsyncResult)
+        async_result_mock = mocker.create_autospec(AsyncResult)
         async_result_mock.id = celery_task_id
         signature_mock.delay.return_value = async_result_mock
 
@@ -64,9 +63,8 @@ class TestProcessDicomJob:
 
 class TestProcessDicomTask:
     @pytest.mark.parametrize("urgent", [True, False])
-    @patch("adit.core.tasks.Scheduler", autospec=True)
     def test_process_dicom_task_succeeds(
-        self, scheduler_mock, urgent, example_models: ExampleModels
+        self, mocker: MockerFixture, urgent, example_models: ExampleModels
     ):
         # Arrange
         dicom_job = example_models.dicom_job_factory_class.create(
@@ -79,18 +77,21 @@ class TestProcessDicomTask:
             job=dicom_job,
         )
 
+        scheduler_mock = mocker.patch("adit.core.tasks.Scheduler", autospec=True)
         scheduler_mock.return_value.must_be_scheduled.return_value = False
 
         process_dicom_task = ProcessDicomTask()
         process_dicom_task.dicom_task_class = example_models.dicom_task_class
         process_dicom_task.app_settings_class = example_models.app_settings_class
 
-        def handle_dicom_task(self, dicom_task):
-            return (DicomTask.Status.SUCCESS, "Success!")
+        mocker.patch.object(
+            ProcessDicomTask,
+            "handle_dicom_task",
+            lambda self, dicom_task: (DicomTask.Status.SUCCESS, "Success!"),
+        )
 
-        with patch.object(ProcessDicomTask, "handle_dicom_task", handle_dicom_task):
-            # Act
-            process_dicom_task.run(dicom_task.id)
+        # Act
+        process_dicom_task.run(dicom_task.id)
 
         # Assert
         if urgent:
@@ -105,9 +106,8 @@ class TestProcessDicomTask:
         assert dicom_task.status == DicomTask.Status.SUCCESS
         assert dicom_task.message == "Success!"
 
-    @patch("adit.core.tasks.Scheduler", autospec=True)
     def test_dicom_job_fails_when_dicom_task_fails(
-        self, scheduler_mock, example_models: ExampleModels
+        self, mocker: MockerFixture, example_models: ExampleModels
     ):
         # Arrange
         dicom_job = example_models.dicom_job_factory_class.create(
@@ -119,18 +119,21 @@ class TestProcessDicomTask:
             job=dicom_job,
         )
 
+        scheduler_mock = mocker.patch("adit.core.tasks.Scheduler", autospec=True)
         scheduler_mock.return_value.must_be_scheduled.return_value = False
 
         process_dicom_task = ProcessDicomTask()
         process_dicom_task.dicom_task_class = example_models.dicom_task_class
         process_dicom_task.app_settings_class = example_models.app_settings_class
 
-        def handle_dicom_task(self, dicom_task):
-            return (DicomTask.Status.FAILURE, "Failure!")
+        mocker.patch.object(
+            ProcessDicomTask,
+            "handle_dicom_task",
+            lambda self, dicom_task: (DicomTask.Status.FAILURE, "Failure!"),
+        )
 
-        with patch.object(ProcessDicomTask, "handle_dicom_task", handle_dicom_task):
-            # Act
-            process_dicom_task.run(dicom_task.id)
+        # Act
+        process_dicom_task.run(dicom_task.id)
 
         # Assert
         dicom_job.refresh_from_db()
@@ -140,9 +143,8 @@ class TestProcessDicomTask:
         assert dicom_task.status == DicomTask.Status.FAILURE
         assert dicom_task.message == "Failure!"
 
-    @patch("adit.core.tasks.Scheduler", autospec=True)
     def test_dicom_job_fails_when_dicom_task_raises(
-        self, scheduler_mock, example_models: ExampleModels
+        self, mocker: MockerFixture, example_models: ExampleModels
     ):
         # Arrange
         dicom_job = example_models.dicom_job_factory_class.create(
@@ -154,6 +156,7 @@ class TestProcessDicomTask:
             job=dicom_job,
         )
 
+        scheduler_mock = mocker.patch("adit.core.tasks.Scheduler", autospec=True)
         scheduler_mock.return_value.must_be_scheduled.return_value = False
 
         process_dicom_task = ProcessDicomTask()
@@ -163,9 +166,10 @@ class TestProcessDicomTask:
         def handle_dicom_task(self, dicom_task):
             raise Exception("Unexpected error!")
 
-        with patch.object(ProcessDicomTask, "handle_dicom_task", handle_dicom_task):
-            # Act
-            process_dicom_task.run(dicom_task.id)
+        mocker.patch.object(ProcessDicomTask, "handle_dicom_task", handle_dicom_task)
+
+        # Act
+        process_dicom_task.run(dicom_task.id)
 
         # Assert
         dicom_job.refresh_from_db()
@@ -175,9 +179,8 @@ class TestProcessDicomTask:
         assert dicom_task.status == DicomTask.Status.FAILURE
         assert dicom_task.message == "Unexpected error!"
 
-    @patch("adit.core.tasks.Scheduler", autospec=True)
     def test_dicom_job_canceled_when_dicom_task_canceled(
-        self, scheduler_mock, example_models: ExampleModels
+        self, mocker: MockerFixture, example_models: ExampleModels
     ):
         # Arrange
         dicom_job = example_models.dicom_job_factory_class.create(
@@ -189,6 +192,7 @@ class TestProcessDicomTask:
             job=dicom_job,
         )
 
+        scheduler_mock = mocker.patch("adit.core.tasks.Scheduler", autospec=True)
         scheduler_mock.return_value.must_be_scheduled.return_value = False
 
         process_dicom_task = ProcessDicomTask()
@@ -198,9 +202,10 @@ class TestProcessDicomTask:
         def handle_dicom_task(self, dicom_task):
             raise Exception("Should never raise!")
 
-        with patch.object(ProcessDicomTask, "handle_dicom_task", handle_dicom_task):
-            # Act
-            process_dicom_task.run(dicom_task.id)
+        mocker.patch.object(ProcessDicomTask, "handle_dicom_task", handle_dicom_task)
+
+        # Act
+        process_dicom_task.run(dicom_task.id)
 
         # Assert
         dicom_job.refresh_from_db()

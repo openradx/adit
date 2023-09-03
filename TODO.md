@@ -9,11 +9,9 @@
 - Look into how we can improve STOW (do we have to upload one file at a time, can we stream it somehow)
 - Look into how we can stream the file with WADO
 - Remove files in test folders from autoreload
-- Make job urgent (as staff member)
 - Selective transfer choose series
 - Locked info for other apps like batch_transfer_locked.html
 - Hint when app is locked for admin user
-- Rewrite Celery unit tests using the official test helpers
 
 ## High Priority
 
@@ -22,7 +20,6 @@
 - Allow to terminate a specific Celery task with revoke(task_id, terminate=True)
 - Make whole receiver crash if one asyncio task crashes
 - Auto refresh job pages und success or failure
-- Rewrite tests to use mocker fixture instead of patch
 - rename ADIT_AE_TITLE to RECEIVER_AE_TITLE
 - Query with StudyDateStart, StudyDateEnd, StudyDate
 - Common search query Websocket component

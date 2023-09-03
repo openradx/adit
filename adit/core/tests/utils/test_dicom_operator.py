@@ -4,7 +4,6 @@ import threading
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from time import sleep
-from unittest.mock import patch
 
 from django.conf import settings
 from pydicom import Dataset
@@ -24,15 +23,15 @@ from adit.core.utils.file_transmit import FileTransmitServer
 from .conftest import DicomTestHelper
 
 
-@patch("adit.core.utils.dimse_connector.AE.associate")
 def test_find_patients(
-    associate,
+    mocker: MockerFixture,
     association: Association,
     dicom_operator: DicomOperator,
     dicom_test_helper: DicomTestHelper,
 ):
     # Arrange
-    associate.return_value = association
+    associate_mock = mocker.patch("adit.core.utils.dimse_connector.AE.associate")
+    associate_mock.return_value = association
     responses = [{"PatientName": "Foo^Bar", "PatientID": "1001"}]
     association.send_c_find.return_value = dicom_test_helper.create_successful_c_find_responses(
         responses
@@ -48,15 +47,15 @@ def test_find_patients(
     assert association.send_c_find.call_args.args[1] == PatientRootQueryRetrieveInformationModelFind
 
 
-@patch("adit.core.utils.dimse_connector.AE.associate")
 def test_find_studies_with_patient_root(
-    associate,
+    mocker: MockerFixture,
     association: Association,
     dicom_operator: DicomOperator,
     dicom_test_helper: DicomTestHelper,
 ):
     # Arrange
-    associate.return_value = association
+    associate_mock = mocker.patch("adit.core.utils.dimse_connector.AE.associate")
+    associate_mock.return_value = association
     responses = [{"PatientID": "12345"}]
     association.send_c_find.return_value = dicom_test_helper.create_successful_c_find_responses(
         responses
@@ -72,15 +71,15 @@ def test_find_studies_with_patient_root(
     assert association.send_c_find.call_args.args[1] == StudyRootQueryRetrieveInformationModelFind
 
 
-@patch("adit.core.utils.dimse_connector.AE.associate")
 def test_find_studies_with_study_root(
-    associate,
+    mocker: MockerFixture,
     association: Association,
     dicom_operator: DicomOperator,
     dicom_test_helper: DicomTestHelper,
 ):
     # Arrange
-    associate.return_value = association
+    associate_mock = mocker.patch("adit.core.utils.dimse_connector.AE.associate")
+    associate_mock.return_value = association
     responses = [{"PatientName": "Foo^Bar"}]
     association.send_c_find.return_value = dicom_test_helper.create_successful_c_find_responses(
         responses
@@ -96,15 +95,15 @@ def test_find_studies_with_study_root(
     assert association.send_c_find.call_args.args[1] == StudyRootQueryRetrieveInformationModelFind
 
 
-@patch("adit.core.utils.dimse_connector.AE.associate")
 def test_find_series(
-    associate,
+    mocker: MockerFixture,
     association: Association,
     dicom_operator: DicomOperator,
     dicom_test_helper: DicomTestHelper,
 ):
     # Arrange
-    associate.return_value = association
+    associate_mock = mocker.patch("adit.core.utils.dimse_connector.AE.associate")
+    associate_mock.return_value = association
     responses = [{"PatientID": "12345", "StudyInstanceUID": "1.123"}]
     association.send_c_find.return_value = dicom_test_helper.create_successful_c_find_responses(
         responses
@@ -129,7 +128,8 @@ def test_download_series_with_c_get(
     dicom_test_helper: DicomTestHelper,
 ):
     # Arrange
-    mocker.patch("adit.core.utils.dimse_connector.AE.associate", return_value=association)
+    associate_mock = mocker.patch("adit.core.utils.dimse_connector.AE.associate")
+    associate_mock.return_value = association
     association.send_c_get.return_value = dicom_test_helper.create_successful_c_get_response()
     path = Path(settings.BASE_DIR) / "samples" / "dicoms"
     ds = read_dataset(next(path.rglob("*.dcm")))
@@ -153,7 +153,8 @@ def test_download_series_with_c_move(
     # Arrange
     settings.FILE_TRANSMIT_HOST = "127.0.0.1"
     settings.FILE_TRANSMIT_PORT = 17999
-    mocker.patch("adit.core.utils.dimse_connector.AE.associate", return_value=association)
+    associate_mock = mocker.patch("adit.core.utils.dimse_connector.AE.associate")
+    associate_mock.return_value = association
     association.send_c_move.return_value = dicom_test_helper.create_successful_c_move_response()
     dicom_operator.server.study_root_get_support = False
     dicom_operator.server.patient_root_get_support = False

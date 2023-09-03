@@ -1,7 +1,6 @@
-from unittest.mock import create_autospec, patch
-
 import pytest
 from django.core.files import File
+from pytest_mock import MockerFixture
 
 from adit.accounts.factories import UserFactory
 from adit.accounts.models import User
@@ -22,16 +21,16 @@ def data_dict():
 
 
 @pytest.fixture
-def file_dict():
-    file = create_autospec(File, size=5242880)
+def file_dict(mocker: MockerFixture):
+    file = mocker.create_autospec(File, size=5242880)
     file.name = "sample_sheet.xlsx"
     file.read.return_value.decode.return_value = ""
     return {"batch_file": file}
 
 
-def test_field_labels():
+def test_field_labels(mocker: MockerFixture):
     # Arrange
-    user = create_autospec(User)
+    user = mocker.create_autospec(User)
     user.has_perm.return_value = True
 
     # Act
@@ -51,12 +50,14 @@ def test_field_labels():
 
 
 @pytest.mark.django_db
-@patch("adit.batch_transfer.forms.BatchTransferFileParser.parse", autospec=True)
-def test_with_valid_data(parse_mock, grant_access, data_dict, file_dict):
+def test_with_valid_data(mocker: MockerFixture, grant_access, data_dict, file_dict):
     # Arrange
     user = UserFactory.create()
     grant_access(user, data_dict["source"], "source")
     grant_access(user, data_dict["destination"], "destination")
+    parse_mock = mocker.patch(
+        "adit.batch_transfer.forms.BatchTransferFileParser.parse", autospec=True
+    )
     parse_mock.return_value = []
 
     # Act
@@ -68,9 +69,9 @@ def test_with_valid_data(parse_mock, grant_access, data_dict, file_dict):
     assert parse_mock.call_args.args[1] == file_dict["batch_file"]
 
 
-def test_with_missing_values():
+def test_with_missing_values(mocker: MockerFixture):
     # Arrange
-    user = create_autospec(User)
+    user = mocker.create_autospec(User)
     user.has_perm.return_value = True
 
     # Act
@@ -88,11 +89,11 @@ def test_with_missing_values():
 
 
 @pytest.mark.django_db
-def test_disallow_too_large_file(data_dict):
+def test_disallow_too_large_file(mocker: MockerFixture, data_dict):
     # Arrange
-    file = create_autospec(File, size=5242881)
+    file = mocker.create_autospec(File, size=5242881)
     file.name = "sample_sheet.xlsx"
-    user = create_autospec(User)
+    user = mocker.create_autospec(User)
     user.has_perm.return_value = True
 
     # Act
