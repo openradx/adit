@@ -298,9 +298,6 @@ RABBITMQ_URL = env.str("RABBITMQ_URL", default="amqp://localhost")  # type: igno
 RABBIT_MANAGEMENT_HOST = env.str("RABBIT_MANAGEMENT_HOST", default="localhost")  # type: ignore
 RABBIT_MANAGEMENT_PORT = env.int("RABBIT_MANAGEMENT_PORT", default=15672)  # type: ignore
 
-# Redis is used as LRU cache and for distributed locks (sherlock).
-REDIS_URL = env.str("REDIS_URL", default="redis://localhost:6379/0")  # type: ignore
-
 # Celery
 # see https://github.com/celery/celery/issues/5026 for how to name configs
 if USE_TZ:
@@ -354,6 +351,9 @@ CELERY_TASK_ACKS_LATE = True
 # This allows to use the authentication of ADIT.
 FLOWER_HOST = env.str("FLOWER_HOST", default="localhost")  # type: ignore
 FLOWER_PORT = env.int("FLOWER_PORT", default=5555)  # type: ignore
+
+# Redis is used for distributed locks (sherlock).
+REDIS_URL = env.str("REDIS_URL", default="redis://localhost:6379/0")  # type: ignore
 
 # Orthanc servers are integrated in ADIT by using a reverse proxy (django-revproxy).
 ORTHANC1_HOST = env.str("ORTHANC1_HOST", default="localhost")  # type: ignore
