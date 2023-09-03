@@ -90,7 +90,7 @@ class TestProcessDicomTask:
 
         with patch.object(ProcessDicomTask, "handle_dicom_task", handle_dicom_task):
             # Act
-            result = process_dicom_task.run(dicom_task.id)
+            process_dicom_task.run(dicom_task.id)
 
         # Assert
         if urgent:
@@ -102,8 +102,7 @@ class TestProcessDicomTask:
         assert dicom_job.status == DicomJob.Status.SUCCESS
 
         dicom_task.refresh_from_db()
-        assert result == DicomTask.Status.SUCCESS
-        assert dicom_task.status == result
+        assert dicom_task.status == DicomTask.Status.SUCCESS
         assert dicom_task.message == "Success!"
 
     @patch("adit.core.tasks.Scheduler", autospec=True)
@@ -131,15 +130,14 @@ class TestProcessDicomTask:
 
         with patch.object(ProcessDicomTask, "handle_dicom_task", handle_dicom_task):
             # Act
-            result = process_dicom_task.run(dicom_task.id)
+            process_dicom_task.run(dicom_task.id)
 
         # Assert
         dicom_job.refresh_from_db()
         assert dicom_job.status == DicomJob.Status.FAILURE
 
         dicom_task.refresh_from_db()
-        assert result == DicomTask.Status.FAILURE
-        assert dicom_task.status == result
+        assert dicom_task.status == DicomTask.Status.FAILURE
         assert dicom_task.message == "Failure!"
 
     @patch("adit.core.tasks.Scheduler", autospec=True)
@@ -167,15 +165,14 @@ class TestProcessDicomTask:
 
         with patch.object(ProcessDicomTask, "handle_dicom_task", handle_dicom_task):
             # Act
-            result = process_dicom_task.run(dicom_task.id)
+            process_dicom_task.run(dicom_task.id)
 
         # Assert
         dicom_job.refresh_from_db()
         assert dicom_job.status == DicomJob.Status.FAILURE
 
         dicom_task.refresh_from_db()
-        assert result == DicomTask.Status.FAILURE
-        assert dicom_task.status == result
+        assert dicom_task.status == DicomTask.Status.FAILURE
         assert dicom_task.message == "Unexpected error!"
 
     @patch("adit.core.tasks.Scheduler", autospec=True)
@@ -203,15 +200,14 @@ class TestProcessDicomTask:
 
         with patch.object(ProcessDicomTask, "handle_dicom_task", handle_dicom_task):
             # Act
-            result = process_dicom_task.run(dicom_task.id)
+            process_dicom_task.run(dicom_task.id)
 
         # Assert
         dicom_job.refresh_from_db()
         assert dicom_job.status == DicomJob.Status.CANCELED
 
         dicom_task.refresh_from_db()
-        assert result == DicomTask.Status.CANCELED
-        assert dicom_task.status == result
+        assert dicom_task.status == DicomTask.Status.CANCELED
         assert dicom_task.message == "Task was canceled."
 
     @pytest.mark.skip  # TODO

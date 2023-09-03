@@ -45,6 +45,8 @@
 
 - Do some prechecks before trying the task (is source and destination online?)
 - Fix Celery logging (task ids are not appended to logging messages even as we use get_task_logger)
+  -- Look into how the setup is in <https://youtube.com/playlist?list=PLOLrQ9Pn6caz-6WpcBYxV84g9gwptoN20&si=jUU6wttECucsbGFv>
+  -- and its code <https://github.com/veryacademy?q=Django&type=all&language=&sort=>
 - Shorter timeout for offline studies
 - Tests: test_query_utils, test serializers, test all views (as integration tests using real Orthanc), improve tests of transferutil, BatchFileSizeError
 - c-get download timeout
