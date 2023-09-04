@@ -12,6 +12,10 @@
 - Selective transfer choose series
 - Locked info for other apps like batch_transfer_locked.html
 - Hint when app is locked for admin user
+- Encrypt data between swarm containers
+-- <https://docs.docker.com/network/drivers/overlay/#encrypt-traffic-on-an-overlay-network>
+-- <https://forums.docker.com/t/configuring-encryption-for-swarm-overlay-network-in-compose/29469/2>
+-- We can also make the network attachable to do the "exec" stuff in tasks.py using one off containers using "run"
 
 ## High Priority
 
