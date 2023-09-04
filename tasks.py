@@ -358,3 +358,14 @@ def purge_celery(
     if force:
         cmd += " -f"
     run_cmd(ctx, cmd)
+
+
+@task
+def publish_client(ctx: Context):
+    """Publish ADIT Client to PyPI
+
+    - Make sure PyPI API token is set: poetry config pypi-token.pypi your-api-token
+    - Set version in adit_client/pyproject.toml
+    """
+    with ctx.cd("adit_client"):
+        run_cmd(ctx, "poetry publish --build")

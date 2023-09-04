@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "adit-client"
-version = "0.2.0"
+version = "0.2.1"
 description = "ADIT Client library to connect to an ADIT server."
 authors = ["Kai Schlamp <kai.schlamp@gmail.com>"]
 license = "GPL-3.0-or-later"
