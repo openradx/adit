@@ -53,6 +53,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "django.contrib.humanize",
     "django.contrib.sites",
+    "dbbackup",
     "revproxy",
     "loginas",
     "crispy_forms",
@@ -244,6 +245,12 @@ AUTH_USER_MODEL = "accounts.User"
 
 # Where to redirect to after login
 LOGIN_REDIRECT_URL = "home"
+
+# django-dbbackup
+DBBACKUP_STORAGE = "django.core.files.storage.FileSystemStorage"
+DBBACKUP_STORAGE_OPTIONS = {
+    "location": env.str("BACKUP_DIR", default=(BASE_DIR / "backups")),  # type: ignore
+}
 
 # For crispy forms
 CRISPY_ALLOWED_TEMPLATE_PACKS = "bootstrap5"

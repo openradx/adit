@@ -30,6 +30,13 @@ ENV PYTHONUNBUFFERED=1 \
 # prepend poetry and venv to path
 ENV PATH="$POETRY_HOME/bin:$VENV_PATH/bin:$PATH"
 
+RUN apt-get update \
+    && apt-get install --no-install-recommends -y \
+    # deps for db management commands
+    postgresql-client \
+    # deps for transferring to an archive
+    p7zip-full
+
 
 # `builder-base` stage is used to build deps + create our virtual environment
 FROM python-base as builder-base
@@ -38,9 +45,7 @@ RUN apt-get update \
     # deps for installing poetry
     curl \
     # deps for building python deps
-    build-essential \
-    # deps for ADIT
-    p7zip-full
+    build-essential
 
 # install poetry - respects $POETRY_VERSION & $POETRY_HOME
 RUN curl -sSL https://install.python-poetry.org | python3 -
