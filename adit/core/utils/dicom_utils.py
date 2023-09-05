@@ -72,14 +72,14 @@ def person_name_to_dicom(value: str, add_wildcards=False) -> str:
     return re.sub(r"\s*,\s*", "^", value)
 
 
-def _build_date_time_range(
+def _build_date_time_datetime_range(
     start: str | datetime.date | datetime.time | datetime.datetime | None,
     end: str | datetime.date | datetime.time | datetime.datetime | None,
     vr_class: type[valuerep.DA] | type[valuerep.TM] | type[valuerep.DT],
 ):
     start_date = str(vr_class(start)) if start else ""
     end_date = str(vr_class(end)) if end else ""
-    return f"{start_date}-{end_date}"
+    return f"{start_date} - {end_date}"
 
 
 def _convert_to_dicom_date_time_datetime(
@@ -94,13 +94,16 @@ def _convert_to_dicom_date_time_datetime(
     """
     if isinstance(value, str):
         if "-" in value:
-            start, end = value.split("-")
-            return _build_date_time_range(start, end, vr_class)
+            range = [s.strip() for s in value.split("-")]
+            if len(range) != 2:
+                raise ValueError(f"Invalid range: {value}")
+            start, end = range
+            return _build_date_time_datetime_range(start, end, vr_class)
         else:
             return str(vr_class(value))
     elif isinstance(value, tuple):
         start, end = value
-        return _build_date_time_range(start, end, vr_class)
+        return _build_date_time_datetime_range(start, end, vr_class)
     else:
         return str(vr_class(value))
 
