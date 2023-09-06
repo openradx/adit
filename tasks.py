@@ -1,3 +1,4 @@
+import os
 import sys
 from glob import glob
 from os import environ
@@ -287,30 +288,39 @@ def copy_statics(ctx: Context):
 
 
 @task
-def init_workspace(ctx: Context, type: Literal["codespaces", "gitpod", "local"] = "local"):
+def init_workspace(ctx: Context):
     """Initialize workspace for Github Codespaces or Gitpod"""
     env_dev_file = f"{project_dir}/.env.dev"
+    if os.path.isfile(env_dev_file):
+        print("Workspace already initialized (.env.dev file exists).")
+        return
+
     copy(f"{project_dir}/example.env", env_dev_file)
 
-    if type != "local":
-        if type == "codespaces":
-            base_url = f"https://{environ['CODESPACE_NAME']}-8000.preview.app.github.dev"
-        elif type == "gitpod":
-            result = run_cmd(ctx, "gp url 8000", silent=True)
-            assert result and result.ok
-            base_url = result.stdout.strip()
-        else:
-            raise ValueError(f"Invalid workspace type: {type}")
+    def modify_env_file(base_url: str | None = None):
+        if base_url:
+            hosts = ".localhost,127.0.0.1,[::1],"
+            hosts += base_url.removeprefix("https://")
+            set_key(env_dev_file, "BASE_URL", base_url, quote_mode="never")
+            set_key(env_dev_file, "DJANGO_CSRF_TRUSTED_ORIGINS", base_url, quote_mode="never")
+            set_key(env_dev_file, "DJANGO_ALLOWED_HOSTS", hosts, quote_mode="never")
+            set_key(env_dev_file, "DJANGO_INTERNAL_IPS", hosts, quote_mode="never")
 
-        hosts = ".localhost,127.0.0.1,[::1],"
-        hosts += base_url.removeprefix("https://")
+        set_key(env_dev_file, "FORCE_DEBUG_TOOLBAR", "true", quote_mode="never")
 
-        set_key(env_dev_file, "BASE_URL", base_url, quote_mode="never")
-        set_key(env_dev_file, "DJANGO_CSRF_TRUSTED_ORIGINS", base_url, quote_mode="never")
-        set_key(env_dev_file, "DJANGO_ALLOWED_HOSTS", hosts, quote_mode="never")
-        set_key(env_dev_file, "DJANGO_INTERNAL_IPS", hosts, quote_mode="never")
-
-    set_key(env_dev_file, "FORCE_DEBUG_TOOLBAR", "true", quote_mode="never")
+    if environ.get("CODESPACE_NAME"):
+        # Inside GitHub Codespaces
+        base_url = f"https://{environ['CODESPACE_NAME']}-8000.preview.app.github.dev"
+        modify_env_file(base_url)
+    elif environ.get("GITPOD_WORKSPACE_ID"):
+        # Inside Gitpod
+        result = run_cmd(ctx, "gp url 8000", silent=True)
+        assert result and result.ok
+        base_url = result.stdout.strip()
+        modify_env_file(base_url)
+    else:
+        # Inside some local environment
+        modify_env_file()
 
 
 @task
