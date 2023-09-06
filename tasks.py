@@ -287,27 +287,29 @@ def copy_statics(ctx: Context):
 
 
 @task
-def init_workspace(ctx: Context, type: Literal["codespaces", "gitpod"]):
+def init_workspace(ctx: Context, type: Literal["codespaces", "gitpod", "local"] = "local"):
     """Initialize workspace for Github Codespaces or Gitpod"""
     env_dev_file = f"{project_dir}/.env.dev"
     copy(f"{project_dir}/example.env", env_dev_file)
 
-    if type == "codespaces":
-        base_url = f"https://{environ['CODESPACE_NAME']}-8000.preview.app.github.dev"
-    elif type == "gitpod":
-        result = run_cmd(ctx, "gp url 8000", silent=True)
-        assert result and result.ok
-        base_url = result.stdout.strip()
-    else:
-        raise ValueError(f"Invalid workspace type: {type}")
+    if type != "local":
+        if type == "codespaces":
+            base_url = f"https://{environ['CODESPACE_NAME']}-8000.preview.app.github.dev"
+        elif type == "gitpod":
+            result = run_cmd(ctx, "gp url 8000", silent=True)
+            assert result and result.ok
+            base_url = result.stdout.strip()
+        else:
+            raise ValueError(f"Invalid workspace type: {type}")
 
-    hosts = ".localhost,127.0.0.1,[::1],"
-    hosts += base_url.removeprefix("https://")
+        hosts = ".localhost,127.0.0.1,[::1],"
+        hosts += base_url.removeprefix("https://")
 
-    set_key(env_dev_file, "BASE_URL", base_url, quote_mode="never")
-    set_key(env_dev_file, "DJANGO_CSRF_TRUSTED_ORIGINS", base_url, quote_mode="never")
-    set_key(env_dev_file, "DJANGO_ALLOWED_HOSTS", hosts, quote_mode="never")
-    set_key(env_dev_file, "DJANGO_INTERNAL_IPS", hosts, quote_mode="never")
+        set_key(env_dev_file, "BASE_URL", base_url, quote_mode="never")
+        set_key(env_dev_file, "DJANGO_CSRF_TRUSTED_ORIGINS", base_url, quote_mode="never")
+        set_key(env_dev_file, "DJANGO_ALLOWED_HOSTS", hosts, quote_mode="never")
+        set_key(env_dev_file, "DJANGO_INTERNAL_IPS", hosts, quote_mode="never")
+
     set_key(env_dev_file, "FORCE_DEBUG_TOOLBAR", "true", quote_mode="never")
 
 
