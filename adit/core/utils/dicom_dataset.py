@@ -255,10 +255,10 @@ def _set_dataset_value(
         elif vr == "DA":
             date = convert_to_dicom_date(v)
             setattr(ds, k, date)
-        elif vr == "DT":
+        elif vr == "TM":
             time = convert_to_dicom_time(v)
             setattr(ds, k, time)
-        elif vr == "TM":
+        elif vr == "DT":
             datetime = convert_to_dicom_datetime(v)
             setattr(ds, k, datetime)
         else:
