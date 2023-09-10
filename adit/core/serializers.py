@@ -11,7 +11,7 @@ class BatchTaskListSerializer(serializers.ListSerializer):
         super().__init__(*args, **kwargs)
 
     def get_tasks(self):
-        assert type(self.validated_data) == list
+        assert isinstance(self.validated_data, list)
         return [self.model(**item) for item in self.validated_data]
 
 
