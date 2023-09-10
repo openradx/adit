@@ -13,12 +13,12 @@
   },
   "homepage": "https://github.com/medihack/adit#readme",
   "dependencies": {
-    "@alpinejs/morph": "^3.12.3",
+    "@alpinejs/morph": "^3.13.0",
     "@popperjs/core": "^2.11.8",
-    "alpinejs": "^3.12.3",
+    "alpinejs": "^3.13.0",
     "bootstrap": "^5.3.1",
     "bootswatch": "^5.3.1",
-    "htmx.org": "^1.9.4"
+    "htmx.org": "^1.9.5"
   },
   "scripts": {
     "copy-statics": "invoke copy-statics"
