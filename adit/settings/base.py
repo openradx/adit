@@ -251,6 +251,7 @@ DBBACKUP_STORAGE = "django.core.files.storage.FileSystemStorage"
 DBBACKUP_STORAGE_OPTIONS = {
     "location": env.str("BACKUP_DIR", default=(BASE_DIR / "backups")),  # type: ignore
 }
+DBBACKUP_CLEANUP_KEEP = 30
 
 # For crispy forms
 CRISPY_ALLOWED_TEMPLATE_PACKS = "bootstrap5"

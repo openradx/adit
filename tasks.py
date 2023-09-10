@@ -58,6 +58,19 @@ def check_compose_up(ctx: Context, env: Environments):
     return False
 
 
+def find_running_container_id(ctx: Context, env: Environments, name: str):
+    stack_name = get_stack_name(env)
+    sep = "-" if env == "dev" else "_"
+    cmd = f"docker ps -q -f name={stack_name}{sep}{name} -f status=running"
+    cmd += " | head -n1"
+    result = ctx.run(cmd, hide=True, warn=True)
+    if result and result.ok:
+        container_id = result.stdout.strip()
+        if container_id:
+            return container_id
+    return None
+
+
 def run_cmd(ctx: Context, cmd: str, silent=False) -> Result:
     if not silent:
         print(f"Running: {cmd}")
@@ -381,3 +394,32 @@ def publish_client(ctx: Context):
     """
     with ctx.cd("adit_client"):
         run_cmd(ctx, "poetry publish --build")
+
+
+@task
+def backup_db(ctx: Context, env: Environments = "prod"):
+    """Backup database
+
+    For backup location see setting DBBACKUP_STORAGE_OPTIONS
+    For possible commands see:
+    https://django-dbbackup.readthedocs.io/en/master/commands.html
+    """
+    settings = "adit.settings.production" if env == "prod" else "adit.settings.development"
+    web_container_id = find_running_container_id(ctx, env, "web")
+    cmd = (
+        f"docker exec --env DJANGO_SETTINGS_MODULE={settings} "
+        f"{web_container_id} ./manage.py dbbackup --clean -v 2"
+    )
+    run_cmd(ctx, cmd)
+
+
+@task
+def restore_db(ctx: Context, env: Environments = "prod"):
+    """Restore database from backup"""
+    settings = "adit.settings.production" if env == "prod" else "adit.settings.development"
+    web_container_id = find_running_container_id(ctx, env, "web")
+    cmd = (
+        f"docker exec --env DJANGO_SETTINGS_MODULE={settings} "
+        f"{web_container_id} ./manage.py dbrestore"
+    )
+    run_cmd(ctx, cmd)
