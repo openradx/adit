@@ -1,3 +1,5 @@
+from celery.schedules import crontab
+
 from .base import *  # noqa: F403
 from .base import env
 
@@ -21,3 +23,8 @@ EMAIL_HOST_PASSWORD = env.str("DJANGO_EMAIL_HOST_PASSWORD", default="")  # type:
 EMAIL_USE_TLS = env.bool("DJANGO_EMAIL_USE_TLS", default=False)  # type: ignore
 
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+
+CELERY_BEAT_SCHEDULE["backup-db"] = {  # noqa: F405
+    "task": "adit.core.tasks.backup_db",
+    "schedule": crontab(minute=0, hour=3),  # execute daily at 3 o'clock UTC
+}

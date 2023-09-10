@@ -12,6 +12,7 @@ from celery.exceptions import Retry
 from celery.utils.log import get_task_logger
 from django.conf import settings
 from django.core.mail import send_mail
+from django.core.management import call_command
 from django.utils import timezone
 from sherlock import Lock
 
@@ -61,6 +62,11 @@ def check_disk_space():
             )
             logger.warning(msg)
             send_mail_to_admins("Warning, low disk space!", msg)
+
+
+@shared_task
+def backup_db():
+    call_command("backup_db")
 
 
 class ProcessDicomJob(CeleryTask):
