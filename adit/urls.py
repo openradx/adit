@@ -23,12 +23,7 @@ urlpatterns = [
     path("accounts/", include("adit.accounts.urls")),
     path("api/", include("adit.api.urls")),
     path("", include("adit.core.urls")),
-    path("selective-transfer/", include("adit.selective_transfer.urls")),
-    path("batch-transfer/", include("adit.batch_transfer.urls")),
-    path("batch-query/", include("adit.batch_query.urls")),
-    path("dicom-explorer/", include("adit.dicom_explorer.urls")),
     path("token-authentication/", include("adit.token_authentication.urls")),
-    path("dicom-web/", include("adit.dicom_web.urls")),
     path("sandbox/", include("adit.sandbox.urls")),
 ]
 
