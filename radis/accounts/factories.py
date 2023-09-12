@@ -7,7 +7,7 @@ from .models import Institute, User
 T = TypeVar("T")
 
 
-# We can't use BaseDjangoModelFactory of adit.core.factories because of circular imports
+# We can't use BaseDjangoModelFactory of radis.core.factories because of circular imports
 class BaseDjangoModelFactory(Generic[T], factory.django.DjangoModelFactory):
     @classmethod
     def create(cls, *args, **kwargs) -> T:
@@ -30,7 +30,7 @@ class UserFactory(BaseDjangoModelFactory[User]):
 
 class AdminUserFactory(UserFactory):
     username = "admin"
-    email = "admin@adit.test"
+    email = "admin@radis.test"
     password = factory.PostGenerationMethodCall("set_password", "admin")
     is_superuser = True
     is_staff = True

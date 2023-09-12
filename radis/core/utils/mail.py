@@ -2,7 +2,7 @@ from django.conf import settings
 from django.core.mail import mail_admins, send_mail
 from django.utils.html import strip_tags
 
-from adit.accounts.models import User
+from radis.accounts.models import User
 
 
 def send_mail_to_admins(

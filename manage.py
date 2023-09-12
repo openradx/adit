@@ -21,7 +21,7 @@ def initialize_debugger():
 
 
 def main():
-    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "adit.settings.development")
+    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "radis.settings.development")
 
     initialize_debugger()
 

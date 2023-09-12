@@ -1,6 +1,6 @@
 {% load blocktrans from i18n %}
 {% blocktrans %}
-    The user ({{ user }}) has asked to register an account at ADIT.
+    The user ({{ user }}) has asked to register an account at RADIS.
     To approve the account, please click the following link.
 {% endblocktrans %}
 

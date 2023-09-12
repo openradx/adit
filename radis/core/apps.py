@@ -3,7 +3,7 @@ from django.db.models.signals import post_migrate
 
 
 class CoreConfig(AppConfig):
-    name = "adit.core"
+    name = "radis.core"
 
     def ready(self):
         # Put calls to db stuff in this signal handler

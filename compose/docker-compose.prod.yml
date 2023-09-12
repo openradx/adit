@@ -3,14 +3,14 @@ version: "3.8"
 x-app:
   &default-app
   restart: always
-  image: adit_prod:latest
+  image: radis_prod:latest
   env_file:
     - ../.env.prod
   environment:
     ENABLE_REMOTE_DEBUGGING: 0
-    DJANGO_SETTINGS_MODULE: "adit.settings.production"
-    SSL_CERT_FILE: "/var/www/adit/ssl/cert.pem"
-    SSL_KEY_FILE: "/var/www/adit/ssl/key.pem"
+    DJANGO_SETTINGS_MODULE: "radis.settings.production"
+    SSL_CERT_FILE: "/var/www/radis/ssl/cert.pem"
+    SSL_KEY_FILE: "/var/www/radis/ssl/key.pem"
 
 services:
   web:
@@ -27,7 +27,7 @@ services:
         ./manage.py collectstatic --no-input &&
         ./manage.py create_admin &&
         ./manage.py generate_cert &&
-        daphne -b 0.0.0.0 -p 80 -e ssl:443:privateKey=/var/www/adit/ssl/key.pem:certKey=/var/www/adit/ssl/cert.pem adit.asgi:application
+        daphne -b 0.0.0.0 -p 80 -e ssl:443:privateKey=/var/www/radis/ssl/key.pem:certKey=/var/www/radis/ssl/cert.pem radis.asgi:application
       "
     deploy:
       replicas: 1

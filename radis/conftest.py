@@ -8,8 +8,8 @@ from django.core.management import call_command
 from faker import Faker
 from playwright.sync_api import Locator, Page, Response
 
-from adit.accounts.factories import UserFactory
-from adit.testing import ChannelsLiveServer
+from radis.accounts.factories import UserFactory
+from radis.testing import ChannelsLiveServer
 
 fake = Faker()
 
@@ -55,7 +55,7 @@ def channels_live_server(request):
 
 
 @pytest.fixture
-def adit_celery_worker():
+def radis_celery_worker():
     def start_worker():
         call_command("celery_worker", "-Q", "test_queue")
 

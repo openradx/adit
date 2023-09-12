@@ -17,8 +17,8 @@ ALLOWED_HOSTS = env.list("DJANGO_ALLOWED_HOSTS", default=[])  # type: ignore
 CSRF_TRUSTED_ORIGINS = env.list("DJANGO_CSRF_TRUSTED_ORIGINS", default=[])  # type: ignore
 
 # TODO: We also use Postgres for tests now. So tests can only run in the fullstack setup.
-# if not ADIT_FULLSTACK and sys.argv and ("test" in sys.argv or "pytest" in sys.argv[0]):
-#     DATABASES = {"default": env.db("SQLITE_URL", default="sqlite:///./adit-sqlite.db")}
+# if not RADIS_FULLSTACK and sys.argv and ("test" in sys.argv or "pytest" in sys.argv[0]):
+#     DATABASES = {"default": env.db("SQLITE_URL", default="sqlite:///./radis-sqlite.db")}
 
 EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 
@@ -27,7 +27,7 @@ INSTALLED_APPS += [  # noqa: F405
     "debug_permissions",
     "django_extensions",
     "django_browser_reload",
-    "adit.sandbox.apps.SandboxConfig",
+    "radis.sandbox.apps.SandboxConfig",
 ]
 
 MIDDLEWARE += [  # noqa: F405
@@ -44,7 +44,7 @@ if env.bool("FORCE_DEBUG_TOOLBAR", default=False):  # type: ignore
 CELERY_TASK_ALWAYS_EAGER = False
 CELERY_TASK_EAGER_PROPAGATES = False
 
-LOGGING["loggers"]["adit"]["level"] = "DEBUG"  # noqa: F405
+LOGGING["loggers"]["radis"]["level"] = "DEBUG"  # noqa: F405
 LOGGING["loggers"]["celery"]["level"] = "DEBUG"  # noqa: F405
 
 INTERNAL_IPS = env.list("DJANGO_INTERNAL_IPS", default=["127.0.0.1"])  # type: ignore

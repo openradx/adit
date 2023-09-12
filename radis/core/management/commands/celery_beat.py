@@ -28,13 +28,13 @@ class Command(ServerCommand):
         )
 
     def run_server(self, **options):
-        folder_path = Path("/var/www/adit/celery/")
+        folder_path = Path("/var/www/radis/celery/")
         folder_path.mkdir(parents=True, exist_ok=True)
         schedule_path = folder_path / "celerybeat-schedule"
         loglevel = options["loglevel"]
 
         # --pidfile= disables pidfile creation as we can control the process with subprocess
-        cmd = f"celery -A adit beat -l {loglevel} -s {str(schedule_path)} --pidfile="
+        cmd = f"celery -A radis beat -l {loglevel} -s {str(schedule_path)} --pidfile="
 
         self.beat_process = subprocess.Popen(shlex.split(cmd))
         self.beat_process.wait()

@@ -1,5 +1,5 @@
 """
-WSGI config for adit project.
+WSGI config for radis project.
 
 It exposes the WSGI callable as a module-level variable named ``application``.
 
@@ -11,6 +11,6 @@ import os
 
 from django.core.wsgi import get_wsgi_application
 
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "adit.settings.development")
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "radis.settings.development")
 
 application = get_wsgi_application()

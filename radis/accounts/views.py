@@ -5,7 +5,7 @@ from django.http import HttpResponse
 from django.views.generic import TemplateView
 from django.views.generic.edit import CreateView
 
-from adit.core.types import AuthenticatedHttpRequest
+from radis.core.types import AuthenticatedHttpRequest
 
 from .forms import RegistrationForm
 from .models import User

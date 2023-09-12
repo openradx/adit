@@ -25,6 +25,6 @@ EMAIL_USE_TLS = env.bool("DJANGO_EMAIL_USE_TLS", default=False)  # type: ignore
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
 CELERY_BEAT_SCHEDULE["backup-db"] = {  # noqa: F405
-    "task": "adit.core.tasks.backup_db",
+    "task": "radis.core.tasks.backup_db",
     "schedule": crontab(minute=0, hour=3),  # execute daily at 3 o'clock UTC
 }

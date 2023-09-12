@@ -58,7 +58,7 @@ class ServerCommand(BaseCommand, ABC):
 
             try:
                 for changes in watch(
-                    settings.BASE_DIR / "adit", watch_filter=PythonFilter(), stop_event=self._stop
+                    settings.BASE_DIR / "radis", watch_filter=PythonFilter(), stop_event=self._stop
                 ):
                     self.stdout.write("Changes detected. Restarting server...")
                     inner_run()

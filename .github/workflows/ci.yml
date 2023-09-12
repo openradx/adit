@@ -25,7 +25,7 @@ jobs:
           context: .
           target: development
           load: true
-          tags: adit_dev:latest
+          tags: radis_dev:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
       - name: Configure environment

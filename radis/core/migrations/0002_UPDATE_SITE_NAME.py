@@ -10,8 +10,8 @@ def update_site_name(apps, _):
     SiteModel.objects.update_or_create(
         pk=settings.SITE_ID,
         defaults={
-            "domain": settings.ADIT_SITE_DOMAIN,
-            "name": settings.ADIT_SITE_NAME,
+            "domain": settings.RADIS_SITE_DOMAIN,
+            "name": settings.RADIS_SITE_NAME,
         },
     )
 

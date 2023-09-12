@@ -1,12 +1,12 @@
 from django.apps import AppConfig
 
-from adit.core.site import register_main_menu_item
+from radis.core.site import register_main_menu_item
 
 SECTION_NAME = "Sandbox"
 
 
 class SandboxConfig(AppConfig):
-    name = "adit.sandbox"
+    name = "radis.sandbox"
 
     def ready(self):
         register_app()

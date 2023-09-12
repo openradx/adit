@@ -8,7 +8,7 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from adit.core.mixins import OwnerRequiredMixin
+from radis.core.mixins import OwnerRequiredMixin
 
 from .forms import GenerateTokenForm
 from .models import Token

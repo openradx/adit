@@ -27,7 +27,7 @@ ready(function () {
 
 /**
  * Get the app config from the DOM that was added by the Django context processor:
- * adit.core.site.base_context_processor (public key)
+ * radis.core.site.base_context_processor (public key)
  * @returns {object} config
  */
 function getConfig() {

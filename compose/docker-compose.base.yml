@@ -11,7 +11,7 @@ x-app:
     DATABASE_URL: "psql://postgres:postgres@postgres:5432/postgres"
     RABBITMQ_URL: "amqp://rabbit"
     REDIS_URL: "redis://redis:6379/0"
-    DJANGO_STATIC_ROOT: "/var/www/adit/static/"
+    DJANGO_STATIC_ROOT: "/var/www/radis/static/"
     RABBIT_MANAGEMENT_HOST: "rabbit"
     RABBIT_MANAGEMENT_PORT: "15672"
     FLOWER_HOST: "flower"
@@ -25,7 +25,7 @@ services:
     volumes:
       # Cave, overwrites the above anchor
       - /mnt:/mnt
-      - adit_data:/var/www/adit
+      - radis_data:/var/www/radis
 
   postgres:
     image: postgres:13.11
@@ -55,7 +55,7 @@ services:
 
   # RabbitMQ authentication can't be disabled. So when we try to log into
   # the management console we have to use "guest" as username and password.
-  # The real authentication happens by ADIT itself, because the management
+  # The real authentication happens by RADIS itself, because the management
   # console is behind a ProxyView.
   rabbit:
     image: rabbitmq:3.12.2-management
@@ -80,7 +80,7 @@ configs:
     file: ./rabbitmq/rabbitmq.conf
 
 volumes:
-  adit_data:
+  radis_data:
   postgres_data:
   rabbit_data:
   redis_data:

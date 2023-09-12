@@ -1,1 +1,1 @@
-{% load i18n %}{% trans "Account approval on ADIT" %}
+{% load i18n %}{% trans "Account approval on RADIS" %}

@@ -13,8 +13,8 @@ from invoke.tasks import task
 
 Environments = Literal["dev", "prod"]
 
-stack_name_dev = "adit_dev"
-stack_name_prod = "adit_prod"
+stack_name_dev = "radis_dev"
+stack_name_prod = "radis_prod"
 
 project_dir = Path(__file__).resolve().parent
 compose_dir = project_dir / "compose"
@@ -89,7 +89,7 @@ def run_cmd(ctx: Context, cmd: str, silent=False) -> Result:
 
 @task
 def compose_build(ctx: Context, env: Environments = "dev"):
-    """Build ADIT image for specified environment"""
+    """Build RADIS image for specified environment"""
     cmd = f"{build_compose_cmd(env)} build"
     run_cmd(ctx, cmd)
 
@@ -101,7 +101,7 @@ def compose_up(
     no_build: bool = False,
     profile: Literal["full", "web", "extra", "db"] = "full",
 ):
-    """Start ADIT containers in specified environment"""
+    """Start RADIS containers in specified environment"""
     build_opt = "--no-build" if no_build else "--build"
     cmd = f"{build_compose_cmd(env)} --profile {profile} up {build_opt} --detach"
     run_cmd(ctx, cmd)
@@ -114,7 +114,7 @@ def compose_down(
     profile: Literal["full", "web", "extra", "db"] = "full",
     cleanup: bool = False,
 ):
-    """Stop ADIT containers in specified environment"""
+    """Stop RADIS containers in specified environment"""
     cmd = f"{build_compose_cmd(env)} --profile {profile} down"
     if cleanup:
         cmd += " --remove-orphans --volumes"
@@ -123,7 +123,7 @@ def compose_down(
 
 @task
 def compose_restart(ctx: Context, env: Environments = "dev", service: str | None = None):
-    """Restart ADIT containers in specified environment"""
+    """Restart RADIS containers in specified environment"""
     cmd = f"{build_compose_cmd(env)} restart"
     if service:
         cmd += f" {service}"
@@ -140,7 +140,7 @@ def compose_logs(
     until: str | None = None,
     tail: int | None = None,
 ):
-    """Show logs of ADIT containers in specified environment"""
+    """Show logs of RADIS containers in specified environment"""
     cmd = f"{build_compose_cmd(env)} logs"
     if service:
         cmd += f" {service}"
@@ -220,12 +220,12 @@ def test(
     """Run the test suite"""
     if not check_compose_up(ctx, "dev"):
         sys.exit(
-            "Integration tests need ADIT dev containers running.\nRun 'invoke compose-up' first."
+            "Integration tests need RADIS dev containers running.\nRun 'invoke compose-up' first."
         )
 
     cmd = (
         f"{build_compose_cmd('dev')} exec "
-        "--env DJANGO_SETTINGS_MODULE=adit.settings.test web pytest "
+        "--env DJANGO_SETTINGS_MODULE=radis.settings.test web pytest "
     )
     if cov:
         cmd += "--cov "
@@ -263,8 +263,8 @@ def reset_dev(ctx: Context):
 
 
 @task
-def adit_web_shell(ctx: Context, env: Environments = "dev"):
-    """Open Python shell in ADIT web container of specified environment"""
+def radis_web_shell(ctx: Context, env: Environments = "dev"):
+    """Open Python shell in RADIS web container of specified environment"""
     cmd = f"{build_compose_cmd(env)} exec web python manage.py shell_plus"
     run_cmd(ctx, cmd)
 
@@ -275,19 +275,19 @@ def copy_statics(ctx: Context):
     print("Copying statics...")
 
     for file in glob("node_modules/@popperjs/core/dist/umd/popper.js*"):
-        copy(file, "adit/static/vendor/")
+        copy(file, "radis/static/vendor/")
     for file in glob("node_modules/bootstrap/dist/css/bootstrap.css*"):
-        copy(file, "adit/static/vendor/")
+        copy(file, "radis/static/vendor/")
     for file in glob("node_modules/bootstrap/dist/js/bootstrap.bundle.js*"):
-        copy(file, "adit/static/vendor/")
-    copy("node_modules/bootswatch/dist/flatly/bootstrap.css", "adit/static/vendor/")
-    copy("node_modules/alpinejs/dist/cdn.js", "adit/static/vendor/alpine.js")
-    copy("node_modules/@alpinejs/morph/dist/cdn.js", "adit/static/vendor/alpine-morph.js")
-    copy("node_modules/htmx.org/dist/htmx.js", "adit/static/vendor/")
-    copy("node_modules/htmx.org/dist/ext/ws.js", "adit/static/vendor/htmx-ws.js")
+        copy(file, "radis/static/vendor/")
+    copy("node_modules/bootswatch/dist/flatly/bootstrap.css", "radis/static/vendor/")
+    copy("node_modules/alpinejs/dist/cdn.js", "radis/static/vendor/alpine.js")
+    copy("node_modules/@alpinejs/morph/dist/cdn.js", "radis/static/vendor/alpine-morph.js")
+    copy("node_modules/htmx.org/dist/htmx.js", "radis/static/vendor/")
+    copy("node_modules/htmx.org/dist/ext/ws.js", "radis/static/vendor/htmx-ws.js")
     copy(
         "node_modules/htmx.org/dist/ext/alpine-morph.js",
-        "adit/static/vendor/htmx-alpine-morph.js",
+        "radis/static/vendor/htmx-alpine-morph.js",
     )
 
 
@@ -370,7 +370,7 @@ def purge_celery(
     force=False,
 ):
     """Purge Celery queues"""
-    cmd = f"{build_compose_cmd(env)} exec web celery -A adit purge -Q {queues}"
+    cmd = f"{build_compose_cmd(env)} exec web celery -A radis purge -Q {queues}"
     if force:
         cmd += " -f"
     run_cmd(ctx, cmd)
@@ -378,12 +378,12 @@ def purge_celery(
 
 @task
 def publish_client(ctx: Context):
-    """Publish ADIT Client to PyPI
+    """Publish RADIS Client to PyPI
 
     - Make sure PyPI API token is set: poetry config pypi-token.pypi your-api-token
-    - Set version in adit_client/pyproject.toml
+    - Set version in radis_client/pyproject.toml
     """
-    with ctx.cd("adit_client"):
+    with ctx.cd("radis_client"):
         run_cmd(ctx, "poetry publish --build")
 
 
@@ -395,7 +395,7 @@ def backup_db(ctx: Context, env: Environments = "prod"):
     For possible commands see:
     https://django-dbbackup.readthedocs.io/en/master/commands.html
     """
-    settings = "adit.settings.production" if env == "prod" else "adit.settings.development"
+    settings = "radis.settings.production" if env == "prod" else "radis.settings.development"
     web_container_id = find_running_container_id(ctx, env, "web")
     cmd = (
         f"docker exec --env DJANGO_SETTINGS_MODULE={settings} "
@@ -407,7 +407,7 @@ def backup_db(ctx: Context, env: Environments = "prod"):
 @task
 def restore_db(ctx: Context, env: Environments = "prod"):
     """Restore database from backup"""
-    settings = "adit.settings.production" if env == "prod" else "adit.settings.development"
+    settings = "radis.settings.production" if env == "prod" else "radis.settings.development"
     web_container_id = find_running_container_id(ctx, env, "web")
     cmd = (
         f"docker exec --env DJANGO_SETTINGS_MODULE={settings} "

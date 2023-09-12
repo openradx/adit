@@ -72,11 +72,11 @@ RUN poetry install
 # Install requirements for end-to-end testing
 RUN playwright install --with-deps chromium
 
-# Required folders for ADIT
-RUN mkdir -p /var/www/adit/logs \
-    /var/www/adit/static \
-    /var/www/adit/ssl \
-    /var/www/adit/celery
+# Required folders for RADIS
+RUN mkdir -p /var/www/radis/logs \
+    /var/www/radis/static \
+    /var/www/radis/ssl \
+    /var/www/radis/celery
 
 # will become mountpoint of our code
 WORKDIR /app
@@ -87,10 +87,10 @@ FROM python-base as production
 COPY --from=builder-base $PYSETUP_PATH $PYSETUP_PATH
 COPY . /app/
 
-# Required folders for ADIT
-RUN mkdir -p /var/www/adit/logs \
-    /var/www/adit/static \
-    /var/www/adit/ssl \
-    /var/www/adit/celery
+# Required folders for RADIS
+RUN mkdir -p /var/www/radis/logs \
+    /var/www/radis/static \
+    /var/www/radis/ssl \
+    /var/www/radis/celery
 
 WORKDIR /app

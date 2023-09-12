@@ -7,7 +7,7 @@ class Command(BaseCommand):
     help = "Reset all migration files (dangerous!!!)."
 
     def handle(self, *args, **options):
-        migration_paths = settings.BASE_DIR.glob("./adit/*/migrations/**/*.py")
+        migration_paths = settings.BASE_DIR.glob("./radis/*/migrations/**/*.py")
         migration_paths = [i for i in migration_paths if i.name != "__init__.py"]
         for migration_path in migration_paths:
             migration_path.unlink()

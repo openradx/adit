@@ -5,8 +5,8 @@ from django.core.management import call_command
 from django.core.management.base import BaseCommand, CommandParser
 from faker import Faker
 
-from adit.accounts.factories import AdminUserFactory, InstituteFactory, UserFactory
-from adit.accounts.models import Institute, User
+from radis.accounts.factories import AdminUserFactory, InstituteFactory, UserFactory
+from radis.accounts.models import Institute, User
 
 USER_COUNT = 20
 INSTITUTE_COUNT = 3

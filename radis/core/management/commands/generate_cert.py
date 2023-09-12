@@ -9,7 +9,7 @@ from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.x509.oid import NameOID
 from django.core.management.base import BaseCommand
 
-from adit.settings.base import env
+from radis.settings.base import env
 
 
 def generate_selfsigned_cert(

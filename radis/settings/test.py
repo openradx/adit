@@ -7,7 +7,7 @@ if not DATABASES["default"]["NAME"].startswith("test_"):  # noqa: F405
     DATABASES["default"]["NAME"] = test_database  # noqa: F405
     DATABASES["default"]["TEST"] = {"NAME": test_database}  # noqa: F405
 
-# This test worker uses a "test_queue" (see adit_celery_worker fixture). In contrast
+# This test worker uses a "test_queue" (see radis_celery_worker fixture). In contrast
 # to development and production system we only use one worker that handles all
 # Celery tasks.
 CELERY_TASK_DEFAULT_QUEUE = "test_queue"

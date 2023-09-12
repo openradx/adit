@@ -6,7 +6,7 @@ import pytz
 from django.contrib.auth.models import AbstractBaseUser, AnonymousUser
 from django.db import models
 
-from adit.accounts.models import User
+from radis.accounts.models import User
 
 from .utils.crypto import hash_token
 

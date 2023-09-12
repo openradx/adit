@@ -45,7 +45,7 @@ class Command(ServerCommand):
         loglevel = options["loglevel"]
         concurrency = options["concurrency"]
         hostname = f"worker_{queue}_{socket.gethostname()}"
-        cmd = f"celery -A adit worker -Q {queue} -l {loglevel} -c {concurrency} -n {hostname}"
+        cmd = f"celery -A radis worker -Q {queue} -l {loglevel} -c {concurrency} -n {hostname}"
 
         self.worker_process = subprocess.Popen(shlex.split(cmd))
         self.worker_process.wait()

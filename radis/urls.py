@@ -1,4 +1,4 @@
-"""adit URL Configuration
+"""radis URL Configuration
 
 The `urlpatterns` list routes URLs to views. For more information please see:
     https://docs.djangoproject.com/en/3.0/topics/http/urls/
@@ -20,11 +20,11 @@ from django.urls import include, path
 urlpatterns = [
     path("admin-the-great/", admin.site.urls),
     path("api-auth/", include("rest_framework.urls")),
-    path("accounts/", include("adit.accounts.urls")),
-    path("api/", include("adit.api.urls")),
-    path("", include("adit.core.urls")),
-    path("token-authentication/", include("adit.token_authentication.urls")),
-    path("sandbox/", include("adit.sandbox.urls")),
+    path("accounts/", include("radis.accounts.urls")),
+    path("api/", include("radis.api.urls")),
+    path("", include("radis.core.urls")),
+    path("token-authentication/", include("radis.token_authentication.urls")),
+    path("sandbox/", include("radis.sandbox.urls")),
 ]
 
 # Django loginas

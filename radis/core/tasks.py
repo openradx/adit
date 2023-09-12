@@ -4,7 +4,7 @@ from django.conf import settings
 from django.core.mail import send_mail
 from django.core.management import call_command
 
-from adit.accounts.models import User
+from radis.accounts.models import User
 
 logger = get_task_logger(__name__)
 

@@ -1,7 +1,7 @@
 [tool.poetry]
-name = "adit"
+name = "radis"
 version = "0.26.1"
-description = "ADIT (Automated DICOM Transfer) is a swiss army knife to exchange DICOM data between various systems by using a convenient web frontend."
+description = "RADIS (Radiology Report Archive and Discovery System) is an application to archive, query and collect radiology reports."
 authors = ["medihack <kai.schlamp@gmail.com>"]
 license = "GPL-3.0-or-later"
 
@@ -87,9 +87,9 @@ typeCheckingMode = "basic"
 reportUnnecessaryTypeIgnoreComment = true
 
 [tool.pytest.ini_options]
-DJANGO_SETTINGS_MODULE = "adit.settings.development"
+DJANGO_SETTINGS_MODULE = "radis.settings.development"
 python_files = ["tests.py", "test_*.py", "*_tests.py"]
-testpaths = ["adit"]
+testpaths = ["radis"]
 log_cli = 0
 log_cli_level = "INFO"
 log_cli_format = "%(asctime)s [%(levelname)8s] %(message)s (%(filename)s:%(lineno)s)"
@@ -105,7 +105,7 @@ timeout = 60
 
 [tool.coverage.run]
 branch = true
-source = ["adit"]
+source = ["radis"]
 
 [tool.coverage.report]
 skip_empty = true

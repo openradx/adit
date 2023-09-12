@@ -13,8 +13,8 @@ class Command(BaseCommand):
         to_address = options["to_address"]
 
         send_mail(
-            "[ADIT] Test Mail",
-            "This is a test mail sent by ADIT.",
+            "[RADIS] Test Mail",
+            "This is a test mail sent by RADIS.",
             settings.SERVER_EMAIL,
             [to_address],
             fail_silently=False,

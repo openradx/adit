@@ -28,7 +28,7 @@ def base_context_processor(request: HttpRequest) -> dict[str, Any]:
         theme_color = preferences.get("theme_color", theme_color)
 
     return {
-        "version": settings.ADIT_VERSION,
+        "version": settings.RADIS_VERSION,
         "base_url": settings.BASE_URL,
         "support_email": settings.SUPPORT_EMAIL,
         "nav_menu_items": nav_menu_items,

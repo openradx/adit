@@ -3,5 +3,5 @@
     "checkJs": true,
     "target": "ES6"
   },
-  "include": ["./adit/*/static/**/*.js"]
+  "include": ["./radis/*/static/**/*.js"]
 }
