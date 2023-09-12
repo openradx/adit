@@ -51,14 +51,6 @@ services:
     deploy:
       replicas: 1
 
-  receiver:
-    <<: *default-app
-    ports:
-      - "11112:11112"
-    command: ./manage.py receiver
-    deploy:
-      replicas: 1
-
   flower:
     <<: *default-app
     deploy:

@@ -63,16 +63,6 @@ services:
       - full
       - extra
 
-  receiver:
-    <<: *default-app
-    ports:
-      - "11122:11112"
-    command: |
-      ./manage.py receiver --autoreload
-    profiles:
-      - full
-      - extra
-
   flower:
     <<: *default-app
     profiles:

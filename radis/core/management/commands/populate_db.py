@@ -1,6 +1,6 @@
 from os import environ
 
-from django.contrib.auth.models import Group, Permission
+from django.contrib.auth.models import Permission
 from django.core.management import call_command
 from django.core.management.base import BaseCommand, CommandParser
 from faker import Faker
@@ -27,9 +27,6 @@ def create_users() -> list[User]:
     }
     admin = AdminUserFactory.create(**admin_data)
 
-    batch_transfer_group = Group.objects.get(name="batch_transfer_group")
-    selective_transfer_group = Group.objects.get(name="selective_transfer_group")
-
     users = [admin]
 
     urgent_permissions = Permission.objects.filter(
@@ -42,8 +39,6 @@ def create_users() -> list[User]:
     user_count = USER_COUNT - 1  # -1 for admin
     for i in range(user_count):
         user = UserFactory.create()
-        user.groups.add(batch_transfer_group)
-        user.groups.add(selective_transfer_group)
 
         if i > 0:
             user.user_permissions.add(*urgent_permissions)

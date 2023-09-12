@@ -40,9 +40,6 @@ services:
   celery_beat:
     <<: *default-app
 
-  receiver:
-    <<: *default-app
-
   flower:
     <<: *default-app
     expose:
