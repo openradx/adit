@@ -1,7 +1,5 @@
 from os import environ
 
-import factory
-from django.conf import settings
 from django.contrib.auth.models import Group, Permission
 from django.core.management import call_command
 from django.core.management.base import BaseCommand, CommandParser
@@ -9,25 +7,6 @@ from faker import Faker
 
 from adit.accounts.factories import AdminUserFactory, InstituteFactory, UserFactory
 from adit.accounts.models import Institute, User
-from adit.batch_query.factories import (
-    BatchQueryJobFactory,
-    BatchQueryResultFactory,
-    BatchQueryTaskFactory,
-)
-from adit.batch_transfer.factories import (
-    BatchTransferJobFactory,
-    BatchTransferTaskFactory,
-)
-from adit.core.factories import (
-    DicomFolderFactory,
-    DicomNodeInstituteAccessFactory,
-    DicomServerFactory,
-)
-from adit.core.models import DicomFolder, DicomServer
-from adit.selective_transfer.factories import (
-    SelectiveTransferJobFactory,
-    SelectiveTransferTaskFactory,
-)
 
 USER_COUNT = 20
 INSTITUTE_COUNT = 3
@@ -94,135 +73,6 @@ def create_institutes(users: list[User]) -> list[Institute]:
     return institutes
 
 
-def create_server_nodes(institutes: list[Institute]) -> list[DicomServer]:
-    servers: list[DicomServer] = []
-
-    orthanc1 = DicomServerFactory.create(
-        name="Orthanc Test Server 1",
-        ae_title="ORTHANC1",
-        host=settings.ORTHANC1_HOST,
-        port=settings.ORTHANC1_DICOM_PORT,
-    )
-
-    servers.append(orthanc1)
-
-    DicomNodeInstituteAccessFactory.create(
-        dicom_node=orthanc1,
-        institute=institutes[0],
-        source=True,
-        destination=True,
-    )
-
-    orthanc2 = DicomServerFactory.create(
-        name="Orthanc Test Server 2",
-        ae_title="ORTHANC2",
-        host=settings.ORTHANC2_HOST,
-        port=settings.ORTHANC2_DICOM_PORT,
-    )
-
-    servers.append(orthanc2)
-
-    DicomNodeInstituteAccessFactory.create(
-        dicom_node=orthanc2,
-        institute=institutes[0],
-        destination=True,
-    )
-
-    server_count = DICOM_SERVER_COUNT - 2  # -2 for Orthanc servers
-    for _ in range(server_count):
-        server = DicomServerFactory.create()
-        servers.append(server)
-
-        DicomNodeInstituteAccessFactory.create(
-            dicom_node=server,
-            institute=fake.random_element(elements=institutes),
-            source=fake.boolean(),
-            destination=fake.boolean(),
-        )
-
-    return servers
-
-
-def create_folder_nodes(institutes: list[Institute]) -> list[DicomFolder]:
-    folders: list[DicomFolder] = []
-
-    download_folder = DicomFolderFactory.create(name="Downloads", path="/app/dicom_downloads")
-    folders.append(download_folder)
-
-    DicomNodeInstituteAccessFactory.create(
-        dicom_node=download_folder,
-        institute=institutes[0],
-        destination=True,
-    )
-
-    folder_count = DICOM_FOLDER_COUNT - 1  # -1 for Downloads folder
-    for _ in range(folder_count):
-        folder = DicomFolderFactory.create()
-        folders.append(folder)
-
-        DicomNodeInstituteAccessFactory.create(
-            dicom_node=folder,
-            institute=fake.random_element(elements=institutes),
-            destination=True,
-        )
-
-    return folders
-
-
-def create_jobs(users: list[User], servers: list[DicomServer], folders: list[DicomFolder]) -> None:
-    for _ in range(SELECTIVE_TRANSFER_JOB_COUNT):
-        create_selective_transfer_job(users, servers, folders)
-
-    for _ in range(BATCH_TRANSFER_JOB_COUNT):
-        create_batch_transfer_job(users, servers, folders)
-
-    for _ in range(BATCH_QUERY_JOB_COUNT):
-        create_batch_query_job(users, servers)
-
-
-def create_selective_transfer_job(
-    users: list[User], servers: list[DicomServer], folders: list[DicomFolder]
-) -> None:
-    servers_and_folders = servers + folders
-
-    job = SelectiveTransferJobFactory.create(
-        source=factory.Faker("random_element", elements=servers),
-        destination=factory.Faker("random_element", elements=servers_and_folders),
-        owner=factory.Faker("random_element", elements=users),
-    )
-
-    for task_id in range(fake.random_int(min=1, max=100)):
-        SelectiveTransferTaskFactory.create(job=job, task_id=task_id)
-
-
-def create_batch_transfer_job(
-    users: list[User], servers: list[DicomServer], folders: list[DicomFolder]
-) -> None:
-    servers_and_folders = servers + folders
-
-    job = BatchTransferJobFactory.create(
-        source=factory.Faker("random_element", elements=servers),
-        destination=factory.Faker("random_element", elements=servers_and_folders),
-        owner=factory.Faker("random_element", elements=users),
-    )
-
-    for task_id in range(fake.random_int(min=1, max=100)):
-        BatchTransferTaskFactory.create(job=job, task_id=task_id)
-
-
-def create_batch_query_job(users: list[User], servers: list[DicomServer]) -> None:
-    job = BatchQueryJobFactory.create(
-        source=factory.Faker("random_element", elements=servers),
-        owner=factory.Faker("random_element", elements=users),
-    )
-
-    for task_id in range(fake.random_int(min=1, max=100)):
-        query = BatchQueryTaskFactory.create(job=job, task_id=task_id)
-
-        for _ in range(fake.random_int(min=1, max=3)):
-            BatchQueryResultFactory.create(job=job, query=query)
-
-
 class Command(BaseCommand):
     help = "Populates the database with example data."
 
@@ -244,8 +94,4 @@ class Command(BaseCommand):
             print("Populating development database with test data.")
 
             users = create_users()
-            institutes = create_institutes(users)
-            servers = create_server_nodes(institutes)
-            folders = create_folder_nodes(institutes)
-
-            create_jobs(users, servers, folders)
+            create_institutes(users)

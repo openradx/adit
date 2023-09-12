@@ -1,8 +1,0 @@
-{% if transfer and created_job %}
-    <div id="response">
-        <div class="alert alert-success mt-3" role="alert">
-            Successfully submitted transfer job with
-            <a href="{{ created_job.get_absolute_url }}">ID {{ created_job.id }}</a>
-        </div>
-    </div>
-{% endif %}

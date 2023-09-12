@@ -65,12 +65,7 @@ INSTALLED_APPS = [
     "adit.core.apps.CoreConfig",
     "adit.accounts.apps.AccountsConfig",
     "adit.token_authentication.apps.TokenAuthenticationConfig",
-    "adit.selective_transfer.apps.SelectiveTransferConfig",
-    "adit.batch_query.apps.BatchQueryConfig",
-    "adit.batch_transfer.apps.BatchTransferConfig",
-    "adit.dicom_explorer.apps.DicomExplorerConfig",
     "adit.api.apps.ApiConfig",
-    "adit.dicom_web.apps.DicomWebConfig",
     "channels",
 ]
 
