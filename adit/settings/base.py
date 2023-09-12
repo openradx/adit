@@ -14,8 +14,6 @@ from pathlib import Path
 
 import environ
 import toml
-from celery.schedules import crontab
-from pydicom import config as pydicom_config
 
 env = environ.Env()
 
@@ -185,16 +183,6 @@ LOGGING = {
             "level": "WARNING",
             "propagate": False,
         },
-        "pydicom": {
-            "handlers": ["console"],
-            "level": "WARNING",
-            "propagate": False,
-        },
-        "pynetdicom": {
-            "handlers": ["console"],
-            "level": "WARNING",
-            "propagate": False,
-        },
     },
     "root": {"handlers": ["console"], "level": "ERROR"},
 }
@@ -222,7 +210,6 @@ REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
         "adit.token_authentication.auth.RestTokenAuthentication",
     ],
-    "EXCEPTION_HANDLER": "adit.dicom_web.exceptions.dicom_web_exception_handler",
 }
 
 
@@ -307,36 +294,11 @@ if USE_TZ:
 CELERY_BROKER_URL = RABBITMQ_URL
 CELERY_WORKER_HIJACK_ROOT_LOGGER = False
 CELERY_TASK_DEFAULT_QUEUE = "default_queue"
-CELERY_TASK_ROUTES = {
-    "adit.selective_transfer.tasks.ProcessSelectiveTransferTask": {
-        "queue": "dicom_task_queue",
-    },
-    "adit.batch_query.tasks.ProcessBatchQueryTask": {
-        "queue": "dicom_task_queue",
-    },
-    "adit.batch_transfer.tasks.ProcessBatchTransferTask": {
-        "queue": "dicom_task_queue",
-    },
-}
-CELERY_BEAT_SCHEDULE = {
-    "check-disk-space": {
-        "task": "adit.core.tasks.check_disk_space",
-        "schedule": crontab(minute=0, hour=7),  # execute daily at 7 o'clock UTC
-    }
-}
+CELERY_TASK_ROUTES = {}
+CELERY_BEAT_SCHEDULE = {}
 
-# No need for a result backend as Celery Canvas is not used anymore and
-# we also log all info in the database inside the dicom task.
+# No need for a result backend as we don't use Celery Canvas.
 CELERY_IGNORE_RESULT = True
-
-# Max retries is normally 3. We have to overwrite this, see
-# https://github.com/celery/celery/issues/976
-# Retries happen when a DICOM server is not responding, a requested
-# study is currently offline, the scheduler is rescheduling (because
-# we are outside the time slot). So we have to set this quite high.
-# None would turn it off, but we make sure that no bug let retry it
-# forever.
-CELERY_TASK_ANNOTATIONS = {"*": {"max_retries": 100}}
 
 # Settings for priority queues, see also apply_async calls in the models.
 # Requires RabbitMQ as the message broker!
@@ -360,99 +322,15 @@ FLOWER_PORT = env.int("FLOWER_PORT", default=5555)  # type: ignore
 # Redis is used for distributed locks (sherlock).
 REDIS_URL = env.str("REDIS_URL", default="redis://localhost:6379/0")  # type: ignore
 
-# Orthanc servers are integrated in ADIT by using a reverse proxy (django-revproxy).
-ORTHANC1_HOST = env.str("ORTHANC1_HOST", default="localhost")  # type: ignore
-ORTHANC1_HTTP_PORT = env.int("ORTHANC1_HTTP_PORT", default=6501)  # type: ignore
-ORTHANC1_DICOM_PORT = env.int("ORTHANC1_DICOM_PORT", default=7501)  # type: ignore
-ORTHANC1_DICOMWEB_ROOT = env.str("ORTHANC1_DICOMWEB_ROOT", default="dicom-web")  # type: ignore
-ORTHANC2_HOST = env.str("ORTHANC2_HOST", default="localhost")  # type: ignore
-ORTHANC2_HTTP_PORT = env.int("ORTHANC2_HTTP_PORT", default=6502)  # type: ignore
-ORTHANC2_DICOM_PORT = env.int("ORTHANC2_DICOM_PORT", default=7502)  # type: ignore
-ORTHANC2_DICOMWEB_ROOT = env.str("ORTHANC2_DICOMWEB_ROOT", default="dicom-web")  # type: ignore
-
 # Used by django-filter
 FILTERS_EMPTY_CHOICE_LABEL = "Show All"
-
-# Global pydicom settings
-pydicom_config.convert_wrong_length_to_UN = True
 
 ###
 # ADIT specific settings
 ###
 
-# The AE Tile for the ADIT STORE SCP server
-ADIT_AE_TITLE = env.str("ADIT_AE_TITLE", default="ADIT1")  # type: ignore
-
-# The address and port of the STORE SCP server (part of the receiver).
-# By default the STORE SCP server listens to all interfaces (empty string)
-STORE_SCP_HOST = env.str("STORE_SCP_HOST", default="localhost")  # type: ignore
-STORE_SCP_PORT = env.int("STORE_SCP_PORT", default=11112)  # type: ignore
-
-# The address and port of the file transmit socket server (part of the receiver)
-# that is used to transfer DICOM files from the receiver to the workers (when
-# the PACS server does not support C-GET).
-# By default the file transmit socket server listens to all interfaces (should
-# not be a problem as it is inside the docker network).
-FILE_TRANSMIT_HOST = env.str("FILE_TRANSMIT_HOST", default="localhost")  # type: ignore
-FILE_TRANSMIT_PORT = env.int("FILE_TRANSMIT_PORT", default=14638)  # type: ignore
-
-# A folder to cache temporary DICOM files.
-# Receiver and file transmit client do create temporary directories in this
-# folder and cache their received DICOM files there.
-TEMP_DICOM_DIR = env.str("TEMP_DICOM_DIR", default=str(BASE_DIR / ".dicoms"))  # type: ignore
-
-# Usually a transfer job must be verified by an admin. By setting
-# this option to True ADIT will schedule unverified transfers
-# (and directly set the status of the job to PENDING).
-SELECTIVE_TRANSFER_UNVERIFIED = True
-BATCH_QUERY_UNVERIFIED = True
-BATCH_TRANSFER_UNVERIFIED = True
-
 # A timezone that is used for users of the web interface.
 USER_TIME_ZONE = env.str("USER_TIME_ZONE", default="Europe/Berlin")  # type: ignore
-
-# Priorities of dicom tasks
-# Selective transfers have the highest priority as those are
-# normally fewer than the other tasks. Batch transfers have the lowest
-# priority as there are mostly numerous and long running.
-SELECTIVE_TRANSFER_DEFAULT_PRIORITY = 4
-SELECTIVE_TRANSFER_URGENT_PRIORITY = 8
-BATCH_TRANSFER_DEFAULT_PRIORITY = 2
-BATCH_TRANSFER_URGENT_PRIORITY = 6
-BATCH_QUERY_DEFAULT_PRIORITY = 3
-BATCH_QUERY_URGENT_PRIORITY = 7
-
-# The maximum number of resulting studies for selective_transfer query
-SELECTIVE_TRANSFER_RESULT_LIMIT = 101
-
-# The maximum number of results (patients or studies) in dicom_explorer
-DICOM_EXPLORER_RESULT_LIMIT = 101
-
-# The timeout in dicom_explorer a DICOM server must respond
-DICOM_EXPLORER_RESPONSE_TIMEOUT = 3  # seconds
-
-# The timeout we wait for images of a C-MOVE download
-C_MOVE_DOWNLOAD_TIMEOUT = 60  # seconds
-
-# Show DICOM debug messages of pynetdicom
-ENABLE_DICOM_DEBUG_LOGGER = False
-
-# How often to retry a failed dicom task before it is definitively failed
-DICOM_TASK_RETRIES = 2
-
-# The maximum number of batch queries a normal user can process in one job
-# (staff user are not limited)
-MAX_BATCH_QUERY_SIZE = 1000
-
-# The maximum number of batch transfers a normal user can process in one job
-# (staff users are not limited)
-MAX_BATCH_TRANSFER_SIZE = 500
-
-# Exclude modalities when listing studies and during queries or transfers
-EXCLUDED_MODALITIES = ["PR", "SR"]
-
-# If an ethics committee approval is required for batch transfer
-ETHICS_COMMITTEE_APPROVAL_REQUIRED = True
 
 # The salt that is used for hashing new tokens in the token authentication app.
 # Cave, changing the salt after some tokens were already generated makes them all invalid!
@@ -460,7 +338,3 @@ TOKEN_AUTHENTICATION_SALT = env.str(
     "TOKEN_AUTHENTICATION_SALT",
     default="Rn4YNfgAar5dYbPu",  # type: ignore
 )
-
-# DicomWeb Settings
-DEFAULT_BOUNDARY = "adit-boundary"
-ERROR_MESSAGE = "Processing your DicomWeb request failed."

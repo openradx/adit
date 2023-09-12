@@ -1,6 +1,7 @@
 version: "3.8"
 
-x-app: &default-app
+x-app:
+  &default-app
   restart: always
   image: adit_prod:latest
   env_file:
@@ -44,12 +45,6 @@ services:
     deploy:
       replicas: 1
 
-  worker_dicom_task:
-    <<: *default-app
-    command: ./manage.py celery_worker -Q dicom_task_queue
-    deploy:
-      replicas: 1
-
   celery_beat:
     <<: *default-app
     command: ./manage.py celery_beat
@@ -75,16 +70,6 @@ services:
       replicas: 1
 
   redis:
-    restart: always
-    deploy:
-      replicas: 1
-
-  orthanc1:
-    restart: always
-    deploy:
-      replicas: 1
-
-  orthanc2:
     restart: always
     deploy:
       replicas: 1

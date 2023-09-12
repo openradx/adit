@@ -1,6 +1,7 @@
 version: "3.8"
 
-x-app: &default-app
+x-app:
+  &default-app
   volumes:
     - /mnt:/mnt
   depends_on:
@@ -15,18 +16,6 @@ x-app: &default-app
     RABBIT_MANAGEMENT_PORT: "15672"
     FLOWER_HOST: "flower"
     FLOWER_PORT: "5555"
-    ORTHANC1_HOST: "orthanc1"
-    ORTHANC1_HTTP_PORT: 6501
-    ORTHANC1_DICOM_PORT: 7501
-    ORTHANC1_DICOMWEB_ROOT: "dicom-web"
-    ORTHANC2_HOST: "orthanc2"
-    ORTHANC2_HTTP_PORT: 6502
-    ORTHANC2_DICOM_PORT: 7502
-    ORTHANC2_DICOMWEB_ROOT: "dicom-web"
-    FILE_TRANSMIT_HOST: "receiver"
-    FILE_TRANSMIT_PORT: 14638
-    STORE_SCP_HOST: "receiver"
-    STORE_SCP_PORT: 11112
 
 services:
   web:
@@ -46,9 +35,6 @@ services:
       - postgres_data:/var/lib/postgresql/data
 
   worker_default:
-    <<: *default-app
-
-  worker_dicom_task:
     <<: *default-app
 
   celery_beat:
@@ -89,35 +75,9 @@ services:
     volumes:
       - redis_data:/data
 
-  orthanc1:
-    image: jodogne/orthanc-plugins:1.12.1
-    expose:
-      - "6501"
-      - "7501"
-    configs:
-      - source: orthanc1_config
-        target: /etc/orthanc/orthanc.json
-    volumes:
-      - orthanc1_data:/var/lib/orthanc/db
-
-  orthanc2:
-    image: jodogne/orthanc-plugins:1.12.1
-    expose:
-      - "6502"
-      - "7502"
-    configs:
-      - source: orthanc2_config
-        target: /etc/orthanc/orthanc.json
-    volumes:
-      - orthanc2_data:/var/lib/orthanc/db
-
 configs:
   rabbit_config:
     file: ./rabbitmq/rabbitmq.conf
-  orthanc1_config:
-    file: ./orthanc/orthanc1.json
-  orthanc2_config:
-    file: ./orthanc/orthanc2.json
 
 volumes:
   adit_data:
@@ -125,5 +85,3 @@ volumes:
   rabbit_data:
   redis_data:
   flower_data:
-  orthanc1_data:
-  orthanc2_data:

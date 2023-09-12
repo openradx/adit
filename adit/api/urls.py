@@ -1,10 +1,3 @@
-from django.urls import path
+from django.urls import path  # noqa: F401
 
-from .views import TransferJobListAPIView
-
-urlpatterns = [
-    path(
-        "transfer-jobs/",
-        TransferJobListAPIView.as_view(),
-    ),
-]
+urlpatterns = []

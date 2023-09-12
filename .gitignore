@@ -136,9 +136,6 @@ node_modules/
 # Database of pytest-testmon
 .testmondata
 
-# The Orthanc storage folders
-OrthancStorage*
-
 # Redis DB dump
 dump.rdb
 
@@ -152,6 +149,3 @@ dump.rdb
 bin/
 share/
 pyvenv.cfg
-
-# ADIT specific
-.dicoms

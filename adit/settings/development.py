@@ -44,8 +44,6 @@ if env.bool("FORCE_DEBUG_TOOLBAR", default=False):  # type: ignore
 CELERY_TASK_ALWAYS_EAGER = False
 CELERY_TASK_EAGER_PROPAGATES = False
 
-ENABLE_DICOM_DEBUG_LOGGER = False
-
 LOGGING["loggers"]["adit"]["level"] = "DEBUG"  # noqa: F405
 LOGGING["loggers"]["celery"]["level"] = "DEBUG"  # noqa: F405
 

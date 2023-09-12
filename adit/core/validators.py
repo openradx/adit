@@ -42,23 +42,3 @@ def validate_modalities(value: str) -> None:
     for modality in modalities:
         if not modality.isalpha() or len(modality) > 16:
             raise ValidationError(f"Invalid modality: {modality}")
-
-
-def validate_series_number(value: str) -> None:
-    # Series Number uses a Value Representation (VR) of Integer String (IS)
-    # https://dicom.nema.org/dicom/2013/output/chtml/part05/sect_6.2.html
-    if not isinstance(value, str):
-        raise ValidationError(f"Invalid type of series number: {value} [{type(value)}]")
-
-    try:
-        snr = int(value)
-        if snr < -(2**31) or snr > 2**31 - 1:
-            raise ValueError()
-    except ValueError:
-        raise ValidationError(f"Invalid series number: {value}")
-
-
-def validate_series_numbers(value: str) -> None:
-    series_numbers = map(str.strip, value.split(","))
-    for series_number in series_numbers:
-        validate_series_number(series_number)

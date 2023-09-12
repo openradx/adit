@@ -254,21 +254,12 @@ def ci(ctx: Context):
 @task
 def reset_dev(ctx: Context):
     """Reset dev container environment"""
-    # Reset Orthancs
-    reset_orthancs(ctx, "dev")
     # Wipe the database
     flush_cmd = f"{build_compose_cmd('dev')} exec web python manage.py flush --noinput"
     run_cmd(ctx, flush_cmd)
     # Re-populate the database with example data
     populate_db_cmd = f"{build_compose_cmd('dev')} exec web python manage.py populate_db"
     run_cmd(ctx, populate_db_cmd)
-
-
-@task
-def reset_orthancs(ctx: Context, env: Environments = "dev"):
-    """Reset Orthancs"""
-    cmd = f"{build_compose_cmd(env)} exec web python manage.py reset_orthancs"
-    run_cmd(ctx, cmd)
 
 
 @task
@@ -375,7 +366,7 @@ def try_github_actions(ctx: Context):
 def purge_celery(
     ctx: Context,
     env: Environments = "dev",
-    queues: str = "default_queue,dicom_task_queue",
+    queues: str = "default_queue",
     force=False,
 ):
     """Purge Celery queues"""

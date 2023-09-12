@@ -1,6 +1,7 @@
 version: "3.8"
 
-x-app: &default-app
+x-app:
+  &default-app
   image: adit_dev:latest
   volumes:
     - ..:/app
@@ -54,14 +55,6 @@ services:
       - full
       - extra
 
-  worker_dicom_task:
-    <<: *default-app
-    command: |
-      ./manage.py celery_worker -Q dicom_task_queue --autoreload
-    profiles:
-      - full
-      - extra
-
   celery_beat:
     <<: *default-app
     command: |
@@ -92,16 +85,6 @@ services:
       - extra
 
   redis:
-    profiles:
-      - full
-      - extra
-
-  orthanc1:
-    profiles:
-      - full
-      - extra
-
-  orthanc2:
     profiles:
       - full
       - extra
