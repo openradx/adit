@@ -57,6 +57,21 @@ E: Release file for http://security.debian.org/debian-security/dists/buster/upda
 E: Release file for http://deb.debian.org/debian/dists/buster-updates/InRelease is not valid yet (invalid for another 17h 37min 38s). Updates for this repository will not be applied.
 ```
 
+### Docker and proxies
+
+Docker Compose does automatically set http_proxy, HTTP_PROXY, https_proxy,
+HTTPS_PROXY, no_proxy and NO_PROXY with the values specified in
+~/.docker/config.json. Unfortunately Docker Swarm does not set those value,
+but those can be set by using environment variables, e.g. using an env file.
+The proxy variables by the env file do overwrite the settings of config.json.
+To make the proxy only available during building an image, but not when the
+container runs (in Compose as in Swarm this is never the case), then set proxy
+in config.json, but explicitly reset them in the env file. This seems to be
+necessary as Playwright doesn't respect the no_proxy setup and may lead to
+strange errors during integration testing.
+See also <https://docs.docker.com/network/proxy/#configure-the-docker-client>
+and <https://forums.docker.com/t/docker-swarm-mode-not-picking-up-proxy-configuration/132233/8?u=medihack>
+
 ## Gitpod
 
 - It is not possible to set an ENV variable using the Gitpod Dockerfile
