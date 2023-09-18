@@ -28,7 +28,6 @@ class BatchQueryJobForm(forms.ModelForm):
     class Meta:
         model = BatchQueryJob
         fields = (
-            "source",
             "urgent",
             "project_name",
             "project_description",
@@ -103,6 +102,7 @@ class BatchQueryJobForm(forms.ModelForm):
     def _save_tasks(self, job):
         for task in self.tasks:
             task.job = job
+            task.source = self.cleaned_data["source"]
 
         BatchQueryTask.objects.bulk_create(self.tasks)
 

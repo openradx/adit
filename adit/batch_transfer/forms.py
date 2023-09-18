@@ -29,8 +29,6 @@ class BatchTransferJobForm(forms.ModelForm):
     class Meta:
         model = BatchTransferJob
         fields = (
-            "source",
-            "destination",
             "urgent",
             "project_name",
             "project_description",
@@ -134,6 +132,10 @@ class BatchTransferJobForm(forms.ModelForm):
     def _save_tasks(self, batch_job: BatchTransferJob):
         for task in self.tasks:
             task.job = batch_job
+            # TODO: This can be removed later as source and destination will come from
+            # the batch file
+            task.source = self.cleaned_data["source"]
+            task.destination = self.cleaned_data["destination"]
 
         BatchTransferTask.objects.bulk_create(self.tasks)
 

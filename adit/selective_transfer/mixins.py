@@ -31,7 +31,7 @@ class SelectiveTransferJobCreateMixin:
     """
 
     def create_source_operator(self, form: SelectiveTransferJobForm) -> DicomOperator:
-        return DicomOperator(form.instance.source.dicomserver)
+        return DicomOperator(form.cleaned_data["source"].dicomserver)
 
     def query_studies(
         self, operator: DicomOperator, form: SelectiveTransferJobForm, limit_results: int
@@ -90,6 +90,8 @@ class SelectiveTransferJobCreateMixin:
             study_uid = study_data[1]
             SelectiveTransferTask.objects.create(
                 job=job,
+                source=form.cleaned_data["source"],
+                destination=form.cleaned_data["destination"],
                 patient_id=patient_id,
                 study_uid=study_uid,
                 pseudonym=pseudonym,

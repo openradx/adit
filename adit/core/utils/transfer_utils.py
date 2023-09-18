@@ -12,7 +12,7 @@ from dicognito.anonymizer import Anonymizer
 from django.conf import settings
 from pydicom import Dataset
 
-from ..models import DicomNode, TransferJob, TransferTask
+from ..models import DicomNode, TransferTask
 from .dicom_dataset import QueryDataset, ResultDataset
 from .dicom_operator import DicomOperator
 from .sanitize import sanitize_dirname
@@ -22,14 +22,14 @@ logger = logging.getLogger(__name__)
 
 def _create_source_operator(transfer_task: TransferTask) -> DicomOperator:
     # An own function to easily mock the source operator in test_transfer_utils.py
-    assert transfer_task.job.source.node_type == DicomNode.NodeType.SERVER
-    return DicomOperator(transfer_task.job.source.dicomserver)
+    assert transfer_task.source.node_type == DicomNode.NodeType.SERVER
+    return DicomOperator(transfer_task.source.dicomserver)
 
 
 def _create_dest_operator(transfer_task: TransferTask) -> DicomOperator:
     # An own function to easily mock the destination operator in test_transfer_utils.py
-    assert transfer_task.job.destination.node_type == DicomNode.NodeType.SERVER
-    return DicomOperator(transfer_task.job.destination.dicomserver)
+    assert transfer_task.destination.node_type == DicomNode.NodeType.SERVER
+    return DicomOperator(transfer_task.destination.dicomserver)
 
 
 class TransferExecutor:
@@ -45,28 +45,28 @@ class TransferExecutor:
         self.source_operator = _create_source_operator(transfer_task)
 
         self.dest_operator = None
-        if self.transfer_task.job.destination.node_type == DicomNode.NodeType.SERVER:
+        if self.transfer_task.destination.node_type == DicomNode.NodeType.SERVER:
             self.dest_operator = _create_dest_operator(transfer_task)
 
     def start(self) -> tuple[TransferTask.Status, str]:
-        transfer_job: TransferJob = self.transfer_task.job
-
-        accessible_source_nodes = DicomNode.objects.accessible_by_user(transfer_job.owner, "source")
-        if not accessible_source_nodes.filter(pk=transfer_job.source.pk).exists():
-            raise ValueError(f"Not accessible DICOM source node: {transfer_job.source.name}")
+        accessible_source_nodes = DicomNode.objects.accessible_by_user(
+            self.transfer_task.job.owner, "source"
+        )
+        if not accessible_source_nodes.filter(pk=self.transfer_task.source.pk).exists():
+            raise ValueError(f"Not accessible DICOM source node: {self.transfer_task.source}")
 
         accessible_destination_nodes = DicomNode.objects.accessible_by_user(
-            transfer_job.owner, "destination"
+            self.transfer_task.job.owner, "destination"
         )
-        if not accessible_destination_nodes.filter(pk=transfer_job.destination.pk).exists():
+        if not accessible_destination_nodes.filter(pk=self.transfer_task.destination.pk).exists():
             raise ValueError(
-                f"Not accessible DICOM destination node: {transfer_job.destination.name}"
+                f"Not accessible DICOM destination node: {self.transfer_task.destination}"
             )
 
         if self.dest_operator:
             self._transfer_to_server()
         else:
-            if transfer_job.archive_password:
+            if self.transfer_task.job.archive_password:
                 self._transfer_to_archive()
             else:
                 self._transfer_to_folder()
@@ -80,11 +80,9 @@ class TransferExecutor:
             self.dest_operator.upload_instances(patient_folder)
 
     def _transfer_to_archive(self) -> None:
-        transfer_job: TransferJob = self.transfer_task.job
-
-        assert transfer_job.destination.node_type == DicomNode.NodeType.FOLDER
-        archive_folder = Path(transfer_job.destination.dicomfolder.path)
-        archive_password = transfer_job.archive_password
+        assert self.transfer_task.destination.node_type == DicomNode.NodeType.FOLDER
+        archive_folder = Path(self.transfer_task.destination.dicomfolder.path)
+        archive_password = self.transfer_task.job.archive_password
 
         archive_name = f"{self._create_destination_name()}.7z"
         archive_path = archive_folder / archive_name
@@ -97,10 +95,8 @@ class TransferExecutor:
             _add_to_archive(archive_path, archive_password, patient_folder)
 
     def _transfer_to_folder(self) -> None:
-        transfer_job: TransferJob = self.transfer_task.job
-
-        assert transfer_job.destination.node_type == DicomNode.NodeType.FOLDER
-        dicom_folder = Path(transfer_job.destination.dicomfolder.path)
+        assert self.transfer_task.destination.node_type == DicomNode.NodeType.FOLDER
+        dicom_folder = Path(self.transfer_task.destination.dicomfolder.path)
         download_folder = dicom_folder / self._create_destination_name()
         self._download_dicoms(download_folder)
 

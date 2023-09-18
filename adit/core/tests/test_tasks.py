@@ -16,11 +16,11 @@ class TestProcessDicomJob:
         # Arrange
         dicom_job = example_models.dicom_job_factory_class.create(
             status=DicomJob.Status.PENDING,
-            source=DicomServerFactory(),
             urgent=urgent,
         )
         dicom_task = example_models.dicom_task_factory_class.create(
             status=DicomTask.Status.PENDING,
+            source=DicomServerFactory(),
             job=dicom_job,
         )
 
@@ -69,11 +69,11 @@ class TestProcessDicomTask:
         # Arrange
         dicom_job = example_models.dicom_job_factory_class.create(
             status=DicomJob.Status.PENDING,
-            source=DicomServerFactory(),
             urgent=urgent,
         )
         dicom_task = example_models.dicom_task_factory_class.create(
             status=DicomTask.Status.PENDING,
+            source=DicomServerFactory(),
             job=dicom_job,
         )
 
@@ -112,10 +112,10 @@ class TestProcessDicomTask:
         # Arrange
         dicom_job = example_models.dicom_job_factory_class.create(
             status=DicomJob.Status.PENDING,
-            source=DicomServerFactory(),
         )
         dicom_task = example_models.dicom_task_factory_class.create(
             status=DicomTask.Status.PENDING,
+            source=DicomServerFactory(),
             job=dicom_job,
         )
 
@@ -149,10 +149,10 @@ class TestProcessDicomTask:
         # Arrange
         dicom_job = example_models.dicom_job_factory_class.create(
             status=DicomJob.Status.PENDING,
-            source=DicomServerFactory(),
         )
         dicom_task = example_models.dicom_task_factory_class.create(
             status=DicomTask.Status.PENDING,
+            source=DicomServerFactory(),
             job=dicom_job,
         )
 
@@ -185,10 +185,10 @@ class TestProcessDicomTask:
         # Arrange
         dicom_job = example_models.dicom_job_factory_class.create(
             status=DicomJob.Status.CANCELING,
-            source=DicomServerFactory(),
         )
         dicom_task = example_models.dicom_task_factory_class.create(
             status=DicomTask.Status.PENDING,
+            source=DicomServerFactory(),
             job=dicom_job,
         )
 

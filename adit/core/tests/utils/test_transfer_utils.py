@@ -47,18 +47,18 @@ def test_transfer_to_server_succeeds(
     # Arrange
     job = example_models.transfer_job_factory_class.create(
         status=TransferJob.Status.PENDING,
-        source=DicomServerFactory(),
-        destination=DicomServerFactory(),
         archive_password="",
     )
     task = example_models.transfer_task_factory_class.create(
+        source=DicomServerFactory(),
+        destination=DicomServerFactory(),
         status=TransferTask.Status.PENDING,
         series_uids="",
         pseudonym="",
         job=job,
     )
-    grant_access(job.owner, job.source, "source")
-    grant_access(job.owner, job.destination, "destination")
+    grant_access(job.owner, task.source, "source")
+    grant_access(job.owner, task.destination, "destination")
 
     patient, study = create_resources(task)
 
@@ -110,20 +110,20 @@ def test_transfer_to_folder_succeeds(
     user = UserFactory.create(username="kai")
     job = example_models.transfer_job_factory_class.create(
         status=TransferJob.Status.PENDING,
-        source=DicomServerFactory(),
-        destination=DicomFolderFactory(),
         archive_password="",
         owner=user,
     )
     task = example_models.transfer_task_factory_class.create(
+        source=DicomServerFactory(),
+        destination=DicomFolderFactory(),
         status=TransferTask.Status.PENDING,
         patient_id="1001",
         series_uids="",
         pseudonym="",
         job=job,
     )
-    grant_access(job.owner, job.source, "source")
-    grant_access(job.owner, job.destination, "destination")
+    grant_access(job.owner, task.source, "source")
+    grant_access(job.owner, task.destination, "destination")
 
     patient, study = create_resources(task)
 
@@ -161,15 +161,18 @@ def test_transfer_to_archive_succeeds(
     # Arrange
     job = example_models.transfer_job_factory_class.create(
         status=TransferJob.Status.PENDING,
-        source=DicomServerFactory(),
-        destination=DicomFolderFactory(),
         archive_password="mysecret",
     )
     task = example_models.transfer_task_factory_class.create(
-        status=TransferTask.Status.PENDING, series_uids="", pseudonym="", job=job
+        source=DicomServerFactory(),
+        destination=DicomFolderFactory(),
+        status=TransferTask.Status.PENDING,
+        series_uids="",
+        pseudonym="",
+        job=job,
     )
-    grant_access(job.owner, job.source, "source")
-    grant_access(job.owner, job.destination, "destination")
+    grant_access(job.owner, task.source, "source")
+    grant_access(job.owner, task.destination, "destination")
 
     patient, study = create_resources(task)
 

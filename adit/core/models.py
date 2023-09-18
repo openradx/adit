@@ -210,8 +210,6 @@ class DicomJob(models.Model):
         tasks = RelatedManager["DicomTask"]()
 
     id: int
-    source_id: int
-    source = models.ForeignKey(DicomNode, related_name="+", on_delete=models.PROTECT)
     get_status_display: Callable[[], str]
     status = models.CharField(max_length=2, choices=Status.choices, default=Status.UNVERIFIED)
     urgent = models.BooleanField(default=False)
@@ -306,8 +304,6 @@ class TransferJob(DicomJob):
             )
         ]
 
-    destination_id: int
-    destination = models.ForeignKey(DicomNode, related_name="+", on_delete=models.PROTECT)
     trial_protocol_id = models.CharField(
         blank=True, max_length=64, validators=[no_backslash_char_validator]
     )
@@ -329,6 +325,8 @@ class DicomTask(models.Model):
     id: int
     job_id: int
     job = models.ForeignKey(DicomJob, on_delete=models.CASCADE, related_name="tasks")
+    source_id: int
+    source = models.ForeignKey(DicomNode, related_name="+", on_delete=models.PROTECT)
     celery_task_id = models.CharField(max_length=255)
     get_status_display: Callable[[], str]
     status = models.CharField(
@@ -360,6 +358,8 @@ class TransferTask(DicomTask):
         on_delete=models.CASCADE,
         related_name="tasks",
     )
+    destination_id: int
+    destination = models.ForeignKey(DicomNode, related_name="+", on_delete=models.PROTECT)
     patient_id = models.CharField(
         max_length=64,
         validators=[
@@ -385,8 +385,8 @@ class TransferTask(DicomTask):
     def __str__(self):
         return (
             f"{self.__class__.__name__} "
-            f"[Source {self.job.source.name}, "
-            f"Destination {self.job.destination}, "
+            f"[Source {self.source}, "
+            f"Destination {self.destination}, "
             f"Job ID {self.job.id}, Task ID {self.id}]"
         )
 

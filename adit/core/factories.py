@@ -109,7 +109,6 @@ class AbstractDicomJobFactory(Generic[T], BaseDjangoModelFactory[T]):
     class Meta:
         model: DicomJob
 
-    source = factory.SubFactory(DicomServerFactory)
     status = factory.Faker("random_element", elements=job_status_keys)
     message = factory.Faker("sentence")
     urgent = factory.Faker("boolean", chance_of_getting_true=25)
@@ -120,7 +119,6 @@ class AbstractTransferJobFactory(Generic[T], AbstractDicomJobFactory[T]):
     class Meta:
         model: TransferJob
 
-    destination = factory.SubFactory(DicomServerFactory)
     trial_protocol_id = factory.Faker("word")
     trial_protocol_name = factory.Faker("text", max_nb_chars=25)
 
@@ -132,6 +130,7 @@ class AbstractDicomTaskFactory(Generic[T], BaseDjangoModelFactory[T]):
     class Meta:
         model: DicomTask
 
+    source = factory.SubFactory(DicomServerFactory)
     status = factory.Faker("random_element", elements=task_status_keys)
     message = factory.Faker("sentence")
     log = factory.Faker("paragraph")
@@ -148,6 +147,7 @@ class AbstractTransferTaskFactory(Generic[T], AbstractDicomTaskFactory[T]):
     class Meta:
         model: TransferTask
 
+    destination = factory.SubFactory(DicomServerFactory)
     patient_id = factory.Faker("numerify", text="##########")
     study_uid = factory.LazyFunction(generate_uid)
     series_uids = factory.LazyFunction(generate_uids)

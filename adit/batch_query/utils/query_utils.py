@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 def _create_source_operator(query_task: BatchQueryTask) -> DicomOperator:
     # An own function to easily mock the source connector in test_transfer_utils.py
-    return DicomOperator(query_task.job.source.dicomserver)
+    return DicomOperator(query_task.source.dicomserver)
 
 
 class QueryExecutor:
@@ -31,10 +31,11 @@ class QueryExecutor:
         self.operator = _create_source_operator(query_task)
 
     def start(self) -> tuple[BatchQueryTask.Status, str]:
-        query_job = self.query_task.job
-        accessible_source_nodes = DicomNode.objects.accessible_by_user(query_job.owner, "source")
-        if not accessible_source_nodes.filter(pk=query_job.source.pk).exists():
-            raise ValueError(f"Not accessible DICOM source node: {query_job.source}")
+        accessible_source_nodes = DicomNode.objects.accessible_by_user(
+            self.query_task.job.owner, "source"
+        )
+        if not accessible_source_nodes.filter(pk=self.query_task.source.pk).exists():
+            raise ValueError(f"Not accessible DICOM source node: {self.query_task.source}")
 
         patient = self._fetch_patient()
 
