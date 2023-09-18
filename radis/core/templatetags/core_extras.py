@@ -1,4 +1,5 @@
 import logging
+import re
 from datetime import date, datetime, time
 from typing import Any
 
@@ -62,3 +63,21 @@ def message_symbol(tag: str) -> str:
         "error": "error",
     }
     return tag_map.get(tag, "bug")
+
+
+# TODO: Resolve reference names from another source in the context
+# Context must be set in the view
+@register.simple_tag(takes_context=True)
+def url_abbreviation(context: dict, url: str):
+    abbr = re.sub(r"^(https?://)?(www.)?", "", url)
+    return abbr[:5]
+
+
+@register.simple_tag
+def calc_age(patient_birth_date: date, study_datetime: datetime):
+    study_date = study_datetime.date()
+    age = study_date.year - patient_birth_date.year
+    if (study_date.month, study_date.day) < (patient_birth_date.month, patient_birth_date.day):
+        age -= 1
+
+    return age

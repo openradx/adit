@@ -3,5 +3,5 @@
     "checkJs": true,
     "target": "ES6"
   },
-  "include": ["./radis/*/static/**/*.js"]
+  "include": ["./globals.d.ts", "./radis/*/static/**/*.js"]
 }

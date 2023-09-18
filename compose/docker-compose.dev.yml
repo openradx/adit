@@ -30,6 +30,8 @@ services:
         wait-for-it -s postgres:5432 -t 60 && 
         ./manage.py migrate &&
         ./manage.py collectstatic --no-input &&
+        wait-for-it -s vespa:19071 -t 60 &&
+        ./manage.py setup_vespa --generate --deploy &&
         ./manage.py populate_db &&
         ./manage.py runserver 0.0.0.0:8000
       "
@@ -42,6 +44,17 @@ services:
       - "5432:5432"
     environment:
       POSTGRES_PASSWORD: "postgres"
+    profiles:
+      - full
+      - web
+      - db
+
+  vespa:
+    environment:
+      # Reduce memory usage of Vespa during development (espcially on Cloud IDEs), see
+      # https://docs.vespa.ai/en/operations/node-setup.html#memory-settings
+      VESPA_CONFIGSERVER_JVMARGS: "-Xms32M -Xmx128M"
+      VESPA_CONFIGPROXY_JVMARGS: "-Xms32M -Xmx32M"
     profiles:
       - full
       - web

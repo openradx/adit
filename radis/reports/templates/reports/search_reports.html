@@ -1,0 +1,44 @@
+{% extends "reports/reports_layout.html" %}
+{% load static from static %}
+{% load crispy from crispy_forms_tags %}
+{% block heading %}
+    <h4 class="mb-3">Search reports</h4>
+{% endblock heading %}
+{% block content %}
+    <div class="d-flex flex-column mb-3">
+        <form method="get">
+            <div class="input-group">
+                <input type="text"
+                       name="query"
+                       value="{{ query }}"
+                       maxlength="200"
+                       placeholder="Search"
+                       class="form-control" />
+                <button type="submit" class="btn btn-success">{% include "core/icons/search.svg" %}</button>
+            </div>
+        </form>
+        {% if query and total_count %}
+            <small class="ms-2">Ranked {{ total_count }} report{{ total_count|pluralize }}.</small>
+        {% endif %}
+    </div>
+    <div>
+        {% if query %}
+            {% for report in reports %}
+                <div class="card mb-2">
+                    <div class="card-body">
+                        <div class="d-flex flex-column gap-1">
+                            {% include "reports/_result_header.html" with counter=forloop.counter %}
+                            <div class="report-text">{{ report.body|safe }}</div>
+                            {% include "reports/_result_buttons_panel.html" %}
+                        </div>
+                    </div>
+                </div>
+            {% empty %}
+                <div class="alert alert-light" role="alert">No results found</div>
+            {% endfor %}
+        {% else %}
+            <div class="alert alert-light" role="alert">TODO: Help</div>
+        {% endif %}
+    </div>
+    {% include "core/_pagination.html" %}
+{% endblock content %}

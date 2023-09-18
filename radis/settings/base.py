@@ -64,6 +64,7 @@ INSTALLED_APPS = [
     "radis.accounts.apps.AccountsConfig",
     "radis.token_authentication.apps.TokenAuthenticationConfig",
     "radis.api.apps.ApiConfig",
+    "radis.reports.apps.ReportsConfig",
     "channels",
 ]
 
@@ -325,9 +326,11 @@ REDIS_URL = env.str("REDIS_URL", default="redis://localhost:6379/0")  # type: ig
 # Used by django-filter
 FILTERS_EMPTY_CHOICE_LABEL = "Show All"
 
-###
-# RADIS specific settings
-###
+# Vespa
+VESPA_HOST = env.str("VESPA_HOST", default="localhost")  # type: ignore
+VESPA_CONFIG_PORT = env.int("VESPA_CONFIG_PORT", default=19071)  # type: ignore
+VESPA_DATA_PORT = env.int("VESPA_DATA_PORT", default=8080)  # type: ignore
+
 
 # A timezone that is used for users of the web interface.
 USER_TIME_ZONE = env.str("USER_TIME_ZONE", default="Europe/Berlin")  # type: ignore

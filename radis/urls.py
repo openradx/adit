@@ -25,6 +25,7 @@ urlpatterns = [
     path("", include("radis.core.urls")),
     path("token-authentication/", include("radis.token_authentication.urls")),
     path("sandbox/", include("radis.sandbox.urls")),
+    path("reports/", include("radis.reports.urls")),
 ]
 
 # Django loginas

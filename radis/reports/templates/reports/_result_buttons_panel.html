@@ -1,0 +1,16 @@
+<div class="mt-1 d-flex justify-content-between">
+    <div class="d-flex gap-1">
+        <a href="{% url 'report_detail' report.document_id %}"
+           class="btn btn-secondary btn-sm">
+            {% include "core/icons/goto.svg" %}
+            View
+        </a>
+        <button hx-get="{% url 'report_preview' report.document_id %}"
+                hx-target="#dialog"
+                class="btn btn-secondary btn-sm">
+            {% include "core/icons/preview.svg" %}
+            Preview
+        </button>
+    </div>
+    {% include "reports/_references.html" %}
+</div>

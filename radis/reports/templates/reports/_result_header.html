@@ -1,0 +1,19 @@
+{% load calc_age from core_extras %}
+<div class="d-flex justify-content-between">
+    <div class="d-flex gap-4">
+        <div class="d-flex flex-column">
+            <small>Age: {% calc_age report.patient_birth_date report.study_datetime %}</small>
+            <small>Sex: {{ report.patient_sex }}</small>
+        </div>
+        <div class="d-flex flex-column">
+            <small>Modalities: {{ report.modalities_in_study|join:", " }}</small>
+            <small>Study Description: {{ report.study_description }}</small>
+        </div>
+    </div>
+    <div>
+        <div class="d-flex flex-column">
+            <small>Result: #{{ counter|add:offset }}</small>
+            <small>Relevance: {{ report.relevance|floatformat:3 }}</small>
+        </div>
+    </div>
+</div>

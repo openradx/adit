@@ -2,11 +2,12 @@
 
 ## High Priority
 
-- Get rid of jQuery (also RADIS)
-  -- Use ready function (see core.js) (also RADIS)
+- Secure API view
+  -- Create group that can use API
+  -- Differentiate between users that can query data and modify data
+- Improve TokenFactory (+ ADIT)
+- Rename populate_db to populate_data
 - <https://docs.vespa.ai/en/operations/docker-containers.html#mounting-persistent-volumes>
-- Switch to Bootstrap 5 (RADIS + RADIS)
-  -- Add theme toggler
 - Change maxHits and maxOffset for farer pagination
   -- <https://docs.vespa.ai/en/reference/query-api-reference.html#native-execution-parameters>
   -- <https://pyvespa.readthedocs.io/en/latest/reference-api.html#queryprofile>
@@ -16,6 +17,7 @@
 - Allow to configure reference names using a database model
   -- Reference: name (unique), match (unique)
 - Sidebar like in <https://cord19.vespa.ai/search?query=pain> with filters: Age, Gender, Modality, Study Description
+- Remove unneeded templatetags
 
 ## Fix
 
@@ -48,3 +50,4 @@
 - Delete reset_dev_db and add reset option to populate_dev_db
 - Improve copy-statics task
 - Cleanup icons and rename images from .html to .svg
+- globals.d.ts

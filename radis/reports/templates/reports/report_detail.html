@@ -1,0 +1,42 @@
+{% extends "reports/reports_layout.html" %}
+{% load calc_age from core_extras %}
+{% block heading %}
+    <h4 class="mb-3">Report Details</h4>
+{% endblock heading %}
+{% block content %}
+    <table class="table table-sm table-borderless definition-table mb-2">
+        <tbody>
+            <tr>
+                <th>Document ID</th>
+                <td>{{ report.document_id }}</td>
+            </tr>
+            <tr>
+                <th>Patient Age</th>
+                <td>{% calc_age report.patient_birth_date report.study_datetime %}</td>
+            </tr>
+            <tr>
+                <th>Patient Sex</th>
+                <td>{{ report.patient_sex }}</td>
+            </tr>
+            <tr>
+                <th>Study Description</th>
+                <td>{{ report.study_description }}</td>
+            </tr>
+            <tr>
+                <th>Study Date and Time</th>
+                <td>{{ report.study_datetime }}</td>
+            </tr>
+            <tr>
+                <th>Modalities in Study</th>
+                <td>{{ report.modalities_in_study|join:", " }}</td>
+            </tr>
+        </tbody>
+    </table>
+    <div class="mb-3 d-flex justify-content-between">{% include "reports/_references.html" %}</div>
+    <div class="card">
+        <div class="card-body">
+            <h5 class="card-title">Report Text</h5>
+            <div class="report-text">{{ report.body }}</div>
+        </div>
+    </div>
+{% endblock content %}
