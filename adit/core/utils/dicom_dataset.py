@@ -190,7 +190,7 @@ class QueryDataset(BaseDataset):
         ds = Dataset()
 
         for k, v in query.items():
-            _set_dataset_value(ds, k, v, ignore_invalid_tags=True, ignore_invalid_values=True)
+            _set_dataset_value(ds, k, v)
 
         for k, v in additional_attributes.items():
             _set_dataset_value(ds, k, v)
@@ -238,13 +238,9 @@ class ResultDataset(BaseDataset):
         return keyword in self._ds
 
 
-def _set_dataset_value(
-    ds: Dataset, k: str, v: Any, ignore_invalid_tags=False, ignore_invalid_values=False
-) -> None:
+def _set_dataset_value(ds: Dataset, k: str, v: Any) -> None:
     t = datadict.tag_for_keyword(k)
     if t is None:
-        if ignore_invalid_tags:
-            return
         raise ValueError(f"Unknown DICOM tag with keyword: {k}")
 
     vr = datadict.dictionary_VR(t)
@@ -265,5 +261,4 @@ def _set_dataset_value(
             elem = DataElement(t, vr, v, validation_mode=config.RAISE)
             ds.add(elem)
     except ValueError as err:
-        if not ignore_invalid_values:
-            raise ValueError(f"Invalid value for DICOM tag {t} ({vr}): {v}") from err
+        raise ValueError(f"Invalid value for DICOM tag '{k}' (VR {vr}): {v} ({str(err)})") from err

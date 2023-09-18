@@ -2,6 +2,7 @@
 
 ## Top
 
+- Currently when images are received by the DICOMweb API they are temporarily downloaded to the file system before then send back to the requester. Try to pass the dataset directly.
 - Update documentation
 - Fix some stuff and use our fork then of DICOMwebClient
   -- <https://github.com/ImagingDataCommons/dicomweb-client/issues/88>
@@ -13,9 +14,9 @@
 - Locked info for other apps like batch_transfer_locked.html
 - Hint when app is locked for admin user
 - Encrypt data between swarm containers
--- <https://docs.docker.com/network/drivers/overlay/#encrypt-traffic-on-an-overlay-network>
--- <https://forums.docker.com/t/configuring-encryption-for-swarm-overlay-network-in-compose/29469/2>
--- We can also make the network attachable to do the "exec" stuff in tasks.py using one off containers using "run"
+  -- <https://docs.docker.com/network/drivers/overlay/#encrypt-traffic-on-an-overlay-network>
+  -- <https://forums.docker.com/t/configuring-encryption-for-swarm-overlay-network-in-compose/29469/2>
+  -- We can also make the network attachable to do the "exec" stuff in tasks.py using one off containers using "run"
 
 ## High Priority
 

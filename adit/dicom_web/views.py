@@ -62,7 +62,12 @@ class QueryStudyAPIView(QueryAPIView):
             query[key] = value
 
         source_server = await self._fetch_dicom_server(request, ae_title, "source")
-        results = await qido_find(source_server, query, self.level)
+
+        try:
+            results = await qido_find(source_server, query, self.level)
+        except ValueError as err:
+            logger.warn(f"Invalid DICOMweb study query - {err}")
+            raise ValidationError(str(err)) from err
 
         return Response([result.dataset.to_json_dict() for result in results])
 
@@ -90,7 +95,12 @@ class QuerySeriesAPIView(QueryAPIView):
 
         query["StudyInstanceUID"] = study_uid
         source_server = await self._fetch_dicom_server(request, ae_title, "source")
-        results = await qido_find(source_server, query, self.level)
+
+        try:
+            results = await qido_find(source_server, query, self.level)
+        except ValueError as err:
+            logger.warn(f"Invalid DICOMweb series query - {err}")
+            raise ValidationError(str(err)) from err
 
         return Response([result.dataset.to_json_dict() for result in results])
 
