@@ -9,7 +9,7 @@ from pydicom import Dataset
 from pydicom.errors import InvalidDicomError
 from requests import HTTPError
 
-from ..errors import RetriableError
+from ..errors import DicomCommunicationError, DicomConnectionError
 from ..models import DicomServer
 from ..utils.dicom_dataset import QueryDataset, ResultDataset
 from ..utils.dicom_utils import read_dataset
@@ -214,7 +214,7 @@ class DicomWebConnector:
 
         if retriable_failures:
             plural = len(retriable_failures) > 1
-            raise RetriableError(
+            raise DicomCommunicationError(
                 f"{len(retriable_failures)} STOW-RS operation{'s' if plural else ''} failed."
             )
 
@@ -228,9 +228,9 @@ def _handle_dicomweb_error(err: HTTPError, op: str) -> NoReturn:
     status_code = err.response.status_code
     status_phrase = HTTPStatus(status_code).phrase
     if _is_retriable_error(status_code):
-        msg = f"DICOMweb {op} request failed: {status_phrase} [{status_code}]."
-        logger.error(msg)
-        raise RetriableError(msg)
+        raise DicomConnectionError(
+            f"DICOMweb {op} request failed: {status_phrase} [{status_code}]."
+        )
     else:
         logger.exception(
             f"DICOMweb {op} request failed critically: {status_phrase} [{status_code}]."

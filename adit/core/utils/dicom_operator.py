@@ -23,7 +23,7 @@ from django.conf import settings
 from pydicom import Dataset
 from pynetdicom.events import Event
 
-from ..errors import RetriableError
+from ..errors import DicomCommunicationError, OutOfDiskSpaceError
 from ..models import DicomServer
 from .dicom_dataset import QueryDataset, ResultDataset
 from .dicom_utils import (
@@ -461,8 +461,8 @@ class DicomOperator:
 
         if series_list and has_failure:
             if not has_success:
-                raise RetriableError("Failed to move all series.")
-            raise RetriableError("Failed to move some series.")
+                raise DicomCommunicationError("Failed to move all series.")
+            raise DicomCommunicationError("Failed to move some series.")
 
     def move_series(self, patient_id: str, study_uid: str, series_uid: str, dest_aet: str):
         self.dimse_connector.send_c_move(
@@ -587,7 +587,7 @@ class DicomOperator:
                     if remaining_image_uids == image_uids:
                         logger.error("No images of series %s received.", series_uid)
                         receiving_errors.append(
-                            RetriableError("Failed to download all images with C-MOVE.")
+                            DicomCommunicationError("Failed to download all images with C-MOVE.")
                         )
 
                     logger.error(
@@ -596,7 +596,7 @@ class DicomOperator:
                         ", ".join(remaining_image_uids),
                     )
                     receiving_errors.append(
-                        RetriableError("Failed to download some images with C-MOVE.")
+                        DicomCommunicationError("Failed to download some images with C-MOVE.")
                     )
 
             async def handle_received_file(filename: str, metadata: Metadata):
@@ -678,8 +678,8 @@ class DicomOperator:
             if isinstance(err, OSError) and err.errno == errno.ENOSPC:
                 # No space left on destination
                 logger.exception("Out of disk space while saving %s.", file_path)
-                no_space_error = RetriableError(
-                    "Out of disk space on destination.", long_delay=True
+                no_space_error = OutOfDiskSpaceError(
+                    f"Out of disk space on destination '{dest_folder}'."
                 )
                 no_space_error.__cause__ = err
                 raise no_space_error

@@ -33,7 +33,7 @@ from pynetdicom.sop_class import (
 )
 from pynetdicom.status import code_to_category
 
-from ..errors import RetriableError
+from ..errors import DicomCommunicationError, DicomConnectionError
 from ..models import DicomServer
 from ..utils.dicom_dataset import QueryDataset, ResultDataset
 from ..utils.dicom_utils import has_wildcards, read_dataset
@@ -197,8 +197,7 @@ class DimseConnector:
         )
 
         if not self.assoc.is_established:
-            logger.error("Could not connect to %s.", self.server)
-            raise RetriableError(f"Could not connect to {self.server}.")
+            raise DicomConnectionError(f"Could not connect to {self.server}.")
 
     def close_connection(self):
         if not self.assoc:
@@ -245,9 +244,9 @@ class DimseConnector:
         result_counter = 0
         for status, identifier in responses:
             if not status:
-                msg = "Connection timed out, was aborted or received invalid response."
-                logger.error(msg)
-                raise RetriableError(msg)
+                raise DicomConnectionError(
+                    "Connection timed out, was aborted or received invalid response."
+                )
 
             status_category = code_to_category(status.Status)
             if status_category == STATUS_SUCCESS:
@@ -266,9 +265,9 @@ class DimseConnector:
                     break
 
             else:
-                msg = f"Unexpected error during C-FIND: {status_category} [{status.Status}]."
-                logger.error(msg)
-                raise RetriableError(msg)
+                raise DicomCommunicationError(
+                    f"Unexpected error during C-FIND: {status_category} [{status.Status}]."
+                )
 
     @connect_to_server("C_GET")
     def send_c_get(
@@ -350,9 +349,9 @@ class DimseConnector:
             status = self.assoc.send_c_store(ds, msg_id)
 
             if not status:
-                msg = "Connection timed out, was aborted or received invalid response."
-                logger.error(msg)
-                raise RetriableError(msg)
+                raise DicomConnectionError(
+                    "Connection timed out, was aborted or received invalid response."
+                )
             else:
                 status_category = code_to_category(status.Status)
                 if status_category == STATUS_WARNING:
@@ -409,7 +408,7 @@ class DimseConnector:
 
         if failures:
             plural = len(failures) > 1
-            raise RetriableError(
+            raise DicomCommunicationError(
                 f"{len(failures)} C-STORE operation{'s' if plural else ''} failed."
             )
 
@@ -418,9 +417,9 @@ class DimseConnector:
     ) -> None:
         for status, identifier in responses:
             if not status:
-                msg = "Connection timed out, was aborted or received invalid response."
-                logger.error(msg)
-                raise RetriableError(msg)
+                raise DicomConnectionError(
+                    "Connection timed out, was aborted or received invalid response."
+                )
 
             status_category = code_to_category(status.Status)
             if status_category not in [STATUS_SUCCESS, STATUS_PENDING]:
@@ -429,13 +428,13 @@ class DimseConnector:
                     if failed_image_uids:
                         if isinstance(failed_image_uids, str):
                             failed_image_uids = [failed_image_uids]
-                        msg = (
-                            f"Failed to transfer several images with {op}: "
-                            f"{status} [{status.Status}]."
-                        )
-                        logger.error(msg)
                         logger.error(
                             "Erroneous images (SOPInstanceUID): %s", ", ".join(failed_image_uids)
                         )
-                        raise RetriableError(msg)
-                raise RetriableError(f"Unexpected error during {op} [status {status_category}].")
+                        raise DicomCommunicationError(
+                            f"Failed to transfer several images with {op}: "
+                            f"{status} [{status.Status}]."
+                        )
+                raise DicomCommunicationError(
+                    f"Unexpected error during {op} [status {status_category}]."
+                )

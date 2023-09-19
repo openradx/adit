@@ -18,7 +18,7 @@ from sherlock import Lock
 
 from adit.accounts.models import User
 
-from .errors import RetriableError
+from .errors import DicomCommunicationError, DicomConnectionError, OutOfDiskSpaceError
 from .models import AppSettings, DicomFolder, DicomJob, DicomTask
 from .utils.mail import (
     send_job_finished_mail,
@@ -115,7 +115,7 @@ class ProcessDicomTask(AbortableCeleryTask):
             # When the task is rescheduled a Retry will be raised that must be
             # passed through to Celery.
             raise err
-        except RetriableError as err:
+        except (DicomCommunicationError, DicomConnectionError, OutOfDiskSpaceError) as err:
             # Inside the handle_dicom_task errors of kind RetriableTaskError can be raised
             # which are handled here and also raise a Retry in the end.
             logger.exception("Retriable error occurred during %s.", dicom_task)
@@ -123,7 +123,12 @@ class ProcessDicomTask(AbortableCeleryTask):
             # We can't use the Celery built-in max_retries and celery_task.request.retries
             # directly as we also use celery_task.retry() for scheduling tasks.
             if dicom_task.retries < settings.DICOM_TASK_RETRIES:
-                logger.info("Retrying task in %s.", humanize.naturaldelta(err.delay))
+                delta = (
+                    timedelta(hours=24)
+                    if isinstance(err, OutOfDiskSpaceError)
+                    else timedelta(minutes=15)
+                )
+                logger.info("Retrying task in %s.", humanize.naturaldelta(delta))
 
                 dicom_task.status = DicomTask.Status.PENDING
                 dicom_task.message = "Task timed out and will be retried."
@@ -140,7 +145,7 @@ class ProcessDicomTask(AbortableCeleryTask):
                 if priority < settings.CELERY_TASK_QUEUE_MAX_PRIORITY:
                     priority += 1
 
-                raise self.retry(eta=timezone.now() + err.delay, exc=err, priority=priority)
+                raise self.retry(eta=timezone.now() + delta, exc=err, priority=priority)
 
             logger.error("No more retries for finally failed %s: %s", dicom_task, str(err))
 

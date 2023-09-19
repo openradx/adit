@@ -1,16 +1,16 @@
-from datetime import timedelta
-
 from rest_framework.exceptions import ErrorDetail
 
 
-class RetriableError(Exception):
-    def __init__(self, message: str, long_delay: bool = False) -> None:
-        if long_delay:
-            self.delay = timedelta(hours=24)
-        else:
-            self.delay = timedelta(minutes=15)
+class DicomConnectionError(Exception):
+    pass
 
-        super().__init__(message)
+
+class DicomCommunicationError(Exception):
+    pass
+
+
+class OutOfDiskSpaceError(Exception):
+    pass
 
 
 class BatchFileSizeError(Exception):
