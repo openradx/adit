@@ -5,8 +5,11 @@ from adrf.views import sync_to_async
 from django.urls import reverse
 from pydicom import Dataset, Sequence
 
+from adit.core.errors import DicomCommunicationError, DicomConnectionError
 from adit.core.models import DicomServer
 from adit.core.utils.dicom_operator import DicomOperator
+
+from ..errors import RemoteServerError
 
 logger = logging.getLogger(__name__)
 
@@ -46,7 +49,9 @@ async def stow_store(dest_server: DicomServer, datasets: list[Dataset]) -> list[
             )
             result_ds.OriginalAttributesSequence = original_attributes
             result_dict[ds.StudyInstanceUID].ReferencedSOPSequence.append(result_ds)
-
+        except (DicomCommunicationError, DicomConnectionError) as err:
+            logger.exception(err)
+            raise RemoteServerError(str(err))
         except Exception as e:
             logger.error("Failed to upload dataset %s", ds.SOPInstanceUID)
             logger.error(e)
