@@ -112,7 +112,7 @@ class DicomNode(models.Model):
         through="DicomNodeInstituteAccess",
     )
 
-    objects = DicomNodeManager["DicomNode"]()
+    objects: DicomNodeManager["DicomNode"] = DicomNodeManager["DicomNode"]()
 
     class Meta:
         ordering = ("name",)
@@ -174,7 +174,7 @@ class DicomServer(DicomNode):
     dicomweb_stow_prefix = models.CharField(blank=True, max_length=2000)
     dicomweb_authorization_header = models.CharField(blank=True, max_length=2000)
 
-    objects = DicomNodeManager["DicomServer"]()
+    objects: DicomNodeManager["DicomServer"] = DicomNodeManager["DicomServer"]()
 
 
 class DicomFolder(DicomNode):
@@ -192,7 +192,7 @@ class DicomFolder(DicomNode):
         help_text="When to warn the admins by Email (used space in GB).",
     )
 
-    objects = DicomNodeManager["DicomFolder"]()
+    objects: DicomNodeManager["DicomFolder"] = DicomNodeManager["DicomFolder"]()
 
 
 class DicomJob(models.Model):
