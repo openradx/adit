@@ -106,11 +106,9 @@ class BaseUpdatePreferencesView(ABC, LoginRequiredMixin, View):
 
         for key, value in request.POST.items():
             if value == "true":
-                value = True
+                preferences[key] = True
             elif value == "false":
-                value = False
-
-            preferences[key] = value
+                preferences[key] = False
 
         request.user.save()
 
@@ -177,18 +175,20 @@ class DicomJobDetailView(
     PageSizeSelectMixin,
     DetailView,
 ):
+    queryset: QuerySet
     table_class: type[Table]
     filterset_class: type[FilterSet]
     model: type[DicomJob]
     context_object_name: str
     template_name: str
 
-    def get_filter_queryset(self) -> QuerySet:
+    def get_filter_queryset(self) -> QuerySet[DicomTask]:
         job = cast(DicomJob, self.get_object())
         return job.tasks
 
 
 class DicomJobDeleteView(LoginRequiredMixin, OwnerRequiredMixin, DeleteView):
+    object: DicomJob
     model: type[DicomJob]
     success_url: str
     success_message = "Job with ID %(id)d was deleted successfully"

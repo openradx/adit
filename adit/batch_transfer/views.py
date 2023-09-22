@@ -1,6 +1,8 @@
 from typing import Any
 
 from django.conf import settings
+from django.db.models import QuerySet
+from django.http import HttpRequest, HttpResponse
 from django.urls import reverse_lazy
 
 from adit.core.views import (
@@ -97,6 +99,7 @@ class BatchTransferJobCreateView(BatchTransferLockedMixin, DicomJobCreateView):
 
 
 class BatchTransferJobDetailView(BatchTransferLockedMixin, DicomJobDetailView):
+    queryset: QuerySet
     table_class = BatchTransferTaskTable
     filterset_class = BatchTransferTaskFilter
     model = BatchTransferJob
@@ -105,6 +108,7 @@ class BatchTransferJobDetailView(BatchTransferLockedMixin, DicomJobDetailView):
 
 
 class BatchTransferJobDeleteView(BatchTransferLockedMixin, DicomJobDeleteView):
+    object: BatchTransferJob
     model = BatchTransferJob
     success_url = reverse_lazy("batch_transfer_job_list")
 

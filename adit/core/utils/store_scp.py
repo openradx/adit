@@ -23,7 +23,7 @@ class StoreScp:
     _ae: AE | None = None
     _file_received_handler: FileReceivedHandler | None = None
 
-    def __init__(self, folder: os.PathLike, ae_title: str, host: str, port: int, debug=False):
+    def __init__(self, folder: str, ae_title: str, host: str, port: int, debug=False):
         self._folder = folder
         self._ae_title = ae_title
         self._host = host

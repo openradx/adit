@@ -22,7 +22,7 @@ class BatchTransferFileParser(BatchFileParser[BatchTransferTask]):
         self.can_transfer_unpseudonymized = can_transfer_unpseudonymized
         super().__init__(mapping)
 
-    def get_serializer(self, data: dict[str, str]):
+    def get_serializer(self, data: list[dict[str, str]]):
         return BatchTransferTaskSerializer(
             data=data,
             many=True,
@@ -52,16 +52,16 @@ class BatchTransferFileParser(BatchFileParser[BatchTransferTask]):
                 else:
                     explicit_series_to_transfer.extend(task.series_uids_list)
 
-            task: BatchTransferTask = tasks_with_same_study[0]
-            task.task_id = index + 1
-            task.lines_list = cumulative_lines
+            task_to_transfer: BatchTransferTask = tasks_with_same_study[0]
+            task_to_transfer.task_id = index + 1
+            task_to_transfer.lines_list = cumulative_lines
 
             if transfer_whole_study:
-                task.series_uids = ""
+                task_to_transfer.series_uids = ""
             else:
                 # Remove duplicates, but keep order
-                task.series_uids_list = list(dict.fromkeys(explicit_series_to_transfer))
+                task_to_transfer.series_uids_list = list(dict.fromkeys(explicit_series_to_transfer))
 
-            tasks_to_transfer.append(task)
+            tasks_to_transfer.append(task_to_transfer)
 
         return tasks_to_transfer

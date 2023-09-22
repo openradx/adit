@@ -60,5 +60,6 @@
     "HTML (Eex)",
     "plist"
   ],
-  "js/ts.implicitProjectConfig.checkJs": true
+  "js/ts.implicitProjectConfig.checkJs": true,
+  "mypy.runUsingActiveInterpreter": true
 }

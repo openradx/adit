@@ -2,6 +2,7 @@ import datetime
 from typing import Any
 
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
+from django.http import HttpResponse
 from django.urls import reverse_lazy
 from django.views.generic import DeleteView, FormView
 from rest_framework.request import Request
@@ -32,7 +33,7 @@ class TokenDashboardView(
         kwargs.update({"user": self.request.user})
         return kwargs
 
-    def form_valid(self, form):
+    def form_valid(self, form) -> HttpResponse:
         data = form.cleaned_data
         expiry_time = int(data["expiry_time"])
         expires = None
@@ -69,6 +70,7 @@ class DeleteTokenView(
     OwnerRequiredMixin,
     DeleteView,
 ):
+    object: Token
     permission_required = "token_authentication.delete_token"
     model = Token
     success_url = reverse_lazy("token_dashboard")

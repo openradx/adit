@@ -6,12 +6,12 @@ from adit.accounts.models import User
 
 from .models import Token
 
-EXPIRY_TIMES = (
+EXPIRY_TIMES: list[tuple[int, str]] = [
     (24, "1 Day"),
     (7 * 24, "7 Days"),
     (30 * 24, "30 Days"),
     (90 * 24, "90 Days"),
-)
+]
 
 
 class GenerateTokenForm(forms.ModelForm):
@@ -19,14 +19,14 @@ class GenerateTokenForm(forms.ModelForm):
         model = Token
         fields = ["description"]
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, **kwargs) -> None:
         self.user: User = kwargs.pop("user")
 
         super().__init__(*args, **kwargs)
 
         expiry_times = EXPIRY_TIMES
         if self.user.has_perm("token_authentication.can_generate_never_expiring_token"):
-            expiry_times = expiry_times + ((0, "Never"),)
+            expiry_times = expiry_times + [(0, "Never")]
 
         self.fields["expiry_time"] = forms.ChoiceField(choices=expiry_times, label="Expiry Time")
 

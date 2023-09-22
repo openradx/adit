@@ -1,4 +1,5 @@
 from typing import Any, Iterable
+from unittest.mock import Mock
 
 import pytest
 from pydicom.dataset import Dataset
@@ -60,7 +61,7 @@ def dicom_test_helper():
 
 
 @pytest.fixture
-def association(mocker: MockerFixture):
+def association(mocker: MockerFixture) -> Mock:
     assoc = mocker.create_autospec(Association)
     assoc.is_established = True
     return assoc

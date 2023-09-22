@@ -3,11 +3,13 @@ from typing import Any, cast
 
 from django.conf import settings
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.db.models import QuerySet
 from django.http.response import HttpResponse
 from django.urls import reverse_lazy
 from django.views.generic import DetailView
 from django.views.generic.base import View
 from django.views.generic.detail import SingleObjectMixin
+from django_stubs_ext import QuerySetAny
 from django_tables2 import SingleTableMixin
 
 from adit.core.mixins import OwnerRequiredMixin, PageSizeSelectMixin, RelatedFilterMixin
@@ -28,7 +30,7 @@ from adit.core.views import (
 from .filters import BatchQueryJobFilter, BatchQueryResultFilter, BatchQueryTaskFilter
 from .forms import BatchQueryJobForm
 from .mixins import BatchQueryLockedMixin
-from .models import BatchQueryJob, BatchQueryTask
+from .models import BatchQueryJob, BatchQueryResult, BatchQueryTask
 from .tables import BatchQueryJobTable, BatchQueryResultTable, BatchQueryTaskTable
 from .utils.exporters import write_results
 
@@ -93,6 +95,7 @@ class BatchQueryJobCreateView(BatchQueryLockedMixin, DicomJobCreateView):
 
 
 class BatchQueryJobDetailView(BatchQueryLockedMixin, DicomJobDetailView):
+    queryset: QuerySetAny
     table_class = BatchQueryTaskTable
     filterset_class = BatchQueryTaskFilter
     model = BatchQueryJob
@@ -106,6 +109,7 @@ class BatchQueryJobDetailView(BatchQueryLockedMixin, DicomJobDetailView):
 
 
 class BatchQueryJobDeleteView(BatchQueryLockedMixin, DicomJobDeleteView):
+    object: BatchQueryJob
     model = BatchQueryJob
     success_url = reverse_lazy("batch_transfer_job_list")
 
@@ -136,12 +140,13 @@ class BatchQueryTaskDetailView(
     PageSizeSelectMixin,
     DicomTaskDetailView,
 ):
+    queryset: QuerySetAny
     model = BatchQueryTask
     job_url_name = "batch_query_job_detail"
     template_name = "batch_query/batch_query_task_detail.html"
     table_class = BatchQueryResultTable
 
-    def get_table_data(self):
+    def get_table_data(self) -> QuerySet[BatchQueryResult]:
         task = cast(BatchQueryTask, self.get_object())
         return task.results.all()
 
@@ -155,6 +160,7 @@ class BatchQueryResultListView(
     PageSizeSelectMixin,
     DetailView,
 ):
+    queryset: QuerySetAny
     table_class = BatchQueryResultTable
     filterset_class = BatchQueryResultFilter
     model = BatchQueryJob

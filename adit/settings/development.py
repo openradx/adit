@@ -5,16 +5,16 @@ from .base import env
 
 DEBUG = True
 
-ENABLE_REMOTE_DEBUGGING = env.bool("ENABLE_REMOTE_DEBUGGING", default=False)  # type: ignore
+ENABLE_REMOTE_DEBUGGING = env.bool("ENABLE_REMOTE_DEBUGGING", default=False)
 
 SECRET_KEY = env.str(
     "DJANGO_SECRET_KEY",
-    default="ug+cbde301nelb)(di0^p21osy3h=t$%2$-8d&0#xlyfj8&==5",  # type: ignore
+    default="ug+cbde301nelb)(di0^p21osy3h=t$%2$-8d&0#xlyfj8&==5",
 )
 
-ALLOWED_HOSTS = env.list("DJANGO_ALLOWED_HOSTS", default=[])  # type: ignore
+ALLOWED_HOSTS = env.list("DJANGO_ALLOWED_HOSTS", default=[])
 
-CSRF_TRUSTED_ORIGINS = env.list("DJANGO_CSRF_TRUSTED_ORIGINS", default=[])  # type: ignore
+CSRF_TRUSTED_ORIGINS = env.list("DJANGO_CSRF_TRUSTED_ORIGINS", default=[])
 
 # TODO: We also use Postgres for tests now. So tests can only run in the fullstack setup.
 # if not ADIT_FULLSTACK and sys.argv and ("test" in sys.argv or "pytest" in sys.argv[0]):
@@ -35,7 +35,7 @@ MIDDLEWARE += [  # noqa: F405
     "django_browser_reload.middleware.BrowserReloadMiddleware",
 ]
 
-if env.bool("FORCE_DEBUG_TOOLBAR", default=False):  # type: ignore
+if env.bool("FORCE_DEBUG_TOOLBAR", default=False):
     # https://github.com/jazzband/django-debug-toolbar/issues/1035
     from django.conf import settings
 
@@ -46,12 +46,12 @@ CELERY_TASK_EAGER_PROPAGATES = False
 
 ENABLE_DICOM_DEBUG_LOGGER = False
 
-LOGGING["loggers"]["adit"]["level"] = "DEBUG"  # noqa: F405
-LOGGING["loggers"]["celery"]["level"] = "DEBUG"  # noqa: F405
+LOGGING["loggers"]["adit"]["level"] = "DEBUG"  # type: ignore
+LOGGING["loggers"]["celery"]["level"] = "DEBUG"  # type: ignore
 
-INTERNAL_IPS = env.list("DJANGO_INTERNAL_IPS", default=["127.0.0.1"])  # type: ignore
+INTERNAL_IPS = env.list("DJANGO_INTERNAL_IPS", default=["127.0.0.1"])
 
-if env.bool("USE_DOCKER", default=False):  # type: ignore
+if env.bool("USE_DOCKER", default=False):
     import socket
 
     # For Debug Toolbar to show up on Docker Compose in development mode.

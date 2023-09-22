@@ -4,13 +4,13 @@ import threading
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from time import sleep
+from unittest.mock import Mock
 
 from django.conf import settings
 from pydicom import Dataset
-from pynetdicom.association import Association
-from pynetdicom.sop_class import (
-    PatientRootQueryRetrieveInformationModelFind,  # type: ignore
-    StudyRootQueryRetrieveInformationModelFind,  # type: ignore
+from pynetdicom.sop_class import (  # type: ignore
+    PatientRootQueryRetrieveInformationModelFind,
+    StudyRootQueryRetrieveInformationModelFind,
 )
 from pytest_django.fixtures import SettingsWrapper
 from pytest_mock import MockerFixture
@@ -25,7 +25,7 @@ from .conftest import DicomTestHelper
 
 def test_find_patients(
     mocker: MockerFixture,
-    association: Association,
+    association: Mock,
     dicom_operator: DicomOperator,
     dicom_test_helper: DicomTestHelper,
 ):
@@ -49,7 +49,7 @@ def test_find_patients(
 
 def test_find_studies_with_patient_root(
     mocker: MockerFixture,
-    association: Association,
+    association: Mock,
     dicom_operator: DicomOperator,
     dicom_test_helper: DicomTestHelper,
 ):
@@ -73,7 +73,7 @@ def test_find_studies_with_patient_root(
 
 def test_find_studies_with_study_root(
     mocker: MockerFixture,
-    association: Association,
+    association: Mock,
     dicom_operator: DicomOperator,
     dicom_test_helper: DicomTestHelper,
 ):
@@ -97,7 +97,7 @@ def test_find_studies_with_study_root(
 
 def test_find_series(
     mocker: MockerFixture,
-    association: Association,
+    association: Mock,
     dicom_operator: DicomOperator,
     dicom_test_helper: DicomTestHelper,
 ):
@@ -123,7 +123,7 @@ def test_find_series(
 
 def test_download_series_with_c_get(
     mocker: MockerFixture,
-    association: Association,
+    association: Mock,
     dicom_operator: DicomOperator,
     dicom_test_helper: DicomTestHelper,
 ):
@@ -146,7 +146,7 @@ def test_download_series_with_c_get(
 def test_download_series_with_c_move(
     settings: SettingsWrapper,
     mocker: MockerFixture,
-    association: Association,
+    association: Mock,
     dicom_operator: DicomOperator,
     dicom_test_helper: DicomTestHelper,
 ):

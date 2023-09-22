@@ -14,7 +14,7 @@ def test_stow(
     grant_access,
     create_dicom_web_client,
     test_dicoms,
-):
+) -> None:
     user, token = user_with_token
     server = DicomServer.objects.get(ae_title="ORTHANC2")
     # We must also grant access as source as we query the server after

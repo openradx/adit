@@ -3,11 +3,12 @@
 import json
 from django.apps import AppConfig
 from django.db import migrations
+from django.db.backends.base.schema import BaseDatabaseSchemaEditor
 
 
-def convert_json_to_text(apps: AppConfig, schema_editor):
+def convert_json_to_text(apps: AppConfig, schema_editor: BaseDatabaseSchemaEditor) -> None:
     BatchQueryTask = apps.get_model("batch_query.BatchQueryTask")
-    for query in BatchQueryTask.objects.all():
+    for query in BatchQueryTask.objects.all():  # type: ignore
         if not query.lines:
             query.lines = ""
         else:
@@ -26,7 +27,7 @@ def convert_json_to_text(apps: AppConfig, schema_editor):
         query.save()
 
     BatchQueryResult = apps.get_model("batch_query.BatchQueryResult")
-    for result in BatchQueryResult.objects.all():
+    for result in BatchQueryResult.objects.all():  # type: ignore
         if not result.modalities:
             result.modalities = ""
         else:
@@ -35,9 +36,9 @@ def convert_json_to_text(apps: AppConfig, schema_editor):
         result.save()
 
 
-def convert_text_to_json(apps: AppConfig, schema_editor):
+def convert_text_to_json(apps: AppConfig, schema_editor: BaseDatabaseSchemaEditor) -> None:
     BatchQueryTask = apps.get_model("batch_query.BatchQueryTask")
-    for query in BatchQueryTask.objects.all():
+    for query in BatchQueryTask.objects.all():  # type: ignore
         if not query.lines:
             query.lines = "[]"
         else:
@@ -56,7 +57,7 @@ def convert_text_to_json(apps: AppConfig, schema_editor):
         query.save()
 
     BatchQueryResult = apps.get_model("batch_query.BatchQueryResult")
-    for result in BatchQueryResult.objects.all():
+    for result in BatchQueryResult.objects.all():  # type: ignore
         if not result.modalities:
             result.modalities = None
         else:
@@ -70,4 +71,4 @@ class Migration(migrations.Migration):
         ("batch_query", "0015_alter_batchqueryresult_modalities_and_more"),
     ]
 
-    operations = [migrations.RunPython(convert_json_to_text, convert_text_to_json)]
+    operations = [migrations.RunPython(convert_json_to_text, convert_text_to_json)]  # type: ignore

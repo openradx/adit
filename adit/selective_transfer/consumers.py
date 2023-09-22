@@ -48,7 +48,7 @@ def render_error_message(message) -> str:
 
 
 class SelectiveTransferConsumer(SelectiveTransferJobCreateMixin, AsyncJsonWebsocketConsumer):
-    async def connect(self):
+    async def connect(self) -> None:
         logger.debug("Connected to WebSocket client.")
 
         self.user: User = self.scope["user"]

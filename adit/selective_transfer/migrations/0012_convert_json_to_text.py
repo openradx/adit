@@ -7,7 +7,7 @@ from django.db import migrations
 
 def convert_json_to_text(apps: AppConfig, schema_editor):
     SelectiveTransferTask = apps.get_model("selective_transfer.SelectiveTransferTask")
-    for task in SelectiveTransferTask.objects.all():
+    for task in SelectiveTransferTask.objects.all():  # type: ignore
         if not task.series_uids:
             task.series_uids = ""
         else:
@@ -18,7 +18,7 @@ def convert_json_to_text(apps: AppConfig, schema_editor):
 
 def convert_text_to_json(apps: AppConfig, schema_editor):
     SelectiveTransferTask = apps.get_model("selective_transfer.SelectiveTransferTask")
-    for task in SelectiveTransferTask.objects.all():
+    for task in SelectiveTransferTask.objects.all():  # type: ignore
         if not task.series_uids:
             task.series_uids = "null"
         else:
@@ -32,4 +32,4 @@ class Migration(migrations.Migration):
         ("selective_transfer", "0011_alter_selectivetransfertask_series_uids"),
     ]
 
-    operations = [migrations.RunPython(convert_json_to_text, convert_text_to_json)]
+    operations = [migrations.RunPython(convert_json_to_text, convert_text_to_json)]  # type: ignore

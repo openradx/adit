@@ -2,6 +2,7 @@ from datetime import datetime
 from typing import Any
 
 from django.conf import settings
+from django.db.models import QuerySet
 from django.http import HttpResponseBadRequest
 from django.urls import reverse_lazy
 
@@ -80,7 +81,7 @@ class SelectiveTransferJobCreateView(
 
         return kwargs
 
-    def get_initial(self):
+    def get_initial(self) -> dict[str, Any]:
         initial = super().get_initial()
 
         preferences: dict[str, Any] = self.request.user.preferences
@@ -145,6 +146,7 @@ class SelectiveTransferJobCreateView(
 
 
 class SelectiveTransferJobDetailView(SelectiveTransferLockedMixin, DicomJobDetailView):
+    queryset: QuerySet
     table_class = SelectiveTransferTaskTable
     filterset_class = SelectiveTransferTaskFilter
     model = SelectiveTransferJob
@@ -153,6 +155,7 @@ class SelectiveTransferJobDetailView(SelectiveTransferLockedMixin, DicomJobDetai
 
 
 class SelectiveTransferJobDeleteView(SelectiveTransferLockedMixin, DicomJobDeleteView):
+    object: SelectiveTransferJob
     model = SelectiveTransferJob
     success_url = reverse_lazy("selective_transfer_job_list")
 

@@ -62,7 +62,7 @@ class BatchTransferJobForm(forms.ModelForm):
             ),
         }
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, **kwargs) -> None:
         self.batch_file_errors = None
         self.tasks = []
         self.save_tasks = None

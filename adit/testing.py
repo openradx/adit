@@ -1,10 +1,12 @@
 from functools import partial
+from typing import cast
 
 from channels.routing import get_default_application
 from daphne.testing import DaphneProcess
 from django.contrib.staticfiles.handlers import ASGIStaticFilesHandler  # type: ignore
 from django.core.exceptions import ImproperlyConfigured
 from django.db import connections
+from django.db.backends.sqlite3.base import DatabaseWrapper as SQLite3DatabaseWrapper
 from django.test.utils import modify_settings
 
 
@@ -24,7 +26,10 @@ class ChannelsLiveServer:
 
     def __init__(self) -> None:
         for connection in connections.all():
-            if connection.vendor == "sqlite" and connection.is_in_memory_db():
+            if (
+                connection.vendor == "sqlite"
+                and cast(SQLite3DatabaseWrapper, connection).is_in_memory_db()
+            ):
                 raise ImproperlyConfigured(
                     "ChannelsLiveServer can not be used with in memory databases"
                 )

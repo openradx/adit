@@ -7,7 +7,7 @@ from functools import partial
 from pathlib import Path
 from typing import Callable
 
-from celery.contrib.abortable import AbortableTask as AbortableCeleryTask  # pyright: ignore
+from celery.contrib.abortable import AbortableTask as AbortableCeleryTask  # type: ignore
 from dicognito.anonymizer import Anonymizer
 from django.conf import settings
 from pydicom import Dataset
@@ -108,7 +108,7 @@ class TransferExecutor:
         self,
         download_folder: Path,
     ) -> Path:
-        pseudonym = self.transfer_task.pseudonym
+        pseudonym: str | None = self.transfer_task.pseudonym
         if pseudonym:
             patient_folder = download_folder / sanitize_dirname(pseudonym)
         else:
@@ -316,19 +316,19 @@ def _add_to_archive(archive_path: Path, archive_password: str, path_to_add: Path
     """Add a file or folder to an archive. If the archive does not exist
     it will be created."""
     # TODO catch error like https://stackoverflow.com/a/46098513/166229
-    cmd = [
+    cmd: list[str] = [
         "7z",
         "a",
         "-p" + archive_password,
         "-mhe=on",
         "-mx1",
         "-y",
-        archive_path,
-        path_to_add,
+        archive_path.as_posix(),
+        path_to_add.as_posix(),
     ]
 
     proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL)
     proc.wait()
     (_, stderr) = proc.communicate()
     if proc.returncode != 0:
-        raise IOError(f"Failed to add path to archive {stderr}")
+        raise IOError(f"Failed to add path to archive: {str(stderr)}")

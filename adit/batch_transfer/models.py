@@ -1,14 +1,9 @@
-from typing import TYPE_CHECKING
-
 from celery import current_app
 from django.db import models
 from django.urls import reverse
 
 from adit.core.models import AppSettings, TransferJob, TransferTask
 from adit.core.validators import pos_int_list_validator
-
-if TYPE_CHECKING:
-    from django.db.models.manager import RelatedManager
 
 
 class BatchTransferSettings(AppSettings):
@@ -17,17 +12,15 @@ class BatchTransferSettings(AppSettings):
 
 
 class BatchTransferJob(TransferJob):
+    tasks: models.QuerySet["BatchTransferTask"]
     project_name = models.CharField(max_length=150)
     project_description = models.TextField(max_length=2000)
     ethics_application_id = models.CharField(blank=True, max_length=100)
 
-    if TYPE_CHECKING:
-        tasks = RelatedManager["BatchTransferTask"]()
-
-    def delay(self):
+    def delay(self) -> None:
         current_app.send_task("adit.batch_transfer.tasks.ProcessBatchTransferJob", (self.id,))
 
-    def get_absolute_url(self):
+    def get_absolute_url(self) -> str:
         return reverse("batch_transfer_job_detail", args=[self.id])
 
 

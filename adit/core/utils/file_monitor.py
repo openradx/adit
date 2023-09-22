@@ -1,14 +1,14 @@
 import asyncio
 import logging
-from os import DirEntry, PathLike
+from os import PathLike
 from typing import Awaitable, Callable
 
 from aiofiles import os
 from asyncinotify import Inotify, Mask
 
-FileHandler = Callable[[PathLike], bool | None | Awaitable[bool] | Awaitable[None]]
-BeforeScanHandler = Callable[[], None | Awaitable[None]]
-AfterScanHandler = Callable[[], None | Awaitable[None]]
+FileHandler = Callable[[str], Awaitable[bool] | Awaitable[None]]
+BeforeScanHandler = Callable[[], None]
+AfterScanHandler = Callable[[], None]
 
 logger = logging.getLogger(__name__)
 
@@ -17,17 +17,17 @@ class FileMonitor:
     """Monitors a folder for new files and processes them."""
 
     def __init__(self, folder: PathLike):
-        self._folder = folder
+        self._folder: PathLike = folder
 
         # We use a queue to make sure that only one scan is running at a time.
         # A max size of 2 is enough as we only have to make sure that a succeeding
         # scan is started after the current one is finished (when a new file was
         # added to the folder during the running scan)
-        self._queue = asyncio.Queue(maxsize=2)
+        self._queue: asyncio.Queue[bool] = asyncio.Queue(maxsize=2)
         self._file_handler: FileHandler | None = None
         self._before_scan_handler: BeforeScanHandler | None = None
         self._after_scan_handler: AfterScanHandler | None = None
-        self._scan_counter = 0
+        self._scan_counter: int = 0
         self._task_group: asyncio.Future | None = None
 
     def set_file_handler(self, file_handler: FileHandler):
@@ -51,20 +51,17 @@ class FileMonitor:
         """Returns the number of scans that were performed since start."""
         self._scan_counter
 
-    async def _scan_path(self, path: PathLike):
+    async def _scan_path(self, path: str):
         if await os.path.isfile(path):
-            is_processed = False
+            is_processed: bool | None = False
             if self._file_handler:
-                if asyncio.iscoroutinefunction(self._file_handler):
-                    is_processed = await self._file_handler(path)
-                else:
-                    is_processed = self._file_handler(path)
+                is_processed = await self._file_handler(path)
 
             if is_processed:
                 await os.unlink(path)
 
         elif await os.path.isdir(path):
-            entries: list[DirEntry] = await os.scandir(path)  # type: ignore
+            entries = await os.scandir(path)
             for entry in entries:
                 await self._scan_path(entry.path)
 
@@ -82,10 +79,7 @@ class FileMonitor:
     async def _worker(self):
         while True:
             if self._before_scan_handler:
-                if asyncio.iscoroutinefunction(self._before_scan_handler):
-                    await self._before_scan_handler()
-                else:
-                    self._before_scan_handler()
+                self._before_scan_handler()
 
             await self._queue.get()
             await self._scan_path(self._folder)
@@ -94,10 +88,7 @@ class FileMonitor:
             self._scan_counter += 1
 
             if self._after_scan_handler:
-                if asyncio.iscoroutinefunction(self._after_scan_handler):
-                    await self._after_scan_handler()
-                else:
-                    self._after_scan_handler()
+                self._after_scan_handler()
 
     async def _schedule_scan(self):
         try:

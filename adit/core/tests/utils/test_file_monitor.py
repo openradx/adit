@@ -20,7 +20,7 @@ async def test_file_monitor_detects_file_and_removes_it(create_dummy_file):
 
         monitor = FileMonitor(Path(temp_dir))
 
-        def handle_file(filepath: os.PathLike):
+        async def handle_file(filepath: os.PathLike):
             assert os.path.getsize(filepath) == dummy_size
             monitor.stop()
             return True

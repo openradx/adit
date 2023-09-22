@@ -59,7 +59,7 @@ class QueryStudyAPIView(QueryAPIView):
     ) -> Response:
         query: dict[str, str] = {}
         for key, value in request.GET.items():
-            query[key] = value
+            query[key] = str(value)
 
         source_server = await self._fetch_dicom_server(request, ae_title, "source")
 
@@ -83,7 +83,7 @@ class QuerySeriesAPIView(QueryAPIView):
     ) -> Response:
         query: dict[str, str] = {}
         for key, value in request.GET.items():
-            query[key] = value
+            query[key] = str(value)
 
         if not study_uid:
             # In contrast to the DICOMweb standard, ADIT can't support querying series without

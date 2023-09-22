@@ -6,13 +6,14 @@ from dicomweb_client import DICOMwebClient
 from requests import HTTPError
 
 from adit.core.models import DicomServer
+from adit.testing import ChannelsLiveServer
 
 
 @pytest.mark.integration
 @pytest.mark.django_db(transaction=True)
 def test_qido_study(
     dimse_orthancs,
-    channels_live_server,
+    channels_live_server: ChannelsLiveServer,
     user_with_token,
     grant_access,
     create_dicom_web_client,
@@ -51,7 +52,7 @@ def test_qido_series(
     grant_access,
     create_dicom_web_client,
     extended_data_sheet,
-):
+) -> None:
     user, token = user_with_token
     server = DicomServer.objects.get(ae_title="ORTHANC1")
     grant_access(user, server, "source")
@@ -69,10 +70,10 @@ def test_qido_series(
 
     study_uid = list(extended_data_sheet["StudyInstanceUID"])[0]
     results = orthanc1_client.search_for_series(study_uid)
-    results_series_uids = set(
-        [pydicom.Dataset.from_json(result_json).SeriesInstanceUID for result_json in results]
-    )
-    assert results_series_uids == set(
+    results_series_uids = [
+        pydicom.Dataset.from_json(result_json).SeriesInstanceUID for result_json in results
+    ]
+    assert set(results_series_uids) == set(
         extended_data_sheet[extended_data_sheet["StudyInstanceUID"] == study_uid][
             "SeriesInstanceUID"
         ]

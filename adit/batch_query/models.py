@@ -1,5 +1,4 @@
 from datetime import datetime
-from typing import TYPE_CHECKING
 
 from celery import current_app
 from django.core.exceptions import ValidationError
@@ -17,9 +16,6 @@ from adit.core.validators import (
     validate_series_numbers,
 )
 
-if TYPE_CHECKING:
-    from django.db.models.manager import RelatedManager
-
 
 class BatchQuerySettings(AppSettings):
     class Meta:
@@ -27,12 +23,10 @@ class BatchQuerySettings(AppSettings):
 
 
 class BatchQueryJob(DicomJob):
+    tasks: models.QuerySet["BatchQueryTask"]
+    results: models.QuerySet["BatchQueryResult"]
     project_name = models.CharField(max_length=150)
     project_description = models.TextField(max_length=2000)
-
-    if TYPE_CHECKING:
-        tasks = RelatedManager["BatchQueryTask"]()
-        results = RelatedManager["BatchQueryResult"]()
 
     def delay(self):
         current_app.send_task("adit.batch_query.tasks.ProcessBatchQueryJob", (self.id,))
@@ -42,6 +36,8 @@ class BatchQueryJob(DicomJob):
 
 
 class BatchQueryTask(DicomTask):
+    results: models.QuerySet["BatchQueryResult"]
+    job_id: int
     job = models.ForeignKey(BatchQueryJob, on_delete=models.CASCADE, related_name="tasks")
     lines = models.TextField(validators=[pos_int_list_validator])
     patient_id = models.CharField(
@@ -110,9 +106,6 @@ class BatchQueryTask(DicomTask):
         max_length=64,
         validators=[no_backslash_char_validator, no_control_chars_validator],
     )
-
-    if TYPE_CHECKING:
-        results = RelatedManager["BatchQueryResult"]()
 
     @property
     def lines_list(self) -> list[str]:

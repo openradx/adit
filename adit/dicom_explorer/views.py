@@ -115,7 +115,7 @@ def render_query_result(
     """
     query: dict[str, str] = {}
     for key, value in request.GET.items():
-        query[key] = value
+        query[key] = str(value)
 
     url_name = resolve(request.path_info).url_name
 

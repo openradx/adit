@@ -75,7 +75,7 @@ class BatchQueryJobForm(forms.ModelForm):
         self.helper.attrs["x-data"] = "batchQueryJobForm()"
         self.helper.add_input(Submit("save", "Create Job"))
 
-    def clean_batch_file(self):
+    def clean_batch_file(self) -> File:
         batch_file: File = self.cleaned_data["batch_file"]
         parser = BatchQueryFileParser()
 

@@ -1,6 +1,6 @@
 import logging
 
-from celery.contrib.abortable import AbortableTask as AbortableCeleryTask  # pyright: ignore
+from celery.contrib.abortable import AbortableTask as AbortableCeleryTask  # type: ignore
 from django.conf import settings
 from django.template.defaultfilters import pluralize
 
@@ -101,6 +101,7 @@ class QueryExecutor:
                 if modality not in settings.EXCLUDED_MODALITIES
             ]
 
+        study_results: list[ResultDataset]
         if not modalities_query:
             study_results = list(
                 self.operator.find_studies(
@@ -116,7 +117,7 @@ class QueryExecutor:
             )
         else:
             seen: set[str] = set()
-            study_results: list[ResultDataset] = []
+            study_results = []
             for modality in modalities_query:
                 studies = list(
                     self.operator.find_studies(
@@ -141,6 +142,7 @@ class QueryExecutor:
     def _fetch_series(self, patient_id: str, study_uid: str) -> list[ResultDataset]:
         series_numbers = self.query_task.series_numbers_list
 
+        series_results: list[ResultDataset]
         if not series_numbers:
             series_query = QueryDataset.create(
                 PatientID=patient_id,
@@ -150,7 +152,7 @@ class QueryExecutor:
             series_results = list(self.operator.find_series(series_query))
         else:
             seen: set[str] = set()
-            series_results: list[ResultDataset] = []
+            series_results = []
             for series_number in series_numbers:
                 series_query = QueryDataset.create(
                     PatientID=patient_id,

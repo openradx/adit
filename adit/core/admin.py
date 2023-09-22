@@ -26,8 +26,8 @@ class DicomJobAdmin(admin.ModelAdmin):
     def get_owner(self, obj: DicomJob):
         return obj.owner.username
 
-    get_owner.short_description = "Owner"
-    get_owner.admin_order_field = "owner__username"
+    get_owner.short_description = "Owner"  # type: ignore
+    get_owner.admin_order_field = "owner__username"  # type: ignore
 
 
 class DicomTaskAdmin(admin.ModelAdmin):
@@ -46,8 +46,8 @@ class DicomTaskAdmin(admin.ModelAdmin):
     def get_owner(self, obj: DicomTask):
         return obj.job.owner.username
 
-    get_owner.short_description = "Owner"
-    get_owner.admin_order_field = "job__owner__username"
+    get_owner.short_description = "Owner"  # type: ignore
+    get_owner.admin_order_field = "job__owner__username"  # type: ignore
 
 
 class DicomNodeInstituteAccessInline(admin.TabularInline):

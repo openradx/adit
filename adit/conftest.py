@@ -59,7 +59,7 @@ def poll():
 
 
 @pytest.fixture
-def channels_live_server(request):
+def channels_live_server(request) -> ChannelsLiveServer:
     server = ChannelsLiveServer()
     request.addfinalizer(server.stop)
     return server

@@ -7,7 +7,7 @@ import redis
 import sherlock
 from celery import Task as CeleryTask
 from celery import shared_task
-from celery.contrib.abortable import AbortableTask as AbortableCeleryTask  # pyright: ignore
+from celery.contrib.abortable import AbortableTask as AbortableCeleryTask  # type: ignore
 from celery.exceptions import Retry
 from celery.utils.log import get_task_logger
 from django.conf import settings

@@ -1,5 +1,6 @@
 import threading
 from functools import wraps
+from typing import Callable
 
 
 def debounce(wait_time=1):
@@ -9,7 +10,7 @@ def debounce(wait_time=1):
     it will wait for the last call to be debounced and run only this one.
     """
 
-    def decorator(func):
+    def decorator(func: Callable) -> Callable:
         timer: threading.Timer | None = None
 
         @wraps(func)

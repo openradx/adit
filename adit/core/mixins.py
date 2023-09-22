@@ -1,20 +1,17 @@
 from functools import reduce
-from typing import Any
+from typing import Any, Protocol
 
 from django.contrib.auth.mixins import AccessMixin
 from django.core.exceptions import SuspiciousOperation
-from django.http import HttpRequest, HttpResponse
-from django.views import View
+from django.http import HttpRequest, HttpResponseBase
 
 # from django.forms.formsets import ORDERING_FIELD_NAME
-from django.views.generic import DetailView, ListView, TemplateView
+from django.views.generic import TemplateView
 from django_filters.views import FilterMixin
 
 from .forms import PageSizeSelectForm
 from .models import AppSettings
-from .types import AuthenticatedHttpRequest
 from .utils.auth_utils import is_logged_in_user
-from .utils.type_utils import with_type_hint
 
 
 def deepgetattr(obj: object, attr: str):
@@ -22,11 +19,23 @@ def deepgetattr(obj: object, attr: str):
     return reduce(getattr, attr.split("."), obj)
 
 
-class LockedMixin(with_type_hint(View)):
+class ViewProtocol(Protocol):
+    def dispatch(self, request: HttpRequest, *args: Any, **kwargs: Any) -> HttpResponseBase:
+        ...
+
+
+class LockedProtocol(ViewProtocol, Protocol):
+    settings_model: type[AppSettings]
+    section_name: str
+
+
+class LockedMixin:
     settings_model: type[AppSettings]
     section_name = "Section"
 
-    def dispatch(self, request: HttpRequest, *args: Any, **kwargs: Any) -> HttpResponse:
+    def dispatch(
+        self: LockedProtocol, request: HttpRequest, *args: Any, **kwargs: Any
+    ) -> HttpResponseBase:
         settings = self.settings_model.get()
         assert settings
 
@@ -39,21 +48,35 @@ class LockedMixin(with_type_hint(View)):
                 extra_context={"section_name": self.section_name},
             )(request)
 
-        return super().dispatch(request, *args, **kwargs)
+        return super().dispatch(request, *args, **kwargs)  # type: ignore[safe-super]
 
 
-class OwnerRequiredMixin(AccessMixin, with_type_hint(DetailView)):
+class DetailViewProtocol(ViewProtocol, Protocol):
+    def get_object(self, queryset=None) -> Any:
+        ...
+
+    def handle_no_permission(self) -> HttpResponseBase:
+        ...
+
+
+class OwnerRequiredProtocol(DetailViewProtocol, Protocol):
+    owner_accessor: str
+    allow_superuser_access: bool
+    allow_staff_access: bool
+
+
+class OwnerRequiredMixin(AccessMixin):
     """
     Verify that the user is the owner of the object. By default
     also superusers and staff may access the object.
     Should be added to a view class after LoginRequiredMixin.
     """
 
+    owner_accessor = "owner"
     allow_superuser_access = True
     allow_staff_access = True
-    owner_accessor = "owner"
 
-    def dispatch(self, request: AuthenticatedHttpRequest, *args, **kwargs):
+    def dispatch(self: OwnerRequiredProtocol, request: HttpRequest, *args, **kwargs):
         obj = self.get_object()
 
         user = request.user
@@ -72,10 +95,10 @@ class OwnerRequiredMixin(AccessMixin, with_type_hint(DetailView)):
         if check_owner and user != deepgetattr(obj, self.owner_accessor):
             return self.handle_no_permission()
 
-        return super().dispatch(request, *args, **kwargs)
+        return super().dispatch(request, *args, **kwargs)  # type: ignore[safe-super]
 
 
-class RelatedFilterMixin(FilterMixin, with_type_hint(ListView)):
+class RelatedFilterMixin(FilterMixin):
     """A mixin that provides a way to show and handle a FilterSet in a request.
 
     The advantage is provided over FilterMixin is that it does use a special
@@ -114,7 +137,7 @@ class RelatedFilterMixin(FilterMixin, with_type_hint(ListView)):
         return context
 
 
-class PageSizeSelectMixin(with_type_hint(ListView)):
+class PageSizeSelectMixin:
     """A mixin to show a page size selector.
 
     Must be placed after the SingleTableMixin as it sets self.paginated_by

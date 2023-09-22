@@ -1,4 +1,5 @@
 import io
+from typing import IO, Any, Mapping, Optional
 
 from pydicom.errors import InvalidDicomError
 from rest_framework.exceptions import NotAcceptable
@@ -10,7 +11,15 @@ from adit.core.utils.dicom_utils import read_dataset
 class StowMultipartApplicationDicomParser(BaseParser):
     media_type = "multipart/related; type=application/dicom"
 
-    def parse(self, stream, media_type: str, parser_context=None):
+    def parse(
+        self,
+        stream: IO[Any],
+        media_type: str | None = None,
+        parser_context: Mapping[str, Any] | None = None,
+    ) -> Any:
+        if media_type is None:
+            raise NotAcceptable("Invalid multipart request with no media type")
+
         try:
             boundary = media_type.split("boundary=")[1]
         except IndexError:

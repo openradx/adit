@@ -83,12 +83,13 @@ def create_users() -> list[User]:
 def create_institutes(users: list[User]) -> list[Institute]:
     institutes: list[Institute] = []
 
+    institute: Institute
     for _ in range(INSTITUTE_COUNT):
         institute = InstituteFactory.create()
         institutes.append(institute)
 
     for user in users:
-        institute: Institute = fake.random_element(elements=institutes)
+        institute = fake.random_element(elements=institutes)
         institute.users.add(user)
 
     return institutes

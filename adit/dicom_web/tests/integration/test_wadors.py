@@ -14,7 +14,7 @@ def test_wado_study(
     grant_access,
     create_dicom_web_client,
     extended_data_sheet,
-):
+) -> None:
     user, token = user_with_token
     server = DicomServer.objects.get(ae_title="ORTHANC1")
     grant_access(user, server, "source")
@@ -24,30 +24,30 @@ def test_wado_study(
 
     study_uid = list(extended_data_sheet["StudyInstanceUID"])[0]
 
-    results = orthanc1_client.retrieve_study(study_uid)
+    studies: list[pydicom.Dataset] = orthanc1_client.retrieve_study(study_uid)
     series_instance_uids = set()
-    for result in results:
+    for study in studies:
         assert (
-            result.StudyInstanceUID == study_uid
+            study.StudyInstanceUID == study_uid
         ), "The WADO request on study level returned series instances of the wrong study."
-        series_instance_uids.add(result.SeriesInstanceUID)
+        series_instance_uids.add(study.SeriesInstanceUID)
     assert series_instance_uids == set(
         extended_data_sheet[extended_data_sheet["StudyInstanceUID"] == study_uid][
             "SeriesInstanceUID"
         ]
     ), "The WADO request on study level did not return all associated series."
 
-    results = orthanc1_client.retrieve_study_metadata(study_uid)
+    metadata_list = orthanc1_client.retrieve_study_metadata(study_uid)
     series_instance_uids = set()
-    for result_json in results:
-        result = pydicom.Dataset.from_json(result_json)
+    for metadata in metadata_list:
+        study_ds = pydicom.Dataset.from_json(metadata)
         assert not hasattr(
-            result, "PixelData"
+            study_ds, "PixelData"
         ), "The WADO metadata request on study level returned pixel data."
         assert (
-            result.StudyInstanceUID == study_uid
+            study_ds.StudyInstanceUID == study_uid
         ), "The WADO metadata request on study level returned series instances of the wrong study."
-        series_instance_uids.add(result.SeriesInstanceUID)
+        series_instance_uids.add(study_ds.SeriesInstanceUID)
     assert series_instance_uids == set(
         extended_data_sheet[extended_data_sheet["StudyInstanceUID"] == study_uid][
             "SeriesInstanceUID"
@@ -64,7 +64,7 @@ def test_wado_series(
     grant_access,
     create_dicom_web_client,
     extended_data_sheet,
-):
+) -> None:
     user, token = user_with_token
     server = DicomServer.objects.get(ae_title="ORTHANC1")
     grant_access(user, server, "source")
@@ -79,24 +79,24 @@ def test_wado_series(
         ]
     )[0]
 
-    results = orthanc1_client.retrieve_series(study_uid, series_uid)
-    for result in results:
+    series_list = orthanc1_client.retrieve_series(study_uid, series_uid)
+    for series in series_list:
         assert (
-            result.StudyInstanceUID == study_uid
+            series.StudyInstanceUID == study_uid
         ), "The WADO request on study level returned instances of the wrong study."
         assert (
-            result.SeriesInstanceUID == series_uid
+            series.SeriesInstanceUID == series_uid
         ), "The WADO request on series level returned instances of the wrong series"
 
-    results = orthanc1_client.retrieve_series_metadata(study_uid, series_uid)
-    for result_json in results:
-        result = pydicom.Dataset.from_json(result_json)
+    metadata_list = orthanc1_client.retrieve_series_metadata(study_uid, series_uid)
+    for metadata in metadata_list:
+        series_ds = pydicom.Dataset.from_json(metadata)
         assert not hasattr(
-            result, "PixelData"
+            series_ds, "PixelData"
         ), "The WADO metadata request on series level returned pixel data."
         assert (
-            result.StudyInstanceUID == study_uid
+            series_ds.StudyInstanceUID == study_uid
         ), "The WADO metadata request on series level returned instances of the wrong study."
         assert (
-            result.SeriesInstanceUID == series_uid
+            series_ds.SeriesInstanceUID == series_uid
         ), "The WADO metadata request on series level returned instances of the wrong series"

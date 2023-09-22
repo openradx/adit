@@ -1,22 +1,15 @@
-from typing import TYPE_CHECKING
-
 from django.contrib.auth.models import AbstractUser, Group, Permission
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ObjectDoesNotExist
 from django.db import models
 
-if TYPE_CHECKING:
-    from django.db.models.manager import RelatedManager
-
 
 class User(AbstractUser):
     id: int
+    institutes: models.QuerySet["Institute"]
     phone_number = models.CharField(max_length=64)
     department = models.CharField(max_length=128)
     preferences = models.JSONField(default=dict)
-
-    if TYPE_CHECKING:
-        institutes = RelatedManager["Institute"]()
 
     def is_group_member(self, group_name: str):
         return self.groups.filter(name=group_name).exists()
@@ -33,12 +26,12 @@ class User(AbstractUser):
             )
             self.user_permissions.add(permission)
         else:
-            permissions = Permission.objects.filter(codename=permission_codename)
+            permissions = list(Permission.objects.filter(codename=permission_codename))
 
             if len(permissions) == 0:
                 raise ObjectDoesNotExist(f'Permission "{permission_codename}" does not exist.')
 
-            self.user_permissions.add(permissions)
+            self.user_permissions.add(*permissions)
 
 
 class Institute(models.Model):

@@ -22,8 +22,7 @@ def write_results(job: BatchQueryJob, file: IO) -> None:
     header = get_header(has_pseudonyms, has_series)
     data = []
     for query_task in query_tasks:
-        result_rows = get_result_rows(query_task, has_pseudonyms, has_series)
-        data += result_rows
+        data += get_result_rows(query_task, has_pseudonyms, has_series)
 
     df = pd.DataFrame(data, columns=header)
     df.to_excel(file, index=False, engine="openpyxl")
@@ -78,7 +77,7 @@ def get_result_rows(
 
         image_count = ""
         if result.image_count is not None:
-            image_count = result.image_count
+            image_count = str(result.image_count)
 
         result_row = []
 

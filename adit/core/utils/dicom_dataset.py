@@ -230,7 +230,7 @@ class QueryDataset(BaseDataset):
 
 
 class ResultDataset(BaseDataset):
-    @BaseDataset.ModalitiesInStudy.setter
+    @BaseDataset.ModalitiesInStudy.setter  # type: ignore
     def ModalitiesInStudy(self, value: str | list[str]) -> None:
         self._ds.ModalitiesInStudy = value
 

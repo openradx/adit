@@ -1,10 +1,11 @@
 from abc import abstractmethod
 from datetime import time
-from typing import TYPE_CHECKING, Callable, Generic, Literal, TypeVar
+from typing import Callable, Generic, Literal, Self, TypeVar
 
 from django.conf import settings
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
+from django.db.models import QuerySet
 from django.db.models.constraints import UniqueConstraint
 
 from adit.accounts.models import Institute, User
@@ -16,9 +17,6 @@ from .validators import (
     uid_chars_validator,
     validate_uids,
 )
-
-if TYPE_CHECKING:
-    from django.db.models.manager import RelatedManager
 
 
 class CoreSettings(models.Model):
@@ -74,7 +72,7 @@ TModel = TypeVar("TModel", bound=models.Model)
 class DicomNodeManager(Generic[TModel], models.Manager[TModel]):
     def accessible_by_user(
         self, user: User, access_type: Literal["source", "destination"]
-    ) -> "DicomNodeManager":
+    ) -> QuerySet[TModel]:
         # Also staff users can only use nodes that are assigned to an institute (but they
         # must not be a member of that institute in contrast to normal users).
         if user.is_staff:
@@ -112,7 +110,7 @@ class DicomNode(models.Model):
         through="DicomNodeInstituteAccess",
     )
 
-    objects = DicomNodeManager["DicomNode"]()
+    objects: DicomNodeManager["DicomNode"] = DicomNodeManager["DicomNode"]()
 
     class Meta:
         ordering = ("name",)
@@ -174,7 +172,9 @@ class DicomServer(DicomNode):
     dicomweb_stow_prefix = models.CharField(blank=True, max_length=2000)
     dicomweb_authorization_header = models.CharField(blank=True, max_length=2000)
 
-    objects = DicomNodeManager["DicomServer"]()
+    objects: DicomNodeManager["DicomServer"] = DicomNodeManager[  # type: ignore[assignment]
+        "DicomServer"
+    ]()
 
 
 class DicomFolder(DicomNode):
@@ -192,7 +192,9 @@ class DicomFolder(DicomNode):
         help_text="When to warn the admins by Email (used space in GB).",
     )
 
-    objects = DicomNodeManager["DicomFolder"]()
+    objects: DicomNodeManager["DicomFolder"] = DicomNodeManager[  # type: ignore[assignment]
+        "DicomFolder"
+    ]()
 
 
 class DicomJob(models.Model):
@@ -206,10 +208,11 @@ class DicomJob(models.Model):
         WARNING = "WA", "Warning"
         FAILURE = "FA", "Failure"
 
-    if TYPE_CHECKING:
-        tasks = RelatedManager["DicomTask"]()
-
-    id: int
+    # We have to explicitly define the id field as BigAutoField for mypy as we use this
+    # abstract model directly as an abstraction.
+    id = models.BigAutoField(primary_key=True)
+    tasks: QuerySet["DicomTask"]
+    objects: models.Manager[Self]
     source_id: int
     source = models.ForeignKey(DicomNode, related_name="+", on_delete=models.PROTECT)
     get_status_display: Callable[[], str]
@@ -239,6 +242,10 @@ class DicomJob(models.Model):
 
     def __str__(self):
         return f"{self.__class__.__name__} [ID {self.id}]"
+
+    @abstractmethod
+    def get_absolute_url(self) -> str:
+        raise NotImplementedError()
 
     def reset_tasks(self, only_failed=False):
         if only_failed:
@@ -326,9 +333,11 @@ class DicomTask(models.Model):
         WARNING = "WA", "Warning"
         FAILURE = "FA", "Failure"
 
-    id: int
-    job_id: int
-    job = models.ForeignKey(DicomJob, on_delete=models.CASCADE, related_name="tasks")
+    # We have to explicitly define the id field as BigAutoField for mypy as we use this
+    # abstract model directly as an abstraction.
+    id = models.BigAutoField(primary_key=True)
+    objects: models.Manager[Self]
+    job: models.ForeignObject
     task_id = models.PositiveIntegerField()
     celery_task_id = models.CharField(max_length=255)
     get_status_display: Callable[[], str]
@@ -359,11 +368,6 @@ class TransferTask(DicomTask):
     class Meta(DicomTask.Meta):
         abstract = True
 
-    job = models.ForeignKey(
-        TransferJob,
-        on_delete=models.CASCADE,
-        related_name="tasks",
-    )
     patient_id = models.CharField(
         max_length=64,
         validators=[

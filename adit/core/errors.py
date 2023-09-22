@@ -33,7 +33,7 @@ class BatchFileContentError(Exception):
         self.data = data
         self.errors = errors
 
-        self.message = None
+        self.message: str | None = None
 
     def __str__(self) -> str:
         if self.message is None:

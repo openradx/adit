@@ -46,7 +46,7 @@ class Command(AsyncServerCommand):
         self._file_monitor = FileMonitor(receiver_dir)
         self._file_transmit = FileTransmitServer("0.0.0.0", settings.FILE_TRANSMIT_PORT)
 
-        async def handle_received_file(file_path):
+        async def handle_received_file(file_path: os.PathLike) -> bool:
             # The calling AE title is retained by the StoreScp class in the filename so
             # that we can use it for the topic when transmitting the file.
             filename: str = os.path.basename(file_path)

@@ -7,7 +7,7 @@ from django.db import migrations
 
 def convert_json_to_text(apps: AppConfig, schema_editor):
     BatchTransferTask = apps.get_model("batch_transfer.BatchTransferTask")
-    for task in BatchTransferTask.objects.all():
+    for task in BatchTransferTask.objects.all():  # type: ignore
         if not task.lines:
             task.lines = ""
         else:
@@ -23,7 +23,7 @@ def convert_json_to_text(apps: AppConfig, schema_editor):
 
 def convert_text_to_json(apps: AppConfig, schema_editor):
     BatchTransferTask = apps.get_model("batch_transfer.BatchTransferTask")
-    for task in BatchTransferTask.objects.all():
+    for task in BatchTransferTask.objects.all():  # type: ignore
         if not task.lines:
             task.lines = "[]"
         else:
@@ -42,4 +42,4 @@ class Migration(migrations.Migration):
         ("batch_transfer", "0012_alter_batchtransfertask_lines_and_more"),
     ]
 
-    operations = [migrations.RunPython(convert_json_to_text, convert_text_to_json)]
+    operations = [migrations.RunPython(convert_json_to_text, convert_text_to_json)]  # type: ignore

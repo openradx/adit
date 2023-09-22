@@ -26,7 +26,7 @@ class DicomJobTable(tables.Table):
         model: type[DicomJob]
         order_by = ("-id",)
         # owner is dynamically excluded for non staff users (see tables.py)
-        fields = ("id", "status", "source", "created", "owner")
+        fields: tuple[str, ...] = ("id", "status", "source", "created", "owner")
         empty_text = "No jobs to show"
         attrs = {
             "id": "dicom_job_table",

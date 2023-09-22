@@ -7,8 +7,10 @@ from django.conf import settings
 from django.contrib.auth.models import Group
 
 from adit.accounts.factories import UserFactory
+from adit.accounts.models import User
 from adit.core.utils.dicom_utils import read_dataset
 from adit.token_authentication.factories import TokenFactory
+from adit.token_authentication.models import Token
 
 # Workaround to make playwright work with Django
 # see https://github.com/microsoft/playwright-pytest/issues/29#issuecomment-731515676
@@ -16,7 +18,7 @@ os.environ.setdefault("DJANGO_ALLOW_ASYNC_UNSAFE", "true")
 
 
 @pytest.fixture
-def user_with_token():
+def user_with_token() -> tuple[User, Token]:
     user = UserFactory.create()
     token_authentication_group = Group.objects.get(name="token_authentication_group")
     user.groups.add(token_authentication_group)

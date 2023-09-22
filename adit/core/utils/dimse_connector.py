@@ -20,16 +20,16 @@ from pynetdicom.presentation import (
     StoragePresentationContexts,
     build_role,
 )
-from pynetdicom.sop_class import (
-    EncapsulatedMTLStorage,  # pyright: ignore
-    EncapsulatedOBJStorage,  # pyright: ignore
-    EncapsulatedSTLStorage,  # pyright: ignore
-    PatientRootQueryRetrieveInformationModelFind,  # pyright: ignore
-    PatientRootQueryRetrieveInformationModelGet,  # pyright: ignore
-    PatientRootQueryRetrieveInformationModelMove,  # pyright: ignore
-    StudyRootQueryRetrieveInformationModelFind,  # pyright: ignore
-    StudyRootQueryRetrieveInformationModelGet,  # pyright: ignore
-    StudyRootQueryRetrieveInformationModelMove,  # pyright: ignore
+from pynetdicom.sop_class import (  # type: ignore
+    EncapsulatedMTLStorage,
+    EncapsulatedOBJStorage,
+    EncapsulatedSTLStorage,
+    PatientRootQueryRetrieveInformationModelFind,
+    PatientRootQueryRetrieveInformationModelGet,
+    PatientRootQueryRetrieveInformationModelMove,
+    StudyRootQueryRetrieveInformationModelFind,
+    StudyRootQueryRetrieveInformationModelGet,
+    StudyRootQueryRetrieveInformationModelMove,
 )
 from pynetdicom.status import code_to_category
 
@@ -193,7 +193,7 @@ class DimseConnector:
             self.server.host,
             self.server.port,
             ae_title=self.server.ae_title,
-            ext_neg=ext_neg,
+            ext_neg=ext_neg,  # type: ignore
         )
 
         if not self.assoc.is_established:

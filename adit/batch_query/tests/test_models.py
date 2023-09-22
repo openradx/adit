@@ -21,7 +21,7 @@ class TestBatchQueryTask:
             pytest.fail()
 
     @pytest.mark.django_db
-    def test_valid_with_patient_name_and_birth_date(self):
+    def test_valid_with_patient_name_and_birth_date(self) -> None:
         task: BatchQueryTask = BatchQueryTaskFactory.create()
         task.patient_id = ""
         task.patient_name = "Apple, Peter"
@@ -37,7 +37,7 @@ class TestBatchQueryTask:
         "patient_name,patient_birth_date",
         [("", None), ("Apple, Peter", None), ("", date(1976, 8, 31))],
     )
-    def test_invalid_without_identfiable_patient(self, patient_name, patient_birth_date):
+    def test_invalid_without_identfiable_patient(self, patient_name, patient_birth_date) -> None:
         task: BatchQueryTask = BatchQueryTaskFactory.create()
         task.patient_id = ""
         task.patient_name = patient_name

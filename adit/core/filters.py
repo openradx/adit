@@ -1,18 +1,16 @@
 import django_filters
-from django.views import View
 
 from adit.core.forms import FilterSetFormHelper
-from adit.core.utils.type_utils import with_type_hint
 
 from .models import DicomJob, DicomTask
 
 
-class DicomJobFilter(django_filters.FilterSet, with_type_hint(View)):
+class DicomJobFilter(django_filters.FilterSet):
     class Meta:
         model: type[DicomJob]
         fields = ("status",)
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
 
         form_helper = FilterSetFormHelper(self.request.GET)
@@ -21,12 +19,12 @@ class DicomJobFilter(django_filters.FilterSet, with_type_hint(View)):
         self.form.helper = form_helper
 
 
-class DicomTaskFilter(django_filters.FilterSet, with_type_hint(View)):
+class DicomTaskFilter(django_filters.FilterSet):
     class Meta:
         model: type[DicomTask]
         fields = ("status",)
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
 
         form_helper = FilterSetFormHelper(self.request.GET)
