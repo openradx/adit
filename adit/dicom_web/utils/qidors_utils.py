@@ -8,7 +8,7 @@ from adit.core.models import DicomServer
 from adit.core.utils.dicom_dataset import QueryDataset, ResultDataset
 from adit.core.utils.dicom_operator import DicomOperator
 
-from ..errors import RemoteServerError
+from ..errors import BadGatewayApiError, ServiceUnavailableApiError
 
 logger = logging.getLogger("__name__")
 
@@ -28,8 +28,11 @@ async def qido_find(
             results: list[ResultDataset] = list(await sync_to_async(operator.find_series)(query_ds))
         else:
             raise ValueError(f"Invalid QIDO-RS level: {level}.")
-    except (DicomCommunicationError, DicomConnectionError) as err:
+    except DicomConnectionError as err:
         logger.exception(err)
-        raise RemoteServerError(str(err))
+        raise ServiceUnavailableApiError(str(err))
+    except DicomCommunicationError as err:
+        logger.exception(err)
+        raise BadGatewayApiError(str(err))
 
     return results

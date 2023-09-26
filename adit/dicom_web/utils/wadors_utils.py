@@ -9,7 +9,7 @@ from adit.core.models import DicomServer
 from adit.core.utils.dicom_dataset import QueryDataset
 from adit.core.utils.dicom_operator import DicomOperator
 
-from ..errors import RemoteServerError
+from ..errors import BadGatewayApiError, ServiceUnavailableApiError
 
 logger = logging.getLogger("__name__")
 
@@ -24,17 +24,20 @@ async def wado_retrieve(
 
     try:
         series_list = list(await sync_to_async(operator.find_series)(query_ds))
-    except (DicomCommunicationError, DicomConnectionError) as err:
+
+        if len(series_list) == 0:
+            raise NotFound("No DICOM objects matches the query.")
+
+        for series in series_list:
+            await sync_to_async(operator.download_series)(
+                patient_id=series.PatientID,
+                study_uid=series.StudyInstanceUID,
+                series_uid=series.SeriesInstanceUID,
+                dest_folder=dest_folder,
+            )
+    except DicomConnectionError as err:
         logger.exception(err)
-        raise RemoteServerError(str(err))
-
-    if len(series_list) == 0:
-        raise NotFound("No DICOM objects matches the query.")
-
-    for series in series_list:
-        await sync_to_async(operator.download_series)(
-            patient_id=series.PatientID,
-            study_uid=series.StudyInstanceUID,
-            series_uid=series.SeriesInstanceUID,
-            dest_folder=dest_folder,
-        )
+        raise ServiceUnavailableApiError(str(err))
+    except DicomCommunicationError as err:
+        logger.exception(err)
+        raise BadGatewayApiError(str(err))

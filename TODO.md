@@ -2,13 +2,13 @@
 
 ## Top
 
-- Currently when images are received by the DICOMweb API they are temporarily downloaded to the file system before then send back to the requester. Try to pass the dataset directly.
+- Make sure temporary folder created in retrieve DICOM web API is cleaned up (see TODO in /home/adm-adit/workspace/adit/adit/dicom_web/views.py)
+- Look into how we can stream the file from disc (from the temp folder) with WADO (see <https://chat.openai.com/share/d5a2f27f-4854-4deb-85df-b7f574638ae3>)
+- Look into how we can improve STOW (do we have to upload one file at a time, can we stream it somehow)
 - Update documentation
 - Fix some stuff and use our fork then of DICOMwebClient
   -- <https://github.com/ImagingDataCommons/dicomweb-client/issues/88>
   -- <https://github.com/ImagingDataCommons/dicomweb-client/issues/89>
-- Look into how we can improve STOW (do we have to upload one file at a time, can we stream it somehow)
-- Look into how we can stream the file with WADO
 - Remove files in test folders from autoreload
 - Selective transfer choose series
 - Locked info for other apps like batch_transfer_locked.html

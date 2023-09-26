@@ -438,3 +438,31 @@ class DimseConnector:
                 raise DicomCommunicationError(
                     f"Unexpected error during {op} [status {status_category}]."
                 )
+
+            if status_category == STATUS_SUCCESS:
+                # Optional operation primitive parameters
+                # https://pydicom.github.io/pynetdicom/dev/reference/generated/pynetdicom.dimse_primitives.C_GET.html
+                # https://pydicom.github.io/pynetdicom/dev/reference/generated/pynetdicom.dimse_primitives.C_MOVE.html
+                completed_suboperations: int | None = status.get("NumberOfCompletedSuboperations")
+                failed_suboperations: int | None = status.get("NumberOfFailedSuboperations")
+                remaining_suboperations: int | None = status.get("NumberOfRemainingSuboperations")
+                warning_suboperations: int | None = status.get("NumberOfWarningSuboperations")
+
+                if remaining_suboperations:
+                    raise AssertionError(
+                        "No remaining sub-operations should be left when operation succeeded."
+                    )
+
+                # On some PACS (GE and Synapse) we get a SUCCESS response even when all
+                # sub-operations failed.
+                # https://github.com/pydicom/pynetdicom/issues/552
+                if failed_suboperations and completed_suboperations == 0:
+                    raise DicomCommunicationError("All sub-operations failed.")
+
+                # TODO: We should somehow log this into the task log, so that is visible to the user
+
+                if warning_suboperations:
+                    logger.warn(f"{warning_suboperations} sub-operations with warnings.")
+
+                if failed_suboperations:
+                    logger.error(f"{failed_suboperations} sub-operations failed.")

@@ -18,7 +18,7 @@ from sherlock import Lock
 
 from adit.accounts.models import User
 
-from .errors import DicomCommunicationError, DicomConnectionError, OutOfDiskSpaceError
+from .errors import DicomConnectionError, OutOfDiskSpaceError
 from .models import AppSettings, DicomFolder, DicomJob, DicomTask
 from .utils.mail import (
     send_job_finished_mail,
@@ -115,7 +115,7 @@ class ProcessDicomTask(AbortableCeleryTask):
             # When the task is rescheduled a Retry will be raised that must be
             # passed through to Celery.
             raise err
-        except (DicomCommunicationError, DicomConnectionError, OutOfDiskSpaceError) as err:
+        except (DicomConnectionError, OutOfDiskSpaceError) as err:
             # Inside the handle_dicom_task errors of kind RetriableTaskError can be raised
             # which are handled here and also raise a Retry in the end.
             logger.exception("Retriable error occurred during %s.", dicom_task)

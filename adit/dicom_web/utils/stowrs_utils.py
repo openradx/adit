@@ -9,7 +9,7 @@ from adit.core.errors import DicomCommunicationError, DicomConnectionError
 from adit.core.models import DicomServer
 from adit.core.utils.dicom_operator import DicomOperator
 
-from ..errors import RemoteServerError
+from ..errors import BadGatewayApiError, ServiceUnavailableApiError
 
 logger = logging.getLogger(__name__)
 
@@ -49,12 +49,15 @@ async def stow_store(dest_server: DicomServer, datasets: list[Dataset]) -> list[
             )
             result_ds.OriginalAttributesSequence = original_attributes
             result_dict[ds.StudyInstanceUID].ReferencedSOPSequence.append(result_ds)
-        except (DicomCommunicationError, DicomConnectionError) as err:
+        except DicomConnectionError as err:
             logger.exception(err)
-            raise RemoteServerError(str(err))
-        except Exception as e:
+            raise ServiceUnavailableApiError(str(err))
+        except DicomCommunicationError as err:
+            logger.exception(err)
+            raise BadGatewayApiError(str(err))
+        except Exception as err:
+            logger.exception(err)
             logger.error("Failed to upload dataset %s", ds.SOPInstanceUID)
-            logger.error(e)
 
             # https://dicom.nema.org/medical/dicom/current/output/html/part18.html#sect_I.2.2
             result_ds.FailureReason = "0110"  # Processing failure

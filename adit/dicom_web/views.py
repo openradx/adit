@@ -139,6 +139,7 @@ class RetrieveAPIView(WebDicomAPIView):
                 f"The specified server with AE title '{ae_title}' does not support WADO-RS."
             )
 
+        # TODO: Make sure the temp folder is cleaned up correctly!
         folder_path = await self._generate_temp_folder(study_uid, series_uid, self.level)
 
         return source_server, folder_path
