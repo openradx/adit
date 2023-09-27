@@ -1,9 +1,14 @@
 from abc import ABC
 from typing import IO, Generic, Type, TypeVar, cast
+from zipfile import BadZipFile
 
 import pandas as pd
 
-from .errors import BatchFileContentError, BatchFileFormatError, BatchFileSizeError
+from .errors import (
+    BatchFileContentError,
+    BatchFileFormatError,
+    BatchFileSizeError,
+)
 from .models import DicomTask
 from .serializers import BatchTaskListSerializer, BatchTaskSerializer
 
@@ -30,11 +35,12 @@ class BatchFileParser(Generic[T], ABC):
             # We only extract strings and let the serializer handle the parsing
             # of the dates so that all errors are handled there.
             df = pd.read_excel(batch_file, dtype="string", engine="openpyxl")
-            df.fillna("", inplace=True)
-            for col in df:
-                df[col] = df[col].str.strip()
-        except ValueError:
-            raise BatchFileFormatError()
+        except (BadZipFile, ValueError):
+            raise BatchFileFormatError
+
+        df.fillna("", inplace=True)
+        for col in df:
+            df[col] = df[col].str.strip()
 
         for idx, (_, row) in enumerate(df.iterrows()):
             data_row = {}
