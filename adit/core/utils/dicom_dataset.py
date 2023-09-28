@@ -1,4 +1,5 @@
 import datetime
+import logging
 from datetime import date, time
 from typing import Any, Iterable, Literal
 
@@ -14,6 +15,8 @@ from .dicom_utils import (
     convert_to_python_time,
 )
 
+logger = logging.getLogger(__name__)
+
 
 class BaseDataset:
     def __init__(self, ds: Dataset) -> None:
@@ -28,9 +31,15 @@ class BaseDataset:
         return str(self._ds.PatientName)
 
     @property
-    def PatientBirthDate(self) -> date:
-        birth_date = self._ds.PatientBirthDate
-        return convert_to_python_date(birth_date)
+    def PatientBirthDate(self) -> date | None:
+        try:
+            birth_date = self._ds.PatientBirthDate
+            return convert_to_python_date(birth_date)
+        except Exception:
+            # Birth date can be absent on some external images even if it
+            # is mandatory by the DICOM standard
+            logger.exception(f"Invalid patient birth date in dataset:\n{self._ds}")
+            return None
 
     @property
     def PatientSex(self) -> Literal["M", "F", "O"]:
