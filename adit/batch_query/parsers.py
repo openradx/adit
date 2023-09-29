@@ -1,5 +1,3 @@
-import re
-
 from adit.core.parsers import BatchFileParser
 from adit.core.utils.dicom_utils import person_name_to_dicom
 
@@ -20,8 +18,6 @@ mapping = {
     "pseudonym": "Pseudonym",
 }
 
-dt_regex = re.compile(r"^(\d{4}-\d{2}-\d{2}) \d{2}:\d{2}:\d{2}$")
-
 
 class BatchQueryFileParser(BatchFileParser[BatchQueryTask]):
     serializer_class = BatchQueryTaskSerializer
@@ -33,12 +29,6 @@ class BatchQueryFileParser(BatchFileParser[BatchQueryTask]):
         if field in ["patient_birth_date", "study_date_start", "study_date_end"]:
             if not value:
                 return None
-
-            m = dt_regex.match(value)
-            if m:
-                # Only extract the date as the DateField of the date field
-                # will only parse a valid date without time.
-                return m.group(1)
 
         if field in ["modalities", "series_numbers"]:
             return ", ".join(filter(len, map(str.strip, value.split(","))))

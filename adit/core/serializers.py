@@ -1,5 +1,6 @@
 from typing import Type
 
+from django.utils import formats
 from rest_framework import serializers
 
 from adit.core.models import DicomTask
@@ -29,6 +30,16 @@ class BatchTaskSerializer(serializers.ModelSerializer):
 
     def adapt_date_field(self, field_name):
         field = self.fields[field_name]
+
+        # When loading the data from the Excel sheet the fields with date content may return
+        # a date/time string (when date type was explicitly set in the Excel column)
+        # or the string that was directly provided by the user (text type column).
+        # We make sure that all different formats could be parsed.
+        date_input_formats = formats.get_format("DATE_INPUT_FORMATS")
+        datetime_input_formats = formats.get_format("DATETIME_INPUT_FORMATS")
+        input_formats = date_input_formats + datetime_input_formats
+        field.input_formats = input_formats
+
         field.error_messages["invalid"] = "Date has wrong format."
 
     def validate(self, attrs):
