@@ -647,7 +647,6 @@ class DicomOperator:
                         # if all images were received or not.
                         eval_images_received()
 
-                        self.dimse_connector.abort_connection()
                         break
 
             check_timeout_task = asyncio.create_task(check_timeout())
