@@ -209,12 +209,9 @@ class DimseConnector:
         self.assoc = None
 
     def abort_connection(self):
-        if not self.assoc:
-            raise AssertionError("No association to abort.")
-
-        logger.debug("Aborting connection to DICOM server %s.", self.server.ae_title)
-
-        self.assoc.abort()
+        if self.assoc:
+            logger.debug("Aborting connection to DICOM server %s.", self.server.ae_title)
+            self.assoc.abort()
 
     @connect_to_server("C_FIND")
     def send_c_find(

@@ -517,6 +517,8 @@ class DicomOperator:
         dest_folder: PathLike,
         modifier: Modifier | None = None,
     ):
+        # When downloading the series with C-MOVE we first must know all the images that
+        # the series contains so that we can decide if all were retrieved.
         images = list(
             self.find_images(
                 QueryDataset.create(
@@ -531,11 +533,11 @@ class DicomOperator:
         # A list of errors that may occur while receiving the images
         receiving_errors: list[Exception] = []
 
-        # The images are sent to the receiver container (a C-STORE SCP server)
-        # by the move operation. Then those are send to a RabbitMQ queue from
-        # which we consume them in a separate thread.
+        # The requested images are sent to the receiver container (a C-STORE SCP server)
+        # by the C-MOVE operation. Then those are send via the transmitter (over TCP socket)
+        # which we consume in a separate thread.
         with ThreadPoolExecutor() as executor:
-            future = executor.submit(
+            consume_future = executor.submit(
                 self._consume_from_receiver,
                 query.StudyInstanceUID,
                 query.SeriesInstanceUID,
@@ -550,7 +552,7 @@ class DicomOperator:
 
                 # We have to check the result of the future here, otherwise
                 # exceptions in the thread would be ignored.
-                future.result()
+                consume_future.result()
             except Exception as err:
                 # We check here if an error occurred in the consumer thread and
                 # then do nothing here but handle it in the finally block.
@@ -582,7 +584,7 @@ class DicomOperator:
                 settings.FILE_TRANSMIT_HOST, settings.FILE_TRANSMIT_PORT
             )
 
-            def eval_images_received():
+            def check_images_received():
                 if remaining_image_uids:
                     if remaining_image_uids == image_uids:
                         logger.error("No images of series %s received.", series_uid)
@@ -645,8 +647,8 @@ class DicomOperator:
                         # We have to call this before aborting the connection because this
                         # can raise an exception with C-MOVE and we need the info then
                         # if all images were received or not.
-                        eval_images_received()
-
+                        check_images_received()
+                        self.dimse_connector.abort_connection()
                         break
 
             check_timeout_task = asyncio.create_task(check_timeout())
@@ -654,7 +656,7 @@ class DicomOperator:
             await asyncio.gather(subscribe_task, check_timeout_task)
 
             if not receiving_errors:
-                eval_images_received()
+                check_images_received()
 
         asyncio.run(consume(), debug=settings.DEBUG)
 
