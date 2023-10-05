@@ -29,7 +29,6 @@ class BatchFileParser(Generic[T], ABC):
 
     def parse(self, batch_file: IO, max_batch_size: int | None) -> list[T]:
         data: list[dict[str, str]] = []
-        counter = 1
 
         try:
             # We only extract strings and let the serializer handle the parsing
@@ -54,9 +53,6 @@ class BatchFileParser(Generic[T], ABC):
 
             if row_empty:
                 continue
-
-            data_row["task_id"] = counter
-            counter += 1
 
             # + 2 because the first row is the header and the index starts at 0
             data_row["lines"] = str(idx + 2)

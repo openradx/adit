@@ -40,7 +40,6 @@ class BatchTransferTaskSerializer(BatchTaskSerializer):
     class Meta(BatchTaskSerializer.Meta):
         model = BatchTransferTask
         fields = [
-            "task_id",
             "patient_id",
             "study_uid",
             "series_uids",

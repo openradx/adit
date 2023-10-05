@@ -19,7 +19,7 @@ class BatchQueryTaskFilter(DicomTaskFilter):
 
 
 class BatchQueryResultFilter(django_filters.FilterSet, with_type_hint(View)):
-    task_id = django_filters.NumberFilter(field_name="query__task_id", label="Task ID")
+    task_id = django_filters.NumberFilter(field_name="query_id", label="Task ID")
 
     class Meta:
         model = BatchQueryResult

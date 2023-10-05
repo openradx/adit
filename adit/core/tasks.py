@@ -104,8 +104,8 @@ class ProcessDicomTask(AbortableCeleryTask):
     dicom_task_class: type[DicomTask]
     app_settings_class: type[AppSettings]
 
-    def run(self, dicom_task_id: int):
-        dicom_task = self.dicom_task_class.objects.get(id=dicom_task_id)
+    def run(self, task_id: int):
+        dicom_task = self.dicom_task_class.objects.get(id=task_id)
 
         try:
             status, message = self.process_dicom_task(dicom_task)

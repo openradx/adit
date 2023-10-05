@@ -22,7 +22,7 @@
 
 - Redirect after restart/retry/delete job
 - Option in batch query to query whole study or explicit series
-- Allow to terminate a specific Celery task with revoke(task_id, terminate=True)
+- Allow to terminate a specific Celery task with revoke(celery_task_id, terminate=True)
 - Make whole receiver crash if one asyncio task crashes
 - Auto refresh job pages und success or failure
 - rename ADIT_AE_TITLE to RECEIVER_AE_TITLE

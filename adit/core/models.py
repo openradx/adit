@@ -329,7 +329,6 @@ class DicomTask(models.Model):
     id: int
     job_id: int
     job = models.ForeignKey(DicomJob, on_delete=models.CASCADE, related_name="tasks")
-    task_id = models.PositiveIntegerField()
     celery_task_id = models.CharField(max_length=255)
     get_status_display: Callable[[], str]
     status = models.CharField(
@@ -346,13 +345,10 @@ class DicomTask(models.Model):
 
     class Meta:
         abstract = True
-        ordering = ("task_id",)
-        constraints = [
-            UniqueConstraint(fields=["job", "task_id"], name="%(class)s_unique_task_id_per_job")
-        ]
+        ordering = ("id",)
 
     def __str__(self):
-        return f"{self.__class__.__name__} [Job ID {self.job.id}, Task ID {self.task_id}]"
+        return f"{self.__class__.__name__} [Job ID {self.job.id}, Task ID {self.id}]"
 
 
 class TransferTask(DicomTask):
@@ -391,7 +387,7 @@ class TransferTask(DicomTask):
             f"{self.__class__.__name__} "
             f"[Source {self.job.source.name}, "
             f"Destination {self.job.destination}, "
-            f"Job ID {self.job.id}, Task ID {self.task_id}]"
+            f"Job ID {self.job.id}, Task ID {self.id}]"
         )
 
     @property

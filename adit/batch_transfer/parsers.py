@@ -34,14 +34,14 @@ class BatchTransferFileParser(BatchFileParser[BatchTransferTask]):
 
         # Tasks with different series of the same study must be grouped together.
         # This is necessary for pseudonymization, so that the whole study
-        # (with its series) are processed by one to worker and get the same
+        # (with its series) are processed by only one worker and get the same
         # pseudonymized Study Instance UID.
         tasks_by_study: DefaultDict[str, list[BatchTransferTask]] = defaultdict(list)
         for task in tasks:
             tasks_by_study[task.study_uid].append(task)
 
         tasks_to_transfer: list[BatchTransferTask] = []
-        for index, tasks_with_same_study in enumerate(tasks_by_study.values()):
+        for tasks_with_same_study in tasks_by_study.values():
             transfer_whole_study = False
             explicit_series_to_transfer: list[str] = []
             cumulative_lines = []
@@ -53,7 +53,6 @@ class BatchTransferFileParser(BatchFileParser[BatchTransferTask]):
                     explicit_series_to_transfer.extend(task.series_uids_list)
 
             task: BatchTransferTask = tasks_with_same_study[0]
-            task.task_id = index + 1
             task.lines_list = cumulative_lines
 
             if transfer_whole_study:

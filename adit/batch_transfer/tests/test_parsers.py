@@ -38,12 +38,10 @@ def test_same_studies_are_grouped_together(create_batch_file, data):
 
     assert len(tasks) == 2
 
-    assert tasks[0].task_id == 1
     assert tasks[0].patient_id == data["PatientID"][0]
     assert tasks[0].study_uid == data["StudyInstanceUID"][0]
     assert tasks[0].series_uids == data["SeriesInstanceUID"][0]
 
-    assert tasks[1].task_id == 2
     assert tasks[1].patient_id == data["PatientID"][1]
     assert tasks[1].study_uid == data["StudyInstanceUID"][1]
     assert tasks[1].series_uids == f"{data['SeriesInstanceUID'][1]}, {data['SeriesInstanceUID'][2]}"

@@ -132,7 +132,6 @@ class AbstractDicomTaskFactory(Generic[T], BaseDjangoModelFactory[T]):
     class Meta:
         model: DicomTask
 
-    task_id = factory.Sequence(int)
     status = factory.Faker("random_element", elements=task_status_keys)
     message = factory.Faker("sentence")
     log = factory.Faker("paragraph")

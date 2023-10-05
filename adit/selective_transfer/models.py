@@ -36,4 +36,4 @@ class SelectiveTransferTask(TransferTask):
     )
 
     def get_absolute_url(self):
-        return reverse("selective_transfer_task_detail", args=[self.job.id, self.task_id])
+        return reverse("selective_transfer_task_detail", args=[self.job.id, self.id])

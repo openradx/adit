@@ -45,13 +45,13 @@ class TransferJobTable(DicomJobTable):
 
 
 class DicomTaskTable(tables.Table):
-    task_id = RecordIdColumn(verbose_name="Task ID")
+    id = RecordIdColumn(verbose_name="Task ID")
     end = tables.DateTimeColumn(verbose_name="Finished At")
 
     class Meta:
         model: type[DicomTask]
-        order_by = ("task_id",)
-        fields = ("task_id", "status", "message", "end")
+        order_by = ("id",)
+        fields = ("id", "status", "message", "end")
         empty_text = "No tasks to show"
         attrs = {"class": "table table-bordered table-hover"}
 

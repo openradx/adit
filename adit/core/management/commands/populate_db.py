@@ -191,8 +191,8 @@ def create_selective_transfer_job(
         owner=factory.Faker("random_element", elements=users),
     )
 
-    for task_id in range(fake.random_int(min=1, max=100)):
-        SelectiveTransferTaskFactory.create(job=job, task_id=task_id)
+    for _ in range(fake.random_int(min=1, max=100)):
+        SelectiveTransferTaskFactory.create(job=job)
 
 
 def create_batch_transfer_job(
@@ -206,8 +206,8 @@ def create_batch_transfer_job(
         owner=factory.Faker("random_element", elements=users),
     )
 
-    for task_id in range(fake.random_int(min=1, max=100)):
-        BatchTransferTaskFactory.create(job=job, task_id=task_id)
+    for _ in range(fake.random_int(min=1, max=100)):
+        BatchTransferTaskFactory.create(job=job)
 
 
 def create_batch_query_job(users: list[User], servers: list[DicomServer]) -> None:
@@ -216,8 +216,8 @@ def create_batch_query_job(users: list[User], servers: list[DicomServer]) -> Non
         owner=factory.Faker("random_element", elements=users),
     )
 
-    for task_id in range(fake.random_int(min=1, max=100)):
-        query = BatchQueryTaskFactory.create(job=job, task_id=task_id)
+    for _ in range(fake.random_int(min=1, max=100)):
+        query = BatchQueryTaskFactory.create(job=job)
 
         for _ in range(fake.random_int(min=1, max=3)):
             BatchQueryResultFactory.create(job=job, query=query)

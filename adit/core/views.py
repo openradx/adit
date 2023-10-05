@@ -348,7 +348,7 @@ class DicomTaskDetailView(LoginRequiredMixin, OwnerRequiredMixin, DetailView):
                 "be called with a job_id and a task_id in the URLconf."
             )
 
-        queryset = queryset.filter(job_id=job_id, task_id=task_id)
+        queryset = queryset.filter(job_id=job_id, id=task_id)
 
         try:
             obj = queryset.get()

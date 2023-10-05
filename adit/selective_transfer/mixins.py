@@ -84,13 +84,12 @@ class SelectiveTransferJobCreateMixin:
         job = form.save()
 
         pseudonym = form.cleaned_data["pseudonym"]
-        for idx, selected_study in enumerate(selected_studies):
+        for selected_study in selected_studies:
             study_data = selected_study.split("\\")
             patient_id = study_data[0]
             study_uid = study_data[1]
             SelectiveTransferTask.objects.create(
                 job=job,
-                task_id=idx + 1,
                 patient_id=patient_id,
                 study_uid=study_uid,
                 pseudonym=pseudonym,

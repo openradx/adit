@@ -7,7 +7,6 @@ class BatchQueryTaskSerializer(BatchTaskSerializer):
     class Meta(BatchTaskSerializer.Meta):
         model = BatchQueryTask
         fields = [
-            "task_id",
             "patient_id",
             "patient_name",
             "patient_birth_date",
