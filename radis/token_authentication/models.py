@@ -42,7 +42,7 @@ class Token(models.Model):
     created_time = models.DateTimeField(auto_now_add=True)
     last_used = models.DateTimeField(blank=True, null=True)
 
-    objects = TokenManager()
+    objects: TokenManager = TokenManager()
 
     class Meta:
         permissions = [
