@@ -1,0 +1,20 @@
+{% load crispy_forms_tags %}
+<div class="modal-content" data-dialog-static="true">
+    <div class="modal-header">
+        <h5 class="modal-title">Create new collection</h5>
+        <button type="button"
+                class="btn-close"
+                data-bs-dismiss="modal"
+                aria-label="Close" />
+    </div>
+    <div class="modal-body">
+        <form hx-post="{% url 'collection_create' %}">
+            {% csrf_token %}
+            {{ form|crispy }}
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-primary">Create</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>

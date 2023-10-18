@@ -4,8 +4,8 @@ from django.db.models.signals import post_migrate
 from radis.core.site import register_main_menu_item
 
 
-class ReportsConfig(AppConfig):
-    name = "radis.reports"
+class CollectionsConfig(AppConfig):
+    name = "radis.collections"
 
     def ready(self):
         register_app()
@@ -16,8 +16,8 @@ class ReportsConfig(AppConfig):
 
 def register_app():
     register_main_menu_item(
-        url_name="search_reports",
-        label="Search",
+        url_name="collection_list",
+        label="Collections",
     )
 
 
@@ -26,8 +26,8 @@ def init_db(**kwargs):
 
 
 def create_app_settings():
-    from .models import ReportsAppSettings
+    from .models import CollectionsAppSettings
 
-    settings = ReportsAppSettings.get()
+    settings = CollectionsAppSettings.get()
     if not settings:
-        ReportsAppSettings.objects.create()
+        CollectionsAppSettings.objects.create()

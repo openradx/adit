@@ -1,0 +1,7 @@
+<button hx-get="{% url 'collection_select' document_id %}"
+        hx-target="#dialog"
+        class="btn btn-secondary btn-sm position-relative">
+    {% include "core/icons/collection.svg" %}
+    Collections
+    {% include "collections/_collection_count_badge.html" %}
+</button>

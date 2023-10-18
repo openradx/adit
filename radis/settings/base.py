@@ -51,6 +51,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "django.contrib.humanize",
     "django.contrib.sites",
+    "django.contrib.postgres",
     "dbbackup",
     "revproxy",
     "loginas",
@@ -65,6 +66,7 @@ INSTALLED_APPS = [
     "radis.token_authentication.apps.TokenAuthenticationConfig",
     "radis.api.apps.ApiConfig",
     "radis.reports.apps.ReportsConfig",
+    "radis.collections.apps.CollectionsConfig",
     "channels",
 ]
 

@@ -19,7 +19,6 @@ from radis.token_authentication.utils.crypto import hash_token
 USER_COUNT = 20
 INSTITUTE_COUNT = 3
 ADMIN_AUTH_TOKEN = "f2e7412ca332a85e37f3fce88c6a1904fe35ad63"
-INSTITUTES = ["Allgemeinradiologie", "Neuroradiologie", "Thoraxradiologie"]
 PACS_ITEMS = [
     {"pacs_aet": "gepacs", "pacs_name": "GE PACS"},
     {"pacs_aet": "synapse", "pacs_name": "Synapse"},
@@ -38,11 +37,13 @@ def feed_report(body: str):
     patient_birth_date = datetime.combine(fake.date_of_birth(), time())
     study_datetime = fake.date_time_between(patient_birth_date, datetime.now())
 
+    institute_ids = [institute.id for institute in Institute.objects.all()]
+
     response = vespa_app.get_client().feed_data_point(
         schema="report",
         data_id=document_id,
         fields={
-            "institutes": fake.random_elements(elements=INSTITUTES, unique=True),
+            "institutes": fake.random_elements(elements=institute_ids, unique=True),
             "pacs_aet": pacs["pacs_aet"],
             "pacs_name": pacs["pacs_name"],
             "patient_id": fake.ean(length=8),

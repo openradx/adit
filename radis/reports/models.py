@@ -1,6 +1,6 @@
 from radis.core.models import AppSettings
 
 
-class ReportsSettings(AppSettings):
+class ReportsAppSettings(AppSettings):
     class Meta:
-        verbose_name_plural = "Reports settings"
+        verbose_name_plural = "Reports app settings"

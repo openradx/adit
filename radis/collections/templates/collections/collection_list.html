@@ -1,0 +1,18 @@
+{% extends "collections/collections_layout.html" %}
+{% load crispy from crispy_forms_tags %}
+{% block heading %}
+    <div class="d-flex justify-content-between align-items-start">
+        <h4 class="mb-3">Collections</h4>
+        <button type="button"
+                class="btn btn-success btn-sm"
+                hx-get="{% url 'collection_create' %}"
+                hx-target="#dialog">
+            {% include "core/icons/add.svg" %}
+            Add new collection
+        </button>
+    </div>
+{% endblock heading %}
+{% block content %}
+    <div>{% crispy filter.form %}</div>
+    {% include "collections/_collection_list.html" %}
+{% endblock content %}

@@ -8,10 +8,12 @@ from radis.core.validators import (
     validate_patient_sex,
 )
 
+DOCUMENT_ID_MAX_LENGTH = 128
+
 
 class ReportSerializer(serializers.Serializer):
-    document_id = serializers.CharField(max_length=128)
-    institutes = serializers.ListField(child=serializers.CharField())
+    document_id = serializers.CharField(max_length=DOCUMENT_ID_MAX_LENGTH)
+    institutes = serializers.ListField(child=serializers.IntegerField())
     pacs_aet = serializers.CharField(max_length=16)
     pacs_name = serializers.CharField(max_length=64)
     patient_id = serializers.CharField(

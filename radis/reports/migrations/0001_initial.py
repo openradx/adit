@@ -10,7 +10,7 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.CreateModel(
-            name="ReportsSettings",
+            name="ReportsAppSettings",
             fields=[
                 (
                     "id",
@@ -21,7 +21,7 @@ class Migration(migrations.Migration):
                 ("locked", models.BooleanField(default=False)),
             ],
             options={
-                "verbose_name_plural": "Reports settings",
+                "verbose_name_plural": "Reports app settings",
             },
         ),
     ]

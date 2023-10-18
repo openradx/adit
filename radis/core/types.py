@@ -6,6 +6,7 @@ from radis.accounts.models import User
 
 class AuthenticatedHttpRequest(HttpRequest):
     user: User
+    htmx: bool
 
 
 class AuthenticatedRequest(Request):

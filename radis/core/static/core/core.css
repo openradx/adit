@@ -1,29 +1,38 @@
 /***
+* Bootstrap
+***/
+[data-bs-theme="dark"] {
+  .list-group-item {
+    --bs-list-group-action-hover-bg: #3d4e52;
+  }
+}
+
+/***
 * Misc
 ***/
 
 /* Place caption on tables on the top. */
 caption {
-    caption-side: top;
+  caption-side: top;
 }
 
 /* No wrap of long Bootstrap tooltips. */
 .tooltip-inner {
-    max-width: none;
+  max-width: none;
 }
 
 /* Shows that you get more info when hovering it. */
 .info-hint {
-    border-bottom: 1px dotted black;
-    cursor: help;
+  border-bottom: 1px dotted black;
+  cursor: help;
 }
 
 /* When maintenance mode is active. */
 .maintenance-hint {
-    background-color: orange;
-    padding: 4px;
-    font-size: 1.5rem;
-    text-align: center;
+  background-color: orange;
+  padding: 4px;
+  font-size: 1.5rem;
+  text-align: center;
 }
 
 /***
@@ -31,7 +40,7 @@ caption {
 ***/
 
 [x-cloak] {
-    display: none;
+  display: none;
 }
 
 /***
@@ -40,21 +49,21 @@ caption {
 
 /* Floating panel for toast messages */
 .toasts-panel {
-    position: fixed;
-    top: 5em;
-    right: 1em;
+  position: fixed;
+  top: 5em;
+  right: 1em;
 }
 
 .toast.success svg rect {
-    fill: green;
+  fill: green;
 }
 
 .toast.warning svg rect {
-    fill: yellow;
+  fill: yellow;
 }
 
 .toast.error svg rect {
-    fill: red;
+  fill: red;
 }
 
 /***
@@ -63,16 +72,18 @@ caption {
 
 /* Nice sort indicators in the django-table2 tables */
 table.table thead th.asc.orderable {
-    background: url('data:image/svg+xml;utf8,<svg class="bi bi-caret-up-fill" width="1em" height="1em" viewBox="0 0 16 16" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M7.247 4.86l-4.796 5.481c-.566.647-.106 1.659.753 1.659h9.592a1 1 0 0 0 .753-1.659l-4.796-5.48a1 1 0 0 0-1.506 0z"/></svg>') no-repeat;
-    background-position: right 0.75rem center;
+  background: url('data:image/svg+xml;utf8,<svg class="bi bi-caret-up-fill" width="1em" height="1em" viewBox="0 0 16 16" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M7.247 4.86l-4.796 5.481c-.566.647-.106 1.659.753 1.659h9.592a1 1 0 0 0 .753-1.659l-4.796-5.48a1 1 0 0 0-1.506 0z"/></svg>')
+    no-repeat;
+  background-position: right 0.75rem center;
 }
 
 table.table thead th.desc.orderable {
-    background: url('data:image/svg+xml;utf8,<svg class="bi bi-caret-down-fill" width="1em" height="1em" viewBox="0 0 16 16" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M7.247 11.14L2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z"/></svg>') no-repeat;
-    background-position: right 0.75rem center;
+  background: url('data:image/svg+xml;utf8,<svg class="bi bi-caret-down-fill" width="1em" height="1em" viewBox="0 0 16 16" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M7.247 11.14L2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z"/></svg>')
+    no-repeat;
+  background-position: right 0.75rem center;
 }
 
 /* Make the sort indicator fit for small columns */
 table.table thead th.orderable {
-    min-width: 85px;
+  min-width: 85px;
 }

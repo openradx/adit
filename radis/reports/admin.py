@@ -1,5 +1,5 @@
 from django.contrib import admin
 
-from .models import ReportsSettings
+from .models import ReportsAppSettings
 
-admin.site.register(ReportsSettings, admin.ModelAdmin)
+admin.site.register(ReportsAppSettings, admin.ModelAdmin)

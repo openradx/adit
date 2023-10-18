@@ -78,7 +78,7 @@ class ReportSummary(ReportBase):
 
 @dataclass(kw_only=True)
 class ReportDetail(ReportBase):
-    institutes: list[str]
+    institutes: list[int]
     pacs_aet: str
     study_instance_uid: str
     series_instance_uid: str

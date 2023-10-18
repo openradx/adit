@@ -24,7 +24,7 @@ def _create_report_schema():
             fields=[
                 Field(
                     name="institutes",
-                    type="array<string>",
+                    type="array<int>",
                     indexing=["attribute"],
                 ),
                 Field(

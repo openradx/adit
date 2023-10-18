@@ -13,8 +13,8 @@ register = Library()
 
 
 @register.filter
-def access_item(dictionary: dict[str, Any], key: str) -> Any:
-    return dictionary[key]
+def access_item(d: dict, key: str) -> Any:
+    return d.get(key, "")
 
 
 @register.simple_tag(takes_context=True)

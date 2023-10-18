@@ -38,7 +38,7 @@ class FilterSetFormHelper(FormHelper):
 
     def __init__(
         self,
-        params: QueryDict,
+        params: QueryDict | dict,
         **kwargs,
     ):
         super().__init__(**kwargs)
