@@ -66,7 +66,7 @@ def check_disk_space():
 
 @shared_task
 def backup_db():
-    call_command("backup_db")
+    call_command("dbbackup", "--clean", "-v 2")
 
 
 class ProcessDicomJob(CeleryTask):
