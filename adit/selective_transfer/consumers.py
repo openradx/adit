@@ -159,6 +159,8 @@ class SelectiveTransferConsumer(SelectiveTransferJobCreateMixin, AsyncJsonWebsoc
             if message_id != self.current_message_id:
                 return
 
+            # TODO: we have to query multiple servers here by creating multiple operators,
+            # also the source must be attached somehow
             operator = self.create_source_operator(form)
             self.query_operators.append(operator)
 

@@ -185,14 +185,14 @@ def create_selective_transfer_job(
 ) -> None:
     servers_and_folders = servers + folders
 
-    job = SelectiveTransferJobFactory.create(
-        source=factory.Faker("random_element", elements=servers),
-        destination=factory.Faker("random_element", elements=servers_and_folders),
-        owner=factory.Faker("random_element", elements=users),
-    )
+    job = SelectiveTransferJobFactory.create(owner=factory.Faker("random_element", elements=users))
 
     for _ in range(fake.random_int(min=1, max=100)):
-        SelectiveTransferTaskFactory.create(job=job)
+        SelectiveTransferTaskFactory.create(
+            job=job,
+            source=factory.Faker("random_element", elements=servers),
+            destination=factory.Faker("random_element", elements=servers_and_folders),
+        )
 
 
 def create_batch_transfer_job(
@@ -200,24 +200,24 @@ def create_batch_transfer_job(
 ) -> None:
     servers_and_folders = servers + folders
 
-    job = BatchTransferJobFactory.create(
-        source=factory.Faker("random_element", elements=servers),
-        destination=factory.Faker("random_element", elements=servers_and_folders),
-        owner=factory.Faker("random_element", elements=users),
-    )
+    job = BatchTransferJobFactory.create(owner=factory.Faker("random_element", elements=users))
 
     for _ in range(fake.random_int(min=1, max=100)):
-        BatchTransferTaskFactory.create(job=job)
+        BatchTransferTaskFactory.create(
+            job=job,
+            source=factory.Faker("random_element", elements=servers),
+            destination=factory.Faker("random_element", elements=servers_and_folders),
+        )
 
 
 def create_batch_query_job(users: list[User], servers: list[DicomServer]) -> None:
-    job = BatchQueryJobFactory.create(
-        source=factory.Faker("random_element", elements=servers),
-        owner=factory.Faker("random_element", elements=users),
-    )
+    job = BatchQueryJobFactory.create(owner=factory.Faker("random_element", elements=users))
 
     for _ in range(fake.random_int(min=1, max=100)):
-        query = BatchQueryTaskFactory.create(job=job)
+        query = BatchQueryTaskFactory.create(
+            job=job,
+            source=factory.Faker("random_element", elements=servers),
+        )
 
         for _ in range(fake.random_int(min=1, max=3)):
             BatchQueryResultFactory.create(job=job, query=query)

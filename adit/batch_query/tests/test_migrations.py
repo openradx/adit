@@ -61,3 +61,38 @@ def test_0016_convert_json_to_text(migrator: Migrator):
     assert query.series_numbers == "4, 5, 6"
 
     assert result.modalities == "CT, MR"
+
+
+@pytest.mark.django_db
+def test_0021_set_source_in_tasks(migrator: Migrator):
+    old_state = migrator.apply_initial_migration(("batch_query", "0020_batchquerytask_source"))
+
+    User = old_state.apps.get_model("accounts", "User")
+    DicomServer = old_state.apps.get_model("core", "DicomServer")
+    BatchQueryJob = old_state.apps.get_model("batch_query", "BatchQueryJob")
+    BatchQueryTask = old_state.apps.get_model("batch_query", "BatchQueryTask")
+
+    server1 = DicomServer.objects.create(
+        ae_title="server1",
+        name="server1",
+        host="server1",
+        port=11112,
+    )
+    user = User.objects.create(
+        username="user",
+    )
+    job = BatchQueryJob.objects.create(
+        source_id=server1.id,
+        owner_id=user.id,
+    )
+    task = BatchQueryTask.objects.create(
+        job_id=job.id,
+        task_id="123",
+    )
+
+    new_state = migrator.apply_tested_migration(("batch_query", "0021_set_source_in_tasks"))
+    BatchQueryTask = new_state.apps.get_model("batch_query", "BatchQueryTask")
+
+    task = BatchQueryTask.objects.get(id=task.id)
+
+    assert task.source.name == "server1"

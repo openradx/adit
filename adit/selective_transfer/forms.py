@@ -31,8 +31,6 @@ class SelectiveTransferJobForm(forms.ModelForm):
     class Meta:
         model = SelectiveTransferJob
         fields = (
-            "source",
-            "destination",
             "urgent",
             "trial_protocol_id",
             "trial_protocol_name",
