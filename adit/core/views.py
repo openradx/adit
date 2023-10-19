@@ -130,11 +130,9 @@ class DicomJobListView(LoginRequiredMixin, SingleTableMixin, PageSizeSelectMixin
 
     def get_queryset(self) -> QuerySet:
         if self.request.user.is_staff and self.request.GET.get("all"):
-            queryset = self.model.objects.all()
-        else:
-            queryset = self.model.objects.filter(owner=self.request.user)
+            return self.model.objects.all()
 
-        return queryset.select_related("source")
+        return self.model.objects.filter(owner=self.request.user)
 
     def get_table_kwargs(self) -> dict[str, Any]:
         kwargs = super().get_table_kwargs()
@@ -146,8 +144,7 @@ class DicomJobListView(LoginRequiredMixin, SingleTableMixin, PageSizeSelectMixin
 
 
 class TransferJobListView(DicomJobListView):
-    def get_queryset(self) -> QuerySet:
-        return super().get_queryset().select_related("destination")
+    pass
 
 
 class DicomJobCreateView(

@@ -21,12 +21,13 @@ class RecordIdColumn(tables.TemplateColumn):
 
 class DicomJobTable(tables.Table):
     id = RecordIdColumn(verbose_name="Job ID")
+    created = tables.Column(verbose_name="Created At")
 
     class Meta:
         model: type[DicomJob]
         order_by = ("-id",)
-        # owner is dynamically excluded for non staff users (see tables.py)
-        fields = ("id", "status", "source", "created", "owner")
+        # owner is dynamically excluded for non staff users (see views.py)
+        fields = ("id", "status", "message", "created", "owner")
         empty_text = "No jobs to show"
         attrs = {
             "id": "dicom_job_table",
@@ -39,9 +40,7 @@ class DicomJobTable(tables.Table):
 
 
 class TransferJobTable(DicomJobTable):
-    class Meta(DicomJobTable.Meta):
-        # owner is dynamically excluded for non staff users (see tables.py)
-        fields = ("id", "status", "source", "destination", "created", "owner")
+    pass
 
 
 class DicomTaskTable(tables.Table):
