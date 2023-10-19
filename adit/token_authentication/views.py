@@ -8,7 +8,7 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from adit.core.mixins import OwnerRequiredMixin
+from adit.core.types import AuthenticatedHttpRequest
 
 from .forms import GenerateTokenForm
 from .models import Token
@@ -66,12 +66,17 @@ class TokenDashboardView(
 class DeleteTokenView(
     LoginRequiredMixin,
     PermissionRequiredMixin,
-    OwnerRequiredMixin,
     DeleteView,
 ):
     permission_required = "token_authentication.delete_token"
     model = Token
     success_url = reverse_lazy("token_dashboard")
+    request: AuthenticatedHttpRequest
+
+    def get_queryset(self):
+        if self.request.user.is_staff:
+            return self.model.objects.all()
+        return self.model.objects.filter(owner=self.request.user)
 
 
 class TestView(APIView):

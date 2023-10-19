@@ -10,7 +10,8 @@ from django.views.generic.base import View
 from django.views.generic.detail import SingleObjectMixin
 from django_tables2 import SingleTableMixin
 
-from adit.core.mixins import OwnerRequiredMixin, PageSizeSelectMixin, RelatedFilterMixin
+from adit.core.mixins import PageSizeSelectMixin, RelatedFilterMixin
+from adit.core.types import AuthenticatedHttpRequest
 from adit.core.views import (
     BaseUpdatePreferencesView,
     DicomJobCancelView,
@@ -149,7 +150,6 @@ class BatchQueryTaskDetailView(
 class BatchQueryResultListView(
     BatchQueryLockedMixin,
     LoginRequiredMixin,
-    OwnerRequiredMixin,
     SingleTableMixin,
     RelatedFilterMixin,
     PageSizeSelectMixin,
@@ -160,6 +160,13 @@ class BatchQueryResultListView(
     model = BatchQueryJob
     context_object_name = "job"
     template_name = "batch_query/batch_query_result_list.html"
+    request: AuthenticatedHttpRequest
+
+    def get_queryset(self):
+        assert self.model
+        if self.request.user.is_staff:
+            return self.model.objects.all()
+        return self.model.objects.filter(owner=self.request.user)
 
     def get_filter_queryset(self):
         job = cast(BatchQueryJob, self.get_object())
@@ -169,11 +176,17 @@ class BatchQueryResultListView(
 class BatchQueryResultDownloadView(
     BatchQueryLockedMixin,
     LoginRequiredMixin,
-    OwnerRequiredMixin,
     SingleObjectMixin,
     View,
 ):
     model = BatchQueryJob
+    request: AuthenticatedHttpRequest
+
+    def get_queryset(self):
+        # assert self.model
+        if self.request.user.is_staff:
+            return self.model.objects.all()
+        return self.model.objects.filter(owner=self.request.user)
 
     def get(self, request, *args, **kwargs):
         # by overriding get() we have to call get_object() ourselves

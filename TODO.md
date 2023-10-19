@@ -2,7 +2,7 @@
 
 ## Top
 
-- Get rid of OwnerRequiredMixin (antipattern!)
+- use get in PageSizeSelectMixin (see RADIS)
 - Move those list fields to ArrayField
 - Make Institutes switchable and a user can only have one active institute
 - Make registration Email unique and required. Also maybe check if an Email is of specific domains (optional).

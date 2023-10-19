@@ -1,18 +1,16 @@
 from functools import reduce
 from typing import Any
 
-from django.contrib.auth.mixins import AccessMixin
 from django.core.exceptions import SuspiciousOperation
 from django.http import HttpRequest, HttpResponse
 from django.views import View
 
 # from django.forms.formsets import ORDERING_FIELD_NAME
-from django.views.generic import DetailView, ListView, TemplateView
+from django.views.generic import ListView, TemplateView
 from django_filters.views import FilterMixin
 
 from .forms import PageSizeSelectForm
 from .models import AppSettings
-from .types import AuthenticatedHttpRequest
 from .utils.auth_utils import is_logged_in_user
 from .utils.type_utils import with_type_hint
 
@@ -38,39 +36,6 @@ class LockedMixin(with_type_hint(View)):
                 template_name="core/section_locked.html",
                 extra_context={"section_name": self.section_name},
             )(request)
-
-        return super().dispatch(request, *args, **kwargs)
-
-
-class OwnerRequiredMixin(AccessMixin, with_type_hint(DetailView)):
-    """
-    Verify that the user is the owner of the object. By default
-    also superusers and staff may access the object.
-    Should be added to a view class after LoginRequiredMixin.
-    """
-
-    allow_superuser_access = True
-    allow_staff_access = True
-    owner_accessor = "owner"
-
-    def dispatch(self, request: AuthenticatedHttpRequest, *args, **kwargs):
-        obj = self.get_object()
-
-        user = request.user
-        if not user.is_authenticated:
-            raise AssertionError("The user must be authenticated to check if he is the owner.")
-
-        check_owner = True
-        if (
-            self.allow_superuser_access
-            and user.is_superuser
-            or self.allow_staff_access
-            and user.is_staff
-        ):
-            check_owner = False
-
-        if check_owner and user != deepgetattr(obj, self.owner_accessor):
-            return self.handle_no_permission()
 
         return super().dispatch(request, *args, **kwargs)
 

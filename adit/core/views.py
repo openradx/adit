@@ -14,8 +14,7 @@ from django.db.models import Model
 from django.db.models.query import QuerySet
 from django.forms import Form, ModelForm
 from django.http import HttpRequest, HttpResponse
-from django.http.response import Http404
-from django.shortcuts import redirect, render
+from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import re_path, reverse_lazy
 from django.views.generic import View
 from django.views.generic.base import TemplateView
@@ -29,7 +28,7 @@ from revproxy.views import ProxyView
 
 from ..celery import app as celery_app
 from .forms import BroadcastForm
-from .mixins import OwnerRequiredMixin, PageSizeSelectMixin, RelatedFilterMixin
+from .mixins import PageSizeSelectMixin, RelatedFilterMixin
 from .models import CoreSettings, DicomJob, DicomTask
 from .site import job_stats_collectors
 from .tasks import broadcast_mail
@@ -168,7 +167,6 @@ class DicomJobCreateView(
 
 class DicomJobDetailView(
     LoginRequiredMixin,
-    OwnerRequiredMixin,
     SingleTableMixin,
     RelatedFilterMixin,
     PageSizeSelectMixin,
@@ -179,16 +177,28 @@ class DicomJobDetailView(
     model: type[DicomJob]
     context_object_name: str
     template_name: str
+    request: AuthenticatedHttpRequest
+
+    def get_queryset(self):
+        if self.request.user.is_staff:
+            return self.model.objects.all()
+        return self.model.objects.filter(owner=self.request.user)
 
     def get_filter_queryset(self) -> QuerySet:
         job = cast(DicomJob, self.get_object())
         return job.tasks
 
 
-class DicomJobDeleteView(LoginRequiredMixin, OwnerRequiredMixin, DeleteView):
+class DicomJobDeleteView(LoginRequiredMixin, DeleteView):
     model: type[DicomJob]
     success_url: str
     success_message = "Job with ID %(id)d was deleted successfully"
+    request: AuthenticatedHttpRequest
+
+    def get_queryset(self):
+        if self.request.user.is_staff:
+            return self.model.objects.all()
+        return self.model.objects.filter(owner=self.request.user)
 
     def delete(self, request, *args, **kwargs) -> HttpResponse:
         job = cast(DicomJob, self.get_object())
@@ -207,9 +217,15 @@ class DicomJobDeleteView(LoginRequiredMixin, OwnerRequiredMixin, DeleteView):
         return super().delete(request, *args, **kwargs)
 
 
-class DicomJobVerifyView(LoginRequiredMixin, OwnerRequiredMixin, SingleObjectMixin, View):
+class DicomJobVerifyView(LoginRequiredMixin, SingleObjectMixin, View):
     model: type[DicomJob]
     success_message = "Job with ID %(id)d was verified"
+    request: AuthenticatedHttpRequest
+
+    def get_queryset(self):
+        if self.request.user.is_staff:
+            return self.model.objects.all()
+        return self.model.objects.filter(owner=self.request.user)
 
     def post(self, request: AuthenticatedHttpRequest, *args, **kwargs) -> HttpResponse:
         job = cast(DicomJob, self.get_object())
@@ -227,9 +243,15 @@ class DicomJobVerifyView(LoginRequiredMixin, OwnerRequiredMixin, SingleObjectMix
         return redirect(job)
 
 
-class DicomJobCancelView(LoginRequiredMixin, OwnerRequiredMixin, SingleObjectMixin, View):
+class DicomJobCancelView(LoginRequiredMixin, SingleObjectMixin, View):
     model: type[DicomJob]
     success_message = "Job with ID %(id)d was canceled"
+    request: AuthenticatedHttpRequest
+
+    def get_queryset(self):
+        if self.request.user.is_staff:
+            return self.model.objects.all()
+        return self.model.objects.filter(owner=self.request.user)
 
     def post(self, request: AuthenticatedHttpRequest, *args, **kwargs) -> HttpResponse:
         job = cast(DicomJob, self.get_object())
@@ -259,9 +281,15 @@ class DicomJobCancelView(LoginRequiredMixin, OwnerRequiredMixin, SingleObjectMix
         return redirect(job)
 
 
-class DicomJobResumeView(LoginRequiredMixin, OwnerRequiredMixin, SingleObjectMixin, View):
+class DicomJobResumeView(LoginRequiredMixin, SingleObjectMixin, View):
     model: type[DicomJob]
     success_message = "Job with ID %(id)d will be resumed"
+    request: AuthenticatedHttpRequest
+
+    def get_queryset(self):
+        if self.request.user.is_staff:
+            return self.model.objects.all()
+        return self.model.objects.filter(owner=self.request.user)
 
     def post(self, request: AuthenticatedHttpRequest, *args, **kwargs) -> HttpResponse:
         job = cast(DicomJob, self.get_object())
@@ -281,9 +309,15 @@ class DicomJobResumeView(LoginRequiredMixin, OwnerRequiredMixin, SingleObjectMix
         return redirect(job)
 
 
-class DicomJobRetryView(LoginRequiredMixin, OwnerRequiredMixin, SingleObjectMixin, View):
+class DicomJobRetryView(LoginRequiredMixin, SingleObjectMixin, View):
     model: type[DicomJob]
     success_message = "Job with ID %(id)d will be retried"
+    request: AuthenticatedHttpRequest
+
+    def get_queryset(self):
+        if self.request.user.is_staff:
+            return self.model.objects.all()
+        return self.model.objects.filter(owner=self.request.user)
 
     def post(self, request: AuthenticatedHttpRequest, *args, **kwargs) -> HttpResponse:
         job = cast(DicomJob, self.get_object())
@@ -303,9 +337,15 @@ class DicomJobRetryView(LoginRequiredMixin, OwnerRequiredMixin, SingleObjectMixi
         return redirect(job)
 
 
-class DicomJobRestartView(LoginRequiredMixin, OwnerRequiredMixin, SingleObjectMixin, View):
+class DicomJobRestartView(LoginRequiredMixin, SingleObjectMixin, View):
     model: type[DicomJob]
     success_message = "Job with ID %(id)d will be restarted"
+    request: AuthenticatedHttpRequest
+
+    def get_queryset(self):
+        if self.request.user.is_staff:
+            return self.model.objects.all()
+        return self.model.objects.filter(owner=self.request.user)
 
     def post(self, request: AuthenticatedHttpRequest, *args, **kwargs) -> HttpResponse:
         job = cast(DicomJob, self.get_object())
@@ -325,12 +365,17 @@ class DicomJobRestartView(LoginRequiredMixin, OwnerRequiredMixin, SingleObjectMi
         return redirect(job)
 
 
-class DicomTaskDetailView(LoginRequiredMixin, OwnerRequiredMixin, DetailView):
+class DicomTaskDetailView(LoginRequiredMixin, DetailView):
     model: type[DicomTask]
     job_url_name: str
     template_name: str
     context_object_name = "task"
-    owner_accessor = "job.owner"
+    request: AuthenticatedHttpRequest
+
+    def get_queryset(self):
+        if self.request.user.is_staff:
+            return self.model.objects.all()
+        return self.model.objects.filter(job__owner=self.request.user)
 
     def get_object(self, queryset: QuerySet | None = None) -> Model:
         if queryset is None:
@@ -346,14 +391,7 @@ class DicomTaskDetailView(LoginRequiredMixin, OwnerRequiredMixin, DetailView):
             )
 
         queryset = queryset.filter(job_id=job_id, id=task_id)
-
-        try:
-            obj = queryset.get()
-        except queryset.model.DoesNotExist as err:
-            raise Http404(
-                f"No {queryset.model._meta.verbose_name} found matching the query"
-            ) from err
-        return obj
+        return get_object_or_404(queryset)
 
     def get_context_data(self, **kwargs) -> dict[str, Any]:
         context = super().get_context_data(**kwargs)
