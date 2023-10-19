@@ -2,6 +2,12 @@
 
 ## Top
 
+- Get rid of OwnerRequiredMixin (antipattern!)
+- Move those list fields to ArrayField
+- Make Institutes switchable and a user can only have one active institute
+- Make registration Email unique and required. Also maybe check if an Email is of specific domains (optional).
+  -- We must first delete those users with duplicate or non existing Emails
+  -- Do this also for RADIS
 - Make sure temporary folder created in retrieve DICOM web API is cleaned up (see TODO in /home/adm-adit/workspace/adit/adit/dicom_web/views.py)
 - Look into how we can stream the file from disc (from the temp folder) with WADO (see <https://chat.openai.com/share/d5a2f27f-4854-4deb-85df-b7f574638ae3>)
 - Look into how we can improve STOW (do we have to upload one file at a time, can we stream it somehow)
