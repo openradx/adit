@@ -1,4 +1,4 @@
-{% extends "reports/reports_layout.html" %}
+{% extends "search/search_layout.html" %}
 {% load static from static %}
 {% load crispy from crispy_forms_tags %}
 {% block heading %}
@@ -27,9 +27,9 @@
                 <div class="card mb-2">
                     <div class="card-body">
                         <div class="d-flex flex-column gap-1">
-                            {% include "reports/_result_header.html" with counter=forloop.counter %}
+                            {% include "search/_result_header.html" with counter=forloop.counter %}
                             <div class="report-text">{{ report.body|safe }}</div>
-                            {% include "reports/_result_buttons_panel.html" %}
+                            {% include "search/_result_buttons_panel.html" %}
                         </div>
                     </div>
                 </div>

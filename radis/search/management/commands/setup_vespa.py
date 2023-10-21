@@ -5,7 +5,7 @@ from pathlib import Path
 from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
 
-from radis.core.vespa_app import VespaConfigurator, vespa_app
+from ...vespa_app import VespaConfigurator, vespa_app
 
 
 class Command(BaseCommand):

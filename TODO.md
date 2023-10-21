@@ -2,6 +2,7 @@
 
 ## High Priority
 
+- Type site.py (also in ADIT)
 - Secure API view
   -- Create group that can use API
   -- Differentiate between users that can query data and modify data

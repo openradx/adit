@@ -2,10 +2,10 @@ from typing import Any, cast
 
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.messages.views import SuccessMessageMixin
-from django.core.exceptions import SuspiciousFileOperation, SuspiciousOperation
+from django.core.exceptions import SuspiciousOperation
 from django.db import IntegrityError
-from django.db.models import Count, Exists, OuterRef, QuerySet
-from django.forms import BaseModelForm
+from django.db.models import Count, QuerySet
+from django.forms import BaseModelForm, modelform_factory
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, render
 from django.urls import reverse_lazy
@@ -17,11 +17,13 @@ from django_tables2 import SingleTableMixin
 
 from radis.core.mixins import PageSizeSelectMixin
 from radis.core.types import AuthenticatedHttpRequest
+from radis.reports.models import Report
 
 from .filters import CollectionFilter
-from .forms import CollectionForm
-from .models import CollectedReport, Collection
+from .models import Collection
 from .tables import CollectionTable
+
+LAST_USED_COLLECTION_PREFERENCE = "last_used_collection"
 
 
 class CollectionListView(LoginRequiredMixin, SingleTableMixin, PageSizeSelectMixin, FilterView):
@@ -49,7 +51,7 @@ class CollectionCreateView(
 ):
     model = Collection
     template_name = "collections/_collection_create.html"
-    form_class = CollectionForm
+    form_class = modelform_factory(Collection, fields=["name"])
 
     def form_valid(self, form: BaseModelForm) -> HttpResponse:
         form.instance.owner = self.request.user
@@ -68,7 +70,7 @@ class CollectionCreateView(
 class CollectionUpdateView(LoginRequiredMixin, UpdateView):
     model = Collection
     template_name = "collections/_collection_update.html"
-    form_class = CollectionForm
+    form_class = modelform_factory(Collection, fields=["name"])
 
     def get_queryset(self) -> QuerySet[Collection]:
         return super().get_queryset().filter(owner=self.request.user)
@@ -107,7 +109,7 @@ class CollectionDetailView(
         self.object = self.get_object(queryset=Collection.objects.filter(owner=self.request.user))
         return super().get(request, *args, **kwargs)
 
-    def get_queryset(self) -> QuerySet[CollectedReport]:
+    def get_queryset(self) -> QuerySet[Report]:
         return cast(Collection, self.object).reports.all()
 
     def get_context_data(self, **kwargs: Any) -> dict[str, Any]:
@@ -119,29 +121,16 @@ class CollectionDetailView(
 
 class CollectionSelectView(LoginRequiredMixin, View):
     def get(self, request: AuthenticatedHttpRequest, document_id: str) -> HttpResponse:
-        user_id = request.user.id
-        collections = (
-            Collection.objects.filter(owner_id=user_id)
-            .order_by("name")
-            .annotate(
-                has_report=Exists(
-                    CollectedReport.objects.filter(
-                        collection_id=OuterRef("id"), document_id=document_id
-                    )
-                )
-            )
-            .all()
-        )
-
-        last_used_collection = Collection.objects.get_last_used_collection(owner_id=user_id)
-
         addable_collections: list[Collection] = []
         removable_collections: list[Collection] = []
+        collections = Collection.objects.filter(owner=request.user).with_has_report(document_id)
         for collection in collections:
             if collection.has_report:
                 removable_collections.append(collection)
             else:
                 addable_collections.append(collection)
+
+        last_used_collection = request.user.preferences.get(LAST_USED_COLLECTION_PREFERENCE)
 
         return render(
             request,
@@ -155,22 +144,29 @@ class CollectionSelectView(LoginRequiredMixin, View):
         )
 
     def post(self, request: AuthenticatedHttpRequest, document_id: str) -> HttpResponse:
-        user_id = request.user.id
+        # user_id = request.user.id
         action = request.POST.get("action")
         collection_id = request.POST.get("collection")
 
-        collection = Collection.objects.get(id=collection_id)
-        if not collection or not collection.owner_id == user_id:
-            raise SuspiciousFileOperation()
+        collection = get_object_or_404(
+            Collection.objects.filter(owner=request.user), pk=collection_id
+        )
+        report = get_object_or_404(Report, document_id=document_id)
 
         response = HttpResponse(status=200)
         if action == "add":
-            CollectedReport.objects.create(document_id=document_id, collection=collection)
+            if collection.reports.contains(report):
+                raise SuspiciousOperation
+
+            collection.reports.add(report)
+            request.user.preferences[LAST_USED_COLLECTION_PREFERENCE] = collection.id
+            request.user.save()
             response = trigger_client_event(response, f"collectionsOfReportChanged_{document_id}")
         elif action == "remove":
-            CollectedReport.objects.get(
-                document_id=document_id, collection_id=collection_id
-            ).delete()
+            if not collection.reports.contains(report):
+                raise SuspiciousOperation
+
+            collection.reports.remove(report)
             response = trigger_client_event(response, f"collectionsOfReportChanged_{document_id}")
         else:
             raise SuspiciousOperation(f"Invalid action: {action}")
@@ -180,9 +176,9 @@ class CollectionSelectView(LoginRequiredMixin, View):
 
 class CollectionCountBadgeView(LoginRequiredMixin, View):
     def get(self, request: AuthenticatedHttpRequest, document_id: str) -> HttpResponse:
-        owner_id = request.user.id
-        collection_counts = CollectedReport.objects.get_collection_counts(owner_id, [document_id])
-        collection_count = collection_counts[document_id]
+        collection_count = Collection.objects.filter(
+            owner=request.user, reports__document_id=document_id
+        ).count()
         return render(
             request,
             "collections/_collection_count_badge.html",
@@ -192,13 +188,16 @@ class CollectionCountBadgeView(LoginRequiredMixin, View):
 
 class CollectedReportRemoveView(LoginRequiredMixin, View):
     def post(
-        self, request: AuthenticatedHttpRequest, collection_pk: int, collected_report_pk: int
+        self, request: AuthenticatedHttpRequest, collection_pk: int, report_pk: int
     ) -> HttpResponse:
-        collection: Collection = get_object_or_404(
+        collection = get_object_or_404(
             Collection.objects.filter(owner=request.user), pk=collection_pk
         )
-        collected_report: CollectedReport = get_object_or_404(
-            collection.reports, pk=collected_report_pk
-        )
-        collected_report.delete()
+        report = get_object_or_404(Report, pk=report_pk)
+
+        if not collection.reports.contains(report):
+            raise SuspiciousOperation
+
+        collection.reports.remove(report)
+
         return HttpResponseClientRefresh()

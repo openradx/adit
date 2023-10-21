@@ -28,7 +28,7 @@ urlpatterns = [
     ),
     path("<int:pk>/", CollectionDetailView.as_view(), name="collection_detail"),
     path(
-        "<int:collection_pk>/remove/<int:collected_report_pk>/",
+        "<int:collection_pk>/remove/<int:report_pk>/",
         CollectedReportRemoveView.as_view(),
         name="collected_report_remove",
     ),

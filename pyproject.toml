@@ -79,6 +79,7 @@ django-browser-reload = "^1.11.0"
 pywatchman = "^1.4.1"
 openai = "^0.28.0"
 tiktoken = "^0.5.1"
+pydicom = "^2.4.3"
 
 [tool.pyright]
 ignore = ["**/migrations"]

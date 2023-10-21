@@ -1,5 +1,4 @@
 import json
-from datetime import datetime, time
 from os import environ
 from pathlib import Path
 
@@ -11,7 +10,9 @@ from faker import Faker
 
 from radis.accounts.factories import AdminUserFactory, InstituteFactory, UserFactory
 from radis.accounts.models import Institute, User
-from radis.core.vespa_app import vespa_app
+from radis.reports.factories import ReportFactory
+from radis.search.models import ReportDocument
+from radis.search.vespa_app import vespa_app
 from radis.token_authentication.factories import TokenFactory
 from radis.token_authentication.models import FRACTION_LENGTH
 from radis.token_authentication.utils.crypto import hash_token
@@ -30,39 +31,10 @@ fake = Faker()
 
 
 def feed_report(body: str):
-    sop_instance_uid = fake.uuid4()
-    pacs = fake.random_element(elements=PACS_ITEMS)
-    references = [fake.uri() for _ in range(fake.random_int(min=0, max=3))]
-    document_id = pacs["pacs_aet"] + "_" + sop_instance_uid
-    patient_birth_date = datetime.combine(fake.date_of_birth(), time())
-    study_datetime = fake.date_time_between(patient_birth_date, datetime.now())
-
-    institute_ids = [institute.id for institute in Institute.objects.all()]
-
-    response = vespa_app.get_client().feed_data_point(
-        schema="report",
-        data_id=document_id,
-        fields={
-            "institutes": fake.random_elements(elements=institute_ids, unique=True),
-            "pacs_aet": pacs["pacs_aet"],
-            "pacs_name": pacs["pacs_name"],
-            "patient_id": fake.ean(length=8),
-            "patient_birth_date": int(patient_birth_date.timestamp()),
-            "patient_sex": fake.random_element(elements=["F", "M", "U"]),
-            "study_instance_uid": fake.uuid4(),
-            "accession_number": fake.ean(length=13),
-            "study_description": fake.sentence(),
-            "study_datetime": int(study_datetime.timestamp()),
-            "series_instance_uid": fake.uuid4(),
-            "modalities_in_study": [fake.random_element(elements=MODALITIES)],
-            "sop_instance_uid": sop_instance_uid,
-            "references": references,
-            "body": body,
-        },
-    )
-
-    if response.get_status_code() != 200:
-        raise AssertionError
+    report = ReportFactory.create(body=body)
+    institutes = fake.random_elements(elements=list(Institute.objects.all()), unique=True)
+    report.institutes.set(institutes)
+    ReportDocument.from_report_model(report).create()
 
 
 def feed_reports():

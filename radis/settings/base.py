@@ -66,6 +66,7 @@ INSTALLED_APPS = [
     "radis.token_authentication.apps.TokenAuthenticationConfig",
     "radis.api.apps.ApiConfig",
     "radis.reports.apps.ReportsConfig",
+    "radis.search.apps.SearchConfig",
     "radis.collections.apps.CollectionsConfig",
     "channels",
 ]

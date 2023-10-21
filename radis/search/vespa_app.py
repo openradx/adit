@@ -14,12 +14,12 @@ from vespa.package import (
     Summary,
 )
 
-from .models import ReportDetail, ReportQueryResult
+REPORT_SCHEMA_NAME = "report"
 
 
 def _create_report_schema():
     return Schema(
-        "report",
+        REPORT_SCHEMA_NAME,
         document=Document(
             fields=[
                 Field(
@@ -35,12 +35,7 @@ def _create_report_schema():
                 Field(
                     name="pacs_name",
                     type="string",
-                    indexing=["summary", "attribute"],
-                ),
-                Field(
-                    name="patient_id",
-                    type="string",
-                    indexing=["summary", "attribute"],
+                    indexing=["summary"],
                 ),
                 Field(
                     name="patient_birth_date",
@@ -49,16 +44,6 @@ def _create_report_schema():
                 ),
                 Field(
                     name="patient_sex",
-                    type="string",
-                    indexing=["summary", "attribute"],
-                ),
-                Field(
-                    name="study_instance_uid",
-                    type="string",
-                    indexing=["attribute"],
-                ),
-                Field(
-                    name="accession_number",
                     type="string",
                     indexing=["summary", "attribute"],
                 ),
@@ -73,19 +58,9 @@ def _create_report_schema():
                     indexing=["summary", "attribute"],
                 ),
                 Field(
-                    name="series_instance_uid",
-                    type="string",
-                    indexing=["attribute"],
-                ),
-                Field(
                     name="modalities_in_study",
                     type="array<string>",
                     indexing=["summary", "attribute"],
-                ),
-                Field(
-                    name="sop_instance_uid",
-                    type="string",
-                    indexing=["attribute"],
                 ),
                 Field(
                     name="references",
@@ -183,24 +158,6 @@ class VespaApp:
                 application_package=self.get_app_package(),
             )
         return self._client
-
-    def query_reports(self, query: str, offset: int = 0, page_size: int = 100) -> ReportQueryResult:
-        client = self.get_client()
-        response = client.query(
-            {
-                "yql": "select * from report where userQuery()",
-                "query": query,
-                "type": "web",
-                "hits": page_size,
-                "offset": offset,
-            }
-        )
-        return ReportQueryResult.from_response(response)
-
-    def get_report(self, document_id: str) -> ReportDetail:
-        client = self.get_client()
-        response = client.get_data("report", document_id)
-        return ReportDetail.from_response(response.get_json())
 
 
 vespa_app = VespaApp()

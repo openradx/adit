@@ -53,6 +53,13 @@ ready(function () {
   });
   htmx.on("htmx:afterSwap", (e) => {
     const modal = bootstrap.Modal.getInstance("#modal");
+    const modalEl = document.getElementById("modal");
+    modalEl.addEventListener("shown.bs.modal", (event) => {
+      const inputEl = modalEl.querySelector("input:not([type=hidden])");
+      if (inputEl)
+        // @ts-ignore
+        inputEl.focus();
+    });
 
     if (e.detail.target.id == "dialog") {
       modal.show();

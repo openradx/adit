@@ -2641,6 +2641,20 @@ files = [
 ]
 
 [[package]]
+name = "pydicom"
+version = "2.4.3"
+description = "A pure Python package for reading and writing DICOM data"
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "pydicom-2.4.3-py3-none-any.whl", hash = "sha256:797e84f7b22e5f8bce403da505935b0787dca33550891f06495d14b3f6c70504"},
+    {file = "pydicom-2.4.3.tar.gz", hash = "sha256:51906e0b9fb6e184a0f56298cb43ed716b7cf7edc00f6b71d5c769bc1f982402"},
+]
+
+[package.extras]
+docs = ["matplotlib", "numpy", "numpydoc", "pillow", "sphinx", "sphinx-copybutton", "sphinx-gallery", "sphinx_rtd_theme", "sphinxcontrib-napoleon"]
+
+[[package]]
 name = "pyee"
 version = "9.0.4"
 description = "A port of node.js's EventEmitter to python."
@@ -4066,4 +4080,4 @@ testing = ["coverage (>=5.0.3)", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "acd97ed219f70720794ef99281c0b222bf2aa4125cf4990b47cc037e0d44ca5c"
+content-hash = "8b6a02db5cafe8ad158c520d06a99dbc7f8f1287116c0dcc258b6c309f1e5930"

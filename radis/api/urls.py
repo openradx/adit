@@ -1,11 +1,11 @@
-from django.urls import path
-from rest_framework.urlpatterns import format_suffix_patterns
+from django.urls import include, path
+from rest_framework.routers import DefaultRouter
 
-from .views import ReportDetailAPIView, ReportListAPIView
+from .views import ReportViewSet
+
+router = DefaultRouter()
+router.register(r"reports", ReportViewSet)
 
 urlpatterns = [
-    path("reports/", ReportListAPIView.as_view()),
-    path("reports/<str:document_id>/", ReportDetailAPIView.as_view()),
+    path("", include(router.urls)),
 ]
-
-urlpatterns = format_suffix_patterns(urlpatterns)

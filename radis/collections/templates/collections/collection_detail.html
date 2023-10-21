@@ -37,7 +37,7 @@
     <div class="d-flex flex-column">
         {% for report in object_list %}
             <div class="d-flex justify-content-between align-items-center">
-                {{ report.created }}
+                {{ report.study_description }}
                 <form hx-post="{% url 'collected_report_remove' collection.id report.id %}">
                     {% csrf_token %}
                     <button type="submit"

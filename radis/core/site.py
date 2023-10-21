@@ -5,15 +5,10 @@ from django.http import HttpRequest
 from django.middleware.csrf import get_token
 
 nav_menu_items = []
-job_stats_collectors = []
 
 
 def register_main_menu_item(url_name: str, label: str) -> None:
     nav_menu_items.append({"url_name": url_name, "label": label})
-
-
-def register_job_stats_collector(job_stats):
-    job_stats_collectors.append(job_stats)
 
 
 def base_context_processor(request: HttpRequest) -> dict[str, Any]:

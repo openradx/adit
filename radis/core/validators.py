@@ -21,13 +21,6 @@ no_wildcard_chars_validator = RegexValidator(
 )
 
 
-def validate_modalities(value: list[str]) -> None:
-    modalities = map(str.strip, value)
-    for modality in modalities:
-        if not modality.isalpha() or len(modality) > 16:
-            raise ValidationError(f"Invalid modality: {modality}")
-
-
 def validate_patient_sex(patient_sex: str):
     if patient_sex not in ["F", "M", "U"]:
         raise ValidationError(f"Invalid patient sex: {patient_sex}")

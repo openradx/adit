@@ -26,6 +26,7 @@ urlpatterns = [
     path("token-authentication/", include("radis.token_authentication.urls")),
     path("sandbox/", include("radis.sandbox.urls")),
     path("reports/", include("radis.reports.urls")),
+    path("search/", include("radis.search.urls")),
     path("collections/", include("radis.collections.urls")),
 ]
 
