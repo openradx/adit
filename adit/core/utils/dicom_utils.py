@@ -14,7 +14,7 @@ DateTimeRange = tuple[datetime.datetime | None, datetime.datetime | None]
 
 
 def write_dataset(
-    ds: Dataset, fn: str | bytes | PathLike | BinaryIO, write_like_original=True
+    ds: Dataset, fn: str | bytes | PathLike | BinaryIO, write_like_original=False
 ) -> None:
     """Write a DICOM dataset to a file or buffer.
 

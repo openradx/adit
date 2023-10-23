@@ -61,13 +61,7 @@ class WadoMultipartApplicationDicomRenderer(DicomWebWadoRenderer):
             self._write_part(ds)
 
     def _write_part(self, ds: Dataset) -> None:
-        # We have to write the dataset with write_like_original=False to
-        # make sure that DICOMweb Client can read it as it doesn't use
-        # the force option of dcmread internally.
-        # https://github.com/ImagingDataCommons/dicomweb-client/issues/89
-        # TODO: Maybe we should check if there is a better way to write the DICOM
-        # file (how about the metadata?!).
-        write_dataset(ds, self.stream, write_like_original=False)
+        write_dataset(ds, self.stream)
         self.stream.write(b"\r\n")
 
     def _write_header(self) -> None:
