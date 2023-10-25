@@ -14,7 +14,6 @@ from adit.core.validators import (
     no_backslash_char_validator,
     no_control_chars_validator,
     no_wildcard_chars_validator,
-    validate_series_number,
 )
 
 if TYPE_CHECKING:
@@ -193,9 +192,7 @@ class BatchQueryResult(models.Model):
     series_number = models.CharField(
         blank=True,
         max_length=12,
-        validators=[
-            validate_series_number,
-        ],
+        validators=[integer_string_validator],
     )
     pseudonym = models.CharField(  # allow to pipe pseudonym through to a possible batch transfer
         blank=True,
