@@ -2,19 +2,18 @@ from datetime import datetime
 from typing import TYPE_CHECKING
 
 from celery import current_app
+from django.contrib.postgres.fields import ArrayField
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.urls import reverse
 
 from adit.core.models import AppSettings, DicomJob, DicomTask
 from adit.core.validators import (
+    integer_string_validator,
+    letters_validator,
     no_backslash_char_validator,
     no_control_chars_validator,
     no_wildcard_chars_validator,
-    pos_int_list_validator,
-    validate_modalities,
-    validate_series_number,
-    validate_series_numbers,
 )
 
 if TYPE_CHECKING:
@@ -43,7 +42,7 @@ class BatchQueryJob(DicomJob):
 
 class BatchQueryTask(DicomTask):
     job = models.ForeignKey(BatchQueryJob, on_delete=models.CASCADE, related_name="tasks")
-    lines = models.TextField(validators=[pos_int_list_validator])
+    lines = ArrayField(models.PositiveSmallIntegerField())
     patient_id = models.CharField(
         blank=True,
         max_length=64,
@@ -89,9 +88,10 @@ class BatchQueryTask(DicomTask):
         blank=True,
         error_messages={"invalid": "Invalid date format."},
     )
-    modalities = models.TextField(
+    modalities = ArrayField(
+        models.CharField(max_length=16, validators=[letters_validator]),
         blank=True,
-        validators=[validate_modalities],
+        default=list,
     )
     study_description = models.CharField(
         blank=True,
@@ -101,9 +101,10 @@ class BatchQueryTask(DicomTask):
         blank=True,
         max_length=64,
     )
-    series_numbers = models.TextField(
+    series_numbers = ArrayField(
+        models.CharField(max_length=12, validators=[integer_string_validator]),
         blank=True,
-        validators=[validate_series_numbers],
+        default=list,
     )
     pseudonym = models.CharField(  # allow to pipe pseudonym to batch transfer task
         blank=True,
@@ -113,30 +114,6 @@ class BatchQueryTask(DicomTask):
 
     if TYPE_CHECKING:
         results = RelatedManager["BatchQueryResult"]()
-
-    @property
-    def lines_list(self) -> list[str]:
-        return list(filter(len, map(str.strip, self.lines.split(","))))
-
-    @lines_list.setter
-    def lines_list(self, value: list[str]) -> None:
-        self.lines = ", ".join(value)
-
-    @property
-    def modalities_list(self) -> list[str]:
-        return list(filter(len, map(str.strip, self.modalities.split(","))))
-
-    @modalities_list.setter
-    def modalities_list(self, value: list[str]) -> None:
-        self.modalities = ", ".join(value)
-
-    @property
-    def series_numbers_list(self) -> list[str]:
-        return list(filter(len, map(str.strip, self.series_numbers.split(","))))
-
-    @series_numbers_list.setter
-    def series_numbers_list(self, value: list[str]) -> None:
-        self.series_numbers = ", ".join(value)
 
     def clean(self) -> None:
         if not self.accession_number and not self.modalities:
@@ -186,10 +163,7 @@ class BatchQueryResult(models.Model):
     )
     study_date = models.DateField()
     study_time = models.TimeField()
-    modalities = models.TextField(
-        blank=True,
-        validators=[validate_modalities],
-    )
+    modalities = ArrayField(models.CharField(max_length=16, validators=[letters_validator]))
     image_count = models.PositiveIntegerField(
         null=True,
         blank=True,
@@ -218,9 +192,7 @@ class BatchQueryResult(models.Model):
     series_number = models.CharField(
         blank=True,
         max_length=12,
-        validators=[
-            validate_series_number,
-        ],
+        validators=[integer_string_validator],
     )
     pseudonym = models.CharField(  # allow to pipe pseudonym through to a possible batch transfer
         blank=True,
@@ -247,14 +219,6 @@ class BatchQueryResult(models.Model):
 
     def __str__(self):
         return f"{self.__class__.__name__} [ID {self.id}]"
-
-    @property
-    def modalities_list(self) -> list[str]:
-        return list(filter(len, map(str.strip, self.modalities.split(","))))
-
-    @modalities_list.setter
-    def modalities_list(self, value: list[str]) -> None:
-        self.modalities = ", ".join(value)
 
     @property
     def study_date_time(self):

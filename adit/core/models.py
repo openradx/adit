@@ -3,6 +3,7 @@ from datetime import time
 from typing import TYPE_CHECKING, Callable, Generic, Literal, TypeVar
 
 from django.conf import settings
+from django.contrib.postgres.fields import ArrayField
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.db.models.constraints import UniqueConstraint
@@ -14,7 +15,6 @@ from .validators import (
     no_control_chars_validator,
     no_wildcard_chars_validator,
     uid_chars_validator,
-    validate_uids,
 )
 
 if TYPE_CHECKING:
@@ -372,9 +372,10 @@ class TransferTask(DicomTask):
         max_length=64,
         validators=[uid_chars_validator],
     )
-    series_uids = models.TextField(
+    series_uids = ArrayField(
+        models.CharField(max_length=64, validators=[uid_chars_validator]),
         blank=True,
-        validators=[validate_uids],
+        default=list,
     )
     pseudonym = models.CharField(
         blank=True,
@@ -389,11 +390,3 @@ class TransferTask(DicomTask):
             f"Destination {self.destination}, "
             f"Job ID {self.job.id}, Task ID {self.id}]"
         )
-
-    @property
-    def series_uids_list(self) -> list[str]:
-        return list(filter(len, map(str.strip, self.series_uids.split(","))))
-
-    @series_uids_list.setter
-    def series_uids_list(self, value: list[str]) -> None:
-        self.series_uids = ", ".join(value)

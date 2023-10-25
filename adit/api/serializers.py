@@ -21,14 +21,13 @@ class TransferTaskSerializer(serializers.ModelSerializer):
         self.max_series_count = max_series_count
         super().__init__(instance=instance, data=data, **kwargs)
 
-    def validate_series_uids(self, series_uids):
+    def validate_series_uids(self, series_uids: list[str]):
         try:
             validate_uids(series_uids)
         except exceptions.ValidationError as err:
             raise serializers.ValidationError(err.message)
 
-        series_uid_list = list(filter(len, map(str.strip, series_uids.split(","))))
-        if len(series_uid_list) > self.max_series_count:
+        if len(series_uids) > self.max_series_count:
             raise serializers.ValidationError(
                 f"Maximum {self.max_series_count} series per task allowed."
             )

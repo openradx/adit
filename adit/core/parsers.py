@@ -55,7 +55,7 @@ class BatchFileParser(Generic[T], ABC):
                 continue
 
             # + 2 because the first row is the header and the index starts at 0
-            data_row["lines"] = str(idx + 2)
+            data_row["lines"] = [idx + 2]
 
             data.append(data_row)
 

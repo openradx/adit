@@ -24,3 +24,4 @@ class BatchTransferTaskFactory(AbstractTransferTaskFactory[BatchTransferTask]):
         model = BatchTransferTask
 
     job = factory.SubFactory(BatchTransferJobFactory)
+    lines = factory.LazyFunction(lambda: [fake.pyint(min_value=2)])

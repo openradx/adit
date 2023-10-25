@@ -138,9 +138,8 @@ class AbstractDicomTaskFactory(Generic[T], BaseDjangoModelFactory[T]):
 
 def generate_uids():
     if fake.boolean(chance_of_getting_true=25):
-        uids = [generate_uid() for _ in range(fake.random_int(min=1, max=8))]
-        return ", ".join(uids)
-    return ""
+        return [generate_uid() for _ in range(fake.random_int(min=1, max=8))]
+    return []
 
 
 class AbstractTransferTaskFactory(Generic[T], AbstractDicomTaskFactory[T]):
