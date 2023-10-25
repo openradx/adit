@@ -5,7 +5,7 @@ import tempfile
 from datetime import datetime
 from functools import partial
 from pathlib import Path
-from typing import Callable
+from typing import Any, Callable
 
 from celery.contrib.abortable import AbortableTask as AbortableCeleryTask  # pyright: ignore
 from dicognito.anonymizer import Anonymizer
@@ -268,13 +268,37 @@ class TransferExecutor:
         """Optionally pseudonymize an incoming dataset with the given pseudonym
         and add the trial ID and name to the DICOM header if specified."""
         if pseudonym:
-            # All dates get pseudonymized, but we want to retain the study date.
+            # All dates get anonymized by dicognito, but we want to retain some dates.
+            # For that we save them here to restore them after anonymization as dicognito
+            # currently does not provide that functionality.
+            # TODO: Use dicognito for this when issue is fixed:
+            # https://github.com/blairconrad/dicognito/issues/155
             # TODO: Make this configurable.
-            study_date = ds.StudyDate
+            attributes_to_retain = [
+                "StudyDate",
+                "StudyTime",
+                "SeriesDate",
+                "SeriesTime",
+                "AcquisitionDate",
+                "AcquisitionTime",
+                "ImageDate",
+                "ImageTime",
+                "ContentDate",
+                "ContentTime",
+                "DateOfLastCalibration",
+                "TimeOfLastCalibration",
+                "AcquisitionDateTime",
+            ]
+            saved_attributes: dict[str, Any] = {}
+            for attr in attributes_to_retain:
+                value = ds.get(attr)
+                if value is not None:
+                    saved_attributes[attr] = value
 
             anonymizer.anonymize(ds)
 
-            ds.StudyDate = study_date
+            for attr in saved_attributes:
+                setattr(ds, attr, saved_attributes[attr])
 
             ds.PatientID = pseudonym
             ds.PatientName = pseudonym
