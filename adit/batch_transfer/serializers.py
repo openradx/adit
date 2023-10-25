@@ -42,6 +42,7 @@ class BatchTransferTaskSerializer(BatchTaskSerializer):
         fields = [
             # TODO: We later have to put source and destination in here
             # when batch transfers get source and destination from the batch file
+            "lines",
             "patient_id",
             "study_uid",
             "series_uids",

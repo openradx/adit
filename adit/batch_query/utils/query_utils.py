@@ -95,10 +95,10 @@ class QueryExecutor:
         study_date = (start_date, end_date)
 
         modalities_query: list[str] = []
-        if self.query_task.modalities_list:
+        if self.query_task.modalities:
             modalities_query = [
                 modality
-                for modality in self.query_task.modalities_list
+                for modality in self.query_task.modalities
                 if modality not in settings.EXCLUDED_MODALITIES
             ]
 
@@ -140,7 +140,7 @@ class QueryExecutor:
         return sorted(study_results, key=lambda study: study.StudyDate)
 
     def _fetch_series(self, patient_id: str, study_uid: str) -> list[ResultDataset]:
-        series_numbers = self.query_task.series_numbers_list
+        series_numbers = self.query_task.series_numbers
 
         if not series_numbers:
             series_query = QueryDataset.create(
@@ -182,8 +182,7 @@ class QueryExecutor:
                 study_date=study.StudyDate,
                 study_time=study.StudyTime,
                 study_description=study.StudyDescription,
-                # Modalities of all series in this study
-                modalities=", ".join(study.ModalitiesInStudy),
+                modalities=study.ModalitiesInStudy,  # All modalities in this study
                 image_count=study.NumberOfStudyRelatedInstances,
                 pseudonym=self.query_task.pseudonym,
                 series_uid="",
@@ -212,8 +211,7 @@ class QueryExecutor:
                     study_date=study.StudyDate,
                     study_time=study.StudyTime,
                     study_description=study.StudyDescription,
-                    # Modality only of this series
-                    modalities=series.Modality,
+                    modalities=[series.Modality],  # The modality of this series
                     image_count=study.NumberOfStudyRelatedInstances,
                     pseudonym=self.query_task.pseudonym,
                     series_uid=series.SeriesInstanceUID,

@@ -22,6 +22,14 @@ class BatchTransferFileParser(BatchFileParser[BatchTransferTask]):
         self.can_transfer_unpseudonymized = can_transfer_unpseudonymized
         super().__init__(mapping)
 
+    def transform_value(self, field: str, value: str):
+        if field == "series_uids":
+            if value.strip():
+                return [value]
+            return []
+
+        return value
+
     def get_serializer(self, data: dict[str, str]):
         return BatchTransferTaskSerializer(
             data=data,
@@ -44,22 +52,22 @@ class BatchTransferFileParser(BatchFileParser[BatchTransferTask]):
         for tasks_with_same_study in tasks_by_study.values():
             transfer_whole_study = False
             explicit_series_to_transfer: list[str] = []
-            cumulative_lines = []
+            cumulative_lines: list[int] = []
             for task in tasks_with_same_study:
-                cumulative_lines.extend(task.lines_list)
-                if not task.series_uids_list:
+                cumulative_lines.extend(task.lines)
+                if not task.series_uids:
                     transfer_whole_study = True
                 else:
-                    explicit_series_to_transfer.extend(task.series_uids_list)
+                    explicit_series_to_transfer.extend(task.series_uids)
 
             task: BatchTransferTask = tasks_with_same_study[0]
-            task.lines_list = cumulative_lines
+            task.lines = cumulative_lines
 
             if transfer_whole_study:
-                task.series_uids = ""
+                task.series_uids = []
             else:
                 # Remove duplicates, but keep order
-                task.series_uids_list = list(dict.fromkeys(explicit_series_to_transfer))
+                task.series_uids = list(dict.fromkeys(explicit_series_to_transfer))
 
             tasks_to_transfer.append(task)
 

@@ -56,7 +56,7 @@ class BatchFileContentError(Exception):
                 if self.message:
                     self.message += "\n"
                 if item_errors:
-                    lines: str = self.data[num]["lines"]
+                    lines: str = ", ".join(map(str, self.data[num]["lines"]))
                     lines_label = "lines" if "," in lines else "line"
                     self.message += f"Invalid data on {lines_label} {lines}:\n"
 

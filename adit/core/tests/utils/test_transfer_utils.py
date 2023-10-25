@@ -53,7 +53,7 @@ def test_transfer_to_server_succeeds(
         source=DicomServerFactory(),
         destination=DicomServerFactory(),
         status=TransferTask.Status.PENDING,
-        series_uids="",
+        series_uids=[],
         pseudonym="",
         job=job,
     )
@@ -118,7 +118,7 @@ def test_transfer_to_folder_succeeds(
         destination=DicomFolderFactory(),
         status=TransferTask.Status.PENDING,
         patient_id="1001",
-        series_uids="",
+        series_uids=[],
         pseudonym="",
         job=job,
     )
@@ -167,7 +167,7 @@ def test_transfer_to_archive_succeeds(
         source=DicomServerFactory(),
         destination=DicomFolderFactory(),
         status=TransferTask.Status.PENDING,
-        series_uids="",
+        series_uids=[],
         pseudonym="",
         job=job,
     )

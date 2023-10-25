@@ -1,6 +1,13 @@
 from django.core.exceptions import ValidationError
 from django.core.validators import RegexValidator
 
+letters_validator = RegexValidator(r"^[a-zA-Z]*$", "Only letters A-Z are allowed.")
+
+integer_string_validator = RegexValidator(
+    r"^\s*[-+]?[0-9]+\s*$", "Invalid string representation of a number."
+)
+
+# TODO: check if we can remove
 pos_int_list_validator = RegexValidator(
     regex=r"^\s*\d+(?:\s*,\s*\d+)*\s*\Z",
     message="Enter only digits separated by commas.",
@@ -28,6 +35,7 @@ no_wildcard_chars_validator = RegexValidator(
 uid_chars_validator = RegexValidator(regex=r"^[\d\.]+$", message="Invalid character in UID.")
 
 
+# TODO: check if we can remove
 def validate_uids(value: str) -> None:
     uids = map(str.strip, value.split(","))
     for uid in uids:
@@ -37,6 +45,7 @@ def validate_uids(value: str) -> None:
         uid_chars_validator(uid)
 
 
+# TODO: remove
 def validate_modalities(value: str) -> None:
     modalities = map(str.strip, value.split(","))
     for modality in modalities:
@@ -44,6 +53,7 @@ def validate_modalities(value: str) -> None:
             raise ValidationError(f"Invalid modality: {modality}")
 
 
+# TODO: Move together with integer_string_validator
 def validate_series_number(value: str) -> None:
     # Series Number uses a Value Representation (VR) of Integer String (IS)
     # https://dicom.nema.org/dicom/2013/output/chtml/part05/sect_6.2.html

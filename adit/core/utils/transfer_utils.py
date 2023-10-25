@@ -123,7 +123,7 @@ class TransferExecutor:
 
         # If some series are explicitly chosen then check if their Series Instance UIDs
         # are correct and only use those modalities for the name of the study folder.
-        series_uids = self.transfer_task.series_uids_list
+        series_uids = self.transfer_task.series_uids
         if series_uids:
             modalities = set()
             for series_uid in series_uids:
