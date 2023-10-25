@@ -61,7 +61,7 @@ class Migration(migrations.Migration):
                     max_length=12,
                     validators=[
                         django.core.validators.RegexValidator(
-                            "^\s*[-+]?[0-9]+\s*$", "Invalid string representation of a number."
+                            "^\\s*[-+]?[0-9]+\\s*$", "Invalid string representation of a number."
                         )
                     ],
                 ),
