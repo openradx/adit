@@ -98,8 +98,9 @@ class BaseDataset:
         return str(self._ds.SeriesDescription)
 
     @property
-    def SeriesNumber(self) -> int:
-        return int(self._ds.SeriesNumber)
+    def SeriesNumber(self) -> int | None:
+        series_number = self._ds.SeriesNumber
+        return int(series_number) if series_number is not None else None
 
     @property
     def Modality(self) -> str:
