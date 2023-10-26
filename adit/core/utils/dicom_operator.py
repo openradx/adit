@@ -670,7 +670,8 @@ class DicomOperator:
             modifier(ds)
 
         folder_path = Path(dest_folder)
-        file_path = folder_path / ds.SOPInstanceUID
+        file_name = f"{ds.SOPInstanceUID}.dcm"
+        file_path = folder_path / file_name
 
         try:
             folder_path.mkdir(parents=True, exist_ok=True)
