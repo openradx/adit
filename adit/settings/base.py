@@ -437,7 +437,7 @@ DICOM_EXPLORER_RESULT_LIMIT = 101
 DICOM_EXPLORER_RESPONSE_TIMEOUT = 3  # seconds
 
 # The timeout we wait for images of a C-MOVE download
-C_MOVE_DOWNLOAD_TIMEOUT = 60  # seconds
+C_MOVE_DOWNLOAD_TIMEOUT = 100  # seconds
 
 # Show DICOM debug messages of pynetdicom
 ENABLE_DICOM_DEBUG_LOGGER = False

@@ -634,7 +634,7 @@ class DicomOperator:
                     if subscribe_task.done():
                         break
 
-                    time_since_last_image = time.time() - last_image_at if last_image_at else 0
+                    time_since_last_image = time.time() - last_image_at
                     if time_since_last_image > settings.C_MOVE_DOWNLOAD_TIMEOUT:
                         # Don't accept any more images
                         subscribe_task.cancel()
