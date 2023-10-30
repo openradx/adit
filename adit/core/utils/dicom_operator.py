@@ -12,6 +12,7 @@ in the Patient Root Query/Retrieve Information Model
 import asyncio
 import errno
 import logging
+import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
 from os import PathLike
@@ -533,6 +534,9 @@ class DicomOperator:
         # A list of errors that may occur while receiving the images
         receiving_errors: list[Exception] = []
 
+        # An event queue to signal the consumer when the C-MOVE operation finished
+        event = threading.Event()
+
         # The requested images are sent to the receiver container (a C-STORE SCP server)
         # by the C-MOVE operation. Then those are send via the transmitter (over TCP socket)
         # which we consume in a separate thread.
@@ -543,12 +547,16 @@ class DicomOperator:
                 query.SeriesInstanceUID,
                 image_uids,
                 dest_folder,
+                event,
                 receiving_errors,
                 modifier,
             )
 
             try:
                 self.dimse_connector.send_c_move(query, settings.ADIT_AE_TITLE)
+
+                # Signal consumer that C-MOVE operation is finished
+                event.set()
 
                 # We have to check the result of the future here, otherwise
                 # exceptions in the thread would be ignored.
@@ -573,6 +581,7 @@ class DicomOperator:
         series_uid: str,
         image_uids: list[str],
         dest_folder: PathLike,
+        event: threading.Event,
         receiving_errors: list[Exception],
         modifier: Modifier | None = None,
     ):
@@ -630,6 +639,10 @@ class DicomOperator:
             async def check_timeout():
                 while True:
                     await asyncio.sleep(1)
+
+                    # Start the timeout check only after the C-MOVE operation finished
+                    if not event.is_set():
+                        continue
 
                     if subscribe_task.done():
                         break
