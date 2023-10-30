@@ -8,7 +8,7 @@ from typing import Awaitable, Callable
 import aiofiles
 from aiofiles import os, tempfile
 
-BUFFER_SIZE = 1024
+BUFFER_SIZE = 64 * 1024  # 64kb
 
 SubscribeHandler = Callable[[str], None | Awaitable[None]]
 UnsubscribeHandler = Callable[[str], None | Awaitable[None]]
@@ -27,7 +27,7 @@ class FileTransmitSession:
         self._reader = reader
         self._writer = writer
 
-    async def send_file(self, file_path: PathLike, metadata: dict[str, str] | None = None):
+    async def send_file(self, file_path: PathLike | str, metadata: dict[str, str] | None = None):
         # Send file size
         file_size = await os.path.getsize(file_path)
         data = struct.pack("!I", file_size)  # encodes unsigned int to exactly 4 bytes
@@ -80,7 +80,7 @@ class FileTransmitServer:
     async def publish_file(
         self,
         topic: str,
-        file_path: PathLike,
+        file_path: PathLike | str,
         metadata: dict[str, str] | None = None,
     ):
         """Publishes a file to all clients that subscribed to the given topic."""
