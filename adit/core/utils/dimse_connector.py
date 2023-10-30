@@ -263,7 +263,7 @@ class DimseConnector:
 
             else:
                 raise DicomCommunicationError(
-                    f"Unexpected error during C-FIND: {status_category} [{status.Status}]."
+                    f"Unexpected error during C-FIND [{status_category}]:\n{status}"
                 )
 
     @connect_to_server("C_GET")
@@ -353,15 +353,10 @@ class DimseConnector:
                 status_category = code_to_category(status.Status)
                 if status_category == STATUS_WARNING:
                     warnings.append(ds.StudyInstanceUID)
-                    logger.warning(
-                        f"Warning during C-STORE: {status_category} [0x{status.Status:04x}]."
-                    )
+                    logger.warning(f"Warning during C-STORE [{status_category}]:\n{status}")
                 elif status_category != STATUS_SUCCESS:
                     failures.append(ds.StudyInstanceUID)
-                    logger.error(
-                        "Unexpected error during C-STORE: "
-                        f"{status_category} [0x{status.Status:04x}]."
-                    )
+                    logger.error(f"Unexpected error during C-STORE [{status_category}]:\n{status}")
 
         if not self.server.store_scp_support:
             raise ValueError("C-STORE operation not supported by server.")
@@ -431,11 +426,11 @@ class DimseConnector:
                             "Erroneous images (SOPInstanceUID): %s", ", ".join(failed_image_uids)
                         )
                         raise DicomCommunicationError(
-                            f"Failed to transfer several images with {op}: "
-                            f"{status} [{status.Status}]."
+                            f"Failed to transfer several images with {op} [{status_category}]:\n"
+                            f"{status}"
                         )
                 raise DicomCommunicationError(
-                    f"Unexpected error during {op} [status {status_category}]."
+                    f"Unexpected error during {op} [{status_category}]:\n{status}"
                 )
 
             if status_category == STATUS_SUCCESS:
