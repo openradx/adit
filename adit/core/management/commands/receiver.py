@@ -68,8 +68,8 @@ class Command(AsyncServerCommand):
                 except Exception as err:
                     # TODO: Maybe store unreadable files in some special folder for later analysis
                     logger.error(
-                        f"Error while reading and transmitting received DICOM file '{filename}' with "
-                        f"StudyInstanceUID '{study_uid}', SeriesInstanceUID '{series_uid}', "
+                        f"Error while reading and transmitting received DICOM file '{filename}' "
+                        f"with StudyInstanceUID '{study_uid}', SeriesInstanceUID '{series_uid}', "
                         f"SOPInstanceUID '{instance_uid}'."
                     )
                     logger.exception(err)
