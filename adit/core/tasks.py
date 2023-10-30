@@ -262,7 +262,7 @@ class ProcessDicomTask(AbortableCeleryTask):
                 dicom_job.status = DicomJob.Status.SUCCESS
                 dicom_job.message = "All tasks succeeded."
             elif has_success and has_failure or has_warning and has_failure:
-                dicom_job.status = DicomJob.Status.WARNING
+                dicom_job.status = DicomJob.Status.FAILURE
                 dicom_job.message = "Some tasks failed."
             elif has_success and has_warning:
                 dicom_job.status = DicomJob.Status.WARNING
