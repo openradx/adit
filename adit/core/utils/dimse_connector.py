@@ -106,15 +106,17 @@ class DimseConnector:
         auto_connect: bool = True,
         connection_retries: int = 2,
         retry_timeout: int = 30,  # in seconds
-        acse_timeout: int | None = None,
-        dimse_timeout: int | None = None,
-        network_timeout: int | None = None,
+        acse_timeout: int | None = 60,
+        connection_timeout: int | None = None,
+        dimse_timeout: int | None = 60,
+        network_timeout: int | None = 120,
     ) -> None:
         self.server = server
         self.auto_connect = auto_connect
         self.connection_retries = connection_retries
         self.retry_timeout = retry_timeout
         self.acse_timeout = acse_timeout
+        self.connection_timeout = connection_timeout
         self.dimse_timeout = dimse_timeout
         self.network_timeout = network_timeout
 
@@ -150,8 +152,11 @@ class DimseConnector:
         ae.maximum_pdu_size = 0
 
         # We only use the timeouts if set, otherwise we leave the default timeouts
+        # https://github.com/pydicom/pynetdicom/blob/4972781323e4f726e99ed03cf6ddce786f90f486/pynetdicom/ae.py#L96
         if self.acse_timeout is not None:
             ae.acse_timeout = self.acse_timeout
+        if self.connection_timeout is not None:
+            ae.connection_timeout = self.connection_timeout
         if self.dimse_timeout is not None:
             ae.dimse_timeout = self.dimse_timeout
         if self.network_timeout is not None:
