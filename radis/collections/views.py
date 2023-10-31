@@ -1,4 +1,4 @@
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
 
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.messages.views import SuccessMessageMixin
@@ -22,6 +22,10 @@ from radis.reports.models import Report
 from .filters import CollectionFilter
 from .models import Collection
 from .tables import CollectionTable
+
+if TYPE_CHECKING:
+    from .models import CollectionWithHasReport
+
 
 LAST_USED_COLLECTION_PREFERENCE = "last_used_collection"
 
@@ -121,8 +125,8 @@ class CollectionDetailView(
 
 class CollectionSelectView(LoginRequiredMixin, View):
     def get(self, request: AuthenticatedHttpRequest, document_id: str) -> HttpResponse:
-        addable_collections: list[Collection] = []
-        removable_collections: list[Collection] = []
+        addable_collections: list[CollectionWithHasReport] = []
+        removable_collections: list[CollectionWithHasReport] = []
         collections = Collection.objects.filter(owner=request.user).with_has_report(document_id)
         for collection in collections:
             if collection.has_report:

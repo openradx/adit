@@ -1,10 +1,15 @@
 import re
-from typing import cast
+from typing import TYPE_CHECKING, cast
 
 from django.db import models
 
 from radis.accounts.models import User
 from radis.reports.models import Report
+
+if TYPE_CHECKING:
+
+    class ReportWithAnnotation(Report):
+        total: int
 
 
 def extract_document_id(id: str) -> str:
@@ -14,10 +19,6 @@ def extract_document_id(id: str) -> str:
 def sanitize_report_summary(text: str) -> str:
     text = re.sub(r"[\r\n]+", '<em class="break">...</em>', text)
     return text.strip()
-
-
-class ReportWithAnnotation(Report):
-    total: int
 
 
 def get_collection_counts(user: User, document_ids: list[str]) -> dict[str, int]:

@@ -1,4 +1,4 @@
-from typing import cast
+from typing import TYPE_CHECKING, cast
 
 from django.conf import settings
 from django.db import models
@@ -6,6 +6,11 @@ from django.db.models.constraints import UniqueConstraint
 
 from radis.core.models import AppSettings
 from radis.reports.models import Report
+
+if TYPE_CHECKING:
+
+    class CollectionWithHasReport(Report):
+        has_report: bool
 
 
 class CollectionsAppSettings(AppSettings):
@@ -61,7 +66,3 @@ class Collection(models.Model):
 
     def __str__(self):
         return f"Collection {self.id} [{self.name}]"
-
-
-class CollectionWithHasReport(Collection):
-    has_report: bool
