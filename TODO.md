@@ -2,6 +2,7 @@
 
 ## Top
 
+- Exclude SR and PR when in pseudonymization mode
 - Cancel processing tasks actively
   -- When cancelling a job we currenty wait for an already processing task to be completed before setting the job as canceled
   -- Those tasks should get actively canceled by listening to an event or so
