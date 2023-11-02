@@ -2,6 +2,13 @@
 
 ## Top
 
+- Cancel processing tasks actively
+  -- When cancelling a job we currenty wait for an already processing task to be completed before setting the job as canceled
+  -- Those tasks should get actively canceled by listening to an event or so
+  -- We already inherit out tasks from AbortableTask <https://docs.celeryq.dev/en/stable/reference/celery.contrib.abortable.html>
+  -- No we must pass the is_aborted() somehow down to the connectors
+  -- In DimseConnector we could check a provided is_cancelled function if the next series should be fetched (or even the association be aborted)
+  -- in DicomWebConnector we chould also check such an function an close the Session <https://requests.readthedocs.io/en/latest/api/#requests.Session.close>. We can handle the Session manually when using DicomWebClient <https://dicomweb-client.readthedocs.io/en/latest/package.html#dicomweb_client.api.DICOMwebClient>
 - use get in PageSizeSelectMixin (see RADIS)
 - Move those list fields to ArrayField
 - Make Institutes switchable and a user can only have one active institute
