@@ -25,6 +25,7 @@ from .utils.mail import (
     send_mail_to_admins,
 )
 from .utils.scheduler import Scheduler
+from .utils.task_utils import update_job_status
 
 logger = get_task_logger(__name__)
 
@@ -175,8 +176,18 @@ class ProcessDicomTask(AbortableCeleryTask):
 
             logger.info("%s ended.", dicom_task)
 
+            dicom_job = dicom_task.job
+
             with Lock("update_job_after_task"):
-                self.update_job_after_task(dicom_task.job)
+                dicom_job.refresh_from_db()
+                update_job_status(dicom_job)
+                dicom_job.end = timezone.now()
+                dicom_job.save()
+
+            if dicom_job.send_finished_mail:
+                send_job_finished_mail(dicom_job)
+
+            logger.info("%s ended.", dicom_job)
 
     def process_dicom_task(self, dicom_task: DicomTask) -> tuple[DicomTask.Status, str]:
         logger.info("%s started.", dicom_task)
@@ -239,48 +250,3 @@ class ProcessDicomTask(AbortableCeleryTask):
         stored in the task model.
         """
         raise NotImplementedError("Subclasses must implement this method.")
-
-    def update_job_after_task(self, dicom_job: DicomJob):
-        """Evaluates all the tasks of a dicom job and sets the job status accordingly."""
-
-        if dicom_job.status == DicomJob.Status.CANCELING:
-            if not dicom_job.tasks.filter(status=DicomTask.Status.IN_PROGRESS).exists():
-                dicom_job.status = DicomJob.Status.CANCELED
-                dicom_job.save()
-        elif dicom_job.tasks.filter(status=DicomTask.Status.IN_PROGRESS).exists():
-            dicom_job.status = DicomJob.Status.IN_PROGRESS
-            dicom_job.save()
-        elif dicom_job.tasks.filter(status=DicomTask.Status.PENDING).exists():
-            dicom_job.status = DicomJob.Status.PENDING
-            dicom_job.save()
-        else:
-            has_success = dicom_job.tasks.filter(status=DicomTask.Status.SUCCESS).exists()
-            has_warning = dicom_job.tasks.filter(status=DicomTask.Status.WARNING).exists()
-            has_failure = dicom_job.tasks.filter(status=DicomTask.Status.FAILURE).exists()
-
-            if has_success and not has_warning and not has_failure:
-                dicom_job.status = DicomJob.Status.SUCCESS
-                dicom_job.message = "All tasks succeeded."
-            elif has_success and has_failure or has_warning and has_failure:
-                dicom_job.status = DicomJob.Status.FAILURE
-                dicom_job.message = "Some tasks failed."
-            elif has_success and has_warning:
-                dicom_job.status = DicomJob.Status.WARNING
-                dicom_job.message = "Some tasks have warnings."
-            elif has_warning:
-                dicom_job.status = DicomJob.Status.WARNING
-                dicom_job.message = "All tasks have warnings."
-            elif has_failure:
-                dicom_job.status = DicomJob.Status.FAILURE
-                dicom_job.message = "All tasks failed."
-            else:
-                # at least one of success, warnings or failures must be > 0
-                raise AssertionError(f"Invalid task status list of {dicom_job}.")
-
-            dicom_job.end = timezone.now()
-            dicom_job.save()
-
-            logger.info("%s ended.", dicom_job)
-
-            if dicom_job.send_finished_mail:
-                send_job_finished_mail(dicom_job)
