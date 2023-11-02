@@ -379,7 +379,12 @@ def purge_celery(
     force=False,
 ):
     """Purge Celery queues"""
-    cmd = f"{build_compose_cmd(env)} exec web celery -A adit purge -Q {queues}"
+    settings = "adit.settings.production" if env == "prod" else "adit.settings.development"
+    web_container_id = find_running_container_id(ctx, env, "web")
+    cmd = (
+        f"docker exec --env DJANGO_SETTINGS_MODULE={settings} "
+        f"{web_container_id} celery -A adit purge -Q {queues}"
+    )
     if force:
         cmd += " -f"
     run_cmd(ctx, cmd)
