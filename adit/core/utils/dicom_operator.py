@@ -533,7 +533,10 @@ class DicomOperator:
         receiving_errors: list[Exception] = []
 
         # An event queue to signal the consumer when the C-MOVE operation finished
-        event = threading.Event()
+        c_move_finished_event = threading.Event()
+
+        # An event to make sure the consumer thread finally stops
+        stop_consumer_event = threading.Event()
 
         # The requested images are sent to the receiver container (a C-STORE SCP server)
         # by the C-MOVE operation. Then those are send via the transmitter (over TCP socket)
@@ -545,7 +548,8 @@ class DicomOperator:
                 query.SeriesInstanceUID,
                 image_uids,
                 dest_folder,
-                event,
+                c_move_finished_event,
+                stop_consumer_event,
                 receiving_errors,
                 modifier,
             )
@@ -554,22 +558,23 @@ class DicomOperator:
                 self.dimse_connector.send_c_move(query, settings.ADIT_AE_TITLE)
 
                 # Signal consumer that C-MOVE operation is finished
-                event.set()
+                c_move_finished_event.set()
 
-                # We have to check the result of the future here, otherwise
-                # exceptions in the thread would be ignored.
+                # We then wait until the consumer is finished or raises.
+                # For catching the exception we need to check the result of the future here,
+                # otherwise exceptions in the thread would be ignored.
                 consume_future.result()
             except Exception as err:
                 # We check here if an error occurred in the consumer thread and
-                # then do nothing here but handle it in the finally block.
+                # and only re-raise the error when non occurred.
                 # The consumer might also have aborted the connection which then raises
                 # an exception during C-MOVE.
-                if receiving_errors:
-                    pass
-
-                # Otherwise just raise the original error
-                raise err
+                # Errors in the consumer thread are handled in the finally block.
+                if not receiving_errors:
+                    raise err
             finally:
+                stop_consumer_event.set()
+
                 if receiving_errors:
                     raise receiving_errors[0]
 
@@ -579,7 +584,8 @@ class DicomOperator:
         series_uid: str,
         image_uids: list[str],
         dest_folder: PathLike,
-        event: threading.Event,
+        c_move_finished_event: threading.Event,
+        stop_consumer_event: threading.Event,
         receiving_errors: list[Exception],
         modifier: Modifier | None = None,
     ):
@@ -634,37 +640,36 @@ class DicomOperator:
                 file_transmit.subscribe(topic, handle_received_file)
             )
 
-            async def check_timeout():
-                while True:
-                    await asyncio.sleep(1)
+            while True:
+                await asyncio.sleep(1)
 
-                    # Start the timeout check only after the C-MOVE operation finished
-                    if not event.is_set():
-                        continue
+                if stop_consumer_event.is_set():
+                    subscribe_task.cancel()
+                    break
 
-                    if subscribe_task.done():
-                        break
+                # Start the timeout check only after the C-MOVE operation finished
+                if not c_move_finished_event.is_set():
+                    continue
 
-                    time_since_last_image = time.time() - last_image_at
-                    if time_since_last_image > settings.C_MOVE_DOWNLOAD_TIMEOUT:
-                        # Don't accept any more images
-                        subscribe_task.cancel()
+                if subscribe_task.done():
+                    break
 
-                        logger.error(
-                            "C-MOVE download timed out after %d seconds.",
-                            round(time_since_last_image),
-                        )
+                time_since_last_image = time.time() - last_image_at
+                if time_since_last_image > settings.C_MOVE_DOWNLOAD_TIMEOUT:
+                    # Don't accept any more images
+                    subscribe_task.cancel()
 
-                        # We have to call this before aborting the connection because this
-                        # can raise an exception with C-MOVE and we need the info then
-                        # if all images were received or not.
-                        check_images_received()
-                        self.dimse_connector.abort_connection()
-                        break
+                    logger.error(
+                        "C-MOVE download timed out after %d seconds.",
+                        round(time_since_last_image),
+                    )
 
-            check_timeout_task = asyncio.create_task(check_timeout())
-
-            await asyncio.gather(subscribe_task, check_timeout_task)
+                    # We have to call this before aborting the connection because this
+                    # can raise an exception with C-MOVE and we need the info then
+                    # if all images were received or not.
+                    check_images_received()
+                    self.dimse_connector.abort_connection()
+                    break
 
             if not receiving_errors:
                 check_images_received()

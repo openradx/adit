@@ -413,12 +413,12 @@ class DimseConnector:
         self, responses: Iterator[tuple[Dataset, Dataset | None]], op: Literal["C-GET", "C-MOVE"]
     ) -> None:
         for status, identifier in responses:
-            logger.debug("Received %s status response:\n%s", op, status)
-
             if not status:
                 raise DicomConnectionError(
                     "Connection timed out, was aborted or received invalid response."
                 )
+
+            logger.debug("Received %s status response:\n%s", op, status)
 
             status_category = code_to_category(status.Status)
             if status_category not in [STATUS_SUCCESS, STATUS_PENDING]:
