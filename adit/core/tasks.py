@@ -10,6 +10,7 @@ from celery import shared_task
 from celery.contrib.abortable import AbortableTask as AbortableCeleryTask  # pyright: ignore
 from celery.exceptions import Retry
 from celery.utils.log import get_task_logger
+from django import db
 from django.conf import settings
 from django.core.mail import send_mail
 from django.core.management import call_command
@@ -171,6 +172,12 @@ class ProcessDicomTask(AbortableCeleryTask):
                 dicom_task.log += "\n-----\n"
             dicom_task.log += traceback.format_exc()
         finally:
+            # Django ORM does not work well with long running tasks in production as the
+            # database server closes the connection, but Django still tries to use the closed
+            # connection. We explicitly close all connections here so that Django is forced to
+            # create a new connection when a model is saved.
+            db.close_old_connections()
+
             dicom_task.end = timezone.now()
             dicom_task.save()
 
