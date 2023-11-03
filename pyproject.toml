@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "adit"
-version = "0.27.0"
+version = "0.27.1"
 description = "ADIT (Automated DICOM Transfer) is a swiss army knife to exchange DICOM data between various systems by using a convenient web frontend."
 authors = ["medihack <kai.schlamp@gmail.com>"]
 license = "GPL-3.0-or-later"
@@ -45,7 +45,7 @@ whitenoise = "^6.0.0"
 crispy-bootstrap5 = "^0.7"
 django-dbbackup = "^4.0.2"
 janus = "^1.0.0"
-psycopg = {extras = ["binary"], version = "^3.1.12"}
+psycopg = { extras = ["binary"], version = "^3.1.12" }
 
 [tool.poetry.group.dev.dependencies]
 black = "^23.1.0"
