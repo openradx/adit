@@ -357,6 +357,7 @@ class DicomJobRestartView(LoginRequiredMixin, SingleObjectMixin, View):
         job.reset_tasks()
 
         job.status = DicomJob.Status.PENDING
+        job.message = ""
         job.save()
 
         job.delay()
