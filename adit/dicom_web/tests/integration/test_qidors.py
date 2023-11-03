@@ -64,6 +64,7 @@ def test_qido_series(
         # without a StudyInstanceUID, because it is not possible with a connected DIMSE server.
         orthanc1_client.search_for_series()
     except HTTPError as err:
+        assert err.response
         error_details = err.response.json()
         assert re.search("without a StudyInstanceUID", error_details[0])
 

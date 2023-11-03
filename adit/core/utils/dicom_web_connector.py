@@ -170,6 +170,7 @@ class DicomWebConnector:
             try:
                 self.dicomweb_client.store_instances([ds])
             except HTTPError as err:
+                assert err.response
                 status_code = err.response.status_code
                 if _is_retriable_error(status_code):
                     retriable_failures.append(ds.SOPInstanceUID)
@@ -225,6 +226,7 @@ def _is_retriable_error(status_code: int) -> bool:
 
 
 def _handle_dicomweb_error(err: HTTPError, op: str) -> NoReturn:
+    assert err.response
     status_code = err.response.status_code
     status_phrase = HTTPStatus(status_code).phrase
     if _is_retriable_error(status_code):
