@@ -2,6 +2,7 @@
 
 ## Top
 
+- Upgrade psycopg on RADIS
 - Exclude SR and PR when in pseudonymization mode
 - Cancel processing tasks actively
   -- When cancelling a job we currenty wait for an already processing task to be completed before setting the job as canceled
