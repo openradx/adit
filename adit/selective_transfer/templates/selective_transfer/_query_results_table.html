@@ -1,4 +1,4 @@
-{% load person_name_from_dicom filter_modalities join_if_list from core_extras %}
+{% load combine_datetime person_name_from_dicom filter_modalities join_if_list from core_extras %}
 <table class="table">
     <thead>
         <tr>
@@ -6,7 +6,7 @@
             <th class="text-nowrap">Patient ID</th>
             <th class="text-nowrap">Patient Name</th>
             <th class="text-nowrap">Birth Date</th>
-            <th class="text-nowrap">Study Date</th>
+            <th class="text-nowrap">Study Date/Time</th>
             <th class="text-nowrap">Modality</th>
             <th class="text-nowrap">Study Description</th>
             <th class="text-nowrap"># Images</th>
@@ -25,12 +25,13 @@
                 <td>{{ result.PatientID }}</td>
                 <td>{{ result.PatientName|person_name_from_dicom|title }}</td>
                 <td>{{ result.PatientBirthDate|date:"SHORT_DATE_FORMAT" }}</td>
-                <td>{{ result.StudyDate|date:"SHORT_DATE_FORMAT" }}</td>
+                {% combine_datetime result.StudyDate result.StudyTime as study_datetime %}
+                <td>{{ study_datetime|date:"SHORT_DATETIME_FORMAT" }}</td>
                 {% filter_modalities result.ModalitiesInStudy as modalities %}
-                    <td>{{ modalities|join_if_list:", "|default:"—" }}</td>
-                    <td>{{ result.StudyDescription }}</td>
-                    <td>{{ result.NumberOfStudyRelatedInstances }}</td>
-                </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+                <td>{{ modalities|join_if_list:", "|default:"—" }}</td>
+                <td>{{ result.StudyDescription }}</td>
+                <td>{{ result.NumberOfStudyRelatedInstances }}</td>
+            </tr>
+        {% endfor %}
+    </tbody>
+</table>
