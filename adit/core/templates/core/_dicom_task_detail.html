@@ -28,6 +28,12 @@
         <dd class="col-sm-9">
             {{ task.source }}
         </dd>
+        {% if task.lines %}
+            <dt class="col-sm-3">Excel Lines</dt>
+            <dd class="col-sm-9">
+                {{ task.lines|join:", " }}
+            </dd>
+        {% endif %}
         {% if user.is_staff %}
             <dt class="col-sm-3">Created By</dt>
             <dd class="col-sm-9">
