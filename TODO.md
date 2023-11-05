@@ -143,6 +143,7 @@
   -- <https://github.com/taskipy/taskipy>
   -- <https://github.com/nat-n/poethepoet>
   -- <https://just.systems/>
+  -- <https://taskfile.dev/>
 - Make a job urgent retrospectively (maybe only staff members can do this)
   -- A current workaround is to cancel the job, change urgency with Django Admin and then resume the job
 - Try to bring channels_liver_server in official pytest_django release

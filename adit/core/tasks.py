@@ -187,11 +187,11 @@ class ProcessDicomTask(AbortableCeleryTask):
 
             with Lock("update_job_after_task"):
                 dicom_job.refresh_from_db()
-                update_job_status(dicom_job)
+                job_finished = update_job_status(dicom_job)
                 dicom_job.end = timezone.now()
                 dicom_job.save()
 
-            if dicom_job.send_finished_mail:
+            if job_finished and dicom_job.send_finished_mail:
                 send_job_finished_mail(dicom_job)
 
             logger.info("%s ended.", dicom_job)
