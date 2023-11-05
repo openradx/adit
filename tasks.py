@@ -396,6 +396,7 @@ def publish_client(ctx: Context):
 
     - Make sure PyPI API token is set: poetry config pypi-token.pypi your-api-token
     - Set version in adit_client/pyproject.toml
+    - Execute this command
     """
     with ctx.cd("adit_client"):
         run_cmd(ctx, "poetry publish --build")

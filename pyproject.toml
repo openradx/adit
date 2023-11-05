@@ -81,6 +81,7 @@ ruff = "^0.0.291"
 time-machine = "^2.1.0"
 django-browser-reload = "^1.11.0"
 pywatchman = "^1.4.1"
+vermin = "^1.5.2"
 
 [tool.pyright]
 ignore = ["**/migrations"]
