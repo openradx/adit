@@ -279,7 +279,12 @@ class DicomJob(models.Model):
 
     @property
     def is_restartable(self):
-        return self.status not in [self.Status.UNVERIFIED, self.Status.IN_PROGRESS]
+        return self.status in [
+            self.Status.CANCELED,
+            self.Status.SUCCESS,
+            self.Status.WARNING,
+            self.Status.FAILURE,
+        ]
 
     @property
     def processed_tasks(self):
