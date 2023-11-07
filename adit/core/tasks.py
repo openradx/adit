@@ -21,6 +21,7 @@ from adit.accounts.models import User
 
 from .errors import DicomConnectionError, OutOfDiskSpaceError
 from .models import AppSettings, DicomFolder, DicomJob, DicomTask
+from .types import DicomLogEntry
 from .utils.mail import (
     send_job_finished_mail,
     send_mail_to_admins,
@@ -110,9 +111,10 @@ class ProcessDicomTask(AbortableCeleryTask):
         dicom_task = self.dicom_task_class.objects.get(id=task_id)
 
         try:
-            status, message = self.process_dicom_task(dicom_task)
+            status, message, logs = self.process_dicom_task(dicom_task)
             dicom_task.status = status
             dicom_task.message = message
+            dicom_task.log = "\n".join([log["message"] for log in logs])
         except Retry as err:
             # When the task is rescheduled a Retry will be raised that must be
             # passed through to Celery.
@@ -196,7 +198,9 @@ class ProcessDicomTask(AbortableCeleryTask):
 
             logger.info("%s ended.", dicom_job)
 
-    def process_dicom_task(self, dicom_task: DicomTask) -> tuple[DicomTask.Status, str]:
+    def process_dicom_task(
+        self, dicom_task: DicomTask
+    ) -> tuple[DicomTask.Status, str, list[DicomLogEntry]]:
         logger.info("%s started.", dicom_task)
 
         dicom_job = dicom_task.job
@@ -208,7 +212,7 @@ class ProcessDicomTask(AbortableCeleryTask):
             dicom_job.status == DicomJob.Status.CANCELING
             or dicom_task.status == DicomTask.Status.CANCELED
         ):
-            return (DicomTask.Status.CANCELED, "Task was canceled.")
+            return (DicomTask.Status.CANCELED, "Task was canceled.", [])
 
         if dicom_task.status != dicom_task.Status.PENDING:
             raise AssertionError(f"Invalid {dicom_task} status: {dicom_task.get_status_display()}")
@@ -250,7 +254,7 @@ class ProcessDicomTask(AbortableCeleryTask):
 
         return self.handle_dicom_task(dicom_task)
 
-    def handle_dicom_task(self, dicom_task) -> tuple[DicomTask.Status, str]:
+    def handle_dicom_task(self, dicom_task) -> tuple[DicomTask.Status, str, list[DicomLogEntry]]:
         """Does the actual work of the dicom task.
 
         Should return a tuple of the final status of that task and a message that is

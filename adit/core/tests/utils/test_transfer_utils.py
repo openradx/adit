@@ -81,7 +81,7 @@ def test_transfer_to_server_succeeds(
     celery_task_mock = mocker.create_autospec(CeleryTask)
 
     # Act
-    (status, message) = TransferExecutor(task, celery_task_mock).start()
+    (status, message, logs) = TransferExecutor(task, celery_task_mock).start()
 
     # Assert
     source_operator_mock.download_study.assert_called_with(
@@ -96,6 +96,7 @@ def test_transfer_to_server_succeeds(
 
     assert status == TransferTask.Status.SUCCESS
     assert message == "Transfer task completed successfully."
+    assert logs == []
 
 
 @pytest.mark.django_db
@@ -141,7 +142,7 @@ def test_transfer_to_folder_succeeds(
     mocker.patch("adit.core.utils.transfer_utils.os.mkdir", autospec=True)
 
     # Act
-    (status, message) = TransferExecutor(task, celery_task_mock).start()
+    (status, message, logs) = TransferExecutor(task, celery_task_mock).start()
 
     # Assert
     download_path = source_operator_mock.download_study.call_args.kwargs["dest_folder"]
@@ -149,6 +150,7 @@ def test_transfer_to_folder_succeeds(
 
     assert status == TransferTask.Status.SUCCESS
     assert message == "Transfer task completed successfully."
+    assert logs == []
 
 
 @pytest.mark.django_db
@@ -192,7 +194,7 @@ def test_transfer_to_archive_succeeds(
     celery_task_mock = mocker.create_autospec(CeleryTask)
 
     # Act
-    (status, message) = TransferExecutor(task, celery_task_mock).start()
+    (status, message, logs) = TransferExecutor(task, celery_task_mock).start()
 
     # Assert
     source_operator_mock.find_patients.assert_called_once()
@@ -201,3 +203,4 @@ def test_transfer_to_archive_succeeds(
 
     assert status == TransferTask.Status.SUCCESS
     assert message == "Transfer task completed successfully."
+    assert logs == []

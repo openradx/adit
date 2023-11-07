@@ -26,6 +26,7 @@ from pynetdicom.events import Event
 
 from ..errors import DicomCommunicationError, OutOfDiskSpaceError
 from ..models import DicomServer
+from ..types import DicomLogEntry
 from .dicom_dataset import QueryDataset, ResultDataset
 from .dicom_utils import (
     convert_to_python_regex,
@@ -58,6 +59,16 @@ class DicomOperator:
         )
         # TODO: also make retries and timeouts possible in DicomWebConnector
         self.dicom_web_connector = DicomWebConnector(server)
+
+        self.logs: list[DicomLogEntry] = []
+
+    def get_logs(self) -> list[DicomLogEntry]:
+        return self.dimse_connector.logs + self.dicom_web_connector.logs + self.logs
+
+    def clear_logs(self) -> None:
+        self.dimse_connector.logs.clear()
+        self.dicom_web_connector.logs.clear()
+        self.logs.clear()
 
     def abort(self) -> None:
         self.dimse_connector.abort_connection()
@@ -602,16 +613,19 @@ class DicomOperator:
                     if remaining_image_uids == image_uids:
                         logger.error("No images of series %s received.", series_uid)
                         receiving_errors.append(
-                            DicomCommunicationError("Failed to download all images with C-MOVE.")
+                            DicomCommunicationError("Failed to fetch all images with C-MOVE.")
                         )
 
-                    logger.error(
+                    logger.warn(
                         "These images of series %s were not received: %s",
                         series_uid,
                         ", ".join(remaining_image_uids),
                     )
-                    receiving_errors.append(
-                        DicomCommunicationError("Failed to download some images with C-MOVE.")
+                    self.logs.append(
+                        {
+                            "level": "Warning",
+                            "message": "Failed to fetch some images with C-MOVE.",
+                        }
                     )
 
             async def handle_received_file(filename: str, metadata: Metadata):
@@ -647,7 +661,7 @@ class DicomOperator:
                     subscribe_task.cancel()
                     break
 
-                # Start the timeout check only after the C-MOVE operation finished
+                # Start checking the timeout only after the C-MOVE operation is finished
                 if not c_move_finished_event.is_set():
                     continue
 
@@ -658,17 +672,10 @@ class DicomOperator:
                 if time_since_last_image > settings.C_MOVE_DOWNLOAD_TIMEOUT:
                     # Don't accept any more images
                     subscribe_task.cancel()
-
                     logger.error(
                         "C-MOVE download timed out after %d seconds.",
                         round(time_since_last_image),
                     )
-
-                    # We have to call this before aborting the connection because this
-                    # can raise an exception with C-MOVE and we need the info then
-                    # if all images were received or not.
-                    check_images_received()
-                    self.dimse_connector.abort_connection()
                     break
 
             if not receiving_errors:

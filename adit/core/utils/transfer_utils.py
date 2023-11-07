@@ -13,6 +13,7 @@ from django.conf import settings
 from pydicom import Dataset
 
 from ..models import DicomNode, TransferTask
+from ..types import DicomLogEntry
 from .dicom_dataset import QueryDataset, ResultDataset
 from .dicom_operator import DicomOperator
 from .sanitize import sanitize_dirname
@@ -48,7 +49,7 @@ class TransferExecutor:
         if self.transfer_task.destination.node_type == DicomNode.NodeType.SERVER:
             self.dest_operator = _create_dest_operator(transfer_task)
 
-    def start(self) -> tuple[TransferTask.Status, str]:
+    def start(self) -> tuple[TransferTask.Status, str, list[DicomLogEntry]]:
         accessible_source_nodes = DicomNode.objects.accessible_by_user(
             self.transfer_task.job.owner, "source"
         )
@@ -71,7 +72,24 @@ class TransferExecutor:
             else:
                 self._transfer_to_folder()
 
-        return (TransferTask.Status.SUCCESS, "Transfer task completed successfully.")
+        logs: list[DicomLogEntry] = []
+        for log in self.source_operator.get_logs():
+            logs.append(log)
+        self.source_operator.clear_logs()
+
+        if self.dest_operator:
+            for log in self.dest_operator.get_logs():
+                logs.append(log)
+            self.dest_operator.clear_logs()
+
+        status: TransferTask.Status = TransferTask.Status.SUCCESS
+        message: str = "Transfer task completed successfully."
+        for log in logs:
+            if log["level"] == "Warning":
+                status = TransferTask.Status.WARNING
+                message = "Transfer task finished with warnings."
+
+        return (status, message, logs)
 
     def _transfer_to_server(self) -> None:
         with tempfile.TemporaryDirectory(prefix="adit_") as tmpdir:
