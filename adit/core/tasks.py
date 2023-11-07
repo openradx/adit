@@ -201,21 +201,24 @@ class ProcessDicomTask(AbortableCeleryTask):
     def process_dicom_task(
         self, dicom_task: DicomTask
     ) -> tuple[DicomTask.Status, str, list[DicomLogEntry]]:
-        logger.info("%s started.", dicom_task)
-
         dicom_job = dicom_task.job
 
         # Dicom jobs are canceled by the DicomJobCancelView and tasks are also revoked there,
-        # but it could happen that the task was already picked up by a worker. We then just
-        # ignore that task.
+        # but it could happen that the task was already picked up by a worker or under rare
+        # circumstances will nevertheless get picked up by a worker (e.g. the worker crashes
+        # and forgot its revoked tasks). We then just ignore that task.
         if (
-            dicom_job.status == DicomJob.Status.CANCELING
-            or dicom_task.status == DicomTask.Status.CANCELED
+            dicom_task.status == DicomTask.Status.CANCELED
+            or dicom_job.status == DicomJob.Status.CANCELED
+            or dicom_job.status == DicomJob.Status.CANCELING
         ):
+            logger.debug(f"{dicom_task} cancelled.")
             return (DicomTask.Status.CANCELED, "Task was canceled.", [])
 
         if dicom_task.status != dicom_task.Status.PENDING:
             raise AssertionError(f"Invalid {dicom_task} status: {dicom_task.get_status_display()}")
+
+        logger.info("%s started.", dicom_task)
 
         app_settings = self.app_settings_class.get()
         assert app_settings
