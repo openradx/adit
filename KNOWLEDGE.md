@@ -27,6 +27,11 @@
   i.scheduled()
   app.AsyncResult("task_id").state
 
+## Celery
+
+<https://medium.com/better-programming/python-celery-best-practices-ae182730bb81>
+<https://stackoverflow.com/a/47980598/166229>
+
 ## DICOM
 
 ### pydicom and datetime

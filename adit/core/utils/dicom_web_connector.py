@@ -11,6 +11,7 @@ from requests import HTTPError
 
 from ..errors import DicomCommunicationError, DicomConnectionError
 from ..models import DicomServer
+from ..types import DicomLogEntry
 from ..utils.dicom_dataset import QueryDataset, ResultDataset
 from ..utils.dicom_utils import read_dataset
 
@@ -64,8 +65,14 @@ def connect_to_server():
 class DicomWebConnector:
     dicomweb_client: DICOMwebClient | None = None
 
-    def __init__(self, server: DicomServer) -> None:
+    def __init__(
+        self,
+        server: DicomServer,
+    ) -> None:
         self.server = server
+
+        # TODO: log warnings
+        self.logs: list[DicomLogEntry] = []
 
     def abort(self) -> None:
         """

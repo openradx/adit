@@ -87,7 +87,7 @@ class TestProcessDicomTask:
         mocker.patch.object(
             ProcessDicomTask,
             "handle_dicom_task",
-            lambda self, dicom_task: (DicomTask.Status.SUCCESS, "Success!"),
+            lambda self, dicom_task: (DicomTask.Status.SUCCESS, "Success!", []),
         )
 
         # Act
@@ -129,7 +129,7 @@ class TestProcessDicomTask:
         mocker.patch.object(
             ProcessDicomTask,
             "handle_dicom_task",
-            lambda self, dicom_task: (DicomTask.Status.FAILURE, "Failure!"),
+            lambda self, dicom_task: (DicomTask.Status.FAILURE, "Failure!", []),
         )
 
         # Act

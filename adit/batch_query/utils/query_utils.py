@@ -5,6 +5,7 @@ from django.conf import settings
 from django.template.defaultfilters import pluralize
 
 from adit.core.models import DicomNode
+from adit.core.types import DicomLogEntry
 from adit.core.utils.dicom_dataset import QueryDataset, ResultDataset
 from adit.core.utils.dicom_operator import DicomOperator
 
@@ -30,7 +31,7 @@ class QueryExecutor:
 
         self.operator = _create_source_operator(query_task)
 
-    def start(self) -> tuple[BatchQueryTask.Status, str]:
+    def start(self) -> tuple[BatchQueryTask.Status, str, list[DicomLogEntry]]:
         accessible_source_nodes = DicomNode.objects.accessible_by_user(
             self.query_task.job.owner, "source"
         )
@@ -50,7 +51,15 @@ class QueryExecutor:
 
         BatchQueryResult.objects.bulk_create(results)
 
-        return (BatchQueryTask.Status.SUCCESS, msg)
+        status: BatchQueryTask.Status = BatchQueryTask.Status.SUCCESS
+        logs = self.operator.get_logs()
+        for log in logs:
+            if log["level"] == "Warning":
+                status = BatchQueryTask.Status.WARNING
+
+        self.operator.clear_logs()
+
+        return (status, msg, logs)
 
     def _fetch_patient(self) -> ResultDataset:
         patient_id = self.query_task.patient_id

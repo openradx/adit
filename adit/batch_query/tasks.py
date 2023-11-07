@@ -5,6 +5,7 @@ from adit.core.tasks import (
     ProcessDicomJob,
     ProcessDicomTask,
 )
+from adit.core.types import DicomLogEntry
 
 from .models import BatchQueryJob, BatchQuerySettings, BatchQueryTask
 from .utils.query_utils import QueryExecutor
@@ -14,7 +15,9 @@ class ProcessBatchQueryTask(ProcessDicomTask):
     dicom_task_class = BatchQueryTask
     app_settings_class = BatchQuerySettings
 
-    def handle_dicom_task(self, dicom_task) -> tuple[BatchQueryTask.Status, str]:
+    def handle_dicom_task(
+        self, dicom_task
+    ) -> tuple[BatchQueryTask.Status, str, list[DicomLogEntry]]:
         return QueryExecutor(dicom_task, self).start()
 
 

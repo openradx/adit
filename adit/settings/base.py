@@ -348,13 +348,13 @@ CELERY_TASK_ANNOTATIONS = {"*": {"max_retries": 100}}
 CELERY_TASK_QUEUE_MAX_PRIORITY = 10
 CELERY_TASK_DEFAULT_PRIORITY = 5
 
-# Only non prefetched tasks can be sorted by their priority. So we only
-# prefetch only one task at a time.
+# Only non prefetched tasks can be sorted by their priority. So we prefetch
+# only one task at a time.
 CELERY_WORKER_PREFETCH_MULTIPLIER = 1
 
-# Not sure if this is really necessary for priorities to work, but saw this mentioned
-# https://medium.com/better-programming/python-celery-best-practices-ae182730bb81
-# https://stackoverflow.com/a/47980598/166229
+# Only acknowledge the Celery task when it was finished by the worker.
+# If the worker crashed while executing the task it will be re-executed
+# when the worker is up again
 CELERY_TASK_ACKS_LATE = True
 
 # Flower is integrated in ADIT by using a reverse proxy (django-revproxy).
@@ -437,7 +437,7 @@ DICOM_EXPLORER_RESULT_LIMIT = 101
 DICOM_EXPLORER_RESPONSE_TIMEOUT = 3  # seconds
 
 # The timeout we wait for images of a C-MOVE download
-C_MOVE_DOWNLOAD_TIMEOUT = 100  # seconds
+C_MOVE_DOWNLOAD_TIMEOUT = 30  # seconds
 
 # Show DICOM debug messages of pynetdicom
 ENABLE_DICOM_DEBUG_LOGGER = False

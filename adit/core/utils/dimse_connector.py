@@ -10,7 +10,7 @@ from django.conf import settings
 from pydicom import Dataset
 from pydicom.errors import InvalidDicomError
 from pynetdicom import debug_logger
-from pynetdicom._globals import STATUS_PENDING, STATUS_SUCCESS, STATUS_WARNING
+from pynetdicom._globals import STATUS_FAILURE, STATUS_PENDING, STATUS_SUCCESS, STATUS_WARNING
 from pynetdicom.ae import ApplicationEntity as AE
 from pynetdicom.association import Association
 from pynetdicom.events import EVT_C_STORE, Event
@@ -35,6 +35,7 @@ from pynetdicom.status import code_to_category
 
 from ..errors import DicomCommunicationError, DicomConnectionError
 from ..models import DicomServer
+from ..types import DicomLogEntry
 from ..utils.dicom_dataset import QueryDataset, ResultDataset
 from ..utils.dicom_utils import has_wildcards, read_dataset
 
@@ -119,6 +120,7 @@ class DimseConnector:
         self.connection_timeout = connection_timeout
         self.dimse_timeout = dimse_timeout
         self.network_timeout = network_timeout
+        self.logs: list[DicomLogEntry] = []
 
         if settings.ENABLE_DICOM_DEBUG_LOGGER:
             debug_logger()  # Debug mode of pynetdicom
@@ -418,10 +420,41 @@ class DimseConnector:
                     "Connection timed out, was aborted or received invalid response."
                 )
 
-            logger.debug("Received %s status response:\n%s", op, status)
-
             status_category = code_to_category(status.Status)
-            if status_category not in [STATUS_SUCCESS, STATUS_PENDING]:
+
+            logger.debug(f"Received {op} status response [{status_category}]:\n{status}")
+
+            if status_category in [STATUS_SUCCESS, STATUS_WARNING]:
+                # Optional operation primitive parameters
+                # https://pydicom.github.io/pynetdicom/dev/reference/generated/pynetdicom.dimse_primitives.C_GET.html
+                # https://pydicom.github.io/pynetdicom/dev/reference/generated/pynetdicom.dimse_primitives.C_MOVE.html
+                completed_suboperations: int | None = status.get("NumberOfCompletedSuboperations")
+                failed_suboperations: int | None = status.get("NumberOfFailedSuboperations")
+                warning_suboperations: int | None = status.get("NumberOfWarningSuboperations")
+
+                if failed_suboperations or warning_suboperations:
+                    # On some PACS (GE and Synapse) we get a SUCCESS response even when all
+                    # sub-operations failed.
+                    # https://github.com/pydicom/pynetdicom/issues/552
+                    if failed_suboperations and not completed_suboperations:
+                        raise DicomCommunicationError("All sub-operations failed.")
+
+                    if failed_suboperations and completed_suboperations:
+                        message = f"{failed_suboperations} sub-operations failed:\n{status}"
+                        self.logs.append({"level": "Warning", "message": message})
+                        logger.warn(message)
+
+                    if warning_suboperations:
+                        message = f"{warning_suboperations} sub-operations with warnings."
+                        self.logs.append({"level": "Warning", "message": message})
+                        logger.warn(message)
+                else:
+                    if status_category == STATUS_WARNING:
+                        message = f"Unknown warning:\n{status}"
+                        self.logs.append({"level": "Warning", "message": message})
+                        logger.warn(message)
+
+            if status_category == STATUS_FAILURE:
                 if identifier:
                     failed_image_uids = identifier.get("FailedSOPInstanceUIDList", [])
                     if failed_image_uids:
@@ -437,31 +470,3 @@ class DimseConnector:
                 raise DicomCommunicationError(
                     f"Unexpected error during {op} [{status_category}]:\n{status}"
                 )
-
-            if status_category == STATUS_SUCCESS:
-                # Optional operation primitive parameters
-                # https://pydicom.github.io/pynetdicom/dev/reference/generated/pynetdicom.dimse_primitives.C_GET.html
-                # https://pydicom.github.io/pynetdicom/dev/reference/generated/pynetdicom.dimse_primitives.C_MOVE.html
-                completed_suboperations: int | None = status.get("NumberOfCompletedSuboperations")
-                failed_suboperations: int | None = status.get("NumberOfFailedSuboperations")
-                remaining_suboperations: int | None = status.get("NumberOfRemainingSuboperations")
-                warning_suboperations: int | None = status.get("NumberOfWarningSuboperations")
-
-                if remaining_suboperations:
-                    raise AssertionError(
-                        "No remaining sub-operations should be left when operation succeeded."
-                    )
-
-                # On some PACS (GE and Synapse) we get a SUCCESS response even when all
-                # sub-operations failed.
-                # https://github.com/pydicom/pynetdicom/issues/552
-                if failed_suboperations and completed_suboperations == 0:
-                    raise DicomCommunicationError("All sub-operations failed.")
-
-                # TODO: We should somehow log this into the task log, so that is visible to the user
-
-                if warning_suboperations:
-                    logger.warn(f"{warning_suboperations} sub-operations with warnings.")
-
-                if failed_suboperations:
-                    logger.error(f"{failed_suboperations} sub-operations failed.")

@@ -2,7 +2,12 @@
 
 ## Top
 
+- Use DicomLogEntry during C-STORE
+- Allow to restart or cancel specific dicom task
+- Fix dicom explorer search over Accession Number
+- Make warning when only one image fails
 - Upgrade psycopg on RADIS
+- Use django-stubs instead of django-types (also on RADIS)
 - Exclude SR and PR when in pseudonymization mode
 - Cancel processing tasks actively
   -- When cancelling a job we currenty wait for an already processing task to be completed before setting the job as canceled
