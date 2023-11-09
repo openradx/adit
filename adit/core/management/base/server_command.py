@@ -48,7 +48,7 @@ class ServerCommand(BaseCommand, ABC):
 
             def inner_run():
                 if self._popen is not None:
-                    self._popen.kill()
+                    self._popen.terminate()
 
                 args = sys.argv.copy()
                 args.remove("--autoreload")
@@ -98,11 +98,11 @@ class ServerCommand(BaseCommand, ABC):
     @abstractmethod
     def on_shutdown(self) -> None:
         """
-        A callback method that is called when the application is shutting down.
+        A callback method that is called when the server should shutdown.
 
-        Can be used to perform any necessary cleanup. Is called by using Ctrl-C or
-        when Docker container is stopped. It is not called during autoreload in
-        dev mode (as KILL signal is send there).
+        Called when CTRL-C is pressed, the Docker container is stopped or when
+        an autoreload is triggered. It should be used to clean up any resources
+        and force the server to shut down.
         """
         raise NotImplementedError
 
