@@ -47,8 +47,8 @@ class ServerCommand(BaseCommand, ABC):
             self.stdout.write(f"Autoreload enabled for {self.server_name}.")
 
             def inner_run():
-                if self._popen:
-                    self._popen.terminate()
+                if self._popen is not None:
+                    self._popen.kill()
 
                 args = sys.argv.copy()
                 args.remove("--autoreload")
@@ -86,11 +86,24 @@ class ServerCommand(BaseCommand, ABC):
         self._stop.set()
 
     @abstractmethod
-    def run_server(self, **options):
+    def run_server(self, **options) -> None:
+        """
+        The abstract method that should be implemented by subclasses to do the work.
+
+        Args:
+            **options: Additional keyword arguments parsed from the command line.
+        """
         raise NotImplementedError
 
     @abstractmethod
-    def on_shutdown(self):
+    def on_shutdown(self) -> None:
+        """
+        A callback method that is called when the application is shutting down.
+
+        Can be used to perform any necessary cleanup. Is called by using Ctrl-C or
+        when Docker container is stopped. It is not called during autoreload in
+        dev mode (as KILL signal is send there).
+        """
         raise NotImplementedError
 
 
