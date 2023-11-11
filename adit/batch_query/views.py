@@ -58,6 +58,8 @@ class BatchQueryJobCreateView(BatchQueryLockedMixin, DicomJobCreateView):
     form_class = BatchQueryJobForm
     template_name = "batch_query/batch_query_job_form.html"
     permission_required = "batch_query.add_batchqueryjob"
+    default_priority = settings.BATCH_QUERY_DEFAULT_PRIORITY
+    urgent_priority = settings.BATCH_QUERY_URGENT_PRIORITY
     object: BatchQueryJob
 
     def get_initial(self) -> dict[str, Any]:
@@ -80,17 +82,7 @@ class BatchQueryJobCreateView(BatchQueryLockedMixin, DicomJobCreateView):
         return initial
 
     def form_valid(self, form):
-        user = self.request.user
-        form.instance.owner = user
-        response = super().form_valid(form)
-
-        job = self.object  # set by super().form_valid(form)
-        if user.is_staff or settings.BATCH_QUERY_UNVERIFIED:
-            job.status = BatchQueryJob.Status.PENDING
-            job.save()
-            job.delay()
-
-        return response
+        return super().form_valid(form, settings.BATCH_QUERY_UNVERIFIED)
 
 
 class BatchQueryJobDetailView(BatchQueryLockedMixin, DicomJobDetailView):
@@ -113,6 +105,8 @@ class BatchQueryJobDeleteView(BatchQueryLockedMixin, DicomJobDeleteView):
 
 class BatchQueryJobVerifyView(BatchQueryLockedMixin, DicomJobVerifyView):
     model = BatchQueryJob
+    default_priority = settings.BATCH_QUERY_DEFAULT_PRIORITY
+    urgent_priority = settings.BATCH_QUERY_URGENT_PRIORITY
 
 
 class BatchQueryJobCancelView(BatchQueryLockedMixin, DicomJobCancelView):
@@ -121,14 +115,20 @@ class BatchQueryJobCancelView(BatchQueryLockedMixin, DicomJobCancelView):
 
 class BatchQueryJobResumeView(BatchQueryLockedMixin, DicomJobResumeView):
     model = BatchQueryJob
+    default_priority = settings.BATCH_QUERY_DEFAULT_PRIORITY
+    urgent_priority = settings.BATCH_QUERY_URGENT_PRIORITY
 
 
 class BatchQueryJobRetryView(BatchQueryLockedMixin, DicomJobRetryView):
     model = BatchQueryJob
+    default_priority = settings.BATCH_QUERY_DEFAULT_PRIORITY
+    urgent_priority = settings.BATCH_QUERY_URGENT_PRIORITY
 
 
 class BatchQueryJobRestartView(BatchQueryLockedMixin, DicomJobRestartView):
     model = BatchQueryJob
+    default_priority = settings.BATCH_QUERY_DEFAULT_PRIORITY
+    urgent_priority = settings.BATCH_QUERY_URGENT_PRIORITY
 
 
 class BatchQueryTaskDetailView(

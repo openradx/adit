@@ -1,6 +1,5 @@
 from typing import TYPE_CHECKING
 
-from celery import current_app
 from django.contrib.postgres.fields import ArrayField
 from django.db import models
 from django.urls import reverse
@@ -23,9 +22,6 @@ class BatchTransferJob(TransferJob):
 
     if TYPE_CHECKING:
         tasks = RelatedManager["BatchTransferTask"]()
-
-    def delay(self):
-        current_app.send_task("adit.batch_transfer.tasks.ProcessBatchTransferJob", (self.id,))
 
     def get_absolute_url(self):
         return reverse("batch_transfer_job_detail", args=[self.id])

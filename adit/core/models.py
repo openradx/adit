@@ -1,8 +1,8 @@
-from abc import abstractmethod
-from datetime import time
 from typing import TYPE_CHECKING, Callable, Generic, Literal, TypeVar
 
 from django.conf import settings
+from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
+from django.contrib.contenttypes.models import ContentType
 from django.contrib.postgres.fields import ArrayField
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
@@ -37,28 +37,12 @@ class CoreSettings(models.Model):
         return cls.objects.first()
 
 
-def slot_time(hour, minute):
-    return time(hour, minute)
-
-
 class AppSettings(models.Model):
     id: int
     # Lock the creation of new jobs
     locked = models.BooleanField(default=False)
     # Suspend the background processing.
     suspended = models.BooleanField(default=False)
-    # Must be set in UTC time as Celery workers can't figure out another time zone.
-    slot_begin_time = models.TimeField(
-        default=slot_time(22, 0),
-        help_text=f"Must be set in {settings.TIME_ZONE} time zone.",
-    )
-    # Must be set in UTC time as Celery workers can't figure out another time zone.
-    slot_end_time = models.TimeField(
-        default=slot_time(8, 0),
-        help_text=f"Must be set in {settings.TIME_ZONE} time zone.",
-    )
-    # Timeout between transfer tasks
-    transfer_timeout = models.IntegerField(default=3)
 
     class Meta:
         abstract = True
@@ -294,10 +278,6 @@ class DicomJob(models.Model):
         )
         return self.tasks.exclude(status__in=non_processed)
 
-    @abstractmethod
-    def delay(self):
-        raise NotImplementedError()
-
 
 class TransferJob(DicomJob):
     class Meta(DicomJob.Meta):
@@ -318,6 +298,33 @@ class TransferJob(DicomJob):
     archive_password = models.CharField(blank=True, max_length=50)
 
 
+class QueuedTask(models.Model):
+    id: int
+    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
+    object_id = models.PositiveIntegerField()
+    content_object = GenericForeignKey("content_type", "object_id")
+    priority = models.PositiveIntegerField()
+    eta = models.DateTimeField(blank=True, null=True)
+    created = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            UniqueConstraint(
+                fields=["content_type", "object_id"],
+                name="unique_queued_task_per_dicom_task",
+            )
+        ]
+        indexes = [
+            models.Index(
+                fields=["eta", "priority", "created"],
+                name="eta_priority_created_idx",
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.__class__.__name__} [{self.content_type} {self.object_id}]"
+
+
 class DicomTask(models.Model):
     class Status(models.TextChoices):
         PENDING = "PE", "Pending"
@@ -332,7 +339,6 @@ class DicomTask(models.Model):
     job = models.ForeignKey(DicomJob, on_delete=models.CASCADE, related_name="tasks")
     source_id: int
     source = models.ForeignKey(DicomNode, related_name="+", on_delete=models.PROTECT)
-    celery_task_id = models.CharField(max_length=255)
     get_status_display: Callable[[], str]
     status = models.CharField(
         max_length=2,
@@ -345,6 +351,7 @@ class DicomTask(models.Model):
     created = models.DateTimeField(auto_now_add=True)
     start = models.DateTimeField(null=True, blank=True)
     end = models.DateTimeField(null=True, blank=True)
+    _queued = GenericRelation(QueuedTask)
 
     class Meta:
         abstract = True
@@ -352,6 +359,10 @@ class DicomTask(models.Model):
 
     def __str__(self):
         return f"{self.__class__.__name__} [Job ID {self.job.id}, Task ID {self.id}]"
+
+    @property
+    def queued(self) -> QueuedTask | None:
+        return self._queued.first()
 
 
 class TransferTask(DicomTask):

@@ -1,7 +1,11 @@
 from django.apps import AppConfig
 from django.db.models.signals import post_migrate
 
-from adit.core.site import register_job_stats_collector, register_main_menu_item
+from adit.core.site import (
+    register_dicom_processor,
+    register_job_stats_collector,
+    register_main_menu_item,
+)
 
 SECTION_NAME = "Batch Query"
 
@@ -17,10 +21,16 @@ class BatchQueryConfig(AppConfig):
 
 
 def register_app():
+    from .models import BatchQueryTask
+    from .processors import ProcessBatchQueryTask
+
     register_main_menu_item(
         url_name="batch_query_job_create",
         label=SECTION_NAME,
     )
+
+    model_label = f"{BatchQueryTask._meta.app_label}.{BatchQueryTask._meta.model_name}"
+    register_dicom_processor(model_label, ProcessBatchQueryTask)
 
     register_job_stats_collector(collect_job_stats)
 

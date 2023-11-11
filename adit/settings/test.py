@@ -1,3 +1,5 @@
+# TODO: not sure if we still need this
+
 from .development import *  # noqa: F403
 
 # We must force the Celery test worker (in a subprocess started inside a test) to

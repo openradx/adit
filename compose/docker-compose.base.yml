@@ -5,6 +5,8 @@ x-app: &default-app
     - /mnt:/mnt
   depends_on:
     - postgres
+    - rabbit
+    - redis
   environment:
     USE_DOCKER: 1
     DATABASE_URL: "psql://postgres:postgres@postgres:5432/postgres"
@@ -45,10 +47,10 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
-  worker_default:
+  dicom_worker:
     <<: *default-app
 
-  worker_dicom_task:
+  celery_worker:
     <<: *default-app
 
   celery_beat:
@@ -83,7 +85,7 @@ services:
       - rabbit_data:/var/lib/rabbitmq
 
   redis:
-    image: redis:7.0.12
+    image: redis:7.2.3
     expose:
       - "6379"
     volumes:

@@ -66,6 +66,17 @@ def channels_live_server(request):
 
 
 @pytest.fixture
+def dicom_worker():
+    def start_worker():
+        call_command("dicom_worker", "-p", "1")
+
+    p = Process(target=start_worker)
+    p.start()
+    yield
+    p.terminate()
+
+
+@pytest.fixture
 def adit_celery_worker():
     def start_worker():
         call_command("celery_worker", "-Q", "test_queue")

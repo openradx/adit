@@ -7,6 +7,7 @@ from adit.accounts.models import User
 from adit.core.mixins import LockedMixin
 from adit.core.utils.dicom_dataset import QueryDataset, ResultDataset
 from adit.core.utils.dicom_operator import DicomOperator
+from adit.core.utils.job_utils import queue_pending_tasks
 
 from .apps import SECTION_NAME
 from .forms import SelectiveTransferJobForm
@@ -100,6 +101,11 @@ class SelectiveTransferJobCreateMixin:
         if user.is_staff or settings.SELECTIVE_TRANSFER_UNVERIFIED:
             job.status = SelectiveTransferJob.Status.PENDING
             job.save()
-            job.delay()
+
+            queue_pending_tasks(
+                job,
+                settings.SELECTIVE_TRANSFER_DEFAULT_PRIORITY,
+                settings.SELECTIVE_TRANSFER_URGENT_PRIORITY,
+            )
 
         return job

@@ -26,13 +26,13 @@ from django_tables2 import SingleTableMixin
 from django_tables2.tables import Table
 from revproxy.views import ProxyView
 
-from ..celery import app as celery_app
 from .forms import BroadcastForm
 from .mixins import PageSizeSelectMixin, RelatedFilterMixin
 from .models import CoreSettings, DicomJob, DicomTask
 from .site import job_stats_collectors
 from .tasks import broadcast_mail
 from .types import AuthenticatedHttpRequest
+from .utils.job_utils import queue_pending_tasks
 
 THEME = "theme"
 
@@ -155,14 +155,29 @@ class DicomJobCreateView(
     form_class: type[ModelForm]
     template_name: str
     permission_required: str
+    default_priority: int
+    urgent_priority: int
     request: AuthenticatedHttpRequest
+    object: DicomJob
 
     def get_form_kwargs(self) -> dict[str, Any]:
         kwargs = super().get_form_kwargs()
-
         kwargs["user"] = self.request.user
-
         return kwargs
+
+    def form_valid(self, form: ModelForm, transfer_unverified: bool) -> HttpResponse:
+        user = self.request.user
+        form.instance.owner = user
+        response = super().form_valid(form)
+
+        job = self.object  # set by super().form_valid(form)
+        if user.is_staff or transfer_unverified:
+            job.status = DicomJob.Status.PENDING
+            job.save()
+
+            queue_pending_tasks(job, self.default_priority, self.urgent_priority)
+
+        return response
 
 
 class DicomJobDetailView(
@@ -207,10 +222,6 @@ class DicomJobDeleteView(LoginRequiredMixin, DeleteView):
                 f"Job with ID {job.id} and status {job.get_status_display()} is not deletable."
             )
 
-        for dicom_task in job.tasks.all():
-            if dicom_task.celery_task_id:
-                celery_app.control.revoke(dicom_task.celery_task_id)
-
         # As SuccessMessageMixin does not work in DeleteView we have to do
         # it manually (https://code.djangoproject.com/ticket/21936)
         messages.success(request, self.success_message % job.__dict__)
@@ -219,6 +230,8 @@ class DicomJobDeleteView(LoginRequiredMixin, DeleteView):
 
 class DicomJobVerifyView(LoginRequiredMixin, SingleObjectMixin, View):
     model: type[DicomJob]
+    default_priority: int
+    urgent_priority: int
     success_message = "Job with ID %(id)d was verified"
     request: AuthenticatedHttpRequest
 
@@ -237,7 +250,7 @@ class DicomJobVerifyView(LoginRequiredMixin, SingleObjectMixin, View):
         job.status = DicomJob.Status.PENDING
         job.save()
 
-        job.delay()
+        queue_pending_tasks(job, self.default_priority, self.urgent_priority)
 
         messages.success(request, self.success_message % job.__dict__)
         return redirect(job)
@@ -260,10 +273,14 @@ class DicomJobCancelView(LoginRequiredMixin, SingleObjectMixin, View):
                 f"Job with ID {job.id} and status {job.get_status_display()} is not cancelable."
             )
 
-        dicom_tasks = job.tasks.filter(status=DicomTask.Status.PENDING)
-        for dicom_task in dicom_tasks.only("celery_task_id"):
-            if dicom_task.celery_task_id:
-                celery_app.control.revoke(dicom_task.celery_task_id)
+        dicom_tasks = job.tasks.filter(status=DicomTask.Status.PENDING).prefetch_related("queued")
+
+        # TODO: somehow do a bulk delete
+        for dicom_task in dicom_tasks:
+            queued_task = dicom_task.queued
+            if queued_task:
+                queued_task.delete()
+
         dicom_tasks.update(status=DicomTask.Status.CANCELED)
 
         tasks_in_progress_count = job.tasks.filter(status=DicomTask.Status.IN_PROGRESS).count()
@@ -283,6 +300,8 @@ class DicomJobCancelView(LoginRequiredMixin, SingleObjectMixin, View):
 
 class DicomJobResumeView(LoginRequiredMixin, SingleObjectMixin, View):
     model: type[DicomJob]
+    default_priority: int
+    urgent_priority: int
     success_message = "Job with ID %(id)d will be resumed"
     request: AuthenticatedHttpRequest
 
@@ -303,7 +322,7 @@ class DicomJobResumeView(LoginRequiredMixin, SingleObjectMixin, View):
         job.status = DicomJob.Status.PENDING
         job.save()
 
-        job.delay()
+        queue_pending_tasks(job, self.default_priority, self.urgent_priority)
 
         messages.success(request, self.success_message % job.__dict__)
         return redirect(job)
@@ -311,6 +330,8 @@ class DicomJobResumeView(LoginRequiredMixin, SingleObjectMixin, View):
 
 class DicomJobRetryView(LoginRequiredMixin, SingleObjectMixin, View):
     model: type[DicomJob]
+    default_priority: int
+    urgent_priority: int
     success_message = "Job with ID %(id)d will be retried"
     request: AuthenticatedHttpRequest
 
@@ -331,7 +352,7 @@ class DicomJobRetryView(LoginRequiredMixin, SingleObjectMixin, View):
         job.status = DicomJob.Status.PENDING
         job.save()
 
-        job.delay()
+        queue_pending_tasks(job, self.default_priority, self.urgent_priority)
 
         messages.success(request, self.success_message % job.__dict__)
         return redirect(job)
@@ -339,6 +360,8 @@ class DicomJobRetryView(LoginRequiredMixin, SingleObjectMixin, View):
 
 class DicomJobRestartView(LoginRequiredMixin, SingleObjectMixin, View):
     model: type[DicomJob]
+    default_priority: int
+    urgent_priority: int
     success_message = "Job with ID %(id)d will be restarted"
     request: AuthenticatedHttpRequest
 
@@ -360,7 +383,7 @@ class DicomJobRestartView(LoginRequiredMixin, SingleObjectMixin, View):
         job.message = ""
         job.save()
 
-        job.delay()
+        queue_pending_tasks(job, self.default_priority, self.urgent_priority)
 
         messages.success(request, self.success_message % job.__dict__)
         return redirect(job)
