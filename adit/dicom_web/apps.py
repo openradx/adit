@@ -1,5 +1,3 @@
-from datetime import time
-
 from django.apps import AppConfig
 from django.db.models.signals import post_migrate
 
@@ -21,4 +19,4 @@ def create_app_settings():
 
     settings = DicomWebSettings.get()
     if not settings:
-        DicomWebSettings.objects.create(slot_begin_time=time(8, 8), slot_end_time=time(8, 8))
+        DicomWebSettings.objects.create()

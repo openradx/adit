@@ -6,11 +6,10 @@ from django.contrib.auth.models import Group
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.urls import reverse
 from pytest_django.asserts import assertTemplateUsed
-from pytest_mock import MockerFixture
 
 from adit.accounts.factories import UserFactory
 from adit.core.factories import DicomServerFactory
-from adit.core.models import DicomServer
+from adit.core.models import DicomServer, QueuedTask
 
 from ..models import BatchTransferJob
 
@@ -73,9 +72,7 @@ def test_logged_in_user_with_permission_can_access_form(client):
     assertTemplateUsed(response, "batch_transfer/batch_transfer_job_form.html")
 
 
-def test_batch_job_created_and_enqueued_with_auto_verify(
-    mocker: MockerFixture, client, settings, grant_access, form_data
-):
+def test_batch_job_created_and_enqueued_with_auto_verify(client, settings, grant_access, form_data):
     settings.BATCH_TRANSFER_UNVERIFIED = True
     user = UserFactory.create()
     batch_transfer_group = Group.objects.get(name="batch_transfer_group")
@@ -85,19 +82,16 @@ def test_batch_job_created_and_enqueued_with_auto_verify(
     destination_server = DicomServer.objects.get(pk=form_data["destination"])
     grant_access(user, source_server, "source")
     grant_access(user, destination_server, "destination")
-    send_task_mock = mocker.patch("celery.current_app.send_task")
 
     client.post(reverse("batch_transfer_job_create"), form_data)
 
     job = BatchTransferJob.objects.first()
     assert job and job.tasks.count() == 3
-    send_task_mock.assert_called_once_with(
-        "adit.batch_transfer.tasks.ProcessBatchTransferJob", (1,)
-    )
+    assert QueuedTask.objects.count() == 3
 
 
 def test_batch_job_created_and_not_enqueued_without_auto_verify(
-    mocker: MockerFixture, client, settings, grant_access, form_data
+    client, settings, grant_access, form_data
 ):
     settings.BATCH_TRANSFER_UNVERIFIED = False
     user = UserFactory.create()
@@ -108,13 +102,12 @@ def test_batch_job_created_and_not_enqueued_without_auto_verify(
     destination_server = DicomServer.objects.get(pk=form_data["destination"])
     grant_access(user, source_server, "source")
     grant_access(user, destination_server, "destination")
-    send_task_mock = mocker.patch("celery.current_app.send_task")
 
     client.post(reverse("batch_transfer_job_create"), form_data)
 
     job = BatchTransferJob.objects.first()
     assert job and job.tasks.count() == 3
-    send_task_mock.assert_not_called()
+    assert QueuedTask.objects.count() == 0
 
 
 def test_job_cant_be_created_with_missing_fields(client, form_data):

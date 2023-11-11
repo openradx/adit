@@ -1,6 +1,5 @@
 from typing import TYPE_CHECKING
 
-from celery import current_app
 from django.db import models
 from django.urls import reverse
 
@@ -18,11 +17,6 @@ class SelectiveTransferSettings(AppSettings):
 class SelectiveTransferJob(TransferJob):
     if TYPE_CHECKING:
         tasks = RelatedManager["SelectiveTransferTask"]()
-
-    def delay(self):
-        current_app.send_task(
-            "adit.selective_transfer.tasks.ProcessSelectiveTransferJob", (self.id,)
-        )
 
     def get_absolute_url(self):
         return reverse("selective_transfer_job_detail", args=[self.id])

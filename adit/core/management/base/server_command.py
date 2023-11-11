@@ -5,6 +5,7 @@ import sys
 from abc import ABC, abstractmethod
 from datetime import datetime
 from threading import Event
+from types import FrameType
 
 from django.conf import settings
 from django.core.management.base import BaseCommand
@@ -32,13 +33,20 @@ class ServerCommand(BaseCommand, ABC):
 
     def handle(self, *args, **options):
         # SIGINT is sent by CTRL-C
-        signal.signal(
-            signal.SIGINT, lambda signum, frame: (self._on_terminate(), self.on_shutdown())
-        )
+        def on_interrupt(signum: int, frame: FrameType | None) -> None:
+            self.on_shutdown()
+            signal.signal(signal.SIGINT, signal.SIG_DFL)
+            signal.raise_signal(signal.SIGINT)
+
+        signal.signal(signal.SIGINT, on_interrupt)
+
         # SIGTERM is sent when stopping a Docker container
-        signal.signal(
-            signal.SIGTERM, lambda signum, frame: (self._on_terminate(), self.on_shutdown())
-        )
+        def on_terminate(signum: int, frame: FrameType | None) -> None:
+            self.on_shutdown()
+            signal.signal(signal.SIGTERM, signal.SIG_DFL)
+            signal.raise_signal(signal.SIGTERM)
+
+        signal.signal(signal.SIGTERM, on_terminate)
 
         self.run(**options)
 
