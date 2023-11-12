@@ -5,6 +5,7 @@ import sys
 from abc import ABC, abstractmethod
 from datetime import datetime
 from threading import Event
+from types import FrameType
 
 from django.conf import settings
 from django.core.management.base import BaseCommand
@@ -32,13 +33,22 @@ class ServerCommand(BaseCommand, ABC):
 
     def handle(self, *args, **options):
         # SIGINT is sent by CTRL-C
-        signal.signal(
-            signal.SIGINT, lambda signum, frame: (self._on_terminate(), self.on_shutdown())
-        )
+        def on_interrupt(signum: int, frame: FrameType | None) -> None:
+            self.on_shutdown()
+            self.shutdown()
+            signal.signal(signal.SIGINT, signal.SIG_DFL)
+            signal.raise_signal(signal.SIGINT)
+
+        signal.signal(signal.SIGINT, on_interrupt)
+
         # SIGTERM is sent when stopping a Docker container
-        signal.signal(
-            signal.SIGTERM, lambda signum, frame: (self._on_terminate(), self.on_shutdown())
-        )
+        def on_terminate(signum: int, frame: FrameType | None) -> None:
+            self.on_shutdown()
+            self.shutdown()
+            signal.signal(signal.SIGTERM, signal.SIG_DFL)
+            signal.raise_signal(signal.SIGTERM)
+
+        signal.signal(signal.SIGTERM, on_terminate)
 
         self.run(**options)
 
@@ -47,7 +57,7 @@ class ServerCommand(BaseCommand, ABC):
             self.stdout.write(f"Autoreload enabled for {self.server_name}.")
 
             def inner_run():
-                if self._popen:
+                if self._popen is not None:
                     self._popen.terminate()
 
                 args = sys.argv.copy()
@@ -79,30 +89,35 @@ class ServerCommand(BaseCommand, ABC):
 
             self.run_server(**options)
 
-    def _on_terminate(self):
+    def shutdown(self):
         if self._popen:
             self._popen.terminate()
 
         self._stop.set()
 
     @abstractmethod
-    def run_server(self, **options):
+    def run_server(self, **options) -> None:
+        """
+        The abstract method that should be implemented by subclasses to do the work.
+
+        Args:
+            **options: Additional keyword arguments parsed from the command line.
+        """
         raise NotImplementedError
 
     @abstractmethod
-    def on_shutdown(self):
+    def on_shutdown(self) -> None:
+        """
+        A callback method that is called when the server should shutdown.
+
+        Called when CTRL-C is pressed, the Docker container is stopped or when
+        an autoreload is triggered. It should be used to clean up any resources
+        and force the server to shut down.
+        """
         raise NotImplementedError
 
 
 class AsyncServerCommand(ServerCommand, ABC):
-    def handle(self, *args, **options):
-        # SIGINT is sent by CTRL-C
-        signal.signal(signal.SIGINT, lambda signum, frame: self._on_terminate())
-        # SIGTERM is sent when stopping a Docker container
-        signal.signal(signal.SIGTERM, lambda signum, frame: self._on_terminate())
-
-        self.run(**options)
-
     def run_server(self, **options):
         loop = asyncio.get_event_loop()
 

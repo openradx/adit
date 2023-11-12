@@ -1,7 +1,11 @@
 from .development import *  # noqa: F403
 
-# We must force the Celery test worker (in a subprocess started inside a test) to
-# use the test database.
+INSTALLED_APPS += [  # noqa: F405
+    "adit.core.tests.example_app.apps.ExampleAppConfig",
+]
+
+# We must force our background workers that a started during integration tests as
+# a subprocess to use the test database.
 if not DATABASES["default"]["NAME"].startswith("test_"):  # noqa: F405
     test_database = "test_" + DATABASES["default"]["NAME"]  # noqa: F405
     DATABASES["default"]["NAME"] = test_database  # noqa: F405

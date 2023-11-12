@@ -2,6 +2,19 @@
 
 ## Top
 
+- Before new release
+  -- test job_utils
+  -- move mixins stuff over to consumer and delete the stuff in slective transfer view (we never post there)
+  -- Rename Process... to ...Processor
+  -- Switch from Celery to Huey
+  -- Fix pyright
+  -- exclude autoreload when tests are saved (Custom Filter in server command watched files)
+  -- Text canceled task/job in test_workers.py
+
+- Upgrade REDIS server on RADIS
+- Unfix pyright and its VS code extension
+- Move over to Celery with Redis backend and get rid of RabbitMQ
+- Replace sherlock on RADIS
 - Use DicomLogEntry during C-STORE
 - Allow to restart or cancel specific dicom task
 - Fix dicom explorer search over Accession Number
@@ -126,7 +139,6 @@
 - <https://www.yergler.net/2009/09/27/nested-formsets-with-django/>
 - <http://the-frey.github.io/2014/08/18/monitoring-docker-containers-with-monit>
 - move or get rid of hijack_logger and store_log_in_task in task_utils
-- Use LRU cache for dicom explorer / collector (don't we already do this?!)
 - log debug -> info in connector also in production
 - Link owner in templates to user profile
 - Rewrite dicom_connector to use asyncio (wrap all pynetdicom calls in asyncio.to_thread)

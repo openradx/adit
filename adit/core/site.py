@@ -1,11 +1,15 @@
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from django.conf import settings
 from django.http import HttpRequest
 from django.middleware.csrf import get_token
 
+if TYPE_CHECKING:
+    from adit.core.processors import ProcessDicomTask
+
 nav_menu_items = []
 job_stats_collectors = []
+dicom_processors: dict[str, type["ProcessDicomTask"]] = {}
 
 
 def register_main_menu_item(url_name: str, label: str) -> None:
@@ -14,6 +18,10 @@ def register_main_menu_item(url_name: str, label: str) -> None:
 
 def register_job_stats_collector(job_stats):
     job_stats_collectors.append(job_stats)
+
+
+def register_dicom_processor(model_label: str, dicom_processor: type["ProcessDicomTask"]) -> None:
+    dicom_processors[model_label] = dicom_processor
 
 
 def base_context_processor(request: HttpRequest) -> dict[str, Any]:

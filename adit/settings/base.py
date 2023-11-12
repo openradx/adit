@@ -311,18 +311,8 @@ if USE_TZ:
     CELERY_TIMEZONE = TIME_ZONE
 CELERY_BROKER_URL = RABBITMQ_URL
 CELERY_WORKER_HIJACK_ROOT_LOGGER = False
+CELERY_IGNORE_RESULT = True
 CELERY_TASK_DEFAULT_QUEUE = "default_queue"
-CELERY_TASK_ROUTES = {
-    "adit.selective_transfer.tasks.ProcessSelectiveTransferTask": {
-        "queue": "dicom_task_queue",
-    },
-    "adit.batch_query.tasks.ProcessBatchQueryTask": {
-        "queue": "dicom_task_queue",
-    },
-    "adit.batch_transfer.tasks.ProcessBatchTransferTask": {
-        "queue": "dicom_task_queue",
-    },
-}
 CELERY_BEAT_SCHEDULE = {
     "check-disk-space": {
         "task": "adit.core.tasks.check_disk_space",
@@ -330,39 +320,12 @@ CELERY_BEAT_SCHEDULE = {
     }
 }
 
-# No need for a result backend as Celery Canvas is not used anymore and
-# we also log all info in the database inside the dicom task.
-CELERY_IGNORE_RESULT = True
-
-# Max retries is normally 3. We have to overwrite this, see
-# https://github.com/celery/celery/issues/976
-# Retries happen when a DICOM server is not responding, a requested
-# study is currently offline, the scheduler is rescheduling (because
-# we are outside the time slot). So we have to set this quite high.
-# None would turn it off, but we make sure that no bug let retry it
-# forever.
-CELERY_TASK_ANNOTATIONS = {"*": {"max_retries": 100}}
-
-# Settings for priority queues, see also apply_async calls in the models.
-# Requires RabbitMQ as the message broker!
-CELERY_TASK_QUEUE_MAX_PRIORITY = 10
-CELERY_TASK_DEFAULT_PRIORITY = 5
-
-# Only non prefetched tasks can be sorted by their priority. So we prefetch
-# only one task at a time.
-CELERY_WORKER_PREFETCH_MULTIPLIER = 1
-
-# Only acknowledge the Celery task when it was finished by the worker.
-# If the worker crashed while executing the task it will be re-executed
-# when the worker is up again
-CELERY_TASK_ACKS_LATE = True
-
 # Flower is integrated in ADIT by using a reverse proxy (django-revproxy).
 # This allows to use the authentication of ADIT.
 FLOWER_HOST = env.str("FLOWER_HOST", default="localhost")  # type: ignore
 FLOWER_PORT = env.int("FLOWER_PORT", default=5555)  # type: ignore
 
-# Redis is used for distributed locks (sherlock).
+# Redis is used for distributed locks
 REDIS_URL = env.str("REDIS_URL", default="redis://localhost:6379/0")  # type: ignore
 
 # Orthanc servers are integrated in ADIT by using a reverse proxy (django-revproxy).

@@ -5,16 +5,16 @@ from pydicom import Dataset
 from pytest_mock import MockerFixture
 
 from adit.accounts.factories import UserFactory
-from adit.core.utils.dicom_dataset import ResultDataset
 
 from ...factories import (
     DicomFolderFactory,
     DicomServerFactory,
 )
 from ...models import TransferJob, TransferTask
+from ...utils.dicom_dataset import ResultDataset
 from ...utils.dicom_operator import DicomOperator
 from ...utils.transfer_utils import TransferExecutor
-from ..conftest import ExampleModels
+from ..example_app.factories import ExampleTransferJobFactory, ExampleTransferTaskFactory
 
 
 @pytest.fixture
@@ -40,16 +40,15 @@ def create_resources():
 @pytest.mark.django_db
 def test_transfer_to_server_succeeds(
     mocker: MockerFixture,
-    example_models: ExampleModels,
     grant_access,
     create_resources,
 ):
     # Arrange
-    job = example_models.transfer_job_factory_class.create(
+    job = ExampleTransferJobFactory.create(
         status=TransferJob.Status.PENDING,
         archive_password="",
     )
-    task = example_models.transfer_task_factory_class.create(
+    task = ExampleTransferTaskFactory.create(
         source=DicomServerFactory(),
         destination=DicomServerFactory(),
         status=TransferTask.Status.PENDING,
@@ -103,18 +102,17 @@ def test_transfer_to_server_succeeds(
 @time_machine.travel("2020-01-01")
 def test_transfer_to_folder_succeeds(
     mocker: MockerFixture,
-    example_models: ExampleModels,
     grant_access,
     create_resources,
 ):
     # Arrange
     user = UserFactory.create(username="kai")
-    job = example_models.transfer_job_factory_class.create(
+    job = ExampleTransferJobFactory.create(
         status=TransferJob.Status.PENDING,
         archive_password="",
         owner=user,
     )
-    task = example_models.transfer_task_factory_class.create(
+    task = ExampleTransferTaskFactory.create(
         source=DicomServerFactory(),
         destination=DicomFolderFactory(),
         status=TransferTask.Status.PENDING,
@@ -146,7 +144,9 @@ def test_transfer_to_folder_succeeds(
 
     # Assert
     download_path = source_operator_mock.download_study.call_args.kwargs["dest_folder"]
-    assert download_path.match(r"adit_adit.core_1_20200101_kai/1001/20190923-080000-CT")
+    assert download_path.match(
+        rf"adit_{job._meta.app_label}_{job.id}_20200101_kai/1001/20190923-080000-CT"
+    )
 
     assert status == TransferTask.Status.SUCCESS
     assert message == "Transfer task completed successfully."
@@ -156,16 +156,15 @@ def test_transfer_to_folder_succeeds(
 @pytest.mark.django_db
 def test_transfer_to_archive_succeeds(
     mocker: MockerFixture,
-    example_models: ExampleModels,
     grant_access,
     create_resources,
 ):
     # Arrange
-    job = example_models.transfer_job_factory_class.create(
+    job = ExampleTransferJobFactory.create(
         status=TransferJob.Status.PENDING,
         archive_password="mysecret",
     )
-    task = example_models.transfer_task_factory_class.create(
+    task = ExampleTransferTaskFactory.create(
         source=DicomServerFactory(),
         destination=DicomFolderFactory(),
         status=TransferTask.Status.PENDING,

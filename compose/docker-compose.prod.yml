@@ -38,15 +38,15 @@ services:
     deploy:
       replicas: 1
 
-  worker_default:
+  dicom_worker:
     <<: *default-app
-    command: ./manage.py celery_worker -Q default_queue
+    command: ./manage.py dicom_worker
     deploy:
       replicas: 1
 
-  worker_dicom_task:
+  celery_worker:
     <<: *default-app
-    command: ./manage.py celery_worker -Q dicom_task_queue
+    command: ./manage.py celery_worker -Q default_queue
     deploy:
       replicas: 1
 

@@ -1,7 +1,6 @@
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from celery import current_app
 from django.contrib.postgres.fields import ArrayField
 from django.core.exceptions import ValidationError
 from django.db import models
@@ -32,9 +31,6 @@ class BatchQueryJob(DicomJob):
     if TYPE_CHECKING:
         tasks = RelatedManager["BatchQueryTask"]()
         results = RelatedManager["BatchQueryResult"]()
-
-    def delay(self):
-        current_app.send_task("adit.batch_query.tasks.ProcessBatchQueryJob", (self.id,))
 
     def get_absolute_url(self):
         return reverse("batch_query_job_detail", args=[str(self.id)])

@@ -50,6 +50,8 @@ class BatchTransferJobCreateView(BatchTransferLockedMixin, DicomJobCreateView):
     form_class = BatchTransferJobForm
     template_name = "batch_transfer/batch_transfer_job_form.html"
     permission_required = "batch_transfer.add_batchtransferjob"
+    default_priority = settings.BATCH_TRANSFER_DEFAULT_PRIORITY
+    urgent_priority = settings.BATCH_TRANSFER_URGENT_PRIORITY
     object: BatchTransferJob
 
     def get_initial(self) -> dict[str, Any]:
@@ -76,24 +78,7 @@ class BatchTransferJobCreateView(BatchTransferLockedMixin, DicomJobCreateView):
         return initial
 
     def form_valid(self, form):
-        user = self.request.user
-        form.instance.owner = user
-        response = super().form_valid(form)
-
-        # Do it after an ongoing transaction (even if it is currently
-        # unnecessary as ATOMIC_REQUESTS is False), see also
-        # https://spapas.github.io/2019/02/25/django-fix-async-db/
-        # Currently I am not using it because it is hard to test, but there
-        # it is already fixed in an upcoming release, see
-        # https://code.djangoproject.com/ticket/30457
-        # TODO transaction.on_commit(lambda: enqueue_batch_job(self.object.id))
-        job = self.object  # set by super().form_valid(form)
-        if user.is_staff or settings.BATCH_TRANSFER_UNVERIFIED:
-            job.status = BatchTransferJob.Status.PENDING
-            job.save()
-            job.delay()
-
-        return response
+        return super().form_valid(form, settings.BATCH_TRANSFER_UNVERIFIED)
 
 
 class BatchTransferJobDetailView(BatchTransferLockedMixin, DicomJobDetailView):
@@ -111,6 +96,8 @@ class BatchTransferJobDeleteView(BatchTransferLockedMixin, DicomJobDeleteView):
 
 class BatchTransferJobVerifyView(BatchTransferLockedMixin, DicomJobVerifyView):
     model = BatchTransferJob
+    default_priority = settings.BATCH_TRANSFER_DEFAULT_PRIORITY
+    urgent_priority = settings.BATCH_TRANSFER_URGENT_PRIORITY
 
 
 class BatchTransferJobCancelView(BatchTransferLockedMixin, DicomJobCancelView):
@@ -119,14 +106,20 @@ class BatchTransferJobCancelView(BatchTransferLockedMixin, DicomJobCancelView):
 
 class BatchTransferJobResumeView(BatchTransferLockedMixin, DicomJobResumeView):
     model = BatchTransferJob
+    default_priority = settings.BATCH_TRANSFER_DEFAULT_PRIORITY
+    urgent_priority = settings.BATCH_TRANSFER_URGENT_PRIORITY
 
 
 class BatchTransferJobRetryView(BatchTransferLockedMixin, DicomJobRetryView):
     model = BatchTransferJob
+    default_priority = settings.BATCH_TRANSFER_DEFAULT_PRIORITY
+    urgent_priority = settings.BATCH_TRANSFER_URGENT_PRIORITY
 
 
 class BatchTransferJobRestartView(BatchTransferLockedMixin, DicomJobRestartView):
     model = BatchTransferJob
+    default_priority = settings.BATCH_TRANSFER_DEFAULT_PRIORITY
+    urgent_priority = settings.BATCH_TRANSFER_URGENT_PRIORITY
 
 
 class BatchTransferTaskDetailView(BatchTransferLockedMixin, DicomTaskDetailView):

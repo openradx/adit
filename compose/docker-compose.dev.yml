@@ -46,18 +46,18 @@ services:
       - web
       - db
 
-  worker_default:
+  dicom_worker:
     <<: *default-app
     command: |
-      ./manage.py celery_worker -Q default_queue --autoreload
+      ./manage.py dicom_worker --autoreload
     profiles:
       - full
       - extra
 
-  worker_dicom_task:
+  celery_worker:
     <<: *default-app
     command: |
-      ./manage.py celery_worker -Q dicom_task_queue --autoreload
+      ./manage.py celery_worker -Q default_queue --autoreload
     profiles:
       - full
       - extra
