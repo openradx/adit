@@ -35,6 +35,7 @@ class ServerCommand(BaseCommand, ABC):
         # SIGINT is sent by CTRL-C
         def on_interrupt(signum: int, frame: FrameType | None) -> None:
             self.on_shutdown()
+            self.shutdown()
             signal.signal(signal.SIGINT, signal.SIG_DFL)
             signal.raise_signal(signal.SIGINT)
 
@@ -43,6 +44,7 @@ class ServerCommand(BaseCommand, ABC):
         # SIGTERM is sent when stopping a Docker container
         def on_terminate(signum: int, frame: FrameType | None) -> None:
             self.on_shutdown()
+            self.shutdown()
             signal.signal(signal.SIGTERM, signal.SIG_DFL)
             signal.raise_signal(signal.SIGTERM)
 
@@ -87,7 +89,7 @@ class ServerCommand(BaseCommand, ABC):
 
             self.run_server(**options)
 
-    def _on_terminate(self):
+    def shutdown(self):
         if self._popen:
             self._popen.terminate()
 
@@ -116,14 +118,6 @@ class ServerCommand(BaseCommand, ABC):
 
 
 class AsyncServerCommand(ServerCommand, ABC):
-    def handle(self, *args, **options):
-        # SIGINT is sent by CTRL-C
-        signal.signal(signal.SIGINT, lambda signum, frame: self._on_terminate())
-        # SIGTERM is sent when stopping a Docker container
-        signal.signal(signal.SIGTERM, lambda signum, frame: self._on_terminate())
-
-        self.run(**options)
-
     def run_server(self, **options):
         loop = asyncio.get_event_loop()
 
