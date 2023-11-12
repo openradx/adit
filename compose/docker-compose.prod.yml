@@ -69,11 +69,6 @@ services:
     deploy:
       replicas: 1
 
-  rabbit:
-    restart: always
-    deploy:
-      replicas: 1
-
   redis:
     restart: always
     deploy:

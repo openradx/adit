@@ -295,21 +295,14 @@ REGISTRATION_OPEN = True
 # Channels
 ASGI_APPLICATION = "adit.asgi.application"
 
-# RabbitMQ is used as Celery message broker
-RABBITMQ_URL = env.str("RABBITMQ_URL", default="amqp://localhost")  # type: ignore
-
-# Rabbit Management console is integrated in ADIT by using an reverse
-# proxy (django-revproxy).This allows to use the authentication of ADIT.
-# But as RabbitMQ authentication can't be disabled we have to login
-# there with "guest" as username and password again.
-RABBIT_MANAGEMENT_HOST = env.str("RABBIT_MANAGEMENT_HOST", default="localhost")  # type: ignore
-RABBIT_MANAGEMENT_PORT = env.int("RABBIT_MANAGEMENT_PORT", default=15672)  # type: ignore
+# Redis is used as the Celery backend and for distributed locks
+REDIS_URL = env.str("REDIS_URL", default="redis://localhost:6379/0")  # type: ignore
 
 # Celery
 # see https://github.com/celery/celery/issues/5026 for how to name configs
 if USE_TZ:
     CELERY_TIMEZONE = TIME_ZONE
-CELERY_BROKER_URL = RABBITMQ_URL
+CELERY_BROKER_URL = REDIS_URL
 CELERY_WORKER_HIJACK_ROOT_LOGGER = False
 CELERY_IGNORE_RESULT = True
 CELERY_TASK_DEFAULT_QUEUE = "default_queue"
@@ -324,9 +317,6 @@ CELERY_BEAT_SCHEDULE = {
 # This allows to use the authentication of ADIT.
 FLOWER_HOST = env.str("FLOWER_HOST", default="localhost")  # type: ignore
 FLOWER_PORT = env.int("FLOWER_PORT", default=5555)  # type: ignore
-
-# Redis is used for distributed locks
-REDIS_URL = env.str("REDIS_URL", default="redis://localhost:6379/0")  # type: ignore
 
 # Orthanc servers are integrated in ADIT by using a reverse proxy (django-revproxy).
 ORTHANC1_HOST = env.str("ORTHANC1_HOST", default="localhost")  # type: ignore
