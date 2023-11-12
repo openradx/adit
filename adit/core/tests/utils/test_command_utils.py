@@ -3,13 +3,7 @@ from datetime import time
 
 import pytest
 
-from adit.core.management.commands.dicom_worker import in_time_slot, valid_time_range
-
-
-def test_in_time_slot():
-    assert in_time_slot(time(10), time(20), time(15))
-    assert in_time_slot(time(20), time(6), time(3))
-    assert not in_time_slot(time(20), time(6), time(15))
+from ...utils.command_utils import valid_time_range
 
 
 def test_valid_time_range():
