@@ -306,6 +306,7 @@ class QueuedTask(models.Model):
     priority = models.PositiveIntegerField()
     eta = models.DateTimeField(blank=True, null=True)
     created = models.DateTimeField(auto_now_add=True)
+    locked = models.BooleanField(default=False)
 
     class Meta:
         constraints = [
@@ -316,8 +317,8 @@ class QueuedTask(models.Model):
         ]
         indexes = [
             models.Index(
-                fields=["eta", "priority", "created"],
-                name="eta_priority_created_idx",
+                fields=["locked", "eta", "priority", "created"],
+                name="fetch_next_task_idx",
             )
         ]
 

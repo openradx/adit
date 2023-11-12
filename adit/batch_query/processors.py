@@ -6,10 +6,11 @@ from .utils.query_utils import QueryExecutor
 
 
 class ProcessBatchQueryTask(ProcessDicomTask):
+    app_name = "Batch Query"
     dicom_task_class = BatchQueryTask
     app_settings_class = BatchQuerySettings
 
-    def handle_dicom_task(
+    def process_dicom_task(
         self, dicom_task
     ) -> tuple[BatchQueryTask.Status, str, list[DicomLogEntry]]:
         assert isinstance(dicom_task, BatchQueryTask)

@@ -9,10 +9,11 @@ from .models import (
 
 
 class ProcessSelectiveTransferTask(ProcessDicomTask):
+    app_name = "Selective Transfer"
     dicom_task_class = SelectiveTransferTask
     app_settings_class = SelectiveTransferSettings
 
-    def handle_dicom_task(
+    def process_dicom_task(
         self, dicom_task
     ) -> tuple[SelectiveTransferTask.Status, str, list[DicomLogEntry]]:
         assert isinstance(dicom_task, SelectiveTransferTask)

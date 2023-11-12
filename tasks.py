@@ -11,7 +11,7 @@ from invoke.context import Context
 from invoke.runners import Result
 from invoke.tasks import task
 
-Environments = Literal["dev", "prod"]
+Environments = Literal["dev", "prod", "test"]
 
 stack_name_dev = "adit_dev"
 stack_name_prod = "adit_prod"
@@ -69,6 +69,17 @@ def find_running_container_id(ctx: Context, env: Environments, name: str):
         if container_id:
             return container_id
     return None
+
+
+def get_settings_module(env: Environments):
+    if env == "dev":
+        return "adit.settings.development"
+    elif env == "prod":
+        return "adit.settings.production"
+    elif env == "test":
+        return "adit.settings.test"
+    else:
+        raise ValueError(f"Unknown environment: {env}")
 
 
 def run_cmd(ctx: Context, cmd: str, silent=False) -> Result:
@@ -179,6 +190,14 @@ def stack_rm(ctx: Context, env: Environments = "prod"):
     """Remove the stack from Docker Swarm (prod by default!)."""
     stack_name = get_stack_name(env)
     cmd = f"docker stack rm {stack_name}"
+    run_cmd(ctx, cmd)
+
+
+@task
+def make_migrations(ctx: Context, env: Environments = "dev"):
+    """Make Django migrations (optionally of the test app)"""
+    settings_module = get_settings_module(env)
+    cmd = f"django-admin makemigrations --settings={settings_module}"
     run_cmd(ctx, cmd)
 
 

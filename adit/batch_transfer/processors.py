@@ -6,10 +6,11 @@ from .models import BatchTransferSettings, BatchTransferTask
 
 
 class ProcessBatchTransferTask(ProcessDicomTask):
+    app_name = "Batch Transfer"
     dicom_task_class = BatchTransferTask
     app_settings_class = BatchTransferSettings
 
-    def handle_dicom_task(
+    def process_dicom_task(
         self, dicom_task
     ) -> tuple[BatchTransferTask.Status, str, list[DicomLogEntry]]:
         assert isinstance(dicom_task, BatchTransferTask)
