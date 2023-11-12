@@ -6,7 +6,6 @@ from .views import (
     HomeView,
     Orthanc1ProxyView,
     Orthanc2ProxyView,
-    RabbitManagementProxyView,
     UpdatePreferencesView,
     admin_section,
 )
@@ -31,7 +30,6 @@ urlpatterns = [
         HomeView.as_view(),
         name="home",
     ),
-    RabbitManagementProxyView.as_url(),
     FlowerProxyView.as_url(),
     Orthanc1ProxyView.as_url(),
     Orthanc2ProxyView.as_url(),

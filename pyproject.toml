@@ -9,7 +9,7 @@ license = "GPL-3.0-or-later"
 adrf = "^0.1.1"
 aiofiles = "^23.1.0"
 asyncinotify = "^4.0.1"
-celery = "^5.2.7"
+celery = {extras = ["redis"], version = "^5.3.5"}
 channels = "^4.0.0"
 channels-redis = "^4.0.0"
 cryptography = "^41.0.1"

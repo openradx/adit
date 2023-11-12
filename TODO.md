@@ -13,7 +13,6 @@
 
 - Upgrade REDIS server on RADIS
 - Unfix pyright and its VS code extension
-- Move over to Celery with Redis backend and get rid of RabbitMQ
 - Replace sherlock on RADIS
 - Use DicomLogEntry during C-STORE
 - Allow to restart or cancel specific dicom task
@@ -116,7 +115,7 @@
 - Get rid of 7z archive feature. It think it was never used.
 - Allow to search multiple source servers with one query (maybe only in dicom explorer)
 - Bring everything behind Nginx as reverse proxy
-  -- Orthanc, Flower, Rabbit Management Console should then be directly behind Nginx (without Django-revproxy)
+  -- Orthanc and Flower should then be directly behind Nginx (without Django-revproxy)
   -- Use authentication module of nginx
   -- <http://nginx.org/en/docs/http/ngx_http_auth_request_module.html>
   -- <https://stackoverflow.com/a/70961666/166229>
@@ -144,7 +143,7 @@
 - Rewrite dicom_connector to use asyncio (wrap all pynetdicom calls in asyncio.to_thread)
   -- I don't think that this will gain any performance improvements, so maybe not worth it
 - Look out for a django-revproxy fix (see <https://github.com/jazzband/django-revproxy/issues/144>)
-  -- Flower and Rabbit Management Console are running behind a Django internal reverse proxy (django-revproxy) so that only admins can access them
+  -- Flower is running behind a Django internal reverse proxy (django-revproxy) so that only admins can access them
   -- Unfortunately the last released django-revproxy is broken with latest Django
   -- So we use the master branch here directly from Github (see pyproject.toml)
   -- Alternatively we could use <https://github.com/thomasw/djproxy>
