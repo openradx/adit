@@ -2,6 +2,7 @@ import asyncio
 import signal
 import subprocess
 import sys
+import threading
 from abc import ABC, abstractmethod
 from datetime import datetime
 from threading import Event
@@ -59,6 +60,7 @@ class ServerCommand(BaseCommand, ABC):
             def inner_run():
                 if self._popen is not None:
                     self._popen.terminate()
+                    self._popen.wait()
 
                 args = sys.argv.copy()
                 args.remove("--autoreload")
@@ -87,7 +89,11 @@ class ServerCommand(BaseCommand, ABC):
             self.stdout.write(f"Starting {self.server_name}")
             self.stdout.write("Quit with CONTROL-C.")
 
-            self.run_server(**options)
+            # We run run_server in a different thread to avoid blocking the main thread
+            # especially when handling SIGINT and SIGTERM signals.
+            t = threading.Thread(target=self.run_server, kwargs=options)
+            t.start()
+            t.join()
 
     def shutdown(self):
         if self._popen:

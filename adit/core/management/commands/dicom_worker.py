@@ -37,5 +37,6 @@ class Command(ServerCommand):
         self._dicom_worker.run()
 
     def on_shutdown(self):
+        # TODO: We must somehow force it to shutdown after some time period
         if self._dicom_worker:
             self._dicom_worker.shutdown()
