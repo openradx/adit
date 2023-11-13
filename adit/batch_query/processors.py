@@ -1,11 +1,11 @@
-from adit.core.processors import ProcessDicomTask
+from adit.core.processors import DicomTaskProcessor
 from adit.core.types import DicomLogEntry
 
 from .models import BatchQuerySettings, BatchQueryTask
 from .utils.query_utils import QueryExecutor
 
 
-class ProcessBatchQueryTask(ProcessDicomTask):
+class BatchQueryTaskProcessor(DicomTaskProcessor):
     app_name = "Batch Query"
     dicom_task_class = BatchQueryTask
     app_settings_class = BatchQuerySettings

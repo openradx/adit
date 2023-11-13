@@ -22,7 +22,7 @@ class BatchQueryConfig(AppConfig):
 
 def register_app():
     from .models import BatchQueryTask
-    from .processors import ProcessBatchQueryTask
+    from .processors import BatchQueryTaskProcessor
 
     register_main_menu_item(
         url_name="batch_query_job_create",
@@ -30,7 +30,7 @@ def register_app():
     )
 
     model_label = f"{BatchQueryTask._meta.app_label}.{BatchQueryTask._meta.model_name}"
-    register_dicom_processor(model_label, ProcessBatchQueryTask)
+    register_dicom_processor(model_label, BatchQueryTaskProcessor)
 
     register_job_stats_collector(collect_job_stats)
 

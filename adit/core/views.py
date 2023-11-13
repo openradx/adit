@@ -286,7 +286,7 @@ class DicomJobCancelView(LoginRequiredMixin, SingleObjectMixin, View):
         tasks_in_progress_count = job.tasks.filter(status=DicomTask.Status.IN_PROGRESS).count()
 
         # If there is a still in progress task then the job will be set to canceled when
-        # the processing of the task is finished (see tasks.ProcessDicomTask#update_job_after).
+        # the processing of the task is finished (see update_job_status).
         if tasks_in_progress_count > 0:
             job.status = DicomJob.Status.CANCELING
         else:

@@ -13,7 +13,7 @@ from django.utils import timezone
 
 from adit.core.errors import DicomError, RetriableDicomError
 from adit.core.models import DicomJob, DicomTask, QueuedTask
-from adit.core.processors import ProcessDicomTask
+from adit.core.processors import DicomTaskProcessor
 from adit.core.site import dicom_processors
 from adit.core.utils.job_utils import update_job_status
 from adit.core.utils.mail import send_job_finished_mail
@@ -53,7 +53,7 @@ class DicomWorker:
 
     def process_next_task(self) -> bool:
         dicom_task: DicomTask | None = None
-        processor: ProcessDicomTask | None = None
+        processor: DicomTaskProcessor | None = None
         with self._redis.lock(DISTRIBUTED_LOCK):
             queued_task = self.fetch_next_queued_task()
             if not queued_task:
@@ -168,7 +168,7 @@ class DicomWorker:
 
     def prepare_processing(
         self, queued_task: QueuedTask
-    ) -> tuple[DicomTask, ProcessDicomTask] | Literal[False]:
+    ) -> tuple[DicomTask, DicomTaskProcessor] | Literal[False]:
         # We have to lock this queued task so that no other worker can pick it up
         queued_task.locked = True
         queued_task.save()
@@ -205,7 +205,7 @@ class DicomWorker:
 
         return (dicom_task, processor)
 
-    def get_processor(self, dicom_task: DicomTask) -> ProcessDicomTask:
+    def get_processor(self, dicom_task: DicomTask) -> DicomTaskProcessor:
         model_label = f"{dicom_task._meta.app_label}.{dicom_task._meta.model_name}"
         Processor = dicom_processors[model_label]
         assert Processor is not None

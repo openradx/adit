@@ -22,7 +22,7 @@ class BatchTransferConfig(AppConfig):
 
 def register_app():
     from .models import BatchTransferTask
-    from .processors import ProcessBatchTransferTask
+    from .processors import BatchTransferTaskProcessor
 
     register_main_menu_item(
         url_name="batch_transfer_job_create",
@@ -30,7 +30,7 @@ def register_app():
     )
 
     model_label = f"{BatchTransferTask._meta.app_label}.{BatchTransferTask._meta.model_name}"
-    register_dicom_processor(model_label, ProcessBatchTransferTask)
+    register_dicom_processor(model_label, BatchTransferTaskProcessor)
 
     register_job_stats_collector(collect_job_stats)
 

@@ -5,7 +5,6 @@
 - Before new release
   -- test job_utils
   -- move mixins stuff over to consumer and delete the stuff in slective transfer view (we never post there)
-  -- Rename Process... to ...Processor
   -- exclude autoreload when tests are saved (Custom Filter in server command watched files)
   -- Test canceled task/job in test_workers.py
   -- Test locked of queued task

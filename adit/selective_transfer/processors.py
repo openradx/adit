@@ -1,4 +1,4 @@
-from adit.core.processors import ProcessDicomTask
+from adit.core.processors import DicomTaskProcessor
 from adit.core.types import DicomLogEntry
 from adit.core.utils.transfer_utils import TransferExecutor
 
@@ -8,7 +8,7 @@ from .models import (
 )
 
 
-class ProcessSelectiveTransferTask(ProcessDicomTask):
+class SelectiveTransferTaskProcessor(DicomTaskProcessor):
     app_name = "Selective Transfer"
     dicom_task_class = SelectiveTransferTask
     app_settings_class = SelectiveTransferSettings
