@@ -24,7 +24,7 @@ from django.conf import settings
 from pydicom import Dataset
 from pynetdicom.events import Event
 
-from ..errors import DicomCommunicationError, OutOfDiskSpaceError
+from ..errors import DicomError, RetriableDicomError
 from ..models import DicomServer
 from ..types import DicomLogEntry
 from .dicom_dataset import QueryDataset, ResultDataset
@@ -120,7 +120,7 @@ class DicomOperator:
             yield from self._handle_found_patients(query, results)
 
         else:
-            raise ValueError("No supported method to find patients.")
+            raise DicomError("No supported method to find patients available.")
 
     def _handle_found_patients(
         self, query: QueryDataset, results: Iterable[ResultDataset]
@@ -190,7 +190,7 @@ class DicomOperator:
             results = self.dicom_web_connector.send_qido_rs(query, limit_results=limit_results)
             yield from self._handle_found_studies(query, results)
         else:
-            raise ValueError("No supported method to find studies.")
+            raise DicomError("No supported method to find studies available.")
 
     def _handle_found_studies(
         self,
@@ -261,7 +261,7 @@ class DicomOperator:
         # A StudyInstanceUID is always required for querying series, regardless of C-FIND or QIDO-RS
         study_uid = query.get("StudyInstanceUID")
         if not study_uid or has_wildcards(study_uid):
-            raise ValueError("StudyInstanceUID is required for querying series.")
+            raise DicomError("StudyInstanceUID is required for querying series.")
 
         query.QueryRetrieveLevel = "SERIES"
 
@@ -269,7 +269,7 @@ class DicomOperator:
             if not self.server.study_root_find_support:
                 patient_id = query.get("PatientID")
                 if not patient_id or has_wildcards(patient_id):
-                    raise ValueError(
+                    raise DicomError(
                         "PatientID is required for querying series with "
                         "Patient Root Query/Retrieve Information Model."
                     )
@@ -333,10 +333,10 @@ class DicomOperator:
         # regardless of C-FIND or QIDO-RS
         study_uid = query.get("StudyInstanceUID")
         if not study_uid or has_wildcards(study_uid):
-            raise ValueError("StudyInstanceUID is required for querying images.")
+            raise DicomError("StudyInstanceUID is required for querying images.")
         series_uid = query.get("SeriesInstanceUID")
         if not series_uid or has_wildcards(series_uid):
-            raise ValueError("SeriesInstanceUID is required for querying images.")
+            raise DicomError("SeriesInstanceUID is required for querying images.")
 
         query.QueryRetrieveLevel = "IMAGE"
 
@@ -344,7 +344,7 @@ class DicomOperator:
             if not self.server.study_root_find_support:
                 patient_id = query.get("PatientID")
                 if not patient_id or has_wildcards(patient_id):
-                    raise ValueError(
+                    raise DicomError(
                         "PatientID is required for querying images with "
                         "Patient Root Query/Retrieve Information Model."
                     )
@@ -353,7 +353,7 @@ class DicomOperator:
         elif self.server.dicomweb_qido_support:
             yield from self.dicom_web_connector.send_qido_rs(query, limit_results=limit_results)
         else:
-            raise ValueError("No supported method to find images.")
+            raise DicomError("No supported method to find images available.")
 
     def download_study(
         self,
@@ -419,7 +419,7 @@ class DicomOperator:
             self._download_series_with_c_move(query, dest_folder, modifier)
             logger.debug("Successfully downloaded series %s of study %s.", series_uid, study_uid)
         else:
-            raise ValueError("No Query/Retrieve Information Model supported to download images.")
+            raise DicomError("No Query/Retrieve Information Model supported to download images.")
 
     def upload_instances(self, resource: PathLike | list[Dataset]):
         """Upload instances from a specified folder or list of instances in memory"""
@@ -429,7 +429,7 @@ class DicomOperator:
         elif self.server.dicomweb_stow_support:
             self.dicom_web_connector.send_stow_rs(resource)
         else:
-            raise ValueError("Server does not support uploading images.")
+            raise DicomError("Server does not support uploading images.")
 
     def move_study(
         self,
@@ -469,10 +469,11 @@ class DicomOperator:
                 logger.exception("Failed to move series %s.", series_uid)
                 has_failure = True
 
+        # TODO: maybe we should just log this as a warning or raise a RetriableDicomError
         if series_list and has_failure:
             if not has_success:
-                raise DicomCommunicationError("Failed to move all series.")
-            raise DicomCommunicationError("Failed to move some series.")
+                raise DicomError("Failed to move all series.")
+            raise DicomError("Failed to move some series.")
 
     def move_series(self, patient_id: str, study_uid: str, series_uid: str, dest_aet: str):
         self.dimse_connector.send_c_move(
@@ -613,7 +614,7 @@ class DicomOperator:
                     if remaining_image_uids == image_uids:
                         logger.error("No images of series %s received.", series_uid)
                         receiving_errors.append(
-                            DicomCommunicationError("Failed to fetch all images with C-MOVE.")
+                            RetriableDicomError("Failed to fetch all images with C-MOVE.")
                         )
 
                     logger.warn(
@@ -700,14 +701,10 @@ class DicomOperator:
             folder_path.mkdir(parents=True, exist_ok=True)
             write_dataset(ds, file_path)
         except Exception as err:
+            self.abort()
             if isinstance(err, OSError) and err.errno == errno.ENOSPC:
                 # No space left on destination
-                logger.exception("Out of disk space while saving %s.", file_path)
-                no_space_error = OutOfDiskSpaceError(
-                    f"Out of disk space on destination '{dest_folder}'."
-                )
-                no_space_error.__cause__ = err
-                raise no_space_error
+                raise DicomError(f"Out of disk space on destination '{dest_folder}'.") from err
             else:
-                logger.exception("Failed to save %s.", file_path)
-                raise err
+                # Unknown write error
+                raise DicomError(f"Failed to save '{file_path}'.") from err

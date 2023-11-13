@@ -14,4 +14,4 @@ class ProcessBatchQueryTask(ProcessDicomTask):
         self, dicom_task
     ) -> tuple[BatchQueryTask.Status, str, list[DicomLogEntry]]:
         assert isinstance(dicom_task, BatchQueryTask)
-        return QueryExecutor(dicom_task, self).start()
+        return QueryExecutor(dicom_task).start()

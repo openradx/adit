@@ -4,7 +4,7 @@ from os import PathLike
 from adrf.views import sync_to_async
 from rest_framework.exceptions import NotFound
 
-from adit.core.errors import DicomCommunicationError, DicomConnectionError
+from adit.core.errors import DicomError, RetriableDicomError
 from adit.core.models import DicomServer
 from adit.core.utils.dicom_dataset import QueryDataset
 from adit.core.utils.dicom_operator import DicomOperator
@@ -35,9 +35,9 @@ async def wado_retrieve(
                 series_uid=series.SeriesInstanceUID,
                 dest_folder=dest_folder,
             )
-    except DicomConnectionError as err:
+    except RetriableDicomError as err:
         logger.exception(err)
         raise ServiceUnavailableApiError(str(err))
-    except DicomCommunicationError as err:
+    except DicomError as err:
         logger.exception(err)
         raise BadGatewayApiError(str(err))

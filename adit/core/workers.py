@@ -11,7 +11,7 @@ from django.conf import settings
 from django.db.models import Q
 from django.utils import timezone
 
-from adit.core.errors import DicomConnectionError, OutOfDiskSpaceError
+from adit.core.errors import DicomError, RetriableDicomError
 from adit.core.models import DicomJob, DicomTask, QueuedTask
 from adit.core.processors import ProcessDicomTask
 from adit.core.site import dicom_processors
@@ -73,23 +73,17 @@ class DicomWorker:
             dicom_task.message = message
             dicom_task.log = "\n".join([log["message"] for log in logs])
             queued_task.delete()
-        except (DicomConnectionError, OutOfDiskSpaceError) as err:
-            # Inside the handle_dicom_task errors of kind RetriableTaskError can be raised
-            # which are handled here and also raise a Retry in the end.
+        except RetriableDicomError as err:
             logger.exception("Retriable error occurred during %s.", dicom_task)
 
-            # We can't use the Celery built-in max_retries and celery_task.request.retries
-            # directly as we also use celery_task.retry() for scheduling tasks.
             if dicom_task.retries < settings.DICOM_TASK_RETRIES:
-                delta = (
-                    timedelta(hours=24)
-                    if isinstance(err, OutOfDiskSpaceError)
-                    else timedelta(minutes=15)
-                )
-                logger.info(f"Retrying {dicom_task} in {humanize.naturaldelta(delta)}.")
+                delta = err.delta
+                humanized_delta = humanize.naturaldelta(delta)
+
+                logger.info(f"Retrying {dicom_task} in {humanized_delta}.")
 
                 dicom_task.status = DicomTask.Status.PENDING
-                dicom_task.message = "Task timed out and will be retried."
+                dicom_task.message = f"Task failed, but will be retried in {humanized_delta}."
                 if dicom_task.log:
                     dicom_task.log += "\n"
                 dicom_task.log += str(err)
@@ -110,8 +104,7 @@ class DicomWorker:
                 dicom_task.status = DicomTask.Status.FAILURE
                 dicom_task.message = str(err)
                 queued_task.delete()
-        except ValueError as err:
-            # We raise ValueError for expected errors
+        except DicomError as err:
             logger.exception("Error during %s.", dicom_task)
 
             dicom_task.status = DicomTask.Status.FAILURE
@@ -121,7 +114,6 @@ class DicomWorker:
             dicom_task.log += traceback.format_exc()
             queued_task.delete()
         except Exception as err:
-            # Unexpected errors are handled here
             logger.exception("Unexpected error during %s.", dicom_task)
 
             dicom_task.status = DicomTask.Status.FAILURE

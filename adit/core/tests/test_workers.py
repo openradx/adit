@@ -1,6 +1,8 @@
 import pytest
 from pytest_mock import MockerFixture
 
+from adit.core.errors import RetriableDicomError
+
 from ..models import DicomJob, DicomTask, QueuedTask
 from ..processors import ProcessDicomTask
 from ..workers import DicomWorker
@@ -37,16 +39,22 @@ def test_worker_with_task_that_succeeds(mocker: MockerFixture, dicom_worker: Dic
     )
     queued_task = QueuedTask.objects.create(content_object=dicom_task, priority=5)
 
-    mocker.patch.object(
-        ExampleProcessor,
-        "process_dicom_task",
-        lambda self, dicom_task: (DicomTask.Status.SUCCESS, "Success!", []),
-    )
+    queued_task_was_locked = False
+
+    def process_dicom_task(self, dicom_task):
+        nonlocal queued_task_was_locked
+        queued_task.refresh_from_db()
+        queued_task_was_locked = queued_task.locked
+        return (DicomTask.Status.SUCCESS, "Success!", [])
+
+    mocker.patch.object(ExampleProcessor, "process_dicom_task", process_dicom_task)
 
     # Act
     dicom_worker.process_next_task()
 
     # Assert
+    assert queued_task_was_locked
+
     dicom_job.refresh_from_db()
     assert dicom_job.status == DicomJob.Status.SUCCESS
 
@@ -69,16 +77,22 @@ def test_worker_with_task_that_fails(mocker: MockerFixture, dicom_worker: DicomW
     )
     queued_task = QueuedTask.objects.create(content_object=dicom_task, priority=5)
 
-    mocker.patch.object(
-        ExampleProcessor,
-        "process_dicom_task",
-        lambda self, dicom_task: (DicomTask.Status.FAILURE, "Failure!", []),
-    )
+    queued_task_was_locked = False
+
+    def process_dicom_task(self, dicom_task):
+        nonlocal queued_task_was_locked
+        queued_task.refresh_from_db()
+        queued_task_was_locked = queued_task.locked
+        return (DicomTask.Status.FAILURE, "Failure!", [])
+
+    mocker.patch.object(ExampleProcessor, "process_dicom_task", process_dicom_task)
 
     # Act
     dicom_worker.process_next_task()
 
     # Assert
+    assert queued_task_was_locked
+
     dicom_job.refresh_from_db()
     assert dicom_job.status == DicomJob.Status.FAILURE
 
@@ -92,7 +106,7 @@ def test_worker_with_task_that_fails(mocker: MockerFixture, dicom_worker: DicomW
 
 
 @pytest.mark.django_db
-def test_worker_with_task_that_raises_non_retriable(
+def test_worker_with_task_that_raises_non_retriable_error(
     mocker: MockerFixture, dicom_worker: DicomWorker
 ):
     # Arrange
@@ -103,7 +117,12 @@ def test_worker_with_task_that_raises_non_retriable(
     )
     queued_task = QueuedTask.objects.create(content_object=dicom_task, priority=5)
 
+    queued_task_was_locked = False
+
     def process_dicom_task(self, dicom_task):
+        nonlocal queued_task_was_locked
+        queued_task.refresh_from_db()
+        queued_task_was_locked = queued_task.locked
         raise Exception("Unexpected error!")
 
     mocker.patch.object(ExampleProcessor, "process_dicom_task", process_dicom_task)
@@ -112,6 +131,8 @@ def test_worker_with_task_that_raises_non_retriable(
     dicom_worker.process_next_task()
 
     # Assert
+    assert queued_task_was_locked
+
     dicom_job.refresh_from_db()
     assert dicom_job.status == DicomJob.Status.FAILURE
 
@@ -122,3 +143,43 @@ def test_worker_with_task_that_raises_non_retriable(
 
     with pytest.raises(QueuedTask.DoesNotExist):
         QueuedTask.objects.get(pk=queued_task.pk)
+
+
+@pytest.mark.django_db
+def test_worker_with_task_that_raises_retriable_error(
+    mocker: MockerFixture, dicom_worker: DicomWorker
+):
+    # Arrange
+    dicom_job = ExampleTransferJobFactory.create(status=DicomJob.Status.PENDING)
+    dicom_task = ExampleTransferTaskFactory.create(
+        status=DicomTask.Status.PENDING,
+        job=dicom_job,
+    )
+    queued_task = QueuedTask.objects.create(content_object=dicom_task, priority=5)
+
+    queued_task_was_locked = False
+
+    def process_dicom_task(self, dicom_task):
+        nonlocal queued_task_was_locked
+        queued_task.refresh_from_db()
+        queued_task_was_locked = queued_task.locked
+        raise RetriableDicomError("Retriable error!")
+
+    mocker.patch.object(ExampleProcessor, "process_dicom_task", process_dicom_task)
+
+    # Act
+    dicom_worker.process_next_task()
+
+    # Assert
+    queued_task.refresh_from_db()
+    assert queued_task_was_locked
+    assert not queued_task.locked
+
+    dicom_job.refresh_from_db()
+    assert dicom_job.status == DicomJob.Status.PENDING
+
+    dicom_task.refresh_from_db()
+    assert dicom_task.queued == queued_task
+    assert dicom_task.status == DicomTask.Status.PENDING
+    assert dicom_task.retries == 1
+    assert QueuedTask.objects.get(pk=queued_task.pk)

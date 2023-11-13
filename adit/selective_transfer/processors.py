@@ -17,4 +17,4 @@ class ProcessSelectiveTransferTask(ProcessDicomTask):
         self, dicom_task
     ) -> tuple[SelectiveTransferTask.Status, str, list[DicomLogEntry]]:
         assert isinstance(dicom_task, SelectiveTransferTask)
-        return TransferExecutor(dicom_task, self).start()
+        return TransferExecutor(dicom_task).start()

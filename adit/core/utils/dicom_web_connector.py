@@ -9,7 +9,7 @@ from pydicom import Dataset
 from pydicom.errors import InvalidDicomError
 from requests import HTTPError
 
-from ..errors import DicomCommunicationError, DicomConnectionError
+from ..errors import DicomError, RetriableDicomError
 from ..models import DicomServer
 from ..types import DicomLogEntry
 from ..utils.dicom_dataset import QueryDataset, ResultDataset
@@ -29,7 +29,7 @@ def connect_to_server():
     def decorator(func):
         def wrapper(self: "DicomWebConnector", *args, **kwargs):
             if not self.server.dicomweb_root_url:
-                raise ValueError("Missing DICOMweb root url.")
+                raise DicomError("Missing DICOMweb root url.")
 
             headers = {}
             if self.server.dicomweb_authorization_header:
@@ -92,13 +92,12 @@ class DicomWebConnector:
 
         level = query_dict.pop("QueryRetrieveLevel", "")
         if not level:
-            raise ValueError("Missing QueryRetrieveLevel.")
-
-        if not self.dicomweb_client:
-            raise AssertionError("Missing DICOMweb client.")
+            raise DicomError("Missing QueryRetrieveLevel.")
 
         if not self.server.dicomweb_qido_support:
-            raise ValueError("DICOMweb QIDO-RS is not supported by the server.")
+            raise DicomError("DICOMweb QIDO-RS is not supported by the server.")
+
+        assert self.dicomweb_client
 
         try:
             if level == "STUDY":
@@ -131,30 +130,29 @@ class DicomWebConnector:
 
         level = query_dict.pop("QueryRetrieveLevel", "")
         if not level:
-            raise ValueError("Missing QueryRetrieveLevel.")
-
-        if not self.dicomweb_client:
-            raise AssertionError("Missing DICOMweb client.")
+            raise DicomError("Missing QueryRetrieveLevel.")
 
         if not self.server.dicomweb_wado_support:
-            raise ValueError("DICOMweb WADO-RS is not supported by the server.")
+            raise DicomError("DICOMweb WADO-RS is not supported by the server.")
+
+        assert self.dicomweb_client
 
         try:
             if level == "STUDY":
                 study_uid = query_dict.pop("StudyInstanceUID", "")
                 if not study_uid:
-                    raise ValueError("Missing StudyInstanceUID for WADO-RS on study level.")
+                    raise DicomError("Missing StudyInstanceUID for WADO-RS on study level.")
                 return self.dicomweb_client.retrieve_study(study_uid)
             elif level == "SERIES":
                 study_uid = query_dict.pop("StudyInstanceUID", "")
                 series_uid = query_dict.pop("SeriesInstanceUID", "")
                 if not study_uid:
-                    raise ValueError("Missing StudyInstanceUID for WADO-RS on series level.")
+                    raise DicomError("Missing StudyInstanceUID for WADO-RS on series level.")
                 if not series_uid:
-                    raise ValueError("Missing SeriesInstanceUID for WADO-RS on series level.")
+                    raise DicomError("Missing SeriesInstanceUID for WADO-RS on series level.")
                 return self.dicomweb_client.retrieve_series(study_uid, series_uid)
             else:
-                raise ValueError(f"Invalid QueryRetrieveLevel: {level}")
+                raise DicomError(f"Invalid QueryRetrieveLevel: {level}")
         except HTTPError as err:
             _handle_dicomweb_error(err, "WADO-RS")
 
@@ -171,8 +169,7 @@ class DicomWebConnector:
             if modifier:
                 modifier(ds)
 
-            if not self.dicomweb_client:
-                raise AssertionError("Missing DICOMweb client.")
+            assert self.dicomweb_client
 
             try:
                 self.dicomweb_client.store_instances([ds])
@@ -185,7 +182,7 @@ class DicomWebConnector:
                     _handle_dicomweb_error(err, "STOW-RS")
 
         if not self.server.dicomweb_stow_support:
-            raise ValueError("DICOMweb STOW-RS is not supported by the server.")
+            raise DicomError("DICOMweb STOW-RS is not supported by the server.")
 
         if isinstance(resource, list):  # resource is a list of datasets
             logger.debug("Sending STOW of %d datasets.", len(resource))
@@ -196,7 +193,7 @@ class DicomWebConnector:
         else:  # resource is a path to a folder
             folder = Path(resource)
             if not folder.is_dir():
-                raise ValueError(f"Resource is not a valid folder: {resource}")
+                raise DicomError(f"Resource is not a valid folder: {resource}")
 
             logger.debug("Sending STOW of folder: %s", folder.absolute())
 
@@ -215,14 +212,14 @@ class DicomWebConnector:
                 _send_dataset(ds)
 
             if invalid_dicoms:
-                raise IOError(
+                raise DicomError(
                     f"{len(invalid_dicoms)} DICOM file{'s' if len(invalid_dicoms) > 1 else ''} "
                     " could not be read for STOW-RS."
                 )
 
         if retriable_failures:
             plural = len(retriable_failures) > 1
-            raise DicomCommunicationError(
+            raise RetriableDicomError(
                 f"{len(retriable_failures)} STOW-RS operation{'s' if plural else ''} failed."
             )
 
@@ -237,9 +234,9 @@ def _handle_dicomweb_error(err: HTTPError, op: str) -> NoReturn:
     status_code = err.response.status_code
     status_phrase = HTTPStatus(status_code).phrase
     if _is_retriable_error(status_code):
-        raise DicomConnectionError(
+        raise RetriableDicomError(
             f"DICOMweb {op} request failed: {status_phrase} [{status_code}]."
-        )
+        ) from err
     else:
         logger.exception(
             f"DICOMweb {op} request failed critically: {status_phrase} [{status_code}]."
