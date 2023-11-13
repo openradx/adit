@@ -220,10 +220,9 @@ class DicomWorker:
         return Processor()
 
     def shutdown(self) -> None:
-        self._stop.set()
-        lock = self._redis.lock(DISTRIBUTED_LOCK)
-        if lock.locked():
-            lock.release()
+        with self._redis.lock(DISTRIBUTED_LOCK):
+            self._stop.set()
+
         self._redis.close()
 
         # TODO: Somehow handle an task that is in the middle of being processed

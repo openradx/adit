@@ -36,14 +36,15 @@ class Command(ServerCommand):
         parser.add_argument(
             "-c",
             "--concurrency",
+            type=int,
             default=1,
             help="Number of child processes processing the queue.",
         )
 
     def run_server(self, **options):
-        queue = options["queue"]
-        loglevel = options["loglevel"]
-        concurrency = options["concurrency"]
+        queue: str = options["queue"]
+        loglevel: str = options["loglevel"]
+        concurrency: int = options["concurrency"]
         hostname = f"worker_{queue}_{socket.gethostname()}"
         cmd = f"celery -A adit worker -Q {queue} -l {loglevel} -c {concurrency} -n {hostname}"
 
@@ -53,3 +54,4 @@ class Command(ServerCommand):
     def on_shutdown(self):
         assert self.worker_process
         self.worker_process.terminate()
+        self.worker_process.wait()
