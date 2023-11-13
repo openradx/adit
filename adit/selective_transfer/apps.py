@@ -22,7 +22,7 @@ class SelectiveTransferConfig(AppConfig):
 
 def register_app():
     from .models import SelectiveTransferTask
-    from .processors import ProcessSelectiveTransferTask
+    from .processors import SelectiveTransferTaskProcessor
 
     register_main_menu_item(
         url_name="selective_transfer_job_create",
@@ -32,7 +32,7 @@ def register_app():
     model_label = (
         f"{SelectiveTransferTask._meta.app_label}.{SelectiveTransferTask._meta.model_name}"
     )
-    register_dicom_processor(model_label, ProcessSelectiveTransferTask)
+    register_dicom_processor(model_label, SelectiveTransferTaskProcessor)
 
     register_job_stats_collector(collect_job_stats)
 

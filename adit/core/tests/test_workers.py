@@ -4,13 +4,13 @@ from pytest_mock import MockerFixture
 from adit.core.errors import RetriableDicomError
 
 from ..models import DicomJob, DicomTask, QueuedTask
-from ..processors import ProcessDicomTask
+from ..processors import DicomTaskProcessor
 from ..workers import DicomWorker
 from .example_app.factories import ExampleTransferJobFactory, ExampleTransferTaskFactory
 from .example_app.models import ExampleAppSettings, ExampleTransferTask
 
 
-class ExampleProcessor(ProcessDicomTask):
+class ExampleProcessor(DicomTaskProcessor):
     app_name = "Example"
     dicom_task_class = ExampleTransferTask
     app_settings_class = ExampleAppSettings

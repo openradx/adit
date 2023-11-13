@@ -5,11 +5,11 @@ from django.http import HttpRequest
 from django.middleware.csrf import get_token
 
 if TYPE_CHECKING:
-    from adit.core.processors import ProcessDicomTask
+    from adit.core.processors import DicomTaskProcessor
 
 nav_menu_items = []
 job_stats_collectors = []
-dicom_processors: dict[str, type["ProcessDicomTask"]] = {}
+dicom_processors: dict[str, type["DicomTaskProcessor"]] = {}
 
 
 def register_main_menu_item(url_name: str, label: str) -> None:
@@ -20,7 +20,7 @@ def register_job_stats_collector(job_stats):
     job_stats_collectors.append(job_stats)
 
 
-def register_dicom_processor(model_label: str, dicom_processor: type["ProcessDicomTask"]) -> None:
+def register_dicom_processor(model_label: str, dicom_processor: type["DicomTaskProcessor"]) -> None:
     dicom_processors[model_label] = dicom_processor
 
 

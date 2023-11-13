@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 ProcessingResult = tuple[DicomTask.Status, str, list[DicomLogEntry]]
 
 
-class ProcessDicomTask:
+class DicomTaskProcessor:
     app_name: str
     dicom_task_class: type[DicomTask]
     app_settings_class: type[AppSettings]
