@@ -41,7 +41,7 @@ from ..utils.dicom_utils import has_wildcards, read_dataset
 
 logger = logging.getLogger(__name__)
 
-DimseService = Literal["C_FIND", "C_GET", "C_MOVE", "C_STORE"]
+DimseService = Literal["C-FIND", "C-GET", "C-MOVE", "C-STORE"]
 
 Modifier = Callable[[Dataset], None]
 
@@ -167,11 +167,11 @@ class DimseConnector:
         # Setup the contexts
         # (inspired by https://github.com/pydicom/pynetdicom/blob/master/pynetdicom/apps)
         ext_neg = []
-        if service == "C_FIND":
+        if service == "C-FIND":
             ae.requested_contexts = (
                 QueryRetrievePresentationContexts + BasicWorklistManagementPresentationContexts
             )
-        elif service == "C_GET":
+        elif service == "C-GET":
             # We must exclude as many storage contexts as query/retrieve contexts we add
             # because the maximum requested contexts is 128. "StoragePresentationContexts" is a list
             # that contains 128 storage contexts itself.
@@ -189,9 +189,9 @@ class DimseConnector:
                 assert cx.abstract_syntax is not None
                 ae.add_requested_context(cx.abstract_syntax)
                 ext_neg.append(build_role(cx.abstract_syntax, scp_role=True))
-        elif service == "C_MOVE":
+        elif service == "C-MOVE":
             ae.requested_contexts = QueryRetrievePresentationContexts
-        elif service == "C_STORE":
+        elif service == "C-STORE":
             ae.requested_contexts = StoragePresentationContexts
         else:
             raise DicomError(f"Invalid DIMSE service: {service}")
@@ -218,7 +218,7 @@ class DimseConnector:
             logger.debug("Aborting connection to DICOM server %s.", self.server.ae_title)
             self.assoc.abort()
 
-    @connect_to_server("C_FIND")
+    @connect_to_server("C-FIND")
     def send_c_find(
         self, query: QueryDataset, limit_results: int | None = None, msg_id: int = 1
     ) -> Iterator[ResultDataset]:
@@ -269,7 +269,7 @@ class DimseConnector:
                     f"Unexpected error during C-FIND [{status_category}]:\n{status}"
                 )
 
-    @connect_to_server("C_GET")
+    @connect_to_server("C-GET")
     def send_c_get(
         self,
         query: QueryDataset,
@@ -303,7 +303,7 @@ class DimseConnector:
 
         self._handle_get_and_move_responses(responses, "C-GET")
 
-    @connect_to_server("C_MOVE")
+    @connect_to_server("C-MOVE")
     def send_c_move(self, query: QueryDataset, dest_aet: str, msg_id: int = 1) -> None:
         logger.debug("Sending C-MOVE with query:\n%s", query)
 
@@ -327,7 +327,7 @@ class DimseConnector:
 
         self._handle_get_and_move_responses(responses, "C-MOVE")
 
-    @connect_to_server("C_STORE")
+    @connect_to_server("C-STORE")
     def send_c_store(
         self, resource: PathLike | list[Dataset], modifier: Modifier | None = None, msg_id: int = 1
     ) -> None:
