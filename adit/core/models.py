@@ -56,9 +56,7 @@ TModel = TypeVar("TModel", bound=models.Model)
 
 
 class DicomNodeManager(Generic[TModel], models.Manager[TModel]):
-    def accessible_by_user(
-        self, user: User, access_type: Literal["source", "destination"]
-    ) -> "DicomNodeManager":
+    def accessible_by_user(self, user: User, access_type: Literal["source", "destination"]):
         # Also staff users can only use nodes that are assigned to an institute (but they
         # must not be a member of that institute in contrast to normal users).
         if user.is_staff:

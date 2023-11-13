@@ -6,11 +6,19 @@
   -- test job_utils
   -- move mixins stuff over to consumer and delete the stuff in slective transfer view (we never post there)
   -- Rename Process... to ...Processor
-  -- Switch from Celery to Huey
-  -- Fix pyright
   -- exclude autoreload when tests are saved (Custom Filter in server command watched files)
-  -- Text canceled task/job in test_workers.py
+  -- Test canceled task/job in test_workers.py
+  -- Test locked of queued task
+  -- Fix pyright (wait for new release)
 
+- Rename C_STORE to C-STORE and so on in dimse connector
+- Replace AssertionError with assert
+- Make single task abortable
+  -- Add aborted attribute to QueuedTask
+  -- Run processor in DICOM worker in its own process that can be killed
+  -- Check aborted attribute every 10 seconds or so and the may be kill the process
+  -- Set task to FAILURE with message "Task manually / forcefully aborted"
+- Make single task cancelable, retriable, resumeable, ...
 - Upgrade REDIS server on RADIS
 - Unfix pyright and its VS code extension
 - Replace sherlock on RADIS
@@ -107,6 +115,7 @@
 
 ## Maybe
 
+- Switch from Celery to Huey
 - Upgrade postgres server to v15, but we have to migrate the data then as the database files are incompatible a newer version
   -- <https://hollo.me/devops/upgrade-postgresql-database-with-docker.html>
   -- <https://thomasbandt.com/postgres-docker-major-version-upgrade>

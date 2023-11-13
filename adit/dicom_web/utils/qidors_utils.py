@@ -3,7 +3,7 @@ from typing import Literal
 
 from adrf.views import sync_to_async
 
-from adit.core.errors import DicomCommunicationError, DicomConnectionError
+from adit.core.errors import DicomError, RetriableDicomError
 from adit.core.models import DicomServer
 from adit.core.utils.dicom_dataset import QueryDataset, ResultDataset
 from adit.core.utils.dicom_operator import DicomOperator
@@ -28,10 +28,10 @@ async def qido_find(
             results: list[ResultDataset] = list(await sync_to_async(operator.find_series)(query_ds))
         else:
             raise ValueError(f"Invalid QIDO-RS level: {level}.")
-    except DicomConnectionError as err:
+    except RetriableDicomError as err:
         logger.exception(err)
         raise ServiceUnavailableApiError(str(err))
-    except DicomCommunicationError as err:
+    except DicomError as err:
         logger.exception(err)
         raise BadGatewayApiError(str(err))
 

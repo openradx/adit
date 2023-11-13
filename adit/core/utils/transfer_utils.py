@@ -7,11 +7,11 @@ from functools import partial
 from pathlib import Path
 from typing import Any, Callable
 
-from celery.contrib.abortable import AbortableTask as AbortableCeleryTask  # pyright: ignore
 from dicognito.anonymizer import Anonymizer
 from django.conf import settings
 from pydicom import Dataset
 
+from ..errors import DicomError
 from ..models import DicomNode, TransferTask
 from ..types import DicomLogEntry
 from .dicom_dataset import QueryDataset, ResultDataset
@@ -21,49 +21,29 @@ from .sanitize import sanitize_dirname
 logger = logging.getLogger(__name__)
 
 
-def _create_source_operator(transfer_task: TransferTask) -> DicomOperator:
-    # An own function to easily mock the source operator in test_transfer_utils.py
-    assert transfer_task.source.node_type == DicomNode.NodeType.SERVER
-    return DicomOperator(transfer_task.source.dicomserver)
-
-
-def _create_dest_operator(transfer_task: TransferTask) -> DicomOperator:
-    # An own function to easily mock the destination operator in test_transfer_utils.py
-    assert transfer_task.destination.node_type == DicomNode.NodeType.SERVER
-    return DicomOperator(transfer_task.destination.dicomserver)
-
-
 class TransferExecutor:
     """
     Executes a transfer task of a selective transfer or batch transfer by utilizing the
     DICOM operator. Transfers only a single study or some selected series of a single study.
     """
 
-    def __init__(self, transfer_task: TransferTask, celery_task: AbortableCeleryTask) -> None:
+    def __init__(self, transfer_task: TransferTask) -> None:
         self.transfer_task = transfer_task
-        self.celery_task = celery_task
 
-        self.source_operator = _create_source_operator(transfer_task)
+        source_node = DicomNode.objects.accessible_by_user(
+            self.transfer_task.job.owner, "source"
+        ).get(pk=self.transfer_task.source.pk)
+        assert source_node.node_type == DicomNode.NodeType.SERVER
+        self.source_operator = DicomOperator(source_node.dicomserver)
 
         self.dest_operator = None
         if self.transfer_task.destination.node_type == DicomNode.NodeType.SERVER:
-            self.dest_operator = _create_dest_operator(transfer_task)
+            dest_node = DicomNode.objects.accessible_by_user(
+                self.transfer_task.job.owner, "destination"
+            ).get(pk=self.transfer_task.destination.pk)
+            self.dest_operator = DicomOperator(dest_node.dicomserver)
 
     def start(self) -> tuple[TransferTask.Status, str, list[DicomLogEntry]]:
-        accessible_source_nodes = DicomNode.objects.accessible_by_user(
-            self.transfer_task.job.owner, "source"
-        )
-        if not accessible_source_nodes.filter(pk=self.transfer_task.source.pk).exists():
-            raise ValueError(f"Not accessible DICOM source node: {self.transfer_task.source}")
-
-        accessible_destination_nodes = DicomNode.objects.accessible_by_user(
-            self.transfer_task.job.owner, "destination"
-        )
-        if not accessible_destination_nodes.filter(pk=self.transfer_task.destination.pk).exists():
-            raise ValueError(
-                f"Not accessible DICOM destination node: {self.transfer_task.destination}"
-            )
-
         if self.dest_operator:
             self._transfer_to_server()
         else:
@@ -200,10 +180,10 @@ class TransferExecutor:
         )
 
         if len(patients) == 0:
-            raise ValueError(f"No patient found with Patient ID {self.transfer_task.patient_id}.")
+            raise DicomError(f"No patient found with Patient ID {self.transfer_task.patient_id}.")
 
         if len(patients) > 1:
-            raise AssertionError(
+            raise DicomError(
                 f"Multiple patients found with Patient ID {self.transfer_task.patient_id}."
             )
 
@@ -220,11 +200,11 @@ class TransferExecutor:
         )
 
         if len(studies) == 0:
-            raise ValueError(
+            raise DicomError(
                 f"No study found with Study Instance UID {self.transfer_task.study_uid}."
             )
         if len(studies) > 1:
-            raise AssertionError(
+            raise DicomError(
                 f"Multiple studies found with Study Instance UID {self.transfer_task.study_uid}."
             )
 
@@ -246,9 +226,9 @@ class TransferExecutor:
                 results.append(series)
 
         if len(results) == 0:
-            raise ValueError(f"No series found with Series Instance UID {series_uid}.")
+            raise DicomError(f"No series found with Series Instance UID {series_uid}.")
         if len(results) > 1:
-            raise AssertionError(f"Multiple series found with Series Instance UID {series_uid}.")
+            raise DicomError(f"Multiple series found with Series Instance UID {series_uid}.")
 
         return results
 
@@ -339,7 +319,7 @@ class TransferExecutor:
     def _create_archive(self, archive_path: Path, archive_password: str) -> None:
         """Create a new archive with just an INDEX.txt file in it."""
         if Path(archive_path).is_file():
-            raise ValueError(f"Archive ${archive_path} already exists.")
+            raise DicomError(f"Archive ${archive_path} already exists.")
 
         with tempfile.TemporaryDirectory(prefix="adit_") as tmpdir:
             readme_path = Path(tmpdir) / "INDEX.txt"
@@ -369,4 +349,4 @@ def _add_to_archive(archive_path: Path, archive_password: str, path_to_add: Path
     proc.wait()
     (_, stderr) = proc.communicate()
     if proc.returncode != 0:
-        raise IOError(f"Failed to add path to archive {stderr}")
+        raise DicomError(f"Failed to add path to archive: {stderr}")

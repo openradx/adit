@@ -1,9 +1,9 @@
 import logging
 
-from celery.contrib.abortable import AbortableTask as AbortableCeleryTask  # pyright: ignore
 from django.conf import settings
 from django.template.defaultfilters import pluralize
 
+from adit.core.errors import DicomError
 from adit.core.models import DicomNode
 from adit.core.types import DicomLogEntry
 from adit.core.utils.dicom_dataset import QueryDataset, ResultDataset
@@ -14,30 +14,22 @@ from ..models import BatchQueryResult, BatchQueryTask
 logger = logging.getLogger(__name__)
 
 
-def _create_source_operator(query_task: BatchQueryTask) -> DicomOperator:
-    # An own function to easily mock the source connector in test_transfer_utils.py
-    return DicomOperator(query_task.source.dicomserver)
-
-
 class QueryExecutor:
     """
     Executes a batch query task (one line in a batch query file) by utilizing the
     DICOM operator. Currently we don't make it abortable in between as it is fast enough.
     """
 
-    def __init__(self, query_task: BatchQueryTask, celery_task: AbortableCeleryTask) -> None:
+    def __init__(self, query_task: BatchQueryTask) -> None:
         self.query_task = query_task
-        self.celery_task = celery_task
 
-        self.operator = _create_source_operator(query_task)
+        source_node = DicomNode.objects.accessible_by_user(self.query_task.job.owner, "source").get(
+            pk=self.query_task.source.pk
+        )
+        assert source_node.node_type == DicomNode.NodeType.SERVER
+        self.operator = DicomOperator(source_node.dicomserver)
 
     def start(self) -> tuple[BatchQueryTask.Status, str, list[DicomLogEntry]]:
-        accessible_source_nodes = DicomNode.objects.accessible_by_user(
-            self.query_task.job.owner, "source"
-        )
-        if not accessible_source_nodes.filter(pk=self.query_task.source.pk).exists():
-            raise ValueError(f"Not accessible DICOM source node: {self.query_task.source}")
-
         patient = self._fetch_patient()
 
         is_series_query = self.query_task.series_description or self.query_task.series_numbers
@@ -78,23 +70,23 @@ class QueryExecutor:
                 )
             )
         else:
-            raise ValueError("PatientName and PatientBirthDate are required.")
+            raise DicomError("PatientName and PatientBirthDate are required.")
 
         if len(patients) == 0:
-            raise ValueError("Patient not found.")
+            raise DicomError("Patient not found.")
 
         if len(patients) > 1:
-            raise ValueError("Multiple patients found.")
+            raise DicomError("Multiple patients found.")
 
         patient = patients[0]
 
         # We can test for equality cause wildcards are not allowed during
         # batch query (only in selective transfer)
         if patient_id and patient_name and patient.PatientName != patient_name:
-            raise ValueError("PatientName doesn't match found patient by PatientID.")
+            raise DicomError("PatientName doesn't match found patient by PatientID.")
 
         if patient_id and birth_date and patient.PatientBirthDate != birth_date:
-            raise ValueError("PatientBirthDate doesn't match found patient by PatientID.")
+            raise DicomError("PatientBirthDate doesn't match found patient by PatientID.")
 
         return patient
 

@@ -14,4 +14,4 @@ class ProcessBatchTransferTask(ProcessDicomTask):
         self, dicom_task
     ) -> tuple[BatchTransferTask.Status, str, list[DicomLogEntry]]:
         assert isinstance(dicom_task, BatchTransferTask)
-        return TransferExecutor(dicom_task, self).start()
+        return TransferExecutor(dicom_task).start()

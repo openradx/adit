@@ -1,16 +1,19 @@
+from datetime import timedelta
+
 from rest_framework.exceptions import ErrorDetail
 
 
-class DicomConnectionError(Exception):
+class DicomError(Exception):
     pass
 
 
-class DicomCommunicationError(Exception):
-    pass
+default_retry_delta = timedelta(minutes=20)
 
 
-class OutOfDiskSpaceError(Exception):
-    pass
+class RetriableDicomError(Exception):
+    def __init__(self, message: str, delta: timedelta = default_retry_delta) -> None:
+        super().__init__(message)
+        self.delta = delta
 
 
 class BatchFileSizeError(Exception):

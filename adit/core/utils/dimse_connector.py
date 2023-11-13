@@ -33,7 +33,7 @@ from pynetdicom.sop_class import (
 )
 from pynetdicom.status import code_to_category
 
-from ..errors import DicomCommunicationError, DicomConnectionError
+from ..errors import DicomError, RetriableDicomError
 from ..models import DicomServer
 from ..types import DicomLogEntry
 from ..utils.dicom_dataset import QueryDataset, ResultDataset
@@ -194,7 +194,7 @@ class DimseConnector:
         elif service == "C_STORE":
             ae.requested_contexts = StoragePresentationContexts
         else:
-            raise ValueError(f"Invalid DIMSE service: {service}")
+            raise DicomError(f"Invalid DIMSE service: {service}")
 
         self.assoc = ae.associate(
             self.server.host,
@@ -204,14 +204,12 @@ class DimseConnector:
         )
 
         if not self.assoc.is_established:
-            raise DicomConnectionError(f"Could not connect to {self.server}.")
+            raise RetriableDicomError(f"Could not connect to {self.server}.")
 
     def close_connection(self):
-        if not self.assoc:
-            raise AssertionError("No association to release.")
-
         logger.debug("Closing connection to DICOM server %s.", self.server.ae_title)
 
+        assert self.assoc
         self.assoc.release()
         self.assoc = None
 
@@ -228,7 +226,7 @@ class DimseConnector:
 
         level: str | None = query.get("QueryRetrieveLevel")
         if not level:
-            raise ValueError("Missing QueryRetrieveLevel for C-FIND query.")
+            raise DicomError("Missing QueryRetrieveLevel for C-FIND query.")
 
         patient_id = query.get("PatientID", "")
         has_valid_patient_id = bool(patient_id) and not has_wildcards(patient_id)
@@ -238,17 +236,15 @@ class DimseConnector:
         elif self.server.patient_root_find_support and (level == "PATIENT" or has_valid_patient_id):
             query_model = PatientRootQueryRetrieveInformationModelFind
         else:
-            raise ValueError("No valid Query/Retrieve Information Model for C-FIND could be found.")
+            raise DicomError("No valid Query/Retrieve Information Model for C-FIND could be found.")
 
-        if not self.assoc or not self.assoc.is_alive():
-            raise AssertionError("No association for sending C-FIND.")
-
+        assert self.assoc and self.assoc.is_alive()
         responses = self.assoc.send_c_find(query.dataset, query_model, msg_id)
 
         result_counter = 0
         for status, identifier in responses:
             if not status:
-                raise DicomConnectionError(
+                raise RetriableDicomError(
                     "Connection timed out, was aborted or received invalid response."
                 )
 
@@ -259,7 +255,7 @@ class DimseConnector:
 
             elif status_category == STATUS_PENDING:
                 if not identifier:
-                    raise AssertionError("Missing identifier for pending C-FIND.")
+                    raise RetriableDicomError("Missing identifier for pending C-FIND.")
 
                 yield ResultDataset(identifier)
 
@@ -269,7 +265,7 @@ class DimseConnector:
                     break
 
             else:
-                raise DicomCommunicationError(
+                raise RetriableDicomError(
                     f"Unexpected error during C-FIND [{status_category}]:\n{status}"
                 )
 
@@ -293,16 +289,14 @@ class DimseConnector:
         elif self.server.patient_root_get_support and has_patient_id and has_study_uid:
             query_model = PatientRootQueryRetrieveInformationModelGet
         else:
-            raise ValueError(
+            raise DicomError(
                 "No valid Query/Retrieve Information Model for C-GET could be selected."
             )
-
-        if not self.assoc or not self.assoc.is_alive():
-            raise AssertionError("No association for sending C-GET.")
 
         # A list to store errors that might be raised by the store handler
         store_errors: list[Exception] = []
 
+        assert self.assoc and self.assoc.is_alive()
         self.assoc.bind(EVT_C_STORE, store_handler, [store_errors])
 
         responses = self.assoc.send_c_get(query.dataset, query_model, msg_id)
@@ -324,13 +318,11 @@ class DimseConnector:
         elif self.server.patient_root_move_support and has_patient_id and has_study_uid:
             query_model = PatientRootQueryRetrieveInformationModelMove
         else:
-            raise ValueError(
+            raise DicomError(
                 "No valid Query/Retrieve Information Model for C-MOVE could be selected."
             )
 
-        if not self.assoc or not self.assoc.is_alive():
-            raise AssertionError("No association for sending C-MOVE.")
-
+        assert self.assoc and self.assoc.is_alive()
         responses = self.assoc.send_c_move(query.dataset, dest_aet, query_model, msg_id)
 
         self._handle_get_and_move_responses(responses, "C-MOVE")
@@ -347,13 +339,11 @@ class DimseConnector:
             if modifier:
                 modifier(ds)
 
-            if not self.assoc or not self.assoc.is_alive():
-                raise AssertionError("No association for sending C-MOVE.")
-
+            assert self.assoc and self.assoc.is_alive()
             status = self.assoc.send_c_store(ds, msg_id)
 
             if not status:
-                raise DicomConnectionError(
+                raise RetriableDicomError(
                     "Connection timed out, was aborted or received invalid response."
                 )
             else:
@@ -366,7 +356,7 @@ class DimseConnector:
                     logger.error(f"Unexpected error during C-STORE [{status_category}]:\n{status}")
 
         if not self.server.store_scp_support:
-            raise ValueError("C-STORE operation not supported by server.")
+            raise DicomError("C-STORE operation not supported by server.")
 
         if isinstance(resource, list):  # resource is a list of datasets
             logger.debug("Sending C-STORE of %d datasets.", len(resource))
@@ -377,7 +367,7 @@ class DimseConnector:
         else:  # resource is a folder
             folder = Path(resource)
             if not folder.is_dir():
-                raise ValueError(f"Resource is not a valid folder: {resource}.")
+                raise DicomError(f"Resource is not a valid folder: {resource}.")
 
             logger.debug("Sending C-STORE of folder: %s", folder.absolute())
 
@@ -396,7 +386,7 @@ class DimseConnector:
                 _send_dataset(ds)
 
             if invalid_dicoms:
-                raise IOError(
+                raise DicomError(
                     f"{len(invalid_dicoms)} DICOM file{'s' if len(invalid_dicoms) > 1 else ''} "
                     " could not be read for C-STORE."
                 )
@@ -407,7 +397,7 @@ class DimseConnector:
 
         if failures:
             plural = len(failures) > 1
-            raise DicomCommunicationError(
+            raise RetriableDicomError(
                 f"{len(failures)} C-STORE operation{'s' if plural else ''} failed."
             )
 
@@ -416,7 +406,7 @@ class DimseConnector:
     ) -> None:
         for status, identifier in responses:
             if not status:
-                raise DicomConnectionError(
+                raise RetriableDicomError(
                     "Connection timed out, was aborted or received invalid response."
                 )
 
@@ -437,7 +427,7 @@ class DimseConnector:
                     # sub-operations failed.
                     # https://github.com/pydicom/pynetdicom/issues/552
                     if failed_suboperations and not completed_suboperations:
-                        raise DicomCommunicationError("All sub-operations failed.")
+                        raise RetriableDicomError("All sub-operations failed.")
 
                     if failed_suboperations and completed_suboperations:
                         message = f"{failed_suboperations} sub-operations failed:\n{status}"
@@ -463,10 +453,10 @@ class DimseConnector:
                         logger.error(
                             "Erroneous images (SOPInstanceUID): %s", ", ".join(failed_image_uids)
                         )
-                        raise DicomCommunicationError(
+                        raise RetriableDicomError(
                             f"Failed to transfer several images with {op} [{status_category}]:\n"
                             f"{status}"
                         )
-                raise DicomCommunicationError(
+                raise RetriableDicomError(
                     f"Unexpected error during {op} [{status_category}]:\n{status}"
                 )

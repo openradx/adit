@@ -5,7 +5,7 @@ from adrf.views import sync_to_async
 from django.urls import reverse
 from pydicom import Dataset, Sequence
 
-from adit.core.errors import DicomCommunicationError, DicomConnectionError
+from adit.core.errors import DicomError, RetriableDicomError
 from adit.core.models import DicomServer
 from adit.core.utils.dicom_operator import DicomOperator
 
@@ -49,10 +49,10 @@ async def stow_store(dest_server: DicomServer, datasets: list[Dataset]) -> list[
             )
             result_ds.OriginalAttributesSequence = original_attributes
             result_dict[ds.StudyInstanceUID].ReferencedSOPSequence.append(result_ds)
-        except DicomConnectionError as err:
+        except RetriableDicomError as err:
             logger.exception(err)
             raise ServiceUnavailableApiError(str(err))
-        except DicomCommunicationError as err:
+        except DicomError as err:
             logger.exception(err)
             raise BadGatewayApiError(str(err))
         except Exception as err:

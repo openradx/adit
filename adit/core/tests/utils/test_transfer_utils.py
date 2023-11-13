@@ -1,6 +1,5 @@
 import pytest
 import time_machine
-from celery import Task as CeleryTask
 from pydicom import Dataset
 from pytest_mock import MockerFixture
 
@@ -64,23 +63,14 @@ def test_transfer_to_server_succeeds(
     source_operator_mock = mocker.create_autospec(DicomOperator)
     source_operator_mock.find_patients.return_value = iter([patient])
     source_operator_mock.find_studies.return_value = iter([study])
-
-    create_source_operator_mock = mocker.patch(
-        "adit.core.utils.transfer_utils._create_source_operator", autospec=True
-    )
-    create_source_operator_mock.return_value = source_operator_mock
-
     dest_operator_mock = mocker.create_autospec(DicomOperator)
 
-    create_dest_operator_mock = mocker.patch(
-        "adit.core.utils.transfer_utils._create_dest_operator", autospec=True
-    )
-    create_dest_operator_mock.return_value = dest_operator_mock
-
-    celery_task_mock = mocker.create_autospec(CeleryTask)
+    executor = TransferExecutor(task)
+    mocker.patch.object(executor, "source_operator", source_operator_mock)
+    mocker.patch.object(executor, "dest_operator", dest_operator_mock)
 
     # Act
-    (status, message, logs) = TransferExecutor(task, celery_task_mock).start()
+    (status, message, logs) = executor.start()
 
     # Assert
     source_operator_mock.download_study.assert_called_with(
@@ -130,17 +120,13 @@ def test_transfer_to_folder_succeeds(
     source_operator_mock.find_patients.return_value = iter([patient])
     source_operator_mock.find_studies.return_value = iter([study])
 
-    create_source_operator_mock = mocker.patch(
-        "adit.core.utils.transfer_utils._create_source_operator", autospec=True
-    )
-    create_source_operator_mock.return_value = source_operator_mock
-
-    celery_task_mock = mocker.create_autospec(CeleryTask)
+    executor = TransferExecutor(task)
+    mocker.patch.object(executor, "source_operator", source_operator_mock)
 
     mocker.patch("adit.core.utils.transfer_utils.os.mkdir", autospec=True)
 
     # Act
-    (status, message, logs) = TransferExecutor(task, celery_task_mock).start()
+    (status, message, logs) = executor.start()
 
     # Assert
     download_path = source_operator_mock.download_study.call_args.kwargs["dest_folder"]
@@ -181,19 +167,15 @@ def test_transfer_to_archive_succeeds(
     source_operator_mock.find_patients.return_value = iter([patient])
     source_operator_mock.find_studies.return_value = iter([study])
 
-    create_source_operator_mock = mocker.patch(
-        "adit.core.utils.transfer_utils._create_source_operator", autospec=True
-    )
-    create_source_operator_mock.return_value = source_operator_mock
+    executor = TransferExecutor(task)
+    mocker.patch.object(executor, "source_operator", source_operator_mock)
 
     Popen_mock = mocker.patch("subprocess.Popen")
     Popen_mock.return_value.returncode = 0
     Popen_mock.return_value.communicate.return_value = ("", "")
 
-    celery_task_mock = mocker.create_autospec(CeleryTask)
-
     # Act
-    (status, message, logs) = TransferExecutor(task, celery_task_mock).start()
+    (status, message, logs) = executor.start()
 
     # Assert
     source_operator_mock.find_patients.assert_called_once()
