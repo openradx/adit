@@ -3,7 +3,6 @@
 ## Top
 
 - Before new release
-  -- Fix order of forms that source / destination fields are at the top again
   -- test job_utils
   -- exclude autoreload when tests are saved (Custom Filter in server command watched files)
   -- Test canceled task/job in test_workers.py
@@ -112,6 +111,7 @@
 
 ## Maybe
 
+- Switch from Daphne to Uvicorn (maybe it has faster restart times during development)
 - Switch from Celery to Huey
 - Upgrade postgres server to v15, but we have to migrate the data then as the database files are incompatible a newer version
   -- <https://hollo.me/devops/upgrade-postgresql-database-with-docker.html>

@@ -12,6 +12,8 @@ from django.conf import settings
 from django.core.management.base import BaseCommand
 from watchfiles import PythonFilter, watch
 
+from ...utils.debounce import debounce
+
 
 class ServerCommand(BaseCommand, ABC):
     """See Django's runserver.py command.
@@ -57,6 +59,8 @@ class ServerCommand(BaseCommand, ABC):
         if options["autoreload"]:
             self.stdout.write(f"Autoreload enabled for {self.server_name}.")
 
+            # We debounce to give the Django webserver time to restart first
+            @debounce(wait_time=2)
             def inner_run():
                 if self._popen is not None:
                     self._popen.terminate()
