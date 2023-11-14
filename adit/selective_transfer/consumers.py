@@ -15,13 +15,13 @@ from django.template.loader import render_to_string
 
 from adit.accounts.models import User
 from adit.core.models import DicomNode
+from adit.core.utils.debounce import debounce
 from adit.core.utils.dicom_dataset import QueryDataset, ResultDataset
 from adit.core.utils.dicom_operator import DicomOperator
 from adit.core.utils.job_utils import queue_pending_tasks
 
 from .forms import SelectiveTransferJobForm
 from .models import SelectiveTransferJob, SelectiveTransferTask
-from .utils.debounce import debounce
 from .views import SELECTIVE_TRANSFER_ADVANCED_OPTIONS_COLLAPSED
 
 logger = logging.getLogger(__name__)

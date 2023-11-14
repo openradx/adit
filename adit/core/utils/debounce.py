@@ -5,6 +5,7 @@ from functools import wraps
 def debounce(wait_time=1):
     """Decorator that will debounce a function.
 
+    #
     Function is called after wait_time in seconds.  If it is called multiple times,
     it will wait for the last call to be debounced and run only this one.
     """
