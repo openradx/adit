@@ -3,12 +3,10 @@
 ## Top
 
 - Before new release
+  -- Fix order of forms that source / destination fields are at the top again
   -- test job_utils
-  -- move mixins stuff over to consumer and delete the stuff in slective transfer view (we never post there)
   -- exclude autoreload when tests are saved (Custom Filter in server command watched files)
   -- Test canceled task/job in test_workers.py
-  -- Test locked of queued task
-  -- Fix pyright (wait for new release)
 
 - Rename C_STORE to C-STORE and so on in dimse connector
 - Replace AssertionError with assert

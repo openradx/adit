@@ -56,7 +56,7 @@ class SelectiveTransferJobForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         self.user = kwargs.pop("user")
-        self.action = kwargs.pop("action")
+        self.action = kwargs.pop("action", "")
         self.advanced_options_collapsed = kwargs.pop("advanced_options_collapsed")
 
         super().__init__(*args, **kwargs)

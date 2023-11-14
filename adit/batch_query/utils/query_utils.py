@@ -23,6 +23,7 @@ class QueryExecutor:
     def __init__(self, query_task: BatchQueryTask) -> None:
         self.query_task = query_task
 
+        # Make sure source is accessible by the user
         source_node = DicomNode.objects.accessible_by_user(self.query_task.job.owner, "source").get(
             pk=self.query_task.source.pk
         )

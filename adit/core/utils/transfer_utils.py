@@ -30,6 +30,7 @@ class TransferExecutor:
     def __init__(self, transfer_task: TransferTask) -> None:
         self.transfer_task = transfer_task
 
+        # Make sure source and destination are accessible by the user
         source_node = DicomNode.objects.accessible_by_user(
             self.transfer_task.job.owner, "source"
         ).get(pk=self.transfer_task.source.pk)

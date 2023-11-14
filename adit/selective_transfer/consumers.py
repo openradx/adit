@@ -3,7 +3,8 @@ import contextlib
 import logging
 import threading
 from concurrent.futures import ThreadPoolExecutor
-from typing import Any
+from datetime import datetime
+from typing import Any, Iterator, cast
 
 from asgiref.sync import async_to_sync
 from channels.db import database_sync_to_async
@@ -13,11 +14,13 @@ from django.conf import settings
 from django.template.loader import render_to_string
 
 from adit.accounts.models import User
-from adit.core.utils.dicom_dataset import ResultDataset
+from adit.core.models import DicomNode
+from adit.core.utils.dicom_dataset import QueryDataset, ResultDataset
 from adit.core.utils.dicom_operator import DicomOperator
+from adit.core.utils.job_utils import queue_pending_tasks
 
 from .forms import SelectiveTransferJobForm
-from .mixins import SelectiveTransferJobCreateMixin
+from .models import SelectiveTransferJob, SelectiveTransferTask
 from .utils.debounce import debounce
 from .views import SELECTIVE_TRANSFER_ADVANCED_OPTIONS_COLLAPSED
 
@@ -47,7 +50,7 @@ def render_error_message(message) -> str:
     )
 
 
-class SelectiveTransferConsumer(SelectiveTransferJobCreateMixin, AsyncJsonWebsocketConsumer):
+class SelectiveTransferConsumer(AsyncJsonWebsocketConsumer):
     async def connect(self):
         logger.debug("Connected to WebSocket client.")
 
@@ -149,19 +152,24 @@ class SelectiveTransferConsumer(SelectiveTransferJobCreateMixin, AsyncJsonWebsoc
     async def _make_query(self, form: SelectiveTransferJobForm, message_id: int) -> None:
         loop = asyncio.get_event_loop()
         await loop.run_in_executor(
-            self.pool, self._create_and_send_query_response, form, message_id
+            self.pool, self._generate_and_send_query_response, form, message_id
         )
 
-    def _create_and_send_query_response(
+    def _generate_and_send_query_response(
         self, form: SelectiveTransferJobForm, message_id: int
     ) -> None:
         with lock:
             if message_id != self.current_message_id:
                 return
 
-            # TODO: we have to query multiple servers here by creating multiple operators,
-            # also the source must be attached somehow
-            operator = self.create_source_operator(form)
+            # Make sure source is accessible by the user
+            source = cast(DicomNode, form.cleaned_data["source"])
+            source_node = DicomNode.objects.accessible_by_user(self.user, "source").get(
+                pk=source.pk
+            )
+            assert source_node.node_type == DicomNode.NodeType.SERVER
+            operator = DicomOperator(source_node.dicomserver)
+
             self.query_operators.append(operator)
 
         try:
@@ -191,6 +199,38 @@ class SelectiveTransferConsumer(SelectiveTransferJobCreateMixin, AsyncJsonWebsoc
 
         return None
 
+    def query_studies(
+        self, operator: DicomOperator, form: SelectiveTransferJobForm, limit_results: int
+    ) -> Iterator[ResultDataset]:
+        data = form.cleaned_data
+
+        if data["modality"] in settings.EXCLUDED_MODALITIES:
+            return []
+
+        studies = operator.find_studies(
+            QueryDataset.create(
+                PatientID=data["patient_id"],
+                PatientName=data["patient_name"],
+                PatientBirthDate=data["patient_birth_date"],
+                AccessionNumber=data["accession_number"],
+                StudyDate=data["study_date"],
+                ModalitiesInStudy=data["modality"],
+            ),
+            limit_results=limit_results,
+        )
+
+        def has_only_excluded_modalities(study: ResultDataset):
+            modalities_in_study = set(study.ModalitiesInStudy)
+            excluded_modalities = set(settings.EXCLUDED_MODALITIES)
+            not_excluded_modalities = list(modalities_in_study - excluded_modalities)
+            return len(not_excluded_modalities) == 0
+
+        for study in studies:
+            if has_only_excluded_modalities(study):
+                continue
+
+            yield study
+
     @debounce()
     def send_query_response(
         self,
@@ -201,7 +241,11 @@ class SelectiveTransferConsumer(SelectiveTransferJobCreateMixin, AsyncJsonWebsoc
         # Rerender form to remove potential previous error messages
         rendered_form = render_crispy_form(form)
 
-        studies = self.sort_studies(studies)
+        studies = sorted(
+            studies,
+            key=lambda study: datetime.combine(study.StudyDate, study.StudyTime),
+            reverse=True,
+        )
 
         rendered_query_results = render_to_string(
             "selective_transfer/_query_results.html",
@@ -240,3 +284,40 @@ class SelectiveTransferConsumer(SelectiveTransferJobCreateMixin, AsyncJsonWebsoc
             {"transfer": True, "created_job": job},
         )
         return rendered_form + rendered_created_job
+
+    def transfer_selected_studies(
+        self, user: User, form: SelectiveTransferJobForm, selected_studies: list[str]
+    ) -> SelectiveTransferJob:
+        if not selected_studies:
+            raise ValueError("At least one study to transfer must be selected.")
+        if len(selected_studies) > 10 and not user.is_staff:
+            raise ValueError("Maximum 10 studies per selective transfer are allowed.")
+
+        form.instance.owner = user
+        job = form.save()
+
+        pseudonym = form.cleaned_data["pseudonym"]
+        for selected_study in selected_studies:
+            study_data = selected_study.split("\\")
+            patient_id = study_data[0]
+            study_uid = study_data[1]
+            SelectiveTransferTask.objects.create(
+                job=job,
+                source=form.cleaned_data["source"],
+                destination=form.cleaned_data["destination"],
+                patient_id=patient_id,
+                study_uid=study_uid,
+                pseudonym=pseudonym,
+            )
+
+        if user.is_staff or settings.SELECTIVE_TRANSFER_UNVERIFIED:
+            job.status = SelectiveTransferJob.Status.PENDING
+            job.save()
+
+            queue_pending_tasks(
+                job,
+                settings.SELECTIVE_TRANSFER_DEFAULT_PRIORITY,
+                settings.SELECTIVE_TRANSFER_URGENT_PRIORITY,
+            )
+
+        return job
