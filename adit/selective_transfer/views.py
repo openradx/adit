@@ -1,10 +1,10 @@
-from datetime import datetime
 from typing import Any
 
 from django.conf import settings
-from django.http import HttpResponseBadRequest
+from django.shortcuts import render
 from django.urls import reverse_lazy
 
+from adit.core.types import AuthenticatedHttpRequest
 from adit.core.views import (
     BaseUpdatePreferencesView,
     DicomJobCancelView,
@@ -21,7 +21,7 @@ from adit.core.views import (
 
 from .filters import SelectiveTransferJobFilter, SelectiveTransferTaskFilter
 from .forms import SelectiveTransferJobForm
-from .mixins import SelectiveTransferJobCreateMixin, SelectiveTransferLockedMixin
+from .mixins import SelectiveTransferLockedMixin
 from .models import SelectiveTransferJob, SelectiveTransferTask
 from .tables import SelectiveTransferJobTable, SelectiveTransferTaskTable
 
@@ -51,27 +51,27 @@ class SelectiveTransferJobListView(SelectiveTransferLockedMixin, TransferJobList
     template_name = "selective_transfer/selective_transfer_job_list.html"
 
 
-class SelectiveTransferJobCreateView(
-    SelectiveTransferLockedMixin, SelectiveTransferJobCreateMixin, DicomJobCreateView
-):
+class SelectiveTransferJobCreateView(SelectiveTransferLockedMixin, DicomJobCreateView):
     """A view class to render the selective transfer form.
 
-    POST (and the creation of the job) is not handled by this view because the
-    job itself is created by using the REST API and an AJAX call.
-
-    TODO: Maybe we should only use this view to render the form and not for processing
-    it as normally we use the WebSocket consumer for that. It is a relict and a
-    fallback when no JavaScript or WebSockets are available.
+    The form data itself is not processed by this view but by using WebSockets (see
+    consumer.py). That way long running queries and cancellation can be used.
     """
 
     form_class = SelectiveTransferJobForm
     template_name = "selective_transfer/selective_transfer_job_form.html"
     permission_required = "selective_transfer.add_selectivetransferjob"
+    request: AuthenticatedHttpRequest
+
+    def post(self, request, *args, **kwargs):
+        return render(
+            request,
+            "core/js_required_hint.html",
+            {"hint": "Selective transfer requires JavaScript to work properly."},
+        )
 
     def get_form_kwargs(self) -> dict[str, Any]:
         kwargs = super().get_form_kwargs()
-
-        kwargs["action"] = self.request.POST.get("action")
 
         preferences: dict[str, Any] = self.request.user.preferences
         kwargs["advanced_options_collapsed"] = preferences.get(
@@ -102,46 +102,6 @@ class SelectiveTransferJobCreateView(
             initial["send_finished_mail"] = send_finished_mail
 
         return initial
-
-    def form_invalid(self, form):
-        error_message = "Please correct the form errors and search again."
-        return self.render_to_response(
-            self.get_context_data(form=form, error_message=error_message)
-        )
-
-    def form_valid(self, form: SelectiveTransferJobForm):
-        action = self.request.POST.get("action")
-
-        if action == "query":
-            connector = self.create_source_operator(form)
-            limit = settings.SELECTIVE_TRANSFER_RESULT_LIMIT
-            studies = list(self.query_studies(connector, form, limit))
-            studies = sorted(
-                studies,
-                key=lambda study: datetime.combine(study.StudyDate, study.StudyTime),
-                reverse=True,
-            )
-            max_results_reached = len(studies) >= limit
-            return self.render_to_response(
-                self.get_context_data(
-                    query=True,
-                    query_results=studies,
-                    max_results_reached=max_results_reached,
-                )
-            )
-
-        if action == "transfer":
-            user = self.request.user
-            selected_studies = self.request.POST.getlist("selected_studies")
-            try:
-                job = self.transfer_selected_studies(user, form, selected_studies)
-            except ValueError as err:
-                return self.render_to_response(
-                    self.get_context_data(transfer=True, error_message=str(err))
-                )
-            return self.render_to_response(self.get_context_data(transfer=True, created_job=job))
-
-        return HttpResponseBadRequest()
 
 
 class SelectiveTransferJobDetailView(SelectiveTransferLockedMixin, DicomJobDetailView):
