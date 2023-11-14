@@ -1,12 +1,12 @@
+{% load bootstrap_icon combine_datetime join_if_list from core_extras %}
 {% load explorer_url from dicom_explorer_extras %}
-{% load combine_datetime join_if_list from core_extras %}
 <dl class="row card-body mb-0">
     <dt class="col-sm-3">Study Instance UID</dt>
     <dd class="col-sm-9">
         {{ study.StudyInstanceUID }}
         {% if level != "study" %}
             {% explorer_url server.id patient.PatientID study.StudyInstanceUID as study_url %}
-            <a href="{{ study_url }}">{% include "core/icons/goto.svg" %}</a>
+            <a href="{{ study_url }}">{% bootstrap_icon "box-arrow-in-down-right" %}</a>
         {% endif %}
     </dd>
     <dt class="col-sm-3">Accession Number</dt>

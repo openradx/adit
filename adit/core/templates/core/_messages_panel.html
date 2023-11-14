@@ -1,7 +1,7 @@
 {# Messages are placed by the server using the Django messages framework #}
 {% load alert_class message_symbol from core_extras %}
 <div class="messages-panel">
-    {% include "core/icons/alert_icons.svg" %}
+    {% include "core/_alert_icons.html" %}
     {% for message in messages %}
         <div class="alert {{ message.level_tag|alert_class }} d-flex align-items-center alert-dismissible fade show"
              role="alert">

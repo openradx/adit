@@ -17,6 +17,7 @@
     "@popperjs/core": "^2.11.8",
     "alpinejs": "^3.13.0",
     "bootstrap": "^5.3.1",
+    "bootstrap-icons": "^1.11.1",
     "bootswatch": "^5.3.1",
     "dcmjs": "^0.30.0",
     "dicomweb-client": "^0.10.3",

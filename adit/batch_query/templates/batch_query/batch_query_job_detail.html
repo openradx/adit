@@ -1,4 +1,5 @@
 {% extends "batch_query/batch_query_layout.html" %}
+{% load bootstrap_icon from core_extras %}
 {% load dicom_job_status_css_class from core_extras %}
 {% load render_table from django_tables2 %}
 {% load job_control_panel from batch_query_extras %}
@@ -6,7 +7,7 @@
     <div class="d-flex justify-content-between align-items-start">
         <h4 class="mb-3">Batch Query Job</h4>
         <a href="{% url 'batch_query_job_list' %}">
-            {% include "core/icons/list.svg" %}
+            {% bootstrap_icon "list" %}
             Job List
         </a>
     </div>
@@ -53,15 +54,13 @@
             {{ job.message|default:"—" }}
         </dd>
     </dl>
-    <div class="d-flex justify-content-between">
-        <h5 text-nowrap>
-            Study Queries
-            <a href="{% url 'batch_query_result_list' job.id %}"
-               class="badge text-bg-light align-top">
-                {% include "core/icons/view.svg" %}
-                View Results
-            </a>
-        </h5>
+    <div class="d-flex align-items-center justify-content-between">
+        <h5 class="text-nowrap">Study Queries</h5>
+        <a href="{% url 'batch_query_result_list' job.id %}"
+           class="btn btn-sm btn-success btn-primary">
+            {% bootstrap_icon "eye" %}
+            View Results
+        </a>
         {% include "core/_table_filters.html" %}
     </div>
     {% render_table table %}
