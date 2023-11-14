@@ -1,5 +1,5 @@
 from crispy_forms.helper import FormHelper
-from crispy_forms.layout import Submit
+from crispy_forms.layout import Layout, Submit
 from django import forms
 from django.conf import settings
 from django.core.exceptions import ValidationError
@@ -71,6 +71,8 @@ class BatchQueryJobForm(forms.ModelForm):
         ] = "onSendFinishedMailChange($event)"
 
         self.helper = FormHelper(self)
+        self.helper.layout = Layout("source")  # Make sure source is on top
+        self.helper.render_unmentioned_fields = True  # and the rest of the fields below
         self.helper.attrs["x-data"] = "batchQueryJobForm()"
         self.helper.add_input(Submit("save", "Create Job"))
 
