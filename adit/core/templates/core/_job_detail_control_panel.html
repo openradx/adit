@@ -1,3 +1,4 @@
+{% load bootstrap_icon from core_extras %}
 <div class="d-flex">
     {% if user.is_staff and not job.is_verified %}
         <form class="me-3"
@@ -6,7 +7,7 @@
               onSubmit="return confirm('Are you sure you want to verify this job?');">
             {% csrf_token %}
             <button type="submit" class="btn btn-success">
-                {% include "core/icons/verify.svg" %}
+                {% bootstrap_icon "check" %}
                 Verify Job
             </button>
         </form>
@@ -18,7 +19,7 @@
               onSubmit="return confirm('Are you sure you want to delete this job?');">
             {% csrf_token %}
             <button type="submit" class="btn btn-danger">
-                {% include "core/icons/delete.svg" %}
+                {% bootstrap_icon "trash" %}
                 Delete Job
             </button>
         </form>
@@ -30,7 +31,7 @@
               onSubmit="return confirm('Are you sure you want to cancel this job?');">
             {% csrf_token %}
             <button type="submit" class="btn btn-warning">
-                {% include "core/icons/cancel.svg" %}
+                {% bootstrap_icon "stop" %}
                 Cancel Job
             </button>
         </form>
@@ -42,7 +43,7 @@
               onSubmit="return confirm('Are you sure you want to resume this job?');">
             {% csrf_token %}
             <button type="submit" class="btn btn-secondary">
-                {% include "core/icons/resume.svg" %}
+                {% bootstrap_icon "play" %}
                 Resume Job
             </button>
         </form>
@@ -54,7 +55,7 @@
               onSubmit="return confirm('Are you sure you want to retry the failed tasks?');">
             {% csrf_token %}
             <button type="submit" class="btn btn-secondary">
-                {% include "core/icons/retry.svg" %}
+                {% bootstrap_icon "arrow-clockwise" %}
                 Retry Failed Tasks
             </button>
         </form>
@@ -66,7 +67,7 @@
               onSubmit="return confirm('Are you sure you want to restart the entire job?');">
             {% csrf_token %}
             <button type="submit" class="btn btn-danger">
-                {% include "core/icons/restart.svg" %}
+                {% bootstrap_icon "arrow-repeat" %}
                 Restart Entire Job
             </button>
         </form>

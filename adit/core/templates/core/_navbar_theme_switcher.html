@@ -1,16 +1,22 @@
 <li id="theme-switcher" class="nav-item dropdown">
-    {% include "core/icons/themes.svg" %}
+    {% include "core/_theme_icons.html" %}
     <button class="btn btn-link nav-link dropdown-toggle d-flex align-items-center my-1"
             role="button"
             data-bs-toggle="dropdown"
             aria-label="Toggle theme"
             aria-expanded="false">
         {% if theme == "light" %}
-            {% include "core/icons/theme_light.svg" %}
+            <svg width="16" height="16">
+                <use href="#theme-light" />
+            </svg>
         {% elif theme == "dark" %}
-            {% include "core/icons/theme_dark.svg" %}
+            <svg width="16" height="16">
+                <use href="#theme-dark" />
+            </svg>
         {% else %}
-            {% include "core/icons/theme_auto.svg" %}
+            <svg width="16" height="16">
+                <use href="#theme-auto" />
+            </svg>
         {% endif %}
     </button>
     <ul class="dropdown-menu dropdown-menu-end">
@@ -18,7 +24,9 @@
             <button class="dropdown-item d-flex align-items-center gap-2 {% if theme == 'light' %}active{% endif %}"
                     aria-pressed="{% if theme == 'light' %}true{% else %}false{% endif %}"
                     data-bs-theme-value="light">
-                {% include "core/icons/theme_light.svg" %}
+                <svg width="16" height="16">
+                    <use href="#theme-light" />
+                </svg>
                 Light
             </button>
         </li>
@@ -26,7 +34,9 @@
             <button class="dropdown-item d-flex align-items-center gap-2 {% if theme == 'dark' %}active{% endif %}"
                     aria-pressed="{% if theme == 'dark' %}true{% else %}false{% endif %}"
                     data-bs-theme-value="dark">
-                {% include "core/icons/theme_dark.svg" %}
+                <svg width="16" height="16">
+                    <use href="#theme-dark" />
+                </svg>
                 Dark
             </button>
         </li>
@@ -34,7 +44,9 @@
             <button class="dropdown-item d-flex align-items-center gap-2 {% if theme == 'auto' %}active{% endif %}"
                     aria-pressed="{% if theme == 'auto' %}true{% else %}false{% endif %}"
                     data-bs-theme-value="auto">
-                {% include "core/icons/theme_auto.svg" %}
+                <svg width="16" height="16">
+                    <use href="#theme-auto" />
+                </svg>
                 Auto
             </button>
         </li>

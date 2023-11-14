@@ -7,6 +7,7 @@
   -- exclude autoreload when tests are saved (Custom Filter in server command watched files)
   -- Test canceled task/job in test_workers.py
 
+- Figure out if favicon works in all browsers
 - Rename C_STORE to C-STORE and so on in dimse connector
 - Replace AssertionError with assert
 - Make single task abortable

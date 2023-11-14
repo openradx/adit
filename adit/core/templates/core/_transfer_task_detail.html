@@ -1,4 +1,4 @@
-{% load dicom_task_status_css_class from core_extras %}
+{% load bootstrap_icon dicom_task_status_css_class from core_extras %}
 {% load explorer_url from dicom_explorer_extras %}
 {% with task.job as job %}
     <dl class="row">
@@ -10,7 +10,7 @@
         <dd class="col-sm-9">
             <a href="{% url job_url_name job.id %}">
                 {{ job.id }}
-                {% include "core/icons/goto.svg" %}
+                {% bootstrap_icon "box-arrow-in-down-right" %}
             </a>
         </dd>
         <dt class="col-sm-3">Status</dt>
@@ -63,7 +63,7 @@
                 <a href="{{ study_url }}"
                    title="Show in DICOM Explorer"
                    data-bs-toggle="tooltip"
-                   data-bs-placement="left">{% include "core/icons/goto.svg" %}</a>
+                   data-bs-placement="left">{% bootstrap_icon "box-arrow-in-down-right" %}</a>
             {% endif %}
         </dd>
         {% for series_uid in task.series_uids %}
@@ -78,7 +78,7 @@
                 <a href="{{ series_url }}"
                    title="Show in DICOM Explorer"
                    data-bs-toggle="tooltip"
-                   data-bs-placement="left">{% include "core/icons/goto.svg" %}</a>
+                   data-bs-placement="left">{% bootstrap_icon "box-arrow-in-down-right" %}</a>
             </dd>
         {% endfor %}
         <dt class="col-sm-3">Pseudonym</dt>

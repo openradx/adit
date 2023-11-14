@@ -1,4 +1,4 @@
-{% load combine_datetime filter_modalities join_if_list from core_extras %}
+{% load bootstrap_icon combine_datetime filter_modalities join_if_list from core_extras %}
 {% load explorer_url from dicom_explorer_extras %}
 <table class="table">
     <caption>Studies</caption>
@@ -27,7 +27,7 @@
                     <a href="{{ study_url }}"
                        title="{{ study.StudyInstanceUID }}"
                        data-bs-toggle="tooltip"
-                       data-bs-placement="left">{% include "core/icons/goto.svg" %}</a>
+                       data-bs-placement="left">{% bootstrap_icon "box-arrow-in-down-right" %}</a>
                 </td>
             </tr>
         {% endfor %}

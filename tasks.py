@@ -308,6 +308,7 @@ def copy_statics(ctx: Context):
         copy(file, "adit/static/vendor/")
     for file in glob("node_modules/bootstrap/dist/js/bootstrap.bundle.js*"):
         copy(file, "adit/static/vendor/")
+    copy("node_modules/bootstrap-icons/bootstrap-icons.svg", "adit/static/vendor/")
     copy("node_modules/bootswatch/dist/flatly/bootstrap.css", "adit/static/vendor/")
     copy("node_modules/alpinejs/dist/cdn.js", "adit/static/vendor/alpine.js")
     copy("node_modules/@alpinejs/morph/dist/cdn.js", "adit/static/vendor/alpine-morph.js")

@@ -59,7 +59,7 @@
     activeThemeItem.classList.add("active");
     activeThemeItem.setAttribute("aria-pressed", "true");
 
-    // The the href of the current SVG symbol
+    // The href of the current SVG symbol
     const href = activeThemeItem.querySelector("svg use").getAttribute("href");
 
     // Set the href of the SVG symbol in the theme switcher button

@@ -1,9 +1,10 @@
 {% extends "batch_transfer/batch_transfer_layout.html" %}
+{% load bootstrap_icon from core_extras %}
 {% block heading %}
     <div class="d-flex justify-content-between align-items-start">
         <h4 class="mb-3">Batch Transfer Jobs</h4>
         <a href="{% url 'batch_transfer_job_create' %}">
-            {% include "core/icons/create.svg" %}
+            {% bootstrap_icon "plus-square" %}
             Create New Job
         </a>
     </div>

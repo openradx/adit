@@ -1,4 +1,4 @@
-{% load person_name_from_dicom from core_extras %}
+{% load bootstrap_icon person_name_from_dicom from core_extras %}
 {% load explorer_url from dicom_explorer_extras %}
 <table class="table">
     <caption>Patients</caption>
@@ -23,7 +23,7 @@
                     <a href="{{ patient_url }}"
                        title="{{ patient.PatientID }}"
                        data-bs-toggle="tooltip"
-                       data-bs-placement="left">{% include "core/icons/goto.svg" %}</a>
+                       data-bs-placement="left">{% bootstrap_icon "box-arrow-in-down-right" %}</a>
                 </td>
             </tr>
         {% endfor %}

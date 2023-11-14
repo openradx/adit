@@ -1,4 +1,4 @@
-{% load person_name_from_dicom from core_extras %}
+{% load bootstrap_icon person_name_from_dicom from core_extras %}
 {% load explorer_url from dicom_explorer_extras %}
 <dl class="row card-body mb-0">
     <dt class="col-sm-3">Patient ID</dt>
@@ -6,7 +6,7 @@
         {{ patient.PatientID }}
         {% if level != "patient" %}
             {% explorer_url server.id patient.PatientID as patient_url %}
-            <a href="{{ patient_url }}">{% include "core/icons/goto.svg" %}</a>
+            <a href="{{ patient_url }}">{% bootstrap_icon "box-arrow-in-down-right" %}</a>
         {% endif %}
     </dd>
     <dt class="col-sm-3">Patient Name</dt>

@@ -1,5 +1,6 @@
 {% extends "core/_message_modal.html" %}
 {% load static from static %}
+{% load bootstrap_icon from core_extras %}
 {% block modal_title %}
     Batch Transfer Help
 {% endblock modal_title %}
@@ -55,7 +56,7 @@
     </p>
     <div class="mb-1">
         <a href="{% static 'samples/batch_transfer_sample.xlsx' %}">
-            {% include "core/icons/download.svg" %}
+            {% bootstrap_icon "download" %}
             Download a sample batch transfer file (Excel format).
         </a>
     </div>
