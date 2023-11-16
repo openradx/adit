@@ -1,4 +1,7 @@
+import datetime
+
 import pytest
+import time_machine
 from pytest_mock import MockerFixture
 
 from adit.core.errors import RetriableDicomError
@@ -24,8 +27,8 @@ def patch_dicom_processors(mocker: MockerFixture):
 
 @pytest.fixture
 def dicom_worker(mocker: MockerFixture):
-    worker = DicomWorker()
-    worker._redis = mocker.MagicMock()
+    worker = DicomWorker(polling_interval=1)
+    mocker.patch.object(worker, "_redis", mocker.MagicMock())
     return worker
 
 
@@ -148,3 +151,37 @@ def test_worker_with_task_that_raises_non_retriable_error(
 
     with pytest.raises(QueuedTask.DoesNotExist):
         QueuedTask.objects.get(pk=queued_task.pk)
+
+
+@time_machine.travel(datetime.datetime(2022, 1, 1, 0, 0))
+def test_worker_inside_timeslot(mocker: MockerFixture):
+    time_slot = (datetime.time(22, 0), datetime.time(6, 0))
+    worker = DicomWorker(polling_interval=1, time_slot=time_slot)
+    mocker.patch.object(worker, "_redis", mocker.MagicMock())
+
+    wait_mock = mocker.patch.object(
+        worker._stop, "wait", wraps=worker._stop.wait, side_effect=lambda _: worker._stop.set()
+    )
+    process_mock = mocker.patch.object(worker, "check_and_process_next_task", return_value=False)
+
+    worker.run()
+
+    wait_mock.assert_called_once()
+    process_mock.assert_called_once()
+
+
+@time_machine.travel(datetime.datetime(2022, 1, 1, 12, 0))
+def test_worker_outside_timeslot(mocker: MockerFixture):
+    time_slot = (datetime.time(22, 0), datetime.time(6, 0))
+    worker = DicomWorker(polling_interval=1, time_slot=time_slot)
+    mocker.patch.object(worker, "_redis", mocker.MagicMock())
+
+    wait_mock = mocker.patch.object(
+        worker._stop, "wait", wraps=worker._stop.wait, side_effect=lambda _: worker._stop.set()
+    )
+    process_spy = mocker.spy(worker, "check_and_process_next_task")
+
+    worker.run()
+
+    wait_mock.assert_called_once()
+    process_spy.assert_not_called()

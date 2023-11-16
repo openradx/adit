@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 TimeSlot = tuple[time, time]
 
 DISTRIBUTED_LOCK = "dicom_worker_lock"
-PROCESS_TIMEOUT = 60 * 30  # 30 minutes
+PROCESS_TIMEOUT = 60 * 20  # 20 minutes
 MAX_PRIORITY = 10
 
 
