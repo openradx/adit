@@ -110,6 +110,11 @@ class DicomNode(models.Model):
                 raise AssertionError(f"Invalid node type: {self.NODE_TYPE}")
             self.node_type = self.NODE_TYPE
 
+    def is_accessible_by_user(
+        self, user: User, access_type: Literal["source", "destination"]
+    ) -> bool:
+        return DicomNode.objects.accessible_by_user(user, access_type).filter(id=self.id).exists()
+
 
 class DicomNodeInstituteAccess(models.Model):
     id: int

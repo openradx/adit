@@ -1,3 +1,5 @@
+from typing import cast
+
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Layout, Submit
 from django import forms
@@ -6,9 +8,11 @@ from django.core.exceptions import ValidationError
 from django.core.files import File
 from django.db import transaction
 from django.utils.safestring import mark_safe
+from django.utils.translation import gettext_lazy as _
 
 from adit.core.errors import BatchFileContentError, BatchFileFormatError, BatchFileSizeError
 from adit.core.fields import DicomNodeChoiceField, RestrictedFileField
+from adit.core.models import DicomNode
 
 from .models import BatchQueryJob, BatchQueryTask
 from .parsers import BatchQueryFileParser
@@ -47,19 +51,19 @@ class BatchQueryJobForm(forms.ModelForm):
         self.tasks = []
         self.save_tasks = None
 
-        user = kwargs.pop("user")
+        self.user = kwargs.pop("user")
 
         super().__init__(*args, **kwargs)
 
-        self.fields["source"] = DicomNodeChoiceField("source", user)
+        self.fields["source"] = DicomNodeChoiceField("source", self.user)
         self.fields["source"].widget.attrs["@change"] = "onSourceChange($event)"
 
         self.fields["urgent"].widget.attrs["@change"] = "onUrgentChange($event)"
 
-        if not user.has_perm("batch_query.can_process_urgently"):
+        if not self.user.has_perm("batch_query.can_process_urgently"):
             del self.fields["urgent"]
 
-        self.max_batch_size = settings.MAX_BATCH_QUERY_SIZE if not user.is_staff else None
+        self.max_batch_size = settings.MAX_BATCH_QUERY_SIZE if not self.user.is_staff else None
 
         if self.max_batch_size is not None:
             self.fields[
@@ -75,6 +79,12 @@ class BatchQueryJobForm(forms.ModelForm):
         self.helper.render_unmentioned_fields = True  # and the rest of the fields below
         self.helper.attrs["x-data"] = "batchQueryJobForm()"
         self.helper.add_input(Submit("save", "Create Job"))
+
+    def clean_source(self):
+        source = cast(DicomNode, self.cleaned_data["source"])
+        if not source.is_accessible_by_user(self.user, "source"):
+            raise ValidationError(_("You do not have access to this source."))
+        return source
 
     def clean_batch_file(self):
         batch_file: File = self.cleaned_data["batch_file"]

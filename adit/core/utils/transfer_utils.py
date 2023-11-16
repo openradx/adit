@@ -30,19 +30,14 @@ class TransferExecutor:
     def __init__(self, transfer_task: TransferTask) -> None:
         self.transfer_task = transfer_task
 
-        # Make sure source and destination are accessible by the user
-        source_node = DicomNode.objects.accessible_by_user(
-            self.transfer_task.job.owner, "source"
-        ).get(pk=self.transfer_task.source.pk)
-        assert source_node.node_type == DicomNode.NodeType.SERVER
-        self.source_operator = DicomOperator(source_node.dicomserver)
+        source = self.transfer_task.source
+        assert source.node_type == DicomNode.NodeType.SERVER
+        self.source_operator = DicomOperator(source.dicomserver)
 
         self.dest_operator = None
-        if self.transfer_task.destination.node_type == DicomNode.NodeType.SERVER:
-            dest_node = DicomNode.objects.accessible_by_user(
-                self.transfer_task.job.owner, "destination"
-            ).get(pk=self.transfer_task.destination.pk)
-            self.dest_operator = DicomOperator(dest_node.dicomserver)
+        destination = self.transfer_task.destination
+        if destination.node_type == DicomNode.NodeType.SERVER:
+            self.dest_operator = DicomOperator(destination.dicomserver)
 
     def start(self) -> tuple[TransferTask.Status, str, list[DicomLogEntry]]:
         if self.dest_operator:
