@@ -5,7 +5,6 @@ from datetime import time, timedelta
 from threading import Event
 from typing import cast
 
-import django
 import humanize
 import redis
 from django import db
@@ -116,15 +115,12 @@ class DicomWorker:
             queued_task.locked = True
             queued_task.save()
 
-            logger.debug(f"Next queued task being processed: {queued_task}")
-            return queued_task
+        logger.debug(f"Next queued task being processed: {queued_task}")
+        return queued_task
 
     # Pebble allows us to set a timeout and terminates the process if it takes too long
     @concurrent.process(timeout=PROCESS_TIMEOUT, daemon=True)
     def process_dicom_task(self, queued_task_id: int) -> None:
-        # As we run this in a separate process we have to initialize Django
-        django.setup()
-
         queued_task = QueuedTask.objects.get(id=queued_task_id)
         dicom_task = cast(DicomTask, queued_task.content_object)
         processor = self._get_processor(dicom_task)
