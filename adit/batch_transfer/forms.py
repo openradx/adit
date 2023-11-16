@@ -1,3 +1,5 @@
+from typing import cast
+
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Layout, Submit
 from django import forms
@@ -5,10 +7,12 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.utils.safestring import mark_safe
+from django.utils.translation import gettext_lazy as _
 
 from adit.accounts.models import User
 from adit.core.errors import BatchFileContentError, BatchFileFormatError, BatchFileSizeError
 from adit.core.fields import DicomNodeChoiceField, RestrictedFileField
+from adit.core.models import DicomNode
 
 from .models import BatchTransferJob, BatchTransferTask
 from .parsers import BatchTransferFileParser
@@ -102,6 +106,18 @@ class BatchTransferJobForm(forms.ModelForm):
         self.helper.render_unmentioned_fields = True  # and the rest of the fields below
         self.helper.attrs["x-data"] = "batchTransferJobForm()"
         self.helper.add_input(Submit("save", "Create Job"))
+
+    def clean_source(self):
+        source = cast(DicomNode, self.cleaned_data["source"])
+        if not source.is_accessible_by_user(self.user, "source"):
+            raise ValidationError(_("You do not have access to this source."))
+        return source
+
+    def clean_destination(self):
+        destination = cast(DicomNode, self.cleaned_data["destination"])
+        if not destination.is_accessible_by_user(self.user, "destination"):
+            raise ValidationError(_("You do not have access to this destination."))
+        return destination
 
     def clean_batch_file(self):
         batch_file = self.cleaned_data["batch_file"]

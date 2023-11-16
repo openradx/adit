@@ -6,8 +6,6 @@
   -- test job_utils
   -- Test canceled task/job in test_workers.py
 
-- Test accessible in form
-  -- Remove accessible tests from transfer/query_util, (already tested in form)
 - Replace 7z with .zip format. Really save in patient folder?
 - Figure out if favicon works in all browsers
 - Rename C_STORE to C-STORE and so on in dimse connector

@@ -162,13 +162,9 @@ class SelectiveTransferConsumer(AsyncJsonWebsocketConsumer):
             if message_id != self.current_message_id:
                 return
 
-            # Make sure source is accessible by the user
             source = cast(DicomNode, form.cleaned_data["source"])
-            source_node = DicomNode.objects.accessible_by_user(self.user, "source").get(
-                pk=source.pk
-            )
-            assert source_node.node_type == DicomNode.NodeType.SERVER
-            operator = DicomOperator(source_node.dicomserver)
+            assert source.node_type == DicomNode.NodeType.SERVER
+            operator = DicomOperator(source.dicomserver)
 
             self.query_operators.append(operator)
 

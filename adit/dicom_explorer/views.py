@@ -125,7 +125,7 @@ def render_query_result(
     try:
         server = DicomServer.objects.accessible_by_user(request.user, "source").get(id=server_id)
     except DicomServer.DoesNotExist:
-        return render_error(request, f"Invalid DICOM server with ID {server_id}.")
+        return render_error(request, "Invalid DICOM server.")
 
     if url_name == "dicom_explorer_server_detail":
         response = render_server_detail(request, server)
