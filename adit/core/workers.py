@@ -56,13 +56,13 @@ class DicomWorker:
                 continue
 
     def check_and_process_next_task(self) -> bool:
-        queued_task = self.fetch_queued_task()
+        queued_task = self._fetch_queued_task()
         if not queued_task:
             return False
 
         try:
-            assert callable(self.process_dicom_task)
-            self._future = self.process_dicom_task(queued_task.id)
+            assert callable(self._process_dicom_task)
+            self._future = self._process_dicom_task(queued_task.id)
             self._future.result()
         except TimeoutError:
             dicom_task = cast(DicomTask, queued_task.content_object)
@@ -87,7 +87,7 @@ class DicomWorker:
 
         return True
 
-    def fetch_queued_task(self) -> QueuedTask | None:
+    def _fetch_queued_task(self) -> QueuedTask | None:
         with self._redis.lock(DISTRIBUTED_LOCK):
             queued_tasks = QueuedTask.objects.filter(locked=False)
             queued_tasks = queued_tasks.filter(Q(eta=None) | Q(eta__lt=timezone.now()))
@@ -120,7 +120,7 @@ class DicomWorker:
 
     # Pebble allows us to set a timeout and terminates the process if it takes too long
     @concurrent.process(timeout=PROCESS_TIMEOUT, daemon=True)
-    def process_dicom_task(self, queued_task_id: int) -> None:
+    def _process_dicom_task(self, queued_task_id: int) -> None:
         queued_task = QueuedTask.objects.get(id=queued_task_id)
         dicom_task = cast(DicomTask, queued_task.content_object)
         processor = self._get_processor(dicom_task)
@@ -181,22 +181,16 @@ class DicomWorker:
                 dicom_task.status = DicomTask.Status.FAILURE
                 dicom_task.message = str(err)
                 queued_task.delete()
-        except DicomError as err:
-            logger.exception("Error during %s.", dicom_task)
+        except Exception as err:
+            if isinstance(err, DicomError):
+                logger.exception("Error during %s.", dicom_task)
+            else:
+                logger.exception("Unexpected error during %s.", dicom_task)
 
             dicom_task.status = DicomTask.Status.FAILURE
             dicom_task.message = str(err)
             if dicom_task.log:
                 dicom_task.log += "\n---\n"
-            dicom_task.log += traceback.format_exc()
-            queued_task.delete()
-        except Exception as err:
-            logger.exception("Unexpected error during %s.", dicom_task)
-
-            dicom_task.status = DicomTask.Status.FAILURE
-            dicom_task.message = str(err)
-            if dicom_task.log:
-                dicom_task.log += "\n-----\n"
             dicom_task.log += traceback.format_exc()
             queued_task.delete()
         finally:
