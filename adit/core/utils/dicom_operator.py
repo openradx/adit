@@ -553,7 +553,7 @@ class DicomOperator:
         # The requested images are sent to the receiver container (a C-STORE SCP server)
         # by the C-MOVE operation. Then those are send via the transmitter (over TCP socket)
         # which we consume in a separate thread.
-        with ThreadPoolExecutor() as executor:
+        with ThreadPoolExecutor(max_workers=1) as executor:
             consume_future = executor.submit(
                 self._consume_from_receiver,
                 query.StudyInstanceUID,

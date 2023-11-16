@@ -4,9 +4,9 @@
 
 - Before new release
   -- test job_utils
-  -- exclude autoreload when tests are saved (Custom Filter in server command watched files)
   -- Test canceled task/job in test_workers.py
 
+- Replace 7z with .zip format. Really save in patient folder?
 - Figure out if favicon works in all browsers
 - Rename C_STORE to C-STORE and so on in dimse connector
 - Replace AssertionError with assert
@@ -16,14 +16,11 @@
   -- Check aborted attribute every 10 seconds or so and the may be kill the process
   -- Set task to FAILURE with message "Task manually / forcefully aborted"
 - Make single task cancelable, retriable, resumeable, ...
-- Upgrade REDIS server on RADIS
 - Unfix pyright and its VS code extension
-- Replace sherlock on RADIS
 - Use DicomLogEntry during C-STORE
 - Allow to restart or cancel specific dicom task
 - Fix dicom explorer search over Accession Number
 - Make warning when only one image fails
-- Upgrade psycopg on RADIS
 - Use django-stubs instead of django-types (also on RADIS)
 - Exclude SR and PR when in pseudonymization mode
 - Cancel processing tasks actively
@@ -112,6 +109,7 @@
 
 ## Maybe
 
+- exclude test folders from autorelad in ServerCommand (maybe a custom filter is needed)
 - Switch from Daphne to Uvicorn (maybe it has faster restart times during development)
 - Switch from Celery to Huey
 - Upgrade postgres server to v15, but we have to migrate the data then as the database files are incompatible a newer version
@@ -189,3 +187,9 @@
 - Get rid of jQuery in ADIT and RADIS
 - Get rid of Jumbotron
 - Get rid of those not used accounts views and login form
+- Move over to SVG sprites
+- Get rid of RabbitMQ
+- Port over ServerCommand
+- Upgrade REDIS server on RADIS
+- Remove sherlock on RADIS as no need for distributed lock there and we use Redis here for that
+- Upgrade psycopg on RADIS
