@@ -23,12 +23,9 @@ class QueryExecutor:
     def __init__(self, query_task: BatchQueryTask) -> None:
         self.query_task = query_task
 
-        # Make sure source is accessible by the user
-        source_node = DicomNode.objects.accessible_by_user(self.query_task.job.owner, "source").get(
-            pk=self.query_task.source.pk
-        )
-        assert source_node.node_type == DicomNode.NodeType.SERVER
-        self.operator = DicomOperator(source_node.dicomserver)
+        source = self.query_task.source
+        assert source.node_type == DicomNode.NodeType.SERVER
+        self.operator = DicomOperator(source.dicomserver)
 
     def start(self) -> tuple[BatchQueryTask.Status, str, list[DicomLogEntry]]:
         patient = self._fetch_patient()
@@ -184,7 +181,7 @@ class QueryExecutor:
                 study_date=study.StudyDate,
                 study_time=study.StudyTime,
                 study_description=study.StudyDescription,
-                modalities=study.ModalitiesInStudy,  # All modalities in this study
+                modalities=study.ModalitiesInStudy,  # type: ignore TODO: pyright issue #6456
                 image_count=study.NumberOfStudyRelatedInstances,
                 pseudonym=self.query_task.pseudonym,
                 series_uid="",
@@ -213,7 +210,7 @@ class QueryExecutor:
                     study_date=study.StudyDate,
                     study_time=study.StudyTime,
                     study_description=study.StudyDescription,
-                    modalities=[series.Modality],  # The modality of this series
+                    modalities=[series.Modality],
                     image_count=study.NumberOfStudyRelatedInstances,
                     pseudonym=self.query_task.pseudonym,
                     series_uid=series.SeriesInstanceUID,

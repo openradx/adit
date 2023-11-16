@@ -1,4 +1,5 @@
 import re
+from typing import cast
 
 from crispy_forms.bootstrap import StrictButton
 from crispy_forms.helper import FormHelper
@@ -76,6 +77,18 @@ class SelectiveTransferJobForm(forms.ModelForm):
         self.helper.layout = Layout(
             Div(query_form_layout, css_id="query_form", **{"hx-swap-oob": "morph"})
         )
+
+    def clean_source(self):
+        source = cast(DicomNode, self.cleaned_data["source"])
+        if not source.is_accessible_by_user(self.user, "source"):
+            raise ValidationError(_("You do not have access to this source."))
+        return source
+
+    def clean_destination(self):
+        destination = cast(DicomNode, self.cleaned_data["destination"])
+        if not destination.is_accessible_by_user(self.user, "destination"):
+            raise ValidationError(_("You do not have access to this destination."))
+        return destination
 
     def clean_pseudonym(self):
         pseudonym = self.cleaned_data["pseudonym"]

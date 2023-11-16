@@ -162,13 +162,9 @@ class SelectiveTransferConsumer(AsyncJsonWebsocketConsumer):
             if message_id != self.current_message_id:
                 return
 
-            # Make sure source is accessible by the user
             source = cast(DicomNode, form.cleaned_data["source"])
-            source_node = DicomNode.objects.accessible_by_user(self.user, "source").get(
-                pk=source.pk
-            )
-            assert source_node.node_type == DicomNode.NodeType.SERVER
-            operator = DicomOperator(source_node.dicomserver)
+            assert source.node_type == DicomNode.NodeType.SERVER
+            operator = DicomOperator(source.dicomserver)
 
             self.query_operators.append(operator)
 
@@ -220,7 +216,7 @@ class SelectiveTransferConsumer(AsyncJsonWebsocketConsumer):
         )
 
         def has_only_excluded_modalities(study: ResultDataset):
-            modalities_in_study = set(study.ModalitiesInStudy)
+            modalities_in_study = set(study.ModalitiesInStudy)  # type: ignore TODO: pyright issue #6456
             excluded_modalities = set(settings.EXCLUDED_MODALITIES)
             not_excluded_modalities = list(modalities_in_study - excluded_modalities)
             return len(not_excluded_modalities) == 0
