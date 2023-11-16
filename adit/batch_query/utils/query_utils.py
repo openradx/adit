@@ -184,7 +184,7 @@ class QueryExecutor:
                 study_date=study.StudyDate,
                 study_time=study.StudyTime,
                 study_description=study.StudyDescription,
-                modalities=study.ModalitiesInStudy,  # All modalities in this study
+                modalities=study.ModalitiesInStudy,  # type: ignore TODO: pyright issue #6456
                 image_count=study.NumberOfStudyRelatedInstances,
                 pseudonym=self.query_task.pseudonym,
                 series_uid="",
@@ -213,7 +213,7 @@ class QueryExecutor:
                     study_date=study.StudyDate,
                     study_time=study.StudyTime,
                     study_description=study.StudyDescription,
-                    modalities=[series.Modality],  # The modality of this series
+                    modalities=[series.Modality],
                     image_count=study.NumberOfStudyRelatedInstances,
                     pseudonym=self.query_task.pseudonym,
                     series_uid=series.SeriesInstanceUID,

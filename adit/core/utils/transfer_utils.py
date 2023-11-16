@@ -114,7 +114,7 @@ class TransferExecutor:
         # the study folder.
         patient = self._fetch_patient()
         study = self._fetch_study(patient_id=patient.PatientID)
-        modalities = study.ModalitiesInStudy
+        modalities = study.ModalitiesInStudy  # type: ignore TODO: pyright issue #6456
 
         modalities = [
             modality for modality in modalities if modality not in settings.EXCLUDED_MODALITIES

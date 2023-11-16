@@ -213,7 +213,7 @@ class DicomOperator:
             #     )
 
             if query.has("ModalitiesInStudy"):
-                modalities = result.ModalitiesInStudy
+                modalities = result.ModalitiesInStudy  # type: ignore TODO: pyright issue #6456
                 # It's ok if any of the searched modalities is in this study
                 if not any(modality in modalities for modality in query.ModalitiesInStudy):
                     continue
