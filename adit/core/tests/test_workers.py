@@ -88,37 +88,6 @@ def test_worker_with_task_that_fails(mocker: MockerFixture, dicom_worker: DicomW
 
 
 @pytest.mark.django_db
-def test_worker_with_task_that_raises_non_retriable_error(
-    mocker: MockerFixture, dicom_worker: DicomWorker
-):
-    dicom_job = ExampleTransferJobFactory.create(status=DicomJob.Status.PENDING)
-    dicom_task = ExampleTransferTaskFactory.create(
-        status=DicomTask.Status.PENDING,
-        job=dicom_job,
-    )
-    queued_task = QueuedTask.objects.create(content_object=dicom_task, priority=5)
-
-    def process_dicom_task(self, dicom_task):
-        assert QueuedTask.objects.get(pk=queued_task.pk).locked
-        raise Exception("Unexpected error!")
-
-    mocker.patch.object(ExampleProcessor, "process_dicom_task", process_dicom_task)
-
-    dicom_worker.check_and_process_next_task()
-
-    dicom_job.refresh_from_db()
-    assert dicom_job.status == DicomJob.Status.FAILURE
-
-    dicom_task.refresh_from_db()
-    assert dicom_task.queued is None
-    assert dicom_task.status == DicomTask.Status.FAILURE
-    assert dicom_task.message == "Unexpected error!"
-
-    with pytest.raises(QueuedTask.DoesNotExist):
-        QueuedTask.objects.get(pk=queued_task.pk)
-
-
-@pytest.mark.django_db
 def test_worker_with_task_that_raises_retriable_error(
     mocker: MockerFixture, dicom_worker: DicomWorker
 ):
@@ -148,3 +117,34 @@ def test_worker_with_task_that_raises_retriable_error(
     assert dicom_task.status == DicomTask.Status.PENDING
     assert dicom_task.retries == 1
     assert QueuedTask.objects.get(pk=queued_task.pk)
+
+
+@pytest.mark.django_db
+def test_worker_with_task_that_raises_non_retriable_error(
+    mocker: MockerFixture, dicom_worker: DicomWorker
+):
+    dicom_job = ExampleTransferJobFactory.create(status=DicomJob.Status.PENDING)
+    dicom_task = ExampleTransferTaskFactory.create(
+        status=DicomTask.Status.PENDING,
+        job=dicom_job,
+    )
+    queued_task = QueuedTask.objects.create(content_object=dicom_task, priority=5)
+
+    def process_dicom_task(self, dicom_task):
+        assert QueuedTask.objects.get(pk=queued_task.pk).locked
+        raise Exception("Unexpected error!")
+
+    mocker.patch.object(ExampleProcessor, "process_dicom_task", process_dicom_task)
+
+    dicom_worker.check_and_process_next_task()
+
+    dicom_job.refresh_from_db()
+    assert dicom_job.status == DicomJob.Status.FAILURE
+
+    dicom_task.refresh_from_db()
+    assert dicom_task.queued is None
+    assert dicom_task.status == DicomTask.Status.FAILURE
+    assert dicom_task.message == "Unexpected error!"
+
+    with pytest.raises(QueuedTask.DoesNotExist):
+        QueuedTask.objects.get(pk=queued_task.pk)
