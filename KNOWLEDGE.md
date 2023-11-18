@@ -34,6 +34,8 @@
 
 ## DICOM
 
+- All available DICOM tags: <https://dicom.nema.org/medical/dicom/current/output/chtml/part06/chapter_6.html>
+
 ### pydicom and datetime
 
 - To automatically convert dates to the datetime.date class this config must be set explicitly (default is False): config.datetime_conversion = True
