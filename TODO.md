@@ -6,6 +6,12 @@
   -- test job_utils
   -- Test canceled task/job in test_workers.py
 
+- Make sure all views are atomic
+  -- Use ATOMIC_REQUESTS database setting
+  -- Unfortunately we can't just set ATOMIC_REQUESTS in the database settings globally as those don't seem to work with async views
+  -- Try this again when Django 5.0 is released
+  -- Otherwise tell those async views to be @transaction.non_atomic_requests
+  -- Alternative is to decorate all appropriate views with @transaction.atomic
 - Replace 7z with .zip format. Really save in patient folder?
 - Figure out if favicon works in all browsers
 - Rename C_STORE to C-STORE and so on in dimse connector

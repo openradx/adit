@@ -5,7 +5,6 @@ from crispy_forms.layout import Layout, Submit
 from django import forms
 from django.conf import settings
 from django.core.exceptions import ValidationError
-from django.db import transaction
 from django.utils.safestring import mark_safe
 from django.utils.translation import gettext_lazy as _
 
@@ -158,14 +157,13 @@ class BatchTransferJobForm(forms.ModelForm):
         BatchTransferTask.objects.bulk_create(self.tasks)
 
     def save(self, commit=True):
-        with transaction.atomic():
-            batch_job = super().save(commit=commit)
+        batch_job = super().save(commit=commit)
 
-            if commit:
-                self._save_tasks(batch_job)
-            else:
-                # If not committing, add a method to the form to allow deferred
-                # saving of tasks.
-                self.save_tasks = self._save_tasks
+        if commit:
+            self._save_tasks(batch_job)
+        else:
+            # If not committing, add a method to the form to allow deferred
+            # saving of tasks.
+            self.save_tasks = self._save_tasks
 
         return batch_job
