@@ -6,7 +6,6 @@ from django import forms
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.files import File
-from django.db import transaction
 from django.utils.safestring import mark_safe
 from django.utils.translation import gettext_lazy as _
 
@@ -119,14 +118,13 @@ class BatchQueryJobForm(forms.ModelForm):
         BatchQueryTask.objects.bulk_create(self.tasks)
 
     def save(self, commit=True):
-        with transaction.atomic():
-            job = super().save(commit=commit)
+        job = super().save(commit=commit)
 
-            if commit:
-                self._save_tasks(job)
-            else:
-                # If not committing, add a method to the form to allow deferred
-                # saving of query tasks.
-                self.save_tasks = self._save_tasks
+        if commit:
+            self._save_tasks(job)
+        else:
+            # If not committing, add a method to the form to allow deferred
+            # saving of query tasks.
+            self.save_tasks = self._save_tasks
 
         return job
