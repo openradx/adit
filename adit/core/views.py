@@ -9,6 +9,7 @@ from django.contrib.auth.mixins import (
     PermissionRequiredMixin,
     UserPassesTestMixin,
 )
+from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import SuspiciousOperation
 from django.db.models import Model
 from django.db.models.query import QuerySet
@@ -28,7 +29,7 @@ from revproxy.views import ProxyView
 
 from .forms import BroadcastForm
 from .mixins import PageSizeSelectMixin, RelatedFilterMixin
-from .models import CoreSettings, DicomJob, DicomTask
+from .models import CoreSettings, DicomJob, DicomTask, QueuedTask
 from .site import job_stats_collectors
 from .tasks import broadcast_mail
 from .types import AuthenticatedHttpRequest
@@ -273,20 +274,17 @@ class DicomJobCancelView(LoginRequiredMixin, SingleObjectMixin, View):
                 f"Job with ID {job.id} and status {job.get_status_display()} is not cancelable."
             )
 
-        dicom_tasks = job.tasks.filter(status=DicomTask.Status.PENDING).prefetch_related("queued")
-
-        # TODO: somehow do a bulk delete
-        for dicom_task in dicom_tasks:
-            queued_task = dicom_task.queued
-            if queued_task:
-                queued_task.delete()
-
+        dicom_tasks = job.tasks.filter(status=DicomTask.Status.PENDING)
+        task_model = self.model._meta.get_field("tasks").related_model
+        assert task_model and issubclass(task_model, DicomTask)
+        content_type = ContentType.objects.get_for_model(task_model)
+        dicom_task_ids = dicom_tasks.values_list("id", flat=True)
+        QueuedTask.objects.filter(content_type=content_type, object_id__in=dicom_task_ids).delete()
         dicom_tasks.update(status=DicomTask.Status.CANCELED)
 
+        # If there is a task in progress then the job will be set to canceling and will be set
+        # to canceled when the processing of the task is finished (see update_job_status).
         tasks_in_progress_count = job.tasks.filter(status=DicomTask.Status.IN_PROGRESS).count()
-
-        # If there is a still in progress task then the job will be set to canceled when
-        # the processing of the task is finished (see update_job_status).
         if tasks_in_progress_count > 0:
             job.status = DicomJob.Status.CANCELING
         else:
