@@ -428,6 +428,8 @@ SKIP_ELEMENTS_ANONYMIZATION = [
     "AcquisitionDate",
     "AcquisitionDateTime",
     "AcquisitionTime",
+    "ContentDate",
+    "ContentTime",
     "SeriesDate",
     "SeriesTime",
     "StudyDate",
