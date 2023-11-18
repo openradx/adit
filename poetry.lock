@@ -839,13 +839,13 @@ files = [
 
 [[package]]
 name = "dicognito"
-version = "0.16.0"
+version = "0.17.0"
 description = "A tool for anonymizing DICOM files"
 optional = false
 python-versions = "*"
 files = [
-    {file = "dicognito-0.16.0-py3-none-any.whl", hash = "sha256:51b1f9cdae93ee49274b4d9b14a004d6182d4409a7bc984807f34558e1b837d0"},
-    {file = "dicognito-0.16.0.tar.gz", hash = "sha256:843cc38ee43cb846fad3a32012b02ae77421e0f0eaa7df86cad75c7ae5549a9c"},
+    {file = "dicognito-0.17.0-py3-none-any.whl", hash = "sha256:91058bd58ab92d2cdbfecec64a2aa7e84c62b42dabdc72962cf40e7b921d759d"},
+    {file = "dicognito-0.17.0.tar.gz", hash = "sha256:96e700d69d4915251a297b72ab0f6fe414b42fc9b709f04b440847805ca502af"},
 ]
 
 [package.dependencies]
@@ -3679,4 +3679,4 @@ testing = ["coverage (>=5.0.3)", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "a690ec1e96ed8fe23af7015cff71f896156619b5a3247a6e530515dcea17cdac"
+content-hash = "620eec8c03b689fa7a7f4f201c3a1d4542d7d427b5b3bc492b311364b5b95612"

@@ -5,9 +5,10 @@ import tempfile
 from datetime import datetime
 from functools import partial
 from pathlib import Path
-from typing import Any, Callable
+from typing import Callable
 
 from dicognito.anonymizer import Anonymizer
+from dicognito.value_keeper import ValueKeeper
 from django.conf import settings
 from pydicom import Dataset
 
@@ -94,6 +95,15 @@ class TransferExecutor:
         download_folder = dicom_folder / self._create_destination_name()
         self._download_dicoms(download_folder)
 
+    def _create_destination_name(self) -> str:
+        transfer_job = self.transfer_task.job
+        name = "adit_"
+        name += transfer_job._meta.app_label + "_"
+        name += str(transfer_job.id) + "_"
+        name += transfer_job.created.strftime("%Y%m%d") + "_"
+        name += transfer_job.owner.username
+        return sanitize_dirname(name)
+
     def _download_dicoms(
         self,
         download_folder: Path,
@@ -134,7 +144,8 @@ class TransferExecutor:
         study_folder = patient_folder / f"{prefix}-{modalities}"
         os.makedirs(study_folder, exist_ok=True)
 
-        anonymizer = Anonymizer()
+        anonymizer = self._setup_anonymizer()
+
         modifier = partial(
             self._modify_dataset,
             anonymizer,
@@ -158,15 +169,6 @@ class TransferExecutor:
             )
 
         return patient_folder
-
-    def _create_destination_name(self) -> str:
-        transfer_job = self.transfer_task.job
-        name = "adit_"
-        name += transfer_job._meta.app_label + "_"
-        name += str(transfer_job.id) + "_"
-        name += transfer_job.created.strftime("%Y%m%d") + "_"
-        name += transfer_job.owner.username
-        return sanitize_dirname(name)
 
     def _fetch_patient(self) -> ResultDataset:
         patients = list(
@@ -228,6 +230,12 @@ class TransferExecutor:
 
         return results
 
+    def _setup_anonymizer(self) -> Anonymizer:
+        anonymizer = Anonymizer()
+        for element in settings.SKIP_ELEMENTS_ANONYMIZATION:
+            anonymizer.add_element_handler(ValueKeeper(element))
+        return anonymizer
+
     def _download_study(
         self,
         patient_id: str,
@@ -262,37 +270,7 @@ class TransferExecutor:
         """Optionally pseudonymize an incoming dataset with the given pseudonym
         and add the trial ID and name to the DICOM header if specified."""
         if pseudonym:
-            # All dates get anonymized by dicognito, but we want to retain some dates.
-            # For that we save them here to restore them after anonymization as dicognito
-            # currently does not provide that functionality.
-            # TODO: Use dicognito for this when issue is fixed:
-            # https://github.com/blairconrad/dicognito/issues/155
-            # TODO: Make this configurable.
-            attributes_to_retain = [
-                "StudyDate",
-                "StudyTime",
-                "SeriesDate",
-                "SeriesTime",
-                "AcquisitionDate",
-                "AcquisitionTime",
-                "ImageDate",
-                "ImageTime",
-                "ContentDate",
-                "ContentTime",
-                "DateOfLastCalibration",
-                "TimeOfLastCalibration",
-                "AcquisitionDateTime",
-            ]
-            saved_attributes: dict[str, Any] = {}
-            for attr in attributes_to_retain:
-                value = ds.get(attr)
-                if value is not None:
-                    saved_attributes[attr] = value
-
             anonymizer.anonymize(ds)
-
-            for attr in saved_attributes:
-                setattr(ds, attr, saved_attributes[attr])
 
             ds.PatientID = pseudonym
             ds.PatientName = pseudonym
