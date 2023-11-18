@@ -1,5 +1,7 @@
 from .development import *  # noqa: F403
 
+EXAMPLE_APP = True
+
 INSTALLED_APPS += [  # noqa: F405
     "adit.core.tests.example_app.apps.ExampleAppConfig",
 ]

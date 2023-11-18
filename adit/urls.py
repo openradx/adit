@@ -44,3 +44,8 @@ if settings.DEBUG:
         path("__reload__/", include("django_browser_reload.urls")),
         path("__debug__/", include(debug_toolbar.urls)),
     ] + urlpatterns
+
+# When running tests with DJANGO_SETTINGS_MODULE=adit.settings.test we add
+# our example app to the urls
+if getattr(settings, "EXAMPLE_APP", False):
+    urlpatterns += [path("example-app/", include("adit.core.tests.example_app.urls"))]

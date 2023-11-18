@@ -8,8 +8,12 @@ class ExampleAppSettings(AppSettings):
 
 
 class ExampleTransferJob(TransferJob):
-    pass
+    def get_absolute_url(self):
+        return "/"
 
 
 class ExampleTransferTask(TransferTask):
     job = models.ForeignKey(ExampleTransferJob, on_delete=models.CASCADE, related_name="tasks")
+
+    def get_absolute_url(self):
+        return "/"
