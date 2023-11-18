@@ -6,26 +6,91 @@ from adit.accounts.factories import UserFactory
 
 from ..models import DicomJob, DicomTask, QueuedTask
 from .example_app.factories import ExampleTransferJobFactory, ExampleTransferTaskFactory
+from .example_app.models import ExampleTransferJob, ExampleTransferTask
 
 
-@pytest.mark.django_db(transaction=True)
-def test_job_can_be_canceled(client: Client):
-    user = UserFactory.create()
-    client.force_login(user)
+class TestExampleTransferJobDeleteView:
+    @pytest.mark.django_db
+    def test_job_can_be_deleted(self, client: Client):
+        user = UserFactory.create()
+        client.force_login(user)
 
-    dicom_job = ExampleTransferJobFactory.create(status=DicomJob.Status.PENDING, owner=user)
-    dicom_task = ExampleTransferTaskFactory.create(
-        status=DicomTask.Status.PENDING,
-        job=dicom_job,
-    )
-    QueuedTask.objects.create(content_object=dicom_task, priority=5)
+        job = ExampleTransferJobFactory.create(status=DicomJob.Status.PENDING, owner=user)
+        task = ExampleTransferTaskFactory.create(
+            status=DicomTask.Status.PENDING,
+            job=job,
+        )
+        QueuedTask.objects.create(content_object=task, priority=5)
 
-    client.post(reverse("example_transfer_job_cancel", args=[dicom_job.pk]))
+        response = client.post(reverse("example_transfer_job_delete", args=[job.pk]))
 
-    dicom_job.refresh_from_db()
-    assert dicom_job.status == DicomJob.Status.CANCELED
+        assert response.status_code == 302
+        assert ExampleTransferJob.objects.count() == 0
+        assert ExampleTransferTask.objects.count() == 0
+        assert QueuedTask.objects.count() == 0
 
-    dicom_task.refresh_from_db()
-    assert dicom_task.status == DicomTask.Status.CANCELED
+    @pytest.mark.django_db
+    def test_non_deletable_job_cannot_be_deleted(self, client: Client):
+        user = UserFactory.create()
+        client.force_login(user)
 
-    assert QueuedTask.objects.count() == 0
+        job = ExampleTransferJobFactory.create(status=DicomJob.Status.IN_PROGRESS, owner=user)
+        task = ExampleTransferTaskFactory.create(
+            status=DicomTask.Status.IN_PROGRESS,
+            job=job,
+        )
+        QueuedTask.objects.create(content_object=task, priority=5)
+
+        response = client.post(reverse("example_transfer_job_delete", args=[job.pk]))
+
+        assert response.status_code == 400
+        assert ExampleTransferJob.objects.count() == 1
+        assert ExampleTransferTask.objects.count() == 1
+        assert QueuedTask.objects.count() == 1
+
+
+class TestExampleTransferJobCancelView:
+    @pytest.mark.django_db
+    def test_job_can_be_canceled(self, client: Client):
+        user = UserFactory.create()
+        client.force_login(user)
+
+        job = ExampleTransferJobFactory.create(status=DicomJob.Status.PENDING, owner=user)
+        task = ExampleTransferTaskFactory.create(
+            status=DicomTask.Status.PENDING,
+            job=job,
+        )
+        QueuedTask.objects.create(content_object=task, priority=5)
+
+        response = client.post(reverse("example_transfer_job_cancel", args=[job.pk]))
+
+        assert response.status_code == 302
+
+        job.refresh_from_db()
+        assert job.status == DicomJob.Status.CANCELED
+
+        task.refresh_from_db()
+        assert task.status == DicomTask.Status.CANCELED
+
+        assert QueuedTask.objects.count() == 0
+
+    @pytest.mark.django_db
+    def test_non_cancelable_job_cannot_be_canceled(self, client: Client):
+        user = UserFactory.create()
+        client.force_login(user)
+
+        job = ExampleTransferJobFactory.create(status=DicomJob.Status.SUCCESS, owner=user)
+        task = ExampleTransferTaskFactory.create(
+            status=DicomTask.Status.SUCCESS,
+            job=job,
+        )
+
+        response = client.post(reverse("example_transfer_job_cancel", args=[job.pk]))
+
+        assert response.status_code == 400
+
+        job.refresh_from_db()
+        assert job.status == DicomJob.Status.SUCCESS
+
+        task.refresh_from_db()
+        assert task.status == DicomTask.Status.SUCCESS

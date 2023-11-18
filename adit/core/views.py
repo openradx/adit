@@ -14,7 +14,7 @@ from django.core.exceptions import SuspiciousOperation
 from django.db.models import Model
 from django.db.models.query import QuerySet
 from django.forms import Form, ModelForm
-from django.http import HttpRequest, HttpResponse
+from django.http import HttpRequest, HttpResponse, HttpResponseRedirect
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import re_path, reverse_lazy
 from django.views.generic import View
@@ -210,23 +210,27 @@ class DicomJobDeleteView(LoginRequiredMixin, DeleteView):
     success_url: str
     success_message = "Job with ID %(id)d was deleted successfully"
     request: AuthenticatedHttpRequest
+    object: DicomJob
 
     def get_queryset(self):
         if self.request.user.is_staff:
             return self.model.objects.all()
         return self.model.objects.filter(owner=self.request.user)
 
-    def delete(self, request, *args, **kwargs) -> HttpResponse:
+    def form_valid(self, form: ModelForm) -> HttpResponse:
         job = cast(DicomJob, self.get_object())
+
         if not job.is_deletable:
             raise SuspiciousOperation(
                 f"Job with ID {job.id} and status {job.get_status_display()} is not deletable."
             )
 
+        self.object.delete()
+
         # As SuccessMessageMixin does not work in DeleteView we have to do
         # it manually (https://code.djangoproject.com/ticket/21936)
-        messages.success(request, self.success_message % job.__dict__)
-        return super().delete(request, *args, **kwargs)
+        messages.success(self.request, self.success_message % job.__dict__)
+        return HttpResponseRedirect(self.get_success_url())
 
 
 class DicomJobVerifyView(LoginRequiredMixin, SingleObjectMixin, View):
