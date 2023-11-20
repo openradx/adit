@@ -422,3 +422,16 @@ TOKEN_AUTHENTICATION_SALT = env.str(
 # DicomWeb Settings
 DEFAULT_BOUNDARY = "adit-boundary"
 ERROR_MESSAGE = "Processing your DicomWeb request failed."
+
+# Elements to keep during pseudonymization
+SKIP_ELEMENTS_ANONYMIZATION = [
+    "AcquisitionDate",
+    "AcquisitionDateTime",
+    "AcquisitionTime",
+    "ContentDate",
+    "ContentTime",
+    "SeriesDate",
+    "SeriesTime",
+    "StudyDate",
+    "StudyTime",
+]
