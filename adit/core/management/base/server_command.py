@@ -128,14 +128,14 @@ class ServerCommand(BaseCommand, ABC):
 
 
 class AsyncServerCommand(ServerCommand, ABC):
+    loop: asyncio.AbstractEventLoop
+
     def run_server(self, **options):
-        loop = asyncio.get_event_loop()
+        async def _run_server(**options):
+            self.loop = asyncio.get_event_loop()
+            await self.run_server_async(**options)
 
-        # Shutdown in asyncio loop must be handled by a different signal handler
-        loop.add_signal_handler(signal.SIGINT, lambda: self.on_shutdown())
-        loop.add_signal_handler(signal.SIGTERM, lambda: self.on_shutdown())
-
-        loop.run_until_complete(self.run_server_async())
+        asyncio.run(_run_server(**options))
 
     @abstractmethod
     async def run_server_async(self, **options):
