@@ -40,7 +40,11 @@ services:
 
   dicom_worker:
     <<: *default-app
-    command: ./manage.py dicom_worker
+    command: >
+      bash -c "
+        wait-for-it -s web:80 -t 0 && 
+        ./manage.py dicom_worker
+      "
     deploy:
       replicas: 1
 
