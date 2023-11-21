@@ -21,7 +21,7 @@ class Command(AsyncServerCommand):
     )
     server_name = "DICOM receiver"
 
-    async def run_server_async(self):
+    async def run_server_async(self, **options):
         # No need for an async path library as we only do it once at startup.
         receiver_dir = Path(settings.TEMP_DICOM_DIR) / "receiver"
         receiver_dir.mkdir(parents=True, exist_ok=True)
@@ -97,4 +97,4 @@ class Command(AsyncServerCommand):
 
     def on_shutdown(self):
         self._store_scp.stop()
-        asyncio.create_task(self._file_transmit.stop())
+        asyncio.run_coroutine_threadsafe(self._file_transmit.stop(), self.loop)
