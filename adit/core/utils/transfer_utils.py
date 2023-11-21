@@ -275,7 +275,7 @@ class TransferExecutor:
             ds.PatientID = pseudonym
             ds.PatientName = pseudonym
 
-        trial_protocol_id = (self.transfer_task.job.trial_protocol_id,)
+        trial_protocol_id = self.transfer_task.job.trial_protocol_id
         trial_protocol_name = self.transfer_task.job.trial_protocol_name
 
         if trial_protocol_id:
