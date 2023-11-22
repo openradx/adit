@@ -2,13 +2,17 @@ import asyncio
 import signal
 import subprocess
 import sys
+import threading
 from abc import ABC, abstractmethod
 from datetime import datetime
 from threading import Event
+from types import FrameType
 
 from django.conf import settings
 from django.core.management.base import BaseCommand
 from watchfiles import PythonFilter, watch
+
+from ...utils.debounce import debounce
 
 
 class ServerCommand(BaseCommand, ABC):
@@ -32,13 +36,22 @@ class ServerCommand(BaseCommand, ABC):
 
     def handle(self, *args, **options):
         # SIGINT is sent by CTRL-C
-        signal.signal(
-            signal.SIGINT, lambda signum, frame: (self._on_terminate(), self.on_shutdown())
-        )
+        def on_interrupt(signum: int, frame: FrameType | None) -> None:
+            self.on_shutdown()
+            self.shutdown()
+            signal.signal(signal.SIGINT, signal.SIG_DFL)
+            signal.raise_signal(signal.SIGINT)
+
+        signal.signal(signal.SIGINT, on_interrupt)
+
         # SIGTERM is sent when stopping a Docker container
-        signal.signal(
-            signal.SIGTERM, lambda signum, frame: (self._on_terminate(), self.on_shutdown())
-        )
+        def on_terminate(signum: int, frame: FrameType | None) -> None:
+            self.on_shutdown()
+            self.shutdown()
+            signal.signal(signal.SIGTERM, signal.SIG_DFL)
+            signal.raise_signal(signal.SIGTERM)
+
+        signal.signal(signal.SIGTERM, on_terminate)
 
         self.run(**options)
 
@@ -46,9 +59,12 @@ class ServerCommand(BaseCommand, ABC):
         if options["autoreload"]:
             self.stdout.write(f"Autoreload enabled for {self.server_name}.")
 
+            # We debounce to give the Django webserver time to restart first
+            @debounce(wait_time=2)
             def inner_run():
-                if self._popen:
+                if self._popen is not None:
                     self._popen.terminate()
+                    self._popen.wait()
 
                 args = sys.argv.copy()
                 args.remove("--autoreload")
@@ -77,40 +93,49 @@ class ServerCommand(BaseCommand, ABC):
             self.stdout.write(f"Starting {self.server_name}")
             self.stdout.write("Quit with CONTROL-C.")
 
-            self.run_server(**options)
+            # We run run_server in a different thread to avoid blocking the main thread
+            # especially when handling SIGINT and SIGTERM signals.
+            t = threading.Thread(target=self.run_server, kwargs=options)
+            t.start()
+            t.join()
 
-    def _on_terminate(self):
+    def shutdown(self):
         if self._popen:
             self._popen.terminate()
 
         self._stop.set()
 
     @abstractmethod
-    def run_server(self, **options):
+    def run_server(self, **options) -> None:
+        """
+        The abstract method that should be implemented by subclasses to do the work.
+
+        Args:
+            **options: Additional keyword arguments parsed from the command line.
+        """
         raise NotImplementedError
 
     @abstractmethod
-    def on_shutdown(self):
+    def on_shutdown(self) -> None:
+        """
+        A callback method that is called when the server should shutdown.
+
+        Called when CTRL-C is pressed, the Docker container is stopped or when
+        an autoreload is triggered. It should be used to clean up any resources
+        and force the server to shut down.
+        """
         raise NotImplementedError
 
 
 class AsyncServerCommand(ServerCommand, ABC):
-    def handle(self, *args, **options):
-        # SIGINT is sent by CTRL-C
-        signal.signal(signal.SIGINT, lambda signum, frame: self._on_terminate())
-        # SIGTERM is sent when stopping a Docker container
-        signal.signal(signal.SIGTERM, lambda signum, frame: self._on_terminate())
-
-        self.run(**options)
+    loop: asyncio.AbstractEventLoop
 
     def run_server(self, **options):
-        loop = asyncio.get_event_loop()
+        async def _run_server(**options):
+            self.loop = asyncio.get_event_loop()
+            await self.run_server_async(**options)
 
-        # Shutdown in asyncio loop must be handled by a different signal handler
-        loop.add_signal_handler(signal.SIGINT, lambda: self.on_shutdown())
-        loop.add_signal_handler(signal.SIGTERM, lambda: self.on_shutdown())
-
-        loop.run_until_complete(self.run_server_async())
+        asyncio.run(_run_server(**options))
 
     @abstractmethod
     async def run_server_async(self, **options):

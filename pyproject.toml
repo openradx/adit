@@ -9,7 +9,7 @@ license = "GPL-3.0-or-later"
 adrf = "^0.1.1"
 aiofiles = "^23.1.0"
 asyncinotify = "^4.0.1"
-celery = {extras = ["redis"], version = "^5.3.5"}
+celery = { extras = ["redis"], version = "^5.3.5" }
 channels = "^4.0.0"
 channels-redis = "^4.0.0"
 cryptography = "^41.0.1"
@@ -35,12 +35,12 @@ redis = "^4.6"
 toml = "^0.10.2"
 Twisted = { extras = ["tls", "http2"], version = "^22.2.0" }
 wait-for-it = "^2.2.2"
-watchfiles = "^0.20.0"
+watchfiles = "^0.21.0"
 whitenoise = "^6.0.0"
 crispy-bootstrap5 = "^0.7"
 django-dbbackup = "^4.0.2"
 pyvespa = "^0.37.1"
-psycopg = {extras = ["binary"], version = "^3.1.13"}
+psycopg = { extras = ["binary"], version = "^3.1.13" }
 
 [tool.poetry.group.dev.dependencies]
 black = "^23.1.0"

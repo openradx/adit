@@ -53,3 +53,4 @@ class Command(ServerCommand):
     def on_shutdown(self):
         assert self.worker_process
         self.worker_process.terminate()
+        self.worker_process.wait()
