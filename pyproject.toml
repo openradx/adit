@@ -30,7 +30,6 @@ humanize = "^4.0.0"
 Markdown = "^3.3.7"
 openpyxl = "^3.1.2"
 pandas = "^2.0.1"
-psycopg2 = "^2.9.3"
 python = "^3.11"
 redis = "^4.6"
 toml = "^0.10.2"
@@ -41,6 +40,7 @@ whitenoise = "^6.0.0"
 crispy-bootstrap5 = "^0.7"
 django-dbbackup = "^4.0.2"
 pyvespa = "^0.37.1"
+psycopg = {extras = ["binary"], version = "^3.1.13"}
 
 [tool.poetry.group.dev.dependencies]
 black = "^23.1.0"
