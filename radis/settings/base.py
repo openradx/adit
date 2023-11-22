@@ -281,7 +281,7 @@ REGISTRATION_OPEN = True
 # Channels
 ASGI_APPLICATION = "radis.asgi.application"
 
-# Redis is used for distributed locks (sherlock).
+# Redis is used as Celery backend
 REDIS_URL = env.str("REDIS_URL", default="redis://localhost:6379/0")  # type: ignore
 
 # Celery

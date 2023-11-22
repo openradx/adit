@@ -33,7 +33,6 @@ pandas = "^2.0.1"
 psycopg2 = "^2.9.3"
 python = "^3.11"
 redis = "^4.6"
-sherlock = "^0.4.1"
 toml = "^0.10.2"
 Twisted = { extras = ["tls", "http2"], version = "^22.2.0" }
 wait-for-it = "^2.2.2"

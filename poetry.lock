@@ -3293,25 +3293,6 @@ testing = ["build[virtualenv]", "filelock (>=3.4.0)", "flake8-2020", "ini2toml[l
 testing-integration = ["build[virtualenv] (>=1.0.3)", "filelock (>=3.4.0)", "jaraco.envs (>=2.2)", "jaraco.path (>=3.2.0)", "packaging (>=23.1)", "pytest", "pytest-enabler", "pytest-xdist", "tomli", "virtualenv (>=13.0.0)", "wheel"]
 
 [[package]]
-name = "sherlock"
-version = "0.4.1"
-description = "Distributed inter-process locks with a choice of backend"
-optional = false
-python-versions = ">=3.7,<4.0"
-files = [
-    {file = "sherlock-0.4.1-py3-none-any.whl", hash = "sha256:811f1f410b4be035726bf602d00c05d5969534d52158725cd3562ccadd2f7325"},
-    {file = "sherlock-0.4.1.tar.gz", hash = "sha256:e620f498d5e2618005d3b5e08cc34106c1ab09e9c58d4310fc268b011700b6f5"},
-]
-
-[package.extras]
-all = ["filelock (>=3.7.1,<4.0.0)", "kubernetes (>=24.2.0,<25.0.0)", "pylibmc (>=1.6.1,<2.0.0)", "redis (>=4.3.4,<5.0.0)"]
-etcd = ["python-etcd (>=0.4.5,<0.5.0)"]
-filelock = ["filelock (>=3.7.1,<4.0.0)"]
-kubernetes = ["kubernetes (>=24.2.0,<25.0.0)"]
-memcached = ["pylibmc (>=1.6.1,<2.0.0)"]
-redis = ["redis (>=4.3.4,<5.0.0)"]
-
-[[package]]
 name = "six"
 version = "1.16.0"
 description = "Python 2 and 3 compatibility utilities"
@@ -4020,4 +4001,4 @@ testing = ["coverage (>=5.0.3)", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "e87f1542b21834ede5c4792254352d1a2637be86f6dee43bfec15f156be17fc9"
+content-hash = "8cde14bca4a42903aad9308e1aab287340791f22db9879f365312eebfb0f739c"
