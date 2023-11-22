@@ -1,0 +1,7 @@
+{% extends "core/core_layout.html" %}
+{% load static from static %}
+{% block script %}
+    {{ block.super }}
+    <script type="module" src="https://unpkg.com/dcmjs"></script>
+    <script src="{% static 'upload/upload.js' %}"></script>
+{% endblock script %}

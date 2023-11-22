@@ -18,7 +18,8 @@
     "alpinejs": "^3.13.0",
     "bootstrap": "^5.3.1",
     "bootswatch": "^5.3.1",
-    "htmx.org": "^1.9.5"
+    "htmx.org": "^1.9.5",
+    "dcmjs": "^1.0.0"
   },
   "scripts": {
     "copy-statics": "invoke copy-statics"

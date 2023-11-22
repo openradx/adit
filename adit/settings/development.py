@@ -28,6 +28,7 @@ INSTALLED_APPS += [  # noqa: F405
     "django_extensions",
     "django_browser_reload",
     "adit.sandbox.apps.SandboxConfig",
+    "adit.upload.apps.UploadConfig",
 ]
 
 MIDDLEWARE += [  # noqa: F405

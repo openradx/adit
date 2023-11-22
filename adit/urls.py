@@ -30,6 +30,7 @@ urlpatterns = [
     path("token-authentication/", include("adit.token_authentication.urls")),
     path("dicom-web/", include("adit.dicom_web.urls")),
     path("sandbox/", include("adit.sandbox.urls")),
+    path("upload/", include("adit.upload.urls")),
 ]
 
 # Django loginas

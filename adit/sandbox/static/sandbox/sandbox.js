@@ -6,4 +6,5 @@ function toastSandbox() {
       showToast("warning", "Sandbox", "You clicked a button!");
     },
   };
+
 }

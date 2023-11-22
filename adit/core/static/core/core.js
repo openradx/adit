@@ -73,6 +73,31 @@ function updatePreferences(route, data) {
   });
 }
 
+function uploadData(data) {
+  const formData = new FormData();
+  for (const key in data) {
+    formData.append(key, data[key]);
+    console.log(data[key]);
+  }
+
+  // const url = "url/to/async/view";
+
+  // const config = getConfig();
+  // const request = new Request(url, {
+  //   method: "POST",
+  //   //headers: { "X-CSRFToken": config.csrf_token },
+  //   mode: "same-origin", // Do not send CSRF token to another domain.
+  //   body: formData,
+  // });
+
+  // fetch(request).then(function () {
+  //   const config = getConfig();
+  //   if (config.debug) {
+  //     console.log("Saved properties to session", data);
+  //   }
+  // });
+}
+
 /**
  * Show a new toast (put on top of the toasts stack).
  * @param {("success"|"warning"|"error")} level
