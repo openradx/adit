@@ -1,4 +1,4 @@
-from typing import Literal, NamedTuple
+from typing import Literal, NamedTuple, cast
 
 from crispy_forms.bootstrap import FieldWithButtons
 from crispy_forms.helper import FormHelper
@@ -19,7 +19,8 @@ class PageSizeSelectForm(forms.Form):
         super().__init__(data, *args, **kwargs)
 
         choices = [(size, size) for size in pages_sizes]
-        self.fields["per_page"].choices = choices
+        per_page_field = cast(forms.ChoiceField, self.fields["per_page"])
+        per_page_field.choices = choices
 
         # For simplicity we reuse the FilterSetFormHelper here (normally used for filters)
         form_helper = FilterSetFormHelper(data)

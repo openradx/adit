@@ -2,7 +2,7 @@ from functools import partial
 
 from channels.routing import get_default_application
 from daphne.testing import DaphneProcess
-from django.contrib.staticfiles.handlers import ASGIStaticFilesHandler  # type: ignore
+from django.contrib.staticfiles.handlers import ASGIStaticFilesHandler
 from django.core.exceptions import ImproperlyConfigured
 from django.db import connections
 from django.test.utils import modify_settings
@@ -24,7 +24,7 @@ class ChannelsLiveServer:
 
     def __init__(self) -> None:
         for connection in connections.all():
-            if connection.vendor == "sqlite" and connection.is_in_memory_db():
+            if connection.vendor == "sqlite" and connection.is_in_memory_db():  # type: ignore
                 raise ImproperlyConfigured(
                     "ChannelsLiveServer can not be used with in memory databases"
                 )

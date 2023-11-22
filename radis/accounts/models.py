@@ -38,7 +38,7 @@ class User(AbstractUser):
             if len(permissions) == 0:
                 raise ObjectDoesNotExist(f'Permission "{permission_codename}" does not exist.')
 
-            self.user_permissions.add(permissions)
+            self.user_permissions.add(*permissions)
 
 
 class Institute(models.Model):

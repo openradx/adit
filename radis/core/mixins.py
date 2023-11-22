@@ -1,25 +1,39 @@
-from typing import Any
+from typing import Any, Protocol
 
-from django.contrib.auth.mixins import AccessMixin
 from django.core.exceptions import SuspiciousOperation
-from django.http import HttpRequest, HttpResponse
-from django.views import View
-from django.views.generic import DetailView, ListView, TemplateView
+from django.db.models import QuerySet
+from django.http import HttpRequest, HttpResponseBase
+from django.views.generic import TemplateView
+from django_filters.filterset import FilterSet
 from django_filters.views import FilterMixin
 
 from .forms import PageSizeSelectForm
 from .models import AppSettings
-from .types import AuthenticatedHttpRequest
 from .utils.auth_utils import is_logged_in_user
-from .utils.permission_utils import is_object_owner
-from .utils.type_utils import with_type_hint
 
 
-class LockedMixin(with_type_hint(View)):
+class ViewProtocol(Protocol):
+    request: HttpRequest
+
+    def dispatch(self, request: HttpRequest, *args: Any, **kwargs: Any) -> HttpResponseBase:
+        ...
+
+    def get(self, request: HttpRequest, *args: Any, **kwargs: Any) -> HttpResponseBase:
+        ...
+
+    def get_context_data(self, **kwargs: Any) -> dict[str, Any]:
+        ...
+
+
+class LockedMixinProtocol(ViewProtocol, Protocol):
     settings_model: type[AppSettings]
-    section_name = "Section"
+    section_name: str
 
-    def dispatch(self, request: HttpRequest, *args: Any, **kwargs: Any) -> HttpResponse:
+
+class LockedMixin:
+    def dispatch(
+        self: LockedMixinProtocol, request: HttpRequest, *args: Any, **kwargs: Any
+    ) -> HttpResponseBase:
         settings = self.settings_model.get()
         assert settings
 
@@ -35,26 +49,21 @@ class LockedMixin(with_type_hint(View)):
         return super().dispatch(request, *args, **kwargs)
 
 
-class OwnerRequiredMixin(AccessMixin, with_type_hint(DetailView)):
-    """
-    Verify that the user is the owner of the object. By default
-    also superusers and staff may access the object.
-    Should be added to a view class after LoginRequiredMixin.
-    """
+class RelatedFilterMixinProtocol(ViewProtocol, Protocol):
+    filterset: FilterSet
+    object_list: QuerySet
 
-    owner_accessor = "owner"
+    def get_strict(self) -> bool:
+        ...
 
-    def dispatch(self, request: AuthenticatedHttpRequest, *args, **kwargs):
-        obj = self.get_object()
-        user = request.user
+    def get_filterset_class(self) -> type[FilterSet]:
+        ...
 
-        if not is_object_owner(obj, user):
-            return self.handle_no_permission()
-
-        return super().dispatch(request, *args, **kwargs)
+    def get_filterset(self, filterset_class: type[FilterSet]) -> FilterSet:
+        ...
 
 
-class RelatedFilterMixin(FilterMixin, with_type_hint(ListView)):
+class RelatedFilterMixin(FilterMixin):
     """A mixin that provides a way to show and handle a FilterSet in a request.
 
     The advantage is provided over FilterMixin is that it does use a special
@@ -64,6 +73,8 @@ class RelatedFilterMixin(FilterMixin, with_type_hint(ListView)):
     django_tables2 automatically uses the set self.object_list attribute.
     It must be placed behind SingleTableMixin.
     """
+
+    request: HttpRequest
 
     def get_filter_queryset(self):
         raise NotImplementedError("Must be implemented by the derived view.")
@@ -76,7 +87,7 @@ class RelatedFilterMixin(FilterMixin, with_type_hint(ListView)):
         }
         return kwargs
 
-    def get_context_data(self, **kwargs):
+    def get_context_data(self: RelatedFilterMixinProtocol, **kwargs):
         context = super().get_context_data(**kwargs)
 
         filterset_class = self.get_filterset_class()
@@ -93,12 +104,18 @@ class RelatedFilterMixin(FilterMixin, with_type_hint(ListView)):
         return context
 
 
-class PageSizeSelectMixin(with_type_hint(ListView)):
+class PageSizeSelectMixinProtocol(ViewProtocol, Protocol):
+    paginate_by: int
+
+
+class PageSizeSelectMixin:
     """A mixin to show a page size selector."""
 
-    def get(self, request: HttpRequest, *args: Any, **kwargs: Any) -> HttpResponse:
+    def get(
+        self: PageSizeSelectMixinProtocol, request: HttpRequest, *args: Any, **kwargs: Any
+    ) -> HttpResponseBase:
         try:
-            per_page = int(self.request.GET.get("per_page", 50))
+            per_page = int(request.GET.get("per_page", 50))
         except ValueError:
             per_page = 50
 
@@ -107,7 +124,7 @@ class PageSizeSelectMixin(with_type_hint(ListView)):
 
         return super().get(request, *args, **kwargs)
 
-    def get_context_data(self, **kwargs):
+    def get_context_data(self: PageSizeSelectMixinProtocol, **kwargs):
         context = super().get_context_data(**kwargs)
         context["page_size_select"] = PageSizeSelectForm(self.request.GET, [50, 100, 250, 500])
         return context

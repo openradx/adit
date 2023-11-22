@@ -6,7 +6,7 @@ from django.core.exceptions import SuspiciousOperation
 from django.db import IntegrityError
 from django.db.models import Count, QuerySet
 from django.forms import BaseModelForm, modelform_factory
-from django.http import HttpResponse
+from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, render
 from django.urls import reverse_lazy
 from django.views.generic import CreateView, DeleteView, ListView, UpdateView, View
@@ -109,9 +109,9 @@ class CollectionDetailView(
 ):
     template_name = "collections/collection_detail.html"
 
-    def get(self, request: AuthenticatedHttpRequest, *args: Any, **kwargs: Any) -> HttpResponse:
+    def get(self, request: HttpRequest, *args: Any, **kwargs: Any):
         self.object = self.get_object(queryset=Collection.objects.filter(owner=self.request.user))
-        return super().get(request, *args, **kwargs)
+        return super().get(request)
 
     def get_queryset(self) -> QuerySet[Report]:
         return cast(Collection, self.object).reports.all()
@@ -127,7 +127,11 @@ class CollectionSelectView(LoginRequiredMixin, View):
     def get(self, request: AuthenticatedHttpRequest, document_id: str) -> HttpResponse:
         addable_collections: list[CollectionWithHasReport] = []
         removable_collections: list[CollectionWithHasReport] = []
-        collections = Collection.objects.filter(owner=request.user).with_has_report(document_id)
+        collections = (
+            Collection.objects.get_queryset()
+            .filter(owner=request.user)
+            .with_has_report(document_id)
+        )
         for collection in collections:
             if collection.has_report:
                 removable_collections.append(collection)
