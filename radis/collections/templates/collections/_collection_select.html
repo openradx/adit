@@ -1,3 +1,4 @@
+{% load bootstrap_icon from core_extras %}
 <div class="modal-content">
     <div class="modal-header">
         <h5 class="modal-title">Collections</h5>
@@ -25,7 +26,7 @@
                         {% endfor %}
                     </select>
                     <button type="submit" class="btn btn-success text-nowrap">
-                        {% include "core/icons/add.svg" %}
+                        {% bootstrap_icon "plus" %}
                         Add
                     </button>
                 </div>
@@ -42,7 +43,7 @@
                                         <input type="hidden" name="action" value="remove" />
                                         <input type="hidden" name="collection" value="{{ collection.id }}" />
                                         <button type="submit" class="btn btn-sm btn-danger">
-                                            {% include "core/icons/remove.svg" %}
+                                            {% bootstrap_icon "x" %}
                                             Remove
                                         </button>
                                     </form>

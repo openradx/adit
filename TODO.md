@@ -50,5 +50,4 @@
 - Correct help in populate_dev_db command
 - Delete reset_dev_db and add reset option to populate_dev_db
 - Improve copy-statics task
-- Cleanup icons and rename images from .html to .svg
 - globals.d.ts

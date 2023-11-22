@@ -1,4 +1,5 @@
 {% extends "collections/collections_layout.html" %}
+{% load bootstrap_icon from core_extras %}
 {% block heading %}
     <div class="d-flex justify-content-between align-items-start">
         <h4 class="mb-3">Collection Detail</h4>
@@ -7,7 +8,7 @@
                     class="btn btn-primary btn-sm"
                     hx-get="{% url 'collection_update' collection.id %}"
                     hx-target="#dialog">
-                {% include "core/icons/edit.svg" %}
+                {% bootstrap_icon "pencil" %}
                 Rename
             </button>
             <form action="{% url 'collection_delete' collection.id %}" method="post">
@@ -15,7 +16,7 @@
                 <button type="submit"
                         class="btn btn-danger btn-sm"
                         onclick="return confirm(`Really delete collection '{{ collection.name }}'?`)">
-                    {% include "core/icons/delete.svg" %}
+                    {% bootstrap_icon "trash" %}
                     Delete
                 </button>
             </form>
@@ -43,7 +44,7 @@
                     <button type="submit"
                             class="btn btn-danger btn-sm"
                             onclick="return confirm(`Really remove this report?`)">
-                        {% include "core/icons/remove.svg" %}
+                        {% bootstrap_icon "x" %}
                         Remove
                     </button>
                 </form>

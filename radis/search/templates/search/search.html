@@ -1,6 +1,7 @@
 {% extends "search/search_layout.html" %}
 {% load static from static %}
 {% load crispy from crispy_forms_tags %}
+{% load bootstrap_icon from core_extras %}
 {% block heading %}
     <h4 class="mb-3">Search reports</h4>
 {% endblock heading %}
@@ -14,7 +15,7 @@
                        maxlength="200"
                        placeholder="Search"
                        class="form-control" />
-                <button type="submit" class="btn btn-success">{% include "core/icons/search.svg" %}</button>
+                <button type="submit" class="btn btn-success">{% bootstrap_icon "search" %}</button>
             </div>
         </form>
         {% if query and total_count %}

@@ -1,6 +1,7 @@
 {% extends "token_authentication/token_authentication_layout.html" %}
 {% load render_table from django_tables2 %}
 {% load crispy from crispy_forms_tags %}
+{% load bootstrap_icon from core_extras %}
 {% block heading %}
     <div class="d-flex justify-content-between align-items-start">
         <h4 class="mb-3">
@@ -25,9 +26,7 @@
                     <span class="badge text-bg-light" id="unhashed-token-string">{{ new_token }}</span>
                     <button id="copy-token-button"
                             class="btn btn-light btn-sm"
-                            @click="copyTokenToClipboard('{{ new_token }}')">
-                        {% include "core/icons/clipboard.svg" %}
-                    </button>
+                            @click="copyTokenToClipboard('{{ new_token }}')">{% bootstrap_icon "clipboard" %}</button>
                 </h3>
             </div>
         </div>
@@ -58,9 +57,7 @@
                             <td>
                                 <form action="{% url "delete_token" token.pk %}" method="post">
                                     {% csrf_token %}
-                                    <button type="submit" class="btn btn-danger btn-sm" aria-label="Delete token">
-                                        {% include "core/icons/delete.svg" %}
-                                    </button>
+                                    <button type="submit" class="btn btn-danger btn-sm" aria-label="Delete token">{% bootstrap_icon "trash" %}</button>
                                 </form>
                             </td>
                         </tr>

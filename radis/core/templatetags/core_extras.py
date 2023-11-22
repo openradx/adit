@@ -12,6 +12,11 @@ logger = logging.getLogger(__name__)
 register = Library()
 
 
+@register.inclusion_tag("core/_bootstrap_icon.html")
+def bootstrap_icon(icon_name: str, size: int = 16):
+    return {"icon_name": icon_name, "size": size}
+
+
 @register.filter
 def access_item(d: dict, key: str) -> Any:
     return d.get(key, "")
