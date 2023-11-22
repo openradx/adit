@@ -82,11 +82,6 @@ services:
       - full
       - extra
 
-  rabbit:
-    profiles:
-      - full
-      - extra
-
   redis:
     profiles:
       - full

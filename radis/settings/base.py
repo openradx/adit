@@ -281,50 +281,23 @@ REGISTRATION_OPEN = True
 # Channels
 ASGI_APPLICATION = "radis.asgi.application"
 
-# RabbitMQ is used as Celery message broker
-RABBITMQ_URL = env.str("RABBITMQ_URL", default="amqp://localhost")  # type: ignore
-
-# Rabbit Management console is integrated in RADIS by using an reverse
-# proxy (django-revproxy).This allows to use the authentication of RADIS.
-# But as RabbitMQ authentication can't be disabled we have to login
-# there with "guest" as username and password again.
-RABBIT_MANAGEMENT_HOST = env.str("RABBIT_MANAGEMENT_HOST", default="localhost")  # type: ignore
-RABBIT_MANAGEMENT_PORT = env.int("RABBIT_MANAGEMENT_PORT", default=15672)  # type: ignore
+# Redis is used for distributed locks (sherlock).
+REDIS_URL = env.str("REDIS_URL", default="redis://localhost:6379/0")  # type: ignore
 
 # Celery
 # see https://github.com/celery/celery/issues/5026 for how to name configs
 if USE_TZ:
     CELERY_TIMEZONE = TIME_ZONE
-CELERY_BROKER_URL = RABBITMQ_URL
+CELERY_BROKER_URL = REDIS_URL
 CELERY_WORKER_HIJACK_ROOT_LOGGER = False
-CELERY_TASK_DEFAULT_QUEUE = "default_queue"
-CELERY_TASK_ROUTES = {}
-CELERY_BEAT_SCHEDULE = {}
-
-# No need for a result backend as we don't use Celery Canvas.
 CELERY_IGNORE_RESULT = True
-
-# Settings for priority queues, see also apply_async calls in the models.
-# Requires RabbitMQ as the message broker!
-CELERY_TASK_QUEUE_MAX_PRIORITY = 10
-CELERY_TASK_DEFAULT_PRIORITY = 5
-
-# Only non prefetched tasks can be sorted by their priority. So we only
-# prefetch only one task at a time.
-CELERY_WORKER_PREFETCH_MULTIPLIER = 1
-
-# Not sure if this is really necessary for priorities to work, but saw this mentioned
-# https://medium.com/better-programming/python-celery-best-practices-ae182730bb81
-# https://stackoverflow.com/a/47980598/166229
-CELERY_TASK_ACKS_LATE = True
+CELERY_TASK_DEFAULT_QUEUE = "default_queue"
+CELERY_BEAT_SCHEDULE = {}
 
 # Flower is integrated in RADIS by using a reverse proxy (django-revproxy).
 # This allows to use the authentication of RADIS.
 FLOWER_HOST = env.str("FLOWER_HOST", default="localhost")  # type: ignore
 FLOWER_PORT = env.int("FLOWER_PORT", default=5555)  # type: ignore
-
-# Redis is used for distributed locks (sherlock).
-REDIS_URL = env.str("REDIS_URL", default="redis://localhost:6379/0")  # type: ignore
 
 # Used by django-filter
 FILTERS_EMPTY_CHOICE_LABEL = "Show All"

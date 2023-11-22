@@ -4,7 +4,6 @@ from .views import (
     BroadcastView,
     FlowerProxyView,
     HomeView,
-    RabbitManagementProxyView,
     UpdatePreferencesView,
     admin_section,
 )
@@ -29,6 +28,5 @@ urlpatterns = [
         HomeView.as_view(),
         name="home",
     ),
-    RabbitManagementProxyView.as_url(),
     FlowerProxyView.as_url(),
 ]

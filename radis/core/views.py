@@ -118,15 +118,6 @@ class AdminProxyView(LoginRequiredMixin, UserPassesTestMixin, ProxyView):
         return re_path(rf"^{cls.url_prefix}/(?P<path>.*)$", cls.as_view())  # type: ignore
 
 
-class RabbitManagementProxyView(AdminProxyView):
-    upstream = (
-        f"http://{settings.RABBIT_MANAGEMENT_HOST}:"
-        f"{settings.RABBIT_MANAGEMENT_PORT}"  # type: ignore
-    )
-    url_prefix = "rabbit"
-    rewrite = ((rf"^/{url_prefix}$", r"/"),)
-
-
 class FlowerProxyView(AdminProxyView):
     upstream = f"http://{settings.FLOWER_HOST}:{settings.FLOWER_PORT}"  # type: ignore
     url_prefix = "flower"
