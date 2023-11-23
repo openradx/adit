@@ -16,9 +16,9 @@
     "@alpinejs/morph": "^3.13.0",
     "@popperjs/core": "^2.11.8",
     "alpinejs": "^3.13.0",
-    "bootstrap": "^5.3.1",
+    "bootstrap": "^5.3.2",
     "bootstrap-icons": "^1.11.1",
-    "bootswatch": "^5.3.1",
+    "bootswatch": "^5.3.2",
     "dcmjs": "^0.30.0",
     "dicomweb-client": "^0.10.3",
     "htmx.org": "^1.9.5"
