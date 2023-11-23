@@ -4,7 +4,7 @@ from typing import Any, Callable
 
 import openai
 import tiktoken
-from openai.error import ServiceUnavailableError
+from openai.types.chat import ChatCompletionMessageParam
 
 ReportGeneratedCallback = Callable[[str, int], None]
 
@@ -72,7 +72,9 @@ class ReportGenerator:
         self.max_tokens = max_tokens
         self.callback = callback
 
-        self.messages = [{"role": "system", "content": "You are an senior radiologist."}]
+        self.messages: list[ChatCompletionMessageParam] = [
+            {"role": "system", "content": "You are an senior radiologist."}
+        ]
 
     def reset_context(self, full_reset=False):
         if len(self.messages) < 3 or full_reset:
@@ -100,10 +102,13 @@ class ReportGenerator:
         retries = 0
         while not response:
             try:
-                response = openai.ChatCompletion.create(
-                    model=self.model, messages=self.messages, api_key=self.api_key
+                response = openai.chat.completions.create(
+                    messages=self.messages,
+                    model=self.model,
+                    # model=self.model, messages=self.messages, api_key=self.api_key
                 )
-            except ServiceUnavailableError as err:
+            # For available errors see https://github.com/openai/openai-python#handling-errors
+            except openai.APIStatusError as err:
                 retries += 1
                 if retries == 3:
                     print("Error! Service unavailable even after 3 retries.")
