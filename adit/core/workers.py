@@ -61,8 +61,7 @@ class DicomWorker:
             return False
 
         try:
-            assert callable(self._process_dicom_task)
-            self._future = self._process_dicom_task(queued_task.id)
+            self._future = cast(ProcessFuture, self._process_dicom_task(queued_task.id))
             self._future.result()
         except TimeoutError:
             dicom_task = cast(DicomTask, queued_task.content_object)

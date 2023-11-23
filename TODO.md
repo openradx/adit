@@ -27,7 +27,7 @@
 - Allow to restart or cancel specific dicom task
 - Fix dicom explorer search over Accession Number
 - Make warning when only one image fails
-- Use django-stubs instead of django-types (also on RADIS)
+- Use django-stubs instead of django-types (already done on RADIS)
 - Exclude SR and PR when in pseudonymization mode
 - Cancel processing tasks actively
   -- When cancelling a job we currenty wait for an already processing task to be completed before setting the job as canceled
@@ -190,12 +190,4 @@
 
 ## RADIS
 
-- Get rid of jQuery in ADIT and RADIS
-- Get rid of Jumbotron
-- Get rid of those not used accounts views and login form
 - Move over to SVG sprites
-- Get rid of RabbitMQ
-- Port over ServerCommand
-- Upgrade REDIS server on RADIS
-- Remove sherlock on RADIS as no need for distributed lock there and we use Redis here for that
-- Upgrade psycopg on RADIS
