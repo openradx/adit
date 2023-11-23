@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Any, cast
+from typing import Any, Protocol, cast, runtime_checkable
 
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.messages.views import SuccessMessageMixin
@@ -23,11 +23,12 @@ from .filters import CollectionFilter
 from .models import Collection
 from .tables import CollectionTable
 
-if TYPE_CHECKING:
-    from .models import CollectionWithHasReport
-
-
 LAST_USED_COLLECTION_PREFERENCE = "last_used_collection"
+
+
+@runtime_checkable
+class AnnotatedCollection(Protocol):
+    has_report: bool
 
 
 class CollectionListView(LoginRequiredMixin, SingleTableMixin, PageSizeSelectMixin, FilterView):
@@ -125,14 +126,15 @@ class CollectionDetailView(
 
 class CollectionSelectView(LoginRequiredMixin, View):
     def get(self, request: AuthenticatedHttpRequest, document_id: str) -> HttpResponse:
-        addable_collections: list[CollectionWithHasReport] = []
-        removable_collections: list[CollectionWithHasReport] = []
+        addable_collections: list[Collection] = []
+        removable_collections: list[Collection] = []
         collections = (
             Collection.objects.get_queryset()
             .filter(owner=request.user)
             .with_has_report(document_id)
         )
         for collection in collections:
+            assert isinstance(collection, AnnotatedCollection)
             if collection.has_report:
                 removable_collections.append(collection)
             else:

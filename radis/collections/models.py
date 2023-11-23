@@ -1,16 +1,9 @@
-from typing import TYPE_CHECKING, cast
-
 from django.conf import settings
 from django.db import models
 from django.db.models.constraints import UniqueConstraint
 
 from radis.core.models import AppSettings
 from radis.reports.models import Report
-
-if TYPE_CHECKING:
-
-    class CollectionWithHasReport(Report):
-        has_report: bool
 
 
 class CollectionsAppSettings(AppSettings):
@@ -19,8 +12,8 @@ class CollectionsAppSettings(AppSettings):
 
 
 class CollectionQuerySet(models.QuerySet["Collection"]):
-    def with_has_report(self, document_id: str) -> models.QuerySet["CollectionWithHasReport"]:
-        collections = self.order_by("name").annotate(
+    def with_has_report(self, document_id: str):
+        return self.order_by("name").annotate(
             has_report=models.Exists(
                 Collection.objects.filter(
                     id=models.OuterRef("id"),
@@ -28,14 +21,13 @@ class CollectionQuerySet(models.QuerySet["Collection"]):
                 )
             )
         )
-        return cast(models.QuerySet[CollectionWithHasReport], collections)
 
 
 class CollectionManager(models.Manager["Collection"]):
     def get_queryset(self) -> CollectionQuerySet:
         return CollectionQuerySet(self.model)
 
-    def with_has_report(self, document_id: str) -> models.QuerySet["CollectionWithHasReport"]:
+    def with_has_report(self, document_id: str):
         return self.get_queryset().with_has_report(document_id)
 
 
