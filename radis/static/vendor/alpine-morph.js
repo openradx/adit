@@ -84,11 +84,16 @@
       }
     }
     function patchChildren(from2, to) {
+      if (from2._x_teleport)
+        from2 = from2._x_teleport;
+      if (to._x_teleport)
+        to = to._x_teleport;
       let fromKeys = keyToMap(from2.children);
       let fromKeyHoldovers = {};
       let currentTo = getFirstNode(to);
       let currentFrom = getFirstNode(from2);
       while (currentTo) {
+        seedingMatchingId(currentTo, currentFrom);
         let toKey = getKey(currentTo);
         let fromKey = getKey(currentFrom);
         if (!currentFrom) {
@@ -106,8 +111,8 @@
             continue;
           }
         }
-        let isIf = (node) => node && node.nodeType === 8 && node.textContent === " __BLOCK__ ";
-        let isEnd = (node) => node && node.nodeType === 8 && node.textContent === " __ENDBLOCK__ ";
+        let isIf = (node) => node && node.nodeType === 8 && node.textContent === "[if BLOCK]><![endif]";
+        let isEnd = (node) => node && node.nodeType === 8 && node.textContent === "[if ENDBLOCK]><![endif]";
         if (isIf(currentTo) && isIf(currentFrom)) {
           let nestedIfCount = 0;
           let fromBlockStart = currentFrom;
@@ -264,7 +269,7 @@
     get children() {
       let children = [];
       let currentNode = this.startComment.nextSibling;
-      while (currentNode !== void 0 && currentNode !== this.endComment) {
+      while (currentNode && currentNode !== this.endComment) {
         children.push(currentNode);
         currentNode = currentNode.nextSibling;
       }
@@ -294,11 +299,6 @@
     return parent.firstChild;
   }
   function getNextSibling(parent, reference) {
-    if (reference._x_teleport) {
-      return reference._x_teleport;
-    } else if (reference.teleportBack) {
-      return reference.teleportBack;
-    }
     let next;
     if (parent instanceof Block) {
       next = parent.nextNode(reference);
@@ -322,6 +322,13 @@
       hostDiv.firstElementChild.removeAttributeNode(attr);
       this.setAttributeNode(attr);
     };
+  }
+  function seedingMatchingId(to, from) {
+    let fromId = from && from._x_bindings && from._x_bindings.id;
+    if (!fromId)
+      return;
+    to.setAttribute("id", fromId);
+    to.id = fromId;
   }
 
   // packages/morph/src/index.js
