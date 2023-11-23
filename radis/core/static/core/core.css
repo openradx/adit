@@ -35,6 +35,20 @@ caption {
   text-align: center;
 }
 
+.report-summary {
+  white-space: normal;
+
+  strong {
+    font-weight: bold;
+    font-style: italic;
+    text-decoration: underline dotted;
+  }
+}
+
+.report-text {
+  white-space: pre-line;
+}
+
 /***
 * Alpine.js
 ***/

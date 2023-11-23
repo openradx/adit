@@ -1,4 +1,3 @@
-import re
 from typing import Protocol, runtime_checkable
 
 from django.db import models
@@ -17,7 +16,6 @@ def extract_document_id(id: str) -> str:
 
 
 def sanitize_report_summary(text: str) -> str:
-    text = re.sub(r"[\r\n]+", '<em class="break">...</em>', text)
     return text.strip()
 
 
