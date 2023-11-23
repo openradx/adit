@@ -1,15 +1,15 @@
 import re
-from typing import TYPE_CHECKING, cast
+from typing import Protocol, runtime_checkable
 
 from django.db import models
 
 from radis.accounts.models import User
 from radis.reports.models import Report
 
-if TYPE_CHECKING:
 
-    class ReportWithAnnotation(Report):
-        total: int
+@runtime_checkable
+class AnnotatedReport(Protocol):
+    total: int
 
 
 def extract_document_id(id: str) -> str:
@@ -28,4 +28,9 @@ def get_collection_counts(user: User, document_ids: list[str]) -> dict[str, int]
         .order_by("total")
     )
 
-    return {report.document_id: cast(ReportWithAnnotation, report).total for report in reports}
+    collection_counts = {}
+    for report in reports:
+        assert isinstance(report, AnnotatedReport)
+        collection_counts[report.document_id] = report.total
+
+    return collection_counts
