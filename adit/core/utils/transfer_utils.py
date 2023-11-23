@@ -292,6 +292,8 @@ class TransferExecutor:
 
     def _create_archive(self, archive_path: Path, archive_password: str) -> None:
         """Create a new archive with just an INDEX.txt file in it."""
+        logger.debug(f"Creating archive at {archive_path}")
+
         if Path(archive_path).is_file():
             raise DicomError(f"Archive ${archive_path} already exists.")
 

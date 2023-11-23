@@ -91,7 +91,7 @@ class SelectiveTransferJobForm(forms.ModelForm):
         return destination
 
     def clean_pseudonym(self):
-        pseudonym = self.cleaned_data["pseudonym"]
+        pseudonym: str = self.cleaned_data["pseudonym"]
         if self.action == "transfer":
             # We only validate if a pseudonym must be set if the user starts
             # to transfer and not when just querying for studies
@@ -102,19 +102,12 @@ class SelectiveTransferJobForm(forms.ModelForm):
                 raise ValidationError(_("This field is required."))
         return pseudonym
 
-    def clean_archive_password(self):
-        archive_password = self.cleaned_data["archive_password"]
-        destination = self.cleaned_data.get("destination")
-        if not destination or destination.node_type != DicomNode.NodeType.FOLDER:
-            archive_password = ""
-        return archive_password
-
     def clean_patient_name(self):
-        patient_name = self.cleaned_data["patient_name"]
+        patient_name: str = self.cleaned_data["patient_name"]
         return person_name_to_dicom(patient_name, add_wildcards=True)
 
     def clean_modality(self):
-        modality = self.cleaned_data["modality"]
+        modality: str = self.cleaned_data["modality"]
         modilities = re.split(r"\s*,\s*", modality)
 
         if len(modilities) == 0:
@@ -122,6 +115,13 @@ class SelectiveTransferJobForm(forms.ModelForm):
         if len(modilities) == 1:
             return modilities[0]
         return modilities
+
+    def clean(self):
+        destination: DicomNode = self.cleaned_data.get("destination")
+        if not destination or destination.node_type != DicomNode.NodeType.FOLDER:
+            self.cleaned_data["archive_password"] = ""
+
+        return self.cleaned_data
 
     def build_query_form_layout(self):
         query_form_layout = Layout(
