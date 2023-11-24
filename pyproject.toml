@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "radis"
-version = "0.26.1"
+version = "0.1.0"
 description = "RADIS (Radiology Report Archive and Discovery System) is an application to archive, query and collect radiology reports."
 authors = ["medihack <kai.schlamp@gmail.com>"]
 license = "GPL-3.0-or-later"
