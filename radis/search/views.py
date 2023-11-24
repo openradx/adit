@@ -8,7 +8,6 @@ from radis.core.types import AuthenticatedRequest
 
 from .models import ReportQuery
 from .serializers import SearchParamsSerializer
-from .utils.search_utils import get_collection_counts
 
 
 class SearchView(LoginRequiredMixin, View):
@@ -30,15 +29,11 @@ class SearchView(LoginRequiredMixin, View):
             paginator = Paginator(range(total_count), page_size)
             page = paginator.get_page(page_number)
 
-            documents_ids = [report.document_id for report in result.reports]
-            collection_counts = get_collection_counts(request.user, documents_ids)
-
             context["query"] = query
             context["offset"] = offset
             context["paginator"] = paginator
             context["page_obj"] = page
             context["total_count"] = total_count
             context["reports"] = result.reports
-            context["collection_counts"] = collection_counts
 
         return render(request, "search/search.html", context)

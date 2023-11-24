@@ -25,15 +25,7 @@
     <div>
         {% if query %}
             {% for report in reports %}
-                <div class="card mb-2">
-                    <div class="card-body">
-                        <div class="d-flex flex-column gap-1">
-                            {% include "search/_result_header.html" with counter=forloop.counter %}
-                            <div class="report-summary">{{ report.body|safe }}</div>
-                            {% include "search/_result_buttons_panel.html" %}
-                        </div>
-                    </div>
-                </div>
+                {% include "search/_result_report.html" %}
             {% empty %}
                 <div class="alert alert-light" role="alert">No results found</div>
             {% endfor %}

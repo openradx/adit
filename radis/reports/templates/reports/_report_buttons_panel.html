@@ -1,18 +1,18 @@
 {% load bootstrap_icon access_item from core_extras %}
 <div class="mt-1 d-flex justify-content-between">
     <div class="d-flex gap-2">
-        <a href="{% url 'report_detail' report.document_id %}"
+        <a href="{% url 'report_detail' report.id %}"
            class="btn btn-secondary btn-sm">
             {% bootstrap_icon "arrow-right-short" %}
             View
         </a>
-        <button hx-get="{% url 'report_preview' report.document_id %}"
+        <button hx-get="{% url 'report_preview' report.id %}"
                 hx-target="#dialog"
                 class="btn btn-secondary btn-sm">
             {% bootstrap_icon "eye" %}
             Preview
         </button>
-        {% include "collections/_collection_select_button.html" with document_id=report.document_id collection_count=collection_counts|access_item:report.document_id %}
+        {% include "collections/_collection_select_button.html" %}
     </div>
     {% include "reports/_references.html" %}
 </div>

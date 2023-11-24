@@ -2,7 +2,7 @@
 {% load bootstrap_icon from core_extras %}
 {% block heading %}
     <div class="d-flex justify-content-between align-items-start">
-        <h4 class="mb-3">Collection Detail</h4>
+        <h4 class="mb-3">Collection {{ collection.name }}</h4>
         <div class="d-flex gap-1">
             <button type="button"
                     class="btn btn-primary btn-sm"
@@ -24,34 +24,5 @@
     </div>
 {% endblock heading %}
 {% block content %}
-    <dl class="row">
-        <dd class="col-2">
-            Name
-        </dd>
-        <dt class="col-10">{{ collection.name }}</dt>
-        <dd class="col-2">
-            Created at
-        </dd>
-        <dt class="col-10">{{ collection.created }}</dt>
-    </dl>
-    <h5>Reports</h5>
-    <div class="d-flex flex-column">
-        {% for report in object_list %}
-            <div class="d-flex justify-content-between align-items-center">
-                {{ report.study_description }}
-                <form hx-post="{% url 'collected_report_remove' collection.id report.id %}">
-                    {% csrf_token %}
-                    <button type="submit"
-                            class="btn btn-danger btn-sm"
-                            onclick="return confirm(`Really remove this report?`)">
-                        {% bootstrap_icon "x" %}
-                        Remove
-                    </button>
-                </form>
-            </div>
-        {% empty %}
-            No reports in this collection
-        {% endfor %}
-    </div>
-    {% include "core/_pagination.html" %}
+    {% include "collections/_collection_detail.html" %}
 {% endblock content %}

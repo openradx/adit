@@ -1,7 +1,9 @@
+from typing import TYPE_CHECKING
+
 from django.contrib.postgres.fields import ArrayField
 from django.db import models
 
-from radis.accounts.models import Institute
+from radis.accounts.models import Institute, User
 from radis.core.models import AppSettings
 from radis.core.validators import (
     no_backslash_char_validator,
@@ -9,6 +11,11 @@ from radis.core.validators import (
     no_wildcard_chars_validator,
     validate_patient_sex,
 )
+
+if TYPE_CHECKING:
+    from django.db.models.manager import RelatedManager
+
+    from radis.collections.models import Collection
 
 
 class ReportsAppSettings(AppSettings):
@@ -77,5 +84,14 @@ class Report(models.Model):
     references = ArrayField(models.URLField())
     body = models.TextField()
 
+    if TYPE_CHECKING:
+        collections = RelatedManager["Collection"]()
+
     def __str__(self) -> str:
         return f"Report {self.id} [{self.document_id}]"
+
+    def get_collections(self, owner: User) -> models.QuerySet["Collection"]:
+        return self.collections.filter(owner=owner)
+
+    def get_collections_count(self, owner: User) -> int:
+        return self.get_collections(owner).count()

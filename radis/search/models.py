@@ -10,7 +10,7 @@ from radis.api.site import ReportEventType
 from radis.core.models import AppSettings
 from radis.reports.models import Report
 
-from .utils.search_utils import extract_document_id, sanitize_report_summary
+from .utils.search_utils import extract_document_id
 from .vespa_app import REPORT_SCHEMA_NAME, vespa_app
 
 logger = logging.getLogger(__name__)
@@ -50,7 +50,7 @@ class ReportDocument:
             study_datetime=report.study_datetime,
             modalities_in_study=report.modalities_in_study,
             references=report.references,
-            body=sanitize_report_summary(report.body),
+            body=report.body.strip(),
         )
 
     def dictify_for_vespa(self):
@@ -121,8 +121,12 @@ class ReportSummary:
             study_datetime=study_datetime,
             modalities_in_study=record["fields"].get("modalities_in_study", []),
             references=record["fields"].get("references", []),
-            body=sanitize_report_summary(record["fields"]["body"]),
+            body=record["fields"]["body"],
         )
+
+    @property
+    def report_full(self):
+        return Report.objects.get(document_id=self.document_id)
 
 
 @dataclass

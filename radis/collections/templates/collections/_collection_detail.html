@@ -1,0 +1,10 @@
+<div class="d-flex flex-column"
+     hx-get="{% url 'collection_detail' collection.id %}"
+     hx-trigger="collectedReportsChanged_{{ collection.id }} from:body">
+    {% for report in reports %}
+        {% include "collections/_collected_report.html" %}
+    {% empty %}
+        No reports in this collection
+    {% endfor %}
+</div>
+{% include "core/_pagination.html" %}

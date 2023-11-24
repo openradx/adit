@@ -12,12 +12,12 @@ class CollectionsAppSettings(AppSettings):
 
 
 class CollectionQuerySet(models.QuerySet["Collection"]):
-    def with_has_report(self, document_id: str):
+    def with_has_report(self, report_id: int):
         return self.order_by("name").annotate(
             has_report=models.Exists(
                 Collection.objects.filter(
                     id=models.OuterRef("id"),
-                    reports__document_id=document_id,
+                    reports__id=report_id,
                 )
             )
         )
@@ -27,8 +27,8 @@ class CollectionManager(models.Manager["Collection"]):
     def get_queryset(self) -> CollectionQuerySet:
         return CollectionQuerySet(self.model)
 
-    def with_has_report(self, document_id: str):
-        return self.get_queryset().with_has_report(document_id)
+    def with_has_report(self, report_id: int):
+        return self.get_queryset().with_has_report(report_id)
 
 
 class Collection(models.Model):

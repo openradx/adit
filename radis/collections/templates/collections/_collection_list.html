@@ -1,4 +1,4 @@
 {% load render_table from django_tables2 %}
-<div hx-get="{% url 'collection_list' %}"
-     hx-trigger="collectionListChanged from:body"
-     class="list-group">{% render_table table %}</div>
+<div class="list-group"
+     hx-get="{% url 'collection_list' %}"
+     hx-trigger="collectionListChanged from:body">{% render_table table %}</div>
