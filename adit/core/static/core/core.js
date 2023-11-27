@@ -80,22 +80,26 @@ function uploadData(data) {
     console.log(data[key]);
   }
 
-  // const url = "url/to/async/view";
+  const url = "/upload/data-upload/";
 
-  // const config = getConfig();
-  // const request = new Request(url, {
-  //   method: "POST",
-  //   //headers: { "X-CSRFToken": config.csrf_token },
-  //   mode: "same-origin", // Do not send CSRF token to another domain.
-  //   body: formData,
-  // });
+  const config = getConfig();
+  const request = new Request(url, {
+    method: "POST",
+    headers: { "X-CSRFToken": config.csrf_token },
+    mode: "same-origin", // Do not send CSRF token to another domain.
+    body: formData,
+  });
 
-  // fetch(request).then(function () {
-  //   const config = getConfig();
-  //   if (config.debug) {
-  //     console.log("Saved properties to session", data);
-  //   }
-  // });
+  fetch(request)
+    .then(function (response) {
+      const config = getConfig();
+      if (config.debug) {
+        console.log("Uploaded data to server", data);
+      }
+    })
+    .catch(function (error) {
+      console.log(`Error: ${error.message}`);
+    });
 }
 
 /**

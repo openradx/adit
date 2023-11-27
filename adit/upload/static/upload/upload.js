@@ -17,7 +17,7 @@ function uploadJobForm(formEl) {
     onDestinationChange: function (ev) {
       this._updateIsDestinationFolder(ev.target);
 
-      updatePreferences("selective-transfer", {
+      updatePreferences("upload", {
         [UPLOAD_DESTINATION]: ev.target.value,
       });
     },
@@ -52,21 +52,21 @@ function uploadJobForm(formEl) {
         showToast("warning", "Sandbox", `We have ${files.length} files!!!`);
         var i = 0;
         for (const file of files) {
-          showToast("warning", "Sandbox", `No#${i}: ${files[i].name}!!!`);
+          // showToast("warning", "Sandbox", `No#${i}: ${files[i].name}!!!`);
           const fileReader = new FileReader();
           fileReader.onload = (function (file) {
             return function (e) {
-              const arrayBuffer = fileReader.result;
-              const myDict = dcmjs.data.DicomMessage.readFile(arrayBuffer);
-              const tag = myDict.dict["00080060"].Value[0];
-              showToast(
-                "warning",
-                "Sandbox",
-                `Modality of ${file.name}: ${tag}!!!`
-              );
               uploadData({
                 ["file_data"]: file.name,
               });
+              const arrayBuffer = fileReader.result;
+              const myDict = dcmjs.data.DicomMessage.readFile(arrayBuffer);
+              const tag = myDict.dict["00080060"].Value[0];
+              // showToast(
+              //   "warning",
+              //   "Sandbox",
+              //   `Modality of ${file.name}: ${tag}!!!`
+              // );
 
               // Use the myDict object here
             };

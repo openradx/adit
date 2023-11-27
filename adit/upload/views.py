@@ -1,43 +1,24 @@
-import asyncio
-from typing import Any, Literal
-
-from adrf.views import APIView as AsyncApiView
-from adrf.views import sync_to_async
-from django.conf import settings
-from django.contrib.auth.mixins import (
-    LoginRequiredMixin,
-    PermissionRequiredMixin,
-    UserPassesTestMixin,
-)
-from django.shortcuts import render
-from django.urls import reverse_lazy
-from django.views.generic import TemplateView
-from rest_framework.exceptions import NotAcceptable, NotFound, ParseError, ValidationError
-from rest_framework.response import Response
+from typing import Any
 
 from adit.core.models import DicomServer
 from adit.core.types import AuthenticatedRequest
 from adit.core.views import (
     BaseUpdatePreferencesView,
-    DicomJobCancelView,
     DicomJobCreateView,
-    DicomJobDeleteView,
-    DicomJobDetailView,
-    DicomJobRestartView,
-    DicomJobResumeView,
-    DicomJobRetryView,
-    DicomJobVerifyView,
-    DicomTaskDetailView,
-    TransferJobListView,
 )
-from adit.dicom_web.views import WebDicomAPIView
+from adit.dicom_web.views import StoreAPIView
 
 from .forms import UploadJobForm
-from .mixins import UploadLockedMixin
-from adit.dicom_web.utils.stowrs_utils import stow_store
 
 UPLOAD_SOURCE = "upload_source"
 UPLOAD_DESTINATION = "upload_destination"
+
+
+class UploadUpdatePreferencesView(BaseUpdatePreferencesView):
+    allowed_keys: list[str] = [
+        UPLOAD_SOURCE,
+        UPLOAD_DESTINATION,
+    ]
 
 
 class UploadJobCreateView(DicomJobCreateView):
@@ -70,27 +51,11 @@ class UploadJobCreateView(DicomJobCreateView):
         return initial
 
 
-class UploadDataView(WebDicomAPIView):
-    async def handle_request(self, request: AuthenticatedRequest, ae_title: str) -> DicomServer:
-        return await self._fetch_dicom_server(request, ae_title, "destination")
-
-    async def post(
-        self,
-        request: AuthenticatedRequest,
-        ae_title: str,
-        study_uid: str = "",
-    ) -> Response:
-        dest_server = await self.handle_request(request, ae_title)
-
-        if study_uid:
-            datasets = [
-                dataset
-                for dataset in request.data["datasets"]
-                if dataset.StudyInstanceUID == study_uid
-            ]
-        else:
-            datasets = request.data["datasets"]
-
-        results = await stow_store(dest_server, datasets)
-
-        return Response(results, content_type=request.accepted_renderer.media_type)  # type: ignore
+class UploadAPIView(StoreAPIView):
+    async def post(self, request: AuthenticatedRequest, ae_title: str = "", study_uid: str = ""):
+        # Set the ae_title value here
+        servers = DicomServer.objects.all()
+        ae_title = servers[int(request.user.preferences[UPLOAD_DESTINATION])].ae_title
+        print(ae_title)
+        # Call the super().post() method with the updated parameters
+        return super().post(request, ae_title, study_uid)
