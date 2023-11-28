@@ -298,6 +298,10 @@ def copy_statics(ctx: Context):
         "node_modules/htmx.org/dist/ext/alpine-morph.js",
         "adit/static/vendor/htmx-alpine-morph.js",
     )
+    for file in glob("node_modules/dcmjs/build/dcmjs.js*"):
+        copy(file, "adit/static/vendor/")
+    for file in glob("node_modules/dicomweb-client/build/dicomweb-client.js*"):
+        copy(file, "adit/static/vendor/")
 
 
 @task

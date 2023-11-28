@@ -1,7 +1,11 @@
 {
   "compilerOptions": {
     "checkJs": true,
-    "target": "ES6"
+    "target": "ES6",
+    "paths": {
+      "dcmjs": ["./adit/static/vendor/dcmjs.js"],
+      "dicomweb-client": ["./adit/static/vendor/dicomweb-client.js"]
+    }
   },
   "include": ["./adit/*/static/**/*.js"]
 }
