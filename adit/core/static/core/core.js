@@ -73,6 +73,14 @@ ready(function () {
     // static or non static dynamically
     bootstrap.Modal.getInstance("#htmx-modal").dispose();
   });
+
+  // Allow to trigger toasts from HTMX responses using HX-Trigger
+  // (e.g. by using django_htmx.http.trigger_client_event)
+  document.body.addEventListener("toast", (e) => {
+    // @ts-ignore
+    const { level, title, text } = e.detail;
+    showToast(level, title, text);
+  });
 });
 
 /**
