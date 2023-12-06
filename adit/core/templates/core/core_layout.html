@@ -54,6 +54,12 @@
         {% include "core/_toasts_panel.html" %}
         {% block bottom %}
         {% endblock bottom %}
+        <!-- Bootstrap modal slot for HTMX -->
+        <div id="htmx-modal" class="modal fade" tabindex="-1">
+            <div id="htmx-dialog"
+                 class="modal-dialog modal-lg modal-dialog-scrollable"
+                 hx-target="this"></div>
+        </div>
         {# Vendor Javascript dependencies (except Alpine.js, see below) #}
         <script src="{% static 'vendor/popper.js' %}"></script>
         <script src="{% static 'vendor/bootstrap.bundle.js' %}"></script>

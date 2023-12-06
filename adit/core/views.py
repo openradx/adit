@@ -32,7 +32,7 @@ from .mixins import PageSizeSelectMixin, RelatedFilterMixin
 from .models import CoreSettings, DicomJob, DicomTask, QueuedTask
 from .site import job_stats_collectors
 from .tasks import broadcast_mail
-from .types import AuthenticatedHttpRequest
+from .types import AuthenticatedHttpRequest, HtmxHttpRequest
 from .utils.job_utils import queue_pending_tasks
 
 THEME = "theme"
@@ -50,6 +50,13 @@ def admin_section(request: HttpRequest) -> HttpResponse:
             "job_stats": job_stats,
         },
     )
+
+
+class HtmxTemplateView(TemplateView):
+    def get(self, request: HtmxHttpRequest, *args: Any, **kwargs: Any) -> HttpResponse:
+        if not request.htmx:
+            raise SuspiciousOperation
+        return super().get(request, *args, **kwargs)
 
 
 class BroadcastView(LoginRequiredMixin, UserPassesTestMixin, FormView):

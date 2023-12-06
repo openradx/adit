@@ -6,7 +6,13 @@
     <div class="d-flex justify-content-between align-items-start">
         <h4 class="mb-3">
             REST Authentication Tokens
-            {% include "core/_help_button.html" with target="#generate_token_help_modal" only %}
+            <button type="button"
+                    class="btn btn-sm btn-info align-baseline"
+                    hx-get="{% url 'token_authentication_help' %}"
+                    hx-target="#htmx-dialog">
+                {% bootstrap_icon "question-circle" %}
+                Help
+            </button>
         </h4>
     </div>
 {% endblock heading %}
@@ -77,6 +83,3 @@
         </form>
     </div>
 {% endblock content %}
-{% block bottom %}
-    {% include 'token_authentication/_generate_token_help_modal.html' with modal_id="generate_token_help_modal" %}
-{% endblock bottom %}

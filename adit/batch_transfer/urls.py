@@ -1,5 +1,7 @@
 from django.urls import path
 
+from adit.core.views import HtmxTemplateView
+
 from .views import (
     BatchTransferJobCancelView,
     BatchTransferJobCreateView,
@@ -18,6 +20,11 @@ urlpatterns = [
     path(
         "update-preferences/",
         BatchTransferUpdatePreferencesView.as_view(),
+    ),
+    path(
+        "help/",
+        HtmxTemplateView.as_view(template_name="batch_transfer/_batch_transfer_help.html"),
+        name="batch_transfer_help",
     ),
     path(
         "jobs/",

@@ -1,5 +1,7 @@
 from django.urls import path
 
+from adit.core.views import HtmxTemplateView
+
 from .views import (
     SelectiveTransferJobCancelView,
     SelectiveTransferJobCreateView,
@@ -18,6 +20,11 @@ urlpatterns = [
     path(
         "update-preferences/",
         SelectiveTransferUpdatePreferencesView.as_view(),
+    ),
+    path(
+        "help/",
+        HtmxTemplateView.as_view(template_name="selective_transfer/_selective_transfer_help.html"),
+        name="selective_transfer_help",
     ),
     path(
         "jobs/",
