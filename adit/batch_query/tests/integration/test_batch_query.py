@@ -35,7 +35,7 @@ def test_urgent_batch_query_with_dimse_server(
     page.get_by_label("Start query urgently").click(force=True)
     page.get_by_label("Project name").fill("Test query")
     page.get_by_label("Project description").fill("Just a test query.")
-    page.get_by_label("Batch file").set_input_files(files=[batch_file])
+    page.get_by_label("Batch file*", exact=True).set_input_files(files=[batch_file])
     page.locator('input:has-text("Create job")').click()
 
     # Assert
@@ -70,7 +70,7 @@ def test_urgent_batch_query_with_dicomweb_server(
     page.get_by_label("Start query urgently").click(force=True)
     page.get_by_label("Project name").fill("Test query")
     page.get_by_label("Project description").fill("Just a test query.")
-    page.get_by_label("Batch file").set_input_files(files=[batch_file])
+    page.get_by_label("Batch file*", exact=True).set_input_files(files=[batch_file])
     page.locator('input:has-text("Create job")').click()
 
     # Assert
