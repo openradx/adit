@@ -37,12 +37,13 @@ caption {
 
 .report-summary {
   white-space: normal;
+}
 
-  strong {
-    font-weight: bold;
-    font-style: italic;
-    text-decoration: underline dotted;
-  }
+.report-summary strong {
+  font-weight: bold;
+  font-style: italic;
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 .report-text {
