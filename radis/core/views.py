@@ -21,7 +21,7 @@ from revproxy.views import ProxyView
 from .forms import BroadcastForm
 from .models import CoreSettings
 from .tasks import broadcast_mail
-from .types import AuthenticatedHttpRequest
+from .types import AuthenticatedHttpRequest, HtmxHttpRequest
 
 THEME = "theme"
 
@@ -29,6 +29,13 @@ THEME = "theme"
 @staff_member_required
 def admin_section(request: HttpRequest) -> HttpResponse:
     return render(request, "core/admin_section.html")
+
+
+class HtmxTemplateView(TemplateView):
+    def get(self, request: HtmxHttpRequest, *args: Any, **kwargs: Any) -> HttpResponse:
+        if not request.htmx:
+            raise SuspiciousOperation
+        return super().get(request, *args, **kwargs)
 
 
 class BroadcastView(LoginRequiredMixin, UserPassesTestMixin, FormView):

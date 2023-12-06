@@ -7,7 +7,7 @@
             <button type="button"
                     class="btn btn-primary btn-sm"
                     hx-get="{% url 'collection_update' collection.id %}"
-                    hx-target="#dialog">
+                    hx-target="#htmx-dialog">
                 {% bootstrap_icon "pencil" %}
                 Rename
             </button>

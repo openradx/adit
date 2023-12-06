@@ -7,7 +7,7 @@
             View
         </a>
         <button hx-get="{% url 'report_preview' report.id %}"
-                hx-target="#dialog"
+                hx-target="#htmx-dialog"
                 class="btn btn-secondary btn-sm">
             {% bootstrap_icon "eye" %}
             Preview

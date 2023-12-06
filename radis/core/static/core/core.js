@@ -29,7 +29,7 @@ ready(function () {
   htmx.on("htmx:beforeSwap", (e) => {
     // Check if the modal should be static
     let staticModal = false;
-    if (e.detail.target.id == "dialog" && e.detail.xhr.response) {
+    if (e.detail.target.id == "htmx-dialog" && e.detail.xhr.response) {
       const doc = new DOMParser().parseFromString(
         e.detail.xhr.response,
         "text/html"
@@ -41,19 +41,19 @@ ready(function () {
       }
     }
 
-    const modal = bootstrap.Modal.getOrCreateInstance("#modal", {
+    const modal = bootstrap.Modal.getOrCreateInstance("#htmx-modal", {
       backdrop: staticModal ? "static" : true,
     });
 
     // An empty response targeting the #dialog does hide the modal
-    if (e.detail.target.id == "dialog" && !e.detail.xhr.response) {
+    if (e.detail.target.id == "htmx-dialog" && !e.detail.xhr.response) {
       modal.hide();
       e.detail.shouldSwap = false;
     }
   });
   htmx.on("htmx:afterSwap", (e) => {
-    const modal = bootstrap.Modal.getInstance("#modal");
-    const modalEl = document.getElementById("modal");
+    const modal = bootstrap.Modal.getInstance("#htmx-modal");
+    const modalEl = document.getElementById("htmx-modal");
     modalEl.addEventListener("shown.bs.modal", (event) => {
       const inputEl = modalEl.querySelector("input:not([type=hidden])");
       if (inputEl)
@@ -61,20 +61,21 @@ ready(function () {
         inputEl.focus();
     });
 
-    if (e.detail.target.id == "dialog") {
+    if (e.detail.target.id == "htmx-dialog") {
       modal.show();
     }
   });
-  htmx.on("hidden.bs.modal", () => {
+  htmx.on("#htmx-modal", "hidden.bs.modal", () => {
     // Reset the dialog after it was closed
-    document.getElementById("dialog").innerHTML = "";
+    document.getElementById("htmx-dialog").innerHTML = "";
 
     // Explicitly dispose it that next time it can be recreated
     // static or non static dynamically
-    bootstrap.Modal.getInstance("#modal").dispose();
+    bootstrap.Modal.getInstance("#htmx-modal").dispose();
   });
 
   // Allow to trigger toasts from HTMX responses using HX-Trigger
+  // (e.g. by using django_htmx.http.trigger_client_event)
   document.body.addEventListener("toast", (e) => {
     // @ts-ignore
     const { level, title, text } = e.detail;

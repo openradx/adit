@@ -1,6 +1,6 @@
 {% load bootstrap_icon from core_extras %}
 <button hx-get="{% url 'collection_select' report.id %}"
-        hx-target="#dialog"
+        hx-target="#htmx-dialog"
         class="btn btn-secondary btn-sm position-relative">
     {% bootstrap_icon "list-check" %}
     Collections
