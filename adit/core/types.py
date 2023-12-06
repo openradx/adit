@@ -11,7 +11,7 @@ class HtmxHttpRequest(HttpRequest):
     htmx: HtmxDetails
 
 
-class AuthenticatedHttpRequest(HttpRequest):
+class AuthenticatedHttpRequest(HtmxHttpRequest):
     user: User
 
 
