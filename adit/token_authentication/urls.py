@@ -1,5 +1,7 @@
 from django.urls import path
 
+from adit.core.views import HtmxTemplateView
+
 from .views import DeleteTokenView, TestView, TokenDashboardView
 
 urlpatterns = [
@@ -7,6 +9,13 @@ urlpatterns = [
         "",
         TokenDashboardView.as_view(),
         name="token_dashboard",
+    ),
+    path(
+        "help/",
+        HtmxTemplateView.as_view(
+            template_name="token_authentication/_token_authentication_help.html"
+        ),
+        name="token_authentication_help",
     ),
     path(
         "<int:pk>/delete-token",

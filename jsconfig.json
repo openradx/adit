@@ -7,5 +7,5 @@
       "dicomweb-client": ["./adit/static/vendor/dicomweb-client.js"]
     }
   },
-  "include": ["./adit/*/static/**/*.js"]
+  "include": ["./globals.d.ts", "./adit/*/static/**/*.js"]
 }

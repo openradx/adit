@@ -2,6 +2,8 @@
 
 ## Top
 
+- Allow to trigger toasts from HTMX responses using HX-Trigger # see core.js of RADIS
+
 - Before new release
   -- test job_utils
   -- Test canceled task/job in test_workers.py
@@ -194,4 +196,8 @@
 
 ## RADIS
 
-- Move over to SVG sprites
+- In core_layout rename #dialog to #htmx-dialog and #modal to #htmx-modal, also in the core.js and also in all the htmx rendered templates (hx-target="#dialog" to hx-target="#htmx-dialog")
+- htmx.on("#htmx-modal", "hidden.bs.modal", () => {
+- delete unneeded \_message_modal.html and \_confirm_modal.html
+- use HtmxDetails in types.py
+- HtmxTemplateView also for RADIS (if needed)

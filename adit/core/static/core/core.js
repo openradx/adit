@@ -23,6 +23,56 @@ ready(function () {
   for (const tooltip of tooltips) {
     new bootstrap.Tooltip(tooltip);
   }
+
+  // Manage the Bootstrap modal when using HTMX
+  // Based on https://blog.benoitblanchon.fr/django-htmx-modal-form/
+  htmx.on("htmx:beforeSwap", (e) => {
+    // Check if the modal should be static
+    let staticModal = false;
+    if (e.detail.target.id == "htmx-dialog" && e.detail.xhr.response) {
+      const doc = new DOMParser().parseFromString(
+        e.detail.xhr.response,
+        "text/html"
+      );
+      if (
+        doc.querySelector(".modal-content").hasAttribute("data-dialog-static")
+      ) {
+        staticModal = true;
+      }
+    }
+
+    const modal = bootstrap.Modal.getOrCreateInstance("#htmx-modal", {
+      backdrop: staticModal ? "static" : true,
+    });
+
+    // An empty response targeting the #dialog does hide the modal
+    if (e.detail.target.id == "htmx-dialog" && !e.detail.xhr.response) {
+      modal.hide();
+      e.detail.shouldSwap = false;
+    }
+  });
+  htmx.on("htmx:afterSwap", (e) => {
+    const modal = bootstrap.Modal.getInstance("#htmx-modal");
+    const modalEl = document.getElementById("htmx-modal");
+    modalEl.addEventListener("shown.bs.modal", (event) => {
+      const inputEl = modalEl.querySelector("input:not([type=hidden])");
+      if (inputEl)
+        // @ts-ignore
+        inputEl.focus();
+    });
+
+    if (e.detail.target.id == "htmx-dialog") {
+      modal.show();
+    }
+  });
+  htmx.on("#htmx-modal", "hidden.bs.modal", () => {
+    // Reset the dialog after it was closed
+    document.getElementById("htmx-dialog").innerHTML = "";
+
+    // Explicitly dispose it that next time it can be recreated
+    // static or non static dynamically
+    bootstrap.Modal.getInstance("#htmx-modal").dispose();
+  });
 });
 
 /**

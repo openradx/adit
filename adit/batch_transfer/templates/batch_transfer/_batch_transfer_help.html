@@ -1,0 +1,68 @@
+{% load static from static %}
+{% load bootstrap_icon from core_extras %}
+<div class="modal-content">
+    <div class="modal-header">
+        <h5 class="modal-title">Batch Transfer Help</h5>
+        <button type="button"
+                class="btn-close"
+                data-bs-dismiss="modal"
+                aria-label="Close" />
+    </div>
+    <div class="modal-body">
+        <p>
+            With this form you can create a new batch transfer job to transfer studies from a source server to a destination.
+            Batch transfer jobs are put into a queue and will be processed by a worker when the time is right. You will get an
+            Email when the job is finished (or failed for some reason).
+        </p>
+        <p>
+            Each batch transfer job contains several transfer tasks that define what studies to transfer. This data must be
+            specified in an Excel file (.xlsx). The first row of the Excel file must contain the header with the
+            column titles. The following rows contain the data that identifies the studies to transfer.
+        </p>
+        <p>
+            The required PatientID and StudyInstanceUID can be fetched by doing a "Batch Query". The resulting file of a
+            batch query can be used for the batch transfer. So a batch query is usually a preparation step for a batch transfer.
+        </p>
+        <p>
+            <strong class="text-danger">Cave!</strong>
+            <br />
+            If PatientID or AccessionNumber contains leading zeros those are relevant as it is not a number but a text
+            identifier. So make sure that your Excel file does not remove those leading zeros by setting the column type to text or
+            add a single quote ' as prefix to the text cell itself.
+        </p>
+        <p>
+            The following columns must be defined in the batch file:
+            <dl>
+                <dt>PatientID</dt>
+                <dd>
+                    The unique ID of the patient in the PACS. This column is required.
+                </dd>
+                <dt>StudyInstanceUID</dt>
+                <dd>
+                    A unique ID that identifies the study. This column is required.
+                </dd>
+                <dt>SeriesInstanceUID</dt>
+                <dd>
+                    An unique ID that identifies the series. This column is optional to only transfer
+                    specific series of a study.
+                </dd>
+                <dt>Pseudonym</dt>
+                <dd>
+                    A pseudonym to pseudonymize the images during transfer. This field is required
+                    if you don't have the permission to transfer unpseudonymized (the default).
+                </dd>
+            </dl>
+        </p>
+        <p>
+            The "SeriesInstanceUID" is optional. If provided, only the specified series of the study will be transferred. The
+            provided pseudonym is optional if you have the permissions to transfer unpseudonymized. It will be set as PatientID
+            and PatientName. So it is recommended to use cryptic identifier strings (e.g. "XFE3TEW2N").
+        </p>
+        <div class="mb-1">
+            <a href="{% static 'samples/batch_transfer_sample.xlsx' %}">
+                {% bootstrap_icon "download" %}
+                Download a sample batch transfer file (Excel format).
+            </a>
+        </div>
+    </div>
+</div>
