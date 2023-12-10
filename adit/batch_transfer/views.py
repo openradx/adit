@@ -57,7 +57,7 @@ class BatchTransferJobCreateView(BatchTransferLockedMixin, DicomJobCreateView):
     def get_initial(self) -> dict[str, Any]:
         initial = super().get_initial()
 
-        preferences: dict[str, Any] = self.request.user.preferences
+        preferences: dict[str, Any] = self.request.user.profile.preferences
 
         source = preferences.get(BATCH_TRANSFER_SOURCE)
         if source is not None:

@@ -2,7 +2,7 @@ from typing import Generic, TypeVar
 
 import factory
 
-from .models import Institute, User
+from .models import Institute, User, UserProfile
 
 T = TypeVar("T")
 
@@ -24,6 +24,10 @@ class UserFactory(BaseDjangoModelFactory[User]):
     password = factory.PostGenerationMethodCall("set_password", "userpass")
     first_name = factory.Faker("first_name")
     last_name = factory.Faker("last_name")
+    profile = factory.SubFactory(UserProfile)
+
+
+class UserProfileFactory(BaseDjangoModelFactory[UserProfile]):
     phone_number = factory.Faker("phone_number")
     department = factory.Faker("company")
 

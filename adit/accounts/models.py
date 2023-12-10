@@ -4,6 +4,8 @@ from django.contrib.auth.models import AbstractUser, Group, Permission
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ObjectDoesNotExist
 from django.db import models
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 
 if TYPE_CHECKING:
     from django.db.models.manager import RelatedManager
@@ -11,9 +13,7 @@ if TYPE_CHECKING:
 
 class User(AbstractUser):
     id: int
-    phone_number = models.CharField(max_length=64)
-    department = models.CharField(max_length=128)
-    preferences = models.JSONField(default=dict)
+    profile: "UserProfile"
 
     if TYPE_CHECKING:
         institutes = RelatedManager["Institute"]()
@@ -39,6 +39,23 @@ class User(AbstractUser):
                 raise ObjectDoesNotExist(f'Permission "{permission_codename}" does not exist.')
 
             self.user_permissions.add(permissions)
+
+
+class UserProfile(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="profile")
+    phone_number = models.CharField(max_length=64)
+    department = models.CharField(max_length=128)
+    preferences = models.JSONField(default=dict)
+
+    def __str__(self) -> str:
+        return self.user.username + " Profile"
+
+
+@receiver(post_save, sender=User)
+def save_user_profile(sender, instance, created, **kwargs):
+    if created:
+        UserProfile.objects.create(user=instance)
+    instance.profile.save()
 
 
 class Institute(models.Model):

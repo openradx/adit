@@ -91,7 +91,7 @@ class SelectiveTransferConsumer(AsyncJsonWebsocketConsumer):
 
         # Advanced options collapsed preference is not part of the form data itself,
         # so we have to pass it separately.
-        advanced_options_collapsed = self.user.preferences.get(
+        advanced_options_collapsed = self.user.profile.preferences.get(
             SELECTIVE_TRANSFER_ADVANCED_OPTIONS_COLLAPSED, False
         )
 

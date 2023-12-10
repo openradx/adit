@@ -73,7 +73,7 @@ class SelectiveTransferJobCreateView(SelectiveTransferLockedMixin, DicomJobCreat
     def get_form_kwargs(self) -> dict[str, Any]:
         kwargs = super().get_form_kwargs()
 
-        preferences: dict[str, Any] = self.request.user.preferences
+        preferences: dict[str, Any] = self.request.user.profile.preferences
         kwargs["advanced_options_collapsed"] = preferences.get(
             SELECTIVE_TRANSFER_ADVANCED_OPTIONS_COLLAPSED, False
         )
@@ -83,7 +83,7 @@ class SelectiveTransferJobCreateView(SelectiveTransferLockedMixin, DicomJobCreat
     def get_initial(self):
         initial = super().get_initial()
 
-        preferences: dict[str, Any] = self.request.user.preferences
+        preferences: dict[str, Any] = self.request.user.profile.preferences
 
         source = preferences.get(SELECTIVE_TRANSFER_SOURCE)
         if source is not None:

@@ -109,7 +109,7 @@ class BaseUpdatePreferencesView(ABC, LoginRequiredMixin, View):
             if key not in self.allowed_keys:
                 raise SuspiciousOperation(f'Invalid preference "{key}" to update.')
 
-        preferences = request.user.preferences
+        preferences = request.user.profile.preferences
 
         for key, value in request.POST.items():
             if value == "true":

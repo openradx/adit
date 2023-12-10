@@ -65,7 +65,7 @@ class BatchQueryJobCreateView(BatchQueryLockedMixin, DicomJobCreateView):
     def get_initial(self) -> dict[str, Any]:
         initial = super().get_initial()
 
-        preferences: dict[str, Any] = self.request.user.preferences
+        preferences: dict[str, Any] = self.request.user.profile.preferences
 
         source = preferences.get(BATCH_QUERY_SOURCE)
         if source is not None:

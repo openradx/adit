@@ -2,13 +2,15 @@ from typing import Any
 
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Submit
+from django import forms
 from django.contrib.auth.forms import UserCreationForm
 from django.forms import ValidationError
 
-from .models import User
+from .models import User, UserProfile
 
 
-class RegistrationForm(UserCreationForm):
+# TODO: fix, phone_number and department are in user profile and not user itself
+class UserRegistrationForm(UserCreationForm):
     class Meta:
         model = User
         fields = (
@@ -18,8 +20,6 @@ class RegistrationForm(UserCreationForm):
             "email",
             "first_name",
             "last_name",
-            "phone_number",
-            "department",
         )
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
@@ -32,9 +32,6 @@ class RegistrationForm(UserCreationForm):
         self.fields["first_name"].required = True
         self.fields["last_name"].required = True
 
-        self.helper = FormHelper(self)
-        self.helper.add_input(Submit("register", "Register"))
-
     def clean_email(self):
         # Django's AbstractUser Email model field is not unique. We fix this here programmatically
         # at the form level.
@@ -43,3 +40,20 @@ class RegistrationForm(UserCreationForm):
             raise ValidationError("An account with this Email address is already registered.")
 
         return email
+
+
+class UserProfileRegistrationForm(forms.ModelForm):
+    class Meta:
+        model = UserProfile
+        fields = (
+            "phone_number",
+            "department",
+        )
+
+
+class RegistrationForm(UserRegistrationForm, UserProfileRegistrationForm):
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+
+        self.helper = FormHelper(self)
+        self.helper.add_input(Submit("register", "Register"))
