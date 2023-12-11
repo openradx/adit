@@ -27,7 +27,7 @@ def test_unpseudonymized_urgent_selective_transfer_with_dimse_server(
 
     # Act
     page.goto(channels_live_server.url + "/selective-transfer/jobs/new/")
-    page.get_by_label("Start transfer directly").click(force=True)
+    page.get_by_label("Urgent").click(force=True)
     page.get_by_label("Source").select_option(label="DICOM Server Orthanc Test Server 1")
     page.get_by_label("Destination").select_option(label="DICOM Server Orthanc Test Server 2")
     page.get_by_label("Patient ID").press("Enter")
@@ -60,7 +60,7 @@ def test_unpseudonymized_urgent_selective_transfer_with_dicomweb_server(
 
     # Act
     page.goto(channels_live_server.url + "/selective-transfer/jobs/new/")
-    page.get_by_label("Start transfer directly").click(force=True)
+    page.get_by_label("Urgent").click(force=True)
     page.get_by_label("Source").select_option(label="DICOM Server Orthanc Test Server 1")
     page.get_by_label("Destination").select_option(label="DICOM Server Orthanc Test Server 2")
     page.get_by_label("Patient ID").press("Enter")

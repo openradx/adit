@@ -32,7 +32,7 @@ def test_urgent_batch_query_with_dimse_server(
     # Act
     page.goto(channels_live_server.url + "/batch-query/jobs/new/")
     page.get_by_label("Source").select_option(label="DICOM Server Orthanc Test Server 1")
-    page.get_by_label("Start query urgently").click(force=True)
+    page.get_by_label("Urgent").click(force=True)
     page.get_by_label("Project name").fill("Test query")
     page.get_by_label("Project description").fill("Just a test query.")
     page.get_by_label("Batch file*", exact=True).set_input_files(files=[batch_file])
@@ -67,7 +67,7 @@ def test_urgent_batch_query_with_dicomweb_server(
     # Act
     page.goto(channels_live_server.url + "/batch-query/jobs/new/")
     page.get_by_label("Source").select_option(label="DICOM Server Orthanc Test Server 1")
-    page.get_by_label("Start query urgently").click(force=True)
+    page.get_by_label("Urgent").click(force=True)
     page.get_by_label("Project name").fill("Test query")
     page.get_by_label("Project description").fill("Just a test query.")
     page.get_by_label("Batch file*", exact=True).set_input_files(files=[batch_file])

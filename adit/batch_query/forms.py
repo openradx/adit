@@ -38,11 +38,10 @@ class BatchQueryJobForm(forms.ModelForm):
             "send_finished_mail",
         )
         labels = {
-            "urgent": "Start query urgently",
             "send_finished_mail": "Send Email when job is finished",
         }
         help_texts = {
-            "urgent": ("Prioritize and start directly (without scheduling)."),
+            "urgent": ("Prioritize this query job."),
         }
 
     def __init__(self, *args, **kwargs):
