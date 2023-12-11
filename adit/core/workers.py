@@ -6,6 +6,7 @@ from threading import Event
 from typing import cast
 
 import humanize
+import psycopg
 import redis
 from django import db
 from django.conf import settings
@@ -208,7 +209,8 @@ class DicomWorker:
             # <https://docs.djangoproject.com/en/4.2/ref/databases/#caveats>
             try:
                 dicom_task.save()
-            except db.OperationalError:
+            except (db.utils.OperationalError, psycopg.OperationalError):
+                db.close_old_connections()
                 dicom_task.save()
 
             logger.info(f"Processing {dicom_task} ended.")
