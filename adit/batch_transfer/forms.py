@@ -42,14 +42,13 @@ class BatchTransferJobForm(forms.ModelForm):
             "send_finished_mail",
         )
         labels = {
-            "urgent": "Start transfer urgently",
             "trial_protocol_id": "Trial ID",
             "trial_protocol_name": "Trial name",
             "ethics_application_id": "Ethics committee approval",
             "send_finished_mail": "Send Email when job is finished",
         }
         help_texts = {
-            "urgent": ("Start transfer directly (without scheduling) and prioritize it."),
+            "urgent": ("Prioritize this transfer job."),
             "ethics_application_id": (
                 "The identification number of the ethics application for this trial."
             ),

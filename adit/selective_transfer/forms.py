@@ -46,13 +46,12 @@ class SelectiveTransferJobForm(forms.ModelForm):
             "accession_number",
         )
         labels = {
-            "urgent": "Start transfer directly",
             "trial_protocol_id": "Trial ID",
             "trial_protocol_name": "Trial name",
             "send_finished_mail": "Send Email when job is finished",
         }
         help_texts = {
-            "urgent": ("Start transfer directly (without scheduling) and prioritize it."),
+            "urgent": ("Prioritize this transfer job."),
         }
 
     def __init__(self, *args, **kwargs):
