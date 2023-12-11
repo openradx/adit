@@ -7,9 +7,12 @@ from .models import (
     DicomNodeInstituteAccess,
     DicomServer,
     DicomTask,
+    QueuedTask,
 )
 
 admin.site.site_header = "ADIT administration"
+
+admin.site.register(CoreSettings, admin.ModelAdmin)
 
 
 class DicomJobAdmin(admin.ModelAdmin):
@@ -28,6 +31,20 @@ class DicomJobAdmin(admin.ModelAdmin):
 
     get_owner.short_description = "Owner"
     get_owner.admin_order_field = "owner__username"
+
+
+class QueuedTaskAdmin(admin.ModelAdmin):
+    list_display = (
+        "id",
+        "content_object",
+        "priority",
+        "created",
+        "locked",
+        "eta",
+    )
+
+
+admin.site.register(QueuedTask, QueuedTaskAdmin)
 
 
 class DicomTaskAdmin(admin.ModelAdmin):
@@ -72,6 +89,3 @@ class DicomFolderAdmin(admin.ModelAdmin):
 
 
 admin.site.register(DicomFolder, DicomFolderAdmin)
-
-
-admin.site.register(CoreSettings, admin.ModelAdmin)
