@@ -36,4 +36,4 @@ class BatchTransferTask(TransferTask):
     lines = ArrayField(models.PositiveSmallIntegerField())
 
     def get_absolute_url(self):
-        return reverse("batch_transfer_task_detail", args=[self.job.id, self.id])
+        return reverse("batch_transfer_task_detail", args=[self.id])
