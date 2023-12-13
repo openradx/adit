@@ -84,7 +84,7 @@ urlpatterns = [
         name="batch_query_result_download",
     ),
     path(
-        "jobs/<int:job_id>/tasks/<int:task_id>/",
+        "tasks/<int:pk>/",
         BatchQueryTaskDetailView.as_view(),
         name="batch_query_task_detail",
     ),

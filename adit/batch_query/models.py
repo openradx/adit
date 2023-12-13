@@ -124,7 +124,7 @@ class BatchQueryTask(DicomTask):
         return super().clean()
 
     def get_absolute_url(self):
-        return reverse("batch_query_task_detail", args=[self.job.id, self.id])
+        return reverse("batch_query_task_detail", args=[self.id])
 
 
 class BatchQueryResult(models.Model):

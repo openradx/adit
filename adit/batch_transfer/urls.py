@@ -77,7 +77,7 @@ urlpatterns = [
         name="batch_transfer_job_verify",
     ),
     path(
-        "jobs/<int:job_id>/tasks/<int:task_id>/",
+        "tasks/<int:pk>/",
         BatchTransferTaskDetailView.as_view(),
         name="batch_transfer_task_detail",
     ),

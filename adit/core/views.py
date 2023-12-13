@@ -11,11 +11,10 @@ from django.contrib.auth.mixins import (
 )
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import SuspiciousOperation
-from django.db.models import Model
 from django.db.models.query import QuerySet
 from django.forms import Form, ModelForm
 from django.http import HttpRequest, HttpResponse, HttpResponseRedirect
-from django.shortcuts import get_object_or_404, redirect, render
+from django.shortcuts import redirect, render
 from django.urls import re_path, reverse_lazy
 from django.views.generic import View
 from django.views.generic.base import TemplateView
@@ -409,22 +408,6 @@ class DicomTaskDetailView(LoginRequiredMixin, DetailView):
         if self.request.user.is_staff:
             return self.model.objects.all()
         return self.model.objects.filter(job__owner=self.request.user)
-
-    def get_object(self, queryset: QuerySet | None = None) -> Model:
-        if queryset is None:
-            queryset = self.get_queryset()
-
-        job_id = self.kwargs.get("job_id")
-        task_id = self.kwargs.get("task_id")
-
-        if job_id is None or task_id is None:
-            raise AttributeError(
-                f"Dicom task detail view {self.__class__.__name__} must "
-                "be called with a job_id and a task_id in the URLconf."
-            )
-
-        queryset = queryset.filter(job_id=job_id, id=task_id)
-        return get_object_or_404(queryset)
 
     def get_context_data(self, **kwargs) -> dict[str, Any]:
         context = super().get_context_data(**kwargs)

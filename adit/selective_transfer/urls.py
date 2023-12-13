@@ -72,7 +72,7 @@ urlpatterns = [
         name="selective_transfer_job_restart",
     ),
     path(
-        "jobs/<int:job_id>/tasks/<int:task_id>/",
+        "tasks/<int:pk>/",
         SelectiveTransferTaskDetailView.as_view(),
         name="selective_transfer_task_detail",
     ),
