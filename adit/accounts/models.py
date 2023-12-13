@@ -47,5 +47,5 @@ class Institute(models.Model):
     description = models.TextField(blank=True, max_length=1024)
     users = models.ManyToManyField(User, related_name="institutes", blank=True)
 
-    def __str__(self):
-        return self.name
+    def __str__(self) -> str:
+        return f"{self.__class__.__name__} {self.name} [ID {self.id}]"

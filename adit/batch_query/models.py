@@ -213,7 +213,7 @@ class BatchQueryResult(models.Model):
         ],
     )
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"{self.__class__.__name__} [ID {self.id}]"
 
     @property

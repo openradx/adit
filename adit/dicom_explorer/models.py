@@ -18,5 +18,5 @@ class PermissionSupport(models.Model):
         default_permissions = ()
         permissions = (("query_dicom_server", "Query DICOM Server"),)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"{self.__class__.__name__} [ID {self.id}]"

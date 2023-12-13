@@ -34,6 +34,7 @@ class TokenManager(models.Manager["Token"]):
 
 
 class Token(models.Model):
+    id: int
     owner = models.ForeignKey(User, on_delete=models.CASCADE)
     token_hashed = models.CharField(max_length=128, unique=True)
     fraction = models.CharField(max_length=FRACTION_LENGTH)
@@ -52,8 +53,8 @@ class Token(models.Model):
             )
         ]
 
-    def __str__(self):
-        return self.token_hashed
+    def __str__(self) -> str:
+        return f"Token {self.token_hashed} [ID {self.id}]"
 
     def is_expired(self):
         utc = pytz.UTC

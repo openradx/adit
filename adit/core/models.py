@@ -29,7 +29,7 @@ class CoreSettings(models.Model):
     class Meta:
         verbose_name_plural = "Core settings"
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"{self.__class__.__name__} [ID {self.id}]"
 
     @classmethod
@@ -99,9 +99,12 @@ class DicomNode(models.Model):
     class Meta:
         ordering = ("name",)
 
-    def __str__(self):
+    def __str__(self) -> str:
         node_types_dict = dict(self.NodeType.choices)
         return f"DICOM {node_types_dict[self.node_type]} {self.name}"
+
+    def __repr__(self) -> str:
+        return f"{self.__str__()} [ID {self.id}]"
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -222,7 +225,7 @@ class DicomJob(models.Model):
             )
         ]
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"{self.__class__.__name__} [ID {self.id}]"
 
     def reset_tasks(self, only_failed=False):
@@ -325,8 +328,8 @@ class QueuedTask(models.Model):
             )
         ]
 
-    def __str__(self):
-        return f"{self.__class__.__name__} [{self.content_type} {self.object_id}]"
+    def __str__(self) -> str:
+        return f"{self.__class__.__name__} [ID {self.id} ({self.content_object})]"
 
 
 class DicomTask(models.Model):
@@ -361,8 +364,8 @@ class DicomTask(models.Model):
         abstract = True
         ordering = ("id",)
 
-    def __str__(self):
-        return f"{self.__class__.__name__} [Job ID {self.job.id}, Task ID {self.id}]"
+    def __str__(self) -> str:
+        return f"{self.__class__.__name__} [ID {self.id} (Job ID {self.job.id})]"
 
     @property
     def queued(self) -> QueuedTask | None:
@@ -403,10 +406,5 @@ class TransferTask(DicomTask):
         validators=[no_backslash_char_validator, no_control_chars_validator],
     )
 
-    def __str__(self):
-        return (
-            f"{self.__class__.__name__} "
-            f"[Source {self.source}, "
-            f"Destination {self.destination}, "
-            f"Job ID {self.job.id}, Task ID {self.id}]"
-        )
+    def __str__(self) -> str:
+        return f"{self.__class__.__name__} [ID {self.id} (Job ID {self.job_id})]"
