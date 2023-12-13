@@ -6,9 +6,7 @@ from threading import Event
 from typing import cast
 
 import humanize
-import psycopg
 import redis
-from django import db
 from django.conf import settings
 from django.db.models import Q
 from django.utils import timezone
@@ -18,6 +16,7 @@ from adit.core.errors import DicomError, RetriableDicomError
 from adit.core.models import DicomJob, DicomTask, QueuedTask
 from adit.core.processors import DicomTaskProcessor
 from adit.core.site import dicom_processors
+from adit.core.utils.db_utils import ensure_db_connection
 from adit.core.utils.job_utils import update_job_status
 from adit.core.utils.mail import send_job_finished_mail
 
@@ -75,6 +74,8 @@ class DicomWorker:
             dicom_task.status = DicomTask.Status.FAILURE
         finally:
             self._future = None
+
+            ensure_db_connection()
 
             # Unlock the queued task. The queued task may also be already deleted
             # when everything worked well.
@@ -196,22 +197,9 @@ class DicomWorker:
         finally:
             dicom_task.end = timezone.now()
 
-            # Django ORM does not work well with long running tasks in production as the
-            # database server closes the connection, but Django still tries to use the closed
-            # connection and then throws an error. We just try again then which hopefully
-            # and just creates new connection.
-            # An alternative would be to use db.close_old_connections(), but that breaks our
-            # tests as it also closes some pytest connections.
-            # References:
-            # <https://code.djangoproject.com/ticket/24810>
-            # <https://github.com/jdelic/django-dbconn-retry> No support for psycopg v3
-            # <https://tryolabs.com/blog/2014/02/12/long-running-process-and-django-orm>
-            # <https://docs.djangoproject.com/en/4.2/ref/databases/#caveats>
-            try:
-                dicom_task.save()
-            except (db.utils.OperationalError, psycopg.OperationalError):
-                db.close_old_connections()
-                dicom_task.save()
+            ensure_db_connection()
+
+            dicom_task.save()
 
             logger.info(f"Processing {dicom_task} ended.")
 
