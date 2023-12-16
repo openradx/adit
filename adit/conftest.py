@@ -2,7 +2,7 @@ import io
 import time
 from multiprocessing import Process
 from tempfile import NamedTemporaryFile
-from typing import Callable, Literal
+from typing import Callable
 
 import nest_asyncio
 import pandas as pd
@@ -12,14 +12,13 @@ from django.core.management import call_command
 from faker import Faker
 from playwright.sync_api import Locator, Page, Response
 
-from adit.accounts.factories import InstituteFactory, UserFactory
-from adit.accounts.models import Institute, User
+from adit.accounts.factories import UserFactory
+from adit.accounts.models import User
 from adit.core.factories import (
-    DicomNodeInstituteAccessFactory,
     DicomServerFactory,
     DicomWebServerFactory,
 )
-from adit.core.models import DicomNode, DicomServer
+from adit.core.models import DicomServer
 from adit.testing import ChannelsLiveServer
 
 fake = Faker()
@@ -173,29 +172,3 @@ def create_dummy_file():
         file.close()
 
     return _create_dummy_file
-
-
-@pytest.fixture
-def grant_access():
-    def _grant_access(
-        user: User,
-        dicom_node: DicomNode,
-        access_type: Literal["source", "destination"],
-        institute: Institute | None = None,
-    ) -> None:
-        if not institute:
-            institute = InstituteFactory.create()
-        institute.users.add(user)
-
-        if access_type == "source":
-            DicomNodeInstituteAccessFactory.create(
-                dicom_node=dicom_node, institute=institute, source=True
-            )
-        elif access_type == "destination":
-            DicomNodeInstituteAccessFactory.create(
-                dicom_node=dicom_node, institute=institute, destination=True
-            )
-        else:
-            raise AssertionError(f"Invalid access type: {access_type}")
-
-    return _grant_access
