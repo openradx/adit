@@ -6,6 +6,15 @@
         {% include "core/images/adit_logo.svg" %}
     </h1>
     <p class="lead">A swiss army knife to exchange DICOM data between various systems.</p>
+    <p>
+        Active Group:
+        {% if not user.active_group %}
+            —
+        {% else %}
+            {{ user.active_group.name }}
+        {% endif %}
+        <small class="ms-1">[<a href="{% url 'profile' %}">Change in user profile</a>]</small>
+    </p>
 {% endblock heading %}
 {% block content %}
     {{ announcement|safe }}

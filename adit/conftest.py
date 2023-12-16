@@ -139,9 +139,9 @@ def login_user(page: Page):
 # TODO: See if we can make it a yield fixture with name logged_in_user
 @pytest.fixture
 def create_and_login_user(page: Page, login_user):
-    def _create_and_login_user(server_url: str):
+    def _create_and_login_user(server_url: str) -> User:
         password = "mysecret"
-        user = UserFactory(password=password)
+        user = UserFactory.create(password=password)
 
         login_user(server_url, user.username, password)
 

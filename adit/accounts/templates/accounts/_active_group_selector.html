@@ -1,0 +1,18 @@
+<h5>Active Group</h5>
+{% if user.active_group is None %}
+    You are not assigned to any groups.
+{% else %}
+    <form hx-post="{% url 'active_group' %}" hx-trigger="change" hx-swap="none">
+        {% csrf_token %}
+        <select id="active-group-selector"
+                name="group"
+                class="form-select"
+                style="max-width: 800px"
+                aria-label="Select the currently active group">
+            {% for group in user.groups.all %}
+                <option value="{{ group.id }}"
+                        {% if user.active_group.id == group.id %}selected{% endif %}>{{ group.name }}</option>
+            {% endfor %}
+        </select>
+    </form>
+{% endif %}
