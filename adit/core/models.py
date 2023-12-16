@@ -88,11 +88,11 @@ class DicomNode(models.Model):
     id: int
     node_type = models.CharField(max_length=2, choices=NodeType.choices)
     name = models.CharField(unique=True, max_length=64)
-    institutes = models.ManyToManyField(
-        Institute,
+    groups = models.ManyToManyField(
+        Group,
         blank=True,
         related_name="dicom_nodes",
-        through="DicomNodeInstituteAccess",
+        through="DicomNodeGroupAccess",
     )
 
     objects: DicomNodeManager["DicomNode"] = DicomNodeManager["DicomNode"]()
@@ -120,19 +120,19 @@ class DicomNode(models.Model):
         return DicomNode.objects.accessible_by_user(user, access_type).filter(id=self.id).exists()
 
 
-class DicomNodeInstituteAccess(models.Model):
+class DicomNodeGroupAccess(models.Model):
     id: int
     dicom_node = models.ForeignKey(DicomNode, on_delete=models.CASCADE, related_name="accesses")
-    institute = models.ForeignKey(Institute, on_delete=models.CASCADE)
+    group = models.ForeignKey(Group, on_delete=models.CASCADE)
     source = models.BooleanField(default=False)
     destination = models.BooleanField(default=False)
 
     class Meta:
-        verbose_name_plural = "DICOM node institute accesses"
+        verbose_name_plural = "DICOM node group accesses"
         constraints = [
             UniqueConstraint(
-                fields=["dicom_node", "institute"],
-                name="unique_dicom_node_per_institute",
+                fields=["dicom_node", "group"],
+                name="unique_dicom_node_per_group",
             )
         ]
 

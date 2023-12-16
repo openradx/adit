@@ -4,7 +4,7 @@ from .models import (
     CoreSettings,
     DicomFolder,
     DicomJob,
-    DicomNodeInstituteAccess,
+    DicomNodeGroupAccess,
     DicomServer,
     DicomTask,
     QueuedTask,
@@ -67,16 +67,16 @@ class DicomTaskAdmin(admin.ModelAdmin):
     get_owner.admin_order_field = "job__owner__username"
 
 
-class DicomNodeInstituteAccessInline(admin.TabularInline):
-    model = DicomNodeInstituteAccess
+class DicomNodeGroupAccessInline(admin.TabularInline):
+    model = DicomNodeGroupAccess
     extra = 1
-    ordering = ("institute__name",)
+    ordering = ("group__name",)
 
 
 class DicomServerAdmin(admin.ModelAdmin):
     list_display = ("name", "ae_title", "host", "port")
     exclude = ("node_type",)
-    inlines = (DicomNodeInstituteAccessInline,)
+    inlines = (DicomNodeGroupAccessInline,)
 
 
 admin.site.register(DicomServer, DicomServerAdmin)
@@ -85,7 +85,7 @@ admin.site.register(DicomServer, DicomServerAdmin)
 class DicomFolderAdmin(admin.ModelAdmin):
     list_display = ("name", "path")
     exclude = ("node_type",)
-    inlines = (DicomNodeInstituteAccessInline,)
+    inlines = (DicomNodeGroupAccessInline,)
 
 
 admin.site.register(DicomFolder, DicomFolderAdmin)
