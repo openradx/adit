@@ -2,7 +2,6 @@ from io import BytesIO
 
 import pandas as pd
 import pytest
-from django.contrib.auth.models import Group
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.urls import reverse
 from pytest_django.asserts import assertTemplateUsed
@@ -10,6 +9,7 @@ from pytest_django.asserts import assertTemplateUsed
 from adit.accounts.factories import UserFactory
 from adit.core.factories import DicomServerFactory
 from adit.core.models import DicomServer, QueuedTask
+from adit.core.utils.auth_utils import add_user_to_group, grant_access
 
 from ..models import BatchTransferJob
 
@@ -62,27 +62,29 @@ def test_user_must_have_permission_to_access_view(client):
 
 
 @pytest.mark.django_db
-def test_logged_in_user_with_permission_can_access_form(client):
+def test_logged_in_user_with_permission_can_access_form(client, batch_transfer_group):
     user = UserFactory.create()
-    batch_transfer_group = Group.objects.get(name="batch_transfer_group")
-    user.groups.add(batch_transfer_group)
+    add_user_to_group(user, batch_transfer_group)
     client.force_login(user)
     response = client.get(reverse("batch_transfer_job_create"))
     assert response.status_code == 200
     assertTemplateUsed(response, "batch_transfer/batch_transfer_job_form.html")
 
 
-def test_batch_job_created_and_enqueued_with_auto_verify(client, settings, grant_access, form_data):
+def test_batch_job_created_and_enqueued_with_auto_verify(
+    client, settings, batch_transfer_group, form_data
+):
     settings.BATCH_TRANSFER_UNVERIFIED = True
+
     user = UserFactory.create()
-    batch_transfer_group = Group.objects.get(name="batch_transfer_group")
-    user.groups.add(batch_transfer_group)
-    client.force_login(user)
+    add_user_to_group(user, batch_transfer_group)
+
     source_server = DicomServer.objects.get(pk=form_data["source"])
     destination_server = DicomServer.objects.get(pk=form_data["destination"])
-    grant_access(user, source_server, "source")
-    grant_access(user, destination_server, "destination")
+    grant_access(batch_transfer_group, source_server, source=True)
+    grant_access(batch_transfer_group, destination_server, destination=True)
 
+    client.force_login(user)
     client.post(reverse("batch_transfer_job_create"), form_data)
 
     job = BatchTransferJob.objects.first()
@@ -91,18 +93,19 @@ def test_batch_job_created_and_enqueued_with_auto_verify(client, settings, grant
 
 
 def test_batch_job_created_and_not_enqueued_without_auto_verify(
-    client, settings, grant_access, form_data
+    client, settings, batch_transfer_group, form_data
 ):
     settings.BATCH_TRANSFER_UNVERIFIED = False
+
     user = UserFactory.create()
-    batch_transfer_group = Group.objects.get(name="batch_transfer_group")
-    user.groups.add(batch_transfer_group)
-    client.force_login(user)
+    add_user_to_group(user, batch_transfer_group)
+
     source_server = DicomServer.objects.get(pk=form_data["source"])
     destination_server = DicomServer.objects.get(pk=form_data["destination"])
-    grant_access(user, source_server, "source")
-    grant_access(user, destination_server, "destination")
+    grant_access(batch_transfer_group, source_server, source=True)
+    grant_access(batch_transfer_group, destination_server, destination=True)
 
+    client.force_login(user)
     client.post(reverse("batch_transfer_job_create"), form_data)
 
     job = BatchTransferJob.objects.first()
@@ -110,10 +113,9 @@ def test_batch_job_created_and_not_enqueued_without_auto_verify(
     assert QueuedTask.objects.count() == 0
 
 
-def test_job_cant_be_created_with_missing_fields(client, form_data):
+def test_job_cant_be_created_with_missing_fields(client, batch_transfer_group, form_data):
     user = UserFactory.create()
-    batch_transfer_group = Group.objects.get(name="batch_transfer_group")
-    user.groups.add(batch_transfer_group)
+    add_user_to_group(user, batch_transfer_group)
     client.force_login(user)
     for key_to_exclude in form_data:
         invalid_form_data = form_data.copy()

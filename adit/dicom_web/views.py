@@ -44,6 +44,7 @@ class WebDicomAPIView(AsyncApiView):
             )
 
 
+# TODO: respect permission can_query
 class QueryAPIView(WebDicomAPIView):
     level: Literal["STUDY", "SERIES"]
     renderer_classes = [QidoApplicationDicomJsonRenderer]
@@ -105,6 +106,7 @@ class QuerySeriesAPIView(QueryAPIView):
         return Response([result.dataset.to_json_dict() for result in results])
 
 
+# TODO: respect permission can_retrieve
 class RetrieveAPIView(WebDicomAPIView):
     level: Literal["STUDY", "SERIES"]
     query: dict = {
@@ -215,6 +217,7 @@ class RetrieveSeriesAPIView(RetrieveAPIView):
         )
 
 
+# TODO: respect permission can_store
 class StoreAPIView(WebDicomAPIView):
     parser_classes = [StowMultipartApplicationDicomParser]
     renderer_classes = [StowApplicationDicomJsonRenderer]

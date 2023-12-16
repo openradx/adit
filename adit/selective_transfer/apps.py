@@ -52,20 +52,7 @@ def collect_job_stats():
 
 
 def init_db(**kwargs):
-    create_group()
     create_app_settings()
-
-
-def create_group():
-    from adit.accounts.utils import create_group_with_permissions
-
-    create_group_with_permissions(
-        "selective_transfer_group",
-        (
-            "selective_transfer.add_selectivetransferjob",
-            "selective_transfer.view_selectivetransferjob",
-        ),
-    )
 
 
 def create_app_settings():

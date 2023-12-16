@@ -3,6 +3,7 @@ import pytest
 from dicomweb_client import DICOMwebClient
 
 from adit.core.models import DicomServer
+from adit.core.utils.auth_utils import grant_access
 
 
 @pytest.mark.integration
@@ -10,16 +11,15 @@ from adit.core.models import DicomServer
 def test_wado_study(
     dimse_orthancs,
     channels_live_server,
-    user_with_token,
-    grant_access,
+    user_with_group_and_token,
     create_dicom_web_client,
     extended_data_sheet,
 ):
-    user, token = user_with_token
+    _, group, token = user_with_group_and_token
     server = DicomServer.objects.get(ae_title="ORTHANC1")
-    grant_access(user, server, "source")
+    grant_access(group, server, source=True)
     orthanc1_client: DICOMwebClient = create_dicom_web_client(
-        channels_live_server.url, server.ae_title
+        channels_live_server.url, server.ae_title, token
     )
 
     study_uid = list(extended_data_sheet["StudyInstanceUID"])[0]
@@ -60,16 +60,15 @@ def test_wado_study(
 def test_wado_series(
     dimse_orthancs,
     channels_live_server,
-    user_with_token,
-    grant_access,
+    user_with_group_and_token,
     create_dicom_web_client,
     extended_data_sheet,
 ):
-    user, token = user_with_token
+    _, group, token = user_with_group_and_token
     server = DicomServer.objects.get(ae_title="ORTHANC1")
-    grant_access(user, server, "source")
+    grant_access(group, server, source=True)
     orthanc1_client: DICOMwebClient = create_dicom_web_client(
-        channels_live_server.url, server.ae_title
+        channels_live_server.url, server.ae_title, token
     )
 
     study_uid = list(extended_data_sheet["StudyInstanceUID"])[0]

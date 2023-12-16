@@ -4,7 +4,9 @@ import pandas as pd
 import pytest
 from playwright.sync_api import Locator, Page, expect
 
+from adit.accounts.models import User
 from adit.batch_transfer.models import BatchTransferJob
+from adit.core.utils.auth_utils import add_permission, add_user_to_group, grant_access
 
 
 @pytest.mark.integration
@@ -16,7 +18,7 @@ def test_unpseudonymized_urgent_batch_transfer_with_dimse_server(
     dicom_worker,
     channels_live_server,
     create_and_login_user,
-    grant_access,
+    batch_transfer_group,
     create_excel_file,
 ):
     # Arrange
@@ -26,12 +28,12 @@ def test_unpseudonymized_urgent_batch_transfer_with_dimse_server(
     )
     batch_file = create_excel_file(df)
 
-    user = create_and_login_user(channels_live_server.url)
-    user.join_group("batch_transfer_group")
-    user.add_permission("can_process_urgently", BatchTransferJob)
-    user.add_permission("can_transfer_unpseudonymized", BatchTransferJob)
-    grant_access(user, dimse_orthancs[0], "source")
-    grant_access(user, dimse_orthancs[1], "destination")
+    user: User = create_and_login_user(channels_live_server.url)
+    add_user_to_group(user, batch_transfer_group)
+    add_permission(batch_transfer_group, BatchTransferJob, "can_process_urgently")
+    add_permission(batch_transfer_group, BatchTransferJob, "can_transfer_unpseudonymized")
+    grant_access(batch_transfer_group, dimse_orthancs[0], source=True)
+    grant_access(batch_transfer_group, dimse_orthancs[1], destination=True)
 
     # Act
     page.goto(channels_live_server.url + "/batch-transfer/jobs/new/")
@@ -57,7 +59,7 @@ def test_unpseudonymized_urgent_batch_transfer_with_dicomweb_server(
     dicom_worker,
     channels_live_server,
     create_and_login_user,
-    grant_access,
+    batch_transfer_group,
     create_excel_file,
 ):
     # Arrange
@@ -67,12 +69,12 @@ def test_unpseudonymized_urgent_batch_transfer_with_dicomweb_server(
     )
     batch_file = create_excel_file(df)
 
-    user = create_and_login_user(channels_live_server.url)
-    user.join_group("batch_transfer_group")
-    user.add_permission("can_process_urgently", BatchTransferJob)
-    user.add_permission("can_transfer_unpseudonymized", BatchTransferJob)
-    grant_access(user, dicomweb_orthancs[0], "source")
-    grant_access(user, dicomweb_orthancs[1], "destination")
+    user: User = create_and_login_user(channels_live_server.url)
+    add_user_to_group(user, batch_transfer_group)
+    add_permission(batch_transfer_group, BatchTransferJob, "can_process_urgently")
+    add_permission(batch_transfer_group, BatchTransferJob, "can_transfer_unpseudonymized")
+    grant_access(batch_transfer_group, dicomweb_orthancs[0], source=True)
+    grant_access(batch_transfer_group, dicomweb_orthancs[1], destination=True)
 
     # Act
     page.goto(channels_live_server.url + "/batch-transfer/jobs/new/")

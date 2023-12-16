@@ -4,7 +4,9 @@ import pandas as pd
 import pytest
 from playwright.sync_api import Locator, Page, expect
 
+from adit.accounts.models import User
 from adit.batch_query.models import BatchQueryJob
+from adit.core.utils.auth_utils import add_permission, add_user_to_group, grant_access
 
 
 @pytest.mark.integration
@@ -16,18 +18,18 @@ def test_urgent_batch_query_with_dimse_server(
     dicom_worker,
     channels_live_server,
     create_and_login_user,
-    grant_access,
+    batch_query_group,
     create_excel_file,
 ):
     # Arrange
     df = pd.DataFrame([["1005", "0062115904"]], columns=["PatientID", "AccessionNumber"])
     batch_file = create_excel_file(df)
 
-    user = create_and_login_user(channels_live_server.url)
-    user.join_group("batch_query_group")
-    user.add_permission("can_process_urgently", BatchQueryJob)
-    grant_access(user, dimse_orthancs[0], "source")
-    grant_access(user, dimse_orthancs[1], "destination")
+    user: User = create_and_login_user(channels_live_server.url)
+    add_user_to_group(user, batch_query_group)
+    add_permission(batch_query_group, BatchQueryJob, "can_process_urgently")
+    grant_access(batch_query_group, dimse_orthancs[0], source=True)
+    grant_access(batch_query_group, dimse_orthancs[1], destination=True)
 
     # Act
     page.goto(channels_live_server.url + "/batch-query/jobs/new/")
@@ -51,18 +53,18 @@ def test_urgent_batch_query_with_dicomweb_server(
     dicom_worker,
     channels_live_server,
     create_and_login_user,
-    grant_access,
+    batch_query_group,
     create_excel_file,
 ):
     # Arrange
     df = pd.DataFrame([["1005", "0062115904"]], columns=["PatientID", "AccessionNumber"])
     batch_file = create_excel_file(df)
 
-    user = create_and_login_user(channels_live_server.url)
-    user.join_group("batch_query_group")
-    user.add_permission("can_process_urgently", BatchQueryJob)
-    grant_access(user, dicomweb_orthancs[0], "source")
-    grant_access(user, dicomweb_orthancs[1], "destination")
+    user: User = create_and_login_user(channels_live_server.url)
+    add_user_to_group(user, batch_query_group)
+    add_permission(batch_query_group, BatchQueryJob, "can_process_urgently")
+    grant_access(batch_query_group, dicomweb_orthancs[0], source=True)
+    grant_access(batch_query_group, dicomweb_orthancs[1], destination=True)
 
     # Act
     page.goto(channels_live_server.url + "/batch-query/jobs/new/")
