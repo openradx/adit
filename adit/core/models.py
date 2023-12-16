@@ -1,6 +1,7 @@
 from typing import TYPE_CHECKING, Callable, Generic, Literal, TypeVar
 
 from django.conf import settings
+from django.contrib.auth.models import Group
 from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.postgres.fields import ArrayField
@@ -8,7 +9,7 @@ from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.db.models.constraints import UniqueConstraint
 
-from adit.accounts.models import Institute, User
+from adit.accounts.models import User
 
 from .validators import (
     no_backslash_char_validator,
@@ -62,7 +63,7 @@ class DicomNodeManager(Generic[TModel], models.Manager[TModel]):
         if user.is_staff:
             accessible_nodes = self.all()
         else:
-            accessible_nodes = self.filter(accesses__institute__in=user.institutes.all())
+            accessible_nodes = self.filter(accesses__group__in=user.groups.all())
 
         if access_type == "source":
             accessible_nodes = accessible_nodes.filter(accesses__source=True)

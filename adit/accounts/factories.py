@@ -1,8 +1,9 @@
 from typing import Generic, TypeVar
 
 import factory
+from django.contrib.auth.models import Group
 
-from .models import Institute, User
+from .models import User
 
 T = TypeVar("T")
 
@@ -36,10 +37,9 @@ class AdminUserFactory(UserFactory):
     is_staff = True
 
 
-class InstituteFactory(BaseDjangoModelFactory[Institute]):
+class GroupFactory(BaseDjangoModelFactory[Group]):
     class Meta:
-        model = Institute
+        model = Group
         django_get_or_create = ("name",)
 
-    name = factory.Sequence(lambda n: f"Institute {n}")
-    description = factory.Faker("text", max_nb_chars=200)
+    name = factory.Faker("company")

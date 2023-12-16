@@ -88,6 +88,7 @@ MIDDLEWARE = [
     "django_htmx.middleware.HtmxMiddleware",
     "adit.core.middlewares.MaintenanceMiddleware",
     "adit.core.middlewares.TimezoneMiddleware",
+    "adit.accounts.middlewares.ActiveGroupMiddleware",
 ]
 
 ROOT_URLCONF = "adit.urls"
@@ -119,6 +120,9 @@ DATABASES = {"default": env.db(default="sqlite:///adit-sqlite.db")}  # type: ign
 # Django 3.2 switched to BigAutoField for primary keys. It must be set explicitly
 # and requires a migration.
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+# A custom authentication backend that supports a single currently active group.
+AUTHENTICATION_BACKENDS = ["adit.accounts.backends.ActiveGroupModelBackend"]
 
 # Password validation
 # https://docs.djangoproject.com/en/3.0/ref/settings/#auth-password-validators

@@ -80,18 +80,20 @@ def create_users() -> list[User]:
     return users
 
 
-def create_institutes(users: list[User]) -> list[Institute]:
-    institutes: list[Institute] = []
+def create_groups(users: list[User]) -> list[Group]:
+    groups: list[Group] = []
 
-    for _ in range(INSTITUTE_COUNT):
-        institute = InstituteFactory.create()
-        institutes.append(institute)
+    for _ in range(GROUP_COUNT):
+        group = GroupFactory.create()
+        groups.append(group)
 
     for user in users:
-        institute: Institute = fake.random_element(elements=institutes)
-        institute.users.add(user)
+        group: Group = fake.random_element(elements=groups)
+        user.groups.add(group)
+        if not user.active_group:
+            user.change_active_group(group)
 
-    return institutes
+    return groups
 
 
 def create_server_nodes(institutes: list[Institute]) -> list[DicomServer]:
@@ -244,8 +246,8 @@ class Command(BaseCommand):
             print("Populating development database with test data.")
 
             users = create_users()
-            institutes = create_institutes(users)
-            servers = create_server_nodes(institutes)
-            folders = create_folder_nodes(institutes)
+            groups = create_groups(users)
+            servers = create_server_nodes(groups)
+            folders = create_folder_nodes(groups)
 
             create_jobs(users, servers, folders)
