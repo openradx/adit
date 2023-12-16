@@ -7,8 +7,8 @@ from django.core.management import call_command
 from django.core.management.base import BaseCommand, CommandParser
 from faker import Faker
 
-from adit.accounts.factories import AdminUserFactory, InstituteFactory, UserFactory
-from adit.accounts.models import Institute, User
+from adit.accounts.factories import AdminUserFactory, GroupFactory, UserFactory
+from adit.accounts.models import User
 from adit.batch_query.factories import (
     BatchQueryJobFactory,
     BatchQueryResultFactory,
@@ -20,17 +20,17 @@ from adit.batch_transfer.factories import (
 )
 from adit.core.factories import (
     DicomFolderFactory,
-    DicomNodeInstituteAccessFactory,
     DicomServerFactory,
 )
 from adit.core.models import DicomFolder, DicomServer
+from adit.core.utils.auth_utils import grant_access
 from adit.selective_transfer.factories import (
     SelectiveTransferJobFactory,
     SelectiveTransferTaskFactory,
 )
 
 USER_COUNT = 20
-INSTITUTE_COUNT = 3
+GROUP_COUNT = 3
 DICOM_SERVER_COUNT = 5
 DICOM_FOLDER_COUNT = 3
 SELECTIVE_TRANSFER_JOB_COUNT = 20
@@ -53,9 +53,6 @@ def create_users() -> list[User]:
     }
     admin = AdminUserFactory.create(**admin_data)
 
-    batch_transfer_group = Group.objects.get(name="batch_transfer_group")
-    selective_transfer_group = Group.objects.get(name="selective_transfer_group")
-
     users = [admin]
 
     urgent_permissions = Permission.objects.filter(
@@ -68,8 +65,6 @@ def create_users() -> list[User]:
     user_count = USER_COUNT - 1  # -1 for admin
     for i in range(user_count):
         user = UserFactory.create()
-        user.groups.add(batch_transfer_group)
-        user.groups.add(selective_transfer_group)
 
         if i > 0:
             user.user_permissions.add(*urgent_permissions)
@@ -80,21 +75,23 @@ def create_users() -> list[User]:
     return users
 
 
-def create_institutes(users: list[User]) -> list[Institute]:
-    institutes: list[Institute] = []
+def create_groups(users: list[User]) -> list[Group]:
+    groups: list[Group] = []
 
-    for _ in range(INSTITUTE_COUNT):
-        institute = InstituteFactory.create()
-        institutes.append(institute)
+    for _ in range(GROUP_COUNT):
+        group = GroupFactory.create()
+        groups.append(group)
 
     for user in users:
-        institute: Institute = fake.random_element(elements=institutes)
-        institute.users.add(user)
+        group: Group = fake.random_element(elements=groups)
+        user.groups.add(group)
+        if not user.active_group:
+            user.change_active_group(group)
 
-    return institutes
+    return groups
 
 
-def create_server_nodes(institutes: list[Institute]) -> list[DicomServer]:
+def create_server_nodes(groups: list[Group]) -> list[DicomServer]:
     servers: list[DicomServer] = []
 
     orthanc1 = DicomServerFactory.create(
@@ -103,15 +100,8 @@ def create_server_nodes(institutes: list[Institute]) -> list[DicomServer]:
         host=settings.ORTHANC1_HOST,
         port=settings.ORTHANC1_DICOM_PORT,
     )
-
+    grant_access(groups[0], orthanc1, source=True, destination=True)
     servers.append(orthanc1)
-
-    DicomNodeInstituteAccessFactory.create(
-        dicom_node=orthanc1,
-        institute=institutes[0],
-        source=True,
-        destination=True,
-    )
 
     orthanc2 = DicomServerFactory.create(
         name="Orthanc Test Server 2",
@@ -119,52 +109,35 @@ def create_server_nodes(institutes: list[Institute]) -> list[DicomServer]:
         host=settings.ORTHANC2_HOST,
         port=settings.ORTHANC2_DICOM_PORT,
     )
-
+    grant_access(groups[0], orthanc2, destination=True)
     servers.append(orthanc2)
-
-    DicomNodeInstituteAccessFactory.create(
-        dicom_node=orthanc2,
-        institute=institutes[0],
-        destination=True,
-    )
 
     server_count = DICOM_SERVER_COUNT - 2  # -2 for Orthanc servers
     for _ in range(server_count):
         server = DicomServerFactory.create()
-        servers.append(server)
-
-        DicomNodeInstituteAccessFactory.create(
-            dicom_node=server,
-            institute=fake.random_element(elements=institutes),
+        grant_access(
+            fake.random_element(elements=groups),
+            server,
             source=fake.boolean(),
             destination=fake.boolean(),
         )
+        servers.append(server)
 
     return servers
 
 
-def create_folder_nodes(institutes: list[Institute]) -> list[DicomFolder]:
+def create_folder_nodes(groups: list[Group]) -> list[DicomFolder]:
     folders: list[DicomFolder] = []
 
     download_folder = DicomFolderFactory.create(name="Downloads", path="/app/dicom_downloads")
+    grant_access(groups[0], download_folder, destination=True)
     folders.append(download_folder)
-
-    DicomNodeInstituteAccessFactory.create(
-        dicom_node=download_folder,
-        institute=institutes[0],
-        destination=True,
-    )
 
     folder_count = DICOM_FOLDER_COUNT - 1  # -1 for Downloads folder
     for _ in range(folder_count):
         folder = DicomFolderFactory.create()
+        grant_access(fake.random_element(elements=groups), folder, destination=True)
         folders.append(folder)
-
-        DicomNodeInstituteAccessFactory.create(
-            dicom_node=folder,
-            institute=fake.random_element(elements=institutes),
-            destination=True,
-        )
 
     return folders
 
@@ -244,8 +217,8 @@ class Command(BaseCommand):
             print("Populating development database with test data.")
 
             users = create_users()
-            institutes = create_institutes(users)
-            servers = create_server_nodes(institutes)
-            folders = create_folder_nodes(institutes)
+            groups = create_groups(users)
+            servers = create_server_nodes(groups)
+            folders = create_folder_nodes(groups)
 
             create_jobs(users, servers, folders)

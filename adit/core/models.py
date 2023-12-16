@@ -1,6 +1,7 @@
 from typing import TYPE_CHECKING, Callable, Generic, Literal, TypeVar
 
 from django.conf import settings
+from django.contrib.auth.models import Group
 from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.postgres.fields import ArrayField
@@ -8,7 +9,7 @@ from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.db.models.constraints import UniqueConstraint
 
-from adit.accounts.models import Institute, User
+from adit.accounts.models import User
 
 from .validators import (
     no_backslash_char_validator,
@@ -62,7 +63,7 @@ class DicomNodeManager(Generic[TModel], models.Manager[TModel]):
         if user.is_staff:
             accessible_nodes = self.all()
         else:
-            accessible_nodes = self.filter(accesses__institute__in=user.institutes.all())
+            accessible_nodes = self.filter(accesses__group__in=user.groups.all())
 
         if access_type == "source":
             accessible_nodes = accessible_nodes.filter(accesses__source=True)
@@ -87,11 +88,11 @@ class DicomNode(models.Model):
     id: int
     node_type = models.CharField(max_length=2, choices=NodeType.choices)
     name = models.CharField(unique=True, max_length=64)
-    institutes = models.ManyToManyField(
-        Institute,
+    groups = models.ManyToManyField(
+        Group,
         blank=True,
         related_name="dicom_nodes",
-        through="DicomNodeInstituteAccess",
+        through="DicomNodeGroupAccess",
     )
 
     objects: DicomNodeManager["DicomNode"] = DicomNodeManager["DicomNode"]()
@@ -119,19 +120,19 @@ class DicomNode(models.Model):
         return DicomNode.objects.accessible_by_user(user, access_type).filter(id=self.id).exists()
 
 
-class DicomNodeInstituteAccess(models.Model):
+class DicomNodeGroupAccess(models.Model):
     id: int
     dicom_node = models.ForeignKey(DicomNode, on_delete=models.CASCADE, related_name="accesses")
-    institute = models.ForeignKey(Institute, on_delete=models.CASCADE)
+    group = models.ForeignKey(Group, on_delete=models.CASCADE)
     source = models.BooleanField(default=False)
     destination = models.BooleanField(default=False)
 
     class Meta:
-        verbose_name_plural = "DICOM node institute accesses"
+        verbose_name_plural = "DICOM node group accesses"
         constraints = [
             UniqueConstraint(
-                fields=["dicom_node", "institute"],
-                name="unique_dicom_node_per_institute",
+                fields=["dicom_node", "group"],
+                name="unique_dicom_node_per_group",
             )
         ]
 

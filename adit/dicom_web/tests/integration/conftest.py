@@ -4,11 +4,11 @@ import pandas as pd
 import pytest
 from dicomweb_client import DICOMwebClient
 from django.conf import settings
-from django.contrib.auth.models import Group
 
 from adit.accounts.factories import UserFactory
+from adit.core.utils.auth_utils import add_user_to_group
 from adit.core.utils.dicom_utils import read_dataset
-from adit.token_authentication.factories import TokenFactory
+from adit.token_authentication.models import Token
 
 # Workaround to make playwright work with Django
 # see https://github.com/microsoft/playwright-pytest/issues/29#issuecomment-731515676
@@ -16,23 +16,22 @@ os.environ.setdefault("DJANGO_ALLOW_ASYNC_UNSAFE", "true")
 
 
 @pytest.fixture
-def user_with_token():
+def user_with_group_and_token(dicom_web_group):
     user = UserFactory.create()
-    token_authentication_group = Group.objects.get(name="token_authentication_group")
-    user.groups.add(token_authentication_group)
-    token = TokenFactory.create(owner=user)
-    return user, token
+    add_user_to_group(user, dicom_web_group)
+    _, token_string = Token.objects.create_token(user, "", None)
+    return user, dicom_web_group, token_string
 
 
 @pytest.fixture
 def create_dicom_web_client():
-    def _create_dicom_web_client(server_url: str, ae_title: str):
+    def _create_dicom_web_client(server_url: str, ae_title: str, token_string: str):
         client = DICOMwebClient(
             url=f"{server_url}/dicom-web/{ae_title}",
             qido_url_prefix="qidors",
             wado_url_prefix="wadors",
             stow_url_prefix="stowrs",
-            headers={"Authorization": "Token test_token_string"},
+            headers={"Authorization": f"Token {token_string}"},
         )
         return client
 

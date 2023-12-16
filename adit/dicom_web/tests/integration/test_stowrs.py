@@ -3,6 +3,7 @@ import pytest
 from dicomweb_client import DICOMwebClient
 
 from adit.core.models import DicomServer
+from adit.core.utils.auth_utils import grant_access
 
 
 @pytest.mark.integration
@@ -10,19 +11,17 @@ from adit.core.models import DicomServer
 def test_stow(
     dimse_orthancs,
     channels_live_server,
-    user_with_token,
-    grant_access,
+    user_with_group_and_token,
     create_dicom_web_client,
     test_dicoms,
 ):
-    user, token = user_with_token
+    _, group, token = user_with_group_and_token
     server = DicomServer.objects.get(ae_title="ORTHANC2")
     # We must also grant access as source as we query the server after
     # the upload if the images are there
-    grant_access(user, server, "source")
-    grant_access(user, server, "destination")
+    grant_access(group, server, source=True, destination=True)
     orthanc2_client: DICOMwebClient = create_dicom_web_client(
-        channels_live_server.url, server.ae_title
+        channels_live_server.url, server.ae_title, token
     )
 
     studies = orthanc2_client.search_for_studies()

@@ -2,7 +2,9 @@
 
 ## Top
 
+- Add permissions to dicom_web views (see TODOs there)
 - Allow to trigger toasts from HTMX responses using HX-Trigger # see core.js of RADIS
+- Fix toasts that newest is always on top (also in RADIS)
 
 - Before new release
   -- test job_utils
@@ -40,7 +42,6 @@
   -- in DicomWebConnector we chould also check such an function an close the Session <https://requests.readthedocs.io/en/latest/api/#requests.Session.close>. We can handle the Session manually when using DicomWebClient <https://dicomweb-client.readthedocs.io/en/latest/package.html#dicomweb_client.api.DICOMwebClient>
 - use get in PageSizeSelectMixin (see RADIS)
 - Move those list fields to ArrayField
-- Make Institutes switchable and a user can only have one active institute
 - Make registration Email unique and required. Also maybe check if an Email is of specific domains (optional).
   -- We must first delete those users with duplicate or non existing Emails
   -- Do this also for RADIS
