@@ -3,6 +3,8 @@ from typing import Callable
 import pytest
 from playwright.sync_api import Locator, Page, expect
 
+from adit.accounts.models import User
+from adit.core.utils.auth_utils import add_permission, add_user_to_group, grant_access
 from adit.selective_transfer.models import SelectiveTransferJob
 
 
@@ -15,15 +17,15 @@ def test_unpseudonymized_urgent_selective_transfer_with_dimse_server(
     dicom_worker,
     channels_live_server,
     create_and_login_user,
-    grant_access,
+    selective_transfer_group,
 ):
     # Arrange
-    user = create_and_login_user(channels_live_server.url)
-    user.join_group("selective_transfer_group")
-    user.add_permission("can_process_urgently", SelectiveTransferJob)
-    user.add_permission("can_transfer_unpseudonymized", SelectiveTransferJob)
-    grant_access(user, dimse_orthancs[0], "source")
-    grant_access(user, dimse_orthancs[1], "destination")
+    user: User = create_and_login_user(channels_live_server.url)
+    add_user_to_group(user, selective_transfer_group)
+    add_permission(selective_transfer_group, SelectiveTransferJob, "can_process_urgently")
+    add_permission(selective_transfer_group, SelectiveTransferJob, "can_transfer_unpseudonymized")
+    grant_access(selective_transfer_group, dimse_orthancs[0], source=True)
+    grant_access(selective_transfer_group, dimse_orthancs[1], destination=True)
 
     # Act
     page.goto(channels_live_server.url + "/selective-transfer/jobs/new/")
@@ -48,15 +50,15 @@ def test_unpseudonymized_urgent_selective_transfer_with_dicomweb_server(
     dicom_worker,
     channels_live_server,
     create_and_login_user,
-    grant_access,
+    selective_transfer_group,
 ):
     # Arrange
-    user = create_and_login_user(channels_live_server.url)
-    user.join_group("selective_transfer_group")
-    user.add_permission("can_process_urgently", SelectiveTransferJob)
-    user.add_permission("can_transfer_unpseudonymized", SelectiveTransferJob)
-    grant_access(user, dicomweb_orthancs[0], "source")
-    grant_access(user, dicomweb_orthancs[1], "destination")
+    user: User = create_and_login_user(channels_live_server.url)
+    add_user_to_group(user, selective_transfer_group)
+    add_permission(selective_transfer_group, SelectiveTransferJob, "can_process_urgently")
+    add_permission(selective_transfer_group, SelectiveTransferJob, "can_transfer_unpseudonymized")
+    grant_access(selective_transfer_group, dicomweb_orthancs[0], source=True)
+    grant_access(selective_transfer_group, dicomweb_orthancs[1], destination=True)
 
     # Act
     page.goto(channels_live_server.url + "/selective-transfer/jobs/new/")

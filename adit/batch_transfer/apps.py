@@ -50,20 +50,7 @@ def collect_job_stats():
 
 
 def init_db(**kwargs):
-    create_group()
     create_app_settings()
-
-
-def create_group():
-    from adit.accounts.utils import create_group_with_permissions
-
-    create_group_with_permissions(
-        "batch_transfer_group",
-        (
-            "batch_transfer.add_batchtransferjob",
-            "batch_transfer.view_batchtransferjob",
-        ),
-    )
 
 
 def create_app_settings():

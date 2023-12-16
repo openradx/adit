@@ -6,6 +6,7 @@ from dicomweb_client import DICOMwebClient
 from requests import HTTPError
 
 from adit.core.models import DicomServer
+from adit.core.utils.auth_utils import grant_access
 
 
 @pytest.mark.integration
@@ -13,16 +14,15 @@ from adit.core.models import DicomServer
 def test_qido_study(
     dimse_orthancs,
     channels_live_server,
-    user_with_token,
-    grant_access,
+    user_with_group_and_token,
     create_dicom_web_client,
     full_data_sheet,
 ):
-    user, token = user_with_token
+    _, group, token = user_with_group_and_token
     server = DicomServer.objects.get(ae_title="ORTHANC1")
-    grant_access(user, server, "source")
+    grant_access(group, server, source=True)
     orthanc1_client: DICOMwebClient = create_dicom_web_client(
-        channels_live_server.url, server.ae_title
+        channels_live_server.url, server.ae_title, token
     )
 
     results = orthanc1_client.search_for_studies()
@@ -47,16 +47,15 @@ def test_qido_study(
 def test_qido_series(
     dimse_orthancs,
     channels_live_server,
-    user_with_token,
-    grant_access,
+    user_with_group_and_token,
     create_dicom_web_client,
     extended_data_sheet,
 ):
-    user, token = user_with_token
+    _, group, token = user_with_group_and_token
     server = DicomServer.objects.get(ae_title="ORTHANC1")
-    grant_access(user, server, "source")
+    grant_access(group, server, source=True)
     orthanc1_client: DICOMwebClient = create_dicom_web_client(
-        channels_live_server.url, server.ae_title
+        channels_live_server.url, server.ae_title, token
     )
 
     try:

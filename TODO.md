@@ -2,6 +2,7 @@
 
 ## Top
 
+- Add permissions to dicom_web views (see TODOs there)
 - Allow to trigger toasts from HTMX responses using HX-Trigger # see core.js of RADIS
 - Fix toasts that newest is always on top (also in RADIS)
 
