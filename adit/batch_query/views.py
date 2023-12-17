@@ -23,8 +23,11 @@ from adit.core.views import (
     DicomJobResumeView,
     DicomJobRetryView,
     DicomJobVerifyView,
+    DicomTaskDeleteView,
     DicomTaskDetailView,
+    DicomTaskResetView,
 )
+from adit.selective_transfer.mixins import SelectiveTransferLockedMixin
 
 from .filters import BatchQueryJobFilter, BatchQueryResultFilter, BatchQueryTaskFilter
 from .forms import BatchQueryJobForm
@@ -145,6 +148,16 @@ class BatchQueryTaskDetailView(
     def get_table_data(self):
         task = cast(BatchQueryTask, self.get_object())
         return task.results.all()
+
+
+class BatchQueryTaskDeleteView(SelectiveTransferLockedMixin, DicomTaskDeleteView):
+    model = BatchQueryTask
+
+
+class BatchQueryTaskResetView(SelectiveTransferLockedMixin, DicomTaskResetView):
+    model = BatchQueryTask
+    default_priority = settings.BATCH_QUERY_DEFAULT_PRIORITY
+    urgent_priority = settings.BATCH_QUERY_URGENT_PRIORITY
 
 
 class BatchQueryResultListView(

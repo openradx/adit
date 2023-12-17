@@ -2,7 +2,7 @@
 <div class="d-flex">
     {% if user.is_staff and not job.is_verified %}
         <form class="me-3"
-              action="{% url verify_url job.pk %}"
+              action="{% url job_verify_url job.pk %}"
               method="post"
               onSubmit="return confirm('Are you sure you want to verify this job?');">
             {% csrf_token %}
@@ -14,7 +14,7 @@
     {% endif %}
     {% if job.is_deletable %}
         <form class="me-3"
-              action="{% url delete_url job.pk %}"
+              action="{% url job_delete_url job.pk %}"
               method="post"
               onSubmit="return confirm('Are you sure you want to delete this job?');">
             {% csrf_token %}
@@ -26,7 +26,7 @@
     {% endif %}
     {% if job.is_cancelable %}
         <form class="me-3"
-              action="{% url cancel_url job.pk %}"
+              action="{% url job_cancel_url job.pk %}"
               method="post"
               onSubmit="return confirm('Are you sure you want to cancel this job?');">
             {% csrf_token %}
@@ -38,7 +38,7 @@
     {% endif %}
     {% if job.is_resumable %}
         <form class="me-3"
-              action="{% url resume_url job.pk %}"
+              action="{% url job_resume_url job.pk %}"
               method="post"
               onSubmit="return confirm('Are you sure you want to resume this job?');">
             {% csrf_token %}
@@ -50,7 +50,7 @@
     {% endif %}
     {% if job.is_retriable %}
         <form class="me-3"
-              action="{% url retry_url job.pk %}"
+              action="{% url job_retry_url job.pk %}"
               method="post"
               onSubmit="return confirm('Are you sure you want to retry the failed tasks?');">
             {% csrf_token %}
@@ -62,11 +62,11 @@
     {% endif %}
     {% if user.is_staff and job.is_restartable %}
         <form class="me-3"
-              action="{% url restart_url job.pk %}"
+              action="{% url job_restart_url job.pk %}"
               method="post"
               onSubmit="return confirm('Are you sure you want to restart the entire job?');">
             {% csrf_token %}
-            <button type="submit" class="btn btn-danger">
+            <button type="submit" class="btn btn-warning">
                 {% bootstrap_icon "arrow-repeat" %}
                 Restart Entire Job
             </button>

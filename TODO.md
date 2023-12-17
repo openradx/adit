@@ -3,6 +3,8 @@
 ## Top
 
 - Add permissions to dicom_web views (see TODOs there)
+- task urls without job
+- Just warn when one only one series of the study could not be transferred (only error when all series could not be transferred)
 - Allow to trigger toasts from HTMX responses using HX-Trigger # see core.js of RADIS
 - Fix toasts that newest is always on top (also in RADIS)
 
@@ -118,6 +120,9 @@
 
 ## Maybe
 
+- Show failed tasks in results of batch query and batch transfer
+- Allow to find multiple Patients for the same PatientName + PatientBirthDate in batch query
+  -- Currently we don't allow this, but this can happen when a patient has multiple PatientIDs in the same PACS (e.g. has external images)
 - exclude test folders from autorelad in ServerCommand (maybe a custom filter is needed)
 - Switch from Daphne to Uvicorn (maybe it has faster restart times during development)
 - Switch from Celery to Huey
