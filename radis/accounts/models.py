@@ -6,7 +6,7 @@ from django.core.exceptions import ObjectDoesNotExist
 from django.db import models
 
 if TYPE_CHECKING:
-    from django.db.models.manager import RelatedManager
+    from django_stubs_ext.db.models import manager
 
 
 class User(AbstractUser):
@@ -16,7 +16,7 @@ class User(AbstractUser):
     preferences = models.JSONField(default=dict)
 
     if TYPE_CHECKING:
-        institutes = RelatedManager["Institute"]()
+        institutes = manager.RelatedManager["Institute"]()
 
     def is_group_member(self, group_name: str):
         return self.groups.filter(name=group_name).exists()

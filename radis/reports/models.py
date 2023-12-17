@@ -13,7 +13,7 @@ from radis.core.validators import (
 )
 
 if TYPE_CHECKING:
-    from django.db.models.manager import RelatedManager
+    from django_stubs_ext.db.models import manager
 
     from radis.collections.models import Collection
 
@@ -85,7 +85,7 @@ class Report(models.Model):
     body = models.TextField()
 
     if TYPE_CHECKING:
-        collections = RelatedManager["Collection"]()
+        collections = manager.RelatedManager["Collection"]()
 
     def __str__(self) -> str:
         return f"Report {self.id} [{self.document_id}]"
