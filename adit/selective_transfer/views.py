@@ -15,7 +15,9 @@ from adit.core.views import (
     DicomJobResumeView,
     DicomJobRetryView,
     DicomJobVerifyView,
+    DicomTaskDeleteView,
     DicomTaskDetailView,
+    DicomTaskResetView,
     TransferJobListView,
 )
 
@@ -149,3 +151,13 @@ class SelectiveTransferTaskDetailView(SelectiveTransferLockedMixin, DicomTaskDet
     model = SelectiveTransferTask
     job_url_name = "selective_transfer_job_detail"
     template_name = "selective_transfer/selective_transfer_task_detail.html"
+
+
+class SelectiveTransferTaskDeleteView(SelectiveTransferLockedMixin, DicomTaskDeleteView):
+    model = SelectiveTransferTask
+
+
+class SelectiveTransferTaskResetView(SelectiveTransferLockedMixin, DicomTaskResetView):
+    model = SelectiveTransferTask
+    default_priority = settings.SELECTIVE_TRANSFER_DEFAULT_PRIORITY
+    urgent_priority = settings.SELECTIVE_TRANSFER_URGENT_PRIORITY

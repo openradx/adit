@@ -10,10 +10,11 @@ from django.contrib.auth.mixins import (
     UserPassesTestMixin,
 )
 from django.contrib.contenttypes.models import ContentType
+from django.contrib.messages.views import SuccessMessageMixin
 from django.core.exceptions import SuspiciousOperation
 from django.db.models.query import QuerySet
 from django.forms import Form, ModelForm
-from django.http import HttpRequest, HttpResponse, HttpResponseRedirect
+from django.http import HttpRequest, HttpResponse
 from django.shortcuts import redirect, render
 from django.urls import re_path, reverse_lazy
 from django.views.generic import View
@@ -32,7 +33,7 @@ from .models import CoreSettings, DicomJob, DicomTask, QueuedTask
 from .site import job_stats_collectors
 from .tasks import broadcast_mail
 from .types import AuthenticatedHttpRequest, HtmxHttpRequest
-from .utils.job_utils import queue_pending_tasks
+from .utils.job_utils import queue_pending_task, queue_pending_tasks, update_job_status
 
 THEME = "theme"
 
@@ -58,10 +59,11 @@ class HtmxTemplateView(TemplateView):
         return super().get(request, *args, **kwargs)
 
 
-class BroadcastView(LoginRequiredMixin, UserPassesTestMixin, FormView):
+class BroadcastView(LoginRequiredMixin, UserPassesTestMixin, SuccessMessageMixin, FormView):
     template_name = "core/broadcast.html"
     form_class = BroadcastForm
     success_url = reverse_lazy("broadcast")
+    success_message = "Mail queued for sending successfully"
     request: AuthenticatedHttpRequest
 
     def test_func(self) -> bool:
@@ -72,12 +74,6 @@ class BroadcastView(LoginRequiredMixin, UserPassesTestMixin, FormView):
         message = form.cleaned_data["message"]
 
         broadcast_mail.delay(subject, message)
-
-        messages.add_message(
-            self.request,
-            messages.SUCCESS,
-            "Mail queued for sending successfully",
-        )
 
         return super().form_valid(form)
 
@@ -214,7 +210,7 @@ class DicomJobDetailView(
 class DicomJobDeleteView(LoginRequiredMixin, DeleteView):
     model: type[DicomJob]
     success_url: str
-    success_message = "Job with ID %(id)d was deleted successfully"
+    success_message = "Job with ID %(id)d was deleted"
     request: AuthenticatedHttpRequest
     object: DicomJob
 
@@ -231,12 +227,14 @@ class DicomJobDeleteView(LoginRequiredMixin, DeleteView):
                 f"Job with ID {job.id} and status {job.get_status_display()} is not deletable."
             )
 
-        self.object.delete()
+        # We have to create the success message before we delete the job
+        # as the ID afterwards will be None
+        success_message = self.success_message % job.__dict__
 
-        # As SuccessMessageMixin does not work in DeleteView we have to do
-        # it manually (https://code.djangoproject.com/ticket/21936)
-        messages.success(self.request, self.success_message % job.__dict__)
-        return HttpResponseRedirect(self.get_success_url())
+        job.delete()
+
+        messages.success(self.request, success_message)
+        return redirect(self.get_success_url())
 
 
 class DicomJobVerifyView(LoginRequiredMixin, SingleObjectMixin, View):
@@ -413,6 +411,71 @@ class DicomTaskDetailView(LoginRequiredMixin, DetailView):
         context = super().get_context_data(**kwargs)
         context["job_url_name"] = self.job_url_name
         return context
+
+
+class DicomTaskDeleteView(LoginRequiredMixin, DeleteView):
+    model: type[DicomTask]
+    success_message = "Task with ID %(id)d was deleted"
+    request: AuthenticatedHttpRequest
+
+    def get_queryset(self):
+        if self.request.user.is_staff:
+            return self.model.objects.all()
+        return self.model.objects.filter(owner=self.request.user)
+
+    def form_valid(self, form: ModelForm) -> HttpResponse:
+        task = cast(DicomTask, self.get_object())
+
+        if not task.is_deletable:
+            raise SuspiciousOperation(
+                f"Task with ID {task.id} and status {task.get_status_display()} is not deletable."
+            )
+
+        # We have to create the success message before we delete the task
+        # as the ID afterwards will be None
+        success_message = self.success_message % task.__dict__
+
+        task.delete()
+        update_job_status(task.job)
+
+        messages.success(self.request, success_message)
+        return redirect(task.job)
+
+
+class DicomTaskResetView(LoginRequiredMixin, SingleObjectMixin, View):
+    model: type[DicomTask]
+    default_priority: int
+    urgent_priority: int
+    success_message = "Task with ID %(id)d was reset"
+    request: AuthenticatedHttpRequest
+
+    def get_queryset(self):
+        if self.request.user.is_staff:
+            return self.model.objects.all()
+        return self.model.objects.filter(owner=self.request.user)
+
+    def post(self, request: AuthenticatedHttpRequest, *args, **kwargs) -> HttpResponse:
+        task = cast(DicomTask, self.get_object())
+        if not task.is_resettable:
+            raise SuspiciousOperation(
+                f"Task with ID {task.id} and status {task.get_status_display()} is not resettable."
+            )
+
+        # See also core.models.DicomJob.reset_tasks
+        task.status = DicomTask.Status.PENDING
+        task.retries = 0
+        task.message = ""
+        task.log = ""
+        task.start = None
+        task.end = None
+        task.save()
+
+        queue_pending_task(task, self.default_priority, self.urgent_priority)
+
+        update_job_status(task.job)
+
+        messages.success(request, self.success_message % task.__dict__)
+        return redirect(task)
 
 
 class AdminProxyView(LoginRequiredMixin, UserPassesTestMixin, ProxyView):
