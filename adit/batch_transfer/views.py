@@ -13,7 +13,9 @@ from adit.core.views import (
     DicomJobResumeView,
     DicomJobRetryView,
     DicomJobVerifyView,
+    DicomTaskDeleteView,
     DicomTaskDetailView,
+    DicomTaskResetView,
     TransferJobListView,
 )
 
@@ -126,3 +128,13 @@ class BatchTransferTaskDetailView(BatchTransferLockedMixin, DicomTaskDetailView)
     model = BatchTransferTask
     job_url_name = "batch_transfer_job_detail"
     template_name = "batch_transfer/batch_transfer_task_detail.html"
+
+
+class BatchTransferTaskDeleteView(BatchTransferLockedMixin, DicomTaskDeleteView):
+    model = BatchTransferTask
+
+
+class BatchTransferTaskResetView(BatchTransferLockedMixin, DicomTaskResetView):
+    model = BatchTransferTask
+    default_priority = settings.BATCH_TRANSFER_DEFAULT_PRIORITY
+    urgent_priority = settings.BATCH_TRANSFER_URGENT_PRIORITY

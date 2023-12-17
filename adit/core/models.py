@@ -8,6 +8,7 @@ from django.contrib.postgres.fields import ArrayField
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.db.models.constraints import UniqueConstraint
+from django.db.models.query import QuerySet
 
 from adit.accounts.models import User
 
@@ -229,12 +230,17 @@ class DicomJob(models.Model):
     def __str__(self) -> str:
         return f"{self.__class__.__name__} [ID {self.id}]"
 
-    def reset_tasks(self, only_failed=False):
+    def get_absolute_url(self) -> str:
+        # Gets overridden in subclasses
+        ...
+
+    def reset_tasks(self, only_failed=False) -> None:
         if only_failed:
             dicom_tasks = self.tasks.filter(status=DicomTask.Status.FAILURE)
         else:
             dicom_tasks = self.tasks.all()
 
+        # See also core.views.DicomTaskResetView.post
         dicom_tasks.update(
             status=DicomJob.Status.PENDING,
             retries=0,
@@ -245,7 +251,7 @@ class DicomJob(models.Model):
         )
 
     @property
-    def is_deletable(self):
+    def is_deletable(self) -> bool:
         non_pending_tasks = self.tasks.exclude(status=DicomTask.Status.PENDING)
         return (
             self.status in [self.Status.UNVERIFIED, self.Status.PENDING]
@@ -253,23 +259,23 @@ class DicomJob(models.Model):
         )
 
     @property
-    def is_verified(self):
+    def is_verified(self) -> bool:
         return self.status != self.Status.UNVERIFIED
 
     @property
-    def is_cancelable(self):
+    def is_cancelable(self) -> bool:
         return self.status in [self.Status.PENDING, self.Status.IN_PROGRESS]
 
     @property
-    def is_resumable(self):
+    def is_resumable(self) -> bool:
         return self.status == self.Status.CANCELED
 
     @property
-    def is_retriable(self):
+    def is_retriable(self) -> bool:
         return self.status == self.Status.FAILURE
 
     @property
-    def is_restartable(self):
+    def is_restartable(self) -> bool:
         return self.status in [
             self.Status.CANCELED,
             self.Status.SUCCESS,
@@ -278,7 +284,7 @@ class DicomJob(models.Model):
         ]
 
     @property
-    def processed_tasks(self):
+    def processed_tasks(self) -> QuerySet["DicomTask"]:
         non_processed = (
             DicomTask.Status.PENDING,
             DicomTask.Status.IN_PROGRESS,
@@ -371,6 +377,19 @@ class DicomTask(models.Model):
     @property
     def queued(self) -> QueuedTask | None:
         return self._queued.first()
+
+    @property
+    def is_deletable(self) -> bool:
+        return self.status == self.Status.PENDING
+
+    @property
+    def is_resettable(self) -> bool:
+        return self.status in [
+            self.Status.CANCELED,
+            self.Status.SUCCESS,
+            self.Status.WARNING,
+            self.Status.FAILURE,
+        ]
 
 
 class TransferTask(DicomTask):
