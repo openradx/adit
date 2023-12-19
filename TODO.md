@@ -4,34 +4,22 @@
 
 - Move executor functionality to processors
 - Add permissions to dicom_web views (see TODOs there)
-- task urls without job
+- use get in PageSizeSelectMixin (see RADIS)
+- Update documentation
 - Just warn when one only one series of the study could not be transferred (only error when all series could not be transferred)
-- Allow to trigger toasts from HTMX responses using HX-Trigger # see core.js of RADIS
 - Fix toasts that newest is always on top (also in RADIS)
-
-- Before new release
-  -- test job_utils
-  -- Test canceled task/job in test_workers.py
-
+- test job_utils
+- Test canceled task/job in test_workers.py
 - Make sure all views are atomic
   -- Use ATOMIC_REQUESTS database setting
   -- Unfortunately we can't just set ATOMIC_REQUESTS in the database settings globally as those don't seem to work with async views
   -- Try this again when Django 5.0 is released
   -- Otherwise tell those async views to be @transaction.non_atomic_requests
   -- Alternative is to decorate all appropriate views with @transaction.atomic
-- Replace 7z with .zip format. Really save in patient folder?
 - Figure out if favicon works in all browsers
 - Rename C_STORE to C-STORE and so on in dimse connector
-- Replace AssertionError with assert
-- Make single task abortable
-  -- Add aborted attribute to QueuedTask
-  -- Run processor in DICOM worker in its own process that can be killed
-  -- Check aborted attribute every 10 seconds or so and the may be kill the process
-  -- Set task to FAILURE with message "Task manually / forcefully aborted"
-- Make single task cancelable, retriable, resumeable, ...
-- Unfix pyright and its VS code extension
+- Replace ass AssertionError with assert
 - Use DicomLogEntry during C-STORE
-- Allow to restart or cancel specific dicom task
 - Fix dicom explorer search over Accession Number
 - Make warning when only one image fails
 - Use django-stubs instead of django-types (already done on RADIS)
@@ -43,7 +31,6 @@
   -- No we must pass the is_aborted() somehow down to the connectors
   -- In DimseConnector we could check a provided is_cancelled function if the next series should be fetched (or even the association be aborted)
   -- in DicomWebConnector we chould also check such an function an close the Session <https://requests.readthedocs.io/en/latest/api/#requests.Session.close>. We can handle the Session manually when using DicomWebClient <https://dicomweb-client.readthedocs.io/en/latest/package.html#dicomweb_client.api.DICOMwebClient>
-- use get in PageSizeSelectMixin (see RADIS)
 - Move those list fields to ArrayField
 - Make registration Email unique and required. Also maybe check if an Email is of specific domains (optional).
   -- We must first delete those users with duplicate or non existing Emails
@@ -51,24 +38,16 @@
 - Make sure temporary folder created in retrieve DICOM web API is cleaned up (see TODO in /home/adm-adit/workspace/adit/adit/dicom_web/views.py)
 - Look into how we can stream the file from disc (from the temp folder) with WADO (see <https://chat.openai.com/share/d5a2f27f-4854-4deb-85df-b7f574638ae3>)
 - Look into how we can improve STOW (do we have to upload one file at a time, can we stream it somehow)
-- Move source and target from DICOM job to DICOM task
-  -- That way we can transfer from multiple sources to a destination in one job
-  -- <https://stackoverflow.com/questions/37171077/how-can-i-move-a-field-from-one-model-to-another-and-still-retain-the-data>
-- Update documentation
 - Fix some stuff and use our fork then of DICOMwebClient
   -- <https://github.com/ImagingDataCommons/dicomweb-client/issues/88>
   -- <https://github.com/ImagingDataCommons/dicomweb-client/issues/89>
 - Remove files in test folders from autoreload
 - Selective transfer choose series
 - Locked info for other apps like batch_transfer_locked.html
-- Hint when app is locked for admin user
 - Encrypt data between swarm containers
   -- <https://docs.docker.com/network/drivers/overlay/#encrypt-traffic-on-an-overlay-network>
   -- <https://forums.docker.com/t/configuring-encryption-for-swarm-overlay-network-in-compose/29469/2>
   -- We can also make the network attachable to do the "exec" stuff in tasks.py using one off containers using "run"
-
-## High Priority
-
 - Redirect after restart/retry/delete job
 - Option in batch query to query whole study or explicit series
 - Allow to terminate a specific Celery task with revoke(celery_task_id, terminate=True)
@@ -77,7 +56,6 @@
 - rename ADIT_AE_TITLE to RECEIVER_AE_TITLE
 - Query with StudyDateStart, StudyDateEnd, StudyDate
 - Common search query Websocket component
-- QueryUtil -> QueryExecutor, and TransferUtil -> TransferExecutor
 - Improve cancel during transfer
 - Allow admin to kill a job (with task revoke(terminate=True))
 - Fix the ineffective stuff in transfer_utils, see TODO there
@@ -103,7 +81,7 @@
 - Make logging analyze Docker image with: <http://crunchtools.com/software/petit/>, less, vim, <https://crypt.gen.nz/logsurfer/>, ripgrep
 - Evaluate (0008, 0056) Instance Availability CS: 'OFFLINE' ( (ONLINE, NEARLINE, OFFLINE, UNAVAILABLE)), see <https://www.gehealthcare.com/-/jssmedia/1b62d771fb604ff7a4c8012498aea68b.pdf?la=en-us>
 
-## Features
+## Maybe
 
 - New batch transfer
   -- Create new batch transfer job and allow to add tasks
@@ -117,10 +95,7 @@
   -- Store those files perhaps in ORTHANC
   -- Preview uploaded images
   -- Allow to transfer thow uploaded image to a PACS
-- Better scheduler (with day in week and times)
-
-## Maybe
-
+- Improve scheduler (with day in week and times)
 - Show failed tasks in results of batch query and batch transfer
 - Allow to find multiple Patients for the same PatientName + PatientBirthDate in batch query
   -- Currently we don't allow this, but this can happen when a patient has multiple PatientIDs in the same PACS (e.g. has external images)
