@@ -16,6 +16,7 @@ from .views import (
     BatchQueryResultListView,
     BatchQueryTaskDeleteView,
     BatchQueryTaskDetailView,
+    BatchQueryTaskKillView,
     BatchQueryTaskResetView,
     BatchQueryUpdatePreferencesView,
 )
@@ -94,6 +95,11 @@ urlpatterns = [
         "tasks/<int:pk>/delete/",
         BatchQueryTaskDeleteView.as_view(),
         name="batch_query_task_delete",
+    ),
+    path(
+        "tasks/<int:pk>/kill/",
+        BatchQueryTaskKillView.as_view(),
+        name="batch_query_task_kill",
     ),
     path(
         "tasks/<int:pk>/reset/",

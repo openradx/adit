@@ -237,12 +237,15 @@ class DicomJobDeleteView(LoginRequiredMixin, DeleteView):
         return redirect(self.get_success_url())
 
 
-class DicomJobVerifyView(LoginRequiredMixin, SingleObjectMixin, View):
+class DicomJobVerifyView(LoginRequiredMixin, UserPassesTestMixin, SingleObjectMixin, View):
     model: type[DicomJob]
     default_priority: int
     urgent_priority: int
     success_message = "Job with ID %(id)d was verified"
     request: AuthenticatedHttpRequest
+
+    def test_func(self) -> bool:
+        return self.request.user.is_staff
 
     def get_queryset(self):
         if self.request.user.is_staff:
@@ -364,12 +367,15 @@ class DicomJobRetryView(LoginRequiredMixin, SingleObjectMixin, View):
         return redirect(job)
 
 
-class DicomJobRestartView(LoginRequiredMixin, SingleObjectMixin, View):
+class DicomJobRestartView(LoginRequiredMixin, UserPassesTestMixin, SingleObjectMixin, View):
     model: type[DicomJob]
     default_priority: int
     urgent_priority: int
     success_message = "Job with ID %(id)d will be restarted"
     request: AuthenticatedHttpRequest
+
+    def test_func(self) -> bool:
+        return self.request.user.is_staff
 
     def get_queryset(self):
         if self.request.user.is_staff:
@@ -473,6 +479,35 @@ class DicomTaskResetView(LoginRequiredMixin, SingleObjectMixin, View):
         queue_pending_task(task, self.default_priority, self.urgent_priority)
 
         update_job_status(task.job)
+
+        messages.success(request, self.success_message % task.__dict__)
+        return redirect(task)
+
+
+class DicomTaskKillView(LoginRequiredMixin, UserPassesTestMixin, SingleObjectMixin, View):
+    model: type[DicomTask]
+    success_message = "Task with ID %(id)d will be killed"
+    request: AuthenticatedHttpRequest
+
+    def test_func(self) -> bool:
+        return self.request.user.is_staff
+
+    def get_queryset(self):
+        if self.request.user.is_staff:
+            return self.model.objects.all()
+        return self.model.objects.filter(owner=self.request.user)
+
+    def post(self, request: AuthenticatedHttpRequest, *args, **kwargs) -> HttpResponse:
+        task = cast(DicomTask, self.get_object())
+        if not task.is_killable:
+            raise SuspiciousOperation(
+                f"Task with ID {task.id} and status {task.get_status_display()} is not killable."
+            )
+
+        queued_task = task.queued
+        if queued_task:
+            queued_task.kill = True
+            queued_task.save()
 
         messages.success(request, self.success_message % task.__dict__)
         return redirect(task)

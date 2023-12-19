@@ -25,6 +25,7 @@ from adit.core.views import (
     DicomJobVerifyView,
     DicomTaskDeleteView,
     DicomTaskDetailView,
+    DicomTaskKillView,
     DicomTaskResetView,
 )
 from adit.selective_transfer.mixins import SelectiveTransferLockedMixin
@@ -158,6 +159,10 @@ class BatchQueryTaskResetView(SelectiveTransferLockedMixin, DicomTaskResetView):
     model = BatchQueryTask
     default_priority = settings.BATCH_QUERY_DEFAULT_PRIORITY
     urgent_priority = settings.BATCH_QUERY_URGENT_PRIORITY
+
+
+class BatchQueryTaskKillView(SelectiveTransferLockedMixin, DicomTaskKillView):
+    model = BatchQueryTask
 
 
 class BatchQueryResultListView(

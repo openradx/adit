@@ -1,11 +1,9 @@
 import logging
 
 from .models import AppSettings, DicomTask
-from .types import DicomLogEntry
+from .types import ProcessingResult
 
 logger = logging.getLogger(__name__)
-
-ProcessingResult = tuple[DicomTask.Status, str, list[DicomLogEntry]]
 
 
 class DicomTaskProcessor:

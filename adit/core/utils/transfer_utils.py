@@ -14,7 +14,7 @@ from pydicom import Dataset
 
 from ..errors import DicomError
 from ..models import DicomNode, TransferTask
-from ..types import DicomLogEntry
+from ..types import DicomLogEntry, ProcessingResult
 from .dicom_dataset import QueryDataset, ResultDataset
 from .dicom_operator import DicomOperator
 from .sanitize import sanitize_dirname
@@ -40,7 +40,7 @@ class TransferExecutor:
         if destination.node_type == DicomNode.NodeType.SERVER:
             self.dest_operator = DicomOperator(destination.dicomserver)
 
-    def start(self) -> tuple[TransferTask.Status, str, list[DicomLogEntry]]:
+    def start(self) -> ProcessingResult:
         if self.dest_operator:
             self._transfer_to_server()
         else:
@@ -66,7 +66,11 @@ class TransferExecutor:
                 status = TransferTask.Status.WARNING
                 message = "Transfer task finished with warnings."
 
-        return (status, message, logs)
+        return {
+            "status": status,
+            "message": message,
+            "log": "\n".join([log["message"] for log in logs]),
+        }
 
     def _transfer_to_server(self) -> None:
         with tempfile.TemporaryDirectory(prefix="adit_") as tmpdir:

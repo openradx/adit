@@ -14,6 +14,7 @@ from .views import (
     SelectiveTransferJobVerifyView,
     SelectiveTransferTaskDeleteView,
     SelectiveTransferTaskDetailView,
+    SelectiveTransferTaskKillView,
     SelectiveTransferTaskResetView,
     SelectiveTransferUpdatePreferencesView,
 )
@@ -82,6 +83,11 @@ urlpatterns = [
         "tasks/<int:pk>/delete/",
         SelectiveTransferTaskDeleteView.as_view(),
         name="selective_transfer_task_delete",
+    ),
+    path(
+        "tasks/<int:pk>/kill/",
+        SelectiveTransferTaskKillView.as_view(),
+        name="selective_transfer_task_kill",
     ),
     path(
         "tasks/<int:pk>/reset/",

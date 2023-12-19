@@ -1,3 +1,5 @@
+from django.utils import timezone
+
 from ..models import DicomJob, DicomTask, QueuedTask
 
 
@@ -31,15 +33,18 @@ def update_job_status(dicom_job: DicomJob) -> bool:
     if dicom_job.tasks.filter(status=DicomTask.Status.PENDING).exists():
         if dicom_job.status != DicomJob.Status.CANCELING:
             dicom_job.status = DicomJob.Status.PENDING
+            dicom_job.save()
         return False
 
     if dicom_job.tasks.filter(status=DicomTask.Status.IN_PROGRESS).exists():
         if dicom_job.status != DicomJob.Status.CANCELING:
             dicom_job.status = DicomJob.Status.IN_PROGRESS
+            dicom_job.save()
         return False
 
     if dicom_job.status == DicomJob.Status.CANCELING:
         dicom_job.status = DicomJob.Status.CANCELED
+        dicom_job.save()
         return False
 
     # Job is finished and we evaluate its final status
@@ -65,4 +70,8 @@ def update_job_status(dicom_job: DicomJob) -> bool:
     else:
         # at least one of success, warnings or failures must be > 0
         raise AssertionError(f"Invalid task status list of {dicom_job}.")
+
+    dicom_job.end = timezone.now()
+    dicom_job.save()
+
     return True

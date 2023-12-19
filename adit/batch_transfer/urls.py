@@ -14,6 +14,7 @@ from .views import (
     BatchTransferJobVerifyView,
     BatchTransferTaskDeleteView,
     BatchTransferTaskDetailView,
+    BatchTransferTaskKillView,
     BatchTransferTaskResetView,
     BatchTransferUpdatePreferencesView,
 )
@@ -92,5 +93,10 @@ urlpatterns = [
         "tasks/<int:pk>/reset/",
         BatchTransferTaskResetView.as_view(),
         name="batch_transfer_task_reset",
+    ),
+    path(
+        "tasks/<int:pk>/kill/",
+        BatchTransferTaskKillView.as_view(),
+        name="batch_transfer_task_kill",
     ),
 ]

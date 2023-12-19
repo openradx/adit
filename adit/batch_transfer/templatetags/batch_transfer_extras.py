@@ -26,6 +26,7 @@ def task_control_panel(context: dict[str, Any]) -> dict[str, Any]:
     return {
         "task_delete_url": "batch_transfer_task_delete",
         "task_reset_url": "batch_transfer_task_reset",
+        "task_kill_url": "batch_transfer_task_kill",
         "user": context["user"],
         "task": context["task"],
     }
