@@ -11,6 +11,45 @@ const UPLOAD_DESTINATION = "upload_destination";
 
 function uploadJobForm(formEl) {
   return {
+    isDropping: Boolean,
+    buttonVisible: Boolean,
+    fileCount: 0,
+    droppedFiles: Object,
+
+    getFiles: function () {
+      var inputElement = document.getElementById("fileselector");
+      if (
+        inputElement instanceof HTMLInputElement &&
+        inputElement.files.length > 0
+      ) {
+        return inputElement.files;
+      } else if (this.droppedFiles.length > 0) {
+        const files = [];
+        for (const f of this.droppedFiles) {
+          files.push(f);
+        }
+        return files;
+      } else {
+        return [];
+      }
+    },
+
+    toggleUploadButtonVisibility: function () {
+      // Check if files are selected
+      const files = this.getFiles();
+      this.buttonVisible = files.length > 0;
+      this.fileCount = files.length;
+    },
+    clearFiles: function () {
+      var inputEl = document.getElementById("fileselector");
+
+      if (inputEl instanceof HTMLInputElement) {
+        inputEl.value = null;
+      }
+      this.droppedFiles = [];
+      console.log(inputEl);
+      this.toggleUploadButtonVisibility();
+    },
     initDestination: function (destEl) {
       this._updateIsDestinationFolder(destEl);
     },
@@ -25,77 +64,116 @@ function uploadJobForm(formEl) {
       const option = destEl.options[destEl.selectedIndex];
       this.isDestinationFolder = option.dataset.node_type === "folder";
     },
-    query4Folder: function () {
-      const pseudonymInput = formEl.querySelector('[name="pseudonym"]');
-      const Path = formEl.querySelector('[name="data_folder_path"]');
-      if (
-        pseudonymInput instanceof HTMLInputElement &&
-        Path instanceof HTMLInputElement
-      ) {
-        const pseudonymValue = pseudonymInput.value + Path.value;
-        showToast("warning", "Sandbox", `Pseudonym: ${pseudonymValue}`);
-        console.log("Hallo");
-      }
+
+    fileHandler: async function (fileObj, datasets) {
+      const arrayBuffer = await fileObj.arrayBuffer(); //await fileReader.readAsArrayBuffer(fileObj);
+      datasets.push(arrayBuffer);
+      console.log(datasets);
     },
 
     chooseFolder: function () {
-      const folderPath = formEl.querySelector('[name="data_folder_path"]');
+      const files = this.getFiles();
+      console.log(files);
+      this.loadFiles(files);
+    },
 
-      var inputElement = document.getElementById("fileselector");
-
-      if (inputElement instanceof HTMLInputElement) {
-        var files = inputElement.files;
+    loadFiles: async function (files) {
+      const destinationSelect = formEl.querySelector('[name="destination"]');
+      if (destinationSelect instanceof HTMLSelectElement) {
+        const selectedOption =
+          destinationSelect.options[destinationSelect.selectedIndex];
+        var node_id = selectedOption.getAttribute("node_id");
       }
+      showToast("warning", "Sandbox", "Let's upload some Files!!!");
       if (files.length === 0) {
         showToast("warning", "Sandbox", `No files selected.${files}`);
       } else {
         showToast("warning", "Sandbox", `We have ${files.length} files!!!`);
-        var i = 0;
-        for (const file of files) {
-          // showToast("warning", "Sandbox", `No#${i}: ${files[i].name}!!!`);
-          const fileReader = new FileReader();
-          fileReader.onload = (function (file) {
-            return function (e) {
-              uploadData({
-                ["file_data"]: file.name,
-              });
-              const arrayBuffer = fileReader.result;
-              const myDict = dcmjs.data.DicomMessage.readFile(arrayBuffer);
-              const tag = myDict.dict["00080060"].Value[0];
-              // showToast(
-              //   "warning",
-              //   "Sandbox",
-              //   `Modality of ${file.name}: ${tag}!!!`
-              // );
 
-              // Use the myDict object here
-            };
-          })(file);
-          fileReader.readAsArrayBuffer(file);
-          i++;
+        var datasets = [];
+        for (const fileEntry of files) {
+          await this.fileHandler(fileEntry, datasets);
+        }
+        if (this.checkPatientIDs(datasets)) {
+          for (const set in datasets) {
+            console.log("lets upload");
+            uploadData({
+              ["dataset"]: set,
+              ["node_id"]: node_id,
+            });
+          }
+        } else {
+          console.log("Not same PatientIDs");
         }
       }
+    },
 
-      // Use the File System Access API to allow the user to choose a directory
-      //const directoryHandle = await window.showDirectoryPicker();
+    retrieveFilefromFileEntry: async function (fileEntry) {
+      return new Promise((resolve, reject) => {
+        fileEntry.file(resolve, reject);
+      });
+    },
 
-      // Get the absolute path from the directory handle
-      //const folderPath = directoryHandle.name;
-
-      // Update the data_folder_path field
-      const dataFolderPathInput = formEl.querySelector(
-        '[name="data_folder_path"]'
-      );
-      if (dataFolderPathInput instanceof HTMLInputElement) {
-        dataFolderPathInput.value = "abc"; //files[0].name;
+    traverseDirectory: async function (item, files) {
+      if (item.isFile) {
+        const file = await this.retrieveFilefromFileEntry(item, files);
+        files.push(file);
       } else {
-        console.error(
-          "folder_path input element not found or is not an HTMLInputElement"
-        );
+        const items = await this.readDirectory(item);
+        for (let item of items) {
+          await this.traverseDirectory(item, files);
+        }
       }
-      // } catch (error) {
-      //   showToast("warning", "Sandbox",`"Error choosing folde:", ${error}`);
-      // }
+    },
+
+    handleDrop: async function (ev) {
+      const files = [];
+      let promiseList = [];
+      const items = ev.dataTransfer.items;
+      for (const item of items) {
+        const itemEntry = item.webkitGetAsEntry();
+        if (itemEntry) {
+          await this.traverseDirectory(itemEntry, files);
+        }
+      }
+      console.log(files);
+      console.log(`We've got all files: ${files}`);
+      this.fileCount = files.length;
+      console.log(`The FileArray: ${files}`);
+      // Hier gehts dann mit dem eigentlichen Upload los
+
+      if (files.length > 0) {
+        var inputElement = document.getElementById("fileselector");
+
+        if (inputElement instanceof HTMLInputElement) {
+          inputElement.value = null;
+        }
+
+        this.buttonVisible = true;
+        this.droppedFiles = files;
+      }
+      console.log(this.droppedFiles);
+    },
+
+    checkPatientIDs: function (datasets) {
+      const patientIDs = new Set();
+      const patientBirthdates = new Set();
+      const patientNames = new Set();
+
+      for (const set of datasets) {
+        // const dcm = dcmjs.data.DicomMessage.readFile(set);
+        // patientIDs.add(dcm.dict["00100020"].Value[0]);
+        // patientNames.add(dcm.dict["00100010"].Value[0]);
+        // patientBirthdates.add(dcm.dict["00100030"].Value[0]);
+      }
+
+      console.log(patientIDs);
+
+      return (
+        patientIDs.size == 1 &&
+        patientNames.size == 1 &&
+        patientBirthdates.size == 1
+      );
     },
   };
 }
