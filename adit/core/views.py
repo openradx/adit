@@ -33,7 +33,6 @@ from .models import CoreSettings, DicomJob, DicomTask, QueuedTask
 from .site import job_stats_collectors
 from .tasks import broadcast_mail
 from .types import AuthenticatedHttpRequest, HtmxHttpRequest
-from .utils.job_utils import queue_pending_task, queue_pending_tasks
 
 THEME = "theme"
 
@@ -158,8 +157,6 @@ class DicomJobCreateView(
     form_class: type[ModelForm]
     template_name: str
     permission_required: str
-    default_priority: int
-    urgent_priority: int
     request: AuthenticatedHttpRequest
     object: DicomJob
 
@@ -178,7 +175,7 @@ class DicomJobCreateView(
             job.status = DicomJob.Status.PENDING
             job.save()
 
-            queue_pending_tasks(job, self.default_priority, self.urgent_priority)
+            job.queue_pending_tasks()
 
         return response
 
@@ -239,8 +236,6 @@ class DicomJobDeleteView(LoginRequiredMixin, DeleteView):
 
 class DicomJobVerifyView(LoginRequiredMixin, UserPassesTestMixin, SingleObjectMixin, View):
     model: type[DicomJob]
-    default_priority: int
-    urgent_priority: int
     success_message = "Job with ID %(id)d was verified"
     request: AuthenticatedHttpRequest
 
@@ -262,7 +257,7 @@ class DicomJobVerifyView(LoginRequiredMixin, UserPassesTestMixin, SingleObjectMi
         job.status = DicomJob.Status.PENDING
         job.save()
 
-        queue_pending_tasks(job, self.default_priority, self.urgent_priority)
+        job.queue_pending_tasks()
 
         messages.success(request, self.success_message % job.__dict__)
         return redirect(job)
@@ -309,8 +304,6 @@ class DicomJobCancelView(LoginRequiredMixin, SingleObjectMixin, View):
 
 class DicomJobResumeView(LoginRequiredMixin, SingleObjectMixin, View):
     model: type[DicomJob]
-    default_priority: int
-    urgent_priority: int
     success_message = "Job with ID %(id)d will be resumed"
     request: AuthenticatedHttpRequest
 
@@ -331,7 +324,7 @@ class DicomJobResumeView(LoginRequiredMixin, SingleObjectMixin, View):
         job.status = DicomJob.Status.PENDING
         job.save()
 
-        queue_pending_tasks(job, self.default_priority, self.urgent_priority)
+        job.queue_pending_tasks()
 
         messages.success(request, self.success_message % job.__dict__)
         return redirect(job)
@@ -339,8 +332,6 @@ class DicomJobResumeView(LoginRequiredMixin, SingleObjectMixin, View):
 
 class DicomJobRetryView(LoginRequiredMixin, SingleObjectMixin, View):
     model: type[DicomJob]
-    default_priority: int
-    urgent_priority: int
     success_message = "Job with ID %(id)d will be retried"
     request: AuthenticatedHttpRequest
 
@@ -361,7 +352,7 @@ class DicomJobRetryView(LoginRequiredMixin, SingleObjectMixin, View):
         job.status = DicomJob.Status.PENDING
         job.save()
 
-        queue_pending_tasks(job, self.default_priority, self.urgent_priority)
+        job.queue_pending_tasks()
 
         messages.success(request, self.success_message % job.__dict__)
         return redirect(job)
@@ -369,8 +360,6 @@ class DicomJobRetryView(LoginRequiredMixin, SingleObjectMixin, View):
 
 class DicomJobRestartView(LoginRequiredMixin, UserPassesTestMixin, SingleObjectMixin, View):
     model: type[DicomJob]
-    default_priority: int
-    urgent_priority: int
     success_message = "Job with ID %(id)d will be restarted"
     request: AuthenticatedHttpRequest
 
@@ -395,7 +384,7 @@ class DicomJobRestartView(LoginRequiredMixin, UserPassesTestMixin, SingleObjectM
         job.message = ""
         job.save()
 
-        queue_pending_tasks(job, self.default_priority, self.urgent_priority)
+        job.queue_pending_tasks()
 
         messages.success(request, self.success_message % job.__dict__)
         return redirect(job)
@@ -450,8 +439,6 @@ class DicomTaskDeleteView(LoginRequiredMixin, DeleteView):
 
 class DicomTaskResetView(LoginRequiredMixin, SingleObjectMixin, View):
     model: type[DicomTask]
-    default_priority: int
-    urgent_priority: int
     success_message = "Task with ID %(id)d was reset"
     request: AuthenticatedHttpRequest
 
@@ -476,8 +463,7 @@ class DicomTaskResetView(LoginRequiredMixin, SingleObjectMixin, View):
         task.end = None
         task.save()
 
-        queue_pending_task(task, self.default_priority, self.urgent_priority)
-
+        task.queue_pending_task()
         task.job.post_process()
 
         messages.success(request, self.success_message % task.__dict__)

@@ -1,6 +1,7 @@
 from datetime import datetime
 from typing import TYPE_CHECKING
 
+from django.conf import settings
 from django.contrib.postgres.fields import ArrayField
 from django.core.exceptions import ValidationError
 from django.db import models
@@ -25,6 +26,9 @@ class BatchQuerySettings(AppSettings):
 
 
 class BatchQueryJob(DicomJob):
+    default_priority = settings.BATCH_QUERY_DEFAULT_PRIORITY
+    urgent_priority = settings.BATCH_QUERY_URGENT_PRIORITY
+
     project_name = models.CharField(max_length=150)
     project_description = models.TextField(max_length=2000)
 

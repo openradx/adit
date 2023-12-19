@@ -62,8 +62,6 @@ class BatchQueryJobCreateView(BatchQueryLockedMixin, DicomJobCreateView):
     form_class = BatchQueryJobForm
     template_name = "batch_query/batch_query_job_form.html"
     permission_required = "batch_query.add_batchqueryjob"
-    default_priority = settings.BATCH_QUERY_DEFAULT_PRIORITY
-    urgent_priority = settings.BATCH_QUERY_URGENT_PRIORITY
     object: BatchQueryJob
 
     def get_initial(self) -> dict[str, Any]:
@@ -109,8 +107,6 @@ class BatchQueryJobDeleteView(BatchQueryLockedMixin, DicomJobDeleteView):
 
 class BatchQueryJobVerifyView(BatchQueryLockedMixin, DicomJobVerifyView):
     model = BatchQueryJob
-    default_priority = settings.BATCH_QUERY_DEFAULT_PRIORITY
-    urgent_priority = settings.BATCH_QUERY_URGENT_PRIORITY
 
 
 class BatchQueryJobCancelView(BatchQueryLockedMixin, DicomJobCancelView):
@@ -119,20 +115,14 @@ class BatchQueryJobCancelView(BatchQueryLockedMixin, DicomJobCancelView):
 
 class BatchQueryJobResumeView(BatchQueryLockedMixin, DicomJobResumeView):
     model = BatchQueryJob
-    default_priority = settings.BATCH_QUERY_DEFAULT_PRIORITY
-    urgent_priority = settings.BATCH_QUERY_URGENT_PRIORITY
 
 
 class BatchQueryJobRetryView(BatchQueryLockedMixin, DicomJobRetryView):
     model = BatchQueryJob
-    default_priority = settings.BATCH_QUERY_DEFAULT_PRIORITY
-    urgent_priority = settings.BATCH_QUERY_URGENT_PRIORITY
 
 
 class BatchQueryJobRestartView(BatchQueryLockedMixin, DicomJobRestartView):
     model = BatchQueryJob
-    default_priority = settings.BATCH_QUERY_DEFAULT_PRIORITY
-    urgent_priority = settings.BATCH_QUERY_URGENT_PRIORITY
 
 
 class BatchQueryTaskDetailView(
@@ -157,8 +147,6 @@ class BatchQueryTaskDeleteView(SelectiveTransferLockedMixin, DicomTaskDeleteView
 
 class BatchQueryTaskResetView(SelectiveTransferLockedMixin, DicomTaskResetView):
     model = BatchQueryTask
-    default_priority = settings.BATCH_QUERY_DEFAULT_PRIORITY
-    urgent_priority = settings.BATCH_QUERY_URGENT_PRIORITY
 
 
 class BatchQueryTaskKillView(SelectiveTransferLockedMixin, DicomTaskKillView):

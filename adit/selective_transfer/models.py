@@ -1,5 +1,6 @@
 from typing import TYPE_CHECKING
 
+from django.conf import settings
 from django.db import models
 from django.urls import reverse
 
@@ -15,6 +16,9 @@ class SelectiveTransferSettings(AppSettings):
 
 
 class SelectiveTransferJob(TransferJob):
+    default_priority = settings.SELECTIVE_TRANSFER_DEFAULT_PRIORITY
+    urgent_priority = settings.SELECTIVE_TRANSFER_URGENT_PRIORITY
+
     if TYPE_CHECKING:
         tasks = RelatedManager["SelectiveTransferTask"]()
 

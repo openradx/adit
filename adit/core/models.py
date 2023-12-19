@@ -203,6 +203,9 @@ class DicomJob(models.Model):
     if TYPE_CHECKING:
         tasks = RelatedManager["DicomTask"]()
 
+    default_priority: int
+    urgent_priority: int
+
     id: int
     get_status_display: Callable[[], str]
     status = models.CharField(max_length=2, choices=Status.choices, default=Status.UNVERIFIED)
@@ -235,6 +238,16 @@ class DicomJob(models.Model):
     def get_absolute_url(self) -> str:
         # Gets overridden in subclasses
         ...
+
+    def queue_pending_tasks(self):
+        """Queues all pending tasks of this job."""
+        priority = self.default_priority
+        if self.urgent:
+            priority = self.urgent_priority
+
+        for dicom_task in self.tasks.filter(status=DicomTask.Status.PENDING):
+            if not dicom_task.queued:
+                QueuedTask.objects.create(content_object=dicom_task, priority=priority)
 
     def reset_tasks(self, only_failed=False) -> None:
         if only_failed:
@@ -431,6 +444,15 @@ class DicomTask(models.Model):
 
     def __str__(self) -> str:
         return f"{self.__class__.__name__} [ID {self.id} (Job ID {self.job.id})]"
+
+    def queue_pending_task(self) -> None:
+        """Queues a dicom task."""
+        priority = self.job.default_priority
+        if self.job.urgent:
+            priority = self.job.urgent_priority
+
+        if not self.queued:
+            QueuedTask.objects.create(content_object=self, priority=priority)
 
     @property
     def queued(self) -> QueuedTask | None:

@@ -1,6 +1,5 @@
 from typing import Any
 
-from django.conf import settings
 from django.shortcuts import render
 from django.urls import reverse_lazy
 
@@ -122,8 +121,6 @@ class SelectiveTransferJobDeleteView(SelectiveTransferLockedMixin, DicomJobDelet
 
 class SelectiveTransferJobVerifyView(SelectiveTransferLockedMixin, DicomJobVerifyView):
     model = SelectiveTransferJob
-    default_priority = settings.SELECTIVE_TRANSFER_DEFAULT_PRIORITY
-    urgent_priority = settings.SELECTIVE_TRANSFER_URGENT_PRIORITY
 
 
 class SelectiveTransferJobCancelView(SelectiveTransferLockedMixin, DicomJobCancelView):
@@ -132,20 +129,14 @@ class SelectiveTransferJobCancelView(SelectiveTransferLockedMixin, DicomJobCance
 
 class SelectiveTransferJobResumeView(SelectiveTransferLockedMixin, DicomJobResumeView):
     model = SelectiveTransferJob
-    default_priority = settings.SELECTIVE_TRANSFER_DEFAULT_PRIORITY
-    urgent_priority = settings.SELECTIVE_TRANSFER_URGENT_PRIORITY
 
 
 class SelectiveTransferJobRetryView(SelectiveTransferLockedMixin, DicomJobRetryView):
     model = SelectiveTransferJob
-    default_priority = settings.SELECTIVE_TRANSFER_DEFAULT_PRIORITY
-    urgent_priority = settings.SELECTIVE_TRANSFER_URGENT_PRIORITY
 
 
 class SelectiveTransferJobRestartView(SelectiveTransferLockedMixin, DicomJobRestartView):
     model = SelectiveTransferJob
-    default_priority = settings.SELECTIVE_TRANSFER_DEFAULT_PRIORITY
-    urgent_priority = settings.SELECTIVE_TRANSFER_URGENT_PRIORITY
 
 
 class SelectiveTransferTaskDetailView(SelectiveTransferLockedMixin, DicomTaskDetailView):
@@ -160,8 +151,6 @@ class SelectiveTransferTaskDeleteView(SelectiveTransferLockedMixin, DicomTaskDel
 
 class SelectiveTransferTaskResetView(SelectiveTransferLockedMixin, DicomTaskResetView):
     model = SelectiveTransferTask
-    default_priority = settings.SELECTIVE_TRANSFER_DEFAULT_PRIORITY
-    urgent_priority = settings.SELECTIVE_TRANSFER_URGENT_PRIORITY
 
 
 class SelectiveTransferTaskKillView(SelectiveTransferLockedMixin, DicomTaskKillView):

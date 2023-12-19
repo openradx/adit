@@ -53,8 +53,6 @@ class BatchTransferJobCreateView(BatchTransferLockedMixin, DicomJobCreateView):
     form_class = BatchTransferJobForm
     template_name = "batch_transfer/batch_transfer_job_form.html"
     permission_required = "batch_transfer.add_batchtransferjob"
-    default_priority = settings.BATCH_TRANSFER_DEFAULT_PRIORITY
-    urgent_priority = settings.BATCH_TRANSFER_URGENT_PRIORITY
     object: BatchTransferJob
 
     def get_initial(self) -> dict[str, Any]:
@@ -99,8 +97,6 @@ class BatchTransferJobDeleteView(BatchTransferLockedMixin, DicomJobDeleteView):
 
 class BatchTransferJobVerifyView(BatchTransferLockedMixin, DicomJobVerifyView):
     model = BatchTransferJob
-    default_priority = settings.BATCH_TRANSFER_DEFAULT_PRIORITY
-    urgent_priority = settings.BATCH_TRANSFER_URGENT_PRIORITY
 
 
 class BatchTransferJobCancelView(BatchTransferLockedMixin, DicomJobCancelView):
@@ -109,20 +105,14 @@ class BatchTransferJobCancelView(BatchTransferLockedMixin, DicomJobCancelView):
 
 class BatchTransferJobResumeView(BatchTransferLockedMixin, DicomJobResumeView):
     model = BatchTransferJob
-    default_priority = settings.BATCH_TRANSFER_DEFAULT_PRIORITY
-    urgent_priority = settings.BATCH_TRANSFER_URGENT_PRIORITY
 
 
 class BatchTransferJobRetryView(BatchTransferLockedMixin, DicomJobRetryView):
     model = BatchTransferJob
-    default_priority = settings.BATCH_TRANSFER_DEFAULT_PRIORITY
-    urgent_priority = settings.BATCH_TRANSFER_URGENT_PRIORITY
 
 
 class BatchTransferJobRestartView(BatchTransferLockedMixin, DicomJobRestartView):
     model = BatchTransferJob
-    default_priority = settings.BATCH_TRANSFER_DEFAULT_PRIORITY
-    urgent_priority = settings.BATCH_TRANSFER_URGENT_PRIORITY
 
 
 class BatchTransferTaskDetailView(BatchTransferLockedMixin, DicomTaskDetailView):
@@ -137,8 +127,6 @@ class BatchTransferTaskDeleteView(BatchTransferLockedMixin, DicomTaskDeleteView)
 
 class BatchTransferTaskResetView(BatchTransferLockedMixin, DicomTaskResetView):
     model = BatchTransferTask
-    default_priority = settings.BATCH_TRANSFER_DEFAULT_PRIORITY
-    urgent_priority = settings.BATCH_TRANSFER_URGENT_PRIORITY
 
 
 class BatchTransferTaskKillView(BatchTransferLockedMixin, DicomTaskKillView):

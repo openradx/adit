@@ -18,7 +18,6 @@ from adit.core.models import DicomNode
 from adit.core.utils.debounce import debounce
 from adit.core.utils.dicom_dataset import QueryDataset, ResultDataset
 from adit.core.utils.dicom_operator import DicomOperator
-from adit.core.utils.job_utils import queue_pending_tasks
 
 from .forms import SelectiveTransferJobForm
 from .models import SelectiveTransferJob, SelectiveTransferTask
@@ -310,10 +309,6 @@ class SelectiveTransferConsumer(AsyncJsonWebsocketConsumer):
             job.status = SelectiveTransferJob.Status.PENDING
             job.save()
 
-            queue_pending_tasks(
-                job,
-                settings.SELECTIVE_TRANSFER_DEFAULT_PRIORITY,
-                settings.SELECTIVE_TRANSFER_URGENT_PRIORITY,
-            )
+            job.queue_pending_tasks()
 
         return job
