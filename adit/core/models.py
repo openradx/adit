@@ -320,6 +320,7 @@ class QueuedTask(models.Model):
     eta = models.DateTimeField(blank=True, null=True)
     created = models.DateTimeField(auto_now_add=True)
     locked = models.BooleanField(default=False)
+    kill = models.BooleanField(default=False)
 
     class Meta:
         constraints = [
@@ -390,6 +391,10 @@ class DicomTask(models.Model):
             self.Status.WARNING,
             self.Status.FAILURE,
         ]
+
+    @property
+    def is_killable(self) -> bool:
+        return self.status == self.Status.IN_PROGRESS
 
 
 class TransferTask(DicomTask):

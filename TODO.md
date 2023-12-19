@@ -2,6 +2,9 @@
 
 ## Top
 
+- update_job_status -> update_job_state
+- maybe move job_utils function to models methods
+- Move executor functionality to processors
 - Add permissions to dicom_web views (see TODOs there)
 - task urls without job
 - Just warn when one only one series of the study could not be transferred (only error when all series could not be transferred)

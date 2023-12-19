@@ -74,7 +74,7 @@ def test_transfer_to_server_succeeds(
     mocker.patch.object(executor, "dest_operator", dest_operator_mock)
 
     # Act
-    (status, message, logs) = executor.start()
+    result = executor.start()
 
     # Assert
     source_operator_mock.download_study.assert_called_with(
@@ -87,9 +87,9 @@ def test_transfer_to_server_succeeds(
     upload_path = dest_operator_mock.upload_instances.call_args.args[0]
     assert upload_path.match(f"*/{study.PatientID}")
 
-    assert status == TransferTask.Status.SUCCESS
-    assert message == "Transfer task completed successfully."
-    assert logs == []
+    assert result["status"] == TransferTask.Status.SUCCESS
+    assert result["message"] == "Transfer task completed successfully."
+    assert result["log"] == ""
 
 
 @pytest.mark.django_db
@@ -131,7 +131,7 @@ def test_transfer_to_folder_succeeds(
     mocker.patch("adit.core.utils.transfer_utils.os.mkdir", autospec=True)
 
     # Act
-    (status, message, logs) = executor.start()
+    result = executor.start()
 
     # Assert
     download_path = source_operator_mock.download_study.call_args.kwargs["dest_folder"]
@@ -139,9 +139,9 @@ def test_transfer_to_folder_succeeds(
         rf"adit_{job._meta.app_label}_{job.id}_20200101_kai/1001/20190923-080000-CT"
     )
 
-    assert status == TransferTask.Status.SUCCESS
-    assert message == "Transfer task completed successfully."
-    assert logs == []
+    assert result["status"] == TransferTask.Status.SUCCESS
+    assert result["message"] == "Transfer task completed successfully."
+    assert result["log"] == ""
 
 
 @pytest.mark.django_db
@@ -183,13 +183,13 @@ def test_transfer_to_archive_succeeds(
     Popen_mock.return_value.communicate.return_value = ("", "")
 
     # Act
-    (status, message, logs) = executor.start()
+    result = executor.start()
 
     # Assert
     source_operator_mock.find_patients.assert_called_once()
     assert Popen_mock.call_args.args[0][0] == "7z"
     assert Popen_mock.call_count == 2
 
-    assert status == TransferTask.Status.SUCCESS
-    assert message == "Transfer task completed successfully."
-    assert logs == []
+    assert result["status"] == TransferTask.Status.SUCCESS
+    assert result["message"] == "Transfer task completed successfully."
+    assert result["log"] == ""

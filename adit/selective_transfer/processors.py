@@ -1,5 +1,5 @@
 from adit.core.processors import DicomTaskProcessor
-from adit.core.types import DicomLogEntry
+from adit.core.types import ProcessingResult
 from adit.core.utils.transfer_utils import TransferExecutor
 
 from .models import (
@@ -13,8 +13,6 @@ class SelectiveTransferTaskProcessor(DicomTaskProcessor):
     dicom_task_class = SelectiveTransferTask
     app_settings_class = SelectiveTransferSettings
 
-    def process_dicom_task(
-        self, dicom_task
-    ) -> tuple[SelectiveTransferTask.Status, str, list[DicomLogEntry]]:
+    def process_dicom_task(self, dicom_task) -> ProcessingResult:
         assert isinstance(dicom_task, SelectiveTransferTask)
         return TransferExecutor(dicom_task).start()

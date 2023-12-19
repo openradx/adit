@@ -1,4 +1,5 @@
 import datetime
+from time import sleep
 
 import pytest
 import time_machine
@@ -27,7 +28,7 @@ def patch_dicom_processors(mocker: MockerFixture):
 
 @pytest.fixture
 def dicom_worker(mocker: MockerFixture):
-    worker = DicomWorker(polling_interval=1)
+    worker = DicomWorker(polling_interval=1, monitor_interval=1)
     mocker.patch.object(worker, "_redis", mocker.MagicMock())
     return worker
 
@@ -43,7 +44,11 @@ def test_worker_with_task_that_succeeds(mocker: MockerFixture, dicom_worker: Dic
 
     def process_dicom_task(self, dicom_task):
         assert QueuedTask.objects.get(pk=queued_task.pk).locked
-        return (DicomTask.Status.SUCCESS, "Success!", [])
+        return {
+            "status": DicomTask.Status.SUCCESS,
+            "message": "Success!",
+            "log": "",
+        }
 
     mocker.patch.object(ExampleProcessor, "process_dicom_task", process_dicom_task)
 
@@ -72,7 +77,11 @@ def test_worker_with_task_that_fails(mocker: MockerFixture, dicom_worker: DicomW
 
     def process_dicom_task(self, dicom_task):
         assert QueuedTask.objects.get(pk=queued_task.pk).locked
-        return (DicomTask.Status.FAILURE, "Failure!", [])
+        return {
+            "status": DicomTask.Status.FAILURE,
+            "message": "Failure!",
+            "log": "",
+        }
 
     mocker.patch.object(ExampleProcessor, "process_dicom_task", process_dicom_task)
 
@@ -160,7 +169,10 @@ def test_worker_inside_timeslot(mocker: MockerFixture):
     mocker.patch.object(worker, "_redis", mocker.MagicMock())
 
     wait_mock = mocker.patch.object(
-        worker._stop, "wait", wraps=worker._stop.wait, side_effect=lambda _: worker._stop.set()
+        worker._stop_worker,
+        "wait",
+        wraps=worker._stop_worker.wait,
+        side_effect=lambda _: worker._stop_worker.set(),
     )
     process_mock = mocker.patch.object(worker, "check_and_process_next_task", return_value=False)
 
@@ -177,7 +189,10 @@ def test_worker_outside_timeslot(mocker: MockerFixture):
     mocker.patch.object(worker, "_redis", mocker.MagicMock())
 
     wait_mock = mocker.patch.object(
-        worker._stop, "wait", wraps=worker._stop.wait, side_effect=lambda _: worker._stop.set()
+        worker._stop_worker,
+        "wait",
+        wraps=worker._stop_worker.wait,
+        side_effect=lambda _: worker._stop_worker.set(),
     )
     process_spy = mocker.spy(worker, "check_and_process_next_task")
 
@@ -185,3 +200,34 @@ def test_worker_outside_timeslot(mocker: MockerFixture):
 
     wait_mock.assert_called_once()
     process_spy.assert_not_called()
+
+
+@pytest.mark.django_db(transaction=True)
+def test_worker_kills_task(mocker: MockerFixture, dicom_worker: DicomWorker):
+    dicom_job = ExampleTransferJobFactory.create(status=DicomJob.Status.PENDING)
+    dicom_task = ExampleTransferTaskFactory.create(
+        status=DicomTask.Status.PENDING,
+        job=dicom_job,
+    )
+    queued_task = QueuedTask.objects.create(content_object=dicom_task, priority=5)
+
+    def process_dicom_task(self, dicom_task):
+        killed = False
+        while True:
+            sleep(1)
+            if not killed:
+                task = QueuedTask.objects.get(pk=queued_task.pk)
+                task.kill = True
+                task.save()
+
+    mocker.patch.object(ExampleProcessor, "process_dicom_task", process_dicom_task)
+
+    dicom_worker.check_and_process_next_task()
+
+    dicom_job.refresh_from_db()
+    assert dicom_job.status == DicomJob.Status.FAILURE
+
+    dicom_task.refresh_from_db()
+    assert dicom_task.queued is None
+    assert dicom_task.status == DicomTask.Status.FAILURE
+    assert dicom_task.message == "Task was killed by admin."

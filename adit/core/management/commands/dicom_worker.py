@@ -19,7 +19,14 @@ class Command(ServerCommand):
             "--polling-interval",
             type=int,
             default=5,
-            help="The polling interval to check for new queued tasks.",
+            help="The interval (in seconds) to check for new queued tasks.",
+        )
+        parser.add_argument(
+            "-m",
+            "--monitor-interval",
+            type=int,
+            default=5,
+            help="The interval (in seconds) to check if the task process should be killed.",
         )
         parser.add_argument(
             "-t",
@@ -30,10 +37,11 @@ class Command(ServerCommand):
         )
 
     def run_server(self, **options):
-        time_slot: tuple[time, time] | None = options["time_slot"]
         polling_interval: int = options["polling_interval"]
+        monitor_interval: int = options["monitor_interval"]
+        time_slot: tuple[time, time] | None = options["time_slot"]
 
-        self._dicom_worker = DicomWorker(polling_interval, time_slot)
+        self._dicom_worker = DicomWorker(polling_interval, monitor_interval, time_slot)
         self._dicom_worker.run()
 
     def on_shutdown(self):

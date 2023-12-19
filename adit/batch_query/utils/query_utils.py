@@ -5,7 +5,7 @@ from django.template.defaultfilters import pluralize
 
 from adit.core.errors import DicomError
 from adit.core.models import DicomNode
-from adit.core.types import DicomLogEntry
+from adit.core.types import ProcessingResult
 from adit.core.utils.dicom_dataset import QueryDataset, ResultDataset
 from adit.core.utils.dicom_operator import DicomOperator
 
@@ -27,7 +27,7 @@ class QueryExecutor:
         assert source.node_type == DicomNode.NodeType.SERVER
         self.operator = DicomOperator(source.dicomserver)
 
-    def start(self) -> tuple[BatchQueryTask.Status, str, list[DicomLogEntry]]:
+    def start(self) -> ProcessingResult:
         patient = self._fetch_patient()
 
         is_series_query = self.query_task.series_description or self.query_task.series_numbers
@@ -49,7 +49,11 @@ class QueryExecutor:
 
         self.operator.clear_logs()
 
-        return (status, msg, logs)
+        return {
+            "status": status,
+            "message": msg,
+            "log": "\n".join([log["message"] for log in logs]),
+        }
 
     def _fetch_patient(self) -> ResultDataset:
         patient_id = self.query_task.patient_id
