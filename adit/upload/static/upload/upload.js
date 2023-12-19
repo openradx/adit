@@ -109,9 +109,12 @@ function uploadJobForm(formEl) {
     },
 
     retrieveFilefromFileEntry: async function (fileEntry) {
-      return new Promise((resolve, reject) => {
-        fileEntry.file(resolve, reject);
-      });
+      return new Promise(fileEntry.file.bind(fileEntry));
+    },
+
+    readDirectory: function (item) {
+      const directoryReader = item.createReader();
+      return new Promise(directoryReader.readEntries.bind(directoryReader));
     },
 
     traverseDirectory: async function (item, files) {
