@@ -76,29 +76,41 @@ function updatePreferences(route, data) {
 function uploadData(data) {
   const formData = new FormData();
   for (const key in data) {
-    formData.append(key, data[key]);
-    console.log(data[key]);
+    const blob = new Blob([data[key]]);
+    formData.append(key, blob);
   }
 
-  const url = "/upload/data-upload/";
+  const url = `/upload/data-upload/${data.node_id}/`;
 
   const config = getConfig();
   const request = new Request(url, {
     method: "POST",
-    headers: { "X-CSRFToken": config.csrf_token },
-    mode: "same-origin", // Do not send CSRF token to another domain.
+    headers: {
+      "X-CSRFToken": config.csrf_token,
+    },
+
+    //mode: "same-origin", // Do not send CSRF token to another domain.
     body: formData,
   });
 
   fetch(request)
-    .then(function (response) {
+    .then(async function (response) {
       const config = getConfig();
       if (config.debug) {
-        console.log("Uploaded data to server", data);
+        const text = await response.text();
+        if (response.ok) {
+          console.log(
+            "Uploaded data to server with status:",
+            text,
+            response.status
+          );
+        } else {
+          console.log("Response from server:", text, response.status);
+        }
       }
     })
     .catch(function (error) {
-      console.log(`Error: ${error.message}`);
+      console.log(`Error: ${error.reason_phrase}`);
     });
 }
 

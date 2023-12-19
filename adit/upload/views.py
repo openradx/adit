@@ -1,7 +1,24 @@
+import asyncio
+import io
+import sqlite3 as sql
+from concurrent.futures import ThreadPoolExecutor
+from io import BytesIO
 from typing import Any
 
-from adit.core.models import DicomServer
+import pydicom
+from asgiref.sync import sync_to_async
+from django.db.models import QuerySet
+from django.http import HttpRequest, HttpResponse
+from django.template.response import TemplateResponse
+from pydicom import Dataset
+from rest_framework.decorators import api_view, renderer_classes
+from rest_framework.renderers import JSONRenderer, TemplateHTMLRenderer
+from rest_framework.response import Response
+
+from adit.core.decorators import login_required_async, permission_required_async
+from adit.core.models import DicomNode, DicomServer
 from adit.core.types import AuthenticatedRequest
+from adit.core.utils.dicom_operator import DicomOperator
 from adit.core.views import (
     BaseUpdatePreferencesView,
     DicomJobCreateView,
@@ -51,11 +68,49 @@ class UploadJobCreateView(DicomJobCreateView):
         return initial
 
 
-class UploadAPIView(StoreAPIView):
-    async def post(self, request: AuthenticatedRequest, ae_title: str = "", study_uid: str = ""):
-        # Set the ae_title value here
-        servers = DicomServer.objects.all()
-        ae_title = servers[int(request.user.preferences[UPLOAD_DESTINATION])].ae_title
-        print(ae_title)
-        # Call the super().post() method with the updated parameters
-        return super().post(request, ae_title, study_uid)
+# @login_required_async
+# @sync_to_async
+async def uploadAPIView(request, node_id: str) -> HttpResponse:
+    status = 0
+    message = ""
+    pool = ThreadPoolExecutor()
+    if request.method == "POST":
+        data = request.FILES
+        dataset = None
+
+        if "dataset" in data:
+            dataset_bytes = data["dataset"].read()
+            dataset_bytes = BytesIO(dataset_bytes)
+            dataset = pydicom.dcmread(dataset_bytes, force=True)
+
+            if "node_id" in data:
+                selected_id = int(node_id)
+                destination_node = await sync_to_async(
+                    lambda: DicomServer.objects.get(id=selected_id)
+                )()
+
+                operator = DicomOperator(destination_node)
+
+                try:
+                    loop = asyncio.get_event_loop()
+                    await loop.run_in_executor(None, operator.upload_instances, [dataset])
+                    status = 200
+
+                    message = "Upload erfolgreich"
+                except:
+                    status = 500
+                    message = "Upload fehlgeschlagen"
+
+            else:
+                status = 400
+                message = "keine NodeID erhalten "
+
+        else:
+            status = 400
+            message = "keine Daten enthalten"
+
+    response = HttpResponse(status=status, content=message)
+
+    response["statusText"] = response.reason_phrase
+
+    return response

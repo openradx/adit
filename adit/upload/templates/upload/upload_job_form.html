@@ -19,40 +19,59 @@
         https://github.com/bigskysoftware/htmx/issues/1337
      -->
     <div x-data="uploadJobForm($el)">
-        <form hx-ext="alpine-morph"
-              method="post"
-              action=""
-              {% comment %}
-              Hier
-              muss
-              die
-              url
-              der
-              neuen
-              async
-              view
-              rein
-              {% endcomment %}
-              novalidate
-              {% crispy form %}>
-            <button type="submit"
-                    class="btn btn-primary"
-                    name="action"
-                    value="transfer"
-                    @click.prevent="query4Folder()">
-                <span>Search Folder</span>
-            </button>
-            <input id="fileselector"
-                   type="file"
-                   class="btn btn-primary"
-                   @onchange="chooseFolder()"
-                   webkitdirectory
-                   directory
-                   multiple="true">
-            Choose a directory</>
-            <button class="btn btn-primary"  @click="chooseFolder()">Browse Folder</button>
+        <form hx-ext="alpine-morph" method="post" enctype="multipart/form-data">
+            {% crispy form %}
         </form>
+        <input id="fileselector"
+               type="file"
+               class="btn btn-primary"
+               @change="toggleUploadButtonVisibility()"
+               accept=".dcm,.DCM"
+               webkitdirectory
+               mozdirectory>
+        Choose a directory
+    </input>
+    <div id="dropZone"
+         x-on:drop="isDropping = false"
+         x-on:drop.prevent="handleDrop(event)"
+         x-on:dragover.prevent="isDropping = true"
+         x-on:dragleave.prevent="isDropping = false"
+         x-on:change="toggleUploadButtonVisibility()"
+         class="relative"
+         {% comment %}
+         x-show="isDragNDropVisible = true"
+         {% endcomment %}
+         style="min-height: 200px;
+                border: 2px dashed #ccc;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                margin-bottom: 20px;
+                margin-top: 20px">
+        <div x-show="isDropping" class="absolute inset-0 bg-gray-200 opacity-75"></div>
+        <span class="text-lg">Drop files here</span>
     </div>
+    <div>
+        <p id="fileCountText"
+           x-cloack
+           x-show="fileCount>0"
+           x-text="`${fileCount} Files selected`"></p>
+    </div>
+    <div>
+        <button id="uploadButton"
+                type="submit"
+                class="btn btn-primary"
+                x-cloack
+                x-show="buttonVisible"
+                @click="chooseFolder()">Upload Files</button>
+        <button id="clearButton"
+                type="submit"
+                class="btn btn-primary"
+                x-cloack
+                x-show="buttonVisible"
+                @click="clearFiles()">Clear Files</button>
+    </div>
+</div>
 {% endblock content %}
 {% block bottom %}
 {% endblock bottom %}

@@ -1,6 +1,6 @@
 from django.urls import path
 
-from .views import UploadAPIView, UploadJobCreateView, UploadUpdatePreferencesView
+from .views import UploadJobCreateView, UploadUpdatePreferencesView, uploadAPIView
 
 urlpatterns = [
     path(
@@ -12,5 +12,5 @@ urlpatterns = [
         UploadJobCreateView.as_view(),
         name="upload_job_create",
     ),
-    path("data-upload/", UploadAPIView.as_view(), name="data_upload"),
+    path("data-upload/<str:node_id>/", view=uploadAPIView, name="data_upload"),
 ]
