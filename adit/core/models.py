@@ -9,8 +9,10 @@ from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.db.models.constraints import UniqueConstraint
 from django.db.models.query import QuerySet
+from django.utils import timezone
 
 from adit.accounts.models import User
+from adit.core.utils.mail import send_job_finished_mail
 
 from .validators import (
     no_backslash_char_validator,
@@ -249,6 +251,61 @@ class DicomJob(models.Model):
             start=None,
             end=None,
         )
+
+    def post_process(self) -> bool:
+        """Evaluates all the tasks of a dicom job and sets the job state accordingly.
+
+        Returns: True if the job is finished, False otherwise
+        """
+
+        if self.tasks.filter(status=DicomTask.Status.PENDING).exists():
+            if self.status != DicomJob.Status.CANCELING:
+                self.status = DicomJob.Status.PENDING
+                self.save()
+            return False
+
+        if self.tasks.filter(status=DicomTask.Status.IN_PROGRESS).exists():
+            if self.status != DicomJob.Status.CANCELING:
+                self.status = DicomJob.Status.IN_PROGRESS
+                self.save()
+            return False
+
+        if self.status == DicomJob.Status.CANCELING:
+            self.status = DicomJob.Status.CANCELED
+            self.save()
+            return False
+
+        # Job is finished and we evaluate its final status
+        has_success = self.tasks.filter(status=DicomTask.Status.SUCCESS).exists()
+        has_warning = self.tasks.filter(status=DicomTask.Status.WARNING).exists()
+        has_failure = self.tasks.filter(status=DicomTask.Status.FAILURE).exists()
+
+        if has_success and not has_warning and not has_failure:
+            self.status = DicomJob.Status.SUCCESS
+            self.message = "All tasks succeeded."
+        elif has_success and has_failure or has_warning and has_failure:
+            self.status = DicomJob.Status.FAILURE
+            self.message = "Some tasks failed."
+        elif has_success and has_warning:
+            self.status = DicomJob.Status.WARNING
+            self.message = "Some tasks have warnings."
+        elif has_warning:
+            self.status = DicomJob.Status.WARNING
+            self.message = "All tasks have warnings."
+        elif has_failure:
+            self.status = DicomJob.Status.FAILURE
+            self.message = "All tasks failed."
+        else:
+            # at least one of success, warnings or failures must be > 0
+            raise AssertionError(f"Invalid task status list of {self}.")
+
+        self.end = timezone.now()
+        self.save()
+
+        if self.send_finished_mail:
+            send_job_finished_mail(self)
+
+        return True
 
     @property
     def is_deletable(self) -> bool:

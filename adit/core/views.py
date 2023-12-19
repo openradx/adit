@@ -33,7 +33,7 @@ from .models import CoreSettings, DicomJob, DicomTask, QueuedTask
 from .site import job_stats_collectors
 from .tasks import broadcast_mail
 from .types import AuthenticatedHttpRequest, HtmxHttpRequest
-from .utils.job_utils import queue_pending_task, queue_pending_tasks, update_job_status
+from .utils.job_utils import queue_pending_task, queue_pending_tasks
 
 THEME = "theme"
 
@@ -294,7 +294,7 @@ class DicomJobCancelView(LoginRequiredMixin, SingleObjectMixin, View):
         dicom_tasks.update(status=DicomTask.Status.CANCELED)
 
         # If there is a task in progress then the job will be set to canceling and will be set
-        # to canceled when the processing of the task is finished (see update_job_status).
+        # to canceled when the processing of the task is finished.
         tasks_in_progress_count = job.tasks.filter(status=DicomTask.Status.IN_PROGRESS).count()
         if tasks_in_progress_count > 0:
             job.status = DicomJob.Status.CANCELING
@@ -442,7 +442,7 @@ class DicomTaskDeleteView(LoginRequiredMixin, DeleteView):
         success_message = self.success_message % task.__dict__
 
         task.delete()
-        update_job_status(task.job)
+        task.job.post_process()
 
         messages.success(self.request, success_message)
         return redirect(task.job)
@@ -478,7 +478,7 @@ class DicomTaskResetView(LoginRequiredMixin, SingleObjectMixin, View):
 
         queue_pending_task(task, self.default_priority, self.urgent_priority)
 
-        update_job_status(task.job)
+        task.job.post_process()
 
         messages.success(request, self.success_message % task.__dict__)
         return redirect(task)

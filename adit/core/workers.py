@@ -20,8 +20,6 @@ from adit.core.processors import DicomTaskProcessor
 from adit.core.site import dicom_processors
 from adit.core.types import ProcessingResult
 from adit.core.utils.db_utils import ensure_db_connection
-from adit.core.utils.job_utils import update_job_status
-from adit.core.utils.mail import send_job_finished_mail
 
 from .utils.worker_utils import in_time_slot
 
@@ -172,13 +170,10 @@ class DicomWorker:
 
             with self._redis.lock(DISTRIBUTED_LOCK):
                 dicom_job.refresh_from_db()
-                job_finished = update_job_status(dicom_job)
+                job_finished = dicom_job.post_process()
 
             if job_finished:
                 logger.info(f"Processing of {dicom_job} ended.")
-
-                if dicom_job.send_finished_mail:
-                    send_job_finished_mail(dicom_job)
 
             # Unlock the queued task. The queued task may also be already deleted
             # when everything worked well.
