@@ -2,7 +2,6 @@
 
 ## Top
 
-- Move executor functionality to processors
 - Add permissions to dicom_web views (see TODOs there)
 - use get in PageSizeSelectMixin (see RADIS)
 - Update documentation

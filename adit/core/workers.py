@@ -224,15 +224,14 @@ class DicomWorker:
         dicom_task = cast(DicomTask, queued_task.content_object)
         processor = self._get_processor(dicom_task)
 
-        logger.info(f"Processing {dicom_task} started.")
-
-        return processor.process_dicom_task(dicom_task)
+        logger.info(f"Start processing of {dicom_task}.")
+        return processor.process()
 
     def _get_processor(self, dicom_task: DicomTask) -> DicomTaskProcessor:
         model_label = f"{dicom_task._meta.app_label}.{dicom_task._meta.model_name}"
         Processor = dicom_processors[model_label]
         assert Processor is not None
-        return Processor()
+        return Processor(dicom_task)
 
     @concurrent.thread
     def _monitor_task(self, queued_task_id: int, process_future: ProcessFuture) -> None:

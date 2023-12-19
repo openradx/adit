@@ -8,6 +8,9 @@ class ExampleAppSettings(AppSettings):
 
 
 class ExampleTransferJob(TransferJob):
+    default_priority = 5
+    urgent_priority = 10
+
     def get_absolute_url(self):
         return "/"
 

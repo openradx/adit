@@ -1,15 +1,14 @@
-from adit.core.processors import DicomTaskProcessor
-from adit.core.types import ProcessingResult
-from adit.core.utils.transfer_utils import TransferExecutor
+from adit.core.models import DicomTask
+from adit.core.processors import TransferTaskProcessor
 
 from .models import BatchTransferSettings, BatchTransferTask
 
 
-class BatchTransferTaskProcessor(DicomTaskProcessor):
+class BatchTransferTaskProcessor(TransferTaskProcessor):
     app_name = "Batch Transfer"
     dicom_task_class = BatchTransferTask
     app_settings_class = BatchTransferSettings
 
-    def process_dicom_task(self, dicom_task) -> ProcessingResult:
+    def __init__(self, dicom_task: DicomTask) -> None:
         assert isinstance(dicom_task, BatchTransferTask)
-        return TransferExecutor(dicom_task).start()
+        super().__init__(dicom_task)

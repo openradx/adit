@@ -42,7 +42,7 @@ def test_worker_with_task_that_succeeds(mocker: MockerFixture, dicom_worker: Dic
     )
     queued_task = QueuedTask.objects.create(content_object=dicom_task, priority=5)
 
-    def process_dicom_task(self, dicom_task):
+    def process(self):
         assert QueuedTask.objects.get(pk=queued_task.pk).locked
         return {
             "status": DicomTask.Status.SUCCESS,
@@ -50,7 +50,7 @@ def test_worker_with_task_that_succeeds(mocker: MockerFixture, dicom_worker: Dic
             "log": "",
         }
 
-    mocker.patch.object(ExampleProcessor, "process_dicom_task", process_dicom_task)
+    mocker.patch.object(ExampleProcessor, "process", process)
 
     dicom_worker.check_and_process_next_task()
 
@@ -75,7 +75,7 @@ def test_worker_with_task_that_fails(mocker: MockerFixture, dicom_worker: DicomW
     )
     queued_task = QueuedTask.objects.create(content_object=dicom_task, priority=5)
 
-    def process_dicom_task(self, dicom_task):
+    def process(self):
         assert QueuedTask.objects.get(pk=queued_task.pk).locked
         return {
             "status": DicomTask.Status.FAILURE,
@@ -83,7 +83,7 @@ def test_worker_with_task_that_fails(mocker: MockerFixture, dicom_worker: DicomW
             "log": "",
         }
 
-    mocker.patch.object(ExampleProcessor, "process_dicom_task", process_dicom_task)
+    mocker.patch.object(ExampleProcessor, "process", process)
 
     dicom_worker.check_and_process_next_task()
 
@@ -110,11 +110,11 @@ def test_worker_with_task_that_raises_retriable_error(
     )
     queued_task = QueuedTask.objects.create(content_object=dicom_task, priority=5)
 
-    def process_dicom_task(self, dicom_task):
+    def process(self):
         assert QueuedTask.objects.get(pk=queued_task.pk).locked
         raise RetriableDicomError("Retriable error!")
 
-    mocker.patch.object(ExampleProcessor, "process_dicom_task", process_dicom_task)
+    mocker.patch.object(ExampleProcessor, "process", process)
 
     dicom_worker.check_and_process_next_task()
 
@@ -142,11 +142,11 @@ def test_worker_with_task_that_raises_non_retriable_error(
     )
     queued_task = QueuedTask.objects.create(content_object=dicom_task, priority=5)
 
-    def process_dicom_task(self, dicom_task):
+    def process(self):
         assert QueuedTask.objects.get(pk=queued_task.pk).locked
         raise Exception("Unexpected error!")
 
-    mocker.patch.object(ExampleProcessor, "process_dicom_task", process_dicom_task)
+    mocker.patch.object(ExampleProcessor, "process", process)
 
     dicom_worker.check_and_process_next_task()
 
@@ -211,7 +211,7 @@ def test_worker_kills_task(mocker: MockerFixture, dicom_worker: DicomWorker):
     )
     queued_task = QueuedTask.objects.create(content_object=dicom_task, priority=5)
 
-    def process_dicom_task(self, dicom_task):
+    def process(self):
         killed = False
         while True:
             sleep(1)
@@ -220,7 +220,7 @@ def test_worker_kills_task(mocker: MockerFixture, dicom_worker: DicomWorker):
                 task.kill = True
                 task.save()
 
-    mocker.patch.object(ExampleProcessor, "process_dicom_task", process_dicom_task)
+    mocker.patch.object(ExampleProcessor, "process", process)
 
     dicom_worker.check_and_process_next_task()
 

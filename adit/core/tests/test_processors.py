@@ -5,16 +5,16 @@ from pytest_mock import MockerFixture
 
 from adit.accounts.factories import UserFactory
 
-from ...factories import (
+from ..factories import (
     DicomFolderFactory,
     DicomServerFactory,
 )
-from ...models import TransferJob, TransferTask
-from ...utils.auth_utils import add_user_to_group, grant_access
-from ...utils.dicom_dataset import ResultDataset
-from ...utils.dicom_operator import DicomOperator
-from ...utils.transfer_utils import TransferExecutor
-from ..example_app.factories import ExampleTransferJobFactory, ExampleTransferTaskFactory
+from ..models import TransferJob, TransferTask
+from ..processors import TransferTaskProcessor
+from ..utils.auth_utils import add_user_to_group, grant_access
+from ..utils.dicom_dataset import ResultDataset
+from ..utils.dicom_operator import DicomOperator
+from .example_app.factories import ExampleTransferJobFactory, ExampleTransferTaskFactory
 
 
 @pytest.fixture
@@ -69,12 +69,12 @@ def test_transfer_to_server_succeeds(
     source_operator_mock.find_studies.return_value = iter([study])
     dest_operator_mock = mocker.create_autospec(DicomOperator)
 
-    executor = TransferExecutor(task)
-    mocker.patch.object(executor, "source_operator", source_operator_mock)
-    mocker.patch.object(executor, "dest_operator", dest_operator_mock)
+    processor = TransferTaskProcessor(task)
+    mocker.patch.object(processor, "source_operator", source_operator_mock)
+    mocker.patch.object(processor, "dest_operator", dest_operator_mock)
 
     # Act
-    result = executor.start()
+    result = processor.process()
 
     # Assert
     source_operator_mock.download_study.assert_called_with(
@@ -125,13 +125,13 @@ def test_transfer_to_folder_succeeds(
     source_operator_mock.find_patients.return_value = iter([patient])
     source_operator_mock.find_studies.return_value = iter([study])
 
-    executor = TransferExecutor(task)
-    mocker.patch.object(executor, "source_operator", source_operator_mock)
+    processor = TransferTaskProcessor(task)
+    mocker.patch.object(processor, "source_operator", source_operator_mock)
 
-    mocker.patch("adit.core.utils.transfer_utils.os.mkdir", autospec=True)
+    mocker.patch("adit.core.processors.os.mkdir", autospec=True)
 
     # Act
-    result = executor.start()
+    result = processor.process()
 
     # Assert
     download_path = source_operator_mock.download_study.call_args.kwargs["dest_folder"]
@@ -175,15 +175,15 @@ def test_transfer_to_archive_succeeds(
     source_operator_mock.find_patients.return_value = iter([patient])
     source_operator_mock.find_studies.return_value = iter([study])
 
-    executor = TransferExecutor(task)
-    mocker.patch.object(executor, "source_operator", source_operator_mock)
+    processor = TransferTaskProcessor(task)
+    mocker.patch.object(processor, "source_operator", source_operator_mock)
 
     Popen_mock = mocker.patch("subprocess.Popen")
     Popen_mock.return_value.returncode = 0
     Popen_mock.return_value.communicate.return_value = ("", "")
 
     # Act
-    result = executor.start()
+    result = processor.process()
 
     # Assert
     source_operator_mock.find_patients.assert_called_once()
