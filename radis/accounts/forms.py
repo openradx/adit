@@ -2,8 +2,9 @@ from typing import Any
 
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Submit
+from django import forms
+from django.contrib.admin.widgets import FilteredSelectMultiple
 from django.contrib.auth.forms import UserCreationForm
-from django.forms import ValidationError
 
 from .models import User
 
@@ -40,6 +41,32 @@ class RegistrationForm(UserCreationForm):
         # at the form level.
         email: str = self.cleaned_data["email"]
         if User.objects.filter(email=email).exists():
-            raise ValidationError("An account with this Email address is already registered.")
+            raise forms.ValidationError("An account with this Email address is already registered.")
 
         return email
+
+
+class GroupAdminForm(forms.ModelForm):
+    """
+    ModelForm that adds an additional multiple select field for managing
+    the users in the group.
+    """
+
+    users = forms.ModelMultipleChoiceField(
+        User.objects.all(),
+        widget=FilteredSelectMultiple("Users", False),
+        required=False,
+    )
+
+    def __init__(self, *args, **kwargs):
+        super(GroupAdminForm, self).__init__(*args, **kwargs)
+        if self.instance.pk:
+            initial_users = self.instance.user_set.values_list("pk", flat=True)
+            self.initial["users"] = initial_users
+
+    def save(self, *args, **kwargs):
+        kwargs["commit"] = True
+        return super(GroupAdminForm, self).save(*args, **kwargs)
+
+    def save_m2m(self):
+        self.instance.user_set.set(self.cleaned_data["users"])
