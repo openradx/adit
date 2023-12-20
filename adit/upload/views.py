@@ -19,6 +19,7 @@ from adit.core.decorators import login_required_async, permission_required_async
 from adit.core.models import DicomNode, DicomServer
 from adit.core.types import AuthenticatedRequest
 from adit.core.utils.dicom_operator import DicomOperator
+from adit.core.utils.dicom_utils import read_dataset
 from adit.core.views import (
     BaseUpdatePreferencesView,
     DicomJobCreateView,
@@ -81,14 +82,14 @@ async def uploadAPIView(request, node_id: str) -> HttpResponse:
         if "dataset" in data:
             dataset_bytes = data["dataset"].read()
             dataset_bytes = BytesIO(dataset_bytes)
-            dataset = pydicom.dcmread(dataset_bytes, force=True)
+            dataset = read_dataset(dataset_bytes)
 
             if "node_id" in data:
                 selected_id = int(node_id)
                 destination_node = await sync_to_async(
                     lambda: DicomServer.objects.get(id=selected_id)
                 )()
-
+            
                 operator = DicomOperator(destination_node)
 
                 try:
