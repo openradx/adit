@@ -1,9 +1,10 @@
 from typing import TYPE_CHECKING
 
+from django.contrib.auth.models import Group
 from django.contrib.postgres.fields import ArrayField
 from django.db import models
 
-from radis.accounts.models import Institute, User
+from radis.accounts.models import User
 from radis.core.models import AppSettings
 from radis.core.validators import (
     no_backslash_char_validator,
@@ -26,8 +27,8 @@ class ReportsAppSettings(AppSettings):
 class Report(models.Model):
     id: int
     document_id = models.CharField(max_length=128, unique=True)
-    institutes = models.ManyToManyField(
-        Institute,
+    groups = models.ManyToManyField(
+        Group,
         related_name="reports",
     )
     pacs_aet = models.CharField(max_length=16)

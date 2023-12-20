@@ -3,7 +3,7 @@ from django.contrib.auth.admin import GroupAdmin, UserAdmin
 from django.contrib.auth.models import Group
 
 from .forms import GroupAdminForm
-from .models import Institute, User
+from .models import User
 
 
 class MyUserAdmin(UserAdmin):
@@ -28,12 +28,3 @@ class MyGroupAdmin(GroupAdmin):
 
 admin.site.unregister(Group)
 admin.site.register(Group, MyGroupAdmin)
-
-
-class InstituteAdmin(admin.ModelAdmin):
-    list_display = ("name", "description")
-    ordering = ("name",)
-    filter_horizontal = ("users",)
-
-
-admin.site.register(Institute, InstituteAdmin)

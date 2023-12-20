@@ -23,7 +23,7 @@ def _create_report_schema():
         document=Document(
             fields=[
                 Field(
-                    name="institutes",
+                    name="groups",
                     type="array<int>",
                     indexing=["attribute"],
                 ),

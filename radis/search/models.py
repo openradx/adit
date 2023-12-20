@@ -24,7 +24,7 @@ class SearchAppSettings(AppSettings):
 @dataclass(kw_only=True)
 class ReportDocument:
     document_id: str
-    institutes: list[int]
+    groups: list[int]
     pacs_aet: str
     pacs_name: str
     patient_birth_date: date
@@ -41,7 +41,7 @@ class ReportDocument:
 
         return ReportDocument(
             document_id=report.document_id,
-            institutes=[institute.id for institute in report.institutes.all()],
+            groups=[group.id for group in report.groups.all()],
             pacs_aet=report.pacs_aet,
             pacs_name=report.pacs_name,
             patient_birth_date=report.patient_birth_date,

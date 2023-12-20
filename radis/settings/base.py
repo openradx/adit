@@ -84,6 +84,7 @@ MIDDLEWARE = [
     "django_htmx.middleware.HtmxMiddleware",
     "radis.core.middlewares.MaintenanceMiddleware",
     "radis.core.middlewares.TimezoneMiddleware",
+    "radis.accounts.middlewares.ActiveGroupMiddleware",
 ]
 
 ROOT_URLCONF = "radis.urls"
@@ -115,6 +116,9 @@ DATABASES = {"default": env.db(default="sqlite:///radis-sqlite.db")}  # type: ig
 # Django 3.2 switched to BigAutoField for primary keys. It must be set explicitly
 # and requires a migration.
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+# A custom authentication backend that supports a single currently active group.
+AUTHENTICATION_BACKENDS = ["radis.accounts.backends.ActiveGroupModelBackend"]
 
 # Password validation
 # https://docs.djangoproject.com/en/3.0/ref/settings/#auth-password-validators

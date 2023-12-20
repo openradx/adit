@@ -5,6 +5,15 @@
         <span class="me-2">Welcome to RADIS</span>
         {% include "core/images/radis_logo.svg" %}
     </h1>
+    <p>
+        Active Group:
+        {% if not user.active_group %}
+            —
+        {% else %}
+            {{ user.active_group.name }}
+        {% endif %}
+        <small class="ms-1">[<a href="{% url 'profile' %}">Change in user profile</a>]</small>
+    </p>
 {% endblock heading %}
 {% block content %}
     {{ announcement|safe }}

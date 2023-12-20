@@ -3,13 +3,13 @@ from os import environ
 from pathlib import Path
 
 from django.conf import settings
-from django.contrib.auth.models import Permission
+from django.contrib.auth.models import Group, Permission
 from django.core.management import call_command
 from django.core.management.base import BaseCommand, CommandParser
 from faker import Faker
 
-from radis.accounts.factories import AdminUserFactory, InstituteFactory, UserFactory
-from radis.accounts.models import Institute, User
+from radis.accounts.factories import AdminUserFactory, GroupFactory, UserFactory
+from radis.accounts.models import User
 from radis.reports.factories import ReportFactory
 from radis.search.models import ReportDocument
 from radis.search.vespa_app import vespa_app
@@ -18,7 +18,7 @@ from radis.token_authentication.models import FRACTION_LENGTH
 from radis.token_authentication.utils.crypto import hash_token
 
 USER_COUNT = 20
-INSTITUTE_COUNT = 3
+GROUP_COUNT = 3
 ADMIN_AUTH_TOKEN = "f2e7412ca332a85e37f3fce88c6a1904fe35ad63"
 PACS_ITEMS = [
     {"pacs_aet": "gepacs", "pacs_name": "GE PACS"},
@@ -32,8 +32,8 @@ fake = Faker()
 
 def feed_report(body: str):
     report = ReportFactory.create(body=body)
-    institutes = fake.random_elements(elements=list(Institute.objects.all()), unique=True)
-    report.institutes.set(institutes)
+    groups = fake.random_elements(elements=list(Group.objects.all()), unique=True)
+    report.groups.set(groups)
     ReportDocument.from_report_model(report).create()
 
 
@@ -88,18 +88,20 @@ def create_users() -> list[User]:
     return users
 
 
-def create_institutes(users: list[User]) -> list[Institute]:
-    institutes: list[Institute] = []
+def create_groups(users: list[User]) -> list[Group]:
+    groups: list[Group] = []
 
-    for _ in range(INSTITUTE_COUNT):
-        institute = InstituteFactory.create()
-        institutes.append(institute)
+    for _ in range(GROUP_COUNT):
+        group = GroupFactory.create()
+        groups.append(group)
 
     for user in users:
-        institute: Institute = fake.random_element(elements=institutes)
-        institute.users.add(user)
+        group: Group = fake.random_element(elements=groups)
+        user.groups.add(group)
+        if not user.active_group:
+            user.change_active_group(group)
 
-    return institutes
+    return groups
 
 
 class Command(BaseCommand):
@@ -120,7 +122,7 @@ class Command(BaseCommand):
         else:
             print("Populating development database with test data.")
             users = create_users()
-            create_institutes(users)
+            create_groups(users)
 
         results = vespa_app.get_client().query(
             {"yql": "select * from sources * where true", "hits": 1}
