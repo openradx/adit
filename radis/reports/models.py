@@ -13,7 +13,7 @@ from radis.core.validators import (
 )
 
 if TYPE_CHECKING:
-    from django_stubs_ext.db.models import manager
+    from django.db.models import manager
 
     from radis.collections.models import Collection
 

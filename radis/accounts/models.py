@@ -6,7 +6,7 @@ from django.core.exceptions import ObjectDoesNotExist
 from django.db import models
 
 if TYPE_CHECKING:
-    from django_stubs_ext.db.models import manager
+    from django.db.models import manager
 
 
 class User(AbstractUser):

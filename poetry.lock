@@ -1169,42 +1169,6 @@ reference = "HEAD"
 resolved_reference = "5908f2e968a44f54d57491777680e51b4cb662a8"
 
 [[package]]
-name = "django-stubs"
-version = "4.2.7"
-description = "Mypy stubs for Django"
-optional = false
-python-versions = ">=3.8"
-files = [
-    {file = "django-stubs-4.2.7.tar.gz", hash = "sha256:8ccd2ff4ee5adf22b9e3b7b1a516d2e1c2191e9d94e672c35cc2bc3dd61e0f6b"},
-    {file = "django_stubs-4.2.7-py3-none-any.whl", hash = "sha256:4cf4de258fa71adc6f2799e983091b9d46cfc67c6eebc68fe111218c9a62b3b8"},
-]
-
-[package.dependencies]
-django = "*"
-django-stubs-ext = ">=4.2.7"
-types-pytz = "*"
-types-PyYAML = "*"
-typing-extensions = "*"
-
-[package.extras]
-compatible-mypy = ["mypy (>=1.7.0,<1.8.0)"]
-
-[[package]]
-name = "django-stubs-ext"
-version = "4.2.7"
-description = "Monkey-patching and extensions for django-stubs"
-optional = false
-python-versions = ">=3.8"
-files = [
-    {file = "django-stubs-ext-4.2.7.tar.gz", hash = "sha256:519342ac0849cda1559746c9a563f03ff99f636b0ebe7c14b75e816a00dfddc3"},
-    {file = "django_stubs_ext-4.2.7-py3-none-any.whl", hash = "sha256:45a5d102417a412e3606e3c358adb4744988a92b7b58ccf3fd64bddd5d04d14c"},
-]
-
-[package.dependencies]
-django = "*"
-typing-extensions = "*"
-
-[[package]]
 name = "django-tables2"
 version = "2.7.0"
 description = "Table/data-grid framework for Django"
@@ -1234,6 +1198,20 @@ files = [
 
 [package.dependencies]
 typing_extensions = ">=3.6,<5"
+
+[[package]]
+name = "django-types"
+version = "0.19.1"
+description = "Type stubs for Django"
+optional = false
+python-versions = ">=3.7,<4.0"
+files = [
+    {file = "django_types-0.19.1-py3-none-any.whl", hash = "sha256:b3f529de17f6374d41ca67232aa01330c531bbbaa3ac4097896f31ac33c96c30"},
+    {file = "django_types-0.19.1.tar.gz", hash = "sha256:5ae7988612cf6fbc357b018bbc3b3a878b65e04275cc46e0d35d66a708daff12"},
+]
+
+[package.dependencies]
+types-psycopg2 = ">=2.9.21.13"
 
 [[package]]
 name = "djangorestframework"
@@ -3958,25 +3936,14 @@ dev = ["pep8 (>=1.6.2)", "pyenchant (>=1.6.6)", "pytest (>=2.6.4)", "pytest-cov 
 twisted = ["twisted (>=20.3.0)", "zope.interface (>=5.2.0)"]
 
 [[package]]
-name = "types-pytz"
-version = "2023.3.1.1"
-description = "Typing stubs for pytz"
+name = "types-psycopg2"
+version = "2.9.21.20"
+description = "Typing stubs for psycopg2"
 optional = false
-python-versions = "*"
+python-versions = ">=3.7"
 files = [
-    {file = "types-pytz-2023.3.1.1.tar.gz", hash = "sha256:cc23d0192cd49c8f6bba44ee0c81e4586a8f30204970fc0894d209a6b08dab9a"},
-    {file = "types_pytz-2023.3.1.1-py3-none-any.whl", hash = "sha256:1999a123a3dc0e39a2ef6d19f3f8584211de9e6a77fe7a0259f04a524e90a5cf"},
-]
-
-[[package]]
-name = "types-pyyaml"
-version = "6.0.12.12"
-description = "Typing stubs for PyYAML"
-optional = false
-python-versions = "*"
-files = [
-    {file = "types-PyYAML-6.0.12.12.tar.gz", hash = "sha256:334373d392fde0fdf95af5c3f1661885fa10c52167b14593eb856289e1855062"},
-    {file = "types_PyYAML-6.0.12.12-py3-none-any.whl", hash = "sha256:c05bc6c158facb0676674b7f11fe3960db4f389718e19e62bd2b84d6205cfd24"},
+    {file = "types-psycopg2-2.9.21.20.tar.gz", hash = "sha256:73baea689575bf5bb1b915b783fb0524044c6242928aeef1ae5a9e32f0780d3d"},
+    {file = "types_psycopg2-2.9.21.20-py3-none-any.whl", hash = "sha256:5b1e2e1d9478f8a298ea7038f8ea988e0ccc1f0af39f84636d57ef0da6f29e95"},
 ]
 
 [[package]]
@@ -4355,4 +4322,4 @@ testing = ["coverage (>=5.0.3)", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "10174c3b06d56d8986b6c7d68b2c307f00ad8719d38cdee7e05f8f5360dbf009"
+content-hash = "48a2396e24a9dd6b14705cdffef9b8b298732891bacbfa36879b438c5506bf8d"
