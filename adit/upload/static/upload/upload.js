@@ -164,10 +164,10 @@ function uploadJobForm(formEl) {
       const patientNames = new Set();
 
       for (const set of datasets) {
-        // const dcm = dcmjs.data.DicomMessage.readFile(set);
-        // patientIDs.add(dcm.dict["00100020"].Value[0]);
-        // patientNames.add(dcm.dict["00100010"].Value[0]);
-        // patientBirthdates.add(dcm.dict["00100030"].Value[0]);
+        const dcm = dcmjs.data.DicomMessage.readFile(set);
+        patientIDs.add(dcm.dict["00100020"].Value[0]);
+        patientNames.add(dcm.dict["00100010"].Value[0]);
+        patientBirthdates.add(dcm.dict["00100030"].Value[0]);
       }
 
       console.log(patientIDs);
