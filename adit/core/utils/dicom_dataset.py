@@ -3,7 +3,7 @@ import logging
 from datetime import date, time
 from typing import Any, Iterable, Literal
 
-from pydicom import DataElement, Dataset, config, datadict
+from pydicom import DataElement, Dataset, datadict
 
 from .dicom_utils import (
     DateRange,
@@ -268,7 +268,7 @@ def _set_dataset_value(ds: Dataset, k: str, v: Any) -> None:
             datetime = convert_to_dicom_datetime(v)
             setattr(ds, k, datetime)
         else:
-            elem = DataElement(t, vr, v, validation_mode=config.RAISE)
+            elem = DataElement(t, vr, v)
             ds.add(elem)
     except ValueError as err:
         raise ValueError(f"Invalid value for DICOM tag '{k}' (VR {vr}): {v} ({str(err)})") from err
