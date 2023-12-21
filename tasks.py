@@ -452,8 +452,13 @@ def restore_db(ctx: Context, env: Environments = "prod"):
 
 
 @task
-def release(ctx: Context, rule: Literal["patch", "minor", "major"]):
-    """Release a new version of ADIT"""
+def bump_version(ctx: Context, rule: Literal["patch", "minor", "major"]):
+    """Bump version, create a tag, commit and push to GitHub"""
+    result = run_cmd(ctx, "git status --porcelain", silent=True)
+    if result.stdout.strip():
+        print("There are uncommitted changes. Aborting.")
+        sys.exit(1)
+
     run_cmd(ctx, f"poetry version {rule}")
     run_cmd(ctx, "git add pyproject.toml")
     run_cmd(ctx, "git commit -m 'Bump version'")
