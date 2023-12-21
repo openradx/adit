@@ -61,13 +61,14 @@ TModel = TypeVar("TModel", bound=models.Model)
 
 class DicomNodeManager(Generic[TModel], models.Manager[TModel]):
     def accessible_by_user(self, user: User, access_type: Literal["source", "destination"]):
-        # Also staff users can only use nodes that are assigned to an institute (but they
-        # must not be a member of that institute in contrast to normal users).
-        if user.is_staff:
-            accessible_nodes = self.all()
-        else:
-            accessible_nodes = self.filter(accesses__group__in=user.groups.all())
+        # Superusers can access all nodes
+        if user.is_superuser:
+            if access_type == "source":
+                # A source node can never be a folder
+                return self.filter(node_type=DicomNode.NodeType.SERVER)
+            return self.all()
 
+        accessible_nodes = self.filter(accesses__group__in=user.groups.all())
         if access_type == "source":
             accessible_nodes = accessible_nodes.filter(accesses__source=True)
         elif access_type == "destination":
