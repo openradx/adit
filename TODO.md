@@ -49,3 +49,4 @@
 - Correct help in populate_dev_db command
 - Delete reset_dev_db and add reset option to populate_dev_db
 - globals.d.ts
+- PageSizeSelectMixin improvements

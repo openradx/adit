@@ -35,22 +35,22 @@ caption {
   text-align: center;
 }
 
-.report-summary {
+.text-summary {
   white-space: normal;
 }
 
-.report-summary strong {
+.text-summary strong {
   font-weight: bold;
   font-style: italic;
   text-decoration: underline;
   text-underline-offset: 2px;
 }
 
-.report-text {
+.pre-line {
   white-space: pre-line;
 }
 
-.report-clamp {
+.clamp-3 {
   overflow: hidden;
   text-overflow: ellipsis;
   display: -webkit-box;

@@ -1,10 +1,11 @@
 {% load collections_count from reports_extras %}
 <div hx-get="{% url 'collection_count_badge' report.id %}"
      hx-trigger="collectionsOfReportChanged_{{ report.id }} from:body"
+     hx-swap="outerHTML"
      hx-target="this">
     {% collections_count report as count %}
     {% if count %}
-        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+        <span class="position-absolute top-0 start-100 z-1 translate-middle badge rounded-pill bg-danger">
             {{ count }}
             <span class="visually-hidden">Number of report collections</span>
         </span>

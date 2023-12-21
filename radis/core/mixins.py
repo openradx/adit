@@ -7,6 +7,8 @@ from django.views.generic import TemplateView
 from django_filters.filterset import FilterSet
 from django_filters.views import FilterMixin
 
+from radis.core.types import HtmxHttpRequest
+
 from .forms import PageSizeSelectForm
 from .models import AppSettings
 from .utils.auth_utils import is_logged_in_user
@@ -46,6 +48,15 @@ class LockedMixin:
                 extra_context={"section_name": self.section_name},
             )(request)
 
+        return super().dispatch(request, *args, **kwargs)
+
+
+class HtmxOnlyMixin:
+    def dispatch(
+        self: ViewProtocol, request: HtmxHttpRequest, *args: Any, **kwargs: Any
+    ) -> HttpResponse:
+        if not request.htmx:
+            raise SuspiciousOperation()
         return super().dispatch(request, *args, **kwargs)
 
 
@@ -114,10 +125,14 @@ class PageSizeSelectMixin:
     def get(
         self: PageSizeSelectMixinProtocol, request: HttpRequest, *args: Any, **kwargs: Any
     ) -> HttpResponse:
+        # Make the initial paginate_by attribute the default page size if set
+        if self.paginate_by is None:
+            self.paginate_by = 50
+
         try:
-            per_page = int(request.GET.get("per_page", 50))
+            per_page = int(request.GET.get("per_page", self.paginate_by))
         except ValueError:
-            per_page = 50
+            per_page = self.paginate_by
 
         per_page = min(per_page, 100)
         self.paginate_by = per_page  # used by MultipleObjectMixin
