@@ -449,3 +449,13 @@ def restore_db(ctx: Context, env: Environments = "prod"):
         f"{web_container_id} ./manage.py dbrestore"
     )
     run_cmd(ctx, cmd)
+
+
+@task
+def release(ctx: Context, rule: Literal["patch", "minor", "major"]):
+    """Release a new version of ADIT"""
+    run_cmd(ctx, f"poetry version {rule}")
+    run_cmd(ctx, "git add pyproject.toml")
+    run_cmd(ctx, "git commit -m 'Bump version'")
+    run_cmd(ctx, "git tag -a $(poetry version -s) -m 'Release $(poetry version -s)'")
+    run_cmd(ctx, "git push --follow-tags")
