@@ -218,7 +218,7 @@ class DicomWorker:
         return queued_task
 
     # Pebble allows us to set a timeout and terminates the process if it takes too long
-    @concurrent.process(timeout=10, daemon=True)
+    @concurrent.process(timeout=PROCESS_TIMEOUT, daemon=True)
     def _process_dicom_task(self, queued_task_id: int) -> ProcessingResult:
         queued_task = QueuedTask.objects.get(id=queued_task_id)
         dicom_task = cast(DicomTask, queued_task.content_object)
