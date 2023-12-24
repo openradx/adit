@@ -1,5 +1,5 @@
 {% load bootstrap_icon access_item from core_extras %}
-<div class="mt-1 d-flex justify-content-between">
+<div class="mt-2 d-flex justify-content-between">
     <div class="d-flex gap-2">
         <a href="{% url 'report_detail' report.id %}"
            class="btn btn-secondary btn-sm">
@@ -13,6 +13,7 @@
             Preview
         </button>
         {% include "collections/_collection_select_button.html" %}
+        {% include "notes/_note_edit_button.html" %}
     </div>
     {% include "reports/_references.html" %}
 </div>

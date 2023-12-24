@@ -1,0 +1,19 @@
+{% load crispy from crispy_forms_tags %}
+{% load bootstrap_icon from core_extras %}
+<div class="modal-content" data-dialog-static>
+    <div class="modal-header">
+        <h5 class="modal-title">Note</h5>
+    </div>
+    <div class="modal-body">
+        <form hx-post="{% url 'note_edit' report_id %}?reload_on_note_delete={{ reload_on_note_delete|yesno }}">
+            {% csrf_token %}
+            {{ form|crispy }}
+            <div class="d-flex justify-content-end">
+                <button type="submit" class="btn btn-sm btn-success">
+                    {% bootstrap_icon "floppy" %}
+                    Save
+                </button>
+            </div>
+        </form>
+    </div>
+</div>

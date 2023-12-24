@@ -1,0 +1,8 @@
+<div class="card mb-2">
+    <div class="card-body">
+        {% include "notes/_note_text.html" %}
+        <hr />
+        <div class="text-summuary clamp-3">{{ note.report.body }}</div>
+        {% include "reports/_report_buttons_panel.html" with report=note.report reload_on_note_delete=True %}
+    </div>
+</div>

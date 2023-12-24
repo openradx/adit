@@ -1,0 +1,14 @@
+{% extends "notes/notes_layout.html" %}
+{% load crispy from crispy_forms_tags %}
+{% block heading %}
+    <h4 class="mb-3">Notes</h4>
+{% endblock heading %}
+{% block content %}
+    <div class="mb-3">{% crispy filter.form %}</div>
+    {% for note in notes %}
+        {% include "notes/_note_list_item.html" %}
+    {% empty %}
+        No notes available
+    {% endfor %}
+    <div class="mt-3">{% include "core/_pagination.html" %}</div>
+{% endblock content %}

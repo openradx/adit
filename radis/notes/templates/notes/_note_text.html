@@ -1,0 +1,5 @@
+<div hx-get="{% url 'note_text' note.id %}"
+     hx-trigger="noteChanged_{{ note.report_id }} from:body"
+     hx-swap="outerHTML"
+     hx-target="this"
+     class="pre-line">{{ note.text }}</div>

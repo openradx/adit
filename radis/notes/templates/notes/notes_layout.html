@@ -1,0 +1,11 @@
+{% extends "core/core_layout.html" %}
+{% load static from static %}
+{% block css %}
+    <link rel="stylesheet"
+          type="text/css"
+          href="{% static 'notes/notes.css' %}" />
+{% endblock css %}
+{% block script %}
+    {{ block.super }}
+    <script src="{% static 'notes/notes.js' %}"></script>
+{% endblock script %}

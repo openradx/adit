@@ -1,0 +1,12 @@
+{% load note_available from notes_extras %}
+<div hx-get="{% url 'note_available_badge' report.id %}"
+     hx-trigger="noteChanged_{{ report.id }} from:body"
+     hx-swap="outerHTML"
+     hx-target="this">
+    {% note_available report as available %}
+    {% if available %}
+        <span class="position-absolute top-0 start-100 z-1 translate-middle badge p-2 border border-light rounded-circle bg-danger">
+            <span class="visually-hidden">Note available</span>
+        </span>
+    {% endif %}
+</div>

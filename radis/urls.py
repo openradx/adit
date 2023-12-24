@@ -28,6 +28,7 @@ urlpatterns = [
     path("reports/", include("radis.reports.urls")),
     path("search/", include("radis.search.urls")),
     path("collections/", include("radis.collections.urls")),
+    path("notes/", include("radis.notes.urls")),
 ]
 
 # Django loginas
