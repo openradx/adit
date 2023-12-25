@@ -629,6 +629,10 @@ class DicomOperator:
                         }
                     )
 
+            def read_and_handle_image(filename: str):
+                ds = read_dataset(filename)
+                self._handle_downloaded_image(ds, dest_folder, modifier)
+
             async def handle_received_file(filename: str, metadata: Metadata):
                 nonlocal last_image_at
                 last_image_at = time.time()
@@ -638,8 +642,7 @@ class DicomOperator:
                 try:
                     if image_uid in remaining_image_uids:
                         remaining_image_uids.remove(image_uid)
-                        ds = read_dataset(filename)
-                        self._handle_downloaded_image(ds, dest_folder, modifier)
+                        await asyncio.to_thread(read_and_handle_image, filename)
                 except Exception as err:
                     receiving_errors.append(err)
                 finally:
