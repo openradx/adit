@@ -24,22 +24,27 @@
 - Use django-stubs instead of django-types (already done on RADIS)
 - Exclude SR and PR when in pseudonymization mode
 - Cancel processing tasks actively
-  -- When cancelling a job we currenty wait for an already processing task to be completed before setting the job as canceled
-  -- Those tasks should get actively canceled by listening to an event or so
-  -- We already inherit out tasks from AbortableTask <https://docs.celeryq.dev/en/stable/reference/celery.contrib.abortable.html>
-  -- No we must pass the is_aborted() somehow down to the connectors
+  -- When cancelling a job we currently wait for an already processing task to be completed before setting the job as canceled
+  -- Those tasks should get actively killed, which is already implemented when killing the task from UI (staff only)
+  -- But maybe we can do it more gracefully by passing a is_aborted() somehow down to the connectors
   -- In DimseConnector we could check a provided is_cancelled function if the next series should be fetched (or even the association be aborted)
   -- in DicomWebConnector we chould also check such an function an close the Session <https://requests.readthedocs.io/en/latest/api/#requests.Session.close>. We can handle the Session manually when using DicomWebClient <https://dicomweb-client.readthedocs.io/en/latest/package.html#dicomweb_client.api.DICOMwebClient>
-- Move those list fields to ArrayField
 - Make registration Email unique and required. Also maybe check if an Email is of specific domains (optional).
   -- We must first delete those users with duplicate or non existing Emails
   -- Do this also for RADIS
 - Make sure temporary folder created in retrieve DICOM web API is cleaned up (see TODO in /home/adm-adit/workspace/adit/adit/dicom_web/views.py)
 - Look into how we can stream the file from disc (from the temp folder) with WADO (see <https://chat.openai.com/share/d5a2f27f-4854-4deb-85df-b7f574638ae3>)
 - Look into how we can improve STOW (do we have to upload one file at a time, can we stream it somehow)
-- Fix some stuff and use our fork then of DICOMwebClient
-  -- <https://github.com/ImagingDataCommons/dicomweb-client/issues/88>
-  -- <https://github.com/ImagingDataCommons/dicomweb-client/issues/89>
+- DICOMwebClient currently does not support to access warnings when transferring images
+  -- See <https://github.com/ImagingDataCommons/dicomweb-client/issues/94>
+  -- That way we can't show warnings when some images of study to transfer could not be received (Partial Response with HTTP status code 206)
+  -- Maybe we can fix some stuff and get the PR accepted or use an own fork
+  --- See also <https://github.com/ImagingDataCommons/dicomweb-client/issues/88>
+- Directly stream images from the connectors through the operators
+  -- Currently we download them to a folder first
+  -- This is ok for selective and batch transfer, but not really ok for our API calls to retrieve images
+  -- Also the DicomWebConnector seems to support this through iter\_ interface, see <https://github.com/ImagingDataCommons/dicomweb-client/issues/88>
+  -- For DimseConnector this is already partly implemented by using generators (see `yield` there)
 - Remove files in test folders from autoreload
 - Selective transfer choose series
 - Locked info for other apps like batch_transfer_locked.html
