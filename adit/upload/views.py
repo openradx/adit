@@ -90,7 +90,6 @@ async def uploadAPIView(request, node_id: str) -> HttpResponse:
 
         if "dataset" in data:
             dataset_bytes = data["dataset"].read()
-
             dataset_bytes = BytesIO(dataset_bytes)
             dataset = read_dataset(dataset_bytes)
 
@@ -99,15 +98,12 @@ async def uploadAPIView(request, node_id: str) -> HttpResponse:
                 destination_node = await sync_to_async(
                     lambda: DicomServer.objects.get(id=selected_id)
                 )()
-
                 operator = DicomOperator(destination_node)
 
                 try:
                     loop = asyncio.get_event_loop()
                     await loop.run_in_executor(None, operator.upload_instances, [dataset])
-
                     status = 200
-
                     message = "Upload erfolgreich"
 
                 except error:

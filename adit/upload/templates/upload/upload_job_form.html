@@ -58,12 +58,14 @@
         <button id="uploadButton"
                 type="submit"
                 class="btn btn-primary"
+                type="submit"
                 x-cloack
                 x-show="buttonVisible"
                 @click="chooseFolder()">Upload Files</button>
         <button id="clearButton"
                 type="submit"
                 class="btn btn-primary"
+                type="submit"
                 x-cloack
                 x-show="buttonVisible"
                 @click="clearFiles()">Clear Files</button>
@@ -78,7 +80,7 @@
         <p id="uploadCompleteText"
            x-cloack
            x-show="false"
-           x-text="`Upload Complete`"></p>
+           x-text="`${uploadResultText}`"></p>
     </div>
 </div>
 {% endblock content %}

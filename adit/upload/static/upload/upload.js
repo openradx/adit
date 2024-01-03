@@ -15,6 +15,7 @@ function uploadJobForm(formEl) {
     buttonVisible: Boolean,
     fileCount: 0,
     droppedFiles: Object,
+    uploadResultText: String,
 
     getFiles: function () {
       var inputElement = document.getElementById("fileselector");
@@ -95,11 +96,11 @@ function uploadJobForm(formEl) {
         for (const fileEntry of files) {
           await this.fileHandler(fileEntry, datasets);
         }
+        let status = 0;
+        let loadedFiles = 0;
+        if (this.checkPatientIDs(datasets)) {
+          // if (true) {
 
-        // if (this.checkPatientIDs(datasets)) {
-        if (true) {
-          let status = 0;
-          let loadedFiles = 0;
           for (const set of datasets) {
             console.log("toBEUploaded:", set);
             status = await uploadData({
@@ -115,17 +116,27 @@ function uploadJobForm(formEl) {
                 total: datasets.length,
               });
             } else {
+              this.uploadResultText = "Upload Failed";
+              htmx.trigger("#pb", "hideprogress");
+              htmx.trigger("#uploadCompleteText", "showUploadText");
               console.log("Upload Failed");
+              break;
             }
+          }
+          if (loadedFiles == datasets.length) {
+            this.uploadResultText = "Upload Successful!";
+            setTimeout(function () {
+              htmx.trigger("#pb", "hideprogress");
+              htmx.trigger("#uploadCompleteText", "showUploadText");
+            }, 3000); // Wait for 3 seconds (3000 milliseconds)
           }
         } else {
           console.log("Not same PatientIDs");
-        }
-        console.log("upload complete");
-        setTimeout(function () {
+          this.uploadResultText = "Upload Failed";
           htmx.trigger("#pb", "hideprogress");
           htmx.trigger("#uploadCompleteText", "showUploadText");
-        }, 3000); // Wait for 3 seconds (3000 milliseconds)
+        }
+        console.log("upload complete");
       }
     },
 
