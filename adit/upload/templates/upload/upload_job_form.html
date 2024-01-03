@@ -38,9 +38,6 @@
          x-on:dragleave.prevent="isDropping = false"
          x-on:change="toggleUploadButtonVisibility()"
          class="relative"
-         {% comment %}
-         x-show="isDragNDropVisible = true"
-         {% endcomment %}
          style="min-height: 200px;
                 border: 2px dashed #ccc;
                 display: flex;
@@ -72,7 +69,16 @@
                 @click="clearFiles()">Clear Files</button>
     </div>
     <div>
-        <progress id="pb" value="0" max="100" style="width:100%;%" x-show="false"></progress>
+        <progress id="pb"
+                  value="0"
+                  max="100"
+                  style="width:100%"
+                  x-cloack
+                  x-show="false"></progress>
+        <p id="uploadCompleteText"
+           x-cloack
+           x-show="false"
+           x-text="`Upload Complete`"></p>
     </div>
 </div>
 {% endblock content %}

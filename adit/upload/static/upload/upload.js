@@ -39,7 +39,7 @@ function uploadJobForm(formEl) {
       const files = this.getFiles();
       this.buttonVisible = files.length > 0;
       this.fileCount = files.length;
-      htmx.trigger("#pb", "resetprogress", {});
+      htmx.trigger("#uploadCompleteText", "hideUploadText");
     },
     clearFiles: function () {
       var inputEl = document.getElementById("fileselector");

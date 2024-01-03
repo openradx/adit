@@ -38,4 +38,3 @@ class UploadJob(TransferJob):
 
 class UploadTask(TransferTask):
     job = models.ForeignKey(UploadJob, on_delete=models.CASCADE, related_name="tasks")
-    

@@ -99,7 +99,6 @@ ready(function () {
   });
   htmx.on("#uploadCompleteText", "hideUploadText", function () {
     htmx.find("#uploadCompleteText").setAttribute("x-show", false);
-    console.log("Hide the Text");
   });
   htmx.on("#uploadCompleteText", "showUploadText", function () {
     htmx.find("#uploadCompleteText").setAttribute("x-show", true);

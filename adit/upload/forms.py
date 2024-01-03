@@ -2,9 +2,7 @@ from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Column, Div, Field, Layout, Row
 from django import forms
 
-
 from adit.core.fields import DicomNodeChoiceField
-
 from adit.core.validators import no_backslash_char_validator, no_control_chars_validator
 
 from .models import UploadJob

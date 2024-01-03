@@ -1,21 +1,20 @@
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
+from io import BytesIO
+from os import error
 from typing import Any
 
 import pydicom
 from asgiref.sync import sync_to_async
-from django.db.models import QuerySet
 from django.http import HttpRequest, HttpResponse
-from django.template.response import TemplateResponse
-from pydicom import Dataset
 from rest_framework.decorators import api_view, renderer_classes
 from rest_framework.renderers import JSONRenderer, TemplateHTMLRenderer
 from rest_framework.response import Response
 
 from adit.core.decorators import login_required_async, permission_required_async
 from adit.core.models import DicomNode, DicomServer
-from adit.core.types import AuthenticatedRequest
 from adit.core.utils.dicom_operator import DicomOperator
 from adit.core.utils.dicom_utils import read_dataset
-from adit.core.utils.dicom_operator import DicomOperator
 from adit.core.views import (
     BaseUpdatePreferencesView,
     DicomJobCreateView,
@@ -64,19 +63,34 @@ class UploadJobCreateView(DicomJobCreateView):
 
         return initial
 
+    # def post(self, request):
+    #     form = UploadJobForm(
+    #         pseudonym=request.POST.get("pseudonym"), destination=request.POST.get("destination")
+    #     )
+
+    #     if form.is_valid():
+    #         success = {"Correct entrys"}
+    #         context = {"form": form, "success": success}
+    #         response = render(request, self.template_name, context)
+    #         print("valid")
+    #     else:
+    #         print("not valid")
+    #         context = {"form": form, "errors": form.errors.values()}
+    #         return render(request, self.template_name, context)
+
 
 # @login_required_async
 # @sync_to_async
 async def uploadAPIView(request, node_id: str) -> HttpResponse:
     status = 0
     message = ""
-    pool = ThreadPoolExecutor()
+
     if request.method == "POST":
         data = request.FILES
-        dataset = None
 
         if "dataset" in data:
             dataset_bytes = data["dataset"].read()
+
             dataset_bytes = BytesIO(dataset_bytes)
             dataset = read_dataset(dataset_bytes)
 
@@ -85,16 +99,19 @@ async def uploadAPIView(request, node_id: str) -> HttpResponse:
                 destination_node = await sync_to_async(
                     lambda: DicomServer.objects.get(id=selected_id)
                 )()
-            
+
                 operator = DicomOperator(destination_node)
 
                 try:
                     loop = asyncio.get_event_loop()
                     await loop.run_in_executor(None, operator.upload_instances, [dataset])
+
                     status = 200
 
                     message = "Upload erfolgreich"
-                except:
+
+                except error:
+                    print(error)
                     status = 500
                     message = "Upload fehlgeschlagen"
 
