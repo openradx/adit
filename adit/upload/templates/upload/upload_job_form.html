@@ -6,10 +6,10 @@
             New Data Upload Job
             {% include "core/_help_button.html" %}
         </h4>
-        <a href="#">
+        {% comment %} <a href="#">
             {% include "core/icons/list.svg" %}
             Previous Jobs
-        </a>
+        </a> {% endcomment %}
     </div>
 {% endblock heading %}
 {% block content %}
@@ -57,7 +57,7 @@
            x-show="fileCount>0"
            x-text="`${fileCount} Files selected`"></p>
     </div>
-    <div>
+    <div style="margin-bottom: 20px; margin-top: 20px">
         <button id="uploadButton"
                 type="submit"
                 class="btn btn-primary"
@@ -70,6 +70,9 @@
                 x-cloack
                 x-show="buttonVisible"
                 @click="clearFiles()">Clear Files</button>
+    </div>
+    <div>
+        <progress id="pb" value="0" max="100" style="width:100%;%" x-show="false"></progress>
     </div>
 </div>
 {% endblock content %}

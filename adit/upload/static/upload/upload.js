@@ -39,6 +39,7 @@ function uploadJobForm(formEl) {
       const files = this.getFiles();
       this.buttonVisible = files.length > 0;
       this.fileCount = files.length;
+      htmx.trigger("#pb", "resetprogress", {});
     },
     clearFiles: function () {
       var inputEl = document.getElementById("fileselector");
@@ -68,17 +69,17 @@ function uploadJobForm(formEl) {
     fileHandler: async function (fileObj, datasets) {
       const arrayBuffer = await fileObj.arrayBuffer(); //await fileReader.readAsArrayBuffer(fileObj);
       datasets.push(arrayBuffer);
-      console.log(datasets);
     },
 
     chooseFolder: function () {
       const files = this.getFiles();
-      console.log(files);
+
       this.loadFiles(files);
     },
 
     loadFiles: async function (files) {
       const destinationSelect = formEl.querySelector('[name="destination"]');
+
       if (destinationSelect instanceof HTMLSelectElement) {
         const selectedOption =
           destinationSelect.options[destinationSelect.selectedIndex];
@@ -94,17 +95,37 @@ function uploadJobForm(formEl) {
         for (const fileEntry of files) {
           await this.fileHandler(fileEntry, datasets);
         }
-        if (this.checkPatientIDs(datasets)) {
-          for (const set in datasets) {
-            console.log("lets upload");
-            uploadData({
+
+        // if (this.checkPatientIDs(datasets)) {
+        if (true) {
+          let status = 0;
+          let loadedFiles = 0;
+          for (const set of datasets) {
+            console.log("toBEUploaded:", set);
+            status = await uploadData({
               ["dataset"]: set,
               ["node_id"]: node_id,
             });
+            if (status == 200) {
+              loadedFiles += 1;
+
+              htmx.trigger("#pb", "showprogress");
+              htmx.trigger("#pb", "uploadprogress", {
+                loaded: loadedFiles,
+                total: datasets.length,
+              });
+            } else {
+              console.log("Upload Failed");
+            }
           }
         } else {
           console.log("Not same PatientIDs");
         }
+        console.log("upload complete");
+        setTimeout(function () {
+          htmx.trigger("#pb", "hideprogress");
+          htmx.trigger("#uploadCompleteText", "showUploadText");
+        }, 3000); // Wait for 3 seconds (3000 milliseconds)
       }
     },
 
@@ -131,7 +152,7 @@ function uploadJobForm(formEl) {
 
     handleDrop: async function (ev) {
       const files = [];
-      let promiseList = [];
+      htmx.trigger("#uploadCompleteText", "hideUploadText");
       const items = ev.dataTransfer.items;
       for (const item of items) {
         const itemEntry = item.webkitGetAsEntry();
@@ -139,11 +160,8 @@ function uploadJobForm(formEl) {
           await this.traverseDirectory(itemEntry, files);
         }
       }
-      console.log(files);
-      console.log(`We've got all files: ${files}`);
+
       this.fileCount = files.length;
-      console.log(`The FileArray: ${files}`);
-      // Hier gehts dann mit dem eigentlichen Upload los
 
       if (files.length > 0) {
         var inputElement = document.getElementById("fileselector");
@@ -169,9 +187,6 @@ function uploadJobForm(formEl) {
         patientNames.add(dcm.dict["00100010"].Value[0]);
         patientBirthdates.add(dcm.dict["00100030"].Value[0]);
       }
-
-      console.log(patientIDs);
-
       return (
         patientIDs.size == 1 &&
         patientNames.size == 1 &&
