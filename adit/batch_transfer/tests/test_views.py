@@ -27,7 +27,7 @@ def form_data(db):
         ],
         columns=["PatientID", "StudyInstanceUID", "Pseudonym"],
     )
-    data.to_excel(buffer, index=False)
+    data.to_excel(buffer, index=False)  # type: ignore
 
     return {
         "source": DicomServerFactory.create().id,

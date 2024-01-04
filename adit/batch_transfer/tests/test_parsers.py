@@ -24,7 +24,7 @@ def data():
 def create_batch_file():
     def _create_batch_file(df: pd.DataFrame):
         batch_file = BytesIO()
-        df.to_excel(batch_file, index=False, engine="openpyxl")
+        df.to_excel(batch_file, index=False, engine="openpyxl")  # type: ignore
         return batch_file
 
     return _create_batch_file

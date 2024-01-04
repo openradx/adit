@@ -364,6 +364,14 @@ class DicomJob(models.Model):
 
 
 class TransferJob(DicomJob):
+    trial_protocol_id = models.CharField(
+        blank=True, max_length=64, validators=[no_backslash_char_validator]
+    )
+    trial_protocol_name = models.CharField(
+        blank=True, max_length=64, validators=[no_backslash_char_validator]
+    )
+    archive_password = models.CharField(blank=True, max_length=50)
+
     class Meta(DicomJob.Meta):
         abstract = True
         permissions = DicomJob.Meta.permissions + [
@@ -372,14 +380,6 @@ class TransferJob(DicomJob):
                 "Can transfer unpseudonymized",
             )
         ]
-
-    trial_protocol_id = models.CharField(
-        blank=True, max_length=64, validators=[no_backslash_char_validator]
-    )
-    trial_protocol_name = models.CharField(
-        blank=True, max_length=64, validators=[no_backslash_char_validator]
-    )
-    archive_password = models.CharField(blank=True, max_length=50)
 
 
 class QueuedTask(models.Model):
@@ -478,9 +478,6 @@ class DicomTask(models.Model):
 
 
 class TransferTask(DicomTask):
-    class Meta(DicomTask.Meta):
-        abstract = True
-
     job = models.ForeignKey(
         TransferJob,
         on_delete=models.CASCADE,
@@ -510,6 +507,9 @@ class TransferTask(DicomTask):
         max_length=64,
         validators=[no_backslash_char_validator, no_control_chars_validator],
     )
+
+    class Meta(DicomTask.Meta):
+        abstract = True
 
     def __str__(self) -> str:
         return f"{self.__class__.__name__} [ID {self.id} (Job ID {self.job_id})]"
