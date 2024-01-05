@@ -109,15 +109,22 @@ class PageSizeSelectMixin(with_type_hint(ListView)):
     which is used by this mixin for the page size.
     """
 
+    def get(self, request: HttpRequest, *args: Any, **kwargs: Any) -> HttpResponse:
+        # Make the initial paginate_by attribute the default page size if set
+        if not hasattr(self, "paginate_by") or self.paginate_by is None:
+            self.paginate_by = 50
+
+        try:
+            per_page = int(request.GET.get("per_page", self.paginate_by))
+        except ValueError:
+            per_page = self.paginate_by
+
+        per_page = min(per_page, 100)
+        self.paginate_by = per_page  # used by MultipleObjectMixin (and also django_tables2)
+
+        return super().get(request, *args, **kwargs)
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        try:
-            per_page = int(self.request.GET.get("per_page", 50))
-        except ValueError:
-            per_page = 50
-
-        per_page = min(per_page, 1000)
-        self.paginate_by = per_page  # Used by django_tables2
-
         context["page_size_select"] = PageSizeSelectForm(self.request.GET, [50, 100, 250, 500])
         return context
