@@ -28,11 +28,11 @@ from django_tables2.tables import Table
 from revproxy.views import ProxyView
 
 from .forms import BroadcastForm
-from .mixins import PageSizeSelectMixin, RelatedFilterMixin
+from .mixins import HtmxOnlyMixin, PageSizeSelectMixin, RelatedFilterMixin
 from .models import CoreSettings, DicomJob, DicomTask, QueuedTask
 from .site import job_stats_collectors
 from .tasks import broadcast_mail
-from .types import AuthenticatedHttpRequest, HtmxHttpRequest
+from .types import AuthenticatedHttpRequest
 
 THEME = "theme"
 
@@ -51,11 +51,8 @@ def admin_section(request: HttpRequest) -> HttpResponse:
     )
 
 
-class HtmxTemplateView(TemplateView):
-    def get(self, request: HtmxHttpRequest, *args: Any, **kwargs: Any) -> HttpResponse:
-        if not request.htmx:
-            raise SuspiciousOperation
-        return super().get(request, *args, **kwargs)
+class HtmxTemplateView(HtmxOnlyMixin, TemplateView):
+    pass
 
 
 class BroadcastView(LoginRequiredMixin, UserPassesTestMixin, SuccessMessageMixin, FormView):

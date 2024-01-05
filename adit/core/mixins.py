@@ -1,5 +1,5 @@
 from functools import reduce
-from typing import Any
+from typing import Any, Protocol
 
 from django.core.exceptions import SuspiciousOperation
 from django.http import HttpRequest, HttpResponse
@@ -11,6 +11,7 @@ from django_filters.views import FilterMixin
 
 from .forms import PageSizeSelectForm
 from .models import AppSettings
+from .types import HtmxHttpRequest
 from .utils.auth_utils import is_logged_in_user
 from .utils.type_utils import with_type_hint
 
@@ -18,6 +19,19 @@ from .utils.type_utils import with_type_hint
 def deepgetattr(obj: object, attr: str):
     """Recurses through an attribute chain to get the ultimate value."""
     return reduce(getattr, attr.split("."), obj)
+
+
+class ViewProtocol(Protocol):
+    request: HttpRequest
+
+    def dispatch(self, request: HttpRequest, *args: Any, **kwargs: Any) -> HttpResponse:
+        ...
+
+    def get(self, request: HttpRequest, *args: Any, **kwargs: Any) -> HttpResponse:
+        ...
+
+    def get_context_data(self, **kwargs: Any) -> dict[str, Any]:
+        ...
 
 
 class LockedMixin(with_type_hint(View)):
@@ -37,6 +51,15 @@ class LockedMixin(with_type_hint(View)):
                 extra_context={"section_name": self.section_name},
             )(request)
 
+        return super().dispatch(request, *args, **kwargs)
+
+
+class HtmxOnlyMixin:
+    def dispatch(
+        self: ViewProtocol, request: HtmxHttpRequest, *args: Any, **kwargs: Any
+    ) -> HttpResponse:
+        if not request.htmx:
+            raise SuspiciousOperation()
         return super().dispatch(request, *args, **kwargs)
 
 

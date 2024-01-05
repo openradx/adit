@@ -1,11 +1,12 @@
 from typing import Any
 
 from django.contrib.auth.mixins import AccessMixin, LoginRequiredMixin
-from django.core.exceptions import SuspiciousOperation, ValidationError
+from django.core.exceptions import ValidationError
 from django.views import View
 from django.views.generic import TemplateView
 
 from adit.core.http import trigger_toast
+from adit.core.mixins import HtmxOnlyMixin
 from adit.core.types import AuthenticatedHttpRequest
 
 
@@ -19,11 +20,8 @@ class UserProfileView(LoginRequiredMixin, AccessMixin, TemplateView):
         return context
 
 
-class ActiveGroupView(LoginRequiredMixin, View):
+class ActiveGroupView(LoginRequiredMixin, HtmxOnlyMixin, View):
     def post(self, request: AuthenticatedHttpRequest):
-        if not request.htmx:
-            raise SuspiciousOperation
-
         try:
             group_id = request.POST.get("group") or ""
             group_id = int(group_id)
