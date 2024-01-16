@@ -264,7 +264,7 @@ class TransferTaskProcessor(DicomTaskProcessor):
         study_uid: str,
         study_folder: Path,
         modifier: Callable,
-        series_uids: list[str] = [],
+        series_uids: list[str] | None = None,
     ) -> None:
         if series_uids:
             for series_uid in series_uids:
@@ -276,6 +276,7 @@ class TransferTaskProcessor(DicomTaskProcessor):
                     modifier=modifier,
                 )
         else:
+            # If no series are explicitly chosen then download all series of the study
             self.source_operator.download_study(
                 patient_id=patient_id,
                 study_uid=study_uid,
