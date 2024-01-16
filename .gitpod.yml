@@ -4,6 +4,7 @@ image:
 tasks:
   - name: setup
     init: |
+      git remote add radis https://github.com/radexperts/radis.git
       poetry install
       npm install
     command: |
