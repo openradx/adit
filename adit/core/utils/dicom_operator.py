@@ -380,7 +380,7 @@ class DicomOperator:
             if modality in settings.EXCLUDED_MODALITIES:
                 continue
 
-            # TODO maybe we should move the series folder name creation to the
+            # TODO: maybe we should move the series folder name creation to the
             # store handler as it is not guaranteed that all PACS servers
             # do return the SeriesDescription with C-FIND
             series_folder_name = sanitize_dirname(series.SeriesDescription)
