@@ -18,6 +18,12 @@ class MyUserAdmin(UserAdmin):
         "last_name",
         "is_staff",
     )
+    fieldsets = UserAdmin.fieldsets + (  # type: ignore
+        (
+            "Additional stuff",
+            {"fields": ("phone_number", "department", "active_group")},
+        ),
+    )
     change_form_template = "loginas/change_form.html"
 
 
