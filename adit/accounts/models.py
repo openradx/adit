@@ -1,5 +1,9 @@
+import logging
+
 from django.contrib.auth.models import AbstractUser, Group
 from django.db import models
+
+logger = logging.getLogger(__name__)
 
 
 class User(AbstractUser):
@@ -13,7 +17,11 @@ class User(AbstractUser):
 
     def save(self, *args, **kwargs):
         if self.active_group and self.active_group not in self.groups.all():
-            raise ValueError("Active group must be one of the user's groups")
+            logger.warn(
+                f"Active group '{self.active_group.name}' not in user's groups. "
+                "Setting active group to None."
+            )
+            self.active_group = None
         super().save(*args, **kwargs)
 
     def change_active_group(self, new_group):
