@@ -28,9 +28,9 @@ ADIT client is a Python library to query, retrieve and upload DICOM images progr
 
 ## Screenshots
 
-![Screenshot1](https://github.com/radexperts/adit/assets/120626/f03d6af0-510f-4324-95f4-10bf8522fce2)
+![Screenshot1](https://github.com/openradx/adit/assets/120626/f03d6af0-510f-4324-95f4-10bf8522fce2)
 
-![Screenshot2](https://github.com/radexperts/adit/assets/120626/2b322dd9-0ce3-4e8f-9ca3-a10e00842c62)
+![Screenshot2](https://github.com/openradx/adit/assets/120626/2b322dd9-0ce3-4e8f-9ca3-a10e00842c62)
 
 ![Screenshot3](https://user-images.githubusercontent.com/120626/155511254-95adbed7-ef2e-44bd-aa3b-6e055be527a5.png)
 
