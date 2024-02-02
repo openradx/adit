@@ -1,8 +1,8 @@
-# Adit Client
+# ADIT Client
 
 ## About
 
-Adit Client is the official Python client of [ADIT (Automated DICOM Transfer)](https://github.com/radexperts/adit).
+ADIT Client is the official Python client of [ADIT (Automated DICOM Transfer)](https://github.com/openradx/adit).
 
 ## Usage
 
@@ -15,8 +15,8 @@ Adit Client is the official Python client of [ADIT (Automated DICOM Transfer)](h
 ### Code
 
 ```python
-adit_url = "https://adit" # The host URL of adit
-adit_token = "my_token" # The generated auth token
+server_url = "https://adit" # The host URL of the ADIT server
+auth_token = "my_token" # The authentication token generated in your profile
 client = AditClient(server_url=adit_url, auth_token=adit_token)
 
 # Search for studies
