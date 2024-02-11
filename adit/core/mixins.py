@@ -1,24 +1,16 @@
-from functools import reduce
 from typing import Any, Protocol
 
 from django.core.exceptions import SuspiciousOperation
+from django.db.models import QuerySet
 from django.http import HttpRequest, HttpResponse
-from django.views import View
-
-# from django.forms.formsets import ORDERING_FIELD_NAME
-from django.views.generic import ListView, TemplateView
+from django.views.generic import TemplateView
+from django_filters.filterset import FilterSet
 from django_filters.views import FilterMixin
 
 from .forms import PageSizeSelectForm
 from .models import AppSettings
 from .types import HtmxHttpRequest
 from .utils.auth_utils import is_logged_in_user
-from .utils.type_utils import with_type_hint
-
-
-def deepgetattr(obj: object, attr: str):
-    """Recurses through an attribute chain to get the ultimate value."""
-    return reduce(getattr, attr.split("."), obj)
 
 
 class ViewProtocol(Protocol):
@@ -34,11 +26,15 @@ class ViewProtocol(Protocol):
         ...
 
 
-class LockedMixin(with_type_hint(View)):
+class LockedMixinProtocol(ViewProtocol, Protocol):
     settings_model: type[AppSettings]
-    section_name = "Section"
+    section_name: str
 
-    def dispatch(self, request: HttpRequest, *args: Any, **kwargs: Any) -> HttpResponse:
+
+class LockedMixin:
+    def dispatch(
+        self: LockedMixinProtocol, request: HttpRequest, *args: Any, **kwargs: Any
+    ) -> HttpResponse:
         settings = self.settings_model.get()
         assert settings
 
@@ -63,7 +59,21 @@ class HtmxOnlyMixin:
         return super().dispatch(request, *args, **kwargs)
 
 
-class RelatedFilterMixin(FilterMixin, with_type_hint(ListView)):
+class RelatedFilterMixinProtocol(ViewProtocol, Protocol):
+    filterset: FilterSet
+    object_list: QuerySet
+
+    def get_strict(self) -> bool:
+        ...
+
+    def get_filterset_class(self) -> type[FilterSet]:
+        ...
+
+    def get_filterset(self, filterset_class: type[FilterSet]) -> FilterSet:
+        ...
+
+
+class RelatedFilterMixin(FilterMixin):
     """A mixin that provides a way to show and handle a FilterSet in a request.
 
     The advantage is provided over FilterMixin is that it does use a special
@@ -73,6 +83,8 @@ class RelatedFilterMixin(FilterMixin, with_type_hint(ListView)):
     django_tables2 automatically uses the set self.object_list attribute.
     It must be placed behind SingleTableMixin.
     """
+
+    request: HttpRequest
 
     def get_filter_queryset(self):
         raise NotImplementedError("Must be implemented by the derived view.")
@@ -85,7 +97,7 @@ class RelatedFilterMixin(FilterMixin, with_type_hint(ListView)):
         }
         return kwargs
 
-    def get_context_data(self, **kwargs):
+    def get_context_data(self: RelatedFilterMixinProtocol, **kwargs):
         context = super().get_context_data(**kwargs)
 
         filterset_class = self.get_filterset_class()
@@ -102,14 +114,17 @@ class RelatedFilterMixin(FilterMixin, with_type_hint(ListView)):
         return context
 
 
-class PageSizeSelectMixin(with_type_hint(ListView)):
-    """A mixin to show a page size selector.
+class PageSizeSelectMixinProtocol(ViewProtocol, Protocol):
+    paginate_by: int
+    page_sizes: list[int]
 
-    Must be placed after the SingleTableMixin as it sets self.paginated_by
-    which is used by this mixin for the page size.
-    """
 
-    def get(self, request: HttpRequest, *args: Any, **kwargs: Any) -> HttpResponse:
+class PageSizeSelectMixin:
+    """A mixin to show a page size selector."""
+
+    def get(
+        self: PageSizeSelectMixinProtocol, request: HttpRequest, *args: Any, **kwargs: Any
+    ) -> HttpResponse:
         # Make the initial paginate_by attribute the default page size if set
         if not hasattr(self, "paginate_by") or self.paginate_by is None:
             self.paginate_by = 50
@@ -120,11 +135,15 @@ class PageSizeSelectMixin(with_type_hint(ListView)):
             per_page = self.paginate_by
 
         per_page = min(per_page, 100)
-        self.paginate_by = per_page  # used by MultipleObjectMixin (and also django_tables2)
+        self.paginate_by = per_page  # used by MultipleObjectMixin and django_tables2
 
         return super().get(request, *args, **kwargs)
 
-    def get_context_data(self, **kwargs):
+    def get_context_data(self: PageSizeSelectMixinProtocol, **kwargs):
         context = super().get_context_data(**kwargs)
-        context["page_size_select"] = PageSizeSelectForm(self.request.GET, [50, 100, 250, 500])
+
+        if not hasattr(self, "page_sizes") or self.page_sizes is None:
+            self.page_sizes = [50, 100, 250, 500]
+        context["page_size_select"] = PageSizeSelectForm(self.request.GET, self.page_sizes)
+
         return context

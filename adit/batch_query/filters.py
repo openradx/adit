@@ -1,9 +1,8 @@
 import django_filters
-from django.views import View
+from django.http import HttpRequest
 
 from adit.core.filters import DicomJobFilter, DicomTaskFilter
 from adit.core.forms import FilterSetFormHelper
-from adit.core.utils.type_utils import with_type_hint
 
 from .models import BatchQueryJob, BatchQueryResult, BatchQueryTask
 
@@ -18,8 +17,9 @@ class BatchQueryTaskFilter(DicomTaskFilter):
         model = BatchQueryTask
 
 
-class BatchQueryResultFilter(django_filters.FilterSet, with_type_hint(View)):
+class BatchQueryResultFilter(django_filters.FilterSet):
     task_id = django_filters.NumberFilter(field_name="query_id", label="Task ID")
+    request: HttpRequest
 
     class Meta:
         model = BatchQueryResult

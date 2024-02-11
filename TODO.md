@@ -87,10 +87,6 @@
 
 ## Maybe
 
-- Replace with_type_hint by Protocols
-  -- RADIS currently uses Protocols for type hints but ADIT with_type_hint for mixins
-  -- Protocols would work instead for the with_type_hint implementation in mypy
-  -- Protocols are also the official way to type hint mixins
 - New batch transfer
   -- Create new batch transfer job and allow to add tasks
   -- Add tasks manually or using a Excel file
