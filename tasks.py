@@ -203,16 +203,16 @@ def make_migrations(ctx: Context, env: Environments = "dev"):
 
 @task
 def format(ctx: Context):
-    """Format the source code (black, ruff, djlint)"""
+    """Format the source code with ruff and djlint"""
     # Format Python code
-    black_cmd = "poetry run black ."
-    run_cmd(ctx, black_cmd)
+    format_code_cmd = "poetry run ruff format ."
+    run_cmd(ctx, format_code_cmd)
     # Sort Python imports
-    ruff_cmd = "poetry run ruff . --fix --select I"
-    run_cmd(ctx, ruff_cmd)
+    sort_imports_cmd = "poetry run ruff . --fix --select I"
+    run_cmd(ctx, sort_imports_cmd)
     # Format Django templates
-    djlint_cmd = "poetry run djlint . --reformat"
-    run_cmd(ctx, djlint_cmd)
+    format_templates_cmd = "poetry run djlint . --reformat"
+    run_cmd(ctx, format_templates_cmd)
 
 
 @task

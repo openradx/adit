@@ -48,7 +48,6 @@ psycopg = { extras = ["binary"], version = "^3.1.12" }
 pebble = "^5.0.3"
 
 [tool.poetry.group.dev.dependencies]
-black = "^23.1.0"
 celery-types = "^0.20.0"
 debugpy = "^1.6.2"
 django-debug-permissions = "^1.0.0"
@@ -117,10 +116,6 @@ show_missing = true
 exclude = ["migrations"]
 line-length = 100
 select = ["E", "F", "I", "DJ"]
-
-[tool.black]
-extend-exclude = "migrations"
-line-length = 100
 
 [tool.djlint]
 profile = "django"
