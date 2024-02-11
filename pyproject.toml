@@ -83,7 +83,7 @@ pywatchman = "^1.4.1"
 vermin = "^1.5.2"
 
 [tool.pyright]
-ignore = ["**/migrations"]
+ignore = ["**/migrations", "**/*.ipynb"]
 typeCheckingMode = "basic"
 reportUnnecessaryTypeIgnoreComment = true
 
