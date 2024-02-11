@@ -25,7 +25,7 @@ def form_data(db):
             ["1002", "1.2.840.113845.11.1000000001951524609.20200705170836.2689469", "C2XJQ2AR"],
             ["1003", "1.2.840.113845.11.1000000001951524609.20200705172608.2689471", "KRS8CZ3S"],
         ],
-        columns=["PatientID", "StudyInstanceUID", "Pseudonym"],
+        columns=["PatientID", "StudyInstanceUID", "Pseudonym"],  # type: ignore
     )
     data.to_excel(buffer, index=False)  # type: ignore
 

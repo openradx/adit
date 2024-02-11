@@ -22,7 +22,10 @@ def test_urgent_batch_query_with_dimse_server(
     create_excel_file,
 ):
     # Arrange
-    df = pd.DataFrame([["1005", "0062115904"]], columns=["PatientID", "AccessionNumber"])
+    df = pd.DataFrame(
+        [["1005", "0062115904"]],
+        columns=["PatientID", "AccessionNumber"],  # type: ignore
+    )
     batch_file = create_excel_file(df)
 
     user: User = create_and_login_user(channels_live_server.url)
@@ -57,7 +60,10 @@ def test_urgent_batch_query_with_dicomweb_server(
     create_excel_file,
 ):
     # Arrange
-    df = pd.DataFrame([["1005", "0062115904"]], columns=["PatientID", "AccessionNumber"])
+    df = pd.DataFrame(
+        [["1005", "0062115904"]],
+        columns=["PatientID", "AccessionNumber"],  # type: ignore
+    )
     batch_file = create_excel_file(df)
 
     user: User = create_and_login_user(channels_live_server.url)

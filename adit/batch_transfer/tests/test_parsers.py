@@ -16,7 +16,7 @@ def data():
             ["222", "1.2.4", "1.2.4.1", "pseudo2"],
             ["222", "1.2.4", "1.2.4.2", "pseudo2"],
         ],
-        columns=["PatientID", "StudyInstanceUID", "SeriesInstanceUID", "Pseudonym"],
+        columns=["PatientID", "StudyInstanceUID", "SeriesInstanceUID", "Pseudonym"],  # type: ignore
     )
 
 
