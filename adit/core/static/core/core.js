@@ -56,9 +56,22 @@ ready(function () {
     const modalEl = document.getElementById("htmx-modal");
     modalEl.addEventListener("shown.bs.modal", (event) => {
       const inputEl = modalEl.querySelector("input:not([type=hidden])");
-      if (inputEl)
+      if (inputEl) {
         // @ts-ignore
         inputEl.focus();
+      }
+
+      if (!inputEl) {
+        const textareaEl = modalEl.querySelector("textarea:not([type=hidden])");
+        if (textareaEl) {
+          // @ts-ignore
+          textareaEl.focus();
+          setTimeout(function () {
+            // @ts-ignore
+            textareaEl.selectionStart = textareaEl.selectionEnd = 10000;
+          }, 0);
+        }
+      }
     });
 
     if (e.detail.target.id == "htmx-dialog") {
