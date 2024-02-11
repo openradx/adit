@@ -1,12 +1,12 @@
-FROM gitpod/workspace-python-3.11
+FROM gitpod/workspace-python-3.12
 
 USER gitpod
 
 ENV NVM_DIR $HOME/.nvm
-ENV NODE_VERSION 18.16.0
+ENV NODE_VERSION 20.11.0
 
 RUN mkdir $NVM_DIR && \ 
-  curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.3/install.sh | bash && \
+  curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash && \
   . $NVM_DIR/nvm.sh && \
   nvm install $NODE_VERSION && \
   nvm alias default $NODE_VERSION && \
