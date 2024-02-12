@@ -150,8 +150,8 @@ class RetrieveAPIView(WebDicomAPIView):
         if mode != request.accepted_renderer.mode:  # type: ignore
             raise NotAcceptable(
                 "Media type {} is not supported for retrieve mode {}".format(
-                    request.accepted_renderer.media_type,
-                    mode,  # type: ignore
+                    request.accepted_renderer.media_type,  # type: ignore
+                    mode,
                 )
             )
 
