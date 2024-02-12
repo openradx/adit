@@ -21,7 +21,7 @@ services:
       - "443:443"
     command: >
       bash -c "
-        wait-for-it -s postgres:5432 -t 60 && 
+        wait-for-it -s postgres.local:5432 -t 60 && 
         ./manage.py migrate &&
         ./manage.py collectstatic --no-input &&
         ./manage.py create_admin &&
@@ -42,7 +42,7 @@ services:
     <<: *default-app
     command: >
       bash -c "
-        wait-for-it -s web:80 -t 0 && 
+        wait-for-it -s web.local:80 -t 0 && 
         ./manage.py dicom_worker
       "
     deploy:
