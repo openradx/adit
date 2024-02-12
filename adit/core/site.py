@@ -9,16 +9,16 @@ if TYPE_CHECKING:
     from .processors import DicomTaskProcessor
 
 
-class NavMenuItem(NamedTuple):
+class MainMenuItem(NamedTuple):
     url_name: str
     label: str
 
 
-nav_menu_items: list[NavMenuItem] = []
+main_menu_items: list[MainMenuItem] = []
 
 
 def register_main_menu_item(url_name: str, label: str) -> None:
-    nav_menu_items.append(NavMenuItem(url_name, label))
+    main_menu_items.append(MainMenuItem(url_name, label))
 
 
 class JobStats(NamedTuple):
@@ -59,7 +59,7 @@ def base_context_processor(request: HttpRequest) -> dict[str, Any]:
         "version": settings.ADIT_VERSION,
         "base_url": settings.BASE_URL,
         "support_email": settings.SUPPORT_EMAIL,
-        "nav_menu_items": nav_menu_items,
+        "main_menu_items": main_menu_items,
         "theme": theme,
         "theme_color": theme_color,
         # Variables in public are also available on the client via JavaScript,
