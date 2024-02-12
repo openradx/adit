@@ -2,6 +2,7 @@ from django.apps import AppConfig
 from django.db.models.signals import post_migrate
 
 from adit.core.site import (
+    JobStats,
     register_dicom_processor,
     register_job_stats_collector,
     register_main_menu_item,
@@ -21,7 +22,7 @@ class SelectiveTransferConfig(AppConfig):
 
 
 def register_app():
-    from .models import SelectiveTransferTask
+    from .models import SelectiveTransferJob, SelectiveTransferTask
     from .processors import SelectiveTransferTaskProcessor
 
     register_main_menu_item(
@@ -34,21 +35,13 @@ def register_app():
     )
     register_dicom_processor(model_label, SelectiveTransferTaskProcessor)
 
+    def collect_job_stats() -> JobStats:
+        counts: dict[SelectiveTransferJob.Status, int] = {}
+        for status in SelectiveTransferJob.Status:
+            counts[status] = SelectiveTransferJob.objects.filter(status=status).count()
+        return JobStats("Selective Transfer", "selective_transfer_job_list", counts)
+
     register_job_stats_collector(collect_job_stats)
-
-
-def collect_job_stats():
-    from .models import SelectiveTransferJob
-
-    counts = {}
-    for status in SelectiveTransferJob.Status:
-        counts[status] = SelectiveTransferJob.objects.filter(status=status).count()
-
-    return {
-        "job_name": "Selective Transfer",
-        "url_name": "selective_transfer_job_list",
-        "counts": counts,
-    }
 
 
 def init_db(**kwargs):

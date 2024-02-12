@@ -2,6 +2,7 @@ from django.apps import AppConfig
 from django.db.models.signals import post_migrate
 
 from adit.core.site import (
+    JobStats,
     register_dicom_processor,
     register_job_stats_collector,
     register_main_menu_item,
@@ -21,7 +22,7 @@ class BatchTransferConfig(AppConfig):
 
 
 def register_app():
-    from .models import BatchTransferTask
+    from .models import BatchTransferJob, BatchTransferTask
     from .processors import BatchTransferTaskProcessor
 
     register_main_menu_item(
@@ -32,21 +33,13 @@ def register_app():
     model_label = f"{BatchTransferTask._meta.app_label}.{BatchTransferTask._meta.model_name}"
     register_dicom_processor(model_label, BatchTransferTaskProcessor)
 
+    def collect_job_stats():
+        counts: dict[BatchTransferJob.Status, int] = {}
+        for status in BatchTransferJob.Status:
+            counts[status] = BatchTransferJob.objects.filter(status=status).count()
+        return JobStats("Batch Transfer", "batch_transfer_job_list", counts)
+
     register_job_stats_collector(collect_job_stats)
-
-
-def collect_job_stats():
-    from .models import BatchTransferJob
-
-    counts = {}
-    for status in BatchTransferJob.Status:
-        counts[status] = BatchTransferJob.objects.filter(status=status).count()
-
-    return {
-        "job_name": "Batch Transfer",
-        "url_name": "batch_transfer_job_list",
-        "counts": counts,
-    }
 
 
 def init_db(**kwargs):

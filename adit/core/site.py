@@ -1,23 +1,43 @@
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Callable, NamedTuple
 
 from django.conf import settings
 from django.http import HttpRequest
 from django.middleware.csrf import get_token
 
 if TYPE_CHECKING:
-    from adit.core.processors import DicomTaskProcessor
+    from .models import DicomJob
+    from .processors import DicomTaskProcessor
 
-nav_menu_items = []
-job_stats_collectors = []
-dicom_processors: dict[str, type["DicomTaskProcessor"]] = {}
+
+class NavMenuItem(NamedTuple):
+    url_name: str
+    label: str
+
+
+nav_menu_items: list[NavMenuItem] = []
 
 
 def register_main_menu_item(url_name: str, label: str) -> None:
-    nav_menu_items.append({"url_name": url_name, "label": label})
+    nav_menu_items.append(NavMenuItem(url_name, label))
 
 
-def register_job_stats_collector(job_stats):
-    job_stats_collectors.append(job_stats)
+class JobStats(NamedTuple):
+    job_name: str
+    url_name: str
+    counts: dict["DicomJob.Status", int]
+
+
+JobStatsCollector = Callable[[], JobStats]
+
+
+job_stats_collectors: list[JobStatsCollector] = []
+
+
+def register_job_stats_collector(collector: JobStatsCollector) -> None:
+    job_stats_collectors.append(collector)
+
+
+dicom_processors: dict[str, type["DicomTaskProcessor"]] = {}
 
 
 def register_dicom_processor(model_label: str, dicom_processor: type["DicomTaskProcessor"]) -> None:
