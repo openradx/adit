@@ -11,7 +11,7 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 
 from adit.core.models import DicomServer
-from adit.core.types import AuthenticatedRequest
+from adit.core.types import AuthenticatedApiRequest
 
 from .parsers import StowMultipartApplicationDicomParser
 from .renderers import (
@@ -31,7 +31,7 @@ class WebDicomAPIView(AsyncApiView):
     @sync_to_async
     def _fetch_dicom_server(
         self,
-        request: AuthenticatedRequest,
+        request: AuthenticatedApiRequest,
         ae_title: str,
         access_type: Literal["source", "destination"],
     ) -> DicomServer:
@@ -55,7 +55,7 @@ class QueryStudyAPIView(QueryAPIView):
 
     async def get(
         self,
-        request: AuthenticatedRequest,
+        request: AuthenticatedApiRequest,
         ae_title: str,
     ) -> Response:
         query: dict[str, str] = {}
@@ -78,7 +78,7 @@ class QuerySeriesAPIView(QueryAPIView):
 
     async def get(
         self,
-        request: AuthenticatedRequest,
+        request: AuthenticatedApiRequest,
         ae_title: str,
         study_uid: str = "",
     ) -> Response:
@@ -119,7 +119,7 @@ class RetrieveAPIView(WebDicomAPIView):
 
     async def handle_request(
         self,
-        request: AuthenticatedRequest,
+        request: AuthenticatedApiRequest,
         ae_title: str,
         mode: str,
         study_uid: str,
@@ -150,7 +150,8 @@ class RetrieveAPIView(WebDicomAPIView):
         if mode != request.accepted_renderer.mode:  # type: ignore
             raise NotAcceptable(
                 "Media type {} is not supported for retrieve mode {}".format(
-                    request.accepted_renderer.media_type, mode  # type: ignore
+                    request.accepted_renderer.media_type,
+                    mode,  # type: ignore
                 )
             )
 
@@ -173,7 +174,7 @@ class RetrieveStudyAPIView(RetrieveAPIView):
 
     async def get(
         self,
-        request: AuthenticatedRequest,
+        request: AuthenticatedApiRequest,
         ae_title: str,
         study_uid: str,
         mode: str = "bulk",
@@ -195,7 +196,7 @@ class RetrieveSeriesAPIView(RetrieveAPIView):
 
     async def get(
         self,
-        request: AuthenticatedRequest,
+        request: AuthenticatedApiRequest,
         ae_title: str,
         study_uid: str,
         series_uid: str,
@@ -222,12 +223,12 @@ class StoreAPIView(WebDicomAPIView):
     parser_classes = [StowMultipartApplicationDicomParser]
     renderer_classes = [StowApplicationDicomJsonRenderer]
 
-    async def handle_request(self, request: AuthenticatedRequest, ae_title: str) -> DicomServer:
+    async def handle_request(self, request: AuthenticatedApiRequest, ae_title: str) -> DicomServer:
         return await self._fetch_dicom_server(request, ae_title, "destination")
 
     async def post(
         self,
-        request: AuthenticatedRequest,
+        request: AuthenticatedApiRequest,
         ae_title: str,
         study_uid: str = "",
     ) -> Response:
