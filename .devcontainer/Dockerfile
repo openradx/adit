@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/devcontainers/python:3.11
+FROM mcr.microsoft.com/devcontainers/python:3.12
 
 # Install dependency to make bash completion work with invoke
 RUN apt-get update && \
@@ -14,5 +14,4 @@ RUN pipx install invoke && \
   invoke --print-completion-script=bash >> ~/.bash_completion
 
 RUN pipx install poetry && \
-  poetry completions bash >> ~/.bash_completion && \
-  poetry config virtualenvs.in-project true
+  poetry completions bash >> ~/.bash_completion

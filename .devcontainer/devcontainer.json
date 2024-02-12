@@ -6,7 +6,7 @@
     "ghcr.io/devcontainers/features/docker-in-docker:2": {
       // Install Docker CE instead of an (by default) older Moby version
       "moby": false,
-      "version": "23.0.4"
+      "version": "25.0.3"
     },
     "ghcr.io/devcontainers/features/node:1": {}
   },
