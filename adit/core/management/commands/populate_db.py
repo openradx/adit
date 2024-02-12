@@ -28,6 +28,9 @@ from adit.selective_transfer.factories import (
     SelectiveTransferJobFactory,
     SelectiveTransferTaskFactory,
 )
+from adit.token_authentication.factories import TokenFactory
+from adit.token_authentication.models import FRACTION_LENGTH
+from adit.token_authentication.utils.crypto import hash_token
 
 USER_COUNT = 20
 GROUP_COUNT = 3
@@ -40,18 +43,34 @@ BATCH_TRANSFER_JOB_COUNT = 10
 fake = Faker()
 
 
-def create_users() -> list[User]:
+def create_admin() -> User:
     if "ADMIN_USERNAME" not in environ or "ADMIN_PASSWORD" not in environ:
         print("Cave! No admin credentials found in environment. Using default ones.")
 
-    admin_data = {
-        "username": environ.get("ADMIN_USERNAME", "admin"),
-        "first_name": environ.get("ADMIN_FIRST_NAME", "Wilhelm"),
-        "last_name": environ.get("ADMIN_LAST_NAME", "Röntgen"),
-        "email": environ.get("ADMIN_EMAIL", "wilhelm.roentgen@example.org"),
-        "password": environ.get("ADMIN_PASSWORD", "mysecret"),
-    }
-    admin = AdminUserFactory.create(**admin_data)
+    admin = AdminUserFactory.create(
+        username=environ.get("ADMIN_USERNAME", "admin"),
+        first_name=environ.get("ADMIN_FIRST_NAME", "Wilhelm"),
+        last_name=environ.get("ADMIN_LAST_NAME", "Röntgen"),
+        email=environ.get("ADMIN_EMAIL", "wilhelm.roentgen@example.org"),
+        password=environ.get("ADMIN_PASSWORD", "mysecret"),
+    )
+
+    if "ADMIN_AUTH_TOKEN" not in environ:
+        print("No admin auth token in environment. Skipping auth token creation.")
+    else:
+        auth_token = environ["ADMIN_AUTH_TOKEN"]
+        TokenFactory.create(
+            token_hashed=hash_token(auth_token),
+            fraction=auth_token[:FRACTION_LENGTH],
+            owner=admin,
+            expires=None,
+        )
+
+    return admin
+
+
+def create_users() -> list[User]:
+    admin = create_admin()
 
     users = [admin]
 
