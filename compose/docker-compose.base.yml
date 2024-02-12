@@ -38,8 +38,6 @@ services:
 
   postgres:
     image: postgres:13.13
-    expose:
-      - "5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
@@ -57,8 +55,6 @@ services:
 
   flower:
     <<: *default-app
-    expose:
-      - "5555"
     command: >
       bash -c "
         wait-for-it -s redis:6379 -t 60 &&
@@ -67,16 +63,11 @@ services:
 
   redis:
     image: redis:7.2.3
-    expose:
-      - "6379"
     volumes:
       - redis_data:/data
 
   orthanc1:
     image: jodogne/orthanc-plugins:1.12.1
-    expose:
-      - "6501"
-      - "7501"
     configs:
       - source: orthanc1_config
         target: /etc/orthanc/orthanc.json
@@ -85,9 +76,6 @@ services:
 
   orthanc2:
     image: jodogne/orthanc-plugins:1.12.1
-    expose:
-      - "6502"
-      - "7502"
     configs:
       - source: orthanc2_config
         target: /etc/orthanc/orthanc.json
