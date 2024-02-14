@@ -16,6 +16,9 @@ Environments = Literal["dev", "prod", "test"]
 stack_name_dev = "adit_dev"
 stack_name_prod = "adit_prod"
 
+postgres_dev_volume = f"{stack_name_dev}_postgres_data"
+postgres_prod_volume = f"{stack_name_prod}_postgres_data"
+
 project_dir = Path(__file__).resolve().parent
 compose_dir = project_dir / "compose"
 
@@ -33,6 +36,15 @@ def get_stack_name(env: Environments):
         return stack_name_dev
     elif env == "prod":
         return stack_name_prod
+    else:
+        raise ValueError(f"Unknown environment: {env}")
+
+
+def get_postgres_volume(env: Environments):
+    if env == "dev":
+        return postgres_dev_volume
+    elif env == "prod":
+        return postgres_prod_volume
     else:
         raise ValueError(f"Unknown environment: {env}")
 
@@ -80,6 +92,19 @@ def get_settings_module(env: Environments):
         return "adit.settings.test"
     else:
         raise ValueError(f"Unknown environment: {env}")
+
+
+def confirm(question: str) -> bool:
+    valid = {"yes": True, "y": True, "ye": True, "no": False, "n": False}
+    while True:
+        sys.stdout.write(f"{question} [y/N] ")
+        choice = input().lower()
+        if choice == "":
+            return False
+        elif choice in valid:
+            return valid[choice]
+        else:
+            sys.stdout.write("Please respond with 'yes' or 'no' " "(or 'y' or 'n').\n")
 
 
 def run_cmd(ctx: Context, cmd: str, silent=False) -> Result:
@@ -452,3 +477,20 @@ def bump_version(ctx: Context, rule: Literal["patch", "minor", "major"]):
     run_cmd(ctx, "git commit -m 'Bump version'")
     run_cmd(ctx, "git tag -a $(poetry version -s) -m 'Release $(poetry version -s)'")
     run_cmd(ctx, "git push --follow-tags")
+
+
+@task
+def upgrade_postgresql(ctx: Context, env: Environments = "dev", version: str = "latest"):
+    print(f"Upgrading PostgreSQL database in {env} environment to {version}.")
+    print("Cave, make sure the whole stack is not stopped. Otherwise this will corrupt data!")
+    if confirm("Are you sure you want to proceed?"):
+        print("Starting docker container that upgrades the database files.")
+        print("Watch the output if everything went fine or if any further steps are necessary.")
+        volume = get_postgres_volume(env)
+        run_cmd(
+            ctx,
+            f"docker run -e POSTGRES_PASSWORD=postgres -v {volume}:/var/lib/postgresql/data "
+            f"pgautoupgrade/pgautoupgrade:{version}",
+        )
+    else:
+        print("Cancelled")

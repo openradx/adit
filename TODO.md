@@ -2,12 +2,6 @@
 
 ## Top
 
-- Upgrade PostgreSQL database to 16.x
-  -- Best is to use this <https://github.com/pgautoupgrade/docker-pgautoupgrade>
-  -- docker run -e POSTGRES_PASSWORD=postgres -v adit_dev_postgres_data:/var/lib/postgresql/data pgautoupgrade/pgautoupgrade:latest
-  -- Make sure stack is not running while upgrading
-  -- Command line option for selecting environment (the volume to upgrade) and Postgres version
-  -- Let user confirm before starting this image, its dangerous!!!
 - Add permissions to dicom_web views (see TODOs there)
 - use get in PageSizeSelectMixin (see RADIS)
 - Update documentation
