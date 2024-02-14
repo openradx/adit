@@ -1,4 +1,4 @@
-FROM python:3.11-bullseye as python-base
+FROM python:3.12-bullseye as python-base
 
 # python
 # ENV variables are also available in the later build stages
@@ -12,8 +12,9 @@ ENV PYTHONUNBUFFERED=1 \
     PIP_DEFAULT_TIMEOUT=100 \
     \
     # poetry
+    # https://python-poetry.org/docs/#installing-with-the-official-installer
     # https://python-poetry.org/docs/configuration/#using-environment-variables
-    POETRY_VERSION=1.4.2 \
+    POETRY_VERSION=1.7.1 \
     # make poetry install to this location
     POETRY_HOME="/opt/poetry" \
     # make poetry create the virtual environment in the project's root
