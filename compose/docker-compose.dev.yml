@@ -17,8 +17,8 @@ services:
     build:
       target: development
     ports:
-      - "8000:8000"
-      - "5678:5678"
+      - "${ADIT_HOST_PORT:-8000}:8000"
+      - "${ADIT_DEBUG_PORT:-5678}:5678"
     volumes:
       # Cave, overwrites the above anchor
       - ..:/app
