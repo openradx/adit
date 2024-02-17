@@ -2,6 +2,8 @@
 
 ## Top
 
+- Bring back some kind of ID in batch modes to better correlate the failures in the Excel files
+- Show failures in exported batch results
 - Add permissions to dicom_web views (see TODOs there)
 - use get in PageSizeSelectMixin (see RADIS)
 - Update documentation
