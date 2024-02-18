@@ -3,6 +3,11 @@
 ## Top
 
 - Bring back some kind of ID in batch modes to better correlate the failures in the Excel files
+  - Use "batch_id" for tasks in batch query and batch transfer
+  - Build export view and allow to export with failures
+  - Also write a note there that the user should
+    - rename BATCH_ID to QUERY_ID in the resulting file and should provide a new BATCH_ID column
+- Add a permission to only allow to add a new job when all other jobs of the user are finished
 - Show failures in exported batch results
 - Add permissions to dicom_web views (see TODOs there)
 - use get in PageSizeSelectMixin (see RADIS)
