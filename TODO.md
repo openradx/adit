@@ -4,11 +4,13 @@
 
 - Generate exposed IDs for URLs by hashing the primary (number) keys:
   - <https://sqids.org/python>
+  - <https://stackoverflow.com/questions/43253602/django-short-non-linear-non-predictable-id-in-the-url>
 - Bring back some kind of ID in batch modes to better correlate the failures in the Excel files
   - Use "batch_id" for tasks in batch query and batch transfer
   - Build export view and allow to export with failures
   - Also write a note there that the user should
     - rename BATCH_ID to QUERY_ID in the resulting file and should provide a new BATCH_ID column
+  - <https://github.com/openradx/adit/commit/c6d840b1872b3c8f39b0f0008cdce131d5863f4d>
 - Add a permission to only allow to add a new job when all other jobs of the user are finished
 - Show failures in exported batch results
 - Add permissions to dicom_web views (see TODOs there)
