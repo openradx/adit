@@ -2,6 +2,8 @@
 
 ## Top
 
+- Generate exposed IDs for URLs by hashing the primary (number) keys:
+  - <https://sqids.org/python>
 - Bring back some kind of ID in batch modes to better correlate the failures in the Excel files
   - Use "batch_id" for tasks in batch query and batch transfer
   - Build export view and allow to export with failures
