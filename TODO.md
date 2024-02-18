@@ -12,11 +12,11 @@
 - test job_utils
 - Test canceled task/job in test_workers.py
 - Make sure all views are atomic
-  -- Use ATOMIC_REQUESTS database setting
-  -- Unfortunately we can't just set ATOMIC_REQUESTS in the database settings globally as those don't seem to work with async views
-  -- Try this again when Django 5.0 is released
-  -- Otherwise tell those async views to be @transaction.non_atomic_requests
-  -- Alternative is to decorate all appropriate views with @transaction.atomic
+  - Use ATOMIC_REQUESTS database setting
+  - Unfortunately we can't just set ATOMIC_REQUESTS in the database settings globally as those don't seem to work with async views
+  - Try this again when Django 5.0 is released
+  - Otherwise tell those async views to be @transaction.non_atomic_requests
+  - Alternative is to decorate all appropriate views with @transaction.atomic
 - Figure out if favicon works in all browsers
 - Rename C_STORE to C-STORE and so on in dimse connector
 - Replace ass AssertionError with assert
@@ -26,34 +26,34 @@
 - Use django-stubs instead of django-types (already done on RADIS)
 - Exclude SR and PR when in pseudonymization mode
 - Cancel processing tasks actively
-  -- When cancelling a job we currently wait for an already processing task to be completed before setting the job as canceled
-  -- Those tasks should get actively killed, which is already implemented when killing the task from UI (staff only)
-  -- But maybe we can do it more gracefully by passing a is_aborted() somehow down to the connectors
-  -- In DimseConnector we could check a provided is_cancelled function if the next series should be fetched (or even the association be aborted)
-  -- in DicomWebConnector we chould also check such an function an close the Session <https://requests.readthedocs.io/en/latest/api/#requests.Session.close>. We can handle the Session manually when using DicomWebClient <https://dicomweb-client.readthedocs.io/en/latest/package.html#dicomweb_client.api.DICOMwebClient>
+  - When cancelling a job we currently wait for an already processing task to be completed before setting the job as canceled
+  - Those tasks should get actively killed, which is already implemented when killing the task from UI (staff only)
+  - But maybe we can do it more gracefully by passing a is_aborted() somehow down to the connectors
+  - In DimseConnector we could check a provided is_cancelled function if the next series should be fetched (or even the association be aborted)
+  - in DicomWebConnector we chould also check such an function an close the Session <https://requests.readthedocs.io/en/latest/api/#requests.Session.close>. We can handle the Session manually when using DicomWebClient <https://dicomweb-client.readthedocs.io/en/latest/package.html#dicomweb_client.api.DICOMwebClient>
 - Make registration Email unique and required. Also maybe check if an Email is of specific domains (optional).
-  -- We must first delete those users with duplicate or non existing Emails
-  -- Do this also for RADIS
+  - We must first delete those users with duplicate or non existing Emails
+  - Do this also for RADIS
 - Make sure temporary folder created in retrieve DICOM web API is cleaned up (see TODO in /home/adm-adit/workspace/adit/adit/dicom_web/views.py)
 - Look into how we can stream the file from disc (from the temp folder) with WADO (see <https://chat.openai.com/share/d5a2f27f-4854-4deb-85df-b7f574638ae3>)
 - Look into how we can improve STOW (do we have to upload one file at a time, can we stream it somehow)
 - DICOMwebClient currently does not support to access warnings when transferring images
-  -- See <https://github.com/ImagingDataCommons/dicomweb-client/issues/94>
-  -- That way we can't show warnings when some images of study to transfer could not be received (Partial Response with HTTP status code 206)
-  -- Maybe we can fix some stuff and get the PR accepted or use an own fork
-  --- See also <https://github.com/ImagingDataCommons/dicomweb-client/issues/88>
+  - See <https://github.com/ImagingDataCommons/dicomweb-client/issues/94>
+  - That way we can't show warnings when some images of study to transfer could not be received (Partial Response with HTTP status code 206)
+  - Maybe we can fix some stuff and get the PR accepted or use an own fork
+    - See also <https://github.com/ImagingDataCommons/dicomweb-client/issues/88>
 - Directly stream images from the connectors through the operators
-  -- Currently we download them to a folder first
-  -- This is ok for selective and batch transfer, but not really ok for our API calls to retrieve images
-  -- Also the DicomWebConnector seems to support this through iter\_ interface, see <https://github.com/ImagingDataCommons/dicomweb-client/issues/88>
-  -- For DimseConnector this is already partly implemented by using generators (see `yield` there)
+  - Currently we download them to a folder first
+  - This is ok for selective and batch transfer, but not really ok for our API calls to retrieve images
+  - Also the DicomWebConnector seems to support this through iter\_ interface, see <https://github.com/ImagingDataCommons/dicomweb-client/issues/88>
+  - For DimseConnector this is already partly implemented by using generators (see `yield` there)
 - Remove files in test folders from autoreload
 - Selective transfer choose series
 - Locked info for other apps like batch_transfer_locked.html
 - Encrypt data between swarm containers
-  -- <https://docs.docker.com/network/drivers/overlay/#encrypt-traffic-on-an-overlay-network>
-  -- <https://forums.docker.com/t/configuring-encryption-for-swarm-overlay-network-in-compose/29469/2>
-  -- We can also make the network attachable to do the "exec" stuff in tasks.py using one off containers using "run"
+  - <https://docs.docker.com/network/drivers/overlay/#encrypt-traffic-on-an-overlay-network>
+  - <https://forums.docker.com/t/configuring-encryption-for-swarm-overlay-network-in-compose/29469/2>
+  - We can also make the network attachable to do the "exec" stuff in tasks.py using one off containers using "run"
 - Redirect after restart/retry/delete job
 - Option in batch query to query whole study or explicit series
 - Allow to terminate a specific Celery task with revoke(celery_task_id, terminate=True)
@@ -68,18 +68,18 @@
 - Write test_parsers.py
 - DICOM data that does not need to be modified can be directly transferred between the source and destination server (C-MOVE). The only exception is when source and destination server are the same, then the data will still be downloaded and uploaded again. This may be helpful when the PACS server treats the data somehow differently when sent by ADIT.
 - Check if we still need Abortable Celery Tasks (and just use Task)
-  -- Currently we don't use this functionality to abort running task, but we could
-  -- <https://docs.celeryq.dev/en/stable/reference/celery.contrib.abortable.html>
-  -- <https://docs.celeryq.dev/en/latest/faq.html#how-do-i-get-the-result-of-a-task-if-i-have-the-id-that-points-there>
+  - Currently we don't use this functionality to abort running task, but we could
+  - <https://docs.celeryq.dev/en/stable/reference/celery.contrib.abortable.html>
+  - <https://docs.celeryq.dev/en/latest/faq.html#how-do-i-get-the-result-of-a-task-if-i-have-the-id-that-points-there>
 - Use Django ORM as Celery result backend (currently we use Redis for that)
-  -- <https://docs.celeryq.dev/en/stable/django/first-steps-with-django.html#django-celery-results-using-the-django-orm-cache-as-a-result-backend>
+  - <https://docs.celeryq.dev/en/stable/django/first-steps-with-django.html#django-celery-results-using-the-django-orm-cache-as-a-result-backend>
 
 ## Fix
 
 - Do some prechecks before trying the task (is source and destination online?)
 - Fix Celery logging (task ids are not appended to logging messages even as we use get_task_logger)
-  -- Look into how the setup is in <https://youtube.com/playlist?list=PLOLrQ9Pn6caz-6WpcBYxV84g9gwptoN20&si=jUU6wttECucsbGFv>
-  -- and its code <https://github.com/veryacademy?q=Django&type=all&language=&sort=>
+  - Look into how the setup is in <https://youtube.com/playlist?list=PLOLrQ9Pn6caz-6WpcBYxV84g9gwptoN20&si=jUU6wttECucsbGFv>
+  - and its code <https://github.com/veryacademy?q=Django&type=all&language=&sort=>
 - Shorter timeout for offline studies
 - Tests: test_query_utils, test serializers, test all views (as integration tests using real Orthanc), improve tests of transferutil, BatchFileSizeError
 - c-get download timeout
@@ -90,46 +90,46 @@
 ## Maybe
 
 - New batch transfer
-  -- Create new batch transfer job and allow to add tasks
-  -- Add tasks manually or using a Excel file
-  -- Query tasks directly using new dicom_query_queue
-  -- New status: QUERYING, READY
-  -- Button: Start Transfer (only when no task is querying)
-  -- Allow to add tasks to an already existing job (even if already transferred)
-  -- Delete batch query
+  - Create new batch transfer job and allow to add tasks
+  - Add tasks manually or using a Excel file
+  - Query tasks directly using new dicom_query_queue
+  - New status: QUERYING, READY
+  - Button: Start Transfer (only when no task is querying)
+  - Allow to add tasks to an already existing job (even if already transferred)
+  - Delete batch query
 - Upload portal with drag&drop
-  -- Store those files perhaps in ORTHANC
-  -- Preview uploaded images
-  -- Allow to transfer thow uploaded image to a PACS
+  - Store those files perhaps in ORTHANC
+  - Preview uploaded images
+  - Allow to transfer thow uploaded image to a PACS
 - Improve scheduler (with day in week and times)
 - Show failed tasks in results of batch query and batch transfer
 - Allow to find multiple Patients for the same PatientName + PatientBirthDate in batch query
-  -- Currently we don't allow this, but this can happen when a patient has multiple PatientIDs in the same PACS (e.g. has external images)
+  - Currently we don't allow this, but this can happen when a patient has multiple PatientIDs in the same PACS (e.g. has external images)
 - exclude test folders from autorelad in ServerCommand (maybe a custom filter is needed)
 - Switch from Daphne to Uvicorn (maybe it has faster restart times during development)
 - Switch from Celery to Huey
 - Upgrade postgres server to v15, but we have to migrate the data then as the database files are incompatible a newer version
-  -- <https://hollo.me/devops/upgrade-postgresql-database-with-docker.html>
-  -- <https://thomasbandt.com/postgres-docker-major-version-upgrade>
-  -- <https://betterprogramming.pub/how-to-upgrade-your-postgresql-version-using-docker-d1e81dbbbdf9>
-  -- look into <https://github.com/tianon/docker-postgres-upgrade>
+  - <https://hollo.me/devops/upgrade-postgresql-database-with-docker.html>
+  - <https://thomasbandt.com/postgres-docker-major-version-upgrade>
+  - <https://betterprogramming.pub/how-to-upgrade-your-postgresql-version-using-docker-d1e81dbbbdf9>
+  - look into <https://github.com/tianon/docker-postgres-upgrade>
 - Get rid of 7z archive feature. It think it was never used.
 - Allow to search multiple source servers with one query (maybe only in dicom explorer)
 - Bring everything behind Nginx as reverse proxy
-  -- Orthanc and Flower should then be directly behind Nginx (without Django-revproxy)
-  -- Use authentication module of nginx
-  -- <http://nginx.org/en/docs/http/ngx_http_auth_request_module.html>
-  -- <https://stackoverflow.com/a/70961666/166229>
-  -- Evaluate Nginx vs Traefik
+  - Orthanc and Flower should then be directly behind Nginx (without Django-revproxy)
+  - Use authentication module of nginx
+  - <http://nginx.org/en/docs/http/ngx_http_auth_request_module.html>
+  - <https://stackoverflow.com/a/70961666/166229>
+  - Evaluate Nginx vs Traefik
 - Reuse authentication in integration tests
-  -- <https://playwright.dev/python/docs/auth>
-  -- Unfortunately, we can't use live_server fixture inside session fixtures
-  -- example <https://github.com/automationneemo/PlaywrightDemoYt>
+  - <https://playwright.dev/python/docs/auth>
+  - Unfortunately, we can't use live_server fixture inside session fixtures
+  - example <https://github.com/automationneemo/PlaywrightDemoYt>
 - Get rid of dicom_connector.download_study/move_study. Do everything at the series level. That way filtering series (e.g. exlcude modalities) is much easier.
 - Evaluate if services should be better restarted with pywatchman instead of watchdog and watchmedo
-  -- pywatchman is used by Django autoreload
-  -- See <https://github.com/django/django/blob/main/django/utils/autoreload.py>
-  -- Unfortunately, I could not get it to work with Django autoreload itself, but we can use something similiar by using watchman directly and integrate it in ServerCommand
+  - pywatchman is used by Django autoreload
+  - See <https://github.com/django/django/blob/main/django/utils/autoreload.py>
+  - Unfortunately, I could not get it to work with Django autoreload itself, but we can use something similiar by using watchman directly and integrate it in ServerCommand
 - BatchQuery with custom DICOM keywords
 - Watchdog server
 - pull celery_task stuff out of transfer_utils
@@ -142,44 +142,44 @@
 - log debug -> info in connector also in production
 - Link owner in templates to user profile
 - Encrypt to zip file instead to 7zip
-  -- 7z a -tzip -pfoobar foo.zip ./adit_selective_transfer_9133_20231121_schlampkai
-  -- Unfortunately, file names and directory names are still visible
-  -- Can be work around by wrapping another zip file in an encrypted zip file <https://unix.stackexchange.com/a/290088/469228>
+  - 7z a -tzip -pfoobar foo.zip ./adit_selective_transfer_9133_20231121_schlampkai
+  - Unfortunately, file names and directory names are still visible
+  - Can be work around by wrapping another zip file in an encrypted zip file <https://unix.stackexchange.com/a/290088/469228>
 - Rewrite dicom_connector to use asyncio (wrap all pynetdicom calls in asyncio.to_thread)
-  -- I don't think that this will gain any performance improvements, so maybe not worth it
+  - I don't think that this will gain any performance improvements, so maybe not worth it
 - Look out for a django-revproxy fix (see <https://github.com/jazzband/django-revproxy/issues/144>)
-  -- Flower is running behind a Django internal reverse proxy (django-revproxy) so that only admins can access them
-  -- Unfortunately the last released django-revproxy is broken with latest Django
-  -- So we use the master branch here directly from Github (see pyproject.toml)
-  -- Alternatively we could use <https://github.com/thomasw/djproxy>
+  - Flower is running behind a Django internal reverse proxy (django-revproxy) so that only admins can access them
+  - Unfortunately the last released django-revproxy is broken with latest Django
+  - So we use the master branch here directly from Github (see pyproject.toml)
+  - Alternatively we could use <https://github.com/thomasw/djproxy>
 - Rethink task queues and rescheduling
   -- Currently we use Celery to schedule tasks in the future using Celery's ETA feature, but this is not recommended for tasks in the distant future (see <https://docs.celeryq.dev/en/stable/userguide/calling.html#eta-and-countdown>)
-  -- An option would be to introduce a "rescheduled" property in task model and reschedule them by checking periodically using Celery Beat PeriodicTasks (maybe every hour or so) or using "one_off" PeriodicTasks.
-  -- But then we can't use Celery Canvas anymore as tasks in a worker finish with such a rescheduling outside of the Celery queue system. We then have to check at the end of each task if the job is finished or erroneous (by checking all the other sibling tasks). This should be done with a distributed lock (e.g. using <https://sher-lock.readthedocs.io/en/latest/>) so that if we have multiple workers there are no race conditions.
-  -- Maybe it isn't even a big problem as in a hospital site we never accumulate such many Celery tasks on a worker and ETA is totally fine (just keep it in mind that it could get a problem).
-  -- Make sure if using PeriodicTask that those are also cancelled when job is cancelled.
-  -- Another solution would be to use Temporal.io as soon as they implement task priorities <https://github.com/temporalio/temporal/issues/1507>
+  - An option would be to introduce a "rescheduled" property in task model and reschedule them by checking periodically using Celery Beat PeriodicTasks (maybe every hour or so) or using "one_off" PeriodicTasks.
+  - But then we can't use Celery Canvas anymore as tasks in a worker finish with such a rescheduling outside of the Celery queue system. We then have to check at the end of each task if the job is finished or erroneous (by checking all the other sibling tasks). This should be done with a distributed lock (e.g. using <https://sher-lock.readthedocs.io/en/latest/>) so that if we have multiple workers there are no race conditions.
+  - Maybe it isn't even a big problem as in a hospital site we never accumulate such many Celery tasks on a worker and ETA is totally fine (just keep it in mind that it could get a problem).
+  - Make sure if using PeriodicTask that those are also cancelled when job is cancelled.
+  - Another solution would be to use Temporal.io as soon as they implement task priorities <https://github.com/temporalio/temporal/issues/1507>
 - Evaluate other task runners
-  -- <https://www.pyinvoke.org/> # used currently
-  -- <https://github.com/taskipy/taskipy>
-  -- <https://github.com/nat-n/poethepoet>
-  -- <https://just.systems/>
-  -- <https://taskfile.dev/>
+  - <https://www.pyinvoke.org/> # used currently
+  - <https://github.com/taskipy/taskipy>
+  - <https://github.com/nat-n/poethepoet>
+  - <https://just.systems/>
+  - <https://taskfile.dev/>
 - Make a job urgent retrospectively (maybe only staff members can do this)
-  -- A current workaround is to cancel the job, change urgency with Django Admin and then resume the job
+  - A current workaround is to cancel the job, change urgency with Django Admin and then resume the job
 - Try to bring channels_liver_server in official pytest_django release
-  -- <https://github.com/pytest-dev/pytest-django/blob/master/pytest_django/fixtures.py#L514>
-  -- <https://github.com/pytest-dev/pytest-django/blob/42b7db2f4f5dbe785e57652d1d4ea9eda39e56e3/pytest_django/live_server_helper.py#L4>
-  -- <https://github.com/django/channels/blob/main/channels/testing/live.py#L21>
-  -- <https://github.com/django/daphne/blob/main/daphne/testing.py#L123>
-  -- <https://github.com/django/django/blob/main/django/test/testcases.py#L1810>
+  - <https://github.com/pytest-dev/pytest-django/blob/master/pytest_django/fixtures.py#L514>
+  - <https://github.com/pytest-dev/pytest-django/blob/42b7db2f4f5dbe785e57652d1d4ea9eda39e56e3/pytest_django/live_server_helper.py#L4>
+  - <https://github.com/django/channels/blob/main/channels/testing/live.py#L21>
+  - <https://github.com/django/daphne/blob/main/daphne/testing.py#L123>
+  - <https://github.com/django/django/blob/main/django/test/testcases.py#L1810>
 - Maybe move label from from form to models using "verbose_name" and also the help_text
 - Save specific form fields for later use with HTMX, currently we only save them in the post handler when the form is valid.
 - Move user profile fields from User to a related UserProfile model. Improves the query performance a bit, but not sure if it is worth it.
 - Setup pgadmin
-  -- <https://stackoverflow.com/questions/64620446/adding-postgress-connections-to-pgadmin-in-docker-file>
-  -- Not sure if we really need this as we have Django admin and can view data in there
+  - <https://stackoverflow.com/questions/64620446/adding-postgress-connections-to-pgadmin-in-docker-file>
+  - Not sure if we really need this as we have Django admin and can view data in there
 - Move to SVG sprite (the stuff with symbol) instead of including the SVGs itself
-  -- See <https://getbootstrap.com/docs/5.0/components/alerts/#icons>
+  - See <https://getbootstrap.com/docs/5.0/components/alerts/#icons>
 
 ## RADIS
