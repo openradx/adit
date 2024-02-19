@@ -6,10 +6,11 @@
   - <https://sqids.org/python>
   - <https://stackoverflow.com/questions/43253602/django-short-non-linear-non-predictable-id-in-the-url>
 - Bring back some kind of ID in batch modes to better correlate the failures in the Excel files
-  - Use "batch_id" for tasks in batch query and batch transfer
-  - Build export view and allow to export with failures
-  - Also write a note there that the user should
-    - rename BATCH_ID to QUERY_ID in the resulting file and should provide a new BATCH_ID column
+  - Users must provide "QUERY_ID" in Batch Query and "TRANSFER_ID" in Batch Transfer in uploaded Excel files
+  - BatchQueryTask gets an additional "query_id" and BatchTransferTask gets an additional "transfer_id"
+  - Show those to the user in the task views so that they can find the corresponding Excel row more easily
+  - Create new export batch query results view to optionally allow the users to export with failures
+  - Also provide some more info in that view what users should do to transfer
   - <https://github.com/openradx/adit/commit/c6d840b1872b3c8f39b0f0008cdce131d5863f4d>
 - Add a permission to only allow to add a new job when all other jobs of the user are finished
 - Show failures in exported batch results
