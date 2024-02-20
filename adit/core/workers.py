@@ -190,8 +190,7 @@ class DicomWorker:
         with self._redis.lock(DISTRIBUTED_LOCK):
             queued_tasks = QueuedTask.objects.filter(locked=False)
             queued_tasks = queued_tasks.filter(Q(eta=None) | Q(eta__lt=timezone.now()))
-            queued_tasks = queued_tasks.order_by("-priority")
-            queued_tasks = queued_tasks.order_by("created")
+            queued_tasks = queued_tasks.order_by("-priority", "created")
             queued_task = queued_tasks.first()
 
             if not queued_task:
