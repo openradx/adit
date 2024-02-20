@@ -46,9 +46,10 @@ django-dbbackup = "^4.0.2"
 janus = "^1.0.0"
 psycopg = { extras = ["binary"], version = "^3.1.12" }
 pebble = "^5.0.3"
+pyarrow = "^15.0.0"
 
 [tool.poetry.group.dev.dependencies]
-celery-types = "^0.20.0"
+celery-types = "^0.22.0"
 debugpy = "^1.6.2"
 django-debug-permissions = "^1.0.0"
 django-debug-toolbar = "^4.1.0"
@@ -62,7 +63,7 @@ invoke = "^2.1.2"
 ipykernel = "^6.17.1"
 ipython = "^8.1.1"
 nest-asyncio = "^1.5.6"
-pyright = "^1.1.336"
+pyright = "^1.1.351"
 pytest = "^7.1.2"
 pytest-asyncio = "^0.21.0"
 pytest-celery = "^0.0.0"
@@ -76,7 +77,7 @@ pytest-timeout = "^2.1.0"
 pytest-watch = "^4.2.0"
 python-dotenv = "^1.0.0"
 requests = "^2.27.1"
-ruff = "^0.1.4"
+ruff = "^0.2.2"
 time-machine = "^2.1.0"
 django-browser-reload = "^1.11.0"
 pywatchman = "^1.4.1"
@@ -115,7 +116,7 @@ show_missing = true
 [tool.ruff]
 exclude = ["migrations"]
 line-length = 100
-select = ["E", "F", "I", "DJ"]
+lint.select = ["E", "F", "I", "DJ"]
 
 [tool.djlint]
 profile = "django"
