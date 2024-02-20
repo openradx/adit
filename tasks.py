@@ -260,6 +260,7 @@ def test(
     keyword: str | None = None,
     mark: str | None = None,
     stdout: bool = False,
+    failfast: bool = False,
 ):
     """Run the test suite"""
     if not check_compose_up(ctx, "dev"):
@@ -283,6 +284,8 @@ def test(
         cmd += f"-m {mark} "
     if stdout:
         cmd += "-s "
+    if failfast:
+        cmd += "-x "
     if path:
         cmd += path
     run_cmd(ctx, cmd)
