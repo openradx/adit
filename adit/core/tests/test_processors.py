@@ -65,7 +65,6 @@ def test_transfer_to_server_succeeds(
     patient, study = create_resources(task)
 
     source_operator_mock = mocker.create_autospec(DicomOperator)
-    source_operator_mock.find_patients.return_value = iter([patient])
     source_operator_mock.find_studies.return_value = iter([study])
     dest_operator_mock = mocker.create_autospec(DicomOperator)
 
@@ -122,7 +121,6 @@ def test_transfer_to_folder_succeeds(
     patient, study = create_resources(task)
 
     source_operator_mock = mocker.create_autospec(DicomOperator)
-    source_operator_mock.find_patients.return_value = iter([patient])
     source_operator_mock.find_studies.return_value = iter([study])
 
     processor = TransferTaskProcessor(task)
@@ -172,7 +170,6 @@ def test_transfer_to_archive_succeeds(
     patient, study = create_resources(task)
 
     source_operator_mock = mocker.create_autospec(DicomOperator)
-    source_operator_mock.find_patients.return_value = iter([patient])
     source_operator_mock.find_studies.return_value = iter([study])
 
     processor = TransferTaskProcessor(task)
@@ -186,7 +183,6 @@ def test_transfer_to_archive_succeeds(
     result = processor.process()
 
     # Assert
-    source_operator_mock.find_patients.assert_called_once()
     assert Popen_mock.call_args.args[0][0] == "7z"
     assert Popen_mock.call_count == 2
 

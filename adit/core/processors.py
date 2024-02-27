@@ -137,10 +137,7 @@ class TransferTaskProcessor(DicomTaskProcessor):
             pseudonym = None
             patient_folder = download_folder / sanitize_dirname(self.transfer_task.patient_id)
 
-        # Check if the Study Instance UID is correct and fetch some attributes to create
-        # the study folder.
-        patient = self._fetch_patient()
-        study = self._fetch_study(patient_id=patient.PatientID)
+        study = self._fetch_study()
         modalities = study.ModalitiesInStudy
 
         modalities = [
@@ -192,28 +189,11 @@ class TransferTaskProcessor(DicomTaskProcessor):
 
         return patient_folder
 
-    def _fetch_patient(self) -> ResultDataset:
-        patients = list(
-            self.source_operator.find_patients(
-                QueryDataset.create(PatientID=self.transfer_task.patient_id)
-            )
-        )
-
-        if len(patients) == 0:
-            raise DicomError(f"No patient found with Patient ID {self.transfer_task.patient_id}.")
-
-        if len(patients) > 1:
-            raise DicomError(
-                f"Multiple patients found with Patient ID {self.transfer_task.patient_id}."
-            )
-
-        return patients[0]
-
-    def _fetch_study(self, patient_id: str) -> ResultDataset:
+    def _fetch_study(self) -> ResultDataset:
         studies = list(
             self.source_operator.find_studies(
                 QueryDataset.create(
-                    PatientID=patient_id,
+                    PatientID=self.transfer_task.patient_id,
                     StudyInstanceUID=self.transfer_task.study_uid,
                 )
             )
