@@ -12,6 +12,7 @@ from invoke.runners import Result
 from invoke.tasks import task
 
 Environments = Literal["dev", "prod", "test"]
+Profile = Literal["full", "web"]
 
 stack_name_dev = "adit_dev"
 stack_name_prod = "adit_prod"
@@ -135,7 +136,7 @@ def compose_up(
     ctx: Context,
     env: Environments = "dev",
     no_build: bool = False,
-    profile: Literal["full", "web", "extra", "db"] = "full",
+    profile: Profile = "full",
 ):
     """Start ADIT containers in specified environment"""
     build_opt = "--no-build" if no_build else "--build"
@@ -147,7 +148,7 @@ def compose_up(
 def compose_down(
     ctx: Context,
     env: Environments = "dev",
-    profile: Literal["full", "web", "extra", "db"] = "full",
+    profile: Profile = "full",
     cleanup: bool = False,
 ):
     """Stop ADIT containers in specified environment"""
