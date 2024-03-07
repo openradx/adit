@@ -27,6 +27,8 @@ from django_tables2 import SingleTableMixin
 from django_tables2.tables import Table
 from revproxy.views import ProxyView
 
+from adit.core.utils.model_utils import reset_tasks
+
 from .forms import BroadcastForm
 from .mixins import HtmxOnlyMixin, PageSizeSelectMixin, RelatedFilterMixin
 from .models import CoreSettings, DicomJob, DicomTask, QueuedTask
@@ -451,14 +453,7 @@ class DicomTaskResetView(LoginRequiredMixin, SingleObjectMixin, View):
                 f"Task with ID {task.id} and status {task.get_status_display()} is not resettable."
             )
 
-        # See also core.models.DicomJob.reset_tasks
-        task.status = DicomTask.Status.PENDING
-        task.retries = 0
-        task.message = ""
-        task.log = ""
-        task.start = None
-        task.end = None
-        task.save()
+        reset_tasks(self.model.objects.filter(id=task.id))
 
         task.queue_pending_task()
         task.job.post_process()

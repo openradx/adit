@@ -13,6 +13,7 @@ from django.utils import timezone
 
 from adit.accounts.models import User
 from adit.core.utils.mail import send_job_finished_mail
+from adit.core.utils.model_utils import reset_tasks
 
 from .validators import (
     no_backslash_char_validator,
@@ -252,19 +253,11 @@ class DicomJob(models.Model):
 
     def reset_tasks(self, only_failed=False) -> None:
         if only_failed:
-            dicom_tasks = self.tasks.filter(status=DicomTask.Status.FAILURE)
+            tasks = self.tasks.filter(status=DicomTask.Status.FAILURE)
         else:
-            dicom_tasks = self.tasks.all()
+            tasks = self.tasks.all()
 
-        # See also core.views.DicomTaskResetView.post
-        dicom_tasks.update(
-            status=DicomJob.Status.PENDING,
-            retries=0,
-            message="",
-            log="",
-            start=None,
-            end=None,
-        )
+        reset_tasks(tasks)
 
     def post_process(self) -> bool:
         """Evaluates all the tasks of a dicom job and sets the job state accordingly.
