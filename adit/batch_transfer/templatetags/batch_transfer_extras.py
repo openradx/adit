@@ -2,8 +2,6 @@ from typing import Any
 
 from django.template import Library
 
-from ..models import TransferTask
-
 register = Library()
 
 
@@ -30,16 +28,3 @@ def task_control_panel(context: dict[str, Any]) -> dict[str, Any]:
         "user": context["user"],
         "task": context["task"],
     }
-
-
-@register.filter
-def task_status_badge_class(status: TransferTask.Status) -> str:
-    css_classes = {
-        TransferTask.Status.PENDING: "badge-secondary",
-        TransferTask.Status.IN_PROGRESS: "badge-info",
-        TransferTask.Status.CANCELED: "badge-dark",
-        TransferTask.Status.SUCCESS: "badge-success",
-        TransferTask.Status.WARNING: "badge-warning",
-        TransferTask.Status.FAILURE: "badge-danger",
-    }
-    return css_classes[status]
