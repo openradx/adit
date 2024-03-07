@@ -3,14 +3,14 @@
 {% load bootstrap_icon from core_extras %}
 {% block heading %}
     <div class="d-flex justify-content-between align-items-start">
-        <h4 class="mb-3">
-            Select studies to transfer
+        <h4 class="mb-3 d-flex gap-3">
+            <span>Select studies to transfer</span>
             <button type="button"
                     class="btn btn-sm btn-info align-baseline"
                     hx-get="{% url 'selective_transfer_help' %}"
                     hx-target="#htmx-dialog">
-                {% bootstrap_icon "question-circle" %}
                 Help
+                {% bootstrap_icon "question-circle" %}
             </button>
         </h4>
         <a href="{% url 'selective_transfer_job_list' %}">
