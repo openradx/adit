@@ -1,5 +1,6 @@
 import datetime
 from time import sleep
+from typing import override
 
 import pytest
 import time_machine
@@ -9,6 +10,7 @@ from adit.core.errors import RetriableDicomError
 
 from ..models import DicomJob, DicomTask, QueuedTask
 from ..processors import DicomTaskProcessor
+from ..types import ProcessingResult
 from ..workers import DicomWorker
 from .example_app.factories import ExampleTransferJobFactory, ExampleTransferTaskFactory
 from .example_app.models import ExampleAppSettings, ExampleTransferTask
@@ -18,6 +20,14 @@ class ExampleProcessor(DicomTaskProcessor):
     app_name = "Example"
     dicom_task_class = ExampleTransferTask
     app_settings_class = ExampleAppSettings
+
+    @override
+    def process(self) -> ProcessingResult:
+        return {
+            "status": ExampleTransferTask.Status.SUCCESS,
+            "message": "Example task succeeded",
+            "log": "",
+        }
 
 
 @pytest.fixture(autouse=True)
