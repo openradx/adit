@@ -42,7 +42,6 @@ services:
     profiles:
       - full
       - web
-      - db
 
   dicom_worker:
     <<: *default-app
@@ -53,7 +52,6 @@ services:
       "
     profiles:
       - full
-      - extra
 
   celery_worker:
     <<: *default-app
@@ -61,7 +59,6 @@ services:
       ./manage.py celery_worker -Q default_queue --autoreload
     profiles:
       - full
-      - extra
 
   celery_beat:
     <<: *default-app
@@ -69,7 +66,6 @@ services:
       ./manage.py celery_beat --autoreload
     profiles:
       - full
-      - extra
 
   receiver:
     <<: *default-app
@@ -79,28 +75,23 @@ services:
       ./manage.py receiver --autoreload
     profiles:
       - full
-      - extra
 
   flower:
     <<: *default-app
     profiles:
       - full
-      - extra
 
   redis:
     profiles:
       - full
-      - extra
 
   orthanc1:
     profiles:
       - full
-      - extra
 
   orthanc2:
     profiles:
       - full
-      - extra
 
 volumes:
   vscode-server:
