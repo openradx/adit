@@ -1,3 +1,4 @@
+import abc
 import logging
 import os
 import subprocess
@@ -22,7 +23,7 @@ from .utils.sanitize import sanitize_dirname
 logger = logging.getLogger(__name__)
 
 
-class DicomTaskProcessor:
+class DicomTaskProcessor(abc.ABC):
     app_name: str
     dicom_task_class: type[DicomTask]
     app_settings_class: type[AppSettings]
@@ -35,16 +36,19 @@ class DicomTaskProcessor:
         assert app_settings
         return app_settings.suspended
 
+    @abc.abstractmethod
     def process(self) -> ProcessingResult:
         """Does the actual work of processing the dicom task.
 
         Should return a tuple of the final status of that task, a message that is
         stored in the task model and a list of log entries (e.g. warnings).
         """
-        raise NotImplementedError("Subclasses must implement this method.")
+        ...
 
 
 class TransferTaskProcessor(DicomTaskProcessor):
+    _logs: list[DicomLogEntry] = []
+
     def __init__(self, dicom_task: DicomTask) -> None:
         assert isinstance(dicom_task, TransferTask)
         self.transfer_task = dicom_task
@@ -58,6 +62,14 @@ class TransferTaskProcessor(DicomTaskProcessor):
         if destination.node_type == DicomNode.NodeType.SERVER:
             self.dest_operator = DicomOperator(destination.dicomserver)
 
+    def get_logs(self) -> list[DicomLogEntry]:
+        logs: list[DicomLogEntry] = []
+        logs.extend(self.source_operator.get_logs())
+        if self.dest_operator:
+            logs.extend(self.dest_operator.get_logs())
+        logs.extend(self._logs)
+        return logs
+
     def process(self) -> ProcessingResult:
         if self.dest_operator:
             self._transfer_to_server()
@@ -67,22 +79,13 @@ class TransferTaskProcessor(DicomTaskProcessor):
             else:
                 self._transfer_to_folder()
 
-        logs: list[DicomLogEntry] = []
-        for log in self.source_operator.get_logs():
-            logs.append(log)
-        self.source_operator.clear_logs()
-
-        if self.dest_operator:
-            for log in self.dest_operator.get_logs():
-                logs.append(log)
-            self.dest_operator.clear_logs()
-
         status: TransferTask.Status = TransferTask.Status.SUCCESS
         message: str = "Transfer task completed successfully."
+        logs = self.get_logs()
         for log in logs:
             if log["level"] == "Warning":
                 status = TransferTask.Status.WARNING
-                message = "Transfer task finished with warnings."
+                message = log["title"]
 
         return {
             "status": status,
@@ -200,6 +203,17 @@ class TransferTaskProcessor(DicomTaskProcessor):
         )
 
         if len(studies) == 0:
+            # It could be that the PatientID of the patient changed, because the patient was
+            # reassigned to another patient (e.g. if it is an external investigation).
+            # So we try to find the study with the StudyInstanceUID only and later warn
+            # that there PatientIDs differ (see below).
+            studies = list(
+                self.source_operator.find_studies(
+                    QueryDataset.create(StudyInstanceUID=self.transfer_task.study_uid)
+                )
+            )
+
+        if len(studies) == 0:
             raise DicomError(
                 f"No study found with Study Instance UID {self.transfer_task.study_uid}."
             )
@@ -208,7 +222,22 @@ class TransferTaskProcessor(DicomTaskProcessor):
                 f"Multiple studies found with Study Instance UID {self.transfer_task.study_uid}."
             )
 
-        return studies[0]
+        study = studies[0]
+        task_patient_id = self.transfer_task.patient_id
+        study_patient_id = study.PatientID
+        if task_patient_id != study_patient_id:
+            self._logs.append(
+                {
+                    "level": "Warning",
+                    "title": "Mismatching PatientIDs",
+                    "message": (
+                        "Mismatching PatientID in the transfer task "
+                        f"({task_patient_id}) and the found study ({study_patient_id})."
+                    ),
+                }
+            )
+
+        return study
 
     def _fetch_series_list(self, series_uid: str) -> list[ResultDataset]:
         series_list = list(
