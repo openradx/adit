@@ -368,9 +368,9 @@ TEMP_DICOM_DIR = env.str("TEMP_DICOM_DIR", default=str(BASE_DIR / ".dicoms"))  #
 # Usually a transfer job must be verified by an admin. By setting
 # this option to True ADIT will schedule unverified transfers
 # (and directly set the status of the job to PENDING).
-SELECTIVE_TRANSFER_UNVERIFIED = True
-BATCH_QUERY_UNVERIFIED = True
-BATCH_TRANSFER_UNVERIFIED = True
+START_SELECTIVE_TRANSFER_UNVERIFIED = True
+START_BATCH_QUERY_UNVERIFIED = True
+START_BATCH_TRANSFER_UNVERIFIED = True
 
 # A timezone that is used for users of the web interface.
 USER_TIME_ZONE = env.str("USER_TIME_ZONE", default="Europe/Berlin")  # type: ignore

@@ -74,7 +74,7 @@ def test_logged_in_user_with_permission_can_access_form(client, batch_transfer_g
 def test_batch_job_created_and_enqueued_with_auto_verify(
     client, settings, batch_transfer_group, form_data
 ):
-    settings.BATCH_TRANSFER_UNVERIFIED = True
+    settings.START_BATCH_TRANSFER_UNVERIFIED = True
 
     user = UserFactory.create()
     add_user_to_group(user, batch_transfer_group)
@@ -95,7 +95,7 @@ def test_batch_job_created_and_enqueued_with_auto_verify(
 def test_batch_job_created_and_not_enqueued_without_auto_verify(
     client, settings, batch_transfer_group, form_data
 ):
-    settings.BATCH_TRANSFER_UNVERIFIED = False
+    settings.START_BATCH_TRANSFER_UNVERIFIED = False
 
     user = UserFactory.create()
     add_user_to_group(user, batch_transfer_group)

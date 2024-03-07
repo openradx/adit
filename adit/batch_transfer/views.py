@@ -79,7 +79,7 @@ class BatchTransferJobCreateView(BatchTransferLockedMixin, DicomJobCreateView):
         return initial
 
     def form_valid(self, form):
-        return super().form_valid(form, settings.BATCH_TRANSFER_UNVERIFIED)
+        return super().form_valid(form, settings.START_BATCH_TRANSFER_UNVERIFIED)
 
 
 class BatchTransferJobDetailView(BatchTransferLockedMixin, DicomJobDetailView):

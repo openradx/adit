@@ -84,7 +84,7 @@ class BatchQueryJobCreateView(BatchQueryLockedMixin, DicomJobCreateView):
         return initial
 
     def form_valid(self, form):
-        return super().form_valid(form, settings.BATCH_QUERY_UNVERIFIED)
+        return super().form_valid(form, settings.START_BATCH_QUERY_UNVERIFIED)
 
 
 class BatchQueryJobDetailView(BatchQueryLockedMixin, DicomJobDetailView):

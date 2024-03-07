@@ -305,7 +305,7 @@ class SelectiveTransferConsumer(AsyncJsonWebsocketConsumer):
                 pseudonym=pseudonym,
             )
 
-        if user.is_staff or settings.SELECTIVE_TRANSFER_UNVERIFIED:
+        if user.is_staff or settings.START_SELECTIVE_TRANSFER_UNVERIFIED:
             job.status = SelectiveTransferJob.Status.PENDING
             job.save()
 
