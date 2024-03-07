@@ -431,17 +431,35 @@ class DimseConnector:
 
                     if failed_suboperations and completed_suboperations:
                         message = f"{failed_suboperations} sub-operations failed:\n{status}"
-                        self.logs.append({"level": "Warning", "message": message})
+                        self.logs.append(
+                            {
+                                "level": "Warning",
+                                "title": "Some failed sub-operations",
+                                "message": message,
+                            }
+                        )
                         logger.warn(message)
 
                     if warning_suboperations:
                         message = f"{warning_suboperations} sub-operations with warnings."
-                        self.logs.append({"level": "Warning", "message": message})
+                        self.logs.append(
+                            {
+                                "level": "Warning",
+                                "title": "Sub-operations with warnings",
+                                "message": message,
+                            }
+                        )
                         logger.warn(message)
                 else:
                     if status_category == STATUS_WARNING:
                         message = f"Unknown warning:\n{status}"
-                        self.logs.append({"level": "Warning", "message": message})
+                        self.logs.append(
+                            {
+                                "level": "Warning",
+                                "title": "Unexpected warnings",
+                                "message": message,
+                            }
+                        )
                         logger.warn(message)
 
             if status_category == STATUS_FAILURE:

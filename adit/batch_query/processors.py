@@ -25,6 +25,11 @@ class BatchQueryTaskProcessor(DicomTaskProcessor):
         self.operator = DicomOperator(source.dicomserver)
 
     def process(self) -> ProcessingResult:
+        # TODO: Allow to get multiple patients (but provide a warning if there are multiple
+        # patients). We also have to use a for loop then. Make sure that users that provide
+        # only a patient name must provide a birth date as well.
+        # Also make sure that patient name doesn't contain wildcards.
+
         patient = self._fetch_patient()
 
         is_series_query = self.query_task.series_description or self.query_task.series_numbers
@@ -43,8 +48,6 @@ class BatchQueryTaskProcessor(DicomTaskProcessor):
         for log in logs:
             if log["level"] == "Warning":
                 status = BatchQueryTask.Status.WARNING
-
-        self.operator.clear_logs()
 
         return {
             "status": status,

@@ -22,6 +22,7 @@ class AuthenticatedApiRequest(Request):
 
 class DicomLogEntry(TypedDict):
     level: Literal["Info", "Warning"]
+    title: str
     message: str
 
 

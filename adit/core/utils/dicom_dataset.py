@@ -139,7 +139,7 @@ class _NoValue:
 
 class QueryDataset(BaseDataset):
     def ensure_elements(self, *keywords: str) -> None:
-        """Ensure that specific elements in a dataset are present."""
+        """Ensure that specific elements in a dataset are present (even if empty)."""
         for keyword in keywords:
             if keyword not in self._ds:
                 setattr(self._ds, keyword, "")

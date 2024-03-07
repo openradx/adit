@@ -65,14 +65,22 @@ class DicomOperator:
     def get_logs(self) -> list[DicomLogEntry]:
         return self.dimse_connector.logs + self.dicom_web_connector.logs + self.logs
 
-    def clear_logs(self) -> None:
-        self.dimse_connector.logs.clear()
-        self.dicom_web_connector.logs.clear()
-        self.logs.clear()
-
     def abort(self) -> None:
         self.dimse_connector.abort_connection()
         self.dicom_web_connector.abort()
+
+    def find_patient_id_of_study_uid(self, study_uid: str) -> str | None:
+        query = QueryDataset.create(StudyInstanceUID=study_uid, QueryRetrieveLevel="STUDY")
+        result: ResultDataset | None = None
+        if self.server.study_root_find_support:
+            result = next(self.dimse_connector.send_c_find(query), None)
+        elif self.server.dicomweb_qido_support:
+            result = next(iter(self.dicom_web_connector.send_qido_rs(query)), None)
+
+        if result and "PatientID" in result:
+            return result.PatientID
+
+        return None
 
     def find_patients(
         self,
@@ -625,6 +633,7 @@ class DicomOperator:
                     self.logs.append(
                         {
                             "level": "Warning",
+                            "title": "Some images could not be fetched",
                             "message": "Failed to fetch some images with C-MOVE.",
                         }
                     )
