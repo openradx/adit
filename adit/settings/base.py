@@ -113,6 +113,15 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "adit.wsgi.application"
 
+STORAGES = {
+    "default": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+    },
+    "staticfiles": {
+        "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+    },
+}
+
 # env.db() loads the DB setup from the DATABASE_URL environment variable using
 # Django-environ.
 # The sqlite database is still used for pytest tests.
