@@ -100,8 +100,6 @@ markers = ["integration: mark a test as an integration test."]
 filterwarnings = [
     # We already fixed this, so we only need to remove this ignore with next major version of factory boy
     "ignore:.*Factory._after_postgeneration will stop saving the instance:DeprecationWarning",
-    "ignore:SelectableGroups dict interface is deprecated:DeprecationWarning",
-    "ignore:The USE_L10N setting is deprecated:django.utils.deprecation.RemovedInDjango50Warning",
     "ignore:'cgi' is deprecated:DeprecationWarning",
 ]
 timeout = 60
