@@ -15,7 +15,6 @@
 - Add a permission to only allow to add a new job when all other jobs of the user are finished
 - Show failures in exported batch results
 - Add permissions to dicom_web views (see TODOs there)
-- use get in PageSizeSelectMixin (see RADIS)
 - Update documentation
 - Just warn when one only one series of the study could not be transferred (only error when all series could not be transferred)
 - Fix toasts that newest is always on top (also in RADIS)
