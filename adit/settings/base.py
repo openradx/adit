@@ -227,9 +227,6 @@ LANGUAGE_CODE = "de-de"
 # We don't want to have German translations, but everything in English
 USE_I18N = False
 
-# But we still want to have dates and times localized
-USE_L10N = True
-
 USE_TZ = True
 
 TIME_ZONE = "UTC"
