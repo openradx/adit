@@ -101,6 +101,8 @@ filterwarnings = [
     # We already fixed this, so we only need to remove this ignore with next major version of factory boy
     "ignore:.*Factory._after_postgeneration will stop saving the instance:DeprecationWarning",
     "ignore:'cgi' is deprecated:DeprecationWarning",
+    'ignore:.*use of fork\(\) may lead to deadlocks.*:DeprecationWarning',
+    'ignore:.*Use timezone-aware objects to represent datetimes in UTC.*:DeprecationWarning',
 ]
 timeout = 60
 

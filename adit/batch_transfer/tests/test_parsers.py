@@ -59,7 +59,7 @@ def test_can_parse_without_series_uid(create_batch_file, data):
 
 
 def test_can_not_transfer_unpseudonymized_without_permission(create_batch_file, data):
-    data["Pseudonym"][0] = ""
+    data.loc[0, "Pseudonym"] = ""
     file = create_batch_file(data)
 
     parser = BatchTransferFileParser(can_transfer_unpseudonymized=False)
