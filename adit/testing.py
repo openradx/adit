@@ -40,7 +40,7 @@ class ChannelsLiveServer:
         self._server_process = self.ProtocolServerProcess(self.host, get_application)
         self._server_process.start()
         self._server_process.ready.wait()
-        self._port = self._server_process.port.value  # type: ignore
+        self._port = self._server_process.port.value
 
     def stop(self) -> None:
         self._server_process.terminate()
