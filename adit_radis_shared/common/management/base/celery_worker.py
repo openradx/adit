@@ -4,8 +4,6 @@ import socket
 import subprocess
 from typing import Literal
 
-from django.conf import settings
-
 from .server_command import ServerCommand
 
 logger = logging.getLogger(__name__)
@@ -15,7 +13,6 @@ class CeleryWorkerCommand(ServerCommand):
     project: Literal["adit", "radis"]
     help = "Starts a Celery worker"
     server_name = "Celery worker"
-    paths_to_watch = [settings.BASE_DIR / "adit"]
     worker_process: subprocess.Popen | None
 
     def __init__(self, *args, **kwargs):
