@@ -34,7 +34,7 @@ class UserFactory(BaseDjangoModelFactory[User]):
 
 class AdminUserFactory(UserFactory):
     username = "admin"
-    email = "admin@radis.test"
+    email = "admin@openradx.test"
     is_superuser = True
     is_staff = True
 
