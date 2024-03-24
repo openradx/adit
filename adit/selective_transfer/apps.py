@@ -1,12 +1,8 @@
 from django.apps import AppConfig
 from django.db.models.signals import post_migrate
 
-from adit.core.site import (
-    JobStats,
-    register_dicom_processor,
-    register_job_stats_collector,
-    register_main_menu_item,
-)
+from adit.core.site import JobStats, register_dicom_processor, register_job_stats_collector
+from adit_radis_shared.common.site import register_main_menu_item
 
 SECTION_NAME = "Selective Transfer"
 

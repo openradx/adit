@@ -14,7 +14,7 @@ from django.conf import settings
 from pydicom import Dataset
 
 from .errors import DicomError
-from .models import AppSettings, DicomNode, DicomTask, TransferTask
+from .models import DicomAppSettings, DicomNode, DicomTask, TransferTask
 from .types import DicomLogEntry, ProcessingResult
 from .utils.dicom_dataset import QueryDataset, ResultDataset
 from .utils.dicom_operator import DicomOperator
@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 class DicomTaskProcessor(abc.ABC):
     app_name: str
     dicom_task_class: type[DicomTask]
-    app_settings_class: type[AppSettings]
+    app_settings_class: type[DicomAppSettings]
 
     def __init__(self, dicom_task: DicomTask) -> None:
         self.dicom_task = dicom_task

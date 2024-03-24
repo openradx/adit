@@ -7,8 +7,6 @@ from django.core.management import call_command
 from django.core.management.base import BaseCommand, CommandParser
 from faker import Faker
 
-from adit.accounts.factories import AdminUserFactory, GroupFactory, UserFactory
-from adit.accounts.models import User
 from adit.batch_query.factories import (
     BatchQueryJobFactory,
     BatchQueryResultFactory,
@@ -28,9 +26,11 @@ from adit.selective_transfer.factories import (
     SelectiveTransferJobFactory,
     SelectiveTransferTaskFactory,
 )
-from adit.token_authentication.factories import TokenFactory
-from adit.token_authentication.models import FRACTION_LENGTH
-from adit.token_authentication.utils.crypto import hash_token
+from adit_radis_shared.accounts.factories import AdminUserFactory, GroupFactory, UserFactory
+from adit_radis_shared.accounts.models import User
+from adit_radis_shared.token_authentication.factories import TokenFactory
+from adit_radis_shared.token_authentication.models import FRACTION_LENGTH
+from adit_radis_shared.token_authentication.utils.crypto import hash_token
 
 USER_COUNT = 20
 GROUP_COUNT = 3

@@ -6,10 +6,11 @@ from pathlib import Path
 import janus
 from django.conf import settings
 
+from adit_radis_shared.common.management.base.server_command import AsyncServerCommand
+
 from ...utils.dicom_utils import read_dataset
 from ...utils.file_transmit import FileTransmitServer
 from ...utils.store_scp import StoreScp
-from ..base.server_command import AsyncServerCommand
 
 logger = logging.getLogger(__name__)
 

@@ -6,10 +6,11 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.urls import reverse
 from pytest_django.asserts import assertTemplateUsed
 
-from adit.accounts.factories import UserFactory
 from adit.core.factories import DicomServerFactory
 from adit.core.models import DicomServer, QueuedTask
-from adit.core.utils.auth_utils import add_user_to_group, grant_access
+from adit.core.utils.auth_utils import grant_access
+from adit_radis_shared.accounts.factories import UserFactory
+from adit_radis_shared.common.utils.auth_utils import add_user_to_group
 
 from ..models import BatchTransferJob
 

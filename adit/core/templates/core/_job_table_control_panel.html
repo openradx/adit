@@ -1,4 +1,4 @@
-{% load url_replace from core_extras %}
+{% load url_replace from common_extras %}
 <div class="d-flex">
     {% if user.is_staff and not request.GET.all %}
         <a class="btn btn-secondary" href="?{% url_replace 'all' '1' %}">Show jobs of all users</a>

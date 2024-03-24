@@ -3,5 +3,5 @@
     "checkJs": true,
     "target": "ES6"
   },
-  "include": ["./globals.d.ts", "./adit/*/static/**/*.js"]
+  "include": ["./globals.d.ts", "./**/static/**/*.js"]
 }

@@ -22,10 +22,14 @@ env = environ.Env()
 # The base directory of the project (the root of the repository)
 BASE_DIR = Path(__file__).resolve(strict=True).parent.parent.parent
 
-# Read pyproject.toml file
-pyproject = toml.load(BASE_DIR / "pyproject.toml")
-
-ADIT_VERSION = pyproject["tool"]["poetry"]["version"]
+# Read pyproject.toml to fetch current version
+# We to do this conditionally as radis_client uses RADIS for testing as a package where
+# the file is not present.
+if (BASE_DIR / "pyproject.toml").exists():
+    pyproject = toml.load(BASE_DIR / "pyproject.toml")
+    PROJECT_VERSION = pyproject["tool"]["poetry"]["version"]
+else:
+    PROJECT_VERSION = "???"
 
 READ_DOT_ENV_FILE = env.bool("DJANGO_READ_DOT_ENV_FILE", default=False)  # type: ignore
 if READ_DOT_ENV_FILE:
@@ -44,6 +48,7 @@ ADIT_SITE_NAME = env.str("ADIT_SITE_NAME", default="adit.org")  # type: ignore
 INSTALLED_APPS = [
     "daphne",
     "whitenoise.runserver_nostatic",
+    "adit_radis_shared.common.apps.CommonConfig",
     "registration",
     "django.contrib.admin",
     "django.contrib.auth",
@@ -65,8 +70,8 @@ INSTALLED_APPS = [
     "rest_framework",
     "adrf",
     "adit.core.apps.CoreConfig",
-    "adit.accounts.apps.AccountsConfig",
-    "adit.token_authentication.apps.TokenAuthenticationConfig",
+    "adit_radis_shared.accounts.apps.AccountsConfig",
+    "adit_radis_shared.token_authentication.apps.TokenAuthenticationConfig",
     "adit.selective_transfer.apps.SelectiveTransferConfig",
     "adit.batch_query.apps.BatchQueryConfig",
     "adit.batch_transfer.apps.BatchTransferConfig",
@@ -87,9 +92,9 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "django.contrib.sites.middleware.CurrentSiteMiddleware",
     "django_htmx.middleware.HtmxMiddleware",
+    "adit_radis_shared.accounts.middlewares.ActiveGroupMiddleware",
+    "adit_radis_shared.common.middlewares.TimezoneMiddleware",
     "adit.core.middlewares.MaintenanceMiddleware",
-    "adit.core.middlewares.TimezoneMiddleware",
-    "adit.accounts.middlewares.ActiveGroupMiddleware",
 ]
 
 ROOT_URLCONF = "adit.urls"
@@ -97,7 +102,7 @@ ROOT_URLCONF = "adit.urls"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [BASE_DIR / "adit" / "templates"],
+        "DIRS": [],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
@@ -105,7 +110,7 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
-                "adit.core.site.base_context_processor",
+                "adit_radis_shared.common.site.base_context_processor",
             ],
         },
     },
@@ -132,7 +137,7 @@ DATABASES = {"default": env.db(default="sqlite:///adit-sqlite.db")}  # type: ign
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # A custom authentication backend that supports a single currently active group.
-AUTHENTICATION_BACKENDS = ["adit.accounts.backends.ActiveGroupModelBackend"]
+AUTHENTICATION_BACKENDS = ["adit_radis_shared.accounts.backends.ActiveGroupModelBackend"]
 
 # Password validation
 # https://docs.djangoproject.com/en/3.0/ref/settings/#auth-password-validators
@@ -237,7 +242,7 @@ REST_FRAMEWORK = {
         "rest_framework.permissions.IsAuthenticated",
     ],
     "DEFAULT_AUTHENTICATION_CLASSES": [
-        "adit.token_authentication.auth.RestTokenAuthentication",
+        "adit_radis_shared.token_authentication.auth.RestTokenAuthentication",
     ],
     "EXCEPTION_HANDLER": "adit.dicom_web.exceptions.dicom_web_exception_handler",
 }
@@ -300,7 +305,7 @@ ADMINS = [
 ]
 
 # Settings for django-registration-redux
-REGISTRATION_FORM = "adit.accounts.forms.RegistrationForm"
+REGISTRATION_FORM = "adit_radis_shared.accounts.forms.RegistrationForm"
 ACCOUNT_ACTIVATION_DAYS = 14
 REGISTRATION_OPEN = True
 

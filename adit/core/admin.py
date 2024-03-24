@@ -1,4 +1,8 @@
 from django.contrib import admin
+from django.contrib.auth.admin import GroupAdmin
+from django.contrib.auth.models import Group
+
+from adit_radis_shared.accounts.forms import GroupAdminForm
 
 from .models import (
     CoreSettings,
@@ -89,3 +93,12 @@ class DicomFolderAdmin(admin.ModelAdmin):
 
 
 admin.site.register(DicomFolder, DicomFolderAdmin)
+
+
+class MyGroupAdmin(GroupAdmin):
+    form = GroupAdminForm
+    inlines = (DicomNodeGroupAccessInline,)
+
+
+admin.site.unregister(Group)
+admin.site.register(Group, MyGroupAdmin)

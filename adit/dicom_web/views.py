@@ -11,7 +11,7 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 
 from adit.core.models import DicomServer
-from adit.core.types import AuthenticatedApiRequest
+from adit_radis_shared.common.types import AuthenticatedApiRequest
 
 from .parsers import StowMultipartApplicationDicomParser
 from .renderers import (

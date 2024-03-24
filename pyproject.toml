@@ -122,7 +122,7 @@ lint.select = ["E", "F", "I", "DJ"]
 [tool.djlint]
 profile = "django"
 max_line_length = 120
-ignore = "H021,T002"
+ignore = "H021,H030,H031,T002"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

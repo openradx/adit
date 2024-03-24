@@ -12,14 +12,14 @@ from django.core.management import call_command
 from faker import Faker
 from playwright.sync_api import Locator, Page, Response
 
-from adit.accounts.factories import UserFactory
-from adit.accounts.models import User
 from adit.core.factories import (
     DicomServerFactory,
     DicomWebServerFactory,
 )
 from adit.core.models import DicomServer
-from adit.testing import ChannelsLiveServer
+from adit_radis_shared.accounts.factories import UserFactory
+from adit_radis_shared.accounts.models import User
+from adit_radis_shared.common.utils.testing import ChannelsLiveServer
 
 fake = Faker()
 

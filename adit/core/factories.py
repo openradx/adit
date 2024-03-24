@@ -4,7 +4,8 @@ import factory
 from faker import Faker
 from pydicom.uid import generate_uid
 
-from adit.accounts.factories import UserFactory
+from adit_radis_shared.accounts.factories import UserFactory
+from adit_radis_shared.common.factories import BaseDjangoModelFactory
 
 from .models import (
     DicomFolder,
@@ -19,12 +20,6 @@ from .models import (
 fake = Faker()
 
 T = TypeVar("T")
-
-
-class BaseDjangoModelFactory(Generic[T], factory.django.DjangoModelFactory):
-    @classmethod
-    def create(cls, *args, **kwargs) -> T:
-        return super().create(*args, **kwargs)
 
 
 class AbstractDicomNodeFactory(Generic[T], BaseDjangoModelFactory[T]):

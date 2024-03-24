@@ -11,7 +11,7 @@ from .templatetags.core_extras import (
 class RecordIdColumn(tables.TemplateColumn):
     def __init__(self, verbose_name):
         template_code = (
-            "{% load bootstrap_icon from core_extras %}"
+            "{% load bootstrap_icon from common_extras %}"
             '<a href="{{ record.get_absolute_url }}">'
             "{{ value }} "
             '{% bootstrap_icon "box-arrow-in-down-right" %}'

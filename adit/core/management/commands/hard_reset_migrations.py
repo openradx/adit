@@ -1,21 +1,7 @@
-from django.conf import settings
-from django.core.management import call_command
-from django.core.management.base import BaseCommand
+from adit_radis_shared.common.management.base.hard_reset_migrations import (
+    HardResetMigrationsCommand,
+)
 
 
-class Command(BaseCommand):
-    help = "Reset all migration files (dangerous!!!)."
-
-    def handle(self, *args, **options):
-        migration_paths = settings.BASE_DIR.glob("./adit/*/migrations/**/*.py")
-        migration_paths = [i for i in migration_paths if i.name != "__init__.py"]
-        for migration_path in migration_paths:
-            migration_path.unlink()
-
-        pyc_paths = settings.BASE_DIR.glob("*/migrations/**/*.pyc")
-        for pyc_path in pyc_paths:
-            pyc_path.unlink()
-
-        call_command("reset_db", "--noinput")  # needs django_extensions installed
-        call_command("makemigrations")
-        call_command("migrate")
+class Command(HardResetMigrationsCommand):
+    project = "adit"

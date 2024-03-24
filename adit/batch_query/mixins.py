@@ -1,4 +1,4 @@
-from adit.core.mixins import LockedMixin
+from adit_radis_shared.common.mixins import LockedMixin
 
 from .apps import SECTION_NAME
 from .models import BatchQuerySettings

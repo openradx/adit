@@ -2,7 +2,7 @@ import pytest
 from django.test import Client
 from django.urls import reverse
 
-from adit.accounts.factories import UserFactory
+from adit_radis_shared.accounts.factories import UserFactory
 
 from ..models import DicomJob, DicomTask, QueuedTask
 from .example_app.factories import ExampleTransferJobFactory, ExampleTransferTaskFactory

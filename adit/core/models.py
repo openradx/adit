@@ -11,9 +11,10 @@ from django.db.models.constraints import UniqueConstraint
 from django.db.models.query import QuerySet
 from django.utils import timezone
 
-from adit.accounts.models import User
 from adit.core.utils.mail import send_job_finished_mail
 from adit.core.utils.model_utils import reset_tasks
+from adit_radis_shared.accounts.models import User
+from adit_radis_shared.common.models import AppSettings, ProjectSettings
 
 from .validators import (
     no_backslash_char_validator,
@@ -26,35 +27,17 @@ if TYPE_CHECKING:
     from django.db.models.manager import RelatedManager
 
 
-class CoreSettings(models.Model):
-    id: int
-    maintenance_mode = models.BooleanField(default=False)
-    announcement = models.TextField(blank=True)
-
+class CoreSettings(ProjectSettings):
     class Meta:
         verbose_name_plural = "Core settings"
 
-    def __str__(self) -> str:
-        return f"{self.__class__.__name__} [ID {self.id}]"
 
-    @classmethod
-    def get(cls):
-        return cls.objects.first()
-
-
-class AppSettings(models.Model):
-    id: int
-    # Lock the creation of new jobs
-    locked = models.BooleanField(default=False)
+class DicomAppSettings(AppSettings):
     # Suspend the background processing.
     suspended = models.BooleanField(default=False)
 
     class Meta:
         abstract = True
-
-    @classmethod
-    def get(cls):
-        return cls.objects.first()
 
 
 TModel = TypeVar("TModel", bound=models.Model)

@@ -1,6 +1,6 @@
 from django.apps import AppConfig
 
-from adit.core.site import register_main_menu_item
+from adit_radis_shared.common.site import register_main_menu_item
 
 SECTION_NAME = "Sandbox"
 

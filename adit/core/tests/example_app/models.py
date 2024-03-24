@@ -1,9 +1,9 @@
 from django.db import models
 
-from ...models import AppSettings, TransferJob, TransferTask
+from ...models import DicomAppSettings, TransferJob, TransferTask
 
 
-class ExampleAppSettings(AppSettings):
+class ExampleAppSettings(DicomAppSettings):
     pass
 
 

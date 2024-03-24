@@ -4,9 +4,10 @@ import pandas as pd
 import pytest
 from playwright.sync_api import Locator, Page, expect
 
-from adit.accounts.models import User
 from adit.batch_query.models import BatchQueryJob
-from adit.core.utils.auth_utils import add_permission, add_user_to_group, grant_access
+from adit.core.utils.auth_utils import grant_access
+from adit_radis_shared.accounts.models import User
+from adit_radis_shared.common.utils.auth_utils import add_permission, add_user_to_group
 
 
 @pytest.mark.integration
