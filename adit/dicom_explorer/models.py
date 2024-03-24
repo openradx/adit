@@ -1,9 +1,9 @@
 from django.db import models
 
-from adit.core.models import AppSettings
+from adit.core.models import DicomAppSettings
 
 
-class DicomExplorerSettings(AppSettings):
+class DicomExplorerSettings(DicomAppSettings):
     class Meta:
         verbose_name_plural = "DICOM explorer settings"
 

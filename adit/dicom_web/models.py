@@ -1,7 +1,7 @@
-from adit.core.models import AppSettings
+from adit.core.models import DicomAppSettings
 
 
-class DicomWebSettings(AppSettings):
+class DicomWebSettings(DicomAppSettings):
     class Meta:
         verbose_name_plural = "Dicom Web settings"
         permissions = [

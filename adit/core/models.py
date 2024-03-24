@@ -33,7 +33,6 @@ class CoreSettings(ProjectSettings):
 
 
 class DicomAppSettings(AppSettings):
-    # Suspend the background processing.
     suspended = models.BooleanField(default=False)
 
     class Meta:
