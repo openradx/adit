@@ -1,0 +1,76 @@
+{% load static from static %}
+<!DOCTYPE html>
+<html lang="en"
+      data-bs-theme="{{ theme_color }}"
+      data-theme-preference="{{ theme }}">
+    <head>
+        <meta charset="utf-8" />
+        <meta http-equiv="x-ua-compatible" content="ie=edge" />
+        <title>
+            {% block title %}
+            {% endblock title %}
+        </title>
+        <meta name="charset" content="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="author" content="OpenRadX" />
+        {% block meta %}
+        {% endblock meta %}
+        {# Make our public data available on the client, see common.site.base_context_processor #}
+        {{ public|json_script:"public" }}
+        <script>window.public = JSON.parse(document.getElementById('public').textContent);</script>
+        {# We put the theme JavaScript stuff on top to avoid flickering #}
+        <script src="{% static 'common/theme.js' %}"></script>
+        {# Favicon #}
+        <link rel="icon"
+              type="image/png"
+              sizes="32x32"
+              href="{% static 'favicon/favicon.png' %}" />
+        {# CSS stuff #}
+        <link rel="stylesheet"
+              type="text/css"
+              href="{% static 'vendor/bootstrap.css' %}" />
+        <link rel="stylesheet"
+              type="text/css"
+              href="{% static 'common/common.css' %}" />
+        {% block css %}
+        {% endblock css %}
+    </head>
+    <body id="{{ request.resolver_match.url_name }}"
+          hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
+        <script>document.body.className="js";</script>
+        {% block header %}
+        {% endblock header %}
+        <main role="main">
+            <div class="top container my-3">
+                {% block heading %}
+                {% endblock heading %}
+                {% include "common/_messages_panel.html" %}
+                {% block content %}
+                {% endblock content %}
+            </div>
+            {% block footer %}
+            {% endblock footer %}
+        </main>
+        {% include "common/_toasts_panel.html" %}
+        {% block bottom %}
+        {% endblock bottom %}
+        {# Bootstrap modal slot for HTMX #}
+        <div id="htmx-modal" class="modal fade" tabindex="-1">
+            <div id="htmx-dialog"
+                 class="modal-dialog modal-lg modal-dialog-scrollable"
+                 hx-target="this"></div>
+        </div>
+        {# Vendor Javascript dependencies (except Alpine.js, see below) #}
+        <script src="{% static 'vendor/popper.js' %}"></script>
+        <script src="{% static 'vendor/bootstrap.bundle.js' %}"></script>
+        <script src="{% static 'vendor/htmx.js' %}"></script>
+        <script src="{% static 'vendor/htmx-ws.js' %}"></script>
+        <script src="{% static 'vendor/htmx-alpine-morph.js' %}"></script>
+        <script src="{% static 'vendor/alpine-morph.js' %}"></script>
+        <script src="{% static 'common/common.js' %}"></script>
+        {% block script %}
+        {% endblock script %}
+        {# Load Alpine.js last to make sure our components are available #}
+        <script src="{% static 'vendor/alpine.js' %}"></script>
+    </body>
+</html>

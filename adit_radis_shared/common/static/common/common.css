@@ -1,0 +1,91 @@
+/***
+* Bootstrap
+***/
+[data-bs-theme="dark"] {
+  .list-group-item {
+    --bs-list-group-action-hover-bg: #3d4e52;
+  }
+}
+
+/* No wrap of long Bootstrap tooltips. */
+.tooltip-inner {
+  max-width: none;
+}
+
+/***
+* Alpine.js
+***/
+[x-cloak] {
+  display: none !important;
+}
+
+/***
+* Toasts panel
+***/
+/* Floating panel for toast messages */
+.toasts-panel {
+  position: fixed;
+  top: 5em;
+  right: 1em;
+}
+
+.toast.success svg rect {
+  fill: green;
+}
+
+.toast.warning svg rect {
+  fill: yellow;
+}
+
+.toast.error svg rect {
+  fill: red;
+}
+
+/***
+* django_tables2
+***/
+/* Nice sort indicators in the django-table2 tables for light and dark theme */
+table.table thead th.asc.orderable {
+  background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="black" class="bi bi-chevron-up" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M7.646 4.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1-.708.708L8 5.707l-5.646 5.647a.5.5 0 0 1-.708-.708z"/></svg>')
+    no-repeat;
+  background-position: right 0.5rem center;
+}
+
+table.table thead th.desc.orderable {
+  background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="black" class="bi bi-chevron-down" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708"/></svg>')
+    no-repeat;
+  background-position: right 0.5rem center;
+}
+
+[data-bs-theme="dark"] table.table thead th.asc.orderable {
+  background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="white" class="bi bi-chevron-up" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M7.646 4.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1-.708.708L8 5.707l-5.646 5.647a.5.5 0 0 1-.708-.708z"/></svg>')
+    no-repeat;
+  background-position: right 0.5rem center;
+}
+
+[data-bs-theme="dark"] table.table thead th.desc.orderable {
+  background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="white" class="bi bi-chevron-down" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708"/></svg>')
+    no-repeat;
+  background-position: right 0.5rem center;
+}
+
+table.table thead th.orderable {
+  padding-right: 2rem;
+  white-space: nowrap;
+}
+
+/***
+* Misc
+***/
+/* Place caption of tables on the top. */
+caption {
+  caption-side: top;
+}
+
+/* When maintenance mode is active. */
+.maintenance-hint {
+  background-color: orange;
+  padding: 4px;
+  font-size: 1.5rem;
+  text-align: center;
+}

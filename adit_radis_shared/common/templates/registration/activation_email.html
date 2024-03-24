@@ -1,0 +1,43 @@
+{% load trans blocktrans from i18n %}
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <title>{% trans "RADIS registration" %}</title>
+        <meta name="keywords" content="RADIS,Radiology,Reports,Medicine,Tool" />
+        <meta name="description" content="Activate your account on RADIS." />
+    </head>
+    <body>
+        <p>
+            Dear colleagues,
+            <br />
+            <br />
+            RADIS is the result of well <mark>over a hundred hours of development work</mark>, most of which took place
+            <mark>in my spare time</mark>. I developed it with the intention to simplify our work regarding the processing
+            of radiological images, so that we can focus again on the actual scientific activity. Vice versa I ask you to
+            <mark>consider me on publications for which RADIS was used</mark>.
+            <br />
+        </p>
+        <p>
+            {% blocktrans %}
+        To activate your account on RADIS, please click the following link within the next
+        {{ expiration_days }} days:
+        {% endblocktrans %}
+        </p>
+        <p>
+            <a href="https://{{ site.domain }}{% url 'registration_activate' activation_key %}">
+                {{ site.domain }}{% url 'registration_activate' activation_key %}
+            </a>
+        </p>
+        <p>
+            Please view the landing page of <a href="https://{{ site.domain }}">RADIS</a> and
+            <a href="mailto:kai.schlamp@med.uni-heidelberg.de">write me</a> or call me
+            (Phone 396-8503) what permissions you need.
+        </p>
+        <p>
+            {% blocktrans %}
+        Sincerely,<br>
+        OpenRadX Team
+        {% endblocktrans %}
+        </p>
+    </body>
+</html>

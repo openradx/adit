@@ -1,0 +1,17 @@
+<ul class="navbar-nav me-auto">
+    {% with request.resolver_match.url_name as url_name %}
+        {% for item in main_menu_items %}
+            <li class="nav-item {% if url_name == item.name %}active{% endif %}">
+                <a class="nav-link" href="{% url item.url_name %}">
+                    {{ item.label }}
+                    {% if url_name == item.url_name %}<span class="visually-hidden">(current)</span>{% endif %}
+                </a>
+            </li>
+        {% endfor %}
+    {% endwith %}
+    {% if user.is_staff %}
+        <li class="nav-item">
+            <a class="nav-link" href="{% url 'admin_section' %}">Admin Section</a>
+        </li>
+    {% endif %}
+</ul>

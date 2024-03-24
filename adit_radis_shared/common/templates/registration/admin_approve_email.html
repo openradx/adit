@@ -1,0 +1,47 @@
+{% load trans blocktrans from i18n %}
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <title>{% trans "RADIS registration" %}</title>
+        <meta name="keywords" content="RADIS,Radiology,Reports,Medicine,Tool" />
+        <meta name="description" content="Approve account registration on RADIS." />
+    </head>
+    <body>
+        <p>
+            {% blocktrans %}
+            The user ({{ user }}) has asked to register an account at RADIS.
+        {% endblocktrans %}
+        </p>
+        <p>
+            {% blocktrans %}
+            To approve this, please
+        {% endblocktrans %}
+            <a href="https://{{ site.domain }}{% url 'registration_admin_approve' profile_id %}">{% trans "click here" %}</a>.
+        </p>
+        <p>
+            <h4>User Details:</h4>
+            <dl class="row">
+                <dt class="col-sm-3">Username</dt>
+                <dd class="col-sm-9">
+                    {{ user.username }}
+                </dd>
+                <dt class="col-sm-3">Email</dt>
+                <dd class="col-sm-9">
+                    {{ user.email }}
+                </dd>
+                <dt class="col-sm-3">Full Name</dt>
+                <dd class="col-sm-9">
+                    {{ user.get_full_name }}
+                </dd>
+                <dt class="col-sm-3">Phone Number</dt>
+                <dd class="col-sm-9">
+                    {{ user.phone_number }}
+                </dd>
+                <dt class="col-sm-3">Department</dt>
+                <dd class="col-sm-9">
+                    {{ user.department }}
+                </dd>
+            </dl>
+        </p>
+    </body>
+</html>

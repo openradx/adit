@@ -1,0 +1,23 @@
+{% extends "registration/registration_base.html" %}
+{% load trans blocktrans from i18n %}
+{% block title %}
+    {% trans "Account Activation Resent - RADIS" %}
+{% endblock title %}
+{% block heading %}
+    <h4>{% trans "Account activation resent" %}</h4>
+{% endblock heading %}
+{% block content %}
+    <p>
+        {% blocktrans %}
+            We have sent an email to {{ email }} with further instructions.
+        {% endblocktrans %}
+    </p>
+{% endblock content %}
+{% comment %}
+**registration/resend_activation_complete.html**
+Used after form for resending account activation is submitted. By default has
+the following context:
+
+``email``
+    The email address submitted in the resend activation form.
+{% endcomment %}

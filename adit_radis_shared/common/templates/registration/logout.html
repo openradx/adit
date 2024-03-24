@@ -1,0 +1,12 @@
+{% extends "registration/registration_base.html" %}
+{% load trans from i18n %}
+{% block title %}
+    {% trans "Logged out - RADIS" %}
+{% endblock title %}
+{% block heading %}
+    <h4>{% trans "Logged out" %}</h4>
+{% endblock heading %}
+{% block content %}
+    <p class="lead">{% trans "You were successfully logged out." %}</p>
+    <a class="btn btn-primary" href="{% url 'auth_login' %}" role="button">{% trans "Log in again" %}</a>
+{% endblock content %}

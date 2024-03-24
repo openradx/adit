@@ -1,0 +1,17 @@
+{% load trans blocktrans from i18n %}
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <title>{% trans "RADIS admin approval" %}</title>
+        <meta name="keywords" content="RADIS,Radiology,Reports,Medicine,Tool" />
+        <meta name="description" content="Account approved on RADIS." />
+    </head>
+    <body>
+        <p>
+            {% blocktrans %}
+            Your account is now approved. You can 
+        {% endblocktrans %}
+            <a href="https://{{ site.domain }}{% url 'auth_login' %}">{% trans "log in." %}</a>
+        </p>
+    </body>
+</html>

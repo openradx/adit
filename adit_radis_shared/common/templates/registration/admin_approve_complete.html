@@ -1,0 +1,11 @@
+{% extends "registration/registration_base.html" %}
+{% load trans from i18n %}
+{% block title %}
+    {% trans "Account Approved - RADIS" %}
+{% endblock title %}
+{% block heading %}
+    <h4>User account approved.</h4>
+{% endblock heading %}
+{% block content %}
+    <p>{% trans "The user's account is now approved." %}</p>
+{% endblock content %}

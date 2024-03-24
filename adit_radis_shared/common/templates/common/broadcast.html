@@ -1,0 +1,12 @@
+{% extends "core/core_layout.html" %}
+{% load crispy from crispy_forms_tags %}
+{% block heading %}
+    <h4 class="mb-3">Send a message to all signed up users</h4>
+{% endblock heading %}
+{% block content %}
+    <form action="{% url 'broadcast' %}" method="post">
+        {% csrf_token %}
+        {{ form|crispy }}
+        <input type="submit" name="send" value="Send" class="btn btn-primary" />
+    </form>
+{% endblock content %}

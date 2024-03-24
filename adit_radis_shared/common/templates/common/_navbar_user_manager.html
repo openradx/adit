@@ -1,0 +1,38 @@
+{% load bootstrap_icon from common_extras %}
+{% if user.is_authenticated %}
+    <li class="nav-item dropdown">
+        <button class="btn btn-link nav-link dropdown-toggle d-flex align-items-center gap-1"
+                role="button"
+                data-bs-toggle="dropdown"
+                aria-expanded="false">
+            {% bootstrap_icon "person-square" %}
+            <span id="logged_in_username">{{ user.username }}</span>
+        </button>
+        <ul class="dropdown-menu dropdown-menu-end">
+            <li>
+                <a class="dropdown-item d-flex align-items-center gap-2"
+                   href="{% url 'profile' %}">
+                    {% bootstrap_icon "person-square" %}
+                    Profile
+                </a>
+            </li>
+            <li>
+                <hr class="dropdown-divider" />
+            </li>
+            <li>
+                <a class="dropdown-item d-flex align-items-center gap-2"
+                   href="{% url 'auth_logout' %}">
+                    {% bootstrap_icon "box-arrow-right" %}
+                    Logout
+                </a>
+            </li>
+        </ul>
+    </li>
+{% else %}
+    <li class="nav-item">
+        <a class="nav-link" href="{% url 'auth_login' %}">
+            {% bootstrap_icon "box-arrow-in-right" %}
+            Login
+        </a>
+    </li>
+{% endif %}

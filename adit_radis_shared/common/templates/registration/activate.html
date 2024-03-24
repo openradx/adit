@@ -1,0 +1,11 @@
+{% extends "registration/registration_base.html" %}
+{% load trans from i18n %}
+{% block title %}
+    {% trans "Account Activation Failure - RADIS" %}
+{% endblock title %}
+{% block heading %}
+    <h4>{% trans "Account activation failed" %}</h4>
+{% endblock heading %}
+{% block content %}
+    <p>{% trans "Please contact the support if the problem persists." %}</p>
+{% endblock content %}

@@ -1,0 +1,12 @@
+; DO NOT EDIT (unless you know what you are doing)
+;
+; This subdirectory is a git "subrepo", and this file is maintained by the
+; git-subrepo command. See https://github.com/ingydotnet/git-subrepo#readme
+;
+[subrepo]
+	remote = https://github.com/openradx/adit-radis-shared-subrepo.git
+	branch = main
+	commit = cff4f1e55050b26de32c3bc261e418b40d2d3960
+	parent = 34591ed156db178c450321ee081ccf198bf8cc7a
+	method = merge
+	cmdver = 0.4.6

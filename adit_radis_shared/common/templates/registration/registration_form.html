@@ -1,0 +1,12 @@
+{% extends "registration/registration_base.html" %}
+{% load trans from i18n %}
+{% load crispy from crispy_forms_tags %}
+{% block title %}
+    {% trans "Register for an account - RADIS" %}
+{% endblock title %}
+{% block heading %}
+    <h4>{% trans "User registration" %}</h4>
+{% endblock heading %}
+{% block content %}
+    <p>{% crispy form %}</p>
+{% endblock content %}

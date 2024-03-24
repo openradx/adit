@@ -1,0 +1,16 @@
+{% extends "registration/registration_base.html" %}
+{% load trans from i18n %}
+{% load crispy from crispy_forms_tags %}
+{% block title %}
+    {% trans "Resend Activation Email - RADIS" %}
+{% endblock title %}
+{% block heading %}
+    <h4>{% trans "Resend activation mail" %}</h4>
+{% endblock heading %}
+{% block content %}
+    <form method="post" action="">
+        {% csrf_token %}
+        {{ form|crispy }}
+        <input type="submit" value="{% trans 'Submit' %}" />
+    </form>
+{% endblock content %}

@@ -1,0 +1,54 @@
+<li id="theme-switcher" class="nav-item dropdown">
+    {% include "common/_theme_icons.html" %}
+    <button class="btn btn-link nav-link dropdown-toggle d-flex align-items-center my-1"
+            role="button"
+            data-bs-toggle="dropdown"
+            aria-label="Toggle theme"
+            aria-expanded="false">
+        {% if theme == "light" %}
+            <svg width="16" height="16">
+                <use href="#theme-light" />
+            </svg>
+        {% elif theme == "dark" %}
+            <svg width="16" height="16">
+                <use href="#theme-dark" />
+            </svg>
+        {% else %}
+            <svg width="16" height="16">
+                <use href="#theme-auto" />
+            </svg>
+        {% endif %}
+    </button>
+    <ul class="dropdown-menu dropdown-menu-end">
+        <li>
+            <button class="dropdown-item d-flex align-items-center gap-2 {% if theme == 'light' %}active{% endif %}"
+                    aria-pressed="{% if theme == 'light' %}true{% else %}false{% endif %}"
+                    data-bs-theme-value="light">
+                <svg width="16" height="16">
+                    <use href="#theme-light" />
+                </svg>
+                Light
+            </button>
+        </li>
+        <li>
+            <button class="dropdown-item d-flex align-items-center gap-2 {% if theme == 'dark' %}active{% endif %}"
+                    aria-pressed="{% if theme == 'dark' %}true{% else %}false{% endif %}"
+                    data-bs-theme-value="dark">
+                <svg width="16" height="16">
+                    <use href="#theme-dark" />
+                </svg>
+                Dark
+            </button>
+        </li>
+        <li>
+            <button class="dropdown-item d-flex align-items-center gap-2 {% if theme == 'auto' %}active{% endif %}"
+                    aria-pressed="{% if theme == 'auto' %}true{% else %}false{% endif %}"
+                    data-bs-theme-value="auto">
+                <svg width="16" height="16">
+                    <use href="#theme-auto" />
+                </svg>
+                Auto
+            </button>
+        </li>
+    </ul>
+</li>
