@@ -5,10 +5,10 @@ import sys
 import threading
 from abc import ABC, abstractmethod
 from datetime import datetime
+from pathlib import Path
 from threading import Event
 from types import FrameType
 
-from django.conf import settings
 from django.core.management.base import BaseCommand
 from watchfiles import PythonFilter, watch
 
@@ -23,6 +23,7 @@ class ServerCommand(BaseCommand, ABC):
 
     help = "Starts a custom server"
     server_name = "custom server"
+    paths_to_watch: list[str | Path] = []
 
     _popen: subprocess.Popen | None = None
     _stop = Event()
@@ -57,7 +58,15 @@ class ServerCommand(BaseCommand, ABC):
 
     def run(self, **options):
         if options["autoreload"]:
-            self.stdout.write(f"Autoreload enabled for {self.server_name}.")
+            if not self.paths_to_watch:
+                raise ValueError(
+                    "If autoreload is enabled you must specify at least one path to watch."
+                )
+
+            self.stdout.write(
+                f"Autoreload enabled for {self.server_name} and "
+                f"watching paths: {", ".join(map(str, self.paths_to_watch))}."
+            )
 
             # We debounce to give the Django webserver time to restart first
             @debounce(wait_time=2)
@@ -73,8 +82,8 @@ class ServerCommand(BaseCommand, ABC):
             inner_run()
 
             try:
-                for changes in watch(
-                    settings.BASE_DIR / "radis", watch_filter=PythonFilter(), stop_event=self._stop
+                for _ in watch(
+                    *self.paths_to_watch, watch_filter=PythonFilter(), stop_event=self._stop
                 ):
                     self.stdout.write("Changes detected. Restarting server...")
                     inner_run()

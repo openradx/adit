@@ -21,6 +21,7 @@ class Command(AsyncServerCommand):
         "files to subscribing Celery workers."
     )
     server_name = "DICOM receiver"
+    paths_to_watch = [settings.BASE_DIR / "adit"]
 
     async def run_server_async(self, **options):
         # No need for an async path library as we only do it once at startup.

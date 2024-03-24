@@ -4,6 +4,8 @@ import subprocess
 from pathlib import Path
 from typing import Literal
 
+from django.conf import settings
+
 from .server_command import ServerCommand
 
 logger = logging.getLogger(__name__)
@@ -13,6 +15,7 @@ class CeleryBeatCommand(ServerCommand):
     project: Literal["adit", "radis"]
     help = "Starts Celery beat scheduler"
     server_name = "Celery beat scheduler"
+    paths_to_watch = [settings.BASE_DIR / "adit"]
 
     def __init__(self, *args, **kwargs):
         self.beat_process = None
