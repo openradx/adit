@@ -23,8 +23,8 @@ env = environ.Env()
 BASE_DIR = Path(__file__).resolve(strict=True).parent.parent.parent
 
 # Read pyproject.toml to fetch current version
-# We to do this conditionally as radis_client uses RADIS for testing as a package where
-# the file is not present.
+# We to do this conditionally as the ADIT client library uses ADIT
+# for integration tests installed as a package (where no pyproject.toml is available).
 if (BASE_DIR / "pyproject.toml").exists():
     pyproject = toml.load(BASE_DIR / "pyproject.toml")
     PROJECT_VERSION = pyproject["tool"]["poetry"]["version"]
@@ -38,12 +38,15 @@ if READ_DOT_ENV_FILE:
 
 BASE_URL = env.str("BASE_URL", default="http://localhost")  # type: ignore
 
+# Used by the django.contrib.sites framework
 SITE_ID = 1
 
 # Used by our custom migration adit.core.migrations.0002_UPDATE_SITE_NAME
-# to set the domain and name of the sites framework
-ADIT_SITE_DOMAIN = env.str("ADIT_SITE_DOMAIN", default="adit.org")  # type: ignore
-ADIT_SITE_NAME = env.str("ADIT_SITE_NAME", default="adit.org")  # type: ignore
+# to set the domain and name of the sites frameworks site model with
+# the above SITE_ID as primary key.
+# Once set the domain and name from the database will be used!
+SITE_DOMAIN = env.str("SITE_DOMAIN", default="adit.test")  # type: ignore
+SITE_NAME = env.str("SITE_NAME", default="ADIT")  # type: ignore
 
 INSTALLED_APPS = [
     "daphne",
