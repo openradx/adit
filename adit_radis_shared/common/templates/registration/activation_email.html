@@ -2,12 +2,14 @@
 <!DOCTYPE html>
 <html lang="en">
     <head>
-        <title>{% trans "RADIS registration" %}</title>
+        <title>{% trans "Registration |" %} {{ site.name }}</title>
         <meta name="keywords" content="RADIS,Radiology,Reports,Medicine,Tool" />
-        <meta name="description" content="Activate your account on RADIS." />
+        <meta name="description"
+              content="Activate your account on {{ site.name }}." />
     </head>
     <body>
         <p>
+            {% blocktrans %}
             Dear colleagues,
             <br />
             <br />
@@ -15,13 +17,13 @@
             <mark>in my spare time</mark>. I developed it with the intention to simplify our work regarding the processing
             of radiological images, so that we can focus again on the actual scientific activity. Vice versa I ask you to
             <mark>consider me on publications for which RADIS was used</mark>.
-            <br />
+            {% endblocktrans %}
         </p>
         <p>
             {% blocktrans %}
-        To activate your account on RADIS, please click the following link within the next
-        {{ expiration_days }} days:
-        {% endblocktrans %}
+            To activate your account on {{ site.name }}, please click the following link within the next
+            {{ expiration_days }} days:
+            {% endblocktrans %}
         </p>
         <p>
             <a href="https://{{ site.domain }}{% url 'registration_activate' activation_key %}">
@@ -29,15 +31,50 @@
             </a>
         </p>
         <p>
-            Please view the landing page of <a href="https://{{ site.domain }}">RADIS</a> and
+            {% blocktrans %}
+            Please view the landing page of <a href="https://{{ site.domain }}">{{ site.name }}</a> and
             <a href="mailto:kai.schlamp@med.uni-heidelberg.de">write me</a> or call me
             (Phone 396-8503) what permissions you need.
+            {% endblocktrans %}
         </p>
         <p>
             {% blocktrans %}
-        Sincerely,<br>
-        OpenRadX Team
-        {% endblocktrans %}
+            Sincerely,
+            Kai Schlamp
+            {% endblocktrans %}
         </p>
     </body>
 </html>
+{% comment %}
+**registration/activation_email.html**
+
+Used to generate the html body of the activation email. Should display a
+link the user can click to activate the account. This template has the
+following context:
+
+``activation_key``
+    The activation key for the new account.
+
+``expiration_days``
+    The number of days remaining during which the account may be
+    activated.
+
+``site``
+    An object representing the site on which the user registered;
+    depending on whether ``django.contrib.sites`` is installed, this
+    may be an instance of either ``django.contrib.sites.models.Site``
+    (if the sites application is installed) or
+    ``django.contrib.sites.requests.RequestSite`` (if not). Consult `the
+    documentation for the Django sites framework
+    <http://docs.djangoproject.com/en/dev/ref/contrib/sites />`_ for
+    details regarding these objects' interfaces.
+
+``user``
+    The new user account
+
+``request``
+    ``HttpRequest`` instance for better flexibility.
+    For example it can be used to compute absolute register URL:
+
+        {{ request.scheme }}://{{ request.get_host }}{% url 'registration_activate' activation_key %}
+{% endcomment %}

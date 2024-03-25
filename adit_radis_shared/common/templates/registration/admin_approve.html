@@ -1,8 +1,16 @@
 {% extends "registration/registration_base.html" %}
 {% load trans from i18n %}
 {% block title %}
-    {% trans "Approval Failure - RADIS" %}
+    {% trans "Approval failure |" %} {{ request.site.name }}
 {% endblock title %}
 {% block content %}
     <p>{% trans "Account approval failed." %}</p>
 {% endblock content %}
+{% comment %}
+**registration/admin_approve.html**
+
+Used if account activation fails. With the default setup, has the following context:
+
+``activation_key``
+    The activation key used during the activation attempt.
+{% endcomment %}

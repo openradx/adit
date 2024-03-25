@@ -2,10 +2,10 @@
 {% load trans from i18n %}
 {% load crispy from crispy_forms_tags %}
 {% block title %}
-    {% trans "Resend Activation Email - RADIS" %}
+    {% trans "Resend activation Email |" %} {{ request.site.name }}
 {% endblock title %}
 {% block heading %}
-    <h4>{% trans "Resend activation mail" %}</h4>
+    <h4>{% trans "Resend activation Email" %}</h4>
 {% endblock heading %}
 {% block content %}
     <form method="post" action="">
@@ -14,3 +14,14 @@
         <input type="submit" value="{% trans 'Submit' %}" />
     </form>
 {% endblock content %}
+{% comment %}
+**registration/resend_activation_form.html**
+Used to show the form users will fill out to resend the activation email. By
+default, has the following context:
+
+``form``
+    The registration form. This will be an instance of some subclass
+    of ``django.forms.Form``; consult `Django's forms documentation
+    <http://docs.djangoproject.com/en/dev/topics/forms />`_ for
+    information on how to display this in a template.
+{% endcomment %}

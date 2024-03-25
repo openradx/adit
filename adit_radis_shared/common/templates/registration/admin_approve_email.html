@@ -2,42 +2,43 @@
 <!DOCTYPE html>
 <html lang="en">
     <head>
-        <title>{% trans "RADIS registration" %}</title>
+        <title>{% trans "Registration |" %} {{ site.name }}</title>
         <meta name="keywords" content="RADIS,Radiology,Reports,Medicine,Tool" />
-        <meta name="description" content="Approve account registration on RADIS." />
+        <meta name="description"
+              content="Approve account registration on {{ site.name }}." />
     </head>
     <body>
         <p>
             {% blocktrans %}
-            The user ({{ user }}) has asked to register an account at RADIS.
-        {% endblocktrans %}
+            The user ({{ user }}) has asked to register an account at {{ site.name }}.
+            {% endblocktrans %}
         </p>
         <p>
             {% blocktrans %}
             To approve this, please
-        {% endblocktrans %}
+            {% endblocktrans %}
             <a href="https://{{ site.domain }}{% url 'registration_admin_approve' profile_id %}">{% trans "click here" %}</a>.
         </p>
         <p>
-            <h4>User Details:</h4>
+            <h4>{% trans "User Details:" %}</h4>
             <dl class="row">
-                <dt class="col-sm-3">Username</dt>
+                <dt class="col-sm-3">{% trans "Username" %}</dt>
                 <dd class="col-sm-9">
                     {{ user.username }}
                 </dd>
-                <dt class="col-sm-3">Email</dt>
+                <dt class="col-sm-3">{% trans "Email" %}</dt>
                 <dd class="col-sm-9">
                     {{ user.email }}
                 </dd>
-                <dt class="col-sm-3">Full Name</dt>
+                <dt class="col-sm-3">{% trans "Full name" %}</dt>
                 <dd class="col-sm-9">
                     {{ user.get_full_name }}
                 </dd>
-                <dt class="col-sm-3">Phone Number</dt>
+                <dt class="col-sm-3">{% trans "Phone number" %}</dt>
                 <dd class="col-sm-9">
                     {{ user.phone_number }}
                 </dd>
-                <dt class="col-sm-3">Department</dt>
+                <dt class="col-sm-3">{% trans "Department" %}</dt>
                 <dd class="col-sm-9">
                     {{ user.department }}
                 </dd>
@@ -45,3 +46,32 @@
         </p>
     </body>
 </html>
+{% comment %}
+**registration/admin_approve_email.html**
+
+Used to generate the html body of the admin activation email. Should display a
+link for an admin to approve activation of the account. This template has the
+following context:
+
+``profile_id``
+    The id of the registration profile requesting approval
+
+``site``
+    An object representing the site on which the user registered;
+    depending on whether ``django.contrib.sites`` is installed, this
+    may be an instance of either ``django.contrib.sites.models.Site``
+    (if the sites application is installed) or
+    ``django.contrib.sites.requests.RequestSite`` (if not). Consult `the
+    documentation for the Django sites framework
+    <http://docs.djangoproject.com/en/dev/ref/contrib/sites />`_ for
+    details regarding these objects' interfaces.
+
+``user``
+    The new user account
+
+``request``
+    ``HttpRequest`` instance for better flexibility.
+    For example it can be used to compute absolute approval URL:
+
+        {{ request.scheme }}://{{ request.get_host }}{% url 'registration_admin_approve' profile_id %}
+{% endcomment %}

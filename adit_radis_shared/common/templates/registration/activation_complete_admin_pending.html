@@ -1,7 +1,7 @@
 {% extends "registration/registration_base.html" %}
-{% load trans blocktrans from i18n %}
+{% load trans from i18n %}
 {% block title %}
-    {% trans "Account Activated - RADIS" %}
+    {% trans "Account activation |" %} {{ request.site.name }}
 {% endblock title %}
 {% block heading %}
     <h4>{% trans "Account activated" %}</h4>
@@ -10,10 +10,14 @@
     <p>
         {% trans "You activated your account." %}
         {% if not user.is_authenticated %}
-            {% blocktrans %}
-                To log in and use RADIS the account must be activated also by an administrator.
-            {% endblocktrans %}
-            {% trans "Once an administrator activates your account you can login." %}
+            {% trans "Once a site administrator confirms your activation you can login." %}
         {% endif %}
     </p>
 {% endblock content %}
+{% comment %}
+**registration/activation_complete.html**
+
+Used after successful account activation. This template has no context
+variables of its own, and should simply inform the user that their
+account is now active.
+{% endcomment %}

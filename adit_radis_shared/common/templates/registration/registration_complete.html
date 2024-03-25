@@ -1,7 +1,7 @@
 {% extends "registration/registration_base.html" %}
 {% load trans from i18n %}
 {% block title %}
-    {% trans "Activation email sent - RADIS" %}
+    {% trans "Activation email sent |" %} {{ request.site.name }}
 {% endblock title %}
 {% block heading %}
     <h4>{% trans "Registration complete" %}</h4>

@@ -1,7 +1,7 @@
 {% extends "registration/registration_base.html" %}
 {% load trans blocktrans from i18n %}
 {% block title %}
-    {% trans "Account Activation Resent - RADIS" %}
+    {% trans "Account activation resent |" %} {{ request.site.name }}
 {% endblock title %}
 {% block heading %}
     <h4>{% trans "Account activation resent" %}</h4>

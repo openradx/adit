@@ -1,1 +1,1 @@
-{% load i18n %}{% trans "Account approval on RADIS" %}
+{% load trans from i18n %}{% trans "Account approval on" %} {{ site.name }}

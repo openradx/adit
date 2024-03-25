@@ -1,22 +1,26 @@
 {% extends "registration/registration_base.html" %}
-{% load trans from i18n %}
+{% load trans blocktrans from i18n %}
 {% load crispy from crispy_forms_tags %}
 {% block title %}
-    {% trans "Log in - RADIS" %}
+    {% trans "Log in |" %} {{ site.name }}
 {% endblock title %}
 {% block heading %}
     <h4>Login</h4>
 {% endblock heading %}
 {% block content %}
-    {% if form.errors %}<p>Your username or password is incorrect. Try again?</p>{% endif %}
+    {% if form.errors %}
+        <p>{% trans "Your username or password is incorrect. Try again?" %}</p>
+    {% endif %}
     {% if next %}
         {% if user.is_authenticated %}
             <p>
+                {% blocktrans %}
                 Your account doesn't have access to this page. To proceed,
                 please login with an account that has access.
+                {% endblocktrans %}
             </p>
         {% else %}
-            <p>You muss login to access this page.</p>
+            <p>{% trans "You muss login to access this page." %}</p>
         {% endif %}
     {% endif %}
     <p>
@@ -37,3 +41,30 @@
         <a href="{% url 'registration_register' %}">{% trans "Register" %}</a>
     </p>
 {% endblock content %}
+{% comment %}
+**registration/login.html**
+
+It's your responsibility to provide the login form in a template called
+registration/login.html by default. This template gets passed four
+template context variables:
+
+``form``
+    A Form object representing the login form. See the forms
+    documentation for more on Form objects.
+
+``next``
+    The URL to redirect to after successful login. This may contain a
+    query string, too.
+
+``site``
+    The current Site, according to the SITE_ID setting. If you don't
+    have the site framework installed, this will be set to an instance
+    of RequestSite, which derives the site name and domain from the
+    current HttpRequest.
+
+``site_name``
+    An alias for site.name. If you don't have the site framework
+    installed, this will be set to the value of
+    request.META['SERVER_NAME']. For more on sites, see The
+    "sites" framework.
+{% endcomment %}

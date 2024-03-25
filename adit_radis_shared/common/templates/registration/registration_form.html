@@ -2,7 +2,7 @@
 {% load trans from i18n %}
 {% load crispy from crispy_forms_tags %}
 {% block title %}
-    {% trans "Register for an account - RADIS" %}
+    {% trans "Register for an account |" %} {{ request.site.name }}
 {% endblock title %}
 {% block heading %}
     <h4>{% trans "User registration" %}</h4>
@@ -10,3 +10,14 @@
 {% block content %}
     <p>{% crispy form %}</p>
 {% endblock content %}
+{% comment %}
+**registration/registration_form.html**
+Used to show the form users will fill out to register. By default, has
+the following context:
+
+``form``
+    The registration form. This will be an instance of some subclass
+    of ``django.forms.Form``; consult `Django's forms documentation
+    <http://docs.djangoproject.com/en/dev/topics/forms />`_ for
+    information on how to display this in a template.
+{% endcomment %}
