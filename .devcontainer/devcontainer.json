@@ -12,8 +12,7 @@
   },
   // https://github.com/orgs/community/discussions/50403
   // "initializeCommand": "docker system prune --all --force",
-  "postCreateCommand": "git remote add radis https://github.com/openradx/radis.git && poetry install && npm install",
-  "postStartCommand": "poetry run invoke init-workspace",
+  "postCreateCommand": "poetry install && npm install && poetry run invoke init-workspace",
   "customizations": {
     "vscode": {
       "extensions": [
