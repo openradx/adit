@@ -1,12 +1,10 @@
-from typing import Literal
-
 from django.conf import settings
+from django.contrib.sites.models import Site
 from django.core.mail import send_mail
 from django.core.management.base import BaseCommand
 
 
-class SendTestMailCommand(BaseCommand):
-    project_name: Literal["ADIT", "RADIS"]
+class Command(BaseCommand):
     help = "Send a test mail using the provided Email settings."
 
     def add_arguments(self, parser):
@@ -14,10 +12,11 @@ class SendTestMailCommand(BaseCommand):
 
     def handle(self, *args, **options):
         to_address = options["to_address"]
+        site = Site.objects.get_current()
 
         send_mail(
-            f"[{self.project_name}] Test Mail",
-            f"This is a test mail sent by {self.project_name}.",
+            f"[{site.name}] Test Mail",
+            f"This is a test mail sent by {site.name}.",
             settings.SERVER_EMAIL,
             [to_address],
             fail_silently=False,
