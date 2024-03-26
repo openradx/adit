@@ -26,6 +26,7 @@ from django_tables2.tables import Table
 
 from adit.core.utils.model_utils import reset_tasks
 from adit_radis_shared.common.mixins import PageSizeSelectMixin, RelatedFilterMixin
+from adit_radis_shared.common.shortcuts import get_site_profile
 from adit_radis_shared.common.site import THEME_PREFERENCE_KEY
 from adit_radis_shared.common.types import AuthenticatedHttpRequest
 from adit_radis_shared.common.views import (
@@ -34,7 +35,7 @@ from adit_radis_shared.common.views import (
     BaseUpdatePreferencesView,
 )
 
-from .models import CoreSettings, DicomJob, DicomTask, QueuedTask
+from .models import DicomJob, DicomTask, QueuedTask
 from .site import job_stats_collectors
 from .tasks import broadcast_mail
 
@@ -65,9 +66,7 @@ class HomeView(TemplateView):
 
     def get_context_data(self, **kwargs) -> dict[str, Any]:
         context = super().get_context_data(**kwargs)
-        core_settings = CoreSettings.get()
-        assert core_settings
-        context["announcement"] = core_settings.announcement
+        context["announcement"] = get_site_profile().announcement
         return context
 
 

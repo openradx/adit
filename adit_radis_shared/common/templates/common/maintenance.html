@@ -1,0 +1,7 @@
+{% extends "common/common_layout.html" %}
+{% block heading %}
+    <h1 class="display-4">{{ request.site.name }} is being maintained!</h1>
+{% endblock heading %}
+{% block content %}
+    <p class="lead">{{ request.site.name }} is currently not available. Please try again later.</p>
+{% endblock content %}

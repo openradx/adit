@@ -1,23 +1,8 @@
 {% extends "common/common_layout.html" %}
 {% load static from static %}
-{% block title %}
-    ADIT - Automated DICOM Transfer
-{% endblock title %}
-{% block meta %}
-    {{ block.super }}
-    <meta name="keywords" content="ADIT,DICOM,Radiology,Medicine,Tool" />
-    <meta name="description"
-          content="ADIT is a tool for managing automated DICOM transfers" />
-{% endblock meta %}
 {% block css %}
     <link rel="stylesheet" type="text/css" href="{% static 'core/core.css' %}" />
 {% endblock css %}
-{% block header %}
-    {% include "common/_navbar.html" with site_name="ADIT" %}
-{% endblock header %}
-{% block footer %}
-    {% include "common/_footer.html" with site_name="ADIT" url="https://github.com/openradx/adit" %}
-{% endblock footer %}
 {% block script %}
     <script src="{% static 'core/core.js' %}"></script>
 {% endblock script %}

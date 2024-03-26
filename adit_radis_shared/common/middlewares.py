@@ -6,36 +6,32 @@ from django.template.response import TemplateResponse
 from django.urls import reverse
 from django.utils import timezone
 
-from .models import ProjectSettings
+from adit_radis_shared.common.shortcuts import get_site_profile
+from adit_radis_shared.common.types import HtmxHttpRequest
 
 
 def is_html_response(response):
     return response.has_header("Content-Type") and response["Content-Type"].startswith("text/html")
 
 
-class BaseMaintenanceMiddleware:
+class MaintenanceMiddleware:
     """Render a maintenance template if in maintenance mode.
 
     Adapted from http://blog.ankitjaiswal.tech/put-your-django-site-on-maintenanceoffline-mode/
     """
 
-    project_settings: type[ProjectSettings]
-    template_name: str
-
     def __init__(self, get_response):
         self.get_response = get_response
 
-    def __call__(self, request):
+    def __call__(self, request: HtmxHttpRequest):
         login_request = request.path == reverse("auth_login")
         logout_request = request.path == reverse("auth_logout")
         if login_request or logout_request:
             return self.get_response(request)
 
-        settings = self.project_settings.get()
-        assert settings
-        in_maintenance = settings.maintenance_mode
+        in_maintenance = get_site_profile().maintenance
         if in_maintenance and not request.user.is_staff:
-            response = TemplateResponse(request, self.template_name)
+            response = TemplateResponse(request, "common/maintenance.html")
             return response.render()
 
         response = self.get_response(request)
