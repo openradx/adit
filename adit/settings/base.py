@@ -22,9 +22,9 @@ env = environ.Env()
 # The base directory of the project (the root of the repository)
 BASE_DIR = Path(__file__).resolve(strict=True).parent.parent.parent
 
-# Read pyproject.toml to fetch current version
-# We to do this conditionally as the ADIT client library uses ADIT
-# for integration tests installed as a package (where no pyproject.toml is available).
+# Read pyproject.toml to fetch current version. We do this conditionally as the
+# ADIT client library uses ADIT for integration tests installed as a package
+# (where no pyproject.toml is available).
 if (BASE_DIR / "pyproject.toml").exists():
     pyproject = toml.load(BASE_DIR / "pyproject.toml")
     PROJECT_VERSION = pyproject["tool"]["poetry"]["version"]
