@@ -3,7 +3,7 @@ from datetime import time
 
 import pytest
 
-from ...utils.command_utils import valid_time_range
+from ...utils.time_utils import valid_time_range
 
 
 def test_valid_time_range():
