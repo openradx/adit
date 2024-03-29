@@ -361,7 +361,7 @@ pydicom_config.convert_wrong_length_to_UN = True
 ###
 
 # The AE Tile for the ADIT STORE SCP server
-ADIT_AE_TITLE = env.str("ADIT_AE_TITLE", default="ADIT1")  # type: ignore
+RECEIVER_AE_TITLE = env.str("RECEIVER_AE_TITLE", default="ADIT1")  # type: ignore
 
 # The address and port of the STORE SCP server (part of the receiver).
 # By default the STORE SCP server listens to all interfaces (empty string)

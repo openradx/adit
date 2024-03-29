@@ -575,7 +575,7 @@ class DicomOperator:
             )
 
             try:
-                self.dimse_connector.send_c_move(query, settings.ADIT_AE_TITLE)
+                self.dimse_connector.send_c_move(query, settings.RECEIVER_AE_TITLE)
 
                 # Signal consumer that C-MOVE operation is finished
                 c_move_finished_event.set()

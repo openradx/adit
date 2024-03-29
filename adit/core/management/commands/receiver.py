@@ -37,7 +37,7 @@ class Command(AsyncServerCommand):
         # listen on all interfaces (what we do now).
         self._store_scp = StoreScp(
             folder=receiver_dir,
-            ae_title=settings.ADIT_AE_TITLE,
+            ae_title=settings.RECEIVER_AE_TITLE,
             host="0.0.0.0",
             port=settings.STORE_SCP_PORT,
             debug=settings.ENABLE_DICOM_DEBUG_LOGGER,
