@@ -14,7 +14,7 @@ from django.utils import timezone
 from adit.core.utils.mail import send_job_finished_mail
 from adit.core.utils.model_utils import reset_tasks
 from adit_radis_shared.accounts.models import User
-from adit_radis_shared.common.models import AppSettings, ProjectSettings
+from adit_radis_shared.common.models import AppSettings
 
 from .validators import (
     no_backslash_char_validator,
@@ -25,11 +25,6 @@ from .validators import (
 
 if TYPE_CHECKING:
     from django.db.models.manager import RelatedManager
-
-
-class CoreSettings(ProjectSettings):
-    class Meta:
-        verbose_name_plural = "Core settings"
 
 
 class DicomAppSettings(AppSettings):

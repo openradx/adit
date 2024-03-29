@@ -5,7 +5,6 @@ from django.contrib.auth.models import Group
 from adit_radis_shared.accounts.forms import GroupAdminForm
 
 from .models import (
-    CoreSettings,
     DicomFolder,
     DicomJob,
     DicomNodeGroupAccess,
@@ -15,8 +14,6 @@ from .models import (
 )
 
 admin.site.site_header = "ADIT administration"
-
-admin.site.register(CoreSettings, admin.ModelAdmin)
 
 
 class DicomJobAdmin(admin.ModelAdmin):
