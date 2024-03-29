@@ -1,5 +1,6 @@
 from typing import Any, Callable
 
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.mixins import (
     LoginRequiredMixin,
@@ -109,3 +110,15 @@ class AdminProxyView(LoginRequiredMixin, UserPassesTestMixin, ProxyView):
     @classmethod
     def as_url(cls):
         return re_path(rf"^{cls.url_prefix}/(?P<path>.*)$", cls.as_view())  # type: ignore
+
+
+class FlowerProxyView(AdminProxyView):
+    upstream = f"http://{settings.FLOWER_HOST}:{settings.FLOWER_PORT}"  # type: ignore
+    url_prefix = "flower"
+    rewrite = ((rf"^/{url_prefix}$", rf"/{url_prefix}/"),)
+
+    @classmethod
+    def as_url(cls):
+        # Flower needs a bit different setup then the other proxy views as flower
+        # uses a prefix itself (see docker compose service)
+        return re_path(rf"^(?P<path>{cls.url_prefix}.*)$", cls.as_view())
