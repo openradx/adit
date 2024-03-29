@@ -14,6 +14,7 @@ from django.views.generic.base import TemplateView
 from revproxy.views import ProxyView
 
 from adit_radis_shared.common.forms import BroadcastForm
+from adit_radis_shared.common.models import SiteProfile
 
 from .types import AuthenticatedHttpRequest, HtmxHttpRequest
 
@@ -23,6 +24,16 @@ class HtmxTemplateView(TemplateView):
         if not request.htmx:
             raise SuspiciousOperation
         return super().get(request, *args, **kwargs)
+
+
+class BaseHomeView(TemplateView):
+    template_name: str
+
+    def get_context_data(self, **kwargs) -> dict[str, Any]:
+        context = super().get_context_data(**kwargs)
+        site_profile = SiteProfile.objects.get_current()
+        context["announcement"] = site_profile.announcement if site_profile else ""
+        return context
 
 
 class BaseUpdatePreferencesView(LoginRequiredMixin, View):
