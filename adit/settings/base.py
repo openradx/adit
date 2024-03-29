@@ -36,8 +36,6 @@ if READ_DOT_ENV_FILE:
     # OS environment variables take precedence over variables from .env
     env.read_env(str(BASE_DIR / ".env"))
 
-BASE_URL = env.str("BASE_URL", default="http://localhost")  # type: ignore
-
 # Used by the django.contrib.sites framework
 SITE_ID = 1
 
@@ -45,7 +43,7 @@ SITE_ID = 1
 # of the sites frameworks Site model and also some other site specific settings in
 # our custom SiteProfile model.
 # Once set those values will be used from the database!
-SITE_DOMAIN = env.str("SITE_DOMAIN", default="adit.test")  # type: ignore
+SITE_DOMAIN = env.str("SITE_DOMAIN", default="localhost")  # type: ignore
 SITE_NAME = "ADIT"
 SITE_META_KEYWORDS = "ADIT,Radiology,DICOM,Medicine,Tool,Transfer"
 SITE_META_DESCRIPTION = "ADIT is a tool for managing automated DICOM transfers"
