@@ -331,21 +331,23 @@ def copy_statics(ctx: Context):
     """Copy JS and CSS dependencies from node_modules to static vendor folder"""
     print("Copying statics...")
 
+    vendor = "adit_radis_shared/common/static/vendor/"
+
     for file in glob("node_modules/@popperjs/core/dist/umd/popper.js*"):
-        copy(file, "adit/static/vendor/")
+        copy(file, f"{vendor}/")
     for file in glob("node_modules/bootstrap/dist/css/bootstrap.css*"):
-        copy(file, "adit/static/vendor/")
+        copy(file, f"{vendor}/")
     for file in glob("node_modules/bootstrap/dist/js/bootstrap.bundle.js*"):
-        copy(file, "adit/static/vendor/")
-    copy("node_modules/bootstrap-icons/bootstrap-icons.svg", "adit/static/vendor/")
-    copy("node_modules/bootswatch/dist/flatly/bootstrap.css", "adit/static/vendor/")
-    copy("node_modules/alpinejs/dist/cdn.js", "adit/static/vendor/alpine.js")
-    copy("node_modules/@alpinejs/morph/dist/cdn.js", "adit/static/vendor/alpine-morph.js")
-    copy("node_modules/htmx.org/dist/htmx.js", "adit/static/vendor/")
-    copy("node_modules/htmx.org/dist/ext/ws.js", "adit/static/vendor/htmx-ws.js")
+        copy(file, f"{vendor}/")
+    copy("node_modules/bootstrap-icons/bootstrap-icons.svg", f"{vendor}/")
+    copy("node_modules/bootswatch/dist/flatly/bootstrap.css", f"{vendor}/")
+    copy("node_modules/alpinejs/dist/cdn.js", f"{vendor}/alpine.js")
+    copy("node_modules/@alpinejs/morph/dist/cdn.js", f"{vendor}/alpine-morph.js")
+    copy("node_modules/htmx.org/dist/htmx.js", f"{vendor}/")
+    copy("node_modules/htmx.org/dist/ext/ws.js", f"{vendor}/htmx-ws.js")
     copy(
         "node_modules/htmx.org/dist/ext/alpine-morph.js",
-        "adit/static/vendor/htmx-alpine-morph.js",
+        f"{vendor}/htmx-alpine-morph.js",
     )
 
 
