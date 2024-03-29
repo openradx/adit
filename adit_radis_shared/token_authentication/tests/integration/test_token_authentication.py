@@ -6,7 +6,7 @@ from adit_radis_shared.common.utils.auth_utils import add_user_to_group
 
 
 @pytest.mark.integration
-@pytest.mark.django_db(transaction=True)
+@pytest.mark.django_db
 def test_create_and_delete_authentication_token(
     page: Page,
     channels_live_server,
@@ -40,7 +40,7 @@ def test_create_and_delete_authentication_token(
 
 
 @pytest.mark.integration
-@pytest.mark.django_db(transaction=True)
+@pytest.mark.django_db
 def test_invalid_authentication_token(
     channels_live_server,
 ):
