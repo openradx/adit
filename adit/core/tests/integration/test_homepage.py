@@ -4,7 +4,7 @@ import pytest
 from playwright.sync_api import Page, expect
 
 
-@pytest.mark.integration
+@pytest.mark.integration(transaction=True)
 def test_homepage_has_title(live_server, page: Page):
     page.goto(live_server.url)
 

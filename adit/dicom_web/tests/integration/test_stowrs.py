@@ -10,7 +10,7 @@ from adit.core.utils.auth_utils import grant_access
 @pytest.mark.django_db(transaction=True)
 def test_stow(
     dimse_orthancs,
-    channels_live_server,
+    live_server,
     user_with_group_and_token,
     create_dicom_web_client,
     test_dicoms,
@@ -21,7 +21,7 @@ def test_stow(
     # the upload if the images are there
     grant_access(group, server, source=True, destination=True)
     orthanc2_client: DICOMwebClient = create_dicom_web_client(
-        channels_live_server.url, server.ae_title, token
+        live_server.url, server.ae_title, token
     )
 
     studies = orthanc2_client.search_for_studies()
