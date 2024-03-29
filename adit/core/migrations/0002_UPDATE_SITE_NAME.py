@@ -24,5 +24,7 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.RunPython(update_site_name),
+        # No need anymore for this data migration as we to it in common,
+        # see common/migrations/0002_update_or_create_site.py
+        # migrations.RunPython(update_site_name),
     ]
