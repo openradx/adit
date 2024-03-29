@@ -16,7 +16,6 @@ from django.http import HttpRequest, HttpResponse
 from django.shortcuts import redirect, render
 from django.urls import re_path, reverse_lazy
 from django.views.generic import View
-from django.views.generic.base import TemplateView
 from django.views.generic.detail import DetailView, SingleObjectMixin
 from django.views.generic.edit import CreateView, DeleteView
 from django_filters import FilterSet
@@ -31,10 +30,11 @@ from adit_radis_shared.common.types import AuthenticatedHttpRequest
 from adit_radis_shared.common.views import (
     AdminProxyView,
     BaseBroadcastView,
+    BaseHomeView,
     BaseUpdatePreferencesView,
 )
 
-from .models import CoreSettings, DicomJob, DicomTask, QueuedTask
+from .models import DicomJob, DicomTask, QueuedTask
 from .site import job_stats_collectors
 from .tasks import broadcast_mail
 
@@ -60,15 +60,8 @@ class BroadcastView(BaseBroadcastView):
         broadcast_mail.delay(subject, message)
 
 
-class HomeView(TemplateView):
+class HomeView(BaseHomeView):
     template_name = "core/home.html"
-
-    def get_context_data(self, **kwargs) -> dict[str, Any]:
-        context = super().get_context_data(**kwargs)
-        core_settings = CoreSettings.get()
-        assert core_settings
-        context["announcement"] = core_settings.announcement
-        return context
 
 
 class UpdatePreferencesView(BaseUpdatePreferencesView):
