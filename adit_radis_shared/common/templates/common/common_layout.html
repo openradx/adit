@@ -9,10 +9,14 @@
         <title>
             {% block title %}
             {% endblock title %}
+            | {{ request.site.name }}
         </title>
         <meta name="charset" content="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <meta name="author" content="OpenRadX" />
+        <meta name="keywords" content="{{ request.site.profile.meta_keywords }}" />
+        <meta name="description"
+              content="{{ request.site.profile.meta_description }}" />
         {% block meta %}
         {% endblock meta %}
         {# Make our public data available on the client, see common.site.base_context_processor #}
@@ -39,6 +43,7 @@
           hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
         <script>document.body.className="js";</script>
         {% block header %}
+            {% include "common/_navbar.html" %}
         {% endblock header %}
         <main role="main">
             <div class="top container my-3">
@@ -49,6 +54,7 @@
                 {% endblock content %}
             </div>
             {% block footer %}
+                {% include "common/_footer.html" %}
             {% endblock footer %}
         </main>
         {% include "common/_toasts_panel.html" %}

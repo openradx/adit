@@ -3,7 +3,7 @@
 <html lang="en">
     <head>
         <title>{% trans "Registration |" %} {{ site.name }}</title>
-        <meta name="keywords" content="RADIS,Radiology,Reports,Medicine,Tool" />
+        <meta name="keywords" content="{{ site.profile.meta_keywords }}" />
         <meta name="description"
               content="Activate your account on {{ site.name }}." />
     </head>
@@ -13,10 +13,9 @@
             Dear colleagues,
             <br />
             <br />
-            RADIS is the result of well <mark>over a hundred hours of development work</mark>, most of which took place
-            <mark>in my spare time</mark>. I developed it with the intention to simplify our work regarding the processing
-            of radiological images, so that we can focus again on the actual scientific activity. Vice versa I ask you to
-            <mark>consider me on publications for which RADIS was used</mark>.
+            {{ site.name }} is the result of well over a hundred hours of development work, most of which took place
+            <mark>in my spare time. I developed it with the intention to simplify our work and improve our research
+            activities. Vice versa I ask you to <mark>consider me on publications for which {{ site.name }} was used</mark>.
             {% endblocktrans %}
         </p>
         <p>
