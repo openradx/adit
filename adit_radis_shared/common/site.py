@@ -32,7 +32,6 @@ def base_context_processor(request: HttpRequest) -> dict[str, Any]:
 
     return {
         "version": settings.PROJECT_VERSION,
-        "base_url": settings.BASE_URL,
         "support_email": settings.SUPPORT_EMAIL,
         "main_menu_items": main_menu_items,
         "theme": theme,

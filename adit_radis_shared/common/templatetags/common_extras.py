@@ -2,6 +2,8 @@ import logging
 from datetime import date, datetime, time
 from typing import Any
 
+from django.contrib.sites.shortcuts import get_current_site
+from django.http import HttpRequest
 from django.template import Library
 from django.template.defaultfilters import join
 
@@ -13,6 +15,15 @@ register = Library()
 @register.filter
 def access_item(d: dict, key: str) -> Any:
     return d.get(key, "")
+
+
+@register.simple_tag(takes_context=True)
+def base_url(context: dict[str, Any]) -> str:
+    # Requires django.template.context_processors.request
+    request: HttpRequest = context["request"]
+    domain = get_current_site(request).domain
+    protocol = "https" if request.is_secure() else "http"
+    return f"{protocol}://{domain}"
 
 
 @register.inclusion_tag("common/_bootstrap_icon.html")
