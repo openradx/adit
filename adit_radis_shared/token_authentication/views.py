@@ -3,6 +3,7 @@ from typing import Any
 
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
 from django.urls import reverse_lazy
+from django.utils import timezone
 from django.views.generic import DeleteView, FormView
 from rest_framework.request import Request
 from rest_framework.response import Response
@@ -37,7 +38,7 @@ class TokenDashboardView(
         expiry_time = int(data["expiry_time"])
         expires = None
         if expiry_time > 0:
-            expires = datetime.datetime.now() + datetime.timedelta(hours=expiry_time)
+            expires = timezone.now() + datetime.timedelta(hours=expiry_time)
         try:
             description: str = data["description"]
             _, token_string = Token.objects.create_token(
