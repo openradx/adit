@@ -13,11 +13,11 @@ from crispy_forms.utils import render_crispy_form
 from django.conf import settings
 from django.template.loader import render_to_string
 
-from adit.accounts.models import User
 from adit.core.models import DicomNode
-from adit.core.utils.debounce import debounce
 from adit.core.utils.dicom_dataset import QueryDataset, ResultDataset
 from adit.core.utils.dicom_operator import DicomOperator
+from adit_radis_shared.accounts.models import User
+from adit_radis_shared.common.utils.debounce import debounce
 
 from .forms import SelectiveTransferJobForm
 from .models import SelectiveTransferJob, SelectiveTransferTask

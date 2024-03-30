@@ -1,4 +1,4 @@
-from adit.core.mixins import LockedMixin
+from adit_radis_shared.common.mixins import LockedMixin
 
 from .models import DicomExplorerSettings
 

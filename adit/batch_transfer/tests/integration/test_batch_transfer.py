@@ -4,9 +4,10 @@ import pandas as pd
 import pytest
 from playwright.sync_api import Locator, Page, expect
 
-from adit.accounts.models import User
 from adit.batch_transfer.models import BatchTransferJob
-from adit.core.utils.auth_utils import add_permission, add_user_to_group, grant_access
+from adit.core.utils.auth_utils import grant_access
+from adit_radis_shared.accounts.models import User
+from adit_radis_shared.common.utils.auth_utils import add_permission, add_user_to_group
 
 
 @pytest.mark.integration
@@ -16,7 +17,7 @@ def test_unpseudonymized_urgent_batch_transfer_with_dimse_server(
     poll: Callable[[Locator], Locator],
     dimse_orthancs,
     dicom_worker,
-    channels_live_server,
+    live_server,
     create_and_login_user,
     batch_transfer_group,
     create_excel_file,
@@ -28,7 +29,7 @@ def test_unpseudonymized_urgent_batch_transfer_with_dimse_server(
     )
     batch_file = create_excel_file(df)
 
-    user: User = create_and_login_user(channels_live_server.url)
+    user: User = create_and_login_user(live_server.url)
     add_user_to_group(user, batch_transfer_group)
     add_permission(batch_transfer_group, BatchTransferJob, "can_process_urgently")
     add_permission(batch_transfer_group, BatchTransferJob, "can_transfer_unpseudonymized")
@@ -36,7 +37,7 @@ def test_unpseudonymized_urgent_batch_transfer_with_dimse_server(
     grant_access(batch_transfer_group, dimse_orthancs[1], destination=True)
 
     # Act
-    page.goto(channels_live_server.url + "/batch-transfer/jobs/new/")
+    page.goto(live_server.url + "/batch-transfer/jobs/new/")
     page.get_by_label("Source").select_option(label="DICOM Server Orthanc Test Server 1")
     page.get_by_label("Destination").select_option(label="DICOM Server Orthanc Test Server 2")
     page.get_by_label("Urgent").click(force=True)
@@ -57,7 +58,7 @@ def test_unpseudonymized_urgent_batch_transfer_with_dicomweb_server(
     poll: Callable[[Locator], Locator],
     dicomweb_orthancs,
     dicom_worker,
-    channels_live_server,
+    live_server,
     create_and_login_user,
     batch_transfer_group,
     create_excel_file,
@@ -69,7 +70,7 @@ def test_unpseudonymized_urgent_batch_transfer_with_dicomweb_server(
     )
     batch_file = create_excel_file(df)
 
-    user: User = create_and_login_user(channels_live_server.url)
+    user: User = create_and_login_user(live_server.url)
     add_user_to_group(user, batch_transfer_group)
     add_permission(batch_transfer_group, BatchTransferJob, "can_process_urgently")
     add_permission(batch_transfer_group, BatchTransferJob, "can_transfer_unpseudonymized")
@@ -77,7 +78,7 @@ def test_unpseudonymized_urgent_batch_transfer_with_dicomweb_server(
     grant_access(batch_transfer_group, dicomweb_orthancs[1], destination=True)
 
     # Act
-    page.goto(channels_live_server.url + "/batch-transfer/jobs/new/")
+    page.goto(live_server.url + "/batch-transfer/jobs/new/")
     page.get_by_label("Source").select_option(label="DICOM Server Orthanc Test Server 1")
     page.get_by_label("Destination").select_option(label="DICOM Server Orthanc Test Server 2")
     page.get_by_label("Urgent").click(force=True)

@@ -8,10 +8,10 @@ from django.core.exceptions import ValidationError
 from django.utils.safestring import mark_safe
 from django.utils.translation import gettext_lazy as _
 
-from adit.accounts.models import User
 from adit.core.errors import BatchFileContentError, BatchFileFormatError, BatchFileSizeError
 from adit.core.fields import DicomNodeChoiceField, RestrictedFileField
 from adit.core.models import DicomNode
+from adit_radis_shared.accounts.models import User
 
 from .models import BatchTransferJob, BatchTransferTask
 from .parsers import BatchTransferFileParser

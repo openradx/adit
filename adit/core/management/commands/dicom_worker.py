@@ -1,14 +1,16 @@
 from datetime import time
 
-from adit.core.utils.command_utils import valid_time_range
-from adit.core.workers import DicomWorker
+from django.conf import settings
 
-from ..base.server_command import ServerCommand
+from adit.core.utils.time_utils import valid_time_range
+from adit.core.workers import DicomWorker
+from adit_radis_shared.common.management.base.server_command import ServerCommand
 
 
 class Command(ServerCommand):
     help = "Starts a DICOM worker"
     server_name = "DICOM Worker"
+    paths_to_watch = [settings.BASE_DIR / "adit"]
     _dicom_worker: DicomWorker | None
 
     def add_arguments(self, parser):

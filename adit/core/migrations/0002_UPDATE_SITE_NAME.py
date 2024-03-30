@@ -10,8 +10,8 @@ def update_site_name(apps, _):
     SiteModel.objects.update_or_create(
         pk=settings.SITE_ID,
         defaults={
-            "domain": settings.ADIT_SITE_DOMAIN,
-            "name": settings.ADIT_SITE_NAME,
+            "domain": settings.SITE_DOMAIN,
+            "name": settings.SITE_NAME,
         },
     )
 
@@ -24,5 +24,7 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.RunPython(update_site_name),
+        # No need anymore for this data migration as we to it in common,
+        # see common/migrations/0002_update_or_create_site.py
+        # migrations.RunPython(update_site_name),
     ]

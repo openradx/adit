@@ -1,0 +1,26 @@
+{% load trans blocktrans from i18n %}
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <title>{% trans "Account approved |" %} {{ site.name }}</title>
+        <meta name="keywords" content="{{ site.profile.meta_keywords }}" />
+        <meta name="description" content="Account approved on {{ site.name }}." />
+    </head>
+    <body>
+        <p>
+            {% blocktrans %}
+            Your account on {{ site.name }} is now approved. You can 
+            {% endblocktrans %}
+            <a href="https://{{ site.domain }}{% url 'auth_login' %}">{% trans "log in." %}</a>
+        </p>
+    </body>
+</html>
+{% comment %}
+**registration/admin_approve_complete_email.html**
+
+Used after successful account activation. This template has no context
+variables of its own, and should simply inform the user that their
+account is now active.
+
+TODO: Open issue that this comments belongs to admin_approve_complete.html
+{% endcomment %}

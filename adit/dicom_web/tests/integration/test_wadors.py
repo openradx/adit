@@ -10,7 +10,7 @@ from adit.core.utils.auth_utils import grant_access
 @pytest.mark.django_db(transaction=True)
 def test_wado_study(
     dimse_orthancs,
-    channels_live_server,
+    live_server,
     user_with_group_and_token,
     create_dicom_web_client,
     extended_data_sheet,
@@ -19,7 +19,7 @@ def test_wado_study(
     server = DicomServer.objects.get(ae_title="ORTHANC1")
     grant_access(group, server, source=True)
     orthanc1_client: DICOMwebClient = create_dicom_web_client(
-        channels_live_server.url, server.ae_title, token
+        live_server.url, server.ae_title, token
     )
 
     study_uid = list(extended_data_sheet["StudyInstanceUID"])[0]
@@ -59,7 +59,7 @@ def test_wado_study(
 @pytest.mark.django_db(transaction=True)
 def test_wado_series(
     dimse_orthancs,
-    channels_live_server,
+    live_server,
     user_with_group_and_token,
     create_dicom_web_client,
     extended_data_sheet,
@@ -68,7 +68,7 @@ def test_wado_series(
     server = DicomServer.objects.get(ae_title="ORTHANC1")
     grant_access(group, server, source=True)
     orthanc1_client: DICOMwebClient = create_dicom_web_client(
-        channels_live_server.url, server.ae_title, token
+        live_server.url, server.ae_title, token
     )
 
     study_uid = list(extended_data_sheet["StudyInstanceUID"])[0]

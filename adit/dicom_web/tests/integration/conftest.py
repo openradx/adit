@@ -5,10 +5,10 @@ import pytest
 from dicomweb_client import DICOMwebClient
 from django.conf import settings
 
-from adit.accounts.factories import UserFactory
-from adit.core.utils.auth_utils import add_user_to_group
 from adit.core.utils.dicom_utils import read_dataset
-from adit.token_authentication.models import Token
+from adit_radis_shared.accounts.factories import UserFactory
+from adit_radis_shared.common.utils.auth_utils import add_user_to_group
+from adit_radis_shared.token_authentication.models import Token
 
 # Workaround to make playwright work with Django
 # see https://github.com/microsoft/playwright-pytest/issues/29#issuecomment-731515676

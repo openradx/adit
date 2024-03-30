@@ -4,13 +4,13 @@ from django.conf import settings
 from django.db import models
 from django.urls import reverse
 
-from adit.core.models import AppSettings, TransferJob, TransferTask
+from adit.core.models import DicomAppSettings, TransferJob, TransferTask
 
 if TYPE_CHECKING:
     from django.db.models.manager import RelatedManager
 
 
-class SelectiveTransferSettings(AppSettings):
+class SelectiveTransferSettings(DicomAppSettings):
     class Meta:
         verbose_name_plural = "Selective transfer settings"
 

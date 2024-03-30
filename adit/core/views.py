@@ -1,4 +1,3 @@
-from abc import ABC
 from typing import Any, cast
 
 from django.conf import settings
@@ -10,33 +9,34 @@ from django.contrib.auth.mixins import (
     UserPassesTestMixin,
 )
 from django.contrib.contenttypes.models import ContentType
-from django.contrib.messages.views import SuccessMessageMixin
 from django.core.exceptions import SuspiciousOperation
 from django.db.models.query import QuerySet
-from django.forms import Form, ModelForm
+from django.forms import ModelForm
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import redirect, render
-from django.urls import re_path, reverse_lazy
+from django.urls import reverse_lazy
 from django.views.generic import View
-from django.views.generic.base import TemplateView
 from django.views.generic.detail import DetailView, SingleObjectMixin
-from django.views.generic.edit import CreateView, DeleteView, FormView
+from django.views.generic.edit import CreateView, DeleteView
 from django_filters import FilterSet
 from django_filters.views import FilterView
 from django_tables2 import SingleTableMixin
 from django_tables2.tables import Table
-from revproxy.views import ProxyView
 
 from adit.core.utils.model_utils import reset_tasks
+from adit_radis_shared.common.mixins import PageSizeSelectMixin, RelatedFilterMixin
+from adit_radis_shared.common.site import THEME_PREFERENCE_KEY
+from adit_radis_shared.common.types import AuthenticatedHttpRequest
+from adit_radis_shared.common.views import (
+    AdminProxyView,
+    BaseBroadcastView,
+    BaseHomeView,
+    BaseUpdatePreferencesView,
+)
 
-from .forms import BroadcastForm
-from .mixins import HtmxOnlyMixin, PageSizeSelectMixin, RelatedFilterMixin
-from .models import CoreSettings, DicomJob, DicomTask, QueuedTask
+from .models import DicomJob, DicomTask, QueuedTask
 from .site import job_stats_collectors
 from .tasks import broadcast_mail
-from .types import AuthenticatedHttpRequest
-
-THEME = "theme"
 
 
 @staff_member_required
@@ -53,72 +53,19 @@ def admin_section(request: HttpRequest) -> HttpResponse:
     )
 
 
-class HtmxTemplateView(HtmxOnlyMixin, TemplateView):
-    pass
-
-
-class BroadcastView(LoginRequiredMixin, UserPassesTestMixin, SuccessMessageMixin, FormView):
-    template_name = "core/broadcast.html"
-    form_class = BroadcastForm
+class BroadcastView(BaseBroadcastView):
     success_url = reverse_lazy("broadcast")
-    success_message = "Mail queued for sending successfully"
-    request: AuthenticatedHttpRequest
 
-    def test_func(self) -> bool:
-        return self.request.user.is_staff
-
-    def form_valid(self, form: Form) -> HttpResponse:
-        subject = form.cleaned_data["subject"]
-        message = form.cleaned_data["message"]
-
+    def send_mails(self, subject: str, message: str) -> None:
         broadcast_mail.delay(subject, message)
 
-        return super().form_valid(form)
 
-
-class HomeView(TemplateView):
+class HomeView(BaseHomeView):
     template_name = "core/home.html"
-
-    def get_context_data(self, **kwargs) -> dict[str, Any]:
-        context = super().get_context_data(**kwargs)
-        core_settings = CoreSettings.get()
-        assert core_settings
-        context["announcement"] = core_settings.announcement
-        return context
-
-
-class BaseUpdatePreferencesView(ABC, LoginRequiredMixin, View):
-    """Allows the client to update the user preferences.
-
-    We use this to retain some form state between browser refreshes.
-    The implementations of this view is called by some AJAX requests when specific
-    form fields are changed.
-    """
-
-    allowed_keys: list[str]
-
-    def post(self, request: AuthenticatedHttpRequest) -> HttpResponse:
-        for key in request.POST.keys():
-            if key not in self.allowed_keys:
-                raise SuspiciousOperation(f'Invalid preference "{key}" to update.')
-
-        preferences = request.user.preferences
-
-        for key, value in request.POST.items():
-            if value == "true":
-                value = True
-            elif value == "false":
-                value = False
-
-            preferences[key] = value
-
-        request.user.save()
-
-        return HttpResponse()
 
 
 class UpdatePreferencesView(BaseUpdatePreferencesView):
-    allowed_keys = [THEME]
+    allowed_keys = [THEME_PREFERENCE_KEY]
 
 
 class DicomJobListView(LoginRequiredMixin, SingleTableMixin, PageSizeSelectMixin, FilterView):
@@ -489,36 +436,6 @@ class DicomTaskKillView(LoginRequiredMixin, UserPassesTestMixin, SingleObjectMix
 
         messages.success(request, self.success_message % task.__dict__)
         return redirect(task)
-
-
-class AdminProxyView(LoginRequiredMixin, UserPassesTestMixin, ProxyView):
-    """A reverse proxy view to hide other services behind that only an admin can access.
-
-    By using a reverse proxy we can use the Django authentication
-    to check for an logged in admin user.
-    Code from https://stackoverflow.com/a/61997024/166229
-    """
-
-    request: AuthenticatedHttpRequest
-
-    def test_func(self):
-        return self.request.user.is_staff
-
-    @classmethod
-    def as_url(cls):
-        return re_path(rf"^{cls.url_prefix}/(?P<path>.*)$", cls.as_view())  # type: ignore
-
-
-class FlowerProxyView(AdminProxyView):
-    upstream = f"http://{settings.FLOWER_HOST}:{settings.FLOWER_PORT}"  # type: ignore
-    url_prefix = "flower"
-    rewrite = ((rf"^/{url_prefix}$", rf"/{url_prefix}/"),)
-
-    @classmethod
-    def as_url(cls):
-        # Flower needs a bit different setup then the other proxy views as flower
-        # uses a prefix itself (see docker compose service)
-        return re_path(rf"^(?P<path>{cls.url_prefix}.*)$", cls.as_view())
 
 
 class Orthanc1ProxyView(AdminProxyView):

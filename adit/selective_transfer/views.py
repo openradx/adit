@@ -3,9 +3,7 @@ from typing import Any
 from django.shortcuts import render
 from django.urls import reverse_lazy
 
-from adit.core.types import AuthenticatedHttpRequest
 from adit.core.views import (
-    BaseUpdatePreferencesView,
     DicomJobCancelView,
     DicomJobCreateView,
     DicomJobDeleteView,
@@ -20,6 +18,8 @@ from adit.core.views import (
     DicomTaskResetView,
     TransferJobListView,
 )
+from adit_radis_shared.common.types import AuthenticatedHttpRequest
+from adit_radis_shared.common.views import BaseUpdatePreferencesView
 
 from .filters import SelectiveTransferJobFilter, SelectiveTransferTaskFilter
 from .forms import SelectiveTransferJobForm

@@ -6,10 +6,11 @@ from pathlib import Path
 import janus
 from django.conf import settings
 
+from adit_radis_shared.common.management.base.server_command import AsyncServerCommand
+
 from ...utils.dicom_utils import read_dataset
 from ...utils.file_transmit import FileTransmitServer
 from ...utils.store_scp import StoreScp
-from ..base.server_command import AsyncServerCommand
 
 logger = logging.getLogger(__name__)
 
@@ -20,6 +21,7 @@ class Command(AsyncServerCommand):
         "files to subscribing Celery workers."
     )
     server_name = "DICOM receiver"
+    paths_to_watch = [settings.BASE_DIR / "adit"]
 
     async def run_server_async(self, **options):
         # No need for an async path library as we only do it once at startup.
@@ -35,7 +37,7 @@ class Command(AsyncServerCommand):
         # listen on all interfaces (what we do now).
         self._store_scp = StoreScp(
             folder=receiver_dir,
-            ae_title=settings.ADIT_AE_TITLE,
+            ae_title=settings.RECEIVER_AE_TITLE,
             host="0.0.0.0",
             port=settings.STORE_SCP_PORT,
             debug=settings.ENABLE_DICOM_DEBUG_LOGGER,

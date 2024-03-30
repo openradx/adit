@@ -1,3 +1,4 @@
-<a href="{{ base_url }}{{ job.get_absolute_url }}">{{ job }}</a> finished.
+{% load base_url from common_extras %}
+<a href="{% base_url %}{{ job.get_absolute_url }}">{{ job }}</a> finished.
 Message:
 {{ job.message|default:"—" }}

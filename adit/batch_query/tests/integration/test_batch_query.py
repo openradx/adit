@@ -4,9 +4,10 @@ import pandas as pd
 import pytest
 from playwright.sync_api import Locator, Page, expect
 
-from adit.accounts.models import User
 from adit.batch_query.models import BatchQueryJob
-from adit.core.utils.auth_utils import add_permission, add_user_to_group, grant_access
+from adit.core.utils.auth_utils import grant_access
+from adit_radis_shared.accounts.models import User
+from adit_radis_shared.common.utils.auth_utils import add_permission, add_user_to_group
 
 
 @pytest.mark.integration
@@ -16,7 +17,7 @@ def test_urgent_batch_query_with_dimse_server(
     poll: Callable[[Locator], Locator],
     dimse_orthancs,
     dicom_worker,
-    channels_live_server,
+    live_server,
     create_and_login_user,
     batch_query_group,
     create_excel_file,
@@ -28,14 +29,14 @@ def test_urgent_batch_query_with_dimse_server(
     )
     batch_file = create_excel_file(df)
 
-    user: User = create_and_login_user(channels_live_server.url)
+    user: User = create_and_login_user(live_server.url)
     add_user_to_group(user, batch_query_group)
     add_permission(batch_query_group, BatchQueryJob, "can_process_urgently")
     grant_access(batch_query_group, dimse_orthancs[0], source=True)
     grant_access(batch_query_group, dimse_orthancs[1], destination=True)
 
     # Act
-    page.goto(channels_live_server.url + "/batch-query/jobs/new/")
+    page.goto(live_server.url + "/batch-query/jobs/new/")
     page.get_by_label("Source").select_option(label="DICOM Server Orthanc Test Server 1")
     page.get_by_label("Urgent").click(force=True)
     page.get_by_label("Project name").fill("Test query")
@@ -54,7 +55,7 @@ def test_urgent_batch_query_with_dicomweb_server(
     poll: Callable[[Locator], Locator],
     dicomweb_orthancs,
     dicom_worker,
-    channels_live_server,
+    live_server,
     create_and_login_user,
     batch_query_group,
     create_excel_file,
@@ -66,14 +67,14 @@ def test_urgent_batch_query_with_dicomweb_server(
     )
     batch_file = create_excel_file(df)
 
-    user: User = create_and_login_user(channels_live_server.url)
+    user: User = create_and_login_user(live_server.url)
     add_user_to_group(user, batch_query_group)
     add_permission(batch_query_group, BatchQueryJob, "can_process_urgently")
     grant_access(batch_query_group, dicomweb_orthancs[0], source=True)
     grant_access(batch_query_group, dicomweb_orthancs[1], destination=True)
 
     # Act
-    page.goto(channels_live_server.url + "/batch-query/jobs/new/")
+    page.goto(live_server.url + "/batch-query/jobs/new/")
     page.get_by_label("Source").select_option(label="DICOM Server Orthanc Test Server 1")
     page.get_by_label("Urgent").click(force=True)
     page.get_by_label("Project name").fill("Test query")

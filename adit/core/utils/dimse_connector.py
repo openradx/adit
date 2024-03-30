@@ -147,7 +147,7 @@ class DimseConnector:
                     raise err
 
     def _associate(self, service: DimseService):
-        ae = AE(settings.ADIT_AE_TITLE)
+        ae = AE(settings.RECEIVER_AE_TITLE)
 
         # Speed up by reducing the number of required DIMSE messages
         # https://pydicom.github.io/pynetdicom/stable/examples/storage.html#storage-scp

@@ -1,0 +1,85 @@
+{% extends "token_authentication/token_authentication_layout.html" %}
+{% load render_table from django_tables2 %}
+{% load crispy from crispy_forms_tags %}
+{% load bootstrap_icon from common_extras %}
+{% block heading %}
+    <div class="d-flex justify-content-between align-items-start">
+        <h4 class="mb-3 d-flex gap-3">
+            <span>REST Authentication Tokens</span>
+            <button type="button"
+                    class="btn btn-sm btn-info align-baseline"
+                    hx-get="{% url 'token_authentication_help' %}"
+                    hx-target="#htmx-dialog">
+                Help
+                {% bootstrap_icon "question-circle" %}
+            </button>
+        </h4>
+    </div>
+{% endblock heading %}
+{% block content %}
+    <!-- Show a maybe newly generated token -->
+    {% if new_token %}
+        <div class="card mb-3" x-data="newToken()">
+            <div class="card-body">
+                <h5>Sucessfully generated a REST authentication token.</h5>
+                This token will only be visible once, so make sure to copy it
+                now and store it in a safe place. As you will not be able to
+                see it again, you will have to generate a new token if you lose
+                it.
+                <br />
+                <br />
+                <h3>
+                    <span class="badge text-bg-light" id="unhashed-token-string">{{ new_token }}</span>
+                    <button id="copy-token-button"
+                            class="btn btn-light btn-sm"
+                            @click="copyTokenToClipboard('{{ new_token }}')">{% bootstrap_icon "clipboard" %}</button>
+                </h3>
+            </div>
+        </div>
+    {% endif %}
+    <!-- List of all tokens by this user -->
+    <div style="margin-top: 40px;">
+        {% if tokens %}
+            <h5>Existing tokens</h5>
+            <table class="table table-hover" id="token-list-wrapper">
+                <thead>
+                    <tr>
+                        <th>Token</th>
+                        <th>Description</th>
+                        <th>Created</th>
+                        <th>Expires</th>
+                        <th>Last Used</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for token in tokens reversed %}
+                        <tr>
+                            <td class="text-nowrap">{{ token.fraction }}...</td>
+                            <td>{{ token.description|default:"—" }}</td>
+                            <td>{{ token.created_time }}</td>
+                            <td>{{ token.expires|default_if_none:"Never" }}</td>
+                            <td>{{ token.last_used|default_if_none:"Never" }}</td>
+                            <td>
+                                <form action="{% url 'delete_token' token.pk %}" method="post">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-danger btn-sm" aria-label="Delete token">{% bootstrap_icon "trash" %}</button>
+                                </form>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <h5>No generated tokens</h5>
+        {% endif %}
+    </div>
+    <!-- Form to generate new tokens -->
+    <div style="margin-top: 40px;">
+        <h5>Generate a new token</h5>
+        <form action="{% url 'token_dashboard' %}" method="post">
+            {% csrf_token %}
+            {% crispy form %}
+        </form>
+    </div>
+{% endblock content %}

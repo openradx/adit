@@ -1,0 +1,23 @@
+{# Messages are placed by the server using the Django messages framework #}
+{% load alert_class message_symbol from common_extras %}
+<div class="messages-panel">
+    {% include "common/_alert_icons.html" %}
+    {% for message in messages %}
+        <div class="alert {{ message.level_tag|alert_class }} d-flex align-items-center alert-dismissible fade show"
+             role="alert">
+            <svg class="me-2"
+                 width="24"
+                 height="24"
+                 fill="currentColor"
+                 role="img"
+                 aria-label="Success:">
+                <use xlink:href="#{{ message.level_tag|message_symbol }}" />
+            </svg>
+            <div>{{ message }}</div>
+            <button type="button"
+                    class="btn-close"
+                    data-bs-dismiss="alert"
+                    aria-label="Close" />
+        </div>
+    {% endfor %}
+</div>

@@ -22,28 +22,37 @@ env = environ.Env()
 # The base directory of the project (the root of the repository)
 BASE_DIR = Path(__file__).resolve(strict=True).parent.parent.parent
 
-# Read pyproject.toml file
-pyproject = toml.load(BASE_DIR / "pyproject.toml")
-
-ADIT_VERSION = pyproject["tool"]["poetry"]["version"]
+# Read pyproject.toml to fetch current version. We do this conditionally as the
+# ADIT client library uses ADIT for integration tests installed as a package
+# (where no pyproject.toml is available).
+if (BASE_DIR / "pyproject.toml").exists():
+    pyproject = toml.load(BASE_DIR / "pyproject.toml")
+    PROJECT_VERSION = pyproject["tool"]["poetry"]["version"]
+else:
+    PROJECT_VERSION = "???"
 
 READ_DOT_ENV_FILE = env.bool("DJANGO_READ_DOT_ENV_FILE", default=False)  # type: ignore
 if READ_DOT_ENV_FILE:
     # OS environment variables take precedence over variables from .env
     env.read_env(str(BASE_DIR / ".env"))
 
-BASE_URL = env.str("BASE_URL", default="http://localhost")  # type: ignore
-
+# Used by the django.contrib.sites framework
 SITE_ID = 1
 
-# Used by our custom migration adit.core.migrations.0002_UPDATE_SITE_NAME
-# to set the domain and name of the sites framework
-ADIT_SITE_DOMAIN = env.str("ADIT_SITE_DOMAIN", default="adit.org")  # type: ignore
-ADIT_SITE_NAME = env.str("ADIT_SITE_NAME", default="adit.org")  # type: ignore
+# Used by our custom data migrations in the common app to set the domain and name
+# of the sites frameworks Site model and also some other site specific settings in
+# our custom SiteProfile model.
+# Once set those values will be used from the database!
+SITE_DOMAIN = env.str("SITE_DOMAIN", default="localhost")  # type: ignore
+SITE_NAME = "ADIT"
+SITE_META_KEYWORDS = "ADIT,Radiology,DICOM,Medicine,Tool,Transfer"
+SITE_META_DESCRIPTION = "ADIT is a tool for managing automated DICOM transfers"
+SITE_PROJECT_URL = "https://github.com/openradx/adit"
 
 INSTALLED_APPS = [
     "daphne",
     "whitenoise.runserver_nostatic",
+    "adit_radis_shared.common.apps.CommonConfig",
     "registration",
     "django.contrib.admin",
     "django.contrib.auth",
@@ -65,8 +74,8 @@ INSTALLED_APPS = [
     "rest_framework",
     "adrf",
     "adit.core.apps.CoreConfig",
-    "adit.accounts.apps.AccountsConfig",
-    "adit.token_authentication.apps.TokenAuthenticationConfig",
+    "adit_radis_shared.accounts.apps.AccountsConfig",
+    "adit_radis_shared.token_authentication.apps.TokenAuthenticationConfig",
     "adit.selective_transfer.apps.SelectiveTransferConfig",
     "adit.batch_query.apps.BatchQueryConfig",
     "adit.batch_transfer.apps.BatchTransferConfig",
@@ -87,9 +96,9 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "django.contrib.sites.middleware.CurrentSiteMiddleware",
     "django_htmx.middleware.HtmxMiddleware",
-    "adit.core.middlewares.MaintenanceMiddleware",
-    "adit.core.middlewares.TimezoneMiddleware",
-    "adit.accounts.middlewares.ActiveGroupMiddleware",
+    "adit_radis_shared.accounts.middlewares.ActiveGroupMiddleware",
+    "adit_radis_shared.common.middlewares.MaintenanceMiddleware",
+    "adit_radis_shared.common.middlewares.TimezoneMiddleware",
 ]
 
 ROOT_URLCONF = "adit.urls"
@@ -97,7 +106,7 @@ ROOT_URLCONF = "adit.urls"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [BASE_DIR / "adit" / "templates"],
+        "DIRS": [],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
@@ -105,7 +114,7 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
-                "adit.core.site.base_context_processor",
+                "adit_radis_shared.common.site.base_context_processor",
             ],
         },
     },
@@ -132,7 +141,7 @@ DATABASES = {"default": env.db(default="sqlite:///adit-sqlite.db")}  # type: ign
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # A custom authentication backend that supports a single currently active group.
-AUTHENTICATION_BACKENDS = ["adit.accounts.backends.ActiveGroupModelBackend"]
+AUTHENTICATION_BACKENDS = ["adit_radis_shared.accounts.backends.ActiveGroupModelBackend"]
 
 # Password validation
 # https://docs.djangoproject.com/en/3.0/ref/settings/#auth-password-validators
@@ -237,7 +246,7 @@ REST_FRAMEWORK = {
         "rest_framework.permissions.IsAuthenticated",
     ],
     "DEFAULT_AUTHENTICATION_CLASSES": [
-        "adit.token_authentication.auth.RestTokenAuthentication",
+        "adit_radis_shared.token_authentication.auth.RestTokenAuthentication",
     ],
     "EXCEPTION_HANDLER": "adit.dicom_web.exceptions.dicom_web_exception_handler",
 }
@@ -300,7 +309,7 @@ ADMINS = [
 ]
 
 # Settings for django-registration-redux
-REGISTRATION_FORM = "adit.accounts.forms.RegistrationForm"
+REGISTRATION_FORM = "adit_radis_shared.accounts.forms.RegistrationForm"
 ACCOUNT_ACTIVATION_DAYS = 14
 REGISTRATION_OPEN = True
 
@@ -350,7 +359,7 @@ pydicom_config.convert_wrong_length_to_UN = True
 ###
 
 # The AE Tile for the ADIT STORE SCP server
-ADIT_AE_TITLE = env.str("ADIT_AE_TITLE", default="ADIT1")  # type: ignore
+RECEIVER_AE_TITLE = env.str("RECEIVER_AE_TITLE", default="ADIT1")  # type: ignore
 
 # The address and port of the STORE SCP server (part of the receiver).
 # By default the STORE SCP server listens to all interfaces (empty string)

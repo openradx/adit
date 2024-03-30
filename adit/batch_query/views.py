@@ -10,10 +10,7 @@ from django.views.generic.base import View
 from django.views.generic.detail import SingleObjectMixin
 from django_tables2 import SingleTableMixin
 
-from adit.core.mixins import PageSizeSelectMixin, RelatedFilterMixin
-from adit.core.types import AuthenticatedHttpRequest
 from adit.core.views import (
-    BaseUpdatePreferencesView,
     DicomJobCancelView,
     DicomJobCreateView,
     DicomJobDeleteView,
@@ -29,6 +26,9 @@ from adit.core.views import (
     DicomTaskResetView,
 )
 from adit.selective_transfer.mixins import SelectiveTransferLockedMixin
+from adit_radis_shared.common.mixins import PageSizeSelectMixin, RelatedFilterMixin
+from adit_radis_shared.common.types import AuthenticatedHttpRequest
+from adit_radis_shared.common.views import BaseUpdatePreferencesView
 
 from .filters import BatchQueryJobFilter, BatchQueryResultFilter, BatchQueryTaskFilter
 from .forms import BatchQueryJobForm

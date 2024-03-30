@@ -331,21 +331,23 @@ def copy_statics(ctx: Context):
     """Copy JS and CSS dependencies from node_modules to static vendor folder"""
     print("Copying statics...")
 
+    vendor = "adit_radis_shared/common/static/vendor/"
+
     for file in glob("node_modules/@popperjs/core/dist/umd/popper.js*"):
-        copy(file, "adit/static/vendor/")
+        copy(file, f"{vendor}/")
     for file in glob("node_modules/bootstrap/dist/css/bootstrap.css*"):
-        copy(file, "adit/static/vendor/")
+        copy(file, f"{vendor}/")
     for file in glob("node_modules/bootstrap/dist/js/bootstrap.bundle.js*"):
-        copy(file, "adit/static/vendor/")
-    copy("node_modules/bootstrap-icons/bootstrap-icons.svg", "adit/static/vendor/")
-    copy("node_modules/bootswatch/dist/flatly/bootstrap.css", "adit/static/vendor/")
-    copy("node_modules/alpinejs/dist/cdn.js", "adit/static/vendor/alpine.js")
-    copy("node_modules/@alpinejs/morph/dist/cdn.js", "adit/static/vendor/alpine-morph.js")
-    copy("node_modules/htmx.org/dist/htmx.js", "adit/static/vendor/")
-    copy("node_modules/htmx.org/dist/ext/ws.js", "adit/static/vendor/htmx-ws.js")
+        copy(file, f"{vendor}/")
+    copy("node_modules/bootstrap-icons/bootstrap-icons.svg", f"{vendor}/")
+    copy("node_modules/bootswatch/dist/flatly/bootstrap.css", f"{vendor}/")
+    copy("node_modules/alpinejs/dist/cdn.js", f"{vendor}/alpine.js")
+    copy("node_modules/@alpinejs/morph/dist/cdn.js", f"{vendor}/alpine-morph.js")
+    copy("node_modules/htmx.org/dist/htmx.js", f"{vendor}/")
+    copy("node_modules/htmx.org/dist/ext/ws.js", f"{vendor}/htmx-ws.js")
     copy(
         "node_modules/htmx.org/dist/ext/alpine-morph.js",
-        "adit/static/vendor/htmx-alpine-morph.js",
+        f"{vendor}/htmx-alpine-morph.js",
     )
 
 
@@ -359,27 +361,27 @@ def init_workspace(ctx: Context):
 
     copy(f"{project_dir}/example.env", env_dev_file)
 
-    def modify_env_file(base_url: str | None = None):
-        if base_url:
-            hosts = ".localhost,127.0.0.1,[::1],"
-            hosts += base_url.removeprefix("https://")
-            set_key(env_dev_file, "BASE_URL", base_url, quote_mode="never")
-            set_key(env_dev_file, "DJANGO_CSRF_TRUSTED_ORIGINS", base_url, quote_mode="never")
+    def modify_env_file(domain: str | None = None):
+        if domain:
+            url = f"https://{domain}"
+            hosts = f".localhost,127.0.0.1,[::1],{domain}"
+            set_key(env_dev_file, "DJANGO_CSRF_TRUSTED_ORIGINS", url, quote_mode="never")
             set_key(env_dev_file, "DJANGO_ALLOWED_HOSTS", hosts, quote_mode="never")
             set_key(env_dev_file, "DJANGO_INTERNAL_IPS", hosts, quote_mode="never")
+            set_key(env_dev_file, "SITE_DOMAIN", domain, quote_mode="never")
 
         set_key(env_dev_file, "FORCE_DEBUG_TOOLBAR", "true", quote_mode="never")
 
     if environ.get("CODESPACE_NAME"):
         # Inside GitHub Codespaces
-        base_url = f"https://{environ['CODESPACE_NAME']}-8000.preview.app.github.dev"
-        modify_env_file(base_url)
+        codespaces_url = f"{environ['CODESPACE_NAME']}-8000.preview.app.github.dev"
+        modify_env_file(codespaces_url)
     elif environ.get("GITPOD_WORKSPACE_ID"):
         # Inside Gitpod
         result = run_cmd(ctx, "gp url 8000", silent=True)
         assert result and result.ok
-        base_url = result.stdout.strip()
-        modify_env_file(base_url)
+        gitpod_url = result.stdout.strip().removeprefix("https://")
+        modify_env_file(gitpod_url)
     else:
         # Inside some local environment
         modify_env_file()

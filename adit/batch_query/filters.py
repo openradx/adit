@@ -2,7 +2,7 @@ import django_filters
 from django.http import HttpRequest
 
 from adit.core.filters import DicomJobFilter, DicomTaskFilter
-from adit.core.forms import FilterSetFormHelper
+from adit_radis_shared.common.forms import FilterSetFormHelper
 
 from .models import BatchQueryJob, BatchQueryResult, BatchQueryTask
 

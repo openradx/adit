@@ -3,7 +3,8 @@ import time_machine
 from pydicom import Dataset
 from pytest_mock import MockerFixture
 
-from adit.accounts.factories import UserFactory
+from adit_radis_shared.accounts.factories import UserFactory
+from adit_radis_shared.common.utils.auth_utils import add_user_to_group
 
 from ..factories import (
     DicomFolderFactory,
@@ -11,7 +12,7 @@ from ..factories import (
 )
 from ..models import TransferJob, TransferTask
 from ..processors import TransferTaskProcessor
-from ..utils.auth_utils import add_user_to_group, grant_access
+from ..utils.auth_utils import grant_access
 from ..utils.dicom_dataset import ResultDataset
 from ..utils.dicom_operator import DicomOperator
 from .example_app.factories import ExampleTransferJobFactory, ExampleTransferTaskFactory
