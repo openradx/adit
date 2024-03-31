@@ -104,11 +104,28 @@ class TransferTaskProcessor(DicomTaskProcessor):
         archive_folder = Path(self.transfer_task.destination.dicomfolder.path)
         archive_password = self.transfer_task.job.archive_password
 
-        archive_name = f"{self._create_destination_name()}.7z"
+        if settings.SELECTIVE_TRANSFER_ARCHIVE_TYPE == "7z":
+            suffix = ".7z"
+        elif settings.SELECTIVE_TRANSFER_ARCHIVE_TYPE == "zip":
+            suffix = ".zip"
+        else:
+            raise DicomError(
+                f"Unsupported archive type: {settings.SELECTIVE_TRANSFER_ARCHIVE_TYPE}"
+            )
+
+        archive_name = f"{self._create_destination_name()}{suffix}"
         archive_path = archive_folder / archive_name
 
         if not archive_path.is_file():
-            self._create_archive(archive_path, archive_password)
+            logger.debug(f"Creating archive at {archive_path}")
+
+            with tempfile.TemporaryDirectory(prefix="adit_") as tmpdir:
+                readme_path = Path(tmpdir) / "INDEX.txt"
+                with open(readme_path, "w", encoding="utf-8") as readme_file:
+                    readme_file.write(
+                        f"Archive created by {self.transfer_task.job} at {datetime.now()}."
+                    )
+                _add_to_archive(archive_path, archive_password, readme_path)
 
         with tempfile.TemporaryDirectory(prefix="adit_") as tmpdir:
             patient_folder = self._download_dicoms(Path(tmpdir))
@@ -322,39 +339,23 @@ class TransferTaskProcessor(DicomTaskProcessor):
                 f"Project:{trial_protocol_id} Subject:{pseudonym} Session:{pseudonym}_{session_id}"
             )
 
-    def _create_archive(self, archive_path: Path, archive_password: str) -> None:
-        """Create a new archive with just an INDEX.txt file in it."""
-        logger.debug(f"Creating archive at {archive_path}")
-
-        if Path(archive_path).is_file():
-            raise DicomError(f"Archive ${archive_path} already exists.")
-
-        with tempfile.TemporaryDirectory(prefix="adit_") as tmpdir:
-            readme_path = Path(tmpdir) / "INDEX.txt"
-            with open(readme_path, "w", encoding="utf-8") as readme_file:
-                readme_file.write(
-                    f"Archive created by {self.transfer_task.job} at {datetime.now()}."
-                )
-            _add_to_archive(archive_path, archive_password, readme_path)
-
 
 def _add_to_archive(archive_path: Path, archive_password: str, path_to_add: Path) -> None:
     """Add a file or folder to an archive. If the archive does not exist
     it will be created."""
-    # TODO catch error like https://stackoverflow.com/a/46098513/166229
-    cmd = [
-        "7z",
-        "a",
-        "-p" + archive_password,
-        "-mhe=on",
-        "-mx1",
-        "-y",
-        archive_path,
-        path_to_add,
-    ]
+    cmd = ["7z", "a", "-y", "-mx1", f"-p{archive_password}"]
+
+    if settings.SELECTIVE_TRANSFER_ARCHIVE_TYPE == "7z":
+        cmd.extend(["-t7z", "-mhe=on"])
+    elif settings.SELECTIVE_TRANSFER_ARCHIVE_TYPE == "zip":
+        cmd.extend(["-tzip"])
+    else:
+        raise DicomError(f"Unsupported archive type: {settings.SELECTIVE_TRANSFER_ARCHIVE_TYPE}")
+
+    cmd.extend([str(archive_path), str(path_to_add)])
 
     proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL)
     proc.wait()
     (_, stderr) = proc.communicate()
     if proc.returncode != 0:
-        raise DicomError(f"Failed to add path to archive: {stderr}")
+        raise DicomError(f"Failed to add path {path_to_add} to archive {archive_path}: {stderr}")

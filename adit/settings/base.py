@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/3.0/ref/settings/
 """
 
 from pathlib import Path
+from typing import Literal
 
 import environ
 import toml
@@ -399,6 +400,11 @@ BATCH_TRANSFER_DEFAULT_PRIORITY = 2
 BATCH_TRANSFER_URGENT_PRIORITY = 6
 BATCH_QUERY_DEFAULT_PRIORITY = 3
 BATCH_QUERY_URGENT_PRIORITY = 7
+
+# The used archive type when creating a new archive in selective transfer.
+# .7z is more the secure as the names of files and folder can't be viewed
+# (in contrast to .zip), but .zip is more widely used.
+SELECTIVE_TRANSFER_ARCHIVE_TYPE: Literal["7z", "zip"] = "zip"
 
 # The maximum number of resulting studies for selective_transfer query
 SELECTIVE_TRANSFER_RESULT_LIMIT = 101

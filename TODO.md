@@ -121,7 +121,6 @@
   - <https://thomasbandt.com/postgres-docker-major-version-upgrade>
   - <https://betterprogramming.pub/how-to-upgrade-your-postgresql-version-using-docker-d1e81dbbbdf9>
   - look into <https://github.com/tianon/docker-postgres-upgrade>
-- Get rid of 7z archive feature. It think it was never used.
 - Allow to search multiple source servers with one query (maybe only in dicom explorer)
 - Bring everything behind Nginx as reverse proxy
   - Orthanc and Flower should then be directly behind Nginx (without Django-revproxy)
@@ -149,8 +148,7 @@
 - move or get rid of hijack_logger and store_log_in_task in task_utils
 - log debug -> info in connector also in production
 - Link owner in templates to user profile
-- Encrypt to zip file instead to 7zip
-  - 7z a -tzip -pfoobar foo.zip ./adit_selective_transfer_9133_20231121_schlampkai
+- Improve .zip file encryption
   - Unfortunately, file names and directory names are still visible
   - Can be work around by wrapping another zip file in an encrypted zip file <https://unix.stackexchange.com/a/290088/469228>
 - Rewrite dicom_connector to use asyncio (wrap all pynetdicom calls in asyncio.to_thread)
