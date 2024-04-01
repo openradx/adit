@@ -39,8 +39,7 @@
         {% block css %}
         {% endblock css %}
     </head>
-    <body id="{{ request.resolver_match.url_name }}"
-          hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
+    <body hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
         <script>document.body.className="js";</script>
         {% block header %}
             {% include "common/_navbar.html" %}
