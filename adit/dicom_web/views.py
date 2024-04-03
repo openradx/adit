@@ -1,10 +1,9 @@
 import logging
-import os
 from pathlib import Path
 from typing import Literal
 
 from adrf.views import APIView as AsyncApiView
-from adrf.views import sync_to_async
+from aiofiles.os import makedirs
 from django.conf import settings
 from rest_framework.exceptions import NotAcceptable, NotFound, ParseError, ValidationError
 from rest_framework.request import Request
@@ -160,10 +159,10 @@ class RetrieveAPIView(WebDicomAPIView):
         folder_path = Path(settings.TEMP_DICOM_DIR) / "wado"
         if level == "STUDY":
             folder_path = folder_path / ("study_" + study_uid)
-            await sync_to_async(os.makedirs)(folder_path, exist_ok=True)
+            await makedirs(folder_path, exist_ok=True)
         elif level == "SERIES":
             folder_path = folder_path / ("series_" + series_uid)
-            await sync_to_async(os.makedirs)(folder_path, exist_ok=True)
+            await makedirs(folder_path, exist_ok=True)
 
         return folder_path
 
