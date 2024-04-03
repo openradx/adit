@@ -28,8 +28,7 @@ logger = logging.getLogger(__name__)
 
 
 class WebDicomAPIView(AsyncApiView):
-    @sync_to_async
-    def _fetch_dicom_server(
+    async def _fetch_dicom_server(
         self,
         request: AuthenticatedApiRequest,
         ae_title: str,
@@ -37,7 +36,7 @@ class WebDicomAPIView(AsyncApiView):
     ) -> DicomServer:
         try:
             accessible_servers = DicomServer.objects.accessible_by_user(request.user, access_type)
-            return accessible_servers.get(ae_title=ae_title)
+            return await accessible_servers.aget(ae_title=ae_title)
         except DicomServer.DoesNotExist:
             raise NotFound(
                 f'Server with AE title "{ae_title}" does not exist or is not accessible.'
