@@ -4,8 +4,13 @@
     "target": "ES6",
     "paths": {
       "dcmjs": ["./adit/static/vendor/dcmjs.js"],
-      "dicomweb-client": ["./adit/static/vendor/dicomweb-client.js"]
+      "dicomweb-client": ["./adit/static/vendor/dicomweb-client.js"],
+      "dicom-web-anonymizer": ["./adit/static/vendor/dicom-web-anonymizer.js"]
     }
   },
-  "include": ["./globals.d.ts", "./adit/*/static/**/*.js"]
+  "include": [
+    "./globals.d.ts",
+    "./adit/*/static/**/*.js",
+    "./adit/*/static/**/**/*.d.ts"
+  ]
 }

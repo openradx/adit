@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING
 
 from celery import current_app
 from django.contrib.postgres.fields import ArrayField
-from django.core.exceptions import ValidationError
+
 from django.db import models
 from django.urls import reverse
 

@@ -4,15 +4,24 @@ from io import BytesIO
 from os import error
 from typing import Any
 
+# import bs4
 import pydicom
 from asgiref.sync import sync_to_async
-from django.http import HttpRequest, HttpResponse
+from crispy_forms.utils import render_crispy_form
+from django.core.exceptions import SuspiciousOperation, ValidationError
+from django.forms import Form
+from django.forms.models import model_to_dict
+from django.http import HttpRequest, HttpResponse, JsonResponse
+from django.shortcuts import render
+from django.template.context_processors import csrf
+from django_htmx.http import trigger_client_event
 from rest_framework.decorators import api_view, renderer_classes
 from rest_framework.renderers import JSONRenderer, TemplateHTMLRenderer
 from rest_framework.response import Response
 
 from adit.core.decorators import login_required_async, permission_required_async
 from adit.core.models import DicomNode, DicomServer
+from adit.core.types import AuthenticatedHttpRequest
 from adit.core.utils.dicom_operator import DicomOperator
 from adit.core.utils.dicom_utils import read_dataset
 from adit.core.views import (
@@ -38,6 +47,7 @@ class UploadJobCreateView(DicomJobCreateView):
     template_name = "upload/upload_job_form.html"
     form_class = UploadJobForm
     permission_required = "upload.add_uploadjob"
+    request: AuthenticatedHttpRequest
     # model = UploadJob
 
     def get_form_kwargs(self) -> dict[str, Any]:
@@ -50,7 +60,6 @@ class UploadJobCreateView(DicomJobCreateView):
 
     def get_initial(self):
         initial = super().get_initial()
-
         preferences: dict[str, Any] = self.request.user.preferences
 
         source = preferences.get(UPLOAD_SOURCE)
@@ -63,25 +72,72 @@ class UploadJobCreateView(DicomJobCreateView):
 
         return initial
 
-    # def post(self, request):
-    #     form = UploadJobForm(
-    #         pseudonym=request.POST.get("pseudonym"), destination=request.POST.get("destination")
-    #     )
+    def post(self, request: AuthenticatedHttpRequest, *args, **kwargs):
+        import sys
 
-    #     if form.is_valid():
-    #         success = {"Correct entrys"}
-    #         context = {"form": form, "success": success}
-    #         response = render(request, self.template_name, context)
-    #         print("valid")
-    #     else:
-    #         print("not valid")
-    #         context = {"form": form, "errors": form.errors.values()}
-    #         return render(request, self.template_name, context)
+        print(sys.path)
+        if not request.htmx:
+            raise SuspiciousOperation("Only accessible by HTMX")
+        print(
+            "\n\n\nrequest:",
+            request.POST,
+            "\n::\n",
+        )
+        form = UploadJobForm(
+            request.POST,
+            user=request.user,
+            action="transfer",
+        )
+
+        if form.is_valid():
+            success = {"Correct entrys"}
+            context = {"form": form, "success": success}
+
+            print("valid")
+            response = HttpResponse(status=204)  # 204 = Success without response (kein body)
+            response = trigger_client_event(response, "chooseFolder")
+            print(response)
+            return response
+
+        else:
+            # print(f"not valid, {form.errors},", "\n::\n", form.error_class, "\n::\n", form.data)
+            # print(form.media)
+            # rendered_form = render(
+            #     request,
+            #     "upload/upload_job_form_partial.html",
+            #     {
+            #         "div_id_pseudonym": form.fields.get("pseudonym"),
+            #         "div_id_destination": form.fields.get("destination"),
+            #     },
+            # )
+            # print(rendered_form, "\n::\n")
+            print(form.helper.layout, "\n::\n")
+            print(form, "\n::\n")
+            print(form["pseudonym"], "\n::\n")
+            print(form["destination"], "\n::\n")
+            print(form.base_fields, "\n::\n")
+            ctx = {}
+            ctx.update(csrf(request))
+            x = render_crispy_form(form, context=ctx)
+            print(x, "\n::\n")
+            print(type(x), "\n::\n")
+            # soup = BeautifulSoup(x, "html.parser")
+            # inner_part = soup.find("div", id="form_partial")
+
+            # print(inner_part, "\n::\n")
+            print("-" * 30, "END OF RESPONSE", "-" * 30)
+            return render(
+                request,
+                "upload/upload_job_form_partial.html",
+                {
+                    "div_id_pseudonym": form.fields.get("pseudonym"),
+                    "div_id_destination": form.fields.get("destination"),
+                },
+            )
 
 
-# @login_required_async
-# @sync_to_async
-async def uploadAPIView(request, node_id: str) -> HttpResponse:
+@login_required_async
+async def uploadAPIView(request: AuthenticatedHttpRequest, node_id: str) -> HttpResponse:
     status = 0
     message = ""
 
@@ -118,7 +174,7 @@ async def uploadAPIView(request, node_id: str) -> HttpResponse:
         else:
             status = 400
             message = "keine Daten enthalten"
-
+    print(status)
     response = HttpResponse(status=status, content=message)
 
     response["statusText"] = response.reason_phrase

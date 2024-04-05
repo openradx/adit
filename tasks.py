@@ -322,6 +322,8 @@ def copy_statics(ctx: Context):
         copy(file, "adit/static/vendor/")
     for file in glob("node_modules/dicomweb-client/build/dicomweb-client.js*"):
         copy(file, "adit/static/vendor/")
+    for file in glob("node_modules/dicom-web-anonymizer/dist/dicom-web-anonymizer.*"):
+        copy(file, "adit/static/vendor/")
 
 
 @task

@@ -82,27 +82,7 @@ ready(function () {
     showToast(level, title, text);
   });
 
-  // Update the progress bar
-  htmx.on("#pb", "uploadprogress", function (evt) {
-    htmx
-      .find("#pb")
-      .setAttribute("value", (evt.detail.loaded / evt.detail.total) * 100);
-  });
-  htmx.on("#pb", "resetprogress", function () {
-    htmx.find("#pb").setAttribute("value", 0);
-  });
-  htmx.on("#pb", "hideprogress", function () {
-    htmx.find("#pb").setAttribute("x-show", false);
-  });
-  htmx.on("#pb", "showprogress", function () {
-    htmx.find("#pb").setAttribute("x-show", true);
-  });
-  htmx.on("#uploadCompleteText", "hideUploadText", function () {
-    htmx.find("#uploadCompleteText").setAttribute("x-show", false);
-  });
-  htmx.on("#uploadCompleteText", "showUploadText", function () {
-    htmx.find("#uploadCompleteText").setAttribute("x-show", true);
-  });
+ 
 });
 
 /**
@@ -151,47 +131,6 @@ function updatePreferences(route, data) {
       console.log("Saved properties to session", data);
     }
   });
-}
-
-function uploadData(data) {
-  const formData = new FormData();
-  for (const key in data) {
-    const blob = new Blob([data[key]]);
-    formData.append(key, blob);
-  }
-
-  const url = `/upload/data-upload/${data.node_id}/`;
-
-  const config = getConfig();
-  const request = new Request(url, {
-    method: "POST",
-    headers: { "X-CSRFToken": config.csrf_token },
-    mode: "same-origin", // Do not send CSRF token to another domain.
-    body: formData,
-  });
-  var status = 0;
-  return fetch(request)
-    .then(async function (response) {
-      const config = getConfig();
-      if (config.debug) {
-        const text = await response.text();
-        if (response.ok) {
-          console.log(
-            "Uploaded data to server with status:",
-            text,
-            response.status
-          );
-
-          return response.status;
-        } else {
-          console.log("Response from server:", text);
-        }
-      }
-    })
-    .catch(function (error) {
-      console.log(`Error: ${error.reason_phrase}`);
-      return 0;
-    });
 }
 
 /**

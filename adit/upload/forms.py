@@ -1,6 +1,8 @@
 from crispy_forms.helper import FormHelper
-from crispy_forms.layout import Column, Div, Field, Layout, Row
+from crispy_forms.layout import HTML, Column, Div, Field, Layout, Row
 from django import forms
+from django.core.exceptions import SuspiciousOperation, ValidationError
+from django.utils.translation import gettext_lazy as _
 
 from adit.core.fields import DicomNodeChoiceField
 from adit.core.validators import no_backslash_char_validator, no_control_chars_validator
@@ -41,31 +43,38 @@ class UploadJobForm(forms.ModelForm):
         self.fields["pseudonym"].required = True
         self.fields["destination"].required = True
         self.helper = FormHelper(self)
-        query_form_layout = self.build_query_form_layout()
+        form_fields_layout = self.build_query_form_layout()
 
         # We swap the form using the htmx alpine-morph extension to retain the focus on the input
         self.helper.layout = Layout(
-            Div(query_form_layout, css_id="query_form", **{"hx-swap-oob": "morph"})
+            Div(
+                form_fields_layout,
+                css_id="form_fields",
+                **{"x-init": "initUploadForm($el)", "hx-swap-oob": "morph"},
+            ),
         )
 
     def build_query_form_layout(self):
         query_form_layout = Layout(
-            Row(
-                Column(
-                    self.build_option_field(
-                        "pseudonym",
-                    )
+            Div(
+                Row(
+                    Column(
+                        self.build_option_field(
+                            "pseudonym",
+                        )
+                    ),
+                    Column(
+                        Field(
+                            "destination",
+                            **{
+                                "x-init": "initDestination($el)",
+                                "@change": "onDestinationChange($event)",
+                            },
+                        )
+                    ),
                 ),
-                Column(
-                    Field(
-                        "destination",
-                        **{
-                            "x-init": "initDestination($el)",
-                            "@change": "onDestinationChange($event)",
-                        },
-                    )
-                ),
-            ),
+                css_id="form_partial",
+            )
         )
 
         return query_form_layout

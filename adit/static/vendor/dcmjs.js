@@ -17416,13 +17416,18 @@ b"+i+"*=d\
 	  var imagePlaneModule = metadataProvider.get("imagePlaneModule", imageIds[0]);
 	  var generalSeriesModule = metadataProvider.get("generalSeriesModule", imageIds[0]);
 	  var SeriesInstanceUID = generalSeriesModule.seriesInstanceUID;
-	  if (!imagePlaneModule) {
-	    console.warn("Insufficient metadata, imagePlaneModule missing.");
-	  }
-	  var ImageOrientationPatient = Array.isArray(imagePlaneModule.rowCosines) ? [].concat(_toConsumableArray(imagePlaneModule.rowCosines), _toConsumableArray(imagePlaneModule.columnCosines)) : [imagePlaneModule.rowCosines.x, imagePlaneModule.rowCosines.y, imagePlaneModule.rowCosines.z, imagePlaneModule.columnCosines.x, imagePlaneModule.columnCosines.y, imagePlaneModule.columnCosines.z];
+	  var ImageOrientationPatient;
+	  var validOrientations;
+	  var hasCoordinateSystem = ("FrameOfReferenceUID" in multiframe);
+	  if (hasCoordinateSystem) {
+	    if (!imagePlaneModule) {
+	      console.warn("Insufficient metadata, imagePlaneModule missing.");
+	    }
+	    ImageOrientationPatient = Array.isArray(imagePlaneModule.rowCosines) ? [].concat(_toConsumableArray(imagePlaneModule.rowCosines), _toConsumableArray(imagePlaneModule.columnCosines)) : [imagePlaneModule.rowCosines.x, imagePlaneModule.rowCosines.y, imagePlaneModule.rowCosines.z, imagePlaneModule.columnCosines.x, imagePlaneModule.columnCosines.y, imagePlaneModule.columnCosines.z];
 
-	  // Get IOP from ref series, compute supported orientations:
-	  var validOrientations = getValidOrientations(ImageOrientationPatient);
+	    // Get IOP from ref series, compute supported orientations:
+	    validOrientations = getValidOrientations(ImageOrientationPatient);
+	  }
 	  var sliceLength = multiframe.Columns * multiframe.Rows;
 	  var segMetadata = getSegmentMetadata(multiframe, SeriesInstanceUID);
 	  var TransferSyntaxUID = multiframe._meta.TransferSyntaxUID.Value[0];
@@ -17440,7 +17445,12 @@ b"+i+"*=d\
 	      throw new Error("Fractional segmentations are not yet supported");
 	    }
 	  }
-	  var orientation = checkOrientation(multiframe, validOrientations, [imagePlaneModule.rows, imagePlaneModule.columns, imageIds.length], tolerance);
+	  var orientation;
+	  if (hasCoordinateSystem) {
+	    orientation = checkOrientation(multiframe, validOrientations, [imagePlaneModule.rows, imagePlaneModule.columns, imageIds.length], tolerance);
+	  } else {
+	    orientation = "Planar";
+	  }
 	  var overlapping = false;
 	  if (!skipOverlapping) {
 	    overlapping = checkSEGsOverlapping(pixelData, multiframe, imageIds, validOrientations, metadataProvider, tolerance);
@@ -17511,9 +17521,7 @@ b"+i+"*=d\
 	    return imageId;
 	  }
 	  var frameSourceImageSequence = undefined;
-	  if (SourceImageSequence && SourceImageSequence.length !== 0) {
-	    frameSourceImageSequence = SourceImageSequence[frameSegment];
-	  } else if (PerFrameFunctionalGroup.DerivationImageSequence) {
+	  if (PerFrameFunctionalGroup.DerivationImageSequence) {
 	    var DerivationImageSequence = PerFrameFunctionalGroup.DerivationImageSequence;
 	    if (Array.isArray(DerivationImageSequence)) {
 	      if (DerivationImageSequence.length !== 0) {
@@ -17532,6 +17540,8 @@ b"+i+"*=d\
 	        }
 	      }
 	    }
+	  } else if (SourceImageSequence && SourceImageSequence.length !== 0) {
+	    frameSourceImageSequence = SourceImageSequence[frameSegment];
 	  }
 	  if (frameSourceImageSequence) {
 	    imageId = getImageIdOfSourceImagebySourceImageSequence(frameSourceImageSequence, imageIds, metadataProvider);
@@ -17609,9 +17619,15 @@ b"+i+"*=d\
 	      for (var i = 0; i < role.length; ++i) {
 	        var _frameSegment = role[i];
 	        var PerFrameFunctionalGroups = PerFrameFunctionalGroupsSequence[_frameSegment];
-	        var ImageOrientationPatientI = sharedImageOrientationPatient || PerFrameFunctionalGroups.PlaneOrientationSequence.ImageOrientationPatient;
 	        var pixelDataI2D = ndarray$1(new Uint8Array(pixelData.buffer, _frameSegment * sliceLength, sliceLength), [Rows, Columns]);
-	        var alignedPixelDataI = alignPixelDataWithSourceData(pixelDataI2D, ImageOrientationPatientI, validOrientations, tolerance);
+	        var alignedPixelDataI = void 0;
+	        var hasCoordinateSystem = ("FrameOfReferenceUID" in multiframe);
+	        if (hasCoordinateSystem) {
+	          var ImageOrientationPatientI = sharedImageOrientationPatient || PerFrameFunctionalGroups.PlaneOrientationSequence.ImageOrientationPatient;
+	          alignedPixelDataI = alignPixelDataWithSourceData(pixelDataI2D, ImageOrientationPatientI, validOrientations, tolerance);
+	        } else {
+	          alignedPixelDataI = pixelDataI2D;
+	        }
 	        if (!alignedPixelDataI) {
 	          console.warn("Individual SEG frames are out of plane with respect to the first SEG frame, this is not yet supported, skipping this frame.");
 	          continue;
@@ -17674,9 +17690,15 @@ b"+i+"*=d\
 	        i = _i2;
 	        return "continue";
 	      }
-	      var ImageOrientationPatientI = sharedImageOrientationPatient || PerFrameFunctionalGroups.PlaneOrientationSequence.ImageOrientationPatient;
 	      var pixelDataI2D = ndarray$1(new Uint8Array(pixelData.buffer, _i2 * sliceLength, sliceLength), [Rows, Columns]);
-	      var alignedPixelDataI = alignPixelDataWithSourceData(pixelDataI2D, ImageOrientationPatientI, validOrientations, tolerance);
+	      var alignedPixelDataI = void 0;
+	      var hasCoordinateSystem = ("FrameOfReferenceUID" in multiframe);
+	      if (hasCoordinateSystem) {
+	        var ImageOrientationPatientI = sharedImageOrientationPatient || PerFrameFunctionalGroups.PlaneOrientationSequence.ImageOrientationPatient;
+	        alignedPixelDataI = alignPixelDataWithSourceData(pixelDataI2D, ImageOrientationPatientI, validOrientations, tolerance);
+	      } else {
+	        alignedPixelDataI = pixelDataI2D;
+	      }
 	      if (!alignedPixelDataI) {
 	        throw new Error("Individual SEG frames are out of plane with respect to the first SEG frame. " + "This is not yet supported. Aborting segmentation loading.");
 	      }
@@ -17686,8 +17708,8 @@ b"+i+"*=d\
 	        i = _i2;
 	        return "continue";
 	      }
-	      var sourceImageMetadata = metadataProvider.get("instance", imageId);
-	      if (Rows !== sourceImageMetadata.Rows || Columns !== sourceImageMetadata.Columns) {
+	      var sourceImageMetadata = metadataProvider.get("imagePixelModule", imageId);
+	      if (Rows !== sourceImageMetadata.rows || Columns !== sourceImageMetadata.columns) {
 	        throw new Error("Individual SEG frames have different geometry dimensions (Rows and Columns) " + "respect to the source image reference frame. This is not yet supported. " + "Aborting segmentation loading. ");
 	      }
 	      var imageIdIndex = imageIds.findIndex(function (element) {
@@ -17757,9 +17779,15 @@ b"+i+"*=d\
 	  var sliceLength = Columns * Rows;
 	  var _loop5 = function _loop5(groupsLen, _i3) {
 	    var PerFrameFunctionalGroups = PerFrameFunctionalGroupsSequence[_i3];
-	    var ImageOrientationPatientI = sharedImageOrientationPatient || PerFrameFunctionalGroups.PlaneOrientationSequence.ImageOrientationPatient;
 	    var pixelDataI2D = ndarray$1(new Uint8Array(pixelData.buffer, _i3 * sliceLength, sliceLength), [Rows, Columns]);
-	    var alignedPixelDataI = alignPixelDataWithSourceData(pixelDataI2D, ImageOrientationPatientI, validOrientations, tolerance);
+	    var alignedPixelDataI = void 0;
+	    var hasCoordinateSystem = ("FrameOfReferenceUID" in multiframe);
+	    if (hasCoordinateSystem) {
+	      var ImageOrientationPatientI = sharedImageOrientationPatient || PerFrameFunctionalGroups.PlaneOrientationSequence.ImageOrientationPatient;
+	      alignedPixelDataI = alignPixelDataWithSourceData(pixelDataI2D, ImageOrientationPatientI, validOrientations, tolerance);
+	    } else {
+	      alignedPixelDataI = pixelDataI2D;
+	    }
 	    if (!alignedPixelDataI) {
 	      throw new Error("Individual SEG frames are out of plane with respect to the first SEG frame. " + "This is not yet supported. Aborting segmentation loading.");
 	    }
@@ -17772,8 +17800,8 @@ b"+i+"*=d\
 	      console.warn("Image not present in stack, can't import frame : " + _i3 + ".");
 	      return "continue";
 	    }
-	    var sourceImageMetadata = metadataProvider.get("instance", imageId);
-	    if (Rows !== sourceImageMetadata.Rows || Columns !== sourceImageMetadata.Columns) {
+	    var sourceImageMetadata = metadataProvider.get("imagePixelModule", imageId);
+	    if (Rows !== sourceImageMetadata.rows || Columns !== sourceImageMetadata.columns) {
 	      throw new Error("Individual SEG frames have different geometry dimensions (Rows and Columns) " + "respect to the source image reference frame. This is not yet supported. " + "Aborting segmentation loading. ");
 	    }
 	    var imageIdIndex = imageIds.findIndex(function (element) {
