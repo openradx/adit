@@ -29,7 +29,9 @@ def connect_to_server():
     """
 
     def decorator(func):
-        def create_dicomweb_client(self: "DicomWebConnector") -> None:
+        def setup_dicomweb_client(self: "DicomWebConnector") -> None:
+            logger.debug("Setting up DICOMweb client with url %s", self.server.dicomweb_root_url)
+
             if not self.server.dicomweb_root_url:
                 raise DicomError("Missing DICOMweb root url.")
 
@@ -51,17 +53,15 @@ def connect_to_server():
                 headers=headers,
             )
 
-            logger.debug("Set up dicomweb client with url %s", self.server.dicomweb_root_url)
-
         @wraps(func)
         def gen_wrapper(self: "DicomWebConnector", *args, **kwargs):
-            create_dicomweb_client(self)
+            setup_dicomweb_client(self)
             yield from func(self, *args, **kwargs)
             self.dicomweb_client = None
 
         @wraps(func)
         def func_wrapper(self: "DicomWebConnector", *args, **kwargs):
-            create_dicomweb_client(self)
+            setup_dicomweb_client(self)
             result = func(self, *args, **kwargs)
             self.dicomweb_client = None
             return result
@@ -90,7 +90,6 @@ class DicomWebConnector:
         if self.dicomweb_client and self.dicomweb_client._session:
             self.dicomweb_client._session.close()
 
-    # TODO: How about fields
     @connect_to_server()
     def send_qido_rs(
         self, query: QueryDataset, limit_results: int | None = None
