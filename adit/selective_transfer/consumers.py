@@ -61,7 +61,7 @@ class SelectiveTransferConsumer(AsyncJsonWebsocketConsumer):
         await self.accept()
 
     async def disconnect(self, code: int) -> None:
-        self._abort_operators()
+        await self._abort_operators()
         self.pool.shutdown(wait=False, cancel_futures=True)
         logger.debug("Disconnected from WebSocket client with code: %s", code)
 
@@ -80,7 +80,7 @@ class SelectiveTransferConsumer(AsyncJsonWebsocketConsumer):
             # First we abort all operators as we received a new command what to do
             self.current_message_id += 1
             message_id = self.current_message_id
-            self._abort_operators()
+            await self._abort_operators()
 
         if action == "cancel" or action == "reset":
             # The connectors are already aborted, so we can just update the UI
@@ -126,11 +126,12 @@ class SelectiveTransferConsumer(AsyncJsonWebsocketConsumer):
         else:
             raise ValueError(f"Invalid action to process: {action}")
 
-    def _abort_operators(self) -> None:
+    async def _abort_operators(self) -> None:
+        loop = asyncio.get_event_loop()
         while self.query_operators:
             for operator in self.query_operators[:]:
                 self.query_operators.remove(operator)
-                operator.abort()
+                loop.call_soon_threadsafe(operator.abort)
 
     @database_sync_to_async
     def check_permission(self) -> str | None:
