@@ -77,12 +77,7 @@ def test_transfer_to_server_succeeds(
     result = processor.process()
 
     # Assert
-    source_operator_mock.download_study.assert_called_with(
-        task.patient_id,
-        task.study_uid,
-        mocker.ANY,
-        modifier=mocker.ANY,
-    )
+    source_operator_mock.fetch_study.assert_called_with(task.patient_id, task.study_uid, mocker.ANY)
 
     upload_path = dest_operator_mock.upload_instances.call_args.args[0]
     assert upload_path.match(f"*/{study.PatientID}")
@@ -133,10 +128,7 @@ def test_transfer_to_folder_succeeds(
     result = processor.process()
 
     # Assert
-    download_path = source_operator_mock.download_study.call_args.kwargs["dest_folder"]
-    assert download_path.match(
-        rf"adit_{job._meta.app_label}_{job.id}_20200101_kai/1001/20190923-080000-CT"
-    )
+    source_operator_mock.fetch_study.assert_called_with(task.patient_id, task.study_uid, mocker.ANY)
 
     assert result["status"] == TransferTask.Status.SUCCESS
     assert result["message"] == "Transfer task completed successfully."

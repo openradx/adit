@@ -1,8 +1,6 @@
 import asyncio
-import filecmp
 import threading
 from pathlib import Path
-from tempfile import TemporaryDirectory
 from time import sleep
 
 from django.conf import settings
@@ -133,14 +131,18 @@ def test_download_series_with_c_get(
     association.send_c_get.return_value = dicom_test_helper.create_successful_c_get_response()
     path = Path(settings.BASE_DIR) / "samples" / "dicoms"
     ds = read_dataset(next(path.rglob("*.dcm")))
-    with TemporaryDirectory() as tmp_dir:
-        # Act
-        dicom_operator.download_series(
-            ds.PatientID, ds.StudyInstanceUID, ds.SeriesInstanceUID, Path(tmp_dir)
-        )
+    received_ds = []
 
-        # Assert
-        association.send_c_get.assert_called_once()
+    # Act
+    dicom_operator.fetch_series(
+        ds.PatientID, ds.StudyInstanceUID, ds.SeriesInstanceUID, lambda ds: received_ds.append(ds)
+    )
+
+    # Assert
+    association.send_c_get.assert_called_once()
+
+    # TODO: This test could be improved, unfortunately the callback of  fetch_series will never get
+    # called when we just mock send_c_get. And so we can't assert anything on received_ds.
 
 
 def test_download_series_with_c_move(
@@ -186,15 +188,16 @@ def test_download_series_with_c_move(
     # Make sure transmit server is started
     sleep(0.5)
 
-    with TemporaryDirectory() as tmp_dir:
-        # Act
-        dicom_operator.download_series(
-            ds.PatientID, ds.StudyInstanceUID, ds.SeriesInstanceUID, Path(tmp_dir)
-        )
+    received_ds = []
 
-        # Assert
-        assert subscribed_topic == (
-            f"{dicom_operator.server.ae_title}\\{ds.StudyInstanceUID}\\{ds.SeriesInstanceUID}"
-        )
-        association.send_c_move.assert_called_once()
-        assert filecmp.cmp(next(Path(tmp_dir).iterdir()), file_path)
+    # Act
+    dicom_operator.fetch_series(
+        ds.PatientID, ds.StudyInstanceUID, ds.SeriesInstanceUID, lambda ds: received_ds.append(ds)
+    )
+
+    # Assert
+    assert subscribed_topic == (
+        f"{dicom_operator.server.ae_title}\\{ds.StudyInstanceUID}\\{ds.SeriesInstanceUID}"
+    )
+    association.send_c_move.assert_called_once()
+    assert received_ds[0] == ds

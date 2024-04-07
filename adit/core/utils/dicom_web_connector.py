@@ -1,8 +1,10 @@
+import inspect
 import logging
+from functools import wraps
 from http import HTTPStatus
 from os import PathLike
 from pathlib import Path
-from typing import Callable, NoReturn
+from typing import Callable, Iterator, NoReturn
 
 from dicomweb_client import DICOMwebClient
 from pydicom import Dataset
@@ -27,7 +29,7 @@ def connect_to_server():
     """
 
     def decorator(func):
-        def wrapper(self: "DicomWebConnector", *args, **kwargs):
+        def create_dicomweb_client(self: "DicomWebConnector") -> None:
             if not self.server.dicomweb_root_url:
                 raise DicomError("Missing DICOMweb root url.")
 
@@ -51,13 +53,20 @@ def connect_to_server():
 
             logger.debug("Set up dicomweb client with url %s", self.server.dicomweb_root_url)
 
-            result = func(self, *args, **kwargs)
-
+        @wraps(func)
+        def gen_wrapper(self: "DicomWebConnector", *args, **kwargs):
+            create_dicomweb_client(self)
+            yield from func(self, *args, **kwargs)
             self.dicomweb_client = None
 
+        @wraps(func)
+        def func_wrapper(self: "DicomWebConnector", *args, **kwargs):
+            create_dicomweb_client(self)
+            result = func(self, *args, **kwargs)
+            self.dicomweb_client = None
             return result
 
-        return wrapper
+        return gen_wrapper if inspect.isgeneratorfunction(func) else func_wrapper
 
     return decorator
 
@@ -122,10 +131,9 @@ class DicomWebConnector:
             _handle_dicomweb_error(err, "QIDO-RS")
 
     @connect_to_server()
-    def send_wado_rs(self, query: QueryDataset) -> list[Dataset]:
+    def send_wado_rs(self, query: QueryDataset) -> Iterator[Dataset]:
         logger.debug("Sending WADO-RS with query: %s", query)
 
-        # TODO: Do we really need the conversion?
         query_dict = query.dictify()
 
         level = query_dict.pop("QueryRetrieveLevel", "")
@@ -142,7 +150,7 @@ class DicomWebConnector:
                 study_uid = query_dict.pop("StudyInstanceUID", "")
                 if not study_uid:
                     raise DicomError("Missing StudyInstanceUID for WADO-RS on study level.")
-                return self.dicomweb_client.retrieve_study(study_uid)
+                yield from self.dicomweb_client.iter_study(study_uid)
             elif level == "SERIES":
                 study_uid = query_dict.pop("StudyInstanceUID", "")
                 series_uid = query_dict.pop("SeriesInstanceUID", "")
@@ -150,7 +158,7 @@ class DicomWebConnector:
                     raise DicomError("Missing StudyInstanceUID for WADO-RS on series level.")
                 if not series_uid:
                     raise DicomError("Missing SeriesInstanceUID for WADO-RS on series level.")
-                return self.dicomweb_client.retrieve_series(study_uid, series_uid)
+                yield from self.dicomweb_client.iter_series(study_uid, series_uid)
             else:
                 raise DicomError(f"Invalid QueryRetrieveLevel: {level}")
         except HTTPError as err:

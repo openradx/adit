@@ -274,6 +274,7 @@ class DimseConnector:
         self,
         query: QueryDataset,
         store_handler: Callable[[Event, list[Exception]], int],
+        store_errors: list[Exception],
         msg_id: int = 1,
     ) -> None:
         logger.debug("Sending C-GET with query:\n%s", query)
@@ -292,9 +293,6 @@ class DimseConnector:
             raise DicomError(
                 "No valid Query/Retrieve Information Model for C-GET could be selected."
             )
-
-        # A list to store errors that might be raised by the store handler
-        store_errors: list[Exception] = []
 
         assert self.assoc and self.assoc.is_alive()
         self.assoc.bind(EVT_C_STORE, store_handler, [store_errors])

@@ -1,13 +1,16 @@
 import logging
 from os import PathLike
+from pathlib import Path
 
 from adrf.views import sync_to_async
+from pydicom import Dataset
 from rest_framework.exceptions import NotFound
 
 from adit.core.errors import DicomError, RetriableDicomError
 from adit.core.models import DicomServer
 from adit.core.utils.dicom_dataset import QueryDataset
 from adit.core.utils.dicom_operator import DicomOperator
+from adit.core.utils.dicom_utils import write_dataset
 
 from ..errors import BadGatewayApiError, ServiceUnavailableApiError
 
@@ -22,6 +25,17 @@ async def wado_retrieve(
     operator = DicomOperator(source_server)
     query_ds = QueryDataset.from_dict(query)
 
+    def callback(ds: Dataset) -> None:
+        if ds is None:
+            return
+
+        folder_path = Path(dest_folder)
+        file_name = f"{ds.SOPInstanceUID}.dcm"
+        file_path = folder_path / file_name
+
+        folder_path.mkdir(parents=True, exist_ok=True)
+        write_dataset(ds, file_path)
+
     try:
         series_list = list(await sync_to_async(operator.find_series)(query_ds))
 
@@ -29,11 +43,11 @@ async def wado_retrieve(
             raise NotFound("No DICOM objects matches the query.")
 
         for series in series_list:
-            await sync_to_async(operator.download_series)(
+            await sync_to_async(operator.fetch_series)(
                 patient_id=series.PatientID,
                 study_uid=series.StudyInstanceUID,
                 series_uid=series.SeriesInstanceUID,
-                dest_folder=dest_folder,
+                callback=callback,
             )
     except RetriableDicomError as err:
         logger.exception(err)

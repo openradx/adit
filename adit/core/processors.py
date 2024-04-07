@@ -18,6 +18,7 @@ from .models import DicomAppSettings, DicomNode, DicomTask, TransferTask
 from .types import DicomLogEntry, ProcessingResult
 from .utils.dicom_dataset import QueryDataset, ResultDataset
 from .utils.dicom_operator import DicomOperator
+from .utils.dicom_utils import write_dataset
 from .utils.sanitize import sanitize_dirname
 
 logger = logging.getLogger(__name__)
@@ -157,7 +158,7 @@ class TransferTaskProcessor(DicomTaskProcessor):
             pseudonym = None
             patient_folder = download_folder / sanitize_dirname(self.transfer_task.patient_id)
 
-        study = self._fetch_study()
+        study = self._find_study()
         modalities = study.ModalitiesInStudy
 
         modalities = [
@@ -173,7 +174,7 @@ class TransferTaskProcessor(DicomTaskProcessor):
                 # TODO: this seems to be very ineffective as we do a c-find for every series
                 # in a study and check if it is a wanted series. Better fetch all series of
                 # a study and check then.
-                for series in self._fetch_series_list(series_uid=series_uid):
+                for series in self._find_series_list(series_uid=series_uid):
                     modalities.add(series.Modality)
 
         study_date = study.StudyDate
@@ -209,7 +210,7 @@ class TransferTaskProcessor(DicomTaskProcessor):
 
         return patient_folder
 
-    def _fetch_study(self) -> ResultDataset:
+    def _find_study(self) -> ResultDataset:
         studies = list(
             self.source_operator.find_studies(
                 QueryDataset.create(
@@ -256,7 +257,7 @@ class TransferTaskProcessor(DicomTaskProcessor):
 
         return study
 
-    def _fetch_series_list(self, series_uid: str) -> list[ResultDataset]:
+    def _find_series_list(self, series_uid: str) -> list[ResultDataset]:
         series_list = list(
             self.source_operator.find_series(
                 QueryDataset.create(
@@ -292,22 +293,32 @@ class TransferTaskProcessor(DicomTaskProcessor):
         modifier: Callable,
         series_uids: list[str] | None = None,
     ) -> None:
+        def callback(ds: Dataset | None) -> None:
+            if ds is None:
+                return
+
+            modifier(ds)
+
+            folder_path = Path(study_folder)
+            file_name = f"{ds.SOPInstanceUID}.dcm"
+            file_path = folder_path / file_name
+            folder_path.mkdir(parents=True, exist_ok=True)
+            write_dataset(ds, file_path)
+
         if series_uids:
             for series_uid in series_uids:
-                self.source_operator.download_series(
+                self.source_operator.fetch_series(
                     patient_id=patient_id,
                     study_uid=study_uid,
                     series_uid=series_uid,
-                    dest_folder=study_folder,
-                    modifier=modifier,
+                    callback=callback,
                 )
         else:
             # If no series are explicitly chosen then download all series of the study
-            self.source_operator.download_study(
+            self.source_operator.fetch_study(
                 patient_id=patient_id,
                 study_uid=study_uid,
-                dest_folder=study_folder,
-                modifier=modifier,
+                callback=callback,
             )
 
     def _modify_dataset(

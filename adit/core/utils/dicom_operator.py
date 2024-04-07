@@ -16,7 +16,6 @@ import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
 from os import PathLike
-from pathlib import Path
 from typing import Callable, Iterable, Iterator
 
 from aiofiles import os as async_os
@@ -32,16 +31,12 @@ from .dicom_utils import (
     convert_to_python_regex,
     has_wildcards,
     read_dataset,
-    write_dataset,
 )
 from .dicom_web_connector import DicomWebConnector
 from .dimse_connector import DimseConnector
 from .file_transmit import FileTransmitClient, Metadata
-from .sanitize import sanitize_dirname
 
 logger = logging.getLogger(__name__)
-
-Modifier = Callable[[Dataset], None]
 
 
 class DicomOperator:
@@ -350,13 +345,12 @@ class DicomOperator:
         else:
             raise DicomError("No supported method to find images available.")
 
-    def download_study(
+    def fetch_study(
         self,
         patient_id: str,
         study_uid: str,
-        dest_folder: PathLike,
+        callback: Callable[[Dataset], None],
         modality: str = "",
-        modifier: Modifier | None = None,
     ):
         series_list = list(
             self.find_series(
@@ -375,24 +369,17 @@ class DicomOperator:
             if modality in settings.EXCLUDED_MODALITIES:
                 continue
 
-            # TODO: maybe we should move the series folder name creation to the
-            # store handler as it is not guaranteed that all PACS servers
-            # do return the SeriesDescription with C-FIND
-            series_folder_name = sanitize_dirname(series.SeriesDescription)
-            download_path = Path(dest_folder) / series_folder_name
-
-            self.download_series(patient_id, study_uid, series_uid, download_path, modifier)
+            self.fetch_series(patient_id, study_uid, series_uid, callback)
 
         logger.debug("Successfully downloaded study %s.", study_uid)
 
-    def download_series(
+    def fetch_series(
         self,
         patient_id: str,
         study_uid: str,
         series_uid: str,
-        dest_folder: PathLike,
-        modifier: Modifier | None = None,
-    ):
+        callback: Callable[[Dataset], None],
+    ) -> None:
         """Download all series to a specified folder for given series UIDs and pseudonymize
         the dataset before storing it to disk."""
 
@@ -405,18 +392,15 @@ class DicomOperator:
 
         # We prefer C-GET over WADO-RS over C-MOVE
         if self.server.patient_root_get_support or self.server.study_root_get_support:
-            self._download_series_with_c_get(query, dest_folder, modifier)
-            logger.debug("Successfully downloaded series %s of study %s.", series_uid, study_uid)
+            self._fetch_series_with_c_get(query, callback)
         elif self.server.dicomweb_wado_support:
-            self._download_series_with_wado(query, dest_folder, modifier)
-            logger.debug("Successfully downloaded series %s of study %s.", series_uid, study_uid)
+            self._fetch_series_with_wado_rs(query, callback)
         elif self.server.patient_root_move_support or self.server.study_root_move_support:
-            self._download_series_with_c_move(query, dest_folder, modifier)
-            logger.debug("Successfully downloaded series %s of study %s.", series_uid, study_uid)
+            self._fetch_series_with_c_move(query, callback)
         else:
             raise DicomError("No Query/Retrieve Information Model supported to download images.")
 
-    def upload_instances(self, resource: PathLike | list[Dataset]):
+    def upload_instances(self, resource: PathLike | list[Dataset]) -> None:
         """Upload instances from a specified folder or list of instances in memory"""
 
         if self.server.store_scp_support:
@@ -432,7 +416,7 @@ class DicomOperator:
         study_uid: str,
         dest_aet: str,
         modality: str = "",
-    ):
+    ) -> None:
         series_list = list(
             self.find_series(
                 QueryDataset.create(
@@ -470,7 +454,7 @@ class DicomOperator:
                 raise DicomError("Failed to move all series.")
             raise DicomError("Failed to move some series.")
 
-    def move_series(self, patient_id: str, study_uid: str, series_uid: str, dest_aet: str):
+    def move_series(self, patient_id: str, study_uid: str, series_uid: str, dest_aet: str) -> None:
         self.dimse_connector.send_c_move(
             QueryDataset.create(
                 QueryRetrieveLevel="SERIES",
@@ -481,26 +465,15 @@ class DicomOperator:
             dest_aet,
         )
 
-    def _download_series_with_wado(
-        self, query: QueryDataset, dest_folder: PathLike, modifier: Modifier | None = None
-    ):
-        instances = self.dicom_web_connector.send_wado_rs(query)
-
-        for ds in instances:
-            self._handle_downloaded_image(ds, dest_folder, modifier)
-
-    def _download_series_with_c_get(
-        self,
-        query: QueryDataset,
-        dest_folder: PathLike,
-        modifier: Modifier | None = None,
-    ):
-        def handle_c_get_store(event: Event, store_errors: list[Exception]):
+    def _fetch_series_with_c_get(
+        self, query: QueryDataset, callback: Callable[[Dataset], None]
+    ) -> None:
+        def store_handler(event: Event, store_errors: list[Exception]) -> int:
             ds = event.dataset
             ds.file_meta = event.file_meta
 
             try:
-                self._handle_downloaded_image(ds, dest_folder, modifier)
+                self._handle_fetched_image(ds, callback)
             except Exception as err:
                 store_errors.append(err)
 
@@ -515,14 +488,25 @@ class DicomOperator:
 
             return 0x0000  # Success
 
-        self.dimse_connector.send_c_get(query, handle_c_get_store)
+        store_errors: list[Exception] = []
 
-    def _download_series_with_c_move(
+        self.dimse_connector.send_c_get(query, store_handler, store_errors)
+
+        if store_errors:
+            raise store_errors[0]
+
+    def _fetch_series_with_wado_rs(
+        self, query: QueryDataset, callback: Callable[[Dataset], None]
+    ) -> None:
+        instances = self.dicom_web_connector.send_wado_rs(query)
+        for ds in instances:
+            self._handle_fetched_image(ds, callback)
+
+    def _fetch_series_with_c_move(
         self,
         query: QueryDataset,
-        dest_folder: PathLike,
-        modifier: Modifier | None = None,
-    ):
+        callback: Callable[[Dataset], None],
+    ) -> None:
         # When downloading the series with C-MOVE we first must know all the images that
         # the series contains so that we can decide if all were retrieved.
         images = list(
@@ -554,11 +538,10 @@ class DicomOperator:
                 query.StudyInstanceUID,
                 query.SeriesInstanceUID,
                 image_uids,
-                dest_folder,
+                callback,
                 c_move_finished_event,
                 stop_consumer_event,
                 receiving_errors,
-                modifier,
             )
 
             try:
@@ -590,12 +573,11 @@ class DicomOperator:
         study_uid: str,
         series_uid: str,
         image_uids: list[str],
-        dest_folder: PathLike,
+        callback: Callable[[Dataset], None],
         c_move_finished_event: threading.Event,
         stop_consumer_event: threading.Event,
         receiving_errors: list[Exception],
-        modifier: Modifier | None = None,
-    ):
+    ) -> None:
         async def consume():
             remaining_image_uids = image_uids[:]
             last_image_at = time.time()
@@ -627,7 +609,7 @@ class DicomOperator:
 
             def read_and_handle_image(filename: str):
                 ds = read_dataset(filename)
-                self._handle_downloaded_image(ds, dest_folder, modifier)
+                self._handle_fetched_image(ds, callback)
 
             async def handle_received_file(filename: str, metadata: Metadata):
                 nonlocal last_image_at
@@ -638,6 +620,7 @@ class DicomOperator:
                 try:
                     if image_uid in remaining_image_uids:
                         remaining_image_uids.remove(image_uid)
+                        # Good to know, exceptions will be propagated by asyncio.to_thread
                         await asyncio.to_thread(read_and_handle_image, filename)
                 except Exception as err:
                     receiving_errors.append(err)
@@ -683,27 +666,15 @@ class DicomOperator:
 
         asyncio.run(consume(), debug=settings.DEBUG)
 
-    def _handle_downloaded_image(
-        self,
-        ds: Dataset,
-        dest_folder: PathLike,
-        modifier: Modifier | None,
-    ):
-        if modifier:
-            modifier(ds)
-
-        folder_path = Path(dest_folder)
-        file_name = f"{ds.SOPInstanceUID}.dcm"
-        file_path = folder_path / file_name
-
+    def _handle_fetched_image(self, ds: Dataset, callback: Callable[[Dataset], None]) -> None:
         try:
-            folder_path.mkdir(parents=True, exist_ok=True)
-            write_dataset(ds, file_path)
+            callback(ds)
         except Exception as err:
-            self.abort()
             if isinstance(err, OSError) and err.errno == errno.ENOSPC:
                 # No space left on destination
-                raise DicomError(f"Out of disk space on destination '{dest_folder}'.") from err
+                raise DicomError(
+                    f"Out of disk space while trying to save '{err.filename}'."
+                ) from err
             else:
-                # Unknown write error
-                raise DicomError(f"Failed to save '{file_path}'.") from err
+                # Unknown error
+                raise DicomError(f"Failed to handle image '{ds.SOPInstanceUID}'.") from err
