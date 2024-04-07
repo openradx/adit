@@ -37,7 +37,7 @@ class DicomJobTable(tables.Table):
 
     def render_status(self, value, record):
         css_class = dicom_job_status_css_class(record.status)
-        return format_html(f'<span class="{css_class} text-nowrap">{value}</span>')
+        return format_html('<span class="{} text-nowrap">{}</span>', css_class, value)
 
 
 class TransferJobTable(DicomJobTable):
@@ -57,4 +57,4 @@ class DicomTaskTable(tables.Table):
 
     def render_status(self, value, record):
         css_class = dicom_task_status_css_class(record.status)
-        return format_html(f'<span class="{css_class} text-nowrap">{value}</span>')
+        return format_html('<span class="{} text-nowrap">{}</span>', css_class, value)
