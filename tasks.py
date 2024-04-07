@@ -234,7 +234,7 @@ def format(ctx: Context):
     format_code_cmd = "poetry run ruff format ."
     run_cmd(ctx, format_code_cmd)
     # Sort Python imports
-    sort_imports_cmd = "poetry run ruff . --fix --select I"
+    sort_imports_cmd = "poetry run ruff check . --fix --select I"
     run_cmd(ctx, sort_imports_cmd)
     # Format Django templates
     format_templates_cmd = "poetry run djlint . --reformat"
@@ -244,7 +244,7 @@ def format(ctx: Context):
 @task
 def lint(ctx: Context):
     """Lint the source code (ruff, djlint, pyright)"""
-    cmd_ruff = "poetry run ruff ."
+    cmd_ruff = "poetry run ruff check ."
     run_cmd(ctx, cmd_ruff)
     cmd_djlint = "poetry run djlint . --lint"
     run_cmd(ctx, cmd_djlint)
