@@ -6,7 +6,7 @@
 [subrepo]
 	remote = https://github.com/openradx/adit-radis-shared-subrepo.git
 	branch = main
-	commit = b27bf527b52f27dd95feca4a90f58cb7f27d65d1
-	parent = 7c726b627b6aef77bdbe9427442be2b81530d36e
+	commit = 3328bad1b981d52635a37324ef50d14a5d35736f
+	parent = 309e6333053581229300dd9e9710c33655e346b5
 	method = merge
 	cmdver = 0.4.6
