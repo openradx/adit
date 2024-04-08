@@ -57,8 +57,6 @@ class WadoMultipartApplicationDicomRenderer(DicomWebWadoRenderer):
             raise ValueError("Invalid dataset encoding. Must be little endian.")
         write_dataset(ds, stream)
         stream.write(b"\r\n")
-
-        stream.seek(0)
         return stream.getvalue()
 
     def end_stream(self) -> bytes:
@@ -66,7 +64,6 @@ class WadoMultipartApplicationDicomRenderer(DicomWebWadoRenderer):
         stream.write(b"--")
         stream.write(self.boundary.encode("utf-8"))
         stream.write(b"--")
-        stream.seek(0)
         return stream.getvalue()
 
     async def render(self, instances: AsyncIterator[Dataset]) -> AsyncIterator[bytes]:
