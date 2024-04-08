@@ -1,6 +1,6 @@
+import asyncio
 import logging
-from os import PathLike
-from pathlib import Path
+from typing import AsyncIterator
 
 from adrf.views import sync_to_async
 from pydicom import Dataset
@@ -10,7 +10,6 @@ from adit.core.errors import DicomError, RetriableDicomError
 from adit.core.models import DicomServer
 from adit.core.utils.dicom_dataset import QueryDataset
 from adit.core.utils.dicom_operator import DicomOperator
-from adit.core.utils.dicom_utils import write_dataset
 
 from ..errors import BadGatewayApiError, ServiceUnavailableApiError
 
@@ -20,21 +19,19 @@ logger = logging.getLogger("__name__")
 async def wado_retrieve(
     source_server: DicomServer,
     query: dict[str, str],
-    dest_folder: PathLike,
-) -> None:
+) -> AsyncIterator[Dataset]:
+    """WADO retrieve helper.
+
+    Mainly converts a sync callback (by the operator) to an async iterator.
+    """
     operator = DicomOperator(source_server)
     query_ds = QueryDataset.from_dict(query)
 
+    loop = asyncio.get_running_loop()
+    queue = asyncio.Queue[Dataset]()
+
     def callback(ds: Dataset) -> None:
-        if ds is None:
-            return
-
-        folder_path = Path(dest_folder)
-        file_name = f"{ds.SOPInstanceUID}.dcm"
-        file_path = folder_path / file_name
-
-        folder_path.mkdir(parents=True, exist_ok=True)
-        write_dataset(ds, file_path)
+        loop.call_soon_threadsafe(queue.put_nowait, ds)
 
     try:
         series_list = list(await sync_to_async(operator.find_series)(query_ds))
@@ -43,12 +40,34 @@ async def wado_retrieve(
             raise NotFound("No DICOM objects matches the query.")
 
         for series in series_list:
-            await sync_to_async(operator.fetch_series)(
-                patient_id=series.PatientID,
-                study_uid=series.StudyInstanceUID,
-                series_uid=series.SeriesInstanceUID,
-                callback=callback,
+            fetch_series_task = asyncio.create_task(
+                sync_to_async(operator.fetch_series)(
+                    patient_id=series.PatientID,
+                    study_uid=series.StudyInstanceUID,
+                    series_uid=series.SeriesInstanceUID,
+                    callback=callback,
+                )
             )
+
+            while True:
+                queue_get_task = asyncio.create_task(queue.get())
+                done, _ = await asyncio.wait(
+                    [fetch_series_task, queue_get_task], return_when=asyncio.FIRST_COMPLETED
+                )
+
+                finished = False
+                for task in done:
+                    if task == queue_get_task:
+                        yield queue_get_task.result()
+                    if task == fetch_series_task:
+                        finished = True
+
+                if finished:
+                    queue_get_task.cancel()
+                    break
+
+            await asyncio.wait([fetch_series_task, queue_get_task])
+
     except RetriableDicomError as err:
         logger.exception(err)
         raise ServiceUnavailableApiError(str(err))
