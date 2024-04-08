@@ -8,9 +8,9 @@ from adit.core.utils.auth_utils import grant_access
 
 @pytest.mark.integration
 @pytest.mark.django_db(transaction=True)
-def test_wado_study(
+def test_retrieve_study(
     dimse_orthancs,
-    live_server,
+    channels_live_server,
     user_with_group_and_token,
     create_dicom_web_client,
     extended_data_sheet,
@@ -19,7 +19,7 @@ def test_wado_study(
     server = DicomServer.objects.get(ae_title="ORTHANC1")
     grant_access(group, server, source=True)
     orthanc1_client: DICOMwebClient = create_dicom_web_client(
-        live_server.url, server.ae_title, token
+        channels_live_server.url, server.ae_title, token
     )
 
     study_uid = list(extended_data_sheet["StudyInstanceUID"])[0]
@@ -36,6 +36,25 @@ def test_wado_study(
             "SeriesInstanceUID"
         ]
     ), "The WADO request on study level did not return all associated series."
+
+
+@pytest.mark.integration
+@pytest.mark.django_db(transaction=True)
+def test_retrieve_study_metadata(
+    dimse_orthancs,
+    channels_live_server,
+    user_with_group_and_token,
+    create_dicom_web_client,
+    extended_data_sheet,
+):
+    _, group, token = user_with_group_and_token
+    server = DicomServer.objects.get(ae_title="ORTHANC1")
+    grant_access(group, server, source=True)
+    orthanc1_client: DICOMwebClient = create_dicom_web_client(
+        channels_live_server.url, server.ae_title, token
+    )
+
+    study_uid = list(extended_data_sheet["StudyInstanceUID"])[0]
 
     results = orthanc1_client.retrieve_study_metadata(study_uid)
     series_instance_uids = set()
@@ -57,9 +76,9 @@ def test_wado_study(
 
 @pytest.mark.integration
 @pytest.mark.django_db(transaction=True)
-def test_wado_series(
+def test_retrieve_series(
     dimse_orthancs,
-    live_server,
+    channels_live_server,
     user_with_group_and_token,
     create_dicom_web_client,
     extended_data_sheet,
@@ -68,7 +87,7 @@ def test_wado_series(
     server = DicomServer.objects.get(ae_title="ORTHANC1")
     grant_access(group, server, source=True)
     orthanc1_client: DICOMwebClient = create_dicom_web_client(
-        live_server.url, server.ae_title, token
+        channels_live_server.url, server.ae_title, token
     )
 
     study_uid = list(extended_data_sheet["StudyInstanceUID"])[0]
@@ -86,6 +105,30 @@ def test_wado_series(
         assert (
             result.SeriesInstanceUID == series_uid
         ), "The WADO request on series level returned instances of the wrong series"
+
+
+@pytest.mark.integration
+@pytest.mark.django_db(transaction=True)
+def test_retrieve_series_metadata(
+    dimse_orthancs,
+    channels_live_server,
+    user_with_group_and_token,
+    create_dicom_web_client,
+    extended_data_sheet,
+):
+    _, group, token = user_with_group_and_token
+    server = DicomServer.objects.get(ae_title="ORTHANC1")
+    grant_access(group, server, source=True)
+    orthanc1_client: DICOMwebClient = create_dicom_web_client(
+        channels_live_server.url, server.ae_title, token
+    )
+
+    study_uid = list(extended_data_sheet["StudyInstanceUID"])[0]
+    series_uid = list(
+        extended_data_sheet[extended_data_sheet["StudyInstanceUID"] == study_uid][
+            "SeriesInstanceUID"
+        ]
+    )[0]
 
     results = orthanc1_client.retrieve_series_metadata(study_uid, series_uid)
     for result_json in results:

@@ -1,11 +1,11 @@
 import json
-import os
 from io import BytesIO
+from typing import AsyncIterator
 
 from pydicom import Dataset
 from rest_framework.renderers import BaseRenderer
 
-from adit.core.utils.dicom_utils import read_dataset, write_dataset
+from adit.core.utils.dicom_utils import write_dataset
 
 
 class QidoApplicationDicomJsonRenderer(BaseRenderer):
@@ -22,7 +22,6 @@ class DicomWebWadoRenderer(BaseRenderer):
     subtype: str | None
     boundary: str | None
     charset: str | None
-    mode: str | None
 
     @property
     def content_type(self) -> str:
@@ -39,76 +38,49 @@ class DicomWebWadoRenderer(BaseRenderer):
 class WadoMultipartApplicationDicomRenderer(DicomWebWadoRenderer):
     media_type = "multipart/related; type=application/dicom"
     format = "multipart"
-
     subtype: str = "application/dicom"
     boundary: str = "adit-boundary"
     charset: str = "utf-8"
-    mode: str = "bulk"
 
-    def start_stream(self):
-        self.stream = BytesIO()
-
-    def end_stream(self):
-        self.stream.write(b"--")
-        self.stream.write(self.boundary.encode("utf-8"))
-        self.stream.write(b"--")
-        self.stream.seek(0)
-
-    def write_ds(self, ds: Dataset):
-        self._write_boundary()
-        self._write_header()
+    def instance_stream(self, ds: Dataset) -> bytes:
+        stream = BytesIO()
+        # boundary
+        stream.write(b"\r\n")
+        stream.write(b"--" + self.boundary.encode("utf-8") + b"\r\n")
+        # header
+        stream.write(b"Content-Type: " + self.subtype.encode("utf-8"))
+        stream.write(b"\r\n")
+        stream.write(b"\r\n")
+        # instance
         if ds.is_little_endian:
-            self._write_part(ds)
+            write_dataset(ds, stream)
+            stream.write(b"\r\n")
+        # TODO: What to do with big endian?
 
-    def _write_part(self, ds: Dataset) -> None:
-        write_dataset(ds, self.stream)
-        self.stream.write(b"\r\n")
+        stream.seek(0)
+        return stream.getvalue()
 
-    def _write_header(self) -> None:
-        self.stream.write(b"Content-Type: " + self.subtype.encode("utf-8"))
-        self.stream.write(b"\r\n")
-        self.stream.write(b"\r\n")
+    def end_stream(self) -> bytes:
+        stream = BytesIO()
+        stream.write(b"--")
+        stream.write(self.boundary.encode("utf-8"))
+        stream.write(b"--")
+        stream.seek(0)
+        return stream.getvalue()
 
-    def _write_boundary(self) -> None:
-        self.stream.write(b"\r\n")
-        self.stream.write(b"--" + self.boundary.encode("utf-8") + b"\r\n")
-
-    def render(self, data, accepted_media_type=None, renderer_context=None):
-        folder_path = data["folder_path"]
-        self.start_stream()
-        for file in os.listdir(folder_path):
-            file_path = folder_path / file
-            ds = read_dataset(file_path)
-            self.write_ds(ds)
-            os.remove(file_path)
-        self.end_stream()
-        os.rmdir(folder_path)
-        return self.stream
+    async def render(self, instances: AsyncIterator[Dataset]) -> AsyncIterator[bytes]:
+        async for ds in instances:
+            yield self.instance_stream(ds)
+        yield self.end_stream()
 
 
 class WadoApplicationDicomJsonRenderer(DicomWebWadoRenderer):
     media_type = "application/dicom+json"
     format = "json"
-    mode = "metadata"
-
-    def start_file_meta_list(self):
-        self.file_meta_list = []
-
-    def append_file_meta(self, ds: Dataset):
-        if hasattr(ds, "PixelData"):
-            del ds.PixelData
-        json_meta = ds.to_json_dict()
-        self.file_meta_list.append(json_meta)
 
     def render(self, data, accepted_media_type=None, renderer_context=None):
-        self.start_file_meta_list()
-        for file in os.listdir(data["folder_path"]):
-            file_path = data["folder_path"] / file
-            ds = read_dataset(file_path)
-            self.append_file_meta(ds)
-            os.remove(file_path)
-        os.rmdir(data["folder_path"])
-        return json.dumps(self.file_meta_list)
+        metadata = data["metadata"]
+        return json.dumps(metadata)
 
 
 class StowApplicationDicomJsonRenderer(BaseRenderer):

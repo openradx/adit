@@ -4,10 +4,18 @@ from .views import (
     QuerySeriesAPIView,
     QueryStudiesAPIView,
     RetrieveSeriesAPIView,
+    RetrieveSeriesMetadataAPIView,
     RetrieveStudyAPIView,
-    StoreAPIView,
+    RetrieveStudyMetadataAPIView,
+    StoreInstancesAPIView,
 )
 
+# For possible DICOMweb target resources see
+# https://www.dicomstandard.org/using/dicomweb/restful-structure
+#
+# As we just act as a proxy we only implement the mandatory target resources, see
+# https://dicom.nema.org/medical/dicom/current/output/html/part18.html#table_10.6.1-1
+# TODO: Implement remaining target resource URLs
 urlpatterns = [
     path(
         "<str:ae_title>/qidors/studies/",
@@ -25,8 +33,8 @@ urlpatterns = [
         name="wado_rs-studies_with_study_uid",
     ),
     path(
-        "<str:ae_title>/wadors/studies/<str:study_uid>/<str:mode>/",
-        RetrieveStudyAPIView.as_view(),
+        "<str:ae_title>/wadors/studies/<str:study_uid>/metadata/",
+        RetrieveStudyMetadataAPIView.as_view(),
         name="wado_rs-studies_with_study_uid_and_mode",
     ),
     path(
@@ -35,18 +43,18 @@ urlpatterns = [
         name="wado_rs-series_with_study_uid_and_series_uid",
     ),
     path(
-        "<str:ae_title>/wadors/studies/<str:study_uid>/series/<str:series_uid>/<str:mode>/",
-        RetrieveSeriesAPIView.as_view(),
+        "<str:ae_title>/wadors/studies/<str:study_uid>/series/<str:series_uid>/metadata/",
+        RetrieveSeriesMetadataAPIView.as_view(),
         name="wado_rs-series_with_study_uid_and_series_uid_and_mode",
     ),
     path(
         "<str:ae_title>/stowrs/studies",
-        StoreAPIView.as_view(),
+        StoreInstancesAPIView.as_view(),
         name="stow_rs-series",
     ),
     path(
         "<str:ae_title>/stowrs/studies/<str:study_uid>",
-        StoreAPIView.as_view(),
+        StoreInstancesAPIView.as_view(),
         name="stow_rs-series_with_study_uid",
     ),
 ]

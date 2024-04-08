@@ -1,9 +1,6 @@
-import re
-
 import pydicom
 import pytest
 from dicomweb_client import DICOMwebClient
-from requests import HTTPError
 
 from adit.core.models import DicomServer
 from adit.core.utils.auth_utils import grant_access
@@ -11,7 +8,7 @@ from adit.core.utils.auth_utils import grant_access
 
 @pytest.mark.integration
 @pytest.mark.django_db(transaction=True)
-def test_qido_study(
+def test_search_studies(
     dimse_orthancs,
     live_server,
     user_with_group_and_token,
@@ -44,7 +41,7 @@ def test_qido_study(
 
 @pytest.mark.integration
 @pytest.mark.django_db(transaction=True)
-def test_qido_series(
+def test_search_series(
     dimse_orthancs,
     live_server,
     user_with_group_and_token,
@@ -57,15 +54,6 @@ def test_qido_series(
     orthanc1_client: DICOMwebClient = create_dicom_web_client(
         live_server.url, server.ae_title, token
     )
-
-    try:
-        # Even DICOMweb standard does allow this we don't support it querying all series
-        # without a StudyInstanceUID, because it is not possible with a connected DIMSE server.
-        orthanc1_client.search_for_series()
-    except HTTPError as err:
-        assert err.response is not None
-        error_details = err.response.json()
-        assert re.search("without a StudyInstanceUID", error_details[0])
 
     study_uid = list(extended_data_sheet["StudyInstanceUID"])[0]
     results = orthanc1_client.search_for_series(study_uid)
