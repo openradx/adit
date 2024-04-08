@@ -48,7 +48,7 @@ class QueryAPIView(WebDicomAPIView):
     renderer_classes = [QidoApplicationDicomJsonRenderer]
 
 
-class QueryStudyAPIView(QueryAPIView):
+class QueryStudiesAPIView(QueryAPIView):
     level = "STUDY"
 
     async def get(

@@ -2,7 +2,7 @@ from django.urls import path
 
 from .views import (
     QuerySeriesAPIView,
-    QueryStudyAPIView,
+    QueryStudiesAPIView,
     RetrieveSeriesAPIView,
     RetrieveStudyAPIView,
     StoreAPIView,
@@ -11,7 +11,7 @@ from .views import (
 urlpatterns = [
     path(
         "<str:ae_title>/qidors/studies/",
-        QueryStudyAPIView.as_view(),
+        QueryStudiesAPIView.as_view(),
         name="qido_rs-studies",
     ),
     path(
