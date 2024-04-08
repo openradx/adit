@@ -15,11 +15,6 @@ urlpatterns = [
         name="qido_rs-studies",
     ),
     path(
-        "<str:ae_title>/qidors/series/",
-        QuerySeriesAPIView.as_view(),
-        name="qido_rs-series",
-    ),
-    path(
         "<str:ae_title>/qidors/studies/<str:study_uid>/series/",
         QuerySeriesAPIView.as_view(),
         name="qido_rs-series_with_study_uid",
