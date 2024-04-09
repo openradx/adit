@@ -2,6 +2,9 @@
 
 ## Top
 
+- Also admins must have an active group
+  - And filter nodes according to the active group also for admins
+  - But allow admin to select each group he wants as active group
 - Generate exposed IDs for URLs by hashing the primary (number) keys:
   - <https://sqids.org/python>
   - <https://stackoverflow.com/questions/43253602/django-short-non-linear-non-predictable-id-in-the-url>
