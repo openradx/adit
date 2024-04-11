@@ -1,9 +1,8 @@
 import os
+import shutil
 import sys
-from glob import glob
 from os import environ
 from pathlib import Path
-from shutil import copy
 from typing import Literal
 
 from dotenv import set_key
@@ -331,24 +330,24 @@ def copy_statics(ctx: Context):
     """Copy JS and CSS dependencies from node_modules to static vendor folder"""
     print("Copying statics...")
 
-    vendor = "adit_radis_shared/common/static/vendor/"
+    target_folder = "adit/static/vendor/"
 
-    for file in glob("node_modules/@popperjs/core/dist/umd/popper.js*"):
-        copy(file, f"{vendor}/")
-    for file in glob("node_modules/bootstrap/dist/css/bootstrap.css*"):
-        copy(file, f"{vendor}/")
-    for file in glob("node_modules/bootstrap/dist/js/bootstrap.bundle.js*"):
-        copy(file, f"{vendor}/")
-    copy("node_modules/bootstrap-icons/bootstrap-icons.svg", f"{vendor}/")
-    copy("node_modules/bootswatch/dist/flatly/bootstrap.css", f"{vendor}/")
-    copy("node_modules/alpinejs/dist/cdn.js", f"{vendor}/alpine.js")
-    copy("node_modules/@alpinejs/morph/dist/cdn.js", f"{vendor}/alpine-morph.js")
-    copy("node_modules/htmx.org/dist/htmx.js", f"{vendor}/")
-    copy("node_modules/htmx.org/dist/ext/ws.js", f"{vendor}/htmx-ws.js")
-    copy(
-        "node_modules/htmx.org/dist/ext/alpine-morph.js",
-        f"{vendor}/htmx-alpine-morph.js",
-    )
+    def copy_file(file: str, filename: str | None = None):
+        if not filename:
+            shutil.copy(file, target_folder)
+        else:
+            target_file = os.path.join(target_folder, filename)
+            shutil.copy(file, target_file)
+
+    copy_file("node_modules/bootstrap/dist/js/bootstrap.bundle.js")
+    copy_file("node_modules/bootstrap/dist/js/bootstrap.bundle.js.map")
+    copy_file("node_modules/bootswatch/dist/flatly/bootstrap.css")
+    copy_file("node_modules/bootstrap-icons/bootstrap-icons.svg")
+    copy_file("node_modules/alpinejs/dist/cdn.js", "alpine.js")
+    copy_file("node_modules/@alpinejs/morph/dist/cdn.js", "alpine-morph.js")
+    copy_file("node_modules/htmx.org/dist/htmx.js")
+    copy_file("node_modules/htmx.org/dist/ext/ws.js", "htmx-ws.js")
+    copy_file("node_modules/htmx.org/dist/ext/alpine-morph.js", "htmx-alpine-morph.js")
 
 
 @task
@@ -359,7 +358,7 @@ def init_workspace(ctx: Context):
         print("Workspace already initialized (.env.dev file exists).")
         return
 
-    copy(f"{project_dir}/example.env", env_dev_file)
+    shutil.copy(f"{project_dir}/example.env", env_dev_file)
 
     def modify_env_file(domain: str | None = None):
         if domain:
