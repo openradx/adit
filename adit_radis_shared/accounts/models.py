@@ -16,7 +16,7 @@ class User(AbstractUser):
             raise ValueError("Active group must be one of the user's groups")
         super().save(*args, **kwargs)
 
-    def change_active_group(self, new_group):
+    def change_active_group(self, new_group: Group):
         if new_group in self.groups.all():
             self.active_group = new_group
             self.save()

@@ -1,5 +1,3 @@
-from typing import Any
-
 from django.contrib.auth.mixins import AccessMixin, LoginRequiredMixin
 from django.core.exceptions import SuspiciousOperation, ValidationError
 from django.views import View
@@ -12,11 +10,6 @@ from adit_radis_shared.common.utils.htmx_triggers import trigger_toast
 class UserProfileView(LoginRequiredMixin, AccessMixin, TemplateView):
     template_name = "accounts/profile.html"
     request: AuthenticatedHttpRequest
-
-    def get_context_data(self, **kwargs: Any) -> dict[str, Any]:
-        context = super().get_context_data(**kwargs)
-        context["user"] = self.request.user
-        return context
 
 
 class ActiveGroupView(LoginRequiredMixin, View):
