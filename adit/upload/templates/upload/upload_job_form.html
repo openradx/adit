@@ -1,5 +1,4 @@
 {% extends "upload/upload_layout.html" %}
-{% load crispy from crispy_forms_tags %}
 {% block content %}
     <!--
         In contrast to the documentation we put hx-ext directly on the form
@@ -16,7 +15,7 @@
               hx-swap-oob="morph"
               enctype="multipart/form-data">
             <div id="upload_form">
-                {% crispy form %}
+                {% include "upload/upload_job_form_fields.html" %}
                 <div id="form_rest">
                     <input id="fileselector"
                            type="file"

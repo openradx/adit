@@ -1,0 +1,41 @@
+<div id="form_partial">
+    <div class="row ">
+        <div class="col-md ">
+            <div class="col-md ">
+                <div id="div_id_pseudonym" class="mb-3">
+                    <label for="id_pseudonym" class="form-label requiredField">
+                        Pseudonym<span class="asteriskField">*</span>
+                    </label>
+                    <input type="text"
+                           name="pseudonym"
+                           maxlength="64"
+                           @keydown.enter.prevent=""
+                           class="textinput form-control"
+                           required=""
+                           id="id_pseudonym">
+                </div>
+            </div>
+        </div>
+        <div class="col-md ">
+            <div id="div_id_destination" class="mb-3">
+                <label for="id_destination" class="form-label requiredField">
+                    Destination<span class="asteriskField">*</span>
+                </label>
+                <select name="destination"
+                        x-init="initDestination($el)"
+                        @change="onDestinationChange($event)"
+                        class="dicomnodeselect form-select"
+                        required=""
+                        id="id_destination">
+                    <option value="">---------</option>
+                    <option value="1" selected="" data-node_type="server" node_id="1">DICOM Server Orthanc Test Server 1</option>
+                    <option value="2" data-node_type="server" node_id="2">DICOM Server Orthanc Test Server 2</option>
+                    <option value="4" data-node_type="server" node_id="4">DICOM Server wagner-ramos</option>
+                    <option value="6" data-node_type="folder" node_id="6">DICOM Folder Downloads</option>
+                    <option value="8" data-node_type="folder" node_id="8">DICOM Folder lewis-murphy</option>
+                    <option value="7" data-node_type="folder" node_id="7">DICOM Folder mcdonald</option>
+                </select>
+            </div>
+        </div>
+    </div>
+</div>

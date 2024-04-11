@@ -4,9 +4,9 @@ from io import BytesIO
 from os import error
 from typing import Any
 
+# import bs4
 import pydicom
 from asgiref.sync import sync_to_async
-from bs4 import BeautifulSoup
 from crispy_forms.utils import render_crispy_form
 from django.core.exceptions import SuspiciousOperation, ValidationError
 from django.forms import Form
@@ -73,9 +73,16 @@ class UploadJobCreateView(DicomJobCreateView):
         return initial
 
     def post(self, request: AuthenticatedHttpRequest, *args, **kwargs):
+        import sys
+
+        print(sys.path)
         if not request.htmx:
             raise SuspiciousOperation("Only accessible by HTMX")
-
+        print(
+            "\n\n\nrequest:",
+            request.POST,
+            "\n::\n",
+        )
         form = UploadJobForm(
             request.POST,
             user=request.user,
@@ -83,24 +90,50 @@ class UploadJobCreateView(DicomJobCreateView):
         )
 
         if form.is_valid():
-            ctx = {}
-            ctx.update(csrf(request))
-            rendered_form = render_crispy_form(form, context=ctx)
-            soup = BeautifulSoup(rendered_form, "html.parser")
-            inner_part = soup.find("div", id="form_partial")
-            response = HttpResponse(inner_part, status=200)
-            response = trigger_client_event(response, "chooseFolder")
+            success = {"Correct entrys"}
+            context = {"form": form, "success": success}
 
+            print("valid")
+            response = HttpResponse(status=204)  # 204 = Success without response (kein body)
+            response = trigger_client_event(response, "chooseFolder")
+            print(response)
             return response
 
         else:
+            # print(f"not valid, {form.errors},", "\n::\n", form.error_class, "\n::\n", form.data)
+            # print(form.media)
+            # rendered_form = render(
+            #     request,
+            #     "upload/upload_job_form_partial.html",
+            #     {
+            #         "div_id_pseudonym": form.fields.get("pseudonym"),
+            #         "div_id_destination": form.fields.get("destination"),
+            #     },
+            # )
+            # print(rendered_form, "\n::\n")
+            print(form.helper.layout, "\n::\n")
+            print(form, "\n::\n")
+            print(form["pseudonym"], "\n::\n")
+            print(form["destination"], "\n::\n")
+            print(form.base_fields, "\n::\n")
             ctx = {}
             ctx.update(csrf(request))
-            rendered_form = render_crispy_form(form, context=ctx)
-            soup = BeautifulSoup(rendered_form, "html.parser")
-            inner_part = soup.find("div", id="form_partial")
+            x = render_crispy_form(form, context=ctx)
+            print(x, "\n::\n")
+            print(type(x), "\n::\n")
+            # soup = BeautifulSoup(x, "html.parser")
+            # inner_part = soup.find("div", id="form_partial")
 
-            return HttpResponse(inner_part, status=200)
+            # print(inner_part, "\n::\n")
+            print("-" * 30, "END OF RESPONSE", "-" * 30)
+            return render(
+                request,
+                "upload/upload_job_form_partial.html",
+                {
+                    "div_id_pseudonym": form.fields.get("pseudonym"),
+                    "div_id_destination": form.fields.get("destination"),
+                },
+            )
 
 
 @login_required_async
