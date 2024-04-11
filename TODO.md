@@ -2,6 +2,7 @@
 
 ## Top
 
+- Add page titles to all pages (see RADIS)
 - Also admins must have an active group
   - And filter nodes according to the active group also for admins
   - But allow admin to select each group he wants as active group
