@@ -8474,6 +8474,11 @@
 	      }
 	      return vr;
 	    }
+	  }, {
+	    key: "parseUnknownVr",
+	    value: function parseUnknownVr(type) {
+	      return new ParsedUnknownValue(type);
+	    }
 	  }]);
 	  return ValueRepresentation;
 	}();
@@ -9540,59 +9545,107 @@
 	  }
 	  return _createClass(UnknownValue);
 	}(BinaryRepresentation);
-	var OtherWordString = /*#__PURE__*/function (_BinaryRepresentation2) {
-	  _inherits(OtherWordString, _BinaryRepresentation2);
-	  var _super30 = _createSuper(OtherWordString);
-	  function OtherWordString() {
+	var ParsedUnknownValue = /*#__PURE__*/function (_BinaryRepresentation2) {
+	  _inherits(ParsedUnknownValue, _BinaryRepresentation2);
+	  var _super30 = _createSuper(ParsedUnknownValue);
+	  function ParsedUnknownValue(vr) {
 	    var _this29;
-	    _classCallCheck(this, OtherWordString);
-	    _this29 = _super30.call(this, "OW");
+	    _classCallCheck(this, ParsedUnknownValue);
+	    _this29 = _super30.call(this, vr);
 	    _this29.maxLength = null;
-	    _this29.padByte = PADDING_NULL;
+	    _this29.padByte = 0;
 	    _this29.noMultiple = true;
+	    _this29._isBinary = true;
+	    _this29._allowMultiple = false;
+	    _this29._isExplicit = true;
 	    return _this29;
 	  }
-	  return _createClass(OtherWordString);
+	  _createClass(ParsedUnknownValue, [{
+	    key: "read",
+	    value: function read(stream, length, syntax) {
+	      var arrayBuffer = this.readBytes(stream, length, syntax)[0];
+	      var streamFromBuffer = new ReadBufferStream(arrayBuffer, true);
+	      var vr = ValueRepresentation.createByTypeString(this.type);
+	      var values = [];
+	      if (vr.isBinary() && length > vr.maxLength && !vr.noMultiple) {
+	        var times = length / vr.maxLength,
+	          i = 0;
+	        while (i++ < times) {
+	          values.push(vr.read(streamFromBuffer, vr.maxLength, syntax));
+	        }
+	      } else {
+	        var val = vr.read(streamFromBuffer, length, syntax);
+	        if (!vr.isBinary() && singleVRs$1.indexOf(vr.type) == -1) {
+	          values = val;
+	          if (typeof val === "string") {
+	            values = val.split(String.fromCharCode(VM_DELIMITER));
+	          }
+	        } else if (vr.type == "SQ") {
+	          values = val;
+	        } else if (vr.type == "OW" || vr.type == "OB") {
+	          values = val;
+	        } else {
+	          Array.isArray(val) ? values = val : values.push(val);
+	        }
+	      }
+	      return values;
+	    }
+	  }]);
+	  return ParsedUnknownValue;
 	}(BinaryRepresentation);
-	var OtherByteString = /*#__PURE__*/function (_BinaryRepresentation3) {
-	  _inherits(OtherByteString, _BinaryRepresentation3);
-	  var _super31 = _createSuper(OtherByteString);
-	  function OtherByteString() {
+	var OtherWordString = /*#__PURE__*/function (_BinaryRepresentation3) {
+	  _inherits(OtherWordString, _BinaryRepresentation3);
+	  var _super31 = _createSuper(OtherWordString);
+	  function OtherWordString() {
 	    var _this30;
-	    _classCallCheck(this, OtherByteString);
-	    _this30 = _super31.call(this, "OB");
+	    _classCallCheck(this, OtherWordString);
+	    _this30 = _super31.call(this, "OW");
 	    _this30.maxLength = null;
 	    _this30.padByte = PADDING_NULL;
 	    _this30.noMultiple = true;
 	    return _this30;
 	  }
-	  return _createClass(OtherByteString);
+	  return _createClass(OtherWordString);
 	}(BinaryRepresentation);
-	var OtherDoubleString = /*#__PURE__*/function (_BinaryRepresentation4) {
-	  _inherits(OtherDoubleString, _BinaryRepresentation4);
-	  var _super32 = _createSuper(OtherDoubleString);
-	  function OtherDoubleString() {
+	var OtherByteString = /*#__PURE__*/function (_BinaryRepresentation4) {
+	  _inherits(OtherByteString, _BinaryRepresentation4);
+	  var _super32 = _createSuper(OtherByteString);
+	  function OtherByteString() {
 	    var _this31;
-	    _classCallCheck(this, OtherDoubleString);
-	    _this31 = _super32.call(this, "OD");
+	    _classCallCheck(this, OtherByteString);
+	    _this31 = _super32.call(this, "OB");
 	    _this31.maxLength = null;
 	    _this31.padByte = PADDING_NULL;
 	    _this31.noMultiple = true;
 	    return _this31;
 	  }
-	  return _createClass(OtherDoubleString);
+	  return _createClass(OtherByteString);
 	}(BinaryRepresentation);
-	var OtherFloatString = /*#__PURE__*/function (_BinaryRepresentation5) {
-	  _inherits(OtherFloatString, _BinaryRepresentation5);
-	  var _super33 = _createSuper(OtherFloatString);
-	  function OtherFloatString() {
+	var OtherDoubleString = /*#__PURE__*/function (_BinaryRepresentation5) {
+	  _inherits(OtherDoubleString, _BinaryRepresentation5);
+	  var _super33 = _createSuper(OtherDoubleString);
+	  function OtherDoubleString() {
 	    var _this32;
-	    _classCallCheck(this, OtherFloatString);
-	    _this32 = _super33.call(this, "OF");
+	    _classCallCheck(this, OtherDoubleString);
+	    _this32 = _super33.call(this, "OD");
 	    _this32.maxLength = null;
 	    _this32.padByte = PADDING_NULL;
 	    _this32.noMultiple = true;
 	    return _this32;
+	  }
+	  return _createClass(OtherDoubleString);
+	}(BinaryRepresentation);
+	var OtherFloatString = /*#__PURE__*/function (_BinaryRepresentation6) {
+	  _inherits(OtherFloatString, _BinaryRepresentation6);
+	  var _super34 = _createSuper(OtherFloatString);
+	  function OtherFloatString() {
+	    var _this33;
+	    _classCallCheck(this, OtherFloatString);
+	    _this33 = _super34.call(this, "OF");
+	    _this33.maxLength = null;
+	    _this33.padByte = PADDING_NULL;
+	    _this33.noMultiple = true;
+	    return _this33;
 	  }
 	  return _createClass(OtherFloatString);
 	}(BinaryRepresentation); // these VR instances are precreate and are reused for each requested vr/tag
@@ -10219,7 +10272,12 @@
 	        vr = ValueRepresentation.createByTypeString(vrType);
 	      } else {
 	        vrType = stream.readVR();
-	        vr = ValueRepresentation.createByTypeString(vrType);
+	        if (vrType === "UN" && DicomMessage.lookupTag(tag) && DicomMessage.lookupTag(tag).vr) {
+	          vrType = DicomMessage.lookupTag(tag).vr;
+	          vr = ValueRepresentation.parseUnknownVr(vrType);
+	        } else {
+	          vr = ValueRepresentation.createByTypeString(vrType);
+	        }
 	        if (vr.isExplicit()) {
 	          stream.increment(2);
 	          length = stream.readUint32();
