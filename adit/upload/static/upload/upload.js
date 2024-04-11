@@ -104,24 +104,38 @@ function UploadJobForm(formEl) {
         for (const fileEntry of files) {
           await this.fileHandler(fileEntry, datasets);
         }
-        const x = dcmjs.data.DicomMessage.readFile(datasets[0]);
-        console.log(x.dict["00080090"]);
+
+        // console.log(x.dict["00080090"]);
         let status = 0;
         let loadedFiles = 0;
         if (this.checkPatientIDs(datasets)) {
-          const anon = new Anonymizer();
+          const pseudonym = formEl.querySelector('[name="pseudonym"]');
+          var newPatientID = "";
+          if (pseudonym instanceof HTMLInputElement) {
+            newPatientID = pseudonym.value;
+          }
+          console.log("newPatientID:", newPatientID);
+          const anon = new Anonymizer(newPatientID);
           this.buttonVisible = false;
           this.stopUploadVar = false;
           for (const set of datasets) {
-            console.log(this.stopUploadVar);
+            console.log(set);
+            const x = dcmjs.data.DicomMessage.readFile(set);
+            console.log(x);
+            await anon.anonymize(x);
+            console.log(x);
+
+            const anonymized_set = await x.write();
+            console.log(anonymized_set);
+
             document.getElementById("pb").style.display = "inline-block";
             if (this.stopUploadVar) {
               break;
             } // Stop uploading if stop button is clicked
 
-            console.log("toBEUploaded:", set);
+            console.log("toBeUploaded:", anonymized_set);
             status = await uploadData({
-              ["dataset"]: set,
+              ["dataset"]: anonymized_set,
               ["node_id"]: node_id,
             });
             if (status == 200) {
@@ -235,10 +249,6 @@ function UploadJobForm(formEl) {
       for (const set of datasets) {
         const dcm = dcmjs.data.DicomMessage.readFile(set);
 
-        const anon = new Anonymizer();
-
-        await anon.anonymize(dcm);
-        console.log(dcm.dict["00080090"]);
         patientIDs.add(dcm.dict["00100020"].Value[0]);
         patientNames.add(dcm.dict["00100010"].Value[0]);
         patientBirthdates.add(dcm.dict["00100030"].Value[0]);
