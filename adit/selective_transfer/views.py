@@ -1,6 +1,6 @@
 from typing import Any
 
-from django.shortcuts import render
+from django.core.exceptions import BadRequest
 from django.urls import reverse_lazy
 
 from adit.core.views import (
@@ -66,11 +66,7 @@ class SelectiveTransferJobCreateView(SelectiveTransferLockedMixin, DicomJobCreat
     request: AuthenticatedHttpRequest
 
     def post(self, request, *args, **kwargs):
-        return render(
-            request,
-            "core/js_required_hint.html",
-            {"hint": "Selective transfer requires JavaScript to work properly."},
-        )
+        raise BadRequest("Form is only for use with WebSockets")
 
     def get_form_kwargs(self) -> dict[str, Any]:
         kwargs = super().get_form_kwargs()
