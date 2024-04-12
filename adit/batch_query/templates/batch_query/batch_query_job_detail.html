@@ -3,6 +3,9 @@
 {% load dicom_job_status_css_class from core_extras %}
 {% load render_table from django_tables2 %}
 {% load job_control_panel from batch_query_extras %}
+{% block title %}
+    Batch Query Job
+{% endblock title %}
 {% block heading %}
     <div class="d-flex justify-content-between align-items-start">
         <h4 class="mb-3">Batch Query Job</h4>

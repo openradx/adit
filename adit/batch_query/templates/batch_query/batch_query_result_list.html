@@ -1,6 +1,9 @@
 {% extends "batch_query/batch_query_layout.html" %}
 {% load render_table from django_tables2 %}
 {% load bootstrap_icon from common_extras %}
+{% block title %}
+    Batch Query Results
+{% endblock title %}
 {% block heading %}
     <div class="d-flex justify-content-between align-items-start">
         <h4 class="mb-3">Batch Query Results</h4>
