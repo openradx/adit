@@ -1,3 +1,4 @@
+{% load groups_of_user from accounts_extras %}
 <h5>Active Group</h5>
 {% if request.user.active_group is None %}
     You are not assigned to any groups.
@@ -9,7 +10,8 @@
                 class="form-select"
                 style="max-width: 800px"
                 aria-label="Select the currently active group">
-            {% for group in request.user.groups.all %}
+            {% groups_of_user as groups %}
+            {% for group in groups %}
                 <option value="{{ group.id }}"
                         {% if request.user.active_group.id == group.id %}selected{% endif %}>{{ group.name }}</option>
             {% endfor %}

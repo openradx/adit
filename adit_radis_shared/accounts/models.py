@@ -12,7 +12,7 @@ class User(AbstractUser):
     )
 
     def save(self, *args, **kwargs):
-        if self.active_group and self.active_group not in self.groups.all():
+        if not self.is_staff and self.active_group and self.active_group not in self.groups.all():
             raise ValueError("Active group must be one of the user's groups")
         super().save(*args, **kwargs)
 
