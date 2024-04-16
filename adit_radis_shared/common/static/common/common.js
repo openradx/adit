@@ -127,7 +127,9 @@ function updatePreferences(route, data) {
 }
 
 /**
- * Show a new toast (put on top of the toasts stack).
+ * Add a new toast to the toasts panel by dispatching a custom event
+ * that is listened by the toasts panel.
+ *
  * @param {("success"|"warning"|"error")} level
  * @param {string} title
  * @param {string} text
@@ -135,7 +137,7 @@ function updatePreferences(route, data) {
  */
 function showToast(level, title, text) {
   window.dispatchEvent(
-    // listened by common/_toasts_panel.html
+    // listened to by common/_toasts_panel.html
     new CustomEvent("common:add-toast", {
       detail: {
         level: level,
@@ -148,10 +150,9 @@ function showToast(level, title, text) {
 
 /**
  * Alpine data model for the toasts panel.
- * @param {HTMLElement} panelEl
  * @returns {object} Alpine data model
  */
-function toastsPanel(panelEl) {
+function ToastsPanel() {
   /**
    * Helper function to capitalize a string
    * @param {string} str
@@ -163,12 +164,14 @@ function toastsPanel(panelEl) {
   }
 
   return {
+    currentId: 1,
     options: {
       duration: 30000, // 30 seconds
     },
     /**
      * An array of toasts created by the client.
      * @type{Array}
+     * @property {number} id
      * @property {("success"|"warning"|"error")} level
      * @property {string} title
      * @property {string} text
@@ -179,7 +182,7 @@ function toastsPanel(panelEl) {
      * @param {HTMLElement} toastEl
      * @returns {void}
      */
-    initToast: function (toastEl) {
+    showToast: function (toastEl) {
       new bootstrap.Toast(toastEl, {
         delay: this.options.duration,
       }).show();
@@ -187,15 +190,16 @@ function toastsPanel(panelEl) {
     /**
      * Add a toast to the toasts list. Call the showToast function above to
      * add toasts to the list from another function or script.
-     * @param {object} toast
-     * @param {("success"|"warning"|"error")} toast.level
-     * @param {string} toast.title
-     * @param {string} toast.text
+     * @param {CustomEvent<{level: "success"|"warning"|"error", title: string, text: string}>} evt
      * @returns {void}
      */
-    addToast: function (toast) {
-      toast.title = capitalize(toast.title);
-      this.toasts.push(toast);
+    addToast: function (evt) {
+      this.toasts.unshift({
+        id: this.currentId++,
+        level: evt.detail.level,
+        title: capitalize(evt.detail.title),
+        text: evt.detail.text,
+      });
     },
   };
 }

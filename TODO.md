@@ -21,7 +21,6 @@
 - Add permissions to dicom_web views (see TODOs there)
 - Update documentation
 - Just warn when one only one series of the study could not be transferred (only error when all series could not be transferred)
-- Fix toasts that newest is always on top (also in RADIS)
 - test job_utils
 - Test canceled task/job in test_workers.py
 - Make sure all views are atomic
