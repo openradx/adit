@@ -39,14 +39,7 @@ TModel = TypeVar("TModel", bound=models.Model)
 
 class DicomNodeManager(Generic[TModel], models.Manager[TModel]):
     def accessible_by_user(self, user: User, access_type: Literal["source", "destination"]):
-        # Superusers can access all nodes
-        if user.is_superuser:
-            if access_type == "source":
-                # A source node can never be a folder
-                return self.filter(node_type=DicomNode.NodeType.SERVER)
-            return self.all()
-
-        accessible_nodes = self.filter(accesses__group__in=user.groups.all())
+        accessible_nodes = self.filter(accesses__group=user.active_group)
         if access_type == "source":
             accessible_nodes = accessible_nodes.filter(accesses__source=True)
         elif access_type == "destination":

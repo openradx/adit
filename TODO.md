@@ -2,13 +2,9 @@
 
 ## Top
 
-- Add page titles to all pages (see RADIS)
 - Also admins must have an active group
   - And filter nodes according to the active group also for admins
   - But allow admin to select each group he wants as active group
-- Generate exposed IDs for URLs by hashing the primary (number) keys:
-  - <https://sqids.org/python>
-  - <https://stackoverflow.com/questions/43253602/django-short-non-linear-non-predictable-id-in-the-url>
 - Bring back some kind of ID in batch modes to better correlate the failures in the Excel files
   - Users must provide "QUERY_ID" in Batch Query and "TRANSFER_ID" in Batch Transfer in uploaded Excel files
   - BatchQueryTask gets an additional "query_id" and BatchTransferTask gets an additional "transfer_id"
@@ -30,8 +26,6 @@
   - Otherwise tell those async views to be @transaction.non_atomic_requests
   - Alternative is to decorate all appropriate views with @transaction.atomic
 - Figure out if favicon works in all browsers
-- Rename C_STORE to C-STORE and so on in dimse connector
-- Replace ass AssertionError with assert
 - Use DicomLogEntry during C-STORE
 - Fix dicom explorer search over Accession Number
 - Make warning when only one image fails
@@ -87,7 +81,6 @@
 
 ## Fix
 
-- Do some prechecks before trying the task (is source and destination online?)
 - Fix Celery logging (task ids are not appended to logging messages even as we use get_task_logger)
   - Look into how the setup is in <https://youtube.com/playlist?list=PLOLrQ9Pn6caz-6WpcBYxV84g9gwptoN20&si=jUU6wttECucsbGFv>
   - and its code <https://github.com/veryacademy?q=Django&type=all&language=&sort=>
@@ -100,6 +93,10 @@
 
 ## Maybe
 
+- Do some prechecks before trying the task (is source and destination online?)
+- Generate exposed IDs for URLs by hashing the primary (number) keys:
+  - <https://sqids.org/python>
+  - <https://stackoverflow.com/questions/43253602/django-short-non-linear-non-predictable-id-in-the-url>
 - New batch transfer
   - Create new batch transfer job and allow to add tasks
   - Add tasks manually or using a Excel file
@@ -188,7 +185,6 @@
 - Setup pgadmin
   - <https://stackoverflow.com/questions/64620446/adding-postgress-connections-to-pgadmin-in-docker-file>
   - Not sure if we really need this as we have Django admin and can view data in there
-- Move to SVG sprite (the stuff with symbol) instead of including the SVGs itself
-  - See <https://getbootstrap.com/docs/5.0/components/alerts/#icons>
+- Replace ass AssertionError with assert
 
 ## RADIS
