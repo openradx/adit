@@ -5,7 +5,6 @@ from pytest_mock import MockerFixture
 from adit.core.factories import DicomServerFactory
 from adit.core.utils.auth_utils import grant_access
 from adit_radis_shared.accounts.factories import UserFactory
-from adit_radis_shared.accounts.models import User
 from adit_radis_shared.common.utils.auth_utils import add_user_to_group
 
 from ..forms import BatchTransferJobForm
@@ -30,10 +29,11 @@ def file_dict(mocker: MockerFixture):
     return {"batch_file": file}
 
 
+@pytest.mark.django_db
 def test_field_labels(mocker: MockerFixture):
     # Arrange
-    user = mocker.create_autospec(User)
-    user.has_perm.return_value = True
+    user = UserFactory.create()
+    mocker.patch.object(user, "has_perm", return_value=True)
 
     # Act
     form = BatchTransferJobForm(user=user)
@@ -72,10 +72,11 @@ def test_with_valid_data(mocker: MockerFixture, batch_transfer_group, data_dict,
     assert parse_mock.call_args.args[1] == file_dict["batch_file"]
 
 
+@pytest.mark.django_db
 def test_with_missing_values(mocker: MockerFixture):
     # Arrange
-    user = mocker.create_autospec(User)
-    user.has_perm.return_value = True
+    user = UserFactory.create()
+    mocker.patch.object(user, "has_perm", return_value=True)
 
     # Act
     form = BatchTransferJobForm({}, user=user)
@@ -96,8 +97,9 @@ def test_disallow_too_large_file(mocker: MockerFixture, data_dict):
     # Arrange
     file = mocker.create_autospec(File, size=5242881)
     file.name = "sample_sheet.xlsx"
-    user = mocker.create_autospec(User)
-    user.has_perm.return_value = True
+
+    user = UserFactory.create()
+    mocker.patch.object(user, "has_perm", return_value=True)
 
     # Act
     form = BatchTransferJobForm(data_dict, {"batch_file": file}, user=user)
