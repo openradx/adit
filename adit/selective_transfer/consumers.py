@@ -4,7 +4,7 @@ import logging
 import threading
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
-from typing import Any, Iterator, cast
+from typing import Any, Iterator, Literal, cast
 
 from asgiref.sync import async_to_sync
 from channels.db import database_sync_to_async
@@ -88,19 +88,8 @@ class SelectiveTransferConsumer(AsyncJsonWebsocketConsumer):
             await self.send(query_hint)
             return
 
-        # Advanced options collapsed preference is not part of the form data itself,
-        # so we have to pass it separately.
-        advanced_options_collapsed = self.user.preferences.get(
-            SELECTIVE_TRANSFER_ADVANCED_OPTIONS_COLLAPSED, False
-        )
-
         # We are now in a query or transfer action so we have to process the form
-        form = SelectiveTransferJobForm(
-            content,
-            user=self.user,
-            action=action,
-            advanced_options_collapsed=advanced_options_collapsed,
-        )
+        form = await self.get_form(action, content)
         form_valid: bool = await database_sync_to_async(form.is_valid)()
 
         if action == "query":
@@ -125,6 +114,24 @@ class SelectiveTransferConsumer(AsyncJsonWebsocketConsumer):
 
         else:
             raise ValueError(f"Invalid action to process: {action}")
+
+    @database_sync_to_async
+    def get_form(
+        self, action: Literal["query", "transfer"], content: dict["str", Any]
+    ) -> SelectiveTransferJobForm:
+        # Advanced options collapsed preference is not part of the form data itself,
+        # so we have to pass it separately.
+        advanced_options_collapsed = self.user.preferences.get(
+            SELECTIVE_TRANSFER_ADVANCED_OPTIONS_COLLAPSED, False
+        )
+
+        # We are now in a query or transfer action so we have to process the form
+        return SelectiveTransferJobForm(
+            content,
+            user=self.user,
+            action=action,
+            advanced_options_collapsed=advanced_options_collapsed,
+        )
 
     async def _abort_operators(self) -> None:
         loop = asyncio.get_event_loop()
