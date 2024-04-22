@@ -2,9 +2,6 @@
 
 ## Top
 
-- Also admins must have an active group
-  - And filter nodes according to the active group also for admins
-  - But allow admin to select each group he wants as active group
 - Bring back some kind of ID in batch modes to better correlate the failures in the Excel files
   - Users must provide "QUERY_ID" in Batch Query and "TRANSFER_ID" in Batch Transfer in uploaded Excel files
   - BatchQueryTask gets an additional "query_id" and BatchTransferTask gets an additional "transfer_id"
@@ -25,7 +22,6 @@
   - Try this again when Django 5.0 is released
   - Otherwise tell those async views to be @transaction.non_atomic_requests
   - Alternative is to decorate all appropriate views with @transaction.atomic
-- Figure out if favicon works in all browsers
 - Use DicomLogEntry during C-STORE
 - Fix dicom explorer search over Accession Number
 - Make warning when only one image fails
