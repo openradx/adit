@@ -1,6 +1,11 @@
 from os import environ
 
 import factory
+from adit_radis_shared.accounts.factories import AdminUserFactory, GroupFactory, UserFactory
+from adit_radis_shared.accounts.models import User
+from adit_radis_shared.token_authentication.factories import TokenFactory
+from adit_radis_shared.token_authentication.models import FRACTION_LENGTH
+from adit_radis_shared.token_authentication.utils.crypto import hash_token
 from django.conf import settings
 from django.contrib.auth.models import Group, Permission
 from django.core.management import call_command
@@ -26,11 +31,6 @@ from adit.selective_transfer.factories import (
     SelectiveTransferJobFactory,
     SelectiveTransferTaskFactory,
 )
-from adit_radis_shared.accounts.factories import AdminUserFactory, GroupFactory, UserFactory
-from adit_radis_shared.accounts.models import User
-from adit_radis_shared.token_authentication.factories import TokenFactory
-from adit_radis_shared.token_authentication.models import FRACTION_LENGTH
-from adit_radis_shared.token_authentication.utils.crypto import hash_token
 
 USER_COUNT = 20
 GROUP_COUNT = 3

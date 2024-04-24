@@ -1,9 +1,8 @@
 from typing import Literal
 
+from adit_radis_shared.accounts.models import User
 from django import forms
 from django.template.defaultfilters import filesizeformat
-
-from adit_radis_shared.accounts.models import User
 
 from .models import DicomNode
 from .widgets import DicomNodeSelect

@@ -26,7 +26,6 @@ INSTALLED_APPS += [  # noqa: F405
     "debug_toolbar",
     "debug_permissions",
     "django_browser_reload",
-    "adit.sandbox.apps.SandboxConfig",
 ]
 
 MIDDLEWARE += [  # noqa: F405

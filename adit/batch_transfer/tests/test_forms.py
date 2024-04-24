@@ -1,11 +1,11 @@
 import pytest
+from adit_radis_shared.accounts.factories import UserFactory
+from adit_radis_shared.common.utils.auth_utils import add_user_to_group
 from django.core.files import File
 from pytest_mock import MockerFixture
 
 from adit.core.factories import DicomServerFactory
 from adit.core.utils.auth_utils import grant_access
-from adit_radis_shared.accounts.factories import UserFactory
-from adit_radis_shared.common.utils.auth_utils import add_user_to_group
 
 from ..forms import BatchTransferJobForm
 

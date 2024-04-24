@@ -1,8 +1,7 @@
+from adit_radis_shared.accounts.forms import GroupAdminForm
 from django.contrib import admin
 from django.contrib.auth.admin import GroupAdmin
 from django.contrib.auth.models import Group
-
-from adit_radis_shared.accounts.forms import GroupAdminForm
 
 from .models import (
     DicomFolder,

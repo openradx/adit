@@ -1,9 +1,6 @@
 from django.apps import AppConfig
 from django.db.models.signals import post_migrate
 
-from adit.core.site import JobStats, register_dicom_processor, register_job_stats_collector
-from adit_radis_shared.common.site import register_main_menu_item
-
 SECTION_NAME = "Selective Transfer"
 
 
@@ -18,12 +15,18 @@ class SelectiveTransferConfig(AppConfig):
 
 
 def register_app():
+    from adit_radis_shared.common.site import MainMenuItem, register_main_menu_item
+
+    from adit.core.site import JobStats, register_dicom_processor, register_job_stats_collector
+
     from .models import SelectiveTransferJob, SelectiveTransferTask
     from .processors import SelectiveTransferTaskProcessor
 
     register_main_menu_item(
-        url_name="selective_transfer_job_create",
-        label=SECTION_NAME,
+        MainMenuItem(
+            url_name="selective_transfer_job_create",
+            label=SECTION_NAME,
+        )
     )
 
     model_label = (

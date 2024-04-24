@@ -1,10 +1,10 @@
 from datetime import time
 
+from adit_radis_shared.common.management.base.server_command import ServerCommand
 from django.conf import settings
 
 from adit.core.utils.time_utils import valid_time_range
 from adit.core.workers import DicomWorker
-from adit_radis_shared.common.management.base.server_command import ServerCommand
 
 
 class Command(ServerCommand):

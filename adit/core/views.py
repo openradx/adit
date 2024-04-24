@@ -1,5 +1,14 @@
 from typing import Any, cast
 
+from adit_radis_shared.common.mixins import PageSizeSelectMixin, RelatedFilterMixin
+from adit_radis_shared.common.site import THEME_PREFERENCE_KEY
+from adit_radis_shared.common.types import AuthenticatedHttpRequest
+from adit_radis_shared.common.views import (
+    AdminProxyView,
+    BaseBroadcastView,
+    BaseHomeView,
+    BaseUpdatePreferencesView,
+)
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
@@ -24,15 +33,6 @@ from django_tables2 import SingleTableMixin
 from django_tables2.tables import Table
 
 from adit.core.utils.model_utils import reset_tasks
-from adit_radis_shared.common.mixins import PageSizeSelectMixin, RelatedFilterMixin
-from adit_radis_shared.common.site import THEME_PREFERENCE_KEY
-from adit_radis_shared.common.types import AuthenticatedHttpRequest
-from adit_radis_shared.common.views import (
-    AdminProxyView,
-    BaseBroadcastView,
-    BaseHomeView,
-    BaseUpdatePreferencesView,
-)
 
 from .models import DicomJob, DicomTask, QueuedTask
 from .site import job_stats_collectors

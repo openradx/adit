@@ -1,7 +1,5 @@
 from django.apps import AppConfig
 
-from adit_radis_shared.common.site import register_main_menu_item
-
 SECTION_NAME = "DICOM Explorer"
 
 
@@ -13,7 +11,11 @@ class DicomExplorerConfig(AppConfig):
 
 
 def register_app():
+    from adit_radis_shared.common.site import MainMenuItem, register_main_menu_item
+
     register_main_menu_item(
-        url_name="dicom_explorer_form",
-        label=SECTION_NAME,
+        MainMenuItem(
+            url_name="dicom_explorer_form",
+            label=SECTION_NAME,
+        )
     )

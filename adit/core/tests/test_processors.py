@@ -1,10 +1,9 @@
 import pytest
 import time_machine
-from pydicom import Dataset
-from pytest_mock import MockerFixture
-
 from adit_radis_shared.accounts.factories import UserFactory
 from adit_radis_shared.common.utils.auth_utils import add_user_to_group
+from pydicom import Dataset
+from pytest_mock import MockerFixture
 
 from ..factories import (
     DicomFolderFactory,

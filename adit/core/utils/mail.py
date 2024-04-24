@@ -1,6 +1,5 @@
-from django.template.loader import render_to_string
-
 from adit_radis_shared.common.utils.mail import send_mail_to_admins, send_mail_to_user
+from django.template.loader import render_to_string
 
 
 def send_job_finished_mail(job):

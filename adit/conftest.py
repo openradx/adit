@@ -5,6 +5,7 @@ from tempfile import NamedTemporaryFile
 import nest_asyncio
 import pandas as pd
 import pytest
+from adit_radis_shared.conftest import *  # noqa: F403
 from django.conf import settings
 from django.core.management import call_command
 from faker import Faker
@@ -14,7 +15,6 @@ from adit.core.factories import (
     DicomWebServerFactory,
 )
 from adit.core.models import DicomServer
-from adit_radis_shared.conftest import *  # noqa: F403
 
 fake = Faker()
 

@@ -4,9 +4,8 @@ import os
 from pathlib import Path
 
 import janus
-from django.conf import settings
-
 from adit_radis_shared.common.management.base.server_command import AsyncServerCommand
+from django.conf import settings
 
 from ...utils.dicom_utils import read_dataset
 from ...utils.file_transmit import FileTransmitServer

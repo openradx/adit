@@ -1,12 +1,11 @@
 import subprocess
 
+from adit_radis_shared.accounts.models import User
 from celery import shared_task
 from celery.utils.log import get_task_logger
 from django.conf import settings
 from django.core.mail import send_mail
 from django.core.management import call_command
-
-from adit_radis_shared.accounts.models import User
 
 from .models import DicomFolder
 from .utils.mail import send_mail_to_admins

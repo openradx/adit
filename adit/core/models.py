@@ -1,5 +1,7 @@
 from typing import TYPE_CHECKING, Callable, Generic, Literal, TypeVar
 
+from adit_radis_shared.accounts.models import User
+from adit_radis_shared.common.models import AppSettings
 from django.conf import settings
 from django.contrib.auth.models import Group
 from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
@@ -13,8 +15,6 @@ from django.utils import timezone
 
 from adit.core.utils.mail import send_job_finished_mail
 from adit.core.utils.model_utils import reset_tasks
-from adit_radis_shared.accounts.models import User
-from adit_radis_shared.common.models import AppSettings
 
 from .validators import (
     no_backslash_char_validator,

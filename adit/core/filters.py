@@ -1,7 +1,6 @@
 import django_filters
-from django.http import HttpRequest
-
 from adit_radis_shared.common.forms import FilterSetFormHelper
+from django.http import HttpRequest
 
 from .models import DicomJob, DicomTask
 

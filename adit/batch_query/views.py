@@ -1,6 +1,9 @@
 from io import BytesIO
 from typing import Any, cast
 
+from adit_radis_shared.common.mixins import PageSizeSelectMixin, RelatedFilterMixin
+from adit_radis_shared.common.types import AuthenticatedHttpRequest
+from adit_radis_shared.common.views import BaseUpdatePreferencesView
 from django.conf import settings
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http.response import HttpResponse
@@ -26,9 +29,6 @@ from adit.core.views import (
     DicomTaskResetView,
 )
 from adit.selective_transfer.mixins import SelectiveTransferLockedMixin
-from adit_radis_shared.common.mixins import PageSizeSelectMixin, RelatedFilterMixin
-from adit_radis_shared.common.types import AuthenticatedHttpRequest
-from adit_radis_shared.common.views import BaseUpdatePreferencesView
 
 from .filters import BatchQueryJobFilter, BatchQueryResultFilter, BatchQueryTaskFilter
 from .forms import BatchQueryJobForm

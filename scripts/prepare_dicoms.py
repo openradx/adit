@@ -6,6 +6,7 @@ Examples:
 python prepare_dicoms.py in_folder out_folder -m PatientName "Papaya^Pamela" \
     -m PatientBirthDate "19760829"
 """
+
 import argparse
 from pathlib import Path
 

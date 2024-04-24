@@ -1,6 +1,7 @@
 import logging
 from typing import AsyncIterator, Literal, cast
 
+from adit_radis_shared.common.types import AuthenticatedApiRequest
 from adrf.views import APIView as AsyncApiView
 from django.http import StreamingHttpResponse
 from pydicom import Dataset
@@ -8,7 +9,6 @@ from rest_framework.exceptions import NotFound, ParseError, ValidationError
 from rest_framework.response import Response
 
 from adit.core.models import DicomServer
-from adit_radis_shared.common.types import AuthenticatedApiRequest
 
 from .parsers import StowMultipartApplicationDicomParser
 from .renderers import (

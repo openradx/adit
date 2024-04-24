@@ -1,5 +1,6 @@
 from typing import Any
 
+from adit_radis_shared.common.views import BaseUpdatePreferencesView
 from django.conf import settings
 from django.urls import reverse_lazy
 
@@ -18,7 +19,6 @@ from adit.core.views import (
     DicomTaskResetView,
     TransferJobListView,
 )
-from adit_radis_shared.common.views import BaseUpdatePreferencesView
 
 from .filters import BatchTransferJobFilter, BatchTransferTaskFilter
 from .forms import BatchTransferJobForm

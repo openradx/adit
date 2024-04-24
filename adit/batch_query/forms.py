@@ -68,9 +68,9 @@ class BatchQueryJobForm(forms.ModelForm):
                 "batch_file"
             ].help_text = f"Maximum {self.max_batch_size} tasks per query job!"
 
-        self.fields["send_finished_mail"].widget.attrs[
-            "@change"
-        ] = "onSendFinishedMailChange($event)"
+        self.fields["send_finished_mail"].widget.attrs["@change"] = (
+            "onSendFinishedMailChange($event)"
+        )
 
         self.helper = FormHelper(self)
         self.helper.layout = Layout("source")  # Make sure source is on top
