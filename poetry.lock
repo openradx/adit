@@ -2,13 +2,13 @@
 
 [[package]]
 name = "adit-radis-shared"
-version = "0.2.0"
+version = "0.2.1"
 description = "Shared Django apps between ADIT and RADIS"
 optional = false
 python-versions = "<4.0,>=3.11"
 files = [
-    {file = "adit_radis_shared-0.2.0-py3-none-any.whl", hash = "sha256:f39e7e5b2cdcaeaaaaad49fdb2878dca4f3d29c0f5477f9b2ccd76e9b67d0ad9"},
-    {file = "adit_radis_shared-0.2.0.tar.gz", hash = "sha256:d27bbbbbc90edd8ee309c8033ab5cd43eaec49ee84314f706021df7a2d78cc44"},
+    {file = "adit_radis_shared-0.2.1-py3-none-any.whl", hash = "sha256:0ed7c687c19c9116c6fdecc56fd684aa975e3bc1eb79010c119323780fcc695c"},
+    {file = "adit_radis_shared-0.2.1.tar.gz", hash = "sha256:b13fa8deeafd9afd94a70cdfe79dbb761beeee99bab028319585b0548208a935"},
 ]
 
 [package.dependencies]
