@@ -19,7 +19,8 @@ from django.contrib import admin
 from django.urls import include, path
 
 urlpatterns = [
-    path("admin-the-great/", admin.site.urls),
+    path("django-admin/", admin.site.urls),
+    path("django-admin/", include("loginas.urls")),
     path("api-auth/", include("rest_framework.urls")),
     path("accounts/", include("adit_radis_shared.accounts.urls")),
     path("api/", include("adit.api.urls")),
@@ -31,9 +32,6 @@ urlpatterns = [
     path("token-authentication/", include("adit_radis_shared.token_authentication.urls")),
     path("dicom-web/", include("adit.dicom_web.urls")),
 ]
-
-# Django loginas
-urlpatterns += [path("admin/", include("loginas.urls"))]
 
 # Debug Toolbar in Debug mode only
 if settings.DEBUG:
