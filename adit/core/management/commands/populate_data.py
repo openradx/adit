@@ -1,13 +1,7 @@
-from os import environ
-
 import factory
-from adit_radis_shared.accounts.factories import AdminUserFactory, GroupFactory, UserFactory
 from adit_radis_shared.accounts.models import User
-from adit_radis_shared.token_authentication.factories import TokenFactory
-from adit_radis_shared.token_authentication.models import FRACTION_LENGTH
-from adit_radis_shared.token_authentication.utils.crypto import hash_token
 from django.conf import settings
-from django.contrib.auth.models import Group, Permission
+from django.contrib.auth.models import Group
 from django.core.management import call_command
 from django.core.management.base import BaseCommand, CommandParser
 from faker import Faker
@@ -32,8 +26,6 @@ from adit.selective_transfer.factories import (
     SelectiveTransferTaskFactory,
 )
 
-USER_COUNT = 20
-GROUP_COUNT = 3
 DICOM_SERVER_COUNT = 5
 DICOM_FOLDER_COUNT = 3
 SELECTIVE_TRANSFER_JOB_COUNT = 20
@@ -41,73 +33,6 @@ BATCH_QUERY_JOB_COUNT = 10
 BATCH_TRANSFER_JOB_COUNT = 10
 
 fake = Faker()
-
-
-def create_admin() -> User:
-    if "ADMIN_USERNAME" not in environ or "ADMIN_PASSWORD" not in environ:
-        print("Cave! No admin credentials found in environment. Using default ones.")
-
-    admin = AdminUserFactory.create(
-        username=environ.get("ADMIN_USERNAME", "admin"),
-        first_name=environ.get("ADMIN_FIRST_NAME", "Wilhelm"),
-        last_name=environ.get("ADMIN_LAST_NAME", "Röntgen"),
-        email=environ.get("ADMIN_EMAIL", "wilhelm.roentgen@example.org"),
-        password=environ.get("ADMIN_PASSWORD", "mysecret"),
-    )
-
-    if "ADMIN_AUTH_TOKEN" not in environ:
-        print("No admin auth token in environment. Skipping auth token creation.")
-    else:
-        auth_token = environ["ADMIN_AUTH_TOKEN"]
-        TokenFactory.create(
-            token_hashed=hash_token(auth_token),
-            fraction=auth_token[:FRACTION_LENGTH],
-            owner=admin,
-            expires=None,
-        )
-
-    return admin
-
-
-def create_users() -> list[User]:
-    admin = create_admin()
-
-    users = [admin]
-
-    urgent_permissions = Permission.objects.filter(
-        codename="can_process_urgently",
-    )
-    unpseudonymized_permissions = Permission.objects.filter(
-        codename="can_transfer_unpseudonymized",
-    )
-
-    user_count = USER_COUNT - 1  # -1 for admin
-    for i in range(user_count):
-        user = UserFactory.create()
-
-        if i > 0:
-            user.user_permissions.add(*urgent_permissions)
-            user.user_permissions.add(*unpseudonymized_permissions)
-
-        users.append(user)
-
-    return users
-
-
-def create_groups(users: list[User]) -> list[Group]:
-    groups: list[Group] = []
-
-    for _ in range(GROUP_COUNT):
-        group = GroupFactory.create()
-        groups.append(group)
-
-    for user in users:
-        group: Group = fake.random_element(elements=groups)
-        user.groups.add(group)
-        if not user.active_group:
-            user.change_active_group(group)
-
-    return groups
 
 
 def create_server_nodes(groups: list[Group]) -> list[DicomServer]:
@@ -235,8 +160,9 @@ class Command(BaseCommand):
         if do_populate:
             print("Populating development database with test data.")
 
-            users = create_users()
-            groups = create_groups(users)
+            users = list(User.objects.all())
+            groups = list(Group.objects.all())
+
             servers = create_server_nodes(groups)
             folders = create_folder_nodes(groups)
 

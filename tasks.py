@@ -306,9 +306,13 @@ def reset_dev(ctx: Context):
     # Wipe the database
     flush_cmd = f"{build_compose_cmd('dev')} exec web python manage.py flush --noinput"
     run_cmd(ctx, flush_cmd)
+    # Re-populate the database with users and groups
+    populate_cmd = f"{build_compose_cmd('dev')} exec web python manage.py populate_users_and_groups"
+    populate_cmd += " --users 20 --groups 3"
+    run_cmd(ctx, populate_cmd)
     # Re-populate the database with example data
-    populate_db_cmd = f"{build_compose_cmd('dev')} exec web python manage.py populate_db"
-    run_cmd(ctx, populate_db_cmd)
+    populate_cmd = f"{build_compose_cmd('dev')} exec web python manage.py populate_data"
+    run_cmd(ctx, populate_cmd)
 
 
 @task

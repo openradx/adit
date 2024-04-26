@@ -29,7 +29,8 @@ services:
         wait-for-it -s postgres.local:5432 -t 60 && 
         ./manage.py migrate &&
         ./manage.py collectstatic --no-input &&
-        ./manage.py populate_db &&
+        ./manage.py populate_users_and_groups --users 20 --groups 3 &&
+        ./manage.py populate_data &&
         ./manage.py runserver 0.0.0.0:8000
       "
     profiles:
