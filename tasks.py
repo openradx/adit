@@ -7,7 +7,6 @@ from typing import Literal
 
 from dotenv import set_key
 from invoke.context import Context
-from invoke.runners import Result
 from invoke.tasks import task
 
 Environments = Literal["dev", "prod", "test"]
@@ -107,17 +106,6 @@ def confirm(question: str) -> bool:
             sys.stdout.write("Please respond with 'yes' or 'no' " "(or 'y' or 'n').\n")
 
 
-def run_cmd(ctx: Context, cmd: str, silent=False) -> Result:
-    if not silent:
-        print(f"Running: {cmd}")
-
-    hide = True if silent else None
-
-    result = ctx.run(cmd, pty=True, hide=hide)
-    assert result and result.ok
-    return result
-
-
 ###
 # Tasks
 ###
@@ -127,7 +115,7 @@ def run_cmd(ctx: Context, cmd: str, silent=False) -> Result:
 def compose_build(ctx: Context, env: Environments = "dev"):
     """Build ADIT image for specified environment"""
     cmd = f"{build_compose_cmd(env)} build"
-    run_cmd(ctx, cmd)
+    ctx.run(cmd, pty=True)
 
 
 @task
@@ -140,7 +128,7 @@ def compose_up(
     """Start ADIT containers in specified environment"""
     build_opt = "--no-build" if no_build else "--build"
     cmd = f"{build_compose_cmd(env)} --profile {profile} up {build_opt} --detach"
-    run_cmd(ctx, cmd)
+    ctx.run(cmd, pty=True)
 
 
 @task
@@ -154,7 +142,7 @@ def compose_down(
     cmd = f"{build_compose_cmd(env)} --profile {profile} down"
     if cleanup:
         cmd += " --remove-orphans --volumes"
-    run_cmd(ctx, cmd)
+    ctx.run(cmd, pty=True)
 
 
 @task
@@ -163,7 +151,7 @@ def compose_restart(ctx: Context, env: Environments = "dev", service: str | None
     cmd = f"{build_compose_cmd(env)} restart"
     if service:
         cmd += f" {service}"
-    run_cmd(ctx, cmd)
+    ctx.run(cmd, pty=True)
 
 
 @task
@@ -188,7 +176,7 @@ def compose_logs(
         cmd += f" --until {until}"
     if tail:
         cmd += f" --tail {tail}"
-    run_cmd(ctx, cmd)
+    ctx.run(cmd, pty=True)
 
 
 @task
@@ -207,7 +195,7 @@ def stack_deploy(ctx: Context, env: Environments = "prod", build: bool = False):
         raise ValueError(f"Unknown environment: {env}")
 
     cmd = f"docker stack deploy {suffix}"
-    run_cmd(ctx, cmd)
+    ctx.run(cmd, pty=True)
 
 
 @task
@@ -215,7 +203,7 @@ def stack_rm(ctx: Context, env: Environments = "prod"):
     """Remove the stack from Docker Swarm (prod by default!)."""
     stack_name = get_stack_name(env)
     cmd = f"docker stack rm {stack_name}"
-    run_cmd(ctx, cmd)
+    ctx.run(cmd, pty=True)
 
 
 @task
@@ -223,7 +211,7 @@ def make_migrations(ctx: Context, env: Environments = "dev"):
     """Make Django migrations (optionally of the test app)"""
     settings_module = get_settings_module(env)
     cmd = f"django-admin makemigrations --settings={settings_module}"
-    run_cmd(ctx, cmd)
+    ctx.run(cmd, pty=True)
 
 
 @task
@@ -231,24 +219,24 @@ def format(ctx: Context):
     """Format the source code with ruff and djlint"""
     # Format Python code
     format_code_cmd = "poetry run ruff format ."
-    run_cmd(ctx, format_code_cmd)
+    ctx.run(format_code_cmd, pty=True)
     # Sort Python imports
     sort_imports_cmd = "poetry run ruff check . --fix --select I"
-    run_cmd(ctx, sort_imports_cmd)
+    ctx.run(sort_imports_cmd, pty=True)
     # Format Django templates
     format_templates_cmd = "poetry run djlint . --reformat"
-    run_cmd(ctx, format_templates_cmd)
+    ctx.run(format_templates_cmd, pty=True)
 
 
 @task
 def lint(ctx: Context):
     """Lint the source code (ruff, djlint, pyright)"""
     cmd_ruff = "poetry run ruff check ."
-    run_cmd(ctx, cmd_ruff)
+    ctx.run(cmd_ruff, pty=True)
     cmd_djlint = "poetry run djlint . --lint"
-    run_cmd(ctx, cmd_djlint)
+    ctx.run(cmd_djlint, pty=True)
     cmd_pyright = "poetry run pyright"
-    run_cmd(ctx, cmd_pyright)
+    ctx.run(cmd_pyright, pty=True)
 
 
 @task
@@ -288,7 +276,7 @@ def test(
         cmd += "-x "
     if path:
         cmd += path
-    run_cmd(ctx, cmd)
+    ctx.run(cmd, pty=True)
 
 
 @task
@@ -305,28 +293,28 @@ def reset_dev(ctx: Context):
     reset_orthancs(ctx, "dev")
     # Wipe the database
     flush_cmd = f"{build_compose_cmd('dev')} exec web python manage.py flush --noinput"
-    run_cmd(ctx, flush_cmd)
+    ctx.run(flush_cmd, pty=True)
     # Re-populate the database with users and groups
     populate_cmd = f"{build_compose_cmd('dev')} exec web python manage.py populate_users_and_groups"
     populate_cmd += " --users 20 --groups 3"
-    run_cmd(ctx, populate_cmd)
+    ctx.run(populate_cmd, pty=True)
     # Re-populate the database with example data
     populate_cmd = f"{build_compose_cmd('dev')} exec web python manage.py populate_data"
-    run_cmd(ctx, populate_cmd)
+    ctx.run(populate_cmd, pty=True)
 
 
 @task
 def reset_orthancs(ctx: Context, env: Environments = "dev"):
     """Reset Orthancs"""
     cmd = f"{build_compose_cmd(env)} exec web python manage.py reset_orthancs"
-    run_cmd(ctx, cmd)
+    ctx.run(cmd, pty=True)
 
 
 @task
 def adit_web_shell(ctx: Context, env: Environments = "dev"):
     """Open Python shell in ADIT web container of specified environment"""
     cmd = f"{build_compose_cmd(env)} exec web python manage.py shell_plus"
-    run_cmd(ctx, cmd)
+    ctx.run(cmd, pty=True)
 
 
 @task
@@ -356,7 +344,7 @@ def init_workspace(ctx: Context):
         modify_env_file(codespaces_url)
     elif environ.get("GITPOD_WORKSPACE_ID"):
         # Inside Gitpod
-        result = run_cmd(ctx, "gp url 8000", silent=True)
+        result = ctx.run("gp url 8000", silent=True, pty=True)
         assert result and result.ok
         gitpod_url = result.stdout.strip().removeprefix("https://")
         modify_env_file(gitpod_url)
@@ -370,18 +358,19 @@ def show_outdated(ctx: Context):
     """Show outdated dependencies"""
     print("### Outdated Python dependencies ###")
     poetry_cmd = "poetry show --outdated --top-level"
-    result = run_cmd(ctx, poetry_cmd)
+    result = ctx.run(poetry_cmd, pty=True)
+    assert result and result.ok
     print(result.stderr.strip())
 
     print("### Outdated NPM dependencies ###")
     npm_cmd = "npm outdated"
-    run_cmd(ctx, npm_cmd)
+    ctx.run(npm_cmd, pty=True)
 
 
 @task
 def upgrade(ctx: Context):
     """Upgrade Python and JS packages"""
-    run_cmd(ctx, "poetry update")
+    ctx.run("poetry update", pty=True)
 
 
 @task
@@ -390,12 +379,12 @@ def try_github_actions(ctx: Context):
     act_path = project_dir / "bin" / "act"
     if not act_path.exists():
         print("Installing act...")
-        run_cmd(
-            ctx,
+        ctx.run(
             "curl https://raw.githubusercontent.com/nektos/act/master/install.sh | sudo bash",
             silent=True,
+            pty=True,
         )
-    run_cmd(ctx, f"{act_path} -P ubuntu-latest=catthehacker/ubuntu:act-latest")
+    ctx.run(f"{act_path} -P ubuntu-latest=catthehacker/ubuntu:act-latest", pty=True)
 
 
 @task
@@ -414,7 +403,7 @@ def purge_celery(
     )
     if force:
         cmd += " -f"
-    run_cmd(ctx, cmd)
+    ctx.run(cmd, pty=True)
 
 
 @task
@@ -431,7 +420,7 @@ def backup_db(ctx: Context, env: Environments = "prod"):
         f"docker exec --env DJANGO_SETTINGS_MODULE={settings} "
         f"{web_container_id} ./manage.py dbbackup --clean -v 2"
     )
-    run_cmd(ctx, cmd)
+    ctx.run(cmd, pty=True)
 
 
 @task
@@ -443,22 +432,23 @@ def restore_db(ctx: Context, env: Environments = "prod"):
         f"docker exec --env DJANGO_SETTINGS_MODULE={settings} "
         f"{web_container_id} ./manage.py dbrestore"
     )
-    run_cmd(ctx, cmd)
+    ctx.run(cmd, pty=True)
 
 
 @task
 def bump_version(ctx: Context, rule: Literal["patch", "minor", "major"]):
     """Bump version, create a tag, commit and push to GitHub"""
-    result = run_cmd(ctx, "git status --porcelain", silent=True)
+    result = ctx.run("git status --porcelain", silent=True, pty=True)
+    assert result and result.ok
     if result.stdout.strip():
         print("There are uncommitted changes. Aborting.")
         sys.exit(1)
 
-    run_cmd(ctx, f"poetry version {rule}")
-    run_cmd(ctx, "git add pyproject.toml")
-    run_cmd(ctx, "git commit -m 'Bump version'")
-    run_cmd(ctx, "git tag -a $(poetry version -s) -m 'Release $(poetry version -s)'")
-    run_cmd(ctx, "git push --follow-tags")
+    ctx.run(f"poetry version {rule}", pty=True)
+    ctx.run("git add pyproject.toml", pty=True)
+    ctx.run("git commit -m 'Bump version'", pty=True)
+    ctx.run("git tag -a $(poetry version -s) -m 'Release $(poetry version -s)'", pty=True)
+    ctx.run("git push --follow-tags", pty=True)
 
 
 @task
@@ -469,10 +459,10 @@ def upgrade_postgresql(ctx: Context, env: Environments = "dev", version: str = "
         print("Starting docker container that upgrades the database files.")
         print("Watch the output if everything went fine or if any further steps are necessary.")
         volume = get_postgres_volume(env)
-        run_cmd(
-            ctx,
+        ctx.run(
             f"docker run -e POSTGRES_PASSWORD=postgres -v {volume}:/var/lib/postgresql/data "
             f"pgautoupgrade/pgautoupgrade:{version}",
+            pty=True,
         )
     else:
         print("Cancelled")
