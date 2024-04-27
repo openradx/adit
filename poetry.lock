@@ -37,7 +37,7 @@ whitenoise = "^6.0.0"
 type = "git"
 url = "https://github.com/openradx/adit-radis-shared.git"
 reference = "HEAD"
-resolved_reference = "3d814d89e44629b7534373ce4da30f288d41133e"
+resolved_reference = "0ff253bce657508102be322383b2c58c497fb14f"
 
 [[package]]
 name = "adrf"
@@ -3759,5 +3759,5 @@ testing = ["coverage (>=5.0.3)", "zope.event", "zope.testing"]
 
 [metadata]
 lock-version = "2.0"
-python-versions = "^3.11"
-content-hash = "3111b1577351a19806b9ea3356a49c48919bab95ba00618849b92a0ff88588a4"
+python-versions = ">=3.11,<4.0"
+content-hash = "6e9ffb113c37ad02390e59061a2c44f8ac22225eae7e38d4f4fa65afe46eea8b"
