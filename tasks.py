@@ -344,7 +344,7 @@ def init_workspace(ctx: Context):
         modify_env_file(codespaces_url)
     elif environ.get("GITPOD_WORKSPACE_ID"):
         # Inside Gitpod
-        result = ctx.run("gp url 8000", silent=True, pty=True)
+        result = ctx.run("gp url 8000", hide=True, pty=True)
         assert result and result.ok
         gitpod_url = result.stdout.strip().removeprefix("https://")
         modify_env_file(gitpod_url)
@@ -381,7 +381,7 @@ def try_github_actions(ctx: Context):
         print("Installing act...")
         ctx.run(
             "curl https://raw.githubusercontent.com/nektos/act/master/install.sh | sudo bash",
-            silent=True,
+            hide=True,
             pty=True,
         )
     ctx.run(f"{act_path} -P ubuntu-latest=catthehacker/ubuntu:act-latest", pty=True)
@@ -438,7 +438,7 @@ def restore_db(ctx: Context, env: Environments = "prod"):
 @task
 def bump_version(ctx: Context, rule: Literal["patch", "minor", "major"]):
     """Bump version, create a tag, commit and push to GitHub"""
-    result = ctx.run("git status --porcelain", silent=True, pty=True)
+    result = ctx.run("git status --porcelain", hide=True, pty=True)
     assert result and result.ok
     if result.stdout.strip():
         print("There are uncommitted changes. Aborting.")
