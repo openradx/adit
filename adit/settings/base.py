@@ -18,10 +18,54 @@ import toml
 from celery.schedules import crontab
 from pydicom import config as pydicom_config
 
-env = environ.Env()
-
 # The base directory of the project (the root of the repository)
 BASE_DIR = Path(__file__).resolve(strict=True).parent.parent.parent
+
+env = environ.Env(
+    # Base
+    SITE_DOMAIN=(str, "localhost"),
+    DATABASE_URL=(str, "sqlite:///adit-sqlite.db"),
+    DJANGO_STATIC_ROOT=(str, BASE_DIR / "static"),
+    BACKUP_DIR=(str, BASE_DIR / "backups"),
+    DJANGO_SERVER_EMAIL=(str, "admin@adit.test"),
+    SUPPORT_EMAIL=(str, "admin@adit.test"),
+    ADMIN_FIRST_NAME=(str, "ADIT"),
+    ADMIN_LAST_NAME=(str, "Admin"),
+    ADMIN_EMAIL=(str, "admin@adit.test"),
+    REDIS_URL=(str, "redis://localhost:6379/0"),
+    FLOWER_HOST=(str, "localhost"),
+    FLOWER_PORT=(int, 5555),
+    ORTHANC1_HOST=(str, "localhost"),
+    ORTHANC1_HTTP_PORT=(int, 6501),
+    ORTHANC1_DICOM_PORT=(int, 7501),
+    ORTHANC1_DICOMWEB_ROOT=(str, "dicom-web"),
+    ORTHANC2_HOST=(str, "localhost"),
+    ORTHANC2_HTTP_PORT=(int, 6502),
+    ORTHANC2_DICOM_PORT=(int, 7502),
+    ORTHANC2_DICOMWEB_ROOT=(str, "dicom-web"),
+    RECEIVER_AE_TITLE=(str, "ADIT1"),
+    STORE_SCP_HOST=(str, "localhost"),
+    STORE_SCP_PORT=(int, 11112),
+    FILE_TRANSMIT_HOST=(str, "localhost"),
+    FILE_TRANSMIT_PORT=(int, 14638),
+    TEMP_DICOM_DIR=(str, BASE_DIR / ".dicoms"),
+    USER_TIME_ZONE=(str, "Europe/Berlin"),
+    TOKEN_AUTHENTICATION_SALT=(str, "Rn4YNfgAar5dYbPu"),
+    # Development
+    ENABLE_REMOTE_DEBUGGING=(bool, False),
+    DJANGO_SECRET_KEY=(str, "ug+cbde301nelb)(di0^p21osy3h=t$%2$-8d&0#xlyfj8&==5"),
+    DJANGO_ALLOWED_HOSTS=(list, ["localhost"]),
+    DJANGO_CSRF_TRUSTED_ORIGINS=(list, []),
+    FORCE_DEBUG_TOOLBAR=(bool, False),
+    DJANGO_INTERNAL_IPS=(list, ["127.0.0.1"]),
+    USE_DOCKER=(bool, False),
+    # Production
+    DJANGO_EMAIL_HOST=(str, "localhost"),
+    DJANGO_EMAIL_PORT=(int, 25),
+    DJANGO_EMAIL_HOST_USER=(str, ""),
+    DJANGO_EMAIL_HOST_PASSWORD=(str, ""),
+    DJANGO_EMAIL_USE_TLS=(bool, False),
+)
 
 # Read pyproject.toml to fetch current version. We do this conditionally as the
 # ADIT client library uses ADIT for integration tests installed as a package
@@ -32,11 +76,6 @@ if (BASE_DIR / "pyproject.toml").exists():
 else:
     PROJECT_VERSION = "???"
 
-READ_DOT_ENV_FILE = env.bool("DJANGO_READ_DOT_ENV_FILE", default=False)  # type: ignore
-if READ_DOT_ENV_FILE:
-    # OS environment variables take precedence over variables from .env
-    env.read_env(str(BASE_DIR / ".env"))
-
 # Used by the django.contrib.sites framework
 SITE_ID = 1
 
@@ -44,7 +83,7 @@ SITE_ID = 1
 # of the sites frameworks Site model and also some other site specific settings in
 # our custom SiteProfile model.
 # Once set those values will be used from the database!
-SITE_DOMAIN = env.str("SITE_DOMAIN", default="localhost")  # type: ignore
+SITE_DOMAIN = env("SITE_DOMAIN")
 SITE_NAME = "ADIT"
 SITE_META_KEYWORDS = "ADIT,Radiology,DICOM,Medicine,Tool,Transfer"
 SITE_META_DESCRIPTION = "ADIT is a tool for managing automated DICOM transfers"
@@ -133,9 +172,8 @@ STORAGES = {
 }
 
 # env.db() loads the DB setup from the DATABASE_URL environment variable using
-# Django-environ.
-# The sqlite database is still used for pytest tests.
-DATABASES = {"default": env.db(default="sqlite:///adit-sqlite.db")}  # type: ignore
+# Django-environ. The sqlite database is still used for pytest tests.
+DATABASES = {"default": env.db()}
 
 # Django 3.2 switched to BigAutoField for primary keys. It must be set explicitly
 # and requires a migration.
@@ -260,7 +298,7 @@ STATICFILES_DIRS = (BASE_DIR / "adit" / "static",)
 
 STATIC_URL = "/static/"
 
-STATIC_ROOT = env.str("DJANGO_STATIC_ROOT", default=(BASE_DIR / "staticfiles"))  # type: ignore
+STATIC_ROOT = env("DJANGO_STATIC_ROOT")
 
 # Custom user model
 AUTH_USER_MODEL = "accounts.User"
@@ -270,9 +308,7 @@ LOGIN_REDIRECT_URL = "home"
 
 # django-dbbackup
 DBBACKUP_STORAGE = "django.core.files.storage.FileSystemStorage"
-DBBACKUP_STORAGE_OPTIONS = {
-    "location": env.str("BACKUP_DIR", default=(BASE_DIR / "backups")),  # type: ignore
-}
+DBBACKUP_STORAGE_OPTIONS = {"location": env("BACKUP_DIR")}
 DBBACKUP_CLEANUP_KEEP = 30
 
 # For crispy forms
@@ -291,23 +327,18 @@ EMAIL_SUBJECT_PREFIX = "[ADIT] "
 
 # An Email address used by the ADIT server to notify about finished jobs and
 # management notifications.
-SERVER_EMAIL = env.str("DJANGO_SERVER_EMAIL", default="support@adit.test")  # type: ignore
+SERVER_EMAIL = env("DJANGO_SERVER_EMAIL")
 DEFAULT_FROM_EMAIL = SERVER_EMAIL
 
 # A support Email address that is presented to the users where
 # they can get support.
-SUPPORT_EMAIL = env.str("SUPPORT_EMAIL", default=SERVER_EMAIL)  # type: ignore
+SUPPORT_EMAIL = env("SUPPORT_EMAIL")
 
 # Also used by django-registration-redux to send account approval emails
-admin_first_name = env.str("ADMIN_FIRST_NAME", default="ADIT")  # type: ignore
-admin_last_name = env.str("ADMIN_LAST_NAME", default="Admin")  # type: ignore
+admin_first_name = env("ADMIN_FIRST_NAME")
+admin_last_name = env("ADMIN_LAST_NAME")
 admin_full_name = admin_first_name + " " + admin_last_name
-ADMINS = [
-    (
-        admin_full_name,
-        env.str("ADMIN_EMAIL", default="admin@adit.test"),  # type: ignore
-    )
-]
+ADMINS = [(admin_full_name, env("ADMIN_EMAIL"))]
 
 # Settings for django-registration-redux
 REGISTRATION_FORM = "adit_radis_shared.accounts.forms.RegistrationForm"
@@ -318,7 +349,7 @@ REGISTRATION_OPEN = True
 ASGI_APPLICATION = "adit.asgi.application"
 
 # Redis is used as the Celery backend and for distributed locks
-REDIS_URL = env.str("REDIS_URL", default="redis://localhost:6379/0")  # type: ignore
+REDIS_URL = env("REDIS_URL")
 
 # Celery
 # see https://github.com/celery/celery/issues/5026 for how to name configs
@@ -336,18 +367,18 @@ CELERY_BEAT_SCHEDULE = {
 
 # Flower is integrated in ADIT by using a reverse proxy (django-revproxy).
 # This allows to use the authentication of ADIT.
-FLOWER_HOST = env.str("FLOWER_HOST", default="localhost")  # type: ignore
-FLOWER_PORT = env.int("FLOWER_PORT", default=5555)  # type: ignore
+FLOWER_HOST = env("FLOWER_HOST")
+FLOWER_PORT = env("FLOWER_PORT")
 
 # Orthanc servers are integrated in ADIT by using a reverse proxy (django-revproxy).
-ORTHANC1_HOST = env.str("ORTHANC1_HOST", default="localhost")  # type: ignore
-ORTHANC1_HTTP_PORT = env.int("ORTHANC1_HTTP_PORT", default=6501)  # type: ignore
-ORTHANC1_DICOM_PORT = env.int("ORTHANC1_DICOM_PORT", default=7501)  # type: ignore
-ORTHANC1_DICOMWEB_ROOT = env.str("ORTHANC1_DICOMWEB_ROOT", default="dicom-web")  # type: ignore
-ORTHANC2_HOST = env.str("ORTHANC2_HOST", default="localhost")  # type: ignore
-ORTHANC2_HTTP_PORT = env.int("ORTHANC2_HTTP_PORT", default=6502)  # type: ignore
-ORTHANC2_DICOM_PORT = env.int("ORTHANC2_DICOM_PORT", default=7502)  # type: ignore
-ORTHANC2_DICOMWEB_ROOT = env.str("ORTHANC2_DICOMWEB_ROOT", default="dicom-web")  # type: ignore
+ORTHANC1_HOST = env("ORTHANC1_HOST")
+ORTHANC1_HTTP_PORT = env("ORTHANC1_HTTP_PORT")
+ORTHANC1_DICOM_PORT = env("ORTHANC1_DICOM_PORT")
+ORTHANC1_DICOMWEB_ROOT = env("ORTHANC1_DICOMWEB_ROOT")
+ORTHANC2_HOST = env("ORTHANC2_HOST")
+ORTHANC2_HTTP_PORT = env("ORTHANC2_HTTP_PORT")
+ORTHANC2_DICOM_PORT = env("ORTHANC2_DICOM_PORT")
+ORTHANC2_DICOMWEB_ROOT = env("ORTHANC2_DICOMWEB_ROOT")
 
 # Used by django-filter
 FILTERS_EMPTY_CHOICE_LABEL = "Show All"
@@ -360,25 +391,25 @@ pydicom_config.convert_wrong_length_to_UN = True
 ###
 
 # The AE Tile for the ADIT STORE SCP server
-RECEIVER_AE_TITLE = env.str("RECEIVER_AE_TITLE", default="ADIT1")  # type: ignore
+RECEIVER_AE_TITLE = env("RECEIVER_AE_TITLE")
 
 # The address and port of the STORE SCP server (part of the receiver).
 # By default the STORE SCP server listens to all interfaces (empty string)
-STORE_SCP_HOST = env.str("STORE_SCP_HOST", default="localhost")  # type: ignore
-STORE_SCP_PORT = env.int("STORE_SCP_PORT", default=11112)  # type: ignore
+STORE_SCP_HOST = env("STORE_SCP_HOST")
+STORE_SCP_PORT = env("STORE_SCP_PORT")
 
 # The address and port of the file transmit socket server (part of the receiver)
 # that is used to transfer DICOM files from the receiver to the workers (when
 # the PACS server does not support C-GET).
 # By default the file transmit socket server listens to all interfaces (should
 # not be a problem as it is inside the docker network).
-FILE_TRANSMIT_HOST = env.str("FILE_TRANSMIT_HOST", default="localhost")  # type: ignore
-FILE_TRANSMIT_PORT = env.int("FILE_TRANSMIT_PORT", default=14638)  # type: ignore
+FILE_TRANSMIT_HOST = env("FILE_TRANSMIT_HOST")
+FILE_TRANSMIT_PORT = env("FILE_TRANSMIT_PORT")
 
 # A folder to cache temporary DICOM files.
 # Receiver and file transmit client do create temporary directories in this
 # folder and cache their received DICOM files there.
-TEMP_DICOM_DIR = env.str("TEMP_DICOM_DIR", default=str(BASE_DIR / ".dicoms"))  # type: ignore
+TEMP_DICOM_DIR = env("TEMP_DICOM_DIR")
 
 # Usually a transfer job must be verified by an admin. By setting
 # this option to True ADIT will schedule unverified transfers
@@ -388,7 +419,7 @@ START_BATCH_QUERY_UNVERIFIED = True
 START_BATCH_TRANSFER_UNVERIFIED = True
 
 # A timezone that is used for users of the web interface.
-USER_TIME_ZONE = env.str("USER_TIME_ZONE", default="Europe/Berlin")  # type: ignore
+USER_TIME_ZONE = env("USER_TIME_ZONE")
 
 # Priorities of dicom tasks
 # Selective transfers have the highest priority as those are
@@ -440,10 +471,7 @@ ETHICS_COMMITTEE_APPROVAL_REQUIRED = True
 
 # The salt that is used for hashing new tokens in the token authentication app.
 # Cave, changing the salt after some tokens were already generated makes them all invalid!
-TOKEN_AUTHENTICATION_SALT = env.str(
-    "TOKEN_AUTHENTICATION_SALT",
-    default="Rn4YNfgAar5dYbPu",  # type: ignore
-)
+TOKEN_AUTHENTICATION_SALT = env("TOKEN_AUTHENTICATION_SALT")
 
 # DicomWeb Settings
 DEFAULT_BOUNDARY = "adit-boundary"

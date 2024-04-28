@@ -18,11 +18,11 @@ DATABASES["default"]["PASSWORD"] = env.str("POSTGRES_PASSWORD")  # noqa: F405
 
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 EMAIL_TIMEOUT = 60
-EMAIL_HOST = env.str("DJANGO_EMAIL_HOST")
-EMAIL_PORT = env.int("DJANGO_EMAIL_PORT", default=25)  # type: ignore
-EMAIL_HOST_USER = env.str("DJANGO_EMAIL_HOST_USER", default="")  # type: ignore
-EMAIL_HOST_PASSWORD = env.str("DJANGO_EMAIL_HOST_PASSWORD", default="")  # type: ignore
-EMAIL_USE_TLS = env.bool("DJANGO_EMAIL_USE_TLS", default=False)  # type: ignore
+EMAIL_HOST = env("DJANGO_EMAIL_HOST")
+EMAIL_PORT = env("DJANGO_EMAIL_PORT")
+EMAIL_HOST_USER = env("DJANGO_EMAIL_HOST_USER")
+EMAIL_HOST_PASSWORD = env("DJANGO_EMAIL_HOST_PASSWORD")
+EMAIL_USE_TLS = env("DJANGO_EMAIL_USE_TLS")
 
 CELERY_BEAT_SCHEDULE["backup-db"] = {  # noqa: F405
     "task": "adit.core.tasks.backup_db",
