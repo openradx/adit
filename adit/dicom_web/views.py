@@ -216,7 +216,7 @@ class StoreInstancesAPIView(WebDicomAPIView):
         dest_server = await self._get_dicom_server(request, ae_title, "destination")
 
         if study_uid:
-            datasets = [
+            datasets: list[Dataset] = [
                 dataset
                 for dataset in request.data["datasets"]
                 if dataset.StudyInstanceUID == study_uid
