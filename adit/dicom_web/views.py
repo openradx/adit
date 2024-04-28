@@ -1,14 +1,15 @@
 import logging
 from typing import AsyncIterator, Literal, cast
 
-from adit_radis_shared.common.types import AuthenticatedApiRequest
+from adit_radis_shared.common.types import AuthenticatedApiRequest, User
 from adrf.views import APIView as AsyncApiView
+from channels.db import database_sync_to_async
 from django.http import StreamingHttpResponse
 from pydicom import Dataset
 from rest_framework.exceptions import NotFound, ParseError, ValidationError
 from rest_framework.response import Response
 
-from adit.core.models import DicomServer
+from adit.core.models import DicomNodeManager, DicomServer
 
 from .parsers import StowMultipartApplicationDicomParser
 from .renderers import (
@@ -26,6 +27,14 @@ logger = logging.getLogger(__name__)
 
 
 class WebDicomAPIView(AsyncApiView):
+    @database_sync_to_async
+    def get_accessible_servers(
+        self,
+        user: User,
+        access_type: Literal["source", "destination"],
+    ) -> DicomNodeManager[DicomServer]:
+        return DicomServer.objects.accessible_by_user(user, access_type)
+
     async def _get_dicom_server(
         self,
         request: AuthenticatedApiRequest,
@@ -33,7 +42,7 @@ class WebDicomAPIView(AsyncApiView):
         access_type: Literal["source", "destination"],
     ) -> DicomServer:
         try:
-            accessible_servers = DicomServer.objects.accessible_by_user(request.user, access_type)
+            accessible_servers = await self.get_accessible_servers(request.user, access_type)
             return await accessible_servers.aget(ae_title=ae_title)
         except DicomServer.DoesNotExist:
             raise NotFound(
