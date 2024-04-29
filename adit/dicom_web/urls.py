@@ -48,7 +48,7 @@ urlpatterns = [
         name="wado_rs-series_with_study_uid_and_series_uid_and_mode",
     ),
     path(
-        "<str:ae_title>/stowrs/studies",
+        "<str:ae_title>/stowrs/studies/",
         StoreInstancesAPIView.as_view(),
         name="stow_rs-series",
     ),
