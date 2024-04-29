@@ -38,8 +38,23 @@ TModel = TypeVar("TModel", bound=models.Model)
 
 
 class DicomNodeManager(Generic[TModel], models.Manager[TModel]):
-    def accessible_by_user(self, user: User, access_type: Literal["source", "destination"]):
-        accessible_nodes = self.filter(accesses__group=user.active_group)
+    def accessible_by_user(
+        self, user: User, access_type: Literal["source", "destination"], all_groups: bool = False
+    ) -> QuerySet[TModel]:
+        """Check if the user is allowed to access the given node.
+
+        Args:
+            user: The user to check for access to the node.
+            access_type: The type of access to check ("source" or "destination").
+            all_groups: Check over all groups of the user, otherwise only the active group.
+
+        Returns:
+            A queryset of nodes that the user is allowed to access.
+        """
+        if all_groups:
+            accessible_nodes = self.filter(accesses__group__in=user.groups.all())
+        else:
+            accessible_nodes = self.filter(accesses__group=user.active_group)
         if access_type == "source":
             accessible_nodes = accessible_nodes.filter(accesses__source=True)
         elif access_type == "destination":

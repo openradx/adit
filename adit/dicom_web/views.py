@@ -4,12 +4,13 @@ from typing import AsyncIterator, Literal, cast
 from adit_radis_shared.common.types import AuthenticatedApiRequest, User
 from adrf.views import APIView as AsyncApiView
 from channels.db import database_sync_to_async
+from django.db.models import QuerySet
 from django.http import StreamingHttpResponse
 from pydicom import Dataset
 from rest_framework.exceptions import NotFound, ParseError, ValidationError
 from rest_framework.response import Response
 
-from adit.core.models import DicomNodeManager, DicomServer
+from adit.core.models import DicomServer
 
 from .parsers import StowMultipartApplicationDicomParser
 from .renderers import (
@@ -32,8 +33,8 @@ class WebDicomAPIView(AsyncApiView):
         self,
         user: User,
         access_type: Literal["source", "destination"],
-    ) -> DicomNodeManager[DicomServer]:
-        return DicomServer.objects.accessible_by_user(user, access_type)
+    ) -> QuerySet[DicomServer]:
+        return DicomServer.objects.accessible_by_user(user, access_type, all_groups=True)
 
     async def _get_dicom_server(
         self,
