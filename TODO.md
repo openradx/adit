@@ -2,6 +2,10 @@
 
 ## Top
 
+- Fix that ADIT DICOMweb supports STOW of multiple image files at once
+  -- Currently it only allow to upload only one file after another
+  -- When multiple files at once are stored than those are send as a chunked transfer
+  -- This seems to be not supported by DRF
 - Bring back some kind of ID in batch modes to better correlate the failures in the Excel files
   - Users must provide "QUERY_ID" in Batch Query and "TRANSFER_ID" in Batch Transfer in uploaded Excel files
   - BatchQueryTask gets an additional "query_id" and BatchTransferTask gets an additional "transfer_id"
