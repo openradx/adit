@@ -18,37 +18,37 @@ from .views import (
 # TODO: Implement remaining target resource URLs
 urlpatterns = [
     path(
-        "<str:ae_title>/qidors/studies/",
+        "<str:ae_title>/qidors/studies",
         QueryStudiesAPIView.as_view(),
         name="qido_rs-studies",
     ),
     path(
-        "<str:ae_title>/qidors/studies/<str:study_uid>/series/",
+        "<str:ae_title>/qidors/studies/<str:study_uid>/series",
         QuerySeriesAPIView.as_view(),
         name="qido_rs-series_with_study_uid",
     ),
     path(
-        "<str:ae_title>/wadors/studies/<str:study_uid>/",
+        "<str:ae_title>/wadors/studies/<str:study_uid>",
         RetrieveStudyAPIView.as_view(),
         name="wado_rs-studies_with_study_uid",
     ),
     path(
-        "<str:ae_title>/wadors/studies/<str:study_uid>/metadata/",
+        "<str:ae_title>/wadors/studies/<str:study_uid>/metadata",
         RetrieveStudyMetadataAPIView.as_view(),
         name="wado_rs-studies_with_study_uid_and_mode",
     ),
     path(
-        "<str:ae_title>/wadors/studies/<str:study_uid>/series/<str:series_uid>/",
+        "<str:ae_title>/wadors/studies/<str:study_uid>/series/<str:series_uid>",
         RetrieveSeriesAPIView.as_view(),
         name="wado_rs-series_with_study_uid_and_series_uid",
     ),
     path(
-        "<str:ae_title>/wadors/studies/<str:study_uid>/series/<str:series_uid>/metadata/",
+        "<str:ae_title>/wadors/studies/<str:study_uid>/series/<str:series_uid>/metadata",
         RetrieveSeriesMetadataAPIView.as_view(),
         name="wado_rs-series_with_study_uid_and_series_uid_and_mode",
     ),
     path(
-        "<str:ae_title>/stowrs/studies/",
+        "<str:ae_title>/stowrs/studies",
         StoreInstancesAPIView.as_view(),
         name="stow_rs-series",
     ),
