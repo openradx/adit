@@ -15,6 +15,10 @@ from .views import (
 #
 # As we just act as a proxy we only implement the mandatory target resources, see
 # https://dicom.nema.org/medical/dicom/current/output/html/part18.html#table_10.6.1-1
+#
+# As [DICOMweb client](https://github.com/ImagingDataCommons/dicomweb-client) does not use trailing
+# slashes in URLs we also don't use them in the URL patterns (in contrast to DRF best practice).
+#
 # TODO: Implement remaining target resource URLs
 urlpatterns = [
     path(
