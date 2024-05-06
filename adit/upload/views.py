@@ -65,6 +65,7 @@ class UploadJobCreateView(DicomJobCreateView):
         if not request.htmx:
             raise SuspiciousOperation("Only accessible by HTMX")
 
+
         form = UploadJobForm(
             request.POST,
             user=request.user,
