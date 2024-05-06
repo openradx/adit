@@ -106,7 +106,7 @@ function UploadJobForm(formEl) {
       if (files.length === 0) {
         showToast("warning", "Sandbox", `No files selected.${files}`);
       } else {
-        showToast("warning", "Sandbox", `${files.length} files selected`);
+        //showToast("warning", "Sandbox", `${files.length} files selected`);
 
         var datasets = [];
         for (const fileEntry of files) {
@@ -124,7 +124,14 @@ function UploadJobForm(formEl) {
               newPatientID = pseudonym.value;
             }
 
-            const anon = new Anonymizer(newPatientID);
+            const anon = new Anonymizer(
+              newPatientID,
+              undefined,
+              undefined,
+              undefined,
+              undefined,
+              123456789
+            );
             this.buttonVisible = false;
             this.stopUploadVar = false;
             for (const set of datasets) {
