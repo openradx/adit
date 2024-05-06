@@ -22,6 +22,16 @@ function UploadJobForm(formEl) {
       document.body.addEventListener("chooseFolder", (e) => {
         this.chooseFolder();
       });
+
+      var button = document.getElementById("uploadButton");
+      // Add an event listener to the button
+      button.addEventListener("click", function () {
+        // Trigger the form submission when the button is clicked
+        var form = document.getElementById("myForm");
+        if (form instanceof HTMLFormElement) {
+          htmx.trigger("#myForm", "submit");
+        }
+      });
     },
 
     initDestination: function (destEl) {
@@ -71,7 +81,6 @@ function UploadJobForm(formEl) {
         inputEl.value = null;
       }
       this.droppedFiles = [];
-      console.log(inputEl);
       this.toggleUploadButtonVisibility();
     },
 
@@ -82,7 +91,6 @@ function UploadJobForm(formEl) {
 
     chooseFolder: function () {
       const files = this.getFiles();
-
       this.loadFiles(files);
     },
 
@@ -94,94 +102,113 @@ function UploadJobForm(formEl) {
           destinationSelect.options[destinationSelect.selectedIndex];
         var node_id = selectedOption.getAttribute("node_id");
       }
-      showToast("warning", "Sandbox", "Let's upload some Files!!!");
+
       if (files.length === 0) {
         showToast("warning", "Sandbox", `No files selected.${files}`);
       } else {
-        showToast("warning", "Sandbox", `We have ${files.length} files!!!`);
+        showToast("warning", "Sandbox", `${files.length} files selected`);
 
         var datasets = [];
         for (const fileEntry of files) {
           await this.fileHandler(fileEntry, datasets);
         }
 
-        // console.log(x.dict["00080090"]);
         let status = 0;
         let loadedFiles = 0;
-        if (this.checkPatientIDs(datasets)) {
-          const pseudonym = formEl.querySelector('[name="pseudonym"]');
-          var newPatientID = "";
-          if (pseudonym instanceof HTMLInputElement) {
-            newPatientID = pseudonym.value;
-          }
-          console.log("newPatientID:", newPatientID);
-          const anon = new Anonymizer(newPatientID);
-          this.buttonVisible = false;
-          this.stopUploadVar = false;
-          for (const set of datasets) {
-            console.log(set);
-            const x = dcmjs.data.DicomMessage.readFile(set);
-            console.log(x);
-            await anon.anonymize(x);
-            console.log(x);
+        try {
+          const checker = await this.checkPatientIDs(datasets);
+          if (checker) {
+            const pseudonym = formEl.querySelector('[name="pseudonym"]');
+            var newPatientID = "";
+            if (pseudonym instanceof HTMLInputElement) {
+              newPatientID = pseudonym.value;
+            }
 
-            const anonymized_set = await x.write();
-            console.log(anonymized_set);
+            const anon = new Anonymizer(newPatientID);
+            this.buttonVisible = false;
+            this.stopUploadVar = false;
+            for (const set of datasets) {
+              // Anonymize data and write back to bufferstream
+              const x = dcmjs.data.DicomMessage.readFile(set, {
+                ignoreErrors: true,
+              });
+              const y = dcmjs.data.DicomMessage.readFile(set, {
+                ignoreErrors: true,
+              });
 
-            document.getElementById("pb").style.display = "inline-block";
-            if (this.stopUploadVar) {
-              break;
-            } // Stop uploading if stop button is clicked
+              await anon.anonymize(x);
+              const anonymized_set = await x.write();
 
-            console.log("toBeUploaded:", anonymized_set);
-            status = await uploadData({
-              ["dataset"]: anonymized_set,
-              ["node_id"]: node_id,
-            });
-            if (status == 200) {
-              loadedFiles += 1;
-
+              document.getElementById("pb").style.display = "inline-block";
               document.getElementById("stopUploadButton").style.display =
                 "inline-block";
-              const progBar = document.getElementById("pb");
-              if (progBar instanceof HTMLProgressElement) {
-                progBar.value = (loadedFiles / datasets.length) * 100;
+              if (this.stopUploadVar) {
+                // Stop uploading if stop button is clicked
+                break;
               }
-            } else {
-              this.uploadResultText = "Upload Failed";
-              document.getElementById("pb").style.display = "none";
-              document.getElementById("uploadCompleteText").style.display =
-                "inline-block";
 
-              console.log("Upload Failed");
-              break;
+              // Upload data to server
+              status = await uploadData({
+                ["dataset"]: anonymized_set,
+                ["node_id"]: node_id,
+              });
+              if (status == 200) {
+                loadedFiles += 1;
+
+                const progBar = document.getElementById("pb");
+                if (progBar instanceof HTMLProgressElement) {
+                  progBar.value = (loadedFiles / datasets.length) * 100;
+                }
+              } else {
+                this.uploadResultText = "Upload Failed";
+                document.getElementById("pb").style.display = "none";
+                document.getElementById("uploadCompleteText").style.display =
+                  "inline-block";
+
+                console.log("Upload Failed");
+                break;
+              }
             }
-          }
-          if (loadedFiles == datasets.length) {
-            this.uploadResultText = "Upload Successful!";
-            document.getElementById("stopUploadButton").style.display = "none";
-            setTimeout(function () {
-              document.getElementById("pb").style.display = "none";
-            }, 3000);
+            if (loadedFiles == datasets.length) {
+              this.uploadResultText = "Upload Successful!";
 
-            setTimeout(function () {
+              setTimeout(function () {
+                document.getElementById("pb").style.display = "none";
+              }, 3000);
+              setTimeout(function () {
+                document.getElementById("stopUploadButton").style.display =
+                  "none";
+              }, 500);
+
+              setTimeout(function () {
+                document.getElementById("uploadCompleteText").style.display =
+                  "inline-block";
+              }, 3000);
+              // Wait for 3 seconds (3000 milliseconds)
+            } else {
+              document.getElementById("stopUploadButton").style.display =
+                "none";
+
+              if (this.stopUploadVar) {
+                this.uploadResultText = "Upload Cancelled";
+              } else {
+                this.uploadResultText = "Upload Failed";
+              }
+
+              document.getElementById("pb").style.display = "none";
               document.getElementById("uploadCompleteText").style.display =
                 "inline-block";
-            }, 3000);
-            // Wait for 3 seconds (3000 milliseconds)
+            }
           } else {
-            document.getElementById("stopUploadButton").style.display = "none";
-
-            if (this.stopUploadVar) {
-              this.uploadResultText = "Upload Cancelled";
-            } else {
-              this.uploadResultText = "Upload Failed";
-            }
-
-            document.getElementById("pb").style.display = "none";
+            this.uploadResultText = "Upload refused - Fehlerhafte Datensätze";
+            this.buttonVisible = false;
             document.getElementById("uploadCompleteText").style.display =
               "inline-block";
           }
+        } catch (e) {
+          this.uploadResultText = "Upload Failed" + "\n" + e.message;
+          document.getElementById("uploadCompleteText").style.display =
+            "inline-block";
         }
 
         console.log("Upload process finished");
@@ -190,7 +217,6 @@ function UploadJobForm(formEl) {
 
     stopUpload: async function () {
       this.stopUploadVar = true;
-      console.log("STOP ALL UPLOADS!!!!!!!!!");
     },
 
     retrieveFilefromFileEntry: async function (fileEntry) {
@@ -238,26 +264,34 @@ function UploadJobForm(formEl) {
         this.buttonVisible = true;
         this.droppedFiles = files;
       }
-      console.log(this.droppedFiles);
     },
 
     checkPatientIDs: async function (datasets) {
       const patientIDs = new Set();
       const patientBirthdates = new Set();
       const patientNames = new Set();
-
-      for (const set of datasets) {
-        const dcm = dcmjs.data.DicomMessage.readFile(set);
-
-        patientIDs.add(dcm.dict["00100020"].Value[0]);
-        patientNames.add(dcm.dict["00100010"].Value[0]);
-        patientBirthdates.add(dcm.dict["00100030"].Value[0]);
+      try {
+        for (const set of datasets) {
+          const dcm = dcmjs.data.DicomMessage.readFile(set, {
+            ignoreErrors: true,
+          });
+          try {
+            patientIDs.add(dcm.dict["00100020"].Value[0]); // Patient ID
+            patientNames.add(dcm.dict["00100010"].Value[0].Alphabetic); // Patient Name
+            patientBirthdates.add(dcm.dict["00100030"].Value[0]); // Patient Birthdate
+          } catch (e) {
+            //console.log(e);
+          }
+        }
+        return (
+          patientIDs.size <= 1 &&
+          patientNames.size <= 1 &&
+          patientBirthdates.size <= 1
+        );
+      } catch (e) {
+        //console.log(e);
+        return false;
       }
-      return (
-        patientIDs.size == 1 &&
-        patientNames.size == 1 &&
-        patientBirthdates.size == 1
-      );
     },
   };
 }
@@ -298,7 +332,7 @@ async function uploadData(data) {
       }
     })
     .catch(function (error) {
-      console.log(`Error: ${error.reason_phrase}`);
+      //console.log(`Error: ${error.reason_phrase}`);
       return 0;
     });
 }
