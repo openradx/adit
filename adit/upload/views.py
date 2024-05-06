@@ -1,26 +1,16 @@
 import asyncio
-from concurrent.futures import ThreadPoolExecutor
 from io import BytesIO
 from os import error
 from typing import Any
 
-import pydicom
 from asgiref.sync import sync_to_async
-from bs4 import BeautifulSoup
-from crispy_forms.utils import render_crispy_form
-from django.core.exceptions import SuspiciousOperation, ValidationError
-from django.forms import Form
-from django.forms.models import model_to_dict
-from django.http import HttpRequest, HttpResponse, JsonResponse
+from django.core.exceptions import SuspiciousOperation
+from django.http import HttpResponse
 from django.shortcuts import render
-from django.template.context_processors import csrf
 from django_htmx.http import trigger_client_event
-from rest_framework.decorators import api_view, renderer_classes
-from rest_framework.renderers import JSONRenderer, TemplateHTMLRenderer
-from rest_framework.response import Response
 
 from adit.core.decorators import login_required_async, permission_required_async
-from adit.core.models import DicomNode, DicomServer
+from adit.core.models import DicomServer
 from adit.core.types import AuthenticatedHttpRequest
 from adit.core.utils.dicom_operator import DicomOperator
 from adit.core.utils.dicom_utils import read_dataset
@@ -28,7 +18,6 @@ from adit.core.views import (
     BaseUpdatePreferencesView,
     DicomJobCreateView,
 )
-from adit.dicom_web.views import StoreAPIView
 
 from .forms import UploadJobForm
 
@@ -48,7 +37,6 @@ class UploadJobCreateView(DicomJobCreateView):
     form_class = UploadJobForm
     permission_required = "upload.add_uploadjob"
     request: AuthenticatedHttpRequest
-    # model = UploadJob
 
     def get_form_kwargs(self) -> dict[str, Any]:
         kwargs = super().get_form_kwargs()
@@ -73,6 +61,7 @@ class UploadJobCreateView(DicomJobCreateView):
         return initial
 
     def post(self, request: AuthenticatedHttpRequest, *args, **kwargs):
+
         if not request.htmx:
             raise SuspiciousOperation("Only accessible by HTMX")
 
@@ -83,24 +72,13 @@ class UploadJobCreateView(DicomJobCreateView):
         )
 
         if form.is_valid():
-            ctx = {}
-            ctx.update(csrf(request))
-            rendered_form = render_crispy_form(form, context=ctx)
-            soup = BeautifulSoup(rendered_form, "html.parser")
-            inner_part = soup.find("div", id="form_partial")
-            response = HttpResponse(inner_part, status=200)
-            response = trigger_client_event(response, "chooseFolder")
-
-            return response
+            return trigger_client_event(
+                render(request, "upload/upload_job_form_swappable.html", {"form": form}),
+                "chooseFolder",
+            )
 
         else:
-            ctx = {}
-            ctx.update(csrf(request))
-            rendered_form = render_crispy_form(form, context=ctx)
-            soup = BeautifulSoup(rendered_form, "html.parser")
-            inner_part = soup.find("div", id="form_partial")
-
-            return HttpResponse(inner_part, status=200)
+            return render(request, "upload/upload_job_form_swappable.html", {"form": form})
 
 
 @login_required_async
@@ -141,7 +119,6 @@ async def uploadAPIView(request: AuthenticatedHttpRequest, node_id: str) -> Http
         else:
             status = 400
             message = "keine Daten enthalten"
-    print(status)
     response = HttpResponse(status=status, content=message)
 
     response["statusText"] = response.reason_phrase

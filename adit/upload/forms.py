@@ -1,7 +1,6 @@
 from crispy_forms.helper import FormHelper
-from crispy_forms.layout import HTML, Column, Div, Field, Layout, Row
+from crispy_forms.layout import Column, Div, Field, Layout, Row
 from django import forms
-from django.core.exceptions import SuspiciousOperation, ValidationError
 from django.utils.translation import gettext_lazy as _
 
 from adit.core.fields import DicomNodeChoiceField
@@ -50,9 +49,22 @@ class UploadJobForm(forms.ModelForm):
             Div(
                 form_fields_layout,
                 css_id="form_fields",
-                **{"x-init": "initUploadForm($el)", "hx-swap-oob": "morph"},
             ),
         )
+        self.helper.form_action = ""
+        self.helper.attrs = {
+            "x-init": "initUploadForm($el)",
+            "id": "myForm",
+            "hx-ext": "alpine-morph",
+            "hx-post": "new",
+            "method": "post",
+            "hx-trigger": "submit",
+            # "hx-target": "#form_page",
+            "hx-swap-oob": "true",
+            "action": "",
+            "novalidate": "",
+            "enctype": "multipart/form-data",
+        }
 
     def build_query_form_layout(self):
         query_form_layout = Layout(
