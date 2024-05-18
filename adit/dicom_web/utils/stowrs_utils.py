@@ -14,7 +14,7 @@ from ..errors import BadGatewayApiError, ServiceUnavailableApiError
 logger = logging.getLogger(__name__)
 
 
-async def stow_store(dest_server: DicomServer, datasets: list[Dataset]) -> list[Dataset]:
+async def stow_store(dest_server: DicomServer, datasets: list[Dataset]) -> dict[str, Dataset]:
     operator = DicomOperator(dest_server)
 
     logger.info("Connected to server %s", dest_server.ae_title)
@@ -63,7 +63,7 @@ async def stow_store(dest_server: DicomServer, datasets: list[Dataset]) -> list[
             result_ds.FailureReason = "0110"  # Processing failure
             result_dict[ds.StudyInstanceUID].FailedSOPSequence.append(result_ds)
 
-    return list(result_dict.values())
+    return result_dict
 
 
 async def remove_unknow_vr_attributes(ds: Dataset) -> Sequence:
