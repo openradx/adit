@@ -12,7 +12,7 @@ from rest_framework.response import Response
 
 from adit.core.models import DicomServer
 
-from .parsers import StowMultipartApplicationDicomParser
+from .parsers import StowMultipartApplicationDicomParser, parse_request_in_chunks
 from .renderers import (
     DicomWebWadoRenderer,
     QidoApplicationDicomJsonRenderer,
@@ -225,15 +225,21 @@ class StoreInstancesAPIView(WebDicomAPIView):
     ) -> Response:
         dest_server = await self._get_dicom_server(request, ae_title, "destination")
 
-        if study_uid:
-            datasets: list[Dataset] = [
-                dataset
-                for dataset in request.data["datasets"]
-                if dataset.StudyInstanceUID == study_uid
-            ]
-        else:
-            datasets = request.data["datasets"]
+        results_dict: dict[str, Dataset] = {}
+        async for ds in parse_request_in_chunks(request):
+            if study_uid:
+                if ds.StudyInstanceUID != study_uid:
+                    continue
+            result = await stow_store(dest_server, [ds])
+            for k, v in result.items():
+                if k not in results_dict:
+                    results_dict[k] = Dataset()
+                    results_dict[k].RetrieveURL = v.RetrieveURL
+                    results_dict[k].FailedSOPSequence = []
+                    results_dict[k].ReferencedSOPSequence = []
+                results_dict[k].FailedSOPSequence.extend(v.FailedSOPSequence)
+                results_dict[k].ReferencedSOPSequence.extend(v.ReferencedSOPSequence)
 
-        results = await stow_store(dest_server, datasets)
+        results: list[Dataset] = list(results_dict.values())
 
-        return Response(results, content_type=request.accepted_renderer.media_type)  # type: ignore
+        return Response(results, content_type=request.accepted_renderer.media_type)  # type: ignores
