@@ -6,7 +6,7 @@ authors = ["medihack <kai.schlamp@gmail.com>"]
 license = "GPL-3.0-or-later"
 
 [tool.poetry.dependencies]
-adit-radis-shared = { git = "https://github.com/openradx/adit-radis-shared.git" }
+adit-radis-shared = { git = "https://github.com/openradx/adit-radis-shared.git", rev = "0ff253bce657508102be322383b2c58c497fb14f" }
 adrf = "^0.1.1"
 aiofiles = "^23.1.0"
 asyncinotify = "^4.0.1"
@@ -92,7 +92,7 @@ reportUnnecessaryTypeIgnoreComment = true
 [tool.pytest.ini_options]
 DJANGO_SETTINGS_MODULE = "adit.settings.development"
 python_files = ["tests.py", "test_*.py", "*_tests.py"]
-testpaths = ["adit", "adit_radis_shared"]
+testpaths = ["adit"]
 log_cli = 0
 log_cli_level = "INFO"
 log_cli_format = "%(asctime)s [%(levelname)8s] %(message)s (%(filename)s:%(lineno)s)"
@@ -109,7 +109,7 @@ timeout = 60
 
 [tool.coverage.run]
 branch = true
-source = ["adit", "adit_radis_shared"]
+source = ["adit"]
 
 [tool.coverage.report]
 skip_empty = true
