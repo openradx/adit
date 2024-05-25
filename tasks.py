@@ -334,20 +334,21 @@ def init_workspace(ctx: Context):
             set_key(env_dev_file, "DJANGO_CSRF_TRUSTED_ORIGINS", url, quote_mode="never")
             set_key(env_dev_file, "DJANGO_ALLOWED_HOSTS", hosts, quote_mode="never")
             set_key(env_dev_file, "DJANGO_INTERNAL_IPS", hosts, quote_mode="never")
+            set_key(env_dev_file, "SITE_BASE_URL", url, quote_mode="never")
             set_key(env_dev_file, "SITE_DOMAIN", domain, quote_mode="never")
 
         set_key(env_dev_file, "FORCE_DEBUG_TOOLBAR", "true", quote_mode="never")
 
     if environ.get("CODESPACE_NAME"):
         # Inside GitHub Codespaces
-        codespaces_url = f"{environ['CODESPACE_NAME']}-8000.preview.app.github.dev"
-        modify_env_file(codespaces_url)
+        domain = f"{environ['CODESPACE_NAME']}-8000.preview.app.github.dev"
+        modify_env_file(domain)
     elif environ.get("GITPOD_WORKSPACE_ID"):
         # Inside Gitpod
         result = ctx.run("gp url 8000", hide=True, pty=True)
         assert result and result.ok
-        gitpod_url = result.stdout.strip().removeprefix("https://")
-        modify_env_file(gitpod_url)
+        domain = result.stdout.strip().removeprefix("https://")
+        modify_env_file(domain)
     else:
         # Inside some local environment
         modify_env_file()

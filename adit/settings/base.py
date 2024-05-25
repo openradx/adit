@@ -37,15 +37,11 @@ if READ_DOT_ENV_FILE:
     # OS environment variables take precedence over variables from .env
     env.read_env(str(BASE_DIR / ".env"))
 
-# Used by the django.contrib.sites framework
-SITE_ID = 1
-
-# Used by our custom data migrations in the common app to set the domain and name
-# of the sites frameworks Site model and also some other site specific settings in
-# our custom SiteProfile model.
-# Once set those values will be used from the database!
+# Our custom site settings that are also available in the templates,
+# see adit-radis-shared/common/site.py#base_context_processor
+SITE_BASE_URL = env.str("SITE_BASE_URL", default="http://localhost:8000")  # type: ignore
 SITE_DOMAIN = env.str("SITE_DOMAIN", default="localhost")  # type: ignore
-SITE_NAME = "ADIT"
+SITE_NAME = env.str("SITE_NAME", default="ADIT")  # type: ignore
 SITE_META_KEYWORDS = "ADIT,Radiology,DICOM,Medicine,Tool,Transfer"
 SITE_META_DESCRIPTION = "ADIT is a tool for managing automated DICOM transfers"
 SITE_PROJECT_URL = "https://github.com/openradx/adit"
@@ -62,7 +58,6 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "django.contrib.humanize",
-    "django.contrib.sites",
     "django.contrib.postgres",
     "django_extensions",
     "dbbackup",
@@ -95,7 +90,6 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
-    "django.contrib.sites.middleware.CurrentSiteMiddleware",
     "django_htmx.middleware.HtmxMiddleware",
     "adit_radis_shared.accounts.middlewares.ActiveGroupMiddleware",
     "adit_radis_shared.common.middlewares.MaintenanceMiddleware",

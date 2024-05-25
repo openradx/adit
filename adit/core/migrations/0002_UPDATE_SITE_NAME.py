@@ -20,11 +20,10 @@ class Migration(migrations.Migration):
 
     dependencies = [
         ("core", "0001_initial"),
-        ("sites", "0002_alter_domain_unique"),
+        # ("sites", "0002_alter_domain_unique"),
     ]
 
     operations = [
-        # No need anymore for this data migration as we to it in common,
-        # see common/migrations/0002_update_or_create_site.py
+        # No need for this as we don't use the sites framework anymore
         # migrations.RunPython(update_site_name),
     ]

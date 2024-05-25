@@ -1,3 +1,2 @@
-{% load base_url from common_extras %}
-<a href="{% base_url %}{{ job.get_absolute_url }}">{{ job }}</a> failed unexpectedly.
+<a href="{{ site_base_url }}{{ job.get_absolute_url }}">{{ job }}</a> failed unexpectedly.
 Celery Task ID {{ celery_task_id }}.
