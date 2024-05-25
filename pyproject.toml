@@ -6,7 +6,7 @@ authors = ["medihack <kai.schlamp@gmail.com>"]
 license = "GPL-3.0-or-later"
 
 [tool.poetry.dependencies]
-adit-radis-shared = { git = "https://github.com/openradx/adit-radis-shared.git" }
+adit-radis-shared = { git = "https://github.com/openradx/adit-radis-shared.git", tag = "0.2.4" }
 adrf = "^0.1.1"
 aiofiles = "^23.1.0"
 asyncinotify = "^4.0.1"
