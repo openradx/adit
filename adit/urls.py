@@ -29,7 +29,7 @@ urlpatterns = [
     path("batch-query/", include("adit.batch_query.urls")),
     path("dicom-explorer/", include("adit.dicom_explorer.urls")),
     path("token-authentication/", include("adit_radis_shared.token_authentication.urls")),
-    path("dicom-web/", include("adit.dicom_web.urls")),
+    path("api/dicom-web/", include("adit.dicom_web.urls")),
 ]
 
 # Debug Toolbar in Debug mode only

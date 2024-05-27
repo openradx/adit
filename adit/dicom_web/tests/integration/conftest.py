@@ -27,7 +27,7 @@ def user_with_group_and_token(dicom_web_group):
 def create_dicom_web_client():
     def _create_dicom_web_client(server_url: str, ae_title: str, token_string: str):
         client = DICOMwebClient(
-            url=f"{server_url}/dicom-web/{ae_title}",
+            url=f"{server_url}/api/dicom-web/{ae_title}",
             qido_url_prefix="qidors",
             wado_url_prefix="wadors",
             stow_url_prefix="stowrs",
