@@ -34,7 +34,7 @@ class DicomTaskProcessor(abc.ABC):
 
     def is_suspended(self) -> bool:
         app_settings = self.app_settings_class.get()
-        assert app_settings
+        assert isinstance(app_settings, DicomAppSettings)
         return app_settings.suspended
 
     @abc.abstractmethod
