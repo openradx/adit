@@ -23,7 +23,6 @@ urlpatterns = [
     path("django-admin/", include("loginas.urls")),
     path("api-auth/", include("rest_framework.urls")),
     path("accounts/", include("adit_radis_shared.accounts.urls")),
-    path("api/", include("adit.api.urls")),
     path("", include("adit.core.urls")),
     path("selective-transfer/", include("adit.selective_transfer.urls")),
     path("batch-transfer/", include("adit.batch_transfer.urls")),
