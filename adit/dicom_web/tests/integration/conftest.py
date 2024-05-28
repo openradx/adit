@@ -1,12 +1,13 @@
 import os
+from typing import Iterable
 
 import pandas as pd
 import pytest
 from adit_radis_shared.accounts.factories import UserFactory
 from adit_radis_shared.common.utils.auth_utils import add_user_to_group
 from adit_radis_shared.token_authentication.models import Token
-from dicomweb_client import DICOMwebClient
 from django.conf import settings
+from pydicom import Dataset
 
 from adit.core.utils.dicom_utils import read_dataset
 
@@ -52,16 +53,15 @@ def extended_data_sheet():
 
 @pytest.fixture
 def test_dicoms():
-    test_dicoms_path = settings.BASE_DIR / "samples" / "dicoms" / "1001"
-    dicoms = []
-    for root, _, files in os.walk(test_dicoms_path):
-        if len(files) != 0:
-            try:
-                dicoms.extend(
-                    [read_dataset(os.path.join(root, files[i])) for i in range(len(files))]
-                )
-            except Exception:
-                continue
-    if len(dicoms) == 0:
-        raise Exception("No DICOM files found in samples/dicoms")
-    return dicoms
+    def _test_dicoms(patient_id: str) -> Iterable[Dataset]:
+        test_dicoms_path = settings.BASE_DIR / "samples" / "dicoms" / patient_id
+        for root, _, files in os.walk(test_dicoms_path):
+            if len(files) != 0:
+                for file in files:
+                    try:
+                        ds = read_dataset(os.path.join(root, file))
+                    except Exception:
+                        continue
+                    yield ds
+
+    return _test_dicoms

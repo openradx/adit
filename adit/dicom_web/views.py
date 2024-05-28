@@ -6,13 +6,14 @@ from adrf.views import APIView as AsyncApiView
 from channels.db import database_sync_to_async
 from django.db.models import QuerySet
 from django.http import StreamingHttpResponse
-from pydicom import Dataset
+from django.urls import reverse
+from pydicom import Dataset, Sequence
 from rest_framework.exceptions import NotFound, ParseError, ValidationError
 from rest_framework.response import Response
 
 from adit.core.models import DicomServer
 
-from .parsers import StowMultipartApplicationDicomParser, parse_request_in_chunks
+from .parsers import StowMultipartApplicationDicomParser
 from .renderers import (
     DicomWebWadoRenderer,
     QidoApplicationDicomJsonRenderer,
@@ -225,21 +226,36 @@ class StoreInstancesAPIView(WebDicomAPIView):
     ) -> Response:
         dest_server = await self._get_dicom_server(request, ae_title, "destination")
 
-        results_dict: dict[str, Dataset] = {}
-        async for ds in parse_request_in_chunks(request):
+        results: Dataset = Dataset()
+        results.ReferenceSOPSequence = Sequence([])
+        results.FailedSOPSequence = Sequence([])
+
+        async for ds in cast(AsyncIterator[Dataset | None], request.data):
+            if ds is None:
+                continue
+
+            logger.debug(f"Received instance {ds.SOPInstanceUID} via STOW-RS")
+
             if study_uid:
+                results.RetrieveURL = reverse(
+                    "wado_rs-studies_with_study_uid",
+                    args=[dest_server.ae_title, ds.StudyInstanceUID],
+                )
                 if ds.StudyInstanceUID != study_uid:
                     continue
-            result = await stow_store(dest_server, [ds])
-            for k, v in result.items():
-                if k not in results_dict:
-                    results_dict[k] = Dataset()
-                    results_dict[k].RetrieveURL = v.RetrieveURL
-                    results_dict[k].FailedSOPSequence = []
-                    results_dict[k].ReferencedSOPSequence = []
-                results_dict[k].FailedSOPSequence.extend(v.FailedSOPSequence)
-                results_dict[k].ReferencedSOPSequence.extend(v.ReferencedSOPSequence)
 
-        results: list[Dataset] = list(results_dict.values())
+            logger.debug(f"Storing instance {ds.SOPInstanceUID} to {dest_server.ae_title}")
+            result_ds, failed = await stow_store(dest_server, ds)
 
-        return Response(results, content_type=request.accepted_renderer.media_type)  # type: ignores
+            if failed:
+                logger.debug(
+                    f"Storing instance {ds.SOPInstanceUID} to {dest_server.ae_title} failed"
+                )
+                results.FailedSOPSequence.append(result_ds)
+            else:
+                results.ReferenceSOPSequence.append(result_ds)
+                logger.debug(
+                    f"Successfully stored instance {ds.SOPInstanceUID} to {dest_server.ae_title}"
+                )
+
+        return Response([results], content_type=request.accepted_renderer.media_type)  # type: ignore
