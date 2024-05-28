@@ -2,6 +2,8 @@
 
 ## Top
 
+- When populate_data then also reset_orthancs
+- Study Date is changed when using Selective Transfer
 - Fix that ADIT DICOMweb supports STOW of multiple image files at once
   -- Currently it only allow to upload only one file after another
   -- When multiple files at once are stored than those are send as a chunked transfer
