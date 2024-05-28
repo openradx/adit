@@ -448,7 +448,7 @@ def bump_version(ctx: Context, rule: Literal["patch", "minor", "major"]):
     ctx.run(f"poetry version {rule}", pty=True)
     ctx.run("git add pyproject.toml", pty=True)
     ctx.run("git commit -m 'Bump version'", pty=True)
-    ctx.run("git tag -a $(poetry version -s) -m 'Release $(poetry version -s)'", pty=True)
+    ctx.run('git tag -a v$(poetry version -s) -m "Release v$(poetry version -s)"', pty=True)
     ctx.run("git push --follow-tags", pty=True)
 
 
