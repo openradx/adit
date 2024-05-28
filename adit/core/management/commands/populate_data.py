@@ -153,7 +153,7 @@ class Command(BaseCommand):
             call_command("migrate")
 
         do_populate = True
-        if User.objects.count() > 0:
+        if DicomServer.objects.filter(ae_title="ORTHANC1").count() > 0:
             print("Development database already populated. Skipping.")
             do_populate = False
 
