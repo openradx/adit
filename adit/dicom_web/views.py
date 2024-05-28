@@ -14,13 +14,10 @@ from rest_framework.response import Response
 from adit.core.models import DicomServer
 
 from .parsers import StowMultipartApplicationDicomParser
-from .renderers import (
-    DicomWebWadoRenderer,
-    QidoApplicationDicomJsonRenderer,
-    StowApplicationDicomJsonRenderer,
-    WadoApplicationDicomJsonRenderer,
-    WadoMultipartApplicationDicomRenderer,
-)
+from .renderers import (DicomWebWadoRenderer, QidoApplicationDicomJsonRenderer,
+                        StowApplicationDicomJsonRenderer,
+                        WadoApplicationDicomJsonRenderer,
+                        WadoMultipartApplicationDicomRenderer)
 from .utils.qidors_utils import qido_find
 from .utils.stowrs_utils import stow_store
 from .utils.wadors_utils import wado_retrieve
@@ -227,7 +224,7 @@ class StoreInstancesAPIView(WebDicomAPIView):
         dest_server = await self._get_dicom_server(request, ae_title, "destination")
 
         results: Dataset = Dataset()
-        results.ReferenceSOPSequence = Sequence([])
+        results.ReferencedSOPSequence = Sequence([])
         results.FailedSOPSequence = Sequence([])
 
         async for ds in cast(AsyncIterator[Dataset | None], request.data):
@@ -253,7 +250,7 @@ class StoreInstancesAPIView(WebDicomAPIView):
                 )
                 results.FailedSOPSequence.append(result_ds)
             else:
-                results.ReferenceSOPSequence.append(result_ds)
+                results.ReferencedSOPSequence.append(result_ds)
                 logger.debug(
                     f"Successfully stored instance {ds.SOPInstanceUID} to {dest_server.ae_title}"
                 )
