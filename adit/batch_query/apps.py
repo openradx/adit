@@ -48,6 +48,5 @@ def init_db(**kwargs):
 def create_app_settings():
     from .models import BatchQuerySettings
 
-    settings = BatchQuerySettings.get()
-    if not settings:
+    if not BatchQuerySettings.objects.exists():
         BatchQuerySettings.objects.create()

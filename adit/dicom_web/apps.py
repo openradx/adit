@@ -16,6 +16,5 @@ def init_db(**kwargs):
 def create_app_settings():
     from .models import DicomWebSettings
 
-    settings = DicomWebSettings.get()
-    if not settings:
+    if not DicomWebSettings.objects.exists():
         DicomWebSettings.objects.create()

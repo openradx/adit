@@ -50,6 +50,5 @@ def init_db(**kwargs):
 def create_app_settings():
     from .models import SelectiveTransferSettings
 
-    settings = SelectiveTransferSettings.get()
-    if not settings:
+    if not SelectiveTransferSettings.objects.exists():
         SelectiveTransferSettings.objects.create()

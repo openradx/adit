@@ -48,6 +48,5 @@ def init_db(**kwargs):
 def create_app_settings():
     from .models import BatchTransferSettings
 
-    settings = BatchTransferSettings.get()
-    if not settings:
+    if not BatchTransferSettings.objects.exists():
         BatchTransferSettings.objects.create()

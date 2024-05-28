@@ -17,6 +17,5 @@ def init_db(sender, **kwargs):
 def create_app_settings():
     from .models import ExampleAppSettings
 
-    settings = ExampleAppSettings.get()
-    if not settings:
+    if not ExampleAppSettings.objects.exists():
         ExampleAppSettings.objects.create()
