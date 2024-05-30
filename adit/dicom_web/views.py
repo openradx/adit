@@ -6,13 +6,15 @@ from adrf.views import APIView as AsyncApiView
 from channels.db import database_sync_to_async
 from django.db.models import QuerySet
 from django.http import StreamingHttpResponse
-from pydicom import Dataset
-from rest_framework.exceptions import NotFound, ParseError, ValidationError
+from django.urls import reverse
+from pydicom import Dataset, Sequence
+from rest_framework.exceptions import NotFound, ParseError, UnsupportedMediaType, ValidationError
 from rest_framework.response import Response
+from rest_framework.utils.mediatypes import media_type_matches
 
 from adit.core.models import DicomServer
 
-from .parsers import StowMultipartApplicationDicomParser
+from .parsers import parse_request_in_chunks
 from .renderers import (
     DicomWebWadoRenderer,
     QidoApplicationDicomJsonRenderer,
@@ -214,7 +216,6 @@ class RetrieveSeriesMetadataAPIView(RetrieveSeriesAPIView):
 
 # TODO: respect permission can_store
 class StoreInstancesAPIView(WebDicomAPIView):
-    parser_classes = [StowMultipartApplicationDicomParser]
     renderer_classes = [StowApplicationDicomJsonRenderer]
 
     async def post(
@@ -223,17 +224,42 @@ class StoreInstancesAPIView(WebDicomAPIView):
         ae_title: str,
         study_uid: str = "",
     ) -> Response:
+        content_type: str = request.content_type  # type: ignore
+        if not media_type_matches("multipart/related; type=application/dicom", content_type):
+            raise UnsupportedMediaType(content_type)
+
         dest_server = await self._get_dicom_server(request, ae_title, "destination")
 
-        if study_uid:
-            datasets: list[Dataset] = [
-                dataset
-                for dataset in request.data["datasets"]
-                if dataset.StudyInstanceUID == study_uid
-            ]
-        else:
-            datasets = request.data["datasets"]
+        results: Dataset = Dataset()
+        results.ReferencedSOPSequence = Sequence([])
+        results.FailedSOPSequence = Sequence([])
 
-        results = await stow_store(dest_server, datasets)
+        async for ds in parse_request_in_chunks(request):
+            if ds is None:
+                continue
 
-        return Response(results, content_type=request.accepted_renderer.media_type)  # type: ignore
+            logger.debug(f"Received instance {ds.SOPInstanceUID} via STOW-RS")
+
+            if study_uid:
+                results.RetrieveURL = reverse(
+                    "wado_rs-studies_with_study_uid",
+                    args=[dest_server.ae_title, ds.StudyInstanceUID],
+                )
+                if ds.StudyInstanceUID != study_uid:
+                    continue
+
+            logger.debug(f"Storing instance {ds.SOPInstanceUID} to {dest_server.ae_title}")
+            result_ds, failed = await stow_store(dest_server, ds)
+
+            if failed:
+                logger.debug(
+                    f"Storing instance {ds.SOPInstanceUID} to {dest_server.ae_title} failed"
+                )
+                results.FailedSOPSequence.append(result_ds)
+            else:
+                results.ReferencedSOPSequence.append(result_ds)
+                logger.debug(
+                    f"Successfully stored instance {ds.SOPInstanceUID} to {dest_server.ae_title}"
+                )
+
+        return Response([results], content_type=request.accepted_renderer.media_type)  # type: ignore

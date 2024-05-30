@@ -14,56 +14,42 @@ from ..errors import BadGatewayApiError, ServiceUnavailableApiError
 logger = logging.getLogger(__name__)
 
 
-async def stow_store(dest_server: DicomServer, datasets: list[Dataset]) -> list[Dataset]:
+async def stow_store(dest_server: DicomServer, ds: Dataset) -> tuple[Dataset, bool]:
     operator = DicomOperator(dest_server)
 
     logger.info("Connected to server %s", dest_server.ae_title)
 
-    result_dict: dict[str, Dataset] = {}
+    assert isinstance(ds, Dataset)
 
-    for ds in datasets:
-        assert isinstance(ds, Dataset)
+    result_ds = Dataset()
+    result_ds.SOPClassUID = ds.SOPClassUID
+    result_ds.SOPInstanceUID = ds.SOPInstanceUID
+    result_ds.OriginalAttributesSequence = Sequence([])
 
-        if ds.StudyInstanceUID not in result_dict:
-            result_dict[ds.StudyInstanceUID] = Dataset()
-            result_dict[ds.StudyInstanceUID].RetrieveURL = reverse(
-                "wado_rs-studies_with_study_uid",
-                args=[dest_server.ae_title, ds.StudyInstanceUID],
-            )
-            result_dict[ds.StudyInstanceUID].FailedSOPSequence = Sequence([])
-            result_dict[ds.StudyInstanceUID].ReferencedSOPSequence = Sequence([])
+    original_attributes = await remove_unknow_vr_attributes(ds)
 
-        result_ds = Dataset()
-        result_ds.SOPClassUID = ds.SOPClassUID
-        result_ds.SOPInstanceUID = ds.SOPInstanceUID
-        result_ds.OriginalAttributesSequence = Sequence([])
+    try:
+        await sync_to_async(operator.upload_instances)([ds])
+        result_ds.RetrieveURL = reverse(
+            "wado_rs-series_with_study_uid_and_series_uid",
+            args=[dest_server.ae_title, ds.StudyInstanceUID, ds.SeriesInstanceUID],
+        )
+        result_ds.OriginalAttributesSequence = original_attributes
+        return result_ds, False
+    except RetriableDicomError as err:
+        logger.exception(err)
+        raise ServiceUnavailableApiError(str(err))
+    except DicomError as err:
+        logger.exception(err)
+        raise BadGatewayApiError(str(err))
+    except Exception as err:
+        logger.exception(err)
+        logger.error("Failed to upload dataset %s", ds.SOPInstanceUID)
 
-        original_attributes = await remove_unknow_vr_attributes(ds)
+        # https://dicom.nema.org/medical/dicom/current/output/html/part18.html#sect_I.2.2
+        result_ds.FailureReason = "0110"  # Processing failure
 
-        try:
-            # TODO: really upload one at at time?!
-            await sync_to_async(operator.upload_instances)([ds])
-            result_ds.RetrieveURL = reverse(
-                "wado_rs-series_with_study_uid_and_series_uid",
-                args=[dest_server.ae_title, ds.StudyInstanceUID, ds.SeriesInstanceUID],
-            )
-            result_ds.OriginalAttributesSequence = original_attributes
-            result_dict[ds.StudyInstanceUID].ReferencedSOPSequence.append(result_ds)
-        except RetriableDicomError as err:
-            logger.exception(err)
-            raise ServiceUnavailableApiError(str(err))
-        except DicomError as err:
-            logger.exception(err)
-            raise BadGatewayApiError(str(err))
-        except Exception as err:
-            logger.exception(err)
-            logger.error("Failed to upload dataset %s", ds.SOPInstanceUID)
-
-            # https://dicom.nema.org/medical/dicom/current/output/html/part18.html#sect_I.2.2
-            result_ds.FailureReason = "0110"  # Processing failure
-            result_dict[ds.StudyInstanceUID].FailedSOPSequence.append(result_ds)
-
-    return list(result_dict.values())
+    return result_ds, True
 
 
 async def remove_unknow_vr_attributes(ds: Dataset) -> Sequence:
