@@ -6,6 +6,7 @@ import pytest
 from adit_radis_shared.accounts.factories import UserFactory
 from adit_radis_shared.common.utils.auth_utils import add_user_to_group
 from adit_radis_shared.token_authentication.models import Token
+from dicomweb_client import DICOMwebClient
 from django.conf import settings
 from pydicom import Dataset
 
