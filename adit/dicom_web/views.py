@@ -8,16 +8,20 @@ from django.db.models import QuerySet
 from django.http import StreamingHttpResponse
 from django.urls import reverse
 from pydicom import Dataset, Sequence
-from rest_framework.exceptions import NotFound, ParseError, ValidationError
+from rest_framework.exceptions import NotFound, ParseError, UnsupportedMediaType, ValidationError
 from rest_framework.response import Response
+from rest_framework.utils.mediatypes import media_type_matches
 
 from adit.core.models import DicomServer
 
-from .parsers import StowMultipartApplicationDicomParser
-from .renderers import (DicomWebWadoRenderer, QidoApplicationDicomJsonRenderer,
-                        StowApplicationDicomJsonRenderer,
-                        WadoApplicationDicomJsonRenderer,
-                        WadoMultipartApplicationDicomRenderer)
+from .parsers import parse_request_in_chunks
+from .renderers import (
+    DicomWebWadoRenderer,
+    QidoApplicationDicomJsonRenderer,
+    StowApplicationDicomJsonRenderer,
+    WadoApplicationDicomJsonRenderer,
+    WadoMultipartApplicationDicomRenderer,
+)
 from .utils.qidors_utils import qido_find
 from .utils.stowrs_utils import stow_store
 from .utils.wadors_utils import wado_retrieve
@@ -212,7 +216,6 @@ class RetrieveSeriesMetadataAPIView(RetrieveSeriesAPIView):
 
 # TODO: respect permission can_store
 class StoreInstancesAPIView(WebDicomAPIView):
-    parser_classes = [StowMultipartApplicationDicomParser]
     renderer_classes = [StowApplicationDicomJsonRenderer]
 
     async def post(
@@ -221,13 +224,17 @@ class StoreInstancesAPIView(WebDicomAPIView):
         ae_title: str,
         study_uid: str = "",
     ) -> Response:
+        content_type: str = request.content_type  # type: ignore
+        if not media_type_matches("multipart/related; type=application/dicom", content_type):
+            raise UnsupportedMediaType(content_type)
+
         dest_server = await self._get_dicom_server(request, ae_title, "destination")
 
         results: Dataset = Dataset()
         results.ReferencedSOPSequence = Sequence([])
         results.FailedSOPSequence = Sequence([])
 
-        async for ds in cast(AsyncIterator[Dataset | None], request.data):
+        async for ds in parse_request_in_chunks(request):
             if ds is None:
                 continue
 

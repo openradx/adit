@@ -93,7 +93,6 @@ MIDDLEWARE = [
     "adit_radis_shared.accounts.middlewares.ActiveGroupMiddleware",
     "adit_radis_shared.common.middlewares.MaintenanceMiddleware",
     "adit_radis_shared.common.middlewares.TimezoneMiddleware",
-    "adit.dicom_web.middlewares.ChunkedHTTPRequestMiddleware",
 ]
 
 ROOT_URLCONF = "adit.urls"

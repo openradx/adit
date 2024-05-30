@@ -29,7 +29,6 @@ async def stow_store(dest_server: DicomServer, ds: Dataset) -> tuple[Dataset, bo
     original_attributes = await remove_unknow_vr_attributes(ds)
 
     try:
-        # TODO: really upload one at at time?!
         await sync_to_async(operator.upload_instances)([ds])
         result_ds.RetrieveURL = reverse(
             "wado_rs-series_with_study_uid_and_series_uid",
