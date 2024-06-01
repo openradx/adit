@@ -1,5 +1,4 @@
 x-app: &default-app
-  restart: always
   image: adit_prod:latest
   env_file:
     - ../.env.prod
@@ -8,6 +7,12 @@ x-app: &default-app
     DJANGO_SETTINGS_MODULE: "adit.settings.production"
     SSL_CERT_FILE: "/var/www/adit/ssl/cert.pem"
     SSL_KEY_FILE: "/var/www/adit/ssl/key.pem"
+
+x-deploy: &deploy
+  replicas: 1
+  restart_policy:
+    condition: on-failure
+    max_attempts: 3
 
 services:
   web:
@@ -28,14 +33,14 @@ services:
         daphne -b 0.0.0.0 -p 80 -e ssl:443:privateKey=/var/www/adit/ssl/key.pem:certKey=/var/www/adit/ssl/cert.pem adit.asgi:application
       "
     deploy:
-      replicas: 1
+      <<: *deploy
+      replicas: 3
 
   postgres:
-    restart: always
     env_file:
       - ../.env.prod
     deploy:
-      replicas: 1
+      <<: *deploy
 
   dicom_worker:
     <<: *default-app
@@ -45,19 +50,19 @@ services:
         ./manage.py dicom_worker
       "
     deploy:
-      replicas: 1
+      <<: *deploy
 
   celery_worker:
     <<: *default-app
     command: ./manage.py celery_worker -Q default_queue
     deploy:
-      replicas: 1
+      <<: *deploy
 
   celery_beat:
     <<: *default-app
     command: ./manage.py celery_beat
     deploy:
-      replicas: 1
+      <<: *deploy
 
   receiver:
     <<: *default-app
@@ -65,24 +70,21 @@ services:
       - "11112:11112"
     command: ./manage.py receiver
     deploy:
-      replicas: 1
+      <<: *deploy
 
   flower:
     <<: *default-app
     deploy:
-      replicas: 1
+      <<: *deploy
 
   redis:
-    restart: always
     deploy:
-      replicas: 1
+      <<: *deploy
 
   orthanc1:
-    restart: always
     deploy:
-      replicas: 1
+      <<: *deploy
 
   orthanc2:
-    restart: always
     deploy:
-      replicas: 1
+      <<: *deploy
