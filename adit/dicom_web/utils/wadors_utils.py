@@ -34,14 +34,16 @@ async def wado_retrieve(
         loop.call_soon_threadsafe(queue.put_nowait, ds)
 
     try:
-        series_list = list(await sync_to_async(operator.find_series)(query_ds))
+        series_list = list(
+            await sync_to_async(operator.find_series, thread_sensitive=False)(query_ds)
+        )
 
         if len(series_list) == 0:
             raise NotFound("No DICOM objects matches the query.")
 
         for series in series_list:
             fetch_series_task = asyncio.create_task(
-                sync_to_async(operator.fetch_series)(
+                sync_to_async(operator.fetch_series, thread_sensitive=False)(
                     patient_id=series.PatientID,
                     study_uid=series.StudyInstanceUID,
                     series_uid=series.SeriesInstanceUID,

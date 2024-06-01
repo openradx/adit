@@ -22,10 +22,12 @@ async def qido_find(
     try:
         if level == "STUDY":
             results: list[ResultDataset] = list(
-                await sync_to_async(operator.find_studies)(query_ds)
+                await sync_to_async(operator.find_studies, thread_sensitive=False)(query_ds)
             )
         elif level == "SERIES":
-            results: list[ResultDataset] = list(await sync_to_async(operator.find_series)(query_ds))
+            results: list[ResultDataset] = list(
+                await sync_to_async(operator.find_series, thread_sensitive=False)(query_ds)
+            )
         else:
             raise ValueError(f"Invalid QIDO-RS level: {level}.")
     except RetriableDicomError as err:
