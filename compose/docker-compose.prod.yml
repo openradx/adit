@@ -15,6 +15,24 @@ x-deploy: &deploy
     max_attempts: 3
 
 services:
+  # We can't use those manage commands inside the web container in production because
+  # the web service may have multiple replicas. So we make sure to only run them once
+  # and wait for it to be finished by the web service containers.
+  init:
+    <<: *default-app
+    hostname: init.local
+    command: >
+      bash -c "
+        wait-for-it -s postgres.local:5432 -t 60 && 
+        ./manage.py migrate &&
+        ./manage.py collectstatic --no-input &&
+        ./manage.py create_admin &&
+        ./manage.py generate_cert &&
+        ./manage.py ok_server --host 0.0.0.0 --port 8000
+      "
+    deploy:
+      <<: *deploy
+
   web:
     <<: *default-app
     build:
@@ -24,16 +42,13 @@ services:
       - "${ADIT_HTTPS_PORT:-443}:443"
     command: >
       bash -c "
-        wait-for-it -s postgres.local:5432 -t 60 && 
-        ./manage.py migrate &&
-        ./manage.py collectstatic --no-input &&
-        ./manage.py create_admin &&
-        ./manage.py generate_cert &&
+        wait-for-it -s init.local:8000 -t 300 && 
         echo 'Starting web server ...'
         daphne -b 0.0.0.0 -p 80 -e ssl:443:privateKey=/var/www/adit/ssl/key.pem:certKey=/var/www/adit/ssl/cert.pem adit.asgi:application
       "
     deploy:
       <<: *deploy
+      replicas: 3
 
   postgres:
     env_file:
