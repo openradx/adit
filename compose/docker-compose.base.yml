@@ -1,5 +1,6 @@
 x-app: &default-app
   volumes:
+    - adit_data:/var/www/adit
     - /mnt:/mnt
   depends_on:
     - postgres
