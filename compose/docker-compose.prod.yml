@@ -34,7 +34,6 @@ services:
       "
     deploy:
       <<: *deploy
-      replicas: 3
 
   postgres:
     env_file:
