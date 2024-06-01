@@ -95,6 +95,8 @@
 
 ## Maybe
 
+- Replace Redis distributed locks with <https://django-pglock.readthedocs.io/en/1.5.1/>
+- Replace Celery with <https://procrastinate.readthedocs.io/en/stable/howto/django.html>
 - Do some prechecks before trying the task (is source and destination online?)
 - Generate exposed IDs for URLs by hashing the primary (number) keys:
   - <https://sqids.org/python>
