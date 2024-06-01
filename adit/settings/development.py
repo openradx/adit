@@ -22,6 +22,10 @@ CSRF_TRUSTED_ORIGINS = env.list("DJANGO_CSRF_TRUSTED_ORIGINS", default=[])  # ty
 
 EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 
+# In production we use Gunicorn + Uvicorn (faster and supports multiple workers), but in
+# development (and during testing) we still use Daphne
+INSTALLED_APPS = ["daphne"] + INSTALLED_APPS  # noqa: F405
+
 INSTALLED_APPS += [  # noqa: F405
     "debug_toolbar",
     "debug_permissions",

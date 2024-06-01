@@ -25,7 +25,7 @@ services:
         ./manage.py create_admin &&
         ./manage.py generate_cert &&
         echo 'Starting web server ...'
-        daphne -b 0.0.0.0 -p 80 -e ssl:443:privateKey=/var/www/adit/ssl/key.pem:certKey=/var/www/adit/ssl/cert.pem adit.asgi:application
+        gunicorn -b 0.0.0.0:443 --keyfile=/var/www/adit/ssl/key.pem --certfile /var/www/adit/ssl/cert.pem -w 4 -k uvicorn.workers.UvicornWorker adit.asgi:application
       "
     deploy:
       replicas: 1
@@ -41,7 +41,7 @@ services:
     <<: *default-app
     command: >
       bash -c "
-        wait-for-it -s web.local:80 -t 0 && 
+        wait-for-it -s web.local:443 -t 0 && 
         ./manage.py dicom_worker
       "
     deploy:
