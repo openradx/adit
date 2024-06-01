@@ -88,6 +88,7 @@ vermin = "^1.5.2"
 ignore = ["**/migrations", "**/*.ipynb"]
 typeCheckingMode = "basic"
 reportUnnecessaryTypeIgnoreComment = true
+reportWildcardImportFromLibrary = false
 
 [tool.pytest.ini_options]
 DJANGO_SETTINGS_MODULE = "adit.settings.development"

@@ -1,6 +1,5 @@
 import datetime
 from time import sleep
-from typing import override
 
 import pytest
 import time_machine
@@ -21,7 +20,6 @@ class ExampleProcessor(DicomTaskProcessor):
     dicom_task_class = ExampleTransferTask
     app_settings_class = ExampleAppSettings
 
-    @override
     def process(self) -> ProcessingResult:
         return {
             "status": ExampleTransferTask.Status.SUCCESS,
