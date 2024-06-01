@@ -10,6 +10,11 @@ x-app: &default-app
   pull_policy: never # only works with Docker Compose and not Docker Swarm
 
 services:
+  init:
+    <<: *default-app
+    profiles:
+      - never
+
   web:
     <<: *default-app
     build:

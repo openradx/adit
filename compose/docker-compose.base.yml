@@ -1,5 +1,6 @@
 x-app: &default-app
   volumes:
+    - adit_data:/var/www/adit
     - /mnt:/mnt
   depends_on:
     - postgres
@@ -25,15 +26,15 @@ x-app: &default-app
     STORE_SCP_PORT: 11112
 
 services:
+  init:
+    <<: *default-app
+    hostname: init.local
+
   web:
     <<: *default-app
     hostname: web.local
     build:
       context: ..
-    volumes:
-      # Cave, overwrites the above anchor
-      - /mnt:/mnt
-      - adit_data:/var/www/adit
 
   postgres:
     image: postgres:13.13
