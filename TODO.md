@@ -116,7 +116,6 @@
 - Allow to find multiple Patients for the same PatientName + PatientBirthDate in batch query
   - Currently we don't allow this, but this can happen when a patient has multiple PatientIDs in the same PACS (e.g. has external images)
 - exclude test folders from autorelad in ServerCommand (maybe a custom filter is needed)
-- Switch from Daphne to Uvicorn (maybe it has faster restart times during development)
 - Switch from Celery to Huey
 - Upgrade postgres server to v15, but we have to migrate the data then as the database files are incompatible a newer version
   - <https://hollo.me/devops/upgrade-postgresql-database-with-docker.html>

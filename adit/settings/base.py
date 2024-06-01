@@ -47,7 +47,6 @@ SITE_META_DESCRIPTION = "ADIT is a tool for managing automated DICOM transfers"
 SITE_PROJECT_URL = "https://github.com/openradx/adit"
 
 INSTALLED_APPS = [
-    "daphne",
     "whitenoise.runserver_nostatic",
     "adit_radis_shared.common.apps.CommonConfig",
     "registration",
