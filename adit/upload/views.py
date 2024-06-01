@@ -65,7 +65,6 @@ class UploadJobCreateView(DicomJobCreateView):
         if not request.htmx:
             raise SuspiciousOperation("Only accessible by HTMX")
 
-
         form = UploadJobForm(
             request.POST,
             user=request.user,
@@ -73,6 +72,7 @@ class UploadJobCreateView(DicomJobCreateView):
         )
 
         if form.is_valid():
+            
             return trigger_client_event(
                 render(request, "upload/upload_job_form_swappable.html", {"form": form}),
                 "chooseFolder",
@@ -84,42 +84,31 @@ class UploadJobCreateView(DicomJobCreateView):
 
 @login_required_async
 async def uploadAPIView(request: AuthenticatedHttpRequest, node_id: str) -> HttpResponse:
-    status = 0
-    message = ""
+    if request.method != "POST":
+        return HttpResponse(status=405)
 
-    if request.method == "POST":
-        data = request.FILES
+    data = request.FILES
 
-        if "dataset" in data:
-            dataset_bytes = data["dataset"].read()
-            dataset_bytes = BytesIO(dataset_bytes)
-            dataset = read_dataset(dataset_bytes)
+    destination = await sync_to_async(lambda: DicomServer.objects.get(id=node_id))()
+    operator = DicomOperator(destination)
 
-            if "node_id" in data:
-                selected_id = int(node_id)
-                destination_node = await sync_to_async(
-                    lambda: DicomServer.objects.get(id=selected_id)
-                )()
-                operator = DicomOperator(destination_node)
+    if "dataset" in data:
+        dataset_bytes = BytesIO(data["dataset"].read())
+        dataset = read_dataset(dataset_bytes)
 
-                try:
-                    loop = asyncio.get_event_loop()
-                    await loop.run_in_executor(None, operator.upload_instances, [dataset])
-                    status = 200
-                    message = "Upload erfolgreich"
+    if dataset is None:
+        return HttpResponse(status=400, content="No data received")
+    try:
+        loop = asyncio.get_event_loop()
+        await loop.run_in_executor(None, operator.upload_instances, [dataset])
 
-                except error:
-                    print(error)
-                    status = 500
-                    message = "Upload fehlgeschlagen"
+        status = 200
+        message = "Upload successful"
 
-            else:
-                status = 400
-                message = "keine NodeID erhalten "
+    except Exception:
+        status = 500
+        message = "Upload failed"
 
-        else:
-            status = 400
-            message = "keine Daten enthalten"
     response = HttpResponse(status=status, content=message)
 
     response["statusText"] = response.reason_phrase
