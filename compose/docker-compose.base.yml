@@ -1,6 +1,5 @@
 x-app: &default-app
   volumes:
-    - adit_data:/var/www/adit
     - /mnt:/mnt
   depends_on:
     - postgres
@@ -29,12 +28,18 @@ services:
   init:
     <<: *default-app
     hostname: init.local
+    volumes:
+      - adit_data:/var/www/adit
+      - /mnt:/mnt
 
   web:
     <<: *default-app
     hostname: web.local
     build:
       context: ..
+    volumes:
+      - adit_data:/var/www/adit
+      - /mnt:/mnt
 
   postgres:
     image: postgres:13.13
