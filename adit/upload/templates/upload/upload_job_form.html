@@ -9,6 +9,8 @@
     <div x-data="UploadJobForm($el)">
         <div id="form_page">{% include "upload/upload_job_form_swappable.html" %}</div>
         <div id="form_rest">
+            <label for="fileselector">Choose a directory</label>
+            <br>
             <input id="fileselector"
                    type="file"
                    class="btn btn-primary"
@@ -16,7 +18,6 @@
                    accept=".dcm,.DCM"
                    webkitdirectory
                    mozdirectory>
-            Choose a directory
         </input>
         <div id="dropZone"
              x-on:drop="isDropping = false"
@@ -74,7 +75,6 @@
         </div>
     </div>
 </div>
-
 {% endblock content %}
 {% block bottom %}
 {% endblock bottom %}
