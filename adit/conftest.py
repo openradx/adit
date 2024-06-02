@@ -14,10 +14,7 @@ from playwright.sync_api import Locator, Page, Response
 
 from adit.accounts.factories import UserFactory
 from adit.accounts.models import User
-from adit.core.factories import (
-    DicomServerFactory,
-    DicomWebServerFactory,
-)
+from adit.core.factories import DicomServerFactory, DicomWebServerFactory
 from adit.core.models import DicomServer
 from adit.testing import ChannelsLiveServer
 

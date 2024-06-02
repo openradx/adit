@@ -14,10 +14,7 @@ from adit.core.models import DicomServer
 from adit.core.types import AuthenticatedHttpRequest
 from adit.core.utils.dicom_operator import DicomOperator
 from adit.core.utils.dicom_utils import read_dataset
-from adit.core.views import (
-    BaseUpdatePreferencesView,
-    DicomJobCreateView,
-)
+from adit.core.views import BaseUpdatePreferencesView, DicomJobCreateView
 
 from .forms import UploadJobForm
 
@@ -61,7 +58,6 @@ class UploadJobCreateView(DicomJobCreateView):
         return initial
 
     def post(self, request: AuthenticatedHttpRequest, *args, **kwargs):
-
         if not request.htmx:
             raise SuspiciousOperation("Only accessible by HTMX")
 
@@ -72,7 +68,6 @@ class UploadJobCreateView(DicomJobCreateView):
         )
 
         if form.is_valid():
-            
             return trigger_client_event(
                 render(request, "upload/upload_job_form_swappable.html", {"form": form}),
                 "chooseFolder",
