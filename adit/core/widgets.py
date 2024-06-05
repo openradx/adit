@@ -13,7 +13,9 @@ class DicomNodeSelect(Select):
             dicom_node = value.instance
             if dicom_node.node_type == DicomNode.NodeType.SERVER:
                 option["attrs"]["data-node_type"] = "server"
+                option["attrs"]["node_id"] = dicom_node.id
             elif dicom_node.node_type == DicomNode.NodeType.FOLDER:
                 option["attrs"]["data-node_type"] = "folder"
+                option["attrs"]["node_id"] = dicom_node.id
 
         return option

@@ -1,8 +1,10 @@
 import os
 import shutil
 import sys
+from glob import glob
 from os import environ
 from pathlib import Path
+from shutil import copy
 from typing import Literal
 
 from dotenv import set_key
@@ -318,6 +320,19 @@ def adit_web_shell(ctx: Context, env: Environments = "dev"):
 
 
 @task
+def copy_statics(ctx: Context):
+    """Copy JS and CSS dependencies from node_modules to static vendor folder"""
+    print("Copying statics...")
+
+    for file in glob("node_modules/dcmjs/build/dcmjs.js*"):
+        copy(file, "adit/static/vendor/")
+    for file in glob("node_modules/dicomweb-client/build/dicomweb-client.js*"):
+        copy(file, "adit/static/vendor/")
+    for file in glob("node_modules/dicom-web-anonymizer/dist/dicom-web-anonymizer.*"):
+        copy(file, "adit/static/vendor/")
+
+
+@task
 def init_workspace(ctx: Context):
     """Initialize workspace for Github Codespaces or Gitpod"""
     env_dev_file = f"{project_dir}/.env.dev"
@@ -372,6 +387,7 @@ def show_outdated(ctx: Context):
 def upgrade(ctx: Context):
     """Upgrade Python and JS packages"""
     ctx.run("poetry update", pty=True)
+    copy_statics(ctx)
 
 
 @task
