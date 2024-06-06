@@ -1,11 +1,10 @@
 import io
 import os
 from pathlib import Path
-from typing import Iterable
+from typing import Any, Dict, Iterable
 
 import pytest
 from django.conf import settings
-from pydicom import Dataset
 
 from adit.core.utils.dicom_utils import read_dataset
 
@@ -16,7 +15,7 @@ os.environ.setdefault("DJANGO_ALLOW_ASYNC_UNSAFE", "true")
 
 @pytest.fixture
 def uploadable_test_dicoms():
-    def _test_dicoms(patient_id: str) -> Iterable[Dataset]:
+    def _test_dicoms(patient_id: str) -> Iterable[Dict[str, Any | str | bytes]]:
         test_dicoms_path = settings.BASE_DIR / "samples" / "dicoms" / patient_id
         for root, _, files in os.walk(test_dicoms_path):
             if len(files) != 0:
