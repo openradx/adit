@@ -13,6 +13,7 @@ from rest_framework.response import Response
 from rest_framework.utils.mediatypes import media_type_matches
 
 from adit.core.models import DicomServer
+from adit.dicom_web.utils.peekable import AsyncPeekable
 
 from .parsers import parse_request_in_chunks
 from .renderers import (
@@ -148,6 +149,21 @@ class RetrieveStudyAPIView(RetrieveAPIView):
         query["StudyInstanceUID"] = study_uid
 
         instances = wado_retrieve(source_server, query)
+        instances = AsyncPeekable(instances)
+
+        # In the middle of a StreamingHttpResponse we can't just throw an exception anymore to
+        # just return a error response as the stream has already started. Thats why we peek
+        # here and throw an exception to return an error response if something initially
+        # went wrong. If the in middle of the StreamingHttpResponse an error happens (not
+        # reachable PACS server or so) we return a error message inside the streamed response,
+        # but this just leads to a not readable DICOM file on the client side.
+        try:
+            await instances.peek()
+        except StopAsyncIteration:
+            pass
+        except Exception as err:
+            logger.exception(err)
+            raise
 
         renderer = cast(DicomWebWadoRenderer, getattr(request, "accepted_renderer"))
 
@@ -186,6 +202,16 @@ class RetrieveSeriesAPIView(RetrieveAPIView):
         query["SeriesInstanceUID"] = series_uid
 
         instances = wado_retrieve(source_server, query)
+        instances = AsyncPeekable(instances)
+
+        # See comment in RetrieveStudyAPIView
+        try:
+            await instances.peek()
+        except StopAsyncIteration:
+            pass
+        except Exception as err:
+            logger.exception(err)
+            raise
 
         renderer = cast(DicomWebWadoRenderer, getattr(request, "accepted_renderer"))
 

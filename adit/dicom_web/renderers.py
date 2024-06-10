@@ -42,7 +42,16 @@ class WadoMultipartApplicationDicomRenderer(DicomWebWadoRenderer):
     boundary: str = "adit-boundary"
     charset: str = "utf-8"
 
-    def instance_stream(self, ds: Dataset) -> bytes:
+    async def render(self, instances: AsyncIterator[Dataset]) -> AsyncIterator[bytes]:
+        try:
+            async for ds in instances:
+                yield self._instance_stream(ds)
+        except Exception as err:
+            yield self._error_stream(err)
+
+        yield self._end_stream()
+
+    def _instance_stream(self, ds: Dataset) -> bytes:
         stream = BytesIO()
         # boundary
         stream.write(b"\r\n")
@@ -59,17 +68,26 @@ class WadoMultipartApplicationDicomRenderer(DicomWebWadoRenderer):
         stream.write(b"\r\n")
         return stream.getvalue()
 
-    def end_stream(self) -> bytes:
+    def _error_stream(self, err: Exception) -> bytes:
+        stream = BytesIO()
+        # boundary
+        stream.write(b"\r\n")
+        stream.write(b"--" + self.boundary.encode("utf-8") + b"\r\n")
+        # header
+        stream.write(b"Content-Type: text/plain")
+        stream.write(b"\r\n")
+        stream.write(b"\r\n")
+        # message
+        stream.write(f"Error: Failed to fetch DICOM data: {err}\r\n".encode("utf-8"))
+        stream.write(b"\r\n")
+        return stream.getvalue()
+
+    def _end_stream(self) -> bytes:
         stream = BytesIO()
         stream.write(b"--")
         stream.write(self.boundary.encode("utf-8"))
         stream.write(b"--")
         return stream.getvalue()
-
-    async def render(self, instances: AsyncIterator[Dataset]) -> AsyncIterator[bytes]:
-        async for ds in instances:
-            yield self.instance_stream(ds)
-        yield self.end_stream()
 
 
 class WadoApplicationDicomJsonRenderer(DicomWebWadoRenderer):
