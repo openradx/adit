@@ -71,8 +71,6 @@ async def wado_retrieve(
             await asyncio.wait([fetch_series_task, queue_get_task])
 
     except RetriableDicomError as err:
-        logger.exception(err)
         raise ServiceUnavailableApiError(str(err))
     except DicomError as err:
-        logger.exception(err)
         raise BadGatewayApiError(str(err))
