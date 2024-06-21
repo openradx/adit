@@ -12,6 +12,6 @@ def reset_tasks(tasks: models.QuerySet["DicomTask"]) -> None:
         retries=0,
         message="",
         log="",
-        started_at=None,
-        ended_at=None,
+        start=None,
+        end=None,
     )
