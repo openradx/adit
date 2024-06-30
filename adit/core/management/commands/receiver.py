@@ -16,11 +16,11 @@ logger = logging.getLogger(__name__)
 
 class Command(AsyncServerCommand):
     help = (
-        "Starts a receiver with a C-STORE SCP for receiving DICOM files and transmits those."
-        "files to subscribing Celery workers."
+        "Starts a receiver with a C-STORE SCP for receiving DICOM files and transmits those"
+        "files to subscribing workers."
     )
     server_name = "DICOM receiver"
-    paths_to_watch = [settings.BASE_DIR / "adit"]
+    paths_to_watch = settings.SOURCE_FOLDERS
 
     async def run_server_async(self, **options):
         # No need for an async path library as we only do it once at startup.

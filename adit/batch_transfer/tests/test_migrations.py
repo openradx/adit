@@ -5,8 +5,8 @@ from django_test_migrations.migrator import Migrator
 
 
 @pytest.mark.django_db
-def test_0013_convert_json_to_text(migrator: Migrator):
-    old_state = migrator.apply_initial_migration(
+def test_0013_convert_json_to_text(migrator_ext: Migrator):
+    old_state = migrator_ext.apply_initial_migration(
         ("batch_transfer", "0012_alter_batchtransfertask_lines_and_more")
     )
 
@@ -43,7 +43,7 @@ def test_0013_convert_json_to_text(migrator: Migrator):
         series_uids='["4.5.6", "7.8.9"]',
     )
 
-    new_state = migrator.apply_tested_migration(("batch_transfer", "0013_convert_json_to_text"))
+    new_state = migrator_ext.apply_tested_migration(("batch_transfer", "0013_convert_json_to_text"))
     BatchTransferTask = new_state.apps.get_model("batch_transfer", "BatchTransferTask")
 
     task = BatchTransferTask.objects.get(id=task.id)
@@ -53,8 +53,8 @@ def test_0013_convert_json_to_text(migrator: Migrator):
 
 
 @pytest.mark.django_db
-def test_0018_set_source_and_destination_in_tasks(migrator: Migrator):
-    old_state = migrator.apply_initial_migration(
+def test_0018_set_source_and_destination_in_tasks(migrator_ext: Migrator):
+    old_state = migrator_ext.apply_initial_migration(
         ("batch_transfer", "0017_batchtransfertask_source_and_destination")
     )
 
@@ -88,7 +88,7 @@ def test_0018_set_source_and_destination_in_tasks(migrator: Migrator):
         task_id="123",
     )
 
-    new_state = migrator.apply_tested_migration(
+    new_state = migrator_ext.apply_tested_migration(
         ("batch_transfer", "0018_set_source_and_destination_in_tasks")
     )
     BatchTransferTask = new_state.apps.get_model("batch_transfer", "BatchTransferTask")
@@ -100,8 +100,8 @@ def test_0018_set_source_and_destination_in_tasks(migrator: Migrator):
 
 
 @pytest.mark.django_db
-def test_0023_move_text_to_array_field(migrator: Migrator):
-    old_state = migrator.apply_initial_migration(
+def test_0023_move_text_to_array_field(migrator_ext: Migrator):
+    old_state = migrator_ext.apply_initial_migration(
         ("batch_transfer", "0022_batchtransfertask_lines_new_and_more")
     )
 
@@ -139,7 +139,7 @@ def test_0023_move_text_to_array_field(migrator: Migrator):
         series_uids_new=[],
     )
 
-    new_state = migrator.apply_tested_migration(("batch_transfer", "0023_text_to_array_field"))
+    new_state = migrator_ext.apply_tested_migration(("batch_transfer", "0023_text_to_array_field"))
     BatchTransferTask = new_state.apps.get_model("batch_transfer", "BatchTransferTask")
 
     task = BatchTransferTask.objects.get(id=task.id)

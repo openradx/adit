@@ -57,7 +57,7 @@ class BroadcastView(BaseBroadcastView):
     success_url = reverse_lazy("broadcast")
 
     def send_mails(self, subject: str, message: str) -> None:
-        broadcast_mail.delay(subject, message)
+        broadcast_mail.defer(subject, message)
 
 
 class HomeView(BaseHomeView):

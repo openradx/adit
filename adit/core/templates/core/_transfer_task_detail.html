@@ -87,10 +87,6 @@
             {{ task.pseudonym|default:"—" }}
         </dd>
         {% if user.is_staff %}
-            <dt class="col-sm-3">Celery Task ID</dt>
-            <dd class="col-sm-9">
-                {{ task.celery_task_id|default:"—" }}
-            </dd>
             <dt class="col-sm-3">Log</dt>
             <dd class="col-sm-9">
                 <pre>{{ task.log|default:"—" }}</pre>

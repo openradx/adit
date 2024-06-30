@@ -10,7 +10,7 @@ from adit.core.workers import DicomWorker
 class Command(ServerCommand):
     help = "Starts a DICOM worker"
     server_name = "DICOM Worker"
-    paths_to_watch = [settings.BASE_DIR / "adit"]
+    paths_to_watch = settings.SOURCE_FOLDERS
     _dicom_worker: DicomWorker | None
 
     def add_arguments(self, parser):

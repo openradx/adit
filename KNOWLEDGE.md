@@ -19,19 +19,6 @@
 - The SECRET_KEY should not start with a dollar sign (\$), django-environ has problems with it (see Proxy value in the documentation)
 - Multi table inheritance extensions: <https://github.com/django-polymorphic/django-polymorphic> and <https://github.com/jazzband/django-model-utils>
 
-## Celery Manage Python API
-
-- python manage.py shell_plus
-  from adit.celery import app
-  i = app.control.inspect()
-  i.scheduled()
-  app.AsyncResult("task_id").state
-
-## Celery
-
-<https://medium.com/better-programming/python-celery-best-practices-ae182730bb81>
-<https://stackoverflow.com/a/47980598/166229>
-
 ## DICOM
 
 - All available DICOM tags: <https://dicom.nema.org/medical/dicom/current/output/chtml/part06/chapter_6.html>
@@ -109,8 +96,8 @@ and <https://forums.docker.com/t/docker-swarm-mode-not-picking-up-proxy-configur
 - docker build . --target development -t adit_dev # Build a volume from our Dockerfile
 - docker run -v C:\Users\kaisc\Projects\adit:/src -it adit_dev /bin/bash # Run the built container with src folder mounted from host
 - docker ps -a --filter volume=vol_name # Find container that mounts volume
-- docker run -v=adit_web_data:/var/www/adit -it busybox /bin/sh # Start interactive shell with named volume mounted
-- docker run --rm -i -v=adit_web_data:/foo busybox find /foo # List files in named volume
+- docker run -v=adit_dev_web_data:/var/www/web -it busybox /bin/sh # Start interactive shell with named volume mounted
+- docker run --rm -i -v=adit_dev_web_data:/foo busybox find /foo # List files in named volume
 - docker volume ls -f "name=adit_dev-\*" # Show all volumes that begin with "adit_dev-"
 - docker volume rm $(docker volume ls -f "name=foobar-\*" -q) # Delete all volumes that begin with "foobar-", cave delete the \
 
@@ -132,16 +119,9 @@ and <https://forums.docker.com/t/docker-swarm-mode-not-picking-up-proxy-configur
 - docker stack services foobar
 - docker stack rm foobar
 
-### Celery commands
-
-- celery -A adit purge -Q default_queue,dicom_task_queue
-- celery -A adit inspect active_queues
-- celery -A adit inspect scheduled
-- celery -A adit inspect stats
-
 ## Deployment for production
 
-- Copy cert.pem and key.pem from N:\Dokumente\Projekte\ADIT_Server\ssl_certificate to /var/www/adit/ssl/
+- Copy cert.pem and key.pem from N:\Dokumente\Projekte\ADIT_Server\ssl_certificate to /var/www/web/ssl/
 - Restart adit_prod_web container
 - Add the DICOM servers and folders
 
