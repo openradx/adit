@@ -1,4 +1,3 @@
-from adit_radis_shared.common.views import FlowerProxyView
 from django.urls import path
 
 from .views import (
@@ -30,7 +29,6 @@ urlpatterns = [
         HomeView.as_view(),
         name="home",
     ),
-    FlowerProxyView.as_url(),
     Orthanc1ProxyView.as_url(),
     Orthanc2ProxyView.as_url(),
 ]

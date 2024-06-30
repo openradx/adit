@@ -1,19 +1,19 @@
+import logging
 import subprocess
 
 from adit_radis_shared.accounts.models import User
-from celery import shared_task
-from celery.utils.log import get_task_logger
 from django.conf import settings
 from django.core.mail import send_mail
 from django.core.management import call_command
+from procrastinate.contrib.django import app
 
 from .models import DicomFolder
 from .utils.mail import send_mail_to_admins
 
-logger = get_task_logger(__name__)
+logger = logging.getLogger(__name__)
 
 
-@shared_task
+@app.task
 def broadcast_mail(subject: str, message: str):
     recipients = []
     for user in User.objects.all():
@@ -25,8 +25,9 @@ def broadcast_mail(subject: str, message: str):
     logger.info("Successfully sent an Email to %d recipents.", len(recipients))
 
 
-@shared_task
-def check_disk_space():
+@app.periodic(cron="0 7 * * *")  # every day at 7am
+@app.task
+def check_disk_space(*args, **kwargs):
     # TODO: Maybe only check active folders (that belong to an institute and are active
     # as a destination)
     folders = DicomFolder.objects.all()
@@ -45,6 +46,7 @@ def check_disk_space():
             send_mail_to_admins("Warning, low disk space!", msg)
 
 
-@shared_task
-def backup_db():
+@app.periodic(cron="0 3 * * * ")  # every day at 3am
+@app.task
+def backup_db(*args, **kwargs):
     call_command("dbbackup", "--clean", "-v 2")

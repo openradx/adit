@@ -13,11 +13,11 @@ def send_job_finished_mail(job):
 
 
 # TODO: This is not used anymore.
-def send_job_failed_mail(job, celery_task_id):
+def send_job_failed_mail(job):
     subject = "Job failed"
     html_content = render_to_string(
         "core/mail/dicom_job_failed.html",
-        {"site_base_url": settings.SITE_BASE_URL, "job": job, "celery_task_id": celery_task_id},
+        {"site_base_url": settings.SITE_BASE_URL, "job": job},
     )
     send_mail_to_admins(subject, html_content=html_content)
     send_mail_to_user(job.owner, subject, html_content=html_content)
