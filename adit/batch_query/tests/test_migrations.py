@@ -5,8 +5,8 @@ from django_test_migrations.migrator import Migrator
 
 
 @pytest.mark.django_db
-def test_0016_convert_json_to_text(migrator: Migrator):
-    old_state = migrator.apply_initial_migration(
+def test_0016_convert_json_to_text(migrator_ext: Migrator):
+    old_state = migrator_ext.apply_initial_migration(
         ("batch_query", "0015_alter_batchqueryresult_modalities_and_more")
     )
 
@@ -49,7 +49,7 @@ def test_0016_convert_json_to_text(migrator: Migrator):
         study_uid="1.2.3",
     )
 
-    new_state = migrator.apply_tested_migration(("batch_query", "0016_convert_json_to_text"))
+    new_state = migrator_ext.apply_tested_migration(("batch_query", "0016_convert_json_to_text"))
     BatchQueryTask = new_state.apps.get_model("batch_query", "BatchQueryTask")
     BatchQueryResult = new_state.apps.get_model("batch_query", "BatchQueryResult")
 
@@ -64,8 +64,8 @@ def test_0016_convert_json_to_text(migrator: Migrator):
 
 
 @pytest.mark.django_db
-def test_0021_set_source_in_tasks(migrator: Migrator):
-    old_state = migrator.apply_initial_migration(("batch_query", "0020_batchquerytask_source"))
+def test_0021_set_source_in_tasks(migrator_ext: Migrator):
+    old_state = migrator_ext.apply_initial_migration(("batch_query", "0020_batchquerytask_source"))
 
     User = old_state.apps.get_model("accounts", "User")
     DicomServer = old_state.apps.get_model("core", "DicomServer")
@@ -90,7 +90,7 @@ def test_0021_set_source_in_tasks(migrator: Migrator):
         task_id="123",
     )
 
-    new_state = migrator.apply_tested_migration(("batch_query", "0021_set_source_in_tasks"))
+    new_state = migrator_ext.apply_tested_migration(("batch_query", "0021_set_source_in_tasks"))
     BatchQueryTask = new_state.apps.get_model("batch_query", "BatchQueryTask")
 
     task = BatchQueryTask.objects.get(id=task.id)
@@ -99,8 +99,8 @@ def test_0021_set_source_in_tasks(migrator: Migrator):
 
 
 @pytest.mark.django_db
-def test_0026_move_text_to_array_field(migrator: Migrator):
-    old_state = migrator.apply_initial_migration(
+def test_0026_move_text_to_array_field(migrator_ext: Migrator):
+    old_state = migrator_ext.apply_initial_migration(
         ("batch_query", "0025_batchqueryresult_modalities_new_and_more")
     )
 
@@ -146,7 +146,7 @@ def test_0026_move_text_to_array_field(migrator: Migrator):
         study_uid="1.2.3",
     )
 
-    new_state = migrator.apply_tested_migration(("batch_query", "0026_text_to_array_field"))
+    new_state = migrator_ext.apply_tested_migration(("batch_query", "0026_text_to_array_field"))
     BatchQueryTask = new_state.apps.get_model("batch_query", "BatchQueryTask")
     BatchQueryResult = new_state.apps.get_model("batch_query", "BatchQueryResult")
 

@@ -41,17 +41,6 @@ def dicom_worker():
 
 
 @pytest.fixture
-def adit_celery_worker():
-    def start_worker():
-        call_command("celery_worker", "-Q", "test_queue")
-
-    p = Process(target=start_worker)
-    p.start()
-    yield
-    p.terminate()
-
-
-@pytest.fixture
 def dimse_orthancs() -> tuple[DicomServer, DicomServer]:
     call_command("reset_orthancs")
 

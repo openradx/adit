@@ -5,6 +5,7 @@ from os import environ
 from pathlib import Path
 from typing import Literal
 
+from adit_radis_shared.invoke_tasks import InvokeTasks
 from dotenv import set_key
 from invoke.context import Context
 from invoke.tasks import task
@@ -24,6 +25,8 @@ compose_dir = project_dir / "compose"
 compose_file_base = compose_dir / "docker-compose.base.yml"
 compose_file_dev = compose_dir / "docker-compose.dev.yml"
 compose_file_prod = compose_dir / "docker-compose.prod.yml"
+
+invoke_tasks = InvokeTasks("adit", project_dir)
 
 ###
 # Helper functions
@@ -389,25 +392,6 @@ def try_github_actions(ctx: Context):
 
 
 @task
-def purge_celery(
-    ctx: Context,
-    env: Environments = "dev",
-    queues: str = "default_queue,dicom_task_queue",
-    force=False,
-):
-    """Purge Celery queues"""
-    settings = "adit.settings.production" if env == "prod" else "adit.settings.development"
-    web_container_id = find_running_container_id(ctx, env, "web")
-    cmd = (
-        f"docker exec --env DJANGO_SETTINGS_MODULE={settings} "
-        f"{web_container_id} celery -A adit purge -Q {queues}"
-    )
-    if force:
-        cmd += " -f"
-    ctx.run(cmd, pty=True)
-
-
-@task
 def backup_db(ctx: Context, env: Environments = "prod"):
     """Backup database
 
@@ -467,3 +451,8 @@ def upgrade_postgresql(ctx: Context, env: Environments = "dev", version: str = "
         )
     else:
         print("Cancelled")
+
+
+@task
+def upgrade_adit_radis_shared(ctx: Context, version: str | None = None):
+    invoke_tasks.upgrade_adit_radis_shared(ctx, version)

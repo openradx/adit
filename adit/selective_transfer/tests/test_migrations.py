@@ -5,8 +5,8 @@ from django_test_migrations.migrator import Migrator
 
 
 @pytest.mark.django_db
-def test_0012_convert_json_to_text(migrator: Migrator):
-    old_state = migrator.apply_initial_migration(
+def test_0012_convert_json_to_text(migrator_ext: Migrator):
+    old_state = migrator_ext.apply_initial_migration(
         ("selective_transfer", "0011_alter_selectivetransfertask_series_uids")
     )
 
@@ -42,7 +42,9 @@ def test_0012_convert_json_to_text(migrator: Migrator):
         series_uids='["4.5.6", "7.8.9"]',
     )
 
-    new_state = migrator.apply_tested_migration(("selective_transfer", "0012_convert_json_to_text"))
+    new_state = migrator_ext.apply_tested_migration(
+        ("selective_transfer", "0012_convert_json_to_text")
+    )
     SelectiveTransferTask = new_state.apps.get_model("selective_transfer", "SelectiveTransferTask")
 
     task = SelectiveTransferTask.objects.get(id=task.id)
@@ -51,8 +53,8 @@ def test_0012_convert_json_to_text(migrator: Migrator):
 
 
 @pytest.mark.django_db
-def test_0016_set_source_and_destination_in_tasks(migrator: Migrator):
-    old_state = migrator.apply_initial_migration(
+def test_0016_set_source_and_destination_in_tasks(migrator_ext: Migrator):
+    old_state = migrator_ext.apply_initial_migration(
         ("selective_transfer", "0015_selectivetransfertask_source_and_destination")
     )
 
@@ -86,7 +88,7 @@ def test_0016_set_source_and_destination_in_tasks(migrator: Migrator):
         task_id="123",
     )
 
-    new_state = migrator.apply_tested_migration(
+    new_state = migrator_ext.apply_tested_migration(
         ("selective_transfer", "0016_set_source_and_destination_in_tasks")
     )
     SelectiveTransferTask = new_state.apps.get_model("selective_transfer", "SelectiveTransferTask")
@@ -98,8 +100,8 @@ def test_0016_set_source_and_destination_in_tasks(migrator: Migrator):
 
 
 @pytest.mark.django_db
-def test_0021_move_text_to_array_field(migrator: Migrator):
-    old_state = migrator.apply_initial_migration(
+def test_0021_move_text_to_array_field(migrator_ext: Migrator):
+    old_state = migrator_ext.apply_initial_migration(
         ("selective_transfer", "0020_selectivetransfertask_series_uids_new")
     )
 
@@ -135,7 +137,9 @@ def test_0021_move_text_to_array_field(migrator: Migrator):
         series_uids_new=[],
     )
 
-    new_state = migrator.apply_tested_migration(("selective_transfer", "0021_text_to_array_field"))
+    new_state = migrator_ext.apply_tested_migration(
+        ("selective_transfer", "0021_text_to_array_field")
+    )
     SelectiveTransferTask = new_state.apps.get_model("selective_transfer", "SelectiveTransferTask")
 
     task = SelectiveTransferTask.objects.get(id=task.id)
