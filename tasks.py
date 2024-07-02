@@ -387,6 +387,7 @@ def show_outdated(ctx: Context):
 def upgrade(ctx: Context):
     """Upgrade Python and JS packages"""
     ctx.run("poetry update", pty=True)
+    ctx.run("npm update", pty=True)
     copy_statics(ctx)
 
 
