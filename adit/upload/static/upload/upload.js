@@ -22,13 +22,13 @@ function UploadJobForm(formEl) {
       document.body.addEventListener("chooseFolder", (e) => {
         this.chooseFolder();
       });
+      var button = formEl.querySelector("button#uploadButton");
 
-      var button = document.getElementById("uploadButton");
       // Add an event listener to the button
       button.addEventListener("click", function () {
         // Trigger the form submission when the button is clicked
-        var form = document.getElementById("myForm");
-        if (form instanceof HTMLFormElement) {
+        var myForm = formEl.querySelector("form#myForm");
+        if (myForm instanceof HTMLFormElement) {
           htmx.trigger("#myForm", "submit");
         }
       });
@@ -50,7 +50,7 @@ function UploadJobForm(formEl) {
     },
 
     getFiles: function () {
-      var inputElement = document.getElementById("fileselector");
+      var inputElement = formEl.querySelector("#fileselector");
       if (
         inputElement instanceof HTMLInputElement &&
         inputElement.files.length > 0
@@ -72,10 +72,10 @@ function UploadJobForm(formEl) {
       const files = this.getFiles();
       this.buttonVisible = files.length > 0 ? true : false;
       this.fileCount = files.length;
-      document.getElementById("uploadCompleteText").style.display = "none";
+      document.getElementById("uploadCompleteText").style.display = "none"; //TODO: introduce variable to change classe state, don't change html directly -> https://alpinejs.dev/directives/bind
     },
     clearFiles: function () {
-      var inputEl = document.getElementById("fileselector");
+      var inputEl = formEl.querySelector("#fileselector");
 
       if (inputEl instanceof HTMLInputElement) {
         inputEl.value = null;
@@ -96,19 +96,17 @@ function UploadJobForm(formEl) {
 
     loadFiles: async function (files) {
       const destinationSelect = formEl.querySelector('[name="destination"]');
-      
+
       if (destinationSelect instanceof HTMLSelectElement) {
         const selectedOption =
           destinationSelect.options[destinationSelect.selectedIndex];
-        var node_id = selectedOption.getAttribute("node_id");
+        var node_id = selectedOption.getAttribute("data-node_id");
         console.log(node_id);
       }
       console.log(node_id);
       if (files.length === 0) {
         showToast("warning", "Sandbox", `No files selected.${files}`);
       } else {
-        //showToast("warning", "Sandbox", `${files.length} files selected`);
-
         var datasets = [];
         for (const fileEntry of files) {
           await this.fileHandler(fileEntry, datasets);
@@ -192,7 +190,6 @@ function UploadJobForm(formEl) {
                 document.getElementById("uploadCompleteText").style.display =
                   "inline-block";
               }, 3000);
-              // Wait for 3 seconds (3000 milliseconds)
             } else {
               document.getElementById("stopUploadButton").style.display =
                 "none";
@@ -214,12 +211,13 @@ function UploadJobForm(formEl) {
               "inline-block";
           }
         } catch (e) {
-          this.uploadResultText = "Upload Failed" + "\n" + e.message;
+          this.uploadResultText = "Upload Failed";
+          console.log(e);
           document.getElementById("uploadCompleteText").style.display =
             "inline-block";
         }
 
-        console.log("Upload process finished");
+        console.info("Upload process finished successfully.");
       }
     },
 
@@ -280,29 +278,36 @@ function UploadJobForm(formEl) {
       const patientNames = new Set();
 
       try {
-        console.log("were here");
         for (const set of datasets) {
-          console.log("were here2");
           const dcm = dcmjs.data.DicomMessage.readFile(set, {
             ignoreErrors: true,
           });
-          console.log("were here3");
-          console.log(dcm);
+
           try {
             patientIDs.add(dcm.dict["00100020"].Value[0]); // Patient ID
+          } catch (e) {
+            console.log("Missing PatientID");//TODO:
+          }
+          try {
             patientNames.add(dcm.dict["00100010"].Value[0].Alphabetic); // Patient Name
+          } catch (e) {
+            console.log("Missing PatientName");//TODO:
+          }
+          try {
             patientBirthdates.add(dcm.dict["00100030"].Value[0]); // Patient Birthdate
           } catch (e) {
-            console.log(e);
+            console.log("Missing PatientBirthdate");//TODO:
           }
         }
+        // Check if in a whole study are more than one PatientID, Name or Birthdate
+
         return (
           patientIDs.size <= 1 &&
           patientNames.size <= 1 &&
           patientBirthdates.size <= 1
         );
       } catch (e) {
-        //console.log(e);
+        console.log(e);//TODO:
         return false;
       }
     },
@@ -334,16 +339,16 @@ async function uploadData(data) {
             "Uploaded data to server with status:",
             text,
             response.status
-          );
+          );//TODO:
 
           return response.status;
         } else {
-          console.log("Response from server:", text);
+          console.log("Response from server:", text);//TODO:
         }
       }
     })
     .catch(function (error) {
-      //console.log(`Error: ${error.reason_phrase}`);
+      console.log(`Error: ${error.reason_phrase}`); //TODO:
       return 0;
     });
 }
