@@ -108,16 +108,10 @@ def test_upload_full(
     expect(poll(page.locator("button#uploadButton"))).to_be_visible()
     expect(poll(page.locator("button#clearButton"))).to_be_visible()
 
-    # page.screenshot(path="./screenshots/before_upload.png")
-
     page.locator("button#uploadButton").click()
 
     expect(poll(page.locator("button#stopUploadButton"))).to_be_visible()
 
-    # page.screenshot(path="./screenshots/during_upload.png")
-
     page.wait_for_selector("p#uploadCompleteText")
-
-    # page.screenshot(path="./screenshots/after_upload.png")
 
     expect(page.locator("p#uploadCompleteText")).to_contain_text("Upload Successful!")

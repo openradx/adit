@@ -70,6 +70,7 @@ class UploadJobCreateView(DicomJobCreateView):
         )
 
         if form.is_valid():
+            print(form.cleaned_data)
             return trigger_client_event(
                 render(request, "upload/upload_job_form_swappable.html", {"form": form}),
                 "chooseFolder",
@@ -87,6 +88,7 @@ async def uploadAPIView(request: AuthenticatedHttpRequest, node_id: str) -> Http
     data = request.FILES
 
     destination = await sync_to_async(lambda: DicomServer.objects.get(id=node_id))()
+
     operator = DicomOperator(destination)
 
     if "dataset" in data:
