@@ -26,7 +26,6 @@ INSTALLED_APPS += [  # noqa: F405
     "debug_toolbar",
     "debug_permissions",
     "django_browser_reload",
-    "adit.upload.apps.UploadConfig",
 ]
 
 MIDDLEWARE += [  # noqa: F405
