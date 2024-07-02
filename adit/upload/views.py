@@ -5,20 +5,22 @@ from typing import Any
 from adit_radis_shared.common.decorators import login_required_async
 from adit_radis_shared.common.types import AuthenticatedHttpRequest
 from asgiref.sync import sync_to_async
+from django.contrib.auth.mixins import (
+    LoginRequiredMixin,
+    PermissionRequiredMixin,
+)
 from django.core.exceptions import SuspiciousOperation
 from django.http import HttpResponse
 from django.shortcuts import render
+from django.views.generic.edit import FormView
 from django_htmx.http import trigger_client_event
 
 from adit.core.models import DicomServer
 from adit.core.utils.dicom_operator import DicomOperator
 from adit.core.utils.dicom_utils import read_dataset
-from adit.core.views import (
-    BaseUpdatePreferencesView,
-    DicomJobCreateView,
-)
+from adit.core.views import BaseUpdatePreferencesView
 
-from .forms import UploadJobForm
+from .forms import UploadForm
 
 UPLOAD_SOURCE = "upload_source"
 UPLOAD_DESTINATION = "upload_destination"
@@ -31,9 +33,13 @@ class UploadUpdatePreferencesView(BaseUpdatePreferencesView):
     ]
 
 
-class UploadJobCreateView(DicomJobCreateView):
+class UploadCreateView(
+    LoginRequiredMixin,
+    PermissionRequiredMixin,
+    FormView,
+):
     template_name = "upload/upload_job_form.html"
-    form_class = UploadJobForm
+    form_class = UploadForm
     permission_required = "upload.add_uploadjob"
     request: AuthenticatedHttpRequest
 
@@ -63,12 +69,11 @@ class UploadJobCreateView(DicomJobCreateView):
         if not request.htmx:
             raise SuspiciousOperation("Only accessible by HTMX")
 
-        form = UploadJobForm(
+        form = UploadForm(
             request.POST,
             user=request.user,
             action="transfer",
         )
-
         if form.is_valid():
             print(form.cleaned_data)
             return trigger_client_event(

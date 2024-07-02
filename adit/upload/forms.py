@@ -5,7 +5,6 @@ from django import forms
 from adit.core.fields import DicomNodeChoiceField
 from adit.core.validators import no_backslash_char_validator, no_control_chars_validator
 
-from .models import UploadJob
 
 
 class MultipleFileInput(forms.widgets.FileInput):
@@ -18,22 +17,17 @@ class MultipleFileInput(forms.widgets.FileInput):
         super().__init__(attrs)
 
 
-class UploadJobForm(forms.ModelForm):
+class UploadForm(forms.Form):
     pseudonym = forms.CharField(
         required=True,
         max_length=64,
         validators=[no_backslash_char_validator, no_control_chars_validator],
+        label="Patient Pseudonym",
     )
-
-    class Meta:
-        model = UploadJob
-        fields = ("pseudonym",)
-        labels = {"pseudonym": "Patient Pseudonym"}  # , "data_folder_path": "Data Folder Path"}
 
     def __init__(self, *args, **kwargs):
         self.user = kwargs.pop("user")
         self.action = kwargs.pop("action")
-        # self.instance = kwargs.pop("instance")
 
         super().__init__(*args, **kwargs)
 
