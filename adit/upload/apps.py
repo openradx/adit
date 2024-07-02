@@ -17,11 +17,6 @@ class UploadConfig(AppConfig):
 def register_app():
     from adit_radis_shared.common.site import MainMenuItem, register_main_menu_item
 
-    from adit.core.site import register_dicom_processor
-
-    from .models import UploadTask
-    from .processors import UploadTaskProcessor
-
     register_main_menu_item(
         MainMenuItem(
             url_name="upload_job_create",
@@ -29,16 +24,6 @@ def register_app():
         )
     )
 
-    model_label = f"{UploadTask._meta.app_label}.{UploadTask._meta.model_name}"
-    register_dicom_processor(model_label, UploadTaskProcessor)
-
-    # def collect_job_stats() -> JobStats:
-    #     counts: dict[UploadJob.Status, int] = {}
-    #     for status in UploadJob.Status:
-    #         counts[status] = UploadJob.objects.filter(status=status).count()
-    #     return JobStats("Selective Transfer", "selective_transfer_job_list", counts)
-
-    # register_job_stats_collector(collect_job_stats) # TODO add Upload job view
 
 
 def init_db(**kwargs):
