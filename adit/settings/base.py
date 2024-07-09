@@ -77,6 +77,7 @@ INSTALLED_APPS = [
     "adit.batch_transfer.apps.BatchTransferConfig",
     "adit.dicom_explorer.apps.DicomExplorerConfig",
     "adit.dicom_web.apps.DicomWebConfig",
+    "adit.upload.apps.UploadConfig",
     "channels",
 ]
 
