@@ -17,8 +17,8 @@ function UploadJobForm(formEl) {
     droppedFiles: Object,
     uploadResultText: String,
     stopUploadVar: Boolean,
-    pbStyleDisplay: String,
-    uploadCompleteTextStyleDisplay: String,
+    pbVisible: String,
+    uploadCompleteTextVisible: String,
     stopUploadButtonStyleDisplay: String,
 
     initUploadForm: function (destEl) {
@@ -26,7 +26,7 @@ function UploadJobForm(formEl) {
         this.chooseFolder();
       });
       var button = formEl.querySelector("button#uploadButton");
-
+      this.stopUploadButtonVisible = false;
       // Add an event listener to the button
       button.addEventListener("click", function () {
         // Trigger the form submission when the button is clicked
@@ -75,7 +75,7 @@ function UploadJobForm(formEl) {
       const files = this.getFiles();
       this.buttonVisible = files.length > 0 ? true : false;
       this.fileCount = files.length;
-      this.uploadCompleteTextStyleDisplay = "none"; //TODO: introduce variable to change classe state, don't change html directly -> https://alpinejs.dev/directives/bind
+      this.uploadCompleteTextVisible = false; //TODO: introduce variable to change classe state, don't change html directly -> https://alpinejs.dev/directives/bind
     },
     clearFiles: function () {
       var inputEl = formEl.querySelector("#fileselector");
@@ -104,9 +104,8 @@ function UploadJobForm(formEl) {
         const selectedOption =
           destinationSelect.options[destinationSelect.selectedIndex];
         var node_id = selectedOption.getAttribute("data-node_id");
-        console.log(node_id);
       }
-      console.log(node_id);
+
       if (files.length === 0) {
         showToast("warning", "Sandbox", `No files selected.${files}`);
       } else {
@@ -136,9 +135,9 @@ function UploadJobForm(formEl) {
               await anon.anonymize(dicomData);
               const anonymized_set = await dicomData.write();
 
-              this.pbStyleDisplay = "inline-block";
-              this.stopUploadButtonStyleDisplay = "inline-block";
+              this.pbVisible = true;
 
+              this.stopUploadButtonVisible = true;
               if (this.stopUploadVar) {
                 // Stop uploading if stop button is clicked
                 break;
@@ -152,15 +151,17 @@ function UploadJobForm(formEl) {
 
               if (status == 200) {
                 loadedFiles += 1;
-                const progBar = formEl.querySelector('[name="pb"]');
-                // document.getElementById("pb");
+                const progBar = formEl.querySelector('[id="pb"]');
+
                 if (progBar instanceof HTMLProgressElement) {
                   progBar.value = (loadedFiles / datasets.length) * 100;
                 }
+              } else if (status == 403) {
+                console.log("einmal die 403");
               } else {
                 this.uploadResultText = "Upload Failed";
-                this.pbStyleDisplay = "none";
-                this.uploadCompleteTextStyleDisplay = "inline-block";
+                this.pbVisible = false;
+                this.uploadCompleteTextVisible = true;
                 break;
               }
             }
@@ -172,12 +173,11 @@ function UploadJobForm(formEl) {
           } else {
             this.uploadResultText = "Upload refused - Fehlerhafte Datensätze";
             this.buttonVisible = false;
-            this.uploadCompleteTextStyleDisplay = "inline-block";
+            this.uploadCompleteTextVisible = true;
           }
         } catch (e) {
-          this.uploadResultText = "Upload Failed due to an Error";
-          console.log(e);
-          this.uploadCompleteTextStyleDisplay = "inline-block";
+          this.uploadResultText = e; //"Upload Failed due to an Error";
+          this.uploadCompleteTextVisible = true;
         }
 
         console.info("Upload process finished successfully.");
@@ -186,22 +186,17 @@ function UploadJobForm(formEl) {
 
     uploadSuccessfull: function () {
       this.uploadResultText = "Upload Successful!";
+      this.stopUploadButtonVisible = false;
 
-      setTimeout(function () {
-        this.pbStyleDisplay = "none";
-      }, 3000);
-
-      setTimeout(function () {
-        this.stopUploadButtonStyleDisplay = "none";
-      }, 500);
-
-      setTimeout(function () {
-        this.uploadCompleteTextStyleDisplay = "inline-block";
-      }, 3000);
+      setTimeout(() => {
+        this.uploadCompleteTextVisible = false;
+        this.pbVisible = false;
+      }, 5000);
     },
 
     stopUpload: function () {
-      this.stopUploadButtonStyleDisplay = "none";
+      this.stopUploadVar = true;
+      this.stopUploadButtonVisible = false;
 
       if (this.stopUploadVar) {
         this.uploadResultText = "Upload Cancelled";
@@ -209,8 +204,12 @@ function UploadJobForm(formEl) {
         this.uploadResultText = "Upload Failed";
       }
 
-      this.pbStyleDisplay = "none";
-      this.uploadCompleteTextStyleDisplay = "inline-block";
+      this.pbVisible = false;
+      this.uploadCompleteTextVisible = true;
+
+      setTimeout(() => {
+        this.uploadCompleteTextVisible = false;
+      }, 5000);
     },
 
     createAnonymizer: function () {
@@ -255,7 +254,7 @@ function UploadJobForm(formEl) {
 
     handleDrop: async function (ev) {
       const files = [];
-      this.uploadCompleteTextStyleDisplay = "none";
+      this.uploadCompleteTextVisible = false;
 
       const items = ev.dataTransfer.items;
       for (const item of items) {
@@ -327,7 +326,7 @@ async function uploadData(data) {
     const blob = new Blob([data[key]]);
     formData.append(key, blob);
   }
-  console.log(data.node_id);
+
   const url = `/upload/data-upload/${data.node_id}/`;
 
   const request = new Request(url, {
