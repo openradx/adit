@@ -10,7 +10,7 @@ urlpatterns = [
     path(
         "jobs/new",
         UploadCreateView.as_view(),
-        name="upload_job_create",
+        name="upload_create",
     ),
     path("data-upload/<str:node_id>/", view=uploadAPIView, name="data_upload"),
 ]

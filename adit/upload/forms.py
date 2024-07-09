@@ -6,7 +6,6 @@ from adit.core.fields import DicomNodeChoiceField
 from adit.core.validators import no_backslash_char_validator, no_control_chars_validator
 
 
-
 class MultipleFileInput(forms.widgets.FileInput):
     def __init__(self, attrs=None):
         attrs = attrs or {}
