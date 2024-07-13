@@ -302,9 +302,6 @@ REGISTRATION_OPEN = True
 # Channels
 ASGI_APPLICATION = "adit.asgi.application"
 
-# Redis is used for distributed locks
-REDIS_URL = env.str("REDIS_URL", default="redis://localhost:6379/0")  # type: ignore
-
 # Orthanc servers are integrated in ADIT by using a reverse proxy (django-revproxy).
 ORTHANC1_HOST = env.str("ORTHANC1_HOST", default="localhost")  # type: ignore
 ORTHANC1_HTTP_PORT = env.int("ORTHANC1_HTTP_PORT", default=6501)  # type: ignore
@@ -388,7 +385,16 @@ C_MOVE_DOWNLOAD_TIMEOUT = 30  # seconds
 ENABLE_DICOM_DEBUG_LOGGER = False
 
 # How often to retry a failed dicom task before it is definitively failed
-DICOM_TASK_RETRIES = 2
+DICOM_TASK_RETRIES = 3
+
+# How long to wait in seconds before retrying a failed dicom task (exponential backoff)
+DICOM_TASK_EXPONENTIAL_WAIT = 10  # 10 seconds
+
+# How long to wait in seconds before killing a dicom task that is not finished yet
+DICOM_TASK_PROCESS_TIMEOUT = 60 * 20  # 20 minutes
+
+# How often to check the database if the DICOM task should be canceled
+DICOM_TASK_CANCELED_MONITOR_INTERVAL = 10  # 10 seconds
 
 # The maximum number of batch queries a normal user can process in one job
 # (staff user are not limited)

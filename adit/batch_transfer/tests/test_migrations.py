@@ -146,3 +146,49 @@ def test_0023_move_text_to_array_field(migrator_ext: Migrator):
 
     assert task.lines_new == [1, 2, 3]
     assert task.series_uids_new == ["4.5.6", "7.8.9"]
+
+
+@pytest.mark.django_db
+def test_0029_switch_to_procrastinate(migrator_ext: Migrator):
+    old_state = migrator_ext.apply_initial_migration(
+        ("batch_transfer", "0028_remove_batchtransfersettings_slot_begin_time_and_more")
+    )
+
+    # Historical models are reconstructed from the migration files. We can't use our factories here.
+    User = old_state.apps.get_model("accounts", "User")
+    DicomServer = old_state.apps.get_model("core", "DicomServer")
+    BatchTransferJob = old_state.apps.get_model("batch_transfer", "BatchTransferJob")
+    BatchTransferTask = old_state.apps.get_model("batch_transfer", "BatchTransferTask")
+
+    server1 = DicomServer.objects.create(
+        ae_title="server1",
+        name="server1",
+        host="server1",
+        port=11112,
+    )
+    server2 = DicomServer.objects.create(
+        ae_title="server2",
+        name="server2",
+        host="server2",
+        port=11112,
+    )
+    user = User.objects.create(
+        username="user",
+    )
+    job = BatchTransferJob.objects.create(
+        owner_id=user.id,
+    )
+    task = BatchTransferTask.objects.create(
+        job_id=job.id,
+        source_id=server1.id,
+        destination_id=server2.id,
+        lines=[],
+    )
+
+    new_state = migrator_ext.apply_tested_migration(
+        ("batch_transfer", "0029_switch_to_procrastinate")
+    )
+
+    BatchTransferTask = new_state.apps.get_model("batch_transfer", "BatchTransferTask")
+
+    assert task.retries + 1 == BatchTransferTask.objects.get(id=task.id).attempts

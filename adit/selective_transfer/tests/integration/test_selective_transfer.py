@@ -15,7 +15,7 @@ def test_unpseudonymized_urgent_selective_transfer_with_dimse_server(
     page: Page,
     poll: Callable[[Locator], Locator],
     dimse_orthancs,
-    dicom_worker,
+    run_worker,
     channels_live_server,
     create_and_login_user,
     selective_transfer_group,
@@ -38,6 +38,8 @@ def test_unpseudonymized_urgent_selective_transfer_with_dimse_server(
     page.locator('button:has-text("Start transfer")').click()
     page.locator('a:has-text("ID")').click()
 
+    run_worker()
+
     # Assert
     expect(poll(page.locator('dl:has-text("Success")'))).to_be_visible()
 
@@ -48,7 +50,7 @@ def test_unpseudonymized_urgent_selective_transfer_with_dicomweb_server(
     page: Page,
     poll: Callable[[Locator], Locator],
     dicomweb_orthancs,
-    dicom_worker,
+    run_worker,
     channels_live_server,
     create_and_login_user,
     selective_transfer_group,
@@ -70,6 +72,8 @@ def test_unpseudonymized_urgent_selective_transfer_with_dicomweb_server(
     page.locator('tr:has-text("1008"):has-text("2020") input').click()
     page.locator('button:has-text("Start transfer")').click()
     page.locator('a:has-text("ID")').click()
+
+    run_worker()
 
     # Assert
     expect(poll(page.locator('dl:has-text("Success")'))).to_be_visible()

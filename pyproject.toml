@@ -6,12 +6,11 @@ authors = ["medihack <kai.schlamp@gmail.com>"]
 license = "GPL-3.0-or-later"
 
 [tool.poetry.dependencies]
-adit-radis-shared = {git = "https://github.com/openradx/adit-radis-shared.git", rev = "v0.4.6"}
+adit-radis-shared = {git = "https://github.com/openradx/adit-radis-shared.git", rev = "v0.5.0"}
 adrf = "^0.1.1"
-aiofiles = "^23.1.0"
+aiofiles = "^24.1.0"
 asyncinotify = "^4.0.1"
 channels = "^4.0.0"
-channels-redis = "^4.0.0"
 crispy-bootstrap5 = "^2024.2"
 cryptography = "^42.0.5"
 daphne = "^4.0.0"
@@ -25,6 +24,7 @@ django-extensions = "^3.1.5"
 django-filter = "^24.2"
 django-htmx = "^1.14.0"
 django-loginas = "^0.3.9"
+django-pglock = "^1.5.1"
 django-registration-redux = "^2.10"
 django-revproxy = { git = "https://github.com/jazzband/django-revproxy.git" }
 django-tables2 = "^2.3.3"
@@ -35,13 +35,12 @@ Markdown = "^3.3.7"
 openpyxl = "^3.1.2"
 pandas = "^2.0.1"
 pebble = "^5.0.3"
-procrastinate = { extras = ["django"], version = "^2.6.0" }
+procrastinate = { extras = ["django"], version = "^2.8.0" }
 psycopg = { extras = ["binary"], version = "^3.1.12" }
 pyarrow = "^16.1.0"
 pydicom = "^2.3.0"
 pynetdicom = "^2.0.2"
 python = ">=3.11,<4.0"
-redis = "^5.0.3"
 toml = "^0.10.2"
 Twisted = { extras = ["tls", "http2"], version = "^24.3.0" }
 wait-for-it = "^2.2.2"
@@ -58,7 +57,7 @@ django-types = "^0.19.1"
 djangorestframework-types = "^0.8.0"
 djlint = "^1.19.16"
 factory-boy = "^3.1.0"
-Faker = "^25.5.0"
+Faker = "^26.0.0"
 invoke = "^2.1.2"
 ipykernel = "^6.17.1"
 ipython = "^8.1.1"
@@ -77,7 +76,7 @@ pytest-watch = "^4.2.0"
 python-dotenv = "^1.0.0"
 pywatchman = "^2.0.0"
 requests = "^2.27.1"
-ruff = "^0.4.7"
+ruff = "^0.5.1"
 time-machine = "^2.1.0"
 vermin = "^1.5.2"
 
@@ -107,7 +106,7 @@ timeout = 60
 
 [tool.coverage.run]
 branch = true
-source = ["adit", "adit_radis_shared"]
+source = ["adit"]
 
 [tool.coverage.report]
 skip_empty = true

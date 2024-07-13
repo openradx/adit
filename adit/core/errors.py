@@ -1,5 +1,3 @@
-from datetime import timedelta
-
 from rest_framework.exceptions import ErrorDetail
 
 
@@ -7,13 +5,8 @@ class DicomError(Exception):
     pass
 
 
-default_retry_delta = timedelta(minutes=20)
-
-
 class RetriableDicomError(Exception):
-    def __init__(self, message: str, delta: timedelta = default_retry_delta) -> None:
-        super().__init__(message)
-        self.delta = delta
+    pass
 
 
 class BatchFileSizeError(Exception):
