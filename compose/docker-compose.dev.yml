@@ -51,8 +51,8 @@ services:
     <<: *default-app
     command: >
       bash -c "
-        wait-for-it -s web.local:8000 -t 0 && 
-        ./manage.py dicom_worker --autoreload
+        wait-for-it -s postgres.local:5432 -t 60 &&
+        ./manage.py worker -l debug -q dicom --autoreload
       "
     profiles:
       - full
@@ -61,7 +61,6 @@ services:
     <<: *default-app
     command: >
       bash -c "
-        cd example_project;
         wait-for-it -s postgres.local:5432 -t 60 &&
         ./manage.py worker -l debug -q default --autoreload
       "
@@ -74,10 +73,6 @@ services:
       - "11122:11112"
     command: |
       ./manage.py receiver --autoreload
-    profiles:
-      - full
-
-  redis:
     profiles:
       - full
 

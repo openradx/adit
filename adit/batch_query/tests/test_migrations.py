@@ -158,3 +158,39 @@ def test_0026_move_text_to_array_field(migrator_ext: Migrator):
     assert query.series_numbers_new == ["4", "5", "6"]
 
     assert result.modalities_new == ["CT", "MR"]
+
+
+@pytest.mark.django_db
+def test_0032_switch_to_procrastinate(migrator_ext: Migrator):
+    old_state = migrator_ext.apply_initial_migration(
+        ("batch_query", "0031_remove_batchquerysettings_slot_begin_time_and_more")
+    )
+
+    User = old_state.apps.get_model("accounts", "User")
+    DicomServer = old_state.apps.get_model("core", "DicomServer")
+    BatchQueryJob = old_state.apps.get_model("batch_query", "BatchQueryJob")
+    BatchQueryTask = old_state.apps.get_model("batch_query", "BatchQueryTask")
+
+    server = DicomServer.objects.create(
+        ae_title="server1",
+        name="server1",
+        host="server1",
+        port=11112,
+    )
+    user = User.objects.create(
+        username="user",
+    )
+    job = BatchQueryJob.objects.create(
+        owner_id=user.id,
+    )
+    task = BatchQueryTask.objects.create(
+        job_id=job.id,
+        source_id=server.id,
+        lines=[],
+    )
+
+    new_state = migrator_ext.apply_tested_migration(("batch_query", "0032_switch_to_procrastinate"))
+
+    BatchQueryTask = new_state.apps.get_model("batch_query", "BatchQueryTask")
+
+    assert task.retries + 1 == BatchQueryTask.objects.get(id=task.id).attempts

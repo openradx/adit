@@ -79,10 +79,6 @@ services:
     deploy:
       <<: *deploy
 
-  redis:
-    deploy:
-      <<: *deploy
-
   orthanc1:
     deploy:
       <<: *deploy

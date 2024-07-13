@@ -6,10 +6,11 @@ from adit_radis_shared.accounts.factories import UserFactory
 from adit_radis_shared.common.utils.auth_utils import add_user_to_group
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.urls import reverse
+from procrastinate.contrib.django.models import ProcrastinateJob
 from pytest_django.asserts import assertTemplateUsed
 
 from adit.core.factories import DicomServerFactory
-from adit.core.models import DicomServer, QueuedTask
+from adit.core.models import DicomServer
 from adit.core.utils.auth_utils import grant_access
 
 from ..models import BatchTransferJob
@@ -90,7 +91,7 @@ def test_batch_job_created_and_enqueued_with_auto_verify(
 
     job = BatchTransferJob.objects.first()
     assert job and job.tasks.count() == 3
-    assert QueuedTask.objects.count() == 3
+    assert ProcrastinateJob.objects.count() == 3
 
 
 def test_batch_job_created_and_not_enqueued_without_auto_verify(
@@ -111,7 +112,7 @@ def test_batch_job_created_and_not_enqueued_without_auto_verify(
 
     job = BatchTransferJob.objects.first()
     assert job and job.tasks.count() == 3
-    assert QueuedTask.objects.count() == 0
+    assert ProcrastinateJob.objects.count() == 0
 
 
 def test_job_cant_be_created_with_missing_fields(client, batch_transfer_group, form_data):

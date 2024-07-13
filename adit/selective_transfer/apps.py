@@ -1,6 +1,8 @@
 from django.apps import AppConfig
 from django.db.models.signals import post_migrate
 
+from adit.core.utils.model_utils import get_model_label
+
 SECTION_NAME = "Selective Transfer"
 
 
@@ -29,10 +31,7 @@ def register_app():
         )
     )
 
-    model_label = (
-        f"{SelectiveTransferTask._meta.app_label}.{SelectiveTransferTask._meta.model_name}"
-    )
-    register_dicom_processor(model_label, SelectiveTransferTaskProcessor)
+    register_dicom_processor(get_model_label(SelectiveTransferTask), SelectiveTransferTaskProcessor)
 
     def collect_job_stats() -> JobStats:
         counts: dict[SelectiveTransferJob.Status, int] = {}

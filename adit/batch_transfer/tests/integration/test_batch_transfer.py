@@ -16,7 +16,7 @@ def test_unpseudonymized_urgent_batch_transfer_with_dimse_server(
     page: Page,
     poll: Callable[[Locator], Locator],
     dimse_orthancs,
-    dicom_worker,
+    run_worker,
     live_server,
     create_and_login_user,
     batch_transfer_group,
@@ -47,6 +47,8 @@ def test_unpseudonymized_urgent_batch_transfer_with_dimse_server(
     page.get_by_label("Batch file*", exact=True).set_input_files(files=[batch_file])
     page.locator('input:has-text("Create job")').click()
 
+    run_worker()
+
     # Assert
     expect(poll(page.locator('dl:has-text("Success")'))).to_be_visible()
 
@@ -57,7 +59,7 @@ def test_unpseudonymized_urgent_batch_transfer_with_dicomweb_server(
     page: Page,
     poll: Callable[[Locator], Locator],
     dicomweb_orthancs,
-    dicom_worker,
+    run_worker,
     live_server,
     create_and_login_user,
     batch_transfer_group,
@@ -87,6 +89,8 @@ def test_unpseudonymized_urgent_batch_transfer_with_dicomweb_server(
     page.get_by_label("Ethics committee approval").fill("I have it, I swear.")
     page.get_by_label("Batch file*", exact=True).set_input_files(files=[batch_file])
     page.locator('input:has-text("Create job")').click()
+
+    run_worker()
 
     # Assert
     expect(poll(page.locator('dl:has-text("Success")'))).to_be_visible()
