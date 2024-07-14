@@ -15,13 +15,14 @@ from typing import Literal
 
 import environ
 import toml
-from celery.schedules import crontab
 from pydicom import config as pydicom_config
 
 env = environ.Env()
 
 # The base directory of the project (the root of the repository)
 BASE_DIR = Path(__file__).resolve(strict=True).parent.parent.parent
+
+SOURCE_FOLDERS = [BASE_DIR / "adit"]
 
 # Read pyproject.toml to fetch current version. We do this conditionally as the
 # ADIT client library uses ADIT for integration tests installed as a package
@@ -31,11 +32,6 @@ if (BASE_DIR / "pyproject.toml").exists():
     PROJECT_VERSION = pyproject["tool"]["poetry"]["version"]
 else:
     PROJECT_VERSION = "???"
-
-READ_DOT_ENV_FILE = env.bool("DJANGO_READ_DOT_ENV_FILE", default=False)  # type: ignore
-if READ_DOT_ENV_FILE:
-    # OS environment variables take precedence over variables from .env
-    env.read_env(str(BASE_DIR / ".env"))
 
 # Our custom site settings that are also available in the templates,
 # see adit-radis-shared/common/site.py#base_context_processor
@@ -60,6 +56,7 @@ INSTALLED_APPS = [
     "django.contrib.humanize",
     "django.contrib.postgres",
     "django_extensions",
+    "procrastinate.contrib.django",
     "dbbackup",
     "revproxy",
     "loginas",
@@ -198,11 +195,6 @@ LOGGING = {
             "level": "INFO",
             "propagate": False,
         },
-        "celery": {
-            "handlers": ["console", "mail_admins"],
-            "level": "INFO",
-            "propagate": False,
-        },
         "django": {
             "handlers": ["console"],
             "level": "WARNING",
@@ -310,28 +302,6 @@ REGISTRATION_OPEN = True
 # Channels
 ASGI_APPLICATION = "adit.asgi.application"
 
-# Redis is used as the Celery backend and for distributed locks
-REDIS_URL = env.str("REDIS_URL", default="redis://localhost:6379/0")  # type: ignore
-
-# Celery
-# see https://github.com/celery/celery/issues/5026 for how to name configs
-if USE_TZ:
-    CELERY_TIMEZONE = TIME_ZONE
-CELERY_BROKER_URL = REDIS_URL
-CELERY_IGNORE_RESULT = True
-CELERY_TASK_DEFAULT_QUEUE = "default_queue"
-CELERY_BEAT_SCHEDULE = {
-    "check-disk-space": {
-        "task": "adit.core.tasks.check_disk_space",
-        "schedule": crontab(minute=0, hour=7),  # execute daily at 7 o'clock UTC
-    }
-}
-
-# Flower is integrated in ADIT by using a reverse proxy (django-revproxy).
-# This allows to use the authentication of ADIT.
-FLOWER_HOST = env.str("FLOWER_HOST", default="localhost")  # type: ignore
-FLOWER_PORT = env.int("FLOWER_PORT", default=5555)  # type: ignore
-
 # Orthanc servers are integrated in ADIT by using a reverse proxy (django-revproxy).
 ORTHANC1_HOST = env.str("ORTHANC1_HOST", default="localhost")  # type: ignore
 ORTHANC1_HTTP_PORT = env.int("ORTHANC1_HTTP_PORT", default=6501)  # type: ignore
@@ -415,7 +385,16 @@ C_MOVE_DOWNLOAD_TIMEOUT = 30  # seconds
 ENABLE_DICOM_DEBUG_LOGGER = False
 
 # How often to retry a failed dicom task before it is definitively failed
-DICOM_TASK_RETRIES = 2
+DICOM_TASK_RETRIES = 3
+
+# How long to wait in seconds before retrying a failed dicom task (exponential backoff)
+DICOM_TASK_EXPONENTIAL_WAIT = 10  # 10 seconds
+
+# How long to wait in seconds before killing a dicom task that is not finished yet
+DICOM_TASK_PROCESS_TIMEOUT = 60 * 20  # 20 minutes
+
+# How often to check the database if the DICOM task should be canceled
+DICOM_TASK_CANCELED_MONITOR_INTERVAL = 10  # 10 seconds
 
 # The maximum number of batch queries a normal user can process in one job
 # (staff user are not limited)

@@ -1,6 +1,8 @@
 from django.apps import AppConfig
 from django.db.models.signals import post_migrate
 
+from adit.core.utils.model_utils import get_model_label
+
 SECTION_NAME = "Batch Query"
 
 
@@ -29,8 +31,7 @@ def register_app():
         )
     )
 
-    model_label = f"{BatchQueryTask._meta.app_label}.{BatchQueryTask._meta.model_name}"
-    register_dicom_processor(model_label, BatchQueryTaskProcessor)
+    register_dicom_processor(get_model_label(BatchQueryTask), BatchQueryTaskProcessor)
 
     def collect_job_stats():
         counts: dict[BatchQueryJob.Status, int] = {}

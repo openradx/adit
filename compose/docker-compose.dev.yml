@@ -51,23 +51,19 @@ services:
     <<: *default-app
     command: >
       bash -c "
-        wait-for-it -s web.local:8000 -t 0 && 
-        ./manage.py dicom_worker --autoreload
+        wait-for-it -s postgres.local:5432 -t 60 &&
+        ./manage.py worker -l debug -q dicom --autoreload
       "
     profiles:
       - full
 
-  celery_worker:
+  default_worker:
     <<: *default-app
-    command: |
-      ./manage.py celery_worker -Q default_queue --autoreload
-    profiles:
-      - full
-
-  celery_beat:
-    <<: *default-app
-    command: |
-      ./manage.py celery_beat --autoreload
+    command: >
+      bash -c "
+        wait-for-it -s postgres.local:5432 -t 60 &&
+        ./manage.py worker -l debug -q default --autoreload
+      "
     profiles:
       - full
 
@@ -77,15 +73,6 @@ services:
       - "11122:11112"
     command: |
       ./manage.py receiver --autoreload
-    profiles:
-      - full
-
-  flower:
-    <<: *default-app
-    profiles:
-      - full
-
-  redis:
     profiles:
       - full
 

@@ -3,10 +3,9 @@ x-app: &default-app
   env_file:
     - ../.env.prod
   environment:
-    ENABLE_REMOTE_DEBUGGING: 0
     DJANGO_SETTINGS_MODULE: "adit.settings.production"
-    SSL_CERT_FILE: "/var/www/adit/ssl/cert.pem"
-    SSL_KEY_FILE: "/var/www/adit/ssl/key.pem"
+    SSL_CERT_FILE: "/var/www/web/ssl/cert.pem"
+    SSL_KEY_FILE: "/var/www/web/ssl/key.pem"
 
 x-deploy: &deploy
   replicas: 1
@@ -44,7 +43,7 @@ services:
       bash -c "
         wait-for-it -s init.local:8000 -t 300 && 
         echo 'Starting web server ...'
-        daphne -b 0.0.0.0 -p 80 -e ssl:443:privateKey=/var/www/adit/ssl/key.pem:certKey=/var/www/adit/ssl/cert.pem adit.asgi:application
+        daphne -b 0.0.0.0 -p 80 -e ssl:443:privateKey=/var/www/web/ssl/key.pem:certKey=/var/www/web/ssl/cert.pem adit.asgi:application
       "
     deploy:
       <<: *deploy
@@ -66,15 +65,9 @@ services:
     deploy:
       <<: *deploy
 
-  celery_worker:
+  default_worker:
     <<: *default-app
-    command: ./manage.py celery_worker -Q default_queue
-    deploy:
-      <<: *deploy
-
-  celery_beat:
-    <<: *default-app
-    command: ./manage.py celery_beat
+    command: ./manage.py procrastinate worker
     deploy:
       <<: *deploy
 
@@ -83,15 +76,6 @@ services:
     ports:
       - "11112:11112"
     command: ./manage.py receiver
-    deploy:
-      <<: *deploy
-
-  flower:
-    <<: *default-app
-    deploy:
-      <<: *deploy
-
-  redis:
     deploy:
       <<: *deploy
 

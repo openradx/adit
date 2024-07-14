@@ -3,14 +3,10 @@ x-app: &default-app
     - /mnt:/mnt
   depends_on:
     - postgres
-    - redis
   environment:
     USE_DOCKER: 1
     DATABASE_URL: "psql://postgres:postgres@postgres.local:5432/postgres"
-    REDIS_URL: "redis://redis.local:6379/0"
-    DJANGO_STATIC_ROOT: "/var/www/adit/static/"
-    FLOWER_HOST: "flower.local"
-    FLOWER_PORT: "5555"
+    DJANGO_STATIC_ROOT: "/var/www/web/static/"
     ORTHANC1_HOST: "orthanc1.local"
     ORTHANC1_HTTP_PORT: 6501
     ORTHANC1_DICOM_PORT: 7501
@@ -29,7 +25,7 @@ services:
     <<: *default-app
     hostname: init.local
     volumes:
-      - adit_data:/var/www/adit
+      - web_data:/var/www/web
       - /mnt:/mnt
 
   web:
@@ -38,7 +34,7 @@ services:
     build:
       context: ..
     volumes:
-      - adit_data:/var/www/adit
+      - web_data:/var/www/web
       - /mnt:/mnt
 
   postgres:
@@ -51,32 +47,13 @@ services:
     <<: *default-app
     hostname: dicom_worker.local
 
-  celery_worker:
+  default_worker:
     <<: *default-app
-    hostname: celery_worker.local
-
-  celery_beat:
-    <<: *default-app
-    hostname: celery_beat.local
+    hostname: default_worker.local
 
   receiver:
     <<: *default-app
     hostname: receiver.local
-
-  flower:
-    <<: *default-app
-    hostname: flower.local
-    command: >
-      bash -c "
-        wait-for-it -s redis:6379 -t 60 &&
-        celery --broker=redis://redis:6379/0 flower --url_prefix=flower
-      "
-
-  redis:
-    image: redis:7.2.3
-    hostname: redis.local
-    volumes:
-      - redis_data:/data
 
   orthanc1:
     image: jodogne/orthanc-plugins:1.12.1
@@ -103,9 +80,7 @@ configs:
     file: ./orthanc/orthanc2.json
 
 volumes:
-  adit_data:
+  web_data:
   postgres_data:
-  redis_data:
-  flower_data:
   orthanc1_data:
   orthanc2_data:

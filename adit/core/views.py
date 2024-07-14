@@ -17,7 +17,6 @@ from django.contrib.auth.mixins import (
     PermissionRequiredMixin,
     UserPassesTestMixin,
 )
-from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import SuspiciousOperation
 from django.db.models.query import QuerySet
 from django.forms import ModelForm
@@ -31,10 +30,11 @@ from django_filters import FilterSet
 from django_filters.views import FilterView
 from django_tables2 import SingleTableMixin
 from django_tables2.tables import Table
+from procrastinate.contrib.django import app
 
 from adit.core.utils.model_utils import reset_tasks
 
-from .models import DicomJob, DicomTask, QueuedTask
+from .models import DicomJob, DicomTask
 from .site import job_stats_collectors
 from .tasks import broadcast_mail
 
@@ -57,7 +57,7 @@ class BroadcastView(BaseBroadcastView):
     success_url = reverse_lazy("broadcast")
 
     def send_mails(self, subject: str, message: str) -> None:
-        broadcast_mail.delay(subject, message)
+        broadcast_mail.defer(subject, message)
 
 
 class HomeView(BaseHomeView):
@@ -174,6 +174,10 @@ class DicomJobDeleteView(LoginRequiredMixin, DeleteView):
         # as the ID afterwards will be None
         success_message = self.success_message % job.__dict__
 
+        for task in job.tasks.all():
+            if task.queued_job_id is not None:
+                app.job_manager.cancel_job_by_id(task.queued_job_id, delete_job=True)
+
         job.delete()
 
         messages.success(self.request, success_message)
@@ -227,11 +231,10 @@ class DicomJobCancelView(LoginRequiredMixin, SingleObjectMixin, View):
             )
 
         dicom_tasks = job.tasks.filter(status=DicomTask.Status.PENDING)
-        task_model = self.model._meta.get_field("tasks").related_model
-        assert task_model and issubclass(task_model, DicomTask)
-        content_type = ContentType.objects.get_for_model(task_model)
-        dicom_task_ids = dicom_tasks.values_list("id", flat=True)
-        QueuedTask.objects.filter(content_type=content_type, object_id__in=dicom_task_ids).delete()
+        for dicom_task in dicom_tasks:
+            queued_job_id = dicom_task.queued_job_id
+            if queued_job_id is not None:
+                app.job_manager.cancel_job_by_id(queued_job_id, delete_job=True)
         dicom_tasks.update(status=DicomTask.Status.CANCELED)
 
         # If there is a task in progress then the job will be set to canceling and will be set
@@ -429,10 +432,9 @@ class DicomTaskKillView(LoginRequiredMixin, UserPassesTestMixin, SingleObjectMix
                 f"Task with ID {task.id} and status {task.get_status_display()} is not killable."
             )
 
-        queued_task = task.queued
-        if queued_task:
-            queued_task.kill = True
-            queued_task.save()
+        queued_job_id = task.queued_job_id
+        if queued_job_id is not None:
+            app.job_manager.cancel_job_by_id(queued_job_id, abort=True, delete_job=True)
 
         messages.success(request, self.success_message % task.__dict__)
         return redirect(task)

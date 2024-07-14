@@ -2,6 +2,7 @@
 
 ## Top
 
+- Delete VSCode stuff inside containers (I think its only when using the container itself as devcontainer)
 - When populate_data then also reset_orthancs
 - Study Date is changed when using Selective Transfer
 - Fix that ADIT DICOMweb supports STOW of multiple image files at once
@@ -64,7 +65,6 @@
   - We can also make the network attachable to do the "exec" stuff in tasks.py using one off containers using "run"
 - Redirect after restart/retry/delete job
 - Option in batch query to query whole study or explicit series
-- Allow to terminate a specific Celery task with revoke(celery_task_id, terminate=True)
 - Make whole receiver crash if one asyncio task crashes
 - Auto refresh job pages und success or failure
 - Query with StudyDateStart, StudyDateEnd, StudyDate
@@ -74,18 +74,9 @@
 - Fix the ineffective stuff in transfer_utils, see TODO there
 - Write test_parsers.py
 - DICOM data that does not need to be modified can be directly transferred between the source and destination server (C-MOVE). The only exception is when source and destination server are the same, then the data will still be downloaded and uploaded again. This may be helpful when the PACS server treats the data somehow differently when sent by ADIT.
-- Check if we still need Abortable Celery Tasks (and just use Task)
-  - Currently we don't use this functionality to abort running task, but we could
-  - <https://docs.celeryq.dev/en/stable/reference/celery.contrib.abortable.html>
-  - <https://docs.celeryq.dev/en/latest/faq.html#how-do-i-get-the-result-of-a-task-if-i-have-the-id-that-points-there>
-- Use Django ORM as Celery result backend (currently we use Redis for that)
-  - <https://docs.celeryq.dev/en/stable/django/first-steps-with-django.html#django-celery-results-using-the-django-orm-cache-as-a-result-backend>
 
 ## Fix
 
-- Fix Celery logging (task ids are not appended to logging messages even as we use get_task_logger)
-  - Look into how the setup is in <https://youtube.com/playlist?list=PLOLrQ9Pn6caz-6WpcBYxV84g9gwptoN20&si=jUU6wttECucsbGFv>
-  - and its code <https://github.com/veryacademy?q=Django&type=all&language=&sort=>
 - Shorter timeout for offline studies
 - Tests: test_query_utils, test serializers, test all views (as integration tests using real Orthanc), improve tests of transferutil, BatchFileSizeError
 - c-get download timeout
@@ -95,8 +86,6 @@
 
 ## Maybe
 
-- Replace Redis distributed locks with <https://django-pglock.readthedocs.io/en/1.5.1/>
-- Replace Celery with <https://procrastinate.readthedocs.io/en/stable/howto/django.html>
 - Do some prechecks before trying the task (is source and destination online?)
 - Generate exposed IDs for URLs by hashing the primary (number) keys:
   - <https://sqids.org/python>
@@ -119,7 +108,6 @@
   - Currently we don't allow this, but this can happen when a patient has multiple PatientIDs in the same PACS (e.g. has external images)
 - exclude test folders from autorelad in ServerCommand (maybe a custom filter is needed)
 - Switch from Daphne to Uvicorn (maybe it has faster restart times during development)
-- Switch from Celery to Huey
 - Upgrade postgres server to v15, but we have to migrate the data then as the database files are incompatible a newer version
   - <https://hollo.me/devops/upgrade-postgresql-database-with-docker.html>
   - <https://thomasbandt.com/postgres-docker-major-version-upgrade>
@@ -127,7 +115,7 @@
   - look into <https://github.com/tianon/docker-postgres-upgrade>
 - Allow to search multiple source servers with one query (maybe only in dicom explorer)
 - Bring everything behind Nginx as reverse proxy
-  - Orthanc and Flower should then be directly behind Nginx (without Django-revproxy)
+  - Orthanc could then be directly behind Nginx (without Django-revproxy)
   - Use authentication module of nginx
   - <http://nginx.org/en/docs/http/ngx_http_auth_request_module.html>
   - <https://stackoverflow.com/a/70961666/166229>
@@ -143,7 +131,6 @@
   - Unfortunately, I could not get it to work with Django autoreload itself, but we can use something similiar by using watchman directly and integrate it in ServerCommand
 - BatchQuery with custom DICOM keywords
 - Watchdog server
-- pull celery_task stuff out of transfer_utils
 - Allow provide a regex of StudyDescription in batch file
 - move date parsing part in parsers.py and consumers.py to date_util.py
 - <https://stackoverflow.com/questions/14259852/how-to-identify-image-receive-in-c-store-as-result-of-a-c-move-query>
@@ -157,18 +144,6 @@
   - Can be work around by wrapping another zip file in an encrypted zip file <https://unix.stackexchange.com/a/290088/469228>
 - Rewrite dicom_connector to use asyncio (wrap all pynetdicom calls in asyncio.to_thread)
   - I don't think that this will gain any performance improvements, so maybe not worth it
-- Look out for a django-revproxy fix (see <https://github.com/jazzband/django-revproxy/issues/144>)
-  - Flower is running behind a Django internal reverse proxy (django-revproxy) so that only admins can access them
-  - Unfortunately the last released django-revproxy is broken with latest Django
-  - So we use the master branch here directly from Github (see pyproject.toml)
-  - Alternatively we could use <https://github.com/thomasw/djproxy>
-- Rethink task queues and rescheduling
-  - Currently we use Celery to schedule tasks in the future using Celery's ETA feature, but this is not recommended for tasks in the distant future (see <https://docs.celeryq.dev/en/stable/userguide/calling.html#eta-and-countdown>)
-  - An option would be to introduce a "rescheduled" property in task model and reschedule them by checking periodically using Celery Beat PeriodicTasks (maybe every hour or so) or using "one_off" PeriodicTasks.
-  - But then we can't use Celery Canvas anymore as tasks in a worker finish with such a rescheduling outside of the Celery queue system. We then have to check at the end of each task if the job is finished or erroneous (by checking all the other sibling tasks). This should be done with a distributed lock (e.g. using <https://sher-lock.readthedocs.io/en/latest/>) so that if we have multiple workers there are no race conditions.
-  - Maybe it isn't even a big problem as in a hospital site we never accumulate such many Celery tasks on a worker and ETA is totally fine (just keep it in mind that it could get a problem).
-  - Make sure if using PeriodicTask that those are also cancelled when job is cancelled.
-  - Another solution would be to use Temporal.io as soon as they implement task priorities <https://github.com/temporalio/temporal/issues/1507>
 - Evaluate other task runners
   - <https://www.pyinvoke.org/> # used currently
   - <https://github.com/taskipy/taskipy>

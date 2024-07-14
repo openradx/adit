@@ -1,11 +1,9 @@
 import io
-from multiprocessing import Process
 from tempfile import NamedTemporaryFile
 
 import nest_asyncio
 import pandas as pd
 import pytest
-from adit_radis_shared.conftest import *  # noqa: F403
 from django.conf import settings
 from django.core.management import call_command
 from faker import Faker
@@ -16,7 +14,7 @@ from adit.core.factories import (
 )
 from adit.core.models import DicomServer
 
-fake = Faker()
+pytest_plugins = ["adit_radis_shared.pytest_fixtures"]
 
 
 def pytest_configure():
@@ -29,26 +27,7 @@ def pytest_configure():
     nest_asyncio.apply()
 
 
-@pytest.fixture
-def dicom_worker():
-    def start_worker():
-        call_command("dicom_worker", "-p", "1")
-
-    p = Process(target=start_worker)
-    p.start()
-    yield
-    p.terminate()
-
-
-@pytest.fixture
-def adit_celery_worker():
-    def start_worker():
-        call_command("celery_worker", "-Q", "test_queue")
-
-    p = Process(target=start_worker)
-    p.start()
-    yield
-    p.terminate()
+fake = Faker()
 
 
 @pytest.fixture

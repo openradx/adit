@@ -1,32 +1,37 @@
+import logging
 import subprocess
+import traceback
+from concurrent import futures
+from time import sleep
+from typing import cast
 
+import humanize
+import pglock
 from adit_radis_shared.accounts.models import User
-from celery import shared_task
-from celery.utils.log import get_task_logger
+from django import db
 from django.conf import settings
 from django.core.mail import send_mail
 from django.core.management import call_command
+from django.utils import timezone
+from pebble import ProcessFuture, concurrent
+from procrastinate import JobContext, RetryStrategy
+from procrastinate.contrib.django import app
 
-from .models import DicomFolder
+from .errors import DicomError, RetriableDicomError
+from .models import DicomFolder, DicomJob, DicomTask
+from .types import ProcessingResult
+from .utils.db_utils import ensure_db_connection
 from .utils.mail import send_mail_to_admins
+from .utils.task_utils import get_dicom_processor, get_dicom_task
 
-logger = get_task_logger(__name__)
+DISTRIBUTED_LOCK = "process_dicom_task_lock"
 
-
-@shared_task
-def broadcast_mail(subject: str, message: str):
-    recipients = []
-    for user in User.objects.all():
-        if user.email:
-            recipients.append(user.email)
-
-    send_mail(subject, message, settings.SUPPORT_EMAIL, recipients)
-
-    logger.info("Successfully sent an Email to %d recipents.", len(recipients))
+logger = logging.getLogger(__name__)
 
 
-@shared_task
-def check_disk_space():
+@app.periodic(cron="0 7 * * *")  # every day at 7am
+@app.task
+def check_disk_space(*args, **kwargs):
     # TODO: Maybe only check active folders (that belong to an institute and are active
     # as a destination)
     folders = DicomFolder.objects.all()
@@ -45,6 +50,138 @@ def check_disk_space():
             send_mail_to_admins("Warning, low disk space!", msg)
 
 
-@shared_task
-def backup_db():
+@app.periodic(cron="0 3 * * * ")  # every day at 3am
+@app.task
+def backup_db(*args, **kwargs):
     call_command("dbbackup", "--clean", "-v 2")
+
+
+@app.task
+def broadcast_mail(subject: str, message: str):
+    recipients = []
+    for user in User.objects.all():
+        if user.email:
+            recipients.append(user.email)
+
+    send_mail(subject, message, settings.SUPPORT_EMAIL, recipients)
+
+    logger.info("Successfully sent an Email to %d recipents.", len(recipients))
+
+
+@app.task(
+    queue="dicom",
+    pass_context=True,
+    # TODO: Increase the priority slightly when it will be retried
+    # See https://github.com/procrastinate-org/procrastinate/issues/1096
+    retry=RetryStrategy(
+        max_attempts=settings.DICOM_TASK_RETRIES,
+        exponential_wait=settings.DICOM_TASK_EXPONENTIAL_WAIT,
+        retry_exceptions={RetriableDicomError},
+    ),
+)
+def process_dicom_task(context: JobContext, model_label: str, task_id: int):
+    dicom_task = get_dicom_task(model_label, task_id)
+    assert dicom_task.status == DicomTask.Status.PENDING
+
+    # When the first DICOM task of a job is processed then the status of the
+    # job switches from PENDING to IN_PROGRESS
+    dicom_job = dicom_task.job
+    if dicom_job.status == DicomJob.Status.PENDING:
+        dicom_job.status = DicomJob.Status.IN_PROGRESS
+        dicom_job.start = timezone.now()
+        dicom_job.save()
+        logger.info(f"Processing of {dicom_job} started.")
+
+    dicom_task.status = DicomTask.Status.IN_PROGRESS
+    dicom_task.start = timezone.now()
+    dicom_task.attempts += 1
+    dicom_task.save()
+
+    logger.info(f"Processing of {dicom_task} started.")
+
+    @concurrent.process(timeout=settings.DICOM_TASK_PROCESS_TIMEOUT, daemon=True)
+    def _process_dicom_task(model_label: str, task_id: int) -> ProcessingResult:
+        dicom_task = get_dicom_task(model_label, task_id)
+        processor = get_dicom_processor(dicom_task)
+
+        logger.info(f"Start processing of {dicom_task}.")
+        return processor.process()
+
+    @concurrent.thread
+    def _monitor_task(context: JobContext, future: ProcessFuture) -> None:
+        while not future.done():
+            if context.should_abort():
+                future.cancel()
+                sleep(settings.DICOM_TASK_CANCELED_MONITOR_INTERVAL)
+        db.close_old_connections()
+
+    try:
+        future = cast(ProcessFuture, _process_dicom_task(model_label, task_id))
+        _monitor_task(context, future)
+        result: ProcessingResult = future.result()
+        dicom_task.status = result["status"]
+        dicom_task.message = result["message"]
+        dicom_task.log = result["log"]
+        ensure_db_connection()
+
+    except futures.TimeoutError:
+        dicom_task.message = "Task was aborted due to timeout."
+        dicom_task.status = DicomTask.Status.FAILURE
+        ensure_db_connection()
+
+    except RetriableDicomError as err:
+        logger.exception("Retriable error occurred during %s.", dicom_task)
+
+        # Cave, the the attempts of the Procrastinate job must not be the same number
+        # as the attempts of the DicomTask. The DicomTask could be started by multiple
+        # Procrastinate jobs (e.g. if the user canceled and resumed the same task).
+        assert context.job
+        job_attempts = context.job.attempts
+        delta = settings.DICOM_TASK_EXPONENTIAL_WAIT ** (job_attempts + 1)
+        humanized_delta = humanize.naturaldelta(delta)
+
+        if job_attempts < settings.DICOM_TASK_RETRIES:
+            logger.info(f"Retrying {dicom_task} in {humanized_delta}.")
+
+            dicom_task.status = DicomTask.Status.PENDING
+            dicom_task.message = f"Task failed, but will be retried in {humanized_delta}."
+            if dicom_task.log:
+                dicom_task.log += "\n"
+            dicom_task.log += str(err)
+        else:
+            logger.error("No more retries for finally failed %s: %s", dicom_task, str(err))
+
+            dicom_task.status = DicomTask.Status.FAILURE
+            dicom_task.message = str(err)
+
+        ensure_db_connection()
+        raise err
+
+    except Exception as err:
+        if isinstance(err, DicomError):
+            logger.exception("Error during %s.", dicom_task)
+        else:
+            logger.exception("Unexpected error during %s.", dicom_task)
+
+        dicom_task.status = DicomTask.Status.FAILURE
+        dicom_task.message = str(err)
+        if dicom_task.log:
+            dicom_task.log += "\n---\n"
+        dicom_task.log += traceback.format_exc()
+
+        ensure_db_connection()
+
+    finally:
+        dicom_task.end = timezone.now()
+        dicom_task.save()
+        logger.info(f"Processing of {dicom_task} ended.")
+
+        with pglock.advisory(DISTRIBUTED_LOCK):
+            dicom_job.refresh_from_db()
+            job_finished = dicom_job.post_process()
+
+        if job_finished:
+            logger.info(f"Processing of {dicom_job} ended.")
+
+        # TODO: https://github.com/procrastinate-org/procrastinate/issues/1106
+        db.close_old_connections()

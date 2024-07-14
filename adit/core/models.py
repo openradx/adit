@@ -4,18 +4,17 @@ from adit_radis_shared.accounts.models import User
 from adit_radis_shared.common.models import AppSettings
 from django.conf import settings
 from django.contrib.auth.models import Group
-from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
-from django.contrib.contenttypes.models import ContentType
 from django.contrib.postgres.fields import ArrayField
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.db.models.constraints import UniqueConstraint
 from django.db.models.query import QuerySet
 from django.utils import timezone
+from procrastinate.contrib.django import app
+from procrastinate.contrib.django.models import ProcrastinateJob
 
-from adit.core.utils.mail import send_job_finished_mail
-from adit.core.utils.model_utils import reset_tasks
-
+from .utils.mail import send_job_finished_mail
+from .utils.model_utils import get_model_label, reset_tasks
 from .validators import (
     no_backslash_char_validator,
     no_control_chars_validator,
@@ -228,13 +227,23 @@ class DicomJob(models.Model):
 
     def queue_pending_tasks(self):
         """Queues all pending tasks of this job."""
+        assert self.status == DicomJob.Status.PENDING
+
         priority = self.default_priority
         if self.urgent:
             priority = self.urgent_priority
 
         for dicom_task in self.tasks.filter(status=DicomTask.Status.PENDING):
-            if not dicom_task.queued:
-                QueuedTask.objects.create(content_object=dicom_task, priority=priority)
+            assert dicom_task.queued_job is None
+
+            model_label = get_model_label(dicom_task.__class__)
+            queued_job_id = app.configure_task(
+                "adit.core.tasks.process_dicom_task",
+                allow_unknown=False,
+                priority=priority,
+            ).defer(model_label=model_label, task_id=dicom_task.id)
+            dicom_task.queued_job_id = queued_job_id
+            dicom_task.save()
 
     def reset_tasks(self, only_failed=False) -> None:
         if only_failed:
@@ -249,7 +258,6 @@ class DicomJob(models.Model):
 
         Returns: True if the job is finished, False otherwise
         """
-
         if self.tasks.filter(status=DicomTask.Status.PENDING).exists():
             if self.status != DicomJob.Status.CANCELING:
                 self.status = DicomJob.Status.PENDING
@@ -360,35 +368,6 @@ class TransferJob(DicomJob):
         ]
 
 
-class QueuedTask(models.Model):
-    id: int
-    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
-    object_id = models.PositiveIntegerField()
-    content_object = GenericForeignKey("content_type", "object_id")
-    priority = models.PositiveIntegerField()
-    eta = models.DateTimeField(blank=True, null=True)
-    created = models.DateTimeField(auto_now_add=True)
-    locked = models.BooleanField(default=False)
-    kill = models.BooleanField(default=False)
-
-    class Meta:
-        constraints = [
-            UniqueConstraint(
-                fields=["content_type", "object_id"],
-                name="unique_queued_task_per_dicom_task",
-            )
-        ]
-        indexes = [
-            models.Index(
-                fields=["locked", "eta", "priority", "created"],
-                name="fetch_next_task_idx",
-            )
-        ]
-
-    def __str__(self) -> str:
-        return f"{self.__class__.__name__} [ID {self.id} ({self.content_object})]"
-
-
 class DicomTask(models.Model):
     class Status(models.TextChoices):
         PENDING = "PE", "Pending"
@@ -403,19 +382,22 @@ class DicomTask(models.Model):
     job = models.ForeignKey(DicomJob, on_delete=models.CASCADE, related_name="tasks")
     source_id: int
     source = models.ForeignKey(DicomNode, related_name="+", on_delete=models.PROTECT)
+    queued_job_id: int
+    queued_job = models.OneToOneField(
+        ProcrastinateJob, null=True, on_delete=models.SET_NULL, related_name="+"
+    )
     get_status_display: Callable[[], str]
     status = models.CharField(
         max_length=2,
         choices=Status.choices,
         default=Status.PENDING,
     )
-    retries = models.PositiveSmallIntegerField(default=0)
+    attempts = models.PositiveSmallIntegerField(default=0)
     message = models.TextField(blank=True, default="")
     log = models.TextField(blank=True, default="")
     created = models.DateTimeField(auto_now_add=True)
     start = models.DateTimeField(null=True, blank=True)
     end = models.DateTimeField(null=True, blank=True)
-    _queued = GenericRelation(QueuedTask)
 
     class Meta:
         abstract = True
@@ -426,16 +408,21 @@ class DicomTask(models.Model):
 
     def queue_pending_task(self) -> None:
         """Queues a dicom task."""
+        assert self.status == DicomTask.Status.PENDING
+        assert self.queued_job is None
+
         priority = self.job.default_priority
         if self.job.urgent:
             priority = self.job.urgent_priority
 
-        if not self.queued:
-            QueuedTask.objects.create(content_object=self, priority=priority)
-
-    @property
-    def queued(self) -> QueuedTask | None:
-        return self._queued.first()
+        model_label = get_model_label(self.__class__)
+        queued_job_id = app.configure_task(
+            "adit.core.tasks.process_dicom_task",
+            allow_unknown=False,
+            priority=priority,
+        ).defer(model_label=model_label, task_id=self.id)
+        self.queued_job_id = queued_job_id
+        self.save()
 
     @property
     def is_deletable(self) -> bool:
