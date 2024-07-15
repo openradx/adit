@@ -9,7 +9,7 @@ from django.contrib.auth.mixins import (
     LoginRequiredMixin,
     PermissionRequiredMixin,
 )
-from django.core.exceptions import SuspiciousOperation
+from django.core.exceptions import PermissionDenied, SuspiciousOperation
 from django.http import HttpResponse
 from django.shortcuts import render
 from django.views.generic.edit import FormView
@@ -40,7 +40,7 @@ class UploadCreateView(
 ):
     template_name = "upload/upload_job_form.html"
     form_class = UploadForm
-    permission_required = "upload.add_uploadjob"
+    permission_required = "upload.upload_data_view"
     request: AuthenticatedHttpRequest
 
     def get_form_kwargs(self) -> dict[str, Any]:
@@ -86,35 +86,46 @@ class UploadCreateView(
 
 
 @login_required_async
-async def uploadAPIView(request: AuthenticatedHttpRequest, node_id: str) -> HttpResponse:
+async def upload_api_view(request: AuthenticatedHttpRequest, node_id: str) -> HttpResponse:
     if request.method != "POST":
         return HttpResponse(status=405)
 
+    has_permission = await sync_to_async(lambda: request.user.has_perm("upload.can_upload_data"))()
+
+    if not has_permission:
+        raise PermissionDenied()
+
     data = request.FILES
 
-    destination = await sync_to_async(lambda: DicomServer.objects.get(id=node_id))()
+    destination_node = await DicomServer.objects.aget(id=node_id)
 
-    operator = DicomOperator(destination)
+    node_accessible = await sync_to_async(
+        lambda: destination_node.is_accessible_by_user(request.user, "destination")
+    )()
+    if not node_accessible:
+        raise PermissionDenied()
+    else:
+        operator = DicomOperator(destination_node)
 
-    if "dataset" in data:
-        dataset_bytes = BytesIO(data["dataset"].read())
-        dataset = read_dataset(dataset_bytes)
+        if "dataset" in data:
+            dataset_bytes = BytesIO(data["dataset"].read())
+            dataset = read_dataset(dataset_bytes)
 
-    if dataset is None:
-        return HttpResponse(status=400, content="No data received")
-    try:
-        loop = asyncio.get_event_loop()
-        await loop.run_in_executor(None, operator.upload_instances, [dataset])
+        if dataset is None:
+            return HttpResponse(status=400, content="No data received")
+        try:
+            loop = asyncio.get_event_loop()
+            await loop.run_in_executor(None, operator.upload_instances, [dataset])
 
-        status = 200
-        message = "Upload successful"
+            status = 200
+            message = "Upload successful"
 
-    except Exception:
-        status = 500
-        message = "Upload failed"
+        except Exception:
+            status = 500
+            message = "Upload failed"
 
-    response = HttpResponse(status=status, content=message)
+        response = HttpResponse(status=status, content=message)
 
-    response["statusText"] = response.reason_phrase
+        response["statusText"] = response.reason_phrase
 
-    return response
+        return response
