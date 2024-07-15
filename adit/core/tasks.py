@@ -5,7 +5,6 @@ from concurrent import futures
 from time import sleep
 from typing import cast
 
-import humanize
 import pglock
 from adit_radis_shared.accounts.models import User
 from django import db
@@ -80,6 +79,8 @@ def broadcast_mail(subject: str, message: str):
     ),
 )
 def process_dicom_task(context: JobContext, model_label: str, task_id: int):
+    assert context.job
+
     dicom_task = get_dicom_task(model_label, task_id)
     assert dicom_task.status == DicomTask.Status.PENDING
 
@@ -135,22 +136,13 @@ def process_dicom_task(context: JobContext, model_label: str, task_id: int):
         # Cave, the the attempts of the Procrastinate job must not be the same number
         # as the attempts of the DicomTask. The DicomTask could be started by multiple
         # Procrastinate jobs (e.g. if the user canceled and resumed the same task).
-        assert context.job
-        job_attempts = context.job.attempts
-        delta = settings.DICOM_TASK_EXPONENTIAL_WAIT ** (job_attempts + 1)
-        humanized_delta = humanize.naturaldelta(delta)
-
-        if job_attempts < settings.DICOM_TASK_RETRIES:
-            logger.info(f"Retrying {dicom_task} in {humanized_delta}.")
-
+        if context.job.attempts < settings.DICOM_TASK_RETRIES:
             dicom_task.status = DicomTask.Status.PENDING
-            dicom_task.message = f"Task failed, but will be retried in {humanized_delta}."
+            dicom_task.message = "Task failed, but will be retried."
             if dicom_task.log:
                 dicom_task.log += "\n"
             dicom_task.log += str(err)
         else:
-            logger.error("No more retries for finally failed %s: %s", dicom_task, str(err))
-
             dicom_task.status = DicomTask.Status.FAILURE
             dicom_task.message = str(err)
 
