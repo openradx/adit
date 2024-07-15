@@ -27,6 +27,7 @@ function UploadJobForm(formEl) {
       });
       var button = formEl.querySelector("button#uploadButton");
       this.stopUploadButtonVisible = false;
+      this.fileCount = 0;
       // Add an event listener to the button
       button.addEventListener("click", function () {
         // Trigger the form submission when the button is clicked
@@ -166,31 +167,33 @@ function UploadJobForm(formEl) {
               }
             }
             if (loadedFiles == datasets.length) {
-              this.uploadSuccessfull();
+              this.finishUpload();
             } else {
               this.stopUpload();
             }
           } else {
+            console.log("checker falsch");
             this.uploadResultText = "Upload refused - Fehlerhafte Datensätze";
             this.buttonVisible = false;
             this.uploadCompleteTextVisible = true;
           }
         } catch (e) {
-          this.uploadResultText = e; //"Upload Failed due to an Error";
+          console.log("error in try");
+          this.uploadResultText = "Upload Failed due to an Error";
           this.uploadCompleteTextVisible = true;
+          console.info("Upload process failed with error:", e);
         }
-
-        console.info("Upload process finished successfully.");
       }
     },
 
-    uploadSuccessfull: function () {
+    finishUpload: function () {
       this.uploadResultText = "Upload Successful!";
       this.stopUploadButtonVisible = false;
+      this.pbVisible = false;
+      this.uploadCompleteTextVisible = true;
 
       setTimeout(() => {
         this.uploadCompleteTextVisible = false;
-        this.pbVisible = false;
       }, 5000);
     },
 
@@ -288,7 +291,7 @@ function UploadJobForm(formEl) {
           const dcm = dcmjs.data.DicomMessage.readFile(set, {
             ignoreErrors: true,
           });
-
+          console.info("At least we can read in the files");
           try {
             patientIDs.add(dcm.dict["00100020"].Value[0]); // Patient ID
           } catch (e) {
