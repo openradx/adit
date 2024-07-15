@@ -122,7 +122,7 @@ def test_process_dicom_task_that_should_be_retried(mocker: MockerFixture, run_wo
     dicom_task.refresh_from_db()
     assert dicom_task.queued_job is not None
     assert dicom_task.status == DicomTask.Status.PENDING
-    assert dicom_task.message == "Task failed, but will be retried in 10 seconds."
+    assert dicom_task.message == "Task failed, but will be retried."
     assert dicom_task.attempts == 1
 
 
