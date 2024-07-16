@@ -40,12 +40,11 @@ class UploadCreateView(
 ):
     template_name = "upload/upload_job_form.html"
     form_class = UploadForm
-    permission_required = "upload.upload_data_view"
+    permission_required = "upload.can_upload_data"
     request: AuthenticatedHttpRequest
 
     def get_form_kwargs(self) -> dict[str, Any]:
         kwargs = super().get_form_kwargs()
-
         kwargs["action"] = self.request.POST.get("action")
         kwargs["user"] = self.request.user
 
@@ -54,12 +53,12 @@ class UploadCreateView(
     def get_initial(self):
         initial = super().get_initial()
         preferences: dict[str, Any] = self.request.user.preferences
-
         source = preferences.get(UPLOAD_SOURCE)
+        destination = preferences.get(UPLOAD_DESTINATION)
+
         if source is not None:
             initial["source"] = source
 
-        destination = preferences.get(UPLOAD_DESTINATION)
         if destination is not None:
             initial["destination"] = destination
 
@@ -75,7 +74,6 @@ class UploadCreateView(
             action="transfer",
         )
         if form.is_valid():
-            print(form.cleaned_data)
             return trigger_client_event(
                 render(request, "upload/upload_job_form_swappable.html", {"form": form}),
                 "chooseFolder",

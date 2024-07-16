@@ -26,6 +26,7 @@ function UploadJobForm(formEl) {
         this.chooseFolder();
       });
       var button = formEl.querySelector("button#uploadButton");
+      this.stopUploadVar = false;
       this.stopUploadButtonVisible = false;
       this.fileCount = 0;
       // Add an event listener to the button
@@ -55,6 +56,7 @@ function UploadJobForm(formEl) {
 
     getFiles: function () {
       var inputElement = formEl.querySelector("#fileselector");
+
       if (
         inputElement instanceof HTMLInputElement &&
         inputElement.files.length > 0
@@ -157,8 +159,6 @@ function UploadJobForm(formEl) {
                 if (progBar instanceof HTMLProgressElement) {
                   progBar.value = (loadedFiles / datasets.length) * 100;
                 }
-              } else if (status == 403) {
-                console.log("einmal die 403");
               } else {
                 this.uploadResultText = "Upload Failed";
                 this.pbVisible = false;
@@ -167,18 +167,16 @@ function UploadJobForm(formEl) {
               }
             }
             if (loadedFiles == datasets.length) {
-              this.finishUpload();
+              this.finishUploadComplete();
             } else {
-              this.stopUpload();
+              this.finishUploadIncomplete();
             }
           } else {
-            console.log("checker falsch");
             this.uploadResultText = "Upload refused - Fehlerhafte Datensätze";
             this.buttonVisible = false;
             this.uploadCompleteTextVisible = true;
           }
         } catch (e) {
-          console.log("error in try");
           this.uploadResultText = "Upload Failed due to an Error";
           this.uploadCompleteTextVisible = true;
           console.info("Upload process failed with error:", e);
@@ -186,7 +184,7 @@ function UploadJobForm(formEl) {
       }
     },
 
-    finishUpload: function () {
+    finishUploadComplete: function () {
       this.uploadResultText = "Upload Successful!";
       this.stopUploadButtonVisible = false;
       this.pbVisible = false;
@@ -201,6 +199,10 @@ function UploadJobForm(formEl) {
       this.stopUploadVar = true;
       this.stopUploadButtonVisible = false;
 
+      this.finishUploadIncomplete();
+    },
+
+    finishUploadIncomplete: function () {
       if (this.stopUploadVar) {
         this.uploadResultText = "Upload Cancelled";
       } else {
@@ -291,7 +293,7 @@ function UploadJobForm(formEl) {
           const dcm = dcmjs.data.DicomMessage.readFile(set, {
             ignoreErrors: true,
           });
-          console.info("At least we can read in the files");
+
           try {
             patientIDs.add(dcm.dict["00100020"].Value[0]); // Patient ID
           } catch (e) {
@@ -339,6 +341,7 @@ async function uploadData(data) {
     body: formData,
   });
   var status = 0;
+
   return fetch(request)
     .then(async function (response) {
       const text = await response.text();
