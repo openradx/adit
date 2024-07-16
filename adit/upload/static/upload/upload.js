@@ -341,23 +341,12 @@ async function uploadData(data) {
   var status = 0;
   return fetch(request)
     .then(async function (response) {
-      if (window.public.debug) {
-        const text = await response.text();
-        if (response.ok) {
-          console.log(
-            "Uploaded data to server with status:",
-            text,
-            response.status
-          ); //TODO:
+      const text = await response.text();
 
-          return response.status;
-        } else {
-          console.log("Response from server:", text); //TODO:
-        }
-      }
+      return response.ok ? response.status : Promise.reject(new Error(text));
     })
     .catch(function (error) {
-      console.log(`Error: ${error.reason_phrase}`); //TODO:
-      return 0;
+      console.error(`Error: ${error.message || "Network error"}`);
+      return 500;
     });
 }
