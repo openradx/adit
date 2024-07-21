@@ -59,15 +59,19 @@ services:
     <<: *default-app
     command: >
       bash -c "
-        wait-for-it -s web.local:80 -t 0 && 
-        ./manage.py dicom_worker
+        wait-for-it -s postgres.local:5432 -t 60 &&
+        ./manage.py worker -q dicom
       "
     deploy:
       <<: *deploy
 
   default_worker:
     <<: *default-app
-    command: ./manage.py procrastinate worker
+    command: >
+      bash -c "
+        wait-for-it -s postgres.local:5432 -t 60 &&
+        ./manage.py worker -q default
+      "
     deploy:
       <<: *deploy
 
