@@ -22,6 +22,7 @@ env = environ.Env()
 # The base directory of the project (the root of the repository)
 BASE_DIR = Path(__file__).resolve(strict=True).parent.parent.parent
 
+# Used to monitor files for autoreload
 SOURCE_FOLDERS = [BASE_DIR / "adit"]
 
 # Read pyproject.toml to fetch current version. We do this conditionally as the
