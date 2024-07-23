@@ -36,16 +36,10 @@ services:
         ./manage.py populate_data &&
         ./manage.py runserver 0.0.0.0:8000
       "
-    profiles:
-      - full
-      - web
 
   postgres:
     environment:
       POSTGRES_PASSWORD: "postgres"
-    profiles:
-      - full
-      - web
 
   dicom_worker:
     <<: *default-app
@@ -54,8 +48,6 @@ services:
         wait-for-it -s postgres.local:5432 -t 60 &&
         ./manage.py worker -l debug -q dicom --autoreload
       "
-    profiles:
-      - full
 
   default_worker:
     <<: *default-app
@@ -64,8 +56,6 @@ services:
         wait-for-it -s postgres.local:5432 -t 60 &&
         ./manage.py worker -l debug -q default --autoreload
       "
-    profiles:
-      - full
 
   receiver:
     <<: *default-app
@@ -73,16 +63,6 @@ services:
       - "11122:11112"
     command: |
       ./manage.py receiver --autoreload
-    profiles:
-      - full
-
-  orthanc1:
-    profiles:
-      - full
-
-  orthanc2:
-    profiles:
-      - full
 
 volumes:
   vscode-server:
