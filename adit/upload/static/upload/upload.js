@@ -283,44 +283,47 @@ function UploadJobForm(formEl) {
       }
     },
 
-    checkPatientIDs: async function (datasets) {
-      const patientIDs = new Set();
-      const patientBirthdates = new Set();
-      const patientNames = new Set();
+    checkPatientIDs: function (datasets) {
+      const patientIDs = new Map();
+      const patientBirthdates = new Map();
+      const patientNames = new Map();
 
-      try {
-        for (const set of datasets) {
-          const dcm = dcmjs.data.DicomMessage.readFile(set, {
-            ignoreErrors: true,
-          });
+      for (const set of datasets) {
+        const dcm = dcmjs.data.DicomMessage.readFile(set, {
+          ignoreErrors: true,
+        });
 
-          try {
-            patientIDs.add(dcm.dict["00100020"].Value[0]); // Patient ID
-          } catch (e) {
-            console.log("Missing PatientID"); //TODO:
-          }
-          try {
-            patientNames.add(dcm.dict["00100010"].Value[0].Alphabetic); // Patient Name
-          } catch (e) {
-            console.log("Missing PatientName"); //TODO:
-          }
-          try {
-            patientBirthdates.add(dcm.dict["00100030"].Value[0]); // Patient Birthdate
-          } catch (e) {
-            console.log("Missing PatientBirthdate"); //TODO:
-          }
+        const patientID = dcm.dict["00100020"]?.Value[0];
+        if (patientID) {
+          patientIDs.set(patientID, (patientIDs.get(patientID) || 0) + 1);
         }
-        // Check if in a whole study are more than one PatientID, Name or Birthdate
 
-        return (
-          patientIDs.size <= 1 &&
-          patientNames.size <= 1 &&
-          patientBirthdates.size <= 1
-        );
-      } catch (e) {
-        console.log(e); //TODO:
-        return false;
+        const patientName = dcm.dict["00100010"]?.Value[0]?.Alphabetic;
+        if (patientName) {
+          patientNames.set(
+            patientName,
+            (patientNames.get(patientName) || 0) + 1
+          );
+        }
+
+        const patientBirthdate = dcm.dict["00100030"]?.Value[0];
+        if (patientBirthdate) {
+          patientBirthdates.set(
+            patientBirthdate,
+            (patientBirthdates.get(patientBirthdate) || 0) + 1
+          );
+        }
       }
+
+      // Check if in a whole study are more than one PatientID, Name or Birthdate
+      return (
+        patientIDs.size <= 1 &&
+        patientNames.size <= 1 &&
+        patientBirthdates.size <= 1 &&
+        !patientIDs.has(-1) &&
+        !patientNames.has(undefined) &&
+        !patientBirthdates.has(undefined)
+      );
     },
   };
 }
