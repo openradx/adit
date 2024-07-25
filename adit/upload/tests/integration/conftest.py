@@ -1,6 +1,6 @@
 import io
 import os
-from pathlib import Path
+import tempfile
 from typing import Any, Dict, Iterable
 
 import pytest
@@ -36,14 +36,16 @@ def uploadable_test_dicoms():
 
 
 @pytest.fixture
-def test_dicom_paths():
-    def _test_dicom_paths(patient_id: str) -> list[Path]:
-        paths = []
-        for root, _, files in os.walk(settings.BASE_DIR / "samples" / "dicoms" / patient_id):
-            if len(files) != 0:
-                for file in files:
-                    if file.endswith((".dcm", ".DCM")):
-                        paths.append(os.path.join(root, file))
-        return paths
+def noncompatible_test_file():
+    def _noncompatible_file():
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".txt") as tmp_file:
+            tmp_file.write(b"This is a test text file.")
+            tmp_file.seek(0)
+            buffer = io.BytesIO(tmp_file.read())
+        return {
+            "name": tmp_file.name,
+            "mimeType": "text/plain",
+            "buffer": buffer.getvalue(),
+        }
 
-    return _test_dicom_paths
+    return _noncompatible_file

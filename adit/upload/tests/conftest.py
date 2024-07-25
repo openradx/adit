@@ -6,5 +6,5 @@ from adit_radis_shared.common.utils.auth_utils import add_permission
 @pytest.fixture
 def upload_group(db):
     group = GroupFactory.create(name="Radiologists")
-    add_permission(group, "upload", "add_uploadjob")
+    add_permission(group, "upload", "can_upload_data")
     return group
