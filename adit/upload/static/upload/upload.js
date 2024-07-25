@@ -13,7 +13,7 @@ function UploadJobForm(formEl) {
     isDropping: Boolean,
     buttonVisible: Boolean,
     stopUploadButtonVisible: Boolean,
-    fileCount: 0,
+    fileCount: Number,
     droppedFiles: Object,
     uploadResultText: String,
     stopUploadVar: Boolean,
@@ -78,7 +78,7 @@ function UploadJobForm(formEl) {
       const files = this.getFiles();
       this.buttonVisible = files.length > 0 ? true : false;
       this.fileCount = files.length;
-      this.uploadCompleteTextVisible = false; //TODO: introduce variable to change classe state, don't change html directly -> https://alpinejs.dev/directives/bind
+      this.uploadCompleteTextVisible = false;
     },
     clearFiles: function () {
       var inputEl = formEl.querySelector("#fileselector");
@@ -178,8 +178,9 @@ function UploadJobForm(formEl) {
           }
         } catch (e) {
           this.uploadResultText = "Upload Failed due to an Error";
+          this.buttonVisible = false;
           this.uploadCompleteTextVisible = true;
-          console.info("Upload process failed with error:", e);
+          console.error(e);
         }
       }
     },
@@ -260,8 +261,8 @@ function UploadJobForm(formEl) {
     handleDrop: async function (ev) {
       const files = [];
       this.uploadCompleteTextVisible = false;
-
       const items = ev.dataTransfer.items;
+
       for (const item of items) {
         const itemEntry = item.webkitGetAsEntry();
         if (itemEntry) {
