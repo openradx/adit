@@ -51,7 +51,6 @@ class UploadForm(forms.Form):
             "hx-post": "new",
             "method": "post",
             "hx-trigger": "submit",
-            # "hx-target": "#form_page",
             "hx-swap-oob": "true",
             "action": "",
             "novalidate": "",
