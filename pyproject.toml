@@ -6,7 +6,7 @@ authors = ["medihack <kai.schlamp@gmail.com>"]
 license = "GPL-3.0-or-later"
 
 [tool.poetry.dependencies]
-adit-radis-shared = { git = "https://github.com/openradx/adit-radis-shared.git", tag = "v0.3.5" }
+adit-radis-shared = { git = "https://github.com/openradx/adit-radis-shared.git", rev = "v0.6.2" }
 adrf = "^0.1.1"
 aiofiles = "^23.1.0"
 asyncinotify = "^4.0.1"
@@ -46,7 +46,7 @@ redis = "^5.0.3"
 toml = "^0.10.2"
 Twisted = { extras = ["tls", "http2"], version = "^24.3.0" }
 wait-for-it = "^2.2.2"
-watchfiles = "^0.21.0"
+watchfiles = "^0.22.0"
 whitenoise = "^6.0.0"
 
 [tool.poetry.group.dev.dependencies]
