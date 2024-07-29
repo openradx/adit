@@ -547,13 +547,13 @@ test = ["pytest", "pytest-django"]
 
 [[package]]
 name = "croniter"
-version = "3.0.3"
+version = "2.0.5"
 description = "croniter provides iteration for datetime object with cron like format"
 optional = false
 python-versions = "!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,>=2.6"
 files = [
-    {file = "croniter-3.0.3-py2.py3-none-any.whl", hash = "sha256:b3bd11f270dc54ccd1f2397b813436015a86d30ffc5a7a9438eec1ed916f2101"},
-    {file = "croniter-3.0.3.tar.gz", hash = "sha256:34117ec1741f10a7bd0ec3ad7d8f0eb8fa457a2feb9be32e6a2250e158957668"},
+    {file = "croniter-2.0.5-py2.py3-none-any.whl", hash = "sha256:fdbb44920944045cc323db54599b321325141d82d14fa7453bc0699826bbe9ed"},
+    {file = "croniter-2.0.5.tar.gz", hash = "sha256:f1f8ca0af64212fbe99b1bee125ee5a1b53a9c1b433968d8bca8817b79d237f3"},
 ]
 
 [package.dependencies]
@@ -1911,13 +1911,13 @@ files = [
 
 [[package]]
 name = "procrastinate"
-version = "2.9.1"
+version = "2.8.0"
 description = "Postgres-based distributed task processing library"
 optional = false
 python-versions = "<4.0,>=3.8"
 files = [
-    {file = "procrastinate-2.9.1-py3-none-any.whl", hash = "sha256:e1db7843268a8a6bb18055b316df871dc729e93342cb69c015cf8181ab00002d"},
-    {file = "procrastinate-2.9.1.tar.gz", hash = "sha256:6c3566f15d42ce9ea52c0d9e2b92151970d78b9bb797b82d03cbdd2d2d347586"},
+    {file = "procrastinate-2.8.0-py3-none-any.whl", hash = "sha256:8dd785ea8afc04d72a1e45f13a480e46745a559ae62b3ef46cf8165b88a69a64"},
+    {file = "procrastinate-2.8.0.tar.gz", hash = "sha256:c5c9c1ed3d95148139dd41e0a046e7bd3f1e712cc5111b023b699d82f209d981"},
 ]
 
 [package.dependencies]
