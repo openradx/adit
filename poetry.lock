@@ -2,7 +2,7 @@
 
 [[package]]
 name = "adit-radis-shared"
-version = "0.6.2"
+version = "0.6.3"
 description = "Shared Django apps between ADIT and RADIS"
 optional = false
 python-versions = "^3.11"
@@ -37,8 +37,8 @@ whitenoise = "^6.0.0"
 [package.source]
 type = "git"
 url = "https://github.com/openradx/adit-radis-shared.git"
-reference = "v0.6.2"
-resolved_reference = "932355e6bf7d5bb574ed011aa2967a43a9be8ca8"
+reference = "v0.6.3"
+resolved_reference = "b1501731740190d1000b6fbf61306f645a843100"
 
 [[package]]
 name = "adrf"
@@ -3506,4 +3506,4 @@ testing = ["coverage (>=5.0.3)", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.11,<4.0"
-content-hash = "9ac5b440489fab55ba3fa92868cf7b4cb1a256f5c8621f94a4553f432243398d"
+content-hash = "13c96592863c7e28d4576aa6815bea5229210d1b04af3b2dda13ad3606f6b805"
