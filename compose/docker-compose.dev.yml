@@ -46,7 +46,7 @@ services:
     command: >
       bash -c "
         wait-for-it -s postgres.local:5432 -t 60 &&
-        ./manage.py worker -l debug -q dicom --autoreload
+        ./manage.py bg_worker -l debug -q dicom --autoreload
       "
 
   default_worker:
@@ -54,7 +54,7 @@ services:
     command: >
       bash -c "
         wait-for-it -s postgres.local:5432 -t 60 &&
-        ./manage.py worker -l debug -q default --autoreload
+        ./manage.py bg_worker -l debug -q default --autoreload
       "
 
   receiver:

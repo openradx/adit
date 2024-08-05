@@ -60,7 +60,7 @@ services:
     command: >
       bash -c "
         wait-for-it -s postgres.local:5432 -t 60 &&
-        ./manage.py worker -q dicom
+        ./manage.py bg_worker -q dicom
       "
     deploy:
       <<: *deploy
@@ -70,7 +70,7 @@ services:
     command: >
       bash -c "
         wait-for-it -s postgres.local:5432 -t 60 &&
-        ./manage.py worker -q default
+        ./manage.py bg_worker -q default
       "
     deploy:
       <<: *deploy
