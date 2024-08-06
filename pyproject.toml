@@ -1,12 +1,12 @@
 [tool.poetry]
 name = "adit"
-version = "0.33.1"
+version = "0.34.0"
 description = "ADIT (Automated DICOM Transfer) is a swiss army knife to exchange DICOM data between various systems by using a convenient web frontend."
 authors = ["medihack <kai.schlamp@gmail.com>"]
 license = "GPL-3.0-or-later"
 
 [tool.poetry.dependencies]
-adit-radis-shared = { git = "https://github.com/openradx/adit-radis-shared.git", tag = "v0.6.4" }
+adit-radis-shared = {git = "https://github.com/openradx/adit-radis-shared.git", rev = "v0.6.4"}
 adrf = "^0.1.1"
 aiofiles = "^24.1.0"
 asyncinotify = "^4.0.1"
