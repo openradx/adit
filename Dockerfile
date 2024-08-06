@@ -73,11 +73,6 @@ RUN poetry install
 # Install requirements for end-to-end testing
 RUN playwright install --with-deps chromium
 
-# Required folders for web service
-RUN mkdir -p /var/www/web/logs \
-    /var/www/web/static \
-    /var/www/web/ssl
-
 # will become mountpoint of our code
 WORKDIR /app
 
@@ -86,10 +81,5 @@ WORKDIR /app
 FROM python-base as production
 COPY --from=builder-base $PYSETUP_PATH $PYSETUP_PATH
 COPY . /app/
-
-# Required folders for web service
-RUN mkdir -p /var/www/web/logs \
-    /var/www/web/static \
-    /var/www/web/ssl
 
 WORKDIR /app
