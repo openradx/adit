@@ -116,7 +116,7 @@ class SelectiveTransferJobForm(forms.ModelForm):
         return modilities
 
     def clean(self):
-        destination: DicomNode = self.cleaned_data.get("destination")
+        destination: DicomNode | None = self.cleaned_data.get("destination")
         if not destination or destination.node_type != DicomNode.NodeType.FOLDER:
             self.cleaned_data["archive_password"] = ""
 

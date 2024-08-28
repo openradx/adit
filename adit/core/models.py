@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Callable, Generic, Literal, TypeVar
+from typing import Callable, Generic, Literal, TypeVar
 
 from adit_radis_shared.accounts.models import User
 from adit_radis_shared.common.models import AppSettings
@@ -8,7 +8,6 @@ from django.contrib.postgres.fields import ArrayField
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.db.models.constraints import UniqueConstraint
-from django.db.models.query import QuerySet
 from django.utils import timezone
 from procrastinate.contrib.django import app
 from procrastinate.contrib.django.models import ProcrastinateJob
@@ -21,9 +20,6 @@ from .validators import (
     no_wildcard_chars_validator,
     uid_chars_validator,
 )
-
-if TYPE_CHECKING:
-    from django.db.models.manager import RelatedManager
 
 
 class DicomAppSettings(AppSettings):
@@ -39,7 +35,7 @@ TModel = TypeVar("TModel", bound=models.Model)
 class DicomNodeManager(Generic[TModel], models.Manager[TModel]):
     def accessible_by_user(
         self, user: User, access_type: Literal["source", "destination"], all_groups: bool = False
-    ) -> QuerySet[TModel]:
+    ) -> models.QuerySet[TModel]:
         """Check if the user is allowed to access the given node.
 
         Args:
@@ -186,9 +182,6 @@ class DicomJob(models.Model):
         WARNING = "WA", "Warning"
         FAILURE = "FA", "Failure"
 
-    if TYPE_CHECKING:
-        tasks = RelatedManager["DicomTask"]()
-
     default_priority: int
     urgent_priority: int
 
@@ -207,6 +200,8 @@ class DicomJob(models.Model):
     created = models.DateTimeField(auto_now_add=True)
     start = models.DateTimeField(null=True, blank=True)
     end = models.DateTimeField(null=True, blank=True)
+
+    tasks: models.QuerySet["DicomTask"]
 
     class Meta:
         abstract = True
@@ -341,7 +336,7 @@ class DicomJob(models.Model):
         ]
 
     @property
-    def processed_tasks(self) -> QuerySet["DicomTask"]:
+    def processed_tasks(self) -> models.QuerySet["DicomTask"]:
         non_processed = (
             DicomTask.Status.PENDING,
             DicomTask.Status.IN_PROGRESS,
@@ -405,6 +400,8 @@ class DicomTask(models.Model):
 
     def __str__(self) -> str:
         return f"{self.__class__.__name__} [ID {self.id} (Job ID {self.job.id})]"
+
+    def get_absolute_url(self) -> str: ...
 
     def queue_pending_task(self) -> None:
         """Queues a dicom task."""

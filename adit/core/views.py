@@ -145,7 +145,7 @@ class DicomJobDetailView(
             return self.model.objects.all()
         return self.model.objects.filter(owner=self.request.user)
 
-    def get_filter_queryset(self) -> QuerySet:
+    def get_filter_queryset(self) -> QuerySet[DicomTask]:
         job = cast(DicomJob, self.get_object())
         return job.tasks
 

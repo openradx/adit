@@ -1,14 +1,9 @@
-from typing import TYPE_CHECKING
-
 from django.conf import settings
 from django.contrib.postgres.fields import ArrayField
 from django.db import models
 from django.urls import reverse
 
 from adit.core.models import DicomAppSettings, TransferJob, TransferTask
-
-if TYPE_CHECKING:
-    from django.db.models.manager import RelatedManager
 
 
 class BatchTransferSettings(DicomAppSettings):
@@ -24,8 +19,7 @@ class BatchTransferJob(TransferJob):
     project_description = models.TextField(max_length=2000)
     ethics_application_id = models.CharField(blank=True, max_length=100)
 
-    if TYPE_CHECKING:
-        tasks = RelatedManager["BatchTransferTask"]()
+    tasks: models.QuerySet["BatchTransferTask"]
 
     def get_absolute_url(self):
         return reverse("batch_transfer_job_detail", args=[self.id])

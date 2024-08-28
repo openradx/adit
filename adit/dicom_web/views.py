@@ -67,6 +67,7 @@ class QueryStudiesAPIView(QueryAPIView):
     ) -> Response:
         query: dict[str, str] = {}
         for key, value in request.GET.items():
+            assert isinstance(value, str)
             query[key] = value
 
         source_server = await self._get_dicom_server(request, ae_title, "source")
@@ -86,6 +87,7 @@ class QuerySeriesAPIView(QueryAPIView):
     ) -> Response:
         query: dict[str, str] = {}
         for key, value in request.GET.items():
+            assert isinstance(value, str)
             query[key] = value
 
         query["StudyInstanceUID"] = study_uid
@@ -250,7 +252,7 @@ class StoreInstancesAPIView(WebDicomAPIView):
         ae_title: str,
         study_uid: str = "",
     ) -> Response:
-        content_type: str = request.content_type  # type: ignore
+        content_type: str = request.content_type
         if not media_type_matches("multipart/related; type=application/dicom", content_type):
             raise UnsupportedMediaType(content_type)
 
@@ -288,4 +290,4 @@ class StoreInstancesAPIView(WebDicomAPIView):
                     f"Successfully stored instance {ds.SOPInstanceUID} to {dest_server.ae_title}"
                 )
 
-        return Response([results], content_type=request.accepted_renderer.media_type)  # type: ignore
+        return Response([results], content_type=request.accepted_renderer.media_type)
