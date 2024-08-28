@@ -32,7 +32,7 @@ class BatchQueryJob(DicomJob):
     results: models.QuerySet["BatchQueryResult"]
 
     def get_absolute_url(self):
-        return reverse("batch_query_job_detail", args=[str(self.id)])
+        return reverse("batch_query_job_detail", args=[str(self.pk)])
 
 
 class BatchQueryTask(DicomTask):
@@ -122,11 +122,10 @@ class BatchQueryTask(DicomTask):
         return super().clean()
 
     def get_absolute_url(self):
-        return reverse("batch_query_task_detail", args=[self.id])
+        return reverse("batch_query_task_detail", args=[self.pk])
 
 
 class BatchQueryResult(models.Model):
-    id: int
     job = models.ForeignKey(BatchQueryJob, on_delete=models.CASCADE, related_name="results")
     query = models.ForeignKey(BatchQueryTask, on_delete=models.CASCADE, related_name="results")
     patient_id = models.CharField(
@@ -212,7 +211,7 @@ class BatchQueryResult(models.Model):
     )
 
     def __str__(self) -> str:
-        return f"{self.__class__.__name__} [ID {self.id}]"
+        return f"{self.__class__.__name__} [{self.pk}]"
 
     @property
     def study_date_time(self):

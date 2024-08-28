@@ -17,7 +17,7 @@ class SelectiveTransferJob(TransferJob):
     tasks: models.QuerySet["SelectiveTransferTask"]
 
     def get_absolute_url(self):
-        return reverse("selective_transfer_job_detail", args=[self.id])
+        return reverse("selective_transfer_job_detail", args=[self.pk])
 
 
 class SelectiveTransferTask(TransferTask):
@@ -28,4 +28,4 @@ class SelectiveTransferTask(TransferTask):
     )
 
     def get_absolute_url(self):
-        return reverse("selective_transfer_task_detail", args=[self.id])
+        return reverse("selective_transfer_task_detail", args=[self.pk])

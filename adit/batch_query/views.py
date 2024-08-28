@@ -206,6 +206,6 @@ class BatchQueryResultDownloadView(
             content=file.getvalue(),
             content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         )
-        filename = f"batch_query_job_{job.id}_results.xlsx"
+        filename = f"batch_query_job_{job.pk}_results.xlsx"
         response["Content-Disposition"] = f"attachment;filename={filename}"
         return response
