@@ -1,0 +1,6 @@
+{
+  "dependencies": {
+    "dicom-web-anonymizer": "^0.1.1",
+    "dicomweb-client": "^0.10.4"
+  }
+}
