@@ -5,6 +5,7 @@ from typing import Any
 from adit_radis_shared.common.decorators import login_required_async
 from adit_radis_shared.common.types import AuthenticatedHttpRequest
 from asgiref.sync import sync_to_async
+from django.conf import settings
 from django.contrib.auth.mixins import (
     LoginRequiredMixin,
     PermissionRequiredMixin,
@@ -42,6 +43,11 @@ class UploadCreateView(
     form_class = UploadForm
     permission_required = "upload.can_upload_data"
     request: AuthenticatedHttpRequest
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["anon_seed"] = settings.ANONYMIZATION_SEED
+        return context
 
     def get_form_kwargs(self) -> dict[str, Any]:
         kwargs = super().get_form_kwargs()

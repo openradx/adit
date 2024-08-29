@@ -44,7 +44,6 @@ function UploadJobForm(formEl) {
     },
     onDestinationChange: function (ev) {
       this._updateIsDestinationFolder(ev.target);
-
       updatePreferences("upload", {
         [UPLOAD_DESTINATION]: ev.target.value,
       });
@@ -225,14 +224,16 @@ function UploadJobForm(formEl) {
       if (pseudonym instanceof HTMLInputElement) {
         newPatientID = pseudonym.value;
       }
-
+      const seed = JSON.parse(
+        document.getElementById("anon-seed-json").textContent
+      );
       const anon = new Anonymizer(
         newPatientID,
         undefined,
         undefined,
         undefined,
         undefined,
-        123456789
+        seed
       );
 
       return anon;

@@ -5,6 +5,7 @@
     <script src="{% static 'vendor/dcmjs.js' %}"></script>
     <script src="{% static 'vendor/dicom-web-anonymizer.js' %}"></script>
     <script src="{% static 'vendor/dicomweb-client.js' %}"></script>
+    {{ anon_seed|json_script:"anon-seed-json" }}
     <script src="{% static 'upload/upload.js' %}"></script>
 {% endblock script %}
 {% block heading %}
