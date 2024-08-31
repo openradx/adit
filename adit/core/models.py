@@ -1,4 +1,4 @@
-from typing import Callable, Generic, Literal, TypeVar
+from typing import Callable, Literal, TypeVar
 
 from adit_radis_shared.accounts.models import User
 from adit_radis_shared.common.models import AppSettings
@@ -32,7 +32,7 @@ class DicomAppSettings(AppSettings):
 TModel = TypeVar("TModel", bound=models.Model)
 
 
-class DicomNodeManager(Generic[TModel], models.Manager[TModel]):
+class DicomNodeManager(models.Manager[TModel]):
     def accessible_by_user(
         self, user: User, access_type: Literal["source", "destination"], all_groups: bool = False
     ) -> models.QuerySet[TModel]:

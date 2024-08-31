@@ -1,10 +1,8 @@
 from collections import deque
-from typing import AsyncIterator, Deque, Optional, TypeVar
-
-T = TypeVar("T")
+from typing import AsyncIterator, Deque, Optional
 
 
-class AsyncPeekable(AsyncIterator[T]):
+class AsyncPeekable[T](AsyncIterator[T]):
     """Wrap an async iterator to allow lookahead elements.
 
     Call :meth:`peek` on the result to get the value that will be returned
