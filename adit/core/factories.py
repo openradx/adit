@@ -1,5 +1,3 @@
-from typing import Generic, TypeVar
-
 import factory
 from adit_radis_shared.accounts.factories import UserFactory
 from adit_radis_shared.common.factories import BaseDjangoModelFactory
@@ -18,10 +16,8 @@ from .models import (
 
 fake = Faker()
 
-T = TypeVar("T")
 
-
-class AbstractDicomNodeFactory(Generic[T], BaseDjangoModelFactory[T]):
+class AbstractDicomNodeFactory[T](BaseDjangoModelFactory[T]):
     class Meta:
         model: DicomNode
 
@@ -84,7 +80,7 @@ class DicomFolderFactory(AbstractDicomNodeFactory[DicomFolder]):
 job_status_keys = [key for key, value in TransferJob.Status.choices]
 
 
-class AbstractDicomJobFactory(Generic[T], BaseDjangoModelFactory[T]):
+class AbstractDicomJobFactory[T](BaseDjangoModelFactory[T]):
     class Meta:
         model: DicomJob
 
@@ -94,7 +90,7 @@ class AbstractDicomJobFactory(Generic[T], BaseDjangoModelFactory[T]):
     owner = factory.SubFactory(UserFactory)
 
 
-class AbstractTransferJobFactory(Generic[T], AbstractDicomJobFactory[T]):
+class AbstractTransferJobFactory[T](AbstractDicomJobFactory[T]):
     class Meta:
         model: TransferJob
 
@@ -105,7 +101,7 @@ class AbstractTransferJobFactory(Generic[T], AbstractDicomJobFactory[T]):
 task_status_keys = [key for key, value in TransferTask.Status.choices]
 
 
-class AbstractDicomTaskFactory(Generic[T], BaseDjangoModelFactory[T]):
+class AbstractDicomTaskFactory[T](BaseDjangoModelFactory[T]):
     class Meta:
         model: DicomTask
 
@@ -121,7 +117,7 @@ def generate_uids():
     return []
 
 
-class AbstractTransferTaskFactory(Generic[T], AbstractDicomTaskFactory[T]):
+class AbstractTransferTaskFactory[T](AbstractDicomTaskFactory[T]):
     class Meta:
         model: TransferTask
 

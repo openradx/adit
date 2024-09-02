@@ -1,5 +1,3 @@
-# type: ignore
-
 import pytest
 from django_test_migrations.migrator import Migrator
 

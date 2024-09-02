@@ -145,7 +145,7 @@ class DicomJobDetailView(
             return self.model.objects.all()
         return self.model.objects.filter(owner=self.request.user)
 
-    def get_filter_queryset(self) -> QuerySet:
+    def get_filter_queryset(self) -> QuerySet[DicomTask]:
         job = cast(DicomJob, self.get_object())
         return job.tasks
 
@@ -167,7 +167,7 @@ class DicomJobDeleteView(LoginRequiredMixin, DeleteView):
 
         if not job.is_deletable:
             raise SuspiciousOperation(
-                f"Job with ID {job.id} and status {job.get_status_display()} is not deletable."
+                f"Job with ID {job.pk} and status {job.get_status_display()} is not deletable."
             )
 
         # We have to create the success message before we delete the job
@@ -201,7 +201,7 @@ class DicomJobVerifyView(LoginRequiredMixin, UserPassesTestMixin, SingleObjectMi
         job = cast(DicomJob, self.get_object())
         if job.is_verified:
             raise SuspiciousOperation(
-                f"Job with ID {job.id} and status {job.get_status_display()} was already verified."
+                f"Job with ID {job.pk} and status {job.get_status_display()} was already verified."
             )
 
         job.status = DicomJob.Status.PENDING
@@ -227,7 +227,7 @@ class DicomJobCancelView(LoginRequiredMixin, SingleObjectMixin, View):
         job = cast(DicomJob, self.get_object())
         if not job.is_cancelable:
             raise SuspiciousOperation(
-                f"Job with ID {job.id} and status {job.get_status_display()} is not cancelable."
+                f"Job with ID {job.pk} and status {job.get_status_display()} is not cancelable."
             )
 
         tasks = job.tasks.filter(status=DicomTask.Status.PENDING)
@@ -261,7 +261,7 @@ class DicomJobResumeView(LoginRequiredMixin, SingleObjectMixin, View):
         job = cast(DicomJob, self.get_object())
         if not job.is_resumable:
             raise SuspiciousOperation(
-                f"Job with ID {job.id} and status {job.get_status_display()} is not resumable."
+                f"Job with ID {job.pk} and status {job.get_status_display()} is not resumable."
             )
 
         job.tasks.filter(status=DicomTask.Status.CANCELED).update(status=DicomTask.Status.PENDING)
@@ -289,7 +289,7 @@ class DicomJobRetryView(LoginRequiredMixin, SingleObjectMixin, View):
         job = cast(DicomJob, self.get_object())
         if not job.is_retriable:
             raise SuspiciousOperation(
-                f"Job with ID {job.id} and status {job.get_status_display()} is not retriable."
+                f"Job with ID {job.pk} and status {job.get_status_display()} is not retriable."
             )
 
         job.reset_tasks(only_failed=True)
@@ -320,7 +320,7 @@ class DicomJobRestartView(LoginRequiredMixin, UserPassesTestMixin, SingleObjectM
         job = cast(DicomJob, self.get_object())
         if not request.user.is_staff or not job.is_restartable:
             raise SuspiciousOperation(
-                f"Job with ID {job.id} and status {job.get_status_display()} is not restartable."
+                f"Job with ID {job.pk} and status {job.get_status_display()} is not restartable."
             )
 
         job.reset_tasks()
@@ -368,7 +368,7 @@ class DicomTaskDeleteView(LoginRequiredMixin, DeleteView):
 
         if not task.is_deletable:
             raise SuspiciousOperation(
-                f"Task with ID {task.id} and status {task.get_status_display()} is not deletable."
+                f"Task with ID {task.pk} and status {task.get_status_display()} is not deletable."
             )
 
         # We have to create the success message before we delete the task
@@ -396,10 +396,10 @@ class DicomTaskResetView(LoginRequiredMixin, SingleObjectMixin, View):
         task = cast(DicomTask, self.get_object())
         if not task.is_resettable:
             raise SuspiciousOperation(
-                f"Task with ID {task.id} and status {task.get_status_display()} is not resettable."
+                f"Task with ID {task.pk} and status {task.get_status_display()} is not resettable."
             )
 
-        reset_tasks(self.model.objects.filter(id=task.id))
+        reset_tasks(self.model.objects.filter(pk=task.pk))
 
         task.queue_pending_task()
         task.job.post_process()
@@ -425,7 +425,7 @@ class DicomTaskKillView(LoginRequiredMixin, UserPassesTestMixin, SingleObjectMix
         task = cast(DicomTask, self.get_object())
         if not task.is_killable:
             raise SuspiciousOperation(
-                f"Task with ID {task.id} and status {task.get_status_display()} is not killable."
+                f"Task with ID {task.pk} and status {task.get_status_display()} is not killable."
             )
 
         queued_job_id = task.queued_job_id

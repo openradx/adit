@@ -1,13 +1,8 @@
-from typing import TYPE_CHECKING
-
 from django.conf import settings
 from django.db import models
 from django.urls import reverse
 
 from adit.core.models import DicomAppSettings, TransferJob, TransferTask
-
-if TYPE_CHECKING:
-    from django.db.models.manager import RelatedManager
 
 
 class SelectiveTransferSettings(DicomAppSettings):
@@ -19,11 +14,10 @@ class SelectiveTransferJob(TransferJob):
     default_priority = settings.SELECTIVE_TRANSFER_DEFAULT_PRIORITY
     urgent_priority = settings.SELECTIVE_TRANSFER_URGENT_PRIORITY
 
-    if TYPE_CHECKING:
-        tasks = RelatedManager["SelectiveTransferTask"]()
+    tasks: models.QuerySet["SelectiveTransferTask"]
 
     def get_absolute_url(self):
-        return reverse("selective_transfer_job_detail", args=[self.id])
+        return reverse("selective_transfer_job_detail", args=[self.pk])
 
 
 class SelectiveTransferTask(TransferTask):
@@ -34,4 +28,4 @@ class SelectiveTransferTask(TransferTask):
     )
 
     def get_absolute_url(self):
-        return reverse("selective_transfer_task_detail", args=[self.id])
+        return reverse("selective_transfer_task_detail", args=[self.pk])

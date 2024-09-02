@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Callable, Generic, Literal, TypeVar
+from typing import Callable, Literal, TypeVar
 
 from adit_radis_shared.accounts.models import User
 from adit_radis_shared.common.models import AppSettings
@@ -8,7 +8,6 @@ from django.contrib.postgres.fields import ArrayField
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.db.models.constraints import UniqueConstraint
-from django.db.models.query import QuerySet
 from django.utils import timezone
 from procrastinate.contrib.django import app
 from procrastinate.contrib.django.models import ProcrastinateJob
@@ -22,9 +21,6 @@ from .validators import (
     uid_chars_validator,
 )
 
-if TYPE_CHECKING:
-    from django.db.models.manager import RelatedManager
-
 
 class DicomAppSettings(AppSettings):
     suspended = models.BooleanField(default=False)
@@ -36,10 +32,10 @@ class DicomAppSettings(AppSettings):
 TModel = TypeVar("TModel", bound=models.Model)
 
 
-class DicomNodeManager(Generic[TModel], models.Manager[TModel]):
+class DicomNodeManager(models.Manager[TModel]):
     def accessible_by_user(
         self, user: User, access_type: Literal["source", "destination"], all_groups: bool = False
-    ) -> QuerySet[TModel]:
+    ) -> models.QuerySet[TModel]:
         """Check if the user is allowed to access the given node.
 
         Args:
@@ -74,7 +70,6 @@ class DicomNode(models.Model):
     dicomserver: "DicomServer"
     dicomfolder: "DicomFolder"
 
-    id: int
     node_type = models.CharField(max_length=2, choices=NodeType.choices)
     name = models.CharField(unique=True, max_length=64)
     groups = models.ManyToManyField(
@@ -94,7 +89,7 @@ class DicomNode(models.Model):
         return f"DICOM {node_types_dict[self.node_type]} {self.name}"
 
     def __repr__(self) -> str:
-        return f"{self.__str__()} [ID {self.id}]"
+        return f"{self.__str__()} [{self.pk}]"
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -106,11 +101,10 @@ class DicomNode(models.Model):
     def is_accessible_by_user(
         self, user: User, access_type: Literal["source", "destination"]
     ) -> bool:
-        return DicomNode.objects.accessible_by_user(user, access_type).filter(id=self.id).exists()
+        return DicomNode.objects.accessible_by_user(user, access_type).filter(pk=self.pk).exists()
 
 
 class DicomNodeGroupAccess(models.Model):
-    id: int
     dicom_node = models.ForeignKey(DicomNode, on_delete=models.CASCADE, related_name="accesses")
     group = models.ForeignKey(Group, on_delete=models.CASCADE)
     source = models.BooleanField(default=False)
@@ -126,7 +120,7 @@ class DicomNodeGroupAccess(models.Model):
         ]
 
     def __str__(self) -> str:
-        return f"{self.__class__.__name__} [ID {self.id}]"
+        return f"{self.__class__.__name__} [{self.pk}]"
 
 
 class DicomServer(DicomNode):
@@ -186,13 +180,9 @@ class DicomJob(models.Model):
         WARNING = "WA", "Warning"
         FAILURE = "FA", "Failure"
 
-    if TYPE_CHECKING:
-        tasks = RelatedManager["DicomTask"]()
-
     default_priority: int
     urgent_priority: int
 
-    id: int
     get_status_display: Callable[[], str]
     status = models.CharField(max_length=2, choices=Status.choices, default=Status.UNVERIFIED)
     urgent = models.BooleanField(default=False)
@@ -208,6 +198,8 @@ class DicomJob(models.Model):
     start = models.DateTimeField(null=True, blank=True)
     end = models.DateTimeField(null=True, blank=True)
 
+    tasks: models.QuerySet["DicomTask"]
+
     class Meta:
         abstract = True
         indexes = [models.Index(fields=["owner", "status"])]
@@ -219,7 +211,7 @@ class DicomJob(models.Model):
         ]
 
     def __str__(self) -> str:
-        return f"{self.__class__.__name__} [ID {self.id}]"
+        return f"{self.__class__.__name__} [{self.pk}]"
 
     def get_absolute_url(self) -> str:
         # Gets overridden in subclasses
@@ -241,7 +233,7 @@ class DicomJob(models.Model):
                 "adit.core.tasks.process_dicom_task",
                 allow_unknown=False,
                 priority=priority,
-            ).defer(model_label=model_label, task_id=dicom_task.id)
+            ).defer(model_label=model_label, task_id=dicom_task.pk)
             dicom_task.queued_job_id = queued_job_id
             dicom_task.save()
 
@@ -341,7 +333,7 @@ class DicomJob(models.Model):
         ]
 
     @property
-    def processed_tasks(self) -> QuerySet["DicomTask"]:
+    def processed_tasks(self) -> models.QuerySet["DicomTask"]:
         non_processed = (
             DicomTask.Status.PENDING,
             DicomTask.Status.IN_PROGRESS,
@@ -377,7 +369,6 @@ class DicomTask(models.Model):
         WARNING = "WA", "Warning"
         FAILURE = "FA", "Failure"
 
-    id: int
     job_id: int
     job = models.ForeignKey(DicomJob, on_delete=models.CASCADE, related_name="tasks")
     source_id: int
@@ -404,7 +395,9 @@ class DicomTask(models.Model):
         ordering = ("id",)
 
     def __str__(self) -> str:
-        return f"{self.__class__.__name__} [ID {self.id} (Job ID {self.job.id})]"
+        return f"{self.__class__.__name__} [{self.pk}]"
+
+    def get_absolute_url(self) -> str: ...
 
     def queue_pending_task(self) -> None:
         """Queues a dicom task."""
@@ -420,7 +413,7 @@ class DicomTask(models.Model):
             "adit.core.tasks.process_dicom_task",
             allow_unknown=False,
             priority=priority,
-        ).defer(model_label=model_label, task_id=self.id)
+        ).defer(model_label=model_label, task_id=self.pk)
         self.queued_job_id = queued_job_id
         self.save()
 
@@ -477,4 +470,4 @@ class TransferTask(DicomTask):
         abstract = True
 
     def __str__(self) -> str:
-        return f"{self.__class__.__name__} [ID {self.id} (Job ID {self.job_id})]"
+        return f"{self.__class__.__name__} [{self.pk}]"

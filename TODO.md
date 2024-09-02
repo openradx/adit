@@ -32,7 +32,6 @@
 - Use DicomLogEntry during C-STORE
 - Fix dicom explorer search over Accession Number
 - Make warning when only one image fails
-- Use django-stubs instead of django-types (already done on RADIS)
 - Exclude SR and PR when in pseudonymization mode
 - Cancel processing tasks actively
   - When cancelling a job we currently wait for an already processing task to be completed before setting the job as canceled

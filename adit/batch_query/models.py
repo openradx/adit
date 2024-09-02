@@ -1,5 +1,4 @@
 from datetime import datetime
-from typing import TYPE_CHECKING
 
 from django.conf import settings
 from django.contrib.postgres.fields import ArrayField
@@ -16,9 +15,6 @@ from adit.core.validators import (
     no_wildcard_chars_validator,
 )
 
-if TYPE_CHECKING:
-    from django.db.models.manager import RelatedManager
-
 
 class BatchQuerySettings(DicomAppSettings):
     class Meta:
@@ -32,12 +28,11 @@ class BatchQueryJob(DicomJob):
     project_name = models.CharField(max_length=150)
     project_description = models.TextField(max_length=2000)
 
-    if TYPE_CHECKING:
-        tasks = RelatedManager["BatchQueryTask"]()
-        results = RelatedManager["BatchQueryResult"]()
+    tasks: models.QuerySet["BatchQueryTask"]
+    results: models.QuerySet["BatchQueryResult"]
 
     def get_absolute_url(self):
-        return reverse("batch_query_job_detail", args=[str(self.id)])
+        return reverse("batch_query_job_detail", args=[str(self.pk)])
 
 
 class BatchQueryTask(DicomTask):
@@ -112,8 +107,7 @@ class BatchQueryTask(DicomTask):
         validators=[no_backslash_char_validator, no_control_chars_validator],
     )
 
-    if TYPE_CHECKING:
-        results = RelatedManager["BatchQueryResult"]()
+    results: models.QuerySet["BatchQueryResult"]
 
     def clean(self) -> None:
         if not self.accession_number and not self.modalities:
@@ -128,11 +122,10 @@ class BatchQueryTask(DicomTask):
         return super().clean()
 
     def get_absolute_url(self):
-        return reverse("batch_query_task_detail", args=[self.id])
+        return reverse("batch_query_task_detail", args=[self.pk])
 
 
 class BatchQueryResult(models.Model):
-    id: int
     job = models.ForeignKey(BatchQueryJob, on_delete=models.CASCADE, related_name="results")
     query = models.ForeignKey(BatchQueryTask, on_delete=models.CASCADE, related_name="results")
     patient_id = models.CharField(
@@ -218,7 +211,7 @@ class BatchQueryResult(models.Model):
     )
 
     def __str__(self) -> str:
-        return f"{self.__class__.__name__} [ID {self.id}]"
+        return f"{self.__class__.__name__} [{self.pk}]"
 
     @property
     def study_date_time(self):

@@ -32,8 +32,8 @@ def form_data(db):
     data.to_excel(buffer, index=False)  # type: ignore
 
     return {
-        "source": DicomServerFactory.create().id,
-        "destination": DicomServerFactory.create().id,
+        "source": DicomServerFactory.create().pk,
+        "destination": DicomServerFactory.create().pk,
         "project_name": "Apollo project",
         "project_description": "Fly to the moon",
         "ethics_application_id": "12345",
