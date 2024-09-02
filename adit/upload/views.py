@@ -11,6 +11,7 @@ from django.contrib.auth.mixins import (
     PermissionRequiredMixin,
 )
 from django.core.exceptions import PermissionDenied, SuspiciousOperation
+from django.core.files.uploadedfile import UploadedFile
 from django.http import HttpResponse
 from django.shortcuts import render
 from django.views.generic.edit import FormView
@@ -99,7 +100,7 @@ async def upload_api_view(request: AuthenticatedHttpRequest, node_id: str) -> Ht
     if not has_permission:
         raise PermissionDenied()
 
-    data = request.FILES
+    file_data = request.FILES
 
     destination_node = await DicomServer.objects.aget(id=node_id)
 
@@ -111,11 +112,13 @@ async def upload_api_view(request: AuthenticatedHttpRequest, node_id: str) -> Ht
     else:
         operator = DicomOperator(destination_node)
 
-        if "dataset" in data:
-            dataset_bytes = BytesIO(data["dataset"].read())
+        if "dataset" in file_data:
+            uploaded_file = file_data["dataset"]
+            assert isinstance(uploaded_file, UploadedFile)
+            dataset_bytes = BytesIO(uploaded_file.read())
             dataset = read_dataset(dataset_bytes)
 
-        if dataset is None:
+        if dataset is None or uploaded_file is None:
             return HttpResponse(status=400, content="No data received")
         try:
             loop = asyncio.get_event_loop()

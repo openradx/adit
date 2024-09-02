@@ -9,8 +9,6 @@ class UploadSettings(DicomAppSettings):
 
 
 class UploadPermissionSupport(models.Model):
-    id: int
-
     class Meta:
         managed = False
         default_permissions = ()
@@ -19,4 +17,4 @@ class UploadPermissionSupport(models.Model):
         ]
 
     def __str__(self) -> str:
-        return f"{self.__class__.__name__} [ID {self.id}]"
+        return f"{self.__class__.__name__} [{self.pk}]"
