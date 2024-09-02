@@ -6,7 +6,6 @@ from adit_radis_shared.common.utils.auth_utils import add_user_to_group
 from faker import Faker
 from playwright.sync_api import Locator, Page, expect
 
-from adit.core.models import DicomServer
 from adit.core.utils.auth_utils import grant_access
 from adit.core.utils.dicom_dataset import QueryDataset
 from adit.core.utils.dicom_operator import DicomOperator
@@ -22,7 +21,7 @@ def test_clear_files(
     channels_live_server,
     create_and_login_user,
     upload_group,
-    uploadable_test_dicoms,
+    provide_path_to_file_dir,
 ):
     user: User = create_and_login_user(channels_live_server.url)
     add_user_to_group(user, upload_group)
@@ -33,7 +32,7 @@ def test_clear_files(
     page.goto(channels_live_server.url + "/upload/jobs/new")
     page.get_by_label("Destination").select_option(label="DICOM Server Orthanc Test Server 2")
     page.get_by_label("Pseudonym").fill("Test pseudonym")
-    file = next(uploadable_test_dicoms("1001"))
+    file = next(provide_path_to_file_dir("1001"))
     page.get_by_label("Choose a directory").set_input_files(files=[file])
 
     assert page.get_by_label("Choose a directory").input_value()
@@ -58,7 +57,7 @@ def test_stop_upload(
     channels_live_server,
     create_and_login_user,
     upload_group,
-    uploadable_test_dicoms,
+    provide_path_to_file_dir,
 ):
     user: User = create_and_login_user(channels_live_server.url)
     add_user_to_group(user, upload_group)
@@ -69,7 +68,7 @@ def test_stop_upload(
     page.goto(channels_live_server.url + "/upload/jobs/new")
     page.get_by_label("Destination").select_option(label="DICOM Server Orthanc Test Server 2")
     page.get_by_label("Pseudonym").fill("Test pseudonym")
-    file = next(uploadable_test_dicoms("1001"))
+    file = next(provide_path_to_file_dir("1001"))
     page.get_by_label("Choose a directory").set_input_files(files=[file])
 
     expect(poll(page.locator("button#uploadButton"))).to_be_visible()
@@ -92,7 +91,7 @@ def test_upload_full(
     channels_live_server,
     create_and_login_user,
     upload_group,
-    uploadable_test_dicoms,
+    provide_path_to_file_dir,
 ):
     user: User = create_and_login_user(channels_live_server.url)
     add_user_to_group(user, upload_group)
@@ -103,7 +102,7 @@ def test_upload_full(
     page.goto(channels_live_server.url + "/upload/jobs/new")
     page.get_by_label("Destination").select_option(label="DICOM Server Orthanc Test Server 2")
     page.get_by_label("Pseudonym").fill("Test pseudonym")
-    file = next(uploadable_test_dicoms("1001"))
+    file = next(provide_path_to_file_dir("1001"))
 
     page.get_by_label("Choose a directory").set_input_files(files=[file])
 
@@ -187,7 +186,7 @@ def test_upload_without_destination(
     channels_live_server,
     create_and_login_user,
     upload_group,
-    uploadable_test_dicoms,
+    provide_path_to_file_dir,
 ):
     user: User = create_and_login_user(channels_live_server.url)
     add_user_to_group(user, upload_group)
@@ -196,7 +195,7 @@ def test_upload_without_destination(
     page.on("console", lambda msg: print(msg.text))
     page.goto(channels_live_server.url + "/upload/jobs/new")
     page.get_by_label("Pseudonym").fill("Test pseudonym")
-    file = next(uploadable_test_dicoms("1001"))
+    file = next(provide_path_to_file_dir("1001"))
     page.get_by_label("Choose a directory").set_input_files(files=[file])
 
     expect(poll(page.locator("button#uploadButton"))).to_be_visible()
@@ -216,21 +215,22 @@ def test_pseudonym_is_used_as_patientID(
     channels_live_server,
     create_and_login_user,
     upload_group,
-    uploadable_test_dicoms,
+    provide_path_to_file_dir,
 ):
     # Arrange
     user: User = create_and_login_user(channels_live_server.url)
     add_user_to_group(user, upload_group)
-    grant_access(upload_group, dimse_orthancs[1], destination=True)
+    grant_access(upload_group, dimse_orthancs[0], destination=True)
 
     page.on("console", lambda msg: print(msg.text))
     page.goto(channels_live_server.url + "/upload/jobs/new")
-    page.get_by_label("Destination").select_option(label="DICOM Server Orthanc Test Server 2")
+    page.get_by_label("Destination").select_option(label="DICOM Server Orthanc Test Server 1")
 
     test_pseudonym = "Patient #" + str(fake.random_int(min=10, max=1000))
+
     page.get_by_label("Pseudonym").fill(test_pseudonym)
 
-    file = next(uploadable_test_dicoms("1001"))
+    file = next(provide_path_to_file_dir("1001"))
 
     page.get_by_label("Choose a directory").set_input_files(files=[file])
 
@@ -245,7 +245,7 @@ def test_pseudonym_is_used_as_patientID(
 
     expect(page.locator("p#uploadCompleteText")).to_contain_text("Upload Successful!")
 
-    destination_node = DicomServer.objects.get(id="14")
+    destination_node = dimse_orthancs[0]
     orthanc_operator = DicomOperator(destination_node)
     found_patients = orthanc_operator.find_patients(QueryDataset.create(PatientID=test_pseudonym))
     found_patients_list = list(found_patients)

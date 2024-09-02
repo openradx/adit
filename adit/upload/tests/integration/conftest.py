@@ -36,6 +36,17 @@ def uploadable_test_dicoms():
 
 
 @pytest.fixture
+def provide_path_to_file_dir():
+    def _test_dicoms(patient_id: str) -> Iterable[str]:
+        test_dicoms_path = settings.BASE_DIR / "samples" / "dicoms" / patient_id
+        folders = os.listdir(test_dicoms_path)
+        for folder in folders:
+            yield os.path.join(test_dicoms_path, folder)
+
+    return _test_dicoms
+
+
+@pytest.fixture
 def noncompatible_test_file():
     def _noncompatible_file():
         with tempfile.NamedTemporaryFile(delete=False, suffix=".txt") as tmp_file:
