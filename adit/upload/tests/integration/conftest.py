@@ -52,11 +52,7 @@ def noncompatible_test_file():
         with tempfile.NamedTemporaryFile(delete=False, suffix=".txt") as tmp_file:
             tmp_file.write(b"This is a test text file.")
             tmp_file.seek(0)
-            buffer = io.BytesIO(tmp_file.read())
-        return {
-            "name": tmp_file.name,
-            "mimeType": "text/plain",
-            "buffer": buffer.getvalue(),
-        }
+
+        return os.path.dirname(tmp_file.name)
 
     return _noncompatible_file

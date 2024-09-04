@@ -158,7 +158,7 @@ def test_upload_without_pseudonym(
     channels_live_server,
     create_and_login_user,
     upload_group,
-    uploadable_test_dicoms,
+    provide_path_to_file_dir,
 ):
     user: User = create_and_login_user(channels_live_server.url)
     add_user_to_group(user, upload_group)
@@ -166,7 +166,7 @@ def test_upload_without_pseudonym(
     page.on("console", lambda msg: print(msg.text))
     page.goto(channels_live_server.url + "/upload/jobs/new")
     page.get_by_label("Destination").select_option(label="DICOM Server Orthanc Test Server 2")
-    file = next(uploadable_test_dicoms("1001"))
+    file = next(provide_path_to_file_dir("1001"))
     page.get_by_label("Choose a directory").set_input_files(files=[file])
 
     expect(poll(page.locator("button#uploadButton"))).to_be_visible()
