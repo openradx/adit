@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "adit"
-version = "0.34.0"
+version = "0.0.0"
 description = "ADIT (Automated DICOM Transfer) is a swiss army knife to exchange DICOM data between various systems by using a convenient web frontend."
 authors = ["medihack <kai.schlamp@gmail.com>"]
 license = "GPL-3.0-or-later"
@@ -41,7 +41,6 @@ pyarrow = "^17.0.0"
 pydicom = "^2.3.0"
 pynetdicom = "^2.0.2"
 python = ">=3.12,<4.0"
-toml = "^0.10.2"
 Twisted = { extras = ["tls", "http2"], version = "^24.3.0" }
 wait-for-it = "^2.2.2"
 watchfiles = "^0.24.0"

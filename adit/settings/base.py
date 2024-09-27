@@ -14,7 +14,6 @@ from pathlib import Path
 from typing import Literal
 
 import environ
-import toml
 from pydicom import config as pydicom_config
 
 env = environ.Env()
@@ -25,14 +24,8 @@ BASE_DIR = Path(__file__).resolve(strict=True).parent.parent.parent
 # Used to monitor files for autoreload
 SOURCE_FOLDERS = [BASE_DIR / "adit"]
 
-# Read pyproject.toml to fetch current version. We do this conditionally as the
-# ADIT client library uses ADIT for integration tests installed as a package
-# (where no pyproject.toml is available).
-if (BASE_DIR / "pyproject.toml").exists():
-    pyproject = toml.load(BASE_DIR / "pyproject.toml")
-    PROJECT_VERSION = pyproject["tool"]["poetry"]["version"]
-else:
-    PROJECT_VERSION = "???"
+# Fetch version from the environment which is passed through from the latest git version tag
+PROJECT_VERSION = env.str("PROJECT_VERSION", default="vX.Y.Z")  # type: ignore
 
 # Our custom site settings that are also available in the templates,
 # see adit-radis-shared/common/site.py#base_context_processor
