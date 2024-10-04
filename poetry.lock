@@ -2,7 +2,7 @@
 
 [[package]]
 name = "adit-radis-shared"
-version = "0.6.8"
+version = "0.0.0"
 description = "Shared Django apps between ADIT and RADIS"
 optional = false
 python-versions = ">=3.12,<4.0"
@@ -27,7 +27,6 @@ django-tables2 = "^2.3.3"
 djangorestframework = "^3.13.1"
 procrastinate = {version = "^2.8.0", extras = ["django"]}
 psycopg = {version = "^3.1.12", extras = ["binary"]}
-toml = "^0.10.2"
 Twisted = {version = "^24.3.0", extras = ["http2", "tls"]}
 wait-for-it = "^2.2.2"
 watchfiles = "^0.24.0"
@@ -36,8 +35,8 @@ whitenoise = "^6.0.0"
 [package.source]
 type = "git"
 url = "https://github.com/openradx/adit-radis-shared.git"
-reference = "v0.6.8"
-resolved_reference = "bb43f75b9fb2513ce6023e7f7128ef07575b1c85"
+reference = "0.7.0"
+resolved_reference = "81840dae4acefca23cb8a8921db63de8f67e2b47"
 
 [[package]]
 name = "adrf"
@@ -3162,17 +3161,6 @@ files = [
 python-dateutil = "*"
 
 [[package]]
-name = "toml"
-version = "0.10.2"
-description = "Python Library for Tom's Obvious, Minimal Language"
-optional = false
-python-versions = ">=2.6, !=3.0.*, !=3.1.*, !=3.2.*"
-files = [
-    {file = "toml-0.10.2-py2.py3-none-any.whl", hash = "sha256:806143ae5bfb6a3c6e736a764057db0e6a0e05e338b5630894a5f779cabb4f9b"},
-    {file = "toml-0.10.2.tar.gz", hash = "sha256:b3bda1d108d5dd99f4a20d24d9c348e91c4db7ab1b749200bded2f839ccbe68f"},
-]
-
-[[package]]
 name = "tornado"
 version = "6.4.1"
 description = "Tornado is a Python web framework and asynchronous networking library, originally developed at FriendFeed."
@@ -3591,4 +3579,4 @@ testing = ["coverage (>=5.0.3)", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.12,<4.0"
-content-hash = "edd86675631feef34cfe0a825a0e93044118c3b46bfa0a6bf2b9db171e1c44dc"
+content-hash = "dde8c1197bf4b8b339cb59c10d108de6fbbeb6eca27d786b67c2ce5f5a404907"

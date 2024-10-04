@@ -27,12 +27,14 @@ SOURCE_FOLDERS = [BASE_DIR / "adit"]
 # Fetch version from the environment which is passed through from the latest git version tag
 PROJECT_VERSION = env.str("PROJECT_VERSION", default="vX.Y.Z")  # type: ignore
 
-# Our custom site settings that are also available in the templates,
-# see adit-radis-shared/common/site.py#base_context_processor
-SITE_BASE_URL = env.str("SITE_BASE_URL", default="http://localhost:8000")  # type: ignore
+SITE_ID = 1
+
+# The following settings are stored in the Site model on startup initially (see common/apps.py).
+# Once set they are stored in the database and can be changed via the admin interface.
 SITE_DOMAIN = env.str("SITE_DOMAIN", default="localhost")  # type: ignore
 SITE_NAME = env.str("SITE_NAME", default="ADIT")  # type: ignore
-SITE_META_KEYWORDS = "ADIT,Radiology,DICOM,Medicine,Tool,Transfer"
+SITE_USES_HTTPS = env.bool("SITE_USES_HTTPS", default=False)  # type: ignore
+SITE_META_KEYWORDS = "ADIT, Radiology, DICOM,Medicine, Tool, Transfer"
 SITE_META_DESCRIPTION = "ADIT is a tool for managing automated DICOM transfers"
 SITE_PROJECT_URL = "https://github.com/openradx/adit"
 
@@ -48,6 +50,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "django.contrib.humanize",
+    "django.contrib.sites",
     "django.contrib.postgres",
     "django_extensions",
     "procrastinate.contrib.django",
@@ -80,6 +83,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "django.contrib.sites.middleware.CurrentSiteMiddleware",
     "django_htmx.middleware.HtmxMiddleware",
     "adit_radis_shared.accounts.middlewares.ActiveGroupMiddleware",
     "adit_radis_shared.common.middlewares.MaintenanceMiddleware",
@@ -278,12 +282,9 @@ DEFAULT_FROM_EMAIL = SERVER_EMAIL
 SUPPORT_EMAIL = env.str("SUPPORT_EMAIL", default=SERVER_EMAIL)  # type: ignore
 
 # Also used by django-registration-redux to send account approval emails
-admin_first_name = env.str("ADMIN_FIRST_NAME", default="ADIT")  # type: ignore
-admin_last_name = env.str("ADMIN_LAST_NAME", default="Admin")  # type: ignore
-admin_full_name = admin_first_name + " " + admin_last_name
 ADMINS = [
     (
-        admin_full_name,
+        env.str("ADMIN_FULL_NAME", default="ADIT Admin"),  # type: ignore
         env.str("ADMIN_EMAIL", default="admin@adit.test"),  # type: ignore
     )
 ]

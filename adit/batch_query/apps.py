@@ -43,10 +43,6 @@ def register_app():
 
 
 def init_db(**kwargs):
-    create_app_settings()
-
-
-def create_app_settings():
     from .models import BatchQuerySettings
 
     if not BatchQuerySettings.objects.exists():

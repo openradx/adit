@@ -10,10 +10,6 @@ class DicomWebConfig(AppConfig):
 
 
 def init_db(**kwargs):
-    create_app_settings()
-
-
-def create_app_settings():
     from .models import DicomWebSettings
 
     if not DicomWebSettings.objects.exists():
