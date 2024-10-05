@@ -39,7 +39,7 @@ services:
       - /mnt:/mnt
 
   postgres:
-    image: postgres:13.13
+    image: postgres:17.0
     hostname: postgres.local
     volumes:
       - postgres_data:/var/lib/postgresql/data
