@@ -7,7 +7,7 @@ license = "AGPL-3.0-or-later"
 readme = "README.md"
 
 [tool.poetry.dependencies]
-adit-radis-shared = { git = "https://github.com/openradx/adit-radis-shared.git", rev = "0.8.0" }
+adit-radis-shared = { git = "https://github.com/openradx/adit-radis-shared.git", rev = "30d48e2b317e05f551ab44eff245d2a766099946" }
 adrf = "^0.1.1"
 aiofiles = "^24.1.0"
 asyncinotify = "^4.0.1"
