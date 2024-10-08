@@ -1,4 +1,4 @@
-FROM python:3.12-bullseye as python-base
+FROM python:3.12-bullseye AS python-base
 
 # python
 # ENV variables are also available in the later build stages
@@ -40,7 +40,7 @@ RUN apt-get update \
 
 
 # `builder-base` stage is used to build deps + create our virtual environment
-FROM python-base as builder-base
+FROM python-base AS builder-base
 RUN apt-get update \
     && apt-get install --no-install-recommends -y \
     # deps for installing poetry
@@ -60,7 +60,7 @@ RUN poetry install --without dev
 
 
 # `development` image is used during development / testing
-FROM python-base as development
+FROM python-base AS development
 WORKDIR $PYSETUP_PATH
 
 # copy in our built poetry + venv
@@ -78,7 +78,7 @@ WORKDIR /app
 
 
 # `production` image used for runtime
-FROM python-base as production
+FROM python-base AS production
 COPY --from=builder-base $PYSETUP_PATH $PYSETUP_PATH
 COPY . /app/
 
