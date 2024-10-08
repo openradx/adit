@@ -4,19 +4,13 @@
   "lockFileMaintenance": { "enabled": true },
   "packageRules": [
     {
-      "matchManagers": ["poetry"],
-      "matchPackageNames": ["adit-radis-shared"],
-      "versioning": "semver",
-      "allowedVersions": "/^\\d+\\.\\d+\\.\\d+$/"
-    },
-    {
       "managers": ["docker-compose"],
       "matchPackageNames": ["postgres"],
       "enabled": false
     },
     {
       "matchManagers": ["poetry"],
-      "matchPackageNames": ["pydicom", "dicognito"],
+      "matchPackageNames": ["adit-radis-shared", "pydicom", "dicognito"],
       "enabled": false
     }
   ]
