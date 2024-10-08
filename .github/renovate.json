@@ -4,9 +4,8 @@
   "lockFileMaintenance": { "enabled": true },
   "packageRules": [
     {
-      "matchPackageNames": ["adit-radis-shared"],
       "matchManagers": ["poetry"],
-      "matchDepTypes": ["git"],
+      "matchPackageNames": ["adit-radis-shared"],
       "versioning": "semver"
     },
     {
