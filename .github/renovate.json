@@ -8,6 +8,11 @@
       "matchManagers": ["poetry"],
       "matchDepTypes": ["git"],
       "versioning": "semver"
+    },
+    {
+      "managers": ["docker-compose"],
+      "matchPackageNames": ["postgres"],
+      "enabled": false
     }
   ]
 }
