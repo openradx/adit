@@ -13,6 +13,11 @@
       "managers": ["docker-compose"],
       "matchPackageNames": ["postgres"],
       "enabled": false
+    },
+    {
+      "matchManagers": ["poetry"],
+      "matchPackageNames": ["pydicom", "dicognito"],
+      "enabled": false
     }
   ]
 }
