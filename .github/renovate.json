@@ -12,6 +12,12 @@
       "matchManagers": ["poetry"],
       "matchPackageNames": ["adit-radis-shared", "pydicom", "dicognito"],
       "enabled": false
+    },
+    {
+      "matchManagers": ["poetry"],
+      "matchPackageNames": ["python"],
+      "matchUpdateTypes": ["minor", "major"],
+      "enabled": false
     }
   ]
 }
