@@ -39,7 +39,7 @@ services:
       - /mnt:/mnt
 
   postgres:
-    image: postgres:13.13
+    image: postgres:13.16
     hostname: postgres.local
     volumes:
       - postgres_data:/var/lib/postgresql/data
@@ -57,7 +57,7 @@ services:
     hostname: receiver.local
 
   orthanc1:
-    image: jodogne/orthanc-plugins:1.12.1
+    image: jodogne/orthanc-plugins:1.12.4
     hostname: orthanc1.local
     configs:
       - source: orthanc1_config
@@ -66,7 +66,7 @@ services:
       - orthanc1_data:/var/lib/orthanc/db
 
   orthanc2:
-    image: jodogne/orthanc-plugins:1.12.1
+    image: jodogne/orthanc-plugins:1.12.4
     hostname: orthanc2.local
     configs:
       - source: orthanc2_config
