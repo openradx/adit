@@ -16,8 +16,7 @@
     {
       "matchManagers": ["poetry"],
       "matchPackageNames": ["python"],
-      "matchUpdateTypes": ["minor", "major"],
-      "enabled": false
+      "allowedVersions": "<3.13.0"
     }
   ]
 }
