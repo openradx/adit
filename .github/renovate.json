@@ -9,6 +9,11 @@
       "allowedVersions": "<=16"
     },
     {
+      "managers": ["dockerfile"],
+      "matchPackageNames": ["python"],
+      "allowedVersions": "<=3.12"
+    },
+    {
       "matchManagers": ["poetry"],
       "matchPackageNames": ["dicognito"],
       "allowedVersions": "<=0.17"
