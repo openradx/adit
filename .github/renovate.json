@@ -6,7 +6,8 @@
     {
       "matchManagers": ["poetry"],
       "matchPackageNames": ["adit-radis-shared"],
-      "versioning": "semver"
+      "versioning": "semver",
+      "allowedVersions": "/^\\d+\\.\\d+\\.\\d+$/"
     },
     {
       "managers": ["docker-compose"],
