@@ -248,7 +248,10 @@ class DicomJob(models.Model):
     def post_process(self) -> bool:
         """Evaluates all the tasks of a dicom job and sets the job state accordingly.
 
-        Returns: True if the job is finished, False otherwise
+        Should be called whenever task are updated or manipulated.
+
+        Returns:
+            True if the job is finished, False otherwise
         """
         if self.tasks.filter(status=DicomTask.Status.PENDING).exists():
             if self.status != DicomJob.Status.CANCELING:
