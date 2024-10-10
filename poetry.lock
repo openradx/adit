@@ -2,7 +2,7 @@
 
 [[package]]
 name = "adit-radis-shared"
-version = "0.6.8"
+version = "0.0.0"
 description = "Shared Django apps between ADIT and RADIS"
 optional = false
 python-versions = ">=3.12,<4.0"
@@ -27,7 +27,6 @@ django-tables2 = "^2.3.3"
 djangorestframework = "^3.13.1"
 procrastinate = {version = "^2.8.0", extras = ["django"]}
 psycopg = {version = "^3.1.12", extras = ["binary"]}
-toml = "^0.10.2"
 Twisted = {version = "^24.3.0", extras = ["http2", "tls"]}
 wait-for-it = "^2.2.2"
 watchfiles = "^0.24.0"
@@ -36,8 +35,8 @@ whitenoise = "^6.0.0"
 [package.source]
 type = "git"
 url = "https://github.com/openradx/adit-radis-shared.git"
-reference = "v0.6.8"
-resolved_reference = "bb43f75b9fb2513ce6023e7f7128ef07575b1c85"
+reference = "0.8.0"
+resolved_reference = "60b7bf0fce044d04103e5f7313c8d16c85fa247a"
 
 [[package]]
 name = "adrf"
@@ -3591,4 +3590,4 @@ testing = ["coverage (>=5.0.3)", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.12,<4.0"
-content-hash = "14cf8920e9a34bdb797c6e60b8026ef138a002d6d9a40ec24eb9d667d7ab1bd1"
+content-hash = "f6316a43d0f6238488d1764deaf90be9efff8ae73bccd81e62bd73782f4392a5"
