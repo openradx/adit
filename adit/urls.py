@@ -30,6 +30,7 @@ urlpatterns = [
     path("dicom-explorer/", include("adit.dicom_explorer.urls")),
     path("token-authentication/", include("adit_radis_shared.token_authentication.urls")),
     path("api/dicom-web/", include("adit.dicom_web.urls")),
+    path("upload/", include("adit.upload.urls")),
 ]
 
 # Debug Toolbar in Debug mode only
