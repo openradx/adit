@@ -10,29 +10,28 @@ const UPLOAD_DESTINATION = "upload_destination";
 
 function UploadJobForm(formEl) {
   return {
-    isDropping: Boolean,
-    buttonVisible: Boolean,
-    stopUploadButtonVisible: Boolean,
-    fileCount: Number,
-    droppedFiles: Object,
-    uploadResultText: String,
-    stopUploadVar: Boolean,
-    pbVisible: String,
-    uploadCompleteTextVisible: String,
-    stopUploadButtonStyleDisplay: String,
+    isDropping: false,
+    buttonVisible: false,
+    stopUploadButtonVisible: false,
+    fileCount: 0,
+    droppedFiles: [],
+    uploadResultText: "",
+    stopUploadVar: false,
+    pbVisible: false,
+    uploadCompleteTextVisible: false,
 
     initUploadForm: function (destEl) {
       document.body.addEventListener("chooseFolder", (e) => {
         this.chooseFolder();
       });
-      var button = formEl.querySelector("button#uploadButton");
+      const button = formEl.querySelector("button#uploadButton");
       this.stopUploadVar = false;
       this.stopUploadButtonVisible = false;
       this.fileCount = 0;
       // Add an event listener to the button
       button.addEventListener("click", function () {
         // Trigger the form submission when the button is clicked
-        var myForm = formEl.querySelector("form#myForm");
+        const myForm = formEl.querySelector("form#myForm");
         if (myForm instanceof HTMLFormElement) {
           htmx.trigger("#myForm", "submit");
         }
@@ -48,49 +47,48 @@ function UploadJobForm(formEl) {
         [UPLOAD_DESTINATION]: ev.target.value,
       });
     },
+
     _updateIsDestinationFolder: function (destEl) {
       const option = destEl.options[destEl.selectedIndex];
       this.isDestinationFolder = option.dataset.node_type === "folder";
     },
 
     getFiles: function () {
-      var inputElement = formEl.querySelector("#fileselector");
+      const inputElement = formEl.querySelector("#fileselector");
 
-      if (
-        inputElement instanceof HTMLInputElement &&
-        inputElement.files.length > 0
-      ) {
-        return inputElement.files;
-      } else if (this.droppedFiles.length > 0) {
-        const files = [];
-        for (const f of this.droppedFiles) {
-          files.push(f);
-        }
-        return files;
-      } else {
-        return [];
+      if (!(inputElement instanceof HTMLInputElement)) {
+        throw new Error(
+          "inputElement must be an instance of HTMLProgressElement"
+        );
       }
+
+      if (inputElement.files.length > 0) {
+        return inputElement.files;
+      }
+
+      return this.droppedFiles;
     },
 
     toggleUploadButtonVisibility: function () {
       // Check if files are selected
       const files = this.getFiles();
-      this.buttonVisible = files.length > 0 ? true : false;
+      this.buttonVisible = files.length > 0;
       this.fileCount = files.length;
       this.uploadCompleteTextVisible = false;
     },
     clearFiles: function () {
-      var inputEl = formEl.querySelector("#fileselector");
+      const inputEl = formEl.querySelector("#fileselector");
 
-      if (inputEl instanceof HTMLInputElement) {
-        inputEl.value = null;
+      if (!(inputEl instanceof HTMLInputElement)) {
+        throw new Error("inputEl must be an instance of HTMLInputElement");
       }
+      inputEl.value = null;
       this.droppedFiles = [];
       this.toggleUploadButtonVisibility();
     },
 
-    fileHandler: async function (fileObj, datasets) {
-      const arrayBuffer = await fileObj.arrayBuffer(); //await fileReader.readAsArrayBuffer(fileObj);
+    fileHandler: async (fileObj, datasets) => {
+      const arrayBuffer = await fileObj.arrayBuffer();
       datasets.push(arrayBuffer);
     },
 
@@ -102,16 +100,20 @@ function UploadJobForm(formEl) {
     loadFiles: async function (files) {
       const destinationSelect = formEl.querySelector('[name="destination"]');
 
-      if (destinationSelect instanceof HTMLSelectElement) {
-        const selectedOption =
-          destinationSelect.options[destinationSelect.selectedIndex];
-        var node_id = selectedOption.getAttribute("data-node_id");
+      if (!(destinationSelect instanceof HTMLSelectElement)) {
+        throw new Error(
+          "destinationSelect must be an instance of HTMLSelectElement"
+        );
       }
+      destinationSelect.options[0];
+      const selectedOption =
+        destinationSelect.options[destinationSelect.selectedIndex];
+      const node_id = selectedOption.dataset.node_id;
 
       if (files.length === 0) {
         showToast("warning", "Sandbox", `No files selected.${files}`);
       } else {
-        var datasets = [];
+        const datasets = [];
         for (const fileEntry of files) {
           await this.fileHandler(fileEntry, datasets);
         }
@@ -120,7 +122,7 @@ function UploadJobForm(formEl) {
         let loadedFiles = 0;
 
         try {
-          const checker = await this.checkPatientIDs(datasets);
+          const checker = await this.isValidSeries(datasets);
 
           if (checker) {
             const anon = this.createAnonymizer();
@@ -128,16 +130,34 @@ function UploadJobForm(formEl) {
             this.buttonVisible = false;
             this.stopUploadVar = false;
 
+            const progBar = formEl.querySelector('[id="pb"]');
+            if (!(progBar instanceof HTMLProgressElement)) {
+              throw new Error(
+                "progBar must be an instance of HTMLProgressElement"
+              );
+            }
+            progBar.value = 0;
+            this.pbVisible = true;
             for (const set of datasets) {
               // Anonymize data and write back to bufferstream
               const dicomData = dcmjs.data.DicomMessage.readFile(set, {
                 ignoreErrors: true,
               });
+              const pseudonym = formEl.querySelector('[name="pseudonym"]');
+
+              if (!(pseudonym instanceof HTMLInputElement)) {
+                throw new Error(
+                  "pseudonym must be an instance of HTMLInputElement"
+                );
+              }
+              let newPatientID = pseudonym.value;
 
               await anon.anonymize(dicomData);
+              dicomData.upsertTag("00100020", "LO", [newPatientID]); // replace PatientID
+              dicomData.upsertTag("00100010", "PN", [
+                { Alphabetic: newPatientID },
+              ]); // replace PatientName
               const anonymized_set = await dicomData.write();
-
-              this.pbVisible = true;
 
               this.stopUploadButtonVisible = true;
               if (this.stopUploadVar) {
@@ -147,17 +167,14 @@ function UploadJobForm(formEl) {
 
               // Upload data to server
               status = await uploadData({
-                ["dataset"]: anonymized_set,
-                ["node_id"]: node_id,
+                dataset: anonymized_set,
+                node_id: node_id,
               });
 
               if (status == 200) {
                 loadedFiles += 1;
-                const progBar = formEl.querySelector('[id="pb"]');
 
-                if (progBar instanceof HTMLProgressElement) {
-                  progBar.value = (loadedFiles / datasets.length) * 100;
-                }
+                progBar.value = (loadedFiles / datasets.length) * 100;
               } else {
                 this.uploadResultText = "Upload Failed";
                 this.pbVisible = false;
@@ -172,7 +189,7 @@ function UploadJobForm(formEl) {
               this.finishUploadIncomplete();
             }
           } else {
-            this.uploadResultText = "Upload refused - Fehlerhafte Datensätze";
+            this.uploadResultText = "Upload refused - Incorrect dataset";
             this.buttonVisible = false;
             this.uploadCompleteTextVisible = true;
           }
@@ -218,42 +235,32 @@ function UploadJobForm(formEl) {
       }, 5000);
     },
 
-    createAnonymizer: function () {
-      const pseudonym = formEl.querySelector('[name="pseudonym"]');
-      var newPatientID = "";
-      if (pseudonym instanceof HTMLInputElement) {
-        newPatientID = pseudonym.value;
+    createAnonymizer: () => {
+      const seedElement = document.getElementById("anon-seed-json");
+      if (!seedElement) {
+        throw new Error("anon-seed-json element does not exist");
       }
-      const seed = JSON.parse(
-        document.getElementById("anon-seed-json").textContent
-      );
-      const anon = new Anonymizer(
-        newPatientID,
-        undefined,
-        undefined,
-        undefined,
-        undefined,
-        seed
-      );
+      const seedText = seedElement.textContent;
+      if (!seedText) {
+        throw new Error("anon-seed-json element is empty");
+      }
+      const seed = JSON.parse(seedText);
 
-      return anon;
-    },
-
-    retrieveFilefromFileEntry: async function (fileEntry) {
-      return new Promise(fileEntry.file.bind(fileEntry));
-    },
-
-    readDirectory: function (item) {
-      const directoryReader = item.createReader();
-      return new Promise(directoryReader.readEntries.bind(directoryReader));
+      return new Anonymizer({ seed: seed });
     },
 
     traverseDirectory: async function (item, files) {
       if (item.isFile) {
-        const file = await this.retrieveFilefromFileEntry(item, files);
+        const file = await new Promise((resolve, reject) => {
+          item.file(resolve, reject);
+        });
         files.push(file);
       } else {
-        const items = await this.readDirectory(item);
+        const directoryReader = item.createReader();
+        const items = await new Promise((reslove, reject) => {
+          directoryReader.readEntries(reslove, reject);
+        });
+
         for (let item of items) {
           await this.traverseDirectory(item, files);
         }
@@ -275,7 +282,7 @@ function UploadJobForm(formEl) {
       this.fileCount = files.length;
 
       if (files.length > 0) {
-        var inputElement = document.getElementById("fileselector");
+        const inputElement = document.getElementById("fileselector");
 
         if (inputElement instanceof HTMLInputElement) {
           inputElement.value = null;
@@ -286,52 +293,47 @@ function UploadJobForm(formEl) {
       }
     },
 
-    checkPatientIDs: function (datasets) {
-      const patientIDs = new Map();
-      const patientBirthdates = new Map();
-      const patientNames = new Map();
+    isValidSeries: (datasets) => {
+      const patientIDs = new Set();
+      const patientBirthdates = new Set();
+      const patientNames = new Set();
 
       for (const set of datasets) {
+        const patIDTagNumber = "00100020";
+        const patNameTagNumber = "00100010";
+        const patBirthdateTagNumber = "00100030";
+
         const dcm = dcmjs.data.DicomMessage.readFile(set, {
           ignoreErrors: true,
         });
 
-        const patientID = dcm.dict["00100020"]?.Value[0];
-        if (patientID) {
-          patientIDs.set(patientID, (patientIDs.get(patientID) || 0) + 1);
+        const patientID = dcm.dict[patIDTagNumber]?.Value[0];
+        if (patientID != null) {
+          patientIDs.add(patientID);
         }
 
-        const patientName = dcm.dict["00100010"]?.Value[0]?.Alphabetic;
-        if (patientName) {
-          patientNames.set(
-            patientName,
-            (patientNames.get(patientName) || 0) + 1
-          );
+        const patientName = dcm.dict[patNameTagNumber]?.Value[0]?.Alphabetic;
+        if (patientName != null) {
+          patientNames.add(patientName);
         }
 
-        const patientBirthdate = dcm.dict["00100030"]?.Value[0];
-        if (patientBirthdate) {
-          patientBirthdates.set(
-            patientBirthdate,
-            (patientBirthdates.get(patientBirthdate) || 0) + 1
-          );
+        const patientBirthdate = dcm.dict[patBirthdateTagNumber]?.Value[0];
+        if (patientBirthdate != null) {
+          patientBirthdates.add(patientBirthdate);
         }
       }
 
       // Check if in a whole study are more than one PatientID, Name or Birthdate
       return (
-        patientIDs.size <= 1 &&
-        patientNames.size <= 1 &&
-        patientBirthdates.size <= 1 &&
-        !patientIDs.has(-1) &&
-        !patientNames.has(undefined) &&
-        !patientBirthdates.has(undefined)
+        patientIDs.size == 1 &&
+        patientNames.size == 1 &&
+        patientBirthdates.size == 1
       );
     },
   };
 }
 
-async function uploadData(data) {
+const uploadData = async (data) => {
   const formData = new FormData();
   for (const key in data) {
     const blob = new Blob([data[key]]);
@@ -346,16 +348,16 @@ async function uploadData(data) {
     mode: "same-origin", // Do not send CSRF token to another domain.
     body: formData,
   });
-  var status = 0;
+  let status = 0;
 
   return fetch(request)
-    .then(async function (response) {
+    .then(async (response) => {
       const text = await response.text();
 
       return response.ok ? response.status : Promise.reject(new Error(text));
     })
-    .catch(function (error) {
+    .catch((error) => {
       console.error(`Error: ${error.message || "Network error"}`);
       return 500;
     });
-}
+};
