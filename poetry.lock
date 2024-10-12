@@ -40,13 +40,13 @@ resolved_reference = "60b7bf0fce044d04103e5f7313c8d16c85fa247a"
 
 [[package]]
 name = "adrf"
-version = "0.1.7"
+version = "0.1.8"
 description = "Async support for Django REST framework"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "adrf-0.1.7-py3-none-any.whl", hash = "sha256:815c4ce1179931e41f966eb8d36903fcc36bad6964e61cfc0f360d107725bd18"},
-    {file = "adrf-0.1.7.tar.gz", hash = "sha256:2a29a7621767ea670655e744a65ee1f19e8208fffbc5e71d2cf43def4c352740"},
+    {file = "adrf-0.1.8-py3-none-any.whl", hash = "sha256:3032b987085d75cfd59eb3d4dcd7138fc20085de1782b065603559ccec69531f"},
+    {file = "adrf-0.1.8.tar.gz", hash = "sha256:18844630dd9272c38cc3f761fce6bfb50f91c4f84dadf99846f86d4527f19c7f"},
 ]
 
 [package.dependencies]
@@ -776,13 +776,13 @@ bcrypt = ["bcrypt"]
 
 [[package]]
 name = "django-browser-reload"
-version = "1.15.0"
+version = "1.16.0"
 description = "Automatically reload your browser in development."
 optional = false
-python-versions = ">=3.8"
+python-versions = ">=3.9"
 files = [
-    {file = "django_browser_reload-1.15.0-py3-none-any.whl", hash = "sha256:55b72335568b988e3a2beddb1703db6951516355925d3fc9c587f0bbd9e8efaa"},
-    {file = "django_browser_reload-1.15.0.tar.gz", hash = "sha256:ed094386c587a95ff4f34a0d302ecd58f15e919784c4c76a97f7cb977446104c"},
+    {file = "django_browser_reload-1.16.0-py3-none-any.whl", hash = "sha256:abda653c5ac958cab8505a0d67b25a6935402d35036f8f47588594487648189c"},
+    {file = "django_browser_reload-1.16.0.tar.gz", hash = "sha256:2c8fc0f7e678dd5e03f78bedc96dd2efb363379a966e5de68308f3ab0fc8e61b"},
 ]
 
 [package.dependencies]
