@@ -15,7 +15,8 @@ RUN mkdir $NVM_DIR && \
 RUN python3 -m pip install --user pipx && \
   python3 -m pipx ensurepath && \
   python3 -m pipx install invoke && \
-  invoke --print-completion-script=bash >> $HOME/.bash_completion
+  invoke --print-completion-script=bash >> $HOME/.bash_completion && \
+  pipx uninstall invoke
 
 ENV NODE_PATH $NVM_DIR/v$NODE_VERSION/lib/node_modules
 ENV PATH $NVM_DIR/versions/node/v$NODE_VERSION/bin:$PATH
