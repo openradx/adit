@@ -73,7 +73,7 @@ def broadcast_mail(subject: str, message: str):
     # TODO: Increase the priority slightly when it will be retried
     # See https://github.com/procrastinate-org/procrastinate/issues/1096
     retry=RetryStrategy(
-        max_attempts=settings.DICOM_TASK_RETRIES,
+        max_attempts=settings.DICOM_TASK_MAX_ATTEMPTS,
         exponential_wait=settings.DICOM_TASK_EXPONENTIAL_WAIT,
         retry_exceptions={RetriableDicomError},
     ),
@@ -136,7 +136,7 @@ def process_dicom_task(context: JobContext, model_label: str, task_id: int):
         # Cave, the the attempts of the Procrastinate job must not be the same number
         # as the attempts of the DicomTask. The DicomTask could be started by multiple
         # Procrastinate jobs (e.g. if the user canceled and resumed the same task).
-        if context.job.attempts < settings.DICOM_TASK_RETRIES:
+        if context.job.attempts < settings.DICOM_TASK_MAX_ATTEMPTS:
             dicom_task.status = DicomTask.Status.PENDING
             dicom_task.message = "Task failed, but will be retried."
             if dicom_task.log:

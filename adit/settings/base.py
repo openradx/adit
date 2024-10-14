@@ -381,7 +381,7 @@ C_MOVE_DOWNLOAD_TIMEOUT = 30  # seconds
 ENABLE_DICOM_DEBUG_LOGGER = False
 
 # How often to retry a failed dicom task before it is definitively failed
-DICOM_TASK_RETRIES = 3
+DICOM_TASK_MAX_ATTEMPTS = 3
 
 # How long to wait in seconds before retrying a failed dicom task (exponential backoff)
 DICOM_TASK_EXPONENTIAL_WAIT = 10  # 10 seconds
