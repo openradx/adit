@@ -2004,13 +2004,13 @@ files = [
 
 [[package]]
 name = "procrastinate"
-version = "2.14.1"
+version = "2.15.0"
 description = "Postgres-based distributed task processing library"
 optional = false
 python-versions = "<4.0,>=3.8"
 files = [
-    {file = "procrastinate-2.14.1-py3-none-any.whl", hash = "sha256:581aacffa50a0ed84d980c127647f28d5f6559503f05bcffbcecaf8d1930f9fc"},
-    {file = "procrastinate-2.14.1.tar.gz", hash = "sha256:446111c90a31fa8c395edce0dc0e15e5f58df9b6a388583005042558ef4302d3"},
+    {file = "procrastinate-2.15.0-py3-none-any.whl", hash = "sha256:7e2f0980ac1e1a9bda4fdc6e9580f89029844f1691602142a1e533ef5eb3c8cd"},
+    {file = "procrastinate-2.15.0.tar.gz", hash = "sha256:b75d2361e0210bffbad9394f8b7ef9486a366f2a8b50590b23e6952d673228b0"},
 ]
 
 [package.dependencies]
