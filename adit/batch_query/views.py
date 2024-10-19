@@ -189,7 +189,6 @@ class BatchQueryResultDownloadView(
     request: AuthenticatedHttpRequest
 
     def get_queryset(self):
-        # assert self.model
         if self.request.user.is_staff:
             return self.model.objects.all()
         return self.model.objects.filter(owner=self.request.user)

@@ -11,10 +11,6 @@ class ExampleAppConfig(AppConfig):
 
 
 def init_db(sender, **kwargs):
-    create_app_settings()
-
-
-def create_app_settings():
     from .models import ExampleAppSettings
 
     if not ExampleAppSettings.objects.exists():

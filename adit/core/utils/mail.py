@@ -1,5 +1,4 @@
 from adit_radis_shared.common.utils.mail import send_mail_to_admins, send_mail_to_user
-from django.conf import settings
 from django.template.loader import render_to_string
 
 
@@ -7,7 +6,7 @@ def send_job_finished_mail(job):
     subject = "Job finished"
     html_content = render_to_string(
         "core/mail/dicom_job_finished.html",
-        {"site_base_url": settings.SITE_BASE_URL, "job": job},
+        {"job": job},
     )
     send_mail_to_user(job.owner, subject, html_content=html_content)
 
@@ -17,7 +16,7 @@ def send_job_failed_mail(job):
     subject = "Job failed"
     html_content = render_to_string(
         "core/mail/dicom_job_failed.html",
-        {"site_base_url": settings.SITE_BASE_URL, "job": job},
+        {"job": job},
     )
     send_mail_to_admins(subject, html_content=html_content)
     send_mail_to_user(job.owner, subject, html_content=html_content)

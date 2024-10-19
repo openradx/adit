@@ -18,9 +18,9 @@
         <dd class="col-sm-9">
             <span class="{{ task.status|dicom_task_status_css_class }}">{{ task.get_status_display }}</span>
         </dd>
-        <dt class="col-sm-3">Retries</dt>
+        <dt class="col-sm-3">Attempts</dt>
         <dd class="col-sm-9">
-            {{ task.retries|default:"—" }}
+            {{ task.attempts|default:"—" }}
         </dd>
         <dt class="col-sm-3">Message</dt>
         <dd class="col-sm-9">

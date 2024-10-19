@@ -290,4 +290,5 @@ class StoreInstancesAPIView(WebDicomAPIView):
                     f"Successfully stored instance {ds.SOPInstanceUID} to {dest_server.ae_title}"
                 )
 
+        assert request.accepted_renderer is not None
         return Response([results], content_type=request.accepted_renderer.media_type)

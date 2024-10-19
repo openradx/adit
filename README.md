@@ -60,4 +60,4 @@ ADIT is not a certified medical product. So use at your own risk.
 
 ## License
 
-- GPL 3.0 or later
+- AGPL 3.0 or later

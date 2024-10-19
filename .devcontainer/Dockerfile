@@ -11,7 +11,8 @@ USER vscode
 
 # pipx is already installed in the base devcontainers Python image
 RUN pipx install invoke && \
-  invoke --print-completion-script=bash >> ~/.bash_completion
+  invoke --print-completion-script=bash >> ~/.bash_completion && \
+  pipx uninstall invoke
 
 RUN pipx install poetry && \
   poetry completions bash >> ~/.bash_completion
