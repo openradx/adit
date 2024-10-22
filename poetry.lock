@@ -740,13 +740,13 @@ pydicom = ">=2.3.1"
 
 [[package]]
 name = "dicomweb-client"
-version = "0.59.2"
+version = "0.59.3"
 description = "Client for DICOMweb RESTful services."
 optional = false
 python-versions = ">=3.6"
 files = [
-    {file = "dicomweb_client-0.59.2-py3-none-any.whl", hash = "sha256:53b9c9483dbce2e4629785c7f2c74602ef7c3dbe9d84af975e5cac8dda27545d"},
-    {file = "dicomweb_client-0.59.2.tar.gz", hash = "sha256:b06a43892f21e278c07e42e644ae7f11a1681788f11e77ef691ed404041a93cb"},
+    {file = "dicomweb_client-0.59.3-py3-none-any.whl", hash = "sha256:58ba2c9d4924ab3bc66d7a078b070b73562d321846f70f0050fb51d078897726"},
+    {file = "dicomweb_client-0.59.3.tar.gz", hash = "sha256:dd11604c99711d3fc9d223de960a1b64db3b2dcbc30592473d935e27b9243d46"},
 ]
 
 [package.dependencies]
