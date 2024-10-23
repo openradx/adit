@@ -30,14 +30,6 @@ invoke_tasks.PROJECT_DIR = Path(__file__).resolve().parent
 
 
 @task
-def upgrade(ctx: Context):
-    """Upgrade Python and JS packages"""
-    ctx.run("poetry update", pty=True)
-    ctx.run("npm update", pty=True)
-    copy_statics(ctx)
-
-
-@task
 def reset_orthancs(ctx: Context, env: invoke_tasks.Environments = "dev"):
     """Reset Orthancs"""
     cmd = f"{invoke_tasks.build_compose_cmd(env)} exec web python manage.py reset_orthancs"
