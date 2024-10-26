@@ -1,12 +1,13 @@
 x-app: &default-app
   volumes:
-    - /mnt:/mnt
+    - ../backups:/backups
   depends_on:
     - postgres
   environment:
     USE_DOCKER: 1
     PROJECT_VERSION: ${PROJECT_VERSION:-vX.Y.Z}
     DATABASE_URL: "psql://postgres:postgres@postgres.local:5432/postgres"
+    BACKUP_DIR: "/backups"
     DJANGO_STATIC_ROOT: "/var/www/web/static/"
     ORTHANC1_HOST: "orthanc1.local"
     ORTHANC1_HTTP_PORT: 6501
@@ -27,7 +28,7 @@ services:
     hostname: init.local
     volumes:
       - web_data:/var/www/web
-      - /mnt:/mnt
+      - ../backups:/backups
 
   web:
     <<: *default-app
@@ -36,7 +37,7 @@ services:
       context: ..
     volumes:
       - web_data:/var/www/web
-      - /mnt:/mnt
+      - ../backups:/backups
 
   postgres:
     image: postgres:13.16
