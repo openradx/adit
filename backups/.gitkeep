@@ -1,4 +1,0 @@
-# Directory to keep database backups
-
-Database backups are done every night at 3 am by a periodic task using the dbbackup management command.
-The dbbackup command can be called manually with `./manage.py dbbackup` (uses the django-dbbackup app).
