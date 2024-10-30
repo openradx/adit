@@ -783,18 +783,18 @@ bcrypt = ["bcrypt"]
 
 [[package]]
 name = "django-browser-reload"
-version = "1.16.0"
+version = "1.17.0"
 description = "Automatically reload your browser in development."
 optional = false
 python-versions = ">=3.9"
 files = [
-    {file = "django_browser_reload-1.16.0-py3-none-any.whl", hash = "sha256:abda653c5ac958cab8505a0d67b25a6935402d35036f8f47588594487648189c"},
-    {file = "django_browser_reload-1.16.0.tar.gz", hash = "sha256:2c8fc0f7e678dd5e03f78bedc96dd2efb363379a966e5de68308f3ab0fc8e61b"},
+    {file = "django_browser_reload-1.17.0-py3-none-any.whl", hash = "sha256:d372c12c1c5962c02279a53cac7e8a020c48f104592c637a06d0768b28d2d6be"},
+    {file = "django_browser_reload-1.17.0.tar.gz", hash = "sha256:3667939cde0eee1a6d698dbe3b78cf10b573dabc4e711fb7933f1ba91fb98da4"},
 ]
 
 [package.dependencies]
 asgiref = ">=3.6"
-django = ">=3.2"
+django = ">=4.2"
 
 [[package]]
 name = "django-crispy-forms"
@@ -1476,17 +1476,14 @@ test-extra = ["curio", "ipython[test]", "matplotlib (!=3.2.0)", "nbformat", "num
 
 [[package]]
 name = "janus"
-version = "1.0.0"
+version = "1.1.0"
 description = "Mixed sync-async queue to interoperate between asyncio tasks and classic threads"
 optional = false
-python-versions = ">=3.7"
+python-versions = ">=3.9"
 files = [
-    {file = "janus-1.0.0-py3-none-any.whl", hash = "sha256:2596ea5482711c1ee3ef2df6c290aaf370a13c55a007826e8f7c32d696d1d00a"},
-    {file = "janus-1.0.0.tar.gz", hash = "sha256:df976f2cdcfb034b147a2d51edfc34ff6bfb12d4e2643d3ad0e10de058cb1612"},
+    {file = "janus-1.1.0-py3-none-any.whl", hash = "sha256:9a3daf0f1a16abda1a7c976e28dc1f6caf3b8d1de9b8c93b2ea84de424de7705"},
+    {file = "janus-1.1.0.tar.gz", hash = "sha256:0634df8b2b31f8afda4311abcf7fea912686fef717d13769eeaa01ae08d2b84c"},
 ]
-
-[package.dependencies]
-typing-extensions = ">=3.7.4.3"
 
 [[package]]
 name = "jedi"
@@ -3559,13 +3556,13 @@ files = [
 
 [[package]]
 name = "whitenoise"
-version = "6.8.1"
+version = "6.8.2"
 description = "Radically simplified static file serving for WSGI applications"
 optional = false
 python-versions = ">=3.9"
 files = [
-    {file = "whitenoise-6.8.1-py3-none-any.whl", hash = "sha256:196ba04ca0a80f4a3f99f88381864f218a28b5fb5b44d29feea484d501fa0ba3"},
-    {file = "whitenoise-6.8.1.tar.gz", hash = "sha256:11042f39f1dcfbb3814726b9364703af6901706582d988e96494cfefdc3a89e2"},
+    {file = "whitenoise-6.8.2-py3-none-any.whl", hash = "sha256:df12dce147a043d1956d81d288c6f0044147c6d2ab9726e5772ac50fb45d2280"},
+    {file = "whitenoise-6.8.2.tar.gz", hash = "sha256:486bd7267a375fa9650b136daaec156ac572971acc8bf99add90817a530dd1d4"},
 ]
 
 [package.extras]
