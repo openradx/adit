@@ -35,7 +35,7 @@ whitenoise = "^6.0.0"
 [package.source]
 type = "git"
 url = "https://github.com/openradx/adit-radis-shared.git"
-reference = "0.8.1"
+reference = "907e36755110aedd5fcc6e0a9894c590c499c6d2"
 resolved_reference = "907e36755110aedd5fcc6e0a9894c590c499c6d2"
 
 [[package]]
@@ -3643,4 +3643,4 @@ testing = ["coverage[toml]", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.12,<4.0"
-content-hash = "e5f0172384b41f0d2783eb19b59d5d4516fcaa2e0cfc214e6282d030f1579632"
+content-hash = "7e8040bc93a6831385dcf907cc4380b74e94ddb0e459c040c8ccea9aa326a261"
