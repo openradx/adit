@@ -245,7 +245,7 @@ class DicomJob(models.Model):
 
         reset_tasks(tasks)
 
-    def post_process(self) -> bool:
+    def post_process(self, suppress_email=False) -> bool:
         """Evaluates all the tasks of a dicom job and sets the job state accordingly.
 
         Should be called whenever task are updated or manipulated.
@@ -297,7 +297,7 @@ class DicomJob(models.Model):
         self.end = timezone.now()
         self.save()
 
-        if self.send_finished_mail:
+        if self.send_finished_mail and not suppress_email:
             send_job_finished_mail(self)
 
         return True
