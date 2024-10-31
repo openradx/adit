@@ -155,4 +155,4 @@ pyvenv.cfg
 
 # ADIT specific
 .dicoms/
-backups/
+/backups
