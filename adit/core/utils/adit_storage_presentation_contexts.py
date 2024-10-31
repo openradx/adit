@@ -2,7 +2,6 @@ from pynetdicom.presentation import (
     build_context,
 )
 
-
 # Prebuilt context matching the DCMTK Implementation https://github.com/DCMTK/dcmtk/blob/d1fb197927fd4178b5a24e0f0dba6f8d785a8f93/dcmdata/libsrc/dcuid.cc#L895
 _storage = [
     "1.2.840.10008.5.1.4.1.1.9.1.3",  # AmbulatoryECGWaveformStorage
@@ -44,8 +43,8 @@ _storage = [
     "1.2.840.10008.5.1.4.1.1.9.2.1",  # HemodynamicWaveformStorage
     "1.2.840.10008.5.1.4.1.1.88.68",  # ImplantationPlanSRStorage
     "1.2.840.10008.5.1.4.1.1.78.8",  # IntraocularLensCalculationsStorage
-    "1.2.840.10008.5.1.4.1.1.14.1",  # IntravascularOpticalCoherenceTomographyImageStorageForPresentation
-    "1.2.840.10008.5.1.4.1.1.14.2",  # IntravascularOpticalCoherenceTomographyImageStorageForProcessing
+    "1.2.840.10008.5.1.4.1.1.14.1",  # IntravascularOpticalCoherenceTomographyImageStorageForPresentation # noqa
+    "1.2.840.10008.5.1.4.1.1.14.2",  # IntravascularOpticalCoherenceTomographyImageStorageForProcessing # noqa
     "1.2.840.10008.5.1.4.1.1.78.2",  # KeratometryMeasurementsStorage
     "1.2.840.10008.5.1.4.1.1.88.59",  # KeyObjectSelectionDocumentStorage
     "1.2.840.10008.5.1.4.1.1.2.2",  # LegacyConvertedEnhancedCTImageStorage
@@ -140,7 +139,7 @@ _storage = [
     # "1.2.840.10008.5.1.4.1.1.77.1.10",  # MicroscopyBulkSimpleAnnotationsStorage
     # "1.2.840.10008.5.1.4.1.1.9.6.2",  # MultichannelRespiratoryWaveformStorage
     # "1.2.840.10008.5.1.4.1.1.11.11",  # MultipleVolumeRenderingVolumetricPresentationStateStorage
-    # "1.2.840.10008.5.1.4.1.1.77.1.5.8",  # OphthalmicOpticalCoherenceTomographyBscanVolumeAnalysisStorage
+    # "1.2.840.10008.5.1.4.1.1.77.1.5.8",  # OphthalmicOpticalCoherenceTomographyBscanVolumeAnalysisStorage # noqa
     # "1.2.840.10008.5.1.4.1.1.77.1.5.7",  # OphthalmicOpticalCoherenceTomographyEnFaceImageStorage
     # "1.2.840.10008.5.1.4.1.1.30",  # ParametricMapStorage
     # "1.2.840.10008.5.1.4.1.1.88.72",  # PatientRadiationDoseSRStorage
@@ -169,12 +168,12 @@ _storage = [
     # "1.2.840.10008.5.1.4.1.1.11.12",  # VariableModalityLUTSoftcopyPresentationStateStorage
     # "1.2.840.10008.5.1.4.1.1.11.9",  # VolumeRenderingVolumetricPresentationStateStorage
     # "1.2.840.10008.5.1.4.1.1.88.70",  # WaveformAnnotationSRStorage
-    # "1.2.840.10008.5.1.4.1.1.77.1.5.5",  # WideFieldOphthalmicPhotographyStereographicProjectionImageStorage
+    # "1.2.840.10008.5.1.4.1.1.77.1.5.5",  # WideFieldOphthalmicPhotographyStereographicProjectionImageStorage # noqa
     # "1.2.840.10008.5.1.4.1.1.77.1.5.6",  # WideFieldOphthalmicPhotography3DCoordinatesImageStorage
     # "1.2.840.10008.5.1.4.1.1.200.8"  # XAPerformedProcedureProtocolStorage
     ## non-patient
     # "1.2.840.10008.5.1.4.39.2",  # ColorPaletteStorage
-    # "1.2.840.10008.5.1.4.1.1.200.1",  # CTDefinedProcedureProtocolStorage  
+    # "1.2.840.10008.5.1.4.1.1.200.1",  # CTDefinedProcedureProtocolStorage
     # "1.2.840.10008.5.1.4.43.1",  # GenericImplantTemplateStorage
     # "1.2.840.10008.5.1.4.38.1",  # HangingProtocolStorage
     # "1.2.840.10008.5.1.4.44.1",  # ImplantAssemblyTemplateStorage
@@ -220,4 +219,4 @@ _storage = [
 assert len(_storage) <= 128
 
 AditStoragePresentationContexts = [build_context(uid) for uid in sorted(_storage)]
-"""Pre-built presentation contexts for :dcm:`Storage<part04/chapter_B.html>` matching the DCMTK Implementation."""
+"""Pre-built presentation contexts for :dcm:`Storage<part04/chapter_B.html>` matching the DCMTK Implementation."""  # noqa

@@ -21,9 +21,6 @@ from pynetdicom.presentation import (
     build_role,
 )
 from pynetdicom.sop_class import (
-    EncapsulatedMTLStorage,  # pyright: ignore
-    EncapsulatedOBJStorage,  # pyright: ignore
-    EncapsulatedSTLStorage,  # pyright: ignore
     PatientRootQueryRetrieveInformationModelFind,  # pyright: ignore
     PatientRootQueryRetrieveInformationModelGet,  # pyright: ignore
     PatientRootQueryRetrieveInformationModelMove,  # pyright: ignore
@@ -36,9 +33,9 @@ from pynetdicom.status import code_to_category
 from ..errors import DicomError, RetriableDicomError
 from ..models import DicomServer
 from ..types import DicomLogEntry
+from ..utils.adit_storage_presentation_contexts import AditStoragePresentationContexts
 from ..utils.dicom_dataset import QueryDataset, ResultDataset
 from ..utils.dicom_utils import has_wildcards, read_dataset
-from ..utils.adit_storage_presentation_contexts import AditStoragePresentationContexts
 
 logger = logging.getLogger(__name__)
 
@@ -176,7 +173,7 @@ class DimseConnector:
             # We must exclude as many storage contexts as query/retrieve contexts we add
             # because the maximum requested contexts is 128. "StoragePresentationContexts" is a list
             # that contains 128 storage contexts itself.
-           
+
             store_contexts = AditStoragePresentationContexts
             ae.add_requested_context(PatientRootQueryRetrieveInformationModelGet)
             ae.add_requested_context(StudyRootQueryRetrieveInformationModelGet)
