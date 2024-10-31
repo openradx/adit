@@ -154,5 +154,6 @@ share/
 pyvenv.cfg
 
 # ADIT specific
-.dicoms/
-/backups
+/.dicoms/
+/backups/*
+!/backups/.gitkeep
