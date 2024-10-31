@@ -43,7 +43,7 @@ services:
       bash -c "
         wait-for-it -s init.local:8000 -t 300 && 
         echo 'Starting web server ...'
-        daphne -b 0.0.0.0 -p 80 -e ssl:443:privateKey=/var/www/web/ssl/key.pem:certKey=/var/www/web/ssl/cert.pem adit.asgi:application
+        daphne -b 0.0.0.0 -p 80 -e ssl:443:privateKey=/etc/ssl/private/key.pem:certKey=/etc/ssl/private/cert.pem adit.asgi:application
       "
     deploy:
       <<: *deploy
