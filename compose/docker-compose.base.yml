@@ -1,6 +1,7 @@
 x-app: &default-app
   volumes:
     - ../backups:/backups
+    - /mnt:/mnt
   depends_on:
     - postgres
   environment:
@@ -29,6 +30,7 @@ services:
     volumes:
       - web_data:/var/www/web
       - ../backups:/backups
+      - /mnt:/mnt
 
   web:
     <<: *default-app
@@ -38,6 +40,7 @@ services:
     volumes:
       - web_data:/var/www/web
       - ../backups:/backups
+      - /mnt:/mnt
 
   postgres:
     image: postgres:17
