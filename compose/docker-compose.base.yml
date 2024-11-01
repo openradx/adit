@@ -41,6 +41,7 @@ services:
       - web_data:/var/www/web
       - ../backups:/backups
       - /mnt:/mnt
+      - /etc/ssl:/etc/ssl
 
   postgres:
     image: postgres:17
