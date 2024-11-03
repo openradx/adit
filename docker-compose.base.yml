@@ -5,8 +5,8 @@ x-app: &default-app
   depends_on:
     - postgres
   environment:
-    ADIT_AE_TITLE: ${ADIT_AE_TITLE:?}
     BACKUP_DIR: ${BACKUP_DIR:?}
+    CALLING_AE_TITLE: ${CALLING_AE_TITLE:?}
     DATABASE_URL: "psql://postgres:postgres@postgres.local:5432/postgres"
     DJANGO_ADMIN_EMAIL: ${DJANGO_ADMIN_EMAIL:?}
     DJANGO_ADMIN_FULL_NAME: ${DJANGO_ADMIN_FULL_NAME:?}

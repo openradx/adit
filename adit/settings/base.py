@@ -312,8 +312,10 @@ pydicom_config.convert_wrong_length_to_UN = True
 # ADIT specific settings
 ###
 
-# The AE Tile for the ADIT STORE SCP server
-ADIT_AE_TITLE = env.str("ADIT_AE_TITLE")
+# The calling AE title of ADIT.
+CALLING_AE_TITLE = env.str("CALLING_AE_TITLE")
+
+# The AE title where the receiver is listening for incoming files.
 RECEIVER_AE_TITLE = env.str("RECEIVER_AE_TITLE")
 
 # The address and port of the STORE SCP server (part of the receiver).
