@@ -1,13 +1,15 @@
 x-app: &default-app
   image: adit_dev:latest
   volumes:
-    - ..:/app
-  env_file:
-    - ../.env.dev
+    - .:/app
+    - vscode-server:/root/.vscode-server/extensions
+    - vscode-server-insiders:/root/.vscode-server-insiders/extensions
   environment:
-    ENABLE_REMOTE_DEBUGGING: 0
     DJANGO_SETTINGS_MODULE: "adit.settings.development"
-  pull_policy: never # only works with Docker Compose and not Docker Swarm
+    FORCE_DEBUG_TOOLBAR: ${FORCE_DEBUG_TOOLBAR:-true}
+    REMOTE_DEBUGGING_ENABLED: ${REMOTE_DEBUGGING_ENABLED:-false}
+    REMOTE_DEBUGGING_PORT: ${REMOTE_DEBUGGING_PORT:-5678}
+  pull_policy: never
 
 services:
   init:
@@ -20,33 +22,17 @@ services:
     build:
       target: development
     ports:
-      - "${ADIT_HOST_PORT:-8000}:8000"
-      - "${ADIT_DEBUG_PORT:-5678}:5678"
-    volumes:
-      # Cave, overwrites the above anchor
-      - ..:/app
-      - vscode-server:/root/.vscode-server/extensions
-      - vscode-server-insiders:/root/.vscode-server-insiders/extensions
+      - "${WEB_DEV_PORT:-8000}:8000"
+      - "${REMOTE_DEBUGGING_PORT:-5678}:5678"
     command: >
       bash -c "
         wait-for-it -s postgres.local:5432 -t 60 && 
         ./manage.py migrate &&
-        ./manage.py collectstatic --no-input &&
-        ./manage.py populate_users_and_groups --users 20 --groups 3 &&
-        ./manage.py populate_data &&
+        ./manage.py create_superuser &&
+        ./manage.py create_example_users --count 20 &&
+        ./manage.py create_example_groups --count 3 &&
+        ./manage.py populate_example_data &&
         ./manage.py runserver 0.0.0.0:8000
-      "
-
-  postgres:
-    environment:
-      POSTGRES_PASSWORD: "postgres"
-
-  dicom_worker:
-    <<: *default-app
-    command: >
-      bash -c "
-        wait-for-it -s postgres.local:5432 -t 60 &&
-        ./manage.py bg_worker -l debug -q dicom --autoreload
       "
 
   default_worker:
@@ -57,12 +43,24 @@ services:
         ./manage.py bg_worker -l debug -q default --autoreload
       "
 
+  dicom_worker:
+    <<: *default-app
+    command: >
+      bash -c "
+        wait-for-it -s postgres.local:5432 -t 60 &&
+        ./manage.py bg_worker -l debug -q dicom --autoreload
+      "
+
   receiver:
     <<: *default-app
     ports:
       - "11122:11112"
     command: |
       ./manage.py receiver --autoreload
+
+  postgres:
+    environment:
+      POSTGRES_PASSWORD: postgres
 
 volumes:
   vscode-server:

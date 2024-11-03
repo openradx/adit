@@ -50,12 +50,12 @@ class Command(BaseCommand):
             job.save()
 
     def handle(self, *args, **options):
-        print("Cleanup DICOM jobs and tasks.")
+        self.stdout.write("Cleanup DICOM jobs and tasks.")
 
-        print("Make sure workers are idle and no task is currently processed.")
+        self.stdout.write("Make sure workers are idle and no task is currently processed.")
         user_input = input("Are you sure you want to continue? (y/n): ")
         if user_input.lower() not in ("y", "yes"):
-            print("Aborting.")
+            self.stdout.write("Aborting.")
             return
 
         self.cleanup_tasks(SelectiveTransferTask)

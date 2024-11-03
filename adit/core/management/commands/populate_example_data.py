@@ -154,11 +154,11 @@ class Command(BaseCommand):
 
         do_populate = True
         if DicomServer.objects.filter(ae_title="ORTHANC1").count() > 0:
-            print("Development database already populated. Skipping.")
+            self.stdout.write("Development database already populated. Skipping.")
             do_populate = False
 
         if do_populate:
-            print("Populating development database with test data.")
+            self.stdout.write("Populating development database with test data.")
 
             users = list(User.objects.all())
             groups = list(Group.objects.all())
