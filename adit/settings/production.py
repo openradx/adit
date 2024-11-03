@@ -6,18 +6,25 @@ from .base import env
 
 DEBUG = False
 
-SECRET_KEY = env("DJANGO_SECRET_KEY")
-
-ALLOWED_HOSTS = env.list("DJANGO_ALLOWED_HOSTS")
-
-STORAGES["staticfiles"]["BACKEND"] = "whitenoise.storage.CompressedManifestStaticFilesStorage"  # noqa: F405
-
 DATABASES["default"]["PASSWORD"] = env.str("POSTGRES_PASSWORD")  # noqa: F405
+
+STATIC_ROOT = env.str("DJANGO_STATIC_ROOT")
+
+STORAGES = {
+    "default": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+    },
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+    },
+}
 
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 EMAIL_TIMEOUT = 60
-EMAIL_HOST = env.str("DJANGO_EMAIL_HOST")
-EMAIL_PORT = env.int("DJANGO_EMAIL_PORT", default=25)  # type: ignore
-EMAIL_HOST_USER = env.str("DJANGO_EMAIL_HOST_USER", default="")  # type: ignore
-EMAIL_HOST_PASSWORD = env.str("DJANGO_EMAIL_HOST_PASSWORD", default="")  # type: ignore
-EMAIL_USE_TLS = env.bool("DJANGO_EMAIL_USE_TLS", default=False)  # type: ignore
+email_config = env.email_url("DJANGO_EMAIL_URL")
+EMAIL_HOST = email_config["EMAIL_HOST"]
+EMAIL_PORT = email_config.get("EMAIL_PORT", 25)
+EMAIL_HOST_USER = email_config.get("EMAIL_HOST_USER")
+EMAIL_HOST_PASSWORD = email_config.get("EMAIL_HOST_PASSWORD")
+EMAIL_USE_TLS = email_config.get("EMAIL_USE_TLS", False)
+EMAIL_USE_SSL = email_config.get("EMAIL_USE_SSL", False)

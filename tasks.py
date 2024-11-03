@@ -2,13 +2,18 @@ from pathlib import Path
 
 from adit_radis_shared import invoke_tasks
 from adit_radis_shared.invoke_tasks import (  # noqa: F401
+    Utility,
     backup_db,
     compose_down,
     compose_up,
     format,
+    generate_auth_token,
+    generate_certificate_files,
+    generate_django_secret_key,
+    generate_secure_password,
     init_workspace,
     lint,
-    reset_dev,
+    randomize_env_secrets,
     restore_db,
     show_outdated,
     stack_deploy,
@@ -27,7 +32,10 @@ invoke_tasks.PROJECT_DIR = Path(__file__).resolve().parent
 
 
 @task
-def reset_orthancs(ctx: Context, env: invoke_tasks.Environments = "dev"):
-    """Reset Orthancs"""
-    cmd = f"{invoke_tasks.build_compose_cmd(env)} exec web python manage.py reset_orthancs"
+def populate_orthancs(ctx: Context, reset: bool = False):
+    """Populate Orthancs with example DICOMs"""
+    cmd = f"{Utility.build_compose_cmd()} exec web python manage.py populate_orthancs"
+    if reset:
+        cmd += " --reset"
+
     ctx.run(cmd, pty=True)

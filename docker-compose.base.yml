@@ -1,47 +1,58 @@
 x-app: &default-app
   volumes:
-    - ../backups:/backups
-    - /mnt:/mnt
+    - ${BACKUP_DIR:?}:/backups
+    - ${MOUNT_DIR:?}:/mnt
   depends_on:
     - postgres
   environment:
-    USE_DOCKER: 1
-    PROJECT_VERSION: ${PROJECT_VERSION:-vX.Y.Z}
+    ADIT_AE_TITLE: ${ADIT_AE_TITLE:?}
+    BACKUP_DIR: ${BACKUP_DIR:?}
     DATABASE_URL: "psql://postgres:postgres@postgres.local:5432/postgres"
-    BACKUP_DIR: "/backups"
-    DJANGO_STATIC_ROOT: "/var/www/web/static/"
-    ORTHANC1_HOST: "orthanc1.local"
-    ORTHANC1_HTTP_PORT: 6501
-    ORTHANC1_DICOM_PORT: 7501
-    ORTHANC1_DICOMWEB_ROOT: "dicom-web"
-    ORTHANC2_HOST: "orthanc2.local"
-    ORTHANC2_HTTP_PORT: 6502
-    ORTHANC2_DICOM_PORT: 7502
-    ORTHANC2_DICOMWEB_ROOT: "dicom-web"
+    DJANGO_ADMIN_EMAIL: ${DJANGO_ADMIN_EMAIL:?}
+    DJANGO_ADMIN_FULL_NAME: ${DJANGO_ADMIN_FULL_NAME:?}
+    DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:?}
+    DJANGO_CSRF_TRUSTED_ORIGINS: ${DJANGO_CSRF_TRUSTED_ORIGINS:?}
+    DJANGO_INTERNAL_IPS: ${DJANGO_INTERNAL_IPS:?}
+    DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:?}
+    DJANGO_SERVER_EMAIL: ${DJANGO_SERVER_EMAIL:?}
     FILE_TRANSMIT_HOST: "receiver.local"
     FILE_TRANSMIT_PORT: 14638
+    HTTP_PROXY: ${HTTP_PROXY:-}
+    HTTPS_PROXY: ${HTTPS_PROXY:-}
+    MOUNT_DIR: ${MOUNT_DIR:?}
+    NO_PROXY: ${NO_PROXY:-}
+    ORTHANC1_DICOM_PORT: 7501
+    ORTHANC1_DICOMWEB_ROOT: "dicom-web"
+    ORTHANC1_HOST: "orthanc1.local"
+    ORTHANC1_HTTP_PORT: 6501
+    ORTHANC2_DICOM_PORT: 7502
+    ORTHANC2_DICOMWEB_ROOT: "dicom-web"
+    ORTHANC2_HOST: "orthanc2.local"
+    ORTHANC2_HTTP_PORT: 6502
+    PROJECT_VERSION: ${PROJECT_VERSION:-vX.Y.Z}
+    RECEIVER_AE_TITLE: ${RECEIVER_AE_TITLE:?}
+    SITE_DOMAIN: ${SITE_DOMAIN:?}
+    SITE_NAME: ${SITE_NAME:?}
+    SITE_USES_HTTPS: ${SITE_USES_HTTPS:-false}
     STORE_SCP_HOST: "receiver.local"
     STORE_SCP_PORT: 11112
+    SUPERUSER_AUTH_TOKEN: ${SUPERUSER_AUTH_TOKEN:-}
+    SUPERUSER_EMAIL: ${SUPERUSER_EMAIL:-}
+    SUPERUSER_USERNAME: ${SUPERUSER_USERNAME:-}
+    SUPERUSER_PASSWORD: ${SUPERUSER_PASSWORD:-}
+    SUPPORT_EMAIL: ${SUPPORT_EMAIL:?}
+    TOKEN_AUTHENTICATION_SALT: ${TOKEN_AUTHENTICATION_SALT:?}
+    USE_DOCKER: 1
+    USER_TIME_ZONE: ${USER_TIME_ZONE:?}
 
 services:
   init:
     <<: *default-app
     hostname: init.local
-    volumes:
-      - web_data:/var/www/web
-      - ../backups:/backups
-      - /mnt:/mnt
 
   web:
     <<: *default-app
     hostname: web.local
-    build:
-      context: ..
-    volumes:
-      - web_data:/var/www/web
-      - ../backups:/backups
-      - /mnt:/mnt
-      - /etc/ssl:/etc/ssl
 
   postgres:
     image: postgres:17
@@ -86,7 +97,6 @@ configs:
     file: ./orthanc/orthanc2.json
 
 volumes:
-  web_data:
   postgres_data:
   orthanc1_data:
   orthanc2_data:
