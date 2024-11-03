@@ -54,23 +54,23 @@ services:
     <<: *default-app
     hostname: web.local
 
-  postgres:
-    image: postgres:17
-    hostname: postgres.local
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
+  default_worker:
+    <<: *default-app
+    hostname: default_worker.local
 
   dicom_worker:
     <<: *default-app
     hostname: dicom_worker.local
 
-  default_worker:
-    <<: *default-app
-    hostname: default_worker.local
-
   receiver:
     <<: *default-app
     hostname: receiver.local
+  
+  postgres:
+    image: postgres:17
+    hostname: postgres.local
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
 
   orthanc1:
     image: jodogne/orthanc-plugins:1.12.4
