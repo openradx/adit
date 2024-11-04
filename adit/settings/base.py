@@ -45,8 +45,6 @@ ALLOWED_HOSTS = env.list("DJANGO_ALLOWED_HOSTS")
 
 CSRF_TRUSTED_ORIGINS = env.list("DJANGO_CSRF_TRUSTED_ORIGINS")
 
-INTERNAL_IPS = env.list("DJANGO_INTERNAL_IPS")
-
 INSTALLED_APPS = [
     "daphne",
     "whitenoise.runserver_nostatic",
