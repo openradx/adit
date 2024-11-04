@@ -20,12 +20,7 @@ MIDDLEWARE += [  # noqa: F405
 ]
 
 if env.bool("FORCE_DEBUG_TOOLBAR"):
-    # https://github.com/jazzband/django-debug-toolbar/issues/1035
-    from django.conf import settings
-
-    DEBUG_TOOLBAR_CONFIG = {"SHOW_TOOLBAR_CALLBACK": lambda request: settings.DEBUG}
-
-ENABLE_DICOM_DEBUG_LOGGER = False
+    DEBUG_TOOLBAR_CONFIG = {"SHOW_TOOLBAR_CALLBACK": lambda _: True}
 
 LOGGING["loggers"]["adit"]["level"] = "DEBUG"  # noqa: F405
 
@@ -37,3 +32,5 @@ if env.bool("USE_DOCKER"):
     # If viewed from somewhere else then DJANGO_INTERNAL_IPS must be set.
     hostname, _, ips = socket.gethostbyname_ex(socket.gethostname())
     INTERNAL_IPS += [".".join(ip.split(".")[:-1] + ["1"]) for ip in ips]  # noqa: F405
+
+ENABLE_DICOM_DEBUG_LOGGER = False
