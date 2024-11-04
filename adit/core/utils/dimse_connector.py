@@ -33,9 +33,9 @@ from pynetdicom.status import code_to_category
 from ..errors import DicomError, RetriableDicomError
 from ..models import DicomServer
 from ..types import DicomLogEntry
-from ..utils.adit_storage_presentation_contexts import AditStoragePresentationContexts
 from ..utils.dicom_dataset import QueryDataset, ResultDataset
 from ..utils.dicom_utils import has_wildcards, read_dataset
+from ..utils.presentation_contexts import AditStoragePresentationContexts
 
 logger = logging.getLogger(__name__)
 
@@ -170,14 +170,12 @@ class DimseConnector:
                 QueryRetrievePresentationContexts + BasicWorklistManagementPresentationContexts
             )
         elif service == "C-GET":
-            # We must exclude as many storage contexts as query/retrieve contexts we add
-            # because the maximum requested contexts is 128. "StoragePresentationContexts" is a list
-            # that contains 128 storage contexts itself.
-
-            store_contexts = AditStoragePresentationContexts
+            # The maximum requested contexts is 128. AditStoragePresentationContexts currently
+            # contains 120 storage contexts. So even with the query/retrieve contexts added we
+            # should have no problem.
             ae.add_requested_context(PatientRootQueryRetrieveInformationModelGet)
             ae.add_requested_context(StudyRootQueryRetrieveInformationModelGet)
-            for cx in store_contexts:
+            for cx in AditStoragePresentationContexts:
                 assert cx.abstract_syntax is not None
                 ae.add_requested_context(cx.abstract_syntax)
                 ext_neg.append(build_role(cx.abstract_syntax, scp_role=True))
