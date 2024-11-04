@@ -17,7 +17,6 @@ from pynetdicom.events import EVT_C_STORE, Event
 from pynetdicom.presentation import (
     BasicWorklistManagementPresentationContexts,
     QueryRetrievePresentationContexts,
-    StoragePresentationContexts,
     build_role,
 )
 from pynetdicom.sop_class import (
@@ -182,7 +181,7 @@ class DimseConnector:
         elif service == "C-MOVE":
             ae.requested_contexts = QueryRetrievePresentationContexts
         elif service == "C-STORE":
-            ae.requested_contexts = StoragePresentationContexts
+            ae.requested_contexts = AditStoragePresentationContexts
         else:
             raise DicomError(f"Invalid DIMSE service: {service}")
 
