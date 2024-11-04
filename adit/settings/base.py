@@ -27,9 +27,6 @@ SOURCE_FOLDERS = [BASE_DIR / "adit"]
 # Fetch version from the environment which is passed through from the latest git version tag
 PROJECT_VERSION = env.str("PROJECT_VERSION", default="vX.Y.Z")  # type: ignore
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
-
 # Needed by sites framework
 SITE_ID = 1
 
@@ -121,17 +118,15 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "adit.wsgi.application"
 
-# env.db() loads the DB setup from the DATABASE_URL environment variable using
-# Django-environ.
-# The sqlite database is still used for pytest tests.
+# Loads the DB setup from the DATABASE_URL environment variable.
 DATABASES = {"default": env.db()}
 
-# Django 3.2 switched to BigAutoField for primary keys. It must be set explicitly
-# and requires a migration.
+# Default primary key field type
+# https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-# A custom authentication backend that supports a single currently active group.
-AUTHENTICATION_BACKENDS = ["adit_radis_shared.accounts.backends.ActiveGroupModelBackend"]
+# Custom user model
+AUTH_USER_MODEL = "accounts.User"
 
 # Password validation
 # https://docs.djangoproject.com/en/3.0/ref/settings/#auth-password-validators
@@ -150,6 +145,14 @@ AUTH_PASSWORD_VALIDATORS = [
         "NAME": "django.contrib.auth.password_validation.NumericPasswordValidator",
     },
 ]
+
+# A custom authentication backend that supports a single currently active group.
+AUTHENTICATION_BACKENDS = ["adit_radis_shared.accounts.backends.ActiveGroupModelBackend"]
+
+# Settings for django-registration-redux
+REGISTRATION_FORM = "adit_radis_shared.accounts.forms.RegistrationForm"
+ACCOUNT_ACTIVATION_DAYS = 14
+REGISTRATION_OPEN = True
 
 # See following examples:
 # https://github.com/django/django/blob/master/django/utils/log.py
@@ -225,6 +228,9 @@ USE_TZ = True
 
 TIME_ZONE = "UTC"
 
+# A timezone that is presented to the users of the web interface.
+USER_TIME_ZONE = env.str("USER_TIME_ZONE")
+
 # All REST API requests must come from authenticated clients
 REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": [
@@ -244,9 +250,6 @@ REST_FRAMEWORK = {
 STATICFILES_DIRS = (BASE_DIR / "adit" / "static",)
 
 STATIC_URL = "/static/"
-
-# Custom user model
-AUTH_USER_MODEL = "accounts.User"
 
 # Where to redirect to after login
 LOGIN_REDIRECT_URL = "home"
@@ -282,11 +285,6 @@ SUPPORT_EMAIL = env.str("SUPPORT_EMAIL")
 # Also used by django-registration-redux to send account approval emails
 ADMINS = [(env.str("DJANGO_ADMIN_FULL_NAME"), env.str("DJANGO_ADMIN_EMAIL"))]
 
-# Settings for django-registration-redux
-REGISTRATION_FORM = "adit_radis_shared.accounts.forms.RegistrationForm"
-ACCOUNT_ACTIVATION_DAYS = 14
-REGISTRATION_OPEN = True
-
 # Channels
 ASGI_APPLICATION = "adit.asgi.application"
 
@@ -305,10 +303,6 @@ FILTERS_EMPTY_CHOICE_LABEL = "Show All"
 
 # Global pydicom settings
 pydicom_config.convert_wrong_length_to_UN = True
-
-###
-# ADIT specific settings
-###
 
 # The calling AE title of ADIT.
 CALLING_AE_TITLE = env.str("CALLING_AE_TITLE")
@@ -335,9 +329,6 @@ FILE_TRANSMIT_PORT = env.int("FILE_TRANSMIT_PORT")
 START_SELECTIVE_TRANSFER_UNVERIFIED = True
 START_BATCH_QUERY_UNVERIFIED = True
 START_BATCH_TRANSFER_UNVERIFIED = True
-
-# A timezone that is used for users of the web interface.
-USER_TIME_ZONE = env.str("USER_TIME_ZONE")
 
 # Priorities of dicom tasks
 # Selective transfers have the highest priority as those are
