@@ -17,6 +17,7 @@ from pynetdicom.events import EVT_C_STORE, Event
 from pynetdicom.presentation import (
     BasicWorklistManagementPresentationContexts,
     QueryRetrievePresentationContexts,
+    UnifiedProcedurePresentationContexts,
     build_role,
 )
 from pynetdicom.sop_class import (
@@ -166,7 +167,9 @@ class DimseConnector:
         ext_neg = []
         if service == "C-FIND":
             ae.requested_contexts = (
-                QueryRetrievePresentationContexts + BasicWorklistManagementPresentationContexts
+                QueryRetrievePresentationContexts
+                + BasicWorklistManagementPresentationContexts
+                + UnifiedProcedurePresentationContexts
             )
         elif service == "C-GET":
             # The maximum requested contexts is 128. AditStoragePresentationContexts currently
