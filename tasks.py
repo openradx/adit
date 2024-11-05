@@ -20,7 +20,6 @@ from adit_radis_shared.invoke_tasks import (  # noqa: F401
     stack_rm,
     test,
     try_github_actions,
-    upgrade_adit_radis_shared,
     upgrade_postgresql,
     web_shell,
 )
