@@ -31,11 +31,13 @@ ENV PYTHONUNBUFFERED=1 \
 # prepend poetry and venv to path
 ENV PATH="$POETRY_HOME/bin:$VENV_PATH/bin:$PATH"
 
+# deps for db management commands and transferring to an archive
+# make sure to match the postgres version to the service in the compose file
 RUN apt-get update \
+    && apt-get install --no-install-recommends -y postgresql-common \
+    && /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y \
     && apt-get install --no-install-recommends -y \
-    # deps for db management commands
-    postgresql-client \
-    # deps for transferring to an archive
+    postgresql-client-17 \
     p7zip-full
 
 
