@@ -256,7 +256,7 @@ LOGIN_REDIRECT_URL = "home"
 
 # django-dbbackup
 DBBACKUP_STORAGE = "django.core.files.storage.FileSystemStorage"
-DBBACKUP_STORAGE_OPTIONS = {"location": env.str("BACKUP_DIR")}
+DBBACKUP_STORAGE_OPTIONS = {"location": env.str("DBBACKUP_STORAGE_LOCATION")}
 DBBACKUP_CLEANUP_KEEP = 30
 
 # For crispy forms
