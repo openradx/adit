@@ -35,7 +35,7 @@ from ..models import DicomServer
 from ..types import DicomLogEntry
 from ..utils.dicom_dataset import QueryDataset, ResultDataset
 from ..utils.dicom_utils import has_wildcards, read_dataset
-from ..utils.presentation_contexts import AditStoragePresentationContexts
+from ..utils.presentation_contexts import StoragePresentationContexts
 
 logger = logging.getLogger(__name__)
 
@@ -172,19 +172,19 @@ class DimseConnector:
                 + UnifiedProcedurePresentationContexts
             )
         elif service == "C-GET":
-            # The maximum requested contexts is 128. AditStoragePresentationContexts currently
+            # The maximum requested contexts is 128. StoragePresentationContexts currently
             # contains 120 storage contexts. So even with the query/retrieve contexts added we
             # should have no problem.
             ae.add_requested_context(PatientRootQueryRetrieveInformationModelGet)
             ae.add_requested_context(StudyRootQueryRetrieveInformationModelGet)
-            for cx in AditStoragePresentationContexts:
+            for cx in StoragePresentationContexts:
                 assert cx.abstract_syntax is not None
                 ae.add_requested_context(cx.abstract_syntax)
                 ext_neg.append(build_role(cx.abstract_syntax, scp_role=True))
         elif service == "C-MOVE":
             ae.requested_contexts = QueryRetrievePresentationContexts
         elif service == "C-STORE":
-            ae.requested_contexts = AditStoragePresentationContexts
+            ae.requested_contexts = StoragePresentationContexts
         else:
             raise DicomError(f"Invalid DIMSE service: {service}")
 
