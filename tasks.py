@@ -8,7 +8,6 @@ from adit_radis_shared.invoke_tasks import (  # noqa: F401
     compose_up,
     format,
     generate_auth_token,
-    generate_certificate_chain,
     generate_certificate_files,
     generate_django_secret_key,
     generate_secure_password,
