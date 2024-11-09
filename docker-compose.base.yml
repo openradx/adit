@@ -18,7 +18,7 @@ x-app: &default-app
     FILE_TRANSMIT_PORT: 14638
     HTTP_PROXY: ${HTTP_PROXY:-}
     HTTPS_PROXY: ${HTTPS_PROXY:-}
-    MOUNT_DIR: ${MOUNT_DIR:?}
+    MOUNT_DIR: "/mnt"
     NO_PROXY: ${NO_PROXY:-}
     ORTHANC1_DICOM_PORT: 7501
     ORTHANC1_DICOMWEB_ROOT: "dicom-web"
