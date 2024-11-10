@@ -118,6 +118,11 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "adit.wsgi.application"
 
+ASGI_APPLICATION = "adit.asgi.application"
+
+# This seems to be important for Cloud IDEs as CookieStorage does not work there.
+MESSAGE_STORAGE = "django.contrib.messages.storage.session.SessionStorage"
+
 # Loads the DB setup from the DATABASE_URL environment variable.
 DATABASES = {"default": env.db()}
 
@@ -149,10 +154,38 @@ AUTH_PASSWORD_VALIDATORS = [
 # A custom authentication backend that supports a single currently active group.
 AUTHENTICATION_BACKENDS = ["adit_radis_shared.accounts.backends.ActiveGroupModelBackend"]
 
+# Where to redirect to after login
+LOGIN_REDIRECT_URL = "home"
+
 # Settings for django-registration-redux
 REGISTRATION_FORM = "adit_radis_shared.accounts.forms.RegistrationForm"
 ACCOUNT_ACTIVATION_DAYS = 14
 REGISTRATION_OPEN = True
+
+EMAIL_SUBJECT_PREFIX = "[ADIT] "
+
+# The email address critical error messages of the server will be sent from.
+SERVER_EMAIL = env.str("DJANGO_SERVER_EMAIL")
+
+# The Email address is also used to notify about finished jobs and management notifications.
+DEFAULT_FROM_EMAIL = SERVER_EMAIL
+
+# A support Email address that is presented to the users where they can get support.
+SUPPORT_EMAIL = env.str("SUPPORT_EMAIL")
+
+# Also used by django-registration-redux to send account approval emails
+ADMINS = [(env.str("DJANGO_ADMIN_FULL_NAME"), env.str("DJANGO_ADMIN_EMAIL"))]
+
+# All REST API requests must come from authenticated clients
+REST_FRAMEWORK = {
+    "DEFAULT_PERMISSION_CLASSES": [
+        "rest_framework.permissions.IsAuthenticated",
+    ],
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "adit_radis_shared.token_authentication.auth.RestTokenAuthentication",
+    ],
+    "EXCEPTION_HANDLER": "adit.dicom_web.exceptions.dicom_web_exception_handler",
+}
 
 # See following examples:
 # https://github.com/django/django/blob/master/django/utils/log.py
@@ -221,43 +254,22 @@ LOGGING = {
 
 LANGUAGE_CODE = "de-de"
 
+TIME_ZONE = "UTC"
+
 # We don't want to have German translations, but everything in English
 USE_I18N = False
 
 USE_TZ = True
 
-TIME_ZONE = "UTC"
-
 # A timezone that is presented to the users of the web interface.
 USER_TIME_ZONE = env.str("USER_TIME_ZONE")
 
-# All REST API requests must come from authenticated clients
-REST_FRAMEWORK = {
-    "DEFAULT_PERMISSION_CLASSES": [
-        "rest_framework.permissions.IsAuthenticated",
-    ],
-    "DEFAULT_AUTHENTICATION_CLASSES": [
-        "adit_radis_shared.token_authentication.auth.RestTokenAuthentication",
-    ],
-    "EXCEPTION_HANDLER": "adit.dicom_web.exceptions.dicom_web_exception_handler",
-}
-
-
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/3.0/howto/static-files/
+STATIC_URL = "/static/"
 
 # Additional (project wide) static files
 STATICFILES_DIRS = (BASE_DIR / "adit" / "static",)
-
-STATIC_URL = "/static/"
-
-# Where to redirect to after login
-LOGIN_REDIRECT_URL = "home"
-
-# django-dbbackup
-DBBACKUP_STORAGE = "django.core.files.storage.FileSystemStorage"
-DBBACKUP_STORAGE_OPTIONS = {"location": env.str("DBBACKUP_STORAGE_LOCATION")}
-DBBACKUP_CLEANUP_KEEP = 30
 
 # For crispy forms
 CRISPY_ALLOWED_TEMPLATE_PACKS = "bootstrap5"
@@ -266,27 +278,14 @@ CRISPY_TEMPLATE_PACK = "bootstrap5"
 # django-templates2
 DJANGO_TABLES2_TEMPLATE = "django_tables2/bootstrap5.html"
 
-# This seems to be important for development on Gitpod as CookieStorage
-# and FallbackStorage does not work there.
-# Seems to be the same problem with Cloud9 https://stackoverflow.com/a/34828308/166229
-MESSAGE_STORAGE = "django.contrib.messages.storage.session.SessionStorage"
+# The salt that is used for hashing new tokens in the token authentication app.
+# Cave, changing the salt after some tokens were already generated makes them all invalid!
+TOKEN_AUTHENTICATION_SALT = env.str("TOKEN_AUTHENTICATION_SALT")
 
-EMAIL_SUBJECT_PREFIX = "[ADIT] "
-
-# The email address critical error messages of the server will be sent from.
-SERVER_EMAIL = env.str("DJANGO_SERVER_EMAIL")
-
-# The Email address is also used to notify about finished jobs and management notifications.
-DEFAULT_FROM_EMAIL = SERVER_EMAIL
-
-# A support Email address that is presented to the users where they can get support.
-SUPPORT_EMAIL = env.str("SUPPORT_EMAIL")
-
-# Also used by django-registration-redux to send account approval emails
-ADMINS = [(env.str("DJANGO_ADMIN_FULL_NAME"), env.str("DJANGO_ADMIN_EMAIL"))]
-
-# Channels
-ASGI_APPLICATION = "adit.asgi.application"
+# django-dbbackup
+DBBACKUP_STORAGE = "django.core.files.storage.FileSystemStorage"
+DBBACKUP_STORAGE_OPTIONS = {"location": env.str("DBBACKUP_STORAGE_LOCATION")}
+DBBACKUP_CLEANUP_KEEP = 30
 
 # Orthanc servers are integrated in ADIT by using a reverse proxy (django-revproxy).
 ORTHANC1_HOST = env.str("ORTHANC1_HOST")
@@ -386,10 +385,6 @@ EXCLUDED_MODALITIES = ["PR", "SR"]
 
 # If an ethics committee approval is required for batch transfer
 ETHICS_COMMITTEE_APPROVAL_REQUIRED = True
-
-# The salt that is used for hashing new tokens in the token authentication app.
-# Cave, changing the salt after some tokens were already generated makes them all invalid!
-TOKEN_AUTHENTICATION_SALT = env.str("TOKEN_AUTHENTICATION_SALT")
 
 # DicomWeb Settings
 DEFAULT_BOUNDARY = "adit-boundary"
