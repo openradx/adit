@@ -15,13 +15,13 @@
     },
     {
       "matchManagers": ["poetry"],
-      "matchPackageNames": ["dicognito"],
-      "allowedVersions": "<=0.17"
+      "matchPackageNames": ["pydicom"],
+      "allowedVersions": "<=2"
     },
     {
       "matchManagers": ["poetry"],
-      "matchPackageNames": ["pydicom"],
-      "allowedVersions": "<=2"
+      "matchPackageNames": ["dicognito"],
+      "allowedVersions": "<=0.17"
     }
   ]
 }
