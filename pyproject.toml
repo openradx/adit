@@ -44,7 +44,7 @@ pynetdicom = "^2.1.1"
 python = ">=3.12,<4.0"
 Twisted = { extras = ["tls", "http2"], version = "^24.3.0" }
 wait-for-it = "^2.2.2"
-watchfiles = "^0.24.0"
+watchfiles = "^1.0.0"
 whitenoise = "^6.0.0"
 
 [tool.poetry.group.dev.dependencies]
