@@ -28,6 +28,7 @@ class DicomTaskProcessor(abc.ABC):
     app_name: str
     dicom_task_class: type[DicomTask]
     app_settings_class: type[DicomAppSettings]
+    logs: list[DicomLogEntry] = []
 
     def __init__(self, dicom_task: DicomTask) -> None:
         self.dicom_task = dicom_task
@@ -48,7 +49,6 @@ class DicomTaskProcessor(abc.ABC):
 
 
 class TransferTaskProcessor(DicomTaskProcessor):
-    _logs: list[DicomLogEntry] = []
 
     def __init__(self, dicom_task: DicomTask) -> None:
         assert isinstance(dicom_task, TransferTask)
@@ -63,12 +63,12 @@ class TransferTaskProcessor(DicomTaskProcessor):
         if destination.node_type == DicomNode.NodeType.SERVER:
             self.dest_operator = DicomOperator(destination.dicomserver)
 
-    def get_logs(self) -> list[DicomLogEntry]:
+    def _get_logs(self) -> list[DicomLogEntry]:
         logs: list[DicomLogEntry] = []
         logs.extend(self.source_operator.get_logs())
         if self.dest_operator:
             logs.extend(self.dest_operator.get_logs())
-        logs.extend(self._logs)
+        logs.extend(self.logs)
         return logs
 
     def process(self) -> ProcessingResult:
@@ -82,7 +82,7 @@ class TransferTaskProcessor(DicomTaskProcessor):
 
         status: TransferTask.Status = TransferTask.Status.SUCCESS
         message: str = "Transfer task completed successfully."
-        logs = self.get_logs()
+        logs = self._get_logs()
         for log in logs:
             if log["level"] == "Warning":
                 status = TransferTask.Status.WARNING
@@ -142,7 +142,7 @@ class TransferTaskProcessor(DicomTaskProcessor):
         transfer_job = self.transfer_task.job
         name = "adit_"
         name += transfer_job._meta.app_label + "_"
-        name += str(transfer_job.id) + "_"
+        name += str(transfer_job.pk) + "_"
         name += transfer_job.created.strftime("%Y%m%d") + "_"
         name += transfer_job.owner.username
         return sanitize_dirname(name)
@@ -244,7 +244,7 @@ class TransferTaskProcessor(DicomTaskProcessor):
         task_patient_id = self.transfer_task.patient_id
         study_patient_id = study.PatientID
         if task_patient_id != study_patient_id:
-            self._logs.append(
+            self.logs.append(
                 {
                     "level": "Warning",
                     "title": "Mismatching PatientIDs",
