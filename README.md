@@ -56,7 +56,7 @@ Downloading data from a DICOM server can done by using a DIMSE operation or by u
 
 ## Disclaimer
 
-ADIT is not a certified medical product. So use at your own risk.
+ADIT is intended for research purposes only and is not a certified medical device. It should not be used for clinical diagnostics, treatment, or any medical applications. Use this software at your own risk. The developers and contributors are not liable for any outcomes resulting from its use.
 
 ## License
 
