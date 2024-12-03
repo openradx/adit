@@ -15,8 +15,8 @@ def test_convert_to_dicom_date():
     assert convert_to_dicom_date(date(2023, 8, 31)) == "20230831"
 
     # Test with date ranges
-    assert convert_to_dicom_date("20220309 - 20230831") == "20220309 - 20230831"
-    assert convert_to_dicom_date((date(2022, 3, 9), date(2023, 8, 31))) == "20220309 - 20230831"
+    assert convert_to_dicom_date("20220309 - 20230831") == "20220309-20230831"
+    assert convert_to_dicom_date((date(2022, 3, 9), date(2023, 8, 31))) == "20220309-20230831"
 
 
 def test_convert_to_dicom_time():
