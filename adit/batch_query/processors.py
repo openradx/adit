@@ -176,11 +176,13 @@ class BatchQueryTaskProcessor(DicomTaskProcessor):
             studies = self._fetch_studies(patient_id)
 
             if results and studies:
-                self.logs.append({
-                    "level": "Warning",
-                    "title": "Indistinct patients",
-                    "message": "Studies of multiple patients were found for this query.",
-                })
+                self.logs.append(
+                    {
+                        "level": "Warning",
+                        "title": "Indistinct patients",
+                        "message": "Studies of multiple patients were found for this query.",
+                    }
+                )
 
             for study in studies:
                 batch_query_result = BatchQueryResult(
@@ -211,11 +213,13 @@ class BatchQueryTaskProcessor(DicomTaskProcessor):
             studies = self._fetch_studies(patient_id)
 
             if results and studies:
-                self.logs.append({
-                    "level": "Warning",
-                    "title": "Indistinct patients",
-                    "message": "Studies of multiple patients were found for this query.",
-                })
+                self.logs.append(
+                    {
+                        "level": "Warning",
+                        "title": "Indistinct patients",
+                        "message": "Studies of multiple patients were found for this query.",
+                    }
+                )
 
             for study in studies:
                 series_list = self._fetch_series(patient_id, study.StudyInstanceUID)
