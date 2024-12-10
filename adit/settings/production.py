@@ -28,3 +28,5 @@ EMAIL_HOST_USER = email_config.get("EMAIL_HOST_USER")
 EMAIL_HOST_PASSWORD = email_config.get("EMAIL_HOST_PASSWORD")
 EMAIL_USE_TLS = email_config.get("EMAIL_USE_TLS", False)
 EMAIL_USE_SSL = email_config.get("EMAIL_USE_SSL", False)
+
+SECURE_SSL_REDIRECT = env.bool("DISABLE_HTTP", False)
