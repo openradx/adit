@@ -2,6 +2,7 @@ x-app: &default-app
   volumes:
     - ${BACKUP_DIR:?}:/backups
     - ${MOUNT_DIR:?}:/mnt
+    - ${CA_BUNDLE_FILE:?}:/etc/ssl/ca-bundle.pem:ro
   depends_on:
     - postgres
   environment:
@@ -42,6 +43,7 @@ x-app: &default-app
     SUPPORT_EMAIL: ${SUPPORT_EMAIL:?}
     TOKEN_AUTHENTICATION_SALT: ${TOKEN_AUTHENTICATION_SALT:?}
     USER_TIME_ZONE: ${USER_TIME_ZONE:?}
+    REQUESTS_CA_BUNDLE: "/etc/ssl/ca-bundle.pem"
 
 services:
   init:
