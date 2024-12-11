@@ -38,6 +38,7 @@ def connect_to_server():
             headers = {}
             if self.server.dicomweb_authorization_header:
                 headers["Authorization"] = self.server.dicomweb_authorization_header
+                headers["User-Agent"] = "python-adit"
 
             self.dicomweb_client = DICOMwebClient(
                 url=self.server.dicomweb_root_url,
