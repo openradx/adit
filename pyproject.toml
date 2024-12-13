@@ -31,7 +31,7 @@ django-revproxy = { git = "https://github.com/jazzband/django-revproxy.git" }
 django-tables2 = "^2.3.3"
 djangorestframework = "^3.13.1"
 humanize = "^4.0.0"
-janus = "^1.0.0"
+janus = "^2.0.0"
 Markdown = "^3.3.7"
 openpyxl = "^3.1.2"
 pandas = "^2.0.1"

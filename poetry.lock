@@ -1487,13 +1487,13 @@ test-extra = ["curio", "ipython[test]", "matplotlib (!=3.2.0)", "nbformat", "num
 
 [[package]]
 name = "janus"
-version = "1.1.0"
+version = "2.0.0"
 description = "Mixed sync-async queue to interoperate between asyncio tasks and classic threads"
 optional = false
 python-versions = ">=3.9"
 files = [
-    {file = "janus-1.1.0-py3-none-any.whl", hash = "sha256:9a3daf0f1a16abda1a7c976e28dc1f6caf3b8d1de9b8c93b2ea84de424de7705"},
-    {file = "janus-1.1.0.tar.gz", hash = "sha256:0634df8b2b31f8afda4311abcf7fea912686fef717d13769eeaa01ae08d2b84c"},
+    {file = "janus-2.0.0-py3-none-any.whl", hash = "sha256:7e6449d34eab04cd016befbd7d8c0d8acaaaab67cb59e076a69149f9031745f9"},
+    {file = "janus-2.0.0.tar.gz", hash = "sha256:0970f38e0e725400496c834a368a67ee551dc3b5ad0a257e132f5b46f2e77770"},
 ]
 
 [[package]]
@@ -3639,4 +3639,4 @@ testing = ["coverage[toml]", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.12,<4.0"
-content-hash = "46551184f842c5885089f2031a87834cc3792717b55bdce0fe368aedd1acd3c4"
+content-hash = "541dad97e150121e4aef0aafd3c2094904b4aa814ec2d22ddff910a12b66e232"
