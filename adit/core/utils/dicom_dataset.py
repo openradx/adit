@@ -1,7 +1,7 @@
 import datetime
 import logging
 from datetime import date, time
-from typing import Any, Iterable, Literal
+from typing import Any, Iterable, List, Literal
 
 from pydicom import DataElement, Dataset, datadict
 
@@ -237,6 +237,18 @@ class QueryDataset(BaseDataset):
                 query[elem.keyword] = str(val).replace("\u0000", "").strip()
 
         return query
+
+    def get_search_filters_and_fields(self) -> tuple[dict[str, str], List[str]]:
+        """Create python dicomweb-client compatible search filters and fields.
+
+        Convert a query dataset to python dicomweb-client compatible search filters and fields.
+        Removes empty or none values for search filters but keeps all keys as search fields.
+        Returns a new dict and list, the original dataset is not modified.
+        """
+
+        query_dict = self.dictify()
+        search_filters = {k: v for k, v in query_dict.items() if v not in [None, ""]}
+        return (search_filters, [key for key in query_dict])
 
 
 class ResultDataset(BaseDataset):
