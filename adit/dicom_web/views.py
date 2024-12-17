@@ -60,10 +60,16 @@ class QueryAPIView(WebDicomAPIView):
     renderer_classes = [QidoApplicationDicomJsonRenderer]
 
     def _extract_query_parameters(self, request: AuthenticatedApiRequest, study_uid: str | None = None) -> tuple[QueryDataset, Union[int, None]]:
+        """
+        Filters a valid DICOMweb requests GET parameters and returns a QueryDataset and a limit value to match ADIT implementation
+        """
         query: dict[str, str] = {}
         for key, value in request.GET.items():
             assert isinstance(value, str)
-            query[key] = value
+            if key == "includefield":
+                query[value] = ""
+            else:
+                query[key] = value
 
         if study_uid is not None:
             query["StudyInstanceUID"] = study_uid
