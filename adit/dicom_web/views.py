@@ -1,6 +1,7 @@
 import logging
-from typing import AsyncIterator, Literal, cast
+from typing import AsyncIterator, Literal, cast, Union
 
+from adit.core.utils.dicom_dataset import QueryDataset
 from adit_radis_shared.common.types import AuthenticatedApiRequest, User
 from adrf.views import APIView as AsyncApiView
 from channels.db import database_sync_to_async
@@ -58,6 +59,22 @@ class WebDicomAPIView(AsyncApiView):
 class QueryAPIView(WebDicomAPIView):
     renderer_classes = [QidoApplicationDicomJsonRenderer]
 
+    def _extract_query_parameters(self, request: AuthenticatedApiRequest, study_uid: str | None = None) -> tuple[QueryDataset, Union[int, None]]:
+        query: dict[str, str] = {}
+        for key, value in request.GET.items():
+            assert isinstance(value, str)
+            query[key] = value
+
+        if study_uid is not None:
+            query["StudyInstanceUID"] = study_uid
+
+        limit_results = None
+        if "limit" in query:
+            limit_results = int(query.pop("limit"))
+
+        query_ds = QueryDataset.from_dict(query)
+        return query_ds, limit_results
+
 
 class QueryStudiesAPIView(QueryAPIView):
     async def get(
@@ -65,15 +82,11 @@ class QueryStudiesAPIView(QueryAPIView):
         request: AuthenticatedApiRequest,
         ae_title: str,
     ) -> Response:
-        query: dict[str, str] = {}
-        for key, value in request.GET.items():
-            assert isinstance(value, str)
-            query[key] = value
-
+        query_ds, limit_results = self._extract_query_parameters(request)
         source_server = await self._get_dicom_server(request, ae_title, "source")
 
         try:
-            results = await qido_find(source_server, query, "STUDY")
+            results = await qido_find(source_server, query_ds, limit_results, "STUDY")
         except ValueError as err:
             logger.warn(f"Invalid DICOMweb study query - {err}")
             raise ValidationError(str(err)) from err
@@ -84,18 +97,12 @@ class QueryStudiesAPIView(QueryAPIView):
 class QuerySeriesAPIView(QueryAPIView):
     async def get(
         self, request: AuthenticatedApiRequest, ae_title: str, study_uid: str
-    ) -> Response:
-        query: dict[str, str] = {}
-        for key, value in request.GET.items():
-            assert isinstance(value, str)
-            query[key] = value
-
-        query["StudyInstanceUID"] = study_uid
-
+    ) -> Response:        
+        query_ds, limit_results = self._extract_query_parameters(request, study_uid)
         source_server = await self._get_dicom_server(request, ae_title, "source")
 
         try:
-            results = await qido_find(source_server, query, "SERIES")
+            results = await qido_find(source_server, query_ds, limit_results, "SERIES")
         except ValueError as err:
             logger.warn(f"Invalid DICOMweb series query - {err}")
             raise ValidationError(str(err)) from err
