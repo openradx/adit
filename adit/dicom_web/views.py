@@ -1,7 +1,6 @@
 import logging
-from typing import AsyncIterator, Literal, cast, Union
+from typing import AsyncIterator, Literal, Union, cast
 
-from adit.core.utils.dicom_dataset import QueryDataset
 from adit_radis_shared.common.types import AuthenticatedApiRequest, User
 from adrf.views import APIView as AsyncApiView
 from channels.db import database_sync_to_async
@@ -14,6 +13,7 @@ from rest_framework.response import Response
 from rest_framework.utils.mediatypes import media_type_matches
 
 from adit.core.models import DicomServer
+from adit.core.utils.dicom_dataset import QueryDataset
 from adit.dicom_web.utils.peekable import AsyncPeekable
 
 from .parsers import parse_request_in_chunks
@@ -59,9 +59,12 @@ class WebDicomAPIView(AsyncApiView):
 class QueryAPIView(WebDicomAPIView):
     renderer_classes = [QidoApplicationDicomJsonRenderer]
 
-    def _extract_query_parameters(self, request: AuthenticatedApiRequest, study_uid: str | None = None) -> tuple[QueryDataset, Union[int, None]]:
+    def _extract_query_parameters(
+        self, request: AuthenticatedApiRequest, study_uid: str | None = None
+    ) -> tuple[QueryDataset, Union[int, None]]:
         """
-        Filters a valid DICOMweb requests GET parameters and returns a QueryDataset and a limit value to match ADIT implementation
+        Filters a valid DICOMweb requests GET parameters and returns a QueryDataset and a
+        limit value to match ADIT implementation
         """
         query: dict[str, str] = {}
         for key, value in request.GET.items():
@@ -103,7 +106,7 @@ class QueryStudiesAPIView(QueryAPIView):
 class QuerySeriesAPIView(QueryAPIView):
     async def get(
         self, request: AuthenticatedApiRequest, ae_title: str, study_uid: str
-    ) -> Response:        
+    ) -> Response:
         query_ds, limit_results = self._extract_query_parameters(request, study_uid)
         source_server = await self._get_dicom_server(request, ae_title, "source")
 

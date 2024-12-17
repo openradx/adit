@@ -14,18 +14,25 @@ logger = logging.getLogger("__name__")
 
 
 async def qido_find(
-    source_server: DicomServer, query_ds: QueryDataset, limit_results: int | None, level: Literal["STUDY", "SERIES"]
+    source_server: DicomServer,
+    query_ds: QueryDataset,
+    limit_results: int | None,
+    level: Literal["STUDY", "SERIES"],
 ) -> list[ResultDataset]:
     operator = DicomOperator(source_server)
 
     try:
         if level == "STUDY":
             results: list[ResultDataset] = list(
-                await sync_to_async(operator.find_studies, thread_sensitive=False)(query_ds, limit_results)
+                await sync_to_async(operator.find_studies, thread_sensitive=False)(
+                    query_ds, limit_results
+                )
             )
         elif level == "SERIES":
             results: list[ResultDataset] = list(
-                await sync_to_async(operator.find_series, thread_sensitive=False)(query_ds, limit_results)
+                await sync_to_async(operator.find_series, thread_sensitive=False)(
+                    query_ds, limit_results
+                )
             )
         else:
             raise ValueError(f"Invalid QIDO-RS level: {level}.")

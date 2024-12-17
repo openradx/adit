@@ -6,7 +6,6 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from typing import Any, Iterator, Literal, cast
 
-from adit.core.errors import DicomError, RetriableDicomError
 from adit_radis_shared.accounts.models import User
 from adit_radis_shared.common.utils.debounce import debounce
 from asgiref.sync import async_to_sync
@@ -17,6 +16,7 @@ from django.conf import settings
 from django.template.loader import render_to_string
 from requests.exceptions import HTTPError
 
+from adit.core.errors import DicomError, RetriableDicomError
 from adit.core.models import DicomNode
 from adit.core.utils.dicom_dataset import QueryDataset, ResultDataset
 from adit.core.utils.dicom_operator import DicomOperator
@@ -176,18 +176,20 @@ class SelectiveTransferConsumer(AsyncJsonWebsocketConsumer):
             elif status_code == 502:  # Bad gateway
                 additional_error_text = "The source is not available."
             form_error_response = await self._build_form_error_response(
-                form,
-                f"Something went wrong at your requested source. {additional_error_text}")
+                form, f"Something went wrong at your requested source. {additional_error_text}"
+            )
             await self.send(form_error_response)
-        except (DicomError, RetriableDicomError) as e:
+        except (DicomError, RetriableDicomError):
             form_error_response = await self._build_form_error_response(
                 form,
-                f"Something went wrong at your requested source. A Dicom Error has occured at the source.")
+                "Something went wrong at your requested source."
+                "A Dicom Error has occured at the source.",
+            )
             await self.send(form_error_response)
         except Exception:
             form_error_response = await self._build_form_error_response(
-                form,
-                f"Something went wrong.")
+                form, "Something went wrong."
+            )
             await self.send(form_error_response)
 
     def _generate_and_send_query_response(
