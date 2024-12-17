@@ -14,6 +14,7 @@ from channels.generic.websocket import AsyncJsonWebsocketConsumer
 from crispy_forms.utils import render_crispy_form
 from django.conf import settings
 from django.template.loader import render_to_string
+from requests.exceptions import HTTPError
 
 from adit.core.models import DicomNode
 from adit.core.utils.dicom_dataset import QueryDataset, ResultDataset
@@ -158,9 +159,20 @@ class SelectiveTransferConsumer(AsyncJsonWebsocketConsumer):
 
     async def _make_query(self, form: SelectiveTransferJobForm, message_id: int) -> None:
         loop = asyncio.get_event_loop()
-        await loop.run_in_executor(
-            self.pool, self._generate_and_send_query_response, form, message_id
-        )
+        try:
+            await loop.run_in_executor(
+                self.pool, self._generate_and_send_query_response, form, message_id
+            )
+        except HTTPError as e:
+            additional_error_text = ""
+            if e.response.status_code == 400:  # Bad request
+                additional_error_text = "The source did not understand the ADIT request"
+            form_error_response = await self._build_form_error_response(
+                form,
+                f"Something went wrong at your desired source. {additional_error_text}. "
+                "Try again later.",
+            )
+            await self.send(form_error_response)
 
     def _generate_and_send_query_response(
         self, form: SelectiveTransferJobForm, message_id: int
@@ -195,6 +207,10 @@ class SelectiveTransferConsumer(AsyncJsonWebsocketConsumer):
             # Ignore connection aborts (most probably from ourself)
             # Maybe we should check here if we really aborted the connection
             pass
+
+        except HTTPError as e:
+            raise e
+
         finally:
             with lock:
                 if operator in self.query_operators:

@@ -49,7 +49,6 @@ class DicomTaskProcessor(abc.ABC):
 
 
 class TransferTaskProcessor(DicomTaskProcessor):
-
     def __init__(self, dicom_task: DicomTask) -> None:
         assert isinstance(dicom_task, TransferTask)
         self.transfer_task = dicom_task
