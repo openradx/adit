@@ -164,14 +164,17 @@ class SelectiveTransferConsumer(AsyncJsonWebsocketConsumer):
                 self.pool, self._generate_and_send_query_response, form, message_id
             )
         except HTTPError as e:
+            status_code = e.response.status_code
             additional_error_text = ""
-            if e.response.status_code == 400:  # Bad request
-                additional_error_text = "The source did not understand the ADIT request"
+            if status_code == 400:  # Bad request
+                additional_error_text = "The source did not understand the ADIT request."
+            elif status_code == 401 or status_code == 403:  # Unauthorized or forbidden
+                additional_error_text = "ADIT is not authorized to access the source."
+            elif status_code == 500 or status_code == 502:  # Internal server error or bad gateway
+                additional_error_text = "The source is not reachable."
             form_error_response = await self._build_form_error_response(
                 form,
-                f"Something went wrong at your desired source. {additional_error_text}. "
-                "Try again later.",
-            )
+                f"Something went wrong at your desired source. {additional_error_text}")
             await self.send(form_error_response)
 
     def _generate_and_send_query_response(
