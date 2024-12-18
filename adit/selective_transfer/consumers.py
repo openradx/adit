@@ -226,9 +226,6 @@ class SelectiveTransferConsumer(AsyncJsonWebsocketConsumer):
             # Maybe we should check here if we really aborted the connection
             pass
 
-        except HTTPError as e:
-            raise e
-
         finally:
             with lock:
                 if operator in self.query_operators:

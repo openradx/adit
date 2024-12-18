@@ -1,7 +1,7 @@
 import datetime
 import logging
 from datetime import date, time
-from typing import Any, Iterable, List, Literal
+from typing import Any, Iterable, Literal
 
 from pydicom import DataElement, Dataset, datadict
 
@@ -238,7 +238,7 @@ class QueryDataset(BaseDataset):
 
         return query
 
-    def get_search_filters_and_fields(self) -> tuple[dict[str, str], List[str]]:
+    def get_search_filters_and_fields(self) -> tuple[dict[str, str], list[str]]:
         """Create python dicomweb-client compatible search filters and fields.
 
         Convert a query dataset to python dicomweb-client compatible search filters and fields.
