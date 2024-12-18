@@ -14,7 +14,9 @@ from channels.generic.websocket import AsyncJsonWebsocketConsumer
 from crispy_forms.utils import render_crispy_form
 from django.conf import settings
 from django.template.loader import render_to_string
+from requests.exceptions import HTTPError
 
+from adit.core.errors import DicomError, RetriableDicomError
 from adit.core.models import DicomNode
 from adit.core.utils.dicom_dataset import QueryDataset, ResultDataset
 from adit.core.utils.dicom_operator import DicomOperator
@@ -158,9 +160,37 @@ class SelectiveTransferConsumer(AsyncJsonWebsocketConsumer):
 
     async def _make_query(self, form: SelectiveTransferJobForm, message_id: int) -> None:
         loop = asyncio.get_event_loop()
-        await loop.run_in_executor(
-            self.pool, self._generate_and_send_query_response, form, message_id
-        )
+        try:
+            await loop.run_in_executor(
+                self.pool, self._generate_and_send_query_response, form, message_id
+            )
+        except HTTPError as e:
+            status_code = e.response.status_code
+            additional_error_text = ""
+            if status_code == 400:  # Bad request
+                additional_error_text = "The source did not understand the ADIT request."
+            elif status_code == 401 or status_code == 403:  # Unauthorized or forbidden
+                additional_error_text = "ADIT is not authorized to access the source."
+            elif status_code == 500:  # Internal server error
+                additional_error_text = "The source could not process the ADIT request."
+            elif status_code == 502:  # Bad gateway
+                additional_error_text = "The source is not available."
+            form_error_response = await self._build_form_error_response(
+                form, f"Something went wrong at your requested source. {additional_error_text}"
+            )
+            await self.send(form_error_response)
+        except (DicomError, RetriableDicomError):
+            form_error_response = await self._build_form_error_response(
+                form,
+                "Something went wrong at your requested source."
+                "A Dicom Error has occured at the source.",
+            )
+            await self.send(form_error_response)
+        except Exception:
+            form_error_response = await self._build_form_error_response(
+                form, "Something went wrong."
+            )
+            await self.send(form_error_response)
 
     def _generate_and_send_query_response(
         self, form: SelectiveTransferJobForm, message_id: int
@@ -195,6 +225,7 @@ class SelectiveTransferConsumer(AsyncJsonWebsocketConsumer):
             # Ignore connection aborts (most probably from ourself)
             # Maybe we should check here if we really aborted the connection
             pass
+
         finally:
             with lock:
                 if operator in self.query_operators:
