@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/devcontainers/python:3.12
+FROM mcr.microsoft.com/devcontainers/python:3.13
 
 # Install dependency to make bash completion work with invoke
 RUN apt-get update && \
