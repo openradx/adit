@@ -12,10 +12,10 @@ def initialize_debugger():
 
     # RUN_MAIN envvar is set by the reloader to indicate that this is the
     # actual thread running Django.
-    if settings.DEBUG and settings.ENABLE_REMOTE_DEBUGGING and os.getenv("RUN_MAIN"):
+    if settings.DEBUG and settings.REMOTE_DEBUGGING_ENABLED and os.getenv("RUN_MAIN"):
         import debugpy
 
-        debugpy.listen(("0.0.0.0", 5678))
+        debugpy.listen(("0.0.0.0", settings.REMOTE_DEBUGGING_PORT))
         sys.stdout.write("Start the VS Code debugger now, waiting...\n")
         debugpy.wait_for_client()
         sys.stdout.write("Debugger attached, starting server...\n")

@@ -4,7 +4,7 @@ from django.template.defaultfilters import pluralize
 from adit.core.errors import DicomError
 from adit.core.models import DicomNode, DicomTask
 from adit.core.processors import DicomTaskProcessor
-from adit.core.types import ProcessingResult
+from adit.core.types import DicomLogEntry, ProcessingResult
 from adit.core.utils.dicom_dataset import QueryDataset, ResultDataset
 from adit.core.utils.dicom_operator import DicomOperator
 
@@ -24,27 +24,27 @@ class BatchQueryTaskProcessor(DicomTaskProcessor):
         assert source.node_type == DicomNode.NodeType.SERVER
         self.operator = DicomOperator(source.dicomserver)
 
-    def process(self) -> ProcessingResult:
-        # TODO: Allow to get multiple patients (but provide a warning if there are multiple
-        # patients). We also have to use a for loop then. Make sure that users that provide
-        # only a patient name must provide a birth date as well.
-        # Also make sure that patient name doesn't contain wildcards.
+    def _get_logs(self) -> list[DicomLogEntry]:
+        logs: list[DicomLogEntry] = []
+        logs.extend(self.operator.get_logs())
+        logs.extend(self.logs)
+        return logs
 
-        patient = self._fetch_patient()
+    def process(self) -> ProcessingResult:
+        patients = self._fetch_patients()
 
         is_series_query = self.query_task.series_description or self.query_task.series_numbers
-
         if is_series_query:
-            results = self._query_series(patient.PatientID)
+            results = self._query_series([patient.PatientID for patient in patients])
             msg = f"{len(results)} series found"
         else:
-            results = self._query_studies(patient.PatientID)
+            results = self._query_studies([patient.PatientID for patient in patients])
             msg = f"{len(results)} stud{pluralize(len(results), 'y,ies')} found"
 
         BatchQueryResult.objects.bulk_create(results)
 
         status: BatchQueryTask.Status = BatchQueryTask.Status.SUCCESS
-        logs = self.operator.get_logs()
+        logs = self._get_logs()
         for log in logs:
             if log["level"] == "Warning":
                 status = BatchQueryTask.Status.WARNING
@@ -55,7 +55,7 @@ class BatchQueryTaskProcessor(DicomTaskProcessor):
             "log": "\n".join([log["message"] for log in logs]),
         }
 
-    def _fetch_patient(self) -> ResultDataset:
+    def _fetch_patients(self) -> list[ResultDataset]:
         patient_id = self.query_task.patient_id
         patient_name = self.query_task.patient_name
         birth_date = self.query_task.patient_birth_date
@@ -65,32 +65,32 @@ class BatchQueryTaskProcessor(DicomTaskProcessor):
         # if those were provided beside the PatientID
         if patient_id:
             patients = list(self.operator.find_patients(QueryDataset.create(PatientID=patient_id)))
+            if len(patients) > 1:
+                raise DicomError("Multiple patients found for this PatientID.")
+            if len(patients) == 0:
+                raise DicomError("No patient found with this PatientID.")
+
+            # Some checks if they provide a PatientID and also a PatientName or PatientBirthDate.
+            assert len(patients) == 1
+            patient = patients[0]
+            # We can test for equality cause wildcards are not allowed during batch query
+            # (in contrast to selective transfer).
+            if patient_name and patient.PatientName != patient_name:
+                raise DicomError("PatientName doesn't match found patient by PatientID.")
+            if birth_date and patient.PatientBirthDate != birth_date:
+                raise DicomError("PatientBirthDate doesn't match found patient by PatientID.")
         elif patient_name and birth_date:
             patients = list(
                 self.operator.find_patients(
                     QueryDataset.create(PatientName=patient_name, PatientBirthDate=birth_date)
                 )
             )
+            if len(patients) == 0:
+                raise DicomError("No patient found with this PatientName and PatientBirthDate.")
         else:
-            raise DicomError("PatientName and PatientBirthDate are required.")
+            raise DicomError("PatientID or PatientName and PatientBirthDate are required.")
 
-        if len(patients) == 0:
-            raise DicomError("Patient not found.")
-
-        if len(patients) > 1:
-            raise DicomError("Multiple patients found.")
-
-        patient = patients[0]
-
-        # We can test for equality cause wildcards are not allowed during
-        # batch query (only in selective transfer)
-        if patient_id and patient_name and patient.PatientName != patient_name:
-            raise DicomError("PatientName doesn't match found patient by PatientID.")
-
-        if patient_id and birth_date and patient.PatientBirthDate != birth_date:
-            raise DicomError("PatientBirthDate doesn't match found patient by PatientID.")
-
-        return patient
+        return patients
 
     def _fetch_studies(self, patient_id: str) -> list[ResultDataset]:
         start_date = self.query_task.study_date_start
@@ -170,39 +170,21 @@ class BatchQueryTaskProcessor(DicomTaskProcessor):
 
         return sorted(series_results, key=lambda series: int(series.get("SeriesNumber", 0)))
 
-    def _query_studies(self, patient_id: str) -> list[BatchQueryResult]:
-        studies = self._fetch_studies(patient_id)
+    def _query_studies(self, patient_ids: list[str]) -> list[BatchQueryResult]:
         results: list[BatchQueryResult] = []
-        for study in studies:
-            batch_query_result = BatchQueryResult(
-                job=self.query_task.job,
-                query=self.query_task,
-                patient_id=study.PatientID,
-                patient_name=study.PatientName,
-                patient_birth_date=study.PatientBirthDate,
-                study_uid=study.StudyInstanceUID,
-                accession_number=study.AccessionNumber,
-                study_date=study.StudyDate,
-                study_time=study.StudyTime,
-                study_description=study.StudyDescription,
-                modalities=study.ModalitiesInStudy,
-                image_count=study.NumberOfStudyRelatedInstances,
-                pseudonym=self.query_task.pseudonym,
-                series_uid="",
-                series_description="",
-                series_number="",
-            )
-            results.append(batch_query_result)
+        for patient_id in patient_ids:
+            studies = self._fetch_studies(patient_id)
 
-        return results
+            if results and studies:
+                self.logs.append(
+                    {
+                        "level": "Warning",
+                        "title": "Indistinct patients",
+                        "message": "Studies of multiple patients were found for this query.",
+                    }
+                )
 
-    def _query_series(self, patient_id: str) -> list[BatchQueryResult]:
-        studies = self._fetch_studies(patient_id)
-
-        results: list[BatchQueryResult] = []
-        for study in studies:
-            series_list = self._fetch_series(patient_id, study.StudyInstanceUID)
-            for series in series_list:
+            for study in studies:
                 batch_query_result = BatchQueryResult(
                     job=self.query_task.job,
                     query=self.query_task,
@@ -214,13 +196,52 @@ class BatchQueryTaskProcessor(DicomTaskProcessor):
                     study_date=study.StudyDate,
                     study_time=study.StudyTime,
                     study_description=study.StudyDescription,
-                    modalities=[series.Modality],
+                    modalities=study.ModalitiesInStudy,
                     image_count=study.NumberOfStudyRelatedInstances,
                     pseudonym=self.query_task.pseudonym,
-                    series_uid=series.SeriesInstanceUID,
-                    series_description=series.SeriesDescription,
-                    series_number=str(series.SeriesNumber),
+                    series_uid="",
+                    series_description="",
+                    series_number="",
                 )
                 results.append(batch_query_result)
+
+        return results
+
+    def _query_series(self, patient_ids: list[str]) -> list[BatchQueryResult]:
+        results: list[BatchQueryResult] = []
+        for patient_id in patient_ids:
+            studies = self._fetch_studies(patient_id)
+
+            if results and studies:
+                self.logs.append(
+                    {
+                        "level": "Warning",
+                        "title": "Indistinct patients",
+                        "message": "Studies of multiple patients were found for this query.",
+                    }
+                )
+
+            for study in studies:
+                series_list = self._fetch_series(patient_id, study.StudyInstanceUID)
+                for series in series_list:
+                    batch_query_result = BatchQueryResult(
+                        job=self.query_task.job,
+                        query=self.query_task,
+                        patient_id=study.PatientID,
+                        patient_name=study.PatientName,
+                        patient_birth_date=study.PatientBirthDate,
+                        study_uid=study.StudyInstanceUID,
+                        accession_number=study.AccessionNumber,
+                        study_date=study.StudyDate,
+                        study_time=study.StudyTime,
+                        study_description=study.StudyDescription,
+                        modalities=[series.Modality],
+                        image_count=study.NumberOfStudyRelatedInstances,
+                        pseudonym=self.query_task.pseudonym,
+                        series_uid=series.SeriesInstanceUID,
+                        series_description=series.SeriesDescription,
+                        series_number=str(series.SeriesNumber),
+                    )
+                    results.append(batch_query_result)
 
         return results

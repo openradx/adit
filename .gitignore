@@ -145,13 +145,17 @@ dump.rdb
 # SQLite databases
 *.db
 
-#PyCharm
+# PyCharm
 .idea/
 
-#virtualenv
+# virtualenv
 bin/
 share/
 pyvenv.cfg
 
+# Certificate files
+*.pem
+
 # ADIT specific
-.dicoms
+/backups/*
+!/backups/.gitkeep

@@ -1,11 +1,14 @@
 x-app: &default-app
   image: adit_prod:latest
-  env_file:
-    - ../.env.prod
+  volumes:
+    - web_data:/var/www/web
+    - ${SSL_CERT_FILE:?}:/etc/web/ssl/cert.pem
+    - ${SSL_KEY_FILE:?}:/etc/web/ssl/key.pem
   environment:
+    DJANGO_EMAIL_URL: ${DJANGO_EMAIL_URL:?}
     DJANGO_SETTINGS_MODULE: "adit.settings.production"
-    SSL_CERT_FILE: "/var/www/web/ssl/cert.pem"
-    SSL_KEY_FILE: "/var/www/web/ssl/key.pem"
+    DJANGO_STATIC_ROOT: "/var/www/web/static/"
+    POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?}
 
 x-deploy: &deploy
   replicas: 1
@@ -25,8 +28,7 @@ services:
         wait-for-it -s postgres.local:5432 -t 60 && 
         ./manage.py migrate &&
         ./manage.py collectstatic --no-input &&
-        ./manage.py create_admin &&
-        ./manage.py generate_cert &&
+        ./manage.py create_superuser &&
         ./manage.py ok_server --host 0.0.0.0 --port 8000
       "
     deploy:
@@ -37,21 +39,27 @@ services:
     build:
       target: production
     ports:
-      - "${ADIT_HTTP_PORT:-80}:80"
-      - "${ADIT_HTTPS_PORT:-443}:443"
+      - "${WEB_HTTP_PORT:-80}:80"
+      - "${WEB_HTTPS_PORT:-443}:443"
     command: >
       bash -c "
         wait-for-it -s init.local:8000 -t 300 && 
-        echo 'Starting web server ...'
-        daphne -b 0.0.0.0 -p 80 -e ssl:443:privateKey=/var/www/web/ssl/key.pem:certKey=/var/www/web/ssl/cert.pem adit.asgi:application
+        echo 'Starting web server ...' &&
+        daphne -b 0.0.0.0 -p 80 \\
+          -e ssl:443:privateKey=/etc/web/ssl/key.pem:certKey=/etc/web/ssl/cert.pem \\
+          adit.asgi:application
       "
     deploy:
       <<: *deploy
-      replicas: 3
+      replicas: ${WEB_REPLICAS:-3}
 
-  postgres:
-    env_file:
-      - ../.env.prod
+  default_worker:
+    <<: *default-app
+    command: >
+      bash -c "
+        wait-for-it -s postgres.local:5432 -t 60 &&
+        ./manage.py bg_worker -q default
+      "
     deploy:
       <<: *deploy
 
@@ -64,22 +72,19 @@ services:
       "
     deploy:
       <<: *deploy
-
-  default_worker:
-    <<: *default-app
-    command: >
-      bash -c "
-        wait-for-it -s postgres.local:5432 -t 60 &&
-        ./manage.py bg_worker -q default
-      "
-    deploy:
-      <<: *deploy
+      replicas: ${DICOM_WORKER_REPLICAS:-3}
 
   receiver:
     <<: *default-app
     ports:
       - "11112:11112"
     command: ./manage.py receiver
+    deploy:
+      <<: *deploy
+
+  postgres:
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?}
     deploy:
       <<: *deploy
 
@@ -90,3 +95,6 @@ services:
   orthanc2:
     deploy:
       <<: *deploy
+
+volumes:
+  web_data:

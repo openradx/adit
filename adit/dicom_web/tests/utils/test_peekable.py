@@ -6,15 +6,18 @@ from ...utils.peekable import AsyncPeekable
 
 
 @pytest.fixture
-async def mock_async_iterator() -> AsyncIterator[int]:
-    yield 1
-    yield 2
-    yield 3
+def mock_async_iterator():
+    async def _mock_async_iterator() -> AsyncIterator[int]:
+        yield 1
+        yield 2
+        yield 3
+
+    return _mock_async_iterator
 
 
 @pytest.mark.asyncio
-async def test_peek(mock_async_iterator: AsyncIterator[int]) -> None:
-    peekable = AsyncPeekable(mock_async_iterator)
+async def test_peek(mock_async_iterator) -> None:
+    peekable = AsyncPeekable(mock_async_iterator())
     assert await peekable.peek() == 1
     assert await peekable.peek() == 1
     assert await peekable.__anext__() == 1
@@ -22,8 +25,8 @@ async def test_peek(mock_async_iterator: AsyncIterator[int]) -> None:
 
 
 @pytest.mark.asyncio
-async def test_default_value(mock_async_iterator: AsyncIterator[int]) -> None:
-    peekable = AsyncPeekable(mock_async_iterator)
+async def test_default_value(mock_async_iterator) -> None:
+    peekable = AsyncPeekable(mock_async_iterator())
     assert await peekable.peek(42) == 1
     assert await peekable.__anext__() == 1
     assert await peekable.peek(42) == 2
@@ -34,8 +37,8 @@ async def test_default_value(mock_async_iterator: AsyncIterator[int]) -> None:
 
 
 @pytest.mark.asyncio
-async def test_empty(mock_async_iterator: AsyncIterator[int]) -> None:
-    peekable = AsyncPeekable(mock_async_iterator)
+async def test_empty(mock_async_iterator) -> None:
+    peekable = AsyncPeekable(mock_async_iterator())
     assert await peekable.peek(42) == 1
     assert await peekable.__anext__() == 1
     assert await peekable.__anext__() == 2

@@ -32,7 +32,7 @@ fake = Faker()
 
 @pytest.fixture
 def dimse_orthancs() -> tuple[DicomServer, DicomServer]:
-    call_command("reset_orthancs")
+    call_command("populate_orthancs", reset=True)
 
     orthanc1 = DicomServerFactory.create(
         name="Orthanc Test Server 1",
@@ -52,7 +52,7 @@ def dimse_orthancs() -> tuple[DicomServer, DicomServer]:
 
 @pytest.fixture
 def dicomweb_orthancs() -> tuple[DicomServer, DicomServer]:
-    call_command("reset_orthancs")
+    call_command("populate_orthancs", reset=True)
 
     orthanc1 = DicomWebServerFactory.create(
         name="Orthanc Test Server 1",

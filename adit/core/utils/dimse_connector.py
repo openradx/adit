@@ -17,13 +17,10 @@ from pynetdicom.events import EVT_C_STORE, Event
 from pynetdicom.presentation import (
     BasicWorklistManagementPresentationContexts,
     QueryRetrievePresentationContexts,
-    StoragePresentationContexts,
+    UnifiedProcedurePresentationContexts,
     build_role,
 )
 from pynetdicom.sop_class import (
-    EncapsulatedMTLStorage,  # pyright: ignore
-    EncapsulatedOBJStorage,  # pyright: ignore
-    EncapsulatedSTLStorage,  # pyright: ignore
     PatientRootQueryRetrieveInformationModelFind,  # pyright: ignore
     PatientRootQueryRetrieveInformationModelGet,  # pyright: ignore
     PatientRootQueryRetrieveInformationModelMove,  # pyright: ignore
@@ -38,6 +35,7 @@ from ..models import DicomServer
 from ..types import DicomLogEntry
 from ..utils.dicom_dataset import QueryDataset, ResultDataset
 from ..utils.dicom_utils import has_wildcards, read_dataset
+from ..utils.presentation_contexts import StoragePresentationContexts
 
 logger = logging.getLogger(__name__)
 
@@ -147,7 +145,7 @@ class DimseConnector:
                     raise err
 
     def _associate(self, service: DimseService):
-        ae = AE(settings.RECEIVER_AE_TITLE)
+        ae = AE(settings.CALLING_AE_TITLE)
 
         # Speed up by reducing the number of required DIMSE messages
         # https://pydicom.github.io/pynetdicom/stable/examples/storage.html#storage-scp
@@ -169,23 +167,17 @@ class DimseConnector:
         ext_neg = []
         if service == "C-FIND":
             ae.requested_contexts = (
-                QueryRetrievePresentationContexts + BasicWorklistManagementPresentationContexts
+                QueryRetrievePresentationContexts
+                + BasicWorklistManagementPresentationContexts
+                + UnifiedProcedurePresentationContexts
             )
         elif service == "C-GET":
-            # We must exclude as many storage contexts as query/retrieve contexts we add
-            # because the maximum requested contexts is 128. "StoragePresentationContexts" is a list
-            # that contains 128 storage contexts itself.
-            exclude = [
-                EncapsulatedSTLStorage,
-                EncapsulatedOBJStorage,
-                EncapsulatedMTLStorage,
-            ]
-            store_contexts = [
-                cx for cx in StoragePresentationContexts if cx.abstract_syntax not in exclude
-            ]
+            # The maximum requested contexts is 128. StoragePresentationContexts currently
+            # contains 120 storage contexts. So even with the query/retrieve contexts added we
+            # should have no problem.
             ae.add_requested_context(PatientRootQueryRetrieveInformationModelGet)
             ae.add_requested_context(StudyRootQueryRetrieveInformationModelGet)
-            for cx in store_contexts:
+            for cx in StoragePresentationContexts:
                 assert cx.abstract_syntax is not None
                 ae.add_requested_context(cx.abstract_syntax)
                 ext_neg.append(build_role(cx.abstract_syntax, scp_role=True))

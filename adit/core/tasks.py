@@ -108,7 +108,7 @@ def process_dicom_task(context: JobContext, model_label: str, task_id: int):
         logger.info(f"Start processing of {dicom_task}.")
         return processor.process()
 
-    @concurrent.thread
+    @concurrent.thread()
     def _monitor_task(context: JobContext, future: ProcessFuture) -> None:
         while not future.done():
             if context.should_abort():

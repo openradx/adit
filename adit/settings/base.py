@@ -32,12 +32,18 @@ SITE_ID = 1
 
 # The following settings are stored in the Site model on startup initially (see common/apps.py).
 # Once set they are stored in the database and can be changed via the admin interface.
-SITE_DOMAIN = env.str("SITE_DOMAIN", default="localhost")  # type: ignore
-SITE_NAME = env.str("SITE_NAME", default="ADIT")  # type: ignore
-SITE_USES_HTTPS = env.bool("SITE_USES_HTTPS", default=False)  # type: ignore
+SITE_DOMAIN = env.str("SITE_DOMAIN")
+SITE_NAME = env.str("SITE_NAME")
+SITE_USES_HTTPS = env.bool("SITE_USES_HTTPS")
 SITE_META_KEYWORDS = "ADIT, Radiology, DICOM,Medicine, Tool, Transfer"
 SITE_META_DESCRIPTION = "ADIT is a tool for managing automated DICOM transfers"
 SITE_PROJECT_URL = "https://github.com/openradx/adit"
+
+SECRET_KEY = env.str("DJANGO_SECRET_KEY")
+
+ALLOWED_HOSTS = env.list("DJANGO_ALLOWED_HOSTS")
+
+CSRF_TRUSTED_ORIGINS = env.list("DJANGO_CSRF_TRUSTED_ORIGINS")
 
 INSTALLED_APPS = [
     "daphne",
@@ -113,26 +119,20 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "adit.wsgi.application"
 
-STORAGES = {
-    "default": {
-        "BACKEND": "django.core.files.storage.FileSystemStorage",
-    },
-    "staticfiles": {
-        "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
-    },
-}
+ASGI_APPLICATION = "adit.asgi.application"
 
-# env.db() loads the DB setup from the DATABASE_URL environment variable using
-# Django-environ.
-# The sqlite database is still used for pytest tests.
-DATABASES = {"default": env.db(default="sqlite:///adit-sqlite.db")}  # type: ignore
+# This seems to be important for Cloud IDEs as CookieStorage does not work there.
+MESSAGE_STORAGE = "django.contrib.messages.storage.session.SessionStorage"
 
-# Django 3.2 switched to BigAutoField for primary keys. It must be set explicitly
-# and requires a migration.
+# Loads the DB setup from the DATABASE_URL environment variable.
+DATABASES = {"default": env.db()}
+
+# Default primary key field type
+# https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-# A custom authentication backend that supports a single currently active group.
-AUTHENTICATION_BACKENDS = ["adit_radis_shared.accounts.backends.ActiveGroupModelBackend"]
+# Custom user model
+AUTH_USER_MODEL = "accounts.User"
 
 # Password validation
 # https://docs.djangoproject.com/en/3.0/ref/settings/#auth-password-validators
@@ -151,6 +151,42 @@ AUTH_PASSWORD_VALIDATORS = [
         "NAME": "django.contrib.auth.password_validation.NumericPasswordValidator",
     },
 ]
+
+# A custom authentication backend that supports a single currently active group.
+AUTHENTICATION_BACKENDS = ["adit_radis_shared.accounts.backends.ActiveGroupModelBackend"]
+
+# Where to redirect to after login
+LOGIN_REDIRECT_URL = "home"
+
+# Settings for django-registration-redux
+REGISTRATION_FORM = "adit_radis_shared.accounts.forms.RegistrationForm"
+ACCOUNT_ACTIVATION_DAYS = 14
+REGISTRATION_OPEN = True
+
+EMAIL_SUBJECT_PREFIX = "[ADIT] "
+
+# The email address critical error messages of the server will be sent from.
+SERVER_EMAIL = env.str("DJANGO_SERVER_EMAIL")
+
+# The Email address is also used to notify about finished jobs and management notifications.
+DEFAULT_FROM_EMAIL = SERVER_EMAIL
+
+# A support Email address that is presented to the users where they can get support.
+SUPPORT_EMAIL = env.str("SUPPORT_EMAIL")
+
+# Also used by django-registration-redux to send account approval emails
+ADMINS = [(env.str("DJANGO_ADMIN_FULL_NAME"), env.str("DJANGO_ADMIN_EMAIL"))]
+
+# All REST API requests must come from authenticated clients
+REST_FRAMEWORK = {
+    "DEFAULT_PERMISSION_CLASSES": [
+        "rest_framework.permissions.IsAuthenticated",
+    ],
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "adit_radis_shared.token_authentication.auth.RestTokenAuthentication",
+    ],
+    "EXCEPTION_HANDLER": "adit.dicom_web.exceptions.dicom_web_exception_handler",
+}
 
 # See following examples:
 # https://github.com/django/django/blob/master/django/utils/log.py
@@ -219,46 +255,22 @@ LOGGING = {
 
 LANGUAGE_CODE = "de-de"
 
+TIME_ZONE = "UTC"
+
 # We don't want to have German translations, but everything in English
 USE_I18N = False
 
 USE_TZ = True
 
-TIME_ZONE = "UTC"
-
-# All REST API requests must come from authenticated clients
-REST_FRAMEWORK = {
-    "DEFAULT_PERMISSION_CLASSES": [
-        "rest_framework.permissions.IsAuthenticated",
-    ],
-    "DEFAULT_AUTHENTICATION_CLASSES": [
-        "adit_radis_shared.token_authentication.auth.RestTokenAuthentication",
-    ],
-    "EXCEPTION_HANDLER": "adit.dicom_web.exceptions.dicom_web_exception_handler",
-}
-
+# A timezone that is presented to the users of the web interface.
+USER_TIME_ZONE = env.str("USER_TIME_ZONE")
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/3.0/howto/static-files/
-
-STATICFILES_DIRS = (BASE_DIR / "adit" / "static",)
-
 STATIC_URL = "/static/"
 
-STATIC_ROOT = env.str("DJANGO_STATIC_ROOT", default=(BASE_DIR / "staticfiles"))  # type: ignore
-
-# Custom user model
-AUTH_USER_MODEL = "accounts.User"
-
-# Where to redirect to after login
-LOGIN_REDIRECT_URL = "home"
-
-# django-dbbackup
-DBBACKUP_STORAGE = "django.core.files.storage.FileSystemStorage"
-DBBACKUP_STORAGE_OPTIONS = {
-    "location": env.str("BACKUP_DIR", default=(BASE_DIR / "backups")),  # type: ignore
-}
-DBBACKUP_CLEANUP_KEEP = 30
+# Additional (project wide) static files
+STATICFILES_DIRS = (BASE_DIR / "adit" / "static",)
 
 # For crispy forms
 CRISPY_ALLOWED_TEMPLATE_PACKS = "bootstrap5"
@@ -267,47 +279,24 @@ CRISPY_TEMPLATE_PACK = "bootstrap5"
 # django-templates2
 DJANGO_TABLES2_TEMPLATE = "django_tables2/bootstrap5.html"
 
-# This seems to be important for development on Gitpod as CookieStorage
-# and FallbackStorage does not work there.
-# Seems to be the same problem with Cloud9 https://stackoverflow.com/a/34828308/166229
-MESSAGE_STORAGE = "django.contrib.messages.storage.session.SessionStorage"
+# The salt that is used for hashing new tokens in the token authentication app.
+# Cave, changing the salt after some tokens were already generated makes them all invalid!
+TOKEN_AUTHENTICATION_SALT = env.str("TOKEN_AUTHENTICATION_SALT")
 
-EMAIL_SUBJECT_PREFIX = "[ADIT] "
-
-# An Email address used by the ADIT server to notify about finished jobs and
-# management notifications.
-SERVER_EMAIL = env.str("DJANGO_SERVER_EMAIL", default="support@adit.test")  # type: ignore
-DEFAULT_FROM_EMAIL = SERVER_EMAIL
-
-# A support Email address that is presented to the users where
-# they can get support.
-SUPPORT_EMAIL = env.str("SUPPORT_EMAIL", default=SERVER_EMAIL)  # type: ignore
-
-# Also used by django-registration-redux to send account approval emails
-ADMINS = [
-    (
-        env.str("ADMIN_FULL_NAME", default="ADIT Admin"),  # type: ignore
-        env.str("ADMIN_EMAIL", default="admin@adit.test"),  # type: ignore
-    )
-]
-
-# Settings for django-registration-redux
-REGISTRATION_FORM = "adit_radis_shared.accounts.forms.RegistrationForm"
-ACCOUNT_ACTIVATION_DAYS = 14
-REGISTRATION_OPEN = True
-
-# Channels
-ASGI_APPLICATION = "adit.asgi.application"
+# django-dbbackup
+DBBACKUP_STORAGE = "django.core.files.storage.FileSystemStorage"
+DBBACKUP_STORAGE_OPTIONS = {"location": env.str("DBBACKUP_STORAGE_LOCATION")}
+DBBACKUP_CLEANUP_KEEP = 30
 
 # Orthanc servers are integrated in ADIT by using a reverse proxy (django-revproxy).
-ORTHANC1_HOST = env.str("ORTHANC1_HOST", default="localhost")  # type: ignore
-ORTHANC1_HTTP_PORT = env.int("ORTHANC1_HTTP_PORT", default=6501)  # type: ignore
-ORTHANC1_DICOM_PORT = env.int("ORTHANC1_DICOM_PORT", default=7501)  # type: ignore
-ORTHANC1_DICOMWEB_ROOT = env.str("ORTHANC1_DICOMWEB_ROOT", default="dicom-web")  # type: ignore
-ORTHANC2_HOST = env.str("ORTHANC2_HOST", default="localhost")  # type: ignore
-ORTHANC2_HTTP_PORT = env.int("ORTHANC2_HTTP_PORT", default=6502)  # type: ignore
-ORTHANC2_DICOM_PORT = env.int("ORTHANC2_DICOM_PORT", default=7502)  # type: ignore
-ORTHANC2_DICOMWEB_ROOT = env.str("ORTHANC2_DICOMWEB_ROOT", default="dicom-web")  # type: ignore
+ORTHANC1_HOST = env.str("ORTHANC1_HOST")
+ORTHANC1_HTTP_PORT = env.int("ORTHANC1_HTTP_PORT")
+ORTHANC1_DICOM_PORT = env.int("ORTHANC1_DICOM_PORT")
+ORTHANC1_DICOMWEB_ROOT = env.str("ORTHANC1_DICOMWEB_ROOT")
+ORTHANC2_HOST = env.str("ORTHANC2_HOST")
+ORTHANC2_HTTP_PORT = env.int("ORTHANC2_HTTP_PORT")
+ORTHANC2_DICOM_PORT = env.int("ORTHANC2_DICOM_PORT")
+ORTHANC2_DICOMWEB_ROOT = env.str("ORTHANC2_DICOMWEB_ROOT")
 
 # Used by django-filter
 FILTERS_EMPTY_CHOICE_LABEL = "Show All"
@@ -315,30 +304,24 @@ FILTERS_EMPTY_CHOICE_LABEL = "Show All"
 # Global pydicom settings
 pydicom_config.convert_wrong_length_to_UN = True
 
-###
-# ADIT specific settings
-###
+# The calling AE title of ADIT.
+CALLING_AE_TITLE = env.str("CALLING_AE_TITLE")
 
-# The AE Tile for the ADIT STORE SCP server
-RECEIVER_AE_TITLE = env.str("RECEIVER_AE_TITLE", default="ADIT1")  # type: ignore
+# The AE title where the receiver is listening for incoming files.
+RECEIVER_AE_TITLE = env.str("RECEIVER_AE_TITLE")
 
 # The address and port of the STORE SCP server (part of the receiver).
 # By default the STORE SCP server listens to all interfaces (empty string)
-STORE_SCP_HOST = env.str("STORE_SCP_HOST", default="localhost")  # type: ignore
-STORE_SCP_PORT = env.int("STORE_SCP_PORT", default=11112)  # type: ignore
+STORE_SCP_HOST = env.str("STORE_SCP_HOST")
+STORE_SCP_PORT = env.int("STORE_SCP_PORT")
 
 # The address and port of the file transmit socket server (part of the receiver)
 # that is used to transfer DICOM files from the receiver to the workers (when
 # the PACS server does not support C-GET).
 # By default the file transmit socket server listens to all interfaces (should
 # not be a problem as it is inside the docker network).
-FILE_TRANSMIT_HOST = env.str("FILE_TRANSMIT_HOST", default="localhost")  # type: ignore
-FILE_TRANSMIT_PORT = env.int("FILE_TRANSMIT_PORT", default=14638)  # type: ignore
-
-# A folder to cache temporary DICOM files.
-# Receiver and file transmit client do create temporary directories in this
-# folder and cache their received DICOM files there.
-TEMP_DICOM_DIR = env.str("TEMP_DICOM_DIR", default=str(BASE_DIR / ".dicoms"))  # type: ignore
+FILE_TRANSMIT_HOST = env.str("FILE_TRANSMIT_HOST")
+FILE_TRANSMIT_PORT = env.int("FILE_TRANSMIT_PORT")
 
 # Usually a transfer job must be verified by an admin. By setting
 # this option to True ADIT will schedule unverified transfers
@@ -346,9 +329,6 @@ TEMP_DICOM_DIR = env.str("TEMP_DICOM_DIR", default=str(BASE_DIR / ".dicoms"))  #
 START_SELECTIVE_TRANSFER_UNVERIFIED = True
 START_BATCH_QUERY_UNVERIFIED = True
 START_BATCH_TRANSFER_UNVERIFIED = True
-
-# A timezone that is used for users of the web interface.
-USER_TIME_ZONE = env.str("USER_TIME_ZONE", default="Europe/Berlin")  # type: ignore
 
 # Priorities of dicom tasks
 # Selective transfers have the highest priority as those are
@@ -406,13 +386,6 @@ EXCLUDED_MODALITIES = ["PR", "SR"]
 
 # If an ethics committee approval is required for batch transfer
 ETHICS_COMMITTEE_APPROVAL_REQUIRED = True
-
-# The salt that is used for hashing new tokens in the token authentication app.
-# Cave, changing the salt after some tokens were already generated makes them all invalid!
-TOKEN_AUTHENTICATION_SALT = env.str(
-    "TOKEN_AUTHENTICATION_SALT",
-    default="Rn4YNfgAar5dYbPu",  # type: ignore
-)
 
 # DicomWeb Settings
 DEFAULT_BOUNDARY = "adit-boundary"

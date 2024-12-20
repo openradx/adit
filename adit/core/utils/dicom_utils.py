@@ -79,7 +79,7 @@ def _build_date_time_datetime_range(
 ):
     start_date = str(vr_class(start)) if start else ""
     end_date = str(vr_class(end)) if end else ""
-    return f"{start_date} - {end_date}"
+    return f"{start_date}-{end_date}"
 
 
 def _convert_to_dicom_date_time_datetime(

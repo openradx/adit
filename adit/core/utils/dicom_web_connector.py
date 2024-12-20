@@ -96,9 +96,9 @@ class DicomWebConnector:
     ) -> list[ResultDataset]:
         logger.debug("Sending QIDO-RS with query: %s", query)
 
-        query_dict = query.dictify()
+        search_filters, fields = query.get_search_filters_and_fields()
 
-        level = query_dict.pop("QueryRetrieveLevel", "")
+        level = search_filters.pop("QueryRetrieveLevel", "")
         if not level:
             raise DicomError("Missing QueryRetrieveLevel.")
 
@@ -110,17 +110,17 @@ class DicomWebConnector:
         try:
             if level == "STUDY":
                 results = self.dicomweb_client.search_for_studies(
-                    search_filters=query_dict, limit=limit_results
+                    fields=fields, search_filters=search_filters, limit=limit_results
                 )
             elif level == "SERIES":
-                study_uid = query_dict.pop("StudyInstanceUID", "")
+                study_uid = search_filters.pop("StudyInstanceUID", "")
                 if study_uid:
                     results = self.dicomweb_client.search_for_series(
-                        study_uid, search_filters=query_dict, limit=limit_results
+                        study_uid, fields=fields, search_filters=search_filters, limit=limit_results
                     )
                 else:
                     results = self.dicomweb_client.search_for_series(
-                        search_filters=query_dict, limit=limit_results
+                        fields=fields, search_filters=search_filters, limit=limit_results
                     )
             else:
                 raise ValueError(f"Invalid QueryRetrieveLevel: {level}")
