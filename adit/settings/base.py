@@ -78,6 +78,7 @@ INSTALLED_APPS = [
     "adit.batch_transfer.apps.BatchTransferConfig",
     "adit.dicom_explorer.apps.DicomExplorerConfig",
     "adit.dicom_web.apps.DicomWebConfig",
+    "adit.upload.apps.UploadConfig",
     "channels",
 ]
 
@@ -402,3 +403,6 @@ SKIP_ELEMENTS_ANONYMIZATION = [
     "StudyDate",
     "StudyTime",
 ]
+
+# Secret seed for Patient data anonymization
+ANONYMIZATION_SEED = env.str("ANONYMIZATION_SEED", default="")  # type: ignore
