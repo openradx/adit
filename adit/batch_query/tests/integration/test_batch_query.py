@@ -9,6 +9,11 @@ from playwright.sync_api import Locator, Page, expect
 
 from adit.batch_query.models import BatchQueryJob
 from adit.core.utils.auth_utils import grant_access
+from adit.core.utils.testing_helpers import (
+    create_excel_file,
+    setup_dicomweb_orthancs,
+    setup_dimse_orthancs,
+)
 
 
 @pytest.mark.integration
@@ -16,24 +21,24 @@ from adit.core.utils.auth_utils import grant_access
 def test_urgent_batch_query_with_dimse_server(
     page: Page,
     poll: Callable[[Locator], Locator],
-    dimse_orthancs,
     live_server,
     create_and_login_user,
     batch_query_group,
-    create_excel_file,
 ):
     # Arrange
     df = pd.DataFrame(
         [["1005", "0062115904"]],
         columns=["PatientID", "AccessionNumber"],  # type: ignore
     )
-    batch_file = create_excel_file(df)
+    batch_file = create_excel_file(df, "batch_file.xlsx")
 
     user: User = create_and_login_user(live_server.url)
     add_user_to_group(user, batch_query_group)
     add_permission(batch_query_group, BatchQueryJob, "can_process_urgently")
-    grant_access(batch_query_group, dimse_orthancs[0], source=True)
-    grant_access(batch_query_group, dimse_orthancs[1], destination=True)
+
+    orthancs = setup_dimse_orthancs()
+    grant_access(batch_query_group, orthancs[0], source=True)
+    grant_access(batch_query_group, orthancs[1], destination=True)
 
     # Act
     page.goto(live_server.url + "/batch-query/jobs/new/")
@@ -55,24 +60,24 @@ def test_urgent_batch_query_with_dimse_server(
 def test_urgent_batch_query_with_dicomweb_server(
     page: Page,
     poll: Callable[[Locator], Locator],
-    dicomweb_orthancs,
     live_server,
     create_and_login_user,
     batch_query_group,
-    create_excel_file,
 ):
     # Arrange
     df = pd.DataFrame(
         [["1005", "0062115904"]],
         columns=["PatientID", "AccessionNumber"],  # type: ignore
     )
-    batch_file = create_excel_file(df)
+    batch_file = create_excel_file(df, "batch_file.xlsx")
 
     user: User = create_and_login_user(live_server.url)
     add_user_to_group(user, batch_query_group)
     add_permission(batch_query_group, BatchQueryJob, "can_process_urgently")
-    grant_access(batch_query_group, dicomweb_orthancs[0], source=True)
-    grant_access(batch_query_group, dicomweb_orthancs[1], destination=True)
+
+    orthancs = setup_dicomweb_orthancs()
+    grant_access(batch_query_group, orthancs[0], source=True)
+    grant_access(batch_query_group, orthancs[1], destination=True)
 
     # Act
     page.goto(live_server.url + "/batch-query/jobs/new/")

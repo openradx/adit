@@ -9,6 +9,11 @@ from playwright.sync_api import Locator, Page, expect
 
 from adit.batch_transfer.models import BatchTransferJob
 from adit.core.utils.auth_utils import grant_access
+from adit.core.utils.testing_helpers import (
+    create_excel_file,
+    setup_dicomweb_orthancs,
+    setup_dimse_orthancs,
+)
 
 
 @pytest.mark.integration
@@ -16,25 +21,25 @@ from adit.core.utils.auth_utils import grant_access
 def test_unpseudonymized_urgent_batch_transfer_with_dimse_server(
     page: Page,
     poll: Callable[[Locator], Locator],
-    dimse_orthancs,
     live_server,
     create_and_login_user,
     batch_transfer_group,
-    create_excel_file,
 ):
     # Arrange
     df = pd.DataFrame(
         [["1005", "1.2.840.113845.11.1000000001951524609.20200705173311.2689472"]],
         columns=["PatientID", "StudyInstanceUID"],  # type: ignore
     )
-    batch_file = create_excel_file(df)
+    batch_file = create_excel_file(df, "batch_file.xlsx")
 
     user: User = create_and_login_user(live_server.url)
     add_user_to_group(user, batch_transfer_group)
     add_permission(batch_transfer_group, BatchTransferJob, "can_process_urgently")
     add_permission(batch_transfer_group, BatchTransferJob, "can_transfer_unpseudonymized")
-    grant_access(batch_transfer_group, dimse_orthancs[0], source=True)
-    grant_access(batch_transfer_group, dimse_orthancs[1], destination=True)
+
+    orthancs = setup_dimse_orthancs()
+    grant_access(batch_transfer_group, orthancs[0], source=True)
+    grant_access(batch_transfer_group, orthancs[1], destination=True)
 
     # Act
     page.goto(live_server.url + "/batch-transfer/jobs/new/")
@@ -58,25 +63,25 @@ def test_unpseudonymized_urgent_batch_transfer_with_dimse_server(
 def test_unpseudonymized_urgent_batch_transfer_with_dicomweb_server(
     page: Page,
     poll: Callable[[Locator], Locator],
-    dicomweb_orthancs,
     live_server,
     create_and_login_user,
     batch_transfer_group,
-    create_excel_file,
 ):
     # Arrange
     df = pd.DataFrame(
         [["1005", "1.2.840.113845.11.1000000001951524609.20200705173311.2689472"]],
         columns=["PatientID", "StudyInstanceUID"],  # type: ignore
     )
-    batch_file = create_excel_file(df)
+    batch_file = create_excel_file(df, "batch_file.xlsx")
 
     user: User = create_and_login_user(live_server.url)
     add_user_to_group(user, batch_transfer_group)
     add_permission(batch_transfer_group, BatchTransferJob, "can_process_urgently")
     add_permission(batch_transfer_group, BatchTransferJob, "can_transfer_unpseudonymized")
-    grant_access(batch_transfer_group, dicomweb_orthancs[0], source=True)
-    grant_access(batch_transfer_group, dicomweb_orthancs[1], destination=True)
+
+    orthancs = setup_dicomweb_orthancs()
+    grant_access(batch_transfer_group, orthancs[0], source=True)
+    grant_access(batch_transfer_group, orthancs[1], destination=True)
 
     # Act
     page.goto(live_server.url + "/batch-transfer/jobs/new/")

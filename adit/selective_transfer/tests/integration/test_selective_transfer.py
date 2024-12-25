@@ -1,29 +1,31 @@
 import pytest
 from adit_radis_shared.accounts.models import User
 from adit_radis_shared.common.utils.auth_utils import add_permission, add_user_to_group
+from adit_radis_shared.common.utils.testing import ChannelsLiveServer
 from adit_radis_shared.common.utils.worker_utils import run_worker_once
 from playwright.sync_api import Page, expect
 
 from adit.core.utils.auth_utils import grant_access
+from adit.core.utils.testing_helpers import setup_dicomweb_orthancs, setup_dimse_orthancs
 from adit.selective_transfer.models import SelectiveTransferJob
+from adit.selective_transfer.utils.testing_helpers import create_selective_transfer_group
 
 
 @pytest.mark.integration
 @pytest.mark.django_db(transaction=True)
 def test_unpseudonymized_urgent_selective_transfer_with_dimse_server(
-    page: Page,
-    dimse_orthancs,
-    channels_live_server,
-    create_and_login_user,
-    selective_transfer_group,
+    page: Page, channels_live_server: ChannelsLiveServer, create_and_login_user
 ):
     # Arrange
     user: User = create_and_login_user(channels_live_server.url)
-    add_user_to_group(user, selective_transfer_group)
-    add_permission(selective_transfer_group, SelectiveTransferJob, "can_process_urgently")
-    add_permission(selective_transfer_group, SelectiveTransferJob, "can_transfer_unpseudonymized")
-    grant_access(selective_transfer_group, dimse_orthancs[0], source=True)
-    grant_access(selective_transfer_group, dimse_orthancs[1], destination=True)
+    group = create_selective_transfer_group()
+    add_user_to_group(user, group)
+    add_permission(group, SelectiveTransferJob, "can_process_urgently")
+    add_permission(group, SelectiveTransferJob, "can_transfer_unpseudonymized")
+
+    orthancs = setup_dimse_orthancs()
+    grant_access(group, orthancs[0], source=True)
+    grant_access(group, orthancs[1], destination=True)
 
     # Act
     page.goto(channels_live_server.url + "/selective-transfer/jobs/new/")
@@ -47,19 +49,18 @@ def test_unpseudonymized_urgent_selective_transfer_with_dimse_server(
 @pytest.mark.integration
 @pytest.mark.django_db(transaction=True)
 def test_unpseudonymized_urgent_selective_transfer_with_dicomweb_server(
-    page: Page,
-    dicomweb_orthancs,
-    channels_live_server,
-    create_and_login_user,
-    selective_transfer_group,
+    page: Page, channels_live_server: ChannelsLiveServer, create_and_login_user
 ):
     # Arrange
     user: User = create_and_login_user(channels_live_server.url)
-    add_user_to_group(user, selective_transfer_group)
-    add_permission(selective_transfer_group, SelectiveTransferJob, "can_process_urgently")
-    add_permission(selective_transfer_group, SelectiveTransferJob, "can_transfer_unpseudonymized")
-    grant_access(selective_transfer_group, dicomweb_orthancs[0], source=True)
-    grant_access(selective_transfer_group, dicomweb_orthancs[1], destination=True)
+    group = create_selective_transfer_group()
+    add_user_to_group(user, group)
+    add_permission(group, SelectiveTransferJob, "can_process_urgently")
+    add_permission(group, SelectiveTransferJob, "can_transfer_unpseudonymized")
+
+    orthancs = setup_dicomweb_orthancs()
+    grant_access(group, orthancs[0], source=True)
+    grant_access(group, orthancs[1], destination=True)
 
     # Act
     page.goto(channels_live_server.url + "/selective-transfer/jobs/new/")
