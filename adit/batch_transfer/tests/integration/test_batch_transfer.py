@@ -1,40 +1,46 @@
-from typing import Callable
-
 import pandas as pd
 import pytest
-from adit_radis_shared.accounts.models import User
-from adit_radis_shared.common.utils.auth_utils import add_permission, add_user_to_group
-from playwright.sync_api import Locator, Page, expect
+from adit_radis_shared.common.utils.testing_helpers import (
+    add_permission,
+    add_user_to_group,
+    create_and_login_example_user,
+    poll_locator,
+    run_worker_once,
+)
+from playwright.sync_api import Page, expect
+from pytest_django.live_server_helper import LiveServer
 
 from adit.batch_transfer.models import BatchTransferJob
+from adit.batch_transfer.utils.testing_helpers import create_batch_transfer_group
 from adit.core.utils.auth_utils import grant_access
+from adit.core.utils.testing_helpers import (
+    create_excel_file,
+    setup_dicomweb_orthancs,
+    setup_dimse_orthancs,
+)
 
 
 @pytest.mark.integration
 @pytest.mark.django_db(transaction=True)
 def test_unpseudonymized_urgent_batch_transfer_with_dimse_server(
-    page: Page,
-    poll: Callable[[Locator], Locator],
-    dimse_orthancs,
-    run_worker,
-    live_server,
-    create_and_login_user,
-    batch_transfer_group,
-    create_excel_file,
+    page: Page, live_server: LiveServer
 ):
     # Arrange
     df = pd.DataFrame(
         [["1005", "1.2.840.113845.11.1000000001951524609.20200705173311.2689472"]],
         columns=["PatientID", "StudyInstanceUID"],  # type: ignore
     )
-    batch_file = create_excel_file(df)
+    batch_file = create_excel_file(df, "batch_file.xlsx")
 
-    user: User = create_and_login_user(live_server.url)
-    add_user_to_group(user, batch_transfer_group)
-    add_permission(batch_transfer_group, BatchTransferJob, "can_process_urgently")
-    add_permission(batch_transfer_group, BatchTransferJob, "can_transfer_unpseudonymized")
-    grant_access(batch_transfer_group, dimse_orthancs[0], source=True)
-    grant_access(batch_transfer_group, dimse_orthancs[1], destination=True)
+    user = create_and_login_example_user(page, live_server.url)
+    group = create_batch_transfer_group()
+    add_user_to_group(user, group)
+    add_permission(group, BatchTransferJob, "can_process_urgently")
+    add_permission(group, BatchTransferJob, "can_transfer_unpseudonymized")
+
+    orthancs = setup_dimse_orthancs()
+    grant_access(group, orthancs[0], source=True)
+    grant_access(group, orthancs[1], destination=True)
 
     # Act
     page.goto(live_server.url + "/batch-transfer/jobs/new/")
@@ -47,37 +53,33 @@ def test_unpseudonymized_urgent_batch_transfer_with_dimse_server(
     page.get_by_label("Batch file*", exact=True).set_input_files(files=[batch_file])
     page.locator('input:has-text("Create job")').click()
 
-    run_worker()
+    run_worker_once()
 
     # Assert
-    expect(poll(page.locator('dl:has-text("Success")'))).to_be_visible()
+    expect(poll_locator(page.locator('dl:has-text("Success")'))).to_be_visible()
 
 
 @pytest.mark.integration
 @pytest.mark.django_db(transaction=True)
 def test_unpseudonymized_urgent_batch_transfer_with_dicomweb_server(
-    page: Page,
-    poll: Callable[[Locator], Locator],
-    dicomweb_orthancs,
-    run_worker,
-    live_server,
-    create_and_login_user,
-    batch_transfer_group,
-    create_excel_file,
+    page: Page, live_server: LiveServer
 ):
     # Arrange
     df = pd.DataFrame(
         [["1005", "1.2.840.113845.11.1000000001951524609.20200705173311.2689472"]],
         columns=["PatientID", "StudyInstanceUID"],  # type: ignore
     )
-    batch_file = create_excel_file(df)
+    batch_file = create_excel_file(df, "batch_file.xlsx")
 
-    user: User = create_and_login_user(live_server.url)
-    add_user_to_group(user, batch_transfer_group)
-    add_permission(batch_transfer_group, BatchTransferJob, "can_process_urgently")
-    add_permission(batch_transfer_group, BatchTransferJob, "can_transfer_unpseudonymized")
-    grant_access(batch_transfer_group, dicomweb_orthancs[0], source=True)
-    grant_access(batch_transfer_group, dicomweb_orthancs[1], destination=True)
+    user = create_and_login_example_user(page, live_server.url)
+    group = create_batch_transfer_group()
+    add_user_to_group(user, group)
+    add_permission(group, BatchTransferJob, "can_process_urgently")
+    add_permission(group, BatchTransferJob, "can_transfer_unpseudonymized")
+
+    orthancs = setup_dicomweb_orthancs()
+    grant_access(group, orthancs[0], source=True)
+    grant_access(group, orthancs[1], destination=True)
 
     # Act
     page.goto(live_server.url + "/batch-transfer/jobs/new/")
@@ -90,7 +92,7 @@ def test_unpseudonymized_urgent_batch_transfer_with_dicomweb_server(
     page.get_by_label("Batch file*", exact=True).set_input_files(files=[batch_file])
     page.locator('input:has-text("Create job")').click()
 
-    run_worker()
+    run_worker_once()
 
     # Assert
-    expect(poll(page.locator('dl:has-text("Success")'))).to_be_visible()
+    expect(poll_locator(page.locator('dl:has-text("Success")'))).to_be_visible()

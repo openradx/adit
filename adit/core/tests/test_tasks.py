@@ -1,4 +1,5 @@
 import pytest
+from adit_radis_shared.common.utils.testing_helpers import run_worker_once
 from pytest_mock import MockerFixture
 
 from adit.core.errors import RetriableDicomError
@@ -29,7 +30,7 @@ def patch_dicom_processors(mocker: MockerFixture):
 
 
 @pytest.mark.django_db(transaction=True)
-def test_process_dicom_task_that_succeeds(mocker: MockerFixture, run_worker):
+def test_process_dicom_task_that_succeeds(mocker: MockerFixture):
     dicom_job = ExampleTransferJobFactory.create(status=DicomJob.Status.PENDING)
     dicom_task = ExampleTransferTaskFactory.create(
         status=DicomTask.Status.PENDING,
@@ -50,7 +51,7 @@ def test_process_dicom_task_that_succeeds(mocker: MockerFixture, run_worker):
 
     mocker.patch.object(ExampleProcessor, "process", process)
 
-    run_worker()
+    run_worker_once()
 
     dicom_job.refresh_from_db()
     assert dicom_job.status == DicomJob.Status.SUCCESS
@@ -63,7 +64,7 @@ def test_process_dicom_task_that_succeeds(mocker: MockerFixture, run_worker):
 
 
 @pytest.mark.django_db(transaction=True)
-def test_process_dicom_task_that_fails(mocker: MockerFixture, run_worker):
+def test_process_dicom_task_that_fails(mocker: MockerFixture):
     dicom_job = ExampleTransferJobFactory.create(status=DicomJob.Status.PENDING)
     dicom_task = ExampleTransferTaskFactory.create(
         status=DicomTask.Status.PENDING,
@@ -84,7 +85,7 @@ def test_process_dicom_task_that_fails(mocker: MockerFixture, run_worker):
 
     mocker.patch.object(ExampleProcessor, "process", process)
 
-    run_worker()
+    run_worker_once()
 
     dicom_job.refresh_from_db()
     assert dicom_job.status == DicomJob.Status.FAILURE
@@ -97,7 +98,7 @@ def test_process_dicom_task_that_fails(mocker: MockerFixture, run_worker):
 
 
 @pytest.mark.django_db(transaction=True)
-def test_process_dicom_task_that_should_be_retried(mocker: MockerFixture, run_worker):
+def test_process_dicom_task_that_should_be_retried(mocker: MockerFixture):
     dicom_job = ExampleTransferJobFactory.create(status=DicomJob.Status.PENDING)
     dicom_task = ExampleTransferTaskFactory.create(
         status=DicomTask.Status.PENDING,
@@ -114,7 +115,7 @@ def test_process_dicom_task_that_should_be_retried(mocker: MockerFixture, run_wo
 
     mocker.patch.object(ExampleProcessor, "process", process)
 
-    run_worker()
+    run_worker_once()
 
     dicom_job.refresh_from_db()
     assert dicom_job.status == DicomJob.Status.PENDING
@@ -127,7 +128,7 @@ def test_process_dicom_task_that_should_be_retried(mocker: MockerFixture, run_wo
 
 
 @pytest.mark.django_db(transaction=True)
-def test_process_dicom_task_that_raises(mocker: MockerFixture, run_worker):
+def test_process_dicom_task_that_raises(mocker: MockerFixture):
     dicom_job = ExampleTransferJobFactory.create(status=DicomJob.Status.PENDING)
     dicom_task = ExampleTransferTaskFactory.create(
         status=DicomTask.Status.PENDING,
@@ -144,7 +145,7 @@ def test_process_dicom_task_that_raises(mocker: MockerFixture, run_worker):
 
     mocker.patch.object(ExampleProcessor, "process", process)
 
-    run_worker()
+    run_worker_once()
 
     dicom_job.refresh_from_db()
     assert dicom_job.status == DicomJob.Status.FAILURE

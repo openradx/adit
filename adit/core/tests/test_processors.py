@@ -1,9 +1,10 @@
 import pytest
 import time_machine
 from adit_radis_shared.accounts.factories import UserFactory
-from adit_radis_shared.common.utils.auth_utils import add_user_to_group
-from pydicom import Dataset
+from adit_radis_shared.common.utils.testing_helpers import add_user_to_group
 from pytest_mock import MockerFixture
+
+from adit.core.utils.testing_helpers import create_example_transfer_group, create_resources
 
 from ..factories import (
     DicomFolderFactory,
@@ -12,40 +13,16 @@ from ..factories import (
 from ..models import TransferJob, TransferTask
 from ..processors import TransferTaskProcessor
 from ..utils.auth_utils import grant_access
-from ..utils.dicom_dataset import ResultDataset
 from ..utils.dicom_operator import DicomOperator
 from .example_app.factories import ExampleTransferJobFactory, ExampleTransferTaskFactory
 
 
-@pytest.fixture
-def create_resources():
-    def _create_resources(transfer_task):
-        ds = Dataset()
-        ds.PatientID = transfer_task.patient_id
-        patient = ResultDataset(ds)
-
-        ds = Dataset()
-        ds.PatientID = transfer_task.patient_id
-        ds.StudyInstanceUID = transfer_task.study_uid
-        ds.StudyDate = "20190923"
-        ds.StudyTime = "080000"
-        ds.ModalitiesInStudy = ["CT", "SR"]
-        study = ResultDataset(ds)
-
-        return patient, study
-
-    return _create_resources
-
-
 @pytest.mark.django_db
-def test_transfer_to_server_succeeds(
-    mocker: MockerFixture,
-    example_transfer_group,
-    create_resources,
-):
+def test_transfer_to_server_succeeds(mocker: MockerFixture):
     # Arrange
     user = UserFactory.create(username="kai")
-    add_user_to_group(user, example_transfer_group)
+    group = create_example_transfer_group()
+    add_user_to_group(user, group)
     job = ExampleTransferJobFactory.create(
         status=TransferJob.Status.PENDING,
         archive_password="",
@@ -59,10 +36,10 @@ def test_transfer_to_server_succeeds(
         pseudonym="",
         job=job,
     )
-    grant_access(example_transfer_group, task.source, source=True)
-    grant_access(example_transfer_group, task.destination, destination=True)
+    grant_access(group, task.source, source=True)
+    grant_access(group, task.destination, destination=True)
 
-    patient, study = create_resources(task)
+    _, study = create_resources(task)
 
     source_operator_mock = mocker.create_autospec(DicomOperator)
     source_operator_mock.find_studies.return_value = iter([study])
@@ -88,14 +65,11 @@ def test_transfer_to_server_succeeds(
 
 @pytest.mark.django_db
 @time_machine.travel("2020-01-01")
-def test_transfer_to_folder_succeeds(
-    mocker: MockerFixture,
-    example_transfer_group,
-    create_resources,
-):
+def test_transfer_to_folder_succeeds(mocker: MockerFixture):
     # Arrange
     user = UserFactory.create(username="kai")
-    add_user_to_group(user, example_transfer_group)
+    group = create_example_transfer_group()
+    add_user_to_group(user, group)
     job = ExampleTransferJobFactory.create(
         status=TransferJob.Status.PENDING,
         archive_password="",
@@ -110,10 +84,10 @@ def test_transfer_to_folder_succeeds(
         pseudonym="",
         job=job,
     )
-    grant_access(example_transfer_group, task.source, source=True)
-    grant_access(example_transfer_group, task.destination, destination=True)
+    grant_access(group, task.source, source=True)
+    grant_access(group, task.destination, destination=True)
 
-    patient, study = create_resources(task)
+    _, study = create_resources(task)
 
     source_operator_mock = mocker.create_autospec(DicomOperator)
     source_operator_mock.find_studies.return_value = iter([study])
@@ -135,14 +109,11 @@ def test_transfer_to_folder_succeeds(
 
 
 @pytest.mark.django_db
-def test_transfer_to_archive_succeeds(
-    mocker: MockerFixture,
-    example_transfer_group,
-    create_resources,
-):
+def test_transfer_to_archive_succeeds(mocker: MockerFixture):
     # Arrange
     user = UserFactory.create(username="kai")
-    add_user_to_group(user, example_transfer_group)
+    group = create_example_transfer_group()
+    add_user_to_group(user, group)
     job = ExampleTransferJobFactory.create(
         status=TransferJob.Status.PENDING,
         archive_password="mysecret",
@@ -156,10 +127,10 @@ def test_transfer_to_archive_succeeds(
         pseudonym="",
         job=job,
     )
-    grant_access(example_transfer_group, task.source, source=True)
-    grant_access(example_transfer_group, task.destination, destination=True)
+    grant_access(group, task.source, source=True)
+    grant_access(group, task.destination, destination=True)
 
-    patient, study = create_resources(task)
+    _, study = create_resources(task)
 
     source_operator_mock = mocker.create_autospec(DicomOperator)
     source_operator_mock.find_studies.return_value = iter([study])
