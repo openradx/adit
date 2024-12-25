@@ -6,8 +6,10 @@ from adit_radis_shared.accounts.models import User
 from adit_radis_shared.common.utils.auth_utils import add_permission, add_user_to_group
 from adit_radis_shared.common.utils.worker_utils import run_worker_once
 from playwright.sync_api import Locator, Page, expect
+from pytest_django.live_server_helper import LiveServer
 
 from adit.batch_query.models import BatchQueryJob
+from adit.batch_query.utils.testing_helpers import create_batch_query_group
 from adit.core.utils.auth_utils import grant_access
 from adit.core.utils.testing_helpers import (
     create_excel_file,
@@ -19,11 +21,7 @@ from adit.core.utils.testing_helpers import (
 @pytest.mark.integration
 @pytest.mark.django_db(transaction=True)
 def test_urgent_batch_query_with_dimse_server(
-    page: Page,
-    poll: Callable[[Locator], Locator],
-    live_server,
-    create_and_login_user,
-    batch_query_group,
+    page: Page, poll: Callable[[Locator], Locator], live_server: LiveServer, create_and_login_user
 ):
     # Arrange
     df = pd.DataFrame(
@@ -33,12 +31,13 @@ def test_urgent_batch_query_with_dimse_server(
     batch_file = create_excel_file(df, "batch_file.xlsx")
 
     user: User = create_and_login_user(live_server.url)
-    add_user_to_group(user, batch_query_group)
-    add_permission(batch_query_group, BatchQueryJob, "can_process_urgently")
+    group = create_batch_query_group()
+    add_user_to_group(user, group)
+    add_permission(group, BatchQueryJob, "can_process_urgently")
 
     orthancs = setup_dimse_orthancs()
-    grant_access(batch_query_group, orthancs[0], source=True)
-    grant_access(batch_query_group, orthancs[1], destination=True)
+    grant_access(group, orthancs[0], source=True)
+    grant_access(group, orthancs[1], destination=True)
 
     # Act
     page.goto(live_server.url + "/batch-query/jobs/new/")
@@ -58,11 +57,7 @@ def test_urgent_batch_query_with_dimse_server(
 @pytest.mark.integration
 @pytest.mark.django_db(transaction=True)
 def test_urgent_batch_query_with_dicomweb_server(
-    page: Page,
-    poll: Callable[[Locator], Locator],
-    live_server,
-    create_and_login_user,
-    batch_query_group,
+    page: Page, poll: Callable[[Locator], Locator], live_server: LiveServer, create_and_login_user
 ):
     # Arrange
     df = pd.DataFrame(
@@ -72,12 +67,13 @@ def test_urgent_batch_query_with_dicomweb_server(
     batch_file = create_excel_file(df, "batch_file.xlsx")
 
     user: User = create_and_login_user(live_server.url)
-    add_user_to_group(user, batch_query_group)
-    add_permission(batch_query_group, BatchQueryJob, "can_process_urgently")
+    group = create_batch_query_group()
+    add_user_to_group(user, group)
+    add_permission(group, BatchQueryJob, "can_process_urgently")
 
     orthancs = setup_dicomweb_orthancs()
-    grant_access(batch_query_group, orthancs[0], source=True)
-    grant_access(batch_query_group, orthancs[1], destination=True)
+    grant_access(group, orthancs[0], source=True)
+    grant_access(group, orthancs[1], destination=True)
 
     # Act
     page.goto(live_server.url + "/batch-query/jobs/new/")

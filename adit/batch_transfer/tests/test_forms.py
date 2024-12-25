@@ -4,6 +4,7 @@ from adit_radis_shared.common.utils.auth_utils import add_user_to_group
 from django.core.files import File
 from pytest_mock import MockerFixture
 
+from adit.batch_transfer.utils.testing_helpers import create_batch_transfer_group
 from adit.core.factories import DicomServerFactory
 from adit.core.utils.auth_utils import grant_access
 
@@ -52,12 +53,13 @@ def test_field_labels(mocker: MockerFixture):
 
 
 @pytest.mark.django_db
-def test_with_valid_data(mocker: MockerFixture, batch_transfer_group, data_dict, file_dict):
+def test_with_valid_data(mocker: MockerFixture, data_dict, file_dict):
     # Arrange
     user = UserFactory.create()
-    add_user_to_group(user, batch_transfer_group)
-    grant_access(batch_transfer_group, data_dict["source"], source=True)
-    grant_access(batch_transfer_group, data_dict["destination"], destination=True)
+    group = create_batch_transfer_group()
+    add_user_to_group(user, group)
+    grant_access(group, data_dict["source"], source=True)
+    grant_access(group, data_dict["destination"], destination=True)
     parse_mock = mocker.patch(
         "adit.batch_transfer.forms.BatchTransferFileParser.parse", autospec=True
     )
