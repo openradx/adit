@@ -1,37 +1,38 @@
 import pytest
-from adit_radis_shared.accounts.models import User
-from adit_radis_shared.common.utils.auth_utils import add_user_to_group
+from adit_radis_shared.common.utils.testing_helpers import (
+    add_user_to_group,
+    create_and_login_example_user,
+)
 from faker import Faker
 from playwright.sync_api import Page, expect
+from pytest_django.live_server_helper import LiveServer
 
 from adit.core.utils.auth_utils import grant_access
 from adit.core.utils.dicom_dataset import QueryDataset
 from adit.core.utils.dicom_operator import DicomOperator
+from adit.core.utils.testing_helpers import setup_dimse_orthancs
+from adit.upload.utils.testing_helpers import create_upload_group, get_sample_dicoms_folder
 
 fake = Faker()
 
 
 @pytest.mark.integration
 @pytest.mark.django_db(transaction=True)
-def test_clear_files(
-    page: Page,
-    dimse_orthancs,
-    live_server,
-    create_and_login_user,
-    upload_group,
-    provide_path_to_file_dir,
-):
-    user: User = create_and_login_user(live_server.url)
-    add_user_to_group(user, upload_group)
-    grant_access(upload_group, dimse_orthancs[1], destination=True)
+def test_clear_files(live_server: LiveServer, page: Page):
+    user = create_and_login_example_user(page, live_server.url)
+    group = create_upload_group()
+
+    add_user_to_group(user, group)
+    dimse_orthancs = setup_dimse_orthancs()
+    grant_access(group, dimse_orthancs[1], destination=True)
+    folder = get_sample_dicoms_folder("1001")
 
     page.on("console", lambda msg: print(msg.text))
 
     page.goto(live_server.url + "/upload/jobs/new")
     page.get_by_label("Destination").select_option(label="DICOM Server Orthanc Test Server 2")
     page.get_by_label("Pseudonym").fill("Test pseudonym")
-    file = next(provide_path_to_file_dir("1001"))
-    page.get_by_label("Choose a directory").set_input_files(files=[file])
+    page.get_by_label("Choose a directory").set_input_files(files=[folder])
 
     assert page.get_by_label("Choose a directory").input_value()
 
@@ -49,25 +50,20 @@ def test_clear_files(
 
 @pytest.mark.integration
 @pytest.mark.django_db(transaction=True)
-def test_stop_upload(
-    page: Page,
-    dimse_orthancs,
-    live_server,
-    create_and_login_user,
-    upload_group,
-    provide_path_to_file_dir,
-):
-    user: User = create_and_login_user(live_server.url)
-    add_user_to_group(user, upload_group)
-    grant_access(upload_group, dimse_orthancs[1], destination=True)
+def test_stop_upload(live_server: LiveServer, page: Page):
+    user = create_and_login_example_user(page, live_server.url)
+    group = create_upload_group()
+    add_user_to_group(user, group)
+    dimse_orthancs = setup_dimse_orthancs()
+    grant_access(group, dimse_orthancs[1], destination=True)
+    folder = get_sample_dicoms_folder("1001")
 
     page.on("console", lambda msg: print(msg.text))
 
     page.goto(live_server.url + "/upload/jobs/new")
     page.get_by_label("Destination").select_option(label="DICOM Server Orthanc Test Server 2")
     page.get_by_label("Pseudonym").fill("Test pseudonym")
-    file = next(provide_path_to_file_dir("1001"))
-    page.get_by_label("Choose a directory").set_input_files(files=[file])
+    page.get_by_label("Choose a directory").set_input_files(files=[folder])
 
     expect(page.locator("button#uploadButton")).to_be_visible()
     expect(page.locator("button#clearButton")).to_be_visible()
@@ -83,26 +79,21 @@ def test_stop_upload(
 
 @pytest.mark.integration
 @pytest.mark.django_db(transaction=True)
-def test_upload_full(
-    page: Page,
-    dimse_orthancs,
-    live_server,
-    create_and_login_user,
-    upload_group,
-    provide_path_to_file_dir,
-):
-    user: User = create_and_login_user(live_server.url)
-    add_user_to_group(user, upload_group)
-    grant_access(upload_group, dimse_orthancs[1], destination=True)
+def test_upload_full(live_server: LiveServer, page: Page):
+    user = create_and_login_example_user(page, live_server.url)
+    group = create_upload_group()
+    add_user_to_group(user, group)
+    dimse_orthancs = setup_dimse_orthancs()
+    grant_access(group, dimse_orthancs[1], destination=True)
+    folder = get_sample_dicoms_folder("1001")
 
     page.on("console", lambda msg: print(msg.text))
 
     page.goto(live_server.url + "/upload/jobs/new")
     page.get_by_label("Destination").select_option(label="DICOM Server Orthanc Test Server 2")
     page.get_by_label("Pseudonym").fill("Test pseudonym")
-    file = next(provide_path_to_file_dir("1001"))
 
-    page.get_by_label("Choose a directory").set_input_files(files=[file])
+    page.get_by_label("Choose a directory").set_input_files(files=[folder])
 
     expect(page.locator("button#uploadButton")).to_be_visible()
     expect(page.locator("button#clearButton")).to_be_visible()
@@ -119,16 +110,13 @@ def test_upload_full(
 @pytest.mark.integration
 @pytest.mark.django_db(transaction=True)
 def test_upload_unsupported_file_type(
-    page: Page,
-    dimse_orthancs,
-    live_server,
-    create_and_login_user,
-    upload_group,
-    noncompatible_test_file,
+    live_server: LiveServer, page: Page, invalid_sample_files_folder: str
 ):
-    user: User = create_and_login_user(live_server.url)
-    add_user_to_group(user, upload_group)
-    grant_access(upload_group, dimse_orthancs[1], destination=True)
+    user = create_and_login_example_user(page, live_server.url)
+    group = create_upload_group()
+    add_user_to_group(user, group)
+    dimse_orthancs = setup_dimse_orthancs()
+    grant_access(group, dimse_orthancs[1], destination=True)
 
     page.on("console", lambda msg: print(msg.text))
 
@@ -136,8 +124,7 @@ def test_upload_unsupported_file_type(
     page.get_by_label("Destination").select_option(label="DICOM Server Orthanc Test Server 2")
     page.get_by_label("Pseudonym").fill("Test pseudonym")
 
-    tmp = noncompatible_test_file()
-    page.get_by_label("Choose a directory").set_input_files(files=[tmp])
+    page.get_by_label("Choose a directory").set_input_files(files=[invalid_sample_files_folder])
 
     expect(page.locator("button#uploadButton")).to_be_visible()
     expect(page.locator("button#clearButton")).to_be_visible()
@@ -150,22 +137,19 @@ def test_upload_unsupported_file_type(
 
 @pytest.mark.integration
 @pytest.mark.django_db(transaction=True)
-def test_upload_without_pseudonym(
-    page: Page,
-    dimse_orthancs,
-    live_server,
-    create_and_login_user,
-    upload_group,
-    provide_path_to_file_dir,
-):
-    user: User = create_and_login_user(live_server.url)
-    add_user_to_group(user, upload_group)
-    grant_access(upload_group, dimse_orthancs[1], destination=True)
+def test_upload_without_pseudonym(live_server: LiveServer, page: Page):
+    user = create_and_login_example_user(page, live_server.url)
+    group = create_upload_group()
+    add_user_to_group(user, group)
+    dimse_orthancs = setup_dimse_orthancs()
+    grant_access(group, dimse_orthancs[1], destination=True)
+    folder = get_sample_dicoms_folder("1001")
+
     page.on("console", lambda msg: print(msg.text))
+
     page.goto(live_server.url + "/upload/jobs/new")
     page.get_by_label("Destination").select_option(label="DICOM Server Orthanc Test Server 2")
-    file = next(provide_path_to_file_dir("1001"))
-    page.get_by_label("Choose a directory").set_input_files(files=[file])
+    page.get_by_label("Choose a directory").set_input_files(files=[folder])
 
     expect(page.locator("button#uploadButton")).to_be_visible()
     expect(page.locator("button#clearButton")).to_be_visible()
@@ -178,23 +162,19 @@ def test_upload_without_pseudonym(
 
 @pytest.mark.integration
 @pytest.mark.django_db(transaction=True)
-def test_upload_without_destination(
-    page: Page,
-    dimse_orthancs,
-    live_server,
-    create_and_login_user,
-    upload_group,
-    provide_path_to_file_dir,
-):
-    user: User = create_and_login_user(live_server.url)
-    add_user_to_group(user, upload_group)
-    grant_access(upload_group, dimse_orthancs[1], destination=True)
+def test_upload_without_destination(live_server: LiveServer, page: Page):
+    user = create_and_login_example_user(page, live_server.url)
+    group = create_upload_group()
+    add_user_to_group(user, group)
+    dimse_orthancs = setup_dimse_orthancs()
+    grant_access(group, dimse_orthancs[1], destination=True)
+    folder = get_sample_dicoms_folder("1001")
 
     page.on("console", lambda msg: print(msg.text))
+
     page.goto(live_server.url + "/upload/jobs/new")
     page.get_by_label("Pseudonym").fill("Test pseudonym")
-    file = next(provide_path_to_file_dir("1001"))
-    page.get_by_label("Choose a directory").set_input_files(files=[file])
+    page.get_by_label("Choose a directory").set_input_files(files=[folder])
 
     expect(page.locator("button#uploadButton")).to_be_visible()
     expect(page.locator("button#clearButton")).to_be_visible()
@@ -207,30 +187,23 @@ def test_upload_without_destination(
 
 @pytest.mark.integration
 @pytest.mark.django_db(transaction=True)
-def test_pseudonym_is_used_as_patientID(
-    page: Page,
-    dimse_orthancs,
-    live_server,
-    create_and_login_user,
-    upload_group,
-    provide_path_to_file_dir,
-):
+def test_pseudonym_is_used_as_patientID(live_server: LiveServer, page: Page):
     # Arrange
-    user: User = create_and_login_user(live_server.url)
-    add_user_to_group(user, upload_group)
-    grant_access(upload_group, dimse_orthancs[0], destination=True)
+    user = create_and_login_example_user(page, live_server.url)
+    group = create_upload_group()
+    add_user_to_group(user, group)
+    dimse_orthancs = setup_dimse_orthancs()
+    grant_access(group, dimse_orthancs[0], destination=True)
+    test_pseudonym = "Patient #" + str(fake.random_int(min=10, max=1000))
+    folder = get_sample_dicoms_folder("1001")
 
     page.on("console", lambda msg: print(msg.text))
+
     page.goto(live_server.url + "/upload/jobs/new")
     page.get_by_label("Destination").select_option(label="DICOM Server Orthanc Test Server 1")
-
-    test_pseudonym = "Patient #" + str(fake.random_int(min=10, max=1000))
-
     page.get_by_label("Pseudonym").fill(test_pseudonym)
 
-    file = next(provide_path_to_file_dir("1001"))
-
-    page.get_by_label("Choose a directory").set_input_files(files=[file])
+    page.get_by_label("Choose a directory").set_input_files(files=[folder])
 
     expect(page.locator("button#uploadButton")).to_be_visible()
     expect(page.locator("button#clearButton")).to_be_visible()
