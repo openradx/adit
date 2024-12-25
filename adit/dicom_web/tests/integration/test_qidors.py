@@ -1,5 +1,6 @@
 import pydicom
 import pytest
+from pytest_django.live_server_helper import LiveServer
 
 from adit.core.models import DicomServer
 from adit.core.utils.auth_utils import grant_access
@@ -14,9 +15,7 @@ from adit.dicom_web.utils.testing_helpers import create_user_with_dicom_web_grou
 
 @pytest.mark.integration
 @pytest.mark.django_db(transaction=True)
-def test_search_studies(
-    live_server,
-):
+def test_search_studies(live_server: LiveServer):
     setup_dimse_orthancs()
 
     _, group, token = create_user_with_dicom_web_group_and_token()
@@ -45,9 +44,7 @@ def test_search_studies(
 
 @pytest.mark.integration
 @pytest.mark.django_db(transaction=True)
-def test_search_series(
-    live_server,
-):
+def test_search_series(live_server: LiveServer):
     setup_dimse_orthancs()
 
     _, group, token = create_user_with_dicom_web_group_and_token()
