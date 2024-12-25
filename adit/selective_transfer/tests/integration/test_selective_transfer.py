@@ -1,9 +1,8 @@
-from typing import Callable
-
 import pytest
 from adit_radis_shared.accounts.models import User
 from adit_radis_shared.common.utils.auth_utils import add_permission, add_user_to_group
-from playwright.sync_api import Locator, Page, expect
+from adit_radis_shared.common.utils.worker_utils import run_worker_once
+from playwright.sync_api import Page, expect
 
 from adit.core.utils.auth_utils import grant_access
 from adit.selective_transfer.models import SelectiveTransferJob
@@ -13,9 +12,7 @@ from adit.selective_transfer.models import SelectiveTransferJob
 @pytest.mark.django_db(transaction=True)
 def test_unpseudonymized_urgent_selective_transfer_with_dimse_server(
     page: Page,
-    poll: Callable[[Locator], Locator],
     dimse_orthancs,
-    run_worker,
     channels_live_server,
     create_and_login_user,
     selective_transfer_group,
@@ -33,24 +30,25 @@ def test_unpseudonymized_urgent_selective_transfer_with_dimse_server(
     page.get_by_label("Urgent").click(force=True)
     page.get_by_label("Source").select_option(label="DICOM Server Orthanc Test Server 1")
     page.get_by_label("Destination").select_option(label="DICOM Server Orthanc Test Server 2")
+    page.get_by_label("Patient ID").click()
+    page.get_by_label("Patient ID").fill("1008")
     page.get_by_label("Patient ID").press("Enter")
     page.locator('tr:has-text("1008"):has-text("2020") input').click()
     page.locator('button:has-text("Start transfer")').click()
     page.locator('a:has-text("ID")').click()
 
-    run_worker()
+    run_worker_once()
+    page.reload()
 
     # Assert
-    expect(poll(page.locator('dl:has-text("Success")'))).to_be_visible()
+    expect(page.locator('dl:has-text("Success")')).to_be_visible()
 
 
 @pytest.mark.integration
 @pytest.mark.django_db(transaction=True)
 def test_unpseudonymized_urgent_selective_transfer_with_dicomweb_server(
     page: Page,
-    poll: Callable[[Locator], Locator],
     dicomweb_orthancs,
-    run_worker,
     channels_live_server,
     create_and_login_user,
     selective_transfer_group,
@@ -68,12 +66,15 @@ def test_unpseudonymized_urgent_selective_transfer_with_dicomweb_server(
     page.get_by_label("Urgent").click(force=True)
     page.get_by_label("Source").select_option(label="DICOM Server Orthanc Test Server 1")
     page.get_by_label("Destination").select_option(label="DICOM Server Orthanc Test Server 2")
+    page.get_by_label("Patient ID").click()
+    page.get_by_label("Patient ID").fill("1008")
     page.get_by_label("Patient ID").press("Enter")
     page.locator('tr:has-text("1008"):has-text("2020") input').click()
     page.locator('button:has-text("Start transfer")').click()
     page.locator('a:has-text("ID")').click()
 
-    run_worker()
+    run_worker_once()
+    page.reload()
 
     # Assert
-    expect(poll(page.locator('dl:has-text("Success")'))).to_be_visible()
+    expect(page.locator('dl:has-text("Success")')).to_be_visible()

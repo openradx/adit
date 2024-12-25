@@ -4,6 +4,7 @@ import pandas as pd
 import pytest
 from adit_radis_shared.accounts.models import User
 from adit_radis_shared.common.utils.auth_utils import add_permission, add_user_to_group
+from adit_radis_shared.common.utils.worker_utils import run_worker_once
 from playwright.sync_api import Locator, Page, expect
 
 from adit.batch_transfer.models import BatchTransferJob
@@ -16,7 +17,6 @@ def test_unpseudonymized_urgent_batch_transfer_with_dimse_server(
     page: Page,
     poll: Callable[[Locator], Locator],
     dimse_orthancs,
-    run_worker,
     live_server,
     create_and_login_user,
     batch_transfer_group,
@@ -47,7 +47,7 @@ def test_unpseudonymized_urgent_batch_transfer_with_dimse_server(
     page.get_by_label("Batch file*", exact=True).set_input_files(files=[batch_file])
     page.locator('input:has-text("Create job")').click()
 
-    run_worker()
+    run_worker_once()
 
     # Assert
     expect(poll(page.locator('dl:has-text("Success")'))).to_be_visible()
@@ -59,7 +59,6 @@ def test_unpseudonymized_urgent_batch_transfer_with_dicomweb_server(
     page: Page,
     poll: Callable[[Locator], Locator],
     dicomweb_orthancs,
-    run_worker,
     live_server,
     create_and_login_user,
     batch_transfer_group,
@@ -90,7 +89,7 @@ def test_unpseudonymized_urgent_batch_transfer_with_dicomweb_server(
     page.get_by_label("Batch file*", exact=True).set_input_files(files=[batch_file])
     page.locator('input:has-text("Create job")').click()
 
-    run_worker()
+    run_worker_once()
 
     # Assert
     expect(poll(page.locator('dl:has-text("Success")'))).to_be_visible()
