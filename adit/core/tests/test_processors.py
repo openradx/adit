@@ -1,7 +1,7 @@
 import pytest
 import time_machine
 from adit_radis_shared.accounts.factories import UserFactory
-from adit_radis_shared.common.utils.auth_utils import add_user_to_group
+from adit_radis_shared.common.utils.testing_helpers import add_user_to_group
 from pytest_mock import MockerFixture
 
 from adit.core.utils.testing_helpers import create_example_transfer_group, create_resources

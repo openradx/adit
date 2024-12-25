@@ -1,11 +1,13 @@
-from typing import Callable
-
 import pandas as pd
 import pytest
-from adit_radis_shared.accounts.models import User
-from adit_radis_shared.common.utils.auth_utils import add_permission, add_user_to_group
-from adit_radis_shared.common.utils.worker_utils import run_worker_once
-from playwright.sync_api import Locator, Page, expect
+from adit_radis_shared.common.utils.testing_helpers import (
+    add_permission,
+    add_user_to_group,
+    create_and_login_example_user,
+    poll_locator,
+    run_worker_once,
+)
+from playwright.sync_api import Page, expect
 from pytest_django.live_server_helper import LiveServer
 
 from adit.batch_transfer.models import BatchTransferJob
@@ -21,7 +23,7 @@ from adit.core.utils.testing_helpers import (
 @pytest.mark.integration
 @pytest.mark.django_db(transaction=True)
 def test_unpseudonymized_urgent_batch_transfer_with_dimse_server(
-    page: Page, poll: Callable[[Locator], Locator], live_server: LiveServer, create_and_login_user
+    page: Page, live_server: LiveServer
 ):
     # Arrange
     df = pd.DataFrame(
@@ -30,7 +32,7 @@ def test_unpseudonymized_urgent_batch_transfer_with_dimse_server(
     )
     batch_file = create_excel_file(df, "batch_file.xlsx")
 
-    user: User = create_and_login_user(live_server.url)
+    user = create_and_login_example_user(page, live_server.url)
     group = create_batch_transfer_group()
     add_user_to_group(user, group)
     add_permission(group, BatchTransferJob, "can_process_urgently")
@@ -54,13 +56,13 @@ def test_unpseudonymized_urgent_batch_transfer_with_dimse_server(
     run_worker_once()
 
     # Assert
-    expect(poll(page.locator('dl:has-text("Success")'))).to_be_visible()
+    expect(poll_locator(page.locator('dl:has-text("Success")'))).to_be_visible()
 
 
 @pytest.mark.integration
 @pytest.mark.django_db(transaction=True)
 def test_unpseudonymized_urgent_batch_transfer_with_dicomweb_server(
-    page: Page, poll: Callable[[Locator], Locator], live_server: LiveServer, create_and_login_user
+    page: Page, live_server: LiveServer
 ):
     # Arrange
     df = pd.DataFrame(
@@ -69,7 +71,7 @@ def test_unpseudonymized_urgent_batch_transfer_with_dicomweb_server(
     )
     batch_file = create_excel_file(df, "batch_file.xlsx")
 
-    user: User = create_and_login_user(live_server.url)
+    user = create_and_login_example_user(page, live_server.url)
     group = create_batch_transfer_group()
     add_user_to_group(user, group)
     add_permission(group, BatchTransferJob, "can_process_urgently")
@@ -93,4 +95,4 @@ def test_unpseudonymized_urgent_batch_transfer_with_dicomweb_server(
     run_worker_once()
 
     # Assert
-    expect(poll(page.locator('dl:has-text("Success")'))).to_be_visible()
+    expect(poll_locator(page.locator('dl:has-text("Success")'))).to_be_visible()

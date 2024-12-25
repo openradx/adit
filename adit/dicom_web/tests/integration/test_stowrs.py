@@ -1,5 +1,5 @@
 import pytest
-from adit_radis_shared.common.utils.testing import ChannelsLiveServer
+from adit_radis_shared.common.utils.testing_helpers import ChannelsLiveServer
 from pydicom import Dataset
 from pytest_django.live_server_helper import LiveServer
 

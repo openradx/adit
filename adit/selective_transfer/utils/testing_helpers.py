@@ -1,5 +1,5 @@
 from adit_radis_shared.accounts.factories import GroupFactory
-from adit_radis_shared.common.utils.auth_utils import add_permission
+from adit_radis_shared.common.utils.testing_helpers import add_permission
 from django.contrib.auth.models import Group
 
 

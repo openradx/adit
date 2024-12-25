@@ -3,7 +3,7 @@ from unittest.mock import create_autospec
 
 import pandas as pd
 from adit_radis_shared.accounts.factories import GroupFactory
-from adit_radis_shared.common.utils.auth_utils import add_permission
+from adit_radis_shared.common.utils.testing_helpers import add_permission
 from django.core.files import File
 from django.core.files.uploadedfile import SimpleUploadedFile
 

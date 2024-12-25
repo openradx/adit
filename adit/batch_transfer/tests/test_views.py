@@ -1,6 +1,6 @@
 import pytest
 from adit_radis_shared.accounts.factories import UserFactory
-from adit_radis_shared.common.utils.auth_utils import add_user_to_group
+from adit_radis_shared.common.utils.testing_helpers import add_user_to_group
 from django.conf import LazySettings
 from django.test import Client
 from django.urls import reverse

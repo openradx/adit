@@ -1,8 +1,11 @@
 import pytest
-from adit_radis_shared.accounts.models import User
-from adit_radis_shared.common.utils.auth_utils import add_permission, add_user_to_group
-from adit_radis_shared.common.utils.testing import ChannelsLiveServer
-from adit_radis_shared.common.utils.worker_utils import run_worker_once
+from adit_radis_shared.common.utils.testing_helpers import (
+    ChannelsLiveServer,
+    add_permission,
+    add_user_to_group,
+    create_and_login_example_user,
+    run_worker_once,
+)
 from playwright.sync_api import Page, expect
 
 from adit.core.utils.auth_utils import grant_access
@@ -14,10 +17,10 @@ from adit.selective_transfer.utils.testing_helpers import create_selective_trans
 @pytest.mark.integration
 @pytest.mark.django_db(transaction=True)
 def test_unpseudonymized_urgent_selective_transfer_with_dimse_server(
-    page: Page, channels_live_server: ChannelsLiveServer, create_and_login_user
+    page: Page, channels_live_server: ChannelsLiveServer
 ):
     # Arrange
-    user: User = create_and_login_user(channels_live_server.url)
+    user = create_and_login_example_user(page, channels_live_server.url)
     group = create_selective_transfer_group()
     add_user_to_group(user, group)
     add_permission(group, SelectiveTransferJob, "can_process_urgently")
@@ -49,10 +52,10 @@ def test_unpseudonymized_urgent_selective_transfer_with_dimse_server(
 @pytest.mark.integration
 @pytest.mark.django_db(transaction=True)
 def test_unpseudonymized_urgent_selective_transfer_with_dicomweb_server(
-    page: Page, channels_live_server: ChannelsLiveServer, create_and_login_user
+    page: Page, channels_live_server: ChannelsLiveServer
 ):
     # Arrange
-    user: User = create_and_login_user(channels_live_server.url)
+    user = create_and_login_example_user(page, channels_live_server.url)
     group = create_selective_transfer_group()
     add_user_to_group(user, group)
     add_permission(group, SelectiveTransferJob, "can_process_urgently")

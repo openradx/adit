@@ -1,11 +1,13 @@
-from typing import Callable
-
 import pandas as pd
 import pytest
-from adit_radis_shared.accounts.models import User
-from adit_radis_shared.common.utils.auth_utils import add_permission, add_user_to_group
-from adit_radis_shared.common.utils.worker_utils import run_worker_once
-from playwright.sync_api import Locator, Page, expect
+from adit_radis_shared.common.utils.testing_helpers import (
+    add_permission,
+    add_user_to_group,
+    create_and_login_example_user,
+    poll_locator,
+    run_worker_once,
+)
+from playwright.sync_api import Page, expect
 from pytest_django.live_server_helper import LiveServer
 
 from adit.batch_query.models import BatchQueryJob
@@ -20,9 +22,7 @@ from adit.core.utils.testing_helpers import (
 
 @pytest.mark.integration
 @pytest.mark.django_db(transaction=True)
-def test_urgent_batch_query_with_dimse_server(
-    page: Page, poll: Callable[[Locator], Locator], live_server: LiveServer, create_and_login_user
-):
+def test_urgent_batch_query_with_dimse_server(page: Page, live_server: LiveServer):
     # Arrange
     df = pd.DataFrame(
         [["1005", "0062115904"]],
@@ -30,7 +30,7 @@ def test_urgent_batch_query_with_dimse_server(
     )
     batch_file = create_excel_file(df, "batch_file.xlsx")
 
-    user: User = create_and_login_user(live_server.url)
+    user = create_and_login_example_user(page, live_server.url)
     group = create_batch_query_group()
     add_user_to_group(user, group)
     add_permission(group, BatchQueryJob, "can_process_urgently")
@@ -51,14 +51,12 @@ def test_urgent_batch_query_with_dimse_server(
     run_worker_once()
 
     # Assert
-    expect(poll(page.locator('dl:has-text("Success")'))).to_be_visible()
+    expect(poll_locator(page.locator('dl:has-text("Success")'))).to_be_visible()
 
 
 @pytest.mark.integration
 @pytest.mark.django_db(transaction=True)
-def test_urgent_batch_query_with_dicomweb_server(
-    page: Page, poll: Callable[[Locator], Locator], live_server: LiveServer, create_and_login_user
-):
+def test_urgent_batch_query_with_dicomweb_server(page: Page, live_server: LiveServer):
     # Arrange
     df = pd.DataFrame(
         [["1005", "0062115904"]],
@@ -66,7 +64,7 @@ def test_urgent_batch_query_with_dicomweb_server(
     )
     batch_file = create_excel_file(df, "batch_file.xlsx")
 
-    user: User = create_and_login_user(live_server.url)
+    user = create_and_login_example_user(page, live_server.url)
     group = create_batch_query_group()
     add_user_to_group(user, group)
     add_permission(group, BatchQueryJob, "can_process_urgently")
@@ -87,4 +85,4 @@ def test_urgent_batch_query_with_dicomweb_server(
     run_worker_once()
 
     # Assert
-    expect(poll(page.locator('dl:has-text("Success")'))).to_be_visible()
+    expect(poll_locator(page.locator('dl:has-text("Success")'))).to_be_visible()

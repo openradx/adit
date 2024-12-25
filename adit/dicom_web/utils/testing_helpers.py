@@ -1,5 +1,5 @@
 from adit_radis_shared.accounts.factories import GroupFactory, UserFactory
-from adit_radis_shared.common.utils.auth_utils import add_permission, add_user_to_group
+from adit_radis_shared.common.utils.testing_helpers import add_permission, add_user_to_group
 from adit_radis_shared.token_authentication.models import Token
 
 

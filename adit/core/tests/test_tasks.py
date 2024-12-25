@@ -1,5 +1,5 @@
 import pytest
-from adit_radis_shared.common.utils.worker_utils import run_worker_once
+from adit_radis_shared.common.utils.testing_helpers import run_worker_once
 from pytest_mock import MockerFixture
 
 from adit.core.errors import RetriableDicomError
