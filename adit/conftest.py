@@ -1,5 +1,4 @@
 import nest_asyncio
-from faker import Faker
 
 pytest_plugins = ["adit_radis_shared.pytest_fixtures"]
 
@@ -12,6 +11,3 @@ def pytest_configure():
     # https://github.com/pytest-dev/pytest-asyncio/issues/543
     # https://github.com/microsoft/playwright-pytest/issues/167
     nest_asyncio.apply()
-
-
-fake = Faker()

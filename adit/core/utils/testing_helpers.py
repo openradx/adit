@@ -1,23 +1,105 @@
 import io
 import os
-from typing import Iterable
+from typing import Any, Iterable
+from unittest.mock import create_autospec
 
 import pandas as pd
+from adit_radis_shared.accounts.factories import GroupFactory
+from adit_radis_shared.common.utils.auth_utils import add_permission
 from dicomweb_client import DICOMwebClient
 from django.conf import settings
 from django.core.management import call_command
-from faker import Faker
 from playwright.sync_api import FilePayload
 from pydicom import Dataset
+from pynetdicom.association import Association
+from pynetdicom.status import Status
 
 from adit.core.factories import (
     DicomServerFactory,
     DicomWebServerFactory,
 )
 from adit.core.models import DicomServer
+from adit.core.utils.dicom_dataset import ResultDataset
+from adit.core.utils.dicom_operator import DicomOperator
 from adit.core.utils.dicom_utils import read_dataset
 
-fake = Faker()
+Response = tuple[Dataset, Dataset | None]
+
+
+class DicomTestHelper:
+    @staticmethod
+    def create_dataset_from_dict(data: dict[str, Any]) -> Dataset:
+        ds = Dataset()
+        for i in data:
+            setattr(ds, i, data[i])
+        return ds
+
+    @staticmethod
+    def create_successful_c_find_responses(data_dicts: list[dict[str, Any]]) -> Iterable[Response]:
+        responses: list[tuple[Dataset, Dataset | None]] = []
+        for data_dict in data_dicts:
+            identifier = DicomTestHelper.create_dataset_from_dict(data_dict)
+            pending_status = Dataset()
+            pending_status.Status = Status.PENDING
+            responses.append((pending_status, identifier))
+
+        success_status = Dataset()
+        success_status.Status = Status.SUCCESS
+        responses.append((success_status, None))
+
+        return iter(responses)
+
+    @staticmethod
+    def create_successful_c_get_response() -> Iterable[Response]:
+        responses: list[Response] = []
+        success_status = Dataset()
+        success_status.Status = Status.SUCCESS
+        responses.append((success_status, None))
+        return iter(responses)
+
+    @staticmethod
+    def create_successful_c_move_response() -> Iterable[Response]:
+        return DicomTestHelper.create_successful_c_get_response()
+
+    @staticmethod
+    def create_successful_c_store_response() -> Dataset:
+        success_status = Dataset()
+        success_status.Status = Status.SUCCESS
+        return success_status
+
+
+def create_association_mock() -> Association:
+    assoc = create_autospec(Association)
+    assoc.is_established = True
+    return assoc
+
+
+def create_dicom_operator() -> DicomOperator:
+    server = DicomServerFactory.create()
+    return DicomOperator(server)
+
+
+def create_example_transfer_group():
+    group = GroupFactory.create(name="Radiologists")
+    add_permission(group, "example_app", "add_exampletransferjob")
+    add_permission(group, "example_app", "view_exampletransferjob")
+    return group
+
+
+def create_resources(transfer_task):
+    ds = Dataset()
+    ds.PatientID = transfer_task.patient_id
+    patient = ResultDataset(ds)
+
+    ds = Dataset()
+    ds.PatientID = transfer_task.patient_id
+    ds.StudyInstanceUID = transfer_task.study_uid
+    ds.StudyDate = "20190923"
+    ds.StudyTime = "080000"
+    ds.ModalitiesInStudy = ["CT", "SR"]
+    study = ResultDataset(ds)
+
+    return patient, study
 
 
 def setup_dimse_orthancs() -> tuple[DicomServer, DicomServer]:
