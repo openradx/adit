@@ -4,7 +4,6 @@ from adit_radis_shared.common.utils.testing_helpers import (
     add_permission,
     add_user_to_group,
     create_and_login_example_user,
-    poll_locator,
     run_worker_once,
 )
 from playwright.sync_api import Page, expect
@@ -54,9 +53,10 @@ def test_unpseudonymized_urgent_batch_transfer_with_dimse_server(
     page.locator('input:has-text("Create job")').click()
 
     run_worker_once()
+    page.reload()
 
     # Assert
-    expect(poll_locator(page.locator('dl:has-text("Success")'))).to_be_visible()
+    expect(page.locator('dl:has-text("Success")')).to_be_visible()
 
 
 @pytest.mark.integration
@@ -93,6 +93,7 @@ def test_unpseudonymized_urgent_batch_transfer_with_dicomweb_server(
     page.locator('input:has-text("Create job")').click()
 
     run_worker_once()
+    page.reload()
 
     # Assert
-    expect(poll_locator(page.locator('dl:has-text("Success")'))).to_be_visible()
+    expect(page.locator('dl:has-text("Success")')).to_be_visible()
