@@ -1,53 +1,21 @@
-from io import BytesIO
-
-import pandas as pd
 import pytest
 from adit_radis_shared.accounts.factories import UserFactory
 from adit_radis_shared.common.utils.auth_utils import add_user_to_group
-from django.core.files.uploadedfile import SimpleUploadedFile
+from django.conf import LazySettings
+from django.test import Client
 from django.urls import reverse
 from procrastinate.contrib.django.models import ProcrastinateJob
 from pytest_django.asserts import assertTemplateUsed
 
-from adit.batch_transfer.utils.testing_helpers import create_batch_transfer_group
-from adit.core.factories import DicomServerFactory
+from adit.batch_transfer.utils.testing_helpers import create_batch_transfer_group, create_form_data
 from adit.core.models import DicomServer
 from adit.core.utils.auth_utils import grant_access
 
 from ..models import BatchTransferJob
 
 
-# Somehow the form data must be always generated from scratch (maybe cause of the
-# SimpleUploadedFile) otherwise tests fail.
-@pytest.fixture
-def form_data(db):
-    buffer = BytesIO()
-    data = pd.DataFrame(
-        [
-            ["1001", "1.2.840.113845.11.1000000001951524609.20200705182951.2689481", "WSOHMP4N"],
-            ["1002", "1.2.840.113845.11.1000000001951524609.20200705170836.2689469", "C2XJQ2AR"],
-            ["1003", "1.2.840.113845.11.1000000001951524609.20200705172608.2689471", "KRS8CZ3S"],
-        ],
-        columns=["PatientID", "StudyInstanceUID", "Pseudonym"],  # type: ignore
-    )
-    data.to_excel(buffer, index=False)  # type: ignore
-
-    return {
-        "source": DicomServerFactory.create().pk,
-        "destination": DicomServerFactory.create().pk,
-        "project_name": "Apollo project",
-        "project_description": "Fly to the moon",
-        "ethics_application_id": "12345",
-        "batch_file": SimpleUploadedFile(
-            name="sample_sheet.xlsx",
-            content=buffer.getvalue(),
-            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        ),
-    }
-
-
 @pytest.mark.django_db
-def test_user_must_be_logged_in_to_access_view(client):
+def test_user_must_be_logged_in_to_access_view(client: Client):
     response = client.get(reverse("batch_transfer_job_create"))
     assert response.status_code == 302
     response = client.post(reverse("batch_transfer_job_create"))
@@ -55,7 +23,7 @@ def test_user_must_be_logged_in_to_access_view(client):
 
 
 @pytest.mark.django_db
-def test_user_must_have_permission_to_access_view(client):
+def test_user_must_have_permission_to_access_view(client: Client):
     user = UserFactory.create()
     client.force_login(user)
     response = client.get(reverse("batch_transfer_job_create"))
@@ -65,7 +33,7 @@ def test_user_must_have_permission_to_access_view(client):
 
 
 @pytest.mark.django_db
-def test_logged_in_user_with_permission_can_access_form(client):
+def test_logged_in_user_with_permission_can_access_form(client: Client):
     user = UserFactory.create()
     group = create_batch_transfer_group()
     add_user_to_group(user, group)
@@ -75,13 +43,15 @@ def test_logged_in_user_with_permission_can_access_form(client):
     assertTemplateUsed(response, "batch_transfer/batch_transfer_job_form.html")
 
 
-def test_batch_job_created_and_enqueued_with_auto_verify(client, settings, form_data):
+@pytest.mark.django_db
+def test_batch_job_created_and_enqueued_with_auto_verify(client: Client, settings: LazySettings):
     settings.START_BATCH_TRANSFER_UNVERIFIED = True
 
     user = UserFactory.create()
     group = create_batch_transfer_group()
     add_user_to_group(user, group)
 
+    form_data = create_form_data()
     source_server = DicomServer.objects.get(pk=form_data["source"])
     destination_server = DicomServer.objects.get(pk=form_data["destination"])
     grant_access(group, source_server, source=True)
@@ -95,13 +65,17 @@ def test_batch_job_created_and_enqueued_with_auto_verify(client, settings, form_
     assert ProcrastinateJob.objects.count() == 3
 
 
-def test_batch_job_created_and_not_enqueued_without_auto_verify(client, settings, form_data):
+@pytest.mark.django_db
+def test_batch_job_created_and_not_enqueued_without_auto_verify(
+    client: Client, settings: LazySettings
+):
     settings.START_BATCH_TRANSFER_UNVERIFIED = False
 
     user = UserFactory.create()
     group = create_batch_transfer_group()
     add_user_to_group(user, group)
 
+    form_data = create_form_data()
     source_server = DicomServer.objects.get(pk=form_data["source"])
     destination_server = DicomServer.objects.get(pk=form_data["destination"])
     grant_access(group, source_server, source=True)
@@ -115,11 +89,13 @@ def test_batch_job_created_and_not_enqueued_without_auto_verify(client, settings
     assert ProcrastinateJob.objects.count() == 0
 
 
-def test_job_cant_be_created_with_missing_fields(client, form_data):
+@pytest.mark.django_db
+def test_job_cant_be_created_with_missing_fields(client: Client):
     user = UserFactory.create()
     group = create_batch_transfer_group()
     add_user_to_group(user, group)
     client.force_login(user)
+    form_data = create_form_data()
     for key_to_exclude in form_data:
         invalid_form_data = form_data.copy()
         del invalid_form_data[key_to_exclude]
