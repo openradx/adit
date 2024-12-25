@@ -103,6 +103,7 @@ filterwarnings = [
     'ignore:.*Use timezone-aware objects to represent datetimes in UTC.*:DeprecationWarning',
 ]
 timeout = 60
+asyncio_default_fixture_loop_scope = "function"
 
 [tool.coverage.run]
 branch = true
