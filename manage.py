@@ -4,6 +4,10 @@
 import os
 import sys
 
+from dotenv import load_dotenv
+
+load_dotenv()
+
 
 def initialize_debugger():
     """Enable remote debugging."""
