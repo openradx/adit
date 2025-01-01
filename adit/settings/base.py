@@ -20,8 +20,8 @@ from pydicom import config as pydicom_config
 # set using the `.env` file (see `manage.py`). But some variables are only used in the Docker
 # compose setup, so we need to provide defaults here.
 env = environ.Env()
-llamacpp_dev_port = env.int("LLAMACPP_DEV_PORT")
-postgres_dev_port = env.int("POSTGRES_DEV_PORT")
+llamacpp_dev_port = env.int("LLAMACPP_DEV_PORT", default=8080)  # type: ignore
+postgres_dev_port = env.int("POSTGRES_DEV_PORT", default=5432)  # type: ignore
 env = environ.Env(
     DATABASE_URL=(str, f"postgres://postgres:postgres@localhost:{postgres_dev_port}/postgres"),
     DBBACKUP_STORAGE_LOCATION=(str, "/temp/backups-radis"),
