@@ -64,6 +64,8 @@ services:
   postgres:
     environment:
       POSTGRES_PASSWORD: postgres
+    ports:
+      - "${POSTGRES_DEV_PORT:-5432}:5432"
 
 volumes:
   vscode-server:

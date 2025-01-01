@@ -16,7 +16,17 @@ from typing import Literal
 import environ
 from pydicom import config as pydicom_config
 
+# During development and calling `manage.py` from the host most environment variables are
+# set using the `.env` file (see `manage.py`). But some variables are only used in the Docker
+# compose setup, so we need to provide defaults here.
 env = environ.Env()
+llamacpp_dev_port = env.int("LLAMACPP_DEV_PORT")
+postgres_dev_port = env.int("POSTGRES_DEV_PORT")
+env = environ.Env(
+    DATABASE_URL=(str, f"postgres://postgres:postgres@localhost:{postgres_dev_port}/postgres"),
+    DBBACKUP_STORAGE_LOCATION=(str, "/temp/backups-radis"),
+    LLAMACPP_URL=(str, f"http://localhost:{llamacpp_dev_port}"),
+)
 
 # The base directory of the project (the root of the repository)
 BASE_DIR = Path(__file__).resolve(strict=True).parent.parent.parent
