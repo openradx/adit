@@ -6,7 +6,7 @@ x-app: &default-app
     - postgres
   environment:
     CALLING_AE_TITLE: ${CALLING_AE_TITLE:?}
-    DATABASE_URL: "psql://postgres:postgres@postgres.local:5432/postgres"
+    DATABASE_URL: "postgres://postgres:postgres@postgres.local:5432/postgres"
     DBBACKUP_STORAGE_LOCATION: "/backups"
     DJANGO_ADMIN_EMAIL: ${DJANGO_ADMIN_EMAIL:?}
     DJANGO_ADMIN_FULL_NAME: ${DJANGO_ADMIN_FULL_NAME:?}
@@ -63,7 +63,7 @@ services:
   receiver:
     <<: *default-app
     hostname: receiver.local
-  
+
   postgres:
     image: postgres:17
     hostname: postgres.local
