@@ -182,7 +182,7 @@ class SelectiveTransferConsumer(AsyncJsonWebsocketConsumer):
         except (DicomError, RetriableDicomError):
             form_error_response = await self._build_form_error_response(
                 form,
-                "Something went wrong at your requested source."
+                "Something went wrong at your requested source. "
                 "A Dicom Error has occured at the source.",
             )
             await self.send(form_error_response)

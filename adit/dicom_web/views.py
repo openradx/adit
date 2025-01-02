@@ -70,7 +70,7 @@ class QueryAPIView(WebDicomAPIView):
         for key, value in request.GET.items():
             assert isinstance(value, str)
             if key == "includefield":
-                query[value] = ""
+                continue
             else:
                 query[key] = value
 
@@ -82,6 +82,7 @@ class QueryAPIView(WebDicomAPIView):
             limit_results = int(query.pop("limit"))
 
         query_ds = QueryDataset.from_dict(query)
+        query_ds.ensure_elements(*request.GET.getlist('includefield'))
         return query_ds, limit_results
 
 
