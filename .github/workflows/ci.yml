@@ -1,4 +1,4 @@
-name: CI
+name: Run Continuous Integration
 on:
   push:
     branches: [main]
