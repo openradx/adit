@@ -10,7 +10,7 @@ x-app: &default-app
     FORCE_DEBUG_TOOLBAR: ${FORCE_DEBUG_TOOLBAR:-true}
     REMOTE_DEBUGGING_ENABLED: ${REMOTE_DEBUGGING_ENABLED:-false}
     REMOTE_DEBUGGING_PORT: ${REMOTE_DEBUGGING_PORT:-5678}
-  pull_policy: never
+  pull_policy: build
 
 services:
   init:
