@@ -19,6 +19,8 @@ STORAGES = {
     },
 }
 
+SECURE_SSL_REDIRECT = True
+
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 EMAIL_TIMEOUT = 60
 email_config = env.email_url("DJANGO_EMAIL_URL")
@@ -28,5 +30,3 @@ EMAIL_HOST_USER = email_config.get("EMAIL_HOST_USER")
 EMAIL_HOST_PASSWORD = email_config.get("EMAIL_HOST_PASSWORD")
 EMAIL_USE_TLS = email_config.get("EMAIL_USE_TLS", False)
 EMAIL_USE_SSL = email_config.get("EMAIL_USE_SSL", False)
-
-SECURE_SSL_REDIRECT = env.bool("DISABLE_HTTP", False)  # type: ignore

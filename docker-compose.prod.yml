@@ -2,8 +2,8 @@ x-app: &default-app
   image: https://ghcr.io/openradx/adit:latest
   volumes:
     - web_data:/var/www/web
-    - ${SSL_CERT_FILE:?}:/etc/web/ssl/cert.pem
-    - ${SSL_KEY_FILE:?}:/etc/web/ssl/key.pem
+    - ${SSL_SERVER_CERT_FILE:?}:/etc/web/ssl/cert.pem
+    - ${SSL_SERVER_KEY_FILE:?}:/etc/web/ssl/key.pem
   environment:
     DJANGO_EMAIL_URL: ${DJANGO_EMAIL_URL:?}
     DJANGO_SETTINGS_MODULE: "adit.settings.production"
