@@ -400,6 +400,10 @@ ETHICS_COMMITTEE_APPROVAL_REQUIRED = True
 DEFAULT_BOUNDARY = "adit-boundary"
 ERROR_MESSAGE = "Processing your DicomWeb request failed."
 
+# If enabled, series are placed into separate folders when downloading a study.
+# Otherwise all images of the whole study are placed into folder.
+CREATE_SERIES_SUB_FOLDERS = True
+
 # Elements to keep during pseudonymization
 SKIP_ELEMENTS_ANONYMIZATION = [
     "AcquisitionDate",

@@ -19,7 +19,7 @@ from .types import DicomLogEntry, ProcessingResult
 from .utils.dicom_dataset import QueryDataset, ResultDataset
 from .utils.dicom_operator import DicomOperator
 from .utils.dicom_utils import write_dataset
-from .utils.sanitize import sanitize_dirname
+from .utils.sanitize import sanitize_filename
 
 logger = logging.getLogger(__name__)
 
@@ -95,7 +95,7 @@ class TransferTaskProcessor(DicomTaskProcessor):
 
     def _transfer_to_server(self) -> None:
         with tempfile.TemporaryDirectory(prefix="adit_") as tmpdir:
-            patient_folder = self._download_dicoms(Path(tmpdir))
+            patient_folder = self._download_to_folder(Path(tmpdir))
             assert self.dest_operator
             self.dest_operator.upload_instances(patient_folder)
 
@@ -128,14 +128,14 @@ class TransferTaskProcessor(DicomTaskProcessor):
                 _add_to_archive(archive_path, archive_password, readme_path)
 
         with tempfile.TemporaryDirectory(prefix="adit_") as tmpdir:
-            patient_folder = self._download_dicoms(Path(tmpdir))
+            patient_folder = self._download_to_folder(Path(tmpdir))
             _add_to_archive(archive_path, archive_password, patient_folder)
 
     def _transfer_to_folder(self) -> None:
         assert self.transfer_task.destination.node_type == DicomNode.NodeType.FOLDER
         dicom_folder = Path(self.transfer_task.destination.dicomfolder.path)
         download_folder = dicom_folder / self._create_destination_name()
-        self._download_dicoms(download_folder)
+        self._download_to_folder(download_folder)
 
     def _create_destination_name(self) -> str:
         transfer_job = self.transfer_task.job
@@ -144,18 +144,18 @@ class TransferTaskProcessor(DicomTaskProcessor):
         name += str(transfer_job.pk) + "_"
         name += transfer_job.created.strftime("%Y%m%d") + "_"
         name += transfer_job.owner.username
-        return sanitize_dirname(name)
+        return sanitize_filename(name)
 
-    def _download_dicoms(
+    def _download_to_folder(
         self,
         download_folder: Path,
     ) -> Path:
         pseudonym = self.transfer_task.pseudonym
         if pseudonym:
-            patient_folder = download_folder / sanitize_dirname(pseudonym)
+            patient_folder = download_folder / sanitize_filename(pseudonym)
         else:
             pseudonym = None
-            patient_folder = download_folder / sanitize_dirname(self.transfer_task.patient_id)
+            patient_folder = download_folder / sanitize_filename(self.transfer_task.patient_id)
 
         study = self._find_study()
         modalities = study.ModalitiesInStudy
@@ -298,10 +298,16 @@ class TransferTaskProcessor(DicomTaskProcessor):
 
             modifier(ds)
 
-            folder_path = Path(study_folder)
-            file_name = f"{ds.SOPInstanceUID}.dcm"
-            file_path = folder_path / file_name
-            folder_path.mkdir(parents=True, exist_ok=True)
+            final_folder: Path
+            if settings.CREATE_SERIES_SUB_FOLDERS:
+                series_folder_name = sanitize_filename(f"{ds.SeriesNumber}-{ds.SeriesDescription}")
+                final_folder = study_folder / series_folder_name
+            else:
+                final_folder = study_folder
+
+            final_folder.mkdir(parents=True, exist_ok=True)
+            file_name = sanitize_filename(f"{ds.SOPInstanceUID}.dcm")
+            file_path = final_folder / file_name
             write_dataset(ds, file_path)
 
         if series_uids:

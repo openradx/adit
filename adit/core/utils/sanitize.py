@@ -1,13 +1,10 @@
 import re
 
 
-def sanitize_dirname(dirname):
+def sanitize_filename(name):
     """Windows can't handle some file and folder names so we have to sanitize them."""
-    dirname = dirname.strip()
-    dirname = re.sub(r"(\<|\>|\:|\"|\/|\\|\||\?|\*)", "", dirname)
-    dirname = re.sub(r"(\.+)$", "", dirname)
-    return dirname
-
-
-def sanitize_filename(filename):
-    return sanitize_dirname(filename)
+    sanitized_name = re.sub(r'[<>:"/\\|?*\x00-\x1F]', "_", name)
+    sanitized_name = sanitized_name.strip()
+    if not sanitized_name:
+        sanitized_name = "default"
+    return sanitized_name
