@@ -20,6 +20,7 @@ from adit.core.utils.testing_helpers import (
 
 
 @pytest.mark.integration
+@pytest.mark.order("last")
 @pytest.mark.django_db(transaction=True)
 def test_urgent_batch_query_with_dimse_server(page: Page, live_server: LiveServer):
     # Arrange
@@ -55,6 +56,7 @@ def test_urgent_batch_query_with_dimse_server(page: Page, live_server: LiveServe
 
 
 @pytest.mark.integration
+@pytest.mark.order("last")
 @pytest.mark.django_db(transaction=True)
 def test_urgent_batch_query_with_dicomweb_server(page: Page, live_server: LiveServer):
     # Arrange

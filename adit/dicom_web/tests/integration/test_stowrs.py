@@ -14,6 +14,7 @@ from adit.dicom_web.utils.testing_helpers import create_user_with_dicom_web_grou
 
 
 @pytest.mark.integration
+@pytest.mark.order("last")
 @pytest.mark.django_db(transaction=True)
 def test_single_stow(live_server: LiveServer):
     setup_dimse_orthancs()
@@ -41,6 +42,7 @@ def test_single_stow(live_server: LiveServer):
 
 
 @pytest.mark.integration
+@pytest.mark.order("last")
 @pytest.mark.django_db(transaction=True)
 def test_chunked_stow(channels_live_server: ChannelsLiveServer):
     # When sending multiple DICOM files at once then DICOMwebClient uses a chunked transfer

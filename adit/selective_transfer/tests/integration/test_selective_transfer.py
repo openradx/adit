@@ -15,6 +15,7 @@ from adit.selective_transfer.utils.testing_helpers import create_selective_trans
 
 
 @pytest.mark.integration
+@pytest.mark.order("last")
 @pytest.mark.django_db(transaction=True)
 def test_unpseudonymized_urgent_selective_transfer_with_dimse_server(
     page: Page, channels_live_server: ChannelsLiveServer
@@ -50,6 +51,7 @@ def test_unpseudonymized_urgent_selective_transfer_with_dimse_server(
 
 
 @pytest.mark.integration
+@pytest.mark.order("last")
 @pytest.mark.django_db(transaction=True)
 def test_unpseudonymized_urgent_selective_transfer_with_dicomweb_server(
     page: Page, channels_live_server: ChannelsLiveServer
