@@ -13,20 +13,13 @@ https://docs.djangoproject.com/en/3.0/ref/settings/
 from pathlib import Path
 from typing import Literal
 
-import environ
+from environs import env
 from pydicom import config as pydicom_config
 
-# During development and calling `manage.py` from the host most environment variables are
-# set using the `.env` file (see `manage.py`). But some variables are only used in the Docker
-# compose setup, so we need to provide defaults here.
-env = environ.Env()
-llamacpp_dev_port = env.int("LLAMACPP_DEV_PORT", default=8080)  # type: ignore
-postgres_dev_port = env.int("POSTGRES_DEV_PORT", default=5432)  # type: ignore
-env = environ.Env(
-    DATABASE_URL=(str, f"postgres://postgres:postgres@localhost:{postgres_dev_port}/postgres"),
-    DBBACKUP_STORAGE_LOCATION=(str, "/temp/backups-radis"),
-    LLAMACPP_URL=(str, f"http://localhost:{llamacpp_dev_port}"),
-)
+# During development and calling `manage.py` from the host we have to load the .env file manually.
+# Some env variables will still need a default value, as those are only set in the compose file.
+if not env.bool("IS_DOCKER_CONTAINER", default=False):
+    env.read_env()
 
 # The base directory of the project (the root of the repository)
 BASE_DIR = Path(__file__).resolve(strict=True).parent.parent.parent
@@ -35,7 +28,7 @@ BASE_DIR = Path(__file__).resolve(strict=True).parent.parent.parent
 SOURCE_FOLDERS = [BASE_DIR / "adit"]
 
 # Fetch version from the environment which is passed through from the latest git version tag
-PROJECT_VERSION = env.str("PROJECT_VERSION", default="vX.Y.Z")  # type: ignore
+PROJECT_VERSION = env.str("PROJECT_VERSION", default="vX.Y.Z")
 
 # Needed by sites framework
 SITE_ID = 1
@@ -133,8 +126,11 @@ ASGI_APPLICATION = "adit.asgi.application"
 # This seems to be important for Cloud IDEs as CookieStorage does not work there.
 MESSAGE_STORAGE = "django.contrib.messages.storage.session.SessionStorage"
 
-# Loads the DB setup from the DATABASE_URL environment variable.
-DATABASES = {"default": env.db()}
+# DATABASE_URL is only set in the compose file. For local development on the host
+# we use the port from the .env file directly.
+postgres_dev_port = env.int("POSTGRES_DEV_PORT", default=5432)
+database_url = f"postgres://postgres:postgres@localhost:{postgres_dev_port}/postgres"
+DATABASES = {"default": env.dj_db_url("DATABASE_URL", default=database_url)}
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
@@ -294,7 +290,9 @@ TOKEN_AUTHENTICATION_SALT = env.str("TOKEN_AUTHENTICATION_SALT")
 
 # django-dbbackup
 DBBACKUP_STORAGE = "django.core.files.storage.FileSystemStorage"
-DBBACKUP_STORAGE_OPTIONS = {"location": env.str("DBBACKUP_STORAGE_LOCATION")}
+DBBACKUP_STORAGE_OPTIONS = {
+    "location": env.str("DBBACKUP_STORAGE_LOCATION", default="/tmp/backups-adit")
+}
 DBBACKUP_CLEANUP_KEEP = 30
 
 # Orthanc servers are integrated in ADIT by using a reverse proxy (django-revproxy).
