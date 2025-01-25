@@ -3,6 +3,8 @@ from .base import env
 
 DEBUG = True
 
+ENVIRONMENT = "development"
+
 INTERNAL_IPS = env.list("DJANGO_INTERNAL_IPS")
 
 REMOTE_DEBUGGING_ENABLED = env.bool("REMOTE_DEBUGGING_ENABLED")
