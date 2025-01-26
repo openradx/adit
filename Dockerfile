@@ -62,7 +62,7 @@ WORKDIR $PYSETUP_PATH
 COPY poetry.lock pyproject.toml ./
 
 # install runtime deps - uses $POETRY_VIRTUALENVS_IN_PROJECT internally
-RUN poetry install --without dev
+RUN poetry install --without dev --no-root
 
 
 # `development` image is used during development / testing
@@ -75,7 +75,7 @@ COPY --from=builder-base $POETRY_HOME $POETRY_HOME
 COPY --from=builder-base $PYSETUP_PATH $PYSETUP_PATH
 
 # quicker install as runtime deps are already installed
-RUN poetry install
+RUN poetry install --no-root
 
 # Install requirements for end-to-end testing
 RUN playwright install --with-deps chromium
