@@ -12,7 +12,7 @@ from adit.core.utils.testing_helpers import (
 from adit.dicom_web.utils.testing_helpers import create_user_with_dicom_web_group_and_token
 
 
-@pytest.mark.integration
+@pytest.mark.acceptance
 @pytest.mark.order("last")
 @pytest.mark.django_db(transaction=True)
 def test_retrieve_study(channels_live_server: ChannelsLiveServer):
@@ -30,16 +30,16 @@ def test_retrieve_study(channels_live_server: ChannelsLiveServer):
     results = orthanc1_client.retrieve_study(study_uid)
     series_instance_uids = set()
     for result in results:
-        assert (
-            result.StudyInstanceUID == study_uid
-        ), "The WADO request on study level returned series instances of the wrong study."
+        assert result.StudyInstanceUID == study_uid, (
+            "The WADO request on study level returned series instances of the wrong study."
+        )
         series_instance_uids.add(result.SeriesInstanceUID)
     assert series_instance_uids == set(
         data_sheet[data_sheet["StudyInstanceUID"] == study_uid]["SeriesInstanceUID"]
     ), "The WADO request on study level did not return all associated series."
 
 
-@pytest.mark.integration
+@pytest.mark.acceptance
 @pytest.mark.order("last")
 @pytest.mark.django_db(transaction=True)
 def test_retrieve_study_metadata(channels_live_server: ChannelsLiveServer):
@@ -58,19 +58,19 @@ def test_retrieve_study_metadata(channels_live_server: ChannelsLiveServer):
     series_instance_uids = set()
     for result_json in results:
         result = pydicom.Dataset.from_json(result_json)
-        assert not hasattr(
-            result, "PixelData"
-        ), "The WADO metadata request on study level returned pixel data."
-        assert (
-            result.StudyInstanceUID == study_uid
-        ), "The WADO metadata request on study level returned series instances of the wrong study."
+        assert not hasattr(result, "PixelData"), (
+            "The WADO metadata request on study level returned pixel data."
+        )
+        assert result.StudyInstanceUID == study_uid, (
+            "The WADO metadata request on study level returned series instances of the wrong study."
+        )
         series_instance_uids.add(result.SeriesInstanceUID)
     assert series_instance_uids == set(
         data_sheet[data_sheet["StudyInstanceUID"] == study_uid]["SeriesInstanceUID"]
     ), "The WADO metadata request on study level did not return all associated series."
 
 
-@pytest.mark.integration
+@pytest.mark.acceptance
 @pytest.mark.order("last")
 @pytest.mark.django_db(transaction=True)
 def test_retrieve_series(channels_live_server: ChannelsLiveServer):
@@ -90,15 +90,15 @@ def test_retrieve_series(channels_live_server: ChannelsLiveServer):
 
     results = orthanc1_client.retrieve_series(study_uid, series_uid)
     for result in results:
-        assert (
-            result.StudyInstanceUID == study_uid
-        ), "The WADO request on study level returned instances of the wrong study."
-        assert (
-            result.SeriesInstanceUID == series_uid
-        ), "The WADO request on series level returned instances of the wrong series"
+        assert result.StudyInstanceUID == study_uid, (
+            "The WADO request on study level returned instances of the wrong study."
+        )
+        assert result.SeriesInstanceUID == series_uid, (
+            "The WADO request on series level returned instances of the wrong series"
+        )
 
 
-@pytest.mark.integration
+@pytest.mark.acceptance
 @pytest.mark.order("last")
 @pytest.mark.django_db(transaction=True)
 def test_retrieve_series_metadata(channels_live_server: ChannelsLiveServer):
@@ -119,12 +119,12 @@ def test_retrieve_series_metadata(channels_live_server: ChannelsLiveServer):
     results = orthanc1_client.retrieve_series_metadata(study_uid, series_uid)
     for result_json in results:
         result = pydicom.Dataset.from_json(result_json)
-        assert not hasattr(
-            result, "PixelData"
-        ), "The WADO metadata request on series level returned pixel data."
-        assert (
-            result.StudyInstanceUID == study_uid
-        ), "The WADO metadata request on series level returned instances of the wrong study."
-        assert (
-            result.SeriesInstanceUID == series_uid
-        ), "The WADO metadata request on series level returned instances of the wrong series"
+        assert not hasattr(result, "PixelData"), (
+            "The WADO metadata request on series level returned pixel data."
+        )
+        assert result.StudyInstanceUID == study_uid, (
+            "The WADO metadata request on series level returned instances of the wrong study."
+        )
+        assert result.SeriesInstanceUID == series_uid, (
+            "The WADO metadata request on series level returned instances of the wrong series"
+        )

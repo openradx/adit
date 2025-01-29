@@ -14,7 +14,7 @@ from adit.selective_transfer.models import SelectiveTransferJob
 from adit.selective_transfer.utils.testing_helpers import create_selective_transfer_group
 
 
-@pytest.mark.integration
+@pytest.mark.acceptance
 @pytest.mark.order("last")
 @pytest.mark.django_db(transaction=True)
 def test_unpseudonymized_urgent_selective_transfer_with_dimse_server(
@@ -50,7 +50,7 @@ def test_unpseudonymized_urgent_selective_transfer_with_dimse_server(
     expect(page.locator('dl:has-text("Success")')).to_be_visible()
 
 
-@pytest.mark.integration
+@pytest.mark.acceptance
 @pytest.mark.order("last")
 @pytest.mark.django_db(transaction=True)
 def test_unpseudonymized_urgent_selective_transfer_with_dicomweb_server(

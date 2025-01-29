@@ -4,16 +4,16 @@ from adit_radis_shared.accounts.factories import UserFactory
 from adit_radis_shared.common.utils.testing_helpers import add_user_to_group
 from pytest_mock import MockerFixture
 
-from adit.core.utils.testing_helpers import create_example_transfer_group, create_resources
-
-from ..factories import (
+from adit.core.factories import (
     DicomFolderFactory,
     DicomServerFactory,
 )
-from ..models import TransferJob, TransferTask
-from ..processors import TransferTaskProcessor
-from ..utils.auth_utils import grant_access
-from ..utils.dicom_operator import DicomOperator
+from adit.core.models import TransferJob, TransferTask
+from adit.core.processors import TransferTaskProcessor
+from adit.core.utils.auth_utils import grant_access
+from adit.core.utils.dicom_operator import DicomOperator
+from adit.core.utils.testing_helpers import create_example_transfer_group, create_resources
+
 from .example_app.factories import ExampleTransferJobFactory, ExampleTransferTaskFactory
 
 

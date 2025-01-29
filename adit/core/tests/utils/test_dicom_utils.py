@@ -1,6 +1,6 @@
 from datetime import date, datetime, time
 
-from ...utils.dicom_utils import (
+from adit.core.utils.dicom_utils import (
     convert_to_dicom_date,
     convert_to_dicom_datetime,
     convert_to_dicom_time,

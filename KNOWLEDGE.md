@@ -62,7 +62,7 @@ To make the proxy only available during building an image, but not when the
 container runs (in Compose as in Swarm this is never the case), then set proxy
 in config.json, but explicitly reset them in the env file. This seems to be
 necessary as Playwright doesn't respect the no_proxy setup and may lead to
-strange errors during integration testing.
+strange errors during acceptance testing.
 See also <https://docs.docker.com/network/proxy/#configure-the-docker-client>
 and <https://forums.docker.com/t/docker-swarm-mode-not-picking-up-proxy-configuration/132233/8?u=medihack>
 

@@ -7,11 +7,10 @@ from procrastinate.contrib.django.models import ProcrastinateJob
 from pytest_django.asserts import assertTemplateUsed
 from pytest_django.fixtures import SettingsWrapper
 
+from adit.batch_transfer.models import BatchTransferJob
 from adit.batch_transfer.utils.testing_helpers import create_batch_transfer_group, create_form_data
 from adit.core.models import DicomServer
 from adit.core.utils.auth_utils import grant_access
-
-from ..models import BatchTransferJob
 
 
 @pytest.mark.django_db

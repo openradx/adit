@@ -4,14 +4,13 @@ from adit_radis_shared.common.utils.testing_helpers import add_user_to_group
 from django.core.files import File
 from pytest_mock import MockerFixture
 
+from adit.batch_transfer.forms import BatchTransferJobForm
 from adit.batch_transfer.utils.testing_helpers import (
     create_batch_transfer_group,
     create_data_dict,
     create_file_dict,
 )
 from adit.core.utils.auth_utils import grant_access
-
-from ..forms import BatchTransferJobForm
 
 
 @pytest.mark.django_db

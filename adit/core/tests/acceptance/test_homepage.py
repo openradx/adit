@@ -5,7 +5,7 @@ from playwright.sync_api import Page, expect
 from pytest_django.live_server_helper import LiveServer
 
 
-@pytest.mark.integration
+@pytest.mark.acceptance
 @pytest.mark.order("last")
 @pytest.mark.django_db(transaction=True)
 def test_homepage_has_title(live_server: LiveServer, page: Page):

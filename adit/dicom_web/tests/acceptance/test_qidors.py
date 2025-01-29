@@ -13,7 +13,7 @@ from adit.core.utils.testing_helpers import (
 from adit.dicom_web.utils.testing_helpers import create_user_with_dicom_web_group_and_token
 
 
-@pytest.mark.integration
+@pytest.mark.acceptance
 @pytest.mark.order("last")
 @pytest.mark.django_db(transaction=True)
 def test_search_studies(live_server: LiveServer):
@@ -30,9 +30,9 @@ def test_search_studies(live_server: LiveServer):
     results_study_uids = set()
     for result_json in results:
         results_study_uids.add(pydicom.Dataset.from_json(result_json).StudyInstanceUID)
-    assert results_study_uids == set(
-        data_sheet["StudyInstanceUID"]
-    ), "Basic QIDO request on study level failed."
+    assert results_study_uids == set(data_sheet["StudyInstanceUID"]), (
+        "Basic QIDO request on study level failed."
+    )
 
     results = orthanc1_client.search_for_studies(search_filters={"PatientID": "1005"})
     results_study_uids = set()
@@ -43,7 +43,7 @@ def test_search_studies(live_server: LiveServer):
     ), "QIDO request with PatientID filter on study level failed."
 
 
-@pytest.mark.integration
+@pytest.mark.acceptance
 @pytest.mark.order("last")
 @pytest.mark.django_db(transaction=True)
 def test_search_series(live_server: LiveServer):
@@ -70,6 +70,6 @@ def test_search_series(live_server: LiveServer):
     for result_json in results:
         results_series_uids.append(pydicom.Dataset.from_json(result_json).SeriesInstanceUID)
     assert len(results_series_uids) == 1
-    assert (
-        results_series_uids[0] == list(data_sheet["SeriesInstanceUID"])[3]
-    ), "QIDO request with StudyInstanceUID and Modality filter on series level failed"
+    assert results_series_uids[0] == list(data_sheet["SeriesInstanceUID"])[3], (
+        "QIDO request with StudyInstanceUID and Modality filter on series level failed"
+    )

@@ -4,7 +4,8 @@ from django.test import Client
 from django.urls import reverse
 from procrastinate.contrib.django.models import ProcrastinateJob
 
-from ..models import DicomJob, DicomTask
+from adit.core.models import DicomJob, DicomTask
+
 from .example_app.factories import ExampleTransferJobFactory, ExampleTransferTaskFactory
 from .example_app.models import ExampleTransferJob, ExampleTransferTask
 
