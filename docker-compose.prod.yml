@@ -7,8 +7,8 @@ x-app: &default-app
   environment:
     DJANGO_EMAIL_URL: ${DJANGO_EMAIL_URL:?}
     DJANGO_SECURE_SSL_REDIRECT: ${DJANGO_SECURE_SSL_REDIRECT:-true}
-    DJANGO_SETTINGS_MODULE: "adit.settings.production"
-    DJANGO_STATIC_ROOT: "/var/www/web/static/"
+    DJANGO_SETTINGS_MODULE: adit.settings.production
+    DJANGO_STATIC_ROOT: /var/www/web/static/
     POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?}
 
 x-deploy: &deploy
@@ -40,8 +40,8 @@ services:
     build:
       target: production
     ports:
-      - "${WEB_HTTP_PORT:-80}:80"
-      - "${WEB_HTTPS_PORT:-443}:443"
+      - ${WEB_HTTP_PORT:-80}:80
+      - ${WEB_HTTPS_PORT:-443}:443
     command: >
       bash -c "
         wait-for-it -s init.local:8000 -t 300 && 
@@ -78,7 +78,7 @@ services:
   receiver:
     <<: *default-app
     ports:
-      - "11112:11112"
+      - 11112:11112
     command: ./manage.py receiver
     deploy:
       <<: *deploy

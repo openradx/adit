@@ -6,7 +6,7 @@ x-app: &default-app
     - vscode-server-insiders:/root/.vscode-server-insiders/extensions
   environment:
     DJANGO_INTERNAL_IPS: ${DJANGO_INTERNAL_IPS:?}
-    DJANGO_SETTINGS_MODULE: "adit.settings.development"
+    DJANGO_SETTINGS_MODULE: adit.settings.development
     FORCE_DEBUG_TOOLBAR: ${FORCE_DEBUG_TOOLBAR:-true}
     REMOTE_DEBUGGING_ENABLED: ${REMOTE_DEBUGGING_ENABLED:-false}
     REMOTE_DEBUGGING_PORT: ${REMOTE_DEBUGGING_PORT:-5678}
@@ -23,8 +23,8 @@ services:
     build:
       target: development
     ports:
-      - "${WEB_DEV_PORT:-8000}:8000"
-      - "${REMOTE_DEBUGGING_PORT:-5678}:5678"
+      - ${WEB_DEV_PORT:-8000}:8000
+      - ${REMOTE_DEBUGGING_PORT:-5678}:5678
     command: >
       bash -c "
         wait-for-it -s postgres.local:5432 -t 60 && 
@@ -57,7 +57,7 @@ services:
   receiver:
     <<: *default-app
     ports:
-      - "11122:11112"
+      - 11122:11112
     command: |
       ./manage.py receiver --autoreload
 
@@ -65,7 +65,7 @@ services:
     environment:
       POSTGRES_PASSWORD: postgres
     ports:
-      - "${POSTGRES_DEV_PORT:-5432}:5432"
+      - ${POSTGRES_DEV_PORT:-5432}:5432
 
 volumes:
   vscode-server:
