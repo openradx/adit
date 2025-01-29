@@ -6,6 +6,7 @@ x-app: &default-app
     - ${SSL_SERVER_KEY_FILE:?}:/etc/web/ssl/key.pem
   environment:
     DJANGO_EMAIL_URL: ${DJANGO_EMAIL_URL:?}
+    DJANGO_SECURE_SSL_REDIRECT: ${DJANGO_SECURE_SSL_REDIRECT:-true}
     DJANGO_SETTINGS_MODULE: "adit.settings.production"
     DJANGO_STATIC_ROOT: "/var/www/web/static/"
     POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?}
