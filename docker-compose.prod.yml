@@ -1,5 +1,5 @@
 x-app: &default-app
-  image: https://ghcr.io/openradx/adit:latest
+  image: ghcr.io/openradx/adit:latest
   volumes:
     - web_data:/var/www/web
     - ${SSL_SERVER_CERT_FILE:?}:/etc/web/ssl/cert.pem
