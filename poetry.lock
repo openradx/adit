@@ -2156,18 +2156,17 @@ files = [
 
 [[package]]
 name = "procrastinate"
-version = "3.0.0"
+version = "3.0.2"
 description = "Postgres-based distributed task processing library"
 optional = false
-python-versions = "<4.0,>=3.9"
+python-versions = ">=3.9"
 groups = ["main"]
 files = [
-    {file = "procrastinate-3.0.0-py3-none-any.whl", hash = "sha256:4ba9bfb8076f0380c9af43e0ccf768e27811dd8bee3e55cc5b86214362ddc361"},
-    {file = "procrastinate-3.0.0.tar.gz", hash = "sha256:694c6d363d5e0e071ca5f72d72eb604518d4e6bf51ad64eccae15a160dfc5b9f"},
+    {file = "procrastinate-3.0.2-py3-none-any.whl", hash = "sha256:3852a3ef2cce9216a884c39aacf944c3f06ad48592786f05ac7d2fc7ea333f77"},
+    {file = "procrastinate-3.0.2.tar.gz", hash = "sha256:c39cd6fedd5fc8b93662d734aacf5f8d9ec06c1b89f21c9095c4a2419e5ab41a"},
 ]
 
 [package.dependencies]
-anyio = "*"
 asgiref = "*"
 attrs = "*"
 croniter = "*"
@@ -2560,14 +2559,14 @@ test = ["pretend", "pytest (>=3.0.1)", "pytest-rerunfailures"]
 
 [[package]]
 name = "pyright"
-version = "1.1.392.post0"
+version = "1.1.393"
 description = "Command line wrapper for pyright"
 optional = false
 python-versions = ">=3.7"
 groups = ["dev"]
 files = [
-    {file = "pyright-1.1.392.post0-py3-none-any.whl", hash = "sha256:252f84458a46fa2f0fd4e2f91fc74f50b9ca52c757062e93f6c250c0d8329eb2"},
-    {file = "pyright-1.1.392.post0.tar.gz", hash = "sha256:3b7f88de74a28dcfa90c7d90c782b6569a48c2be5f9d4add38472bdaac247ebd"},
+    {file = "pyright-1.1.393-py3-none-any.whl", hash = "sha256:8320629bb7a44ca90944ba599390162bf59307f3d9fb6e27da3b7011b8c17ae5"},
+    {file = "pyright-1.1.393.tar.gz", hash = "sha256:aeeb7ff4e0364775ef416a80111613f91a05c8e01e58ecfefc370ca0db7aed9c"},
 ]
 
 [package.dependencies]
@@ -2602,14 +2601,14 @@ dev = ["argcomplete", "attrs (>=19.2)", "hypothesis (>=3.56)", "mock", "pygments
 
 [[package]]
 name = "pytest-asyncio"
-version = "0.25.2"
+version = "0.25.3"
 description = "Pytest support for asyncio"
 optional = false
 python-versions = ">=3.9"
 groups = ["dev"]
 files = [
-    {file = "pytest_asyncio-0.25.2-py3-none-any.whl", hash = "sha256:0d0bb693f7b99da304a0634afc0a4b19e49d5e0de2d670f38dc4bfa5727c5075"},
-    {file = "pytest_asyncio-0.25.2.tar.gz", hash = "sha256:3f8ef9a98f45948ea91a0ed3dc4268b5326c0e7bce73892acc654df4262ad45f"},
+    {file = "pytest_asyncio-0.25.3-py3-none-any.whl", hash = "sha256:9e89518e0f9bd08928f97a3482fdc4e244df17529460bc038291ccaf8f85c7c3"},
+    {file = "pytest_asyncio-0.25.3.tar.gz", hash = "sha256:fc1da2cf9f125ada7e710b4ddad05518d4cee187ae9412e9ac9271003497f07a"},
 ]
 
 [package.dependencies]
