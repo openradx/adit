@@ -39,7 +39,7 @@ urlpatterns = [
     path(
         "<str:ae_title>/wadors/studies/<str:study_uid>/metadata",
         RetrieveStudyMetadataAPIView.as_view(),
-        name="wado_rs-study_with_study_uid_and_mode",
+        name="wado_rs-study_metadata_with_study_uid",
     ),
     path(
         "<str:ae_title>/wadors/studies/<str:study_uid>/series/<str:series_uid>",
@@ -49,7 +49,7 @@ urlpatterns = [
     path(
         "<str:ae_title>/wadors/studies/<str:study_uid>/series/<str:series_uid>/metadata",
         RetrieveSeriesMetadataAPIView.as_view(),
-        name="wado_rs-series_with_study_uid_and_series_uid_and_mode",
+        name="wado_rs-series_metadata_with_study_uid_and_series_uid",
     ),
     path(
         "<str:ae_title>/stowrs/studies",
