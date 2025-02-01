@@ -1,5 +1,4 @@
 {% load bootstrap_icon combine_datetime join_if_list from common_extras %}
-{% load filter_modalities from core_extras %}
 {% load explorer_url from dicom_explorer_extras %}
 <table class="table">
     <caption>Studies</caption>
@@ -20,8 +19,7 @@
                 <td>{{ study.StudyDescription|default:"—" }}</td>
                 {% combine_datetime study.StudyDate study.StudyTime as study_datetime %}
                 <td>{{ study_datetime|date:"SHORT_DATETIME_FORMAT" }}</td>
-                {% filter_modalities study.ModalitiesInStudy as modalities %}
-                <td>{{ modalities|join_if_list:", "|default:"—" }}</td>
+                <td>{{ study.ModalitiesInStudy|join_if_list:", "|default:"—" }}</td>
                 <td>{{ study.NumberOfStudyRelatedInstances|default_if_none:"—" }}</td>
                 <td>
                     {% explorer_url server.id patient.PatientID study.StudyInstanceUID as study_url %}

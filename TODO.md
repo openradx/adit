@@ -2,7 +2,6 @@
 
 ## Top
 
-- Make EXCLUDE_MODALITIES more consistent
 - Delete VSCode stuff inside containers (I think its only when using the container itself as devcontainer)
 - Study Date is changed when using Selective Transfer
 - Fix that ADIT DICOMweb supports STOW of multiple image files at once
