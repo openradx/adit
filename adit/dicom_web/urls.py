@@ -1,19 +1,22 @@
 from django.urls import path
 
 from .views import (
+    QueryImagesAPIView,
     QuerySeriesAPIView,
     QueryStudiesAPIView,
+    RetrieveImageAPIView,
+    RetrieveImageMetadataAPIView,
     RetrieveSeriesAPIView,
     RetrieveSeriesMetadataAPIView,
     RetrieveStudyAPIView,
     RetrieveStudyMetadataAPIView,
-    StoreInstancesAPIView,
+    StoreImagesAPIView,
 )
 
 # For possible DICOMweb target resources see
 # https://www.dicomstandard.org/using/dicomweb/restful-structure
 #
-# As we just act as a proxy we only implement the mandatory target resources, see
+# As ADIT acts as a proxy we only implement the mandatory target resources, see
 # https://dicom.nema.org/medical/dicom/current/output/html/part18.html#table_10.6.1-1
 #
 # As [DICOMweb client](https://github.com/ImagingDataCommons/dicomweb-client) does not use trailing
@@ -32,14 +35,19 @@ urlpatterns = [
         name="qido_rs-series_with_study_uid",
     ),
     path(
+        "<str:ae_title>/qidors/studies/<str:study_uid>/series/<str:series_uid>/instances",
+        QueryImagesAPIView.as_view(),
+        name="qido_rs-images_with_study_uid_and_series_uid",
+    ),
+    path(
         "<str:ae_title>/wadors/studies/<str:study_uid>",
         RetrieveStudyAPIView.as_view(),
-        name="wado_rs-studies_with_study_uid",
+        name="wado_rs-study_with_study_uid",
     ),
     path(
         "<str:ae_title>/wadors/studies/<str:study_uid>/metadata",
         RetrieveStudyMetadataAPIView.as_view(),
-        name="wado_rs-studies_with_study_uid_and_mode",
+        name="wado_rs-study_metadata_with_study_uid",
     ),
     path(
         "<str:ae_title>/wadors/studies/<str:study_uid>/series/<str:series_uid>",
@@ -49,16 +57,26 @@ urlpatterns = [
     path(
         "<str:ae_title>/wadors/studies/<str:study_uid>/series/<str:series_uid>/metadata",
         RetrieveSeriesMetadataAPIView.as_view(),
-        name="wado_rs-series_with_study_uid_and_series_uid_and_mode",
+        name="wado_rs-series_metadata_with_study_uid_and_series_uid",
+    ),
+    path(
+        "<str:ae_title>/wadors/studies/<str:study_uid>/series/<str:series_uid>/instances/<str:image_uid>",
+        RetrieveImageAPIView.as_view(),
+        name="wado_rs-image_with_study_uid_and_series_uid_and_image_uid",
+    ),
+    path(
+        "<str:ae_title>/wadors/studies/<str:study_uid>/series/<str:series_uid>/instances/<str:image_uid>/metadata",
+        RetrieveImageMetadataAPIView.as_view(),
+        name="wado_rs-image_metadata_with_study_uid_and_series_uid_and_image_uid",
     ),
     path(
         "<str:ae_title>/stowrs/studies",
-        StoreInstancesAPIView.as_view(),
+        StoreImagesAPIView.as_view(),
         name="stow_rs-series",
     ),
     path(
         "<str:ae_title>/stowrs/studies/<str:study_uid>",
-        StoreInstancesAPIView.as_view(),
+        StoreImagesAPIView.as_view(),
         name="stow_rs-series_with_study_uid",
     ),
 ]

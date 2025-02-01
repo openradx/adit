@@ -102,7 +102,7 @@ class BatchQueryTaskProcessor(DicomTaskProcessor):
             modalities_query = [
                 modality
                 for modality in self.query_task.modalities
-                if modality not in settings.EXCLUDED_MODALITIES
+                if modality not in settings.EXCLUDE_MODALITIES
             ]
 
         if not modalities_query:

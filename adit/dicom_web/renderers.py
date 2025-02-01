@@ -42,10 +42,10 @@ class WadoMultipartApplicationDicomRenderer(DicomWebWadoRenderer):
     boundary: str = "adit-boundary"
     charset: str = "utf-8"
 
-    async def render(self, instances: AsyncIterator[Dataset]) -> AsyncIterator[bytes]:
+    async def render(self, images: AsyncIterator[Dataset]) -> AsyncIterator[bytes]:
         try:
-            async for ds in instances:
-                yield self._instance_stream(ds)
+            async for image in images:
+                yield self._instance_stream(image)
         except Exception as err:
             yield self._error_stream(err)
 

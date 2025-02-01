@@ -2,6 +2,7 @@
 
 ## Top
 
+- Make EXCLUDE_MODALITIES more consistent
 - Delete VSCode stuff inside containers (I think its only when using the container itself as devcontainer)
 - Study Date is changed when using Selective Transfer
 - Fix that ADIT DICOMweb supports STOW of multiple image files at once
@@ -122,7 +123,6 @@
   - <https://playwright.dev/python/docs/auth>
   - Unfortunately, we can't use live_server fixture inside session fixtures
   - example <https://github.com/automationneemo/PlaywrightDemoYt>
-- Get rid of dicom_connector.download_study/move_study. Do everything at the series level. That way filtering series (e.g. exlcude modalities) is much easier.
 - Evaluate if services should be better restarted with pywatchman instead of watchdog and watchmedo
   - pywatchman is used by Django autoreload
   - See <https://github.com/django/django/blob/main/django/utils/autoreload.py>

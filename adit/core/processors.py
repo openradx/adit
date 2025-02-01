@@ -97,7 +97,7 @@ class TransferTaskProcessor(DicomTaskProcessor):
         with tempfile.TemporaryDirectory(prefix="adit_") as tmpdir:
             patient_folder = self._download_to_folder(Path(tmpdir))
             assert self.dest_operator
-            self.dest_operator.upload_instances(patient_folder)
+            self.dest_operator.upload_images(patient_folder)
 
     def _transfer_to_archive(self) -> None:
         assert self.transfer_task.destination.node_type == DicomNode.NodeType.FOLDER
@@ -161,7 +161,7 @@ class TransferTaskProcessor(DicomTaskProcessor):
         modalities = study.ModalitiesInStudy
 
         modalities = [
-            modality for modality in modalities if modality not in settings.EXCLUDED_MODALITIES
+            modality for modality in modalities if modality not in settings.EXCLUDE_MODALITIES
         ]
 
         # If some series are explicitly chosen then check if their Series Instance UIDs
@@ -311,6 +311,7 @@ class TransferTaskProcessor(DicomTaskProcessor):
             write_dataset(ds, file_path)
 
         if series_uids:
+            # If specific series are selected we transfer only those series.
             for series_uid in series_uids:
                 self.source_operator.fetch_series(
                     patient_id=patient_id,
@@ -318,8 +319,23 @@ class TransferTaskProcessor(DicomTaskProcessor):
                     series_uid=series_uid,
                     callback=callback,
                 )
+        elif self.transfer_task.pseudonym:
+            # If the study should be pseudonymized we transfer on series level to exclude
+            # specific series that can be defined in the settings.
+            series_list = list(
+                self.source_operator.find_series(
+                    QueryDataset.create(PatientID=patient_id, StudyInstanceUID=study_uid)
+                )
+            )
+            for series in series_list:
+                series_uid = series.SeriesInstanceUID
+                modality = series.Modality
+                if modality in settings.EXCLUDE_MODALITIES:
+                    continue
+
+                self.source_operator.fetch_series(patient_id, study_uid, series_uid, callback)
         else:
-            # If no series are explicitly chosen then download all series of the study
+            # If not pseudonymized we transfer the whole study as it is.
             self.source_operator.fetch_study(
                 patient_id=patient_id,
                 study_uid=study_uid,

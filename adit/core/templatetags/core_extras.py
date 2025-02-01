@@ -21,8 +21,7 @@ def person_name_from_dicom(value: str) -> str:
 
 @register.simple_tag
 def filter_modalities(modalities: list[str]) -> list[str]:
-    exclude_modalities = settings.EXCLUDED_MODALITIES
-    return [modality for modality in modalities if modality not in exclude_modalities]
+    return [modality for modality in modalities if modality not in settings.EXCLUDE_MODALITIES]
 
 
 @register.filter

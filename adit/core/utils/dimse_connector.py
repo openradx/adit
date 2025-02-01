@@ -371,7 +371,7 @@ class DimseConnector:
                 except InvalidDicomError as err:
                     logger.error("Failed to read DICOM file %s: %s", path, err)
                     invalid_dicoms.append(path)
-                    continue  # We try to handle the rest of the instances and raise the error later
+                    continue  # We try to handle the rest of the images and raise the error later
 
                 _send_dataset(ds)
 

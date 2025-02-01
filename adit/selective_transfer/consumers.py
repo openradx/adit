@@ -238,7 +238,7 @@ class SelectiveTransferConsumer(AsyncJsonWebsocketConsumer):
     ) -> Iterator[ResultDataset]:
         data = form.cleaned_data
 
-        if data["modality"] in settings.EXCLUDED_MODALITIES:
+        if data["modality"] in settings.EXCLUDE_MODALITIES:
             return []
 
         studies = operator.find_studies(
@@ -255,7 +255,7 @@ class SelectiveTransferConsumer(AsyncJsonWebsocketConsumer):
 
         def has_only_excluded_modalities(study: ResultDataset):
             modalities_in_study = set(study.ModalitiesInStudy)
-            excluded_modalities = set(settings.EXCLUDED_MODALITIES)
+            excluded_modalities = set(settings.EXCLUDE_MODALITIES)
             not_excluded_modalities = list(modalities_in_study - excluded_modalities)
             return len(not_excluded_modalities) == 0
 
@@ -287,7 +287,7 @@ class SelectiveTransferConsumer(AsyncJsonWebsocketConsumer):
                 "query": True,
                 "query_results": studies,
                 "max_results_reached": max_results_reached,
-                "exclude_modalities": settings.EXCLUDED_MODALITIES,
+                "exclude_modalities": settings.EXCLUDE_MODALITIES,
             },
         )
 

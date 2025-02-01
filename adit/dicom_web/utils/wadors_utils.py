@@ -1,10 +1,9 @@
 import asyncio
 import logging
-from typing import AsyncIterator
+from typing import AsyncIterator, Literal
 
 from adrf.views import sync_to_async
 from pydicom import Dataset
-from rest_framework.exceptions import NotFound
 
 from adit.core.errors import DicomError, RetriableDicomError
 from adit.core.models import DicomServer
@@ -19,6 +18,7 @@ logger = logging.getLogger("__name__")
 async def wado_retrieve(
     source_server: DicomServer,
     query: dict[str, str],
+    level: Literal["STUDY", "SERIES", "IMAGE"],
 ) -> AsyncIterator[Dataset]:
     """WADO retrieve helper.
 
@@ -34,41 +34,55 @@ async def wado_retrieve(
         loop.call_soon_threadsafe(queue.put_nowait, ds)
 
     try:
-        series_list = list(
-            await sync_to_async(operator.find_series, thread_sensitive=False)(query_ds)
-        )
-
-        if len(series_list) == 0:
-            raise NotFound("No DICOM objects matches the query.")
-
-        for series in series_list:
-            fetch_series_task = asyncio.create_task(
-                sync_to_async(operator.fetch_series, thread_sensitive=False)(
-                    patient_id=series.PatientID,
-                    study_uid=series.StudyInstanceUID,
-                    series_uid=series.SeriesInstanceUID,
+        if level == "STUDY":
+            fetch_task = asyncio.create_task(
+                sync_to_async(operator.fetch_study, thread_sensitive=False)(
+                    patient_id=query_ds.PatientID,
+                    study_uid=query_ds.StudyInstanceUID,
                     callback=callback,
                 )
             )
-
-            while True:
-                queue_get_task = asyncio.create_task(queue.get())
-                done, _ = await asyncio.wait(
-                    [fetch_series_task, queue_get_task], return_when=asyncio.FIRST_COMPLETED
+        elif level == "SERIES":
+            fetch_task = asyncio.create_task(
+                sync_to_async(operator.fetch_series, thread_sensitive=False)(
+                    patient_id=query_ds.PatientID,
+                    study_uid=query_ds.StudyInstanceUID,
+                    series_uid=query_ds.SeriesInstanceUID,
+                    callback=callback,
                 )
+            )
+        elif level == "IMAGE":
+            assert query_ds.has("SeriesInstanceUID")
+            fetch_task = asyncio.create_task(
+                sync_to_async(operator.fetch_image, thread_sensitive=False)(
+                    patient_id=query_ds.PatientID,
+                    study_uid=query_ds.StudyInstanceUID,
+                    series_uid=query_ds.SeriesInstanceUID,
+                    image_uid=query_ds.SOPInstanceUID,
+                    callback=callback,
+                )
+            )
+        else:
+            raise ValueError(f"Invalid WADO-RS level: {level}.")
 
-                finished = False
-                for task in done:
-                    if task == queue_get_task:
-                        yield queue_get_task.result()
-                    if task == fetch_series_task:
-                        finished = True
+        while True:
+            queue_get_task = asyncio.create_task(queue.get())
+            done, _ = await asyncio.wait(
+                [fetch_task, queue_get_task], return_when=asyncio.FIRST_COMPLETED
+            )
 
-                if finished:
-                    queue_get_task.cancel()
-                    break
+            finished = False
+            for task in done:
+                if task == queue_get_task:
+                    yield queue_get_task.result()
+                if task == fetch_task:
+                    finished = True
 
-            await asyncio.wait([fetch_series_task, queue_get_task])
+            if finished:
+                queue_get_task.cancel()
+                break
+
+        await asyncio.wait([fetch_task, queue_get_task])
 
     except RetriableDicomError as err:
         raise ServiceUnavailableApiError(str(err))

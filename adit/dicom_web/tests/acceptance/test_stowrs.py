@@ -7,7 +7,7 @@ from adit.core.models import DicomServer
 from adit.core.utils.auth_utils import grant_access
 from adit.core.utils.testing_helpers import (
     create_dicom_web_client,
-    load_test_dicoms,
+    load_sample_dicoms,
     setup_dimse_orthancs,
 )
 from adit.dicom_web.utils.testing_helpers import create_user_with_dicom_web_group_and_token
@@ -30,7 +30,7 @@ def test_single_stow(live_server: LiveServer):
     assert len(studies) == 0, "Orthanc2 should be empty."
 
     number_of_study_related_instances: dict[str, int] = {}
-    for ds in load_test_dicoms("1001"):
+    for ds in load_sample_dicoms("1001"):
         if ds.StudyInstanceUID not in number_of_study_related_instances:
             number_of_study_related_instances[ds.StudyInstanceUID] = 0
         orthanc2_client.store_instances([ds])
@@ -64,7 +64,7 @@ def test_chunked_stow(channels_live_server: ChannelsLiveServer):
 
     number_of_study_related_instances: dict[str, int] = {}
     datasets: list[Dataset] = []
-    for ds in load_test_dicoms("1002"):
+    for ds in load_sample_dicoms("1002"):
         if ds.StudyInstanceUID not in number_of_study_related_instances:
             number_of_study_related_instances[ds.StudyInstanceUID] = 0
         number_of_study_related_instances[ds.StudyInstanceUID] += 1

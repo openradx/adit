@@ -387,8 +387,8 @@ MAX_BATCH_QUERY_SIZE = 1000
 # (staff users are not limited)
 MAX_BATCH_TRANSFER_SIZE = 500
 
-# Exclude modalities when listing studies and during queries or transfers
-EXCLUDED_MODALITIES = ["PR", "SR"]
+# See example.env
+EXCLUDE_MODALITIES = env.list("EXCLUDE_MODALITIES", default=[])
 
 # If an ethics committee approval is required for batch transfer
 ETHICS_COMMITTEE_APPROVAL_REQUIRED = True

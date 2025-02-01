@@ -82,7 +82,7 @@ class QueryAPIView(WebDicomAPIView):
             limit_results = int(query.pop("limit"))
 
         query_ds = QueryDataset.from_dict(query)
-        query_ds.ensure_elements(*request.GET.getlist('includefield'))
+        query_ds.ensure_elements(*request.GET.getlist("includefield"))
         return query_ds, limit_results
 
 
@@ -98,7 +98,7 @@ class QueryStudiesAPIView(QueryAPIView):
         try:
             results = await qido_find(source_server, query_ds, limit_results, "STUDY")
         except ValueError as err:
-            logger.warn(f"Invalid DICOMweb study query - {err}")
+            logger.warning(f"Invalid DICOMweb study query - {err}")
             raise ValidationError(str(err)) from err
 
         return Response([result.dataset.to_json_dict() for result in results])
@@ -114,7 +114,23 @@ class QuerySeriesAPIView(QueryAPIView):
         try:
             results = await qido_find(source_server, query_ds, limit_results, "SERIES")
         except ValueError as err:
-            logger.warn(f"Invalid DICOMweb series query - {err}")
+            logger.warning(f"Invalid DICOMweb series query - {err}")
+            raise ValidationError(str(err)) from err
+
+        return Response([result.dataset.to_json_dict() for result in results])
+
+
+class QueryImagesAPIView(QueryAPIView):
+    async def get(
+        self, request: AuthenticatedApiRequest, ae_title: str, series_uid: str
+    ) -> Response:
+        query_ds, limit_results = self._extract_query_parameters(request, series_uid)
+        source_server = await self._get_dicom_server(request, ae_title, "source")
+
+        try:
+            results = await qido_find(source_server, query_ds, limit_results, "IMAGE")
+        except ValueError as err:
+            logger.warning(f"Invalid DICOMweb image query - {err}")
             raise ValidationError(str(err)) from err
 
         return Response([result.dataset.to_json_dict() for result in results])
@@ -149,12 +165,30 @@ class RetrieveAPIView(WebDicomAPIView):
 
         return source_server
 
-    async def extract_metadata(self, instances: AsyncIterator[Dataset]) -> list[dict]:
+    async def peek_images(self, images: AsyncIterator[Dataset]) -> AsyncPeekable[Dataset]:
+        # In the middle of a StreamingHttpResponse we can't just throw an exception anymore to
+        # just return a error response as the stream has already started. Thats why we peek
+        # the first image here and throw an exception to return an error response if something
+        # initially went wrong. If in middle of the StreamingHttpResponse an error happens (e.g.
+        # PACS not reachable anymore) we return an error message inside the streamed response,
+        # but this by default just leads to a not readable DICOM file on the client side.
+        peekable_images = AsyncPeekable(images)
+        try:
+            await peekable_images.peek()
+        except StopAsyncIteration:
+            pass
+        except Exception as err:
+            logger.exception(err)
+            raise
+
+        return peekable_images
+
+    async def extract_metadata(self, images: AsyncIterator[Dataset]) -> list[dict]:
         metadata: list[dict] = []
-        async for ds in instances:
-            if hasattr(ds, "PixelData"):
-                del ds.PixelData
-            metadata.append(ds.to_json_dict())
+        async for image in images:
+            if hasattr(image, "PixelData"):
+                del image.PixelData
+            metadata.append(image.to_json_dict())
         return metadata
 
 
@@ -167,27 +201,12 @@ class RetrieveStudyAPIView(RetrieveAPIView):
         query = self.query.copy()
         query["StudyInstanceUID"] = study_uid
 
-        instances = wado_retrieve(source_server, query)
-        instances = AsyncPeekable(instances)
-
-        # In the middle of a StreamingHttpResponse we can't just throw an exception anymore to
-        # just return a error response as the stream has already started. Thats why we peek
-        # here and throw an exception to return an error response if something initially
-        # went wrong. If the in middle of the StreamingHttpResponse an error happens (not
-        # reachable PACS server or so) we return a error message inside the streamed response,
-        # but this just leads to a not readable DICOM file on the client side.
-        try:
-            await instances.peek()
-        except StopAsyncIteration:
-            pass
-        except Exception as err:
-            logger.exception(err)
-            raise
+        images = wado_retrieve(source_server, query, "STUDY")
+        images = await self.peek_images(images)
 
         renderer = cast(DicomWebWadoRenderer, getattr(request, "accepted_renderer"))
-
         return StreamingHttpResponse(
-            streaming_content=renderer.render(instances),
+            streaming_content=renderer.render(images),
             content_type=renderer.content_type,
         )
 
@@ -201,12 +220,10 @@ class RetrieveStudyMetadataAPIView(RetrieveStudyAPIView):
         query = self.query.copy()
         query["StudyInstanceUID"] = study_uid
 
-        instances = wado_retrieve(source_server, query)
-
-        metadata = await self.extract_metadata(instances)
+        images = wado_retrieve(source_server, query, "STUDY")
+        metadata = await self.extract_metadata(images)
 
         renderer = cast(DicomWebWadoRenderer, getattr(request, "accepted_renderer"))
-
         return Response({"metadata": metadata}, content_type=renderer.content_type)
 
 
@@ -220,22 +237,12 @@ class RetrieveSeriesAPIView(RetrieveAPIView):
         query["StudyInstanceUID"] = study_uid
         query["SeriesInstanceUID"] = series_uid
 
-        instances = wado_retrieve(source_server, query)
-        instances = AsyncPeekable(instances)
-
-        # See comment in RetrieveStudyAPIView
-        try:
-            await instances.peek()
-        except StopAsyncIteration:
-            pass
-        except Exception as err:
-            logger.exception(err)
-            raise
+        images = wado_retrieve(source_server, query, "SERIES")
+        images = await self.peek_images(images)
 
         renderer = cast(DicomWebWadoRenderer, getattr(request, "accepted_renderer"))
-
         return StreamingHttpResponse(
-            streaming_content=renderer.render(instances),
+            streaming_content=renderer.render(images),
             content_type=renderer.content_type,
         )
 
@@ -250,17 +257,64 @@ class RetrieveSeriesMetadataAPIView(RetrieveSeriesAPIView):
         query["StudyInstanceUID"] = study_uid
         query["SeriesInstanceUID"] = series_uid
 
-        instances = wado_retrieve(source_server, query)
-
-        metadata = await self.extract_metadata(instances)
+        images = wado_retrieve(source_server, query, "SERIES")
+        metadata = await self.extract_metadata(images)
 
         renderer = cast(DicomWebWadoRenderer, getattr(request, "accepted_renderer"))
+        return Response({"metadata": metadata}, content_type=renderer.content_type)
 
+
+class RetrieveImageAPIView(RetrieveAPIView):
+    async def get(
+        self,
+        request: AuthenticatedApiRequest,
+        ae_title: str,
+        study_uid: str,
+        series_uid: str,
+        image_uid: str,
+    ) -> Response | StreamingHttpResponse:
+        source_server = await self._get_dicom_server(request, ae_title)
+
+        query = self.query.copy()
+        query["StudyInstanceUID"] = study_uid
+        query["SeriesInstanceUID"] = series_uid
+        query["SOPInstanceUID"] = image_uid
+
+        images = wado_retrieve(source_server, query, "IMAGE")
+        images = await self.peek_images(images)
+
+        renderer = cast(DicomWebWadoRenderer, getattr(request, "accepted_renderer"))
+        return StreamingHttpResponse(
+            streaming_content=renderer.render(images),
+            content_type=renderer.content_type,
+        )
+
+
+class RetrieveImageMetadataAPIView(RetrieveImageAPIView):
+    async def get(
+        self,
+        request: AuthenticatedApiRequest,
+        ae_title: str,
+        study_uid: str,
+        series_uid: str,
+        image_uid: str,
+    ) -> Response:
+        source_server = await self._get_dicom_server(request, ae_title)
+
+        query = self.query.copy()
+        query["StudyInstanceUID"] = study_uid
+        query["SeriesInstanceUID"] = series_uid
+        query["SOPInstanceUID"] = image_uid
+
+        images = wado_retrieve(source_server, query, "IMAGE")
+        metadata = await self.extract_metadata(images)
+
+        renderer = cast(DicomWebWadoRenderer, getattr(request, "accepted_renderer"))
         return Response({"metadata": metadata}, content_type=renderer.content_type)
 
 
 # TODO: respect permission can_store
-class StoreInstancesAPIView(WebDicomAPIView):
+class StoreImagesAPIView(WebDicomAPIView):
     renderer_classes = [StowApplicationDicomJsonRenderer]
 
     async def post(
@@ -287,7 +341,7 @@ class StoreInstancesAPIView(WebDicomAPIView):
 
             if study_uid:
                 results.RetrieveURL = reverse(
-                    "wado_rs-studies_with_study_uid",
+                    "wado_rs-study_with_study_uid",
                     args=[dest_server.ae_title, ds.StudyInstanceUID],
                 )
                 if ds.StudyInstanceUID != study_uid:
