@@ -106,6 +106,7 @@ filterwarnings = [
     "ignore:'cgi' is deprecated:DeprecationWarning",
     'ignore:.*use of fork\(\) may lead to deadlocks.*:DeprecationWarning',
     'ignore:.*Use timezone-aware objects to represent datetimes in UTC.*:DeprecationWarning',
+    "error::Warning",
 ]
 timeout = 60
 
