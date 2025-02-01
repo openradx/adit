@@ -64,7 +64,6 @@ def test_search_series(live_server: LiveServer):
     results_series_uids = []
     for result_json in results:
         results_series_uids.append(pydicom.Dataset.from_json(result_json).SeriesInstanceUID)
-    assert len(results_series_uids) == 1
     assert results_series_uids == list(
         metadata[(metadata["StudyInstanceUID"] == study_uid) & (metadata["Modality"] == "SR")][
             "SeriesInstanceUID"

@@ -27,7 +27,7 @@ def test_single_stow(live_server: LiveServer):
     orthanc2_client = create_dicom_web_client(live_server.url, server.ae_title, token)
 
     studies = orthanc2_client.search_for_studies(search_filters={"PatientID": "1001"})
-    assert len(studies) == 0, "Orthanc2 should be empty."
+    assert len(studies) == 0
 
     number_of_study_related_instances: dict[str, int] = {}
     for ds in load_sample_dicoms("1001"):
@@ -60,7 +60,7 @@ def test_chunked_stow(channels_live_server: ChannelsLiveServer):
     orthanc2_client = create_dicom_web_client(channels_live_server.url, server.ae_title, token)
 
     studies = orthanc2_client.search_for_studies(search_filters={"PatientID": "1002"})
-    assert len(studies) == 0, "Orthanc2 should be empty."
+    assert len(studies) == 0
 
     number_of_study_related_instances: dict[str, int] = {}
     datasets: list[Dataset] = []
