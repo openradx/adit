@@ -101,12 +101,14 @@ log_cli_format = "%(asctime)s [%(levelname)8s] %(message)s (%(filename)s:%(linen
 log_cli_date_format = "%Y-%m-%d %H:%M:%S"
 markers = ["acceptance: mark a test as an acceptance test."]
 filterwarnings = [
+    "error",
+    "ignore::UserWarning",
+    "ignore::pytest.PytestUnraisableExceptionWarning",
     # We already fixed this, so we only need to remove this ignore with next major version of factory boy
     "ignore:.*Factory._after_postgeneration will stop saving the instance:DeprecationWarning",
     "ignore:'cgi' is deprecated:DeprecationWarning",
     'ignore:.*use of fork\(\) may lead to deadlocks.*:DeprecationWarning',
     'ignore:.*Use timezone-aware objects to represent datetimes in UTC.*:DeprecationWarning',
-    "error::Warning",
 ]
 timeout = 60
 
