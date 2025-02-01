@@ -55,7 +55,7 @@ def test_transfer_to_server_succeeds(mocker: MockerFixture):
     # Assert
     source_operator_mock.fetch_study.assert_called_with(task.patient_id, task.study_uid, mocker.ANY)
 
-    upload_path = dest_operator_mock.upload_instances.call_args.args[0]
+    upload_path = dest_operator_mock.upload_images.call_args.args[0]
     assert upload_path.match(f"*/{study.PatientID}")
 
     assert result["status"] == TransferTask.Status.SUCCESS

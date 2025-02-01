@@ -31,7 +31,7 @@ class BatchQueryTaskProcessor(DicomTaskProcessor):
         return logs
 
     def process(self) -> ProcessingResult:
-        patients = self._fetch_patients()
+        patients = self._find_patients()
 
         is_series_query = self.query_task.series_description or self.query_task.series_numbers
         if is_series_query:
@@ -55,7 +55,7 @@ class BatchQueryTaskProcessor(DicomTaskProcessor):
             "log": "\n".join([log["message"] for log in logs]),
         }
 
-    def _fetch_patients(self) -> list[ResultDataset]:
+    def _find_patients(self) -> list[ResultDataset]:
         patient_id = self.query_task.patient_id
         patient_name = self.query_task.patient_name
         birth_date = self.query_task.patient_birth_date
@@ -92,7 +92,7 @@ class BatchQueryTaskProcessor(DicomTaskProcessor):
 
         return patients
 
-    def _fetch_studies(self, patient_id: str) -> list[ResultDataset]:
+    def _find_studies(self, patient_id: str) -> list[ResultDataset]:
         start_date = self.query_task.study_date_start
         end_date = self.query_task.study_date_end
         study_date = (start_date, end_date)
@@ -142,7 +142,7 @@ class BatchQueryTaskProcessor(DicomTaskProcessor):
 
         return sorted(study_results, key=lambda study: study.StudyDate)
 
-    def _fetch_series(self, patient_id: str, study_uid: str) -> list[ResultDataset]:
+    def _find_series(self, patient_id: str, study_uid: str) -> list[ResultDataset]:
         series_numbers = self.query_task.series_numbers
 
         if not series_numbers:
@@ -173,7 +173,7 @@ class BatchQueryTaskProcessor(DicomTaskProcessor):
     def _query_studies(self, patient_ids: list[str]) -> list[BatchQueryResult]:
         results: list[BatchQueryResult] = []
         for patient_id in patient_ids:
-            studies = self._fetch_studies(patient_id)
+            studies = self._find_studies(patient_id)
 
             if results and studies:
                 self.logs.append(
@@ -210,7 +210,7 @@ class BatchQueryTaskProcessor(DicomTaskProcessor):
     def _query_series(self, patient_ids: list[str]) -> list[BatchQueryResult]:
         results: list[BatchQueryResult] = []
         for patient_id in patient_ids:
-            studies = self._fetch_studies(patient_id)
+            studies = self._find_studies(patient_id)
 
             if results and studies:
                 self.logs.append(
@@ -222,7 +222,7 @@ class BatchQueryTaskProcessor(DicomTaskProcessor):
                 )
 
             for study in studies:
-                series_list = self._fetch_series(patient_id, study.StudyInstanceUID)
+                series_list = self._find_series(patient_id, study.StudyInstanceUID)
                 for series in series_list:
                     batch_query_result = BatchQueryResult(
                         job=self.query_task.job,

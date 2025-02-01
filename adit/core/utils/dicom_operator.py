@@ -400,8 +400,8 @@ class DicomOperator:
         else:
             raise DicomError("No Query/Retrieve Information Model supported to download images.")
 
-    def upload_instances(self, resource: PathLike | list[Dataset]) -> None:
-        """Upload instances from a specified folder or list of instances in memory"""
+    def upload_images(self, resource: PathLike | list[Dataset]) -> None:
+        """Upload images from a specified folder or list of images in memory"""
 
         if self.server.store_scp_support:
             self.dimse_connector.send_c_store(resource)
@@ -498,8 +498,8 @@ class DicomOperator:
     def _fetch_series_with_wado_rs(
         self, query: QueryDataset, callback: Callable[[Dataset], None]
     ) -> None:
-        instances = self.dicom_web_connector.send_wado_rs(query)
-        for ds in instances:
+        images = self.dicom_web_connector.send_wado_rs(query)
+        for ds in images:
             self._handle_fetched_image(ds, callback)
 
     def _fetch_series_with_c_move(

@@ -82,7 +82,7 @@ class QueryAPIView(WebDicomAPIView):
             limit_results = int(query.pop("limit"))
 
         query_ds = QueryDataset.from_dict(query)
-        query_ds.ensure_elements(*request.GET.getlist('includefield'))
+        query_ds.ensure_elements(*request.GET.getlist("includefield"))
         return query_ds, limit_results
 
 
@@ -260,7 +260,7 @@ class RetrieveSeriesMetadataAPIView(RetrieveSeriesAPIView):
 
 
 # TODO: respect permission can_store
-class StoreInstancesAPIView(WebDicomAPIView):
+class StoreImagesAPIView(WebDicomAPIView):
     renderer_classes = [StowApplicationDicomJsonRenderer]
 
     async def post(
@@ -287,7 +287,7 @@ class StoreInstancesAPIView(WebDicomAPIView):
 
             if study_uid:
                 results.RetrieveURL = reverse(
-                    "wado_rs-studies_with_study_uid",
+                    "wado_rs-study_with_study_uid",
                     args=[dest_server.ae_title, ds.StudyInstanceUID],
                 )
                 if ds.StudyInstanceUID != study_uid:

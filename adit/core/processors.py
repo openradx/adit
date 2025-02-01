@@ -97,7 +97,7 @@ class TransferTaskProcessor(DicomTaskProcessor):
         with tempfile.TemporaryDirectory(prefix="adit_") as tmpdir:
             patient_folder = self._download_to_folder(Path(tmpdir))
             assert self.dest_operator
-            self.dest_operator.upload_instances(patient_folder)
+            self.dest_operator.upload_images(patient_folder)
 
     def _transfer_to_archive(self) -> None:
         assert self.transfer_task.destination.node_type == DicomNode.NodeType.FOLDER
