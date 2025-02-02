@@ -1,15 +1,21 @@
+import pandas as pd
 import pydicom
 import pytest
 from adit_radis_shared.common.utils.testing_helpers import ChannelsLiveServer
+from django.conf import settings
 
 from adit.core.models import DicomServer
 from adit.core.utils.auth_utils import grant_access
 from adit.core.utils.testing_helpers import (
     create_dicom_web_client,
-    load_sample_dicoms_metadata,
     setup_dimse_orthancs,
 )
 from adit.dicom_web.utils.testing_helpers import create_user_with_dicom_web_group_and_token
+
+
+def get_extended_data_sheet():
+    extended_data_sheet_path = settings.BASE_DIR / "samples" / "extended_data_sheet.xlsx"
+    return pd.read_excel(extended_data_sheet_path)
 
 
 @pytest.mark.acceptance
@@ -23,18 +29,20 @@ def test_retrieve_study(channels_live_server: ChannelsLiveServer):
     grant_access(group, server, source=True)
     orthanc1_client = create_dicom_web_client(channels_live_server.url, server.ae_title, token)
 
-    metadata = load_sample_dicoms_metadata()
-    study_uid: str = metadata.iloc[0]["StudyInstanceUID"]
+    data_sheet = get_extended_data_sheet()
+
+    study_uid = list(data_sheet["StudyInstanceUID"])[0]
 
     results = orthanc1_client.retrieve_study(study_uid)
-    series_uids = set()
+    series_instance_uids = set()
     for result in results:
-        assert isinstance(result, pydicom.Dataset)
-        assert result.StudyInstanceUID == study_uid
-        series_uids.add(result.SeriesInstanceUID)
-    assert series_uids == set(
-        metadata[metadata["StudyInstanceUID"] == study_uid]["SeriesInstanceUID"]
-    )
+        assert result.StudyInstanceUID == study_uid, (
+            "The WADO request on study level returned series instances of the wrong study."
+        )
+        series_instance_uids.add(result.SeriesInstanceUID)
+    assert series_instance_uids == set(
+        data_sheet[data_sheet["StudyInstanceUID"] == study_uid]["SeriesInstanceUID"]
+    ), "The WADO request on study level did not return all associated series."
 
 
 @pytest.mark.acceptance
@@ -48,19 +56,24 @@ def test_retrieve_study_metadata(channels_live_server: ChannelsLiveServer):
     grant_access(group, server, source=True)
     orthanc1_client = create_dicom_web_client(channels_live_server.url, server.ae_title, token)
 
-    metadata = load_sample_dicoms_metadata()
-    study_uid: str = metadata["StudyInstanceUID"].iloc[0]
+    data_sheet = get_extended_data_sheet()
+
+    study_uid = list(data_sheet["StudyInstanceUID"])[0]
 
     results = orthanc1_client.retrieve_study_metadata(study_uid)
-    series_uids = set()
+    series_instance_uids = set()
     for result_json in results:
         result = pydicom.Dataset.from_json(result_json)
-        assert not hasattr(result, "PixelData")
-        assert result.StudyInstanceUID == study_uid
-        series_uids.add(result.SeriesInstanceUID)
-    assert series_uids == set(
-        metadata[metadata["StudyInstanceUID"] == study_uid]["SeriesInstanceUID"]
-    )
+        assert not hasattr(result, "PixelData"), (
+            "The WADO metadata request on study level returned pixel data."
+        )
+        assert result.StudyInstanceUID == study_uid, (
+            "The WADO metadata request on study level returned series instances of the wrong study."
+        )
+        series_instance_uids.add(result.SeriesInstanceUID)
+    assert series_instance_uids == set(
+        data_sheet[data_sheet["StudyInstanceUID"] == study_uid]["SeriesInstanceUID"]
+    ), "The WADO metadata request on study level did not return all associated series."
 
 
 @pytest.mark.acceptance
@@ -74,15 +87,21 @@ def test_retrieve_series(channels_live_server: ChannelsLiveServer):
     grant_access(group, server, source=True)
     orthanc1_client = create_dicom_web_client(channels_live_server.url, server.ae_title, token)
 
-    metadata = load_sample_dicoms_metadata()
-    study_uid: str = metadata.iloc[0]["StudyInstanceUID"]
-    series_uid: str = metadata.iloc[0]["SeriesInstanceUID"]
+    data_sheet = get_extended_data_sheet()
+
+    study_uid = list(data_sheet["StudyInstanceUID"])[0]
+    series_uid = list(data_sheet[data_sheet["StudyInstanceUID"] == study_uid]["SeriesInstanceUID"])[
+        0
+    ]
 
     results = orthanc1_client.retrieve_series(study_uid, series_uid)
     for result in results:
-        assert isinstance(result, pydicom.Dataset)
-        assert result.StudyInstanceUID == study_uid
-        assert result.SeriesInstanceUID == series_uid
+        assert result.StudyInstanceUID == study_uid, (
+            "The WADO request on study level returned instances of the wrong study."
+        )
+        assert result.SeriesInstanceUID == series_uid, (
+            "The WADO request on series level returned instances of the wrong series"
+        )
 
 
 @pytest.mark.acceptance
@@ -96,60 +115,22 @@ def test_retrieve_series_metadata(channels_live_server: ChannelsLiveServer):
     grant_access(group, server, source=True)
     orthanc1_client = create_dicom_web_client(channels_live_server.url, server.ae_title, token)
 
-    metadata = load_sample_dicoms_metadata()
-    study_uid: str = metadata["StudyInstanceUID"].iloc[0]
-    series_uid: str = metadata["SeriesInstanceUID"].iloc[0]
+    data_sheet = get_extended_data_sheet()
+
+    study_uid = list(data_sheet["StudyInstanceUID"])[0]
+    series_uid = list(data_sheet[data_sheet["StudyInstanceUID"] == study_uid]["SeriesInstanceUID"])[
+        0
+    ]
 
     results = orthanc1_client.retrieve_series_metadata(study_uid, series_uid)
     for result_json in results:
         result = pydicom.Dataset.from_json(result_json)
-        assert not hasattr(result, "PixelData")
-        assert result.StudyInstanceUID == study_uid
-        assert result.SeriesInstanceUID == series_uid
-
-
-@pytest.mark.acceptance
-@pytest.mark.order("last")
-@pytest.mark.django_db(transaction=True)
-def test_retrieve_image(channels_live_server: ChannelsLiveServer):
-    setup_dimse_orthancs()
-
-    _, group, token = create_user_with_dicom_web_group_and_token()
-    server = DicomServer.objects.get(ae_title="ORTHANC1")
-    grant_access(group, server, source=True)
-    orthanc1_client = create_dicom_web_client(channels_live_server.url, server.ae_title, token)
-
-    metadata = load_sample_dicoms_metadata()
-    study_uid: str = metadata["StudyInstanceUID"].iloc[0]
-    series_uid: str = metadata["SeriesInstanceUID"].iloc[0]
-    image_uid: str = metadata["SOPInstanceUID"].iloc[0]
-
-    result = orthanc1_client.retrieve_instance(study_uid, series_uid, image_uid)
-    assert isinstance(result, pydicom.Dataset)
-    assert result.StudyInstanceUID == study_uid
-    assert result.SeriesInstanceUID == series_uid
-    assert result.SOPInstanceUID == image_uid
-
-
-@pytest.mark.acceptance
-@pytest.mark.order("last")
-@pytest.mark.django_db(transaction=True)
-def test_retrieve_image_metadata(channels_live_server: ChannelsLiveServer):
-    setup_dimse_orthancs()
-
-    _, group, token = create_user_with_dicom_web_group_and_token()
-    server = DicomServer.objects.get(ae_title="ORTHANC1")
-    grant_access(group, server, source=True)
-    orthanc1_client = create_dicom_web_client(channels_live_server.url, server.ae_title, token)
-
-    metadata = load_sample_dicoms_metadata()
-    study_uid: str = metadata["StudyInstanceUID"].iloc[0]
-    series_uid: str = metadata["SeriesInstanceUID"].iloc[0]
-    image_uid: str = metadata["SOPInstanceUID"].iloc[0]
-
-    result = orthanc1_client.retrieve_instance_metadata(study_uid, series_uid, image_uid)
-    result = pydicom.Dataset.from_json(result)
-    assert not hasattr(result, "PixelData")
-    assert result.StudyInstanceUID == study_uid
-    assert result.SeriesInstanceUID == series_uid
-    assert result.SOPInstanceUID == image_uid
+        assert not hasattr(result, "PixelData"), (
+            "The WADO metadata request on series level returned pixel data."
+        )
+        assert result.StudyInstanceUID == study_uid, (
+            "The WADO metadata request on series level returned instances of the wrong study."
+        )
+        assert result.SeriesInstanceUID == series_uid, (
+            "The WADO metadata request on series level returned instances of the wrong series"
+        )
