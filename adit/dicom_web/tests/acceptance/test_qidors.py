@@ -23,7 +23,7 @@ def test_search_studies(live_server: LiveServer):
     grant_access(group, server, source=True)
     orthanc1_client = create_dicom_web_client(live_server.url, server.ae_title, token)
 
-    metadata = load_sample_dicoms_metadata("1001")
+    metadata = load_sample_dicoms_metadata()
 
     results = orthanc1_client.search_for_studies()
     results_study_uids = set()
@@ -49,7 +49,7 @@ def test_search_series(live_server: LiveServer):
     grant_access(group, server, source=True)
     orthanc1_client = create_dicom_web_client(live_server.url, server.ae_title, token)
 
-    metadata = load_sample_dicoms_metadata("1001")
+    metadata = load_sample_dicoms_metadata()
     study_uid: str = metadata["StudyInstanceUID"].iloc[0]
 
     results = orthanc1_client.search_for_series(study_uid)
