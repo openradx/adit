@@ -23,7 +23,7 @@ def test_retrieve_study(channels_live_server: ChannelsLiveServer):
     grant_access(group, server, source=True)
     orthanc1_client = create_dicom_web_client(channels_live_server.url, server.ae_title, token)
 
-    metadata = load_sample_dicoms_metadata()
+    metadata = load_sample_dicoms_metadata("1001")
     study_uid: str = metadata.iloc[0]["StudyInstanceUID"]
 
     results = orthanc1_client.retrieve_study(study_uid)
@@ -48,7 +48,7 @@ def test_retrieve_study_metadata(channels_live_server: ChannelsLiveServer):
     grant_access(group, server, source=True)
     orthanc1_client = create_dicom_web_client(channels_live_server.url, server.ae_title, token)
 
-    metadata = load_sample_dicoms_metadata()
+    metadata = load_sample_dicoms_metadata("1001")
     study_uid: str = metadata["StudyInstanceUID"].iloc[0]
 
     results = orthanc1_client.retrieve_study_metadata(study_uid)
@@ -74,7 +74,7 @@ def test_retrieve_series(channels_live_server: ChannelsLiveServer):
     grant_access(group, server, source=True)
     orthanc1_client = create_dicom_web_client(channels_live_server.url, server.ae_title, token)
 
-    metadata = load_sample_dicoms_metadata()
+    metadata = load_sample_dicoms_metadata("1001")
     study_uid: str = metadata.iloc[0]["StudyInstanceUID"]
     series_uid: str = metadata.iloc[0]["SeriesInstanceUID"]
 
@@ -96,7 +96,7 @@ def test_retrieve_series_metadata(channels_live_server: ChannelsLiveServer):
     grant_access(group, server, source=True)
     orthanc1_client = create_dicom_web_client(channels_live_server.url, server.ae_title, token)
 
-    metadata = load_sample_dicoms_metadata()
+    metadata = load_sample_dicoms_metadata("1001")
     study_uid: str = metadata["StudyInstanceUID"].iloc[0]
     series_uid: str = metadata["SeriesInstanceUID"].iloc[0]
 
@@ -119,7 +119,7 @@ def test_retrieve_image(channels_live_server: ChannelsLiveServer):
     grant_access(group, server, source=True)
     orthanc1_client = create_dicom_web_client(channels_live_server.url, server.ae_title, token)
 
-    metadata = load_sample_dicoms_metadata()
+    metadata = load_sample_dicoms_metadata("1001")
     study_uid: str = metadata["StudyInstanceUID"].iloc[0]
     series_uid: str = metadata["SeriesInstanceUID"].iloc[0]
     image_uid: str = metadata["SOPInstanceUID"].iloc[0]
@@ -142,7 +142,7 @@ def test_retrieve_image_metadata(channels_live_server: ChannelsLiveServer):
     grant_access(group, server, source=True)
     orthanc1_client = create_dicom_web_client(channels_live_server.url, server.ae_title, token)
 
-    metadata = load_sample_dicoms_metadata()
+    metadata = load_sample_dicoms_metadata("1001")
     study_uid: str = metadata["StudyInstanceUID"].iloc[0]
     series_uid: str = metadata["SeriesInstanceUID"].iloc[0]
     image_uid: str = metadata["SOPInstanceUID"].iloc[0]
