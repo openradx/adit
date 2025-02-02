@@ -3,10 +3,7 @@
     "dockerfile": "Dockerfile"
   },
   "features": {
-    "ghcr.io/devcontainers/features/docker-in-docker:2": {
-      // Install Docker CE instead of an (by default) older Moby version
-      "moby": false
-    },
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {},
     "ghcr.io/devcontainers/features/node:1": {}
   },
   // https://github.com/orgs/community/discussions/50403
