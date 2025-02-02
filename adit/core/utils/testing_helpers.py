@@ -1,3 +1,4 @@
+import functools
 import io
 import os
 from typing import Any, Iterable
@@ -159,23 +160,31 @@ def create_dicom_web_client(server_url: str, ae_title: str, token_string: str) -
     )
 
 
-def get_full_data_sheet():
-    full_data_sheet_path = settings.BASE_DIR / "samples" / "full_data_sheet.xlsx"
-    return pd.read_excel(full_data_sheet_path)
+def load_sample_dicoms(patient_id: str | None = None) -> Iterable[Dataset]:
+    test_dicoms_path = settings.BASE_DIR / "samples" / "dicoms"
+    if patient_id:
+        test_dicoms_path = test_dicoms_path / patient_id
 
-
-def get_extended_data_sheet():
-    extended_data_sheet_path = settings.BASE_DIR / "samples" / "extended_data_sheet.xlsx"
-    return pd.read_excel(extended_data_sheet_path)
-
-
-def load_test_dicoms(patient_id: str) -> Iterable[Dataset]:
-    test_dicoms_path = settings.BASE_DIR / "samples" / "dicoms" / patient_id
     for root, _, files in os.walk(test_dicoms_path):
-        if len(files) != 0:
-            for file in files:
-                try:
-                    ds = read_dataset(os.path.join(root, file))
-                except Exception:
-                    continue
-                yield ds
+        for file in files:
+            try:
+                ds = read_dataset(os.path.join(root, file))
+            except Exception:
+                continue
+            yield ds
+
+
+@functools.lru_cache(maxsize=None)
+def load_sample_dicoms_metadata(patient_id: str | None = None) -> pd.DataFrame:
+    metadata = []
+    for ds in load_sample_dicoms(patient_id):
+        metadata.append(
+            {
+                "PatientID": ds.PatientID,
+                "StudyInstanceUID": ds.StudyInstanceUID,
+                "SeriesInstanceUID": ds.SeriesInstanceUID,
+                "SOPInstanceUID": ds.SOPInstanceUID,
+                "Modality": ds.Modality,
+            }
+        )
+    return pd.DataFrame(metadata)

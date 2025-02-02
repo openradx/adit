@@ -151,6 +151,7 @@ class TransferTaskProcessor(DicomTaskProcessor):
         download_folder: Path,
     ) -> Path:
         pseudonym = self.transfer_task.pseudonym
+
         if pseudonym:
             patient_folder = download_folder / sanitize_filename(pseudonym)
         else:
@@ -160,9 +161,11 @@ class TransferTaskProcessor(DicomTaskProcessor):
         study = self._find_study()
         modalities = study.ModalitiesInStudy
 
-        modalities = [
-            modality for modality in modalities if modality not in settings.EXCLUDED_MODALITIES
-        ]
+        exclude_modalities = settings.EXCLUDE_MODALITIES
+        if pseudonym and exclude_modalities:
+            # When we download the study we will exclude the specified modalities, but only
+            # if we are pseudonymizing the study, see also _download_study().
+            modalities = [modality for modality in modalities if modality not in exclude_modalities]
 
         # If some series are explicitly chosen then check if their Series Instance UIDs
         # are correct and only use those modalities for the name of the study folder.
@@ -310,7 +313,38 @@ class TransferTaskProcessor(DicomTaskProcessor):
             file_path = final_folder / file_name
             write_dataset(ds, file_path)
 
+        pseudonymize = bool(self.transfer_task.pseudonym)
+        exclude_modalities = settings.EXCLUDE_MODALITIES
+
         if series_uids:
+            # If specific series are selected we transfer only those series. When pseudonymizing
+            # we have to check if a modality should be excluded.
+            if pseudonymize and exclude_modalities:
+                filtered_series = []
+                for series_uid in series_uids:
+                    series_list = list(
+                        self.source_operator.find_series(
+                            QueryDataset.create(
+                                PatientID=patient_id,
+                                StudyInstanceUID=study_uid,
+                                SeriesInstanceUID=series_uid,
+                            )
+                        )
+                    )
+                    if not series_list:
+                        logger.warning(f"Series with UID {series_uid} not found.")
+                        continue
+
+                    assert len(series_list) == 1
+                    series = series_list[0]
+
+                    if series.Modality in exclude_modalities:
+                        continue
+
+                    filtered_series.append(series)
+
+                series_uids = [series.SeriesInstanceUID for series in filtered_series]
+
             for series_uid in series_uids:
                 self.source_operator.fetch_series(
                     patient_id=patient_id,
@@ -318,8 +352,25 @@ class TransferTaskProcessor(DicomTaskProcessor):
                     series_uid=series_uid,
                     callback=callback,
                 )
+
+        elif pseudonymize:
+            # If the whole study should be transferred and pseudonymized, we transfer on the
+            # series level to exclude the specified modalities.
+            series_list = list(
+                self.source_operator.find_series(
+                    QueryDataset.create(PatientID=patient_id, StudyInstanceUID=study_uid)
+                )
+            )
+            for series in series_list:
+                series_uid = series.SeriesInstanceUID
+                modality = series.Modality
+                if modality in settings.EXCLUDE_MODALITIES:
+                    continue
+
+                self.source_operator.fetch_series(patient_id, study_uid, series_uid, callback)
+
         else:
-            # If no series are explicitly chosen then download all series of the study
+            # Without pseudonymization we transfer the whole study as it is.
             self.source_operator.fetch_study(
                 patient_id=patient_id,
                 study_uid=study_uid,

@@ -17,7 +17,7 @@ async def qido_find(
     source_server: DicomServer,
     query_ds: QueryDataset,
     limit_results: int | None,
-    level: Literal["STUDY", "SERIES"],
+    level: Literal["STUDY", "SERIES", "IMAGE"],
 ) -> list[ResultDataset]:
     operator = DicomOperator(source_server)
 
@@ -31,6 +31,12 @@ async def qido_find(
         elif level == "SERIES":
             results: list[ResultDataset] = list(
                 await sync_to_async(operator.find_series, thread_sensitive=False)(
+                    query_ds, limit_results
+                )
+            )
+        elif level == "IMAGE":
+            results: list[ResultDataset] = list(
+                await sync_to_async(operator.find_images, thread_sensitive=False)(
                     query_ds, limit_results
                 )
             )

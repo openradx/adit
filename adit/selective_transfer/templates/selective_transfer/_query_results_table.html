@@ -1,5 +1,5 @@
 {% load combine_datetime join_if_list from common_extras %}
-{% load person_name_from_dicom filter_modalities from core_extras %}
+{% load person_name_from_dicom from core_extras %}
 <table class="table">
     <thead>
         <tr>
@@ -19,7 +19,12 @@
                 <td>
                     <div class="form-check">
                         {% with result.PatientID|add:"\\"|add:result.StudyInstanceUID as value %}
-                            <input class="form-check-input position-static" type="checkbox" id="study_select_{{ forloop.counter0 }}" name="selected_studies" value={{ value }} aria-label="Select Study" />
+                            <input class="form-check-input position-static"
+                                   type="checkbox"
+                                   id="study_select_{{ forloop.counter0 }}"
+                                   name="selected_studies"
+                                   value="{{ value }}"
+                                   aria-label="Select Study" />
                         {% endwith %}
                     </div>
                 </td>
@@ -28,8 +33,7 @@
                 <td>{{ result.PatientBirthDate|date:"SHORT_DATE_FORMAT" }}</td>
                 {% combine_datetime result.StudyDate result.StudyTime as study_datetime %}
                 <td>{{ study_datetime|date:"SHORT_DATETIME_FORMAT" }}</td>
-                {% filter_modalities result.ModalitiesInStudy as modalities %}
-                <td>{{ modalities|join_if_list:", "|default:"—" }}</td>
+                <td>{{ result.ModalitiesInStudy|join_if_list:", "|default:"—" }}</td>
                 <td>{{ result.StudyDescription }}</td>
                 <td>{{ result.NumberOfStudyRelatedInstances }}</td>
             </tr>

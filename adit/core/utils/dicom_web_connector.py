@@ -113,15 +113,20 @@ class DicomWebConnector:
                     fields=fields, search_filters=search_filters, limit=limit_results
                 )
             elif level == "SERIES":
-                study_uid = search_filters.pop("StudyInstanceUID", "")
-                if study_uid:
-                    results = self.dicomweb_client.search_for_series(
-                        study_uid, fields=fields, search_filters=search_filters, limit=limit_results
-                    )
-                else:
-                    results = self.dicomweb_client.search_for_series(
-                        fields=fields, search_filters=search_filters, limit=limit_results
-                    )
+                study_uid = search_filters.pop("StudyInstanceUID", None)
+                results = self.dicomweb_client.search_for_series(
+                    study_uid, fields=fields, search_filters=search_filters, limit=limit_results
+                )
+            elif level == "IMAGE":
+                study_uid = search_filters.pop("StudyInstanceUID", None)
+                series_uid = search_filters.pop("SeriesInstanceUID", None)
+                results = self.dicomweb_client.search_for_instances(
+                    study_uid,
+                    series_uid,
+                    fields=fields,
+                    search_filters=search_filters,
+                    limit=limit_results,
+                )
             else:
                 raise ValueError(f"Invalid QueryRetrieveLevel: {level}")
 
@@ -158,6 +163,19 @@ class DicomWebConnector:
                 if not series_uid:
                     raise DicomError("Missing SeriesInstanceUID for WADO-RS on series level.")
                 yield from self.dicomweb_client.iter_series(study_uid, series_uid)
+            elif level == "IMAGE":
+                study_uid = query_dict.pop("StudyInstanceUID", "")
+                series_uid = query_dict.pop("SeriesInstanceUID", "")
+                sop_instance_uid = query_dict.pop("SOPInstanceUID", "")
+                if not study_uid:
+                    raise DicomError("Missing StudyInstanceUID for WADO-RS on image level.")
+                if not series_uid:
+                    raise DicomError("Missing SeriesInstanceUID for WADO-RS on image level.")
+                if not sop_instance_uid:
+                    raise DicomError("Missing SOPInstanceUID for WADO-RS on image level.")
+                yield self.dicomweb_client.retrieve_instance(
+                    study_uid, series_uid, sop_instance_uid
+                )
             else:
                 raise DicomError(f"Invalid QueryRetrieveLevel: {level}")
         except HTTPError as err:
@@ -214,7 +232,7 @@ class DicomWebConnector:
                 except InvalidDicomError as err:
                     logger.error("Failed to read DICOM file %s: %s", path, err)
                     invalid_dicoms.append(path)
-                    continue  # We try to handle the rest of the instances and raise the error later
+                    continue  # We try to handle the rest of the images and raise the error later
 
                 _send_dataset(ds)
 

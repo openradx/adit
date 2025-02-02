@@ -1,4 +1,3 @@
-from django.conf import settings
 from django.template.defaultfilters import pluralize
 
 from adit.core.errors import DicomError
@@ -97,15 +96,7 @@ class BatchQueryTaskProcessor(DicomTaskProcessor):
         end_date = self.query_task.study_date_end
         study_date = (start_date, end_date)
 
-        modalities_query: list[str] = []
-        if self.query_task.modalities:
-            modalities_query = [
-                modality
-                for modality in self.query_task.modalities
-                if modality not in settings.EXCLUDED_MODALITIES
-            ]
-
-        if not modalities_query:
+        if not self.query_task.modalities:
             study_results = list(
                 self.operator.find_studies(
                     QueryDataset.create(
@@ -121,7 +112,9 @@ class BatchQueryTaskProcessor(DicomTaskProcessor):
         else:
             seen: set[str] = set()
             study_results: list[ResultDataset] = []
-            for modality in modalities_query:
+            for modality in self.query_task.modalities:
+                # ModalitiesInStudy does not support to query multiple modalities at once,
+                # so we have to query them one by one.
                 studies = list(
                     self.operator.find_studies(
                         QueryDataset.create(

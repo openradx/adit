@@ -1,6 +1,5 @@
 import logging
 
-from django.conf import settings
 from django.template import Library
 
 from ..models import DicomJob, DicomTask
@@ -17,12 +16,6 @@ def person_name_from_dicom(value: str) -> str:
         return value
 
     return value.replace("^", ", ")
-
-
-@register.simple_tag
-def filter_modalities(modalities: list[str]) -> list[str]:
-    exclude_modalities = settings.EXCLUDED_MODALITIES
-    return [modality for modality in modalities if modality not in exclude_modalities]
 
 
 @register.filter
