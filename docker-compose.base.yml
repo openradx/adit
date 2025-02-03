@@ -72,7 +72,7 @@ services:
       - postgres_data:/var/lib/postgresql/data
 
   orthanc1:
-    image: jodogne/orthanc-plugins:1.12.5
+    image: jodogne/orthanc-plugins:1.12.6
     hostname: orthanc1.local
     configs:
       - source: orthanc1_config
@@ -81,7 +81,7 @@ services:
       - orthanc1_data:/var/lib/orthanc/db
 
   orthanc2:
-    image: jodogne/orthanc-plugins:1.12.5
+    image: jodogne/orthanc-plugins:1.12.6
     hostname: orthanc2.local
     configs:
       - source: orthanc2_config
