@@ -27,6 +27,11 @@
       "matchManagers": ["poetry"],
       "matchPackageNames": ["dicognito"],
       "allowedVersions": "<=0.17"
+    },
+    {
+      "managers": ["poetry"],
+      "matchPackageNames": ["factory-boy"],
+      "allowedVersions": "<=3.3.2"
     }
   ]
 }
