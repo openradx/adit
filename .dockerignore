@@ -64,7 +64,7 @@ venv/
 # Vim swap files
 **/*.swp
 
-# Development stuff
+# More development stuff
 .github/
 .pytest_cache/
 .ruff_cache/
