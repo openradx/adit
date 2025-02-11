@@ -654,14 +654,14 @@ test-randomorder = ["pytest-randomly"]
 
 [[package]]
 name = "cssbeautifier"
-version = "1.15.2"
+version = "1.15.3"
 description = "CSS unobfuscator and beautifier."
 optional = false
 python-versions = "*"
 groups = ["dev"]
 files = [
-    {file = "cssbeautifier-1.15.2-py3-none-any.whl", hash = "sha256:6daf7f6012ff2914092d675793a5a7f602ca36a10159d0cf5c119183004306e0"},
-    {file = "cssbeautifier-1.15.2.tar.gz", hash = "sha256:02d42ffa6aefaa87f18452b437dbb73f6b98f42e9a84759810dc58f7a6bfc26c"},
+    {file = "cssbeautifier-1.15.3-py3-none-any.whl", hash = "sha256:0dcaf5ce197743a79b3a160b84ea58fcbd9e3e767c96df1171e428125b16d410"},
+    {file = "cssbeautifier-1.15.3.tar.gz", hash = "sha256:406b04d09e7d62c0be084fbfa2cba5126fe37359ea0d8d9f7b963a6354fc8303"},
 ]
 
 [package.dependencies]
@@ -1214,14 +1214,14 @@ files = [
 
 [[package]]
 name = "environs"
-version = "14.1.0"
+version = "14.1.1"
 description = "simplified environment variable parsing"
 optional = false
 python-versions = ">=3.9"
 groups = ["main"]
 files = [
-    {file = "environs-14.1.0-py3-none-any.whl", hash = "sha256:a7edda1668ddf1fbfcb7662bdc242dac25648eff2c7fdbaa5d959693afed7a3e"},
-    {file = "environs-14.1.0.tar.gz", hash = "sha256:a5f2afe9d5a21b468e74a3cceacf5d2371fd67dbb9a7e54fe62290c75a09cdfa"},
+    {file = "environs-14.1.1-py3-none-any.whl", hash = "sha256:45bc56f1d53bbc59d8dd69bba97377dd88ec28b8229d81cedbd455b21789445b"},
+    {file = "environs-14.1.1.tar.gz", hash = "sha256:03db7ee2d50ec697b68814cd175a3a05a7c7954804e4e419ca8b570dc5a835cf"},
 ]
 
 [package.dependencies]
@@ -1284,18 +1284,18 @@ doc = ["Sphinx", "sphinx-rtd-theme", "sphinxcontrib-spelling"]
 
 [[package]]
 name = "faker"
-version = "36.0.0"
+version = "36.1.0"
 description = "Faker is a Python package that generates fake data for you."
 optional = false
 python-versions = ">=3.9"
 groups = ["dev"]
 files = [
-    {file = "Faker-36.0.0-py3-none-any.whl", hash = "sha256:67b89f255843c84fac395ae4430d48a7422e1f48b3435dbcceb77364d24e2bb8"},
-    {file = "faker-36.0.0.tar.gz", hash = "sha256:e00cf69e55d3466f93c82cf63259a484d14b48702a1d9ed719ff039e9f392b49"},
+    {file = "Faker-36.1.0-py3-none-any.whl", hash = "sha256:aa0b93487d3adf7cd89953d172e3df896cb7b35d8a5222c0da873edbe2f7adf5"},
+    {file = "faker-36.1.0.tar.gz", hash = "sha256:f40510350aecfe006f45cb3f8879b35e861367cf347f51a7f2ca2c0571fdcc0b"},
 ]
 
 [package.dependencies]
-python-dateutil = ">=2.4"
+tzdata = "*"
 
 [[package]]
 name = "greenlet"
@@ -1616,14 +1616,14 @@ testing = ["Django", "attrs", "colorama", "docopt", "pytest (<9.0.0)"]
 
 [[package]]
 name = "jsbeautifier"
-version = "1.15.2"
+version = "1.15.3"
 description = "JavaScript unobfuscator and beautifier."
 optional = false
 python-versions = "*"
 groups = ["dev"]
 files = [
-    {file = "jsbeautifier-1.15.2-py3-none-any.whl", hash = "sha256:d599aed6dcb0d5431190e5ad7335900d5fdc67236082fe6b6d3fb61d568d7417"},
-    {file = "jsbeautifier-1.15.2.tar.gz", hash = "sha256:6aff11af2c6cb9a2ce135f33a5b223cf5ee676ab7ff5da0edac01e23734f5755"},
+    {file = "jsbeautifier-1.15.3-py3-none-any.whl", hash = "sha256:b207a15ab7529eee4a35ae7790e9ec4e32a2b5026d51e2d0386c3a65e6ecfc91"},
+    {file = "jsbeautifier-1.15.3.tar.gz", hash = "sha256:5f1baf3d4ca6a615bb5417ee861b34b77609eeb12875555f8bbfabd9bf2f3457"},
 ]
 
 [package.dependencies]
@@ -3597,7 +3597,6 @@ files = [
     {file = "tzdata-2025.1-py2.py3-none-any.whl", hash = "sha256:7e127113816800496f027041c570f50bcd464a020098a3b6b199517772303639"},
     {file = "tzdata-2025.1.tar.gz", hash = "sha256:24894909e88cdb28bd1636c6887801df64cb485bd593f2fd83ef29075a81d694"},
 ]
-markers = {dev = "sys_platform == \"win32\""}
 
 [[package]]
 name = "urllib3"
