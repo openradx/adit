@@ -48,7 +48,7 @@ jobs:
         run: poetry run ./manage.py lint_code
       - name: Run tests
         shell: 'script -q -e -c "bash {0}"'
-        run: poetry run ./manage.py pytest_in_container test --cov
+        run: poetry run ./manage.py pytest_in_container --cov
       - name: Stop Docker containers
         if: ${{ always() }}
         run: poetry run ./manage.py compose_down
