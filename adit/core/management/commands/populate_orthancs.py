@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from django.conf import settings
 from django.core.management.base import BaseCommand
 
@@ -11,8 +13,12 @@ class Command(BaseCommand):
         parser.add_argument("--reset", action="store_true")
 
     def handle(self, *args, **options):
-        orthanc1 = OrthancRestHandler(host=settings.ORTHANC1_HOST, port=settings.ORTHANC1_HTTP_PORT)
-        orthanc2 = OrthancRestHandler(host=settings.ORTHANC2_HOST, port=settings.ORTHANC2_HTTP_PORT)
+        orthanc1_host: str = settings.ORTHANC1_HOST
+        orthanc1_http_port: int = settings.ORTHANC1_HTTP_PORT
+        orthanc2_host: str = settings.ORTHANC2_HOST
+        orthanc2_http_port: int = settings.ORTHANC2_HTTP_PORT
+        orthanc1 = OrthancRestHandler(host=orthanc1_host, port=orthanc1_http_port)
+        orthanc2 = OrthancRestHandler(host=orthanc2_host, port=orthanc2_http_port)
 
         if options["reset"]:
             self.stdout.write("Resetting Orthancs...", ending="")
@@ -27,6 +33,7 @@ class Command(BaseCommand):
 
         self.stdout.write("Populating Orthanc1 with example DICOMs...", ending="")
         self.stdout.flush()
-        dicoms_folder = settings.BASE_DIR / "samples" / "dicoms"
+        base_path: Path = settings.ROOT_PATH
+        dicoms_folder = base_path / "samples" / "dicoms"
         orthanc1.upload(dicoms_folder)
         self.stdout.write("Done")

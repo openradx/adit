@@ -37,8 +37,8 @@ whitenoise = "^6.0.0"
 [package.source]
 type = "git"
 url = "https://github.com/openradx/adit-radis-shared.git"
-reference = "0.13.2"
-resolved_reference = "06057b75eb040a5d3d96cbe9b98ceae72f1b6cfa"
+reference = "0.13.3"
+resolved_reference = "c39e3f829add52e3acb62be2407eec929c95ba63"
 
 [[package]]
 name = "adrf"
@@ -1112,6 +1112,27 @@ files = [
 typing_extensions = ">=4.0"
 
 [[package]]
+name = "django-typer"
+version = "2.6.0"
+description = "Use Typer to define the CLI for your Django management commands."
+optional = false
+python-versions = "<4.0,>=3.9"
+groups = ["dev"]
+files = [
+    {file = "django_typer-2.6.0-py3-none-any.whl", hash = "sha256:7635fc3d3af6d9e80b53089c969e3947a8e1cd127e4a497a1c46696eebddec62"},
+    {file = "django_typer-2.6.0.tar.gz", hash = "sha256:60b15b67d8540000aa9851ba0e381dda8700fc1a418b3861844a2eabdbf96fc3"},
+]
+
+[package.dependencies]
+click = ">=8.1.0,<9.0.0"
+Django = ">=3.2,<6.0"
+shellingham = ">=1.5.4"
+typer-slim = ">=0.14.0,<0.16.0"
+
+[package.extras]
+rich = ["rich (>=10.11.0,<14.0.0)"]
+
+[[package]]
 name = "djangorestframework"
 version = "3.15.2"
 description = "Web APIs for Django, made easy."
@@ -1501,18 +1522,6 @@ groups = ["dev"]
 files = [
     {file = "iniconfig-2.0.0-py3-none-any.whl", hash = "sha256:b6a85871a79d2e3b22d2d1b94ac2824226a63c6b741c88f7ae975f18b6778374"},
     {file = "iniconfig-2.0.0.tar.gz", hash = "sha256:2d91e135bf72d31a410b17c16da610a82cb55f6b0477d1a902134b24a455b8b3"},
-]
-
-[[package]]
-name = "invoke"
-version = "2.2.0"
-description = "Pythonic task execution"
-optional = false
-python-versions = ">=3.6"
-groups = ["dev"]
-files = [
-    {file = "invoke-2.2.0-py3-none-any.whl", hash = "sha256:6ea924cc53d4f78e3d98bc436b08069a03077e6f85ad1ddaa8a116d7dad15820"},
-    {file = "invoke-2.2.0.tar.gz", hash = "sha256:ee6cbb101af1a859c7fe84f2a264c059020b0cb7fe3535f9424300ab568f6bd5"},
 ]
 
 [[package]]
@@ -3294,6 +3303,18 @@ test = ["build[virtualenv] (>=1.0.3)", "filelock (>=3.4.0)", "ini2toml[lite] (>=
 type = ["importlib_metadata (>=7.0.2)", "jaraco.develop (>=7.21)", "mypy (==1.14.*)", "pytest-mypy"]
 
 [[package]]
+name = "shellingham"
+version = "1.5.4"
+description = "Tool to Detect Surrounding Shell"
+optional = false
+python-versions = ">=3.7"
+groups = ["dev"]
+files = [
+    {file = "shellingham-1.5.4-py2.py3-none-any.whl", hash = "sha256:7ecfff8f2fd72616f7481040475a65b2bf8af90a56c89140852d1120324e8686"},
+    {file = "shellingham-1.5.4.tar.gz", hash = "sha256:8dbca0739d487e5bd35ab3ca4b36e11c4078f3a234bfce294b0a0291363404de"},
+]
+
+[[package]]
 name = "six"
 version = "1.17.0"
 description = "Python 2 and 3 compatibility utilities"
@@ -3550,6 +3571,25 @@ files = [
 all = ["twisted (>=20.3.0)", "zope.interface (>=5.2.0)"]
 dev = ["pep8 (>=1.6.2)", "pyenchant (>=1.6.6)", "pytest (>=2.6.4)", "pytest-cov (>=1.8.1)", "sphinx (>=1.2.3)", "sphinx-rtd-theme (>=0.1.9)", "sphinxcontrib-spelling (>=2.1.2)", "tox (>=2.1.1)", "tox-gh-actions (>=2.2.0)", "twine (>=1.6.5)", "wheel"]
 twisted = ["twisted (>=20.3.0)", "zope.interface (>=5.2.0)"]
+
+[[package]]
+name = "typer-slim"
+version = "0.15.1"
+description = "Typer, build great CLIs. Easy to code. Based on Python type hints."
+optional = false
+python-versions = ">=3.7"
+groups = ["dev"]
+files = [
+    {file = "typer_slim-0.15.1-py3-none-any.whl", hash = "sha256:20233cb89938ea3cca633afee10b906a1b0e7c5330f31ed8c55f4f0779efe6df"},
+    {file = "typer_slim-0.15.1.tar.gz", hash = "sha256:b8ce8fd2a3c7d52f0d0c1318776e7f2bf897fa203daf899f3863514aa926c725"},
+]
+
+[package.dependencies]
+click = ">=8.0.0"
+typing-extensions = ">=3.7.4.3"
+
+[package.extras]
+standard = ["rich (>=10.11.0)", "shellingham (>=1.3.0)"]
 
 [[package]]
 name = "types-pyyaml"
@@ -3862,4 +3902,4 @@ testing = ["coverage[toml]", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.12,<4.0"
-content-hash = "38d8fda7aa3568f35e8b546c39e4bd9ddc7eb58630d43e79c78e05ce7c3f9433"
+content-hash = "4886ece307f09558e2aa19abe046f8b2a30630145d18cf58f8a904cfe1daa142"

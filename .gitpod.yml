@@ -5,7 +5,7 @@ tasks:
   - name: setup
     init: |
       poetry install
-      poetry run invoke init-workspace
+      poetry run ./init_workspace.py
 
 ports:
   - port: 8000

@@ -21,7 +21,7 @@ class Command(AsyncServerCommand):
         "files to subscribing workers."
     )
     server_name = "DICOM receiver"
-    paths_to_watch = settings.SOURCE_FOLDERS
+    paths_to_watch = settings.SOURCE_PATHS
 
     async def run_server_async(self, **options):
         with tempfile.TemporaryDirectory(prefix="adit_receiver_") as tmpdir:
