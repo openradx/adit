@@ -11,7 +11,7 @@ dynamic = ["dependencies", "version"]
 version = "0.0.0"
 
 [tool.poetry.dependencies]
-adit-radis-shared = { git = "https://github.com/openradx/adit-radis-shared.git", tag = "0.13.5" }
+adit-radis-shared = { git = "https://github.com/openradx/adit-radis-shared.git", tag = "0.13.6" }
 adrf = "^0.1.1"
 aiofiles = "^24.1.0"
 asyncinotify = "^4.0.1"
