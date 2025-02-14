@@ -28,7 +28,7 @@ jobs:
       - name: Install dependencies
         run: poetry install
       - name: Configure environment
-        run: poetry run ./init_workspace.py
+        run: poetry run ./cli.py init-workspace
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
       - name: Build and cache Docker images
@@ -41,14 +41,14 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
       - name: Start Docker containers
-        run: poetry run ./manage.py compose_up --no-build
+        run: poetry run ./cli.py compose-up --no-build
       - name: Run linting
         # https://github.com/actions/runner/issues/241#issuecomment-745902718
         shell: 'script -q -e -c "bash {0}"'
-        run: poetry run ./manage.py lint_code
+        run: poetry run ./cli.py lint
       - name: Run tests
         shell: 'script -q -e -c "bash {0}"'
-        run: poetry run ./manage.py pytest_in_container --cov
+        run: poetry run ./cli.py test --cov
       - name: Stop Docker containers
         if: ${{ always() }}
-        run: poetry run ./manage.py compose_down
+        run: poetry run ./cli.py compose-down

@@ -22,13 +22,10 @@ if not env.bool("IS_DOCKER_CONTAINER", default=False):
     env.read_env()
 
 # The base directory of the project (the root of the repository)
-ROOT_PATH = Path(__file__).resolve(strict=True).parent.parent.parent
+BASE_PATH = Path(__file__).resolve(strict=True).parent.parent.parent
 
 # The source paths of the project
-SOURCE_PATHS = [ROOT_PATH / "adit"]
-
-# The ID of the project and also the project module
-PROJECT_ID = "adit"
+SOURCE_PATHS = [BASE_PATH / "adit"]
 
 # Fetch version from the environment which is passed through from the latest git version tag
 PROJECT_VERSION = env.str("PROJECT_VERSION", default="vX.Y.Z")
@@ -85,7 +82,6 @@ INSTALLED_APPS = [
     "adit.dicom_web.apps.DicomWebConfig",
     "adit_radis_shared.maintenance_commands.apps.MaintenanceCommandsConfig",
     "channels",
-    "django_typer",
 ]
 
 MIDDLEWARE = [
@@ -279,7 +275,7 @@ USER_TIME_ZONE = env.str("USER_TIME_ZONE")
 STATIC_URL = "/static/"
 
 # Additional (project wide) static files
-STATICFILES_DIRS = (ROOT_PATH / "adit" / "static",)
+STATICFILES_DIRS = (BASE_PATH / "adit" / "static",)
 
 # For crispy forms
 CRISPY_ALLOWED_TEMPLATE_PACKS = "bootstrap5"
