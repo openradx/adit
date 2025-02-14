@@ -22,10 +22,10 @@ if not env.bool("IS_DOCKER_CONTAINER", default=False):
     env.read_env()
 
 # The base directory of the project (the root of the repository)
-BASE_DIR = Path(__file__).resolve(strict=True).parent.parent.parent
+BASE_PATH = Path(__file__).resolve(strict=True).parent.parent.parent
 
-# Used to monitor files for autoreload
-SOURCE_FOLDERS = [BASE_DIR / "adit"]
+# The source paths of the project
+SOURCE_PATHS = [BASE_PATH / "adit"]
 
 # Fetch version from the environment which is passed through from the latest git version tag
 PROJECT_VERSION = env.str("PROJECT_VERSION", default="vX.Y.Z")
@@ -274,7 +274,7 @@ USER_TIME_ZONE = env.str("USER_TIME_ZONE")
 STATIC_URL = "/static/"
 
 # Additional (project wide) static files
-STATICFILES_DIRS = (BASE_DIR / "adit" / "static",)
+STATICFILES_DIRS = (BASE_PATH / "adit" / "static",)
 
 # For crispy forms
 CRISPY_ALLOWED_TEMPLATE_PACKS = "bootstrap5"
@@ -295,14 +295,14 @@ DBBACKUP_STORAGE_OPTIONS = {
 DBBACKUP_CLEANUP_KEEP = 30
 
 # Orthanc servers are integrated in ADIT by using a reverse proxy (django-revproxy).
-ORTHANC1_HOST = env.str("ORTHANC1_HOST")
-ORTHANC1_HTTP_PORT = env.int("ORTHANC1_HTTP_PORT")
-ORTHANC1_DICOM_PORT = env.int("ORTHANC1_DICOM_PORT")
-ORTHANC1_DICOMWEB_ROOT = env.str("ORTHANC1_DICOMWEB_ROOT")
-ORTHANC2_HOST = env.str("ORTHANC2_HOST")
-ORTHANC2_HTTP_PORT = env.int("ORTHANC2_HTTP_PORT")
-ORTHANC2_DICOM_PORT = env.int("ORTHANC2_DICOM_PORT")
-ORTHANC2_DICOMWEB_ROOT = env.str("ORTHANC2_DICOMWEB_ROOT")
+ORTHANC1_HOST = env.str("ORTHANC1_HOST", default="localhost")
+ORTHANC1_HTTP_PORT = env.int("ORTHANC1_HTTP_PORT", default=6501)
+ORTHANC1_DICOM_PORT = env.int("ORTHANC1_DICOM_PORT", default=7501)
+ORTHANC1_DICOMWEB_ROOT = env.str("ORTHANC1_DICOMWEB_ROOT", "dicom-web")
+ORTHANC2_HOST = env.str("ORTHANC2_HOST", default="localhost")
+ORTHANC2_HTTP_PORT = env.int("ORTHANC2_HTTP_PORT", default=6502)
+ORTHANC2_DICOM_PORT = env.int("ORTHANC2_DICOM_PORT", default=7502)
+ORTHANC2_DICOMWEB_ROOT = env.str("ORTHANC2_DICOMWEB_ROOT", "dicom-web")
 
 # Used by django-filter
 FILTERS_EMPTY_CHOICE_LABEL = "Show All"
@@ -318,16 +318,16 @@ RECEIVER_AE_TITLE = env.str("RECEIVER_AE_TITLE")
 
 # The address and port of the STORE SCP server (part of the receiver).
 # By default the STORE SCP server listens to all interfaces (empty string)
-STORE_SCP_HOST = env.str("STORE_SCP_HOST")
-STORE_SCP_PORT = env.int("STORE_SCP_PORT")
+STORE_SCP_HOST = env.str("STORE_SCP_HOST", "localhost")
+STORE_SCP_PORT = env.int("STORE_SCP_PORT", 11112)
 
 # The address and port of the file transmit socket server (part of the receiver)
 # that is used to transfer DICOM files from the receiver to the workers (when
 # the PACS server does not support C-GET).
 # By default the file transmit socket server listens to all interfaces (should
 # not be a problem as it is inside the docker network).
-FILE_TRANSMIT_HOST = env.str("FILE_TRANSMIT_HOST")
-FILE_TRANSMIT_PORT = env.int("FILE_TRANSMIT_PORT")
+FILE_TRANSMIT_HOST = env.str("FILE_TRANSMIT_HOST", "localhost")
+FILE_TRANSMIT_PORT = env.int("FILE_TRANSMIT_PORT", 14638)
 
 # Usually a transfer job must be verified by an admin. By setting
 # this option to True ADIT will schedule unverified transfers

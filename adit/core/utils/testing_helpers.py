@@ -161,7 +161,7 @@ def create_dicom_web_client(server_url: str, ae_title: str, token_string: str) -
 
 
 def load_sample_dicoms(patient_id: str | None = None) -> Iterable[Dataset]:
-    test_dicoms_path = settings.BASE_DIR / "samples" / "dicoms"
+    test_dicoms_path = settings.BASE_PATH / "samples" / "dicoms"
     if patient_id:
         test_dicoms_path = test_dicoms_path / patient_id
 

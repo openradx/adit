@@ -14,10 +14,10 @@ git clone https://github.com/openradx/adit.git
 cd adit
 poetry install
 poetry shell
-invoke compose-up
+poetry run ./cli.py compose-up
 ```
 
 The development server of the example project will be started on <http://localhost:8000>
 
 If a library dependency is changed, the containers need to be rebuilt (e.g. by running
-`invoke compose-down && invoke compose-up`).
+`poetry run ./cli.py compose-down && poetry run ./cli.py compose-up`).

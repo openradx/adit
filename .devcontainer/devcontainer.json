@@ -8,7 +8,7 @@
   },
   // https://github.com/orgs/community/discussions/50403
   // "initializeCommand": "docker system prune --all --force",
-  "postCreateCommand": "poetry install && poetry run invoke init-workspace",
+  "postCreateCommand": "poetry install && poetry run ./cli.py init-workspace",
   "customizations": {
     "vscode": {
       "extensions": [
