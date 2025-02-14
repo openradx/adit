@@ -33,7 +33,7 @@ class Command(BaseCommand):
 
         self.stdout.write("Populating Orthanc1 with example DICOMs...", ending="")
         self.stdout.flush()
-        base_path: Path = settings.ROOT_PATH
+        base_path: Path = settings.BASE_PATH
         dicoms_folder = base_path / "samples" / "dicoms"
         orthanc1.upload(dicoms_folder)
         self.stdout.write("Done")

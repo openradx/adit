@@ -129,7 +129,7 @@ def test_download_series_with_c_get(mocker: MockerFixture):
     association_mock = create_association_mock()
     associate_mock.return_value = association_mock
     association_mock.send_c_get.return_value = DicomTestHelper.create_successful_c_get_response()
-    path = Path(settings.ROOT_PATH) / "samples" / "dicoms"
+    path = Path(settings.BASE_PATH) / "samples" / "dicoms"
     ds = read_dataset(next(path.rglob("*.dcm")))
     received_ds = []
     dicom_operator = create_dicom_operator()
@@ -158,7 +158,7 @@ def test_download_series_with_c_move(settings: SettingsWrapper, mocker: MockerFi
     dicom_operator = create_dicom_operator()
     dicom_operator.server.study_root_get_support = False
     dicom_operator.server.patient_root_get_support = False
-    path = Path(settings.ROOT_PATH) / "samples" / "dicoms"
+    path = Path(settings.BASE_PATH) / "samples" / "dicoms"
     file_path = next(path.rglob("*.dcm"))
     ds = read_dataset(file_path)
     responses = [{"SOPInstanceUID": ds.SOPInstanceUID}]

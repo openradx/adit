@@ -15,7 +15,7 @@ NUM_TRANSFER_FILES = 5
 
 @pytest.mark.asyncio
 async def test_start_transmit_file():
-    samples_path = Path(f"{settings.ROOT_PATH}/samples/dicoms")
+    samples_path = Path(f"{settings.BASE_PATH}/samples/dicoms")
     sample_files = list(samples_path.rglob("*.dcm"))
 
     server = FileTransmitServer(HOST, PORT)
