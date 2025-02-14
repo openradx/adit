@@ -36,17 +36,14 @@ app.command()(commands.try_github_actions)
 
 
 @app.command()
-def populate_orthancs(
-    reset: Annotated[bool, typer.Option(help="Do not build images")] = False,
-    simulate: Annotated[bool, typer.Option(help="Simulate the command")] = False,
-):
+def populate_orthancs(reset: Annotated[bool, typer.Option(help="Do not build images")] = False):
     """Populate Orthancs with example DICOMs"""
 
     cmd = f"{helpers.build_compose_cmd()} exec web python manage.py populate_orthancs"
     if reset:
         cmd += " --reset"
 
-    helpers.execute_cmd(cmd, simulate=simulate)
+    helpers.execute_cmd(cmd)
 
 
 if __name__ == "__main__":
