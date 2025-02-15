@@ -8,27 +8,23 @@ jobs:
   ci:
     strategy:
       fail-fast: false
-      matrix:
-        python-version: ["3.12"]
-        poetry-version: ["2.0.1"]
-        os: [ubuntu-latest]
-    runs-on: ${{ matrix.os }}
+    runs-on: "ubuntu-latest"
     timeout-minutes: 15
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-      - name: Set up Python
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: "0.6.0"
+      - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: ${{ matrix.python-version }}
-      - name: Set up Poetry
-        uses: abatilo/actions-poetry@v4
-        with:
-          poetry-version: ${{ matrix.poetry-version }}
+          python-version-file: ".python-version"
       - name: Install dependencies
-        run: poetry install
+        run: uv sync
       - name: Configure environment
-        run: poetry run ./cli.py init-workspace
+        run: uv run ./cli.py init-workspace
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
       - name: Build and cache Docker images
@@ -41,14 +37,14 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
       - name: Start Docker containers
-        run: poetry run ./cli.py compose-up --no-build
+        run: uv run ./cli.py compose-up --no-build
       - name: Run linting
         # https://github.com/actions/runner/issues/241#issuecomment-745902718
         shell: 'script -q -e -c "bash {0}"'
-        run: poetry run ./cli.py lint
+        run: uv run ./cli.py lint
       - name: Run tests
         shell: 'script -q -e -c "bash {0}"'
-        run: poetry run ./cli.py test --cov
+        run: uv run ./cli.py test --cov
       - name: Stop Docker containers
         if: ${{ always() }}
-        run: poetry run ./cli.py compose-down
+        run: uv run ./cli.py compose-down

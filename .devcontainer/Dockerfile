@@ -6,6 +6,7 @@ USER root
 # - gettext for Django translations
 # - postgresql-common for the apt.postgresql.org.sh script
 # - postgresql-client-17 for a current version of psql
+# Make sure to match the version of the postgres service in the compose file!
 RUN sudo apt-get update \
   && apt-get install -y --no-install-recommends \
   bash-completion \
@@ -17,6 +18,3 @@ RUN sudo apt-get update \
   && rm -rf /var/lib/apt/lists/*
 
 USER vscode
-
-RUN pipx install poetry \
-  && poetry completions bash >> ~/.bash_completion

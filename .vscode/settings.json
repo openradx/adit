@@ -2,6 +2,7 @@
   "cSpell.diagnosticLevel": "Hint",
   "docker.containers.label": "ContainerName",
   "editor.formatOnSave": true,
+  "evenBetterToml.schema.enabled": false,
   "javascript.validate.enable": true,
   "js/ts.implicitProjectConfig.checkJs": true,
   "notebook.formatOnSave.enabled": true,
