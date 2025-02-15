@@ -6,9 +6,10 @@
     "ghcr.io/devcontainers/features/docker-in-docker:2": {},
     "ghcr.io/devcontainers/features/node:1": {}
   },
-  // https://github.com/orgs/community/discussions/50403
-  // "initializeCommand": "docker system prune --all --force",
-  "postCreateCommand": "poetry install && poetry run ./cli.py init-workspace",
+  "remoteEnv": {
+    "UV_CACHE_DIR": "/workspaces/.cache"
+  },
+  "postCreateCommand": "uv sync && uv run ./cli.py init-workspace",
   "customizations": {
     "vscode": {
       "extensions": [

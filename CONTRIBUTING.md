@@ -12,12 +12,11 @@ We adhere to the Google Python Style [Guide](https://google.github.io/styleguide
 ```terminal
 git clone https://github.com/openradx/adit.git
 cd adit
-poetry install
-poetry shell
-poetry run ./cli.py compose-up
+uv sync
+uv run ./cli.py compose-up
 ```
 
 The development server of the example project will be started on <http://localhost:8000>
 
 If a library dependency is changed, the containers need to be rebuilt (e.g. by running
-`poetry run ./cli.py compose-down && poetry run ./cli.py compose-up`).
+`uv run ./cli.py compose-down && uv run ./cli.py compose-up`).

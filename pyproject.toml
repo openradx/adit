@@ -5,91 +5,88 @@ authors = [{ name = "Kai Schlamp" }]
 license = "AGPL-3.0-or-later"
 readme = "README.md"
 requires-python = ">=3.12,<4.0"
-dynamic = ["dependencies", "version"]
+dynamic = ["version"]
+dependencies = [
+    "adit-radis-shared @ git+https://github.com/openradx/adit-radis-shared.git@0.14.0",
+    "adrf",
+    "aiofiles",
+    "asyncinotify",
+    "channels",
+    "crispy-bootstrap5",
+    "cryptography",
+    "daphne",
+    "dicognito<0.18.0",
+    "dicomweb-client",
+    "Django",
+    "django-crispy-forms",
+    "django-dbbackup",
+    "django-extensions",
+    "django-filter",
+    "django-htmx",
+    "django-loginas",
+    "django-pglock",
+    "django-registration-redux",
+    "django-revproxy",
+    "django-tables2",
+    "djangorestframework",
+    "environs[django]",
+    "humanize",
+    "janus",
+    "Markdown",
+    "openpyxl",
+    "pandas",
+    "pebble",
+    "procrastinate[django]",
+    "psycopg[binary]",
+    "pyarrow",
+    "pydicom<3.0.0",
+    "pynetdicom",
+    "Twisted[tls,http2]",
+    "wait-for-it",
+    "watchfiles",
+    "whitenoise",
+]
 
-[tool.poetry]
-version = "0.0.0"
-
-[tool.poetry.dependencies]
-adit-radis-shared = { git = "https://github.com/openradx/adit-radis-shared.git", tag = "0.13.6" }
-adrf = "^0.1.1"
-aiofiles = "^24.1.0"
-asyncinotify = "^4.0.1"
-channels = "^4.0.0"
-crispy-bootstrap5 = "^2024.2"
-cryptography = "^44.0.0"
-daphne = "^4.0.0"
-dicognito = "<0.18.0"
-dicomweb-client = "^0.59.1"
-Django = "^5.0.4"
-django-crispy-forms = "^2.0"
-django-dbbackup = "^4.0.2"
-django-extensions = "^3.1.5"
-django-filter = "^24.2"
-django-htmx = "^1.14.0"
-django-loginas = "^0.3.9"
-django-pglock = "^1.5.1"
-django-registration-redux = "^2.10"
-django-revproxy = "^0.13.0"
-django-tables2 = "^2.3.3"
-djangorestframework = "^3.13.1"
-environs = { extras = ["django"], version = "^14.1.0" }
-humanize = "^4.0.0"
-janus = "^2.0.0"
-Markdown = "^3.3.7"
-openpyxl = "^3.1.2"
-pandas = "^2.0.1"
-pebble = "^5.0.3"
-procrastinate = { extras = ["django"], version = "^3.0.0" }
-psycopg = { extras = ["binary"], version = "^3.1.12" }
-pyarrow = "^19.0.0"
-pydicom = "^2.4.4"
-pynetdicom = "^2.1.1"
-python = ">=3.12,<4.0"
-Twisted = { extras = ["tls", "http2"], version = "^24.3.0" }
-wait-for-it = "^2.2.2"
-watchfiles = "^1.0.3"
-whitenoise = "^6.0.0"
-
-[tool.poetry.group.dev.dependencies]
-debugpy = "^1.6.2"
-django-browser-reload = "^1.11.0"
-django-debug-permissions = "^1.0.0"
-django-debug-toolbar = "^5.0.0"
-django-stubs = "^5.0.4"
-django-test-migrations = "^1.3.0"
-djangorestframework-stubs = "^3.15.0"
-djlint = "^1.19.16"
-factory-boy = "<=3.3.2"
-Faker = "^36.0.0"
-ipykernel = "^6.17.1"
-ipython = "^8.1.1"
-nest-asyncio = "^1.5.6"
-pyright = "^1.1.351"
-pytest = "^8.1.1"
-pytest-asyncio = "^0.25.0"
-pytest-cov = "^6.0.0"
-pytest-django = "^4.5.2"
-pytest-mock = "^3.10.0"
-pytest-only = "^2.0.0"
-pytest-order = "^1.3.0"
-pytest-picked = "^0.5.0"
-pytest-playwright = "^0.7.0"
-pytest-timeout = "^2.1.0"
-pytest-watch = "^4.2.0"
-python-dotenv = "^1.0.0"
-pywatchman = "^2.0.0"
-requests = "^2.27.1"
-ruff = "^0.9.0"
-time-machine = "^2.1.0"
-typer = "^0.15.1"
-vermin = "^1.5.2"
+[dependency-groups]
+dev = [
+    "debugpy",
+    "django-browser-reload",
+    "django-debug-permissions",
+    "django-debug-toolbar",
+    "django-stubs",
+    "django-test-migrations",
+    "djangorestframework-stubs",
+    "djlint",
+    "factory-boy<=3.3.2",
+    "Faker",
+    "ipykernel",
+    "ipython",
+    "nest-asyncio",
+    "pyright",
+    "pytest",
+    "pytest-asyncio",
+    "pytest-cov",
+    "pytest-django",
+    "pytest-mock",
+    "pytest-only",
+    "pytest-order",
+    "pytest-picked",
+    "pytest-playwright",
+    "pytest-timeout",
+    "pytest-watch",
+    "python-dotenv",
+    "pywatchman",
+    "requests",
+    "ruff",
+    "time-machine",
+    "typer",
+    "vermin",
+]
 
 [tool.pyright]
 ignore = ["**/migrations", "**/*.ipynb"]
 typeCheckingMode = "basic"
 reportUnnecessaryTypeIgnoreComment = true
-reportWildcardImportFromLibrary = false
 
 [tool.pytest.ini_options]
 DJANGO_SETTINGS_MODULE = "adit.settings.development"
@@ -129,5 +126,14 @@ max_line_length = 120
 ignore = "H021,H030,H031,T002"
 
 [build-system]
-requires = ["poetry-core>=1.0.0"]
-build-backend = "poetry.core.masonry.api"
+requires = ["hatchling", "uv-dynamic-versioning"]
+build-backend = "hatchling.build"
+
+[tool.hatch.version]
+source = "uv-dynamic-versioning"
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.uv-dynamic-versioning]
+pattern = "default-unprefixed"
