@@ -12,7 +12,7 @@
   "remoteEnv": {
     "UV_CACHE_DIR": "${containerWorkspaceFolder}/.cache/uv"
   },
-  "postCreateCommand": "uv sync && uv run ./cli.py init-workspace",
+  "postCreateCommand": "bash .devcontainer/post-create.sh",
   "customizations": {
     "vscode": {
       "extensions": [
