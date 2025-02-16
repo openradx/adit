@@ -6,46 +6,6 @@ license = "AGPL-3.0-or-later"
 readme = "README.md"
 requires-python = ">=3.12,<4.0"
 version = "0.0.0"
-dependencies = [
-    "adit-radis-shared @ git+https://github.com/openradx/adit-radis-shared.git@0.14.0",
-    "adrf",
-    "aiofiles",
-    "asyncinotify",
-    "channels",
-    "crispy-bootstrap5",
-    "cryptography",
-    "daphne",
-    "dicognito<0.18.0",
-    "dicomweb-client",
-    "Django",
-    "django-crispy-forms",
-    "django-dbbackup",
-    "django-extensions",
-    "django-filter",
-    "django-htmx",
-    "django-loginas",
-    "django-pglock",
-    "django-registration-redux",
-    "django-revproxy",
-    "django-tables2",
-    "djangorestframework",
-    "environs[django]",
-    "humanize",
-    "janus",
-    "Markdown",
-    "openpyxl",
-    "pandas",
-    "pebble",
-    "procrastinate[django]",
-    "psycopg[binary]",
-    "pyarrow",
-    "pydicom<3.0.0",
-    "pynetdicom",
-    "Twisted[tls,http2]",
-    "wait-for-it",
-    "watchfiles",
-    "whitenoise",
-]
 
 [dependency-groups]
 dev = [
@@ -83,13 +43,19 @@ dev = [
     "vermin",
 ]
 
+[tool.uv.sources]
+adit_server = { workspace = true }
+
+[tool.uv.workspace]
+members = ["adit_server"]
+
 [tool.pyright]
 ignore = ["**/migrations", "**/*.ipynb"]
 typeCheckingMode = "basic"
 reportUnnecessaryTypeIgnoreComment = true
 
 [tool.pytest.ini_options]
-DJANGO_SETTINGS_MODULE = "adit.settings.development"
+DJANGO_SETTINGS_MODULE = "adit_server.settings.development"
 python_files = ["tests.py", "test_*.py", "*_tests.py"]
 testpaths = ["adit/**/tests"]
 log_cli = 0

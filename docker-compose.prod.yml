@@ -7,7 +7,7 @@ x-app: &default-app
   environment:
     DJANGO_EMAIL_URL: ${DJANGO_EMAIL_URL:?}
     DJANGO_SECURE_SSL_REDIRECT: ${DJANGO_SECURE_SSL_REDIRECT:-true}
-    DJANGO_SETTINGS_MODULE: adit.settings.production
+    DJANGO_SETTINGS_MODULE: adit_server.settings.production
     DJANGO_STATIC_ROOT: /var/www/web/static/
     POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?}
 
@@ -48,7 +48,7 @@ services:
         echo 'Starting web server ...' &&
         daphne -b 0.0.0.0 -p 80 \\
           -e ssl:443:privateKey=/etc/web/ssl/key.pem:certKey=/etc/web/ssl/cert.pem \\
-          adit.asgi:application
+          adit_server.asgi:application
       "
     deploy:
       <<: *deploy

@@ -1,0 +1,97 @@
+{% load static from static %}
+{% load bootstrap_icon from common_extras %}
+<div class="modal-content">
+    <div class="modal-header">
+        <h5 class="modal-title">Batch Query Help</h5>
+        <button type="button"
+                class="btn-close"
+                data-bs-dismiss="modal"
+                aria-label="Close" />
+    </div>
+    <div class="modal-body">
+        <p>
+            With a Batch Query you can create a job to find data of multiple studies in a source DICOM / PACS server. Batch
+            query jobs are put into a queue and will be processed by a worker when the time is right. You will get an Email when
+            the job is finished (or failed for some reason).
+        </p>
+        <p>
+            Each batch query job contains several query tasks that define what studies to search for. The search terms must be
+            specified in an Excel file (.xlsx). The first row of the Excel file must contain the header with the column titles (see below).
+            Each of the following rows represent a query task.
+        </p>
+        <p>
+            <strong class="text-danger">Cave!</strong>
+            <br />
+            If PatientID or AccessionNumber contains leading zeros those are relevant as it is not a number but a text
+            identifier. So make sure that your Excel file does not remove those leading zeros by setting the column type to text or
+            add a single quote ' as prefix to the text cell itself.
+        </p>
+        <p>
+            These are the columns in the batch file to execute your queries:
+            <dl>
+                <dt>PatientID</dt>
+                <dd>
+                    The unique ID of the patient in the PACS.
+                </dd>
+                <dt>PatientName</dt>
+                <dd>
+                    The name of the patient.
+                </dd>
+                <dt>PatientBirthDate</dt>
+                <dd>
+                    The birth date of the patient.
+                </dd>
+                <dt>AccessionNumber</dt>
+                <dd>
+                    The Accession Number (a unique ID) of the study.
+                </dd>
+                <dt>From</dt>
+                <dd>
+                    Only include studies newer than or equal to this date.
+                </dd>
+                <dt>Until</dt>
+                <dd>
+                    Only include studies older than or equal to this date.
+                </dd>
+                <dt>Modality</dt>
+                <dd>
+                    The modality of the study. Multiple modalities to query can be provided as a comma
+                    separated list.
+                </dd>
+                <dt>SeriesDescription</dt>
+                <dd>
+                    Only include series of the study, whose series description match a certain case insensitive regular
+                    expression pattern (see <a href="https://medium.com/factory-mind/regex-tutorial-a-simple-cheatsheet-by-examples-649dc1c3f285/">
+                    introduction into using a regular expression</a> and <a href="https://regex101.com/"> testing your
+                    regular expression</a>).
+                </dd>
+                <dt>SeriesNumber</dt>
+                <dd>
+                    Only include series of the study with the specified series number. Multiple series
+                    numbers can be provided as a comma separated list.
+                </dd>
+                <dt>Pseudonym</dt>
+                <dd>
+                    A pseudonym to pseudonymize the images during a subsequent transfer with Batch Transfer.
+                </dd>
+            </dl>
+        </p>
+        <p>
+            The patient must be identifiable by either "PatientID" or "PatientName" together with "PatientBirthDate".
+            The remaining fields are optional and may limit the results for what you really need.
+        </p>
+        <p>
+            The result of the batch query can be viewed and downloaded from adit_server. The downloaded Excel file contains more data
+            then what can be viewed on the website. Each result contains the "PatientID" and "StudyInstanceUID", which is
+            necessary for a batch transfer job. If a "SeriesDescription" or a "SeriesNumber" was provided, the result will also
+            contain the "SeriesInstanceUID". This downloaded file can be used for a batch transfer. So a batch query job is in
+            a preparation step for a batch transfer.
+        </p>
+        <div class="mb-1">
+            <a href="{% static 'samples/batch_query_sample.xlsx' %}">
+                {% bootstrap_icon "download" %}
+                Download a sample batch query file (Excel format).
+            </a>
+        </div>
+    </div>
+</div>
