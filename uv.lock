@@ -4,7 +4,8 @@ requires-python = ">=3.12, <4.0"
 
 [[package]]
 name = "adit"
-source = { editable = "." }
+version = "0.0.0"
+source = { virtual = "." }
 dependencies = [
     { name = "adit-radis-shared" },
     { name = "adrf" },
@@ -118,7 +119,7 @@ requires-dist = [
     { name = "pyarrow" },
     { name = "pydicom", specifier = "<3.0.0" },
     { name = "pynetdicom" },
-    { name = "twisted", extras = ["http2", "tls"] },
+    { name = "twisted", extras = ["tls", "http2"] },
     { name = "wait-for-it" },
     { name = "watchfiles" },
     { name = "whitenoise" },

@@ -5,7 +5,7 @@ authors = [{ name = "Kai Schlamp" }]
 license = "AGPL-3.0-or-later"
 readme = "README.md"
 requires-python = ">=3.12,<4.0"
-dynamic = ["version"]
+version = "0.0.0"
 dependencies = [
     "adit-radis-shared @ git+https://github.com/openradx/adit-radis-shared.git@0.14.0",
     "adrf",
@@ -124,16 +124,3 @@ lint.select = ["E", "F", "I", "DJ"]
 profile = "django"
 max_line_length = 120
 ignore = "H021,H030,H031,T002"
-
-[build-system]
-requires = ["hatchling", "uv-dynamic-versioning"]
-build-backend = "hatchling.build"
-
-[tool.hatch.version]
-source = "uv-dynamic-versioning"
-
-[tool.hatch.metadata]
-allow-direct-references = true
-
-[tool.uv-dynamic-versioning]
-pattern = "default-unprefixed"
