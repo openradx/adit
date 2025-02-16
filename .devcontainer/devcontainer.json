@@ -4,10 +4,13 @@
   },
   "features": {
     "ghcr.io/devcontainers/features/docker-in-docker:2": {},
-    "ghcr.io/devcontainers/features/node:1": {}
+    "ghcr.io/devcontainers/features/node:1": {},
+    "ghcr.io/va-h/devcontainers-features/uv:1": {
+      "shellautocompletion": true
+    }
   },
   "remoteEnv": {
-    "UV_CACHE_DIR": "/workspaces/.cache"
+    "UV_CACHE_DIR": "${containerWorkspaceFolder}/.cache/uv"
   },
   "postCreateCommand": "uv sync && uv run ./cli.py init-workspace",
   "customizations": {

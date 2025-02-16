@@ -9,7 +9,6 @@ USER root
 # Make sure to match the version of the postgres service in the compose file!
 RUN sudo apt-get update \
   && apt-get install -y --no-install-recommends \
-  bash-completion \
   gettext \
   postgresql-common \
   && /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y \
