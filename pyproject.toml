@@ -82,6 +82,13 @@ dev = [
     "typer",
     "vermin",
 ]
+client = ["adit-client"]
+
+[tool.uv]
+default-groups = ["dev", "client"]
+
+[tool.uv.sources]
+adit-client = { path = "adit-client" }
 
 [tool.pyright]
 ignore = ["**/migrations", "**/*.ipynb"]
@@ -91,7 +98,7 @@ reportUnnecessaryTypeIgnoreComment = true
 [tool.pytest.ini_options]
 DJANGO_SETTINGS_MODULE = "adit.settings.development"
 python_files = ["tests.py", "test_*.py", "*_tests.py"]
-testpaths = ["adit/**/tests"]
+testpaths = ["adit/**/tests", "adit-client/**/tests"]
 log_cli = 0
 log_cli_level = "INFO"
 log_cli_format = "%(asctime)s [%(levelname)8s] %(message)s (%(filename)s:%(lineno)s)"
@@ -108,7 +115,7 @@ timeout = 60
 
 [tool.coverage.run]
 branch = true
-source = ["adit"]
+source = ["adit", "adit-client"]
 
 [tool.coverage.report]
 skip_empty = true

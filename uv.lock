@@ -47,6 +47,9 @@ dependencies = [
 ]
 
 [package.dev-dependencies]
+client = [
+    { name = "adit-client" },
+]
 dev = [
     { name = "debugpy" },
     { name = "django-browser-reload" },
@@ -125,6 +128,7 @@ requires-dist = [
 ]
 
 [package.metadata.requires-dev]
+client = [{ name = "adit-client", directory = "adit-client" }]
 dev = [
     { name = "debugpy" },
     { name = "django-browser-reload" },
@@ -158,6 +162,22 @@ dev = [
     { name = "time-machine" },
     { name = "typer" },
     { name = "vermin" },
+]
+
+[[package]]
+name = "adit-client"
+source = { directory = "adit-client" }
+dependencies = [
+    { name = "dicognito" },
+    { name = "dicomweb-client" },
+    { name = "pydicom" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "dicognito", specifier = "<0.18.0" },
+    { name = "dicomweb-client" },
+    { name = "pydicom", specifier = "<3.0.0" },
 ]
 
 [[package]]
