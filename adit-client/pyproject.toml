@@ -6,7 +6,11 @@ license = "AGPL-3.0-or-later"
 readme = "README.md"
 requires-python = ">=3.12,<4.0"
 dynamic = ["version"]
-dependencies = ["dicognito<0.18.0", "dicomweb-client", "pydicom<3.0.0"]
+dependencies = [
+    "dicognito ~= 0.17.0",
+    "dicomweb-client ~= 0.59",
+    "pydicom ~= 2.4",
+]
 
 [build-system]
 requires = ["hatchling", "uv-dynamic-versioning"]
