@@ -16,7 +16,7 @@ RUN apt-get update \
 ENV PYTHONUNBUFFERED=1 \
   PYTHONDONTWRITEBYTECODE=1
 
-COPY --from=ghcr.io/astral-sh/uv:0.6.0 /uv /uvx /bin/
+COPY --from=ghcr.io/astral-sh/uv:0.6.2 /uv /uvx /bin/
 
 ENV UV_COMPILE_BYTECODE=1 \
   UV_LINK_MODE=copy
