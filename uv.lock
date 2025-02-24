@@ -87,7 +87,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "adit-radis-shared", git = "https://github.com/openradx/adit-radis-shared.git?rev=0.14.0" },
+    { name = "adit-radis-shared", git = "https://github.com/openradx/adit-radis-shared.git?rev=0.14.1" },
     { name = "adrf", specifier = "~=0.1" },
     { name = "aiofiles", specifier = "~=24.1" },
     { name = "asyncinotify", specifier = "~=4.2" },
@@ -182,8 +182,8 @@ requires-dist = [
 
 [[package]]
 name = "adit-radis-shared"
-version = "0.14.0"
-source = { git = "https://github.com/openradx/adit-radis-shared.git?rev=0.14.0#56c38d5e783e498645f3da2cdcd059e8b4e11ff1" }
+version = "0.14.1"
+source = { git = "https://github.com/openradx/adit-radis-shared.git?rev=0.14.1#88d9b69db8edaee291079ea6d31a2e42bda72f6f" }
 dependencies = [
     { name = "channels" },
     { name = "crispy-bootstrap5" },
@@ -200,10 +200,14 @@ dependencies = [
     { name = "django-revproxy" },
     { name = "django-tables2" },
     { name = "djangorestframework" },
+    { name = "dunamai" },
     { name = "environs", extra = ["django"] },
     { name = "procrastinate", extra = ["django"] },
     { name = "psycopg", extra = ["binary"] },
+    { name = "python-dotenv" },
+    { name = "requests" },
     { name = "twisted", extra = ["http2", "tls"] },
+    { name = "typer" },
     { name = "wait-for-it" },
     { name = "watchfiles" },
     { name = "whitenoise" },
@@ -949,6 +953,18 @@ name = "docopt"
 version = "0.6.2"
 source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/a2/55/8f8cab2afd404cf578136ef2cc5dfb50baa1761b68c9da1fb1e4eed343c9/docopt-0.6.2.tar.gz", hash = "sha256:49b3a825280bd66b3aa83585ef59c4a8c82f2c8a522dbe754a8bc8d08c85c491", size = 25901 }
+
+[[package]]
+name = "dunamai"
+version = "1.23.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "packaging" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/06/4e/a5c8c337a1d9ac0384298ade02d322741fb5998041a5ea74d1cd2a4a1d47/dunamai-1.23.0.tar.gz", hash = "sha256:a163746de7ea5acb6dacdab3a6ad621ebc612ed1e528aaa8beedb8887fccd2c4", size = 44681 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/21/4c/963169386309fec4f96fd61210ac0a0666887d0fb0a50205395674d20b71/dunamai-1.23.0-py3-none-any.whl", hash = "sha256:a0906d876e92441793c6a423e16a4802752e723e9c9a5aabdc5535df02dbe041", size = 26342 },
+]
 
 [[package]]
 name = "editorconfig"

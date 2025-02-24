@@ -29,6 +29,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
+          build-args: ${{ steps.meta.outputs.version }}
           target: production
           push: true
           tags: ${{ steps.meta.outputs.tags }}

@@ -7,7 +7,7 @@ readme = "README.md"
 requires-python = ">=3.12,<4.0"
 dynamic = ["version"]
 dependencies = [
-    "adit-radis-shared @ git+https://github.com/openradx/adit-radis-shared.git@0.14.0",
+    "adit-radis-shared @ git+https://github.com/openradx/adit-radis-shared.git@0.14.1",
     "adrf ~= 0.1",
     "aiofiles ~= 24.1",
     "asyncinotify ~= 4.2",

@@ -27,8 +27,8 @@ BASE_PATH = Path(__file__).resolve(strict=True).parent.parent.parent
 # The source paths of the project
 SOURCE_PATHS = [BASE_PATH / "adit"]
 
-# Fetch version from the environment which is passed through from the latest git version tag
-PROJECT_VERSION = env.str("PROJECT_VERSION", default="vX.Y.Z")
+# Fetch version from the environment which is passed through from the git version tag
+PROJECT_VERSION = env.str("PROJECT_VERSION", default="v0.0.0")
 
 # The project URL used in the navbar and footer
 PROJECT_URL = "https://github.com/openradx/adit"
