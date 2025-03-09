@@ -13,6 +13,7 @@ def get_model_label(model: type[models.Model]) -> str:
 def reset_tasks(tasks: models.QuerySet["DicomTask"]) -> None:
     tasks.update(
         status=tasks.model.Status.PENDING,
+        queued_job_id=None,
         attempts=0,
         message="",
         log="",
