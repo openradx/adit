@@ -5,7 +5,6 @@ from adit_radis_shared.common.site import THEME_PREFERENCE_KEY
 from adit_radis_shared.common.types import AuthenticatedHttpRequest
 from adit_radis_shared.common.views import (
     AdminProxyView,
-    BaseBroadcastView,
     BaseHomeView,
     BaseUpdatePreferencesView,
 )
@@ -22,7 +21,6 @@ from django.db.models.query import QuerySet
 from django.forms import ModelForm
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import redirect, render
-from django.urls import reverse_lazy
 from django.views.generic import View
 from django.views.generic.detail import DetailView, SingleObjectMixin
 from django.views.generic.edit import CreateView, DeleteView
@@ -36,7 +34,6 @@ from adit.core.utils.model_utils import reset_tasks
 
 from .models import DicomJob, DicomTask
 from .site import job_stats_collectors
-from .tasks import broadcast_mail
 
 
 @staff_member_required
@@ -51,13 +48,6 @@ def admin_section(request: HttpRequest) -> HttpResponse:
             "job_stats": job_stats,
         },
     )
-
-
-class BroadcastView(BaseBroadcastView):
-    success_url = reverse_lazy("broadcast")
-
-    def send_mails(self, subject: str, message: str) -> None:
-        broadcast_mail.defer(subject, message)
 
 
 class HomeView(BaseHomeView):
