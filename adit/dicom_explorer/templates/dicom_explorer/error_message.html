@@ -3,10 +3,12 @@
     DICOM Explorer Failure
 {% endblock title %}
 {% block heading %}
-    <h4 class="mb-3">
-        DICOM Explorer
-        <small class="text-muted">Failure</small>
-    </h4>
+    <c-heading>
+    <c-slot name="title">
+    DICOM Explorer
+    <small class="text-muted">Failure</small>
+    </c-slot>
+    </c-heading>
 {% endblock heading %}
 {% block content %}
     {{ error_message }}

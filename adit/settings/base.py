@@ -66,6 +66,7 @@ INSTALLED_APPS = [
     "dbbackup",
     "revproxy",
     "loginas",
+    "django_cotton",
     "crispy_forms",
     "crispy_bootstrap5",
     "django_htmx",

@@ -5,13 +5,15 @@
     Batch Query Results
 {% endblock title %}
 {% block heading %}
-    <div class="d-flex justify-content-between align-items-start">
-        <h4 class="mb-3">Batch Query Results</h4>
-        <a href="{% url 'batch_query_job_detail' job.id %}">
-            {% bootstrap_icon "arrow-return-left" %}
-            View Job
-        </a>
-    </div>
+    <c-heading title="Batch Query Results">
+    <c-slot name="right">
+    <a href="{% url 'batch_query_job_detail' job.id %}"
+       class="btn btn-secondary">
+        {% bootstrap_icon "arrow-return-left" %}
+        View Job
+    </a>
+    </c-slot>
+    </c-heading>
 {% endblock heading %}
 {% block content %}
     <div class="d-flex justify-content-between">

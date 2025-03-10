@@ -5,22 +5,24 @@
     New Selective Transfer Job
 {% endblock title %}
 {% block heading %}
-    <div class="d-flex justify-content-between align-items-start">
-        <h4 class="mb-3 d-flex gap-3">
-            <span>Select studies to transfer</span>
-            <button type="button"
-                    class="btn btn-sm btn-info align-baseline"
-                    hx-get="{% url 'selective_transfer_help' %}"
-                    hx-target="#htmx-dialog">
-                Help
-                {% bootstrap_icon "question-circle" %}
-            </button>
-        </h4>
-        <a href="{% url 'selective_transfer_job_list' %}">
-            {% bootstrap_icon "list" %}
-            Previous Jobs
-        </a>
-    </div>
+    <c-heading title="New Selective Transfer Job">
+    <c-slot name="left">
+    <button type="button"
+            class="btn btn-info"
+            hx-get="{% url 'selective_transfer_help' %}"
+            hx-target="#htmx-dialog">
+        Help
+        {% bootstrap_icon "question-circle" %}
+    </button>
+    </c-slot>
+    <c-slot name="right">
+    <a href="{% url 'selective_transfer_job_list' %}"
+       class="btn btn-secondary">
+        {% bootstrap_icon "list" %}
+        Previous Jobs
+    </a>
+    </c-slot>
+    </c-heading>
 {% endblock heading %}
 {% block content %}
     <!--
