@@ -18,6 +18,7 @@ dependencies = [
     { name = "dicognito" },
     { name = "dicomweb-client" },
     { name = "django" },
+    { name = "django-block-fragments" },
     { name = "django-cotton" },
     { name = "django-crispy-forms" },
     { name = "django-dbbackup" },
@@ -29,7 +30,6 @@ dependencies = [
     { name = "django-registration-redux" },
     { name = "django-revproxy" },
     { name = "django-tables2" },
-    { name = "django-template-partials" },
     { name = "djangorestframework" },
     { name = "environs", extra = ["django"] },
     { name = "humanize" },
@@ -101,6 +101,7 @@ requires-dist = [
     { name = "dicognito", specifier = ">=0.17.0,<0.18.0" },
     { name = "dicomweb-client", specifier = ">=0.59.3" },
     { name = "django", specifier = ">=5.1.6" },
+    { name = "django-block-fragments", specifier = ">=0.1.1" },
     { name = "django-cotton", specifier = ">=1.6.0" },
     { name = "django-crispy-forms", specifier = ">=2.3" },
     { name = "django-dbbackup", specifier = ">=4.2.1" },
@@ -112,7 +113,6 @@ requires-dist = [
     { name = "django-registration-redux", specifier = ">=2.13" },
     { name = "django-revproxy", specifier = ">=0.13.0" },
     { name = "django-tables2", specifier = ">=2.7.5" },
-    { name = "django-template-partials", specifier = ">=24.4" },
     { name = "djangorestframework", specifier = ">=3.15.2" },
     { name = "environs", extras = ["django"], specifier = ">=14.1.1" },
     { name = "humanize", specifier = ">=4.12.1" },
@@ -685,6 +685,18 @@ wheels = [
 ]
 
 [[package]]
+name = "django-block-fragments"
+version = "0.1.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "django" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/05/4d/b90af5ed02efed97232b1bb3198146de01beee35be478223a092c7bc1fea/django_block_fragments-0.1.1.tar.gz", hash = "sha256:207e9a8c76e1b52486ddf8ee1bdc5aad4f65f3d1a0874b5303ad1b6d08ef0850", size = 22714 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/e7/4c/a515e1b4f6a63785c73d9da5d5eceae21157d95cea09748d196029db4ee4/django_block_fragments-0.1.1-py3-none-any.whl", hash = "sha256:9f1a24a18da95f0d2eb4db4a402755488535e14bc3e545fe8c0ab33043c94261", size = 7670 },
+]
+
+[[package]]
 name = "django-browser-reload"
 version = "1.18.0"
 source = { registry = "https://pypi.org/simple" }
@@ -896,18 +908,6 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/19/0f/497ebb829a0f6d93ac8ae720b114a413e6e3a6eb0682f15c7a8d59f69464/django_tables2-2.7.5.tar.gz", hash = "sha256:fb5dcaa09379cf3947598ec7e1bd5f26ed63aafdee3b23963446763bbeac37bf", size = 128618 }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/0b/66/6d454db3edcd285b767caaa790c3e7a3969c91bb6f93601d9a879aab06f2/django_tables2-2.7.5-py3-none-any.whl", hash = "sha256:d9338937797207ffb6f481be2125c5ec3a0bb1858d409c672cc25fc5d654cb22", size = 95984 },
-]
-
-[[package]]
-name = "django-template-partials"
-version = "24.4"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "django" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/1c/ff/2a7ddae12ca8e5fea1a41af05924c04f1bb4aec7157b04a88b829dd93d4a/django_template_partials-24.4.tar.gz", hash = "sha256:25b67301470fc274ecc419e5e5fd4686a5020b1c038fd241a70eb087809034b6", size = 14538 }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/31/72/d8eea70683b25230e0d2647b5cf6f2db4a7e7d35cb6170506d9618196374/django_template_partials-24.4-py2.py3-none-any.whl", hash = "sha256:ee59d3839385d7f648907c3fa8d5923fcd66cd8090f141fe2a1c338b917984e2", size = 8439 },
 ]
 
 [[package]]
