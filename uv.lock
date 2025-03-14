@@ -90,7 +90,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "adit-radis-shared", git = "https://github.com/openradx/adit-radis-shared.git?rev=0.16.0" },
+    { name = "adit-radis-shared", git = "https://github.com/openradx/adit-radis-shared.git?rev=0.17.0" },
     { name = "adrf", specifier = ">=0.1.9" },
     { name = "aiofiles", specifier = ">=24.1.0" },
     { name = "asyncinotify", specifier = ">=4.2.0" },
@@ -188,13 +188,14 @@ requires-dist = [
 [[package]]
 name = "adit-radis-shared"
 version = "0.0.0"
-source = { git = "https://github.com/openradx/adit-radis-shared.git?rev=0.16.0#1ec1135d62e940a6d5b9694eaf29734cc367a6b1" }
+source = { git = "https://github.com/openradx/adit-radis-shared.git?rev=0.17.0#32455298f6d5e84d2d2bd8ff854f60ef56913e01" }
 dependencies = [
     { name = "channels" },
     { name = "crispy-bootstrap5" },
     { name = "cryptography" },
     { name = "daphne" },
     { name = "django" },
+    { name = "django-block-fragments" },
     { name = "django-cotton" },
     { name = "django-crispy-forms" },
     { name = "django-dbbackup" },

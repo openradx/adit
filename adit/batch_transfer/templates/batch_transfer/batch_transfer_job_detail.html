@@ -7,14 +7,14 @@
     Batch Transfer Job
 {% endblock title %}
 {% block heading %}
-    <c-heading title="Batch Transfer Job">
+    <c-page-heading title="Batch Transfer Job">
     <c-slot name="right">
     <a href="{% url 'batch_transfer_job_list' %}" class="btn btn-secondary">
         {% bootstrap_icon "list" %}
         Job List
     </a>
     </c-slot>
-    </c-heading>
+    </c-page-heading>
 {% endblock heading %}
 {% block content %}
     <dl class="row">

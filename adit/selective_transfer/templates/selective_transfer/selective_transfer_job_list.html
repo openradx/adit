@@ -4,7 +4,7 @@
     Selective Transfer Jobs
 {% endblock title %}
 {% block heading %}
-    <c-heading title="Selective Transfer Jobs">
+    <c-page-heading title="Selective Transfer Jobs">
     <c-slot name="right">
     <a href="{% url 'selective_transfer_job_create' %}"
        class="btn btn-primary">
@@ -12,7 +12,7 @@
         Create New Job
     </a>
     </c-slot>
-    </c-heading>
+    </c-page-heading>
 {% endblock heading %}
 {% block content %}
     {% include "core/_dicom_job_table.html" %}

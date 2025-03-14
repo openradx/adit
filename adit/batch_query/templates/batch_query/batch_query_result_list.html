@@ -5,7 +5,7 @@
     Batch Query Results
 {% endblock title %}
 {% block heading %}
-    <c-heading title="Batch Query Results">
+    <c-page-heading title="Batch Query Results">
     <c-slot name="right">
     <a href="{% url 'batch_query_job_detail' job.id %}"
        class="btn btn-secondary">
@@ -13,7 +13,7 @@
         View Job
     </a>
     </c-slot>
-    </c-heading>
+    </c-page-heading>
 {% endblock heading %}
 {% block content %}
     <div class="d-flex justify-content-between">

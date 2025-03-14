@@ -7,14 +7,14 @@
     Batch Query Job
 {% endblock title %}
 {% block heading %}
-    <c-heading title="Batch Query Job">
+    <c-page-heading title="Batch Query Job">
     <c-slot name="left">
     <a href="{% url 'batch_query_job_list' %}" class="btn btn-secondary">
         {% bootstrap_icon "list" %}
         Job List
     </a>
     </c-slot>
-    </c-heading>
+    </c-page-heading>
 {% endblock heading %}
 {% block content %}
     <dl class="row">
@@ -61,7 +61,7 @@
     <div class="d-flex align-items-center justify-content-between">
         <h5 class="text-nowrap">Study Queries</h5>
         <a href="{% url 'batch_query_result_list' job.id %}"
-           class="btn btn-sm btn-success btn-primary">
+           class="btn btn-sm btn-primary">
             {% bootstrap_icon "eye" %}
             View Results
         </a>

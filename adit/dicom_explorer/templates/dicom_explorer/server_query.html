@@ -3,12 +3,12 @@
     DICOM Explorer Server List
 {% endblock title %}
 {% block heading %}
-    <c-heading>
+    <c-page-heading>
     <c-slot name="title">
     DICOM Explorer
     <small class="text-muted">Server List</small>
     </c-slot>
-    </c-heading>
+    </c-page-heading>
 {% endblock heading %}
 {% block content %}
     {% include "dicom_explorer/_servers_table.html" %}

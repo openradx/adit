@@ -4,14 +4,14 @@
     Batch Transfer Jobs
 {% endblock title %}
 {% block heading %}
-    <c-heading title="Batch Transfer Jobs">
+    <c-page-heading title="Batch Transfer Jobs">
     <c-slot name="right">
     <a href="{% url 'batch_transfer_job_create' %}" class="btn btn-primary">
         {% bootstrap_icon "plus-lg" %}
         Create New Job
     </a>
     </c-slot>
-    </c-heading>
+    </c-page-heading>
 {% endblock heading %}
 {% block content %}
     {% include "core/_dicom_job_table.html" %}
