@@ -1,7 +1,8 @@
 {% extends "batch_transfer/batch_transfer_layout.html" %}
-{% load dicom_job_status_css_class from core_extras %}
+{% load crispy from crispy_forms_tags %}
 {% load render_table from django_tables2 %}
 {% load bootstrap_icon from common_extras %}
+{% load dicom_job_status_css_class from core_extras %}
 {% load job_control_panel from batch_transfer_extras %}
 {% block title %}
     Batch Transfer Job
@@ -66,10 +67,11 @@
             {{ job.message|default:"—" }}
         </dd>
     </dl>
-    <div class="d-flex justify-content-between">
-        <h5 text-nowrap>Transfer Tasks</h5>
-        {% include "core/_table_filters.html" %}
-    </div>
+    <c-table-heading title="Transfer Tasks">
+    <c-slot name="right">
+    {% crispy filter.form %}
+    </c-slot>
+    </c-table-heading>
     {% render_table table %}
     {% job_control_panel %}
 {% endblock content %}
