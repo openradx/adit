@@ -11,12 +11,7 @@
 {% endblock heading %}
 {% block content %}
     {% include "core/_dicom_task_detail.html" %}
-    <div class="row justify-content-end mb-1">
-        <div class="col-md">
-            <h5 text-nowrap>Results</h5>
-        </div>
-        <div class="col col-md-auto">{% crispy page_size_select %}</div>
-    </div>
+    <c-table-heading title="Results" />
     {% render_table table %}
     {% task_control_panel %}
 {% endblock content %}
