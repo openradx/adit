@@ -1,50 +1,59 @@
 #! /usr/bin/env python3
+# PYTHON_ARGCOMPLETE_OK
+import argparse
+import sys
 
-from pathlib import Path
-from typing import Annotated
-
-import typer
-from adit_radis_shared import cli_commands as commands
-from adit_radis_shared import cli_helpers as helpers
-
-helpers.PROJECT_ID = "adit"
-helpers.ROOT_PATH = Path(__file__).resolve().parent
-
-app = typer.Typer()
-
-extra_args = {"allow_extra_args": True, "ignore_unknown_options": True}
-
-app.command()(commands.init_workspace)
-app.command()(commands.compose_up)
-app.command()(commands.compose_down)
-app.command()(commands.stack_deploy)
-app.command()(commands.stack_rm)
-app.command()(commands.lint)
-app.command()(commands.format_code)
-app.command(context_settings=extra_args)(commands.test)
-app.command()(commands.show_outdated)
-app.command()(commands.backup_db)
-app.command()(commands.restore_db)
-app.command()(commands.shell)
-app.command()(commands.generate_certificate_files)
-app.command()(commands.generate_certificate_chain)
-app.command()(commands.generate_django_secret_key)
-app.command()(commands.generate_secure_password)
-app.command()(commands.generate_auth_token)
-app.command()(commands.randomize_env_secrets)
-app.command()(commands.try_github_actions)
+import argcomplete
+from adit_radis_shared.cli import helper as cli_helper
+from adit_radis_shared.cli import parsers
 
 
-@app.command()
-def populate_orthancs(reset: Annotated[bool, typer.Option(help="Do not build images")] = False):
-    """Populate Orthancs with example DICOMs"""
+def populate_orthancs(reset: bool, **kwargs):
+    helper = cli_helper.CommandHelper()
 
-    cmd = f"{helpers.build_compose_cmd()} exec web python manage.py populate_orthancs"
+    cmd = f"{helper.build_compose_cmd()} exec web python manage.py populate_orthancs"
     if reset:
         cmd += " --reset"
 
-    helpers.execute_cmd(cmd)
+    helper.execute_cmd(cmd)
 
 
 if __name__ == "__main__":
-    app()
+    root_parser = argparse.ArgumentParser()
+    subparsers = root_parser.add_subparsers(dest="command")
+
+    parsers.register_compose_up(subparsers)
+    parsers.register_compose_down(subparsers)
+    parsers.register_db_backup(subparsers)
+    parsers.register_db_restore(subparsers)
+    parsers.register_format_code(subparsers)
+    parsers.register_generate_auth_token(subparsers)
+    parsers.register_generate_certificate_chain(subparsers)
+    parsers.register_generate_certificate_files(subparsers)
+    parsers.register_generate_django_secret_key(subparsers)
+    parsers.register_generate_secure_password(subparsers)
+    parsers.register_init_workspace(subparsers)
+    parsers.register_lint(subparsers)
+    parsers.register_randomize_env_secrets(subparsers)
+    parsers.register_shell(subparsers)
+    parsers.register_show_outdated(subparsers)
+    parsers.register_stack_deploy(subparsers)
+    parsers.register_stack_rm(subparsers)
+    parsers.register_test(subparsers)
+    parsers.register_try_github_actions(subparsers)
+    parsers.register_upgrade_postgres_volume(subparsers)
+
+    info = "Populate Orthancs with example DICOMs"
+    parser = subparsers.add_parser("populate-orthancs", help=info, description=info)
+    parser.add_argument(
+        "--reset", action="store_true", help="Fully reset the Orthancs and and then repopulate"
+    )
+    parser.set_defaults(func=populate_orthancs)
+
+    argcomplete.autocomplete(root_parser)
+    args, extra_args = root_parser.parse_known_args()
+    if not args.command:
+        root_parser.print_help()
+        sys.exit(1)
+
+    args.func(**vars(args), extra_args=extra_args)

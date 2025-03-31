@@ -7,7 +7,7 @@ version = "0.0.0"
 readme = "README.md"
 requires-python = ">=3.12,<4.0"
 dependencies = [
-    "adit-radis-shared @ git+https://github.com/openradx/adit-radis-shared.git@0.17.0",
+    "adit-radis-shared @ git+https://github.com/openradx/adit-radis-shared.git@0.17.3",
     "adrf>=0.1.9",
     "aiofiles>=24.1.0",
     "asyncinotify>=4.2.0",
@@ -51,6 +51,7 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "argcomplete>=3.6.1",
     "debugpy>=1.8.12",
     "django-browser-reload>=1.18.0",
     "django-debug-permissions>=1.0.0",
@@ -81,7 +82,6 @@ dev = [
     "requests>=2.32.3",
     "ruff>=0.9.7",
     "time-machine>=2.16.0",
-    "typer>=0.15.1",
     "vermin>=1.6.0",
 ]
 client = ["adit-client"]
