@@ -50,6 +50,9 @@ services:
 
   web:
     <<: *default-app
+    build:
+      args:
+        - PROJECT_VERSION=${PROJECT_VERSION:?}
     hostname: web.local
 
   default_worker:

@@ -101,13 +101,6 @@ and <https://forums.docker.com/t/docker-swarm-mode-not-picking-up-proxy-configur
 - docker volume ls -f "name=adit_dev-\*" # Show all volumes that begin with "adit_dev-"
 - docker volume rm $(docker volume ls -f "name=foobar-\*" -q) # Delete all volumes that begin with "foobar-", cave delete the \
 
-### Docker compose comands
-
-- docker compose -f "docker-compose.dev.yml" -p adit_dev exec web pytest # Run Pytest on web container
-- docker compose -f "docker-compose.dev.yml" -p adit_dev exec web pytest --cov=./adit # Run Pytest with coverage report
-- docker compose -f "docker-compose.dev.yml" -p adit_dev up -d --build
-- docker compose -f "docker-compose.prod.yml" -p adit_prod up -d --build
-
 ### Docker swarm commands
 
 - docker swarm init
