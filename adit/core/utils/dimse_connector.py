@@ -10,7 +10,12 @@ from django.conf import settings
 from pydicom import Dataset
 from pydicom.errors import InvalidDicomError
 from pynetdicom import debug_logger
-from pynetdicom._globals import STATUS_FAILURE, STATUS_PENDING, STATUS_SUCCESS, STATUS_WARNING
+from pynetdicom._globals import (
+    STATUS_FAILURE,  # type: ignore
+    STATUS_PENDING,  # type: ignore
+    STATUS_SUCCESS,  # type: ignore
+    STATUS_WARNING,  # type: ignore
+)
 from pynetdicom.ae import ApplicationEntity as AE
 from pynetdicom.association import Association
 from pynetdicom.events import EVT_C_STORE, Event
