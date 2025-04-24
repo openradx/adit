@@ -34,6 +34,7 @@ services:
         ./manage.py populate_example_data &&
         wait-for-it -s orthanc1.local:6501 -t 60 &&
         ./manage.py populate_orthancs &&
+        ./manage.py retry_stalled_jobs &&
         ./manage.py runserver 0.0.0.0:8000
       "
 
