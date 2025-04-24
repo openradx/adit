@@ -1,11 +1,10 @@
 #! /usr/bin/env python3
 # PYTHON_ARGCOMPLETE_OK
 import argparse
-import sys
 
-import argcomplete
 from adit_radis_shared.cli import helper as cli_helper
 from adit_radis_shared.cli import parsers
+from adit_radis_shared.cli.setup import setup_root_parser
 
 
 def populate_orthancs(reset: bool, **kwargs):
@@ -51,10 +50,4 @@ if __name__ == "__main__":
     )
     parser.set_defaults(func=populate_orthancs)
 
-    argcomplete.autocomplete(root_parser)
-    args, extra_args = root_parser.parse_known_args()
-    if not args.command:
-        root_parser.print_help()
-        sys.exit(1)
-
-    args.func(**vars(args), extra_args=extra_args)
+    setup_root_parser(root_parser)
