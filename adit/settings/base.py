@@ -366,6 +366,9 @@ BATCH_TRANSFER_URGENT_PRIORITY = 6
 BATCH_QUERY_DEFAULT_PRIORITY = 3
 BATCH_QUERY_URGENT_PRIORITY = 7
 
+# The priority for stalled jobs that are retried.
+STALLED_JOBS_RETRY_PRIORITY = 10
+
 # The used archive type when creating a new archive in selective transfer.
 # .7z is more the secure as the names of files and folder can't be viewed
 # (in contrast to .zip), but .zip is more widely used.
