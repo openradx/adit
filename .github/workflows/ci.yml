@@ -37,7 +37,7 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
       - name: Start Docker containers
-        run: uv run ./cli.py compose-up -- --no-build
+        run: uv run ./cli.py compose-up -- --detach --no-build
       - name: Run linting
         # https://github.com/actions/runner/issues/241#issuecomment-745902718
         shell: 'script -q -e -c "bash {0}"'

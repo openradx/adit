@@ -1,5 +1,7 @@
 x-app: &default-app
   image: adit_dev:latest
+  build:
+    target: development
   volumes:
     - .:/app
     - /app/.venv
@@ -18,8 +20,6 @@ services:
 
   web:
     <<: *default-app
-    build:
-      target: development
     pull_policy: build
     ports:
       - ${WEB_DEV_PORT:-8000}:8000
