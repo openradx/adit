@@ -2,6 +2,7 @@ x-app: &default-app
   image: adit_dev:latest
   build:
     target: development
+  pull_policy: build
   volumes:
     - .:/app
     - /app/.venv
@@ -20,7 +21,6 @@ services:
 
   web:
     <<: *default-app
-    pull_policy: build
     ports:
       - ${WEB_DEV_PORT:-8000}:8000
       - ${REMOTE_DEBUGGING_PORT:-5678}:5678
