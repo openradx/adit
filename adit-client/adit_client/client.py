@@ -3,8 +3,8 @@ from typing import Iterator
 
 from dicognito.anonymizer import Anonymizer
 from dicognito.value_keeper import ValueKeeper
-from dicomweb_client import DICOMwebClient, session_utils
 from pydicom import Dataset
+from pydicomweb_client import DICOMwebClient, session_utils
 
 DEFAULT_SKIP_ELEMENTS_ANONYMIZATION = [
     "AcquisitionDate",
@@ -45,7 +45,9 @@ class AditClient:
         self, ae_title: str, query: dict[str, str] | None = None
     ) -> list[Dataset]:
         """Search for studies."""
-        results = self._create_dicom_web_client(ae_title).search_for_studies(search_filters=query)
+        results = self._create_dicom_web_client(ae_title).search_for_studies(
+            search_filters=query
+        )
         return [Dataset.from_json(result) for result in results]
 
     def search_for_series(
@@ -161,7 +163,9 @@ class AditClient:
         if isinstance(self.verify, bool):
             session.verify = self.verify
         else:
-            session = session_utils.add_certs_to_session(session=session, ca_bundle=self.verify)
+            session = session_utils.add_certs_to_session(
+                session=session, ca_bundle=self.verify
+            )
 
         return DICOMwebClient(
             session=session,
