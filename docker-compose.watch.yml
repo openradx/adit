@@ -1,0 +1,26 @@
+x-app: &default-app
+  volumes: !override
+    - ${BACKUP_DIR:?}:/backups
+    - ${MOUNT_DIR:?}:/mnt
+  develop:
+    watch:
+      - action: sync
+        path: .
+        target: /app
+        ignore:
+          - .venv/
+      - action: rebuild
+        path: ./pyproject.toml
+
+services:
+  web:
+    <<: *default-app
+
+  default_worker:
+    <<: *default-app
+
+  dicom_worker:
+    <<: *default-app
+
+  receiver:
+    <<: *default-app

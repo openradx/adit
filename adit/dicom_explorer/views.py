@@ -1,10 +1,9 @@
 import asyncio
 from urllib.parse import urlencode
 
-from adit_radis_shared.common.decorators import login_required_async, permission_required_async
 from adit_radis_shared.common.types import AuthenticatedHttpRequest
 from django.conf import settings
-from django.contrib.auth.decorators import login_required
+from django.contrib.auth.decorators import login_required, permission_required
 from django.core.exceptions import ValidationError
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import redirect, render
@@ -52,8 +51,8 @@ def dicom_explorer_form_view(request: AuthenticatedHttpRequest) -> HttpResponse:
     raise AssertionError("Invalid DICOM explorer query.")
 
 
-@login_required_async
-@permission_required_async("dicom_explorer.query_dicom_server")
+@login_required
+@permission_required("dicom_explorer.query_dicom_server")
 async def dicom_explorer_resources_view(
     request: AuthenticatedHttpRequest,
     server_id: str | None = None,
