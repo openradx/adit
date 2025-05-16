@@ -3,8 +3,8 @@ from typing import Iterator
 
 from dicognito.anonymizer import Anonymizer
 from dicognito.value_keeper import ValueKeeper
-from dicomweb_client import DICOMwebClient, session_utils
 from pydicom import Dataset
+from pydicomweb_client import DICOMwebClient, session_utils
 
 DEFAULT_SKIP_ELEMENTS_ANONYMIZATION = [
     "AcquisitionDate",

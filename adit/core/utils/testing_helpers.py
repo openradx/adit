@@ -7,11 +7,11 @@ from unittest.mock import create_autospec
 import pandas as pd
 from adit_radis_shared.accounts.factories import GroupFactory
 from adit_radis_shared.common.utils.testing_helpers import add_permission
-from dicomweb_client import DICOMwebClient
 from django.conf import settings
 from django.core.management import call_command
 from playwright.sync_api import FilePayload
 from pydicom import Dataset
+from pydicomweb_client import DICOMwebClient
 from pynetdicom.association import Association
 from pynetdicom.status import Status
 
@@ -36,7 +36,9 @@ class DicomTestHelper:
         return ds
 
     @staticmethod
-    def create_successful_c_find_responses(data_dicts: list[dict[str, Any]]) -> Iterable[Response]:
+    def create_successful_c_find_responses(
+        data_dicts: list[dict[str, Any]],
+    ) -> Iterable[Response]:
         responses: list[tuple[Dataset, Dataset | None]] = []
         for data_dict in data_dicts:
             identifier = DicomTestHelper.create_dataset_from_dict(data_dict)
@@ -150,7 +152,9 @@ def create_excel_file(df: pd.DataFrame, filename: str) -> FilePayload:
     }
 
 
-def create_dicom_web_client(server_url: str, ae_title: str, token_string: str) -> DICOMwebClient:
+def create_dicom_web_client(
+    server_url: str, ae_title: str, token_string: str
+) -> DICOMwebClient:
     return DICOMwebClient(
         url=f"{server_url}/api/dicom-web/{ae_title}",
         qido_url_prefix="qidors",
