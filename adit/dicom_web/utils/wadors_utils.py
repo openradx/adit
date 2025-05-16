@@ -19,6 +19,7 @@ async def wado_retrieve(
     source_server: DicomServer,
     query: dict[str, str],
     level: Literal["STUDY", "SERIES", "IMAGE"],
+    pseudonym: str | None = None,
 ) -> AsyncIterator[Dataset]:
     """WADO retrieve helper.
 
@@ -31,6 +32,10 @@ async def wado_retrieve(
     queue = asyncio.Queue[Dataset]()
 
     def callback(ds: Dataset) -> None:
+        if pseudonym is not None:
+            ds.PatientID = pseudonym
+            ds.PatientName = pseudonym
+
         loop.call_soon_threadsafe(queue.put_nowait, ds)
 
     try:

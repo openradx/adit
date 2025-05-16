@@ -8,7 +8,12 @@ from django.db.models import QuerySet
 from django.http import StreamingHttpResponse
 from django.urls import reverse
 from pydicom import Dataset, Sequence
-from rest_framework.exceptions import NotFound, ParseError, UnsupportedMediaType, ValidationError
+from rest_framework.exceptions import (
+    NotFound,
+    ParseError,
+    UnsupportedMediaType,
+    ValidationError,
+)
 from rest_framework.response import Response
 from rest_framework.utils.mediatypes import media_type_matches
 
@@ -38,7 +43,9 @@ class WebDicomAPIView(AsyncApiView):
         user: User,
         access_type: Literal["source", "destination"],
     ) -> QuerySet[DicomServer]:
-        return DicomServer.objects.accessible_by_user(user, access_type, all_groups=True)
+        return DicomServer.objects.accessible_by_user(
+            user, access_type, all_groups=True
+        )
 
     async def _get_dicom_server(
         self,
@@ -47,7 +54,9 @@ class WebDicomAPIView(AsyncApiView):
         access_type: Literal["source", "destination"],
     ) -> DicomServer:
         try:
-            accessible_servers = await self.get_accessible_servers(request.user, access_type)
+            accessible_servers = await self.get_accessible_servers(
+                request.user, access_type
+            )
             return await accessible_servers.aget(ae_title=ae_title)
         except DicomServer.DoesNotExist:
             raise NotFound(
@@ -144,7 +153,10 @@ class RetrieveAPIView(WebDicomAPIView):
         "SeriesInstanceUID": "",
         "SeriesDescription": "",
     }
-    renderer_classes = [WadoMultipartApplicationDicomRenderer, WadoApplicationDicomJsonRenderer]
+    renderer_classes = [
+        WadoMultipartApplicationDicomRenderer,
+        WadoApplicationDicomJsonRenderer,
+    ]
 
     async def _get_dicom_server(
         self, request: AuthenticatedApiRequest, ae_title: str
@@ -165,7 +177,9 @@ class RetrieveAPIView(WebDicomAPIView):
 
         return source_server
 
-    async def peek_images(self, images: AsyncIterator[Dataset]) -> AsyncPeekable[Dataset]:
+    async def peek_images(
+        self, images: AsyncIterator[Dataset]
+    ) -> AsyncPeekable[Dataset]:
         # In the middle of a StreamingHttpResponse we can't just throw an exception anymore to
         # just return a error response as the stream has already started. Thats why we peek
         # the first image here and throw an exception to return an error response if something
@@ -197,11 +211,12 @@ class RetrieveStudyAPIView(RetrieveAPIView):
         self, request: AuthenticatedApiRequest, ae_title: str, study_uid: str
     ) -> StreamingHttpResponse:
         source_server = await self._get_dicom_server(request, ae_title)
+        pseudonym = request.GET.get("pseudonym", None)
 
         query = self.query.copy()
         query["StudyInstanceUID"] = study_uid
 
-        images = wado_retrieve(source_server, query, "STUDY")
+        images = wado_retrieve(source_server, query, "STUDY", pseudonym=pseudonym)
         images = await self.peek_images(images)
 
         renderer = cast(DicomWebWadoRenderer, getattr(request, "accepted_renderer"))
@@ -216,11 +231,12 @@ class RetrieveStudyMetadataAPIView(RetrieveStudyAPIView):
         self, request: AuthenticatedApiRequest, ae_title: str, study_uid: str
     ) -> Response:
         source_server = await self._get_dicom_server(request, ae_title)
+        pseudonym = request.GET.get("pseudonym", None)
 
         query = self.query.copy()
         query["StudyInstanceUID"] = study_uid
 
-        images = wado_retrieve(source_server, query, "STUDY")
+        images = wado_retrieve(source_server, query, "STUDY", pseudonym=pseudonym)
         metadata = await self.extract_metadata(images)
 
         renderer = cast(DicomWebWadoRenderer, getattr(request, "accepted_renderer"))
@@ -229,15 +245,20 @@ class RetrieveStudyMetadataAPIView(RetrieveStudyAPIView):
 
 class RetrieveSeriesAPIView(RetrieveAPIView):
     async def get(
-        self, request: AuthenticatedApiRequest, ae_title: str, study_uid: str, series_uid: str
+        self,
+        request: AuthenticatedApiRequest,
+        ae_title: str,
+        study_uid: str,
+        series_uid: str,
     ) -> Response | StreamingHttpResponse:
         source_server = await self._get_dicom_server(request, ae_title)
+        pseudonym = request.GET.get("pseudonym", None)
 
         query = self.query.copy()
         query["StudyInstanceUID"] = study_uid
         query["SeriesInstanceUID"] = series_uid
 
-        images = wado_retrieve(source_server, query, "SERIES")
+        images = wado_retrieve(source_server, query, "SERIES", pseudonym=pseudonym)
         images = await self.peek_images(images)
 
         renderer = cast(DicomWebWadoRenderer, getattr(request, "accepted_renderer"))
@@ -249,15 +270,20 @@ class RetrieveSeriesAPIView(RetrieveAPIView):
 
 class RetrieveSeriesMetadataAPIView(RetrieveSeriesAPIView):
     async def get(
-        self, request: AuthenticatedApiRequest, ae_title: str, study_uid: str, series_uid: str
+        self,
+        request: AuthenticatedApiRequest,
+        ae_title: str,
+        study_uid: str,
+        series_uid: str,
     ) -> Response:
         source_server = await self._get_dicom_server(request, ae_title)
+        pseudonym = request.GET.get("pseudonym", None)
 
         query = self.query.copy()
         query["StudyInstanceUID"] = study_uid
         query["SeriesInstanceUID"] = series_uid
 
-        images = wado_retrieve(source_server, query, "SERIES")
+        images = wado_retrieve(source_server, query, "SERIES", pseudonym=pseudonym)
         metadata = await self.extract_metadata(images)
 
         renderer = cast(DicomWebWadoRenderer, getattr(request, "accepted_renderer"))
@@ -274,13 +300,14 @@ class RetrieveImageAPIView(RetrieveAPIView):
         image_uid: str,
     ) -> Response | StreamingHttpResponse:
         source_server = await self._get_dicom_server(request, ae_title)
+        pseudonym = request.GET.get("pseudonym", None)
 
         query = self.query.copy()
         query["StudyInstanceUID"] = study_uid
         query["SeriesInstanceUID"] = series_uid
         query["SOPInstanceUID"] = image_uid
 
-        images = wado_retrieve(source_server, query, "IMAGE")
+        images = wado_retrieve(source_server, query, "IMAGE", pseudonym=pseudonym)
         images = await self.peek_images(images)
 
         renderer = cast(DicomWebWadoRenderer, getattr(request, "accepted_renderer"))
@@ -300,13 +327,14 @@ class RetrieveImageMetadataAPIView(RetrieveImageAPIView):
         image_uid: str,
     ) -> Response:
         source_server = await self._get_dicom_server(request, ae_title)
+        pseudonym = request.GET.get("pseudonym", None)
 
         query = self.query.copy()
         query["StudyInstanceUID"] = study_uid
         query["SeriesInstanceUID"] = series_uid
         query["SOPInstanceUID"] = image_uid
 
-        images = wado_retrieve(source_server, query, "IMAGE")
+        images = wado_retrieve(source_server, query, "IMAGE", pseudonym=pseudonym)
         metadata = await self.extract_metadata(images)
 
         renderer = cast(DicomWebWadoRenderer, getattr(request, "accepted_renderer"))
@@ -324,7 +352,9 @@ class StoreImagesAPIView(WebDicomAPIView):
         study_uid: str = "",
     ) -> Response:
         content_type: str = request.content_type
-        if not media_type_matches("multipart/related; type=application/dicom", content_type):
+        if not media_type_matches(
+            "multipart/related; type=application/dicom", content_type
+        ):
             raise UnsupportedMediaType(content_type)
 
         dest_server = await self._get_dicom_server(request, ae_title, "destination")
@@ -347,7 +377,9 @@ class StoreImagesAPIView(WebDicomAPIView):
                 if ds.StudyInstanceUID != study_uid:
                     continue
 
-            logger.debug(f"Storing instance {ds.SOPInstanceUID} to {dest_server.ae_title}")
+            logger.debug(
+                f"Storing instance {ds.SOPInstanceUID} to {dest_server.ae_title}"
+            )
             result_ds, failed = await stow_store(dest_server, ds)
 
             if failed:
