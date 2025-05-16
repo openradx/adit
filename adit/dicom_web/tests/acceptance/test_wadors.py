@@ -1,5 +1,7 @@
 import pydicom
 import pytest
+from adit_radis_shared.common.utils.testing_helpers import ChannelsLiveServer
+
 from adit.core.models import DicomServer
 from adit.core.utils.auth_utils import grant_access
 from adit.core.utils.testing_helpers import (
@@ -10,7 +12,6 @@ from adit.core.utils.testing_helpers import (
 from adit.dicom_web.utils.testing_helpers import (
     create_user_with_dicom_web_group_and_token,
 )
-from adit_radis_shared.common.utils.testing_helpers import ChannelsLiveServer
 
 
 @pytest.mark.acceptance
