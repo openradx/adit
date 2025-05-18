@@ -30,9 +30,7 @@ def connect_to_server():
 
     def decorator(func):
         def setup_dicomweb_client(self: "DicomWebConnector") -> None:
-            logger.debug(
-                "Setting up DICOMweb client with url %s", self.server.dicomweb_root_url
-            )
+            logger.debug("Setting up DICOMweb client with url %s", self.server.dicomweb_root_url)
 
             if not self.server.dicomweb_root_url:
                 raise DicomError("Missing DICOMweb root url.")
@@ -44,19 +42,13 @@ def connect_to_server():
             self.dicomweb_client = DICOMwebClient(
                 url=self.server.dicomweb_root_url,
                 qido_url_prefix=(
-                    self.server.dicomweb_qido_prefix
-                    if self.server.dicomweb_qido_prefix
-                    else None
+                    self.server.dicomweb_qido_prefix if self.server.dicomweb_qido_prefix else None
                 ),
                 wado_url_prefix=(
-                    self.server.dicomweb_wado_prefix
-                    if self.server.dicomweb_wado_prefix
-                    else None
+                    self.server.dicomweb_wado_prefix if self.server.dicomweb_wado_prefix else None
                 ),
                 stow_url_prefix=(
-                    self.server.dicomweb_stow_prefix
-                    if self.server.dicomweb_stow_prefix
-                    else None
+                    self.server.dicomweb_stow_prefix if self.server.dicomweb_stow_prefix else None
                 ),
                 headers=headers,
             )
@@ -164,38 +156,26 @@ class DicomWebConnector:
             if level == "STUDY":
                 study_uid = query_dict.pop("StudyInstanceUID", "")
                 if not study_uid:
-                    raise DicomError(
-                        "Missing StudyInstanceUID for WADO-RS on study level."
-                    )
+                    raise DicomError("Missing StudyInstanceUID for WADO-RS on study level.")
                 yield from self.dicomweb_client.iter_study(study_uid)
             elif level == "SERIES":
                 study_uid = query_dict.pop("StudyInstanceUID", "")
                 series_uid = query_dict.pop("SeriesInstanceUID", "")
                 if not study_uid:
-                    raise DicomError(
-                        "Missing StudyInstanceUID for WADO-RS on series level."
-                    )
+                    raise DicomError("Missing StudyInstanceUID for WADO-RS on series level.")
                 if not series_uid:
-                    raise DicomError(
-                        "Missing SeriesInstanceUID for WADO-RS on series level."
-                    )
+                    raise DicomError("Missing SeriesInstanceUID for WADO-RS on series level.")
                 yield from self.dicomweb_client.iter_series(study_uid, series_uid)
             elif level == "IMAGE":
                 study_uid = query_dict.pop("StudyInstanceUID", "")
                 series_uid = query_dict.pop("SeriesInstanceUID", "")
                 sop_instance_uid = query_dict.pop("SOPInstanceUID", "")
                 if not study_uid:
-                    raise DicomError(
-                        "Missing StudyInstanceUID for WADO-RS on image level."
-                    )
+                    raise DicomError("Missing StudyInstanceUID for WADO-RS on image level.")
                 if not series_uid:
-                    raise DicomError(
-                        "Missing SeriesInstanceUID for WADO-RS on image level."
-                    )
+                    raise DicomError("Missing SeriesInstanceUID for WADO-RS on image level.")
                 if not sop_instance_uid:
-                    raise DicomError(
-                        "Missing SOPInstanceUID for WADO-RS on image level."
-                    )
+                    raise DicomError("Missing SOPInstanceUID for WADO-RS on image level.")
                 yield self.dicomweb_client.retrieve_instance(
                     study_uid, series_uid, sop_instance_uid
                 )
@@ -236,9 +216,7 @@ class DicomWebConnector:
             logger.debug("Sending STOW of %d datasets.", len(resource))
 
             for ds in resource:
-                logger.debug(
-                    "Sending C-STORE of SOP instance %s.", str(ds.SOPInstanceUID)
-                )
+                logger.debug("Sending C-STORE of SOP instance %s.", str(ds.SOPInstanceUID))
                 _send_dataset(ds)
         else:  # resource is a path to a folder
             folder = Path(resource)

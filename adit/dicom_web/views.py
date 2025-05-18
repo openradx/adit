@@ -8,12 +8,7 @@ from django.db.models import QuerySet
 from django.http import StreamingHttpResponse
 from django.urls import reverse
 from pydicom import Dataset, Sequence
-from rest_framework.exceptions import (
-    NotFound,
-    ParseError,
-    UnsupportedMediaType,
-    ValidationError,
-)
+from rest_framework.exceptions import NotFound, ParseError, UnsupportedMediaType, ValidationError
 from rest_framework.response import Response
 from rest_framework.utils.mediatypes import media_type_matches
 
@@ -149,10 +144,7 @@ class RetrieveAPIView(WebDicomAPIView):
         "SeriesInstanceUID": "",
         "SeriesDescription": "",
     }
-    renderer_classes = [
-        WadoMultipartApplicationDicomRenderer,
-        WadoApplicationDicomJsonRenderer,
-    ]
+    renderer_classes = [WadoMultipartApplicationDicomRenderer, WadoApplicationDicomJsonRenderer]
 
     async def _get_dicom_server(
         self, request: AuthenticatedApiRequest, ae_title: str
@@ -239,11 +231,7 @@ class RetrieveStudyMetadataAPIView(RetrieveStudyAPIView):
 
 class RetrieveSeriesAPIView(RetrieveAPIView):
     async def get(
-        self,
-        request: AuthenticatedApiRequest,
-        ae_title: str,
-        study_uid: str,
-        series_uid: str,
+        self, request: AuthenticatedApiRequest, ae_title: str, study_uid: str, series_uid: str
     ) -> Response | StreamingHttpResponse:
         source_server = await self._get_dicom_server(request, ae_title)
         pseudonym = request.GET.get("pseudonym", None)
@@ -264,11 +252,7 @@ class RetrieveSeriesAPIView(RetrieveAPIView):
 
 class RetrieveSeriesMetadataAPIView(RetrieveSeriesAPIView):
     async def get(
-        self,
-        request: AuthenticatedApiRequest,
-        ae_title: str,
-        study_uid: str,
-        series_uid: str,
+        self, request: AuthenticatedApiRequest, ae_title: str, study_uid: str, series_uid: str
     ) -> Response:
         source_server = await self._get_dicom_server(request, ae_title)
         pseudonym = request.GET.get("pseudonym", None)

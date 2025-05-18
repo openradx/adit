@@ -9,9 +9,7 @@ from adit.core.utils.testing_helpers import (
     load_sample_dicoms_metadata,
     setup_dimse_orthancs,
 )
-from adit.dicom_web.utils.testing_helpers import (
-    create_user_with_dicom_web_group_and_token,
-)
+from adit.dicom_web.utils.testing_helpers import create_user_with_dicom_web_group_and_token
 
 
 @pytest.mark.acceptance

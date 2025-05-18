@@ -152,9 +152,7 @@ def create_excel_file(df: pd.DataFrame, filename: str) -> FilePayload:
     }
 
 
-def create_dicom_web_client(
-    server_url: str, ae_title: str, token_string: str
-) -> DICOMwebClient:
+def create_dicom_web_client(server_url: str, ae_title: str, token_string: str) -> DICOMwebClient:
     return DICOMwebClient(
         url=f"{server_url}/api/dicom-web/{ae_title}",
         qido_url_prefix="qidors",
