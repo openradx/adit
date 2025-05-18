@@ -43,9 +43,7 @@ class WebDicomAPIView(AsyncApiView):
         user: User,
         access_type: Literal["source", "destination"],
     ) -> QuerySet[DicomServer]:
-        return DicomServer.objects.accessible_by_user(
-            user, access_type, all_groups=True
-        )
+        return DicomServer.objects.accessible_by_user(user, access_type, all_groups=True)
 
     async def _get_dicom_server(
         self,
@@ -54,9 +52,7 @@ class WebDicomAPIView(AsyncApiView):
         access_type: Literal["source", "destination"],
     ) -> DicomServer:
         try:
-            accessible_servers = await self.get_accessible_servers(
-                request.user, access_type
-            )
+            accessible_servers = await self.get_accessible_servers(request.user, access_type)
             return await accessible_servers.aget(ae_title=ae_title)
         except DicomServer.DoesNotExist:
             raise NotFound(
@@ -177,9 +173,7 @@ class RetrieveAPIView(WebDicomAPIView):
 
         return source_server
 
-    async def peek_images(
-        self, images: AsyncIterator[Dataset]
-    ) -> AsyncPeekable[Dataset]:
+    async def peek_images(self, images: AsyncIterator[Dataset]) -> AsyncPeekable[Dataset]:
         # In the middle of a StreamingHttpResponse we can't just throw an exception anymore to
         # just return a error response as the stream has already started. Thats why we peek
         # the first image here and throw an exception to return an error response if something
@@ -352,9 +346,7 @@ class StoreImagesAPIView(WebDicomAPIView):
         study_uid: str = "",
     ) -> Response:
         content_type: str = request.content_type
-        if not media_type_matches(
-            "multipart/related; type=application/dicom", content_type
-        ):
+        if not media_type_matches("multipart/related; type=application/dicom", content_type):
             raise UnsupportedMediaType(content_type)
 
         dest_server = await self._get_dicom_server(request, ae_title, "destination")
@@ -377,9 +369,7 @@ class StoreImagesAPIView(WebDicomAPIView):
                 if ds.StudyInstanceUID != study_uid:
                     continue
 
-            logger.debug(
-                f"Storing instance {ds.SOPInstanceUID} to {dest_server.ae_title}"
-            )
+            logger.debug(f"Storing instance {ds.SOPInstanceUID} to {dest_server.ae_title}")
             result_ds, failed = await stow_store(dest_server, ds)
 
             if failed:

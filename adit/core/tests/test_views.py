@@ -16,9 +16,7 @@ class TestExampleTransferJobDeleteView:
         user = UserFactory.create()
         client.force_login(user)
 
-        job = ExampleTransferJobFactory.create(
-            status=DicomJob.Status.PENDING, owner=user
-        )
+        job = ExampleTransferJobFactory.create(status=DicomJob.Status.PENDING, owner=user)
         task = ExampleTransferTaskFactory.create(
             status=DicomTask.Status.PENDING,
             job=job,
@@ -39,9 +37,7 @@ class TestExampleTransferJobDeleteView:
         user = UserFactory.create()
         client.force_login(user)
 
-        job = ExampleTransferJobFactory.create(
-            status=DicomJob.Status.PENDING, owner=user
-        )
+        job = ExampleTransferJobFactory.create(status=DicomJob.Status.PENDING, owner=user)
         task = ExampleTransferTaskFactory.create(
             status=DicomTask.Status.PENDING,
             job=job,
@@ -71,9 +67,7 @@ class TestExampleTransferJobCancelView:
         user = UserFactory.create()
         client.force_login(user)
 
-        job = ExampleTransferJobFactory.create(
-            status=DicomJob.Status.PENDING, owner=user
-        )
+        job = ExampleTransferJobFactory.create(status=DicomJob.Status.PENDING, owner=user)
         task = ExampleTransferTaskFactory.create(
             status=DicomTask.Status.PENDING,
             job=job,
@@ -97,9 +91,7 @@ class TestExampleTransferJobCancelView:
         user = UserFactory.create()
         client.force_login(user)
 
-        job = ExampleTransferJobFactory.create(
-            status=DicomJob.Status.SUCCESS, owner=user
-        )
+        job = ExampleTransferJobFactory.create(status=DicomJob.Status.SUCCESS, owner=user)
         task = ExampleTransferTaskFactory.create(
             status=DicomTask.Status.SUCCESS,
             job=job,

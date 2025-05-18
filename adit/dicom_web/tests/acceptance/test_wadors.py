@@ -23,9 +23,7 @@ def test_retrieve_study(channels_live_server: ChannelsLiveServer):
     _, group, token = create_user_with_dicom_web_group_and_token()
     server = DicomServer.objects.get(ae_title="ORTHANC1")
     grant_access(group, server, source=True)
-    orthanc1_client = create_dicom_web_client(
-        channels_live_server.url, server.ae_title, token
-    )
+    orthanc1_client = create_dicom_web_client(channels_live_server.url, server.ae_title, token)
 
     metadata = load_sample_dicoms_metadata("1001")
     study_uid: str = metadata.iloc[0]["StudyInstanceUID"]
@@ -50,9 +48,7 @@ def test_retrieve_study_with_pseudonym(channels_live_server: ChannelsLiveServer)
     _, group, token = create_user_with_dicom_web_group_and_token()
     server = DicomServer.objects.get(ae_title="ORTHANC1")
     grant_access(group, server, source=True)
-    orthanc1_client = create_dicom_web_client(
-        channels_live_server.url, server.ae_title, token
-    )
+    orthanc1_client = create_dicom_web_client(channels_live_server.url, server.ae_title, token)
 
     metadata = load_sample_dicoms_metadata("1001")
     study_uid: str = metadata.iloc[0]["StudyInstanceUID"]
@@ -60,9 +56,7 @@ def test_retrieve_study_with_pseudonym(channels_live_server: ChannelsLiveServer)
     additional_params = {
         "pseudonym": test_pseudonym,
     }
-    results = orthanc1_client.retrieve_study(
-        study_uid, additional_params=additional_params
-    )
+    results = orthanc1_client.retrieve_study(study_uid, additional_params=additional_params)
     series_uids = set()
     for result in results:
         assert isinstance(result, pydicom.Dataset)
@@ -84,9 +78,7 @@ def test_retrieve_study_metadata(channels_live_server: ChannelsLiveServer):
     _, group, token = create_user_with_dicom_web_group_and_token()
     server = DicomServer.objects.get(ae_title="ORTHANC1")
     grant_access(group, server, source=True)
-    orthanc1_client = create_dicom_web_client(
-        channels_live_server.url, server.ae_title, token
-    )
+    orthanc1_client = create_dicom_web_client(channels_live_server.url, server.ae_title, token)
 
     metadata = load_sample_dicoms_metadata("1001")
     study_uid: str = metadata["StudyInstanceUID"].iloc[0]
@@ -114,9 +106,7 @@ def test_retrieve_study_metadata_with_pseudonym(
     _, group, token = create_user_with_dicom_web_group_and_token()
     server = DicomServer.objects.get(ae_title="ORTHANC1")
     grant_access(group, server, source=True)
-    orthanc1_client = create_dicom_web_client(
-        channels_live_server.url, server.ae_title, token
-    )
+    orthanc1_client = create_dicom_web_client(channels_live_server.url, server.ae_title, token)
 
     metadata = load_sample_dicoms_metadata("1001")
     study_uid: str = metadata["StudyInstanceUID"].iloc[0]
@@ -150,9 +140,7 @@ def test_retrieve_series(channels_live_server: ChannelsLiveServer):
     _, group, token = create_user_with_dicom_web_group_and_token()
     server = DicomServer.objects.get(ae_title="ORTHANC1")
     grant_access(group, server, source=True)
-    orthanc1_client = create_dicom_web_client(
-        channels_live_server.url, server.ae_title, token
-    )
+    orthanc1_client = create_dicom_web_client(channels_live_server.url, server.ae_title, token)
 
     metadata = load_sample_dicoms_metadata("1001")
     study_uid: str = metadata.iloc[0]["StudyInstanceUID"]
@@ -174,9 +162,7 @@ def test_retrieve_series_with_pseudonym(channels_live_server: ChannelsLiveServer
     _, group, token = create_user_with_dicom_web_group_and_token()
     server = DicomServer.objects.get(ae_title="ORTHANC1")
     grant_access(group, server, source=True)
-    orthanc1_client = create_dicom_web_client(
-        channels_live_server.url, server.ae_title, token
-    )
+    orthanc1_client = create_dicom_web_client(channels_live_server.url, server.ae_title, token)
 
     metadata = load_sample_dicoms_metadata("1001")
     study_uid: str = metadata.iloc[0]["StudyInstanceUID"]
@@ -206,9 +192,7 @@ def test_retrieve_series_metadata(channels_live_server: ChannelsLiveServer):
     _, group, token = create_user_with_dicom_web_group_and_token()
     server = DicomServer.objects.get(ae_title="ORTHANC1")
     grant_access(group, server, source=True)
-    orthanc1_client = create_dicom_web_client(
-        channels_live_server.url, server.ae_title, token
-    )
+    orthanc1_client = create_dicom_web_client(channels_live_server.url, server.ae_title, token)
 
     metadata = load_sample_dicoms_metadata("1001")
     study_uid: str = metadata["StudyInstanceUID"].iloc[0]
@@ -233,9 +217,7 @@ def test_retrieve_series_metadata_with_metadata(
     _, group, token = create_user_with_dicom_web_group_and_token()
     server = DicomServer.objects.get(ae_title="ORTHANC1")
     grant_access(group, server, source=True)
-    orthanc1_client = create_dicom_web_client(
-        channels_live_server.url, server.ae_title, token
-    )
+    orthanc1_client = create_dicom_web_client(channels_live_server.url, server.ae_title, token)
 
     metadata = load_sample_dicoms_metadata("1001")
     study_uid: str = metadata["StudyInstanceUID"].iloc[0]
@@ -266,9 +248,7 @@ def test_retrieve_image(channels_live_server: ChannelsLiveServer):
     _, group, token = create_user_with_dicom_web_group_and_token()
     server = DicomServer.objects.get(ae_title="ORTHANC1")
     grant_access(group, server, source=True)
-    orthanc1_client = create_dicom_web_client(
-        channels_live_server.url, server.ae_title, token
-    )
+    orthanc1_client = create_dicom_web_client(channels_live_server.url, server.ae_title, token)
 
     metadata = load_sample_dicoms_metadata("1001")
     study_uid: str = metadata["StudyInstanceUID"].iloc[0]
@@ -291,9 +271,7 @@ def test_retrieve_image_with_pseudonym(channels_live_server: ChannelsLiveServer)
     _, group, token = create_user_with_dicom_web_group_and_token()
     server = DicomServer.objects.get(ae_title="ORTHANC1")
     grant_access(group, server, source=True)
-    orthanc1_client = create_dicom_web_client(
-        channels_live_server.url, server.ae_title, token
-    )
+    orthanc1_client = create_dicom_web_client(channels_live_server.url, server.ae_title, token)
 
     metadata = load_sample_dicoms_metadata("1001")
     study_uid: str = metadata["StudyInstanceUID"].iloc[0]
@@ -324,18 +302,14 @@ def test_retrieve_image_metadata(channels_live_server: ChannelsLiveServer):
     _, group, token = create_user_with_dicom_web_group_and_token()
     server = DicomServer.objects.get(ae_title="ORTHANC1")
     grant_access(group, server, source=True)
-    orthanc1_client = create_dicom_web_client(
-        channels_live_server.url, server.ae_title, token
-    )
+    orthanc1_client = create_dicom_web_client(channels_live_server.url, server.ae_title, token)
 
     metadata = load_sample_dicoms_metadata("1001")
     study_uid: str = metadata["StudyInstanceUID"].iloc[0]
     series_uid: str = metadata["SeriesInstanceUID"].iloc[0]
     image_uid: str = metadata["SOPInstanceUID"].iloc[0]
 
-    result = orthanc1_client.retrieve_instance_metadata(
-        study_uid, series_uid, image_uid
-    )
+    result = orthanc1_client.retrieve_instance_metadata(study_uid, series_uid, image_uid)
     result = pydicom.Dataset.from_json(result)
     assert not hasattr(result, "PixelData")
     assert result.StudyInstanceUID == study_uid
@@ -354,9 +328,7 @@ def test_retrieve_image_metadata_with_pseudonym(
     _, group, token = create_user_with_dicom_web_group_and_token()
     server = DicomServer.objects.get(ae_title="ORTHANC1")
     grant_access(group, server, source=True)
-    orthanc1_client = create_dicom_web_client(
-        channels_live_server.url, server.ae_title, token
-    )
+    orthanc1_client = create_dicom_web_client(channels_live_server.url, server.ae_title, token)
 
     metadata = load_sample_dicoms_metadata("1001")
     study_uid: str = metadata["StudyInstanceUID"].iloc[0]
