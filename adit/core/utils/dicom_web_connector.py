@@ -115,10 +115,7 @@ class DicomWebConnector:
             elif level == "SERIES":
                 study_uid = search_filters.pop("StudyInstanceUID", None)
                 results = self.dicomweb_client.search_for_series(
-                    study_uid,
-                    fields=fields,
-                    search_filters=search_filters,
-                    limit=limit_results,
+                    study_uid, fields=fields, search_filters=search_filters, limit=limit_results
                 )
             elif level == "IMAGE":
                 study_uid = search_filters.pop("StudyInstanceUID", None)

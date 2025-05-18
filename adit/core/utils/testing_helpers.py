@@ -36,9 +36,7 @@ class DicomTestHelper:
         return ds
 
     @staticmethod
-    def create_successful_c_find_responses(
-        data_dicts: list[dict[str, Any]],
-    ) -> Iterable[Response]:
+    def create_successful_c_find_responses(data_dicts: list[dict[str, Any]]) -> Iterable[Response]:
         responses: list[tuple[Dataset, Dataset | None]] = []
         for data_dict in data_dicts:
             identifier = DicomTestHelper.create_dataset_from_dict(data_dict)
