@@ -1,6 +1,9 @@
+from http import HTTPStatus
+
 import pydicom
 import pytest
 from adit_radis_shared.common.utils.testing_helpers import ChannelsLiveServer
+from requests.exceptions import HTTPError
 
 from adit.core.models import DicomServer
 from adit.core.utils.auth_utils import grant_access
@@ -70,6 +73,39 @@ def test_retrieve_study_with_pseudonym(channels_live_server: ChannelsLiveServer)
 @pytest.mark.acceptance
 @pytest.mark.order("last")
 @pytest.mark.django_db(transaction=True)
+def test_retrieve_study_with_invalid_pseudonym(channels_live_server: ChannelsLiveServer):
+    setup_dimse_orthancs()
+
+    _, group, token = create_user_with_dicom_web_group_and_token()
+    server = DicomServer.objects.get(ae_title="ORTHANC1")
+    grant_access(group, server, source=True)
+    orthanc1_client = create_dicom_web_client(channels_live_server.url, server.ae_title, token)
+
+    metadata = load_sample_dicoms_metadata("1001")
+    study_uid: str = metadata.iloc[0]["StudyInstanceUID"]
+    test_pseudonym = "Test\\Pseudonym"
+    additional_params = {
+        "pseudonym": test_pseudonym,
+    }
+
+    try:
+        orthanc1_client.retrieve_study(study_uid, additional_params=additional_params)
+    except HTTPError as e:
+        response = e.response
+        assert response is not None
+        assert response.status_code == HTTPStatus.BAD_REQUEST
+        try:
+            error = response.json()
+            assert "pseudonym" in error or "invalid" in str(error).lower(), (
+                f"Unexpected error: {error}"
+            )
+        except Exception:
+            assert "invalid" in response.text.lower(), f"Unexpected response: {response.text}"
+
+
+@pytest.mark.acceptance
+@pytest.mark.order("last")
+@pytest.mark.django_db(transaction=True)
 def test_retrieve_study_metadata(channels_live_server: ChannelsLiveServer):
     setup_dimse_orthancs()
 
@@ -132,6 +168,41 @@ def test_retrieve_study_metadata_with_pseudonym(
 @pytest.mark.acceptance
 @pytest.mark.order("last")
 @pytest.mark.django_db(transaction=True)
+def test_retrieve_study_metadata_with_invalid_pseudonym(
+    channels_live_server: ChannelsLiveServer,
+):
+    setup_dimse_orthancs()
+
+    _, group, token = create_user_with_dicom_web_group_and_token()
+    server = DicomServer.objects.get(ae_title="ORTHANC1")
+    grant_access(group, server, source=True)
+    orthanc1_client = create_dicom_web_client(channels_live_server.url, server.ae_title, token)
+
+    metadata = load_sample_dicoms_metadata("1001")
+    study_uid: str = metadata["StudyInstanceUID"].iloc[0]
+    test_pseudonym = "Test\\Pseudonym"
+    additional_params = {
+        "pseudonym": test_pseudonym,
+    }
+
+    try:
+        orthanc1_client.retrieve_study_metadata(study_uid, additional_params=additional_params)
+    except HTTPError as e:
+        response = e.response
+        assert response is not None
+        assert response.status_code == HTTPStatus.BAD_REQUEST
+        try:
+            error = response.json()
+            assert "pseudonym" in error or "invalid" in str(error).lower(), (
+                f"Unexpected error: {error}"
+            )
+        except Exception:
+            assert "invalid" in response.text.lower(), f"Unexpected response: {response.text}"
+
+
+@pytest.mark.acceptance
+@pytest.mark.order("last")
+@pytest.mark.django_db(transaction=True)
 def test_retrieve_series(channels_live_server: ChannelsLiveServer):
     setup_dimse_orthancs()
 
@@ -184,6 +255,40 @@ def test_retrieve_series_with_pseudonym(channels_live_server: ChannelsLiveServer
 @pytest.mark.acceptance
 @pytest.mark.order("last")
 @pytest.mark.django_db(transaction=True)
+def test_retrieve_series_with_invalid_pseudonym(channels_live_server: ChannelsLiveServer):
+    setup_dimse_orthancs()
+
+    _, group, token = create_user_with_dicom_web_group_and_token()
+    server = DicomServer.objects.get(ae_title="ORTHANC1")
+    grant_access(group, server, source=True)
+    orthanc1_client = create_dicom_web_client(channels_live_server.url, server.ae_title, token)
+
+    metadata = load_sample_dicoms_metadata("1001")
+    study_uid: str = metadata.iloc[0]["StudyInstanceUID"]
+    series_uid: str = metadata.iloc[0]["SeriesInstanceUID"]
+    test_pseudonym = "TestPseudonym"
+    additional_params = {
+        "pseudonym": test_pseudonym,
+    }
+
+    try:
+        orthanc1_client.retrieve_series(study_uid, series_uid, additional_params=additional_params)
+    except HTTPError as e:
+        response = e.response
+        assert response is not None
+        assert response.status_code == HTTPStatus.BAD_REQUEST
+        try:
+            error = response.json()
+            assert "pseudonym" in error or "invalid" in str(error).lower(), (
+                f"Unexpected error: {error}"
+            )
+        except Exception:
+            assert "invalid" in response.text.lower(), f"Unexpected response: {response.text}"
+
+
+@pytest.mark.acceptance
+@pytest.mark.order("last")
+@pytest.mark.django_db(transaction=True)
 def test_retrieve_series_metadata(channels_live_server: ChannelsLiveServer):
     setup_dimse_orthancs()
 
@@ -207,7 +312,7 @@ def test_retrieve_series_metadata(channels_live_server: ChannelsLiveServer):
 @pytest.mark.acceptance
 @pytest.mark.order("last")
 @pytest.mark.django_db(transaction=True)
-def test_retrieve_series_metadata_with_metadata(
+def test_retrieve_series_metadata_with_pseudonym(
     channels_live_server: ChannelsLiveServer,
 ):
     setup_dimse_orthancs()
@@ -235,6 +340,44 @@ def test_retrieve_series_metadata_with_metadata(
         assert result.SeriesInstanceUID == series_uid
         assert result.PatientID == test_pseudonym
         assert result.PatientName == test_pseudonym
+
+
+@pytest.mark.acceptance
+@pytest.mark.order("last")
+@pytest.mark.django_db(transaction=True)
+def test_retrieve_series_metadata_with_invalid_pseudonym(
+    channels_live_server: ChannelsLiveServer,
+):
+    setup_dimse_orthancs()
+
+    _, group, token = create_user_with_dicom_web_group_and_token()
+    server = DicomServer.objects.get(ae_title="ORTHANC1")
+    grant_access(group, server, source=True)
+    orthanc1_client = create_dicom_web_client(channels_live_server.url, server.ae_title, token)
+
+    metadata = load_sample_dicoms_metadata("1001")
+    study_uid: str = metadata["StudyInstanceUID"].iloc[0]
+    series_uid: str = metadata["SeriesInstanceUID"].iloc[0]
+    test_pseudonym = "TestPseudonym"
+    additional_params = {
+        "pseudonym": test_pseudonym,
+    }
+
+    try:
+        orthanc1_client.retrieve_series_metadata(
+            study_uid, series_uid, additional_params=additional_params
+        )
+    except HTTPError as e:
+        response = e.response
+        assert response is not None
+        assert response.status_code == HTTPStatus.BAD_REQUEST
+        try:
+            error = response.json()
+            assert "pseudonym" in error or "invalid" in str(error).lower(), (
+                f"Unexpected error: {error}"
+            )
+        except Exception:
+            assert "invalid" in response.text.lower(), f"Unexpected response: {response.text}"
 
 
 @pytest.mark.acceptance
@@ -294,6 +437,43 @@ def test_retrieve_image_with_pseudonym(channels_live_server: ChannelsLiveServer)
 @pytest.mark.acceptance
 @pytest.mark.order("last")
 @pytest.mark.django_db(transaction=True)
+def test_retrieve_image_with_invalid_pseudonym(channels_live_server: ChannelsLiveServer):
+    setup_dimse_orthancs()
+
+    _, group, token = create_user_with_dicom_web_group_and_token()
+    server = DicomServer.objects.get(ae_title="ORTHANC1")
+    grant_access(group, server, source=True)
+    orthanc1_client = create_dicom_web_client(channels_live_server.url, server.ae_title, token)
+
+    metadata = load_sample_dicoms_metadata("1001")
+    study_uid: str = metadata["StudyInstanceUID"].iloc[0]
+    series_uid: str = metadata["SeriesInstanceUID"].iloc[0]
+    image_uid: str = metadata["SOPInstanceUID"].iloc[0]
+    test_pseudonym = "Test\\Pseudonym"
+    additional_params = {
+        "pseudonym": test_pseudonym,
+    }
+
+    try:
+        orthanc1_client.retrieve_instance(
+            study_uid, series_uid, image_uid, additional_params=additional_params
+        )
+    except HTTPError as e:
+        response = e.response
+        assert response is not None
+        assert response.status_code == HTTPStatus.BAD_REQUEST
+        try:
+            error = response.json()
+            assert "pseudonym" in error or "invalid" in str(error).lower(), (
+                f"Unexpected error: {error}"
+            )
+        except Exception:
+            assert "invalid" in response.text.lower(), f"Unexpected response: {response.text}"
+
+
+@pytest.mark.acceptance
+@pytest.mark.order("last")
+@pytest.mark.django_db(transaction=True)
 def test_retrieve_image_metadata(channels_live_server: ChannelsLiveServer):
     setup_dimse_orthancs()
 
@@ -347,3 +527,42 @@ def test_retrieve_image_metadata_with_pseudonym(
     assert result.SOPInstanceUID == image_uid
     assert result.PatientID == test_pseudonym
     assert result.PatientName == test_pseudonym
+
+
+@pytest.mark.acceptance
+@pytest.mark.order("last")
+@pytest.mark.django_db(transaction=True)
+def test_retrieve_image_metadata_with_invalid_pseudonym(
+    channels_live_server: ChannelsLiveServer,
+):
+    setup_dimse_orthancs()
+
+    _, group, token = create_user_with_dicom_web_group_and_token()
+    server = DicomServer.objects.get(ae_title="ORTHANC1")
+    grant_access(group, server, source=True)
+    orthanc1_client = create_dicom_web_client(channels_live_server.url, server.ae_title, token)
+
+    metadata = load_sample_dicoms_metadata("1001")
+    study_uid: str = metadata["StudyInstanceUID"].iloc[0]
+    series_uid: str = metadata["SeriesInstanceUID"].iloc[0]
+    image_uid: str = metadata["SOPInstanceUID"].iloc[0]
+    test_pseudonym = "Test\\Pseudonym"
+    additional_params = {
+        "pseudonym": test_pseudonym,
+    }
+
+    try:
+        orthanc1_client.retrieve_instance_metadata(
+            study_uid, series_uid, image_uid, additional_params=additional_params
+        )
+    except HTTPError as e:
+        response = e.response
+        assert response is not None
+        assert response.status_code == HTTPStatus.BAD_REQUEST
+        try:
+            error = response.json()
+            assert "pseudonym" in error or "invalid" in str(error).lower(), (
+                f"Unexpected error: {error}"
+            )
+        except Exception:
+            assert "invalid" in response.text.lower(), f"Unexpected response: {response.text}"

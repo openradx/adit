@@ -4,6 +4,7 @@ from typing import AsyncIterator, Literal, Union, cast
 from adit_radis_shared.common.types import AuthenticatedApiRequest, User
 from adrf.views import APIView as AsyncApiView
 from channels.db import database_sync_to_async
+from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db.models import QuerySet
 from django.http import StreamingHttpResponse
 from django.urls import reverse
@@ -12,6 +13,7 @@ from rest_framework.exceptions import NotFound, ParseError, UnsupportedMediaType
 from rest_framework.response import Response
 from rest_framework.utils.mediatypes import media_type_matches
 
+from adit.core import validators
 from adit.core.models import DicomServer
 from adit.core.utils.dicom_dataset import QueryDataset
 from adit.dicom_web.utils.peekable import AsyncPeekable
@@ -197,7 +199,14 @@ class RetrieveStudyAPIView(RetrieveAPIView):
         self, request: AuthenticatedApiRequest, ae_title: str, study_uid: str
     ) -> StreamingHttpResponse:
         source_server = await self._get_dicom_server(request, ae_title)
-        pseudonym = request.GET.get("pseudonym", None)
+        pseudonym = request.GET.get("pseudonym")
+
+        if pseudonym is not None:
+            try:
+                is_valid_pseudonym(pseudonym)
+            except ValidationError as e:
+                logger.warning(f"Invalid DICOMweb study pseudonym - {pseudonym}")
+                raise e
 
         query = self.query.copy()
         query["StudyInstanceUID"] = study_uid
@@ -217,7 +226,14 @@ class RetrieveStudyMetadataAPIView(RetrieveStudyAPIView):
         self, request: AuthenticatedApiRequest, ae_title: str, study_uid: str
     ) -> Response:
         source_server = await self._get_dicom_server(request, ae_title)
-        pseudonym = request.GET.get("pseudonym", None)
+        pseudonym = request.GET.get("pseudonym")
+
+        if pseudonym is not None:
+            try:
+                is_valid_pseudonym(pseudonym)
+            except ValidationError as e:
+                logger.warning(f"Invalid DICOMweb study metadata pseudonym - {pseudonym}")
+                raise e
 
         query = self.query.copy()
         query["StudyInstanceUID"] = study_uid
@@ -234,7 +250,14 @@ class RetrieveSeriesAPIView(RetrieveAPIView):
         self, request: AuthenticatedApiRequest, ae_title: str, study_uid: str, series_uid: str
     ) -> Response | StreamingHttpResponse:
         source_server = await self._get_dicom_server(request, ae_title)
-        pseudonym = request.GET.get("pseudonym", None)
+        pseudonym = request.GET.get("pseudonym")
+
+        if pseudonym is not None:
+            try:
+                is_valid_pseudonym(pseudonym)
+            except ValidationError as e:
+                logger.warning(f"Invalid DICOMweb series pseudonym - {pseudonym}")
+                raise e
 
         query = self.query.copy()
         query["StudyInstanceUID"] = study_uid
@@ -255,7 +278,14 @@ class RetrieveSeriesMetadataAPIView(RetrieveSeriesAPIView):
         self, request: AuthenticatedApiRequest, ae_title: str, study_uid: str, series_uid: str
     ) -> Response:
         source_server = await self._get_dicom_server(request, ae_title)
-        pseudonym = request.GET.get("pseudonym", None)
+        pseudonym = request.GET.get("pseudonym")
+
+        if pseudonym is not None:
+            try:
+                is_valid_pseudonym(pseudonym)
+            except ValidationError as e:
+                logger.warning(f"Invalid DICOMweb series metadata pseudonym - {pseudonym}")
+                raise e
 
         query = self.query.copy()
         query["StudyInstanceUID"] = study_uid
@@ -278,7 +308,14 @@ class RetrieveImageAPIView(RetrieveAPIView):
         image_uid: str,
     ) -> Response | StreamingHttpResponse:
         source_server = await self._get_dicom_server(request, ae_title)
-        pseudonym = request.GET.get("pseudonym", None)
+        pseudonym = request.GET.get("pseudonym")
+
+        if pseudonym is not None:
+            try:
+                is_valid_pseudonym(pseudonym)
+            except ValidationError as e:
+                logger.warning(f"Invalid DICOMweb image pseudonym - {pseudonym}")
+                raise e
 
         query = self.query.copy()
         query["StudyInstanceUID"] = study_uid
@@ -305,7 +342,14 @@ class RetrieveImageMetadataAPIView(RetrieveImageAPIView):
         image_uid: str,
     ) -> Response:
         source_server = await self._get_dicom_server(request, ae_title)
-        pseudonym = request.GET.get("pseudonym", None)
+        pseudonym = request.GET.get("pseudonym")
+
+        if pseudonym is not None:
+            try:
+                is_valid_pseudonym(pseudonym)
+            except ValidationError as e:
+                logger.warning(f"Invalid DICOMweb image metadata pseudonym - {pseudonym}")
+                raise e
 
         query = self.query.copy()
         query["StudyInstanceUID"] = study_uid
@@ -369,3 +413,15 @@ class StoreImagesAPIView(WebDicomAPIView):
 
         assert request.accepted_renderer is not None
         return Response([results], content_type=request.accepted_renderer.media_type)
+
+
+def is_valid_pseudonym(pseudonym: str) -> None:
+    """
+    Validate the pseudonym.
+    Raises DRF ValidationError on failure.
+    """
+    try:
+        validators.no_backslash_char_validator(pseudonym)
+        validators.no_control_chars_validator(pseudonym)
+    except DjangoValidationError as e:
+        raise ValidationError({"pseudonym": e.messages})
