@@ -423,5 +423,7 @@ def is_valid_pseudonym(pseudonym: str) -> None:
     try:
         validators.no_backslash_char_validator(pseudonym)
         validators.no_control_chars_validator(pseudonym)
+        validators.no_wildcard_chars_validator(pseudonym)
+        validators.char_limit_validator(pseudonym)
     except DjangoValidationError as e:
         raise ValidationError({"pseudonym": e.messages})

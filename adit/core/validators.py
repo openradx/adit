@@ -28,6 +28,10 @@ no_wildcard_chars_validator = RegexValidator(
     inverse_match=True,
 )
 
+char_limit_validator = RegexValidator(
+    regex=r".{0,64}", message="String too long (max 64 characters)."
+)
+
 uid_chars_validator = RegexValidator(regex=r"^[\d\.]+$", message="Invalid character in UID.")
 
 
