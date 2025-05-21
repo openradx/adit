@@ -3,6 +3,9 @@ import logging
 from typing import AsyncIterator, Literal
 
 from adrf.views import sync_to_async
+from dicognito.anonymizer import Anonymizer
+from dicognito.value_keeper import ValueKeeper
+from django.conf import settings
 from pydicom import Dataset
 
 from adit.core.errors import DicomError, RetriableDicomError
@@ -33,6 +36,11 @@ async def wado_retrieve(
 
     def callback(ds: Dataset) -> None:
         if pseudonym is not None:
+            anonymizer = Anonymizer()
+            for element in settings.SKIP_ELEMENTS_ANONYMIZATION:
+                anonymizer.add_element_handler(ValueKeeper(element))
+
+            anonymizer.anonymize(ds)
             ds.PatientID = pseudonym
             ds.PatientName = pseudonym
 

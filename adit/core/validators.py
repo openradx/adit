@@ -28,10 +28,6 @@ no_wildcard_chars_validator = RegexValidator(
     inverse_match=True,
 )
 
-char_limit_validator = RegexValidator(
-    regex=r".{0,64}", message="String too long (max 64 characters)."
-)
-
 uid_chars_validator = RegexValidator(regex=r"^[\d\.]+$", message="Invalid character in UID.")
 
 
@@ -72,3 +68,10 @@ def validate_series_number(value: str) -> None:
             raise ValueError()
     except ValueError:
         raise ValidationError(f"Invalid series number: {value}")
+
+
+def validate_pseudonym(pseudonym: str) -> None:
+    no_backslash_char_validator(pseudonym)
+    no_control_chars_validator(pseudonym)
+    no_wildcard_chars_validator(pseudonym)
+    validate_uids([pseudonym])

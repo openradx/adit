@@ -14,6 +14,13 @@ from adit.core.utils.testing_helpers import (
 )
 from adit.dicom_web.utils.testing_helpers import create_user_with_dicom_web_group_and_token
 
+INVALID_PSEUDONYMS = [
+    "Test\\Pseudonym1",  # Invalid due to backslash
+    "Test\u0001Pseudonym2",  # Invalid due to control character
+    "Test*Pseudonym3",  # Invalid due to wildcard character
+    "T" * 65,  # Invalid due to exceeding character limit
+]
+
 
 @pytest.mark.acceptance
 @pytest.mark.order("last")
@@ -73,7 +80,10 @@ def test_retrieve_study_with_pseudonym(channels_live_server: ChannelsLiveServer)
 @pytest.mark.acceptance
 @pytest.mark.order("last")
 @pytest.mark.django_db(transaction=True)
-def test_retrieve_study_with_invalid_pseudonym(channels_live_server: ChannelsLiveServer):
+@pytest.mark.parametrize("test_pseudonym", INVALID_PSEUDONYMS)
+def test_retrieve_study_with_invalid_pseudonym(
+    channels_live_server: ChannelsLiveServer, test_pseudonym
+):
     setup_dimse_orthancs()
 
     _, group, token = create_user_with_dicom_web_group_and_token()
@@ -83,31 +93,24 @@ def test_retrieve_study_with_invalid_pseudonym(channels_live_server: ChannelsLiv
 
     metadata = load_sample_dicoms_metadata("1001")
     study_uid: str = metadata.iloc[0]["StudyInstanceUID"]
-    test_pseudonyms = [
-        "Test\\Pseudonym1",  # Invalid due to backslash
-        "Test\u0001Pseudonym2",  # Invalid due to control character
-        "Test*Pseudonym3",  # Invalid due to wildcard character
-        "T" * 65,  # Invalid due to exceeding character limit
-    ]
 
-    for test_pseudonym in test_pseudonyms:
-        additional_params = {
-            "pseudonym": test_pseudonym,
-        }
+    additional_params = {
+        "pseudonym": test_pseudonym,
+    }
 
+    try:
+        orthanc1_client.retrieve_study(study_uid, additional_params=additional_params)
+    except HTTPError as e:
+        response = e.response
+        assert response is not None
+        assert response.status_code == HTTPStatus.BAD_REQUEST
         try:
-            orthanc1_client.retrieve_study(study_uid, additional_params=additional_params)
-        except HTTPError as e:
-            response = e.response
-            assert response is not None
-            assert response.status_code == HTTPStatus.BAD_REQUEST
-            try:
-                error = response.json()
-                assert "pseudonym" in error or "invalid" in str(error).lower(), (
-                    f"Unexpected error: {error}"
-                )
-            except Exception:
-                assert "invalid" in response.text.lower(), f"Unexpected response: {response.text}"
+            error = response.json()
+            assert "pseudonym" in error or "invalid" in str(error).lower(), (
+                f"Unexpected error: {error}"
+            )
+        except Exception:
+            assert "invalid" in response.text.lower(), f"Unexpected response: {response.text}"
 
 
 @pytest.mark.acceptance
@@ -175,8 +178,9 @@ def test_retrieve_study_metadata_with_pseudonym(
 @pytest.mark.acceptance
 @pytest.mark.order("last")
 @pytest.mark.django_db(transaction=True)
+@pytest.mark.parametrize("test_pseudonym", INVALID_PSEUDONYMS)
 def test_retrieve_study_metadata_with_invalid_pseudonym(
-    channels_live_server: ChannelsLiveServer,
+    channels_live_server: ChannelsLiveServer, test_pseudonym
 ):
     setup_dimse_orthancs()
 
@@ -187,31 +191,24 @@ def test_retrieve_study_metadata_with_invalid_pseudonym(
 
     metadata = load_sample_dicoms_metadata("1001")
     study_uid: str = metadata["StudyInstanceUID"].iloc[0]
-    test_pseudonyms = [
-        "Test\\Pseudonym1",  # Invalid due to backslash
-        "Test\u0001Pseudonym2",  # Invalid due to control character
-        "Test*Pseudonym3",  # Invalid due to wildcard character
-        "T" * 65,  # Invalid due to exceeding character limit
-    ]
 
-    for test_pseudonym in test_pseudonyms:
-        additional_params = {
-            "pseudonym": test_pseudonym,
-        }
+    additional_params = {
+        "pseudonym": test_pseudonym,
+    }
 
+    try:
+        orthanc1_client.retrieve_study_metadata(study_uid, additional_params=additional_params)
+    except HTTPError as e:
+        response = e.response
+        assert response is not None
+        assert response.status_code == HTTPStatus.BAD_REQUEST
         try:
-            orthanc1_client.retrieve_study_metadata(study_uid, additional_params=additional_params)
-        except HTTPError as e:
-            response = e.response
-            assert response is not None
-            assert response.status_code == HTTPStatus.BAD_REQUEST
-            try:
-                error = response.json()
-                assert "pseudonym" in error or "invalid" in str(error).lower(), (
-                    f"Unexpected error: {error}"
-                )
-            except Exception:
-                assert "invalid" in response.text.lower(), f"Unexpected response: {response.text}"
+            error = response.json()
+            assert "pseudonym" in error or "invalid" in str(error).lower(), (
+                f"Unexpected error: {error}"
+            )
+        except Exception:
+            assert "invalid" in response.text.lower(), f"Unexpected response: {response.text}"
 
 
 @pytest.mark.acceptance
@@ -269,7 +266,10 @@ def test_retrieve_series_with_pseudonym(channels_live_server: ChannelsLiveServer
 @pytest.mark.acceptance
 @pytest.mark.order("last")
 @pytest.mark.django_db(transaction=True)
-def test_retrieve_series_with_invalid_pseudonym(channels_live_server: ChannelsLiveServer):
+@pytest.mark.parametrize("test_pseudonym", INVALID_PSEUDONYMS)
+def test_retrieve_series_with_invalid_pseudonym(
+    channels_live_server: ChannelsLiveServer, test_pseudonym
+):
     setup_dimse_orthancs()
 
     _, group, token = create_user_with_dicom_web_group_and_token()
@@ -280,33 +280,24 @@ def test_retrieve_series_with_invalid_pseudonym(channels_live_server: ChannelsLi
     metadata = load_sample_dicoms_metadata("1001")
     study_uid: str = metadata.iloc[0]["StudyInstanceUID"]
     series_uid: str = metadata.iloc[0]["SeriesInstanceUID"]
-    test_pseudonyms = [
-        "Test\\Pseudonym1",  # Invalid due to backslash
-        "Test\u0001Pseudonym2",  # Invalid due to control character
-        "Test*Pseudonym3",  # Invalid due to wildcard character
-        "T" * 65,  # Invalid due to exceeding character limit
-    ]
 
-    for test_pseudonym in test_pseudonyms:
-        additional_params = {
-            "pseudonym": test_pseudonym,
-        }
+    additional_params = {
+        "pseudonym": test_pseudonym,
+    }
 
+    try:
+        orthanc1_client.retrieve_series(study_uid, series_uid, additional_params=additional_params)
+    except HTTPError as e:
+        response = e.response
+        assert response is not None
+        assert response.status_code == HTTPStatus.BAD_REQUEST
         try:
-            orthanc1_client.retrieve_series(
-                study_uid, series_uid, additional_params=additional_params
+            error = response.json()
+            assert "pseudonym" in error or "invalid" in str(error).lower(), (
+                f"Unexpected error: {error}"
             )
-        except HTTPError as e:
-            response = e.response
-            assert response is not None
-            assert response.status_code == HTTPStatus.BAD_REQUEST
-            try:
-                error = response.json()
-                assert "pseudonym" in error or "invalid" in str(error).lower(), (
-                    f"Unexpected error: {error}"
-                )
-            except Exception:
-                assert "invalid" in response.text.lower(), f"Unexpected response: {response.text}"
+        except Exception:
+            assert "invalid" in response.text.lower(), f"Unexpected response: {response.text}"
 
 
 @pytest.mark.acceptance
@@ -368,8 +359,9 @@ def test_retrieve_series_metadata_with_pseudonym(
 @pytest.mark.acceptance
 @pytest.mark.order("last")
 @pytest.mark.django_db(transaction=True)
+@pytest.mark.parametrize("test_pseudonym", INVALID_PSEUDONYMS)
 def test_retrieve_series_metadata_with_invalid_pseudonym(
-    channels_live_server: ChannelsLiveServer,
+    channels_live_server: ChannelsLiveServer, test_pseudonym
 ):
     setup_dimse_orthancs()
 
@@ -381,33 +373,26 @@ def test_retrieve_series_metadata_with_invalid_pseudonym(
     metadata = load_sample_dicoms_metadata("1001")
     study_uid: str = metadata["StudyInstanceUID"].iloc[0]
     series_uid: str = metadata["SeriesInstanceUID"].iloc[0]
-    test_pseudonyms = [
-        "Test\\Pseudonym1",  # Invalid due to backslash
-        "Test\u0001Pseudonym2",  # Invalid due to control character
-        "Test*Pseudonym3",  # Invalid due to wildcard character
-        "T" * 65,  # Invalid due to exceeding character limit
-    ]
 
-    for test_pseudonym in test_pseudonyms:
-        additional_params = {
-            "pseudonym": test_pseudonym,
-        }
+    additional_params = {
+        "pseudonym": test_pseudonym,
+    }
 
+    try:
+        orthanc1_client.retrieve_series_metadata(
+            study_uid, series_uid, additional_params=additional_params
+        )
+    except HTTPError as e:
+        response = e.response
+        assert response is not None
+        assert response.status_code == HTTPStatus.BAD_REQUEST
         try:
-            orthanc1_client.retrieve_series_metadata(
-                study_uid, series_uid, additional_params=additional_params
+            error = response.json()
+            assert "pseudonym" in error or "invalid" in str(error).lower(), (
+                f"Unexpected error: {error}"
             )
-        except HTTPError as e:
-            response = e.response
-            assert response is not None
-            assert response.status_code == HTTPStatus.BAD_REQUEST
-            try:
-                error = response.json()
-                assert "pseudonym" in error or "invalid" in str(error).lower(), (
-                    f"Unexpected error: {error}"
-                )
-            except Exception:
-                assert "invalid" in response.text.lower(), f"Unexpected response: {response.text}"
+        except Exception:
+            assert "invalid" in response.text.lower(), f"Unexpected response: {response.text}"
 
 
 @pytest.mark.acceptance
@@ -467,7 +452,10 @@ def test_retrieve_image_with_pseudonym(channels_live_server: ChannelsLiveServer)
 @pytest.mark.acceptance
 @pytest.mark.order("last")
 @pytest.mark.django_db(transaction=True)
-def test_retrieve_image_with_invalid_pseudonym(channels_live_server: ChannelsLiveServer):
+@pytest.mark.parametrize("test_pseudonym", INVALID_PSEUDONYMS)
+def test_retrieve_image_with_invalid_pseudonym(
+    channels_live_server: ChannelsLiveServer, test_pseudonym
+):
     setup_dimse_orthancs()
 
     _, group, token = create_user_with_dicom_web_group_and_token()
@@ -479,33 +467,26 @@ def test_retrieve_image_with_invalid_pseudonym(channels_live_server: ChannelsLiv
     study_uid: str = metadata["StudyInstanceUID"].iloc[0]
     series_uid: str = metadata["SeriesInstanceUID"].iloc[0]
     image_uid: str = metadata["SOPInstanceUID"].iloc[0]
-    test_pseudonyms = [
-        "Test\\Pseudonym1",  # Invalid due to backslash
-        "Test\u0001Pseudonym2",  # Invalid due to control character
-        "Test*Pseudonym3",  # Invalid due to wildcard character
-        "T" * 65,  # Invalid due to exceeding character limit
-    ]
 
-    for test_pseudonym in test_pseudonyms:
-        additional_params = {
-            "pseudonym": test_pseudonym,
-        }
+    additional_params = {
+        "pseudonym": test_pseudonym,
+    }
 
+    try:
+        orthanc1_client.retrieve_instance(
+            study_uid, series_uid, image_uid, additional_params=additional_params
+        )
+    except HTTPError as e:
+        response = e.response
+        assert response is not None
+        assert response.status_code == HTTPStatus.BAD_REQUEST
         try:
-            orthanc1_client.retrieve_instance(
-                study_uid, series_uid, image_uid, additional_params=additional_params
+            error = response.json()
+            assert "pseudonym" in error or "invalid" in str(error).lower(), (
+                f"Unexpected error: {error}"
             )
-        except HTTPError as e:
-            response = e.response
-            assert response is not None
-            assert response.status_code == HTTPStatus.BAD_REQUEST
-            try:
-                error = response.json()
-                assert "pseudonym" in error or "invalid" in str(error).lower(), (
-                    f"Unexpected error: {error}"
-                )
-            except Exception:
-                assert "invalid" in response.text.lower(), f"Unexpected response: {response.text}"
+        except Exception:
+            assert "invalid" in response.text.lower(), f"Unexpected response: {response.text}"
 
 
 @pytest.mark.acceptance
@@ -569,8 +550,9 @@ def test_retrieve_image_metadata_with_pseudonym(
 @pytest.mark.acceptance
 @pytest.mark.order("last")
 @pytest.mark.django_db(transaction=True)
+@pytest.mark.parametrize("test_pseudonym", INVALID_PSEUDONYMS)
 def test_retrieve_image_metadata_with_invalid_pseudonym(
-    channels_live_server: ChannelsLiveServer,
+    channels_live_server: ChannelsLiveServer, test_pseudonym
 ):
     setup_dimse_orthancs()
 
@@ -583,30 +565,23 @@ def test_retrieve_image_metadata_with_invalid_pseudonym(
     study_uid: str = metadata["StudyInstanceUID"].iloc[0]
     series_uid: str = metadata["SeriesInstanceUID"].iloc[0]
     image_uid: str = metadata["SOPInstanceUID"].iloc[0]
-    test_pseudonyms = [
-        "Test\\Pseudonym1",  # Invalid due to backslash
-        "Test\u0001Pseudonym2",  # Invalid due to control character
-        "Test*Pseudonym3",  # Invalid due to wildcard character
-        "T" * 65,  # Invalid due to exceeding character limit
-    ]
 
-    for test_pseudonym in test_pseudonyms:
-        additional_params = {
-            "pseudonym": test_pseudonym,
-        }
+    additional_params = {
+        "pseudonym": test_pseudonym,
+    }
 
+    try:
+        orthanc1_client.retrieve_instance_metadata(
+            study_uid, series_uid, image_uid, additional_params=additional_params
+        )
+    except HTTPError as e:
+        response = e.response
+        assert response is not None
+        assert response.status_code == HTTPStatus.BAD_REQUEST
         try:
-            orthanc1_client.retrieve_instance_metadata(
-                study_uid, series_uid, image_uid, additional_params=additional_params
+            error = response.json()
+            assert "pseudonym" in error or "invalid" in str(error).lower(), (
+                f"Unexpected error: {error}"
             )
-        except HTTPError as e:
-            response = e.response
-            assert response is not None
-            assert response.status_code == HTTPStatus.BAD_REQUEST
-            try:
-                error = response.json()
-                assert "pseudonym" in error or "invalid" in str(error).lower(), (
-                    f"Unexpected error: {error}"
-                )
-            except Exception:
-                assert "invalid" in response.text.lower(), f"Unexpected response: {response.text}"
+        except Exception:
+            assert "invalid" in response.text.lower(), f"Unexpected response: {response.text}"
