@@ -4,20 +4,6 @@ from typing import Iterator
 from pydicom import Dataset
 from pydicomweb_client import DICOMwebClient, session_utils
 
-from adit.core.utils.pseudonymizer import Pseudonymizer
-
-DEFAULT_SKIP_ELEMENTS_ANONYMIZATION = [
-    "AcquisitionDate",
-    "AcquisitionDateTime",
-    "AcquisitionTime",
-    "ContentDate",
-    "ContentTime",
-    "SeriesDate",
-    "SeriesTime",
-    "StudyDate",
-    "StudyTime",
-]
-
 
 class AditClient:
     def __init__(
@@ -27,7 +13,6 @@ class AditClient:
         verify: str | bool = True,
         trial_protocol_id: str | None = None,
         trial_protocol_name: str | None = None,
-        skip_elements_anonymization: list[str] | None = None,
     ) -> None:
         self.server_url = server_url
         self.auth_token = auth_token
@@ -35,11 +20,6 @@ class AditClient:
         self.trial_protocol_id = trial_protocol_id
         self.trial_protocol_name = trial_protocol_name
         self.__version__ = importlib.metadata.version("adit-client")
-
-        if skip_elements_anonymization is None:
-            self.skip_elements_anonymization = DEFAULT_SKIP_ELEMENTS_ANONYMIZATION
-        else:
-            self.skip_elements_anonymization = skip_elements_anonymization
 
     def search_for_studies(
         self, ae_title: str, query: dict[str, str] | None = None
@@ -75,19 +55,17 @@ class AditClient:
     ) -> list[Dataset]:
         """Retrieve all instances of a study."""
         images = self._create_dicom_web_client(ae_title).retrieve_study(study_uid)
-        pseudonymizer = Pseudonymizer(pseudonym)
 
-        return [self._handle_dataset(image, pseudonymizer) for image in images]
+        return [self._handle_dataset(image, pseudonym) for image in images]
 
     def iter_study(
         self, ae_title: str, study_uid: str, pseudonym: str | None = None
     ) -> Iterator[Dataset]:
         """Iterate over all instances of a study."""
         images = self._create_dicom_web_client(ae_title).iter_study(study_uid)
-        pseudonymizer = Pseudonymizer(pseudonym)
 
         for image in images:
-            yield self._handle_dataset(image, pseudonymizer)
+            yield self._handle_dataset(image, pseudonym)
 
     def retrieve_series(
         self,
@@ -100,9 +78,8 @@ class AditClient:
         images = self._create_dicom_web_client(ae_title).retrieve_series(
             study_uid, series_instance_uid=series_uid
         )
-        pseudonymizer = Pseudonymizer(pseudonym)
 
-        return [self._handle_dataset(image, pseudonymizer) for image in images]
+        return [self._handle_dataset(image, pseudonym) for image in images]
 
     def iter_series(
         self,
@@ -115,10 +92,9 @@ class AditClient:
         images = self._create_dicom_web_client(ae_title).iter_series(
             study_uid, series_instance_uid=series_uid
         )
-        pseudonymizer = Pseudonymizer(pseudonym)
 
         for image in images:
-            yield self._handle_dataset(image, pseudonymizer)
+            yield self._handle_dataset(image, pseudonym)
 
     def retrieve_image(
         self,
@@ -132,9 +108,8 @@ class AditClient:
         image = self._create_dicom_web_client(ae_title).retrieve_instance(
             study_uid, series_uid, image_uid
         )
-        pseudonymizer = Pseudonymizer(pseudonym)
 
-        return self._handle_dataset(image, pseudonymizer)
+        return self._handle_dataset(image, pseudonym)
 
     def store_images(self, ae_title: str, images: list[Dataset]) -> Dataset:
         """Store images."""
@@ -160,7 +135,7 @@ class AditClient:
             },
         )
 
-    def _handle_dataset(self, ds: Dataset, pseudonymizer: Pseudonymizer) -> Dataset:
+    def _handle_dataset(self, ds: Dataset, pseudonym: str | None) -> Dataset:
         # Similar to what ADIT does in core/processors.py
 
         if self.trial_protocol_id is not None:
@@ -169,9 +144,6 @@ class AditClient:
         if self.trial_protocol_name is not None:
             ds.ClinicalTrialProtocolName = self.trial_protocol_name
 
-        pseudonymizer.pseudonymize(ds)
-
-        pseudonym = pseudonymizer.pseudonym
         if pseudonym and self.trial_protocol_id:
             session_id = f"{ds.StudyDate}-{ds.StudyTime}"
             ds.PatientComments = (
