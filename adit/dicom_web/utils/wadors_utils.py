@@ -3,15 +3,13 @@ import logging
 from typing import AsyncIterator, Literal
 
 from adrf.views import sync_to_async
-from dicognito.anonymizer import Anonymizer
-from dicognito.value_keeper import ValueKeeper
-from django.conf import settings
 from pydicom import Dataset
 
 from adit.core.errors import DicomError, RetriableDicomError
 from adit.core.models import DicomServer
 from adit.core.utils.dicom_dataset import QueryDataset
 from adit.core.utils.dicom_operator import DicomOperator
+from adit.core.utils.pseudonymizer import Pseudonymizer
 
 from ..errors import BadGatewayApiError, ServiceUnavailableApiError
 
@@ -34,15 +32,13 @@ async def wado_retrieve(
     loop = asyncio.get_running_loop()
     queue = asyncio.Queue[Dataset]()
 
-    def callback(ds: Dataset) -> None:
-        if pseudonym is not None:
-            anonymizer = Anonymizer()
-            for element in settings.SKIP_ELEMENTS_ANONYMIZATION:
-                anonymizer.add_element_handler(ValueKeeper(element))
+    pseudonymizer: Pseudonymizer | None = None
+    if pseudonym is not None:
+        pseudonymizer = Pseudonymizer(pseudonym=pseudonym)
 
-            anonymizer.anonymize(ds)
-            ds.PatientID = pseudonym
-            ds.PatientName = pseudonym
+    def callback(ds: Dataset) -> None:
+        if pseudonymizer is not None:
+            pseudonymizer.pseudonymize(ds)
 
         loop.call_soon_threadsafe(queue.put_nowait, ds)
 

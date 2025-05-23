@@ -1,10 +1,10 @@
 import importlib.metadata
 from typing import Iterator
 
-from dicognito.anonymizer import Anonymizer
-from dicognito.value_keeper import ValueKeeper
 from pydicom import Dataset
 from pydicomweb_client import DICOMwebClient, session_utils
+
+from adit.core.utils.pseudonymizer import Pseudonymizer
 
 DEFAULT_SKIP_ELEMENTS_ANONYMIZATION = [
     "AcquisitionDate",
@@ -75,25 +75,19 @@ class AditClient:
     ) -> list[Dataset]:
         """Retrieve all instances of a study."""
         images = self._create_dicom_web_client(ae_title).retrieve_study(study_uid)
+        pseudonymizer = Pseudonymizer(pseudonym)
 
-        anonymizer: Anonymizer | None = None
-        if pseudonym is not None:
-            anonymizer = self._setup_anonymizer()
-
-        return [self._handle_dataset(image, anonymizer, pseudonym) for image in images]
+        return [self._handle_dataset(image, pseudonymizer) for image in images]
 
     def iter_study(
         self, ae_title: str, study_uid: str, pseudonym: str | None = None
     ) -> Iterator[Dataset]:
         """Iterate over all instances of a study."""
         images = self._create_dicom_web_client(ae_title).iter_study(study_uid)
-
-        anonymizer: Anonymizer | None = None
-        if pseudonym is not None:
-            anonymizer = self._setup_anonymizer()
+        pseudonymizer = Pseudonymizer(pseudonym)
 
         for image in images:
-            yield self._handle_dataset(image, anonymizer, pseudonym)
+            yield self._handle_dataset(image, pseudonymizer)
 
     def retrieve_series(
         self,
@@ -106,12 +100,9 @@ class AditClient:
         images = self._create_dicom_web_client(ae_title).retrieve_series(
             study_uid, series_instance_uid=series_uid
         )
+        pseudonymizer = Pseudonymizer(pseudonym)
 
-        anonymizer: Anonymizer | None = None
-        if pseudonym is not None:
-            anonymizer = self._setup_anonymizer()
-
-        return [self._handle_dataset(image, anonymizer, pseudonym) for image in images]
+        return [self._handle_dataset(image, pseudonymizer) for image in images]
 
     def iter_series(
         self,
@@ -124,13 +115,10 @@ class AditClient:
         images = self._create_dicom_web_client(ae_title).iter_series(
             study_uid, series_instance_uid=series_uid
         )
-
-        anonymizer: Anonymizer | None = None
-        if pseudonym is not None:
-            anonymizer = self._setup_anonymizer()
+        pseudonymizer = Pseudonymizer(pseudonym)
 
         for image in images:
-            yield self._handle_dataset(image, anonymizer, pseudonym)
+            yield self._handle_dataset(image, pseudonymizer)
 
     def retrieve_image(
         self,
@@ -144,12 +132,9 @@ class AditClient:
         image = self._create_dicom_web_client(ae_title).retrieve_instance(
             study_uid, series_uid, image_uid
         )
+        pseudonymizer = Pseudonymizer(pseudonym)
 
-        anonymizer: Anonymizer | None = None
-        if pseudonym is not None:
-            anonymizer = self._setup_anonymizer()
-
-        return self._handle_dataset(image, anonymizer, pseudonym)
+        return self._handle_dataset(image, pseudonymizer)
 
     def store_images(self, ae_title: str, images: list[Dataset]) -> Dataset:
         """Store images."""
@@ -175,15 +160,7 @@ class AditClient:
             },
         )
 
-    def _setup_anonymizer(self) -> Anonymizer:
-        anonymizer = Anonymizer()
-        for element in self.skip_elements_anonymization:
-            anonymizer.add_element_handler(ValueKeeper(element))
-        return anonymizer
-
-    def _handle_dataset(
-        self, ds: Dataset, anonymizer: Anonymizer | None, pseudonym: str | None
-    ) -> Dataset:
+    def _handle_dataset(self, ds: Dataset, pseudonymizer: Pseudonymizer) -> Dataset:
         # Similar to what ADIT does in core/processors.py
 
         if self.trial_protocol_id is not None:
@@ -192,12 +169,9 @@ class AditClient:
         if self.trial_protocol_name is not None:
             ds.ClinicalTrialProtocolName = self.trial_protocol_name
 
-        if pseudonym is not None:
-            assert anonymizer is not None
-            anonymizer.anonymize(ds)
-            ds.PatientID = pseudonym
-            ds.PatientName = pseudonym
+        pseudonymizer.pseudonymize(ds)
 
+        pseudonym = pseudonymizer.pseudonym
         if pseudonym and self.trial_protocol_id:
             session_id = f"{ds.StudyDate}-{ds.StudyTime}"
             ds.PatientComments = (

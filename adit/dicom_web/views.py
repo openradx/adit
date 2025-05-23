@@ -4,6 +4,7 @@ from typing import AsyncIterator, Literal, Union, cast
 from adit_radis_shared.common.types import AuthenticatedApiRequest, User
 from adrf.views import APIView as AsyncApiView
 from channels.db import database_sync_to_async
+from django.core.exceptions import ValidationError as DRFValidationError
 from django.db.models import QuerySet
 from django.http import StreamingHttpResponse
 from django.urls import reverse
@@ -192,6 +193,13 @@ class RetrieveAPIView(WebDicomAPIView):
             metadata.append(image.to_json_dict())
         return metadata
 
+    def validate_pseudonym(self, pseudonym: str | None) -> None:
+        if pseudonym is not None:
+            try:
+                validate_pseudonym(pseudonym)
+            except DRFValidationError as e:
+                raise ParseError({"pseudonym": e.messages})
+
 
 class RetrieveStudyAPIView(RetrieveAPIView):
     async def get(
@@ -199,8 +207,7 @@ class RetrieveStudyAPIView(RetrieveAPIView):
     ) -> StreamingHttpResponse:
         source_server = await self._get_dicom_server(request, ae_title)
         pseudonym = request.GET.get("pseudonym")
-        if pseudonym is not None:
-            validate_pseudonym(pseudonym)
+        self.validate_pseudonym(pseudonym)
 
         query = self.query.copy()
         query["StudyInstanceUID"] = study_uid
@@ -221,8 +228,7 @@ class RetrieveStudyMetadataAPIView(RetrieveStudyAPIView):
     ) -> Response:
         source_server = await self._get_dicom_server(request, ae_title)
         pseudonym = request.GET.get("pseudonym")
-        if pseudonym is not None:
-            validate_pseudonym(pseudonym)
+        self.validate_pseudonym(pseudonym)
 
         query = self.query.copy()
         query["StudyInstanceUID"] = study_uid
@@ -240,8 +246,7 @@ class RetrieveSeriesAPIView(RetrieveAPIView):
     ) -> Response | StreamingHttpResponse:
         source_server = await self._get_dicom_server(request, ae_title)
         pseudonym = request.GET.get("pseudonym")
-        if pseudonym is not None:
-            validate_pseudonym(pseudonym)
+        self.validate_pseudonym(pseudonym)
 
         query = self.query.copy()
         query["StudyInstanceUID"] = study_uid
@@ -263,8 +268,7 @@ class RetrieveSeriesMetadataAPIView(RetrieveSeriesAPIView):
     ) -> Response:
         source_server = await self._get_dicom_server(request, ae_title)
         pseudonym = request.GET.get("pseudonym")
-        if pseudonym is not None:
-            validate_pseudonym(pseudonym)
+        self.validate_pseudonym(pseudonym)
 
         query = self.query.copy()
         query["StudyInstanceUID"] = study_uid
@@ -288,8 +292,7 @@ class RetrieveImageAPIView(RetrieveAPIView):
     ) -> Response | StreamingHttpResponse:
         source_server = await self._get_dicom_server(request, ae_title)
         pseudonym = request.GET.get("pseudonym")
-        if pseudonym is not None:
-            validate_pseudonym(pseudonym)
+        self.validate_pseudonym(pseudonym)
 
         query = self.query.copy()
         query["StudyInstanceUID"] = study_uid
@@ -317,8 +320,7 @@ class RetrieveImageMetadataAPIView(RetrieveImageAPIView):
     ) -> Response:
         source_server = await self._get_dicom_server(request, ae_title)
         pseudonym = request.GET.get("pseudonym")
-        if pseudonym is not None:
-            validate_pseudonym(pseudonym)
+        self.validate_pseudonym(pseudonym)
 
         query = self.query.copy()
         query["StudyInstanceUID"] = study_uid
