@@ -8,8 +8,6 @@ from functools import partial
 from pathlib import Path
 from typing import Callable
 
-from dicognito.anonymizer import Anonymizer
-from dicognito.value_keeper import ValueKeeper
 from django.conf import settings
 from pydicom import Dataset
 
@@ -281,12 +279,6 @@ class TransferTaskProcessor(DicomTaskProcessor):
             raise DicomError(f"Multiple series found with Series Instance UID {series_uid}.")
 
         return results
-
-    def _setup_anonymizer(self) -> Anonymizer:
-        anonymizer = Anonymizer()
-        for element in settings.SKIP_ELEMENTS_ANONYMIZATION:
-            anonymizer.add_element_handler(ValueKeeper(element))
-        return anonymizer
 
     def _download_study(
         self,
