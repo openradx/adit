@@ -32,13 +32,10 @@ async def wado_retrieve(
     loop = asyncio.get_running_loop()
     queue = asyncio.Queue[Dataset]()
 
-    pseudonymizer: Pseudonymizer | None = None
-    if pseudonym is not None:
-        pseudonymizer = Pseudonymizer(pseudonym=pseudonym)
+    pseudonymizer = Pseudonymizer(pseudonym)
 
     def callback(ds: Dataset) -> None:
-        if pseudonymizer is not None:
-            pseudonymizer.pseudonymize(ds)
+        pseudonymizer.pseudonymize(ds)
 
         loop.call_soon_threadsafe(queue.put_nowait, ds)
 

@@ -7,7 +7,6 @@ from pydicom import Dataset
 class Pseudonymizer:
     """
     A utility class for pseudonymizing (or anonymizing) DICOM data.
-    When no pseudonym is provided, it will only anonymize the data.
     """
 
     def __init__(self, pseudonym: str | None = None) -> None:
@@ -39,8 +38,8 @@ class Pseudonymizer:
 
         :param ds: The DICOM dataset to be pseudonymized.
         """
-        self.anonymizer.anonymize(ds)  # Apply anonymization to the dataset.
         if self.pseudonym:
             # Replace PatientID and PatientName with the provided pseudonym.
+            self.anonymizer.anonymize(ds)  # Apply anonymization to the dataset.
             ds.PatientID = self.pseudonym
             ds.PatientName = self.pseudonym
