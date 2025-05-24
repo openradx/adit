@@ -69,6 +69,3 @@ venv/
 /.pytest_cache/
 /.ruff_cache/
 /.vscode/
-
-# Project specific stuff
-/samples/
