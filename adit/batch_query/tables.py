@@ -19,9 +19,7 @@ class BatchQueryTaskTable(DicomTaskTable):
 class BatchQueryResultTable(tables.Table):
     task_id = tables.Column(accessor="query_id", verbose_name="Task ID")
     patient_id = tables.Column(verbose_name="Patient ID")
-    study_date_time = tables.DateTimeColumn(
-        verbose_name="Study Date/Time", order_by=("study_date", "study_time")
-    )
+    study_datetime = tables.DateTimeColumn(verbose_name="Study Date/Time")
     study_description = tables.Column(verbose_name="Study Description")
     image_count = tables.Column(verbose_name="# Images")
 
@@ -31,7 +29,7 @@ class BatchQueryResultTable(tables.Table):
         fields = (
             "task_id",
             "patient_id",
-            "study_date_time",
+            "study_datetime",
             "study_description",
             "modalities",
             "image_count",

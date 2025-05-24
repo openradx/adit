@@ -133,7 +133,7 @@ class BatchQueryTaskProcessor(DicomTaskProcessor):
                         seen.add(study.StudyInstanceUID)
                         study_results.append(study)
 
-        return sorted(study_results, key=lambda study: study.StudyDate)
+        return sorted(study_results, key=lambda study: study.StudyDateTime)
 
     def _find_series(self, patient_id: str, study_uid: str) -> list[ResultDataset]:
         series_numbers = self.query_task.series_numbers
@@ -186,8 +186,7 @@ class BatchQueryTaskProcessor(DicomTaskProcessor):
                     patient_birth_date=study.PatientBirthDate,
                     study_uid=study.StudyInstanceUID,
                     accession_number=study.AccessionNumber,
-                    study_date=study.StudyDate,
-                    study_time=study.StudyTime,
+                    study_datetime=study.StudyDateTime,
                     study_description=study.StudyDescription,
                     modalities=study.ModalitiesInStudy,
                     image_count=study.NumberOfStudyRelatedInstances,
@@ -225,8 +224,7 @@ class BatchQueryTaskProcessor(DicomTaskProcessor):
                         patient_birth_date=study.PatientBirthDate,
                         study_uid=study.StudyInstanceUID,
                         accession_number=study.AccessionNumber,
-                        study_date=study.StudyDate,
-                        study_time=study.StudyTime,
+                        study_datetime=study.StudyDateTime,
                         study_description=study.StudyDescription,
                         modalities=[series.Modality],
                         image_count=study.NumberOfStudyRelatedInstances,

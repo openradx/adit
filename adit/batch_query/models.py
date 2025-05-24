@@ -1,5 +1,3 @@
-from datetime import datetime
-
 from django.conf import settings
 from django.contrib.postgres.fields import ArrayField
 from django.core.exceptions import ValidationError
@@ -154,8 +152,7 @@ class BatchQueryResult(models.Model):
             no_wildcard_chars_validator,
         ],
     )
-    study_date = models.DateField()
-    study_time = models.TimeField()
+    study_datetime = models.DateTimeField()
     modalities = ArrayField(models.CharField(max_length=16, validators=[letters_validator]))
     image_count = models.PositiveIntegerField(
         null=True,
@@ -212,7 +209,3 @@ class BatchQueryResult(models.Model):
 
     def __str__(self) -> str:
         return f"{self.__class__.__name__} [{self.pk}]"
-
-    @property
-    def study_date_time(self):
-        return datetime.combine(self.study_date, self.study_time)

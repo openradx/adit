@@ -179,10 +179,9 @@ class TransferTaskProcessor(DicomTaskProcessor):
                 for series in self._find_series_list(series_uid=series_uid):
                     modalities.add(series.Modality)
 
-        study_date = study.StudyDate
-        study_time = study.StudyTime
+        study_datetime = study.StudyDateTime
         modalities = ",".join(modalities)
-        prefix = f"{study_date.strftime('%Y%m%d')}-{study_time.strftime('%H%M%S')}"
+        prefix = f"{study_datetime.strftime('%Y%m%d')}-{study_datetime.strftime('%H%M%S')}"
         study_folder = patient_folder / f"{prefix}-{modalities}"
         os.makedirs(study_folder, exist_ok=True)
 

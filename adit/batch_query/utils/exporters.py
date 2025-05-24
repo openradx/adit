@@ -1,7 +1,6 @@
 from typing import IO
 
 import pandas as pd
-from django.utils.formats import date_format, time_format
 
 from adit.core.templatetags.core_extras import person_name_from_dicom
 
@@ -71,11 +70,6 @@ def get_result_rows(
     for result in query_task.results.all():
         patient_name = person_name_from_dicom(result.patient_name)
 
-        # TODO: check if we can use datetime directly (without string conversion)
-        patient_birth_date = date_format(result.patient_birth_date, "SHORT_DATE_FORMAT")
-        study_date = date_format(result.study_date, "SHORT_DATE_FORMAT")
-        study_time = time_format(result.study_time, "TIME_FORMAT")
-
         image_count = ""
         if result.image_count is not None:
             image_count = result.image_count
@@ -89,10 +83,9 @@ def get_result_rows(
             [
                 result.patient_id,
                 patient_name,
-                patient_birth_date,
+                result.patient_birth_date,
                 result.modalities,
-                study_date,
-                study_time,
+                result.study_datetime,
                 result.study_description,
                 image_count,
                 result.accession_number,

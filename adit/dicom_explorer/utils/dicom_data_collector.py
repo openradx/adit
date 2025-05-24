@@ -1,5 +1,3 @@
-from datetime import datetime
-
 from django.conf import settings
 
 from adit.core.models import DicomServer
@@ -23,11 +21,7 @@ class DicomDataCollector:
     def collect_studies(self, query: QueryDataset, limit_results: int | None = None):
         studies = list(self.operator.find_studies(query, limit_results=limit_results))
 
-        return sorted(
-            studies,
-            key=lambda study: datetime.combine(study.StudyDate, study.StudyTime),
-            reverse=True,
-        )
+        return sorted(studies, key=lambda study: study.StudyDateTime, reverse=True)
 
     def collect_series(self, query: QueryDataset) -> list[ResultDataset]:
         if not query.has("StudyInstanceUID"):

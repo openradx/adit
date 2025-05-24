@@ -11,7 +11,7 @@ class BatchQueryResultAdmin(admin.ModelAdmin):
         "job_id",
         "query_id",
         "patient_id",
-        "study_date",
+        "study_datetime",
         "modalities",
         "study_description",
         "series_description",

@@ -1,8 +1,8 @@
 import datetime
 import logging
-from datetime import date, time
 from typing import Any, Iterable, Literal
 
+from django.utils import timezone
 from pydicom import DataElement, Dataset, datadict
 
 from .dicom_utils import (
@@ -12,7 +12,6 @@ from .dicom_utils import (
     convert_to_dicom_datetime,
     convert_to_dicom_time,
     convert_to_python_date,
-    convert_to_python_time,
 )
 
 logger = logging.getLogger(__name__)
@@ -31,7 +30,7 @@ class BaseDataset:
         return str(self._ds.PatientName)
 
     @property
-    def PatientBirthDate(self) -> date | None:
+    def PatientBirthDate(self) -> datetime.date | None:
         try:
             birth_date = self._ds.PatientBirthDate
             return convert_to_python_date(birth_date)
@@ -58,14 +57,18 @@ class BaseDataset:
         return str(self._ds.AccessionNumber)
 
     @property
-    def StudyDate(self) -> date:
+    def StudyDateTime(self) -> datetime.datetime:
         study_date = self._ds.StudyDate
-        return convert_to_python_date(study_date)
-
-    @property
-    def StudyTime(self) -> time:
         study_time = self._ds.StudyTime
-        return convert_to_python_time(study_time)
+        dt = datetime.datetime.combine(study_date, study_time)
+        if "TimezoneOffsetFromUTC" in self._ds:
+            offset = self._ds.TimezoneOffsetFromUTC
+            hours = int(offset[:3])
+            minutes = int(offset[0] + offset[3:])
+            return dt.replace(
+                tzinfo=datetime.timezone(datetime.timedelta(hours=hours, minutes=minutes))
+            )
+        return timezone.make_aware(dt)
 
     @property
     def StudyDescription(self) -> str:

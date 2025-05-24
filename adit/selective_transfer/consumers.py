@@ -3,7 +3,6 @@ import contextlib
 import logging
 import threading
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime
 from typing import Any, Iterator, Literal, cast
 
 from adit_radis_shared.accounts.models import User
@@ -263,11 +262,7 @@ class SelectiveTransferConsumer(AsyncJsonWebsocketConsumer):
         # Rerender form to remove potential previous error messages
         rendered_form = render_crispy_form(form)
 
-        studies = sorted(
-            studies,
-            key=lambda study: datetime.combine(study.StudyDate, study.StudyTime),
-            reverse=True,
-        )
+        studies = sorted(studies, key=lambda study: study.StudyDateTime, reverse=True)
 
         rendered_query_results = render_to_string(
             "selective_transfer/_query_results.html",
