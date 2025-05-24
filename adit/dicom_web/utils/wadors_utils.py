@@ -9,6 +9,7 @@ from adit.core.errors import DicomError, RetriableDicomError
 from adit.core.models import DicomServer
 from adit.core.utils.dicom_dataset import QueryDataset
 from adit.core.utils.dicom_operator import DicomOperator
+from adit.core.utils.pseudonymizer import Pseudonymizer
 
 from ..errors import BadGatewayApiError, ServiceUnavailableApiError
 
@@ -19,6 +20,7 @@ async def wado_retrieve(
     source_server: DicomServer,
     query: dict[str, str],
     level: Literal["STUDY", "SERIES", "IMAGE"],
+    pseudonym: str | None = None,
 ) -> AsyncIterator[Dataset]:
     """WADO retrieve helper.
 
@@ -30,7 +32,11 @@ async def wado_retrieve(
     loop = asyncio.get_running_loop()
     queue = asyncio.Queue[Dataset]()
 
+    pseudonymizer = Pseudonymizer(pseudonym)
+
     def callback(ds: Dataset) -> None:
+        pseudonymizer.pseudonymize(ds)
+
         loop.call_soon_threadsafe(queue.put_nowait, ds)
 
     try:
