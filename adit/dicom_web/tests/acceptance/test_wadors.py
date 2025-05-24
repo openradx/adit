@@ -2,6 +2,7 @@ from http import HTTPStatus
 
 import pydicom
 import pytest
+from adit_client import AditClient
 from adit_radis_shared.common.utils.testing_helpers import ChannelsLiveServer
 from requests.exceptions import HTTPError
 
@@ -49,15 +50,13 @@ def test_retrieve_study_with_pseudonym(channels_live_server: ChannelsLiveServer)
     _, group, token = create_user_with_dicom_web_group_and_token()
     server = DicomServer.objects.get(ae_title="ORTHANC1")
     grant_access(group, server, source=True)
-    orthanc1_client = create_dicom_web_client(channels_live_server.url, server.ae_title, token)
+    adit_client = AditClient(server_url=channels_live_server.url, auth_token=token)
 
     metadata = load_sample_dicoms_metadata("1001")
     study_uid: str = metadata.iloc[0]["StudyInstanceUID"]
     test_pseudonym = "TestPseudonym"
-    additional_params = {
-        "pseudonym": test_pseudonym,
-    }
-    results = orthanc1_client.retrieve_study(study_uid, additional_params=additional_params)
+
+    results = adit_client.retrieve_study(server.ae_title, study_uid, test_pseudonym)
     for result in results:
         assert isinstance(result, pydicom.Dataset)
         assert result.PatientID == test_pseudonym
@@ -73,17 +72,14 @@ def test_retrieve_study_with_invalid_pseudonym(channels_live_server: ChannelsLiv
     _, group, token = create_user_with_dicom_web_group_and_token()
     server = DicomServer.objects.get(ae_title="ORTHANC1")
     grant_access(group, server, source=True)
-    orthanc1_client = create_dicom_web_client(channels_live_server.url, server.ae_title, token)
+    adit_client = AditClient(server_url=channels_live_server.url, auth_token=token)
 
     metadata = load_sample_dicoms_metadata("1001")
     study_uid: str = metadata.iloc[0]["StudyInstanceUID"]
-
-    additional_params = {
-        "pseudonym": "Test\\Pseudonym1",
-    }
+    test_pseudonym = "Test\\Pseudonym1"
 
     try:
-        orthanc1_client.retrieve_study(study_uid, additional_params=additional_params)
+        adit_client.retrieve_study(server.ae_title, study_uid, test_pseudonym)
     except HTTPError as e:
         response = e.response
         assert response is not None
@@ -134,18 +130,13 @@ def test_retrieve_study_metadata_with_pseudonym(
     _, group, token = create_user_with_dicom_web_group_and_token()
     server = DicomServer.objects.get(ae_title="ORTHANC1")
     grant_access(group, server, source=True)
-    orthanc1_client = create_dicom_web_client(channels_live_server.url, server.ae_title, token)
+    adit_client = AditClient(server_url=channels_live_server.url, auth_token=token)
 
     metadata = load_sample_dicoms_metadata("1001")
     study_uid: str = metadata["StudyInstanceUID"].iloc[0]
     test_pseudonym = "TestPseudonym"
-    additional_params = {
-        "pseudonym": test_pseudonym,
-    }
 
-    results = orthanc1_client.retrieve_study_metadata(
-        study_uid, additional_params=additional_params
-    )
+    results = adit_client.retrieve_study_metadata(server.ae_title, study_uid, test_pseudonym)
     for result_json in results:
         result = pydicom.Dataset.from_json(result_json)
         assert not hasattr(result, "PixelData")
@@ -162,17 +153,14 @@ def test_retrieve_study_metadata_with_invalid_pseudonym(channels_live_server: Ch
     _, group, token = create_user_with_dicom_web_group_and_token()
     server = DicomServer.objects.get(ae_title="ORTHANC1")
     grant_access(group, server, source=True)
-    orthanc1_client = create_dicom_web_client(channels_live_server.url, server.ae_title, token)
+    adit_client = AditClient(server_url=channels_live_server.url, auth_token=token)
 
     metadata = load_sample_dicoms_metadata("1001")
     study_uid: str = metadata["StudyInstanceUID"].iloc[0]
-
-    additional_params = {
-        "pseudonym": "Test\\Pseudonym1",
-    }
+    test_pseudonym = "Test\\Pseudonym1"
 
     try:
-        orthanc1_client.retrieve_study_metadata(study_uid, additional_params=additional_params)
+        adit_client.retrieve_study_metadata(server.ae_title, study_uid, test_pseudonym)
     except HTTPError as e:
         response = e.response
         assert response is not None
@@ -217,23 +205,16 @@ def test_retrieve_series_with_pseudonym(channels_live_server: ChannelsLiveServer
     _, group, token = create_user_with_dicom_web_group_and_token()
     server = DicomServer.objects.get(ae_title="ORTHANC1")
     grant_access(group, server, source=True)
-    orthanc1_client = create_dicom_web_client(channels_live_server.url, server.ae_title, token)
+    adit_client = AditClient(server_url=channels_live_server.url, auth_token=token)
 
     metadata = load_sample_dicoms_metadata("1001")
     study_uid: str = metadata.iloc[0]["StudyInstanceUID"]
     series_uid: str = metadata.iloc[0]["SeriesInstanceUID"]
     test_pseudonym = "TestPseudonym"
-    additional_params = {
-        "pseudonym": test_pseudonym,
-    }
 
-    results = orthanc1_client.retrieve_series(
-        study_uid, series_uid, additional_params=additional_params
-    )
+    results = adit_client.retrieve_series(server.ae_title, study_uid, series_uid, test_pseudonym)
     for result in results:
         assert isinstance(result, pydicom.Dataset)
-        # assert result.StudyInstanceUID == study_uid
-        # assert result.SeriesInstanceUID == series_uid
         assert result.PatientID == test_pseudonym
         assert result.PatientName == test_pseudonym
 
@@ -247,18 +228,15 @@ def test_retrieve_series_with_invalid_pseudonym(channels_live_server: ChannelsLi
     _, group, token = create_user_with_dicom_web_group_and_token()
     server = DicomServer.objects.get(ae_title="ORTHANC1")
     grant_access(group, server, source=True)
-    orthanc1_client = create_dicom_web_client(channels_live_server.url, server.ae_title, token)
+    adit_client = AditClient(server_url=channels_live_server.url, auth_token=token)
 
     metadata = load_sample_dicoms_metadata("1001")
     study_uid: str = metadata.iloc[0]["StudyInstanceUID"]
     series_uid: str = metadata.iloc[0]["SeriesInstanceUID"]
-
-    additional_params = {
-        "pseudonym": "Test\\Pseudonym1",
-    }
+    test_pseudonym = "Test\\Pseudonym1"
 
     try:
-        orthanc1_client.retrieve_series(study_uid, series_uid, additional_params=additional_params)
+        adit_client.retrieve_series(server.ae_title, study_uid, series_uid, test_pseudonym)
     except HTTPError as e:
         response = e.response
         assert response is not None
@@ -306,24 +284,19 @@ def test_retrieve_series_metadata_with_pseudonym(
     _, group, token = create_user_with_dicom_web_group_and_token()
     server = DicomServer.objects.get(ae_title="ORTHANC1")
     grant_access(group, server, source=True)
-    orthanc1_client = create_dicom_web_client(channels_live_server.url, server.ae_title, token)
+    adit_client = AditClient(server_url=channels_live_server.url, auth_token=token)
 
     metadata = load_sample_dicoms_metadata("1001")
     study_uid: str = metadata["StudyInstanceUID"].iloc[0]
     series_uid: str = metadata["SeriesInstanceUID"].iloc[0]
     test_pseudonym = "TestPseudonym"
-    additional_params = {
-        "pseudonym": test_pseudonym,
-    }
 
-    results = orthanc1_client.retrieve_series_metadata(
-        study_uid, series_uid, additional_params=additional_params
+    results = adit_client.retrieve_series_metadata(
+        server.ae_title, study_uid, series_uid, test_pseudonym
     )
     for result_json in results:
         result = pydicom.Dataset.from_json(result_json)
         assert not hasattr(result, "PixelData")
-        # assert result.StudyInstanceUID == study_uid
-        # assert result.SeriesInstanceUID == series_uid
         assert result.PatientID == test_pseudonym
         assert result.PatientName == test_pseudonym
 
@@ -337,20 +310,15 @@ def test_retrieve_series_metadata_with_invalid_pseudonym(channels_live_server: C
     _, group, token = create_user_with_dicom_web_group_and_token()
     server = DicomServer.objects.get(ae_title="ORTHANC1")
     grant_access(group, server, source=True)
-    orthanc1_client = create_dicom_web_client(channels_live_server.url, server.ae_title, token)
+    adit_client = AditClient(server_url=channels_live_server.url, auth_token=token)
 
     metadata = load_sample_dicoms_metadata("1001")
     study_uid: str = metadata["StudyInstanceUID"].iloc[0]
     series_uid: str = metadata["SeriesInstanceUID"].iloc[0]
-
-    additional_params = {
-        "pseudonym": "Test\\Pseudonym1",
-    }
+    test_pseudonym = "Test\\Pseudonym1"
 
     try:
-        orthanc1_client.retrieve_series_metadata(
-            study_uid, series_uid, additional_params=additional_params
-        )
+        adit_client.retrieve_series_metadata(server.ae_title, study_uid, series_uid, test_pseudonym)
     except HTTPError as e:
         response = e.response
         assert response is not None
@@ -396,19 +364,16 @@ def test_retrieve_image_with_pseudonym(channels_live_server: ChannelsLiveServer)
     _, group, token = create_user_with_dicom_web_group_and_token()
     server = DicomServer.objects.get(ae_title="ORTHANC1")
     grant_access(group, server, source=True)
-    orthanc1_client = create_dicom_web_client(channels_live_server.url, server.ae_title, token)
+    adit_client = AditClient(server_url=channels_live_server.url, auth_token=token)
 
     metadata = load_sample_dicoms_metadata("1001")
     study_uid: str = metadata["StudyInstanceUID"].iloc[0]
     series_uid: str = metadata["SeriesInstanceUID"].iloc[0]
     image_uid: str = metadata["SOPInstanceUID"].iloc[0]
     test_pseudonym = "TestPseudonym"
-    additional_params = {
-        "pseudonym": test_pseudonym,
-    }
 
-    result = orthanc1_client.retrieve_instance(
-        study_uid, series_uid, image_uid, additional_params=additional_params
+    result = adit_client.retrieve_image(
+        server.ae_title, study_uid, series_uid, image_uid, test_pseudonym
     )
     assert isinstance(result, pydicom.Dataset)
     assert result.PatientID == test_pseudonym
@@ -424,20 +389,17 @@ def test_retrieve_image_with_invalid_pseudonym(channels_live_server: ChannelsLiv
     _, group, token = create_user_with_dicom_web_group_and_token()
     server = DicomServer.objects.get(ae_title="ORTHANC1")
     grant_access(group, server, source=True)
-    orthanc1_client = create_dicom_web_client(channels_live_server.url, server.ae_title, token)
+    adit_client = AditClient(server_url=channels_live_server.url, auth_token=token)
 
     metadata = load_sample_dicoms_metadata("1001")
     study_uid: str = metadata["StudyInstanceUID"].iloc[0]
     series_uid: str = metadata["SeriesInstanceUID"].iloc[0]
     image_uid: str = metadata["SOPInstanceUID"].iloc[0]
-
-    additional_params = {
-        "pseudonym": "Test\\Pseudonym1",
-    }
+    test_pseudonym = "Test\\Pseudonym1"
 
     try:
-        orthanc1_client.retrieve_instance(
-            study_uid, series_uid, image_uid, additional_params=additional_params
+        adit_client.retrieve_image(
+            server.ae_title, study_uid, series_uid, image_uid, test_pseudonym
         )
     except HTTPError as e:
         response = e.response
@@ -487,19 +449,16 @@ def test_retrieve_image_metadata_with_pseudonym(
     _, group, token = create_user_with_dicom_web_group_and_token()
     server = DicomServer.objects.get(ae_title="ORTHANC1")
     grant_access(group, server, source=True)
-    orthanc1_client = create_dicom_web_client(channels_live_server.url, server.ae_title, token)
+    adit_client = AditClient(server_url=channels_live_server.url, auth_token=token)
 
     metadata = load_sample_dicoms_metadata("1001")
     study_uid: str = metadata["StudyInstanceUID"].iloc[0]
     series_uid: str = metadata["SeriesInstanceUID"].iloc[0]
     image_uid: str = metadata["SOPInstanceUID"].iloc[0]
     test_pseudonym = "TestPseudonym"
-    additional_params = {
-        "pseudonym": test_pseudonym,
-    }
 
-    result = orthanc1_client.retrieve_instance_metadata(
-        study_uid, series_uid, image_uid, additional_params=additional_params
+    result = adit_client.retrieve_image_metadata(
+        server.ae_title, study_uid, series_uid, image_uid, test_pseudonym
     )
     result = pydicom.Dataset.from_json(result)
     assert not hasattr(result, "PixelData")
@@ -516,20 +475,17 @@ def test_retrieve_image_metadata_with_invalid_pseudonym(channels_live_server: Ch
     _, group, token = create_user_with_dicom_web_group_and_token()
     server = DicomServer.objects.get(ae_title="ORTHANC1")
     grant_access(group, server, source=True)
-    orthanc1_client = create_dicom_web_client(channels_live_server.url, server.ae_title, token)
+    adit_client = AditClient(server_url=channels_live_server.url, auth_token=token)
 
     metadata = load_sample_dicoms_metadata("1001")
     study_uid: str = metadata["StudyInstanceUID"].iloc[0]
     series_uid: str = metadata["SeriesInstanceUID"].iloc[0]
     image_uid: str = metadata["SOPInstanceUID"].iloc[0]
-
-    additional_params = {
-        "pseudonym": "Test\\Pseudonym1",
-    }
+    test_pseudonym = "Test\\Pseudonym1"
 
     try:
-        orthanc1_client.retrieve_instance_metadata(
-            study_uid, series_uid, image_uid, additional_params=additional_params
+        adit_client.retrieve_image_metadata(
+            server.ae_title, study_uid, series_uid, image_uid, test_pseudonym
         )
     except HTTPError as e:
         response = e.response

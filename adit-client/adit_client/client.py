@@ -54,7 +54,9 @@ class AditClient:
         self, ae_title: str, study_uid: str, pseudonym: str | None = None
     ) -> list[Dataset]:
         """Retrieve all instances of a study."""
-        images = self._create_dicom_web_client(ae_title).retrieve_study(study_uid)
+        images = self._create_dicom_web_client(ae_title).retrieve_study(
+            study_uid, additional_params={"pseudonym": pseudonym}
+        )
 
         return [self._handle_dataset(image, pseudonym) for image in images]
 
@@ -76,7 +78,7 @@ class AditClient:
     ) -> list[Dataset]:
         """Retrieve all instances of a series."""
         images = self._create_dicom_web_client(ae_title).retrieve_series(
-            study_uid, series_instance_uid=series_uid
+            study_uid, series_instance_uid=series_uid, additional_params={"pseudonym": pseudonym}
         )
 
         return [self._handle_dataset(image, pseudonym) for image in images]
@@ -106,7 +108,7 @@ class AditClient:
     ) -> Dataset:
         """Retrieve an image."""
         image = self._create_dicom_web_client(ae_title).retrieve_instance(
-            study_uid, series_uid, image_uid
+            study_uid, series_uid, image_uid, additional_params={"pseudonym": pseudonym}
         )
 
         return self._handle_dataset(image, pseudonym)
