@@ -31,7 +31,7 @@
     "editor.defaultFormatter": "esbenp.prettier-vscode"
   },
   "[dockerfile]": {
-    "editor.defaultFormatter": "ms-azuretools.vscode-containers"
+    "editor.defaultFormatter": "ms-azuretools.vscode-docker"
   },
   "[html][django-html]": {
     "editor.defaultFormatter": "monosans.djlint"
