@@ -193,12 +193,14 @@ class RetrieveAPIView(WebDicomAPIView):
             metadata.append(image.to_json_dict())
         return metadata
 
-    def validate_pseudonym(self, pseudonym: str | None) -> None:
+    def _get_pseudonym(self, request: AuthenticatedApiRequest) -> str | None:
+        pseudonym = request.GET.get("pseudonym")
         if pseudonym is not None:
             try:
                 validate_pseudonym(pseudonym)
             except DRFValidationError as e:
                 raise ParseError({"pseudonym": e.messages})
+            return pseudonym
 
 
 class RetrieveStudyAPIView(RetrieveAPIView):
@@ -206,8 +208,7 @@ class RetrieveStudyAPIView(RetrieveAPIView):
         self, request: AuthenticatedApiRequest, ae_title: str, study_uid: str
     ) -> StreamingHttpResponse:
         source_server = await self._get_dicom_server(request, ae_title)
-        pseudonym = request.GET.get("pseudonym")
-        self.validate_pseudonym(pseudonym)
+        pseudonym = self._get_pseudonym(request)
 
         query = self.query.copy()
         query["StudyInstanceUID"] = study_uid
@@ -227,8 +228,7 @@ class RetrieveStudyMetadataAPIView(RetrieveStudyAPIView):
         self, request: AuthenticatedApiRequest, ae_title: str, study_uid: str
     ) -> Response:
         source_server = await self._get_dicom_server(request, ae_title)
-        pseudonym = request.GET.get("pseudonym")
-        self.validate_pseudonym(pseudonym)
+        pseudonym = self._get_pseudonym(request)
 
         query = self.query.copy()
         query["StudyInstanceUID"] = study_uid
@@ -245,8 +245,7 @@ class RetrieveSeriesAPIView(RetrieveAPIView):
         self, request: AuthenticatedApiRequest, ae_title: str, study_uid: str, series_uid: str
     ) -> Response | StreamingHttpResponse:
         source_server = await self._get_dicom_server(request, ae_title)
-        pseudonym = request.GET.get("pseudonym")
-        self.validate_pseudonym(pseudonym)
+        pseudonym = self._get_pseudonym(request)
 
         query = self.query.copy()
         query["StudyInstanceUID"] = study_uid
@@ -267,8 +266,7 @@ class RetrieveSeriesMetadataAPIView(RetrieveSeriesAPIView):
         self, request: AuthenticatedApiRequest, ae_title: str, study_uid: str, series_uid: str
     ) -> Response:
         source_server = await self._get_dicom_server(request, ae_title)
-        pseudonym = request.GET.get("pseudonym")
-        self.validate_pseudonym(pseudonym)
+        pseudonym = self._get_pseudonym(request)
 
         query = self.query.copy()
         query["StudyInstanceUID"] = study_uid
@@ -291,8 +289,7 @@ class RetrieveImageAPIView(RetrieveAPIView):
         image_uid: str,
     ) -> Response | StreamingHttpResponse:
         source_server = await self._get_dicom_server(request, ae_title)
-        pseudonym = request.GET.get("pseudonym")
-        self.validate_pseudonym(pseudonym)
+        pseudonym = self._get_pseudonym(request)
 
         query = self.query.copy()
         query["StudyInstanceUID"] = study_uid
@@ -319,8 +316,7 @@ class RetrieveImageMetadataAPIView(RetrieveImageAPIView):
         image_uid: str,
     ) -> Response:
         source_server = await self._get_dicom_server(request, ae_title)
-        pseudonym = request.GET.get("pseudonym")
-        self.validate_pseudonym(pseudonym)
+        pseudonym = self._get_pseudonym(request)
 
         query = self.query.copy()
         query["StudyInstanceUID"] = study_uid
