@@ -275,7 +275,7 @@ LOGGING = {
 # Internationalization
 # https://docs.djangoproject.com/en/3.0/topics/i18n/
 
-LANGUAGE_CODE = "de-de"
+LANGUAGE_CODE = "en-us"
 
 # TODO: We don't want use translations yet, but everything is hardcoded in English
 USE_I18N = False
