@@ -15,8 +15,8 @@ from rest_framework.utils.mediatypes import media_type_matches
 
 from adit.core.models import DicomServer
 from adit.core.utils.dicom_dataset import QueryDataset
-from adit.core.validators import validate_pseudonym
 from adit.dicom_web.utils.peekable import AsyncPeekable
+from adit.dicom_web.validators import validate_pseudonym
 
 from .parsers import parse_request_in_chunks
 from .renderers import (
