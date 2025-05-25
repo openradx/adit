@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1.16-labs # TODO remove when ADD --exclude is stable
 # Ideas from https://docs.astral.sh/uv/guides/integration/docker/
 # and https://hynek.me/articles/docker-uv/
 
@@ -59,7 +60,9 @@ RUN --mount=type=cache,target=/root/.cache/uv \
   --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
   uv sync --frozen --no-install-project --no-dev --no-group client
 
-ADD . /app
+# We can't put ./samples into .dockerignore because we need it in watch mode
+# during development, but we don't want it in the production image.
+ADD --exclude=./samples . /app
 
 # Install project itself
 RUN --mount=type=cache,target=/root/.cache/uv \

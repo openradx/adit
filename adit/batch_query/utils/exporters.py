@@ -1,7 +1,6 @@
-from typing import IO
+from typing import IO, Any
 
 import pandas as pd
-from django.utils.formats import date_format, time_format
 
 from adit.core.templatetags.core_extras import person_name_from_dicom
 
@@ -64,21 +63,14 @@ def get_header(has_pseudonyms: bool, has_series: bool) -> list[str]:
 
 def get_result_rows(
     query_task: BatchQueryTask, has_pseudonyms: bool, has_series: bool
-) -> list[list[str]]:
+) -> list[list[Any]]:
     result_rows = []
 
     result: BatchQueryResult
     for result in query_task.results.all():
         patient_name = person_name_from_dicom(result.patient_name)
-
-        # TODO: check if we can use datetime directly (without string conversion)
-        patient_birth_date = date_format(result.patient_birth_date, "SHORT_DATE_FORMAT")
-        study_date = date_format(result.study_date, "SHORT_DATE_FORMAT")
-        study_time = time_format(result.study_time, "TIME_FORMAT")
-
-        image_count = ""
-        if result.image_count is not None:
-            image_count = result.image_count
+        modalities = ", ".join(result.modalities) if result.modalities else ""
+        image_count = result.image_count if result.image_count is not None else ""
 
         result_row = []
 
@@ -89,10 +81,10 @@ def get_result_rows(
             [
                 result.patient_id,
                 patient_name,
-                patient_birth_date,
-                result.modalities,
-                study_date,
-                study_time,
+                result.patient_birth_date,
+                modalities,
+                result.study_date,
+                result.study_time,
                 result.study_description,
                 image_count,
                 result.accession_number,
