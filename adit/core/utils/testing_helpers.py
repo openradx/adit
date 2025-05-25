@@ -7,11 +7,11 @@ from unittest.mock import create_autospec
 import pandas as pd
 from adit_radis_shared.accounts.factories import GroupFactory
 from adit_radis_shared.common.utils.testing_helpers import add_permission
+from dicomweb_client import DICOMwebClient
 from django.conf import settings
 from django.core.management import call_command
 from playwright.sync_api import FilePayload
 from pydicom import Dataset
-from pydicomweb_client import DICOMwebClient
 from pynetdicom.association import Association
 from pynetdicom.status import Status
 

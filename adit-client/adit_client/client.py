@@ -1,8 +1,8 @@
 import importlib.metadata
 from typing import Iterator
 
+from dicomweb_client import DICOMwebClient, session_utils
 from pydicom import Dataset
-from pydicomweb_client import DICOMwebClient, session_utils
 
 
 class AditClient:

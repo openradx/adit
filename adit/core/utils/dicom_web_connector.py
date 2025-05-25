@@ -6,9 +6,9 @@ from os import PathLike
 from pathlib import Path
 from typing import Callable, Iterator, NoReturn
 
+from dicomweb_client import DICOMwebClient
 from pydicom import Dataset
 from pydicom.errors import InvalidDicomError
-from pydicomweb_client import DICOMwebClient
 from requests import HTTPError
 
 from ..errors import DicomError, RetriableDicomError

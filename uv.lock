@@ -16,6 +16,7 @@ dependencies = [
     { name = "cryptography" },
     { name = "daphne" },
     { name = "dicognito" },
+    { name = "dicomweb-client" },
     { name = "django" },
     { name = "django-block-fragments" },
     { name = "django-cotton" },
@@ -41,7 +42,6 @@ dependencies = [
     { name = "psycopg", extra = ["binary"] },
     { name = "pyarrow" },
     { name = "pydicom" },
-    { name = "pydicomweb-client" },
     { name = "pynetdicom" },
     { name = "twisted", extra = ["http2", "tls"] },
     { name = "wait-for-it" },
@@ -99,6 +99,7 @@ requires-dist = [
     { name = "cryptography", specifier = ">=44.0.1" },
     { name = "daphne", specifier = ">=4.1.2" },
     { name = "dicognito", specifier = ">=0.17.0,<0.18.0" },
+    { name = "dicomweb-client", specifier = ">=0.60.0" },
     { name = "django", specifier = ">=5.1.6" },
     { name = "django-block-fragments", specifier = ">=0.1.1" },
     { name = "django-cotton", specifier = ">=1.6.0" },
@@ -124,7 +125,6 @@ requires-dist = [
     { name = "psycopg", extras = ["binary"], specifier = ">=3.2.5" },
     { name = "pyarrow", specifier = ">=19.0.1" },
     { name = "pydicom", specifier = ">=2.4.4,<3.0.0" },
-    { name = "pydicomweb-client", specifier = ">=0.0.2" },
     { name = "pynetdicom", specifier = ">=2.1.1" },
     { name = "twisted", extras = ["tls", "http2"], specifier = ">=24.11.0" },
     { name = "wait-for-it", specifier = ">=2.3.0" },
@@ -643,7 +643,7 @@ wheels = [
 
 [[package]]
 name = "dicomweb-client"
-version = "0.59.3"
+version = "0.60.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "numpy" },
@@ -652,9 +652,9 @@ dependencies = [
     { name = "requests" },
     { name = "retrying" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/ba/dd/160c7670dcba8081c737404a3186ae219a8804d8cc087b29aa8d08c2c8fa/dicomweb_client-0.59.3.tar.gz", hash = "sha256:dd11604c99711d3fc9d223de960a1b64db3b2dcbc30592473d935e27b9243d46", size = 70995, upload-time = "2024-10-22T01:26:25.053Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/10/6b/3e318d68e9bc5dd57a2556950475b07ba36950c5b3e57037552d62c02d49/dicomweb_client-0.60.0.tar.gz", hash = "sha256:fd2db1ab8e9fe976752b44e1f9223000db3626c5cae7194b2e9b4177e48d2630", size = 81867, upload-time = "2025-05-24T19:48:40.679Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/fd/77/e7ac701ad5ce4507d52ed5ace9f3c0c0129e6fbb29d108a0fd00362547c1/dicomweb_client-0.59.3-py3-none-any.whl", hash = "sha256:58ba2c9d4924ab3bc66d7a078b070b73562d321846f70f0050fb51d078897726", size = 61563, upload-time = "2024-10-22T01:26:23.109Z" },
+    { url = "https://files.pythonhosted.org/packages/c3/e2/88287e1290c97804f540195506ae4a4a8e70a2cc3b0c42fe00634423e081/dicomweb_client-0.60.0-py3-none-any.whl", hash = "sha256:fde6743036f9c9da74580dd643c66121a1650d16737184695bfbe076f3875e71", size = 61466, upload-time = "2025-05-24T19:48:39.469Z" },
 ]
 
 [[package]]
@@ -1782,22 +1782,6 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/25/98/0b530df4b0129f5651a006534168769a507e50c92657a22fb3e26bd2b0cf/pydicom-2.4.4.tar.gz", hash = "sha256:90b4801d851ce65be3df520e16bbfa3d6c767cf2a3a3b1c18f6780e6b670b87a", size = 2016625, upload-time = "2023-12-14T21:44:29.896Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/35/2a/8c0f6fe243e6b6793868c6834203a44cc8f3f25abad780e1c7b21e15594d/pydicom-2.4.4-py3-none-any.whl", hash = "sha256:f9f8e19b78525be57aa6384484298833e4d06ac1d6226c79459131ddb0bd7c42", size = 1771279, upload-time = "2023-12-14T21:44:27.232Z" },
-]
-
-[[package]]
-name = "pydicomweb-client"
-version = "0.0.2"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "numpy" },
-    { name = "pillow" },
-    { name = "pydicom" },
-    { name = "requests" },
-    { name = "retrying" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/ef/e6/18a99b4be614dc3a4e3d295224d16ddb8298e1f0835a9a24bf7d4d88c750/pydicomweb_client-0.0.2.tar.gz", hash = "sha256:3ca6b8ba12bc32e53869e5e4e35f3cee341121af533a14102eb7f5b0472ff4f4", size = 135408, upload-time = "2025-05-16T12:45:26.214Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/da/59/6551c57384fda7565af591b6935a293d7603af2b426007416d66d2f91283/pydicomweb_client-0.0.2-py3-none-any.whl", hash = "sha256:3a7f0b1242b14b27726d7ef26ca1ef63ceb6b80b4dbb6ad6c5bdf001bdf943ad", size = 61346, upload-time = "2025-05-16T12:45:24.263Z" },
 ]
 
 [[package]]
