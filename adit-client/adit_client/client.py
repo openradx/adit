@@ -60,6 +60,14 @@ class AditClient:
 
         return [self._handle_dataset(image, pseudonym) for image in images]
 
+    def retrieve_study_metadata(
+        self, ae_title: str, study_uid: str, pseudonym: str | None = None
+    ) -> list[dict[str, dict]]:
+        """Retrieve the metadata for all instances of a study."""
+        return self._create_dicom_web_client(ae_title).retrieve_study_metadata(
+            study_uid, additional_params={"pseudonym": pseudonym}
+        )
+
     def iter_study(
         self, ae_title: str, study_uid: str, pseudonym: str | None = None
     ) -> Iterator[Dataset]:
@@ -82,6 +90,18 @@ class AditClient:
         )
 
         return [self._handle_dataset(image, pseudonym) for image in images]
+
+    def retrieve_series_metadata(
+        self,
+        ae_title: str,
+        study_uid: str,
+        series_uid: str,
+        pseudonym: str | None = None,
+    ) -> list[dict[str, dict]]:
+        """Retrieve the metadata for all instances of a series."""
+        return self._create_dicom_web_client(ae_title).retrieve_series_metadata(
+            study_uid, series_instance_uid=series_uid, additional_params={"pseudonym": pseudonym}
+        )
 
     def iter_series(
         self,
@@ -112,6 +132,19 @@ class AditClient:
         )
 
         return self._handle_dataset(image, pseudonym)
+
+    def retrieve_image_metadata(
+        self,
+        ae_title: str,
+        study_uid: str,
+        series_uid: str,
+        image_uid: str,
+        pseudonym: str | None = None,
+    ) -> dict[str, dict]:
+        """Retrieve the metadata for an image."""
+        return self._create_dicom_web_client(ae_title).retrieve_instance_metadata(
+            study_uid, series_uid, image_uid, additional_params={"pseudonym": pseudonym}
+        )
 
     def store_images(self, ae_title: str, images: list[Dataset]) -> Dataset:
         """Store images."""
