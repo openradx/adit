@@ -16,7 +16,11 @@ from rest_framework.utils.mediatypes import media_type_matches
 from adit.core.models import DicomServer
 from adit.core.utils.dicom_dataset import QueryDataset
 from adit.dicom_web.utils.peekable import AsyncPeekable
-from adit.dicom_web.validators import validate_pseudonym
+from adit.dicom_web.validators import (
+    validate_pseudonym,
+    validate_trial_protocol_id,
+    validate_trial_protocol_name,
+)
 
 from .parsers import parse_request_in_chunks
 from .renderers import (
@@ -201,6 +205,24 @@ class RetrieveAPIView(WebDicomAPIView):
             except DRFValidationError as e:
                 raise ParseError({"pseudonym": e.messages})
             return pseudonym
+
+    def _get_trial_protocol_id(self, request: AuthenticatedApiRequest) -> str | None:
+        trial_protocol_id = request.GET.get("trial_protocol_id")
+        if trial_protocol_id is not None:
+            try:
+                validate_trial_protocol_id(trial_protocol_id)
+            except DRFValidationError as e:
+                raise ParseError({"pseudonym": e.messages})
+            return trial_protocol_id
+
+    def _get_trial_protocol_name(self, request: AuthenticatedApiRequest) -> str | None:
+        trial_protocol_name = request.GET.get("trial_protocol_name")
+        if trial_protocol_name is not None:
+            try:
+                validate_trial_protocol_name(trial_protocol_name)
+            except DRFValidationError as e:
+                raise ParseError({"pseudonym": e.messages})
+            return trial_protocol_name
 
 
 class RetrieveStudyAPIView(RetrieveAPIView):

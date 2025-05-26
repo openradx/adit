@@ -21,6 +21,8 @@ async def wado_retrieve(
     query: dict[str, str],
     level: Literal["STUDY", "SERIES", "IMAGE"],
     pseudonym: str | None = None,
+    trial_protocol_id: str | None = None,
+    trial_protocol_name: str | None = None,
 ) -> AsyncIterator[Dataset]:
     """WADO retrieve helper.
 
@@ -35,9 +37,18 @@ async def wado_retrieve(
     pseudonymizer = Pseudonymizer(pseudonym)
 
     def callback(ds: Dataset) -> None:
-        pseudonymizer.pseudonymize(ds)
+        _handle_dataset(ds)
 
         loop.call_soon_threadsafe(queue.put_nowait, ds)
+
+    def _handle_dataset(ds: Dataset) -> None:
+        pseudonymizer.pseudonymize(ds)
+
+        if trial_protocol_id is not None:
+            ds.ClinicalTrialProtocolID = trial_protocol_id
+
+        if trial_protocol_name is not None:
+            ds.ClinicalTrialProtocolName = trial_protocol_name
 
     try:
         if level == "STUDY":
