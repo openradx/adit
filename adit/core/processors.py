@@ -191,6 +191,7 @@ class TransferTaskProcessor(DicomTaskProcessor):
         modifier = partial(
             self._modify_dataset,
             pseudonymizer,
+            pseudonym,
         )
 
         if series_uids:
