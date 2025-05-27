@@ -8,10 +8,10 @@ from functools import partial
 from pathlib import Path
 from typing import Callable
 
-from dicognito.anonymizer import Anonymizer
-from dicognito.value_keeper import ValueKeeper
 from django.conf import settings
 from pydicom import Dataset
+
+from adit.core.utils.pseudonymizer import Pseudonymizer
 
 from .errors import DicomError
 from .models import DicomAppSettings, DicomNode, DicomTask, TransferTask
@@ -186,11 +186,11 @@ class TransferTaskProcessor(DicomTaskProcessor):
         study_folder = patient_folder / f"{prefix}-{modalities}"
         os.makedirs(study_folder, exist_ok=True)
 
-        anonymizer = self._setup_anonymizer()
+        pseudonymizer = Pseudonymizer()
 
         modifier = partial(
             self._modify_dataset,
-            anonymizer,
+            pseudonymizer,
             pseudonym,
         )
 
@@ -280,12 +280,6 @@ class TransferTaskProcessor(DicomTaskProcessor):
             raise DicomError(f"Multiple series found with Series Instance UID {series_uid}.")
 
         return results
-
-    def _setup_anonymizer(self) -> Anonymizer:
-        anonymizer = Anonymizer()
-        for element in settings.SKIP_ELEMENTS_ANONYMIZATION:
-            anonymizer.add_element_handler(ValueKeeper(element))
-        return anonymizer
 
     def _download_study(
         self,
@@ -379,17 +373,14 @@ class TransferTaskProcessor(DicomTaskProcessor):
 
     def _modify_dataset(
         self,
-        anonymizer: Anonymizer,
+        pseudonymizer: Pseudonymizer,
         pseudonym: str | None,
         ds: Dataset,
     ) -> None:
         """Optionally pseudonymize an incoming dataset with the given pseudonym
         and add the trial ID and name to the DICOM header if specified."""
         if pseudonym:
-            anonymizer.anonymize(ds)
-
-            ds.PatientID = pseudonym
-            ds.PatientName = pseudonym
+            pseudonymizer.pseudonymize(ds, pseudonym)
 
         trial_protocol_id = self.transfer_task.job.trial_protocol_id
         trial_protocol_name = self.transfer_task.job.trial_protocol_name

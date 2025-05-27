@@ -4,6 +4,7 @@ from typing import AsyncIterator, Literal, Union, cast
 from adit_radis_shared.common.types import AuthenticatedApiRequest, User
 from adrf.views import APIView as AsyncApiView
 from channels.db import database_sync_to_async
+from django.core.exceptions import ValidationError as DRFValidationError
 from django.db.models import QuerySet
 from django.http import StreamingHttpResponse
 from django.urls import reverse
@@ -15,6 +16,7 @@ from rest_framework.utils.mediatypes import media_type_matches
 from adit.core.models import DicomServer
 from adit.core.utils.dicom_dataset import QueryDataset
 from adit.dicom_web.utils.peekable import AsyncPeekable
+from adit.dicom_web.validators import validate_pseudonym
 
 from .parsers import parse_request_in_chunks
 from .renderers import (
@@ -191,17 +193,27 @@ class RetrieveAPIView(WebDicomAPIView):
             metadata.append(image.to_json_dict())
         return metadata
 
+    def _get_pseudonym(self, request: AuthenticatedApiRequest) -> str | None:
+        pseudonym = request.GET.get("pseudonym")
+        if pseudonym is not None:
+            try:
+                validate_pseudonym(pseudonym)
+            except DRFValidationError as e:
+                raise ParseError({"pseudonym": e.messages})
+            return pseudonym
+
 
 class RetrieveStudyAPIView(RetrieveAPIView):
     async def get(
         self, request: AuthenticatedApiRequest, ae_title: str, study_uid: str
     ) -> StreamingHttpResponse:
         source_server = await self._get_dicom_server(request, ae_title)
+        pseudonym = self._get_pseudonym(request)
 
         query = self.query.copy()
         query["StudyInstanceUID"] = study_uid
 
-        images = wado_retrieve(source_server, query, "STUDY")
+        images = wado_retrieve(source_server, query, "STUDY", pseudonym=pseudonym)
         images = await self.peek_images(images)
 
         renderer = cast(DicomWebWadoRenderer, getattr(request, "accepted_renderer"))
@@ -216,11 +228,12 @@ class RetrieveStudyMetadataAPIView(RetrieveStudyAPIView):
         self, request: AuthenticatedApiRequest, ae_title: str, study_uid: str
     ) -> Response:
         source_server = await self._get_dicom_server(request, ae_title)
+        pseudonym = self._get_pseudonym(request)
 
         query = self.query.copy()
         query["StudyInstanceUID"] = study_uid
 
-        images = wado_retrieve(source_server, query, "STUDY")
+        images = wado_retrieve(source_server, query, "STUDY", pseudonym=pseudonym)
         metadata = await self.extract_metadata(images)
 
         renderer = cast(DicomWebWadoRenderer, getattr(request, "accepted_renderer"))
@@ -232,12 +245,13 @@ class RetrieveSeriesAPIView(RetrieveAPIView):
         self, request: AuthenticatedApiRequest, ae_title: str, study_uid: str, series_uid: str
     ) -> Response | StreamingHttpResponse:
         source_server = await self._get_dicom_server(request, ae_title)
+        pseudonym = self._get_pseudonym(request)
 
         query = self.query.copy()
         query["StudyInstanceUID"] = study_uid
         query["SeriesInstanceUID"] = series_uid
 
-        images = wado_retrieve(source_server, query, "SERIES")
+        images = wado_retrieve(source_server, query, "SERIES", pseudonym=pseudonym)
         images = await self.peek_images(images)
 
         renderer = cast(DicomWebWadoRenderer, getattr(request, "accepted_renderer"))
@@ -252,12 +266,13 @@ class RetrieveSeriesMetadataAPIView(RetrieveSeriesAPIView):
         self, request: AuthenticatedApiRequest, ae_title: str, study_uid: str, series_uid: str
     ) -> Response:
         source_server = await self._get_dicom_server(request, ae_title)
+        pseudonym = self._get_pseudonym(request)
 
         query = self.query.copy()
         query["StudyInstanceUID"] = study_uid
         query["SeriesInstanceUID"] = series_uid
 
-        images = wado_retrieve(source_server, query, "SERIES")
+        images = wado_retrieve(source_server, query, "SERIES", pseudonym=pseudonym)
         metadata = await self.extract_metadata(images)
 
         renderer = cast(DicomWebWadoRenderer, getattr(request, "accepted_renderer"))
@@ -274,13 +289,14 @@ class RetrieveImageAPIView(RetrieveAPIView):
         image_uid: str,
     ) -> Response | StreamingHttpResponse:
         source_server = await self._get_dicom_server(request, ae_title)
+        pseudonym = self._get_pseudonym(request)
 
         query = self.query.copy()
         query["StudyInstanceUID"] = study_uid
         query["SeriesInstanceUID"] = series_uid
         query["SOPInstanceUID"] = image_uid
 
-        images = wado_retrieve(source_server, query, "IMAGE")
+        images = wado_retrieve(source_server, query, "IMAGE", pseudonym=pseudonym)
         images = await self.peek_images(images)
 
         renderer = cast(DicomWebWadoRenderer, getattr(request, "accepted_renderer"))
@@ -300,13 +316,14 @@ class RetrieveImageMetadataAPIView(RetrieveImageAPIView):
         image_uid: str,
     ) -> Response:
         source_server = await self._get_dicom_server(request, ae_title)
+        pseudonym = self._get_pseudonym(request)
 
         query = self.query.copy()
         query["StudyInstanceUID"] = study_uid
         query["SeriesInstanceUID"] = series_uid
         query["SOPInstanceUID"] = image_uid
 
-        images = wado_retrieve(source_server, query, "IMAGE")
+        images = wado_retrieve(source_server, query, "IMAGE", pseudonym=pseudonym)
         metadata = await self.extract_metadata(images)
 
         renderer = cast(DicomWebWadoRenderer, getattr(request, "accepted_renderer"))
