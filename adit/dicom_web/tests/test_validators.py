@@ -30,9 +30,4 @@ def test_validate_pseudonym_invalid(invalid_pseudonym):
 @pytest.mark.parametrize("valid_pseudonym", VALID_PSEUDONYMS)
 def test_validate_pseudonym_valid(valid_pseudonym):
     """Test that validate_pseudonym does not raise an error for valid pseudonyms."""
-    try:
-        validate_pseudonym(valid_pseudonym)
-    except ValidationError:
-        pytest.fail(
-            f"validate_pseudonym raised ValidationError for a valid pseudonym: {valid_pseudonym}"
-        )
+    validate_pseudonym(valid_pseudonym)

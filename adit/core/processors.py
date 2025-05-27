@@ -186,7 +186,7 @@ class TransferTaskProcessor(DicomTaskProcessor):
         study_folder = patient_folder / f"{prefix}-{modalities}"
         os.makedirs(study_folder, exist_ok=True)
 
-        pseudonymizer = Pseudonymizer(pseudonym)
+        pseudonymizer = Pseudonymizer()
 
         modifier = partial(
             self._modify_dataset,
@@ -373,11 +373,13 @@ class TransferTaskProcessor(DicomTaskProcessor):
     def _modify_dataset(
         self,
         pseudonymizer: Pseudonymizer,
+        pseudonym: str | None,
         ds: Dataset,
     ) -> None:
         """Optionally pseudonymize an incoming dataset with the given pseudonym
         and add the trial ID and name to the DICOM header if specified."""
-        pseudonymizer.pseudonymize(ds)
+        if pseudonym:
+            pseudonymizer.pseudonymize(ds, pseudonym)
 
         trial_protocol_id = self.transfer_task.job.trial_protocol_id
         trial_protocol_name = self.transfer_task.job.trial_protocol_name
@@ -388,7 +390,6 @@ class TransferTaskProcessor(DicomTaskProcessor):
         if trial_protocol_name:
             ds.ClinicalTrialProtocolName = trial_protocol_name
 
-        pseudonym = pseudonymizer.pseudonym
         if pseudonym and trial_protocol_id:
             session_id = f"{ds.StudyDate}-{ds.StudyTime}"
             ds.PatientComments = (
