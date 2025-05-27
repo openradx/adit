@@ -11,7 +11,7 @@ from typing import Callable
 from django.conf import settings
 from pydicom import Dataset
 
-from adit.core.utils.pseudonymizer import Pseudonymizer
+from adit.core.utils.dicom_manipulator import DicomManipulator
 
 from .errors import DicomError
 from .models import DicomAppSettings, DicomNode, DicomTask, TransferTask
@@ -186,12 +186,13 @@ class TransferTaskProcessor(DicomTaskProcessor):
         study_folder = patient_folder / f"{prefix}-{modalities}"
         os.makedirs(study_folder, exist_ok=True)
 
-        pseudonymizer = Pseudonymizer()
+        dicom_manipulator = DicomManipulator()
 
         modifier = partial(
-            self._modify_dataset,
-            pseudonymizer,
-            pseudonym,
+            dicom_manipulator.manipulate,
+            pseudonym=pseudonym,
+            trial_protocol_id=self.transfer_task.job.trial_protocol_id,
+            trial_protocol_name=self.transfer_task.job.trial_protocol_name,
         )
 
         if series_uids:
@@ -369,32 +370,6 @@ class TransferTaskProcessor(DicomTaskProcessor):
                 patient_id=patient_id,
                 study_uid=study_uid,
                 callback=callback,
-            )
-
-    def _modify_dataset(
-        self,
-        pseudonymizer: Pseudonymizer,
-        pseudonym: str | None,
-        ds: Dataset,
-    ) -> None:
-        """Optionally pseudonymize an incoming dataset with the given pseudonym
-        and add the trial ID and name to the DICOM header if specified."""
-        if pseudonym:
-            pseudonymizer.pseudonymize(ds, pseudonym)
-
-        trial_protocol_id = self.transfer_task.job.trial_protocol_id
-        trial_protocol_name = self.transfer_task.job.trial_protocol_name
-
-        if trial_protocol_id:
-            ds.ClinicalTrialProtocolID = trial_protocol_id
-
-        if trial_protocol_name:
-            ds.ClinicalTrialProtocolName = trial_protocol_name
-
-        if pseudonym and trial_protocol_id:
-            session_id = f"{ds.StudyDate}-{ds.StudyTime}"
-            ds.PatientComments = (
-                f"Project:{trial_protocol_id} Subject:{pseudonym} Session:{pseudonym}_{session_id}"
             )
 
 

@@ -8,8 +8,8 @@ from pydicom import Dataset
 from adit.core.errors import DicomError, RetriableDicomError
 from adit.core.models import DicomServer
 from adit.core.utils.dicom_dataset import QueryDataset
+from adit.core.utils.dicom_manipulator import DicomManipulator
 from adit.core.utils.dicom_operator import DicomOperator
-from adit.core.utils.pseudonymizer import Pseudonymizer
 
 from ..errors import BadGatewayApiError, ServiceUnavailableApiError
 
@@ -34,11 +34,10 @@ async def wado_retrieve(
     loop = asyncio.get_running_loop()
     queue = asyncio.Queue[Dataset]()
 
-    pseudonymizer = Pseudonymizer()
+    dicom_manipulator = DicomManipulator()
 
     def callback(ds: Dataset) -> None:
-        if pseudonym:
-            pseudonymizer.pseudonymize(ds, pseudonym)
+        dicom_manipulator.manipulate(ds, pseudonym, trial_protocol_id, trial_protocol_name)
 
         loop.call_soon_threadsafe(queue.put_nowait, ds)
 

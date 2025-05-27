@@ -212,7 +212,7 @@ class RetrieveAPIView(WebDicomAPIView):
             try:
                 validate_trial_protocol_id(trial_protocol_id)
             except DRFValidationError as e:
-                raise ParseError({"pseudonym": e.messages})
+                raise ParseError({"trial_protocol_id": e.messages})
             return trial_protocol_id
 
     def _get_trial_protocol_name(self, request: AuthenticatedApiRequest) -> str | None:
@@ -221,7 +221,7 @@ class RetrieveAPIView(WebDicomAPIView):
             try:
                 validate_trial_protocol_name(trial_protocol_name)
             except DRFValidationError as e:
-                raise ParseError({"pseudonym": e.messages})
+                raise ParseError({"trial_protocol_name": e.messages})
             return trial_protocol_name
 
 

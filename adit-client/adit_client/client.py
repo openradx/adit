@@ -67,7 +67,7 @@ class AditClient:
             additional_params=additional_params,
         )
 
-        return [self._handle_dataset(image, pseudonym) for image in images]
+        return images
 
     def retrieve_study_metadata(
         self, ae_title: str, study_uid: str, pseudonym: str | None = None
@@ -92,7 +92,7 @@ class AditClient:
         images = self._create_dicom_web_client(ae_title).iter_study(study_uid)
 
         for image in images:
-            yield self._handle_dataset(image, pseudonym)
+            yield image
 
     def retrieve_series(
         self,
@@ -114,7 +114,7 @@ class AditClient:
             study_uid, series_instance_uid=series_uid, additional_params=additional_params
         )
 
-        return [self._handle_dataset(image, pseudonym) for image in images]
+        return images
 
     def retrieve_series_metadata(
         self,
@@ -149,7 +149,7 @@ class AditClient:
         )
 
         for image in images:
-            yield self._handle_dataset(image, pseudonym)
+            yield image
 
     def retrieve_image(
         self,
@@ -172,7 +172,7 @@ class AditClient:
             study_uid, series_uid, image_uid, additional_params=additional_params
         )
 
-        return self._handle_dataset(image, pseudonym)
+        return image
 
     def retrieve_image_metadata(
         self,
@@ -218,21 +218,3 @@ class AditClient:
                 "User-Agent": f"python-adit_client/{self.__version__}",
             },
         )
-
-    def _handle_dataset(self, ds: Dataset, pseudonym: str | None) -> Dataset:
-        # Similar to what ADIT does in core/processors.py
-
-        if self.trial_protocol_id is not None:
-            ds.ClinicalTrialProtocolID = self.trial_protocol_id
-
-        if self.trial_protocol_name is not None:
-            ds.ClinicalTrialProtocolName = self.trial_protocol_name
-
-        if pseudonym and self.trial_protocol_id:
-            session_id = f"{ds.StudyDate}-{ds.StudyTime}"
-            ds.PatientComments = (
-                f"Project:{self.trial_protocol_id} Subject:{pseudonym} "
-                f"Session:{pseudonym}_{session_id}"
-            )
-
-        return ds
