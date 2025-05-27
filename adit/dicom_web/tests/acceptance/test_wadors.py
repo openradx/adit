@@ -57,10 +57,16 @@ def test_retrieve_study_with_pseudonym(channels_live_server: ChannelsLiveServer)
     test_pseudonym = "TestPseudonym"
 
     results = adit_client.retrieve_study(server.ae_title, study_uid, test_pseudonym)
+    series_uids = set()
     for result in results:
         assert isinstance(result, pydicom.Dataset)
         assert result.PatientID == test_pseudonym
         assert result.PatientName == test_pseudonym
+        assert result.StudyInstanceUID != study_uid
+        series_uids.add(result.SeriesInstanceUID)
+    assert series_uids.isdisjoint(
+        set(metadata[metadata["StudyInstanceUID"] == study_uid]["SeriesInstanceUID"])
+    )
 
 
 @pytest.mark.acceptance
@@ -78,19 +84,14 @@ def test_retrieve_study_with_invalid_pseudonym(channels_live_server: ChannelsLiv
     study_uid: str = metadata.iloc[0]["StudyInstanceUID"]
     test_pseudonym = "Test\\Pseudonym1"
 
-    try:
+    with pytest.raises(HTTPError) as exc_info:
         adit_client.retrieve_study(server.ae_title, study_uid, test_pseudonym)
-    except HTTPError as e:
-        response = e.response
-        assert response is not None
-        assert response.status_code == HTTPStatus.BAD_REQUEST
-        try:
-            error = response.json()
-            assert "pseudonym" in error or "invalid" in str(error).lower(), (
-                f"Unexpected error: {error}"
-            )
-        except Exception:
-            assert "invalid" in response.text.lower(), f"Unexpected response: {response.text}"
+
+    response = exc_info.value.response
+    assert response is not None
+    assert response.status_code == HTTPStatus.BAD_REQUEST
+    error = response.json()
+    assert "pseudonym" in error or "invalid" in str(error).lower(), f"Unexpected error: {error}"
 
 
 @pytest.mark.acceptance
@@ -137,11 +138,16 @@ def test_retrieve_study_metadata_with_pseudonym(
     test_pseudonym = "TestPseudonym"
 
     results = adit_client.retrieve_study_metadata(server.ae_title, study_uid, test_pseudonym)
+    series_uids = set()
     for result_json in results:
         result = pydicom.Dataset.from_json(result_json)
         assert not hasattr(result, "PixelData")
         assert result.PatientID == test_pseudonym
         assert result.PatientName == test_pseudonym
+        assert result.StudyInstanceUID != study_uid
+    assert series_uids.isdisjoint(
+        set(metadata[metadata["StudyInstanceUID"] == study_uid]["SeriesInstanceUID"])
+    )
 
 
 @pytest.mark.acceptance
@@ -159,19 +165,14 @@ def test_retrieve_study_metadata_with_invalid_pseudonym(channels_live_server: Ch
     study_uid: str = metadata["StudyInstanceUID"].iloc[0]
     test_pseudonym = "Test\\Pseudonym1"
 
-    try:
+    with pytest.raises(HTTPError) as exc_info:
         adit_client.retrieve_study_metadata(server.ae_title, study_uid, test_pseudonym)
-    except HTTPError as e:
-        response = e.response
-        assert response is not None
-        assert response.status_code == HTTPStatus.BAD_REQUEST
-        try:
-            error = response.json()
-            assert "pseudonym" in error or "invalid" in str(error).lower(), (
-                f"Unexpected error: {error}"
-            )
-        except Exception:
-            assert "invalid" in response.text.lower(), f"Unexpected response: {response.text}"
+
+    response = exc_info.value.response
+    assert response is not None
+    assert response.status_code == HTTPStatus.BAD_REQUEST
+    error = response.json()
+    assert "pseudonym" in error or "invalid" in str(error).lower(), f"Unexpected error: {error}"
 
 
 @pytest.mark.acceptance
@@ -217,6 +218,8 @@ def test_retrieve_series_with_pseudonym(channels_live_server: ChannelsLiveServer
         assert isinstance(result, pydicom.Dataset)
         assert result.PatientID == test_pseudonym
         assert result.PatientName == test_pseudonym
+        assert result.StudyInstanceUID != study_uid
+        assert result.SeriesInstanceUID != series_uid
 
 
 @pytest.mark.acceptance
@@ -235,19 +238,14 @@ def test_retrieve_series_with_invalid_pseudonym(channels_live_server: ChannelsLi
     series_uid: str = metadata.iloc[0]["SeriesInstanceUID"]
     test_pseudonym = "Test\\Pseudonym1"
 
-    try:
+    with pytest.raises(HTTPError) as exc_info:
         adit_client.retrieve_series(server.ae_title, study_uid, series_uid, test_pseudonym)
-    except HTTPError as e:
-        response = e.response
-        assert response is not None
-        assert response.status_code == HTTPStatus.BAD_REQUEST
-        try:
-            error = response.json()
-            assert "pseudonym" in error or "invalid" in str(error).lower(), (
-                f"Unexpected error: {error}"
-            )
-        except Exception:
-            assert "invalid" in response.text.lower(), f"Unexpected response: {response.text}"
+
+    response = exc_info.value.response
+    assert response is not None
+    assert response.status_code == HTTPStatus.BAD_REQUEST
+    error = response.json()
+    assert "pseudonym" in error or "invalid" in str(error).lower(), f"Unexpected error: {error}"
 
 
 @pytest.mark.acceptance
@@ -299,6 +297,8 @@ def test_retrieve_series_metadata_with_pseudonym(
         assert not hasattr(result, "PixelData")
         assert result.PatientID == test_pseudonym
         assert result.PatientName == test_pseudonym
+        assert result.StudyInstanceUID != study_uid
+        assert result.SeriesInstanceUID != series_uid
 
 
 @pytest.mark.acceptance
@@ -317,19 +317,14 @@ def test_retrieve_series_metadata_with_invalid_pseudonym(channels_live_server: C
     series_uid: str = metadata["SeriesInstanceUID"].iloc[0]
     test_pseudonym = "Test\\Pseudonym1"
 
-    try:
+    with pytest.raises(HTTPError) as exc_info:
         adit_client.retrieve_series_metadata(server.ae_title, study_uid, series_uid, test_pseudonym)
-    except HTTPError as e:
-        response = e.response
-        assert response is not None
-        assert response.status_code == HTTPStatus.BAD_REQUEST
-        try:
-            error = response.json()
-            assert "pseudonym" in error or "invalid" in str(error).lower(), (
-                f"Unexpected error: {error}"
-            )
-        except Exception:
-            assert "invalid" in response.text.lower(), f"Unexpected response: {response.text}"
+
+    response = exc_info.value.response
+    assert response is not None
+    assert response.status_code == HTTPStatus.BAD_REQUEST
+    error = response.json()
+    assert "pseudonym" in error or "invalid" in str(error).lower(), f"Unexpected error: {error}"
 
 
 @pytest.mark.acceptance
@@ -378,6 +373,9 @@ def test_retrieve_image_with_pseudonym(channels_live_server: ChannelsLiveServer)
     assert isinstance(result, pydicom.Dataset)
     assert result.PatientID == test_pseudonym
     assert result.PatientName == test_pseudonym
+    assert result.StudyInstanceUID != study_uid
+    assert result.SeriesInstanceUID != series_uid
+    assert result.SOPInstanceUID != image_uid
 
 
 @pytest.mark.acceptance
@@ -397,21 +395,16 @@ def test_retrieve_image_with_invalid_pseudonym(channels_live_server: ChannelsLiv
     image_uid: str = metadata["SOPInstanceUID"].iloc[0]
     test_pseudonym = "Test\\Pseudonym1"
 
-    try:
+    with pytest.raises(HTTPError) as exc_info:
         adit_client.retrieve_image(
             server.ae_title, study_uid, series_uid, image_uid, test_pseudonym
         )
-    except HTTPError as e:
-        response = e.response
-        assert response is not None
-        assert response.status_code == HTTPStatus.BAD_REQUEST
-        try:
-            error = response.json()
-            assert "pseudonym" in error or "invalid" in str(error).lower(), (
-                f"Unexpected error: {error}"
-            )
-        except Exception:
-            assert "invalid" in response.text.lower(), f"Unexpected response: {response.text}"
+
+    response = exc_info.value.response
+    assert response is not None
+    assert response.status_code == HTTPStatus.BAD_REQUEST
+    error = response.json()
+    assert "pseudonym" in error or "invalid" in str(error).lower(), f"Unexpected error: {error}"
 
 
 @pytest.mark.acceptance
@@ -464,6 +457,9 @@ def test_retrieve_image_metadata_with_pseudonym(
     assert not hasattr(result, "PixelData")
     assert result.PatientID == test_pseudonym
     assert result.PatientName == test_pseudonym
+    assert result.StudyInstanceUID != study_uid
+    assert result.SeriesInstanceUID != series_uid
+    assert result.SOPInstanceUID != image_uid
 
 
 @pytest.mark.acceptance
@@ -483,18 +479,13 @@ def test_retrieve_image_metadata_with_invalid_pseudonym(channels_live_server: Ch
     image_uid: str = metadata["SOPInstanceUID"].iloc[0]
     test_pseudonym = "Test\\Pseudonym1"
 
-    try:
+    with pytest.raises(HTTPError) as exc_info:
         adit_client.retrieve_image_metadata(
             server.ae_title, study_uid, series_uid, image_uid, test_pseudonym
         )
-    except HTTPError as e:
-        response = e.response
-        assert response is not None
-        assert response.status_code == HTTPStatus.BAD_REQUEST
-        try:
-            error = response.json()
-            assert "pseudonym" in error or "invalid" in str(error).lower(), (
-                f"Unexpected error: {error}"
-            )
-        except Exception:
-            assert "invalid" in response.text.lower(), f"Unexpected response: {response.text}"
+
+    response = exc_info.value.response
+    assert response is not None
+    assert response.status_code == HTTPStatus.BAD_REQUEST
+    error = response.json()
+    assert "pseudonym" in error or "invalid" in str(error).lower(), f"Unexpected error: {error}"

@@ -9,14 +9,13 @@ class Pseudonymizer:
     A utility class for pseudonymizing (or anonymizing) DICOM data.
     """
 
-    def __init__(self, pseudonym: str | None = None) -> None:
+    def __init__(self) -> None:
         """
-        Initialize the Pseudonymizer with an optional pseudonym.
+        Initialize the Pseudonymizer.
 
-        :param pseudonym: The pseudonym to be used for the DICOM data.
+        Sets up the anonymizer instance and configures it to skip specific elements.
         """
         self.anonymizer = self._setup_anonymizer()
-        self.pseudonym = pseudonym
 
     def _setup_anonymizer(self) -> Anonymizer:
         """
@@ -29,17 +28,17 @@ class Pseudonymizer:
             anonymizer.add_element_handler(ValueKeeper(element))
         return anonymizer
 
-    def pseudonymize(
-        self,
-        ds: Dataset,
-    ) -> None:
+    def pseudonymize(self, ds: Dataset, pseudonym: str) -> None:
         """
-        Pseudonymize the given DICOM dataset using the anonymizer and optional pseudonym.
+        Pseudonymize the given DICOM dataset using the anonymizer and the provided pseudonym.
 
         :param ds: The DICOM dataset to be pseudonymized.
+        :param pseudonym: The pseudonym to be applied to the dataset.
+        :raises ValueError: If the pseudonym is None or empty.
         """
-        if self.pseudonym:
-            # Replace PatientID and PatientName with the provided pseudonym.
-            self.anonymizer.anonymize(ds)  # Apply anonymization to the dataset.
-            ds.PatientID = self.pseudonym
-            ds.PatientName = self.pseudonym
+        if not pseudonym:
+            raise ValueError("A valid pseudonym must be provided for pseudonymization.")
+
+        self.anonymizer.anonymize(ds)
+        ds.PatientID = pseudonym
+        ds.PatientName = pseudonym
