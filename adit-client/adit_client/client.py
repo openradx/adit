@@ -82,7 +82,7 @@ class AditClient:
             additional_params["trial_protocol_name"] = self.trial_protocol_name
 
         return self._create_dicom_web_client(ae_title).retrieve_study_metadata(
-            study_uid, additional_params={"pseudonym": pseudonym}
+            study_uid, additional_params=additional_params
         )
 
     def iter_study(
