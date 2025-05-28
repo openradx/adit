@@ -62,12 +62,10 @@ class AditClient:
         if self.trial_protocol_name:
             additional_params["trial_protocol_name"] = self.trial_protocol_name
 
-        images = self._create_dicom_web_client(ae_title).retrieve_study(
+        return self._create_dicom_web_client(ae_title).retrieve_study(
             study_uid,
             additional_params=additional_params,
         )
-
-        return images
 
     def retrieve_study_metadata(
         self, ae_title: str, study_uid: str, pseudonym: str | None = None
@@ -89,9 +87,7 @@ class AditClient:
         self, ae_title: str, study_uid: str, pseudonym: str | None = None
     ) -> Iterator[Dataset]:
         """Iterate over all instances of a study."""
-        images = self._create_dicom_web_client(ae_title).iter_study(study_uid)
-
-        for image in images:
+        for image in self._create_dicom_web_client(ae_title).iter_study(study_uid):
             yield image
 
     def retrieve_series(
@@ -110,11 +106,9 @@ class AditClient:
         if self.trial_protocol_name:
             additional_params["trial_protocol_name"] = self.trial_protocol_name
 
-        images = self._create_dicom_web_client(ae_title).retrieve_series(
+        return self._create_dicom_web_client(ae_title).retrieve_series(
             study_uid, series_instance_uid=series_uid, additional_params=additional_params
         )
-
-        return images
 
     def retrieve_series_metadata(
         self,
@@ -144,11 +138,9 @@ class AditClient:
         pseudonym: str | None = None,
     ) -> Iterator[Dataset]:
         """Iterate over all instances of a series."""
-        images = self._create_dicom_web_client(ae_title).iter_series(
+        for image in self._create_dicom_web_client(ae_title).iter_series(
             study_uid, series_instance_uid=series_uid
-        )
-
-        for image in images:
+        ):
             yield image
 
     def retrieve_image(
@@ -168,11 +160,9 @@ class AditClient:
         if self.trial_protocol_name:
             additional_params["trial_protocol_name"] = self.trial_protocol_name
 
-        image = self._create_dicom_web_client(ae_title).retrieve_instance(
+        return self._create_dicom_web_client(ae_title).retrieve_instance(
             study_uid, series_uid, image_uid, additional_params=additional_params
         )
-
-        return image
 
     def retrieve_image_metadata(
         self,
