@@ -41,15 +41,6 @@ async def wado_retrieve(
 
         loop.call_soon_threadsafe(queue.put_nowait, ds)
 
-    def _handle_dataset(ds: Dataset) -> None:
-        pseudonymizer.pseudonymize(ds)
-
-        if trial_protocol_id is not None:
-            ds.ClinicalTrialProtocolID = trial_protocol_id
-
-        if trial_protocol_name is not None:
-            ds.ClinicalTrialProtocolName = trial_protocol_name
-
     try:
         if level == "STUDY":
             fetch_task = asyncio.create_task(
