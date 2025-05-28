@@ -320,7 +320,7 @@ def test_retrieve_series_metadata(channels_live_server: ChannelsLiveServer):
 @pytest.mark.acceptance
 @pytest.mark.order("last")
 @pytest.mark.django_db(transaction=True)
-def test_retrieve_series_metadata_with_metadata(
+def test_retrieve_series_metadata_with_manipulation(
     channels_live_server: ChannelsLiveServer,
 ):
     setup_dimse_orthancs()
