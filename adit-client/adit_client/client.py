@@ -54,28 +54,41 @@ class AditClient:
         self, ae_title: str, study_uid: str, pseudonym: str | None = None
     ) -> list[Dataset]:
         """Retrieve all instances of a study."""
-        images = self._create_dicom_web_client(ae_title).retrieve_study(
-            study_uid, additional_params={"pseudonym": pseudonym}
-        )
+        additional_params = {}
+        if pseudonym:
+            additional_params["pseudonym"] = pseudonym
+        if self.trial_protocol_id:
+            additional_params["trial_protocol_id"] = self.trial_protocol_id
+        if self.trial_protocol_name:
+            additional_params["trial_protocol_name"] = self.trial_protocol_name
 
-        return [self._handle_dataset(image, pseudonym) for image in images]
+        return self._create_dicom_web_client(ae_title).retrieve_study(
+            study_uid,
+            additional_params=additional_params,
+        )
 
     def retrieve_study_metadata(
         self, ae_title: str, study_uid: str, pseudonym: str | None = None
     ) -> list[dict[str, dict]]:
         """Retrieve the metadata for all instances of a study."""
+        additional_params = {}
+        if pseudonym:
+            additional_params["pseudonym"] = pseudonym
+        if self.trial_protocol_id:
+            additional_params["trial_protocol_id"] = self.trial_protocol_id
+        if self.trial_protocol_name:
+            additional_params["trial_protocol_name"] = self.trial_protocol_name
+
         return self._create_dicom_web_client(ae_title).retrieve_study_metadata(
-            study_uid, additional_params={"pseudonym": pseudonym}
+            study_uid, additional_params=additional_params
         )
 
     def iter_study(
         self, ae_title: str, study_uid: str, pseudonym: str | None = None
     ) -> Iterator[Dataset]:
         """Iterate over all instances of a study."""
-        images = self._create_dicom_web_client(ae_title).iter_study(study_uid)
-
-        for image in images:
-            yield self._handle_dataset(image, pseudonym)
+        for image in self._create_dicom_web_client(ae_title).iter_study(study_uid):
+            yield image
 
     def retrieve_series(
         self,
@@ -85,11 +98,17 @@ class AditClient:
         pseudonym: str | None = None,
     ) -> list[Dataset]:
         """Retrieve all instances of a series."""
-        images = self._create_dicom_web_client(ae_title).retrieve_series(
-            study_uid, series_instance_uid=series_uid, additional_params={"pseudonym": pseudonym}
-        )
+        additional_params = {}
+        if pseudonym:
+            additional_params["pseudonym"] = pseudonym
+        if self.trial_protocol_id:
+            additional_params["trial_protocol_id"] = self.trial_protocol_id
+        if self.trial_protocol_name:
+            additional_params["trial_protocol_name"] = self.trial_protocol_name
 
-        return [self._handle_dataset(image, pseudonym) for image in images]
+        return self._create_dicom_web_client(ae_title).retrieve_series(
+            study_uid, series_instance_uid=series_uid, additional_params=additional_params
+        )
 
     def retrieve_series_metadata(
         self,
@@ -99,8 +118,16 @@ class AditClient:
         pseudonym: str | None = None,
     ) -> list[dict[str, dict]]:
         """Retrieve the metadata for all instances of a series."""
+        additional_params = {}
+        if pseudonym:
+            additional_params["pseudonym"] = pseudonym
+        if self.trial_protocol_id:
+            additional_params["trial_protocol_id"] = self.trial_protocol_id
+        if self.trial_protocol_name:
+            additional_params["trial_protocol_name"] = self.trial_protocol_name
+
         return self._create_dicom_web_client(ae_title).retrieve_series_metadata(
-            study_uid, series_instance_uid=series_uid, additional_params={"pseudonym": pseudonym}
+            study_uid, series_instance_uid=series_uid, additional_params=additional_params
         )
 
     def iter_series(
@@ -111,12 +138,10 @@ class AditClient:
         pseudonym: str | None = None,
     ) -> Iterator[Dataset]:
         """Iterate over all instances of a series."""
-        images = self._create_dicom_web_client(ae_title).iter_series(
+        for image in self._create_dicom_web_client(ae_title).iter_series(
             study_uid, series_instance_uid=series_uid
-        )
-
-        for image in images:
-            yield self._handle_dataset(image, pseudonym)
+        ):
+            yield image
 
     def retrieve_image(
         self,
@@ -127,11 +152,17 @@ class AditClient:
         pseudonym: str | None = None,
     ) -> Dataset:
         """Retrieve an image."""
-        image = self._create_dicom_web_client(ae_title).retrieve_instance(
-            study_uid, series_uid, image_uid, additional_params={"pseudonym": pseudonym}
-        )
+        additional_params = {}
+        if pseudonym:
+            additional_params["pseudonym"] = pseudonym
+        if self.trial_protocol_id:
+            additional_params["trial_protocol_id"] = self.trial_protocol_id
+        if self.trial_protocol_name:
+            additional_params["trial_protocol_name"] = self.trial_protocol_name
 
-        return self._handle_dataset(image, pseudonym)
+        return self._create_dicom_web_client(ae_title).retrieve_instance(
+            study_uid, series_uid, image_uid, additional_params=additional_params
+        )
 
     def retrieve_image_metadata(
         self,
@@ -142,8 +173,16 @@ class AditClient:
         pseudonym: str | None = None,
     ) -> dict[str, dict]:
         """Retrieve the metadata for an image."""
+        additional_params = {}
+        if pseudonym:
+            additional_params["pseudonym"] = pseudonym
+        if self.trial_protocol_id:
+            additional_params["trial_protocol_id"] = self.trial_protocol_id
+        if self.trial_protocol_name:
+            additional_params["trial_protocol_name"] = self.trial_protocol_name
+
         return self._create_dicom_web_client(ae_title).retrieve_instance_metadata(
-            study_uid, series_uid, image_uid, additional_params={"pseudonym": pseudonym}
+            study_uid, series_uid, image_uid, additional_params=additional_params
         )
 
     def store_images(self, ae_title: str, images: list[Dataset]) -> Dataset:
@@ -169,21 +208,3 @@ class AditClient:
                 "User-Agent": f"python-adit_client/{self.__version__}",
             },
         )
-
-    def _handle_dataset(self, ds: Dataset, pseudonym: str | None) -> Dataset:
-        # Similar to what ADIT does in core/processors.py
-
-        if self.trial_protocol_id is not None:
-            ds.ClinicalTrialProtocolID = self.trial_protocol_id
-
-        if self.trial_protocol_name is not None:
-            ds.ClinicalTrialProtocolName = self.trial_protocol_name
-
-        if pseudonym and self.trial_protocol_id:
-            session_id = f"{ds.StudyDate}-{ds.StudyTime}"
-            ds.PatientComments = (
-                f"Project:{self.trial_protocol_id} Subject:{pseudonym} "
-                f"Session:{pseudonym}_{session_id}"
-            )
-
-        return ds

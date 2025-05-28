@@ -90,7 +90,7 @@ client = ["adit-client"]
 default-groups = ["dev", "client"]
 
 [tool.uv.sources]
-adit-client = { path = "adit-client" }
+adit-client = { path = "./adit-client", editable = true }
 
 [tool.pyright]
 ignore = ["**/migrations", "**/*.ipynb"]

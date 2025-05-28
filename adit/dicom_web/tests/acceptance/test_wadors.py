@@ -44,17 +44,25 @@ def test_retrieve_study(channels_live_server: ChannelsLiveServer):
 @pytest.mark.acceptance
 @pytest.mark.order("last")
 @pytest.mark.django_db(transaction=True)
-def test_retrieve_study_with_pseudonym(channels_live_server: ChannelsLiveServer):
+def test_retrieve_study_with_manipulation(channels_live_server: ChannelsLiveServer):
     setup_dimse_orthancs()
+
+    test_pseudonym = "TestPseudonym"
+    test_protocol_id = "TestProtocolID"
+    test_protocol_name = "TestProtocolName"
 
     _, group, token = create_user_with_dicom_web_group_and_token()
     server = DicomServer.objects.get(ae_title="ORTHANC1")
     grant_access(group, server, source=True)
-    adit_client = AditClient(server_url=channels_live_server.url, auth_token=token)
+    adit_client = AditClient(
+        server_url=channels_live_server.url,
+        auth_token=token,
+        trial_protocol_id=test_protocol_id,
+        trial_protocol_name=test_protocol_name,
+    )
 
     metadata = load_sample_dicoms_metadata("1001")
     study_uid: str = metadata.iloc[0]["StudyInstanceUID"]
-    test_pseudonym = "TestPseudonym"
 
     results = adit_client.retrieve_study(server.ae_title, study_uid, test_pseudonym)
     series_uids = set()
@@ -63,6 +71,13 @@ def test_retrieve_study_with_pseudonym(channels_live_server: ChannelsLiveServer)
         assert result.PatientID == test_pseudonym
         assert result.PatientName == test_pseudonym
         assert result.StudyInstanceUID != study_uid
+        assert result.ClinicalTrialProtocolID == test_protocol_id
+        assert result.ClinicalTrialProtocolName == test_protocol_name
+        session_id = f"{result.StudyDate}-{result.StudyTime}"
+        assert result.PatientComments == (
+            f"Project:{test_protocol_id} Subject:{test_pseudonym} "
+            f"Session:{test_pseudonym}_{session_id}"
+        )
         series_uids.add(result.SeriesInstanceUID)
     assert series_uids.isdisjoint(
         set(metadata[metadata["StudyInstanceUID"] == study_uid]["SeriesInstanceUID"])
@@ -123,19 +138,27 @@ def test_retrieve_study_metadata(channels_live_server: ChannelsLiveServer):
 @pytest.mark.acceptance
 @pytest.mark.order("last")
 @pytest.mark.django_db(transaction=True)
-def test_retrieve_study_metadata_with_pseudonym(
+def test_retrieve_study_metadata_with_manipulation(
     channels_live_server: ChannelsLiveServer,
 ):
     setup_dimse_orthancs()
 
+    test_pseudonym = "TestPseudonym"
+    test_protocol_id = "TestProtocolID"
+    test_protocol_name = "TestProtocolName"
+
     _, group, token = create_user_with_dicom_web_group_and_token()
     server = DicomServer.objects.get(ae_title="ORTHANC1")
     grant_access(group, server, source=True)
-    adit_client = AditClient(server_url=channels_live_server.url, auth_token=token)
+    adit_client = AditClient(
+        server_url=channels_live_server.url,
+        auth_token=token,
+        trial_protocol_id=test_protocol_id,
+        trial_protocol_name=test_protocol_name,
+    )
 
     metadata = load_sample_dicoms_metadata("1001")
     study_uid: str = metadata["StudyInstanceUID"].iloc[0]
-    test_pseudonym = "TestPseudonym"
 
     results = adit_client.retrieve_study_metadata(server.ae_title, study_uid, test_pseudonym)
     series_uids = set()
@@ -145,6 +168,14 @@ def test_retrieve_study_metadata_with_pseudonym(
         assert result.PatientID == test_pseudonym
         assert result.PatientName == test_pseudonym
         assert result.StudyInstanceUID != study_uid
+        assert result.ClinicalTrialProtocolID == test_protocol_id
+        assert result.ClinicalTrialProtocolName == test_protocol_name
+        session_id = f"{result.StudyDate}-{result.StudyTime}"
+        assert result.PatientComments == (
+            f"Project:{test_protocol_id} Subject:{test_pseudonym} "
+            f"Session:{test_pseudonym}_{session_id}"
+        )
+        series_uids.add(result.SeriesInstanceUID)
     assert series_uids.isdisjoint(
         set(metadata[metadata["StudyInstanceUID"] == study_uid]["SeriesInstanceUID"])
     )
@@ -200,18 +231,26 @@ def test_retrieve_series(channels_live_server: ChannelsLiveServer):
 @pytest.mark.acceptance
 @pytest.mark.order("last")
 @pytest.mark.django_db(transaction=True)
-def test_retrieve_series_with_pseudonym(channels_live_server: ChannelsLiveServer):
+def test_retrieve_series_with_manipulation(channels_live_server: ChannelsLiveServer):
     setup_dimse_orthancs()
+
+    test_pseudonym = "TestPseudonym"
+    test_protocol_id = "TestProtocolID"
+    test_protocol_name = "TestProtocolName"
 
     _, group, token = create_user_with_dicom_web_group_and_token()
     server = DicomServer.objects.get(ae_title="ORTHANC1")
     grant_access(group, server, source=True)
-    adit_client = AditClient(server_url=channels_live_server.url, auth_token=token)
+    adit_client = AditClient(
+        server_url=channels_live_server.url,
+        auth_token=token,
+        trial_protocol_id=test_protocol_id,
+        trial_protocol_name=test_protocol_name,
+    )
 
     metadata = load_sample_dicoms_metadata("1001")
     study_uid: str = metadata.iloc[0]["StudyInstanceUID"]
     series_uid: str = metadata.iloc[0]["SeriesInstanceUID"]
-    test_pseudonym = "TestPseudonym"
 
     results = adit_client.retrieve_series(server.ae_title, study_uid, series_uid, test_pseudonym)
     for result in results:
@@ -220,6 +259,13 @@ def test_retrieve_series_with_pseudonym(channels_live_server: ChannelsLiveServer
         assert result.PatientName == test_pseudonym
         assert result.StudyInstanceUID != study_uid
         assert result.SeriesInstanceUID != series_uid
+        assert result.ClinicalTrialProtocolID == test_protocol_id
+        assert result.ClinicalTrialProtocolName == test_protocol_name
+        session_id = f"{result.StudyDate}-{result.StudyTime}"
+        assert result.PatientComments == (
+            f"Project:{test_protocol_id} Subject:{test_pseudonym} "
+            f"Session:{test_pseudonym}_{session_id}"
+        )
 
 
 @pytest.mark.acceptance
@@ -274,20 +320,28 @@ def test_retrieve_series_metadata(channels_live_server: ChannelsLiveServer):
 @pytest.mark.acceptance
 @pytest.mark.order("last")
 @pytest.mark.django_db(transaction=True)
-def test_retrieve_series_metadata_with_pseudonym(
+def test_retrieve_series_metadata_with_manipulation(
     channels_live_server: ChannelsLiveServer,
 ):
     setup_dimse_orthancs()
 
+    test_pseudonym = "TestPseudonym"
+    test_protocol_id = "TestProtocolID"
+    test_protocol_name = "TestProtocolName"
+
     _, group, token = create_user_with_dicom_web_group_and_token()
     server = DicomServer.objects.get(ae_title="ORTHANC1")
     grant_access(group, server, source=True)
-    adit_client = AditClient(server_url=channels_live_server.url, auth_token=token)
+    adit_client = AditClient(
+        server_url=channels_live_server.url,
+        auth_token=token,
+        trial_protocol_id=test_protocol_id,
+        trial_protocol_name=test_protocol_name,
+    )
 
     metadata = load_sample_dicoms_metadata("1001")
     study_uid: str = metadata["StudyInstanceUID"].iloc[0]
     series_uid: str = metadata["SeriesInstanceUID"].iloc[0]
-    test_pseudonym = "TestPseudonym"
 
     results = adit_client.retrieve_series_metadata(
         server.ae_title, study_uid, series_uid, test_pseudonym
@@ -299,6 +353,13 @@ def test_retrieve_series_metadata_with_pseudonym(
         assert result.PatientName == test_pseudonym
         assert result.StudyInstanceUID != study_uid
         assert result.SeriesInstanceUID != series_uid
+        assert result.ClinicalTrialProtocolID == test_protocol_id
+        assert result.ClinicalTrialProtocolName == test_protocol_name
+        session_id = f"{result.StudyDate}-{result.StudyTime}"
+        assert result.PatientComments == (
+            f"Project:{test_protocol_id} Subject:{test_pseudonym} "
+            f"Session:{test_pseudonym}_{session_id}"
+        )
 
 
 @pytest.mark.acceptance
@@ -353,19 +414,27 @@ def test_retrieve_image(channels_live_server: ChannelsLiveServer):
 @pytest.mark.acceptance
 @pytest.mark.order("last")
 @pytest.mark.django_db(transaction=True)
-def test_retrieve_image_with_pseudonym(channels_live_server: ChannelsLiveServer):
+def test_retrieve_image_with_manipulation(channels_live_server: ChannelsLiveServer):
     setup_dimse_orthancs()
+
+    test_pseudonym = "TestPseudonym"
+    test_protocol_id = "TestProtocolID"
+    test_protocol_name = "TestProtocolName"
 
     _, group, token = create_user_with_dicom_web_group_and_token()
     server = DicomServer.objects.get(ae_title="ORTHANC1")
     grant_access(group, server, source=True)
-    adit_client = AditClient(server_url=channels_live_server.url, auth_token=token)
+    adit_client = AditClient(
+        server_url=channels_live_server.url,
+        auth_token=token,
+        trial_protocol_id=test_protocol_id,
+        trial_protocol_name=test_protocol_name,
+    )
 
     metadata = load_sample_dicoms_metadata("1001")
     study_uid: str = metadata["StudyInstanceUID"].iloc[0]
     series_uid: str = metadata["SeriesInstanceUID"].iloc[0]
     image_uid: str = metadata["SOPInstanceUID"].iloc[0]
-    test_pseudonym = "TestPseudonym"
 
     result = adit_client.retrieve_image(
         server.ae_title, study_uid, series_uid, image_uid, test_pseudonym
@@ -376,6 +445,12 @@ def test_retrieve_image_with_pseudonym(channels_live_server: ChannelsLiveServer)
     assert result.StudyInstanceUID != study_uid
     assert result.SeriesInstanceUID != series_uid
     assert result.SOPInstanceUID != image_uid
+    assert result.ClinicalTrialProtocolID == test_protocol_id
+    assert result.ClinicalTrialProtocolName == test_protocol_name
+    session_id = f"{result.StudyDate}-{result.StudyTime}"
+    assert result.PatientComments == (
+        f"Project:{test_protocol_id} Subject:{test_pseudonym} Session:{test_pseudonym}_{session_id}"
+    )
 
 
 @pytest.mark.acceptance
@@ -434,15 +509,24 @@ def test_retrieve_image_metadata(channels_live_server: ChannelsLiveServer):
 @pytest.mark.acceptance
 @pytest.mark.order("last")
 @pytest.mark.django_db(transaction=True)
-def test_retrieve_image_metadata_with_pseudonym(
+def test_retrieve_image_metadata_with_manipulation(
     channels_live_server: ChannelsLiveServer,
 ):
     setup_dimse_orthancs()
 
+    test_pseudonym = "TestPseudonym"
+    test_protocol_id = "TestProtocolID"
+    test_protocol_name = "TestProtocolName"
+
     _, group, token = create_user_with_dicom_web_group_and_token()
     server = DicomServer.objects.get(ae_title="ORTHANC1")
     grant_access(group, server, source=True)
-    adit_client = AditClient(server_url=channels_live_server.url, auth_token=token)
+    adit_client = AditClient(
+        server_url=channels_live_server.url,
+        auth_token=token,
+        trial_protocol_id=test_protocol_id,
+        trial_protocol_name=test_protocol_name,
+    )
 
     metadata = load_sample_dicoms_metadata("1001")
     study_uid: str = metadata["StudyInstanceUID"].iloc[0]
@@ -460,6 +544,12 @@ def test_retrieve_image_metadata_with_pseudonym(
     assert result.StudyInstanceUID != study_uid
     assert result.SeriesInstanceUID != series_uid
     assert result.SOPInstanceUID != image_uid
+    assert result.ClinicalTrialProtocolID == test_protocol_id
+    assert result.ClinicalTrialProtocolName == test_protocol_name
+    session_id = f"{result.StudyDate}-{result.StudyTime}"
+    assert result.PatientComments == (
+        f"Project:{test_protocol_id} Subject:{test_pseudonym} Session:{test_pseudonym}_{session_id}"
+    )
 
 
 @pytest.mark.acceptance

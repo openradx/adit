@@ -16,7 +16,11 @@ from rest_framework.utils.mediatypes import media_type_matches
 from adit.core.models import DicomServer
 from adit.core.utils.dicom_dataset import QueryDataset
 from adit.dicom_web.utils.peekable import AsyncPeekable
-from adit.dicom_web.validators import validate_pseudonym
+from adit.dicom_web.validators import (
+    validate_pseudonym,
+    validate_trial_protocol_id,
+    validate_trial_protocol_name,
+)
 
 from .parsers import parse_request_in_chunks
 from .renderers import (
@@ -202,6 +206,24 @@ class RetrieveAPIView(WebDicomAPIView):
                 raise ParseError({"pseudonym": e.messages})
             return pseudonym
 
+    def _get_trial_protocol_id(self, request: AuthenticatedApiRequest) -> str | None:
+        trial_protocol_id = request.GET.get("trial_protocol_id")
+        if trial_protocol_id is not None:
+            try:
+                validate_trial_protocol_id(trial_protocol_id)
+            except DRFValidationError as e:
+                raise ParseError({"trial_protocol_id": e.messages})
+            return trial_protocol_id
+
+    def _get_trial_protocol_name(self, request: AuthenticatedApiRequest) -> str | None:
+        trial_protocol_name = request.GET.get("trial_protocol_name")
+        if trial_protocol_name is not None:
+            try:
+                validate_trial_protocol_name(trial_protocol_name)
+            except DRFValidationError as e:
+                raise ParseError({"trial_protocol_name": e.messages})
+            return trial_protocol_name
+
 
 class RetrieveStudyAPIView(RetrieveAPIView):
     async def get(
@@ -209,11 +231,20 @@ class RetrieveStudyAPIView(RetrieveAPIView):
     ) -> StreamingHttpResponse:
         source_server = await self._get_dicom_server(request, ae_title)
         pseudonym = self._get_pseudonym(request)
+        trial_protocol_id = self._get_trial_protocol_id(request)
+        trial_protocol_name = self._get_trial_protocol_name(request)
 
         query = self.query.copy()
         query["StudyInstanceUID"] = study_uid
 
-        images = wado_retrieve(source_server, query, "STUDY", pseudonym=pseudonym)
+        images = wado_retrieve(
+            source_server,
+            query,
+            "STUDY",
+            pseudonym=pseudonym,
+            trial_protocol_id=trial_protocol_id,
+            trial_protocol_name=trial_protocol_name,
+        )
         images = await self.peek_images(images)
 
         renderer = cast(DicomWebWadoRenderer, getattr(request, "accepted_renderer"))
@@ -229,11 +260,20 @@ class RetrieveStudyMetadataAPIView(RetrieveStudyAPIView):
     ) -> Response:
         source_server = await self._get_dicom_server(request, ae_title)
         pseudonym = self._get_pseudonym(request)
+        trial_protocol_id = self._get_trial_protocol_id(request)
+        trial_protocol_name = self._get_trial_protocol_name(request)
 
         query = self.query.copy()
         query["StudyInstanceUID"] = study_uid
 
-        images = wado_retrieve(source_server, query, "STUDY", pseudonym=pseudonym)
+        images = wado_retrieve(
+            source_server,
+            query,
+            "STUDY",
+            pseudonym=pseudonym,
+            trial_protocol_id=trial_protocol_id,
+            trial_protocol_name=trial_protocol_name,
+        )
         metadata = await self.extract_metadata(images)
 
         renderer = cast(DicomWebWadoRenderer, getattr(request, "accepted_renderer"))
@@ -246,12 +286,21 @@ class RetrieveSeriesAPIView(RetrieveAPIView):
     ) -> Response | StreamingHttpResponse:
         source_server = await self._get_dicom_server(request, ae_title)
         pseudonym = self._get_pseudonym(request)
+        trial_protocol_id = self._get_trial_protocol_id(request)
+        trial_protocol_name = self._get_trial_protocol_name(request)
 
         query = self.query.copy()
         query["StudyInstanceUID"] = study_uid
         query["SeriesInstanceUID"] = series_uid
 
-        images = wado_retrieve(source_server, query, "SERIES", pseudonym=pseudonym)
+        images = wado_retrieve(
+            source_server,
+            query,
+            "SERIES",
+            pseudonym=pseudonym,
+            trial_protocol_id=trial_protocol_id,
+            trial_protocol_name=trial_protocol_name,
+        )
         images = await self.peek_images(images)
 
         renderer = cast(DicomWebWadoRenderer, getattr(request, "accepted_renderer"))
@@ -267,12 +316,21 @@ class RetrieveSeriesMetadataAPIView(RetrieveSeriesAPIView):
     ) -> Response:
         source_server = await self._get_dicom_server(request, ae_title)
         pseudonym = self._get_pseudonym(request)
+        trial_protocol_id = self._get_trial_protocol_id(request)
+        trial_protocol_name = self._get_trial_protocol_name(request)
 
         query = self.query.copy()
         query["StudyInstanceUID"] = study_uid
         query["SeriesInstanceUID"] = series_uid
 
-        images = wado_retrieve(source_server, query, "SERIES", pseudonym=pseudonym)
+        images = wado_retrieve(
+            source_server,
+            query,
+            "SERIES",
+            pseudonym=pseudonym,
+            trial_protocol_id=trial_protocol_id,
+            trial_protocol_name=trial_protocol_name,
+        )
         metadata = await self.extract_metadata(images)
 
         renderer = cast(DicomWebWadoRenderer, getattr(request, "accepted_renderer"))
@@ -290,13 +348,22 @@ class RetrieveImageAPIView(RetrieveAPIView):
     ) -> Response | StreamingHttpResponse:
         source_server = await self._get_dicom_server(request, ae_title)
         pseudonym = self._get_pseudonym(request)
+        trial_protocol_id = self._get_trial_protocol_id(request)
+        trial_protocol_name = self._get_trial_protocol_name(request)
 
         query = self.query.copy()
         query["StudyInstanceUID"] = study_uid
         query["SeriesInstanceUID"] = series_uid
         query["SOPInstanceUID"] = image_uid
 
-        images = wado_retrieve(source_server, query, "IMAGE", pseudonym=pseudonym)
+        images = wado_retrieve(
+            source_server,
+            query,
+            "IMAGE",
+            pseudonym=pseudonym,
+            trial_protocol_id=trial_protocol_id,
+            trial_protocol_name=trial_protocol_name,
+        )
         images = await self.peek_images(images)
 
         renderer = cast(DicomWebWadoRenderer, getattr(request, "accepted_renderer"))
@@ -317,13 +384,22 @@ class RetrieveImageMetadataAPIView(RetrieveImageAPIView):
     ) -> Response:
         source_server = await self._get_dicom_server(request, ae_title)
         pseudonym = self._get_pseudonym(request)
+        trial_protocol_id = self._get_trial_protocol_id(request)
+        trial_protocol_name = self._get_trial_protocol_name(request)
 
         query = self.query.copy()
         query["StudyInstanceUID"] = study_uid
         query["SeriesInstanceUID"] = series_uid
         query["SOPInstanceUID"] = image_uid
 
-        images = wado_retrieve(source_server, query, "IMAGE", pseudonym=pseudonym)
+        images = wado_retrieve(
+            source_server,
+            query,
+            "IMAGE",
+            pseudonym=pseudonym,
+            trial_protocol_id=trial_protocol_id,
+            trial_protocol_name=trial_protocol_name,
+        )
         metadata = await self.extract_metadata(images)
 
         renderer = cast(DicomWebWadoRenderer, getattr(request, "accepted_renderer"))
