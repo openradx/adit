@@ -29,10 +29,10 @@ class DicomManipulator:
             self.pseudonymizer.pseudonymize(ds, pseudonym)
 
         if trial_protocol_id:
-            ds.TrialProtocolID = trial_protocol_id
+            ds.ClinicalTrialProtocolID = trial_protocol_id
 
         if trial_protocol_name:
-            ds.TrialProtocolName = trial_protocol_name
+            ds.ClinicalTrialProtocolName = trial_protocol_name
 
         if pseudonym and trial_protocol_id:
             session_id = f"{ds.StudyDate}-{ds.StudyTime}"
