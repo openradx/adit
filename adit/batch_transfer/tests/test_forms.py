@@ -23,7 +23,7 @@ def test_field_labels(mocker: MockerFixture):
     form = BatchTransferJobForm(user=user)
 
     # Assert
-    assert len(form.fields) == 10
+    assert len(form.fields) == 11
     assert "source" in form.fields
     assert "destination" in form.fields
     assert "urgent" in form.fields
