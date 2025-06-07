@@ -53,7 +53,6 @@ class TransferTaskProcessor(DicomTaskProcessor):
     def __init__(self, dicom_task: DicomTask) -> None:
         assert isinstance(dicom_task, TransferTask)
         self.transfer_task = dicom_task
-        self._temp_directories = []
 
         source = self.transfer_task.source
         assert source.node_type == DicomNode.NodeType.SERVER
@@ -79,7 +78,8 @@ class TransferTaskProcessor(DicomTaskProcessor):
             if self.transfer_task.job.archive_password:
                 self._transfer_to_archive()
             elif self.transfer_task.job.convert_to_nifti:
-                self._transfer_to_folder(use_temp_folder=True)
+                temp_download_folder = self._transfer_to_folder(use_temp_folder=True)
+                self._convert_dicom_to_nifti(temp_download_folder)
             else:
                 self._transfer_to_folder()
 
@@ -135,34 +135,27 @@ class TransferTaskProcessor(DicomTaskProcessor):
             patient_folder = self._download_to_folder(Path(tmpdir))
             _add_to_archive(archive_path, archive_password, patient_folder)
 
-    def _convert_dicom_to_nifti(self) -> None:
-        with tempfile.TemporaryDirectory(prefix="adit_") as tmpdir:
-            dicom_folder = Path(tmpdir) / self.transfer_task.destination.dicomfolder.path
-            nifti_folder = Path(self.transfer_task.destination.dicomfolder.path) / "nifti_output"
+    def _convert_dicom_to_nifti(self, dicom_folder: Path) -> None:
+        nifti_folder = (
+            Path(self.transfer_task.destination.dicomfolder.path) / self._create_destination_name()
+        )
 
-            converter = DicomToNiftiConverter()
-            converter.convert(dicom_folder, nifti_folder)
+        converter = DicomToNiftiConverter()
+        converter.convert(dicom_folder, nifti_folder)
 
     def _get_download_folder(self, use_temp_folder: bool) -> Path:
         if use_temp_folder:
-            tmpdir = tempfile.TemporaryDirectory(prefix="adit_")
-            self._temp_directories.append(tmpdir)
-            return Path(tmpdir.name) / self._create_destination_name()
+            with tempfile.TemporaryDirectory(prefix="adit_") as tmpdir:
+                return Path(tmpdir) / self._create_destination_name()
         else:
             assert self.transfer_task.destination.node_type == DicomNode.NodeType.FOLDER
             dicom_folder = Path(self.transfer_task.destination.dicomfolder.path)
             return dicom_folder / self._create_destination_name()
 
-    def cleanup_temp_directories(self) -> None:
-        for temp_dir in self._temp_directories:
-            temp_dir.cleanup()
-        self._temp_directories.clear()
-
-    def _transfer_to_folder(self, use_temp_folder: bool = False) -> None:
+    def _transfer_to_folder(self, use_temp_folder: bool = False) -> Path:
         download_folder = self._get_download_folder(use_temp_folder)
         self._download_to_folder(download_folder)
-        if use_temp_folder:
-            self.cleanup_temp_directories()
+        return download_folder
 
     def _create_destination_name(self) -> str:
         transfer_job = self.transfer_task.job
