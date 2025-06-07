@@ -53,6 +53,7 @@ class TransferTaskProcessor(DicomTaskProcessor):
     def __init__(self, dicom_task: DicomTask) -> None:
         assert isinstance(dicom_task, TransferTask)
         self.transfer_task = dicom_task
+        self._temp_directories = []
 
         source = self.transfer_task.source
         assert source.node_type == DicomNode.NodeType.SERVER
@@ -145,15 +146,23 @@ class TransferTaskProcessor(DicomTaskProcessor):
     def _get_download_folder(self, use_temp_folder: bool) -> Path:
         if use_temp_folder:
             tmpdir = tempfile.TemporaryDirectory(prefix="adit_")
+            self._temp_directories.append(tmpdir)
             return Path(tmpdir.name) / self._create_destination_name()
         else:
             assert self.transfer_task.destination.node_type == DicomNode.NodeType.FOLDER
             dicom_folder = Path(self.transfer_task.destination.dicomfolder.path)
             return dicom_folder / self._create_destination_name()
 
+    def cleanup_temp_directories(self) -> None:
+        for temp_dir in self._temp_directories:
+            temp_dir.cleanup()
+        self._temp_directories.clear()
+
     def _transfer_to_folder(self, use_temp_folder: bool = False) -> None:
         download_folder = self._get_download_folder(use_temp_folder)
         self._download_to_folder(download_folder)
+        if use_temp_folder:
+            self.cleanup_temp_directories()
 
     def _create_destination_name(self) -> str:
         transfer_job = self.transfer_task.job
