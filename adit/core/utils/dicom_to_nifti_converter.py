@@ -7,7 +7,8 @@ class DicomToNiftiConverter:
     def __init__(self, dcm2niix_path: str = "dcm2niix"):
         """
         Initialize the converter with the path to the dcm2niix executable.
-        :param dcm2niix_path: Path to the dcm2niix executable. Defaults to 'dcm2niix' if it's in PATH.
+        :param dcm2niix_path: Path to the dcm2niix executable.
+            Defaults to 'dcm2niix' if it's in PATH.
         """
         self.dcm2niix_path = dcm2niix_path
 
@@ -41,5 +42,6 @@ class DicomToNiftiConverter:
             raise RuntimeError(f"Failed to convert DICOM to NIfTI: {e.stderr.decode('utf-8')}")
 
         print(
-            f"DICOM files in {dicom_folder} successfully converted to NIfTI format in {output_folder}."
+            f"DICOM files in {dicom_folder} successfully converted to NIfTI format "
+            f"in {output_folder}."
         )
