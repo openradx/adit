@@ -30,6 +30,7 @@ BATCH_TRANSFER_SOURCE = "batch_transfer_source"
 BATCH_TRANSFER_DESTINATION = "batch_transfer_destination"
 BATCH_TRANSFER_URGENT = "batch_transfer_urgent"
 BATCH_TRANSFER_SEND_FINISHED_MAIL = "batch_transfer_send_finished_mail"
+BATCH_TRANSFER_CONVERT_TO_NIFTI = "batch_transfer_convert_to_nifti"
 
 
 class BatchTransferUpdatePreferencesView(BatchTransferLockedMixin, BaseUpdatePreferencesView):
@@ -38,6 +39,7 @@ class BatchTransferUpdatePreferencesView(BatchTransferLockedMixin, BaseUpdatePre
         BATCH_TRANSFER_DESTINATION,
         BATCH_TRANSFER_URGENT,
         BATCH_TRANSFER_SEND_FINISHED_MAIL,
+        BATCH_TRANSFER_CONVERT_TO_NIFTI,
     ]
 
 
@@ -75,6 +77,10 @@ class BatchTransferJobCreateView(BatchTransferLockedMixin, DicomJobCreateView):
         send_finished_mail = preferences.get(BATCH_TRANSFER_SEND_FINISHED_MAIL)
         if send_finished_mail is not None:
             initial["send_finished_mail"] = send_finished_mail
+
+        convert_to_nifti = preferences.get(BATCH_TRANSFER_CONVERT_TO_NIFTI)
+        if convert_to_nifti is not None:
+            initial["convert_to_nifti"] = convert_to_nifti
 
         return initial
 

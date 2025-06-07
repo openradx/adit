@@ -21,6 +21,7 @@ RUN apt-get update \
   && apt-get install --no-install-recommends -y \
   postgresql-client-17 \
   p7zip-full \
+  dcm2niix \
   && rm -rf /var/lib/apt/lists/*
 
 COPY --from=ghcr.io/astral-sh/uv:0.7.8 /uv /uvx /bin/

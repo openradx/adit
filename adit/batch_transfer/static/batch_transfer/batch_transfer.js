@@ -5,6 +5,7 @@ const BATCH_TRANSFER_SOURCE = "batch_transfer_source";
 const BATCH_TRANSFER_DESTINATION = "batch_transfer_destination";
 const BATCH_TRANSFER_URGENT = "batch_transfer_urgent";
 const BATCH_TRANSFER_SEND_FINISHED_MAIL = "batch_transfer_send_finished_mail";
+const BATCH_TRANSFER_CONVERT_TO_NIFTI = "batch_transfer_convert_to_nifti";
 
 function batchTransferJobForm() {
   return {
@@ -26,6 +27,11 @@ function batchTransferJobForm() {
     onSendFinishedMailChange: function (ev) {
       updatePreferences("batch-transfer", {
         [BATCH_TRANSFER_SEND_FINISHED_MAIL]: ev.target.checked,
+      });
+    },
+    onConvertToNiftiChange: function (ev) {
+      updatePreferences("batch-transfer", {
+        [BATCH_TRANSFER_CONVERT_TO_NIFTI]: ev.target.checked,
       });
     },
   };

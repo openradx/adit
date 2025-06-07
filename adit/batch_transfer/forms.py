@@ -40,12 +40,14 @@ class BatchTransferJobForm(forms.ModelForm):
             "trial_protocol_id",
             "trial_protocol_name",
             "send_finished_mail",
+            "convert_to_nifti",
         )
         labels = {
             "trial_protocol_id": "Trial ID",
             "trial_protocol_name": "Trial name",
             "ethics_application_id": "Ethics committee approval",
             "send_finished_mail": "Send Email when job is finished",
+            "convert_to_nifti": "Convert to NIfTI",
         }
         help_texts = {
             "urgent": ("Prioritize this transfer job."),
@@ -98,6 +100,8 @@ class BatchTransferJobForm(forms.ModelForm):
         self.fields["send_finished_mail"].widget.attrs["@change"] = (
             "onSendFinishedMailChange($event)"
         )
+
+        self.fields["convert_to_nifti"].widget.attrs["@change"] = "onConvertToNiftiChange($event)"
 
         self.helper = FormHelper(self)
         self.helper.layout = Layout("source", "destination")  # Make sure those fields are on top
