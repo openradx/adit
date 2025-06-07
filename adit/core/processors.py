@@ -12,6 +12,7 @@ from django.conf import settings
 from pydicom import Dataset
 
 from adit.core.utils.dicom_manipulator import DicomManipulator
+from adit.core.utils.dicom_to_nifti_converter import DicomToNiftiConverter
 
 from .errors import DicomError
 from .models import DicomAppSettings, DicomNode, DicomTask, TransferTask
@@ -76,6 +77,8 @@ class TransferTaskProcessor(DicomTaskProcessor):
         else:
             if self.transfer_task.job.archive_password:
                 self._transfer_to_archive()
+            elif self.transfer_task.job.convert_to_nifti:
+                self._transfer_to_folder(use_temp_folder=True)
             else:
                 self._transfer_to_folder()
 
@@ -131,10 +134,25 @@ class TransferTaskProcessor(DicomTaskProcessor):
             patient_folder = self._download_to_folder(Path(tmpdir))
             _add_to_archive(archive_path, archive_password, patient_folder)
 
-    def _transfer_to_folder(self) -> None:
-        assert self.transfer_task.destination.node_type == DicomNode.NodeType.FOLDER
-        dicom_folder = Path(self.transfer_task.destination.dicomfolder.path)
-        download_folder = dicom_folder / self._create_destination_name()
+    def _convert_dicom_to_nifti(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="adit_") as tmpdir:
+            dicom_folder = Path(tmpdir) / self.transfer_task.destination.dicomfolder.path
+            nifti_folder = Path(self.transfer_task.destination.dicomfolder.path) / "nifti_output"
+
+            converter = DicomToNiftiConverter()
+            converter.convert(dicom_folder, nifti_folder)
+
+    def _get_download_folder(self, use_temp_folder: bool) -> Path:
+        if use_temp_folder:
+            tmpdir = tempfile.TemporaryDirectory(prefix="adit_")
+            return Path(tmpdir.name) / self._create_destination_name()
+        else:
+            assert self.transfer_task.destination.node_type == DicomNode.NodeType.FOLDER
+            dicom_folder = Path(self.transfer_task.destination.dicomfolder.path)
+            return dicom_folder / self._create_destination_name()
+
+    def _transfer_to_folder(self, use_temp_folder: bool = False) -> None:
+        download_folder = self._get_download_folder(use_temp_folder)
         self._download_to_folder(download_folder)
 
     def _create_destination_name(self) -> str:
