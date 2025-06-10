@@ -39,15 +39,15 @@ class BatchTransferJobForm(forms.ModelForm):
             "batch_file",
             "trial_protocol_id",
             "trial_protocol_name",
-            "send_finished_mail",
             "convert_to_nifti",
+            "send_finished_mail",
         )
         labels = {
             "trial_protocol_id": "Trial ID",
             "trial_protocol_name": "Trial name",
             "ethics_application_id": "Ethics committee approval",
-            "send_finished_mail": "Send Email when job is finished",
             "convert_to_nifti": "Convert to NIfTI",
+            "send_finished_mail": "Send Email when job is finished",
         }
         help_texts = {
             "urgent": ("Prioritize this transfer job."),
