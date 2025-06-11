@@ -29,8 +29,6 @@ class DicomToNiftiConverter:
 
         cmd = [
             self.dcm2niix_path,
-            "-z",
-            "y",  # Compress output files
             "-o",
             str(output_folder),  # Output folder
             str(dicom_folder),  # Input folder

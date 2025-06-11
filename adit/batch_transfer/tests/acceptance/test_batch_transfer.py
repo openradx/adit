@@ -1,3 +1,6 @@
+from pathlib import Path
+
+import nibabel as nib
 import pandas as pd
 import pytest
 from adit_radis_shared.common.utils.testing_helpers import (
@@ -11,6 +14,7 @@ from pytest_django.live_server_helper import LiveServer
 
 from adit.batch_transfer.models import BatchTransferJob
 from adit.batch_transfer.utils.testing_helpers import create_batch_transfer_group
+from adit.core.factories import DicomFolderFactory
 from adit.core.utils.auth_utils import grant_access
 from adit.core.utils.testing_helpers import (
     create_excel_file,
@@ -58,6 +62,64 @@ def test_unpseudonymized_urgent_batch_transfer_with_dimse_server(
 
     # Assert
     expect(page.locator('dl:has-text("Success")')).to_be_visible()
+
+
+@pytest.mark.acceptance
+@pytest.mark.order("last")
+@pytest.mark.django_db(transaction=True)
+def test_unpseudonymized_urgent_batch_transfer_with_dimse_server_and_convert_to_nifti(
+    page: Page, live_server: LiveServer
+):
+    df = pd.DataFrame(
+        [["1005", "1.2.840.113845.11.1000000001951524609.20200705173311.2689472"]],
+        columns=["PatientID", "StudyInstanceUID"],
+    )
+    batch_file = create_excel_file(df, "batch_file.xlsx")
+
+    user = create_and_login_example_user(page, live_server.url)
+    group = create_batch_transfer_group()
+    add_user_to_group(user, group)
+    add_permission(group, BatchTransferJob, "can_process_urgently")
+    add_permission(group, BatchTransferJob, "can_transfer_unpseudonymized")
+
+    orthancs = setup_dimse_orthancs()
+    grant_access(group, orthancs[0], source=True)
+    grant_access(group, orthancs[1], destination=True)
+    download_folder = DicomFolderFactory.create(name="Downloads", path="/app/dicom_downloads")
+    grant_access(group, download_folder, destination=True)
+
+    # Act
+    page.goto(live_server.url + "/batch-transfer/jobs/new/")
+    page.get_by_label("Source").select_option(label="DICOM Server Orthanc Test Server 1")
+    page.get_by_label("Destination").select_option(label="DICOM Folder Downloads")
+    page.get_by_label("Urgent").click(force=True)
+    page.get_by_label("Convert to NIfTI").click(force=True)  # Enable NIfTI conversion
+    page.get_by_label("Project name").fill("Test transfer with NIfTI conversion (DIMSE)")
+    page.get_by_label("Project description").fill(
+        "Testing transfer with NIfTI conversion using DIMSE."
+    )
+    page.get_by_label("Ethics committee approval").fill("I have it, I swear.")
+    page.get_by_label("Batch file*", exact=True).set_input_files(files=[batch_file])
+    page.locator('input:has-text("Create job")').click()
+
+    run_worker_once()
+    page.reload()
+
+    # Validate NIfTI files
+    nifti_folder_base = Path("/app/dicom_downloads/")
+    nifti_folders = list(nifti_folder_base.glob("adit_*"))  # Use wildcard to locate the folder
+    assert len(nifti_folders) > 0, "No NIfTI folder was found."
+
+    nifti_folder = nifti_folders[0]  # Assuming only one folder is created for this test
+    nifti_files = list(nifti_folder.glob("*.nii*"))
+    assert len(nifti_files) > 0, "No NIfTI files were generated."
+
+    for nifti_file in nifti_files:
+        try:
+            img = nib.load(nifti_file)  # type: ignore
+            assert img is not None, f"Invalid NIfTI file: {nifti_file}"
+        except Exception as e:
+            raise AssertionError(f"Failed to validate NIfTI file {nifti_file}: {e}")
 
 
 @pytest.mark.acceptance
