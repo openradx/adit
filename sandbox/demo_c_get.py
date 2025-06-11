@@ -20,9 +20,7 @@ def handle_store(event: Event):
     """Handle a C-STORE request event."""
     ds = event.dataset
     ds.file_meta = event.file_meta
-
-    ds.save_as(ds.SOPInstanceUID, write_like_original=False)
-
+    ds.save_as(ds.SOPInstanceUID, enforce_file_format=True)
     return 0x0000  # success
 
 

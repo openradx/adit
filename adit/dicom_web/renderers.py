@@ -61,9 +61,6 @@ class WadoMultipartApplicationDicomRenderer(DicomWebWadoRenderer):
         stream.write(b"\r\n")
         stream.write(b"\r\n")
         # instance
-        if not ds.is_little_endian:
-            # TODO: What to do with big endian? Can we convert it somehow? When does this happen?
-            raise ValueError("Invalid dataset encoding. Must be little endian.")
         write_dataset(ds, stream)
         stream.write(b"\r\n")
         return stream.getvalue()

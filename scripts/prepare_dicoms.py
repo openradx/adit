@@ -73,7 +73,7 @@ def main():
         instance_number = str(ds.InstanceNumber)
         filename = f"{instance_number.zfill(5)}.dcm"
         output_path = folder_path / filename
-        ds.save_as(output_path, write_like_original=False)
+        ds.save_as(output_path, enforce_file_format=True)
 
 
 if __name__ == "__main__":

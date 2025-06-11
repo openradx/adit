@@ -24,12 +24,19 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          images: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
       - name: Build and push Docker image
         uses: docker/build-push-action@v6
         with:
           context: .
-          build-args: ${{ steps.meta.outputs.version }}
+          build-args: |
+            PROJECT_VERSION=${{ steps.meta.outputs.version }}
           target: production
           push: true
           tags: ${{ steps.meta.outputs.tags }}
