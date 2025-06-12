@@ -32,7 +32,7 @@ def test_unpseudonymized_urgent_batch_transfer_with_dimse_server(
     # Arrange
     df = pd.DataFrame(
         [["1005", "1.2.840.113845.11.1000000001951524609.20200705173311.2689472"]],
-        columns=["PatientID", "StudyInstanceUID"],  # type: ignore
+        columns=["PatientID", "StudyInstanceUID"],
     )
     batch_file = create_excel_file(df, "batch_file.xlsx")
 
@@ -131,7 +131,7 @@ def test_unpseudonymized_urgent_batch_transfer_with_dicomweb_server(
     # Arrange
     df = pd.DataFrame(
         [["1005", "1.2.840.113845.11.1000000001951524609.20200705173311.2689472"]],
-        columns=["PatientID", "StudyInstanceUID"],  # type: ignore
+        columns=["PatientID", "StudyInstanceUID"],
     )
     batch_file = create_excel_file(df, "batch_file.xlsx")
 
