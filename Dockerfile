@@ -23,9 +23,6 @@ RUN apt-get update \
   p7zip-full \
   && rm -rf /var/lib/apt/lists/*
 
-# Install dcm2niix from PyPI
-RUN pip install dcm2niix
-
 COPY --from=ghcr.io/astral-sh/uv:0.7.8 /uv /uvx /bin/
 
 WORKDIR /app

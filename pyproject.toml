@@ -47,6 +47,7 @@ dependencies = [
     "wait-for-it>=2.3.0",
     "watchfiles>=1.0.4",
     "whitenoise>=6.9.0",
+    "dcm2niix>=1.0.20240622",
 ]
 
 [dependency-groups]

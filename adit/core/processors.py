@@ -3,6 +3,7 @@ import logging
 import os
 import subprocess
 import tempfile
+from contextlib import contextmanager
 from datetime import datetime
 from functools import partial
 from pathlib import Path
@@ -142,33 +143,25 @@ class TransferTaskProcessor(DicomTaskProcessor):
         converter = DicomToNiftiConverter()
         converter.convert(dicom_folder, nifti_folder)
 
-    def _get_download_folder(
-        self, use_temp_folder: bool = False
-    ) -> Path | tempfile.TemporaryDirectory:
+    @contextmanager
+    def _get_download_folder(self, use_temp_folder: bool = False):
         if use_temp_folder:
-            tmpdir = tempfile.TemporaryDirectory(prefix="adit_")
-            return tmpdir
+            with tempfile.TemporaryDirectory(prefix="adit_") as tmpdir:
+                folder = Path(tmpdir) / self._create_destination_name()
+                folder.mkdir(parents=True, exist_ok=True)
+                yield folder
         else:
             assert self.transfer_task.destination.node_type == DicomNode.NodeType.FOLDER
             dicom_folder = Path(self.transfer_task.destination.dicomfolder.path)
-            return dicom_folder / self._create_destination_name()
+            folder = dicom_folder / self._create_destination_name()
+            folder.mkdir(parents=True, exist_ok=True)
+            yield folder
 
     def _transfer_to_folder(self, convert_dicom_to_nifti: bool = False) -> None:
-        if convert_dicom_to_nifti:
-            tmpdir = self._get_download_folder(use_temp_folder=True)
-            if isinstance(tmpdir, tempfile.TemporaryDirectory):
-                with tmpdir:
-                    download_folder = Path(tmpdir.name) / self._create_destination_name()
-                    self._download_to_folder(download_folder)
-                    self._convert_dicom_to_nifti(download_folder)
-            else:
-                raise ValueError("Expected TemporaryDirectory when use_temp_folder is True.")
-        else:
-            download_folder = self._get_download_folder()
-            if isinstance(download_folder, Path):
-                self._download_to_folder(download_folder)
-            else:
-                raise ValueError("Expected Path when use_temp_folder is False.")
+        with self._get_download_folder(use_temp_folder=convert_dicom_to_nifti) as download_folder:
+            self._download_to_folder(download_folder)
+            if convert_dicom_to_nifti:
+                self._convert_dicom_to_nifti(download_folder)
 
     def _create_destination_name(self) -> str:
         transfer_job = self.transfer_task.job
