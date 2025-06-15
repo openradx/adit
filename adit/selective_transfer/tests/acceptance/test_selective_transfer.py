@@ -1,3 +1,4 @@
+from datetime import datetime
 from pathlib import Path
 
 import nibabel as nib
@@ -90,11 +91,12 @@ def test_unpseudonymized_urgent_selective_transfer_with_dimse_server_and_convert
     page.reload()
 
     # Validate NIfTI files
+    current_date = datetime.now().strftime("%Y%m%d")  # Get the current date dynamically
+    expected_folder_name = f"adit_selective_transfer_1_{current_date}_{user.username}"
     nifti_folder_base = Path("/app/dicom_downloads/")
-    nifti_folders = list(nifti_folder_base.glob("adit_*"))  # Use wildcard to locate the folder
-    assert len(nifti_folders) > 0, "No NIfTI folder was found."
+    nifti_folder = nifti_folder_base / expected_folder_name
 
-    nifti_folder = nifti_folders[0]  # Assuming only one folder is created for this test
+    assert nifti_folder.exists(), f"NIfTI folder '{expected_folder_name}' does not exist."
     nifti_files = list(nifti_folder.glob("*.nii*"))
     assert len(nifti_files) > 0, "No NIfTI files were generated."
 

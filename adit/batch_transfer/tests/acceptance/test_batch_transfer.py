@@ -1,3 +1,4 @@
+from datetime import datetime
 from pathlib import Path
 
 import nibabel as nib
@@ -70,6 +71,7 @@ def test_unpseudonymized_urgent_batch_transfer_with_dimse_server(
 def test_unpseudonymized_urgent_batch_transfer_with_dimse_server_and_convert_to_nifti(
     page: Page, live_server: LiveServer
 ):
+    # Arrange
     df = pd.DataFrame(
         [["1005", "1.2.840.113845.11.1000000001951524609.20200705173311.2689472"]],
         columns=["PatientID", "StudyInstanceUID"],  # type: ignore
@@ -106,11 +108,12 @@ def test_unpseudonymized_urgent_batch_transfer_with_dimse_server_and_convert_to_
     page.reload()
 
     # Validate NIfTI files
+    current_date = datetime.now().strftime("%Y%m%d")  # Get the current date dynamically
+    expected_folder_name = f"adit_batch_transfer_1_{current_date}_{user.username}"
     nifti_folder_base = Path("/app/dicom_downloads/")
-    nifti_folders = list(nifti_folder_base.glob("adit_*"))  # Use wildcard to locate the folder
-    assert len(nifti_folders) > 0, "No NIfTI folder was found."
+    nifti_folder = nifti_folder_base / expected_folder_name
 
-    nifti_folder = nifti_folders[0]  # Assuming only one folder is created for this test
+    assert nifti_folder.exists(), f"NIfTI folder '{expected_folder_name}' does not exist."
     nifti_files = list(nifti_folder.glob("*.nii*"))
     assert len(nifti_files) > 0, "No NIfTI files were generated."
 
@@ -120,6 +123,9 @@ def test_unpseudonymized_urgent_batch_transfer_with_dimse_server_and_convert_to_
             assert img is not None, f"Invalid NIfTI file: {nifti_file}"
         except Exception as e:
             raise AssertionError(f"Failed to validate NIfTI file {nifti_file}: {e}")
+
+    # Assert
+    expect(page.locator('dl:has-text("Success")')).to_be_visible()
 
 
 @pytest.mark.acceptance
