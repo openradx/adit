@@ -104,12 +104,18 @@ def test_unpseudonymized_urgent_batch_transfer_with_dimse_server_and_convert_to_
     page.get_by_label("Batch file*", exact=True).set_input_files(files=[batch_file])
     page.locator('input:has-text("Create job")').click()
 
+    # Extract the job ID from the URL
+    current_url = page.url
+    job_id = current_url.split("/")[
+        -2
+    ]  # Extract the job ID from the URL (e.g., /batch-transfer/jobs/<jobID>/)
+
     run_worker_once()
     page.reload()
 
     # Validate NIfTI files
     current_date = datetime.now().strftime("%Y%m%d")  # Get the current date dynamically
-    expected_folder_name = f"adit_batch_transfer_1_{current_date}_{user.username}"
+    expected_folder_name = f"adit_batch_transfer_{job_id}_{current_date}_{user.username}"
     nifti_folder_base = Path("/app/dicom_downloads/")
     nifti_folder = nifti_folder_base / expected_folder_name
 
