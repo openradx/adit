@@ -144,6 +144,11 @@ class TransferTaskProcessor(DicomTaskProcessor):
         converter = DicomToNiftiConverter()
         converter.convert(dicom_folder, nifti_patient_folder)
 
+        # Remove any files accidentally written to the base folder
+        for file in nifti_folder.iterdir():
+            if file.is_file() and file not in nifti_patient_folder.iterdir():
+                file.unlink()
+
     @contextmanager
     def _get_download_folder(self, use_temp_folder: bool = False):
         if use_temp_folder:
