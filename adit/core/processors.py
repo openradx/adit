@@ -139,9 +139,10 @@ class TransferTaskProcessor(DicomTaskProcessor):
         nifti_folder = (
             Path(self.transfer_task.destination.dicomfolder.path) / self._create_destination_name()
         )
+        nifti_patient_folder = self._get_patient_folder(nifti_folder)
 
         converter = DicomToNiftiConverter()
-        converter.convert(dicom_folder, nifti_folder)
+        converter.convert(dicom_folder, nifti_patient_folder)
 
     @contextmanager
     def _get_download_folder(self, use_temp_folder: bool = False):
@@ -177,12 +178,7 @@ class TransferTaskProcessor(DicomTaskProcessor):
         download_folder: Path,
     ) -> Path:
         pseudonym = self.transfer_task.pseudonym
-
-        if pseudonym:
-            patient_folder = download_folder / sanitize_filename(pseudonym)
-        else:
-            pseudonym = None
-            patient_folder = download_folder / sanitize_filename(self.transfer_task.patient_id)
+        patient_folder = self._get_patient_folder(download_folder)
 
         study = self._find_study()
         modalities = study.ModalitiesInStudy
@@ -397,6 +393,16 @@ class TransferTaskProcessor(DicomTaskProcessor):
                 study_uid=study_uid,
                 callback=callback,
             )
+
+    def _get_patient_folder(self, download_folder: Path) -> Path:
+        pseudonym = self.transfer_task.pseudonym
+
+        if pseudonym:
+            patient_folder = download_folder / sanitize_filename(pseudonym)
+        else:
+            pseudonym = None
+            patient_folder = download_folder / sanitize_filename(self.transfer_task.patient_id)
+        return patient_folder
 
 
 def _add_to_archive(archive_path: Path, archive_password: str, path_to_add: Path) -> None:
