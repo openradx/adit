@@ -72,8 +72,9 @@ def test_unpseudonymized_urgent_batch_transfer_with_dimse_server_and_convert_to_
     page: Page, live_server: LiveServer
 ):
     # Arrange
+    test_patient_id = "1005"
     df = pd.DataFrame(
-        [["1005", "1.2.840.113845.11.1000000001951524609.20200705173311.2689472"]],
+        [[test_patient_id, "1.2.840.113845.11.1000000001951524609.20200705173311.2689472"]],
         columns=["PatientID", "StudyInstanceUID"],  # type: ignore
     )
     batch_file = create_excel_file(df, "batch_file.xlsx")
@@ -116,8 +117,7 @@ def test_unpseudonymized_urgent_batch_transfer_with_dimse_server_and_convert_to_
     # Validate NIfTI files
     current_date = datetime.now().strftime("%Y%m%d")  # Get the current date dynamically
     expected_folder_name = f"adit_batch_transfer_{job_id}_{current_date}_{user.username}"
-    nifti_folder_base = Path("/app/dicom_downloads/")
-    nifti_folder = nifti_folder_base / expected_folder_name
+    nifti_folder = Path("/app/dicom_downloads") / expected_folder_name / test_patient_id
 
     assert nifti_folder.exists(), f"NIfTI folder '{expected_folder_name}' does not exist."
     nifti_files = list(nifti_folder.glob("*.nii*"))

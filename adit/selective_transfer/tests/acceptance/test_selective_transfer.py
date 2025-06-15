@@ -98,8 +98,7 @@ def test_unpseudonymized_urgent_selective_transfer_with_dimse_server_and_convert
     # Validate NIfTI files
     current_date = datetime.now().strftime("%Y%m%d")  # Get the current date dynamically
     expected_folder_name = f"adit_selective_transfer_{job_id}_{current_date}_{user.username}"
-    nifti_folder_base = Path("/app/dicom_downloads/")
-    nifti_folder = nifti_folder_base / expected_folder_name
+    nifti_folder = Path("/app/dicom_downloads/") / expected_folder_name / "1008"
 
     assert nifti_folder.exists(), f"NIfTI folder '{expected_folder_name}' does not exist."
     nifti_files = list(nifti_folder.glob("*.nii*"))
