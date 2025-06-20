@@ -101,7 +101,7 @@ def test_unpseudonymized_urgent_selective_transfer_with_dimse_server_and_convert
     nifti_folder = Path("/app/dicom_downloads/") / expected_folder_name / "1008"
 
     assert nifti_folder.exists(), f"NIfTI folder '{expected_folder_name}' does not exist."
-    nifti_files = list(nifti_folder.glob("*.nii*"))
+    nifti_files = list(nifti_folder.glob("**/*.nii*"))
     assert len(nifti_files) > 0, "No NIfTI files were generated."
 
     for nifti_file in nifti_files:

@@ -3,7 +3,6 @@ import logging
 import os
 import subprocess
 import tempfile
-from contextlib import contextmanager
 from datetime import datetime
 from functools import partial
 from pathlib import Path
@@ -75,13 +74,12 @@ class TransferTaskProcessor(DicomTaskProcessor):
     def process(self) -> ProcessingResult:
         if self.dest_operator:
             self._transfer_to_server()
+        elif self.transfer_task.job.archive_password:
+            self._transfer_to_archive()
+        elif self.transfer_task.job.convert_to_nifti:
+            self._transfer_to_nifti()
         else:
-            if self.transfer_task.job.archive_password:
-                self._transfer_to_archive()
-            elif self.transfer_task.job.convert_to_nifti:
-                self._transfer_to_folder(convert_dicom_to_nifti=True)
-            else:
-                self._transfer_to_folder()
+            self._transfer_to_folder()
 
         status: TransferTask.Status = TransferTask.Status.SUCCESS
         message: str = "Transfer task completed successfully."
@@ -135,39 +133,26 @@ class TransferTaskProcessor(DicomTaskProcessor):
             patient_folder = self._download_to_folder(Path(tmpdir))
             _add_to_archive(archive_path, archive_password, patient_folder)
 
-    def _convert_dicom_to_nifti(self, dicom_folder: Path) -> None:
-        nifti_folder = (
-            Path(self.transfer_task.destination.dicomfolder.path) / self._create_destination_name()
-        )
-        nifti_patient_folder = self._get_patient_folder(nifti_folder)
+    def _transfer_to_nifti(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="adit_") as tmpdir:
+            patient_folder = self._download_to_folder(Path(tmpdir))
+            subfolders = [f for f in patient_folder.iterdir() if f.is_dir()]
+            assert len(subfolders) == 1
+            patient_folder_name, study_folder_name = subfolders[0].parts[-2:]
+            nifti_folder = (
+                Path(self.transfer_task.destination.dicomfolder.path)
+                / self._create_destination_name()
+                / patient_folder_name
+                / study_folder_name
+            )
+            converter = DicomToNiftiConverter()
+            converter.convert(patient_folder, nifti_folder)
 
-        converter = DicomToNiftiConverter()
-        converter.convert(dicom_folder, nifti_patient_folder)
-
-        # Remove any files accidentally written to the base folder
-        for file in nifti_folder.iterdir():
-            if file.is_file() and file not in nifti_patient_folder.iterdir():
-                file.unlink()
-
-    @contextmanager
-    def _get_download_folder(self, use_temp_folder: bool = False):
-        if use_temp_folder:
-            with tempfile.TemporaryDirectory(prefix="adit_") as tmpdir:
-                folder = Path(tmpdir) / self._create_destination_name()
-                folder.mkdir(parents=True, exist_ok=True)
-                yield folder
-        else:
-            assert self.transfer_task.destination.node_type == DicomNode.NodeType.FOLDER
-            dicom_folder = Path(self.transfer_task.destination.dicomfolder.path)
-            folder = dicom_folder / self._create_destination_name()
-            folder.mkdir(parents=True, exist_ok=True)
-            yield folder
-
-    def _transfer_to_folder(self, convert_dicom_to_nifti: bool = False) -> None:
-        with self._get_download_folder(use_temp_folder=convert_dicom_to_nifti) as download_folder:
-            self._download_to_folder(download_folder)
-            if convert_dicom_to_nifti:
-                self._convert_dicom_to_nifti(download_folder)
+    def _transfer_to_folder(self) -> None:
+        assert self.transfer_task.destination.node_type == DicomNode.NodeType.FOLDER
+        dicom_folder = Path(self.transfer_task.destination.dicomfolder.path)
+        download_folder = dicom_folder / self._create_destination_name()
+        self._download_to_folder(download_folder)
 
     def _create_destination_name(self) -> str:
         transfer_job = self.transfer_task.job
@@ -182,8 +167,11 @@ class TransferTaskProcessor(DicomTaskProcessor):
         self,
         download_folder: Path,
     ) -> Path:
-        pseudonym = self.transfer_task.pseudonym
-        patient_folder = self._get_patient_folder(download_folder)
+        pseudonym = self.transfer_task.pseudonym or None
+        if pseudonym:
+            patient_folder = download_folder / sanitize_filename(pseudonym)
+        else:
+            patient_folder = download_folder / sanitize_filename(self.transfer_task.patient_id)
 
         study = self._find_study()
         modalities = study.ModalitiesInStudy
@@ -398,16 +386,6 @@ class TransferTaskProcessor(DicomTaskProcessor):
                 study_uid=study_uid,
                 callback=callback,
             )
-
-    def _get_patient_folder(self, download_folder: Path) -> Path:
-        pseudonym = self.transfer_task.pseudonym
-
-        if pseudonym:
-            patient_folder = download_folder / sanitize_filename(pseudonym)
-        else:
-            pseudonym = None
-            patient_folder = download_folder / sanitize_filename(self.transfer_task.patient_id)
-        return patient_folder
 
 
 def _add_to_archive(archive_path: Path, archive_password: str, path_to_add: Path) -> None:
