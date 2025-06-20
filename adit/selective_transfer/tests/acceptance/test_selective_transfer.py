@@ -1,3 +1,4 @@
+import tempfile
 from datetime import datetime
 from pathlib import Path
 
@@ -71,48 +72,53 @@ def test_unpseudonymized_urgent_selective_transfer_with_dimse_server_and_convert
     orthancs = setup_dimse_orthancs()
     grant_access(group, orthancs[0], source=True)
     grant_access(group, orthancs[1], destination=True)
-    download_folder = DicomFolderFactory.create(name="Downloads", path="/app/dicom_downloads")
-    grant_access(group, download_folder, destination=True)
 
-    # Act
-    page.goto(channels_live_server.url + "/selective-transfer/jobs/new/")
-    page.get_by_label("Urgent").click(force=True)
-    page.get_by_label("Convert to NIfTI").click(force=True)  # Enable NIfTI conversion
-    page.get_by_label("Source").select_option(label="DICOM Server Orthanc Test Server 1")
-    page.get_by_label("Destination").select_option(label="DICOM Folder Downloads")
-    page.get_by_label("Patient ID").click()
-    page.get_by_label("Patient ID").fill("1008")
-    page.get_by_label("Patient ID").press("Enter")
-    page.locator('tr:has-text("1008"):has-text("2020") input').click()
-    page.locator('button:has-text("Start transfer")').click()
+    # Use a temporary directory for the NIfTI output
+    with tempfile.TemporaryDirectory() as temp_dir:
+        download_folder = DicomFolderFactory.create(name="Downloads", path=temp_dir)
+        grant_access(group, download_folder, destination=True)
 
-    # Extract the job ID from the success message
-    success_message = page.locator("text=Successfully submitted transfer job with ID").inner_text()
-    job_id = int(success_message.split("ID")[-1].strip())
+        # Act
+        page.goto(channels_live_server.url + "/selective-transfer/jobs/new/")
+        page.get_by_label("Urgent").click(force=True)
+        page.get_by_label("Convert to NIfTI").click(force=True)  # Enable NIfTI conversion
+        page.get_by_label("Source").select_option(label="DICOM Server Orthanc Test Server 1")
+        page.get_by_label("Destination").select_option(label="DICOM Folder Downloads")
+        page.get_by_label("Patient ID").click()
+        page.get_by_label("Patient ID").fill("1008")
+        page.get_by_label("Patient ID").press("Enter")
+        page.locator('tr:has-text("1008"):has-text("2020") input').click()
+        page.locator('button:has-text("Start transfer")').click()
 
-    page.locator('a:has-text("ID")').click()
+        # Extract the job ID from the success message
+        success_message = page.locator(
+            "text=Successfully submitted transfer job with ID"
+        ).inner_text()
+        job_id = int(success_message.split("ID")[-1].strip())
 
-    run_worker_once()
-    page.reload()
+        page.locator('a:has-text("ID")').click()
 
-    # Validate NIfTI files
-    current_date = datetime.now().strftime("%Y%m%d")  # Get the current date dynamically
-    expected_folder_name = f"adit_selective_transfer_{job_id}_{current_date}_{user.username}"
-    nifti_folder = Path("/app/dicom_downloads/") / expected_folder_name / "1008"
+        run_worker_once()
+        page.reload()
 
-    assert nifti_folder.exists(), f"NIfTI folder '{expected_folder_name}' does not exist."
-    nifti_files = list(nifti_folder.glob("**/*.nii*"))
-    assert len(nifti_files) > 0, "No NIfTI files were generated."
+        # Validate NIfTI files
+        current_date = datetime.now().strftime("%Y%m%d")  # Get the current date dynamically
+        expected_folder_name = f"adit_selective_transfer_{job_id}_{current_date}_{user.username}"
+        nifti_folder = Path(temp_dir) / expected_folder_name / "1008"
 
-    for nifti_file in nifti_files:
-        try:
-            img = nib.load(nifti_file)  # type: ignore
-            assert img is not None, f"Invalid NIfTI file: {nifti_file}"
-        except Exception as e:
-            raise AssertionError(f"Failed to validate NIfTI file {nifti_file}: {e}")
+        assert nifti_folder.exists(), f"NIfTI folder '{expected_folder_name}' does not exist."
+        nifti_files = list(nifti_folder.glob("**/*.nii*"))
+        assert len(nifti_files) > 0, "No NIfTI files were generated."
 
-    # Assert
-    expect(page.locator('dl:has-text("Success")')).to_be_visible()
+        for nifti_file in nifti_files:
+            try:
+                img = nib.load(nifti_file)  # type: ignore
+                assert img is not None, f"Invalid NIfTI file: {nifti_file}"
+            except Exception as e:
+                raise AssertionError(f"Failed to validate NIfTI file {nifti_file}: {e}")
+
+        # Assert
+        expect(page.locator('dl:has-text("Success")')).to_be_visible()
 
 
 @pytest.mark.acceptance
