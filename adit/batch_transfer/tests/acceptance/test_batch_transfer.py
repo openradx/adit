@@ -4,6 +4,7 @@ from pathlib import Path
 
 import nibabel as nib
 import pandas as pd
+import pydicom
 import pytest
 from adit_radis_shared.common.utils.testing_helpers import (
     add_permission,
@@ -17,12 +18,15 @@ from pytest_django.live_server_helper import LiveServer
 from adit.batch_transfer.models import BatchTransferJob
 from adit.batch_transfer.utils.testing_helpers import create_batch_transfer_group
 from adit.core.factories import DicomFolderFactory
+from adit.core.models import DicomServer
 from adit.core.utils.auth_utils import grant_access
 from adit.core.utils.testing_helpers import (
+    create_dicom_web_client,
     create_excel_file,
     setup_dicomweb_orthancs,
     setup_dimse_orthancs,
 )
+from adit.dicom_web.utils.testing_helpers import create_user_with_dicom_web_group_and_token
 
 
 @pytest.mark.acceptance
@@ -73,9 +77,10 @@ def test_unpseudonymized_urgent_batch_transfer_with_dimse_server_and_convert_to_
     page: Page, live_server: LiveServer
 ):
     # Arrange
+    study_uid = "1.2.840.113845.11.1000000001951524609.20200705173311.2689472"
     test_patient_id = "1005"
     df = pd.DataFrame(
-        [[test_patient_id, "1.2.840.113845.11.1000000001951524609.20200705173311.2689472"]],
+        [[test_patient_id, study_uid]],
         columns=["PatientID", "StudyInstanceUID"],  # type: ignore
     )
     batch_file = create_excel_file(df, "batch_file.xlsx")
@@ -111,9 +116,7 @@ def test_unpseudonymized_urgent_batch_transfer_with_dimse_server_and_convert_to_
 
         # Extract the job ID from the URL
         current_url = page.url
-        job_id = current_url.split("/")[
-            -2
-        ]  # Extract the job ID from the URL (e.g., /batch-transfer/jobs/<jobID>/)
+        job_id = current_url.split("/")[-2]  # Extract the job ID from the URL
 
         run_worker_once()
         page.reload()
@@ -127,9 +130,44 @@ def test_unpseudonymized_urgent_batch_transfer_with_dimse_server_and_convert_to_
         nifti_files = list(nifti_folder.glob("**/*.nii*"))
         assert len(nifti_files) > 0, "No NIfTI files were generated."
 
+        # Query series description and series number dynamically using dicom_web_client
+        _, group, token = create_user_with_dicom_web_group_and_token()
+        server = DicomServer.objects.get(ae_title="ORTHANC1")
+        grant_access(group, server, source=True)
+        dicom_web_client = create_dicom_web_client(live_server.url, server.ae_title, token)
+
+        results = dicom_web_client.retrieve_study_metadata(study_uid)
+
+        expected_filenames = []
+        for result_json in results:
+            result = pydicom.Dataset.from_json(result_json)
+            modality = getattr(result, "Modality", "").strip()
+            if modality not in ["CT", "MR", "PT"]:  # Include only imaging modalities
+                continue  # Skip non-imaging series
+            series_description = getattr(result, "SeriesDescription", "UnknownSeries").strip()
+            # Normalize string: replace multiple spaces and special characters
+            series_description = "_".join(
+                series_description.split()
+            )  # Replace multiple spaces with single underscore
+            series_description = series_description.replace("/", "_").replace(
+                "\\", "_"
+            )  # Replace slashes
+            series_number = getattr(result, "SeriesNumber", 0)
+            expected_filename = f"{series_number}-{series_description}.nii.gz"
+            expected_filenames.append(expected_filename)
+
+        # Remove duplicates from expected filenames
+        expected_filenames = list(set(expected_filenames))
+
+        # Validate filenames
+        for expected_filename in expected_filenames:
+            matching_files = [file for file in nifti_files if expected_filename in file.name]
+            assert len(matching_files) == 1, f"Expected file '{expected_filename}' not found."
+
+        # Validate NIfTI file content
         for nifti_file in nifti_files:
             try:
-                img = nib.load(nifti_file)  # type: ignore
+                img = nib.load(nifti_file)  # type: ignore # Load the NIfTI file using nibabel
                 assert img is not None, f"Invalid NIfTI file: {nifti_file}"
             except Exception as e:
                 raise AssertionError(f"Failed to validate NIfTI file {nifti_file}: {e}")
