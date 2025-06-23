@@ -4,7 +4,6 @@ from pathlib import Path
 
 import nibabel as nib
 import pandas as pd
-import pydicom
 import pytest
 from adit_radis_shared.common.utils.testing_helpers import (
     add_permission,
@@ -18,15 +17,12 @@ from pytest_django.live_server_helper import LiveServer
 from adit.batch_transfer.models import BatchTransferJob
 from adit.batch_transfer.utils.testing_helpers import create_batch_transfer_group
 from adit.core.factories import DicomFolderFactory
-from adit.core.models import DicomServer
 from adit.core.utils.auth_utils import grant_access
 from adit.core.utils.testing_helpers import (
-    create_dicom_web_client,
     create_excel_file,
     setup_dicomweb_orthancs,
     setup_dimse_orthancs,
 )
-from adit.dicom_web.utils.testing_helpers import create_user_with_dicom_web_group_and_token
 
 
 @pytest.mark.acceptance
@@ -130,39 +126,20 @@ def test_unpseudonymized_urgent_batch_transfer_with_dimse_server_and_convert_to_
         nifti_files = list(nifti_folder.glob("**/*.nii*"))
         assert len(nifti_files) > 0, "No NIfTI files were generated."
 
-        # Query series description and series number dynamically using dicom_web_client
-        _, group, token = create_user_with_dicom_web_group_and_token()
-        server = DicomServer.objects.get(ae_title="ORTHANC1")
-        grant_access(group, server, source=True)
-        dicom_web_client = create_dicom_web_client(live_server.url, server.ae_title, token)
-
-        results = dicom_web_client.retrieve_study_metadata(study_uid)
-
-        expected_filenames = []
-        for result_json in results:
-            result = pydicom.Dataset.from_json(result_json)
-            modality = getattr(result, "Modality", "").strip()
-            if modality not in ["CT", "MR", "PT"]:  # Include only imaging modalities
-                continue  # Skip non-imaging series
-            series_description = getattr(result, "SeriesDescription", "UnknownSeries").strip()
-            # Normalize string: replace multiple spaces and special characters
-            series_description = "_".join(
-                series_description.split()
-            )  # Replace multiple spaces with single underscore
-            series_description = series_description.replace("/", "_").replace(
-                "\\", "_"
-            )  # Replace slashes
-            series_number = getattr(result, "SeriesNumber", 0)
-            expected_filename = f"{series_number}-{series_description}.nii.gz"
-            expected_filenames.append(expected_filename)
-
-        # Remove duplicates from expected filenames
-        expected_filenames = list(set(expected_filenames))
+        # Hardcoded expected filenames
+        expected_filenames = [
+            "2-Kopf_nativ_5.0_H42s.nii.gz",
+            "3-Kopf_nativ_2.0_H70h.nii.gz",
+            "1-Topogramm_0.6_T20f.nii.gz",
+        ]
 
         # Validate filenames
+        actual_filenames = [file.name for file in nifti_files]
+
         for expected_filename in expected_filenames:
-            matching_files = [file for file in nifti_files if expected_filename in file.name]
-            assert len(matching_files) == 1, f"Expected file '{expected_filename}' not found."
+            assert expected_filename in actual_filenames, (
+                f"Expected file '{expected_filename}' not found."
+            )
 
         # Validate NIfTI file content
         for nifti_file in nifti_files:
