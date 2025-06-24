@@ -1,4 +1,5 @@
 import tempfile
+from collections import Counter
 from datetime import datetime
 from pathlib import Path
 
@@ -131,15 +132,14 @@ def test_unpseudonymized_urgent_batch_transfer_with_dimse_server_and_convert_to_
             "2-Kopf_nativ_5.0_H42s.nii.gz",
             "3-Kopf_nativ_2.0_H70h.nii.gz",
             "1-Topogramm_0.6_T20f.nii.gz",
+            "1-Topogramm_0.6_T20f_ROI1.nii.gz",
         ]
 
         # Validate filenames
         actual_filenames = [file.name for file in nifti_files]
-
-        for expected_filename in expected_filenames:
-            assert expected_filename in actual_filenames, (
-                f"Expected file '{expected_filename}' not found."
-            )
+        assert Counter(expected_filenames) == Counter(actual_filenames), (
+            "NIfTI files do not match expected filenames."
+        )
 
         # Validate NIfTI file content
         for nifti_file in nifti_files:
