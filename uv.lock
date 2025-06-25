@@ -15,6 +15,7 @@ dependencies = [
     { name = "crispy-bootstrap5" },
     { name = "cryptography" },
     { name = "daphne" },
+    { name = "dcm2niix" },
     { name = "dicognito" },
     { name = "dicomweb-client" },
     { name = "django" },
@@ -68,6 +69,7 @@ dev = [
     { name = "ipykernel" },
     { name = "ipython" },
     { name = "nest-asyncio" },
+    { name = "nibabel" },
     { name = "pyright" },
     { name = "pytest" },
     { name = "pytest-asyncio" },
@@ -98,6 +100,7 @@ requires-dist = [
     { name = "crispy-bootstrap5", specifier = ">=2024.10" },
     { name = "cryptography", specifier = ">=44.0.1" },
     { name = "daphne", specifier = ">=4.1.2" },
+    { name = "dcm2niix", specifier = ">=1.0.20250506" },
     { name = "dicognito", specifier = ">=0.17.0" },
     { name = "dicomweb-client", specifier = ">=0.60.0" },
     { name = "django", specifier = ">=5.1.6" },
@@ -149,6 +152,7 @@ dev = [
     { name = "ipykernel", specifier = ">=6.29.5" },
     { name = "ipython", specifier = ">=8.32.0" },
     { name = "nest-asyncio", specifier = ">=1.6.0" },
+    { name = "nibabel", specifier = ">=5.3.2" },
     { name = "pyright", specifier = ">=1.1.394,<=1.1.400" },
     { name = "pytest", specifier = ">=8.3.4" },
     { name = "pytest-asyncio", specifier = ">=0.25.3" },
@@ -604,6 +608,28 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/e9/fa/88208e036d1a000cc99eed11a5ddae2397a39d89c44ac22a3c35a58eb951/daphne-4.2.0.tar.gz", hash = "sha256:c055de9e685cab7aa369e25e16731baa9b310b9db1a76886dbdde0b4456fb056", size = 45302, upload-time = "2025-05-16T14:46:48.422Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/4a/ad/b00755d09a1ec080ad5fe0d5a6e609f9e4441755204a16c17cc7a07f80f6/daphne-4.2.0-py3-none-any.whl", hash = "sha256:ccc7a476c498272237e27758a02aff11c76ab777c4e20b9b6c141729db599d5d", size = 28493, upload-time = "2025-05-16T14:46:46.859Z" },
+]
+
+[[package]]
+name = "dcm2niix"
+version = "1.0.20250506"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/3e/3c/26646fa41e690c3141cf4e936fa7a6fd1caf511ab8795e93a6f658e0ef95/dcm2niix-1.0.20250506.tar.gz", hash = "sha256:f0bbdf030b6b84d2cdbd073904126ac10abd0afde2a52e266908437abf35c27c", size = 545248, upload-time = "2025-05-28T12:16:19.034Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/7c/5e/85565e2f116505fb1380778eee5f1c4d2e714fbac7f82f50902f7e23a9e8/dcm2niix-1.0.20250506-cp312-cp312-macosx_10_13_x86_64.whl", hash = "sha256:ec5b6ac3ab94fb4b6e7a67aa83778a557928cafe8a13d3e9c9e803e2abf4e270", size = 558903, upload-time = "2025-05-28T12:15:27.519Z" },
+    { url = "https://files.pythonhosted.org/packages/e3/65/c8c79cd512ba9b37e1d774907631145e106446adb6e8f2631c6688d1caf2/dcm2niix-1.0.20250506-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:5fe472ea9bfaa117b7cc97826cfc853e245f1a900ac2abea4961f6631b103aa7", size = 505321, upload-time = "2025-05-28T12:15:28.797Z" },
+    { url = "https://files.pythonhosted.org/packages/f2/84/d887bdf53fe99787548f86d969e70088c3fb913071336be251c945ac1d02/dcm2niix-1.0.20250506-cp312-cp312-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:91700a215f21e76d323fc31fb8eb43669ddfb75ab32c74a065fbc0c66ddfc37a", size = 578817, upload-time = "2025-05-28T12:15:29.974Z" },
+    { url = "https://files.pythonhosted.org/packages/f5/ce/9406d41ad9f6488c84207a82e01dc420e2c4d1577ec007a92d5af57414d6/dcm2niix-1.0.20250506-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:b3c9ca037696d379fcb6c65bd4f350b0e9f92a1ef66ec1bd30f7d6017f2a31c8", size = 573420, upload-time = "2025-05-28T12:15:31.254Z" },
+    { url = "https://files.pythonhosted.org/packages/1d/5f/c518c99b7ed4e439f73ee03da73c90fd865dc0a1731ac1f8ce4c31466c49/dcm2niix-1.0.20250506-cp312-cp312-musllinux_1_2_aarch64.whl", hash = "sha256:d0c5ac38ee675985b3e27e44644e87d39eb37fb2ff5589f93b2960f5e32f2800", size = 630216, upload-time = "2025-05-28T12:15:32.588Z" },
+    { url = "https://files.pythonhosted.org/packages/25/6f/cbbeca77a9bac59cc6f6c243a56a18a370c6fa03e380662d29faf1e587c2/dcm2niix-1.0.20250506-cp312-cp312-musllinux_1_2_x86_64.whl", hash = "sha256:4eafae2a7c74a84cb465d7288a20d4d08256163221f85cc09ad6dbbbd3933155", size = 627525, upload-time = "2025-05-28T12:15:33.983Z" },
+    { url = "https://files.pythonhosted.org/packages/97/22/e0e29368897aae0e2e8dddc528813963f0cfa308dc0c994f88bf87552911/dcm2niix-1.0.20250506-cp312-cp312-win_amd64.whl", hash = "sha256:c65b876a5eafe45fe8be42a5770e80f893f232fe85c5aa3ac9692453722b43a0", size = 714271, upload-time = "2025-05-28T12:15:35.19Z" },
+    { url = "https://files.pythonhosted.org/packages/fb/e7/a69cb8696fc21515ce6630ecb1eb115bc5978719226c444547488936e298/dcm2niix-1.0.20250506-cp313-cp313-macosx_10_13_x86_64.whl", hash = "sha256:1550f9e30aff4e2d274f2ce814a28ff6ef65992022400f1f47d4e92afbb29af9", size = 558903, upload-time = "2025-05-28T12:15:37.195Z" },
+    { url = "https://files.pythonhosted.org/packages/66/c4/849fc7f01794c513d1ecd84d0bbe3e9a201695efe17f909982236a7c36b3/dcm2niix-1.0.20250506-cp313-cp313-macosx_11_0_arm64.whl", hash = "sha256:4429c01176625dbba9c47f8e2072731183d20832cb17a7dd0d52f15a90301e99", size = 505320, upload-time = "2025-05-28T12:15:39.181Z" },
+    { url = "https://files.pythonhosted.org/packages/8b/9b/6bc7cd89c9724c11739e89625e001528eae4cb1ff1ab4e3a4f55480e4f54/dcm2niix-1.0.20250506-cp313-cp313-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:e1395cef3d27af2a3e806e2135d80f6cf1f1132f5d7acc0ac3ffcc22ee33a443", size = 578817, upload-time = "2025-05-28T12:15:40.87Z" },
+    { url = "https://files.pythonhosted.org/packages/fb/a4/ee67e1a7c496ba46aee597dad400972a33dee9ab38f066a6e5769f29904e/dcm2niix-1.0.20250506-cp313-cp313-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:534108ca2aa2f7f9be578caf22ba77cbc64e99ccdf82a7102ed15d610e8d8529", size = 573419, upload-time = "2025-05-28T12:15:43.249Z" },
+    { url = "https://files.pythonhosted.org/packages/02/7d/3050c1b53466fefdcc9c0ab3b8cadd2f2c8f727d6044458870304cf1c9dc/dcm2niix-1.0.20250506-cp313-cp313-musllinux_1_2_aarch64.whl", hash = "sha256:fda042fa706fbcbc8f3950333a503a4fd1546abea4c32aec018770f0d3789725", size = 630217, upload-time = "2025-05-28T12:15:44.721Z" },
+    { url = "https://files.pythonhosted.org/packages/92/97/277e1be4cc06bfc6bee9a97b077a9ecf8ba058348afe71b51e51af82ada6/dcm2niix-1.0.20250506-cp313-cp313-musllinux_1_2_x86_64.whl", hash = "sha256:979e238f4dd0d5339dec40d400b9d507397fa61ef78a35ce80017aeb8fbea0f5", size = 627523, upload-time = "2025-05-28T12:15:46.163Z" },
+    { url = "https://files.pythonhosted.org/packages/1b/b0/22572b7931a86e7d333ee25578d80d743c8e5d6f442e431d603eb80fa8b4/dcm2niix-1.0.20250506-cp313-cp313-win_amd64.whl", hash = "sha256:a8e5e245012d0c3d3564d58e388dc953c11494a2f485a28410c35ab6989e8e53", size = 714270, upload-time = "2025-05-28T12:15:47.517Z" },
 ]
 
 [[package]]
@@ -1361,6 +1387,20 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/83/f8/51569ac65d696c8ecbee95938f89d4abf00f47d58d48f6fbabfe8f0baefe/nest_asyncio-1.6.0.tar.gz", hash = "sha256:6f172d5449aca15afd6c646851f4e31e02c598d553a667e38cafa997cfec55fe", size = 7418, upload-time = "2024-01-21T14:25:19.227Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/a0/c4/c2971a3ba4c6103a3d10c4b0f24f461ddc027f0f09763220cf35ca1401b3/nest_asyncio-1.6.0-py3-none-any.whl", hash = "sha256:87af6efd6b5e897c81050477ef65c62e2b2f35d51703cae01aff2905b1852e1c", size = 5195, upload-time = "2024-01-21T14:25:17.223Z" },
+]
+
+[[package]]
+name = "nibabel"
+version = "5.3.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "numpy" },
+    { name = "packaging" },
+    { name = "typing-extensions", marker = "python_full_version < '3.13'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/d9/61/33036cb89f1ec1fedbc4039602345d830b27cbd8a5c7bf28c2e5b5de3ea2/nibabel-5.3.2.tar.gz", hash = "sha256:0bdca6503b1c784b446c745a4542367de7756cfba0d72143b91f9ffb78be569b", size = 4504842, upload-time = "2024-10-23T14:19:55.866Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/43/b2/dc384197be44e2a640bb43311850e23c2c30f3b82ce7c8cdabbf0e53045e/nibabel-5.3.2-py3-none-any.whl", hash = "sha256:52970a5a8a53b1b55249cba4d9bcfaa8cc57e3e5af35a29d7352237e8680a6f8", size = 3293839, upload-time = "2024-10-23T14:19:52.65Z" },
 ]
 
 [[package]]

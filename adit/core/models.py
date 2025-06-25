@@ -188,6 +188,7 @@ class DicomJob(models.Model):
     urgent = models.BooleanField(default=False)
     message = models.TextField(blank=True, default="")
     send_finished_mail = models.BooleanField(default=False)
+    convert_to_nifti = models.BooleanField(default=False)
     owner_id: int
     owner = models.ForeignKey(
         settings.AUTH_USER_MODEL,

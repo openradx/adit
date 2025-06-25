@@ -12,6 +12,7 @@ from django.conf import settings
 from pydicom import Dataset
 
 from adit.core.utils.dicom_manipulator import DicomManipulator
+from adit.core.utils.dicom_to_nifti_converter import DicomToNiftiConverter
 
 from .errors import DicomError
 from .models import DicomAppSettings, DicomNode, DicomTask, TransferTask
@@ -73,11 +74,12 @@ class TransferTaskProcessor(DicomTaskProcessor):
     def process(self) -> ProcessingResult:
         if self.dest_operator:
             self._transfer_to_server()
+        elif self.transfer_task.job.archive_password:
+            self._transfer_to_archive()
+        elif self.transfer_task.job.convert_to_nifti:
+            self._transfer_to_nifti()
         else:
-            if self.transfer_task.job.archive_password:
-                self._transfer_to_archive()
-            else:
-                self._transfer_to_folder()
+            self._transfer_to_folder()
 
         status: TransferTask.Status = TransferTask.Status.SUCCESS
         message: str = "Transfer task completed successfully."
@@ -131,6 +133,21 @@ class TransferTaskProcessor(DicomTaskProcessor):
             patient_folder = self._download_to_folder(Path(tmpdir))
             _add_to_archive(archive_path, archive_password, patient_folder)
 
+    def _transfer_to_nifti(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="adit_") as tmpdir:
+            patient_folder = self._download_to_folder(Path(tmpdir))
+            subfolders = [f for f in patient_folder.iterdir() if f.is_dir()]
+            assert len(subfolders) == 1
+            patient_folder_name, study_folder_name = subfolders[0].parts[-2:]
+            nifti_folder = (
+                Path(self.transfer_task.destination.dicomfolder.path)
+                / self._create_destination_name()
+                / patient_folder_name
+                / study_folder_name
+            )
+            converter = DicomToNiftiConverter()
+            converter.convert(patient_folder, nifti_folder)
+
     def _transfer_to_folder(self) -> None:
         assert self.transfer_task.destination.node_type == DicomNode.NodeType.FOLDER
         dicom_folder = Path(self.transfer_task.destination.dicomfolder.path)
@@ -150,12 +167,10 @@ class TransferTaskProcessor(DicomTaskProcessor):
         self,
         download_folder: Path,
     ) -> Path:
-        pseudonym = self.transfer_task.pseudonym
-
+        pseudonym = self.transfer_task.pseudonym or None
         if pseudonym:
             patient_folder = download_folder / sanitize_filename(pseudonym)
         else:
-            pseudonym = None
             patient_folder = download_folder / sanitize_filename(self.transfer_task.patient_id)
 
         study = self._find_study()
