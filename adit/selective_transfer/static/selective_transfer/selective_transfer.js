@@ -79,6 +79,38 @@ function selectiveTransferJobForm(formEl) {
       formEl.addEventListener("htmx:wsAfterSend", disableTransferButton);
     },
 
+    onArchivePasswordChange: function (ev) {
+      console.log("Archive password changed to:", ev.target.value); // Debug statement
+      const niftiCheckbox = formEl.querySelector("[name=convert_to_nifti]");
+      if (ev.target.value) {
+        niftiCheckbox.checked = false; // Uncheck NIfTI conversion
+        updatePreferences("selective-transfer", {
+          convert_to_nifti: false,
+        });
+      }
+    },
+
+    onConvertToNiftiChange: function (ev) {
+      const archivePasswordField = formEl.querySelector(
+        "[name=archive_password]"
+      );
+      console.log("Archive password field:", archivePasswordField); // Debug statement
+
+      if (ev.target.checked) {
+        archivePasswordField.value = ""; // Clear archive password
+        archivePasswordField.disabled = true; // Disable archive password field
+        updatePreferences("selective-transfer", {
+          archive_password: "",
+          archive_password_disabled: true,
+        });
+      } else {
+        archivePasswordField.disabled = false; // Enable archive password field
+        updatePreferences("selective-transfer", {
+          archive_password_disabled: false,
+        });
+      }
+    },
+
     _updateIsDestinationFolder: function (destEl) {
       const option = destEl.options[destEl.selectedIndex];
       this.isDestinationFolder = option.dataset.node_type === "folder";
