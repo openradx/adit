@@ -1,5 +1,9 @@
 import asyncio
 import logging
+import tempfile
+from collections.abc import Iterator
+from io import BytesIO
+from pathlib import Path
 from typing import AsyncIterator, Literal
 
 from adrf.views import sync_to_async
@@ -10,6 +14,8 @@ from adit.core.models import DicomServer
 from adit.core.utils.dicom_dataset import QueryDataset
 from adit.core.utils.dicom_manipulator import DicomManipulator
 from adit.core.utils.dicom_operator import DicomOperator
+from adit.core.utils.dicom_to_nifti_converter import DicomToNiftiConverter
+from adit.core.utils.dicom_utils import write_dataset
 
 from ..errors import BadGatewayApiError, ServiceUnavailableApiError
 
@@ -91,6 +97,71 @@ async def wado_retrieve(
                 break
 
         await asyncio.wait([fetch_task, queue_get_task])
+
+    except RetriableDicomError as err:
+        raise ServiceUnavailableApiError(str(err))
+    except DicomError as err:
+        raise BadGatewayApiError(str(err))
+
+
+def wado_retrieve_nifti(
+    source_server: DicomServer,
+    query: dict[str, str],
+    level: Literal["STUDY", "SERIES", "IMAGE"],
+) -> Iterator[BytesIO]:
+    """Retrieve DICOM images and convert them to NIfTI format."""
+    operator = DicomOperator(source_server)
+    query_ds = QueryDataset.from_dict(query)
+    dicom_images = set()
+
+    def callback(ds: Dataset) -> None:
+        dicom_images.add(ds)
+
+    try:
+        if level == "SERIES":
+            operator.fetch_series(
+                patient_id=query_ds.PatientID,
+                study_uid=query_ds.StudyInstanceUID,
+                series_uid=query_ds.SeriesInstanceUID,
+                callback=callback,
+            )
+        elif level == "STUDY":
+            operator.fetch_study(
+                patient_id=query_ds.PatientID,
+                study_uid=query_ds.StudyInstanceUID,
+                callback=callback,
+            )
+        elif level == "IMAGE":
+            operator.fetch_image(
+                patient_id=query_ds.PatientID,
+                study_uid=query_ds.StudyInstanceUID,
+                series_uid=query_ds.SeriesInstanceUID,
+                image_uid=query_ds.SOPInstanceUID,
+                callback=callback,
+            )
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_path = Path(temp_dir)
+            file_idx = 0
+
+            # Write DICOM datasets to temporary files
+            for dicom_image in dicom_images:
+                dicom_file_path = temp_path / f"dicom_file_{file_idx}.dcm"
+                write_dataset(dicom_image, dicom_file_path)
+                file_idx += 1
+
+            # Convert the DICOM files to NIfTI
+            nifti_output_dir = temp_path / "nifti_output"
+            nifti_output_dir.mkdir(parents=True, exist_ok=True)
+            converter = DicomToNiftiConverter()
+            converter.convert(temp_path, nifti_output_dir)
+
+            # Yield each NIfTI file
+            for nifti_file in nifti_output_dir.glob("*.nii*"):
+                with open(nifti_file, "rb") as f:
+                    nifti_content = f.read()
+                    nifti_bytes = BytesIO(nifti_content)
+                    yield nifti_bytes
 
     except RetriableDicomError as err:
         raise ServiceUnavailableApiError(str(err))
