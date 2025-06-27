@@ -32,7 +32,7 @@ from .renderers import (
 )
 from .utils.qidors_utils import qido_find
 from .utils.stowrs_utils import stow_store
-from .utils.wadors_utils import wado_retrieve
+from .utils.wadors_utils import wado_retrieve, wado_retrieve_nifti
 
 logger = logging.getLogger(__name__)
 
@@ -55,6 +55,38 @@ class WebDicomAPIView(AsyncApiView):
         try:
             accessible_servers = await self.get_accessible_servers(request.user, access_type)
             return await accessible_servers.aget(ae_title=ae_title)
+        except DicomServer.DoesNotExist:
+            raise NotFound(
+                f'Server with AE title "{ae_title}" does not exist or is not accessible.'
+            )
+
+
+class WebDicomAPIViewSync:
+    query = {
+        "StudyInstanceUID": "",
+        "PatientID": "",
+        "SeriesInstanceUID": "",
+        "SeriesDescription": "",
+    }
+
+    def get_accessible_servers(
+        self,
+        user: User,
+        access_type: Literal["source", "destination"],
+    ) -> QuerySet[DicomServer]:
+        """Synchronously retrieve accessible DICOM servers."""
+        return DicomServer.objects.accessible_by_user(user, access_type, all_groups=True)
+
+    def _get_dicom_server(
+        self,
+        request: AuthenticatedApiRequest,
+        ae_title: str,
+        access_type: Literal["source", "destination"],
+    ) -> DicomServer:
+        """Synchronously retrieve a specific DICOM server."""
+        try:
+            accessible_servers = self.get_accessible_servers(request.user, access_type)
+            return accessible_servers.get(ae_title=ae_title)
         except DicomServer.DoesNotExist:
             raise NotFound(
                 f'Server with AE title "{ae_title}" does not exist or is not accessible.'
@@ -254,6 +286,24 @@ class RetrieveStudyAPIView(RetrieveAPIView):
         )
 
 
+class RetrieveNiftiStudyiAPIView(WebDicomAPIViewSync):
+    def get(
+        self, request: AuthenticatedApiRequest, ae_title: str, study_uid: str
+    ) -> StreamingHttpResponse:
+        source_server = self._get_dicom_server(request, ae_title, "source")
+
+        query = self.query.copy()
+        query["StudyInstanceUID"] = study_uid
+
+        images = wado_retrieve_nifti(source_server, query, "STUDY")
+
+        renderer = cast(DicomWebWadoRenderer, getattr(request, "accepted_renderer"))
+        return StreamingHttpResponse(
+            streaming_content=renderer.render(images),
+            content_type=renderer.content_type,
+        )
+
+
 class RetrieveStudyMetadataAPIView(RetrieveStudyAPIView):
     async def get(
         self, request: AuthenticatedApiRequest, ae_title: str, study_uid: str
@@ -302,6 +352,29 @@ class RetrieveSeriesAPIView(RetrieveAPIView):
             trial_protocol_name=trial_protocol_name,
         )
         images = await self.peek_images(images)
+
+        renderer = cast(DicomWebWadoRenderer, getattr(request, "accepted_renderer"))
+        return StreamingHttpResponse(
+            streaming_content=renderer.render(images),
+            content_type=renderer.content_type,
+        )
+
+
+class RetrieveNiftiSeriesAPIView(WebDicomAPIViewSync):
+    async def get(
+        self, request: AuthenticatedApiRequest, ae_title: str, study_uid: str, series_uid: str
+    ) -> Response | StreamingHttpResponse:
+        source_server = self._get_dicom_server(request, ae_title, "source")
+
+        query = self.query.copy()
+        query["StudyInstanceUID"] = study_uid
+        query["SeriesInstanceUID"] = series_uid
+
+        images = wado_retrieve(
+            source_server,
+            query,
+            "SERIES",
+        )
 
         renderer = cast(DicomWebWadoRenderer, getattr(request, "accepted_renderer"))
         return StreamingHttpResponse(
@@ -365,6 +438,31 @@ class RetrieveImageAPIView(RetrieveAPIView):
             trial_protocol_name=trial_protocol_name,
         )
         images = await self.peek_images(images)
+
+        renderer = cast(DicomWebWadoRenderer, getattr(request, "accepted_renderer"))
+        return StreamingHttpResponse(
+            streaming_content=renderer.render(images),
+            content_type=renderer.content_type,
+        )
+
+
+class RetrieveNiftiImageAPIView(WebDicomAPIViewSync):
+    def get(
+        self,
+        request: AuthenticatedApiRequest,
+        ae_title: str,
+        study_uid: str,
+        series_uid: str,
+        image_uid: str,
+    ) -> Response | StreamingHttpResponse:
+        source_server = self._get_dicom_server(request, ae_title, "source")
+
+        query = self.query.copy()
+        query["StudyInstanceUID"] = study_uid
+        query["SeriesInstanceUID"] = series_uid
+        query["SOPInstanceUID"] = image_uid
+
+        images = wado_retrieve_nifti(source_server, query, "IMAGE")
 
         renderer = cast(DicomWebWadoRenderer, getattr(request, "accepted_renderer"))
         return StreamingHttpResponse(
