@@ -61,38 +61,6 @@ class WebDicomAPIView(AsyncApiView):
             )
 
 
-class WebDicomAPIViewSync:
-    query = {
-        "StudyInstanceUID": "",
-        "PatientID": "",
-        "SeriesInstanceUID": "",
-        "SeriesDescription": "",
-    }
-
-    def get_accessible_servers(
-        self,
-        user: User,
-        access_type: Literal["source", "destination"],
-    ) -> QuerySet[DicomServer]:
-        """Synchronously retrieve accessible DICOM servers."""
-        return DicomServer.objects.accessible_by_user(user, access_type, all_groups=True)
-
-    def _get_dicom_server(
-        self,
-        request: AuthenticatedApiRequest,
-        ae_title: str,
-        access_type: Literal["source", "destination"],
-    ) -> DicomServer:
-        """Synchronously retrieve a specific DICOM server."""
-        try:
-            accessible_servers = self.get_accessible_servers(request.user, access_type)
-            return accessible_servers.get(ae_title=ae_title)
-        except DicomServer.DoesNotExist:
-            raise NotFound(
-                f'Server with AE title "{ae_title}" does not exist or is not accessible.'
-            )
-
-
 # TODO: respect permission can_query
 class QueryAPIView(WebDicomAPIView):
     renderer_classes = [QidoApplicationDicomJsonRenderer]
@@ -286,11 +254,11 @@ class RetrieveStudyAPIView(RetrieveAPIView):
         )
 
 
-class RetrieveNiftiStudyiAPIView(WebDicomAPIViewSync):
-    def get(
+class RetrieveNiftiStudyiAPIView(RetrieveAPIView):
+    async def get(
         self, request: AuthenticatedApiRequest, ae_title: str, study_uid: str
     ) -> StreamingHttpResponse:
-        source_server = self._get_dicom_server(request, ae_title, "source")
+        source_server = await self._get_dicom_server(request, ae_title)
 
         query = self.query.copy()
         query["StudyInstanceUID"] = study_uid
@@ -360,17 +328,17 @@ class RetrieveSeriesAPIView(RetrieveAPIView):
         )
 
 
-class RetrieveNiftiSeriesAPIView(WebDicomAPIViewSync):
+class RetrieveNiftiSeriesAPIView(RetrieveAPIView):
     async def get(
         self, request: AuthenticatedApiRequest, ae_title: str, study_uid: str, series_uid: str
     ) -> Response | StreamingHttpResponse:
-        source_server = self._get_dicom_server(request, ae_title, "source")
+        source_server = await self._get_dicom_server(request, ae_title)
 
         query = self.query.copy()
         query["StudyInstanceUID"] = study_uid
         query["SeriesInstanceUID"] = series_uid
 
-        images = wado_retrieve(
+        images = wado_retrieve_nifti(
             source_server,
             query,
             "SERIES",
@@ -446,8 +414,8 @@ class RetrieveImageAPIView(RetrieveAPIView):
         )
 
 
-class RetrieveNiftiImageAPIView(WebDicomAPIViewSync):
-    def get(
+class RetrieveNiftiImageAPIView(RetrieveAPIView):
+    async def get(
         self,
         request: AuthenticatedApiRequest,
         ae_title: str,
@@ -455,7 +423,7 @@ class RetrieveNiftiImageAPIView(WebDicomAPIViewSync):
         series_uid: str,
         image_uid: str,
     ) -> Response | StreamingHttpResponse:
-        source_server = self._get_dicom_server(request, ae_title, "source")
+        source_server = await self._get_dicom_server(request, ae_title)
 
         query = self.query.copy()
         query["StudyInstanceUID"] = study_uid

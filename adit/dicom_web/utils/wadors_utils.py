@@ -1,7 +1,6 @@
 import asyncio
 import logging
 import tempfile
-from collections.abc import Iterator
 from io import BytesIO
 from pathlib import Path
 from typing import AsyncIterator, Literal
@@ -104,11 +103,11 @@ async def wado_retrieve(
         raise BadGatewayApiError(str(err))
 
 
-def wado_retrieve_nifti(
+async def wado_retrieve_nifti(
     source_server: DicomServer,
     query: dict[str, str],
     level: Literal["STUDY", "SERIES", "IMAGE"],
-) -> Iterator[BytesIO]:
+) -> AsyncIterator[BytesIO]:
     """Retrieve DICOM images and convert them to NIfTI format."""
     operator = DicomOperator(source_server)
     query_ds = QueryDataset.from_dict(query)
@@ -119,26 +118,37 @@ def wado_retrieve_nifti(
 
     try:
         if level == "SERIES":
-            operator.fetch_series(
-                patient_id=query_ds.PatientID,
-                study_uid=query_ds.StudyInstanceUID,
-                series_uid=query_ds.SeriesInstanceUID,
-                callback=callback,
+            fetch_task = asyncio.create_task(
+                sync_to_async(operator.fetch_series, thread_sensitive=False)(
+                    patient_id=query_ds.PatientID,
+                    study_uid=query_ds.StudyInstanceUID,
+                    series_uid=query_ds.SeriesInstanceUID,
+                    callback=callback,
+                )
             )
         elif level == "STUDY":
-            operator.fetch_study(
-                patient_id=query_ds.PatientID,
-                study_uid=query_ds.StudyInstanceUID,
-                callback=callback,
+            fetch_task = asyncio.create_task(
+                sync_to_async(operator.fetch_study, thread_sensitive=False)(
+                    patient_id=query_ds.PatientID,
+                    study_uid=query_ds.StudyInstanceUID,
+                    callback=callback,
+                )
             )
         elif level == "IMAGE":
-            operator.fetch_image(
-                patient_id=query_ds.PatientID,
-                study_uid=query_ds.StudyInstanceUID,
-                series_uid=query_ds.SeriesInstanceUID,
-                image_uid=query_ds.SOPInstanceUID,
-                callback=callback,
+            assert query_ds.has("SeriesInstanceUID")
+            fetch_task = asyncio.create_task(
+                sync_to_async(operator.fetch_image, thread_sensitive=False)(
+                    patient_id=query_ds.PatientID,
+                    study_uid=query_ds.StudyInstanceUID,
+                    series_uid=query_ds.SeriesInstanceUID,
+                    image_uid=query_ds.SOPInstanceUID,
+                    callback=callback,
+                )
             )
+        else:
+            raise ValueError(f"Invalid NIFTI-WADO-RS level: {level}.")
+
+        await asyncio.wait([fetch_task])
 
         with tempfile.TemporaryDirectory() as temp_dir:
             temp_path = Path(temp_dir)
