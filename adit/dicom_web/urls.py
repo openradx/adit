@@ -6,6 +6,9 @@ from .views import (
     QueryStudiesAPIView,
     RetrieveImageAPIView,
     RetrieveImageMetadataAPIView,
+    RetrieveNiftiImageAPIView,
+    RetrieveNiftiSeriesAPIView,
+    RetrieveNiftiStudyiAPIView,
     RetrieveSeriesAPIView,
     RetrieveSeriesMetadataAPIView,
     RetrieveStudyAPIView,
@@ -68,6 +71,21 @@ urlpatterns = [
         "<str:ae_title>/wadors/studies/<str:study_uid>/series/<str:series_uid>/instances/<str:image_uid>/metadata",
         RetrieveImageMetadataAPIView.as_view(),
         name="wado_rs-image_metadata_with_study_uid_and_series_uid_and_image_uid",
+    ),
+    path(
+        "<str:ae_title>/wadors/studies/<str:study_uid>/nifti",
+        RetrieveNiftiStudyiAPIView.as_view(),
+        name="wado_rs-nifti_study_with_study_uid",
+    ),
+    path(
+        "<str:ae_title>/wadors/studies/<str:study_uid>/series/<str:series_uid>/nifti",
+        RetrieveNiftiSeriesAPIView.as_view(),
+        name="wado_rs-nifti_series_with_study_uid_and_series_uid",
+    ),
+    path(
+        "<str:ae_title>/wadors/studies/<str:study_uid>/series/<str:series_uid>/instances/<str:image_uid>/nifti",
+        RetrieveNiftiImageAPIView.as_view(),
+        name="wado_rs-nifti_image_with_study_uid_and_series_uid_and_image_uid",
     ),
     path(
         "<str:ae_title>/stowrs/studies",
