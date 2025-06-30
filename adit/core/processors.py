@@ -387,16 +387,6 @@ class TransferTaskProcessor(DicomTaskProcessor):
                 callback=callback,
             )
 
-    def _get_patient_folder(self, download_folder: Path) -> Path:
-        pseudonym = self.transfer_task.pseudonym
-
-        if pseudonym:
-            patient_folder = download_folder / sanitize_filename(pseudonym)
-        else:
-            pseudonym = None
-            patient_folder = download_folder / sanitize_filename(self.transfer_task.patient_id)
-        return patient_folder
-
 
 def _add_to_archive(archive_path: Path, archive_password: str, path_to_add: Path) -> None:
     """Add a file or folder to an archive. If the archive does not exist
