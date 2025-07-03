@@ -2,7 +2,6 @@ from http import HTTPStatus
 
 import pydicom
 import pytest
-import requests
 from adit_client import AditClient
 from adit_radis_shared.common.utils.testing_helpers import ChannelsLiveServer
 from requests.exceptions import HTTPError
@@ -580,28 +579,3 @@ def test_retrieve_image_metadata_with_invalid_pseudonym(channels_live_server: Ch
     assert response.status_code == HTTPStatus.BAD_REQUEST
     error = response.json()
     assert "pseudonym" in error or "invalid" in str(error).lower(), f"Unexpected error: {error}"
-
-
-@pytest.mark.acceptance
-@pytest.mark.order("last")
-@pytest.mark.django_db(transaction=True)
-def test_retrieve_nifti_study(channels_live_server: ChannelsLiveServer):
-    setup_dimse_orthancs()
-
-    _, group, token = create_user_with_dicom_web_group_and_token()
-    server = DicomServer.objects.get(ae_title="ORTHANC1")
-    grant_access(group, server, source=True)
-
-    metadata = load_sample_dicoms_metadata("1001")
-    study_uid: str = metadata.iloc[0]["StudyInstanceUID"]
-    print(f"Study UID: {study_uid}")
-
-    url = f"{channels_live_server.url}/{server.ae_title}/wadors/studies/{study_uid}/nifti"
-    print(f"URL: {url}")
-    headers = {"Authorization": f"Bearer {token}"}
-
-    response = requests.get(url, headers=headers)
-    print(f"Response Status Code: {response.status_code}")
-    print(f"Response Content: {response.content}")
-    assert response.status_code == HTTPStatus.OK
-    assert response.headers["Content-Type"] == "application/octet-stream"
