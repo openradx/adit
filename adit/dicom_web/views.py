@@ -29,6 +29,7 @@ from .renderers import (
     StowApplicationDicomJsonRenderer,
     WadoApplicationDicomJsonRenderer,
     WadoMultipartApplicationDicomRenderer,
+    WadoMultipartApplicationNiftiRenderer,
 )
 from .utils.qidors_utils import qido_find
 from .utils.stowrs_utils import stow_store
@@ -254,10 +255,16 @@ class RetrieveStudyAPIView(RetrieveAPIView):
         )
 
 
-class RetrieveNiftiStudyiAPIView(RetrieveAPIView):
+class RetrieveNiftiStudyAPIView(RetrieveAPIView):
+    renderer_classes = [WadoMultipartApplicationNiftiRenderer]
+
     async def get(
         self, request: AuthenticatedApiRequest, ae_title: str, study_uid: str
     ) -> StreamingHttpResponse:
+        renderer = cast(
+            WadoMultipartApplicationNiftiRenderer, getattr(request, "accepted_renderer")
+        )
+
         source_server = await self._get_dicom_server(request, ae_title)
 
         query = self.query.copy()
@@ -265,10 +272,12 @@ class RetrieveNiftiStudyiAPIView(RetrieveAPIView):
 
         images = wado_retrieve_nifti(source_server, query, "STUDY")
 
-        renderer = cast(DicomWebWadoRenderer, getattr(request, "accepted_renderer"))
+        # Explicitly set the Content-Type header with the boundary
+        content_type = f"multipart/related; type={renderer.subtype}; boundary={renderer.boundary}"
+
         return StreamingHttpResponse(
             streaming_content=renderer.render(images),
-            content_type=renderer.content_type,
+            content_type=content_type,  # Explicitly set Content-Type here
         )
 
 

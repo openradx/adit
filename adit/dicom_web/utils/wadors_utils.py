@@ -111,10 +111,10 @@ async def wado_retrieve_nifti(
     """Retrieve DICOM images and convert them to NIfTI format."""
     operator = DicomOperator(source_server)
     query_ds = QueryDataset.from_dict(query)
-    dicom_images = set()
+    dicom_images: list[Dataset] = []
 
     def callback(ds: Dataset) -> None:
-        dicom_images.add(ds)
+        dicom_images.append(ds)
 
     try:
         if level == "SERIES":
