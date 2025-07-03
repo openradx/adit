@@ -35,23 +35,22 @@ class DicomWebWadoRenderer(BaseRenderer):
         return str
 
 
-class WadoMultipartApplicationDicomRenderer(DicomWebWadoRenderer):
-    media_type = "multipart/related; type=application/dicom"
-    format = "multipart"
-    subtype: str = "application/dicom"
-    boundary: str = "adit-boundary"
-    charset: str = "utf-8"
+class MultipartRenderer(BaseRenderer):
+    media_type: str
+    format: str
+    subtype: str | None = None
+    boundary: str = "default-boundary"
+    charset: str | None = None
 
-    async def render(self, images: AsyncIterator[Dataset]) -> AsyncIterator[bytes]:
+    async def render(self, items: AsyncIterator[BytesIO | Dataset]) -> AsyncIterator[bytes]:
         try:
-            async for image in images:
-                yield self._instance_stream(image)
+            async for item in items:
+                yield self._instance_stream(item)
         except Exception as err:
             yield self._error_stream(err)
-
         yield self._end_stream()
 
-    def _instance_stream(self, ds: Dataset) -> bytes:
+    def _instance_stream(self, item: BytesIO | Dataset) -> bytes:
         stream = BytesIO()
         # boundary
         stream.write(b"\r\n")
@@ -61,9 +60,12 @@ class WadoMultipartApplicationDicomRenderer(DicomWebWadoRenderer):
         stream.write(b"\r\n")
         stream.write(b"\r\n")
         # instance
-        write_dataset(ds, stream)
+        self._write_item(item, stream)
         stream.write(b"\r\n")
         return stream.getvalue()
+
+    def _write_item(self, item: BytesIO | Dataset, stream: BytesIO):
+        raise NotImplementedError("Subclasses must implement `_write_item`.")
 
     def _error_stream(self, err: Exception) -> bytes:
         stream = BytesIO()
@@ -75,7 +77,7 @@ class WadoMultipartApplicationDicomRenderer(DicomWebWadoRenderer):
         stream.write(b"\r\n")
         stream.write(b"\r\n")
         # message
-        stream.write(f"Error: Failed to fetch DICOM data: {err}\r\n".encode("utf-8"))
+        stream.write(f"Error: {err}\r\n".encode("utf-8"))
         stream.write(b"\r\n")
         return stream.getvalue()
 
@@ -85,6 +87,31 @@ class WadoMultipartApplicationDicomRenderer(DicomWebWadoRenderer):
         stream.write(self.boundary.encode("utf-8"))
         stream.write(b"--")
         return stream.getvalue()
+
+
+class WadoMultipartApplicationDicomRenderer(MultipartRenderer):
+    media_type = "multipart/related; type=application/dicom"
+    format = "multipart"
+    subtype: str = "application/dicom"
+    boundary: str = "adit-boundary"
+    charset: str = "utf-8"
+
+    def _write_item(self, item: Dataset, stream: BytesIO):
+        write_dataset(item, stream)
+
+
+class WadoMultipartApplicationNiftiRenderer(MultipartRenderer):
+    media_type = "multipart/related; type=application/octet-stream"
+    format = "multipart"
+    subtype: str = "application/octet-stream"
+    boundary: str = "nifti-boundary"
+    charset: str = "utf-8"
+
+    def _write_item(self, item: BytesIO, stream: BytesIO):
+        stream.write(item.getvalue())
+
+    def get_headers(self) -> dict:
+        return {"Content-Type": f"multipart/related; type={self.subtype}; boundary={self.boundary}"}
 
 
 class WadoApplicationDicomJsonRenderer(DicomWebWadoRenderer):

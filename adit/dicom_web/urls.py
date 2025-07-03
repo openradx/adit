@@ -8,7 +8,7 @@ from .views import (
     RetrieveImageMetadataAPIView,
     RetrieveNiftiImageAPIView,
     RetrieveNiftiSeriesAPIView,
-    RetrieveNiftiStudyiAPIView,
+    RetrieveNiftiStudyAPIView,
     RetrieveSeriesAPIView,
     RetrieveSeriesMetadataAPIView,
     RetrieveStudyAPIView,
@@ -74,7 +74,7 @@ urlpatterns = [
     ),
     path(
         "<str:ae_title>/wadors/studies/<str:study_uid>/nifti",
-        RetrieveNiftiStudyiAPIView.as_view(),
+        RetrieveNiftiStudyAPIView.as_view(),
         name="wado_rs-nifti_study_with_study_uid",
     ),
     path(
