@@ -56,7 +56,7 @@ class MultipartRenderer(BaseRenderer):
         stream.write(b"\r\n")
         stream.write(b"--" + self.boundary.encode("utf-8") + b"\r\n")
         # header
-        stream.write(b"Content-Type: " + self.subtype.encode("utf-8"))
+        stream.write(b"Content-Type: " + self.subtype.encode("utf-8"))  # type: ignore
         stream.write(b"\r\n")
         stream.write(b"\r\n")
         # instance
