@@ -96,6 +96,10 @@ class WadoMultipartApplicationDicomRenderer(MultipartRenderer):
     boundary: str = "adit-boundary"
     charset: str = "utf-8"
 
+    @property
+    def content_type(self) -> str:
+        return f"{self.media_type}; boundary={self.boundary}"
+
     def _write_item(self, item: Dataset, stream: BytesIO):
         write_dataset(item, stream)
 
