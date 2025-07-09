@@ -16,6 +16,7 @@ from .views import (
     SelectiveTransferTaskKillView,
     SelectiveTransferTaskResetView,
     SelectiveTransferUpdatePreferencesView,
+    SelectiveTransferDownloadStudyView,
 )
 
 urlpatterns = [
@@ -27,6 +28,11 @@ urlpatterns = [
         "help/",
         HtmxTemplateView.as_view(template_name="selective_transfer/_selective_transfer_help.html"),
         name="selective_transfer_help",
+    ),
+    path(
+        "download/<str:study_uid>",
+        SelectiveTransferDownloadStudyView.as_view(),
+        name="selective_transfer_download_study",
     ),
     path(
         "jobs/",

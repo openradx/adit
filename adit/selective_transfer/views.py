@@ -26,6 +26,10 @@ from .forms import SelectiveTransferJobForm
 from .mixins import SelectiveTransferLockedMixin
 from .models import SelectiveTransferJob, SelectiveTransferTask
 from .tables import SelectiveTransferJobTable, SelectiveTransferTaskTable
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.views.generic.base import View
+from django.views.generic.detail import SingleObjectMixin
+
 
 SELECTIVE_TRANSFER_SOURCE = "selective_transfer_source"
 SELECTIVE_TRANSFER_DESTINATION = "selective_transfer_destination"
@@ -44,6 +48,16 @@ class SelectiveTransferUpdatePreferencesView(
         SELECTIVE_TRANSFER_SEND_FINISHED_MAIL,
         SELECTIVE_TRANSFER_ADVANCED_OPTIONS_COLLAPSED,
     ]
+
+class SelectiveTransferDownloadStudyView(
+    SelectiveTransferLockedMixin,
+    LoginRequiredMixin,
+    View
+):
+    async def get(self, request, *args, **kwargs):
+        pass
+
+
 
 
 class SelectiveTransferJobListView(SelectiveTransferLockedMixin, TransferJobListView):
