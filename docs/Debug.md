@@ -6,6 +6,10 @@ This document provides a generic guide for debugging DICOM operations using DCMT
 
 ## Debugging DICOM Operations with DCMTK
 
+### Prerequisites
+
+DCMTK is pre-installed in the `adit_prod_web` container and available on the command line. You can use DCMTK tools like `getscu` directly from the terminal after logging into the terminal
+
 ### C-GET Operations
 
 The C-GET operation allows you to retrieve DICOM studies or images from a PACS server. Follow the steps below to perform and debug C-GET operations:
@@ -33,14 +37,28 @@ The C-GET operation allows you to retrieve DICOM studies or images from a PACS s
      -od ./received_files <PACS_IP> <PACS_PORT>
      ```
 
-3. **Retrieve a Specific Image**:
+3. **Retrieve a specfic Series Using C-GET**:
+
+   - Use the following command to retrieve a study:
+
+     ```bash
+     getscu -v -aet <CALLING_AE_TITLE> -aec <CALLED_AE_TITLE> \
+     -k 0008,0052=SERIES \
+     -k 0020,000D=<STUDY_INSTANCE_UID> \
+     -k 0020,000E=<SERIES_INSTANCE_UID> \
+     -od ./received_files <PACS_IP> <PACS_PORT>
+     ```
+
+4. **Retrieve a Specific Image**:
 
    - Use this command to retrieve a specific image:
 
      ```bash
      getscu -v -aet <CALLING_AE_TITLE> -aec <CALLED_AE_TITLE> \
      -k 0008,0052=IMAGE \
-     -k 0008,0018=<SOP_INSTANCE_UID> \
+     -k 0020,000D=<STUDY_INSTANCE_UID> \
+     -k 0020,000E=<SERIES_INSTANCE_UID> \
+     -k 0008,0018=<SOP_INSTANCE_ID>
      -od ./received_files <PACS_IP> <PACS_PORT>
      ```
 
@@ -49,7 +67,7 @@ The C-GET operation allows you to retrieve DICOM studies or images from a PACS s
 ### Notes
 
 - Replace `<CALLING_AE_TITLE>`, `<CALLED_AE_TITLE>`, `<STUDY_INSTANCE_UID>`, `<SOP_INSTANCE_UID>`, `<PACS_IP>`, and `<PACS_PORT>` with the appropriate values for your setup.
-- Ensure the `getscu` tool from DCMTK is installed and properly configured on your system.
+- DCMTK tools like `getscu` are pre-installed and ready to use in the container.
 - Use the `-v` flag for verbose output to help debug issues during the operation.
 - The `-od` option specifies the output directory where the retrieved files will be saved.
 
