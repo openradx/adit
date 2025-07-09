@@ -58,7 +58,7 @@ The C-GET operation allows you to retrieve DICOM studies or images from a PACS s
      -k 0008,0052=IMAGE \
      -k 0020,000D=<STUDY_INSTANCE_UID> \
      -k 0020,000E=<SERIES_INSTANCE_UID> \
-     -k 0008,0018=<SOP_INSTANCE_ID>
+     -k 0008,0018=<SOP_INSTANCE_UID>
      -od ./received_files <PACS_IP> <PACS_PORT>
      ```
 
