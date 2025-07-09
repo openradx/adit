@@ -1,8 +1,10 @@
 import importlib.metadata
+from io import BytesIO
 from typing import Iterator
 
 from dicomweb_client import DICOMwebClient, session_utils
 from pydicom import Dataset
+from requests_toolbelt import MultipartDecoder
 
 
 class AditClient:
@@ -66,6 +68,40 @@ class AditClient:
             study_uid,
             additional_params=additional_params,
         )
+
+    def retrieve_nifti_study(self, ae_title: str, study_uid: str) -> list[tuple[str, BytesIO]]:
+        """
+        Returns the generated files (NIfTI and JSON) as tuples in the format
+        (filename, file content)
+        """
+        # Create the DICOMweb client
+        dicom_web_client = self._create_dicom_web_client(ae_title)
+
+        # Call the retrieve_study endpoint for NIfTI format
+        response = dicom_web_client._http_get(
+            f"wadors/studies/{study_uid}/nifti",
+            headers={"Accept": "multipart/related; type=application/octet-stream"},
+        )
+
+        decoder = MultipartDecoder.from_response(response)
+        files = []
+
+        # Extract filenames and content from the response
+        for part in decoder.parts:
+            content_disposition = part.headers.get("Content-Disposition", b"").decode("utf-8")
+            filename = None
+
+            # Extract the filename from the Content-Disposition header
+            if "filename=" in content_disposition:
+                filename = content_disposition.split("filename=")[-1].strip('"')
+
+            # If no filename is provided, generate a default one
+            if not filename:
+                filename = f"file_{len(files)}"
+
+            files.append((filename, BytesIO(part.content)))
+
+        return files
 
     def retrieve_study_metadata(
         self, ae_title: str, study_uid: str, pseudonym: str | None = None

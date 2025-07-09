@@ -272,12 +272,9 @@ class RetrieveNiftiStudyAPIView(RetrieveAPIView):
 
         images = wado_retrieve_nifti(source_server, query, "STUDY")
 
-        # Explicitly set the Content-Type header with the boundary
-        content_type = f"multipart/related; type={renderer.subtype}; boundary={renderer.boundary}"
-
         return StreamingHttpResponse(
             streaming_content=renderer.render(images),
-            content_type=content_type,  # Explicitly set Content-Type here
+            content_type=renderer.content_type,
         )
 
 

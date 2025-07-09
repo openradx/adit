@@ -111,11 +111,19 @@ class WadoMultipartApplicationNiftiRenderer(MultipartRenderer):
     boundary: str = "nifti-boundary"
     charset: str = "utf-8"
 
-    def _write_item(self, item: BytesIO, stream: BytesIO):
-        stream.write(item.getvalue())
+    @property
+    def content_type(self) -> str:
+        return f"{self.media_type}; boundary={self.boundary}"
 
-    def get_headers(self) -> dict:
-        return {"Content-Type": f"multipart/related; type={self.subtype}; boundary={self.boundary}"}
+    def render(self, images: AsyncIterator[tuple[str, BytesIO]]) -> AsyncIterator[bytes]:
+        async def streaming_content():
+            async for filename, file_content in images:
+                yield f"--{self.boundary}\r\n".encode()
+                yield f'Content-Disposition: attachment; filename="{filename}"\r\n\r\n'.encode()
+                yield file_content.getvalue()
+            yield f"--{self.boundary}--\r\n".encode()
+
+        return streaming_content()
 
 
 class WadoApplicationDicomJsonRenderer(DicomWebWadoRenderer):

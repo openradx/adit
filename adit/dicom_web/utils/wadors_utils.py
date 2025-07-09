@@ -107,8 +107,11 @@ async def wado_retrieve_nifti(
     source_server: DicomServer,
     query: dict[str, str],
     level: Literal["STUDY", "SERIES", "IMAGE"],
-) -> AsyncIterator[BytesIO]:
-    """Retrieve DICOM images and convert them to NIfTI format."""
+) -> AsyncIterator[tuple[str, BytesIO]]:
+    """
+    Returns the generated files (NIfTI and JSON) as tuples in the format
+    (filename, file content).
+    """
     operator = DicomOperator(source_server)
     query_ds = QueryDataset.from_dict(query)
     dicom_images: list[Dataset] = []
@@ -166,12 +169,22 @@ async def wado_retrieve_nifti(
             converter = DicomToNiftiConverter()
             converter.convert(temp_path, nifti_output_dir)
 
-            # Yield each NIfTI file
+            # Yield each NIfTI and JSON file with their filenames
             for nifti_file in nifti_output_dir.glob("*.nii*"):
+                nifti_filename = nifti_file.name
+                json_filename = nifti_file.with_suffix(".json").name
+
+                # Read and yield the NIfTI file
                 with open(nifti_file, "rb") as f:
                     nifti_content = f.read()
-                    nifti_bytes = BytesIO(nifti_content)
-                    yield nifti_bytes
+                    yield nifti_filename, BytesIO(nifti_content)
+
+                # Read and yield the JSON file
+                json_file = nifti_file.with_suffix(".json")
+                if json_file.exists():
+                    with open(json_file, "rb") as f:
+                        json_content = f.read()
+                        yield json_filename, BytesIO(json_content)
 
     except RetriableDicomError as err:
         raise ServiceUnavailableApiError(str(err))
