@@ -4,7 +4,6 @@ from typing import Iterator
 
 from dicomweb_client import DICOMwebClient, session_utils
 from pydicom import Dataset
-from requests_toolbelt import MultipartDecoder
 
 
 class AditClient:
@@ -71,24 +70,31 @@ class AditClient:
 
     def retrieve_nifti_study(self, ae_title: str, study_uid: str) -> list[tuple[str, BytesIO]]:
         """
-        Returns the generated files (NIfTI and JSON) as tuples in the format
-        (filename, file content)
+        Retrieve NIfTI files from the API.
         """
-        # Create the DICOMweb client
-        dicom_web_client = self._create_dicom_web_client(ae_title)
+        # Ensure the URL includes the scheme
+        base_url = self.server_url
+        if not base_url.startswith("http://") and not base_url.startswith("https://"):
+            base_url = f"http://{base_url}"
 
-        # Call the retrieve_study endpoint for NIfTI format
-        response = dicom_web_client._http_get(
-            f"wadors/studies/{study_uid}/nifti",
+        # Construct the full URL
+        url = f"{base_url}/api/dicom-web/{ae_title}/wadors/studies/{study_uid}/nifti"
+
+        # Call the API
+        response = self._create_dicom_web_client(ae_title)._http_get(
+            url,
             headers={"Accept": "multipart/related; type=application/octet-stream"},
         )
+
+        # Parse the multipart response
+        from requests_toolbelt.multipart.decoder import MultipartDecoder
 
         decoder = MultipartDecoder.from_response(response)
         files = []
 
         # Extract filenames and content from the response
         for part in decoder.parts:
-            content_disposition = part.headers.get("Content-Disposition", b"").decode("utf-8")
+            content_disposition = part.headers.get(b"Content-Disposition", b"").decode("utf-8")
             filename = None
 
             # Extract the filename from the Content-Disposition header

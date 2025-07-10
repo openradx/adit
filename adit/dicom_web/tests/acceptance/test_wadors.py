@@ -1,4 +1,5 @@
 from http import HTTPStatus
+from io import BytesIO
 
 import pydicom
 import pytest
@@ -579,3 +580,31 @@ def test_retrieve_image_metadata_with_invalid_pseudonym(channels_live_server: Ch
     assert response.status_code == HTTPStatus.BAD_REQUEST
     error = response.json()
     assert "pseudonym" in error or "invalid" in str(error).lower(), f"Unexpected error: {error}"
+
+
+@pytest.mark.acceptance
+@pytest.mark.order("last")
+@pytest.mark.django_db(transaction=True)
+def test_retrieve_nifti_study(channels_live_server: ChannelsLiveServer):
+    setup_dimse_orthancs()
+
+    _, group, token = create_user_with_dicom_web_group_and_token()
+    server = DicomServer.objects.get(ae_title="ORTHANC1")
+    grant_access(group, server, source=True)
+    adit_client = AditClient(server_url=channels_live_server.url, auth_token=token)
+
+    metadata = load_sample_dicoms_metadata("1001")
+    study_uid: str = metadata.iloc[0]["StudyInstanceUID"]
+
+    # Call the retrieve_nifti_study method
+    nifti_files = adit_client.retrieve_nifti_study(server.ae_title, study_uid)
+
+    # Validate the response
+    assert len(nifti_files) > 0, "No NIfTI files were returned"
+    for filename, file_content in nifti_files:
+        assert isinstance(filename, str), f"Filename is not a string: {filename}"
+        assert isinstance(file_content, BytesIO), (
+            f"File content is not a BytesIO object: {filename}"
+        )
+        assert file_content.getbuffer().nbytes > 0, f"File {filename} is empty"
+        print(f"Debug: NIfTI file {filename} size: {file_content.getbuffer().nbytes} bytes")
