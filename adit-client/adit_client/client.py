@@ -4,6 +4,7 @@ from typing import Iterator
 
 from dicomweb_client import DICOMwebClient, session_utils
 from pydicom import Dataset
+from requests_toolbelt.multipart.decoder import MultipartDecoder
 
 
 class AditClient:
@@ -86,15 +87,12 @@ class AditClient:
             headers={"Accept": "multipart/related; type=application/octet-stream"},
         )
 
-        # Parse the multipart response
-        from requests_toolbelt.multipart.decoder import MultipartDecoder
-
         decoder = MultipartDecoder.from_response(response)
         files = []
 
         # Extract filenames and content from the response
         for part in decoder.parts:
-            content_disposition = part.headers.get(b"Content-Disposition", b"").decode("utf-8")
+            content_disposition = part.headers.get("Content-Disposition", b"").decode("utf-8")
             filename = None
 
             # Extract the filename from the Content-Disposition header
