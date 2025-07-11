@@ -66,3 +66,11 @@ services:
       POSTGRES_PASSWORD: postgres
     ports:
       - ${POSTGRES_DEV_PORT:-5432}:5432
+
+  orthanc1:
+    ports:
+      - "7501:7501"
+
+  orthanc2:
+    ports:
+      - "7502:7502"
