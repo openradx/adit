@@ -39,6 +39,8 @@ services:
   web:
     <<: *default-app
     build:
+      context: ./web
+      dockerfile: Dockerfile.web
       target: production
     ports:
       - ${WEB_HTTP_PORT:-80}:80
@@ -47,8 +49,8 @@ services:
       bash -c "
         wait-for-it -s init.local:8000 -t 300 && 
         echo 'Starting web server ...' &&
-        daphne -b 0.0.0.0 -p 80 \\
-          -e ssl:443:privateKey=/etc/web/ssl/key.pem:certKey=/etc/web/ssl/cert.pem \\
+        daphne -b 0.0.0.0 -p 80 \
+          -e ssl:443:privateKey=/etc/web/ssl/key.pem:certKey=/etc/web/ssl/cert.pem \
           adit.asgi:application
       "
     deploy:
@@ -57,6 +59,9 @@ services:
 
   default_worker:
     <<: *default-app
+    build:
+      context: ./default_worker
+      dockerfile: Dockerfile.default_worker
     command: >
       bash -c "
         wait-for-it -s postgres.local:5432 -t 60 &&
@@ -67,6 +72,9 @@ services:
 
   dicom_worker:
     <<: *default-app
+    build:
+      context: ./dicom_worker
+      dockerfile: Dockerfile.dicom_worker
     command: >
       bash -c "
         wait-for-it -s postgres.local:5432 -t 60 &&
@@ -78,6 +86,9 @@ services:
 
   receiver:
     <<: *default-app
+    build:
+      context: ./receiver
+      dockerfile: Dockerfile.receiver
     ports:
       - 11112:11112
     command: ./manage.py receiver

@@ -1,0 +1,17 @@
+# Base image
+FROM python:3.9-slim AS base
+
+# Production stage
+FROM base AS production
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+COPY . .
+CMD ["daphne", "-b", "0.0.0.0", "-p", "80", "adit.asgi:application"]
+
+# Development stage
+FROM base AS development
+WORKDIR /app
+RUN pip install --no-cache-dir flask
+COPY . .
+CMD ["./manage.py", "runserver", "0.0.0.0:8000"]

@@ -21,6 +21,10 @@ services:
 
   web:
     <<: *default-app
+    build:
+      context: ./web
+      dockerfile: Dockerfile.web
+      target: development
     ports:
       - ${WEB_DEV_PORT:-8000}:8000
       - ${REMOTE_DEBUGGING_PORT:-5678}:5678
@@ -40,6 +44,9 @@ services:
 
   default_worker:
     <<: *default-app
+    build:
+      context: ./default_worker
+      dockerfile: Dockerfile.default_worker
     command: >
       bash -c "
         wait-for-it -s postgres.local:5432 -t 60 &&
@@ -48,6 +55,9 @@ services:
 
   dicom_worker:
     <<: *default-app
+    build:
+      context: ./dicom_worker
+      dockerfile: Dockerfile.dicom_worker
     command: >
       bash -c "
         wait-for-it -s postgres.local:5432 -t 60 &&
@@ -56,6 +66,9 @@ services:
 
   receiver:
     <<: *default-app
+    build:
+      context: ./receiver
+      dockerfile: Dockerfile.receiver
     ports:
       - 11122:11112
     command: |
