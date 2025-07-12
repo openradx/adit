@@ -16,8 +16,9 @@ class DCMTKWrapper:
         )
 
         # Print output line-by-line as it arrives
-        for line in process.stdout:
-            print(line, end="")
+        if process.stdout is not None:
+            for line in process.stdout:
+                print(line, end="")
 
         process.wait()
         if process.returncode != 0:
