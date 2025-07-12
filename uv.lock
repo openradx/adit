@@ -44,6 +44,7 @@ dependencies = [
     { name = "pyarrow" },
     { name = "pydicom" },
     { name = "pynetdicom" },
+    { name = "python-logstash" },
     { name = "twisted", extra = ["http2", "tls"] },
     { name = "wait-for-it" },
     { name = "watchfiles" },
@@ -129,6 +130,7 @@ requires-dist = [
     { name = "pyarrow", specifier = ">=19.0.1" },
     { name = "pydicom", specifier = ">=2.4.4" },
     { name = "pynetdicom", specifier = ">=2.1.1" },
+    { name = "python-logstash" },
     { name = "twisted", extras = ["tls", "http2"], specifier = ">=24.11.0" },
     { name = "wait-for-it", specifier = ">=2.3.0" },
     { name = "watchfiles", specifier = ">=1.0.4" },
@@ -2070,6 +2072,12 @@ sdist = { url = "https://files.pythonhosted.org/packages/88/2c/7bb1416c5620485aa
 wheels = [
     { url = "https://files.pythonhosted.org/packages/1e/18/98a99ad95133c6a6e2005fe89faedf294a748bd5dc803008059409ac9b1e/python_dotenv-1.1.0-py3-none-any.whl", hash = "sha256:d7c01d9e2293916c18baf562d95698754b0dbbb5e74d457c45d4f6561fb9d55d", size = 20256, upload-time = "2025-03-25T10:14:55.034Z" },
 ]
+
+[[package]]
+name = "python-logstash"
+version = "0.4.8"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/f7/3b/c3a957bbdd23859f07905fc3d1adfe89957217a347478c58409f0315cf1d/python-logstash-0.4.8.tar.gz", hash = "sha256:d04e1ce11ecc107e4a4f3b807fc57d96811e964a554081b3bbb44732f74ef5f9", size = 7074, upload-time = "2022-03-30T11:58:04.095Z" }
 
 [[package]]
 name = "python-slugify"

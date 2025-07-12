@@ -236,6 +236,13 @@ LOGGING = {
         },
     },
     "handlers": {
+        "logstash": {
+            "level": "DEBUG",
+            "class": "logstash.TCPLogstashHandler",
+            "host": "logstash",
+            "port": 5044,
+            "version": 1,
+        },
         "console": {
             "level": "DEBUG",
             "class": "logging.StreamHandler",
@@ -248,28 +255,28 @@ LOGGING = {
         },
     },
     "loggers": {
-        "adit": {
-            "handlers": ["console", "mail_admins"],
-            "level": "INFO",
-            "propagate": False,
-        },
         "django": {
-            "handlers": ["console"],
-            "level": "WARNING",
-            "propagate": False,
+            "handlers": ["logstash", "console"],
+            "level": "DEBUG",
+            "propagate": True,
+        },
+        "adit": {
+            "handlers": ["logstash", "console", "mail_admins"],
+            "level": "DEBUG",
+            "propagate": True,
         },
         "pydicom": {
-            "handlers": ["console"],
-            "level": "WARNING",
-            "propagate": False,
+            "handlers": ["logstash", "console"],
+            "level": "DEBUG",
+            "propagate": True,
         },
         "pynetdicom": {
-            "handlers": ["console"],
-            "level": "WARNING",
-            "propagate": False,
+            "handlers": ["logstash", "console"],
+            "level": "DEBUG",
+            "propagate": True,
         },
     },
-    "root": {"handlers": ["console"], "level": "ERROR"},
+    "root": {"handlers": ["logstash", "console"], "level": "DEBUG"},
 }
 
 # Internationalization
