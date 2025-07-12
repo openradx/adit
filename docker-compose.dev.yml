@@ -80,7 +80,7 @@ services:
   logstash:
     image: docker.elastic.co/logstash/logstash:8.9.0
     volumes:
-      - /workspaces/adit-radis-workspace/projects/adit/logstash.conf:/usr/share/logstash/pipeline/logstash.conf:ro
+      - ./logstash.conf:/usr/share/logstash/pipeline/logstash.conf
     ports:
       - 5044:5044
 
