@@ -9,7 +9,8 @@ class DCMTKWrapper:
 
     def __init__(self, calling_aet: str, calling_port: str):
         """
-        Initiates the class with the AE title of the calling node and its port (currently not needed since there is no C-STORE SCP implementation.)
+        Initiates the class with the AE title of the calling node and its port
+        (currently not needed since there is no C-STORE SCP implementation.)
 
         Args:
             calling_aet (str): AE title of the calling DICOM node.
@@ -45,7 +46,7 @@ class DCMTKWrapper:
         if process.stdout is not None and print_output:
             for line in process.stdout:
                 print(line, end="")
-            print("#########################################") # Delimiter for better readability
+            print("#########################################")  # Delimiter for better readability
         process.wait()
         return process.returncode
 
@@ -140,7 +141,8 @@ class DCMTKWrapper:
         print_output=True,
     ) -> int:
         """
-        Performs a C-MOVE operation to retrieve DICOM datasets from a remote AE and send them to a destination AE.
+        Performs a C-MOVE operation to retrieve DICOM datasets from a remote AE
+        and send them to a destination AE.
 
         Args:
             called_aet (str): AE title of the called DICOM node.
@@ -179,7 +181,8 @@ class DCMTKWrapper:
         print_output=True,
     ) -> int:
         """
-        Performs a C-GET operation to retrieve DICOM datasets from a remote AE and store them locally.
+        Performs a C-GET operation to retrieve DICOM datasets from a remote AE
+        and store them locally.
 
         Args:
             called_aet (str): AE title of the called DICOM node.
