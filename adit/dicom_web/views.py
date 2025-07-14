@@ -335,6 +335,8 @@ class RetrieveSeriesAPIView(RetrieveAPIView):
 
 
 class RetrieveNiftiSeriesAPIView(RetrieveAPIView):
+    renderer_classes = [WadoMultipartApplicationNiftiRenderer]
+
     async def get(
         self, request: AuthenticatedApiRequest, ae_title: str, study_uid: str, series_uid: str
     ) -> Response | StreamingHttpResponse:
@@ -350,7 +352,9 @@ class RetrieveNiftiSeriesAPIView(RetrieveAPIView):
             "SERIES",
         )
 
-        renderer = cast(DicomWebWadoRenderer, getattr(request, "accepted_renderer"))
+        renderer = cast(
+            WadoMultipartApplicationNiftiRenderer, getattr(request, "accepted_renderer")
+        )
         return StreamingHttpResponse(
             streaming_content=renderer.render(images),
             content_type=renderer.content_type,
@@ -421,6 +425,8 @@ class RetrieveImageAPIView(RetrieveAPIView):
 
 
 class RetrieveNiftiImageAPIView(RetrieveAPIView):
+    renderer_classes = [WadoMultipartApplicationNiftiRenderer]
+
     async def get(
         self,
         request: AuthenticatedApiRequest,
@@ -438,7 +444,9 @@ class RetrieveNiftiImageAPIView(RetrieveAPIView):
 
         images = wado_retrieve_nifti(source_server, query, "IMAGE")
 
-        renderer = cast(DicomWebWadoRenderer, getattr(request, "accepted_renderer"))
+        renderer = cast(
+            WadoMultipartApplicationNiftiRenderer, getattr(request, "accepted_renderer")
+        )
         return StreamingHttpResponse(
             streaming_content=renderer.render(images),
             content_type=renderer.content_type,
