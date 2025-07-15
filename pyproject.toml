@@ -65,6 +65,7 @@ dev = [
     "Faker>=36.1.1",
     "ipykernel>=6.29.5",
     "ipython>=8.32.0",
+    "ipywidgets>=8.1.7",
     "nest-asyncio>=1.6.0",
     "nibabel>=5.3.2",
     "pyright>=1.1.394,<=1.1.400",
@@ -84,6 +85,7 @@ dev = [
     "requests>=2.32.3",
     "ruff>=0.9.7",
     "time-machine>=2.16.0",
+    "tqdm>=4.67.1",
     "vermin>=1.6.0",
 ]
 client = ["adit-client"]
