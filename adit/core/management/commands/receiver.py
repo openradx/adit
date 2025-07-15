@@ -78,7 +78,7 @@ class Command(AsyncServerCommand):
                 study_uid = ds.StudyInstanceUID
                 series_uid = ds.SeriesInstanceUID
                 instance_uid = ds.SOPInstanceUID
-                topic = f"{calling_ae}\\{study_uid}\\{series_uid}"
+                topic = f"{calling_ae}\\{study_uid}"
                 await self._file_transmit.publish_file(
                     topic, file_path, {"SOPInstanceUID": instance_uid}
                 )

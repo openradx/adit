@@ -562,17 +562,38 @@ class DicomOperator:
         image_uids: list[str]
         if image_uid := query.get("SOPInstanceUID"):
             image_uids = [image_uid]
-        else:
-            images = list(
-                self.find_images(
-                    QueryDataset.create(
-                        PatientID=query.PatientID,
-                        StudyInstanceUID=query.StudyInstanceUID,
-                        SeriesInstanceUID=query.SeriesInstanceUID,
-                    )
-                )
+        elif series_uid := query.get("SeriesInstanceUID"):
+            query_dataset = QueryDataset.create(
+                PatientID=query.PatientID,
+                StudyInstanceUID=query.StudyInstanceUID,
+                SeriesInstanceUID=series_uid,
             )
+            images = self.find_images(query_dataset)
             image_uids = [image.SOPInstanceUID for image in images]
+        else:
+            # If SeriesInstanceUID not provided or needed it is still necessary for
+            # querying on IMAGE level
+            query_dataset = QueryDataset.create(
+                PatientID=query.PatientID,
+                StudyInstanceUID=query.StudyInstanceUID,
+            )
+
+            series_list = self.find_series(query_dataset)
+
+            query_datasets = [
+                QueryDataset.create(
+                    PatientID=query.PatientID,
+                    StudyInstanceUID=query.StudyInstanceUID,
+                    SeriesInstanceUID=series.SeriesInstanceUID,
+                )
+                for series in series_list
+            ]
+
+            image_uids = [
+                image.SOPInstanceUID
+                for query_dataset in query_datasets
+                for image in self.find_images(query_dataset)
+            ]
 
         # A list of errors that may occur while receiving the images
         receiving_errors: list[Exception] = []
@@ -590,7 +611,6 @@ class DicomOperator:
             consume_future = executor.submit(
                 self._consume_from_receiver,
                 query.StudyInstanceUID,
-                query.SeriesInstanceUID,
                 image_uids,
                 callback,
                 c_move_finished_event,
@@ -625,7 +645,6 @@ class DicomOperator:
     def _consume_from_receiver(
         self,
         study_uid: str,
-        series_uid: str,
         image_uids: list[str],
         callback: Callable[[Dataset], None],
         c_move_finished_event: threading.Event,
@@ -643,14 +662,14 @@ class DicomOperator:
             def check_images_received():
                 if remaining_image_uids:
                     if remaining_image_uids == image_uids:
-                        logger.error("No images of series %s received.", series_uid)
+                        logger.error("No images of study %s received.", study_uid)
                         receiving_errors.append(
                             RetriableDicomError("Failed to fetch all images with C-MOVE.")
                         )
 
                     logger.warn(
-                        "These images of series %s were not received: %s",
-                        series_uid,
+                        "These images of study %s were not received: %s",
+                        study_uid,
                         ", ".join(remaining_image_uids),
                     )
                     self.logs.append(
@@ -686,7 +705,7 @@ class DicomOperator:
 
                 return False
 
-            topic = f"{self.server.ae_title}\\{study_uid}\\{series_uid}"
+            topic = f"{self.server.ae_title}\\{study_uid}"
             subscribe_task = asyncio.create_task(
                 file_transmit.subscribe(topic, handle_received_file)
             )

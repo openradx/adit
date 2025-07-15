@@ -194,8 +194,6 @@ def test_download_series_with_c_move(settings: SettingsWrapper, mocker: MockerFi
     )
 
     # Assert
-    assert subscribed_topic == (
-        f"{dicom_operator.server.ae_title}\\{ds.StudyInstanceUID}\\{ds.SeriesInstanceUID}"
-    )
+    assert subscribed_topic == (f"{dicom_operator.server.ae_title}\\{ds.StudyInstanceUID}")
     association_mock.send_c_move.assert_called_once()
     assert received_ds[0] == ds
