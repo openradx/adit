@@ -588,11 +588,12 @@ class DicomOperator:
                 )
                 for series in series_list
             ]
-            image_uids = []
-            for query_dataset in query_datasets:
-                image_uids.extend(
-                    [image.SOPInstanceUID for image in self.find_images(query_dataset)]
-                )
+
+            image_uids = [
+                image.SOPInstanceUID
+                for query_dataset in query_datasets
+                for image in self.find_images(query_dataset)
+            ]
 
         # A list of errors that may occur while receiving the images
         receiving_errors: list[Exception] = []

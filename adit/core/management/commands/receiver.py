@@ -71,10 +71,12 @@ class Command(AsyncServerCommand):
             calling_ae = filename.split("_")[0]
 
             study_uid = "Unknown"
+            series_uid = "Unknown"
             instance_uid = "Unknown"
             try:
                 ds = read_dataset(file_path)
                 study_uid = ds.StudyInstanceUID
+                series_uid = ds.SeriesInstanceUID
                 instance_uid = ds.SOPInstanceUID
                 topic = f"{calling_ae}\\{study_uid}"
                 await self._file_transmit.publish_file(
@@ -85,7 +87,8 @@ class Command(AsyncServerCommand):
                 # TODO: Maybe store unreadable files in some special folder for later analysis
                 logger.error(
                     f"Error while reading and transmitting received DICOM file '{filename}' "
-                    f"with StudyInstanceUID '{study_uid}', SOPInstanceUID '{instance_uid}'."
+                    f"with StudyInstanceUID '{study_uid}', SeriesInstanceUID '{series_uid}', "
+                    f"SOPInstanceUID '{instance_uid}'."
                 )
                 logger.exception(err)
             finally:
