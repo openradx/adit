@@ -29,7 +29,7 @@ class WadoFetcher:
         self.query_ds = QueryDataset.from_dict(query)
         self.operator = DicomOperator(source_server)
 
-    async def fetch(
+    async def create_fetch_task(
         self, level: Literal["STUDY", "SERIES", "IMAGE"], callback: Callable[[Dataset], None]
     ) -> asyncio.Task:
         """Create and return a fetch task based on the level."""
@@ -97,7 +97,7 @@ async def wado_retrieve(
         loop.call_soon_threadsafe(queue.put_nowait, ds)
 
     try:
-        fetch_task = await wado_fetcher.fetch(level, callback)
+        fetch_task = await wado_fetcher.create_fetch_task(level, callback)
 
         while True:
             queue_get_task = asyncio.create_task(queue.get())
@@ -140,7 +140,7 @@ async def wado_retrieve_nifti(
         dicom_images.append(ds)
 
     try:
-        fetch_task = await wado_fetcher.fetch(level, callback)
+        fetch_task = await wado_fetcher.create_fetch_task(level, callback)
         await WadoFetcher.execute_fetch(fetch_task)
 
         with tempfile.TemporaryDirectory() as temp_dir:
