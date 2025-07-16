@@ -8,7 +8,7 @@ This document provides a generic guide for debugging DICOM operations using DCMT
 
 ### Prerequisites
 
-DCMTK is pre-installed in the `adit_prod_web` container and available on the command line. You can use DCMTK tools like `getscu` directly from the terminal after logging into the terminal
+DCMTK is pre-installed in the web service container and available on the command line. You can use DCMTK tools like `getscu` directly from the terminal after accessing the container.
 
 ### C-GET Operations
 
