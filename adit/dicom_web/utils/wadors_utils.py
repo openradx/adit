@@ -172,7 +172,6 @@ async def wado_retrieve_nifti(
             # Yield each NIfTI and JSON file with their filenames
             for nifti_file in nifti_output_dir.glob("*.nii*"):
                 nifti_filename = nifti_file.name
-                json_filename = nifti_file.with_suffix(".json").name
 
                 # Read and yield the NIfTI file
                 with open(nifti_file, "rb") as f:
@@ -182,6 +181,7 @@ async def wado_retrieve_nifti(
                 # Read and yield the JSON file
                 json_file = nifti_file.with_suffix(".json")
                 if json_file.exists():
+                    json_filename = json_file.name
                     with open(json_file, "rb") as f:
                         json_content = f.read()
                         yield json_filename, BytesIO(json_content)

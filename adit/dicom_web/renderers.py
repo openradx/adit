@@ -117,11 +117,24 @@ class WadoMultipartApplicationNiftiRenderer(MultipartRenderer):
 
     def render(self, images: AsyncIterator[tuple[str, BytesIO]]) -> AsyncIterator[bytes]:
         async def streaming_content():
+            first_part = True
             async for filename, file_content in images:
-                yield f"--{self.boundary}\r\n".encode()
+                # For multipart format, we need to start with boundary
+                if first_part:
+                    yield f"--{self.boundary}\r\n".encode()
+                    first_part = False
+                else:
+                    yield f"\r\n--{self.boundary}\r\n".encode()
+
+                # Add headers for this part
+                yield "Content-Type: application/octet-stream\r\n".encode()
                 yield f'Content-Disposition: attachment; filename="{filename}"\r\n\r\n'.encode()
+
+                # Add content
                 yield file_content.getvalue()
-            yield f"--{self.boundary}--\r\n".encode()
+
+            # End the multipart message with a final boundary
+            yield f"\r\n--{self.boundary}--\r\n".encode()
 
         return streaming_content()
 

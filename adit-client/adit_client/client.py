@@ -71,7 +71,14 @@ class AditClient:
 
     def retrieve_nifti_study(self, ae_title: str, study_uid: str) -> list[tuple[str, BytesIO]]:
         """
-        Retrieve NIfTI files from the API.
+        Retrieve NIfTI files from the API for a specific study.
+
+        Args:
+            ae_title: The AE title of the server.
+            study_uid: The study instance UID.
+
+        Returns:
+            A list of tuples containing the filename and file content.
         """
         # Ensure the URL includes the scheme
         base_url = self.server_url
@@ -87,22 +94,131 @@ class AditClient:
             headers={"Accept": "multipart/related; type=application/octet-stream"},
         )
 
+        # Create a decoder for the multipart response
         decoder = MultipartDecoder.from_response(response)
         files = []
 
-        # Extract filenames and content from the response
+        # Process each part in the multipart response
         for part in decoder.parts:
-            content_disposition = part.headers.get("Content-Disposition", b"").decode("utf-8")
+            content_disposition = part.headers.get(b"Content-Disposition", b"").decode("utf-8")  # type: ignore
+
+            # Extract filename from Content-Disposition header
             filename = None
-
-            # Extract the filename from the Content-Disposition header
             if "filename=" in content_disposition:
-                filename = content_disposition.split("filename=")[-1].strip('"')
+                filename = content_disposition.split("filename=")[1].strip('"')
 
-            # If no filename is provided, generate a default one
+            # If no filename was provided, use a default name
             if not filename:
                 filename = f"file_{len(files)}"
 
+            # Add the file to the list
+            files.append((filename, BytesIO(part.content)))
+
+        return files
+
+    def retrieve_nifti_series(
+        self, ae_title: str, study_uid: str, series_uid: str
+    ) -> list[tuple[str, BytesIO]]:
+        """
+        Retrieve NIfTI files from the API for a specific series.
+
+        Args:
+            ae_title: The AE title of the server.
+            study_uid: The study instance UID.
+            series_uid: The series instance UID.
+
+        Returns:
+            A list of tuples containing the filename and file content.
+        """
+        # Ensure the URL includes the scheme
+        base_url = self.server_url
+        if not base_url.startswith("http://") and not base_url.startswith("https://"):
+            base_url = f"http://{base_url}"
+
+        # Construct the full URL
+        url = (
+            f"{base_url}/api/dicom-web/{ae_title}/wadors/studies/{study_uid}/"
+            f"series/{series_uid}/nifti"
+        )
+
+        # Call the API
+        response = self._create_dicom_web_client(ae_title)._http_get(
+            url,
+            headers={"Accept": "multipart/related; type=application/octet-stream"},
+        )
+
+        # Create a decoder for the multipart response
+        decoder = MultipartDecoder.from_response(response)
+        files = []
+
+        # Process each part in the multipart response
+        for part in decoder.parts:
+            content_disposition = part.headers.get(b"Content-Disposition", b"").decode("utf-8")  # type: ignore
+
+            # Extract filename from Content-Disposition header
+            filename = None
+            if "filename=" in content_disposition:
+                filename = content_disposition.split("filename=")[1].strip('"')
+
+            # If no filename was provided, use a default name
+            if not filename:
+                filename = f"file_{len(files)}"
+
+            # Add the file to the list
+            files.append((filename, BytesIO(part.content)))
+
+        return files
+
+    def retrieve_nifti_image(
+        self, ae_title: str, study_uid: str, series_uid: str, image_uid: str
+    ) -> list[tuple[str, BytesIO]]:
+        """
+        Retrieve NIfTI files from the API for a specific image.
+
+        Args:
+            ae_title: The AE title of the server.
+            study_uid: The study instance UID.
+            series_uid: The series instance UID.
+            image_uid: The SOP instance UID.
+
+        Returns:
+            A list of tuples containing the filename and file content.
+        """
+        # Ensure the URL includes the scheme
+        base_url = self.server_url
+        if not base_url.startswith("http://") and not base_url.startswith("https://"):
+            base_url = f"http://{base_url}"
+
+        # Construct the full URL
+        url = (
+            f"{base_url}/api/dicom-web/{ae_title}/wadors/studies/{study_uid}/"
+            f"series/{series_uid}/instances/{image_uid}/nifti"
+        )
+
+        # Call the API
+        response = self._create_dicom_web_client(ae_title)._http_get(
+            url,
+            headers={"Accept": "multipart/related; type=application/octet-stream"},
+        )
+
+        # Create a decoder for the multipart response
+        decoder = MultipartDecoder.from_response(response)
+        files = []
+
+        # Process each part in the multipart response
+        for part in decoder.parts:
+            content_disposition = part.headers.get(b"Content-Disposition", b"").decode("utf-8")  # type: ignore
+
+            # Extract filename from Content-Disposition header
+            filename = None
+            if "filename=" in content_disposition:
+                filename = content_disposition.split("filename=")[1].strip('"')
+
+            # If no filename was provided, use a default name
+            if not filename:
+                filename = f"file_{len(files)}"
+
+            # Add the file to the list
             files.append((filename, BytesIO(part.content)))
 
         return files
