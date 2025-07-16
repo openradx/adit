@@ -80,13 +80,8 @@ class AditClient:
         Returns:
             A list of tuples containing the filename and file content.
         """
-        # Ensure the URL includes the scheme
-        base_url = self.server_url
-        if not base_url.startswith("http://") and not base_url.startswith("https://"):
-            base_url = f"http://{base_url}"
-
         # Construct the full URL
-        url = f"{base_url}/api/dicom-web/{ae_title}/wadors/studies/{study_uid}/nifti"
+        url = f"{self.server_url}/api/dicom-web/{ae_title}/wadors/studies/{study_uid}/nifti"
 
         # Call the API
         response = self._create_dicom_web_client(ae_title)._http_get(
@@ -130,14 +125,9 @@ class AditClient:
         Returns:
             A list of tuples containing the filename and file content.
         """
-        # Ensure the URL includes the scheme
-        base_url = self.server_url
-        if not base_url.startswith("http://") and not base_url.startswith("https://"):
-            base_url = f"http://{base_url}"
-
         # Construct the full URL
         url = (
-            f"{base_url}/api/dicom-web/{ae_title}/wadors/studies/{study_uid}/"
+            f"{self.server_url}/api/dicom-web/{ae_title}/wadors/studies/{study_uid}/"
             f"series/{series_uid}/nifti"
         )
 
@@ -184,14 +174,9 @@ class AditClient:
         Returns:
             A list of tuples containing the filename and file content.
         """
-        # Ensure the URL includes the scheme
-        base_url = self.server_url
-        if not base_url.startswith("http://") and not base_url.startswith("https://"):
-            base_url = f"http://{base_url}"
-
         # Construct the full URL
         url = (
-            f"{base_url}/api/dicom-web/{ae_title}/wadors/studies/{study_uid}/"
+            f"{self.server_url}/api/dicom-web/{ae_title}/wadors/studies/{study_uid}/"
             f"series/{series_uid}/instances/{image_uid}/nifti"
         )
 
