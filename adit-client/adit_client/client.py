@@ -96,17 +96,7 @@ class AditClient:
         # Process each part in the multipart response
         for part in decoder.parts:
             content_disposition = part.headers.get(b"Content-Disposition", b"").decode("utf-8")  # type: ignore
-
-            # Extract filename from Content-Disposition header
-            filename = None
-            if "filename=" in content_disposition:
-                filename = content_disposition.split("filename=")[1].strip('"')
-
-            # If no filename was provided, use a default name
-            if not filename:
-                filename = f"file_{len(files)}"
-
-            # Add the file to the list
+            filename = self._extract_filename(content_disposition, len(files))
             files.append((filename, BytesIO(part.content)))
 
         return files
@@ -144,17 +134,7 @@ class AditClient:
         # Process each part in the multipart response
         for part in decoder.parts:
             content_disposition = part.headers.get(b"Content-Disposition", b"").decode("utf-8")  # type: ignore
-
-            # Extract filename from Content-Disposition header
-            filename = None
-            if "filename=" in content_disposition:
-                filename = content_disposition.split("filename=")[1].strip('"')
-
-            # If no filename was provided, use a default name
-            if not filename:
-                filename = f"file_{len(files)}"
-
-            # Add the file to the list
+            filename = self._extract_filename(content_disposition, len(files))
             files.append((filename, BytesIO(part.content)))
 
         return files
@@ -193,20 +173,31 @@ class AditClient:
         # Process each part in the multipart response
         for part in decoder.parts:
             content_disposition = part.headers.get(b"Content-Disposition", b"").decode("utf-8")  # type: ignore
-
-            # Extract filename from Content-Disposition header
-            filename = None
-            if "filename=" in content_disposition:
-                filename = content_disposition.split("filename=")[1].strip('"')
-
-            # If no filename was provided, use a default name
-            if not filename:
-                filename = f"file_{len(files)}"
-
-            # Add the file to the list
+            filename = self._extract_filename(content_disposition, len(files))
             files.append((filename, BytesIO(part.content)))
 
         return files
+
+    def _extract_filename(self, content_disposition: str, default_index: int) -> str:
+        """
+        Extract filename from Content-Disposition header.
+
+        Args:
+            content_disposition: The Content-Disposition header value
+            default_index: Index to use for default filename if none found
+
+        Returns:
+            The extracted filename or a default one
+        """
+        filename = None
+        if "filename=" in content_disposition:
+            filename = content_disposition.split("filename=")[1].strip('"')
+
+        # If no filename was provided, use a default name
+        if not filename:
+            filename = f"file_{default_index}"
+
+        return filename
 
     def retrieve_study_metadata(
         self, ae_title: str, study_uid: str, pseudonym: str | None = None
