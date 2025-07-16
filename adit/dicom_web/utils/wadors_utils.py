@@ -169,22 +169,23 @@ async def wado_retrieve_nifti(
             converter = DicomToNiftiConverter()
             converter.convert(temp_path, nifti_output_dir)
 
-            # Yield each NIfTI and JSON file with their filenames
-            for nifti_file in nifti_output_dir.glob("*.nii*"):
-                nifti_filename = nifti_file.name
+            # Collect all NIfTI and JSON files
+            nifti_files = list(nifti_output_dir.glob("*.nii*"))
+            json_files = list(nifti_output_dir.glob("*.json"))
 
-                # Read and yield the NIfTI file
+            # First yield all the NIfTI files
+            for nifti_file in nifti_files:
+                nifti_filename = nifti_file.name
                 with open(nifti_file, "rb") as f:
                     nifti_content = f.read()
                     yield nifti_filename, BytesIO(nifti_content)
 
-                # Read and yield the JSON file
-                json_file = nifti_file.with_suffix(".json")
-                if json_file.exists():
-                    json_filename = json_file.name
-                    with open(json_file, "rb") as f:
-                        json_content = f.read()
-                        yield json_filename, BytesIO(json_content)
+            # Then yield all the JSON files
+            for json_file in json_files:
+                json_filename = json_file.name
+                with open(json_file, "rb") as f:
+                    json_content = f.read()
+                    yield json_filename, BytesIO(json_content)
 
     except RetriableDicomError as err:
         raise ServiceUnavailableApiError(str(err))
