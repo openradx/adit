@@ -187,17 +187,18 @@ class AditClient:
             default_index: Index to use for default filename if none found
 
         Returns:
-            The extracted filename or a default one
+            The extracted filename
+
+        Raises:
+            ValueError: If no filename can be extracted from the Content-Disposition header
         """
-        filename = None
         if "filename=" in content_disposition:
             filename = content_disposition.split("filename=")[1].strip('"')
+            return filename
 
-        # If no filename was provided, use a default name
-        if not filename:
-            filename = f"file_{default_index}"
-
-        return filename
+        raise ValueError(
+            f"Could not extract filename from Content-Disposition header: {content_disposition}"
+        )
 
     def retrieve_study_metadata(
         self, ae_title: str, study_uid: str, pseudonym: str | None = None
