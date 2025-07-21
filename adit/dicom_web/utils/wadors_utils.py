@@ -191,6 +191,8 @@ async def process_single_fetch(dicom_images: list[Dataset]) -> AsyncIterator[tup
     Process a list of DICOM datasets by converting them to NIfTI format
     and yield the resulting files. Only handles conversion and yielding,
     not the fetching of data.
+
+    For each file pair, yields the JSON file first, then the corresponding NIfTI file.
     """
     temp_dir = tempfile.mkdtemp()
     try:
@@ -217,29 +219,41 @@ async def process_single_fetch(dicom_images: list[Dataset]) -> AsyncIterator[tup
             logger.warning(f"Failed to convert some DICOM files to NIfTI: {str(e)}")
             # If the output directory is empty after a failed conversion, we won't yield any files
 
-        # Collect all NIfTI and JSON files that were successfully created
-        nifti_files = [
-            f
-            for f in await sync_to_async(os.listdir)(nifti_output_dir)
-            if f.endswith((".nii", ".nii.gz"))
-        ]
-        json_files = [
-            f for f in await sync_to_async(os.listdir)(nifti_output_dir) if f.endswith(".json")
-        ]
+        # Get all files in the output directory
+        all_files = await sync_to_async(os.listdir)(nifti_output_dir)
 
-        # First yield all the NIfTI files
-        for nifti_filename in nifti_files:
-            nifti_file_path = os.path.join(nifti_output_dir, nifti_filename)
-            async with aiofiles.open(nifti_file_path, "rb") as f:
-                nifti_content = await f.read()
-                yield nifti_filename, BytesIO(nifti_content)
+        # Create a mapping of base filenames to their corresponding file paths
+        file_pairs = {}
+        for filename in all_files:
+            base_name, ext = os.path.splitext(filename)
+            if ext == ".json":
+                # For JSON files, store directly
+                file_pairs.setdefault(base_name, {}).update({"json": filename})
+            elif ext == ".gz" and base_name.endswith(".nii"):
+                # For .nii.gz files, strip the .nii part from the base_name
+                actual_base = os.path.splitext(base_name)[0]
+                file_pairs.setdefault(actual_base, {}).update({"nifti": filename})
+            elif ext == ".nii":
+                # For .nii files
+                file_pairs.setdefault(base_name, {}).update({"nifti": filename})
 
-        # Then yield all the JSON files
-        for json_filename in json_files:
-            json_file_path = os.path.join(nifti_output_dir, json_filename)
-            async with aiofiles.open(json_file_path, "rb") as f:
-                json_content = await f.read()
-                yield json_filename, BytesIO(json_content)
+        # Yield file pairs, JSON first then NIfTI
+        for base_name, files in file_pairs.items():
+            # First yield the JSON file if it exists
+            if "json" in files:
+                json_filename = files["json"]
+                json_file_path = os.path.join(nifti_output_dir, json_filename)
+                async with aiofiles.open(json_file_path, "rb") as f:
+                    json_content = await f.read()
+                    yield json_filename, BytesIO(json_content)
+
+            # Then yield the NIfTI file if it exists
+            if "nifti" in files:
+                nifti_filename = files["nifti"]
+                nifti_file_path = os.path.join(nifti_output_dir, nifti_filename)
+                async with aiofiles.open(nifti_file_path, "rb") as f:
+                    nifti_content = await f.read()
+                    yield nifti_filename, BytesIO(nifti_content)
     finally:
         # Clean up the temporary directory
         await sync_to_async(shutil.rmtree, thread_sensitive=False)(temp_dir, ignore_errors=True)
