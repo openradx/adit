@@ -332,7 +332,7 @@ CALLING_AE_TITLE = env.str("CALLING_AE_TITLE")
 RECEIVER_AE_TITLE = env.str("RECEIVER_AE_TITLE")
 
 # Path to sample DICOM files, used for testing
-SAMPLE_DICOM_DIR = env.str("SAMPLE_DICOM_DIR", str(BASE_PATH / "samples" / "dicoms"))
+DICOM_SAMPLE_DIR = env.str("DICOM_SAMPLE_DIR", str(BASE_PATH / "samples" / "dicoms"))
 
 # The address and port of the STORE SCP server (part of the receiver).
 # By default the STORE SCP server listens to all interfaces (empty string)

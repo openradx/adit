@@ -34,7 +34,7 @@ def get_sample_dicom_path(patient_id=None):
         Path object pointing to the sample DICOM directory
     """
     # First try environment variable
-    sample_base_dir = os.environ.get("SAMPLE_DICOM_DIR")
+    sample_base_dir = os.environ.get("DICOM_SAMPLE_DIR")
 
     if not sample_base_dir:
         # If env var not set, try common locations
@@ -52,7 +52,7 @@ def get_sample_dicom_path(patient_id=None):
         raise ValueError(
             (
                 "Could not locate sample DICOM directory. "
-                "Please set SAMPLE_DICOM_DIR environment variable."
+                "Please set DICOM_SAMPLE_DIR environment variable."
             )
         )
 
