@@ -64,16 +64,6 @@ class WadoFetcher:
         else:
             raise ValueError(f"Invalid WADO-RS level: {level}.")
 
-    @staticmethod
-    async def execute_fetch(fetch_task: asyncio.Task) -> None:
-        """Execute the fetch task and handle common errors."""
-        try:
-            await asyncio.wait([fetch_task])
-        except RetriableDicomError as err:
-            raise ServiceUnavailableApiError(str(err))
-        except DicomError as err:
-            raise BadGatewayApiError(str(err))
-
 
 async def wado_retrieve(
     source_server: DicomServer,
@@ -187,7 +177,7 @@ async def fetch_dicom_data(
         dicom_images.append(ds)
 
     fetch_task = await wado_fetcher.create_fetch_task(level, callback)
-    await WadoFetcher.execute_fetch(fetch_task)
+    await asyncio.wait([fetch_task])
 
     return dicom_images
 
