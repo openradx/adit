@@ -256,4 +256,7 @@ async def process_single_fetch(dicom_images: list[Dataset]) -> AsyncIterator[tup
                     yield nifti_filename, BytesIO(nifti_content)
     finally:
         # Clean up the temporary directory
-        await sync_to_async(shutil.rmtree, thread_sensitive=False)(temp_dir, ignore_errors=True)
+        try:
+            await sync_to_async(shutil.rmtree, thread_sensitive=False)(temp_dir)
+        except Exception as e:
+            logger.warning(f"Failed to clean up temporary directory {temp_dir}: {str(e)}")

@@ -96,7 +96,7 @@ class AditClient:
         # Process each part in the multipart response
         for part in decoder.parts:
             content_disposition = part.headers.get(b"Content-Disposition", b"").decode("utf-8")  # type: ignore
-            filename = self._extract_filename(content_disposition, len(files))
+            filename = self._extract_filename(content_disposition)
             files.append((filename, BytesIO(part.content)))
 
         return files
@@ -127,7 +127,7 @@ class AditClient:
         # Process each part in the multipart response
         for i, part in enumerate(decoder.parts):
             content_disposition = part.headers.get(b"Content-Disposition", b"").decode("utf-8")  # type: ignore
-            filename = self._extract_filename(content_disposition, i)
+            filename = self._extract_filename(content_disposition)
             yield (filename, BytesIO(part.content))
 
     def retrieve_nifti_series(
@@ -163,7 +163,7 @@ class AditClient:
         # Process each part in the multipart response
         for part in decoder.parts:
             content_disposition = part.headers.get(b"Content-Disposition", b"").decode("utf-8")  # type: ignore
-            filename = self._extract_filename(content_disposition, len(files))
+            filename = self._extract_filename(content_disposition)
             files.append((filename, BytesIO(part.content)))
 
         return files
@@ -200,7 +200,7 @@ class AditClient:
         # Process each part in the multipart response
         for i, part in enumerate(decoder.parts):
             content_disposition = part.headers.get(b"Content-Disposition", b"").decode("utf-8")  # type: ignore
-            filename = self._extract_filename(content_disposition, i)
+            filename = self._extract_filename(content_disposition)
             yield (filename, BytesIO(part.content))
 
     def retrieve_nifti_image(
@@ -237,18 +237,17 @@ class AditClient:
         # Process each part in the multipart response
         for part in decoder.parts:
             content_disposition = part.headers.get(b"Content-Disposition", b"").decode("utf-8")  # type: ignore
-            filename = self._extract_filename(content_disposition, len(files))
+            filename = self._extract_filename(content_disposition)
             files.append((filename, BytesIO(part.content)))
 
         return files
 
-    def _extract_filename(self, content_disposition: str, default_index: int) -> str:
+    def _extract_filename(self, content_disposition: str) -> str:
         """
         Extract filename from Content-Disposition header.
 
         Args:
             content_disposition: The Content-Disposition header value
-            default_index: Index to use for default filename if none found
 
         Returns:
             The extracted filename

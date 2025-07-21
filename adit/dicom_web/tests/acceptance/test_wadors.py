@@ -58,7 +58,7 @@ def get_sample_dicom_path(patient_id=None):
 
     base_path = Path(sample_base_dir)
 
-    if patient_id:
+    if patient_id is not None:
         return base_path / str(patient_id)
     return base_path
 
