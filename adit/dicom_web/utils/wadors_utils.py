@@ -1,10 +1,14 @@
 import asyncio
 import logging
+import os
+import shutil
 import tempfile
 from io import BytesIO
 from pathlib import Path
 from typing import AsyncIterator, Callable, Literal
 
+import aiofiles
+import aiofiles.os
 from adrf.views import sync_to_async
 from pydicom import Dataset
 
@@ -188,41 +192,54 @@ async def process_single_fetch(dicom_images: list[Dataset]) -> AsyncIterator[tup
     and yield the resulting files. Only handles conversion and yielding,
     not the fetching of data.
     """
-    with tempfile.TemporaryDirectory() as temp_dir:
+    temp_dir = tempfile.mkdtemp()
+    try:
         temp_path = Path(temp_dir)
 
         # Write DICOM datasets to temporary files
         for file_idx, dicom_image in enumerate(dicom_images):
             dicom_file_path = temp_path / f"dicom_file_{file_idx}.dcm"
-            write_dataset(dicom_image, dicom_file_path)
+            # Use sync_to_async to make write_dataset non-blocking
+            await sync_to_async(write_dataset, thread_sensitive=False)(dicom_image, dicom_file_path)
 
         # Convert the DICOM files to NIfTI
         nifti_output_dir = temp_path / "nifti_output"
-        nifti_output_dir.mkdir(parents=True, exist_ok=True)
+        await aiofiles.os.makedirs(nifti_output_dir, exist_ok=True)
         converter = DicomToNiftiConverter()
 
         try:
-            # Try to convert the DICOM files to NIfTI
-            converter.convert(temp_path, nifti_output_dir)
+            # Use sync_to_async for the converter
+            await sync_to_async(converter.convert, thread_sensitive=False)(
+                temp_path, nifti_output_dir
+            )
         except Exception as e:
             # Log the error but continue execution
             logger.warning(f"Failed to convert some DICOM files to NIfTI: {str(e)}")
             # If the output directory is empty after a failed conversion, we won't yield any files
 
         # Collect all NIfTI and JSON files that were successfully created
-        nifti_files = list(nifti_output_dir.glob("*.nii*"))
-        json_files = list(nifti_output_dir.glob("*.json"))
+        nifti_files = [
+            f
+            for f in await sync_to_async(os.listdir)(nifti_output_dir)
+            if f.endswith((".nii", ".nii.gz"))
+        ]
+        json_files = [
+            f for f in await sync_to_async(os.listdir)(nifti_output_dir) if f.endswith(".json")
+        ]
 
         # First yield all the NIfTI files
-        for nifti_file in nifti_files:
-            nifti_filename = nifti_file.name
-            with open(nifti_file, "rb") as f:
-                nifti_content = f.read()
+        for nifti_filename in nifti_files:
+            nifti_file_path = os.path.join(nifti_output_dir, nifti_filename)
+            async with aiofiles.open(nifti_file_path, "rb") as f:
+                nifti_content = await f.read()
                 yield nifti_filename, BytesIO(nifti_content)
 
         # Then yield all the JSON files
-        for json_file in json_files:
-            json_filename = json_file.name
-            with open(json_file, "rb") as f:
-                json_content = f.read()
+        for json_filename in json_files:
+            json_file_path = os.path.join(nifti_output_dir, json_filename)
+            async with aiofiles.open(json_file_path, "rb") as f:
+                json_content = await f.read()
                 yield json_filename, BytesIO(json_content)
+    finally:
+        # Clean up the temporary directory
+        await sync_to_async(shutil.rmtree, thread_sensitive=False)(temp_dir, ignore_errors=True)
