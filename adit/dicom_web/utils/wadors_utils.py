@@ -132,52 +132,107 @@ async def wado_retrieve_nifti(
     """
     Returns the generated files (NIfTI and JSON) as tuples in the format
     (filename, file content).
-    """
-    dicom_images: list[Dataset] = []
-    wado_fetcher = WadoFetcher(source_server, query)
 
-    def callback(ds: Dataset) -> None:
-        dicom_images.append(ds)
+    For study-level requests, fetches each series individually to prevent
+    loading the entire study into memory at once.
+    """
+    operator = DicomOperator(source_server)
 
     try:
-        fetch_task = await wado_fetcher.create_fetch_task(level, callback)
-        await WadoFetcher.execute_fetch(fetch_task)
+        # For study-level requests, we need to fetch each series separately
+        if level == "STUDY":
+            # First, get the list of series in the study
+            series_list = await sync_to_async(operator.find_series, thread_sensitive=False)(
+                QueryDataset.create(
+                    StudyInstanceUID=query["StudyInstanceUID"],
+                )
+            )
 
-        with tempfile.TemporaryDirectory() as temp_dir:
-            temp_path = Path(temp_dir)
-            file_idx = 0
+            # Process each series individually
+            for series in series_list:
+                series_query = {
+                    "PatientID": query["PatientID"],
+                    "StudyInstanceUID": query["StudyInstanceUID"],
+                    "SeriesInstanceUID": series.SeriesInstanceUID,
+                }
 
-            # Write DICOM datasets to temporary files
-            for dicom_image in dicom_images:
-                dicom_file_path = temp_path / f"dicom_file_{file_idx}.dcm"
-                write_dataset(dicom_image, dicom_file_path)
-                file_idx += 1
+                # Fetch this individual series
+                dicom_images = await fetch_dicom_data(source_server, series_query, "SERIES")
 
-            # Convert the DICOM files to NIfTI
-            nifti_output_dir = temp_path / "nifti_output"
-            nifti_output_dir.mkdir(parents=True, exist_ok=True)
-            converter = DicomToNiftiConverter()
-            converter.convert(temp_path, nifti_output_dir)
-
-            # Collect all NIfTI and JSON files
-            nifti_files = list(nifti_output_dir.glob("*.nii*"))
-            json_files = list(nifti_output_dir.glob("*.json"))
-
-            # First yield all the NIfTI files
-            for nifti_file in nifti_files:
-                nifti_filename = nifti_file.name
-                with open(nifti_file, "rb") as f:
-                    nifti_content = f.read()
-                    yield nifti_filename, BytesIO(nifti_content)
-
-            # Then yield all the JSON files
-            for json_file in json_files:
-                json_filename = json_file.name
-                with open(json_file, "rb") as f:
-                    json_content = f.read()
-                    yield json_filename, BytesIO(json_content)
+                # Convert to NIfTI and yield the files
+                async for filename, file_content in process_single_fetch(dicom_images):
+                    yield filename, file_content
+        else:
+            # For SERIES and IMAGE levels, process normally
+            dicom_images = await fetch_dicom_data(source_server, query, level)
+            async for filename, file_content in process_single_fetch(dicom_images):
+                yield filename, file_content
 
     except RetriableDicomError as err:
         raise ServiceUnavailableApiError(str(err))
     except DicomError as err:
         raise BadGatewayApiError(str(err))
+
+
+async def fetch_dicom_data(
+    source_server: DicomServer,
+    query: dict[str, str],
+    level: Literal["STUDY", "SERIES", "IMAGE"],
+) -> list[Dataset]:
+    """Fetch DICOM data using WadoFetcher and return the list of datasets"""
+    wado_fetcher = WadoFetcher(source_server, query)
+    dicom_images: list[Dataset] = []
+
+    def callback(ds: Dataset) -> None:
+        dicom_images.append(ds)
+
+    fetch_task = await wado_fetcher.create_fetch_task(level, callback)
+    await WadoFetcher.execute_fetch(fetch_task)
+
+    return dicom_images
+
+
+async def process_single_fetch(dicom_images: list[Dataset]) -> AsyncIterator[tuple[str, BytesIO]]:
+    """
+    Process a list of DICOM datasets by converting them to NIfTI format
+    and yield the resulting files. Only handles conversion and yielding,
+    not the fetching of data.
+    """
+    with tempfile.TemporaryDirectory() as temp_dir:
+        temp_path = Path(temp_dir)
+
+        # Write DICOM datasets to temporary files
+        for file_idx, dicom_image in enumerate(dicom_images):
+            dicom_file_path = temp_path / f"dicom_file_{file_idx}.dcm"
+            write_dataset(dicom_image, dicom_file_path)
+
+        # Convert the DICOM files to NIfTI
+        nifti_output_dir = temp_path / "nifti_output"
+        nifti_output_dir.mkdir(parents=True, exist_ok=True)
+        converter = DicomToNiftiConverter()
+
+        try:
+            # Try to convert the DICOM files to NIfTI
+            converter.convert(temp_path, nifti_output_dir)
+        except Exception as e:
+            # Log the error but continue execution
+            logger.warning(f"Failed to convert some DICOM files to NIfTI: {str(e)}")
+            # If the output directory is empty after a failed conversion, we won't yield any files
+
+        # Collect all NIfTI and JSON files that were successfully created
+        nifti_files = list(nifti_output_dir.glob("*.nii*"))
+        json_files = list(nifti_output_dir.glob("*.json"))
+
+        # First yield all the NIfTI files
+        for nifti_file in nifti_files:
+            nifti_filename = nifti_file.name
+            with open(nifti_file, "rb") as f:
+                nifti_content = f.read()
+                yield nifti_filename, BytesIO(nifti_content)
+
+        # Then yield all the JSON files
+        for json_file in json_files:
+            json_filename = json_file.name
+            with open(json_file, "rb") as f:
+                json_content = f.read()
+                yield json_filename, BytesIO(json_content)
