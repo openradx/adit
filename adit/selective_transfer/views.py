@@ -1,9 +1,28 @@
-from typing import Any, cast
+import asyncio
+import zipfile
+import logging
+import time
+from typing import Any, cast, AsyncGenerator
+from io import BytesIO
+from datetime import datetime
+from stat import S_IFREG
+from stream_zip import async_stream_zip, NO_COMPRESSION_64
 
 from adit_radis_shared.common.types import AuthenticatedHttpRequest
 from adit_radis_shared.common.views import BaseUpdatePreferencesView
 from django.core.exceptions import BadRequest
 from django.urls import reverse_lazy
+from django.http import StreamingHttpResponse
+
+from adit.core.models import DicomServer
+from adit.core.utils.dicom_dataset import QueryDataset, ResultDataset
+from adit.core.utils.dicom_operator import DicomOperator
+from pydicom import Dataset
+from adrf.views import sync_to_async
+from concurrent.futures import ThreadPoolExecutor
+from adit.core.utils.dicom_utils import write_dataset
+
+
 
 from adit.core.views import (
     DicomJobCancelView,
@@ -26,10 +45,7 @@ from .forms import SelectiveTransferJobForm
 from .mixins import SelectiveTransferLockedMixin
 from .models import SelectiveTransferJob, SelectiveTransferTask
 from .tables import SelectiveTransferJobTable, SelectiveTransferTaskTable
-from django.contrib.auth.mixins import LoginRequiredMixin
-from django.views.generic.base import View
-from django.views.generic.detail import SingleObjectMixin
-
+from django.contrib.auth.decorators import login_required, permission_required
 
 SELECTIVE_TRANSFER_SOURCE = "selective_transfer_source"
 SELECTIVE_TRANSFER_DESTINATION = "selective_transfer_destination"
@@ -37,6 +53,7 @@ SELECTIVE_TRANSFER_URGENT = "selective_transfer_urgent"
 SELECTIVE_TRANSFER_SEND_FINISHED_MAIL = "selective_transfer_send_finished_mail"
 SELECTIVE_TRANSFER_ADVANCED_OPTIONS_COLLAPSED = "selective_transfer_advanced_options_collapsed"
 
+logger = logging.getLogger(__name__)
 
 class SelectiveTransferUpdatePreferencesView(
     SelectiveTransferLockedMixin, BaseUpdatePreferencesView
@@ -49,14 +66,131 @@ class SelectiveTransferUpdatePreferencesView(
         SELECTIVE_TRANSFER_ADVANCED_OPTIONS_COLLAPSED,
     ]
 
-class SelectiveTransferDownloadStudyView(
-    SelectiveTransferLockedMixin,
-    LoginRequiredMixin,
-    View
-):
-    async def get(self, request, *args, **kwargs):
-        pass
+def download_study(request, server_id, patient_id, study_uid, callback):
+    try:
+        server = DicomServer.objects.accessible_by_user(request.user, "source").get(id=server_id)
+    except DicomServer.DoesNotExist:
+        return render_error(request, "Invalid DICOM server.")
+    
+    operator = DicomOperator(server)
 
+    operator.fetch_study(
+        patient_id=patient_id,
+        study_uid=study_uid,
+        callback=callback,
+    )
+
+
+@login_required
+@permission_required("selective_transfer.download_study")
+async def selective_transfer_download_study_view(
+    request: AuthenticatedHttpRequest,
+    #server_id: str | None = None,
+    patient_id: str | None = None,
+    study_uid: str | None = None,
+) -> StreamingHttpResponse:
+    #hard coded server id
+    server_id = 1
+
+    loop = asyncio.get_running_loop()
+    queue = asyncio.Queue[Dataset]()
+    executor = ThreadPoolExecutor()
+
+    def callback(ds: Dataset) -> None:
+        # Schedules a task on the event loop that puts the dataset into the async queue
+        loop.call_soon_threadsafe(queue.put_nowait, ds)
+
+    fetch_task = asyncio.create_task(
+        sync_to_async(download_study, thread_sensitive=False)(
+            request=request,
+            server_id=server_id,
+            patient_id=patient_id,
+            study_uid=study_uid,
+            callback=callback,
+        )
+    )
+    
+    async def add_sentinel_when_done():
+        await fetch_task
+        await queue.put(None)
+
+    asyncio.create_task(add_sentinel_when_done())
+
+    #Synchronous blocking function
+    def ds_to_buffer(ds):
+        patient_folder = patient_id
+
+        file_name = f"{ds.SOPInstanceUID}.dcm"
+                
+        zip_path = f"{patient_folder}/{file_name}"
+        
+        dcm_buffer = BytesIO()
+        write_dataset(ds, dcm_buffer)
+        dcm_buffer.seek(0)
+
+        return dcm_buffer, zip_path
+
+    # async def ds_to_buffer(ds):
+    #     patient_folder = patient_id
+
+    #     file_name = f"{ds.SOPInstanceUID}.dcm"
+                
+    #     zip_path = f"{patient_folder}/{file_name}"
+        
+    #     dcm_buffer = BytesIO()
+    #     write_dataset(ds, dcm_buffer)
+    #     dcm_buffer.seek(0)
+
+    #     return dcm_buffer, zip_path
+
+    async def single_buffer_gen(content):
+        yield content
+
+    async def async_queue_to_gen():
+        while True:
+            # Waits on the queue, when a queue item is retrieved we write it to an in-memory buffer and yield it
+            
+            logger.debug(queue.qsize())
+            queue_ds = await queue.get()
+
+            if queue_ds is None:
+                logger.debug("break")
+                break
+            logger.debug(queue_ds.SOPInstanceUID)
+
+            ds_buffer, zip_path = await loop.run_in_executor(executor, ds_to_buffer, queue_ds)
+            yield single_buffer_gen(ds_buffer.getvalue()), zip_path
+            
+            # ds_buffer, zip_path = await ds_to_buffer(queue_ds)
+            # yield single_buffer_gen(ds_buffer.getvalue()), zip_path
+
+
+    async def generate_files_to_add_in_zip():
+        modified_at = datetime.now()
+        mode = S_IFREG | 0o600
+        async for buffer_gen, zip_path in async_queue_to_gen():
+            yield (zip_path, modified_at, mode, NO_COMPRESSION_64, buffer_gen)
+    
+    async def stream_zip() -> AsyncGenerator[bytes]:
+        start_time = time.monotonic()
+        try:
+            zipped_files = async_stream_zip(generate_files_to_add_in_zip())
+            async for zipped_file in zipped_files:
+                yield zipped_file
+        finally:
+            executor.shutdown(wait=True)
+            elapsed = time.monotonic() - start_time
+            logger.debug(f"Download completed in {elapsed:.2f} seconds")
+
+    return StreamingHttpResponse(
+        streaming_content=stream_zip(),
+        headers={
+            "Content-Type": 'application/zip',
+            "Content-Disposition": f'attachment; filename="study_download.zip"',
+            "Access-Control-Expose-Headers": "Content-Disposition",
+        },
+    )
+    
 
 
 

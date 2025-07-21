@@ -16,7 +16,7 @@ from .views import (
     SelectiveTransferTaskKillView,
     SelectiveTransferTaskResetView,
     SelectiveTransferUpdatePreferencesView,
-    SelectiveTransferDownloadStudyView,
+    selective_transfer_download_study_view
 )
 
 urlpatterns = [
@@ -30,8 +30,8 @@ urlpatterns = [
         name="selective_transfer_help",
     ),
     path(
-        "download/<str:study_uid>",
-        SelectiveTransferDownloadStudyView.as_view(),
+        "download/patients/<str:patient_id>/studies/<str:study_uid>",
+        selective_transfer_download_study_view,
         name="selective_transfer_download_study",
     ),
     path(
