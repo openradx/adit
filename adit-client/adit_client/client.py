@@ -101,6 +101,35 @@ class AditClient:
 
         return files
 
+    def iter_nifti_study(self, ae_title: str, study_uid: str) -> Iterator[tuple[str, BytesIO]]:
+        """
+        Iterate over NIfTI files from the API for a specific study.
+
+        Args:
+            ae_title: The AE title of the server.
+            study_uid: The study instance UID.
+
+        Yields:
+            Tuples containing the filename and file content.
+        """
+        # Construct the full URL
+        url = f"{self.server_url}/api/dicom-web/{ae_title}/wadors/studies/{study_uid}/nifti"
+
+        # Call the API
+        response = self._create_dicom_web_client(ae_title)._http_get(
+            url,
+            headers={"Accept": "multipart/related; type=application/octet-stream"},
+        )
+
+        # Create a decoder for the multipart response
+        decoder = MultipartDecoder.from_response(response)
+
+        # Process each part in the multipart response
+        for i, part in enumerate(decoder.parts):
+            content_disposition = part.headers.get(b"Content-Disposition", b"").decode("utf-8")  # type: ignore
+            filename = self._extract_filename(content_disposition, i)
+            yield (filename, BytesIO(part.content))
+
     def retrieve_nifti_series(
         self, ae_title: str, study_uid: str, series_uid: str
     ) -> list[tuple[str, BytesIO]]:
@@ -138,6 +167,41 @@ class AditClient:
             files.append((filename, BytesIO(part.content)))
 
         return files
+
+    def iter_nifti_series(
+        self, ae_title: str, study_uid: str, series_uid: str
+    ) -> Iterator[tuple[str, BytesIO]]:
+        """
+        Iterate over NIfTI files from the API for a specific series.
+
+        Args:
+            ae_title: The AE title of the server.
+            study_uid: The study instance UID.
+            series_uid: The series instance UID.
+
+        Yields:
+            Tuples containing the filename and file content.
+        """
+        # Construct the full URL
+        url = (
+            f"{self.server_url}/api/dicom-web/{ae_title}/wadors/studies/{study_uid}/"
+            f"series/{series_uid}/nifti"
+        )
+
+        # Call the API
+        response = self._create_dicom_web_client(ae_title)._http_get(
+            url,
+            headers={"Accept": "multipart/related; type=application/octet-stream"},
+        )
+
+        # Create a decoder for the multipart response
+        decoder = MultipartDecoder.from_response(response)
+
+        # Process each part in the multipart response
+        for i, part in enumerate(decoder.parts):
+            content_disposition = part.headers.get(b"Content-Disposition", b"").decode("utf-8")  # type: ignore
+            filename = self._extract_filename(content_disposition, i)
+            yield (filename, BytesIO(part.content))
 
     def retrieve_nifti_image(
         self, ae_title: str, study_uid: str, series_uid: str, image_uid: str
