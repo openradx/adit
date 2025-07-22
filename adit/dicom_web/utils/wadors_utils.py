@@ -1,8 +1,6 @@
 import asyncio
 import logging
 import os
-import shutil
-import tempfile
 from io import BytesIO
 from pathlib import Path
 from typing import AsyncIterator, Callable, Literal
@@ -10,6 +8,7 @@ from typing import AsyncIterator, Callable, Literal
 import aiofiles
 import aiofiles.os
 from adrf.views import sync_to_async
+from aiofiles.tempfile import TemporaryDirectory
 from pydicom import Dataset
 
 from adit.core.errors import DicomError, RetriableDicomError
@@ -200,8 +199,7 @@ async def process_single_fetch(dicom_images: list[Dataset]) -> AsyncIterator[tup
 
     For each file pair, yields the JSON file first, then the corresponding NIfTI file.
     """
-    temp_dir = tempfile.mkdtemp()
-    try:
+    async with TemporaryDirectory() as temp_dir:
         temp_path = Path(temp_dir)
 
         # Write DICOM datasets to temporary files
@@ -260,9 +258,3 @@ async def process_single_fetch(dicom_images: list[Dataset]) -> AsyncIterator[tup
                 async with aiofiles.open(nifti_file_path, "rb") as f:
                     nifti_content = await f.read()
                     yield nifti_filename, BytesIO(nifti_content)
-    finally:
-        # Clean up the temporary directory
-        try:
-            await sync_to_async(shutil.rmtree, thread_sensitive=False)(temp_dir)
-        except Exception as e:
-            logger.warning(f"Failed to clean up temporary directory {temp_dir}: {str(e)}")
