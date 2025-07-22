@@ -9,6 +9,7 @@ import pydicom
 import pytest
 from adit_client import AditClient
 from adit_radis_shared.common.utils.testing_helpers import ChannelsLiveServer
+from django.conf import settings
 from requests.exceptions import HTTPError
 
 from adit.core.models import DicomServer
@@ -22,7 +23,7 @@ from adit.core.utils.testing_helpers import (
 from adit.dicom_web.utils.testing_helpers import create_user_with_dicom_web_group_and_token
 
 
-# Get sample data path from environment variable or use a relative path as fallback
+# Get sample data path from Django settings or use a relative path as fallback
 def get_sample_dicom_path(patient_id=None):
     """
     Get the path to the sample DICOM files.
@@ -33,11 +34,11 @@ def get_sample_dicom_path(patient_id=None):
     Returns:
         Path object pointing to the sample DICOM directory
     """
-    # First try environment variable
-    sample_base_dir = os.environ.get("DICOM_SAMPLE_DIR")
+    # Use DICOM_SAMPLE_DIR from Django settings
+    sample_base_dir = settings.DICOM_SAMPLE_DIR
 
-    if not sample_base_dir:
-        # If env var not set, try common locations
+    if not sample_base_dir or not Path(sample_base_dir).exists():
+        # If settings path doesn't exist, try common locations
         for path in [
             # Standard location in container
             "/app/samples/dicoms",
@@ -50,10 +51,7 @@ def get_sample_dicom_path(patient_id=None):
 
     if not sample_base_dir:
         raise ValueError(
-            (
-                "Could not locate sample DICOM directory. "
-                "Please set DICOM_SAMPLE_DIR environment variable."
-            )
+            ("Could not locate sample DICOM directory. Please check DICOM_SAMPLE_DIR in settings.")
         )
 
     base_path = Path(sample_base_dir)

@@ -331,7 +331,8 @@ CALLING_AE_TITLE = env.str("CALLING_AE_TITLE")
 # The AE title where the receiver is listening for incoming files.
 RECEIVER_AE_TITLE = env.str("RECEIVER_AE_TITLE")
 
-# Path to sample DICOM files, used for testing
+# Path to sample DICOM files, used only for testing purposes.
+# This shouldn't be needed in production environments.
 DICOM_SAMPLE_DIR = env.str("DICOM_SAMPLE_DIR", str(BASE_PATH / "samples" / "dicoms"))
 
 # The address and port of the STORE SCP server (part of the receiver).
