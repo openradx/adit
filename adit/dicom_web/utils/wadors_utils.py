@@ -244,8 +244,11 @@ async def process_single_fetch(dicom_images: list[Dataset]) -> AsyncIterator[tup
             # Raise the original exception to properly propagate serious errors
             raise e
 
-        # Get all files in the output directory
-        all_files = await sync_to_async(os.listdir)(nifti_output_dir)
+        # Get all files in the output directory using aiofiles instead of sync_to_async(os.listdir)
+        all_files = []
+        entries = await aiofiles.os.scandir(nifti_output_dir)
+        for entry in entries:
+            all_files.append(entry.name)
 
         # Create a mapping of base filenames to their corresponding file paths
         file_pairs = {}
