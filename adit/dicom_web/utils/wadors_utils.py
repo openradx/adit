@@ -180,8 +180,14 @@ async def fetch_dicom_data(
     def callback(ds: Dataset) -> None:
         dicom_images.append(ds)
 
-    fetch_task = await wado_fetcher.create_fetch_task(level, callback)
-    await asyncio.wait([fetch_task])
+    try:
+        fetch_task = await wado_fetcher.create_fetch_task(level, callback)
+        await fetch_task
+
+    except RetriableDicomError as err:
+        raise ServiceUnavailableApiError(str(err))
+    except DicomError as err:
+        raise BadGatewayApiError(str(err))
 
     return dicom_images
 
