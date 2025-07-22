@@ -313,7 +313,13 @@ class TransferTaskProcessor(DicomTaskProcessor):
 
             final_folder: Path
             if settings.CREATE_SERIES_SUB_FOLDERS:
-                series_folder_name = sanitize_filename(f"{ds.SeriesNumber}-{ds.SeriesDescription}")
+                series_number = ds.get("SeriesNumber")
+                if not series_number:
+                    series_folder_name = ds.SeriesInstanceUID
+                else:
+                    series_description = ds.get("SeriesDescription", "Undefined")
+                    series_folder_name = f"{series_number}-{series_description}"
+                series_folder_name = sanitize_filename(series_folder_name)
                 final_folder = study_folder / series_folder_name
             else:
                 final_folder = study_folder
