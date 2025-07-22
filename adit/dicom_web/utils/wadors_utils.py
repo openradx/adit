@@ -11,7 +11,13 @@ from adrf.views import sync_to_async
 from aiofiles.tempfile import TemporaryDirectory
 from pydicom import Dataset
 
-from adit.core.errors import DicomError, RetriableDicomError
+from adit.core.errors import (
+    DicomConversionError,
+    DicomError,
+    NoSpatialDataError,
+    NoValidDicomError,
+    RetriableDicomError,
+)
 from adit.core.models import DicomServer
 from adit.core.utils.dicom_dataset import QueryDataset
 from adit.core.utils.dicom_manipulator import DicomManipulator
@@ -198,6 +204,10 @@ async def process_single_fetch(dicom_images: list[Dataset]) -> AsyncIterator[tup
     not the fetching of data.
 
     For each file pair, yields the JSON file first, then the corresponding NIfTI file.
+
+    Expected exceptions like NoValidDicomError and NoSpatialDataError are handled
+    silently as these indicate series that simply cannot be converted to NIfTI,
+    rather than actual errors.
     """
     async with TemporaryDirectory() as temp_dir:
         temp_path = Path(temp_dir)
@@ -218,10 +228,21 @@ async def process_single_fetch(dicom_images: list[Dataset]) -> AsyncIterator[tup
             await sync_to_async(converter.convert, thread_sensitive=False)(
                 temp_path, nifti_output_dir
             )
+        except (NoValidDicomError, NoSpatialDataError):
+            # These exceptions are expected for series that cannot be converted to NIfTI
+            # For example, non-image series (e.g., SR documents) or series without spatial data
+            # No warning needed, just skip this series without yielding any files
+            return
+        except DicomConversionError as e:
+            # Log warning for conversion errors that aren't critical but worth noting
+            logger.warning(f"Failed to convert DICOM files to NIfTI: {str(e)}")
+            # For conversion errors, there won't be any output files to process
+            return
         except Exception as e:
-            # Log the error but continue execution
-            logger.warning(f"Failed to convert some DICOM files to NIfTI: {str(e)}")
-            # If the output directory is empty after a failed conversion, we won't yield any files
+            # For serious errors (disk full, permissions, etc.), log and propagate the error
+            logger.error(f"Error during DICOM to NIfTI conversion: {str(e)}")
+            # Raise the original exception to properly propagate serious errors
+            raise e
 
         # Get all files in the output directory
         all_files = await sync_to_async(os.listdir)(nifti_output_dir)
