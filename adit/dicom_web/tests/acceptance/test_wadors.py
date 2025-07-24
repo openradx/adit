@@ -952,3 +952,129 @@ def test_retrieve_nifti_image(channels_live_server: ChannelsLiveServer):
             assert file_content.getvalue() == converted_content, (
                 f"Content mismatch for file {converted_file.name}"
             )
+
+
+@pytest.mark.acceptance
+@pytest.mark.order("last")
+@pytest.mark.django_db(transaction=True)
+def test_iter_nifti_study(channels_live_server: ChannelsLiveServer):
+    setup_dimse_orthancs()
+
+    _, group, token = create_user_with_dicom_web_group_and_token()
+    server = DicomServer.objects.get(ae_title="ORTHANC1")
+    grant_access(group, server, source=True)
+    adit_client = AditClient(server_url=channels_live_server.url, auth_token=token)
+
+    metadata = load_sample_dicoms_metadata("1001")
+    study_uid: str = metadata.iloc[0]["StudyInstanceUID"]
+
+    # Use iter_nifti_study to stream the files
+    nifti_files = []
+    for filename, file_content in adit_client.iter_nifti_study(server.ae_title, study_uid):
+        nifti_files.append((filename, file_content.read()))
+        # Reset file pointer for comparison later
+        file_content.seek(0)
+
+    assert len(nifti_files) > 0, "No NIfTI files were streamed"
+
+    # Compare with the non-streaming version
+    full_nifti_files = adit_client.retrieve_nifti_study(server.ae_title, study_uid)
+    
+    # Normalize filenames returned by both methods
+    streamed_files_dict = {filename: content for filename, content in nifti_files}
+    full_files_dict = {filename: file_content.read() for filename, file_content in full_nifti_files}
+    
+    # Check that we have the same files with the same content
+    assert set(streamed_files_dict.keys()) == set(full_files_dict.keys()), (
+        "Files returned by iter_nifti_study and retrieve_nifti_study don't match"
+    )
+    
+    for filename, content in streamed_files_dict.items():
+        assert content == full_files_dict[filename], (
+            f"Content mismatch for file {filename} between streamed and full version"
+        )
+
+
+@pytest.mark.acceptance
+@pytest.mark.order("last")
+@pytest.mark.django_db(transaction=True)
+def test_iter_nifti_series(channels_live_server: ChannelsLiveServer):
+    setup_dimse_orthancs()
+
+    _, group, token = create_user_with_dicom_web_group_and_token()
+    server = DicomServer.objects.get(ae_title="ORTHANC1")
+    grant_access(group, server, source=True)
+    adit_client = AditClient(server_url=channels_live_server.url, auth_token=token)
+
+    metadata = load_sample_dicoms_metadata("1001")
+    study_uid: str = metadata.iloc[0]["StudyInstanceUID"]
+    series_uid: str = metadata.iloc[0]["SeriesInstanceUID"]
+
+    # Use iter_nifti_series to stream the files
+    nifti_files = []
+    for filename, file_content in adit_client.iter_nifti_series(server.ae_title, study_uid, series_uid):
+        nifti_files.append((filename, file_content.read()))
+        # Reset file pointer for comparison later
+        file_content.seek(0)
+
+    assert len(nifti_files) > 0, "No NIfTI files were streamed"
+
+    # Compare with the non-streaming version
+    full_nifti_files = adit_client.retrieve_nifti_series(server.ae_title, study_uid, series_uid)
+    
+    # Normalize filenames returned by both methods
+    streamed_files_dict = {filename: content for filename, content in nifti_files}
+    full_files_dict = {filename: file_content.read() for filename, file_content in full_nifti_files}
+    
+    # Check that we have the same files with the same content
+    assert set(streamed_files_dict.keys()) == set(full_files_dict.keys()), (
+        "Files returned by iter_nifti_series and retrieve_nifti_series don't match"
+    )
+    
+    for filename, content in streamed_files_dict.items():
+        assert content == full_files_dict[filename], (
+            f"Content mismatch for file {filename} between streamed and full version"
+        )
+
+
+@pytest.mark.acceptance
+@pytest.mark.order("last")
+@pytest.mark.django_db(transaction=True)
+def test_iter_nifti_image(channels_live_server: ChannelsLiveServer):
+    setup_dimse_orthancs()
+
+    _, group, token = create_user_with_dicom_web_group_and_token()
+    server = DicomServer.objects.get(ae_title="ORTHANC1")
+    grant_access(group, server, source=True)
+    adit_client = AditClient(server_url=channels_live_server.url, auth_token=token)
+
+    metadata = load_sample_dicoms_metadata("1001")
+    study_uid: str = metadata.iloc[0]["StudyInstanceUID"]
+    series_uid: str = metadata.iloc[0]["SeriesInstanceUID"]
+    image_uid: str = metadata.iloc[0]["SOPInstanceUID"]
+
+    # Use iter_nifti_image to stream the files
+    nifti_files = []
+    for filename, file_content in adit_client.iter_nifti_image(server.ae_title, study_uid, series_uid, image_uid):
+        nifti_files.append((filename, file_content.read()))
+        # Reset file pointer for comparison later
+        file_content.seek(0)
+
+    assert len(nifti_files) > 0, "No NIfTI files were streamed"
+
+    # Compare with the non-streaming version
+    full_nifti_files = adit_client.retrieve_nifti_image(server.ae_title, study_uid, series_uid, image_uid)
+    
+    # Normalize filenames returned by both methods
+    streamed_files_dict = {filename: content for filename, content in nifti_files}
+    full_files_dict = {filename: file_content.read() for filename, file_content in full_nifti_files}
+    
+    # Check that we have the same files with the same content
+    assert set(streamed_files_dict.keys()) == set(full_files_dict.keys()), (
+        "Files returned by iter_nifti_image and retrieve_nifti_image don't match"
+    )
+    
+    for filename, content in streamed_files_dict.items():
+        assert content == full_files_dict[filename], (
+            f"Content mismatch for file {filename} between streamed and full version"
+        )
