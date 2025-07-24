@@ -1,10 +1,9 @@
 import importlib.metadata
 from io import BytesIO
-from typing import Iterator
+from typing import Iterator, Union
 
 from dicomweb_client import DICOMwebClient, session_utils
 from pydicom import Dataset
-from requests_toolbelt.multipart.decoder import MultipartDecoder
 
 
 class AditClient:
@@ -84,120 +83,123 @@ class AditClient:
         url = f"{self.server_url}/api/dicom-web/{ae_title}/wadors/studies/{study_uid}/nifti"
 
         # Call the API
-        response = self._create_dicom_web_client(ae_title)._http_get(
+        dicomweb_client = self._create_dicom_web_client(ae_title)
+        response = dicomweb_client._http_get(
             url,
             headers={"Accept": "multipart/related; type=application/octet-stream"},
+            stream=True,
         )
 
-        # Create a decoder for the multipart response
-        decoder = MultipartDecoder.from_response(response)
-        files = []
-
-        # Process each part in the multipart response
-        for part in decoder.parts:
-            content_disposition = part.headers.get(b"Content-Disposition", b"").decode("utf-8")  # type: ignore
-            filename = self._extract_filename(content_disposition)
-            files.append((filename, BytesIO(part.content)))
-
-        return files
+        # Use the _iter_multipart_response method to process the response with stream=False
+        # to load all data at once for the retrieval method
+        return list(self._iter_multipart_response(response, stream=False))
 
     def _extract_filename(self, content_disposition: str) -> str:
-        """Extract filename from Content-Disposition header."""
+        """Extract filename from Content-Disposition header.
+
+        Parameters
+        ----------
+        content_disposition: str
+            The Content-Disposition header value
+
+        Returns
+        -------
+        str
+            The extracted filename
+
+        Raises
+        ------
+        ValueError
+            If no filename is found in the Content-Disposition header
+        """
         if not content_disposition or "filename=" not in content_disposition:
-            return "unknown.nii.gz"
+            raise ValueError("No filename found in Content-Disposition header")
 
         filename = content_disposition.split("filename=")[1].strip('"')
         return filename
 
-    def _iter_multipart_response(self, response) -> Iterator[tuple[str, BytesIO]]:
+    def _extract_part_content_with_headers(self, part: bytes) -> Union[bytes, None]:
+        """Extract content from a single part of a multipart response message, including headers.
+
+        This method performs the same validation as _extract_part_content in DICOMWebClient but
+        returns the whole part including headers instead of just the content. It is used to patch
+        the DICOMwebClient's method to allow access to headers in multipart responses.
+
+        Parameters
+        ----------
+        part: bytes
+            Individual part of a multipart message
+
+        Returns
+        -------
+        Union[bytes, None]
+            Content of the message part (including headers) or ``None`` if part is empty
+        """
+        if part in (b"", b"--", b"\r\n") or part.startswith(b"--\r\n"):
+            return None
+
+        return part
+
+    def _iter_multipart_response(self, response, stream=False) -> Iterator[tuple[str, BytesIO]]:
         """
         Process a multipart response in chunks, yielding files as they are received.
 
         Args:
             response: The streaming response object from requests.
+            stream: Whether to stream the data in chunks (True) or load it all at once (False).
 
         Yields:
             Tuples containing the filename and file content as they are received.
+
+        Raises:
+            ValueError: If no filename can be determined from headers
         """
-        # Get content type to determine boundary
-        content_type = response.headers.get("Content-Type", "")
-        if not content_type:
-            raise ValueError("Response does not have a Content-Type header")
+        # Create a DICOMwebClient instance to access _decode_multipart_message
+        dicomweb_client = self._create_dicom_web_client("")
 
-        # Extract the boundary from the content type
+        # Store the original method to restore it later
+        original_extract_method = dicomweb_client._extract_part_content
+
         try:
-            boundary = content_type.split("boundary=")[1].strip()
-        except (IndexError, AttributeError):
-            raise ValueError(f"Invalid Content-Type header: {content_type}")
+            # Replace the extract method with our version that includes headers
+            dicomweb_client._extract_part_content = self._extract_part_content_with_headers
 
-        boundary_bytes = f"--{boundary}".encode()
-        end_boundary_bytes = f"--{boundary}--".encode()
+            # Use the DICOMwebClient's _decode_multipart_message method to process the response
+            for part in dicomweb_client._decode_multipart_message(response, stream=stream):
+                # Extract headers from the part
+                headers = {}
+                content = part
 
-        buffer = bytearray()
+                # Try to parse headers if we have a complete part with headers
+                idx = part.find(b"\r\n\r\n")
+                if idx > -1:
+                    headers_bytes = part[:idx]
+                    content = part[idx + 4 :]
 
-        # Process the response in chunks - 512KB chunk size
-        for chunk in response.iter_content(chunk_size=524288):  # 512 * 1024 = 512KB
-            if chunk:
-                buffer.extend(chunk)
+                    for header_line in headers_bytes.split(b"\r\n"):
+                        if header_line and b":" in header_line:
+                            name, value = header_line.split(b":", 1)
+                            headers[name.decode("utf-8").strip()] = value.decode("utf-8").strip()
 
-                # Process any complete parts in the buffer
-                while True:
-                    # Check for part boundary
-                    boundary_index = buffer.find(boundary_bytes)
-
-                    if boundary_index >= 0:
-                        # Extract the part data (excluding the boundary)
-                        part_data = bytes(buffer[:boundary_index])
-
-                        # Remove the processed part and boundary from buffer
-                        buffer = buffer[boundary_index + len(boundary_bytes) :]
-
-                        # Only process parts that have Content-Disposition
-                        #  (skip the first empty one)
-                        if part_data and b"Content-Disposition" in part_data:
-                            # Split headers and content
-                            headers_end = part_data.find(b"\r\n\r\n")
-                            if headers_end > 0:
-                                headers_text = part_data[:headers_end].decode("utf-8")
-                                content = part_data[headers_end + 4 :]
-
-                                # Extract filename from Content-Disposition header
-                                filename = None
-                                for line in headers_text.split("\r\n"):
-                                    if (
-                                        line.startswith("Content-Disposition:")
-                                        and "filename=" in line
-                                    ):
-                                        filename = line.split("filename=")[1].strip('"')
-                                        break
-
-                                if filename:
-                                    # Yield the file immediately as we process it
-                                    yield (filename, BytesIO(content))
-                    else:
-                        # If no complete part found, check for end boundary
-                        if end_boundary_bytes in buffer:
-                            # We've reached the end of the response
+                # Try to get filename from Content-Disposition header in part headers
+                content_disposition = headers.get("Content-Disposition")
+                if content_disposition:
+                    filename = self._extract_filename(content_disposition)
+                else:
+                    # Fallback to response headers if part headers not found
+                    for header, value in response.headers.items():
+                        if header.lower() == "content-disposition":
+                            filename = self._extract_filename(value)
                             break
-                        # No complete part and no end boundary, wait for more data
-                        break
+                    else:
+                        # No Content-Disposition header found in part or response
+                        raise ValueError("No Content-Disposition header found in response")
 
-        # Process any remaining data in the buffer
-        remaining_data = bytes(buffer)
-        if remaining_data and b"Content-Disposition" in remaining_data:
-            headers_end = remaining_data.find(b"\r\n\r\n")
-            if headers_end > 0:
-                headers_text = remaining_data[:headers_end].decode("utf-8")
-                content = remaining_data[headers_end + 4 :]
-
-                filename = None
-                for line in headers_text.split("\r\n"):
-                    if line.startswith("Content-Disposition:") and "filename=" in line:
-                        filename = line.split("filename=")[1].strip('"')
-                        break
-
-                if filename:
-                    yield (filename, BytesIO(content))
+                # Yield the filename and content as BytesIO
+                yield (filename, BytesIO(content))
+        finally:
+            # Restore the original method
+            dicomweb_client._extract_part_content = original_extract_method
 
     def iter_nifti_study(self, ae_title: str, study_uid: str) -> Iterator[tuple[str, BytesIO]]:
         """
@@ -221,7 +223,7 @@ class AditClient:
             stream=True,
         )
 
-        yield from self._iter_multipart_response(response)
+        yield from self._iter_multipart_response(response, stream=True)
 
     def retrieve_nifti_series(
         self, ae_title: str, study_uid: str, series_uid: str
@@ -244,22 +246,15 @@ class AditClient:
         )
 
         # Call the API
-        response = self._create_dicom_web_client(ae_title)._http_get(
+        dicomweb_client = self._create_dicom_web_client(ae_title)
+        response = dicomweb_client._http_get(
             url,
             headers={"Accept": "multipart/related; type=application/octet-stream"},
+            stream=True,
         )
 
-        # Create a decoder for the multipart response
-        decoder = MultipartDecoder.from_response(response)
-        files = []
-
-        # Process each part in the multipart response
-        for part in decoder.parts:
-            content_disposition = part.headers.get(b"Content-Disposition", b"").decode("utf-8")  # type: ignore
-            filename = self._extract_filename(content_disposition)
-            files.append((filename, BytesIO(part.content)))
-
-        return files
+        # Use the _iter_multipart_response method to process the response with stream=False
+        return list(self._iter_multipart_response(response, stream=False))
 
     def iter_nifti_series(
         self, ae_title: str, study_uid: str, series_uid: str
@@ -289,7 +284,7 @@ class AditClient:
             stream=True,
         )
 
-        yield from self._iter_multipart_response(response)
+        yield from self._iter_multipart_response(response, stream=True)
 
     def retrieve_nifti_image(
         self, ae_title: str, study_uid: str, series_uid: str, image_uid: str
@@ -313,22 +308,46 @@ class AditClient:
         )
 
         # Call the API
-        response = self._create_dicom_web_client(ae_title)._http_get(
+        dicomweb_client = self._create_dicom_web_client(ae_title)
+        response = dicomweb_client._http_get(
             url,
             headers={"Accept": "multipart/related; type=application/octet-stream"},
+            stream=True,
         )
 
-        # Create a decoder for the multipart response
-        decoder = MultipartDecoder.from_response(response)
-        files = []
+        # Use the _iter_multipart_response method to process the response with stream=False
+        return list(self._iter_multipart_response(response, stream=False))
 
-        # Process each part in the multipart response
-        for part in decoder.parts:
-            content_disposition = part.headers.get(b"Content-Disposition", b"").decode("utf-8")  # type: ignore
-            filename = self._extract_filename(content_disposition)
-            files.append((filename, BytesIO(part.content)))
+    def iter_nifti_image(
+        self, ae_title: str, study_uid: str, series_uid: str, image_uid: str
+    ) -> Iterator[tuple[str, BytesIO]]:
+        """
+        Iterate over NIfTI files from the API for a specific image.
 
-        return files
+        Args:
+            ae_title: The AE title of the server.
+            study_uid: The study instance UID.
+            series_uid: The series instance UID.
+            image_uid: The SOP instance UID.
+
+        Yields:
+            Tuples containing the filename and file content as they are received from the API.
+        """
+        # Construct the full URL
+        url = (
+            f"{self.server_url}/api/dicom-web/{ae_title}/wadors/studies/{study_uid}/"
+            f"series/{series_uid}/instances/{image_uid}/nifti"
+        )
+
+        # Create client and set up the streaming request
+        dicomweb_client = self._create_dicom_web_client(ae_title)
+        response = dicomweb_client._http_get(
+            url,
+            headers={"Accept": "multipart/related; type=application/octet-stream"},
+            stream=True,
+        )
+
+        yield from self._iter_multipart_response(response, stream=True)
 
     def retrieve_study_metadata(
         self, ae_title: str, study_uid: str, pseudonym: str | None = None
