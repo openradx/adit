@@ -23,8 +23,6 @@ jobs:
           python-version-file: "pyproject.toml"
       - name: Install dependencies
         run: uv sync
-      - name: Check Ruff version
-        run: uv run ruff --version
       - name: Configure environment
         run: uv run ./cli.py init-workspace
       - name: Set up Docker Buildx
@@ -43,7 +41,7 @@ jobs:
       - name: Run linting
         # https://github.com/actions/runner/issues/241#issuecomment-745902718
         shell: 'script -q -e -c "bash {0}"'
-        run: uv run ruff check --config pyproject.toml .
+        run: uv run ./cli.py lint
       - name: Run tests
         shell: 'script -q -e -c "bash {0}"'
         run: uv run ./cli.py test -- --cov

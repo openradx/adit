@@ -21,6 +21,3 @@ source = "uv-dynamic-versioning"
 
 [tool.uv-dynamic-versioning]
 pattern = "default-unprefixed"
-
-[tool]
-# Use parent Ruff configuration
