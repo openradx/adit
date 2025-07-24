@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from .base import *  # noqa: F403
 
 DEBUG = False
@@ -7,6 +9,12 @@ EXAMPLE_APP = True
 INSTALLED_APPS += [  # noqa: F405
     "adit.core.tests.example_app.apps.ExampleAppConfig",
 ]
+
+# The base directory of the project (the root of the repository)
+BASE_PATH = Path(__file__).resolve(strict=True).parent.parent.parent
+
+# Path to sample DICOM files, used only for testing purposes.
+DICOM_SAMPLE_DIR = str(BASE_PATH / "samples" / "dicoms")
 
 # We must force our background workers that a started during acceptance tests as
 # a subprocess to use the test database.

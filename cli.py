@@ -2,8 +2,7 @@
 # PYTHON_ARGCOMPLETE_OK
 import argparse
 
-from adit_radis_shared.cli import helper as cli_helper
-from adit_radis_shared.cli import parsers
+from adit_radis_shared.cli import helper as cli_helper, parsers
 from adit_radis_shared.cli.setup import setup_root_parser
 
 

@@ -35,35 +35,37 @@ class DicomWebWadoRenderer(BaseRenderer):
         return str
 
 
-class WadoMultipartApplicationDicomRenderer(DicomWebWadoRenderer):
-    media_type = "multipart/related; type=application/dicom"
-    format = "multipart"
-    subtype: str = "application/dicom"
-    boundary: str = "adit-boundary"
-    charset: str = "utf-8"
+class MultipartRenderer(BaseRenderer):
+    media_type: str
+    format: str
+    subtype: str | None = None
+    boundary: str = "default-boundary"
+    charset: str | None = None
 
-    async def render(self, images: AsyncIterator[Dataset]) -> AsyncIterator[bytes]:
+    async def render(self, items: AsyncIterator[BytesIO | Dataset]) -> AsyncIterator[bytes]:
         try:
-            async for image in images:
-                yield self._instance_stream(image)
+            async for item in items:
+                yield self._instance_stream(item)
         except Exception as err:
             yield self._error_stream(err)
-
         yield self._end_stream()
 
-    def _instance_stream(self, ds: Dataset) -> bytes:
+    def _instance_stream(self, item: BytesIO | Dataset) -> bytes:
         stream = BytesIO()
         # boundary
         stream.write(b"\r\n")
         stream.write(b"--" + self.boundary.encode("utf-8") + b"\r\n")
         # header
-        stream.write(b"Content-Type: " + self.subtype.encode("utf-8"))
+        stream.write(b"Content-Type: " + self.subtype.encode("utf-8"))  # type: ignore
         stream.write(b"\r\n")
         stream.write(b"\r\n")
         # instance
-        write_dataset(ds, stream)
+        self._write_item(item, stream)
         stream.write(b"\r\n")
         return stream.getvalue()
+
+    def _write_item(self, item: BytesIO | Dataset, stream: BytesIO):
+        raise NotImplementedError("Subclasses must implement `_write_item`.")
 
     def _error_stream(self, err: Exception) -> bytes:
         stream = BytesIO()
@@ -75,7 +77,7 @@ class WadoMultipartApplicationDicomRenderer(DicomWebWadoRenderer):
         stream.write(b"\r\n")
         stream.write(b"\r\n")
         # message
-        stream.write(f"Error: Failed to fetch DICOM data: {err}\r\n".encode("utf-8"))
+        stream.write(f"Error: {err}\r\n".encode("utf-8"))
         stream.write(b"\r\n")
         return stream.getvalue()
 
@@ -85,6 +87,56 @@ class WadoMultipartApplicationDicomRenderer(DicomWebWadoRenderer):
         stream.write(self.boundary.encode("utf-8"))
         stream.write(b"--")
         return stream.getvalue()
+
+
+class WadoMultipartApplicationDicomRenderer(MultipartRenderer):
+    media_type = "multipart/related; type=application/dicom"
+    format = "multipart"
+    subtype: str = "application/dicom"
+    boundary: str = "adit-boundary"
+    charset: str = "utf-8"
+
+    @property
+    def content_type(self) -> str:
+        return f"{self.media_type}; boundary={self.boundary}"
+
+    def _write_item(self, item: Dataset, stream: BytesIO):
+        write_dataset(item, stream)
+
+
+class WadoMultipartApplicationNiftiRenderer(MultipartRenderer):
+    media_type = "multipart/related; type=application/octet-stream"
+    format = "multipart"
+    subtype: str = "application/octet-stream"
+    boundary: str = "nifti-boundary"
+    charset: str = "utf-8"
+
+    @property
+    def content_type(self) -> str:
+        return f"{self.media_type}; boundary={self.boundary}"
+
+    def render(self, images: AsyncIterator[tuple[str, BytesIO]]) -> AsyncIterator[bytes]:
+        async def streaming_content():
+            first_part = True
+            async for filename, file_content in images:
+                # For multipart format, we need to start with boundary
+                if first_part:
+                    yield f"--{self.boundary}\r\n".encode()
+                    first_part = False
+                else:
+                    yield f"\r\n--{self.boundary}\r\n".encode()
+
+                # Add headers for this part
+                yield "Content-Type: application/octet-stream\r\n".encode()
+                yield f'Content-Disposition: attachment; filename="{filename}"\r\n\r\n'.encode()
+
+                # Add content
+                yield file_content.getvalue()
+
+            # End the multipart message with a final boundary
+            yield f"\r\n--{self.boundary}--\r\n".encode()
+
+        return streaming_content()
 
 
 class WadoApplicationDicomJsonRenderer(DicomWebWadoRenderer):

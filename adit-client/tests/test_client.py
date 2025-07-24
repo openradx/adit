@@ -1,10 +1,12 @@
+from __future__ import annotations
+
 import pytest
-from adit_client.client import AditClient
-from adit_client.utils.testing_helpers import create_admin_with_group_and_token
 from pytest_django.live_server_helper import LiveServer
 from pytest_mock import MockerFixture
 
 from adit.core.models import DicomServer
+from adit_client.client import AditClient
+from adit_client.utils.testing_helpers import create_admin_with_group_and_token
 
 
 @pytest.mark.django_db
