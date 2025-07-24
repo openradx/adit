@@ -258,8 +258,14 @@ async def process_single_fetch(dicom_images: list[Dataset]) -> AsyncIterator[tup
             elif ext == ".nii":
                 # For .nii files
                 file_pairs.setdefault(base_name, {}).update({"nifti": filename})
+            elif ext == ".bval":
+                # For .bval files (diffusion b-values)
+                file_pairs.setdefault(base_name, {}).update({"bval": filename})
+            elif ext == ".bvec":
+                # For .bvec files (diffusion b-vectors)
+                file_pairs.setdefault(base_name, {}).update({"bvec": filename})
 
-        # Yield file pairs, JSON first then NIfTI
+        # Yield file pairs, JSON first then NIfTI, and finally bval/bvec if they exist
         for base_name, files in file_pairs.items():
             # First yield the JSON file if it exists
             if "json" in files:
@@ -276,3 +282,19 @@ async def process_single_fetch(dicom_images: list[Dataset]) -> AsyncIterator[tup
                 async with aiofiles.open(nifti_file_path, "rb") as f:
                     nifti_content = await f.read()
                     yield nifti_filename, BytesIO(nifti_content)
+
+            # Then yield the bval file if it exists (diffusion b-values)
+            if "bval" in files:
+                bval_filename = files["bval"]
+                bval_file_path = os.path.join(nifti_output_dir, bval_filename)
+                async with aiofiles.open(bval_file_path, "rb") as f:
+                    bval_content = await f.read()
+                    yield bval_filename, BytesIO(bval_content)
+
+            # Finally yield the bvec file if it exists (diffusion b-vectors)
+            if "bvec" in files:
+                bvec_filename = files["bvec"]
+                bvec_file_path = os.path.join(nifti_output_dir, bvec_filename)
+                async with aiofiles.open(bvec_file_path, "rb") as f:
+                    bvec_content = await f.read()
+                    yield bvec_filename, BytesIO(bvec_content)
