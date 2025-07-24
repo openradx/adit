@@ -135,6 +135,12 @@ exclude = ["migrations", "notebooks"]
 line-length = 100
 lint.select = ["E", "F", "I", "DJ"]
 
+[tool.ruff.lint.isort]
+known-third-party = ["pytest", "pytest_django", "pytest_mock", "pydicom", "django", "adit_radis_shared"]
+known-first-party = ["adit", "adit_client"]
+section-order = ["future", "standard-library", "third-party", "first-party", "local-folder"]
+combine-as-imports = true
+
 [tool.djlint]
 profile = "django"
 max_line_length = 120
