@@ -8,30 +8,27 @@ from adit.core.errors import (
     ExternalToolError,
     InputDirectoryError,
     InvalidDicomError,
-    NoMemoryError,
-    NoSpatialDataError,
     NoValidDicomError,
     OutputDirectoryError,
-    UnknownFormatError,
 )
 
 logger = logging.getLogger(__name__)
 
 
 class DcmExitCode(IntEnum):
-    """Exit codes for dcm2niix as documented in https://github.com/rordenlab/dcm2niix/blob/master/ERRORS.md"""
+    """Exit codes for dcm2niix as documented in https://github.com/rordenlab/dcm2niix"""
 
     SUCCESS = 0
-    MISSING_ARGUMENTS = 1
-    OUTPUT_FOLDER_ERROR = 2
-    INPUT_FOLDER_ERROR = 3
-    INVALID_INPUT_FOLDER = 4
-    UNKNOWN_FORMAT = 5
-    CORRUPT_DICOM = 6
-    NO_VALID_DICOM = 7
-    NO_MEMORY = 8
-    NO_SPATIAL_DATA = 9
-    UNKNOWN_ERROR = 127
+    UNSPECIFIED_ERROR = 1
+    NO_DICOM_FOUND = 2
+    VERSION_REPORT = 3
+    CORRUPT_DICOM = 4
+    INVALID_INPUT_FOLDER = 5
+    INVALID_OUTPUT_FOLDER = 6
+    WRITE_PERMISSION_ERROR = 7
+    PARTIAL_CONVERSION = 8
+    RENAME_ERROR = 9
+    UNKNOWN_ERROR = 127  # Kept for backward compatibility
 
 
 class DicomToNiftiConverter:
@@ -57,9 +54,6 @@ class DicomToNiftiConverter:
             OutputDirectoryError: If there are issues with the output directory.
             InputDirectoryError: If there are issues with the input directory.
             ExternalToolError: If there are issues with the dcm2niix tool.
-            NoSpatialDataError: If DICOM data doesn't contain spatial attributes.
-            NoMemoryError: If the system runs out of memory during conversion.
-            UnknownFormatError: If the input contains an unsupported format.
             DicomConversionError: For other conversion errors.
         """
         dicom_folder = Path(dicom_folder)
@@ -99,27 +93,31 @@ class DicomToNiftiConverter:
 
             if exit_code == DcmExitCode.SUCCESS:
                 pass  # Successful conversion
-            elif exit_code == DcmExitCode.MISSING_ARGUMENTS:
-                raise ExternalToolError(f"dcm2niix missing arguments: {error_msg}")
-            elif exit_code == DcmExitCode.OUTPUT_FOLDER_ERROR:
-                raise OutputDirectoryError(f"Error accessing output directory: {error_msg}")
-            elif exit_code in (DcmExitCode.INPUT_FOLDER_ERROR, DcmExitCode.INVALID_INPUT_FOLDER):
-                raise InputDirectoryError(f"Error accessing input directory: {error_msg}")
-            elif exit_code == DcmExitCode.UNKNOWN_FORMAT:
-                raise UnknownFormatError(f"Unknown or unsupported format: {error_msg}")
+            elif exit_code == DcmExitCode.NO_DICOM_FOUND:
+                raise NoValidDicomError(f"No DICOM images found in input folder: {error_msg}")
+            elif exit_code == DcmExitCode.VERSION_REPORT:
+                logger.info(f"dcm2niix version report: {error_msg}")
             elif exit_code == DcmExitCode.CORRUPT_DICOM:
-                raise InvalidDicomError(f"Corrupt DICOM files: {error_msg}")
-            elif exit_code == DcmExitCode.NO_VALID_DICOM:
-                raise NoValidDicomError(f"No valid DICOM files found: {error_msg}")
-            elif exit_code == DcmExitCode.NO_MEMORY:
-                raise NoMemoryError(f"Not enough memory for conversion: {error_msg}")
-            elif exit_code == DcmExitCode.NO_SPATIAL_DATA:
-                raise NoSpatialDataError(f"No spatial attributes in DICOM data: {error_msg}")
-            elif exit_code == DcmExitCode.UNKNOWN_ERROR or exit_code != 0:
-                raise DicomConversionError(f"Unknown error (exit code {exit_code}): {error_msg}")
+                raise InvalidDicomError(f"Corrupt DICOM file: {error_msg}")
+            elif exit_code == DcmExitCode.INVALID_INPUT_FOLDER:
+                raise InputDirectoryError(f"Input folder invalid: {error_msg}")
+            elif exit_code == DcmExitCode.INVALID_OUTPUT_FOLDER:
+                raise OutputDirectoryError(f"Output folder invalid: {error_msg}")
+            elif exit_code == DcmExitCode.WRITE_PERMISSION_ERROR:
+                raise OutputDirectoryError(
+                    f"Unable to write to output folder (check permissions): {error_msg}"
+                )
+            elif exit_code == DcmExitCode.PARTIAL_CONVERSION:
+                logger.warning(f"Converted some but not all input DICOMs: {error_msg}")
+            elif exit_code == DcmExitCode.RENAME_ERROR:
+                raise DicomConversionError(f"Unable to rename files: {error_msg}")
+            elif exit_code == DcmExitCode.UNSPECIFIED_ERROR or exit_code != 0:
+                raise DicomConversionError(
+                    f"Unspecified error (exit code {exit_code}): {error_msg}"
+                )
 
         except subprocess.SubprocessError as e:
-            raise ExternalToolError(f"Failed to execute dcm2niix: {str(e)}")
+            raise ExternalToolError(f"Failed to execute dcm2niix: {e}")
 
         logger.debug(
             f"DICOM files in {dicom_folder} successfully converted to NIfTI format "

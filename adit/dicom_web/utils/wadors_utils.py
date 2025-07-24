@@ -201,9 +201,8 @@ async def process_single_fetch(dicom_images: list[Dataset]) -> AsyncIterator[tup
 
     For each file pair, yields the JSON file first, then the corresponding NIfTI file.
 
-    Expected exceptions like NoValidDicomError and NoSpatialDataError are handled
-    silently as these indicate series that simply cannot be converted to NIfTI,
-    rather than actual errors.
+    Only NoValidDicomError and NoSpatialDataError are silently ignored as these indicate
+    series that simply cannot be converted to NIfTI. All other exceptions are logged.
     """
     async with TemporaryDirectory() as temp_dir:
         temp_path = Path(temp_dir)
@@ -230,15 +229,14 @@ async def process_single_fetch(dicom_images: list[Dataset]) -> AsyncIterator[tup
             # No warning needed, just skip this series without yielding any files
             return
         except DicomConversionError as e:
-            # Log warning for conversion errors that aren't critical but worth noting
-            logger.warning(f"Failed to convert DICOM files to NIfTI: {str(e)}")
+            # Log warning for conversion errors
+            logger.warning(f"Failed to convert DICOM files to NIfTI: {e}")
             # For conversion errors, there won't be any output files to process
             return
         except Exception as e:
-            # For serious errors (disk full, permissions, etc.), log and propagate the error
-            logger.error(f"Error during DICOM to NIfTI conversion: {str(e)}")
-            # Raise the original exception to properly propagate serious errors
-            raise e
+            # For all other unexpected errors, log and propagate the error
+            logger.error(f"Error during DICOM to NIfTI conversion: {e}")
+            raise
 
         # Get all files in the output directory using aiofiles instead of sync_to_async(os.listdir)
         entries = await aiofiles.os.scandir(nifti_output_dir)
