@@ -7,7 +7,6 @@ from pathlib import Path
 
 import pydicom
 import pytest
-from adit_client import AditClient
 from adit_radis_shared.common.utils.testing_helpers import ChannelsLiveServer
 from django.conf import settings
 from requests.exceptions import HTTPError
@@ -21,6 +20,7 @@ from adit.core.utils.testing_helpers import (
     setup_dimse_orthancs,
 )
 from adit.dicom_web.utils.testing_helpers import create_user_with_dicom_web_group_and_token
+from adit_client import AditClient
 
 
 # Get sample data path from Django settings or use a relative path as fallback
@@ -979,16 +979,16 @@ def test_iter_nifti_study(channels_live_server: ChannelsLiveServer):
 
     # Compare with the non-streaming version
     full_nifti_files = adit_client.retrieve_nifti_study(server.ae_title, study_uid)
-    
+
     # Normalize filenames returned by both methods
     streamed_files_dict = {filename: content for filename, content in nifti_files}
     full_files_dict = {filename: file_content.read() for filename, file_content in full_nifti_files}
-    
+
     # Check that we have the same files with the same content
     assert set(streamed_files_dict.keys()) == set(full_files_dict.keys()), (
         "Files returned by iter_nifti_study and retrieve_nifti_study don't match"
     )
-    
+
     for filename, content in streamed_files_dict.items():
         assert content == full_files_dict[filename], (
             f"Content mismatch for file {filename} between streamed and full version"
@@ -1012,7 +1012,9 @@ def test_iter_nifti_series(channels_live_server: ChannelsLiveServer):
 
     # Use iter_nifti_series to stream the files
     nifti_files = []
-    for filename, file_content in adit_client.iter_nifti_series(server.ae_title, study_uid, series_uid):
+    for filename, file_content in adit_client.iter_nifti_series(
+        server.ae_title, study_uid, series_uid
+    ):
         nifti_files.append((filename, file_content.read()))
         # Reset file pointer for comparison later
         file_content.seek(0)
@@ -1021,16 +1023,16 @@ def test_iter_nifti_series(channels_live_server: ChannelsLiveServer):
 
     # Compare with the non-streaming version
     full_nifti_files = adit_client.retrieve_nifti_series(server.ae_title, study_uid, series_uid)
-    
+
     # Normalize filenames returned by both methods
     streamed_files_dict = {filename: content for filename, content in nifti_files}
     full_files_dict = {filename: file_content.read() for filename, file_content in full_nifti_files}
-    
+
     # Check that we have the same files with the same content
     assert set(streamed_files_dict.keys()) == set(full_files_dict.keys()), (
         "Files returned by iter_nifti_series and retrieve_nifti_series don't match"
     )
-    
+
     for filename, content in streamed_files_dict.items():
         assert content == full_files_dict[filename], (
             f"Content mismatch for file {filename} between streamed and full version"
@@ -1055,7 +1057,9 @@ def test_iter_nifti_image(channels_live_server: ChannelsLiveServer):
 
     # Use iter_nifti_image to stream the files
     nifti_files = []
-    for filename, file_content in adit_client.iter_nifti_image(server.ae_title, study_uid, series_uid, image_uid):
+    for filename, file_content in adit_client.iter_nifti_image(
+        server.ae_title, study_uid, series_uid, image_uid
+    ):
         nifti_files.append((filename, file_content.read()))
         # Reset file pointer for comparison later
         file_content.seek(0)
@@ -1063,17 +1067,19 @@ def test_iter_nifti_image(channels_live_server: ChannelsLiveServer):
     assert len(nifti_files) > 0, "No NIfTI files were streamed"
 
     # Compare with the non-streaming version
-    full_nifti_files = adit_client.retrieve_nifti_image(server.ae_title, study_uid, series_uid, image_uid)
-    
+    full_nifti_files = adit_client.retrieve_nifti_image(
+        server.ae_title, study_uid, series_uid, image_uid
+    )
+
     # Normalize filenames returned by both methods
     streamed_files_dict = {filename: content for filename, content in nifti_files}
     full_files_dict = {filename: file_content.read() for filename, file_content in full_nifti_files}
-    
+
     # Check that we have the same files with the same content
     assert set(streamed_files_dict.keys()) == set(full_files_dict.keys()), (
         "Files returned by iter_nifti_image and retrieve_nifti_image don't match"
     )
-    
+
     for filename, content in streamed_files_dict.items():
         assert content == full_files_dict[filename], (
             f"Content mismatch for file {filename} between streamed and full version"

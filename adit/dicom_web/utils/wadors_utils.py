@@ -38,37 +38,34 @@ class WadoFetcher:
         self.query_ds = QueryDataset.from_dict(query)
         self.operator = DicomOperator(source_server)
 
-    async def create_fetch_task(
+    def create_fetch_task(
         self, level: Literal["STUDY", "SERIES", "IMAGE"], callback: Callable[[Dataset], None]
-    ) -> asyncio.Task:
-        """Create and return a fetch task based on the level."""
+    ):
+        """Create and return a sync_to_async coroutine based on the level.
+
+        The caller is responsible for wrapping this in asyncio.create_task() if needed.
+        """
         if level == "STUDY":
-            return asyncio.create_task(
-                sync_to_async(self.operator.fetch_study, thread_sensitive=False)(
-                    patient_id=self.query_ds.PatientID,
-                    study_uid=self.query_ds.StudyInstanceUID,
-                    callback=callback,
-                )
+            return sync_to_async(self.operator.fetch_study, thread_sensitive=False)(
+                patient_id=self.query_ds.PatientID,
+                study_uid=self.query_ds.StudyInstanceUID,
+                callback=callback,
             )
         elif level == "SERIES":
-            return asyncio.create_task(
-                sync_to_async(self.operator.fetch_series, thread_sensitive=False)(
-                    patient_id=self.query_ds.PatientID,
-                    study_uid=self.query_ds.StudyInstanceUID,
-                    series_uid=self.query_ds.SeriesInstanceUID,
-                    callback=callback,
-                )
+            return sync_to_async(self.operator.fetch_series, thread_sensitive=False)(
+                patient_id=self.query_ds.PatientID,
+                study_uid=self.query_ds.StudyInstanceUID,
+                series_uid=self.query_ds.SeriesInstanceUID,
+                callback=callback,
             )
         elif level == "IMAGE":
             assert self.query_ds.has("SeriesInstanceUID")
-            return asyncio.create_task(
-                sync_to_async(self.operator.fetch_image, thread_sensitive=False)(
-                    patient_id=self.query_ds.PatientID,
-                    study_uid=self.query_ds.StudyInstanceUID,
-                    series_uid=self.query_ds.SeriesInstanceUID,
-                    image_uid=self.query_ds.SOPInstanceUID,
-                    callback=callback,
-                )
+            return sync_to_async(self.operator.fetch_image, thread_sensitive=False)(
+                patient_id=self.query_ds.PatientID,
+                study_uid=self.query_ds.StudyInstanceUID,
+                series_uid=self.query_ds.SeriesInstanceUID,
+                image_uid=self.query_ds.SOPInstanceUID,
+                callback=callback,
             )
         else:
             raise ValueError(f"Invalid WADO-RS level: {level}.")
@@ -96,7 +93,7 @@ async def wado_retrieve(
         loop.call_soon_threadsafe(queue.put_nowait, ds)
 
     try:
-        fetch_task = await wado_fetcher.create_fetch_task(level, callback)
+        fetch_task = asyncio.create_task(wado_fetcher.create_fetch_task(level, callback))
 
         while True:
             queue_get_task = asyncio.create_task(queue.get())
@@ -186,8 +183,7 @@ async def fetch_dicom_data(
         dicom_images.append(ds)
 
     try:
-        fetch_task = await wado_fetcher.create_fetch_task(level, callback)
-        await fetch_task
+        await wado_fetcher.create_fetch_task(level, callback)
 
     except RetriableDicomError as err:
         raise ServiceUnavailableApiError(str(err))
