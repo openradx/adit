@@ -15,10 +15,7 @@ from pydicom import Dataset
 from pynetdicom.association import Association
 from pynetdicom.status import Status
 
-from adit.core.factories import (
-    DicomServerFactory,
-    DicomWebServerFactory,
-)
+from adit.core.factories import DicomMoveServerFactory, DicomServerFactory, DicomWebServerFactory
 from adit.core.models import DicomServer
 from adit.core.utils.dicom_dataset import ResultDataset
 from adit.core.utils.dicom_operator import DicomOperator
@@ -103,21 +100,34 @@ def create_resources(transfer_task):
     return patient, study
 
 
-def setup_dimse_orthancs() -> tuple[DicomServer, DicomServer]:
+def setup_dimse_orthancs(cget_enabled: bool = True) -> tuple[DicomServer, DicomServer]:
     call_command("populate_orthancs", reset=True)
-
-    orthanc1 = DicomServerFactory.create(
-        name="Orthanc Test Server 1",
-        ae_title="ORTHANC1",
-        host=settings.ORTHANC1_HOST,
-        port=settings.ORTHANC1_DICOM_PORT,
-    )
-    orthanc2 = DicomServerFactory.create(
-        name="Orthanc Test Server 2",
-        ae_title="ORTHANC2",
-        host=settings.ORTHANC2_HOST,
-        port=settings.ORTHANC2_DICOM_PORT,
-    )
+    if cget_enabled:
+        orthanc1 = DicomServerFactory.create(
+            name="Orthanc Test Server 1",
+            ae_title="ORTHANC1",
+            host=settings.ORTHANC1_HOST,
+            port=settings.ORTHANC1_DICOM_PORT,
+        )
+        orthanc2 = DicomServerFactory.create(
+            name="Orthanc Test Server 2",
+            ae_title="ORTHANC2",
+            host=settings.ORTHANC2_HOST,
+            port=settings.ORTHANC2_DICOM_PORT,
+        )
+    else:
+        orthanc1 = DicomMoveServerFactory.create(
+            name="Orthanc Test Server 1",
+            ae_title="ORTHANC1",
+            host=settings.ORTHANC1_HOST,
+            port=settings.ORTHANC1_DICOM_PORT,
+        )
+        orthanc2 = DicomMoveServerFactory.create(
+            name="Orthanc Test Server 2",
+            ae_title="ORTHANC2",
+            host=settings.ORTHANC2_HOST,
+            port=settings.ORTHANC2_DICOM_PORT,
+        )
 
     return orthanc1, orthanc2
 
@@ -141,7 +151,7 @@ def setup_dicomweb_orthancs() -> tuple[DicomServer, DicomServer]:
 
 def create_excel_file(df: pd.DataFrame, filename: str) -> FilePayload:
     output = io.BytesIO()
-    df.to_excel(output, index=False, engine="openpyxl")  # type: ignore
+    df.to_excel(output, index=False, engine="openpyxl")
 
     return {
         "name": filename,
