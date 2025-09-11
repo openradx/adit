@@ -24,7 +24,7 @@ from adit.selective_transfer.utils.testing_helpers import create_selective_trans
 @pytest.mark.acceptance
 @pytest.mark.order("last")
 @pytest.mark.django_db(transaction=True)
-@pytest.mark.parametrize("transfer_protocol", ["c-move", "c-get", "webdicom"])
+@pytest.mark.parametrize("transfer_protocol", ["c-move", "c-get", "dicomweb"])
 def test_unpseudonymized_urgent_selective_transfer_with_dimse_server(
     page: Page, channels_live_server: ChannelsLiveServer, transfer_protocol: str
 ):
@@ -35,7 +35,7 @@ def test_unpseudonymized_urgent_selective_transfer_with_dimse_server(
     add_permission(group, SelectiveTransferJob, "can_process_urgently")
     add_permission(group, SelectiveTransferJob, "can_transfer_unpseudonymized")
 
-    if transfer_protocol == "webdicom":
+    if transfer_protocol == "dicomweb":
         orthancs = setup_dicomweb_orthancs()
     elif transfer_protocol == "c-move":
         orthancs = setup_dimse_orthancs(cget_enabled=False)
@@ -67,7 +67,7 @@ def test_unpseudonymized_urgent_selective_transfer_with_dimse_server(
 @pytest.mark.acceptance
 @pytest.mark.order("last")
 @pytest.mark.django_db(transaction=True)
-@pytest.mark.parametrize("transfer_protocol", ["c-move", "c-get", "webdicom"])
+@pytest.mark.parametrize("transfer_protocol", ["c-move", "c-get", "dicomweb"])
 def test_unpseudonymized_urgent_selective_transfer_with_dimse_server_and_convert_to_nifti(
     page: Page, channels_live_server: ChannelsLiveServer, transfer_protocol: str
 ):
@@ -78,7 +78,7 @@ def test_unpseudonymized_urgent_selective_transfer_with_dimse_server_and_convert
     add_permission(group, SelectiveTransferJob, "can_process_urgently")
     add_permission(group, SelectiveTransferJob, "can_transfer_unpseudonymized")
 
-    if transfer_protocol == "webdicom":
+    if transfer_protocol == "dicomweb":
         orthancs = setup_dicomweb_orthancs()
     elif transfer_protocol == "c-move":
         orthancs = setup_dimse_orthancs(cget_enabled=False)
