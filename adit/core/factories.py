@@ -46,6 +46,11 @@ class DicomServerFactory(AbstractDicomNodeFactory[DicomServer]):
     store_scp_support = True
 
 
+class DicomMoveServerFactory(DicomServerFactory):
+    patient_root_get_support = False
+    study_root_get_support = False
+
+
 class DicomWebServerFactory(DicomServerFactory):
     class Meta:
         model = DicomServer
