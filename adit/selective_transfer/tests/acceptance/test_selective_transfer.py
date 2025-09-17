@@ -25,7 +25,7 @@ from adit.selective_transfer.utils.testing_helpers import create_selective_trans
 @pytest.mark.order("last")
 @pytest.mark.django_db(transaction=True)
 @pytest.mark.parametrize("transfer_protocol", ["c-move", "c-get", "dicomweb"])
-def test_unpseudonymized_urgent_selective_transfer_with_dimse_server(
+def test_unpseudonymized_urgent_selective_transfer(
     page: Page, channels_live_server: ChannelsLiveServer, transfer_protocol: str
 ):
     # Arrange
@@ -68,7 +68,7 @@ def test_unpseudonymized_urgent_selective_transfer_with_dimse_server(
 @pytest.mark.order("last")
 @pytest.mark.django_db(transaction=True)
 @pytest.mark.parametrize("transfer_protocol", ["c-move", "c-get", "dicomweb"])
-def test_unpseudonymized_urgent_selective_transfer_with_dimse_server_and_convert_to_nifti(
+def test_unpseudonymized_urgent_selective_transfer_and_convert_to_nifti(
     page: Page, channels_live_server: ChannelsLiveServer, transfer_protocol: str
 ):
     # Arrange
