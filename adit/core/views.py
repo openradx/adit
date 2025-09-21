@@ -351,7 +351,7 @@ class DicomTaskDeleteView(LoginRequiredMixin, DeleteView):
     def get_queryset(self):
         if self.request.user.is_staff:
             return self.model.objects.all()
-        return self.model.objects.filter(owner=self.request.user)
+        return self.model.objects.filter(job__owner=self.request.user)
 
     def form_valid(self, form: ModelForm) -> HttpResponse:
         task = cast(DicomTask, self.get_object())
@@ -380,7 +380,7 @@ class DicomTaskResetView(LoginRequiredMixin, SingleObjectMixin, View):
     def get_queryset(self):
         if self.request.user.is_staff:
             return self.model.objects.all()
-        return self.model.objects.filter(owner=self.request.user)
+        return self.model.objects.filter(job__owner=self.request.user)
 
     def post(self, request: AuthenticatedHttpRequest, *args, **kwargs) -> HttpResponse:
         task = cast(DicomTask, self.get_object())
@@ -390,7 +390,8 @@ class DicomTaskResetView(LoginRequiredMixin, SingleObjectMixin, View):
             )
 
         reset_tasks(self.model.objects.filter(pk=task.pk))
-
+        ## Refresh the task object from database to get the updated status
+        task.refresh_from_db()
         task.queue_pending_task()
         task.job.post_process()
 

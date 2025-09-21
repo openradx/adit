@@ -43,7 +43,7 @@ def dicom_explorer_form_view(request: AuthenticatedHttpRequest) -> HttpResponse:
         if patient_id:
             params["PatientID"] = patient_id
 
-        url = reverse("dicom_explorer_patient_query")
+        url = reverse("dicom_explorer_patient_query", kwargs={"server_id": server.id})
         url = f"{url}?{urlencode(params)}"
         return redirect(url)
 
@@ -159,8 +159,11 @@ def render_query_result(
 
 def render_server_query(request: HttpRequest, query: dict[str, str]) -> HttpResponse:
     """Query servers and render the result."""
-    final_query = query | {"accesses_source": True}
-    servers = DicomServer.objects.filter(**final_query).order_by("id")
+    servers = (
+        DicomServer.objects.accessible_by_user(request.user, "source")  # type: ignore
+        .filter(**query)
+        .order_by("id")
+    )
     return render(request, "dicom_explorer/server_query.html", {"servers": servers})
 
 
