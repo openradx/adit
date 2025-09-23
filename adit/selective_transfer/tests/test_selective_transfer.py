@@ -198,9 +198,6 @@ class TestSelectiveTransfer:
         task_to_delete = SelectiveTransferTaskFactory.create(
             job=job, status=DicomTask.Status.PENDING
         )
-        remaining_task = SelectiveTransferTaskFactory.create(
-            job=job, status=DicomTask.Status.SUCCESS
-        )
 
         client.force_login(user)
 

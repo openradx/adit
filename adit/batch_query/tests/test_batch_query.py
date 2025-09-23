@@ -222,7 +222,6 @@ class TestBatchQuery:
         user = UserFactory.create(is_active=True)
         job = BatchQueryJobFactory.create(owner=user)
         task_to_delete = BatchQueryTaskFactory.create(job=job, status=DicomTask.Status.PENDING)
-        remaining_task = BatchQueryTaskFactory.create(job=job, status=DicomTask.Status.SUCCESS)
 
         client.force_login(user)
 
