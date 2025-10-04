@@ -27,10 +27,10 @@ class TestDicomExplorer:
         user.save()
         client.force_login(user)
         server = DicomServerFactory.create()
-        # Create access permission for user's group to access server as source
+
         DicomNodeGroupAccess.objects.create(dicom_node=server, group=group, source=True)
         response = client.get(f"/dicom-explorer/?server={server.pk}")
-        assert response.status_code == 302  # Should redirect to server detail
+        assert response.status_code == 302
 
     def test_dicom_explorer_server_query_view(self):
         client = Client()

@@ -48,7 +48,7 @@ class TestBatchTransfer:
 
     def test_batch_transfer_job_verify_view(self):
         client = Client()
-        user = UserFactory.create(is_active=True, is_staff=True)  # Staff required for verify
+        user = UserFactory.create(is_active=True, is_staff=True)
         client.force_login(user)
         job = BatchTransferJobFactory.create(owner=user, status=BatchTransferJob.Status.UNVERIFIED)
         response = client.post(f"/batch-transfer/jobs/{job.pk}/verify/")
@@ -64,7 +64,7 @@ class TestBatchTransfer:
 
     def test_batch_transfer_job_restart_view(self):
         client = Client()
-        user = UserFactory.create(is_active=True, is_staff=True)  # Staff required for restart
+        user = UserFactory.create(is_active=True, is_staff=True)
         client.force_login(user)
         job = BatchTransferJobFactory.create(owner=user, status=BatchTransferJob.Status.FAILURE)
         response = client.post(f"/batch-transfer/jobs/{job.pk}/restart/")
@@ -86,7 +86,7 @@ class TestBatchTransfer:
 
     def test_batch_transfer_job_resume_view(self):
         client = Client()
-        user = UserFactory.create(is_active=True, is_staff=True)  # Staff required for resume
+        user = UserFactory.create(is_active=True, is_staff=True)
         client.force_login(user)
         job = BatchTransferJobFactory.create(owner=user, status=BatchTransferJob.Status.CANCELED)
         response = client.post(f"/batch-transfer/jobs/{job.pk}/resume/")
@@ -94,7 +94,7 @@ class TestBatchTransfer:
 
     def test_batch_transfer_job_retry_view(self):
         client = Client()
-        user = UserFactory.create(is_active=True, is_staff=True)  # Staff required for retry
+        user = UserFactory.create(is_active=True, is_staff=True)
         client.force_login(user)
         job = BatchTransferJobFactory.create(owner=user, status=BatchTransferJob.Status.FAILURE)
         response = client.post(f"/batch-transfer/jobs/{job.pk}/retry/")
@@ -111,20 +111,19 @@ class TestBatchTransfer:
 
     def test_batch_transfer_task_delete_view(self):
         client = Client()
-        user = UserFactory.create(is_active=True, is_staff=True)  # Staff required
+        user = UserFactory.create(is_active=True, is_staff=True)
         client.force_login(user)
         job = BatchTransferJobFactory.create(owner=user)
-        # Create multiple tasks so job has tasks remaining after deletion
         task_to_delete = BatchTransferTaskFactory.create(
             job=job, status=BatchTransferTask.Status.PENDING
         )
-        BatchTransferTaskFactory.create(job=job, status=BatchTransferTask.Status.SUCCESS)
+
         response = client.post(f"/batch-transfer/tasks/{task_to_delete.pk}/delete/")
         assert response.status_code == 302
 
     def test_batch_transfer_task_reset_view(self):
         client = Client()
-        user = UserFactory.create(is_active=True, is_staff=True)  # Staff required
+        user = UserFactory.create(is_active=True, is_staff=True)
         client.force_login(user)
         job = BatchTransferJobFactory.create(owner=user)
         task = BatchTransferTaskFactory.create(job=job, status=BatchTransferTask.Status.FAILURE)
@@ -133,7 +132,7 @@ class TestBatchTransfer:
 
     def test_batch_transfer_task_kill_view(self):
         client = Client()
-        user = UserFactory.create(is_active=True, is_staff=True)  # Staff required
+        user = UserFactory.create(is_active=True, is_staff=True)
         client.force_login(user)
         job = BatchTransferJobFactory.create(owner=user)
         task = BatchTransferTaskFactory.create(job=job, status=BatchTransferTask.Status.IN_PROGRESS)
