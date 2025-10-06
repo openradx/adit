@@ -1,8 +1,8 @@
 import logging
-from datetime import datetime
 
 from adrf.views import sync_to_async
 from django.urls import reverse
+from django.utils import timezone
 from pydicom import Dataset, Sequence
 
 from adit.core.errors import DicomError, RetriableDicomError
@@ -57,7 +57,7 @@ async def remove_unknow_vr_attributes(ds: Dataset) -> Sequence:
     for elem in ds:
         if elem.VR == "UN":
             modification_ds = Dataset()
-            modification_ds.AttributeModificationDateTime = datetime.now().strftime("%Y%m%d%H%M%S")
+            modification_ds.AttributeModificationDateTime = timezone.now().strftime("%Y%m%d%H%M%S")
             modification_ds.ModifyingSystem = "ADIT"
             modification_ds.ReasonForTheAttributeModification = "VR_UNKNOWN"
 
