@@ -24,7 +24,7 @@ jobs:
       - name: Install dependencies
         run: uv sync
       - name: Configure environment
-        run: uv run ./cli.py init-workspace
+        run: uv run cli init-workspace
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
       - name: Build and cache Docker images
@@ -37,14 +37,14 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
       - name: Start Docker containers
-        run: uv run ./cli.py compose-up -- --detach --no-build
+        run: uv run cli compose-up -- --detach --no-build
       - name: Run linting
         # https://github.com/actions/runner/issues/241#issuecomment-745902718
         shell: 'script -q -e -c "bash {0}"'
-        run: uv run ./cli.py lint
+        run: uv run cli lint
       - name: Run tests
         shell: 'script -q -e -c "bash {0}"'
-        run: uv run ./cli.py test -- --cov
+        run: uv run cli test -- --cov
       - name: Stop Docker containers
         if: ${{ always() }}
-        run: uv run ./cli.py compose-down
+        run: uv run cli compose-down

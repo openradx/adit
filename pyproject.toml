@@ -90,6 +90,9 @@ dev = [
 ]
 client = ["adit-client"]
 
+[project.scripts]
+cli = "cli:main"
+
 [tool.uv]
 default-groups = ["dev", "client"]
 
