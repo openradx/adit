@@ -36,7 +36,7 @@ def test_unpseudonymized_urgent_batch_transfer(
     # Arrange
     df = pd.DataFrame(
         [["1005", "1.2.840.113845.11.1000000001951524609.20200705173311.2689472"]],
-        columns=["PatientID", "StudyInstanceUID"],
+        columns=["PatientID", "StudyInstanceUID"],  # type: ignore
     )
     batch_file = create_excel_file(df, "batch_file.xlsx")
 
@@ -86,7 +86,7 @@ def test_unpseudonymized_urgent_batch_transfer_and_convert_to_nifti(
     test_patient_id = "1005"
     df = pd.DataFrame(
         [[test_patient_id, study_uid]],
-        columns=["PatientID", "StudyInstanceUID"],
+        columns=["PatientID", "StudyInstanceUID"],  # type: ignore
     )
     batch_file = create_excel_file(df, "batch_file.xlsx")
 
