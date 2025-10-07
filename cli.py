@@ -22,7 +22,6 @@ def main():
     subparsers = root_parser.add_subparsers(dest="command")
 
     parsers.register_compose_build(subparsers)
-    parsers.register_compose_watch(subparsers)
     parsers.register_compose_up(subparsers)
     parsers.register_compose_down(subparsers)
     parsers.register_compose_pull(subparsers)
