@@ -96,10 +96,9 @@ class SelectiveTransferConsumer(AsyncJsonWebsocketConsumer):
             await self.send(query_hint)
             return
 
-        typed_action = cast(Literal["query", "transfer"], action)
-
         # We are now in a query or transfer action so we have to process the form
-        form = await self.get_form(typed_action, content)
+        assert action in ("query", "transfer")
+        form = await self.get_form(action, content)
         form_valid: bool = await database_sync_to_async(form.is_valid)()
 
         if action == "query":
