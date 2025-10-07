@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, cast
 
 from adit_radis_shared.common.views import BaseUpdatePreferencesView
 from django.conf import settings
@@ -98,7 +98,7 @@ class BatchTransferJobDetailView(BatchTransferLockedMixin, DicomJobDetailView):
 
 class BatchTransferJobDeleteView(BatchTransferLockedMixin, DicomJobDeleteView):
     model = BatchTransferJob
-    success_url = reverse_lazy("batch_transfer_job_list")
+    success_url = cast(str, reverse_lazy("batch_transfer_job_list"))
 
 
 class BatchTransferJobVerifyView(BatchTransferLockedMixin, DicomJobVerifyView):

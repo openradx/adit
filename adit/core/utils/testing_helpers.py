@@ -2,7 +2,7 @@ import functools
 import io
 import os
 from typing import Any, Iterable
-from unittest.mock import create_autospec
+from unittest.mock import MagicMock, create_autospec
 
 import pandas as pd
 from adit_radis_shared.accounts.factories import GroupFactory
@@ -66,7 +66,7 @@ class DicomTestHelper:
         return success_status
 
 
-def create_association_mock() -> Association:
+def create_association_mock() -> MagicMock:
     assoc = create_autospec(Association)
     assoc.is_established = True
     return assoc
@@ -161,13 +161,21 @@ def create_excel_file(df: pd.DataFrame, filename: str) -> FilePayload:
 
 
 def create_dicom_web_client(server_url: str, ae_title: str, token_string: str) -> DICOMwebClient:
-    return DICOMwebClient(
+    client = DICOMwebClient(
         url=f"{server_url}/api/dicom-web/{ae_title}",
         qido_url_prefix="qidors",
         wado_url_prefix="wadors",
         stow_url_prefix="stowrs",
         headers={"Authorization": f"Token {token_string}"},
     )
+
+    # Force new HTTP connection per request to avoid keep-alive reuse issues during tests
+    # This is only a problem with the Django live test server that does not handle keep-alive
+    # connections well.
+    if getattr(client, "_session", None):
+        client._session.headers["Connection"] = "close"
+
+    return client
 
 
 def load_sample_dicoms(patient_id: str | None = None) -> Iterable[Dataset]:
