@@ -44,6 +44,7 @@ dependencies = [
     "pyarrow>=19.0.1",
     "pydicom>=2.4.4",
     "pynetdicom>=2.1.1",
+    "requests-toolbelt>=1.0.0",
     "Twisted[tls,http2]>=24.11.0",
     "wait-for-it>=2.3.0",
     "watchfiles>=1.0.4",
@@ -136,6 +137,12 @@ target-version = "py312"
 exclude = ["migrations", "notebooks"]
 line-length = 100
 lint.select = ["E", "F", "I", "DJ"]
+
+[tool.ruff.lint.isort]
+known-third-party = ["pytest", "pytest_django", "pytest_mock", "pydicom", "django", "adit_radis_shared"]
+known-first-party = ["adit", "adit_client"]
+section-order = ["future", "standard-library", "third-party", "first-party", "local-folder"]
+combine-as-imports = true
 
 [tool.djlint]
 profile = "django"

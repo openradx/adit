@@ -9,6 +9,60 @@ class RetriableDicomError(Exception):
     pass
 
 
+class DicomConversionError(Exception):
+    """Base exception for DICOM to NIfTI conversion errors."""
+
+    pass
+
+
+class NoValidDicomError(DicomConversionError):
+    """Exception raised when no valid DICOM files are found."""
+
+    pass
+
+
+class InvalidDicomError(DicomConversionError):
+    """Exception raised when DICOM files are invalid or corrupt."""
+
+    pass
+
+
+class OutputDirectoryError(DicomConversionError):
+    """Exception raised when there are issues with the output directory."""
+
+    pass
+
+
+class InputDirectoryError(DicomConversionError):
+    """Exception raised when there are issues with the input directory."""
+
+    pass
+
+
+class ExternalToolError(DicomConversionError):
+    """Exception raised when there are issues with the external dcm2niix tool."""
+
+    pass
+
+
+class NoSpatialDataError(DicomConversionError):
+    """Exception raised when DICOM data doesn't have spatial attributes."""
+
+    pass
+
+
+class NoMemoryError(DicomConversionError):
+    """Exception raised when the system runs out of memory during conversion."""
+
+    pass
+
+
+class UnknownFormatError(DicomConversionError):
+    """Exception raised when input contains unsupported format."""
+
+    pass
+
+
 class BatchFileSizeError(Exception):
     def __init__(self, batch_tasks_count: int, max_batch_size: int) -> None:
         super().__init__("Too many batch tasks.")
