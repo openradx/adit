@@ -3,12 +3,12 @@ import logging
 import os
 import subprocess
 import tempfile
-from datetime import datetime
 from functools import partial
 from pathlib import Path
 from typing import Callable
 
 from django.conf import settings
+from django.utils import timezone
 from pydicom import Dataset
 
 from adit.core.utils.dicom_manipulator import DicomManipulator
@@ -125,7 +125,7 @@ class TransferTaskProcessor(DicomTaskProcessor):
                 readme_path = Path(tmpdir) / "INDEX.txt"
                 with open(readme_path, "w", encoding="utf-8") as readme_file:
                     readme_file.write(
-                        f"Archive created by {self.transfer_task.job} at {datetime.now()}."
+                        f"Archive created by {self.transfer_task.job} at {timezone.now()}."
                     )
                 _add_to_archive(archive_path, archive_password, readme_path)
 
