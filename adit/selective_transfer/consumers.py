@@ -55,7 +55,13 @@ class SelectiveTransferConsumer(AsyncJsonWebsocketConsumer):
     async def connect(self):
         logger.debug("Connected to WebSocket client.")
 
-        self.user: User = self.scope["user"]
+        scope_user = self.scope.get("user")
+        if scope_user is None or not getattr(scope_user, "is_authenticated", False):
+            await self.close(code=4401)
+            return
+
+        assert isinstance(scope_user, User)
+        self.user: User = scope_user
         self.query_operators: list[DicomOperator] = []
         self.current_message_id: int = 0
         self.pool = ThreadPoolExecutor()
@@ -90,8 +96,10 @@ class SelectiveTransferConsumer(AsyncJsonWebsocketConsumer):
             await self.send(query_hint)
             return
 
+        typed_action = cast(Literal["query", "transfer"], action)
+
         # We are now in a query or transfer action so we have to process the form
-        form = await self.get_form(action, content)
+        form = await self.get_form(typed_action, content)
         form_valid: bool = await database_sync_to_async(form.is_valid)()
 
         if action == "query":
