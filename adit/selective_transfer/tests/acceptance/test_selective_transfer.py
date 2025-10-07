@@ -1,6 +1,5 @@
 import tempfile
 from collections import Counter
-from datetime import datetime
 from pathlib import Path
 
 import nibabel as nib
@@ -12,6 +11,7 @@ from adit_radis_shared.common.utils.testing_helpers import (
     create_and_login_example_user,
     run_worker_once,
 )
+from django.utils import timezone
 from playwright.sync_api import Page, expect
 
 from adit.core.factories import DicomFolderFactory
@@ -117,7 +117,7 @@ def test_unpseudonymized_urgent_selective_transfer_and_convert_to_nifti(
         page.reload()
 
         # Validate NIfTI files
-        current_date = datetime.now().strftime("%Y%m%d")  # Get the current date dynamically
+        current_date = timezone.now().strftime("%Y%m%d")  # Get the current date dynamically
         expected_folder_name = f"adit_selective_transfer_{job_id}_{current_date}_{user.username}"
         nifti_folder = Path(temp_dir) / expected_folder_name / "1008"
 

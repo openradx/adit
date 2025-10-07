@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, cast
 
 from adit_radis_shared.common.types import AuthenticatedHttpRequest
 from adit_radis_shared.common.views import BaseUpdatePreferencesView
@@ -112,7 +112,7 @@ class SelectiveTransferJobDetailView(SelectiveTransferLockedMixin, DicomJobDetai
 
 class SelectiveTransferJobDeleteView(SelectiveTransferLockedMixin, DicomJobDeleteView):
     model = SelectiveTransferJob
-    success_url = reverse_lazy("selective_transfer_job_list")
+    success_url = cast(str, reverse_lazy("selective_transfer_job_list"))
 
 
 class SelectiveTransferJobVerifyView(SelectiveTransferLockedMixin, DicomJobVerifyView):
