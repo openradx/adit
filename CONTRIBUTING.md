@@ -14,7 +14,7 @@ git clone https://github.com/openradx/adit.git
 cd adit
 uv sync
 cp ./example.env ./.env  # adjust the environment variables to your needs
-uv run ./cli.py compose-watch
+uv run cli compose-up -- --watch
 ```
 
 The development server of the example project will be started on <http://localhost:8000>

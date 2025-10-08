@@ -7,7 +7,7 @@ version = "0.0.0"
 readme = "README.md"
 requires-python = ">=3.12,<4.0"
 dependencies = [
-    "adit-radis-shared @ git+https://github.com/openradx/adit-radis-shared.git@0.17.10",
+    "adit-radis-shared @ git+https://github.com/openradx/adit-radis-shared.git@0.18.1",
     "adrf>=0.1.9",
     "aiofiles>=24.1.0",
     "asyncinotify>=4.2.0",
@@ -52,7 +52,6 @@ dependencies = [
 
 [dependency-groups]
 dev = [
-    "argcomplete>=3.6.1",
     "debugpy>=1.8.12",
     "django-browser-reload>=1.18.0",
     "django-debug-permissions>=1.0.0",
@@ -68,13 +67,12 @@ dev = [
     "ipywidgets>=8.1.7",
     "nest-asyncio>=1.6.0",
     "nibabel>=5.3.2",
-    "pyright>=1.1.394,<=1.1.400",
+    "pyright>=1.1.394",
     "pytest>=8.3.4",
     "pytest-asyncio>=0.25.3",
     "pytest-cov>=6.0.0",
     "pytest-django>=4.10.0",
     "pytest-mock>=3.14.0",
-    "pytest-only>=2.1.2",
     "pytest-order>=1.3.0",
     "pytest-picked>=0.5.1",
     "pytest-playwright>=0.7.0",
@@ -86,9 +84,13 @@ dev = [
     "ruff>=0.9.7",
     "time-machine>=2.16.0",
     "tqdm>=4.67.1",
+    "typer>=0.19.2",
     "vermin>=1.6.0",
 ]
 client = ["adit-client"]
+
+[project.scripts]
+cli = "cli:app"
 
 [tool.uv]
 default-groups = ["dev", "client"]
