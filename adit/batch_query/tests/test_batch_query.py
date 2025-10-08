@@ -89,11 +89,11 @@ class TestBatchQuery:
     def test_batch_query_job_delete_view(self):
         client = Client()
         user = UserFactory.create(is_active=True)
-        job = BatchQueryJobFactory.create(owner=user)
+        job = BatchQueryJobFactory.create(owner=user, status=DicomJob.Status.PENDING)
         client.force_login(user)
 
         response = client.post(f"/batch-query/jobs/{job.pk}/delete/")
-        assert response.status_code == 400
+        assert response.status_code == 302
 
     def test_batch_query_result_list_view(self):
         client = Client()
