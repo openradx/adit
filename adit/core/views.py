@@ -67,9 +67,9 @@ class DicomJobListView(LoginRequiredMixin, SingleTableMixin, PageSizeSelectMixin
 
     def get_queryset(self) -> QuerySet:
         if self.request.user.is_staff and self.request.GET.get("all"):
-            return self.model.objects.all()
+            return self.model.objects.all().order_by("-created")
 
-        return self.model.objects.filter(owner=self.request.user)
+        return self.model.objects.filter(owner=self.request.user).order_by("-created")
 
     def get_table_kwargs(self) -> dict[str, Any]:
         kwargs = super().get_table_kwargs()
