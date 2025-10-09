@@ -126,7 +126,6 @@ def test_batch_query_result_download_view(client: Client):
 @pytest.mark.django_db
 def test_batch_query_task_detail_view(client: Client):
     user = UserFactory.create(is_active=True)
-    user = UserFactory.create(is_active=True)
     job = BatchQueryJobFactory.create(owner=user)
     task = BatchQueryTaskFactory.create(job=job)
     client.force_login(user)
