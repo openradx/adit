@@ -32,19 +32,16 @@ async def wado_retrieve(
     query_ds = QueryDataset.from_dict(query)
 
     loop = asyncio.get_running_loop()
-    queue = asyncio.Queue[Dataset]()
+    queue = asyncio.Queue[Dataset|None]()
 
     dicom_manipulator = DicomManipulator()
 
     def callback(ds: Dataset) -> None:
         dicom_manipulator.manipulate(ds, pseudonym, trial_protocol_id, trial_protocol_name)
-        # Schedules a task on the event loop that puts the dataset into the async queue
         loop.call_soon_threadsafe(queue.put_nowait, ds)
 
     try:
         if level == "STUDY":
-            # Schedules a task on the event loop that waits for the background thread to return
-            # The fetch_study synchronous blocking code on the background thread, opens an association with the dimse server which puts the data
             fetch_task = asyncio.create_task(
                 sync_to_async(operator.fetch_study, thread_sensitive=False)(
                     patient_id=query_ds.PatientID,
