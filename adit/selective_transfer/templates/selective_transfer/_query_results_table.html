@@ -1,3 +1,4 @@
+{% load bootstrap_icon from common_extras %}
 {% load combine_datetime join_if_list from common_extras %}
 {% load person_name_from_dicom from core_extras %}
 <table class="table">
@@ -11,6 +12,7 @@
             <th class="text-nowrap">Modality</th>
             <th class="text-nowrap">Study Description</th>
             <th class="text-nowrap"># Images</th>
+            <th class="text-nowrap">Download</th>
         </tr>
     </thead>
     <tbody>
@@ -36,6 +38,12 @@
                 <td>{{ result.ModalitiesInStudy|join_if_list:", "|default:"—" }}</td>
                 <td>{{ result.StudyDescription }}</td>
                 <td>{{ result.NumberOfStudyRelatedInstances }}</td>
+                <td>
+                    <a href="{% url 'selective_transfer_download_study' patient_id=result.PatientID study_uid=result.StudyInstanceUID %}"
+                       class="btn btn-primary btn-sm">
+                        {% bootstrap_icon "download" %}
+                    </a>
+                </td>
             </tr>
         {% endfor %}
     </tbody>
