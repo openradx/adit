@@ -32,13 +32,12 @@ async def wado_retrieve(
     query_ds = QueryDataset.from_dict(query)
 
     loop = asyncio.get_running_loop()
-    queue = asyncio.Queue[Dataset]()
+    queue = asyncio.Queue[Dataset|None]()
 
     dicom_manipulator = DicomManipulator()
 
     def callback(ds: Dataset) -> None:
         dicom_manipulator.manipulate(ds, pseudonym, trial_protocol_id, trial_protocol_name)
-
         loop.call_soon_threadsafe(queue.put_nowait, ds)
 
     try:
@@ -73,24 +72,20 @@ async def wado_retrieve(
         else:
             raise ValueError(f"Invalid WADO-RS level: {level}.")
 
+        async def add_sentinel_when_done():
+            await fetch_task
+            await queue.put(None)
+
+        asyncio.create_task(add_sentinel_when_done())
+
         while True:
-            queue_get_task = asyncio.create_task(queue.get())
-            done, _ = await asyncio.wait(
-                [fetch_task, queue_get_task], return_when=asyncio.FIRST_COMPLETED
-            )
+            queue_ds = await queue.get()
 
-            finished = False
-            for task in done:
-                if task == queue_get_task:
-                    yield queue_get_task.result()
-                if task == fetch_task:
-                    finished = True
-
-            if finished:
-                queue_get_task.cancel()
+            if queue_ds is None:
                 break
 
-        await asyncio.wait([fetch_task, queue_get_task])
+            yield queue_ds
+
 
     except RetriableDicomError as err:
         raise ServiceUnavailableApiError(str(err))
