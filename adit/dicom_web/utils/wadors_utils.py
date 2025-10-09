@@ -38,11 +38,13 @@ async def wado_retrieve(
 
     def callback(ds: Dataset) -> None:
         dicom_manipulator.manipulate(ds, pseudonym, trial_protocol_id, trial_protocol_name)
-
+        # Schedules a task on the event loop that puts the dataset into the async queue
         loop.call_soon_threadsafe(queue.put_nowait, ds)
 
     try:
         if level == "STUDY":
+            # Schedules a task on the event loop that waits for the background thread to return
+            # The fetch_study synchronous blocking code on the background thread, opens an association with the dimse server which puts the data
             fetch_task = asyncio.create_task(
                 sync_to_async(operator.fetch_study, thread_sensitive=False)(
                     patient_id=query_ds.PatientID,
@@ -73,24 +75,20 @@ async def wado_retrieve(
         else:
             raise ValueError(f"Invalid WADO-RS level: {level}.")
 
+        async def add_sentinel_when_done():
+            await fetch_task
+            await queue.put(None)
+
+        asyncio.create_task(add_sentinel_when_done())
+
         while True:
-            queue_get_task = asyncio.create_task(queue.get())
-            done, _ = await asyncio.wait(
-                [fetch_task, queue_get_task], return_when=asyncio.FIRST_COMPLETED
-            )
+            queue_ds = await queue.get()
 
-            finished = False
-            for task in done:
-                if task == queue_get_task:
-                    yield queue_get_task.result()
-                if task == fetch_task:
-                    finished = True
-
-            if finished:
-                queue_get_task.cancel()
+            if queue_ds is None:
                 break
 
-        await asyncio.wait([fetch_task, queue_get_task])
+            yield queue_ds
+
 
     except RetriableDicomError as err:
         raise ServiceUnavailableApiError(str(err))
