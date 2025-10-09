@@ -34,7 +34,6 @@ def test_batch_query_job_create_view(client: Client):
 
 @pytest.mark.django_db
 def test_batch_query_job_detail_view(client):
-    client = Client()
     user = UserFactory.create(is_active=True)
     job = BatchQueryJobFactory.create(owner=user)
     client.force_login(user)
