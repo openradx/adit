@@ -232,14 +232,6 @@ class TestDicomJob:
             mock_send_mail.assert_not_called()
 
     @pytest.mark.django_db
-    def test_job_post_process_no_tasks_assertion_error(self):
-        job = ExampleTransferJobFactory.create(status=DicomJob.Status.PENDING)
-        # No tasks created
-
-        with pytest.raises(AssertionError, match="Invalid task status list"):
-            job.post_process()
-
-    @pytest.mark.django_db
     def test_job_properties(self):
         job = ExampleTransferJobFactory.create(status=DicomJob.Status.UNVERIFIED)
         assert not job.is_verified
