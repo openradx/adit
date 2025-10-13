@@ -194,6 +194,7 @@ function UploadJobForm(formEl) {
           this.uploadResultText = "Upload Failed due to an Error";
           this.buttonVisible = false;
           this.uploadCompleteTextVisible = true;
+          this.pbVisible = false;
           console.error(e);
         }
       }
@@ -345,7 +346,6 @@ const uploadData = async (data) => {
     mode: "same-origin", // Do not send CSRF token to another domain.
     body: formData,
   });
-  let status = 0;
 
   return fetch(request)
     .then(async (response) => {

@@ -111,6 +111,8 @@ async def upload_api_view(request: AuthenticatedHttpRequest, node_id: str) -> Ht
         raise PermissionDenied()
     else:
         operator = DicomOperator(destination_node)
+        dataset = None
+        uploaded_file = None
 
         if "dataset" in file_data:
             uploaded_file = file_data["dataset"]
