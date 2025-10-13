@@ -1,5 +1,5 @@
 import asyncio
-import zipfile
+from tkinter import NONE
 import logging
 import time
 from typing import Any, cast, AsyncGenerator
@@ -7,13 +7,18 @@ from io import BytesIO
 from datetime import datetime
 from stat import S_IFREG
 from stream_zip import async_stream_zip, NO_COMPRESSION_64
+from requests import HTTPError
+
 
 from adit_radis_shared.common.types import AuthenticatedHttpRequest
 from adit_radis_shared.common.views import BaseUpdatePreferencesView
 from django.core.exceptions import BadRequest
 from django.urls import reverse_lazy
 from django.http import StreamingHttpResponse
+from django.template.loader import render_to_string
+from rest_framework.exceptions import NotFound
 
+from adit.core.errors import DicomError
 from adit.core.models import DicomServer
 from adit.core.utils.dicom_dataset import QueryDataset, ResultDataset
 from adit.core.utils.dicom_operator import DicomOperator
@@ -69,17 +74,20 @@ class SelectiveTransferUpdatePreferencesView(
 def download_study(request, server_id, patient_id, study_uid, callback):
     try:
         server = DicomServer.objects.accessible_by_user(request.user, "source").get(id=server_id)
+        operator = DicomOperator(server)
+        operator.fetch_study(
+            patient_id=patient_id,
+            study_uid=study_uid,
+            callback=callback,
+        )
+    # Raise NotFound error if specified DicomServer is not accessible
     except DicomServer.DoesNotExist:
-        return render_error(request, "Invalid DICOM server.")
-    
-    operator = DicomOperator(server)
-
-    operator.fetch_study(
-        patient_id=patient_id,
-        study_uid=study_uid,
-        callback=callback,
-    )
-
+        raise NotFound(f'Invalid DICOM server.')
+    # Re-raise DicomErrors/HttpErrors from fetch_study
+    except (DicomError, HTTPError) as err:
+        raise
+    except Exception as err:
+        raise RuntimeError(f"Unexpected error: {err}") from err
 
 @login_required
 @permission_required("selective_transfer.download_study")
@@ -91,9 +99,8 @@ async def selective_transfer_download_study_view(
 ) -> StreamingHttpResponse:
     #hard coded server id
     server_id = 1
-
     loop = asyncio.get_running_loop()
-    queue = asyncio.Queue[Dataset]()
+    queue = asyncio.Queue[Dataset|None]()
     executor = ThreadPoolExecutor()
 
     def callback(ds: Dataset) -> None:
@@ -109,14 +116,20 @@ async def selective_transfer_download_study_view(
             callback=callback,
         )
     )
+    fetch_error: Exception | None = None
     
     async def add_sentinel_when_done():
-        await fetch_task
-        await queue.put(None)
+        nonlocal fetch_error
+        try:
+            await fetch_task
+        except Exception as err:
+            fetch_error = err
+        finally:
+            await queue.put(None)
 
     asyncio.create_task(add_sentinel_when_done())
 
-    #Synchronous blocking function
+    # Synchronous blocking function
     def ds_to_buffer(ds):
         patient_folder = patient_id
 
@@ -130,52 +143,38 @@ async def selective_transfer_download_study_view(
 
         return dcm_buffer, zip_path
 
-    # async def ds_to_buffer(ds):
-    #     patient_folder = patient_id
-
-    #     file_name = f"{ds.SOPInstanceUID}.dcm"
-                
-    #     zip_path = f"{patient_folder}/{file_name}"
-        
-    #     dcm_buffer = BytesIO()
-    #     write_dataset(ds, dcm_buffer)
-    #     dcm_buffer.seek(0)
-
-    #     return dcm_buffer, zip_path
-
     async def single_buffer_gen(content):
         yield content
 
     async def async_queue_to_gen():
-        while True:
-            # Waits on the queue, when a queue item is retrieved we write it to an in-memory buffer and yield it
+        try:
+            while True:
+                # Waits on the queue, when a queue item is retrieved we write it to an in-memory buffer and yield it
+                queue_ds = await queue.get()
+                if queue_ds is None:
+                    break
+                ds_buffer, zip_path = await loop.run_in_executor(executor, ds_to_buffer, queue_ds)
+                yield single_buffer_gen(ds_buffer.getvalue()), zip_path
             
-            logger.debug(queue.qsize())
-            queue_ds = await queue.get()
-
-            if queue_ds is None:
-                logger.debug("break")
-                break
-            logger.debug(queue_ds.SOPInstanceUID)
-
-            ds_buffer, zip_path = await loop.run_in_executor(executor, ds_to_buffer, queue_ds)
-            yield single_buffer_gen(ds_buffer.getvalue()), zip_path
+            if fetch_error:
+                raise fetch_error
+        except Exception as err:
+            err_buf = BytesIO(f"Error during study direct download:\n\n{err}".encode("utf-8"))
+            yield single_buffer_gen(err_buf.getvalue()), "error.txt"
+            raise
             
-            # ds_buffer, zip_path = await ds_to_buffer(queue_ds)
-            # yield single_buffer_gen(ds_buffer.getvalue()), zip_path
-
 
     async def generate_files_to_add_in_zip():
         modified_at = datetime.now()
         mode = S_IFREG | 0o600
+
         async for buffer_gen, zip_path in async_queue_to_gen():
             yield (zip_path, modified_at, mode, NO_COMPRESSION_64, buffer_gen)
     
-    async def stream_zip() -> AsyncGenerator[bytes]:
+    async def stream_zip() -> AsyncGenerator[bytes, None]:
         start_time = time.monotonic()
         try:
-            zipped_files = async_stream_zip(generate_files_to_add_in_zip())
-            async for zipped_file in zipped_files:
+            async for zipped_file in async_stream_zip(generate_files_to_add_in_zip()):
                 yield zipped_file
         finally:
             executor.shutdown(wait=True)
@@ -190,6 +189,7 @@ async def selective_transfer_download_study_view(
             "Access-Control-Expose-Headers": "Content-Disposition",
         },
     )
+        
     
 
 
