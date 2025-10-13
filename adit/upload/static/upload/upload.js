@@ -57,9 +57,7 @@ function UploadJobForm(formEl) {
       const inputElement = formEl.querySelector("#fileselector");
 
       if (!(inputElement instanceof HTMLInputElement)) {
-        throw new Error(
-          "inputElement must be an instance of HTMLProgressElement"
-        );
+        throw new Error("inputElement must be an instance of HTMLInputElement");
       }
 
       if (inputElement.files.length > 0) {
@@ -105,7 +103,6 @@ function UploadJobForm(formEl) {
           "destinationSelect must be an instance of HTMLSelectElement"
         );
       }
-      destinationSelect.options[0];
       const selectedOption =
         destinationSelect.options[destinationSelect.selectedIndex];
       const node_id = selectedOption.dataset.node_id;
@@ -257,8 +254,8 @@ function UploadJobForm(formEl) {
         files.push(file);
       } else {
         const directoryReader = item.createReader();
-        const items = await new Promise((reslove, reject) => {
-          directoryReader.readEntries(reslove, reject);
+        const items = await new Promise((resolve, reject) => {
+          directoryReader.readEntries(resolve, reject);
         });
 
         for (let item of items) {
