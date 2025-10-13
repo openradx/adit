@@ -2,10 +2,10 @@ import asyncio
 from io import BytesIO
 from typing import Any
 
-from adit_radis_shared.common.decorators import login_required_async
 from adit_radis_shared.common.types import AuthenticatedHttpRequest
 from asgiref.sync import sync_to_async
 from django.conf import settings
+from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import (
     LoginRequiredMixin,
     PermissionRequiredMixin,
@@ -90,7 +90,7 @@ class UploadCreateView(
             return render(request, "upload/upload_job_form_swappable.html", {"form": form})
 
 
-@login_required_async
+@login_required
 async def upload_api_view(request: AuthenticatedHttpRequest, node_id: str) -> HttpResponse:
     if request.method != "POST":
         return HttpResponse(status=405)
@@ -122,7 +122,7 @@ async def upload_api_view(request: AuthenticatedHttpRequest, node_id: str) -> Ht
             return HttpResponse(status=400, content="No data received")
         try:
             loop = asyncio.get_event_loop()
-            await loop.run_in_executor(None, operator.upload_instances, [dataset])
+            await loop.run_in_executor(None, operator.upload_images, [dataset])
 
             status = 200
             message = "Upload successful"
