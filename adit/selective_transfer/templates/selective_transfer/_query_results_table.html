@@ -40,9 +40,7 @@
                 <td>{{ result.NumberOfStudyRelatedInstances }}</td>
                 <td>
                     <a href="{% url 'selective_transfer_download_study' patient_id=result.PatientID study_uid=result.StudyInstanceUID %}"
-                       class="btn btn-primary btn-sm">
-                        {% bootstrap_icon "download" %}
-                    </a>
+                       class="btn btn-primary btn-sm">{% bootstrap_icon "download" %}</a>
                 </td>
             </tr>
         {% endfor %}

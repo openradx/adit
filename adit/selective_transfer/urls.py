@@ -16,7 +16,7 @@ from .views import (
     SelectiveTransferTaskKillView,
     SelectiveTransferTaskResetView,
     SelectiveTransferUpdatePreferencesView,
-    selective_transfer_download_study_view
+    selective_transfer_download_study_view,
 )
 
 urlpatterns = [
