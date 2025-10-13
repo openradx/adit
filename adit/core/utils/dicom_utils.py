@@ -13,15 +13,13 @@ TimeRange = tuple[datetime.time | None, datetime.time | None]
 DateTimeRange = tuple[datetime.datetime | None, datetime.datetime | None]
 
 
-def write_dataset(
-    ds: Dataset, fn: str | bytes | PathLike | BinaryIO, write_like_original=False
-) -> None:
+def write_dataset(ds: Dataset, fn: str | bytes | PathLike | BinaryIO) -> None:
     """Write a DICOM dataset to a file or buffer.
 
     This function is a wrapper around pydicom's dcmwrite function to make sure
     that the dataset is written in a consistent way.
     """
-    dcmwrite(fn, ds, write_like_original)
+    dcmwrite(fn, ds, enforce_file_format=True)
 
 
 def read_dataset(fp: str | bytes | PathLike | BinaryIO) -> Dataset:

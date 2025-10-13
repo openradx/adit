@@ -3,11 +3,11 @@ from adit_radis_shared.common.utils.testing_helpers import run_worker_once
 from pytest_mock import MockerFixture
 
 from adit.core.errors import RetriableDicomError
+from adit.core.models import DicomJob, DicomTask
+from adit.core.processors import DicomTaskProcessor
+from adit.core.types import ProcessingResult
 from adit.core.utils.model_utils import get_model_label
 
-from ..models import DicomJob, DicomTask
-from ..processors import DicomTaskProcessor
-from ..types import ProcessingResult
 from .example_app.factories import ExampleTransferJobFactory, ExampleTransferTaskFactory
 from .example_app.models import ExampleAppSettings, ExampleTransferTask
 

@@ -2,7 +2,7 @@ from datetime import date
 
 import pytest
 
-from ..serializers import BatchQueryTaskSerializer
+from adit.batch_query.serializers import BatchQueryTaskSerializer
 
 
 @pytest.fixture

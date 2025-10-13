@@ -62,7 +62,7 @@ To make the proxy only available during building an image, but not when the
 container runs (in Compose as in Swarm this is never the case), then set proxy
 in config.json, but explicitly reset them in the env file. This seems to be
 necessary as Playwright doesn't respect the no_proxy setup and may lead to
-strange errors during integration testing.
+strange errors during acceptance testing.
 See also <https://docs.docker.com/network/proxy/#configure-the-docker-client>
 and <https://forums.docker.com/t/docker-swarm-mode-not-picking-up-proxy-configuration/132233/8?u=medihack>
 
@@ -100,13 +100,6 @@ and <https://forums.docker.com/t/docker-swarm-mode-not-picking-up-proxy-configur
 - docker run --rm -i -v=adit_dev_web_data:/foo busybox find /foo # List files in named volume
 - docker volume ls -f "name=adit_dev-\*" # Show all volumes that begin with "adit_dev-"
 - docker volume rm $(docker volume ls -f "name=foobar-\*" -q) # Delete all volumes that begin with "foobar-", cave delete the \
-
-### Docker compose comands
-
-- docker compose -f "docker-compose.dev.yml" -p adit_dev exec web pytest # Run Pytest on web container
-- docker compose -f "docker-compose.dev.yml" -p adit_dev exec web pytest --cov=./adit # Run Pytest with coverage report
-- docker compose -f "docker-compose.dev.yml" -p adit_dev up -d --build
-- docker compose -f "docker-compose.prod.yml" -p adit_prod up -d --build
 
 ### Docker swarm commands
 

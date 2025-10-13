@@ -64,5 +64,8 @@ venv/
 # Vim swap files
 **/*.swp
 
-# VS Code
-.vscode/
+# More development stuff
+/.github/
+/.pytest_cache/
+/.ruff_cache/
+/.vscode/

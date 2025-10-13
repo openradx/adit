@@ -55,7 +55,13 @@ class SelectiveTransferConsumer(AsyncJsonWebsocketConsumer):
     async def connect(self):
         logger.debug("Connected to WebSocket client.")
 
-        self.user: User = self.scope["user"]
+        scope_user = self.scope.get("user")
+        if scope_user is None or not getattr(scope_user, "is_authenticated", False):
+            await self.close(code=4401)
+            return
+
+        assert isinstance(scope_user, User)
+        self.user: User = scope_user
         self.query_operators: list[DicomOperator] = []
         self.current_message_id: int = 0
         self.pool = ThreadPoolExecutor()
@@ -91,6 +97,7 @@ class SelectiveTransferConsumer(AsyncJsonWebsocketConsumer):
             return
 
         # We are now in a query or transfer action so we have to process the form
+        assert action in ("query", "transfer")
         form = await self.get_form(action, content)
         form_valid: bool = await database_sync_to_async(form.is_valid)()
 
@@ -182,7 +189,7 @@ class SelectiveTransferConsumer(AsyncJsonWebsocketConsumer):
         except (DicomError, RetriableDicomError):
             form_error_response = await self._build_form_error_response(
                 form,
-                "Something went wrong at your requested source."
+                "Something went wrong at your requested source. "
                 "A Dicom Error has occured at the source.",
             )
             await self.send(form_error_response)
@@ -238,9 +245,6 @@ class SelectiveTransferConsumer(AsyncJsonWebsocketConsumer):
     ) -> Iterator[ResultDataset]:
         data = form.cleaned_data
 
-        if data["modality"] in settings.EXCLUDED_MODALITIES:
-            return []
-
         studies = operator.find_studies(
             QueryDataset.create(
                 PatientID=data["patient_id"],
@@ -253,16 +257,7 @@ class SelectiveTransferConsumer(AsyncJsonWebsocketConsumer):
             limit_results=limit_results,
         )
 
-        def has_only_excluded_modalities(study: ResultDataset):
-            modalities_in_study = set(study.ModalitiesInStudy)
-            excluded_modalities = set(settings.EXCLUDED_MODALITIES)
-            not_excluded_modalities = list(modalities_in_study - excluded_modalities)
-            return len(not_excluded_modalities) == 0
-
         for study in studies:
-            if has_only_excluded_modalities(study):
-                continue
-
             yield study
 
     @debounce()
@@ -287,7 +282,6 @@ class SelectiveTransferConsumer(AsyncJsonWebsocketConsumer):
                 "query": True,
                 "query_results": studies,
                 "max_results_reached": max_results_reached,
-                "exclude_modalities": settings.EXCLUDED_MODALITIES,
             },
         )
 

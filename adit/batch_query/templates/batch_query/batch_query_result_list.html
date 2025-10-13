@@ -1,28 +1,33 @@
 {% extends "batch_query/batch_query_layout.html" %}
+{% load crispy from crispy_forms_tags %}
 {% load render_table from django_tables2 %}
 {% load bootstrap_icon from common_extras %}
 {% block title %}
     Batch Query Results
 {% endblock title %}
 {% block heading %}
-    <div class="d-flex justify-content-between align-items-start">
-        <h4 class="mb-3">Batch Query Results</h4>
-        <a href="{% url 'batch_query_job_detail' job.id %}">
-            {% bootstrap_icon "arrow-return-left" %}
-            View Job
-        </a>
-    </div>
+    <c-page-heading title="Batch Query Results">
+    <c-slot name="right">
+    <a href="{% url 'batch_query_job_detail' job.id %}"
+       class="btn btn-secondary">
+        {% bootstrap_icon "arrow-return-left" %}
+        View Job
+    </a>
+    </c-slot>
+    </c-page-heading>
 {% endblock heading %}
 {% block content %}
-    <div class="d-flex justify-content-between">
-        <h5 text-nowrap class="mb-0">
-            <a href="{% url 'batch_query_result_download' job.id %}"
-               class="badge text-bg-light align-top">
-                {% bootstrap_icon "download" %}
-                Download all results
-            </a>
-        </h5>
-        {% include "core/_table_filters.html" %}
-    </div>
+    <c-table-heading title="Results">
+    <c-slot name="left">
+    <a href="{% url 'batch_query_result_download' job.id %}"
+       class="btn btn-sm btn-primary">
+        {% bootstrap_icon "download" %}
+        Download
+    </a>
+    </c-slot>
+    <c-slot name="right">
+    {% crispy filter.form %}
+    </c-slot>
+    </c-table-heading>
     {% render_table table %}
 {% endblock content %}

@@ -4,13 +4,15 @@
     Selective Transfer Jobs
 {% endblock title %}
 {% block heading %}
-    <div class="d-flex justify-content-between align-items-start">
-        <h4 class="mb-3">Selective Transfer Jobs</h4>
-        <a href="{% url 'selective_transfer_job_create' %}">
-            {% bootstrap_icon "plus-square" %}
-            Create New Job
-        </a>
-    </div>
+    <c-page-heading title="Selective Transfer Jobs">
+    <c-slot name="right">
+    <a href="{% url 'selective_transfer_job_create' %}"
+       class="btn btn-primary">
+        {% bootstrap_icon "plus-lg" %}
+        Create New Job
+    </a>
+    </c-slot>
+    </c-page-heading>
 {% endblock heading %}
 {% block content %}
     {% include "core/_dicom_job_table.html" %}

@@ -3,15 +3,16 @@ import logging
 import os
 import subprocess
 import tempfile
-from datetime import datetime
 from functools import partial
 from pathlib import Path
 from typing import Callable
 
-from dicognito.anonymizer import Anonymizer
-from dicognito.value_keeper import ValueKeeper
 from django.conf import settings
+from django.utils import timezone
 from pydicom import Dataset
+
+from adit.core.utils.dicom_manipulator import DicomManipulator
+from adit.core.utils.dicom_to_nifti_converter import DicomToNiftiConverter
 
 from .errors import DicomError
 from .models import DicomAppSettings, DicomNode, DicomTask, TransferTask
@@ -19,7 +20,7 @@ from .types import DicomLogEntry, ProcessingResult
 from .utils.dicom_dataset import QueryDataset, ResultDataset
 from .utils.dicom_operator import DicomOperator
 from .utils.dicom_utils import write_dataset
-from .utils.sanitize import sanitize_dirname
+from .utils.sanitize import sanitize_filename
 
 logger = logging.getLogger(__name__)
 
@@ -73,11 +74,12 @@ class TransferTaskProcessor(DicomTaskProcessor):
     def process(self) -> ProcessingResult:
         if self.dest_operator:
             self._transfer_to_server()
+        elif self.transfer_task.job.archive_password:
+            self._transfer_to_archive()
+        elif self.transfer_task.job.convert_to_nifti:
+            self._transfer_to_nifti()
         else:
-            if self.transfer_task.job.archive_password:
-                self._transfer_to_archive()
-            else:
-                self._transfer_to_folder()
+            self._transfer_to_folder()
 
         status: TransferTask.Status = TransferTask.Status.SUCCESS
         message: str = "Transfer task completed successfully."
@@ -95,9 +97,9 @@ class TransferTaskProcessor(DicomTaskProcessor):
 
     def _transfer_to_server(self) -> None:
         with tempfile.TemporaryDirectory(prefix="adit_") as tmpdir:
-            patient_folder = self._download_dicoms(Path(tmpdir))
+            patient_folder = self._download_to_folder(Path(tmpdir))
             assert self.dest_operator
-            self.dest_operator.upload_instances(patient_folder)
+            self.dest_operator.upload_images(patient_folder)
 
     def _transfer_to_archive(self) -> None:
         assert self.transfer_task.destination.node_type == DicomNode.NodeType.FOLDER
@@ -123,19 +125,34 @@ class TransferTaskProcessor(DicomTaskProcessor):
                 readme_path = Path(tmpdir) / "INDEX.txt"
                 with open(readme_path, "w", encoding="utf-8") as readme_file:
                     readme_file.write(
-                        f"Archive created by {self.transfer_task.job} at {datetime.now()}."
+                        f"Archive created by {self.transfer_task.job} at {timezone.now()}."
                     )
                 _add_to_archive(archive_path, archive_password, readme_path)
 
         with tempfile.TemporaryDirectory(prefix="adit_") as tmpdir:
-            patient_folder = self._download_dicoms(Path(tmpdir))
+            patient_folder = self._download_to_folder(Path(tmpdir))
             _add_to_archive(archive_path, archive_password, patient_folder)
+
+    def _transfer_to_nifti(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="adit_") as tmpdir:
+            patient_folder = self._download_to_folder(Path(tmpdir))
+            subfolders = [f for f in patient_folder.iterdir() if f.is_dir()]
+            assert len(subfolders) == 1
+            patient_folder_name, study_folder_name = subfolders[0].parts[-2:]
+            nifti_folder = (
+                Path(self.transfer_task.destination.dicomfolder.path)
+                / self._create_destination_name()
+                / patient_folder_name
+                / study_folder_name
+            )
+            converter = DicomToNiftiConverter()
+            converter.convert(patient_folder, nifti_folder)
 
     def _transfer_to_folder(self) -> None:
         assert self.transfer_task.destination.node_type == DicomNode.NodeType.FOLDER
         dicom_folder = Path(self.transfer_task.destination.dicomfolder.path)
         download_folder = dicom_folder / self._create_destination_name()
-        self._download_dicoms(download_folder)
+        self._download_to_folder(download_folder)
 
     def _create_destination_name(self) -> str:
         transfer_job = self.transfer_task.job
@@ -144,25 +161,26 @@ class TransferTaskProcessor(DicomTaskProcessor):
         name += str(transfer_job.pk) + "_"
         name += transfer_job.created.strftime("%Y%m%d") + "_"
         name += transfer_job.owner.username
-        return sanitize_dirname(name)
+        return sanitize_filename(name)
 
-    def _download_dicoms(
+    def _download_to_folder(
         self,
         download_folder: Path,
     ) -> Path:
-        pseudonym = self.transfer_task.pseudonym
+        pseudonym = self.transfer_task.pseudonym or None
         if pseudonym:
-            patient_folder = download_folder / sanitize_dirname(pseudonym)
+            patient_folder = download_folder / sanitize_filename(pseudonym)
         else:
-            pseudonym = None
-            patient_folder = download_folder / sanitize_dirname(self.transfer_task.patient_id)
+            patient_folder = download_folder / sanitize_filename(self.transfer_task.patient_id)
 
         study = self._find_study()
         modalities = study.ModalitiesInStudy
 
-        modalities = [
-            modality for modality in modalities if modality not in settings.EXCLUDED_MODALITIES
-        ]
+        exclude_modalities = settings.EXCLUDE_MODALITIES
+        if pseudonym and exclude_modalities:
+            # When we download the study we will exclude the specified modalities, but only
+            # if we are pseudonymizing the study, see also _download_study().
+            modalities = [modality for modality in modalities if modality not in exclude_modalities]
 
         # If some series are explicitly chosen then check if their Series Instance UIDs
         # are correct and only use those modalities for the name of the study folder.
@@ -183,12 +201,13 @@ class TransferTaskProcessor(DicomTaskProcessor):
         study_folder = patient_folder / f"{prefix}-{modalities}"
         os.makedirs(study_folder, exist_ok=True)
 
-        anonymizer = self._setup_anonymizer()
+        dicom_manipulator = DicomManipulator()
 
         modifier = partial(
-            self._modify_dataset,
-            anonymizer,
-            pseudonym,
+            dicom_manipulator.manipulate,
+            pseudonym=pseudonym,
+            trial_protocol_id=self.transfer_task.job.trial_protocol_id,
+            trial_protocol_name=self.transfer_task.job.trial_protocol_name,
         )
 
         if series_uids:
@@ -278,12 +297,6 @@ class TransferTaskProcessor(DicomTaskProcessor):
 
         return results
 
-    def _setup_anonymizer(self) -> Anonymizer:
-        anonymizer = Anonymizer()
-        for element in settings.SKIP_ELEMENTS_ANONYMIZATION:
-            anonymizer.add_element_handler(ValueKeeper(element))
-        return anonymizer
-
     def _download_study(
         self,
         patient_id: str,
@@ -298,13 +311,56 @@ class TransferTaskProcessor(DicomTaskProcessor):
 
             modifier(ds)
 
-            folder_path = Path(study_folder)
-            file_name = f"{ds.SOPInstanceUID}.dcm"
-            file_path = folder_path / file_name
-            folder_path.mkdir(parents=True, exist_ok=True)
+            final_folder: Path
+            if settings.CREATE_SERIES_SUB_FOLDERS:
+                series_number = ds.get("SeriesNumber")
+                if not series_number:
+                    series_folder_name = ds.SeriesInstanceUID
+                else:
+                    series_description = ds.get("SeriesDescription", "Undefined")
+                    series_folder_name = f"{series_number}-{series_description}"
+                series_folder_name = sanitize_filename(series_folder_name)
+                final_folder = study_folder / series_folder_name
+            else:
+                final_folder = study_folder
+
+            final_folder.mkdir(parents=True, exist_ok=True)
+            file_name = sanitize_filename(f"{ds.SOPInstanceUID}.dcm")
+            file_path = final_folder / file_name
             write_dataset(ds, file_path)
 
+        pseudonymize = bool(self.transfer_task.pseudonym)
+        exclude_modalities = settings.EXCLUDE_MODALITIES
+
         if series_uids:
+            # If specific series are selected we transfer only those series. When pseudonymizing
+            # we have to check if a modality should be excluded.
+            if pseudonymize and exclude_modalities:
+                filtered_series = []
+                for series_uid in series_uids:
+                    series_list = list(
+                        self.source_operator.find_series(
+                            QueryDataset.create(
+                                PatientID=patient_id,
+                                StudyInstanceUID=study_uid,
+                                SeriesInstanceUID=series_uid,
+                            )
+                        )
+                    )
+                    if not series_list:
+                        logger.warning(f"Series with UID {series_uid} not found.")
+                        continue
+
+                    assert len(series_list) == 1
+                    series = series_list[0]
+
+                    if series.Modality in exclude_modalities:
+                        continue
+
+                    filtered_series.append(series)
+
+                series_uids = [series.SeriesInstanceUID for series in filtered_series]
+
             for series_uid in series_uids:
                 self.source_operator.fetch_series(
                     patient_id=patient_id,
@@ -312,41 +368,29 @@ class TransferTaskProcessor(DicomTaskProcessor):
                     series_uid=series_uid,
                     callback=callback,
                 )
+
+        elif pseudonymize:
+            # If the whole study should be transferred and pseudonymized, we transfer on the
+            # series level to exclude the specified modalities.
+            series_list = list(
+                self.source_operator.find_series(
+                    QueryDataset.create(PatientID=patient_id, StudyInstanceUID=study_uid)
+                )
+            )
+            for series in series_list:
+                series_uid = series.SeriesInstanceUID
+                modality = series.Modality
+                if modality in settings.EXCLUDE_MODALITIES:
+                    continue
+
+                self.source_operator.fetch_series(patient_id, study_uid, series_uid, callback)
+
         else:
-            # If no series are explicitly chosen then download all series of the study
+            # Without pseudonymization we transfer the whole study as it is.
             self.source_operator.fetch_study(
                 patient_id=patient_id,
                 study_uid=study_uid,
                 callback=callback,
-            )
-
-    def _modify_dataset(
-        self,
-        anonymizer: Anonymizer,
-        pseudonym: str | None,
-        ds: Dataset,
-    ) -> None:
-        """Optionally pseudonymize an incoming dataset with the given pseudonym
-        and add the trial ID and name to the DICOM header if specified."""
-        if pseudonym:
-            anonymizer.anonymize(ds)
-
-            ds.PatientID = pseudonym
-            ds.PatientName = pseudonym
-
-        trial_protocol_id = self.transfer_task.job.trial_protocol_id
-        trial_protocol_name = self.transfer_task.job.trial_protocol_name
-
-        if trial_protocol_id:
-            ds.ClinicalTrialProtocolID = trial_protocol_id
-
-        if trial_protocol_name:
-            ds.ClinicalTrialProtocolName = trial_protocol_name
-
-        if pseudonym and trial_protocol_id:
-            session_id = f"{ds.StudyDate}-{ds.StudyTime}"
-            ds.PatientComments = (
-                f"Project:{trial_protocol_id} Subject:{pseudonym} Session:{pseudonym}_{session_id}"
             )
 
 

@@ -2,7 +2,7 @@ from typing import AsyncIterator
 
 import pytest
 
-from ...utils.peekable import AsyncPeekable
+from adit.dicom_web.utils.peekable import AsyncPeekable
 
 
 @pytest.fixture

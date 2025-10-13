@@ -3,15 +3,17 @@
     "dockerfile": "Dockerfile"
   },
   "features": {
-    "ghcr.io/devcontainers/features/docker-in-docker:2": {
-      // Install Docker CE instead of an (by default) older Moby version
-      "moby": false
-    },
-    "ghcr.io/devcontainers/features/node:1": {}
+    "ghcr.io/devcontainers/features/github-cli:1": {},
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {},
+    "ghcr.io/devcontainers/features/node:1": {},
+    "ghcr.io/va-h/devcontainers-features/uv:1": {
+      "shellautocompletion": true
+    }
   },
-  // https://github.com/orgs/community/discussions/50403
-  // "initializeCommand": "docker system prune --all --force",
-  "postCreateCommand": "poetry install && poetry run invoke init-workspace",
+  "remoteEnv": {
+    "UV_CACHE_DIR": "${containerWorkspaceFolder}/.cache/uv"
+  },
+  "postCreateCommand": "bash .devcontainer/post-create.sh",
   "customizations": {
     "vscode": {
       "extensions": [

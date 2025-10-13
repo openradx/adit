@@ -8,7 +8,7 @@ INSTALLED_APPS += [  # noqa: F405
     "adit.core.tests.example_app.apps.ExampleAppConfig",
 ]
 
-# We must force our background workers that a started during integration tests as
+# We must force our background workers that a started during acceptance tests as
 # a subprocess to use the test database.
 if not DATABASES["default"]["NAME"].startswith("test_"):  # noqa: F405
     test_database = "test_" + DATABASES["default"]["NAME"]  # noqa: F405

@@ -188,6 +188,7 @@ class DicomJob(models.Model):
     urgent = models.BooleanField(default=False)
     message = models.TextField(blank=True, default="")
     send_finished_mail = models.BooleanField(default=False)
+    convert_to_nifti = models.BooleanField(default=False)
     owner_id: int
     owner = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -253,6 +254,13 @@ class DicomJob(models.Model):
         Returns:
             True if the job is finished, False otherwise
         """
+        if not self.tasks.exists():
+            self.status = DicomJob.Status.SUCCESS
+            self.message = "No tasks to process."
+            self.end = timezone.now()
+            self.save()
+            return True
+
         if self.tasks.filter(status=DicomTask.Status.PENDING).exists():
             if self.status != DicomJob.Status.CANCELING:
                 self.status = DicomJob.Status.PENDING

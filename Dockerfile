@@ -1,87 +1,72 @@
-FROM python:3.12-bullseye AS python-base
+# syntax=docker/dockerfile:1.19-labs # TODO remove when ADD --exclude is stable
+# Ideas from https://docs.astral.sh/uv/guides/integration/docker/
+# and https://hynek.me/articles/docker-uv/
 
-# python
-# ENV variables are also available in the later build stages
+FROM python:3.13-bookworm AS builder-base
+
 ENV PYTHONUNBUFFERED=1 \
-    # prevents python creating .pyc files
-    PYTHONDONTWRITEBYTECODE=1 \
-    \
-    # pip
-    PIP_NO_CACHE_DIR=off \
-    PIP_DISABLE_PIP_VERSION_CHECK=on \
-    PIP_DEFAULT_TIMEOUT=100 \
-    \
-    # poetry
-    # https://python-poetry.org/docs/#installing-with-the-official-installer
-    # https://python-poetry.org/docs/configuration/#using-environment-variables
-    POETRY_VERSION=1.8.3 \
-    # make poetry install to this location
-    POETRY_HOME="/opt/poetry" \
-    # make poetry create the virtual environment in the project's root
-    # it gets named `.venv`
-    POETRY_VIRTUALENVS_IN_PROJECT=true \
-    # do not ask any interactive question
-    POETRY_NO_INTERACTION=1 \
-    \
-    # paths
-    # this is where our requirements + virtual environment will live
-    PYSETUP_PATH="/opt/pysetup" \
-    VENV_PATH="/opt/pysetup/.venv"
+  PYTHONDONTWRITEBYTECODE=1 \
+  UV_LINK_MODE=copy \
+  UV_COMPILE_BYTECODE=1 \
+  UV_PYTHON_DOWNLOADS=never \
+  PATH="/app/.venv/bin:$PATH" \
+  # There is no git during image build so we need to provide a fake version
+  UV_DYNAMIC_VERSIONING_BYPASS=0.0.0
 
-# prepend poetry and venv to path
-ENV PATH="$POETRY_HOME/bin:$VENV_PATH/bin:$PATH"
-
-# deps for db management commands and transferring to an archive
-# make sure to match the postgres version to the service in the compose file
+# Install dependencies for the `psql` command and 7zip.
+# Must match the version of the postgres service in the compose file!
 RUN apt-get update \
-    && apt-get install --no-install-recommends -y postgresql-common \
-    && /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y \
-    && apt-get install --no-install-recommends -y \
-    postgresql-client-17 \
-    p7zip-full
+  && apt-get install --no-install-recommends -y postgresql-common \
+  && /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y \
+  && apt-get install --no-install-recommends -y \
+  postgresql-client-17 \
+  p7zip-full \
+  && rm -rf /var/lib/apt/lists/*
 
+COPY --from=ghcr.io/astral-sh/uv:0.9.2 /uv /uvx /bin/
 
-# `builder-base` stage is used to build deps + create our virtual environment
-FROM python-base AS builder-base
-RUN apt-get update \
-    && apt-get install --no-install-recommends -y \
-    # deps for installing poetry
-    curl \
-    # deps for building python deps
-    build-essential
+WORKDIR /app
 
-# install poetry - respects $POETRY_VERSION & $POETRY_HOME
-RUN curl -sSL https://install.python-poetry.org | python3 -
+###
+# Development image
+###
+FROM builder-base AS development
 
-# copy project requirement files here to ensure they will be cached.
-WORKDIR $PYSETUP_PATH
-COPY poetry.lock pyproject.toml ./
+# Install dependencies without project itself
+RUN --mount=type=cache,target=/root/.cache/uv \
+  --mount=type=bind,source=uv.lock,target=uv.lock \
+  --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
+  uv sync --frozen --no-install-project --no-group client
 
-# install runtime deps - uses $POETRY_VIRTUALENVS_IN_PROJECT internally
-RUN poetry install --without dev
-
-
-# `development` image is used during development / testing
-FROM python-base AS development
-WORKDIR $PYSETUP_PATH
-
-# copy in our built poetry + venv
-COPY --from=builder-base $POETRY_HOME $POETRY_HOME
-COPY --from=builder-base $PYSETUP_PATH $PYSETUP_PATH
-
-# quicker install as runtime deps are already installed
-RUN poetry install
-
-# Install requirements for end-to-end testing
 RUN playwright install --with-deps chromium
 
-# will become mountpoint of our code
-WORKDIR /app
+ADD . /app
 
+# Install project itself
+RUN --mount=type=cache,target=/root/.cache/uv \
+  uv sync --frozen
 
-# `production` image used for runtime
-FROM python-base AS production
-COPY --from=builder-base $PYSETUP_PATH $PYSETUP_PATH
-COPY . /app/
+ARG PROJECT_VERSION
+ENV PROJECT_VERSION=${PROJECT_VERSION}
 
-WORKDIR /app
+###
+# Production image
+###
+FROM builder-base AS production
+
+# Install dependencies without dev and project itself
+RUN --mount=type=cache,target=/root/.cache/uv \
+  --mount=type=bind,source=uv.lock,target=uv.lock \
+  --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
+  uv sync --frozen --no-install-project --no-dev --no-group client
+
+# We can't put ./samples into .dockerignore because we need it in watch mode
+# during development, but we don't want it in the production image.
+ADD --exclude=./samples . /app
+
+# Install project itself
+RUN --mount=type=cache,target=/root/.cache/uv \
+  uv sync --frozen --no-dev --no-group client
+
+ARG PROJECT_VERSION
+ENV PROJECT_VERSION=${PROJECT_VERSION}

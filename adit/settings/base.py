@@ -13,41 +13,33 @@ https://docs.djangoproject.com/en/3.0/ref/settings/
 from pathlib import Path
 from typing import Literal
 
-import environ
+from environs import env
 from pydicom import config as pydicom_config
 
-# During development and calling `manage.py` from the host most environment variables are
-# set using the `.env` file (see `manage.py`). But some variables are only used in the Docker
-# compose setup, so we need to provide defaults here.
-env = environ.Env()
-llamacpp_dev_port = env.int("LLAMACPP_DEV_PORT", default=8080)  # type: ignore
-postgres_dev_port = env.int("POSTGRES_DEV_PORT", default=5432)  # type: ignore
-env = environ.Env(
-    DATABASE_URL=(str, f"postgres://postgres:postgres@localhost:{postgres_dev_port}/postgres"),
-    DBBACKUP_STORAGE_LOCATION=(str, "/temp/backups-radis"),
-    LLAMACPP_URL=(str, f"http://localhost:{llamacpp_dev_port}"),
-)
+# During development and calling `manage.py` from the host we have to load the .env file manually.
+# Some env variables will still need a default value, as those are only set in the compose file.
+if not env.bool("IS_DOCKER_CONTAINER", default=False):
+    env.read_env()
 
 # The base directory of the project (the root of the repository)
-BASE_DIR = Path(__file__).resolve(strict=True).parent.parent.parent
+BASE_PATH = Path(__file__).resolve(strict=True).parent.parent.parent
 
-# Used to monitor files for autoreload
-SOURCE_FOLDERS = [BASE_DIR / "adit"]
+# The source paths of the project
+SOURCE_PATHS = [BASE_PATH / "adit"]
 
-# Fetch version from the environment which is passed through from the latest git version tag
-PROJECT_VERSION = env.str("PROJECT_VERSION", default="vX.Y.Z")  # type: ignore
+# Fetch version from the environment which is passed through from the git version tag
+PROJECT_VERSION = env.str("PROJECT_VERSION", default="v0.0.0")
+
+# The project URL used in the navbar and footer
+PROJECT_URL = "https://github.com/openradx/adit"
 
 # Needed by sites framework
 SITE_ID = 1
 
-# The following settings are stored in the Site model on startup initially (see common/apps.py).
-# Once set they are stored in the database and can be changed via the admin interface.
+# The following settings are synced to the Site model of the sites framework on startup
+# (see common/apps.py in adit-radis-shared).
 SITE_DOMAIN = env.str("SITE_DOMAIN")
 SITE_NAME = env.str("SITE_NAME")
-SITE_USES_HTTPS = env.bool("SITE_USES_HTTPS")
-SITE_META_KEYWORDS = "ADIT, Radiology, DICOM,Medicine, Tool, Transfer"
-SITE_META_DESCRIPTION = "ADIT is a tool for managing automated DICOM transfers"
-SITE_PROJECT_URL = "https://github.com/openradx/adit"
 
 SECRET_KEY = env.str("DJANGO_SECRET_KEY")
 
@@ -74,6 +66,8 @@ INSTALLED_APPS = [
     "dbbackup",
     "revproxy",
     "loginas",
+    "django_cotton.apps.SimpleAppConfig",
+    "block_fragments.apps.SimpleAppConfig",
     "crispy_forms",
     "crispy_bootstrap5",
     "django_htmx",
@@ -105,7 +99,6 @@ MIDDLEWARE = [
     "django_htmx.middleware.HtmxMiddleware",
     "adit_radis_shared.accounts.middlewares.ActiveGroupMiddleware",
     "adit_radis_shared.common.middlewares.MaintenanceMiddleware",
-    "adit_radis_shared.common.middlewares.TimezoneMiddleware",
 ]
 
 ROOT_URLCONF = "adit.urls"
@@ -114,8 +107,25 @@ TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
         "DIRS": [],
-        "APP_DIRS": True,
         "OPTIONS": {
+            "loaders": [
+                (
+                    "block_fragments.loader.Loader",
+                    [
+                        (
+                            "django.template.loaders.cached.Loader",
+                            [
+                                "django_cotton.cotton_loader.Loader",
+                                "django.template.loaders.filesystem.Loader",
+                                "django.template.loaders.app_directories.Loader",
+                            ],
+                        )
+                    ],
+                )
+            ],
+            "builtins": [
+                "django_cotton.templatetags.cotton",
+            ],
             "context_processors": [
                 "django.template.context_processors.debug",
                 "django.template.context_processors.request",
@@ -134,8 +144,11 @@ ASGI_APPLICATION = "adit.asgi.application"
 # This seems to be important for Cloud IDEs as CookieStorage does not work there.
 MESSAGE_STORAGE = "django.contrib.messages.storage.session.SessionStorage"
 
-# Loads the DB setup from the DATABASE_URL environment variable.
-DATABASES = {"default": env.db()}
+# DATABASE_URL is only set in the compose file. For local development on the host
+# we use the port from the .env file directly.
+postgres_dev_port = env.int("POSTGRES_DEV_PORT", default=5432)
+database_url = f"postgres://postgres:postgres@localhost:{postgres_dev_port}/postgres"
+DATABASES = {"default": env.dj_db_url("DATABASE_URL", default=database_url)}
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
@@ -263,31 +276,28 @@ LOGGING = {
 # Internationalization
 # https://docs.djangoproject.com/en/3.0/topics/i18n/
 
-LANGUAGE_CODE = "de-de"
+LANGUAGE_CODE = "en-us"
 
-TIME_ZONE = "UTC"
-
-# We don't want to have German translations, but everything in English
+# TODO: We don't want use translations yet, but everything is hardcoded in English
 USE_I18N = False
 
 USE_TZ = True
 
-# A timezone that is presented to the users of the web interface.
-USER_TIME_ZONE = env.str("USER_TIME_ZONE")
+TIME_ZONE = env.str("TIME_ZONE", default="UTC")
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/3.0/howto/static-files/
 STATIC_URL = "/static/"
 
 # Additional (project wide) static files
-STATICFILES_DIRS = (BASE_DIR / "adit" / "static",)
+STATICFILES_DIRS = (BASE_PATH / "adit" / "static",)
 
 # For crispy forms
 CRISPY_ALLOWED_TEMPLATE_PACKS = "bootstrap5"
 CRISPY_TEMPLATE_PACK = "bootstrap5"
 
 # django-templates2
-DJANGO_TABLES2_TEMPLATE = "django_tables2/bootstrap5.html"
+DJANGO_TABLES2_TEMPLATE = "common/_django_tables2.html"
 
 # The salt that is used for hashing new tokens in the token authentication app.
 # Cave, changing the salt after some tokens were already generated makes them all invalid!
@@ -295,18 +305,20 @@ TOKEN_AUTHENTICATION_SALT = env.str("TOKEN_AUTHENTICATION_SALT")
 
 # django-dbbackup
 DBBACKUP_STORAGE = "django.core.files.storage.FileSystemStorage"
-DBBACKUP_STORAGE_OPTIONS = {"location": env.str("DBBACKUP_STORAGE_LOCATION")}
+DBBACKUP_STORAGE_OPTIONS = {
+    "location": env.str("DBBACKUP_STORAGE_LOCATION", default="/tmp/backups-adit")
+}
 DBBACKUP_CLEANUP_KEEP = 30
 
 # Orthanc servers are integrated in ADIT by using a reverse proxy (django-revproxy).
-ORTHANC1_HOST = env.str("ORTHANC1_HOST")
-ORTHANC1_HTTP_PORT = env.int("ORTHANC1_HTTP_PORT")
-ORTHANC1_DICOM_PORT = env.int("ORTHANC1_DICOM_PORT")
-ORTHANC1_DICOMWEB_ROOT = env.str("ORTHANC1_DICOMWEB_ROOT")
-ORTHANC2_HOST = env.str("ORTHANC2_HOST")
-ORTHANC2_HTTP_PORT = env.int("ORTHANC2_HTTP_PORT")
-ORTHANC2_DICOM_PORT = env.int("ORTHANC2_DICOM_PORT")
-ORTHANC2_DICOMWEB_ROOT = env.str("ORTHANC2_DICOMWEB_ROOT")
+ORTHANC1_HOST = env.str("ORTHANC1_HOST", default="localhost")
+ORTHANC1_HTTP_PORT = env.int("ORTHANC1_HTTP_PORT", default=6501)
+ORTHANC1_DICOM_PORT = env.int("ORTHANC1_DICOM_PORT", default=7501)
+ORTHANC1_DICOMWEB_ROOT = env.str("ORTHANC1_DICOMWEB_ROOT", "dicom-web")
+ORTHANC2_HOST = env.str("ORTHANC2_HOST", default="localhost")
+ORTHANC2_HTTP_PORT = env.int("ORTHANC2_HTTP_PORT", default=6502)
+ORTHANC2_DICOM_PORT = env.int("ORTHANC2_DICOM_PORT", default=7502)
+ORTHANC2_DICOMWEB_ROOT = env.str("ORTHANC2_DICOMWEB_ROOT", "dicom-web")
 
 # Used by django-filter
 FILTERS_EMPTY_CHOICE_LABEL = "Show All"
@@ -322,16 +334,16 @@ RECEIVER_AE_TITLE = env.str("RECEIVER_AE_TITLE")
 
 # The address and port of the STORE SCP server (part of the receiver).
 # By default the STORE SCP server listens to all interfaces (empty string)
-STORE_SCP_HOST = env.str("STORE_SCP_HOST")
-STORE_SCP_PORT = env.int("STORE_SCP_PORT")
+STORE_SCP_HOST = env.str("STORE_SCP_HOST", "localhost")
+STORE_SCP_PORT = env.int("STORE_SCP_PORT", 11112)
 
 # The address and port of the file transmit socket server (part of the receiver)
 # that is used to transfer DICOM files from the receiver to the workers (when
 # the PACS server does not support C-GET).
 # By default the file transmit socket server listens to all interfaces (should
 # not be a problem as it is inside the docker network).
-FILE_TRANSMIT_HOST = env.str("FILE_TRANSMIT_HOST")
-FILE_TRANSMIT_PORT = env.int("FILE_TRANSMIT_PORT")
+FILE_TRANSMIT_HOST = env.str("FILE_TRANSMIT_HOST", "localhost")
+FILE_TRANSMIT_PORT = env.int("FILE_TRANSMIT_PORT", 14638)
 
 # Usually a transfer job must be verified by an admin. By setting
 # this option to True ADIT will schedule unverified transfers
@@ -350,6 +362,9 @@ BATCH_TRANSFER_DEFAULT_PRIORITY = 2
 BATCH_TRANSFER_URGENT_PRIORITY = 6
 BATCH_QUERY_DEFAULT_PRIORITY = 3
 BATCH_QUERY_URGENT_PRIORITY = 7
+
+# The priority for stalled jobs that are retried.
+STALLED_JOBS_RETRY_PRIORITY = 10
 
 # The used archive type when creating a new archive in selective transfer.
 # .7z is more the secure as the names of files and folder can't be viewed
@@ -391,8 +406,8 @@ MAX_BATCH_QUERY_SIZE = 1000
 # (staff users are not limited)
 MAX_BATCH_TRANSFER_SIZE = 500
 
-# Exclude modalities when listing studies and during queries or transfers
-EXCLUDED_MODALITIES = ["PR", "SR"]
+# See example.env
+EXCLUDE_MODALITIES = env.list("EXCLUDE_MODALITIES", default=[])
 
 # If an ethics committee approval is required for batch transfer
 ETHICS_COMMITTEE_APPROVAL_REQUIRED = True
@@ -400,6 +415,10 @@ ETHICS_COMMITTEE_APPROVAL_REQUIRED = True
 # DicomWeb Settings
 DEFAULT_BOUNDARY = "adit-boundary"
 ERROR_MESSAGE = "Processing your DicomWeb request failed."
+
+# If enabled, series are placed into separate folders when downloading a study.
+# Otherwise all images of the whole study are placed into folder.
+CREATE_SERIES_SUB_FOLDERS = True
 
 # Elements to keep during pseudonymization
 SKIP_ELEMENTS_ANONYMIZATION = [

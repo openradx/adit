@@ -1,16 +1,25 @@
 x-app: &default-app
   image: adit_dev:latest
-  volumes:
-    - .:/app
-    - vscode-server:/root/.vscode-server/extensions
-    - vscode-server-insiders:/root/.vscode-server-insiders/extensions
+  build:
+    target: development
+  pull_policy: build
   environment:
     DJANGO_INTERNAL_IPS: ${DJANGO_INTERNAL_IPS:?}
-    DJANGO_SETTINGS_MODULE: "adit.settings.development"
+    DJANGO_SETTINGS_MODULE: adit.settings.development
     FORCE_DEBUG_TOOLBAR: ${FORCE_DEBUG_TOOLBAR:-true}
     REMOTE_DEBUGGING_ENABLED: ${REMOTE_DEBUGGING_ENABLED:-false}
     REMOTE_DEBUGGING_PORT: ${REMOTE_DEBUGGING_PORT:-5678}
-  pull_policy: never
+  develop:
+    watch:
+      - action: sync
+        path: .
+        target: /app
+        ignore:
+          - .git/
+          - .venv/
+          - node_modules/
+      - action: rebuild
+        path: ./pyproject.toml
 
 services:
   init:
@@ -20,11 +29,9 @@ services:
 
   web:
     <<: *default-app
-    build:
-      target: development
     ports:
-      - "${WEB_DEV_PORT:-8000}:8000"
-      - "${REMOTE_DEBUGGING_PORT:-5678}:5678"
+      - ${WEB_DEV_PORT:-8000}:8000
+      - ${REMOTE_DEBUGGING_PORT:-5678}:5678
     command: >
       bash -c "
         wait-for-it -s postgres.local:5432 -t 60 && 
@@ -35,6 +42,7 @@ services:
         ./manage.py populate_example_data &&
         wait-for-it -s orthanc1.local:6501 -t 60 &&
         ./manage.py populate_orthancs &&
+        ./manage.py retry_stalled_jobs &&
         ./manage.py runserver 0.0.0.0:8000
       "
 
@@ -57,7 +65,7 @@ services:
   receiver:
     <<: *default-app
     ports:
-      - "11122:11112"
+      - 11122:11112
     command: |
       ./manage.py receiver --autoreload
 
@@ -65,8 +73,12 @@ services:
     environment:
       POSTGRES_PASSWORD: postgres
     ports:
-      - "${POSTGRES_DEV_PORT:-5432}:5432"
+      - ${POSTGRES_DEV_PORT:-5432}:5432
 
-volumes:
-  vscode-server:
-  vscode-server-insiders:
+  orthanc1:
+    ports:
+      - "7501:7501"
+
+  orthanc2:
+    ports:
+      - "7502:7502"

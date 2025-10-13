@@ -180,6 +180,7 @@ class QueryDataset(BaseDataset):
         SeriesDescription: str | type[_NoValue] = _NoValue,
         SeriesNumber: int | str | type[_NoValue] = _NoValue,
         Modality: str | type[_NoValue] = _NoValue,
+        SOPInstanceUID: str | type[_NoValue] = _NoValue,
     ) -> "QueryDataset":
         """A helper factory method for type hinting query parameters."""
         ds = Dataset()

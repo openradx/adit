@@ -21,7 +21,7 @@ class Command(AsyncServerCommand):
         "files to subscribing workers."
     )
     server_name = "DICOM receiver"
-    paths_to_watch = settings.SOURCE_FOLDERS
+    paths_to_watch = settings.SOURCE_PATHS
 
     async def run_server_async(self, **options):
         with tempfile.TemporaryDirectory(prefix="adit_receiver_") as tmpdir:
@@ -78,7 +78,7 @@ class Command(AsyncServerCommand):
                 study_uid = ds.StudyInstanceUID
                 series_uid = ds.SeriesInstanceUID
                 instance_uid = ds.SOPInstanceUID
-                topic = f"{calling_ae}\\{study_uid}\\{series_uid}"
+                topic = f"{calling_ae}\\{study_uid}"
                 await self._file_transmit.publish_file(
                     topic, file_path, {"SOPInstanceUID": instance_uid}
                 )

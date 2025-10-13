@@ -11,22 +11,17 @@
     {
       "managers": ["docker-compose"],
       "matchPackageNames": ["postgres"],
-      "allowedVersions": "<=16"
+      "allowedVersions": "<=17"
     },
     {
       "managers": ["dockerfile"],
       "matchPackageNames": ["python"],
-      "allowedVersions": "<=3.12"
+      "allowedVersions": "<=3.13"
     },
     {
-      "matchManagers": ["poetry"],
-      "matchPackageNames": ["pydicom"],
-      "allowedVersions": "<=2"
-    },
-    {
-      "matchManagers": ["poetry"],
-      "matchPackageNames": ["dicognito"],
-      "allowedVersions": "<=0.17"
+      "managers": ["pep621"],
+      "matchPackageNames": ["factory-boy"],
+      "allowedVersions": "<=3.3.2"
     }
   ]
 }

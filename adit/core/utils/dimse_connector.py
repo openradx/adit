@@ -10,7 +10,12 @@ from django.conf import settings
 from pydicom import Dataset
 from pydicom.errors import InvalidDicomError
 from pynetdicom import debug_logger
-from pynetdicom._globals import STATUS_FAILURE, STATUS_PENDING, STATUS_SUCCESS, STATUS_WARNING
+from pynetdicom._globals import (
+    STATUS_FAILURE,
+    STATUS_PENDING,
+    STATUS_SUCCESS,
+    STATUS_WARNING,
+)
 from pynetdicom.ae import ApplicationEntity as AE
 from pynetdicom.association import Association
 from pynetdicom.events import EVT_C_STORE, Event
@@ -371,7 +376,7 @@ class DimseConnector:
                 except InvalidDicomError as err:
                     logger.error("Failed to read DICOM file %s: %s", path, err)
                     invalid_dicoms.append(path)
-                    continue  # We try to handle the rest of the instances and raise the error later
+                    continue  # We try to handle the rest of the images and raise the error later
 
                 _send_dataset(ds)
 

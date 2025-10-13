@@ -3,9 +3,8 @@ from io import BytesIO
 import pandas as pd
 import pytest
 
+from adit.batch_transfer.parsers import BatchTransferFileParser
 from adit.core.errors import BatchFileContentError
-
-from ..parsers import BatchTransferFileParser
 
 
 @pytest.fixture

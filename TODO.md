@@ -76,7 +76,7 @@
 ## Fix
 
 - Shorter timeout for offline studies
-- Tests: test_query_utils, test serializers, test all views (as integration tests using real Orthanc), improve tests of transferutil, BatchFileSizeError
+- Tests: test_query_utils, test serializers, test all views (as acceptance tests using real Orthanc), improve tests of transferutil, BatchFileSizeError
 - c-get download timeout
 - Choice to transfer all modalities of a studies or just the modalities which were searched for
 - Make logging analyze Docker image with: <http://crunchtools.com/software/petit/>, less, vim, <https://crypt.gen.nz/logsurfer/>, ripgrep
@@ -118,11 +118,10 @@
   - <http://nginx.org/en/docs/http/ngx_http_auth_request_module.html>
   - <https://stackoverflow.com/a/70961666/166229>
   - Evaluate Nginx vs Traefik
-- Reuse authentication in integration tests
+- Reuse authentication in acceptance tests
   - <https://playwright.dev/python/docs/auth>
   - Unfortunately, we can't use live_server fixture inside session fixtures
   - example <https://github.com/automationneemo/PlaywrightDemoYt>
-- Get rid of dicom_connector.download_study/move_study. Do everything at the series level. That way filtering series (e.g. exlcude modalities) is much easier.
 - Evaluate if services should be better restarted with pywatchman instead of watchdog and watchmedo
   - pywatchman is used by Django autoreload
   - See <https://github.com/django/django/blob/main/django/utils/autoreload.py>
@@ -142,12 +141,6 @@
   - Can be work around by wrapping another zip file in an encrypted zip file <https://unix.stackexchange.com/a/290088/469228>
 - Rewrite dicom_connector to use asyncio (wrap all pynetdicom calls in asyncio.to_thread)
   - I don't think that this will gain any performance improvements, so maybe not worth it
-- Evaluate other task runners
-  - <https://www.pyinvoke.org/> # used currently
-  - <https://github.com/taskipy/taskipy>
-  - <https://github.com/nat-n/poethepoet>
-  - <https://just.systems/>
-  - <https://taskfile.dev/>
 - Make a job urgent retrospectively (maybe only staff members can do this)
   - A current workaround is to cancel the job, change urgency with Django Admin and then resume the job
 - Try to bring channels_liver_server in official pytest_django release

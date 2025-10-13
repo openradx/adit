@@ -1,19 +1,21 @@
 {% extends "batch_transfer/batch_transfer_layout.html" %}
-{% load dicom_job_status_css_class from core_extras %}
+{% load crispy from crispy_forms_tags %}
 {% load render_table from django_tables2 %}
 {% load bootstrap_icon from common_extras %}
+{% load dicom_job_status_css_class from core_extras %}
 {% load job_control_panel from batch_transfer_extras %}
 {% block title %}
     Batch Transfer Job
 {% endblock title %}
 {% block heading %}
-    <div class="d-flex justify-content-between align-items-start">
-        <h4 class="mb-3">Batch Transfer Job</h4>
-        <a href="{% url 'batch_transfer_job_list' %}">
-            {% bootstrap_icon "list" %}
-            Job List
-        </a>
-    </div>
+    <c-page-heading title="Batch Transfer Job">
+    <c-slot name="right">
+    <a href="{% url 'batch_transfer_job_list' %}" class="btn btn-secondary">
+        {% bootstrap_icon "list" %}
+        Job List
+    </a>
+    </c-slot>
+    </c-page-heading>
 {% endblock heading %}
 {% block content %}
     <dl class="row">
@@ -65,10 +67,11 @@
             {{ job.message|default:"—" }}
         </dd>
     </dl>
-    <div class="d-flex justify-content-between">
-        <h5 text-nowrap>Transfer Tasks</h5>
-        {% include "core/_table_filters.html" %}
-    </div>
+    <c-table-heading title="Transfer Tasks">
+    <c-slot name="right">
+    {% crispy filter.form %}
+    </c-slot>
+    </c-table-heading>
     {% render_table table %}
     {% job_control_panel %}
 {% endblock content %}

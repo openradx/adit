@@ -1,7 +1,8 @@
+import functools
 import io
 import os
 from typing import Any, Iterable
-from unittest.mock import create_autospec
+from unittest.mock import MagicMock, create_autospec
 
 import pandas as pd
 from adit_radis_shared.accounts.factories import GroupFactory
@@ -14,10 +15,7 @@ from pydicom import Dataset
 from pynetdicom.association import Association
 from pynetdicom.status import Status
 
-from adit.core.factories import (
-    DicomServerFactory,
-    DicomWebServerFactory,
-)
+from adit.core.factories import DicomMoveServerFactory, DicomServerFactory, DicomWebServerFactory
 from adit.core.models import DicomServer
 from adit.core.utils.dicom_dataset import ResultDataset
 from adit.core.utils.dicom_operator import DicomOperator
@@ -68,7 +66,7 @@ class DicomTestHelper:
         return success_status
 
 
-def create_association_mock() -> Association:
+def create_association_mock() -> MagicMock:
     assoc = create_autospec(Association)
     assoc.is_established = True
     return assoc
@@ -102,21 +100,34 @@ def create_resources(transfer_task):
     return patient, study
 
 
-def setup_dimse_orthancs() -> tuple[DicomServer, DicomServer]:
+def setup_dimse_orthancs(cget_enabled: bool = True) -> tuple[DicomServer, DicomServer]:
     call_command("populate_orthancs", reset=True)
-
-    orthanc1 = DicomServerFactory.create(
-        name="Orthanc Test Server 1",
-        ae_title="ORTHANC1",
-        host=settings.ORTHANC1_HOST,
-        port=settings.ORTHANC1_DICOM_PORT,
-    )
-    orthanc2 = DicomServerFactory.create(
-        name="Orthanc Test Server 2",
-        ae_title="ORTHANC2",
-        host=settings.ORTHANC2_HOST,
-        port=settings.ORTHANC2_DICOM_PORT,
-    )
+    if cget_enabled:
+        orthanc1 = DicomServerFactory.create(
+            name="Orthanc Test Server 1",
+            ae_title="ORTHANC1",
+            host=settings.ORTHANC1_HOST,
+            port=settings.ORTHANC1_DICOM_PORT,
+        )
+        orthanc2 = DicomServerFactory.create(
+            name="Orthanc Test Server 2",
+            ae_title="ORTHANC2",
+            host=settings.ORTHANC2_HOST,
+            port=settings.ORTHANC2_DICOM_PORT,
+        )
+    else:
+        orthanc1 = DicomMoveServerFactory.create(
+            name="Orthanc Test Server 1",
+            ae_title="ORTHANC1",
+            host=settings.ORTHANC1_HOST,
+            port=settings.ORTHANC1_DICOM_PORT,
+        )
+        orthanc2 = DicomMoveServerFactory.create(
+            name="Orthanc Test Server 2",
+            ae_title="ORTHANC2",
+            host=settings.ORTHANC2_HOST,
+            port=settings.ORTHANC2_DICOM_PORT,
+        )
 
     return orthanc1, orthanc2
 
@@ -150,7 +161,7 @@ def create_excel_file(df: pd.DataFrame, filename: str) -> FilePayload:
 
 
 def create_dicom_web_client(server_url: str, ae_title: str, token_string: str) -> DICOMwebClient:
-    return DICOMwebClient(
+    client = DICOMwebClient(
         url=f"{server_url}/api/dicom-web/{ae_title}",
         qido_url_prefix="qidors",
         wado_url_prefix="wadors",
@@ -158,24 +169,40 @@ def create_dicom_web_client(server_url: str, ae_title: str, token_string: str) -
         headers={"Authorization": f"Token {token_string}"},
     )
 
+    # Force new HTTP connection per request to avoid keep-alive reuse issues during tests
+    # This is only a problem with the Django live test server that does not handle keep-alive
+    # connections well.
+    if getattr(client, "_session", None):
+        client._session.headers["Connection"] = "close"
 
-def get_full_data_sheet():
-    full_data_sheet_path = settings.BASE_DIR / "samples" / "full_data_sheet.xlsx"
-    return pd.read_excel(full_data_sheet_path)
-
-
-def get_extended_data_sheet():
-    extended_data_sheet_path = settings.BASE_DIR / "samples" / "extended_data_sheet.xlsx"
-    return pd.read_excel(extended_data_sheet_path)
+    return client
 
 
-def load_test_dicoms(patient_id: str) -> Iterable[Dataset]:
-    test_dicoms_path = settings.BASE_DIR / "samples" / "dicoms" / patient_id
+def load_sample_dicoms(patient_id: str | None = None) -> Iterable[Dataset]:
+    test_dicoms_path = settings.BASE_PATH / "samples" / "dicoms"
+    if patient_id:
+        test_dicoms_path = test_dicoms_path / patient_id
+
     for root, _, files in os.walk(test_dicoms_path):
-        if len(files) != 0:
-            for file in files:
-                try:
-                    ds = read_dataset(os.path.join(root, file))
-                except Exception:
-                    continue
-                yield ds
+        for file in files:
+            try:
+                ds = read_dataset(os.path.join(root, file))
+            except Exception:
+                continue
+            yield ds
+
+
+@functools.lru_cache(maxsize=None)
+def load_sample_dicoms_metadata(patient_id: str | None = None) -> pd.DataFrame:
+    metadata = []
+    for ds in load_sample_dicoms(patient_id):
+        metadata.append(
+            {
+                "PatientID": ds.PatientID,
+                "StudyInstanceUID": ds.StudyInstanceUID,
+                "SeriesInstanceUID": ds.SeriesInstanceUID,
+                "SOPInstanceUID": ds.SOPInstanceUID,
+                "Modality": ds.Modality,
+            }
+        )
+    return pd.DataFrame(metadata)

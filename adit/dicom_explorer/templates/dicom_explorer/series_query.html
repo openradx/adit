@@ -4,10 +4,12 @@
     DICOM Explorer Series List
 {% endblock title %}
 {% block heading %}
-    <h4 class="mb-3">
-        DICOM Explorer
-        <small class="text-muted">Series List</small>
-    </h4>
+    <c-page-heading>
+    <c-slot name="title">
+    DICOM Explorer
+    <small class="text-muted">Series List</small>
+    </c-slot>
+    </c-page-heading>
 {% endblock heading %}
 {% block content %}
     <div class="card">{% include "dicom_explorer/_server_infos.html" %}</div>

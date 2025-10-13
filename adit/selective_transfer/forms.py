@@ -38,6 +38,7 @@ class SelectiveTransferJobForm(forms.ModelForm):
             "pseudonym",
             "archive_password",
             "send_finished_mail",
+            "convert_to_nifti",
             "patient_id",
             "patient_name",
             "patient_birth_date",
@@ -49,6 +50,7 @@ class SelectiveTransferJobForm(forms.ModelForm):
             "trial_protocol_id": "Trial ID",
             "trial_protocol_name": "Trial name",
             "send_finished_mail": "Send Email when job is finished",
+            "convert_to_nifti": "Convert to NIfTI",
         }
         help_texts = {
             "urgent": ("Prioritize this transfer job."),
@@ -204,6 +206,12 @@ class SelectiveTransferJobForm(forms.ModelForm):
                         self.build_option_field(
                             "send_finished_mail",
                             {"@change": "onSendFinishedMailChange($event)"},
+                        ),
+                    ),
+                    Row(
+                        self.build_option_field(
+                            "convert_to_nifti",
+                            {"@change": "onConvertToNiftiChange($event)"},
                         ),
                     ),
                     css_class=advanced_options_class,

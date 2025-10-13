@@ -84,6 +84,10 @@ class DicomOperator:
         For study level DICOMweb QIDO-RS query see:
         https://dicom.nema.org/medical/dicom/current/output/html/part18.html#table_10.6.1-5
         https://dicom.nema.org/medical/dicom/current/output/html/part18.html#table_10.6.3-3
+
+        Args:
+            query: The query dataset.
+            limit_results: The maximum number of results to return.
         """
         query.ensure_elements(
             "PatientID",
@@ -156,6 +160,10 @@ class DicomOperator:
         For study level DICOMweb QIDO-RS query see:
         https://dicom.nema.org/medical/dicom/current/output/html/part18.html#table_10.6.1-5
         https://dicom.nema.org/medical/dicom/current/output/html/part18.html#table_10.6.3-3
+
+        Args:
+            query: The query dataset.
+            limit_results: The maximum number of results to return.
         """
         query.ensure_elements(
             "PatientID",
@@ -237,6 +245,10 @@ class DicomOperator:
         For series level DICOMweb QIDO-RS query see:
         https://dicom.nema.org/medical/dicom/current/output/html/part18.html#table_10.6.1-5
         https://dicom.nema.org/medical/dicom/current/output/html/part18.html#table_10.6.3-4
+
+        Args:
+            query: The query dataset.
+            limit_results: The maximum number of results to return.
         """
         query.ensure_elements(
             "PatientID",
@@ -248,10 +260,9 @@ class DicomOperator:
             "NumberOfSeriesRelatedInstances",
         )
 
-        # A StudyInstanceUID is always required for querying series, regardless of C-FIND or QIDO-RS
         study_uid = query.get("StudyInstanceUID")
         if not study_uid or has_wildcards(study_uid):
-            raise DicomError("StudyInstanceUID is required for querying series.")
+            raise DicomError("A valid StudyInstanceUID is required for querying series.")
 
         query.QueryRetrieveLevel = "SERIES"
 
@@ -309,6 +320,10 @@ class DicomOperator:
         For image level DICOMweb QIDO-RS query see:
         https://dicom.nema.org/medical/dicom/current/output/html/part18.html#table_10.6.1-5
         https://dicom.nema.org/medical/dicom/current/output/html/part18.html#table_10.6.3-5
+
+        Args:
+            query: The query dataset.
+            limit_results: The maximum number of results to return.
         """
         query.ensure_elements(
             "PatientID",
@@ -319,14 +334,12 @@ class DicomOperator:
             "InstanceAvailability",
         )
 
-        # A StudyInstanceUID and SeriesInstanceUID is always required for querying images,
-        # regardless of C-FIND or QIDO-RS
         study_uid = query.get("StudyInstanceUID")
         if not study_uid or has_wildcards(study_uid):
-            raise DicomError("StudyInstanceUID is required for querying images.")
+            raise DicomError("A valid StudyInstanceUID is required for querying images.")
         series_uid = query.get("SeriesInstanceUID")
         if not series_uid or has_wildcards(series_uid):
-            raise DicomError("SeriesInstanceUID is required for querying images.")
+            raise DicomError("A valid SeriesInstanceUID is required for querying images.")
 
         query.QueryRetrieveLevel = "IMAGE"
 
@@ -350,26 +363,28 @@ class DicomOperator:
         patient_id: str,
         study_uid: str,
         callback: Callable[[Dataset], None],
-        modality: str = "",
     ):
-        series_list = list(
-            self.find_series(
-                QueryDataset.create(
-                    PatientID=patient_id,
-                    StudyInstanceUID=study_uid,
-                    Modality=modality,
-                )
-            )
+        """Fetch a study.
+
+        Args:
+            patient_id: The patient ID.
+            study_uid: The study instance UID.
+            callback: A callback function that is called for each fetched image.
+        """
+        query = QueryDataset.create(
+            QueryRetrieveLevel="STUDY",
+            PatientID=patient_id,
+            StudyInstanceUID=study_uid,
         )
 
-        for series in series_list:
-            series_uid = series.SeriesInstanceUID
-            modality = series.Modality
-
-            if modality in settings.EXCLUDED_MODALITIES:
-                continue
-
-            self.fetch_series(patient_id, study_uid, series_uid, callback)
+        if self.server.dicomweb_wado_support:
+            self._fetch_images_with_wado_rs(query, callback)
+        elif self.server.patient_root_get_support or self.server.study_root_get_support:
+            self._fetch_images_with_c_get(query, callback)
+        elif self.server.patient_root_move_support or self.server.study_root_move_support:
+            self._fetch_images_with_c_move(query, callback)
+        else:
+            raise DicomError("No supported method to fetch a study available.")
 
         logger.debug("Successfully downloaded study %s.", study_uid)
 
@@ -380,8 +395,14 @@ class DicomOperator:
         series_uid: str,
         callback: Callable[[Dataset], None],
     ) -> None:
-        """Download all series to a specified folder for given series UIDs and pseudonymize
-        the dataset before storing it to disk."""
+        """Fetch a series.
+
+        Args:
+            patient_id: The patient ID.
+            study_uid: The study instance UID.
+            series_uid: The series instance UID.
+            callback: A callback function that is called for each fetched image.
+        """
 
         query = QueryDataset.create(
             QueryRetrieveLevel="SERIES",
@@ -390,71 +411,100 @@ class DicomOperator:
             SeriesInstanceUID=series_uid,
         )
 
-        # We prefer C-GET over WADO-RS over C-MOVE
-        if self.server.patient_root_get_support or self.server.study_root_get_support:
-            self._fetch_series_with_c_get(query, callback)
-        elif self.server.dicomweb_wado_support:
-            self._fetch_series_with_wado_rs(query, callback)
+        # We prefer WADO-RS over C-GET over C-MOVE
+        if self.server.dicomweb_wado_support:
+            self._fetch_images_with_wado_rs(query, callback)
+        elif self.server.patient_root_get_support or self.server.study_root_get_support:
+            self._fetch_images_with_c_get(query, callback)
         elif self.server.patient_root_move_support or self.server.study_root_move_support:
-            self._fetch_series_with_c_move(query, callback)
+            self._fetch_images_with_c_move(query, callback)
         else:
-            raise DicomError("No Query/Retrieve Information Model supported to download images.")
+            raise DicomError("No supported method to fetch a series available.")
 
-    def upload_instances(self, resource: PathLike | list[Dataset]) -> None:
-        """Upload instances from a specified folder or list of instances in memory"""
+    def fetch_image(
+        self,
+        patient_id: str,
+        study_uid: str,
+        series_uid: str,
+        image_uid: str,
+        callback: Callable[[Dataset], None],
+    ) -> None:
+        """Download an image.
+
+        Args:
+            patient_id: The patient ID.
+            study_uid: The study instance UID.
+            series_uid: The series instance UID.
+            image_uid: The SOP instance UID.
+            callback: A callback function that is called for the fetched image.
+        """
+
+        query = QueryDataset.create(
+            QueryRetrieveLevel="IMAGE",
+            PatientID=patient_id,
+            StudyInstanceUID=study_uid,
+            SeriesInstanceUID=series_uid,
+            SOPInstanceUID=image_uid,
+        )
+
+        # We prefer WADO-RS over C-GET over C-MOVE
+        if self.server.dicomweb_wado_support:
+            self._fetch_images_with_wado_rs(query, callback)
+        elif self.server.patient_root_get_support or self.server.study_root_get_support:
+            self._fetch_images_with_c_get(query, callback)
+        elif self.server.patient_root_move_support or self.server.study_root_move_support:
+            self._fetch_images_with_c_move(query, callback)
+        else:
+            raise DicomError("No supported method to fetch an image available.")
+
+    def upload_images(self, resource: PathLike | list[Dataset]) -> None:
+        """Upload images from a specified folder or list of images in memory"""
 
         if self.server.store_scp_support:
             self.dimse_connector.send_c_store(resource)
         elif self.server.dicomweb_stow_support:
             self.dicom_web_connector.send_stow_rs(resource)
         else:
-            raise DicomError("Server does not support uploading images.")
+            raise DicomError("No supported method to upload images available.")
 
     def move_study(
         self,
         patient_id: str,
         study_uid: str,
         dest_aet: str,
-        modality: str = "",
     ) -> None:
-        series_list = list(
-            self.find_series(
-                QueryDataset.create(
-                    PatientID=patient_id,
-                    StudyInstanceUID=study_uid,
-                    Modality=modality,
-                )
-            )
+        """Move a study to another DICOM server.
+
+        Args:
+            patient_id: The patient ID.
+            study_uid: The study instance UID.
+            dest_aet: The destination AE title.
+            modality: The modality of the series to move.
+        """
+        if not self.server.patient_root_move_support and not self.server.study_root_move_support:
+            raise DicomError("The server does not support moving a study.")
+
+        self.dimse_connector.send_c_move(
+            QueryDataset.create(
+                QueryRetrieveLevel="STUDY",
+                PatientID=patient_id,
+                StudyInstanceUID=study_uid,
+            ),
+            dest_aet,
         )
 
-        has_success = False
-        has_failure = False
-        for series in series_list:
-            series_uid = series.SeriesInstanceUID
-            modality = series.Modality
-
-            if modality in settings.EXCLUDED_MODALITIES:
-                continue
-
-            try:
-                self.move_series(
-                    patient_id=patient_id,
-                    study_uid=study_uid,
-                    series_uid=series_uid,
-                    dest_aet=dest_aet,
-                )
-                has_success = True
-            except ValueError:
-                logger.exception("Failed to move series %s.", series_uid)
-                has_failure = True
-
-        # TODO: maybe we should just log this as a warning or raise a RetriableDicomError
-        if series_list and has_failure:
-            if not has_success:
-                raise DicomError("Failed to move all series.")
-            raise DicomError("Failed to move some series.")
-
     def move_series(self, patient_id: str, study_uid: str, series_uid: str, dest_aet: str) -> None:
+        """Move a series to another DICOM server.
+
+        Args:
+            patient_id: The patient ID.
+            study_uid: The study instance UID.
+            series_uid: The series instance UID.
+            dest_aet: The destination AE title.
+        """
+        if not self.server.patient_root_move_support and not self.server.study_root_move_support:
+            raise DicomError("The server does not support moving a series.")
+
         self.dimse_connector.send_c_move(
             QueryDataset.create(
                 QueryRetrieveLevel="SERIES",
@@ -465,7 +515,14 @@ class DicomOperator:
             dest_aet,
         )
 
-    def _fetch_series_with_c_get(
+    def _fetch_images_with_wado_rs(
+        self, query: QueryDataset, callback: Callable[[Dataset], None]
+    ) -> None:
+        images = self.dicom_web_connector.send_wado_rs(query)
+        for ds in images:
+            self._handle_fetched_image(ds, callback)
+
+    def _fetch_images_with_c_get(
         self, query: QueryDataset, callback: Callable[[Dataset], None]
     ) -> None:
         def store_handler(event: Event, store_errors: list[Exception]) -> int:
@@ -495,30 +552,48 @@ class DicomOperator:
         if store_errors:
             raise store_errors[0]
 
-    def _fetch_series_with_wado_rs(
-        self, query: QueryDataset, callback: Callable[[Dataset], None]
-    ) -> None:
-        instances = self.dicom_web_connector.send_wado_rs(query)
-        for ds in instances:
-            self._handle_fetched_image(ds, callback)
-
-    def _fetch_series_with_c_move(
+    def _fetch_images_with_c_move(
         self,
         query: QueryDataset,
         callback: Callable[[Dataset], None],
     ) -> None:
-        # When downloading the series with C-MOVE we first must know all the images that
-        # the series contains so that we can decide if all were retrieved.
-        images = list(
-            self.find_images(
+        # When downloading images with C-MOVE we first must know all the SOPInstanceUIDs
+        # in advance so that we can check if all were received.
+        image_uids: list[str]
+        if image_uid := query.get("SOPInstanceUID"):
+            image_uids = [image_uid]
+        elif series_uid := query.get("SeriesInstanceUID"):
+            query_dataset = QueryDataset.create(
+                PatientID=query.PatientID,
+                StudyInstanceUID=query.StudyInstanceUID,
+                SeriesInstanceUID=series_uid,
+            )
+            images = self.find_images(query_dataset)
+            image_uids = [image.SOPInstanceUID for image in images]
+        else:
+            # If SeriesInstanceUID not provided or needed it is still necessary for
+            # querying on IMAGE level
+            query_dataset = QueryDataset.create(
+                PatientID=query.PatientID,
+                StudyInstanceUID=query.StudyInstanceUID,
+            )
+
+            series_list = self.find_series(query_dataset)
+
+            query_datasets = [
                 QueryDataset.create(
                     PatientID=query.PatientID,
                     StudyInstanceUID=query.StudyInstanceUID,
-                    SeriesInstanceUID=query.SeriesInstanceUID,
+                    SeriesInstanceUID=series.SeriesInstanceUID,
                 )
-            )
-        )
-        image_uids = [image.SOPInstanceUID for image in images]
+                for series in series_list
+            ]
+
+            image_uids = [
+                image.SOPInstanceUID
+                for query_dataset in query_datasets
+                for image in self.find_images(query_dataset)
+            ]
 
         # A list of errors that may occur while receiving the images
         receiving_errors: list[Exception] = []
@@ -536,7 +611,6 @@ class DicomOperator:
             consume_future = executor.submit(
                 self._consume_from_receiver,
                 query.StudyInstanceUID,
-                query.SeriesInstanceUID,
                 image_uids,
                 callback,
                 c_move_finished_event,
@@ -571,7 +645,6 @@ class DicomOperator:
     def _consume_from_receiver(
         self,
         study_uid: str,
-        series_uid: str,
         image_uids: list[str],
         callback: Callable[[Dataset], None],
         c_move_finished_event: threading.Event,
@@ -589,14 +662,14 @@ class DicomOperator:
             def check_images_received():
                 if remaining_image_uids:
                     if remaining_image_uids == image_uids:
-                        logger.error("No images of series %s received.", series_uid)
+                        logger.error("No images of study %s received.", study_uid)
                         receiving_errors.append(
                             RetriableDicomError("Failed to fetch all images with C-MOVE.")
                         )
 
                     logger.warn(
-                        "These images of series %s were not received: %s",
-                        series_uid,
+                        "These images of study %s were not received: %s",
+                        study_uid,
                         ", ".join(remaining_image_uids),
                     )
                     self.logs.append(
@@ -632,7 +705,7 @@ class DicomOperator:
 
                 return False
 
-            topic = f"{self.server.ae_title}\\{study_uid}\\{series_uid}"
+            topic = f"{self.server.ae_title}\\{study_uid}"
             subscribe_task = asyncio.create_task(
                 file_transmit.subscribe(topic, handle_received_file)
             )

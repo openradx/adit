@@ -42,10 +42,10 @@ class WadoMultipartApplicationDicomRenderer(DicomWebWadoRenderer):
     boundary: str = "adit-boundary"
     charset: str = "utf-8"
 
-    async def render(self, instances: AsyncIterator[Dataset]) -> AsyncIterator[bytes]:
+    async def render(self, images: AsyncIterator[Dataset]) -> AsyncIterator[bytes]:
         try:
-            async for ds in instances:
-                yield self._instance_stream(ds)
+            async for image in images:
+                yield self._instance_stream(image)
         except Exception as err:
             yield self._error_stream(err)
 
@@ -61,9 +61,6 @@ class WadoMultipartApplicationDicomRenderer(DicomWebWadoRenderer):
         stream.write(b"\r\n")
         stream.write(b"\r\n")
         # instance
-        if not ds.is_little_endian:
-            # TODO: What to do with big endian? Can we convert it somehow? When does this happen?
-            raise ValueError("Invalid dataset encoding. Must be little endian.")
         write_dataset(ds, stream)
         stream.write(b"\r\n")
         return stream.getvalue()
