@@ -434,4 +434,4 @@ SKIP_ELEMENTS_ANONYMIZATION = [
 ]
 
 # Secret seed for Patient data anonymization
-ANONYMIZATION_SEED = env.str("ANONYMIZATION_SEED", default="")  # type: ignore
+ANONYMIZATION_SEED = env.str("ANONYMIZATION_SEED", default="")

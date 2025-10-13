@@ -10,4 +10,4 @@ def create_upload_group():
 
 
 def get_sample_dicoms_folder(patient_id: str) -> str:
-    return settings.BASE_DIR / "samples" / "dicoms" / patient_id
+    return settings.BASE_PATH / "samples" / "dicoms" / patient_id

@@ -16,7 +16,8 @@ from adit.upload.utils.testing_helpers import create_upload_group, get_sample_di
 fake = Faker()
 
 
-@pytest.mark.integration
+@pytest.mark.acceptance
+@pytest.mark.order("last")
 @pytest.mark.django_db(transaction=True)
 def test_clear_files(live_server: LiveServer, page: Page):
     user = create_and_login_example_user(page, live_server.url)
@@ -48,7 +49,8 @@ def test_clear_files(live_server: LiveServer, page: Page):
     assert not page.get_by_label("Choose a directory").input_value()
 
 
-@pytest.mark.integration
+@pytest.mark.acceptance
+@pytest.mark.order("last")
 @pytest.mark.django_db(transaction=True)
 def test_stop_upload(live_server: LiveServer, page: Page):
     user = create_and_login_example_user(page, live_server.url)
@@ -77,7 +79,8 @@ def test_stop_upload(live_server: LiveServer, page: Page):
     expect(page.locator("p#uploadCompleteText")).to_contain_text("Upload Cancelled")
 
 
-@pytest.mark.integration
+@pytest.mark.acceptance
+@pytest.mark.order("last")
 @pytest.mark.django_db(transaction=True)
 def test_upload_full(live_server: LiveServer, page: Page):
     user = create_and_login_example_user(page, live_server.url)
@@ -107,7 +110,8 @@ def test_upload_full(live_server: LiveServer, page: Page):
     expect(page.locator("p#uploadCompleteText")).to_contain_text("Upload Successful!")
 
 
-@pytest.mark.integration
+@pytest.mark.acceptance
+@pytest.mark.order("last")
 @pytest.mark.django_db(transaction=True)
 def test_upload_unsupported_file_type(
     live_server: LiveServer, page: Page, invalid_sample_files_folder: str
@@ -135,7 +139,8 @@ def test_upload_unsupported_file_type(
     expect(page.locator("p#uploadCompleteText")).to_contain_text("Upload Failed due to an Error")
 
 
-@pytest.mark.integration
+@pytest.mark.acceptance
+@pytest.mark.order("last")
 @pytest.mark.django_db(transaction=True)
 def test_upload_without_pseudonym(live_server: LiveServer, page: Page):
     user = create_and_login_example_user(page, live_server.url)
@@ -160,7 +165,8 @@ def test_upload_without_pseudonym(live_server: LiveServer, page: Page):
     expect(error_message).to_contain_text("This field is required.")
 
 
-@pytest.mark.integration
+@pytest.mark.acceptance
+@pytest.mark.order("last")
 @pytest.mark.django_db(transaction=True)
 def test_upload_without_destination(live_server: LiveServer, page: Page):
     user = create_and_login_example_user(page, live_server.url)
@@ -185,7 +191,8 @@ def test_upload_without_destination(live_server: LiveServer, page: Page):
     expect(error_message).to_contain_text("This field is required.")
 
 
-@pytest.mark.integration
+@pytest.mark.acceptance
+@pytest.mark.order("last")
 @pytest.mark.django_db(transaction=True)
 def test_pseudonym_is_used_as_patientID(live_server: LiveServer, page: Page):
     # Arrange
