@@ -219,6 +219,7 @@ function UploadJobForm(formEl) {
 
       setTimeout(() => {
         this.uploadCompleteTextVisible = false;
+        this.clearFiles();
       }, 5000);
     },
 
@@ -241,6 +242,7 @@ function UploadJobForm(formEl) {
 
       setTimeout(() => {
         this.uploadCompleteTextVisible = false;
+        this.clearFiles();
       }, 5000);
     },
 
