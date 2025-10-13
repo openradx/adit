@@ -24,6 +24,17 @@ function UploadJobForm(formEl) {
       document.body.addEventListener("chooseFolder", (e) => {
         this.chooseFolder();
       });
+      document.body.addEventListener("htmx:afterSwap", (event) => {
+        if (event.detail.target.id === "myForm") {
+          const pseudonym_error = document.getElementById("id_pseudonym_error");
+          const destination_error = document.getElementById(
+            "id_destination_error"
+          );
+          if (pseudonym_error || destination_error) {
+            this.clearFiles();
+          }
+        }
+      });
       const button = formEl.querySelector("button#uploadButton");
       this.stopUploadVar = false;
       this.stopUploadButtonVisible = false;
