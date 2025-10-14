@@ -121,7 +121,6 @@ filterwarnings = [
     'ignore:.*get_frame_offsets is deprecated and will be removed in v4.0.*:DeprecationWarning',
 ]
 timeout = 60
-asyncio_default_fixture_loop_scope = "function"
 
 [tool.coverage.run]
 branch = true
