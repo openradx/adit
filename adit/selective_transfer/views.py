@@ -89,12 +89,10 @@ def download_study(request, server_id, patient_id, study_uid, callback):
 @permission_required("selective_transfer.download_study")
 async def selective_transfer_download_study_view(
     request: AuthenticatedHttpRequest,
-    # server_id: str | None = None,
+    server_id: str | None = None,
     patient_id: str | None = None,
     study_uid: str | None = None,
 ) -> StreamingHttpResponse:
-    # hard coded server id
-    server_id = 1
     loop = asyncio.get_running_loop()
     queue = asyncio.Queue[Dataset | None]()
     executor = ThreadPoolExecutor()
@@ -127,6 +125,8 @@ async def selective_transfer_download_study_view(
 
     # Synchronous blocking function
     def ds_to_buffer(ds):
+        # TODO: Construct correct file path for instances in study
+
         patient_folder = patient_id
 
         file_name = f"{ds.SOPInstanceUID}.dcm"

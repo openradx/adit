@@ -276,12 +276,16 @@ class SelectiveTransferConsumer(AsyncJsonWebsocketConsumer):
             reverse=True,
         )
 
+        source = cast(DicomNode, form.cleaned_data["source"])
+        server_id = source.dicomserver.pk
+
         rendered_query_results = render_to_string(
             "selective_transfer/_query_results.html",
             {
                 "query": True,
                 "query_results": studies,
                 "max_results_reached": max_results_reached,
+                "server_id": server_id,
             },
         )
 
