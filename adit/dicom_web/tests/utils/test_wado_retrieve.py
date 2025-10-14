@@ -1,5 +1,7 @@
 import asyncio
+
 import pytest
+
 
 @pytest.mark.asyncio
 async def test_race_condition():
@@ -25,7 +27,8 @@ async def test_race_condition():
             for task in done:
                 if task == queue_get_task:
                     results.append(queue_get_task.result())
-                    # artificial delay after queue_get_task, allowing fetch_task to finish before the final queue_get_task can run
+                    # artificial delay after queue_get_task, allowing fetch_task to finish 
+                    # before the final queue_get_task can run
                     await asyncio.sleep(0.0003)
                 if task == fetch_task:
                     finished = True
