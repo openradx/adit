@@ -8,7 +8,7 @@
             Try to limit the results by more precise search terms.
         </div>
     {% endif %}
-    {% if query and query_results %}
+    {% if query and query_results and server_id %}
         {% include "selective_transfer/_query_results_table.html" %}
         <button type="submit"
                 class="btn btn-primary"
