@@ -1,4 +1,6 @@
+import io
 import tempfile
+import zipfile
 from collections import Counter
 from pathlib import Path
 
@@ -151,3 +153,62 @@ def test_unpseudonymized_urgent_selective_transfer_and_convert_to_nifti(
 
         # Assert
         expect(page.locator('dl:has-text("Success")')).to_be_visible()
+
+
+@pytest.mark.acceptance
+@pytest.mark.order("last")
+@pytest.mark.django_db(transaction=True)
+def test_unpseudonymized_selective_direct_download_with_dimse_server(
+    page: Page, channels_live_server: ChannelsLiveServer
+):
+    # Arrange
+    user = create_and_login_example_user(page, channels_live_server.url)
+    group = create_selective_transfer_group()
+    add_user_to_group(user, group)
+    add_permission(group, "selective_transfer", "download_study")
+
+    orthancs = setup_dimse_orthancs()
+    grant_access(group, orthancs[0], source=True)
+    grant_access(group, orthancs[1], destination=True)
+
+    # Act
+    page.goto(channels_live_server.url + "/selective-transfer/jobs/new/")
+    page.get_by_label("Source").select_option(label="DICOM Server Orthanc Test Server 1")
+    page.get_by_label("Destination").select_option(label="DICOM Server Orthanc Test Server 2")
+    page.get_by_label("Modality").click()
+    page.get_by_label("Modality").fill("MR")
+    page.get_by_label("Modality").press("Enter")
+    page.locator('tr:has-text("1003"):has-text("2020") input').click()
+    
+    link_locator = page.locator('a[href*="download/servers/1/patients/1003"]')
+    link_locator.wait_for()
+
+    # Intercept the download and capture it
+    with page.expect_download() as download_info:
+        link_locator.click()
+
+    download = download_info.value
+
+    # Read file content directly
+    path = download.path()
+    with open(path, "rb") as f:
+        zip_bytes = io.BytesIO(f.read())
+
+    # Inspect zip file contents
+    with zipfile.ZipFile(zip_bytes) as zf:
+        actual_files = set(zf.namelist())
+        expected_files = {
+            'study_download_1.2.840.113845.11.1000000001951524609.20200705172608.2689471/1003/20200202-172931-MR/1-AAHead_Scout/1.3.12.2.1107.5.2.18.41369.2020070517301070393121257.dcm',
+            'study_download_1.2.840.113845.11.1000000001951524609.20200705172608.2689471/1003/20200202-172931-MR/1-AAHead_Scout/1.3.12.2.1107.5.2.18.41369.2020070517301070783621262.dcm',
+            'study_download_1.2.840.113845.11.1000000001951524609.20200705172608.2689471/1003/20200202-172931-MR/1-AAHead_Scout/1.3.12.2.1107.5.2.18.41369.2020070517301071809821266.dcm',
+            'study_download_1.2.840.113845.11.1000000001951524609.20200705172608.2689471/1003/20200202-172931-MR/1-AAHead_Scout/1.3.12.2.1107.5.2.18.41369.2020070517301076038721300.dcm',
+            'study_download_1.2.840.113845.11.1000000001951524609.20200705172608.2689471/1003/20200202-172931-MR/5-t2_tse_tra 5mm/1.3.12.2.1107.5.2.18.41369.2020070517335682449622068.dcm',
+            'study_download_1.2.840.113845.11.1000000001951524609.20200705172608.2689471/1003/20200202-172931-MR/5-t2_tse_tra 5mm/1.3.12.2.1107.5.2.18.41369.2020070517335685098622070.dcm',
+            'study_download_1.2.840.113845.11.1000000001951524609.20200705172608.2689471/1003/20200202-172931-MR/5-t2_tse_tra 5mm/1.3.12.2.1107.5.2.18.41369.2020070517335752885122121.dcm',
+            'study_download_1.2.840.113845.11.1000000001951524609.20200705172608.2689471/1003/20200202-172931-MR/5-t2_tse_tra 5mm/1.3.12.2.1107.5.2.18.41369.2020070517335753271722124.dcm',
+            'study_download_1.2.840.113845.11.1000000001951524609.20200705172608.2689471/1003/20200202-172931-MR/8-SWI_Images/1.3.12.2.1107.5.2.18.41369.2020070517415775163724138.dcm',
+            'study_download_1.2.840.113845.11.1000000001951524609.20200705172608.2689471/1003/20200202-172931-MR/8-SWI_Images/1.3.12.2.1107.5.2.18.41369.2020070517415775190624139.dcm',
+            'study_download_1.2.840.113845.11.1000000001951524609.20200705172608.2689471/1003/20200202-172931-MR/8-SWI_Images/1.3.12.2.1107.5.2.18.41369.2020070517415775215724140.dcm',
+            'study_download_1.2.840.113845.11.1000000001951524609.20200705172608.2689471/1003/20200202-172931-MR/8-SWI_Images/1.3.12.2.1107.5.2.18.41369.2020070517415775243224141.dcm',
+        }
+        assert actual_files == expected_files

@@ -8,6 +8,7 @@ from adit.core.models import DicomAppSettings, TransferJob, TransferTask
 class SelectiveTransferSettings(DicomAppSettings):
     class Meta:
         verbose_name_plural = "Selective transfer settings"
+        permissions = (("download_study", "Download study"),)
 
 
 class SelectiveTransferJob(TransferJob):
