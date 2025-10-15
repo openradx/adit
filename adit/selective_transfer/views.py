@@ -125,6 +125,10 @@ async def selective_transfer_download_study_view(
     study_modalities = request.GET.get('study_modalities')
     study_date = request.GET.get('study_date')
     study_time = request.GET.get('study_time')
+    logger.debug(study_modalities)
+    logger.debug(study_date)
+    logger.debug(study_time)
+
 
     download_folder = Path(f"study_download_{study_uid}")
     loop = asyncio.get_running_loop()
@@ -176,15 +180,14 @@ async def selective_transfer_download_study_view(
             patient_folder = download_folder / sanitize_filename(patient_id)
 
         exclude_modalities = settings.EXCLUDE_MODALITIES
-        modalities = ""
+        modalities = study_modalities
         if pseudonym and exclude_modalities and study_modalities:
-            modalities = [modality for modality in study_modalities.split(", ") if modality not in exclude_modalities]
-
-        modalities = ",".join(modalities)
+            included_modalities = [modality for modality in study_modalities.split(",") if modality not in exclude_modalities]
+            modalities = ",".join(included_modalities)
         prefix = f"{study_date}-{study_time}"
         study_folder = patient_folder / f"{prefix}-{modalities}"
 
-        final_folder: Path
+        final_folder = study_folder
         if settings.CREATE_SERIES_SUB_FOLDERS:
             series_number = ds.get("SeriesNumber")
             if not series_number:
@@ -193,9 +196,7 @@ async def selective_transfer_download_study_view(
                 series_description = ds.get("SeriesDescription", "Undefined")
                 series_folder_name = f"{series_number}-{series_description}"
             series_folder_name = sanitize_filename(series_folder_name)
-            final_folder = study_folder / series_folder_name
-        else:
-            final_folder = study_folder
+            final_folder = final_folder / series_folder_name
 
         file_name = sanitize_filename(f"{ds.SOPInstanceUID}.dcm")
         file_path = f"{final_folder} / {file_name}"
