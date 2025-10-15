@@ -254,6 +254,13 @@ class DicomJob(models.Model):
         Returns:
             True if the job is finished, False otherwise
         """
+        if not self.tasks.exists():
+            self.status = DicomJob.Status.SUCCESS
+            self.message = "No tasks to process."
+            self.end = timezone.now()
+            self.save()
+            return True
+
         if self.tasks.filter(status=DicomTask.Status.PENDING).exists():
             if self.status != DicomJob.Status.CANCELING:
                 self.status = DicomJob.Status.PENDING
