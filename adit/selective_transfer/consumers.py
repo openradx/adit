@@ -278,6 +278,10 @@ class SelectiveTransferConsumer(AsyncJsonWebsocketConsumer):
 
         source = cast(DicomNode, form.cleaned_data["source"])
         server_id = source.dicomserver.pk
+        pseudonym = form.cleaned_data["pseudonym"]
+        trial_protocol_id = form.cleaned_data["trial_protocol_id"]
+        trial_protocol_name = form.cleaned_data["trial_protocol_name"]
+
 
         rendered_query_results = render_to_string(
             "selective_transfer/_query_results.html",
@@ -286,6 +290,9 @@ class SelectiveTransferConsumer(AsyncJsonWebsocketConsumer):
                 "query_results": studies,
                 "max_results_reached": max_results_reached,
                 "server_id": server_id,
+                "pseudonym": pseudonym,
+                "trial_protocol_id": trial_protocol_id,
+                "trial_protocol_name": trial_protocol_name,
             },
         )
 

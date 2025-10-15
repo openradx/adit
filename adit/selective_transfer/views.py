@@ -6,14 +6,19 @@ from datetime import datetime
 from io import BytesIO
 from stat import S_IFREG
 from typing import Any, AsyncGenerator, cast
+from functools import partial
+from pathlib import Path
+
 
 from adit_radis_shared.common.types import AuthenticatedHttpRequest
 from adit_radis_shared.common.views import BaseUpdatePreferencesView
 from adrf.views import sync_to_async
+from django.conf import settings
 from django.contrib.auth.decorators import login_required, permission_required
 from django.core.exceptions import BadRequest
 from django.http import StreamingHttpResponse
 from django.urls import reverse_lazy
+from psycopg import OperationalError
 from pydicom import Dataset
 from requests import HTTPError
 from rest_framework.exceptions import NotFound
@@ -21,8 +26,12 @@ from stream_zip import NO_COMPRESSION_64, async_stream_zip
 
 from adit.core.errors import DicomError
 from adit.core.models import DicomServer
+from adit.core.utils.dicom_dataset import QueryDataset
+from adit.core.utils.dicom_manipulator import DicomManipulator
 from adit.core.utils.dicom_operator import DicomOperator
 from adit.core.utils.dicom_utils import write_dataset
+from adit.core.utils.sanitize import sanitize_filename
+
 from adit.core.views import (
     DicomJobCancelView,
     DicomJobCreateView,
@@ -66,15 +75,32 @@ class SelectiveTransferUpdatePreferencesView(
     ]
 
 
-def download_study(request, server_id, patient_id, study_uid, callback):
+def download_study(request, server_id, patient_id, study_uid, pseudonymize, callback):
     try:
         server = DicomServer.objects.accessible_by_user(request.user, "source").get(id=server_id)
         operator = DicomOperator(server)
-        operator.fetch_study(
-            patient_id=patient_id,
-            study_uid=study_uid,
-            callback=callback,
-        )
+
+        exclude_modalities = settings.EXCLUDE_MODALITIES
+        # TODO: Add condition for specified series_uids when user selects specific series in a selected study
+        if pseudonymize and exclude_modalities:
+            series_list = list(
+                operator.find_series(
+                    QueryDataset.create(PatientID=patient_id, StudyInstanceUID=study_uid)
+                )
+            )
+            for series in series_list:
+                series_uid = series.SeriesInstanceUID
+                modality = series.Modality
+                if modality in exclude_modalities:
+                    continue
+
+                operator.fetch_series(patient_id, study_uid, series_uid, callback)
+        else:
+            operator.fetch_study(
+                patient_id=patient_id,
+                study_uid=study_uid,
+                callback=callback,
+            )
     # Raise NotFound error if specified DicomServer is not accessible
     except DicomServer.DoesNotExist:
         raise NotFound("Invalid DICOM server.")
@@ -93,11 +119,28 @@ async def selective_transfer_download_study_view(
     patient_id: str | None = None,
     study_uid: str | None = None,
 ) -> StreamingHttpResponse:
+    pseudonym = request.GET.get('pseudonym')
+    trial_protocol_id = request.GET.get('trial_protocol_id')
+    trial_protocol_name = request.GET.get('trial_protocol_name')
+    study_modalities = request.GET.get('study_modalities')
+    study_date = request.GET.get('study_date')
+    study_time = request.GET.get('study_time')
+
+    download_folder = Path(f"study_download_{study_uid}")
     loop = asyncio.get_running_loop()
     queue = asyncio.Queue[Dataset | None]()
     executor = ThreadPoolExecutor()
+    dicom_manipulator = DicomManipulator()
+
+    modifier = partial(
+        dicom_manipulator.manipulate,
+        pseudonym=pseudonym,
+        trial_protocol_id=trial_protocol_id,
+        trial_protocol_name=trial_protocol_name,
+    )
 
     def callback(ds: Dataset) -> None:
+        modifier(ds)
         # Schedules a task on the event loop that puts the dataset into the async queue
         loop.call_soon_threadsafe(queue.put_nowait, ds)
 
@@ -107,6 +150,7 @@ async def selective_transfer_download_study_view(
             server_id=server_id,
             patient_id=patient_id,
             study_uid=study_uid,
+            pseudonymize=bool(pseudonym),
             callback=callback,
         )
     )
@@ -126,18 +170,41 @@ async def selective_transfer_download_study_view(
     # Synchronous blocking function
     def ds_to_buffer(ds):
         # TODO: Construct correct file path for instances in study
+        if pseudonym:
+            patient_folder = download_folder / sanitize_filename(pseudonym)
+        else:
+            patient_folder = download_folder / sanitize_filename(patient_id)
 
-        patient_folder = patient_id
+        exclude_modalities = settings.EXCLUDE_MODALITIES
+        modalities = ""
+        if pseudonym and exclude_modalities and study_modalities:
+            modalities = [modality for modality in study_modalities.split(", ") if modality not in exclude_modalities]
 
-        file_name = f"{ds.SOPInstanceUID}.dcm"
+        modalities = ",".join(modalities)
+        prefix = f"{study_date}-{study_time}"
+        study_folder = patient_folder / f"{prefix}-{modalities}"
 
-        zip_path = f"{patient_folder}/{file_name}"
+        final_folder: Path
+        if settings.CREATE_SERIES_SUB_FOLDERS:
+            series_number = ds.get("SeriesNumber")
+            if not series_number:
+                series_folder_name = ds.SeriesInstanceUID
+            else:
+                series_description = ds.get("SeriesDescription", "Undefined")
+                series_folder_name = f"{series_number}-{series_description}"
+            series_folder_name = sanitize_filename(series_folder_name)
+            final_folder = study_folder / series_folder_name
+        else:
+            final_folder = study_folder
+
+        file_name = sanitize_filename(f"{ds.SOPInstanceUID}.dcm")
+        file_path = f"{final_folder} / {file_name}"
 
         dcm_buffer = BytesIO()
         write_dataset(ds, dcm_buffer)
         dcm_buffer.seek(0)
 
-        return dcm_buffer, zip_path
+        return dcm_buffer, file_path
 
     async def single_buffer_gen(content):
         yield content
@@ -150,8 +217,8 @@ async def selective_transfer_download_study_view(
                 queue_ds = await queue.get()
                 if queue_ds is None:
                     break
-                ds_buffer, zip_path = await loop.run_in_executor(executor, ds_to_buffer, queue_ds)
-                yield single_buffer_gen(ds_buffer.getvalue()), zip_path
+                ds_buffer, file_path = await loop.run_in_executor(executor, ds_to_buffer, queue_ds)
+                yield single_buffer_gen(ds_buffer.getvalue()), file_path
 
             if fetch_error:
                 raise fetch_error
@@ -164,8 +231,8 @@ async def selective_transfer_download_study_view(
         modified_at = datetime.now()
         mode = S_IFREG | 0o600
 
-        async for buffer_gen, zip_path in async_queue_to_gen():
-            yield (zip_path, modified_at, mode, NO_COMPRESSION_64, buffer_gen)
+        async for buffer_gen, file_path in async_queue_to_gen():
+            yield (file_path, modified_at, mode, NO_COMPRESSION_64, buffer_gen)
 
     async def stream_zip() -> AsyncGenerator[bytes, None]:
         start_time = time.monotonic()
@@ -181,7 +248,7 @@ async def selective_transfer_download_study_view(
         streaming_content=stream_zip(),
         headers={
             "Content-Type": "application/zip",
-            "Content-Disposition": 'attachment; filename="study_download.zip"',
+            "Content-Disposition": f'attachment; filename="{download_folder}.zip"',
             "Access-Control-Expose-Headers": "Content-Disposition",
         },
     )
