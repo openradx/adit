@@ -47,62 +47,12 @@ This document provides an overview of ADIT's architecture and key components.
 - **DICOM Explorer** (`adit.dicom_explorer`): Interactive DICOM data browsing
 - **DICOM Web** (`adit.dicom_web`): RESTful DICOM services interface
 
-## Security Architecture
-
-### Authentication & Authorization
+## Authentication & Authorization
 
 - **Django Auth System**: Built-in user authentication
 - **Group-based Permissions**: Fine-grained access control
 - **DICOM Node Access**: Server-specific user permissions
 - **Session Management**: Secure session handling
-
-### Data Protection
-
-- **DICOM Pseudonymization**: On-the-fly data anonymization
-- **Secure Connections**: TLS/SSL for all external communications
-- **Database Security**: Encrypted connections and proper access controls
-
-## Deployment Architecture
-
-### Development Environment
-
-```text
-Docker Compose → Web Container + Database Container + Background Workers
-```
-
-### Production Environment
-
-```text
-Docker Swarm → ADIT Web Replicas → PostgreSQL Database
-                     ↓
-               Shared Volume Storage
-```
-
-**Docker Swarm**: Container orchestration for production deployment
-
-**ADIT Web Replicas**: Multiple instances of the web application for scalability
-
-**PostgreSQL Database**: Single database instance
-
-**Shared Volume Storage**: Static files and media shared between containers
-
-## Key Design Patterns
-
-### **Factory Pattern**
-
-- Model factories for testing and data generation
-- Configurable object creation for different environments
-
-### **Repository Pattern**
-
-- Django ORM as repository layer
-- Custom managers for complex queries
-- Service layer for business logic
-
-### **Observer Pattern**
-
-- Django signals for model lifecycle events
-- Task status updates and notifications
 
 ## Data Architecture
 
@@ -112,26 +62,6 @@ Docker Swarm → ADIT Web Replicas → PostgreSQL Database
 - **DICOM Nodes**: Server configurations and capabilities
 - **Transfer Jobs**: Batch and selective transfer operations
 - **Tasks**: Individual transfer units with status tracking
-
-## Extensibility Points
-
-### **Custom Transfer Types**
-
-- Pluggable transfer implementations
-- Custom validation rules
-- Configurable processing pipelines
-
-### **DICOM Protocol Extensions**
-
-- Multiple protocol support (DIMSE, DICOMweb)
-- Custom authentication mechanisms
-- Protocol-specific optimizations
-
-### **Integration APIs**
-
-- REST API for external system integration
-- Background job management
-- Custom export formats
 
 ## Performance Considerations
 

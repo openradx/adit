@@ -1,16 +1,13 @@
-/* Optimized Mermaid diagram styling */
 .mermaid {
   text-align: center;
   margin: 1em 0;
 }
 
-/* Ensure diagrams are properly sized */
 .mermaid svg {
   max-width: 100% !important;
   height: auto !important;
 }
 
-/* Basic styling fixes */
 .mermaid .actor {
   stroke: #333;
   fill: #ececff;

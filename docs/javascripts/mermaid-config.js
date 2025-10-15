@@ -1,11 +1,9 @@
-// Optimized Mermaid configuration for fast loading
 document.addEventListener("DOMContentLoaded", function () {
-  // Quick initialization function
   function initializeMermaid() {
     if (typeof mermaid !== "undefined") {
       try {
         mermaid.initialize({
-          startOnLoad: true, // Let mermaid handle auto-loading
+          startOnLoad: true,
           theme: "default",
           securityLevel: "loose",
           themeVariables: {
@@ -34,17 +32,13 @@ document.addEventListener("DOMContentLoaded", function () {
     return false;
   }
 
-  // Try immediate initialization
   if (!initializeMermaid()) {
-    // Quick retry if needed
     setTimeout(initializeMermaid, 50);
   }
 });
 
-// Handle Material theme navigation efficiently
 if (typeof app !== "undefined" && app.document$) {
   app.document$.subscribe(function () {
-    // Quick re-render for new pages
     setTimeout(function () {
       if (typeof mermaid !== "undefined") {
         mermaid.init();

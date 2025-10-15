@@ -65,7 +65,7 @@ cp example.env .env
 # Edit .env with your settings
 
 # Start ADIT
-./cli.py compose-watch
+cli compose-up
 ```
 
 **Q: How do I create the first admin user?**
@@ -79,7 +79,7 @@ When you copy the example environment file, a default admin user can be created 
 cp example.env .env
 # Edit .env and ensure the superuser environment variables are set
 # Then start ADIT - the admin user will be created automatically
-./cli.py compose-watch
+cli compose-up
 ```
 
 **Option 2: Manual creation**
@@ -87,7 +87,7 @@ After starting ADIT, create a superuser manually:
 
 ```bash
 # using the CLI tool
-./cli.py create-superuser
+cli create-superuser
 ```
 
 ## Server Configuration
@@ -347,7 +347,7 @@ studies = client.query_studies(server='PACS1', PatientID='12345')
 
 ### Common Issues
 
-**Q: Transfer fails with connection errors**
+**Q:Transfer fails with connection errors**
 
 A: ADIT implements automatic retry logic for connection issues. Common connection error messages include:
 
@@ -365,7 +365,7 @@ To troubleshoot connection failures:
 
 **Note**: Regular users cannot view or modify DICOM server technical details like IP addresses or ports - this requires administrator access.
 
-**Q: Batch upload fails with "Invalid Excel (.xlsx) file" error**
+**Q:Batch upload fails with "Invalid Excel (.xlsx) file" error**
 
 A: ADIT validates batch files strictly. Check:
 
@@ -377,7 +377,7 @@ A: ADIT validates batch files strictly. Check:
 4. **Batch size limits**: Maximum 500 tasks per batch transfer job and 1000 tasks per batch query job (unless you're staff)
 5. **Column headers**: First row must contain exact column names (case-sensitive)
 
-**Q: Batch upload fails with validation errors**
+**Q:Batch upload fails with validation errors**
 
 A: ADIT performs content validation on batch files:
 
@@ -386,7 +386,7 @@ A: ADIT performs content validation on batch files:
 3. **Consistency**: Same Study UID cannot belong to different Patient IDs
 4. **Character validation**: No backslashes, control characters, or wildcards in ID fields
 
-**Q: Jobs get stuck or fail with timeout errors**
+**Q:Jobs get stuck or fail with timeout errors**
 
 A: ADIT has built-in timeout and retry mechanisms based on the actual codebase configuration:
 
@@ -411,11 +411,10 @@ A: Support resources:
 
 A: When reporting issues, please include:
 
-1. **ADIT version** you're running
-2. **Steps to reproduce** the problem
-3. **Error messages** from the UI or logs
-4. **Environment details** (Docker, database, network setup)
-5. **DICOM server types** you're connecting to
+1. **Steps to reproduce** the problem
+2. **Error messages** from the UI or logs
+3. **Environment details** (Docker, database, network setup)
+4. **DICOM server types** you're connecting to
 
 **Q: How can I contribute to ADIT?**
 

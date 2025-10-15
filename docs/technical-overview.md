@@ -12,21 +12,6 @@ Many existing PACS servers, while robust, rely on older, specialized DICOM proto
 
 Traditional DICOM communication relies on DIMSE (DICOM Message Service Element) services:
 
-```mermaid
-flowchart TD
-    A[DICOM Client] -->|C-FIND Query| B[PACS Server]
-    B -->|Query Results| A
-    A -->|C-GET Retrieve| B
-    B -->|DICOM Images| A
-    A -->|C-STORE Store| B
-    A -->|C-MOVE Push| C[Destination PACS]
-    B -->|DICOM Images| C
-
-    style A fill:#e3f2fd
-    style B fill:#e8f5e8
-    style C fill:#fff3e0
-```
-
 - **C-FIND (Query):** Search for studies, series, or instances based on criteria
 - **C-GET (Retrieve - Pull):** Client requests and "pulls" images directly
 - **C-MOVE (Retrieve - Push):** Instructs server to "push" images to another destination
@@ -93,39 +78,6 @@ sequenceDiagram
 3. **PACS Communication:** Communicates with PACS using native DIMSE protocols
 4. **Response Translation:** Converts DICOM data back to web-friendly format
 5. **Web Response:** Returns JSON/DICOM data over HTTP/HTTPS
-
-### Complete System Architecture
-
-```mermaid
-flowchart TB
-    subgraph Client["Client Applications"]
-        A[Web Browser]
-        B[Python Scripts]
-        C[Research Apps]
-    end
-
-    subgraph ADIT["ADIT System"]
-        D[Web Interface]
-        E[REST API]
-        F[Authentication]
-        G[Translation Engine]
-        H[Pseudonymization]
-        I[Task Queue]
-    end
-
-    subgraph Backend["DICOM Infrastructure"]
-        J[Hospital PACS]
-        K[Research PACS]
-        L[Archive System]
-    end
-
-    Client -->|HTTPS/DICOMweb| ADIT
-    ADIT -->|DIMSE Protocol| Backend
-
-    style Client fill:#e3f2fd
-    style ADIT fill:#f3e5f5
-    style Backend fill:#e8f5e8
-```
 
 ## Security Benefits
 

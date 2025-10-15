@@ -2,7 +2,7 @@
 
 ADIT provides a comprehensive set of features for DICOM data management and transfer.
 
-### DICOM Server Integration
+## DICOM Server Integration
 
 - ✅ **Multiple Server Support**: Connect to multiple DICOM servers simultaneously
 - ✅ **Protocol Support**: Both DIMSE and DICOMweb protocols
