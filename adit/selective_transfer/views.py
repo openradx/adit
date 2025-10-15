@@ -3,12 +3,11 @@ import logging
 import time
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
+from functools import partial
 from io import BytesIO
+from pathlib import Path
 from stat import S_IFREG
 from typing import Any, AsyncGenerator, cast
-from functools import partial
-from pathlib import Path
-
 
 from adit_radis_shared.common.types import AuthenticatedHttpRequest
 from adit_radis_shared.common.views import BaseUpdatePreferencesView
@@ -18,7 +17,6 @@ from django.contrib.auth.decorators import login_required, permission_required
 from django.core.exceptions import BadRequest
 from django.http import StreamingHttpResponse
 from django.urls import reverse_lazy
-from psycopg import OperationalError
 from pydicom import Dataset
 from requests import HTTPError
 from rest_framework.exceptions import NotFound
@@ -31,7 +29,6 @@ from adit.core.utils.dicom_manipulator import DicomManipulator
 from adit.core.utils.dicom_operator import DicomOperator
 from adit.core.utils.dicom_utils import write_dataset
 from adit.core.utils.sanitize import sanitize_filename
-
 from adit.core.views import (
     DicomJobCancelView,
     DicomJobCreateView,
@@ -125,10 +122,6 @@ async def selective_transfer_download_study_view(
     study_modalities = request.GET.get('study_modalities')
     study_date = request.GET.get('study_date')
     study_time = request.GET.get('study_time')
-    logger.debug(study_modalities)
-    logger.debug(study_date)
-    logger.debug(study_time)
-
 
     download_folder = Path(f"study_download_{study_uid}")
     loop = asyncio.get_running_loop()
@@ -199,7 +192,7 @@ async def selective_transfer_download_study_view(
             final_folder = final_folder / series_folder_name
 
         file_name = sanitize_filename(f"{ds.SOPInstanceUID}.dcm")
-        file_path = f"{final_folder} / {file_name}"
+        file_path = f"{final_folder}/{file_name}" # async_stream_zip expects a str
 
         dcm_buffer = BytesIO()
         write_dataset(ds, dcm_buffer)
