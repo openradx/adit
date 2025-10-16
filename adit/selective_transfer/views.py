@@ -104,8 +104,9 @@ def download_study(request, server_id, patient_id, study_uid, pseudonymize, call
     # Re-raise DicomErrors/HttpErrors from fetch_study
     except (DicomError, HTTPError):
         raise
+    # If download_study fails before streaming happens, we can return a http response with the error
     except Exception as err:
-        raise RuntimeError(f"Unexpected error: {err}") from err
+        raise HTTPError(500, f"Unexpected error: {err}")
 
 
 @login_required
@@ -157,6 +158,7 @@ async def selective_transfer_download_study_view(
         nonlocal fetch_error
         try:
             await fetch_task
+        # Catch any error raised by download_study
         except Exception as err:
             fetch_error = err
         finally:
@@ -192,7 +194,7 @@ async def selective_transfer_download_study_view(
             final_folder = final_folder / series_folder_name
 
         file_name = sanitize_filename(f"{ds.SOPInstanceUID}.dcm")
-        file_path = f"{final_folder}/{file_name}" # async_stream_zip expects a str
+        file_path = str(final_folder / file_name) # async_stream_zip expects a str
 
         dcm_buffer = BytesIO()
         write_dataset(ds, dcm_buffer)
@@ -213,11 +215,12 @@ async def selective_transfer_download_study_view(
                     break
                 ds_buffer, file_path = await loop.run_in_executor(executor, ds_to_buffer, queue_ds)
                 yield single_buffer_gen(ds_buffer.getvalue()), file_path
-
+            # Re-raise any error caught during fetch_task 
             if fetch_error:
                 raise fetch_error
+        # Because we cannot change the httpresponse once it has started streaming, we add an error.txt file in the downloaded zip
         except Exception as err:
-            err_buf = BytesIO(f"Error during study direct download:\n\n{err}".encode("utf-8"))
+            err_buf = BytesIO(f"Error during study download:\n\n{err}".encode("utf-8"))
             yield single_buffer_gen(err_buf.getvalue()), "error.txt"
             raise
 
