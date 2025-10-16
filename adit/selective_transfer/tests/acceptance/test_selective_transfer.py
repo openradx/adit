@@ -178,7 +178,8 @@ def test_unpseudonymized_selective_direct_download_with_dimse_server(
     page.get_by_label("Modality").click()
     page.get_by_label("Modality").fill("MR")
     page.get_by_label("Modality").press("Enter")
-    page.locator('tr:has-text("1003"):has-text("2020") input').click()
+
+    print(page.locator('a[href*="download/servers/1/patients/1003"]').count())
     
     link_locator = page.locator('a[href*="download/servers/1/patients/1003"]')
     link_locator.wait_for()

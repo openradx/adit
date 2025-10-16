@@ -281,7 +281,7 @@ class SelectiveTransferConsumer(AsyncJsonWebsocketConsumer):
         pseudonym = form.cleaned_data["pseudonym"]
         trial_protocol_id = form.cleaned_data["trial_protocol_id"]
         trial_protocol_name = form.cleaned_data["trial_protocol_name"]
-        can_download = self.user.has_perm("selective_transfer.download_study")
+        can_download = self.user.has_perm("selective_transfer.can_download_study")
 
         rendered_query_results = render_to_string(
             "selective_transfer/_query_results.html",
