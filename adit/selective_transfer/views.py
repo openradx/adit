@@ -109,7 +109,7 @@ def download_study(request, server_id, patient_id, study_uid, pseudonymize, call
 
 
 @login_required
-@permission_required("selective_transfer.download_study")
+@permission_required("selective_transfer.can_download_study")
 async def selective_transfer_download_study_view(
     request: AuthenticatedHttpRequest,
     server_id: str | None = None,

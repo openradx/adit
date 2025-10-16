@@ -165,7 +165,7 @@ def test_unpseudonymized_selective_direct_download_with_dimse_server(
     user = create_and_login_example_user(page, channels_live_server.url)
     group = create_selective_transfer_group()
     add_user_to_group(user, group)
-    add_permission(group, "selective_transfer", "download_study")
+    add_permission(group, "selective_transfer", "can_download_study")
 
     orthancs = setup_dimse_orthancs()
     grant_access(group, orthancs[0], source=True)
