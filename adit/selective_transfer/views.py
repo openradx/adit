@@ -78,7 +78,8 @@ def download_study(request, server_id, patient_id, study_uid, pseudonymize, call
         operator = DicomOperator(server)
 
         exclude_modalities = settings.EXCLUDE_MODALITIES
-        # TODO: Add condition for specified series_uids when user selects specific series in a selected study
+        # TODO: Add condition for specified series_uids
+        # when user selects specific series in a selected study
         if pseudonymize and exclude_modalities:
             series_list = list(
                 operator.find_series(
@@ -177,7 +178,11 @@ async def selective_transfer_download_study_view(
         exclude_modalities = settings.EXCLUDE_MODALITIES
         modalities = study_modalities
         if pseudonym and exclude_modalities and study_modalities:
-            included_modalities = [modality for modality in study_modalities.split(",") if modality not in exclude_modalities]
+            included_modalities = [
+                modality
+                for modality in study_modalities.split(",")
+                if modality not in exclude_modalities
+            ]
             modalities = ",".join(included_modalities)
         prefix = f"{study_date}-{study_time}"
         study_folder = patient_folder / f"{prefix}-{modalities}"
@@ -218,7 +223,8 @@ async def selective_transfer_download_study_view(
             # Re-raise any error caught during fetch_task 
             if fetch_error:
                 raise fetch_error
-        # Because we cannot change the httpresponse once it has started streaming, we add an error.txt file in the downloaded zip
+        # Because we cannot change the httpresponse once it has started streaming, 
+        # we add an error.txt file in the downloaded zip
         except Exception as err:
             err_buf = BytesIO(f"Error during study download:\n\n{err}".encode("utf-8"))
             yield single_buffer_gen(err_buf.getvalue()), "error.txt"
