@@ -6,7 +6,6 @@ from pathlib import Path
 
 import nibabel as nib
 import pytest
-from adit_radis_shared.accounts.models import User
 from adit_radis_shared.common.utils.testing_helpers import (
     ChannelsLiveServer,
     add_permission,
@@ -15,7 +14,6 @@ from adit_radis_shared.common.utils.testing_helpers import (
     run_worker_once,
 )
 from django.contrib.auth.models import Permission
-
 from django.utils import timezone
 from playwright.sync_api import Page, expect
 
@@ -171,10 +169,11 @@ def test_unpseudonymized_selective_direct_download_with_dimse_server(
     add_permission(group, "selective_transfer", "can_download_study")
 
 
-    perm = Permission.objects.filter(codename="can_download_study", content_type__app_label="selective_transfer").first()
+    perm = Permission.objects.filter(codename="can_download_study", 
+        content_type__app_label="selective_transfer").first()
     print("Permission exists:", bool(perm))
     if perm:
-        print("Permission details:", perm.id, perm.name, perm.content_type)
+        print("Permission details:", perm.name, perm.content_type)
     else:
         print("Permission not found in Permission table")
 
