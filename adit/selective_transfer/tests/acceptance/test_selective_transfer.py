@@ -6,6 +6,7 @@ from pathlib import Path
 
 import nibabel as nib
 import pytest
+from adit_radis_shared.accounts.models import User
 from adit_radis_shared.common.utils.testing_helpers import (
     ChannelsLiveServer,
     add_permission,
@@ -13,6 +14,8 @@ from adit_radis_shared.common.utils.testing_helpers import (
     create_and_login_example_user,
     run_worker_once,
 )
+from django.contrib.auth.models import Permission
+
 from django.utils import timezone
 from playwright.sync_api import Page, expect
 
@@ -167,9 +170,25 @@ def test_unpseudonymized_selective_direct_download_with_dimse_server(
     add_user_to_group(user, group)
     add_permission(group, "selective_transfer", "can_download_study")
 
+
+    perm = Permission.objects.filter(codename="can_download_study", content_type__app_label="selective_transfer").first()
+    print("Permission exists:", bool(perm))
+    if perm:
+        print("Permission details:", perm.id, perm.name, perm.content_type)
+    else:
+        print("Permission not found in Permission table")
+
+    group.refresh_from_db()
+    print("Group permissions:", list(group.permissions.values_list("codename", flat=True)))
+
     orthancs = setup_dimse_orthancs()
     grant_access(group, orthancs[0], source=True)
     grant_access(group, orthancs[1], destination=True)
+
+    user.refresh_from_db()
+    print("User groups:", list(user.groups.values_list("name", flat=True)))
+    print("User direct perms:", list(user.user_permissions.values_list("codename", flat=True)))
+    print("User has can_download_study:", user.has_perm("selective_transfer.can_download_study"))
 
     # Act
     page.goto(channels_live_server.url + "/selective-transfer/jobs/new/")
