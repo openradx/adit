@@ -171,6 +171,9 @@ def test_unpseudonymized_selective_direct_download_with_dimse_server(
     grant_access(group, orthancs[0], source=True)
     grant_access(group, orthancs[1], destination=True)
 
+    from django.db import connection
+    connection.commit()
+
     # Act
     page.goto(channels_live_server.url + "/selective-transfer/jobs/new/")
     page.get_by_label("Source").select_option(label="DICOM Server Orthanc Test Server 1")
