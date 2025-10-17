@@ -38,6 +38,10 @@ jobs:
           cache-to: type=gha,mode=max
       - name: Start Docker containers
         run: uv run cli compose-up -- --detach --no-build
+      - name: Sync test database schema
+        run: |
+          uv run python manage.py makemigrations --check --noinput
+          uv run python manage.py migrate --noinput
       - name: Run linting
         # https://github.com/actions/runner/issues/241#issuecomment-745902718
         shell: 'script -q -e -c "bash {0}"'
