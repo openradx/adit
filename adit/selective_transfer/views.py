@@ -205,7 +205,9 @@ async def selective_transfer_download_study_view(
 
     async def async_queue_to_gen():
         """Consumes and yields the datasets in the async queue"""
-        async def single_buffer_gen(content):
+        
+        async def buffer_to_gen(content):
+            """Wraps dataset buffer in an async generator, expected by async_queue_to_gen"""
             yield content
 
         try:
@@ -216,7 +218,7 @@ async def selective_transfer_download_study_view(
                 if queue_ds is None:
                     break
                 ds_buffer, file_path = await loop.run_in_executor(executor, ds_to_buffer, queue_ds)
-                yield single_buffer_gen(ds_buffer.getvalue()), file_path
+                yield buffer_to_gen(ds_buffer.getvalue()), file_path
             # Re-raise any error caught during fetch_task
             if fetch_error:
                 raise fetch_error
@@ -224,7 +226,7 @@ async def selective_transfer_download_study_view(
         # we add an error.txt file in the downloaded zip
         except (DicomServer.DoesNotExist, DicomError, HTTPError) as err:
             err_buf = BytesIO(f"Error during study download:\n\n{err}".encode("utf-8"))
-            yield single_buffer_gen(err_buf.getvalue()), "error.txt"
+            yield buffer_to_gen(err_buf.getvalue()), "error.txt"
             raise
 
     async def generate_files_to_add_in_zip():

@@ -175,20 +175,21 @@ def test_unpseudonymized_selective_direct_download_with_dimse_server(
 
     user.refresh_from_db()
 
+    server_id = orthancs[0].pk
+    patient_id = "1001"
+    study_uid = "1.2.840.113845.11.1000000001951524609.20200705182951.2689481"
+    study_modalities = "CT,SR"
+    study_date = "20190604"
+    study_time = "182823"
+
     # Act
     page.goto(channels_live_server.url + "/selective-transfer/jobs/new/")
     page.get_by_label("Source").select_option(label="DICOM Server Orthanc Test Server 1")
     page.get_by_label("Destination").select_option(label="DICOM Server Orthanc Test Server 2")
-    page.get_by_label("Modality").click()
-    page.get_by_label("Modality").fill("MR")
-    page.get_by_label("Modality").press("Enter")
+    page.get_by_label("Patient ID").click()
+    page.get_by_label("Patient ID").fill(f"{patient_id}")
+    page.get_by_label("Patient ID").press("Enter")
 
-    server_id = orthancs[0].pk
-    patient_id = "1003"
-    study_uid = "1.2.840.113845.11.1000000001951524609.20200705172608.2689471"
-    study_modalities = "MR"
-    study_date = "20200202"
-    study_time = "172931"
     base_download_link = f"download/servers/{server_id}/patients/{patient_id}/studies/{study_uid}"
     optional_params = (
         f"?study_modalities={study_modalities}&study_date={study_date}&study_time={study_time}"
@@ -211,24 +212,34 @@ def test_unpseudonymized_selective_direct_download_with_dimse_server(
         zip_bytes = io.BytesIO(f.read())
 
     # Inspect zip file contents
-    base = (
-        "study_download_1.2.840.113845.11.1000000001951524609."
-        "20200705172608.2689471/1003/20200202-172931-MR/"
+    base_path = (
+        f"study_download_{study_uid}/{patient_id}/"
+        f"{study_date}-{study_time}-{study_modalities}"
     )
     with zipfile.ZipFile(zip_bytes) as zf:
         actual_files = set(zf.namelist())
         expected_files = {
-            f"{base}1-AAHead_Scout/1.3.12.2.1107.5.2.18.41369.2020070517301070393121257.dcm",
-            f"{base}1-AAHead_Scout/1.3.12.2.1107.5.2.18.41369.2020070517301070783621262.dcm",
-            f"{base}1-AAHead_Scout/1.3.12.2.1107.5.2.18.41369.2020070517301071809821266.dcm",
-            f"{base}1-AAHead_Scout/1.3.12.2.1107.5.2.18.41369.2020070517301076038721300.dcm",
-            f"{base}5-t2_tse_tra 5mm/1.3.12.2.1107.5.2.18.41369.2020070517335682449622068.dcm",
-            f"{base}5-t2_tse_tra 5mm/1.3.12.2.1107.5.2.18.41369.2020070517335685098622070.dcm",
-            f"{base}5-t2_tse_tra 5mm/1.3.12.2.1107.5.2.18.41369.2020070517335752885122121.dcm",
-            f"{base}5-t2_tse_tra 5mm/1.3.12.2.1107.5.2.18.41369.2020070517335753271722124.dcm",
-            f"{base}8-SWI_Images/1.3.12.2.1107.5.2.18.41369.2020070517415775163724138.dcm",
-            f"{base}8-SWI_Images/1.3.12.2.1107.5.2.18.41369.2020070517415775190624139.dcm",
-            f"{base}8-SWI_Images/1.3.12.2.1107.5.2.18.41369.2020070517415775215724140.dcm",
-            f"{base}8-SWI_Images/1.3.12.2.1107.5.2.18.41369.2020070517415775243224141.dcm",
+            f"{base_path}/999-FUJI Basic Text SR for HL7 Radiological Report/"
+            "1.2.840.113845.11.5000000001951524609.20200705191841.1656640.dcm",
+            f"{base_path}/2-Kopf nativ  5.0  H42s/"
+            "1.3.12.2.1107.5.1.4.66002.30000020070514400054400005503.dcm",
+            f"{base_path}/2-Kopf nativ  5.0  H42s/"
+            "1.3.12.2.1107.5.1.4.66002.30000020070514400054400005505.dcm",
+            f"{base_path}/2-Kopf nativ  5.0  H42s/"
+            "1.3.12.2.1107.5.1.4.66002.30000020070514400054400005504.dcm",
+            f"{base_path}/2-Kopf nativ  5.0  H42s/"
+            "1.3.12.2.1107.5.1.4.66002.30000020070514400054400005506.dcm",
+            f"{base_path}/3-Kopf nativ  2.0  H70h/"
+            "1.3.12.2.1107.5.1.4.66002.30000020070514400054400005545.dcm",
+            f"{base_path}/3-Kopf nativ  2.0  H70h/"
+            "1.3.12.2.1107.5.1.4.66002.30000020070514400054400005546.dcm",
+            f"{base_path}/3-Kopf nativ  2.0  H70h/"
+            "1.3.12.2.1107.5.1.4.66002.30000020070514400054400005544.dcm",
+            f"{base_path}/3-Kopf nativ  2.0  H70h/"
+            "1.3.12.2.1107.5.1.4.66002.30000020070514400054400005543.dcm",
+            f"{base_path}/1-Topogramm  0.6  T20f/"
+            "1.3.12.2.1107.5.1.4.66002.30000020070513455668000000632.dcm",
+            f"{base_path}/1-Topogramm  0.6  T20f/"
+            "1.3.12.2.1107.5.1.4.66002.30000020070513455668000000610.dcm",
         }
         assert actual_files == expected_files
