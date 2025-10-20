@@ -213,7 +213,9 @@ def test_unpseudonymized_selective_direct_download_with_dimse_server(
     study_date = "20200202"
     study_time = "172931"
     base_download_link = f"download/servers/{server_id}/patients/{patient_id}/studies/{study_uid}"
-    optional_params = f"?study_modalities={study_modalities}&study_date={study_date}&study_time={study_time}"
+    optional_params = (
+        f"?study_modalities={study_modalities}&study_date={study_date}&study_time={study_time}"
+    )
     download_link = base_download_link + optional_params
 
     link_locator = page.locator(f'a[href*="{download_link}"]')
