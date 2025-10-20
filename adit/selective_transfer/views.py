@@ -208,7 +208,6 @@ async def selective_transfer_download_study_view(
         return dcm_buffer, file_path
 
     async def async_queue_to_gen():
-        
         async def single_buffer_gen(content):
             yield content
 

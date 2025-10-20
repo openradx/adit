@@ -13,7 +13,6 @@ from adit_radis_shared.common.utils.testing_helpers import (
     create_and_login_example_user,
     run_worker_once,
 )
-from django.contrib.auth.models import Permission
 from django.utils import timezone
 from playwright.sync_api import Page, expect
 
@@ -168,26 +167,13 @@ def test_unpseudonymized_selective_direct_download_with_dimse_server(
     add_user_to_group(user, group)
     add_permission(group, "selective_transfer", "can_download_study")
 
-    perm = Permission.objects.filter(
-        codename="can_download_study", content_type__app_label="selective_transfer"
-    ).first()
-    print("Permission exists:", bool(perm))
-    if perm:
-        print("Permission details:", perm.name, perm.content_type)
-    else:
-        print("Permission not found in Permission table")
-
     group.refresh_from_db()
-    print("Group permissions:", list(group.permissions.values_list("codename", flat=True)))
 
     orthancs = setup_dimse_orthancs()
     grant_access(group, orthancs[0], source=True)
     grant_access(group, orthancs[1], destination=True)
 
     user.refresh_from_db()
-    print("User groups:", list(user.groups.values_list("name", flat=True)))
-    print("User direct perms:", list(user.user_permissions.values_list("codename", flat=True)))
-    print("User has can_download_study:", user.has_perm("selective_transfer.can_download_study"))
 
     # Act
     page.goto(channels_live_server.url + "/selective-transfer/jobs/new/")
@@ -197,29 +183,7 @@ def test_unpseudonymized_selective_direct_download_with_dimse_server(
     page.get_by_label("Modality").fill("MR")
     page.get_by_label("Modality").press("Enter")
 
-    # Debug
-    user_page = page.locator("#logged_in_username")
-    if user_page.count() == 0:
-        print("Page has no logged-in user")
-    else:
-        username = user_page.inner_text()
-        print("Logged-in username:", username)
-
-    page.wait_for_selector("table", timeout=10000)
-
-    row_count = page.locator("table tr").count()
-    print("Table row count: ", row_count)
-
-    target_row = page.locator('tr:has-text("1003"):has-text("2020")')
-    print("Target row count: ", target_row.count())
-    download_cell = target_row.locator('td a.btn-primary')
-    print("Target row contents: ", download_cell.evaluate("el => el.outerHTML"))
-
-    download_header = page.locator('th.text-nowrap', has_text="Download")
-    download_header.wait_for(timeout=10000)
-    print("Download header count:", download_header.count())
-
-    server_id = "1"
+    server_id = orthancs[0].pk
     patient_id = "1003"
     study_uid = "1.2.840.113845.11.1000000001951524609.20200705172608.2689471"
     study_modalities = "MR"
@@ -232,7 +196,6 @@ def test_unpseudonymized_selective_direct_download_with_dimse_server(
     download_link = base_download_link + optional_params
 
     link_locator = page.locator(f'a[href*="{download_link}"]')
-    print("Download link count: ", link_locator.count())
 
     link_locator.wait_for()
 
