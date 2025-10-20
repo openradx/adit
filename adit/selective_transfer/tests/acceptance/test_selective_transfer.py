@@ -198,6 +198,13 @@ def test_unpseudonymized_selective_direct_download_with_dimse_server(
     page.get_by_label("Modality").press("Enter")
 
     # Debug
+    user_page = page.locator("#logged_in_username")
+    if user_page.count() == 0:
+        print("Page has no logged-in user")
+    else:
+        username = user_page.inner_text()
+        print("Logged-in username:", username)
+
     page.wait_for_selector("table", timeout=10000)
 
     row_count = page.locator("table tr").count()
@@ -205,6 +212,10 @@ def test_unpseudonymized_selective_direct_download_with_dimse_server(
 
     target_row = page.locator('tr:has-text("1003"):has-text("2020") input').count()
     print("Target row count: ", target_row)
+
+    download_header = page.locator('th.text-nowrap', has_text="Download")
+    download_header.wait_for(timeout=10000)
+    print("Download header count:", download_header.count())
 
     server_id = "1"
     patient_id = "1003"

@@ -207,10 +207,11 @@ async def selective_transfer_download_study_view(
 
         return dcm_buffer, file_path
 
-    async def single_buffer_gen(content):
-        yield content
-
     async def async_queue_to_gen():
+        
+        async def single_buffer_gen(content):
+            yield content
+
         try:
             while True:
                 # Waits on the queue, when a queue item is retrieved,
