@@ -105,10 +105,6 @@ def download_study(request, server_id, patient_id, study_uid, pseudonymize, call
     # Re-raise DicomErrors/HttpErrors from fetch_study
     except (DicomError, HTTPError):
         raise
-    # If download_study fails before streaming happens, we can return a http response with the error
-    except Exception as err:
-        raise HTTPError(500, f"Unexpected error: {err}")
-
 
 @login_required
 @permission_required("selective_transfer.can_download_study")
@@ -159,7 +155,7 @@ async def selective_transfer_download_study_view(
         nonlocal fetch_error
         try:
             await fetch_task
-        # Catch any error raised by download_study
+        # Catch the errors raised by download_study
         except Exception as err:
             fetch_error = err
         finally:
@@ -225,7 +221,7 @@ async def selective_transfer_download_study_view(
                 raise fetch_error
         # Because we cannot change the httpresponse once it has started streaming,
         # we add an error.txt file in the downloaded zip
-        except Exception as err:
+        except (DicomServer.DoesNotExist, DicomError, HTTPError) as err:
             err_buf = BytesIO(f"Error during study download:\n\n{err}".encode("utf-8"))
             yield single_buffer_gen(err_buf.getvalue()), "error.txt"
             raise
