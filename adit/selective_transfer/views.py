@@ -72,14 +72,14 @@ class SelectiveTransferUpdatePreferencesView(
     ]
 
 
-def download_study(request, server_id, patient_id, study_uid, pseudonymize, callback):
+def fetch_study(request, server_id, patient_id, study_uid, pseudonymize, callback):
+    """Fetch the study for download"""
     try:
         server = DicomServer.objects.accessible_by_user(request.user, "source").get(id=server_id)
         operator = DicomOperator(server)
 
         exclude_modalities = settings.EXCLUDE_MODALITIES
-        # TODO: Add condition for specified series_uids
-        # when user selects specific series in a selected study
+
         if pseudonymize and exclude_modalities:
             series_list = list(
                 operator.find_series(
@@ -140,7 +140,7 @@ async def selective_transfer_download_study_view(
         loop.call_soon_threadsafe(queue.put_nowait, ds)
 
     fetch_task = asyncio.create_task(
-        sync_to_async(download_study, thread_sensitive=False)(
+        sync_to_async(fetch_study, thread_sensitive=False)(
             request=request,
             server_id=server_id,
             patient_id=patient_id,
@@ -152,6 +152,7 @@ async def selective_transfer_download_study_view(
     fetch_error: Exception | None = None
 
     async def add_sentinel_when_done():
+        """Inserts sentinel to the queue at the end of fetch_task"""
         nonlocal fetch_error
         try:
             await fetch_task
@@ -163,9 +164,8 @@ async def selective_transfer_download_study_view(
 
     asyncio.create_task(add_sentinel_when_done())
 
-    # Synchronous blocking function
     def ds_to_buffer(ds):
-        # TODO: Construct correct file path for instances in study
+        """Synchronous blocking function that writes the dataset to a buffer and constructs the corresponding file path"""
         if pseudonym:
             patient_folder = download_folder / sanitize_filename(pseudonym)
         else:
@@ -204,6 +204,7 @@ async def selective_transfer_download_study_view(
         return dcm_buffer, file_path
 
     async def async_queue_to_gen():
+        """Consumes and yields the datasets in the async queue"""
         async def single_buffer_gen(content):
             yield content
 
