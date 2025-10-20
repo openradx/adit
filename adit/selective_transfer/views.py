@@ -165,7 +165,7 @@ async def selective_transfer_download_study_view(
     asyncio.create_task(add_sentinel_when_done())
 
     def ds_to_buffer(ds):
-        """Synchronous blocking function that writes the dataset to a buffer and constructs the corresponding file path"""
+        """Writes the dataset to a buffer and constructs the corresponding file path"""
         if pseudonym:
             patient_folder = download_folder / sanitize_filename(pseudonym)
         else:
