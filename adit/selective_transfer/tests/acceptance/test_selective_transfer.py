@@ -168,9 +168,9 @@ def test_unpseudonymized_selective_direct_download_with_dimse_server(
     add_user_to_group(user, group)
     add_permission(group, "selective_transfer", "can_download_study")
 
-
-    perm = Permission.objects.filter(codename="can_download_study", 
-        content_type__app_label="selective_transfer").first()
+    perm = Permission.objects.filter(
+        codename="can_download_study", content_type__app_label="selective_transfer"
+    ).first()
     print("Permission exists:", bool(perm))
     if perm:
         print("Permission details:", perm.name, perm.content_type)
@@ -197,19 +197,28 @@ def test_unpseudonymized_selective_direct_download_with_dimse_server(
     page.get_by_label("Modality").fill("MR")
     page.get_by_label("Modality").press("Enter")
 
-    # Wait for table to become visible
+    # Debug
     page.wait_for_selector("table", timeout=10000)
 
-    # Count rows (you can print this)
     row_count = page.locator("table tr").count()
-    print("Table row count:", row_count)
+    print("Table row count: ", row_count)
 
+    target_row = page.locator('tr:has-text("1003"):has-text("2020") input').count()
+    print("Target row count: ", target_row)
 
-    page.locator('tr:has-text("1003"):has-text("2020") input').click()
+    server_id = "1"
+    patient_id = "1003"
+    study_uid = "1.2.840.113845.11.1000000001951524609.20200705172608.2689471"
+    study_modalities = "MR"
+    study_date = "20200202"
+    study_time = "172931"
+    base_download_link = f"download/servers/{server_id}/patients/{patient_id}/studies/{study_uid}"
+    optional_params = f"?study_modalities={study_modalities}&study_date={study_date}&study_time={study_time}"
+    download_link = base_download_link + optional_params
 
-    print(page.locator('a[href*="download/servers/1/patients/1003"]').count())
-    
-    link_locator = page.locator('a[href*="download/servers/1/patients/1003"]')
+    link_locator = page.locator(f'a[href*="{download_link}"]')
+    print("Download link count: ", link_locator.count())
+
     link_locator.wait_for()
 
     # Intercept the download and capture it
@@ -225,9 +234,9 @@ def test_unpseudonymized_selective_direct_download_with_dimse_server(
 
     # Inspect zip file contents
     base = (
-            "study_download_1.2.840.113845.11.1000000001951524609."
-            "20200705172608.2689471/1003/20200202-172931-MR/"
-        )
+        "study_download_1.2.840.113845.11.1000000001951524609."
+        "20200705172608.2689471/1003/20200202-172931-MR/"
+    )
     with zipfile.ZipFile(zip_bytes) as zf:
         actual_files = set(zf.namelist())
         expected_files = {

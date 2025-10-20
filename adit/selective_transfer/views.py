@@ -118,12 +118,12 @@ async def selective_transfer_download_study_view(
     patient_id: str | None = None,
     study_uid: str | None = None,
 ) -> StreamingHttpResponse:
-    pseudonym = request.GET.get('pseudonym')
-    trial_protocol_id = request.GET.get('trial_protocol_id')
-    trial_protocol_name = request.GET.get('trial_protocol_name')
-    study_modalities = request.GET.get('study_modalities')
-    study_date = request.GET.get('study_date')
-    study_time = request.GET.get('study_time')
+    pseudonym = request.GET.get("pseudonym")
+    trial_protocol_id = request.GET.get("trial_protocol_id")
+    trial_protocol_name = request.GET.get("trial_protocol_name")
+    study_modalities = request.GET.get("study_modalities")
+    study_date = request.GET.get("study_date")
+    study_time = request.GET.get("study_time")
 
     download_folder = Path(f"study_download_{study_uid}")
     loop = asyncio.get_running_loop()
@@ -199,7 +199,7 @@ async def selective_transfer_download_study_view(
             final_folder = final_folder / series_folder_name
 
         file_name = sanitize_filename(f"{ds.SOPInstanceUID}.dcm")
-        file_path = str(final_folder / file_name) # async_stream_zip expects a str
+        file_path = str(final_folder / file_name)  # async_stream_zip expects a str
 
         dcm_buffer = BytesIO()
         write_dataset(ds, dcm_buffer)
@@ -220,10 +220,10 @@ async def selective_transfer_download_study_view(
                     break
                 ds_buffer, file_path = await loop.run_in_executor(executor, ds_to_buffer, queue_ds)
                 yield single_buffer_gen(ds_buffer.getvalue()), file_path
-            # Re-raise any error caught during fetch_task 
+            # Re-raise any error caught during fetch_task
             if fetch_error:
                 raise fetch_error
-        # Because we cannot change the httpresponse once it has started streaming, 
+        # Because we cannot change the httpresponse once it has started streaming,
         # we add an error.txt file in the downloaded zip
         except Exception as err:
             err_buf = BytesIO(f"Error during study download:\n\n{err}".encode("utf-8"))
