@@ -210,8 +210,10 @@ def test_unpseudonymized_selective_direct_download_with_dimse_server(
     row_count = page.locator("table tr").count()
     print("Table row count: ", row_count)
 
-    target_row = page.locator('tr:has-text("1003"):has-text("2020") input').count()
-    print("Target row count: ", target_row)
+    target_row = page.locator('tr:has-text("1003"):has-text("2020")')
+    print("Target row count: ", target_row.count())
+    download_cell = target_row.locator('td a.btn-primary')
+    print("Target row contents: ", download_cell.evaluate("el => el.outerHTML"))
 
     download_header = page.locator('th.text-nowrap', has_text="Download")
     download_header.wait_for(timeout=10000)
