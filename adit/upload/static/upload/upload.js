@@ -25,6 +25,7 @@ function UploadJobForm(formEl) {
         this.chooseFolder();
       });
       document.body.addEventListener("htmx:afterSwap", (event) => {
+        // @ts-ignore
         if (event.detail.target.id === "myForm") {
           const pseudonym_error = document.getElementById("id_pseudonym_error");
           const destination_error = document.getElementById(
@@ -54,6 +55,7 @@ function UploadJobForm(formEl) {
     },
     onDestinationChange: function (ev) {
       this._updateIsDestinationFolder(ev.target);
+      // @ts-ignore
       updatePreferences("upload", {
         [UPLOAD_DESTINATION]: ev.target.value,
       });
@@ -119,6 +121,7 @@ function UploadJobForm(formEl) {
       const node_id = selectedOption.dataset.node_id;
 
       if (files.length === 0) {
+        // @ts-ignore
         showToast("warning", "Sandbox", `No files selected.${files}`);
       } else {
         const datasets = [];
