@@ -8,6 +8,7 @@ from io import BytesIO
 from stat import S_IFREG
 from typing import AsyncGenerator
 
+from adit_radis_shared.accounts.models import User
 from adrf.views import sync_to_async
 from django.conf import settings
 from pydicom import Dataset
@@ -32,30 +33,35 @@ class DicomDownloader:
         self.queue = asyncio.Queue[Dataset | None]()
         self.loop = asyncio.get_running_loop()
 
-    async def download_study(self, user, patient_id, study_uid, study_params, download_folder):
+    async def download_study(
+        self, user: User, patient_id, study_uid, study_params, download_folder
+    ):
         """Directly downloads a study from a DicomServer"""
 
         download_errors: list[Exception] = []
-        # TODO: Use taskgroup?
-        # Producer: Retrieves the study and puts Datasets in queue
-        asyncio.create_task(
-            self.retrieve_study(
-                user=user,
-                patient_id=patient_id,
-                study_uid=study_uid,
-                study_params=study_params,
-                download_errors=download_errors,
-            )
-        )
 
-        # Consumer: Zips study Datasets from the async queue and yields them
-        async for content in self.zip_study(
-            patient_id=patient_id,
-            study_params=study_params,
-            download_folder=download_folder,
-            download_errors=download_errors,
-        ):
-            yield content
+        async with asyncio.TaskGroup() as tg:
+            # Producer: Retrieves the study and puts Datasets in queue
+            tg.create_task(
+                self.retrieve_study(
+                    user=user,
+                    patient_id=patient_id,
+                    study_uid=study_uid,
+                    study_params=study_params,
+                    download_errors=download_errors,
+                )
+            )
+            try:
+                # Consumer: Zips study Datasets from the async queue and yields them
+                async for content in self.zip_study(
+                    patient_id=patient_id,
+                    study_params=study_params,
+                    download_folder=download_folder,
+                    download_errors=download_errors,
+                ):
+                    yield content
+            except* Exception as eg:
+                raise eg
 
     async def retrieve_study(
         self, user, patient_id, study_uid, study_params, download_errors: list[Exception]
@@ -180,23 +186,17 @@ class DicomDownloader:
             """Wraps dataset buffer in an async generator, expected by async_stream_zip"""
             yield content
 
-        try:
-            while True:
-                # Waits on the queue, when a queue item is retrieved,
-                # we write it to an in-memory buffer and yield it
-                queue_ds = await self.queue.get()
-                if queue_ds is None:
-                    break
-                ds_buffer, file_path = await self.loop.run_in_executor(
-                    executor, ds_to_buffer, queue_ds
-                )
-                yield buffer_to_gen(ds_buffer.getvalue()), file_path
-            # Re-raise any error caught during _fetch_put_study
-            if download_errors:
-                raise download_errors[0]
-        # Because we cannot change the httpresponse once it has started streaming,
-        # we add an error.txt file in the downloaded zip
-        except (DicomServer.DoesNotExist, DicomError, HTTPError) as err:
+        while True:
+            # Waits on the queue, when a queue item is retrieved,
+            # we write it to an in-memory buffer and yield it
+            queue_ds = await self.queue.get()
+            if queue_ds is None:
+                break
+            ds_buffer, file_path = await self.loop.run_in_executor(executor, ds_to_buffer, queue_ds)
+            yield buffer_to_gen(ds_buffer.getvalue()), file_path
+        # Re-raise any error caught during _fetch_put_study
+        if download_errors:
+            # Because we cannot change the httpresponse once it has started streaming,
+            # we add an error.txt file in the downloaded zip
             err_buf = BytesIO(f"Error during study download:\n\n{err}".encode("utf-8"))
             yield buffer_to_gen(err_buf.getvalue()), "error.txt"
-            raise
