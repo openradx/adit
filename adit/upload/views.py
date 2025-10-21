@@ -114,8 +114,11 @@ async def upload_api_view(request: AuthenticatedHttpRequest, node_id: str) -> Ht
         dataset = None
         uploaded_file = None
 
+        if file_data is None:
+            return HttpResponse(status=400, content="No data received")
+
         if "dataset" in file_data:
-            uploaded_file = file_data["dataset"]
+            uploaded_file = file_data.get("dataset")
             assert isinstance(uploaded_file, UploadedFile)
             dataset_bytes = BytesIO(uploaded_file.read())
             dataset = read_dataset(dataset_bytes)

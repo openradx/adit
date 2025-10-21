@@ -20,18 +20,18 @@ function UploadJobForm(formEl) {
     pbVisible: false,
     uploadCompleteTextVisible: false,
 
-    initUploadForm: function (destEl) {
-      document.body.addEventListener("chooseFolder", (e) => {
+    initUploadForm: function () {
+      document.body.addEventListener("chooseFolder", () => {
         this.chooseFolder();
       });
       document.body.addEventListener("htmx:afterSwap", (event) => {
         // @ts-ignore
         if (event.detail.target.id === "myForm") {
-          const pseudonym_error = document.getElementById("id_pseudonym_error");
-          const destination_error = document.getElementById(
+          const pseudonymError = document.getElementById("id_pseudonym_error");
+          const destinationError = document.getElementById(
             "id_destination_error"
           );
-          if (pseudonym_error || destination_error) {
+          if (pseudonymError || destinationError) {
             this.clearFiles();
           }
         }
@@ -118,7 +118,7 @@ function UploadJobForm(formEl) {
       }
       const selectedOption =
         destinationSelect.options[destinationSelect.selectedIndex];
-      const node_id = selectedOption.dataset.node_id;
+      const nodeId = selectedOption.dataset.node_id;
 
       if (files.length === 0) {
         // @ts-ignore
@@ -179,7 +179,7 @@ function UploadJobForm(formEl) {
               // Upload data to server
               status = await uploadData({
                 dataset: anonymized_set,
-                node_id: node_id,
+                node_id: nodeId,
               });
 
               if (status == 200) {
@@ -259,6 +259,9 @@ function UploadJobForm(formEl) {
         throw new Error("anon-seed-json element is empty");
       }
       const seed = JSON.parse(seedText);
+      if (seed == null || Object.keys(seed).length === 0) {
+        throw new Error("Anonymizer seed must not be empty");
+      }
 
       return new Anonymizer({ seed: seed });
     },
