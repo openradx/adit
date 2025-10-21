@@ -198,5 +198,6 @@ class DicomDownloader:
         if download_errors:
             # Because we cannot change the httpresponse once it has started streaming,
             # we add an error.txt file in the downloaded zip
+            err = download_errors[0]
             err_buf = BytesIO(f"Error during study download:\n\n{err}".encode("utf-8"))
             yield buffer_to_gen(err_buf.getvalue()), "error.txt"
