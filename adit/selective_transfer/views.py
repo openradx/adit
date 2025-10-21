@@ -57,9 +57,9 @@ class SelectiveTransferUpdatePreferencesView(
 @permission_required("selective_transfer.can_download_study")
 async def selective_transfer_download_study_view(
     request: AuthenticatedHttpRequest,
-    server_id: str | None = None,
-    patient_id: str | None = None,
-    study_uid: str | None = None,
+    server_id: str,
+    patient_id: str,
+    study_uid: str,
 ) -> StreamingHttpResponse:
     study_params = {
         "pseudonym": request.GET.get("pseudonym", None),

@@ -5,6 +5,7 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from functools import partial
 from io import BytesIO
+from pathlib import Path
 from stat import S_IFREG
 from typing import AsyncGenerator
 
@@ -27,14 +28,19 @@ logger = logging.getLogger(__name__)
 
 
 class DicomDownloader:
-    def __init__(self, server_id):
+    def __init__(self, server_id: str):
         self.server_id = server_id
         self.manipulator = DicomManipulator()
         self.queue = asyncio.Queue[Dataset | None]()
         self.loop = asyncio.get_running_loop()
 
     async def download_study(
-        self, user: User, patient_id, study_uid, study_params, download_folder
+        self,
+        user: User,
+        patient_id: str,
+        study_uid: str,
+        study_params: dict,
+        download_folder: Path,
     ):
         """Directly downloads a study from a DicomServer"""
 
@@ -61,10 +67,16 @@ class DicomDownloader:
                 ):
                     yield content
             except* Exception as eg:
+                logger.exception(eg)
                 raise eg
 
     async def retrieve_study(
-        self, user, patient_id, study_uid, study_params, download_errors: list[Exception]
+        self,
+        user: User,
+        patient_id: str,
+        study_uid: str,
+        study_params: dict,
+        download_errors: list[Exception],
     ):
         """Retrieves the study for download"""
 
@@ -85,7 +97,14 @@ class DicomDownloader:
         )
         asyncio.create_task(self._put_sentinel(fetch_put_task, download_errors))
 
-    def _fetch_put_study(self, user, patient_id, study_uid, pseudonymize, modifier):
+    def _fetch_put_study(
+        self,
+        user: User,
+        patient_id: str,
+        study_uid: str,
+        pseudonymize: bool,
+        modifier: partial,
+    ):
         """Fetches Datasets of a study and puts them into the async queue"""
 
         def callback(ds: Dataset) -> None:
@@ -125,7 +144,7 @@ class DicomDownloader:
         except (DicomError, HTTPError):
             raise
 
-    async def _put_sentinel(self, fetch_put_task, download_errors):
+    async def _put_sentinel(self, fetch_put_task: asyncio.Task, download_errors: list[Exception]):
         """Inserts sentinel to the queue at the end of fetch_put_task"""
         try:
             await fetch_put_task
@@ -136,7 +155,11 @@ class DicomDownloader:
             await self.queue.put(None)
 
     async def zip_study(
-        self, patient_id, study_params, download_folder, download_errors
+        self,
+        patient_id: str,
+        study_params: dict,
+        download_folder: Path,
+        download_errors: list[Exception],
     ) -> AsyncGenerator[bytes, None]:
         """Stream zips the retrieved study in the async queue"""
 
@@ -160,11 +183,16 @@ class DicomDownloader:
             logger.debug(f"Download completed in {elapsed:.2f} seconds")
 
     async def _consume_queue(
-        self, executor, patient_id, study_params, download_folder, download_errors
+        self,
+        executor: ThreadPoolExecutor,
+        patient_id: str,
+        study_params: dict,
+        download_folder: Path,
+        download_errors: list[Exception],
     ):
         """Consumes and yields the datasets from the async queue"""
 
-        def ds_to_buffer(ds):
+        def ds_to_buffer(ds: Dataset):
             """Writes the dataset to a buffer and constructs the corresponding file path"""
             ds_buffer = BytesIO()
             write_dataset(ds, ds_buffer)
@@ -182,7 +210,7 @@ class DicomDownloader:
 
             return ds_buffer, str(file_path)
 
-        async def buffer_to_gen(content):
+        async def buffer_to_gen(content: bytes):
             """Wraps dataset buffer in an async generator, expected by async_stream_zip"""
             yield content
 
