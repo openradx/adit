@@ -213,8 +213,7 @@ def test_unpseudonymized_selective_direct_download_with_dimse_server(
 
     # Inspect zip file contents
     base_path = (
-        f"study_download_{study_uid}/{patient_id}/"
-        f"{study_date}-{study_time}-{study_modalities}"
+        f"study_download_{study_uid}/{patient_id}/{study_date}-{study_time}-{study_modalities}"
     )
     with zipfile.ZipFile(zip_bytes) as zf:
         actual_files = set(zf.namelist())

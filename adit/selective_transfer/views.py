@@ -1,34 +1,14 @@
-import asyncio
 import logging
-import time
-from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime
-from functools import partial
-from io import BytesIO
 from pathlib import Path
-from stat import S_IFREG
-from typing import Any, AsyncGenerator, cast
+from typing import Any, cast
 
 from adit_radis_shared.common.types import AuthenticatedHttpRequest
 from adit_radis_shared.common.views import BaseUpdatePreferencesView
-from adrf.views import sync_to_async
-from django.conf import settings
 from django.contrib.auth.decorators import login_required, permission_required
 from django.core.exceptions import BadRequest
 from django.http import StreamingHttpResponse
 from django.urls import reverse_lazy
-from pydicom import Dataset
-from requests import HTTPError
-from rest_framework.exceptions import NotFound
-from stream_zip import NO_COMPRESSION_64, async_stream_zip
 
-from adit.core.errors import DicomError
-from adit.core.models import DicomServer
-from adit.core.utils.dicom_dataset import QueryDataset
-from adit.core.utils.dicom_manipulator import DicomManipulator
-from adit.core.utils.dicom_operator import DicomOperator
-from adit.core.utils.dicom_utils import write_dataset
-from adit.core.utils.sanitize import sanitize_filename
 from adit.core.views import (
     DicomJobCancelView,
     DicomJobCreateView,
@@ -50,6 +30,7 @@ from .forms import SelectiveTransferJobForm
 from .mixins import SelectiveTransferLockedMixin
 from .models import SelectiveTransferJob, SelectiveTransferTask
 from .tables import SelectiveTransferJobTable, SelectiveTransferTaskTable
+from .utils.dicom_downloader import DicomDownloader
 
 SELECTIVE_TRANSFER_SOURCE = "selective_transfer_source"
 SELECTIVE_TRANSFER_DESTINATION = "selective_transfer_destination"
@@ -72,40 +53,6 @@ class SelectiveTransferUpdatePreferencesView(
     ]
 
 
-def fetch_study(request, server_id, patient_id, study_uid, pseudonymize, callback):
-    """Fetch the study for download"""
-    try:
-        server = DicomServer.objects.accessible_by_user(request.user, "source").get(id=server_id)
-        operator = DicomOperator(server)
-
-        exclude_modalities = settings.EXCLUDE_MODALITIES
-
-        if pseudonymize and exclude_modalities:
-            series_list = list(
-                operator.find_series(
-                    QueryDataset.create(PatientID=patient_id, StudyInstanceUID=study_uid)
-                )
-            )
-            for series in series_list:
-                series_uid = series.SeriesInstanceUID
-                modality = series.Modality
-                if modality in exclude_modalities:
-                    continue
-
-                operator.fetch_series(patient_id, study_uid, series_uid, callback)
-        else:
-            operator.fetch_study(
-                patient_id=patient_id,
-                study_uid=study_uid,
-                callback=callback,
-            )
-    # Raise NotFound error if specified DicomServer is not accessible
-    except DicomServer.DoesNotExist:
-        raise NotFound("Invalid DICOM server.")
-    # Re-raise DicomErrors/HttpErrors from fetch_study
-    except (DicomError, HTTPError):
-        raise
-
 @login_required
 @permission_required("selective_transfer.can_download_study")
 async def selective_transfer_download_study_view(
@@ -114,140 +61,28 @@ async def selective_transfer_download_study_view(
     patient_id: str | None = None,
     study_uid: str | None = None,
 ) -> StreamingHttpResponse:
-    pseudonym = request.GET.get("pseudonym")
-    trial_protocol_id = request.GET.get("trial_protocol_id")
-    trial_protocol_name = request.GET.get("trial_protocol_name")
-    study_modalities = request.GET.get("study_modalities")
-    study_date = request.GET.get("study_date")
-    study_time = request.GET.get("study_time")
+    study_params = {
+        "pseudonym": request.GET.get("pseudonym", None),
+        "trial_protocol_id": request.GET.get("trial_protocol_id", None),
+        "trial_protocol_name": request.GET.get("trial_protocol_name", None),
+        # Instead of passing the study details,
+        # maybe cache the query results and access by the study_uid?
+        "study_modalities": request.GET.get("study_modalities"),
+        "study_date": request.GET.get("study_date"),
+        "study_time": request.GET.get("study_time"),
+    }
 
+    downloader = DicomDownloader(server_id)
     download_folder = Path(f"study_download_{study_uid}")
-    loop = asyncio.get_running_loop()
-    queue = asyncio.Queue[Dataset | None]()
-    executor = ThreadPoolExecutor()
-    dicom_manipulator = DicomManipulator()
-
-    modifier = partial(
-        dicom_manipulator.manipulate,
-        pseudonym=pseudonym,
-        trial_protocol_id=trial_protocol_id,
-        trial_protocol_name=trial_protocol_name,
-    )
-
-    def callback(ds: Dataset) -> None:
-        modifier(ds)
-        # Schedules a task on the event loop that puts the dataset into the async queue
-        loop.call_soon_threadsafe(queue.put_nowait, ds)
-
-    fetch_task = asyncio.create_task(
-        sync_to_async(fetch_study, thread_sensitive=False)(
-            request=request,
-            server_id=server_id,
-            patient_id=patient_id,
-            study_uid=study_uid,
-            pseudonymize=bool(pseudonym),
-            callback=callback,
-        )
-    )
-    fetch_error: Exception | None = None
-
-    async def add_sentinel_when_done():
-        """Inserts sentinel to the queue at the end of fetch_task"""
-        nonlocal fetch_error
-        try:
-            await fetch_task
-        # Catch the errors raised by download_study
-        except Exception as err:
-            fetch_error = err
-        finally:
-            await queue.put(None)
-
-    asyncio.create_task(add_sentinel_when_done())
-
-    def ds_to_buffer(ds):
-        """Writes the dataset to a buffer and constructs the corresponding file path"""
-        if pseudonym:
-            patient_folder = download_folder / sanitize_filename(pseudonym)
-        else:
-            patient_folder = download_folder / sanitize_filename(patient_id)
-
-        exclude_modalities = settings.EXCLUDE_MODALITIES
-        modalities = study_modalities
-        if pseudonym and exclude_modalities and study_modalities:
-            included_modalities = [
-                modality
-                for modality in study_modalities.split(",")
-                if modality not in exclude_modalities
-            ]
-            modalities = ",".join(included_modalities)
-        prefix = f"{study_date}-{study_time}"
-        study_folder = patient_folder / f"{prefix}-{modalities}"
-
-        final_folder = study_folder
-        if settings.CREATE_SERIES_SUB_FOLDERS:
-            series_number = ds.get("SeriesNumber")
-            if not series_number:
-                series_folder_name = ds.SeriesInstanceUID
-            else:
-                series_description = ds.get("SeriesDescription", "Undefined")
-                series_folder_name = f"{series_number}-{series_description}"
-            series_folder_name = sanitize_filename(series_folder_name)
-            final_folder = final_folder / series_folder_name
-
-        file_name = sanitize_filename(f"{ds.SOPInstanceUID}.dcm")
-        file_path = str(final_folder / file_name)  # async_stream_zip expects a str
-
-        dcm_buffer = BytesIO()
-        write_dataset(ds, dcm_buffer)
-        dcm_buffer.seek(0)
-
-        return dcm_buffer, file_path
-
-    async def async_queue_to_gen():
-        """Consumes and yields the datasets in the async queue"""
-        
-        async def buffer_to_gen(content):
-            """Wraps dataset buffer in an async generator, expected by async_queue_to_gen"""
-            yield content
-
-        try:
-            while True:
-                # Waits on the queue, when a queue item is retrieved,
-                # we write it to an in-memory buffer and yield it
-                queue_ds = await queue.get()
-                if queue_ds is None:
-                    break
-                ds_buffer, file_path = await loop.run_in_executor(executor, ds_to_buffer, queue_ds)
-                yield buffer_to_gen(ds_buffer.getvalue()), file_path
-            # Re-raise any error caught during fetch_task
-            if fetch_error:
-                raise fetch_error
-        # Because we cannot change the httpresponse once it has started streaming,
-        # we add an error.txt file in the downloaded zip
-        except (DicomServer.DoesNotExist, DicomError, HTTPError) as err:
-            err_buf = BytesIO(f"Error during study download:\n\n{err}".encode("utf-8"))
-            yield buffer_to_gen(err_buf.getvalue()), "error.txt"
-            raise
-
-    async def generate_files_to_add_in_zip():
-        modified_at = datetime.now()
-        mode = S_IFREG | 0o600
-
-        async for buffer_gen, file_path in async_queue_to_gen():
-            yield (file_path, modified_at, mode, NO_COMPRESSION_64, buffer_gen)
-
-    async def stream_zip() -> AsyncGenerator[bytes, None]:
-        start_time = time.monotonic()
-        try:
-            async for zipped_file in async_stream_zip(generate_files_to_add_in_zip()):
-                yield zipped_file
-        finally:
-            executor.shutdown(wait=True)
-            elapsed = time.monotonic() - start_time
-            logger.debug(f"Download completed in {elapsed:.2f} seconds")
 
     return StreamingHttpResponse(
-        streaming_content=stream_zip(),
+        streaming_content=downloader.download_study(
+            user=request.user,
+            patient_id=patient_id,
+            study_uid=study_uid,
+            study_params=study_params,
+            download_folder=download_folder,
+        ),
         headers={
             "Content-Type": "application/zip",
             "Content-Disposition": f'attachment; filename="{download_folder}.zip"',
