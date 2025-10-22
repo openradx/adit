@@ -184,8 +184,11 @@ function UploadJobForm(formEl) {
 
               if (status == 200) {
                 loadedFiles += 1;
-
-                progBar.value = (loadedFiles / datasets.length) * 100;
+                let currentPBValue = progBar.value;
+                let newPBValue = (loadedFiles / datasets.length) * 100;
+                if (newPBValue > currentPBValue) {
+                  progBar.value = newPBValue;
+                }
               } else {
                 this.uploadResultText = "Upload Failed";
                 this.pbVisible = false;

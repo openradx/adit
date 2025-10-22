@@ -194,15 +194,23 @@ def test_upload_without_destination(live_server: LiveServer, page: Page):
 @pytest.mark.acceptance
 @pytest.mark.order("last")
 @pytest.mark.django_db(transaction=True)
-def test_pseudonym_is_used_as_patientID(live_server: LiveServer, page: Page):
+@pytest.mark.parametrize(
+    "patient_id",
+    [
+        "1001",
+        "1003",
+        "1007",
+    ],
+)
+def test_pseudonym_is_used_as_patientID(live_server: LiveServer, page: Page, patient_id: str):
     # Arrange
     user = create_and_login_example_user(page, live_server.url)
     group = create_upload_group()
     add_user_to_group(user, group)
     dimse_orthancs = setup_dimse_orthancs()
     grant_access(group, dimse_orthancs[0], destination=True)
-    test_pseudonym = "Patient #" + str(fake.random_int(min=10, max=1000))
-    folder = get_sample_dicoms_folder("1001")
+    test_pseudonym = "Patient #" + patient_id + str(fake.random_int(min=10, max=1000))
+    folder = get_sample_dicoms_folder(patient_id)
 
     page.on("console", lambda msg: print(msg.text))
 
