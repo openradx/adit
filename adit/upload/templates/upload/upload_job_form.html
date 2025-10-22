@@ -1,0 +1,70 @@
+{% extends "upload/upload_layout.html" %}
+{% load crispy from crispy_forms_tags %}
+{% block content %}
+    <!--
+        In contrast to the documentation we put hx-ext directly on the form
+        as otherwise the submit button values are not in the sent form data.
+        https://github.com/bigskysoftware/htmx/issues/1337
+-->
+    <div x-data="UploadJobForm($el)" x-cloak>
+        <div id="form_page">{% include "upload/upload_job_form_swappable.html" %}</div>
+        <div id="form_rest">
+            <label for="fileselector">Choose a directory</label>
+            <br>
+            <input id="fileselector"
+                   type="file"
+                   class="btn btn-primary"
+                   @change="toggleUploadButtonVisibility()"
+                   accept=".dcm,.DCM"
+                   webkitdirectory
+                   mozdirectory>
+        </input>
+        <div id="dropZone"
+             x-on:drop="isDropping = false"
+             x-on:drop.prevent="handleDrop(event)"
+             x-on:dragover.prevent="isDropping = true"
+             x-on:dragleave.prevent="isDropping = false"
+             x-on:change="toggleUploadButtonVisibility()"
+             class="relative"
+             style="min-height: 200px;
+                    border: 2px dashed #ccc;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    margin-bottom: 20px;
+                    margin-top: 20px">
+            <div x-show="isDropping" class="absolute inset-0 bg-gray-200 opacity-75"></div>
+            <span class="text-lg">Drop files here</span>
+        </div>
+        <div>
+            <p id="fileCountText"
+               x-show="fileCount>0"
+               x-text="`${fileCount} File(s) selected`"></p>
+        </div>
+        <div style="margin-bottom: 20px; margin-top: 20px">
+            <button id="uploadButton"
+                    type="button"
+                    class="btn btn-primary"
+                    x-show="buttonVisible">Upload Files</button>
+            <button id="clearButton"
+                    type="button"
+                    class="btn btn-primary"
+                    x-show="buttonVisible"
+                    @click="clearFiles()">Clear Files</button>
+        </div>
+        <div>
+            <progress id="pb" value="0" max="100" style="width:100%"  x-show="pbVisible"></progress>
+            <button id="stopUploadButton"
+                    type="button"
+                    class="btn btn-primary"
+                    x-show="stopUploadButtonVisible"
+                    @click="stopUpload()">Stop Upload</button>
+            <p id="uploadCompleteText"
+               x-show.important="uploadCompleteTextVisible"
+               x-text="`${uploadResultText}`"></p>
+        </div>
+    </div>
+</div>
+{% endblock content %}
+{% block bottom %}
+{% endblock bottom %}

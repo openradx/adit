@@ -1,4 +1,7 @@
 #! /usr/bin/env python3
+import os
+import shutil
+from glob import glob
 from typing import Annotated
 
 import typer
@@ -47,6 +50,30 @@ def populate_orthancs(
         cmd += " --reset"
 
     helper.execute_cmd(cmd)
+
+
+@app.command()
+def copy_statics():
+    """Copy JS and CSS dependencies from node_modules to static vendor folder"""
+    print("Copying statics...")
+
+    target_folder = "adit/upload/static/vendor"
+
+    def copy_file(file: str, filename: str | None = None):
+        if not filename:
+            shutil.copy(file, target_folder)
+        else:
+            target_file = os.path.join(target_folder, filename)
+            shutil.copy(file, target_file)
+
+    for file in glob("node_modules/dcmjs/build/dcmjs.js*"):
+        copy_file(file)
+    for file in glob("node_modules/dicomweb-client/build/dicomweb-client.js*"):
+        copy_file(file)
+    for file in glob("node_modules/dicom-web-anonymizer/dist/dicom-web-anonymizer.*"):
+        copy_file(file)
+
+    print("Done.")
 
 
 if __name__ == "__main__":
