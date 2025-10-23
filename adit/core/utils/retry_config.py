@@ -161,29 +161,32 @@ def create_retry_decorator(operation_type: str):
     )
 
 
-def on_retry(details: stamina.retry_context) -> None:
+def on_retry(details: stamina.instrumentation.RetryDetails) -> None:
     """Callback for stamina retry events - logs retry attempts.
 
     Args:
-        details: Stamina retry context with attempt info
+        details: Stamina retry details with attempt info
     """
-    if details.attempt == 1:
+    if details.retry_num == 1:
         logger.info(
-            "Starting retry sequence (max %d attempts, timeout %.0fs)",
-            details.args[0] if details.args else "?",
-            details.kwargs.get("timeout", 0),
+            "Starting retry sequence for %s (retry #%d, will wait %.2fs)",
+            details.name,
+            details.retry_num,
+            details.wait_for,
         )
 
     logger.warning(
-        "Retry attempt %d after %s: %s",
-        details.attempt,
-        type(details.exception).__name__,
-        str(details.exception)[:200],  # Truncate long error messages
+        "Retry attempt %d for %s after %s: %s (waited %.2fs so far)",
+        details.retry_num,
+        details.name,
+        type(details.caused_by).__name__,
+        str(details.caused_by)[:200],  # Truncate long error messages
+        details.waited_so_far,
     )
 
 
 # Configure stamina to use our logging callback
-stamina.set_on_retry(on_retry)
+stamina.instrumentation.set_on_retry_hooks([on_retry])
 
 
 # Pre-configured decorators for common operations
