@@ -16,6 +16,11 @@ from ..models import DicomServer
 from ..types import DicomLogEntry
 from ..utils.dicom_dataset import QueryDataset, ResultDataset
 from ..utils.dicom_utils import read_dataset
+from ..utils.retry_config import (
+    retry_dicomweb_retrieve,
+    retry_dicomweb_search,
+    retry_dicomweb_store,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -91,6 +96,7 @@ class DicomWebConnector:
             self.dicomweb_client._session.close()
 
     @connect_to_server()
+    @retry_dicomweb_search
     def send_qido_rs(
         self, query: QueryDataset, limit_results: int | None = None
     ) -> list[ResultDataset]:
@@ -135,6 +141,7 @@ class DicomWebConnector:
             _handle_dicomweb_error(err, "QIDO-RS")
 
     @connect_to_server()
+    @retry_dicomweb_retrieve
     def send_wado_rs(self, query: QueryDataset) -> Iterator[Dataset]:
         logger.debug("Sending WADO-RS with query: %s", query)
 
@@ -182,6 +189,7 @@ class DicomWebConnector:
             _handle_dicomweb_error(err, "WADO-RS")
 
     @connect_to_server()
+    @retry_dicomweb_store
     def send_stow_rs(
         self,
         resource: PathLike | list[Dataset],

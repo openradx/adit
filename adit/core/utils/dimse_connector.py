@@ -41,6 +41,12 @@ from ..types import DicomLogEntry
 from ..utils.dicom_dataset import QueryDataset, ResultDataset
 from ..utils.dicom_utils import has_wildcards, read_dataset
 from ..utils.presentation_contexts import StoragePresentationContexts
+from ..utils.retry_config import (
+    retry_dimse_connect,
+    retry_dimse_find,
+    retry_dimse_retrieve,
+    retry_dimse_store,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -149,6 +155,7 @@ class DimseConnector:
                 else:
                     raise err
 
+    @retry_dimse_connect
     def _associate(self, service: DimseService):
         ae = AE(settings.CALLING_AE_TITLE)
 
@@ -216,6 +223,7 @@ class DimseConnector:
             self.assoc.abort()
 
     @connect_to_server("C-FIND")
+    @retry_dimse_find
     def send_c_find(
         self, query: QueryDataset, limit_results: int | None = None, msg_id: int = 1
     ) -> Iterator[ResultDataset]:
@@ -267,6 +275,7 @@ class DimseConnector:
                 )
 
     @connect_to_server("C-GET")
+    @retry_dimse_retrieve
     def send_c_get(
         self,
         query: QueryDataset,
@@ -299,6 +308,7 @@ class DimseConnector:
         self._handle_get_and_move_responses(responses, "C-GET")
 
     @connect_to_server("C-MOVE")
+    @retry_dimse_retrieve
     def send_c_move(self, query: QueryDataset, dest_aet: str, msg_id: int = 1) -> None:
         logger.debug("Sending C-MOVE with query:\n%s", query)
 
@@ -323,6 +333,7 @@ class DimseConnector:
         self._handle_get_and_move_responses(responses, "C-MOVE")
 
     @connect_to_server("C-STORE")
+    @retry_dimse_store
     def send_c_store(
         self, resource: PathLike | list[Dataset], modifier: Modifier | None = None, msg_id: int = 1
     ) -> None:

@@ -58,6 +58,15 @@ def backup_db(*args, **kwargs):
     pass_context=True,
     # TODO: Increase the priority slightly when it will be retried
     # See https://github.com/procrastinate-org/procrastinate/issues/1096
+    #
+    # Two-level retry strategy:
+    # 1. Network layer (Stamina): Fast retries for transient failures (5-10 attempts)
+    #    - Applied at DIMSE/DICOMweb connector level
+    #    - Handles: connection timeouts, HTTP 503, temporary server unavailability
+    # 2. Task layer (Procrastinate): Slow retries for complete operation failures
+    #    - Applied here (max_attempts below)
+    #    - Only triggers after network-level retries are exhausted
+    #    - Retries the entire task
     retry=RetryStrategy(
         max_attempts=settings.DICOM_TASK_MAX_ATTEMPTS,
         exponential_wait=settings.DICOM_TASK_EXPONENTIAL_WAIT,
