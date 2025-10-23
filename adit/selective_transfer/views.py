@@ -6,8 +6,9 @@ from adit_radis_shared.common.types import AuthenticatedHttpRequest
 from adit_radis_shared.common.views import BaseUpdatePreferencesView
 from django.contrib.auth.decorators import login_required, permission_required
 from django.core.exceptions import BadRequest
-from django.http import StreamingHttpResponse
+from django.http import HttpResponse, StreamingHttpResponse
 from django.urls import reverse_lazy
+from rest_framework.exceptions import NotFound
 
 from adit.core.views import (
     DicomJobCancelView,
@@ -60,7 +61,7 @@ async def selective_transfer_download_study_view(
     server_id: str,
     patient_id: str,
     study_uid: str,
-) -> StreamingHttpResponse:
+) -> HttpResponse | StreamingHttpResponse:
     study_params = {
         "pseudonym": request.GET.get("pseudonym", None),
         "trial_protocol_id": request.GET.get("trial_protocol_id", None),
@@ -75,14 +76,29 @@ async def selective_transfer_download_study_view(
     downloader = DicomDownloader(server_id)
     download_folder = Path(f"study_download_{study_uid}")
 
+    stream = downloader.download_study(
+        user=request.user,
+        patient_id=patient_id,
+        study_uid=study_uid,
+        study_params=study_params,
+        download_folder=download_folder,
+    )
+
+    try:
+        await downloader.wait_until_ready()
+    except NotFound as err:
+        logger.warning("Study download failed before streaming: %s", err)
+        return HttpResponse(str(err), status=404, content_type="text/plain")
+    except Exception as err:
+        logger.exception("Unexpected error preparing study download")
+        return HttpResponse(
+            f"An error occurred while processing the request:\n\n{err}",
+            status=500,
+            content_type="text/plain",
+        )
+
     return StreamingHttpResponse(
-        streaming_content=downloader.download_study(
-            user=request.user,
-            patient_id=patient_id,
-            study_uid=study_uid,
-            study_params=study_params,
-            download_folder=download_folder,
-        ),
+        streaming_content=stream,
         headers={
             "Content-Type": "application/zip",
             "Content-Disposition": f'attachment; filename="{download_folder}.zip"',

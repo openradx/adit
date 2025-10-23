@@ -32,9 +32,10 @@ class DicomDownloader:
         self.server_id = server_id
         self.manipulator = DicomManipulator()
         self.queue = asyncio.Queue[Dataset | None]()
-        self.loop = asyncio.get_running_loop()
+        self._start_consumer_event: asyncio.Event | None = None
+        self._current_download_errors: list[Exception] | None = None
 
-    async def download_study(
+    def download_study(
         self,
         user: User,
         patient_id: str,
@@ -44,31 +45,41 @@ class DicomDownloader:
     ):
         """Directly downloads a study from a DicomServer"""
 
+        self.queue = asyncio.Queue[Dataset | None]()
         download_errors: list[Exception] = []
+        start_consumer_event = asyncio.Event()
+        self._current_download_errors = download_errors
+        self._start_consumer_event = start_consumer_event
 
-        async with asyncio.TaskGroup() as tg:
-            # Producer: Retrieves the study and puts Datasets in queue
-            tg.create_task(
-                self.retrieve_study(
-                    user=user,
-                    patient_id=patient_id,
-                    study_uid=study_uid,
-                    study_params=study_params,
-                    download_errors=download_errors,
-                )
+        # Producer: Retrieves the study and puts Datasets in queue
+        asyncio.create_task(
+            self.retrieve_study(
+                user=user,
+                patient_id=patient_id,
+                study_uid=study_uid,
+                study_params=study_params,
+                download_errors=download_errors,
+                start_consumer_event=start_consumer_event,
             )
-            try:
-                # Consumer: Zips study Datasets from the async queue and yields them
-                async for content in self.zip_study(
-                    patient_id=patient_id,
-                    study_params=study_params,
-                    download_folder=download_folder,
-                    download_errors=download_errors,
-                ):
-                    yield content
-            except* Exception as eg:
-                logger.exception(eg)
-                raise eg
+        )
+        # Consumer: Zips study Datasets from the async queue and yields them
+        return self.zip_study(
+            patient_id=patient_id,
+            study_params=study_params,
+            download_folder=download_folder,
+            download_errors=download_errors,
+            start_consumer_event=start_consumer_event,
+        )
+
+    async def wait_until_ready(self) -> None:
+        """Blocks until the first dataset is available or an early error occurred."""
+        if self._start_consumer_event is None or self._current_download_errors is None:
+            raise RuntimeError("download_study must be called before wait_until_ready")
+
+        await self._start_consumer_event.wait()
+
+        if self._current_download_errors:
+            raise self._current_download_errors[0]
 
     async def retrieve_study(
         self,
@@ -77,9 +88,11 @@ class DicomDownloader:
         study_uid: str,
         study_params: dict,
         download_errors: list[Exception],
+        start_consumer_event: asyncio.Event,
     ):
         """Retrieves the study for download"""
 
+        loop = asyncio.get_running_loop()
         modifier = partial(
             self.manipulator.manipulate,
             pseudonym=study_params["pseudonym"],
@@ -93,9 +106,13 @@ class DicomDownloader:
                 study_uid=study_uid,
                 pseudonymize=bool(study_params["pseudonym"]),
                 modifier=modifier,
+                loop=loop,
+                start_consumer_event=start_consumer_event,
             )
         )
-        asyncio.create_task(self._put_sentinel(fetch_put_task, download_errors))
+        asyncio.create_task(
+            self._put_sentinel(fetch_put_task, download_errors, start_consumer_event)
+        )
 
     def _fetch_put_study(
         self,
@@ -104,13 +121,21 @@ class DicomDownloader:
         study_uid: str,
         pseudonymize: bool,
         modifier: partial,
+        loop: asyncio.AbstractEventLoop,
+        start_consumer_event: asyncio.Event,
     ):
         """Fetches Datasets of a study and puts them into the async queue"""
 
+        first_item_set = False
+
         def callback(ds: Dataset) -> None:
+            nonlocal first_item_set
             modifier(ds)
             # Schedules a task on the event loop that puts the dataset into the async queue
-            self.loop.call_soon_threadsafe(self.queue.put_nowait, ds)
+            loop.call_soon_threadsafe(self.queue.put_nowait, ds)
+            if not first_item_set:
+                first_item_set = True
+                loop.call_soon_threadsafe(start_consumer_event.set)
 
         try:
             server = DicomServer.objects.accessible_by_user(user, "source").get(id=self.server_id)
@@ -144,7 +169,12 @@ class DicomDownloader:
         except (DicomError, HTTPError):
             raise
 
-    async def _put_sentinel(self, fetch_put_task: asyncio.Task, download_errors: list[Exception]):
+    async def _put_sentinel(
+        self,
+        fetch_put_task: asyncio.Task,
+        download_errors: list[Exception],
+        start_consumer_event: asyncio.Event,
+    ):
         """Inserts sentinel to the queue at the end of fetch_put_task"""
         try:
             await fetch_put_task
@@ -152,6 +182,7 @@ class DicomDownloader:
         except Exception as err:
             download_errors.append(err)
         finally:
+            start_consumer_event.set()
             await self.queue.put(None)
 
     async def zip_study(
@@ -160,6 +191,7 @@ class DicomDownloader:
         study_params: dict,
         download_folder: Path,
         download_errors: list[Exception],
+        start_consumer_event: asyncio.Event,
     ) -> AsyncGenerator[bytes, None]:
         """Stream zips the retrieved study in the async queue"""
 
@@ -168,7 +200,12 @@ class DicomDownloader:
             mode = S_IFREG | 0o600
 
             async for buffer_gen, file_path in self._consume_queue(
-                executor, patient_id, study_params, download_folder, download_errors
+                executor,
+                patient_id,
+                study_params,
+                download_folder,
+                download_errors,
+                start_consumer_event,
             ):
                 yield (file_path, modified_at, mode, NO_COMPRESSION_64, buffer_gen)
 
@@ -189,6 +226,7 @@ class DicomDownloader:
         study_params: dict,
         download_folder: Path,
         download_errors: list[Exception],
+        start_consumer_event: asyncio.Event,
     ):
         """Consumes and yields the datasets from the async queue"""
 
@@ -214,13 +252,21 @@ class DicomDownloader:
             """Wraps dataset buffer in an async generator, expected by async_stream_zip"""
             yield content
 
+        loop = asyncio.get_running_loop()
+
+        # Wait for producer to either enqueue the first item or signal an early failure
+        await start_consumer_event.wait()
+
+        if download_errors:
+            raise download_errors[0]
+
         while True:
             # Waits on the queue, when a queue item is retrieved,
             # we write it to an in-memory buffer and yield it
             queue_ds = await self.queue.get()
             if queue_ds is None:
                 break
-            ds_buffer, file_path = await self.loop.run_in_executor(executor, ds_to_buffer, queue_ds)
+            ds_buffer, file_path = await loop.run_in_executor(executor, ds_to_buffer, queue_ds)
             yield buffer_to_gen(ds_buffer.getvalue()), file_path
         # Re-raise any error caught during _fetch_put_study
         if download_errors:
