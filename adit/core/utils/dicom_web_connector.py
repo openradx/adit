@@ -95,8 +95,8 @@ class DicomWebConnector:
         if self.dicomweb_client and self.dicomweb_client._session:
             self.dicomweb_client._session.close()
 
-    @connect_to_server()
     @retry_dicomweb_search
+    @connect_to_server()
     def send_qido_rs(
         self, query: QueryDataset, limit_results: int | None = None
     ) -> list[ResultDataset]:
@@ -140,8 +140,8 @@ class DicomWebConnector:
         except HTTPError as err:
             _handle_dicomweb_error(err, "QIDO-RS")
 
-    @connect_to_server()
     @retry_dicomweb_retrieve
+    @connect_to_server()
     def send_wado_rs(self, query: QueryDataset) -> Iterator[Dataset]:
         logger.debug("Sending WADO-RS with query: %s", query)
 
@@ -188,8 +188,8 @@ class DicomWebConnector:
         except HTTPError as err:
             _handle_dicomweb_error(err, "WADO-RS")
 
-    @connect_to_server()
     @retry_dicomweb_store
+    @connect_to_server()
     def send_stow_rs(
         self,
         resource: PathLike | list[Dataset],

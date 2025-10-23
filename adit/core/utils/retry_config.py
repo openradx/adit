@@ -44,6 +44,7 @@ import logging
 from typing import Any
 
 import stamina
+from django.conf import settings
 
 from ..errors import RetriableDicomError
 
@@ -121,8 +122,6 @@ def get_retry_config(operation_type: str) -> dict[str, Any]:
     config = RETRY_CONFIG[operation_type].copy()
 
     # Allow environment-based overrides for testing
-    from django.conf import settings
-
     if settings.ENABLE_DICOM_DEBUG_LOGGER:
         # Reduce attempts in debug mode for faster feedback
         config["attempts"] = min(config["attempts"], 3)
@@ -139,8 +138,6 @@ def create_retry_decorator(operation_type: str):
     Returns:
         Configured stamina.retry decorator
     """
-    from django.conf import settings
-
     # Check if stamina retry is enabled
     if not getattr(settings, "ENABLE_STAMINA_RETRY", True):
         # Return a no-op decorator
