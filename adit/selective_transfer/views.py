@@ -1,9 +1,14 @@
+import logging
+from pathlib import Path
 from typing import Any, cast
 
 from adit_radis_shared.common.types import AuthenticatedHttpRequest
 from adit_radis_shared.common.views import BaseUpdatePreferencesView
+from django.contrib.auth.decorators import login_required, permission_required
 from django.core.exceptions import BadRequest
+from django.http import HttpResponse, StreamingHttpResponse
 from django.urls import reverse_lazy
+from rest_framework.exceptions import NotFound
 
 from adit.core.views import (
     DicomJobCancelView,
@@ -26,12 +31,15 @@ from .forms import SelectiveTransferJobForm
 from .mixins import SelectiveTransferLockedMixin
 from .models import SelectiveTransferJob, SelectiveTransferTask
 from .tables import SelectiveTransferJobTable, SelectiveTransferTaskTable
+from .utils.dicom_downloader import DicomDownloader
 
 SELECTIVE_TRANSFER_SOURCE = "selective_transfer_source"
 SELECTIVE_TRANSFER_DESTINATION = "selective_transfer_destination"
 SELECTIVE_TRANSFER_URGENT = "selective_transfer_urgent"
 SELECTIVE_TRANSFER_SEND_FINISHED_MAIL = "selective_transfer_send_finished_mail"
 SELECTIVE_TRANSFER_ADVANCED_OPTIONS_COLLAPSED = "selective_transfer_advanced_options_collapsed"
+
+logger = logging.getLogger(__name__)
 
 
 class SelectiveTransferUpdatePreferencesView(
@@ -44,6 +52,59 @@ class SelectiveTransferUpdatePreferencesView(
         SELECTIVE_TRANSFER_SEND_FINISHED_MAIL,
         SELECTIVE_TRANSFER_ADVANCED_OPTIONS_COLLAPSED,
     ]
+
+
+@login_required
+@permission_required("selective_transfer.can_download_study")
+async def selective_transfer_download_study_view(
+    request: AuthenticatedHttpRequest,
+    server_id: str,
+    patient_id: str,
+    study_uid: str,
+) -> HttpResponse | StreamingHttpResponse:
+    study_params = {
+        "pseudonym": request.GET.get("pseudonym", None),
+        "trial_protocol_id": request.GET.get("trial_protocol_id", None),
+        "trial_protocol_name": request.GET.get("trial_protocol_name", None),
+        # Instead of passing the study details,
+        # maybe cache the query results and access by the study_uid?
+        "study_modalities": request.GET.get("study_modalities"),
+        "study_date": request.GET.get("study_date"),
+        "study_time": request.GET.get("study_time"),
+    }
+
+    downloader = DicomDownloader(server_id)
+    download_folder = Path(f"study_download_{study_uid}")
+
+    stream = downloader.download_study(
+        user=request.user,
+        patient_id=patient_id,
+        study_uid=study_uid,
+        study_params=study_params,
+        download_folder=download_folder,
+    )
+
+    try:
+        await downloader.wait_until_ready()
+    except NotFound as err:
+        logger.warning("Study download failed before streaming: %s", err)
+        return HttpResponse(str(err), status=404, content_type="text/plain")
+    except Exception as err:
+        logger.exception("Unexpected error preparing study download")
+        return HttpResponse(
+            f"An error occurred while processing the request:\n\n{err}",
+            status=500,
+            content_type="text/plain",
+        )
+
+    return StreamingHttpResponse(
+        streaming_content=stream,
+        headers={
+            "Content-Type": "application/zip",
+            "Content-Disposition": f'attachment; filename="{download_folder}.zip"',
+            "Access-Control-Expose-Headers": "Content-Disposition",
+        },
+    )
 
 
 class SelectiveTransferJobListView(SelectiveTransferLockedMixin, TransferJobListView):

@@ -2,9 +2,13 @@ import datetime
 import logging
 import re
 from os import PathLike
-from typing import Any, BinaryIO
+from pathlib import Path
+from typing import Any, BinaryIO, Optional
 
+from django.conf import settings
 from pydicom import Dataset, dcmread, dcmwrite, valuerep
+
+from adit.core.utils.sanitize import sanitize_filename
 
 logger = logging.getLogger(__name__)
 
@@ -142,3 +146,52 @@ def convert_to_python_time(value: str) -> datetime.time:
     time_valuerep = valuerep.TM(value)
     assert time_valuerep is not None
     return datetime.time.fromisoformat(time_valuerep.isoformat())
+
+
+def construct_download_file_path(
+    ds: Dataset,
+    download_folder: Path,
+    patient_id: str,
+    study_modalities: str,
+    study_date: str,
+    study_time: str,
+    pseudonym: Optional[str] = None,
+) -> Path:
+    """Constructs the file path for a DICOM instance when transferring/downloading"""
+
+    # Determine the base patient folder
+    patient_folder = download_folder / sanitize_filename(pseudonym or patient_id)
+
+    # Handle modality filtering
+    exclude_modalities = settings.EXCLUDE_MODALITIES
+    modalities = study_modalities
+    if pseudonym and exclude_modalities and study_modalities:
+        included_modalities = [
+            modality
+            for modality in study_modalities.split(",")
+            if modality not in exclude_modalities
+        ]
+        modalities = ",".join(included_modalities)
+
+    # Build study folder path
+    prefix = f"{study_date}-{study_time}"
+    study_folder = patient_folder / f"{prefix}-{modalities}"
+
+    # Determine final folder based on series structure setting
+    if settings.CREATE_SERIES_SUB_FOLDERS:
+        series_number = ds.get("SeriesNumber")
+        if not series_number:
+            series_folder_name = ds.SeriesInstanceUID
+        else:
+            series_description = ds.get("SeriesDescription", "Undefined")
+            series_folder_name = f"{series_number}-{series_description}"
+        series_folder_name = sanitize_filename(series_folder_name)
+        final_folder = study_folder / series_folder_name
+    else:
+        final_folder = study_folder
+
+    # Generate the final file path
+    file_name = sanitize_filename(f"{ds.SOPInstanceUID}.dcm")
+    file_path = final_folder / file_name
+
+    return file_path
