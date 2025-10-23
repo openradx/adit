@@ -1,7 +1,8 @@
 """Tests for retry configuration module."""
 
-import pytest
 from unittest.mock import patch
+
+import pytest
 
 from adit.core.errors import DicomError, RetriableDicomError
 from adit.core.utils.retry_config import (
@@ -10,8 +11,6 @@ from adit.core.utils.retry_config import (
     get_retry_config,
     retry_dimse_connect,
     retry_dimse_find,
-    retry_dimse_retrieve,
-    retry_dimse_store,
 )
 
 
