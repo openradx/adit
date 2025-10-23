@@ -407,7 +407,10 @@ ENABLE_STAMINA_RETRY = env.bool("ENABLE_STAMINA_RETRY", default=True)
 DICOM_TASK_MAX_ATTEMPTS = 3
 
 # How long to wait in seconds before retrying a failed dicom task (exponential backoff)
-DICOM_TASK_EXPONENTIAL_WAIT = 10  # 10 seconds
+# Increased from 10s to 60s since stamina now handles fast retries (5-10 attempts over 2-5 min).
+# Procrastinate retries target longer-term issues: server restarts, maintenance windows, etc.
+# Wait pattern with 60s: 1min → 2min → 4min = ~7min total retry time
+DICOM_TASK_EXPONENTIAL_WAIT = 60  # 1 minute
 
 # How long to wait in seconds before killing a dicom task that is not finished yet
 DICOM_TASK_PROCESS_TIMEOUT = 60 * 20  # 20 minutes
