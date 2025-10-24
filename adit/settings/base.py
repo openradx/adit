@@ -385,11 +385,32 @@ C_MOVE_DOWNLOAD_TIMEOUT = 30  # seconds
 # Show DICOM debug messages of pynetdicom
 ENABLE_DICOM_DEBUG_LOGGER = False
 
+# DICOM Task Retry Configuration
+# ==============================
+#
+# ADIT uses a two-level retry strategy:
+#
+# 1. Network-level (Stamina): Fast retries for transient network failures
+#    - Configured in adit/core/utils/retry_config.py
+#    - 5-10 attempts with exponential backoff + jitter
+#    - Handles: connection timeouts, HTTP 503, temporary server unavailability
+#
+# 2. Task-level (Procrastinate): Slow retries for complete operation failures
+#    - Configured below (DICOM_TASK_MAX_ATTEMPTS, DICOM_TASK_EXPONENTIAL_WAIT)
+#    - Retries entire task after network retries exhausted
+#    - Handles: persistent issues that need longer recovery time
+
+# Enable stamina retry mechanism (set to False to use only Procrastinate retries)
+ENABLE_STAMINA_RETRY = env.bool("ENABLE_STAMINA_RETRY", default=True)
+
 # How often to retry a failed dicom task before it is definitively failed
 DICOM_TASK_MAX_ATTEMPTS = 3
 
 # How long to wait in seconds before retrying a failed dicom task (exponential backoff)
-DICOM_TASK_EXPONENTIAL_WAIT = 10  # 10 seconds
+# Increased from 10s to 60s since stamina now handles fast retries (5-10 attempts over 2-5 min).
+# Procrastinate retries target longer-term issues: server restarts, maintenance windows, etc.
+# Wait pattern with 60s: 1min → 2min → 4min = ~7min total retry time
+DICOM_TASK_EXPONENTIAL_WAIT = 60  # 1 minute
 
 # How long to wait in seconds before killing a dicom task that is not finished yet
 DICOM_TASK_PROCESS_TIMEOUT = 60 * 20  # 20 minutes
