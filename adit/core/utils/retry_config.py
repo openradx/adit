@@ -40,16 +40,12 @@ Is it retriable? (ConnectionError, RetriableDicomError, HTTP 503, etc.)
       → Task FAILURE (no retries)
 """
 
-import logging
 from typing import Any
 
 import stamina
 from django.conf import settings
 
 from ..errors import RetriableDicomError
-
-logger = logging.getLogger(__name__)
-
 
 # Retry configuration for different operation types
 RETRY_CONFIG = {
@@ -156,34 +152,6 @@ def create_retry_decorator(operation_type: str):
         wait_max=config["wait_max"],
         wait_jitter=config["wait_jitter"],
     )
-
-
-def on_retry(details: stamina.instrumentation.RetryDetails) -> None:
-    """Callback for stamina retry events - logs retry attempts.
-
-    Args:
-        details: Stamina retry details with attempt info
-    """
-    if details.retry_num == 1:
-        logger.info(
-            "Starting retry sequence for %s (retry #%d, will wait %.2fs)",
-            details.name,
-            details.retry_num,
-            details.wait_for,
-        )
-
-    logger.warning(
-        "Retry attempt %d for %s after %s: %s (waited %.2fs so far)",
-        details.retry_num,
-        details.name,
-        type(details.caused_by).__name__,
-        str(details.caused_by)[:200],  # Truncate long error messages
-        details.waited_so_far,
-    )
-
-
-# Configure stamina to use our logging callback
-stamina.instrumentation.set_on_retry_hooks([on_retry])
 
 
 # Pre-configured decorators for common operations
