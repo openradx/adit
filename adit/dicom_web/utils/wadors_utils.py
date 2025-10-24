@@ -83,7 +83,11 @@ async def wado_retrieve(
                     break
                 yield queue_ds
 
-    except RetriableDicomError as err:
-        raise ServiceUnavailableApiError(str(err))
-    except DicomError as err:
-        raise BadGatewayApiError(str(err))
+    except ExceptionGroup as eg:
+        # Extract the first relevant exception
+        for exc in eg.exceptions:
+            if isinstance(exc, RetriableDicomError):
+                raise ServiceUnavailableApiError(str(exc))
+            if isinstance(exc, DicomError):
+                raise BadGatewayApiError(str(exc))
+        raise  # Re-raise if no handled exception found
