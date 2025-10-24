@@ -3,8 +3,9 @@
 from unittest.mock import patch
 
 import pytest
+from requests import HTTPError, Response
 
-from adit.core.errors import DicomError, RetriableDicomError
+from adit.core.errors import DicomError, RetriableDicomError, is_retriable_http_status
 from adit.core.utils.retry_config import (
     RETRY_CONFIG,
     create_retry_decorator,
@@ -177,3 +178,103 @@ class TestRetryConfiguration:
         config = get_retry_config("dicomweb_store")
         assert config["attempts"] == 10
         assert config["timeout"] == 180.0
+
+    def test_dicomweb_decorator_converts_retriable_http_error(self):
+        """Test that DICOMweb decorators convert retriable HTTPErrors to RetriableDicomError."""
+        decorator = create_retry_decorator("dicomweb_search")
+
+        # Create a mock HTTP 503 error
+        response = Response()
+        response.status_code = 503
+        http_error = HTTPError(response=response)
+
+        @decorator
+        def failing_dicomweb_operation():
+            raise http_error
+
+        # Should convert HTTPError to RetriableDicomError and retry
+        with pytest.raises(RetriableDicomError) as exc_info:
+            failing_dicomweb_operation()
+
+        # Verify it was converted from HTTPError
+        assert exc_info.value.__cause__ == http_error
+
+    def test_dicomweb_decorator_does_not_convert_permanent_http_error(self):
+        """Test that DICOMweb decorators don't convert permanent HTTPErrors."""
+        decorator = create_retry_decorator("dicomweb_search")
+
+        # Create a mock HTTP 404 error (not retriable)
+        response = Response()
+        response.status_code = 404
+        http_error = HTTPError(response=response)
+
+        @decorator
+        def failing_dicomweb_operation():
+            raise http_error
+
+        # Should not convert, HTTPError should propagate unchanged
+        with pytest.raises(HTTPError) as exc_info:
+            failing_dicomweb_operation()
+
+        assert exc_info.value == http_error
+
+    def test_dicomweb_decorator_handles_generator_http_errors(self):
+        """Test that DICOMweb decorators handle HTTPErrors in generators."""
+        decorator = create_retry_decorator("dicomweb_retrieve")
+
+        # Create a mock HTTP 503 error
+        response = Response()
+        response.status_code = 503
+        http_error = HTTPError(response=response)
+
+        @decorator
+        def failing_generator():
+            yield 1
+            yield 2
+            raise http_error
+
+        # Should convert HTTPError during iteration
+        gen = failing_generator()
+        assert next(gen) == 1
+        assert next(gen) == 2
+
+        with pytest.raises(RetriableDicomError) as exc_info:
+            next(gen)
+
+        # Verify it was converted from HTTPError
+        assert exc_info.value.__cause__ == http_error
+
+    def test_dimse_decorator_does_not_convert_http_errors(self):
+        """Test that DIMSE decorators don't convert HTTPErrors (only DICOMweb does)."""
+        decorator = create_retry_decorator("dimse_find")
+
+        # Create a mock HTTP 503 error
+        response = Response()
+        response.status_code = 503
+        http_error = HTTPError(response=response)
+
+        @decorator
+        def failing_dimse_operation():
+            raise http_error
+
+        # DIMSE decorator should not convert HTTPError
+        with pytest.raises(HTTPError) as exc_info:
+            failing_dimse_operation()
+
+        assert exc_info.value == http_error
+
+
+class TestHttpStatusRetriability:
+    """Test HTTP status code retriability checking."""
+
+    def test_retriable_status_codes(self):
+        """Test that retriable HTTP status codes are correctly identified."""
+        retriable_codes = [408, 409, 429, 500, 503, 504]
+        for code in retriable_codes:
+            assert is_retriable_http_status(code), f"Status {code} should be retriable"
+
+    def test_non_retriable_status_codes(self):
+        """Test that non-retriable HTTP status codes are correctly identified."""
+        non_retriable_codes = [200, 201, 400, 401, 403, 404, 405, 422]
+        for code in non_retriable_codes:
+            assert not is_retriable_http_status(code), f"Status {code} should not be retriable"

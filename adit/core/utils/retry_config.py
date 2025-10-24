@@ -40,12 +40,14 @@ Is it retriable? (ConnectionError, RetriableDicomError, HTTP 503, etc.)
       → Task FAILURE (no retries)
 """
 
+from functools import wraps
 from typing import Any
 
 import stamina
 from django.conf import settings
+from requests import HTTPError
 
-from ..errors import RetriableDicomError
+from ..errors import RetriableDicomError, is_retriable_http_status
 
 # Retry configuration for different operation types
 RETRY_CONFIG = {
@@ -125,6 +127,57 @@ def get_retry_config(operation_type: str) -> dict[str, Any]:
     return config
 
 
+def _convert_http_errors(func):
+    """Decorator that converts retriable HTTPErrors to RetriableDicomError.
+
+    This ensures that transient HTTP errors (503, 429, etc.) are properly
+    caught by the retry decorator, even for generator functions where
+    exceptions occur during iteration rather than during the call.
+
+    Args:
+        func: Function to wrap (can be regular function or generator)
+
+    Returns:
+        Wrapped function that converts HTTPError to RetriableDicomError
+    """
+
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        try:
+            result = func(*args, **kwargs)
+            # If it's a generator, we need to wrap the iteration too
+            if hasattr(result, "__iter__") and hasattr(result, "__next__"):
+                return _wrap_generator(result)
+            return result
+        except HTTPError as err:
+            if err.response and is_retriable_http_status(err.response.status_code):
+                raise RetriableDicomError(
+                    f"HTTP request failed with retriable status: {err.response.status_code}"
+                ) from err
+            raise
+
+    return wrapper
+
+
+def _wrap_generator(generator):
+    """Wrap a generator to convert HTTPErrors during iteration.
+
+    Args:
+        generator: Generator to wrap
+
+    Yields:
+        Items from the wrapped generator
+    """
+    try:
+        yield from generator
+    except HTTPError as err:
+        if err.response and is_retriable_http_status(err.response.status_code):
+            raise RetriableDicomError(
+                f"HTTP request failed with retriable status: {err.response.status_code}"
+            ) from err
+        raise
+
+
 def create_retry_decorator(operation_type: str):
     """Create a stamina retry decorator for a specific operation type.
 
@@ -132,7 +185,7 @@ def create_retry_decorator(operation_type: str):
         operation_type: One of the keys in RETRY_CONFIG
 
     Returns:
-        Configured stamina.retry decorator
+        Configured stamina.retry decorator with HTTP error handling
     """
     # Check if stamina retry is enabled
     if not getattr(settings, "ENABLE_STAMINA_RETRY", True):
@@ -144,7 +197,7 @@ def create_retry_decorator(operation_type: str):
 
     config = get_retry_config(operation_type)
 
-    return stamina.retry(
+    stamina_decorator = stamina.retry(
         on=(ConnectionError, RetriableDicomError, TimeoutError),
         attempts=config["attempts"],
         timeout=config["timeout"],
@@ -152,6 +205,17 @@ def create_retry_decorator(operation_type: str):
         wait_max=config["wait_max"],
         wait_jitter=config["wait_jitter"],
     )
+
+    # For DICOMweb operations, add HTTP error conversion
+    if operation_type.startswith("dicomweb"):
+
+        def decorator(func):
+            # Apply HTTP error conversion first, then stamina retry
+            return stamina_decorator(_convert_http_errors(func))
+
+        return decorator
+    else:
+        return stamina_decorator
 
 
 # Pre-configured decorators for common operations

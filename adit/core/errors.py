@@ -28,6 +28,27 @@ class RetriableDicomError(DicomError):
     pass
 
 
+def is_retriable_http_status(status_code: int) -> bool:
+    """Check if an HTTP status code indicates a transient error that should be retried.
+
+    Retriable status codes:
+    - 408: Request Timeout
+    - 409: Conflict (may resolve on retry)
+    - 429: Too Many Requests (rate limiting)
+    - 500: Internal Server Error (may be transient)
+    - 503: Service Unavailable (server temporarily overloaded)
+    - 504: Gateway Timeout
+
+    Args:
+        status_code: HTTP status code to check
+
+    Returns:
+        True if the status code indicates a retriable error, False otherwise
+    """
+    retriable_status_codes = [408, 409, 429, 500, 503, 504]
+    return status_code in retriable_status_codes
+
+
 class BatchFileSizeError(Exception):
     def __init__(self, batch_tasks_count: int, max_batch_size: int) -> None:
         super().__init__("Too many batch tasks.")
