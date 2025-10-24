@@ -11,11 +11,16 @@ from pydicom import Dataset
 from pydicom.errors import InvalidDicomError
 from requests import HTTPError
 
-from ..errors import DicomError, RetriableDicomError
+from ..errors import DicomError, RetriableDicomError, is_retriable_http_status
 from ..models import DicomServer
 from ..types import DicomLogEntry
 from ..utils.dicom_dataset import QueryDataset, ResultDataset
 from ..utils.dicom_utils import read_dataset
+from ..utils.retry_config import (
+    retry_dicomweb_retrieve,
+    retry_dicomweb_search,
+    retry_dicomweb_store,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -90,6 +95,7 @@ class DicomWebConnector:
         if self.dicomweb_client and self.dicomweb_client._session:
             self.dicomweb_client._session.close()
 
+    @retry_dicomweb_search
     @connect_to_server()
     def send_qido_rs(
         self, query: QueryDataset, limit_results: int | None = None
@@ -134,6 +140,7 @@ class DicomWebConnector:
         except HTTPError as err:
             _handle_dicomweb_error(err, "QIDO-RS")
 
+    @retry_dicomweb_retrieve
     @connect_to_server()
     def send_wado_rs(self, query: QueryDataset) -> Iterator[Dataset]:
         logger.debug("Sending WADO-RS with query: %s", query)
@@ -181,6 +188,7 @@ class DicomWebConnector:
         except HTTPError as err:
             _handle_dicomweb_error(err, "WADO-RS")
 
+    @retry_dicomweb_store
     @connect_to_server()
     def send_stow_rs(
         self,
@@ -201,7 +209,7 @@ class DicomWebConnector:
             except HTTPError as err:
                 assert err.response is not None
                 status_code = err.response.status_code
-                if _is_retriable_error(status_code):
+                if is_retriable_http_status(status_code):
                     retriable_failures.append(ds.SOPInstanceUID)
                 else:
                     _handle_dicomweb_error(err, "STOW-RS")
@@ -249,16 +257,21 @@ class DicomWebConnector:
             )
 
 
-def _is_retriable_error(status_code: int) -> bool:
-    retriable_status_codes = [408, 409, 429, 500, 503, 504]
-    return status_code in retriable_status_codes
-
-
 def _handle_dicomweb_error(err: HTTPError, op: str) -> NoReturn:
+    """Handle DICOMweb HTTPError by converting to appropriate exception type.
+
+    Args:
+        err: The HTTPError that occurred
+        op: Operation name (QIDO-RS, WADO-RS, STOW-RS) for error messages
+
+    Raises:
+        RetriableDicomError: If the error is transient and should be retried
+        HTTPError: If the error is permanent and should not be retried
+    """
     assert err.response is not None
     status_code = err.response.status_code
     status_phrase = HTTPStatus(status_code).phrase
-    if _is_retriable_error(status_code):
+    if is_retriable_http_status(status_code):
         raise RetriableDicomError(
             f"DICOMweb {op} request failed: {status_phrase} [{status_code}]."
         ) from err
