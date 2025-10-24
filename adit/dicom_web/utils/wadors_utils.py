@@ -32,7 +32,7 @@ async def wado_retrieve(
     query_ds = QueryDataset.from_dict(query)
 
     loop = asyncio.get_running_loop()
-    queue = asyncio.Queue[Dataset|None]()
+    queue = asyncio.Queue[Dataset | None]()
 
     dicom_manipulator = DicomManipulator()
 
@@ -85,7 +85,6 @@ async def wado_retrieve(
                 break
 
             yield queue_ds
-
 
     except RetriableDicomError as err:
         raise ServiceUnavailableApiError(str(err))
