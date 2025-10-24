@@ -1,6 +1,6 @@
 import asyncio
 import logging
-from typing import AsyncIterator, Awaitable, Literal
+from typing import AsyncIterator, Literal
 
 from adrf.views import sync_to_async
 from pydicom import Dataset
@@ -41,7 +41,6 @@ async def wado_retrieve(
         loop.call_soon_threadsafe(queue.put_nowait, ds)
 
     try:
-        fetch_coro: Awaitable[None]
         if level == "STUDY":
             fetch_coro = sync_to_async(operator.fetch_study, thread_sensitive=False)(
                 patient_id=query_ds.PatientID,
