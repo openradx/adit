@@ -181,24 +181,35 @@ class TestRetryConfiguration:
 
     def test_dicomweb_decorator_converts_retriable_http_error(self):
         """Test that DICOMweb decorators convert retriable HTTPErrors to RetriableDicomError."""
-        decorator = create_retry_decorator("dicomweb_search")
+        # Override retry config to use minimal attempts to avoid test timeout
+        minimal_config = {
+            "attempts": 2,
+            "timeout": 5.0,
+            "wait_initial": 0.1,
+            "wait_max": 0.2,
+            "wait_jitter": 0.0,
+        }
+        with patch(
+            "adit.core.utils.retry_config.RETRY_CONFIG", {"dicomweb_search": minimal_config}
+        ):
+            decorator = create_retry_decorator("dicomweb_search")
 
-        # Create a mock HTTP 503 error
-        response = Response()
-        response.status_code = 503
-        http_error = HTTPError()
-        http_error.response = response
+            # Create a mock HTTP 503 error
+            response = Response()
+            response.status_code = 503
+            http_error = HTTPError()
+            http_error.response = response
 
-        @decorator
-        def failing_dicomweb_operation():
-            raise http_error
+            @decorator
+            def failing_dicomweb_operation():
+                raise http_error
 
-        # Should convert HTTPError to RetriableDicomError and retry
-        with pytest.raises(RetriableDicomError) as exc_info:
-            failing_dicomweb_operation()
+            # Should convert HTTPError to RetriableDicomError and retry until exhausted
+            with pytest.raises(RetriableDicomError) as exc_info:
+                failing_dicomweb_operation()
 
-        # Verify it was converted from HTTPError
-        assert exc_info.value.__cause__ == http_error
+            # Verify it was converted from HTTPError
+            assert exc_info.value.__cause__ == http_error
 
     def test_dicomweb_decorator_does_not_convert_permanent_http_error(self):
         """Test that DICOMweb decorators don't convert permanent HTTPErrors."""
@@ -221,31 +232,47 @@ class TestRetryConfiguration:
         assert exc_info.value == http_error
 
     def test_dicomweb_decorator_handles_generator_http_errors(self):
-        """Test that DICOMweb decorators handle HTTPErrors in generators."""
-        decorator = create_retry_decorator("dicomweb_retrieve")
+        """Test that DICOMweb decorators handle HTTPErrors in generators.
 
-        # Create a mock HTTP 503 error
-        response = Response()
-        response.status_code = 503
-        http_error = HTTPError()
-        http_error.response = response
+        Note: For generators, the HTTPError conversion happens during iteration,
+        but stamina cannot retry partially consumed generators. The conversion
+        to RetriableDicomError still happens correctly.
+        """
+        # Override retry config to use minimal attempts
+        minimal_config = {
+            "attempts": 2,
+            "timeout": 5.0,
+            "wait_initial": 0.1,
+            "wait_max": 0.2,
+            "wait_jitter": 0.0,
+        }
+        with patch(
+            "adit.core.utils.retry_config.RETRY_CONFIG", {"dicomweb_retrieve": minimal_config}
+        ):
+            decorator = create_retry_decorator("dicomweb_retrieve")
 
-        @decorator
-        def failing_generator():
-            yield 1
-            yield 2
-            raise http_error
+            # Create a mock HTTP 503 error
+            response = Response()
+            response.status_code = 503
+            http_error = HTTPError()
+            http_error.response = response
 
-        # Should convert HTTPError during iteration
-        gen = failing_generator()
-        assert next(gen) == 1
-        assert next(gen) == 2
+            @decorator
+            def failing_generator():
+                yield 1
+                yield 2
+                raise http_error
 
-        with pytest.raises(RetriableDicomError) as exc_info:
-            next(gen)
+            # Should convert HTTPError during iteration
+            gen = failing_generator()
+            assert next(gen) == 1
+            assert next(gen) == 2
 
-        # Verify it was converted from HTTPError
-        assert exc_info.value.__cause__ == http_error
+            with pytest.raises(RetriableDicomError) as exc_info:
+                next(gen)
+
+            # Verify it was converted from HTTPError
+            assert exc_info.value.__cause__ == http_error
 
     def test_dimse_decorator_does_not_convert_http_errors(self):
         """Test that DIMSE decorators don't convert HTTPErrors (only DICOMweb does)."""
