@@ -73,8 +73,10 @@ async def wado_retrieve(
             raise ValueError(f"Invalid WADO-RS level: {level}.")
 
         async def add_sentinel_when_done():
-            await fetch_task
-            await queue.put(None)
+            try:
+                await fetch_task
+            finally:
+                await queue.put(None)
 
         asyncio.create_task(add_sentinel_when_done())
 
