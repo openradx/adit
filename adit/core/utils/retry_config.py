@@ -150,7 +150,7 @@ def _convert_http_errors(func):
                 return _wrap_generator(result)
             return result
         except HTTPError as err:
-            if err.response and is_retriable_http_status(err.response.status_code):
+            if err.response is not None and is_retriable_http_status(err.response.status_code):
                 raise RetriableDicomError(
                     f"HTTP request failed with retriable status: {err.response.status_code}"
                 ) from err
@@ -171,7 +171,7 @@ def _wrap_generator(generator):
     try:
         yield from generator
     except HTTPError as err:
-        if err.response and is_retriable_http_status(err.response.status_code):
+        if err.response is not None and is_retriable_http_status(err.response.status_code):
             raise RetriableDicomError(
                 f"HTTP request failed with retriable status: {err.response.status_code}"
             ) from err
