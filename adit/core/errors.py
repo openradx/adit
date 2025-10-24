@@ -2,10 +2,29 @@ from rest_framework.exceptions import ErrorDetail
 
 
 class DicomError(Exception):
+    """Base exception for all DICOM-related errors.
+
+    Use this for permanent failures that should not be retried automatically,
+    such as invalid UIDs, missing configuration, or data validation errors.
+    """
+
     pass
 
 
-class RetriableDicomError(Exception):
+class RetriableDicomError(DicomError):
+    """DICOM error caused by transient issues that should trigger automatic retry.
+
+    This exception indicates temporary problems that may resolve on retry,
+    such as:
+    - Network timeouts or connection failures
+    - HTTP 503 (Service Unavailable) or 429 (Rate Limit)
+    - Temporary server unavailability
+    - Transient database locks
+
+    The stamina retry decorator and Procrastinate task queue will automatically
+    retry operations that raise this exception.
+    """
+
     pass
 
 
