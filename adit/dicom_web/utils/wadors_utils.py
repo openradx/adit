@@ -1,6 +1,6 @@
 import asyncio
 import logging
-from typing import AsyncIterator, Literal
+from typing import AsyncIterator, Awaitable, Literal
 
 from adrf.views import sync_to_async
 from pydicom import Dataset
@@ -41,52 +41,47 @@ async def wado_retrieve(
         loop.call_soon_threadsafe(queue.put_nowait, ds)
 
     try:
+        fetch_coro: Awaitable[None]
         if level == "STUDY":
-            fetch_task = asyncio.create_task(
-                sync_to_async(operator.fetch_study, thread_sensitive=False)(
-                    patient_id=query_ds.PatientID,
-                    study_uid=query_ds.StudyInstanceUID,
-                    callback=callback,
-                )
+            fetch_coro = sync_to_async(operator.fetch_study, thread_sensitive=False)(
+                patient_id=query_ds.PatientID,
+                study_uid=query_ds.StudyInstanceUID,
+                callback=callback,
             )
         elif level == "SERIES":
-            fetch_task = asyncio.create_task(
-                sync_to_async(operator.fetch_series, thread_sensitive=False)(
-                    patient_id=query_ds.PatientID,
-                    study_uid=query_ds.StudyInstanceUID,
-                    series_uid=query_ds.SeriesInstanceUID,
-                    callback=callback,
-                )
+            fetch_coro = sync_to_async(operator.fetch_series, thread_sensitive=False)(
+                patient_id=query_ds.PatientID,
+                study_uid=query_ds.StudyInstanceUID,
+                series_uid=query_ds.SeriesInstanceUID,
+                callback=callback,
             )
         elif level == "IMAGE":
             assert query_ds.has("SeriesInstanceUID")
-            fetch_task = asyncio.create_task(
-                sync_to_async(operator.fetch_image, thread_sensitive=False)(
-                    patient_id=query_ds.PatientID,
-                    study_uid=query_ds.StudyInstanceUID,
-                    series_uid=query_ds.SeriesInstanceUID,
-                    image_uid=query_ds.SOPInstanceUID,
-                    callback=callback,
-                )
+            fetch_coro = sync_to_async(operator.fetch_image, thread_sensitive=False)(
+                patient_id=query_ds.PatientID,
+                study_uid=query_ds.StudyInstanceUID,
+                series_uid=query_ds.SeriesInstanceUID,
+                image_uid=query_ds.SOPInstanceUID,
+                callback=callback,
             )
         else:
             raise ValueError(f"Invalid WADO-RS level: {level}.")
 
-        async def add_sentinel_when_done():
+        async def add_sentinel_when_done(task: asyncio.Task[None]) -> None:
             try:
-                await fetch_task
+                await task
             finally:
                 await queue.put(None)
 
-        asyncio.create_task(add_sentinel_when_done())
+        async with asyncio.TaskGroup() as task_group:
+            fetch_task = task_group.create_task(fetch_coro)
+            task_group.create_task(add_sentinel_when_done(fetch_task))
 
-        while True:
-            queue_ds = await queue.get()
-
-            if queue_ds is None:
-                break
-
-            yield queue_ds
+            while True:
+                queue_ds = await queue.get()
+                if queue_ds is None:
+                    break
+                yield queue_ds
 
     except RetriableDicomError as err:
         raise ServiceUnavailableApiError(str(err))

@@ -103,9 +103,11 @@ async def test_wado_retrieve_integration(monkeypatch):
     ]
 
 
-'''
+"""
 Mock tests simulating the race condition in the old implementation and 
 how adding a sentinel resolves it. Can be removed if deemed unnecessary.
+"""
+
 
 @pytest.mark.asyncio
 async def test_race_condition():
@@ -178,4 +180,3 @@ async def test_sentinel_prevents_race_condition():
     await wado_retrieve_with_sentinel()
 
     assert results == [0, 1, 2]  # All items should be retrieved
-'''
