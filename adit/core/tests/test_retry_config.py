@@ -186,7 +186,8 @@ class TestRetryConfiguration:
         # Create a mock HTTP 503 error
         response = Response()
         response.status_code = 503
-        http_error = HTTPError(response=response)
+        http_error = HTTPError()
+        http_error.response = response
 
         @decorator
         def failing_dicomweb_operation():
@@ -206,7 +207,8 @@ class TestRetryConfiguration:
         # Create a mock HTTP 404 error (not retriable)
         response = Response()
         response.status_code = 404
-        http_error = HTTPError(response=response)
+        http_error = HTTPError()
+        http_error.response = response
 
         @decorator
         def failing_dicomweb_operation():
@@ -225,7 +227,8 @@ class TestRetryConfiguration:
         # Create a mock HTTP 503 error
         response = Response()
         response.status_code = 503
-        http_error = HTTPError(response=response)
+        http_error = HTTPError()
+        http_error.response = response
 
         @decorator
         def failing_generator():
@@ -251,7 +254,8 @@ class TestRetryConfiguration:
         # Create a mock HTTP 503 error
         response = Response()
         response.status_code = 503
-        http_error = HTTPError(response=response)
+        http_error = HTTPError()
+        http_error.response = response
 
         @decorator
         def failing_dimse_operation():
