@@ -17,7 +17,7 @@ ADIT uses a single-layer retry strategy:
 2. Task Layer (Procrastinate): Slow retries for complete failures
    - Retries entire transfer task if network layer exhausted
    - Retries: 3 attempts with exponential backoff
-   - Wait: 10 seconds base
+   - Wait: 60 seconds base (1min → 2min → 4min)
 
 Why single-layer?
 ----------------
@@ -34,7 +34,7 @@ Is it retriable? (ConnectionError, RetriableDicomError, HTTP 503, etc.)
   ├─ YES → Stamina retries (fast, exponential backoff)
   │   ├─ Success → Continue
   │   └─ Exhausted → Raise to Procrastinate
-  │       ├─ Procrastinate retry (wait 10s+)
+  │       ├─ Procrastinate retry (wait 60s+)
   │       └─ Still failing → Task FAILURE
   └─ NO → Raise immediately (DicomError)
       → Task FAILURE (no retries)
