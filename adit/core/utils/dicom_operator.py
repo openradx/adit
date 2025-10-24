@@ -43,13 +43,11 @@ class DicomOperator:
     def __init__(
         self,
         server: DicomServer,
-        connection_retries: int = 2,
         dimse_timeout: int | None = 60,
     ):
         self.server = server
         self.dimse_connector = DimseConnector(
             server,
-            connection_retries=connection_retries,
             dimse_timeout=dimse_timeout,
         )
         # TODO: also make retries and timeouts possible in DicomWebConnector

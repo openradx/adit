@@ -1,6 +1,5 @@
 import inspect
 import logging
-import time
 from functools import wraps
 from os import PathLike
 from pathlib import Path
@@ -114,8 +113,6 @@ class DimseConnector:
         self,
         server: DicomServer,
         auto_connect: bool = True,
-        connection_retries: int = 2,
-        retry_timeout: int = 30,  # in seconds
         acse_timeout: int | None = 60,
         connection_timeout: int | None = None,
         dimse_timeout: int | None = 60,
@@ -123,8 +120,6 @@ class DimseConnector:
     ) -> None:
         self.server = server
         self.auto_connect = auto_connect
-        self.connection_retries = connection_retries
-        self.retry_timeout = retry_timeout
         self.acse_timeout = acse_timeout
         self.connection_timeout = connection_timeout
         self.dimse_timeout = dimse_timeout
@@ -140,20 +135,9 @@ class DimseConnector:
 
         logger.debug("Opening connection to DICOM server %s.", self.server.ae_title)
 
-        for i in range(self.connection_retries + 1):
-            try:
-                self._associate(service)
-                break
-            except ConnectionError as err:
-                logger.exception("Could not connect to %s.", self.server)
-                if i < self.connection_retries:
-                    logger.info(
-                        "Retrying to connect in %d seconds.",
-                        self.retry_timeout,
-                    )
-                    time.sleep(self.retry_timeout)
-                else:
-                    raise err
+        # Call _associate which is decorated with @retry_dimse_connect
+        # Stamina will handle retries automatically (5 attempts with exponential backoff)
+        self._associate(service)
 
     @retry_dimse_connect
     def _associate(self, service: DimseService):
