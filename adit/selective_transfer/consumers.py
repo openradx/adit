@@ -16,7 +16,7 @@ from django.conf import settings
 from django.template.loader import render_to_string
 from requests.exceptions import HTTPError
 
-from adit.core.errors import DicomError, RetriableDicomError
+from adit.core.errors import DicomError
 from adit.core.models import DicomNode
 from adit.core.utils.dicom_dataset import QueryDataset, ResultDataset
 from adit.core.utils.dicom_operator import DicomOperator
@@ -186,7 +186,8 @@ class SelectiveTransferConsumer(AsyncJsonWebsocketConsumer):
                 form, f"Something went wrong at your requested source. {additional_error_text}"
             )
             await self.send(form_error_response)
-        except (DicomError, RetriableDicomError):
+        except DicomError:
+            # Catches both DicomError and RetriableDicomError (which inherits from DicomError)
             form_error_response = await self._build_form_error_response(
                 form,
                 "Something went wrong at your requested source. "
