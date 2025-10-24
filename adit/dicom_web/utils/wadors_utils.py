@@ -67,6 +67,11 @@ async def wado_retrieve(
             raise ValueError(f"Invalid WADO-RS level: {level}.")
 
         async def add_sentinel_when_done(task: asyncio.Task[None]) -> None:
+            """Wait for fetch task to complete and add sentinel to signal end of stream.
+
+            The sentinel is added even if the task is cancelled, ensuring the consumer
+            loop always terminates cleanly.
+            """
             try:
                 await task
             finally:
@@ -87,6 +92,6 @@ async def wado_retrieve(
         for exc in eg.exceptions:
             if isinstance(exc, RetriableDicomError):
                 raise ServiceUnavailableApiError(str(exc))
-            if isinstance(exc, DicomError):
+            elif isinstance(exc, DicomError):
                 raise BadGatewayApiError(str(exc))
         raise  # Re-raise if no handled exception found
