@@ -3,7 +3,7 @@ import logging
 import re
 from os import PathLike
 from pathlib import Path
-from typing import Any, BinaryIO, Optional
+from typing import Any, BinaryIO, List, Optional
 
 from django.conf import settings
 from pydicom import Dataset, dcmread, dcmwrite, valuerep
@@ -152,9 +152,9 @@ def construct_download_file_path(
     ds: Dataset,
     download_folder: Path,
     patient_id: str,
-    study_modalities: str,
-    study_date: str,
-    study_time: str,
+    study_modalities: List[str],
+    study_date: datetime.date,
+    study_time: datetime.time,
     pseudonym: Optional[str] = None,
 ) -> Path:
     """Constructs the file path for a DICOM instance when transferring/downloading"""
@@ -167,15 +167,13 @@ def construct_download_file_path(
     modalities = study_modalities
     if pseudonym and exclude_modalities and study_modalities:
         included_modalities = [
-            modality
-            for modality in study_modalities.split(",")
-            if modality not in exclude_modalities
+            modality for modality in study_modalities if modality not in exclude_modalities
         ]
-        modalities = ",".join(included_modalities)
-
+        modalities = included_modalities
+    modalities_str = ",".join(modalities)
     # Build study folder path
-    prefix = f"{study_date}-{study_time}"
-    study_folder = patient_folder / f"{prefix}-{modalities}"
+    prefix = f"{study_date.strftime('%Y%m%d')}-{study_time.strftime('%H%M%S')}"
+    study_folder = patient_folder / f"{prefix}-{modalities_str}"
 
     # Determine final folder based on series structure setting
     if settings.CREATE_SERIES_SUB_FOLDERS:

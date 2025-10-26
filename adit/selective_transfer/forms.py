@@ -240,3 +240,29 @@ class SelectiveTransferJobForm(forms.ModelForm):
 
     def build_query_field(self, field_name):
         return Column(Field(field_name))
+
+
+class SelectiveTransferDownloadForm(forms.Form):
+    pseudonym = forms.CharField(
+        required=False,
+        max_length=64,
+        validators=[no_backslash_char_validator, no_control_chars_validator],
+    )
+    trial_protocol_id = forms.CharField(max_length=64, required=False)
+    trial_protocol_name = forms.CharField(max_length=64, required=False)
+    study_modalities = forms.CharField(max_length=64, required=False)
+    study_date = forms.DateField(
+        required=False,
+        input_formats=["%Y%m%d"],  # matches `|date:'Ymd'`
+    )
+    study_time = forms.TimeField(
+        required=False,
+        input_formats=["%H%M%S"],  # matches `|date:'His'`
+    )
+
+    def clean_study_modalities(self):
+        data = self.cleaned_data.get("study_modalities")
+        if not data or data == "—":
+            return None
+        # Convert comma-separated string to list
+        return [m.strip() for m in data.split(",") if m.strip()]

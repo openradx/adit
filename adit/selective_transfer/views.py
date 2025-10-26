@@ -27,7 +27,7 @@ from adit.core.views import (
 )
 
 from .filters import SelectiveTransferJobFilter, SelectiveTransferTaskFilter
-from .forms import SelectiveTransferJobForm
+from .forms import SelectiveTransferDownloadForm, SelectiveTransferJobForm
 from .mixins import SelectiveTransferLockedMixin
 from .models import SelectiveTransferJob, SelectiveTransferTask
 from .tables import SelectiveTransferJobTable, SelectiveTransferTaskTable
@@ -62,16 +62,10 @@ async def selective_transfer_download_study_view(
     patient_id: str,
     study_uid: str,
 ) -> HttpResponse | StreamingHttpResponse:
-    study_params = {
-        "pseudonym": request.GET.get("pseudonym", None),
-        "trial_protocol_id": request.GET.get("trial_protocol_id", None),
-        "trial_protocol_name": request.GET.get("trial_protocol_name", None),
-        # Instead of passing the study details,
-        # maybe cache the query results and access by the study_uid?
-        "study_modalities": request.GET.get("study_modalities"),
-        "study_date": request.GET.get("study_date"),
-        "study_time": request.GET.get("study_time"),
-    }
+    form = SelectiveTransferDownloadForm(request.GET)
+    if not form.is_valid():
+        return HttpResponse({"errors": form.errors}, status=400)
+    study_params = form.cleaned_data
 
     downloader = DicomDownloader(server_id)
     download_folder = Path(f"study_download_{study_uid}")
