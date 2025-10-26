@@ -32,67 +32,66 @@ async def wado_retrieve(
     query_ds = QueryDataset.from_dict(query)
 
     loop = asyncio.get_running_loop()
-    queue = asyncio.Queue[Dataset]()
+    queue = asyncio.Queue[Dataset | None]()
 
     dicom_manipulator = DicomManipulator()
 
     def callback(ds: Dataset) -> None:
         dicom_manipulator.manipulate(ds, pseudonym, trial_protocol_id, trial_protocol_name)
-
         loop.call_soon_threadsafe(queue.put_nowait, ds)
 
     try:
         if level == "STUDY":
-            fetch_task = asyncio.create_task(
-                sync_to_async(operator.fetch_study, thread_sensitive=False)(
-                    patient_id=query_ds.PatientID,
-                    study_uid=query_ds.StudyInstanceUID,
-                    callback=callback,
-                )
+            fetch_coro = sync_to_async(operator.fetch_study, thread_sensitive=False)(
+                patient_id=query_ds.PatientID,
+                study_uid=query_ds.StudyInstanceUID,
+                callback=callback,
             )
         elif level == "SERIES":
-            fetch_task = asyncio.create_task(
-                sync_to_async(operator.fetch_series, thread_sensitive=False)(
-                    patient_id=query_ds.PatientID,
-                    study_uid=query_ds.StudyInstanceUID,
-                    series_uid=query_ds.SeriesInstanceUID,
-                    callback=callback,
-                )
+            fetch_coro = sync_to_async(operator.fetch_series, thread_sensitive=False)(
+                patient_id=query_ds.PatientID,
+                study_uid=query_ds.StudyInstanceUID,
+                series_uid=query_ds.SeriesInstanceUID,
+                callback=callback,
             )
         elif level == "IMAGE":
             assert query_ds.has("SeriesInstanceUID")
-            fetch_task = asyncio.create_task(
-                sync_to_async(operator.fetch_image, thread_sensitive=False)(
-                    patient_id=query_ds.PatientID,
-                    study_uid=query_ds.StudyInstanceUID,
-                    series_uid=query_ds.SeriesInstanceUID,
-                    image_uid=query_ds.SOPInstanceUID,
-                    callback=callback,
-                )
+            fetch_coro = sync_to_async(operator.fetch_image, thread_sensitive=False)(
+                patient_id=query_ds.PatientID,
+                study_uid=query_ds.StudyInstanceUID,
+                series_uid=query_ds.SeriesInstanceUID,
+                image_uid=query_ds.SOPInstanceUID,
+                callback=callback,
             )
         else:
             raise ValueError(f"Invalid WADO-RS level: {level}.")
 
-        while True:
-            queue_get_task = asyncio.create_task(queue.get())
-            done, _ = await asyncio.wait(
-                [fetch_task, queue_get_task], return_when=asyncio.FIRST_COMPLETED
-            )
+        async def add_sentinel_when_done(task: asyncio.Task[None]) -> None:
+            """Wait for fetch task to complete and add sentinel to signal end of stream.
 
-            finished = False
-            for task in done:
-                if task == queue_get_task:
-                    yield queue_get_task.result()
-                if task == fetch_task:
-                    finished = True
+            The sentinel is added even if the task is cancelled, ensuring the consumer
+            loop always terminates cleanly.
+            """
+            try:
+                await task
+            finally:
+                await queue.put(None)
 
-            if finished:
-                queue_get_task.cancel()
-                break
+        async with asyncio.TaskGroup() as task_group:
+            fetch_task = task_group.create_task(fetch_coro)
+            task_group.create_task(add_sentinel_when_done(fetch_task))
 
-        await asyncio.wait([fetch_task, queue_get_task])
+            while True:
+                queue_ds = await queue.get()
+                if queue_ds is None:
+                    break
+                yield queue_ds
 
-    except RetriableDicomError as err:
-        raise ServiceUnavailableApiError(str(err))
-    except DicomError as err:
-        raise BadGatewayApiError(str(err))
+    except ExceptionGroup as eg:
+        # Extract the first relevant exception
+        for exc in eg.exceptions:
+            if isinstance(exc, RetriableDicomError):
+                raise ServiceUnavailableApiError(str(exc))
+            elif isinstance(exc, DicomError):
+                raise BadGatewayApiError(str(exc))
+        raise  # Re-raise if no handled exception found

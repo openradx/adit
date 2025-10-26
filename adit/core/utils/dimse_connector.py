@@ -1,6 +1,5 @@
 import inspect
 import logging
-import time
 from functools import wraps
 from os import PathLike
 from pathlib import Path
@@ -41,6 +40,12 @@ from ..types import DicomLogEntry
 from ..utils.dicom_dataset import QueryDataset, ResultDataset
 from ..utils.dicom_utils import has_wildcards, read_dataset
 from ..utils.presentation_contexts import StoragePresentationContexts
+from ..utils.retry_config import (
+    retry_dimse_connect,
+    retry_dimse_find,
+    retry_dimse_retrieve,
+    retry_dimse_store,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -108,8 +113,6 @@ class DimseConnector:
         self,
         server: DicomServer,
         auto_connect: bool = True,
-        connection_retries: int = 2,
-        retry_timeout: int = 30,  # in seconds
         acse_timeout: int | None = 60,
         connection_timeout: int | None = None,
         dimse_timeout: int | None = 60,
@@ -117,8 +120,6 @@ class DimseConnector:
     ) -> None:
         self.server = server
         self.auto_connect = auto_connect
-        self.connection_retries = connection_retries
-        self.retry_timeout = retry_timeout
         self.acse_timeout = acse_timeout
         self.connection_timeout = connection_timeout
         self.dimse_timeout = dimse_timeout
@@ -134,21 +135,11 @@ class DimseConnector:
 
         logger.debug("Opening connection to DICOM server %s.", self.server.ae_title)
 
-        for i in range(self.connection_retries + 1):
-            try:
-                self._associate(service)
-                break
-            except ConnectionError as err:
-                logger.exception("Could not connect to %s.", self.server)
-                if i < self.connection_retries:
-                    logger.info(
-                        "Retrying to connect in %d seconds.",
-                        self.retry_timeout,
-                    )
-                    time.sleep(self.retry_timeout)
-                else:
-                    raise err
+        # Call _associate which is decorated with @retry_dimse_connect
+        # Stamina will handle retries automatically (5 attempts with exponential backoff)
+        self._associate(service)
 
+    @retry_dimse_connect
     def _associate(self, service: DimseService):
         ae = AE(settings.CALLING_AE_TITLE)
 
@@ -215,6 +206,7 @@ class DimseConnector:
             logger.debug("Aborting connection to DICOM server %s.", self.server.ae_title)
             self.assoc.abort()
 
+    @retry_dimse_find
     @connect_to_server("C-FIND")
     def send_c_find(
         self, query: QueryDataset, limit_results: int | None = None, msg_id: int = 1
@@ -266,6 +258,7 @@ class DimseConnector:
                     f"Unexpected error during C-FIND [{status_category}]:\n{status}"
                 )
 
+    @retry_dimse_retrieve
     @connect_to_server("C-GET")
     def send_c_get(
         self,
@@ -298,6 +291,7 @@ class DimseConnector:
 
         self._handle_get_and_move_responses(responses, "C-GET")
 
+    @retry_dimse_retrieve
     @connect_to_server("C-MOVE")
     def send_c_move(self, query: QueryDataset, dest_aet: str, msg_id: int = 1) -> None:
         logger.debug("Sending C-MOVE with query:\n%s", query)
@@ -322,6 +316,7 @@ class DimseConnector:
 
         self._handle_get_and_move_responses(responses, "C-MOVE")
 
+    @retry_dimse_store
     @connect_to_server("C-STORE")
     def send_c_store(
         self, resource: PathLike | list[Dataset], modifier: Modifier | None = None, msg_id: int = 1
