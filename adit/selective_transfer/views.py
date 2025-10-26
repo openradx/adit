@@ -64,7 +64,7 @@ async def selective_transfer_download_study_view(
 ) -> HttpResponse | StreamingHttpResponse:
     form = SelectiveTransferDownloadForm(request.GET)
     if not form.is_valid():
-        return HttpResponse({"errors": form.errors}, status=400)
+        return HttpResponse(str(form.errors), status=400)
     study_params = form.cleaned_data
 
     downloader = DicomDownloader(server_id)

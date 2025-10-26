@@ -7,7 +7,7 @@ from functools import partial
 from io import BytesIO
 from pathlib import Path
 from stat import S_IFREG
-from typing import AsyncGenerator
+from typing import Any, AsyncGenerator
 
 from adit_radis_shared.accounts.models import User
 from adrf.views import sync_to_async
@@ -31,10 +31,10 @@ class DicomDownloader:
     def __init__(self, server_id: str):
         self.server_id = server_id
         self.manipulator = DicomManipulator()
-        self.queue: asyncio.Queue[Dataset | None]
-        self._producer_checked_event: asyncio.Event
-        self._start_consumer_event: asyncio.Event
-        self._current_download_errors: list[Exception]
+        self.queue = asyncio.Queue[Dataset | None]()
+        self._producer_checked_event = asyncio.Event()
+        self._start_consumer_event = asyncio.Event()
+        self._current_download_errors: list[Exception] = []
 
     def download_study(
         self,
@@ -45,14 +45,6 @@ class DicomDownloader:
         download_folder: Path,
     ):
         """Directly downloads a study from a DicomServer"""
-        # Single use variable initialization
-        self.queue = asyncio.Queue[Dataset | None]()
-        download_errors: list[Exception] = []
-        producer_checked_event = asyncio.Event()
-        start_consumer_event = asyncio.Event()
-        self._current_download_errors = download_errors
-        self._producer_checked_event = producer_checked_event
-        self._start_consumer_event = start_consumer_event
 
         # Producer: Retrieves the study and puts Datasets in queue
         asyncio.create_task(
@@ -216,7 +208,7 @@ class DicomDownloader:
         self,
         executor: ThreadPoolExecutor,
         patient_id: str,
-        study_params: dict,
+        study_params: dict[str, Any],
         download_folder: Path,
     ):
         """Consumes and yields the datasets from the async queue"""

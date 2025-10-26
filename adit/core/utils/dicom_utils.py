@@ -171,7 +171,7 @@ def construct_download_file_path(
             modality for modality in study_modalities if modality not in exclude_modalities
         ]
         modalities = included_modalities
-    modalities_str = ",".join(modalities)
+    modalities_str = ",".join(modalities) if modalities else "UNKNOWN"
     # Build study folder path
     prefix = f"{study_date.strftime('%Y%m%d')}-{study_time.strftime('%H%M%S')}"
     study_folder = patient_folder / f"{prefix}-{modalities_str}"
