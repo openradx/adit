@@ -31,7 +31,7 @@ class DicomDownloader:
     def __init__(self, server_id: str):
         self.server_id = server_id
         self.manipulator = DicomManipulator()
-        self.queue = asyncio.Queue[Dataset | None]()
+        self.queue: asyncio.Queue[Dataset | None]
         self._producer_checked_event: asyncio.Event
         self._start_consumer_event: asyncio.Event
         self._current_download_errors: list[Exception]
@@ -45,7 +45,7 @@ class DicomDownloader:
         download_folder: Path,
     ):
         """Directly downloads a study from a DicomServer"""
-
+        # Single use variable initialization
         self.queue = asyncio.Queue[Dataset | None]()
         download_errors: list[Exception] = []
         producer_checked_event = asyncio.Event()

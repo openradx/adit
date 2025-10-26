@@ -44,8 +44,8 @@ dependencies = [
     { name = "pyarrow" },
     { name = "pydicom" },
     { name = "pynetdicom" },
-    { name = "stream-zip" },
     { name = "stamina" },
+    { name = "stream-zip" },
     { name = "twisted", extra = ["http2", "tls"] },
     { name = "wait-for-it" },
     { name = "watchfiles" },
@@ -132,8 +132,8 @@ requires-dist = [
     { name = "pyarrow", specifier = ">=19.0.1" },
     { name = "pydicom", specifier = ">=2.4.4" },
     { name = "pynetdicom", specifier = ">=2.1.1" },
-    { name = "stream-zip", specifier = ">=0.0.83" },
     { name = "stamina", specifier = ">=24.2.0" },
+    { name = "stream-zip", specifier = ">=0.0.83" },
     { name = "twisted", extras = ["tls", "http2"], specifier = ">=24.11.0" },
     { name = "wait-for-it", specifier = ">=2.3.0" },
     { name = "watchfiles", specifier = ">=1.0.4" },
@@ -2636,15 +2636,6 @@ wheels = [
 ]
 
 [[package]]
-name = "stream-zip"
-version = "0.0.83"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "pycryptodome" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/08/8a/0674a98c1d3d8edf1461b92474ed9cfe19298a297aab9a8ccd9ae1f15b07/stream_zip-0.0.83.tar.gz", hash = "sha256:87d755f0ce43dfc6b0ae555b733f162c76e2eafcf3c7805d3f591e966b316716", size = 9961, upload-time = "2024-09-20T17:22:23.856Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/88/99/53c4dcc32a8d97d133d707c18cb667782b911dffc53bc635616139ba8c38/stream_zip-0.0.83-py3-none-any.whl", hash = "sha256:118bef93c10031dc715235e081c72e1dab2850771893f261cb5d246ff56e0e42", size = 9764, upload-time = "2024-09-20T17:22:22.888Z" },
 name = "stamina"
 version = "25.1.0"
 source = { registry = "https://pypi.org/simple" }
@@ -2654,6 +2645,18 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/fd/c4/d242d76ffc88aa1fd14214d3143b542857b32276db4a20f8d99669054a5e/stamina-25.1.0.tar.gz", hash = "sha256:ad674809796ae40512b3b6296cfade826efd63863ff2ca2f59f806342e91e94a", size = 561127, upload-time = "2025-03-12T09:37:08.217Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/14/ba/d03f7ee711391af1d5f4dd7c44f8abdd06bce247028af2441ba8f6ff329b/stamina-25.1.0-py3-none-any.whl", hash = "sha256:c08291da540e6f4243c20f7ee98f0ed0ac9101d639803c481a029b56d7e9b45d", size = 17323, upload-time = "2025-03-12T09:37:06.886Z" },
+]
+
+[[package]]
+name = "stream-zip"
+version = "0.0.83"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "pycryptodome" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/08/8a/0674a98c1d3d8edf1461b92474ed9cfe19298a297aab9a8ccd9ae1f15b07/stream_zip-0.0.83.tar.gz", hash = "sha256:87d755f0ce43dfc6b0ae555b733f162c76e2eafcf3c7805d3f591e966b316716", size = 9961, upload-time = "2024-09-20T17:22:23.856Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/88/99/53c4dcc32a8d97d133d707c18cb667782b911dffc53bc635616139ba8c38/stream_zip-0.0.83-py3-none-any.whl", hash = "sha256:118bef93c10031dc715235e081c72e1dab2850771893f261cb5d246ff56e0e42", size = 9764, upload-time = "2024-09-20T17:22:22.888Z" },
 ]
 
 [[package]]
