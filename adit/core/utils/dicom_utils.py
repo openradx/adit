@@ -165,6 +165,7 @@ def construct_download_file_path(
     # Handle modality filtering
     exclude_modalities = settings.EXCLUDE_MODALITIES
     modalities = study_modalities
+    modalities_str = ""
     if pseudonym and exclude_modalities and study_modalities:
         included_modalities = [
             modality for modality in study_modalities if modality not in exclude_modalities
