@@ -179,6 +179,7 @@ def test_unpseudonymized_selective_direct_download_with_dimse_server(
     patient_id = "1001"
     study_uid = "1.2.840.113845.11.1000000001951524609.20200705182951.2689481"
     study_modalities = "CT,SR"
+    encoded_study_modalities = "CT%2CSR"
     study_date = "20190604"
     study_time = "182823"
 
@@ -192,7 +193,9 @@ def test_unpseudonymized_selective_direct_download_with_dimse_server(
 
     base_download_link = f"download/servers/{server_id}/patients/{patient_id}/studies/{study_uid}"
     optional_params = (
-        f"?study_modalities={study_modalities}&study_date={study_date}&study_time={study_time}"
+        f"?study_modalities={encoded_study_modalities}"
+        f"&study_date={study_date}"
+        f"&study_time={study_time}"
     )
     download_link = base_download_link + optional_params
 

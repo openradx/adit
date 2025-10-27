@@ -82,7 +82,7 @@ async def selective_transfer_download_study_view(
     query_form = DownloadQueryParamsValidationForm(request.GET)
     if not query_form.is_valid():
         return HttpResponse(str(query_form.errors), status=400)
-    study_params = query_form.to_dataclass()
+    study_params = query_form.to_study_params()
 
     downloader = DicomDownloader(study_ids["server_id"])
     download_folder = Path(f"study_download_{study_ids['study_uid']}")

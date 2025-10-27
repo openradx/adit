@@ -289,5 +289,5 @@ class DownloadQueryParamsValidationForm(forms.Form):
         # Convert comma-separated string to list
         return [m.strip() for m in data.split(",") if m.strip()]
 
-    def to_dataclass(self) -> StudyParams:
+    def to_study_params(self) -> StudyParams:
         return StudyParams(**self.cleaned_data)

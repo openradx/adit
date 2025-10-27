@@ -154,7 +154,7 @@ def construct_download_file_path(
     patient_id: str,
     study_date: datetime.date,
     study_time: datetime.time,
-    study_modalities: list[str] = [],
+    study_modalities: list[str],
     pseudonym: Optional[str] = None,
 ) -> Path:
     """Constructs the file path for a DICOM instance when transferring/downloading"""

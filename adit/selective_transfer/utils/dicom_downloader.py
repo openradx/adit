@@ -2,7 +2,6 @@ import asyncio
 import logging
 import time
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime
 from functools import partial
 from io import BytesIO
 from pathlib import Path
@@ -12,6 +11,7 @@ from typing import AsyncGenerator
 from adit_radis_shared.accounts.models import User
 from adrf.views import sync_to_async
 from django.conf import settings
+from django.utils import timezone
 from pydicom import Dataset
 from requests import HTTPError
 from rest_framework.exceptions import NotFound
@@ -182,7 +182,7 @@ class DicomDownloader:
         """Stream zips the retrieved study in the async queue"""
 
         async def generate_files_to_add_in_zip(executor: ThreadPoolExecutor):
-            modified_at = datetime.now()
+            modified_at = timezone.now()
             mode = S_IFREG | 0o600
 
             async for buffer_gen, file_path in self._consume_queue(
