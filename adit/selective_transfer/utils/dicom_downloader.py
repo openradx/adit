@@ -6,7 +6,7 @@ from functools import partial
 from io import BytesIO
 from pathlib import Path
 from stat import S_IFREG
-from typing import AsyncGenerator
+from typing import Any, AsyncGenerator, Coroutine
 
 from adit_radis_shared.accounts.models import User
 from adrf.views import sync_to_async
@@ -35,7 +35,21 @@ class DicomDownloader:
         self.queue = asyncio.Queue[Dataset | None]()
         self._producer_checked_event = asyncio.Event()
         self._start_consumer_event = asyncio.Event()
-        self._current_download_errors: list[Exception] = []
+        self._tasks: list[asyncio.Task[Any]] = []
+        self._download_error: Exception | None = None
+
+    def _schedule(self, coro: Coroutine[Any, Any, Any]) -> asyncio.Task[Any]:
+        task = asyncio.create_task(coro)
+        self._tasks.append(task)
+        return task
+
+    async def _cancel_pending_tasks(self) -> None:
+        if not self._tasks:
+            return
+        for task in self._tasks:
+            task.cancel()
+        await asyncio.gather(*self._tasks, return_exceptions=True)
+        self._tasks.clear()
 
     def download_study(
         self,
@@ -48,7 +62,7 @@ class DicomDownloader:
         """Directly downloads a study from a DicomServer"""
 
         # Producer: Retrieves the study and puts Datasets in queue
-        asyncio.create_task(
+        self._schedule(
             self.retrieve_study(
                 user=user,
                 patient_id=patient_id,
@@ -72,8 +86,8 @@ class DicomDownloader:
 
         # Check if fetch_study raised early
         # Otherwise, consumer begins streamer
-        if self._current_download_errors:
-            raise self._current_download_errors[0]
+        if self._download_error:
+            raise self._download_error
         else:
             self._start_consumer_event.set()
 
@@ -93,7 +107,7 @@ class DicomDownloader:
             trial_protocol_id=study_params["trial_protocol_id"],
             trial_protocol_name=study_params["trial_protocol_name"],
         )
-        fetch_put_task = asyncio.create_task(
+        fetch_put_task = self._schedule(
             sync_to_async(self._fetch_put_study, thread_sensitive=False)(
                 user=user,
                 patient_id=patient_id,
@@ -103,7 +117,7 @@ class DicomDownloader:
                 loop=loop,
             )
         )
-        asyncio.create_task(self._put_sentinel(fetch_put_task))
+        self._schedule(self._put_sentinel(fetch_put_task))
 
     def _fetch_put_study(
         self,
@@ -168,7 +182,7 @@ class DicomDownloader:
             await fetch_put_task
         # Re-raise the errors raised by _fetch_put_study
         except Exception as err:
-            self._current_download_errors.append(err)
+            self._download_error = err
         finally:
             self._producer_checked_event.set()
             await self.queue.put(None)
@@ -200,6 +214,7 @@ class DicomDownloader:
                 yield zipped_file
         finally:
             executor.shutdown(wait=True)
+            await self._cancel_pending_tasks()
             elapsed = time.monotonic() - start_time
             logger.debug(f"Download completed in {elapsed:.2f} seconds")
 
@@ -248,9 +263,9 @@ class DicomDownloader:
             ds_buffer, file_path = await loop.run_in_executor(executor, ds_to_buffer, queue_ds)
             yield buffer_to_gen(ds_buffer.getvalue()), file_path
         # Re-raise any error caught during _fetch_put_study
-        if self._current_download_errors:
+        if self._download_error:
             # Because we cannot change the httpresponse once it has started streaming,
             # we add an error.txt file in the downloaded zip
-            err = self._current_download_errors[0]
+            err = self._download_error
             err_buf = BytesIO(f"Error during study download:\n\n{err}".encode("utf-8"))
             yield buffer_to_gen(err_buf.getvalue()), "error.txt"
