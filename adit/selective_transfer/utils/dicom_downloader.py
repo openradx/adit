@@ -84,8 +84,8 @@ class DicomDownloader:
         # Or the sentinel which will happen if fetch_study raises early
         await self._producer_checked_event.wait()
 
-        # Check if fetch_study raised early
-        # Otherwise, consumer begins streamer
+        # Check if fetch_study raised early: re-raise the error
+        # Otherwise, signal the consumer to begin streaming
         if self._download_error:
             raise self._download_error
         else:
@@ -97,7 +97,7 @@ class DicomDownloader:
         patient_id: str,
         study_uid: str,
         study_params: StudyParams,
-    ):
+    ) -> None:
         """Retrieves the study for download"""
 
         loop = asyncio.get_running_loop()
@@ -180,10 +180,12 @@ class DicomDownloader:
         """Inserts sentinel to the queue at the end of fetch_put_task"""
         try:
             await fetch_put_task
-        # Re-raise the errors raised by _fetch_put_study
+        # Save the raised exception from fetch_put_task,
+        # which will be raised either by the barrier or returned by the consumer
         except Exception as err:
             self._download_error = err
         finally:
+            # Releases barrier (wait_until_ready) early if fetch_put_task fails early
             self._producer_checked_event.set()
             await self.queue.put(None)
 
@@ -208,12 +210,13 @@ class DicomDownloader:
                 yield (file_path, modified_at, mode, NO_COMPRESSION_64, buffer_gen)
 
         start_time = time.monotonic()
-        executor = ThreadPoolExecutor(max_workers=4)
+        # Only one item is consumed at a time from the queue, so only one thread is necessary
+        executor = ThreadPoolExecutor(max_workers=1)
         try:
             async for zipped_file in async_stream_zip(generate_files_to_add_in_zip(executor)):
                 yield zipped_file
         finally:
-            executor.shutdown(wait=True)
+            executor.shutdown(wait=False, cancel_futures=True)
             await self._cancel_pending_tasks()
             elapsed = time.monotonic() - start_time
             logger.debug(f"Download completed in {elapsed:.2f} seconds")

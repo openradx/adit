@@ -270,8 +270,8 @@ class DownloadQueryParamsValidationForm(forms.Form):
         input_formats=["%H%M%S"],  # matches `|date:'His'`
     )
     study_modalities = forms.CharField(
-        max_length=64,
         required=False,
+        max_length=64,
         validators=[validate_modalities],
     )
     pseudonym = forms.CharField(
@@ -279,8 +279,16 @@ class DownloadQueryParamsValidationForm(forms.Form):
         max_length=64,
         validators=[no_backslash_char_validator, no_control_chars_validator],
     )
-    trial_protocol_id = forms.CharField(max_length=64, required=False)
-    trial_protocol_name = forms.CharField(max_length=64, required=False)
+    trial_protocol_id = forms.CharField(
+        required=False,
+        max_length=64,
+        validators=[no_backslash_char_validator, no_control_chars_validator],
+    )
+    trial_protocol_name = forms.CharField(
+        required=False,
+        max_length=64,
+        validators=[no_backslash_char_validator, no_control_chars_validator],
+    )
 
     def clean_study_modalities(self):
         data = self.cleaned_data.get("study_modalities")
