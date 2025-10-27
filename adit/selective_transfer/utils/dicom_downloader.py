@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial
@@ -13,11 +14,9 @@ from adrf.views import sync_to_async
 from django.conf import settings
 from django.utils import timezone
 from pydicom import Dataset
-from requests import HTTPError
 from rest_framework.exceptions import NotFound
 from stream_zip import NO_COMPRESSION_64, async_stream_zip
 
-from adit.core.errors import DicomError
 from adit.core.models import DicomServer
 from adit.core.types import StudyParams
 from adit.core.utils.dicom_dataset import QueryDataset
@@ -33,6 +32,8 @@ class DicomDownloader:
         self.server_id = server_id
         self.manipulator = DicomManipulator()
         self.queue = asyncio.Queue[Dataset | None]()
+        self._first_put_lock = threading.Lock()
+        self._has_put_once = False
         self._producer_checked_event = asyncio.Event()
         self._start_consumer_event = asyncio.Event()
         self._tasks: list[asyncio.Task[Any]] = []
@@ -130,16 +131,14 @@ class DicomDownloader:
     ):
         """Fetches Datasets of a study and puts them into the async queue"""
 
-        first_item_set = False
-
         def callback(ds: Dataset) -> None:
-            nonlocal first_item_set
             modifier(ds)
             # Schedules a task on the event loop that puts the dataset into the async queue
             loop.call_soon_threadsafe(self.queue.put_nowait, ds)
-            if not first_item_set:
-                first_item_set = True
-                loop.call_soon_threadsafe(self._producer_checked_event.set)
+            with self._first_put_lock:
+                if not self._has_put_once:
+                    self._has_put_once = True
+                    loop.call_soon_threadsafe(self._producer_checked_event.set)
 
         try:
             server = DicomServer.objects.accessible_by_user(user, "source").get(id=self.server_id)
@@ -169,8 +168,8 @@ class DicomDownloader:
         # Raise NotFound error if specified DicomServer is not accessible
         except DicomServer.DoesNotExist:
             raise NotFound("Invalid DICOM server.")
-        # Re-raise DicomErrors/HttpErrors from fetch_series/fetch_study
-        except (DicomError, HTTPError):
+        # Raise all other errors from fetch_study
+        except Exception:
             raise
 
     async def _put_sentinel(
