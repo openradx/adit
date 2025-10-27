@@ -16,6 +16,7 @@ from adit.core.validators import (
     no_backslash_char_validator,
     no_control_chars_validator,
     no_wildcard_chars_validator,
+    validate_modalities,
 )
 
 from .models import SelectiveTransferJob
@@ -268,7 +269,11 @@ class DownloadQueryParamsValidationForm(forms.Form):
         required=True,
         input_formats=["%H%M%S"],  # matches `|date:'His'`
     )
-    study_modalities = forms.CharField(max_length=64, required=False)
+    study_modalities = forms.CharField(
+        max_length=64,
+        required=False,
+        validators=[validate_modalities],
+    )
     pseudonym = forms.CharField(
         required=False,
         max_length=64,
@@ -284,5 +289,5 @@ class DownloadQueryParamsValidationForm(forms.Form):
         # Convert comma-separated string to list
         return [m.strip() for m in data.split(",") if m.strip()]
 
-    def to_dataclass(self) -> "StudyParams":
+    def to_dataclass(self) -> StudyParams:
         return StudyParams(**self.cleaned_data)
