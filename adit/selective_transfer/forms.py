@@ -11,7 +11,17 @@ from django.utils.translation import gettext_lazy as _
 from adit.core.fields import DicomNodeChoiceField
 from adit.core.models import DicomNode
 from adit.core.utils.dicom_utils import person_name_to_dicom
-from adit.core.validators import no_backslash_char_validator, no_control_chars_validator
+from adit.core.validators import (
+    no_backslash_char_validator,
+    no_control_chars_validator,
+    no_wildcard_chars_validator,
+)
+
+id_validators = [
+    no_backslash_char_validator,
+    no_control_chars_validator,
+    no_wildcard_chars_validator,
+]
 
 from .models import SelectiveTransferJob
 
@@ -242,7 +252,13 @@ class SelectiveTransferJobForm(forms.ModelForm):
         return Column(Field(field_name))
 
 
-class SelectiveTransferDownloadForm(forms.Form):
+class DownloadPathParamsValidationForm(forms.Form):
+    server_id = forms.CharField(validators=id_validators)
+    patient_id = forms.CharField(validators=id_validators)
+    study_uid = forms.CharField(validators=id_validators)
+
+
+class DownloadQueryParamsValidationForm(forms.Form):
     pseudonym = forms.CharField(
         required=False,
         max_length=64,

@@ -27,7 +27,11 @@ from adit.core.views import (
 )
 
 from .filters import SelectiveTransferJobFilter, SelectiveTransferTaskFilter
-from .forms import SelectiveTransferDownloadForm, SelectiveTransferJobForm
+from .forms import (
+    DownloadPathParamsValidationForm,
+    DownloadQueryParamsValidationForm,
+    SelectiveTransferJobForm,
+)
 from .mixins import SelectiveTransferLockedMixin
 from .models import SelectiveTransferJob, SelectiveTransferTask
 from .tables import SelectiveTransferJobTable, SelectiveTransferTaskTable
@@ -62,18 +66,31 @@ async def selective_transfer_download_study_view(
     patient_id: str,
     study_uid: str,
 ) -> HttpResponse | StreamingHttpResponse:
-    form = SelectiveTransferDownloadForm(request.GET)
-    if not form.is_valid():
-        return HttpResponse(str(form.errors), status=400)
-    study_params = form.cleaned_data
+    # Validate path parameters
+    path_form = DownloadPathParamsValidationForm(
+        {
+            "server_id": server_id,
+            "patient_id": patient_id,
+            "study_uid": study_uid,
+        }
+    )
+    if not path_form.is_valid():
+        return HttpResponse(str(path_form.errors), status=400)
+    study_ids = path_form.cleaned_data
 
-    downloader = DicomDownloader(server_id)
-    download_folder = Path(f"study_download_{study_uid}")
+    # Validate query parameters
+    query_form = DownloadQueryParamsValidationForm(request.GET)
+    if not query_form.is_valid():
+        return HttpResponse(str(query_form.errors), status=400)
+    study_params = query_form.cleaned_data
+
+    downloader = DicomDownloader(study_ids["server_id"])
+    download_folder = Path(f"study_download_{study_ids['study_uid']}")
 
     stream = downloader.download_study(
         user=request.user,
-        patient_id=patient_id,
-        study_uid=study_uid,
+        patient_id=study_ids["patient_id"],
+        study_uid=study_ids["study_uid"],
         study_params=study_params,
         download_folder=download_folder,
     )
