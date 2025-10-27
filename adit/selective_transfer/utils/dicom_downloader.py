@@ -43,7 +43,7 @@ class DicomDownloader:
         study_uid: str,
         study_params: dict,
         download_folder: Path,
-    ):
+    ) -> AsyncGenerator[bytes, None]:
         """Directly downloads a study from a DicomServer"""
 
         # Producer: Retrieves the study and puts Datasets in queue
@@ -64,8 +64,6 @@ class DicomDownloader:
 
     async def wait_until_ready(self) -> None:
         """Blocks until the first dataset is available or an early error occurred."""
-        if self._producer_checked_event is None or self._current_download_errors is None:
-            raise RuntimeError("download_study must be called before wait_until_ready")
 
         # Set by either the first callback of fetch_study
         # Or the sentinel which will happen if fetch_study raises early
