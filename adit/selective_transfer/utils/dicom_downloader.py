@@ -31,7 +31,7 @@ class DicomDownloader:
     def __init__(self, server_id: str):
         self.server_id = server_id
         self.manipulator = DicomManipulator()
-        self.queue = asyncio.Queue[Dataset | None]()
+        self.queue = asyncio.Queue[Dataset | None](maxsize=100)
         self._first_put_lock = threading.Lock()
         self._has_put_once = False
         self._producer_checked_event = asyncio.Event()
@@ -135,10 +135,14 @@ class DicomDownloader:
             modifier(ds)
             # Schedules a task on the event loop that puts the dataset into the async queue
             loop.call_soon_threadsafe(self.queue.put_nowait, ds)
+            should_signal = False
             with self._first_put_lock:
                 if not self._has_put_once:
                     self._has_put_once = True
-                    loop.call_soon_threadsafe(self._producer_checked_event.set)
+                    should_signal = True
+
+            if should_signal:
+                loop.call_soon_threadsafe(self._producer_checked_event.set)
 
         try:
             server = DicomServer.objects.accessible_by_user(user, "source").get(id=self.server_id)
@@ -168,9 +172,6 @@ class DicomDownloader:
         # Raise NotFound error if specified DicomServer is not accessible
         except DicomServer.DoesNotExist:
             raise NotFound("Invalid DICOM server.")
-        # Raise all other errors from fetch_study
-        except Exception:
-            raise
 
     async def _put_sentinel(
         self,
@@ -215,7 +216,7 @@ class DicomDownloader:
             async for zipped_file in async_stream_zip(generate_files_to_add_in_zip(executor)):
                 yield zipped_file
         finally:
-            executor.shutdown(wait=False, cancel_futures=True)
+            executor.shutdown(wait=True)
             await self._cancel_pending_tasks()
             elapsed = time.monotonic() - start_time
             logger.debug(f"Download completed in {elapsed:.2f} seconds")
