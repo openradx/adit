@@ -167,7 +167,7 @@ def construct_download_file_path(
                 "Sanitized path component '%s' resolved to a disallowed segment; using fallback.",
                 raw_value,
             )
-            return "default"
+            return "safe_path_placeholder"
         return component
 
     def _resolve_for_check(path: Path) -> Path:
