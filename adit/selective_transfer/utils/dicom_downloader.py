@@ -234,7 +234,6 @@ class DicomDownloader:
             ds_buffer = BytesIO()
             write_dataset(ds, ds_buffer)
             ds_buffer.seek(0)
-
             file_path = construct_download_file_path(
                 ds=ds,
                 download_folder=download_folder,
@@ -262,7 +261,12 @@ class DicomDownloader:
             queue_ds = await self.queue.get()
             if queue_ds is None:
                 break
-            ds_buffer, file_path = await loop.run_in_executor(executor, ds_to_buffer, queue_ds)
+            try:
+                ds_buffer, file_path = await loop.run_in_executor(executor, ds_to_buffer, queue_ds)
+            except Exception as err:
+                # Error while constructing the file path from the dataset
+                self._download_error = err
+                break
             yield buffer_to_gen(ds_buffer.getvalue()), file_path
         # Re-raise any error caught during _fetch_put_study
         if self._download_error:

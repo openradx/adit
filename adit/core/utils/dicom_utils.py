@@ -159,8 +159,25 @@ def construct_download_file_path(
 ) -> Path:
     """Constructs the file path for a DICOM instance when transferring/downloading"""
 
+    def _safe_path_component(raw_value: str) -> str:
+        """Return a sanitized component that cannot trigger path traversal."""
+        component = sanitize_filename(raw_value)
+        if component in {".", ".."}:
+            logger.warning(
+                "Sanitized path component '%s' resolved to a disallowed segment; using fallback.",
+                raw_value,
+            )
+            return "default"
+        return component
+
+    def _resolve_for_check(path: Path) -> Path:
+        """Resolve a path for validation without altering the returned path."""
+        if path.is_absolute():
+            return path.resolve(strict=False)
+        return (Path.cwd() / path).resolve(strict=False)
+
     # Determine the base patient folder
-    patient_folder = download_folder / sanitize_filename(pseudonym or patient_id)
+    patient_folder = download_folder / _safe_path_component(pseudonym or patient_id)
 
     # Handle modality filtering
     exclude_modalities = settings.EXCLUDE_MODALITIES
@@ -173,7 +190,7 @@ def construct_download_file_path(
     modalities_str = ",".join(modalities) if modalities else "UNKNOWN"
     # Build study folder path
     prefix = f"{study_date.strftime('%Y%m%d')}-{study_time.strftime('%H%M%S')}"
-    study_folder = patient_folder / f"{prefix}-{modalities_str}"
+    study_folder = patient_folder / _safe_path_component(f"{prefix}-{modalities_str}")
 
     # Determine final folder based on series structure setting
     if settings.CREATE_SERIES_SUB_FOLDERS:
@@ -191,5 +208,15 @@ def construct_download_file_path(
     # Generate the final file path
     file_name = sanitize_filename(f"{ds.SOPInstanceUID}.dcm")
     file_path = final_folder / file_name
+
+    resolved_base_path = _resolve_for_check(download_folder)
+    resolved_file_path = _resolve_for_check(file_path)
+    if ".." in file_path.parts or not resolved_file_path.is_relative_to(resolved_base_path):
+        logger.error(
+            "Detected unsafe download path outside base folder '%s' for SOPInstanceUID '%s'.",
+            download_folder,
+            ds.SOPInstanceUID,
+        )
+        raise ValueError("Unsafe download path detected from dataset metadata.")
 
     return file_path
