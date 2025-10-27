@@ -3,7 +3,7 @@ import logging
 import re
 from os import PathLike
 from pathlib import Path
-from typing import Any, BinaryIO, List, Optional
+from typing import Any, BinaryIO, Optional
 
 from django.conf import settings
 from pydicom import Dataset, dcmread, dcmwrite, valuerep
@@ -152,9 +152,9 @@ def construct_download_file_path(
     ds: Dataset,
     download_folder: Path,
     patient_id: str,
-    study_modalities: List[str],
     study_date: datetime.date,
     study_time: datetime.time,
+    study_modalities: list[str] = [],
     pseudonym: Optional[str] = None,
 ) -> Path:
     """Constructs the file path for a DICOM instance when transferring/downloading"""
@@ -165,7 +165,6 @@ def construct_download_file_path(
     # Handle modality filtering
     exclude_modalities = settings.EXCLUDE_MODALITIES
     modalities = study_modalities
-    modalities_str = ""
     if pseudonym and exclude_modalities and study_modalities:
         included_modalities = [
             modality for modality in study_modalities if modality not in exclude_modalities

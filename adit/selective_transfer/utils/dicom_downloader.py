@@ -7,7 +7,7 @@ from functools import partial
 from io import BytesIO
 from pathlib import Path
 from stat import S_IFREG
-from typing import Any, AsyncGenerator
+from typing import AsyncGenerator
 
 from adit_radis_shared.accounts.models import User
 from adrf.views import sync_to_async
@@ -19,6 +19,7 @@ from stream_zip import NO_COMPRESSION_64, async_stream_zip
 
 from adit.core.errors import DicomError
 from adit.core.models import DicomServer
+from adit.core.types import StudyParams
 from adit.core.utils.dicom_dataset import QueryDataset
 from adit.core.utils.dicom_manipulator import DicomManipulator
 from adit.core.utils.dicom_operator import DicomOperator
@@ -41,7 +42,7 @@ class DicomDownloader:
         user: User,
         patient_id: str,
         study_uid: str,
-        study_params: dict,
+        study_params: StudyParams,
         download_folder: Path,
     ) -> AsyncGenerator[bytes, None]:
         """Directly downloads a study from a DicomServer"""
@@ -81,7 +82,7 @@ class DicomDownloader:
         user: User,
         patient_id: str,
         study_uid: str,
-        study_params: dict,
+        study_params: StudyParams,
     ):
         """Retrieves the study for download"""
 
@@ -175,7 +176,7 @@ class DicomDownloader:
     async def zip_study(
         self,
         patient_id: str,
-        study_params: dict,
+        study_params: StudyParams,
         download_folder: Path,
     ) -> AsyncGenerator[bytes, None]:
         """Stream zips the retrieved study in the async queue"""
@@ -206,7 +207,7 @@ class DicomDownloader:
         self,
         executor: ThreadPoolExecutor,
         patient_id: str,
-        study_params: dict[str, Any],
+        study_params: StudyParams,
         download_folder: Path,
     ):
         """Consumes and yields the datasets from the async queue"""
@@ -218,13 +219,13 @@ class DicomDownloader:
             ds_buffer.seek(0)
 
             file_path = construct_download_file_path(
-                ds,
-                download_folder,
-                patient_id,
-                study_params["study_modalities"],
-                study_params["study_date"],
-                study_params["study_time"],
-                study_params["pseudonym"],
+                ds=ds,
+                download_folder=download_folder,
+                patient_id=patient_id,
+                study_date=study_params["study_date"],
+                study_time=study_params["study_time"],
+                study_modalities=study_params["study_modalities"],
+                pseudonym=study_params["pseudonym"],
             )
 
             return ds_buffer, str(file_path)

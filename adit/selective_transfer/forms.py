@@ -10,6 +10,7 @@ from django.utils.translation import gettext_lazy as _
 
 from adit.core.fields import DicomNodeChoiceField
 from adit.core.models import DicomNode
+from adit.core.types import StudyParams
 from adit.core.utils.dicom_utils import person_name_to_dicom
 from adit.core.validators import (
     no_backslash_char_validator,
@@ -17,13 +18,13 @@ from adit.core.validators import (
     no_wildcard_chars_validator,
 )
 
+from .models import SelectiveTransferJob
+
 id_validators = [
     no_backslash_char_validator,
     no_control_chars_validator,
     no_wildcard_chars_validator,
 ]
-
-from .models import SelectiveTransferJob
 
 
 class SelectiveTransferJobForm(forms.ModelForm):
@@ -259,6 +260,15 @@ class DownloadPathParamsValidationForm(forms.Form):
 
 
 class DownloadQueryParamsValidationForm(forms.Form):
+    study_date = forms.DateField(
+        required=True,
+        input_formats=["%Y%m%d"],  # matches `|date:'Ymd'`
+    )
+    study_time = forms.TimeField(
+        required=True,
+        input_formats=["%H%M%S"],  # matches `|date:'His'`
+    )
+    study_modalities = forms.CharField(max_length=64, required=False)
     pseudonym = forms.CharField(
         required=False,
         max_length=64,
@@ -266,19 +276,13 @@ class DownloadQueryParamsValidationForm(forms.Form):
     )
     trial_protocol_id = forms.CharField(max_length=64, required=False)
     trial_protocol_name = forms.CharField(max_length=64, required=False)
-    study_modalities = forms.CharField(max_length=64, required=False)
-    study_date = forms.DateField(
-        required=False,
-        input_formats=["%Y%m%d"],  # matches `|date:'Ymd'`
-    )
-    study_time = forms.TimeField(
-        required=False,
-        input_formats=["%H%M%S"],  # matches `|date:'His'`
-    )
 
     def clean_study_modalities(self):
         data = self.cleaned_data.get("study_modalities")
         if not data or data == "—":
-            return None
+            return []
         # Convert comma-separated string to list
         return [m.strip() for m in data.split(",") if m.strip()]
+
+    def to_dataclass(self) -> "StudyParams":
+        return StudyParams(**self.cleaned_data)
