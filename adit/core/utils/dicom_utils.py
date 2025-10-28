@@ -167,7 +167,7 @@ def construct_download_file_path(
                 "Sanitized path component '%s' resolved to a disallowed segment; using fallback.",
                 raw_value,
             )
-            return "safe_path_placeholder"
+            return "safe_default"
         return component
 
     def _resolve_for_check(path: Path) -> Path:
@@ -200,7 +200,6 @@ def construct_download_file_path(
         else:
             series_description = ds.get("SeriesDescription", "Undefined")
             series_folder_name = f"{series_number}-{_safe_path_component(series_description)}"
-        series_folder_name = sanitize_filename(series_folder_name)
         final_folder = study_folder / series_folder_name
     else:
         final_folder = study_folder
@@ -213,9 +212,8 @@ def construct_download_file_path(
     resolved_file_path = _resolve_for_check(file_path)
     if ".." in file_path.parts or not resolved_file_path.is_relative_to(resolved_base_path):
         raise ValueError(
-            "Detected unsafe download path outside base folder '%s' for SOPInstanceUID '%s'.",
-            download_folder,
-            ds.SOPInstanceUID,
+            f"Detected unsafe download path outside base folder '{download_folder}' "
+            f"for SOPInstanceUID '{ds.SOPInstanceUID}'."
         )
 
     return file_path

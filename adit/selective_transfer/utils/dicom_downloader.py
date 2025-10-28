@@ -211,7 +211,7 @@ class DicomDownloader:
 
         start_time = time.monotonic()
         # Only one item is consumed at a time from the queue
-        # Thread poool will only ever use one thread, so set max_workers to 1
+        # Thread pool will only ever use one thread, so set max_workers to 1
         executor = ThreadPoolExecutor(max_workers=1)
         try:
             async for zipped_file in async_stream_zip(generate_files_to_add_in_zip(executor)):
