@@ -208,9 +208,10 @@ def construct_download_file_path(
     file_name = sanitize_filename(f"{ds.SOPInstanceUID}.dcm")
     file_path = final_folder / file_name
 
-    resolved_base_path = _resolve_for_check(download_folder)
     resolved_file_path = _resolve_for_check(file_path)
-    if ".." in file_path.parts or not resolved_file_path.is_relative_to(resolved_base_path):
+    resolved_base_path = _resolve_for_check(download_folder)
+
+    if not resolved_file_path.is_relative_to(resolved_base_path):
         raise ValueError(
             f"Detected unsafe download path outside base folder '{download_folder}' "
             f"for SOPInstanceUID '{ds.SOPInstanceUID}'."

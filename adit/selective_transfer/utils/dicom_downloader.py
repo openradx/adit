@@ -31,7 +31,7 @@ class DicomDownloader:
     def __init__(self, server_id: str):
         self.server_id = server_id
         self.manipulator = DicomManipulator()
-        self.queue = asyncio.Queue[Dataset | None](maxsize=100)
+        self.queue = asyncio.Queue[Dataset | None](maxsize=1000)
         self._first_put_lock = threading.Lock()
         self._has_put_once = False
         self._producer_checked_event = asyncio.Event()
@@ -247,7 +247,8 @@ class DicomDownloader:
                     pseudonym=study_params["pseudonym"],
                 )
             # Catch and re-raise value error raised by construct_download_file_path
-            except ValueError:
+            except ValueError as err:
+                logger.error("Failed to construct download path: %s", err)
                 raise
 
             return ds_buffer, str(file_path)

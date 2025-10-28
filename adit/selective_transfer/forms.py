@@ -16,6 +16,7 @@ from adit.core.validators import (
     no_backslash_char_validator,
     no_control_chars_validator,
     no_wildcard_chars_validator,
+    uid_chars_validator,
     validate_modalities,
 )
 
@@ -257,7 +258,7 @@ class SelectiveTransferJobForm(forms.ModelForm):
 class DownloadPathParamsValidationForm(forms.Form):
     server_id = forms.CharField(validators=id_validators)
     patient_id = forms.CharField(validators=id_validators)
-    study_uid = forms.CharField(validators=id_validators)
+    study_uid = forms.CharField(validators=[uid_chars_validator])
 
 
 class DownloadQueryParamsValidationForm(forms.Form):
