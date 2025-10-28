@@ -199,7 +199,7 @@ def construct_download_file_path(
             series_folder_name = ds.SeriesInstanceUID
         else:
             series_description = ds.get("SeriesDescription", "Undefined")
-            series_folder_name = f"{series_number}-{series_description}"
+            series_folder_name = f"{series_number}-{_safe_path_component(series_description)}"
         series_folder_name = sanitize_filename(series_folder_name)
         final_folder = study_folder / series_folder_name
     else:
@@ -212,11 +212,10 @@ def construct_download_file_path(
     resolved_base_path = _resolve_for_check(download_folder)
     resolved_file_path = _resolve_for_check(file_path)
     if ".." in file_path.parts or not resolved_file_path.is_relative_to(resolved_base_path):
-        logger.error(
+        raise ValueError(
             "Detected unsafe download path outside base folder '%s' for SOPInstanceUID '%s'.",
             download_folder,
             ds.SOPInstanceUID,
         )
-        raise ValueError("Unsafe download path detected from dataset metadata.")
 
     return file_path

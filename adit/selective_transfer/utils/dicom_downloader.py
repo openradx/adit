@@ -210,7 +210,8 @@ class DicomDownloader:
                 yield (file_path, modified_at, mode, NO_COMPRESSION_64, buffer_gen)
 
         start_time = time.monotonic()
-        # Only one item is consumed at a time from the queue, so only one thread is necessary
+        # Only one item is consumed at a time from the queue
+        # Thread poool will only ever use one thread, so set max_workers to 1
         executor = ThreadPoolExecutor(max_workers=1)
         try:
             async for zipped_file in async_stream_zip(generate_files_to_add_in_zip(executor)):
@@ -235,15 +236,19 @@ class DicomDownloader:
             ds_buffer = BytesIO()
             write_dataset(ds, ds_buffer)
             ds_buffer.seek(0)
-            file_path = construct_download_file_path(
-                ds=ds,
-                download_folder=download_folder,
-                patient_id=patient_id,
-                study_date=study_params["study_date"],
-                study_time=study_params["study_time"],
-                study_modalities=study_params["study_modalities"],
-                pseudonym=study_params["pseudonym"],
-            )
+            try:
+                file_path = construct_download_file_path(
+                    ds=ds,
+                    download_folder=download_folder,
+                    patient_id=patient_id,
+                    study_date=study_params["study_date"],
+                    study_time=study_params["study_time"],
+                    study_modalities=study_params["study_modalities"],
+                    pseudonym=study_params["pseudonym"],
+                )
+            # Catch and re-raise value error raised by construct_download_file_path
+            except ValueError:
+                raise
 
             return ds_buffer, str(file_path)
 
@@ -264,7 +269,7 @@ class DicomDownloader:
                 break
             try:
                 ds_buffer, file_path = await loop.run_in_executor(executor, ds_to_buffer, queue_ds)
-            except Exception as err:
+            except ValueError as err:
                 # Error while constructing the file path from the dataset
                 self._download_error = err
                 break
