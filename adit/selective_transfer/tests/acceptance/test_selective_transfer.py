@@ -245,3 +245,92 @@ def test_unpseudonymized_selective_direct_download_with_dimse_server(
             "1.3.12.2.1107.5.1.4.66002.30000020070513455668000000610.dcm",
         }
         assert actual_files == expected_files
+
+
+@pytest.mark.acceptance
+@pytest.mark.order("last")
+@pytest.mark.django_db(transaction=True)
+def test_pseudonymized_selective_direct_download_with_dimse_server(
+    page: Page, channels_live_server: ChannelsLiveServer
+):
+    # Arrange
+    user = create_and_login_example_user(page, channels_live_server.url)
+    group = create_selective_transfer_group()
+    add_user_to_group(user, group)
+    add_permission(group, "selective_transfer", "can_download_study")
+
+    group.refresh_from_db()
+
+    orthancs = setup_dimse_orthancs()
+    grant_access(group, orthancs[0], source=True)
+    grant_access(group, orthancs[1], destination=True)
+
+    user.refresh_from_db()
+
+    server_id = orthancs[0].pk
+    patient_id = "1001"
+    study_uid = "1.2.840.113845.11.1000000001951524609.20200705182951.2689481"
+    encoded_study_modalities = "CT%2CSR"
+    study_date = "20190604"
+    study_time = "182823"
+    pseudonym = "Test Pseudonym"
+    encoded_pseudonym = "Test+Pseudonym"
+    included_modalities = "CT"
+
+    # Act
+    page.goto(channels_live_server.url + "/selective-transfer/jobs/new/")
+    page.get_by_label("Source").select_option(label="DICOM Server Orthanc Test Server 1")
+    page.get_by_label("Destination").select_option(label="DICOM Server Orthanc Test Server 2")
+    page.get_by_label("Pseudonym").click(force=True)
+    page.get_by_label("Pseudonym").fill(f"{pseudonym}")
+    page.get_by_label("Patient ID").click()
+    page.get_by_label("Patient ID").fill(f"{patient_id}")
+    page.get_by_label("Patient ID").press("Enter")
+
+    base_download_link = f"download/servers/{server_id}/patients/{patient_id}/studies/{study_uid}"
+    optional_params = (
+        f"?pseudonym={encoded_pseudonym}"
+        f"&study_modalities={encoded_study_modalities}"
+        f"&study_date={study_date}"
+        f"&study_time={study_time}"
+    )
+    download_link = base_download_link + optional_params
+    link_locator = page.locator(f'a[href*="{download_link}"]')
+
+    link_locator.wait_for()
+
+    # Intercept the download and capture it
+    with page.expect_download() as download_info:
+        link_locator.click()
+
+    download = download_info.value
+
+    # Read file content directly
+    path = download.path()
+    with open(path, "rb") as f:
+        zip_bytes = io.BytesIO(f.read())
+
+    # Inspect zip file contents
+    base_path = (
+        f"study_download_{study_uid}/{pseudonym}/{study_date}-{study_time}-{included_modalities}"
+    )
+    with zipfile.ZipFile(zip_bytes) as zf:
+        file_entries = [name for name in zf.namelist() if not name.endswith("/")]
+        expected_series_file_counts = {
+            f"{base_path}/2-Kopf nativ  5.0  H42s/": 4,
+            f"{base_path}/3-Kopf nativ  2.0  H70h/": 4,
+            f"{base_path}/1-Topogramm  0.6  T20f/": 2,
+        }
+        actual_series_file_counts = {}
+
+        for entry in file_entries:
+            assert entry.endswith(".dcm"), f"Unexpected file type in archive: {entry}"
+            assert entry.startswith(f"{base_path}/"), (
+                f"File {entry} not contained in base path {base_path}"
+            )
+            series_path = entry.rsplit("/", 1)[0] + "/"
+            actual_series_file_counts[series_path] = (
+                actual_series_file_counts.get(series_path, 0) + 1
+            )
+
+        assert actual_series_file_counts == expected_series_file_counts
