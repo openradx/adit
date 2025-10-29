@@ -2,11 +2,51 @@ from rest_framework.exceptions import ErrorDetail
 
 
 class DicomError(Exception):
+    """Base exception for all DICOM-related errors.
+
+    Use this for permanent failures that should not be retried automatically,
+    such as invalid UIDs, missing configuration, or data validation errors.
+    """
+
     pass
 
 
-class RetriableDicomError(Exception):
+class RetriableDicomError(DicomError):
+    """DICOM error caused by transient issues that should trigger automatic retry.
+
+    This exception indicates temporary problems that may resolve on retry,
+    such as:
+    - Network timeouts or connection failures
+    - HTTP 503 (Service Unavailable) or 429 (Rate Limit)
+    - Temporary server unavailability
+    - Transient database locks
+
+    The stamina retry decorator and Procrastinate task queue will automatically
+    retry operations that raise this exception.
+    """
+
     pass
+
+
+def is_retriable_http_status(status_code: int) -> bool:
+    """Check if an HTTP status code indicates a transient error that should be retried.
+
+    Retriable status codes:
+    - 408: Request Timeout
+    - 409: Conflict (may resolve on retry)
+    - 429: Too Many Requests (rate limiting)
+    - 500: Internal Server Error (may be transient)
+    - 503: Service Unavailable (server temporarily overloaded)
+    - 504: Gateway Timeout
+
+    Args:
+        status_code: HTTP status code to check
+
+    Returns:
+        True if the status code indicates a retriable error, False otherwise
+    """
+    retriable_status_codes = [408, 409, 429, 500, 503, 504]
+    return status_code in retriable_status_codes
 
 
 class BatchFileSizeError(Exception):
