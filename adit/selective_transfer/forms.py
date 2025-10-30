@@ -293,7 +293,7 @@ class DownloadQueryParamsValidationForm(forms.Form):
 
     def clean_study_modalities(self):
         data = self.cleaned_data.get("study_modalities")
-        if not data or data == "—":
+        if not data:
             return []
         # Convert comma-separated string to list
         return [m.strip() for m in data.split(",") if m.strip()]
