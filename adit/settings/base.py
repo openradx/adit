@@ -13,6 +13,7 @@ https://docs.djangoproject.com/en/3.0/ref/settings/
 from pathlib import Path
 from typing import Literal
 
+from django.core.exceptions import ImproperlyConfigured
 from environs import env
 from pydicom import config as pydicom_config
 
@@ -80,6 +81,7 @@ INSTALLED_APPS = [
     "adit.selective_transfer.apps.SelectiveTransferConfig",
     "adit.batch_query.apps.BatchQueryConfig",
     "adit.batch_transfer.apps.BatchTransferConfig",
+    "adit.upload.apps.UploadConfig",
     "adit.dicom_explorer.apps.DicomExplorerConfig",
     "adit.dicom_web.apps.DicomWebConfig",
     "channels",
@@ -452,3 +454,8 @@ SKIP_ELEMENTS_ANONYMIZATION = [
     "StudyDate",
     "StudyTime",
 ]
+
+# Secret seed for Patient data anonymization
+ANONYMIZATION_SEED = env.str("ANONYMIZATION_SEED", default="")
+if not ANONYMIZATION_SEED:
+    raise ImproperlyConfigured("ANONYMIZATION_SEED must be set")

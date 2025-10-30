@@ -1,0 +1,15 @@
+{% extends "core/core_layout.html" %}
+{% load static from static %}
+{% block script %}
+    {{ block.super }}
+    <script src="{% static 'vendor/dcmjs.js' %}"></script>
+    <script src="{% static 'vendor/dicom-web-anonymizer.js' %}"></script>
+    <script src="{% static 'vendor/dicomweb-client.js' %}"></script>
+    {{ anon_seed|json_script:"anon-seed-json" }}
+    <script src="{% static 'upload/upload.js' %}"></script>
+{% endblock script %}
+{% block heading %}
+    <div class="d-flex justify-content-between align-items-start">
+        <h4 class="mb-3">New Data Upload Job</h4>
+    </div>
+{% endblock heading %}
