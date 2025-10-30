@@ -1,4 +1,5 @@
 import asyncio
+import logging
 from io import BytesIO
 from typing import Any
 
@@ -26,6 +27,8 @@ from .forms import UploadForm
 
 UPLOAD_SOURCE = "upload_source"
 UPLOAD_DESTINATION = "upload_destination"
+
+logger = logging.getLogger(__name__)
 
 
 class UploadUpdatePreferencesView(BaseUpdatePreferencesView):
@@ -121,7 +124,15 @@ async def upload_api_view(request: AuthenticatedHttpRequest, node_id: str) -> Ht
             uploaded_file = file_data.get("dataset")
             assert isinstance(uploaded_file, UploadedFile)
             dataset_bytes = BytesIO(uploaded_file.read())
-            dataset = read_dataset(dataset_bytes)
+            try:
+                dataset = read_dataset(dataset_bytes)
+            except Exception as e:
+                logger.exception(
+                    "Failed to read dataset from uploaded file to node %s because of: %s",
+                    node_id,
+                    e,
+                )
+                return HttpResponse(status=400, content="Invalid dataset")
 
         if dataset is None or uploaded_file is None:
             return HttpResponse(status=400, content="No data received")
@@ -132,7 +143,8 @@ async def upload_api_view(request: AuthenticatedHttpRequest, node_id: str) -> Ht
             status = 200
             message = "Upload successful"
 
-        except Exception:
+        except Exception as e:
+            logger.exception("Upload failed to node %s because of: %s", node_id, e)
             status = 500
             message = "Upload failed"
 

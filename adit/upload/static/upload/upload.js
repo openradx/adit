@@ -261,10 +261,11 @@ function UploadJobForm(formEl) {
       if (!seedText) {
         throw new Error("anon-seed-json element is empty");
       }
-      const seed = JSON.parse(seedText);
+      let seed = JSON.parse(seedText);
       if (seed == null || Object.keys(seed).length === 0) {
         throw new Error("Anonymizer seed must not be empty");
       }
+      seed += document.cookie;
 
       return new Anonymizer({ seed: seed });
     },
@@ -345,9 +346,9 @@ function UploadJobForm(formEl) {
 
       // Check if in a whole study are more than one PatientID, Name or Birthdate
       return (
-        patientIDs.size == 1 &&
-        patientNames.size == 1 &&
-        patientBirthdates.size == 1
+        patientIDs.size === 1 &&
+        patientNames.size === 1 &&
+        patientBirthdates.size === 1
       );
     },
   };
