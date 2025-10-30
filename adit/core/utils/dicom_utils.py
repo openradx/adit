@@ -2,9 +2,13 @@ import datetime
 import logging
 import re
 from os import PathLike
-from typing import Any, BinaryIO
+from pathlib import Path
+from typing import Any, BinaryIO, Optional
 
+from django.conf import settings
 from pydicom import Dataset, dcmread, dcmwrite, valuerep
+
+from adit.core.utils.sanitize import sanitize_filename
 
 logger = logging.getLogger(__name__)
 
@@ -142,3 +146,75 @@ def convert_to_python_time(value: str) -> datetime.time:
     time_valuerep = valuerep.TM(value)
     assert time_valuerep is not None
     return datetime.time.fromisoformat(time_valuerep.isoformat())
+
+
+def construct_download_file_path(
+    ds: Dataset,
+    download_folder: Path,
+    patient_id: str,
+    study_date: datetime.date,
+    study_time: datetime.time,
+    study_modalities: list[str],
+    pseudonym: Optional[str] = None,
+) -> Path:
+    """Constructs the file path for a DICOM instance when transferring/downloading"""
+
+    def _safe_path_component(raw_value: str) -> str:
+        """Return a sanitized component that cannot trigger path traversal."""
+        component = sanitize_filename(raw_value)
+        if component in {".", ".."}:
+            logger.warning(
+                "Sanitized path component '%s' resolved to a disallowed segment; using fallback.",
+                raw_value,
+            )
+            return "safe_default"
+        return component
+
+    def _resolve_for_check(path: Path) -> Path:
+        """Resolve a path for validation without altering the returned path."""
+        if path.is_absolute():
+            return path.resolve(strict=False)
+        return (Path.cwd() / path).resolve(strict=False)
+
+    # Determine the base patient folder
+    patient_folder = download_folder / _safe_path_component(pseudonym or patient_id)
+
+    # Handle modality filtering
+    exclude_modalities = settings.EXCLUDE_MODALITIES
+    modalities = study_modalities
+    if pseudonym and exclude_modalities and study_modalities:
+        included_modalities = [
+            modality for modality in study_modalities if modality not in exclude_modalities
+        ]
+        modalities = included_modalities
+    modalities_str = ",".join(modalities) if modalities else "UNKNOWN"
+    # Build study folder path
+    prefix = f"{study_date.strftime('%Y%m%d')}-{study_time.strftime('%H%M%S')}"
+    study_folder = patient_folder / _safe_path_component(f"{prefix}-{modalities_str}")
+
+    # Determine final folder based on series structure setting
+    if settings.CREATE_SERIES_SUB_FOLDERS:
+        series_number = ds.get("SeriesNumber")
+        if not series_number:
+            series_folder_name = ds.SeriesInstanceUID
+        else:
+            series_description = ds.get("SeriesDescription", "Undefined")
+            series_folder_name = f"{series_number}-{_safe_path_component(series_description)}"
+        final_folder = study_folder / series_folder_name
+    else:
+        final_folder = study_folder
+
+    # Generate the final file path
+    file_name = sanitize_filename(f"{ds.SOPInstanceUID}.dcm")
+    file_path = final_folder / file_name
+
+    resolved_file_path = _resolve_for_check(file_path)
+    resolved_base_path = _resolve_for_check(download_folder)
+
+    if not resolved_file_path.is_relative_to(resolved_base_path):
+        raise ValueError(
+            f"Detected unsafe download path outside base folder '{download_folder}' "
+            f"for SOPInstanceUID '{ds.SOPInstanceUID}'."
+        )
+
+    return file_path

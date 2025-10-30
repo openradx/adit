@@ -10,10 +10,23 @@ from django.utils.translation import gettext_lazy as _
 
 from adit.core.fields import DicomNodeChoiceField
 from adit.core.models import DicomNode
+from adit.core.types import StudyParams
 from adit.core.utils.dicom_utils import person_name_to_dicom
-from adit.core.validators import no_backslash_char_validator, no_control_chars_validator
+from adit.core.validators import (
+    no_backslash_char_validator,
+    no_control_chars_validator,
+    no_wildcard_chars_validator,
+    uid_chars_validator,
+    validate_modalities,
+)
 
 from .models import SelectiveTransferJob
+
+id_validators = [
+    no_backslash_char_validator,
+    no_control_chars_validator,
+    no_wildcard_chars_validator,
+]
 
 
 class SelectiveTransferJobForm(forms.ModelForm):
@@ -240,3 +253,50 @@ class SelectiveTransferJobForm(forms.ModelForm):
 
     def build_query_field(self, field_name):
         return Column(Field(field_name))
+
+
+class DownloadPathParamsValidationForm(forms.Form):
+    server_id = forms.CharField(validators=id_validators)
+    patient_id = forms.CharField(validators=id_validators)
+    study_uid = forms.CharField(validators=[uid_chars_validator])
+
+
+class DownloadQueryParamsValidationForm(forms.Form):
+    study_date = forms.DateField(
+        required=True,
+        input_formats=["%Y%m%d"],  # matches `|date:'Ymd'`
+    )
+    study_time = forms.TimeField(
+        required=True,
+        input_formats=["%H%M%S"],  # matches `|date:'His'`
+    )
+    study_modalities = forms.CharField(
+        required=False,
+        max_length=64,
+        validators=[validate_modalities],
+    )
+    pseudonym = forms.CharField(
+        required=False,
+        max_length=64,
+        validators=[no_backslash_char_validator, no_control_chars_validator],
+    )
+    trial_protocol_id = forms.CharField(
+        required=False,
+        max_length=64,
+        validators=[no_backslash_char_validator, no_control_chars_validator],
+    )
+    trial_protocol_name = forms.CharField(
+        required=False,
+        max_length=64,
+        validators=[no_backslash_char_validator, no_control_chars_validator],
+    )
+
+    def clean_study_modalities(self):
+        data = self.cleaned_data.get("study_modalities")
+        if not data:
+            return []
+        # Convert comma-separated string to list
+        return [m.strip() for m in data.split(",") if m.strip()]
+
+    def to_study_params(self) -> StudyParams:
+        return StudyParams(**self.cleaned_data)

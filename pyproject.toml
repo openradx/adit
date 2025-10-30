@@ -44,6 +44,7 @@ dependencies = [
     "pyarrow>=19.0.1",
     "pydicom>=2.4.4",
     "pynetdicom>=2.1.1",
+    "stream-zip>=0.0.83",
     "stamina>=24.2.0",
     "Twisted[tls,http2]>=24.11.0",
     "wait-for-it>=2.3.0",

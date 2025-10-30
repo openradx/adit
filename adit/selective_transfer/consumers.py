@@ -5,6 +5,7 @@ import threading
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from typing import Any, Iterator, Literal, cast
+from urllib.parse import urlencode
 
 from adit_radis_shared.accounts.models import User
 from adit_radis_shared.common.utils.debounce import debounce
@@ -277,12 +278,28 @@ class SelectiveTransferConsumer(AsyncJsonWebsocketConsumer):
             reverse=True,
         )
 
+        source = cast(DicomNode, form.cleaned_data["source"])
+        server_id = source.dicomserver.pk
+        can_download = self.user.has_perm("selective_transfer.can_download_study")
+
+        pseudo_params = {
+            "pseudonym": form.cleaned_data["pseudonym"],
+            "trial_protocol_id": form.cleaned_data["trial_protocol_id"],
+            "trial_protocol_name": form.cleaned_data["trial_protocol_name"],
+        }
+
+        pseudo_params = {k: v for k, v in pseudo_params.items() if v}
+        encoded_pseudo_params = urlencode(pseudo_params)
+
         rendered_query_results = render_to_string(
             "selective_transfer/_query_results.html",
             {
                 "query": True,
                 "query_results": studies,
                 "max_results_reached": max_results_reached,
+                "server_id": server_id,
+                "pseudo_params": encoded_pseudo_params,
+                "can_download": can_download,
             },
         )
 
