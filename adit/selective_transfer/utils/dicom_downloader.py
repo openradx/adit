@@ -214,7 +214,7 @@ class DicomDownloader:
                 yield (file_path, modified_at, mode, NO_COMPRESSION_64, buffer_gen)
 
         start_time = time.monotonic()
-        # Only one item is consumed at a time from the queue
+        # Only one item is consumed and yielded at a time from the queue
         # Thread pool will only ever use one thread, so set max_workers to 1
         executor = ThreadPoolExecutor(max_workers=1)
         try:
