@@ -98,11 +98,6 @@ function UploadJobForm(formEl) {
       this.toggleUploadButtonVisibility();
     },
 
-    fileHandler: async (fileObj, datasets) => {
-      const arrayBuffer = await fileObj.arrayBuffer();
-      datasets.push(arrayBuffer);
-    },
-
     chooseFolder: function () {
       const files = this.getFiles();
       this.loadFiles(files);
@@ -124,16 +119,12 @@ function UploadJobForm(formEl) {
         // @ts-ignore
         showToast("warning", "Sandbox", `No files selected.${files}`);
       } else {
-        const datasets = [];
-        for (const fileEntry of files) {
-          await this.fileHandler(fileEntry, datasets);
-        }
-
+        const dataset_length = files.length;
         let status = 0;
         let loadedFiles = 0;
 
         try {
-          const checker = await this.isValidSeries(datasets);
+          const checker = await this.isValidSeries(files);
 
           if (checker) {
             const anon = this.createAnonymizer();
@@ -149,7 +140,8 @@ function UploadJobForm(formEl) {
             }
             progBar.value = 0;
             this.pbVisible = true;
-            for (const set of datasets) {
+            for (const file of files) {
+              const set = await file.arrayBuffer();
               // Anonymize data and write back to bufferstream
               const dicomData = dcmjs.data.DicomMessage.readFile(set, {
                 ignoreErrors: true,
@@ -185,7 +177,7 @@ function UploadJobForm(formEl) {
               if (status == 200) {
                 loadedFiles += 1;
                 let currentPBValue = progBar.value;
-                let newPBValue = (loadedFiles / datasets.length) * 100;
+                let newPBValue = (loadedFiles / dataset_length) * 100;
                 if (newPBValue > currentPBValue) {
                   progBar.value = newPBValue;
                 }
@@ -197,7 +189,7 @@ function UploadJobForm(formEl) {
                 break;
               }
             }
-            if (loadedFiles == datasets.length) {
+            if (loadedFiles == dataset_length) {
               this.finishUploadComplete();
             } else {
               this.finishUploadIncomplete();
@@ -314,12 +306,14 @@ function UploadJobForm(formEl) {
       }
     },
 
-    isValidSeries: (datasets) => {
+    isValidSeries: async function (files) {
       const patientIDs = new Set();
       const patientBirthdates = new Set();
       const patientNames = new Set();
 
-      for (const set of datasets) {
+      for (const file of files) {
+        let set = await file.arrayBuffer();
+
         const patIDTagNumber = "00100020";
         const patNameTagNumber = "00100010";
         const patBirthdateTagNumber = "00100030";
