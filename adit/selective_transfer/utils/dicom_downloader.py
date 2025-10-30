@@ -218,6 +218,7 @@ class DicomDownloader:
                 yield zipped_file
         finally:
             executor.shutdown(wait=True)
+            # Cancels all producer tasks
             await self._cancel_pending_tasks()
             elapsed = time.monotonic() - start_time
             logger.debug(f"Download completed in {elapsed:.2f} seconds")
