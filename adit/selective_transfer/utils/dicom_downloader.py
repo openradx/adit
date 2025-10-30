@@ -135,16 +135,20 @@ class DicomDownloader:
             modifier(ds)
             # Schedules a task on the event loop that puts the dataset into the async queue
             loop.call_soon_threadsafe(self.queue.put_nowait, ds)
+            # Acquires the lock and checks if another callback has already put an item in the queue
+            # If not, then set the _has_put_once flag to True and then set the event
             should_signal = False
             with self._first_put_lock:
                 if not self._has_put_once:
                     self._has_put_once = True
                     should_signal = True
-
+            # Threadsafe so no need to put it inside the lock
             if should_signal:
                 loop.call_soon_threadsafe(self._producer_checked_event.set)
 
         try:
+            # Check if user can access the server
+            # If not then we early exit and do not start the download
             server = DicomServer.objects.accessible_by_user(user, "source").get(id=self.server_id)
             operator = DicomOperator(server)
 
@@ -217,6 +221,7 @@ class DicomDownloader:
             async for zipped_file in async_stream_zip(generate_files_to_add_in_zip(executor)):
                 yield zipped_file
         finally:
+            # Always shutdown the thread pool executor
             executor.shutdown(wait=True)
             # Cancels all producer tasks
             await self._cancel_pending_tasks()
