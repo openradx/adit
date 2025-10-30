@@ -15,6 +15,5 @@ There are different things that can be upgraded:
   - After an upgrade make sure the files in `static/vendor` still link to the correct files in `node_modules`1
 - Python and uv in `Dockerfile` that builds the container where ADIT runs in
 - Dependent services in `docker-compose.base.yml`, like PostgreSQL or Vespa database
-- Gitpod development container dependencies in `.gitpod.Dockerfile`
 - Github Codespaces development container dependencies in `.devcontainer/devcontainer.json` and `.devcontainer/Dockerfile`
 - Github actions `.github/workflows/ci.yml` dependencies
