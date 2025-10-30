@@ -13,6 +13,7 @@ https://docs.djangoproject.com/en/3.0/ref/settings/
 from pathlib import Path
 from typing import Literal
 
+from django.core.exceptions import ImproperlyConfigured
 from environs import env
 from pydicom import config as pydicom_config
 
@@ -456,3 +457,5 @@ SKIP_ELEMENTS_ANONYMIZATION = [
 
 # Secret seed for Patient data anonymization
 ANONYMIZATION_SEED = env.str("ANONYMIZATION_SEED", default="")
+if not ANONYMIZATION_SEED:
+    raise ImproperlyConfigured("ANONYMIZATION_SEED must be set")

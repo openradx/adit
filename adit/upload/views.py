@@ -133,6 +133,8 @@ async def upload_api_view(request: AuthenticatedHttpRequest, node_id: str) -> Ht
                     e,
                 )
                 return HttpResponse(status=400, content="Invalid dataset")
+            finally:
+                dataset_bytes.close()
 
         if dataset is None or uploaded_file is None:
             return HttpResponse(status=400, content="No data received")

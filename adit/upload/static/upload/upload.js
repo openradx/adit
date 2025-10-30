@@ -127,7 +127,7 @@ function UploadJobForm(formEl) {
           const checker = await this.isValidSeries(files);
 
           if (checker) {
-            const anon = this.createAnonymizer();
+            const anon = await this.createAnonymizer();
 
             this.buttonVisible = false;
             this.stopUploadVar = false;
@@ -189,7 +189,7 @@ function UploadJobForm(formEl) {
                 break;
               }
             }
-            if (loadedFiles == dataset_length) {
+            if (loadedFiles === dataset_length) {
               this.finishUploadComplete();
             } else {
               this.finishUploadIncomplete();
@@ -244,7 +244,7 @@ function UploadJobForm(formEl) {
       }, 5000);
     },
 
-    createAnonymizer: () => {
+    createAnonymizer: async () => {
       const seedElement = document.getElementById("anon-seed-json");
       if (!seedElement) {
         throw new Error("anon-seed-json element does not exist");
@@ -257,9 +257,15 @@ function UploadJobForm(formEl) {
       if (seed == null || Object.keys(seed).length === 0) {
         throw new Error("Anonymizer seed must not be empty");
       }
-      seed += document.cookie;
+      const encoder = new TextEncoder();
+      const seedData = encoder.encode(seed + document.cookie);
+      const hashBuffer = await crypto.subtle.digest("SHA-256", seedData);
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      const hashHex = hashArray
+        .map((b) => b.toString(16).padStart(2, "0"))
+        .join("");
 
-      return new Anonymizer({ seed: seed });
+      return new Anonymizer({ seed: hashHex });
     },
 
     traverseDirectory: async function (item, files) {
