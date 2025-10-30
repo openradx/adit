@@ -4,7 +4,8 @@ from adit_radis_shared.common.utils.testing_helpers import (
     add_permission,
     add_user_to_group,
 )
-from channels.db import database_sync_to_async
+from asgiref.sync import async_to_sync
+from django.db import close_old_connections, connections
 from django.test.client import AsyncRequestFactory
 from rest_framework.exceptions import NotFound
 
@@ -17,7 +18,7 @@ def arf():
     return AsyncRequestFactory()
 
 
-async def _build_download_request(arf, user, server_id, patient_id, study_uid, query_params=None):
+def _build_download_request(arf, user, server_id, patient_id, study_uid, query_params=None):
     path = f"/selective-transfer/download/{server_id}/{patient_id}/{study_uid}/"
     request = arf.get(path, query_params or {})
     request.user = user
@@ -30,25 +31,34 @@ async def _build_download_request(arf, user, server_id, patient_id, study_uid, q
     return request
 
 
-async def _create_user_with_download_permission():
-    user = await database_sync_to_async(UserFactory.create)(is_active=True)
-    group = await database_sync_to_async(create_selective_transfer_group)()
-    await database_sync_to_async(add_user_to_group)(user, group)
-    await database_sync_to_async(add_permission)(group, "selective_transfer", "can_download_study")
+@pytest.fixture(autouse=True)
+def close_db_connections():
+    close_old_connections()  # clear any inherited handles
+    try:
+        yield
+    finally:
+        close_old_connections()
+        connections.close_all()  # release the connection this test opened
+
+
+@pytest.fixture
+def user_with_download_rights(db):
+    user = UserFactory(is_active=True)
+    group = create_selective_transfer_group()
+    add_user_to_group(user, group)
+    add_permission(group, "selective_transfer", "can_download_study")
     return user
 
 
-@pytest.mark.django_db
-@pytest.mark.asyncio
-async def test_download_with_invalid_server_returns_404(arf, monkeypatch):
-    user = await _create_user_with_download_permission()
+@pytest.mark.django_db(transaction=True)
+def test_download_with_invalid_server_returns_404(arf, user_with_download_rights, monkeypatch):
     server_id = 123456789
     patient_id = 1001
     study_uid = "1.2.840.113845.11.1000000001951524609.20200705182951.2689481"
 
-    request = await _build_download_request(
+    request = _build_download_request(
         arf,
-        user,
+        user_with_download_rights,
         server_id=f"{server_id}",
         patient_id=f"{patient_id}",
         study_uid=f"{study_uid}",
@@ -70,11 +80,8 @@ async def test_download_with_invalid_server_returns_404(arf, monkeypatch):
 
     monkeypatch.setattr("adit.selective_transfer.views.DicomDownloader", EarlyFailingDownloader)
 
-    response = await selective_transfer_download_study_view(
-        request,
-        server_id=f"{server_id}",
-        patient_id=f"{patient_id}",
-        study_uid=f"{study_uid}",
+    response = async_to_sync(selective_transfer_download_study_view)(
+        request, server_id=f"{server_id}", patient_id=f"{patient_id}", study_uid=f"{study_uid}"
     )
 
     assert response.status_code == 404
