@@ -31,6 +31,7 @@ from django_tables2.tables import Table
 from procrastinate.contrib.django import app
 
 from adit.core.utils.model_utils import reset_tasks
+from adit.upload.apps import collect_top_sessions
 
 from .models import DicomJob, DicomTask
 from .site import job_stats_collectors
@@ -40,12 +41,14 @@ from .site import job_stats_collectors
 def admin_section(request: HttpRequest) -> HttpResponse:
     status_list = DicomJob.Status.choices
     job_stats = [collector() for collector in job_stats_collectors]
+    upload_stats = collect_top_sessions()
     return render(
         request,
         "core/admin_section.html",
         {
             "status_list": status_list,
             "job_stats": job_stats,
+            "upload_stats": upload_stats,
         },
     )
 

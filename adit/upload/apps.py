@@ -22,6 +22,12 @@ def register_app():
     )
 
 
+def collect_top_sessions():
+    from adit.upload.models import UploadSession
+
+    return list(UploadSession.objects.order_by("-time_opened"))[:5]
+
+
 def create_app_settings():
     from .models import UploadSettings
 
