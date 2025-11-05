@@ -140,7 +140,7 @@ function UploadJobForm(formEl) {
         const checker = await this.isValidSeries(files);
 
         if (checker) {
-          const anon = await this.createAnonymizer();
+          const anon = await this.createAnonymizer(SessionId);
 
           this.buttonVisible = false;
           this.stopUploadVar = false;
@@ -259,7 +259,7 @@ function UploadJobForm(formEl) {
       }, 5000);
     },
 
-    createAnonymizer: async () => {
+    createAnonymizer: async (sessionId) => {
       const seedElement = document.getElementById("anon-seed-json");
       if (!seedElement) {
         throw new Error("anon-seed-json element does not exist");
@@ -268,19 +268,19 @@ function UploadJobForm(formEl) {
       if (!seedText) {
         throw new Error("anon-seed-json element is empty");
       }
-      let seed = JSON.parse(seedText);
-      if (seed == null || Object.keys(seed).length === 0) {
+      const seedObj = JSON.parse(seedText);
+      if (seedObj == null || Object.keys(seedObj).length === 0) {
         throw new Error("Anonymizer seed must not be empty");
       }
+
       const encoder = new TextEncoder();
-      const seedData = encoder.encode(seed + document.cookie);
-      const hashBuffer = await crypto.subtle.digest("SHA-256", seedData);
+      const combined = encoder.encode(JSON.stringify(seedObj) + sessionId);
+      const hashBuffer = await crypto.subtle.digest("SHA-256", combined);
       const hashArray = Array.from(new Uint8Array(hashBuffer));
-      const hashHex = hashArray
+      const combinedSeed = hashArray
         .map((b) => b.toString(16).padStart(2, "0"))
         .join("");
-
-      return new Anonymizer({ seed: hashHex });
+      return new Anonymizer({ seed: combinedSeed });
     },
 
     traverseDirectory: async function (item, files) {
