@@ -11,6 +11,7 @@ from adit.core.utils.auth_utils import grant_access
 from adit.core.utils.dicom_dataset import QueryDataset
 from adit.core.utils.dicom_operator import DicomOperator
 from adit.core.utils.testing_helpers import setup_dimse_orthancs
+from adit.upload.models import UploadSession
 from adit.upload.utils.testing_helpers import create_upload_group, get_sample_dicoms_folder
 
 fake = Faker()
@@ -238,3 +239,38 @@ def test_pseudonym_is_used_as_patientID(live_server: LiveServer, page: Page, pat
 
     assert found_patients_list[0].PatientID == test_pseudonym
     assert found_patients_list[0].NumberOfPatientRelatedStudies == 1
+
+
+@pytest.mark.acceptance
+@pytest.mark.order("last")
+@pytest.mark.django_db(transaction=True)
+def test_session_statistics(live_server: LiveServer, page: Page):
+    user = create_and_login_example_user(page, live_server.url)
+    group = create_upload_group()
+    add_user_to_group(user, group)
+    dimse_orthancs = setup_dimse_orthancs()
+    grant_access(group, dimse_orthancs[1], destination=True)
+    folder = get_sample_dicoms_folder("1001")
+
+    page.on("console", lambda msg: print(msg.text))
+
+    page.goto(live_server.url + "/upload/jobs/new")
+    page.get_by_label("Destination").select_option(label="DICOM Server Orthanc Test Server 2")
+    page.get_by_label("Pseudonym").fill("Test pseudonym")
+
+    page.get_by_label("Choose a directory").set_input_files(files=[folder])
+
+    expect(page.locator("button#uploadButton")).to_be_visible()
+    expect(page.locator("button#clearButton")).to_be_visible()
+
+    page.locator("button#uploadButton").click()
+
+    expect(page.locator("button#stopUploadButton")).to_be_visible()
+
+    page.wait_for_selector("p#uploadCompleteText")
+
+    expect(page.locator("p#uploadCompleteText")).to_contain_text("Upload Successful!")
+
+    session = UploadSession.objects.order_by("-time_opened").first()
+    assert session is not None
+    assert session.uploaded_file_count == 11
