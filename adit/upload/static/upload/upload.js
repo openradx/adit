@@ -21,9 +21,7 @@ function UploadJobForm(formEl) {
     uploadCompleteTextVisible: false,
 
     initUploadForm: function () {
-      document.body.addEventListener("chooseFolder", () => {
-        this.chooseFolder();
-      });
+      document.body.addEventListener("chooseFolder", this.chooseFolder());
       document.body.addEventListener("htmx:afterSwap", (event) => {
         // @ts-ignore
         if (event.detail.target.id === "myForm") {
@@ -117,95 +115,112 @@ function UploadJobForm(formEl) {
 
       if (files.length === 0) {
         // @ts-ignore
-        showToast("warning", "Sandbox", `No files selected.${files}`);
-      } else {
-        const dataset_length = files.length;
-        let status = 0;
-        let loadedFiles = 0;
+        showToast("warning", "Sandbox", `No files selected.`);
+        return;
+      }
+      //Start session
+      const startSessionResponse = await fetch("/upload/session/", {
+        method: "POST",
+        headers: { "X-CSRFToken": window.public.csrf_token },
+        mode: "same-origin", // Do not send CSRF token to another domain.
+      });
+      if (!startSessionResponse.ok) {
+        // @ts-ignore
+        showToast("error", "Sandbox", `Failed to start upload session:`);
+        return;
+      }
+      const sessionData = await startSessionResponse.json();
+      const SessionId = sessionData["session_id"];
 
-        try {
-          const checker = await this.isValidSeries(files);
+      const dataset_length = files.length;
+      let status = 0;
+      let loadedFiles = 0;
 
-          if (checker) {
-            const anon = await this.createAnonymizer();
+      try {
+        const checker = await this.isValidSeries(files);
 
-            this.buttonVisible = false;
-            this.stopUploadVar = false;
+        if (checker) {
+          const anon = await this.createAnonymizer(SessionId);
 
-            const progBar = formEl.querySelector('[id="pb"]');
-            if (!(progBar instanceof HTMLProgressElement)) {
+          this.buttonVisible = false;
+          this.stopUploadVar = false;
+
+          const progBar = formEl.querySelector('[id="pb"]');
+          if (!(progBar instanceof HTMLProgressElement)) {
+            throw new Error(
+              "progBar must be an instance of HTMLProgressElement"
+            );
+          }
+          progBar.value = 0;
+          this.pbVisible = true;
+          for (const file of files) {
+            const set = await file.arrayBuffer();
+            // Anonymize data and write back to bufferstream
+            const dicomData = dcmjs.data.DicomMessage.readFile(set, {
+              ignoreErrors: true,
+            });
+            const pseudonym = formEl.querySelector('[name="pseudonym"]');
+
+            if (!(pseudonym instanceof HTMLInputElement)) {
               throw new Error(
-                "progBar must be an instance of HTMLProgressElement"
+                "pseudonym must be an instance of HTMLInputElement"
               );
             }
-            progBar.value = 0;
-            this.pbVisible = true;
-            for (const file of files) {
-              const set = await file.arrayBuffer();
-              // Anonymize data and write back to bufferstream
-              const dicomData = dcmjs.data.DicomMessage.readFile(set, {
-                ignoreErrors: true,
-              });
-              const pseudonym = formEl.querySelector('[name="pseudonym"]');
+            let newPatientID = pseudonym.value;
 
-              if (!(pseudonym instanceof HTMLInputElement)) {
-                throw new Error(
-                  "pseudonym must be an instance of HTMLInputElement"
-                );
-              }
-              let newPatientID = pseudonym.value;
+            await anon.anonymize(dicomData);
+            dicomData.upsertTag("00100020", "LO", [newPatientID]); // replace PatientID
+            dicomData.upsertTag("00100010", "PN", [
+              { Alphabetic: newPatientID },
+            ]); // replace PatientName
+            const anonymized_set = await dicomData.write();
 
-              await anon.anonymize(dicomData);
-              dicomData.upsertTag("00100020", "LO", [newPatientID]); // replace PatientID
-              dicomData.upsertTag("00100010", "PN", [
-                { Alphabetic: newPatientID },
-              ]); // replace PatientName
-              const anonymized_set = await dicomData.write();
+            this.stopUploadButtonVisible = true;
+            if (this.stopUploadVar) {
+              // Stop uploading if stop button is clicked
+              break;
+            }
 
-              this.stopUploadButtonVisible = true;
-              if (this.stopUploadVar) {
-                // Stop uploading if stop button is clicked
-                break;
-              }
-
-              // Upload data to server
-              status = await uploadData({
+            // Upload data to server
+            status = await uploadData(
+              {
                 dataset: anonymized_set,
                 node_id: nodeId,
-              });
+              },
+              SessionId
+            );
 
-              if (status == 200) {
-                loadedFiles += 1;
-                let currentPBValue = progBar.value;
-                let newPBValue = (loadedFiles / dataset_length) * 100;
-                if (newPBValue > currentPBValue) {
-                  progBar.value = newPBValue;
-                }
-              } else {
-                this.uploadResultText = "Upload Failed";
-                this.pbVisible = false;
-                this.uploadCompleteTextVisible = true;
-                this.stopUploadButtonVisible = false;
-                break;
+            if (status == 200) {
+              loadedFiles += 1;
+              let currentPBValue = progBar.value;
+              let newPBValue = (loadedFiles / dataset_length) * 100;
+              if (newPBValue > currentPBValue) {
+                progBar.value = newPBValue;
               }
-            }
-            if (loadedFiles === dataset_length) {
-              this.finishUploadComplete();
             } else {
-              this.finishUploadIncomplete();
+              this.uploadResultText = "Upload Failed";
+              this.pbVisible = false;
+              this.uploadCompleteTextVisible = true;
+              this.stopUploadButtonVisible = false;
+              break;
             }
-          } else {
-            this.uploadResultText = "Upload refused - Incorrect dataset";
-            this.buttonVisible = false;
-            this.uploadCompleteTextVisible = true;
           }
-        } catch (e) {
-          this.uploadResultText = "Upload Failed due to an Error";
+          if (loadedFiles === dataset_length) {
+            this.finishUploadComplete();
+          } else {
+            this.finishUploadIncomplete();
+          }
+        } else {
+          this.uploadResultText = "Upload refused - Incorrect dataset";
           this.buttonVisible = false;
           this.uploadCompleteTextVisible = true;
-          this.pbVisible = false;
-          console.error(e);
         }
+      } catch (e) {
+        this.uploadResultText = "Upload Failed due to an Error";
+        this.buttonVisible = false;
+        this.uploadCompleteTextVisible = true;
+        this.pbVisible = false;
+        console.error(e);
       }
     },
 
@@ -244,7 +259,7 @@ function UploadJobForm(formEl) {
       }, 5000);
     },
 
-    createAnonymizer: async () => {
+    createAnonymizer: async (sessionId) => {
       const seedElement = document.getElementById("anon-seed-json");
       if (!seedElement) {
         throw new Error("anon-seed-json element does not exist");
@@ -253,19 +268,19 @@ function UploadJobForm(formEl) {
       if (!seedText) {
         throw new Error("anon-seed-json element is empty");
       }
-      let seed = JSON.parse(seedText);
-      if (seed == null || Object.keys(seed).length === 0) {
+      const seedObj = JSON.parse(seedText);
+      if (seedObj == null || Object.keys(seedObj).length === 0) {
         throw new Error("Anonymizer seed must not be empty");
       }
+
       const encoder = new TextEncoder();
-      const seedData = encoder.encode(seed + document.cookie);
-      const hashBuffer = await crypto.subtle.digest("SHA-256", seedData);
+      const combined = encoder.encode(JSON.stringify(seedObj) + sessionId);
+      const hashBuffer = await crypto.subtle.digest("SHA-256", combined);
       const hashArray = Array.from(new Uint8Array(hashBuffer));
-      const hashHex = hashArray
+      const combinedSeed = hashArray
         .map((b) => b.toString(16).padStart(2, "0"))
         .join("");
-
-      return new Anonymizer({ seed: hashHex });
+      return new Anonymizer({ seed: combinedSeed });
     },
 
     traverseDirectory: async function (item, files) {
@@ -354,7 +369,7 @@ function UploadJobForm(formEl) {
   };
 }
 
-const uploadData = async (data) => {
+const uploadData = async (data, session) => {
   const formData = new FormData();
   for (const key in data) {
     const blob = new Blob([data[key]]);
@@ -365,7 +380,10 @@ const uploadData = async (data) => {
 
   const request = new Request(url, {
     method: "POST",
-    headers: { "X-CSRFToken": window.public.csrf_token },
+    headers: {
+      "X-CSRFToken": window.public.csrf_token,
+      "X-Upload-Session": session,
+    },
     mode: "same-origin", // Do not send CSRF token to another domain.
     body: formData,
   });
