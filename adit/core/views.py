@@ -36,7 +36,7 @@ from .models import DicomJob, DicomTask
 from .site import job_stats_collectors
 
 
-def health(request) -> JsonResponse:
+def health(request: HttpRequest) -> JsonResponse:
     """Return a simple response so external systems can verify the service is up."""
 
     return JsonResponse({"status": "ok"})
