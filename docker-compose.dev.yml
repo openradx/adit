@@ -45,6 +45,8 @@ services:
         ./manage.py retry_stalled_jobs &&
         ./manage.py runserver 0.0.0.0:8000
       "
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health/"]
 
   default_worker:
     <<: *default-app
