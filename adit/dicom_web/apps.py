@@ -14,3 +14,9 @@ def init_db(**kwargs):
 
     if not DicomWebSettings.objects.exists():
         DicomWebSettings.objects.create()
+
+
+def collect_top_sessions():
+    from .models import APISession
+
+    return list(APISession.objects.order_by("-time_opened"))[:5]
