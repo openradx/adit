@@ -281,7 +281,7 @@ LOGGING = {
 LANGUAGE_CODE = "en-us"
 
 # TODO: We don't want use translations yet, but everything is hardcoded in English
-USE_I18N = False
+USE_I18N = True
 
 USE_TZ = True
 
