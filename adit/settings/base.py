@@ -91,6 +91,7 @@ MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
+    "django.middleware.locale.LocaleMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
@@ -280,7 +281,7 @@ LOGGING = {
 LANGUAGE_CODE = "en-us"
 
 # TODO: We don't want use translations yet, but everything is hardcoded in English
-USE_I18N = False
+USE_I18N = True
 
 USE_TZ = True
 
