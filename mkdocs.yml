@@ -87,10 +87,3 @@ extra:
       link: https://github.com/openradx/adit
     - icon: fontawesome/solid/globe
       link: https://ccibonn.ai/
-
-extra_javascript:
-  - https://cdn.jsdelivr.net/npm/mermaid@10.6.1/dist/mermaid.min.js
-  - javascripts/mermaid-config.js
-
-extra_css:
-  - javascripts/mermaid-fixes.css

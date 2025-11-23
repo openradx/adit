@@ -37,8 +37,7 @@ flowchart LR
 
     B -.-> Services
 
-    style A fill:#e3f2fd
-    style B fill:#e8f5e8
+
 ```
 
 - **QIDO-RS:** Query using HTTP GET with URL parameters
