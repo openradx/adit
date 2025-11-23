@@ -19,7 +19,7 @@ from django.contrib.auth.mixins import (
 from django.core.exceptions import SuspiciousOperation
 from django.db.models.query import QuerySet
 from django.forms import ModelForm
-from django.http import HttpRequest, HttpResponse
+from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import redirect, render
 from django.views.generic import View
 from django.views.generic.detail import DetailView, SingleObjectMixin
@@ -34,6 +34,12 @@ from adit.core.utils.model_utils import reset_tasks
 
 from .models import DicomJob, DicomTask
 from .site import job_stats_collectors
+
+
+def health(request: HttpRequest) -> JsonResponse:
+    """Return a simple response so external systems can verify the service is up."""
+
+    return JsonResponse({"status": "ok"})
 
 
 @staff_member_required
@@ -67,9 +73,9 @@ class DicomJobListView(LoginRequiredMixin, SingleTableMixin, PageSizeSelectMixin
 
     def get_queryset(self) -> QuerySet:
         if self.request.user.is_staff and self.request.GET.get("all"):
-            return self.model.objects.all()
+            return self.model.objects.all().order_by("-created")
 
-        return self.model.objects.filter(owner=self.request.user)
+        return self.model.objects.filter(owner=self.request.user).order_by("-created")
 
     def get_table_kwargs(self) -> dict[str, Any]:
         kwargs = super().get_table_kwargs()
@@ -351,7 +357,7 @@ class DicomTaskDeleteView(LoginRequiredMixin, DeleteView):
     def get_queryset(self):
         if self.request.user.is_staff:
             return self.model.objects.all()
-        return self.model.objects.filter(owner=self.request.user)
+        return self.model.objects.filter(job__owner=self.request.user)
 
     def form_valid(self, form: ModelForm) -> HttpResponse:
         task = cast(DicomTask, self.get_object())
@@ -380,7 +386,7 @@ class DicomTaskResetView(LoginRequiredMixin, SingleObjectMixin, View):
     def get_queryset(self):
         if self.request.user.is_staff:
             return self.model.objects.all()
-        return self.model.objects.filter(owner=self.request.user)
+        return self.model.objects.filter(job__owner=self.request.user)
 
     def post(self, request: AuthenticatedHttpRequest, *args, **kwargs) -> HttpResponse:
         task = cast(DicomTask, self.get_object())
@@ -390,7 +396,8 @@ class DicomTaskResetView(LoginRequiredMixin, SingleObjectMixin, View):
             )
 
         reset_tasks(self.model.objects.filter(pk=task.pk))
-
+        ## Refresh the task object from database to get the updated status
+        task.refresh_from_db()
         task.queue_pending_task()
         task.job.post_process()
 

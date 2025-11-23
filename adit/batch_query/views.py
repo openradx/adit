@@ -102,7 +102,7 @@ class BatchQueryJobDetailView(BatchQueryLockedMixin, DicomJobDetailView):
 
 class BatchQueryJobDeleteView(BatchQueryLockedMixin, DicomJobDeleteView):
     model = BatchQueryJob
-    success_url = reverse_lazy("batch_transfer_job_list")
+    success_url = cast(str, reverse_lazy("batch_query_job_list"))
 
 
 class BatchQueryJobVerifyView(BatchQueryLockedMixin, DicomJobVerifyView):

@@ -66,13 +66,6 @@ strange errors during acceptance testing.
 See also <https://docs.docker.com/network/proxy/#configure-the-docker-client>
 and <https://forums.docker.com/t/docker-swarm-mode-not-picking-up-proxy-configuration/132233/8?u=medihack>
 
-## Gitpod
-
-- It is not possible to set an ENV variable using the Gitpod Dockerfile
-- In Gitpod ENV variables can only be set using the Gitpod settings
-- The PYTHONPATH environment variable can't be set in the Gitpod settings (it is always overwritten with a blank value)
-- What is ALLOWED_HOSTS? <https://www.divio.com/blog/django-allowed-hosts-explained/>
-
 ## Commands
 
 ### Testing and coverage commands

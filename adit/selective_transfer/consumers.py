@@ -5,6 +5,7 @@ import threading
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from typing import Any, Iterator, Literal, cast
+from urllib.parse import urlencode
 
 from adit_radis_shared.accounts.models import User
 from adit_radis_shared.common.utils.debounce import debounce
@@ -16,7 +17,7 @@ from django.conf import settings
 from django.template.loader import render_to_string
 from requests.exceptions import HTTPError
 
-from adit.core.errors import DicomError, RetriableDicomError
+from adit.core.errors import DicomError
 from adit.core.models import DicomNode
 from adit.core.utils.dicom_dataset import QueryDataset, ResultDataset
 from adit.core.utils.dicom_operator import DicomOperator
@@ -55,7 +56,13 @@ class SelectiveTransferConsumer(AsyncJsonWebsocketConsumer):
     async def connect(self):
         logger.debug("Connected to WebSocket client.")
 
-        self.user: User = self.scope["user"]
+        scope_user = self.scope.get("user")
+        if scope_user is None or not getattr(scope_user, "is_authenticated", False):
+            await self.close(code=4401)
+            return
+
+        assert isinstance(scope_user, User)
+        self.user: User = scope_user
         self.query_operators: list[DicomOperator] = []
         self.current_message_id: int = 0
         self.pool = ThreadPoolExecutor()
@@ -91,6 +98,7 @@ class SelectiveTransferConsumer(AsyncJsonWebsocketConsumer):
             return
 
         # We are now in a query or transfer action so we have to process the form
+        assert action in ("query", "transfer")
         form = await self.get_form(action, content)
         form_valid: bool = await database_sync_to_async(form.is_valid)()
 
@@ -179,7 +187,8 @@ class SelectiveTransferConsumer(AsyncJsonWebsocketConsumer):
                 form, f"Something went wrong at your requested source. {additional_error_text}"
             )
             await self.send(form_error_response)
-        except (DicomError, RetriableDicomError):
+        except DicomError:
+            # Catches both DicomError and RetriableDicomError (which inherits from DicomError)
             form_error_response = await self._build_form_error_response(
                 form,
                 "Something went wrong at your requested source. "
@@ -269,12 +278,28 @@ class SelectiveTransferConsumer(AsyncJsonWebsocketConsumer):
             reverse=True,
         )
 
+        source = cast(DicomNode, form.cleaned_data["source"])
+        server_id = source.dicomserver.pk
+        can_download = self.user.has_perm("selective_transfer.can_download_study")
+
+        pseudo_params = {
+            "pseudonym": form.cleaned_data["pseudonym"],
+            "trial_protocol_id": form.cleaned_data["trial_protocol_id"],
+            "trial_protocol_name": form.cleaned_data["trial_protocol_name"],
+        }
+
+        pseudo_params = {k: v for k, v in pseudo_params.items() if v}
+        encoded_pseudo_params = urlencode(pseudo_params)
+
         rendered_query_results = render_to_string(
             "selective_transfer/_query_results.html",
             {
                 "query": True,
                 "query_results": studies,
                 "max_results_reached": max_results_reached,
+                "server_id": server_id,
+                "pseudo_params": encoded_pseudo_params,
+                "can_download": can_download,
             },
         )
 

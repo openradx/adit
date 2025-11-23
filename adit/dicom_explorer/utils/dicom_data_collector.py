@@ -10,7 +10,7 @@ from adit.core.utils.dicom_operator import DicomOperator
 class DicomDataCollector:
     def __init__(self, server: DicomServer):
         timeout = settings.DICOM_EXPLORER_RESPONSE_TIMEOUT
-        self.operator = DicomOperator(server, connection_retries=1, dimse_timeout=timeout)
+        self.operator = DicomOperator(server, dimse_timeout=timeout)
 
     def collect_patients(
         self,

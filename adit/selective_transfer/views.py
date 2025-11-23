@@ -1,9 +1,14 @@
-from typing import Any
+import logging
+from pathlib import Path
+from typing import Any, cast
 
 from adit_radis_shared.common.types import AuthenticatedHttpRequest
 from adit_radis_shared.common.views import BaseUpdatePreferencesView
+from django.contrib.auth.decorators import login_required, permission_required
 from django.core.exceptions import BadRequest
+from django.http import HttpResponse, StreamingHttpResponse
 from django.urls import reverse_lazy
+from rest_framework.exceptions import NotFound
 
 from adit.core.views import (
     DicomJobCancelView,
@@ -22,16 +27,23 @@ from adit.core.views import (
 )
 
 from .filters import SelectiveTransferJobFilter, SelectiveTransferTaskFilter
-from .forms import SelectiveTransferJobForm
+from .forms import (
+    DownloadPathParamsValidationForm,
+    DownloadQueryParamsValidationForm,
+    SelectiveTransferJobForm,
+)
 from .mixins import SelectiveTransferLockedMixin
 from .models import SelectiveTransferJob, SelectiveTransferTask
 from .tables import SelectiveTransferJobTable, SelectiveTransferTaskTable
+from .utils.dicom_downloader import DicomDownloader
 
 SELECTIVE_TRANSFER_SOURCE = "selective_transfer_source"
 SELECTIVE_TRANSFER_DESTINATION = "selective_transfer_destination"
 SELECTIVE_TRANSFER_URGENT = "selective_transfer_urgent"
 SELECTIVE_TRANSFER_SEND_FINISHED_MAIL = "selective_transfer_send_finished_mail"
 SELECTIVE_TRANSFER_ADVANCED_OPTIONS_COLLAPSED = "selective_transfer_advanced_options_collapsed"
+
+logger = logging.getLogger(__name__)
 
 
 class SelectiveTransferUpdatePreferencesView(
@@ -44,6 +56,66 @@ class SelectiveTransferUpdatePreferencesView(
         SELECTIVE_TRANSFER_SEND_FINISHED_MAIL,
         SELECTIVE_TRANSFER_ADVANCED_OPTIONS_COLLAPSED,
     ]
+
+
+@login_required
+@permission_required("selective_transfer.can_download_study")
+async def selective_transfer_download_study_view(
+    request: AuthenticatedHttpRequest,
+    server_id: str,
+    patient_id: str,
+    study_uid: str,
+) -> HttpResponse | StreamingHttpResponse:
+    # Validate path parameters
+    path_form = DownloadPathParamsValidationForm(
+        {
+            "server_id": server_id,
+            "patient_id": patient_id,
+            "study_uid": study_uid,
+        }
+    )
+    if not path_form.is_valid():
+        return HttpResponse(str(path_form.errors), status=400)
+    study_ids = path_form.cleaned_data
+
+    # Validate query parameters
+    query_form = DownloadQueryParamsValidationForm(request.GET)
+    if not query_form.is_valid():
+        return HttpResponse(str(query_form.errors), status=400)
+    study_params = query_form.to_study_params()
+
+    downloader = DicomDownloader(study_ids["server_id"])
+    download_folder = Path(f"study_download_{study_ids['study_uid']}")
+
+    stream = downloader.download_study(
+        user=request.user,
+        patient_id=study_ids["patient_id"],
+        study_uid=study_ids["study_uid"],
+        study_params=study_params,
+        download_folder=download_folder,
+    )
+
+    try:
+        await downloader.wait_until_ready()
+    except NotFound as err:
+        logger.warning("Study download failed before streaming: %s", err)
+        return HttpResponse(str(err), status=404, content_type="text/plain")
+    except Exception as err:
+        logger.exception("Unexpected error preparing study download")
+        return HttpResponse(
+            f"An error occurred while processing the request:\n\n{err}",
+            status=500,
+            content_type="text/plain",
+        )
+
+    return StreamingHttpResponse(
+        streaming_content=stream,
+        headers={
+            "Content-Type": "application/zip",
+            "Content-Disposition": f'attachment; filename="{download_folder}.zip"',
+            "Access-Control-Expose-Headers": "Content-Disposition",
+        },
+    )
 
 
 class SelectiveTransferJobListView(SelectiveTransferLockedMixin, TransferJobListView):
@@ -112,7 +184,7 @@ class SelectiveTransferJobDetailView(SelectiveTransferLockedMixin, DicomJobDetai
 
 class SelectiveTransferJobDeleteView(SelectiveTransferLockedMixin, DicomJobDeleteView):
     model = SelectiveTransferJob
-    success_url = reverse_lazy("selective_transfer_job_list")
+    success_url = cast(str, reverse_lazy("selective_transfer_job_list"))
 
 
 class SelectiveTransferJobVerifyView(SelectiveTransferLockedMixin, DicomJobVerifyView):

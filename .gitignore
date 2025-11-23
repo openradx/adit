@@ -149,3 +149,6 @@ pyvenv.cfg
 # ADIT specific
 /backups/*
 !/backups/.gitkeep
+
+# OS Specific
+.DS_Store

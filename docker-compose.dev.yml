@@ -3,15 +3,23 @@ x-app: &default-app
   build:
     target: development
   pull_policy: build
-  volumes:
-    - .:/app
-    - /app/.venv
   environment:
     DJANGO_INTERNAL_IPS: ${DJANGO_INTERNAL_IPS:?}
     DJANGO_SETTINGS_MODULE: adit.settings.development
     FORCE_DEBUG_TOOLBAR: ${FORCE_DEBUG_TOOLBAR:-true}
     REMOTE_DEBUGGING_ENABLED: ${REMOTE_DEBUGGING_ENABLED:-false}
     REMOTE_DEBUGGING_PORT: ${REMOTE_DEBUGGING_PORT:-5678}
+  develop:
+    watch:
+      - action: sync
+        path: .
+        target: /app
+        ignore:
+          - .git/
+          - .venv/
+          - node_modules/
+      - action: rebuild
+        path: ./pyproject.toml
 
 services:
   init:
@@ -37,6 +45,8 @@ services:
         ./manage.py retry_stalled_jobs &&
         ./manage.py runserver 0.0.0.0:8000
       "
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health/"]
 
   default_worker:
     <<: *default-app

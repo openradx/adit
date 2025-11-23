@@ -42,6 +42,7 @@ x-app: &default-app
     SUPPORT_EMAIL: ${SUPPORT_EMAIL:?}
     TIME_ZONE: ${TIME_ZONE:?}
     TOKEN_AUTHENTICATION_SALT: ${TOKEN_AUTHENTICATION_SALT:?}
+    ANONYMIZATION_SEED: ${ANONYMIZATION_SEED:-}
 
 services:
   init:
@@ -74,7 +75,7 @@ services:
       - postgres_data:/var/lib/postgresql/data
 
   orthanc1:
-    image: jodogne/orthanc-plugins:1.12.7
+    image: jodogne/orthanc-plugins:1.12.9
     hostname: orthanc1.local
     configs:
       - source: orthanc1_config
@@ -83,7 +84,7 @@ services:
       - orthanc1_data:/var/lib/orthanc/db
 
   orthanc2:
-    image: jodogne/orthanc-plugins:1.12.7
+    image: jodogne/orthanc-plugins:1.12.9
     hostname: orthanc2.local
     configs:
       - source: orthanc2_config

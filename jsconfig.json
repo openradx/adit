@@ -1,7 +1,14 @@
 {
   "compilerOptions": {
     "checkJs": true,
-    "target": "ES6"
+    "target": "ES6",
+    "paths": {
+      "dcmjs": ["./adit/upload/static/vendor/dcmjs.js"],
+      "dicomweb-client": ["./adit/upload/static/vendor/dicomweb-client.js"],
+      "dicom-web-anonymizer": [
+        "./adit/upload/static/vendor/dicom-web-anonymizer.js"
+      ]
+    }
   },
   "include": ["./globals.d.ts", "./**/static/**/*.js"]
 }
