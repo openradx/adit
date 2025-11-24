@@ -2,6 +2,7 @@ import asyncio
 import logging
 from io import BytesIO
 from typing import Any
+from uuid import UUID
 
 from adit_radis_shared.common.types import AuthenticatedHttpRequest
 from asgiref.sync import sync_to_async
@@ -13,7 +14,7 @@ from django.contrib.auth.mixins import (
 )
 from django.core.exceptions import PermissionDenied, SuspiciousOperation
 from django.core.files.uploadedfile import UploadedFile
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render
 from django.views.generic.edit import FormView
 from django_htmx.http import trigger_client_event
@@ -24,6 +25,7 @@ from adit.core.utils.dicom_utils import read_dataset
 from adit.core.views import BaseUpdatePreferencesView
 
 from .forms import UploadForm
+from .models import UploadSession
 
 UPLOAD_SOURCE = "upload_source"
 UPLOAD_DESTINATION = "upload_destination"
@@ -107,6 +109,12 @@ async def upload_api_view(request: AuthenticatedHttpRequest, node_id: str) -> Ht
 
     destination_node = await DicomServer.objects.aget(id=node_id)
 
+    session_id = request.headers.get("X-Upload-Session")
+    if session_id is None:
+        return HttpResponse(status=400, content="No upload session specified")
+    session_id = UUID(session_id)
+    session = await UploadSession.objects.aget(id=session_id)
+
     node_accessible = await sync_to_async(
         lambda: destination_node.is_accessible_by_user(request.user, "destination")
     )()
@@ -120,10 +128,13 @@ async def upload_api_view(request: AuthenticatedHttpRequest, node_id: str) -> Ht
         if file_data is None:
             return HttpResponse(status=400, content="No data received")
 
+        dataset_size = 0
+
         if "dataset" in file_data:
             uploaded_file = file_data.get("dataset")
             assert isinstance(uploaded_file, UploadedFile)
             dataset_bytes = BytesIO(uploaded_file.read())
+            dataset_size = dataset_bytes.getbuffer().nbytes
             try:
                 dataset = read_dataset(dataset_bytes)
             except Exception as e:
@@ -139,6 +150,10 @@ async def upload_api_view(request: AuthenticatedHttpRequest, node_id: str) -> Ht
         if dataset is None or uploaded_file is None:
             return HttpResponse(status=400, content="No data received")
         try:
+            session.upload_size += dataset_size
+            session.uploaded_file_count += 1
+            await sync_to_async(session.save)()
+
             loop = asyncio.get_event_loop()
             await loop.run_in_executor(None, operator.upload_images, [dataset])
 
@@ -155,3 +170,12 @@ async def upload_api_view(request: AuthenticatedHttpRequest, node_id: str) -> Ht
         response["statusText"] = response.reason_phrase
 
         return response
+
+
+@login_required
+async def create_upload_session(request):
+    if request.method != "POST":
+        return JsonResponse({"error": "Method not allowed"}, status=405)
+
+    data = await sync_to_async(UploadSession.objects.create)(owner=request.user)
+    return JsonResponse({"session_id": str(data.id), "started_at": data.time_opened})
