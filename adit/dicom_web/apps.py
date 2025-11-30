@@ -19,4 +19,4 @@ def init_db(**kwargs):
 def collect_top_sessions():
     from .models import APISession
 
-    return list(APISession.objects.order_by("-time_opened"))[:5]
+    return APISession.objects.order_by("-time_last_accessed")[:3]

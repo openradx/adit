@@ -63,22 +63,23 @@ class WebDicomAPIView(AsyncApiView):
             )
 
     @database_sync_to_async
-    def _create_session(self, user: User, request_type: str) -> APISession:
-        return APISession.objects.create(
-            owner=user,
-            request_type=request_type,
-        )
+    def _create_session(self, user: User) -> APISession:
+        if APISession.objects.filter(owner=user).exists():
+            return APISession.objects.filter(owner=user).order_by("-time_last_accessed")[0]
+        else:
+            return APISession.objects.create(owner=user)
 
     @database_sync_to_async
     def _finalize_session(self, session: APISession, transfer_size: int = 0) -> None:
         if transfer_size is not None:
-            session.transfer_size = transfer_size
-            session.save(update_fields=["transfer_size"])
+            session.total_transfer_size += transfer_size
+            session.total_number_requests += 1
+            session.save(update_fields=["total_transfer_size", "total_number_requests"])
 
     @asynccontextmanager
-    async def track_session(self, user: User, request_type: str):
+    async def track_session(self, user: User):
         """Context manager to track API session for the duration of a request."""
-        session = await self._create_session(user, request_type)
+        session = await self._create_session(user)
         try:
             yield session
         finally:
@@ -128,7 +129,7 @@ class QueryStudiesAPIView(QueryAPIView):
         request: AuthenticatedApiRequest,
         ae_title: str,
     ) -> Response:
-        async with self.track_session(request.user, "QIDO_STUDIES") as session:
+        async with self.track_session(request.user) as session:
             query_ds, limit_results = self._extract_query_parameters(request)
             source_server = await self._get_dicom_server(request, ae_title, "source")
 
@@ -147,7 +148,7 @@ class QuerySeriesAPIView(QueryAPIView):
     async def get(
         self, request: AuthenticatedApiRequest, ae_title: str, study_uid: str
     ) -> Response:
-        async with self.track_session(request.user, "QIDO_SERIES") as session:
+        async with self.track_session(request.user) as session:
             query_ds, limit_results = self._extract_query_parameters(request, study_uid)
             source_server = await self._get_dicom_server(request, ae_title, "source")
 
@@ -166,7 +167,7 @@ class QueryImagesAPIView(QueryAPIView):
     async def get(
         self, request: AuthenticatedApiRequest, ae_title: str, study_uid: str, series_uid: str
     ) -> Response:
-        async with self.track_session(request.user, "QIDO_IMAGES") as session:
+        async with self.track_session(request.user) as session:
             query_ds, limit_results = self._extract_query_parameters(request, study_uid, series_uid)
             source_server = await self._get_dicom_server(request, ae_title, "source")
 
@@ -285,7 +286,7 @@ class RetrieveStudyAPIView(RetrieveAPIView):
     async def get(
         self, request: AuthenticatedApiRequest, ae_title: str, study_uid: str
     ) -> StreamingHttpResponse:
-        async with self.track_session(request.user, "WADO_STUDY") as session:
+        async with self.track_session(request.user) as session:
             source_server = await self._get_dicom_server(request, ae_title)
             pseudonym = self._get_pseudonym(request)
             trial_protocol_id = self._get_trial_protocol_id(request)
@@ -304,7 +305,7 @@ class RetrieveStudyAPIView(RetrieveAPIView):
             )
             images = await self.peek_images(images)
 
-            renderer = cast(DicomWebWadoRenderer, getattr(request, "accepted_renderer"))
+            renderer = WadoMultipartApplicationDicomRenderer()
             return StreamingHttpResponse(
                 streaming_content=_StreamingSessionWrapper(
                     renderer.render(images), session, self._finalize_session
@@ -317,7 +318,7 @@ class RetrieveStudyMetadataAPIView(RetrieveStudyAPIView):
     async def get(
         self, request: AuthenticatedApiRequest, ae_title: str, study_uid: str
     ) -> Response:
-        async with self.track_session(request.user, "WADO_STUDY_METADATA") as session:
+        async with self.track_session(request.user) as session:
             source_server = await self._get_dicom_server(request, ae_title)
             pseudonym = self._get_pseudonym(request)
             trial_protocol_id = self._get_trial_protocol_id(request)
@@ -347,7 +348,7 @@ class RetrieveSeriesAPIView(RetrieveAPIView):
     async def get(
         self, request: AuthenticatedApiRequest, ae_title: str, study_uid: str, series_uid: str
     ) -> Response | StreamingHttpResponse:
-        async with self.track_session(request.user, "WADO_SERIES") as session:
+        async with self.track_session(request.user) as session:
             source_server = await self._get_dicom_server(request, ae_title)
             pseudonym = self._get_pseudonym(request)
             trial_protocol_id = self._get_trial_protocol_id(request)
@@ -380,7 +381,7 @@ class RetrieveSeriesMetadataAPIView(RetrieveSeriesAPIView):
     async def get(
         self, request: AuthenticatedApiRequest, ae_title: str, study_uid: str, series_uid: str
     ) -> Response:
-        async with self.track_session(request.user, "WADO_SERIES_METADATA") as session:
+        async with self.track_session(request.user) as session:
             source_server = await self._get_dicom_server(request, ae_title)
             pseudonym = self._get_pseudonym(request)
             trial_protocol_id = self._get_trial_protocol_id(request)
@@ -416,7 +417,7 @@ class RetrieveImageAPIView(RetrieveAPIView):
         series_uid: str,
         image_uid: str,
     ) -> Response | StreamingHttpResponse:
-        async with self.track_session(request.user, "WADO_IMAGE") as session:
+        async with self.track_session(request.user) as session:
             source_server = await self._get_dicom_server(request, ae_title)
             pseudonym = self._get_pseudonym(request)
             trial_protocol_id = self._get_trial_protocol_id(request)
@@ -455,7 +456,7 @@ class RetrieveImageMetadataAPIView(RetrieveImageAPIView):
         series_uid: str,
         image_uid: str,
     ) -> Response:
-        async with self.track_session(request.user, "WADO_IMAGE_METADATA") as session:
+        async with self.track_session(request.user) as session:
             source_server = await self._get_dicom_server(request, ae_title)
             pseudonym = self._get_pseudonym(request)
             trial_protocol_id = self._get_trial_protocol_id(request)
@@ -493,7 +494,7 @@ class StoreImagesAPIView(WebDicomAPIView):
         ae_title: str,
         study_uid: str = "",
     ) -> Response:
-        async with self.track_session(request.user, "STOW") as session:
+        async with self.track_session(request.user) as session:
             content_type: str = request.content_type
             if not media_type_matches("multipart/related; type=application/dicom", content_type):
                 raise UnsupportedMediaType(content_type)

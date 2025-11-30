@@ -28,6 +28,27 @@
             {% endfor %}
         </tbody>
     </table>
+    <h5>API Sessions</h5>
+    <table class="table table-bordered">
+        <thead>
+            <tr>
+                <th>User</th>
+                <th>Created at</th>
+                <th>Transfer Size</th>
+                <th>Total number of requests</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for session in api_stats %}
+                <tr>
+                    <td>{{ session.owner }}</td>
+                    <td>{{ session.time_last_accessed }}</td>
+                    <td>{{ session.total_transfer_size | filesizeformat }}</td>
+                    <td>{{ session.total_number_requests }}</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
     <h5>Admin Tools</h5>
     <ul class="list-group">
         <li class="list-group-item">

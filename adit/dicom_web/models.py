@@ -15,9 +15,9 @@ class DicomWebSettings(DicomAppSettings):
 
 
 class APISession(models.Model):
-    time_opened = models.DateTimeField(auto_now_add=True)
-    transfer_size = models.IntegerField(default=0)
-    request_type = models.CharField(max_length=50)
+    time_last_accessed = models.DateTimeField(auto_now_add=True)
+    total_transfer_size = models.IntegerField(default=0)
+    total_number_requests = models.IntegerField(default=0)
     owner_id: int
     owner = models.ForeignKey(
         settings.AUTH_USER_MODEL,

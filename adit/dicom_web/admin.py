@@ -9,12 +9,11 @@ class APISessionAdmin(admin.ModelAdmin):
     list_display = (
         "get_owner",
         "id",
-        "time_opened",
+        "time_last_accessed",
+        "total_number_requests",
         "get_size",
-        "transfer_size",
-        "request_type",
     )
-    list_filter = ("time_opened", "owner")
+    list_filter = ("total_number_requests", "owner")
     search_fields = ("owner__username",)
 
     def get_owner(self, obj):
@@ -24,13 +23,13 @@ class APISessionAdmin(admin.ModelAdmin):
     get_owner.short_description = "Owner"
 
     def get_size(self, obj):
-        size = obj.transfer_size
-        for unit in ["B", "KB", "MB", "GB"]:
+        size = obj.total_transfer_size
+        for unit in ["B", "KB", "MB", "GB", "TB"]:
             if size < 1024:
                 return f"{size:.2f} {unit}"
             size /= 1024
 
-    get_size.short_description = "Transfer Size"
+    get_size.short_description = "Total Transfer Size"
 
 
 admin.site.register(APISession, APISessionAdmin)
