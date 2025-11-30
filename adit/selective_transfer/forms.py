@@ -37,8 +37,15 @@ class SelectiveTransferJobForm(forms.ModelForm):
     )
     patient_id = forms.CharField(required=False, max_length=64, label="Patient ID")
     patient_name = forms.CharField(required=False, max_length=324)
-    patient_birth_date = forms.DateField(required=False, label="Birth date")
-    study_date = forms.DateField(required=False)
+    patient_birth_date = forms.DateField(
+        required=False,
+        label="Birth date",
+        widget=forms.DateInput(attrs={"type": "date"}),
+    )
+    study_date = forms.DateField(
+        required=False,
+        widget=forms.DateInput(attrs={"type": "date"}),
+    )
     modality = forms.CharField(required=False, max_length=16)
     accession_number = forms.CharField(required=False, max_length=32, label="Accession #")
 

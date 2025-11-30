@@ -19,7 +19,7 @@ from django.contrib.auth.mixins import (
 from django.core.exceptions import SuspiciousOperation
 from django.db.models.query import QuerySet
 from django.forms import ModelForm
-from django.http import HttpRequest, HttpResponse
+from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import redirect, render
 from django.views.generic import View
 from django.views.generic.detail import DetailView, SingleObjectMixin
@@ -35,6 +35,12 @@ from adit.dicom_web.apps import collect_top_sessions
 
 from .models import DicomJob, DicomTask
 from .site import job_stats_collectors
+
+
+def health(request: HttpRequest) -> JsonResponse:
+    """Return a simple response so external systems can verify the service is up."""
+
+    return JsonResponse({"status": "ok"})
 
 
 @staff_member_required
