@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.db import models
+from django.utils import timezone
 
 from adit.core.models import DicomAppSettings
 
@@ -14,15 +15,14 @@ class DicomWebSettings(DicomAppSettings):
         ]
 
 
-class APISession(models.Model):
-    time_last_accessed = models.DateTimeField(auto_now_add=True)
-    total_transfer_size = models.IntegerField(default=0)
+class APIUsage(models.Model):
+    time_last_accessed = models.DateTimeField(default=timezone.now)
+    total_transfer_size = models.BigIntegerField(default=0)
     total_number_requests = models.IntegerField(default=0)
-    owner_id: int
     owner = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
-        related_name="api_sessions",
+        related_name="api_usage",
     )
 
     def __str__(self) -> str:

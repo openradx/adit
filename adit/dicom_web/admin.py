@@ -1,11 +1,11 @@
 from django.contrib import admin
 
-from .models import APISession, DicomWebSettings
+from .models import APIUsage, DicomWebSettings
 
 admin.site.register(DicomWebSettings, admin.ModelAdmin)
 
 
-class APISessionAdmin(admin.ModelAdmin):
+class APIUsageAdmin(admin.ModelAdmin):
     list_display = (
         "get_owner",
         "id",
@@ -32,4 +32,4 @@ class APISessionAdmin(admin.ModelAdmin):
     get_size.short_description = "Total Transfer Size"
 
 
-admin.site.register(APISession, APISessionAdmin)
+admin.site.register(APIUsage, APIUsageAdmin)

@@ -16,7 +16,7 @@ def init_db(**kwargs):
         DicomWebSettings.objects.create()
 
 
-def collect_top_sessions():
-    from .models import APISession
+def collect_latest_api_usage():
+    from .models import APIUsage
 
-    return APISession.objects.order_by("-time_last_accessed")[:3]
+    return APIUsage.objects.order_by("-time_last_accessed")[:3]

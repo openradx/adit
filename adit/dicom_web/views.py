@@ -1,4 +1,6 @@
+import json
 import logging
+import sys
 from contextlib import asynccontextmanager
 from typing import AsyncIterator, Literal, Union, cast
 
@@ -6,9 +8,10 @@ from adit_radis_shared.common.types import AuthenticatedApiRequest, User
 from adrf.views import APIView as AsyncApiView
 from channels.db import database_sync_to_async
 from django.core.exceptions import ValidationError as DRFValidationError
-from django.db.models import QuerySet
+from django.db.models import F, QuerySet
 from django.http import StreamingHttpResponse
 from django.urls import reverse
+from django.utils import timezone
 from pydicom import Dataset, Sequence
 from rest_framework.exceptions import NotFound, ParseError, UnsupportedMediaType, ValidationError
 from rest_framework.response import Response
@@ -16,7 +19,7 @@ from rest_framework.utils.mediatypes import media_type_matches
 
 from adit.core.models import DicomServer
 from adit.core.utils.dicom_dataset import QueryDataset
-from adit.dicom_web.models import APISession
+from adit.dicom_web.models import APIUsage
 from adit.dicom_web.utils.peekable import AsyncPeekable
 from adit.dicom_web.validators import (
     validate_pseudonym,
@@ -63,23 +66,23 @@ class WebDicomAPIView(AsyncApiView):
             )
 
     @database_sync_to_async
-    def _create_session(self, user: User) -> APISession:
-        if APISession.objects.filter(owner=user).exists():
-            return APISession.objects.filter(owner=user).order_by("-time_last_accessed")[0]
-        else:
-            return APISession.objects.create(owner=user)
+    def _create_statistic(self, user: User) -> APIUsage:
+        statistic, _ = APIUsage.objects.get_or_create(owner=user)
+        return statistic
 
     @database_sync_to_async
-    def _finalize_session(self, session: APISession, transfer_size: int = 0) -> None:
+    def _finalize_statistic(self, statistic: APIUsage, transfer_size: int = 0) -> None:
         if transfer_size is not None:
-            session.total_transfer_size += transfer_size
-            session.total_number_requests += 1
-            session.save(update_fields=["total_transfer_size", "total_number_requests"])
+            APIUsage.objects.filter(pk=statistic.pk).update(
+                total_transfer_size=F("total_transfer_size") + transfer_size,
+                total_number_requests=F("total_number_requests") + 1,
+                time_last_accessed=timezone.now(),
+            )
 
     @asynccontextmanager
     async def track_session(self, user: User):
         """Context manager to track API session for the duration of a request."""
-        session = await self._create_session(user)
+        session = await self._create_statistic(user)
         try:
             yield session
         finally:
@@ -140,7 +143,9 @@ class QueryStudiesAPIView(QueryAPIView):
                 raise ValidationError(str(err)) from err
 
             response_data = [result.dataset.to_json_dict() for result in results]
-            await self._finalize_session(session, transfer_size=len(str(response_data)))
+            await self._finalize_statistic(
+                session, transfer_size=len(json.dumps(response_data).encode())
+            )
             return Response(response_data)
 
 
@@ -159,7 +164,9 @@ class QuerySeriesAPIView(QueryAPIView):
                 raise ValidationError(str(err)) from err
 
             response_data = [result.dataset.to_json_dict() for result in results]
-            await self._finalize_session(session, transfer_size=len(str(response_data)))
+            await self._finalize_statistic(
+                session, transfer_size=len(json.dumps(response_data).encode())
+            )
             return Response(response_data)
 
 
@@ -178,7 +185,9 @@ class QueryImagesAPIView(QueryAPIView):
                 raise ValidationError(str(err)) from err
 
             response_data = [result.dataset.to_json_dict() for result in results]
-            await self._finalize_session(session, transfer_size=len(str(response_data)))
+            await self._finalize_statistic(
+                session, transfer_size=len(json.dumps(response_data).encode())
+            )
             return Response(response_data)
 
 
@@ -268,18 +277,19 @@ class RetrieveAPIView(WebDicomAPIView):
 class _StreamingSessionWrapper:
     """Wraps streaming content to track transfer size asynchronously."""
 
-    def __init__(self, renderer_generator, session: APISession, finalize_func):
+    def __init__(self, renderer_generator, session: APIUsage, finalize_func):
         self.renderer_generator = renderer_generator
         self.session = session
         self.finalize_func = finalize_func
         self.total_size = 0
 
     async def __aiter__(self):
-        async for chunk in self.renderer_generator:
-            self.total_size += len(chunk) if isinstance(chunk, bytes) else len(chunk.encode())
-            yield chunk
-
-        await self.finalize_func(self.session, transfer_size=self.total_size)
+        try:
+            async for chunk in self.renderer_generator:
+                self.total_size += len(chunk) if isinstance(chunk, bytes) else len(chunk.encode())
+                yield chunk
+        finally:
+            await self.finalize_func(self.session, transfer_size=self.total_size)
 
 
 class RetrieveStudyAPIView(RetrieveAPIView):
@@ -305,10 +315,10 @@ class RetrieveStudyAPIView(RetrieveAPIView):
             )
             images = await self.peek_images(images)
 
-            renderer = WadoMultipartApplicationDicomRenderer()
+            renderer = cast(DicomWebWadoRenderer, getattr(request, "accepted_renderer"))
             return StreamingHttpResponse(
                 streaming_content=_StreamingSessionWrapper(
-                    renderer.render(images), session, self._finalize_session
+                    renderer.render(images), session, self._finalize_statistic
                 ),
                 content_type=renderer.content_type,
             )
@@ -338,7 +348,9 @@ class RetrieveStudyMetadataAPIView(RetrieveStudyAPIView):
             metadata = await self.extract_metadata(images)
 
             response_data = {"metadata": metadata}
-            await self._finalize_session(session, transfer_size=len(str(response_data)))
+            await self._finalize_statistic(
+                session, transfer_size=len(json.dumps(response_data).encode())
+            )
 
             renderer = cast(DicomWebWadoRenderer, getattr(request, "accepted_renderer"))
             return Response(response_data, content_type=renderer.content_type)
@@ -371,7 +383,7 @@ class RetrieveSeriesAPIView(RetrieveAPIView):
             renderer = cast(DicomWebWadoRenderer, getattr(request, "accepted_renderer"))
             return StreamingHttpResponse(
                 streaming_content=_StreamingSessionWrapper(
-                    renderer.render(images), session, self._finalize_session
+                    renderer.render(images), session, self._finalize_statistic
                 ),
                 content_type=renderer.content_type,
             )
@@ -402,7 +414,9 @@ class RetrieveSeriesMetadataAPIView(RetrieveSeriesAPIView):
             metadata = await self.extract_metadata(images)
 
             response_data = {"metadata": metadata}
-            await self._finalize_session(session, transfer_size=len(str(response_data)))
+            await self._finalize_statistic(
+                session, transfer_size=len(json.dumps(response_data).encode())
+            )
 
             renderer = cast(DicomWebWadoRenderer, getattr(request, "accepted_renderer"))
             return Response(response_data, content_type=renderer.content_type)
@@ -441,7 +455,7 @@ class RetrieveImageAPIView(RetrieveAPIView):
             renderer = cast(DicomWebWadoRenderer, getattr(request, "accepted_renderer"))
             return StreamingHttpResponse(
                 streaming_content=_StreamingSessionWrapper(
-                    renderer.render(images), session, self._finalize_session
+                    renderer.render(images), session, self._finalize_statistic
                 ),
                 content_type=renderer.content_type,
             )
@@ -478,7 +492,9 @@ class RetrieveImageMetadataAPIView(RetrieveImageAPIView):
             metadata = await self.extract_metadata(images)
 
             response_data = {"metadata": metadata}
-            await self._finalize_session(session, transfer_size=len(str(response_data)))
+            await self._finalize_statistic(
+                session, transfer_size=len(json.dumps(response_data).encode())
+            )
 
             renderer = cast(DicomWebWadoRenderer, getattr(request, "accepted_renderer"))
             return Response(response_data, content_type=renderer.content_type)
@@ -532,7 +548,7 @@ class StoreImagesAPIView(WebDicomAPIView):
                     logger.debug(f"Stored instance {ds.SOPInstanceUID} to {dest_server.ae_title}")
 
             response_data = [results]
-            await self._finalize_session(session, transfer_size=len(str(response_data)))
+            await self._finalize_statistic(session, transfer_size=sys.getsizeof(response_data))
 
             assert request.accepted_renderer is not None
             return Response(response_data, content_type=request.accepted_renderer.media_type)
