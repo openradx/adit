@@ -56,17 +56,12 @@ ADIT is currently in early beta stage. While we are actively building and refini
 ## Quick Start. **Getting Started**: Learn the basics in our [getting started guide](user-docs/getting-started.md)
 
 1. **User Guide**: Explore features in our [user guide](user-docs/user-guide.md)
-2. **Development**: Contribute to the project with our [development guide](dev-docs/development-setup.md)
+2. **Development**: Contribute to the project with our [development guide](dev-docs/contributing.md)
 
 ## Getting Help
 
 - Browse the [user documentation](user-docs/user-guide.md)
 - Report issues on [GitHub](https://github.com/openradx/adit/issues)
-- 💬 Join the discussion in [GitHub Discussions](https://github.com/openradx/adit/discussions)
-
-## Upcoming features
-
-- An upload portal to upload DICOM images through a web interface that can be pseudonymized on the client (before the transfer happens)
 
 ## License
 

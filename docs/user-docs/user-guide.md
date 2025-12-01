@@ -6,7 +6,15 @@ This guide will help you understand how to use **ADIT**
 
 ADIT acts as a bridge between different DICOM systems, enabling secure and controlled data transfer with built-in pseudonymization capabilities. ADIT solves this by acting as a "translator" that converts between web-friendly APIs and traditional DICOM protocols.
 
-1. **You send** a simple web request (like getting data from any website) 2. **ADIT translates** your request into traditional DICOM commands 3. **ADIT communicates** with your PACS using its native protocols 4. **ADIT converts** the response back to web-friendly format 5. **You receive** easy-to-use JSON data or DICOM files.
+1. **You send** a simple web request (like getting data from any website)
+
+2. **ADIT translates** your request into traditional DICOM commands
+
+3. **ADIT communicates** with your PACS using its native protocols
+
+4. **ADIT converts** the response back to web-friendly format
+
+5. **You receive** easy-to-use JSON data or DICOM files.
 
 This means your PACS can stay secure with its existing configuration, while you get modern web access through ADIT.
 
@@ -18,6 +26,7 @@ When you log into ADIT, you'll see the main dashboard with several sections:
 - **Batch Query**: Search for studies on a PACS server by using a batch file.
 - **Batch Transfer**: Transfer or download multiple studies specified in a batch file.
 - **DICOM Explorer**: Explore the DICOM data of a PACS server
+- **DICOM Upload**: Upload DICOM files from your local system to a PACS server
 
 ## Main Workflows
 
@@ -52,6 +61,27 @@ To download DICOM studies to a local folder:
 2. Select "Download" instead of "Transfer"
 3. Choose the download location
 4. Start the download process
+
+### 4. Upload DICOM Files
+
+To upload DICOM files to a PACS server:
+
+1. Navigate to the "DICOM Upload" section
+2. Select your destination DICOM server
+3. Choose the DICOM files or folders to upload
+4. Configure upload options (if available)
+5. Start the upload process
+6. Monitor the upload progress and verify completion
+
+### 5. Explore DICOM Data
+
+To browse and explore DICOM data on a server:
+
+1. Go to the "DICOM Explorer" section
+2. Select the DICOM server to explore
+3. Use the hierarchical navigation (Patient → Study → Series → Image)
+4. View DICOM metadata and image information
+5. Perform actions like downloading or transferring discovered data
 
 ## User Interface Elements
 
@@ -91,14 +121,6 @@ System administrators can inform users about important updates, maintenance sche
 - HTML content is rendered, allowing for formatted text, links, and styling
 - Empty announcements are not displayed to users
 
-#### Best Practices for Announcements
-
-- **Keep messages concise**: Users should be able to quickly read and understand the message
-- **Use clear language**: Avoid technical jargon when possible
-- **Include timeframes**: For maintenance notifications, specify start and end times
-- **Use appropriate formatting**: Utilize HTML tags like `<strong>`, `<em>`, or `<br>` for emphasis and structure
-- **Update regularly**: Remove outdated announcements and keep information current
-
 #### Example Announcements
 
 **Maintenance Notice:**
@@ -107,19 +129,4 @@ System administrators can inform users about important updates, maintenance sche
 <strong>Scheduled Maintenance:</strong> ADIT will be offline for maintenance on
 <strong>March 15, 2024 from 2:00 AM to 4:00 AM UTC</strong>. Please plan your
 transfers accordingly.
-```
-
-**New Feature:**
-
-```html
-🎉 <strong>New Feature Available:</strong> Batch transfers now support
-<em>automatic retry</em> for failed transfers.
-<a href="/docs/features">Learn more</a>
-```
-
-**System Alert:**
-
-```html
-⚠️ <strong>Important:</strong> Due to increased usage, transfer speeds may be
-temporarily reduced during peak hours (9 AM - 5 PM UTC).
 ```

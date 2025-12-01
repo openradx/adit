@@ -80,6 +80,7 @@ nav:
   - Developer Documentation:
       - Contributing: dev-docs/contributing.md
       - Architecture: dev-docs/architecture.md
+      - Core Components: dev-docs/core_components.md
 
 extra:
   social:

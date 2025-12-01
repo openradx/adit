@@ -1,4 +1,4 @@
-# ADIT Architecture Documentation
+# **ADIT Architecture Documentation**
 
 This document provides a comprehensive overview of ADIT's architecture, implementation details, and key components for developers.
 
@@ -31,7 +31,7 @@ flowchart LR
 
 ```
 
-The ADIT platform consists of several coordinated components that together enable automated DICOM retrieval, transformation, and transfer. Users interact with ADIT through a standard web browser, initiating actions such as creating transfer jobs, uploading DICOM files configuring destinations, and monitoring job activity. The browser loads the ADIT Web UI, a server-side rendered interface built with Django templates and enhanced with HTMX for dynamic interactions—presenting dashboards, validating input, and providing seamless user experience through partial page updates and WebSocket connections. These requests are served by the Django API Server, which provides all REST endpoints and implements business logic including authentication, job orchestration, task creation, configuration handling, and interaction with the PostgreSQL database. PostgreSQL stores all persistent system data such as user accounts, transfer jobs, DICOM query results logs, and configuration, and is regularly polled by Transfer Workers for tasks requiring execution. Transfer Workers, typically running in Docker containers, perform the actual data operations: querying remote DICOM servers, retrieving images via C-GET, C-MOVE, or DICOMweb applying pseudonymization or transformation rules, sending images to destinations, and updating task status. For workflows involving C-MOVE, ADIT also runs a C-STORE Receiver which accepts inbound DICOM objects from PACS, forwards them reliably to the Transfer Worker, and ensures lossless data flow. External DICOM systems such as PACS, VNAs, and DICOMweb servers function as the data sources and sinks, providing and receiving DICOM objects through standard DIMSE and DICOMweb protocols.
+The ADIT platform consists of several coordinated components that together enable automated DICOM retrieval, transformation, and transfer. Users interact with ADIT through a standard web browser, initiating actions such as creating transfer jobs, uploading DICOM files configuring destinations, and monitoring job activity. The browser loads the ADIT Web UI, a server-side rendered interface built with Django templates and enhanced with HTMX for dynamic interactions presenting dashboards, validating input, and providing seamless user experience through partial page updates and WebSocket connections. These requests are served by the Django API Server, which provides all REST endpoints and implements business logic including authentication, job orchestration, task creation, configuration handling, and interaction with the PostgreSQL database. PostgreSQL stores all persistent system data such as user accounts, transfer jobs, DICOM query results logs, and configuration, and is regularly polled by Transfer Workers for tasks requiring execution. Transfer Workers running in Docker containers, perform the actual data operations: querying remote DICOM servers, retrieving images via C-GET, C-MOVE, or DICOMweb applying pseudonymization or transformation rules, sending images to destinations, and updating task status. For workflows involving C-MOVE, ADIT also runs a C-STORE Receiver which accepts inbound DICOM objects from PACS, forwards them reliably to the Transfer Worker, and ensures lossless data flow. External DICOM systems such as PACS, VNAs, and DICOMweb servers function as the data sources and sinks, providing and receiving DICOM objects through standard DIMSE and DICOMweb protocols.
 
 ## Backend Architecture
 
@@ -85,26 +85,6 @@ Retrying failed tasks with configurable backoff
 
 Writing detailed logs back into PostgreSQL
 
-## Task Queue Architecture
-
-The system uses a PostgreSQL-backed queue. The Django API inserts tasks into job tables, and workers claim tasks atomically to avoid duplicate processing.
-
-The queue workflow:
-
-API inserts job + tasks
-
-Workers poll the task table
-
-A worker claims a task using atomic DB locks
-
-Task is executed
-
-Worker updates the status (completed/failed)
-
-Workflows proceed to the next task
-
-This ensures safe, consistent job execution even across multiple workers.
-
 ### Procrastinate Task Queue System
 
 ADIT uses Procrastinate as its PostgreSQL-based task queue system, providing robust asynchronous job processing with advanced features for reliability and monitoring.
@@ -144,12 +124,20 @@ ADIT uses Procrastinate as its PostgreSQL-based task queue system, providing rob
 
 **Task Flow Management**:
 
-```text
-Django API ──(enqueue)──→ Procrastinate ──(poll)──→ Worker Container
-     │                        │                         │
-     └──(status updates)──────┘                         │
-                                                         │
-PostgreSQL ←──(progress/results)─────────────────────────┘
+```mermaid
+
+flowchart LR
+    A[Django API]
+    B[Procrastinate]
+    C[Worker Container]
+    D[PostgreSQL]
+
+    A -- enqueue --> B
+    B -- poll --> C
+
+    A -- status updates --> B
+    C -- progress/results --> D
+
 ```
 
 **Configuration and Monitoring**:
@@ -554,7 +542,7 @@ services:
       - "${WEB_DEV_PORT:-8000}:8000"
       - "${REMOTE_DEBUGGING_PORT:-5678}:5678"
     command: >
-      bash -c "wait-for-it -s postgres.local:5432 -t 60 && 
+      bash -c "wait-for-it -s postgres.local:5432 -t 60 &&
                ./manage.py migrate &&
                ./manage.py runserver 0.0.0.0:8000"
     hostname: web.local
@@ -817,4 +805,4 @@ A containerized architecture supports reproducible environments and scalable dep
 
 ---
 
-This structure provides a scalable, secure, and extensible foundation for ADIT’s DICOM data exchange workflows.
+This structure provides a scalable, secure, and extensible foundation for ADIT’s DICOM data exchange workflows
