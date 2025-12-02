@@ -41,16 +41,6 @@ These protocols enable ADIT to connect to most PACS, VNA systems, and research d
 
 ### Getting Started
 
-**Q: What are the system requirements for ADIT?**
-
-A: ADIT requires:
-
-- **Docker & Docker Compose**: For containerized deployment (uses Python 3.13 base image)
-- **PostgreSQL 17**: For data storage (as configured in docker-compose files)
-- **Modern web browser**: Supporting JavaScript ES6+ and modern CSS features
-- **Network access**: To DICOM servers you want to connect to
-- **Minimum 16GB RAM**: Recommended for smooth operation with multiple transfers
-
 **Q: How do I install ADIT?**
 
 A: The easiest way is using Docker Compose:
@@ -402,7 +392,7 @@ A: ADIT has built-in timeout and retry mechanisms based on the actual codebase c
 
 A: Support resources:
 
-- **Documentation**: Check the [user guide](user-guide.md) and [technical overview](../technical-overview.md)
+- **Documentation**: Check the [user guide](user-guide.md),  [technical overview](../technical-overview.md)
 - **GitHub Issues**: Report bugs or request features on [GitHub](https://github.com/openradx/adit/issues)
 - **Discussions**: Join community discussions on [GitHub Discussions](https://github.com/openradx/adit/discussions)
 - **Logs**: Check ADIT logs for detailed error information
