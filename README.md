@@ -30,6 +30,36 @@ ADIT (Automated DICOM Transfer) is a Swiss army knife to exchange DICOM data bet
 > [!IMPORTANT]
 > ADIT is currently in early beta stage. While we are actively building and refining its features, users should anticipate ongoing updates and potential breaking changes as the platform evolves. We appreciate your understanding and welcome feedback to help us shape the future of ADIT.
 
+## The Challenge: Traditional DICOM vs Modern Web Workflows
+
+Many existing PACS servers, while robust, rely on older, specialized DICOM protocols (DIMSE) and often have web-based access (like DICOMweb) either not implemented or explicitly turned off for security reasons. This creates a significant hurdle for modern applications, especially those built for the web or requiring automated, scriptable access.
+
+## How ADIT Bridges the Gap
+
+ADIT acts as a **translation layer** between modern web APIs and traditional DICOM protocols:
+
+```mermaid
+sequenceDiagram
+    participant Client as Your Script/App
+    participant ADIT as ADIT Server
+    participant Worker as ADIT Worker
+    participant PACS as PACS Server
+
+    Client->>ADIT: HTTP GET /dicomweb/studies?PatientAge=020-030&Modality=CT
+    Note over ADIT: Receives DICOMweb/REST request
+
+    ADIT->>Worker: Internal translation
+    Note over Worker: Converts REST → DIMSE
+
+    Worker->>PACS: C-FIND (DIMSE Protocol)
+    PACS-->>Worker: DICOM Response
+
+    Worker->>ADIT: Internal processing
+    Note over ADIT: Converts DIMSE → REST
+
+    ADIT-->>Client: HTTP 200 + JSON Response
+```
+
 ## Features
 
 - Transfer DICOM data between DICOM-compatible servers
