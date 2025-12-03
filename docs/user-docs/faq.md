@@ -316,23 +316,6 @@ A: To create an API token for programmatic access:
 
 4. **Use the Token**: Include it in API requests as `Authorization: Token <your_token_here>`
 
-**Q: Is there a Python client library?**
-
-A: Yes! Install the ADIT client:
-
-```bash
-pip install adit-client
-```
-
-Then use it in your code:
-
-```python
-from adit_client import AditClient
-
-client = AditClient('https://adit.hospital.com', token='your_token')
-studies = client.query_studies(server='PACS1', PatientID='12345')
-```
-
 ## Troubleshooting
 
 ### Common Issues
@@ -378,7 +361,7 @@ A: ADIT performs content validation on batch files:
 
 **Q:Jobs get stuck or fail with timeout errors**
 
-A: ADIT has built-in timeout and retry mechanisms based on the actual codebase configuration:
+A: ADIT has built-in timeout and retry mechanisms.
 
 1. **Connection retries**: Network connections automatically retry twice with 30-second delays between attempts
 2. **Task retries**: Failed tasks retry up to 3 times with exponential backoff intervals
@@ -392,7 +375,7 @@ A: ADIT has built-in timeout and retry mechanisms based on the actual codebase c
 
 A: Support resources:
 
-- **Documentation**: Check the [user guide](user-guide.md),  [technical overview](../technical-overview.md)
+- **Documentation**: Check the [user guide](user-guide.md), [technical overview](../technical-overview.md)
 - **GitHub Issues**: Report bugs or request features on [GitHub](https://github.com/openradx/adit/issues)
 - **Discussions**: Join community discussions on [GitHub Discussions](https://github.com/openradx/adit/discussions)
 - **Logs**: Check ADIT logs for detailed error information
@@ -403,8 +386,7 @@ A: When reporting issues, please include:
 
 1. **Steps to reproduce** the problem
 2. **Error messages** from the UI or logs
-3. **Environment details** (Docker, database, network setup)
-4. **DICOM server types** you're connecting to
+3. **DICOM server types** you're connecting to
 
 **Q: How can I contribute to ADIT?**
 
