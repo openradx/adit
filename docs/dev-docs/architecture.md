@@ -27,11 +27,11 @@ flowchart LR
     DjangoAPI --> DB
     Worker --> DB
     Worker --> CStore
-    CStore --> DICOM
+    DICOM --> CStore
 
 ```
 
-The ADIT platform consists of several coordinated components that together enable automated DICOM retrieval, transformation, and transfer. Users interact with ADIT through a standard web browser, initiating actions such as creating transfer jobs, uploading DICOM files configuring destinations, and monitoring job activity. The browser loads the ADIT Web UI, a server-side rendered interface built with Django templates and enhanced with HTMX for dynamic interactions presenting dashboards, validating input, and providing seamless user experience through partial page updates and WebSocket connections. These requests are served by the Django API Server, which provides all REST endpoints and implements business logic including authentication, job orchestration, task creation, configuration handling, and interaction with the PostgreSQL database. PostgreSQL stores all persistent system data such as user accounts, transfer jobs, DICOM query results logs, and configuration, and is regularly polled by Transfer Workers for tasks requiring execution. Transfer Workers running in Docker containers, perform the actual data operations: querying remote DICOM servers, retrieving images via C-GET, C-MOVE, or DICOMweb applying pseudonymization or transformation rules, sending images to destinations, and updating task status. For workflows involving C-MOVE, ADIT also runs a C-STORE Receiver which accepts inbound DICOM objects from PACS, forwards them reliably to the Transfer Worker, and ensures lossless data flow. External DICOM systems such as PACS, VNAs, and DICOMweb servers function as the data sources and sinks, providing and receiving DICOM objects through standard DIMSE and DICOMweb protocols.
+The ADIT platform consists of several coordinated components that together enable automated DICOM retrieval, transformation, and transfer. Users interact with ADIT through a standard web browser, initiating actions such as creating transfer jobs, uploading DICOM files configuring destinations, and monitoring job activity. The browser loads the ADIT Web UI, a server-side rendered interface built with Django templates and enhanced with HTMX for dynamic interactions presenting dashboards, validating input, and providing seamless user experience through partial page updates. Real-time communication for selective transfers uses WebSocket connections. These requests are served by the Django API Server, which provides all REST endpoints and implements business logic including authentication, job orchestration, task creation, configuration handling, and interaction with the PostgreSQL database. PostgreSQL stores all persistent system data such as user accounts, transfer jobs, DICOM query results logs, and configuration, and is regularly polled by Transfer Workers for tasks requiring execution. Transfer Workers running in Docker containers, perform the actual data operations: querying remote DICOM servers, retrieving images via C-GET, C-MOVE, or DICOMweb applying pseudonymization or transformation rules, sending images to destinations, and updating task status. For workflows involving C-MOVE, ADIT also runs a C-STORE Receiver which accepts inbound DICOM objects from PACS, forwards them reliably to the Transfer Worker, and ensures lossless data flow. External DICOM systems such as PACS, VNAs, and DICOMweb servers function as the data sources and sinks, providing and receiving DICOM objects through standard DIMSE and DICOMweb protocols.
 
 ## Backend Architecture
 
@@ -167,93 +167,17 @@ C-STORE – Used by the receiver component to ingest pushed DICOM datasets.
 
 The system can operate in two primary modes depending on whether processing or anonymization occurs:
 
-Direct Transfer Path
+#### Direct Transfer Path
 
 Source → Worker → Destination
 
 Optimal for unmodified, pass-through DICOM data.
 
-Transform Pipeline
+#### Transform Pipeline
 
 Source → Worker Storage → Transform Step → Destination → Cleanup
 
 Used when transformations, validations, or anonymization are required.
-
-### C-MOVE Receiver Architecture
-
-When operating in C-MOVE mode, ADIT routes data through a specialized receiver process. The interaction follows this structure:
-
-```mermaid
-
-flowchart LR
-    A[PACS Server]
-    B[Worker]
-    C[Source PACS]
-    D[Receiver Container]
-
-    %% C-MOVE path
-    A -- "C-MOVE" --> B
-    B -- "commands" --> C
-
-    %% C-STORE path
-    A -- "C-STORE" --> D
-    D -- "TCP" --> B
-
-```
-
-In this architecture, the Receiver Service functions as a C-STORE SCP and provides:
-
-Reliable acceptance of incoming DICOM objects from the source PACS
-
-Streaming of received files back to the worker over a TCP socket
-
-Integration with the FileTransmitter for high-throughput, low-overhead data streaming
-
-Support for multiple simultaneous C-STORE associations and concurrent transfers
-
-## Data Transformation Layer
-
-The data transformation layer is responsible for modifying DICOM objects when pseudonymization, anonymization, or other tag-level changes are required. This layer operates within the worker component and ensures that any sensitive information is handled securely and consistently. When a job includes transformation rules, the system switches from a direct streaming model to a controlled, file-based pipeline to guarantee data integrity and traceability.
-
-### Pseudonymization Pipeline
-
-When the system must modify incoming DICOM files, it performs a structured sequence of steps:
-
-### Temporary Download
-
-The worker retrieves DICOM instances and stores them in a secure, temporary directory on the ADIT server.
-
-### Transformation Execution
-
-Using pydicom, the worker applies transformations such as anonymization, pseudonymization, or tag rewriting.
-
-### Integrity Validation
-
-After modification, the system verifies that the DICOM structure remains valid and compliant.
-
-### Upload to Destination
-
-The processed data is then transferred to the final destination PACS or storage target.
-
-### Secure Cleanup
-
-Temporary storage is sanitized and deleted to ensure no PHI residue remains on the server.
-
-## Supported Transformations
-
-ADIT's transformation pipeline supports various DICOM modifications through pydicom integration:
-
-**DICOM Tag Anonymization/Pseudonymization**:
-Removal or substitution of identifying fields using pydicom's anonymization capabilities and configurable anonymization seeds.
-
-**Patient ID Remapping**:
-Mapping original identifiers to consistent pseudonyms or study-specific IDs using the ANONYMIZATION_SEED configuration.
-
-**UID Regeneration**:
-Automatic creation of new Study, Series, or Instance UIDs to avoid collisions or preserve anonymity using pydicom's UID generation.
-
-**Custom Tag Modifications**:
-Flexible transformations through DICOM modifier functions that can be applied during transfer operations, allowing for custom business logic.
 
 ## Orthanc Integration
 
@@ -285,12 +209,6 @@ orthanc1:
   hostname: orthanc1.local
   ports:
     - "7501:7501" # DICOM port
-    - "6501:6501" # HTTP port
-  configs:
-    - source: orthanc1_config
-      target: /etc/orthanc/orthanc.json
-  volumes:
-    - orthanc1_data:/var/lib/orthanc/db
 ```
 
 **Configuration Features**:
@@ -386,7 +304,7 @@ ADIT typically runs with the following container types in a production deploymen
 flowchart TB
     subgraph "ADIT Platform"
         subgraph "Core Services"
-            WEB["Web/API Container<br/>(adit-web)"]
+            WEB["Web/API Container<br/>(Direct SSL via Daphne)"]
             DB["PostgreSQL Container<br/>(adit-db)"]
         end
 
@@ -398,14 +316,24 @@ flowchart TB
 
         subgraph "DICOM Services"
             REC["C-STORE Receiver<br/>(adit-receiver)"]
-            ORTH["Orthanc Server<br/>(orthanc)"]
+            ORTH1["Orthanc Server 1<br/>(orthanc1)"]
+            ORTH2["Orthanc Server 2<br/>(orthanc2)"]
         end
 
-        subgraph "Infrastructure"
-            REV["Reverse Proxy<br/>(nginx/traefik)"]
+        subgraph "Storage"
             VOL[("Shared Volumes")]
         end
     end
+
+    subgraph "External Access"
+        HTTPS["HTTPS:443"]
+        HTTP["HTTP:80"]
+        DICOM_PORT["DICOM:11112"]
+    end
+
+    HTTPS --> WEB
+    HTTP --> WEB
+    DICOM_PORT --> REC
 
     WEB --> DB
     W1 --> DB
@@ -414,7 +342,6 @@ flowchart TB
     W1 --> REC
     W2 --> REC
     WN --> REC
-    REV --> WEB
     WEB --> VOL
     W1 --> VOL
     W2 --> VOL
@@ -429,10 +356,13 @@ flowchart TB
 
 **Configuration**:
 
-- **Base Image**: Python 3.13 (production), Python 3.14 (development) with Django dependencies
-- **Exposed Ports**: 8000 (HTTP), optionally 8443 (HTTPS)
+- **Base Image**: Python 3.13 with Django dependencies and Daphne ASGI server
+- **Exposed Ports**:
+  - **Development**: 8000 (HTTP), 5678 (remote debugging)
+  - **Production**: 80 (HTTP), 443 (HTTPS with SSL termination)
+- **SSL Handling**: Direct SSL termination via Daphne with certificate files mounted as volumes
 - **Environment**: Production/development configuration via environment variables
-- **Health Checks**: HTTP endpoint monitoring for container orchestration
+- **Health Checks**: Django health check endpoints at `/health/`
 
 **Responsibilities**:
 
@@ -493,7 +423,9 @@ flowchart TB
 
 - **Base Image**: Python 3.13 with pynetdicom and DICOM libraries
 - **Internal Ports**: 11112 (DICOM C-STORE SCP), 14638 (File Transmit TCP)
-- **External Ports**: 11122:11112 (development mapping)
+- **External Ports**:
+  - **Development**: 11122:11112 (mapped to avoid conflicts)
+  - **Production**: 11112:11112 (direct mapping)
 - **Network**: Internal communication with worker containers via service discovery
 - **File Streaming**: High-performance TCP socket connections to transfer workers
 
@@ -510,22 +442,22 @@ flowchart TB
 **Configuration**:
 
 - **Base Image**: Official Orthanc Docker image
-- **Exposed Ports**: 7501/7502 (DICOM), 6501/6502 (HTTP/DICOMweb)
+- **Exposed Ports**: 7501/7502 (DICOM only in development setup)
 - **Storage**: PostgreSQL backend for production, SQLite for development
 - **Plugins**: DICOMweb, authentication, and storage plugins
 
 ### Infrastructure Containers
 
-#### Reverse Proxy Container (`nginx`/`traefik`)
+#### Web/API Container SSL Handling
 
-**Purpose**: Load balancing, SSL termination, and routing
+**Purpose**: Direct SSL termination and request handling via Django/Daphne
 
 **Features**:
 
-- **SSL/TLS**: Certificate management and HTTPS enforcement
-- **Load Balancing**: Distribute requests across web container instances
-- **Static Files**: Efficient serving of CSS, JS, and image assets
-- **Health Checks**: Route traffic only to healthy containers
+- **SSL/TLS**: Direct SSL termination using Daphne ASGI server with certificate files
+- **Load Balancing**: Multiple web container replicas managed by container orchestration
+- **Static Files**: Served by Django's staticfiles system
+- **Health Checks**: Built-in Django health check endpoints
 
 ### Container Orchestration
 
@@ -534,61 +466,120 @@ flowchart TB
 **Development Environment**:
 
 ```yaml
-version: "3.8"
 services:
   web:
     image: adit_dev:latest
     ports:
-      - "${WEB_DEV_PORT:-8000}:8000"
-      - "${REMOTE_DEBUGGING_PORT:-5678}:5678"
+      - ${WEB_DEV_PORT:-8000}:8000
+      - ${REMOTE_DEBUGGING_PORT:-5678}:5678
     command: >
-      bash -c "wait-for-it -s postgres.local:5432 -t 60 &&
-               ./manage.py migrate &&
-               ./manage.py runserver 0.0.0.0:8000"
-    hostname: web.local
+      bash -c "
+        wait-for-it -s postgres.local:5432 -t 60 && 
+        ./manage.py migrate &&
+        ./manage.py create_superuser &&
+        ./manage.py create_example_users &&
+        ./manage.py create_example_groups &&
+        ./manage.py populate_example_data &&
+        wait-for-it -s orthanc1.local:6501 -t 60 &&
+        ./manage.py populate_orthancs &&
+        ./manage.py retry_stalled_jobs &&
+        ./manage.py runserver 0.0.0.0:8000
+      "
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health/"]
 
   default_worker:
     image: adit_dev:latest
-    command: ./manage.py bg_worker -l debug -q default --autoreload
-    hostname: default_worker.local
+    command: >
+      bash -c "
+        wait-for-it -s postgres.local:5432 -t 60 &&
+        ./manage.py bg_worker -l debug -q default --autoreload
+      "
 
   dicom_worker:
     image: adit_dev:latest
-    command: ./manage.py bg_worker -l debug -q dicom --autoreload
-    hostname: dicom_worker.local
+    command: >
+      bash -c "
+        wait-for-it -s postgres.local:5432 -t 60 &&
+        ./manage.py bg_worker -l debug -q dicom --autoreload
+      "
 
   receiver:
     image: adit_dev:latest
-    command: ./manage.py receiver --autoreload
     ports:
-      - "11122:11112" # External:Internal port mapping
-    hostname: receiver.local
+      - 11122:11112
+    command: |
+      ./manage.py receiver --autoreload
 
   postgres:
     image: postgres:17
-    hostname: postgres.local
+    environment:
+      POSTGRES_PASSWORD: postgres
     ports:
-      - "${POSTGRES_DEV_PORT:-5432}:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - ${POSTGRES_DEV_PORT:-5432}:5432
 
   orthanc1:
     image: jodogne/orthanc-plugins:1.12.9
-    hostname: orthanc1.local
     ports:
       - "7501:7501"
 
   orthanc2:
     image: jodogne/orthanc-plugins:1.12.9
-    hostname: orthanc2.local
     ports:
       - "7502:7502"
 ```
 
-**Production Deployment**:
+**Production Environment**:
 
-- **Container Orchestration**: Kubernetes or Docker Swarm for advanced features
-- **Service Mesh**: Istio or similar for advanced networking and observability
+```yaml
+services:
+  web:
+    image: ghcr.io/openradx/adit:latest
+    ports:
+      - ${WEB_HTTP_PORT:-80}:80
+      - ${WEB_HTTPS_PORT:-443}:443
+    command: >
+      bash -c "
+        wait-for-it -s init.local:8000 -t 300 && 
+        echo 'Starting web server ...' &&
+        daphne -b 0.0.0.0 -p 80 \\
+          -e ssl:443:privateKey=/etc/web/ssl/key.pem:certKey=/etc/web/ssl/cert.pem \\
+          adit.asgi:application
+      "
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/health/"]
+    deploy:
+      replicas: ${WEB_REPLICAS:-3}
+
+  default_worker:
+    image: ghcr.io/openradx/adit:latest
+    command: >
+      bash -c "
+        wait-for-it -s postgres.local:5432 -t 60 &&
+        ./manage.py bg_worker -q default
+      "
+
+  dicom_worker:
+    image: ghcr.io/openradx/adit:latest
+    command: >
+      bash -c "
+        wait-for-it -s postgres.local:5432 -t 60 &&
+        ./manage.py bg_worker -q dicom
+      "
+    deploy:
+      replicas: ${DICOM_WORKER_REPLICAS:-3}
+
+  receiver:
+    image: ghcr.io/openradx/adit:latest
+    ports:
+      - 11112:11112
+    command: ./manage.py receiver
+```
+
+**Container Orchestration Options**:
+
+- **Docker Swarm**: Built-in orchestration with service replicas and load balancing
+- **Kubernetes**: Advanced orchestration with auto-scaling and service mesh integration
 - **Monitoring**: Prometheus, Grafana, and log aggregation
 - **Backup Strategy**: Automated database backups and disaster recovery
 
@@ -612,62 +603,17 @@ services:
 
 **Internal Networks**:
 
-- **Backend Network**: Web, workers, and database communication
+- **Backend Network**: Web, workers, and database communication via Docker internal networks
 - **DICOM Network**: Receiver and external PACS communication
-- **Frontend Network**: Reverse proxy and web container
+- **Container Network**: All containers communicate via Docker Compose default network
 
 **Security Considerations**:
 
-- **Network Isolation**: Containers communicate only through defined networks
-- **Secrets Management**: Database credentials and API keys via Docker secrets
+- **Network Isolation**: Containers communicate only through defined Docker networks
+- **SSL Termination**: Direct SSL handling by web container with mounted certificate files
+- **Secrets Management**: Database credentials and SSL certificates via Docker volumes and environment variables
 - **Image Security**: Regular base image updates and vulnerability scanning
 - **Runtime Security**: Non-root user execution and read-only containers where possible
-
-## Technology Stack Details
-
-The ADIT platform is built on a modern, modular technology stack that supports scalable backend processing, robust DICOM handling, and a streamlined web-based frontend. Each layer of the system is designed to maximize reliability, performance, and maintainability.
-
-### Backend Framework
-
-The backend is powered by Django and Python, providing a strong foundation for database-backed operations, asynchronous processing, and clean API design. These technologies ensure predictable behavior in production and maintainable code for long-term development.
-
-Django 5.1.6+ – Serves as the primary web framework, offering MVC structure, ORM capabilities, built-in admin tools, and strong security features.
-
-Python 3.12+ – Leverages modern language features, improved performance, and first-class async support. Development containers use Python 3.14 for future compatibility.
-
-PostgreSQL 17 – Used as the main relational database, ensuring reliability, consistency, and robust transactional behavior.
-
-Procrastinate – Provides the backend task queue that powers asynchronous job execution, such as DICOM transfers and processing.
-
-Docker – Ensures consistent deployment environments across development, testing, and production. Production images use Python 3.13 with uv for dependency management.
-
-### DICOM Integration
-
-DICOM operations are handled through a combination of community-standard libraries and custom tooling. This allows ADIT to perform complex transfers, apply pseudonymization, and communicate with PACS systems using established protocols.
-
-pydicom – Enables safe parsing, inspection, and manipulation of DICOM datasets.
-
-pynetdicom – Implements DIMSE networking (C-FIND, C-MOVE, C-STORE) required for PACS interoperability.
-
-DICOMweb – Adds support for modern REST-based DICOM endpoints used by newer systems.
-
-Custom utilities – Handle advanced functionality like pseudonymization, validation workflows, and optimized transfer logic.
-
-### Frontend Technology
-
-ADIT's frontend architecture prioritizes simplicity, maintainability, and progressive enhancement. Rather than using complex JavaScript frameworks, it leverages server-side rendering with carefully selected client-side enhancements.
-
-**Django Templates**: Server-side rendered HTML with template inheritance, includes, and custom template tags for reusable components.
-
-**HTMX**: Enables dynamic partial page updates, form submissions, and real-time interactions without full page reloads.
-
-**Alpine.js**: Lightweight reactive JavaScript framework for specific interactive components like form handling and dynamic UI elements.
-
-**Bootstrap 5**: CSS framework providing responsive grid system, components, and utility classes.
-
-**WebSocket Integration**: Real-time updates for transfer progress using HTMX WebSocket extensions.
-
-**Static Asset Management**: Vendor libraries managed through Django's staticfiles with custom CLI commands for dependency updates.
 
 ## Application Architecture
 

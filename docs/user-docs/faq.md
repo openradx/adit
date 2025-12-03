@@ -377,7 +377,6 @@ A: Support resources:
 
 - **Documentation**: Check the [user guide](user-guide.md), [technical overview](../technical-overview.md)
 - **GitHub Issues**: Report bugs or request features on [GitHub](https://github.com/openradx/adit/issues)
-- **Discussions**: Join community discussions on [GitHub Discussions](https://github.com/openradx/adit/discussions)
 - **Logs**: Check ADIT logs for detailed error information
 
 **Q: How do I report a bug?**
