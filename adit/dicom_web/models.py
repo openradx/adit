@@ -25,5 +25,11 @@ class APIUsage(models.Model):
         related_name="api_usage",
     )
 
+    class Meta:
+        indexes = [
+            models.Index(fields=["-time_last_accessed"]),
+        ]
+        constraints = [models.UniqueConstraint(fields=["owner"], name="unique_owner_api_usage")]
+
     def __str__(self) -> str:
         return f"{self.__class__.__name__} [{self.pk}]"

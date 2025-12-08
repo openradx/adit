@@ -1,6 +1,5 @@
 import json
 import logging
-import sys
 from contextlib import asynccontextmanager
 from typing import AsyncIterator, Literal, Union, cast
 
@@ -548,7 +547,9 @@ class StoreImagesAPIView(WebDicomAPIView):
                     logger.debug(f"Stored instance {ds.SOPInstanceUID} to {dest_server.ae_title}")
 
             response_data = [results]
-            await self._finalize_statistic(session, transfer_size=sys.getsizeof(response_data))
+            await self._finalize_statistic(
+                session, transfer_size=len(json.dumps(response_data[0].to_json_dict()).encode())
+            )
 
             assert request.accepted_renderer is not None
             return Response(response_data, content_type=request.accepted_renderer.media_type)
