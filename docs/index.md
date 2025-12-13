@@ -1,4 +1,161 @@
-# ADIT - Automated DICOM Transfer
+---
+hide:
+  - toc
+  - navigation
+---
+
+# **ADIT - Automated DICOM Transfer**
+
+<div class="slideshow-container">
+  <div class="slide fade">
+    <img src="assets/screenshots/Screenshot01.png" alt="ADIT Screenshot 1">
+  </div>
+  <div class="slide fade">
+    <img src="assets/screenshots/Screenshot02.png" alt="ADIT Screenshot 2">
+  </div>
+  <div class="slide fade">
+    <img src="assets/screenshots/Screenshot03.png" alt="ADIT Screenshot 3">
+  </div>
+  <div class="slide fade">
+    <img src="assets/screenshots/Screenshot04.png" alt="ADIT Screenshot 4">
+  </div>
+  
+  
+  <a class="prev" onclick="changeSlide(-1)">❮</a>
+  <a class="next" onclick="changeSlide(1)">❯</a>
+
+  <div class="dot-container">
+    <span class="dot" onclick="currentSlide(1)"></span>
+    <span class="dot" onclick="currentSlide(2)"></span>
+    <span class="dot" onclick="currentSlide(3)"></span>
+    <span class="dot" onclick="currentSlide(4)"></span>
+  </div>
+</div>
+
+<style>
+  
+  .slideshow-container {
+    position: relative;
+    max-width: 100%;
+    margin: 2rem auto;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+  }
+
+  .slide {
+    display: none;
+  }
+
+  .slide img {
+    width: 100%;
+    height: auto;
+  }
+
+  .fade {
+    animation: fade 1s;
+  }
+
+  @keyframes fade {
+    from {opacity: 0.4}
+    to {opacity: 1}
+  }
+
+  /* Navigation buttons */
+  .prev, .next {
+    cursor: pointer;
+    position: absolute;
+    top: 50%;
+    width: auto;
+    margin-top: -22px;
+    padding: 16px;
+    color: white;
+    font-weight: bold;
+    font-size: 18px;
+    transition: 0.3s ease;
+    border-radius: 0 3px 3px 0;
+    user-select: none;
+    background-color: rgba(0,0,0,0.5);
+  }
+
+  .next {
+    right: 0;
+    border-radius: 3px 0 0 3px;
+  }
+
+  .prev:hover, .next:hover {
+    background-color: rgba(0,0,0,0.8);
+  }
+
+  
+  .dot-container {
+    text-align: center;
+    padding: 10px;
+    position: absolute;
+    bottom: 10px;
+    width: 100%;
+  }
+
+  .dot {
+    cursor: pointer;
+    height: 12px;
+    width: 12px;
+    margin: 0 4px;
+    background-color: rgba(255,255,255,0.5);
+    border-radius: 50%;
+    display: inline-block;
+    transition: background-color 0.3s ease;
+  }
+
+  .dot:hover, .dot.active {
+    background-color: rgba(255,255,255,0.9);
+  }
+</style>
+
+<script>
+  let slideIndex = 1;
+  let slideTimer;
+
+  function showSlide(n) {
+    let slides = document.getElementsByClassName("slide");
+    let dots = document.getElementsByClassName("dot");
+    
+    if (n > slides.length) { slideIndex = 1 }
+    if (n < 1) { slideIndex = slides.length }
+    
+    for (let i = 0; i < slides.length; i++) {
+      slides[i].style.display = "none";
+    }
+    
+    for (let i = 0; i < dots.length; i++) {
+      dots[i].className = dots[i].className.replace(" active", "");
+    }
+    
+    if (slides.length > 0) {
+      slides[slideIndex-1].style.display = "block";
+      dots[slideIndex-1].className += " active";
+    }
+    
+    clearTimeout(slideTimer);
+    slideTimer = setTimeout(() => {
+      slideIndex++;
+      showSlide(slideIndex);
+    }, 4000); // Change image every 4 seconds
+  }
+
+  function changeSlide(n) {
+    showSlide(slideIndex += n);
+  }
+
+  function currentSlide(n) {
+    showSlide(slideIndex = n);
+  }
+
+  // Initialize when page loads
+  document.addEventListener('DOMContentLoaded', function() {
+    showSlide(slideIndex);
+  });
+</script>
 
 ADIT (Automated DICOM Transfer) is a Swiss army knife to exchange DICOM data between various systems by using a convenient web frontend.
 
@@ -20,21 +177,7 @@ ADIT serves as a central hub for medical imaging data, connecting various DICOM 
 4. **Format Conversion**: Convert DICOM images to NIfTI format for neuroimaging research and analysis
 5. **Automated Processing**: Handle single transfers or batch operations with full audit trails
 
-**Perfect for**: Research institutions, clinical trials, multi-site studies, neuroimaging research, and any scenario requiring secure DICOM data exchange between different systems.
-
-### **NIfTI Conversion Capabilities**
-
-ADIT includes built-in support for converting DICOM images to **NIfTI (Neuroimaging Informatics Technology Initiative)** format, making medical imaging data accessible to a wide range of neuroimaging and research tools.
-
-**Key Benefits:**
-
-- **Automated conversion** during transfer - no manual processing required
-- **Maintains image quality** and spatial information from original DICOM
-- **Preserves metadata** for research traceability
-- **Cross-platform compatibility** works on Windows, macOS, and Linux
-- **Integration ready** for research pipelines and analysis workflows
-
-Simply enable the "Convert to NIfTI" option during selective or batch transfers, and ADIT will automatically generate research-ready NIfTI files alongside or instead of DICOM data.
+ADIT includes built-in support for converting DICOM images to **NIfTI (Neuroimaging Informatics Technology Initiative)** format, making medical imaging data accessible to a wide range of neuroimaging and research tools. Simply enable the "Convert to NIfTI" option during selective or batch transfers, and ADIT will automatically generate research-ready NIfTI files alongside or instead of DICOM data.
 
 **Ready to modernize your medical imaging workflows?** ADIT bridges the gap between traditional DICOM infrastructure and modern application development, making medical imaging data as accessible as any other web API.
 

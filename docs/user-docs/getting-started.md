@@ -2,14 +2,6 @@
 
 Welcome to ADIT! This guide will help you get started with using ADIT for DICOM data transfer.
 
-## Prerequisites
-
-Before you start using ADIT, you'll need:
-
-- Access to ADIT through a web browser
-- Valid user credentials provided by your administrator
-- Knowledge of the DICOM servers you want to connect to
-
 ## First Login
 
 1. Open your web browser and navigate to the ADIT URL provided by your administrator

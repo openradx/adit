@@ -22,6 +22,13 @@ The development server of the example project will be started on <http://localho
 File changes will be automatically detected and the servers will be restarted. When library
 dependencies are changed, the containers will automatically be rebuilt and restarted.
 
+This repository includes a [Dev Container](https://code.visualstudio.com/docs/devcontainers/create-dev-container).
+If you open the project in VS Code after cloning, you should see a prompt:
+
+“Reopen in Dev Container”
+
+Click it, and VS Code will automatically build and open the development environment.
+
 ## Reporting Issues
 
 If you encounter bugs or have feature requests, please open an issue on GitHub. Include as much detail as possible, including steps to reproduce the issue.

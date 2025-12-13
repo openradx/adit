@@ -1,4 +1,4 @@
-# Core Architecture & Component Hierarchy in ADIT
+# **Core Architecture & Component Hierarchy in ADIT**
 
 This document outlines the hierarchical architecture of the ADIT system, focusing on how core components are shared and reused across different applications (Selective Transfer, Batch Transfer, and Batch Query).
 
@@ -6,11 +6,13 @@ This document outlines the hierarchical architecture of the ADIT system, focusin
 
 The ADIT system follows a hierarchical architecture with the **Core App** (`adit.core`) providing foundational services and shared components. The core includes user management, DICOM node configuration, base models, utilities, and the critical `DicomOperator` for all DICOM operations.
 
-## Core Component Hierarchy
+## **Core Component Hierarchy**
 
 ### 1. Model Inheritance Structure
 
 The core provides base models that establish a consistent pattern across all DICOM applications:
+
+<div class="mermaid-zoom">
 
 ```mermaid
 classDiagram
@@ -51,6 +53,7 @@ classDiagram
         +pseudonym: str
     }
 
+    DicomJob "1" *-- "many" DicomTask : contains
     DicomJob <|-- TransferJob
     DicomJob <|-- BatchQueryJob
     TransferJob <|-- SelectiveTransferJob
@@ -77,6 +80,8 @@ classDiagram
     }
 ```
 
+</div>
+
 **Key Benefits:**
 
 - **Unified Job Management**: All apps use the same job lifecycle (pending → in-progress → success/failure)
@@ -89,70 +94,55 @@ The `DicomOperator` class is the **central abstraction** for all DICOM operation
 
 #### DicomOperator Core Methods
 
-```python
-class DicomOperator:
-    def __init__(self, server: DicomServer, dimse_timeout: int = 60):
-        """Initializes operator with server configuration"""
+The DicomOperator provides several key methods that are reused across all ADIT applications:
 
-    # Query Operations - Used by ALL apps
-    def find_patients(self, query: QueryDataset) -> Iterator[ResultDataset]
-    def find_studies(self, query: QueryDataset) -> Iterator[ResultDataset]
-    def find_series(self, query: QueryDataset) -> Iterator[ResultDataset]
-    def find_images(self, query: QueryDataset) -> Iterator[ResultDataset]
+**Query Operations** - Used by all applications:
 
-    # Retrieval Operations - Used by Transfer apps
-    def fetch_study(self, patient_id: str, study_uid: str, callback: Callable)
-    def fetch_series(self, patient_id: str, study_uid: str, series_uid: str, callback: Callable)
-    def fetch_image(self, patient_id: str, study_uid: str, series_uid: str, image_uid: str, callback: Callable)
+- `find_patients()` - Search for patients matching criteria
+- `find_studies()` - Search for studies matching criteria _(most frequently used)_
+- `find_series()` - Search for series within studies
+- `find_images()` - Search for individual images
 
-    # Movement Operations - Used by Transfer apps
-    def move_study(self, patient_id: str, study_uid: str, dest_aet: str)
-    def upload_images(self, resource: PathLike | list[Dataset])
-```
+**Retrieval Operations** - Used by transfer applications:
 
-#### Protocol Abstraction
+- `fetch_study()` - Download all images in a study _(extensively reused)_
+- `fetch_series()` - Download all images in a specific series
+- `fetch_image()` - Download a single image
 
-The DicomOperator automatically selects the best available protocol:
+**Movement Operations** - Used by transfer applications:
 
-#### find_studies Method
+- `move_study()` - Move a study between DICOM servers
+- `upload_images()` - Upload images to a destination server
 
-```python
-def find_studies(self, query: QueryDataset) -> Iterator[ResultDataset]:
-    if self.server.patient_root_find_support or self.server.study_root_find_support:
-        # Use DIMSE C-FIND
-        results = self.dimse_connector.send_c_find(query)
-        yield from self._handle_found_studies(query, results)
-    elif self.server.dicomweb_qido_support:
-        # Use DICOMweb QIDO-RS
-        results = self.dicom_web_connector.send_qido_rs(query)
-        yield from self._handle_found_studies(query, results)
-    else:
-        raise DicomError("No supported method to find studies available.")
-```
+#### How find_studies() Works
 
-#### fetch study method
+The `find_studies()` method is the most commonly used query method across all applications. It searches for medical imaging studies on a DICOM server based on criteria like patient name, date range, or modality.
 
-The `fetch_study()` method is extensively reused across applications:
+**Protocol Selection:**
+The method intelligently chooses the communication protocol based on what the target server supports:
 
-```python
-def fetch_study(self, patient_id: str, study_uid: str, callback: Callable):
-    """Fetches all images in a study using the best available method"""
-    query = QueryDataset.create(
-        QueryRetrieveLevel="STUDY",
-        PatientID=patient_id,
-        StudyInstanceUID=study_uid,
-    )
+1. **DIMSE C-FIND** (traditional protocol) - Used if the server supports patient-root or study-root queries
+2. **DICOMweb QIDO-RS** (modern web-based protocol) - Used as fallback if DIMSE is unavailable
+3. Returns results progressively as an iterator, allowing applications to process studies as they're found
 
-    # Priority: WADO-RS > C-GET > C-MOVE
-    if self.server.dicomweb_wado_support:
-        self._fetch_images_with_wado_rs(query, callback)
-    elif self.server.patient_root_get_support or self.server.study_root_get_support:
-        self._fetch_images_with_c_get(query, callback)
-    elif self.server.patient_root_move_support or self.server.study_root_move_support:
-        self._fetch_images_with_c_move(query, callback)
-    else:
-        raise DicomError("No supported method to fetch a study available.")
-```
+#### How fetch_study() Works
+
+The `fetch_study()` method is extensively reused in transfer applications to download complete studies from DICOM servers. It retrieves all DICOM images belonging to a specific study.
+
+**Protocol Selection Priority:**
+The method tries protocols in order of efficiency:
+
+1. **WADO-RS** (DICOMweb retrieval) - Preferred for modern servers, most efficient
+2. **C-GET** (DIMSE retrieval) - Traditional protocol, widely supported
+3. **C-MOVE** (DIMSE movement) - Legacy protocol for older systems
+
+**Callback Processing:**
+As each image is retrieved, it's immediately passed to a callback function. This allows applications to:
+
+- Process images in real-time without waiting for the entire study
+- Modify DICOM tags on-the-fly (pseudonymization, etc.)
+- Save images directly to disk as they arrive
+- Provide progress updates to users
 
 ### 3. Processor Architecture
 
@@ -205,7 +195,7 @@ classDiagram
 
 ## Application-Specific Usage Patterns
 
-### 1. Selective Transfer - Real-time Interactive Queries
+### Selective Transfer - Real-time Interactive Queries
 
 **Core Components Used:**
 
@@ -213,30 +203,11 @@ classDiagram
 - `DicomOperator.fetch_study()` - Study download for transfers
 - WebSocket infrastructure for real-time UI updates
 
-**WebSocket Architecture:**
+#### WebSocket Architecture
+
 The WebSocket infrastructure enables real-time communication between the browser and server, allowing for interactive DICOM query operations with immediate feedback. This is primarily used by the Selective Transfer application to provide a responsive user experience during DICOM server queries.
 
-### How WebSocket Communication Works
-
 The WebSocket connection allows bidirectional, persistent communication between the client (browser) and server. Unlike traditional HTTP requests, WebSockets maintain an open connection, enabling the server to send updates to the client as soon as data becomes available.
-
-```python
-class SelectiveTransferConsumer(AsyncJsonWebsocketConsumer):
-    async def connect(self):
-        # Authentication validation
-        scope_user = self.scope.get("user")
-        if not scope_user or not scope_user.is_authenticated:
-            await self.close(code=4401)
-            return
-
-        # Initialize core components
-        self.user = scope_user
-        self.query_operators: list[DicomOperator] = []  # Multiple concurrent operators
-        self.current_message_id = 0                     # Message sequencing
-        self.pool = ThreadPoolExecutor()                # Async execution
-
-        await self.accept()
-```
 
 **Execution pathway:**
 
@@ -246,26 +217,6 @@ class SelectiveTransferConsumer(AsyncJsonWebsocketConsumer):
    - `current_message_id`: Counter to handle message ordering and prevent race conditions
    - `pool`: ThreadPoolExecutor for running blocking DICOM operations in background threads
 3. **Connection Acceptance**: Establishes the WebSocket connection with the client
-
-#### Real-time Query Processing
-
-This converts user search criteria into DICOM queries and streaming results back in real-time:
-
-```python
-def _generate_and_send_query_response(self, form: SelectiveTransferJobForm, message_id: int):
-    """Uses DicomOperator for real-time study queries"""
-    source = cast(DicomNode, form.cleaned_data["source"])
-    operator = DicomOperator(source.dicomserver)  # Create operator for this query
-    self.query_operators.append(operator)         # Track for cancellation
-
-    studies = self.query_studies(operator, form, limit)
-    received_studies = []
-
-    for study in studies:  # Progressive results
-        received_studies.append(study)
-        if message_id == self.current_message_id:  # Check if still current
-            self.send_query_response(form, received_studies, max_results_reached)
-```
 
 **Execution flow:**
 
@@ -294,7 +245,7 @@ def _generate_and_send_query_response(self, form: SelectiveTransferJobForm, mess
 - Old query (123) results are ignored
 - New query (124) results are displayed immediately
 
-### 2. Batch Transfer - Bulk Background Processing
+### Batch Transfer - Bulk Background Processing
 
 **Core Components Used:**
 
@@ -321,7 +272,7 @@ class BatchTransferTaskProcessor(TransferTaskProcessor):
 - CSV file parsing for bulk study definitions
 - Progress tracking across multiple tasks
 
-### 3. Batch Query - Large-scale DICOM Queries
+### Batch Query - Large-scale DICOM Queries
 
 **Core Components Used:**
 
@@ -330,30 +281,9 @@ class BatchTransferTaskProcessor(TransferTaskProcessor):
 - `DicomOperator.find_series()` - Series-level queries
 - Custom result aggregation
 
-**Query Strategy:**
-
-```python
-class BatchQueryTaskProcessor(DicomTaskProcessor):
-    def _query_studies(self, patient_ids: list[str]) -> list[BatchQueryResult]:
-        """Efficiently query large numbers of studies"""
-        results = []
-        for patient_id in patient_ids:
-            studies = self._find_studies(patient_id)
-            for study in studies:
-                # Aggregate results for batch reporting
-                results.append(BatchQueryResult.from_study_data(study))
-        return results
-
-    def _find_studies(self, patient_id: str) -> list[ResultDataset]:
-        """Reuses core DicomOperator.find_studies()"""
-        return list(self.operator.find_studies(
-            QueryDataset.create(PatientID=patient_id)
-        ))
-```
-
 ## Shared Utility Components
 
-### 1. DicomOperator Factory Pattern
+### DicomOperator Factory Pattern
 
 Each app creates DicomOperators as needed:
 
@@ -368,7 +298,7 @@ self.source_operator = DicomOperator(source.dicomserver)
 self.operator = DicomOperator(source.dicomserver)
 ```
 
-### 2. Common Query Patterns
+### Common Query Patterns
 
 All apps use consistent QueryDataset construction:
 
@@ -383,7 +313,7 @@ query = QueryDataset.create(
 studies = operator.find_studies(query)
 ```
 
-### 3. Callback-based Data Processing
+### Callback-based Data Processing
 
 The fetch operations use callbacks for data streaming:
 
@@ -395,49 +325,6 @@ def callback(dataset: Dataset) -> None:
     save_to_disk(dataset)
 
 operator.fetch_study(patient_id, study_uid, callback)
-```
-
-## DicomOperator Method Usage Across Apps
-
-### find_studies() - The Most Reused Method
-
-```mermaid
-graph TD
-    A[DicomOperator.find_studies] --> B[Selective Transfer]
-    A --> C[Batch Transfer]
-    A --> D[Batch Query]
-    A --> E[DICOM Explorer]
-
-    B --> B1[Real-time WebSocket queries]
-    B --> B2[Progressive result streaming]
-
-    C --> C1[Study validation before transfer]
-    C --> C2[CSV bulk processing]
-
-    D --> D1[Large-scale patient discovery]
-    D --> D2[Batch result aggregation]
-
-    E --> E1[Interactive study browsing]
-    E --> E2[Hierarchical navigation]
-```
-
-### fetch_study() - Transfer Operations Core
-
-```mermaid
-graph TD
-    A[DicomOperator.fetch_study] --> B[Selective Transfer]
-    A --> C[Batch Transfer]
-
-    B --> B1[Individual study downloads]
-    B --> B2[Real-time progress updates]
-
-    C --> C1[Bulk study processing]
-    C --> C2[Background task execution]
-
-    A --> D[Protocol Selection]
-    D --> E[WADO-RS - Preferred]
-    D --> F[C-GET - Fallback]
-    D --> G[C-MOVE - Legacy]
 ```
 
 ## Development Guidelines

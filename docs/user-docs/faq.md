@@ -307,12 +307,25 @@ A: To create an API token for programmatic access:
 1. **Log in** to ADIT with your user account
 2. **Navigate to Adit Administration**:
    - Look for **Token Authentication** in the main navigation
-3. **Generate New Token**:
+3. Click **Add** token
 
-   - Scroll down to the **"Generate New Token"** section
-   - Choose an **Expiry Time** (1 Day, 7 Days, 30 Days, 90 Days, or Never if you have permission)
-   - Optionally add a **Description** to identify the token's purpose
-   - Click **"Generate Token"**
+   - Fill in the token details:
+
+   - **Owner:** Select the user who will own the token
+
+   - **Token hashed**: Paste the hashed token value (this is not auto-generated)
+
+   - **Fraction**: Specify the token’s fraction
+
+   - **Description**: Add an optional description to identify the token’s purpose
+
+   - **Expires**: Set the expiration date and time, or leave empty if the token should not expire
+
+   - **Last used**: Usually left blank; this is updated automatically by the system
+
+   - Save the token:
+
+   - Click **Save**, **Save and add another**, or **Save and continue editing**
 
 4. **Use the Token**: Include it in API requests as `Authorization: Token <your_token_here>`
 
@@ -392,6 +405,5 @@ A: When reporting issues, please include:
 A: Contributions are welcome!
 
 - Check the [contributing guide](../dev-docs/contributing.md)
-- Look for issues labeled "good first issue" on GitHub
 - Submit feature requests or bug reports
 - Contribute to documentation improvements
