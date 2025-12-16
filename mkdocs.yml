@@ -21,10 +21,10 @@ theme:
         name: Switch to dark mode
     # Palette toggle for dark mode
     - scheme: slate
-      primary: indigo
-      accent: indigo
+      primary: green
+      accent: cyan
       toggle:
-        icon: material/brightness-4
+        icon: material/brightness-7
         name: Switch to light mode
   features:
     - navigation.tabs

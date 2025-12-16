@@ -7,58 +7,57 @@ hide:
 # **ADIT - Automated DICOM Transfer**
 
 <div class="slideshow-container">
-  <div class="slide fade">
-    <img src="assets/screenshots/Screenshot01.png" alt="ADIT Screenshot 1">
+
+  <div class="slides-wrapper">
+    <div class="slide">
+      <img src="assets/screenshots/Screenshot01.png" alt="RADIS Screenshot 1">
+    </div>
+    <div class="slide">
+      <img src="assets/screenshots/Screenshot02.png" alt="RADIS Screenshot 2">
+    </div>
+    <div class="slide">
+      <img src="assets/screenshots/Screenshot03.png" alt="RADIS Screenshot 3">
+    </div>
+    <div class="slide">
+      <img src="assets/screenshots/Screenshot04.png" alt="RADIS Screenshot 4">
+    </div>
   </div>
-  <div class="slide fade">
-    <img src="assets/screenshots/Screenshot02.png" alt="ADIT Screenshot 2">
-  </div>
-  <div class="slide fade">
-    <img src="assets/screenshots/Screenshot03.png" alt="ADIT Screenshot 3">
-  </div>
-  <div class="slide fade">
-    <img src="assets/screenshots/Screenshot04.png" alt="ADIT Screenshot 4">
-  </div>
-  
-  
-  <a class="prev" onclick="changeSlide(-1)">❮</a>
-  <a class="next" onclick="changeSlide(1)">❯</a>
+
+<a class="prev" onclick="changeSlide(-1)">❮</a>
+<a class="next" onclick="changeSlide(1)">❯</a>
 
   <div class="dot-container">
+    <span class="dot" onclick="currentSlide(0)"></span>
     <span class="dot" onclick="currentSlide(1)"></span>
     <span class="dot" onclick="currentSlide(2)"></span>
     <span class="dot" onclick="currentSlide(3)"></span>
-    <span class="dot" onclick="currentSlide(4)"></span>
   </div>
+
 </div>
 
 <style>
-  
   .slideshow-container {
     position: relative;
     max-width: 100%;
     margin: 2rem auto;
-    border-radius: 8px;
     overflow: hidden;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    border-radius: 8px;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+  }
+
+  .slides-wrapper {
+    display: flex;
+    transition: transform 0.6s ease-in-out;
+    width: 100%;
   }
 
   .slide {
-    display: none;
+    min-width: 100%;
   }
 
   .slide img {
     width: 100%;
-    height: auto;
-  }
-
-  .fade {
-    animation: fade 1s;
-  }
-
-  @keyframes fade {
-    from {opacity: 0.4}
-    to {opacity: 1}
+    display: block;
   }
 
   /* Navigation buttons */
@@ -66,31 +65,30 @@ hide:
     cursor: pointer;
     position: absolute;
     top: 50%;
-    width: auto;
-    margin-top: -22px;
-    padding: 16px;
+    padding: 12px;
     color: white;
-    font-weight: bold;
     font-size: 18px;
-    transition: 0.3s ease;
-    border-radius: 0 3px 3px 0;
-    user-select: none;
     background-color: rgba(0,0,0,0.5);
+    user-select: none;
+    transform: translateY(-50%);
+    border-radius: 3px;
   }
 
   .next {
-    right: 0;
-    border-radius: 3px 0 0 3px;
+    right: 10px;
+  }
+
+  .prev {
+    left: 10px;
   }
 
   .prev:hover, .next:hover {
     background-color: rgba(0,0,0,0.8);
   }
 
-  
+  /* Dots */
   .dot-container {
     text-align: center;
-    padding: 10px;
     position: absolute;
     bottom: 10px;
     width: 100%;
@@ -104,55 +102,48 @@ hide:
     background-color: rgba(255,255,255,0.5);
     border-radius: 50%;
     display: inline-block;
-    transition: background-color 0.3s ease;
   }
 
-  .dot:hover, .dot.active {
+  .dot.active {
     background-color: rgba(255,255,255,0.9);
   }
 </style>
 
 <script>
-  let slideIndex = 1;
-  let slideTimer;
+  let slideIndex = 0;
+  let timer;
 
-  function showSlide(n) {
-    let slides = document.getElementsByClassName("slide");
-    let dots = document.getElementsByClassName("dot");
-    
-    if (n > slides.length) { slideIndex = 1 }
-    if (n < 1) { slideIndex = slides.length }
-    
-    for (let i = 0; i < slides.length; i++) {
-      slides[i].style.display = "none";
-    }
-    
-    for (let i = 0; i < dots.length; i++) {
-      dots[i].className = dots[i].className.replace(" active", "");
-    }
-    
-    if (slides.length > 0) {
-      slides[slideIndex-1].style.display = "block";
-      dots[slideIndex-1].className += " active";
-    }
-    
-    clearTimeout(slideTimer);
-    slideTimer = setTimeout(() => {
+  function showSlide(index) {
+    const slidesWrapper = document.querySelector(".slides-wrapper");
+    const dots = document.querySelectorAll(".dot");
+    const totalSlides = dots.length;
+
+    if (index >= totalSlides) slideIndex = 0;
+    if (index < 0) slideIndex = totalSlides - 1;
+
+    slidesWrapper.style.transform = `translateX(-${slideIndex * 100}%)`;
+
+    dots.forEach(dot => dot.classList.remove("active"));
+    dots[slideIndex].classList.add("active");
+
+    clearTimeout(timer);
+    timer = setTimeout(() => {
       slideIndex++;
       showSlide(slideIndex);
-    }, 4000); // Change image every 4 seconds
+    }, 4000);
   }
 
   function changeSlide(n) {
-    showSlide(slideIndex += n);
+    slideIndex += n;
+    showSlide(slideIndex);
   }
 
   function currentSlide(n) {
-    showSlide(slideIndex = n);
+    slideIndex = n;
+    showSlide(slideIndex);
   }
 
-  // Initialize when page loads
-  document.addEventListener('DOMContentLoaded', function() {
+  document.addEventListener("DOMContentLoaded", () => {
     showSlide(slideIndex);
   });
 </script>
@@ -177,7 +168,7 @@ ADIT serves as a central hub for medical imaging data, connecting various DICOM 
 4. **Format Conversion**: Convert DICOM images to NIfTI format for neuroimaging research and analysis
 5. **Automated Processing**: Handle single transfers or batch operations with full audit trails
 
-ADIT includes built-in support for converting DICOM images to **NIfTI (Neuroimaging Informatics Technology Initiative)** format, making medical imaging data accessible to a wide range of neuroimaging and research tools. Simply enable the "Convert to NIfTI" option during selective or batch transfers, and ADIT will automatically generate research-ready NIfTI files alongside or instead of DICOM data.
+ADIT includes built-in support for converting DICOM images to **NIfTI (Neuroimaging Informatics Technology Initiative)** format, making medical imaging data accessible to a wide range of neuroimaging and research tools.
 
 **Ready to modernize your medical imaging workflows?** ADIT bridges the gap between traditional DICOM infrastructure and modern application development, making medical imaging data as accessible as any other web API.
 

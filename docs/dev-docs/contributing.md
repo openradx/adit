@@ -9,13 +9,42 @@ We adhere to the Google Python Style [Guide](https://google.github.io/styleguide
 
 ## Getting Started
 
+### Installation
+
 ```terminal
 git clone https://github.com/openradx/adit.git
 cd adit
-uv sync
-cp ./example.env ./.env  # adjust the environment variables to your needs
-uv run cli compose-up
+uv sync  # installs Python dependencies into a virtual environment
+cp ./example.env ./.env  # copy environment template (adjust DJANGO_SECRET_KEY and TOKEN_AUTHENTICATION_SALT)
+cli compose-up  # builds and starts Docker containers
 ```
+
+The development server will start at <http://localhost:8000>.
+
+**Initial setup**: The `compose-up` command automatically runs migrations, creates example users/groups, and populates test Orthanc instances with sample data.
+
+**File watching**: Code changes auto-reload the server. Dependency changes (pyproject.toml) trigger container rebuilds.
+
+### Updating Your Development Environment
+
+**Pull latest changes**:
+
+```terminal
+git pull origin main
+uv sync  # update dependencies
+uv run cli compose-up  # restart containers (migrations run automatically)
+```
+
+**After pulling changes**:
+
+- Migrations run automatically on container startup
+- If containers don't start, rebuild: `uv run cli compose-build && uv run cli compose-up`
+- For major database schema changes, consider backing up first: `uv run cli db-backup`
+
+**Dependency updates**:
+
+- Python packages are updated via `uv sync` when pyproject.toml changes
+- Docker images update via `uv run cli compose-pull` (base images)
 
 The development server of the example project will be started on <http://localhost:8000>
 

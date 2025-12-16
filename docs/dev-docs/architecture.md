@@ -41,11 +41,7 @@ ADIT uses [Orthanc](https://www.orthanc-server.com/index.php) (open-source DICOM
 
 ## Frontend Architecture
 
-**Web UI**: Server-side rendered with Django templates and HTMX for dynamic interactions. Uses Bootstrap 5 for styling and Alpine.js for interactive components.
-
-**Features**: DICOM study browser, transfer job configuration, file upload, live status updates, user/role management.
-
-**REST API**: RESTful endpoints with JSON payloads, session/token authentication, and error handling.
+Server-side rendered with Django templates and HTMX for dynamic interactions. Uses Bootstrap 5 for styling and Alpine.js for interactive components.
 
 **ADIT Client**: Python package (`adit-client`) for programmatic API access, supporting automated DICOM operations and returning pydicom datasets.
 
@@ -70,10 +66,6 @@ ADIT runs as multiple Docker containers that work together. In development, thes
 ### Dev Container
 
 The [Dev Container](https://code.visualstudio.com/docs/devcontainers/create-dev-container) is a Docker container that provides the development environment (VS Code, Git, Docker CLI, Node.js, Python tools). It uses Docker-in-Docker to run the application containers inside it. This ensures all developers have identical environments and can manage ADIT's multi-container setup seamlessly.
-
-### Networking & Security
-
-Containers communicate via Docker internal networks. SSL termination handled by web container with mounted certificate files. Secrets managed via Docker volumes and environment variables.
 
 ## Application Architecture
 
@@ -106,38 +98,16 @@ Containers communicate via Docker internal networks. SSL termination handled by 
 - **Users & Groups**: Django authentication with role definitions
 - **Permissions**: Access control for PACS operations
 
-### DICOM Infrastructure
-
-- **DICOM Nodes**: Configuration for remote DICOM servers or local folders
-  - **AE Title (Application Entity Title)**: A unique identifier (up to 16 characters) used in DICOM networking to identify each system that communicates via DICOM protocols. Think of it as a "username" for DICOM network connections - when ADIT connects to a remote PACS, both sides identify themselves by their AE titles
-  - **IP Address and Port**: Network location of the DICOM server (e.g., `192.168.1.100:4242`)
-  - **Service Classes**: Capabilities supported by the DICOM server, such as:
-    - C-FIND (query for studies/series/images)
-    - C-GET/C-MOVE (retrieve images)
-    - C-STORE (send images)
-    - DICOMweb (QIDO-RS, WADO-RS, STOW-RS)
-- **Connection Profiles**: Authentication and protocol settings
-
 ### Transfer Operations
 
-- **Transfer Jobs**: Transfer definitions with owner and status
-- **Transfer Tasks**: Study/series/instance operations
-- **Task Status**: PENDING, IN_PROGRESS, SUCCESS, FAILURE, CANCELED
+Transfer Jobs define transfer operations with owner and status tracking, containing one or more Transfer Tasks that specify study/series/instance operations. Each task progresses through states: PENDING, IN_PROGRESS, SUCCESS, FAILURE, or CANCELED.
 
-### Study Management
+### DICOM Configuration
 
-- **Study Metadata**: Information about DICOM studies stored in ADIT's database to avoid repeated queries to remote PACS servers. Includes:
-  - Patient identifiers and demographics
-  - Study date/time and description
-  - Accession numbers
-  - Modalities present in the study
-  - Count of series and instances
-- **Series/Instance Tracking**: DICOM data follows a hierarchical structure tracked in transfer tasks:
+DICOM Servers represent remote PACS/Orthanc instances, with DICOM Nodes defining source and destination configurations. The system supports both DIMSE protocols (C-FIND, C-GET, C-MOVE, C-STORE) and DICOMweb REST APIs (QIDO-RS, WADO-RS, STOW-RS).
 
-  - **Study** (highest level): A complete imaging exam for a patient (identified by `StudyInstanceUID`)
-  - **Series**: A set of related images within a study, such as all slices of a CT scan (identified by `SeriesInstanceUID`)
-  - **Instance**: Individual DICOM files/images (identified by `SOPInstanceUID`)
+## Related Projects
 
-  Transfer tasks store the study UID and an array of series UIDs to track which specific data needs to be transferred from source to destination.
+- **ADIT Radis Shared**: Common library providing authentication, utilities, and shared Django apps for ADIT and RADIS
 
 ---
