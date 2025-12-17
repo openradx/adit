@@ -35,7 +35,7 @@ ADIT uses [Orthanc](https://www.orthanc-server.com/index.php) (open-source DICOM
 
 ## DICOM Libraries
 
-**pydicom**: Python library for reading, modifying, and writing DICOM files. ADIT uses it to work with DICOM datasets in memory (e.g., `from pydicom import Dataset`), parse DICOM tags, modify patient information for pseudonymization, and convert DICOM data to other formats.
+**pydicom**: Python library for reading, modifying, and writing DICOM files. ADIT uses it to work with DICOM datasets in memory (e.g., `from pydicom import Dataset`), parse DICOM tags, and convert DICOM data to other formats.
 
 **pynetdicom**: Python implementation of DICOM networking protocols. ADIT uses it to communicate with remote PACS servers over the network—sending query requests (C-FIND), retrieving images (C-GET/C-MOVE), and accepting incoming DICOM transfers (C-STORE). It handles the low-level network communication while pydicom handles the DICOM file data.
 
@@ -95,8 +95,9 @@ The [Dev Container](https://code.visualstudio.com/docs/devcontainers/create-dev-
 
 ### User Management
 
-- **Users & Groups**: Django authentication with role definitions
-- **Permissions**: Access control for PACS operations
+- **Users & Groups**: Django authentication with group-based access. Each user has an active group that determines which reports they can access.
+
+- **Permissions**: Fine-grained access control for features (extractions, subscriptions, urgent priority).
 
 ### Transfer Operations
 
@@ -104,7 +105,7 @@ Transfer Jobs define transfer operations with owner and status tracking, contain
 
 ### DICOM Configuration
 
-DICOM Servers represent remote PACS/Orthanc instances, with DICOM Nodes defining source and destination configurations. The system supports both DIMSE protocols (C-FIND, C-GET, C-MOVE, C-STORE) and DICOMweb REST APIs (QIDO-RS, WADO-RS, STOW-RS).
+DICOM Servers represent remote PACS/Orthanc instances, with DICOM Nodes defining source and destination configurations. The system supports both DIMSE protocols (C-FIND, C-GET, C-MOVE, C-STORE) and DICOMweb REST APIs (QIDO-RS, WADO-RS, STOW-RS). Downloading data from a DICOM server can done by using a DIMSE operation or by using DICOMweb REST calls. When using DIMSE operations C-GET is prioritized over C-MOVE as a worker can fetch the DICOM data directly from the server. When downloading data using a C-MOVE operation, ADIT commands the source DICOM server to send the data to a C-STORE SCP server of ADIT running in a separate container (Receiver) that receives the DICOM data and sends it back to the worker using a TCP Socket connection (FileTransmitter).
 
 ## Related Projects
 
