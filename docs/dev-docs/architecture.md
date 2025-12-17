@@ -6,7 +6,7 @@ This document provides a comprehensive overview of ADIT's architecture, implemen
 
 ADIT (Automated DICOM Transfer) is a full-stack web application designed for automated DICOM transfers. The system consists of a Django-based backend, PostgreSQL database, and server-side rendered web interface enhanced with HTMX for dynamic interactions.
 
-ADIT inherits common functionality from **ADIT Radis Shared**, a shared library that provides core components including user authentication, token-based authentication, common utilities, and shared Django applications used by both ADIT and RADIS projects.
+ADIT inherits common functionality from **[ADIT Radis Shared](https://github.com/openradx/adit-radis-shared)**, a shared library that provides core components including user authentication, token-based authentication, common utilities, and shared Django applications used by both ADIT and RADIS projects.
 
 ## High-Level Architecture
 
@@ -35,9 +35,11 @@ ADIT uses [Orthanc](https://www.orthanc-server.com/index.php) (open-source DICOM
 
 ## DICOM Libraries
 
-**pydicom**: Python library for reading, modifying, and writing DICOM files. ADIT uses it to work with DICOM datasets in memory (e.g., `from pydicom import Dataset`), parse DICOM tags, and convert DICOM data to other formats.
+**[pydicom](https://pydicom.github.io/)**: Python library for reading, modifying, and writing DICOM files. ADIT uses it to work with DICOM datasets in memory (e.g., `from pydicom import Dataset`), parse DICOM tags, and convert DICOM data to other formats.
 
-**pynetdicom**: Python implementation of DICOM networking protocols. ADIT uses it to communicate with remote PACS servers over the network—sending query requests (C-FIND), retrieving images (C-GET/C-MOVE), and accepting incoming DICOM transfers (C-STORE). It handles the low-level network communication while pydicom handles the DICOM file data.
+**[pynetdicom](https://pydicom.github.io/)**: Python implementation of DICOM networking protocols. ADIT uses it to communicate with remote PACS servers over the network—sending query requests (C-FIND), retrieving images (C-GET/C-MOVE), and accepting incoming DICOM transfers (C-STORE). It handles the low-level network communication while pydicom handles the DICOM file data.
+
+**[dicognito](https://pypi.org/project/dicognito/)**: DICOM anonymization library used for pseudonymization of patient data. ADIT leverages **dicognito** to remove identifying information from DICOM headers, replace patient names/IDs with pseudonyms, and maintain consistency across multiple studies for the same patient.
 
 ## Frontend Architecture
 
