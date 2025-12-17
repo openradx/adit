@@ -32,7 +32,7 @@ The development server will start at <http://localhost:8000>.
 ```terminal
 git pull origin main
 uv sync  # update dependencies
-uv run cli compose-up  # restart containers (migrations run automatically)
+cli compose-up  # restart containers (migrations run automatically)
 ```
 
 **After pulling changes**:

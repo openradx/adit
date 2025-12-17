@@ -51,7 +51,7 @@ ADIT runs as multiple Docker containers that work together. In development, thes
 
 ### Container Types
 
-**Web Container (`adit-web-1`)**: Runs Django application serving web UI and REST API. Python 3.13 with Daphne ASGI server. Ports: 8000 (dev), 80/443 (prod with SSL). Handles authentication, serves static files, enqueues tasks, and manages database connections.
+**Web Container (`adit-web-1`)**: Runs Django application serving web UI and REST API. Ports: 8000 (dev), 80/443 (prod with SSL). Handles authentication, serves static files, enqueues tasks, and manages database connections.
 
 **PostgreSQL Container (`adit-postgres-1`)**: PostgreSQL 17 database storing all data (users, jobs, tasks, logs, Procrastinate queue). Port 5432. Uses Docker volumes for persistence.
 
@@ -59,7 +59,7 @@ ADIT runs as multiple Docker containers that work together. In development, thes
 
 **DICOM Worker Container (`adit-dicom_worker-1`)**: Executes DICOM transfer tasks from the dicom queue. Same base image as web container plus DICOM tools. Multiple instances can run for scaling.
 
-**C-STORE Receiver Container (`adit-receiver-1`)**: Accepts incoming DICOM data from C-MOVE operations. Python 3.13 with pynetdicom. Ports: 11112 (DICOM), 14638 (file transmit). Forwards data to workers via TCP.
+**C-STORE Receiver Container (`adit-receiver-1`)**: Accepts incoming DICOM data from C-MOVE operations. Ports: 11112 (DICOM), 14638 (file transmit). Forwards data to workers via TCP.
 
 **Orthanc Containers (`adit-orthanc1-1`, `adit-orthanc2-1`)**: Development PACS instances for testing. Official Orthanc image. Ports 7501/7502 (dev only). Uses SQLite for development.
 
