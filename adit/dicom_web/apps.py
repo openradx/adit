@@ -14,3 +14,9 @@ def init_db(**kwargs):
 
     if not DicomWebSettings.objects.exists():
         DicomWebSettings.objects.create()
+
+
+def collect_latest_api_usage():
+    from .models import APIUsage
+
+    return APIUsage.objects.order_by("-time_last_accessed")[:3]
