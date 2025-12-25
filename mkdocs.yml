@@ -71,10 +71,10 @@ markdown_extensions:
 
 nav:
   - Home: index.md
-  - Technical Overview: technical-overview.md
   - User Documentation:
-      - Getting Started: user-docs/getting-started.md
+      - Admin Guide: user-docs/admin-guide.md
       - User Guide: user-docs/user-guide.md
+      - Technical Overview: user-docs/technical-overview.md
       - Features: user-docs/features.md
       - FAQ: user-docs/faq.md
   - Developer Documentation:

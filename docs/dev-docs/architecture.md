@@ -39,7 +39,7 @@ ADIT uses [Orthanc](https://www.orthanc-server.com/index.php) (open-source DICOM
 
 **[pynetdicom](https://pydicom.github.io/)**: Python implementation of DICOM networking protocols. ADIT uses it to communicate with remote PACS servers over the network—sending query requests (C-FIND), retrieving images (C-GET/C-MOVE), and accepting incoming DICOM transfers (C-STORE). It handles the low-level network communication while pydicom handles the DICOM file data.
 
-**[dicognito](https://pypi.org/project/dicognito/)**: DICOM anonymization library used for pseudonymization of patient data. ADIT leverages **dicognito** to remove identifying information from DICOM headers, replace patient names/IDs with pseudonyms, and maintain consistency across multiple studies for the same patient.
+**[dicognito](https://pypi.org/project/dicognito/)**: DICOM anonymization library used for pseudonymization of patient data. ADIT leverages **dicognito** to remove identifying information from DICOM headers, replace patient names/IDs with pseudonyms, and maintain consistency across multiple studies for the same patient. Under the hood, **dicognito** uses **pydicom**.
 
 ## Frontend Architecture
 
@@ -64,10 +64,6 @@ ADIT runs as multiple Docker containers that work together. In development, thes
 **C-STORE Receiver Container (`adit-receiver-1`)**: Accepts incoming DICOM data from C-MOVE operations. Ports: 11112 (DICOM), 14638 (file transmit). Forwards data to workers via TCP.
 
 **Orthanc Containers (`adit-orthanc1-1`, `adit-orthanc2-1`)**: Development PACS instances for testing. Official Orthanc image. Ports 7501/7502 (dev only). Uses SQLite for development.
-
-### Dev Container
-
-The [Dev Container](https://code.visualstudio.com/docs/devcontainers/create-dev-container) is a Docker container that provides the development environment (VS Code, Git, Docker CLI, Node.js, Python tools). It uses Docker-in-Docker to run the application containers inside it. This ensures all developers have identical environments and can manage ADIT's multi-container setup seamlessly.
 
 ## Application Architecture
 

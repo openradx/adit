@@ -1,26 +1,10 @@
 # User Guide
 
-This guide will help you understand how to use **ADIT**
+The User Guide is designed for end users who interact with ADIT to perform DICOM data transfers. It explains how to use the application’s features, and execute common workflows in a clear and practical manner
 
-## How ADIT Works
+## Functionalities Overview
 
-ADIT acts as a bridge between different DICOM systems, enabling secure and controlled data transfer with built-in pseudonymization capabilities. ADIT solves this by acting as a "translator" that converts between web-friendly APIs and traditional DICOM protocols.
-
-1. **You send** a simple web request (like getting data from any website)
-
-2. **ADIT translates** your request into traditional DICOM commands
-
-3. **ADIT communicates** with your PACS using its native protocols
-
-4. **ADIT converts** the response back to web-friendly format
-
-5. **You receive** easy-to-use JSON data or DICOM files.
-
-This means your PACS can stay secure with its existing configuration, while you get modern web access through ADIT.
-
-## Dashboard Overview
-
-When you log into ADIT, you'll see the main dashboard with several sections:
+When you log into ADIT, you'll see the home page with several sections:
 
 - **Selective Transfers**: Search and select specific studies to transfer or download.
 - **Batch Query**: Search for studies on a PACS server by using a batch file.
@@ -28,9 +12,7 @@ When you log into ADIT, you'll see the main dashboard with several sections:
 - **DICOM Explorer**: Explore the DICOM data of a PACS server
 - **DICOM Upload**: Upload DICOM files from your local system to a PACS server
 
-## Main Workflows
-
-### 1. Single Study Transfer
+### 1. Selective Transfer
 
 To transfer a single DICOM study:
 
@@ -114,50 +96,20 @@ To browse and explore DICOM data on a server:
 3. Use the hierarchical navigation (Patient → Study → Series)
 4. View DICOM metadata and image information
 
-## User Interface Elements
+### 7. ADIT Client (Programmatic Access)
 
-### Search Filters
+The **ADIT Client** is a Python package (`adit-client`) that provides programmatic API access to ADIT functionality. It enables automated DICOM operations through Python scripts and returns data as pydicom datasets for seamless integration into your workflows.
 
-- **Patient ID**: Search by patient identifier
-- **Patient Name**: Search by patient name
-- **Study Date**: Filter by study date range
-- **Modality**: Filter by imaging modality (CT, MRI, etc.)
-- **Accession Number**: Search by accession number
+**Key Features:**
 
-### Transfer Options
+- Automate repetitive DICOM transfer tasks
+- Integrate ADIT operations into existing Python applications
+- Retrieve DICOM data as pydicom datasets for analysis
+- Execute batch operations programmatically
+- Access all ADIT features without using the web interface
 
-- **Pseudonymization**: Enable/disable data anonymization
-- **Trial Name**: Add a trial identifier to DICOM headers
-- **Priority**: Set transfer priority level
-- **Schedule**: Set when the transfer should occur
+**When to Use:**
 
-## Administrator Features
-
-### System Announcements
-
-System administrators can inform users about important updates, maintenance schedules, or system changes through the announcement feature.
-
-#### Creating Announcements
-
-1. **Access Admin Interface**: Navigate to the Django admin interface (typically accessible at `/admin/`)
-2. **Find Project Settings**: Go to the "Common" section and select "Project settings"
-3. **Edit Announcement**: In the Project Settings form, locate the "Announcement" field
-4. **Enter Message**: Type your announcement message. HTML formatting is supported for rich text display
-5. **Save Changes**: Click "Save" to publish the announcement
-
-#### Announcement Display
-
-- Announcements appear prominently on the main dashboard/home page
-- All logged-in users will see the announcement when they access ADIT
-- HTML content is rendered, allowing for formatted text, links, and styling
-- Empty announcements are not displayed to users
-
-#### Example Announcements
-
-**Maintenance Notice:**
-
-```html
-<strong>Scheduled Maintenance:</strong> ADIT will be offline for maintenance on
-<strong>March 15, 2024 from 2:00 AM to 4:00 AM UTC</strong>. Please plan your
-transfers accordingly.
-```
+- Automating regular transfer workflows
+- Integrating DICOM transfers into data pipelines
+- Processing large batches of studies programmatically

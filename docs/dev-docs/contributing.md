@@ -9,6 +9,13 @@ We adhere to the Google Python Style [Guide](https://google.github.io/styleguide
 
 ## Getting Started
 
+This repository includes a [Dev Container](https://code.visualstudio.com/docs/devcontainers/create-dev-container). The **Dev Container** is a Docker container that provides the development environment (VS Code, Git, Docker CLI, Node.js, Python tools). It uses Docker-in-Docker to run the application containers inside it. This ensures all developers have identical environments and can manage ADIT's multi-container setup seamlessly.
+If you open the project in VS Code after cloning, you should see a prompt:
+
+“Reopen in Dev Container”
+
+Click it, and VS Code will automatically build and open the development environment.
+
 ### Installation
 
 ```terminal
@@ -16,7 +23,7 @@ git clone https://github.com/openradx/adit.git
 cd adit
 uv sync  # installs Python dependencies into a virtual environment
 cp ./example.env ./.env  # copy environment template (adjust DJANGO_SECRET_KEY and TOKEN_AUTHENTICATION_SALT)
-cli compose-up  # builds and starts Docker containers
+uv run cli compose-up  # builds and starts Docker containers
 ```
 
 The development server will start at <http://localhost:8000>.
@@ -32,7 +39,7 @@ The development server will start at <http://localhost:8000>.
 ```terminal
 git pull origin main
 uv sync  # update dependencies
-cli compose-up  # restart containers (migrations run automatically)
+uv run cli compose-up  # restart containers (migrations run automatically)
 ```
 
 **After pulling changes**:
@@ -50,13 +57,6 @@ The development server of the example project will be started on <http://localho
 
 File changes will be automatically detected and the servers will be restarted. When library
 dependencies are changed, the containers will automatically be rebuilt and restarted.
-
-This repository includes a [Dev Container](https://code.visualstudio.com/docs/devcontainers/create-dev-container).
-If you open the project in VS Code after cloning, you should see a prompt:
-
-“Reopen in Dev Container”
-
-Click it, and VS Code will automatically build and open the development environment.
 
 ## Reporting Issues
 

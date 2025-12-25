@@ -148,29 +148,23 @@ hide:
   });
 </script>
 
-ADIT (Automated DICOM Transfer) is a Swiss army knife to exchange DICOM data between various systems by using a convenient web frontend.
+ADIT acts as an intelligent bridge between traditional DICOM systems and modern applications, enabling secure, controlled, and privacy-preserving medical imaging data transfer.
 
-## Why ADIT?
+Traditional PACS and DICOM systems rely on specialized protocols that are not directly compatible with modern web applications. ADIT solves this challenge by acting as a translator between web-friendly APIs and native DICOM protocols—without requiring changes to existing PACS configurations.
 
-Medical imaging workflows today face significant challenges when moving DICOM data between different systems. ADIT addresses these critical pain points.
+## Request and Response Workflow
 
-## What ADIT Does
+ADIT simplifies interaction with DICOM systems through the following process:
 
-ADIT serves as a central hub for medical imaging data, connecting various DICOM systems and enabling secure, controlled data exchange with modern web technologies.
+- You send a simple web request, similar to interacting with any standard REST API.
 
-### How It Works
+- ADIT translates the web request into traditional DICOM commands.
 
-**ADIT acts as an intelligent bridge** between traditional DICOM systems and modern applications:
+- ADIT communicates with the PACS using its native DICOM protocols.
 
-1. **Data Discovery**: Connect to multiple PACS systems and search for studies using familiar web interfaces
-2. **Secure Retrieval**: Fetch DICOM data using established hospital protocols while maintaining security
-3. **Privacy Protection**: Automatically pseudonymize patient data during transfer to protect privacy
-4. **Format Conversion**: Convert DICOM images to NIfTI format for neuroimaging research and analysis
-5. **Automated Processing**: Handle single transfers or batch operations with full audit trails
+- The PACS response is converted by ADIT into a web-friendly format.
 
-ADIT includes built-in support for converting DICOM images to **NIfTI (Neuroimaging Informatics Technology Initiative)** format, making medical imaging data accessible to a wide range of neuroimaging and research tools.
-
-**Ready to modernize your medical imaging workflows?** ADIT bridges the gap between traditional DICOM infrastructure and modern application development, making medical imaging data as accessible as any other web API.
+- You receive easy-to-use JSON metadata or DICOM files.
 
 ## About
 
@@ -187,16 +181,6 @@ ADIT includes built-in support for converting DICOM images to **NIfTI (Neuroimag
 !!! important "Beta Status"
 ADIT is currently in early beta stage. While we are actively building and refining its features, users should anticipate ongoing updates and potential breaking changes as the platform evolves. We appreciate your understanding and welcome feedback to help us shape the future of ADIT.
 
-## Quick Start. **Getting Started**: Learn the basics in our [getting started guide](user-docs/getting-started.md)
+**Admin Guide**: Explore system administration, configuration, and management features in the [Admin Guide](user-docs/admin-guide.md)
 
-1. **User Guide**: Explore features in our [user guide](user-docs/user-guide.md)
-2. **Development**: Contribute to the project with our [development guide](dev-docs/contributing.md)
-
-## Getting Help
-
-- Browse the [user documentation](user-docs/user-guide.md)
-- Report issues on [GitHub](https://github.com/openradx/adit/issues)
-
-## License
-
-ADIT is licensed under the [AGPL-3.0-or-later](https://github.com/openradx/adit/blob/main/LICENSE) license.
+**User Guide**: Explore the application’s features, and how to execute common workflows in a clear and practical manner in our [User Guide](user-docs/user-guide.md)
