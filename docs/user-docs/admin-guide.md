@@ -17,15 +17,15 @@ uv run cli stack-deploy  # builds and starts Docker containers
 Follow these steps to safely update your ADIT:
 
 1. **Verify no active jobs**: Navigate to Django Admin → **Jobs Overview** and confirm nothing is running
-2. **Enable maintenance mode**: Activate maintenance mode to prevent new job submissions
-3. **Navigate to production folder**
-4. **Backup database**: `uv run cli db-backup`
-5. **Stop services**: `uv run cli stack-rm`
-6. **Pull latest changes**: `git pull origin main`
-7. **Update environment**: Compare `example.env` with your `.env` file and update any new settings
-8. **Pull Docker images**: `uv run cli compose-pull`
-9. **Deploy stack**: `uv run cli stack-deploy`
-10. **Disable maintenance mode**: Turn off maintenance mode to resume normal operations
+2. **Enable maintenance mode**: In Django Admin, navigate to **Common** → **Project Settings** and check the "Maintenance mode" checkbox, then save
+3. Navigate to Production folder
+4. **Backup database**: Run `uv run cli db-backup` to create a database backup
+5. **Remove stack**: Run `uv run cli stack-rm` to remove all Docker containers and services
+6. **Pull latest changes**: Run `git pull origin main` to fetch the latest code updates
+7. **Update environment**: Compare `example.env` with your `.env` file and add any new environment variables or update changed values
+8. **Pull Docker images**: Run `uv run cli compose-pull` to download the latest Docker images
+9. **Deploy stack**: Run `uv run cli stack-deploy` to rebuild and start all services with the updated code
+10. **Disable maintenance mode**: In Django Admin, navigate to **Common** → **Project Settings** and uncheck the "Maintenance mode" checkbox, then save
 
 ## User and Group Management
 
