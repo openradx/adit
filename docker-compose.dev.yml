@@ -1,5 +1,4 @@
 x-app: &default-app
-  image: adit_dev:latest
   build:
     target: development
   pull_policy: build
@@ -29,6 +28,7 @@ services:
 
   web:
     <<: *default-app
+    image: adit_dev-web:latest
     ports:
       - ${WEB_DEV_PORT:-8000}:8000
       - ${REMOTE_DEBUGGING_PORT:-5678}:5678
@@ -50,6 +50,7 @@ services:
 
   default_worker:
     <<: *default-app
+    image: adit_dev-default_worker:latest
     command: >
       bash -c "
         wait-for-it -s postgres.local:5432 -t 60 &&
@@ -58,6 +59,7 @@ services:
 
   dicom_worker:
     <<: *default-app
+    image: adit_dev-dicom_worker:latest
     command: >
       bash -c "
         wait-for-it -s postgres.local:5432 -t 60 &&
@@ -66,6 +68,7 @@ services:
 
   receiver:
     <<: *default-app
+    image: adit_dev-receiver:latest
     ports:
       - 11122:11112
     command: |
