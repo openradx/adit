@@ -1,5 +1,4 @@
 x-app: &default-app
-  image: adit_dev:latest
   build:
     target: development
   pull_policy: build
