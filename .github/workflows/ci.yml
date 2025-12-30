@@ -33,7 +33,11 @@ jobs:
           context: .
           target: development
           load: true
-          tags: adit_dev:latest
+          tags: |
+            adit_dev-web:latest
+            adit_dev-default_worker:latest
+            adit_dev-dicom_worker:latest
+            adit_dev-receiver:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
       - name: Start Docker containers
