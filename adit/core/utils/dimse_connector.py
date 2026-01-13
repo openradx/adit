@@ -205,6 +205,7 @@ class DimseConnector:
         if self.assoc:
             logger.debug("Aborting connection to DICOM server %s.", self.server.ae_title)
             self.assoc.abort()
+            self.assoc = None
 
     @retry_dimse_find
     @connect_to_server("C-FIND")
