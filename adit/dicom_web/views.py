@@ -1,13 +1,16 @@
+import json
 import logging
+from contextlib import asynccontextmanager
 from typing import AsyncIterator, Literal, Union, cast
 
 from adit_radis_shared.common.types import AuthenticatedApiRequest, User
 from adrf.views import APIView as AsyncApiView
 from channels.db import database_sync_to_async
 from django.core.exceptions import ValidationError as DRFValidationError
-from django.db.models import QuerySet
+from django.db.models import F, QuerySet
 from django.http import StreamingHttpResponse
 from django.urls import reverse
+from django.utils import timezone
 from pydicom import Dataset, Sequence
 from rest_framework.exceptions import NotFound, ParseError, UnsupportedMediaType, ValidationError
 from rest_framework.response import Response
@@ -15,6 +18,7 @@ from rest_framework.utils.mediatypes import media_type_matches
 
 from adit.core.models import DicomServer
 from adit.core.utils.dicom_dataset import QueryDataset
+from adit.dicom_web.models import APIUsage
 from adit.dicom_web.utils.peekable import AsyncPeekable
 from adit.dicom_web.validators import (
     validate_pseudonym,
@@ -60,13 +64,39 @@ class WebDicomAPIView(AsyncApiView):
                 f'Server with AE title "{ae_title}" does not exist or is not accessible.'
             )
 
+    @database_sync_to_async
+    def _create_statistic(self, user: User) -> APIUsage:
+        statistic, _ = APIUsage.objects.get_or_create(owner=user)
+        return statistic
+
+    @database_sync_to_async
+    def _finalize_statistic(self, statistic: APIUsage, transfer_size: int = 0) -> None:
+        if transfer_size is not None:
+            APIUsage.objects.filter(pk=statistic.pk).update(
+                total_transfer_size=F("total_transfer_size") + transfer_size,
+                total_number_requests=F("total_number_requests") + 1,
+                time_last_accessed=timezone.now(),
+            )
+
+    @asynccontextmanager
+    async def track_session(self, user: User):
+        """Context manager to track API session for the duration of a request."""
+        session = await self._create_statistic(user)
+        try:
+            yield session
+        finally:
+            pass
+
 
 # TODO: respect permission can_query
 class QueryAPIView(WebDicomAPIView):
     renderer_classes = [QidoApplicationDicomJsonRenderer]
 
     def _extract_query_parameters(
-        self, request: AuthenticatedApiRequest, study_uid: str | None = None
+        self,
+        request: AuthenticatedApiRequest,
+        study_uid: str | None = None,
+        series_uid: str | None = None,
     ) -> tuple[QueryDataset, Union[int, None]]:
         """
         Filters a valid DICOMweb requests GET parameters and returns a QueryDataset and a
@@ -83,6 +113,9 @@ class QueryAPIView(WebDicomAPIView):
         if study_uid is not None:
             query["StudyInstanceUID"] = study_uid
 
+        if series_uid is not None:
+            query["SeriesInstanceUID"] = series_uid
+
         limit_results = None
         if "limit" in query:
             limit_results = int(query.pop("limit"))
@@ -98,48 +131,63 @@ class QueryStudiesAPIView(QueryAPIView):
         request: AuthenticatedApiRequest,
         ae_title: str,
     ) -> Response:
-        query_ds, limit_results = self._extract_query_parameters(request)
-        source_server = await self._get_dicom_server(request, ae_title, "source")
+        async with self.track_session(request.user) as session:
+            query_ds, limit_results = self._extract_query_parameters(request)
+            source_server = await self._get_dicom_server(request, ae_title, "source")
 
-        try:
-            results = await qido_find(source_server, query_ds, limit_results, "STUDY")
-        except ValueError as err:
-            logger.warning(f"Invalid DICOMweb study query - {err}")
-            raise ValidationError(str(err)) from err
+            try:
+                results = await qido_find(source_server, query_ds, limit_results, "STUDY")
+            except ValueError as err:
+                logger.warning(f"Invalid DICOMweb study query - {err}")
+                raise ValidationError(str(err)) from err
 
-        return Response([result.dataset.to_json_dict() for result in results])
+            response_data = [result.dataset.to_json_dict() for result in results]
+            await self._finalize_statistic(
+                session, transfer_size=len(json.dumps(response_data).encode())
+            )
+            return Response(response_data)
 
 
 class QuerySeriesAPIView(QueryAPIView):
     async def get(
         self, request: AuthenticatedApiRequest, ae_title: str, study_uid: str
     ) -> Response:
-        query_ds, limit_results = self._extract_query_parameters(request, study_uid)
-        source_server = await self._get_dicom_server(request, ae_title, "source")
+        async with self.track_session(request.user) as session:
+            query_ds, limit_results = self._extract_query_parameters(request, study_uid)
+            source_server = await self._get_dicom_server(request, ae_title, "source")
 
-        try:
-            results = await qido_find(source_server, query_ds, limit_results, "SERIES")
-        except ValueError as err:
-            logger.warning(f"Invalid DICOMweb series query - {err}")
-            raise ValidationError(str(err)) from err
+            try:
+                results = await qido_find(source_server, query_ds, limit_results, "SERIES")
+            except ValueError as err:
+                logger.warning(f"Invalid DICOMweb series query - {err}")
+                raise ValidationError(str(err)) from err
 
-        return Response([result.dataset.to_json_dict() for result in results])
+            response_data = [result.dataset.to_json_dict() for result in results]
+            await self._finalize_statistic(
+                session, transfer_size=len(json.dumps(response_data).encode())
+            )
+            return Response(response_data)
 
 
 class QueryImagesAPIView(QueryAPIView):
     async def get(
-        self, request: AuthenticatedApiRequest, ae_title: str, series_uid: str
+        self, request: AuthenticatedApiRequest, ae_title: str, study_uid: str, series_uid: str
     ) -> Response:
-        query_ds, limit_results = self._extract_query_parameters(request, series_uid)
-        source_server = await self._get_dicom_server(request, ae_title, "source")
+        async with self.track_session(request.user) as session:
+            query_ds, limit_results = self._extract_query_parameters(request, study_uid, series_uid)
+            source_server = await self._get_dicom_server(request, ae_title, "source")
 
-        try:
-            results = await qido_find(source_server, query_ds, limit_results, "IMAGE")
-        except ValueError as err:
-            logger.warning(f"Invalid DICOMweb image query - {err}")
-            raise ValidationError(str(err)) from err
+            try:
+                results = await qido_find(source_server, query_ds, limit_results, "IMAGE")
+            except ValueError as err:
+                logger.warning(f"Invalid DICOMweb image query - {err}")
+                raise ValidationError(str(err)) from err
 
-        return Response([result.dataset.to_json_dict() for result in results])
+            response_data = [result.dataset.to_json_dict() for result in results]
+            await self._finalize_statistic(
+                session, transfer_size=len(json.dumps(response_data).encode())
+            )
+            return Response(response_data)
 
 
 # TODO: respect permission can_retrieve
@@ -225,116 +273,152 @@ class RetrieveAPIView(WebDicomAPIView):
             return trial_protocol_name
 
 
+class _StreamingSessionWrapper:
+    """Wraps streaming content to track transfer size asynchronously."""
+
+    def __init__(self, renderer_generator, session: APIUsage, finalize_func):
+        self.renderer_generator = renderer_generator
+        self.session = session
+        self.finalize_func = finalize_func
+        self.total_size = 0
+
+    async def __aiter__(self):
+        try:
+            async for chunk in self.renderer_generator:
+                self.total_size += len(chunk) if isinstance(chunk, bytes) else len(chunk.encode())
+                yield chunk
+        finally:
+            await self.finalize_func(self.session, transfer_size=self.total_size)
+
+
 class RetrieveStudyAPIView(RetrieveAPIView):
     async def get(
         self, request: AuthenticatedApiRequest, ae_title: str, study_uid: str
     ) -> StreamingHttpResponse:
-        source_server = await self._get_dicom_server(request, ae_title)
-        pseudonym = self._get_pseudonym(request)
-        trial_protocol_id = self._get_trial_protocol_id(request)
-        trial_protocol_name = self._get_trial_protocol_name(request)
+        async with self.track_session(request.user) as session:
+            source_server = await self._get_dicom_server(request, ae_title)
+            pseudonym = self._get_pseudonym(request)
+            trial_protocol_id = self._get_trial_protocol_id(request)
+            trial_protocol_name = self._get_trial_protocol_name(request)
 
-        query = self.query.copy()
-        query["StudyInstanceUID"] = study_uid
+            query = self.query.copy()
+            query["StudyInstanceUID"] = study_uid
 
-        images = wado_retrieve(
-            source_server,
-            query,
-            "STUDY",
-            pseudonym=pseudonym,
-            trial_protocol_id=trial_protocol_id,
-            trial_protocol_name=trial_protocol_name,
-        )
-        images = await self.peek_images(images)
+            images = wado_retrieve(
+                source_server,
+                query,
+                "STUDY",
+                pseudonym=pseudonym,
+                trial_protocol_id=trial_protocol_id,
+                trial_protocol_name=trial_protocol_name,
+            )
+            images = await self.peek_images(images)
 
-        renderer = cast(DicomWebWadoRenderer, getattr(request, "accepted_renderer"))
-        return StreamingHttpResponse(
-            streaming_content=renderer.render(images),
-            content_type=renderer.content_type,
-        )
+            renderer = cast(DicomWebWadoRenderer, getattr(request, "accepted_renderer"))
+            return StreamingHttpResponse(
+                streaming_content=_StreamingSessionWrapper(
+                    renderer.render(images), session, self._finalize_statistic
+                ),
+                content_type=renderer.content_type,
+            )
 
 
 class RetrieveStudyMetadataAPIView(RetrieveStudyAPIView):
     async def get(
         self, request: AuthenticatedApiRequest, ae_title: str, study_uid: str
     ) -> Response:
-        source_server = await self._get_dicom_server(request, ae_title)
-        pseudonym = self._get_pseudonym(request)
-        trial_protocol_id = self._get_trial_protocol_id(request)
-        trial_protocol_name = self._get_trial_protocol_name(request)
+        async with self.track_session(request.user) as session:
+            source_server = await self._get_dicom_server(request, ae_title)
+            pseudonym = self._get_pseudonym(request)
+            trial_protocol_id = self._get_trial_protocol_id(request)
+            trial_protocol_name = self._get_trial_protocol_name(request)
 
-        query = self.query.copy()
-        query["StudyInstanceUID"] = study_uid
+            query = self.query.copy()
+            query["StudyInstanceUID"] = study_uid
 
-        images = wado_retrieve(
-            source_server,
-            query,
-            "STUDY",
-            pseudonym=pseudonym,
-            trial_protocol_id=trial_protocol_id,
-            trial_protocol_name=trial_protocol_name,
-        )
-        metadata = await self.extract_metadata(images)
+            images = wado_retrieve(
+                source_server,
+                query,
+                "STUDY",
+                pseudonym=pseudonym,
+                trial_protocol_id=trial_protocol_id,
+                trial_protocol_name=trial_protocol_name,
+            )
+            metadata = await self.extract_metadata(images)
 
-        renderer = cast(DicomWebWadoRenderer, getattr(request, "accepted_renderer"))
-        return Response({"metadata": metadata}, content_type=renderer.content_type)
+            response_data = {"metadata": metadata}
+            await self._finalize_statistic(
+                session, transfer_size=len(json.dumps(response_data).encode())
+            )
+
+            renderer = cast(DicomWebWadoRenderer, getattr(request, "accepted_renderer"))
+            return Response(response_data, content_type=renderer.content_type)
 
 
 class RetrieveSeriesAPIView(RetrieveAPIView):
     async def get(
         self, request: AuthenticatedApiRequest, ae_title: str, study_uid: str, series_uid: str
     ) -> Response | StreamingHttpResponse:
-        source_server = await self._get_dicom_server(request, ae_title)
-        pseudonym = self._get_pseudonym(request)
-        trial_protocol_id = self._get_trial_protocol_id(request)
-        trial_protocol_name = self._get_trial_protocol_name(request)
+        async with self.track_session(request.user) as session:
+            source_server = await self._get_dicom_server(request, ae_title)
+            pseudonym = self._get_pseudonym(request)
+            trial_protocol_id = self._get_trial_protocol_id(request)
+            trial_protocol_name = self._get_trial_protocol_name(request)
 
-        query = self.query.copy()
-        query["StudyInstanceUID"] = study_uid
-        query["SeriesInstanceUID"] = series_uid
+            query = self.query.copy()
+            query["StudyInstanceUID"] = study_uid
+            query["SeriesInstanceUID"] = series_uid
 
-        images = wado_retrieve(
-            source_server,
-            query,
-            "SERIES",
-            pseudonym=pseudonym,
-            trial_protocol_id=trial_protocol_id,
-            trial_protocol_name=trial_protocol_name,
-        )
-        images = await self.peek_images(images)
+            images = wado_retrieve(
+                source_server,
+                query,
+                "SERIES",
+                pseudonym=pseudonym,
+                trial_protocol_id=trial_protocol_id,
+                trial_protocol_name=trial_protocol_name,
+            )
+            images = await self.peek_images(images)
 
-        renderer = cast(DicomWebWadoRenderer, getattr(request, "accepted_renderer"))
-        return StreamingHttpResponse(
-            streaming_content=renderer.render(images),
-            content_type=renderer.content_type,
-        )
+            renderer = cast(DicomWebWadoRenderer, getattr(request, "accepted_renderer"))
+            return StreamingHttpResponse(
+                streaming_content=_StreamingSessionWrapper(
+                    renderer.render(images), session, self._finalize_statistic
+                ),
+                content_type=renderer.content_type,
+            )
 
 
 class RetrieveSeriesMetadataAPIView(RetrieveSeriesAPIView):
     async def get(
         self, request: AuthenticatedApiRequest, ae_title: str, study_uid: str, series_uid: str
     ) -> Response:
-        source_server = await self._get_dicom_server(request, ae_title)
-        pseudonym = self._get_pseudonym(request)
-        trial_protocol_id = self._get_trial_protocol_id(request)
-        trial_protocol_name = self._get_trial_protocol_name(request)
+        async with self.track_session(request.user) as session:
+            source_server = await self._get_dicom_server(request, ae_title)
+            pseudonym = self._get_pseudonym(request)
+            trial_protocol_id = self._get_trial_protocol_id(request)
+            trial_protocol_name = self._get_trial_protocol_name(request)
 
-        query = self.query.copy()
-        query["StudyInstanceUID"] = study_uid
-        query["SeriesInstanceUID"] = series_uid
+            query = self.query.copy()
+            query["StudyInstanceUID"] = study_uid
+            query["SeriesInstanceUID"] = series_uid
 
-        images = wado_retrieve(
-            source_server,
-            query,
-            "SERIES",
-            pseudonym=pseudonym,
-            trial_protocol_id=trial_protocol_id,
-            trial_protocol_name=trial_protocol_name,
-        )
-        metadata = await self.extract_metadata(images)
+            images = wado_retrieve(
+                source_server,
+                query,
+                "SERIES",
+                pseudonym=pseudonym,
+                trial_protocol_id=trial_protocol_id,
+                trial_protocol_name=trial_protocol_name,
+            )
+            metadata = await self.extract_metadata(images)
 
-        renderer = cast(DicomWebWadoRenderer, getattr(request, "accepted_renderer"))
-        return Response({"metadata": metadata}, content_type=renderer.content_type)
+            response_data = {"metadata": metadata}
+            await self._finalize_statistic(
+                session, transfer_size=len(json.dumps(response_data).encode())
+            )
+
+            renderer = cast(DicomWebWadoRenderer, getattr(request, "accepted_renderer"))
+            return Response(response_data, content_type=renderer.content_type)
 
 
 class RetrieveImageAPIView(RetrieveAPIView):
@@ -346,31 +430,34 @@ class RetrieveImageAPIView(RetrieveAPIView):
         series_uid: str,
         image_uid: str,
     ) -> Response | StreamingHttpResponse:
-        source_server = await self._get_dicom_server(request, ae_title)
-        pseudonym = self._get_pseudonym(request)
-        trial_protocol_id = self._get_trial_protocol_id(request)
-        trial_protocol_name = self._get_trial_protocol_name(request)
+        async with self.track_session(request.user) as session:
+            source_server = await self._get_dicom_server(request, ae_title)
+            pseudonym = self._get_pseudonym(request)
+            trial_protocol_id = self._get_trial_protocol_id(request)
+            trial_protocol_name = self._get_trial_protocol_name(request)
 
-        query = self.query.copy()
-        query["StudyInstanceUID"] = study_uid
-        query["SeriesInstanceUID"] = series_uid
-        query["SOPInstanceUID"] = image_uid
+            query = self.query.copy()
+            query["StudyInstanceUID"] = study_uid
+            query["SeriesInstanceUID"] = series_uid
+            query["SOPInstanceUID"] = image_uid
 
-        images = wado_retrieve(
-            source_server,
-            query,
-            "IMAGE",
-            pseudonym=pseudonym,
-            trial_protocol_id=trial_protocol_id,
-            trial_protocol_name=trial_protocol_name,
-        )
-        images = await self.peek_images(images)
+            images = wado_retrieve(
+                source_server,
+                query,
+                "IMAGE",
+                pseudonym=pseudonym,
+                trial_protocol_id=trial_protocol_id,
+                trial_protocol_name=trial_protocol_name,
+            )
+            images = await self.peek_images(images)
 
-        renderer = cast(DicomWebWadoRenderer, getattr(request, "accepted_renderer"))
-        return StreamingHttpResponse(
-            streaming_content=renderer.render(images),
-            content_type=renderer.content_type,
-        )
+            renderer = cast(DicomWebWadoRenderer, getattr(request, "accepted_renderer"))
+            return StreamingHttpResponse(
+                streaming_content=_StreamingSessionWrapper(
+                    renderer.render(images), session, self._finalize_statistic
+                ),
+                content_type=renderer.content_type,
+            )
 
 
 class RetrieveImageMetadataAPIView(RetrieveImageAPIView):
@@ -382,28 +469,34 @@ class RetrieveImageMetadataAPIView(RetrieveImageAPIView):
         series_uid: str,
         image_uid: str,
     ) -> Response:
-        source_server = await self._get_dicom_server(request, ae_title)
-        pseudonym = self._get_pseudonym(request)
-        trial_protocol_id = self._get_trial_protocol_id(request)
-        trial_protocol_name = self._get_trial_protocol_name(request)
+        async with self.track_session(request.user) as session:
+            source_server = await self._get_dicom_server(request, ae_title)
+            pseudonym = self._get_pseudonym(request)
+            trial_protocol_id = self._get_trial_protocol_id(request)
+            trial_protocol_name = self._get_trial_protocol_name(request)
 
-        query = self.query.copy()
-        query["StudyInstanceUID"] = study_uid
-        query["SeriesInstanceUID"] = series_uid
-        query["SOPInstanceUID"] = image_uid
+            query = self.query.copy()
+            query["StudyInstanceUID"] = study_uid
+            query["SeriesInstanceUID"] = series_uid
+            query["SOPInstanceUID"] = image_uid
 
-        images = wado_retrieve(
-            source_server,
-            query,
-            "IMAGE",
-            pseudonym=pseudonym,
-            trial_protocol_id=trial_protocol_id,
-            trial_protocol_name=trial_protocol_name,
-        )
-        metadata = await self.extract_metadata(images)
+            images = wado_retrieve(
+                source_server,
+                query,
+                "IMAGE",
+                pseudonym=pseudonym,
+                trial_protocol_id=trial_protocol_id,
+                trial_protocol_name=trial_protocol_name,
+            )
+            metadata = await self.extract_metadata(images)
 
-        renderer = cast(DicomWebWadoRenderer, getattr(request, "accepted_renderer"))
-        return Response({"metadata": metadata}, content_type=renderer.content_type)
+            response_data = {"metadata": metadata}
+            await self._finalize_statistic(
+                session, transfer_size=len(json.dumps(response_data).encode())
+            )
+
+            renderer = cast(DicomWebWadoRenderer, getattr(request, "accepted_renderer"))
+            return Response(response_data, content_type=renderer.content_type)
 
 
 # TODO: respect permission can_store
@@ -416,43 +509,47 @@ class StoreImagesAPIView(WebDicomAPIView):
         ae_title: str,
         study_uid: str = "",
     ) -> Response:
-        content_type: str = request.content_type
-        if not media_type_matches("multipart/related; type=application/dicom", content_type):
-            raise UnsupportedMediaType(content_type)
+        async with self.track_session(request.user) as session:
+            content_type: str = request.content_type
+            if not media_type_matches("multipart/related; type=application/dicom", content_type):
+                raise UnsupportedMediaType(content_type)
 
-        dest_server = await self._get_dicom_server(request, ae_title, "destination")
+            dest_server = await self._get_dicom_server(request, ae_title, "destination")
 
-        results: Dataset = Dataset()
-        results.ReferencedSOPSequence = Sequence([])
-        results.FailedSOPSequence = Sequence([])
+            results: Dataset = Dataset()
+            results.ReferencedSOPSequence = Sequence([])
+            results.FailedSOPSequence = Sequence([])
 
-        async for ds in parse_request_in_chunks(request):
-            if ds is None:
-                continue
-
-            logger.debug(f"Received instance {ds.SOPInstanceUID} via STOW-RS")
-
-            if study_uid:
-                results.RetrieveURL = reverse(
-                    "wado_rs-study_with_study_uid",
-                    args=[dest_server.ae_title, ds.StudyInstanceUID],
-                )
-                if ds.StudyInstanceUID != study_uid:
+            async for ds in parse_request_in_chunks(request):
+                if ds is None:
                     continue
 
-            logger.debug(f"Storing instance {ds.SOPInstanceUID} to {dest_server.ae_title}")
-            result_ds, failed = await stow_store(dest_server, ds)
+                logger.debug(f"Received instance {ds.SOPInstanceUID} via STOW-RS")
 
-            if failed:
-                logger.debug(
-                    f"Storing instance {ds.SOPInstanceUID} to {dest_server.ae_title} failed"
-                )
-                results.FailedSOPSequence.append(result_ds)
-            else:
-                results.ReferencedSOPSequence.append(result_ds)
-                logger.debug(
-                    f"Successfully stored instance {ds.SOPInstanceUID} to {dest_server.ae_title}"
-                )
+                if study_uid:
+                    results.RetrieveURL = reverse(
+                        "wado_rs-study_with_study_uid",
+                        args=[dest_server.ae_title, ds.StudyInstanceUID],
+                    )
+                    if ds.StudyInstanceUID != study_uid:
+                        continue
 
-        assert request.accepted_renderer is not None
-        return Response([results], content_type=request.accepted_renderer.media_type)
+                logger.debug(f"Storing instance {ds.SOPInstanceUID} to {dest_server.ae_title}")
+                result_ds, failed = await stow_store(dest_server, ds)
+
+                if failed:
+                    logger.debug(
+                        f"Storing instance {ds.SOPInstanceUID} to {dest_server.ae_title} failed"
+                    )
+                    results.FailedSOPSequence.append(result_ds)
+                else:
+                    results.ReferencedSOPSequence.append(result_ds)
+                    logger.debug(f"Stored instance {ds.SOPInstanceUID} to {dest_server.ae_title}")
+
+            response_data = [results]
+            await self._finalize_statistic(
+                session, transfer_size=len(json.dumps(response_data[0].to_json_dict()).encode())
+            )
+
+            assert request.accepted_renderer is not None
+            return Response(response_data, content_type=request.accepted_renderer.media_type)
