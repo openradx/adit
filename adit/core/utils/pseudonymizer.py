@@ -1,7 +1,12 @@
+import logging
+import traceback
+
 from dicognito.anonymizer import Anonymizer
 from dicognito.value_keeper import ValueKeeper
 from django.conf import settings
 from pydicom import Dataset
+
+logger = logging.getLogger(__name__)
 
 
 class Pseudonymizer:
@@ -39,6 +44,40 @@ class Pseudonymizer:
         if not pseudonym:
             raise ValueError("A valid pseudonym must be provided for pseudonymization.")
 
-        self.anonymizer.anonymize(ds)
+        sop_instance_uid = getattr(ds, "SOPInstanceUID", "Unknown")
+        sop_class_uid = getattr(ds, "SOPClassUID", "Unknown")
+        modality = getattr(ds, "Modality", "Unknown")
+
+        logger.debug(
+            "DEBUG pseudonymize: Starting anonymization for image %s "
+            "(SOPClassUID: %s, Modality: %s, Pseudonym: %s)",
+            sop_instance_uid,
+            sop_class_uid,
+            modality,
+            pseudonym,
+        )
+
+        try:
+            self.anonymizer.anonymize(ds)
+            logger.debug(
+                "DEBUG pseudonymize: Anonymization completed for image %s", sop_instance_uid
+            )
+        except Exception as err:
+            logger.error(
+                "DEBUG pseudonymize: Anonymization FAILED for image %s "
+                "(SOPClassUID: %s, Modality: %s): %s\n%s",
+                sop_instance_uid,
+                sop_class_uid,
+                modality,
+                str(err),
+                traceback.format_exc(),
+            )
+            raise
+
         ds.PatientID = pseudonym
         ds.PatientName = pseudonym
+        logger.debug(
+            "DEBUG pseudonymize: Set PatientID and PatientName to %s for image %s",
+            pseudonym,
+            sop_instance_uid,
+        )
