@@ -445,6 +445,7 @@ CREATE_SERIES_SUB_FOLDERS = True
 
 # Elements to keep during pseudonymization
 SKIP_ELEMENTS_ANONYMIZATION = [
+    "FrameReferenceDateTime",
     "AcquisitionDate",
     "AcquisitionDateTime",
     "AcquisitionTime",
