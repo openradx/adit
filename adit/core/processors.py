@@ -3,7 +3,6 @@ import logging
 import os
 import subprocess
 import tempfile
-import traceback
 from functools import partial
 from pathlib import Path
 from typing import Callable
@@ -335,12 +334,11 @@ class TransferTaskProcessor(DicomTaskProcessor):
             except Exception as err:
                 logger.error(
                     "DEBUG callback: Modifier failed for image %s (SOPClassUID: %s, "
-                    "Modality: %s): %s\n%s",
+                    "Modality: %s): %s",
                     sop_instance_uid,
                     sop_class_uid,
                     modality,
                     str(err),
-                    traceback.format_exc(),
                 )
                 raise
 
@@ -361,19 +359,14 @@ class TransferTaskProcessor(DicomTaskProcessor):
                 final_folder.mkdir(parents=True, exist_ok=True)
                 file_name = sanitize_filename(f"{ds.SOPInstanceUID}.dcm")
                 file_path = final_folder / file_name
-                logger.debug(
-                    "DEBUG callback: Writing image %s to %s", sop_instance_uid, file_path
-                )
+                logger.debug("DEBUG callback: Writing image %s to %s", sop_instance_uid, file_path)
                 write_dataset(ds, file_path)
-                logger.debug(
-                    "DEBUG callback: Successfully wrote image %s", sop_instance_uid
-                )
+                logger.debug("DEBUG callback: Successfully wrote image %s", sop_instance_uid)
             except Exception as err:
                 logger.error(
-                    "DEBUG callback: Failed to write image %s to disk: %s\n%s",
+                    "DEBUG callback: Failed to write image %s to disk: %s",
                     sop_instance_uid,
                     str(err),
-                    traceback.format_exc(),
                 )
                 raise
 

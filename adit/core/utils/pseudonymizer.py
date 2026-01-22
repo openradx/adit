@@ -1,5 +1,4 @@
 import logging
-import traceback
 
 import pydicom
 from dicognito.anonymizer import Anonymizer
@@ -13,35 +12,24 @@ logger = logging.getLogger(__name__)
 
 class DateTimeLoggingHandler(ElementAnonymizer):
     """
-    A logging handler that inspects and logs datetime DICOM elements
-    before they are shifted by the DateTimeAnonymizer.
+    A logging handler that inspects and logs the FrameReferenceDateTime element
+    before it is shifted by the DateTimeAnonymizer.
     """
 
-    def __call__(self, dataset: Dataset, data_element: pydicom.DataElement) -> bool:
+    def __call__(self, _dataset: Dataset, data_element: pydicom.DataElement) -> bool:
         """
-        Log datetime elements (DA and DT) for debugging purposes.
+        Log FrameReferenceDateTime element for debugging purposes.
 
         Returns False so that the actual DateTimeAnonymizer can still process the element.
         """
-        if data_element.VR not in ("DA", "DT"):
+        if data_element.keyword != "FrameReferenceDateTime":
             return False
 
-        # Get related time element if this is a date element
-        time_value = None
-        if data_element.VR == "DA":
-            time_name = data_element.keyword.replace("Date", "Time")
-            if time_name in dataset:
-                time_element = dataset.data_element(time_name)
-                if time_element and time_element.value:
-                    time_value = time_element.value
-
         logger.debug(
-            "DEBUG DateTimeShift: Element %s (tag: %s, VR: %s) = %r%s",
-            data_element.keyword,
+            "DEBUG DateTimeShift: FrameReferenceDateTime (tag: %s, VR: %s) = %r",
             data_element.tag,
             data_element.VR,
             data_element.value,
-            f", corresponding Time ({time_name}) = {time_value!r}" if time_value else "",
         )
 
         # Return False to allow the DateTimeAnonymizer to process the element
@@ -49,7 +37,7 @@ class DateTimeLoggingHandler(ElementAnonymizer):
 
     def describe_actions(self):
         """Describe the actions this handler performs."""
-        yield "Log all DA and DT elements before datetime shifting"
+        yield "Log FrameReferenceDateTime element before datetime shifting"
 
 
 class Pseudonymizer:
@@ -104,22 +92,10 @@ class Pseudonymizer:
             pseudonym,
         )
 
-        try:
-            self.anonymizer.anonymize(ds)
-            logger.debug(
-                "DEBUG pseudonymize: Anonymization completed for image %s", sop_instance_uid
-            )
-        except Exception as err:
-            logger.error(
-                "DEBUG pseudonymize: Anonymization FAILED for image %s "
-                "(SOPClassUID: %s, Modality: %s): %s\n%s",
-                sop_instance_uid,
-                sop_class_uid,
-                modality,
-                str(err),
-                traceback.format_exc(),
-            )
-            raise
+        self.anonymizer.anonymize(ds)
+        logger.debug(
+            "DEBUG pseudonymize: Anonymization completed for image %s", sop_instance_uid
+        )
 
         ds.PatientID = pseudonym
         ds.PatientName = pseudonym
