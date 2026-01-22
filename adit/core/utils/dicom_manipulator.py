@@ -1,5 +1,4 @@
 import logging
-import traceback
 from typing import Optional
 
 from pydicom.dataset import Dataset
@@ -51,15 +50,13 @@ class DicomManipulator:
                 logger.debug(
                     "DEBUG manipulate: Pseudonymization completed for image %s", sop_instance_uid
                 )
-            except Exception as err:
+            except Exception:
                 logger.error(
                     "DEBUG manipulate: Pseudonymization FAILED for image %s "
-                    "(SOPClassUID: %s, Modality: %s): %s\n%s",
+                    "(SOPClassUID: %s, Modality: %s)",
                     sop_instance_uid,
                     sop_class_uid,
                     modality,
-                    str(err),
-                    traceback.format_exc(),
                 )
                 raise
 
@@ -89,12 +86,10 @@ class DicomManipulator:
                 logger.debug(
                     "DEBUG manipulate: Set PatientComments for image %s", sop_instance_uid
                 )
-            except Exception as err:
+            except Exception:
                 logger.error(
-                    "DEBUG manipulate: Failed to set PatientComments for image %s: %s\n%s",
+                    "DEBUG manipulate: Failed to set PatientComments for image %s",
                     sop_instance_uid,
-                    str(err),
-                    traceback.format_exc(),
                 )
                 raise
 

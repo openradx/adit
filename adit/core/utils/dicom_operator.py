@@ -14,7 +14,6 @@ import errno
 import logging
 import threading
 import time
-import traceback
 from concurrent.futures import ThreadPoolExecutor
 from os import PathLike
 from typing import Callable, Iterable, Iterator
@@ -548,16 +547,14 @@ class DicomOperator:
                     "DEBUG store_handler: Successfully handled image %s", sop_instance_uid
                 )
             except Exception as err:
-                # DEBUG: Log the full exception with traceback
                 logger.error(
                     "DEBUG store_handler: Exception while handling image %s "
-                    "(SOPClassUID: %s, Modality: %s, SeriesUID: %s): %s\n%s",
+                    "(SOPClassUID: %s, Modality: %s, SeriesUID: %s): %s",
                     sop_instance_uid,
                     sop_class_uid,
                     modality,
                     series_uid,
                     str(err),
-                    traceback.format_exc(),
                 )
                 store_errors.append(err)
 
@@ -790,12 +787,10 @@ class DicomOperator:
                 sop_instance_uid,
             )
         except Exception as err:
-            # DEBUG: Log detailed exception info before re-raising
             logger.error(
-                "DEBUG _handle_fetched_image: Callback failed for image %s: %s\n%s",
+                "DEBUG _handle_fetched_image: Callback failed for image %s: %s",
                 sop_instance_uid,
                 str(err),
-                traceback.format_exc(),
             )
             if isinstance(err, OSError) and err.errno == errno.ENOSPC:
                 # No space left on destination
