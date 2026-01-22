@@ -307,40 +307,9 @@ class TransferTaskProcessor(DicomTaskProcessor):
     ) -> None:
         def callback(ds: Dataset | None) -> None:
             if ds is None:
-                logger.debug("DEBUG callback: Received None dataset, skipping")
                 return
 
-            sop_instance_uid = getattr(ds, "SOPInstanceUID", "Unknown")
-            sop_class_uid = getattr(ds, "SOPClassUID", "Unknown")
-            modality = getattr(ds, "Modality", "Unknown")
-            series_uid = getattr(ds, "SeriesInstanceUID", "Unknown")
-
-            logger.debug(
-                "DEBUG callback: Processing image %s (SOPClassUID: %s, Modality: %s, "
-                "SeriesUID: %s)",
-                sop_instance_uid,
-                sop_class_uid,
-                modality,
-                series_uid,
-            )
-
-            try:
-                logger.debug("DEBUG callback: Calling modifier for image %s", sop_instance_uid)
-                modifier(ds)
-                logger.debug(
-                    "DEBUG callback: Modifier completed successfully for image %s",
-                    sop_instance_uid,
-                )
-            except Exception as err:
-                logger.error(
-                    "DEBUG callback: Modifier failed for image %s (SOPClassUID: %s, "
-                    "Modality: %s): %s",
-                    sop_instance_uid,
-                    sop_class_uid,
-                    modality,
-                    str(err),
-                )
-                raise
+            modifier(ds)
 
             final_folder: Path
             if settings.CREATE_SERIES_SUB_FOLDERS:
@@ -355,20 +324,10 @@ class TransferTaskProcessor(DicomTaskProcessor):
             else:
                 final_folder = study_folder
 
-            try:
-                final_folder.mkdir(parents=True, exist_ok=True)
-                file_name = sanitize_filename(f"{ds.SOPInstanceUID}.dcm")
-                file_path = final_folder / file_name
-                logger.debug("DEBUG callback: Writing image %s to %s", sop_instance_uid, file_path)
-                write_dataset(ds, file_path)
-                logger.debug("DEBUG callback: Successfully wrote image %s", sop_instance_uid)
-            except Exception as err:
-                logger.error(
-                    "DEBUG callback: Failed to write image %s to disk: %s",
-                    sop_instance_uid,
-                    str(err),
-                )
-                raise
+            final_folder.mkdir(parents=True, exist_ok=True)
+            file_name = sanitize_filename(f"{ds.SOPInstanceUID}.dcm")
+            file_path = final_folder / file_name
+            write_dataset(ds, file_path)
 
         pseudonymize = bool(self.transfer_task.pseudonym)
         exclude_modalities = settings.EXCLUDE_MODALITIES

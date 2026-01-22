@@ -79,28 +79,6 @@ class Pseudonymizer:
         if not pseudonym:
             raise ValueError("A valid pseudonym must be provided for pseudonymization.")
 
-        sop_instance_uid = getattr(ds, "SOPInstanceUID", "Unknown")
-        sop_class_uid = getattr(ds, "SOPClassUID", "Unknown")
-        modality = getattr(ds, "Modality", "Unknown")
-
-        logger.debug(
-            "DEBUG pseudonymize: Starting anonymization for image %s "
-            "(SOPClassUID: %s, Modality: %s, Pseudonym: %s)",
-            sop_instance_uid,
-            sop_class_uid,
-            modality,
-            pseudonym,
-        )
-
         self.anonymizer.anonymize(ds)
-        logger.debug(
-            "DEBUG pseudonymize: Anonymization completed for image %s", sop_instance_uid
-        )
-
         ds.PatientID = pseudonym
         ds.PatientName = pseudonym
-        logger.debug(
-            "DEBUG pseudonymize: Set PatientID and PatientName to %s for image %s",
-            pseudonym,
-            sop_instance_uid,
-        )

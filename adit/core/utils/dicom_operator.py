@@ -527,35 +527,9 @@ class DicomOperator:
             ds = event.dataset
             ds.file_meta = event.file_meta
 
-            # DEBUG: Log incoming C-STORE request details
-            sop_instance_uid = getattr(ds, "SOPInstanceUID", "Unknown")
-            sop_class_uid = getattr(ds.file_meta, "MediaStorageSOPClassUID", "Unknown")
-            modality = getattr(ds, "Modality", "Unknown")
-            series_uid = getattr(ds, "SeriesInstanceUID", "Unknown")
-            logger.debug(
-                "DEBUG store_handler: Received C-STORE for image %s "
-                "(SOPClassUID: %s, Modality: %s, SeriesUID: %s)",
-                sop_instance_uid,
-                sop_class_uid,
-                modality,
-                series_uid,
-            )
-
             try:
                 self._handle_fetched_image(ds, callback)
-                logger.debug(
-                    "DEBUG store_handler: Successfully handled image %s", sop_instance_uid
-                )
             except Exception as err:
-                logger.error(
-                    "DEBUG store_handler: Exception while handling image %s "
-                    "(SOPClassUID: %s, Modality: %s, SeriesUID: %s): %s",
-                    sop_instance_uid,
-                    sop_class_uid,
-                    modality,
-                    series_uid,
-                    str(err),
-                )
                 store_errors.append(err)
 
                 # Unfortunately not all PACS servers support or respect a C-CANCEL request,
@@ -571,23 +545,10 @@ class DicomOperator:
 
         store_errors: list[Exception] = []
 
-        logger.debug(
-            "DEBUG _fetch_images_with_c_get: Starting C-GET for query level %s",
-            query.get("QueryRetrieveLevel", "Unknown"),
-        )
-
         self.dimse_connector.send_c_get(query, store_handler, store_errors)
 
         if store_errors:
-            logger.error(
-                "DEBUG _fetch_images_with_c_get: C-GET completed with %d error(s). "
-                "First error: %s",
-                len(store_errors),
-                str(store_errors[0]),
-            )
             raise store_errors[0]
-        else:
-            logger.debug("DEBUG _fetch_images_with_c_get: C-GET completed successfully")
 
     def _fetch_images_with_c_move(
         self,
@@ -777,21 +738,9 @@ class DicomOperator:
         asyncio.run(consume(), debug=settings.DEBUG)
 
     def _handle_fetched_image(self, ds: Dataset, callback: Callable[[Dataset], None]) -> None:
-        sop_instance_uid = getattr(ds, "SOPInstanceUID", "Unknown")
-        logger.debug("DEBUG _handle_fetched_image: Processing image %s", sop_instance_uid)
-
         try:
             callback(ds)
-            logger.debug(
-                "DEBUG _handle_fetched_image: Callback completed successfully for image %s",
-                sop_instance_uid,
-            )
         except Exception as err:
-            logger.error(
-                "DEBUG _handle_fetched_image: Callback failed for image %s: %s",
-                sop_instance_uid,
-                str(err),
-            )
             if isinstance(err, OSError) and err.errno == errno.ENOSPC:
                 # No space left on destination
                 raise DicomError(
