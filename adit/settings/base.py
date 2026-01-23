@@ -450,6 +450,7 @@ SKIP_ELEMENTS_ANONYMIZATION = [
     "AcquisitionTime",
     "ContentDate",
     "ContentTime",
+    "FrameReferenceDateTime",
     "SeriesDate",
     "SeriesTime",
     "StudyDate",
