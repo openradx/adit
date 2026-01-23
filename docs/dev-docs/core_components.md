@@ -253,18 +253,6 @@ The WebSocket connection allows bidirectional, persistent communication between 
 - `DicomOperator.fetch_study()` - Bulk study downloads
 - `TransferTaskProcessor` - Background processing
 
-**Processing Pattern:**
-
-```python
-class BatchTransferTaskProcessor(TransferTaskProcessor):
-    def process(self) -> ProcessingResult:
-        # Uses inherited TransferTaskProcessor logic:
-        # 1. _find_study() - Validate study exists
-        # 2. _download_study() - Download with DicomOperator.fetch_study()
-        # 3. _transfer_to_destination() - Move to target location
-        return super().process()
-```
-
 **Bulk Operations:**
 
 - Processes multiple studies per job
@@ -285,47 +273,31 @@ class BatchTransferTaskProcessor(TransferTaskProcessor):
 
 ### DicomOperator Factory Pattern
 
-Each app creates DicomOperators as needed:
+The DicomOperator is instantiated on-demand by each application component when DICOM communication is needed. Rather than maintaining long-lived operator instances, applications create operators as needed by passing a DicomServer configuration object to the constructor.
 
-```python
-# Selective Transfer - WebSocket consumer
-operator = DicomOperator(source.dicomserver)
+**Usage across applications:**
 
-# Batch Transfer - Processor
-self.source_operator = DicomOperator(source.dicomserver)
+- **Selective Transfer**: WebSocket consumers create operators for each real-time query session
+- **Batch Transfer**: Task processors create separate source and destination operators for each transfer task
+- **Batch Query**: Task processors create a single operator instance to query the configured source server
 
-# Batch Query - Processor
-self.operator = DicomOperator(source.dicomserver)
-```
+This factory pattern ensures each operation has a properly configured operator without coupling applications to specific operator instances or lifecycle management.
 
 ### Common Query Patterns
 
-All apps use consistent QueryDataset construction:
+All applications construct DICOM queries using a consistent QueryDataset interface that abstracts DICOM query parameters. The query creation follows DICOM's hierarchical model with fields like PatientID and StudyInstanceUID combined with a QueryRetrieveLevel specification.
 
-```python
-# Study-level query used across all apps
-query = QueryDataset.create(
-    PatientID=patient_id,
-    StudyInstanceUID=study_uid,
-    QueryRetrieveLevel="STUDY"
-)
+**Standard study-level queries** include the patient identifier, study instance UID (when known), and explicitly set the retrieve level to "STUDY". This pattern is used universally across selective transfer, batch transfer, and batch query applications. The DicomOperator's `find_studies()` method processes these standardized queries and returns matching studies as iterable results.
 
-studies = operator.find_studies(query)
-```
+This consistency ensures predictable behavior and allows operators to optimize queries based on the retrieve level and available search parameters.
 
 ### Callback-based Data Processing
 
-The fetch operations use callbacks for data streaming:
+All fetch operations (study downloads, series retrieval) use a callback-driven architecture for processing DICOM datasets as they stream from the source server. Rather than downloading complete studies before processing, applications provide callback functions that receive each DICOM image dataset immediately upon arrival.
 
-```python
-def callback(dataset: Dataset) -> None:
-    # Process each DICOM image as it arrives
-    # Used by all transfer operations
-    modify_dataset(dataset)
-    save_to_disk(dataset)
+**Callback responsibilities** include real-time dataset modification (such as pseudonymization by changing DICOM tags), saving images to disk as they arrive, and providing incremental progress updates to users. This streaming approach is used by all transfer operations to enable efficient memory usage and responsive progress tracking.
 
-operator.fetch_study(patient_id, study_uid, callback)
-```
+The callback pattern allows applications to implement custom processing logic without modifying the core retrieval mechanisms in DicomOperator.
 
 ## Development Guidelines
 

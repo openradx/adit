@@ -20,7 +20,7 @@
     </p>
 {% endblock heading %}
 {% block content %}
-    <div class="alert alert-info" role="alert">{{ announcement|safe }}</div>
+    {% if announcement %}<div class="alert alert-info" role="alert">{{ announcement|safe }}</div>{% endif %}
     <p>
         ADIT (Automated DICOM Transfer) allows to transfer studies between different DICOM / PACS servers or
         download them to a network drive. The transferred resp. downloaded data can be pseudonymized on the fly
