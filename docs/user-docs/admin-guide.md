@@ -5,7 +5,7 @@ The Admin Guide is intended for system administrators and technical staff respon
 ## Installation
 
 ```terminal
-Clone the repository: git clone https://github.com/openradx/adit.git
+Clone the repository: `git clone https://github.com/openradx/adit.git`
 cd adit
 uv sync
 cp ./example.env ./.env  # copy example environment to .env
@@ -39,18 +39,15 @@ ADIT uses a group-based permission system:
 ### Creating and Managing Groups
 
 1. **Access Django Admin**:
-
    - Log in as a staff user
    - Go to **Admin Section** → **Django Admin** (available at `/django-admin/` URL path)
 
 2. **Create/Edit Groups**:
-
    - Navigate to **Authentication and Authorization** → **Groups**
    - Click "Add Group" or edit an existing group
    - Give the group a **Name** (e.g., "Radiologists", "Research Team")
 
 3. **Assign Permissions**:
-
    - In the group form, you'll see **Available permissions** and **Chosen permissions**
    - Select the permissions you want from the available list:
      - `selective_transfer | selective transfer job | Can process urgently`
@@ -61,7 +58,6 @@ ADIT uses a group-based permission system:
    - Move them to **Chosen permissions**
 
 4. **Add Users to Group**:
-
    - In the **Users** section, select users from **Available users**
    - Move them to **Chosen users**
    - Click **Save** to apply all changes
@@ -79,14 +75,12 @@ To add or configure DICOM servers, use the Django Admin interface:
 5. Configure the server details:
 
    **Basic Settings:**
-
    - **Name**: Friendly name for the server
    - **Ae title**: DICOM Application Entity title
    - **Host**: Server hostname or IP address
    - **Port**: DICOM port number
 
    **DICOM Protocol Support:**
-
    - **Patient root find support**: Enable C-FIND at patient root level
    - **Patient root get support**: Enable C-GET at patient root level
    - **Patient root move support**: Enable C-MOVE at patient root level
@@ -96,7 +90,6 @@ To add or configure DICOM servers, use the Django Admin interface:
    - **Store scp support**: Enable C-STORE SCP operations
 
    **DICOMweb Settings (if applicable):**
-
    - **Dicomweb root url**: Base URL for DICOMweb services
    - **Dicomweb qido support**: Enable QIDO-RS (queries)
    - **Dicomweb wado support**: Enable WADO-RS (retrieval)
@@ -202,7 +195,6 @@ To create an API token for programmatic access:
 2. **Navigate to Adit Administration**:
    - Look for **Token Authentication** in the main navigation
 3. Click **Add** token
-
    - Fill in the token details:
 
    - **Owner:** Select the user who will own the token
