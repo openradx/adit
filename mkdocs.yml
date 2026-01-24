@@ -89,3 +89,9 @@ extra:
       link: https://github.com/openradx/adit
     - icon: fontawesome/solid/globe
       link: https://ccibonn.ai/
+
+extra_javascript:
+  - assets/js/slideshow.js
+
+extra_css:
+  - assets/css/slideshow.css
