@@ -24,7 +24,7 @@ theme:
       primary: green
       accent: cyan
       toggle:
-        icon: material/brightness-7
+        icon: material/brightness-4
         name: Switch to light mode
   features:
     - navigation.tabs
@@ -60,6 +60,7 @@ markdown_extensions:
       custom_fences:
         - name: mermaid
           class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
   - pymdownx.tabbed:
       alternate_style: true
   - pymdownx.details
