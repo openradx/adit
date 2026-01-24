@@ -10,16 +10,16 @@ hide:
 
   <div class="slides-wrapper">
     <div class="slide">
-      <img src="assets/screenshots/Screenshot01.png" alt="RADIS Screenshot 1">
+      <img src="assets/screenshots/Screenshot01.png" alt="ADIT Screenshot 1">
     </div>
     <div class="slide">
-      <img src="assets/screenshots/Screenshot02.png" alt="RADIS Screenshot 2">
+      <img src="assets/screenshots/Screenshot02.png" alt="ADIT Screenshot 2">
     </div>
     <div class="slide">
-      <img src="assets/screenshots/Screenshot03.png" alt="RADIS Screenshot 3">
+      <img src="assets/screenshots/Screenshot03.png" alt="ADIT Screenshot 3">
     </div>
     <div class="slide">
-      <img src="assets/screenshots/Screenshot04.png" alt="RADIS Screenshot 4">
+      <img src="assets/screenshots/Screenshot04.png" alt="ADIT Screenshot 4">
     </div>
   </div>
 
