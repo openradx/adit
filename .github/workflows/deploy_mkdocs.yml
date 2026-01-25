@@ -1,4 +1,5 @@
 name: Deploy MkDocs
+
 on:
   push:
     branches:
@@ -10,16 +11,24 @@ permissions:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - uses: actions/setup-python@v5
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-          cache: "pip"
 
-      - run: pip install mkdocs-material>=9.7.0 mkdocs-minify-plugin>=0.8.0
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: "latest"
 
-      - run: mkdocs gh-deploy --force
+      - name: Install dependencies
+        run: uv sync --only-group docs
+
+      - name: Deploy MkDocs
+        run: uv run mkdocs gh-deploy --force
