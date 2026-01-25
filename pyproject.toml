@@ -96,7 +96,7 @@ client = ["adit-client"]
 cli = "cli:app"
 
 [tool.uv]
-default-groups = ["dev", "client"]
+default-groups = ["dev", "client", "docs"]
 constraint-dependencies = ["autobahn<25.11.1"]
 
 [tool.uv.sources]

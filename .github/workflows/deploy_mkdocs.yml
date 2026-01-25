@@ -27,7 +27,7 @@ jobs:
         with:
           version: "latest"
 
-      - name: Install dependencies
+      - name: Install docs dependencies
         run: uv sync --only-group docs
 
       - name: Deploy MkDocs

@@ -73,8 +73,6 @@ dev = [
     { name = "ipykernel" },
     { name = "ipython" },
     { name = "ipywidgets" },
-    { name = "mkdocs-material" },
-    { name = "mkdocs-minify-plugin" },
     { name = "nest-asyncio" },
     { name = "nibabel" },
     { name = "pyright" },
@@ -96,6 +94,10 @@ dev = [
     { name = "tqdm" },
     { name = "typer" },
     { name = "vermin" },
+]
+docs = [
+    { name = "mkdocs-material" },
+    { name = "mkdocs-minify-plugin" },
 ]
 
 [package.metadata]
@@ -161,8 +163,6 @@ dev = [
     { name = "ipykernel", specifier = ">=6.29.5" },
     { name = "ipython", specifier = ">=8.32.0" },
     { name = "ipywidgets", specifier = ">=8.1.7" },
-    { name = "mkdocs-material", specifier = ">=9.7.0" },
-    { name = "mkdocs-minify-plugin", specifier = ">=0.8.0" },
     { name = "nest-asyncio", specifier = ">=1.6.0" },
     { name = "nibabel", specifier = ">=5.3.2" },
     { name = "pyright", specifier = ">=1.1.394" },
@@ -184,6 +184,10 @@ dev = [
     { name = "tqdm", specifier = ">=4.67.1" },
     { name = "typer", specifier = ">=0.19.2" },
     { name = "vermin", specifier = ">=1.6.0" },
+]
+docs = [
+    { name = "mkdocs-material", specifier = ">=9.7.0" },
+    { name = "mkdocs-minify-plugin", specifier = ">=0.8.0" },
 ]
 
 [[package]]
