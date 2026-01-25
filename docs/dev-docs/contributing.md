@@ -56,6 +56,8 @@ uv run cli compose-up  # restart containers (migrations run automatically)
 File changes will be automatically detected and the servers will be restarted. When library
 dependencies are changed, the containers will automatically be rebuilt and restarted.
 
+!!! note "Development vs Production" - **Development**: Use `uv run cli compose-up` for local development with hot-reloading - **Production**: Use `uv run cli stack-deploy` for production deployment with Docker Swarm
+
 ## Reporting Issues
 
 If you encounter bugs or have feature requests, please open an issue on GitHub. Include as much detail as possible, including steps to reproduce the issue.

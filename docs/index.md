@@ -23,14 +23,14 @@ hide:
     </div>
   </div>
 
-<a class="prev" onclick="changeSlide(-1)">❮</a>
-<a class="next" onclick="changeSlide(1)">❯</a>
+<a class="prev" data-slide="-1">❮</a>
+<a class="next" data-slide="1">❯</a>
 
   <div class="dot-container">
-    <span class="dot" onclick="currentSlide(0)"></span>
-    <span class="dot" onclick="currentSlide(1)"></span>
-    <span class="dot" onclick="currentSlide(2)"></span>
-    <span class="dot" onclick="currentSlide(3)"></span>
+    <span class="dot" data-slide-index="0"></span>
+    <span class="dot" data-slide-index="1"></span>
+    <span class="dot" data-slide-index="2"></span>
+    <span class="dot" data-slide-index="3"></span>
   </div>
 
 </div>

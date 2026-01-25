@@ -3,6 +3,9 @@
  * Handles automatic cycling and manual navigation of screenshot slides
  */
 
+// Constants
+const SLIDE_INTERVAL_MS = 4000;
+
 let slideIndex = 0;
 let timer;
 
@@ -33,7 +36,7 @@ function showSlide(index) {
   timer = setTimeout(() => {
     slideIndex++;
     showSlide(slideIndex);
-  }, 4000);
+  }, SLIDE_INTERVAL_MS);
 }
 
 /**
@@ -54,6 +57,16 @@ function currentSlide(n) {
   showSlide(slideIndex);
 }
 
+/**
+ * Clean up timer to prevent memory leaks
+ */
+function cleanupSlideshow() {
+  if (timer) {
+    clearTimeout(timer);
+    timer = null;
+  }
+}
+
 // Initialize slideshow when DOM is ready
 document.addEventListener("DOMContentLoaded", () => {
   // Guard: Only initialize if slideshow markup exists on this page
@@ -62,5 +75,21 @@ document.addEventListener("DOMContentLoaded", () => {
 
   if (slidesWrapper && dots.length > 0) {
     showSlide(slideIndex);
+
+    // Event delegation for navigation controls
+    document
+      .querySelector(".prev")
+      ?.addEventListener("click", () => changeSlide(-1));
+    document
+      .querySelector(".next")
+      ?.addEventListener("click", () => changeSlide(1));
+
+    // Event delegation for dot navigation
+    dots.forEach((dot, index) => {
+      dot.addEventListener("click", () => currentSlide(index));
+    });
   }
 });
+
+// Clean up timer on page unload to prevent memory leaks
+window.addEventListener("beforeunload", cleanupSlideshow);

@@ -9,8 +9,12 @@ Clone the repository: `git clone https://github.com/openradx/adit.git`
 cd adit
 uv sync
 cp ./example.env ./.env  # copy example environment to .env
-uv run cli stack-deploy  # builds and starts Docker containers
+uv run cli stack-deploy  # builds and starts Docker containers for production (Docker Swarm)
 ```
+
+!!! note "Development vs Production" - **Development**: Use `uv run cli compose-up` for local development with hot-reloading - **Production**: Use `uv run cli stack-deploy` for production deployment with Docker Swarm
+
+    See the [Contributing Guide](../dev-docs/contributing.md) for development setup instructions.
 
 ## Updating ADIT
 

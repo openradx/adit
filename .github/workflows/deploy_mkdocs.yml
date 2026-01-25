@@ -20,6 +20,6 @@ jobs:
           python-version: "3.12"
           cache: "pip"
 
-      - run: pip install mkdocs-material mkdocs-minify-plugin
+      - run: pip install mkdocs-material>=9.7.0 mkdocs-minify-plugin>=0.8.0
 
       - run: mkdocs gh-deploy --force
