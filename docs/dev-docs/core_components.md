@@ -347,4 +347,4 @@ The callback pattern allows applications to implement custom processing logic wi
 2. Use `DicomOperator` for DICOM operations
 3. Implement progressive result streaming
 
-This architecture ensures that each application leverges the core components effectively while maintaining clean separation of concerns and maximum code reuse.
+This architecture ensures that each application leverages the core components effectively while maintaining clean separation of concerns and maximum code reuse.

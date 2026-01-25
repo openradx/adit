@@ -1,6 +1,6 @@
 # User Guide
 
-The User Guide is designed for end users who interact with ADIT to perform DICOM data transfers. It explains how to use the application’s features, and execute common workflows in a clear and practical manner
+The User Guide is designed for end users who interact with ADIT to perform DICOM data transfers. It explains how to use the application’s features, and execute common workflows in a clear and practical manner.
 
 ## Functionalities Overview
 
@@ -57,7 +57,7 @@ Each batch transfer job contains several transfer tasks that define what studies
 The required PatientID and StudyInstanceUID can be fetched by doing a "Batch Query". The resulting file of a batch query can be used for the batch transfer. So a batch query is usually a preparation step for a batch transfer.
 
 !!! warning "Excel Data Format"
-    If PatientID or AccessionNumber contains leading zeros those are relevant as it is not a number but a text identifier. So make sure that your Excel file does not remove those leading zeros by setting the column type to text or add a single quote `'` as prefix to the text cell itself.
+If PatientID or AccessionNumber contains leading zeros those are relevant as it is not a number but a text identifier. So make sure that your Excel file does not remove those leading zeros by setting the column type to text or add a single quote `'` as prefix to the text cell itself.
 
 The following columns must be defined in the batch file:
 
