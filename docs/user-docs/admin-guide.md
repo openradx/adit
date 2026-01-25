@@ -199,9 +199,9 @@ To create an API token for programmatic access:
 
    - **Owner:** Select the user who will own the token
 
-   - **Token hashed**: Paste the hashed token value (this is not auto-generated)
+   - **Token hashed**: Paste the hashed token value.
 
-   - **Fraction**: Specify the token’s fraction
+   - **Fraction**: A short prefix (3-4 characters) used to identify the token
 
    - **Description**: Add an optional description to identify the token’s purpose
 

@@ -13,6 +13,12 @@ let timer;
 function showSlide(index) {
   const slidesWrapper = document.querySelector(".slides-wrapper");
   const dots = document.querySelectorAll(".dot");
+
+  // Guard: Exit early if slideshow markup is not present on this page
+  if (!slidesWrapper || dots.length === 0) {
+    return;
+  }
+
   const totalSlides = dots.length;
 
   if (index >= totalSlides) slideIndex = 0;
@@ -50,5 +56,11 @@ function currentSlide(n) {
 
 // Initialize slideshow when DOM is ready
 document.addEventListener("DOMContentLoaded", () => {
-  showSlide(slideIndex);
+  // Guard: Only initialize if slideshow markup exists on this page
+  const slidesWrapper = document.querySelector(".slides-wrapper");
+  const dots = document.querySelectorAll(".dot");
+
+  if (slidesWrapper && dots.length > 0) {
+    showSlide(slideIndex);
+  }
 });

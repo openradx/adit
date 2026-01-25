@@ -92,6 +92,8 @@ extra:
 
 extra_javascript:
   - assets/js/slideshow.js
+  - assets/js/mermaid-zoom.js
 
 extra_css:
   - assets/css/slideshow.css
+  - assets/css/mermaid-enhancements.css

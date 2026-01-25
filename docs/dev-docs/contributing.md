@@ -53,8 +53,6 @@ uv run cli compose-up  # restart containers (migrations run automatically)
 - Python packages are updated via `uv sync` when pyproject.toml changes
 - Docker images update via `uv run cli compose-pull` (base images)
 
-The development server of the example project will be started on <http://localhost:8000>
-
 File changes will be automatically detected and the servers will be restarted. When library
 dependencies are changed, the containers will automatically be rebuilt and restarted.
 

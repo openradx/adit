@@ -12,8 +12,6 @@ The ADIT system follows a hierarchical architecture with the **Core App** (`adit
 
 The core provides base models that establish a consistent pattern across all DICOM applications:
 
-<div class="mermaid-zoom">
-
 ```mermaid
 classDiagram
     class DicomJob {
@@ -79,8 +77,6 @@ classDiagram
         +project_description: str
     }
 ```
-
-</div>
 
 **Key Benefits:**
 

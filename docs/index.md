@@ -53,8 +53,6 @@ ADIT simplifies interaction with DICOM systems through the following process:
 
 - You receive easy-to-use JSON metadata or DICOM files.
 
-## About
-
 ## Developed at
 
 [CCI Bonn](https://ccibonn.ai/) - Center for Computational Imaging, University Hospital Bonn
