@@ -1,5 +1,7 @@
 import inspect
 import logging
+import time
+from contextlib import contextmanager
 from functools import wraps
 from http import HTTPStatus
 from os import PathLike
@@ -12,6 +14,7 @@ from pydicom.errors import InvalidDicomError
 from requests import HTTPError
 
 from ..errors import DicomError, RetriableDicomError, is_retriable_http_status
+from ..metrics import DICOM_OPERATION_COUNTER, DICOM_OPERATION_DURATION
 from ..models import DicomServer
 from ..types import DicomLogEntry
 from ..utils.dicom_dataset import QueryDataset, ResultDataset
@@ -25,6 +28,26 @@ from ..utils.retry_config import (
 logger = logging.getLogger(__name__)
 
 Modifier = Callable[[Dataset], None]
+
+
+@contextmanager
+def track_dicomweb_operation(operation: str, server_ae_title: str):
+    """Context manager to track DICOMweb operation metrics."""
+    start_time = time.time()
+    status = "success"
+    try:
+        yield
+    except Exception:
+        status = "failure"
+        raise
+    finally:
+        duration = time.time() - start_time
+        DICOM_OPERATION_COUNTER.labels(
+            operation=operation, server=server_ae_title, status=status
+        ).inc()
+        DICOM_OPERATION_DURATION.labels(operation=operation, server=server_ae_title).observe(
+            duration
+        )
 
 
 def connect_to_server():
@@ -113,32 +136,33 @@ class DicomWebConnector:
 
         assert self.dicomweb_client
 
-        try:
-            if level == "STUDY":
-                results = self.dicomweb_client.search_for_studies(
-                    fields=fields, search_filters=search_filters, limit=limit_results
-                )
-            elif level == "SERIES":
-                study_uid = search_filters.pop("StudyInstanceUID", None)
-                results = self.dicomweb_client.search_for_series(
-                    study_uid, fields=fields, search_filters=search_filters, limit=limit_results
-                )
-            elif level == "IMAGE":
-                study_uid = search_filters.pop("StudyInstanceUID", None)
-                series_uid = search_filters.pop("SeriesInstanceUID", None)
-                results = self.dicomweb_client.search_for_instances(
-                    study_uid,
-                    series_uid,
-                    fields=fields,
-                    search_filters=search_filters,
-                    limit=limit_results,
-                )
-            else:
-                raise ValueError(f"Invalid QueryRetrieveLevel: {level}")
+        with track_dicomweb_operation("QIDO-RS", self.server.ae_title):
+            try:
+                if level == "STUDY":
+                    results = self.dicomweb_client.search_for_studies(
+                        fields=fields, search_filters=search_filters, limit=limit_results
+                    )
+                elif level == "SERIES":
+                    study_uid = search_filters.pop("StudyInstanceUID", None)
+                    results = self.dicomweb_client.search_for_series(
+                        study_uid, fields=fields, search_filters=search_filters, limit=limit_results
+                    )
+                elif level == "IMAGE":
+                    study_uid = search_filters.pop("StudyInstanceUID", None)
+                    series_uid = search_filters.pop("SeriesInstanceUID", None)
+                    results = self.dicomweb_client.search_for_instances(
+                        study_uid,
+                        series_uid,
+                        fields=fields,
+                        search_filters=search_filters,
+                        limit=limit_results,
+                    )
+                else:
+                    raise ValueError(f"Invalid QueryRetrieveLevel: {level}")
 
-            return [ResultDataset(Dataset.from_json(result)) for result in results]
-        except HTTPError as err:
-            _handle_dicomweb_error(err, "QIDO-RS")
+                return [ResultDataset(Dataset.from_json(result)) for result in results]
+            except HTTPError as err:
+                _handle_dicomweb_error(err, "QIDO-RS")
 
     @retry_dicomweb_retrieve
     @connect_to_server()
@@ -156,37 +180,38 @@ class DicomWebConnector:
 
         assert self.dicomweb_client
 
-        try:
-            if level == "STUDY":
-                study_uid = query_dict.pop("StudyInstanceUID", "")
-                if not study_uid:
-                    raise DicomError("Missing StudyInstanceUID for WADO-RS on study level.")
-                yield from self.dicomweb_client.iter_study(study_uid)
-            elif level == "SERIES":
-                study_uid = query_dict.pop("StudyInstanceUID", "")
-                series_uid = query_dict.pop("SeriesInstanceUID", "")
-                if not study_uid:
-                    raise DicomError("Missing StudyInstanceUID for WADO-RS on series level.")
-                if not series_uid:
-                    raise DicomError("Missing SeriesInstanceUID for WADO-RS on series level.")
-                yield from self.dicomweb_client.iter_series(study_uid, series_uid)
-            elif level == "IMAGE":
-                study_uid = query_dict.pop("StudyInstanceUID", "")
-                series_uid = query_dict.pop("SeriesInstanceUID", "")
-                sop_instance_uid = query_dict.pop("SOPInstanceUID", "")
-                if not study_uid:
-                    raise DicomError("Missing StudyInstanceUID for WADO-RS on image level.")
-                if not series_uid:
-                    raise DicomError("Missing SeriesInstanceUID for WADO-RS on image level.")
-                if not sop_instance_uid:
-                    raise DicomError("Missing SOPInstanceUID for WADO-RS on image level.")
-                yield self.dicomweb_client.retrieve_instance(
-                    study_uid, series_uid, sop_instance_uid
-                )
-            else:
-                raise DicomError(f"Invalid QueryRetrieveLevel: {level}")
-        except HTTPError as err:
-            _handle_dicomweb_error(err, "WADO-RS")
+        with track_dicomweb_operation("WADO-RS", self.server.ae_title):
+            try:
+                if level == "STUDY":
+                    study_uid = query_dict.pop("StudyInstanceUID", "")
+                    if not study_uid:
+                        raise DicomError("Missing StudyInstanceUID for WADO-RS on study level.")
+                    yield from self.dicomweb_client.iter_study(study_uid)
+                elif level == "SERIES":
+                    study_uid = query_dict.pop("StudyInstanceUID", "")
+                    series_uid = query_dict.pop("SeriesInstanceUID", "")
+                    if not study_uid:
+                        raise DicomError("Missing StudyInstanceUID for WADO-RS on series level.")
+                    if not series_uid:
+                        raise DicomError("Missing SeriesInstanceUID for WADO-RS on series level.")
+                    yield from self.dicomweb_client.iter_series(study_uid, series_uid)
+                elif level == "IMAGE":
+                    study_uid = query_dict.pop("StudyInstanceUID", "")
+                    series_uid = query_dict.pop("SeriesInstanceUID", "")
+                    sop_instance_uid = query_dict.pop("SOPInstanceUID", "")
+                    if not study_uid:
+                        raise DicomError("Missing StudyInstanceUID for WADO-RS on image level.")
+                    if not series_uid:
+                        raise DicomError("Missing SeriesInstanceUID for WADO-RS on image level.")
+                    if not sop_instance_uid:
+                        raise DicomError("Missing SOPInstanceUID for WADO-RS on image level.")
+                    yield self.dicomweb_client.retrieve_instance(
+                        study_uid, series_uid, sop_instance_uid
+                    )
+                else:
+                    raise DicomError(f"Invalid QueryRetrieveLevel: {level}")
+            except HTTPError as err:
+                _handle_dicomweb_error(err, "WADO-RS")
 
     @retry_dicomweb_store
     @connect_to_server()
@@ -217,44 +242,45 @@ class DicomWebConnector:
         if not self.server.dicomweb_stow_support:
             raise DicomError("DICOMweb STOW-RS is not supported by the server.")
 
-        if isinstance(resource, list):  # resource is a list of datasets
-            logger.debug("Sending STOW of %d datasets.", len(resource))
+        with track_dicomweb_operation("STOW-RS", self.server.ae_title):
+            if isinstance(resource, list):  # resource is a list of datasets
+                logger.debug("Sending STOW of %d datasets.", len(resource))
 
-            for ds in resource:
-                logger.debug("Sending C-STORE of SOP instance %s.", str(ds.SOPInstanceUID))
-                _send_dataset(ds)
-        else:  # resource is a path to a folder
-            folder = Path(resource)
-            if not folder.is_dir():
-                raise DicomError(f"Resource is not a valid folder: {resource}")
+                for ds in resource:
+                    logger.debug("Sending C-STORE of SOP instance %s.", str(ds.SOPInstanceUID))
+                    _send_dataset(ds)
+            else:  # resource is a path to a folder
+                folder = Path(resource)
+                if not folder.is_dir():
+                    raise DicomError(f"Resource is not a valid folder: {resource}")
 
-            logger.debug("Sending STOW of folder: %s", folder.absolute())
+                logger.debug("Sending STOW of folder: %s", folder.absolute())
 
-            invalid_dicoms: list[PathLike] = []
-            for path in folder.rglob("*"):
-                if not path.is_file():
-                    continue
+                invalid_dicoms: list[PathLike] = []
+                for path in folder.rglob("*"):
+                    if not path.is_file():
+                        continue
 
-                try:
-                    ds = read_dataset(path)
-                except InvalidDicomError as err:
-                    logger.error("Failed to read DICOM file %s: %s", path, err)
-                    invalid_dicoms.append(path)
-                    continue  # We try to handle the rest of the images and raise the error later
+                    try:
+                        ds = read_dataset(path)
+                    except InvalidDicomError as err:
+                        logger.error("Failed to read DICOM file %s: %s", path, err)
+                        invalid_dicoms.append(path)
+                        continue  # Try to handle rest of the images and raise the error later
 
-                _send_dataset(ds)
+                    _send_dataset(ds)
 
-            if invalid_dicoms:
-                raise DicomError(
-                    f"{len(invalid_dicoms)} DICOM file{'s' if len(invalid_dicoms) > 1 else ''} "
-                    " could not be read for STOW-RS."
+                if invalid_dicoms:
+                    raise DicomError(
+                        f"{len(invalid_dicoms)} DICOM file{'s' if len(invalid_dicoms) > 1 else ''} "
+                        " could not be read for STOW-RS."
+                    )
+
+            if retriable_failures:
+                plural = len(retriable_failures) > 1
+                raise RetriableDicomError(
+                    f"{len(retriable_failures)} STOW-RS operation{'s' if plural else ''} failed."
                 )
-
-        if retriable_failures:
-            plural = len(retriable_failures) > 1
-            raise RetriableDicomError(
-                f"{len(retriable_failures)} STOW-RS operation{'s' if plural else ''} failed."
-            )
 
 
 def _handle_dicomweb_error(err: HTTPError, op: str) -> NoReturn:

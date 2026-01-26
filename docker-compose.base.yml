@@ -92,13 +92,69 @@ services:
     volumes:
       - orthanc2_data:/var/lib/orthanc/db
 
+  prometheus:
+    image: prom/prometheus:v2.50.0
+    hostname: prometheus.local
+    configs:
+      - source: prometheus_config
+        target: /etc/prometheus/prometheus.yml
+      - source: prometheus_alerts
+        target: /etc/prometheus/rules/adit_alerts.yml
+    volumes:
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--web.enable-lifecycle'
+
+  grafana:
+    image: grafana/grafana:10.3.0
+    hostname: grafana.local
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    configs:
+      - source: grafana_datasources
+        target: /etc/grafana/provisioning/datasources/datasource.yml
+      - source: grafana_dashboards
+        target: /etc/grafana/provisioning/dashboards/dashboard.yml
+      - source: grafana_adit_dashboard
+        target: /var/lib/grafana/dashboards/adit-overview.json
+    volumes:
+      - grafana_data:/var/lib/grafana
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.47.2
+    hostname: cadvisor.local
+    privileged: true
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+
 configs:
   orthanc1_config:
     file: ./orthanc/orthanc1.json
   orthanc2_config:
     file: ./orthanc/orthanc2.json
+  prometheus_config:
+    file: ./monitoring/prometheus/prometheus.yml
+  prometheus_alerts:
+    file: ./monitoring/prometheus/rules/adit_alerts.yml
+  grafana_datasources:
+    file: ./monitoring/grafana/provisioning/datasources/datasource.yml
+  grafana_dashboards:
+    file: ./monitoring/grafana/provisioning/dashboards/dashboard.yml
+  grafana_adit_dashboard:
+    file: ./monitoring/grafana/dashboards/adit-overview.json
 
 volumes:
   postgres_data:
   orthanc1_data:
   orthanc2_data:
+  prometheus_data:
+  grafana_data:

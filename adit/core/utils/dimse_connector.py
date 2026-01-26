@@ -1,5 +1,7 @@
 import inspect
 import logging
+import time
+from contextlib import contextmanager
 from functools import wraps
 from os import PathLike
 from pathlib import Path
@@ -35,6 +37,7 @@ from pynetdicom.sop_class import (
 from pynetdicom.status import code_to_category
 
 from ..errors import DicomError, RetriableDicomError
+from ..metrics import DICOM_OPERATION_COUNTER, DICOM_OPERATION_DURATION
 from ..models import DicomServer
 from ..types import DicomLogEntry
 from ..utils.dicom_dataset import QueryDataset, ResultDataset
@@ -52,6 +55,26 @@ logger = logging.getLogger(__name__)
 DimseService = Literal["C-FIND", "C-GET", "C-MOVE", "C-STORE"]
 
 Modifier = Callable[[Dataset], None]
+
+
+@contextmanager
+def track_dicom_operation(operation: str, server_ae_title: str):
+    """Context manager to track DICOM operation metrics."""
+    start_time = time.time()
+    status = "success"
+    try:
+        yield
+    except Exception:
+        status = "failure"
+        raise
+    finally:
+        duration = time.time() - start_time
+        DICOM_OPERATION_COUNTER.labels(
+            operation=operation, server=server_ae_title, status=status
+        ).inc()
+        DICOM_OPERATION_DURATION.labels(operation=operation, server=server_ae_title).observe(
+            duration
+        )
 
 
 def connect_to_server(service: DimseService):
@@ -229,35 +252,37 @@ class DimseConnector:
             raise DicomError("No valid Query/Retrieve Information Model for C-FIND could be found.")
 
         assert self.assoc and self.assoc.is_alive()
-        responses = self.assoc.send_c_find(query.dataset, query_model, msg_id)
 
-        result_counter = 0
-        for status, identifier in responses:
-            if not status:
-                raise RetriableDicomError(
-                    "Connection timed out, was aborted or received invalid response."
-                )
+        with track_dicom_operation("C-FIND", self.server.ae_title):
+            responses = self.assoc.send_c_find(query.dataset, query_model, msg_id)
 
-            status_category = code_to_category(status.Status)
-            if status_category == STATUS_SUCCESS:
-                logger.debug("C-FIND completed successfully.")
-                break
+            result_counter = 0
+            for status, identifier in responses:
+                if not status:
+                    raise RetriableDicomError(
+                        "Connection timed out, was aborted or received invalid response."
+                    )
 
-            elif status_category == STATUS_PENDING:
-                if not identifier:
-                    raise RetriableDicomError("Missing identifier for pending C-FIND.")
-
-                yield ResultDataset(identifier)
-
-                result_counter += 1
-                if result_counter == limit_results:
-                    self.abort_connection()
+                status_category = code_to_category(status.Status)
+                if status_category == STATUS_SUCCESS:
+                    logger.debug("C-FIND completed successfully.")
                     break
 
-            else:
-                raise RetriableDicomError(
-                    f"Unexpected error during C-FIND [{status_category}]:\n{status}"
-                )
+                elif status_category == STATUS_PENDING:
+                    if not identifier:
+                        raise RetriableDicomError("Missing identifier for pending C-FIND.")
+
+                    yield ResultDataset(identifier)
+
+                    result_counter += 1
+                    if result_counter == limit_results:
+                        self.abort_connection()
+                        break
+
+                else:
+                    raise RetriableDicomError(
+                        f"Unexpected error during C-FIND [{status_category}]:\n{status}"
+                    )
 
     @retry_dimse_retrieve
     @connect_to_server("C-GET")
@@ -288,9 +313,9 @@ class DimseConnector:
         assert self.assoc and self.assoc.is_alive()
         self.assoc.bind(EVT_C_STORE, store_handler, [store_errors])
 
-        responses = self.assoc.send_c_get(query.dataset, query_model, msg_id)
-
-        self._handle_get_and_move_responses(responses, "C-GET")
+        with track_dicom_operation("C-GET", self.server.ae_title):
+            responses = self.assoc.send_c_get(query.dataset, query_model, msg_id)
+            self._handle_get_and_move_responses(responses, "C-GET")
 
     @retry_dimse_retrieve
     @connect_to_server("C-MOVE")
@@ -313,9 +338,10 @@ class DimseConnector:
             )
 
         assert self.assoc and self.assoc.is_alive()
-        responses = self.assoc.send_c_move(query.dataset, dest_aet, query_model, msg_id)
 
-        self._handle_get_and_move_responses(responses, "C-MOVE")
+        with track_dicom_operation("C-MOVE", self.server.ae_title):
+            responses = self.assoc.send_c_move(query.dataset, dest_aet, query_model, msg_id)
+            self._handle_get_and_move_responses(responses, "C-MOVE")
 
     @retry_dimse_store
     @connect_to_server("C-STORE")
@@ -349,48 +375,49 @@ class DimseConnector:
         if not self.server.store_scp_support:
             raise DicomError("C-STORE operation not supported by server.")
 
-        if isinstance(resource, list):  # resource is a list of datasets
-            logger.debug("Sending C-STORE of %d datasets.", len(resource))
+        with track_dicom_operation("C-STORE", self.server.ae_title):
+            if isinstance(resource, list):  # resource is a list of datasets
+                logger.debug("Sending C-STORE of %d datasets.", len(resource))
 
-            for ds in resource:
-                logger.debug("Sending C-STORE of SOP instance %s.", str(ds.SOPInstanceUID))
-                _send_dataset(ds)
-        else:  # resource is a folder
-            folder = Path(resource)
-            if not folder.is_dir():
-                raise DicomError(f"Resource is not a valid folder: {resource}.")
+                for ds in resource:
+                    logger.debug("Sending C-STORE of SOP instance %s.", str(ds.SOPInstanceUID))
+                    _send_dataset(ds)
+            else:  # resource is a folder
+                folder = Path(resource)
+                if not folder.is_dir():
+                    raise DicomError(f"Resource is not a valid folder: {resource}.")
 
-            logger.debug("Sending C-STORE of folder: %s", folder.absolute())
+                logger.debug("Sending C-STORE of folder: %s", folder.absolute())
 
-            invalid_dicoms: list[PathLike] = []
-            for path in folder.rglob("*"):
-                if not path.is_file():
-                    continue
+                invalid_dicoms: list[PathLike] = []
+                for path in folder.rglob("*"):
+                    if not path.is_file():
+                        continue
 
-                try:
-                    ds = read_dataset(path)
-                except InvalidDicomError as err:
-                    logger.error("Failed to read DICOM file %s: %s", path, err)
-                    invalid_dicoms.append(path)
-                    continue  # We try to handle the rest of the images and raise the error later
+                    try:
+                        ds = read_dataset(path)
+                    except InvalidDicomError as err:
+                        logger.error("Failed to read DICOM file %s: %s", path, err)
+                        invalid_dicoms.append(path)
+                        continue  # Try to handle rest of the images and raise the error later
 
-                _send_dataset(ds)
+                    _send_dataset(ds)
 
-            if invalid_dicoms:
-                raise DicomError(
-                    f"{len(invalid_dicoms)} DICOM file{'s' if len(invalid_dicoms) > 1 else ''} "
-                    " could not be read for C-STORE."
+                if invalid_dicoms:
+                    raise DicomError(
+                        f"{len(invalid_dicoms)} DICOM file{'s' if len(invalid_dicoms) > 1 else ''} "
+                        " could not be read for C-STORE."
+                    )
+
+            if warnings:
+                # TODO: Maybe raise a warning or somehow else inform that the task has warnings
+                pass
+
+            if failures:
+                plural = len(failures) > 1
+                raise RetriableDicomError(
+                    f"{len(failures)} C-STORE operation{'s' if plural else ''} failed."
                 )
-
-        if warnings:
-            # TODO: Maybe raise a warning or somehow else inform that the task has warnings
-            pass
-
-        if failures:
-            plural = len(failures) > 1
-            raise RetriableDicomError(
-                f"{len(failures)} C-STORE operation{'s' if plural else ''} failed."
-            )
 
     def _handle_get_and_move_responses(
         self, responses: Iterator[tuple[Dataset, Dataset | None]], op: Literal["C-GET", "C-MOVE"]

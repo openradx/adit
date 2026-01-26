@@ -87,3 +87,15 @@ services:
   orthanc2:
     ports:
       - "7502:7502"
+
+  prometheus:
+    ports:
+      - ${PROMETHEUS_DEV_PORT:-9090}:9090
+
+  grafana:
+    ports:
+      - ${GRAFANA_PORT:-3000}:3000
+
+  cadvisor:
+    ports:
+      - ${CADVISOR_PORT:-8080}:8080

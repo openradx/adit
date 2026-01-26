@@ -26,6 +26,7 @@ dependencies = [
     "django-extensions>=3.2.3",
     "django-filter>=25.1",
     "django-htmx>=1.22.0",
+    "django-prometheus>=2.3.1",
     "django-loginas>=0.3.11",
     "django-pglock>=1.7.1",
     "django-registration-redux>=2.13",

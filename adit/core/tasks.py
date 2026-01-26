@@ -15,6 +15,14 @@ from procrastinate import JobContext, RetryStrategy
 from procrastinate.contrib.django import app
 
 from .errors import DicomError, RetriableDicomError
+from .metrics import (
+    JOB_DURATION_HISTOGRAM,
+    JOB_STATUS_COUNTER,
+    TASK_DURATION_HISTOGRAM,
+    TASK_RETRY_COUNTER,
+    TASK_STATUS_COUNTER,
+)
+from .metrics_collectors import collect_all_metrics
 from .models import DicomFolder, DicomJob, DicomTask
 from .types import ProcessingResult
 from .utils.db_utils import ensure_db_connection
@@ -51,6 +59,13 @@ def check_disk_space(*args, **kwargs):
 @app.task
 def backup_db(*args, **kwargs):
     call_command("dbbackup", "--clean", "-v 2")
+
+
+@app.periodic(cron="* * * * *")  # every minute
+@app.task
+def collect_metrics(*args, **kwargs):
+    """Collect custom metrics for Prometheus."""
+    collect_all_metrics()
 
 
 @app.task(
@@ -137,6 +152,10 @@ def process_dicom_task(context: JobContext, model_label: str, task_id: int):
             if dicom_task.log:
                 dicom_task.log += "\n"
             dicom_task.log += str(err)
+
+            # Record retry metric
+            task_type = dicom_task.__class__.__name__
+            TASK_RETRY_COUNTER.labels(task_type=task_type).inc()
         else:
             dicom_task.status = DicomTask.Status.FAILURE
             dicom_task.message = str(err)
@@ -163,12 +182,33 @@ def process_dicom_task(context: JobContext, model_label: str, task_id: int):
         dicom_task.save()
         logger.info(f"Processing of {dicom_task} ended.")
 
+        # Record task metrics (only for final statuses, not PENDING retries)
+        task_type = dicom_task.__class__.__name__
+        task_status = dicom_task.status
+        if task_status != DicomTask.Status.PENDING:
+            TASK_STATUS_COUNTER.labels(task_type=task_type, status=task_status).inc()
+
+            # Record task duration
+            if dicom_task.start and dicom_task.end:
+                duration = (dicom_task.end - dicom_task.start).total_seconds()
+                TASK_DURATION_HISTOGRAM.labels(task_type=task_type).observe(duration)
+
         with pglock.advisory(DISTRIBUTED_LOCK):
             dicom_job.refresh_from_db()
             job_finished = dicom_job.post_process()
 
         if job_finished:
             logger.info(f"Processing of {dicom_job} ended.")
+
+            # Record job metrics
+            job_type = dicom_job.__class__.__name__
+            job_status = dicom_job.status
+            JOB_STATUS_COUNTER.labels(job_type=job_type, status=job_status).inc()
+
+            # Record job duration
+            if dicom_job.start and dicom_job.end:
+                job_duration = (dicom_job.end - dicom_job.start).total_seconds()
+                JOB_DURATION_HISTOGRAM.labels(job_type=job_type).observe(job_duration)
 
         # TODO: https://github.com/procrastinate-org/procrastinate/issues/1106
         db.close_old_connections()

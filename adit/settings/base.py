@@ -49,6 +49,7 @@ ALLOWED_HOSTS = env.list("DJANGO_ALLOWED_HOSTS")
 CSRF_TRUSTED_ORIGINS = env.list("DJANGO_CSRF_TRUSTED_ORIGINS")
 
 INSTALLED_APPS = [
+    "django_prometheus",
     "daphne",
     "whitenoise.runserver_nostatic",
     "adit_radis_shared.common.apps.CommonConfig",
@@ -88,6 +89,7 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    "django_prometheus.middleware.PrometheusBeforeMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
@@ -101,6 +103,7 @@ MIDDLEWARE = [
     "django_htmx.middleware.HtmxMiddleware",
     "adit_radis_shared.accounts.middlewares.ActiveGroupMiddleware",
     "adit_radis_shared.common.middlewares.MaintenanceMiddleware",
+    "django_prometheus.middleware.PrometheusAfterMiddleware",
 ]
 
 ROOT_URLCONF = "adit.urls"
@@ -151,6 +154,9 @@ MESSAGE_STORAGE = "django.contrib.messages.storage.session.SessionStorage"
 postgres_dev_port = env.int("POSTGRES_DEV_PORT", default=5432)
 database_url = f"postgres://postgres:postgres@localhost:{postgres_dev_port}/postgres"
 DATABASES = {"default": env.dj_db_url("DATABASE_URL", default=database_url)}
+
+# Use django-prometheus database wrapper for query metrics
+DATABASES["default"]["ENGINE"] = "django_prometheus.db.backends.postgresql"
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field

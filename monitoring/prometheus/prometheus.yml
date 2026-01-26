@@ -1,0 +1,26 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  - /etc/prometheus/rules/*.yml
+
+alerting:
+  alertmanagers: []
+
+scrape_configs:
+  # Scrape Django metrics from the web service
+  - job_name: "django"
+    static_configs:
+      - targets: ["localhost:8000"]
+    metrics_path: /metrics
+
+  # Scrape container metrics from cAdvisor
+  - job_name: "cadvisor"
+    static_configs:
+      - targets: ["cadvisor.local:8080"]
+
+  # Prometheus self-monitoring
+  - job_name: "prometheus"
+    static_configs:
+      - targets: ["localhost:9090"]

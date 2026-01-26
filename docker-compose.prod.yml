@@ -100,5 +100,21 @@ services:
     deploy:
       <<: *deploy
 
+  prometheus:
+    ports:
+      - ${PROMETHEUS_PORT:-9090}:9090
+    deploy:
+      <<: *deploy
+
+  grafana:
+    ports:
+      - ${GRAFANA_PORT:-3000}:3000
+    deploy:
+      <<: *deploy
+
+  cadvisor:
+    deploy:
+      <<: *deploy
+
 volumes:
   web_data:

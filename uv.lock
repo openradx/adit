@@ -31,6 +31,7 @@ dependencies = [
     { name = "django-htmx" },
     { name = "django-loginas" },
     { name = "django-pglock" },
+    { name = "django-prometheus" },
     { name = "django-registration-redux" },
     { name = "django-revproxy" },
     { name = "django-tables2" },
@@ -119,6 +120,7 @@ requires-dist = [
     { name = "django-htmx", specifier = ">=1.22.0" },
     { name = "django-loginas", specifier = ">=0.3.11" },
     { name = "django-pglock", specifier = ">=1.7.1" },
+    { name = "django-prometheus", specifier = ">=2.3.1" },
     { name = "django-registration-redux", specifier = ">=2.13" },
     { name = "django-revproxy", specifier = ">=0.13.0" },
     { name = "django-tables2", specifier = ">=2.7.5" },
@@ -988,6 +990,18 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/0f/28/cacf31c7c15beb609b50b5b0daa873da6384ce794230159289f737d80d57/django_pglock-1.8.0.tar.gz", hash = "sha256:6144d96f52ab1d0b39ee295c6baa05d8de6ed5c59ae550413fe30ab668492e25", size = 16806, upload-time = "2025-11-30T23:28:15.73Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/44/75/0c145fbf2dc92cde0ad1b0d20891a41ea4843a8a6ed592ce35ec46d76e87/django_pglock-1.8.0-py3-none-any.whl", hash = "sha256:8bbfcb5d732a87e377f69d0fef5697042311c787912ad7baa3f0e00dcff06c41", size = 17718, upload-time = "2025-11-30T23:28:14.685Z" },
+]
+
+[[package]]
+name = "django-prometheus"
+version = "2.4.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "prometheus-client" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/e8/b9/c758675671d71a1800feaad5c5fbcdecbd8d34296b63f9dc5662db39abda/django_prometheus-2.4.0.tar.gz", hash = "sha256:67da5c73d8e859aa73f6e11f52341c482691b17f8bd9844157cff6cdf51ce9bc", size = 24393, upload-time = "2025-06-18T18:06:28.673Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/38/05/d980950fb8c3f6f96c644599b1a025fb50e827477b1acf36daef72aa7e76/django_prometheus-2.4.0-py2.py3-none-any.whl", hash = "sha256:5b46b5f07b02ba8dd7abdb03a3c39073e8fd9120e2293a1ecb949bbb865378ac", size = 29528, upload-time = "2025-06-18T18:06:27.079Z" },
 ]
 
 [[package]]
@@ -1869,6 +1883,15 @@ wheels = [
 [package.optional-dependencies]
 django = [
     { name = "django" },
+]
+
+[[package]]
+name = "prometheus-client"
+version = "0.24.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/f0/58/a794d23feb6b00fc0c72787d7e87d872a6730dd9ed7c7b3e954637d8f280/prometheus_client-0.24.1.tar.gz", hash = "sha256:7e0ced7fbbd40f7b84962d5d2ab6f17ef88a72504dcf7c0b40737b43b2a461f9", size = 85616, upload-time = "2026-01-14T15:26:26.965Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/74/c3/24a2f845e3917201628ecaba4f18bab4d18a337834c1df2a159ee9d22a42/prometheus_client-0.24.1-py3-none-any.whl", hash = "sha256:150db128af71a5c2482b36e588fc8a6b95e498750da4b17065947c16070f4055", size = 64057, upload-time = "2026-01-14T15:26:24.42Z" },
 ]
 
 [[package]]
