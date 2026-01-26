@@ -12,11 +12,17 @@ https://channels.readthedocs.io/en/latest/deploying.html#run-protocol-servers
 
 import os
 
-from channels.security.websocket import AllowedHostsOriginValidator
-from channels.sessions import SessionMiddlewareStack
-from django.core.asgi import get_asgi_application
-
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "adit.settings.development")
+
+# Initialize OpenTelemetry before Django loads to ensure all requests are traced
+from adit.telemetry import setup_opentelemetry  # noqa: E402
+
+setup_opentelemetry()
+
+from channels.security.websocket import AllowedHostsOriginValidator  # noqa: E402
+from channels.sessions import SessionMiddlewareStack  # noqa: E402
+from django.core.asgi import get_asgi_application  # noqa: E402
+
 django_asgi_app = get_asgi_application()
 
 from channels.auth import AuthMiddlewareStack  # noqa: E402

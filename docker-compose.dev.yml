@@ -87,3 +87,7 @@ services:
   orthanc2:
     ports:
       - "7502:7502"
+
+  openobserve:
+    ports:
+      - ${OPENOBSERVE_DEV_PORT:-5080}:5080

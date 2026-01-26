@@ -50,6 +50,12 @@ dependencies = [
     "wait-for-it>=2.3.0",
     "watchfiles>=1.0.4",
     "whitenoise>=6.9.0",
+    "opentelemetry-api>=1.32.0",
+    "opentelemetry-sdk>=1.32.0",
+    "opentelemetry-exporter-otlp-proto-http>=1.32.0",
+    "opentelemetry-instrumentation-django>=0.60b0",
+    "opentelemetry-instrumentation-psycopg>=0.60b0",
+    "opentelemetry-instrumentation-logging>=0.60b0",
 ]
 
 [dependency-groups]

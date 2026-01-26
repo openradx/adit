@@ -227,6 +227,9 @@ LOGGING = {
         "require_debug_true": {
             "()": "django.utils.log.RequireDebugTrue",
         },
+        "registered_only": {
+            "()": "adit.telemetry.RegisteredLoggerFilter",
+        },
     },
     "formatters": {
         "simple": {
@@ -240,7 +243,8 @@ LOGGING = {
     },
     "handlers": {
         "console": {
-            "level": "DEBUG",
+            "level": "ERROR",  # Production default; development.py overrides to DEBUG
+            "filters": ["registered_only"],
             "class": "logging.StreamHandler",
             "formatter": "simple",
         },
@@ -249,30 +253,38 @@ LOGGING = {
             "filters": ["require_debug_false"],
             "class": "django.utils.log.AdminEmailHandler",
         },
+        "otlp": {
+            "()": "adit.telemetry.OTLPLoggingHandler",
+            "level": "INFO",
+            "filters": ["registered_only"],
+        },
     },
     "loggers": {
         "adit": {
-            "handlers": ["console", "mail_admins"],
+            "handlers": ["mail_admins"],  # Console removed, propagates to root
             "level": "INFO",
-            "propagate": False,
+            "propagate": True,
         },
         "django": {
-            "handlers": ["console"],
+            "handlers": [],  # Console removed, propagates to root
             "level": "WARNING",
-            "propagate": False,
+            "propagate": True,
         },
         "pydicom": {
-            "handlers": ["console"],
+            "handlers": [],  # Console removed, propagates to root
             "level": "WARNING",
-            "propagate": False,
+            "propagate": True,
         },
         "pynetdicom": {
-            "handlers": ["console"],
+            "handlers": [],  # Console removed, propagates to root
             "level": "WARNING",
-            "propagate": False,
+            "propagate": True,
         },
     },
-    "root": {"handlers": ["console"], "level": "ERROR"},
+    # Root logger handles console output + OTLP handler
+    # Level set to DEBUG so logs can reach handlers; filtering done by RegisteredLoggerFilter
+    # OTLP handler configured here to survive Django's dictConfig() which replaces all handlers
+    "root": {"handlers": ["console", "otlp"], "level": "DEBUG"},
 }
 
 # Internationalization

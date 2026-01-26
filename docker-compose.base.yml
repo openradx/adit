@@ -43,6 +43,10 @@ x-app: &default-app
     TIME_ZONE: ${TIME_ZONE:?}
     TOKEN_AUTHENTICATION_SALT: ${TOKEN_AUTHENTICATION_SALT:?}
     ANONYMIZATION_SEED: ${ANONYMIZATION_SEED:-}
+    OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
+    OTEL_PYTHON_DJANGO_EXCLUDED_URLS: "health/,static/.*"
+    ZO_ROOT_USER_EMAIL: ${ZO_ROOT_USER_EMAIL:-admin@localhost}
+    ZO_ROOT_USER_PASSWORD: ${ZO_ROOT_USER_PASSWORD:-}
 
 services:
   init:
@@ -92,6 +96,16 @@ services:
     volumes:
       - orthanc2_data:/var/lib/orthanc/db
 
+  openobserve:
+    image: public.ecr.aws/zinclabs/openobserve:latest
+    hostname: openobserve.local
+    environment:
+      ZO_ROOT_USER_EMAIL: ${ZO_ROOT_USER_EMAIL:-admin@localhost}
+      ZO_ROOT_USER_PASSWORD: ${ZO_ROOT_USER_PASSWORD:?}
+      ZO_DATA_DIR: /data
+    volumes:
+      - openobserve_data:/data
+
 configs:
   orthanc1_config:
     file: ./orthanc/orthanc1.json
@@ -102,3 +116,4 @@ volumes:
   postgres_data:
   orthanc1_data:
   orthanc2_data:
+  openobserve_data:
