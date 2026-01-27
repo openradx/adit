@@ -94,6 +94,20 @@ class Pseudonymizer:
         sop_instance_uid = getattr(ds, "SOPInstanceUID", "Unknown")
         sop_class_uid = getattr(ds, "SOPClassUID", "Unknown")
         modality = getattr(ds, "Modality", "Unknown")
+        manufacturer = getattr(ds, "Manufacturer", "Unknown")
+        manufacturer_model = getattr(ds, "ManufacturerModelName", "Unknown")
+        software_versions = getattr(ds, "SoftwareVersions", "Unknown")
+        station_name = getattr(ds, "StationName", "Unknown")
+
+        logger.debug(
+            "DEBUG pseudonymize: Manufacturer details for image %s - "
+            "Manufacturer: %s, Model: %s, Software: %s, Station: %s",
+            sop_instance_uid,
+            manufacturer,
+            manufacturer_model,
+            software_versions,
+            station_name,
+        )
 
         logger.debug(
             "DEBUG pseudonymize: Starting anonymization for image %s "
