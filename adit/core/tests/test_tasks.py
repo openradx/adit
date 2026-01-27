@@ -199,7 +199,7 @@ def test_process_dicom_task_transitions_to_failure_after_max_retries(mocker: Moc
     # - attempts=2: third/final attempt (attempts + 1 = 3)
     # With DICOM_TASK_MAX_ATTEMPTS=3, the check is: 2 + 1 < 3 = False → FAILURE
     final_attempt = settings.DICOM_TASK_MAX_ATTEMPTS - 1
-    ProcrastinateJob.objects.filter(status="todo").update(attempts=final_attempt)
+    ProcrastinateJob.objects.filter(id=dicom_task.queued_job_id).update(attempts=final_attempt)
 
     run_worker_once()
 
