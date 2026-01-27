@@ -155,3 +155,59 @@ def test_process_dicom_task_that_raises(mocker: MockerFixture):
     assert dicom_task.status == DicomTask.Status.FAILURE
     assert dicom_task.message == "Unexpected error!"
     assert dicom_task.attempts == 1
+
+
+@pytest.mark.django_db(transaction=True)
+def test_process_dicom_task_transitions_to_failure_after_max_retries(mocker: MockerFixture):
+    """Test that a task correctly transitions to FAILURE after exhausting all retries.
+
+    This test verifies the fix for the off-by-one error where tasks would stay in
+    PENDING status with "Task failed, but will be retried" even after exhausting
+    all retry attempts.
+
+    With DICOM_TASK_MAX_ATTEMPTS=3 (default), the task should transition to FAILURE
+    after the third attempt. The fixed condition `attempts + 1 < max_attempts`
+    on the 3rd attempt gives `2 + 1 < 3` = False, so it should transition to FAILURE.
+
+    We simulate the final attempt by setting the queued job's attempts to max_attempts-1.
+    """
+    from django.conf import settings
+    from procrastinate.contrib.django.models import ProcrastinateJob
+
+    dicom_job = ExampleTransferJobFactory.create(status=DicomJob.Status.PENDING)
+    dicom_task = ExampleTransferTaskFactory.create(
+        status=DicomTask.Status.PENDING,
+        job=dicom_job,
+    )
+
+    dicom_job.queue_pending_tasks()
+
+    dicom_task.refresh_from_db()
+    assert dicom_task.queued_job is not None
+
+    error_message = "Connection refused by server"
+
+    def process(self):
+        raise RetriableDicomError(error_message)
+
+    mocker.patch.object(ExampleProcessor, "process", process)
+
+    # Set the job's attempts to max_attempts-1 to simulate this being the final attempt
+    # Procrastinate's attempts is 0-indexed (counts previous attempts), so:
+    # - attempts=0: first attempt (attempts + 1 = 1)
+    # - attempts=1: second attempt (attempts + 1 = 2)
+    # - attempts=2: third/final attempt (attempts + 1 = 3)
+    # With DICOM_TASK_MAX_ATTEMPTS=3, the check is: 2 + 1 < 3 = False → FAILURE
+    final_attempt = settings.DICOM_TASK_MAX_ATTEMPTS - 1
+    ProcrastinateJob.objects.filter(id=dicom_task.queued_job_id).update(attempts=final_attempt)
+
+    run_worker_once()
+
+    dicom_job.refresh_from_db()
+    assert dicom_job.status == DicomJob.Status.FAILURE
+
+    dicom_task.refresh_from_db()
+    assert dicom_task.status == DicomTask.Status.FAILURE
+    # On final attempt, message should be the actual error, not "will be retried"
+    assert dicom_task.message == error_message
+    assert "Task failed, but will be retried" not in dicom_task.message
