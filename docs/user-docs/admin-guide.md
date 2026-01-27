@@ -191,7 +191,7 @@ client.transfer_study(study_uid="1.2.3.4.5", destination="TARGET_AE")
 
 To create an API token for programmatic access:
 
-1. **Naviagte** to **Token Authentication** by going to **"Profile"** --> **"Manage API Token"**
+1. **Navigate** to **Token Authentication** by going to **"Profile"** --> **"Manage API Token"**
 2. **Description** & **Expiry Time** : Add a description (optional) and expiry time for the token.
 3. **Click** on **"Generate Token"**.
 4. This token will only be visible once, so make sure to copy it now and store it in a safe place. As you will not be able to see it again, you will have to generate a new token if you lose it.

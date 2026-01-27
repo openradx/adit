@@ -26,9 +26,7 @@ uv run cli compose-up  # builds and starts Docker containers
 
 The development server will start at <http://localhost:8000>.
 
-**Initial setup**: The `compose-up` command automatically runs migrations, creates example users/groups, and populates test Orthanc instances with sample data.
-
-**File watching**: Code changes auto-reload the server. Dependency changes (pyproject.toml) trigger container rebuilds.
+File changes will be automatically detected and the servers will be restarted. When library dependencies are changed, the containers will automatically be rebuilt and restarted.
 
 ### Updating Your Development Environment
 
@@ -43,16 +41,13 @@ uv run cli compose-up  # restart containers (migrations run automatically)
 **After pulling changes**:
 
 - Migrations run automatically on container startup
-- If containers don't start, rebuild: `uv run cli compose-build && uv run cli compose-up`
+- If containers fail to start due to dependency or image changes, rebuild them:
+
+  ```terminal
+  uv run cli compose-build && uv run cli compose-up
+  ```
+
 - For major database schema changes, consider backing up first: `uv run cli db-backup`
-
-**Dependency updates**:
-
-- Python packages are updated via `uv sync` when pyproject.toml changes
-- Docker images update via `uv run cli compose-pull` (base images)
-
-File changes will be automatically detected and the servers will be restarted. When library
-dependencies are changed, the containers will automatically be rebuilt and restarted.
 
 !!! note "Development vs Production"
 
