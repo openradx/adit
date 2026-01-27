@@ -191,24 +191,12 @@ client.transfer_study(study_uid="1.2.3.4.5", destination="TARGET_AE")
 
 To create an API token for programmatic access:
 
-1. **Log in** to ADIT with your user account
-2. **Navigate to Adit Administration**:
-   - Look for **Token Authentication** in the main navigation
-3. Click **Add** token
-   - Fill in the token details:
+1. **Naviagte** to **Token Authentication**
+2. **Description** & **Expiry Time** : Add a description (optional) and expiry time for the token.
+3. **Click** on **"Generate Token"**.
+4. This token will only be visible once, so make sure to copy it now and store it in a safe place. As you will not be able to see it again, you will have to generate a new token if you lose it.
 
-   - **Owner:** Select the user who will own the token
+### Revoking Tokens
 
-   - **Token hashed**: Paste the hashed token value.
-
-   - **Fraction**: A short prefix (3-4 characters) used to identify the token
-
-   - **Description**: Add an optional description to identify the token’s purpose
-
-   - **Expires**: Set the expiration date and time, or leave empty if the token should not expire
-
-   - **Last used**: Usually left blank; this is updated automatically by the system
-
-   - Save the token:
-
-   - Click **Save**, **Save and add another**, or **Save and continue editing**
+- **Admins** can revoke tokens by navigating to **Django Admin** --> **Token Authentication**
+- Fill the required details to revoke it.
