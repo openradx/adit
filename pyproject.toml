@@ -55,7 +55,6 @@ dependencies = [
     "opentelemetry-exporter-otlp-proto-http>=1.32.0",
     "opentelemetry-instrumentation-django>=0.60b0",
     "opentelemetry-instrumentation-psycopg>=0.60b0",
-    "opentelemetry-instrumentation-logging>=0.60b0",
 ]
 
 [dependency-groups]
