@@ -108,17 +108,16 @@ services:
   otel-collector:
     image: otel/opentelemetry-collector-contrib:0.115.1
     hostname: otel-collector.local
+    user: "0:0" # Needed to read Docker container log files
     command: ["--config=/etc/otel-collector-config.yaml"]
     environment:
-      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-http://openobserve.local:5080/api/default}
-      OTEL_EXPORTER_AUTH_HEADER: ${OTEL_EXPORTER_AUTH_HEADER:-}
+      OPENOBSERVE_ENDPOINT: ${OPENOBSERVE_ENDPOINT:-http://openobserve.local:5080/api/default}
+      OPENOBSERVE_AUTH_HEADER: ${OPENOBSERVE_AUTH_HEADER:-}
       ENVIRONMENT: ${ENVIRONMENT:-development}
     volumes:
       - /var/lib/docker/containers:/var/lib/docker/containers:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
-    configs:
-      - source: otel_collector_config
-        target: /etc/otel-collector-config.yaml
+      - ./otel-collector-config.yaml:/etc/otel-collector-config.yaml:ro
     depends_on:
       - openobserve
 
@@ -127,8 +126,6 @@ configs:
     file: ./orthanc/orthanc1.json
   orthanc2_config:
     file: ./orthanc/orthanc2.json
-  otel_collector_config:
-    file: ./otel-collector-config.yaml
 
 volumes:
   postgres_data:

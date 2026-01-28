@@ -3,6 +3,7 @@ receivers:
   filelog/docker:
     include:
       - /var/lib/docker/containers/*/*.log
+    include_file_path: true
     # Docker uses JSON log driver by default
     operators:
       # Parse the Docker JSON log format first
@@ -23,40 +24,10 @@ receivers:
         from: attributes.container_id
         to: resource["container.id"]
 
-      # Move the Docker "log" field to body for further parsing
+      # Move the Docker "log" field to body
       - type: move
         from: attributes.log
         to: body
-
-      # Try to parse the body as JSON (our app outputs JSON logs)
-      - type: json_parser
-        id: parser-app-json
-        parse_to: attributes
-        # Don't fail if the log isn't JSON (e.g., from non-app containers)
-        on_error: send
-
-      # Extract severity from our JSON log format
-      - type: severity_parser
-        parse_from: attributes.level
-        mapping:
-          debug: DEBUG
-          info: INFO
-          warning: WARNING
-          error: ERROR
-          critical: CRITICAL
-        on_error: send
-
-      # Move timestamp from app JSON to log timestamp
-      - type: time_parser
-        parse_from: attributes.timestamp
-        layout: "%Y-%m-%dT%H:%M:%S.%f%z"
-        on_error: send
-
-      # Use the message field as the log body if present
-      - type: move
-        from: attributes.message
-        to: body
-        on_error: send
 
       # Remove raw file path attribute
       - type: remove
@@ -108,9 +79,9 @@ processors:
 exporters:
   # Export to OpenObserve
   otlphttp/openobserve:
-    endpoint: ${env:OTEL_EXPORTER_OTLP_ENDPOINT}
+    endpoint: ${env:OPENOBSERVE_ENDPOINT}
     headers:
-      Authorization: ${env:OTEL_EXPORTER_AUTH_HEADER}
+      Authorization: ${env:OPENOBSERVE_AUTH_HEADER}
     tls:
       insecure: true
 

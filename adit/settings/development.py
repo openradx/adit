@@ -27,6 +27,5 @@ if env.bool("FORCE_DEBUG_TOOLBAR"):
     DEBUG_TOOLBAR_CONFIG = {"SHOW_TOOLBAR_CALLBACK": lambda _: True}
 
 LOGGING["loggers"]["adit"]["level"] = "DEBUG"  # noqa: F405
-LOGGING["handlers"]["console"]["level"] = "DEBUG"  # noqa: F405  # Show all logs in dev console
 
 ENABLE_DICOM_DEBUG_LOGGER = False

@@ -217,9 +217,6 @@ REST_FRAMEWORK = {
 # https://github.com/django/django/blob/master/django/utils/log.py
 # https://cheat.readthedocs.io/en/latest/django/logging.html
 # https://stackoverflow.com/a/7045981/166229
-#
-# Logs are output to console in JSON format for collection by otel-collector
-# via Docker container log files.
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
@@ -229,9 +226,6 @@ LOGGING = {
         },
         "require_debug_true": {
             "()": "django.utils.log.RequireDebugTrue",
-        },
-        "registered_only": {
-            "()": "adit.telemetry.RegisteredLoggerFilter",
         },
     },
     "formatters": {
@@ -243,17 +237,12 @@ LOGGING = {
             "format": "[%(asctime)s] %(levelname)s [%(name)s.%(funcName)s:%(lineno)d] %(message)s",
             "datefmt": "%Y-%m-%d %H:%M:%S %Z",
         },
-        # JSON format for otel-collector log collection via Docker container logs
-        "json": {
-            "()": "adit.telemetry.JsonLogFormatter",
-        },
     },
     "handlers": {
         "console": {
-            "level": "ERROR",  # Production default; development.py overrides to DEBUG
-            "filters": ["registered_only"],
+            "level": "DEBUG",
             "class": "logging.StreamHandler",
-            "formatter": "json",
+            "formatter": "simple",
         },
         "mail_admins": {
             "level": "CRITICAL",
@@ -263,29 +252,27 @@ LOGGING = {
     },
     "loggers": {
         "adit": {
-            "handlers": ["mail_admins"],  # Console removed, propagates to root
+            "handlers": ["console", "mail_admins"],
             "level": "INFO",
-            "propagate": True,
+            "propagate": False,
         },
         "django": {
-            "handlers": [],  # Console removed, propagates to root
+            "handlers": ["console"],
             "level": "WARNING",
-            "propagate": True,
+            "propagate": False,
         },
         "pydicom": {
-            "handlers": [],  # Console removed, propagates to root
+            "handlers": ["console"],
             "level": "WARNING",
-            "propagate": True,
+            "propagate": False,
         },
         "pynetdicom": {
-            "handlers": [],  # Console removed, propagates to root
+            "handlers": ["console"],
             "level": "WARNING",
-            "propagate": True,
+            "propagate": False,
         },
     },
-    # Root logger handles console output; logs collected by otel-collector from Docker
-    # Level set to DEBUG so logs can reach handlers; filtering done by RegisteredLoggerFilter
-    "root": {"handlers": ["console"], "level": "DEBUG"},
+    "root": {"handlers": ["console"], "level": "ERROR"},
 }
 
 # Internationalization
