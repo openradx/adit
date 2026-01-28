@@ -1,0 +1,141 @@
+receivers:
+  # Collect logs from Docker container log files
+  filelog/docker:
+    include:
+      - /var/lib/docker/containers/*/*.log
+    # Docker uses JSON log driver by default
+    operators:
+      # Parse the Docker JSON log format first
+      - type: json_parser
+        id: parser-docker
+        timestamp:
+          parse_from: attributes.time
+          layout: "%Y-%m-%dT%H:%M:%S.%LZ"
+
+      # Extract container ID from file path
+      - type: regex_parser
+        id: extract-container-id
+        parse_from: attributes["log.file.path"]
+        regex: '/var/lib/docker/containers/(?P<container_id>[a-f0-9]+)/'
+
+      # Move container_id to resource attributes
+      - type: move
+        from: attributes.container_id
+        to: resource["container.id"]
+
+      # Move the Docker "log" field to body for further parsing
+      - type: move
+        from: attributes.log
+        to: body
+
+      # Try to parse the body as JSON (our app outputs JSON logs)
+      - type: json_parser
+        id: parser-app-json
+        parse_to: attributes
+        # Don't fail if the log isn't JSON (e.g., from non-app containers)
+        on_error: send
+
+      # Extract severity from our JSON log format
+      - type: severity_parser
+        parse_from: attributes.level
+        mapping:
+          debug: DEBUG
+          info: INFO
+          warning: WARNING
+          error: ERROR
+          critical: CRITICAL
+        on_error: send
+
+      # Move timestamp from app JSON to log timestamp
+      - type: time_parser
+        parse_from: attributes.timestamp
+        layout: "%Y-%m-%dT%H:%M:%S.%f%z"
+        on_error: send
+
+      # Use the message field as the log body if present
+      - type: move
+        from: attributes.message
+        to: body
+        on_error: send
+
+      # Remove raw file path attribute
+      - type: remove
+        field: attributes["log.file.path"]
+        on_error: send
+
+    # Start from the end of the file to avoid reprocessing old logs
+    start_at: end
+    # Poll interval
+    poll_interval: 500ms
+    # Retry on failure
+    retry_on_failure:
+      enabled: true
+      initial_interval: 1s
+      max_interval: 30s
+
+  # OTLP receiver for traces and metrics from the application
+  otlp:
+    protocols:
+      http:
+        endpoint: 0.0.0.0:4318
+      grpc:
+        endpoint: 0.0.0.0:4317
+
+processors:
+  # Batch processor to reduce the number of outgoing requests
+  batch:
+    timeout: 5s
+    send_batch_size: 1000
+
+  # Add resource attributes to identify log sources
+  resource:
+    attributes:
+      - key: deployment.environment
+        value: ${env:ENVIRONMENT:-development}
+        action: upsert
+
+  # Filter out health check and static file logs
+  filter/logs:
+    logs:
+      exclude:
+        match_type: regexp
+        bodies:
+          - '.*GET /health/.*'
+          - '.*GET /static/.*'
+          - '.*"GET /health/.*'
+          - '.*"GET /static/.*'
+
+exporters:
+  # Export to OpenObserve
+  otlphttp/openobserve:
+    endpoint: ${env:OTEL_EXPORTER_OTLP_ENDPOINT}
+    headers:
+      Authorization: ${env:OTEL_EXPORTER_AUTH_HEADER}
+    tls:
+      insecure: true
+
+  # Debug exporter for troubleshooting (optional, comment out in production)
+  # debug:
+  #   verbosity: detailed
+  #   sampling_initial: 5
+  #   sampling_thereafter: 200
+
+extensions:
+  health_check:
+    endpoint: 0.0.0.0:13133
+
+service:
+  extensions: [health_check]
+  pipelines:
+    logs:
+      receivers: [filelog/docker]
+      processors: [resource, filter/logs, batch]
+      exporters: [otlphttp/openobserve]
+    traces:
+      receivers: [otlp]
+      processors: [resource, batch]
+      exporters: [otlphttp/openobserve]
+    metrics:
+      receivers: [otlp]
+      processors: [resource, batch]
+      exporters: [otlphttp/openobserve]

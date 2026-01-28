@@ -43,10 +43,9 @@ x-app: &default-app
     TIME_ZONE: ${TIME_ZONE:?}
     TOKEN_AUTHENTICATION_SALT: ${TOKEN_AUTHENTICATION_SALT:?}
     ANONYMIZATION_SEED: ${ANONYMIZATION_SEED:-}
-    OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
+    # Point to otel-collector for traces and metrics (logs collected via Docker container files)
+    OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-http://otel-collector.local:4318}
     OTEL_PYTHON_DJANGO_EXCLUDED_URLS: "health/,static/.*"
-    ZO_ROOT_USER_EMAIL: ${ZO_ROOT_USER_EMAIL:-admin@localhost}
-    ZO_ROOT_USER_PASSWORD: ${ZO_ROOT_USER_PASSWORD:-}
 
 services:
   init:
@@ -106,11 +105,30 @@ services:
     volumes:
       - openobserve_data:/data
 
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.115.1
+    hostname: otel-collector.local
+    command: ["--config=/etc/otel-collector-config.yaml"]
+    environment:
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-http://openobserve.local:5080/api/default}
+      OTEL_EXPORTER_AUTH_HEADER: ${OTEL_EXPORTER_AUTH_HEADER:-}
+      ENVIRONMENT: ${ENVIRONMENT:-development}
+    volumes:
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    configs:
+      - source: otel_collector_config
+        target: /etc/otel-collector-config.yaml
+    depends_on:
+      - openobserve
+
 configs:
   orthanc1_config:
     file: ./orthanc/orthanc1.json
   orthanc2_config:
     file: ./orthanc/orthanc2.json
+  otel_collector_config:
+    file: ./otel-collector-config.yaml
 
 volumes:
   postgres_data:

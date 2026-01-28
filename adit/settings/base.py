@@ -217,6 +217,9 @@ REST_FRAMEWORK = {
 # https://github.com/django/django/blob/master/django/utils/log.py
 # https://cheat.readthedocs.io/en/latest/django/logging.html
 # https://stackoverflow.com/a/7045981/166229
+#
+# Logs are output to console in JSON format for collection by otel-collector
+# via Docker container log files.
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
@@ -240,23 +243,22 @@ LOGGING = {
             "format": "[%(asctime)s] %(levelname)s [%(name)s.%(funcName)s:%(lineno)d] %(message)s",
             "datefmt": "%Y-%m-%d %H:%M:%S %Z",
         },
+        # JSON format for otel-collector log collection via Docker container logs
+        "json": {
+            "()": "adit.telemetry.JsonLogFormatter",
+        },
     },
     "handlers": {
         "console": {
             "level": "ERROR",  # Production default; development.py overrides to DEBUG
             "filters": ["registered_only"],
             "class": "logging.StreamHandler",
-            "formatter": "simple",
+            "formatter": "json",
         },
         "mail_admins": {
             "level": "CRITICAL",
             "filters": ["require_debug_false"],
             "class": "django.utils.log.AdminEmailHandler",
-        },
-        "otlp": {
-            "()": "adit.telemetry.OTLPLoggingHandler",
-            "level": "INFO",
-            "filters": ["registered_only"],
         },
     },
     "loggers": {
@@ -281,10 +283,9 @@ LOGGING = {
             "propagate": True,
         },
     },
-    # Root logger handles console output + OTLP handler
+    # Root logger handles console output; logs collected by otel-collector from Docker
     # Level set to DEBUG so logs can reach handlers; filtering done by RegisteredLoggerFilter
-    # OTLP handler configured here to survive Django's dictConfig() which replaces all handlers
-    "root": {"handlers": ["console", "otlp"], "level": "DEBUG"},
+    "root": {"handlers": ["console"], "level": "DEBUG"},
 }
 
 # Internationalization
