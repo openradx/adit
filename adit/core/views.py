@@ -231,7 +231,7 @@ class DicomJobCancelView(LoginRequiredMixin, SingleObjectMixin, View):
             queued_job_id = dicom_task.queued_job_id
             if queued_job_id is not None:
                 app.job_manager.cancel_job_by_id(queued_job_id, delete_job=True)
-        tasks.update(status=DicomTask.Status.CANCELED)
+        tasks.update(status=DicomTask.Status.CANCELED, message="Task manually canceled")
 
         if job.tasks.filter(status=DicomTask.Status.IN_PROGRESS).exists():
             job.status = DicomJob.Status.CANCELING
