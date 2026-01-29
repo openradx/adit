@@ -6,7 +6,7 @@ hide:
 
 # **ADIT - Automated DICOM Transfer**
 
-<div class="slideshow-container">
+<div class="slideshow-container" role="region" aria-label="ADIT Screenshots Slideshow">
 
   <div class="slides-wrapper">
     <div class="slide">
@@ -23,15 +23,17 @@ hide:
     </div>
   </div>
 
-<a class="prev" data-slide="-1">❮</a>
-<a class="next" data-slide="1">❯</a>
+  <button class="prev" aria-label="Previous slide">❮</button>
+  <button class="next" aria-label="Next slide">❯</button>
 
-  <div class="dot-container">
-    <span class="dot" data-slide-index="0"></span>
-    <span class="dot" data-slide-index="1"></span>
-    <span class="dot" data-slide-index="2"></span>
-    <span class="dot" data-slide-index="3"></span>
+  <div class="dot-container" role="tablist" aria-label="Slide navigation">
+    <button class="dot" role="tab" aria-label="Go to slide 1" data-slide-index="0"></button>
+    <button class="dot" role="tab" aria-label="Go to slide 2" data-slide-index="1"></button>
+    <button class="dot" role="tab" aria-label="Go to slide 3" data-slide-index="2"></button>
+    <button class="dot" role="tab" aria-label="Go to slide 4" data-slide-index="3"></button>
   </div>
+
+  <div class="sr-only" aria-live="polite" aria-atomic="true" id="slideshow-status"></div>
 
 </div>
 
