@@ -403,7 +403,7 @@ ENABLE_DICOM_DEBUG_LOGGER = False
 #    - Handles: connection timeouts, HTTP 503, temporary server unavailability
 #
 # 2. Task-level (Procrastinate): Slow retries for complete operation failures
-#    - Configured below (DICOM_TASK_MAX_ATTEMPTS, DICOM_TASK_EXPONENTIAL_WAIT)
+#    - Configured below (DICOM_TASK_MAX_ATTEMPTS, DICOM_TASK_RETRY_WAIT, DICOM_TASK_LINEAR_WAIT)
 #    - Retries entire task after network retries exhausted
 #    - Handles: persistent issues that need longer recovery time
 
@@ -413,11 +413,13 @@ ENABLE_STAMINA_RETRY = env.bool("ENABLE_STAMINA_RETRY", default=True)
 # How often to retry a failed dicom task before it is definitively failed
 DICOM_TASK_MAX_ATTEMPTS = 3
 
-# How long to wait in seconds before retrying a failed dicom task (exponential backoff)
-# Increased from 10s to 60s since stamina now handles fast retries (5-10 attempts over 2-5 min).
+# Procrastinate retry wait configuration (linear backoff)
+# Formula: wait + linear_wait * attempts
+# Stamina handles fast retries (5-10 attempts over 2-5 min).
 # Procrastinate retries target longer-term issues: server restarts, maintenance windows, etc.
-# Wait pattern with 60s: 1min → 2min → 4min = ~7min total retry time
-DICOM_TASK_EXPONENTIAL_WAIT = 60  # 1 minute
+# Wait pattern: 2min → 4min → 6min
+DICOM_TASK_RETRY_WAIT = 120  # 2 minute base wait
+DICOM_TASK_LINEAR_WAIT = 120  # Add 2 minutes per retry
 
 # How long to wait in seconds before killing a dicom task that is not finished yet
 DICOM_TASK_PROCESS_TIMEOUT = 60 * 20  # 20 minutes
