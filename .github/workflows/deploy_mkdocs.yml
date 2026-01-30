@@ -31,4 +31,4 @@ jobs:
         run: uv sync --only-group docs --no-install-project
 
       - name: Deploy MkDocs
-        run: uv run mkdocs gh-deploy --force
+        run: uv run --only-group docs --no-install-project mkdocs gh-deploy --force
