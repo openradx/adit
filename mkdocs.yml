@@ -1,0 +1,99 @@
+site_name: ADIT Documentation
+site_description: Automated DICOM Transfer - A Swiss army knife to exchange DICOM data between various systems
+site_author: CCI Bonn
+site_url: https://openradx.github.io/adit
+
+repo_name: openradx/adit
+repo_url: https://github.com/openradx/adit
+edit_uri: edit/main/docs/
+
+copyright: Copyright &copy; 2024-2025 CCI Bonn
+
+theme:
+  name: material
+  palette:
+    # Palette toggle for light mode
+    - scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    # Palette toggle for dark mode
+    - scheme: slate
+      primary: green
+      accent: cyan
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - navigation.path
+    - navigation.top
+    - navigation.tracking
+    - search.highlight
+    - search.share
+    - search.suggest
+    - content.code.copy
+    - content.code.annotate
+    - content.action.edit
+    - content.action.view
+    - toc.follow
+
+plugins:
+  - search:
+      separator: '[\s\-,:!=\[\]()"`/]+|\.(?!\d)|&[lg]t;|(?!\b)(?=[A-Z][a-z])'
+  - minify:
+      minify_html: true
+
+markdown_extensions:
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences:
+      preserve_tabs: true
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.details
+  - admonition
+  - attr_list
+  - md_in_html
+  - toc:
+      permalink: true
+
+nav:
+  - Home: index.md
+  - User Documentation:
+      - Admin Guide: user-docs/admin-guide.md
+      - User Guide: user-docs/user-guide.md
+      - Technical Overview: user-docs/technical-overview.md
+      - Features: user-docs/features.md
+      - FAQ: user-docs/faq.md
+  - Developer Documentation:
+      - Contributing: dev-docs/contributing.md
+      - Architecture: dev-docs/architecture.md
+      - Core Components: dev-docs/core_components.md
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/openradx/adit
+    - icon: fontawesome/solid/globe
+      link: https://ccibonn.ai/
+
+extra_javascript:
+  - assets/js/slideshow.js
+  - assets/js/mermaid-zoom.js
+
+extra_css:
+  - assets/css/slideshow.css
+  - assets/css/mermaid-enhancements.css
