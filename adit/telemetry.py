@@ -13,7 +13,11 @@ import socket
 logger = logging.getLogger(__name__)
 
 
-_telemetry_initialized = False
+_telemetry_active = False
+
+
+def is_telemetry_active() -> bool:
+    return _telemetry_active
 
 
 def setup_opentelemetry() -> None:
@@ -25,15 +29,11 @@ def setup_opentelemetry() -> None:
 
     If OTEL_EXPORTER_OTLP_ENDPOINT is not set, telemetry is disabled.
     """
-    global _telemetry_initialized
-
-    if _telemetry_initialized:
-        return
+    global _telemetry_active
 
     endpoint = os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT")
     if not endpoint:
         logger.info("OTEL_EXPORTER_OTLP_ENDPOINT not set, telemetry disabled")
-        _telemetry_initialized = True
         return
 
     try:
@@ -89,10 +89,9 @@ def setup_opentelemetry() -> None:
         # Instrument psycopg (PostgreSQL)
         PsycopgInstrumentor().instrument()
 
-        _telemetry_initialized = True
+        _telemetry_active = True
         logger.info("OpenTelemetry initialized for service: %s", service_name)
     except Exception:
         logger.warning(
             "Failed to initialize OpenTelemetry, continuing without telemetry", exc_info=True
         )
-        _telemetry_initialized = True
