@@ -7,8 +7,6 @@ on:
       - mkdocs-deployment-fix
 permissions:
   contents: write
-  pages: write
-  id-token: write
 
 jobs:
   deploy:
