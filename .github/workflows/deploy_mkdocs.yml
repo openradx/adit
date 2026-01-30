@@ -4,9 +4,9 @@ on:
   push:
     branches:
       - main
-
+      - mkdocs-deployment-fix
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
 
@@ -30,7 +30,7 @@ jobs:
           version: "latest"
 
       - name: Install docs dependencies
-        run: uv sync --only-group docs
+        run: uv sync --only-group docs --no-install-project
 
       - name: Deploy MkDocs
         run: uv run mkdocs gh-deploy --force
