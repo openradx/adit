@@ -15,6 +15,7 @@ from channels.generic.websocket import AsyncJsonWebsocketConsumer
 from crispy_forms.utils import render_crispy_form
 from django.conf import settings
 from django.template.loader import render_to_string
+from django.utils.translation import activate, get_language
 from requests.exceptions import HTTPError
 
 from adit.core.errors import DicomError
@@ -63,11 +64,29 @@ class SelectiveTransferConsumer(AsyncJsonWebsocketConsumer):
 
         assert isinstance(scope_user, User)
         self.user: User = scope_user
+        self.user_language = self._activate_user_language()
         self.query_operators: list[DicomOperator] = []
         self.current_message_id: int = 0
         self.pool = ThreadPoolExecutor()
 
         await self.accept()
+
+    def _activate_user_language(self) -> str:
+        headers = dict(self.scope.get("headers", []))
+        accept_language = headers.get(b"accept-language", b"").decode("utf-8")
+
+        # Parse Accept-Language header to get preferred language
+        preferred_lang = None
+        if accept_language:
+            langs = [lang.split(";")[0].strip().lower() for lang in accept_language.split(",")]
+            # Default to first language
+            preferred_lang = langs[0].split("-")[0] if "-" in langs[0] else langs[0]
+
+        if preferred_lang:
+            activate(preferred_lang)
+            return preferred_lang
+        else:
+            return get_language()
 
     async def disconnect(self, code: int) -> None:
         await self._abort_operators()
@@ -162,6 +181,8 @@ class SelectiveTransferConsumer(AsyncJsonWebsocketConsumer):
 
     @database_sync_to_async
     def _build_form_error_response(self, form: SelectiveTransferJobForm, message: str) -> str:
+        if hasattr(self, "user_language"):
+            activate(self.user_language)
         rendered_form: str = render_crispy_form(form)
         rendered_error_message: str = render_error_message(message)
         return rendered_form + rendered_error_message
@@ -269,6 +290,9 @@ class SelectiveTransferConsumer(AsyncJsonWebsocketConsumer):
         studies: list[ResultDataset],
         max_results_reached: bool,
     ) -> None:
+        if hasattr(self, "user_language"):
+            activate(self.user_language)
+
         # Rerender form to remove potential previous error messages
         rendered_form = render_crispy_form(form)
 
@@ -317,6 +341,9 @@ class SelectiveTransferConsumer(AsyncJsonWebsocketConsumer):
     def build_transfer_response(
         self, form: SelectiveTransferJobForm, selected_studies: list[str]
     ) -> str:
+        if hasattr(self, "user_language"):
+            activate(self.user_language)
+
         rendered_form: str = render_crispy_form(form)
 
         try:
