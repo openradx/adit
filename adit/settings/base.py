@@ -249,30 +249,34 @@ LOGGING = {
             "filters": ["require_debug_false"],
             "class": "django.utils.log.AdminEmailHandler",
         },
+        "otel": {
+            "level": "DEBUG",
+            "class": "opentelemetry.sdk._logs.LoggingHandler",
+        },
     },
     "loggers": {
         "adit": {
-            "handlers": ["console", "mail_admins"],
+            "handlers": ["console", "mail_admins", "otel"],
             "level": "INFO",
             "propagate": False,
         },
         "django": {
-            "handlers": ["console"],
+            "handlers": ["console", "otel"],
             "level": "WARNING",
             "propagate": False,
         },
         "pydicom": {
-            "handlers": ["console"],
+            "handlers": ["console", "otel"],
             "level": "WARNING",
             "propagate": False,
         },
         "pynetdicom": {
-            "handlers": ["console"],
+            "handlers": ["console", "otel"],
             "level": "WARNING",
             "propagate": False,
         },
     },
-    "root": {"handlers": ["console"], "level": "ERROR"},
+    "root": {"handlers": ["console", "otel"], "level": "ERROR"},
 }
 
 # Internationalization

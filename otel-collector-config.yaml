@@ -1,50 +1,5 @@
 receivers:
-  # Collect logs from Docker container log files
-  filelog/docker:
-    include:
-      - /var/lib/docker/containers/*/*.log
-    include_file_path: true
-    # Docker uses JSON log driver by default
-    operators:
-      # Parse the Docker JSON log format first
-      - type: json_parser
-        id: parser-docker
-        timestamp:
-          parse_from: attributes.time
-          layout: "%Y-%m-%dT%H:%M:%S.%LZ"
-
-      # Extract container ID from file path
-      - type: regex_parser
-        id: extract-container-id
-        parse_from: attributes["log.file.path"]
-        regex: '/var/lib/docker/containers/(?P<container_id>[a-f0-9]+)/'
-
-      # Move container_id to resource attributes
-      - type: move
-        from: attributes.container_id
-        to: resource["container.id"]
-
-      # Move the Docker "log" field to body
-      - type: move
-        from: attributes.log
-        to: body
-
-      # Remove raw file path attribute
-      - type: remove
-        field: attributes["log.file.path"]
-        on_error: send
-
-    # Start from the end of the file to avoid reprocessing old logs
-    start_at: end
-    # Poll interval
-    poll_interval: 500ms
-    # Retry on failure
-    retry_on_failure:
-      enabled: true
-      initial_interval: 1s
-      max_interval: 30s
-
-  # OTLP receiver for traces and metrics from the application
+  # OTLP receiver for traces, metrics, and logs from the application
   otlp:
     protocols:
       http:
@@ -99,7 +54,7 @@ service:
   extensions: [health_check]
   pipelines:
     logs:
-      receivers: [filelog/docker]
+      receivers: [otlp]
       processors: [resource, filter/logs, batch]
       exporters: [otlphttp/openobserve]
     traces:

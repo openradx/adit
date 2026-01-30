@@ -43,7 +43,7 @@ x-app: &default-app
     TIME_ZONE: ${TIME_ZONE:?}
     TOKEN_AUTHENTICATION_SALT: ${TOKEN_AUTHENTICATION_SALT:?}
     ANONYMIZATION_SEED: ${ANONYMIZATION_SEED:-}
-    # Point to otel-collector for traces and metrics (logs collected via Docker container files)
+    # Point to otel-collector for traces, metrics, and logs via OTLP
     OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-http://otel-collector.local:4318}
     OTEL_PYTHON_DJANGO_EXCLUDED_URLS: "health/,static/.*"
 
@@ -108,15 +108,12 @@ services:
   otel-collector:
     image: otel/opentelemetry-collector-contrib:0.115.1
     hostname: otel-collector.local
-    user: "0:0" # Needed to read Docker container log files
     command: ["--config=/etc/otel-collector-config.yaml"]
     environment:
       OPENOBSERVE_ENDPOINT: ${OPENOBSERVE_ENDPOINT:-http://openobserve.local:5080/api/default}
       OPENOBSERVE_AUTH_HEADER: ${OPENOBSERVE_AUTH_HEADER:-}
       ENVIRONMENT: ${ENVIRONMENT:-development}
     volumes:
-      - /var/lib/docker/containers:/var/lib/docker/containers:ro
-      - /var/run/docker.sock:/var/run/docker.sock:ro
       - ./otel-collector-config.yaml:/etc/otel-collector-config.yaml:ro
     depends_on:
       - openobserve
