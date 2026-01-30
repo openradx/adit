@@ -4,11 +4,8 @@ on:
   push:
     branches:
       - main
-
 permissions:
-  contents: read
-  pages: write
-  id-token: write
+  contents: write
 
 jobs:
   deploy:
@@ -30,7 +27,7 @@ jobs:
           version: "latest"
 
       - name: Install docs dependencies
-        run: uv sync --only-group docs
+        run: uv sync --only-group docs --no-install-project
 
       - name: Deploy MkDocs
-        run: uv run mkdocs gh-deploy --force
+        run: uv run --no-sync mkdocs gh-deploy --force
