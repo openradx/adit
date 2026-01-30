@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-      - mkdocs-deployment-fix
 permissions:
   contents: write
 
