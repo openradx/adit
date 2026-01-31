@@ -87,3 +87,13 @@ services:
   orthanc2:
     ports:
       - "7502:7502"
+
+  openobserve:
+    ports:
+      - ${OPENOBSERVE_DEV_PORT:-5080}:5080
+
+  otel-collector:
+    ports:
+      - "4317:4317"   # OTLP gRPC
+      - "4318:4318"   # OTLP HTTP
+      - "13133:13133" # Health check

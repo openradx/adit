@@ -13,6 +13,7 @@ https://docs.djangoproject.com/en/3.0/ref/settings/
 from pathlib import Path
 from typing import Literal
 
+from adit_radis_shared.telemetry import add_otel_logging_handler, is_telemetry_active
 from django.core.exceptions import ImproperlyConfigured
 from environs import env
 from pydicom import config as pydicom_config
@@ -274,6 +275,9 @@ LOGGING = {
     },
     "root": {"handlers": ["console"], "level": "ERROR"},
 }
+
+if is_telemetry_active():
+    add_otel_logging_handler(LOGGING)
 
 # Internationalization
 # https://docs.djangoproject.com/en/3.0/topics/i18n/
