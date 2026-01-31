@@ -13,11 +13,10 @@ https://docs.djangoproject.com/en/3.0/ref/settings/
 from pathlib import Path
 from typing import Literal
 
+from adit_radis_shared.telemetry import add_otel_logging_handler, is_telemetry_active
 from django.core.exceptions import ImproperlyConfigured
 from environs import env
 from pydicom import config as pydicom_config
-
-from adit.telemetry import is_telemetry_active
 
 # During development and calling `manage.py` from the host we have to load the .env file manually.
 # Some env variables will still need a default value, as those are only set in the compose file.
@@ -278,13 +277,7 @@ LOGGING = {
 }
 
 if is_telemetry_active():
-    LOGGING["handlers"]["otel"] = {
-        "level": "DEBUG",
-        "class": "opentelemetry.sdk._logs.LoggingHandler",
-    }
-    for _logger_config in LOGGING["loggers"].values():
-        _logger_config["handlers"].append("otel")
-    LOGGING["root"]["handlers"].append("otel")
+    add_otel_logging_handler(LOGGING)
 
 # Internationalization
 # https://docs.djangoproject.com/en/3.0/topics/i18n/

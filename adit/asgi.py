@@ -15,7 +15,7 @@ import os
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "adit.settings.development")
 
 # Initialize OpenTelemetry before Django loads to ensure all requests are traced
-from adit.telemetry import setup_opentelemetry  # noqa: E402
+from adit_radis_shared.telemetry import setup_opentelemetry  # noqa: E402
 
 setup_opentelemetry()
 
