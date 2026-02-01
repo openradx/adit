@@ -209,7 +209,7 @@ requires-dist = [
 [[package]]
 name = "adit-radis-shared"
 version = "0.0.0"
-source = { git = "https://github.com/openradx/adit-radis-shared.git?rev=openobserve#fd2c783a389d2ea9c275b22a794a99f0fa2ba382" }
+source = { git = "https://github.com/openradx/adit-radis-shared.git?rev=openobserve#a945c9d93841fc6c376df7aec78550fec1715b93" }
 dependencies = [
     { name = "channels" },
     { name = "crispy-bootstrap5" },
