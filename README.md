@@ -4,6 +4,8 @@
 
 ADIT (Automated DICOM Transfer) is a Swiss army knife to exchange DICOM data between various systems by using a convenient web frontend.
 
+**[Read the documentation](https://openradx.github.io/adit/)** — includes detailed admin and user guides, as well as developer documentation.  
+
 **Developed at**
 
 <table>
