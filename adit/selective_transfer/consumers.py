@@ -15,7 +15,10 @@ from channels.generic.websocket import AsyncJsonWebsocketConsumer
 from crispy_forms.utils import render_crispy_form
 from django.conf import settings
 from django.template.loader import render_to_string
-from django.utils.translation import activate, get_language
+from django.utils.translation import (
+    get_supported_language_variant,
+    override,
+)
 from requests.exceptions import HTTPError
 
 from adit.core.errors import DicomError
@@ -83,10 +86,13 @@ class SelectiveTransferConsumer(AsyncJsonWebsocketConsumer):
             preferred_lang = langs[0].split("-")[0] if "-" in langs[0] else langs[0]
 
         if preferred_lang:
-            activate(preferred_lang)
+            try:
+                preferred_lang = get_supported_language_variant(preferred_lang)
+            except LookupError:
+                preferred_lang = settings.LANGUAGE_CODE
             return preferred_lang
         else:
-            return get_language()
+            return settings.LANGUAGE_CODE
 
     async def disconnect(self, code: int) -> None:
         await self._abort_operators()
@@ -181,11 +187,10 @@ class SelectiveTransferConsumer(AsyncJsonWebsocketConsumer):
 
     @database_sync_to_async
     def _build_form_error_response(self, form: SelectiveTransferJobForm, message: str) -> str:
-        if hasattr(self, "user_language"):
-            activate(self.user_language)
-        rendered_form: str = render_crispy_form(form)
-        rendered_error_message: str = render_error_message(message)
-        return rendered_form + rendered_error_message
+        with override(getattr(self, "user_language", settings.LANGUAGE_CODE)):
+            rendered_form: str = render_crispy_form(form)
+            rendered_error_message: str = render_error_message(message)
+            return rendered_form + rendered_error_message
 
     async def _make_query(self, form: SelectiveTransferJobForm, message_id: int) -> None:
         loop = asyncio.get_event_loop()
@@ -290,42 +295,40 @@ class SelectiveTransferConsumer(AsyncJsonWebsocketConsumer):
         studies: list[ResultDataset],
         max_results_reached: bool,
     ) -> None:
-        if hasattr(self, "user_language"):
-            activate(self.user_language)
-
         # Rerender form to remove potential previous error messages
-        rendered_form = render_crispy_form(form)
+        with override(getattr(self, "user_language", settings.LANGUAGE_CODE)):
+            rendered_form = render_crispy_form(form)
 
-        studies = sorted(
-            studies,
-            key=lambda study: datetime.combine(study.StudyDate, study.StudyTime),
-            reverse=True,
-        )
+            studies = sorted(
+                studies,
+                key=lambda study: datetime.combine(study.StudyDate, study.StudyTime),
+                reverse=True,
+            )
 
-        source = cast(DicomNode, form.cleaned_data["source"])
-        server_id = source.dicomserver.pk
-        can_download = self.user.has_perm("selective_transfer.can_download_study")
+            source = cast(DicomNode, form.cleaned_data["source"])
+            server_id = source.dicomserver.pk
+            can_download = self.user.has_perm("selective_transfer.can_download_study")
 
-        pseudo_params = {
-            "pseudonym": form.cleaned_data["pseudonym"],
-            "trial_protocol_id": form.cleaned_data["trial_protocol_id"],
-            "trial_protocol_name": form.cleaned_data["trial_protocol_name"],
-        }
+            pseudo_params = {
+                "pseudonym": form.cleaned_data["pseudonym"],
+                "trial_protocol_id": form.cleaned_data["trial_protocol_id"],
+                "trial_protocol_name": form.cleaned_data["trial_protocol_name"],
+            }
 
-        pseudo_params = {k: v for k, v in pseudo_params.items() if v}
-        encoded_pseudo_params = urlencode(pseudo_params)
+            pseudo_params = {k: v for k, v in pseudo_params.items() if v}
+            encoded_pseudo_params = urlencode(pseudo_params)
 
-        rendered_query_results = render_to_string(
-            "selective_transfer/_query_results.html",
-            {
-                "query": True,
-                "query_results": studies,
-                "max_results_reached": max_results_reached,
-                "server_id": server_id,
-                "pseudo_params": encoded_pseudo_params,
-                "can_download": can_download,
-            },
-        )
+            rendered_query_results = render_to_string(
+                "selective_transfer/_query_results.html",
+                {
+                    "query": True,
+                    "query_results": studies,
+                    "max_results_reached": max_results_reached,
+                    "server_id": server_id,
+                    "pseudo_params": encoded_pseudo_params,
+                    "can_download": can_download,
+                },
+            )
 
         async_to_sync(self.send)(rendered_form + rendered_query_results)
 
@@ -341,22 +344,20 @@ class SelectiveTransferConsumer(AsyncJsonWebsocketConsumer):
     def build_transfer_response(
         self, form: SelectiveTransferJobForm, selected_studies: list[str]
     ) -> str:
-        if hasattr(self, "user_language"):
-            activate(self.user_language)
+        with override(getattr(self, "user_language", settings.LANGUAGE_CODE)):
+            rendered_form: str = render_crispy_form(form)
 
-        rendered_form: str = render_crispy_form(form)
+            try:
+                job = self.transfer_selected_studies(self.user, form, selected_studies)
+            except ValueError as err:
+                rendered_error_message = render_error_message(str(err))
+                return rendered_form + rendered_error_message
 
-        try:
-            job = self.transfer_selected_studies(self.user, form, selected_studies)
-        except ValueError as err:
-            rendered_error_message = render_error_message(str(err))
-            return rendered_form + rendered_error_message
-
-        rendered_created_job = render_to_string(
-            "selective_transfer/_created_job.html",
-            {"transfer": True, "created_job": job},
-        )
-        return rendered_form + rendered_created_job
+            rendered_created_job = render_to_string(
+                "selective_transfer/_created_job.html",
+                {"transfer": True, "created_job": job},
+            )
+            return rendered_form + rendered_created_job
 
     def transfer_selected_studies(
         self, user: User, form: SelectiveTransferJobForm, selected_studies: list[str]
