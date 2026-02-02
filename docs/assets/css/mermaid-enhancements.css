@@ -1,0 +1,123 @@
+/**
+ * Mermaid diagram enhancements
+ * Zoom, pan, and accessibility support
+ * Tested with MkDocs Material + Mermaid
+ */
+
+/* Wrapper created by JS */
+.mermaid-zoom-wrapper {
+  position: relative;
+  overflow: visible; /* IMPORTANT: do NOT clip controls */
+  border: 1px solid var(--md-default-fg-color--lightest, #e0e0e0);
+  border-radius: 4px;
+  padding: 1rem;
+  margin: 1.5rem 0;
+  background-color: var(--md-code-bg-color, #f5f5f5);
+}
+
+/* Mermaid container */
+.mermaid-zoom-wrapper pre.mermaid {
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  border: none;
+}
+
+/* SVG behavior */
+.mermaid-zoom-wrapper svg {
+  width: 100%;
+  max-width: none;
+  height: auto;
+  cursor: grab;
+  transform-origin: 0 0;
+  transition: transform 0.15s ease;
+}
+
+.mermaid-zoom-wrapper svg:active {
+  cursor: grabbing;
+}
+
+/* Zoom controls */
+.mermaid-zoom-controls {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  display: flex;
+  gap: 0.25rem;
+  padding: 0.25rem;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 4px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+  z-index: 1000; /* Must beat MkDocs layers */
+}
+
+/* Buttons */
+.mermaid-zoom-controls button {
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 3px;
+  background: var(--md-primary-fg-color, #4051b5);
+  color: #fff;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mermaid-zoom-controls button:hover {
+  background: var(--md-accent-fg-color, #526cfe);
+}
+
+.mermaid-zoom-controls button:active {
+  transform: scale(0.95);
+}
+
+/* Hint text */
+.mermaid-zoom-wrapper::before {
+  content: "💡 Use + / − or Ctrl + Scroll to zoom • Drag to pan";
+  display: block;
+  margin-bottom: 0.75rem;
+  font-size: 0.85rem;
+  font-style: italic;
+  color: var(--md-default-fg-color--light, #666);
+}
+
+/* Improve node readability */
+.mermaid-zoom-wrapper .node rect,
+.mermaid-zoom-wrapper .node circle,
+.mermaid-zoom-wrapper .node ellipse,
+.mermaid-zoom-wrapper .node polygon {
+  stroke-width: 2px;
+}
+
+/* Text color consistency */
+.mermaid-zoom-wrapper text {
+  fill: var(--md-default-fg-color, #333);
+}
+
+/* Mobile behavior */
+@media (max-width: 768px) {
+  .mermaid-zoom-controls {
+    display: none; /* pinch-zoom only on mobile */
+  }
+
+  .mermaid-zoom-wrapper::before {
+    content: "💡 Pinch to zoom • Drag to pan";
+    font-size: 0.75rem;
+  }
+}
+
+/* Print cleanup */
+@media print {
+  .mermaid-zoom-controls,
+  .mermaid-zoom-wrapper::before {
+    display: none;
+  }
+
+  .mermaid-zoom-wrapper svg {
+    transform: none !important;
+  }
+}
