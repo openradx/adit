@@ -4,7 +4,7 @@ from typing import cast
 
 from adit_radis_shared.accounts.models import User
 from crispy_forms.helper import FormHelper
-from crispy_forms.layout import Layout, Submit
+from crispy_forms.layout import Column, Div, Field, HTML, Layout, Row, Submit
 from django import forms
 from django.core.exceptions import ValidationError
 
@@ -146,8 +146,47 @@ class MassTransferJobForm(forms.ModelForm):
         )
 
         self.helper = FormHelper(self)
-        self.helper.layout = Layout("source", "destination")
-        self.helper.render_unmentioned_fields = True
+        self.helper.layout = Layout(
+            Div(
+                HTML("<div class='card-header fw-semibold'>Transfer scope</div>"),
+                Div(
+                    Row(
+                        Column(Field("source"), css_class="col-md-6"),
+                        Column(Field("destination"), css_class="col-md-6"),
+                        css_class="g-3",
+                    ),
+                    Row(
+                        Column(Field("start_date"), css_class="col-md-6"),
+                        Column(Field("end_date"), css_class="col-md-6"),
+                        css_class="g-3",
+                    ),
+                    Row(
+                        Column(Field("partition_granularity"), css_class="col-md-6"),
+                        Column(Field("pseudonymize"), css_class="col-md-6"),
+                        css_class="g-3",
+                    ),
+                    css_class="card-body",
+                ),
+                css_class="card mb-3",
+            ),
+            Div(
+                HTML("<div class='card-header fw-semibold'>Filters</div>"),
+                Div(
+                    Field("filters"),
+                    css_class="card-body",
+                ),
+                css_class="card mb-3",
+            ),
+            Div(
+                HTML("<div class='card-header fw-semibold'>Notifications</div>"),
+                Div(
+                    Field("send_finished_mail"),
+                    css_class="card-body",
+                ),
+                css_class="card mb-3",
+            ),
+        )
+        self.helper.render_unmentioned_fields = False
         self.helper.attrs["x-data"] = "massTransferJobForm()"
         self.helper.add_input(Submit("save", "Create Job"))
 
