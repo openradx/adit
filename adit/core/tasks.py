@@ -1,7 +1,9 @@
 import logging
+import shutil
 import subprocess
 import traceback
 from concurrent import futures
+from pathlib import Path
 from time import sleep
 from typing import cast
 
@@ -61,6 +63,45 @@ DICOM_TASK_RETRY_STRATEGY = RetryStrategy(
 )
 
 
+def _cleanup_mass_transfer_exports(dicom_task: DicomTask) -> None:
+    if dicom_task._meta.app_label != "mass_transfer":
+        return
+
+    partition_key = getattr(dicom_task, "partition_key", None)
+    if not partition_key:
+        return
+
+    try:
+        from adit.mass_transfer.models import MassTransferVolume
+    except Exception:
+        return
+
+    volumes = MassTransferVolume.objects.filter(
+        job_id=dicom_task.job_id,
+        partition_key=partition_key,
+    ).exclude(exported_folder="")
+
+    for volume in volumes:
+        if volume.status == MassTransferVolume.Status.CONVERTED:
+            continue
+
+        export_folder = volume.exported_folder
+        if export_folder:
+            try:
+                shutil.rmtree(Path(export_folder))
+            except FileNotFoundError:
+                pass
+            except Exception as err:
+                volume.add_log(f"Cleanup failed: {err}")
+                volume.save()
+                continue
+
+        volume.exported_folder = ""
+        volume.status = MassTransferVolume.Status.ERROR
+        volume.add_log("Export cleaned up after task failure.")
+        volume.save()
+
+
 def _run_dicom_task(context: JobContext, model_label: str, task_id: int):
     assert context.job
 
@@ -112,6 +153,7 @@ def _run_dicom_task(context: JobContext, model_label: str, task_id: int):
         dicom_task.message = "Task was aborted due to timeout."
         dicom_task.status = DicomTask.Status.FAILURE
         ensure_db_connection()
+        _cleanup_mass_transfer_exports(dicom_task)
 
     except RetriableDicomError as err:
         logger.exception("Retriable error occurred during %s.", dicom_task)
@@ -133,6 +175,7 @@ def _run_dicom_task(context: JobContext, model_label: str, task_id: int):
             dicom_task.message = str(err)
 
         ensure_db_connection()
+        _cleanup_mass_transfer_exports(dicom_task)
         raise err
 
     except Exception as err:
@@ -148,6 +191,7 @@ def _run_dicom_task(context: JobContext, model_label: str, task_id: int):
         dicom_task.log += traceback.format_exc()
 
         ensure_db_connection()
+        _cleanup_mass_transfer_exports(dicom_task)
 
     finally:
         dicom_task.end = timezone.now()
