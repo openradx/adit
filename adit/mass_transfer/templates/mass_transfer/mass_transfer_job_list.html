@@ -1,0 +1,18 @@
+{% extends "mass_transfer/mass_transfer_layout.html" %}
+{% load bootstrap_icon from common_extras %}
+{% block title %}
+    Mass Transfer Jobs
+{% endblock title %}
+{% block heading %}
+    <c-page-heading title="Mass Transfer Jobs">
+    <c-slot name="right">
+    <a href="{% url 'mass_transfer_job_create' %}" class="btn btn-primary">
+        {% bootstrap_icon "plus-lg" %}
+        Create New Job
+    </a>
+    </c-slot>
+    </c-page-heading>
+{% endblock heading %}
+{% block content %}
+    {% include "core/_dicom_job_table.html" %}
+{% endblock content %}

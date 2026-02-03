@@ -4,6 +4,7 @@ from django.db.models import Q
 from adit.batch_query.models import BatchQueryJob, BatchQueryTask
 from adit.batch_transfer.models import BatchTransferJob, BatchTransferTask
 from adit.core.models import DicomJob, DicomTask
+from adit.mass_transfer.models import MassTransferJob, MassTransferTask
 from adit.selective_transfer.models import SelectiveTransferJob, SelectiveTransferTask
 
 
@@ -11,6 +12,7 @@ class Command(BaseCommand):
     help = "Cleanup all DICOM jobs and tasks that are stuck."
 
     def cleanup_tasks(self, model: type[DicomTask]):
+        job_model = model._meta.get_field("job").related_model
         job_ids = set()
 
         message = "Unexpected crash while processing this task."
@@ -18,7 +20,7 @@ class Command(BaseCommand):
 
         tasks_in_progress = model.objects.filter(status=model.Status.IN_PROGRESS).all()
         for task in tasks_in_progress:
-            task.status = SelectiveTransferTask.Status.FAILURE
+            task.status = model.Status.FAILURE
             task.message = message
             task.log = task_log
             task.save()
@@ -27,14 +29,14 @@ class Command(BaseCommand):
         tasks_pending = model.objects.filter(Q(status=model.Status.PENDING)).all()
         for task in tasks_pending:
             if task.queued_job_id is None:
-                task.status = SelectiveTransferTask.Status.FAILURE
+                task.status = model.Status.FAILURE
                 task.message = message
                 task.log = task_log
                 task.save()
                 job_ids.add(task.job_id)
 
         for job_id in job_ids:
-            job = SelectiveTransferJob.objects.get(id=job_id)
+            job = job_model.objects.get(id=job_id)
             job.post_process(suppress_email=True)
 
     def cleanup_jobs(self, model: type[DicomJob]):
@@ -45,7 +47,7 @@ class Command(BaseCommand):
         ).all()
 
         for job in jobs:
-            job.status = SelectiveTransferJob.Status.FAILURE
+            job.status = model.Status.FAILURE
             job.message = message
             job.save()
 
@@ -65,5 +67,7 @@ class Command(BaseCommand):
         self.cleanup_jobs(BatchQueryJob)
         self.cleanup_tasks(BatchTransferTask)
         self.cleanup_jobs(BatchTransferJob)
+        self.cleanup_tasks(MassTransferTask)
+        self.cleanup_jobs(MassTransferJob)
 
         self.stdout.write("Done")

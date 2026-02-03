@@ -1,0 +1,64 @@
+{% extends "mass_transfer/mass_transfer_layout.html" %}
+{% load bootstrap_icon from common_extras %}
+{% block title %}
+    Mass Transfer Filters
+{% endblock title %}
+{% block heading %}
+    <c-page-heading title="Mass Transfer Filters">
+    <c-slot name="right">
+    <a href="{% url 'mass_transfer_filter_create' %}" class="btn btn-primary">
+        {% bootstrap_icon "plus-lg" %}
+        New Filter
+    </a>
+    </c-slot>
+    </c-page-heading>
+{% endblock heading %}
+{% block content %}
+    <table class="table table-bordered table-hover">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Modality</th>
+                <th>Institution</th>
+                <th>Institution Scope</th>
+                <th>Study Description</th>
+                <th>Series Description</th>
+                <th>Series Number</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for f in filters %}
+                <tr>
+                    <td>{{ f.name|default:"—" }}</td>
+                    <td>{{ f.modality|default:"—" }}</td>
+                    <td>{{ f.institution_name|default:"—" }}</td>
+                    <td>
+                        {% if f.institution_name %}
+                            {{ f.apply_institution_on_study|yesno:"Study,Series" }}
+                        {% else %}
+                            —
+                        {% endif %}
+                    </td>
+                    <td>{{ f.study_description|default:"—" }}</td>
+                    <td>{{ f.series_description|default:"—" }}</td>
+                    <td>{{ f.series_number|default:"—" }}</td>
+                    <td>
+                        <a class="btn btn-sm btn-outline-secondary"
+                           href="{% url 'mass_transfer_filter_update' f.pk %}">
+                            {% bootstrap_icon "pencil" %}
+                        </a>
+                        <a class="btn btn-sm btn-outline-danger"
+                           href="{% url 'mass_transfer_filter_delete' f.pk %}">
+                            {% bootstrap_icon "trash" %}
+                        </a>
+                    </td>
+                </tr>
+            {% empty %}
+                <tr>
+                    <td colspan="8">No filters defined.</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% endblock content %}

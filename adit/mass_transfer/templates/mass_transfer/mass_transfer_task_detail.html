@@ -1,0 +1,30 @@
+{% extends "mass_transfer/mass_transfer_layout.html" %}
+{% load dicom_task_status_css_class from core_extras %}
+{% load task_control_panel from mass_transfer_extras %}
+{% block title %}
+    Mass Transfer Task
+{% endblock title %}
+{% block heading %}
+    <c-page-heading title="Mass Transfer Task" />
+{% endblock heading %}
+{% block content %}
+    <dl class="row">
+        <dt class="col-sm-3">Task ID</dt>
+        <dd class="col-sm-9">{{ task.id }}</dd>
+        <dt class="col-sm-3">Partition</dt>
+        <dd class="col-sm-9">{{ task.partition_key }}</dd>
+        <dt class="col-sm-3">Window</dt>
+        <dd class="col-sm-9">{{ task.partition_start }} – {{ task.partition_end }}</dd>
+        <dt class="col-sm-3">Status</dt>
+        <dd class="col-sm-9">
+            <span class="{{ task.status|dicom_task_status_css_class }}" data-status="{{ task.status }}">
+                {{ task.get_status_display }}
+            </span>
+        </dd>
+        <dt class="col-sm-3">Message</dt>
+        <dd class="col-sm-9">{{ task.message|default:"—" }}</dd>
+        <dt class="col-sm-3">Log</dt>
+        <dd class="col-sm-9"><pre class="mb-0">{{ task.log|default:"" }}</pre></dd>
+    </dl>
+    {% task_control_panel %}
+{% endblock content %}

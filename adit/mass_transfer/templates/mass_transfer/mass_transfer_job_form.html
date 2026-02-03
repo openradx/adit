@@ -1,0 +1,25 @@
+{% extends "mass_transfer/mass_transfer_layout.html" %}
+{% load crispy from crispy_forms_tags %}
+{% load bootstrap_icon from common_extras %}
+{% block title %}
+    New Mass Transfer Job
+{% endblock title %}
+{% block heading %}
+    <c-page-heading title="New Mass Transfer Job">
+    <c-slot name="left">
+    <a href="{% url 'mass_transfer_filter_list' %}" class="btn btn-info">
+        Manage Filters
+        {% bootstrap_icon "funnel" %}
+    </a>
+    </c-slot>
+    <c-slot name="right">
+    <a href="{% url 'mass_transfer_job_list' %}" class="btn btn-secondary">
+        {% bootstrap_icon "list" %}
+        Previous Jobs
+    </a>
+    </c-slot>
+    </c-page-heading>
+{% endblock heading %}
+{% block content %}
+    {% crispy form %}
+{% endblock content %}
