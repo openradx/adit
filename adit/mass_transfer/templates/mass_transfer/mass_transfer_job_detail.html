@@ -37,6 +37,8 @@
         <dd class="col-sm-9">{{ job.end_date }}</dd>
         <dt class="col-sm-3">Granularity</dt>
         <dd class="col-sm-9">{{ job.get_partition_granularity_display }}</dd>
+        <dt class="col-sm-3">Pseudonymization</dt>
+        <dd class="col-sm-9">{{ job.pseudonymize|yesno:"Enabled,Disabled" }}</dd>
         <dt class="col-sm-3">Filters</dt>
         <dd class="col-sm-9">
             {% if job.filters.all %}

@@ -147,9 +147,71 @@ def test_process_groups_pseudonyms_by_study(mocker: MockerFixture, settings, tmp
     assert result["status"] == MassTransferTask.Status.SUCCESS
 
 
-def test_volume_output_path_uses_year_month_and_pseudonym():
+@pytest.mark.django_db
+def test_process_opt_out_skips_pseudonymization(
+    mocker: MockerFixture,
+    settings,
+    tmp_path: Path,
+):
+    settings.MASS_TRANSFER_EXPORT_BASE_DIR = str(tmp_path / "exports")
+    MassTransferSettings.objects.create()
+
+    user = UserFactory.create()
+    source = DicomServerFactory.create()
+    destination = DicomFolderFactory.create(path=str(tmp_path / "output"))
+    job = MassTransferJob.objects.create(
+        owner=user,
+        source=source,
+        destination=destination,
+        start_date=date(2024, 1, 1),
+        end_date=date(2024, 1, 1),
+        partition_granularity=MassTransferJob.PartitionGranularity.DAILY,
+        pseudonymize=False,
+    )
+    mf = MassTransferFilter.objects.create(modality="CT")
+    job.filters.add(mf)
+
+    task = MassTransferTask.objects.create(
+        job=job,
+        source=source,
+        partition_start=timezone.now(),
+        partition_end=timezone.now(),
+        partition_key="20240101",
+    )
+
+    volume = MassTransferVolume.objects.create(
+        job=job,
+        partition_key="20240101",
+        patient_id="PATIENT-1",
+        study_instance_uid="study-1",
+        series_instance_uid="series-1",
+        modality="CT",
+        study_description="",
+        series_description="A",
+        series_number=1,
+        study_datetime=timezone.now(),
+    )
+
+    processor = MassTransferTaskProcessor(task)
+    mocker.patch.object(processor, "_find_volumes", return_value=[volume])
+
+    export_calls: list[str] = []
+
+    def fake_export(_, __, ___, pseudonym):
+        export_calls.append(pseudonym)
+
+    mocker.patch.object(processor, "_export_volume", side_effect=fake_export)
+    mocker.patch.object(processor, "_convert_volume", return_value=None)
+
+    result = processor.process()
+
+    assert export_calls == [""]
+    assert result["status"] == MassTransferTask.Status.SUCCESS
+
+
+def test_volume_output_path_uses_year_month_and_subject_id():
     base_dir = Path("/tmp/base")
     study_dt = datetime(2024, 2, 15, 10, 30)
-    path = _volume_output_path(base_dir, study_dt, "pseudo", "1-Head")
+    path = _volume_output_path(base_dir, study_dt, "subject", "1-Head")
 
-    assert path == base_dir / "202402" / "pseudo" / "1-Head"
+    assert path == base_dir / "202402" / "subject" / "1-Head"
