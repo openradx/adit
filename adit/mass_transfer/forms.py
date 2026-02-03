@@ -16,6 +16,46 @@ from .utils.partitions import build_partitions
 
 
 class MassTransferFilterForm(forms.ModelForm):
+    MODALITY_CHOICES = [
+        ("", "Any modality"),
+        ("CT", "CT"),
+        ("MR", "MR"),
+        ("XR", "XR"),
+        ("US", "US"),
+        ("NM", "NM"),
+        ("PT", "PT"),
+        ("MG", "MG"),
+        ("CR", "CR"),
+        ("DX", "DX"),
+        ("RF", "RF"),
+        ("XA", "XA"),
+        ("OT", "OT"),
+        ("SR", "SR"),
+        ("PR", "PR"),
+        ("ECG", "ECG"),
+        ("SEG", "SEG"),
+        ("RTSTRUCT", "RTSTRUCT"),
+        ("RTPLAN", "RTPLAN"),
+        ("RTDOSE", "RTDOSE"),
+        ("RTIMAGE", "RTIMAGE"),
+        ("SM", "SM"),
+        ("IVUS", "IVUS"),
+        ("OCT", "OCT"),
+        ("ES", "ES"),
+        ("OP", "OP"),
+        ("IO", "IO"),
+        ("FA", "FA"),
+        ("RG", "RG"),
+        ("MS", "MS"),
+        ("DOC", "DOC"),
+    ]
+
+    modality = forms.ChoiceField(
+        required=False,
+        choices=MODALITY_CHOICES,
+        help_text="Leave blank for any modality.",
+    )
+
     class Meta:
         model = MassTransferFilter
         fields = (
@@ -36,6 +76,12 @@ class MassTransferFilterForm(forms.ModelForm):
             "series_description": "Series description",
             "series_number": "Series number",
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.helper = FormHelper(self)
+        self.helper.render_unmentioned_fields = True
+        self.helper.add_input(Submit("save", "Save Filter"))
 
 
 class MassTransferJobForm(forms.ModelForm):
@@ -72,6 +118,10 @@ class MassTransferJobForm(forms.ModelForm):
                 "When disabled, patient identifiers are preserved and output folders use "
                 "Patient ID."
             ),
+        }
+        widgets = {
+            "start_date": forms.DateInput(attrs={"type": "date"}),
+            "end_date": forms.DateInput(attrs={"type": "date"}),
         }
 
     def __init__(self, *args, **kwargs):
