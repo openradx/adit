@@ -64,6 +64,15 @@ services:
         ./manage.py bg_worker -l debug -q dicom --autoreload
       "
 
+  mass_transfer_worker:
+    <<: *default-app
+    image: adit_dev-mass_transfer_worker:latest
+    command: >
+      bash -c "
+        wait-for-it -s postgres.local:5432 -t 60 &&
+        ./manage.py bg_worker -l debug -q mass_transfer --autoreload
+      "
+
   receiver:
     <<: *default-app
     ports:

@@ -81,6 +81,7 @@ INSTALLED_APPS = [
     "adit.selective_transfer.apps.SelectiveTransferConfig",
     "adit.batch_query.apps.BatchQueryConfig",
     "adit.batch_transfer.apps.BatchTransferConfig",
+    "adit.mass_transfer.apps.MassTransferConfig",
     "adit.upload.apps.UploadConfig",
     "adit.dicom_explorer.apps.DicomExplorerConfig",
     "adit.dicom_web.apps.DicomWebConfig",
@@ -353,6 +354,7 @@ FILE_TRANSMIT_PORT = env.int("FILE_TRANSMIT_PORT", 14638)
 START_SELECTIVE_TRANSFER_UNVERIFIED = True
 START_BATCH_QUERY_UNVERIFIED = True
 START_BATCH_TRANSFER_UNVERIFIED = True
+START_MASS_TRANSFER_UNVERIFIED = True
 
 # Priorities of dicom tasks
 # Selective transfers have the highest priority as those are
@@ -364,6 +366,8 @@ BATCH_TRANSFER_DEFAULT_PRIORITY = 2
 BATCH_TRANSFER_URGENT_PRIORITY = 6
 BATCH_QUERY_DEFAULT_PRIORITY = 3
 BATCH_QUERY_URGENT_PRIORITY = 7
+MASS_TRANSFER_DEFAULT_PRIORITY = 1
+MASS_TRANSFER_URGENT_PRIORITY = 5
 
 # The priority for stalled jobs that are retried.
 STALLED_JOBS_RETRY_PRIORITY = 10
@@ -378,6 +382,15 @@ SELECTIVE_TRANSFER_RESULT_LIMIT = 101
 
 # The maximum number of results (patients or studies) in dicom_explorer
 DICOM_EXPLORER_RESULT_LIMIT = 101
+
+# Maximum number of C-FIND results for mass transfer before splitting time windows
+MASS_TRANSFER_MAX_SEARCH_RESULTS = env.int("MASS_TRANSFER_MAX_SEARCH_RESULTS", default=200)
+
+# Base directory for temporary DICOM exports in mass transfer
+MASS_TRANSFER_EXPORT_BASE_DIR = env.str(
+    "MASS_TRANSFER_EXPORT_BASE_DIR",
+    default="/mnt/mass_transfer_exports",
+)
 
 # The timeout in dicom_explorer a DICOM server must respond
 DICOM_EXPLORER_RESPONSE_TIMEOUT = 3  # seconds

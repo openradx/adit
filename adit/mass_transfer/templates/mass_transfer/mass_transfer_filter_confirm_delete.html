@@ -1,0 +1,19 @@
+{% extends "mass_transfer/mass_transfer_layout.html" %}
+{% load bootstrap_icon from common_extras %}
+{% block title %}
+    Delete Mass Transfer Filter
+{% endblock title %}
+{% block heading %}
+    <c-page-heading title="Delete Mass Transfer Filter" />
+{% endblock heading %}
+{% block content %}
+    <p>Are you sure you want to delete the filter "{{ object }}"?</p>
+    <form method="post">
+        {% csrf_token %}
+        <button class="btn btn-danger" type="submit">
+            {% bootstrap_icon "trash" %}
+            Delete
+        </button>
+        <a class="btn btn-secondary" href="{% url 'mass_transfer_filter_list' %}">Cancel</a>
+    </form>
+{% endblock content %}
