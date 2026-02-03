@@ -131,6 +131,7 @@ Key variables in `.env` (see `example.env`):
 - **channels/daphne**: WebSocket support for real-time UI
 - **pynetdicom**: DIMSE protocol implementation
 - **dicomweb-client**: DICOMweb REST API client
+- **dcm2niix**: External CLI used to convert DICOM series to NIfTI during mass transfer
 
 ## Testing
 
@@ -185,6 +186,10 @@ job = client.create_transfer_job(
 - Ensure receiver container is running: `docker compose ps receiver`
 - Verify `RECEIVER_AE_TITLE` matches PACS configuration
 - Check receiver logs: `docker compose logs receiver`
+
+### Mass Transfer Conversion Failures
+
+- Ensure `dcm2niix` is installed and available on `PATH` inside the worker image
 
 ### WebSocket Updates Not Working
 

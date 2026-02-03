@@ -165,6 +165,10 @@ class MassTransferJobForm(forms.ModelForm):
                         Column(Field("pseudonymize"), css_class="col-md-6"),
                         css_class="g-3",
                     ),
+                    Row(
+                        Column(Field("send_finished_mail"), css_class="col-md-6"),
+                        css_class="g-3",
+                    ),
                     css_class="card-body",
                 ),
                 css_class="card mb-3",
@@ -173,14 +177,6 @@ class MassTransferJobForm(forms.ModelForm):
                 HTML("<div class='card-header fw-semibold'>Filters</div>"),
                 Div(
                     Field("filters"),
-                    css_class="card-body",
-                ),
-                css_class="card mb-3",
-            ),
-            Div(
-                HTML("<div class='card-header fw-semibold'>Notifications</div>"),
-                Div(
-                    Field("send_finished_mail"),
                     css_class="card-body",
                 ),
                 css_class="card mb-3",
