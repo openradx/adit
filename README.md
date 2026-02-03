@@ -77,7 +77,7 @@ sequenceDiagram
 
 ## API Client
 
-[ADIT Client](https://pypi.org/project/adit-client/0.5.0/) is a Python library to query, retrieve and upload DICOM images programmatically from a Python script. Thereby it can interact with DICOM (e.g. PACS) servers connected to an ADIT server.
+[ADIT Client](https://pypi.org/project/adit-client/) is a Python library to query, retrieve and upload DICOM images programmatically from a Python script. Thereby it can interact with DICOM (e.g. PACS) servers connected to an ADIT server.
 
 ## Architectural overview
 
