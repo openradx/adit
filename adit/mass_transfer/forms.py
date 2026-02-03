@@ -56,16 +56,22 @@ class MassTransferJobForm(forms.ModelForm):
             "end_date",
             "partition_granularity",
             "filters",
+            "pseudonymize",
             "send_finished_mail",
         )
         labels = {
             "start_date": "Start date",
             "end_date": "End date",
             "partition_granularity": "Partition granularity",
+            "pseudonymize": "Pseudonymize data",
             "send_finished_mail": "Send Email when job is finished",
         }
         help_texts = {
             "partition_granularity": "Daily or weekly partition windows.",
+            "pseudonymize": (
+                "When disabled, patient identifiers are preserved and output folders use "
+                "Patient ID."
+            ),
         }
 
     def __init__(self, *args, **kwargs):

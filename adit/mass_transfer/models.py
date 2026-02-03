@@ -62,6 +62,7 @@ class MassTransferJob(DicomJob):
         choices=PartitionGranularity.choices,
         default=PartitionGranularity.DAILY,
     )
+    pseudonymize = models.BooleanField(default=True)
 
     filters = models.ManyToManyField(MassTransferFilter, related_name="jobs", blank=True)
 

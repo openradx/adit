@@ -80,21 +80,21 @@ def _destination_base_dir(node: DicomNode) -> Path:
 def _volume_export_path(
     base_dir: Path,
     study_dt: datetime,
-    pseudonym: str,
+    subject_id: str,
     series_name: str,
 ) -> Path:
     year_month = study_dt.strftime("%Y%m")
-    return base_dir / year_month / pseudonym / series_name
+    return base_dir / year_month / subject_id / series_name
 
 
 def _volume_output_path(
     base_dir: Path,
     study_dt: datetime,
-    pseudonym: str,
+    subject_id: str,
     series_name: str,
 ) -> Path:
     year_month = study_dt.strftime("%Y%m")
-    return base_dir / year_month / pseudonym / series_name
+    return base_dir / year_month / subject_id / series_name
 
 
 class MassTransferTaskProcessor(DicomTaskProcessor):
@@ -146,8 +146,13 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
             volumes_by_study.setdefault(volume.study_instance_uid, []).append(volume)
 
         for _, study_volumes in volumes_by_study.items():
-            existing_pseudonym = next((v.pseudonym for v in study_volumes if v.pseudonym), None)
-            pseudonym = existing_pseudonym or uuid.uuid4().hex
+            pseudonym = ""
+            if job.pseudonymize:
+                existing_pseudonym = next(
+                    (v.pseudonym for v in study_volumes if v.pseudonym),
+                    None,
+                )
+                pseudonym = existing_pseudonym or uuid.uuid4().hex
 
             for volume in study_volumes:
                 if volume.status == MassTransferVolume.Status.CONVERTED:
@@ -370,7 +375,8 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
             volume.series_instance_uid,
         )
 
-        export_path = _volume_export_path(export_base, study_dt, pseudonym, series_name)
+        subject_id = sanitize_filename(pseudonym or volume.patient_id)
+        export_path = _volume_export_path(export_base, study_dt, subject_id, series_name)
         export_path.mkdir(parents=True, exist_ok=True)
         volume.exported_folder = str(export_path)
 
@@ -414,7 +420,8 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
             volume.series_instance_uid,
         )
 
-        output_path = _volume_output_path(output_base, study_dt, pseudonym, series_name)
+        subject_id = sanitize_filename(pseudonym or volume.patient_id)
+        output_path = _volume_output_path(output_base, study_dt, subject_id, series_name)
         output_path.mkdir(parents=True, exist_ok=True)
 
         cmd = [
