@@ -316,7 +316,7 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
 
         query = QueryDataset.create(
             StudyDate=(start.date(), end.date()),
-            StudyTime=(start.time(), end.time()),
+            StudyTime=(datetime.min.time(), datetime.max.time().replace(microsecond=0)),
         )
 
         if mf.modality:
