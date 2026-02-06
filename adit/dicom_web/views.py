@@ -33,10 +33,11 @@ from .renderers import (
     StowApplicationDicomJsonRenderer,
     WadoApplicationDicomJsonRenderer,
     WadoMultipartApplicationDicomRenderer,
+    WadoMultipartApplicationNiftiRenderer,
 )
 from .utils.qidors_utils import qido_find
 from .utils.stowrs_utils import stow_store
-from .utils.wadors_utils import wado_retrieve
+from .utils.wadors_utils import wado_retrieve, wado_retrieve_nifti
 
 logger = logging.getLogger(__name__)
 
@@ -323,6 +324,31 @@ class RetrieveStudyAPIView(RetrieveAPIView):
             )
 
 
+class RetrieveNiftiStudyAPIView(RetrieveAPIView):
+    renderer_classes = [WadoMultipartApplicationNiftiRenderer]
+
+    async def get(
+        self, request: AuthenticatedApiRequest, ae_title: str, study_uid: str
+    ) -> StreamingHttpResponse:
+        async with self.track_session(request.user) as session:
+            source_server = await self._get_dicom_server(request, ae_title)
+
+            query = self.query.copy()
+            query["StudyInstanceUID"] = study_uid
+
+            images = wado_retrieve_nifti(source_server, query, "STUDY")
+
+            renderer = cast(
+                WadoMultipartApplicationNiftiRenderer, getattr(request, "accepted_renderer")
+            )
+            return StreamingHttpResponse(
+                streaming_content=_StreamingSessionWrapper(
+                    renderer.render(images), session, self._finalize_statistic
+                ),
+                content_type=renderer.content_type,
+            )
+
+
 class RetrieveStudyMetadataAPIView(RetrieveStudyAPIView):
     async def get(
         self, request: AuthenticatedApiRequest, ae_title: str, study_uid: str
@@ -380,6 +406,32 @@ class RetrieveSeriesAPIView(RetrieveAPIView):
             images = await self.peek_images(images)
 
             renderer = cast(DicomWebWadoRenderer, getattr(request, "accepted_renderer"))
+            return StreamingHttpResponse(
+                streaming_content=_StreamingSessionWrapper(
+                    renderer.render(images), session, self._finalize_statistic
+                ),
+                content_type=renderer.content_type,
+            )
+
+
+class RetrieveNiftiSeriesAPIView(RetrieveAPIView):
+    renderer_classes = [WadoMultipartApplicationNiftiRenderer]
+
+    async def get(
+        self, request: AuthenticatedApiRequest, ae_title: str, study_uid: str, series_uid: str
+    ) -> StreamingHttpResponse:
+        async with self.track_session(request.user) as session:
+            source_server = await self._get_dicom_server(request, ae_title)
+
+            query = self.query.copy()
+            query["StudyInstanceUID"] = study_uid
+            query["SeriesInstanceUID"] = series_uid
+
+            images = wado_retrieve_nifti(source_server, query, "SERIES")
+
+            renderer = cast(
+                WadoMultipartApplicationNiftiRenderer, getattr(request, "accepted_renderer")
+            )
             return StreamingHttpResponse(
                 streaming_content=_StreamingSessionWrapper(
                     renderer.render(images), session, self._finalize_statistic
@@ -452,6 +504,38 @@ class RetrieveImageAPIView(RetrieveAPIView):
             images = await self.peek_images(images)
 
             renderer = cast(DicomWebWadoRenderer, getattr(request, "accepted_renderer"))
+            return StreamingHttpResponse(
+                streaming_content=_StreamingSessionWrapper(
+                    renderer.render(images), session, self._finalize_statistic
+                ),
+                content_type=renderer.content_type,
+            )
+
+
+class RetrieveNiftiImageAPIView(RetrieveAPIView):
+    renderer_classes = [WadoMultipartApplicationNiftiRenderer]
+
+    async def get(
+        self,
+        request: AuthenticatedApiRequest,
+        ae_title: str,
+        study_uid: str,
+        series_uid: str,
+        image_uid: str,
+    ) -> StreamingHttpResponse:
+        async with self.track_session(request.user) as session:
+            source_server = await self._get_dicom_server(request, ae_title)
+
+            query = self.query.copy()
+            query["StudyInstanceUID"] = study_uid
+            query["SeriesInstanceUID"] = series_uid
+            query["SOPInstanceUID"] = image_uid
+
+            images = wado_retrieve_nifti(source_server, query, "IMAGE")
+
+            renderer = cast(
+                WadoMultipartApplicationNiftiRenderer, getattr(request, "accepted_renderer")
+            )
             return StreamingHttpResponse(
                 streaming_content=_StreamingSessionWrapper(
                     renderer.render(images), session, self._finalize_statistic

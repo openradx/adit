@@ -87,6 +87,37 @@ class WadoMultipartApplicationDicomRenderer(DicomWebWadoRenderer):
         return stream.getvalue()
 
 
+class WadoMultipartApplicationNiftiRenderer(DicomWebWadoRenderer):
+    media_type = "multipart/related; type=application/octet-stream"
+    format = "multipart"
+    subtype: str = "application/octet-stream"
+    boundary: str = "nifti-boundary"
+    charset: str = "utf-8"
+
+    @property
+    def content_type(self) -> str:
+        return f"{self.media_type}; boundary={self.boundary}"
+
+    def render(self, images: AsyncIterator[tuple[str, BytesIO]]) -> AsyncIterator[bytes]:
+        async def streaming_content():
+            first_part = True
+            async for filename, file_content in images:
+                if first_part:
+                    yield f"--{self.boundary}\r\n".encode()
+                    first_part = False
+                else:
+                    yield f"\r\n--{self.boundary}\r\n".encode()
+
+                yield "Content-Type: application/octet-stream\r\n".encode()
+                yield f'Content-Disposition: attachment; filename="{filename}"\r\n\r\n'.encode()
+
+                yield file_content.getvalue()
+
+            yield f"\r\n--{self.boundary}--\r\n".encode()
+
+        return streaming_content()
+
+
 class WadoApplicationDicomJsonRenderer(DicomWebWadoRenderer):
     media_type = "application/dicom+json"
     format = "json"

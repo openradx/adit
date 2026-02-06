@@ -49,6 +49,48 @@ def is_retriable_http_status(status_code: int) -> bool:
     return status_code in retriable_status_codes
 
 
+class DcmToNiftiConversionError(Exception):
+    """Base exception for DICOM to NIfTI conversion errors."""
+
+    pass
+
+
+class NoValidDicomError(DcmToNiftiConversionError):
+    """Exception raised when no valid DICOM files are found."""
+
+    pass
+
+
+class InvalidDicomError(DcmToNiftiConversionError):
+    """Exception raised when DICOM files are invalid or corrupt."""
+
+    pass
+
+
+class OutputDirectoryError(DcmToNiftiConversionError):
+    """Exception raised when there are issues with the output directory."""
+
+    pass
+
+
+class InputDirectoryError(DcmToNiftiConversionError):
+    """Exception raised when there are issues with the input directory."""
+
+    pass
+
+
+class ExternalToolError(DcmToNiftiConversionError):
+    """Exception raised when there are issues with the external dcm2niix tool."""
+
+    pass
+
+
+class NoSpatialDataError(DcmToNiftiConversionError):
+    """Exception raised when DICOM data doesn't have spatial attributes."""
+
+    pass
+
+
 class BatchFileSizeError(Exception):
     def __init__(self, batch_tasks_count: int, max_batch_size: int) -> None:
         super().__init__("Too many batch tasks.")
