@@ -36,7 +36,7 @@ def test_find_studies_raises_when_time_window_too_small(mocker: MockerFixture, s
         end_date=date(2024, 1, 1),
         partition_granularity=MassTransferJob.PartitionGranularity.DAILY,
     )
-    mf = MassTransferFilter.objects.create(owner=user, modality="CT")
+    mf = MassTransferFilter.objects.create(owner=user, name="CT Filter", modality="CT")
     job.filters.add(mf)
 
     start = timezone.now()
@@ -73,7 +73,7 @@ def test_process_groups_pseudonyms_by_study(mocker: MockerFixture, settings, tmp
         end_date=date(2024, 1, 1),
         partition_granularity=MassTransferJob.PartitionGranularity.DAILY,
     )
-    mf = MassTransferFilter.objects.create(owner=user, modality="CT")
+    mf = MassTransferFilter.objects.create(owner=user, name="CT Filter", modality="CT")
     job.filters.add(mf)
 
     task = MassTransferTask.objects.create(
@@ -168,7 +168,7 @@ def test_process_opt_out_skips_pseudonymization(
         partition_granularity=MassTransferJob.PartitionGranularity.DAILY,
         pseudonymize=False,
     )
-    mf = MassTransferFilter.objects.create(owner=user, modality="CT")
+    mf = MassTransferFilter.objects.create(owner=user, name="CT Filter", modality="CT")
     job.filters.add(mf)
 
     task = MassTransferTask.objects.create(

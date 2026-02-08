@@ -149,6 +149,11 @@ class MassTransferFilterCreateView(LoginRequiredMixin, MassTransferLockedMixin, 
     template_name = "mass_transfer/mass_transfer_filter_form.html"
     success_url = cast(str, reverse_lazy("mass_transfer_filter_list"))
 
+    def get_form_kwargs(self) -> dict[str, Any]:
+        kwargs = super().get_form_kwargs()
+        kwargs["user"] = self.request.user
+        return kwargs
+
     def form_valid(self, form):
         form.instance.owner = self.request.user
         return super().form_valid(form)
@@ -159,6 +164,11 @@ class MassTransferFilterUpdateView(LoginRequiredMixin, MassTransferLockedMixin, 
     form_class = MassTransferFilterForm
     template_name = "mass_transfer/mass_transfer_filter_form.html"
     success_url = cast(str, reverse_lazy("mass_transfer_filter_list"))
+
+    def get_form_kwargs(self) -> dict[str, Any]:
+        kwargs = super().get_form_kwargs()
+        kwargs["user"] = self.request.user
+        return kwargs
 
     def get_queryset(self):
         return MassTransferFilter.objects.filter(owner=self.request.user)

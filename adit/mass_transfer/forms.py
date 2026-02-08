@@ -4,7 +4,7 @@ from typing import cast
 
 from adit_radis_shared.accounts.models import User
 from crispy_forms.helper import FormHelper
-from crispy_forms.layout import Column, Div, Field, HTML, Layout, Row, Submit
+from crispy_forms.layout import HTML, Column, Div, Field, Layout, Row, Submit
 from django import forms
 from django.core.exceptions import ValidationError
 
@@ -78,19 +78,30 @@ class MassTransferFilterForm(forms.ModelForm):
         }
 
     def __init__(self, *args, **kwargs):
+        self.user: User | None = kwargs.pop("user", None)
         super().__init__(*args, **kwargs)
         self.helper = FormHelper(self)
         self.helper.render_unmentioned_fields = True
         self.helper.add_input(Submit("save", "Save Filter"))
+
+    def clean_name(self):
+        name = (self.cleaned_data.get("name") or "").strip()
+        if not name:
+            raise ValidationError("Name is required.")
+        if self.user is not None:
+            qs = MassTransferFilter.objects.filter(owner=self.user, name=name)
+            if self.instance.pk:
+                qs = qs.exclude(pk=self.instance.pk)
+            if qs.exists():
+                raise ValidationError("You already have a filter with this name.")
+        return name
 
 
 class MassTransferJobForm(forms.ModelForm):
     filters = forms.ModelMultipleChoiceField(
         queryset=MassTransferFilter.objects.all(),
         required=True,
-        widget=forms.CheckboxSelectMultiple(
-            attrs={"class": "mass-transfer-filter-list"},
-        ),
+        widget=forms.CheckboxSelectMultiple,
     )
 
     tasks: list[MassTransferTask]
@@ -180,7 +191,7 @@ class MassTransferJobForm(forms.ModelForm):
             Div(
                 HTML("<div class='card-header fw-semibold'>Filters</div>"),
                 Div(
-                    Field("filters"),
+                    Field("filters", wrapper_class="mass-transfer-filter-list"),
                     css_class="card-body",
                 ),
                 css_class="card mb-3",
