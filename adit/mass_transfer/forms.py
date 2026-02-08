@@ -88,7 +88,9 @@ class MassTransferJobForm(forms.ModelForm):
     filters = forms.ModelMultipleChoiceField(
         queryset=MassTransferFilter.objects.all(),
         required=True,
-        widget=forms.CheckboxSelectMultiple,
+        widget=forms.CheckboxSelectMultiple(
+            attrs={"class": "mass-transfer-filter-list"},
+        ),
     )
 
     tasks: list[MassTransferTask]
@@ -130,6 +132,8 @@ class MassTransferJobForm(forms.ModelForm):
         self.user: User = kwargs.pop("user")
 
         super().__init__(*args, **kwargs)
+
+        self.fields["filters"].queryset = MassTransferFilter.objects.filter(owner=self.user)
 
         self.fields["source"] = DicomNodeChoiceField("source", self.user)
         self.fields["source"].widget.attrs["@change"] = "onSourceChange($event)"
@@ -209,6 +213,12 @@ class MassTransferJobForm(forms.ModelForm):
         if start_date and end_date and end_date < start_date:
             raise ValidationError("End date must be on or after the start date.")
         return cleaned
+
+    def clean_filters(self):
+        filters = self.cleaned_data["filters"]
+        if filters.exclude(owner=self.user).exists():
+            raise ValidationError("Selected filters are not available to this user.")
+        return filters
 
     def _save_tasks(self, job: MassTransferJob) -> None:
         partitions = build_partitions(

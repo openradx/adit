@@ -15,6 +15,13 @@ class MassTransferSettings(DicomAppSettings):
 
 
 class MassTransferFilter(models.Model):
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="mass_transfer_filters",
+        null=True,
+        blank=True,
+    )
     name = models.CharField(max_length=150, blank=True, default="")
     modality = models.CharField(max_length=16, blank=True, default="")
     institution_name = models.CharField(max_length=128, blank=True, default="")
@@ -72,7 +79,7 @@ class MassTransferJob(DicomJob):
         return reverse("mass_transfer_job_detail", args=[self.pk])
 
     def queue_pending_tasks(self):
-        """Queues all pending tasks of this job in the mass_transfer queue."""
+        """Queues all pending tasks of this job in the dicom queue."""
         assert self.status == DicomJob.Status.PENDING
 
         priority = self.default_priority
@@ -106,7 +113,7 @@ class MassTransferTask(DicomTask):
         return reverse("mass_transfer_task_detail", args=[self.pk])
 
     def queue_pending_task(self) -> None:
-        """Queues a mass transfer task."""
+        """Queues a mass transfer task in the dicom queue."""
         assert self.status == DicomTask.Status.PENDING
         assert self.queued_job is None
 

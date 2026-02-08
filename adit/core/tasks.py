@@ -230,7 +230,7 @@ def process_dicom_task(context: JobContext, model_label: str, task_id: int):
 
 
 @app.task(
-    queue="mass_transfer",
+    queue="dicom",
     pass_context=True,
     retry=DICOM_TASK_RETRY_STRATEGY,
 )
