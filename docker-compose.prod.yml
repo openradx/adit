@@ -78,17 +78,6 @@ services:
       <<: *deploy
       replicas: ${DICOM_WORKER_REPLICAS:-3}
 
-  mass_transfer_worker:
-    <<: *default-app
-    command: >
-      bash -c "
-        wait-for-it -s postgres.local:5432 -t 60 &&
-        ./manage.py bg_worker -q mass_transfer
-      "
-    deploy:
-      <<: *deploy
-      replicas: ${MASS_TRANSFER_WORKER_REPLICAS:-1}
-
   receiver:
     <<: *default-app
     ports:

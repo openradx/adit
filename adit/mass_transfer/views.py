@@ -139,12 +139,19 @@ class MassTransferFilterListView(LoginRequiredMixin, MassTransferLockedMixin, Li
     template_name = "mass_transfer/mass_transfer_filter_list.html"
     context_object_name = "filters"
 
+    def get_queryset(self):
+        return MassTransferFilter.objects.filter(owner=self.request.user)
+
 
 class MassTransferFilterCreateView(LoginRequiredMixin, MassTransferLockedMixin, CreateView):
     model = MassTransferFilter
     form_class = MassTransferFilterForm
     template_name = "mass_transfer/mass_transfer_filter_form.html"
     success_url = cast(str, reverse_lazy("mass_transfer_filter_list"))
+
+    def form_valid(self, form):
+        form.instance.owner = self.request.user
+        return super().form_valid(form)
 
 
 class MassTransferFilterUpdateView(LoginRequiredMixin, MassTransferLockedMixin, UpdateView):
@@ -153,8 +160,14 @@ class MassTransferFilterUpdateView(LoginRequiredMixin, MassTransferLockedMixin, 
     template_name = "mass_transfer/mass_transfer_filter_form.html"
     success_url = cast(str, reverse_lazy("mass_transfer_filter_list"))
 
+    def get_queryset(self):
+        return MassTransferFilter.objects.filter(owner=self.request.user)
+
 
 class MassTransferFilterDeleteView(LoginRequiredMixin, MassTransferLockedMixin, DeleteView):
     model = MassTransferFilter
     template_name = "mass_transfer/mass_transfer_filter_confirm_delete.html"
     success_url = cast(str, reverse_lazy("mass_transfer_filter_list"))
+
+    def get_queryset(self):
+        return MassTransferFilter.objects.filter(owner=self.request.user)
