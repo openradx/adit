@@ -22,7 +22,7 @@ class MassTransferFilter(models.Model):
         null=True,
         blank=True,
     )
-    name = models.CharField(max_length=150, blank=True, default="")
+    name = models.CharField(max_length=150)
     modality = models.CharField(max_length=16, blank=True, default="")
     institution_name = models.CharField(max_length=128, blank=True, default="")
     apply_institution_on_study = models.BooleanField(default=True)
@@ -32,6 +32,16 @@ class MassTransferFilter(models.Model):
 
     class Meta:
         ordering = ("name", "id")
+        constraints = [
+            models.CheckConstraint(
+                condition=~models.Q(name=""),
+                name="mass_transfer_filter_name_not_blank",
+            ),
+            models.UniqueConstraint(
+                fields=["owner", "name"],
+                name="mass_transfer_filter_unique_owner_name",
+            ),
+        ]
 
     def __str__(self) -> str:
         if self.name:
