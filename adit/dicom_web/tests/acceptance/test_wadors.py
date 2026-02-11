@@ -625,8 +625,9 @@ def test_retrieve_nifti_series(channels_live_server: ChannelsLiveServer):
     adit_client = AditClient(server_url=channels_live_server.url, auth_token=token)
 
     metadata = load_sample_dicoms_metadata("1001")
-    study_uid: str = metadata["StudyInstanceUID"].iloc[0]
-    series_uid: str = metadata["SeriesInstanceUID"].iloc[0]
+    image_metadata = metadata[~metadata["Modality"].isin({"SR", "KO", "PR"})]
+    study_uid: str = image_metadata["StudyInstanceUID"].iloc[0]
+    series_uid: str = image_metadata["SeriesInstanceUID"].iloc[0]
 
     results = adit_client.retrieve_nifti_series(server.ae_title, study_uid, series_uid)
 
@@ -681,8 +682,9 @@ def test_iter_nifti_series(channels_live_server: ChannelsLiveServer):
     adit_client = AditClient(server_url=channels_live_server.url, auth_token=token)
 
     metadata = load_sample_dicoms_metadata("1001")
-    study_uid: str = metadata["StudyInstanceUID"].iloc[0]
-    series_uid: str = metadata["SeriesInstanceUID"].iloc[0]
+    image_metadata = metadata[~metadata["Modality"].isin({"SR", "KO", "PR"})]
+    study_uid: str = image_metadata["StudyInstanceUID"].iloc[0]
+    series_uid: str = image_metadata["SeriesInstanceUID"].iloc[0]
 
     retrieved = adit_client.retrieve_nifti_series(server.ae_title, study_uid, series_uid)
     iterated = list(adit_client.iter_nifti_series(server.ae_title, study_uid, series_uid))
@@ -706,9 +708,10 @@ def test_retrieve_nifti_image(channels_live_server: ChannelsLiveServer):
     adit_client = AditClient(server_url=channels_live_server.url, auth_token=token)
 
     metadata = load_sample_dicoms_metadata("1001")
-    study_uid: str = metadata["StudyInstanceUID"].iloc[0]
-    series_uid: str = metadata["SeriesInstanceUID"].iloc[0]
-    image_uid: str = metadata["SOPInstanceUID"].iloc[0]
+    image_metadata = metadata[~metadata["Modality"].isin({"SR", "KO", "PR"})]
+    study_uid: str = image_metadata["StudyInstanceUID"].iloc[0]
+    series_uid: str = image_metadata["SeriesInstanceUID"].iloc[0]
+    image_uid: str = image_metadata["SOPInstanceUID"].iloc[0]
 
     results = adit_client.retrieve_nifti_image(server.ae_title, study_uid, series_uid, image_uid)
 
@@ -739,16 +742,13 @@ def test_iter_nifti_image(channels_live_server: ChannelsLiveServer):
     adit_client = AditClient(server_url=channels_live_server.url, auth_token=token)
 
     metadata = load_sample_dicoms_metadata("1001")
-    study_uid: str = metadata["StudyInstanceUID"].iloc[0]
-    series_uid: str = metadata["SeriesInstanceUID"].iloc[0]
-    image_uid: str = metadata["SOPInstanceUID"].iloc[0]
+    image_metadata = metadata[~metadata["Modality"].isin({"SR", "KO", "PR"})]
+    study_uid: str = image_metadata["StudyInstanceUID"].iloc[0]
+    series_uid: str = image_metadata["SeriesInstanceUID"].iloc[0]
+    image_uid: str = image_metadata["SOPInstanceUID"].iloc[0]
 
-    retrieved = adit_client.retrieve_nifti_image(
-        server.ae_title, study_uid, series_uid, image_uid
-    )
-    iterated = list(
-        adit_client.iter_nifti_image(server.ae_title, study_uid, series_uid, image_uid)
-    )
+    retrieved = adit_client.retrieve_nifti_image(server.ae_title, study_uid, series_uid, image_uid)
+    iterated = list(adit_client.iter_nifti_image(server.ae_title, study_uid, series_uid, image_uid))
 
     assert len(iterated) == len(retrieved), (
         "iter and retrieve should return the same number of files"
