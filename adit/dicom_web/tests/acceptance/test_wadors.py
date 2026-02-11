@@ -1,6 +1,8 @@
 from http import HTTPStatus
 from io import BytesIO
+from typing import cast
 
+import pandas as pd
 import pydicom
 import pytest
 from adit_client import AditClient
@@ -625,7 +627,7 @@ def test_retrieve_nifti_series(channels_live_server: ChannelsLiveServer):
     adit_client = AditClient(server_url=channels_live_server.url, auth_token=token)
 
     metadata = load_sample_dicoms_metadata("1001")
-    image_metadata = metadata[~metadata["Modality"].isin({"SR", "KO", "PR"})]
+    image_metadata = cast(pd.DataFrame, metadata[~metadata["Modality"].isin(["SR", "KO", "PR"])])
     study_uid: str = image_metadata["StudyInstanceUID"].iloc[0]
     series_uid: str = image_metadata["SeriesInstanceUID"].iloc[0]
 
@@ -682,7 +684,7 @@ def test_iter_nifti_series(channels_live_server: ChannelsLiveServer):
     adit_client = AditClient(server_url=channels_live_server.url, auth_token=token)
 
     metadata = load_sample_dicoms_metadata("1001")
-    image_metadata = metadata[~metadata["Modality"].isin({"SR", "KO", "PR"})]
+    image_metadata = cast(pd.DataFrame, metadata[~metadata["Modality"].isin(["SR", "KO", "PR"])])
     study_uid: str = image_metadata["StudyInstanceUID"].iloc[0]
     series_uid: str = image_metadata["SeriesInstanceUID"].iloc[0]
 
@@ -708,7 +710,7 @@ def test_retrieve_nifti_image(channels_live_server: ChannelsLiveServer):
     adit_client = AditClient(server_url=channels_live_server.url, auth_token=token)
 
     metadata = load_sample_dicoms_metadata("1001")
-    image_metadata = metadata[~metadata["Modality"].isin({"SR", "KO", "PR"})]
+    image_metadata = cast(pd.DataFrame, metadata[~metadata["Modality"].isin(["SR", "KO", "PR"])])
     study_uid: str = image_metadata["StudyInstanceUID"].iloc[0]
     series_uid: str = image_metadata["SeriesInstanceUID"].iloc[0]
     image_uid: str = image_metadata["SOPInstanceUID"].iloc[0]
@@ -742,7 +744,7 @@ def test_iter_nifti_image(channels_live_server: ChannelsLiveServer):
     adit_client = AditClient(server_url=channels_live_server.url, auth_token=token)
 
     metadata = load_sample_dicoms_metadata("1001")
-    image_metadata = metadata[~metadata["Modality"].isin({"SR", "KO", "PR"})]
+    image_metadata = cast(pd.DataFrame, metadata[~metadata["Modality"].isin(["SR", "KO", "PR"])])
     study_uid: str = image_metadata["StudyInstanceUID"].iloc[0]
     series_uid: str = image_metadata["SeriesInstanceUID"].iloc[0]
     image_uid: str = image_metadata["SOPInstanceUID"].iloc[0]
