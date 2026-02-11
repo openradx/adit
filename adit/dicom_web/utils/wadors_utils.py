@@ -58,61 +58,64 @@ async def wado_retrieve(
         dicom_manipulator.manipulate(ds, pseudonym, trial_protocol_id, trial_protocol_name)
         loop.call_soon_threadsafe(queue.put_nowait, ds)
 
+    def fetch_with_sentinel():
+        """Run the fetch and put a sentinel when done.
+
+        Both data items and sentinel are put via call_soon_threadsafe from
+        the same thread, guaranteeing FIFO ordering in the event loop.
+        """
+        try:
+            if level == "STUDY":
+                operator.fetch_study(
+                    patient_id=query_ds.PatientID,
+                    study_uid=query_ds.StudyInstanceUID,
+                    callback=callback,
+                )
+            elif level == "SERIES":
+                operator.fetch_series(
+                    patient_id=query_ds.PatientID,
+                    study_uid=query_ds.StudyInstanceUID,
+                    series_uid=query_ds.SeriesInstanceUID,
+                    callback=callback,
+                )
+            elif level == "IMAGE":
+                assert query_ds.has("SeriesInstanceUID")
+                operator.fetch_image(
+                    patient_id=query_ds.PatientID,
+                    study_uid=query_ds.StudyInstanceUID,
+                    series_uid=query_ds.SeriesInstanceUID,
+                    image_uid=query_ds.SOPInstanceUID,
+                    callback=callback,
+                )
+            else:
+                raise ValueError(f"Invalid WADO-RS level: {level}.")
+        finally:
+            loop.call_soon_threadsafe(queue.put_nowait, None)
+
     try:
-        if level == "STUDY":
-            fetch_coro = sync_to_async(operator.fetch_study, thread_sensitive=False)(
-                patient_id=query_ds.PatientID,
-                study_uid=query_ds.StudyInstanceUID,
-                callback=callback,
-            )
-        elif level == "SERIES":
-            fetch_coro = sync_to_async(operator.fetch_series, thread_sensitive=False)(
-                patient_id=query_ds.PatientID,
-                study_uid=query_ds.StudyInstanceUID,
-                series_uid=query_ds.SeriesInstanceUID,
-                callback=callback,
-            )
-        elif level == "IMAGE":
-            assert query_ds.has("SeriesInstanceUID")
-            fetch_coro = sync_to_async(operator.fetch_image, thread_sensitive=False)(
-                patient_id=query_ds.PatientID,
-                study_uid=query_ds.StudyInstanceUID,
-                series_uid=query_ds.SeriesInstanceUID,
-                image_uid=query_ds.SOPInstanceUID,
-                callback=callback,
-            )
-        else:
-            raise ValueError(f"Invalid WADO-RS level: {level}.")
+        fetch_task = asyncio.create_task(
+            sync_to_async(fetch_with_sentinel, thread_sensitive=False)()
+        )
 
-        async def add_sentinel_when_done(task: asyncio.Task[None]) -> None:
-            """Wait for fetch task to complete and add sentinel to signal end of stream.
+        while True:
+            queue_ds = await queue.get()
+            if queue_ds is None:
+                break
+            yield queue_ds
 
-            The sentinel is added even if the task is cancelled, ensuring the consumer
-            loop always terminates cleanly.
-            """
-            try:
-                await task
-            finally:
-                await queue.put(None)
-
-        async with asyncio.TaskGroup() as task_group:
-            fetch_task = task_group.create_task(fetch_coro)
-            task_group.create_task(add_sentinel_when_done(fetch_task))
-
-            while True:
-                queue_ds = await queue.get()
-                if queue_ds is None:
-                    break
-                yield queue_ds
+        await fetch_task
 
     except ExceptionGroup as eg:
-        # Extract the first relevant exception
         for exc in eg.exceptions:
             if isinstance(exc, RetriableDicomError):
                 raise ServiceUnavailableApiError(str(exc))
             elif isinstance(exc, DicomError):
                 raise BadGatewayApiError(str(exc))
-        raise  # Re-raise if no handled exception found
+        raise
+    except RetriableDicomError as err:
+        raise ServiceUnavailableApiError(str(err))
+    except DicomError as err:
+        raise BadGatewayApiError(str(err))
 
 
 def _fetch_dicom_data(
@@ -195,16 +198,16 @@ async def wado_retrieve_nifti(
                     "SeriesInstanceUID": series.SeriesInstanceUID,
                 }
 
-                dicom_images = await sync_to_async(
-                    _fetch_dicom_data, thread_sensitive=False
-                )(source_server, series_query, "SERIES")
+                dicom_images = await sync_to_async(_fetch_dicom_data, thread_sensitive=False)(
+                    source_server, series_query, "SERIES"
+                )
 
                 async for filename, file_content in _process_single_fetch(dicom_images):
                     yield filename, file_content
         else:
-            dicom_images = await sync_to_async(
-                _fetch_dicom_data, thread_sensitive=False
-            )(source_server, query, level)
+            dicom_images = await sync_to_async(_fetch_dicom_data, thread_sensitive=False)(
+                source_server, query, level
+            )
             async for filename, file_content in _process_single_fetch(dicom_images):
                 yield filename, file_content
 
@@ -231,9 +234,7 @@ async def _process_single_fetch(
 
         for file_idx, dicom_image in enumerate(dicom_images):
             dicom_file_path = temp_path / f"dicom_file_{file_idx}.dcm"
-            await sync_to_async(write_dataset, thread_sensitive=False)(
-                dicom_image, dicom_file_path
-            )
+            await sync_to_async(write_dataset, thread_sensitive=False)(dicom_image, dicom_file_path)
 
         nifti_output_dir = temp_path / "nifti_output"
         await aiofiles.os.makedirs(nifti_output_dir, exist_ok=True)
