@@ -1,4 +1,5 @@
 import importlib.metadata
+import os
 from io import BytesIO
 from typing import Iterator, Union
 
@@ -281,7 +282,7 @@ class AditClient:
         if not content_disposition or "filename=" not in content_disposition:
             raise ValueError("No filename found in Content-Disposition header")
         filename = content_disposition.split("filename=")[1].strip('"')
-        return filename
+        return os.path.basename(filename)
 
     def _extract_part_content_with_headers(self, part: bytes) -> Union[bytes, None]:
         """Extract content from a multipart part, keeping headers intact.

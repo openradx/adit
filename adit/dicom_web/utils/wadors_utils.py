@@ -219,8 +219,8 @@ async def _process_single_fetch(
 ) -> AsyncIterator[tuple[str, BytesIO]]:
     """Convert a list of DICOM datasets to NIfTI format and yield the resulting files.
 
-    For each conversion, yields files in order: JSON first, then NIfTI (.nii.gz or .nii),
-    then bval, then bvec.
+    For each conversion output group (identified by base filename), yields files in order:
+    JSON sidecar first, then NIfTI (.nii.gz or .nii), then bval, then bvec.
 
     If conversion fails with NoValidDicomError or NoSpatialDataError, a warning is logged
     because the series was expected to contain image data (non-image modalities are filtered
@@ -273,27 +273,11 @@ async def _process_single_fetch(
             elif ext == ".bvec":
                 file_pairs.setdefault(base_name, {})["bvec"] = filename
 
+        file_order = ["json", "nifti", "bval", "bvec"]
         for _base_name, files in file_pairs.items():
-            if "json" in files:
-                json_file_path = os.path.join(nifti_output_dir, files["json"])
-                async with aiofiles.open(json_file_path, "rb") as f:
-                    json_content = await f.read()
-                    yield files["json"], BytesIO(json_content)
-
-            if "nifti" in files:
-                nifti_file_path = os.path.join(nifti_output_dir, files["nifti"])
-                async with aiofiles.open(nifti_file_path, "rb") as f:
-                    nifti_content = await f.read()
-                    yield files["nifti"], BytesIO(nifti_content)
-
-            if "bval" in files:
-                bval_file_path = os.path.join(nifti_output_dir, files["bval"])
-                async with aiofiles.open(bval_file_path, "rb") as f:
-                    bval_content = await f.read()
-                    yield files["bval"], BytesIO(bval_content)
-
-            if "bvec" in files:
-                bvec_file_path = os.path.join(nifti_output_dir, files["bvec"])
-                async with aiofiles.open(bvec_file_path, "rb") as f:
-                    bvec_content = await f.read()
-                    yield files["bvec"], BytesIO(bvec_content)
+            for file_type in file_order:
+                if file_type in files:
+                    file_path = os.path.join(nifti_output_dir, files[file_type])
+                    async with aiofiles.open(file_path, "rb") as f:
+                        content = await f.read()
+                        yield files[file_type], BytesIO(content)

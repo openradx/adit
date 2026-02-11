@@ -662,7 +662,9 @@ def test_iter_nifti_study(channels_live_server: ChannelsLiveServer):
     retrieved = adit_client.retrieve_nifti_study(server.ae_title, study_uid)
     iterated = list(adit_client.iter_nifti_study(server.ae_title, study_uid))
 
-    assert len(iterated) == len(retrieved), "iter and retrieve should return the same number of files"
+    assert len(iterated) == len(retrieved), (
+        "iter and retrieve should return the same number of files"
+    )
     for (r_name, _), (i_name, _) in zip(retrieved, iterated):
         assert r_name == i_name, f"Filenames should match: {r_name} != {i_name}"
 
@@ -685,6 +687,71 @@ def test_iter_nifti_series(channels_live_server: ChannelsLiveServer):
     retrieved = adit_client.retrieve_nifti_series(server.ae_title, study_uid, series_uid)
     iterated = list(adit_client.iter_nifti_series(server.ae_title, study_uid, series_uid))
 
-    assert len(iterated) == len(retrieved), "iter and retrieve should return the same number of files"
+    assert len(iterated) == len(retrieved), (
+        "iter and retrieve should return the same number of files"
+    )
+    for (r_name, _), (i_name, _) in zip(retrieved, iterated):
+        assert r_name == i_name, f"Filenames should match: {r_name} != {i_name}"
+
+
+@pytest.mark.acceptance
+@pytest.mark.order("last")
+@pytest.mark.django_db(transaction=True)
+def test_retrieve_nifti_image(channels_live_server: ChannelsLiveServer):
+    setup_dimse_orthancs()
+
+    _, group, token = create_user_with_dicom_web_group_and_token()
+    server = DicomServer.objects.get(ae_title="ORTHANC1")
+    grant_access(group, server, source=True)
+    adit_client = AditClient(server_url=channels_live_server.url, auth_token=token)
+
+    metadata = load_sample_dicoms_metadata("1001")
+    study_uid: str = metadata["StudyInstanceUID"].iloc[0]
+    series_uid: str = metadata["SeriesInstanceUID"].iloc[0]
+    image_uid: str = metadata["SOPInstanceUID"].iloc[0]
+
+    results = adit_client.retrieve_nifti_image(server.ae_title, study_uid, series_uid, image_uid)
+
+    assert len(results) > 0, "Expected at least one NIfTI file"
+
+    filenames = [filename for filename, _ in results]
+    nifti_files = [f for f in filenames if f.endswith(".nii.gz") or f.endswith(".nii")]
+    json_files = [f for f in filenames if f.endswith(".json")]
+
+    assert len(nifti_files) > 0, "Expected at least one .nii.gz or .nii file"
+    assert len(json_files) > 0, "Expected at least one .json sidecar file"
+
+    for filename, content in results:
+        assert isinstance(content, BytesIO)
+        data = content.read()
+        assert len(data) > 0, f"File {filename} should not be empty"
+
+
+@pytest.mark.acceptance
+@pytest.mark.order("last")
+@pytest.mark.django_db(transaction=True)
+def test_iter_nifti_image(channels_live_server: ChannelsLiveServer):
+    setup_dimse_orthancs()
+
+    _, group, token = create_user_with_dicom_web_group_and_token()
+    server = DicomServer.objects.get(ae_title="ORTHANC1")
+    grant_access(group, server, source=True)
+    adit_client = AditClient(server_url=channels_live_server.url, auth_token=token)
+
+    metadata = load_sample_dicoms_metadata("1001")
+    study_uid: str = metadata["StudyInstanceUID"].iloc[0]
+    series_uid: str = metadata["SeriesInstanceUID"].iloc[0]
+    image_uid: str = metadata["SOPInstanceUID"].iloc[0]
+
+    retrieved = adit_client.retrieve_nifti_image(
+        server.ae_title, study_uid, series_uid, image_uid
+    )
+    iterated = list(
+        adit_client.iter_nifti_image(server.ae_title, study_uid, series_uid, image_uid)
+    )
+
+    assert len(iterated) == len(retrieved), (
+        "iter and retrieve should return the same number of files"
+    )
     for (r_name, _), (i_name, _) in zip(retrieved, iterated):
         assert r_name == i_name, f"Filenames should match: {r_name} != {i_name}"
