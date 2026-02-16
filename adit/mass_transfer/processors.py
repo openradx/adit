@@ -333,9 +333,18 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
                 )
 
             mid = start + (end - start) / 2
-            return self._find_studies(operator, mf, start, mid) + self._find_studies(
-                operator, mf, mid, end
-            )
+            left = self._find_studies(operator, mf, start, mid)
+            right = self._find_studies(operator, mf, mid + timedelta(seconds=1), end)
+
+            # Deduplicate: the date-level DICOM query can return the same study
+            # in both halves when the split falls within a single day.
+            seen: set[str] = {str(s.StudyInstanceUID) for s in left}
+            for study in right:
+                if str(study.StudyInstanceUID) not in seen:
+                    left.append(study)
+                    seen.add(str(study.StudyInstanceUID))
+
+            return left
 
         return studies
 
