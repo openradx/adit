@@ -1,5 +1,6 @@
 import asyncio
 import logging
+from collections.abc import Callable
 from typing import AsyncIterator, Literal
 
 from adrf.views import sync_to_async
@@ -32,7 +33,7 @@ async def wado_retrieve(
     query_ds = QueryDataset.from_dict(query)
 
     loop = asyncio.get_running_loop()
-    queue = asyncio.Queue[Dataset | None]()
+    queue: asyncio.Queue[Dataset | None] = asyncio.Queue()
 
     dicom_manipulator = DicomManipulator()
 
@@ -40,15 +41,30 @@ async def wado_retrieve(
         dicom_manipulator.manipulate(ds, pseudonym, trial_protocol_id, trial_protocol_name)
         loop.call_soon_threadsafe(queue.put_nowait, ds)
 
+    def fetch_with_sentinel(fetch_func: Callable[..., None], **kwargs: object) -> None:
+        """Wrapper that calls fetch function and schedules sentinel afterward.
+
+        By scheduling the sentinel via call_soon_threadsafe from within the same
+        thread (after the sync function completes), we guarantee FIFO ordering:
+        all data callbacks scheduled during fetch will be processed before the
+        sentinel because they were scheduled first.
+        """
+        try:
+            fetch_func(**kwargs)
+        finally:
+            loop.call_soon_threadsafe(queue.put_nowait, None)
+
     try:
         if level == "STUDY":
-            fetch_coro = sync_to_async(operator.fetch_study, thread_sensitive=False)(
+            fetch_coro = sync_to_async(fetch_with_sentinel, thread_sensitive=False)(
+                operator.fetch_study,
                 patient_id=query_ds.PatientID,
                 study_uid=query_ds.StudyInstanceUID,
                 callback=callback,
             )
         elif level == "SERIES":
-            fetch_coro = sync_to_async(operator.fetch_series, thread_sensitive=False)(
+            fetch_coro = sync_to_async(fetch_with_sentinel, thread_sensitive=False)(
+                operator.fetch_series,
                 patient_id=query_ds.PatientID,
                 study_uid=query_ds.StudyInstanceUID,
                 series_uid=query_ds.SeriesInstanceUID,
@@ -56,7 +72,8 @@ async def wado_retrieve(
             )
         elif level == "IMAGE":
             assert query_ds.has("SeriesInstanceUID")
-            fetch_coro = sync_to_async(operator.fetch_image, thread_sensitive=False)(
+            fetch_coro = sync_to_async(fetch_with_sentinel, thread_sensitive=False)(
+                operator.fetch_image,
                 patient_id=query_ds.PatientID,
                 study_uid=query_ds.StudyInstanceUID,
                 series_uid=query_ds.SeriesInstanceUID,
@@ -66,32 +83,25 @@ async def wado_retrieve(
         else:
             raise ValueError(f"Invalid WADO-RS level: {level}.")
 
-        async def add_sentinel_when_done(task: asyncio.Task[None]) -> None:
-            """Wait for fetch task to complete and add sentinel to signal end of stream.
+        # Start fetch task. Sentinel will be added via call_soon_threadsafe when done.
+        fetch_task = asyncio.create_task(fetch_coro)
 
-            The sentinel is added even if the task is cancelled, ensuring the consumer
-            loop always terminates cleanly.
-            """
-            try:
-                await task
-            finally:
-                await queue.put(None)
-
-        async with asyncio.TaskGroup() as task_group:
-            fetch_task = task_group.create_task(fetch_coro)
-            task_group.create_task(add_sentinel_when_done(fetch_task))
-
+        try:
             while True:
                 queue_ds = await queue.get()
                 if queue_ds is None:
                     break
                 yield queue_ds
+        finally:
+            # Ensure fetch task is properly awaited even if consumer stops early
+            if not fetch_task.done():
+                fetch_task.cancel()
+            try:
+                await fetch_task
+            except asyncio.CancelledError:
+                pass
 
-    except ExceptionGroup as eg:
-        # Extract the first relevant exception
-        for exc in eg.exceptions:
-            if isinstance(exc, RetriableDicomError):
-                raise ServiceUnavailableApiError(str(exc))
-            elif isinstance(exc, DicomError):
-                raise BadGatewayApiError(str(exc))
-        raise  # Re-raise if no handled exception found
+    except RetriableDicomError as exc:
+        raise ServiceUnavailableApiError(str(exc))
+    except DicomError as exc:
+        raise BadGatewayApiError(str(exc))
