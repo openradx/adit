@@ -75,6 +75,10 @@ async def wado_retrieve(
             try:
                 await task
             finally:
+                # Yield to event loop to process any pending call_soon_threadsafe callbacks
+                # that were scheduled during the sync fetch operation. Without this, the
+                # sentinel could be added before the dataset callbacks are processed.
+                await asyncio.sleep(0)
                 await queue.put(None)
 
         async with asyncio.TaskGroup() as task_group:
