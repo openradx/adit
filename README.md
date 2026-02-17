@@ -4,6 +4,8 @@
 
 ADIT (Automated DICOM Transfer) is a Swiss army knife to exchange DICOM data between various systems by using a convenient web frontend.
 
+The detailed documentation of ADIT can be found at <https://openradx.github.io/adit/>.
+
 **Developed at**
 
 <table>
@@ -75,9 +77,9 @@ sequenceDiagram
 - Help modals with detailed information for the most important features
 - An upload portal to upload DICOM images through a web interface that can be pseudonymized on the client (before the transfer happens)
 
-## API Client
+## ADIT Client
 
-[ADIT Client](https://github.com/openradx/adit-client) is a Python library to query, retrieve and upload DICOM images programmatically from a Python script. Thereby it can interact with DICOM (e.g. PACS) servers connected to an ADIT server.
+[ADIT Client](https://pypi.org/project/adit-client/) is a Python library that allows you to programmatically query, retrieve, and upload DICOM images from a Python script. It communicates with DICOM servers, such as PACS systems, via an ADIT server.
 
 ## Architectural overview
 
