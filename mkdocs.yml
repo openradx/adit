@@ -7,6 +7,9 @@ repo_name: openradx/adit
 repo_url: https://github.com/openradx/adit
 edit_uri: edit/main/docs/
 
+hooks:
+  - docs/hooks/copyright.py
+
 theme:
   name: material
   palette:
