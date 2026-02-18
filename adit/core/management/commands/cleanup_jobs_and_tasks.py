@@ -12,7 +12,8 @@ class Command(BaseCommand):
     help = "Cleanup all DICOM jobs and tasks that are stuck."
 
     def cleanup_tasks(self, model: type[DicomTask]):
-        job_model = model._meta.get_field("job").related_model
+        job_model: type[DicomJob] | None = model._meta.get_field("job").related_model  # type: ignore[assignment]
+        assert job_model is not None
         job_ids = set()
 
         message = "Unexpected crash while processing this task."

@@ -144,7 +144,7 @@ class MassTransferJobForm(forms.ModelForm):
 
         super().__init__(*args, **kwargs)
 
-        self.fields["filters"].queryset = MassTransferFilter.objects.filter(owner=self.user)
+        self.fields["filters"].queryset = MassTransferFilter.objects.filter(owner=self.user)  # type: ignore[union-attr]
 
         self.fields["source"] = DicomNodeChoiceField("source", self.user)
         self.fields["source"].widget.attrs["@change"] = "onSourceChange($event)"
@@ -219,6 +219,7 @@ class MassTransferJobForm(forms.ModelForm):
 
     def clean(self):
         cleaned = super().clean()
+        assert cleaned is not None
         start_date = cleaned.get("start_date")
         end_date = cleaned.get("end_date")
         if start_date and end_date and end_date < start_date:
