@@ -35,7 +35,6 @@ jobs:
             adit_dev-web:latest
             adit_dev-default_worker:latest
             adit_dev-dicom_worker:latest
-            adit_dev-mass_transfer_worker:latest
             adit_dev-receiver:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
