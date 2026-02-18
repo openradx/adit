@@ -410,6 +410,10 @@ class DicomTask(models.Model):
 
     def get_absolute_url(self) -> str: ...
 
+    def cleanup_on_failure(self) -> None:
+        """Hook for subclasses to clean up resources after task failure or timeout."""
+        pass
+
     def queue_pending_task(self) -> None:
         """Queues a dicom task."""
         assert self.status == DicomTask.Status.PENDING

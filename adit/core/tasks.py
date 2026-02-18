@@ -53,28 +53,15 @@ def backup_db(*args, **kwargs):
     call_command("dbbackup", "--clean", "-v 2")
 
 
-@app.task(
-    queue="dicom",
-    pass_context=True,
-    # TODO: Increase the priority slightly when it will be retried
-    # See https://github.com/procrastinate-org/procrastinate/issues/1096
-    #
-    # Two-level retry strategy:
-    # 1. Network layer (Stamina): Fast retries for transient failures (5-10 attempts)
-    #    - Applied at DIMSE/DICOMweb connector level
-    #    - Handles: connection timeouts, HTTP 503, temporary server unavailability
-    # 2. Task layer (Procrastinate): Slow retries for complete operation failures
-    #    - Applied here (max_attempts below)
-    #    - Only triggers after network-level retries are exhausted
-    #    - Retries the entire task
-    retry=RetryStrategy(
-        max_attempts=settings.DICOM_TASK_MAX_ATTEMPTS,
-        wait=settings.DICOM_TASK_RETRY_WAIT,
-        linear_wait=settings.DICOM_TASK_LINEAR_WAIT,
-        retry_exceptions={RetriableDicomError},
-    ),
+DICOM_TASK_RETRY_STRATEGY = RetryStrategy(
+    max_attempts=settings.DICOM_TASK_MAX_ATTEMPTS,
+    wait=settings.DICOM_TASK_RETRY_WAIT,
+    linear_wait=settings.DICOM_TASK_LINEAR_WAIT,
+    retry_exceptions={RetriableDicomError},
 )
-def process_dicom_task(context: JobContext, model_label: str, task_id: int):
+
+
+def _run_dicom_task(context: JobContext, model_label: str, task_id: int):
     assert context.job
 
     dicom_task = get_dicom_task(model_label, task_id)
@@ -125,6 +112,7 @@ def process_dicom_task(context: JobContext, model_label: str, task_id: int):
         dicom_task.message = "Task was aborted due to timeout."
         dicom_task.status = DicomTask.Status.FAILURE
         ensure_db_connection()
+        dicom_task.cleanup_on_failure()
 
     except RetriableDicomError as err:
         logger.exception("Retriable error occurred during %s.", dicom_task)
@@ -146,6 +134,7 @@ def process_dicom_task(context: JobContext, model_label: str, task_id: int):
             dicom_task.message = str(err)
 
         ensure_db_connection()
+        dicom_task.cleanup_on_failure()
         raise err
 
     except Exception as err:
@@ -161,6 +150,7 @@ def process_dicom_task(context: JobContext, model_label: str, task_id: int):
         dicom_task.log += traceback.format_exc()
 
         ensure_db_connection()
+        dicom_task.cleanup_on_failure()
 
     finally:
         dicom_task.end = timezone.now()
@@ -176,3 +166,35 @@ def process_dicom_task(context: JobContext, model_label: str, task_id: int):
 
         # TODO: https://github.com/procrastinate-org/procrastinate/issues/1106
         db.close_old_connections()
+
+
+@app.task(
+    queue="dicom",
+    pass_context=True,
+    # TODO: Increase the priority slightly when it will be retried
+    # See https://github.com/procrastinate-org/procrastinate/issues/1096
+    #
+    # Two-level retry strategy:
+    # 1. Network layer (Stamina): Fast retries for transient failures (5-10 attempts)
+    #    - Applied at DIMSE/DICOMweb connector level
+    #    - Handles: connection timeouts, HTTP 503, temporary server unavailability
+    # 2. Task layer (Procrastinate): Slow retries for complete operation failures
+    #    - Applied here (max_attempts below)
+    #    - Only triggers after network-level retries are exhausted
+    #    - Retries the entire task
+    retry=DICOM_TASK_RETRY_STRATEGY,
+)
+def process_dicom_task(context: JobContext, model_label: str, task_id: int):
+    _run_dicom_task(context, model_label, task_id)
+
+
+# Separate task function for mass transfer so Procrastinate can route it
+# independently (e.g. to a different queue or with different retry/priority)
+# without affecting other transfer types.
+@app.task(
+    queue="dicom",
+    pass_context=True,
+    retry=DICOM_TASK_RETRY_STRATEGY,
+)
+def process_mass_transfer_task(context: JobContext, model_label: str, task_id: int):
+    _run_dicom_task(context, model_label, task_id)

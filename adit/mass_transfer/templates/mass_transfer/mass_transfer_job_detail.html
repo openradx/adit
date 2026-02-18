@@ -1,0 +1,70 @@
+{% extends "mass_transfer/mass_transfer_layout.html" %}
+{% load crispy from crispy_forms_tags %}
+{% load render_table from django_tables2 %}
+{% load bootstrap_icon from common_extras %}
+{% load dicom_job_status_css_class from core_extras %}
+{% load job_control_panel from mass_transfer_extras %}
+{% block title %}
+    Mass Transfer Job
+{% endblock title %}
+{% block heading %}
+    <c-page-heading title="Mass Transfer Job">
+    <c-slot name="right">
+    <a href="{% url 'mass_transfer_job_list' %}" class="btn btn-secondary">
+        {% bootstrap_icon "list" %}
+        Job List
+    </a>
+    </c-slot>
+    </c-page-heading>
+{% endblock heading %}
+{% block content %}
+    <dl class="row">
+        <dt class="col-sm-3">Job ID</dt>
+        <dd class="col-sm-9">{{ job.id }}</dd>
+        <dt class="col-sm-3">Created At</dt>
+        <dd class="col-sm-9">{{ job.created }}</dd>
+        {% if user.is_staff %}
+            <dt class="col-sm-3">Created By</dt>
+            <dd class="col-sm-9">{{ job.owner }}</dd>
+        {% endif %}
+        <dt class="col-sm-3">Source</dt>
+        <dd class="col-sm-9">{{ job.source }}</dd>
+        <dt class="col-sm-3">Destination</dt>
+        <dd class="col-sm-9">{{ job.destination }}</dd>
+        <dt class="col-sm-3">Start Date</dt>
+        <dd class="col-sm-9">{{ job.start_date }}</dd>
+        <dt class="col-sm-3">End Date</dt>
+        <dd class="col-sm-9">{{ job.end_date }}</dd>
+        <dt class="col-sm-3">Granularity</dt>
+        <dd class="col-sm-9">{{ job.get_partition_granularity_display }}</dd>
+        <dt class="col-sm-3">Pseudonymization</dt>
+        <dd class="col-sm-9">{{ job.pseudonymize|yesno:"Enabled,Disabled" }}</dd>
+        <dt class="col-sm-3">Filters</dt>
+        <dd class="col-sm-9">
+            {% if job.filters.all %}
+                {% for f in job.filters.all %}
+                    <div>{{ f }}</div>
+                {% empty %}
+                    —
+                {% endfor %}
+            {% endif %}
+        </dd>
+        <dt class="col-sm-3">Processed Tasks</dt>
+        <dd class="col-sm-9">{{ job.processed_tasks.count }} of {{ job.tasks.count }}</dd>
+        <dt class="col-sm-3">Status</dt>
+        <dd class="col-sm-9">
+            <span class="{{ job.status|dicom_job_status_css_class }}" data-status="{{ job.status }}">
+                {{ job.get_status_display }}
+            </span>
+        </dd>
+        <dt class="col-sm-3">Message</dt>
+        <dd class="col-sm-9">{{ job.message|default:"—" }}</dd>
+    </dl>
+    <c-table-heading title="Transfer Tasks">
+    <c-slot name="right">
+    {% crispy filter.form %}
+    </c-slot>
+    </c-table-heading>
+    {% render_table table %}
+    {% job_control_panel %}
+{% endblock content %}
