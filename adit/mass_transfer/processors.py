@@ -6,6 +6,7 @@ import subprocess
 import uuid
 from datetime import datetime, timedelta
 from pathlib import Path
+from typing import cast
 
 from django.conf import settings
 from django.utils import timezone
@@ -40,7 +41,7 @@ def _parse_int(value: object, default: int | None = None) -> int | None:
     try:
         if value is None or value == "":
             return default
-        return int(value)
+        return int(cast(str, value))
     except (TypeError, ValueError):
         return default
 
