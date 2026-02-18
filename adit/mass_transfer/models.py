@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import shutil
+from pathlib import Path
+
 from django.conf import settings
 from django.db import models
 from django.urls import reverse
@@ -19,8 +22,6 @@ class MassTransferFilter(models.Model):
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         related_name="mass_transfer_filters",
-        null=True,
-        blank=True,
     )
     name = models.CharField(max_length=150)
     modality = models.CharField(max_length=16, blank=True, default="")
@@ -122,6 +123,36 @@ class MassTransferTask(DicomTask):
     def get_absolute_url(self):
         return reverse("mass_transfer_task_detail", args=[self.pk])
 
+    def cleanup_on_failure(self) -> None:
+        """Clean up exported DICOM files when a mass transfer task fails or times out."""
+        if not self.partition_key:
+            return
+
+        volumes = MassTransferVolume.objects.filter(
+            job_id=self.job_id,
+            partition_key=self.partition_key,
+        ).exclude(exported_folder="")
+
+        for volume in volumes:
+            if volume.status == MassTransferVolume.Status.CONVERTED:
+                continue
+
+            export_folder = volume.exported_folder
+            if export_folder:
+                try:
+                    shutil.rmtree(Path(export_folder))
+                except FileNotFoundError:
+                    pass
+                except Exception as err:
+                    volume.add_log(f"Cleanup failed: {err}")
+                    volume.save()
+                    continue
+
+            volume.exported_folder = ""
+            volume.status = MassTransferVolume.Status.ERROR
+            volume.add_log("Export cleaned up after task failure.")
+            volume.save()
+
     def queue_pending_task(self) -> None:
         """Queues a mass transfer task in the dicom queue."""
         assert self.status == DicomTask.Status.PENDING
@@ -165,6 +196,7 @@ class MassTransferVolume(models.Model):
     number_of_images = models.PositiveIntegerField(default=0)
 
     exported_folder = models.TextField(blank=True, default="")
+    export_cleaned = models.BooleanField(default=False)
     converted_file = models.TextField(blank=True, default="")
 
     status = models.CharField(max_length=16, choices=Status.choices, default=Status.PENDING)
