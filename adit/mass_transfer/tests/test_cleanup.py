@@ -5,7 +5,6 @@ from adit_radis_shared.accounts.factories import UserFactory
 from django.utils import timezone
 
 from adit.core.factories import DicomFolderFactory, DicomServerFactory
-from adit.core.tasks import _cleanup_mass_transfer_exports
 from adit.mass_transfer.models import (
     MassTransferJob,
     MassTransferSettings,
@@ -55,7 +54,7 @@ def test_cleanup_mass_transfer_exports_on_failure(tmp_path: Path):
         status=MassTransferVolume.Status.EXPORTED,
     )
 
-    _cleanup_mass_transfer_exports(task)
+    task.cleanup_on_failure()
 
     volume.refresh_from_db()
     assert not export_dir.exists()

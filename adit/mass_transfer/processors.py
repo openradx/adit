@@ -78,17 +78,7 @@ def _destination_base_dir(node: DicomNode) -> Path:
     return path
 
 
-def _volume_export_path(
-    base_dir: Path,
-    study_dt: datetime,
-    subject_id: str,
-    series_name: str,
-) -> Path:
-    year_month = study_dt.strftime("%Y%m")
-    return base_dir / year_month / subject_id / series_name
-
-
-def _volume_output_path(
+def _volume_path(
     base_dir: Path,
     study_dt: datetime,
     subject_id: str,
@@ -267,6 +257,9 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
                         continue
 
                     study_dt = _study_datetime(study)
+                    # Use get_or_create for resumability: if a task failed halfway
+                    # and is retried, volumes that were already exported/converted
+                    # are returned as-is and skipped later in the processing loop.
                     volume, created = MassTransferVolume.objects.get_or_create(
                         job=job,
                         series_instance_uid=series_uid,
@@ -286,7 +279,10 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
                             ),
                         },
                     )
-                    if not created:
+                    # Refresh metadata from PACS in case it changed between runs,
+                    # but only for volumes that haven't been processed yet to avoid
+                    # clobbering partition_key on already exported/converted volumes.
+                    if not created and volume.status == MassTransferVolume.Status.PENDING:
                         volume.partition_key = self.mass_task.partition_key
                         volume.patient_id = str(study.PatientID)
                         volume.accession_number = str(study.get("AccessionNumber", ""))
@@ -386,7 +382,7 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
         )
 
         subject_id = sanitize_filename(pseudonym or volume.patient_id)
-        export_path = _volume_export_path(export_base, study_dt, subject_id, series_name)
+        export_path = _volume_path(export_base, study_dt, subject_id, series_name)
         export_path.mkdir(parents=True, exist_ok=True)
         volume.exported_folder = str(export_path)
 
@@ -431,7 +427,7 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
         )
 
         subject_id = sanitize_filename(pseudonym or volume.patient_id)
-        output_path = _volume_output_path(output_base, study_dt, subject_id, series_name)
+        output_path = _volume_path(output_base, study_dt, subject_id, series_name)
         output_path.mkdir(parents=True, exist_ok=True)
 
         cmd = [
@@ -451,7 +447,13 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
                 f"Conversion failed for series {volume.series_instance_uid}: {result.stderr}"
             )
 
-        volume.converted_file = str(output_path / f"{series_name}.nii.gz")
+        nifti_files = sorted(output_path.glob("*.nii.gz"))
+        if not nifti_files:
+            raise DicomError(
+                f"dcm2niix produced no .nii.gz files for series {volume.series_instance_uid}"
+            )
+
+        volume.converted_file = "\n".join(str(f) for f in nifti_files)
         volume.status = MassTransferVolume.Status.CONVERTED
         volume.save()
 
@@ -459,7 +461,7 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
 
     def _cleanup_export(self, volume: MassTransferVolume) -> None:
         export_folder = volume.exported_folder
-        if not export_folder or export_folder.endswith(" (cleaned)"):
+        if not export_folder or volume.export_cleaned:
             return
 
         try:
@@ -471,5 +473,5 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
             volume.save()
             return
 
-        volume.exported_folder = f"{export_folder} (cleaned)"
+        volume.export_cleaned = True
         volume.save()

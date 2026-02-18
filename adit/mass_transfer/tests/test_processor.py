@@ -19,7 +19,7 @@ from adit.mass_transfer.models import (
     MassTransferTask,
     MassTransferVolume,
 )
-from adit.mass_transfer.processors import MassTransferTaskProcessor, _volume_output_path
+from adit.mass_transfer.processors import MassTransferTaskProcessor, _volume_path
 
 
 def _make_study(study_uid: str, study_date: str = "20240101") -> ResultDataset:
@@ -222,10 +222,10 @@ def test_process_opt_out_skips_pseudonymization(
     assert result["status"] == MassTransferTask.Status.SUCCESS
 
 
-def test_volume_output_path_uses_year_month_and_subject_id():
+def test_volume_path_uses_year_month_and_subject_id():
     base_dir = Path("/tmp/base")
     study_dt = datetime(2024, 2, 15, 10, 30)
-    path = _volume_output_path(base_dir, study_dt, "subject", "1-Head")
+    path = _volume_path(base_dir, study_dt, "subject", "1-Head")
 
     assert path == base_dir / "202402" / "subject" / "1-Head"
 

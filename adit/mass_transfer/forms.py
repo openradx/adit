@@ -116,6 +116,7 @@ class MassTransferJobForm(forms.ModelForm):
             "partition_granularity",
             "filters",
             "pseudonymize",
+            "convert_to_nifti",
             "send_finished_mail",
         )
         labels = {
@@ -123,6 +124,7 @@ class MassTransferJobForm(forms.ModelForm):
             "end_date": "End date",
             "partition_granularity": "Partition granularity",
             "pseudonymize": "Pseudonymize data",
+            "convert_to_nifti": "Convert to NIfTI",
             "send_finished_mail": "Send Email when job is finished",
         }
         help_texts = {
@@ -130,6 +132,10 @@ class MassTransferJobForm(forms.ModelForm):
             "pseudonymize": (
                 "When disabled, patient identifiers are preserved and output folders use "
                 "Patient ID."
+            ),
+            "convert_to_nifti": (
+                "When enabled, exported DICOM series are converted to NIfTI format "
+                "using dcm2niix."
             ),
         }
         widgets = {
@@ -181,6 +187,7 @@ class MassTransferJobForm(forms.ModelForm):
                         css_class="g-3",
                     ),
                     Row(
+                        Column(Field("convert_to_nifti"), css_class="col-md-6"),
                         Column(Field("send_finished_mail"), css_class="col-md-6"),
                         css_class="g-3",
                     ),
@@ -255,8 +262,6 @@ class MassTransferJobForm(forms.ModelForm):
 
     def save(self, commit: bool = True):
         job = super().save(commit=False)
-        # Mass transfer always converts to NIfTI
-        job.convert_to_nifti = True
         job.urgent = False
 
         if commit:
