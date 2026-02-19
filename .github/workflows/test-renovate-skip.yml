@@ -5,11 +5,6 @@ on:
     branches:
       - skip-claude-review-for-renovate
 
-env:
-  # Simulated actors to test
-  RENOVATE_BOT: 'renovate[bot]'
-  REGULAR_USER: 'some-user'
-
 jobs:
   # This job simulates what happens for renovate[bot] - should be SKIPPED
   test-renovate-skipped:
@@ -32,6 +27,8 @@ jobs:
     steps:
       - run: |
           echo "=== Test Results ==="
+          echo "Condition: github.event.pull_request.user.login != 'renovate[bot]'"
+          echo ""
           echo "test-renovate-skipped: ${{ needs.test-renovate-skipped.result }}"
           echo "test-regular-user-runs: ${{ needs.test-regular-user-runs.result }}"
           echo ""

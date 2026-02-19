@@ -13,7 +13,7 @@ on:
 jobs:
   claude-review:
     # Skip for Renovate bot PRs
-    if: github.actor != 'renovate[bot]'
+    if: github.event.pull_request.user.login != 'renovate[bot]'
 
     runs-on: ubuntu-latest
     permissions:
