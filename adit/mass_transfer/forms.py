@@ -252,6 +252,7 @@ class MassTransferJobForm(forms.ModelForm):
                 MassTransferTask(
                     job=job,
                     source=job.source,
+                    task_type=MassTransferTask.TaskType.DISCOVERY,
                     partition_start=partition.start,
                     partition_end=partition.end,
                     partition_key=partition.key,

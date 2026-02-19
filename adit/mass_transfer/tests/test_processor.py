@@ -71,7 +71,8 @@ def test_find_studies_raises_when_time_window_too_small(mocker: MockerFixture, s
 
 
 @pytest.mark.django_db
-def test_process_groups_pseudonyms_by_study(mocker: MockerFixture, settings, tmp_path: Path):
+def test_process_study_groups_pseudonyms_by_study(mocker: MockerFixture, settings, tmp_path: Path):
+    """Processing task generates the same pseudonym for all volumes in a study."""
     settings.MASS_TRANSFER_EXPORT_BASE_DIR = str(tmp_path / "exports")
     MassTransferSettings.objects.create()
 
@@ -86,19 +87,22 @@ def test_process_groups_pseudonyms_by_study(mocker: MockerFixture, settings, tmp
         end_date=date(2024, 1, 1),
         partition_granularity=MassTransferJob.PartitionGranularity.DAILY,
     )
-    mf = MassTransferFilter.objects.create(owner=user, name="CT Filter", modality="CT")
-    job.filters.add(mf)
 
-    task = MassTransferTask.objects.create(
+    # Create a processing task for study-1
+    task1 = MassTransferTask.objects.create(
         job=job,
         source=source,
+        task_type=MassTransferTask.TaskType.PROCESSING,
         partition_start=timezone.now(),
         partition_end=timezone.now(),
         partition_key="20240101",
+        study_instance_uid="study-1",
+        patient_id="PAT1",
     )
 
-    volume1 = MassTransferVolume.objects.create(
+    MassTransferVolume.objects.create(
         job=job,
+        task=task1,
         partition_key="20240101",
         study_instance_uid="study-1",
         series_instance_uid="series-1",
@@ -108,8 +112,9 @@ def test_process_groups_pseudonyms_by_study(mocker: MockerFixture, settings, tmp
         series_number=1,
         study_datetime=timezone.now(),
     )
-    volume2 = MassTransferVolume.objects.create(
+    MassTransferVolume.objects.create(
         job=job,
+        task=task1,
         partition_key="20240101",
         study_instance_uid="study-1",
         series_instance_uid="series-2",
@@ -119,24 +124,8 @@ def test_process_groups_pseudonyms_by_study(mocker: MockerFixture, settings, tmp
         series_number=2,
         study_datetime=timezone.now(),
     )
-    volume3 = MassTransferVolume.objects.create(
-        job=job,
-        partition_key="20240101",
-        study_instance_uid="study-2",
-        series_instance_uid="series-3",
-        modality="CT",
-        study_description="",
-        series_description="C",
-        series_number=3,
-        study_datetime=timezone.now(),
-    )
 
-    processor = MassTransferTaskProcessor(task)
-    mocker.patch.object(
-        processor,
-        "_find_volumes",
-        return_value=[volume1, volume2, volume3],
-    )
+    processor = MassTransferTaskProcessor(task1)
 
     export_calls: list[tuple[str, str]] = []
 
@@ -146,26 +135,27 @@ def test_process_groups_pseudonyms_by_study(mocker: MockerFixture, settings, tmp
     mocker.patch.object(processor, "_export_volume", side_effect=fake_export)
     mocker.patch.object(processor, "_convert_volume", return_value=None)
 
-    uuid_side_effect = [
-        uuid.UUID(int=1),
-        uuid.UUID(int=2),
-    ]
-    mocker.patch("adit.mass_transfer.processors.uuid.uuid4", side_effect=uuid_side_effect)
+    mocker.patch(
+        "adit.mass_transfer.processors.uuid.uuid4",
+        return_value=uuid.UUID(int=1),
+    )
 
     result = processor.process()
 
     pseudonyms_by_series = {series_uid: pseudonym for series_uid, pseudonym in export_calls}
+    # Both volumes in the same study should share a pseudonym
     assert pseudonyms_by_series["series-1"] == pseudonyms_by_series["series-2"]
-    assert pseudonyms_by_series["series-1"] != pseudonyms_by_series["series-3"]
+    assert pseudonyms_by_series["series-1"] != ""
     assert result["status"] == MassTransferTask.Status.SUCCESS
 
 
 @pytest.mark.django_db
-def test_process_opt_out_skips_pseudonymization(
+def test_process_study_opt_out_skips_pseudonymization(
     mocker: MockerFixture,
     settings,
     tmp_path: Path,
 ):
+    """When pseudonymize=False, processing task passes empty pseudonym."""
     settings.MASS_TRANSFER_EXPORT_BASE_DIR = str(tmp_path / "exports")
     MassTransferSettings.objects.create()
 
@@ -181,19 +171,21 @@ def test_process_opt_out_skips_pseudonymization(
         partition_granularity=MassTransferJob.PartitionGranularity.DAILY,
         pseudonymize=False,
     )
-    mf = MassTransferFilter.objects.create(owner=user, name="CT Filter", modality="CT")
-    job.filters.add(mf)
 
     task = MassTransferTask.objects.create(
         job=job,
         source=source,
+        task_type=MassTransferTask.TaskType.PROCESSING,
         partition_start=timezone.now(),
         partition_end=timezone.now(),
         partition_key="20240101",
+        study_instance_uid="study-1",
+        patient_id="PATIENT-1",
     )
 
-    volume = MassTransferVolume.objects.create(
+    MassTransferVolume.objects.create(
         job=job,
+        task=task,
         partition_key="20240101",
         patient_id="PATIENT-1",
         study_instance_uid="study-1",
@@ -206,7 +198,6 @@ def test_process_opt_out_skips_pseudonymization(
     )
 
     processor = MassTransferTaskProcessor(task)
-    mocker.patch.object(processor, "_find_volumes", return_value=[volume])
 
     export_calls: list[str] = []
 

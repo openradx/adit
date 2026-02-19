@@ -31,9 +31,12 @@ def test_cleanup_mass_transfer_exports_on_failure(tmp_path: Path):
     task = MassTransferTask.objects.create(
         job=job,
         source=source,
+        task_type=MassTransferTask.TaskType.PROCESSING,
         partition_start=timezone.now(),
         partition_end=timezone.now(),
         partition_key="20240101",
+        study_instance_uid="study-1",
+        patient_id="PATIENT",
     )
 
     export_dir = tmp_path / "exports" / "202401" / "PATIENT" / "1-Head"
@@ -41,6 +44,7 @@ def test_cleanup_mass_transfer_exports_on_failure(tmp_path: Path):
 
     volume = MassTransferVolume.objects.create(
         job=job,
+        task=task,
         partition_key="20240101",
         patient_id="PATIENT",
         study_instance_uid="study-1",

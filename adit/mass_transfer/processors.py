@@ -106,14 +106,18 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
                 "log": "Task skipped because the mass transfer app is suspended.",
             }
 
+        if self.mass_task.task_type == MassTransferTask.TaskType.DISCOVERY:
+            return self._process_discovery()
+        else:
+            return self._process_study()
+
+    def _process_discovery(self):
+        """Phase 1: Query PACS, create volumes, spawn per-study processing tasks."""
         job = self.mass_task.job
         source_node = job.source
-        destination_node = job.destination
 
         if source_node.node_type != DicomNode.NodeType.SERVER:
             raise DicomError("Mass transfer source must be a DICOM server.")
-        if destination_node.node_type != DicomNode.NodeType.FOLDER:
-            raise DicomError("Mass transfer destination must be a DICOM folder.")
 
         filters = list(job.filters.all())
         if not filters:
@@ -126,45 +130,123 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
         operator = DicomOperator(source_node.dicomserver)
         volumes = self._find_volumes(operator, filters)
 
-        export_base = _export_base_dir()
-        output_base = _destination_base_dir(destination_node)
-
-        converted_count = 0
-        failed_count = 0
-
+        # Group volumes by study
         volumes_by_study: dict[str, list[MassTransferVolume]] = {}
         for volume in volumes:
             volumes_by_study.setdefault(volume.study_instance_uid, []).append(volume)
 
-        for _, study_volumes in volumes_by_study.items():
-            pseudonym = ""
-            if job.pseudonymize:
-                existing_pseudonym = next(
-                    (v.pseudonym for v in study_volumes if v.pseudonym),
-                    None,
+        # Create one processing task per study and link volumes to it
+        tasks_created = 0
+        tasks_reused = 0
+        for study_uid, study_volumes in volumes_by_study.items():
+            patient_id = study_volumes[0].patient_id
+
+            # Check for an existing processing task for this study (e.g. on restart)
+            existing_task = MassTransferTask.objects.filter(
+                job=job,
+                task_type=MassTransferTask.TaskType.PROCESSING,
+                study_instance_uid=study_uid,
+            ).first()
+
+            if existing_task is not None:
+                processing_task = existing_task
+                tasks_reused += 1
+            else:
+                processing_task = MassTransferTask.objects.create(
+                    job=job,
+                    source=job.source,
+                    task_type=MassTransferTask.TaskType.PROCESSING,
+                    partition_start=self.mass_task.partition_start,
+                    partition_end=self.mass_task.partition_end,
+                    partition_key=self.mass_task.partition_key,
+                    study_instance_uid=study_uid,
+                    patient_id=patient_id,
                 )
-                pseudonym = existing_pseudonym or uuid.uuid4().hex
+                tasks_created += 1
 
+            # Link volumes to the processing task
             for volume in study_volumes:
-                if volume.status == MassTransferVolume.Status.CONVERTED:
-                    continue
+                if volume.task_id != processing_task.pk:
+                    volume.task = processing_task
+                    volume.save(update_fields=["task"])
 
-                try:
-                    self._export_volume(operator, volume, export_base, pseudonym)
-                    self._convert_volume(volume, output_base, pseudonym)
-                    converted_count += 1
-                except Exception as err:
-                    logger.exception(
-                        "Mass transfer failed for volume %s", volume.series_instance_uid
-                    )
-                    self._cleanup_export(volume)
-                    volume.status = MassTransferVolume.Status.ERROR
-                    volume.add_log(str(err))
-                    volume.save()
-                    failed_count += 1
+            # Enqueue the processing task if it's still pending
+            is_pending = processing_task.status == DicomTask.Status.PENDING
+            if is_pending and processing_task.queued_job is None:
+                processing_task.queue_pending_task()
 
         log_lines = [
             f"Partition {self.mass_task.partition_key}",
+            f"Studies found: {len(volumes_by_study)}",
+            f"Volumes found: {len(volumes)}",
+            f"Processing tasks created: {tasks_created}",
+            f"Processing tasks reused: {tasks_reused}",
+        ]
+
+        return {
+            "status": MassTransferTask.Status.SUCCESS,
+            "message": (
+                f"Discovery complete: {len(volumes_by_study)} studies, "
+                f"{len(volumes)} volumes."
+            ),
+            "log": "\n".join(log_lines),
+        }
+
+    def _process_study(self):
+        """Phase 2: Export + convert all volumes for a single study."""
+        job = self.mass_task.job
+        source_node = job.source
+        destination_node = job.destination
+
+        if source_node.node_type != DicomNode.NodeType.SERVER:
+            raise DicomError("Mass transfer source must be a DICOM server.")
+        if destination_node.node_type != DicomNode.NodeType.FOLDER:
+            raise DicomError("Mass transfer destination must be a DICOM folder.")
+
+        operator = DicomOperator(source_node.dicomserver)
+        volumes = list(self.mass_task.volumes.all())
+
+        if not volumes:
+            return {
+                "status": MassTransferTask.Status.SUCCESS,
+                "message": "No volumes to process.",
+                "log": f"Study {self.mass_task.study_instance_uid}: no volumes linked.",
+            }
+
+        export_base = _export_base_dir()
+        output_base = _destination_base_dir(destination_node)
+
+        pseudonym = ""
+        if job.pseudonymize:
+            existing_pseudonym = next(
+                (v.pseudonym for v in volumes if v.pseudonym),
+                None,
+            )
+            pseudonym = existing_pseudonym or uuid.uuid4().hex
+
+        converted_count = 0
+        failed_count = 0
+
+        for volume in volumes:
+            if volume.status == MassTransferVolume.Status.CONVERTED:
+                continue
+
+            try:
+                self._export_volume(operator, volume, export_base, pseudonym)
+                self._convert_volume(volume, output_base, pseudonym)
+                converted_count += 1
+            except Exception as err:
+                logger.exception(
+                    "Mass transfer failed for volume %s", volume.series_instance_uid
+                )
+                self._cleanup_export(volume)
+                volume.status = MassTransferVolume.Status.ERROR
+                volume.add_log(str(err))
+                volume.save()
+                failed_count += 1
+
+        log_lines = [
+            f"Study {self.mass_task.study_instance_uid}",
             f"Volumes processed: {len(volumes)}",
             f"Converted: {converted_count}",
             f"Failed: {failed_count}",

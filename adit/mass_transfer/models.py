@@ -90,14 +90,32 @@ class MassTransferJob(DicomJob):
         return reverse("mass_transfer_job_detail", args=[self.pk])
 
     def queue_pending_tasks(self):
-        """Queues all pending tasks of this job in the dicom queue."""
+        """Queues pending tasks using two-phase scheduling.
+
+        When pending discovery tasks exist, only those are enqueued (they will
+        create and enqueue processing tasks when they run). Otherwise, pending
+        processing tasks are enqueued directly (e.g. on resume after cancel).
+        """
         assert self.status == DicomJob.Status.PENDING
 
         priority = self.default_priority
         if self.urgent:
             priority = self.urgent_priority
 
-        for mass_task in self.tasks.filter(status=DicomTask.Status.PENDING):
+        pending_discovery = self.tasks.filter(
+            status=DicomTask.Status.PENDING,
+            task_type=MassTransferTask.TaskType.DISCOVERY,
+        )
+
+        if pending_discovery.exists():
+            tasks_to_enqueue = pending_discovery
+        else:
+            tasks_to_enqueue = self.tasks.filter(
+                status=DicomTask.Status.PENDING,
+                task_type=MassTransferTask.TaskType.PROCESSING,
+            )
+
+        for mass_task in tasks_to_enqueue:
             assert mass_task.queued_job is None
 
             model_label = get_model_label(mass_task.__class__)
@@ -111,27 +129,37 @@ class MassTransferJob(DicomJob):
 
 
 class MassTransferTask(DicomTask):
+    class TaskType(models.TextChoices):
+        DISCOVERY = "discovery", "Discovery"
+        PROCESSING = "processing", "Processing"
+
     job = models.ForeignKey(
         MassTransferJob,
         on_delete=models.CASCADE,
         related_name="tasks",
     )
+    task_type = models.CharField(
+        max_length=16,
+        choices=TaskType.choices,
+        default=TaskType.DISCOVERY,
+    )
     partition_start = models.DateTimeField()
     partition_end = models.DateTimeField()
     partition_key = models.CharField(max_length=64)
+    study_instance_uid = models.CharField(max_length=128, blank=True, default="")
+    patient_id = models.CharField(max_length=64, blank=True, default="")
+
+    volumes: models.QuerySet["MassTransferVolume"]
 
     def get_absolute_url(self):
         return reverse("mass_transfer_task_detail", args=[self.pk])
 
     def cleanup_on_failure(self) -> None:
         """Clean up exported DICOM files when a mass transfer task fails or times out."""
-        if not self.partition_key:
+        if self.task_type == self.TaskType.DISCOVERY:
             return
 
-        volumes = MassTransferVolume.objects.filter(
-            job_id=self.job_id,
-            partition_key=self.partition_key,
-        ).exclude(exported_folder="")
+        volumes = self.volumes.exclude(exported_folder="")
 
         for volume in volumes:
             if volume.status == MassTransferVolume.Status.CONVERTED:
@@ -180,6 +208,14 @@ class MassTransferVolume(models.Model):
         ERROR = "error", "Error"
 
     job = models.ForeignKey(MassTransferJob, on_delete=models.CASCADE, related_name="volumes")
+    task_id: int | None
+    task = models.ForeignKey(
+        MassTransferTask,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="volumes",
+    )
     partition_key = models.CharField(max_length=64)
 
     pseudonym = models.CharField(max_length=64, blank=True, default="")
