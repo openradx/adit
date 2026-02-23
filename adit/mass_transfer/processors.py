@@ -474,8 +474,9 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
 
         result = subprocess.run(cmd, check=False, capture_output=True, text=True)
         if result.returncode != 0:
+            output = result.stderr or result.stdout
             raise DicomError(
-                f"Conversion failed for series {volume.series_instance_uid}: {result.stderr}"
+                f"Conversion failed for series {volume.series_instance_uid}: {output}"
             )
 
         nifti_files = sorted(output_path.glob("*.nii.gz"))
