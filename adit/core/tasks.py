@@ -113,6 +113,11 @@ def _run_dicom_task(
         dicom_task.log = result["log"]
         ensure_db_connection()
 
+    except futures.CancelledError:
+        dicom_task.status = DicomTask.Status.CANCELED
+        dicom_task.message = "Task was canceled."
+        ensure_db_connection()
+
     except futures.TimeoutError:
         dicom_task.message = "Task was aborted due to timeout."
         dicom_task.status = DicomTask.Status.FAILURE

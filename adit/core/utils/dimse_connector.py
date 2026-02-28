@@ -75,10 +75,9 @@ def connect_to_server(service: DimseService):
             except Exception as err:
                 self.abort_connection()
                 raise err
-
-            if opened_connection and self.auto_connect:
-                self.close_connection()
-                opened_connection = False
+            finally:
+                if opened_connection and self.auto_connect and self.assoc:
+                    self.close_connection()
 
         @wraps(func)
         def func_wrapper(self: "DimseConnector", *args, **kwargs):
@@ -205,6 +204,7 @@ class DimseConnector:
         if self.assoc:
             logger.debug("Aborting connection to DICOM server %s.", self.server.ae_title)
             self.assoc.abort()
+            self.assoc = None
 
     @retry_dimse_find
     @connect_to_server("C-FIND")

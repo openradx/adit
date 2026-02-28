@@ -226,14 +226,20 @@ class DicomJobCancelView(LoginRequiredMixin, SingleObjectMixin, View):
                 f"Job with ID {job.pk} and status {job.get_status_display()} is not cancelable."
             )
 
-        tasks = job.tasks.filter(status=DicomTask.Status.PENDING)
-        for dicom_task in tasks:
+        pending_tasks = job.tasks.filter(status=DicomTask.Status.PENDING)
+        for dicom_task in pending_tasks:
             queued_job_id = dicom_task.queued_job_id
             if queued_job_id is not None:
                 app.job_manager.cancel_job_by_id(queued_job_id, delete_job=True)
-        tasks.update(status=DicomTask.Status.CANCELED)
+        pending_tasks.update(status=DicomTask.Status.CANCELED)
 
-        if job.tasks.filter(status=DicomTask.Status.IN_PROGRESS).exists():
+        in_progress_tasks = job.tasks.filter(status=DicomTask.Status.IN_PROGRESS)
+        for dicom_task in in_progress_tasks:
+            queued_job_id = dicom_task.queued_job_id
+            if queued_job_id is not None:
+                app.job_manager.cancel_job_by_id(queued_job_id, abort=True)
+
+        if in_progress_tasks.exists():
             job.status = DicomJob.Status.CANCELING
         else:
             job.status = DicomJob.Status.CANCELED
