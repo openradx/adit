@@ -10,6 +10,12 @@
 {% block heading %}
     <c-page-heading title="Mass Transfer Job">
     <c-slot name="right">
+    {% if job.should_link %}
+    <a href="{% url 'mass_transfer_job_associations_export' job.pk %}" class="btn btn-outline-primary">
+        {% bootstrap_icon "download" %}
+        Associations CSV
+    </a>
+    {% endif %}
     <a href="{% url 'mass_transfer_job_list' %}" class="btn btn-secondary">
         {% bootstrap_icon "list" %}
         Job List
@@ -37,8 +43,8 @@
         <dd class="col-sm-9">{{ job.end_date }}</dd>
         <dt class="col-sm-3">Granularity</dt>
         <dd class="col-sm-9">{{ job.get_partition_granularity_display }}</dd>
-        <dt class="col-sm-3">Pseudonymization</dt>
-        <dd class="col-sm-9">{{ job.pseudonymize|yesno:"Enabled,Disabled" }}</dd>
+        <dt class="col-sm-3">Anonymization</dt>
+        <dd class="col-sm-9">{{ job.get_anonymization_mode_display }}</dd>
         <dt class="col-sm-3">Filters</dt>
         <dd class="col-sm-9">
             {% if job.filters.all %}

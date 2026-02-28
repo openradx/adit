@@ -11,6 +11,7 @@ from typing import cast
 from django.conf import settings
 from django.utils import timezone
 from pydicom import Dataset
+from pydicom.uid import ExplicitVRLittleEndian
 
 from adit.core.errors import DicomError, RetriableDicomError
 from adit.core.models import DicomNode, DicomTask
@@ -19,9 +20,16 @@ from adit.core.utils.dicom_dataset import QueryDataset, ResultDataset
 from adit.core.utils.dicom_manipulator import DicomManipulator
 from adit.core.utils.dicom_operator import DicomOperator
 from adit.core.utils.dicom_utils import convert_to_python_regex, write_dataset
+from adit.core.utils.pseudonymizer import Pseudonymizer
 from adit.core.utils.sanitize import sanitize_filename
 
-from .models import MassTransferFilter, MassTransferSettings, MassTransferTask, MassTransferVolume
+from .models import (
+    MassTransferAssociation,
+    MassTransferFilter,
+    MassTransferSettings,
+    MassTransferTask,
+    MassTransferVolume,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -155,12 +163,17 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
 
         for study_uid, study_volumes in volumes_by_study.items():
             pseudonym = ""
-            if job.pseudonymize:
+            study_pseudonymizer: Pseudonymizer | None = None
+
+            if job.should_pseudonymize:
                 existing_pseudonym = next(
                     (v.pseudonym for v in study_volumes if v.pseudonym),
                     None,
                 )
                 pseudonym = existing_pseudonym or uuid.uuid4().hex
+                # One Anonymizer per study: all series in the same study share
+                # the same Anonymizer so UIDs stay consistent within the study.
+                study_pseudonymizer = Pseudonymizer()
 
             for volume in study_volumes:
                 if volume.status == done_status:
@@ -169,11 +182,16 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
 
                 try:
                     if job.convert_to_nifti:
-                        self._export_volume(operator, volume, export_base, pseudonym)
+                        self._export_volume(
+                            operator, volume, export_base, pseudonym,
+                            study_pseudonymizer=study_pseudonymizer,
+                        )
                         self._convert_volume(volume, output_base, pseudonym)
                     else:
-                        # Export DICOM directly to the destination folder
-                        self._export_volume(operator, volume, output_base, pseudonym)
+                        self._export_volume(
+                            operator, volume, output_base, pseudonym,
+                            study_pseudonymizer=study_pseudonymizer,
+                        )
                     total_processed += 1
                 except RetriableDicomError:
                     raise  # let Procrastinate retry the entire task
@@ -186,6 +204,16 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
                     volume.add_log(str(err))
                     volume.save()
                     total_failed += 1
+
+            # Record association for longitudinal linking, but only if at
+            # least one volume in the study was successfully processed.
+            study_has_success = any(
+                v.status != MassTransferVolume.Status.ERROR for v in study_volumes
+            )
+            if job.should_link and pseudonym and study_pseudonymizer and study_has_success:
+                self._create_association(
+                    study_uid, pseudonym, study_volumes, study_pseudonymizer,
+                )
 
         log_lines = [
             f"Partition {self.mass_task.partition_key}",
@@ -401,6 +429,8 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
         volume: MassTransferVolume,
         export_base: Path,
         pseudonym: str,
+        *,
+        study_pseudonymizer: Pseudonymizer | None = None,
     ) -> None:
         if volume.status == MassTransferVolume.Status.EXPORTED and volume.exported_folder:
             return
@@ -417,7 +447,9 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
         export_path.mkdir(parents=True, exist_ok=True)
         volume.exported_folder = str(export_path)
 
-        manipulator = DicomManipulator()
+        # Share the study-level Pseudonymizer (and thus Anonymizer) across
+        # all volumes in the same study.
+        manipulator = DicomManipulator(pseudonymizer=study_pseudonymizer)
 
         def callback(ds: Dataset | None) -> None:
             if ds is None:
@@ -490,6 +522,46 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
         volume.save()
 
         self._cleanup_export(volume)
+
+    def _create_association(
+        self,
+        original_study_uid: str,
+        pseudonym: str,
+        study_volumes: list[MassTransferVolume],
+        study_pseudonymizer: Pseudonymizer,
+    ) -> None:
+        """Create a MassTransferAssociation record linking original to pseudonymized UIDs."""
+        job = self.mass_task.job
+
+        # Recover the pseudonymized StudyInstanceUID by running a probe dataset
+        # through the same Anonymizer instance that processed the real data.
+        # This is deterministic — same input UID always yields the same output.
+        # NOTE: dicognito's anonymize() walks file_meta, so the probe needs
+        # a minimal file_meta block to avoid AttributeError.
+        probe = Dataset()
+        probe.file_meta = Dataset()
+        probe.file_meta.TransferSyntaxUID = ExplicitVRLittleEndian
+        probe.file_meta.MediaStorageSOPClassUID = "1.2.840.10008.5.1.4.1.1.2"
+        probe.file_meta.MediaStorageSOPInstanceUID = "1.2.3"
+        probe.StudyInstanceUID = original_study_uid
+        probe.SOPClassUID = "1.2.840.10008.5.1.4.1.1.2"  # CT Image Storage
+        study_pseudonymizer.anonymizer.anonymize(probe)
+        pseudonymized_study_uid = str(probe.StudyInstanceUID)
+
+        patient_id = next(
+            (v.patient_id for v in study_volumes if v.patient_id), ""
+        )
+
+        MassTransferAssociation.objects.update_or_create(
+            job=job,
+            original_study_instance_uid=original_study_uid,
+            defaults={
+                "task": self.mass_task,
+                "pseudonym": pseudonym,
+                "patient_id": patient_id,
+                "pseudonymized_study_instance_uid": pseudonymized_study_uid,
+            },
+        )
 
     def _cleanup_export(self, volume: MassTransferVolume) -> None:
         export_folder = volume.exported_folder

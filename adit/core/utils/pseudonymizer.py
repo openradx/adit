@@ -9,13 +9,14 @@ class Pseudonymizer:
     A utility class for pseudonymizing (or anonymizing) DICOM data.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, anonymizer: Anonymizer | None = None) -> None:
         """
         Initialize the Pseudonymizer.
 
         Sets up the anonymizer instance and configures it to skip specific elements.
+        If an existing Anonymizer is provided, it will be used instead of creating a new one.
         """
-        self.anonymizer = self._setup_anonymizer()
+        self.anonymizer = anonymizer or self._setup_anonymizer()
 
     def _setup_anonymizer(self) -> Anonymizer:
         """

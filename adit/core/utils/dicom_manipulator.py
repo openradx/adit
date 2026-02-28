@@ -1,20 +1,18 @@
-from typing import Optional
-
 from pydicom.dataset import Dataset
 
 from adit.core.utils.pseudonymizer import Pseudonymizer
 
 
 class DicomManipulator:
-    def __init__(self):
-        self.pseudonymizer = Pseudonymizer()
+    def __init__(self, pseudonymizer: Pseudonymizer | None = None):
+        self.pseudonymizer = pseudonymizer or Pseudonymizer()
 
     def manipulate(
         self,
         ds: Dataset,
-        pseudonym: Optional[str] = None,
-        trial_protocol_id: Optional[str] = None,
-        trial_protocol_name: Optional[str] = None,
+        pseudonym: str | None = None,
+        trial_protocol_id: str | None = None,
+        trial_protocol_name: str | None = None,
     ) -> None:
         """
         Manipulates the DICOM dataset by pseudonymizing and setting trial protocol details.

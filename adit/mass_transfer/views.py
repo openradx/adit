@@ -1,9 +1,12 @@
+import csv
 from typing import Any, cast
 
 from adit_radis_shared.common.views import BaseUpdatePreferencesView
 from django.conf import settings
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.http import HttpResponse
 from django.urls import reverse_lazy
+from django.views import View
 from django.views.generic import CreateView, DeleteView, ListView, UpdateView
 
 from adit.core.views import (
@@ -25,7 +28,7 @@ from adit.core.views import (
 from .filters import MassTransferJobFilter, MassTransferTaskFilter
 from .forms import MassTransferFilterForm, MassTransferJobForm
 from .mixins import MassTransferLockedMixin
-from .models import MassTransferFilter, MassTransferJob, MassTransferTask
+from .models import MassTransferAssociation, MassTransferFilter, MassTransferJob, MassTransferTask
 from .tables import MassTransferJobTable, MassTransferTaskTable
 
 MASS_TRANSFER_SOURCE = "mass_transfer_source"
@@ -89,6 +92,39 @@ class MassTransferJobDetailView(MassTransferLockedMixin, DicomJobDetailView):
     model = MassTransferJob
     context_object_name = "job"
     template_name = "mass_transfer/mass_transfer_job_detail.html"
+
+
+class MassTransferJobAssociationsExportView(LoginRequiredMixin, MassTransferLockedMixin, View):
+    """Streams a CSV of pseudonymization associations for a linking-mode job."""
+
+    def get(self, request, pk):
+        if request.user.is_staff:
+            qs = MassTransferJob.objects.all()
+        else:
+            qs = MassTransferJob.objects.filter(owner=request.user)
+
+        job = qs.get(pk=pk)
+        associations = MassTransferAssociation.objects.filter(job=job).order_by("id")
+
+        response = HttpResponse(content_type="text/csv")
+        response["Content-Disposition"] = f'attachment; filename="associations_job_{job.pk}.csv"'
+
+        writer = csv.writer(response)
+        writer.writerow([
+            "pseudonym",
+            "patient_id",
+            "original_study_instance_uid",
+            "pseudonymized_study_instance_uid",
+        ])
+        for assoc in associations.iterator():
+            writer.writerow([
+                assoc.pseudonym,
+                assoc.patient_id,
+                assoc.original_study_instance_uid,
+                assoc.pseudonymized_study_instance_uid,
+            ])
+
+        return response
 
 
 class MassTransferJobDeleteView(MassTransferLockedMixin, DicomJobDeleteView):

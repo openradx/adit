@@ -95,6 +95,7 @@ def test_process_groups_pseudonyms_by_study(mocker: MockerFixture, settings, tmp
         end_date=date(2024, 1, 1),
         partition_granularity=MassTransferJob.PartitionGranularity.DAILY,
     )
+    job.filters.create(owner=user, name="CT Filter", modality="CT")
 
     task = MassTransferTask.objects.create(
         job=job,
@@ -133,10 +134,11 @@ def test_process_groups_pseudonyms_by_study(mocker: MockerFixture, settings, tmp
 
     # Mock _find_volumes to return pre-created volumes (skip PACS query)
     mocker.patch.object(processor, "_find_volumes", return_value=[vol1, vol2])
+    mocker.patch("adit.mass_transfer.processors.DicomOperator")
 
     export_calls: list[tuple[str, str]] = []
 
-    def fake_export(_, volume, __, pseudonym):
+    def fake_export(_, volume, __, pseudonym, **kwargs):
         export_calls.append((volume.series_instance_uid, pseudonym))
 
     mocker.patch.object(processor, "_export_volume", side_effect=fake_export)
@@ -162,7 +164,7 @@ def test_process_opt_out_skips_pseudonymization(
     settings,
     tmp_path: Path,
 ):
-    """When pseudonymize=False, process passes empty pseudonym."""
+    """When anonymization_mode=NONE, process passes empty pseudonym."""
     settings.MASS_TRANSFER_EXPORT_BASE_DIR = str(tmp_path / "exports")
     MassTransferSettings.objects.create()
 
@@ -176,8 +178,9 @@ def test_process_opt_out_skips_pseudonymization(
         start_date=date(2024, 1, 1),
         end_date=date(2024, 1, 1),
         partition_granularity=MassTransferJob.PartitionGranularity.DAILY,
-        pseudonymize=False,
+        anonymization_mode=MassTransferJob.AnonymizationMode.NONE,
     )
+    job.filters.create(owner=user, name="CT Filter", modality="CT")
 
     task = MassTransferTask.objects.create(
         job=job,
@@ -205,10 +208,11 @@ def test_process_opt_out_skips_pseudonymization(
 
     # Mock _find_volumes to return pre-created volume (skip PACS query)
     mocker.patch.object(processor, "_find_volumes", return_value=[vol])
+    mocker.patch("adit.mass_transfer.processors.DicomOperator")
 
     export_calls: list[str] = []
 
-    def fake_export(_, __, ___, pseudonym):
+    def fake_export(_, __, ___, pseudonym, **kwargs):
         export_calls.append(pseudonym)
 
     mocker.patch.object(processor, "_export_volume", side_effect=fake_export)
@@ -406,7 +410,7 @@ def _make_process_env(
     tmp_path: Path,
     *,
     convert_to_nifti: bool = False,
-    pseudonymize: bool = True,
+    anonymization_mode: str = "pseudonymize",
 ) -> MassTransferTaskProcessor:
     """Create a processor with a fully mocked job for testing process()."""
     settings.MASS_TRANSFER_EXPORT_BASE_DIR = str(tmp_path / "exports")
@@ -414,7 +418,9 @@ def _make_process_env(
     processor = _make_processor(mocker, settings)
 
     mock_job = processor.mass_task.job
-    mock_job.pseudonymize = pseudonymize
+    mock_job.anonymization_mode = anonymization_mode
+    mock_job.should_pseudonymize = anonymization_mode != "none"
+    mock_job.should_link = anonymization_mode == "pseudonymize_with_linking"
     mock_job.convert_to_nifti = convert_to_nifti
     mock_job.source.node_type = DicomNode.NodeType.SERVER
     mock_job.source.dicomserver = mocker.MagicMock()
@@ -571,7 +577,7 @@ def test_process_returns_warning_on_partial_failure(
 
     call_count = {"n": 0}
 
-    def fake_export(op, volume, base, pseudo):
+    def fake_export(op, volume, base, pseudo, **kwargs):
         call_count["n"] += 1
         if call_count["n"] == 2:
             raise DicomError("Export failed")
@@ -729,7 +735,7 @@ def test_process_reuses_existing_pseudonym_on_retry(
 
     export_calls: list[tuple[str, str]] = []
 
-    def fake_export(op, volume, base, pseudonym):
+    def fake_export(op, volume, base, pseudonym, **kwargs):
         export_calls.append((volume.series_instance_uid, pseudonym))
 
     mocker.patch.object(processor, "_export_volume", side_effect=fake_export)
@@ -1206,3 +1212,475 @@ def test_dicom_match_wildcard():
     # DICOM uses * as wildcard, which should be converted to regex .*
     assert _dicom_match("Head*", "Head CT") is True
     assert _dicom_match("Head*", "Foot CT") is False
+
+
+# ---------------------------------------------------------------------------
+# Anonymization mode tests
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+def test_process_linking_mode_creates_associations(
+    mocker: MockerFixture, settings, tmp_path: Path
+):
+    """In linking mode, MassTransferAssociation records are created per study."""
+    from adit.mass_transfer.models import MassTransferAssociation
+
+    settings.MASS_TRANSFER_EXPORT_BASE_DIR = str(tmp_path / "exports")
+    MassTransferSettings.objects.create()
+
+    user = UserFactory.create()
+    source = DicomServerFactory.create()
+    destination = DicomFolderFactory.create(path=str(tmp_path / "output"))
+    job = MassTransferJob.objects.create(
+        owner=user,
+        source=source,
+        destination=destination,
+        start_date=date(2024, 1, 1),
+        end_date=date(2024, 1, 1),
+        partition_granularity=MassTransferJob.PartitionGranularity.DAILY,
+        anonymization_mode=MassTransferJob.AnonymizationMode.PSEUDONYMIZE_WITH_LINKING,
+    )
+    job.filters.create(owner=user, name="CT Filter", modality="CT")
+
+    task = MassTransferTask.objects.create(
+        job=job,
+        source=source,
+        partition_start=timezone.now(),
+        partition_end=timezone.now(),
+        partition_key="20240101",
+    )
+
+    vol = MassTransferVolume.objects.create(
+        job=job,
+        task=task,
+        partition_key="20240101",
+        patient_id="PAT1",
+        study_instance_uid="1.2.3.4",
+        series_instance_uid="1.2.3.4.5",
+        modality="CT",
+        study_description="",
+        series_description="Head",
+        series_number=1,
+        study_datetime=timezone.now(),
+    )
+
+    processor = MassTransferTaskProcessor(task)
+    mocker.patch.object(processor, "_find_volumes", return_value=[vol])
+    mocker.patch("adit.mass_transfer.processors.DicomOperator")
+
+    def fake_export(op, volume, base, pseudonym, **kwargs):
+        volume.status = MassTransferVolume.Status.EXPORTED
+        volume.pseudonym = pseudonym
+        volume.save()
+
+    mocker.patch.object(processor, "_export_volume", side_effect=fake_export)
+
+    mocker.patch(
+        "adit.mass_transfer.processors.uuid.uuid4",
+        return_value=uuid.UUID(int=1),
+    )
+
+    result = processor.process()
+
+    assocs = MassTransferAssociation.objects.filter(job=job)
+    assert assocs.count() == 1
+    assoc = assocs.first()
+    assert assoc.original_study_instance_uid == "1.2.3.4"
+    assert assoc.pseudonym == uuid.UUID(int=1).hex
+    assert assoc.patient_id == "PAT1"
+    assert assoc.pseudonymized_study_instance_uid != ""
+    assert result["status"] == MassTransferTask.Status.SUCCESS
+
+
+@pytest.mark.django_db
+def test_process_linking_mode_skips_association_for_failed_study(
+    mocker: MockerFixture, settings, tmp_path: Path
+):
+    """In linking mode, no association is created if all volumes in a study failed."""
+    from adit.mass_transfer.models import MassTransferAssociation
+
+    settings.MASS_TRANSFER_EXPORT_BASE_DIR = str(tmp_path / "exports")
+    MassTransferSettings.objects.create()
+
+    user = UserFactory.create()
+    source = DicomServerFactory.create()
+    destination = DicomFolderFactory.create(path=str(tmp_path / "output"))
+    job = MassTransferJob.objects.create(
+        owner=user,
+        source=source,
+        destination=destination,
+        start_date=date(2024, 1, 1),
+        end_date=date(2024, 1, 1),
+        partition_granularity=MassTransferJob.PartitionGranularity.DAILY,
+        anonymization_mode=MassTransferJob.AnonymizationMode.PSEUDONYMIZE_WITH_LINKING,
+    )
+    job.filters.create(owner=user, name="CT Filter", modality="CT")
+
+    task = MassTransferTask.objects.create(
+        job=job,
+        source=source,
+        partition_start=timezone.now(),
+        partition_end=timezone.now(),
+        partition_key="20240101",
+    )
+
+    vol = MassTransferVolume.objects.create(
+        job=job,
+        task=task,
+        partition_key="20240101",
+        patient_id="PAT1",
+        study_instance_uid="1.2.3.4",
+        series_instance_uid="1.2.3.4.5",
+        modality="CT",
+        study_description="",
+        series_description="Head",
+        series_number=1,
+        study_datetime=timezone.now(),
+    )
+
+    processor = MassTransferTaskProcessor(task)
+    mocker.patch.object(processor, "_find_volumes", return_value=[vol])
+    mocker.patch("adit.mass_transfer.processors.DicomOperator")
+
+    def fake_export_failure(op, volume, base, pseudonym, **kwargs):
+        raise RuntimeError("DICOM export failed")
+
+    mocker.patch.object(processor, "_export_volume", side_effect=fake_export_failure)
+
+    mocker.patch(
+        "adit.mass_transfer.processors.uuid.uuid4",
+        return_value=uuid.UUID(int=1),
+    )
+
+    result = processor.process()
+
+    assert MassTransferAssociation.objects.filter(job=job).count() == 0
+    assert result["status"] == MassTransferTask.Status.FAILURE
+
+
+@pytest.mark.django_db
+def test_longitudinal_linking_across_partitions(
+    mocker: MockerFixture, settings, tmp_path: Path
+):
+    """Prove that linking mode enables longitudinal tracking across an entire job.
+
+    Scenario:
+      - Partition 1 (Jan 1): PAT1/Study-A (2 series), PAT2/Study-B (1 series)
+      - Partition 2 (Jan 2): PAT1/Study-C (1 series)
+
+    After processing both partitions:
+      - 3 association records exist (one per study)
+      - PAT1 has 2 associations → linkable via patient_id
+      - PAT2 has 1 association
+      - The pseudonymized StudyInstanceUID in each association matches
+        what dicognito actually produced during export (probe-anonymize
+        consistency)
+    """
+    from adit.mass_transfer.models import MassTransferAssociation
+    from adit.core.utils.pseudonymizer import Pseudonymizer
+
+    settings.MASS_TRANSFER_EXPORT_BASE_DIR = str(tmp_path / "exports")
+    MassTransferSettings.objects.create()
+
+    user = UserFactory.create()
+    source = DicomServerFactory.create()
+    destination = DicomFolderFactory.create(path=str(tmp_path / "output"))
+    job = MassTransferJob.objects.create(
+        owner=user,
+        source=source,
+        destination=destination,
+        start_date=date(2024, 1, 1),
+        end_date=date(2024, 1, 2),
+        partition_granularity=MassTransferJob.PartitionGranularity.DAILY,
+        anonymization_mode=MassTransferJob.AnonymizationMode.PSEUDONYMIZE_WITH_LINKING,
+    )
+    job.filters.create(owner=user, name="CT Filter", modality="CT")
+
+    # --- Partition 1: Jan 1 ---
+    task1 = MassTransferTask.objects.create(
+        job=job,
+        source=source,
+        partition_start=timezone.make_aware(datetime(2024, 1, 1)),
+        partition_end=timezone.make_aware(datetime(2024, 1, 1, 23, 59, 59)),
+        partition_key="20240101",
+    )
+
+    # PAT1, Study-A, two series
+    vol_a1 = MassTransferVolume.objects.create(
+        job=job, task=task1, partition_key="20240101",
+        patient_id="PAT1",
+        study_instance_uid="1.2.840.10001.1.1",
+        series_instance_uid="1.2.840.10001.1.1.1",
+        modality="CT", study_description="Brain CT",
+        series_description="Axial", series_number=1,
+        study_datetime=timezone.make_aware(datetime(2024, 1, 1, 10, 0)),
+    )
+    vol_a2 = MassTransferVolume.objects.create(
+        job=job, task=task1, partition_key="20240101",
+        patient_id="PAT1",
+        study_instance_uid="1.2.840.10001.1.1",
+        series_instance_uid="1.2.840.10001.1.1.2",
+        modality="CT", study_description="Brain CT",
+        series_description="Coronal", series_number=2,
+        study_datetime=timezone.make_aware(datetime(2024, 1, 1, 10, 0)),
+    )
+
+    # PAT2, Study-B, one series
+    vol_b = MassTransferVolume.objects.create(
+        job=job, task=task1, partition_key="20240101",
+        patient_id="PAT2",
+        study_instance_uid="1.2.840.10002.1.1",
+        series_instance_uid="1.2.840.10002.1.1.1",
+        modality="CT", study_description="Chest CT",
+        series_description="Axial", series_number=1,
+        study_datetime=timezone.make_aware(datetime(2024, 1, 1, 14, 0)),
+    )
+
+    # --- Partition 2: Jan 2 ---
+    task2 = MassTransferTask.objects.create(
+        job=job,
+        source=source,
+        partition_start=timezone.make_aware(datetime(2024, 1, 2)),
+        partition_end=timezone.make_aware(datetime(2024, 1, 2, 23, 59, 59)),
+        partition_key="20240102",
+    )
+
+    # PAT1 again, Study-C (different study, same patient)
+    vol_c = MassTransferVolume.objects.create(
+        job=job, task=task2, partition_key="20240102",
+        patient_id="PAT1",
+        study_instance_uid="1.2.840.10001.1.2",
+        series_instance_uid="1.2.840.10001.1.2.1",
+        modality="CT", study_description="Follow-up Brain CT",
+        series_description="Axial", series_number=1,
+        study_datetime=timezone.make_aware(datetime(2024, 1, 2, 9, 0)),
+    )
+
+    # --- Capture pseudonymized UIDs produced during export ---
+    # Each study's export uses a Pseudonymizer instance. We capture the
+    # pseudonymized StudyInstanceUID that dicognito actually produces during
+    # the export callback, keyed by original StudyInstanceUID.
+    pseudonymized_uids: dict[str, str] = {}
+
+    def fake_export(op, volume, base, pseudonym, *, study_pseudonymizer=None):
+        """Fake export that actually runs dicognito on a realistic dataset,
+        so we can capture the pseudonymized StudyInstanceUID."""
+        if study_pseudonymizer is not None:
+            # Build a realistic DICOM dataset and run the pseudonymizer
+            ds = Dataset()
+            ds.file_meta = Dataset()
+            ds.file_meta.TransferSyntaxUID = "1.2.840.10008.1.2.1"
+            ds.file_meta.MediaStorageSOPClassUID = "1.2.840.10008.5.1.4.1.1.2"
+            ds.file_meta.MediaStorageSOPInstanceUID = volume.series_instance_uid
+            ds.StudyInstanceUID = volume.study_instance_uid
+            ds.SeriesInstanceUID = volume.series_instance_uid
+            ds.SOPInstanceUID = volume.series_instance_uid + ".1"
+            ds.SOPClassUID = "1.2.840.10008.5.1.4.1.1.2"
+            ds.PatientID = volume.patient_id
+            ds.PatientName = volume.patient_id
+            ds.StudyDate = "20240101"
+            ds.StudyTime = "100000"
+
+            study_pseudonymizer.pseudonymize(ds, pseudonym)
+
+            # Capture the pseudonymized StudyInstanceUID (should be the same
+            # for all series in the same study sharing the same Anonymizer)
+            pseudonymized_uids[volume.study_instance_uid] = str(ds.StudyInstanceUID)
+
+        volume.pseudonym = pseudonym
+        volume.status = MassTransferVolume.Status.EXPORTED
+        volume.save()
+
+    mocker.patch("adit.mass_transfer.processors.DicomOperator")
+
+    # --- Process partition 1 ---
+    processor1 = MassTransferTaskProcessor(task1)
+    mocker.patch.object(processor1, "_find_volumes", return_value=[vol_a1, vol_a2, vol_b])
+    mocker.patch.object(processor1, "_export_volume", side_effect=fake_export)
+
+    result1 = processor1.process()
+    assert result1["status"] == MassTransferTask.Status.SUCCESS
+
+    # --- Process partition 2 ---
+    processor2 = MassTransferTaskProcessor(task2)
+    mocker.patch.object(processor2, "_find_volumes", return_value=[vol_c])
+    mocker.patch.object(processor2, "_export_volume", side_effect=fake_export)
+
+    result2 = processor2.process()
+    assert result2["status"] == MassTransferTask.Status.SUCCESS
+
+    # --- Verify association records ---
+    assocs = MassTransferAssociation.objects.filter(job=job).order_by(
+        "original_study_instance_uid"
+    )
+    assert assocs.count() == 3  # one per study
+
+    assoc_map = {a.original_study_instance_uid: a for a in assocs}
+    assert set(assoc_map.keys()) == {
+        "1.2.840.10001.1.1",
+        "1.2.840.10002.1.1",
+        "1.2.840.10001.1.2",
+    }
+
+    # Each association's pseudonymized UID differs from the original
+    for assoc in assocs:
+        assert assoc.pseudonymized_study_instance_uid != assoc.original_study_instance_uid
+        assert assoc.pseudonymized_study_instance_uid != ""
+
+    # Probe-anonymize consistency: the UID in the association table must
+    # match what dicognito actually produced during export
+    for orig_uid, assoc in assoc_map.items():
+        assert orig_uid in pseudonymized_uids, f"No export captured for {orig_uid}"
+        assert assoc.pseudonymized_study_instance_uid == pseudonymized_uids[orig_uid], (
+            f"Probe UID mismatch for {orig_uid}: "
+            f"association={assoc.pseudonymized_study_instance_uid}, "
+            f"export={pseudonymized_uids[orig_uid]}"
+        )
+
+    # --- Longitudinal linking via patient_id ---
+    # PAT1 has studies A and C — we can link them through the association table
+    pat1_assocs = [a for a in assocs if a.patient_id == "PAT1"]
+    assert len(pat1_assocs) == 2
+    pat1_studies = {a.original_study_instance_uid for a in pat1_assocs}
+    assert pat1_studies == {"1.2.840.10001.1.1", "1.2.840.10001.1.2"}
+
+    # Their pseudonymized UIDs are different (different studies)
+    pat1_pseudo_uids = {a.pseudonymized_study_instance_uid for a in pat1_assocs}
+    assert len(pat1_pseudo_uids) == 2
+
+    # PAT2 has only study B
+    pat2_assocs = [a for a in assocs if a.patient_id == "PAT2"]
+    assert len(pat2_assocs) == 1
+    assert pat2_assocs[0].original_study_instance_uid == "1.2.840.10002.1.1"
+
+    # Associations are tied to the correct tasks
+    assoc_a = assoc_map["1.2.840.10001.1.1"]
+    assoc_b = assoc_map["1.2.840.10002.1.1"]
+    assoc_c = assoc_map["1.2.840.10001.1.2"]
+    assert assoc_a.task_id == task1.pk
+    assert assoc_b.task_id == task1.pk
+    assert assoc_c.task_id == task2.pk
+
+
+@pytest.mark.django_db
+def test_process_pseudonymize_mode_no_associations(
+    mocker: MockerFixture, settings, tmp_path: Path
+):
+    """In pseudonymize mode (without linking), no associations are created."""
+    from adit.mass_transfer.models import MassTransferAssociation
+
+    settings.MASS_TRANSFER_EXPORT_BASE_DIR = str(tmp_path / "exports")
+    MassTransferSettings.objects.create()
+
+    user = UserFactory.create()
+    source = DicomServerFactory.create()
+    destination = DicomFolderFactory.create(path=str(tmp_path / "output"))
+    job = MassTransferJob.objects.create(
+        owner=user,
+        source=source,
+        destination=destination,
+        start_date=date(2024, 1, 1),
+        end_date=date(2024, 1, 1),
+        partition_granularity=MassTransferJob.PartitionGranularity.DAILY,
+        anonymization_mode=MassTransferJob.AnonymizationMode.PSEUDONYMIZE,
+    )
+    job.filters.create(owner=user, name="CT Filter", modality="CT")
+
+    task = MassTransferTask.objects.create(
+        job=job,
+        source=source,
+        partition_start=timezone.now(),
+        partition_end=timezone.now(),
+        partition_key="20240101",
+    )
+
+    vol = MassTransferVolume.objects.create(
+        job=job,
+        task=task,
+        partition_key="20240101",
+        patient_id="PAT1",
+        study_instance_uid="1.2.3.4",
+        series_instance_uid="1.2.3.4.5",
+        modality="CT",
+        study_description="",
+        series_description="Head",
+        series_number=1,
+        study_datetime=timezone.now(),
+    )
+
+    processor = MassTransferTaskProcessor(task)
+    mocker.patch.object(processor, "_find_volumes", return_value=[vol])
+    mocker.patch("adit.mass_transfer.processors.DicomOperator")
+
+    def fake_export(op, volume, base, pseudonym, **kwargs):
+        volume.status = MassTransferVolume.Status.EXPORTED
+        volume.pseudonym = pseudonym
+        volume.save()
+
+    mocker.patch.object(processor, "_export_volume", side_effect=fake_export)
+
+    result = processor.process()
+
+    assert MassTransferAssociation.objects.filter(job=job).count() == 0
+    assert result["status"] == MassTransferTask.Status.SUCCESS
+
+
+def test_process_none_mode_skips_pseudonymizer(
+    mocker: MockerFixture, settings, tmp_path: Path
+):
+    """In 'none' anonymization mode, no pseudonym is generated and no pseudonymizer is created."""
+    processor = _make_process_env(
+        mocker, settings, tmp_path, anonymization_mode="none"
+    )
+    vol = _make_mock_volume(mocker, series_uid="s-1")
+
+    mocker.patch.object(processor, "_find_volumes", return_value=[vol])
+
+    export_calls: list[tuple[str, object]] = []
+
+    def fake_export(op, volume, base, pseudonym, **kwargs):
+        export_calls.append((pseudonym, kwargs.get("study_pseudonymizer")))
+
+    mocker.patch.object(processor, "_export_volume", side_effect=fake_export)
+
+    result = processor.process()
+
+    assert len(export_calls) == 1
+    pseudonym, study_pseudonymizer = export_calls[0]
+    assert pseudonym == ""
+    assert study_pseudonymizer is None
+    assert result["status"] == MassTransferTask.Status.SUCCESS
+
+
+def test_process_pseudonymize_mode_creates_per_study_pseudonymizer(
+    mocker: MockerFixture, settings, tmp_path: Path
+):
+    """In pseudonymize mode, a Pseudonymizer is created per study and shared across volumes."""
+    from adit.core.utils.pseudonymizer import Pseudonymizer
+
+    processor = _make_process_env(mocker, settings, tmp_path)
+
+    vol1 = _make_mock_volume(mocker, study_uid="study-A", series_uid="s-1")
+    vol2 = _make_mock_volume(mocker, study_uid="study-A", series_uid="s-2")
+    vol3 = _make_mock_volume(mocker, study_uid="study-B", series_uid="s-3")
+
+    mocker.patch.object(processor, "_find_volumes", return_value=[vol1, vol2, vol3])
+
+    pseudonymizer_ids: list[int | None] = []
+
+    def fake_export(op, volume, base, pseudonym, **kwargs):
+        ps = kwargs.get("study_pseudonymizer")
+        pseudonymizer_ids.append(id(ps) if ps else None)
+
+    mocker.patch.object(processor, "_export_volume", side_effect=fake_export)
+
+    result = processor.process()
+
+    # Two volumes in study-A share the same Pseudonymizer instance
+    assert pseudonymizer_ids[0] is not None
+    assert pseudonymizer_ids[0] == pseudonymizer_ids[1]
+    # Volume in study-B gets a different Pseudonymizer instance
+    assert pseudonymizer_ids[2] is not None
+    assert pseudonymizer_ids[2] != pseudonymizer_ids[0]
+    assert result["status"] == MassTransferTask.Status.SUCCESS

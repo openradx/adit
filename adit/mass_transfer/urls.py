@@ -5,6 +5,7 @@ from .views import (
     MassTransferFilterDeleteView,
     MassTransferFilterListView,
     MassTransferFilterUpdateView,
+    MassTransferJobAssociationsExportView,
     MassTransferJobCancelView,
     MassTransferJobCreateView,
     MassTransferJobDeleteView,
@@ -46,6 +47,11 @@ urlpatterns = [
     path("jobs/", MassTransferJobListView.as_view(), name="mass_transfer_job_list"),
     path("jobs/new/", MassTransferJobCreateView.as_view(), name="mass_transfer_job_create"),
     path("jobs/<int:pk>/", MassTransferJobDetailView.as_view(), name="mass_transfer_job_detail"),
+    path(
+        "jobs/<int:pk>/associations/",
+        MassTransferJobAssociationsExportView.as_view(),
+        name="mass_transfer_job_associations_export",
+    ),
     path(
         "jobs/<int:pk>/delete/",
         MassTransferJobDeleteView.as_view(),

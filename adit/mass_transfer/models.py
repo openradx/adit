@@ -68,6 +68,11 @@ class MassTransferJob(DicomJob):
         DAILY = "daily", "Daily"
         WEEKLY = "weekly", "Weekly"
 
+    class AnonymizationMode(models.TextChoices):
+        NONE = "none", "No anonymization"
+        PSEUDONYMIZE = "pseudonymize", "Pseudonymize"
+        PSEUDONYMIZE_WITH_LINKING = "pseudonymize_with_linking", "Pseudonymize with linking"
+
     default_priority = settings.MASS_TRANSFER_DEFAULT_PRIORITY
     urgent_priority = settings.MASS_TRANSFER_URGENT_PRIORITY
 
@@ -80,9 +85,21 @@ class MassTransferJob(DicomJob):
         choices=PartitionGranularity.choices,
         default=PartitionGranularity.DAILY,
     )
-    pseudonymize = models.BooleanField(default=True)
+    anonymization_mode = models.CharField(
+        max_length=32,
+        choices=AnonymizationMode.choices,
+        default=AnonymizationMode.PSEUDONYMIZE,
+    )
 
     filters = models.ManyToManyField(MassTransferFilter, related_name="jobs", blank=True)
+
+    @property
+    def should_pseudonymize(self) -> bool:
+        return self.anonymization_mode != self.AnonymizationMode.NONE
+
+    @property
+    def should_link(self) -> bool:
+        return self.anonymization_mode == self.AnonymizationMode.PSEUDONYMIZE_WITH_LINKING
 
     tasks: models.QuerySet["MassTransferTask"]
 
@@ -214,3 +231,40 @@ class MassTransferVolume(models.Model):
         if self.log:
             self.log += "\n"
         self.log += msg
+
+
+class MassTransferAssociation(models.Model):
+    """Maps original DICOM UIDs to their pseudonymized counterparts for longitudinal linking."""
+
+    job = models.ForeignKey(
+        MassTransferJob,
+        on_delete=models.CASCADE,
+        related_name="associations",
+    )
+    task = models.ForeignKey(
+        MassTransferTask,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="associations",
+    )
+    pseudonym = models.CharField(max_length=64)
+    patient_id = models.CharField(max_length=64)
+    original_study_instance_uid = models.CharField(max_length=128)
+    pseudonymized_study_instance_uid = models.CharField(max_length=128)
+    created = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ("id",)
+        constraints = [
+            models.UniqueConstraint(
+                fields=["job", "original_study_instance_uid"],
+                name="mass_transfer_unique_association_per_study",
+            )
+        ]
+
+    def __str__(self) -> str:
+        return (
+            f"MassTransferAssociation {self.original_study_instance_uid} "
+            f"-> {self.pseudonymized_study_instance_uid}"
+        )

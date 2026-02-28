@@ -115,7 +115,7 @@ class MassTransferJobForm(forms.ModelForm):
             "end_date",
             "partition_granularity",
             "filters",
-            "pseudonymize",
+            "anonymization_mode",
             "convert_to_nifti",
             "send_finished_mail",
         )
@@ -123,15 +123,15 @@ class MassTransferJobForm(forms.ModelForm):
             "start_date": "Start date",
             "end_date": "End date",
             "partition_granularity": "Partition granularity",
-            "pseudonymize": "Pseudonymize data",
+            "anonymization_mode": "Anonymization",
             "convert_to_nifti": "Convert to NIfTI",
             "send_finished_mail": "Send Email when job is finished",
         }
         help_texts = {
             "partition_granularity": "Daily or weekly partition windows.",
-            "pseudonymize": (
-                "When disabled, patient identifiers are preserved and output folders use "
-                "Patient ID."
+            "anonymization_mode": (
+                "No anonymization preserves all identifiers. Pseudonymize replaces them. "
+                "Pseudonymize with linking also exports a mapping CSV."
             ),
             "convert_to_nifti": (
                 "When enabled, exported DICOM series are converted to NIfTI format "
@@ -141,6 +141,7 @@ class MassTransferJobForm(forms.ModelForm):
         widgets = {
             "start_date": forms.DateInput(attrs={"type": "date"}),
             "end_date": forms.DateInput(attrs={"type": "date"}),
+            "anonymization_mode": forms.RadioSelect,
         }
 
     def __init__(self, *args, **kwargs):
@@ -183,7 +184,7 @@ class MassTransferJobForm(forms.ModelForm):
                     ),
                     Row(
                         Column(Field("partition_granularity"), css_class="col-md-6"),
-                        Column(Field("pseudonymize"), css_class="col-md-6"),
+                        Column(Field("anonymization_mode"), css_class="col-md-6"),
                         css_class="g-3",
                     ),
                     Row(
