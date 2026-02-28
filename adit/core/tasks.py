@@ -60,7 +60,13 @@ DICOM_TASK_RETRY_STRATEGY = RetryStrategy(
 )
 
 
-def _run_dicom_task(context: JobContext, model_label: str, task_id: int):
+def _run_dicom_task(
+    context: JobContext,
+    model_label: str,
+    task_id: int,
+    *,
+    process_timeout: int | None = None,
+):
     assert context.job
 
     dicom_task = get_dicom_task(model_label, task_id)
@@ -82,7 +88,7 @@ def _run_dicom_task(context: JobContext, model_label: str, task_id: int):
 
     logger.info(f"Processing of {dicom_task} started.")
 
-    @concurrent.process(timeout=settings.DICOM_TASK_PROCESS_TIMEOUT, daemon=True)
+    @concurrent.process(timeout=process_timeout, daemon=True)
     def _process_dicom_task(model_label: str, task_id: int) -> ProcessingResult:
         dicom_task = get_dicom_task(model_label, task_id)
         processor = get_dicom_processor(dicom_task)
@@ -181,16 +187,20 @@ def _run_dicom_task(context: JobContext, model_label: str, task_id: int):
     retry=DICOM_TASK_RETRY_STRATEGY,
 )
 def process_dicom_task(context: JobContext, model_label: str, task_id: int):
-    _run_dicom_task(context, model_label, task_id)
+    _run_dicom_task(
+        context, model_label, task_id, process_timeout=settings.DICOM_TASK_PROCESS_TIMEOUT
+    )
 
 
-# Separate task function for mass transfer so Procrastinate can route it
-# independently (e.g. to a different queue or with different retry/priority)
-# without affecting other transfer types.
+# Separate task function for mass transfer on a dedicated queue so it does not
+# starve batch/selective transfers.  Mass transfer tasks process an entire
+# partition (discovery + export + convert) and can run for hours, so the
+# pebble process timeout is disabled (process_timeout=None).  Individual DICOM
+# operations are still protected by Stamina / pynetdicom-level timeouts.
 @app.task(
-    queue="dicom",
+    queue="mass_transfer",
     pass_context=True,
     retry=DICOM_TASK_RETRY_STRATEGY,
 )
 def process_mass_transfer_task(context: JobContext, model_label: str, task_id: int):
-    _run_dicom_task(context, model_label, task_id)
+    _run_dicom_task(context, model_label, task_id, process_timeout=None)
