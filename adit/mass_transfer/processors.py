@@ -11,7 +11,6 @@ from typing import cast
 from django.conf import settings
 from django.utils import timezone
 from pydicom import Dataset
-from pydicom.uid import ExplicitVRLittleEndian
 
 from adit.core.errors import DicomError, RetriableDicomError
 from adit.core.models import DicomNode, DicomTask
@@ -24,7 +23,6 @@ from adit.core.utils.pseudonymizer import Pseudonymizer
 from adit.core.utils.sanitize import sanitize_filename
 
 from .models import (
-    MassTransferAssociation,
     MassTransferFilter,
     MassTransferSettings,
     MassTransferTask,
@@ -43,6 +41,14 @@ def _dicom_match(pattern: str, value: str | None) -> bool:
         return False
     regex = convert_to_python_regex(pattern)
     return bool(regex.search(str(value)))
+
+
+def _short_error_reason(error: str) -> str:
+    """Extract a short, groupable reason from a volume error message."""
+    # Take the last non-empty line — for dcm2niix output this is the
+    # meaningful summary (e.g. "No valid DICOM images were found").
+    lines = [line.strip() for line in error.strip().splitlines() if line.strip()]
+    return lines[-1] if lines else error
 
 
 def _parse_int(value: object, default: int | None = None) -> int | None:
@@ -159,7 +165,9 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
         )
 
         total_processed = 0
+        total_skipped = 0
         total_failed = 0
+        failed_reasons: dict[str, int] = {}
 
         for study_uid, study_volumes in volumes_by_study.items():
             pseudonym = ""
@@ -179,6 +187,9 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
                 if volume.status == done_status:
                     total_processed += 1
                     continue
+                if volume.status == MassTransferVolume.Status.SKIPPED:
+                    total_skipped += 1
+                    continue
 
                 try:
                     if job.convert_to_nifti:
@@ -192,7 +203,12 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
                             operator, volume, output_base, pseudonym,
                             study_pseudonymizer=study_pseudonymizer,
                         )
-                    total_processed += 1
+
+                    # _convert_volume may set SKIPPED for non-image DICOMs
+                    if volume.status == MassTransferVolume.Status.SKIPPED:
+                        total_skipped += 1
+                    else:
+                        total_processed += 1
                 except RetriableDicomError:
                     raise  # let Procrastinate retry the entire task
                 except Exception as err:
@@ -204,39 +220,47 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
                     volume.add_log(str(err))
                     volume.save()
                     total_failed += 1
-
-            # Record association for longitudinal linking, but only if at
-            # least one volume in the study was successfully processed.
-            study_has_success = any(
-                v.status != MassTransferVolume.Status.ERROR for v in study_volumes
-            )
-            if job.should_link and pseudonym and study_pseudonymizer and study_has_success:
-                self._create_association(
-                    study_uid, pseudonym, study_volumes, study_pseudonymizer,
-                )
+                    reason = _short_error_reason(str(err))
+                    failed_reasons[reason] = failed_reasons.get(reason, 0) + 1
 
         log_lines = [
             f"Partition {self.mass_task.partition_key}",
             f"Studies found: {len(volumes_by_study)}",
             f"Volumes found: {len(volumes)}",
             f"Processed: {total_processed}",
-            f"Failed: {total_failed}",
         ]
+        if total_skipped:
+            log_lines.append(f"Skipped: {total_skipped}")
+        if total_failed:
+            log_lines.append(f"Failed: {total_failed}")
+        if failed_reasons:
+            log_lines.append("Failure reasons:")
+            for reason, count in failed_reasons.items():
+                log_lines.append(f"  {count}x {reason}")
 
-        if total_failed and total_processed:
-            status = MassTransferTask.Status.WARNING
-            message = "Some volumes failed during mass transfer."
-        elif total_failed and not total_processed:
-            status = MassTransferTask.Status.FAILURE
-            message = "All volumes failed during mass transfer."
-        elif not volumes:
+        if not volumes:
             status = MassTransferTask.Status.SUCCESS
             message = "No volumes found for this partition."
+        elif total_failed and not total_processed:
+            status = MassTransferTask.Status.FAILURE
+            message = f"All {total_failed} volumes failed during mass transfer."
         else:
-            status = MassTransferTask.Status.SUCCESS
+            # Build a unified message: "x studies, y volumes processed (z skipped, w failed)"
+            parts = []
+            if total_skipped:
+                parts.append(f"{total_skipped} skipped")
+            if total_failed:
+                parts.append(f"{total_failed} failed")
+            suffix = f" ({', '.join(parts)})" if parts else ""
+
+            if total_failed:
+                status = MassTransferTask.Status.WARNING
+            else:
+                status = MassTransferTask.Status.SUCCESS
+
             message = (
-                f"Mass transfer complete: {len(volumes_by_study)} studies, "
-                f"{total_processed} volumes processed."
+                f"{len(volumes_by_study)} studies, "
+                f"{total_processed} volumes processed{suffix}."
             )
 
         return {
@@ -451,10 +475,18 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
         # all volumes in the same study.
         manipulator = DicomManipulator(pseudonymizer=study_pseudonymizer)
 
+        # Capture pseudonymized UIDs from the first image after anonymization.
+        pseudonymized_study_uid = ""
+        pseudonymized_series_uid = ""
+
         def callback(ds: Dataset | None) -> None:
+            nonlocal pseudonymized_study_uid, pseudonymized_series_uid
             if ds is None:
                 return
             manipulator.manipulate(ds, pseudonym=pseudonym)
+            if pseudonym and not pseudonymized_study_uid:
+                pseudonymized_study_uid = str(ds.StudyInstanceUID)
+                pseudonymized_series_uid = str(ds.SeriesInstanceUID)
             file_name = sanitize_filename(f"{ds.SOPInstanceUID}.dcm")
             write_dataset(ds, export_path / file_name)
 
@@ -466,6 +498,8 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
         )
 
         volume.pseudonym = pseudonym
+        volume.study_instance_uid_pseudonymized = pseudonymized_study_uid
+        volume.series_instance_uid_pseudonymized = pseudonymized_series_uid
         volume.status = MassTransferVolume.Status.EXPORTED
         volume.save()
 
@@ -505,6 +539,17 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
         ]
 
         result = subprocess.run(cmd, check=False, capture_output=True, text=True)
+        combined_output = (result.stdout or "") + (result.stderr or "")
+
+        # dcm2niix returns non-zero when the input contains only non-image
+        # DICOM objects (structured reports, presentation states, etc.).
+        # This is not an error — there is simply nothing to convert.
+        if "No valid DICOM images" in combined_output:
+            volume.status = MassTransferVolume.Status.SKIPPED
+            volume.add_log("Non-image DICOM series (skipped by dcm2niix)")
+            volume.save()
+            return
+
         if result.returncode != 0:
             output = result.stderr or result.stdout
             raise DicomError(
@@ -522,46 +567,6 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
         volume.save()
 
         self._cleanup_export(volume)
-
-    def _create_association(
-        self,
-        original_study_uid: str,
-        pseudonym: str,
-        study_volumes: list[MassTransferVolume],
-        study_pseudonymizer: Pseudonymizer,
-    ) -> None:
-        """Create a MassTransferAssociation record linking original to pseudonymized UIDs."""
-        job = self.mass_task.job
-
-        # Recover the pseudonymized StudyInstanceUID by running a probe dataset
-        # through the same Anonymizer instance that processed the real data.
-        # This is deterministic — same input UID always yields the same output.
-        # NOTE: dicognito's anonymize() walks file_meta, so the probe needs
-        # a minimal file_meta block to avoid AttributeError.
-        probe = Dataset()
-        probe.file_meta = Dataset()
-        probe.file_meta.TransferSyntaxUID = ExplicitVRLittleEndian
-        probe.file_meta.MediaStorageSOPClassUID = "1.2.840.10008.5.1.4.1.1.2"
-        probe.file_meta.MediaStorageSOPInstanceUID = "1.2.3"
-        probe.StudyInstanceUID = original_study_uid
-        probe.SOPClassUID = "1.2.840.10008.5.1.4.1.1.2"  # CT Image Storage
-        study_pseudonymizer.anonymizer.anonymize(probe)
-        pseudonymized_study_uid = str(probe.StudyInstanceUID)
-
-        patient_id = next(
-            (v.patient_id for v in study_volumes if v.patient_id), ""
-        )
-
-        MassTransferAssociation.objects.update_or_create(
-            job=job,
-            original_study_instance_uid=original_study_uid,
-            defaults={
-                "task": self.mass_task,
-                "pseudonym": pseudonym,
-                "patient_id": patient_id,
-                "pseudonymized_study_instance_uid": pseudonymized_study_uid,
-            },
-        )
 
     def _cleanup_export(self, volume: MassTransferVolume) -> None:
         export_folder = volume.exported_folder

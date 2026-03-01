@@ -147,7 +147,10 @@ class MassTransferTask(DicomTask):
         volumes = self.volumes.exclude(exported_folder="")
 
         for volume in volumes:
-            if volume.status == MassTransferVolume.Status.CONVERTED:
+            if volume.status in (
+                MassTransferVolume.Status.CONVERTED,
+                MassTransferVolume.Status.SKIPPED,
+            ):
                 continue
             # When not converting to NIfTI, EXPORTED is the final state and
             # the files live in the destination folder — don't delete them.
@@ -179,6 +182,7 @@ class MassTransferVolume(models.Model):
         PENDING = "pending", "Pending"
         EXPORTED = "exported", "Exported"
         CONVERTED = "converted", "Converted"
+        SKIPPED = "skipped", "Skipped"
         ERROR = "error", "Error"
 
     job = models.ForeignKey(MassTransferJob, on_delete=models.CASCADE, related_name="volumes")
@@ -209,6 +213,9 @@ class MassTransferVolume(models.Model):
     export_cleaned = models.BooleanField(default=False)
     converted_file = models.TextField(blank=True, default="")
 
+    study_instance_uid_pseudonymized = models.CharField(max_length=128, blank=True, default="")
+    series_instance_uid_pseudonymized = models.CharField(max_length=128, blank=True, default="")
+
     status = models.CharField(max_length=16, choices=Status.choices, default=Status.PENDING)
     log = models.TextField(blank=True, default="")
 
@@ -233,38 +240,3 @@ class MassTransferVolume(models.Model):
         self.log += msg
 
 
-class MassTransferAssociation(models.Model):
-    """Maps original DICOM UIDs to their pseudonymized counterparts for longitudinal linking."""
-
-    job = models.ForeignKey(
-        MassTransferJob,
-        on_delete=models.CASCADE,
-        related_name="associations",
-    )
-    task = models.ForeignKey(
-        MassTransferTask,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name="associations",
-    )
-    pseudonym = models.CharField(max_length=64)
-    patient_id = models.CharField(max_length=64)
-    original_study_instance_uid = models.CharField(max_length=128)
-    pseudonymized_study_instance_uid = models.CharField(max_length=128)
-    created = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        ordering = ("id",)
-        constraints = [
-            models.UniqueConstraint(
-                fields=["job", "original_study_instance_uid"],
-                name="mass_transfer_unique_association_per_study",
-            )
-        ]
-
-    def __str__(self) -> str:
-        return (
-            f"MassTransferAssociation {self.original_study_instance_uid} "
-            f"-> {self.pseudonymized_study_instance_uid}"
-        )

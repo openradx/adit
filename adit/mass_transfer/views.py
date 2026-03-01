@@ -28,7 +28,12 @@ from adit.core.views import (
 from .filters import MassTransferJobFilter, MassTransferTaskFilter
 from .forms import MassTransferFilterForm, MassTransferJobForm
 from .mixins import MassTransferLockedMixin
-from .models import MassTransferAssociation, MassTransferFilter, MassTransferJob, MassTransferTask
+from .models import (
+    MassTransferFilter,
+    MassTransferJob,
+    MassTransferTask,
+    MassTransferVolume,
+)
 from .tables import MassTransferJobTable, MassTransferTaskTable
 
 MASS_TRANSFER_SOURCE = "mass_transfer_source"
@@ -104,7 +109,11 @@ class MassTransferJobAssociationsExportView(LoginRequiredMixin, MassTransferLock
             qs = MassTransferJob.objects.filter(owner=request.user)
 
         job = qs.get(pk=pk)
-        associations = MassTransferAssociation.objects.filter(job=job).order_by("id")
+        volumes = (
+            MassTransferVolume.objects.filter(job=job)
+            .exclude(study_instance_uid_pseudonymized="")
+            .order_by("study_datetime", "series_instance_uid")
+        )
 
         response = HttpResponse(content_type="text/csv")
         response["Content-Disposition"] = f'attachment; filename="associations_job_{job.pk}.csv"'
@@ -113,15 +122,19 @@ class MassTransferJobAssociationsExportView(LoginRequiredMixin, MassTransferLock
         writer.writerow([
             "pseudonym",
             "patient_id",
-            "original_study_instance_uid",
-            "pseudonymized_study_instance_uid",
+            "study_instance_uid",
+            "study_instance_uid_pseudonymized",
+            "series_instance_uid",
+            "series_instance_uid_pseudonymized",
         ])
-        for assoc in associations.iterator():
+        for vol in volumes.iterator():
             writer.writerow([
-                assoc.pseudonym,
-                assoc.patient_id,
-                assoc.original_study_instance_uid,
-                assoc.pseudonymized_study_instance_uid,
+                vol.pseudonym,
+                vol.patient_id,
+                vol.study_instance_uid,
+                vol.study_instance_uid_pseudonymized,
+                vol.series_instance_uid,
+                vol.series_instance_uid_pseudonymized,
             ])
 
         return response
@@ -156,6 +169,17 @@ class MassTransferTaskDetailView(MassTransferLockedMixin, DicomTaskDetailView):
     model = MassTransferTask
     job_url_name = "mass_transfer_job_detail"
     template_name = "mass_transfer/mass_transfer_task_detail.html"
+
+    def get_context_data(self, **kwargs) -> dict[str, Any]:
+        context = super().get_context_data(**kwargs)
+        task = self.object
+        context["problem_volumes"] = task.volumes.filter(
+            status__in=[
+                MassTransferVolume.Status.ERROR,
+                MassTransferVolume.Status.SKIPPED,
+            ]
+        ).order_by("status", "study_datetime")
+        return context
 
 
 class MassTransferTaskDeleteView(MassTransferLockedMixin, DicomTaskDeleteView):

@@ -70,7 +70,12 @@ def _run_dicom_task(
     assert context.job
 
     dicom_task = get_dicom_task(model_label, task_id)
-    assert dicom_task.status == DicomTask.Status.PENDING
+    # The assertion status == PENDING assumed that tasks always arrive fresh,
+    # but in reality a retried task can arrive in a half-finished state.
+    # A task may still be IN_PROGRESS if the worker was killed before the
+    # finally block could update its status.  Accept both PENDING and
+    # IN_PROGRESS so the retry can proceed.
+    assert dicom_task.status in (DicomTask.Status.PENDING, DicomTask.Status.IN_PROGRESS)
 
     # When the first DICOM task of a job is processed then the status of the
     # job switches from PENDING to IN_PROGRESS

@@ -2,7 +2,21 @@ from typing import Any
 
 from django.template import Library
 
+from ..models import MassTransferVolume
+
 register = Library()
+
+
+@register.filter
+def volume_status_css_class(status: str) -> str:
+    css_classes = {
+        MassTransferVolume.Status.PENDING: "text-secondary",
+        MassTransferVolume.Status.EXPORTED: "text-info",
+        MassTransferVolume.Status.CONVERTED: "text-success",
+        MassTransferVolume.Status.SKIPPED: "text-muted",
+        MassTransferVolume.Status.ERROR: "text-danger",
+    }
+    return css_classes.get(status, "text-secondary")
 
 
 @register.inclusion_tag("core/_job_detail_control_panel.html", takes_context=True)

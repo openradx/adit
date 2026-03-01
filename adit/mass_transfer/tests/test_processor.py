@@ -1220,12 +1220,10 @@ def test_dicom_match_wildcard():
 
 
 @pytest.mark.django_db
-def test_process_linking_mode_creates_associations(
+def test_process_linking_mode_stores_pseudonymized_uids(
     mocker: MockerFixture, settings, tmp_path: Path
 ):
-    """In linking mode, MassTransferAssociation records are created per study."""
-    from adit.mass_transfer.models import MassTransferAssociation
-
+    """In linking mode, pseudonymized UIDs are stored on the volume."""
     settings.MASS_TRANSFER_EXPORT_BASE_DIR = str(tmp_path / "exports")
     MassTransferSettings.objects.create()
 
@@ -1272,6 +1270,8 @@ def test_process_linking_mode_creates_associations(
     def fake_export(op, volume, base, pseudonym, **kwargs):
         volume.status = MassTransferVolume.Status.EXPORTED
         volume.pseudonym = pseudonym
+        volume.study_instance_uid_pseudonymized = "9.8.7.6"
+        volume.series_instance_uid_pseudonymized = "9.8.7.6.5"
         volume.save()
 
     mocker.patch.object(processor, "_export_volume", side_effect=fake_export)
@@ -1283,23 +1283,18 @@ def test_process_linking_mode_creates_associations(
 
     result = processor.process()
 
-    assocs = MassTransferAssociation.objects.filter(job=job)
-    assert assocs.count() == 1
-    assoc = assocs.first()
-    assert assoc.original_study_instance_uid == "1.2.3.4"
-    assert assoc.pseudonym == uuid.UUID(int=1).hex
-    assert assoc.patient_id == "PAT1"
-    assert assoc.pseudonymized_study_instance_uid != ""
+    vol.refresh_from_db()
+    assert vol.study_instance_uid_pseudonymized == "9.8.7.6"
+    assert vol.series_instance_uid_pseudonymized == "9.8.7.6.5"
+    assert vol.pseudonym == uuid.UUID(int=1).hex
     assert result["status"] == MassTransferTask.Status.SUCCESS
 
 
 @pytest.mark.django_db
-def test_process_linking_mode_skips_association_for_failed_study(
+def test_process_failed_volume_has_no_pseudonymized_uids(
     mocker: MockerFixture, settings, tmp_path: Path
 ):
-    """In linking mode, no association is created if all volumes in a study failed."""
-    from adit.mass_transfer.models import MassTransferAssociation
-
+    """Failed volumes have empty pseudonymized UID fields."""
     settings.MASS_TRANSFER_EXPORT_BASE_DIR = str(tmp_path / "exports")
     MassTransferSettings.objects.create()
 
@@ -1355,7 +1350,9 @@ def test_process_linking_mode_skips_association_for_failed_study(
 
     result = processor.process()
 
-    assert MassTransferAssociation.objects.filter(job=job).count() == 0
+    vol.refresh_from_db()
+    assert vol.study_instance_uid_pseudonymized == ""
+    assert vol.series_instance_uid_pseudonymized == ""
     assert result["status"] == MassTransferTask.Status.FAILURE
 
 
@@ -1363,23 +1360,17 @@ def test_process_linking_mode_skips_association_for_failed_study(
 def test_longitudinal_linking_across_partitions(
     mocker: MockerFixture, settings, tmp_path: Path
 ):
-    """Prove that linking mode enables longitudinal tracking across an entire job.
+    """Prove that pseudonymized UIDs on volumes enable longitudinal tracking.
 
     Scenario:
       - Partition 1 (Jan 1): PAT1/Study-A (2 series), PAT2/Study-B (1 series)
       - Partition 2 (Jan 2): PAT1/Study-C (1 series)
 
     After processing both partitions:
-      - 3 association records exist (one per study)
-      - PAT1 has 2 associations → linkable via patient_id
-      - PAT2 has 1 association
-      - The pseudonymized StudyInstanceUID in each association matches
-        what dicognito actually produced during export (probe-anonymize
-        consistency)
+      - All 4 volumes have pseudonymized UIDs
+      - PAT1 volumes are linkable via patient_id
+      - Two series in the same study share the same pseudonymized study UID
     """
-    from adit.mass_transfer.models import MassTransferAssociation
-    from adit.core.utils.pseudonymizer import Pseudonymizer
-
     settings.MASS_TRANSFER_EXPORT_BASE_DIR = str(tmp_path / "exports")
     MassTransferSettings.objects.create()
 
@@ -1457,38 +1448,15 @@ def test_longitudinal_linking_across_partitions(
         study_datetime=timezone.make_aware(datetime(2024, 1, 2, 9, 0)),
     )
 
-    # --- Capture pseudonymized UIDs produced during export ---
-    # Each study's export uses a Pseudonymizer instance. We capture the
-    # pseudonymized StudyInstanceUID that dicognito actually produces during
-    # the export callback, keyed by original StudyInstanceUID.
-    pseudonymized_uids: dict[str, str] = {}
+    # Use a counter to generate distinct but deterministic pseudonymized UIDs
+    export_counter = {"n": 0}
 
     def fake_export(op, volume, base, pseudonym, *, study_pseudonymizer=None):
-        """Fake export that actually runs dicognito on a realistic dataset,
-        so we can capture the pseudonymized StudyInstanceUID."""
-        if study_pseudonymizer is not None:
-            # Build a realistic DICOM dataset and run the pseudonymizer
-            ds = Dataset()
-            ds.file_meta = Dataset()
-            ds.file_meta.TransferSyntaxUID = "1.2.840.10008.1.2.1"
-            ds.file_meta.MediaStorageSOPClassUID = "1.2.840.10008.5.1.4.1.1.2"
-            ds.file_meta.MediaStorageSOPInstanceUID = volume.series_instance_uid
-            ds.StudyInstanceUID = volume.study_instance_uid
-            ds.SeriesInstanceUID = volume.series_instance_uid
-            ds.SOPInstanceUID = volume.series_instance_uid + ".1"
-            ds.SOPClassUID = "1.2.840.10008.5.1.4.1.1.2"
-            ds.PatientID = volume.patient_id
-            ds.PatientName = volume.patient_id
-            ds.StudyDate = "20240101"
-            ds.StudyTime = "100000"
-
-            study_pseudonymizer.pseudonymize(ds, pseudonym)
-
-            # Capture the pseudonymized StudyInstanceUID (should be the same
-            # for all series in the same study sharing the same Anonymizer)
-            pseudonymized_uids[volume.study_instance_uid] = str(ds.StudyInstanceUID)
-
+        export_counter["n"] += 1
+        n = export_counter["n"]
         volume.pseudonym = pseudonym
+        volume.study_instance_uid_pseudonymized = f"2.16.{volume.study_instance_uid}"
+        volume.series_instance_uid_pseudonymized = f"2.16.{volume.series_instance_uid}"
         volume.status = MassTransferVolume.Status.EXPORTED
         volume.save()
 
@@ -1510,66 +1478,45 @@ def test_longitudinal_linking_across_partitions(
     result2 = processor2.process()
     assert result2["status"] == MassTransferTask.Status.SUCCESS
 
-    # --- Verify association records ---
-    assocs = MassTransferAssociation.objects.filter(job=job).order_by(
-        "original_study_instance_uid"
+    # --- Verify pseudonymized UIDs on volumes ---
+    for vol in [vol_a1, vol_a2, vol_b, vol_c]:
+        vol.refresh_from_db()
+        assert vol.study_instance_uid_pseudonymized != ""
+        assert vol.series_instance_uid_pseudonymized != ""
+        assert vol.study_instance_uid_pseudonymized != vol.study_instance_uid
+
+    # Two series in the same study share the same pseudonymized study UID
+    assert (
+        vol_a1.study_instance_uid_pseudonymized
+        == vol_a2.study_instance_uid_pseudonymized
     )
-    assert assocs.count() == 3  # one per study
-
-    assoc_map = {a.original_study_instance_uid: a for a in assocs}
-    assert set(assoc_map.keys()) == {
-        "1.2.840.10001.1.1",
-        "1.2.840.10002.1.1",
-        "1.2.840.10001.1.2",
-    }
-
-    # Each association's pseudonymized UID differs from the original
-    for assoc in assocs:
-        assert assoc.pseudonymized_study_instance_uid != assoc.original_study_instance_uid
-        assert assoc.pseudonymized_study_instance_uid != ""
-
-    # Probe-anonymize consistency: the UID in the association table must
-    # match what dicognito actually produced during export
-    for orig_uid, assoc in assoc_map.items():
-        assert orig_uid in pseudonymized_uids, f"No export captured for {orig_uid}"
-        assert assoc.pseudonymized_study_instance_uid == pseudonymized_uids[orig_uid], (
-            f"Probe UID mismatch for {orig_uid}: "
-            f"association={assoc.pseudonymized_study_instance_uid}, "
-            f"export={pseudonymized_uids[orig_uid]}"
-        )
+    # But different pseudonymized series UIDs
+    assert (
+        vol_a1.series_instance_uid_pseudonymized
+        != vol_a2.series_instance_uid_pseudonymized
+    )
 
     # --- Longitudinal linking via patient_id ---
-    # PAT1 has studies A and C — we can link them through the association table
-    pat1_assocs = [a for a in assocs if a.patient_id == "PAT1"]
-    assert len(pat1_assocs) == 2
-    pat1_studies = {a.original_study_instance_uid for a in pat1_assocs}
+    pat1_vols = MassTransferVolume.objects.filter(
+        job=job, patient_id="PAT1"
+    ).exclude(study_instance_uid_pseudonymized="")
+    assert pat1_vols.count() == 3  # vol_a1, vol_a2, vol_c
+
+    pat1_studies = set(pat1_vols.values_list("study_instance_uid", flat=True))
     assert pat1_studies == {"1.2.840.10001.1.1", "1.2.840.10001.1.2"}
 
-    # Their pseudonymized UIDs are different (different studies)
-    pat1_pseudo_uids = {a.pseudonymized_study_instance_uid for a in pat1_assocs}
-    assert len(pat1_pseudo_uids) == 2
-
-    # PAT2 has only study B
-    pat2_assocs = [a for a in assocs if a.patient_id == "PAT2"]
-    assert len(pat2_assocs) == 1
-    assert pat2_assocs[0].original_study_instance_uid == "1.2.840.10002.1.1"
-
-    # Associations are tied to the correct tasks
-    assoc_a = assoc_map["1.2.840.10001.1.1"]
-    assoc_b = assoc_map["1.2.840.10002.1.1"]
-    assoc_c = assoc_map["1.2.840.10001.1.2"]
-    assert assoc_a.task_id == task1.pk
-    assert assoc_b.task_id == task1.pk
-    assert assoc_c.task_id == task2.pk
+    pat2_vols = MassTransferVolume.objects.filter(
+        job=job, patient_id="PAT2"
+    ).exclude(study_instance_uid_pseudonymized="")
+    assert pat2_vols.count() == 1
+    assert pat2_vols.first().study_instance_uid == "1.2.840.10002.1.1"
 
 
 @pytest.mark.django_db
-def test_process_pseudonymize_mode_no_associations(
+def test_process_pseudonymize_mode_stores_pseudonymized_uids(
     mocker: MockerFixture, settings, tmp_path: Path
 ):
-    """In pseudonymize mode (without linking), no associations are created."""
-    from adit.mass_transfer.models import MassTransferAssociation
-
+    """In pseudonymize mode (without linking), pseudonymized UIDs are still stored on volumes."""
     settings.MASS_TRANSFER_EXPORT_BASE_DIR = str(tmp_path / "exports")
     MassTransferSettings.objects.create()
 
@@ -1616,13 +1563,17 @@ def test_process_pseudonymize_mode_no_associations(
     def fake_export(op, volume, base, pseudonym, **kwargs):
         volume.status = MassTransferVolume.Status.EXPORTED
         volume.pseudonym = pseudonym
+        volume.study_instance_uid_pseudonymized = "9.8.7.6"
+        volume.series_instance_uid_pseudonymized = "9.8.7.6.5"
         volume.save()
 
     mocker.patch.object(processor, "_export_volume", side_effect=fake_export)
 
     result = processor.process()
 
-    assert MassTransferAssociation.objects.filter(job=job).count() == 0
+    vol.refresh_from_db()
+    assert vol.study_instance_uid_pseudonymized == "9.8.7.6"
+    assert vol.series_instance_uid_pseudonymized == "9.8.7.6.5"
     assert result["status"] == MassTransferTask.Status.SUCCESS
 
 

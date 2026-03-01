@@ -76,6 +76,10 @@ def connect_to_server(service: DimseService):
                 self.abort_connection()
                 raise err
             finally:
+                # When a generator is abandoned mid-iteration (e.g. early return from
+                # a for loop), Python throws GeneratorExit — a BaseException, not an
+                # Exception. Without finally, close_connection() was skipped and the
+                # DIMSE association leaked on the PACS side.
                 if opened_connection and self.auto_connect and self.assoc:
                     self.close_connection()
 
