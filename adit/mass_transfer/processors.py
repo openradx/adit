@@ -137,91 +137,96 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
                 "log": "Mass transfer requires at least one filter.",
             }
 
-        # Discovery: query PACS and create volume records
-        operator = DicomOperator(source_node.dicomserver)
-        volumes = self._find_volumes(operator, filters)
+        # Discovery: query PACS and create volume records.
+        # persistent=True keeps the DIMSE association open across multiple
+        # C-FIND/C-GET calls instead of reconnecting for every operation.
+        operator = DicomOperator(source_node.dicomserver, persistent=True)
+        try:
+            volumes = self._find_volumes(operator, filters)
 
-        # Link all discovered volumes to this task (for cleanup_on_failure)
-        for volume in volumes:
-            if volume.task_id != self.mass_task.pk:
-                volume.task = self.mass_task
-                volume.save(update_fields=["task"])
+            # Link all discovered volumes to this task (for cleanup_on_failure)
+            for volume in volumes:
+                if volume.task_id != self.mass_task.pk:
+                    volume.task = self.mass_task
+                    volume.save(update_fields=["task"])
 
-        # Group volumes by study for pseudonymization — all series in a study
-        # must share the same pseudonym so the data stays linked.
-        volumes_by_study: dict[str, list[MassTransferVolume]] = {}
-        for volume in volumes:
-            volumes_by_study.setdefault(volume.study_instance_uid, []).append(volume)
+            # Group volumes by study for pseudonymization — all series in a study
+            # must share the same pseudonym so the data stays linked.
+            volumes_by_study: dict[str, list[MassTransferVolume]] = {}
+            for volume in volumes:
+                volumes_by_study.setdefault(volume.study_instance_uid, []).append(volume)
 
-        export_base = _export_base_dir()
-        output_base = _destination_base_dir(destination_node)
+            export_base = _export_base_dir()
+            output_base = _destination_base_dir(destination_node)
 
-        # The "done" status depends on whether NIfTI conversion is enabled:
-        # CONVERTED when converting, EXPORTED when exporting DICOM only.
-        done_status = (
-            MassTransferVolume.Status.CONVERTED
-            if job.convert_to_nifti
-            else MassTransferVolume.Status.EXPORTED
-        )
+            # The "done" status depends on whether NIfTI conversion is enabled:
+            # CONVERTED when converting, EXPORTED when exporting DICOM only.
+            done_status = (
+                MassTransferVolume.Status.CONVERTED
+                if job.convert_to_nifti
+                else MassTransferVolume.Status.EXPORTED
+            )
 
-        total_processed = 0
-        total_skipped = 0
-        total_failed = 0
-        failed_reasons: dict[str, int] = {}
+            total_processed = 0
+            total_skipped = 0
+            total_failed = 0
+            failed_reasons: dict[str, int] = {}
 
-        for study_uid, study_volumes in volumes_by_study.items():
-            pseudonym = ""
-            study_pseudonymizer: Pseudonymizer | None = None
+            for study_uid, study_volumes in volumes_by_study.items():
+                pseudonym = ""
+                study_pseudonymizer: Pseudonymizer | None = None
 
-            if job.should_pseudonymize:
-                existing_pseudonym = next(
-                    (v.pseudonym for v in study_volumes if v.pseudonym),
-                    None,
-                )
-                pseudonym = existing_pseudonym or uuid.uuid4().hex
-                # One Anonymizer per study: all series in the same study share
-                # the same Anonymizer so UIDs stay consistent within the study.
-                study_pseudonymizer = Pseudonymizer()
+                if job.should_pseudonymize:
+                    existing_pseudonym = next(
+                        (v.pseudonym for v in study_volumes if v.pseudonym),
+                        None,
+                    )
+                    pseudonym = existing_pseudonym or uuid.uuid4().hex
+                    # One Anonymizer per study: all series in the same study share
+                    # the same Anonymizer so UIDs stay consistent within the study.
+                    study_pseudonymizer = Pseudonymizer()
 
-            for volume in study_volumes:
-                if volume.status == done_status:
-                    total_processed += 1
-                    continue
-                if volume.status == MassTransferVolume.Status.SKIPPED:
-                    total_skipped += 1
-                    continue
-
-                try:
-                    if job.convert_to_nifti:
-                        self._export_volume(
-                            operator, volume, export_base, pseudonym,
-                            study_pseudonymizer=study_pseudonymizer,
-                        )
-                        self._convert_volume(volume, output_base, pseudonym)
-                    else:
-                        self._export_volume(
-                            operator, volume, output_base, pseudonym,
-                            study_pseudonymizer=study_pseudonymizer,
-                        )
-
-                    # _convert_volume may set SKIPPED for non-image DICOMs
+                for volume in study_volumes:
+                    if volume.status == done_status:
+                        total_processed += 1
+                        continue
                     if volume.status == MassTransferVolume.Status.SKIPPED:
                         total_skipped += 1
-                    else:
-                        total_processed += 1
-                except RetriableDicomError:
-                    raise  # let Procrastinate retry the entire task
-                except Exception as err:
-                    logger.exception(
-                        "Mass transfer failed for volume %s", volume.series_instance_uid
-                    )
-                    self._cleanup_export(volume)
-                    volume.status = MassTransferVolume.Status.ERROR
-                    volume.add_log(str(err))
-                    volume.save()
-                    total_failed += 1
-                    reason = _short_error_reason(str(err))
-                    failed_reasons[reason] = failed_reasons.get(reason, 0) + 1
+                        continue
+
+                    try:
+                        if job.convert_to_nifti:
+                            self._export_volume(
+                                operator, volume, export_base, pseudonym,
+                                study_pseudonymizer=study_pseudonymizer,
+                            )
+                            self._convert_volume(volume, output_base, pseudonym)
+                        else:
+                            self._export_volume(
+                                operator, volume, output_base, pseudonym,
+                                study_pseudonymizer=study_pseudonymizer,
+                            )
+
+                        # _convert_volume may set SKIPPED for non-image DICOMs
+                        if volume.status == MassTransferVolume.Status.SKIPPED:
+                            total_skipped += 1
+                        else:
+                            total_processed += 1
+                    except RetriableDicomError:
+                        raise  # let Procrastinate retry the entire task
+                    except Exception as err:
+                        logger.exception(
+                            "Mass transfer failed for volume %s", volume.series_instance_uid
+                        )
+                        self._cleanup_export(volume)
+                        volume.status = MassTransferVolume.Status.ERROR
+                        volume.add_log(str(err))
+                        volume.save()
+                        total_failed += 1
+                        reason = _short_error_reason(str(err))
+                        failed_reasons[reason] = failed_reasons.get(reason, 0) + 1
+        finally:
+            operator.close()
 
         log_lines = [
             f"Partition {self.mass_task.partition_key}",

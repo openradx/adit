@@ -69,6 +69,10 @@ def connect_to_server(service: DimseService):
             if self.auto_connect and not is_connected:
                 self.open_connection(service)
                 opened_connection = True
+            elif self.persistent and is_connected and self._current_service != service:
+                self.close_connection()
+                self.open_connection(service)
+                opened_connection = True
 
             try:
                 yield from func(self, *args, **kwargs)
@@ -80,7 +84,7 @@ def connect_to_server(service: DimseService):
                 # a for loop), Python throws GeneratorExit — a BaseException, not an
                 # Exception. Without finally, close_connection() was skipped and the
                 # DIMSE association leaked on the PACS side.
-                if opened_connection and self.auto_connect and self.assoc:
+                if opened_connection and self.auto_connect and not self.persistent and self.assoc:
                     self.close_connection()
 
         @wraps(func)
@@ -91,6 +95,10 @@ def connect_to_server(service: DimseService):
             if self.auto_connect and not is_connected:
                 self.open_connection(service)
                 opened_connection = True
+            elif self.persistent and is_connected and self._current_service != service:
+                self.close_connection()
+                self.open_connection(service)
+                opened_connection = True
 
             try:
                 result = func(self, *args, **kwargs)
@@ -98,7 +106,7 @@ def connect_to_server(service: DimseService):
                 self.abort_connection()
                 raise err
 
-            if opened_connection and self.auto_connect:
+            if opened_connection and self.auto_connect and not self.persistent:
                 self.close_connection()
                 opened_connection = False
 
@@ -116,6 +124,7 @@ class DimseConnector:
         self,
         server: DicomServer,
         auto_connect: bool = True,
+        persistent: bool = False,
         acse_timeout: int | None = 60,
         connection_timeout: int | None = None,
         dimse_timeout: int | None = 60,
@@ -123,11 +132,13 @@ class DimseConnector:
     ) -> None:
         self.server = server
         self.auto_connect = auto_connect
+        self.persistent = persistent
         self.acse_timeout = acse_timeout
         self.connection_timeout = connection_timeout
         self.dimse_timeout = dimse_timeout
         self.network_timeout = network_timeout
         self.logs: list[DicomLogEntry] = []
+        self._current_service: DimseService | None = None
 
         if settings.ENABLE_DICOM_DEBUG_LOGGER:
             debug_logger()  # Debug mode of pynetdicom
@@ -141,6 +152,7 @@ class DimseConnector:
         # Call _associate which is decorated with @retry_dimse_connect
         # Stamina will handle retries automatically (5 attempts with exponential backoff)
         self._associate(service)
+        self._current_service = service
 
     @retry_dimse_connect
     def _associate(self, service: DimseService):
@@ -203,12 +215,14 @@ class DimseConnector:
         assert self.assoc
         self.assoc.release()
         self.assoc = None
+        self._current_service = None
 
     def abort_connection(self):
         if self.assoc:
             logger.debug("Aborting connection to DICOM server %s.", self.server.ae_title)
             self.assoc.abort()
             self.assoc = None
+            self._current_service = None
 
     @retry_dimse_find
     @connect_to_server("C-FIND")
