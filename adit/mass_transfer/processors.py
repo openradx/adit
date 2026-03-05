@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import hashlib
 import logging
-import shutil
+import secrets
 import subprocess
-import uuid
+import tempfile
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import cast
@@ -24,6 +26,7 @@ from adit.core.utils.sanitize import sanitize_filename
 
 from .models import (
     MassTransferFilter,
+    MassTransferJob,
     MassTransferSettings,
     MassTransferTask,
     MassTransferVolume,
@@ -32,6 +35,21 @@ from .models import (
 logger = logging.getLogger(__name__)
 
 _MIN_SPLIT_WINDOW = timedelta(minutes=30)
+
+
+@dataclass
+class DiscoveredSeries:
+    patient_id: str
+    accession_number: str
+    study_instance_uid: str
+    series_instance_uid: str
+    modality: str
+    study_description: str
+    series_description: str
+    series_number: int | None
+    study_datetime: datetime
+    institution_name: str
+    number_of_images: int
 
 
 def _dicom_match(pattern: str, value: str | None) -> bool:
@@ -44,9 +62,6 @@ def _dicom_match(pattern: str, value: str | None) -> bool:
 
 
 def _short_error_reason(error: str) -> str:
-    """Extract a short, groupable reason from a volume error message."""
-    # Take the last non-empty line — for dcm2niix output this is the
-    # meaningful summary (e.g. "No valid DICOM images were found").
     lines = [line.strip() for line in error.strip().splitlines() if line.strip()]
     return lines[-1] if lines else error
 
@@ -60,17 +75,6 @@ def _parse_int(value: object, default: int | None = None) -> int | None:
         return default
 
 
-def _series_folder_name(
-    series_number: int | None, series_description: str, series_uid: str
-) -> str:
-    if series_number is None:
-        base = series_uid
-    else:
-        description = series_description or "Undefined"
-        base = f"{series_number}-{description}"
-    return sanitize_filename(str(base))
-
-
 def _study_datetime(study: ResultDataset) -> datetime:
     study_date = study.StudyDate
     study_time = study.StudyTime
@@ -79,10 +83,20 @@ def _study_datetime(study: ResultDataset) -> datetime:
     return datetime.combine(study_date, study_time)
 
 
-def _export_base_dir() -> Path:
-    base = Path(settings.MASS_TRANSFER_EXPORT_BASE_DIR)
-    base.mkdir(parents=True, exist_ok=True)
-    return base
+def _study_folder_name(study_description: str, study_dt: datetime, study_uid: str) -> str:
+    desc = sanitize_filename(study_description or "Undefined")
+    date_str = study_dt.strftime("%Y%m%d")
+    short_hash = hashlib.sha256(study_uid.encode()).hexdigest()[:4]
+    return f"{desc}_{date_str}_{short_hash}"
+
+
+def _series_folder_name(
+    series_description: str, series_number: int | None, series_uid: str
+) -> str:
+    if series_number is None:
+        return sanitize_filename(series_uid)
+    desc = sanitize_filename(series_description or "Undefined")
+    return f"{desc}_{series_number}"
 
 
 def _destination_base_dir(node: DicomNode) -> Path:
@@ -90,16 +104,6 @@ def _destination_base_dir(node: DicomNode) -> Path:
     path = Path(node.dicomfolder.path)
     path.mkdir(parents=True, exist_ok=True)
     return path
-
-
-def _volume_path(
-    base_dir: Path,
-    study_dt: datetime,
-    subject_id: str,
-    series_name: str,
-) -> Path:
-    year_month = study_dt.strftime("%Y%m")
-    return base_dir / year_month / subject_id / series_name
 
 
 class MassTransferTaskProcessor(DicomTaskProcessor):
@@ -137,30 +141,36 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
                 "log": "Mass transfer requires at least one filter.",
             }
 
-        # Discovery: query PACS and create volume records.
-        # persistent=True keeps the DIMSE association open across multiple
-        # C-FIND/C-GET calls instead of reconnecting for every operation.
+        pseudonymizer: Pseudonymizer | None = None
+        if job.should_link:
+            pseudonymizer = Pseudonymizer(seed=job.pseudonym_salt)
+        elif job.should_pseudonymize:
+            pseudonymizer = Pseudonymizer()
+
         operator = DicomOperator(source_node.dicomserver, persistent=True)
         try:
-            volumes = self._find_volumes(operator, filters)
+            discovered = self._discover_series(operator, filters)
 
-            # Link all discovered volumes to this task (for cleanup_on_failure)
-            for volume in volumes:
-                if volume.task_id != self.mass_task.pk:
-                    volume.task = self.mass_task
-                    volume.save(update_fields=["task"])
+            # Filter out series already processed in a previous run
+            done_uids = set(
+                MassTransferVolume.objects.filter(
+                    job=job,
+                    status__in=[
+                        MassTransferVolume.Status.EXPORTED,
+                        MassTransferVolume.Status.CONVERTED,
+                        MassTransferVolume.Status.SKIPPED,
+                    ],
+                ).values_list("series_instance_uid", flat=True)
+            )
+            # Delete ERROR volumes so they can be retried cleanly
+            MassTransferVolume.objects.filter(
+                job=job, status=MassTransferVolume.Status.ERROR
+            ).delete()
 
-            # Group volumes by study for pseudonymization — all series in a study
-            # must share the same pseudonym so the data stays linked.
-            volumes_by_study: dict[str, list[MassTransferVolume]] = {}
-            for volume in volumes:
-                volumes_by_study.setdefault(volume.study_instance_uid, []).append(volume)
+            pending = [s for s in discovered if s.series_instance_uid not in done_uids]
+            total_skipped_prior = len(done_uids)
 
-            export_base = _export_base_dir()
             output_base = _destination_base_dir(destination_node)
-
-            # The "done" status depends on whether NIfTI conversion is enabled:
-            # CONVERTED when converting, EXPORTED when exporting DICOM only.
             done_status = (
                 MassTransferVolume.Status.CONVERTED
                 if job.convert_to_nifti
@@ -172,68 +182,139 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
             total_failed = 0
             failed_reasons: dict[str, int] = {}
 
-            for study_uid, study_volumes in volumes_by_study.items():
-                pseudonym = ""
-                study_pseudonymizer: Pseudonymizer | None = None
+            # Group by patient for folder structure
+            by_patient: dict[str, list[DiscoveredSeries]] = {}
+            for s in pending:
+                by_patient.setdefault(s.patient_id, []).append(s)
 
-                if job.should_pseudonymize:
-                    existing_pseudonym = next(
-                        (v.pseudonym for v in study_volumes if v.pseudonym),
-                        None,
+            # For non-linking pseudonymize mode, generate random pseudonyms per patient
+            random_pseudonyms: dict[str, str] = {}
+
+            for patient_id, series_list in by_patient.items():
+                if job.should_link and pseudonymizer:
+                    subject_id = pseudonymizer.compute_pseudonym(patient_id)
+                elif pseudonymizer:
+                    if patient_id not in random_pseudonyms:
+                        random_pseudonyms[patient_id] = secrets.token_hex(6).upper()
+                    subject_id = random_pseudonyms[patient_id]
+                else:
+                    subject_id = sanitize_filename(patient_id)
+
+                for series in series_list:
+                    study_folder = _study_folder_name(
+                        series.study_description,
+                        series.study_datetime,
+                        series.study_instance_uid,
                     )
-                    pseudonym = existing_pseudonym or uuid.uuid4().hex
-                    # One Anonymizer per study: all series in the same study share
-                    # the same Anonymizer so UIDs stay consistent within the study.
-                    study_pseudonymizer = Pseudonymizer()
-
-                for volume in study_volumes:
-                    if volume.status == done_status:
-                        total_processed += 1
-                        continue
-                    if volume.status == MassTransferVolume.Status.SKIPPED:
-                        total_skipped += 1
-                        continue
+                    series_folder = _series_folder_name(
+                        series.series_description,
+                        series.series_number,
+                        series.series_instance_uid,
+                    )
 
                     try:
                         if job.convert_to_nifti:
-                            self._export_volume(
-                                operator, volume, export_base, pseudonym,
-                                study_pseudonymizer=study_pseudonymizer,
-                            )
-                            self._convert_volume(volume, output_base, pseudonym)
+                            with tempfile.TemporaryDirectory() as tmp_dir:
+                                tmp_path = Path(tmp_dir)
+                                self._export_series(
+                                    operator, series, tmp_path,
+                                    subject_id, pseudonymizer,
+                                )
+                                output_path = (
+                                    output_base / self.mass_task.partition_key
+                                    / subject_id / study_folder / series_folder
+                                )
+                                nifti_files = self._convert_series(
+                                    series, tmp_path, output_path,
+                                )
                         else:
-                            self._export_volume(
-                                operator, volume, output_base, pseudonym,
-                                study_pseudonymizer=study_pseudonymizer,
+                            output_path = (
+                                output_base / self.mass_task.partition_key
+                                / subject_id / study_folder / series_folder
                             )
+                            self._export_series(
+                                operator, series, output_path,
+                                subject_id, pseudonymizer,
+                            )
+                            nifti_files = []
 
-                        # _convert_volume may set SKIPPED for non-image DICOMs
-                        if volume.status == MassTransferVolume.Status.SKIPPED:
+                        converted_file = ""
+                        if nifti_files:
+                            converted_file = "\n".join(str(f) for f in nifti_files)
+                            status = done_status
+                        elif job.convert_to_nifti:
+                            status = MassTransferVolume.Status.SKIPPED
+                        else:
+                            status = done_status
+
+                        MassTransferVolume.objects.create(
+                            job=job,
+                            task=self.mass_task,
+                            partition_key=self.mass_task.partition_key,
+                            patient_id=series.patient_id,
+                            pseudonym=subject_id if pseudonymizer else "",
+                            accession_number=series.accession_number,
+                            study_instance_uid=series.study_instance_uid,
+                            series_instance_uid=series.series_instance_uid,
+                            modality=series.modality,
+                            study_description=series.study_description,
+                            series_description=series.series_description,
+                            series_number=series.series_number,
+                            study_datetime=timezone.make_aware(series.study_datetime),
+                            institution_name=series.institution_name,
+                            number_of_images=series.number_of_images,
+                            converted_file=converted_file,
+                            status=status,
+                        )
+
+                        if status == MassTransferVolume.Status.SKIPPED:
                             total_skipped += 1
                         else:
                             total_processed += 1
+
                     except RetriableDicomError:
-                        raise  # let Procrastinate retry the entire task
+                        raise
                     except Exception as err:
                         logger.exception(
-                            "Mass transfer failed for volume %s", volume.series_instance_uid
+                            "Mass transfer failed for series %s",
+                            series.series_instance_uid,
                         )
-                        self._cleanup_export(volume)
-                        volume.status = MassTransferVolume.Status.ERROR
-                        volume.add_log(str(err))
-                        volume.save()
+                        MassTransferVolume.objects.create(
+                            job=job,
+                            task=self.mass_task,
+                            partition_key=self.mass_task.partition_key,
+                            patient_id=series.patient_id,
+                            pseudonym=subject_id if pseudonymizer else "",
+                            accession_number=series.accession_number,
+                            study_instance_uid=series.study_instance_uid,
+                            series_instance_uid=series.series_instance_uid,
+                            modality=series.modality,
+                            study_description=series.study_description,
+                            series_description=series.series_description,
+                            series_number=series.series_number,
+                            study_datetime=timezone.make_aware(series.study_datetime),
+                            institution_name=series.institution_name,
+                            number_of_images=series.number_of_images,
+                            status=MassTransferVolume.Status.ERROR,
+                            log=str(err),
+                        )
                         total_failed += 1
                         reason = _short_error_reason(str(err))
                         failed_reasons[reason] = failed_reasons.get(reason, 0) + 1
         finally:
             operator.close()
 
+        # Count unique studies across all discovered series
+        study_uids = {s.study_instance_uid for s in discovered}
+
         log_lines = [
             f"Partition {self.mass_task.partition_key}",
-            f"Studies found: {len(volumes_by_study)}",
-            f"Volumes found: {len(volumes)}",
+            f"Studies found: {len(study_uids)}",
+            f"Series found: {len(discovered)}",
             f"Processed: {total_processed}",
         ]
+        if total_skipped_prior:
+            log_lines.append(f"Already done (prior run): {total_skipped_prior}")
         if total_skipped:
             log_lines.append(f"Skipped: {total_skipped}")
         if total_failed:
@@ -243,14 +324,13 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
             for reason, count in failed_reasons.items():
                 log_lines.append(f"  {count}x {reason}")
 
-        if not volumes:
+        if not discovered:
             status = MassTransferTask.Status.SUCCESS
-            message = "No volumes found for this partition."
+            message = "No series found for this partition."
         elif total_failed and not total_processed:
             status = MassTransferTask.Status.FAILURE
-            message = f"All {total_failed} volumes failed during mass transfer."
+            message = f"All {total_failed} series failed during mass transfer."
         else:
-            # Build a unified message: "x studies, y volumes processed (z skipped, w failed)"
             parts = []
             if total_skipped:
                 parts.append(f"{total_skipped} skipped")
@@ -258,14 +338,10 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
                 parts.append(f"{total_failed} failed")
             suffix = f" ({', '.join(parts)})" if parts else ""
 
-            if total_failed:
-                status = MassTransferTask.Status.WARNING
-            else:
-                status = MassTransferTask.Status.SUCCESS
-
+            status = MassTransferTask.Status.WARNING if total_failed else MassTransferTask.Status.SUCCESS
             message = (
-                f"{len(volumes_by_study)} studies, "
-                f"{total_processed} volumes processed{suffix}."
+                f"{len(study_uids)} studies, "
+                f"{total_processed} series processed{suffix}."
             )
 
         return {
@@ -274,16 +350,15 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
             "log": "\n".join(log_lines),
         }
 
-    def _find_volumes(
+    def _discover_series(
         self,
         operator: DicomOperator,
         filters: list[MassTransferFilter],
-    ) -> list[MassTransferVolume]:
+    ) -> list[DiscoveredSeries]:
         start = self.mass_task.partition_start
         end = self.mass_task.partition_end
-        job = self.mass_task.job
 
-        found_series: dict[str, MassTransferVolume] = {}
+        found: dict[str, DiscoveredSeries] = {}
 
         for mf in filters:
             studies = self._find_studies(operator, mf, start, end)
@@ -305,7 +380,6 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
                     PatientID=study.PatientID,
                     StudyInstanceUID=study.StudyInstanceUID,
                 )
-                # Request institution name at series level when possible
                 series_query.dataset.InstitutionName = ""
 
                 series_list = list(operator.find_series(series_query))
@@ -341,54 +415,27 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
                         except (TypeError, ValueError):
                             continue
 
-                    if series_uid in found_series:
+                    if series_uid in found:
                         continue
 
                     study_dt = _study_datetime(study)
-                    # Use get_or_create for resumability: if a task failed halfway
-                    # and is retried, volumes that were already exported/converted
-                    # are returned as-is and skipped later in the processing loop.
-                    volume, created = MassTransferVolume.objects.get_or_create(
-                        job=job,
-                        series_instance_uid=series_uid,
-                        defaults={
-                            "partition_key": self.mass_task.partition_key,
-                            "patient_id": str(study.PatientID),
-                            "accession_number": str(study.get("AccessionNumber", "")),
-                            "study_instance_uid": str(study.StudyInstanceUID),
-                            "modality": str(series.Modality),
-                            "study_description": str(study.get("StudyDescription", "")),
-                            "series_description": str(series.get("SeriesDescription", "")),
-                            "series_number": series_number,
-                            "study_datetime": timezone.make_aware(study_dt),
-                            "institution_name": str(series.get("InstitutionName", "")),
-                            "number_of_images": _parse_int(
-                                series.get("NumberOfSeriesRelatedInstances"), default=0
-                            ),
-                        },
-                    )
-                    # Refresh metadata from PACS in case it changed between runs,
-                    # but only for volumes that haven't been processed yet to avoid
-                    # clobbering partition_key on already exported/converted volumes.
-                    if not created and volume.status == MassTransferVolume.Status.PENDING:
-                        volume.partition_key = self.mass_task.partition_key
-                        volume.patient_id = str(study.PatientID)
-                        volume.accession_number = str(study.get("AccessionNumber", ""))
-                        volume.study_instance_uid = str(study.StudyInstanceUID)
-                        volume.modality = str(series.Modality)
-                        volume.study_description = str(study.get("StudyDescription", ""))
-                        volume.series_description = str(series.get("SeriesDescription", ""))
-                        volume.series_number = series_number
-                        volume.study_datetime = timezone.make_aware(study_dt)
-                        volume.institution_name = str(series.get("InstitutionName", ""))
-                        volume.number_of_images = _parse_int(
+                    found[series_uid] = DiscoveredSeries(
+                        patient_id=str(study.PatientID),
+                        accession_number=str(study.get("AccessionNumber", "")),
+                        study_instance_uid=str(study.StudyInstanceUID),
+                        series_instance_uid=str(series_uid),
+                        modality=str(series.Modality),
+                        study_description=str(study.get("StudyDescription", "")),
+                        series_description=str(series.get("SeriesDescription", "")),
+                        series_number=series_number,
+                        study_datetime=study_dt,
+                        institution_name=str(series.get("InstitutionName", "")),
+                        number_of_images=_parse_int(
                             series.get("NumberOfSeriesRelatedInstances"), default=0
-                        )
-                        volume.save()
+                        ) or 0,
+                    )
 
-                    found_series[series_uid] = volume
-
-        return list(found_series.values())
+        return list(found.values())
 
     def _find_studies(
         self,
@@ -421,8 +468,6 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
             left = self._find_studies(operator, mf, start, mid)
             right = self._find_studies(operator, mf, mid + timedelta(seconds=1), end)
 
-            # Deduplicate: the date-level DICOM query can return the same study
-            # in both halves when the split falls within a single day.
             seen: set[str] = {str(s.StudyInstanceUID) for s in left}
             for study in right:
                 if str(study.StudyInstanceUID) not in seen:
@@ -452,140 +497,76 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
 
         return False
 
-    def _export_volume(
+    def _export_series(
         self,
         operator: DicomOperator,
-        volume: MassTransferVolume,
-        export_base: Path,
-        pseudonym: str,
-        *,
-        study_pseudonymizer: Pseudonymizer | None = None,
+        series: DiscoveredSeries,
+        output_path: Path,
+        subject_id: str,
+        pseudonymizer: Pseudonymizer | None,
     ) -> None:
-        if volume.status == MassTransferVolume.Status.EXPORTED and volume.exported_folder:
-            return
+        output_path.mkdir(parents=True, exist_ok=True)
 
-        study_dt = volume.study_datetime
-        series_name = _series_folder_name(
-            volume.series_number,
-            volume.series_description,
-            volume.series_instance_uid,
-        )
-
-        subject_id = sanitize_filename(pseudonym or volume.patient_id)
-        export_path = _volume_path(export_base, study_dt, subject_id, series_name)
-        export_path.mkdir(parents=True, exist_ok=True)
-        volume.exported_folder = str(export_path)
-
-        # Share the study-level Pseudonymizer (and thus Anonymizer) across
-        # all volumes in the same study.
-        manipulator = DicomManipulator(pseudonymizer=study_pseudonymizer)
-
-        # Capture pseudonymized UIDs from the first image after anonymization.
-        pseudonymized_study_uid = ""
-        pseudonymized_series_uid = ""
+        manipulator = DicomManipulator(pseudonymizer=pseudonymizer) if pseudonymizer else None
 
         def callback(ds: Dataset | None) -> None:
-            nonlocal pseudonymized_study_uid, pseudonymized_series_uid
             if ds is None:
                 return
-            manipulator.manipulate(ds, pseudonym=pseudonym)
-            if pseudonym and not pseudonymized_study_uid:
-                pseudonymized_study_uid = str(ds.StudyInstanceUID)
-                pseudonymized_series_uid = str(ds.SeriesInstanceUID)
+            if manipulator:
+                manipulator.manipulate(ds, pseudonym=subject_id)
             file_name = sanitize_filename(f"{ds.SOPInstanceUID}.dcm")
-            write_dataset(ds, export_path / file_name)
+            write_dataset(ds, output_path / file_name)
 
         operator.fetch_series(
-            patient_id=volume.patient_id,
-            study_uid=volume.study_instance_uid,
-            series_uid=volume.series_instance_uid,
+            patient_id=series.patient_id,
+            study_uid=series.study_instance_uid,
+            series_uid=series.series_instance_uid,
             callback=callback,
         )
 
-        volume.pseudonym = pseudonym
-        volume.study_instance_uid_pseudonymized = pseudonymized_study_uid
-        volume.series_instance_uid_pseudonymized = pseudonymized_series_uid
-        volume.status = MassTransferVolume.Status.EXPORTED
-        volume.save()
-
-    def _convert_volume(
+    def _convert_series(
         self,
-        volume: MassTransferVolume,
-        output_base: Path,
-        pseudonym: str,
-    ) -> None:
-        if volume.status == MassTransferVolume.Status.CONVERTED and volume.converted_file:
-            return
-
-        if not volume.exported_folder:
-            raise DicomError("Missing exported folder for conversion.")
-
-        study_dt = volume.study_datetime
-        volume.pseudonym = pseudonym
-        series_name = _series_folder_name(
-            volume.series_number,
-            volume.series_description,
-            volume.series_instance_uid,
-        )
-
-        subject_id = sanitize_filename(pseudonym or volume.patient_id)
-        output_path = _volume_path(output_base, study_dt, subject_id, series_name)
+        series: DiscoveredSeries,
+        dicom_dir: Path,
+        output_path: Path,
+    ) -> list[Path]:
+        """Convert DICOM to NIfTI. Returns list of produced .nii.gz files (empty for non-image)."""
         output_path.mkdir(parents=True, exist_ok=True)
+
+        series_name = _series_folder_name(
+            series.series_description,
+            series.series_number,
+            series.series_instance_uid,
+        )
 
         cmd = [
             "dcm2niix",
-            "-z",
-            "y",
-            "-o",
-            str(output_path),
-            "-f",
-            series_name,
-            str(volume.exported_folder),
+            "-z", "y",
+            "-o", str(output_path),
+            "-f", series_name,
+            str(dicom_dir),
         ]
 
         result = subprocess.run(cmd, check=False, capture_output=True, text=True)
         combined_output = (result.stdout or "") + (result.stderr or "")
 
-        # dcm2niix returns non-zero when the input contains only non-image
-        # DICOM objects (structured reports, presentation states, etc.).
-        # This is not an error — there is simply nothing to convert.
         if "No valid DICOM images" in combined_output:
-            volume.status = MassTransferVolume.Status.SKIPPED
-            volume.add_log("Non-image DICOM series (skipped by dcm2niix)")
-            volume.save()
-            return
+            try:
+                if output_path.exists() and not any(output_path.iterdir()):
+                    output_path.rmdir()
+            except OSError:
+                pass
+            return []
 
         if result.returncode != 0:
             output = result.stderr or result.stdout
             raise DicomError(
-                f"Conversion failed for series {volume.series_instance_uid}: {output}"
+                f"Conversion failed for series {series.series_instance_uid}: {output}"
             )
 
         nifti_files = sorted(output_path.glob("*.nii.gz"))
         if not nifti_files:
             raise DicomError(
-                f"dcm2niix produced no .nii.gz files for series {volume.series_instance_uid}"
+                f"dcm2niix produced no .nii.gz files for series {series.series_instance_uid}"
             )
-
-        volume.converted_file = "\n".join(str(f) for f in nifti_files)
-        volume.status = MassTransferVolume.Status.CONVERTED
-        volume.save()
-
-        self._cleanup_export(volume)
-
-    def _cleanup_export(self, volume: MassTransferVolume) -> None:
-        export_folder = volume.exported_folder
-        if not export_folder or volume.export_cleaned:
-            return
-
-        try:
-            shutil.rmtree(export_folder)
-        except FileNotFoundError:
-            pass
-        except Exception as err:
-            volume.add_log(f"Cleanup failed: {err}")
-            volume.save()
-            return
-
-        volume.export_cleaned = True
-        volume.save()
+        return nifti_files

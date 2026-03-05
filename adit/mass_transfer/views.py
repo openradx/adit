@@ -5,6 +5,7 @@ from adit_radis_shared.common.views import BaseUpdatePreferencesView
 from django.conf import settings
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import HttpResponse
+from django.shortcuts import get_object_or_404
 from django.urls import reverse_lazy
 from django.views import View
 from django.views.generic import CreateView, DeleteView, ListView, UpdateView
@@ -108,34 +109,22 @@ class MassTransferJobAssociationsExportView(LoginRequiredMixin, MassTransferLock
         else:
             qs = MassTransferJob.objects.filter(owner=request.user)
 
-        job = qs.get(pk=pk)
-        volumes = (
+        job = get_object_or_404(qs, pk=pk)
+        associations = (
             MassTransferVolume.objects.filter(job=job)
-            .exclude(study_instance_uid_pseudonymized="")
-            .order_by("study_datetime", "series_instance_uid")
+            .exclude(pseudonym="")
+            .values_list("patient_id", "pseudonym")
+            .distinct()
+            .order_by("patient_id")
         )
 
         response = HttpResponse(content_type="text/csv")
         response["Content-Disposition"] = f'attachment; filename="associations_job_{job.pk}.csv"'
 
         writer = csv.writer(response)
-        writer.writerow([
-            "pseudonym",
-            "patient_id",
-            "study_instance_uid",
-            "study_instance_uid_pseudonymized",
-            "series_instance_uid",
-            "series_instance_uid_pseudonymized",
-        ])
-        for vol in volumes.iterator():
-            writer.writerow([
-                vol.pseudonym,
-                vol.patient_id,
-                vol.study_instance_uid,
-                vol.study_instance_uid_pseudonymized,
-                vol.series_instance_uid,
-                vol.series_instance_uid_pseudonymized,
-            ])
+        writer.writerow(["patient_id", "pseudonym"])
+        for patient_id, pseudonym in associations.iterator():
+            writer.writerow([patient_id, pseudonym])
 
         return response
 

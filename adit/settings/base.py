@@ -386,12 +386,6 @@ DICOM_EXPLORER_RESULT_LIMIT = 101
 # Maximum number of C-FIND results for mass transfer before splitting time windows
 MASS_TRANSFER_MAX_SEARCH_RESULTS = env.int("MASS_TRANSFER_MAX_SEARCH_RESULTS", default=200)
 
-# Base directory for temporary DICOM exports in mass transfer
-MASS_TRANSFER_EXPORT_BASE_DIR = env.str(
-    "MASS_TRANSFER_EXPORT_BASE_DIR",
-    default="/mnt/mass_transfer_exports",
-)
-
 # The timeout in dicom_explorer a DICOM server must respond
 DICOM_EXPLORER_RESPONSE_TIMEOUT = 3  # seconds
 

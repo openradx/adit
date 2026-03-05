@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-import shutil
-from pathlib import Path
+import secrets
 
 from django.conf import settings
 from django.db import models
@@ -92,6 +91,10 @@ class MassTransferJob(DicomJob):
     )
 
     filters = models.ManyToManyField(MassTransferFilter, related_name="jobs", blank=True)
+    pseudonym_salt = models.CharField(
+        max_length=64,
+        default=secrets.token_hex,
+    )
 
     @property
     def should_pseudonymize(self) -> bool:
@@ -143,38 +146,14 @@ class MassTransferTask(DicomTask):
         return reverse("mass_transfer_task_detail", args=[self.pk])
 
     def cleanup_on_failure(self) -> None:
-        """Clean up exported DICOM files when a mass transfer task fails or times out."""
-        volumes = self.volumes.exclude(exported_folder="")
+        """Mark ERROR volumes when a mass transfer task fails or times out.
 
-        for volume in volumes:
-            if volume.status in (
-                MassTransferVolume.Status.CONVERTED,
-                MassTransferVolume.Status.SKIPPED,
-            ):
-                continue
-            # When not converting to NIfTI, EXPORTED is the final state and
-            # the files live in the destination folder — don't delete them.
-            if (
-                not self.job.convert_to_nifti
-                and volume.status == MassTransferVolume.Status.EXPORTED
-            ):
-                continue
-
-            export_folder = volume.exported_folder
-            if export_folder:
-                try:
-                    shutil.rmtree(Path(export_folder))
-                except FileNotFoundError:
-                    pass
-                except Exception as err:
-                    volume.add_log(f"Cleanup failed: {err}")
-                    volume.save()
-                    continue
-
-            volume.exported_folder = ""
-            volume.status = MassTransferVolume.Status.ERROR
-            volume.add_log("Export cleaned up after task failure.")
-            volume.save()
+        With deferred insertion, volumes only exist in the DB after successful
+        export/conversion — there are no intermediate files to clean up.
+        Temp directories used during NIfTI conversion are automatically removed
+        by the TemporaryDirectory context manager.
+        """
+        pass
 
 
 class MassTransferVolume(models.Model):
@@ -209,12 +188,7 @@ class MassTransferVolume(models.Model):
     institution_name = models.CharField(max_length=128, blank=True, default="")
     number_of_images = models.PositiveIntegerField(default=0)
 
-    exported_folder = models.TextField(blank=True, default="")
-    export_cleaned = models.BooleanField(default=False)
     converted_file = models.TextField(blank=True, default="")
-
-    study_instance_uid_pseudonymized = models.CharField(max_length=128, blank=True, default="")
-    series_instance_uid_pseudonymized = models.CharField(max_length=128, blank=True, default="")
 
     status = models.CharField(max_length=16, choices=Status.choices, default=Status.PENDING)
     log = models.TextField(blank=True, default="")
