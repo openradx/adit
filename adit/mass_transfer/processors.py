@@ -221,36 +221,45 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
                         if job.convert_to_nifti:
                             with tempfile.TemporaryDirectory() as tmp_dir:
                                 tmp_path = Path(tmp_dir)
-                                self._export_series(
+                                image_count = self._export_series(
                                     operator, series, tmp_path,
                                     subject_id, pseudonymizer,
                                 )
-                                output_path = (
-                                    output_base / self.mass_task.partition_key
-                                    / subject_id / study_folder / series_folder
-                                )
-                                nifti_files = self._convert_series(
-                                    series, tmp_path, output_path,
-                                )
+                                if image_count == 0:
+                                    nifti_files = []
+                                else:
+                                    output_path = (
+                                        output_base / self.mass_task.partition_key
+                                        / subject_id / study_folder / series_folder
+                                    )
+                                    nifti_files = self._convert_series(
+                                        series, tmp_path, output_path,
+                                    )
                         else:
                             output_path = (
                                 output_base / self.mass_task.partition_key
                                 / subject_id / study_folder / series_folder
                             )
-                            self._export_series(
+                            image_count = self._export_series(
                                 operator, series, output_path,
                                 subject_id, pseudonymizer,
                             )
                             nifti_files = []
 
                         converted_file = ""
-                        if nifti_files:
+                        if image_count == 0:
+                            status = MassTransferVolume.Status.SKIPPED
+                            log_msg = "C-GET returned 0 images"
+                        elif nifti_files:
                             converted_file = "\n".join(str(f) for f in nifti_files)
                             status = done_status
+                            log_msg = ""
                         elif job.convert_to_nifti:
                             status = MassTransferVolume.Status.SKIPPED
+                            log_msg = "No valid DICOM images for NIfTI conversion"
                         else:
                             status = done_status
+                            log_msg = ""
 
                         MassTransferVolume.objects.create(
                             job=job,
@@ -270,6 +279,7 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
                             number_of_images=series.number_of_images,
                             converted_file=converted_file,
                             status=status,
+                            log=log_msg,
                         )
 
                         if status == MassTransferVolume.Status.SKIPPED:
@@ -509,25 +519,49 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
         output_path: Path,
         subject_id: str,
         pseudonymizer: Pseudonymizer | None,
-    ) -> None:
+    ) -> int:
+        """Export a series to output_path. Returns number of images written.
+
+        If C-GET returns 0 images and the server supports C-MOVE, automatically
+        retries with C-MOVE (IMPAX and some other PACS have broken C-GET).
+        """
         output_path.mkdir(parents=True, exist_ok=True)
 
         manipulator = DicomManipulator(pseudonymizer=pseudonymizer) if pseudonymizer else None
+        image_count = 0
 
         def callback(ds: Dataset | None) -> None:
+            nonlocal image_count
             if ds is None:
                 return
             if manipulator:
                 manipulator.manipulate(ds, pseudonym=subject_id)
             file_name = sanitize_filename(f"{ds.SOPInstanceUID}.dcm")
             write_dataset(ds, output_path / file_name)
+            image_count += 1
 
+        # Prefer C-MOVE for mass transfer — C-GET is unreliable on some PACS
+        # (e.g. IMPAX returns 0 images). Fall back to C-GET if C-MOVE is not supported.
+        use_move = (
+            operator.server.patient_root_move_support
+            or operator.server.study_root_move_support
+        )
         operator.fetch_series(
             patient_id=series.patient_id,
             study_uid=series.study_instance_uid,
             series_uid=series.series_instance_uid,
             callback=callback,
+            force_move=use_move,
         )
+
+        if image_count == 0:
+            try:
+                if output_path.exists() and not any(output_path.iterdir()):
+                    output_path.rmdir()
+            except OSError:
+                pass
+
+        return image_count
 
     def _convert_series(
         self,

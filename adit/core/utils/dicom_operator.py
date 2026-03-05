@@ -398,6 +398,7 @@ class DicomOperator:
         study_uid: str,
         series_uid: str,
         callback: Callable[[Dataset], None],
+        force_move: bool = False,
     ) -> None:
         """Fetch a series.
 
@@ -406,6 +407,7 @@ class DicomOperator:
             study_uid: The study instance UID.
             series_uid: The series instance UID.
             callback: A callback function that is called for each fetched image.
+            force_move: If True, skip C-GET and use C-MOVE directly.
         """
 
         query = QueryDataset.create(
@@ -415,8 +417,12 @@ class DicomOperator:
             SeriesInstanceUID=series_uid,
         )
 
-        # We prefer WADO-RS over C-GET over C-MOVE
-        if self.server.dicomweb_wado_support:
+        if force_move:
+            if self.server.patient_root_move_support or self.server.study_root_move_support:
+                self._fetch_images_with_c_move(query, callback)
+            else:
+                raise DicomError("C-MOVE not supported by this server.")
+        elif self.server.dicomweb_wado_support:
             self._fetch_images_with_wado_rs(query, callback)
         elif self.server.patient_root_get_support or self.server.study_root_get_support:
             self._fetch_images_with_c_get(query, callback)
