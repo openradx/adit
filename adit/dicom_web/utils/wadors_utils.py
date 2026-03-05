@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import os
+from collections.abc import Callable
 from io import BytesIO
 from pathlib import Path
 from typing import AsyncIterator, Literal
@@ -50,7 +51,7 @@ async def wado_retrieve(
     query_ds = QueryDataset.from_dict(query)
 
     loop = asyncio.get_running_loop()
-    queue = asyncio.Queue[Dataset | None]()
+    queue: asyncio.Queue[Dataset | None] = asyncio.Queue()
 
     dicom_manipulator = DicomManipulator()
 
@@ -58,64 +59,70 @@ async def wado_retrieve(
         dicom_manipulator.manipulate(ds, pseudonym, trial_protocol_id, trial_protocol_name)
         loop.call_soon_threadsafe(queue.put_nowait, ds)
 
-    def fetch_with_sentinel():
-        """Run the fetch and put a sentinel when done.
+    def fetch_with_sentinel(fetch_func: Callable[..., None], **kwargs: object) -> None:
+        """Wrapper that calls fetch function and schedules sentinel afterward.
 
-        Both data items and sentinel are put via call_soon_threadsafe from
-        the same thread, guaranteeing FIFO ordering in the event loop.
+        By scheduling the sentinel via call_soon_threadsafe from within the same
+        thread (after the sync function completes), we guarantee FIFO ordering:
+        all data callbacks scheduled during fetch will be processed before the
+        sentinel because they were scheduled first.
         """
         try:
-            if level == "STUDY":
-                operator.fetch_study(
-                    patient_id=query_ds.PatientID,
-                    study_uid=query_ds.StudyInstanceUID,
-                    callback=callback,
-                )
-            elif level == "SERIES":
-                operator.fetch_series(
-                    patient_id=query_ds.PatientID,
-                    study_uid=query_ds.StudyInstanceUID,
-                    series_uid=query_ds.SeriesInstanceUID,
-                    callback=callback,
-                )
-            elif level == "IMAGE":
-                assert query_ds.has("SeriesInstanceUID")
-                operator.fetch_image(
-                    patient_id=query_ds.PatientID,
-                    study_uid=query_ds.StudyInstanceUID,
-                    series_uid=query_ds.SeriesInstanceUID,
-                    image_uid=query_ds.SOPInstanceUID,
-                    callback=callback,
-                )
-            else:
-                raise ValueError(f"Invalid WADO-RS level: {level}.")
+            fetch_func(**kwargs)
         finally:
             loop.call_soon_threadsafe(queue.put_nowait, None)
 
     try:
-        fetch_task = asyncio.create_task(
-            sync_to_async(fetch_with_sentinel, thread_sensitive=False)()
-        )
+        if level == "STUDY":
+            fetch_coro = sync_to_async(fetch_with_sentinel, thread_sensitive=False)(
+                operator.fetch_study,
+                patient_id=query_ds.PatientID,
+                study_uid=query_ds.StudyInstanceUID,
+                callback=callback,
+            )
+        elif level == "SERIES":
+            fetch_coro = sync_to_async(fetch_with_sentinel, thread_sensitive=False)(
+                operator.fetch_series,
+                patient_id=query_ds.PatientID,
+                study_uid=query_ds.StudyInstanceUID,
+                series_uid=query_ds.SeriesInstanceUID,
+                callback=callback,
+            )
+        elif level == "IMAGE":
+            assert query_ds.has("SeriesInstanceUID")
+            fetch_coro = sync_to_async(fetch_with_sentinel, thread_sensitive=False)(
+                operator.fetch_image,
+                patient_id=query_ds.PatientID,
+                study_uid=query_ds.StudyInstanceUID,
+                series_uid=query_ds.SeriesInstanceUID,
+                image_uid=query_ds.SOPInstanceUID,
+                callback=callback,
+            )
+        else:
+            raise ValueError(f"Invalid WADO-RS level: {level}.")
 
-        while True:
-            queue_ds = await queue.get()
-            if queue_ds is None:
-                break
-            yield queue_ds
+        # Start fetch task. Sentinel will be added via call_soon_threadsafe when done.
+        fetch_task = asyncio.create_task(fetch_coro)
 
-        await fetch_task
+        try:
+            while True:
+                queue_ds = await queue.get()
+                if queue_ds is None:
+                    break
+                yield queue_ds
+        finally:
+            # Ensure fetch task is properly awaited even if consumer stops early
+            if not fetch_task.done():
+                fetch_task.cancel()
+            try:
+                await fetch_task
+            except asyncio.CancelledError:
+                pass
 
-    except ExceptionGroup as eg:
-        for exc in eg.exceptions:
-            if isinstance(exc, RetriableDicomError):
-                raise ServiceUnavailableApiError(str(exc))
-            elif isinstance(exc, DicomError):
-                raise BadGatewayApiError(str(exc))
-        raise
-    except RetriableDicomError as err:
-        raise ServiceUnavailableApiError(str(err))
-    except DicomError as err:
-        raise BadGatewayApiError(str(err))
+    except RetriableDicomError as exc:
+        raise ServiceUnavailableApiError(str(exc))
+    except DicomError as exc:
+        raise BadGatewayApiError(str(exc))
 
 
 def _fetch_dicom_data(
