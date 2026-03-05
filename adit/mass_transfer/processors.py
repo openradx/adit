@@ -182,25 +182,30 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
             total_failed = 0
             failed_reasons: dict[str, int] = {}
 
-            # Group by patient for folder structure
+            # Group by patient for folder structure (linking + no-anon modes)
             by_patient: dict[str, list[DiscoveredSeries]] = {}
             for s in pending:
                 by_patient.setdefault(s.patient_id, []).append(s)
 
-            # For non-linking pseudonymize mode, generate random pseudonyms per patient
+            # Non-linking pseudonymize: random pseudonym per study so that
+            # studies for the same patient cannot be correlated.
             random_pseudonyms: dict[str, str] = {}
 
             for patient_id, series_list in by_patient.items():
                 if job.should_link and pseudonymizer:
                     subject_id = pseudonymizer.compute_pseudonym(patient_id)
-                elif pseudonymizer:
-                    if patient_id not in random_pseudonyms:
-                        random_pseudonyms[patient_id] = secrets.token_hex(6).upper()
-                    subject_id = random_pseudonyms[patient_id]
-                else:
+                elif not pseudonymizer:
                     subject_id = sanitize_filename(patient_id)
+                else:
+                    # subject_id set per-study below
+                    subject_id = ""
 
                 for series in series_list:
+                    if pseudonymizer and not job.should_link:
+                        study_uid = series.study_instance_uid
+                        if study_uid not in random_pseudonyms:
+                            random_pseudonyms[study_uid] = secrets.token_hex(6).upper()
+                        subject_id = random_pseudonyms[study_uid]
                     study_folder = _study_folder_name(
                         series.study_description,
                         series.study_datetime,

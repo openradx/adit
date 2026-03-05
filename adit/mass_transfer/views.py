@@ -110,6 +110,10 @@ class MassTransferJobAssociationsExportView(LoginRequiredMixin, MassTransferLock
             qs = MassTransferJob.objects.filter(owner=request.user)
 
         job = get_object_or_404(qs, pk=pk)
+
+        if not job.should_link:
+            return HttpResponse("CSV export is only available for linking mode.", status=400)
+
         associations = (
             MassTransferVolume.objects.filter(job=job)
             .exclude(pseudonym="")

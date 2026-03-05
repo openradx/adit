@@ -479,12 +479,39 @@ def test_process_none_mode_uses_patient_id_as_subject(
     assert result["status"] == MassTransferTask.Status.SUCCESS
 
 
-def test_process_pseudonymize_mode_consistent_within_task(
+def test_process_pseudonymize_mode_same_study_same_pseudonym(
     mocker: MockerFixture, settings, tmp_path: Path
 ):
-    """In pseudonymize mode (non-linking), same patient gets same pseudonym within a task."""
+    """In non-linking mode, series in the same study share a pseudonym."""
     processor = _make_process_env(mocker, settings, tmp_path)
-    # Two series, same patient, different studies
+    series = [
+        _make_discovered(patient_id="PAT1", study_uid="study-A", series_uid="s-1"),
+        _make_discovered(patient_id="PAT1", study_uid="study-A", series_uid="s-2"),
+    ]
+
+    mocker.patch.object(processor, "_discover_series", return_value=series)
+
+    subject_ids: list[str] = []
+
+    def fake_export(op, s, path, subject_id, pseudonymizer):
+        subject_ids.append(subject_id)
+
+    mocker.patch.object(processor, "_export_series", side_effect=fake_export)
+    mocker.patch.object(MassTransferVolume.objects, "create")
+
+    processor.process()
+
+    # Same study → same pseudonym
+    assert subject_ids[0] == subject_ids[1]
+    assert subject_ids[0] != ""
+    assert subject_ids[0] != "PAT1"
+
+
+def test_process_pseudonymize_mode_different_studies_different_pseudonyms(
+    mocker: MockerFixture, settings, tmp_path: Path
+):
+    """In non-linking mode, different studies for the same patient get different pseudonyms."""
+    processor = _make_process_env(mocker, settings, tmp_path)
     series = [
         _make_discovered(patient_id="PAT1", study_uid="study-A", series_uid="s-1"),
         _make_discovered(patient_id="PAT1", study_uid="study-B", series_uid="s-2"),
@@ -502,8 +529,8 @@ def test_process_pseudonymize_mode_consistent_within_task(
 
     processor.process()
 
-    # Both series for PAT1 get the same pseudonym within this task
-    assert subject_ids[0] == subject_ids[1]
+    # Different studies → different pseudonyms (non-linkable)
+    assert subject_ids[0] != subject_ids[1]
     assert subject_ids[0] != ""
     assert subject_ids[0] != "PAT1"
 
