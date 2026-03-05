@@ -43,6 +43,9 @@ x-app: &default-app
     TIME_ZONE: ${TIME_ZONE:?}
     TOKEN_AUTHENTICATION_SALT: ${TOKEN_AUTHENTICATION_SALT:?}
     ANONYMIZATION_SEED: ${ANONYMIZATION_SEED:-}
+    # Point to otel-collector for traces, metrics, and logs via OTLP
+    OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-http://otel-collector.local:4318}
+    OTEL_PYTHON_DJANGO_EXCLUDED_URLS: "health/,static/.*"
 
 services:
   init:
@@ -92,6 +95,29 @@ services:
     volumes:
       - orthanc2_data:/var/lib/orthanc/db
 
+  openobserve:
+    image: public.ecr.aws/zinclabs/openobserve:latest
+    hostname: openobserve.local
+    environment:
+      ZO_ROOT_USER_EMAIL: ${ZO_ROOT_USER_EMAIL:-admin@localhost.com}
+      ZO_ROOT_USER_PASSWORD: ${ZO_ROOT_USER_PASSWORD:?}
+      ZO_DATA_DIR: /data
+    volumes:
+      - openobserve_data:/data
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.115.1
+    hostname: otel-collector.local
+    command: ["--config=/etc/otel-collector-config.yaml"]
+    environment:
+      OPENOBSERVE_ENDPOINT: ${OPENOBSERVE_ENDPOINT:-http://openobserve.local:5080/api/default}
+      OPENOBSERVE_AUTH_HEADER: ${OPENOBSERVE_AUTH_HEADER:-}
+      ENVIRONMENT: ${ENVIRONMENT:-development}
+    volumes:
+      - ./otel-collector-config.yaml:/etc/otel-collector-config.yaml:ro
+    depends_on:
+      - openobserve
+
 configs:
   orthanc1_config:
     file: ./orthanc/orthanc1.json
@@ -102,3 +128,4 @@ volumes:
   postgres_data:
   orthanc1_data:
   orthanc2_data:
+  openobserve_data:
