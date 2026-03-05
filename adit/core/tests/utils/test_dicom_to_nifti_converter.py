@@ -4,6 +4,16 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from adit.core.errors import (
+    DcmToNiftiConversionError,
+    ExternalToolError,
+    InputDirectoryError,
+    InvalidDicomError,
+    NoValidDicomError,
+    OutputDirectoryError,
+)
+from adit.core.utils.dicom_to_nifti_converter import DicomToNiftiConverter
+
 CONVERTER_LOGGER = "adit.core.utils.dicom_to_nifti_converter"
 
 
@@ -15,17 +25,6 @@ def _enable_log_propagation():
     adit_logger.propagate = True
     yield
     adit_logger.propagate = original
-
-
-from adit.core.errors import (
-    DcmToNiftiConversionError,
-    ExternalToolError,
-    InputDirectoryError,
-    InvalidDicomError,
-    NoValidDicomError,
-    OutputDirectoryError,
-)
-from adit.core.utils.dicom_to_nifti_converter import DicomToNiftiConverter
 
 
 def _make_completed_process(returncode: int, stdout: str = "", stderr: str = ""):
@@ -42,9 +41,7 @@ class TestDicomToNiftiConverter:
         dicom_folder.mkdir()
         output_folder = tmp_path / "output"
 
-        monkeypatch.setattr(
-            subprocess, "run", lambda *args, **kwargs: _make_completed_process(0)
-        )
+        monkeypatch.setattr(subprocess, "run", lambda *args, **kwargs: _make_completed_process(0))
 
         converter = DicomToNiftiConverter()
         converter.convert(dicom_folder, output_folder)
@@ -54,9 +51,7 @@ class TestDicomToNiftiConverter:
         dicom_folder.mkdir()
         output_folder = tmp_path / "output"
 
-        monkeypatch.setattr(
-            subprocess, "run", lambda *args, **kwargs: _make_completed_process(2)
-        )
+        monkeypatch.setattr(subprocess, "run", lambda *args, **kwargs: _make_completed_process(2))
 
         converter = DicomToNiftiConverter()
         with pytest.raises(NoValidDicomError, match="No DICOM images found"):
@@ -67,9 +62,7 @@ class TestDicomToNiftiConverter:
         dicom_folder.mkdir()
         output_folder = tmp_path / "output"
 
-        monkeypatch.setattr(
-            subprocess, "run", lambda *args, **kwargs: _make_completed_process(4)
-        )
+        monkeypatch.setattr(subprocess, "run", lambda *args, **kwargs: _make_completed_process(4))
 
         converter = DicomToNiftiConverter()
         with pytest.raises(InvalidDicomError, match="Corrupt DICOM"):
@@ -80,9 +73,7 @@ class TestDicomToNiftiConverter:
         dicom_folder.mkdir()
         output_folder = tmp_path / "output"
 
-        monkeypatch.setattr(
-            subprocess, "run", lambda *args, **kwargs: _make_completed_process(5)
-        )
+        monkeypatch.setattr(subprocess, "run", lambda *args, **kwargs: _make_completed_process(5))
 
         converter = DicomToNiftiConverter()
         with pytest.raises(InputDirectoryError, match="Input folder invalid"):
@@ -93,9 +84,7 @@ class TestDicomToNiftiConverter:
         dicom_folder.mkdir()
         output_folder = tmp_path / "output"
 
-        monkeypatch.setattr(
-            subprocess, "run", lambda *args, **kwargs: _make_completed_process(6)
-        )
+        monkeypatch.setattr(subprocess, "run", lambda *args, **kwargs: _make_completed_process(6))
 
         converter = DicomToNiftiConverter()
         with pytest.raises(OutputDirectoryError, match="Output folder invalid"):
@@ -106,9 +95,7 @@ class TestDicomToNiftiConverter:
         dicom_folder.mkdir()
         output_folder = tmp_path / "output"
 
-        monkeypatch.setattr(
-            subprocess, "run", lambda *args, **kwargs: _make_completed_process(7)
-        )
+        monkeypatch.setattr(subprocess, "run", lambda *args, **kwargs: _make_completed_process(7))
 
         converter = DicomToNiftiConverter()
         with pytest.raises(OutputDirectoryError, match="Unable to write"):
@@ -119,9 +106,7 @@ class TestDicomToNiftiConverter:
         dicom_folder.mkdir()
         output_folder = tmp_path / "output"
 
-        monkeypatch.setattr(
-            subprocess, "run", lambda *args, **kwargs: _make_completed_process(8)
-        )
+        monkeypatch.setattr(subprocess, "run", lambda *args, **kwargs: _make_completed_process(8))
 
         converter = DicomToNiftiConverter()
         with caplog.at_level(logging.WARNING, logger=CONVERTER_LOGGER):
@@ -134,9 +119,7 @@ class TestDicomToNiftiConverter:
         dicom_folder.mkdir()
         output_folder = tmp_path / "output"
 
-        monkeypatch.setattr(
-            subprocess, "run", lambda *args, **kwargs: _make_completed_process(9)
-        )
+        monkeypatch.setattr(subprocess, "run", lambda *args, **kwargs: _make_completed_process(9))
 
         converter = DicomToNiftiConverter()
         with pytest.raises(DcmToNiftiConversionError, match="Unable to rename"):
@@ -147,9 +130,7 @@ class TestDicomToNiftiConverter:
         dicom_folder.mkdir()
         output_folder = tmp_path / "output"
 
-        monkeypatch.setattr(
-            subprocess, "run", lambda *args, **kwargs: _make_completed_process(1)
-        )
+        monkeypatch.setattr(subprocess, "run", lambda *args, **kwargs: _make_completed_process(1))
 
         converter = DicomToNiftiConverter()
         with pytest.raises(DcmToNiftiConversionError, match="Unspecified error"):
@@ -182,9 +163,7 @@ class TestDicomToNiftiConverter:
         dicom_folder.mkdir()
         output_folder = tmp_path / "output" / "nested"
 
-        monkeypatch.setattr(
-            subprocess, "run", lambda *args, **kwargs: _make_completed_process(0)
-        )
+        monkeypatch.setattr(subprocess, "run", lambda *args, **kwargs: _make_completed_process(0))
 
         converter = DicomToNiftiConverter()
         converter.convert(dicom_folder, output_folder)

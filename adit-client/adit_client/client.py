@@ -277,7 +277,7 @@ class AditClient:
         )
         yield from self._iter_multipart_response(response, stream=True)
 
-    def _extract_filename(self, content_disposition: str) -> str:
+    def _extract_filename(self, content_disposition: str | None) -> str:
         """Extract filename from Content-Disposition header."""
         if not content_disposition or "filename=" not in content_disposition:
             raise ValueError("No filename found in Content-Disposition header")

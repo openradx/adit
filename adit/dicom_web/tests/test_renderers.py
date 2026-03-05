@@ -75,4 +75,6 @@ class TestWadoMultipartApplicationNiftiRenderer:
     def test_content_type_property(self):
         renderer = WadoMultipartApplicationNiftiRenderer()
 
-        assert renderer.content_type == "multipart/related; type=application/octet-stream; boundary=nifti-boundary"
+        assert renderer.content_type == (
+            "multipart/related; type=application/octet-stream; boundary=nifti-boundary"
+        )

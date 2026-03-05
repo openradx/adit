@@ -1,12 +1,22 @@
 import asyncio
 import logging
-import os
 from io import BytesIO
-from pathlib import Path
+from typing import cast
 from unittest.mock import MagicMock
 
 import pytest
 from pydicom import Dataset
+
+from adit.core.errors import (
+    DcmToNiftiConversionError,
+    DicomError,
+    NoSpatialDataError,
+    NoValidDicomError,
+    RetriableDicomError,
+)
+from adit.core.models import DicomServer
+from adit.dicom_web.errors import BadGatewayApiError, ServiceUnavailableApiError
+from adit.dicom_web.utils import wadors_utils
 
 WADORS_LOGGER = "adit.dicom_web.utils.wadors_utils"
 
@@ -19,17 +29,6 @@ def _enable_log_propagation():
     adit_logger.propagate = True
     yield
     adit_logger.propagate = original
-
-
-from adit.core.errors import (
-    DcmToNiftiConversionError,
-    DicomError,
-    NoSpatialDataError,
-    NoValidDicomError,
-    RetriableDicomError,
-)
-from adit.dicom_web.errors import BadGatewayApiError, ServiceUnavailableApiError
-from adit.dicom_web.utils import wadors_utils
 
 
 # --- Fakes reused across tests (following test_wado_retrieve.py pattern) ---
@@ -52,8 +51,10 @@ class FakeDicomServer:
                 setattr(self, attr, False)
 
 
-def _make_server():
-    return FakeDicomServer(name="Test", ae_title="TEST", host="localhost", port=104)
+def _make_server() -> DicomServer:
+    return cast(
+        DicomServer, FakeDicomServer(name="Test", ae_title="TEST", host="localhost", port=104)
+    )
 
 
 def immediate_sync_to_async(func, *, thread_sensitive=False):
