@@ -85,9 +85,9 @@ def _study_datetime(study: ResultDataset) -> datetime:
 
 def _study_folder_name(study_description: str, study_dt: datetime, study_uid: str) -> str:
     desc = sanitize_filename(study_description or "Undefined")
-    date_str = study_dt.strftime("%Y%m%d")
+    dt_str = study_dt.strftime("%Y%m%d_%H%M%S")
     short_hash = hashlib.sha256(study_uid.encode()).hexdigest()[:4]
-    return f"{desc}_{date_str}_{short_hash}"
+    return f"{desc}_{dt_str}_{short_hash}"
 
 
 def _series_folder_name(

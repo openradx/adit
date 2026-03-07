@@ -662,10 +662,9 @@ def test_series_folder_name_with_no_number():
 
 def test_study_folder_name_includes_description_date_and_hash():
     name = _study_folder_name("Brain CT", datetime(2024, 1, 15, 10, 30), "1.2.3.4")
-    assert name.startswith("Brain CT_20240115_")
-    assert len(name.split("_")) == 3
+    assert name.startswith("Brain CT_20240115_103000_")
     # Hash part is 4 chars
-    assert len(name.split("_")[2]) == 4
+    assert len(name.split("_")[-1]) == 4
 
 
 def test_study_folder_name_deterministic():
