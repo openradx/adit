@@ -8,7 +8,7 @@ pull large cohorts — e.g. "all CT head scans from Neuroradiologie in 2024" —
 pseudonymize them, and optionally convert to NIfTI.
 
 ```
-┌──────────┐    C-FIND     ┌──────────┐    C-GET      ┌──────────────────┐
+┌──────────┐               ┌──────────┐               ┌──────────────────┐
 │   ADIT   │──────────────>│   PACS   │──────────────>│  Network Folder  │
 │  Worker  │   discover    │  Server  │   fetch +     │  /mnt/data/...   │
 │          │   studies &   │          │   pseudonymize│                  │
@@ -41,7 +41,8 @@ MassTransferJob                    (one per user request)
  │    │
  │    ├── MassTransferVolume       (one per exported series)
  │    │    ├── patient_id, pseudonym
- │    │    ├── study/series UIDs
+ │    │    ├── study_instance_uid, study_instance_uid_pseudonymized
+ │    │    ├── series_instance_uid, series_instance_uid_pseudonymized
  │    │    ├── status: exported | converted | skipped | error
  │    │    └── log (error reason if failed)
  │    └── ...
@@ -177,33 +178,29 @@ One task = one partition. Here is the full flow inside `MassTransferTaskProcesso
 /mnt/data/mass_transfer_exports/
 └── 20250101-20250107/                    # partition key
     ├── A7B3X9K2M1Q4/                     # pseudonym (or raw PatientID)
-    │   ├── CT_Schaedel_20250103_f2a1/    # StudyDescription_Date_ShortHash
+    │   ├── CT_Schaedel_20250103_221030/  # Description_Date_Time
     │   │   ├── Axial_1/                  # SeriesDescription_SeriesNumber
     │   │   │   ├── 1.2.3.4.5.6.7.dcm
     │   │   │   ├── 1.2.3.4.5.6.8.dcm
     │   │   │   └── ...
     │   │   └── Sagittal_2/
     │   │       └── ...
-    │   └── MRT_Kopf_20250105_b8c2/
+    │   └── MRT_Kopf_20250105_221030/
     │       └── T1_1/
     │           └── ...
     └── R4T7Y2W8N3P1/
         └── ...
 ```
 
-The study folder name includes a 4-char hash of the StudyInstanceUID to
-prevent collisions when the same patient has multiple studies with the same
-description on the same date.
-
 ---
 
 ## Anonymization Modes
 
-| Mode                          | Folder name                      | DICOM tags         | Cross-partition consistency                   | CSV export                    |
-| ----------------------------- | -------------------------------- | ------------------ | --------------------------------------------- | ----------------------------- |
-| **None**                      | Raw PatientID                    | Untouched          | N/A                                           | Not available |
-| **Pseudonymize**              | Random hex per study             | dicognito (random) | No — each study gets a unique random folder   | Not available |
-| **Pseudonymize with Linking** | Deterministic pseudonym          | dicognito (seeded) | Yes — same patient always gets same pseudonym | patient_id → pseudonym pairs  |
+| Mode                          | Folder name             | DICOM tags         | Cross-partition consistency                   | CSV export                   |
+| ----------------------------- | ----------------------- | ------------------ | --------------------------------------------- | ---------------------------- |
+| **None**                      | Raw PatientID           | Untouched          | N/A                                           | Not available                |
+| **Pseudonymize**              | Random hex per study    | dicognito (random) | No — each study gets a unique random folder   | Not available                |
+| **Pseudonymize with Linking** | Deterministic pseudonym | dicognito (seeded) | Yes — same patient always gets same pseudonym | patient_id → pseudonym pairs |
 
 ### How Linking Works
 
@@ -392,7 +389,7 @@ that abandoned C-GET generators properly close their associations (via
 | `utils/partitions.py` | Date range → partition windows                        |
 | `apps.py`             | App registration, menu item, processor registration   |
 | `templates/`          | Job form, job detail, task detail, filter CRUD        |
-| `tests/`              | 44 tests (processor, partitions, cleanup)             |
+| `tests/`              | 45 tests (processor, partitions, cleanup)             |
 
 ### Modified: `adit/core/`
 
@@ -413,7 +410,7 @@ that abandoned C-GET generators properly close their associations (via
 
 ## Test Coverage
 
-44 tests covering:
+45 tests covering:
 
 - **Discovery**: recursive time-window splitting, deduplication, boundary correctness
 - **Processing**: success, partial failure, total failure, suspension, bad source/dest, no filters, empty partition
@@ -422,10 +419,3 @@ that abandoned C-GET generators properly close their associations (via
 - **NIfTI conversion**: dcm2niix failure, no output, non-image DICOM skip
 - **Utilities**: folder name generation, DICOM wildcard matching, integer parsing, datetime handling
 - **Cleanup**: no-op verification (deferred insertion means nothing to clean up)
-
-Run with:
-
-```bash
-DJANGO_SETTINGS_MODULE=adit.settings.development \
-  python -m pytest adit/mass_transfer/tests/ -v
-```
