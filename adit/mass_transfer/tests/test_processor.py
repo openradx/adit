@@ -327,6 +327,7 @@ def test_process_returns_warning_on_partial_failure(
         call_count["n"] += 1
         if call_count["n"] == 2:
             raise DicomError("Export failed")
+        return (1, "", "")
 
     mocker.patch.object(processor, "_export_series", side_effect=fake_export)
     mocker.patch.object(MassTransferVolume.objects, "create")
@@ -442,6 +443,7 @@ def test_process_skips_already_done_series(
     export_calls = []
     def fake_export(*args, **kwargs):
         export_calls.append(1)
+        return (1, "", "")
     mocker.patch.object(processor, "_export_series", side_effect=fake_export)
     mocker.patch.object(MassTransferVolume.objects, "create")
 
@@ -466,6 +468,7 @@ def test_process_none_mode_uses_patient_id_as_subject(
 
     def fake_export(op, s, path, subject_id, pseudonymizer):
         export_calls.append((subject_id, pseudonymizer))
+        return (1, "", "")
 
     mocker.patch.object(processor, "_export_series", side_effect=fake_export)
     mocker.patch.object(MassTransferVolume.objects, "create")
@@ -495,6 +498,7 @@ def test_process_pseudonymize_mode_same_study_same_pseudonym(
 
     def fake_export(op, s, path, subject_id, pseudonymizer):
         subject_ids.append(subject_id)
+        return (1, "", "")
 
     mocker.patch.object(processor, "_export_series", side_effect=fake_export)
     mocker.patch.object(MassTransferVolume.objects, "create")
@@ -523,6 +527,7 @@ def test_process_pseudonymize_mode_different_studies_different_pseudonyms(
 
     def fake_export(op, s, path, subject_id, pseudonymizer):
         subject_ids.append(subject_id)
+        return (1, "", "")
 
     mocker.patch.object(processor, "_export_series", side_effect=fake_export)
     mocker.patch.object(MassTransferVolume.objects, "create")
@@ -552,6 +557,7 @@ def test_process_linking_mode_uses_deterministic_pseudonym(
 
     def fake_export(op, s, path, subject_id, pseudonymizer):
         subject_ids.append(subject_id)
+        return (1, "", "")
 
     mocker.patch.object(processor, "_export_series", side_effect=fake_export)
     mocker.patch.object(MassTransferVolume.objects, "create")
@@ -765,7 +771,7 @@ def test_process_creates_volume_records_on_success(
     processor = MassTransferTaskProcessor(task)
     mocker.patch.object(processor, "_discover_series", return_value=series)
     mocker.patch("adit.mass_transfer.processors.DicomOperator")
-    mocker.patch.object(processor, "_export_series")
+    mocker.patch.object(processor, "_export_series", return_value=(1, "", ""))
 
     assert MassTransferVolume.objects.filter(job=job).count() == 0
 
@@ -875,7 +881,7 @@ def test_process_deletes_error_volumes_on_retry(
     processor = MassTransferTaskProcessor(task)
     mocker.patch.object(processor, "_discover_series", return_value=series)
     mocker.patch("adit.mass_transfer.processors.DicomOperator")
-    mocker.patch.object(processor, "_export_series")
+    mocker.patch.object(processor, "_export_series", return_value=(1, "", ""))
 
     result = processor.process()
 
@@ -930,7 +936,7 @@ def test_process_deterministic_pseudonyms_across_partitions(
     )]
     processor1 = MassTransferTaskProcessor(task1)
     mocker.patch.object(processor1, "_discover_series", return_value=series1)
-    mocker.patch.object(processor1, "_export_series")
+    mocker.patch.object(processor1, "_export_series", return_value=(1, "", ""))
     processor1.process()
 
     # Partition 2: same PAT1
@@ -939,7 +945,7 @@ def test_process_deterministic_pseudonyms_across_partitions(
     )]
     processor2 = MassTransferTaskProcessor(task2)
     mocker.patch.object(processor2, "_discover_series", return_value=series2)
-    mocker.patch.object(processor2, "_export_series")
+    mocker.patch.object(processor2, "_export_series", return_value=(1, "", ""))
     processor2.process()
 
     vol1 = MassTransferVolume.objects.get(series_instance_uid="1.2.3.100.1")
@@ -994,7 +1000,7 @@ def test_process_pseudonymize_mode_not_linked_across_partitions(
     )]
     processor1 = MassTransferTaskProcessor(task1)
     mocker.patch.object(processor1, "_discover_series", return_value=series1)
-    mocker.patch.object(processor1, "_export_series")
+    mocker.patch.object(processor1, "_export_series", return_value=(1, "", ""))
     processor1.process()
 
     series2 = [_make_discovered(
@@ -1002,7 +1008,7 @@ def test_process_pseudonymize_mode_not_linked_across_partitions(
     )]
     processor2 = MassTransferTaskProcessor(task2)
     mocker.patch.object(processor2, "_discover_series", return_value=series2)
-    mocker.patch.object(processor2, "_export_series")
+    mocker.patch.object(processor2, "_export_series", return_value=(1, "", ""))
     processor2.process()
 
     vol1 = MassTransferVolume.objects.get(series_instance_uid="1.2.3.100.1")

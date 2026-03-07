@@ -221,7 +221,7 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
                         if job.convert_to_nifti:
                             with tempfile.TemporaryDirectory() as tmp_dir:
                                 tmp_path = Path(tmp_dir)
-                                image_count = self._export_series(
+                                image_count, p_study_uid, p_series_uid = self._export_series(
                                     operator, series, tmp_path,
                                     subject_id, pseudonymizer,
                                 )
@@ -240,7 +240,7 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
                                 output_base / self.mass_task.partition_key
                                 / subject_id / study_folder / series_folder
                             )
-                            image_count = self._export_series(
+                            image_count, p_study_uid, p_series_uid = self._export_series(
                                 operator, series, output_path,
                                 subject_id, pseudonymizer,
                             )
@@ -269,7 +269,9 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
                             pseudonym=subject_id if pseudonymizer else "",
                             accession_number=series.accession_number,
                             study_instance_uid=series.study_instance_uid,
+                            study_instance_uid_pseudonymized=p_study_uid,
                             series_instance_uid=series.series_instance_uid,
+                            series_instance_uid_pseudonymized=p_series_uid,
                             modality=series.modality,
                             study_description=series.study_description,
                             series_description=series.series_description,
@@ -519,39 +521,36 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
         output_path: Path,
         subject_id: str,
         pseudonymizer: Pseudonymizer | None,
-    ) -> int:
-        """Export a series to output_path. Returns number of images written.
+    ) -> tuple[int, str, str]:
+        """Export a series to output_path.
 
-        If C-GET returns 0 images and the server supports C-MOVE, automatically
-        retries with C-MOVE (IMPAX and some other PACS have broken C-GET).
+        Returns (image_count, pseudonymized_study_uid, pseudonymized_series_uid).
         """
         output_path.mkdir(parents=True, exist_ok=True)
 
         manipulator = DicomManipulator(pseudonymizer=pseudonymizer) if pseudonymizer else None
         image_count = 0
+        pseudo_study_uid = ""
+        pseudo_series_uid = ""
 
         def callback(ds: Dataset | None) -> None:
-            nonlocal image_count
+            nonlocal image_count, pseudo_study_uid, pseudo_series_uid
             if ds is None:
                 return
             if manipulator:
                 manipulator.manipulate(ds, pseudonym=subject_id)
+                if not pseudo_study_uid:
+                    pseudo_study_uid = str(ds.StudyInstanceUID)
+                    pseudo_series_uid = str(ds.SeriesInstanceUID)
             file_name = sanitize_filename(f"{ds.SOPInstanceUID}.dcm")
             write_dataset(ds, output_path / file_name)
             image_count += 1
 
-        # Prefer C-MOVE for mass transfer — C-GET is unreliable on some PACS
-        # (e.g. IMPAX returns 0 images). Fall back to C-GET if C-MOVE is not supported.
-        use_move = (
-            operator.server.patient_root_move_support
-            or operator.server.study_root_move_support
-        )
         operator.fetch_series(
             patient_id=series.patient_id,
             study_uid=series.study_instance_uid,
             series_uid=series.series_instance_uid,
             callback=callback,
-            force_move=use_move,
         )
 
         if image_count == 0:
@@ -561,7 +560,7 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
             except OSError:
                 pass
 
-        return image_count
+        return image_count, pseudo_study_uid, pseudo_series_uid
 
     def _convert_series(
         self,
