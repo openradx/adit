@@ -2,6 +2,24 @@ from pynetdicom.presentation import (
     build_context,
 )
 
+# Transfer syntaxes to offer for storage contexts. Includes both uncompressed
+# and compressed syntaxes so that C-GET can receive images regardless of how
+# the PACS stores them internally (IMPAX, for example, stores most images in
+# JPEG Lossless and returns 0 images if we only offer uncompressed).
+_transfer_syntaxes = [
+    "1.2.840.10008.1.2",        # Implicit VR Little Endian
+    "1.2.840.10008.1.2.1",      # Explicit VR Little Endian
+    "1.2.840.10008.1.2.4.50",   # JPEG Baseline
+    "1.2.840.10008.1.2.4.51",   # JPEG Extended
+    "1.2.840.10008.1.2.4.57",   # JPEG Lossless
+    "1.2.840.10008.1.2.4.70",   # JPEG Lossless SV1 (default for most PACS)
+    "1.2.840.10008.1.2.4.80",   # JPEG-LS Lossless
+    "1.2.840.10008.1.2.4.81",   # JPEG-LS Near Lossless
+    "1.2.840.10008.1.2.4.90",   # JPEG 2000 Lossless
+    "1.2.840.10008.1.2.4.91",   # JPEG 2000
+    "1.2.840.10008.1.2.5",      # RLE Lossless
+]
+
 # Prebuilt context matching the DCMTK Implementation https://github.com/DCMTK/dcmtk/blob/d1fb197927fd4178b5a24e0f0dba6f8d785a8f93/dcmdata/libsrc/dcuid.cc#L895
 _storage = [
     "1.2.840.10008.5.1.4.1.1.9.1.3",  # AmbulatoryECGWaveformStorage
@@ -128,5 +146,5 @@ _storage = [
 ]
 assert len(_storage) <= 120
 
-StoragePresentationContexts = [build_context(uid) for uid in sorted(_storage)]
+StoragePresentationContexts = [build_context(uid, _transfer_syntaxes) for uid in sorted(_storage)]
 """Pre-built presentation contexts for :dcm:`Storage<part04/chapter_B.html>` containing 120 selected SOP Classes."""  # noqa: E501
