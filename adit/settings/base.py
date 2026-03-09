@@ -383,8 +383,6 @@ SELECTIVE_TRANSFER_RESULT_LIMIT = 101
 # The maximum number of results (patients or studies) in dicom_explorer
 DICOM_EXPLORER_RESULT_LIMIT = 101
 
-# Maximum number of C-FIND results for mass transfer before splitting time windows
-MASS_TRANSFER_MAX_SEARCH_RESULTS = env.int("MASS_TRANSFER_MAX_SEARCH_RESULTS", default=200)
 
 # The timeout in dicom_explorer a DICOM server must respond
 DICOM_EXPLORER_RESPONSE_TIMEOUT = 3  # seconds

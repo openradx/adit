@@ -148,6 +148,9 @@ class DicomServer(DicomNode):
     dicomweb_stow_prefix = models.CharField(blank=True, max_length=2000)
     dicomweb_authorization_header = models.CharField(blank=True, max_length=2000)
 
+    # C-FIND result limit before recursive time-window splitting
+    max_search_results = models.PositiveIntegerField(default=200)
+
     objects: DicomNodeManager["DicomServer"] = DicomNodeManager["DicomServer"]()
 
 

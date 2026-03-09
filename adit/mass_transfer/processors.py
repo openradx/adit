@@ -10,7 +10,6 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import cast
 
-from django.conf import settings
 from django.utils import timezone
 from pydicom import Dataset
 
@@ -218,7 +217,22 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
                     )
 
                     try:
-                        if job.convert_to_nifti:
+                        # Quick IMAGE-level C-FIND to check if instances are
+                        # actually retrievable before attempting the expensive
+                        # C-GET. Many PACS (especially IMPAX) report instances
+                        # at SERIES level that are archived/unavailable.
+                        has_instances = operator.series_has_instances(
+                            patient_id=series.patient_id,
+                            study_uid=series.study_instance_uid,
+                            series_uid=series.series_instance_uid,
+                        )
+
+                        if not has_instances:
+                            image_count = 0
+                            p_study_uid = ""
+                            p_series_uid = ""
+                            nifti_files = []
+                        elif job.convert_to_nifti:
                             with tempfile.TemporaryDirectory() as tmp_dir:
                                 tmp_path = Path(tmp_dir)
                                 image_count, p_study_uid, p_series_uid = self._export_series(
@@ -249,7 +263,15 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
                         converted_file = ""
                         if image_count == 0:
                             status = MassTransferVolume.Status.SKIPPED
-                            log_msg = "C-GET returned 0 images"
+                            if not has_instances:
+                                log_msg = "No instances available in PACS"
+                            elif series.number_of_images == 0:
+                                log_msg = "Non-image series (0 instances in PACS)"
+                            else:
+                                log_msg = (
+                                    f"C-GET returned 0 images"
+                                    f" (PACS reports {series.number_of_images} instances)"
+                                )
                         elif nifti_files:
                             converted_file = "\n".join(str(f) for f in nifti_files)
                             status = done_status
@@ -461,11 +483,44 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
         start: datetime,
         end: datetime,
     ) -> list[ResultDataset]:
-        max_results = settings.MASS_TRANSFER_MAX_SEARCH_RESULTS
+        max_results = operator.server.max_search_results
+
+        # DICOM applies StudyTime independently per day, so a cross-midnight
+        # range like Date=20250227-20250228 Time=234500-000730 does NOT mean
+        # "from Feb 27 23:45 to Feb 28 00:07".  When the window is within a
+        # single day we can use precise time filtering.  For multi-day ranges
+        # we use full-day times and rely on date-based splitting.  But when
+        # the window has narrowed to just two consecutive days (i.e. a
+        # cross-midnight split), we split at midnight so each half becomes a
+        # single-day query with proper time filtering.
+        if start.date() != end.date():
+            days_apart = (end.date() - start.date()).days
+            if days_apart <= 1:
+                # Cross-midnight: split at midnight boundary
+                midnight = datetime.combine(
+                    end.date(), datetime.min.time(), tzinfo=end.tzinfo
+                )
+                left = self._find_studies(
+                    operator, mf, start, midnight - timedelta(seconds=1)
+                )
+                right = self._find_studies(operator, mf, midnight, end)
+
+                seen: set[str] = {str(s.StudyInstanceUID) for s in left}
+                for study in right:
+                    if str(study.StudyInstanceUID) not in seen:
+                        left.append(study)
+                        seen.add(str(study.StudyInstanceUID))
+
+                return left
+
+            # Multi-day: full-day times, splitting will narrow by date
+            study_time = (datetime.min.time(), datetime.max.time().replace(microsecond=0))
+        else:
+            study_time = (start.time(), end.time())
 
         query = QueryDataset.create(
             StudyDate=(start.date(), end.date()),
-            StudyTime=(datetime.min.time(), datetime.max.time().replace(microsecond=0)),
+            StudyTime=study_time,
         )
 
         if mf.modality:

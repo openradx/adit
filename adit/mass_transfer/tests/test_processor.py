@@ -10,7 +10,7 @@ from pytest_mock import MockerFixture
 from adit.core.errors import DicomError, RetriableDicomError
 from adit.core.models import DicomNode
 from adit.core.factories import DicomFolderFactory, DicomServerFactory
-from adit.core.utils.dicom_dataset import ResultDataset
+from adit.core.utils.dicom_dataset import QueryDataset, ResultDataset
 from adit.core.utils.dicom_operator import DicomOperator
 from adit.mass_transfer.models import (
     MassTransferFilter,
@@ -71,10 +71,7 @@ def _make_discovered(
 # ---------------------------------------------------------------------------
 
 
-def _make_processor(mocker: MockerFixture, settings) -> MassTransferTaskProcessor:
-    settings.MASS_TRANSFER_MAX_SEARCH_RESULTS = getattr(
-        settings, "MASS_TRANSFER_MAX_SEARCH_RESULTS", 200
-    )
+def _make_processor(mocker: MockerFixture) -> MassTransferTaskProcessor:
     mock_task = mocker.MagicMock(spec=MassTransferTask)
     mock_task._meta = MassTransferTask._meta
     mocker.patch.object(MassTransferTaskProcessor, "__init__", return_value=None)
@@ -96,12 +93,11 @@ def _make_filter(mocker: MockerFixture, **kwargs) -> MassTransferFilter:
 
 
 @pytest.mark.django_db
-def test_find_studies_raises_when_time_window_too_small(mocker: MockerFixture, settings):
-    settings.MASS_TRANSFER_MAX_SEARCH_RESULTS = 1
+def test_find_studies_raises_when_time_window_too_small(mocker: MockerFixture):
     MassTransferSettings.objects.create()
 
     user = UserFactory.create()
-    source = DicomServerFactory.create()
+    source = DicomServerFactory.create(max_search_results=1)
     destination = DicomFolderFactory.create()
     job = MassTransferJob.objects.create(
         owner=user,
@@ -126,16 +122,15 @@ def test_find_studies_raises_when_time_window_too_small(mocker: MockerFixture, s
 
     processor = MassTransferTaskProcessor(task)
     operator = mocker.create_autospec(DicomOperator)
+    operator.server = source
     operator.find_studies.return_value = [object(), object()]
 
     with pytest.raises(DicomError, match="Time window too small"):
         processor._find_studies(operator, mf, start, end)
 
 
-def test_find_studies_returns_all_when_under_limit(mocker: MockerFixture, settings):
-    settings.MASS_TRANSFER_MAX_SEARCH_RESULTS = 10
-
-    processor = _make_processor(mocker, settings)
+def test_find_studies_returns_all_when_under_limit(mocker: MockerFixture):
+    processor = _make_processor(mocker)
     mf = _make_filter(mocker, modality="CT")
 
     start = datetime(2024, 1, 1, 0, 0, 0)
@@ -144,6 +139,7 @@ def test_find_studies_returns_all_when_under_limit(mocker: MockerFixture, settin
     studies = [_make_study("1.2.3"), _make_study("1.2.4"), _make_study("1.2.5")]
 
     operator = mocker.create_autospec(DicomOperator)
+    operator.server = mocker.MagicMock(max_search_results=10)
     operator.find_studies.return_value = studies
 
     result = processor._find_studies(operator, mf, start, end)
@@ -152,14 +148,13 @@ def test_find_studies_returns_all_when_under_limit(mocker: MockerFixture, settin
     assert operator.find_studies.call_count == 1
 
 
-def test_find_studies_splits_and_deduplicates(mocker: MockerFixture, settings):
-    settings.MASS_TRANSFER_MAX_SEARCH_RESULTS = 2
-
-    processor = _make_processor(mocker, settings)
+def test_find_studies_splits_and_deduplicates(mocker: MockerFixture):
+    processor = _make_processor(mocker)
     mf = _make_filter(mocker, modality="CT")
 
+    # Use a single-day range to test the time-based midpoint split
     start = datetime(2024, 1, 1, 0, 0, 0)
-    end = datetime(2024, 1, 2, 23, 59, 59)
+    end = datetime(2024, 1, 1, 23, 59, 59)
 
     study_a = _make_study("1.2.100")
     study_b = _make_study("1.2.200")
@@ -167,6 +162,7 @@ def test_find_studies_splits_and_deduplicates(mocker: MockerFixture, settings):
     study_a_dup = _make_study("1.2.100")
 
     operator = mocker.create_autospec(DicomOperator)
+    operator.server = mocker.MagicMock(max_search_results=2)
     operator.find_studies.side_effect = [
         [study_a, study_b, study_c],
         [study_a, study_b],
@@ -182,14 +178,13 @@ def test_find_studies_splits_and_deduplicates(mocker: MockerFixture, settings):
     assert "1.2.300" in result_uids
 
 
-def test_find_studies_split_boundaries_dont_overlap(mocker: MockerFixture, settings):
-    settings.MASS_TRANSFER_MAX_SEARCH_RESULTS = 1
-
-    processor = _make_processor(mocker, settings)
+def test_find_studies_split_boundaries_dont_overlap(mocker: MockerFixture):
+    processor = _make_processor(mocker)
     mf = _make_filter(mocker, modality="")
 
+    # Use a single-day range so we test the time-based midpoint split
     start = datetime(2024, 1, 1, 0, 0, 0)
-    end = datetime(2024, 1, 3, 23, 59, 59)
+    end = datetime(2024, 1, 1, 23, 59, 59)
 
     call_ranges: list[tuple[datetime, datetime]] = []
     original_find_studies = MassTransferTaskProcessor._find_studies
@@ -199,6 +194,7 @@ def test_find_studies_split_boundaries_dont_overlap(mocker: MockerFixture, setti
         return original_find_studies(self_inner, operator, mf, s, e)
 
     operator = mocker.create_autospec(DicomOperator)
+    operator.server = mocker.MagicMock(max_search_results=1)
     operator.find_studies.side_effect = [
         [_make_study("1"), _make_study("2")],
         [_make_study("1")],
@@ -224,16 +220,82 @@ def test_find_studies_split_boundaries_dont_overlap(mocker: MockerFixture, setti
     assert right_start > left_end
 
 
-def test_find_studies_preserves_order_with_unique_studies(mocker: MockerFixture, settings):
-    settings.MASS_TRANSFER_MAX_SEARCH_RESULTS = 2
+def test_find_studies_same_day_split_narrows_study_time(mocker: MockerFixture):
+    """When splitting within a single day, StudyTime must narrow to avoid infinite recursion."""
+    processor = _make_processor(mocker)
+    mf = _make_filter(mocker, modality="CT")
 
-    processor = _make_processor(mocker, settings)
+    start = datetime(2024, 1, 1, 8, 0, 0)
+    end = datetime(2024, 1, 1, 20, 0, 0)
+
+    operator = mocker.create_autospec(DicomOperator)
+    operator.server = mocker.MagicMock(max_search_results=1)
+    # First call returns too many results (triggers split), sub-calls return under limit
+    operator.find_studies.side_effect = [
+        [_make_study("1"), _make_study("2")],
+        [_make_study("1")],
+        [_make_study("2")],
+    ]
+
+    processor._find_studies(operator, mf, start, end)
+
+    # 3 calls: initial + left half + right half
+    assert operator.find_studies.call_count == 3
+
+    queries = [call.args[0] for call in operator.find_studies.call_args_list]
+    initial_time = queries[0].dataset.StudyTime
+    left_time = queries[1].dataset.StudyTime
+    right_time = queries[2].dataset.StudyTime
+
+    # Initial query should use the actual start/end times
+    assert "080000" in initial_time
+    assert "200000" in initial_time
+
+    # Sub-queries should have narrower time ranges than the initial query
+    assert left_time != initial_time
+    assert right_time != initial_time
+
+
+def test_find_studies_cross_midnight_splits_at_midnight(mocker: MockerFixture):
+    """A cross-midnight window must split at midnight, not at the midpoint."""
+    processor = _make_processor(mocker)
+    mf = _make_filter(mocker, modality="CT")
+
+    # Window spans midnight: Jan 1 23:45 to Jan 2 00:15
+    start = datetime(2024, 1, 1, 23, 45, 0)
+    end = datetime(2024, 1, 2, 0, 15, 0)
+
+    operator = mocker.create_autospec(DicomOperator)
+    operator.server = mocker.MagicMock(max_search_results=200)
+    # Two sub-queries: before midnight and after midnight
+    operator.find_studies.side_effect = [
+        [_make_study("1")],
+        [_make_study("2")],
+    ]
+
+    result = processor._find_studies(operator, mf, start, end)
+
+    assert len(result) == 2
+    assert operator.find_studies.call_count == 2
+
+    # Verify the queries use single-day ranges with proper times
+    q1 = operator.find_studies.call_args_list[0].args[0]
+    q2 = operator.find_studies.call_args_list[1].args[0]
+    assert "234500" in q1.dataset.StudyTime
+    assert "235959" in q1.dataset.StudyTime
+    assert "000000" in q2.dataset.StudyTime
+    assert "001500" in q2.dataset.StudyTime
+
+
+def test_find_studies_preserves_order_with_unique_studies(mocker: MockerFixture):
+    processor = _make_processor(mocker)
     mf = _make_filter(mocker, modality="")
 
     start = datetime(2024, 1, 1, 0, 0, 0)
-    end = datetime(2024, 1, 3, 23, 59, 59)
+    end = datetime(2024, 1, 1, 23, 59, 59)
 
     operator = mocker.create_autospec(DicomOperator)
+    operator.server = mocker.MagicMock(max_search_results=2)
     operator.find_studies.side_effect = [
         [_make_study("1.2.1"), _make_study("1.2.2"), _make_study("1.2.3")],
         [_make_study("1.2.1"), _make_study("1.2.2")],
@@ -253,13 +315,12 @@ def test_find_studies_preserves_order_with_unique_studies(mocker: MockerFixture,
 
 def _make_process_env(
     mocker: MockerFixture,
-    settings,
     tmp_path: Path,
     *,
     convert_to_nifti: bool = False,
     anonymization_mode: str = "pseudonymize",
 ) -> MassTransferTaskProcessor:
-    processor = _make_processor(mocker, settings)
+    processor = _make_processor(mocker)
 
     mock_job = processor.mass_task.job
     mock_job.anonymization_mode = anonymization_mode
@@ -294,9 +355,9 @@ def _make_process_env(
 
 
 def test_process_reraises_retriable_dicom_error(
-    mocker: MockerFixture, settings, tmp_path: Path
+    mocker: MockerFixture, tmp_path: Path
 ):
-    processor = _make_process_env(mocker, settings, tmp_path)
+    processor = _make_process_env(mocker, tmp_path)
     series = [_make_discovered(series_uid="s-1")]
 
     mocker.patch.object(processor, "_discover_series", return_value=series)
@@ -311,9 +372,9 @@ def test_process_reraises_retriable_dicom_error(
 
 
 def test_process_returns_warning_on_partial_failure(
-    mocker: MockerFixture, settings, tmp_path: Path
+    mocker: MockerFixture, tmp_path: Path
 ):
-    processor = _make_process_env(mocker, settings, tmp_path)
+    processor = _make_process_env(mocker, tmp_path)
     series = [
         _make_discovered(series_uid="s-1"),
         _make_discovered(series_uid="s-2"),
@@ -340,9 +401,9 @@ def test_process_returns_warning_on_partial_failure(
 
 
 def test_process_returns_failure_when_all_fail(
-    mocker: MockerFixture, settings, tmp_path: Path
+    mocker: MockerFixture, tmp_path: Path
 ):
-    processor = _make_process_env(mocker, settings, tmp_path)
+    processor = _make_process_env(mocker, tmp_path)
     series = [
         _make_discovered(series_uid="s-1"),
         _make_discovered(series_uid="s-2"),
@@ -361,9 +422,9 @@ def test_process_returns_failure_when_all_fail(
 
 
 def test_process_returns_warning_when_suspended(
-    mocker: MockerFixture, settings, tmp_path: Path
+    mocker: MockerFixture, tmp_path: Path
 ):
-    processor = _make_process_env(mocker, settings, tmp_path)
+    processor = _make_process_env(mocker, tmp_path)
     mocker.patch.object(processor, "is_suspended", return_value=True)
 
     result = processor.process()
@@ -373,9 +434,9 @@ def test_process_returns_warning_when_suspended(
 
 
 def test_process_raises_when_source_not_server(
-    mocker: MockerFixture, settings, tmp_path: Path
+    mocker: MockerFixture, tmp_path: Path
 ):
-    processor = _make_process_env(mocker, settings, tmp_path)
+    processor = _make_process_env(mocker, tmp_path)
     processor.mass_task.job.source.node_type = DicomNode.NodeType.FOLDER
 
     with pytest.raises(DicomError, match="source must be a DICOM server"):
@@ -383,9 +444,9 @@ def test_process_raises_when_source_not_server(
 
 
 def test_process_raises_when_destination_not_folder(
-    mocker: MockerFixture, settings, tmp_path: Path
+    mocker: MockerFixture, tmp_path: Path
 ):
-    processor = _make_process_env(mocker, settings, tmp_path)
+    processor = _make_process_env(mocker, tmp_path)
     processor.mass_task.job.destination.node_type = DicomNode.NodeType.SERVER
 
     with pytest.raises(DicomError, match="destination must be a DICOM folder"):
@@ -393,9 +454,9 @@ def test_process_raises_when_destination_not_folder(
 
 
 def test_process_returns_failure_when_no_filters(
-    mocker: MockerFixture, settings, tmp_path: Path
+    mocker: MockerFixture, tmp_path: Path
 ):
-    processor = _make_process_env(mocker, settings, tmp_path)
+    processor = _make_process_env(mocker, tmp_path)
     processor.mass_task.job.filters.all.return_value = []
 
     result = processor.process()
@@ -405,9 +466,9 @@ def test_process_returns_failure_when_no_filters(
 
 
 def test_process_returns_success_for_empty_partition(
-    mocker: MockerFixture, settings, tmp_path: Path
+    mocker: MockerFixture, tmp_path: Path
 ):
-    processor = _make_process_env(mocker, settings, tmp_path)
+    processor = _make_process_env(mocker, tmp_path)
     mocker.patch.object(processor, "_discover_series", return_value=[])
 
     result = processor.process()
@@ -417,10 +478,10 @@ def test_process_returns_success_for_empty_partition(
 
 
 def test_process_skips_already_done_series(
-    mocker: MockerFixture, settings, tmp_path: Path
+    mocker: MockerFixture, tmp_path: Path
 ):
     """Already-processed series (from prior runs) are skipped."""
-    processor = _make_process_env(mocker, settings, tmp_path)
+    processor = _make_process_env(mocker, tmp_path)
     series = [
         _make_discovered(series_uid="s-done"),
         _make_discovered(series_uid="s-new"),
@@ -454,11 +515,11 @@ def test_process_skips_already_done_series(
 
 
 def test_process_none_mode_uses_patient_id_as_subject(
-    mocker: MockerFixture, settings, tmp_path: Path
+    mocker: MockerFixture, tmp_path: Path
 ):
     """In 'none' anonymization mode, no pseudonymizer is used."""
     processor = _make_process_env(
-        mocker, settings, tmp_path, anonymization_mode="none"
+        mocker, tmp_path, anonymization_mode="none"
     )
     series = [_make_discovered(patient_id="REAL-PAT-1", series_uid="s-1")]
 
@@ -483,10 +544,10 @@ def test_process_none_mode_uses_patient_id_as_subject(
 
 
 def test_process_pseudonymize_mode_same_study_same_pseudonym(
-    mocker: MockerFixture, settings, tmp_path: Path
+    mocker: MockerFixture, tmp_path: Path
 ):
     """In non-linking mode, series in the same study share a pseudonym."""
-    processor = _make_process_env(mocker, settings, tmp_path)
+    processor = _make_process_env(mocker, tmp_path)
     series = [
         _make_discovered(patient_id="PAT1", study_uid="study-A", series_uid="s-1"),
         _make_discovered(patient_id="PAT1", study_uid="study-A", series_uid="s-2"),
@@ -512,10 +573,10 @@ def test_process_pseudonymize_mode_same_study_same_pseudonym(
 
 
 def test_process_pseudonymize_mode_different_studies_different_pseudonyms(
-    mocker: MockerFixture, settings, tmp_path: Path
+    mocker: MockerFixture, tmp_path: Path
 ):
     """In non-linking mode, different studies for the same patient get different pseudonyms."""
-    processor = _make_process_env(mocker, settings, tmp_path)
+    processor = _make_process_env(mocker, tmp_path)
     series = [
         _make_discovered(patient_id="PAT1", study_uid="study-A", series_uid="s-1"),
         _make_discovered(patient_id="PAT1", study_uid="study-B", series_uid="s-2"),
@@ -541,11 +602,11 @@ def test_process_pseudonymize_mode_different_studies_different_pseudonyms(
 
 
 def test_process_linking_mode_uses_deterministic_pseudonym(
-    mocker: MockerFixture, settings, tmp_path: Path
+    mocker: MockerFixture, tmp_path: Path
 ):
     """In linking mode, pseudonyms are deterministic (seeded)."""
     processor = _make_process_env(
-        mocker, settings, tmp_path, anonymization_mode="pseudonymize_with_linking"
+        mocker, tmp_path, anonymization_mode="pseudonymize_with_linking"
     )
     series = [
         _make_discovered(patient_id="PAT1", study_uid="study-A", series_uid="s-1"),
@@ -578,9 +639,9 @@ def test_process_linking_mode_uses_deterministic_pseudonym(
 
 
 def test_convert_series_raises_on_dcm2niix_failure(
-    mocker: MockerFixture, settings, tmp_path: Path
+    mocker: MockerFixture, tmp_path: Path
 ):
-    processor = _make_processor(mocker, settings)
+    processor = _make_processor(mocker)
     series = _make_discovered(series_uid="1.2.3")
 
     dicom_dir = tmp_path / "dicom_input"
@@ -600,9 +661,9 @@ def test_convert_series_raises_on_dcm2niix_failure(
 
 
 def test_convert_series_raises_when_no_nifti_output(
-    mocker: MockerFixture, settings, tmp_path: Path
+    mocker: MockerFixture, tmp_path: Path
 ):
-    processor = _make_processor(mocker, settings)
+    processor = _make_processor(mocker)
     series = _make_discovered(series_uid="1.2.3")
 
     dicom_dir = tmp_path / "dicom_input"
@@ -622,9 +683,9 @@ def test_convert_series_raises_when_no_nifti_output(
 
 
 def test_convert_series_skips_non_image_dicom(
-    mocker: MockerFixture, settings, tmp_path: Path
+    mocker: MockerFixture, tmp_path: Path
 ):
-    processor = _make_processor(mocker, settings)
+    processor = _make_processor(mocker)
     series = _make_discovered(series_uid="1.2.3")
 
     dicom_dir = tmp_path / "dicom_input"
@@ -738,7 +799,7 @@ def test_dicom_match_wildcard():
 
 @pytest.mark.django_db
 def test_process_creates_volume_records_on_success(
-    mocker: MockerFixture, settings, tmp_path: Path
+    mocker: MockerFixture, tmp_path: Path
 ):
     """Deferred insertion: volumes are created in DB after successful export."""
     MassTransferSettings.objects.create()
@@ -785,7 +846,7 @@ def test_process_creates_volume_records_on_success(
 
 @pytest.mark.django_db
 def test_process_creates_error_volume_on_failure(
-    mocker: MockerFixture, settings, tmp_path: Path
+    mocker: MockerFixture, tmp_path: Path
 ):
     """Failed exports still create a volume record with ERROR status."""
     MassTransferSettings.objects.create()
@@ -831,7 +892,7 @@ def test_process_creates_error_volume_on_failure(
 
 @pytest.mark.django_db
 def test_process_deletes_error_volumes_on_retry(
-    mocker: MockerFixture, settings, tmp_path: Path
+    mocker: MockerFixture, tmp_path: Path
 ):
     """On retry, ERROR volumes from prior runs are deleted so they can be reprocessed."""
     MassTransferSettings.objects.create()
@@ -893,7 +954,7 @@ def test_process_deletes_error_volumes_on_retry(
 
 @pytest.mark.django_db
 def test_process_deterministic_pseudonyms_across_partitions(
-    mocker: MockerFixture, settings, tmp_path: Path
+    mocker: MockerFixture, tmp_path: Path
 ):
     """Same patient gets the same pseudonym across different partitions (linking mode)."""
     MassTransferSettings.objects.create()
@@ -958,7 +1019,7 @@ def test_process_deterministic_pseudonyms_across_partitions(
 
 @pytest.mark.django_db
 def test_process_pseudonymize_mode_not_linked_across_partitions(
-    mocker: MockerFixture, settings, tmp_path: Path
+    mocker: MockerFixture, tmp_path: Path
 ):
     """Non-linking pseudonymize mode: same patient gets different pseudonyms across partitions."""
     MassTransferSettings.objects.create()

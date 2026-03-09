@@ -145,7 +145,13 @@ class DimseConnector:
 
     def open_connection(self, service: DimseService):
         if self.assoc:
-            raise AssertionError("A former connection was not closed properly.")
+            if not self.assoc.is_alive():
+                # Association died (PACS dropped it, timeout, etc.) — clean up the stale reference
+                logger.debug("Cleaning up dead association to %s.", self.server.ae_title)
+                self.assoc = None
+                self._current_service = None
+            else:
+                raise AssertionError("A former connection was not closed properly.")
 
         logger.debug("Opening connection to DICOM server %s.", self.server.ae_title)
 
@@ -208,6 +214,15 @@ class DimseConnector:
 
         if not self.assoc.is_established:
             raise RetriableDicomError(f"Could not connect to {self.server}.")
+
+        if service == "C-GET":
+            rejected = []
+            for cx in self.assoc.rejected_contexts:
+                rejected.append(f"{cx.abstract_syntax}")
+            if rejected:
+                logger.warning("C-GET: %d presentation contexts rejected by SCP: %s", len(rejected), rejected)
+            accepted = [cx.abstract_syntax for cx in self.assoc.accepted_contexts]
+            logger.debug("C-GET: %d presentation contexts accepted", len(accepted))
 
     def close_connection(self):
         logger.debug("Closing connection to DICOM server %s.", self.server.ae_title)
