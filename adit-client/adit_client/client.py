@@ -1,5 +1,7 @@
 import importlib.metadata
-from typing import Iterator
+import os
+from io import BytesIO
+from typing import Iterator, Union
 
 from dicomweb_client import DICOMwebClient, session_utils
 from pydicom import Dataset
@@ -188,6 +190,154 @@ class AditClient:
     def store_images(self, ae_title: str, images: list[Dataset]) -> Dataset:
         """Store images."""
         return self._create_dicom_web_client(ae_title).store_instances(images)
+
+    def retrieve_nifti_study(self, ae_title: str, study_uid: str) -> list[tuple[str, BytesIO]]:
+        """Retrieve NIfTI files for a study."""
+        url = f"{self.server_url}/api/dicom-web/{ae_title}/wadors/studies/{study_uid}/nifti"
+        dicomweb_client = self._create_dicom_web_client(ae_title)
+        response = dicomweb_client._http_get(
+            url,
+            headers={"Accept": "multipart/related; type=application/octet-stream"},
+            stream=True,
+        )
+        return list(self._iter_multipart_response(response, stream=False))
+
+    def iter_nifti_study(self, ae_title: str, study_uid: str) -> Iterator[tuple[str, BytesIO]]:
+        """Iterate over NIfTI files for a study."""
+        url = f"{self.server_url}/api/dicom-web/{ae_title}/wadors/studies/{study_uid}/nifti"
+        dicomweb_client = self._create_dicom_web_client(ae_title)
+        response = dicomweb_client._http_get(
+            url,
+            headers={"Accept": "multipart/related; type=application/octet-stream"},
+            stream=True,
+        )
+        yield from self._iter_multipart_response(response, stream=True)
+
+    def retrieve_nifti_series(
+        self, ae_title: str, study_uid: str, series_uid: str
+    ) -> list[tuple[str, BytesIO]]:
+        """Retrieve NIfTI files for a series."""
+        url = (
+            f"{self.server_url}/api/dicom-web/{ae_title}/wadors/studies/{study_uid}/"
+            f"series/{series_uid}/nifti"
+        )
+        dicomweb_client = self._create_dicom_web_client(ae_title)
+        response = dicomweb_client._http_get(
+            url,
+            headers={"Accept": "multipart/related; type=application/octet-stream"},
+            stream=True,
+        )
+        return list(self._iter_multipart_response(response, stream=False))
+
+    def iter_nifti_series(
+        self, ae_title: str, study_uid: str, series_uid: str
+    ) -> Iterator[tuple[str, BytesIO]]:
+        """Iterate over NIfTI files for a series."""
+        url = (
+            f"{self.server_url}/api/dicom-web/{ae_title}/wadors/studies/{study_uid}/"
+            f"series/{series_uid}/nifti"
+        )
+        dicomweb_client = self._create_dicom_web_client(ae_title)
+        response = dicomweb_client._http_get(
+            url,
+            headers={"Accept": "multipart/related; type=application/octet-stream"},
+            stream=True,
+        )
+        yield from self._iter_multipart_response(response, stream=True)
+
+    def retrieve_nifti_image(
+        self, ae_title: str, study_uid: str, series_uid: str, image_uid: str
+    ) -> list[tuple[str, BytesIO]]:
+        """Retrieve NIfTI files for a single image."""
+        url = (
+            f"{self.server_url}/api/dicom-web/{ae_title}/wadors/studies/{study_uid}/"
+            f"series/{series_uid}/instances/{image_uid}/nifti"
+        )
+        dicomweb_client = self._create_dicom_web_client(ae_title)
+        response = dicomweb_client._http_get(
+            url,
+            headers={"Accept": "multipart/related; type=application/octet-stream"},
+            stream=True,
+        )
+        return list(self._iter_multipart_response(response, stream=False))
+
+    def iter_nifti_image(
+        self, ae_title: str, study_uid: str, series_uid: str, image_uid: str
+    ) -> Iterator[tuple[str, BytesIO]]:
+        """Iterate over NIfTI files for a single image."""
+        url = (
+            f"{self.server_url}/api/dicom-web/{ae_title}/wadors/studies/{study_uid}/"
+            f"series/{series_uid}/instances/{image_uid}/nifti"
+        )
+        dicomweb_client = self._create_dicom_web_client(ae_title)
+        response = dicomweb_client._http_get(
+            url,
+            headers={"Accept": "multipart/related; type=application/octet-stream"},
+            stream=True,
+        )
+        yield from self._iter_multipart_response(response, stream=True)
+
+    def _extract_filename(self, content_disposition: str | None) -> str:
+        """Extract filename from Content-Disposition header."""
+        if not content_disposition or "filename=" not in content_disposition:
+            raise ValueError("No filename found in Content-Disposition header")
+        filename = content_disposition.split("filename=")[1].strip('"')
+        filename = os.path.basename(filename)
+        if not filename:
+            raise ValueError("Content-Disposition filename resolved to empty string")
+        return filename
+
+    def _extract_part_content_with_headers(self, part: bytes) -> Union[bytes, None]:
+        """Extract content from a multipart part, keeping headers intact.
+
+        Used to patch DICOMwebClient's _extract_part_content to allow access
+        to per-part headers (especially Content-Disposition for filenames).
+        """
+        if part in (b"", b"--", b"\r\n") or part.startswith(b"--\r\n"):
+            return None
+        return part
+
+    # NOTE: This method monkey-patches DICOMwebClient._extract_part_content and
+    # uses DICOMwebClient._decode_multipart_message — both private APIs.
+    # These methods are not part of the public interface and may change without
+    # warning. If dicomweb-client is upgraded, verify that these private methods
+    # still exist and behave the same way.
+    def _iter_multipart_response(self, response, stream=False) -> Iterator[tuple[str, BytesIO]]:
+        """Parse a multipart response, yielding (filename, content) tuples."""
+        dicomweb_client = self._create_dicom_web_client("")
+        original_extract_method = dicomweb_client._extract_part_content
+
+        try:
+            dicomweb_client._extract_part_content = self._extract_part_content_with_headers
+
+            for part in dicomweb_client._decode_multipart_message(response, stream=stream):
+                headers = {}
+                content = part
+
+                idx = part.find(b"\r\n\r\n")
+                if idx > -1:
+                    headers_bytes = part[:idx]
+                    content = part[idx + 4 :]
+
+                    for header_line in headers_bytes.split(b"\r\n"):
+                        if header_line and b":" in header_line:
+                            name, value = header_line.split(b":", 1)
+                            headers[name.decode("utf-8").strip()] = value.decode("utf-8").strip()
+
+                content_disposition = headers.get("Content-Disposition")
+                if content_disposition:
+                    filename = self._extract_filename(content_disposition)
+                else:
+                    for header, value in response.headers.items():
+                        if header.lower() == "content-disposition":
+                            filename = self._extract_filename(value)
+                            break
+                    else:
+                        raise ValueError("No Content-Disposition header found in response")
+
+                yield (filename, BytesIO(content))
+        finally:
+            dicomweb_client._extract_part_content = original_extract_method
 
     def _create_dicom_web_client(self, ae_title: str) -> DICOMwebClient:
         session = session_utils.create_session()
