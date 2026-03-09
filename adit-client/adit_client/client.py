@@ -282,7 +282,10 @@ class AditClient:
         if not content_disposition or "filename=" not in content_disposition:
             raise ValueError("No filename found in Content-Disposition header")
         filename = content_disposition.split("filename=")[1].strip('"')
-        return os.path.basename(filename)
+        filename = os.path.basename(filename)
+        if not filename:
+            raise ValueError("Content-Disposition filename resolved to empty string")
+        return filename
 
     def _extract_part_content_with_headers(self, part: bytes) -> Union[bytes, None]:
         """Extract content from a multipart part, keeping headers intact.
@@ -294,6 +297,11 @@ class AditClient:
             return None
         return part
 
+    # NOTE: This method monkey-patches DICOMwebClient._extract_part_content and
+    # uses DICOMwebClient._decode_multipart_message — both private APIs.
+    # These methods are not part of the public interface and may change without
+    # warning. If dicomweb-client is upgraded, verify that these private methods
+    # still exist and behave the same way.
     def _iter_multipart_response(self, response, stream=False) -> Iterator[tuple[str, BytesIO]]:
         """Parse a multipart response, yielding (filename, content) tuples."""
         dicomweb_client = self._create_dicom_web_client("")

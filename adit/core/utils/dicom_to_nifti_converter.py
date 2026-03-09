@@ -8,6 +8,7 @@ from adit.core.errors import (
     ExternalToolError,
     InputDirectoryError,
     InvalidDicomError,
+    NoSpatialDataError,
     NoValidDicomError,
     OutputDirectoryError,
 )
@@ -49,6 +50,7 @@ class DicomToNiftiConverter:
         Raises:
             ValueError: If the dicom_folder doesn't exist.
             NoValidDicomError: If no valid DICOM files are found.
+            NoSpatialDataError: If conversion succeeds but produces no NIfTI output.
             InvalidDicomError: If DICOM files are invalid or corrupt.
             OutputDirectoryError: If there are issues with the output directory.
             InputDirectoryError: If there are issues with the input directory.
@@ -89,7 +91,11 @@ class DicomToNiftiConverter:
             error_msg = f"{stderr}\n{stdout}".strip()
 
             if exit_code == DcmToNiftiExitCode.SUCCESS:
-                pass
+                if not any(output_folder.glob("*.nii*")):
+                    raise NoSpatialDataError(
+                        "Conversion succeeded but produced no NIfTI files. "
+                        "DICOM data may lack spatial attributes."
+                    )
             elif exit_code == DcmToNiftiExitCode.NO_DICOM_FOUND:
                 raise NoValidDicomError(f"No DICOM images found in input folder: {error_msg}")
             elif exit_code == DcmToNiftiExitCode.VERSION_REPORT:
@@ -108,7 +114,7 @@ class DicomToNiftiConverter:
                 logger.warning(f"Converted some but not all input DICOMs: {error_msg}")
             elif exit_code == DcmToNiftiExitCode.RENAME_ERROR:
                 raise DcmToNiftiConversionError(f"Unable to rename files: {error_msg}")
-            elif exit_code == DcmToNiftiExitCode.UNSPECIFIED_ERROR or exit_code != 0:
+            else:
                 raise DcmToNiftiConversionError(
                     f"Unspecified error (exit code {exit_code}): {error_msg}"
                 )
