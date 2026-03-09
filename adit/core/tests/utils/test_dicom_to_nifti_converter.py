@@ -41,7 +41,12 @@ class TestDicomToNiftiConverter:
         dicom_folder.mkdir()
         output_folder = tmp_path / "output"
 
-        monkeypatch.setattr(subprocess, "run", lambda *args, **kwargs: _make_completed_process(0))
+        def fake_run(*args, **kwargs):
+            output_folder.mkdir(parents=True, exist_ok=True)
+            (output_folder / "output.nii").touch()
+            return _make_completed_process(0)
+
+        monkeypatch.setattr(subprocess, "run", fake_run)
 
         converter = DicomToNiftiConverter()
         converter.convert(dicom_folder, output_folder)
@@ -163,7 +168,12 @@ class TestDicomToNiftiConverter:
         dicom_folder.mkdir()
         output_folder = tmp_path / "output" / "nested"
 
-        monkeypatch.setattr(subprocess, "run", lambda *args, **kwargs: _make_completed_process(0))
+        def fake_run(*args, **kwargs):
+            output_folder.mkdir(parents=True, exist_ok=True)
+            (output_folder / "output.nii").touch()
+            return _make_completed_process(0)
+
+        monkeypatch.setattr(subprocess, "run", fake_run)
 
         converter = DicomToNiftiConverter()
         converter.convert(dicom_folder, output_folder)
@@ -175,13 +185,12 @@ class TestDicomToNiftiConverter:
         dicom_folder.mkdir()
         output_folder = tmp_path / "output"
 
-        monkeypatch.setattr(
-            subprocess,
-            "run",
-            lambda *args, **kwargs: _make_completed_process(
-                0, stderr="Warning: some issue detected"
-            ),
-        )
+        def fake_run(*args, **kwargs):
+            output_folder.mkdir(parents=True, exist_ok=True)
+            (output_folder / "output.nii").touch()
+            return _make_completed_process(0, stderr="Warning: some issue detected")
+
+        monkeypatch.setattr(subprocess, "run", fake_run)
 
         converter = DicomToNiftiConverter()
         with caplog.at_level(logging.WARNING, logger=CONVERTER_LOGGER):
