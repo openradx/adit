@@ -106,7 +106,11 @@ def connect_to_server(service: DimseService):
                 self.abort_connection()
                 raise err
 
-            if opened_connection and self.auto_connect and not self.persistent:
+            # Close the connection unless persistent mode is active.
+            # In persistent mode, the association is reused across calls of the
+            # same service type (e.g. multiple C-GETs), which avoids overwhelming
+            # the PACS with rapid association open/close cycles.
+            if opened_connection and self.auto_connect and not self.persistent and self.assoc:
                 self.close_connection()
                 opened_connection = False
 
@@ -484,6 +488,23 @@ class DimseConnector:
                             }
                         )
                         logger.warn(message)
+
+                    # Log "silent empty" responses: PACS returns Success with
+                    # 0 completed, 0 failed, 0 warning.  This happens on IMPAX
+                    # when it is overwhelmed by rapid-fire association requests.
+                    # We don't raise here — the caller handles retry to avoid
+                    # aborting the entire task.
+                    if (
+                        status_category == STATUS_SUCCESS
+                        and completed_suboperations == 0
+                        and not failed_suboperations
+                        and not warning_suboperations
+                    ):
+                        logger.warning(
+                            "%s returned success with 0 sub-operations — "
+                            "PACS may be busy.",
+                            op,
+                        )
 
             if status_category == STATUS_FAILURE:
                 if identifier:

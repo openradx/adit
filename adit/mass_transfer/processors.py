@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import hashlib
 import logging
+import random
 import secrets
 import subprocess
 import tempfile
+import time
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -150,10 +152,11 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
         try:
             discovered = self._discover_series(operator, filters)
 
-            # Filter out series already processed in a previous run
+            # Filter out series already processed in a previous run (same partition)
             done_uids = set(
                 MassTransferVolume.objects.filter(
                     job=job,
+                    partition_key=self.mass_task.partition_key,
                     status__in=[
                         MassTransferVolume.Status.EXPORTED,
                         MassTransferVolume.Status.CONVERTED,
@@ -163,11 +166,13 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
             )
             # Delete ERROR volumes so they can be retried cleanly
             MassTransferVolume.objects.filter(
-                job=job, status=MassTransferVolume.Status.ERROR
+                job=job,
+                partition_key=self.mass_task.partition_key,
+                status=MassTransferVolume.Status.ERROR,
             ).delete()
 
             pending = [s for s in discovered if s.series_instance_uid not in done_uids]
-            total_skipped_prior = len(done_uids)
+            total_skipped_prior = len(discovered) - len(pending)
 
             output_base = _destination_base_dir(destination_node)
             done_status = (
@@ -217,22 +222,15 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
                     )
 
                     try:
-                        # Quick IMAGE-level C-FIND to check if instances are
-                        # actually retrievable before attempting the expensive
-                        # C-GET. Many PACS (especially IMPAX) report instances
-                        # at SERIES level that are archived/unavailable.
-                        has_instances = operator.series_has_instances(
-                            patient_id=series.patient_id,
-                            study_uid=series.study_instance_uid,
-                            series_uid=series.series_instance_uid,
-                        )
+                        # Small delay between C-GET requests to avoid overwhelming
+                        # the PACS.  In selective transfer each study is a separate
+                        # procrastinate task with natural inter-task overhead (seconds).
+                        # Here we process hundreds of series in a tight loop, so we
+                        # add explicit pacing.
+                        if total_processed + total_failed + total_skipped > 0:
+                            time.sleep(0.5)
 
-                        if not has_instances:
-                            image_count = 0
-                            p_study_uid = ""
-                            p_series_uid = ""
-                            nifti_files = []
-                        elif job.convert_to_nifti:
+                        if job.convert_to_nifti:
                             with tempfile.TemporaryDirectory() as tmp_dir:
                                 tmp_path = Path(tmp_dir)
                                 image_count, p_study_uid, p_series_uid = self._export_series(
@@ -262,12 +260,14 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
 
                         converted_file = ""
                         if image_count == 0:
-                            status = MassTransferVolume.Status.SKIPPED
-                            if not has_instances:
-                                log_msg = "No instances available in PACS"
-                            elif series.number_of_images == 0:
+                            if series.number_of_images == 0:
+                                status = MassTransferVolume.Status.SKIPPED
                                 log_msg = "Non-image series (0 instances in PACS)"
                             else:
+                                # PACS reports instances but C-GET returned 0.
+                                # Mark as ERROR so it's retried on the next run
+                                # (ERROR volumes are deleted before processing).
+                                status = MassTransferVolume.Status.ERROR
                                 log_msg = (
                                     f"C-GET returned 0 images"
                                     f" (PACS reports {series.number_of_images} instances)"
@@ -306,7 +306,11 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
                             log=log_msg,
                         )
 
-                        if status == MassTransferVolume.Status.SKIPPED:
+                        if status == MassTransferVolume.Status.ERROR:
+                            total_failed += 1
+                            reason = "C-GET returned 0 images"
+                            failed_reasons[reason] = failed_reasons.get(reason, 0) + 1
+                        elif status == MassTransferVolume.Status.SKIPPED:
                             total_skipped += 1
                         else:
                             total_processed += 1
@@ -601,12 +605,45 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
             write_dataset(ds, output_path / file_name)
             image_count += 1
 
-        operator.fetch_series(
-            patient_id=series.patient_id,
-            study_uid=series.study_instance_uid,
-            series_uid=series.series_instance_uid,
-            callback=callback,
-        )
+        # IMPAX returns "Success with 0 sub-operations" when overwhelmed by
+        # concurrent C-GET associations.  Retry with exponential backoff + jitter
+        # to give the PACS time to recover and desynchronize from other workers.
+        # Only retry when PACS reports instances — a genuine 0-instance series
+        # is skipped immediately.
+        max_retries = 5
+        for attempt in range(max_retries + 1):
+            operator.fetch_series(
+                patient_id=series.patient_id,
+                study_uid=series.study_instance_uid,
+                series_uid=series.series_instance_uid,
+                callback=callback,
+            )
+            if image_count > 0 or series.number_of_images == 0:
+                break
+            if attempt < max_retries:
+                # Exponential backoff: 5, 10, 20, 40, 80 base seconds
+                # with ±25% jitter to avoid thundering herd
+                base_delay = 5 * (2 ** attempt)
+                jitter = base_delay * 0.25 * (2 * random.random() - 1)
+                delay = base_delay + jitter
+                logger.warning(
+                    "C-GET returned 0 images for %s (PACS reports %d) — "
+                    "retrying in %.0fs (attempt %d/%d)",
+                    series.series_instance_uid,
+                    series.number_of_images,
+                    delay,
+                    attempt + 1,
+                    max_retries,
+                )
+                time.sleep(delay)
+
+        if image_count == 0 and series.number_of_images > 0:
+            logger.error(
+                "C-GET returned 0 images for %s after %d attempts (PACS reports %d)",
+                series.series_instance_uid,
+                max_retries + 1,
+                series.number_of_images,
+            )
 
         if image_count == 0:
             try:

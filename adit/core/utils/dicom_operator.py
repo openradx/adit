@@ -392,22 +392,6 @@ class DicomOperator:
 
         logger.debug("Successfully downloaded study %s.", study_uid)
 
-    def series_has_instances(
-        self,
-        patient_id: str,
-        study_uid: str,
-        series_uid: str,
-    ) -> bool:
-        """Quick IMAGE-level C-FIND to check if a series has any retrievable instances."""
-        query = QueryDataset.create(
-            PatientID=patient_id,
-            StudyInstanceUID=study_uid,
-            SeriesInstanceUID=series_uid,
-        )
-        for _ in self.find_images(query, limit_results=1):
-            return True
-        return False
-
     def fetch_series(
         self,
         patient_id: str,
