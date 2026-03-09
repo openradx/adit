@@ -190,7 +190,7 @@ class DimseConnector:
             ae.add_requested_context(StudyRootQueryRetrieveInformationModelGet)
             for cx in StoragePresentationContexts:
                 assert cx.abstract_syntax is not None
-                ae.add_requested_context(cx.abstract_syntax)
+                ae.add_requested_context(cx.abstract_syntax, cx.transfer_syntax)
                 ext_neg.append(build_role(cx.abstract_syntax, scp_role=True))
         elif service == "C-MOVE":
             ae.requested_contexts = QueryRetrievePresentationContexts
