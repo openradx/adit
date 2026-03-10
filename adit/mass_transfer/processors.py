@@ -605,43 +605,40 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
             write_dataset(ds, output_path / file_name)
             image_count += 1
 
-        # IMPAX returns "Success with 0 sub-operations" when overwhelmed by
-        # concurrent C-GET associations.  Retry with exponential backoff + jitter
-        # to give the PACS time to recover and desynchronize from other workers.
-        # Only retry when PACS reports instances — a genuine 0-instance series
-        # is skipped immediately.
-        max_retries = 5
-        for attempt in range(max_retries + 1):
+        # IMPAX returns "Success with 0 sub-operations" for two reasons:
+        # 1. Transient: PACS is overwhelmed by rapid requests (fixed by pacing)
+        # 2. Permanent: series is archived/offline and can't be served via C-GET
+        # One retry after a short delay distinguishes the two cases.  If the
+        # second attempt also fails, the series is unretrievable — move on and
+        # let the ERROR status trigger a retry on the next task run.
+        operator.fetch_series(
+            patient_id=series.patient_id,
+            study_uid=series.study_instance_uid,
+            series_uid=series.series_instance_uid,
+            callback=callback,
+        )
+        if image_count == 0 and series.number_of_images > 0:
+            delay = 3 + random.random() * 2
+            logger.warning(
+                "C-GET returned 0 images for %s (PACS reports %d) — "
+                "retrying in %.0fs",
+                series.series_instance_uid,
+                series.number_of_images,
+                delay,
+            )
+            time.sleep(delay)
             operator.fetch_series(
                 patient_id=series.patient_id,
                 study_uid=series.study_instance_uid,
                 series_uid=series.series_instance_uid,
                 callback=callback,
             )
-            if image_count > 0 or series.number_of_images == 0:
-                break
-            if attempt < max_retries:
-                # Exponential backoff: 5, 10, 20, 40, 80 base seconds
-                # with ±25% jitter to avoid thundering herd
-                base_delay = 5 * (2 ** attempt)
-                jitter = base_delay * 0.25 * (2 * random.random() - 1)
-                delay = base_delay + jitter
-                logger.warning(
-                    "C-GET returned 0 images for %s (PACS reports %d) — "
-                    "retrying in %.0fs (attempt %d/%d)",
-                    series.series_instance_uid,
-                    series.number_of_images,
-                    delay,
-                    attempt + 1,
-                    max_retries,
-                )
-                time.sleep(delay)
 
         if image_count == 0 and series.number_of_images > 0:
             logger.error(
-                "C-GET returned 0 images for %s after %d attempts (PACS reports %d)",
+                "C-GET returned 0 images for %s (PACS reports %d) — "
+                "series may be archived/offline",
                 series.series_instance_uid,
-                max_retries + 1,
                 series.number_of_images,
             )
 
