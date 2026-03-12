@@ -74,18 +74,23 @@ def connect_to_server(service: DimseService):
                 self.open_connection(service)
                 opened_connection = True
 
+            completed = False
             try:
                 yield from func(self, *args, **kwargs)
+                completed = True
             except Exception as err:
                 self.abort_connection()
                 raise err
             finally:
-                # When a generator is abandoned mid-iteration (e.g. early return from
-                # a for loop), Python throws GeneratorExit — a BaseException, not an
-                # Exception. Without finally, close_connection() was skipped and the
-                # DIMSE association leaked on the PACS side.
                 if opened_connection and self.auto_connect and not self.persistent and self.assoc:
                     self.close_connection()
+                elif self.persistent and not completed and self.assoc:
+                    # Generator was abandoned mid-iteration (e.g. early return
+                    # from a for loop).  The PACS may still be sending pending
+                    # responses on this association.  Reusing it would mix stale
+                    # responses into the next query.  Abort so the next request
+                    # opens a clean association.
+                    self.abort_connection()
 
         @wraps(func)
         def func_wrapper(self: "DimseConnector", *args, **kwargs):

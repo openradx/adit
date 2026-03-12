@@ -374,17 +374,17 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
             status = MassTransferTask.Status.FAILURE
             message = f"All {total_failed} series failed during mass transfer."
         else:
-            parts = []
-            if total_skipped:
-                parts.append(f"{total_skipped} skipped")
+            total_series = total_processed + total_failed + total_skipped
+            parts = [f"{total_processed} downloaded"]
             if total_failed:
                 parts.append(f"{total_failed} failed")
-            suffix = f" ({', '.join(parts)})" if parts else ""
+            if total_skipped:
+                parts.append(f"{total_skipped} skipped")
 
             status = MassTransferTask.Status.WARNING if total_failed else MassTransferTask.Status.SUCCESS
             message = (
                 f"{len(study_uids)} studies, "
-                f"{total_processed} series processed{suffix}."
+                f"{total_series} series ({', '.join(parts)})."
             )
 
         return {
