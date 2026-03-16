@@ -28,6 +28,7 @@ from adit.core.utils.sanitize import sanitize_filename
 
 from .models import (
     MassTransferFilter,
+    MassTransferJob,
     MassTransferSettings,
     MassTransferTask,
     MassTransferVolume,
@@ -244,7 +245,7 @@ def _birth_date_range(
     return (earliest_birth, latest_birth)
 
 
-def _destination_base_dir(node: DicomNode, job) -> Path:
+def _destination_base_dir(node: DicomNode, job: MassTransferJob) -> Path:
     assert node.node_type == DicomNode.NodeType.FOLDER
     name = sanitize_filename(
         f"adit_{job._meta.app_label}_{job.pk}_{job.created.strftime('%Y%m%d')}_{job.owner.username}"

@@ -25,6 +25,7 @@ from adit.mass_transfer.processors import (
     MassTransferTaskProcessor,
     _age_at_study,
     _birth_date_range,
+    _destination_base_dir,
     _dicom_match,
     _parse_int,
     _series_folder_name,
@@ -1289,3 +1290,140 @@ def test_extract_dicom_sidecar_pseudonymized_has_no_real_data(tmp_path: Path):
         assert real_patient_id not in val
         assert real_birth_date not in val
         assert real_study_uid not in val
+
+
+# ---------------------------------------------------------------------------
+# _destination_base_dir tests
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+def test_destination_base_dir_creates_job_folder(tmp_path: Path):
+    """Output dir should include adit_{app}_{pk}_{date}_{owner} parent folder."""
+    user = UserFactory.create(username="rghosh")
+    source = DicomServerFactory.create()
+    destination = DicomFolderFactory.create(path=str(tmp_path))
+    job = MassTransferJob.objects.create(
+        owner=user,
+        source=source,
+        destination=destination,
+        start_date=date(2025, 3, 16),
+        end_date=date(2025, 3, 16),
+        partition_granularity=MassTransferJob.PartitionGranularity.DAILY,
+    )
+
+    result = _destination_base_dir(destination, job)
+
+    expected_name = f"adit_mass_transfer_{job.pk}_{job.created.strftime('%Y%m%d')}_rghosh"
+    assert result == tmp_path / expected_name
+    assert result.is_dir()
+
+
+@pytest.mark.django_db
+def test_destination_base_dir_is_idempotent(tmp_path: Path):
+    """Calling _destination_base_dir twice should not fail or create duplicates."""
+    user = UserFactory.create(username="testuser")
+    source = DicomServerFactory.create()
+    destination = DicomFolderFactory.create(path=str(tmp_path))
+    job = MassTransferJob.objects.create(
+        owner=user,
+        source=source,
+        destination=destination,
+        start_date=date(2025, 1, 1),
+        end_date=date(2025, 1, 1),
+        partition_granularity=MassTransferJob.PartitionGranularity.DAILY,
+    )
+
+    result1 = _destination_base_dir(destination, job)
+    result2 = _destination_base_dir(destination, job)
+
+    assert result1 == result2
+    assert result1.is_dir()
+
+
+def test_destination_base_dir_asserts_on_server_node(mocker: MockerFixture):
+    """Should raise AssertionError when node is not a FOLDER."""
+    node = mocker.MagicMock()
+    node.node_type = DicomNode.NodeType.SERVER
+    job = mocker.MagicMock()
+
+    with pytest.raises(AssertionError):
+        _destination_base_dir(node, job)
+
+
+@pytest.mark.django_db
+def test_destination_base_dir_sanitizes_username(tmp_path: Path):
+    """Usernames with special chars should be sanitized in the folder name."""
+    user = UserFactory.create(username="user/with:special")
+    source = DicomServerFactory.create()
+    destination = DicomFolderFactory.create(path=str(tmp_path))
+    job = MassTransferJob.objects.create(
+        owner=user,
+        source=source,
+        destination=destination,
+        start_date=date(2025, 1, 1),
+        end_date=date(2025, 1, 1),
+        partition_granularity=MassTransferJob.PartitionGranularity.DAILY,
+    )
+
+    result = _destination_base_dir(destination, job)
+
+    # Should not contain path separators
+    folder_name = result.name
+    assert "/" not in folder_name
+    assert "\\" not in folder_name
+    assert result.is_dir()
+
+
+@pytest.mark.django_db
+def test_process_output_path_includes_job_folder(
+    mocker: MockerFixture, tmp_path: Path
+):
+    """End-to-end: the output path used during process() should include the job-identifying folder."""
+    MassTransferSettings.objects.create()
+
+    user = UserFactory.create(username="researcher")
+    source = DicomServerFactory.create()
+    destination = DicomFolderFactory.create(path=str(tmp_path / "output"))
+    job = MassTransferJob.objects.create(
+        owner=user,
+        source=source,
+        destination=destination,
+        start_date=date(2024, 1, 1),
+        end_date=date(2024, 1, 1),
+        partition_granularity=MassTransferJob.PartitionGranularity.DAILY,
+        anonymization_mode=MassTransferJob.AnonymizationMode.NONE,
+    )
+    job.filters_json = [{"modality": "CT"}]
+    job.save(update_fields=["filters_json"])
+
+    task = MassTransferTask.objects.create(
+        job=job,
+        source=source,
+        partition_start=timezone.now(),
+        partition_end=timezone.now(),
+        partition_key="20240101",
+    )
+
+    series = [_make_discovered(patient_id="PAT1", series_uid="1.2.3.4.5")]
+
+    processor = MassTransferTaskProcessor(task)
+    mocker.patch.object(processor, "_discover_series", return_value=series)
+    mocker.patch("adit.mass_transfer.processors.DicomOperator")
+
+    export_paths: list[Path] = []
+
+    def fake_export(op, s, path, subject_id, pseudonymizer):
+        export_paths.append(path)
+        return (1, "", "")
+
+    mocker.patch.object(processor, "_export_series", side_effect=fake_export)
+
+    result = processor.process()
+
+    assert result["status"] == MassTransferTask.Status.SUCCESS
+    assert len(export_paths) == 1
+
+    # The path should contain the job-identifying folder
+    expected_prefix = f"adit_mass_transfer_{job.pk}_{job.created.strftime('%Y%m%d')}_researcher"
+    assert expected_prefix in str(export_paths[0])
