@@ -4,14 +4,26 @@
 {% block title %}
     New Mass Transfer Job
 {% endblock title %}
+{% block css %}
+    {{ block.super }}
+    {# CodeMirror 5: chosen over CodeMirror 6 because it needs no build step — a single #}
+    {# CSS + JS include gives us syntax highlighting, bracket matching, auto-indent, #}
+    {# and lint markers for JSON.  CM6 is more modular but requires bundling ES modules. #}
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.18/codemirror.min.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.18/addon/lint/lint.min.css" />
+    <style>
+        .CodeMirror {
+            border: 1px solid #ced4da;
+            border-radius: 0.375rem;
+            font-size: 0.85em;
+            height: auto;
+            min-height: 200px;
+            max-height: 400px;
+        }
+    </style>
+{% endblock css %}
 {% block heading %}
     <c-page-heading title="New Mass Transfer Job">
-    <c-slot name="left">
-    <a href="{% url 'mass_transfer_filter_list' %}" class="btn btn-info">
-        Manage Filters
-        {% bootstrap_icon "funnel" %}
-    </a>
-    </c-slot>
     <c-slot name="right">
     <a href="{% url 'mass_transfer_job_list' %}" class="btn btn-secondary">
         {% bootstrap_icon "list" %}
@@ -23,3 +35,35 @@
 {% block content %}
     {% crispy form %}
 {% endblock content %}
+{% block script %}
+    {{ block.super }}
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.18/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.18/mode/javascript/javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.18/addon/edit/matchbrackets.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.18/addon/edit/closebrackets.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.18/addon/lint/lint.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.18/addon/lint/json-lint.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jsonlint/1.6.0/jsonlint.min.js"></script>
+    <script>
+    document.addEventListener("DOMContentLoaded", function () {
+        var textarea = document.getElementById("id_filters_json");
+        if (!textarea) return;
+
+        var editor = CodeMirror.fromTextArea(textarea, {
+            mode: {name: "javascript", json: true},
+            lineNumbers: true,
+            matchBrackets: true,
+            autoCloseBrackets: true,
+            gutters: ["CodeMirror-lint-markers"],
+            lint: true,
+            tabSize: 2,
+            indentWithTabs: false,
+        });
+
+        // Sync CodeMirror content back to textarea on form submit
+        editor.on("change", function () {
+            editor.save();
+        });
+    });
+    </script>
+{% endblock script %}

@@ -7,7 +7,19 @@ const MASS_TRANSFER_GRANULARITY = "mass_transfer_granularity";
 const MASS_TRANSFER_SEND_FINISHED_MAIL = "mass_transfer_send_finished_mail";
 
 function massTransferJobForm() {
+  var checked = document.querySelector(
+    'input[name="anonymization_mode"]:checked'
+  );
+  var mode = checked ? checked.value : "none";
+
   return {
+    anonymizationMode: mode,
+    get showSalt() {
+      return this.anonymizationMode === "pseudonymize_with_linking";
+    },
+    onAnonymizationModeChange: function (ev) {
+      this.anonymizationMode = ev.target.value;
+    },
     onSourceChange: function (ev) {
       updatePreferences("mass-transfer", {
         [MASS_TRANSFER_SOURCE]: ev.target.value,
@@ -30,3 +42,5 @@ function massTransferJobForm() {
     },
   };
 }
+
+// JSON editor is now handled by CodeMirror in the form template.

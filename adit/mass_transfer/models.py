@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import secrets
 
 from django.conf import settings
@@ -68,7 +69,7 @@ class MassTransferJob(DicomJob):
         WEEKLY = "weekly", "Weekly"
 
     class AnonymizationMode(models.TextChoices):
-        NONE = "none", "No anonymization"
+        NONE = "none", "None"
         PSEUDONYMIZE = "pseudonymize", "Pseudonymize"
         PSEUDONYMIZE_WITH_LINKING = "pseudonymize_with_linking", "Pseudonymize with linking"
 
@@ -87,14 +88,25 @@ class MassTransferJob(DicomJob):
     anonymization_mode = models.CharField(
         max_length=32,
         choices=AnonymizationMode.choices,
-        default=AnonymizationMode.PSEUDONYMIZE,
+        default=AnonymizationMode.NONE,
     )
 
     filters = models.ManyToManyField(MassTransferFilter, related_name="jobs", blank=True)
+    filters_json = models.JSONField(
+        blank=True,
+        null=True,
+        help_text="Inline filter configuration as a JSON list of filter objects.",
+    )
     pseudonym_salt = models.CharField(
         max_length=64,
         default=secrets.token_hex,
     )
+
+    @property
+    def filters_json_pretty(self) -> str:
+        if self.filters_json:
+            return json.dumps(self.filters_json, indent=2)
+        return ""
 
     @property
     def should_pseudonymize(self) -> bool:

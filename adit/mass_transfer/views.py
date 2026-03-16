@@ -1,14 +1,17 @@
 import csv
 from typing import Any, cast
 
+from adit_radis_shared.common.mixins import PageSizeSelectMixin, RelatedFilterMixin
 from adit_radis_shared.common.views import BaseUpdatePreferencesView
 from django.conf import settings
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.db.models import QuerySet
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from django.urls import reverse_lazy
 from django.views import View
 from django.views.generic import CreateView, DeleteView, ListView, UpdateView
+from django_tables2 import SingleTableMixin
 
 from adit.core.views import (
     DicomJobCancelView,
@@ -26,7 +29,7 @@ from adit.core.views import (
     TransferJobListView,
 )
 
-from .filters import MassTransferJobFilter, MassTransferTaskFilter
+from .filters import MassTransferJobFilter, MassTransferTaskFilter, MassTransferVolumeFilter
 from .forms import MassTransferFilterForm, MassTransferJobForm
 from .mixins import MassTransferLockedMixin
 from .models import (
@@ -35,7 +38,7 @@ from .models import (
     MassTransferTask,
     MassTransferVolume,
 )
-from .tables import MassTransferJobTable, MassTransferTaskTable
+from .tables import MassTransferJobTable, MassTransferTaskTable, MassTransferVolumeTable
 
 MASS_TRANSFER_SOURCE = "mass_transfer_source"
 MASS_TRANSFER_DESTINATION = "mass_transfer_destination"
@@ -158,21 +161,23 @@ class MassTransferJobRestartView(MassTransferLockedMixin, DicomJobRestartView):
     model = MassTransferJob
 
 
-class MassTransferTaskDetailView(MassTransferLockedMixin, DicomTaskDetailView):
+class MassTransferTaskDetailView(
+    MassTransferLockedMixin,
+    SingleTableMixin,
+    RelatedFilterMixin,
+    PageSizeSelectMixin,
+    DicomTaskDetailView,
+):
     model = MassTransferTask
     job_url_name = "mass_transfer_job_detail"
     template_name = "mass_transfer/mass_transfer_task_detail.html"
+    table_class = MassTransferVolumeTable
+    filterset_class = MassTransferVolumeFilter
+    table_pagination = {"per_page": 25}
 
-    def get_context_data(self, **kwargs) -> dict[str, Any]:
-        context = super().get_context_data(**kwargs)
-        task = self.object
-        context["problem_volumes"] = task.volumes.filter(
-            status__in=[
-                MassTransferVolume.Status.ERROR,
-                MassTransferVolume.Status.SKIPPED,
-            ]
-        ).order_by("status", "study_datetime")
-        return context
+    def get_filter_queryset(self) -> QuerySet[MassTransferVolume]:
+        task = cast(MassTransferTask, self.get_object())
+        return task.volumes
 
 
 class MassTransferTaskDeleteView(MassTransferLockedMixin, DicomTaskDeleteView):

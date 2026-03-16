@@ -1,18 +1,67 @@
 from __future__ import annotations
 
-from typing import cast
+import json
+import secrets
+from typing import Annotated, cast
 
 from adit_radis_shared.accounts.models import User
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import HTML, Column, Div, Field, Layout, Row, Submit
 from django import forms
 from django.core.exceptions import ValidationError
+from pydantic import BaseModel, ValidationError as PydanticValidationError, model_validator
 
 from adit.core.fields import DicomNodeChoiceField
 from adit.core.models import DicomNode
 
 from .models import MassTransferFilter, MassTransferJob, MassTransferTask
 from .utils.partitions import build_partitions
+
+
+class FilterSchema(BaseModel):
+    """Pydantic model for validating mass transfer filter JSON objects."""
+
+    modality: str = ""
+    institution_name: str = ""
+    apply_institution_on_study: bool = True
+    study_description: str = ""
+    series_description: str = ""
+    series_number: int | None = None
+    min_age: Annotated[int, "non-negative"] | None = None
+    max_age: Annotated[int, "non-negative"] | None = None
+
+    model_config = {"extra": "forbid"}
+
+    @model_validator(mode="after")
+    def check_age_range(self):
+        if self.min_age is not None and self.min_age < 0:
+            raise ValueError("min_age must be non-negative")
+        if self.max_age is not None and self.max_age < 0:
+            raise ValueError("max_age must be non-negative")
+        if (
+            self.min_age is not None
+            and self.max_age is not None
+            and self.min_age > self.max_age
+        ):
+            raise ValueError(f"min_age ({self.min_age}) cannot exceed max_age ({self.max_age})")
+        return self
+
+
+FILTERS_JSON_EXAMPLE = json.dumps(
+    [
+        {
+            "modality": "MR",
+            "institution_name": "Neuroradiologie",
+            "study_description": "",
+            "series_description": "",
+            "series_number": None,
+            "apply_institution_on_study": True,
+            "min_age": 18,
+            "max_age": 90,
+        }
+    ],
+    indent=2,
+)
 
 
 class MassTransferFilterForm(forms.ModelForm):
@@ -98,10 +147,27 @@ class MassTransferFilterForm(forms.ModelForm):
 
 
 class MassTransferJobForm(forms.ModelForm):
-    filters = forms.ModelMultipleChoiceField(
-        queryset=MassTransferFilter.objects.all(),
-        required=True,
-        widget=forms.CheckboxSelectMultiple,
+    filters_json = forms.CharField(
+        label="Filters (JSON)",
+        initial=FILTERS_JSON_EXAMPLE,
+        widget=forms.Textarea(attrs={
+            "id": "id_filters_json",
+        }),
+        help_text=(
+            "A JSON array of filter objects. Each filter can have: "
+            "modality, institution_name, apply_institution_on_study, "
+            "study_description, series_description, series_number, "
+            "min_age, max_age. A series matching ANY filter is included."
+        ),
+    )
+
+    pseudonym_salt = forms.CharField(
+        label="Pseudonym salt",
+        required=False,
+        help_text="Deterministic seed for pseudonymization. Same salt + same patient ID = same pseudonym.",
+        widget=forms.TextInput(attrs={
+            "class": "form-control",
+        }),
     )
 
     tasks: list[MassTransferTask]
@@ -114,8 +180,8 @@ class MassTransferJobForm(forms.ModelForm):
             "start_date",
             "end_date",
             "partition_granularity",
-            "filters",
             "anonymization_mode",
+            "pseudonym_salt",
             "convert_to_nifti",
             "send_finished_mail",
         )
@@ -130,8 +196,10 @@ class MassTransferJobForm(forms.ModelForm):
         help_texts = {
             "partition_granularity": "Daily or weekly partition windows.",
             "anonymization_mode": (
-                "No anonymization preserves all identifiers. Pseudonymize replaces them. "
-                "Pseudonymize with linking also exports a mapping CSV."
+                "None: all identifiers are preserved. "
+                "Pseudonymize: identifiers are replaced with random values. "
+                "Pseudonymize with linking: deterministic pseudonyms (same salt + patient = same pseudonym) "
+                "and a downloadable association CSV."
             ),
             "convert_to_nifti": (
                 "When enabled, exported DICOM series are converted to NIfTI format "
@@ -151,7 +219,9 @@ class MassTransferJobForm(forms.ModelForm):
 
         super().__init__(*args, **kwargs)
 
-        self.fields["filters"].queryset = MassTransferFilter.objects.filter(owner=self.user)  # type: ignore[union-attr]
+        # Auto-populate salt with a fresh random value
+        if not self.initial.get("pseudonym_salt"):
+            self.initial["pseudonym_salt"] = secrets.token_hex()
 
         self.fields["source"] = DicomNodeChoiceField("source", self.user)
         self.fields["source"].widget.attrs["@change"] = "onSourceChange($event)"
@@ -165,6 +235,10 @@ class MassTransferJobForm(forms.ModelForm):
 
         self.fields["send_finished_mail"].widget.attrs["@change"] = (
             "onSendFinishedMailChange($event)"
+        )
+
+        self.fields["anonymization_mode"].widget.attrs["@change"] = (
+            "onAnonymizationModeChange($event)"
         )
 
         self.helper = FormHelper(self)
@@ -192,6 +266,11 @@ class MassTransferJobForm(forms.ModelForm):
                         Column(Field("send_finished_mail"), css_class="col-md-6"),
                         css_class="g-3",
                     ),
+                    Div(
+                        Field("pseudonym_salt"),
+                        css_id="salt-wrapper",
+                        **{"x-show": "showSalt"},
+                    ),
                     css_class="card-body",
                 ),
                 css_class="card mb-3",
@@ -199,7 +278,7 @@ class MassTransferJobForm(forms.ModelForm):
             Div(
                 HTML("<div class='card-header fw-semibold'>Filters</div>"),
                 Div(
-                    Field("filters", wrapper_class="mass-transfer-filter-list"),
+                    Field("filters_json"),
                     css_class="card-body",
                 ),
                 css_class="card mb-3",
@@ -234,11 +313,28 @@ class MassTransferJobForm(forms.ModelForm):
             raise ValidationError("End date must be on or after the start date.")
         return cleaned
 
-    def clean_filters(self):
-        filters = self.cleaned_data["filters"]
-        if filters.exclude(owner=self.user).exists():
-            raise ValidationError("Selected filters are not available to this user.")
-        return filters
+    def clean_filters_json(self):
+        raw = self.cleaned_data["filters_json"].strip()
+        try:
+            data = json.loads(raw)
+        except json.JSONDecodeError as e:
+            raise ValidationError(f"Invalid JSON: {e}")
+
+        if not isinstance(data, list) or not data:
+            raise ValidationError("Filters must be a non-empty JSON array.")
+
+        validated: list[dict] = []
+        for i, item in enumerate(data):
+            if not isinstance(item, dict):
+                raise ValidationError(f"Filter #{i + 1} must be a JSON object.")
+            try:
+                fs = FilterSchema(**item)
+                validated.append(fs.model_dump(exclude_none=True))
+            except PydanticValidationError as e:
+                errors = "; ".join(err["msg"] for err in e.errors())
+                raise ValidationError(f"Filter #{i + 1}: {errors}")
+
+        return validated
 
     def _save_tasks(self, job: MassTransferJob) -> None:
         partitions = build_partitions(
@@ -264,10 +360,10 @@ class MassTransferJobForm(forms.ModelForm):
     def save(self, commit: bool = True):
         job = super().save(commit=False)
         job.urgent = False
+        job.filters_json = self.cleaned_data["filters_json"]
 
         if commit:
             job.save()
-            self.save_m2m()
             self._save_tasks(job)
         else:
             self.save_tasks = self._save_tasks

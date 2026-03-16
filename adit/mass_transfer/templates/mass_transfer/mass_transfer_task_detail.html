@@ -1,6 +1,8 @@
 {% extends "mass_transfer/mass_transfer_layout.html" %}
 {% load dicom_task_status_css_class from core_extras %}
-{% load task_control_panel volume_status_css_class from mass_transfer_extras %}
+{% load task_control_panel from mass_transfer_extras %}
+{% load render_table from django_tables2 %}
+{% load crispy from crispy_forms_tags %}
 {% block title %}
     Mass Transfer Task
 {% endblock title %}
@@ -26,38 +28,10 @@
         <dt class="col-sm-3">Log</dt>
         <dd class="col-sm-9"><pre class="mb-0">{{ task.log|default:"" }}</pre></dd>
     </dl>
-    {% if problem_volumes %}
-        <h5 class="mt-4">Skipped &amp; Failed Volumes</h5>
-        <div class="table-responsive">
-            <table class="table table-sm table-hover">
-                <thead>
-                    <tr>
-                        <th>Status</th>
-                        <th>Modality</th>
-                        <th>Series #</th>
-                        <th>Series Description</th>
-                        <th>Study Date</th>
-                        <th>Reason</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for vol in problem_volumes %}
-                        <tr>
-                            <td>
-                                <span class="{{ vol.status|volume_status_css_class }}">
-                                    {{ vol.get_status_display }}
-                                </span>
-                            </td>
-                            <td>{{ vol.modality }}</td>
-                            <td>{{ vol.series_number|default:"—" }}</td>
-                            <td>{{ vol.series_description|default:"—" }}</td>
-                            <td>{{ vol.study_datetime|date:"Y-m-d" }}</td>
-                            <td><small>{{ vol.log|default:"—" }}</small></td>
-                        </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    {% endif %}
+    <h5 class="mt-4">Volumes</h5>
+    {% crispy filter.form %}
+    <div class="table-responsive" style="max-height: 600px; overflow-y: auto;">
+        {% render_table table %}
+    </div>
     {% task_control_panel %}
 {% endblock content %}

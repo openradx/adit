@@ -21,7 +21,10 @@ from adit.mass_transfer.models import (
 )
 from adit.mass_transfer.processors import (
     DiscoveredSeries,
+    FilterSpec,
     MassTransferTaskProcessor,
+    _age_at_study,
+    _birth_date_range,
     _dicom_match,
     _parse_int,
     _series_folder_name,
@@ -81,15 +84,17 @@ def _make_processor(mocker: MockerFixture) -> MassTransferTaskProcessor:
     return processor
 
 
-def _make_filter(mocker: MockerFixture, **kwargs) -> MassTransferFilter:
-    mf = mocker.MagicMock(spec=MassTransferFilter)
-    mf.modality = kwargs.get("modality", "CT")
-    mf.study_description = kwargs.get("study_description", "")
-    mf.institution_name = kwargs.get("institution_name", "")
-    mf.apply_institution_on_study = kwargs.get("apply_institution_on_study", True)
-    mf.series_description = kwargs.get("series_description", "")
-    mf.series_number = kwargs.get("series_number", None)
-    return mf
+def _make_filter(**kwargs) -> FilterSpec:
+    return FilterSpec(
+        modality=kwargs.get("modality", "CT"),
+        study_description=kwargs.get("study_description", ""),
+        institution_name=kwargs.get("institution_name", ""),
+        apply_institution_on_study=kwargs.get("apply_institution_on_study", True),
+        series_description=kwargs.get("series_description", ""),
+        series_number=kwargs.get("series_number", None),
+        min_age=kwargs.get("min_age", None),
+        max_age=kwargs.get("max_age", None),
+    )
 
 
 @pytest.mark.django_db
@@ -107,8 +112,8 @@ def test_find_studies_raises_when_time_window_too_small(mocker: MockerFixture):
         end_date=date(2024, 1, 1),
         partition_granularity=MassTransferJob.PartitionGranularity.DAILY,
     )
-    mf = MassTransferFilter.objects.create(owner=user, name="CT Filter", modality="CT")
-    job.filters.add(mf)
+    job.filters_json = [{"modality": "CT"}]
+    job.save(update_fields=["filters_json"])
 
     start = timezone.now()
     end = start + timedelta(minutes=10)
@@ -125,13 +130,14 @@ def test_find_studies_raises_when_time_window_too_small(mocker: MockerFixture):
     operator.server = source
     operator.find_studies.return_value = [object(), object()]
 
+    mf = FilterSpec(modality="CT")
     with pytest.raises(DicomError, match="Time window too small"):
         processor._find_studies(operator, mf, start, end)
 
 
 def test_find_studies_returns_all_when_under_limit(mocker: MockerFixture):
     processor = _make_processor(mocker)
-    mf = _make_filter(mocker, modality="CT")
+    mf = _make_filter( modality="CT")
 
     start = datetime(2024, 1, 1, 0, 0, 0)
     end = datetime(2024, 1, 1, 23, 59, 59)
@@ -150,7 +156,7 @@ def test_find_studies_returns_all_when_under_limit(mocker: MockerFixture):
 
 def test_find_studies_splits_and_deduplicates(mocker: MockerFixture):
     processor = _make_processor(mocker)
-    mf = _make_filter(mocker, modality="CT")
+    mf = _make_filter( modality="CT")
 
     # Use a single-day range to test the time-based midpoint split
     start = datetime(2024, 1, 1, 0, 0, 0)
@@ -180,7 +186,7 @@ def test_find_studies_splits_and_deduplicates(mocker: MockerFixture):
 
 def test_find_studies_split_boundaries_dont_overlap(mocker: MockerFixture):
     processor = _make_processor(mocker)
-    mf = _make_filter(mocker, modality="")
+    mf = _make_filter( modality="")
 
     # Use a single-day range so we test the time-based midpoint split
     start = datetime(2024, 1, 1, 0, 0, 0)
@@ -223,7 +229,7 @@ def test_find_studies_split_boundaries_dont_overlap(mocker: MockerFixture):
 def test_find_studies_same_day_split_narrows_study_time(mocker: MockerFixture):
     """When splitting within a single day, StudyTime must narrow to avoid infinite recursion."""
     processor = _make_processor(mocker)
-    mf = _make_filter(mocker, modality="CT")
+    mf = _make_filter( modality="CT")
 
     start = datetime(2024, 1, 1, 8, 0, 0)
     end = datetime(2024, 1, 1, 20, 0, 0)
@@ -259,7 +265,7 @@ def test_find_studies_same_day_split_narrows_study_time(mocker: MockerFixture):
 def test_find_studies_cross_midnight_splits_at_midnight(mocker: MockerFixture):
     """A cross-midnight window must split at midnight, not at the midpoint."""
     processor = _make_processor(mocker)
-    mf = _make_filter(mocker, modality="CT")
+    mf = _make_filter( modality="CT")
 
     # Window spans midnight: Jan 1 23:45 to Jan 2 00:15
     start = datetime(2024, 1, 1, 23, 45, 0)
@@ -289,7 +295,7 @@ def test_find_studies_cross_midnight_splits_at_midnight(mocker: MockerFixture):
 
 def test_find_studies_preserves_order_with_unique_studies(mocker: MockerFixture):
     processor = _make_processor(mocker)
-    mf = _make_filter(mocker, modality="")
+    mf = _make_filter( modality="")
 
     start = datetime(2024, 1, 1, 0, 0, 0)
     end = datetime(2024, 1, 1, 23, 59, 59)
@@ -332,7 +338,8 @@ def _make_process_env(
     mock_job.source.dicomserver = mocker.MagicMock()
     mock_job.destination.node_type = DicomNode.NodeType.FOLDER
     mock_job.destination.dicomfolder.path = str(tmp_path / "output")
-    mock_job.filters.all.return_value = [_make_filter(mocker)]
+    mock_job.filters_json = [{"modality": "CT"}]
+    mock_job.filters.all.return_value = []
 
     processor.mass_task.pk = 42
     processor.mass_task.partition_key = "20240101"
@@ -457,6 +464,7 @@ def test_process_returns_failure_when_no_filters(
     mocker: MockerFixture, tmp_path: Path
 ):
     processor = _make_process_env(mocker, tmp_path)
+    processor.mass_task.job.filters_json = []
     processor.mass_task.job.filters.all.return_value = []
 
     result = processor.process()
@@ -816,7 +824,8 @@ def test_process_creates_volume_records_on_success(
         partition_granularity=MassTransferJob.PartitionGranularity.DAILY,
         anonymization_mode=MassTransferJob.AnonymizationMode.NONE,
     )
-    job.filters.create(owner=user, name="CT Filter", modality="CT")
+    job.filters_json = [{"modality": "CT"}]
+    job.save(update_fields=["filters_json"])
 
     task = MassTransferTask.objects.create(
         job=job,
@@ -863,7 +872,8 @@ def test_process_creates_error_volume_on_failure(
         partition_granularity=MassTransferJob.PartitionGranularity.DAILY,
         anonymization_mode=MassTransferJob.AnonymizationMode.NONE,
     )
-    job.filters.create(owner=user, name="CT Filter", modality="CT")
+    job.filters_json = [{"modality": "CT"}]
+    job.save(update_fields=["filters_json"])
 
     task = MassTransferTask.objects.create(
         job=job,
@@ -909,7 +919,8 @@ def test_process_deletes_error_volumes_on_retry(
         partition_granularity=MassTransferJob.PartitionGranularity.DAILY,
         anonymization_mode=MassTransferJob.AnonymizationMode.NONE,
     )
-    job.filters.create(owner=user, name="CT Filter", modality="CT")
+    job.filters_json = [{"modality": "CT"}]
+    job.save(update_fields=["filters_json"])
 
     task = MassTransferTask.objects.create(
         job=job,
@@ -971,7 +982,8 @@ def test_process_deterministic_pseudonyms_across_partitions(
         partition_granularity=MassTransferJob.PartitionGranularity.DAILY,
         anonymization_mode=MassTransferJob.AnonymizationMode.PSEUDONYMIZE_WITH_LINKING,
     )
-    job.filters.create(owner=user, name="CT Filter", modality="CT")
+    job.filters_json = [{"modality": "CT"}]
+    job.save(update_fields=["filters_json"])
 
     task1 = MassTransferTask.objects.create(
         job=job,
@@ -1036,7 +1048,8 @@ def test_process_pseudonymize_mode_not_linked_across_partitions(
         partition_granularity=MassTransferJob.PartitionGranularity.DAILY,
         anonymization_mode=MassTransferJob.AnonymizationMode.PSEUDONYMIZE,
     )
-    job.filters.create(owner=user, name="CT Filter", modality="CT")
+    job.filters_json = [{"modality": "CT"}]
+    job.save(update_fields=["filters_json"])
 
     task1 = MassTransferTask.objects.create(
         job=job,
@@ -1079,3 +1092,200 @@ def test_process_pseudonymize_mode_not_linked_across_partitions(
     assert vol2.pseudonym != ""
     assert vol1.pseudonym != "PAT1"
     assert vol1.pseudonym != vol2.pseudonym
+
+
+# ---------------------------------------------------------------------------
+# Age filtering tests
+# ---------------------------------------------------------------------------
+
+
+def test_age_at_study_basic():
+    assert _age_at_study(date(1990, 6, 15), date(2025, 6, 15)) == 35
+    assert _age_at_study(date(1990, 6, 15), date(2025, 6, 14)) == 34
+    assert _age_at_study(date(1990, 6, 15), date(2025, 6, 16)) == 35
+
+
+def test_age_at_study_leap_year():
+    assert _age_at_study(date(2000, 2, 29), date(2025, 2, 28)) == 24
+    assert _age_at_study(date(2000, 2, 29), date(2025, 3, 1)) == 25
+
+
+def test_birth_date_range_no_age_limits():
+    assert _birth_date_range(date(2025, 1, 1), date(2025, 1, 31), None, None) is None
+
+
+def test_birth_date_range_min_only():
+    result = _birth_date_range(date(2025, 3, 15), date(2025, 3, 15), 18, None)
+    assert result is not None
+    earliest, latest = result
+    # Latest birth: someone who is 18 on study date could be born up to end of year 2008
+    assert latest.year >= 2007
+    assert earliest == date(1900, 1, 1)
+
+
+def test_birth_date_range_max_only():
+    result = _birth_date_range(date(2025, 3, 15), date(2025, 3, 15), None, 65)
+    assert result is not None
+    earliest, latest = result
+    # Earliest birth: someone who is 65 on study date was born ~1959
+    assert earliest.year <= 1960
+
+
+def test_birth_date_range_both():
+    result = _birth_date_range(date(2025, 3, 15), date(2025, 3, 15), 18, 65)
+    assert result is not None
+    earliest, latest = result
+    assert earliest < latest
+
+
+# ---------------------------------------------------------------------------
+# FilterSpec tests
+# ---------------------------------------------------------------------------
+
+
+def test_filter_spec_from_dict():
+    d = {
+        "modality": "MR",
+        "institution_name": "Neuroradiologie",
+        "min_age": 18,
+        "max_age": 90,
+    }
+    fs = FilterSpec.from_dict(d)
+    assert fs.modality == "MR"
+    assert fs.institution_name == "Neuroradiologie"
+    assert fs.min_age == 18
+    assert fs.max_age == 90
+    assert fs.study_description == ""
+    assert fs.apply_institution_on_study is True
+
+
+def test_filter_spec_from_model(mocker: MockerFixture):
+    mf = mocker.MagicMock(spec=MassTransferFilter)
+    mf.modality = "CT"
+    mf.institution_name = ""
+    mf.apply_institution_on_study = True
+    mf.study_description = "Brain*"
+    mf.series_description = ""
+    mf.series_number = None
+    fs = FilterSpec.from_model(mf)
+    assert fs.modality == "CT"
+    assert fs.study_description == "Brain*"
+    assert fs.min_age is None
+    assert fs.max_age is None
+
+
+# ---------------------------------------------------------------------------
+# DICOM sidecar tests
+# ---------------------------------------------------------------------------
+
+
+def test_write_dicom_sidecar(tmp_path: Path):
+    from adit.mass_transfer.processors import _write_dicom_sidecar
+
+    fields = {
+        "PatientBirthDate": "19900101",
+        "PatientSex": "M",
+        "PatientAgeAtStudy": "35",
+        "StudyDate": "20250315",
+        "StudyInstanceUID": "1.2.3.4.5",
+        "SeriesInstanceUID": "1.2.3.4.5.6",
+        "Modality": "MR",
+    }
+
+    _write_dicom_sidecar(tmp_path, "T1w_3D_101", fields)
+
+    import json
+
+    sidecar = tmp_path / "T1w_3D_101_dicom.json"
+    assert sidecar.exists()
+    result = json.loads(sidecar.read_text())
+    assert result["PatientBirthDate"] == "19900101"
+    assert result["PatientAgeAtStudy"] == "35"
+    assert result["StudyInstanceUID"] == "1.2.3.4.5"
+    assert result["Modality"] == "MR"
+
+
+def test_write_dicom_sidecar_empty_fields(tmp_path: Path):
+    from adit.mass_transfer.processors import _write_dicom_sidecar
+
+    _write_dicom_sidecar(tmp_path, "series_1", {})
+
+    # No file should be written when fields are empty
+    assert not list(tmp_path.glob("*.json"))
+
+
+def _write_test_dicom(path: Path, **kwargs) -> None:
+    """Write a minimal valid DICOM file for testing."""
+    import pydicom
+
+    ds = pydicom.Dataset()
+    for k, v in kwargs.items():
+        setattr(ds, k, v)
+    ds.SOPClassUID = kwargs.get("SOPClassUID", "1.2.840.10008.5.1.4.1.1.4")
+    ds.SOPInstanceUID = kwargs.get("SOPInstanceUID", "1.2.3.4.5")
+    ds.file_meta = pydicom.Dataset()
+    ds.file_meta.TransferSyntaxUID = pydicom.uid.ExplicitVRLittleEndian
+    ds.file_meta.MediaStorageSOPClassUID = ds.SOPClassUID
+    ds.file_meta.MediaStorageSOPInstanceUID = ds.SOPInstanceUID
+    pydicom.dcmwrite(str(path), ds, enforce_file_format=True)
+
+
+def test_extract_dicom_sidecar_computes_age(tmp_path: Path):
+    """_extract_dicom_sidecar should compute PatientAgeAtStudy from birth date and study date."""
+    from adit.mass_transfer.processors import _extract_dicom_sidecar
+
+    _write_test_dicom(
+        tmp_path / "test.dcm",
+        PatientBirthDate="19900615",
+        PatientSex="M",
+        StudyDate="20250615",
+        StudyInstanceUID="1.2.3",
+        SeriesInstanceUID="1.2.3.4",
+        Modality="MR",
+    )
+
+    result = _extract_dicom_sidecar(tmp_path)
+    assert result["PatientAgeAtStudy"] == "35"
+    assert result["PatientBirthDate"] == "19900615"
+    assert result["PatientSex"] == "M"
+    assert result["StudyInstanceUID"] == "1.2.3"
+
+
+def test_extract_dicom_sidecar_pseudonymized_has_no_real_data(tmp_path: Path):
+    """When pseudonymization is applied, sidecar should contain pseudonymized values, not originals.
+
+    This test simulates the post-pseudonymization state: the DICOM files on disk have already
+    been anonymized by dicognito + Pseudonymizer before _extract_dicom_sidecar runs.
+    We verify the sidecar contains only the pseudonymized values.
+    """
+    from adit.mass_transfer.processors import _extract_dicom_sidecar
+
+    _write_test_dicom(
+        tmp_path / "test.dcm",
+        PatientID="ABCDEF123456",
+        PatientName="ABCDEF123456",
+        PatientBirthDate="19920101",
+        PatientSex="M",
+        StudyDate="20260101",
+        StudyInstanceUID="2.25.999999999",
+        SeriesInstanceUID="2.25.888888888",
+        Modality="MR",
+    )
+
+    result = _extract_dicom_sidecar(tmp_path)
+
+    # Sidecar must contain the pseudonymized values (what's on disk)
+    assert result["PatientID"] == "ABCDEF123456"
+    assert result["PatientBirthDate"] == "19920101"
+    assert result["StudyInstanceUID"] == "2.25.999999999"
+    assert result["SeriesInstanceUID"] == "2.25.888888888"
+    assert result["StudyDate"] == "20260101"
+
+    # Real values must NOT appear anywhere
+    real_patient_id = "4654954"
+    real_birth_date = "19900615"
+    real_study_uid = "1.2.276.0.18.14.200.2.0.0.2.20250311.175028.78.91"
+    for val in result.values():
+        assert real_patient_id not in val
+        assert real_birth_date not in val
+        assert real_study_uid not in val

@@ -47,12 +47,14 @@
         <dd class="col-sm-9">{{ job.get_anonymization_mode_display }}</dd>
         <dt class="col-sm-3">Filters</dt>
         <dd class="col-sm-9">
-            {% if job.filters.all %}
+            {% if job.filters_json %}
+                <pre style="margin:0; white-space:pre-wrap;">{{ job.filters_json_pretty }}</pre>
+            {% elif job.filters.all %}
                 {% for f in job.filters.all %}
                     <div>{{ f }}</div>
-                {% empty %}
-                    —
                 {% endfor %}
+            {% else %}
+                —
             {% endif %}
         </dd>
         <dt class="col-sm-3">Processed Tasks</dt>

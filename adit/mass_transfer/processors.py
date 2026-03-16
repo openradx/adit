@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import logging
 import random
 import secrets
@@ -8,7 +9,7 @@ import subprocess
 import tempfile
 import time
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import cast
 
@@ -32,6 +33,48 @@ from .models import (
     MassTransferVolume,
 )
 
+
+@dataclass
+class FilterSpec:
+    """Unified filter representation used by the processor.
+
+    Built from either a MassTransferFilter model instance (old M2M path)
+    or a plain dict from the job's filters_json field.
+    """
+
+    modality: str = ""
+    institution_name: str = ""
+    apply_institution_on_study: bool = True
+    study_description: str = ""
+    series_description: str = ""
+    series_number: int | None = None
+    min_age: int | None = None
+    max_age: int | None = None
+
+    @classmethod
+    def from_model(cls, mf: MassTransferFilter) -> "FilterSpec":
+        return cls(
+            modality=mf.modality,
+            institution_name=mf.institution_name,
+            apply_institution_on_study=mf.apply_institution_on_study,
+            study_description=mf.study_description,
+            series_description=mf.series_description,
+            series_number=mf.series_number,
+        )
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "FilterSpec":
+        return cls(
+            modality=d.get("modality", ""),
+            institution_name=d.get("institution_name", ""),
+            apply_institution_on_study=d.get("apply_institution_on_study", True),
+            study_description=d.get("study_description", ""),
+            series_description=d.get("series_description", ""),
+            series_number=d.get("series_number"),
+            min_age=d.get("min_age"),
+            max_age=d.get("max_age"),
+        )
+
 logger = logging.getLogger(__name__)
 
 _MIN_SPLIT_WINDOW = timedelta(minutes=30)
@@ -50,6 +93,7 @@ class DiscoveredSeries:
     study_datetime: datetime
     institution_name: str
     number_of_images: int
+    patient_birth_date: date | None = None
 
 
 def _dicom_match(pattern: str, value: str | None) -> bool:
@@ -97,6 +141,109 @@ def _series_folder_name(series_description: str, series_number: int | None, seri
     return f"{desc}_{series_number}"
 
 
+_SIDECAR_DICOM_TAGS = [
+    "PatientBirthDate",
+    "PatientSex",
+    "PatientAge",
+    "PatientID",
+    "PatientName",
+    "StudyDate",
+    "StudyInstanceUID",
+    "SeriesInstanceUID",
+    "Modality",
+    "InstitutionName",
+    "StudyDescription",
+    "SeriesDescription",
+    "SeriesNumber",
+]
+
+
+def _extract_dicom_sidecar(dicom_dir: Path) -> dict[str, str]:
+    """Read the first DICOM file in *dicom_dir* and extract sidecar fields.
+
+    These are post-pseudonymization values — shifted dates, replaced UIDs,
+    etc. The function also computes a ``PatientAgeAtStudy`` field from
+    PatientBirthDate and StudyDate when both are present.
+    """
+    import pydicom
+
+    for dcm_path in sorted(dicom_dir.glob("*.dcm")):
+        try:
+            ds = pydicom.dcmread(dcm_path, stop_before_pixels=True)
+        except Exception:
+            continue
+        fields: dict[str, str] = {}
+        for tag in _SIDECAR_DICOM_TAGS:
+            val = ds.get(tag)
+            if val is not None:
+                fields[tag] = str(val)
+
+        # Compute age at study from birth date and study date
+        birth_str = fields.get("PatientBirthDate", "")
+        study_str = fields.get("StudyDate", "")
+        if len(birth_str) == 8 and len(study_str) == 8:
+            try:
+                bd = date(int(birth_str[:4]), int(birth_str[4:6]), int(birth_str[6:8]))
+                sd = date(int(study_str[:4]), int(study_str[4:6]), int(study_str[6:8]))
+                fields["PatientAgeAtStudy"] = str(_age_at_study(bd, sd))
+            except (ValueError, OverflowError):
+                pass
+
+        return fields
+    return {}
+
+
+def _write_dicom_sidecar(output_path: Path, sidecar_name: str, fields: dict[str, str]) -> None:
+    """Write a DICOM metadata sidecar JSON file alongside NIfTI outputs."""
+    if not fields:
+        return
+    sidecar_path = output_path / f"{sidecar_name}_dicom.json"
+    try:
+        sidecar_path.write_text(json.dumps(fields, indent=2))
+    except Exception:
+        logger.warning("Failed to write sidecar %s", sidecar_path, exc_info=True)
+
+
+def _age_at_study(birth_date: date, study_date: date) -> int:
+    """Return the patient's age in whole years on the study date."""
+    age = study_date.year - birth_date.year
+    if (study_date.month, study_date.day) < (birth_date.month, birth_date.day):
+        age -= 1
+    return age
+
+
+def _birth_date_range(
+    study_start: date,
+    study_end: date,
+    min_age: int | None,
+    max_age: int | None,
+) -> tuple[date, date] | None:
+    """Compute a PatientBirthDate range for C-FIND from age bounds.
+
+    Uses the widest possible range: someone who is max_age on the earliest
+    study date was born at the latest on study_start - max_age years, and
+    someone who is min_age on the latest study date was born at the earliest
+    on study_end - min_age years.  We widen by 1 year on each side to account
+    for birthday boundary effects and let client-side filtering be exact.
+    """
+    if min_age is None and max_age is None:
+        return None
+
+    # Earliest possible birth date: max_age on the earliest study day
+    if max_age is not None:
+        earliest_birth = date(study_start.year - max_age - 1, 1, 1)
+    else:
+        earliest_birth = date(1900, 1, 1)
+
+    # Latest possible birth date: min_age on the latest study day
+    if min_age is not None:
+        latest_birth = date(study_end.year - min_age + 1, 12, 31)
+    else:
+        latest_birth = study_end
+
+    return (earliest_birth, latest_birth)
+
+
 def _destination_base_dir(node: DicomNode, job) -> Path:
     assert node.node_type == DicomNode.NodeType.FOLDER
     name = sanitize_filename(
@@ -134,7 +281,13 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
         if destination_node.node_type != DicomNode.NodeType.FOLDER:
             raise DicomError("Mass transfer destination must be a DICOM folder.")
 
-        filters = list(job.filters.all())
+        # Build filter specs: prefer inline JSON, fall back to old M2M.
+        if job.filters_json:
+            filters = [FilterSpec.from_dict(d) for d in job.filters_json]
+        else:
+            legacy_filters = list(job.filters.all())
+            filters = [FilterSpec.from_model(mf) for mf in legacy_filters]
+
         if not filters:
             return {
                 "status": MassTransferTask.Status.FAILURE,
@@ -243,6 +396,11 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
                                 if image_count == 0:
                                     nifti_files = []
                                 else:
+                                    # Extract DICOM metadata before dcm2niix
+                                    # deletes the temp files. These are
+                                    # post-pseudonymization values.
+                                    dicom_sidecar = _extract_dicom_sidecar(tmp_path)
+
                                     output_path = (
                                         output_base
                                         / self.mass_task.partition_key
@@ -255,6 +413,10 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
                                         tmp_path,
                                         output_path,
                                     )
+                                    if nifti_files:
+                                        _write_dicom_sidecar(
+                                            output_path, series_folder, dicom_sidecar,
+                                        )
                         else:
                             output_path = (
                                 output_base
@@ -409,7 +571,7 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
     def _discover_series(
         self,
         operator: DicomOperator,
-        filters: list[MassTransferFilter],
+        filters: list[FilterSpec],
     ) -> list[DiscoveredSeries]:
         start = self.mass_task.partition_start
         end = self.mass_task.partition_end
@@ -430,6 +592,16 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
 
                 if mf.institution_name and mf.apply_institution_on_study:
                     if not self._study_has_institution(operator, study, mf.institution_name):
+                        continue
+
+                # Exact client-side age filtering using actual StudyDate and
+                # PatientBirthDate (the C-FIND birth date range is approximate).
+                birth_date = study.PatientBirthDate
+                if birth_date and study.StudyDate and (mf.min_age is not None or mf.max_age is not None):
+                    age = _age_at_study(birth_date, study.StudyDate)
+                    if mf.min_age is not None and age < mf.min_age:
+                        continue
+                    if mf.max_age is not None and age > mf.max_age:
                         continue
 
                 series_query = QueryDataset.create(
@@ -488,8 +660,8 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
                         institution_name=str(series.get("InstitutionName", "")),
                         number_of_images=_parse_int(
                             series.get("NumberOfSeriesRelatedInstances"), default=0
-                        )
-                        or 0,
+                        ) or 0,
+                        patient_birth_date=birth_date,
                     )
 
         return list(found.values())
@@ -497,7 +669,7 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
     def _find_studies(
         self,
         operator: DicomOperator,
-        mf: MassTransferFilter,
+        mf: FilterSpec,
         start: datetime,
         end: datetime,
     ) -> list[ResultDataset]:
@@ -532,9 +704,13 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
         else:
             study_time = (start.time(), end.time())
 
+        birth_range = _birth_date_range(
+            start.date(), end.date(), mf.min_age, mf.max_age,
+        )
         query = QueryDataset.create(
             StudyDate=(start.date(), end.date()),
             StudyTime=study_time,
+            **({"PatientBirthDate": birth_range} if birth_range else {}),
         )
 
         if mf.modality:
