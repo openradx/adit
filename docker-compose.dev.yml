@@ -70,6 +70,7 @@ services:
 
   mass_transfer_worker:
     <<: *default-app
+    image: adit_dev-mass_transfer_worker:latest
     command: >
       bash -c "
         wait-for-it -s postgres.local:5432 -t 60 &&
