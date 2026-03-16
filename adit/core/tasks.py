@@ -95,6 +95,7 @@ def process_dicom_task(context: JobContext, model_label: str, task_id: int):
     dicom_task.save()
 
     logger.info(f"Processing of {dicom_task} started.")
+    # sleep(30)
 
     @concurrent.process(timeout=settings.DICOM_TASK_PROCESS_TIMEOUT, daemon=True)
     def _process_dicom_task(model_label: str, task_id: int) -> ProcessingResult:
@@ -124,6 +125,12 @@ def process_dicom_task(context: JobContext, model_label: str, task_id: int):
     except futures.TimeoutError:
         dicom_task.message = "Task was aborted due to timeout."
         dicom_task.status = DicomTask.Status.FAILURE
+        ensure_db_connection()
+
+    except futures.CancelledError:
+        logger.info("Processing of %s was canceled.", dicom_task)
+        dicom_task.status = DicomTask.Status.CANCELED
+        dicom_task.message = "Task was canceled."
         ensure_db_connection()
 
     except RetriableDicomError as err:

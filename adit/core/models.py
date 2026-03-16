@@ -273,7 +273,7 @@ class DicomJob(models.Model):
                 self.save()
             return False
 
-        if self.status == DicomJob.Status.CANCELING:
+        if self.status in [DicomJob.Status.CANCELING, DicomJob.Status.CANCELED]:
             self.status = DicomJob.Status.CANCELED
             self.save()
             return False
@@ -282,6 +282,7 @@ class DicomJob(models.Model):
         has_success = self.tasks.filter(status=DicomTask.Status.SUCCESS).exists()
         has_warning = self.tasks.filter(status=DicomTask.Status.WARNING).exists()
         has_failure = self.tasks.filter(status=DicomTask.Status.FAILURE).exists()
+        has_canceled = self.tasks.filter(status=DicomTask.Status.CANCELED).exists()
 
         if has_success and not has_warning and not has_failure:
             self.status = DicomJob.Status.SUCCESS
@@ -298,6 +299,9 @@ class DicomJob(models.Model):
         elif has_failure:
             self.status = DicomJob.Status.FAILURE
             self.message = "All tasks failed."
+        elif has_canceled:
+            self.status = DicomJob.Status.CANCELED
+            self.message = "All tasks were canceled."
         else:
             # at least one of success, warnings or failures must be > 0
             raise AssertionError(f"Invalid task status list of {self}.")
