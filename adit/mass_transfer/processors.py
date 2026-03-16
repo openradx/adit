@@ -27,7 +27,6 @@ from adit.core.utils.sanitize import sanitize_filename
 
 from .models import (
     MassTransferFilter,
-    MassTransferJob,
     MassTransferSettings,
     MassTransferTask,
     MassTransferVolume,
@@ -91,18 +90,19 @@ def _study_folder_name(study_description: str, study_dt: datetime, study_uid: st
     return f"{desc}_{dt_str}_{short_hash}"
 
 
-def _series_folder_name(
-    series_description: str, series_number: int | None, series_uid: str
-) -> str:
+def _series_folder_name(series_description: str, series_number: int | None, series_uid: str) -> str:
     if series_number is None:
         return sanitize_filename(series_uid)
     desc = sanitize_filename(series_description or "Undefined")
     return f"{desc}_{series_number}"
 
 
-def _destination_base_dir(node: DicomNode) -> Path:
+def _destination_base_dir(node: DicomNode, job) -> Path:
     assert node.node_type == DicomNode.NodeType.FOLDER
-    path = Path(node.dicomfolder.path)
+    name = sanitize_filename(
+        f"adit_{job._meta.app_label}_{job.pk}_{job.created.strftime('%Y%m%d')}_{job.owner.username}"
+    )
+    path = Path(node.dicomfolder.path) / name
     path.mkdir(parents=True, exist_ok=True)
     return path
 
@@ -174,7 +174,7 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
             pending = [s for s in discovered if s.series_instance_uid not in done_uids]
             total_skipped_prior = len(discovered) - len(pending)
 
-            output_base = _destination_base_dir(destination_node)
+            output_base = _destination_base_dir(destination_node, job)
             done_status = (
                 MassTransferVolume.Status.CONVERTED
                 if job.convert_to_nifti
@@ -234,27 +234,41 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
                             with tempfile.TemporaryDirectory() as tmp_dir:
                                 tmp_path = Path(tmp_dir)
                                 image_count, p_study_uid, p_series_uid = self._export_series(
-                                    operator, series, tmp_path,
-                                    subject_id, pseudonymizer,
+                                    operator,
+                                    series,
+                                    tmp_path,
+                                    subject_id,
+                                    pseudonymizer,
                                 )
                                 if image_count == 0:
                                     nifti_files = []
                                 else:
                                     output_path = (
-                                        output_base / self.mass_task.partition_key
-                                        / subject_id / study_folder / series_folder
+                                        output_base
+                                        / self.mass_task.partition_key
+                                        / subject_id
+                                        / study_folder
+                                        / series_folder
                                     )
                                     nifti_files = self._convert_series(
-                                        series, tmp_path, output_path,
+                                        series,
+                                        tmp_path,
+                                        output_path,
                                     )
                         else:
                             output_path = (
-                                output_base / self.mass_task.partition_key
-                                / subject_id / study_folder / series_folder
+                                output_base
+                                / self.mass_task.partition_key
+                                / subject_id
+                                / study_folder
+                                / series_folder
                             )
                             image_count, p_study_uid, p_series_uid = self._export_series(
-                                operator, series, output_path,
-                                subject_id, pseudonymizer,
+                                operator,
+                                series,
+                                output_path,
+                                subject_id,
+                                pseudonymizer,
                             )
                             nifti_files = []
 
@@ -381,11 +395,10 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
             if total_skipped:
                 parts.append(f"{total_skipped} skipped")
 
-            status = MassTransferTask.Status.WARNING if total_failed else MassTransferTask.Status.SUCCESS
-            message = (
-                f"{len(study_uids)} studies, "
-                f"{total_series} series ({', '.join(parts)})."
+            status = (
+                MassTransferTask.Status.WARNING if total_failed else MassTransferTask.Status.SUCCESS
             )
+            message = f"{len(study_uids)} studies, {total_series} series ({', '.join(parts)})."
 
         return {
             "status": status,
@@ -475,7 +488,8 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
                         institution_name=str(series.get("InstitutionName", "")),
                         number_of_images=_parse_int(
                             series.get("NumberOfSeriesRelatedInstances"), default=0
-                        ) or 0,
+                        )
+                        or 0,
                     )
 
         return list(found.values())
@@ -501,12 +515,8 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
             days_apart = (end.date() - start.date()).days
             if days_apart <= 1:
                 # Cross-midnight: split at midnight boundary
-                midnight = datetime.combine(
-                    end.date(), datetime.min.time(), tzinfo=end.tzinfo
-                )
-                left = self._find_studies(
-                    operator, mf, start, midnight - timedelta(seconds=1)
-                )
+                midnight = datetime.combine(end.date(), datetime.min.time(), tzinfo=end.tzinfo)
+                left = self._find_studies(operator, mf, start, midnight - timedelta(seconds=1))
                 right = self._find_studies(operator, mf, midnight, end)
 
                 seen: set[str] = {str(s.StudyInstanceUID) for s in left}
@@ -536,9 +546,7 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
 
         if len(studies) > max_results:
             if end - start < _MIN_SPLIT_WINDOW:
-                raise DicomError(
-                    f"Time window too small ({start} to {end}) for filter {mf}."
-                )
+                raise DicomError(f"Time window too small ({start} to {end}) for filter {mf}.")
 
             mid = start + (end - start) / 2
             left = self._find_studies(operator, mf, start, mid)
@@ -620,8 +628,7 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
         if image_count == 0 and series.number_of_images > 0:
             delay = 3 + random.random() * 2
             logger.warning(
-                "C-GET returned 0 images for %s (PACS reports %d) — "
-                "retrying in %.0fs",
+                "C-GET returned 0 images for %s (PACS reports %d) — retrying in %.0fs",
                 series.series_instance_uid,
                 series.number_of_images,
                 delay,
@@ -636,8 +643,7 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
 
         if image_count == 0 and series.number_of_images > 0:
             logger.error(
-                "C-GET returned 0 images for %s (PACS reports %d) — "
-                "series may be archived/offline",
+                "C-GET returned 0 images for %s (PACS reports %d) — series may be archived/offline",
                 series.series_instance_uid,
                 series.number_of_images,
             )
@@ -668,9 +674,12 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
 
         cmd = [
             "dcm2niix",
-            "-z", "y",
-            "-o", str(output_path),
-            "-f", series_name,
+            "-z",
+            "y",
+            "-o",
+            str(output_path),
+            "-f",
+            series_name,
             str(dicom_dir),
         ]
 
@@ -687,9 +696,7 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
 
         if result.returncode != 0:
             output = result.stderr or result.stdout
-            raise DicomError(
-                f"Conversion failed for series {series.series_instance_uid}: {output}"
-            )
+            raise DicomError(f"Conversion failed for series {series.series_instance_uid}: {output}")
 
         nifti_files = sorted(output_path.glob("*.nii.gz"))
         if not nifti_files:
