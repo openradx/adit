@@ -95,7 +95,6 @@ def process_dicom_task(context: JobContext, model_label: str, task_id: int):
     dicom_task.save()
 
     logger.info(f"Processing of {dicom_task} started.")
-    # sleep(30)
 
     @concurrent.process(timeout=settings.DICOM_TASK_PROCESS_TIMEOUT, daemon=True)
     def _process_dicom_task(model_label: str, task_id: int) -> ProcessingResult:
