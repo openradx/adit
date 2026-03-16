@@ -229,7 +229,10 @@ class DimseConnector:
             for cx in self.assoc.rejected_contexts:
                 rejected.append(f"{cx.abstract_syntax}")
             if rejected:
-                logger.warning("C-GET: %d presentation contexts rejected by SCP: %s", len(rejected), rejected)
+                logger.warning(
+                    "C-GET: %d presentation contexts rejected by SCP: %s",
+                    len(rejected), rejected,
+                )
             accepted = [cx.abstract_syntax for cx in self.assoc.accepted_contexts]
             logger.debug("C-GET: %d presentation contexts accepted", len(accepted))
 

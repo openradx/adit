@@ -598,7 +598,8 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
                 # Exact client-side age filtering using actual StudyDate and
                 # PatientBirthDate (the C-FIND birth date range is approximate).
                 birth_date = study.PatientBirthDate
-                if birth_date and study.StudyDate and (mf.min_age is not None or mf.max_age is not None):
+                has_age_filter = mf.min_age is not None or mf.max_age is not None
+                if birth_date and study.StudyDate and has_age_filter:
                     age = _age_at_study(birth_date, study.StudyDate)
                     if mf.min_age is not None and age < mf.min_age:
                         continue

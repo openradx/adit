@@ -8,9 +8,9 @@ from pydicom import Dataset
 from pytest_mock import MockerFixture
 
 from adit.core.errors import DicomError, RetriableDicomError
-from adit.core.models import DicomNode
 from adit.core.factories import DicomFolderFactory, DicomServerFactory
-from adit.core.utils.dicom_dataset import QueryDataset, ResultDataset
+from adit.core.models import DicomNode
+from adit.core.utils.dicom_dataset import ResultDataset
 from adit.core.utils.dicom_operator import DicomOperator
 from adit.mass_transfer.models import (
     MassTransferFilter,
@@ -638,7 +638,8 @@ def test_process_linking_mode_uses_deterministic_pseudonym(
     assert subject_ids[0] != "PAT1"
     # Pseudonym should be deterministic — running again with same salt gives same result
     from adit.core.utils.pseudonymizer import Pseudonymizer
-    expected = Pseudonymizer(seed="test-salt-for-deterministic-pseudonyms").compute_pseudonym("PAT1")
+    ps = Pseudonymizer(seed="test-salt-for-deterministic-pseudonyms")
+    expected = ps.compute_pseudonym("PAT1")
     assert subject_ids[0] == expected
 
 
@@ -1379,7 +1380,7 @@ def test_destination_base_dir_sanitizes_username(tmp_path: Path):
 def test_process_output_path_includes_job_folder(
     mocker: MockerFixture, tmp_path: Path
 ):
-    """End-to-end: the output path used during process() should include the job-identifying folder."""
+    """End-to-end: process() output path should include job-identifying folder."""
     MassTransferSettings.objects.create()
 
     user = UserFactory.create(username="researcher")

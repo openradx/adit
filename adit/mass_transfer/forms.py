@@ -9,7 +9,8 @@ from crispy_forms.helper import FormHelper
 from crispy_forms.layout import HTML, Column, Div, Field, Layout, Row, Submit
 from django import forms
 from django.core.exceptions import ValidationError
-from pydantic import BaseModel, ValidationError as PydanticValidationError, model_validator
+from pydantic import BaseModel, model_validator
+from pydantic import ValidationError as PydanticValidationError
 
 from adit.core.fields import DicomNodeChoiceField
 from adit.core.models import DicomNode
@@ -164,7 +165,10 @@ class MassTransferJobForm(forms.ModelForm):
     pseudonym_salt = forms.CharField(
         label="Pseudonym salt",
         required=False,
-        help_text="Deterministic seed for pseudonymization. Same salt + same patient ID = same pseudonym.",
+        help_text=(
+            "Deterministic seed for pseudonymization."
+            " Same salt + same patient ID = same pseudonym."
+        ),
         widget=forms.TextInput(attrs={
             "class": "form-control",
         }),
@@ -198,7 +202,8 @@ class MassTransferJobForm(forms.ModelForm):
             "anonymization_mode": (
                 "None: all identifiers are preserved. "
                 "Pseudonymize: identifiers are replaced with random values. "
-                "Pseudonymize with linking: deterministic pseudonyms (same salt + patient = same pseudonym) "
+                "Pseudonymize with linking: deterministic pseudonyms "
+                "(same salt + patient = same pseudonym) "
                 "and a downloadable association CSV."
             ),
             "convert_to_nifti": (

@@ -536,7 +536,10 @@ class DicomOperator:
             try:
                 self._handle_fetched_image(ds, callback)
             except Exception as err:
-                logger.error("Store handler failed for SOP %s: %s", ds.SOPInstanceUID, err, exc_info=True)
+                logger.error(
+                    "Store handler failed for SOP %s: %s",
+                    ds.SOPInstanceUID, err, exc_info=True,
+                )
                 store_errors.append(err)
 
                 # Unfortunately not all PACS servers support or respect a C-CANCEL request,
