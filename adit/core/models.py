@@ -274,8 +274,9 @@ class DicomJob(models.Model):
             return False
 
         if self.status in [DicomJob.Status.CANCELING, DicomJob.Status.CANCELED]:
-            self.status = DicomJob.Status.CANCELED
-            self.save()
+            if self.status == DicomJob.Status.CANCELING:
+                self.status = DicomJob.Status.CANCELED
+                self.save()
             return False
 
         # Job is finished and we evaluate its final status
