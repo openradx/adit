@@ -55,7 +55,8 @@ def backup_db(*args, **kwargs):
 
 DICOM_TASK_RETRY_STRATEGY = RetryStrategy(
     max_attempts=settings.DICOM_TASK_MAX_ATTEMPTS,
-    exponential_wait=settings.DICOM_TASK_EXPONENTIAL_WAIT,
+    wait=settings.DICOM_TASK_RETRY_WAIT,
+    linear_wait=settings.DICOM_TASK_LINEAR_WAIT,
     retry_exceptions={RetriableDicomError},
 )
 
@@ -135,7 +136,10 @@ def _run_dicom_task(
         # Cave, the the attempts of the Procrastinate job must not be the same number
         # as the attempts of the DicomTask. The DicomTask could be started by multiple
         # Procrastinate jobs (e.g. if the user canceled and resumed the same task).
-        if context.job.attempts < settings.DICOM_TASK_MAX_ATTEMPTS:
+        # Procrastinate's attempts is 0-indexed (counts previous attempts).
+        # On attempt N, attempts = N-1. We want FAILURE on the final attempt,
+        # which is when attempts + 1 >= max_attempts.
+        if context.job.attempts + 1 < settings.DICOM_TASK_MAX_ATTEMPTS:
             dicom_task.status = DicomTask.Status.PENDING
             dicom_task.message = "Task failed, but will be retried."
             if dicom_task.log:

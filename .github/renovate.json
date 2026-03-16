@@ -22,6 +22,11 @@
       "managers": ["pep621"],
       "matchPackageNames": ["factory-boy"],
       "allowedVersions": "<=3.3.2"
+    },
+    {
+      "managers": ["pep621"],
+      "matchPackageNames": ["autobahn"],
+      "allowedVersions": "<25.11.1"
     }
   ]
 }

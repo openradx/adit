@@ -4,6 +4,8 @@
 
 ADIT (Automated DICOM Transfer) is a Swiss army knife to exchange DICOM data between various systems by using a convenient web frontend.
 
+The detailed documentation of ADIT can be found at <https://openradx.github.io/adit/>.
+
 **Developed at**
 
 <table>
@@ -30,6 +32,36 @@ ADIT (Automated DICOM Transfer) is a Swiss army knife to exchange DICOM data bet
 > [!IMPORTANT]
 > ADIT is currently in early beta stage. While we are actively building and refining its features, users should anticipate ongoing updates and potential breaking changes as the platform evolves. We appreciate your understanding and welcome feedback to help us shape the future of ADIT.
 
+## The Challenge: Traditional DICOM vs Modern Web Workflows
+
+Many existing PACS servers, while robust, rely on older, specialized DICOM protocols (DIMSE) and often have web-based access (like DICOMweb) either not implemented or explicitly turned off for security reasons. This creates a significant hurdle for modern applications, especially those built for the web or requiring automated, scriptable access.
+
+## How ADIT Bridges the Gap
+
+ADIT acts as a **translation layer** between modern web APIs and traditional DICOM protocols:
+
+```mermaid
+sequenceDiagram
+    participant Client as Your Script/App
+    participant ADIT as ADIT Server
+    participant Worker as ADIT Worker
+    participant PACS as PACS Server
+
+    Client->>ADIT: HTTP GET /dicomweb/studies?PatientAge=020-030&Modality=CT
+    Note over ADIT: Receives DICOMweb/REST request
+
+    ADIT->>Worker: Internal translation
+    Note over Worker: Converts REST → DIMSE
+
+    Worker->>PACS: C-FIND (DIMSE Protocol)
+    PACS-->>Worker: DICOM Response
+
+    Worker->>ADIT: Internal processing
+    Note over ADIT: Converts DIMSE → REST
+
+    ADIT-->>Client: HTTP 200 + JSON Response
+```
+
 ## Features
 
 - Transfer DICOM data between DICOM-compatible servers
@@ -45,9 +77,9 @@ ADIT (Automated DICOM Transfer) is a Swiss army knife to exchange DICOM data bet
 - Help modals with detailed information for the most important features
 - An upload portal to upload DICOM images through a web interface that can be pseudonymized on the client (before the transfer happens)
 
-## API Client
+## ADIT Client
 
-[ADIT Client](https://github.com/openradx/adit-client) is a Python library to query, retrieve and upload DICOM images programmatically from a Python script. Thereby it can interact with DICOM (e.g. PACS) servers connected to an ADIT server.
+[ADIT Client](https://pypi.org/project/adit-client/) is a Python library that allows you to programmatically query, retrieve, and upload DICOM images from a Python script. It communicates with DICOM servers, such as PACS systems, via an ADIT server.
 
 ## Architectural overview
 
@@ -61,15 +93,13 @@ Downloading data from a DICOM server can done by using a DIMSE operation or by u
 
 ## Screenshots
 
-![Screenshot1](https://github.com/openradx/adit/assets/120626/f03d6af0-510f-4324-95f4-10bf8522fce2)
+![Screenshot1](resources/screenshots/Screenshot01.png)
 
-![Screenshot2](https://github.com/openradx/adit/assets/120626/2b322dd9-0ce3-4e8f-9ca3-a10e00842c62)
+![Screenshot2](resources/screenshots/Screenshot02.png)
 
-![Screenshot3](https://user-images.githubusercontent.com/120626/155511254-95adbed7-ef2e-44bd-aa3b-6e055be527a5.png)
+![Screenshot3](resources/screenshots/Screenshot03.png)
 
-![Screenshot4](https://user-images.githubusercontent.com/120626/155511300-4dafe29f-748f-4d69-81af-89afe63197a0.png)
-
-![Screenshot5](https://user-images.githubusercontent.com/120626/155511342-e64cd37d-4e92-4a9a-bbb0-4e88ea136d3c.png)
+![Screenshot4](resources/screenshots/Screenshot04.png)
 
 ## Disclaimer
 

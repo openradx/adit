@@ -16,8 +16,8 @@ ADIT uses a single-layer retry strategy:
 
 2. Task Layer (Procrastinate): Slow retries for complete failures
    - Retries entire transfer task if network layer exhausted
-   - Retries: 3 attempts with exponential backoff
-   - Wait: 60 seconds base (1min → 2min → 4min)
+   - Retries: 3 attempts with linear backoff
+   - Wait: 2min → 4min → 6min
 
 Why single-layer?
 ----------------
