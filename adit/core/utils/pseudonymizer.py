@@ -1,4 +1,5 @@
 from dicognito.anonymizer import Anonymizer
+from dicognito.idanonymizer import IDAnonymizer
 from dicognito.randomizer import Randomizer
 from dicognito.value_keeper import ValueKeeper
 from django.conf import settings
@@ -9,9 +10,6 @@ class Pseudonymizer:
     """
     A utility class for pseudonymizing (or anonymizing) DICOM data.
     """
-
-    _ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-    _ID_LENGTH = 12
 
     def __init__(
         self,
@@ -43,16 +41,19 @@ class Pseudonymizer:
     def compute_pseudonym(self, patient_id: str) -> str:
         """Pre-compute the pseudonym for a patient ID without a full DICOM dataset.
 
-        Uses the same algorithm as dicognito's IDAnonymizer so the result
-        matches what anonymize() would produce for PatientID.
+        Delegates to dicognito's IDAnonymizer so the result always matches
+        what anonymize() would produce for PatientID, even if dicognito
+        changes its internal algorithm.
         Requires that this Pseudonymizer was created with a seed.
         """
         if self._seed is None:
             raise ValueError("compute_pseudonym requires a seeded Pseudonymizer")
         randomizer = Randomizer(self._seed)
-        ranges = [len(self._ALPHABET)] * self._ID_LENGTH
-        indices = randomizer.get_ints_from_ranges(patient_id, *ranges)
-        return "".join(self._ALPHABET[i] for i in indices)
+        id_anon = IDAnonymizer(randomizer, "", "", "PatientID")
+        ds = Dataset()
+        ds.PatientID = patient_id
+        id_anon(ds, ds["PatientID"])
+        return str(ds.PatientID)
 
     def pseudonymize(self, ds: Dataset, pseudonym: str) -> None:
         """

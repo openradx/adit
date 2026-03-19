@@ -97,3 +97,47 @@ class TestPseudonymizer:
         pseudonymizer.pseudonymize(ds, pseudonym)
 
         assert ds.AcquisitionDateTime == "20230101120000"
+
+
+class TestComputePseudonym:
+    def test_requires_seed(self):
+        ps = Pseudonymizer()
+        with pytest.raises(ValueError, match="requires a seeded Pseudonymizer"):
+            ps.compute_pseudonym("PAT1")
+
+    def test_deterministic_same_seed(self):
+        """Same seed + same patient ID always produces the same pseudonym."""
+        ps1 = Pseudonymizer(seed="fixed-seed")
+        ps2 = Pseudonymizer(seed="fixed-seed")
+        assert ps1.compute_pseudonym("PAT1") == ps2.compute_pseudonym("PAT1")
+
+    def test_different_seeds_produce_different_pseudonyms(self):
+        ps1 = Pseudonymizer(seed="seed-a")
+        ps2 = Pseudonymizer(seed="seed-b")
+        assert ps1.compute_pseudonym("PAT1") != ps2.compute_pseudonym("PAT1")
+
+    def test_different_patients_produce_different_pseudonyms(self):
+        ps = Pseudonymizer(seed="fixed-seed")
+        assert ps.compute_pseudonym("PAT1") != ps.compute_pseudonym("PAT2")
+
+    def test_matches_dicognito_anonymize(self):
+        """compute_pseudonym must match what dicognito produces for PatientID."""
+        seed = "test-consistency-seed"
+        ps = Pseudonymizer(seed=seed)
+        pseudonym = ps.compute_pseudonym("PATIENT_42")
+
+        # Run the full anonymizer on a real dataset and check the PatientID
+        # before our pseudonymize() overwrites it.
+        from dicognito.anonymizer import Anonymizer
+
+        anon = Anonymizer(seed=seed)
+        ds = create_base_dataset()
+        ds.PatientID = "PATIENT_42"
+        anon.anonymize(ds)
+        assert ds.PatientID == pseudonym
+
+    def test_pseudonym_is_alphanumeric(self):
+        ps = Pseudonymizer(seed="alpha-seed")
+        result = ps.compute_pseudonym("SOME_PATIENT")
+        assert result.isalnum()
+        assert result == result.upper()
