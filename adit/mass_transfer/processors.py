@@ -709,10 +709,13 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
         birth_range = _birth_date_range(
             start.date(), end.date(), mf.min_age, mf.max_age,
         )
+        birth_date_kwarg: dict[str, tuple[date, date]] = {}
+        if birth_range:
+            birth_date_kwarg["PatientBirthDate"] = birth_range
         query = QueryDataset.create(
             StudyDate=(start.date(), end.date()),
             StudyTime=study_time,
-            **({"PatientBirthDate": birth_range} if birth_range else {}),
+            **birth_date_kwarg,  # type: ignore[arg-type]
         )
 
         if mf.modality:

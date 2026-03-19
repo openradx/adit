@@ -962,7 +962,9 @@ def test_process_deletes_error_volumes_on_retry(
     # Old ERROR volume deleted, new EXPORTED volume created
     vols = MassTransferVolume.objects.filter(job=job, series_instance_uid="1.2.3.4.5")
     assert vols.count() == 1
-    assert vols.first().status == MassTransferVolume.Status.EXPORTED
+    vol = vols.first()
+    assert vol is not None
+    assert vol.status == MassTransferVolume.Status.EXPORTED
 
 
 @pytest.mark.django_db
@@ -1225,10 +1227,14 @@ def _write_test_dicom(path: Path, **kwargs) -> None:
         setattr(ds, k, v)
     ds.SOPClassUID = kwargs.get("SOPClassUID", "1.2.840.10008.5.1.4.1.1.4")
     ds.SOPInstanceUID = kwargs.get("SOPInstanceUID", "1.2.3.4.5")
-    ds.file_meta = pydicom.Dataset()
-    ds.file_meta.TransferSyntaxUID = pydicom.uid.ExplicitVRLittleEndian
-    ds.file_meta.MediaStorageSOPClassUID = ds.SOPClassUID
-    ds.file_meta.MediaStorageSOPInstanceUID = ds.SOPInstanceUID
+    from pydicom.dataset import FileMetaDataset
+    from pydicom.uid import ExplicitVRLittleEndian
+
+    file_meta = FileMetaDataset()
+    file_meta.TransferSyntaxUID = ExplicitVRLittleEndian
+    file_meta.MediaStorageSOPClassUID = ds.SOPClassUID
+    file_meta.MediaStorageSOPInstanceUID = ds.SOPInstanceUID
+    ds.file_meta = file_meta
     pydicom.dcmwrite(str(path), ds, enforce_file_format=True)
 
 

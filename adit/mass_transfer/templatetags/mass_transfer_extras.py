@@ -16,7 +16,7 @@ def volume_status_css_class(status: str) -> str:
         MassTransferVolume.Status.SKIPPED: "text-muted",
         MassTransferVolume.Status.ERROR: "text-danger",
     }
-    return css_classes.get(status, "text-secondary")
+    return css_classes.get(MassTransferVolume.Status(status), "text-secondary")
 
 
 @register.inclusion_tag("core/_job_detail_control_panel.html", takes_context=True)
