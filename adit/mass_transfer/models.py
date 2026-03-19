@@ -8,7 +8,7 @@ from django.db import models
 from django.urls import reverse
 from procrastinate.contrib.django import app
 
-from adit.core.models import DicomAppSettings, DicomJob, DicomNode, DicomTask
+from adit.core.models import DicomAppSettings, DicomJob, DicomNode, DicomTask, TransferJob
 from adit.core.utils.model_utils import get_model_label
 
 
@@ -63,7 +63,7 @@ class MassTransferFilter(models.Model):
         return "; ".join(parts) if parts else f"Filter #{self.pk}"
 
 
-class MassTransferJob(DicomJob):
+class MassTransferJob(TransferJob):
     class PartitionGranularity(models.TextChoices):
         DAILY = "daily", "Daily"
         WEEKLY = "weekly", "Weekly"

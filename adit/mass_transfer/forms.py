@@ -186,6 +186,8 @@ class MassTransferJobForm(forms.ModelForm):
             "partition_granularity",
             "anonymization_mode",
             "pseudonym_salt",
+            "trial_protocol_id",
+            "trial_protocol_name",
             "convert_to_nifti",
             "send_finished_mail",
         )

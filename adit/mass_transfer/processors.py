@@ -786,7 +786,13 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
             if ds is None:
                 return
             if manipulator:
-                manipulator.manipulate(ds, pseudonym=subject_id)
+                job = self.mass_task.job
+                manipulator.manipulate(
+                    ds,
+                    pseudonym=subject_id,
+                    trial_protocol_id=job.trial_protocol_id,
+                    trial_protocol_name=job.trial_protocol_name,
+                )
                 if not pseudo_study_uid:
                     pseudo_study_uid = str(ds.StudyInstanceUID)
                     pseudo_series_uid = str(ds.SeriesInstanceUID)
