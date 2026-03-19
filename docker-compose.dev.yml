@@ -1,6 +1,4 @@
 x-app: &default-app
-  volumes:
-    - ${MOUNT_DIR:?}:/mnt
   build:
     target: development
   pull_policy: build
