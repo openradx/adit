@@ -225,6 +225,8 @@ class MassTransferJobForm(forms.ModelForm):
         end_date = cleaned.get("end_date")
         if start_date and end_date and end_date < start_date:
             raise ValidationError("End date must be on or after the start date.")
+        if not cleaned.get("pseudonymize"):
+            cleaned["pseudonym_salt"] = ""
         return cleaned
 
     def clean_filters_json(self):
