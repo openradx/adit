@@ -302,53 +302,94 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
         elif job.should_pseudonymize:
             pseudonymizer = Pseudonymizer()
 
-        operator = DicomOperator(source_node.dicomserver, persistent=True)
+        # Connection management: we use auto_connect=False and manually manage
+        # associations for two reasons:
+        #
+        # 1. PERFORMANCE: A daily partition has ~40 studies and ~700 series.
+        #    With auto_connect=True (default), that's ~750 separate associations
+        #    at ~500ms each = ~6 minutes of pure handshake overhead.
+        #
+        # 2. PACS STABILITY: IMPAX cannot handle rapid-fire association
+        #    open/close cycles. When overwhelmed, it returns C-GET Success
+        #    with 0 images — silent data loss. This was the root cause of
+        #    the ~95% "failure" rate on job 20's early partitions (32,935
+        #    phantom error volumes).
+        #
+        # We split into two phases, each with one long-lived association:
+        #   Phase 1 (discovery): one C-FIND association for all queries
+        #   Phase 2 (transfer): one C-GET association for all fetches
+        #
+        # IMPORTANT — stale C-FIND response bug:
+        # C-FIND methods are generators. If a generator is abandoned
+        # mid-iteration (e.g. limit_results early break, or
+        # _study_has_institution returning after first match), the PACS
+        # keeps sending pending responses on the wire. The next C-FIND on
+        # the SAME association receives stale responses mixed with new
+        # results, causing phantom series from unrelated studies/patients.
+        # This is why we ABORT the association after discovery and open a
+        # fresh one for C-GET — never reuse a C-FIND association that may
+        # have unconsumed responses.
+        operator = DicomOperator(source_node.dicomserver)
+        operator.dimse_connector.auto_connect = False
+
+        # --- Phase 1: Discovery (C-FIND) ---
+        operator.dimse_connector.open_connection("C-FIND")
         try:
             discovered = self._discover_series(operator, filters)
+        finally:
+            # Always abort (not close) after discovery. C-FIND generators
+            # may have been abandoned mid-iteration, leaving stale responses
+            # on the wire. Abort ensures a clean TCP state for the next phase.
+            operator.abort()
 
-            # Filter out series already processed in a previous run (same partition)
-            done_uids = set(
-                MassTransferVolume.objects.filter(
-                    job=job,
-                    partition_key=self.mass_task.partition_key,
-                    status__in=[
-                        MassTransferVolume.Status.EXPORTED,
-                        MassTransferVolume.Status.CONVERTED,
-                        MassTransferVolume.Status.SKIPPED,
-                    ],
-                ).values_list("series_instance_uid", flat=True)
-            )
-            # Delete ERROR volumes so they can be retried cleanly
+        # Filter out series already processed in a previous run (same partition)
+        done_uids = set(
             MassTransferVolume.objects.filter(
                 job=job,
                 partition_key=self.mass_task.partition_key,
-                status=MassTransferVolume.Status.ERROR,
-            ).delete()
+                status__in=[
+                    MassTransferVolume.Status.EXPORTED,
+                    MassTransferVolume.Status.CONVERTED,
+                    MassTransferVolume.Status.SKIPPED,
+                ],
+            ).values_list("series_instance_uid", flat=True)
+        )
+        # Delete ERROR volumes so they can be retried cleanly
+        MassTransferVolume.objects.filter(
+            job=job,
+            partition_key=self.mass_task.partition_key,
+            status=MassTransferVolume.Status.ERROR,
+        ).delete()
 
-            pending = [s for s in discovered if s.series_instance_uid not in done_uids]
-            total_skipped_prior = len(discovered) - len(pending)
+        pending = [s for s in discovered if s.series_instance_uid not in done_uids]
+        total_skipped_prior = len(discovered) - len(pending)
 
-            output_base = _destination_base_dir(destination_node, job)
-            done_status = (
-                MassTransferVolume.Status.CONVERTED
-                if job.convert_to_nifti
-                else MassTransferVolume.Status.EXPORTED
-            )
+        output_base = _destination_base_dir(destination_node, job)
+        done_status = (
+            MassTransferVolume.Status.CONVERTED
+            if job.convert_to_nifti
+            else MassTransferVolume.Status.EXPORTED
+        )
 
-            total_processed = 0
-            total_skipped = 0
-            total_failed = 0
-            failed_reasons: dict[str, int] = {}
+        total_processed = 0
+        total_skipped = 0
+        total_failed = 0
+        failed_reasons: dict[str, int] = {}
 
-            # Group by patient for folder structure (linking + no-anon modes)
-            by_patient: dict[str, list[DiscoveredSeries]] = {}
-            for s in pending:
-                by_patient.setdefault(s.patient_id, []).append(s)
+        # Group by patient for folder structure (linking + no-anon modes)
+        by_patient: dict[str, list[DiscoveredSeries]] = {}
+        for s in pending:
+            by_patient.setdefault(s.patient_id, []).append(s)
 
-            # Non-linking pseudonymize: random pseudonym per study so that
-            # studies for the same patient cannot be correlated.
-            random_pseudonyms: dict[str, str] = {}
+        # Non-linking pseudonymize: random pseudonym per study so that
+        # studies for the same patient cannot be correlated.
+        random_pseudonyms: dict[str, str] = {}
 
+        # --- Phase 2: Transfer (C-GET) ---
+        # One long-lived C-GET association for all series fetches.
+        # This avoids overwhelming IMPAX with rapid association churn.
+        operator.dimse_connector.open_connection("C-GET")
+        try:
             for patient_id, series_list in by_patient.items():
                 if job.should_link and pseudonymizer:
                     subject_id = pseudonymizer.compute_pseudonym(patient_id)
