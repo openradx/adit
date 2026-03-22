@@ -79,18 +79,6 @@ class MassTransferJobForm(forms.ModelForm):
         ),
     )
 
-    pseudonym_salt = forms.CharField(
-        label="Pseudonym salt",
-        required=False,
-        help_text=(
-            "Deterministic seed for pseudonymization."
-            " Same salt + same patient ID = same pseudonym."
-        ),
-        widget=forms.TextInput(attrs={
-            "class": "form-control",
-        }),
-    )
-
     tasks: list[MassTransferTask]
 
     class Meta:
