@@ -5,6 +5,7 @@ import secrets
 from typing import Annotated, cast
 
 from adit_radis_shared.accounts.models import User
+from codemirror.widgets import CodeMirror
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import HTML, Column, Div, Field, Layout, Row, Submit
 from django import forms
@@ -69,9 +70,7 @@ class MassTransferJobForm(forms.ModelForm):
     filters_json = forms.CharField(
         label="Filters (JSON)",
         initial=FILTERS_JSON_EXAMPLE,
-        widget=forms.Textarea(attrs={
-            "id": "id_filters_json",
-        }),
+        widget=CodeMirror(mode={"name": "javascript", "json": True}),
         help_text=(
             "A JSON array of filter objects. Each filter can have: "
             "modality, institution_name, apply_institution_on_study, "
@@ -102,7 +101,7 @@ class MassTransferJobForm(forms.ModelForm):
             "start_date",
             "end_date",
             "partition_granularity",
-            "anonymization_mode",
+            "pseudonymize",
             "pseudonym_salt",
             "trial_protocol_id",
             "trial_protocol_name",
@@ -113,19 +112,23 @@ class MassTransferJobForm(forms.ModelForm):
             "start_date": "Start date",
             "end_date": "End date",
             "partition_granularity": "Partition granularity",
-            "anonymization_mode": "Anonymization",
+            "pseudonymize": "Pseudonymize",
+            "pseudonym_salt": "Pseudonym salt",
             "convert_to_nifti": "Convert to NIfTI",
             "send_finished_mail": "Send Email when job is finished",
         }
         help_texts = {
             "partition_granularity": "Daily or weekly partition windows.",
-            "anonymization_mode": (
-                "None: all identifiers are preserved. "
-                "Pseudonymize: identifiers are replaced with pseudonyms. "
-                "If a salt is provided, pseudonyms are deterministic "
-                "(same salt + patient = same pseudonym) with a "
-                "downloadable association CSV. Without a salt, "
-                "pseudonyms are random."
+            "pseudonym_salt": (
+                "To ensure that patients with the same patient ID receive "
+                "the same pseudonyms, just keep the pre-filled salt. "
+                "If you want to maintain the same pseudonym for the same "
+                "patient ID across different jobs, be sure to reuse the "
+                "same salt from previous jobs (by pasting it here). "
+                "However, if you wish to pseudonymize each study "
+                "independently without retaining the association between "
+                "patient IDs and pseudonyms, remove the salt "
+                "(leave the field blank)."
             ),
             "convert_to_nifti": (
                 "When enabled, exported DICOM series are converted to NIfTI format "
@@ -135,7 +138,6 @@ class MassTransferJobForm(forms.ModelForm):
         widgets = {
             "start_date": forms.DateInput(attrs={"type": "date"}),
             "end_date": forms.DateInput(attrs={"type": "date"}),
-            "anonymization_mode": forms.RadioSelect,
         }
 
     def __init__(self, *args, **kwargs):
@@ -159,12 +161,10 @@ class MassTransferJobForm(forms.ModelForm):
             "onGranularityChange($event)"
         )
 
+        self.fields["pseudonymize"].widget.attrs["x-model"] = "pseudonymize"
+
         self.fields["send_finished_mail"].widget.attrs["@change"] = (
             "onSendFinishedMailChange($event)"
-        )
-
-        self.fields["anonymization_mode"].widget.attrs["@change"] = (
-            "onAnonymizationModeChange($event)"
         )
 
         self.helper = FormHelper(self)
@@ -184,18 +184,18 @@ class MassTransferJobForm(forms.ModelForm):
                     ),
                     Row(
                         Column(Field("partition_granularity"), css_class="col-md-6"),
-                        Column(Field("anonymization_mode"), css_class="col-md-6"),
-                        css_class="g-3",
-                    ),
-                    Row(
-                        Column(Field("convert_to_nifti"), css_class="col-md-6"),
-                        Column(Field("send_finished_mail"), css_class="col-md-6"),
+                        Column(Field("pseudonymize"), css_class="col-md-6"),
                         css_class="g-3",
                     ),
                     Div(
                         Field("pseudonym_salt"),
                         css_id="salt-wrapper",
                         **{"x-show": "showSalt"},
+                    ),
+                    Row(
+                        Column(Field("convert_to_nifti"), css_class="col-md-6"),
+                        Column(Field("send_finished_mail"), css_class="col-md-6"),
+                        css_class="g-3",
                     ),
                     css_class="card-body",
                 ),

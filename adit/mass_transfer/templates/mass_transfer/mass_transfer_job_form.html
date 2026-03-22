@@ -1,17 +1,12 @@
 {% extends "mass_transfer/mass_transfer_layout.html" %}
 {% load crispy from crispy_forms_tags %}
 {% load bootstrap_icon from common_extras %}
-{% load static from static %}
 {% block title %}
     New Mass Transfer Job
 {% endblock title %}
 {% block css %}
     {{ block.super }}
-    {# CodeMirror 5: chosen over CodeMirror 6 because it needs no build step — a single #}
-    {# CSS + JS include gives us syntax highlighting, bracket matching, auto-indent, #}
-    {# and lint markers for JSON.  CM6 is more modular but requires bundling ES modules. #}
-    <link rel="stylesheet" href="{% static 'mass_transfer/vendor/codemirror/codemirror.min.css' %}" />
-    <link rel="stylesheet" href="{% static 'mass_transfer/vendor/codemirror/addon/lint/lint.min.css' %}" />
+    {{ form.media.css }}
     <style>
         .CodeMirror {
             border: 1px solid #ced4da;
@@ -38,33 +33,5 @@
 {% endblock content %}
 {% block script %}
     {{ block.super }}
-    <script src="{% static 'mass_transfer/vendor/codemirror/codemirror.min.js' %}"></script>
-    <script src="{% static 'mass_transfer/vendor/codemirror/mode/javascript/javascript.min.js' %}"></script>
-    <script src="{% static 'mass_transfer/vendor/codemirror/addon/edit/matchbrackets.min.js' %}"></script>
-    <script src="{% static 'mass_transfer/vendor/codemirror/addon/edit/closebrackets.min.js' %}"></script>
-    <script src="{% static 'mass_transfer/vendor/codemirror/addon/lint/lint.min.js' %}"></script>
-    <script src="{% static 'mass_transfer/vendor/codemirror/addon/lint/json-lint.min.js' %}"></script>
-    <script src="{% static 'mass_transfer/vendor/codemirror/jsonlint.min.js' %}"></script>
-    <script>
-    document.addEventListener("DOMContentLoaded", function () {
-        var textarea = document.getElementById("id_filters_json");
-        if (!textarea) return;
-
-        var editor = CodeMirror.fromTextArea(textarea, {
-            mode: {name: "javascript", json: true},
-            lineNumbers: true,
-            matchBrackets: true,
-            autoCloseBrackets: true,
-            gutters: ["CodeMirror-lint-markers"],
-            lint: true,
-            tabSize: 2,
-            indentWithTabs: false,
-        });
-
-        // Sync CodeMirror content back to textarea on form submit
-        editor.on("change", function () {
-            editor.save();
-        });
-    });
-    </script>
+    {{ form.media.js }}
 {% endblock script %}

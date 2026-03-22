@@ -324,19 +324,15 @@ def _make_process_env(
     tmp_path: Path,
     *,
     convert_to_nifti: bool = False,
-    anonymization_mode: str = "pseudonymize",
-    pseudonym_salt: str | None = None,
+    pseudonymize: bool = True,
+    pseudonym_salt: str = "test-salt-for-deterministic-pseudonyms",
 ) -> MassTransferTaskProcessor:
     processor = _make_processor(mocker)
 
     mock_job = processor.mass_task.job
-    mock_job.anonymization_mode = anonymization_mode
-    mock_job.should_pseudonymize = anonymization_mode != "none"
     mock_job.convert_to_nifti = convert_to_nifti
-    if pseudonym_salt is not None:
-        mock_job.pseudonym_salt = pseudonym_salt
-    else:
-        mock_job.pseudonym_salt = "test-salt-for-deterministic-pseudonyms"
+    mock_job.pseudonymize = pseudonymize
+    mock_job.pseudonym_salt = pseudonym_salt
     mock_job.source.node_type = DicomNode.NodeType.SERVER
     mock_job.source.dicomserver = mocker.MagicMock()
     mock_job.destination.node_type = DicomNode.NodeType.FOLDER
@@ -525,9 +521,9 @@ def test_process_cleans_partition_on_retry(
 def test_process_none_mode_uses_patient_id_as_subject(
     mocker: MockerFixture, tmp_path: Path
 ):
-    """In 'none' anonymization mode, no pseudonymizer is used."""
+    """When pseudonymize=False, no pseudonymizer is used."""
     processor = _make_process_env(
-        mocker, tmp_path, anonymization_mode="none"
+        mocker, tmp_path, pseudonymize=False, pseudonym_salt=""
     )
     series = [_make_discovered(patient_id="REAL-PAT-1", series_uid="s-1")]
 
@@ -614,7 +610,7 @@ def test_process_linking_mode_uses_deterministic_pseudonym(
 ):
     """In linking mode (pseudonymize with non-empty salt), pseudonyms are deterministic."""
     processor = _make_process_env(
-        mocker, tmp_path, anonymization_mode="pseudonymize"
+        mocker, tmp_path, pseudonym_salt="test-salt-for-deterministic-pseudonyms"
     )
     series = [
         _make_discovered(patient_id="PAT1", study_uid="study-A", series_uid="s-1"),
@@ -814,7 +810,8 @@ def test_process_creates_volume_records_on_success(
         start_date=date(2024, 1, 1),
         end_date=date(2024, 1, 1),
         partition_granularity=MassTransferJob.PartitionGranularity.DAILY,
-        anonymization_mode=MassTransferJob.AnonymizationMode.NONE,
+        pseudonymize=False,
+        pseudonym_salt="",
     )
     job.filters_json = [{"modality": "CT"}]
     job.save(update_fields=["filters_json"])
@@ -862,7 +859,8 @@ def test_process_creates_error_volume_on_failure(
         start_date=date(2024, 1, 1),
         end_date=date(2024, 1, 1),
         partition_granularity=MassTransferJob.PartitionGranularity.DAILY,
-        anonymization_mode=MassTransferJob.AnonymizationMode.NONE,
+        pseudonymize=False,
+        pseudonym_salt="",
     )
     job.filters_json = [{"modality": "CT"}]
     job.save(update_fields=["filters_json"])
@@ -909,7 +907,8 @@ def test_process_deletes_all_volumes_on_retry(
         start_date=date(2024, 1, 1),
         end_date=date(2024, 1, 1),
         partition_granularity=MassTransferJob.PartitionGranularity.DAILY,
-        anonymization_mode=MassTransferJob.AnonymizationMode.NONE,
+        pseudonymize=False,
+        pseudonym_salt="",
     )
     job.filters_json = [{"modality": "CT"}]
     job.save(update_fields=["filters_json"])
@@ -974,7 +973,7 @@ def test_process_deterministic_pseudonyms_across_partitions(
         start_date=date(2024, 1, 1),
         end_date=date(2024, 1, 2),
         partition_granularity=MassTransferJob.PartitionGranularity.DAILY,
-        anonymization_mode=MassTransferJob.AnonymizationMode.PSEUDONYMIZE,
+        pseudonym_salt="test-salt",
     )
     job.filters_json = [{"modality": "CT"}]
     job.save(update_fields=["filters_json"])
@@ -1040,7 +1039,7 @@ def test_process_pseudonymize_mode_not_linked_across_partitions(
         start_date=date(2024, 1, 1),
         end_date=date(2024, 1, 2),
         partition_granularity=MassTransferJob.PartitionGranularity.DAILY,
-        anonymization_mode=MassTransferJob.AnonymizationMode.PSEUDONYMIZE,
+        pseudonymize=True,
         pseudonym_salt="",
     )
     job.filters_json = [{"modality": "CT"}]
@@ -1364,7 +1363,8 @@ def test_partition_cleanup_deletes_folder_and_volumes(
         start_date=date(2024, 1, 1),
         end_date=date(2024, 1, 1),
         partition_granularity=MassTransferJob.PartitionGranularity.DAILY,
-        anonymization_mode=MassTransferJob.AnonymizationMode.NONE,
+        pseudonymize=False,
+        pseudonym_salt="",
     )
     job.filters_json = [{"modality": "CT"}]
     job.save(update_fields=["filters_json"])
@@ -1580,7 +1580,8 @@ def test_process_output_path_includes_job_folder(
         start_date=date(2024, 1, 1),
         end_date=date(2024, 1, 1),
         partition_granularity=MassTransferJob.PartitionGranularity.DAILY,
-        anonymization_mode=MassTransferJob.AnonymizationMode.NONE,
+        pseudonymize=False,
+        pseudonym_salt="",
     )
     job.filters_json = [{"modality": "CT"}]
     job.save(update_fields=["filters_json"])

@@ -10,7 +10,7 @@
 {% block heading %}
     <c-page-heading title="Mass Transfer Job">
     <c-slot name="right">
-    {% if job.should_pseudonymize and job.pseudonym_salt %}
+    {% if job.pseudonymize and job.pseudonym_salt %}
     <a href="{% url 'mass_transfer_job_associations_export' job.pk %}" class="btn btn-outline-primary">
         {% bootstrap_icon "download" %}
         Associations CSV
@@ -43,8 +43,8 @@
         <dd class="col-sm-9">{{ job.end_date }}</dd>
         <dt class="col-sm-3">Granularity</dt>
         <dd class="col-sm-9">{{ job.get_partition_granularity_display }}</dd>
-        <dt class="col-sm-3">Anonymization</dt>
-        <dd class="col-sm-9">{{ job.get_anonymization_mode_display }}</dd>
+        <dt class="col-sm-3">Pseudonymization</dt>
+        <dd class="col-sm-9">{% if job.pseudonymize %}Enabled{% if job.pseudonym_salt %} (linked, salt: {{ job.pseudonym_salt|truncatechars:16 }}){% else %} (random, no linking){% endif %}{% else %}Disabled{% endif %}</dd>
         <dt class="col-sm-3">Filters</dt>
         <dd class="col-sm-9">
             {% if job.filters_json %}

@@ -26,10 +26,6 @@ class MassTransferJob(TransferJob):
         DAILY = "daily", "Daily"
         WEEKLY = "weekly", "Weekly"
 
-    class AnonymizationMode(models.TextChoices):
-        NONE = "none", "None"
-        PSEUDONYMIZE = "pseudonymize", "Pseudonymize"
-
     default_priority = settings.MASS_TRANSFER_DEFAULT_PRIORITY
     urgent_priority = settings.MASS_TRANSFER_URGENT_PRIORITY
 
@@ -46,20 +42,18 @@ class MassTransferJob(TransferJob):
         choices=PartitionGranularity.choices,
         default=PartitionGranularity.DAILY,
     )
-    anonymization_mode = models.CharField(
-        max_length=32,
-        choices=AnonymizationMode.choices,
-        default=AnonymizationMode.NONE,
+
+    pseudonymize = models.BooleanField(default=True)
+    pseudonym_salt = models.CharField(
+        max_length=64,
+        blank=True,
+        default=secrets.token_hex,
     )
 
     filters_json = models.JSONField(
         blank=True,
         null=True,
         help_text="Inline filter configuration as a JSON list of filter objects.",
-    )
-    pseudonym_salt = models.CharField(
-        max_length=64,
-        default=secrets.token_hex,
     )
 
     @property
@@ -74,10 +68,6 @@ class MassTransferJob(TransferJob):
         if not self.filters_json:
             return []
         return [FilterSpec.from_dict(d) for d in self.filters_json]
-
-    @property
-    def should_pseudonymize(self) -> bool:
-        return self.anonymization_mode != self.AnonymizationMode.NONE
 
     tasks: models.QuerySet["MassTransferTask"]
 

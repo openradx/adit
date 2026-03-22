@@ -279,9 +279,9 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
             }
 
         pseudonymizer: Pseudonymizer | None = None
-        if job.should_pseudonymize and job.pseudonym_salt:
+        if job.pseudonymize and job.pseudonym_salt:
             pseudonymizer = Pseudonymizer(seed=job.pseudonym_salt)
-        elif job.should_pseudonymize:
+        elif job.pseudonymize:
             pseudonymizer = Pseudonymizer()
 
         output_base = _destination_base_dir(destination_node, job)

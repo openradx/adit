@@ -7,18 +7,10 @@ const MASS_TRANSFER_GRANULARITY = "mass_transfer_granularity";
 const MASS_TRANSFER_SEND_FINISHED_MAIL = "mass_transfer_send_finished_mail";
 
 function massTransferJobForm() {
-  var checked = document.querySelector(
-    'input[name="anonymization_mode"]:checked'
-  );
-  var mode = checked ? checked.value : "none";
-
   return {
-    anonymizationMode: mode,
+    pseudonymize: document.getElementById("id_pseudonymize")?.checked ?? true,
     get showSalt() {
-      return this.anonymizationMode === "pseudonymize";
-    },
-    onAnonymizationModeChange: function (ev) {
-      this.anonymizationMode = ev.target.value;
+      return this.pseudonymize;
     },
     onSourceChange: function (ev) {
       updatePreferences("mass-transfer", {

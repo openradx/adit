@@ -112,7 +112,7 @@ class MassTransferJobAssociationsExportView(LoginRequiredMixin, MassTransferLock
 
         job = get_object_or_404(qs, pk=pk)
 
-        if not (job.should_pseudonymize and job.pseudonym_salt):
+        if not (job.pseudonymize and job.pseudonym_salt):
             return HttpResponse("CSV export is only available for linking mode.", status=400)
 
         associations = (
