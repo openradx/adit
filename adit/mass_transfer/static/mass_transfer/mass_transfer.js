@@ -15,7 +15,7 @@ function massTransferJobForm() {
   return {
     anonymizationMode: mode,
     get showSalt() {
-      return this.anonymizationMode === "pseudonymize_with_linking";
+      return this.anonymizationMode === "pseudonymize";
     },
     onAnonymizationModeChange: function (ev) {
       this.anonymizationMode = ev.target.value;

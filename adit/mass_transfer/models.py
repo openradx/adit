@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import secrets
+from typing import TYPE_CHECKING
 
 from django.conf import settings
 from django.db import models
@@ -11,56 +12,13 @@ from procrastinate.contrib.django import app
 from adit.core.models import DicomAppSettings, DicomJob, DicomNode, DicomTask, TransferJob
 from adit.core.utils.model_utils import get_model_label
 
+if TYPE_CHECKING:
+    from .processors import FilterSpec
+
 
 class MassTransferSettings(DicomAppSettings):
     class Meta:
         verbose_name_plural = "Mass transfer settings"
-
-
-class MassTransferFilter(models.Model):
-    owner = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        related_name="mass_transfer_filters",
-    )
-    name = models.CharField(max_length=150)
-    modality = models.CharField(max_length=16, blank=True, default="")
-    institution_name = models.CharField(max_length=128, blank=True, default="")
-    apply_institution_on_study = models.BooleanField(default=True)
-    study_description = models.CharField(max_length=256, blank=True, default="")
-    series_description = models.CharField(max_length=256, blank=True, default="")
-    series_number = models.PositiveIntegerField(null=True, blank=True)
-
-    class Meta:
-        ordering = ("name", "id")
-        constraints = [
-            models.CheckConstraint(
-                condition=~models.Q(name=""),
-                name="mass_transfer_filter_name_not_blank",
-            ),
-            models.UniqueConstraint(
-                fields=["owner", "name"],
-                name="mass_transfer_filter_unique_owner_name",
-            ),
-        ]
-
-    def __str__(self) -> str:
-        if self.name:
-            return self.name
-
-        parts: list[str] = []
-        if self.modality:
-            parts.append(self.modality)
-        if self.institution_name:
-            parts.append(f"Institution={self.institution_name}")
-        if self.study_description:
-            parts.append(f"Study={self.study_description}")
-        if self.series_description:
-            parts.append(f"Series={self.series_description}")
-        if self.series_number is not None:
-            parts.append(f"SeriesNumber={self.series_number}")
-
-        return "; ".join(parts) if parts else f"Filter #{self.pk}"
 
 
 class MassTransferJob(TransferJob):
@@ -71,11 +29,14 @@ class MassTransferJob(TransferJob):
     class AnonymizationMode(models.TextChoices):
         NONE = "none", "None"
         PSEUDONYMIZE = "pseudonymize", "Pseudonymize"
-        PSEUDONYMIZE_WITH_LINKING = "pseudonymize_with_linking", "Pseudonymize with linking"
 
     default_priority = settings.MASS_TRANSFER_DEFAULT_PRIORITY
     urgent_priority = settings.MASS_TRANSFER_URGENT_PRIORITY
 
+    # TODO: Consider moving source/destination to MassTransferTask to match
+    # the TransferTask pattern used by selective_transfer. Currently kept on the
+    # job because MassTransferTask does not inherit from TransferTask (which
+    # carries patient_id, study_uid, etc. fields that mass transfer does not need).
     source = models.ForeignKey(DicomNode, related_name="+", on_delete=models.PROTECT)
     destination = models.ForeignKey(DicomNode, related_name="+", on_delete=models.PROTECT)
     start_date = models.DateField()
@@ -91,7 +52,6 @@ class MassTransferJob(TransferJob):
         default=AnonymizationMode.NONE,
     )
 
-    filters = models.ManyToManyField(MassTransferFilter, related_name="jobs", blank=True)
     filters_json = models.JSONField(
         blank=True,
         null=True,
@@ -108,13 +68,16 @@ class MassTransferJob(TransferJob):
             return json.dumps(self.filters_json, indent=2)
         return ""
 
+    def get_filters(self) -> list[FilterSpec]:
+        from .processors import FilterSpec
+
+        if not self.filters_json:
+            return []
+        return [FilterSpec.from_dict(d) for d in self.filters_json]
+
     @property
     def should_pseudonymize(self) -> bool:
         return self.anonymization_mode != self.AnonymizationMode.NONE
-
-    @property
-    def should_link(self) -> bool:
-        return self.anonymization_mode == self.AnonymizationMode.PSEUDONYMIZE_WITH_LINKING
 
     tasks: models.QuerySet["MassTransferTask"]
 
@@ -156,16 +119,6 @@ class MassTransferTask(DicomTask):
 
     def get_absolute_url(self):
         return reverse("mass_transfer_task_detail", args=[self.pk])
-
-    def cleanup_on_failure(self) -> None:
-        """Mark ERROR volumes when a mass transfer task fails or times out.
-
-        With deferred insertion, volumes only exist in the DB after successful
-        export/conversion — there are no intermediate files to clean up.
-        Temp directories used during NIfTI conversion are automatically removed
-        by the TemporaryDirectory context manager.
-        """
-        pass
 
 
 class MassTransferVolume(models.Model):

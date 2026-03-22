@@ -1,11 +1,7 @@
 x-app: &default-app
   volumes:
     - ${BACKUP_DIR:?}:/backups
-    - type: bind
-      source: ${MOUNT_DIR:?}
-      target: /mnt
-      bind:
-        propagation: rslave
+    - ${MOUNT_DIR:?}:/mnt
   depends_on:
     - postgres
   environment:

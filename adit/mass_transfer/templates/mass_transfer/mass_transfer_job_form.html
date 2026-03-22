@@ -1,6 +1,7 @@
 {% extends "mass_transfer/mass_transfer_layout.html" %}
 {% load crispy from crispy_forms_tags %}
 {% load bootstrap_icon from common_extras %}
+{% load static from static %}
 {% block title %}
     New Mass Transfer Job
 {% endblock title %}
@@ -9,8 +10,8 @@
     {# CodeMirror 5: chosen over CodeMirror 6 because it needs no build step — a single #}
     {# CSS + JS include gives us syntax highlighting, bracket matching, auto-indent, #}
     {# and lint markers for JSON.  CM6 is more modular but requires bundling ES modules. #}
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.18/codemirror.min.css" />
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.18/addon/lint/lint.min.css" />
+    <link rel="stylesheet" href="{% static 'mass_transfer/vendor/codemirror/codemirror.min.css' %}" />
+    <link rel="stylesheet" href="{% static 'mass_transfer/vendor/codemirror/addon/lint/lint.min.css' %}" />
     <style>
         .CodeMirror {
             border: 1px solid #ced4da;
@@ -37,13 +38,13 @@
 {% endblock content %}
 {% block script %}
     {{ block.super }}
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.18/codemirror.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.18/mode/javascript/javascript.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.18/addon/edit/matchbrackets.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.18/addon/edit/closebrackets.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.18/addon/lint/lint.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.18/addon/lint/json-lint.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jsonlint/1.6.0/jsonlint.min.js"></script>
+    <script src="{% static 'mass_transfer/vendor/codemirror/codemirror.min.js' %}"></script>
+    <script src="{% static 'mass_transfer/vendor/codemirror/mode/javascript/javascript.min.js' %}"></script>
+    <script src="{% static 'mass_transfer/vendor/codemirror/addon/edit/matchbrackets.min.js' %}"></script>
+    <script src="{% static 'mass_transfer/vendor/codemirror/addon/edit/closebrackets.min.js' %}"></script>
+    <script src="{% static 'mass_transfer/vendor/codemirror/addon/lint/lint.min.js' %}"></script>
+    <script src="{% static 'mass_transfer/vendor/codemirror/addon/lint/json-lint.min.js' %}"></script>
+    <script src="{% static 'mass_transfer/vendor/codemirror/jsonlint.min.js' %}"></script>
     <script>
     document.addEventListener("DOMContentLoaded", function () {
         var textarea = document.getElementById("id_filters_json");

@@ -15,7 +15,7 @@ from pydantic import ValidationError as PydanticValidationError
 from adit.core.fields import DicomNodeChoiceField
 from adit.core.models import DicomNode
 
-from .models import MassTransferFilter, MassTransferJob, MassTransferTask
+from .models import MassTransferJob, MassTransferTask
 from .utils.partitions import build_partitions
 
 
@@ -63,88 +63,6 @@ FILTERS_JSON_EXAMPLE = json.dumps(
     ],
     indent=2,
 )
-
-
-class MassTransferFilterForm(forms.ModelForm):
-    MODALITY_CHOICES = [
-        ("", "Any modality"),
-        ("CT", "CT"),
-        ("MR", "MR"),
-        ("XR", "XR"),
-        ("US", "US"),
-        ("NM", "NM"),
-        ("PT", "PT"),
-        ("MG", "MG"),
-        ("CR", "CR"),
-        ("DX", "DX"),
-        ("RF", "RF"),
-        ("XA", "XA"),
-        ("OT", "OT"),
-        ("SR", "SR"),
-        ("PR", "PR"),
-        ("ECG", "ECG"),
-        ("SEG", "SEG"),
-        ("RTSTRUCT", "RTSTRUCT"),
-        ("RTPLAN", "RTPLAN"),
-        ("RTDOSE", "RTDOSE"),
-        ("RTIMAGE", "RTIMAGE"),
-        ("SM", "SM"),
-        ("IVUS", "IVUS"),
-        ("OCT", "OCT"),
-        ("ES", "ES"),
-        ("OP", "OP"),
-        ("IO", "IO"),
-        ("FA", "FA"),
-        ("RG", "RG"),
-        ("MS", "MS"),
-        ("DOC", "DOC"),
-    ]
-
-    modality = forms.ChoiceField(
-        required=False,
-        choices=MODALITY_CHOICES,
-        help_text="Leave blank for any modality.",
-    )
-
-    class Meta:
-        model = MassTransferFilter
-        fields = (
-            "name",
-            "modality",
-            "institution_name",
-            "apply_institution_on_study",
-            "study_description",
-            "series_description",
-            "series_number",
-        )
-        labels = {
-            "name": "Filter name",
-            "modality": "Modality",
-            "institution_name": "Institution name",
-            "apply_institution_on_study": "Apply institution filter on study",
-            "study_description": "Study description",
-            "series_description": "Series description",
-            "series_number": "Series number",
-        }
-
-    def __init__(self, *args, **kwargs):
-        self.user: User | None = kwargs.pop("user", None)
-        super().__init__(*args, **kwargs)
-        self.helper = FormHelper(self)
-        self.helper.render_unmentioned_fields = True
-        self.helper.add_input(Submit("save", "Save Filter"))
-
-    def clean_name(self):
-        name = (self.cleaned_data.get("name") or "").strip()
-        if not name:
-            raise ValidationError("Name is required.")
-        if self.user is not None:
-            qs = MassTransferFilter.objects.filter(owner=self.user, name=name)
-            if self.instance.pk:
-                qs = qs.exclude(pk=self.instance.pk)
-            if qs.exists():
-                raise ValidationError("You already have a filter with this name.")
-        return name
 
 
 class MassTransferJobForm(forms.ModelForm):
@@ -203,10 +121,11 @@ class MassTransferJobForm(forms.ModelForm):
             "partition_granularity": "Daily or weekly partition windows.",
             "anonymization_mode": (
                 "None: all identifiers are preserved. "
-                "Pseudonymize: identifiers are replaced with random values. "
-                "Pseudonymize with linking: deterministic pseudonyms "
-                "(same salt + patient = same pseudonym) "
-                "and a downloadable association CSV."
+                "Pseudonymize: identifiers are replaced with pseudonyms. "
+                "If a salt is provided, pseudonyms are deterministic "
+                "(same salt + patient = same pseudonym) with a "
+                "downloadable association CSV. Without a salt, "
+                "pseudonyms are random."
             ),
             "convert_to_nifti": (
                 "When enabled, exported DICOM series are converted to NIfTI format "

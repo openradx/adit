@@ -13,7 +13,6 @@ from adit.core.models import DicomNode
 from adit.core.utils.dicom_dataset import ResultDataset
 from adit.core.utils.dicom_operator import DicomOperator
 from adit.mass_transfer.models import (
-    MassTransferFilter,
     MassTransferJob,
     MassTransferSettings,
     MassTransferTask,
@@ -332,7 +331,6 @@ def _make_process_env(
     mock_job = processor.mass_task.job
     mock_job.anonymization_mode = anonymization_mode
     mock_job.should_pseudonymize = anonymization_mode != "none"
-    mock_job.should_link = anonymization_mode == "pseudonymize_with_linking"
     mock_job.convert_to_nifti = convert_to_nifti
     mock_job.pseudonym_salt = "test-salt-for-deterministic-pseudonyms"
     mock_job.source.node_type = DicomNode.NodeType.SERVER
@@ -340,7 +338,7 @@ def _make_process_env(
     mock_job.destination.node_type = DicomNode.NodeType.FOLDER
     mock_job.destination.dicomfolder.path = str(tmp_path / "output")
     mock_job.filters_json = [{"modality": "CT"}]
-    mock_job.filters.all.return_value = []
+    mock_job.get_filters.return_value = [FilterSpec.from_dict({"modality": "CT"})]
 
     processor.mass_task.pk = 42
     processor.mass_task.partition_key = "20240101"
@@ -466,7 +464,7 @@ def test_process_returns_failure_when_no_filters(
 ):
     processor = _make_process_env(mocker, tmp_path)
     processor.mass_task.job.filters_json = []
-    processor.mass_task.job.filters.all.return_value = []
+    processor.mass_task.job.get_filters.return_value = []
 
     result = processor.process()
 
@@ -984,7 +982,7 @@ def test_process_deterministic_pseudonyms_across_partitions(
         start_date=date(2024, 1, 1),
         end_date=date(2024, 1, 2),
         partition_granularity=MassTransferJob.PartitionGranularity.DAILY,
-        anonymization_mode=MassTransferJob.AnonymizationMode.PSEUDONYMIZE_WITH_LINKING,
+        anonymization_mode=MassTransferJob.AnonymizationMode.PSEUDONYMIZE,
     )
     job.filters_json = [{"modality": "CT"}]
     job.save(update_fields=["filters_json"])
@@ -1162,20 +1160,6 @@ def test_filter_spec_from_dict():
     assert fs.study_description == ""
     assert fs.apply_institution_on_study is True
 
-
-def test_filter_spec_from_model(mocker: MockerFixture):
-    mf = mocker.MagicMock(spec=MassTransferFilter)
-    mf.modality = "CT"
-    mf.institution_name = ""
-    mf.apply_institution_on_study = True
-    mf.study_description = "Brain*"
-    mf.series_description = ""
-    mf.series_number = None
-    fs = FilterSpec.from_model(mf)
-    assert fs.modality == "CT"
-    assert fs.study_description == "Brain*"
-    assert fs.min_age is None
-    assert fs.max_age is None
 
 
 # ---------------------------------------------------------------------------

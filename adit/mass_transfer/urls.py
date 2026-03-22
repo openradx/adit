@@ -1,10 +1,6 @@
 from django.urls import path
 
 from .views import (
-    MassTransferFilterCreateView,
-    MassTransferFilterDeleteView,
-    MassTransferFilterListView,
-    MassTransferFilterUpdateView,
     MassTransferJobAssociationsExportView,
     MassTransferJobCancelView,
     MassTransferJobCreateView,
@@ -23,22 +19,6 @@ from .views import (
 )
 
 urlpatterns = [
-    path("filters/", MassTransferFilterListView.as_view(), name="mass_transfer_filter_list"),
-    path(
-        "filters/new/",
-        MassTransferFilterCreateView.as_view(),
-        name="mass_transfer_filter_create",
-    ),
-    path(
-        "filters/<int:pk>/edit/",
-        MassTransferFilterUpdateView.as_view(),
-        name="mass_transfer_filter_update",
-    ),
-    path(
-        "filters/<int:pk>/delete/",
-        MassTransferFilterDeleteView.as_view(),
-        name="mass_transfer_filter_delete",
-    ),
     path(
         "preferences/",
         MassTransferUpdatePreferencesView.as_view(),

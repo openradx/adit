@@ -10,7 +10,6 @@ from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from django.urls import reverse_lazy
 from django.views import View
-from django.views.generic import CreateView, DeleteView, ListView, UpdateView
 from django_tables2 import SingleTableMixin
 
 from adit.core.views import (
@@ -30,10 +29,9 @@ from adit.core.views import (
 )
 
 from .filters import MassTransferJobFilter, MassTransferTaskFilter, MassTransferVolumeFilter
-from .forms import MassTransferFilterForm, MassTransferJobForm
+from .forms import MassTransferJobForm
 from .mixins import MassTransferLockedMixin
 from .models import (
-    MassTransferFilter,
     MassTransferJob,
     MassTransferTask,
     MassTransferVolume,
@@ -114,7 +112,7 @@ class MassTransferJobAssociationsExportView(LoginRequiredMixin, MassTransferLock
 
         job = get_object_or_404(qs, pk=pk)
 
-        if not job.should_link:
+        if not (job.should_pseudonymize and job.pseudonym_salt):
             return HttpResponse("CSV export is only available for linking mode.", status=400)
 
         associations = (
@@ -192,50 +190,3 @@ class MassTransferTaskKillView(MassTransferLockedMixin, DicomTaskKillView):
     model = MassTransferTask
 
 
-class MassTransferFilterListView(LoginRequiredMixin, MassTransferLockedMixin, ListView):
-    model = MassTransferFilter
-    template_name = "mass_transfer/mass_transfer_filter_list.html"
-    context_object_name = "filters"
-
-    def get_queryset(self):
-        return MassTransferFilter.objects.filter(owner=self.request.user)
-
-
-class MassTransferFilterCreateView(LoginRequiredMixin, MassTransferLockedMixin, CreateView):
-    model = MassTransferFilter
-    form_class = MassTransferFilterForm
-    template_name = "mass_transfer/mass_transfer_filter_form.html"
-    success_url = cast(str, reverse_lazy("mass_transfer_filter_list"))
-
-    def get_form_kwargs(self) -> dict[str, Any]:
-        kwargs = super().get_form_kwargs()
-        kwargs["user"] = self.request.user
-        return kwargs
-
-    def form_valid(self, form):
-        form.instance.owner = self.request.user
-        return super().form_valid(form)
-
-
-class MassTransferFilterUpdateView(LoginRequiredMixin, MassTransferLockedMixin, UpdateView):
-    model = MassTransferFilter
-    form_class = MassTransferFilterForm
-    template_name = "mass_transfer/mass_transfer_filter_form.html"
-    success_url = cast(str, reverse_lazy("mass_transfer_filter_list"))
-
-    def get_form_kwargs(self) -> dict[str, Any]:
-        kwargs = super().get_form_kwargs()
-        kwargs["user"] = self.request.user
-        return kwargs
-
-    def get_queryset(self):
-        return MassTransferFilter.objects.filter(owner=self.request.user)
-
-
-class MassTransferFilterDeleteView(LoginRequiredMixin, MassTransferLockedMixin, DeleteView):
-    model = MassTransferFilter
-    template_name = "mass_transfer/mass_transfer_filter_confirm_delete.html"
-    success_url = cast(str, reverse_lazy("mass_transfer_filter_list"))
-
-    def get_queryset(self):
-        return MassTransferFilter.objects.filter(owner=self.request.user)

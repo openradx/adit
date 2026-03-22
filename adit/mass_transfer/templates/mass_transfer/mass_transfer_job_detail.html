@@ -10,7 +10,7 @@
 {% block heading %}
     <c-page-heading title="Mass Transfer Job">
     <c-slot name="right">
-    {% if job.should_link %}
+    {% if job.should_pseudonymize and job.pseudonym_salt %}
     <a href="{% url 'mass_transfer_job_associations_export' job.pk %}" class="btn btn-outline-primary">
         {% bootstrap_icon "download" %}
         Associations CSV
@@ -49,10 +49,6 @@
         <dd class="col-sm-9">
             {% if job.filters_json %}
                 <pre style="margin:0; white-space:pre-wrap;">{{ job.filters_json_pretty }}</pre>
-            {% elif job.filters.all %}
-                {% for f in job.filters.all %}
-                    <div>{{ f }}</div>
-                {% endfor %}
             {% else %}
                 —
             {% endif %}
