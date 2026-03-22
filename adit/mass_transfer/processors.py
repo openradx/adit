@@ -357,28 +357,27 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
 
         Returns:
             grouped: {patient_id: {study_uid: [series, ...]}}
-            subject_ids: {patient_id: subject_id} mapping for folder names
+            subject_ids: {patient_id: subject_id} mapping for folder names.
+                For deterministic (linked) mode, maps patient_id -> pseudonym.
+                For no-anonymization mode, maps patient_id -> sanitized patient_id.
+                For random mode, subject_ids is empty here — random pseudonyms
+                are assigned per-study in _transfer_grouped_series.
         """
         subject_ids: dict[str, str] = {}
-        random_pseudonyms: dict[str, str] = {}
         grouped: dict[str, dict[str, list[DiscoveredSeries]]] = {}
 
         for series in discovered:
             pid = series.patient_id
             study_uid = series.study_instance_uid
 
-            # Compute subject_id for this patient
             if pid not in subject_ids:
                 if pseudonymizer and job.pseudonym_salt:
+                    # Deterministic (linked): same patient always gets same pseudonym
                     subject_ids[pid] = pseudonymizer.compute_pseudonym(pid)
                 elif not pseudonymizer:
+                    # No anonymization: use raw patient ID as folder name
                     subject_ids[pid] = sanitize_filename(pid)
-                # else: random pseudonym per study, set below
-
-            if pseudonymizer and not job.pseudonym_salt:
-                if study_uid not in random_pseudonyms:
-                    random_pseudonyms[study_uid] = secrets.token_hex(6).upper()
-                subject_ids[pid] = random_pseudonyms[study_uid]
+                # else: random mode — subject_id assigned per-study during transfer
 
             grouped.setdefault(pid, {}).setdefault(study_uid, []).append(series)
 

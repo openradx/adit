@@ -325,6 +325,7 @@ def _make_process_env(
     *,
     convert_to_nifti: bool = False,
     anonymization_mode: str = "pseudonymize",
+    pseudonym_salt: str | None = None,
 ) -> MassTransferTaskProcessor:
     processor = _make_processor(mocker)
 
@@ -332,7 +333,10 @@ def _make_process_env(
     mock_job.anonymization_mode = anonymization_mode
     mock_job.should_pseudonymize = anonymization_mode != "none"
     mock_job.convert_to_nifti = convert_to_nifti
-    mock_job.pseudonym_salt = "test-salt-for-deterministic-pseudonyms"
+    if pseudonym_salt is not None:
+        mock_job.pseudonym_salt = pseudonym_salt
+    else:
+        mock_job.pseudonym_salt = "test-salt-for-deterministic-pseudonyms"
     mock_job.source.node_type = DicomNode.NodeType.SERVER
     mock_job.source.dicomserver = mocker.MagicMock()
     mock_job.destination.node_type = DicomNode.NodeType.FOLDER
@@ -484,40 +488,37 @@ def test_process_returns_success_for_empty_partition(
     assert "No series found" in result["message"]
 
 
-def test_process_skips_already_done_series(
+def test_process_cleans_partition_on_retry(
     mocker: MockerFixture, tmp_path: Path
 ):
-    """Already-processed series (from prior runs) are skipped."""
+    """On retry, ALL pre-existing volumes for the partition are deleted and rediscovered."""
     processor = _make_process_env(mocker, tmp_path)
     series = [
-        _make_discovered(series_uid="s-done"),
-        _make_discovered(series_uid="s-new"),
+        _make_discovered(series_uid="s-1"),
+        _make_discovered(series_uid="s-2"),
     ]
 
     mocker.patch.object(processor, "_discover_series", return_value=series)
 
-    # Mock the DB query to return s-done as already processed
-    mock_qs = mocker.MagicMock()
-    mock_qs.values_list.return_value = {"s-done"}
-    mock_delete_qs = mocker.MagicMock()
-
-    def filter_side_effect(**kwargs):
-        if "status__in" in kwargs:
-            return mock_qs
-        return mock_delete_qs
-
-    mocker.patch.object(MassTransferVolume.objects, "filter", side_effect=filter_side_effect)
+    # Track the delete call on the volume queryset
+    mock_filter_qs = mocker.MagicMock()
+    mocker.patch.object(MassTransferVolume.objects, "filter", return_value=mock_filter_qs)
 
     export_calls = []
+
     def fake_export(*args, **kwargs):
         export_calls.append(1)
         return (1, "", "")
+
     mocker.patch.object(processor, "_export_series", side_effect=fake_export)
     mocker.patch.object(MassTransferVolume.objects, "create")
 
     result = processor.process()
 
-    assert len(export_calls) == 1  # only s-new was exported
+    # All pre-existing volumes for the partition were deleted
+    mock_filter_qs.delete.assert_called_once()
+    # Both series were exported fresh (no skipping)
+    assert len(export_calls) == 2
     assert result["status"] == MassTransferTask.Status.SUCCESS
 
 
@@ -554,7 +555,7 @@ def test_process_pseudonymize_mode_same_study_same_pseudonym(
     mocker: MockerFixture, tmp_path: Path
 ):
     """In non-linking mode, series in the same study share a pseudonym."""
-    processor = _make_process_env(mocker, tmp_path)
+    processor = _make_process_env(mocker, tmp_path, pseudonym_salt="")
     series = [
         _make_discovered(patient_id="PAT1", study_uid="study-A", series_uid="s-1"),
         _make_discovered(patient_id="PAT1", study_uid="study-A", series_uid="s-2"),
@@ -583,7 +584,7 @@ def test_process_pseudonymize_mode_different_studies_different_pseudonyms(
     mocker: MockerFixture, tmp_path: Path
 ):
     """In non-linking mode, different studies for the same patient get different pseudonyms."""
-    processor = _make_process_env(mocker, tmp_path)
+    processor = _make_process_env(mocker, tmp_path, pseudonym_salt="")
     series = [
         _make_discovered(patient_id="PAT1", study_uid="study-A", series_uid="s-1"),
         _make_discovered(patient_id="PAT1", study_uid="study-B", series_uid="s-2"),
@@ -611,9 +612,9 @@ def test_process_pseudonymize_mode_different_studies_different_pseudonyms(
 def test_process_linking_mode_uses_deterministic_pseudonym(
     mocker: MockerFixture, tmp_path: Path
 ):
-    """In linking mode, pseudonyms are deterministic (seeded)."""
+    """In linking mode (pseudonymize with non-empty salt), pseudonyms are deterministic."""
     processor = _make_process_env(
-        mocker, tmp_path, anonymization_mode="pseudonymize_with_linking"
+        mocker, tmp_path, anonymization_mode="pseudonymize"
     )
     series = [
         _make_discovered(patient_id="PAT1", study_uid="study-A", series_uid="s-1"),
@@ -656,12 +657,9 @@ def test_convert_series_raises_on_dcm2niix_failure(
     dicom_dir.mkdir()
     output_path = tmp_path / "output"
 
-    mock_result = mocker.MagicMock()
-    mock_result.returncode = 1
-    mock_result.stderr = "Segmentation fault"
-    mock_result.stdout = ""
     mocker.patch(
-        "adit.mass_transfer.processors.subprocess.run", return_value=mock_result
+        "adit.core.utils.dicom_to_nifti_converter.DicomToNiftiConverter.convert",
+        side_effect=RuntimeError("conversion failed"),
     )
 
     with pytest.raises(DicomError, match="Conversion failed"):
@@ -678,12 +676,9 @@ def test_convert_series_raises_when_no_nifti_output(
     dicom_dir.mkdir()
     output_path = tmp_path / "output"
 
-    mock_result = mocker.MagicMock()
-    mock_result.returncode = 0
-    mock_result.stderr = ""
-    mock_result.stdout = ""
+    # Converter succeeds (does nothing), but output dir has no .nii.gz files
     mocker.patch(
-        "adit.mass_transfer.processors.subprocess.run", return_value=mock_result
+        "adit.core.utils.dicom_to_nifti_converter.DicomToNiftiConverter.convert",
     )
 
     with pytest.raises(DicomError, match="no .nii.gz files"):
@@ -700,12 +695,9 @@ def test_convert_series_skips_non_image_dicom(
     dicom_dir.mkdir()
     output_path = tmp_path / "output"
 
-    mock_result = mocker.MagicMock()
-    mock_result.returncode = 1
-    mock_result.stderr = "No valid DICOM images were found"
-    mock_result.stdout = ""
     mocker.patch(
-        "adit.mass_transfer.processors.subprocess.run", return_value=mock_result
+        "adit.core.utils.dicom_to_nifti_converter.DicomToNiftiConverter.convert",
+        side_effect=RuntimeError("No valid DICOM images were found"),
     )
 
     # Should not raise — non-image DICOMs are silently skipped
@@ -901,10 +893,10 @@ def test_process_creates_error_volume_on_failure(
 
 
 @pytest.mark.django_db
-def test_process_deletes_error_volumes_on_retry(
+def test_process_deletes_all_volumes_on_retry(
     mocker: MockerFixture, tmp_path: Path
 ):
-    """On retry, ERROR volumes from prior runs are deleted so they can be reprocessed."""
+    """On retry, ALL volumes from prior runs are deleted before rediscovery."""
     MassTransferSettings.objects.create()
 
     user = UserFactory.create()
@@ -1049,6 +1041,7 @@ def test_process_pseudonymize_mode_not_linked_across_partitions(
         end_date=date(2024, 1, 2),
         partition_granularity=MassTransferJob.PartitionGranularity.DAILY,
         anonymization_mode=MassTransferJob.AnonymizationMode.PSEUDONYMIZE,
+        pseudonym_salt="",
     )
     job.filters_json = [{"modality": "CT"}]
     job.save(update_fields=["filters_json"])
@@ -1281,6 +1274,210 @@ def test_extract_dicom_sidecar_pseudonymized_has_no_real_data(tmp_path: Path):
         assert real_patient_id not in val
         assert real_birth_date not in val
         assert real_study_uid not in val
+
+
+# ---------------------------------------------------------------------------
+# _group_series tests
+# ---------------------------------------------------------------------------
+
+
+def test_group_series_deterministic_pseudonym(mocker: MockerFixture):
+    """Seeded pseudonymizer with salt: subject_ids maps patient_id to deterministic pseudonym."""
+    from adit.core.utils.pseudonymizer import Pseudonymizer
+
+    processor = _make_processor(mocker)
+    mock_job = mocker.MagicMock()
+    mock_job.pseudonym_salt = "test-seed-123"
+
+    ps = Pseudonymizer(seed="test-seed-123")
+    expected = ps.compute_pseudonym("PAT1")
+
+    series = [
+        _make_discovered(patient_id="PAT1", study_uid="study-A", series_uid="s-1"),
+        _make_discovered(patient_id="PAT2", study_uid="study-B", series_uid="s-2"),
+    ]
+
+    grouped, subject_ids = processor._group_series(series, mock_job, ps)
+
+    assert subject_ids["PAT1"] == expected
+    assert subject_ids["PAT2"] == ps.compute_pseudonym("PAT2")
+    assert "PAT1" in grouped
+    assert "PAT2" in grouped
+
+
+def test_group_series_no_anonymization(mocker: MockerFixture):
+    """Without pseudonymizer, subject_ids maps patient_id to sanitized patient_id."""
+    processor = _make_processor(mocker)
+    mock_job = mocker.MagicMock()
+    mock_job.pseudonym_salt = ""
+
+    series = [
+        _make_discovered(patient_id="PAT1", study_uid="study-A", series_uid="s-1"),
+        _make_discovered(patient_id="PAT2", study_uid="study-B", series_uid="s-2"),
+    ]
+
+    grouped, subject_ids = processor._group_series(series, mock_job, None)
+
+    assert subject_ids["PAT1"] == "PAT1"
+    assert subject_ids["PAT2"] == "PAT2"
+
+
+def test_group_series_random_leaves_subject_ids_empty(mocker: MockerFixture):
+    """With pseudonymizer but no salt, subject_ids is empty (random assigned during transfer)."""
+    from adit.core.utils.pseudonymizer import Pseudonymizer
+
+    processor = _make_processor(mocker)
+    mock_job = mocker.MagicMock()
+    mock_job.pseudonym_salt = ""
+
+    ps = Pseudonymizer()
+
+    series = [
+        _make_discovered(patient_id="PAT1", study_uid="study-A", series_uid="s-1"),
+    ]
+
+    grouped, subject_ids = processor._group_series(series, mock_job, ps)
+
+    assert subject_ids == {}
+    assert "PAT1" in grouped
+
+
+# ---------------------------------------------------------------------------
+# Partition cleanup DB integration test
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+def test_partition_cleanup_deletes_folder_and_volumes(
+    mocker: MockerFixture, tmp_path: Path
+):
+    """process() deletes the partition folder on disk and all volumes for that partition."""
+    MassTransferSettings.objects.create()
+
+    user = UserFactory.create()
+    source = DicomServerFactory.create()
+    destination = DicomFolderFactory.create(path=str(tmp_path / "output"))
+    job = MassTransferJob.objects.create(
+        owner=user,
+        source=source,
+        destination=destination,
+        start_date=date(2024, 1, 1),
+        end_date=date(2024, 1, 1),
+        partition_granularity=MassTransferJob.PartitionGranularity.DAILY,
+        anonymization_mode=MassTransferJob.AnonymizationMode.NONE,
+    )
+    job.filters_json = [{"modality": "CT"}]
+    job.save(update_fields=["filters_json"])
+
+    task = MassTransferTask.objects.create(
+        job=job,
+        source=source,
+        partition_start=timezone.now(),
+        partition_end=timezone.now(),
+        partition_key="20240101",
+    )
+
+    # Create pre-existing volumes
+    for uid in ["1.2.3.1", "1.2.3.2"]:
+        MassTransferVolume.objects.create(
+            job=job,
+            task=task,
+            partition_key="20240101",
+            patient_id="PAT1",
+            study_instance_uid="study-1",
+            series_instance_uid=uid,
+            modality="CT",
+            study_description="Brain CT",
+            series_description="Axial",
+            series_number=1,
+            study_datetime=timezone.now(),
+            status=MassTransferVolume.Status.EXPORTED,
+            log="",
+        )
+
+    # Create the partition folder with a file in it
+    partition_dir = _destination_base_dir(job.destination, job) / "20240101"
+    partition_dir.mkdir(parents=True, exist_ok=True)
+    (partition_dir / "some_file.dcm").write_text("dummy")
+
+    assert MassTransferVolume.objects.filter(job=job, partition_key="20240101").count() == 2
+
+    # Mock discovery to return a new series
+    series = [_make_discovered(patient_id="PAT1", series_uid="1.2.3.new")]
+    processor = MassTransferTaskProcessor(task)
+    mocker.patch.object(processor, "_discover_series", return_value=series)
+    mocker.patch("adit.mass_transfer.processors.DicomOperator")
+    mocker.patch.object(processor, "_export_series", return_value=(1, "", ""))
+
+    result = processor.process()
+
+    assert result["status"] == MassTransferTask.Status.SUCCESS
+    # Old partition folder was deleted (process recreates it for the new export)
+    assert not (partition_dir / "some_file.dcm").exists()
+    # Old volumes were deleted, only the new one remains
+    vols = MassTransferVolume.objects.filter(job=job, partition_key="20240101")
+    assert vols.count() == 1
+    assert vols.first().series_instance_uid == "1.2.3.new"
+
+
+# ---------------------------------------------------------------------------
+# MassTransferJob.get_filters() tests
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+def test_get_filters_from_json():
+    """get_filters() returns FilterSpec objects from valid filters_json."""
+    user = UserFactory.create()
+    source = DicomServerFactory.create()
+    destination = DicomFolderFactory.create()
+    job = MassTransferJob.objects.create(
+        owner=user,
+        source=source,
+        destination=destination,
+        start_date=date(2024, 1, 1),
+        end_date=date(2024, 1, 1),
+        partition_granularity=MassTransferJob.PartitionGranularity.DAILY,
+    )
+
+    # Valid JSON list of filter dicts
+    job.filters_json = [
+        {"modality": "CT", "min_age": 18},
+        {"modality": "MR", "series_description": "T1*"},
+    ]
+    job.save(update_fields=["filters_json"])
+
+    filters = job.get_filters()
+    assert len(filters) == 2
+    assert filters[0].modality == "CT"
+    assert filters[0].min_age == 18
+    assert filters[1].modality == "MR"
+    assert filters[1].series_description == "T1*"
+
+    # Empty list
+    job.filters_json = []
+    job.save(update_fields=["filters_json"])
+    assert job.get_filters() == []
+
+
+@pytest.mark.django_db
+def test_get_filters_empty():
+    """get_filters() returns [] when filters_json is None."""
+    user = UserFactory.create()
+    source = DicomServerFactory.create()
+    destination = DicomFolderFactory.create()
+    job = MassTransferJob.objects.create(
+        owner=user,
+        source=source,
+        destination=destination,
+        start_date=date(2024, 1, 1),
+        end_date=date(2024, 1, 1),
+        partition_granularity=MassTransferJob.PartitionGranularity.DAILY,
+    )
+
+    job.filters_json = None
+    job.save(update_fields=["filters_json"])
+    assert job.get_filters() == []
 
 
 # ---------------------------------------------------------------------------
