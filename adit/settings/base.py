@@ -69,6 +69,7 @@ INSTALLED_APPS = [
     "loginas",
     "django_cotton.apps.SimpleAppConfig",
     "block_fragments.apps.SimpleAppConfig",
+    "codemirror",
     "crispy_forms",
     "crispy_bootstrap5",
     "django_htmx",
@@ -301,6 +302,31 @@ CRISPY_TEMPLATE_PACK = "bootstrap5"
 
 # django-templates2
 DJANGO_TABLES2_TEMPLATE = "common/_django_tables2.html"
+
+# django-codemirror — assets vendored in mass_transfer/static/mass_transfer/vendor/codemirror/
+_CM = "mass_transfer/vendor/codemirror"
+CODEMIRROR_CSS = [
+    f"{_CM}/codemirror.min.css",
+    f"{_CM}/addon/lint/lint.min.css",
+]
+CODEMIRROR_JS = [
+    f"{_CM}/jsonlint.min.js",
+    f"{_CM}/codemirror.min.js",
+    f"{_CM}/mode/javascript/javascript.min.js",
+    f"{_CM}/addon/edit/matchbrackets.min.js",
+    f"{_CM}/addon/edit/closebrackets.min.js",
+    f"{_CM}/addon/lint/lint.min.js",
+    f"{_CM}/addon/lint/json-lint.min.js",
+]
+CODEMIRROR_CONFIG = {
+    "lineNumbers": True,
+    "matchBrackets": True,
+    "autoCloseBrackets": True,
+    "tabSize": 2,
+    "indentWithTabs": False,
+    "gutters": ["CodeMirror-lint-markers"],
+    "lint": True,
+}
 
 # The salt that is used for hashing new tokens in the token authentication app.
 # Cave, changing the salt after some tokens were already generated makes them all invalid!
