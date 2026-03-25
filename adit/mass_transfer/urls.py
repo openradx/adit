@@ -1,9 +1,9 @@
 from django.urls import path
 
 from .views import (
-    MassTransferJobAssociationsExportView,
     MassTransferJobCancelView,
     MassTransferJobCreateView,
+    MassTransferJobCsvExportView,
     MassTransferJobDeleteView,
     MassTransferJobDetailView,
     MassTransferJobListView,
@@ -28,9 +28,9 @@ urlpatterns = [
     path("jobs/new/", MassTransferJobCreateView.as_view(), name="mass_transfer_job_create"),
     path("jobs/<int:pk>/", MassTransferJobDetailView.as_view(), name="mass_transfer_job_detail"),
     path(
-        "jobs/<int:pk>/associations/",
-        MassTransferJobAssociationsExportView.as_view(),
-        name="mass_transfer_job_associations_export",
+        "jobs/<int:pk>/csv/",
+        MassTransferJobCsvExportView.as_view(),
+        name="mass_transfer_job_csv_export",
     ),
     path(
         "jobs/<int:pk>/delete/",

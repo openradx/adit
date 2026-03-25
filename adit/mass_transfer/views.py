@@ -101,8 +101,26 @@ class MassTransferJobDetailView(MassTransferLockedMixin, DicomJobDetailView):
     template_name = "mass_transfer/mass_transfer_job_detail.html"
 
 
-class MassTransferJobAssociationsExportView(LoginRequiredMixin, MassTransferLockedMixin, View):
-    """Streams a CSV of pseudonymization associations for a linking-mode job."""
+class MassTransferJobCsvExportView(LoginRequiredMixin, MassTransferLockedMixin, View):
+    """Streams a full CSV export of all volumes for a linking-mode job."""
+
+    COLUMNS = [
+        "partition_key",
+        "pseudonym",
+        "patient_id",
+        "accession_number",
+        "study_instance_uid",
+        "study_instance_uid_pseudonymized",
+        "series_instance_uid",
+        "series_instance_uid_pseudonymized",
+        "modality",
+        "study_description",
+        "series_description",
+        "series_number",
+        "study_datetime",
+        "institution_name",
+        "number_of_images",
+    ]
 
     def get(self, request, pk):
         if request.user.is_staff:
@@ -115,21 +133,15 @@ class MassTransferJobAssociationsExportView(LoginRequiredMixin, MassTransferLock
         if not (job.pseudonymize and job.pseudonym_salt):
             return HttpResponse("CSV export is only available for linking mode.", status=400)
 
-        associations = (
-            MassTransferVolume.objects.filter(job=job)
-            .exclude(pseudonym="")
-            .values_list("patient_id", "pseudonym")
-            .distinct()
-            .order_by("patient_id")
-        )
+        volumes = MassTransferVolume.objects.filter(job=job).values_list(*self.COLUMNS)
 
         response = HttpResponse(content_type="text/csv")
-        response["Content-Disposition"] = f'attachment; filename="associations_job_{job.pk}.csv"'
+        response["Content-Disposition"] = f'attachment; filename="mass_transfer_job_{job.pk}.csv"'
 
         writer = csv.writer(response)
-        writer.writerow(["patient_id", "pseudonym"])
-        for patient_id, pseudonym in associations.iterator():
-            writer.writerow([patient_id, pseudonym])
+        writer.writerow(self.COLUMNS)
+        for row in volumes.iterator():
+            writer.writerow(row)
 
         return response
 

@@ -11,9 +11,9 @@
     <c-page-heading title="Mass Transfer Job">
     <c-slot name="right">
     {% if job.pseudonymize and job.pseudonym_salt %}
-    <a href="{% url 'mass_transfer_job_associations_export' job.pk %}" class="btn btn-outline-primary">
+    <a href="{% url 'mass_transfer_job_csv_export' job.pk %}" class="btn btn-outline-primary">
         {% bootstrap_icon "download" %}
-        Associations CSV
+        Export CSV
     </a>
     {% endif %}
     <a href="{% url 'mass_transfer_job_list' %}" class="btn btn-secondary">
