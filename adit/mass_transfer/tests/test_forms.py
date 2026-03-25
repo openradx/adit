@@ -1,9 +1,11 @@
 import json
 
 import pytest
-from adit_radis_shared.accounts.factories import UserFactory
+from adit_radis_shared.accounts.factories import GroupFactory, UserFactory
+from adit_radis_shared.common.utils.testing_helpers import add_user_to_group
 
 from adit.core.factories import DicomFolderFactory, DicomServerFactory
+from adit.core.utils.auth_utils import grant_access
 
 from ..forms import MassTransferJobForm
 
@@ -14,6 +16,10 @@ def test_clean_clears_salt_when_pseudonymize_unchecked():
     user = UserFactory.create()
     source = DicomServerFactory.create()
     destination = DicomFolderFactory.create()
+    group = GroupFactory.create()
+    add_user_to_group(user, group)
+    grant_access(group, source, source=True)
+    grant_access(group, destination, destination=True)
 
     form = MassTransferJobForm(
         data={
@@ -38,6 +44,10 @@ def test_clean_keeps_salt_when_pseudonymize_checked():
     user = UserFactory.create()
     source = DicomServerFactory.create()
     destination = DicomFolderFactory.create()
+    group = GroupFactory.create()
+    add_user_to_group(user, group)
+    grant_access(group, source, source=True)
+    grant_access(group, destination, destination=True)
 
     form = MassTransferJobForm(
         data={
@@ -62,6 +72,10 @@ def test_clean_allows_empty_salt_with_pseudonymize_for_random_mode():
     user = UserFactory.create()
     source = DicomServerFactory.create()
     destination = DicomFolderFactory.create()
+    group = GroupFactory.create()
+    add_user_to_group(user, group)
+    grant_access(group, source, source=True)
+    grant_access(group, destination, destination=True)
 
     form = MassTransferJobForm(
         data={
