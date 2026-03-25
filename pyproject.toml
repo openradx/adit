@@ -20,6 +20,7 @@ dependencies = [
     "dicomweb-client>=0.60.0",
     "Django>=5.1.6",
     "django-block-fragments>=0.1.1",
+    "django-codemirror",
     "django-cotton>=1.6.0",
     "django-crispy-forms>=2.3",
     "django-dbbackup>=4.2.1",

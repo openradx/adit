@@ -23,6 +23,7 @@ dependencies = [
     { name = "dicomweb-client" },
     { name = "django" },
     { name = "django-block-fragments" },
+    { name = "django-codemirror" },
     { name = "django-cotton" },
     { name = "django-crispy-forms" },
     { name = "django-dbbackup" },
@@ -116,6 +117,7 @@ requires-dist = [
     { name = "dicomweb-client", specifier = ">=0.60.0" },
     { name = "django", specifier = ">=5.1.6" },
     { name = "django-block-fragments", specifier = ">=0.1.1" },
+    { name = "django-codemirror" },
     { name = "django-cotton", specifier = ">=1.6.0" },
     { name = "django-crispy-forms", specifier = ">=2.3" },
     { name = "django-dbbackup", specifier = ">=4.2.1" },
@@ -904,6 +906,15 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/20/28/d420aaa89028d2ec0cf17c1510d06ff6a8ed0bf1abfb7f33c999e1c5befa/django-cache-url-3.4.5.tar.gz", hash = "sha256:eb9fb194717524348c95cad9905b70b647452741c1d9e481fac6d2125f0ad917", size = 7230, upload-time = "2023-12-04T17:19:46.21Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/48/90/01755e4a42558b763f7021e9369aa6aa94c2ede7313deed56cb7483834ab/django_cache_url-3.4.5-py2.py3-none-any.whl", hash = "sha256:5f350759978483ab85dc0e3e17b3d53eed3394a28148f6bf0f53d11d0feb5b3c", size = 4760, upload-time = "2023-12-04T17:19:44.355Z" },
+]
+
+[[package]]
+name = "django-codemirror"
+version = "1.0.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/74/d6/5d2d4404a64d09851a720c03dd16be6166220f5cd788d4c17338a0b21974/django-codemirror-1.0.1.tar.gz", hash = "sha256:02cff11180922a513324edaf55d66b273ce61e8d66269b49c054e9f4f9f6fbec", size = 1985, upload-time = "2022-04-11T07:14:49.988Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/e9/16/1ebd4e7fb6db30dccebcca37116149880214061e5a4b30f6a969a748b567/django_codemirror-1.0.1-py3-none-any.whl", hash = "sha256:52447f09ddcaca9b7772f5266da92820bfcf2925ea78b4403c29c7261100eca7", size = 3051, upload-time = "2022-04-11T07:14:48.246Z" },
 ]
 
 [[package]]
