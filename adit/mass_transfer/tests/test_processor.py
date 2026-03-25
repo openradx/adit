@@ -1417,7 +1417,9 @@ def test_partition_cleanup_deletes_folder_and_volumes(
     # Old volumes were deleted, only the new one remains
     vols = MassTransferVolume.objects.filter(job=job, partition_key="20240101")
     assert vols.count() == 1
-    assert vols.first().series_instance_uid == "1.2.3.new"
+    vol = vols.first()
+    assert vol is not None
+    assert vol.series_instance_uid == "1.2.3.new"
 
 
 # ---------------------------------------------------------------------------

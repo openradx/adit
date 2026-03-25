@@ -64,7 +64,10 @@ def csv_to_filters(
         normalised_headers = {h.strip().lower(): h for h in reader.fieldnames}
         unknown = set(normalised_headers) - KNOWN_COLUMNS - {""}
         if unknown:
-            print(f"Warning: ignoring unknown columns: {', '.join(sorted(unknown))}", file=sys.stderr)
+            print(
+                f"Warning: ignoring unknown columns: {', '.join(sorted(unknown))}",
+                file=sys.stderr,
+            )
 
         filters: list[dict] = []
         for row_num, row in enumerate(reader, start=2):
