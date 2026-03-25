@@ -1,0 +1,129 @@
+# Staging environment - Dev mode on Docker Swarm for testing worker scaling
+#
+# - Uses development settings (DEBUG=True, debug toolbar, console email)
+# - Runs on localhost:8001 (different port from dev:8000)
+# - Starts with 3 mass_transfer_workers by default (vs 1 in dev)
+# - Just use your existing .env file (staging ports already defined in example.env)
+#
+# Deploy: docker stack deploy -c docker-compose.base.yml -c docker-compose.staging.yml adit-staging
+# Access: http://localhost:8001
+
+x-app: &default-app
+  build:
+    target: development
+  pull_policy: build
+  environment:
+    # Exact same as dev - development Django settings
+    DJANGO_SETTINGS_MODULE: adit.settings.development
+    DJANGO_INTERNAL_IPS: ${DJANGO_INTERNAL_IPS:?}
+    FORCE_DEBUG_TOOLBAR: ${FORCE_DEBUG_TOOLBAR:-true}
+    REMOTE_DEBUGGING_ENABLED: ${REMOTE_DEBUGGING_ENABLED:-false}
+    REMOTE_DEBUGGING_PORT: ${REMOTE_DEBUGGING_PORT:-5678}
+
+x-deploy: &deploy
+  replicas: 1
+  restart_policy:
+    condition: on-failure
+    max_attempts: 3
+
+services:
+  init:
+    <<: *default-app
+    profiles:
+      - never
+
+  web:
+    <<: *default-app
+    image: adit_staging-web:latest
+    ports:
+      - ${WEB_STAGING_PORT:-8001}:8000
+      - ${REMOTE_DEBUGGING_STAGING_PORT:-5679}:5678
+    # Same as dev - plain HTTP via runserver
+    command: >
+      bash -c "
+        wait-for-it -s postgres.local:5432 -t 60 &&
+        ./manage.py migrate &&
+        ./manage.py create_superuser &&
+        ./manage.py create_example_users &&
+        ./manage.py create_example_groups &&
+        ./manage.py populate_example_data &&
+        wait-for-it -s orthanc1.local:6501 -t 60 &&
+        ./manage.py populate_orthancs &&
+        ./manage.py retry_stalled_jobs &&
+        ./manage.py runserver 0.0.0.0:8000
+      "
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health/"]
+    deploy:
+      <<: *deploy
+      replicas: 1
+
+  default_worker:
+    <<: *default-app
+    image: adit_staging-default_worker:latest
+    # Same as dev - debug logging, autoreload
+    command: >
+      bash -c "
+        wait-for-it -s postgres.local:5432 -t 60 &&
+        ./manage.py bg_worker -l debug -q default --autoreload
+      "
+    deploy:
+      <<: *deploy
+      replicas: 1
+
+  dicom_worker:
+    <<: *default-app
+    image: adit_staging-dicom_worker:latest
+    # Same as dev - debug logging, autoreload
+    command: >
+      bash -c "
+        wait-for-it -s postgres.local:5432 -t 60 &&
+        ./manage.py bg_worker -l debug -q dicom --autoreload
+      "
+    deploy:
+      <<: *deploy
+      replicas: 1
+
+  mass_transfer_worker:
+    <<: *default-app
+    image: adit_staging-mass_transfer_worker:latest
+    # Same as dev - debug logging, autoreload
+    command: >
+      bash -c "
+        wait-for-it -s postgres.local:5432 -t 60 &&
+        ./manage.py bg_worker -l debug -q mass_transfer --autoreload
+      "
+    deploy:
+      <<: *deploy
+      replicas: 3  # Start with 3 to test scaling
+
+  receiver:
+    <<: *default-app
+    image: adit_staging-receiver:latest
+    ports:
+      - ${RECEIVER_STAGING_PORT:-11123}:11112
+    # Same as dev - autoreload
+    command: |
+      ./manage.py receiver --autoreload
+    deploy:
+      <<: *deploy
+
+  postgres:
+    environment:
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - ${POSTGRES_STAGING_PORT:-5433}:5432
+    deploy:
+      <<: *deploy
+
+  orthanc1:
+    ports:
+      - ${ORTHANC1_STAGING_PORT:-7503}:7501
+    deploy:
+      <<: *deploy
+
+  orthanc2:
+    ports:
+      - ${ORTHANC2_STAGING_PORT:-7504}:7502
+    deploy:
+      <<: *deploy
