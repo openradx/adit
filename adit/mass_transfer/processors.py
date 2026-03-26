@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import hashlib
 import json
 import logging
 import random
@@ -115,11 +114,10 @@ def _study_datetime(study: ResultDataset) -> datetime:
     return datetime.combine(study_date, study_time)
 
 
-def _study_folder_name(study_description: str, study_dt: datetime, study_uid: str) -> str:
+def _study_folder_name(study_description: str, study_dt: datetime) -> str:
     desc = sanitize_filename(study_description or "Undefined")
     dt_str = study_dt.strftime("%Y%m%d_%H%M%S")
-    short_hash = hashlib.sha256(study_uid.encode()).hexdigest()[:4]
-    return f"{desc}_{dt_str}_{short_hash}"
+    return f"{desc}_{dt_str}"
 
 
 def _series_folder_name(series_description: str, series_number: int | None, series_uid: str) -> str:
@@ -427,7 +425,6 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
                         study_folder = _study_folder_name(
                             series.study_description,
                             series.study_datetime,
-                            series.study_instance_uid,
                         )
                         series_folder = _series_folder_name(
                             series.series_description,

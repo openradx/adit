@@ -717,23 +717,15 @@ def test_series_folder_name_with_no_number():
     assert _series_folder_name("Head CT", None, "1.2.3.4.5") == "1.2.3.4.5"
 
 
-def test_study_folder_name_includes_description_date_and_hash():
-    name = _study_folder_name("Brain CT", datetime(2024, 1, 15, 10, 30), "1.2.3.4")
-    assert name.startswith("Brain CT_20240115_103000_")
-    # Hash part is 4 chars
-    assert len(name.split("_")[-1]) == 4
+def test_study_folder_name_includes_description_and_datetime():
+    name = _study_folder_name("Brain CT", datetime(2024, 1, 15, 10, 30))
+    assert name == "Brain CT_20240115_103000"
 
 
 def test_study_folder_name_deterministic():
-    name1 = _study_folder_name("Brain CT", datetime(2024, 1, 15), "1.2.3.4")
-    name2 = _study_folder_name("Brain CT", datetime(2024, 1, 15), "1.2.3.4")
+    name1 = _study_folder_name("Brain CT", datetime(2024, 1, 15))
+    name2 = _study_folder_name("Brain CT", datetime(2024, 1, 15))
     assert name1 == name2
-
-
-def test_study_folder_name_different_uid_different_hash():
-    name1 = _study_folder_name("Brain CT", datetime(2024, 1, 15), "1.2.3.4")
-    name2 = _study_folder_name("Brain CT", datetime(2024, 1, 15), "1.2.3.5")
-    assert name1 != name2
 
 
 def test_parse_int_normal():
