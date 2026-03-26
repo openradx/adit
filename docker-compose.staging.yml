@@ -5,13 +5,12 @@
 # - Starts with 3 mass_transfer_workers by default (vs 1 in dev)
 # - Just use your existing .env file (staging ports already defined in example.env)
 #
-# Deploy: docker stack deploy -c docker-compose.base.yml -c docker-compose.staging.yml adit-staging
+# Deploy: uv run cli stack-deploy-staging
 # Access: http://localhost:8001
 
 x-app: &default-app
   build:
     target: development
-  pull_policy: build
   environment:
     # Exact same as dev - development Django settings
     DJANGO_SETTINGS_MODULE: adit.settings.development

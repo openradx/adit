@@ -39,7 +39,7 @@ app.command()(commands.try_github_actions)
 
 @app.command()
 def stack_deploy_staging():
-    """Deploy staging stack with Docker Swarm"""
+    """Build images and deploy staging stack with Docker Swarm"""
 
     helper = cli_helper.CommandHelper()
     helper.prepare_environment()
@@ -47,14 +47,19 @@ def stack_deploy_staging():
     env = helper.load_config_from_env_file()
     env["PROJECT_VERSION"] = helper.get_local_project_version()
 
+    base_file = helper.get_compose_base_file()
     staging_file = helper.root_path / "docker-compose.staging.yml"
     stack_name = f"{helper.project_id}_staging"
 
-    cmd = "docker stack deploy --detach"
-    cmd += f" -c {helper.get_compose_base_file()}"
-    cmd += f" -c {staging_file}"
-    cmd += f" {stack_name}"
-    helper.execute_cmd(cmd, env=env)
+    # Build images first (docker stack deploy does not support build)
+    build_cmd = f"docker compose -f {base_file} -f {staging_file} build"
+    helper.execute_cmd(build_cmd, env={**env, "COMPOSE_BAKE": "true"})
+
+    deploy_cmd = "docker stack deploy --detach"
+    deploy_cmd += f" -c {base_file}"
+    deploy_cmd += f" -c {staging_file}"
+    deploy_cmd += f" {stack_name}"
+    helper.execute_cmd(deploy_cmd, env=env)
 
 
 @app.command()
