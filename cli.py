@@ -63,6 +63,15 @@ def stack_deploy_staging():
 
 
 @app.command()
+def stack_rm_staging():
+    """Remove staging stack from Docker Swarm"""
+
+    helper = cli_helper.CommandHelper()
+    stack_name = f"{helper.project_id}_staging"
+    helper.execute_cmd(f"docker stack rm {stack_name}")
+
+
+@app.command()
 def populate_orthancs(
     reset: Annotated[bool, typer.Option(help="Clear Orthancs before populate")] = False,
 ):
