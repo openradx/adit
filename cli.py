@@ -38,6 +38,26 @@ app.command()(commands.try_github_actions)
 
 
 @app.command()
+def stack_deploy_staging():
+    """Deploy staging stack with Docker Swarm"""
+
+    helper = cli_helper.CommandHelper()
+    helper.prepare_environment()
+
+    env = helper.load_config_from_env_file()
+    env["PROJECT_VERSION"] = helper.get_local_project_version()
+
+    staging_file = helper.root_path / "docker-compose.staging.yml"
+    stack_name = f"{helper.project_id}_staging"
+
+    cmd = "docker stack deploy --detach"
+    cmd += f" -c {helper.get_compose_base_file()}"
+    cmd += f" -c {staging_file}"
+    cmd += f" {stack_name}"
+    helper.execute_cmd(cmd, env=env)
+
+
+@app.command()
 def populate_orthancs(
     reset: Annotated[bool, typer.Option(help="Clear Orthancs before populate")] = False,
 ):
