@@ -28,8 +28,8 @@ x-deploy: &deploy
 services:
   init:
     <<: *default-app
-    profiles:
-      - never
+    deploy:
+      replicas: 0
 
   web:
     <<: *default-app
