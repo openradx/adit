@@ -28,6 +28,7 @@ x-deploy: &deploy
 services:
   init:
     <<: *default-app
+    image: adit_staging-web:latest
     deploy:
       replicas: 0
 
