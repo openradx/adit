@@ -63,6 +63,7 @@ class FilterSpec:
             max_age=d.get("max_age"),
         )
 
+
 logger = logging.getLogger(__name__)
 
 _MIN_SPLIT_WINDOW = timedelta(minutes=30)
@@ -129,7 +130,7 @@ def _series_folder_name(series_description: str, series_number: int | None, seri
     return f"{desc}_{series_number}"
 
 
-_SIDECAR_DICOM_TAGS = [
+_DICOM_METADATA_TAGS = [
     "PatientBirthDate",
     "PatientSex",
     "PatientAge",
@@ -146,8 +147,8 @@ _SIDECAR_DICOM_TAGS = [
 ]
 
 
-def _extract_dicom_sidecar(dicom_dir: Path) -> dict[str, str]:
-    """Read the first DICOM file in *dicom_dir* and extract sidecar fields.
+def _extract_dicom_metadata(dicom_dir: Path) -> dict[str, str]:
+    """Read the first DICOM file in *dicom_dir* and extract metadata fields.
 
     These are post-pseudonymization values — shifted dates, replaced UIDs,
     etc. The function also computes a ``PatientAgeAtStudy`` field from
@@ -161,7 +162,7 @@ def _extract_dicom_sidecar(dicom_dir: Path) -> dict[str, str]:
         except Exception:
             continue
         fields: dict[str, str] = {}
-        for tag in _SIDECAR_DICOM_TAGS:
+        for tag in _DICOM_METADATA_TAGS:
             val = ds.get(tag)
             if val is not None:
                 fields[tag] = str(val)
@@ -181,15 +182,15 @@ def _extract_dicom_sidecar(dicom_dir: Path) -> dict[str, str]:
     return {}
 
 
-def _write_dicom_sidecar(output_path: Path, sidecar_name: str, fields: dict[str, str]) -> None:
-    """Write a DICOM metadata sidecar JSON file alongside NIfTI outputs."""
+def _write_dicom_metadata(output_path: Path, metadata_name: str, fields: dict[str, str]) -> None:
+    """Write a DICOM metadata JSON file alongside NIfTI outputs."""
     if not fields:
         return
-    sidecar_path = output_path / f"{sidecar_name}_dicom.json"
+    metadata_path = output_path / f"{metadata_name}_dicom.json"
     try:
-        sidecar_path.write_text(json.dumps(fields, indent=2))
+        metadata_path.write_text(json.dumps(fields, indent=2))
     except Exception:
-        logger.warning("Failed to write sidecar %s", sidecar_path, exc_info=True)
+        logger.warning("Failed to write DICOM metadata %s", metadata_path, exc_info=True)
 
 
 def _age_at_study(birth_date: date, study_date: date) -> int:
@@ -301,7 +302,13 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
             discovered = self._discover_series(operator, filters)
             grouped, subject_ids = self._group_series(discovered, job, pseudonymizer)
             return self._transfer_grouped_series(
-                operator, grouped, subject_ids, job, pseudonymizer, output_base, discovered,
+                operator,
+                grouped,
+                subject_ids,
+                job,
+                pseudonymizer,
+                output_base,
+                discovered,
             )
         finally:
             operator.close()
@@ -402,19 +409,17 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
                         if job.convert_to_nifti:
                             with tempfile.TemporaryDirectory() as tmp_dir:
                                 tmp_path = Path(tmp_dir)
-                                image_count, p_study_uid, p_series_uid = (
-                                    self._export_series(
-                                        operator,
-                                        series,
-                                        tmp_path,
-                                        subject_id,
-                                        pseudonymizer,
-                                    )
+                                image_count, p_study_uid, p_series_uid = self._export_series(
+                                    operator,
+                                    series,
+                                    tmp_path,
+                                    subject_id,
+                                    pseudonymizer,
                                 )
                                 if image_count == 0:
                                     nifti_files = []
                                 else:
-                                    dicom_sidecar = _extract_dicom_sidecar(tmp_path)
+                                    dicom_metadata = _extract_dicom_metadata(tmp_path)
                                     output_path = (
                                         output_base
                                         / self.mass_task.partition_key
@@ -428,10 +433,10 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
                                         output_path,
                                     )
                                     if nifti_files:
-                                        _write_dicom_sidecar(
+                                        _write_dicom_metadata(
                                             output_path,
                                             series_folder,
-                                            dicom_sidecar,
+                                            dicom_metadata,
                                         )
                         else:
                             output_path = (
@@ -568,13 +573,9 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
                 parts.append(f"{total_skipped} skipped")
 
             status = (
-                MassTransferTask.Status.WARNING
-                if total_failed
-                else MassTransferTask.Status.SUCCESS
+                MassTransferTask.Status.WARNING if total_failed else MassTransferTask.Status.SUCCESS
             )
-            message = (
-                f"{len(study_uids)} studies, {total_series} series ({', '.join(parts)})."
-            )
+            message = f"{len(study_uids)} studies, {total_series} series ({', '.join(parts)})."
 
         return {
             "status": status,
@@ -675,7 +676,8 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
                         institution_name=str(series.get("InstitutionName", "")),
                         number_of_images=_parse_int(
                             series.get("NumberOfSeriesRelatedInstances"), default=0
-                        ) or 0,
+                        )
+                        or 0,
                         patient_birth_date=birth_date,
                     )
 
@@ -720,7 +722,10 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
             study_time = (start.time(), end.time())
 
         birth_range = _birth_date_range(
-            start.date(), end.date(), mf.min_age, mf.max_age,
+            start.date(),
+            end.date(),
+            mf.min_age,
+            mf.max_age,
         )
         birth_date_kwarg: dict[str, tuple[date, date]] = {}
         if birth_range:
