@@ -9,7 +9,7 @@ from django.db import models
 from django.urls import reverse
 from procrastinate.contrib.django import app
 
-from adit.core.models import DicomAppSettings, DicomJob, DicomNode, DicomTask, TransferJob
+from adit.core.models import DicomAppSettings, DicomJob, TransferJob, TransferTask
 from adit.core.utils.model_utils import get_model_label
 
 if TYPE_CHECKING:
@@ -29,12 +29,6 @@ class MassTransferJob(TransferJob):
     default_priority = settings.MASS_TRANSFER_DEFAULT_PRIORITY
     urgent_priority = settings.MASS_TRANSFER_URGENT_PRIORITY
 
-    # TODO: Consider moving source/destination to MassTransferTask to match
-    # the TransferTask pattern used by selective_transfer. Currently kept on the
-    # job because MassTransferTask does not inherit from TransferTask (which
-    # carries patient_id, study_uid, etc. fields that mass transfer does not need).
-    source = models.ForeignKey(DicomNode, related_name="+", on_delete=models.PROTECT)
-    destination = models.ForeignKey(DicomNode, related_name="+", on_delete=models.PROTECT)
     start_date = models.DateField()
     end_date = models.DateField()
     partition_granularity = models.CharField(
@@ -82,7 +76,7 @@ class MassTransferJob(TransferJob):
         if self.urgent:
             priority = self.urgent_priority
 
-        for mass_task in self.tasks.filter(status=DicomTask.Status.PENDING):
+        for mass_task in self.tasks.filter(status=TransferTask.Status.PENDING):
             assert mass_task.queued_job is None
 
             model_label = get_model_label(mass_task.__class__)
@@ -95,7 +89,7 @@ class MassTransferJob(TransferJob):
             mass_task.save()
 
 
-class MassTransferTask(DicomTask):
+class MassTransferTask(TransferTask):
     job = models.ForeignKey(
         MassTransferJob,
         on_delete=models.CASCADE,

@@ -34,9 +34,9 @@
             <dd class="col-sm-9">{{ job.owner }}</dd>
         {% endif %}
         <dt class="col-sm-3">Source</dt>
-        <dd class="col-sm-9">{{ job.source }}</dd>
+        <dd class="col-sm-9">{{ job.tasks.first.source }}</dd>
         <dt class="col-sm-3">Destination</dt>
-        <dd class="col-sm-9">{{ job.destination }}</dd>
+        <dd class="col-sm-9">{{ job.tasks.first.destination }}</dd>
         <dt class="col-sm-3">Start Date</dt>
         <dd class="col-sm-9">{{ job.start_date }}</dd>
         <dt class="col-sm-3">End Date</dt>

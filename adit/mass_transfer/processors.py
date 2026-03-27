@@ -261,8 +261,8 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
             }
 
         job = self.mass_task.job
-        source_node = job.source
-        destination_node = job.destination
+        source_node = self.mass_task.source
+        destination_node = self.mass_task.destination
 
         if source_node.node_type != DicomNode.NodeType.SERVER:
             raise DicomError("Mass transfer source must be a DICOM server.")

@@ -84,8 +84,6 @@ class MassTransferJobForm(forms.ModelForm):
     class Meta:
         model = MassTransferJob
         fields = (
-            "source",
-            "destination",
             "start_date",
             "end_date",
             "partition_granularity",
@@ -259,12 +257,16 @@ class MassTransferJobForm(forms.ModelForm):
             job.partition_granularity,
         )
 
+        source = self.cleaned_data["source"]
+        destination = self.cleaned_data["destination"]
+
         tasks: list[MassTransferTask] = []
         for partition in partitions:
             tasks.append(
                 MassTransferTask(
                     job=job,
-                    source=job.source,
+                    source=source,
+                    destination=destination,
                     partition_start=partition.start,
                     partition_end=partition.end,
                     partition_key=partition.key,
