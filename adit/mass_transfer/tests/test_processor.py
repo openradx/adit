@@ -1143,12 +1143,12 @@ def test_filter_spec_from_dict():
 
 
 # ---------------------------------------------------------------------------
-# DICOM sidecar tests
+# DICOM metadata tests
 # ---------------------------------------------------------------------------
 
 
-def test_write_dicom_sidecar(tmp_path: Path):
-    from adit.mass_transfer.processors import _write_dicom_sidecar
+def test_write_dicom_metadata(tmp_path: Path):
+    from adit.mass_transfer.processors import _write_dicom_metadata
 
     fields = {
         "PatientBirthDate": "19900101",
@@ -1160,23 +1160,23 @@ def test_write_dicom_sidecar(tmp_path: Path):
         "Modality": "MR",
     }
 
-    _write_dicom_sidecar(tmp_path, "T1w_3D_101", fields)
+    _write_dicom_metadata(tmp_path, "T1w_3D_101", fields)
 
     import json
 
-    sidecar = tmp_path / "T1w_3D_101_dicom.json"
-    assert sidecar.exists()
-    result = json.loads(sidecar.read_text())
+    metadata = tmp_path / "T1w_3D_101_dicom.json"
+    assert metadata.exists()
+    result = json.loads(metadata.read_text())
     assert result["PatientBirthDate"] == "19900101"
     assert result["PatientAgeAtStudy"] == "35"
     assert result["StudyInstanceUID"] == "1.2.3.4.5"
     assert result["Modality"] == "MR"
 
 
-def test_write_dicom_sidecar_empty_fields(tmp_path: Path):
-    from adit.mass_transfer.processors import _write_dicom_sidecar
+def test_write_dicom_metadata_empty_fields(tmp_path: Path):
+    from adit.mass_transfer.processors import _write_dicom_metadata
 
-    _write_dicom_sidecar(tmp_path, "series_1", {})
+    _write_dicom_metadata(tmp_path, "series_1", {})
 
     # No file should be written when fields are empty
     assert not list(tmp_path.glob("*.json"))
@@ -1202,9 +1202,9 @@ def _write_test_dicom(path: Path, **kwargs) -> None:
     pydicom.dcmwrite(str(path), ds, enforce_file_format=True)
 
 
-def test_extract_dicom_sidecar_computes_age(tmp_path: Path):
-    """_extract_dicom_sidecar should compute PatientAgeAtStudy from birth date and study date."""
-    from adit.mass_transfer.processors import _extract_dicom_sidecar
+def test_extract_dicom_metadata_computes_age(tmp_path: Path):
+    """_extract_dicom_metadata should compute PatientAgeAtStudy from birth date and study date."""
+    from adit.mass_transfer.processors import _extract_dicom_metadata
 
     _write_test_dicom(
         tmp_path / "test.dcm",
@@ -1216,21 +1216,21 @@ def test_extract_dicom_sidecar_computes_age(tmp_path: Path):
         Modality="MR",
     )
 
-    result = _extract_dicom_sidecar(tmp_path)
+    result = _extract_dicom_metadata(tmp_path)
     assert result["PatientAgeAtStudy"] == "35"
     assert result["PatientBirthDate"] == "19900615"
     assert result["PatientSex"] == "M"
     assert result["StudyInstanceUID"] == "1.2.3"
 
 
-def test_extract_dicom_sidecar_pseudonymized_has_no_real_data(tmp_path: Path):
-    """When pseudonymization is applied, sidecar should contain pseudonymized values, not originals.
+def test_extract_dicom_metadata_pseudonymized_has_no_real_data(tmp_path: Path):
+    """When pseudonymization is applied, metadata should contain pseudonymized values, not originals.
 
     This test simulates the post-pseudonymization state: the DICOM files on disk have already
-    been anonymized by dicognito + Pseudonymizer before _extract_dicom_sidecar runs.
-    We verify the sidecar contains only the pseudonymized values.
+    been anonymized by dicognito + Pseudonymizer before _extract_dicom_metadata runs.
+    We verify the metadata contains only the pseudonymized values.
     """
-    from adit.mass_transfer.processors import _extract_dicom_sidecar
+    from adit.mass_transfer.processors import _extract_dicom_metadata
 
     _write_test_dicom(
         tmp_path / "test.dcm",
@@ -1244,9 +1244,9 @@ def test_extract_dicom_sidecar_pseudonymized_has_no_real_data(tmp_path: Path):
         Modality="MR",
     )
 
-    result = _extract_dicom_sidecar(tmp_path)
+    result = _extract_dicom_metadata(tmp_path)
 
-    # Sidecar must contain the pseudonymized values (what's on disk)
+    # Metadata must contain the pseudonymized values (what's on disk)
     assert result["PatientID"] == "ABCDEF123456"
     assert result["PatientBirthDate"] == "19920101"
     assert result["StudyInstanceUID"] == "2.25.999999999"
