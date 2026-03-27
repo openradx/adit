@@ -46,16 +46,23 @@ class DicomNodeManager(models.Manager[TModel]):
         Returns:
             A queryset of nodes that the user is allowed to access.
         """
-        if all_groups:
-            accessible_nodes = self.filter(accesses__group__in=user.groups.all())
-        else:
-            accessible_nodes = self.filter(accesses__group=user.active_group)
         if access_type == "source":
-            accessible_nodes = accessible_nodes.filter(accesses__source=True)
+            access_filter = {"accesses__source": True}
         elif access_type == "destination":
-            accessible_nodes = accessible_nodes.filter(accesses__destination=True)
+            access_filter = {"accesses__destination": True}
         else:
             raise AssertionError(f"Invalid node type: {access_type}")
+
+        # Combine group and access type filters in a single .filter() call
+        # to ensure both conditions apply to the SAME access record.
+        # Separate .filter() calls would create independent JOINs, allowing
+        # permissions from one group to leak to another group's users.
+        if all_groups:
+            accessible_nodes = self.filter(
+                accesses__group__in=user.groups.all(), **access_filter
+            )
+        else:
+            accessible_nodes = self.filter(accesses__group=user.active_group, **access_filter)
 
         return accessible_nodes.distinct()
 
