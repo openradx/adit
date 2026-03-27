@@ -81,7 +81,7 @@ def connect_to_server(service: DimseService):
                 self.abort_connection()
                 raise err
             finally:
-                if opened_connection and self.auto_connect and self.assoc:
+                if opened_connection and self.auto_close and self.assoc:
                     self.close_connection()
 
         @wraps(func)
@@ -104,7 +104,7 @@ def connect_to_server(service: DimseService):
                 self.abort_connection()
                 raise err
 
-            if opened_connection and self.auto_connect and self.assoc:
+            if opened_connection and self.auto_close and self.assoc:
                 self.close_connection()
                 opened_connection = False
 
@@ -122,6 +122,7 @@ class DimseConnector:
         self,
         server: DicomServer,
         auto_connect: bool = True,
+        auto_close: bool = True,
         acse_timeout: int | None = 60,
         connection_timeout: int | None = None,
         dimse_timeout: int | None = 60,
@@ -129,6 +130,7 @@ class DimseConnector:
     ) -> None:
         self.server = server
         self.auto_connect = auto_connect
+        self.auto_close = auto_close
         self.acse_timeout = acse_timeout
         self.connection_timeout = connection_timeout
         self.dimse_timeout = dimse_timeout

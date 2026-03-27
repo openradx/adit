@@ -297,14 +297,11 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
         ).delete()
 
         operator = DicomOperator(source_node.dicomserver)
-        operator.dimse_connector.auto_connect = False
+        operator.dimse_connector.auto_close = False
 
         # Discovery: one C-FIND association for all queries
-        operator.dimse_connector.open_connection("C-FIND")
-        try:
-            discovered = self._discover_series(operator, filters)
-        finally:
-            operator.abort()
+        discovered = self._discover_series(operator, filters)
+        operator.close()
 
         grouped, subject_ids = self._group_series(discovered, job, pseudonymizer)
 
@@ -389,7 +386,6 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
                     subject_id = random_pseudonyms[study_uid]
 
                 # One C-GET association per study
-                operator.dimse_connector.open_connection("C-GET")
                 try:
                     for series in series_list:
                         study_folder = _study_folder_name(
