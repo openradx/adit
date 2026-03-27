@@ -25,8 +25,6 @@ def test_cleanup_on_failure_is_noop():
     destination = DicomFolderFactory.create()
     job = MassTransferJob.objects.create(
         owner=user,
-        source=source,
-        destination=destination,
         start_date=timezone.now().date(),
         end_date=timezone.now().date(),
         partition_granularity=MassTransferJob.PartitionGranularity.DAILY,
@@ -34,6 +32,9 @@ def test_cleanup_on_failure_is_noop():
     task = MassTransferTask.objects.create(
         job=job,
         source=source,
+        destination=destination,
+        patient_id="",
+        study_uid="",
         partition_start=timezone.now(),
         partition_end=timezone.now(),
         partition_key="20240101",

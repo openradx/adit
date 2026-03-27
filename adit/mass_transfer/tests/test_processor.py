@@ -106,8 +106,6 @@ def test_find_studies_raises_when_time_window_too_small(mocker: MockerFixture):
     destination = DicomFolderFactory.create()
     job = MassTransferJob.objects.create(
         owner=user,
-        source=source,
-        destination=destination,
         start_date=date(2024, 1, 1),
         end_date=date(2024, 1, 1),
         partition_granularity=MassTransferJob.PartitionGranularity.DAILY,
@@ -120,6 +118,9 @@ def test_find_studies_raises_when_time_window_too_small(mocker: MockerFixture):
     task = MassTransferTask.objects.create(
         job=job,
         source=source,
+        destination=destination,
+        patient_id="",
+        study_uid="",
         partition_start=start,
         partition_end=end,
         partition_key="20240101",
@@ -333,12 +334,13 @@ def _make_process_env(
     mock_job.convert_to_nifti = convert_to_nifti
     mock_job.pseudonymize = pseudonymize
     mock_job.pseudonym_salt = pseudonym_salt
-    mock_job.source.node_type = DicomNode.NodeType.SERVER
-    mock_job.source.dicomserver = mocker.MagicMock()
-    mock_job.destination.node_type = DicomNode.NodeType.FOLDER
-    mock_job.destination.dicomfolder.path = str(tmp_path / "output")
     mock_job.filters_json = [{"modality": "CT"}]
     mock_job.get_filters.return_value = [FilterSpec.from_dict({"modality": "CT"})]
+
+    processor.mass_task.source.node_type = DicomNode.NodeType.SERVER
+    processor.mass_task.source.dicomserver = mocker.MagicMock()
+    processor.mass_task.destination.node_type = DicomNode.NodeType.FOLDER
+    processor.mass_task.destination.dicomfolder.path = str(tmp_path / "output")
 
     processor.mass_task.pk = 42
     processor.mass_task.partition_key = "20240101"
@@ -434,7 +436,7 @@ def test_process_returns_warning_when_suspended(mocker: MockerFixture, tmp_path:
 
 def test_process_raises_when_source_not_server(mocker: MockerFixture, tmp_path: Path):
     processor = _make_process_env(mocker, tmp_path)
-    processor.mass_task.job.source.node_type = DicomNode.NodeType.FOLDER
+    processor.mass_task.source.node_type = DicomNode.NodeType.FOLDER
 
     with pytest.raises(DicomError, match="source must be a DICOM server"):
         processor.process()
@@ -442,7 +444,7 @@ def test_process_raises_when_source_not_server(mocker: MockerFixture, tmp_path: 
 
 def test_process_raises_when_destination_not_folder(mocker: MockerFixture, tmp_path: Path):
     processor = _make_process_env(mocker, tmp_path)
-    processor.mass_task.job.destination.node_type = DicomNode.NodeType.SERVER
+    processor.mass_task.destination.node_type = DicomNode.NodeType.SERVER
 
     with pytest.raises(DicomError, match="destination must be a DICOM folder"):
         processor.process()
@@ -773,8 +775,6 @@ def test_process_creates_volume_records_on_success(mocker: MockerFixture, tmp_pa
     destination = DicomFolderFactory.create(path=str(tmp_path / "output"))
     job = MassTransferJob.objects.create(
         owner=user,
-        source=source,
-        destination=destination,
         start_date=date(2024, 1, 1),
         end_date=date(2024, 1, 1),
         partition_granularity=MassTransferJob.PartitionGranularity.DAILY,
@@ -787,6 +787,9 @@ def test_process_creates_volume_records_on_success(mocker: MockerFixture, tmp_pa
     task = MassTransferTask.objects.create(
         job=job,
         source=source,
+        destination=destination,
+        patient_id="",
+        study_uid="",
         partition_start=timezone.now(),
         partition_end=timezone.now(),
         partition_key="20240101",
@@ -820,8 +823,6 @@ def test_process_creates_error_volume_on_failure(mocker: MockerFixture, tmp_path
     destination = DicomFolderFactory.create(path=str(tmp_path / "output"))
     job = MassTransferJob.objects.create(
         owner=user,
-        source=source,
-        destination=destination,
         start_date=date(2024, 1, 1),
         end_date=date(2024, 1, 1),
         partition_granularity=MassTransferJob.PartitionGranularity.DAILY,
@@ -834,6 +835,9 @@ def test_process_creates_error_volume_on_failure(mocker: MockerFixture, tmp_path
     task = MassTransferTask.objects.create(
         job=job,
         source=source,
+        destination=destination,
+        patient_id="",
+        study_uid="",
         partition_start=timezone.now(),
         partition_end=timezone.now(),
         partition_key="20240101",
@@ -864,8 +868,6 @@ def test_process_deletes_all_volumes_on_retry(mocker: MockerFixture, tmp_path: P
     destination = DicomFolderFactory.create(path=str(tmp_path / "output"))
     job = MassTransferJob.objects.create(
         owner=user,
-        source=source,
-        destination=destination,
         start_date=date(2024, 1, 1),
         end_date=date(2024, 1, 1),
         partition_granularity=MassTransferJob.PartitionGranularity.DAILY,
@@ -878,6 +880,9 @@ def test_process_deletes_all_volumes_on_retry(mocker: MockerFixture, tmp_path: P
     task = MassTransferTask.objects.create(
         job=job,
         source=source,
+        destination=destination,
+        patient_id="",
+        study_uid="",
         partition_start=timezone.now(),
         partition_end=timezone.now(),
         partition_key="20240101",
@@ -928,8 +933,6 @@ def test_process_deterministic_pseudonyms_across_partitions(mocker: MockerFixtur
     destination = DicomFolderFactory.create(path=str(tmp_path / "output"))
     job = MassTransferJob.objects.create(
         owner=user,
-        source=source,
-        destination=destination,
         start_date=date(2024, 1, 1),
         end_date=date(2024, 1, 2),
         partition_granularity=MassTransferJob.PartitionGranularity.DAILY,
@@ -941,6 +944,9 @@ def test_process_deterministic_pseudonyms_across_partitions(mocker: MockerFixtur
     task1 = MassTransferTask.objects.create(
         job=job,
         source=source,
+        destination=destination,
+        patient_id="",
+        study_uid="",
         partition_start=timezone.make_aware(datetime(2024, 1, 1)),
         partition_end=timezone.make_aware(datetime(2024, 1, 1, 23, 59, 59)),
         partition_key="20240101",
@@ -948,6 +954,9 @@ def test_process_deterministic_pseudonyms_across_partitions(mocker: MockerFixtur
     task2 = MassTransferTask.objects.create(
         job=job,
         source=source,
+        destination=destination,
+        patient_id="",
+        study_uid="",
         partition_start=timezone.make_aware(datetime(2024, 1, 2)),
         partition_end=timezone.make_aware(datetime(2024, 1, 2, 23, 59, 59)),
         partition_key="20240102",
@@ -1002,8 +1011,6 @@ def test_process_pseudonymize_mode_not_linked_across_partitions(
     destination = DicomFolderFactory.create(path=str(tmp_path / "output"))
     job = MassTransferJob.objects.create(
         owner=user,
-        source=source,
-        destination=destination,
         start_date=date(2024, 1, 1),
         end_date=date(2024, 1, 2),
         partition_granularity=MassTransferJob.PartitionGranularity.DAILY,
@@ -1016,6 +1023,9 @@ def test_process_pseudonymize_mode_not_linked_across_partitions(
     task1 = MassTransferTask.objects.create(
         job=job,
         source=source,
+        destination=destination,
+        patient_id="",
+        study_uid="",
         partition_start=timezone.make_aware(datetime(2024, 1, 1)),
         partition_end=timezone.make_aware(datetime(2024, 1, 1, 23, 59, 59)),
         partition_key="20240101",
@@ -1023,6 +1033,9 @@ def test_process_pseudonymize_mode_not_linked_across_partitions(
     task2 = MassTransferTask.objects.create(
         job=job,
         source=source,
+        destination=destination,
+        patient_id="",
+        study_uid="",
         partition_start=timezone.make_aware(datetime(2024, 1, 2)),
         partition_end=timezone.make_aware(datetime(2024, 1, 2, 23, 59, 59)),
         partition_key="20240102",
@@ -1135,7 +1148,7 @@ def test_filter_spec_from_dict():
 
 
 def test_write_dicom_sidecar(tmp_path: Path):
-    from adit.mass_transfer.processors import _write_dicom_metadata
+    from adit.mass_transfer.processors import _write_dicom_sidecar
 
     fields = {
         "PatientBirthDate": "19900101",
@@ -1147,7 +1160,7 @@ def test_write_dicom_sidecar(tmp_path: Path):
         "Modality": "MR",
     }
 
-    _write_dicom_metadata(tmp_path, "T1w_3D_101", fields)
+    _write_dicom_sidecar(tmp_path, "T1w_3D_101", fields)
 
     import json
 
@@ -1161,9 +1174,9 @@ def test_write_dicom_sidecar(tmp_path: Path):
 
 
 def test_write_dicom_sidecar_empty_fields(tmp_path: Path):
-    from adit.mass_transfer.processors import _write_dicom_metadata
+    from adit.mass_transfer.processors import _write_dicom_sidecar
 
-    _write_dicom_metadata(tmp_path, "series_1", {})
+    _write_dicom_sidecar(tmp_path, "series_1", {})
 
     # No file should be written when fields are empty
     assert not list(tmp_path.glob("*.json"))
@@ -1191,7 +1204,7 @@ def _write_test_dicom(path: Path, **kwargs) -> None:
 
 def test_extract_dicom_sidecar_computes_age(tmp_path: Path):
     """_extract_dicom_sidecar should compute PatientAgeAtStudy from birth date and study date."""
-    from adit.mass_transfer.processors import _extract_dicom_metadata
+    from adit.mass_transfer.processors import _extract_dicom_sidecar
 
     _write_test_dicom(
         tmp_path / "test.dcm",
@@ -1203,7 +1216,7 @@ def test_extract_dicom_sidecar_computes_age(tmp_path: Path):
         Modality="MR",
     )
 
-    result = _extract_dicom_metadata(tmp_path)
+    result = _extract_dicom_sidecar(tmp_path)
     assert result["PatientAgeAtStudy"] == "35"
     assert result["PatientBirthDate"] == "19900615"
     assert result["PatientSex"] == "M"
@@ -1217,7 +1230,7 @@ def test_extract_dicom_sidecar_pseudonymized_has_no_real_data(tmp_path: Path):
     been anonymized by dicognito + Pseudonymizer before _extract_dicom_sidecar runs.
     We verify the sidecar contains only the pseudonymized values.
     """
-    from adit.mass_transfer.processors import _extract_dicom_metadata
+    from adit.mass_transfer.processors import _extract_dicom_sidecar
 
     _write_test_dicom(
         tmp_path / "test.dcm",
@@ -1231,7 +1244,7 @@ def test_extract_dicom_sidecar_pseudonymized_has_no_real_data(tmp_path: Path):
         Modality="MR",
     )
 
-    result = _extract_dicom_metadata(tmp_path)
+    result = _extract_dicom_sidecar(tmp_path)
 
     # Sidecar must contain the pseudonymized values (what's on disk)
     assert result["PatientID"] == "ABCDEF123456"
@@ -1331,8 +1344,6 @@ def test_partition_cleanup_deletes_folder_and_volumes(mocker: MockerFixture, tmp
     destination = DicomFolderFactory.create(path=str(tmp_path / "output"))
     job = MassTransferJob.objects.create(
         owner=user,
-        source=source,
-        destination=destination,
         start_date=date(2024, 1, 1),
         end_date=date(2024, 1, 1),
         partition_granularity=MassTransferJob.PartitionGranularity.DAILY,
@@ -1345,6 +1356,9 @@ def test_partition_cleanup_deletes_folder_and_volumes(mocker: MockerFixture, tmp
     task = MassTransferTask.objects.create(
         job=job,
         source=source,
+        destination=destination,
+        patient_id="",
+        study_uid="",
         partition_start=timezone.now(),
         partition_end=timezone.now(),
         partition_key="20240101",
@@ -1369,7 +1383,7 @@ def test_partition_cleanup_deletes_folder_and_volumes(mocker: MockerFixture, tmp
         )
 
     # Create the partition folder with a file in it
-    partition_dir = _destination_base_dir(job.destination, job) / "20240101"
+    partition_dir = _destination_base_dir(destination, job) / "20240101"
     partition_dir.mkdir(parents=True, exist_ok=True)
     (partition_dir / "some_file.dcm").write_text("dummy")
 
@@ -1404,12 +1418,8 @@ def test_partition_cleanup_deletes_folder_and_volumes(mocker: MockerFixture, tmp
 def test_get_filters_from_json():
     """get_filters() returns FilterSpec objects from valid filters_json."""
     user = UserFactory.create()
-    source = DicomServerFactory.create()
-    destination = DicomFolderFactory.create()
     job = MassTransferJob.objects.create(
         owner=user,
-        source=source,
-        destination=destination,
         start_date=date(2024, 1, 1),
         end_date=date(2024, 1, 1),
         partition_granularity=MassTransferJob.PartitionGranularity.DAILY,
@@ -1439,12 +1449,8 @@ def test_get_filters_from_json():
 def test_get_filters_empty():
     """get_filters() returns [] when filters_json is None."""
     user = UserFactory.create()
-    source = DicomServerFactory.create()
-    destination = DicomFolderFactory.create()
     job = MassTransferJob.objects.create(
         owner=user,
-        source=source,
-        destination=destination,
         start_date=date(2024, 1, 1),
         end_date=date(2024, 1, 1),
         partition_granularity=MassTransferJob.PartitionGranularity.DAILY,
@@ -1464,12 +1470,9 @@ def test_get_filters_empty():
 def test_destination_base_dir_creates_job_folder(tmp_path: Path):
     """Output dir should include adit_{app}_{pk}_{date}_{owner} parent folder."""
     user = UserFactory.create(username="rghosh")
-    source = DicomServerFactory.create()
     destination = DicomFolderFactory.create(path=str(tmp_path))
     job = MassTransferJob.objects.create(
         owner=user,
-        source=source,
-        destination=destination,
         start_date=date(2025, 3, 16),
         end_date=date(2025, 3, 16),
         partition_granularity=MassTransferJob.PartitionGranularity.DAILY,
@@ -1486,12 +1489,9 @@ def test_destination_base_dir_creates_job_folder(tmp_path: Path):
 def test_destination_base_dir_is_idempotent(tmp_path: Path):
     """Calling _destination_base_dir twice should not fail or create duplicates."""
     user = UserFactory.create(username="testuser")
-    source = DicomServerFactory.create()
     destination = DicomFolderFactory.create(path=str(tmp_path))
     job = MassTransferJob.objects.create(
         owner=user,
-        source=source,
-        destination=destination,
         start_date=date(2025, 1, 1),
         end_date=date(2025, 1, 1),
         partition_granularity=MassTransferJob.PartitionGranularity.DAILY,
@@ -1518,12 +1518,9 @@ def test_destination_base_dir_asserts_on_server_node(mocker: MockerFixture):
 def test_destination_base_dir_sanitizes_username(tmp_path: Path):
     """Usernames with special chars should be sanitized in the folder name."""
     user = UserFactory.create(username="user/with:special")
-    source = DicomServerFactory.create()
     destination = DicomFolderFactory.create(path=str(tmp_path))
     job = MassTransferJob.objects.create(
         owner=user,
-        source=source,
-        destination=destination,
         start_date=date(2025, 1, 1),
         end_date=date(2025, 1, 1),
         partition_granularity=MassTransferJob.PartitionGranularity.DAILY,
@@ -1548,8 +1545,6 @@ def test_process_output_path_includes_job_folder(mocker: MockerFixture, tmp_path
     destination = DicomFolderFactory.create(path=str(tmp_path / "output"))
     job = MassTransferJob.objects.create(
         owner=user,
-        source=source,
-        destination=destination,
         start_date=date(2024, 1, 1),
         end_date=date(2024, 1, 1),
         partition_granularity=MassTransferJob.PartitionGranularity.DAILY,
@@ -1562,6 +1557,9 @@ def test_process_output_path_includes_job_folder(mocker: MockerFixture, tmp_path
     task = MassTransferTask.objects.create(
         job=job,
         source=source,
+        destination=destination,
+        patient_id="",
+        study_uid="",
         partition_start=timezone.now(),
         partition_end=timezone.now(),
         partition_key="20240101",
