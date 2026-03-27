@@ -44,12 +44,10 @@ class DicomOperator:
         self,
         server: DicomServer,
         dimse_timeout: int | None = 60,
-        auto_close: bool = True,
     ):
         self.server = server
         self.dimse_connector = DimseConnector(
             server,
-            auto_close=auto_close,
             dimse_timeout=dimse_timeout,
         )
         # TODO: also make retries and timeouts possible in DicomWebConnector

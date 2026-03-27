@@ -69,28 +69,20 @@ def connect_to_server(service: DimseService):
             if self.auto_connect and not is_connected:
                 self.open_connection(service)
                 opened_connection = True
-            elif not self.auto_close and is_connected and self._current_service != service:
-                self.close_connection()
-                self.open_connection(service)
-                opened_connection = True
+            elif is_connected and self._current_service != service:
+                raise DicomError(
+                    f"Cannot use {service} while a {self._current_service} "
+                    f"association is open. Close the current association first."
+                )
 
-            completed = False
             try:
                 yield from func(self, *args, **kwargs)
-                completed = True
             except Exception as err:
                 self.abort_connection()
                 raise err
             finally:
-                if opened_connection and self.auto_connect and self.auto_close and self.assoc:
+                if opened_connection and self.auto_connect and self.assoc:
                     self.close_connection()
-                elif not self.auto_close and not completed and self.assoc:
-                    # Generator was abandoned mid-iteration (e.g. early return
-                    # from a for loop).  The PACS may still be sending pending
-                    # responses on this association.  Reusing it would mix stale
-                    # responses into the next query.  Abort so the next request
-                    # opens a clean association.
-                    self.abort_connection()
 
         @wraps(func)
         def func_wrapper(self: "DimseConnector", *args, **kwargs):
@@ -100,15 +92,11 @@ def connect_to_server(service: DimseService):
             if self.auto_connect and not is_connected:
                 self.open_connection(service)
                 opened_connection = True
-            elif not self.auto_close and is_connected and self._current_service != service:
-                # Service type changed (e.g. C-FIND -> C-GET): close the old
-                # association and open a new one with the right contexts.
-                # opened_connection is set to True here even though it's a
-                # *re*-open, but the close guard below won't fire because
-                # auto_close=False skips auto-close.
-                self.close_connection()
-                self.open_connection(service)
-                opened_connection = True
+            elif is_connected and self._current_service != service:
+                raise DicomError(
+                    f"Cannot use {service} while a {self._current_service} "
+                    f"association is open. Close the current association first."
+                )
 
             try:
                 result = func(self, *args, **kwargs)
@@ -116,7 +104,7 @@ def connect_to_server(service: DimseService):
                 self.abort_connection()
                 raise err
 
-            if opened_connection and self.auto_connect and self.auto_close and self.assoc:
+            if opened_connection and self.auto_connect and self.assoc:
                 self.close_connection()
                 opened_connection = False
 
@@ -134,7 +122,6 @@ class DimseConnector:
         self,
         server: DicomServer,
         auto_connect: bool = True,
-        auto_close: bool = True,
         acse_timeout: int | None = 60,
         connection_timeout: int | None = None,
         dimse_timeout: int | None = 60,
@@ -142,7 +129,6 @@ class DimseConnector:
     ) -> None:
         self.server = server
         self.auto_connect = auto_connect
-        self.auto_close = auto_close
         self.acse_timeout = acse_timeout
         self.connection_timeout = connection_timeout
         self.dimse_timeout = dimse_timeout
