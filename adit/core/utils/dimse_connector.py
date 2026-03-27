@@ -78,9 +78,16 @@ def connect_to_server(service: DimseService):
             try:
                 yield from func(self, *args, **kwargs)
             except GeneratorExit:
-                # Generator abandoned mid-stream (e.g. early return from caller).
-                # The DIMSE response is still pending on the wire — we must abort
-                # to avoid corrupting the next operation on this association.
+                # Generator abandoned mid-stream — DIMSE responses are still
+                # pending so we must abort to avoid corrupting the association.
+                # This should not happen in normal operation; callers should
+                # fully consume the generator (e.g. via list()).
+                logger.warning(
+                    "DIMSE generator abandoned mid-stream for %s on %s. "
+                    "Aborting association. Caller should fully consume the generator.",
+                    service,
+                    self.server.ae_title,
+                )
                 self.abort_connection()
                 return
             except Exception as err:

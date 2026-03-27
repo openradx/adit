@@ -776,12 +776,11 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
         )
         series_query.dataset.InstitutionName = ""
 
-        for series in operator.find_series(series_query):
-            institution = series.get("InstitutionName", None)
-            if _dicom_match(institution_name, institution):
-                return True
-
-        return False
+        series_list = list(operator.find_series(series_query))
+        return any(
+            _dicom_match(institution_name, series.get("InstitutionName", None))
+            for series in series_list
+        )
 
     def _export_series(
         self,
