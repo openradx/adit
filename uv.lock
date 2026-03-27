@@ -117,7 +117,7 @@ requires-dist = [
     { name = "dicomweb-client", specifier = ">=0.60.0" },
     { name = "django", specifier = ">=5.1.6" },
     { name = "django-block-fragments", specifier = ">=0.1.1" },
-    { name = "django-codemirror" },
+    { name = "django-codemirror", specifier = ">=1.0.1" },
     { name = "django-cotton", specifier = ">=1.6.0" },
     { name = "django-crispy-forms", specifier = ">=2.3" },
     { name = "django-dbbackup", specifier = ">=4.2.1" },

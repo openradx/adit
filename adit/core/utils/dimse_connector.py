@@ -69,20 +69,28 @@ def connect_to_server(service: DimseService):
             if self.auto_connect and not is_connected:
                 self.open_connection(service)
                 opened_connection = True
+            elif not self.auto_close and is_connected and self._current_service != service:
+                self.close_connection()
+                self.open_connection(service)
+                opened_connection = True
 
+            completed = False
             try:
                 yield from func(self, *args, **kwargs)
+                completed = True
             except Exception as err:
                 self.abort_connection()
                 raise err
             finally:
-                # Use finally instead of bare code after yield-from because
-                # GeneratorExit (raised when a generator is abandoned
-                # mid-iteration) inherits from BaseException, not Exception,
-                # so it bypasses the except clause above. Without finally,
-                # the association would leak.
-                if opened_connection and self.auto_connect and self.assoc:
+                if opened_connection and self.auto_connect and self.auto_close and self.assoc:
                     self.close_connection()
+                elif not self.auto_close and not completed and self.assoc:
+                    # Generator was abandoned mid-iteration (e.g. early return
+                    # from a for loop).  The PACS may still be sending pending
+                    # responses on this association.  Reusing it would mix stale
+                    # responses into the next query.  Abort so the next request
+                    # opens a clean association.
+                    self.abort_connection()
 
         @wraps(func)
         def func_wrapper(self: "DimseConnector", *args, **kwargs):
@@ -92,6 +100,15 @@ def connect_to_server(service: DimseService):
             if self.auto_connect and not is_connected:
                 self.open_connection(service)
                 opened_connection = True
+            elif not self.auto_close and is_connected and self._current_service != service:
+                # Service type changed (e.g. C-FIND -> C-GET): close the old
+                # association and open a new one with the right contexts.
+                # opened_connection is set to True here even though it's a
+                # *re*-open, but the close guard below won't fire because
+                # auto_close=False skips auto-close.
+                self.close_connection()
+                self.open_connection(service)
+                opened_connection = True
 
             try:
                 result = func(self, *args, **kwargs)
@@ -99,7 +116,7 @@ def connect_to_server(service: DimseService):
                 self.abort_connection()
                 raise err
 
-            if opened_connection and self.auto_connect and self.assoc:
+            if opened_connection and self.auto_connect and self.auto_close and self.assoc:
                 self.close_connection()
                 opened_connection = False
 
@@ -117,6 +134,7 @@ class DimseConnector:
         self,
         server: DicomServer,
         auto_connect: bool = True,
+        auto_close: bool = True,
         acse_timeout: int | None = 60,
         connection_timeout: int | None = None,
         dimse_timeout: int | None = 60,
@@ -124,11 +142,13 @@ class DimseConnector:
     ) -> None:
         self.server = server
         self.auto_connect = auto_connect
+        self.auto_close = auto_close
         self.acse_timeout = acse_timeout
         self.connection_timeout = connection_timeout
         self.dimse_timeout = dimse_timeout
         self.network_timeout = network_timeout
         self.logs: list[DicomLogEntry] = []
+        self._current_service: DimseService | None = None
 
         if settings.ENABLE_DICOM_DEBUG_LOGGER:
             debug_logger()  # Debug mode of pynetdicom
@@ -140,6 +160,7 @@ class DimseConnector:
                 # clean up the stale reference so we can reconnect.
                 logger.debug("Cleaning up dead association to %s.", self.server.ae_title)
                 self.assoc = None
+                self._current_service = None
             else:
                 raise AssertionError("A former connection was not closed properly.")
 
@@ -148,6 +169,7 @@ class DimseConnector:
         # Call _associate which is decorated with @retry_dimse_connect
         # Stamina will handle retries automatically (5 attempts with exponential backoff)
         self._associate(service)
+        self._current_service = service
 
     @retry_dimse_connect
     def _associate(self, service: DimseService):
@@ -222,12 +244,14 @@ class DimseConnector:
         assert self.assoc
         self.assoc.release()
         self.assoc = None
+        self._current_service = None
 
     def abort_connection(self):
         if self.assoc:
             logger.debug("Aborting connection to DICOM server %s.", self.server.ae_title)
             self.assoc.abort()
             self.assoc = None
+            self._current_service = None
     
     @retry_dimse_find
     @connect_to_server("C-FIND")
