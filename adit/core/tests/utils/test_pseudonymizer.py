@@ -56,6 +56,7 @@ class TestPseudonymizer:
         with pytest.raises(ValueError, match="valid pseudonym must be provided"):
             pseudonymizer.pseudonymize(ds, None)  # type: ignore
 
+    @pytest.mark.filterwarnings("ignore:Invalid value for VR DT:UserWarning")
     def test_pseudonymize_with_frame_reference_datetime(self, pseudonymizer: Pseudonymizer):
         """Test that FrameReferenceDateTime elements don't cause anonymization to fail.
 
