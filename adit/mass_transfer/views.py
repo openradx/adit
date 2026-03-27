@@ -136,6 +136,8 @@ class MassTransferJobCsvExportView(LoginRequiredMixin, MassTransferLockedMixin, 
         response["Content-Disposition"] = f'attachment; filename="mass_transfer_job_{job.pk}.csv"'
 
         writer = csv.writer(response)
+        if job.pseudonym_salt:
+            response.write(f"# Pseudonym salt: {job.pseudonym_salt}\n")
         writer.writerow(self.COLUMNS)
         for row in volumes.iterator():
             writer.writerow(row)

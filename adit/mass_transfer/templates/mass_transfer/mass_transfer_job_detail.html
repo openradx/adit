@@ -42,7 +42,11 @@
         <dt class="col-sm-3">Granularity</dt>
         <dd class="col-sm-9">{{ job.get_partition_granularity_display }}</dd>
         <dt class="col-sm-3">Pseudonymization</dt>
-        <dd class="col-sm-9">{% if job.pseudonymize %}Enabled{% if job.pseudonym_salt %} (linked, salt: {{ job.pseudonym_salt|truncatechars:16 }}){% else %} (random, no linking){% endif %}{% else %}Disabled{% endif %}</dd>
+        <dd class="col-sm-9">{% if job.pseudonymize %}Enabled{% if job.pseudonym_salt %} (linked){% else %} (random, no linking){% endif %}{% else %}Disabled{% endif %}</dd>
+        {% if job.pseudonym_salt %}
+        <dt class="col-sm-3">Pseudonym Salt</dt>
+        <dd class="col-sm-9">{{ job.pseudonym_salt }}</dd>
+        {% endif %}
         <dt class="col-sm-3">Filters</dt>
         <dd class="col-sm-9">
             {% if job.filters_json %}
