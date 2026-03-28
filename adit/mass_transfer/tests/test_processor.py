@@ -1,5 +1,6 @@
 from datetime import date, datetime, timedelta
 from pathlib import Path
+from unittest.mock import MagicMock
 
 import pytest
 from adit_radis_shared.accounts.factories import UserFactory
@@ -365,6 +366,62 @@ def _make_process_env(
     return processor
 
 
+def _make_process_env_server_dest(
+    mocker: MockerFixture,
+    *,
+    pseudonymize: bool = True,
+    pseudonym_salt: str = "test-salt-for-deterministic-pseudonyms",
+    dest_operator: MagicMock | None = None,
+) -> tuple["MassTransferTaskProcessor", MagicMock]:
+    """Set up a processor with a SERVER destination.
+
+    Returns (processor, dest_operator_mock).
+    """
+    processor = _make_processor(mocker)
+
+    mock_job = processor.mass_task.job
+    mock_job.convert_to_nifti = False
+    mock_job.pseudonymize = pseudonymize
+    mock_job.pseudonym_salt = pseudonym_salt
+    mock_job.filters_json = [{"modality": "CT"}]
+    mock_job.get_filters.return_value = [FilterSpec.from_dict({"modality": "CT"})]
+
+    processor.mass_task.source.node_type = DicomNode.NodeType.SERVER
+    processor.mass_task.source.dicomserver = mocker.MagicMock()
+    processor.mass_task.destination.node_type = DicomNode.NodeType.SERVER
+    processor.mass_task.destination.dicomserver = mocker.MagicMock()
+
+    processor.mass_task.pk = 42
+    processor.mass_task.partition_key = "20240101"
+
+    mocker.patch.object(processor, "is_suspended", return_value=False)
+
+    source_mock = mocker.MagicMock()
+    if dest_operator is None:
+        dest_operator = mocker.MagicMock()
+    # dest DicomOperator is created first (line 288), source second (line 320)
+    mocker.patch(
+        "adit.mass_transfer.processors.DicomOperator",
+        side_effect=[dest_operator, source_mock],
+    )
+
+    # Mock DB queries for deferred insertion
+    mocker.patch.object(
+        MassTransferVolume.objects,
+        "filter",
+        return_value=mocker.MagicMock(
+            values_list=mocker.MagicMock(
+                return_value=mocker.MagicMock(
+                    __iter__=lambda self: iter([]),
+                )
+            ),
+            delete=mocker.MagicMock(),
+        ),
+    )
+
+    return processor, dest_operator
+
+
 def test_process_reraises_retriable_dicom_error(mocker: MockerFixture, tmp_path: Path):
     processor = _make_process_env(mocker, tmp_path)
     series = [_make_discovered(series_uid="s-1")]
@@ -442,14 +499,6 @@ def test_process_raises_when_source_not_server(mocker: MockerFixture, tmp_path: 
         processor.process()
 
 
-def test_process_raises_when_destination_not_folder(mocker: MockerFixture, tmp_path: Path):
-    processor = _make_process_env(mocker, tmp_path)
-    processor.mass_task.destination.node_type = DicomNode.NodeType.SERVER
-
-    with pytest.raises(DicomError, match="destination must be a DICOM folder"):
-        processor.process()
-
-
 def test_process_returns_failure_when_no_filters(mocker: MockerFixture, tmp_path: Path):
     processor = _make_process_env(mocker, tmp_path)
     processor.mass_task.job.filters_json = []
@@ -501,6 +550,120 @@ def test_process_cleans_partition_on_retry(mocker: MockerFixture, tmp_path: Path
     # Both series were exported fresh (no skipping)
     assert len(export_calls) == 2
     assert result["status"] == MassTransferTask.Status.SUCCESS
+
+
+# ---------------------------------------------------------------------------
+# Server destination tests
+# ---------------------------------------------------------------------------
+
+
+def test_process_server_destination_exports_and_uploads(mocker: MockerFixture):
+    processor, mock_dest_operator = _make_process_env_server_dest(mocker)
+    series = [_make_discovered(series_uid="s-1")]
+
+    mocker.patch.object(processor, "_discover_series", return_value=series)
+
+    def fake_export(op, s, path, subject_id, pseudonymizer):
+        path.mkdir(parents=True, exist_ok=True)
+        (path / "dummy.dcm").write_bytes(b"fake")
+        return (1, "pseudo-study-uid", "pseudo-series-uid")
+
+    mocker.patch.object(processor, "_export_series", side_effect=fake_export)
+    mocker.patch.object(MassTransferVolume.objects, "create")
+
+    result = processor.process()
+
+    mock_dest_operator.upload_images.assert_called()
+    assert result["status"] == MassTransferTask.Status.SUCCESS
+
+
+def test_process_server_destination_cleans_volumes_on_retry(mocker: MockerFixture):
+    """Server destination should still delete old DB volume records on retry."""
+    processor, _ = _make_process_env_server_dest(mocker)
+    series = [_make_discovered(series_uid="s-1")]
+
+    mocker.patch.object(processor, "_discover_series", return_value=series)
+
+    mock_filter_qs = mocker.MagicMock()
+    mocker.patch.object(MassTransferVolume.objects, "filter", return_value=mock_filter_qs)
+
+    def fake_export(*args, **kwargs):
+        return (1, "", "")
+
+    mocker.patch.object(processor, "_export_series", side_effect=fake_export)
+    mocker.patch.object(MassTransferVolume.objects, "create")
+
+    processor.process()
+
+    mock_filter_qs.delete.assert_called_once()
+
+
+def test_process_server_destination_closes_dest_operator(mocker: MockerFixture):
+    """dest_operator.close() should be called even if transfer fails."""
+    processor, mock_dest_operator = _make_process_env_server_dest(mocker)
+    series = [_make_discovered(series_uid="s-1")]
+
+    mocker.patch.object(processor, "_discover_series", return_value=series)
+    mocker.patch.object(processor, "_export_series", side_effect=DicomError("PACS down"))
+    mocker.patch.object(MassTransferVolume.objects, "create")
+
+    processor.process()
+
+    mock_dest_operator.close.assert_called()
+
+
+def test_export_series_to_server_skips_upload_on_zero_images(mocker: MockerFixture):
+    """When _export_series returns 0 images, upload_images must NOT be called."""
+    processor = _make_processor(mocker)
+    series = _make_discovered(series_uid="s-1")
+    mock_operator = mocker.MagicMock()
+    mock_dest_operator = mocker.MagicMock()
+
+    mocker.patch.object(processor, "_export_series", return_value=(0, "", ""))
+
+    result = processor._export_series_to_server(
+        mock_operator, series, None, "subject-1", mock_dest_operator
+    )
+
+    mock_dest_operator.upload_images.assert_not_called()
+    assert result.status == MassTransferVolume.Status.ERROR
+
+
+def test_server_destination_upload_dicom_error_marks_failure(mocker: MockerFixture):
+    """When upload_images raises DicomError, the series should be marked as failed."""
+    processor, mock_dest_operator = _make_process_env_server_dest(mocker)
+    series = [_make_discovered(series_uid="s-1")]
+
+    mocker.patch.object(processor, "_discover_series", return_value=series)
+
+    def fake_export(op, s, path, subject_id, pseudonymizer):
+        return (1, "pseudo-study-uid", "pseudo-series-uid")
+
+    mocker.patch.object(processor, "_export_series", side_effect=fake_export)
+    mock_dest_operator.upload_images.side_effect = DicomError("C-STORE rejected")
+    mocker.patch.object(MassTransferVolume.objects, "create")
+
+    result = processor.process()
+
+    assert result["status"] == MassTransferTask.Status.FAILURE
+
+
+def test_server_destination_upload_retriable_error_propagates(mocker: MockerFixture):
+    """When upload_images raises RetriableDicomError, it must propagate up."""
+    processor, mock_dest_operator = _make_process_env_server_dest(mocker)
+    series = [_make_discovered(series_uid="s-1")]
+
+    mocker.patch.object(processor, "_discover_series", return_value=series)
+
+    def fake_export(op, s, path, subject_id, pseudonymizer):
+        return (1, "pseudo-study-uid", "pseudo-series-uid")
+
+    mocker.patch.object(processor, "_export_series", side_effect=fake_export)
+    mock_dest_operator.upload_images.side_effect = RetriableDicomError("Connection reset")
+    mocker.patch.object(MassTransferVolume.objects, "create")
+
+    with pytest.raises(RetriableDicomError, match="Connection reset"):
+        processor.process()
 
 
 def test_process_none_mode_uses_patient_id_as_subject(mocker: MockerFixture, tmp_path: Path):
@@ -1224,7 +1387,8 @@ def test_extract_dicom_metadata_computes_age(tmp_path: Path):
 
 
 def test_extract_dicom_metadata_pseudonymized_has_no_real_data(tmp_path: Path):
-    """When pseudonymization is applied, metadata should contain pseudonymized values, not originals.
+    """When pseudonymization is applied, metadata should contain pseudonymized values,
+    not originals.
 
     This test simulates the post-pseudonymization state: the DICOM files on disk have already
     been anonymized by dicognito + Pseudonymizer before _extract_dicom_metadata runs.

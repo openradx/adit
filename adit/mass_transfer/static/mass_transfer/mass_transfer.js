@@ -8,9 +8,16 @@ const MASS_TRANSFER_SEND_FINISHED_MAIL = "mass_transfer_send_finished_mail";
 
 function massTransferJobForm() {
   return {
-    pseudonymize: document.getElementById("id_pseudonymize")?.checked ?? true,
+    pseudonymize:
+      /** @type {HTMLInputElement | null} */ (
+        document.getElementById("id_pseudonymize")
+      )?.checked ?? true,
+    isDestinationFolder: true,
     get showSalt() {
       return this.pseudonymize;
+    },
+    initDestination: function (destEl) {
+      this._updateIsDestinationFolder(destEl);
     },
     onSourceChange: function (ev) {
       updatePreferences("mass-transfer", {
@@ -18,6 +25,7 @@ function massTransferJobForm() {
       });
     },
     onDestinationChange: function (ev) {
+      this._updateIsDestinationFolder(ev.target);
       updatePreferences("mass-transfer", {
         [MASS_TRANSFER_DESTINATION]: ev.target.value,
       });
@@ -31,6 +39,15 @@ function massTransferJobForm() {
       updatePreferences("mass-transfer", {
         [MASS_TRANSFER_SEND_FINISHED_MAIL]: ev.target.checked,
       });
+    },
+    _updateIsDestinationFolder: function (destEl) {
+      const idx = destEl.selectedIndex;
+      if (idx < 0) {
+        this.isDestinationFolder = true;
+        return;
+      }
+      const option = destEl.options[idx];
+      this.isDestinationFolder = option?.dataset.node_type === "folder";
     },
   };
 }

@@ -280,55 +280,67 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
 
         if source_node.node_type != DicomNode.NodeType.SERVER:
             raise DicomError("Mass transfer source must be a DICOM server.")
-        if destination_node.node_type != DicomNode.NodeType.FOLDER:
-            raise DicomError("Mass transfer destination must be a DICOM folder.")
+        if destination_node.node_type not in (DicomNode.NodeType.FOLDER, DicomNode.NodeType.SERVER):
+            raise DicomError("Mass transfer destination must be a DICOM folder or server.")
 
-        filters = job.get_filters()
+        dest_operator: DicomOperator | None = None
+        if destination_node.node_type == DicomNode.NodeType.SERVER:
+            dest_operator = DicomOperator(destination_node.dicomserver)
 
-        if not filters:
-            return {
-                "status": MassTransferTask.Status.FAILURE,
-                "message": "No filters configured for this job.",
-                "log": "Mass transfer requires at least one filter.",
-            }
+        try:
+            filters = job.get_filters()
 
-        pseudonymizer: Pseudonymizer | None = None
-        if job.pseudonymize and job.pseudonym_salt:
-            pseudonymizer = Pseudonymizer(seed=job.pseudonym_salt)
-        elif job.pseudonymize:
-            pseudonymizer = Pseudonymizer()
+            if not filters:
+                return {
+                    "status": MassTransferTask.Status.FAILURE,
+                    "message": "No filters configured for this job.",
+                    "log": "Mass transfer requires at least one filter.",
+                }
 
-        output_base = _destination_base_dir(destination_node, job)
+            pseudonymizer: Pseudonymizer | None = None
+            if job.pseudonymize and job.pseudonym_salt:
+                pseudonymizer = Pseudonymizer(seed=job.pseudonym_salt)
+            elif job.pseudonymize:
+                pseudonymizer = Pseudonymizer()
 
-        # Clean up partition on retry: delete the partition folder on disk
-        # and all existing volumes for this partition in the DB.
-        partition_path = output_base / self.mass_task.partition_key
-        if partition_path.exists():
-            shutil.rmtree(partition_path)
-        MassTransferVolume.objects.filter(
-            job=job,
-            partition_key=self.mass_task.partition_key,
-        ).delete()
+            output_base: Path | None = None
+            if destination_node.node_type == DicomNode.NodeType.FOLDER:
+                output_base = _destination_base_dir(destination_node, job)
 
-        operator = DicomOperator(source_node.dicomserver)
-        operator.dimse_connector.auto_close = False
+                # Clean up partition on retry: delete the partition folder on disk
+                partition_path = output_base / self.mass_task.partition_key
+                if partition_path.exists():
+                    shutil.rmtree(partition_path)
 
-        # Discovery: With DIMSE one C-FIND association for all queries
-        discovered = self._discover_series(operator, filters)
-        operator.close()
+            # Always clean up existing DB volume records on retry
+            MassTransferVolume.objects.filter(
+                job=job,
+                partition_key=self.mass_task.partition_key,
+            ).delete()
 
-        grouped, subject_ids = self._group_series(discovered, job, pseudonymizer)
+            operator = DicomOperator(source_node.dicomserver)
+            operator.dimse_connector.auto_close = False
 
-        # Transfer: With DIMSE one C-GET association per study
-        return self._transfer_grouped_series(
-            operator,
-            grouped,
-            subject_ids,
-            job,
-            pseudonymizer,
-            output_base,
-            discovered,
-        )
+            # Discovery: With DIMSE one C-FIND association for all queries
+            discovered = self._discover_series(operator, filters)
+            operator.close()
+
+            grouped, subject_ids = self._group_series(discovered, job, pseudonymizer)
+
+            # Transfer: With DIMSE one C-GET association per study
+            return self._transfer_grouped_series(
+                operator,
+                grouped,
+                subject_ids,
+                job,
+                pseudonymizer,
+                output_base,
+                discovered,
+                dest_operator,
+            )
+        finally:
+            if dest_operator:
+                dest_operator.close()
 
     def _group_series(
         self,
@@ -376,8 +388,9 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
         subject_ids: dict[str, str],
         job: MassTransferJob,
         pseudonymizer: Pseudonymizer | None,
-        output_base: Path,
+        output_base: Path | None,
         discovered: list[DiscoveredSeries],
+        dest_operator: DicomOperator | None = None,
     ) -> dict:
         """Transfer all grouped series via C-GET.
 
@@ -414,6 +427,7 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
                             pseudonymizer,
                             subject_id,
                             output_base,
+                            dest_operator,
                         )
                         self._create_volume_record(
                             job,
@@ -449,27 +463,45 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
         job: MassTransferJob,
         pseudonymizer: Pseudonymizer | None,
         subject_id: str,
-        output_base: Path,
+        output_base: Path | None,
+        dest_operator: DicomOperator | None = None,
     ) -> SeriesTransferResult:
         """Export (and optionally convert) a single series.
 
         Returns a result object; never raises except for RetriableDicomError.
         """
-        study_folder = _study_folder_name(
-            series.study_description,
-            series.study_datetime,
-            series.study_instance_uid,
-        )
-        series_folder = _series_folder_name(
-            series.series_description,
-            series.series_number,
-            series.series_instance_uid,
-        )
-        output_path = (
-            output_base / self.mass_task.partition_key / subject_id / study_folder / series_folder
-        )
-
         try:
+            if dest_operator:
+                return self._export_series_to_server(
+                    operator,
+                    series,
+                    pseudonymizer,
+                    subject_id,
+                    dest_operator,
+                )
+
+            if output_base is None:
+                raise DicomError(
+                    "output_base is None for folder destination; this should not happen."
+                )
+            study_folder = _study_folder_name(
+                series.study_description,
+                series.study_datetime,
+                series.study_instance_uid,
+            )
+            series_folder = _series_folder_name(
+                series.series_description,
+                series.series_number,
+                series.series_instance_uid,
+            )
+            output_path = (
+                output_base
+                / self.mass_task.partition_key
+                / subject_id
+                / study_folder
+                / series_folder
+            )
+
             if job.convert_to_nifti:
                 return self._export_and_convert_series(
                     operator,
@@ -570,6 +602,45 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
             return self._zero_image_result(
                 series, study_uid_pseudonymized, series_uid_pseudonymized
             )
+
+        return SeriesTransferResult(
+            image_count=image_count,
+            study_uid_pseudonymized=study_uid_pseudonymized,
+            series_uid_pseudonymized=series_uid_pseudonymized,
+            status=MassTransferVolume.Status.EXPORTED,
+            log="",
+        )
+
+    def _export_series_to_server(
+        self,
+        operator: DicomOperator,
+        series: DiscoveredSeries,
+        pseudonymizer: Pseudonymizer | None,
+        subject_id: str,
+        dest_operator: DicomOperator,
+    ) -> SeriesTransferResult:
+        """Export a series to a temp dir and upload to a destination server."""
+        with tempfile.TemporaryDirectory(prefix="adit_") as tmpdir:
+            tmp_path = Path(tmpdir)
+            image_count, study_uid_pseudonymized, series_uid_pseudonymized = self._export_series(
+                operator,
+                series,
+                tmp_path,
+                subject_id,
+                pseudonymizer,
+            )
+
+            if image_count == 0:
+                return self._zero_image_result(
+                    series, study_uid_pseudonymized, series_uid_pseudonymized
+                )
+
+            logger.debug(
+                "Uploading %d images for series %s to destination server",
+                image_count,
+                series.series_instance_uid,
+            )
+            dest_operator.upload_images(tmp_path)
 
         return SeriesTransferResult(
             image_count=image_count,
