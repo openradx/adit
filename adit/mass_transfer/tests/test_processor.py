@@ -1,5 +1,6 @@
 from datetime import date, datetime, timedelta
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
@@ -42,6 +43,11 @@ def _make_study(study_uid: str, study_date: str = "20240101") -> ResultDataset:
     ds.PatientID = "PAT1"
     ds.ModalitiesInStudy = ["CT"]
     return ResultDataset(ds)
+
+
+def _fake_export_success(*args, **kwargs):
+    """Stub for _export_series that simulates a successful single-image export."""
+    return (1, "", "")
 
 
 def _make_discovered(
@@ -95,6 +101,38 @@ def _make_filter(**kwargs) -> FilterSpec:
         series_number=kwargs.get("series_number", None),
         min_age=kwargs.get("min_age", None),
         max_age=kwargs.get("max_age", None),
+    )
+
+
+@pytest.fixture
+def mass_transfer_env(tmp_path):
+    """Common setup for DB integration tests: settings, user, source, folder dest, job, task."""
+    MassTransferSettings.objects.create()
+    user = UserFactory.create()
+    source = DicomServerFactory.create()
+    destination = DicomFolderFactory.create(path=str(tmp_path / "output"))
+    job = MassTransferJob.objects.create(
+        owner=user,
+        start_date=date(2024, 1, 1),
+        end_date=date(2024, 1, 1),
+        partition_granularity=MassTransferJob.PartitionGranularity.DAILY,
+        pseudonymize=False,
+        pseudonym_salt="",
+    )
+    job.filters_json = [{"modality": "CT"}]
+    job.save(update_fields=["filters_json"])
+    task = MassTransferTask.objects.create(
+        job=job,
+        source=source,
+        destination=destination,
+        patient_id="",
+        study_uid="",
+        partition_start=timezone.now(),
+        partition_end=timezone.now(),
+        partition_key="20240101",
+    )
+    return SimpleNamespace(
+        job=job, task=task, source=source, destination=destination, user=user
     )
 
 
@@ -349,19 +387,18 @@ def _make_process_env(
     mocker.patch.object(processor, "is_suspended", return_value=False)
     mocker.patch("adit.mass_transfer.processors.DicomOperator")
 
-    # Mock DB queries for deferred insertion
+    # Mock DB operations used by the processor
     mocker.patch.object(
         MassTransferVolume.objects,
         "filter",
-        return_value=mocker.MagicMock(
-            values_list=mocker.MagicMock(
-                return_value=mocker.MagicMock(
-                    __iter__=lambda self: iter([]),
-                )
-            ),
-            delete=mocker.MagicMock(),
-        ),
+        return_value=mocker.MagicMock(delete=mocker.MagicMock()),
     )
+    mocker.patch.object(
+        MassTransferVolume.objects,
+        "bulk_create",
+        side_effect=lambda objs: objs,
+    )
+    mocker.patch.object(MassTransferVolume, "save")
 
     return processor
 
@@ -405,19 +442,18 @@ def _make_process_env_server_dest(
         side_effect=[dest_operator, source_mock],
     )
 
-    # Mock DB queries for deferred insertion
+    # Mock DB operations used by the processor
     mocker.patch.object(
         MassTransferVolume.objects,
         "filter",
-        return_value=mocker.MagicMock(
-            values_list=mocker.MagicMock(
-                return_value=mocker.MagicMock(
-                    __iter__=lambda self: iter([]),
-                )
-            ),
-            delete=mocker.MagicMock(),
-        ),
+        return_value=mocker.MagicMock(delete=mocker.MagicMock()),
     )
+    mocker.patch.object(
+        MassTransferVolume.objects,
+        "bulk_create",
+        side_effect=lambda objs: objs,
+    )
+    mocker.patch.object(MassTransferVolume, "save")
 
     return processor, dest_operator
 
@@ -455,7 +491,6 @@ def test_process_returns_warning_on_partial_failure(mocker: MockerFixture, tmp_p
         return (1, "", "")
 
     mocker.patch.object(processor, "_export_series", side_effect=fake_export)
-    mocker.patch.object(MassTransferVolume.objects, "create")
 
     result = processor.process()
 
@@ -473,7 +508,6 @@ def test_process_returns_failure_when_all_fail(mocker: MockerFixture, tmp_path: 
 
     mocker.patch.object(processor, "_discover_series", return_value=series)
     mocker.patch.object(processor, "_export_series", side_effect=DicomError("PACS down"))
-    mocker.patch.object(MassTransferVolume.objects, "create")
 
     result = processor.process()
 
@@ -541,7 +575,6 @@ def test_process_cleans_partition_on_retry(mocker: MockerFixture, tmp_path: Path
         return (1, "", "")
 
     mocker.patch.object(processor, "_export_series", side_effect=fake_export)
-    mocker.patch.object(MassTransferVolume.objects, "create")
 
     result = processor.process()
 
@@ -569,7 +602,6 @@ def test_process_server_destination_exports_and_uploads(mocker: MockerFixture):
         return (1, "pseudo-study-uid", "pseudo-series-uid")
 
     mocker.patch.object(processor, "_export_series", side_effect=fake_export)
-    mocker.patch.object(MassTransferVolume.objects, "create")
 
     result = processor.process()
 
@@ -587,11 +619,7 @@ def test_process_server_destination_cleans_volumes_on_retry(mocker: MockerFixtur
     mock_filter_qs = mocker.MagicMock()
     mocker.patch.object(MassTransferVolume.objects, "filter", return_value=mock_filter_qs)
 
-    def fake_export(*args, **kwargs):
-        return (1, "", "")
-
-    mocker.patch.object(processor, "_export_series", side_effect=fake_export)
-    mocker.patch.object(MassTransferVolume.objects, "create")
+    mocker.patch.object(processor, "_export_series", side_effect=_fake_export_success)
 
     processor.process()
 
@@ -605,7 +633,6 @@ def test_process_server_destination_closes_dest_operator(mocker: MockerFixture):
 
     mocker.patch.object(processor, "_discover_series", return_value=series)
     mocker.patch.object(processor, "_export_series", side_effect=DicomError("PACS down"))
-    mocker.patch.object(MassTransferVolume.objects, "create")
 
     processor.process()
 
@@ -615,18 +642,47 @@ def test_process_server_destination_closes_dest_operator(mocker: MockerFixture):
 def test_export_series_to_server_skips_upload_on_zero_images(mocker: MockerFixture):
     """When _export_series returns 0 images, upload_images must NOT be called."""
     processor = _make_processor(mocker)
-    series = _make_discovered(series_uid="s-1")
+    volume = MassTransferVolume(
+        series_instance_uid="s-1",
+        study_instance_uid="study-1",
+        patient_id="PAT1",
+        number_of_images=10,
+        study_datetime=timezone.now(),
+    )
     mock_operator = mocker.MagicMock()
     mock_dest_operator = mocker.MagicMock()
 
     mocker.patch.object(processor, "_export_series", return_value=(0, "", ""))
 
-    result = processor._export_series_to_server(
-        mock_operator, series, None, "subject-1", mock_dest_operator
+    processor._export_series_to_server(
+        mock_operator, volume, None, "subject-1", mock_dest_operator
     )
 
     mock_dest_operator.upload_images.assert_not_called()
-    assert result.status == MassTransferVolume.Status.ERROR
+    assert volume.status == MassTransferVolume.Status.ERROR
+
+
+def test_export_series_to_server_skips_non_image_series(mocker: MockerFixture):
+    """Non-image series (0 instances in PACS) gets SKIPPED, not ERROR."""
+    processor = _make_processor(mocker)
+    volume = MassTransferVolume(
+        series_instance_uid="s-1",
+        study_instance_uid="study-1",
+        patient_id="PAT1",
+        number_of_images=0,
+        study_datetime=timezone.now(),
+    )
+    mock_operator = mocker.MagicMock()
+    mock_dest_operator = mocker.MagicMock()
+
+    mocker.patch.object(processor, "_export_series", return_value=(0, "", ""))
+
+    processor._export_series_to_server(
+        mock_operator, volume, None, "subject-1", mock_dest_operator
+    )
+
+    mock_dest_operator.upload_images.assert_not_called()
+    assert volume.status == MassTransferVolume.Status.SKIPPED
 
 
 def test_server_destination_upload_dicom_error_marks_failure(mocker: MockerFixture):
@@ -641,7 +697,6 @@ def test_server_destination_upload_dicom_error_marks_failure(mocker: MockerFixtu
 
     mocker.patch.object(processor, "_export_series", side_effect=fake_export)
     mock_dest_operator.upload_images.side_effect = DicomError("C-STORE rejected")
-    mocker.patch.object(MassTransferVolume.objects, "create")
 
     result = processor.process()
 
@@ -660,7 +715,6 @@ def test_server_destination_upload_retriable_error_propagates(mocker: MockerFixt
 
     mocker.patch.object(processor, "_export_series", side_effect=fake_export)
     mock_dest_operator.upload_images.side_effect = RetriableDicomError("Connection reset")
-    mocker.patch.object(MassTransferVolume.objects, "create")
 
     with pytest.raises(RetriableDicomError, match="Connection reset"):
         processor.process()
@@ -680,7 +734,6 @@ def test_process_none_mode_uses_patient_id_as_subject(mocker: MockerFixture, tmp
         return (1, "", "")
 
     mocker.patch.object(processor, "_export_series", side_effect=fake_export)
-    mocker.patch.object(MassTransferVolume.objects, "create")
 
     result = processor.process()
 
@@ -708,7 +761,6 @@ def test_process_pseudonymize_mode_same_study_same_pseudonym(mocker: MockerFixtu
         return (1, "", "")
 
     mocker.patch.object(processor, "_export_series", side_effect=fake_export)
-    mocker.patch.object(MassTransferVolume.objects, "create")
 
     processor.process()
 
@@ -737,7 +789,6 @@ def test_process_pseudonymize_mode_different_studies_different_pseudonyms(
         return (1, "", "")
 
     mocker.patch.object(processor, "_export_series", side_effect=fake_export)
-    mocker.patch.object(MassTransferVolume.objects, "create")
 
     processor.process()
 
@@ -765,7 +816,6 @@ def test_process_linking_mode_uses_deterministic_pseudonym(mocker: MockerFixture
         return (1, "", "")
 
     mocker.patch.object(processor, "_export_series", side_effect=fake_export)
-    mocker.patch.object(MassTransferVolume.objects, "create")
 
     processor.process()
 
@@ -786,7 +836,7 @@ def test_process_linking_mode_uses_deterministic_pseudonym(mocker: MockerFixture
 
 def test_convert_series_raises_on_dcm2niix_failure(mocker: MockerFixture, tmp_path: Path):
     processor = _make_processor(mocker)
-    series = _make_discovered(series_uid="1.2.3")
+    volume = MassTransferVolume(series_instance_uid="1.2.3", study_datetime=timezone.now())
 
     dicom_dir = tmp_path / "dicom_input"
     dicom_dir.mkdir()
@@ -798,12 +848,12 @@ def test_convert_series_raises_on_dcm2niix_failure(mocker: MockerFixture, tmp_pa
     )
 
     with pytest.raises(DicomError, match="Conversion failed"):
-        processor._convert_series(series, dicom_dir, output_path)
+        processor._convert_series(volume, dicom_dir, output_path)
 
 
 def test_convert_series_raises_when_no_nifti_output(mocker: MockerFixture, tmp_path: Path):
     processor = _make_processor(mocker)
-    series = _make_discovered(series_uid="1.2.3")
+    volume = MassTransferVolume(series_instance_uid="1.2.3", study_datetime=timezone.now())
 
     dicom_dir = tmp_path / "dicom_input"
     dicom_dir.mkdir()
@@ -815,12 +865,12 @@ def test_convert_series_raises_when_no_nifti_output(mocker: MockerFixture, tmp_p
     )
 
     with pytest.raises(DicomError, match="no .nii.gz files"):
-        processor._convert_series(series, dicom_dir, output_path)
+        processor._convert_series(volume, dicom_dir, output_path)
 
 
 def test_convert_series_skips_non_image_dicom(mocker: MockerFixture, tmp_path: Path):
     processor = _make_processor(mocker)
-    series = _make_discovered(series_uid="1.2.3")
+    volume = MassTransferVolume(series_instance_uid="1.2.3", study_datetime=timezone.now())
 
     dicom_dir = tmp_path / "dicom_input"
     dicom_dir.mkdir()
@@ -832,7 +882,7 @@ def test_convert_series_skips_non_image_dicom(mocker: MockerFixture, tmp_path: P
     )
 
     # Should not raise — non-image DICOMs are silently skipped
-    processor._convert_series(series, dicom_dir, output_path)
+    processor._convert_series(volume, dicom_dir, output_path)
 
 
 # ---------------------------------------------------------------------------
@@ -929,86 +979,34 @@ def test_dicom_match_wildcard():
 
 
 @pytest.mark.django_db
-def test_process_creates_volume_records_on_success(mocker: MockerFixture, tmp_path: Path):
-    """Deferred insertion: volumes are created in DB after successful export."""
-    MassTransferSettings.objects.create()
-
-    user = UserFactory.create()
-    source = DicomServerFactory.create()
-    destination = DicomFolderFactory.create(path=str(tmp_path / "output"))
-    job = MassTransferJob.objects.create(
-        owner=user,
-        start_date=date(2024, 1, 1),
-        end_date=date(2024, 1, 1),
-        partition_granularity=MassTransferJob.PartitionGranularity.DAILY,
-        pseudonymize=False,
-        pseudonym_salt="",
-    )
-    job.filters_json = [{"modality": "CT"}]
-    job.save(update_fields=["filters_json"])
-
-    task = MassTransferTask.objects.create(
-        job=job,
-        source=source,
-        destination=destination,
-        patient_id="",
-        study_uid="",
-        partition_start=timezone.now(),
-        partition_end=timezone.now(),
-        partition_key="20240101",
-    )
-
+def test_process_creates_volume_records_on_success(mocker: MockerFixture, mass_transfer_env):
+    """Volumes are created in PENDING then updated to EXPORTED after successful export."""
+    env = mass_transfer_env
     series = [_make_discovered(patient_id="PAT1", series_uid="1.2.3.4.5")]
 
-    processor = MassTransferTaskProcessor(task)
+    processor = MassTransferTaskProcessor(env.task)
     mocker.patch.object(processor, "_discover_series", return_value=series)
     mocker.patch("adit.mass_transfer.processors.DicomOperator")
-    mocker.patch.object(processor, "_export_series", return_value=(1, "", ""))
+    mocker.patch.object(processor, "_export_series", side_effect=_fake_export_success)
 
-    assert MassTransferVolume.objects.filter(job=job).count() == 0
+    assert MassTransferVolume.objects.filter(job=env.job).count() == 0
 
     result = processor.process()
 
     assert result["status"] == MassTransferTask.Status.SUCCESS
-    vol = MassTransferVolume.objects.get(job=job, series_instance_uid="1.2.3.4.5")
+    vol = MassTransferVolume.objects.get(job=env.job, series_instance_uid="1.2.3.4.5")
     assert vol.status == MassTransferVolume.Status.EXPORTED
     assert vol.patient_id == "PAT1"
-    assert vol.task == task
+    assert vol.task == env.task
 
 
 @pytest.mark.django_db
-def test_process_creates_error_volume_on_failure(mocker: MockerFixture, tmp_path: Path):
+def test_process_creates_error_volume_on_failure(mocker: MockerFixture, mass_transfer_env):
     """Failed exports still create a volume record with ERROR status."""
-    MassTransferSettings.objects.create()
-
-    user = UserFactory.create()
-    source = DicomServerFactory.create()
-    destination = DicomFolderFactory.create(path=str(tmp_path / "output"))
-    job = MassTransferJob.objects.create(
-        owner=user,
-        start_date=date(2024, 1, 1),
-        end_date=date(2024, 1, 1),
-        partition_granularity=MassTransferJob.PartitionGranularity.DAILY,
-        pseudonymize=False,
-        pseudonym_salt="",
-    )
-    job.filters_json = [{"modality": "CT"}]
-    job.save(update_fields=["filters_json"])
-
-    task = MassTransferTask.objects.create(
-        job=job,
-        source=source,
-        destination=destination,
-        patient_id="",
-        study_uid="",
-        partition_start=timezone.now(),
-        partition_end=timezone.now(),
-        partition_key="20240101",
-    )
-
+    env = mass_transfer_env
     series = [_make_discovered(patient_id="PAT1", series_uid="1.2.3.4.5")]
 
-    processor = MassTransferTaskProcessor(task)
+    processor = MassTransferTaskProcessor(env.task)
     mocker.patch.object(processor, "_discover_series", return_value=series)
     mocker.patch("adit.mass_transfer.processors.DicomOperator")
     mocker.patch.object(processor, "_export_series", side_effect=DicomError("Export failed"))
@@ -1016,40 +1014,16 @@ def test_process_creates_error_volume_on_failure(mocker: MockerFixture, tmp_path
     result = processor.process()
 
     assert result["status"] == MassTransferTask.Status.FAILURE
-    vol = MassTransferVolume.objects.get(job=job, series_instance_uid="1.2.3.4.5")
+    vol = MassTransferVolume.objects.get(job=env.job, series_instance_uid="1.2.3.4.5")
     assert vol.status == MassTransferVolume.Status.ERROR
     assert "Export failed" in vol.log
 
 
 @pytest.mark.django_db
-def test_process_deletes_all_volumes_on_retry(mocker: MockerFixture, tmp_path: Path):
+def test_process_deletes_all_volumes_on_retry(mocker: MockerFixture, mass_transfer_env):
     """On retry, ALL volumes from prior runs are deleted before rediscovery."""
-    MassTransferSettings.objects.create()
-
-    user = UserFactory.create()
-    source = DicomServerFactory.create()
-    destination = DicomFolderFactory.create(path=str(tmp_path / "output"))
-    job = MassTransferJob.objects.create(
-        owner=user,
-        start_date=date(2024, 1, 1),
-        end_date=date(2024, 1, 1),
-        partition_granularity=MassTransferJob.PartitionGranularity.DAILY,
-        pseudonymize=False,
-        pseudonym_salt="",
-    )
-    job.filters_json = [{"modality": "CT"}]
-    job.save(update_fields=["filters_json"])
-
-    task = MassTransferTask.objects.create(
-        job=job,
-        source=source,
-        destination=destination,
-        patient_id="",
-        study_uid="",
-        partition_start=timezone.now(),
-        partition_end=timezone.now(),
-        partition_key="20240101",
-    )
+    env = mass_transfer_env
+    job, task = env.job, env.task
 
     # Simulate a prior failed run that left an ERROR volume
     MassTransferVolume.objects.create(
@@ -1073,7 +1047,7 @@ def test_process_deletes_all_volumes_on_retry(mocker: MockerFixture, tmp_path: P
     processor = MassTransferTaskProcessor(task)
     mocker.patch.object(processor, "_discover_series", return_value=series)
     mocker.patch("adit.mass_transfer.processors.DicomOperator")
-    mocker.patch.object(processor, "_export_series", return_value=(1, "", ""))
+    mocker.patch.object(processor, "_export_series", side_effect=_fake_export_success)
 
     result = processor.process()
 
@@ -1137,7 +1111,7 @@ def test_process_deterministic_pseudonyms_across_partitions(mocker: MockerFixtur
     ]
     processor1 = MassTransferTaskProcessor(task1)
     mocker.patch.object(processor1, "_discover_series", return_value=series1)
-    mocker.patch.object(processor1, "_export_series", return_value=(1, "", ""))
+    mocker.patch.object(processor1, "_export_series", side_effect=_fake_export_success)
     processor1.process()
 
     # Partition 2: same PAT1
@@ -1150,7 +1124,7 @@ def test_process_deterministic_pseudonyms_across_partitions(mocker: MockerFixtur
     ]
     processor2 = MassTransferTaskProcessor(task2)
     mocker.patch.object(processor2, "_discover_series", return_value=series2)
-    mocker.patch.object(processor2, "_export_series", return_value=(1, "", ""))
+    mocker.patch.object(processor2, "_export_series", side_effect=_fake_export_success)
     processor2.process()
 
     vol1 = MassTransferVolume.objects.get(series_instance_uid="1.2.3.100.1")
@@ -1215,7 +1189,7 @@ def test_process_pseudonymize_mode_not_linked_across_partitions(
     ]
     processor1 = MassTransferTaskProcessor(task1)
     mocker.patch.object(processor1, "_discover_series", return_value=series1)
-    mocker.patch.object(processor1, "_export_series", return_value=(1, "", ""))
+    mocker.patch.object(processor1, "_export_series", side_effect=_fake_export_success)
     processor1.process()
 
     series2 = [
@@ -1227,7 +1201,7 @@ def test_process_pseudonymize_mode_not_linked_across_partitions(
     ]
     processor2 = MassTransferTaskProcessor(task2)
     mocker.patch.object(processor2, "_discover_series", return_value=series2)
-    mocker.patch.object(processor2, "_export_series", return_value=(1, "", ""))
+    mocker.patch.object(processor2, "_export_series", side_effect=_fake_export_success)
     processor2.process()
 
     vol1 = MassTransferVolume.objects.get(series_instance_uid="1.2.3.100.1")
@@ -1428,91 +1402,24 @@ def test_extract_dicom_metadata_pseudonymized_has_no_real_data(tmp_path: Path):
 
 
 # ---------------------------------------------------------------------------
-# _group_series tests
-# ---------------------------------------------------------------------------
-
-
-def test_group_series_deterministic_pseudonym(mocker: MockerFixture):
-    """Seeded pseudonymizer with salt: subject_ids maps patient_id to deterministic pseudonym."""
-    from adit.core.utils.pseudonymizer import Pseudonymizer
-
-    processor = _make_processor(mocker)
-    mock_job = mocker.MagicMock()
-    mock_job.pseudonym_salt = "test-seed-123"
-
-    ps = Pseudonymizer(seed="test-seed-123")
-    expected = ps.compute_pseudonym("PAT1")
-
-    series = [
-        _make_discovered(patient_id="PAT1", study_uid="study-A", series_uid="s-1"),
-        _make_discovered(patient_id="PAT2", study_uid="study-B", series_uid="s-2"),
-    ]
-
-    grouped, subject_ids = processor._group_series(series, mock_job, ps)
-
-    assert subject_ids["PAT1"] == expected
-    assert subject_ids["PAT2"] == ps.compute_pseudonym("PAT2")
-    assert "PAT1" in grouped
-    assert "PAT2" in grouped
-
-
-def test_group_series_no_anonymization(mocker: MockerFixture):
-    """Without pseudonymizer, subject_ids maps patient_id to sanitized patient_id."""
-    processor = _make_processor(mocker)
-    mock_job = mocker.MagicMock()
-    mock_job.pseudonym_salt = ""
-
-    series = [
-        _make_discovered(patient_id="PAT1", study_uid="study-A", series_uid="s-1"),
-        _make_discovered(patient_id="PAT2", study_uid="study-B", series_uid="s-2"),
-    ]
-
-    grouped, subject_ids = processor._group_series(series, mock_job, None)
-
-    assert subject_ids["PAT1"] == "PAT1"
-    assert subject_ids["PAT2"] == "PAT2"
-
-
-def test_group_series_random_leaves_subject_ids_empty(mocker: MockerFixture):
-    """With pseudonymizer but no salt, subject_ids is empty (random assigned during transfer)."""
-    from adit.core.utils.pseudonymizer import Pseudonymizer
-
-    processor = _make_processor(mocker)
-    mock_job = mocker.MagicMock()
-    mock_job.pseudonym_salt = ""
-
-    ps = Pseudonymizer()
-
-    series = [
-        _make_discovered(patient_id="PAT1", study_uid="study-A", series_uid="s-1"),
-    ]
-
-    grouped, subject_ids = processor._group_series(series, mock_job, ps)
-
-    assert subject_ids == {}
-    assert "PAT1" in grouped
-
-
-# ---------------------------------------------------------------------------
-# Partition cleanup DB integration test
+# _create_pending_volumes / _group_volumes tests
 # ---------------------------------------------------------------------------
 
 
 @pytest.mark.django_db
-def test_partition_cleanup_deletes_folder_and_volumes(mocker: MockerFixture, tmp_path: Path):
-    """process() deletes the partition folder on disk and all volumes for that partition."""
-    MassTransferSettings.objects.create()
+def test_create_pending_volumes_deterministic_pseudonym():
+    """Seeded pseudonymizer with salt: volumes get deterministic pseudonyms."""
+    from adit.core.utils.pseudonymizer import Pseudonymizer
 
     user = UserFactory.create()
     source = DicomServerFactory.create()
-    destination = DicomFolderFactory.create(path=str(tmp_path / "output"))
+    destination = DicomFolderFactory.create()
     job = MassTransferJob.objects.create(
         owner=user,
         start_date=date(2024, 1, 1),
         end_date=date(2024, 1, 1),
         partition_granularity=MassTransferJob.PartitionGranularity.DAILY,
-        pseudonymize=False,
-        pseudonym_salt="",
+        pseudonym_salt="test-seed-123",
     )
     job.filters_json = [{"modality": "CT"}]
     job.save(update_fields=["filters_json"])
@@ -1527,6 +1434,153 @@ def test_partition_cleanup_deletes_folder_and_volumes(mocker: MockerFixture, tmp
         partition_end=timezone.now(),
         partition_key="20240101",
     )
+
+    ps = Pseudonymizer(seed="test-seed-123")
+    expected_pat1 = ps.compute_pseudonym("PAT1")
+    expected_pat2 = ps.compute_pseudonym("PAT2")
+
+    series = [
+        _make_discovered(patient_id="PAT1", study_uid="study-A", series_uid="s-1"),
+        _make_discovered(patient_id="PAT2", study_uid="study-B", series_uid="s-2"),
+    ]
+
+    processor = MassTransferTaskProcessor(task)
+    volumes = processor._create_pending_volumes(series, job, ps)
+
+    assert len(volumes) == 2
+    assert volumes[0].pseudonym == expected_pat1
+    assert volumes[1].pseudonym == expected_pat2
+    assert all(v.status == MassTransferVolume.Status.PENDING for v in volumes)
+    assert all(v.pk is not None for v in volumes)
+
+    grouped = MassTransferTaskProcessor._group_volumes(volumes)
+    assert "PAT1" in grouped
+    assert "PAT2" in grouped
+
+
+def test_create_pending_volumes_no_anonymization(mocker: MockerFixture):
+    """Without pseudonymizer, volumes have empty pseudonym."""
+    processor = _make_processor(mocker)
+    mocker.patch.object(
+        MassTransferVolume.objects,
+        "bulk_create",
+        side_effect=lambda objs: objs,
+    )
+
+    series = [
+        _make_discovered(patient_id="PAT1", study_uid="study-A", series_uid="s-1"),
+        _make_discovered(patient_id="PAT2", study_uid="study-B", series_uid="s-2"),
+    ]
+
+    mock_job = mocker.MagicMock()
+    mock_job.pseudonym_salt = ""
+
+    volumes = processor._create_pending_volumes(series, mock_job, None)
+
+    assert volumes[0].pseudonym == ""
+    assert volumes[1].pseudonym == ""
+
+
+def test_create_pending_volumes_random_assigns_per_study(mocker: MockerFixture):
+    """With pseudonymizer but no salt, volumes get per-study random pseudonyms."""
+    from adit.core.utils.pseudonymizer import Pseudonymizer
+
+    processor = _make_processor(mocker)
+    mocker.patch.object(
+        MassTransferVolume.objects,
+        "bulk_create",
+        side_effect=lambda objs: objs,
+    )
+
+    ps = Pseudonymizer()
+
+    mock_job = mocker.MagicMock()
+    mock_job.pseudonym_salt = ""
+
+    series = [
+        _make_discovered(patient_id="PAT1", study_uid="study-A", series_uid="s-1"),
+        _make_discovered(patient_id="PAT1", study_uid="study-A", series_uid="s-2"),
+        _make_discovered(patient_id="PAT1", study_uid="study-B", series_uid="s-3"),
+    ]
+
+    volumes = processor._create_pending_volumes(series, mock_job, ps)
+
+    # Same study → same pseudonym
+    assert volumes[0].pseudonym == volumes[1].pseudonym
+    assert volumes[0].pseudonym != ""
+    # Different study → different pseudonym
+    assert volumes[0].pseudonym != volumes[2].pseudonym
+    assert volumes[2].pseudonym != ""
+
+
+# ---------------------------------------------------------------------------
+# _group_volumes tests
+# ---------------------------------------------------------------------------
+
+
+def test_group_volumes_multi_patient_multi_study():
+    """Volumes are grouped by patient_id -> study_instance_uid."""
+    now = timezone.now()
+    v1 = MassTransferVolume(
+        patient_id="PAT1", study_instance_uid="study-A", series_instance_uid="s-1",
+        study_datetime=now,
+    )
+    v2 = MassTransferVolume(
+        patient_id="PAT1", study_instance_uid="study-A", series_instance_uid="s-2",
+        study_datetime=now,
+    )
+    v3 = MassTransferVolume(
+        patient_id="PAT1", study_instance_uid="study-B", series_instance_uid="s-3",
+        study_datetime=now,
+    )
+    v4 = MassTransferVolume(
+        patient_id="PAT2", study_instance_uid="study-C", series_instance_uid="s-4",
+        study_datetime=now,
+    )
+
+    grouped = MassTransferTaskProcessor._group_volumes([v1, v2, v3, v4])
+
+    assert set(grouped.keys()) == {"PAT1", "PAT2"}
+    assert set(grouped["PAT1"].keys()) == {"study-A", "study-B"}
+    assert grouped["PAT1"]["study-A"] == [v1, v2]
+    assert grouped["PAT1"]["study-B"] == [v3]
+    assert grouped["PAT2"]["study-C"] == [v4]
+
+
+# ---------------------------------------------------------------------------
+# RetriableDicomError volume status tests
+# ---------------------------------------------------------------------------
+
+
+def test_retriable_error_saves_volume_as_error(mocker: MockerFixture, tmp_path: Path):
+    """RetriableDicomError should save the current volume as ERROR before propagating."""
+    processor = _make_process_env(mocker, tmp_path)
+    series = [_make_discovered(series_uid="s-1")]
+
+    mocker.patch.object(processor, "_discover_series", return_value=series)
+    mocker.patch.object(
+        processor,
+        "_export_series",
+        side_effect=RetriableDicomError("PACS connection lost"),
+    )
+
+    with pytest.raises(RetriableDicomError):
+        processor.process()
+
+    # volume.save() should have been called (via the finally block)
+    MassTransferVolume.save.assert_called()
+
+
+# ---------------------------------------------------------------------------
+# Partition cleanup DB integration test
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+def test_partition_cleanup_deletes_folder_and_volumes(mocker: MockerFixture, mass_transfer_env):
+    """process() deletes the partition folder on disk and all volumes for that partition."""
+    env = mass_transfer_env
+    job, task, destination = env.job, env.task, env.destination
 
     # Create pre-existing volumes
     for uid in ["1.2.3.1", "1.2.3.2"]:
@@ -1558,7 +1612,7 @@ def test_partition_cleanup_deletes_folder_and_volumes(mocker: MockerFixture, tmp
     processor = MassTransferTaskProcessor(task)
     mocker.patch.object(processor, "_discover_series", return_value=series)
     mocker.patch("adit.mass_transfer.processors.DicomOperator")
-    mocker.patch.object(processor, "_export_series", return_value=(1, "", ""))
+    mocker.patch.object(processor, "_export_series", side_effect=_fake_export_success)
 
     result = processor.process()
 

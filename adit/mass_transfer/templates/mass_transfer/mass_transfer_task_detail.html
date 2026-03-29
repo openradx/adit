@@ -3,11 +3,19 @@
 {% load task_control_panel from mass_transfer_extras %}
 {% load render_table from django_tables2 %}
 {% load crispy from crispy_forms_tags %}
+{% load bootstrap_icon from common_extras %}
 {% block title %}
     Mass Transfer Task
 {% endblock title %}
 {% block heading %}
-    <c-page-heading title="Mass Transfer Task" />
+    <c-page-heading title="Mass Transfer Task">
+    <c-slot name="right">
+    <a href="{% url 'mass_transfer_job_detail' task.job.pk %}" class="btn btn-secondary">
+        {% bootstrap_icon "arrow-left" %}
+        Back to Job
+    </a>
+    </c-slot>
+    </c-page-heading>
 {% endblock heading %}
 {% block content %}
     <dl class="row">
@@ -28,10 +36,11 @@
         <dt class="col-sm-3">Log</dt>
         <dd class="col-sm-9"><pre class="mb-0">{{ task.log|default:"" }}</pre></dd>
     </dl>
-    <h5 class="mt-4">Volumes</h5>
+    <c-table-heading title="Volumes">
+    <c-slot name="right">
     {% crispy filter.form %}
-    <div class="table-responsive" style="max-height: 600px; overflow-y: auto;">
-        {% render_table table %}
-    </div>
+    </c-slot>
+    </c-table-heading>
+    {% render_table table %}
     {% task_control_panel %}
 {% endblock content %}
