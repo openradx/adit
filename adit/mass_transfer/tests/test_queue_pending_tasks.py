@@ -1,5 +1,4 @@
 import pytest
-from adit_radis_shared.common.utils.testing_helpers import run_worker_once
 from procrastinate.contrib.django.models import ProcrastinateJob
 
 from adit.core.models import DicomJob, DicomTask
@@ -34,21 +33,22 @@ def test_queue_pending_tasks_defers_background_job():
 
 @pytest.mark.django_db(transaction=True)
 def test_background_job_queues_all_pending_tasks():
-    """After the background job runs, all pending tasks should have been
-    picked up by the worker (status progressed beyond PENDING)."""
+    """After queue_mass_transfer_tasks runs, all pending tasks should have
+    queued_job set and be placed on the mass_transfer queue."""
     job = MassTransferJobFactory.create(status=DicomJob.Status.PENDING)
     task1 = MassTransferTaskFactory.create(status=DicomTask.Status.PENDING, job=job)
     task2 = MassTransferTaskFactory.create(status=DicomTask.Status.PENDING, job=job)
 
-    job.queue_pending_tasks()
-    run_worker_once()
+    queue_mass_transfer_tasks(job_id=job.pk)
 
-    # run_worker_once processes all jobs (queueing + processing) and deletes
-    # ProcrastinateJob records. Verify that tasks were actually processed.
     task1.refresh_from_db()
     task2.refresh_from_db()
-    assert task1.status != DicomTask.Status.PENDING
-    assert task2.status != DicomTask.Status.PENDING
+    assert task1.queued_job is not None
+    assert task2.queued_job is not None
+
+    for task in [task1, task2]:
+        procrastinate_job = ProcrastinateJob.objects.get(pk=task.queued_job_id)
+        assert procrastinate_job.queue_name == "mass_transfer"
 
 
 @pytest.mark.django_db(transaction=True)
@@ -58,42 +58,37 @@ def test_background_job_skips_canceled_tasks():
     pending_task = MassTransferTaskFactory.create(status=DicomTask.Status.PENDING, job=job)
     canceled_task = MassTransferTaskFactory.create(status=DicomTask.Status.CANCELED, job=job)
 
-    job.queue_pending_tasks()
-    run_worker_once()
+    queue_mass_transfer_tasks(job_id=job.pk)
 
     pending_task.refresh_from_db()
     canceled_task.refresh_from_db()
-    assert pending_task.status != DicomTask.Status.PENDING
-    assert canceled_task.status == DicomTask.Status.CANCELED
+    assert pending_task.queued_job is not None
+    assert canceled_task.queued_job is None
 
 
 @pytest.mark.django_db(transaction=True)
 def test_background_job_is_idempotent():
-    """Deferring queue_pending_tasks twice should not double-queue tasks."""
+    """Calling queue_mass_transfer_tasks twice should not double-queue tasks."""
     job = MassTransferJobFactory.create(status=DicomJob.Status.PENDING)
     task1 = MassTransferTaskFactory.create(status=DicomTask.Status.PENDING, job=job)
     task2 = MassTransferTaskFactory.create(status=DicomTask.Status.PENDING, job=job)
 
-    job.queue_pending_tasks()
-    run_worker_once()
+    queue_mass_transfer_tasks(job_id=job.pk)
 
     task1.refresh_from_db()
     task2.refresh_from_db()
-    assert task1.attempts == 1
-    assert task2.attempts == 1
+    first_queued_job_1 = task1.queued_job_id
+    first_queued_job_2 = task2.queued_job_id
+    assert first_queued_job_1 is not None
+    assert first_queued_job_2 is not None
 
-    # Reset job to PENDING and defer again
-    job.refresh_from_db()
-    job.status = DicomJob.Status.PENDING
-    job.save()
-    job.queue_pending_tasks()
-    run_worker_once()
+    # Call again — tasks already have queued_job set, so they should be skipped
+    queue_mass_transfer_tasks(job_id=job.pk)
 
-    # Tasks should not have been processed again (status is no longer PENDING)
     task1.refresh_from_db()
     task2.refresh_from_db()
-    assert task1.attempts == 1
-    assert task2.attempts == 1
+    assert task1.queued_job_id == first_queued_job_1
+    assert task2.queued_job_id == first_queued_job_2
 
 
 @pytest.mark.django_db(transaction=True)
@@ -103,11 +98,11 @@ def test_background_job_skips_deleted_job():
     job = MassTransferJobFactory.create(status=DicomJob.Status.PENDING)
     MassTransferTaskFactory.create(status=DicomTask.Status.PENDING, job=job)
 
-    job.queue_pending_tasks()
+    job_id = job.pk
     job.delete()
 
     # Should not raise
-    run_worker_once()
+    queue_mass_transfer_tasks(job_id=job_id)
 
 
 @pytest.mark.django_db(transaction=True)
@@ -117,16 +112,14 @@ def test_background_job_skips_non_pending_job():
     job = MassTransferJobFactory.create(status=DicomJob.Status.PENDING)
     task = MassTransferTaskFactory.create(status=DicomTask.Status.PENDING, job=job)
 
-    job.queue_pending_tasks()
-
     # Simulate cancel happening before the background job runs
     job.status = DicomJob.Status.CANCELED
     job.save()
 
-    run_worker_once()
+    queue_mass_transfer_tasks(job_id=job.pk)
 
     task.refresh_from_db()
-    assert task.status == DicomTask.Status.PENDING
+    assert task.queued_job is None
 
 
 @pytest.mark.django_db(transaction=True)
