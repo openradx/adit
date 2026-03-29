@@ -10,7 +10,6 @@ from django.urls import reverse
 from procrastinate.contrib.django import app
 
 from adit.core.models import DicomAppSettings, DicomJob, TransferJob, TransferTask
-from adit.core.utils.model_utils import get_model_label
 
 if TYPE_CHECKING:
     from .processors import FilterSpec
@@ -69,24 +68,13 @@ class MassTransferJob(TransferJob):
         return reverse("mass_transfer_job_detail", args=[self.pk])
 
     def queue_pending_tasks(self):
-        """Queues all pending mass transfer tasks."""
+        """Queues all pending mass transfer tasks via a background job."""
         assert self.status == DicomJob.Status.PENDING
 
-        priority = self.default_priority
-        if self.urgent:
-            priority = self.urgent_priority
-
-        for mass_task in self.tasks.filter(status=TransferTask.Status.PENDING):
-            assert mass_task.queued_job is None
-
-            model_label = get_model_label(mass_task.__class__)
-            queued_job_id = app.configure_task(
-                "adit.core.tasks.process_mass_transfer_task",
-                allow_unknown=False,
-                priority=priority,
-            ).defer(model_label=model_label, task_id=mass_task.pk)
-            mass_task.queued_job_id = queued_job_id
-            mass_task.save()
+        app.configure_task(
+            "adit.mass_transfer.tasks.queue_mass_transfer_tasks",
+            allow_unknown=False,
+        ).defer(job_id=self.pk)
 
 
 class MassTransferTask(TransferTask):
