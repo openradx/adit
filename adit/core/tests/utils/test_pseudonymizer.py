@@ -3,7 +3,7 @@ from pydicom import Dataset
 from pydicom.dataset import FileMetaDataset
 from pydicom.uid import UID
 
-from adit.core.utils.pseudonymizer import Pseudonymizer
+from adit.core.utils.pseudonymizer import Pseudonymizer, compute_pseudonym
 
 
 @pytest.fixture
@@ -101,44 +101,32 @@ class TestPseudonymizer:
 
 
 class TestComputePseudonym:
-    def test_requires_seed(self):
-        ps = Pseudonymizer()
-        with pytest.raises(ValueError, match="requires a seeded Pseudonymizer"):
-            ps.compute_pseudonym("PAT1")
-
     def test_deterministic_same_seed(self):
-        """Same seed + same patient ID always produces the same pseudonym."""
-        ps1 = Pseudonymizer(seed="fixed-seed")
-        ps2 = Pseudonymizer(seed="fixed-seed")
-        assert ps1.compute_pseudonym("PAT1") == ps2.compute_pseudonym("PAT1")
+        """Same seed + same identifier always produces the same pseudonym."""
+        result1 = compute_pseudonym("fixed-seed", "PAT1", 14)
+        result2 = compute_pseudonym("fixed-seed", "PAT1", 14)
+        assert result1 == result2
 
     def test_different_seeds_produce_different_pseudonyms(self):
-        ps1 = Pseudonymizer(seed="seed-a")
-        ps2 = Pseudonymizer(seed="seed-b")
-        assert ps1.compute_pseudonym("PAT1") != ps2.compute_pseudonym("PAT1")
+        result1 = compute_pseudonym("seed-a", "PAT1", 14)
+        result2 = compute_pseudonym("seed-b", "PAT1", 14)
+        assert result1 != result2
 
-    def test_different_patients_produce_different_pseudonyms(self):
-        ps = Pseudonymizer(seed="fixed-seed")
-        assert ps.compute_pseudonym("PAT1") != ps.compute_pseudonym("PAT2")
+    def test_different_identifiers_produce_different_pseudonyms(self):
+        result1 = compute_pseudonym("fixed-seed", "PAT1", 14)
+        result2 = compute_pseudonym("fixed-seed", "PAT2", 14)
+        assert result1 != result2
 
-    def test_matches_dicognito_anonymize(self):
-        """compute_pseudonym must match what dicognito produces for PatientID."""
-        seed = "test-consistency-seed"
-        ps = Pseudonymizer(seed=seed)
-        pseudonym = ps.compute_pseudonym("PATIENT_42")
+    def test_length(self):
+        assert len(compute_pseudonym("seed", "PAT1", 14)) == 14
+        assert len(compute_pseudonym("seed", "PAT1", 8)) == 8
 
-        # Run the full anonymizer on a real dataset and check the PatientID
-        # before our pseudonymize() overwrites it.
-        from dicognito.anonymizer import Anonymizer
-
-        anon = Anonymizer(seed=seed)
-        ds = create_base_dataset()
-        ds.PatientID = "PATIENT_42"
-        anon.anonymize(ds)
-        assert ds.PatientID == pseudonym
-
-    def test_pseudonym_is_alphanumeric(self):
-        ps = Pseudonymizer(seed="alpha-seed")
-        result = ps.compute_pseudonym("SOME_PATIENT")
+    def test_pseudonym_is_uppercase_alphanumeric(self):
+        result = compute_pseudonym("alpha-seed", "SOME_PATIENT", 14)
         assert result.isalnum()
         assert result == result.upper()
+
+    def test_stable_output(self):
+        """Pseudonyms must not change across code updates (breaks cross-transfer linking)."""
+        assert compute_pseudonym("my-salt", "PAT1", 12) == "81T9LZGKTAM3"
+        assert compute_pseudonym("my-salt", "PAT1", 14) == "81T9LZGKTAM3UV"

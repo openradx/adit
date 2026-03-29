@@ -1,9 +1,27 @@
+import hashlib
+import string
+
 from dicognito.anonymizer import Anonymizer
-from dicognito.idanonymizer import IDAnonymizer
-from dicognito.randomizer import Randomizer
 from dicognito.value_keeper import ValueKeeper
 from django.conf import settings
 from pydicom import Dataset
+
+_PSEUDONYM_ALPHABET = string.ascii_uppercase + string.digits  # A-Z0-9
+
+
+def compute_pseudonym(seed: str, identifier: str, length: int) -> str:
+    """Derive a pseudonym from a seed and identifier using SHA-256.
+
+    Uses the same divmod extraction approach as dicognito's IDAnonymizer
+    but with SHA-256 instead of MD5 for stability and security.
+    """
+    digest = hashlib.sha256((seed + identifier).encode("utf8")).digest()
+    big_int = int.from_bytes(digest, "big")
+    chars = []
+    for _ in range(length):
+        big_int, idx = divmod(big_int, len(_PSEUDONYM_ALPHABET))
+        chars.append(_PSEUDONYM_ALPHABET[idx])
+    return "".join(chars)
 
 
 class Pseudonymizer:
@@ -37,23 +55,6 @@ class Pseudonymizer:
         for element in settings.SKIP_ELEMENTS_ANONYMIZATION:
             anonymizer.add_element_handler(ValueKeeper(element))
         return anonymizer
-
-    def compute_pseudonym(self, patient_id: str) -> str:
-        """Pre-compute the pseudonym for a patient ID without a full DICOM dataset.
-
-        Delegates to dicognito's IDAnonymizer so the result always matches
-        what anonymize() would produce for PatientID, even if dicognito
-        changes its internal algorithm.
-        Requires that this Pseudonymizer was created with a seed.
-        """
-        if self._seed is None:
-            raise ValueError("compute_pseudonym requires a seeded Pseudonymizer")
-        randomizer = Randomizer(self._seed)
-        id_anon = IDAnonymizer(randomizer, "", "", "PatientID")
-        ds = Dataset()
-        ds.PatientID = patient_id
-        id_anon(ds, ds["PatientID"])
-        return str(ds.PatientID)
 
     def pseudonymize(self, ds: Dataset, pseudonym: str) -> None:
         """

@@ -22,7 +22,7 @@ from adit.core.utils.dicom_dataset import QueryDataset, ResultDataset
 from adit.core.utils.dicom_manipulator import DicomManipulator
 from adit.core.utils.dicom_operator import DicomOperator
 from adit.core.utils.dicom_utils import convert_to_python_regex, write_dataset
-from adit.core.utils.pseudonymizer import Pseudonymizer
+from adit.core.utils.pseudonymizer import Pseudonymizer, compute_pseudonym
 from adit.core.utils.sanitize import sanitize_filename
 
 from .models import (
@@ -68,6 +68,11 @@ logger = logging.getLogger(__name__)
 _MIN_SPLIT_WINDOW = timedelta(minutes=30)
 _DELAY_BETWEEN_SERIES = 0.5  # seconds between fetch requests to avoid overwhelming the PACS
 _DELAY_RETRY_FETCH = 3  # seconds before retrying a fetch that returned 0 images
+
+# Deterministic pseudonyms use 14 characters. Random pseudonyms use 15 so the
+# two modes can be distinguished by length.
+_DETERMINISTIC_PSEUDONYM_LENGTH = 14
+_RANDOM_PSEUDONYM_LENGTH = 15
 
 
 @dataclass(frozen=True)
@@ -352,11 +357,16 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
 
             if pseudonymizer and job.pseudonym_salt:
                 if pid not in deterministic_ids:
-                    deterministic_ids[pid] = pseudonymizer.compute_pseudonym(pid)
+                    deterministic_ids[pid] = compute_pseudonym(
+                        job.pseudonym_salt, pid, length=_DETERMINISTIC_PSEUDONYM_LENGTH
+                    )
                 pseudonym = deterministic_ids[pid]
             elif pseudonymizer:
                 if study_uid not in random_pseudonyms:
-                    random_pseudonyms[study_uid] = secrets.token_hex(6).upper()
+                    random_seed = secrets.token_hex(16)
+                    random_pseudonyms[study_uid] = compute_pseudonym(
+                        random_seed, pid, length=_RANDOM_PSEUDONYM_LENGTH
+                    )
                 pseudonym = random_pseudonyms[study_uid]
             else:
                 pseudonym = ""

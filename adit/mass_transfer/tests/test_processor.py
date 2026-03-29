@@ -915,10 +915,13 @@ def test_process_linking_mode_uses_deterministic_pseudonym(mocker: MockerFixture
     assert subject_ids[0] != ""
     assert subject_ids[0] != "PAT1"
     # Pseudonym should be deterministic — running again with same salt gives same result
-    from adit.core.utils.pseudonymizer import Pseudonymizer
+    from adit.core.utils.pseudonymizer import compute_pseudonym
+    from adit.mass_transfer.processors import _DETERMINISTIC_PSEUDONYM_LENGTH
 
-    ps = Pseudonymizer(seed="test-salt-for-deterministic-pseudonyms")
-    expected = ps.compute_pseudonym("PAT1")
+    expected = compute_pseudonym(
+        "test-salt-for-deterministic-pseudonyms", "PAT1",
+        length=_DETERMINISTIC_PSEUDONYM_LENGTH,
+    )
     assert subject_ids[0] == expected
 
 
@@ -1515,9 +1518,16 @@ def test_create_pending_volumes_deterministic_pseudonym():
         partition_key="20240101",
     )
 
+    from adit.core.utils.pseudonymizer import compute_pseudonym
+    from adit.mass_transfer.processors import _DETERMINISTIC_PSEUDONYM_LENGTH
+
     ps = Pseudonymizer(seed="test-seed-123")
-    expected_pat1 = ps.compute_pseudonym("PAT1")
-    expected_pat2 = ps.compute_pseudonym("PAT2")
+    expected_pat1 = compute_pseudonym(
+        "test-seed-123", "PAT1", length=_DETERMINISTIC_PSEUDONYM_LENGTH
+    )
+    expected_pat2 = compute_pseudonym(
+        "test-seed-123", "PAT2", length=_DETERMINISTIC_PSEUDONYM_LENGTH
+    )
 
     series = [
         _make_discovered(patient_id="PAT1", study_uid="study-A", series_uid="s-1"),
