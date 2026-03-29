@@ -121,14 +121,15 @@ def mass_transfer_env(tmp_path):
     )
     job.filters_json = [{"modality": "CT"}]
     job.save(update_fields=["filters_json"])
+    now = timezone.now()
     task = MassTransferTask.objects.create(
         job=job,
         source=source,
         destination=destination,
         patient_id="",
         study_uid="",
-        partition_start=timezone.now(),
-        partition_end=timezone.now(),
+        partition_start=now,
+        partition_end=now + timedelta(hours=23, minutes=59, seconds=59),
         partition_key="20240101",
     )
     return SimpleNamespace(
@@ -352,6 +353,98 @@ def test_find_studies_preserves_order_with_unique_studies(mocker: MockerFixture)
 
     result_uids = [str(s.StudyInstanceUID) for s in result]
     assert result_uids == ["1.2.1", "1.2.2", "1.2.3"]
+
+
+# ---------------------------------------------------------------------------
+# _discover_series tests
+# ---------------------------------------------------------------------------
+
+
+def _make_series_result(
+    series_uid: str,
+    modality: str = "CT",
+    series_description: str = "Axial",
+    series_number: int = 1,
+    institution_name: str = "Radiology",
+    num_images: int = 10,
+) -> ResultDataset:
+    ds = Dataset()
+    ds.SeriesInstanceUID = series_uid
+    ds.Modality = modality
+    ds.SeriesDescription = series_description
+    ds.SeriesNumber = series_number
+    ds.InstitutionName = institution_name
+    ds.NumberOfSeriesRelatedInstances = num_images
+    return ResultDataset(ds)
+
+
+def test_discover_series_filters_by_modality(mocker: MockerFixture):
+    processor = _make_processor(mocker)
+    processor.mass_task.partition_start = datetime(2024, 1, 1, 0, 0)
+    processor.mass_task.partition_end = datetime(2024, 1, 1, 23, 59, 59)
+
+    operator = mocker.create_autospec(DicomOperator)
+    operator.server = mocker.MagicMock(max_search_results=200)
+
+    study = _make_study("study-1")
+    study.dataset.ModalitiesInStudy = ["CT", "MR"]
+    operator.find_studies.return_value = [study]
+
+    ct_series = _make_series_result("series-ct", modality="CT")
+    mr_series = _make_series_result("series-mr", modality="MR")
+    operator.find_series.return_value = [ct_series, mr_series]
+
+    # Filter for MR only
+    filters = [_make_filter(modality="MR")]
+    result = processor._discover_series(operator, filters)
+
+    assert len(result) == 1
+    assert result[0].series_instance_uid == "series-mr"
+
+
+def test_discover_series_deduplicates_across_filters(mocker: MockerFixture):
+    processor = _make_processor(mocker)
+    processor.mass_task.partition_start = datetime(2024, 1, 1, 0, 0)
+    processor.mass_task.partition_end = datetime(2024, 1, 1, 23, 59, 59)
+
+    operator = mocker.create_autospec(DicomOperator)
+    operator.server = mocker.MagicMock(max_search_results=200)
+
+    study = _make_study("study-1")
+    study.dataset.ModalitiesInStudy = ["CT"]
+    operator.find_studies.return_value = [study]
+
+    series = _make_series_result("series-1", modality="CT")
+    operator.find_series.return_value = [series]
+
+    # Two filters that both match the same series
+    filters = [_make_filter(modality="CT"), _make_filter(modality="CT")]
+    result = processor._discover_series(operator, filters)
+
+    assert len(result) == 1
+
+
+def test_discover_series_filters_by_series_description(mocker: MockerFixture):
+    processor = _make_processor(mocker)
+    processor.mass_task.partition_start = datetime(2024, 1, 1, 0, 0)
+    processor.mass_task.partition_end = datetime(2024, 1, 1, 23, 59, 59)
+
+    operator = mocker.create_autospec(DicomOperator)
+    operator.server = mocker.MagicMock(max_search_results=200)
+
+    study = _make_study("study-1")
+    study.dataset.ModalitiesInStudy = ["CT"]
+    operator.find_studies.return_value = [study]
+
+    axial = _make_series_result("series-ax", series_description="Axial T1")
+    sagittal = _make_series_result("series-sag", series_description="Sagittal T2")
+    operator.find_series.return_value = [axial, sagittal]
+
+    filters = [_make_filter(modality="CT", series_description="Axial*")]
+    result = processor._discover_series(operator, filters)
+
+    assert len(result) == 1
+    assert result[0].series_instance_uid == "series-ax"
 
 
 # ---------------------------------------------------------------------------
@@ -1424,14 +1517,15 @@ def test_create_pending_volumes_deterministic_pseudonym():
     job.filters_json = [{"modality": "CT"}]
     job.save(update_fields=["filters_json"])
 
+    now = timezone.now()
     task = MassTransferTask.objects.create(
         job=job,
         source=source,
         destination=destination,
         patient_id="",
         study_uid="",
-        partition_start=timezone.now(),
-        partition_end=timezone.now(),
+        partition_start=now,
+        partition_end=now + timedelta(hours=23, minutes=59, seconds=59),
         partition_key="20240101",
     )
 
@@ -1772,14 +1866,15 @@ def test_process_output_path_includes_job_folder(mocker: MockerFixture, tmp_path
     job.filters_json = [{"modality": "CT"}]
     job.save(update_fields=["filters_json"])
 
+    now = timezone.now()
     task = MassTransferTask.objects.create(
         job=job,
         source=source,
         destination=destination,
         patient_id="",
         study_uid="",
-        partition_start=timezone.now(),
-        partition_end=timezone.now(),
+        partition_start=now,
+        partition_end=now + timedelta(hours=23, minutes=59, seconds=59),
         partition_key="20240101",
     )
 

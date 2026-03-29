@@ -5,11 +5,13 @@ import secrets
 from typing import TYPE_CHECKING
 
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.urls import reverse
 from procrastinate.contrib.django import app
 
-from adit.core.models import DicomAppSettings, DicomJob, TransferJob, TransferTask
+from adit.core.models import DicomAppSettings, DicomJob, DicomTask, TransferJob, TransferTask
+from adit.core.utils.model_utils import get_model_label
 
 if TYPE_CHECKING:
     from .processors import FilterSpec
@@ -46,7 +48,11 @@ class MassTransferJob(TransferJob):
     filters_json = models.JSONField(
         blank=True,
         null=True,
-        help_text="Inline filter configuration as a JSON list of filter objects.",
+        help_text=(
+            "JSON list of filter objects. Valid keys: modality, institution_name, "
+            "apply_institution_on_study, study_description, series_description, "
+            "series_number, min_age, max_age."
+        ),
     )
 
     @property
@@ -66,6 +72,13 @@ class MassTransferJob(TransferJob):
 
     def get_absolute_url(self):
         return reverse("mass_transfer_job_detail", args=[self.pk])
+
+    def clean(self):
+        super().clean()
+        if self.start_date and self.end_date and self.end_date < self.start_date:
+            raise ValidationError("End date must be on or after the start date.")
+        if not self.pseudonymize:
+            self.pseudonym_salt = ""
 
     def queue_pending_tasks(self):
         """Queues all pending mass transfer tasks via a background job."""
@@ -89,8 +102,34 @@ class MassTransferTask(TransferTask):
 
     volumes: models.QuerySet["MassTransferVolume"]
 
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(partition_start__lt=models.F("partition_end")),
+                name="mass_transfer_partition_start_before_end",
+            )
+        ]
+
     def get_absolute_url(self):
         return reverse("mass_transfer_task_detail", args=[self.pk])
+
+    def queue_pending_task(self) -> None:
+        """Queue this single task on the mass transfer queue."""
+        assert self.status == DicomTask.Status.PENDING
+        assert self.queued_job is None
+
+        priority = self.job.default_priority
+        if self.job.urgent:
+            priority = self.job.urgent_priority
+
+        model_label = get_model_label(self.__class__)
+        queued_job_id = app.configure_task(
+            "adit.mass_transfer.tasks.process_mass_transfer_task",
+            allow_unknown=False,
+            priority=priority,
+        ).defer(model_label=model_label, task_id=self.pk)
+        self.queued_job_id = queued_job_id
+        self.save()
 
 
 class MassTransferVolume(models.Model):

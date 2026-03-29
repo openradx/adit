@@ -14,6 +14,7 @@ from typing import cast
 
 from django.utils import timezone
 from pydicom import Dataset
+from pydicom.errors import InvalidDicomError
 
 from adit.core.errors import DicomError, RetriableDicomError
 from adit.core.models import DicomNode, DicomTask
@@ -33,7 +34,7 @@ from .models import (
 )
 
 
-@dataclass
+@dataclass(frozen=True)
 class FilterSpec:
     """Unified filter representation used by the processor.
 
@@ -70,7 +71,7 @@ _DELAY_BETWEEN_SERIES = 0.5  # seconds between fetch requests to avoid overwhelm
 _DELAY_RETRY_FETCH = 3  # seconds before retrying a fetch that returned 0 images
 
 
-@dataclass
+@dataclass(frozen=True)
 class DiscoveredSeries:
     patient_id: str
     accession_number: str
@@ -160,7 +161,8 @@ def _extract_dicom_metadata(dicom_dir: Path) -> dict[str, str]:
     for dcm_path in sorted(dicom_dir.glob("*.dcm")):
         try:
             ds = pydicom.dcmread(dcm_path, stop_before_pixels=True)
-        except Exception:
+        except (InvalidDicomError, OSError) as exc:
+            logger.warning("Skipping unreadable DICOM file %s: %s", dcm_path, exc)
             continue
         fields: dict[str, str] = {}
         for tag in _DICOM_METADATA_TAGS:
@@ -190,7 +192,7 @@ def _write_dicom_metadata(output_path: Path, metadata_name: str, fields: dict[st
     metadata_path = output_path / f"{metadata_name}_dicom.json"
     try:
         metadata_path.write_text(json.dumps(fields, indent=2))
-    except Exception:
+    except (OSError, TypeError, ValueError):
         logger.warning("Failed to write metadata %s", metadata_path, exc_info=True)
 
 
@@ -426,9 +428,14 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
                         total_volumes += 1
 
                         if total_processed + total_failed + total_skipped > 0:
-                            # TODO: Investigate why such a pacing delay is really needed.
-                            # Such a timeout was never necessary with batch transfer where we also
-                            # transfer series one by one.
+                            # Pacing delay between consecutive C-GET/C-MOVE requests.
+                            # Some PACS servers reject or drop associations under
+                            # rapid-fire requests. Batch transfer does not need this
+                            # because it processes fewer series per task. The 0.5s
+                            # value was chosen empirically.
+                            # TODO: Investigate if this is really needed and if the
+                            # delay value is appropriate (was never necessary in mass
+                            # transfer which also transfers series one by one).
                             time.sleep(_DELAY_BETWEEN_SERIES)
 
                         subject_id = volume.pseudonym or sanitize_filename(volume.patient_id)
@@ -1013,7 +1020,7 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
                 if output_path.exists() and not any(output_path.iterdir()):
                     output_path.rmdir()
             except OSError:
-                pass
+                logger.debug("Failed to remove empty directory %s", output_path, exc_info=True)
 
         return image_count, study_uid_pseudonymized, series_uid_pseudonymized
 
@@ -1038,7 +1045,7 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
                     if output_path.exists() and not any(output_path.iterdir()):
                         output_path.rmdir()
                 except OSError:
-                    pass
+                    logger.debug("Failed to remove empty directory %s", output_path, exc_info=True)
                 return []
             raise DicomError(
                 f"Conversion failed for series {volume.series_instance_uid}: {err_msg}"

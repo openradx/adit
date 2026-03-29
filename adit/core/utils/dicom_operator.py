@@ -61,8 +61,11 @@ class DicomOperator:
         return self.dimse_connector.logs + self.dicom_web_connector.logs + self.logs
 
     def close(self) -> None:
-        if self.dimse_connector.assoc:
-            self.dimse_connector.close_connection()
+        try:
+            if self.dimse_connector.assoc:
+                self.dimse_connector.close_connection()
+        except Exception:
+            logger.debug("Error closing DIMSE association", exc_info=True)
 
     def abort(self) -> None:
         self.dimse_connector.abort_connection()

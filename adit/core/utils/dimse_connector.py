@@ -55,7 +55,7 @@ Modifier = Callable[[Dataset], None]
 
 
 def connect_to_server(service: DimseService):
-    """Automatically handles the connection when `auto_config` option is set.
+    """Handles the DIMSE association lifecycle based on `auto_connect` and `auto_close`.
 
     TODO: Think about using a context manager instead of a decorator.
     """

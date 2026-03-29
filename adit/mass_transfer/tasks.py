@@ -5,7 +5,6 @@ from procrastinate.contrib.django import app
 
 from adit.core.models import DicomJob, DicomTask
 from adit.core.tasks import DICOM_TASK_RETRY_STRATEGY, _run_dicom_task
-from adit.core.utils.model_utils import get_model_label
 
 logger = logging.getLogger(__name__)
 
@@ -50,19 +49,16 @@ def queue_mass_transfer_tasks(job_id: int):
         )
         return
 
-    priority = job.default_priority
-    if job.urgent:
-        priority = job.urgent_priority
-
     for mass_task in job.tasks.filter(
         status=DicomTask.Status.PENDING,
         queued_job__isnull=True,  # Skip tasks already queued (idempotency guard)
     ):
-        model_label = get_model_label(mass_task.__class__)
-        queued_job_id = app.configure_task(
-            "adit.mass_transfer.tasks.process_mass_transfer_task",
-            allow_unknown=False,
-            priority=priority,
-        ).defer(model_label=model_label, task_id=mass_task.pk)
-        mass_task.queued_job_id = queued_job_id
-        mass_task.save()
+        try:
+            mass_task.queue_pending_task()
+        except Exception:
+            logger.exception(
+                "Failed to queue MassTransferTask %d for job %d",
+                mass_task.pk,
+                job_id,
+            )
+            raise

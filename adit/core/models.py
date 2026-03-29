@@ -156,7 +156,9 @@ class DicomServer(DicomNode):
     dicomweb_authorization_header = models.CharField(blank=True, max_length=2000)
 
     # C-FIND result limit before recursive time-window splitting
-    max_search_results = models.PositiveIntegerField(default=200)
+    max_search_results = models.PositiveIntegerField(
+        default=200, validators=[MinValueValidator(1)]
+    )
 
     objects: DicomNodeManager["DicomServer"] = DicomNodeManager["DicomServer"]()
 
@@ -420,9 +422,6 @@ class DicomTask(models.Model):
 
     def get_absolute_url(self) -> str: ...
 
-    def cleanup_on_failure(self) -> None:
-        """Hook for subclasses to clean up resources after task failure or timeout."""
-        pass
 
     def queue_pending_task(self) -> None:
         """Queues a dicom task."""
