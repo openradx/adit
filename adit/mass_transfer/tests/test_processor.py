@@ -386,12 +386,12 @@ def test_discover_series_filters_by_modality(mocker: MockerFixture):
     operator = mocker.create_autospec(DicomOperator)
     operator.server = mocker.MagicMock(max_search_results=200)
 
-    study = _make_study("study-1")
+    study = _make_study("1.2.3.100")
     study.dataset.ModalitiesInStudy = ["CT", "MR"]
     operator.find_studies.return_value = [study]
 
-    ct_series = _make_series_result("series-ct", modality="CT")
-    mr_series = _make_series_result("series-mr", modality="MR")
+    ct_series = _make_series_result("1.2.3.201", modality="CT")
+    mr_series = _make_series_result("1.2.3.202", modality="MR")
     operator.find_series.return_value = [ct_series, mr_series]
 
     # Filter for MR only
@@ -399,7 +399,7 @@ def test_discover_series_filters_by_modality(mocker: MockerFixture):
     result = processor._discover_series(operator, filters)
 
     assert len(result) == 1
-    assert result[0].series_instance_uid == "series-mr"
+    assert result[0].series_instance_uid == "1.2.3.202"
 
 
 def test_discover_series_deduplicates_across_filters(mocker: MockerFixture):
@@ -410,11 +410,11 @@ def test_discover_series_deduplicates_across_filters(mocker: MockerFixture):
     operator = mocker.create_autospec(DicomOperator)
     operator.server = mocker.MagicMock(max_search_results=200)
 
-    study = _make_study("study-1")
+    study = _make_study("1.2.3.100")
     study.dataset.ModalitiesInStudy = ["CT"]
     operator.find_studies.return_value = [study]
 
-    series = _make_series_result("series-1", modality="CT")
+    series = _make_series_result("1.2.3.301", modality="CT")
     operator.find_series.return_value = [series]
 
     # Two filters that both match the same series
@@ -432,19 +432,19 @@ def test_discover_series_filters_by_series_description(mocker: MockerFixture):
     operator = mocker.create_autospec(DicomOperator)
     operator.server = mocker.MagicMock(max_search_results=200)
 
-    study = _make_study("study-1")
+    study = _make_study("1.2.3.100")
     study.dataset.ModalitiesInStudy = ["CT"]
     operator.find_studies.return_value = [study]
 
-    axial = _make_series_result("series-ax", series_description="Axial T1")
-    sagittal = _make_series_result("series-sag", series_description="Sagittal T2")
+    axial = _make_series_result("1.2.3.401", series_description="Axial T1")
+    sagittal = _make_series_result("1.2.3.402", series_description="Sagittal T2")
     operator.find_series.return_value = [axial, sagittal]
 
     filters = [_make_filter(modality="CT", series_description="Axial*")]
     result = processor._discover_series(operator, filters)
 
     assert len(result) == 1
-    assert result[0].series_instance_uid == "series-ax"
+    assert result[0].series_instance_uid == "1.2.3.401"
 
 
 # ---------------------------------------------------------------------------
