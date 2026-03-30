@@ -101,6 +101,9 @@ def _make_filter(**kwargs) -> FilterSpec:
         series_number=kwargs.get("series_number", None),
         min_age=kwargs.get("min_age", None),
         max_age=kwargs.get("max_age", None),
+        min_number_of_series_related_instances=kwargs.get(
+            "min_number_of_series_related_instances", None
+        ),
     )
 
 
@@ -443,6 +446,51 @@ def test_discover_series_filters_by_series_description(mocker: MockerFixture):
 
     assert len(result) == 1
     assert result[0].series_instance_uid == "1.2.3.401"
+
+
+def test_discover_series_filters_by_min_instances(mocker: MockerFixture):
+    processor = _make_processor(mocker)
+    processor.mass_task.partition_start = datetime(2024, 1, 1, 0, 0)
+    processor.mass_task.partition_end = datetime(2024, 1, 1, 23, 59, 59)
+
+    operator = mocker.create_autospec(DicomOperator)
+    operator.server = mocker.MagicMock(max_search_results=200)
+
+    study = _make_study("1.2.3.100")
+    study.dataset.ModalitiesInStudy = ["CT"]
+    operator.find_studies.return_value = [study]
+
+    big_series = _make_series_result("1.2.3.501", num_images=10)
+    small_series = _make_series_result("1.2.3.502", num_images=2)
+    operator.find_series.return_value = [big_series, small_series]
+
+    filters = [_make_filter(modality="CT", min_number_of_series_related_instances=5)]
+    result = processor._discover_series(operator, filters)
+
+    assert len(result) == 1
+    assert result[0].series_instance_uid == "1.2.3.501"
+
+
+def test_discover_series_no_min_instances_filter_includes_all(mocker: MockerFixture):
+    processor = _make_processor(mocker)
+    processor.mass_task.partition_start = datetime(2024, 1, 1, 0, 0)
+    processor.mass_task.partition_end = datetime(2024, 1, 1, 23, 59, 59)
+
+    operator = mocker.create_autospec(DicomOperator)
+    operator.server = mocker.MagicMock(max_search_results=200)
+
+    study = _make_study("1.2.3.100")
+    study.dataset.ModalitiesInStudy = ["CT"]
+    operator.find_studies.return_value = [study]
+
+    big_series = _make_series_result("1.2.3.501", num_images=10)
+    small_series = _make_series_result("1.2.3.502", num_images=2)
+    operator.find_series.return_value = [big_series, small_series]
+
+    filters = [_make_filter(modality="CT")]  # no min_number_of_series_related_instances
+    result = processor._discover_series(operator, filters)
+
+    assert len(result) == 2
 
 
 # ---------------------------------------------------------------------------
@@ -1354,6 +1402,18 @@ def test_filter_spec_from_dict():
     assert fs.max_age == 90
     assert fs.study_description == ""
     assert fs.apply_institution_on_study is True
+
+
+def test_filter_spec_from_dict_with_min_instances():
+    d = {"modality": "CT", "min_number_of_series_related_instances": 5}
+    fs = FilterSpec.from_dict(d)
+    assert fs.min_number_of_series_related_instances == 5
+
+
+def test_filter_spec_from_dict_without_min_instances():
+    d = {"modality": "CT"}
+    fs = FilterSpec.from_dict(d)
+    assert fs.min_number_of_series_related_instances is None
 
 
 # ---------------------------------------------------------------------------
