@@ -7,6 +7,7 @@ CSV columns (all optional, header names must match):
 
 Usage examples:
     python scripts/csv_to_mass_transfer_filters.py filters.csv
+    python scripts/csv_to_mass_transfer_filters.py filters.csv --delimiter ";"
     python scripts/csv_to_mass_transfer_filters.py filters.csv --min-age 18
     python scripts/csv_to_mass_transfer_filters.py filters.csv --min-age 18 --max-age 90
     python scripts/csv_to_mass_transfer_filters.py filters.csv --min-series-instances 5
@@ -54,18 +55,25 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default=None,
         help="Set a constant min_number_of_series_related_instances for every filter",
     )
+    parser.add_argument(
+        "-d",
+        "--delimiter",
+        default=",",
+        help="CSV column delimiter (default: ',')",
+    )
     return parser.parse_args(argv)
 
 
 def csv_to_filters(
     csv_path: Path,
     *,
+    delimiter: str = ",",
     min_age: int | None = None,
     max_age: int | None = None,
     min_number_of_series_related_instances: int | None = None,
 ) -> list[dict]:
     with csv_path.open(newline="", encoding="utf-8-sig") as f:
-        reader = csv.DictReader(f)
+        reader = csv.DictReader(f, delimiter=delimiter)
         if reader.fieldnames is None:
             raise SystemExit(f"Error: {csv_path} appears to be empty or has no header row.")
 
@@ -128,6 +136,7 @@ def main(argv: list[str] | None = None) -> None:
 
     filters = csv_to_filters(
         args.csv_file,
+        delimiter=args.delimiter,
         min_age=args.min_age,
         max_age=args.max_age,
         min_number_of_series_related_instances=args.min_series_instances,
