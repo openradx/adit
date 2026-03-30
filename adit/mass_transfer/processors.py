@@ -48,6 +48,7 @@ class FilterSpec:
     series_number: int | None = None
     min_age: int | None = None
     max_age: int | None = None
+    min_number_of_series_related_instances: int | None = None
 
     @classmethod
     def from_dict(cls, d: dict) -> "FilterSpec":
@@ -60,6 +61,9 @@ class FilterSpec:
             series_number=d.get("series_number"),
             min_age=d.get("min_age"),
             max_age=d.get("max_age"),
+            min_number_of_series_related_instances=d.get(
+                "min_number_of_series_related_instances"
+            ),
         )
 
 
@@ -828,6 +832,16 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
                             if series_number is None or mf.series_number != series_number:
                                 continue
                         except (TypeError, ValueError):
+                            continue
+
+                    if mf.min_number_of_series_related_instances is not None:
+                        num_instances = (
+                            _parse_int(
+                                series.get("NumberOfSeriesRelatedInstances"), default=0
+                            )
+                            or 0
+                        )
+                        if num_instances < mf.min_number_of_series_related_instances:
                             continue
 
                     if series_uid in found:

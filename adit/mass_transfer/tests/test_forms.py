@@ -328,6 +328,42 @@ def test_clean_source_rejects_folder():
 
 
 @pytest.mark.django_db
+def test_clean_filters_json_min_instances_valid(form_env):
+    form = _make_form(
+        form_env,
+        filters_json=json.dumps([{"modality": "CT", "min_number_of_series_related_instances": 5}]),
+    )
+    assert form.is_valid(), form.errors
+
+
+@pytest.mark.django_db
+def test_clean_filters_json_min_instances_zero_rejected(form_env):
+    form = _make_form(
+        form_env,
+        filters_json=json.dumps([{"modality": "CT", "min_number_of_series_related_instances": 0}]),
+    )
+    assert not form.is_valid()
+    assert "filters_json" in form.errors
+
+
+@pytest.mark.django_db
+def test_clean_filters_json_min_instances_null_accepted(form_env):
+    form = _make_form(
+        form_env,
+        filters_json=json.dumps(
+            [{"modality": "CT", "min_number_of_series_related_instances": None}]
+        ),
+    )
+    assert form.is_valid(), form.errors
+
+
+@pytest.mark.django_db
+def test_clean_filters_json_min_instances_omitted_accepted(form_env):
+    form = _make_form(form_env, filters_json=json.dumps([{"modality": "CT"}]))
+    assert form.is_valid(), form.errors
+
+
+@pytest.mark.django_db
 def test_clean_source_rejects_unauthorized_server():
     user = UserFactory.create()
     source = DicomServerFactory.create()

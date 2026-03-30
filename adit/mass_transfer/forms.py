@@ -31,6 +31,7 @@ class FilterSchema(BaseModel):
     series_number: int | None = None
     min_age: Annotated[int, "non-negative"] | None = None
     max_age: Annotated[int, "non-negative"] | None = None
+    min_number_of_series_related_instances: int | None = None
 
     model_config = {"extra": "forbid"}
 
@@ -40,6 +41,11 @@ class FilterSchema(BaseModel):
             raise ValueError("min_age must be non-negative")
         if self.max_age is not None and self.max_age < 0:
             raise ValueError("max_age must be non-negative")
+        if (
+            self.min_number_of_series_related_instances is not None
+            and self.min_number_of_series_related_instances < 1
+        ):
+            raise ValueError("min_number_of_series_related_instances must be >= 1")
         if (
             self.min_age is not None
             and self.max_age is not None
@@ -60,6 +66,7 @@ FILTERS_JSON_EXAMPLE = json.dumps(
             "apply_institution_on_study": True,
             "min_age": 18,
             "max_age": 90,
+            "min_number_of_series_related_instances": None,
         }
     ],
     indent=2,
@@ -75,7 +82,8 @@ class MassTransferJobForm(forms.ModelForm):
             "A JSON array of filter objects. Each filter can have: "
             "modality, institution_name, apply_institution_on_study, "
             "study_description, series_description, series_number, "
-            "min_age, max_age. A series matching ANY filter is included."
+            "min_age, max_age, min_number_of_series_related_instances. "
+            "A series matching ANY filter is included."
         ),
     )
 
