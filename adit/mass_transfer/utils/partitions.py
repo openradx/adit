@@ -18,6 +18,13 @@ def build_partitions(
     end_date: date,
     granularity: str,
 ) -> list[PartitionWindow]:
+    """Split a date range into non-overlapping partition windows.
+
+    Each partition covers one day (daily) or up to seven days (weekly).
+    Returns a list of PartitionWindow objects ordered chronologically.
+    The last partition may be shorter than the step if *end_date* does not
+    align with a full window.
+    """
     if end_date < start_date:
         raise ValueError("End date must be on or after the start date.")
 

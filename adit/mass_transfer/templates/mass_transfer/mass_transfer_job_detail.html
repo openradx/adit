@@ -10,12 +10,10 @@
 {% block heading %}
     <c-page-heading title="Mass Transfer Job">
     <c-slot name="right">
-    {% if job.pseudonymize and job.pseudonym_salt %}
     <a href="{% url 'mass_transfer_job_csv_export' job.pk %}" class="btn btn-outline-primary">
         {% bootstrap_icon "download" %}
         Export CSV
     </a>
-    {% endif %}
     <a href="{% url 'mass_transfer_job_list' %}" class="btn btn-secondary">
         {% bootstrap_icon "list" %}
         Job List
@@ -34,9 +32,9 @@
             <dd class="col-sm-9">{{ job.owner }}</dd>
         {% endif %}
         <dt class="col-sm-3">Source</dt>
-        <dd class="col-sm-9">{{ job.source }}</dd>
+        <dd class="col-sm-9">{{ job.tasks.first.source }}</dd>
         <dt class="col-sm-3">Destination</dt>
-        <dd class="col-sm-9">{{ job.destination }}</dd>
+        <dd class="col-sm-9">{{ job.tasks.first.destination }}</dd>
         <dt class="col-sm-3">Start Date</dt>
         <dd class="col-sm-9">{{ job.start_date }}</dd>
         <dt class="col-sm-3">End Date</dt>
@@ -44,7 +42,11 @@
         <dt class="col-sm-3">Granularity</dt>
         <dd class="col-sm-9">{{ job.get_partition_granularity_display }}</dd>
         <dt class="col-sm-3">Pseudonymization</dt>
-        <dd class="col-sm-9">{% if job.pseudonymize %}Enabled{% if job.pseudonym_salt %} (linked, salt: {{ job.pseudonym_salt|truncatechars:16 }}){% else %} (random, no linking){% endif %}{% else %}Disabled{% endif %}</dd>
+        <dd class="col-sm-9">{% if job.pseudonymize %}Enabled{% if job.pseudonym_salt %} (linked){% else %} (random, no linking){% endif %}{% else %}Disabled{% endif %}</dd>
+        {% if job.pseudonym_salt %}
+        <dt class="col-sm-3">Pseudonym Salt</dt>
+        <dd class="col-sm-9">{{ job.pseudonym_salt }}</dd>
+        {% endif %}
         <dt class="col-sm-3">Filters</dt>
         <dd class="col-sm-9">
             {% if job.filters_json %}

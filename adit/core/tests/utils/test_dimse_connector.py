@@ -158,3 +158,68 @@ class TestDimseConnectorConnectionLifecycle:
 
         # Assert
         assert connector.assoc is None
+
+    def test_service_switch_closes_and_reopens_connection(self, mocker):
+        """Test that switching services (e.g. C-FIND -> C-GET) closes the old connection
+        and opens a new one with the correct presentation contexts."""
+        server = DicomServerFactory.create()
+        connector = DimseConnector(server, auto_connect=True)
+
+        associate_mock = mocker.patch("adit.core.utils.dimse_connector.AE.associate")
+
+        # First association for C-FIND
+        find_assoc = create_association_mock()
+        find_assoc.is_alive.return_value = True
+        find_assoc.send_c_find.return_value = DicomTestHelper.create_successful_c_find_responses(
+            [{"PatientID": "12345", "QueryRetrieveLevel": "STUDY"}]
+        )
+
+        # Second association for C-GET
+        get_assoc = create_association_mock()
+        get_assoc.is_alive.return_value = True
+        get_assoc.send_c_get.return_value = DicomTestHelper.create_successful_c_get_response()
+
+        associate_mock.side_effect = [find_assoc, get_assoc]
+
+        # Act: perform a C-FIND
+        query = QueryDataset.create(
+            PatientID="12345",
+            StudyInstanceUID="1.2.3.4.5",
+            QueryRetrieveLevel="STUDY",
+        )
+        list(connector.send_c_find(query))
+
+        # After C-FIND with auto_close, connection is closed
+        assert connector.assoc is None
+
+        # Now open a persistent connection for C-FIND, then switch to C-GET
+        connector.auto_close = False
+
+        # Reset the mock for the persistent connections
+        find_assoc2 = create_association_mock()
+        find_assoc2.is_alive.return_value = True
+        find_assoc2.send_c_find.return_value = DicomTestHelper.create_successful_c_find_responses(
+            [{"PatientID": "12345", "QueryRetrieveLevel": "STUDY"}]
+        )
+
+        get_assoc2 = create_association_mock()
+        get_assoc2.is_alive.return_value = True
+        get_assoc2.send_c_get.return_value = DicomTestHelper.create_successful_c_get_response()
+
+        associate_mock.side_effect = [find_assoc2, get_assoc2]
+
+        # C-FIND with auto_close=False keeps connection open
+        list(connector.send_c_find(query))
+        assert connector.assoc is find_assoc2
+        assert connector._current_service == "C-FIND"
+
+        # C-GET should close the C-FIND connection and open a new one
+        store_handler = MagicMock()
+        store_errors = []
+        connector.send_c_get(query, store_handler, store_errors)
+
+        # The C-FIND association should have been released (closed)
+        assert find_assoc2.release.called
+        # The connector should now be on the C-GET association
+        assert connector.assoc is get_assoc2
+        assert connector._current_service == "C-GET"

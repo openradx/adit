@@ -84,8 +84,6 @@ class MassTransferJobForm(forms.ModelForm):
     class Meta:
         model = MassTransferJob
         fields = (
-            "source",
-            "destination",
             "start_date",
             "end_date",
             "partition_granularity",
@@ -143,6 +141,7 @@ class MassTransferJobForm(forms.ModelForm):
         self.fields["source"].widget.attrs["@change"] = "onSourceChange($event)"
 
         self.fields["destination"] = DicomNodeChoiceField("destination", self.user)
+        self.fields["destination"].widget.attrs["x-init"] = "initDestination($el)"
         self.fields["destination"].widget.attrs["@change"] = "onDestinationChange($event)"
 
         self.fields["partition_granularity"].widget.attrs["@change"] = (
@@ -181,7 +180,18 @@ class MassTransferJobForm(forms.ModelForm):
                         **{"x-show": "showSalt"},
                     ),
                     Row(
-                        Column(Field("convert_to_nifti"), css_class="col-md-6"),
+                        Column(
+                            Div(
+                                Field("convert_to_nifti"),
+                                **{
+                                    "x-effect": (
+                                        "const cb = $el.querySelector('input[type=checkbox]');"
+                                        " if (cb) cb.disabled = !isDestinationFolder;"
+                                    ),
+                                },
+                            ),
+                            css_class="col-md-6",
+                        ),
                         Column(Field("send_finished_mail"), css_class="col-md-6"),
                         css_class="g-3",
                     ),
@@ -214,8 +224,6 @@ class MassTransferJobForm(forms.ModelForm):
         destination = cast(DicomNode, self.cleaned_data["destination"])
         if not destination.is_accessible_by_user(self.user, "destination"):
             raise ValidationError("You do not have access to this destination.")
-        if destination.node_type != DicomNode.NodeType.FOLDER:
-            raise ValidationError("Destination must be a DICOM folder.")
         return destination
 
     def clean(self):
@@ -227,6 +235,9 @@ class MassTransferJobForm(forms.ModelForm):
             raise ValidationError("End date must be on or after the start date.")
         if not cleaned.get("pseudonymize"):
             cleaned["pseudonym_salt"] = ""
+        destination = cleaned.get("destination")
+        if destination and destination.node_type == DicomNode.NodeType.SERVER:
+            cleaned["convert_to_nifti"] = False
         return cleaned
 
     def clean_filters_json(self):
@@ -259,12 +270,16 @@ class MassTransferJobForm(forms.ModelForm):
             job.partition_granularity,
         )
 
+        source = self.cleaned_data["source"]
+        destination = self.cleaned_data["destination"]
+
         tasks: list[MassTransferTask] = []
         for partition in partitions:
             tasks.append(
                 MassTransferTask(
                     job=job,
-                    source=job.source,
+                    source=source,
+                    destination=destination,
                     partition_start=partition.start,
                     partition_end=partition.end,
                     partition_key=partition.key,

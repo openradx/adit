@@ -43,11 +43,13 @@ class DicomOperator:
     def __init__(
         self,
         server: DicomServer,
+        persistent: bool = False,
         dimse_timeout: int | None = 60,
     ):
         self.server = server
         self.dimse_connector = DimseConnector(
             server,
+            auto_close=not persistent,
             dimse_timeout=dimse_timeout,
         )
         # TODO: also make retries and timeouts possible in DicomWebConnector
@@ -59,8 +61,11 @@ class DicomOperator:
         return self.dimse_connector.logs + self.dicom_web_connector.logs + self.logs
 
     def close(self) -> None:
-        if self.dimse_connector.assoc:
-            self.dimse_connector.close_connection()
+        try:
+            if self.dimse_connector.assoc:
+                self.dimse_connector.close_connection()
+        except Exception:
+            logger.debug("Error closing DIMSE association", exc_info=True)
 
     def abort(self) -> None:
         self.dimse_connector.abort_connection()

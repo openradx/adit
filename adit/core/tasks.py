@@ -124,11 +124,12 @@ def _run_dicom_task(
         dicom_task.message = "Task was canceled."
         ensure_db_connection()
 
+
     except futures.TimeoutError:
         dicom_task.message = "Task was aborted due to timeout."
         dicom_task.status = DicomTask.Status.FAILURE
         ensure_db_connection()
-        dicom_task.cleanup_on_failure()
+
 
     except RetriableDicomError as err:
         logger.exception("Retriable error occurred during %s.", dicom_task)
@@ -150,7 +151,7 @@ def _run_dicom_task(
             dicom_task.message = str(err)
 
         ensure_db_connection()
-        dicom_task.cleanup_on_failure()
+
         raise err
 
     except Exception as err:
@@ -166,7 +167,7 @@ def _run_dicom_task(
         dicom_task.log += traceback.format_exc()
 
         ensure_db_connection()
-        dicom_task.cleanup_on_failure()
+
 
     finally:
         dicom_task.end = timezone.now()
@@ -204,17 +205,3 @@ def process_dicom_task(context: JobContext, model_label: str, task_id: int):
     _run_dicom_task(
         context, model_label, task_id, process_timeout=settings.DICOM_TASK_PROCESS_TIMEOUT
     )
-
-
-# Separate task function for mass transfer on a dedicated queue so it does not
-# starve batch/selective transfers.  Mass transfer tasks process an entire
-# partition (discovery + export + convert) and can run for hours, so the
-# pebble process timeout is disabled (process_timeout=None).  Individual DICOM
-# operations are still protected by Stamina / pynetdicom-level timeouts.
-@app.task(
-    queue="mass_transfer",
-    pass_context=True,
-    retry=DICOM_TASK_RETRY_STRATEGY,
-)
-def process_mass_transfer_task(context: JobContext, model_label: str, task_id: int):
-    _run_dicom_task(context, model_label, task_id, process_timeout=None)

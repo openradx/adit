@@ -102,7 +102,7 @@ class MassTransferJobDetailView(MassTransferLockedMixin, DicomJobDetailView):
 
 
 class MassTransferJobCsvExportView(LoginRequiredMixin, MassTransferLockedMixin, View):
-    """Streams a full CSV export of all volumes for a linking-mode job."""
+    """Streams a full CSV export of all volumes for a mass transfer job."""
 
     COLUMNS = [
         "partition_key",
@@ -130,15 +130,14 @@ class MassTransferJobCsvExportView(LoginRequiredMixin, MassTransferLockedMixin, 
 
         job = get_object_or_404(qs, pk=pk)
 
-        if not (job.pseudonymize and job.pseudonym_salt):
-            return HttpResponse("CSV export is only available for linking mode.", status=400)
-
         volumes = MassTransferVolume.objects.filter(job=job).values_list(*self.COLUMNS)
 
         response = HttpResponse(content_type="text/csv")
         response["Content-Disposition"] = f'attachment; filename="mass_transfer_job_{job.pk}.csv"'
 
         writer = csv.writer(response)
+        if job.pseudonym_salt:
+            response.write(f"# Pseudonym salt: {job.pseudonym_salt}\n")
         writer.writerow(self.COLUMNS)
         for row in volumes.iterator():
             writer.writerow(row)
