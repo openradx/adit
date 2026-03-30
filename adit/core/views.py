@@ -229,6 +229,8 @@ class DicomJobCancelView(LoginRequiredMixin, SingleObjectMixin, View):
         for dicom_task in pending_tasks:
             queued_job_id = dicom_task.queued_job_id
             if queued_job_id is not None:
+                dicom_task.queued_job_id = None
+                dicom_task.save(update_fields=["queued_job_id"])
                 app.job_manager.cancel_job_by_id(queued_job_id, delete_job=True)
         pending_tasks.update(status=DicomTask.Status.CANCELED)
 
