@@ -396,7 +396,7 @@ class DicomTask(models.Model):
     job = models.ForeignKey(DicomJob, on_delete=models.CASCADE, related_name="tasks")
     source_id: int
     source = models.ForeignKey(DicomNode, related_name="+", on_delete=models.PROTECT)
-    queued_job_id: int
+    queued_job_id: int | None
     queued_job = models.OneToOneField(
         ProcrastinateJob, null=True, on_delete=models.SET_NULL, related_name="+"
     )
