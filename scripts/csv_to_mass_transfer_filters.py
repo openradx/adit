@@ -9,6 +9,7 @@ Usage examples:
     python scripts/csv_to_mass_transfer_filters.py filters.csv
     python scripts/csv_to_mass_transfer_filters.py filters.csv --min-age 18
     python scripts/csv_to_mass_transfer_filters.py filters.csv --min-age 18 --max-age 90
+    python scripts/csv_to_mass_transfer_filters.py filters.csv --min-series-instances 5
     python scripts/csv_to_mass_transfer_filters.py filters.csv -o output.json
 """
 
@@ -47,6 +48,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default=None,
         help="Set a constant max_age for every filter",
     )
+    parser.add_argument(
+        "--min-series-instances",
+        type=int,
+        default=None,
+        help="Set a constant min_number_of_series_related_instances for every filter",
+    )
     return parser.parse_args(argv)
 
 
@@ -55,6 +62,7 @@ def csv_to_filters(
     *,
     min_age: int | None = None,
     max_age: int | None = None,
+    min_number_of_series_related_instances: int | None = None,
 ) -> list[dict]:
     with csv_path.open(newline="", encoding="utf-8-sig") as f:
         reader = csv.DictReader(f)
@@ -83,6 +91,10 @@ def csv_to_filters(
                 entry["min_age"] = min_age
             if max_age is not None:
                 entry["max_age"] = max_age
+            if min_number_of_series_related_instances is not None:
+                entry["min_number_of_series_related_instances"] = (
+                    min_number_of_series_related_instances
+                )
 
             if not entry:
                 print(f"Warning: skipping empty row {row_num}", file=sys.stderr)
@@ -111,8 +123,15 @@ def main(argv: list[str] | None = None) -> None:
         raise SystemExit(
             f"Error: --min-age ({args.min_age}) cannot exceed --max-age ({args.max_age})"
         )
+    if args.min_series_instances is not None and args.min_series_instances < 1:
+        raise SystemExit("Error: --min-series-instances must be at least 1")
 
-    filters = csv_to_filters(args.csv_file, min_age=args.min_age, max_age=args.max_age)
+    filters = csv_to_filters(
+        args.csv_file,
+        min_age=args.min_age,
+        max_age=args.max_age,
+        min_number_of_series_related_instances=args.min_series_instances,
+    )
 
     if not filters:
         raise SystemExit("Error: no valid filter rows found in CSV.")
