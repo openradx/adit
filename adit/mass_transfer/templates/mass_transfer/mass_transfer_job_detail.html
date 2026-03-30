@@ -50,7 +50,7 @@
         <dt class="col-sm-3">Filters</dt>
         <dd class="col-sm-9">
             {% if job.filters_json %}
-                <pre style="margin:0; white-space:pre-wrap;">{{ job.filters_json_pretty }}</pre>
+                <pre style="margin:0; white-space:pre-wrap; max-height:20lh; overflow-y:auto;">{{ job.filters_json_pretty }}</pre>
             {% else %}
                 —
             {% endif %}
