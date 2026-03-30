@@ -57,7 +57,7 @@ services:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health/"]
     deploy:
       <<: *deploy
-      replicas: 1
+      replicas: ${WEB_STAGING_REPLICAS:-1}
 
   default_worker:
     <<: *default-app
@@ -83,7 +83,7 @@ services:
       "
     deploy:
       <<: *deploy
-      replicas: 1
+      replicas: ${DICOM_WORKER_STAGING_REPLICAS:-1}
 
   mass_transfer_worker:
     <<: *default-app
@@ -96,7 +96,7 @@ services:
       "
     deploy:
       <<: *deploy
-      replicas: 3  # Start with 3 to test scaling
+      replicas: ${MASS_TRANSFER_WORKER_STAGING_REPLICAS:-3}
 
   receiver:
     <<: *default-app
