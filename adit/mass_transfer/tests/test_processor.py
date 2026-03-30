@@ -132,9 +132,7 @@ def mass_transfer_env(tmp_path):
         partition_end=now + timedelta(hours=23, minutes=59, seconds=59),
         partition_key="20240101",
     )
-    return SimpleNamespace(
-        job=job, task=task, source=source, destination=destination, user=user
-    )
+    return SimpleNamespace(job=job, task=task, source=source, destination=destination, user=user)
 
 
 @pytest.mark.django_db
@@ -529,7 +527,7 @@ def _make_process_env_server_dest(
     source_mock = mocker.MagicMock()
     if dest_operator is None:
         dest_operator = mocker.MagicMock()
-    # dest DicomOperator is created first (line 288), source second (line 320)
+    # dest DicomOperator is created first, source second
     mocker.patch(
         "adit.mass_transfer.processors.DicomOperator",
         side_effect=[dest_operator, source_mock],
@@ -747,9 +745,7 @@ def test_export_series_to_server_skips_upload_on_zero_images(mocker: MockerFixtu
 
     mocker.patch.object(processor, "_export_series", return_value=(0, "", ""))
 
-    processor._export_series_to_server(
-        mock_operator, volume, None, "subject-1", mock_dest_operator
-    )
+    processor._export_series_to_server(mock_operator, volume, None, "subject-1", mock_dest_operator)
 
     mock_dest_operator.upload_images.assert_not_called()
     assert volume.status == MassTransferVolume.Status.ERROR
@@ -770,9 +766,7 @@ def test_export_series_to_server_skips_non_image_series(mocker: MockerFixture):
 
     mocker.patch.object(processor, "_export_series", return_value=(0, "", ""))
 
-    processor._export_series_to_server(
-        mock_operator, volume, None, "subject-1", mock_dest_operator
-    )
+    processor._export_series_to_server(mock_operator, volume, None, "subject-1", mock_dest_operator)
 
     mock_dest_operator.upload_images.assert_not_called()
     assert volume.status == MassTransferVolume.Status.SKIPPED
@@ -919,7 +913,8 @@ def test_process_linking_mode_uses_deterministic_pseudonym(mocker: MockerFixture
     from adit.mass_transfer.processors import _DETERMINISTIC_PSEUDONYM_LENGTH
 
     expected = compute_pseudonym(
-        "test-salt-for-deterministic-pseudonyms", "PAT1",
+        "test-salt-for-deterministic-pseudonyms",
+        "PAT1",
         length=_DETERMINISTIC_PSEUDONYM_LENGTH,
     )
     assert subject_ids[0] == expected
@@ -1612,19 +1607,27 @@ def test_group_volumes_multi_patient_multi_study():
     """Volumes are grouped by patient_id -> study_instance_uid."""
     now = timezone.now()
     v1 = MassTransferVolume(
-        patient_id="PAT1", study_instance_uid="study-A", series_instance_uid="s-1",
+        patient_id="PAT1",
+        study_instance_uid="study-A",
+        series_instance_uid="s-1",
         study_datetime=now,
     )
     v2 = MassTransferVolume(
-        patient_id="PAT1", study_instance_uid="study-A", series_instance_uid="s-2",
+        patient_id="PAT1",
+        study_instance_uid="study-A",
+        series_instance_uid="s-2",
         study_datetime=now,
     )
     v3 = MassTransferVolume(
-        patient_id="PAT1", study_instance_uid="study-B", series_instance_uid="s-3",
+        patient_id="PAT1",
+        study_instance_uid="study-B",
+        series_instance_uid="s-3",
         study_datetime=now,
     )
     v4 = MassTransferVolume(
-        patient_id="PAT2", study_instance_uid="study-C", series_instance_uid="s-4",
+        patient_id="PAT2",
+        study_instance_uid="study-C",
+        series_instance_uid="s-4",
         study_datetime=now,
     )
 

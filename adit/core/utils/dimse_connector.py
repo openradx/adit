@@ -66,14 +66,12 @@ def connect_to_server(service: DimseService):
             opened_connection = False
 
             is_connected = self.assoc and self.assoc.is_alive()
+            if is_connected and self._current_service != service:
+                self.close_connection()
+                is_connected = False
             if self.auto_connect and not is_connected:
                 self.open_connection(service)
                 opened_connection = True
-            elif is_connected and self._current_service != service:
-                raise DicomError(
-                    f"Cannot use {service} while a {self._current_service} "
-                    f"association is open. Close the current association first."
-                )
 
             try:
                 yield from func(self, *args, **kwargs)
@@ -102,14 +100,12 @@ def connect_to_server(service: DimseService):
             opened_connection = False
 
             is_connected = self.assoc and self.assoc.is_alive()
+            if is_connected and self._current_service != service:
+                self.close_connection()
+                is_connected = False
             if self.auto_connect and not is_connected:
                 self.open_connection(service)
                 opened_connection = True
-            elif is_connected and self._current_service != service:
-                raise DicomError(
-                    f"Cannot use {service} while a {self._current_service} "
-                    f"association is open. Close the current association first."
-                )
 
             try:
                 result = func(self, *args, **kwargs)
