@@ -1,5 +1,6 @@
 import logging
 
+from django import db
 from procrastinate import JobContext, RetryStrategy
 from procrastinate.contrib.django import app
 
@@ -49,16 +50,19 @@ def queue_mass_transfer_tasks(job_id: int):
         )
         return
 
-    for mass_task in job.tasks.filter(
-        status=DicomTask.Status.PENDING,
-        queued_job__isnull=True,  # Skip tasks already queued (idempotency guard)
-    ):
-        try:
-            mass_task.queue_pending_task()
-        except Exception:
-            logger.exception(
-                "Failed to queue MassTransferTask %d for job %d",
-                mass_task.pk,
-                job_id,
-            )
-            raise
+    try:
+        for mass_task in job.tasks.filter(
+            status=DicomTask.Status.PENDING,
+            queued_job__isnull=True,  # Skip tasks already queued (idempotency guard)
+        ):
+            try:
+                mass_task.queue_pending_task()
+            except Exception:
+                logger.exception(
+                    "Failed to queue MassTransferTask %d for job %d",
+                    mass_task.pk,
+                    job_id,
+                )
+                raise
+    finally:
+        db.close_old_connections()
