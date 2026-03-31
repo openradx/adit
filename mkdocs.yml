@@ -7,7 +7,8 @@ repo_name: openradx/adit
 repo_url: https://github.com/openradx/adit
 edit_uri: edit/main/docs/
 
-copyright: Copyright &copy; 2024-2025 CCI Bonn
+hooks:
+  - docs/hooks/copyright.py
 
 theme:
   name: material
