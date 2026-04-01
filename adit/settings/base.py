@@ -494,3 +494,21 @@ SKIP_ELEMENTS_ANONYMIZATION = [
 ANONYMIZATION_SEED = env.str("ANONYMIZATION_SEED", default="")
 if not ANONYMIZATION_SEED:
     raise ImproperlyConfigured("ANONYMIZATION_SEED must be set")
+
+# DICOM tags to extract from the first instance in a series and merge into the
+# dcm2niix JSON sidecar during NIfTI conversion.
+DICOM_METADATA_TAGS = [
+    "PatientBirthDate",
+    "PatientSex",
+    "PatientAge",
+    "PatientID",
+    "PatientName",
+    "StudyDate",
+    "StudyInstanceUID",
+    "SeriesInstanceUID",
+    "Modality",
+    "InstitutionName",
+    "StudyDescription",
+    "SeriesDescription",
+    "SeriesNumber",
+]

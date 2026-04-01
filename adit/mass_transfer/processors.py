@@ -139,23 +139,6 @@ def _series_folder_name(series_description: str, series_number: int | None, seri
     return f"{desc}_{series_number}"
 
 
-_DICOM_METADATA_TAGS = [
-    "PatientBirthDate",
-    "PatientSex",
-    "PatientAge",
-    "PatientID",
-    "PatientName",
-    "StudyDate",
-    "StudyInstanceUID",
-    "SeriesInstanceUID",
-    "Modality",
-    "InstitutionName",
-    "StudyDescription",
-    "SeriesDescription",
-    "SeriesNumber",
-]
-
-
 def _extract_dicom_metadata(dicom_dir: Path) -> dict[str, str]:
     """Read the first DICOM file in *dicom_dir* and extract metadata fields.
 
@@ -164,6 +147,7 @@ def _extract_dicom_metadata(dicom_dir: Path) -> dict[str, str]:
     PatientBirthDate and StudyDate when both are present.
     """
     import pydicom
+    from django.conf import settings
 
     for dcm_path in sorted(dicom_dir.glob("*.dcm")):
         try:
@@ -172,7 +156,7 @@ def _extract_dicom_metadata(dicom_dir: Path) -> dict[str, str]:
             logger.warning("Skipping unreadable DICOM file %s: %s", dcm_path, exc)
             continue
         fields: dict[str, str] = {}
-        for tag in _DICOM_METADATA_TAGS:
+        for tag in settings.DICOM_METADATA_TAGS:
             val = ds.get(tag)
             if val is not None:
                 fields[tag] = str(val)
@@ -192,15 +176,21 @@ def _extract_dicom_metadata(dicom_dir: Path) -> dict[str, str]:
     return {}
 
 
-def _write_dicom_metadata(output_path: Path, metadata_name: str, fields: dict[str, str]) -> None:
-    """Write a DICOM metadata JSON file alongside NIfTI outputs."""
+def _merge_dicom_metadata(output_path: Path, fields: dict[str, str]) -> None:
+    """Merge extra DICOM metadata into dcm2niix JSON sidecars.
+
+    The *fields* are written first and then overlaid with the existing
+    dcm2niix values so that dcm2niix-derived fields always take precedence.
+    """
     if not fields:
         return
-    metadata_path = output_path / f"{metadata_name}_dicom.json"
-    try:
-        metadata_path.write_text(json.dumps(fields, indent=2))
-    except (OSError, TypeError, ValueError):
-        logger.warning("Failed to write metadata %s", metadata_path, exc_info=True)
+    for sidecar_path in sorted(output_path.glob("*.json")):
+        try:
+            existing = json.loads(sidecar_path.read_text())
+            merged = {**fields, **existing}
+            sidecar_path.write_text(json.dumps(merged, indent=2))
+        except (OSError, TypeError, ValueError, json.JSONDecodeError):
+            logger.warning("Failed to merge metadata into %s", sidecar_path, exc_info=True)
 
 
 def _age_at_study(birth_date: date, study_date: date) -> int:
@@ -611,12 +601,7 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
             volume.series_instance_uid_pseudonymized = series_uid_pseudonymized
 
             if nifti_files:
-                series_folder = _series_folder_name(
-                    volume.series_description,
-                    volume.series_number,
-                    volume.series_instance_uid,
-                )
-                _write_dicom_metadata(output_path, series_folder, dicom_metadata)
+                _merge_dicom_metadata(output_path, dicom_metadata)
                 volume.converted_file = "\n".join(str(f) for f in nifti_files)
                 volume.status = MassTransferVolume.Status.CONVERTED
             else:

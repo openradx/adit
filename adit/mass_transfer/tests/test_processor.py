@@ -1,3 +1,4 @@
+import json
 from datetime import date, datetime, timedelta
 from pathlib import Path
 from types import SimpleNamespace
@@ -1421,8 +1422,12 @@ def test_filter_spec_from_dict_without_min_instances():
 # ---------------------------------------------------------------------------
 
 
-def test_write_dicom_metadata(tmp_path: Path):
-    from adit.mass_transfer.processors import _write_dicom_metadata
+def test_merge_dicom_metadata(tmp_path: Path):
+    from adit.mass_transfer.processors import _merge_dicom_metadata
+
+    # Simulate a dcm2niix JSON sidecar
+    sidecar = tmp_path / "T1w_3D.json"
+    sidecar.write_text(json.dumps({"RepetitionTime": 2.0, "EchoTime": 0.03, "Modality": "MR"}))
 
     fields = {
         "PatientBirthDate": "19900101",
@@ -1431,29 +1436,54 @@ def test_write_dicom_metadata(tmp_path: Path):
         "StudyDate": "20250315",
         "StudyInstanceUID": "1.2.3.4.5",
         "SeriesInstanceUID": "1.2.3.4.5.6",
-        "Modality": "MR",
+        "Modality": "CT",  # conflicts with dcm2niix — dcm2niix should win
     }
 
-    _write_dicom_metadata(tmp_path, "T1w_3D_101", fields)
+    _merge_dicom_metadata(tmp_path, fields)
 
-    import json
-
-    metadata = tmp_path / "T1w_3D_101_dicom.json"
-    assert metadata.exists()
-    result = json.loads(metadata.read_text())
+    result = json.loads(sidecar.read_text())
+    # DICOM metadata fields are present
     assert result["PatientBirthDate"] == "19900101"
     assert result["PatientAgeAtStudy"] == "35"
     assert result["StudyInstanceUID"] == "1.2.3.4.5"
+    # dcm2niix fields are preserved
+    assert result["RepetitionTime"] == 2.0
+    assert result["EchoTime"] == 0.03
+    # dcm2niix value wins on conflict
     assert result["Modality"] == "MR"
 
 
-def test_write_dicom_metadata_empty_fields(tmp_path: Path):
-    from adit.mass_transfer.processors import _write_dicom_metadata
+def test_merge_dicom_metadata_multiple_sidecars(tmp_path: Path):
+    from adit.mass_transfer.processors import _merge_dicom_metadata
 
-    _write_dicom_metadata(tmp_path, "series_1", {})
+    sidecar1 = tmp_path / "echo1.json"
+    sidecar2 = tmp_path / "echo2.json"
+    sidecar1.write_text(json.dumps({"EchoTime": 0.01}))
+    sidecar2.write_text(json.dumps({"EchoTime": 0.02}))
 
-    # No file should be written when fields are empty
-    assert not list(tmp_path.glob("*.json"))
+    fields = {"PatientID": "ABC123", "Modality": "MR"}
+
+    _merge_dicom_metadata(tmp_path, fields)
+
+    result1 = json.loads(sidecar1.read_text())
+    result2 = json.loads(sidecar2.read_text())
+    assert result1["PatientID"] == "ABC123"
+    assert result1["EchoTime"] == 0.01
+    assert result2["PatientID"] == "ABC123"
+    assert result2["EchoTime"] == 0.02
+
+
+def test_merge_dicom_metadata_empty_fields(tmp_path: Path):
+    from adit.mass_transfer.processors import _merge_dicom_metadata
+
+    sidecar = tmp_path / "series.json"
+    original = {"RepetitionTime": 2.0}
+    sidecar.write_text(json.dumps(original))
+
+    _merge_dicom_metadata(tmp_path, {})
+
+    # Sidecar should be unchanged
+    assert json.loads(sidecar.read_text()) == original
 
 
 def _write_test_dicom(path: Path, **kwargs) -> None:
