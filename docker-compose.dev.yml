@@ -87,4 +87,3 @@ services:
   orthanc2:
     ports:
       - "7502:7502"
-
