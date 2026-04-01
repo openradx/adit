@@ -3,7 +3,7 @@ x-observability: &observability
     - default
     - openradx-observability
   environment:
-    OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector.local:4318
+    OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
 
 networks:
   openradx-observability:
