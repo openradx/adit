@@ -1,0 +1,22 @@
+x-observability: &observability
+  networks:
+    - default
+    - openradx-observability
+  environment:
+    OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector.local:4318
+
+networks:
+  openradx-observability:
+    external: true
+
+services:
+  init:
+    <<: *observability
+  web:
+    <<: *observability
+  default_worker:
+    <<: *observability
+  dicom_worker:
+    <<: *observability
+  receiver:
+    <<: *observability

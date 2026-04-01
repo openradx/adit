@@ -150,5 +150,8 @@ pyvenv.cfg
 /backups/*
 !/backups/.gitkeep
 
+# Observability overlay (opt-in, copied from .example)
+docker-compose.observability.yml
+
 # OS Specific
 .DS_Store
