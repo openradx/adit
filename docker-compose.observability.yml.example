@@ -4,6 +4,7 @@ x-observability: &observability
     - openradx-observability
   environment:
     OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
+    OTEL_PYTHON_DJANGO_EXCLUDED_URLS: "health/,static/.*"
 
 networks:
   openradx-observability:

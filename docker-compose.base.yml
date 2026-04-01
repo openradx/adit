@@ -43,7 +43,6 @@ x-app: &default-app
     TIME_ZONE: ${TIME_ZONE:?}
     TOKEN_AUTHENTICATION_SALT: ${TOKEN_AUTHENTICATION_SALT:?}
     ANONYMIZATION_SEED: ${ANONYMIZATION_SEED:-}
-    OTEL_PYTHON_DJANGO_EXCLUDED_URLS: "health/,static/.*"
 
 services:
   init:
