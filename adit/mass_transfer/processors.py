@@ -11,6 +11,8 @@ from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import cast
 
+import pydicom
+from django.conf import settings
 from django.utils import timezone
 from pydicom import Dataset
 from pydicom.errors import InvalidDicomError
@@ -61,9 +63,7 @@ class FilterSpec:
             series_number=d.get("series_number"),
             min_age=d.get("min_age"),
             max_age=d.get("max_age"),
-            min_number_of_series_related_instances=d.get(
-                "min_number_of_series_related_instances"
-            ),
+            min_number_of_series_related_instances=d.get("min_number_of_series_related_instances"),
         )
 
 
@@ -146,9 +146,6 @@ def _extract_dicom_metadata(dicom_dir: Path) -> dict[str, str]:
     etc. The function also computes a ``PatientAgeAtStudy`` field from
     PatientBirthDate and StudyDate when both are present.
     """
-    import pydicom
-    from django.conf import settings
-
     for dcm_path in sorted(dicom_dir.glob("*.dcm")):
         try:
             ds = pydicom.dcmread(dcm_path, stop_before_pixels=True)
@@ -821,10 +818,7 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
 
                     if mf.min_number_of_series_related_instances is not None:
                         num_instances = (
-                            _parse_int(
-                                series.get("NumberOfSeriesRelatedInstances"), default=0
-                            )
-                            or 0
+                            _parse_int(series.get("NumberOfSeriesRelatedInstances"), default=0) or 0
                         )
                         if num_instances < mf.min_number_of_series_related_instances:
                             continue
