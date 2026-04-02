@@ -19,5 +19,7 @@ services:
     <<: *observability
   dicom_worker:
     <<: *observability
+  mass_transfer_worker:
+    <<: *observability
   receiver:
     <<: *observability
