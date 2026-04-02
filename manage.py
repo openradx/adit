@@ -7,7 +7,6 @@ import sys
 
 def initialize_debugger():
     """Enable remote debugging."""
-
     from django.conf import settings
 
     # RUN_MAIN envvar is set by the reloader to indicate that this is the
@@ -23,6 +22,11 @@ def initialize_debugger():
 
 def main():
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", "adit.settings.development")
+
+    # Initialize OpenTelemetry before Django loads to ensure all requests are traced
+    from adit_radis_shared.telemetry import setup_opentelemetry
+
+    setup_opentelemetry()
 
     initialize_debugger()
 

@@ -52,7 +52,7 @@ services:
           adit.asgi:application
       "
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost/health/"]
+      test: ["CMD", "curl", "-fk", "https://localhost/health/"]
     deploy:
       <<: *deploy
       replicas: ${WEB_REPLICAS:-3}
