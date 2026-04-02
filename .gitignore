@@ -150,5 +150,8 @@ pyvenv.cfg
 /backups/*
 !/backups/.gitkeep
 
+# Override overlay (opt-in, copied from .example)
+docker-compose.override.yml
+
 # OS Specific
 .DS_Store
