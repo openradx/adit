@@ -360,8 +360,8 @@ class TestProcessSingleFetch:
         assert any("conversion failed unexpectedly" in msg for msg in caplog.messages)
 
     @pytest.mark.asyncio
-    async def test_conversion_error_logs_warning(self, tmp_path, monkeypatch, caplog):
-        """DcmToNiftiConversionError should log a warning and yield nothing."""
+    async def test_conversion_error_propagates(self, tmp_path, monkeypatch):
+        """DcmToNiftiConversionError should propagate to the caller."""
         converter_mock = MagicMock()
         converter_mock.convert.side_effect = DcmToNiftiConversionError("convert failed")
 
@@ -377,13 +377,9 @@ class TestProcessSingleFetch:
 
         monkeypatch.setattr(wadors_utils, "TemporaryDirectory", fake_temp_dir)
 
-        results = []
-        with caplog.at_level(logging.WARNING, logger=WADORS_LOGGER):
-            async for item in wadors_utils._process_single_fetch([Dataset()]):
-                results.append(item)
-
-        assert results == []
-        assert any("Failed to convert DICOM" in msg for msg in caplog.messages)
+        with pytest.raises(DcmToNiftiConversionError, match="convert failed"):
+            async for _ in wadors_utils._process_single_fetch([Dataset()]):
+                pass
 
     @pytest.mark.asyncio
     async def test_unexpected_error_propagates(self, tmp_path, monkeypatch):

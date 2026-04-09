@@ -13,7 +13,6 @@ from aiofiles.tempfile import TemporaryDirectory
 from pydicom import Dataset
 
 from adit.core.errors import (
-    DcmToNiftiConversionError,
     DicomError,
     NoSpatialDataError,
     NoValidDicomError,
@@ -259,9 +258,6 @@ async def _process_single_fetch(
             # The series passed the modality check but still failed conversion.
             # This is unexpected and worth logging as a warning.
             logger.warning(f"Series conversion failed unexpectedly: {e}")
-            return
-        except DcmToNiftiConversionError as e:
-            logger.warning(f"Failed to convert DICOM files to NIfTI: {e}")
             return
         except Exception as e:
             logger.error(f"Error during DICOM to NIfTI conversion: {e}")

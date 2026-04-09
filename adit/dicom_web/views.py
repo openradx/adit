@@ -1,6 +1,7 @@
 import json
 import logging
 from contextlib import asynccontextmanager
+from io import BytesIO
 from typing import AsyncIterator, Literal, Union, cast
 
 from adit_radis_shared.common.types import AuthenticatedApiRequest, User
@@ -238,6 +239,19 @@ class RetrieveAPIView(WebDicomAPIView):
 
         return peekable_images
 
+    async def peek_nifti_files(
+        self, files: AsyncIterator[tuple[str, BytesIO]]
+    ) -> AsyncPeekable[tuple[str, BytesIO]]:
+        peekable_files = AsyncPeekable(files)
+        try:
+            await peekable_files.peek()
+        except StopAsyncIteration:
+            pass
+        except Exception as err:
+            logger.exception(err)
+            raise
+        return peekable_files
+
     async def extract_metadata(self, images: AsyncIterator[Dataset]) -> list[dict]:
         metadata: list[dict] = []
         async for image in images:
@@ -337,6 +351,7 @@ class RetrieveNiftiStudyAPIView(RetrieveAPIView):
             query["StudyInstanceUID"] = study_uid
 
             images = wado_retrieve_nifti(source_server, query, "STUDY")
+            images = await self.peek_nifti_files(images)
 
             renderer = cast(
                 WadoMultipartApplicationNiftiRenderer, getattr(request, "accepted_renderer")
@@ -428,6 +443,7 @@ class RetrieveNiftiSeriesAPIView(RetrieveAPIView):
             query["SeriesInstanceUID"] = series_uid
 
             images = wado_retrieve_nifti(source_server, query, "SERIES")
+            images = await self.peek_nifti_files(images)
 
             renderer = cast(
                 WadoMultipartApplicationNiftiRenderer, getattr(request, "accepted_renderer")
@@ -532,6 +548,7 @@ class RetrieveNiftiImageAPIView(RetrieveAPIView):
             query["SOPInstanceUID"] = image_uid
 
             images = wado_retrieve_nifti(source_server, query, "IMAGE")
+            images = await self.peek_nifti_files(images)
 
             renderer = cast(
                 WadoMultipartApplicationNiftiRenderer, getattr(request, "accepted_renderer")
