@@ -126,6 +126,12 @@ def process_dicom_task(context: JobContext, model_label: str, task_id: int):
         dicom_task.status = DicomTask.Status.FAILURE
         ensure_db_connection()
 
+    except futures.CancelledError:
+        logger.info("Processing of %s was canceled.", dicom_task)
+        dicom_task.status = DicomTask.Status.CANCELED
+        dicom_task.message = "Task was canceled."
+        ensure_db_connection()
+
     except RetriableDicomError as err:
         logger.exception("Retriable error occurred during %s.", dicom_task)
 

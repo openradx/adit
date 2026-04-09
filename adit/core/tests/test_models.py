@@ -169,6 +169,21 @@ class TestDicomJob:
         assert job.end is None
 
     @pytest.mark.django_db
+    def test_job_post_process_all_tasks_canceled(self):
+        job = ExampleTransferJobFactory.create(status=DicomJob.Status.PENDING)
+
+        ExampleTransferTaskFactory.create(job=job, status=DicomTask.Status.CANCELED)
+        ExampleTransferTaskFactory.create(job=job, status=DicomTask.Status.CANCELED)
+
+        result = job.post_process()
+        job.refresh_from_db()
+
+        assert result is True
+        assert job.status == DicomJob.Status.CANCELED
+        assert job.message == "All tasks were canceled."
+        assert job.end is not None
+
+    @pytest.mark.django_db
     @time_machine.travel("2025-01-15 14:30:00+00:00")
     def test_job_timezone_correctness(self):
         job = ExampleTransferJobFactory.create(status=DicomJob.Status.PENDING)

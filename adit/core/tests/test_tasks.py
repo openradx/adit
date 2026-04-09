@@ -1,10 +1,15 @@
+from time import sleep
+from typing import cast
+
 import pytest
 from adit_radis_shared.common.utils.testing_helpers import run_worker_once
+from procrastinate import JobContext
 from pytest_mock import MockerFixture
 
 from adit.core.errors import RetriableDicomError
 from adit.core.models import DicomJob, DicomTask
 from adit.core.processors import DicomTaskProcessor
+from adit.core.tasks import process_dicom_task
 from adit.core.types import ProcessingResult
 from adit.core.utils.model_utils import get_model_label
 
@@ -154,6 +159,47 @@ def test_process_dicom_task_that_raises(mocker: MockerFixture):
     assert dicom_task.queued_job is None
     assert dicom_task.status == DicomTask.Status.FAILURE
     assert dicom_task.message == "Unexpected error!"
+    assert dicom_task.attempts == 1
+
+
+@pytest.mark.django_db(transaction=True)
+def test_process_dicom_task_that_gets_canceled_via_abort_context(mocker: MockerFixture, settings):
+    settings.DICOM_TASK_CANCELED_MONITOR_INTERVAL = 0.01
+    settings.DICOM_TASK_PROCESS_TIMEOUT = 2
+
+    dicom_job = ExampleTransferJobFactory.create(status=DicomJob.Status.PENDING)
+    dicom_task = ExampleTransferTaskFactory.create(
+        status=DicomTask.Status.PENDING,
+        job=dicom_job,
+    )
+
+    def process(self):
+        sleep(10)
+        return {
+            "status": DicomTask.Status.SUCCESS,
+            "message": "Success!",
+            "log": "",
+        }
+
+    class FakeContext:
+        def __init__(self):
+            self.job = object()
+
+        def should_abort(self):
+            return True
+
+    mocker.patch.object(ExampleProcessor, "process", process)
+
+    model_label = get_model_label(ExampleTransferTask)
+    process_dicom_task(cast(JobContext, FakeContext()), model_label, dicom_task.pk)
+
+    dicom_job.refresh_from_db()
+    assert dicom_job.status == DicomJob.Status.CANCELED
+    assert dicom_job.message == "All tasks were canceled."
+
+    dicom_task.refresh_from_db()
+    assert dicom_task.status == DicomTask.Status.CANCELED
+    assert dicom_task.message == "Task was canceled."
     assert dicom_task.attempts == 1
 
 
