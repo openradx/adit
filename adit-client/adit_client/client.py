@@ -200,6 +200,7 @@ class AditClient:
             headers={"Accept": "multipart/related; type=application/octet-stream"},
             stream=True,
         )
+        response.raise_for_status()
         return list(self._iter_multipart_response(response, stream=False))
 
     def iter_nifti_study(self, ae_title: str, study_uid: str) -> Iterator[tuple[str, BytesIO]]:
@@ -211,6 +212,7 @@ class AditClient:
             headers={"Accept": "multipart/related; type=application/octet-stream"},
             stream=True,
         )
+        response.raise_for_status()
         yield from self._iter_multipart_response(response, stream=True)
 
     def retrieve_nifti_series(
@@ -227,6 +229,7 @@ class AditClient:
             headers={"Accept": "multipart/related; type=application/octet-stream"},
             stream=True,
         )
+        response.raise_for_status()
         return list(self._iter_multipart_response(response, stream=False))
 
     def iter_nifti_series(
@@ -243,6 +246,7 @@ class AditClient:
             headers={"Accept": "multipart/related; type=application/octet-stream"},
             stream=True,
         )
+        response.raise_for_status()
         yield from self._iter_multipart_response(response, stream=True)
 
     def retrieve_nifti_image(
@@ -259,6 +263,7 @@ class AditClient:
             headers={"Accept": "multipart/related; type=application/octet-stream"},
             stream=True,
         )
+        response.raise_for_status()
         return list(self._iter_multipart_response(response, stream=False))
 
     def iter_nifti_image(
@@ -275,6 +280,7 @@ class AditClient:
             headers={"Accept": "multipart/related; type=application/octet-stream"},
             stream=True,
         )
+        response.raise_for_status()
         yield from self._iter_multipart_response(response, stream=True)
 
     def _extract_filename(self, content_disposition: str | None) -> str:

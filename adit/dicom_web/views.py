@@ -242,6 +242,12 @@ class RetrieveAPIView(WebDicomAPIView):
     async def peek_nifti_files(
         self, files: AsyncIterator[tuple[str, BytesIO]]
     ) -> AsyncPeekable[tuple[str, BytesIO]]:
+        # In the middle of a StreamingHttpResponse we can't just throw an exception anymore to
+        # just return an error response as the stream has already started. That's why we peek
+        # the first file here and throw an exception to return an error response if something
+        # initially went wrong. If in the middle of the StreamingHttpResponse an error happens
+        # we return an error message inside the streamed response, but this leads to a truncated
+        # and unreadable NIfTI file on the client side.
         peekable_files = AsyncPeekable(files)
         try:
             await peekable_files.peek()

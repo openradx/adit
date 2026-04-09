@@ -13,6 +13,7 @@ from aiofiles.tempfile import TemporaryDirectory
 from pydicom import Dataset
 
 from adit.core.errors import (
+    DcmToNiftiConversionError,
     DicomError,
     NoSpatialDataError,
     NoValidDicomError,
@@ -155,7 +156,8 @@ def _fetch_dicom_data(
             callback=callback,
         )
     elif level == "IMAGE":
-        assert query_ds.has("SeriesInstanceUID")
+        if not query_ds.has("SeriesInstanceUID"):
+            raise ValueError("SeriesInstanceUID is required for IMAGE-level fetch")
         operator.fetch_image(
             patient_id=query_ds.PatientID,
             study_uid=query_ds.StudyInstanceUID,
@@ -189,12 +191,13 @@ async def wado_retrieve_nifti(
         if level == "STUDY":
             series_list = await sync_to_async(operator.find_series, thread_sensitive=False)(
                 QueryDataset.create(
+                    PatientID=query["PatientID"],
                     StudyInstanceUID=query["StudyInstanceUID"],
                 )
             )
 
             for series in series_list:
-                modality = series.Modality
+                modality = getattr(series, "Modality", None)
                 if modality in NON_IMAGE_MODALITIES:
                     logger.debug(
                         f"Skipping non-image series {series.SeriesInstanceUID} "
@@ -224,6 +227,8 @@ async def wado_retrieve_nifti(
     except RetriableDicomError as err:
         raise ServiceUnavailableApiError(str(err))
     except DicomError as err:
+        raise BadGatewayApiError(str(err))
+    except DcmToNiftiConversionError as err:
         raise BadGatewayApiError(str(err))
 
 
@@ -263,8 +268,7 @@ async def _process_single_fetch(
             logger.error(f"Error during DICOM to NIfTI conversion: {e}")
             raise
 
-        entries = await aiofiles.os.scandir(nifti_output_dir)
-        all_files = [entry.name for entry in entries]
+        all_files = await aiofiles.os.listdir(nifti_output_dir)
 
         file_pairs: dict[str, dict[str, str]] = {}
         for filename in all_files:

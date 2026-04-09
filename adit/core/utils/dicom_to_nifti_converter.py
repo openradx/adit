@@ -81,8 +81,8 @@ class DicomToNiftiConverter:
             result = subprocess.run(
                 cmd, check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE
             )
-            stderr = result.stderr.decode("utf-8")
-            stdout = result.stdout.decode("utf-8")
+            stderr = result.stderr.decode("utf-8", errors="replace")
+            stdout = result.stdout.decode("utf-8", errors="replace")
 
             if "Warning:" in stderr or "Warning:" in stdout:
                 logger.warning(f"Warnings during conversion: {stderr}\n{stdout}")
@@ -99,7 +99,10 @@ class DicomToNiftiConverter:
             elif exit_code == DcmToNiftiExitCode.NO_DICOM_FOUND:
                 raise NoValidDicomError(f"No DICOM images found in input folder: {error_msg}")
             elif exit_code == DcmToNiftiExitCode.VERSION_REPORT:
-                logger.info(f"dcm2niix version report: {error_msg}")
+                raise DcmToNiftiConversionError(
+                    f"dcm2niix returned a version report instead of converting (exit code 3). "
+                    f"Check that dcm2niix is invoked correctly: {error_msg}"
+                )
             elif exit_code == DcmToNiftiExitCode.CORRUPT_DICOM:
                 raise InvalidDicomError(f"Corrupt DICOM file: {error_msg}")
             elif exit_code == DcmToNiftiExitCode.INVALID_INPUT_FOLDER:
