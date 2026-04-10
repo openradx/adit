@@ -127,7 +127,8 @@ class WadoMultipartApplicationNiftiRenderer(DicomWebWadoRenderer):
             except Exception as err:
                 yield self._error_stream(err)
 
-            yield f"\r\n--{self.boundary}--\r\n".encode()
+            if not first_part:
+                yield f"\r\n--{self.boundary}--\r\n".encode()
 
         return streaming_content()
 

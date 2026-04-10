@@ -123,7 +123,7 @@ class DicomToNiftiConverter:
                 )
 
         except subprocess.SubprocessError as e:
-            raise ExternalToolError(f"Failed to execute dcm2niix: {e}")
+            raise ExternalToolError(f"Failed to execute dcm2niix: {e}") from e
 
         logger.debug(
             f"DICOM files in {dicom_folder} successfully converted to NIfTI format "

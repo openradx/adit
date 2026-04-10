@@ -124,9 +124,9 @@ async def wado_retrieve(
                 pass
 
     except RetriableDicomError as exc:
-        raise ServiceUnavailableApiError(str(exc))
+        raise ServiceUnavailableApiError(str(exc)) from exc
     except DicomError as exc:
-        raise BadGatewayApiError(str(exc))
+        raise BadGatewayApiError(str(exc)) from exc
 
 
 def _fetch_dicom_data(
@@ -225,9 +225,9 @@ async def wado_retrieve_nifti(
                 yield filename, file_content
 
     except RetriableDicomError as err:
-        raise ServiceUnavailableApiError(str(err))
+        raise ServiceUnavailableApiError(str(err)) from err
     except DicomError as err:
-        raise BadGatewayApiError(str(err))
+        raise BadGatewayApiError(str(err)) from err
     except DcmToNiftiConversionError as err:
         raise BadGatewayApiError(str(err))
 
@@ -265,7 +265,7 @@ async def _process_single_fetch(
             logger.warning(f"Series conversion failed unexpectedly: {e}")
             return
         except Exception as e:
-            logger.error(f"Error during DICOM to NIfTI conversion: {e}")
+            logger.exception(f"Error during DICOM to NIfTI conversion: {e}")
             raise
 
         all_files = await aiofiles.os.listdir(nifti_output_dir)
