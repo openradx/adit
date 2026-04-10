@@ -26,7 +26,7 @@ services:
     hostname: init.local
     command: >
       bash -c "
-        wait-for-it -s postgres.local:5432 -t 60 && 
+        wait-for-it -s postgres.local:5432 -t ${WAIT_POSTGRES_TIMEOUT:-180} &&
         ./manage.py migrate &&
         ./manage.py collectstatic --no-input &&
         ./manage.py create_superuser &&
@@ -61,7 +61,7 @@ services:
     <<: *default-app
     command: >
       bash -c "
-        wait-for-it -s postgres.local:5432 -t 60 &&
+        wait-for-it -s postgres.local:5432 -t ${WAIT_POSTGRES_TIMEOUT:-180} &&
         ./manage.py bg_worker -q default
       "
     deploy:
@@ -71,7 +71,7 @@ services:
     <<: *default-app
     command: >
       bash -c "
-        wait-for-it -s postgres.local:5432 -t 60 &&
+        wait-for-it -s postgres.local:5432 -t ${WAIT_POSTGRES_TIMEOUT:-180} &&
         ./manage.py bg_worker -q dicom
       "
     deploy:
