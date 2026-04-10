@@ -57,8 +57,8 @@ class TestWadoMultipartApplicationNiftiRenderer:
 
         output = await _collect_rendered_output(renderer, _async_iter([]))
 
-        # Only the closing boundary
-        assert output == b"\r\n--nifti-boundary--\r\n"
+        # Empty iterator produces no output — no parts, no boundary
+        assert output == b""
 
     @pytest.mark.asyncio
     async def test_render_filename_sanitization(self):
