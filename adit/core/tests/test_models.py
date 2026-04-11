@@ -520,6 +520,42 @@ class TestDicomNodeManager:
         assert accessible.count() == 1
         assert accessible.filter(pk=server.pk).exists()
 
+    @pytest.mark.django_db
+    def test_accessible_by_user_does_not_leak_permissions_between_groups(self):
+        """Regression test: permissions from one group must not leak to another group.
+
+        If Group B has destination access but Group A does not, a user in Group A
+        should NOT get destination access just because Group B's access exists.
+        """
+        user = UserFactory.create()
+        group_a = GroupFactory.create(name="GroupA")
+        group_b = GroupFactory.create(name="GroupB")
+        user.groups.add(group_a)  # User is ONLY in Group A
+        user.active_group = group_a
+        user.save()
+
+        server = DicomServerFactory.create(name="SharedServer")
+
+        # Group A: source only
+        DicomNodeGroupAccess.objects.create(
+            dicom_node=server, group=group_a, source=True, destination=False
+        )
+        # Group B: source AND destination (user is NOT in this group)
+        DicomNodeGroupAccess.objects.create(
+            dicom_node=server, group=group_b, source=True, destination=True
+        )
+
+        # User should have source access (via Group A)
+        accessible_sources = DicomNode.objects.accessible_by_user(user, "source")
+        assert accessible_sources.filter(pk=server.pk).exists()
+
+        # User should NOT have destination access (Group A doesn't grant it)
+        accessible_destinations = DicomNode.objects.accessible_by_user(user, "destination")
+        assert not accessible_destinations.filter(pk=server.pk).exists(), (
+            "Permission leaked: user got destination access from Group B "
+            "even though they are only in Group A"
+        )
+
 
 class TestDicomNodeGroupAccess:
     @pytest.mark.django_db

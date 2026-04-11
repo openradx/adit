@@ -1,0 +1,23 @@
+x-observability: &observability
+  networks:
+    - default
+    - openradx-observability
+  environment:
+    OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
+    OTEL_PYTHON_DJANGO_EXCLUDED_URLS: "health/,static/.*"
+
+networks:
+  openradx-observability:
+    external: true
+
+services:
+  init:
+    <<: *observability
+  web:
+    <<: *observability
+  default_worker:
+    <<: *observability
+  dicom_worker:
+    <<: *observability
+  receiver:
+    <<: *observability
