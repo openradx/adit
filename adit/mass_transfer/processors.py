@@ -71,7 +71,6 @@ logger = logging.getLogger(__name__)
 
 _MIN_SPLIT_WINDOW = timedelta(minutes=30)
 _DELAY_BETWEEN_SERIES = 0.5  # seconds between fetch requests to avoid overwhelming the PACS
-_DELAY_RETRY_FETCH = 3  # seconds before retrying a fetch that returned 0 images
 
 # Deterministic pseudonyms use 14 characters. Random pseudonyms use 15 so the
 # two modes can be distinguished by length.
@@ -981,12 +980,13 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
             write_dataset(ds, output_path / file_name)
             image_count += 1
 
-        # Some PACS return 0 images for two reasons:
-        # 1. Transient: PACS is overwhelmed by rapid requests (fixed by pacing)
-        # 2. Permanent: series is archived/offline and can't be served
-        # One retry after a short delay distinguishes the two cases.  If the
-        # second attempt also fails, the series is unretrievable — move on and
-        # let the ERROR status trigger a retry on the next task run.
+        # Reconciliation between the discovery and transfer phases: discovery
+        # recorded volume.number_of_images from the PACS's own C-FIND response;
+        # a fetch that delivers 0 images against a non-zero expected count means
+        # the PACS either got momentarily overloaded or the series sits on
+        # archived/offline storage. We probe once more to distinguish the two.
+        # This is workflow logic, not network retry — transient connection
+        # failures are still handled by stamina/procrastinate at lower layers.
         operator.fetch_series(
             patient_id=volume.patient_id,
             study_uid=volume.study_instance_uid,
@@ -998,9 +998,9 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
                 "Fetch returned 0 images for %s (PACS reports %d) — retrying in %ds",
                 volume.series_instance_uid,
                 volume.number_of_images,
-                _DELAY_RETRY_FETCH,
+                settings.MASS_TRANSFER_FETCH_RECONCILIATION_DELAY,
             )
-            time.sleep(_DELAY_RETRY_FETCH)
+            time.sleep(settings.MASS_TRANSFER_FETCH_RECONCILIATION_DELAY)
             operator.fetch_series(
                 patient_id=volume.patient_id,
                 study_uid=volume.study_instance_uid,

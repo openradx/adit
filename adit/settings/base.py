@@ -424,6 +424,12 @@ C_MOVE_DOWNLOAD_TIMEOUT = 30  # seconds
 # (discovery + export + convert) and can run for hours.
 MASS_TRANSFER_PROCESS_TIMEOUT = 24 * 60 * 60  # seconds (24 hours)
 
+# Delay before the mass transfer fetch reconciliation re-attempt. When discovery
+# reported N images for a series but the fetch delivered 0, the processor waits this
+# long before probing once more to distinguish a momentarily overloaded PACS from a
+# series that is truly archived/offline.
+MASS_TRANSFER_FETCH_RECONCILIATION_DELAY = 3  # seconds
+
 # Show DICOM debug messages of pynetdicom
 ENABLE_DICOM_DEBUG_LOGGER = False
 
