@@ -70,7 +70,7 @@ class FilterSpec:
 logger = logging.getLogger(__name__)
 
 _MIN_SPLIT_WINDOW = timedelta(minutes=30)
-_DELAY_BETWEEN_SERIES = 0.5  # seconds between fetch requests to avoid overwhelming the PACS
+_DELAY_BETWEEN_STUDIES = 0.5  # seconds between studies to avoid overwhelming the PACS
 
 # Deterministic pseudonyms use 14 characters. Random pseudonyms use 15 so the
 # two modes can be distinguished by length.
@@ -420,21 +420,18 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
             for study_uid, volumes_list in studies.items():
                 study_count += 1
 
+                if study_count > 1:
+                    # Pacing delay between consecutive studies. Each study opens a
+                    # fresh association and switches patient/study context, which is
+                    # where a busy PACS is most likely to reject or drop requests.
+                    # Series inside the same study fetch back-to-back over the already
+                    # open association.
+                    time.sleep(_DELAY_BETWEEN_STUDIES)
+
                 # One fetch association per study
                 try:
                     for volume in volumes_list:
                         total_volumes += 1
-
-                        if total_processed + total_failed + total_skipped > 0:
-                            # Pacing delay between consecutive C-GET/C-MOVE requests.
-                            # Some PACS servers reject or drop associations under
-                            # rapid-fire requests. Batch transfer does not need this
-                            # because it processes fewer series per task. The 0.5s
-                            # value was chosen empirically.
-                            # TODO: Investigate if this is really needed and if the
-                            # delay value is appropriate (was never necessary in mass
-                            # transfer which also transfers series one by one).
-                            time.sleep(_DELAY_BETWEEN_SERIES)
 
                         subject_id = volume.pseudonym or sanitize_filename(volume.patient_id)
                         self._transfer_single_series(
@@ -987,6 +984,8 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
         # archived/offline storage. We probe once more to distinguish the two.
         # This is workflow logic, not network retry — transient connection
         # failures are still handled by stamina/procrastinate at lower layers.
+        # TODO: Revisit whether this belongs here, in the operator/connector
+        # layer, or should be handled via a stamina retry on a raised exception.
         operator.fetch_series(
             patient_id=volume.patient_id,
             study_uid=volume.study_instance_uid,
