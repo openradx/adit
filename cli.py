@@ -38,40 +38,6 @@ app.command()(commands.try_github_actions)
 
 
 @app.command()
-def stack_deploy_staging():
-    """Build images and deploy staging stack with Docker Swarm"""
-
-    helper = cli_helper.CommandHelper()
-    helper.prepare_environment()
-
-    env = helper.load_config_from_env_file()
-    env["PROJECT_VERSION"] = helper.get_local_project_version()
-
-    base_file = helper.get_compose_base_file()
-    staging_file = helper.root_path / "docker-compose.staging.yml"
-    stack_name = f"{helper.project_id}_staging"
-
-    # Build images first (docker stack deploy does not support build)
-    build_cmd = f"docker compose -f {base_file} -f {staging_file} build"
-    helper.execute_cmd(build_cmd, env={**env, "COMPOSE_BAKE": "true"})
-
-    deploy_cmd = "docker stack deploy --detach"
-    deploy_cmd += f" -c {base_file}"
-    deploy_cmd += f" -c {staging_file}"
-    deploy_cmd += f" {stack_name}"
-    helper.execute_cmd(deploy_cmd, env=env)
-
-
-@app.command()
-def stack_rm_staging():
-    """Remove staging stack from Docker Swarm"""
-
-    helper = cli_helper.CommandHelper()
-    stack_name = f"{helper.project_id}_staging"
-    helper.execute_cmd(f"docker stack rm {stack_name}")
-
-
-@app.command()
 def populate_orthancs(
     reset: Annotated[bool, typer.Option(help="Clear Orthancs before populate")] = False,
 ):
