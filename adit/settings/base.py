@@ -422,6 +422,16 @@ DICOM_EXPLORER_RESPONSE_TIMEOUT = 3  # seconds
 # The timeout we wait for images of a C-MOVE download
 C_MOVE_DOWNLOAD_TIMEOUT = 30  # seconds
 
+# Pebble process timeout for mass transfer tasks. A task processes an entire partition
+# (discovery + export + convert) and can run for hours.
+MASS_TRANSFER_PROCESS_TIMEOUT = 24 * 60 * 60  # seconds (24 hours)
+
+# Delay before the mass transfer fetch reconciliation re-attempt. When discovery
+# reported N images for a series but the fetch delivered 0, the processor waits this
+# long before probing once more to distinguish a momentarily overloaded PACS from a
+# series that is truly archived/offline.
+MASS_TRANSFER_FETCH_RECONCILIATION_DELAY = 3  # seconds
+
 # Show DICOM debug messages of pynetdicom
 ENABLE_DICOM_DEBUG_LOGGER = False
 
@@ -500,3 +510,21 @@ SKIP_ELEMENTS_ANONYMIZATION = [
 ANONYMIZATION_SEED = env.str("ANONYMIZATION_SEED", default="")
 if not ANONYMIZATION_SEED:
     raise ImproperlyConfigured("ANONYMIZATION_SEED must be set")
+
+# DICOM tags to extract from the first instance in a series and merge into the
+# dcm2niix JSON sidecar during NIfTI conversion.
+DICOM_METADATA_TAGS = [
+    "PatientBirthDate",
+    "PatientSex",
+    "PatientAge",
+    "PatientID",
+    "PatientName",
+    "StudyDate",
+    "StudyInstanceUID",
+    "SeriesInstanceUID",
+    "Modality",
+    "InstitutionName",
+    "StudyDescription",
+    "SeriesDescription",
+    "SeriesNumber",
+]

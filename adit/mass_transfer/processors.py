@@ -11,6 +11,8 @@ from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import cast
 
+import pydicom
+from django.conf import settings
 from django.utils import timezone
 from pydicom import Dataset
 from pydicom.errors import InvalidDicomError
@@ -61,17 +63,14 @@ class FilterSpec:
             series_number=d.get("series_number"),
             min_age=d.get("min_age"),
             max_age=d.get("max_age"),
-            min_number_of_series_related_instances=d.get(
-                "min_number_of_series_related_instances"
-            ),
+            min_number_of_series_related_instances=d.get("min_number_of_series_related_instances"),
         )
 
 
 logger = logging.getLogger(__name__)
 
 _MIN_SPLIT_WINDOW = timedelta(minutes=30)
-_DELAY_BETWEEN_SERIES = 0.5  # seconds between fetch requests to avoid overwhelming the PACS
-_DELAY_RETRY_FETCH = 3  # seconds before retrying a fetch that returned 0 images
+_DELAY_BETWEEN_STUDIES = 0.5  # seconds between studies to avoid overwhelming the PACS
 
 # Deterministic pseudonyms use 14 characters. Random pseudonyms use 15 so the
 # two modes can be distinguished by length.
@@ -139,23 +138,6 @@ def _series_folder_name(series_description: str, series_number: int | None, seri
     return f"{desc}_{series_number}"
 
 
-_DICOM_METADATA_TAGS = [
-    "PatientBirthDate",
-    "PatientSex",
-    "PatientAge",
-    "PatientID",
-    "PatientName",
-    "StudyDate",
-    "StudyInstanceUID",
-    "SeriesInstanceUID",
-    "Modality",
-    "InstitutionName",
-    "StudyDescription",
-    "SeriesDescription",
-    "SeriesNumber",
-]
-
-
 def _extract_dicom_metadata(dicom_dir: Path) -> dict[str, str]:
     """Read the first DICOM file in *dicom_dir* and extract metadata fields.
 
@@ -163,8 +145,6 @@ def _extract_dicom_metadata(dicom_dir: Path) -> dict[str, str]:
     etc. The function also computes a ``PatientAgeAtStudy`` field from
     PatientBirthDate and StudyDate when both are present.
     """
-    import pydicom
-
     for dcm_path in sorted(dicom_dir.glob("*.dcm")):
         try:
             ds = pydicom.dcmread(dcm_path, stop_before_pixels=True)
@@ -172,7 +152,7 @@ def _extract_dicom_metadata(dicom_dir: Path) -> dict[str, str]:
             logger.warning("Skipping unreadable DICOM file %s: %s", dcm_path, exc)
             continue
         fields: dict[str, str] = {}
-        for tag in _DICOM_METADATA_TAGS:
+        for tag in settings.DICOM_METADATA_TAGS:
             val = ds.get(tag)
             if val is not None:
                 fields[tag] = str(val)
@@ -192,15 +172,21 @@ def _extract_dicom_metadata(dicom_dir: Path) -> dict[str, str]:
     return {}
 
 
-def _write_dicom_metadata(output_path: Path, metadata_name: str, fields: dict[str, str]) -> None:
-    """Write a DICOM metadata JSON file alongside NIfTI outputs."""
+def _merge_dicom_metadata(output_path: Path, fields: dict[str, str]) -> None:
+    """Merge extra DICOM metadata into dcm2niix JSON sidecars.
+
+    The *fields* are written first and then overlaid with the existing
+    dcm2niix values so that dcm2niix-derived fields always take precedence.
+    """
     if not fields:
         return
-    metadata_path = output_path / f"{metadata_name}_dicom.json"
-    try:
-        metadata_path.write_text(json.dumps(fields, indent=2))
-    except (OSError, TypeError, ValueError):
-        logger.warning("Failed to write metadata %s", metadata_path, exc_info=True)
+    for sidecar_path in sorted(output_path.glob("*.json")):
+        try:
+            existing = json.loads(sidecar_path.read_text())
+            merged = {**fields, **existing}
+            sidecar_path.write_text(json.dumps(merged, indent=2))
+        except (OSError, TypeError, ValueError, json.JSONDecodeError):
+            logger.warning("Failed to merge metadata into %s", sidecar_path, exc_info=True)
 
 
 def _age_at_study(birth_date: date, study_date: date) -> int:
@@ -434,21 +420,19 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
             for study_uid, volumes_list in studies.items():
                 study_count += 1
 
+                if study_count > 1:
+                    # Pacing delay between consecutive studies. Each study opens a
+                    # fresh association and switches patient/study context, which is
+                    # where a busy PACS is most likely to reject or drop requests.
+                    # Series inside the same study fetch back-to-back over the already
+                    # open association.
+                    # TODO: Investigate if this is still necessary.
+                    time.sleep(_DELAY_BETWEEN_STUDIES)
+
                 # One fetch association per study
                 try:
                     for volume in volumes_list:
                         total_volumes += 1
-
-                        if total_processed + total_failed + total_skipped > 0:
-                            # Pacing delay between consecutive C-GET/C-MOVE requests.
-                            # Some PACS servers reject or drop associations under
-                            # rapid-fire requests. Batch transfer does not need this
-                            # because it processes fewer series per task. The 0.5s
-                            # value was chosen empirically.
-                            # TODO: Investigate if this is really needed and if the
-                            # delay value is appropriate (was never necessary in mass
-                            # transfer which also transfers series one by one).
-                            time.sleep(_DELAY_BETWEEN_SERIES)
 
                         subject_id = volume.pseudonym or sanitize_filename(volume.patient_id)
                         self._transfer_single_series(
@@ -611,12 +595,7 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
             volume.series_instance_uid_pseudonymized = series_uid_pseudonymized
 
             if nifti_files:
-                series_folder = _series_folder_name(
-                    volume.series_description,
-                    volume.series_number,
-                    volume.series_instance_uid,
-                )
-                _write_dicom_metadata(output_path, series_folder, dicom_metadata)
+                _merge_dicom_metadata(output_path, dicom_metadata)
                 volume.converted_file = "\n".join(str(f) for f in nifti_files)
                 volume.status = MassTransferVolume.Status.CONVERTED
             else:
@@ -836,10 +815,7 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
 
                     if mf.min_number_of_series_related_instances is not None:
                         num_instances = (
-                            _parse_int(
-                                series.get("NumberOfSeriesRelatedInstances"), default=0
-                            )
-                            or 0
+                            _parse_int(series.get("NumberOfSeriesRelatedInstances"), default=0) or 0
                         )
                         if num_instances < mf.min_number_of_series_related_instances:
                             continue
@@ -1002,12 +978,15 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
             write_dataset(ds, output_path / file_name)
             image_count += 1
 
-        # Some PACS return 0 images for two reasons:
-        # 1. Transient: PACS is overwhelmed by rapid requests (fixed by pacing)
-        # 2. Permanent: series is archived/offline and can't be served
-        # One retry after a short delay distinguishes the two cases.  If the
-        # second attempt also fails, the series is unretrievable — move on and
-        # let the ERROR status trigger a retry on the next task run.
+        # Reconciliation between the discovery and transfer phases: discovery
+        # recorded volume.number_of_images from the PACS's own C-FIND response;
+        # a fetch that delivers 0 images against a non-zero expected count means
+        # the PACS either got momentarily overloaded or the series sits on
+        # archived/offline storage. We probe once more to distinguish the two.
+        # This is workflow logic, not network retry — transient connection
+        # failures are still handled by stamina/procrastinate at lower layers.
+        # TODO: Revisit whether this belongs here, in the operator/connector
+        # layer, or should be handled via a stamina retry on a raised exception.
         operator.fetch_series(
             patient_id=volume.patient_id,
             study_uid=volume.study_instance_uid,
@@ -1019,9 +998,9 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
                 "Fetch returned 0 images for %s (PACS reports %d) — retrying in %ds",
                 volume.series_instance_uid,
                 volume.number_of_images,
-                _DELAY_RETRY_FETCH,
+                settings.MASS_TRANSFER_FETCH_RECONCILIATION_DELAY,
             )
-            time.sleep(_DELAY_RETRY_FETCH)
+            time.sleep(settings.MASS_TRANSFER_FETCH_RECONCILIATION_DELAY)
             operator.fetch_series(
                 patient_id=volume.patient_id,
                 study_uid=volume.study_instance_uid,
