@@ -43,11 +43,13 @@ class DicomOperator:
     def __init__(
         self,
         server: DicomServer,
+        persistent: bool = False,
         dimse_timeout: int | None = 60,
     ):
         self.server = server
         self.dimse_connector = DimseConnector(
             server,
+            auto_close=not persistent,
             dimse_timeout=dimse_timeout,
         )
         # TODO: also make retries and timeouts possible in DicomWebConnector
@@ -57,6 +59,13 @@ class DicomOperator:
 
     def get_logs(self) -> list[DicomLogEntry]:
         return self.dimse_connector.logs + self.dicom_web_connector.logs + self.logs
+
+    def close(self) -> None:
+        try:
+            if self.dimse_connector.assoc:
+                self.dimse_connector.close_connection()
+        except Exception:
+            logger.debug("Error closing DIMSE association", exc_info=True)
 
     def abort(self) -> None:
         self.dimse_connector.abort_connection()
@@ -530,6 +539,10 @@ class DicomOperator:
             try:
                 self._handle_fetched_image(ds, callback)
             except Exception as err:
+                logger.error(
+                    "Store handler failed for SOP %s: %s",
+                    ds.SOPInstanceUID, err, exc_info=True,
+                )
                 store_errors.append(err)
 
                 # Unfortunately not all PACS servers support or respect a C-CANCEL request,

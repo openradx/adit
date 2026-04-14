@@ -1,0 +1,6 @@
+.mass-transfer-filter-list .form-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0 1.25rem 0.5rem 0;
+}

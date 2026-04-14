@@ -55,7 +55,7 @@ Modifier = Callable[[Dataset], None]
 
 
 def connect_to_server(service: DimseService):
-    """Automatically handles the connection when `auto_config` option is set.
+    """Handles the DIMSE association lifecycle based on `auto_connect` and `auto_close`.
 
     TODO: Think about using a context manager instead of a decorator.
     """
@@ -66,25 +66,43 @@ def connect_to_server(service: DimseService):
             opened_connection = False
 
             is_connected = self.assoc and self.assoc.is_alive()
+            if is_connected and self._current_service != service:
+                self.close_connection()
+                is_connected = False
             if self.auto_connect and not is_connected:
                 self.open_connection(service)
                 opened_connection = True
 
             try:
                 yield from func(self, *args, **kwargs)
+            except GeneratorExit:
+                # Generator abandoned mid-stream — DIMSE responses are still
+                # pending so we must abort to avoid corrupting the association.
+                # This should not happen in normal operation; callers should
+                # fully consume the generator (e.g. via list()).
+                logger.warning(
+                    "DIMSE generator abandoned mid-stream for %s on %s. "
+                    "Aborting association. Caller should fully consume the generator.",
+                    service,
+                    self.server.ae_title,
+                )
+                self.abort_connection()
+                return
             except Exception as err:
                 self.abort_connection()
                 raise err
-
-            if opened_connection and self.auto_connect:
-                self.close_connection()
-                opened_connection = False
+            finally:
+                if opened_connection and self.auto_close and self.assoc:
+                    self.close_connection()
 
         @wraps(func)
         def func_wrapper(self: "DimseConnector", *args, **kwargs):
             opened_connection = False
 
             is_connected = self.assoc and self.assoc.is_alive()
+            if is_connected and self._current_service != service:
+                self.close_connection()
+                is_connected = False
             if self.auto_connect and not is_connected:
                 self.open_connection(service)
                 opened_connection = True
@@ -95,7 +113,7 @@ def connect_to_server(service: DimseService):
                 self.abort_connection()
                 raise err
 
-            if opened_connection and self.auto_connect:
+            if opened_connection and self.auto_close and self.assoc:
                 self.close_connection()
                 opened_connection = False
 
@@ -113,6 +131,7 @@ class DimseConnector:
         self,
         server: DicomServer,
         auto_connect: bool = True,
+        auto_close: bool = True,
         acse_timeout: int | None = 60,
         connection_timeout: int | None = None,
         dimse_timeout: int | None = 60,
@@ -120,24 +139,34 @@ class DimseConnector:
     ) -> None:
         self.server = server
         self.auto_connect = auto_connect
+        self.auto_close = auto_close
         self.acse_timeout = acse_timeout
         self.connection_timeout = connection_timeout
         self.dimse_timeout = dimse_timeout
         self.network_timeout = network_timeout
         self.logs: list[DicomLogEntry] = []
+        self._current_service: DimseService | None = None
 
         if settings.ENABLE_DICOM_DEBUG_LOGGER:
             debug_logger()  # Debug mode of pynetdicom
 
     def open_connection(self, service: DimseService):
         if self.assoc:
-            raise AssertionError("A former connection was not closed properly.")
+            if not self.assoc.is_alive():
+                # Association died (PACS dropped it, timeout, etc.) —
+                # clean up the stale reference so we can reconnect.
+                logger.debug("Cleaning up dead association to %s.", self.server.ae_title)
+                self.assoc = None
+                self._current_service = None
+            else:
+                raise AssertionError("A former connection was not closed properly.")
 
         logger.debug("Opening connection to DICOM server %s.", self.server.ae_title)
 
         # Call _associate which is decorated with @retry_dimse_connect
         # Stamina will handle retries automatically (5 attempts with exponential backoff)
         self._associate(service)
+        self._current_service = service
 
     @retry_dimse_connect
     def _associate(self, service: DimseService):
@@ -175,7 +204,7 @@ class DimseConnector:
             ae.add_requested_context(StudyRootQueryRetrieveInformationModelGet)
             for cx in StoragePresentationContexts:
                 assert cx.abstract_syntax is not None
-                ae.add_requested_context(cx.abstract_syntax)
+                ae.add_requested_context(cx.abstract_syntax, cx.transfer_syntax)
                 ext_neg.append(build_role(cx.abstract_syntax, scp_role=True))
         elif service == "C-MOVE":
             ae.requested_contexts = QueryRetrievePresentationContexts
@@ -194,19 +223,33 @@ class DimseConnector:
         if not self.assoc.is_established:
             raise RetriableDicomError(f"Could not connect to {self.server}.")
 
+        if service == "C-GET":
+            rejected = []
+            for cx in self.assoc.rejected_contexts:
+                rejected.append(f"{cx.abstract_syntax}")
+            if rejected:
+                logger.warning(
+                    "C-GET: %d presentation contexts rejected by SCP: %s",
+                    len(rejected), rejected,
+                )
+            accepted = [cx.abstract_syntax for cx in self.assoc.accepted_contexts]
+            logger.debug("C-GET: %d presentation contexts accepted", len(accepted))
+
     def close_connection(self):
         logger.debug("Closing connection to DICOM server %s.", self.server.ae_title)
 
         assert self.assoc
         self.assoc.release()
         self.assoc = None
+        self._current_service = None
 
     def abort_connection(self):
         if self.assoc:
             logger.debug("Aborting connection to DICOM server %s.", self.server.ae_title)
             self.assoc.abort()
             self.assoc = None
-
+            self._current_service = None
+    
     @retry_dimse_find
     @connect_to_server("C-FIND")
     def send_c_find(
@@ -452,6 +495,23 @@ class DimseConnector:
                             }
                         )
                         logger.warn(message)
+
+                    # Log "silent empty" responses: PACS returns Success with
+                    # 0 completed, 0 failed, 0 warning.  This happens on IMPAX
+                    # when it is overwhelmed by rapid-fire association requests.
+                    # We don't raise here — the caller handles retry to avoid
+                    # aborting the entire task.
+                    if (
+                        status_category == STATUS_SUCCESS
+                        and completed_suboperations == 0
+                        and not failed_suboperations
+                        and not warning_suboperations
+                    ):
+                        logger.warning(
+                            "%s returned success with 0 sub-operations — "
+                            "PACS may be busy.",
+                            op,
+                        )
 
             if status_category == STATUS_FAILURE:
                 if identifier:

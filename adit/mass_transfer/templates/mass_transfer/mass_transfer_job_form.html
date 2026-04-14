@@ -1,0 +1,77 @@
+{% extends "mass_transfer/mass_transfer_layout.html" %}
+{% load crispy from crispy_forms_tags %}
+{% load bootstrap_icon from common_extras %}
+{% block title %}
+    New Mass Transfer Job
+{% endblock title %}
+{% block css %}
+    {{ block.super }}
+    {{ form.media.css }}
+    <style>
+        .CodeMirror {
+            border: 1px solid #ced4da;
+            border-radius: 0.375rem;
+            font-size: 0.85em;
+            height: auto;
+            min-height: 200px;
+            max-height: 400px;
+        }
+        [data-bs-theme="dark"] .CodeMirror {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            border-color: #495057;
+        }
+        [data-bs-theme="dark"] .CodeMirror-gutters {
+            background: #1e1e1e;
+            border-right-color: #333;
+        }
+        [data-bs-theme="dark"] .CodeMirror-linenumber {
+            color: #858585;
+        }
+        [data-bs-theme="dark"] .CodeMirror-cursor {
+            border-left-color: #d4d4d4;
+        }
+        [data-bs-theme="dark"] .CodeMirror-selected {
+            background: #264f78;
+        }
+        [data-bs-theme="dark"] .CodeMirror-focused .CodeMirror-selected {
+            background: #264f78;
+        }
+        [data-bs-theme="dark"] .CodeMirror-activeline-background {
+            background: #2a2a2a;
+        }
+        [data-bs-theme="dark"] .CodeMirror-matchingbracket {
+            color: #d4d4d4 !important;
+            background: #3b514d;
+        }
+        [data-bs-theme="dark"] .cm-s-default .cm-keyword { color: #569cd6; }
+        [data-bs-theme="dark"] .cm-s-default .cm-atom { color: #b5cea8; }
+        [data-bs-theme="dark"] .cm-s-default .cm-number { color: #b5cea8; }
+        [data-bs-theme="dark"] .cm-s-default .cm-string { color: #ce9178; }
+        [data-bs-theme="dark"] .cm-s-default .cm-string-2 { color: #ce9178; }
+        [data-bs-theme="dark"] .cm-s-default .cm-variable { color: #9cdcfe; }
+        [data-bs-theme="dark"] .cm-s-default .cm-variable-2 { color: #9cdcfe; }
+        [data-bs-theme="dark"] .cm-s-default .cm-property { color: #9cdcfe; }
+        [data-bs-theme="dark"] .cm-s-default .cm-comment { color: #6a9955; }
+        [data-bs-theme="dark"] .cm-s-default .cm-bracket { color: #d4d4d4; }
+        [data-bs-theme="dark"] .cm-s-default .cm-tag { color: #569cd6; }
+        [data-bs-theme="dark"] .cm-s-default .cm-attribute { color: #9cdcfe; }
+    </style>
+{% endblock css %}
+{% block heading %}
+    <c-page-heading title="New Mass Transfer Job">
+    <c-slot name="right">
+    <a href="{% url 'mass_transfer_job_list' %}" class="btn btn-secondary">
+        {% bootstrap_icon "list" %}
+        Previous Jobs
+    </a>
+    </c-slot>
+    </c-page-heading>
+{% endblock heading %}
+{% block content %}
+    {% crispy form %}
+{% endblock content %}
+{% block script %}
+    {{ block.super }}
+    {{ form.media.js }}
+{% endblock script %}

@@ -70,6 +70,7 @@ INSTALLED_APPS = [
     "loginas",
     "django_cotton.apps.SimpleAppConfig",
     "block_fragments.apps.SimpleAppConfig",
+    "codemirror",
     "crispy_forms",
     "crispy_bootstrap5",
     "django_htmx",
@@ -82,6 +83,7 @@ INSTALLED_APPS = [
     "adit.selective_transfer.apps.SelectiveTransferConfig",
     "adit.batch_query.apps.BatchQueryConfig",
     "adit.batch_transfer.apps.BatchTransferConfig",
+    "adit.mass_transfer.apps.MassTransferConfig",
     "adit.upload.apps.UploadConfig",
     "adit.dicom_explorer.apps.DicomExplorerConfig",
     "adit.dicom_web.apps.DicomWebConfig",
@@ -305,6 +307,31 @@ CRISPY_TEMPLATE_PACK = "bootstrap5"
 # django-templates2
 DJANGO_TABLES2_TEMPLATE = "common/_django_tables2.html"
 
+# django-codemirror — assets vendored in mass_transfer/static/mass_transfer/vendor/codemirror/
+_CM = "mass_transfer/vendor/codemirror"
+CODEMIRROR_CSS = [
+    f"{_CM}/codemirror.min.css",
+    f"{_CM}/addon/lint/lint.min.css",
+]
+CODEMIRROR_JS = [
+    f"{_CM}/jsonlint.min.js",
+    f"{_CM}/codemirror.min.js",
+    f"{_CM}/mode/javascript/javascript.min.js",
+    f"{_CM}/addon/edit/matchbrackets.min.js",
+    f"{_CM}/addon/edit/closebrackets.min.js",
+    f"{_CM}/addon/lint/lint.min.js",
+    f"{_CM}/addon/lint/json-lint.min.js",
+]
+CODEMIRROR_CONFIG = {
+    "lineNumbers": True,
+    "matchBrackets": True,
+    "autoCloseBrackets": True,
+    "tabSize": 2,
+    "indentWithTabs": False,
+    "gutters": ["CodeMirror-lint-markers"],
+    "lint": True,
+}
+
 # The salt that is used for hashing new tokens in the token authentication app.
 # Cave, changing the salt after some tokens were already generated makes them all invalid!
 TOKEN_AUTHENTICATION_SALT = env.str("TOKEN_AUTHENTICATION_SALT")
@@ -357,6 +384,7 @@ FILE_TRANSMIT_PORT = env.int("FILE_TRANSMIT_PORT", 14638)
 START_SELECTIVE_TRANSFER_UNVERIFIED = True
 START_BATCH_QUERY_UNVERIFIED = True
 START_BATCH_TRANSFER_UNVERIFIED = True
+START_MASS_TRANSFER_UNVERIFIED = True
 
 # Priorities of dicom tasks
 # Selective transfers have the highest priority as those are
@@ -368,6 +396,8 @@ BATCH_TRANSFER_DEFAULT_PRIORITY = 2
 BATCH_TRANSFER_URGENT_PRIORITY = 6
 BATCH_QUERY_DEFAULT_PRIORITY = 3
 BATCH_QUERY_URGENT_PRIORITY = 7
+MASS_TRANSFER_DEFAULT_PRIORITY = 1
+MASS_TRANSFER_URGENT_PRIORITY = 5
 
 # The priority for stalled jobs that are retried.
 STALLED_JOBS_RETRY_PRIORITY = 10
@@ -383,11 +413,22 @@ SELECTIVE_TRANSFER_RESULT_LIMIT = 101
 # The maximum number of results (patients or studies) in dicom_explorer
 DICOM_EXPLORER_RESULT_LIMIT = 101
 
+
 # The timeout in dicom_explorer a DICOM server must respond
 DICOM_EXPLORER_RESPONSE_TIMEOUT = 3  # seconds
 
 # The timeout we wait for images of a C-MOVE download
 C_MOVE_DOWNLOAD_TIMEOUT = 30  # seconds
+
+# Pebble process timeout for mass transfer tasks. A task processes an entire partition
+# (discovery + export + convert) and can run for hours.
+MASS_TRANSFER_PROCESS_TIMEOUT = 24 * 60 * 60  # seconds (24 hours)
+
+# Delay before the mass transfer fetch reconciliation re-attempt. When discovery
+# reported N images for a series but the fetch delivered 0, the processor waits this
+# long before probing once more to distinguish a momentarily overloaded PACS from a
+# series that is truly archived/offline.
+MASS_TRANSFER_FETCH_RECONCILIATION_DELAY = 3  # seconds
 
 # Show DICOM debug messages of pynetdicom
 ENABLE_DICOM_DEBUG_LOGGER = False
@@ -467,3 +508,21 @@ SKIP_ELEMENTS_ANONYMIZATION = [
 ANONYMIZATION_SEED = env.str("ANONYMIZATION_SEED", default="")
 if not ANONYMIZATION_SEED:
     raise ImproperlyConfigured("ANONYMIZATION_SEED must be set")
+
+# DICOM tags to extract from the first instance in a series and merge into the
+# dcm2niix JSON sidecar during NIfTI conversion.
+DICOM_METADATA_TAGS = [
+    "PatientBirthDate",
+    "PatientSex",
+    "PatientAge",
+    "PatientID",
+    "PatientName",
+    "StudyDate",
+    "StudyInstanceUID",
+    "SeriesInstanceUID",
+    "Modality",
+    "InstitutionName",
+    "StudyDescription",
+    "SeriesDescription",
+    "SeriesNumber",
+]

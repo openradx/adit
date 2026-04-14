@@ -116,6 +116,10 @@ Key variables in `.env` (see `example.env`):
 - **Type Checking**: pyright in basic mode (migrations excluded)
 - **Linting**: Ruff with E, F, I, DJ rules
 
+### Assertions
+
+- Use `assert` for internal programming error checks (preconditions, invariants). Do not replace with `ValueError` or similar — this app is never run with `python -O`.
+
 ### Django Field Conventions
 
 - Text/char fields: use `blank=True` alone (not `null=True`)
