@@ -9,7 +9,6 @@ x-app: &default-app
     DJANGO_SECURE_SSL_REDIRECT: ${DJANGO_SECURE_SSL_REDIRECT:-true}
     DJANGO_SETTINGS_MODULE: adit.settings.production
     DJANGO_STATIC_ROOT: /var/www/web/static/
-    DJANGO_SESSION_COOKIE_NAME: ${DJANGO_SESSION_COOKIE_NAME:-sessionid}
     POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?}
 
 x-deploy: &deploy
