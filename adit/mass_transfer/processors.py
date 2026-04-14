@@ -426,6 +426,7 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
                     # where a busy PACS is most likely to reject or drop requests.
                     # Series inside the same study fetch back-to-back over the already
                     # open association.
+                    # TODO: Investigate if this is still necessary.
                     time.sleep(_DELAY_BETWEEN_STUDIES)
 
                 # One fetch association per study
