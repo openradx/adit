@@ -104,19 +104,19 @@ async def wado_retrieve(
         # Start fetch task. Sentinel will be added via call_soon_threadsafe when done.
         fetch_task = asyncio.create_task(fetch_coro)
 
-        sentinel_seen = False
+        sentinel_received = False
         try:
             while True:
                 queue_ds = await queue.get()
                 if queue_ds is None:
-                    sentinel_seen = True
+                    sentinel_received = True
                     break
                 yield queue_ds
         finally:
-            # Only cancel if consumer exited early without seeing the sentinel.
-            # If sentinel was seen, fetch_task will complete on its own — let its
-            # exception (if any) propagate to the outer except handlers.
-            if not sentinel_seen and not fetch_task.done():
+            # Only cancel if the consumer stopped early (not via sentinel).
+            # When the sentinel was received, the fetch function has already
+            # completed and its exception must be propagated, not cancelled.
+            if not sentinel_received and not fetch_task.done():
                 fetch_task.cancel()
             try:
                 await fetch_task

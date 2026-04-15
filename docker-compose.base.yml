@@ -64,6 +64,10 @@ services:
     <<: *default-app
     hostname: dicom_worker.local
 
+  mass_transfer_worker:
+    <<: *default-app
+    hostname: mass_transfer_worker.local
+
   receiver:
     <<: *default-app
     hostname: receiver.local

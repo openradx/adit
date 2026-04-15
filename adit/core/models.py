@@ -155,6 +155,11 @@ class DicomServer(DicomNode):
     dicomweb_stow_prefix = models.CharField(blank=True, max_length=2000)
     dicomweb_authorization_header = models.CharField(blank=True, max_length=2000)
 
+    # C-FIND result limit before recursive time-window splitting
+    max_search_results = models.PositiveIntegerField(
+        default=200, validators=[MinValueValidator(1)]
+    )
+
     objects: DicomNodeManager["DicomServer"] = DicomNodeManager["DicomServer"]()
 
 
@@ -391,7 +396,7 @@ class DicomTask(models.Model):
     job = models.ForeignKey(DicomJob, on_delete=models.CASCADE, related_name="tasks")
     source_id: int
     source = models.ForeignKey(DicomNode, related_name="+", on_delete=models.PROTECT)
-    queued_job_id: int
+    queued_job_id: int | None
     queued_job = models.OneToOneField(
         ProcrastinateJob, null=True, on_delete=models.SET_NULL, related_name="+"
     )
@@ -416,6 +421,7 @@ class DicomTask(models.Model):
         return f"{self.__class__.__name__} [{self.pk}]"
 
     def get_absolute_url(self) -> str: ...
+
 
     def queue_pending_task(self) -> None:
         """Queues a dicom task."""

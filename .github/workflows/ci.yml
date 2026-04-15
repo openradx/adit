@@ -14,7 +14,7 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@v7
         with:
-          version: "0.11.2"
+          version: "0.11.6"
       - name: Setup Python
         uses: actions/setup-python@v6
         with:
@@ -35,6 +35,7 @@ jobs:
             adit_dev-web:latest
             adit_dev-default_worker:latest
             adit_dev-dicom_worker:latest
+            adit_dev-mass_transfer_worker:latest
             adit_dev-receiver:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max

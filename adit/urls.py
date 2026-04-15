@@ -27,6 +27,7 @@ urlpatterns = [
     path("selective-transfer/", include("adit.selective_transfer.urls")),
     path("batch-query/", include("adit.batch_query.urls")),
     path("batch-transfer/", include("adit.batch_transfer.urls")),
+    path("mass-transfer/", include("adit.mass_transfer.urls")),
     path("upload/", include("adit.upload.urls")),
     path("dicom-explorer/", include("adit.dicom_explorer.urls")),
     path("token-authentication/", include("adit_radis_shared.token_authentication.urls")),

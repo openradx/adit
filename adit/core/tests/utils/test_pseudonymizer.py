@@ -3,7 +3,7 @@ from pydicom import Dataset
 from pydicom.dataset import FileMetaDataset
 from pydicom.uid import UID
 
-from adit.core.utils.pseudonymizer import Pseudonymizer
+from adit.core.utils.pseudonymizer import Pseudonymizer, compute_pseudonym
 
 
 @pytest.fixture
@@ -56,6 +56,7 @@ class TestPseudonymizer:
         with pytest.raises(ValueError, match="valid pseudonym must be provided"):
             pseudonymizer.pseudonymize(ds, None)  # type: ignore
 
+    @pytest.mark.filterwarnings("ignore:Invalid value for VR DT:UserWarning")
     def test_pseudonymize_with_frame_reference_datetime(self, pseudonymizer: Pseudonymizer):
         """Test that FrameReferenceDateTime elements don't cause anonymization to fail.
 
@@ -97,3 +98,35 @@ class TestPseudonymizer:
         pseudonymizer.pseudonymize(ds, pseudonym)
 
         assert ds.AcquisitionDateTime == "20230101120000"
+
+
+class TestComputePseudonym:
+    def test_deterministic_same_seed(self):
+        """Same seed + same identifier always produces the same pseudonym."""
+        result1 = compute_pseudonym("fixed-seed", "PAT1", 14)
+        result2 = compute_pseudonym("fixed-seed", "PAT1", 14)
+        assert result1 == result2
+
+    def test_different_seeds_produce_different_pseudonyms(self):
+        result1 = compute_pseudonym("seed-a", "PAT1", 14)
+        result2 = compute_pseudonym("seed-b", "PAT1", 14)
+        assert result1 != result2
+
+    def test_different_identifiers_produce_different_pseudonyms(self):
+        result1 = compute_pseudonym("fixed-seed", "PAT1", 14)
+        result2 = compute_pseudonym("fixed-seed", "PAT2", 14)
+        assert result1 != result2
+
+    def test_length(self):
+        assert len(compute_pseudonym("seed", "PAT1", 14)) == 14
+        assert len(compute_pseudonym("seed", "PAT1", 8)) == 8
+
+    def test_pseudonym_is_uppercase_alphanumeric(self):
+        result = compute_pseudonym("alpha-seed", "SOME_PATIENT", 14)
+        assert result.isalnum()
+        assert result == result.upper()
+
+    def test_stable_output(self):
+        """Pseudonyms must not change across code updates (breaks cross-transfer linking)."""
+        assert compute_pseudonym("my-salt", "PAT1", 12) == "81T9LZGKTAM3"
+        assert compute_pseudonym("my-salt", "PAT1", 14) == "81T9LZGKTAM3UV"
