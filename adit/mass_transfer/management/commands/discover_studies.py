@@ -1,15 +1,16 @@
 from __future__ import annotations
 
 import csv
+import json
 import sys
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import date, datetime
 
 from django.core.management.base import BaseCommand, CommandError
 
+from adit.core.models import DicomServer
 from adit.core.utils.dicom_operator import DicomOperator
-from adit.mass_transfer.models import MassTransferJob
-from adit.mass_transfer.processors import DiscoveredSeries, MassTransferTaskProcessor
+from adit.mass_transfer.processors import DiscoveredSeries, FilterSpec, discover_series
 
 
 @dataclass
@@ -36,13 +37,36 @@ CSV_COLUMNS = [
 
 class Command(BaseCommand):
     help = (
-        "Discover all distinct studies for a MassTransferJob by running C-FIND queries "
-        "against the source DICOM server. Outputs CSV to stdout or a file. "
+        "Discover all distinct studies by running C-FIND queries against a DICOM server "
+        "using the given filters and date range. Outputs CSV to stdout or a file. "
         "This is read-only — no database records are created and no files are transferred."
     )
 
     def add_arguments(self, parser):
-        parser.add_argument("job_id", type=int, help="ID of the MassTransferJob.")
+        parser.add_argument(
+            "--source",
+            type=str,
+            required=True,
+            help="Name of the source DICOM server (as configured in ADIT).",
+        )
+        parser.add_argument(
+            "--start-date",
+            type=str,
+            required=True,
+            help="Start date for study discovery (YYYY-MM-DD).",
+        )
+        parser.add_argument(
+            "--end-date",
+            type=str,
+            required=True,
+            help="End date for study discovery (YYYY-MM-DD).",
+        )
+        parser.add_argument(
+            "--filters",
+            type=str,
+            required=True,
+            help="Path to a JSON file containing a list of filter objects.",
+        )
         parser.add_argument(
             "--output",
             type=str,
@@ -51,86 +75,92 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
-        job_id = options["job_id"]
+        server_name = options["source"]
         output_path = options["output"]
 
         try:
-            job = MassTransferJob.objects.get(pk=job_id)
-        except MassTransferJob.DoesNotExist:
-            raise CommandError(f"MassTransferJob with ID {job_id} does not exist.")
-
-        filters = job.get_filters()
-        if not filters:
-            raise CommandError(f"Job {job_id} has no filters configured.")
-
-        tasks = list(job.tasks.order_by("partition_start"))
-        if not tasks:
-            raise CommandError(f"Job {job_id} has no tasks (partitions).")
-
-        source_node = tasks[0].source
-        if source_node.node_type != source_node.NodeType.SERVER:
-            raise CommandError("Mass transfer source must be a DICOM server.")
-
-        self.stderr.write(
-            f"Discovering studies for job {job_id} "
-            f"({len(tasks)} partition(s), {len(filters)} filter(s))..."
-        )
-
-        studies: dict[str, StudyRecord] = {}
-        operator = DicomOperator(source_node.dicomserver, persistent=True)
+            server = DicomServer.objects.get(name=server_name)
+        except DicomServer.DoesNotExist:
+            raise CommandError(f"DICOM server '{server_name}' not found.")
 
         try:
-            for i, task in enumerate(tasks, 1):
-                self.stderr.write(
-                    f"  Partition {i}/{len(tasks)}: {task.partition_key} "
-                    f"({task.partition_start} to {task.partition_end})"
-                )
-                processor = MassTransferTaskProcessor(task)
-                discovered = processor._discover_series(operator, filters)
-                self._aggregate_studies(studies, discovered)
+            start_date = date.fromisoformat(options["start_date"])
+        except ValueError:
+            raise CommandError("Invalid --start-date format. Use YYYY-MM-DD.")
+
+        try:
+            end_date = date.fromisoformat(options["end_date"])
+        except ValueError:
+            raise CommandError("Invalid --end-date format. Use YYYY-MM-DD.")
+
+        if end_date < start_date:
+            raise CommandError("--end-date must be on or after --start-date.")
+
+        try:
+            with open(options["filters"]) as f:
+                raw_filters = json.load(f)
+        except (OSError, json.JSONDecodeError) as e:
+            raise CommandError(f"Failed to read filters file: {e}")
+
+        if not isinstance(raw_filters, list) or not raw_filters:
+            raise CommandError("Filters file must contain a non-empty JSON array.")
+
+        filters = [FilterSpec.from_dict(d) for d in raw_filters]
+
+        start = datetime.combine(start_date, datetime.min.time())
+        end = datetime.combine(end_date, datetime.max.time().replace(microsecond=0))
+
+        self.stderr.write(
+            f"Discovering studies on '{server_name}' "
+            f"from {start_date} to {end_date} ({len(filters)} filter(s))..."
+        )
+
+        operator = DicomOperator(server, persistent=True)
+        try:
+            discovered = discover_series(operator, filters, start, end)
         finally:
             operator.close()
 
+        studies = _aggregate_studies(discovered)
         self.stderr.write(f"Found {len(studies)} distinct study(ies).")
 
         if output_path:
             with open(output_path, "w", newline="") as f:
-                self._write_csv(f, studies)
+                _write_csv(f, studies)
             self.stderr.write(f"CSV written to {output_path}")
         else:
-            self._write_csv(sys.stdout, studies)
+            _write_csv(sys.stdout, studies)
 
-    @staticmethod
-    def _aggregate_studies(
-        studies: dict[str, StudyRecord],
-        discovered: list[DiscoveredSeries],
-    ) -> None:
-        for series in discovered:
-            uid = series.study_instance_uid
-            if uid in studies:
-                studies[uid].modalities.add(series.modality)
-            else:
-                studies[uid] = StudyRecord(
-                    study_instance_uid=uid,
-                    patient_id=series.patient_id,
-                    accession_number=series.accession_number,
-                    study_description=series.study_description,
-                    study_datetime=series.study_datetime,
-                    modalities={series.modality},
-                )
 
-    @staticmethod
-    def _write_csv(file, studies: dict[str, StudyRecord]) -> None:
-        writer = csv.writer(file)
-        writer.writerow(CSV_COLUMNS)
-        for record in sorted(studies.values(), key=lambda r: r.study_datetime):
-            writer.writerow(
-                [
-                    record.study_instance_uid,
-                    record.patient_id,
-                    record.accession_number,
-                    record.study_description,
-                    record.study_datetime.isoformat(),
-                    ",".join(sorted(record.modalities)),
-                ]
+def _aggregate_studies(discovered: list[DiscoveredSeries]) -> dict[str, StudyRecord]:
+    studies: dict[str, StudyRecord] = {}
+    for series in discovered:
+        uid = series.study_instance_uid
+        if uid in studies:
+            studies[uid].modalities.add(series.modality)
+        else:
+            studies[uid] = StudyRecord(
+                study_instance_uid=uid,
+                patient_id=series.patient_id,
+                accession_number=series.accession_number,
+                study_description=series.study_description,
+                study_datetime=series.study_datetime,
+                modalities={series.modality},
             )
+    return studies
+
+
+def _write_csv(file, studies: dict[str, StudyRecord]) -> None:
+    writer = csv.writer(file)
+    writer.writerow(CSV_COLUMNS)
+    for record in sorted(studies.values(), key=lambda r: r.study_datetime):
+        writer.writerow(
+            [
+                record.study_instance_uid,
+                record.patient_id,
+                record.accession_number,
+                record.study_description,
+                record.study_datetime.isoformat(),
+                ",".join(sorted(record.modalities)),
+            ]
+        )

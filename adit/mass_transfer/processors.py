@@ -239,6 +239,210 @@ def _destination_base_dir(node: DicomNode, job: MassTransferJob) -> Path:
     return path
 
 
+def discover_series(
+    operator: DicomOperator,
+    filters: list[FilterSpec],
+    start: datetime,
+    end: datetime,
+) -> list[DiscoveredSeries]:
+    """Run C-FIND queries to discover all series matching the given filters.
+
+    This is a read-only operation with no side effects.
+    """
+    found: dict[str, DiscoveredSeries] = {}
+
+    for mf in filters:
+        studies = _find_studies(operator, mf, start, end)
+
+        for study in studies:
+            if mf.modality and mf.modality not in study.ModalitiesInStudy:
+                continue
+
+            if mf.study_description and not _dicom_match(
+                mf.study_description, study.StudyDescription
+            ):
+                continue
+
+            if mf.institution_name and mf.apply_institution_on_study:
+                if not _study_has_institution(operator, study, mf.institution_name):
+                    continue
+
+            # Exact client-side age filtering using actual StudyDate and
+            # PatientBirthDate (the query birth date range is approximate).
+            birth_date = study.PatientBirthDate
+            has_age_filter = mf.min_age is not None or mf.max_age is not None
+            if birth_date and study.StudyDate and has_age_filter:
+                age = _age_at_study(birth_date, study.StudyDate)
+                if mf.min_age is not None and age < mf.min_age:
+                    continue
+                if mf.max_age is not None and age > mf.max_age:
+                    continue
+
+            series_query = QueryDataset.create(
+                PatientID=study.PatientID,
+                StudyInstanceUID=study.StudyInstanceUID,
+            )
+            series_query.dataset.InstitutionName = ""
+
+            series_list = list(operator.find_series(series_query))
+
+            for series in series_list:
+                series_uid = series.SeriesInstanceUID
+                if not series_uid:
+                    continue
+
+                series_number = _parse_int(series.get("SeriesNumber"), default=None)
+
+                if (
+                    mf.institution_name
+                    and not mf.apply_institution_on_study
+                    and not _dicom_match(mf.institution_name, series.get("InstitutionName", None))
+                ):
+                    continue
+
+                if mf.modality and mf.modality != series.Modality:
+                    continue
+
+                if mf.series_description and not _dicom_match(
+                    mf.series_description, series.SeriesDescription
+                ):
+                    continue
+
+                if mf.series_number is not None:
+                    try:
+                        if series_number is None or mf.series_number != series_number:
+                            continue
+                    except (TypeError, ValueError):
+                        continue
+
+                if mf.min_number_of_series_related_instances is not None:
+                    num_instances = (
+                        _parse_int(series.get("NumberOfSeriesRelatedInstances"), default=0) or 0
+                    )
+                    if num_instances < mf.min_number_of_series_related_instances:
+                        continue
+
+                if series_uid in found:
+                    continue
+
+                study_dt = _study_datetime(study)
+                found[series_uid] = DiscoveredSeries(
+                    patient_id=str(study.PatientID),
+                    accession_number=str(study.get("AccessionNumber", "")),
+                    study_instance_uid=str(study.StudyInstanceUID),
+                    series_instance_uid=str(series_uid),
+                    modality=str(series.Modality),
+                    study_description=str(study.get("StudyDescription", "")),
+                    series_description=str(series.get("SeriesDescription", "")),
+                    series_number=series_number,
+                    study_datetime=study_dt,
+                    institution_name=str(series.get("InstitutionName", "")),
+                    number_of_images=_parse_int(
+                        series.get("NumberOfSeriesRelatedInstances"), default=0
+                    )
+                    or 0,
+                    patient_birth_date=birth_date,
+                )
+
+    return list(found.values())
+
+
+def _find_studies(
+    operator: DicomOperator,
+    mf: FilterSpec,
+    start: datetime,
+    end: datetime,
+) -> list[ResultDataset]:
+    max_results = operator.server.max_search_results
+
+    # DICOM applies StudyTime independently per day, so a cross-midnight
+    # range like Date=20250227-20250228 Time=234500-000730 does NOT mean
+    # "from Feb 27 23:45 to Feb 28 00:07".  When the window is within a
+    # single day we can use precise time filtering.  For multi-day ranges
+    # we use full-day times and rely on date-based splitting.  But when
+    # the window has narrowed to just two consecutive days (i.e. a
+    # cross-midnight split), we split at midnight so each half becomes a
+    # single-day query with proper time filtering.
+    if start.date() != end.date():
+        days_apart = (end.date() - start.date()).days
+        if days_apart <= 1:
+            # Cross-midnight: split at midnight boundary
+            midnight = datetime.combine(end.date(), datetime.min.time(), tzinfo=end.tzinfo)
+            left = _find_studies(operator, mf, start, midnight - timedelta(seconds=1))
+            right = _find_studies(operator, mf, midnight, end)
+
+            seen: set[str] = {str(s.StudyInstanceUID) for s in left}
+            for study in right:
+                if str(study.StudyInstanceUID) not in seen:
+                    left.append(study)
+                    seen.add(str(study.StudyInstanceUID))
+
+            return left
+
+        # Multi-day: full-day times, splitting will narrow by date
+        study_time = (datetime.min.time(), datetime.max.time().replace(microsecond=0))
+    else:
+        study_time = (start.time(), end.time())
+
+    birth_range = _birth_date_range(
+        start.date(),
+        end.date(),
+        mf.min_age,
+        mf.max_age,
+    )
+    birth_date_kwarg: dict[str, tuple[date, date]] = {}
+    if birth_range:
+        birth_date_kwarg["PatientBirthDate"] = birth_range
+    query = QueryDataset.create(
+        StudyDate=(start.date(), end.date()),
+        StudyTime=study_time,
+        **birth_date_kwarg,  # type: ignore[arg-type]
+    )
+
+    if mf.modality:
+        query.dataset.ModalitiesInStudy = mf.modality
+    if mf.study_description:
+        query.dataset.StudyDescription = mf.study_description
+
+    studies = list(operator.find_studies(query, limit_results=max_results + 1))
+
+    if len(studies) > max_results:
+        if end - start < _MIN_SPLIT_WINDOW:
+            raise DicomError(f"Time window too small ({start} to {end}) for filter {mf}.")
+
+        mid = start + (end - start) / 2
+        left = _find_studies(operator, mf, start, mid)
+        right = _find_studies(operator, mf, mid + timedelta(seconds=1), end)
+
+        seen: set[str] = {str(s.StudyInstanceUID) for s in left}
+        for study in right:
+            if str(study.StudyInstanceUID) not in seen:
+                left.append(study)
+                seen.add(str(study.StudyInstanceUID))
+
+        return left
+
+    return studies
+
+
+def _study_has_institution(
+    operator: DicomOperator,
+    study: ResultDataset,
+    institution_name: str,
+) -> bool:
+    series_query = QueryDataset.create(
+        PatientID=study.PatientID,
+        StudyInstanceUID=study.StudyInstanceUID,
+    )
+    series_query.dataset.InstitutionName = ""
+
+    series_list = list(operator.find_series(series_query))
+    return any(
+        _dicom_match(institution_name, series.get("InstitutionName", None))
+        for series in series_list
+    )
+
+
 class MassTransferTaskProcessor(DicomTaskProcessor):
     app_name = "mass_transfer"
     dicom_task_class = MassTransferTask
@@ -742,202 +946,8 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
         operator: DicomOperator,
         filters: list[FilterSpec],
     ) -> list[DiscoveredSeries]:
-        start = self.mass_task.partition_start
-        end = self.mass_task.partition_end
-
-        found: dict[str, DiscoveredSeries] = {}
-
-        for mf in filters:
-            studies = self._find_studies(operator, mf, start, end)
-
-            for study in studies:
-                if mf.modality and mf.modality not in study.ModalitiesInStudy:
-                    continue
-
-                if mf.study_description and not _dicom_match(
-                    mf.study_description, study.StudyDescription
-                ):
-                    continue
-
-                if mf.institution_name and mf.apply_institution_on_study:
-                    if not self._study_has_institution(operator, study, mf.institution_name):
-                        continue
-
-                # Exact client-side age filtering using actual StudyDate and
-                # PatientBirthDate (the query birth date range is approximate).
-                birth_date = study.PatientBirthDate
-                has_age_filter = mf.min_age is not None or mf.max_age is not None
-                if birth_date and study.StudyDate and has_age_filter:
-                    age = _age_at_study(birth_date, study.StudyDate)
-                    if mf.min_age is not None and age < mf.min_age:
-                        continue
-                    if mf.max_age is not None and age > mf.max_age:
-                        continue
-
-                series_query = QueryDataset.create(
-                    PatientID=study.PatientID,
-                    StudyInstanceUID=study.StudyInstanceUID,
-                )
-                series_query.dataset.InstitutionName = ""
-
-                series_list = list(operator.find_series(series_query))
-
-                for series in series_list:
-                    series_uid = series.SeriesInstanceUID
-                    if not series_uid:
-                        continue
-
-                    series_number = _parse_int(series.get("SeriesNumber"), default=None)
-
-                    if (
-                        mf.institution_name
-                        and not mf.apply_institution_on_study
-                        and not _dicom_match(
-                            mf.institution_name, series.get("InstitutionName", None)
-                        )
-                    ):
-                        continue
-
-                    if mf.modality and mf.modality != series.Modality:
-                        continue
-
-                    if mf.series_description and not _dicom_match(
-                        mf.series_description, series.SeriesDescription
-                    ):
-                        continue
-
-                    if mf.series_number is not None:
-                        try:
-                            if series_number is None or mf.series_number != series_number:
-                                continue
-                        except (TypeError, ValueError):
-                            continue
-
-                    if mf.min_number_of_series_related_instances is not None:
-                        num_instances = (
-                            _parse_int(series.get("NumberOfSeriesRelatedInstances"), default=0) or 0
-                        )
-                        if num_instances < mf.min_number_of_series_related_instances:
-                            continue
-
-                    if series_uid in found:
-                        continue
-
-                    study_dt = _study_datetime(study)
-                    found[series_uid] = DiscoveredSeries(
-                        patient_id=str(study.PatientID),
-                        accession_number=str(study.get("AccessionNumber", "")),
-                        study_instance_uid=str(study.StudyInstanceUID),
-                        series_instance_uid=str(series_uid),
-                        modality=str(series.Modality),
-                        study_description=str(study.get("StudyDescription", "")),
-                        series_description=str(series.get("SeriesDescription", "")),
-                        series_number=series_number,
-                        study_datetime=study_dt,
-                        institution_name=str(series.get("InstitutionName", "")),
-                        number_of_images=_parse_int(
-                            series.get("NumberOfSeriesRelatedInstances"), default=0
-                        )
-                        or 0,
-                        patient_birth_date=birth_date,
-                    )
-
-        return list(found.values())
-
-    def _find_studies(
-        self,
-        operator: DicomOperator,
-        mf: FilterSpec,
-        start: datetime,
-        end: datetime,
-    ) -> list[ResultDataset]:
-        max_results = operator.server.max_search_results
-
-        # DICOM applies StudyTime independently per day, so a cross-midnight
-        # range like Date=20250227-20250228 Time=234500-000730 does NOT mean
-        # "from Feb 27 23:45 to Feb 28 00:07".  When the window is within a
-        # single day we can use precise time filtering.  For multi-day ranges
-        # we use full-day times and rely on date-based splitting.  But when
-        # the window has narrowed to just two consecutive days (i.e. a
-        # cross-midnight split), we split at midnight so each half becomes a
-        # single-day query with proper time filtering.
-        if start.date() != end.date():
-            days_apart = (end.date() - start.date()).days
-            if days_apart <= 1:
-                # Cross-midnight: split at midnight boundary
-                midnight = datetime.combine(end.date(), datetime.min.time(), tzinfo=end.tzinfo)
-                left = self._find_studies(operator, mf, start, midnight - timedelta(seconds=1))
-                right = self._find_studies(operator, mf, midnight, end)
-
-                seen: set[str] = {str(s.StudyInstanceUID) for s in left}
-                for study in right:
-                    if str(study.StudyInstanceUID) not in seen:
-                        left.append(study)
-                        seen.add(str(study.StudyInstanceUID))
-
-                return left
-
-            # Multi-day: full-day times, splitting will narrow by date
-            study_time = (datetime.min.time(), datetime.max.time().replace(microsecond=0))
-        else:
-            study_time = (start.time(), end.time())
-
-        birth_range = _birth_date_range(
-            start.date(),
-            end.date(),
-            mf.min_age,
-            mf.max_age,
-        )
-        birth_date_kwarg: dict[str, tuple[date, date]] = {}
-        if birth_range:
-            birth_date_kwarg["PatientBirthDate"] = birth_range
-        query = QueryDataset.create(
-            StudyDate=(start.date(), end.date()),
-            StudyTime=study_time,
-            **birth_date_kwarg,  # type: ignore[arg-type]
-        )
-
-        if mf.modality:
-            query.dataset.ModalitiesInStudy = mf.modality
-        if mf.study_description:
-            query.dataset.StudyDescription = mf.study_description
-
-        studies = list(operator.find_studies(query, limit_results=max_results + 1))
-
-        if len(studies) > max_results:
-            if end - start < _MIN_SPLIT_WINDOW:
-                raise DicomError(f"Time window too small ({start} to {end}) for filter {mf}.")
-
-            mid = start + (end - start) / 2
-            left = self._find_studies(operator, mf, start, mid)
-            right = self._find_studies(operator, mf, mid + timedelta(seconds=1), end)
-
-            seen: set[str] = {str(s.StudyInstanceUID) for s in left}
-            for study in right:
-                if str(study.StudyInstanceUID) not in seen:
-                    left.append(study)
-                    seen.add(str(study.StudyInstanceUID))
-
-            return left
-
-        return studies
-
-    def _study_has_institution(
-        self,
-        operator: DicomOperator,
-        study: ResultDataset,
-        institution_name: str,
-    ) -> bool:
-        series_query = QueryDataset.create(
-            PatientID=study.PatientID,
-            StudyInstanceUID=study.StudyInstanceUID,
-        )
-        series_query.dataset.InstitutionName = ""
-
-        series_list = list(operator.find_series(series_query))
-        return any(
-            _dicom_match(institution_name, series.get("InstitutionName", None))
-            for series in series_list
+        return discover_series(
+            operator, filters, self.mass_task.partition_start, self.mass_task.partition_end
         )
 
     def _export_series(

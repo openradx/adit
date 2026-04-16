@@ -29,6 +29,7 @@ from adit.mass_transfer.processors import (
     _birth_date_range,
     _destination_base_dir,
     _dicom_match,
+    _find_studies,
     _parse_int,
     _series_folder_name,
     _study_datetime,
@@ -145,7 +146,6 @@ def test_find_studies_raises_when_time_window_too_small(mocker: MockerFixture):
 
     user = UserFactory.create()
     source = DicomServerFactory.create(max_search_results=1)
-    destination = DicomFolderFactory.create()
     job = MassTransferJob.objects.create(
         owner=user,
         start_date=date(2024, 1, 1),
@@ -157,29 +157,17 @@ def test_find_studies_raises_when_time_window_too_small(mocker: MockerFixture):
 
     start = timezone.now()
     end = start + timedelta(minutes=10)
-    task = MassTransferTask.objects.create(
-        job=job,
-        source=source,
-        destination=destination,
-        patient_id="",
-        study_uid="",
-        partition_start=start,
-        partition_end=end,
-        partition_key="20240101",
-    )
 
-    processor = MassTransferTaskProcessor(task)
     operator = mocker.create_autospec(DicomOperator)
     operator.server = source
     operator.find_studies.return_value = [object(), object()]
 
     mf = FilterSpec(modality="CT")
     with pytest.raises(DicomError, match="Time window too small"):
-        processor._find_studies(operator, mf, start, end)
+        _find_studies(operator, mf, start, end)
 
 
 def test_find_studies_returns_all_when_under_limit(mocker: MockerFixture):
-    processor = _make_processor(mocker)
     mf = _make_filter(modality="CT")
 
     start = datetime(2024, 1, 1, 0, 0, 0)
@@ -191,14 +179,13 @@ def test_find_studies_returns_all_when_under_limit(mocker: MockerFixture):
     operator.server = mocker.MagicMock(max_search_results=10)
     operator.find_studies.return_value = studies
 
-    result = processor._find_studies(operator, mf, start, end)
+    result = _find_studies(operator, mf, start, end)
 
     assert len(result) == 3
     assert operator.find_studies.call_count == 1
 
 
 def test_find_studies_splits_and_deduplicates(mocker: MockerFixture):
-    processor = _make_processor(mocker)
     mf = _make_filter(modality="CT")
 
     # Use a single-day range to test the time-based midpoint split
@@ -218,7 +205,7 @@ def test_find_studies_splits_and_deduplicates(mocker: MockerFixture):
         [study_a_dup, study_c],
     ]
 
-    result = processor._find_studies(operator, mf, start, end)
+    result = _find_studies(operator, mf, start, end)
 
     result_uids = [str(s.StudyInstanceUID) for s in result]
     assert len(result) == 3
@@ -228,7 +215,6 @@ def test_find_studies_splits_and_deduplicates(mocker: MockerFixture):
 
 
 def test_find_studies_split_boundaries_dont_overlap(mocker: MockerFixture):
-    processor = _make_processor(mocker)
     mf = _make_filter(modality="")
 
     # Use a single-day range so we test the time-based midpoint split
@@ -236,11 +222,11 @@ def test_find_studies_split_boundaries_dont_overlap(mocker: MockerFixture):
     end = datetime(2024, 1, 1, 23, 59, 59)
 
     call_ranges: list[tuple[datetime, datetime]] = []
-    original_find_studies = MassTransferTaskProcessor._find_studies
+    original_find_studies = _find_studies
 
-    def tracking_find_studies(self_inner, operator, mf, s, e):
+    def tracking_find_studies(operator, mf, s, e):
         call_ranges.append((s, e))
-        return original_find_studies(self_inner, operator, mf, s, e)
+        return original_find_studies(operator, mf, s, e)
 
     operator = mocker.create_autospec(DicomOperator)
     operator.server = mocker.MagicMock(max_search_results=1)
@@ -250,20 +236,18 @@ def test_find_studies_split_boundaries_dont_overlap(mocker: MockerFixture):
         [_make_study("2")],
     ]
 
-    mocker.patch.object(
-        MassTransferTaskProcessor,
-        "_find_studies",
-        side_effect=lambda self_inner, op, mf, s, e: tracking_find_studies(
-            self_inner, op, mf, s, e
-        ),
-        autospec=True,
+    mocker.patch(
+        "adit.mass_transfer.processors._find_studies",
+        side_effect=lambda op, mf, s, e: tracking_find_studies(op, mf, s, e),
     )
 
-    processor._find_studies(operator, mf, start, end)
+    _find_studies(operator, mf, start, end)
 
-    assert len(call_ranges) == 3
-    left_start, left_end = call_ranges[1]
-    right_start, right_end = call_ranges[2]
+    # Only the two recursive sub-calls are recorded (the initial call goes
+    # directly to the real function via the local import).
+    assert len(call_ranges) == 2
+    left_start, left_end = call_ranges[0]
+    right_start, right_end = call_ranges[1]
 
     assert left_start == start
     assert right_start > left_end
@@ -271,7 +255,6 @@ def test_find_studies_split_boundaries_dont_overlap(mocker: MockerFixture):
 
 def test_find_studies_same_day_split_narrows_study_time(mocker: MockerFixture):
     """When splitting within a single day, StudyTime must narrow to avoid infinite recursion."""
-    processor = _make_processor(mocker)
     mf = _make_filter(modality="CT")
 
     start = datetime(2024, 1, 1, 8, 0, 0)
@@ -286,7 +269,7 @@ def test_find_studies_same_day_split_narrows_study_time(mocker: MockerFixture):
         [_make_study("2")],
     ]
 
-    processor._find_studies(operator, mf, start, end)
+    _find_studies(operator, mf, start, end)
 
     # 3 calls: initial + left half + right half
     assert operator.find_studies.call_count == 3
@@ -307,7 +290,6 @@ def test_find_studies_same_day_split_narrows_study_time(mocker: MockerFixture):
 
 def test_find_studies_cross_midnight_splits_at_midnight(mocker: MockerFixture):
     """A cross-midnight window must split at midnight, not at the midpoint."""
-    processor = _make_processor(mocker)
     mf = _make_filter(modality="CT")
 
     # Window spans midnight: Jan 1 23:45 to Jan 2 00:15
@@ -322,7 +304,7 @@ def test_find_studies_cross_midnight_splits_at_midnight(mocker: MockerFixture):
         [_make_study("2")],
     ]
 
-    result = processor._find_studies(operator, mf, start, end)
+    result = _find_studies(operator, mf, start, end)
 
     assert len(result) == 2
     assert operator.find_studies.call_count == 2
@@ -337,7 +319,6 @@ def test_find_studies_cross_midnight_splits_at_midnight(mocker: MockerFixture):
 
 
 def test_find_studies_preserves_order_with_unique_studies(mocker: MockerFixture):
-    processor = _make_processor(mocker)
     mf = _make_filter(modality="")
 
     start = datetime(2024, 1, 1, 0, 0, 0)
@@ -351,7 +332,7 @@ def test_find_studies_preserves_order_with_unique_studies(mocker: MockerFixture)
         [_make_study("1.2.2"), _make_study("1.2.3")],
     ]
 
-    result = processor._find_studies(operator, mf, start, end)
+    result = _find_studies(operator, mf, start, end)
 
     result_uids = [str(s.StudyInstanceUID) for s in result]
     assert result_uids == ["1.2.1", "1.2.2", "1.2.3"]
