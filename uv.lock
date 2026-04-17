@@ -120,7 +120,7 @@ requires-dist = [
     { name = "django-codemirror", specifier = ">=1.0.1" },
     { name = "django-cotton", specifier = ">=1.6.0" },
     { name = "django-crispy-forms", specifier = ">=2.3" },
-    { name = "django-dbbackup", specifier = ">=4.2.1" },
+    { name = "django-dbbackup", specifier = ">=5.3.0" },
     { name = "django-extensions", specifier = ">=3.2.3" },
     { name = "django-filter", specifier = ">=25.1" },
     { name = "django-htmx", specifier = ">=1.22.0" },
@@ -948,14 +948,14 @@ wheels = [
 
 [[package]]
 name = "django-dbbackup"
-version = "5.1.1"
+version = "5.3.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "django" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/5b/a1/3416a388b58b0b1d3256575f99e3a7b0db9fd3ce44086b3f7a2eb40515a6/django_dbbackup-5.1.1.tar.gz", hash = "sha256:bfefa6fcf64a602fd5416bc7fff679509bf7eee35c114eee295730df8e9589c9", size = 26371, upload-time = "2026-01-08T05:32:50.719Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/2b/8b/6a963f6e3d13eb689a842c8d942a22bd0f477f328c1ce98e40334ac0031b/django_dbbackup-5.3.0.tar.gz", hash = "sha256:2c880dba7650539e8a724174fedb5213062c4fcda3aa09e1c5f3f573192106cb", size = 27843, upload-time = "2026-04-10T01:49:43.02Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/08/dd/e4d197dacb333a30b5756b0a059f84d0e27e7b2b694365caf145896de390/django_dbbackup-5.1.1-py3-none-any.whl", hash = "sha256:371d82803743f6963d7d6d44ee145472213ddd287c43576ddbc11f2277972c1d", size = 34626, upload-time = "2026-01-08T05:32:49.191Z" },
+    { url = "https://files.pythonhosted.org/packages/6e/fa/24891c73c6fc76e6005389a496fa1752a69d6ff8c609692f86513ab373ad/django_dbbackup-5.3.0-py3-none-any.whl", hash = "sha256:ff80b5facd524e3f6479235aeb330b094a1c982f8b0b9503c24ba0dc613162ed", size = 36170, upload-time = "2026-04-10T01:49:41.534Z" },
 ]
 
 [[package]]
