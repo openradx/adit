@@ -14,7 +14,7 @@ from pydicom import Dataset
 from adit.core.utils.dicom_manipulator import DicomManipulator
 from adit.core.utils.dicom_to_nifti_converter import DicomToNiftiConverter
 
-from .errors import DicomError
+from .errors import DicomError, PartialConversionWarning
 from .models import DicomAppSettings, DicomNode, DicomTask, TransferTask
 from .types import DicomLogEntry, ProcessingResult
 from .utils.dicom_dataset import QueryDataset, ResultDataset
@@ -146,7 +146,16 @@ class TransferTaskProcessor(DicomTaskProcessor):
                 / study_folder_name
             )
             converter = DicomToNiftiConverter()
-            converter.convert(patient_folder, nifti_folder)
+            try:
+                converter.convert(patient_folder, nifti_folder)
+            except PartialConversionWarning as exc:
+                self.logs.append(
+                    {
+                        "level": "Warning",
+                        "title": "Partial NIfTI conversion",
+                        "message": str(exc),
+                    }
+                )
 
     def _transfer_to_folder(self) -> None:
         assert self.transfer_task.destination.node_type == DicomNode.NodeType.FOLDER

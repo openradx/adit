@@ -11,6 +11,7 @@ from adit.core.errors import (
     NoSpatialDataError,
     NoValidDicomError,
     OutputDirectoryError,
+    PartialConversionWarning,
 )
 
 logger = logging.getLogger(__name__)
@@ -69,7 +70,7 @@ class DicomToNiftiConverter:
         cmd = [
             self.dcm2niix_path,
             "-f",
-            "%s-%d",
+            "%s-%d_%e",
             "-z",
             "y",
             "-o",
@@ -115,6 +116,16 @@ class DicomToNiftiConverter:
                 )
             elif exit_code == DcmToNiftiExitCode.PARTIAL_CONVERSION:
                 logger.warning(f"Converted some but not all input DICOMs: {error_msg}")
+                if "Too many NIFTI" in error_msg:
+                    raise PartialConversionWarning(
+                        "Too many NIfTI images with the same name: dcm2niix could not assign "
+                        "unique filenames to all converted files. The series may contain too many "
+                        "subgroups sharing the same series description."
+                    )
+                raise PartialConversionWarning(
+                    f"Partial NIfTI conversion: dcm2niix converted some but not all input DICOMs. "
+                    f"Details: {error_msg}"
+                )
             elif exit_code == DcmToNiftiExitCode.RENAME_ERROR:
                 raise DcmToNiftiConversionError(f"Unable to rename files: {error_msg}")
             else:

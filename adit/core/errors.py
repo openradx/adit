@@ -91,6 +91,15 @@ class NoSpatialDataError(DcmToNiftiConversionError):
     pass
 
 
+class PartialConversionWarning(DcmToNiftiConversionError):
+    """Raised when dcm2niix converts some but not all input DICOMs (exit code 8).
+
+    Treated as a warning, not a hard failure — some NIfTI output was produced.
+    """
+
+    pass
+
+
 class BatchFileSizeError(Exception):
     def __init__(self, batch_tasks_count: int, max_batch_size: int) -> None:
         super().__init__("Too many batch tasks.")
