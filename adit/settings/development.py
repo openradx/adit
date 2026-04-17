@@ -12,6 +12,10 @@ REMOTE_DEBUGGING_PORT = env.int("REMOTE_DEBUGGING_PORT")
 
 EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 
+STORAGES["staticfiles"] = {  # noqa: F405
+    "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+}
+
 INSTALLED_APPS += [  # noqa: F405
     "debug_toolbar",
     "debug_permissions",

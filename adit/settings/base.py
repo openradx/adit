@@ -336,10 +336,15 @@ CODEMIRROR_CONFIG = {
 # Cave, changing the salt after some tokens were already generated makes them all invalid!
 TOKEN_AUTHENTICATION_SALT = env.str("TOKEN_AUTHENTICATION_SALT")
 
-# django-dbbackup
-DBBACKUP_STORAGE = "django.core.files.storage.FileSystemStorage"
-DBBACKUP_STORAGE_OPTIONS = {
-    "location": env.str("DBBACKUP_STORAGE_LOCATION", default="/tmp/backups-adit")
+# django default storage and django-dbbackup
+STORAGES = {
+    "default": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+    },
+    "dbbackup": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+        "OPTIONS": {"location": env.str("DBBACKUP_STORAGE_LOCATION", default="/tmp/backups-adit")},
+    },
 }
 DBBACKUP_CLEANUP_KEEP = 30
 
