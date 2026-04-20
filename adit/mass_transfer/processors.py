@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import errno
 import json
 import logging
 import secrets
@@ -71,6 +72,21 @@ logger = logging.getLogger(__name__)
 
 _MIN_SPLIT_WINDOW = timedelta(minutes=30)
 _DELAY_BETWEEN_STUDIES = 0.5  # seconds between studies to avoid overwhelming the PACS
+_SYSTEMIC_ERRNOS = (errno.ENOSPC, errno.ESTALE, errno.EROFS, errno.EIO)
+
+
+def _is_systemic_error(err: Exception) -> bool:
+    """Return True if the error indicates a systemic infrastructure problem.
+
+    Systemic errors (disk full, stale NFS handle, read-only filesystem, I/O error)
+    affect all remaining series equally, so continuing is pointless.
+    """
+    if isinstance(err, OSError) and err.errno in _SYSTEMIC_ERRNOS:
+        return True
+    if isinstance(err, DicomError) and "Out of disk space" in str(err):
+        return True
+    return False
+
 
 # Deterministic pseudonyms use 14 characters. Random pseudonyms use 15 so the
 # two modes can be distinguished by length.
@@ -257,9 +273,19 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
                 "log": "Task skipped because the mass transfer app is suspended.",
             }
 
+        destination_node = self.mass_task.destination
+        if (
+            destination_node.node_type == DicomNode.NodeType.FOLDER
+            and destination_node.dicomfolder.suspended
+        ):
+            return {
+                "status": MassTransferTask.Status.WARNING,
+                "message": f"Destination '{destination_node.name}' is suspended.",
+                "log": "Task skipped because the destination folder is suspended.",
+            }
+
         job = self.mass_task.job
         source_node = self.mass_task.source
-        destination_node = self.mass_task.destination
 
         if source_node.node_type != DicomNode.NodeType.SERVER:
             raise DicomError("Mass transfer source must be a DICOM server.")
@@ -312,17 +338,61 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
             grouped_volumes = self._group_volumes(volumes)
 
             # Transfer: fetch series grouped by study
-            return self._transfer_grouped_series(
-                operator,
-                grouped_volumes,
-                job,
-                pseudonymizer,
-                output_base,
-                dest_operator,
-            )
+            try:
+                return self._transfer_grouped_series(
+                    operator,
+                    grouped_volumes,
+                    job,
+                    pseudonymizer,
+                    output_base,
+                    dest_operator,
+                )
+            except Exception as err:
+                if _is_systemic_error(err):
+                    self._suspend_destination(destination_node, job, err)
+                    return {
+                        "status": MassTransferTask.Status.FAILURE,
+                        "message": f"Destination suspended: {err}",
+                        "log": (
+                            "Systemic error detected. Destination folder suspended.\n"
+                            f"{err}"
+                        ),
+                    }
+                raise
         finally:
             if dest_operator:
                 dest_operator.close()
+
+    def _suspend_destination(
+        self,
+        destination_node: DicomNode,
+        job: MassTransferJob,
+        err: Exception,
+    ) -> None:
+        """Suspend a folder destination after a systemic error (e.g. disk full)."""
+        if destination_node.node_type != DicomNode.NodeType.FOLDER:
+            return
+
+        folder = destination_node.dicomfolder
+        folder.suspended = True
+        folder.save(update_fields=["suspended"])
+
+        logger.critical(
+            "Destination folder '%s' suspended due to systemic error (job %d): %s",
+            destination_node.name,
+            job.pk,
+            err,
+        )
+
+        from adit.core.utils.mail import send_mail_to_admins
+
+        send_mail_to_admins(
+            f"Mass transfer destination '{destination_node.name}' suspended",
+            f"Destination folder '{destination_node.name}' was automatically suspended "
+            f"due to a systemic error during mass transfer job {job.pk}.\n\n"
+            f"Error: {err}\n\n"
+            f"Please fix the underlying issue and unsuspend the folder in the admin panel.",
+        )
 
     def _create_pending_volumes(
         self,
@@ -535,6 +605,8 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
             )
             volume.status = MassTransferVolume.Status.ERROR
             volume.log = str(err)
+            if _is_systemic_error(err):
+                raise
         finally:
             if volume.status == MassTransferVolume.Status.PENDING:
                 logger.error(

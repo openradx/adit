@@ -177,6 +177,10 @@ class DicomFolder(DicomNode):
         blank=True,
         help_text="When to warn the admins by Email (used space in GB).",
     )
+    suspended = models.BooleanField(
+        default=False,
+        help_text="Suspended destinations skip processing (e.g. disk full).",
+    )
 
     objects: DicomNodeManager["DicomFolder"] = DicomNodeManager["DicomFolder"]()
 

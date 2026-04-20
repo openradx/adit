@@ -1,3 +1,4 @@
+import errno
 import json
 from datetime import date, datetime, timedelta
 from pathlib import Path
@@ -29,6 +30,7 @@ from adit.mass_transfer.processors import (
     _birth_date_range,
     _destination_base_dir,
     _dicom_match,
+    _is_systemic_error,
     _parse_int,
     _series_folder_name,
     _study_datetime,
@@ -520,6 +522,7 @@ def _make_process_env(
     processor.mass_task.source.dicomserver = mocker.MagicMock()
     processor.mass_task.destination.node_type = DicomNode.NodeType.FOLDER
     processor.mass_task.destination.dicomfolder.path = str(tmp_path / "output")
+    processor.mass_task.destination.dicomfolder.suspended = False
 
     processor.mass_task.pk = 42
     processor.mass_task.partition_key = "20240101"
@@ -1989,3 +1992,138 @@ def test_process_output_path_includes_job_folder(mocker: MockerFixture, tmp_path
     # The path should contain the job-identifying folder
     expected_prefix = f"adit_mass_transfer_{job.pk}_{job.created.strftime('%Y%m%d')}_researcher"
     assert expected_prefix in str(export_paths[0])
+
+
+# ---------------------------------------------------------------------------
+# Systemic error detection tests
+# ---------------------------------------------------------------------------
+
+
+class TestIsSystemicError:
+    def test_enospc(self):
+        assert _is_systemic_error(OSError(errno.ENOSPC, "No space left on device"))
+
+    def test_estale(self):
+        assert _is_systemic_error(OSError(errno.ESTALE, "Stale file handle"))
+
+    def test_erofs(self):
+        assert _is_systemic_error(OSError(errno.EROFS, "Read-only file system"))
+
+    def test_eio(self):
+        assert _is_systemic_error(OSError(errno.EIO, "Input/output error"))
+
+    def test_disk_space_dicom_error(self):
+        assert _is_systemic_error(DicomError("Out of disk space while trying to save 'foo.dcm'."))
+
+    def test_regular_oserror(self):
+        assert not _is_systemic_error(OSError(errno.ENOENT, "No such file"))
+
+    def test_regular_exception(self):
+        assert not _is_systemic_error(ValueError("bad value"))
+
+    def test_regular_dicom_error(self):
+        assert not _is_systemic_error(DicomError("Something else went wrong"))
+
+
+@pytest.mark.django_db
+def test_process_stops_on_systemic_error(mocker: MockerFixture, mass_transfer_env):
+    """When export raises ENOSPC, the task stops immediately and the destination is suspended."""
+    env = mass_transfer_env
+    series = [
+        _make_discovered(patient_id="PAT1", series_uid="series-1"),
+        _make_discovered(patient_id="PAT1", series_uid="series-2"),
+    ]
+
+    processor = MassTransferTaskProcessor(env.task)
+    mocker.patch.object(processor, "_discover_series", return_value=series)
+    mocker.patch("adit.mass_transfer.processors.DicomOperator")
+    mocker.patch.object(
+        processor,
+        "_export_series",
+        side_effect=DicomError("Out of disk space while trying to save 'test.dcm'."),
+    )
+    mocker.patch("adit.core.utils.mail.send_mail_to_admins")
+
+    result = processor.process()
+
+    assert result["status"] == MassTransferTask.Status.FAILURE
+    assert "suspended" in result["message"].lower() or "suspended" in result["log"].lower()
+
+    env.destination.refresh_from_db()
+    assert env.destination.suspended is True
+
+    # Only the first series should have been attempted (second skipped due to early exit)
+    vols = MassTransferVolume.objects.filter(job=env.job)
+    error_vols = vols.filter(status=MassTransferVolume.Status.ERROR)
+    assert error_vols.count() == 1
+
+
+@pytest.mark.django_db
+def test_process_continues_on_regular_error(mocker: MockerFixture, mass_transfer_env):
+    """Regular errors (non-systemic) mark the volume as ERROR but continue to the next series."""
+    env = mass_transfer_env
+    series = [
+        _make_discovered(patient_id="PAT1", series_uid="series-1"),
+        _make_discovered(patient_id="PAT1", series_uid="series-2"),
+    ]
+
+    call_count = 0
+
+    def export_first_fails(*args, **kwargs):
+        nonlocal call_count
+        call_count += 1
+        if call_count == 1:
+            raise DicomError("Bad DICOM data")
+        return (1, "", "")
+
+    processor = MassTransferTaskProcessor(env.task)
+    mocker.patch.object(processor, "_discover_series", return_value=series)
+    mocker.patch("adit.mass_transfer.processors.DicomOperator")
+    mocker.patch.object(processor, "_export_series", side_effect=export_first_fails)
+
+    result = processor.process()
+
+    # Should be WARNING (one succeeded, one failed) — NOT FAILURE
+    assert result["status"] == MassTransferTask.Status.WARNING
+
+    env.destination.refresh_from_db()
+    assert env.destination.suspended is False
+
+    # Both series were attempted
+    assert call_count == 2
+
+
+@pytest.mark.django_db
+def test_process_skips_when_destination_suspended(mocker: MockerFixture, mass_transfer_env):
+    """When the destination folder is suspended, process() returns WARNING immediately."""
+    env = mass_transfer_env
+    env.destination.suspended = True
+    env.destination.save()
+
+    processor = MassTransferTaskProcessor(env.task)
+    discover_mock = mocker.patch.object(processor, "_discover_series")
+
+    result = processor.process()
+
+    assert result["status"] == MassTransferTask.Status.WARNING
+    assert "suspended" in result["message"].lower()
+    discover_mock.assert_not_called()
+
+
+@pytest.mark.django_db
+def test_process_does_not_suspend_on_regular_error(mocker: MockerFixture, mass_transfer_env):
+    """Non-systemic errors do NOT suspend the destination."""
+    env = mass_transfer_env
+    series = [_make_discovered(patient_id="PAT1", series_uid="series-1")]
+
+    processor = MassTransferTaskProcessor(env.task)
+    mocker.patch.object(processor, "_discover_series", return_value=series)
+    mocker.patch("adit.mass_transfer.processors.DicomOperator")
+    mocker.patch.object(processor, "_export_series", side_effect=DicomError("Export failed"))
+
+    result = processor.process()
+
+    assert result["status"] == MassTransferTask.Status.FAILURE
+
+    env.destination.refresh_from_db()
+    assert env.destination.suspended is False
