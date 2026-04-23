@@ -25,6 +25,7 @@ def task_control_panel(context: dict[str, Any]) -> dict[str, Any]:
         "task_delete_url": "selective_transfer_task_delete",
         "task_reset_url": "selective_transfer_task_reset",
         "task_kill_url": "selective_transfer_task_kill",
+        "task_force_retry_url": "selective_transfer_task_force_retry",
         "user": context["user"],
         "task": context["task"],
     }

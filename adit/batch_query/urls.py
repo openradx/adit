@@ -15,6 +15,7 @@ from .views import (
     BatchQueryResultListView,
     BatchQueryTaskDeleteView,
     BatchQueryTaskDetailView,
+    BatchQueryTaskForceRetryView,
     BatchQueryTaskKillView,
     BatchQueryTaskResetView,
     BatchQueryUpdatePreferencesView,
@@ -104,5 +105,10 @@ urlpatterns = [
         "tasks/<int:pk>/reset/",
         BatchQueryTaskResetView.as_view(),
         name="batch_query_task_reset",
+    ),
+    path(
+        "tasks/<int:pk>/force-retry/",
+        BatchQueryTaskForceRetryView.as_view(),
+        name="batch_query_task_force_retry",
     ),
 ]

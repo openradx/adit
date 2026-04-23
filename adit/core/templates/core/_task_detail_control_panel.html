@@ -36,4 +36,16 @@
             </button>
         </form>
     {% endif %}
+    {% if user.is_staff and task_force_retry_url %}
+        <form class="me-3"
+              action="{% url task_force_retry_url task.pk %}"
+              method="post"
+              onSubmit="return confirm('Force retry this task? It will be reset and re-queued.');">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-warning">
+                {% bootstrap_icon "arrow-repeat" %}
+                Force Retry
+            </button>
+        </form>
+    {% endif %}
 </div>

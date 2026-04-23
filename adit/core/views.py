@@ -395,21 +395,47 @@ class DicomTaskResetView(LoginRequiredMixin, SingleObjectMixin, View):
             return self.model.objects.all()
         return self.model.objects.filter(job__owner=self.request.user)
 
-    def post(self, request: AuthenticatedHttpRequest, *args, **kwargs) -> HttpResponse:
-        task = cast(DicomTask, self.get_object())
+    def check_task(self, task: DicomTask) -> None:
         if not task.is_resettable:
             raise SuspiciousOperation(
-                f"Task with ID {task.pk} and status {task.get_status_display()} is not resettable."
+                f"Task with ID {task.pk} and status "
+                f"{task.get_status_display()} is not resettable."
             )
 
+    def post(self, request: AuthenticatedHttpRequest, *args, **kwargs) -> HttpResponse:
+        task = cast(DicomTask, self.get_object())
+        self.check_task(task)
+
         reset_tasks(self.model.objects.filter(pk=task.pk))
-        ## Refresh the task object from database to get the updated status
         task.refresh_from_db()
         task.queue_pending_task()
         task.job.post_process()
 
         messages.success(request, self.success_message % task.__dict__)
         return redirect(task)
+
+
+class DicomTaskForceRetryView(UserPassesTestMixin, DicomTaskResetView):
+    """Staff-only reset that skips the is_resettable check.
+
+    Allows admins to retry tasks with any terminal status (e.g. SUCCESS
+    tasks that produced corrupt output).
+    """
+
+    success_message = "Task with ID %(id)d was force retried"
+
+    def test_func(self) -> bool:
+        return self.request.user.is_staff
+
+    def get_queryset(self):
+        return self.model.objects.all()
+
+    def check_task(self, task: DicomTask) -> None:
+        if task.status in (DicomTask.Status.PENDING, DicomTask.Status.IN_PROGRESS):
+            raise SuspiciousOperation(
+                f"Task with ID {task.pk} and status "
+                f"{task.get_status_display()} cannot be force retried."
+            )
 
 
 class DicomTaskKillView(LoginRequiredMixin, UserPassesTestMixin, SingleObjectMixin, View):
