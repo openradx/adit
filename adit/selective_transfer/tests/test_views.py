@@ -149,3 +149,31 @@ def test_selective_transfer_task_kill_view(client: Client):
 
     response = client.post(f"/selective-transfer/tasks/{task.pk}/kill/")
     assert response.status_code == 302
+
+
+@pytest.mark.django_db
+def test_selective_transfer_task_force_retry_view(client: Client):
+    user = UserFactory.create(is_active=True, is_staff=True)
+    job = SelectiveTransferJobFactory.create(owner=user)
+    task = SelectiveTransferTaskFactory.create(
+        job=job, status=DicomTask.Status.SUCCESS
+    )
+    client.force_login(user)
+
+    response = client.post(f"/selective-transfer/tasks/{task.pk}/force-retry/")
+    assert response.status_code == 302
+    task.refresh_from_db()
+    assert task.status == DicomTask.Status.PENDING
+
+
+@pytest.mark.django_db
+def test_selective_transfer_task_force_retry_forbidden_for_non_staff(client: Client):
+    user = UserFactory.create(is_active=True, is_staff=False)
+    job = SelectiveTransferJobFactory.create(owner=user)
+    task = SelectiveTransferTaskFactory.create(
+        job=job, status=DicomTask.Status.SUCCESS
+    )
+    client.force_login(user)
+
+    response = client.post(f"/selective-transfer/tasks/{task.pk}/force-retry/")
+    assert response.status_code == 403

@@ -248,3 +248,43 @@ def test_batch_transfer_task_kill_view(client: Client):
     task = BatchTransferTaskFactory.create(job=job, status=BatchTransferTask.Status.IN_PROGRESS)
     response = client.post(f"/batch-transfer/tasks/{task.pk}/kill/")
     assert response.status_code == 302
+
+
+@pytest.mark.django_db
+def test_batch_transfer_task_force_retry_view(client: Client):
+    user = UserFactory.create(is_active=True, is_staff=True)
+    client.force_login(user)
+    job = BatchTransferJobFactory.create(owner=user)
+    task = BatchTransferTaskFactory.create(
+        job=job, status=BatchTransferTask.Status.SUCCESS
+    )
+    response = client.post(f"/batch-transfer/tasks/{task.pk}/force-retry/")
+    assert response.status_code == 302
+    task.refresh_from_db()
+    assert task.status == BatchTransferTask.Status.PENDING
+
+
+@pytest.mark.django_db
+def test_batch_transfer_task_force_retry_in_progress(client: Client):
+    user = UserFactory.create(is_active=True, is_staff=True)
+    client.force_login(user)
+    job = BatchTransferJobFactory.create(owner=user)
+    task = BatchTransferTaskFactory.create(
+        job=job, status=BatchTransferTask.Status.IN_PROGRESS
+    )
+    response = client.post(f"/batch-transfer/tasks/{task.pk}/force-retry/")
+    assert response.status_code == 302
+    task.refresh_from_db()
+    assert task.status == BatchTransferTask.Status.PENDING
+
+
+@pytest.mark.django_db
+def test_batch_transfer_task_force_retry_forbidden_for_non_staff(client: Client):
+    user = UserFactory.create(is_active=True, is_staff=False)
+    client.force_login(user)
+    job = BatchTransferJobFactory.create(owner=user)
+    task = BatchTransferTaskFactory.create(
+        job=job, status=BatchTransferTask.Status.SUCCESS
+    )
+    response = client.post(f"/batch-transfer/tasks/{task.pk}/force-retry/")
+    assert response.status_code == 403
