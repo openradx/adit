@@ -106,9 +106,8 @@ All task actions are defined in `adit/core/views.py`. Staff users can act on any
 | **Delete** | `PENDING` | Owner or staff | Task is deleted | Job status is re-evaluated via `post_process()` |
 | **Reset** | `CANCELED`, `SUCCESS`, `WARNING`, or `FAILURE` | Owner or staff | Task is reset to `PENDING` (attempts, message, log cleared), then re-queued | Job status is re-evaluated via `post_process()` — typically becomes `PENDING` |
 | **Kill** | `IN_PROGRESS` | Staff only | Queued Procrastinate job is aborted and deleted | Job status is not immediately changed; the killed task's processor will update status when it terminates |
-| **Force Retry** | Any status | Staff only | Same as Reset but skips the status check, allowing retry of tasks in any state (e.g. stuck `IN_PROGRESS` or erroneously `SUCCESS` tasks) | Job status is re-evaluated via `post_process()` — typically becomes `PENDING` |
 
-**Reset/Force Retry internals**: The `reset_tasks()` utility in `adit/core/utils/model_utils.py` clears the task back to its initial state: `status=PENDING`, `queued_job_id=None`, `attempts=0`, `message=""`, `log=""`, `start=None`, `end=None`. After resetting, the task is immediately re-queued via `queue_pending_task()` and the job status is re-evaluated via `post_process()`.
+**Reset internals**: The `reset_tasks()` utility in `adit/core/utils/model_utils.py` clears the task back to its initial state: `status=PENDING`, `queued_job_id=None`, `attempts=0`, `message=""`, `log=""`, `start=None`, `end=None`. After resetting, the task is immediately re-queued via `queue_pending_task()` and the job status is re-evaluated via `post_process()`.
 
 ### DICOM Connectivity (`adit/core/utils/`)
 

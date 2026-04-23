@@ -13,7 +13,6 @@ from .views import (
     BatchTransferJobVerifyView,
     BatchTransferTaskDeleteView,
     BatchTransferTaskDetailView,
-    BatchTransferTaskForceRetryView,
     BatchTransferTaskKillView,
     BatchTransferTaskResetView,
     BatchTransferUpdatePreferencesView,
@@ -98,10 +97,5 @@ urlpatterns = [
         "tasks/<int:pk>/kill/",
         BatchTransferTaskKillView.as_view(),
         name="batch_transfer_task_kill",
-    ),
-    path(
-        "tasks/<int:pk>/force-retry/",
-        BatchTransferTaskForceRetryView.as_view(),
-        name="batch_transfer_task_force_retry",
     ),
 ]

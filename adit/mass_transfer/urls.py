@@ -13,7 +13,6 @@ from .views import (
     MassTransferJobVerifyView,
     MassTransferTaskDeleteView,
     MassTransferTaskDetailView,
-    MassTransferTaskForceRetryView,
     MassTransferTaskKillView,
     MassTransferTaskResetView,
     MassTransferUpdatePreferencesView,
@@ -78,10 +77,5 @@ urlpatterns = [
         "tasks/<int:pk>/kill/",
         MassTransferTaskKillView.as_view(),
         name="mass_transfer_task_kill",
-    ),
-    path(
-        "tasks/<int:pk>/force-retry/",
-        MassTransferTaskForceRetryView.as_view(),
-        name="mass_transfer_task_force_retry",
     ),
 ]

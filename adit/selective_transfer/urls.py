@@ -13,7 +13,6 @@ from .views import (
     SelectiveTransferJobVerifyView,
     SelectiveTransferTaskDeleteView,
     SelectiveTransferTaskDetailView,
-    SelectiveTransferTaskForceRetryView,
     SelectiveTransferTaskKillView,
     SelectiveTransferTaskResetView,
     SelectiveTransferUpdatePreferencesView,
@@ -99,10 +98,5 @@ urlpatterns = [
         "tasks/<int:pk>/reset/",
         SelectiveTransferTaskResetView.as_view(),
         name="selective_transfer_task_reset",
-    ),
-    path(
-        "tasks/<int:pk>/force-retry/",
-        SelectiveTransferTaskForceRetryView.as_view(),
-        name="selective_transfer_task_force_retry",
     ),
 ]

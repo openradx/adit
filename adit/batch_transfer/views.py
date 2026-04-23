@@ -15,7 +15,6 @@ from adit.core.views import (
     DicomJobVerifyView,
     DicomTaskDeleteView,
     DicomTaskDetailView,
-    DicomTaskForceRetryView,
     DicomTaskKillView,
     DicomTaskResetView,
     TransferJobListView,
@@ -133,10 +132,6 @@ class BatchTransferTaskDeleteView(BatchTransferLockedMixin, DicomTaskDeleteView)
 
 
 class BatchTransferTaskResetView(BatchTransferLockedMixin, DicomTaskResetView):
-    model = BatchTransferTask
-
-
-class BatchTransferTaskForceRetryView(BatchTransferLockedMixin, DicomTaskForceRetryView):
     model = BatchTransferTask
 
 
