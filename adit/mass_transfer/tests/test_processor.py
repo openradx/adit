@@ -31,6 +31,7 @@ from adit.mass_transfer.processors import (
     _dicom_match,
     _parse_int,
     _series_folder_name,
+    _series_matches_filter,
     _study_datetime,
     _study_folder_name,
 )
@@ -492,6 +493,112 @@ def test_discover_series_no_min_instances_filter_includes_all(mocker: MockerFixt
     result = processor._discover_series(operator, filters)
 
     assert len(result) == 2
+
+
+def test_discover_series_exclude_removes_matching_series(mocker: MockerFixture):
+    processor = _make_processor(mocker)
+    processor.mass_task.partition_start = datetime(2024, 1, 1, 0, 0)
+    processor.mass_task.partition_end = datetime(2024, 1, 1, 23, 59, 59)
+
+    operator = mocker.create_autospec(DicomOperator)
+    operator.server = mocker.MagicMock(max_search_results=200)
+
+    study = _make_study("1.2.3.100")
+    study.dataset.ModalitiesInStudy = ["CT"]
+    operator.find_studies.return_value = [study]
+
+    axial = _make_series_result("1.2.3.601", series_description="Axial T1")
+    localizer = _make_series_result("1.2.3.602", series_description="Localizer")
+    operator.find_series.return_value = [axial, localizer]
+
+    filters = [
+        _make_filter(modality="CT"),
+        FilterSpec(mode="exclude", series_description="Localizer"),
+    ]
+    result = processor._discover_series(operator, filters)
+
+    series_uids = {s.series_instance_uid for s in result}
+    assert series_uids == {"1.2.3.601"}
+
+
+def test_discover_series_exclude_does_not_trigger_find(mocker: MockerFixture):
+    """Exclude filters must not issue their own C-FIND calls."""
+    processor = _make_processor(mocker)
+    processor.mass_task.partition_start = datetime(2024, 1, 1, 0, 0)
+    processor.mass_task.partition_end = datetime(2024, 1, 1, 23, 59, 59)
+
+    operator = mocker.create_autospec(DicomOperator)
+    operator.server = mocker.MagicMock(max_search_results=200)
+
+    study = _make_study("1.2.3.100")
+    study.dataset.ModalitiesInStudy = ["CT"]
+    operator.find_studies.return_value = [study]
+    operator.find_series.return_value = [_make_series_result("1.2.3.701")]
+
+    filters = [
+        _make_filter(modality="CT"),
+        FilterSpec(mode="exclude", series_description="nonexistent"),
+    ]
+    processor._discover_series(operator, filters)
+
+    # One include filter => one study-level query and one series-level query.
+    # Excludes must not add additional PACS round-trips.
+    assert operator.find_studies.call_count == 1
+    assert operator.find_series.call_count == 1
+
+
+def test_discover_series_exclude_matches_any_of_multiple(mocker: MockerFixture):
+    processor = _make_processor(mocker)
+    processor.mass_task.partition_start = datetime(2024, 1, 1, 0, 0)
+    processor.mass_task.partition_end = datetime(2024, 1, 1, 23, 59, 59)
+
+    operator = mocker.create_autospec(DicomOperator)
+    operator.server = mocker.MagicMock(max_search_results=200)
+
+    study = _make_study("1.2.3.100")
+    study.dataset.ModalitiesInStudy = ["CT"]
+    operator.find_studies.return_value = [study]
+
+    kept = _make_series_result("1.2.3.801", series_description="Axial T1")
+    localizer = _make_series_result("1.2.3.802", series_description="Localizer")
+    scout = _make_series_result("1.2.3.803", series_description="Scout")
+    operator.find_series.return_value = [kept, localizer, scout]
+
+    filters = [
+        _make_filter(modality="CT"),
+        FilterSpec(mode="exclude", series_description="Localizer"),
+        FilterSpec(mode="exclude", series_description="Scout"),
+    ]
+    result = processor._discover_series(operator, filters)
+
+    series_uids = {s.series_instance_uid for s in result}
+    assert series_uids == {"1.2.3.801"}
+
+
+def test_discover_series_exclude_by_institution(mocker: MockerFixture):
+    processor = _make_processor(mocker)
+    processor.mass_task.partition_start = datetime(2024, 1, 1, 0, 0)
+    processor.mass_task.partition_end = datetime(2024, 1, 1, 23, 59, 59)
+
+    operator = mocker.create_autospec(DicomOperator)
+    operator.server = mocker.MagicMock(max_search_results=200)
+
+    study = _make_study("1.2.3.100")
+    study.dataset.ModalitiesInStudy = ["CT"]
+    operator.find_studies.return_value = [study]
+
+    here = _make_series_result("1.2.3.901", institution_name="Radiology")
+    there = _make_series_result("1.2.3.902", institution_name="External")
+    operator.find_series.return_value = [here, there]
+
+    filters = [
+        _make_filter(modality="CT", apply_institution_on_study=False),
+        FilterSpec(mode="exclude", institution_name="External"),
+    ]
+    result = processor._discover_series(operator, filters)
+
+    series_uids = {s.series_instance_uid for s in result}
+    assert series_uids == {"1.2.3.901"}
 
 
 # ---------------------------------------------------------------------------
@@ -1415,6 +1522,122 @@ def test_filter_spec_from_dict_without_min_instances():
     d = {"modality": "CT"}
     fs = FilterSpec.from_dict(d)
     assert fs.min_number_of_series_related_instances is None
+
+
+def test_filter_spec_from_dict_default_mode_is_include():
+    fs = FilterSpec.from_dict({"modality": "CT"})
+    assert fs.mode == "include"
+
+
+def test_filter_spec_from_dict_respects_exclude_mode():
+    fs = FilterSpec.from_dict({"mode": "exclude", "series_description": "Scout"})
+    assert fs.mode == "exclude"
+
+
+# ---------------------------------------------------------------------------
+# _series_matches_filter tests
+# ---------------------------------------------------------------------------
+
+
+def test_series_matches_filter_all_criteria_match():
+    series = _make_discovered()
+    mf = FilterSpec(modality="CT", series_description="Axial*")
+    assert _series_matches_filter(series, mf) is True
+
+
+def test_series_matches_filter_modality_mismatch():
+    series = _make_discovered(modality="CT")
+    mf = FilterSpec(modality="MR")
+    assert _series_matches_filter(series, mf) is False
+
+
+def test_series_matches_filter_series_description_mismatch():
+    series = _make_discovered(series_description="Localizer")
+    mf = FilterSpec(series_description="Axial*")
+    assert _series_matches_filter(series, mf) is False
+
+
+def test_series_matches_filter_series_number_exact():
+    series = _make_discovered(series_number=3)
+    assert _series_matches_filter(series, FilterSpec(series_number=3)) is True
+    assert _series_matches_filter(series, FilterSpec(series_number=4)) is False
+
+
+def test_series_matches_filter_series_number_unknown_fails_match():
+    series = _make_discovered(series_number=None)
+    assert _series_matches_filter(series, FilterSpec(series_number=1)) is False
+
+
+def test_series_matches_filter_institution_checked_by_default():
+    series = DiscoveredSeries(
+        patient_id="PAT1",
+        accession_number="ACC001",
+        study_instance_uid="study-1",
+        series_instance_uid="series-1",
+        modality="CT",
+        study_description="Brain CT",
+        series_description="Axial",
+        series_number=1,
+        study_datetime=datetime(2024, 1, 1, 12, 0),
+        institution_name="External",
+        number_of_images=10,
+    )
+    mf = FilterSpec(institution_name="Radiology")
+    assert _series_matches_filter(series, mf) is False
+
+
+def test_series_matches_filter_institution_skipped_when_check_false():
+    series = DiscoveredSeries(
+        patient_id="PAT1",
+        accession_number="ACC001",
+        study_instance_uid="study-1",
+        series_instance_uid="series-1",
+        modality="CT",
+        study_description="Brain CT",
+        series_description="Axial",
+        series_number=1,
+        study_datetime=datetime(2024, 1, 1, 12, 0),
+        institution_name="External",
+        number_of_images=10,
+    )
+    mf = FilterSpec(institution_name="Radiology")
+    assert _series_matches_filter(series, mf, check_institution=False) is True
+
+
+def test_series_matches_filter_age_with_birth_date():
+    series = DiscoveredSeries(
+        patient_id="PAT1",
+        accession_number="ACC001",
+        study_instance_uid="study-1",
+        series_instance_uid="series-1",
+        modality="CT",
+        study_description="Brain CT",
+        series_description="Axial",
+        series_number=1,
+        study_datetime=datetime(2024, 6, 15, 12, 0),
+        institution_name="Radiology",
+        number_of_images=10,
+        patient_birth_date=date(2000, 1, 1),
+    )
+    assert _series_matches_filter(series, FilterSpec(min_age=18)) is True
+    assert _series_matches_filter(series, FilterSpec(min_age=30)) is False
+    assert _series_matches_filter(series, FilterSpec(max_age=24)) is True
+    assert _series_matches_filter(series, FilterSpec(max_age=20)) is False
+
+
+def test_series_matches_filter_age_permissive_unknown_birth_date():
+    series = _make_discovered()  # patient_birth_date=None
+    mf = FilterSpec(min_age=18)
+    assert _series_matches_filter(series, mf, age_permissive=True) is True
+    assert _series_matches_filter(series, mf, age_permissive=False) is False
+
+
+def test_series_matches_filter_min_instances():
+    series = _make_discovered()  # number_of_images=10
+    mf_ok = FilterSpec(min_number_of_series_related_instances=5)
+    mf_fail = FilterSpec(min_number_of_series_related_instances=20)
+    assert _series_matches_filter(series, mf_ok) is True
+    assert _series_matches_filter(series, mf_fail) is False
 
 
 # ---------------------------------------------------------------------------
