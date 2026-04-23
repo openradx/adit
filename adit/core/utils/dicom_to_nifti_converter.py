@@ -70,7 +70,7 @@ class DicomToNiftiConverter:
         cmd = [
             self.dcm2niix_path,
             "-f",
-            "%s-%d_%e",
+            "%s-%d",
             "-z",
             "y",
             "-o",

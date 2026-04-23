@@ -11,6 +11,7 @@ from adit.core.errors import (
     InvalidDicomError,
     NoValidDicomError,
     OutputDirectoryError,
+    PartialConversionWarning,
 )
 from adit.core.utils.dicom_to_nifti_converter import DicomToNiftiConverter
 
@@ -106,7 +107,7 @@ class TestDicomToNiftiConverter:
         with pytest.raises(OutputDirectoryError, match="Unable to write"):
             converter.convert(dicom_folder, output_folder)
 
-    def test_convert_partial_conversion(self, tmp_path, monkeypatch, caplog):
+    def test_convert_partial_conversion(self, tmp_path, monkeypatch):
         dicom_folder = tmp_path / "dicom"
         dicom_folder.mkdir()
         output_folder = tmp_path / "output"
@@ -114,10 +115,8 @@ class TestDicomToNiftiConverter:
         monkeypatch.setattr(subprocess, "run", lambda *args, **kwargs: _make_completed_process(8))
 
         converter = DicomToNiftiConverter()
-        with caplog.at_level(logging.WARNING, logger=CONVERTER_LOGGER):
+        with pytest.raises(PartialConversionWarning):
             converter.convert(dicom_folder, output_folder)
-
-        assert any("Converted some but not all" in msg for msg in caplog.messages)
 
     def test_convert_rename_error(self, tmp_path, monkeypatch):
         dicom_folder = tmp_path / "dicom"
