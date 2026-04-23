@@ -418,8 +418,8 @@ class DicomTaskResetView(LoginRequiredMixin, SingleObjectMixin, View):
 class DicomTaskForceRetryView(UserPassesTestMixin, DicomTaskResetView):
     """Staff-only reset that skips the is_resettable check.
 
-    Allows admins to retry tasks with any terminal status (e.g. SUCCESS
-    tasks that produced corrupt output).
+    Allows admins to retry tasks with any status (e.g. SUCCESS tasks
+    that produced corrupt output, or stuck IN_PROGRESS tasks).
     """
 
     success_message = "Task with ID %(id)d was force retried"
@@ -431,11 +431,7 @@ class DicomTaskForceRetryView(UserPassesTestMixin, DicomTaskResetView):
         return self.model.objects.all()
 
     def check_task(self, task: DicomTask) -> None:
-        if task.status in (DicomTask.Status.PENDING, DicomTask.Status.IN_PROGRESS):
-            raise SuspiciousOperation(
-                f"Task with ID {task.pk} and status "
-                f"{task.get_status_display()} cannot be force retried."
-            )
+        pass
 
 
 class DicomTaskKillView(LoginRequiredMixin, UserPassesTestMixin, SingleObjectMixin, View):
