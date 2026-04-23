@@ -72,6 +72,44 @@ Transfer operations follow a Job -> Task pattern:
 - Status flow: `PENDING` -> `IN_PROGRESS` -> `SUCCESS`/`WARNING`/`FAILURE`
 - Background workers (Procrastinate) poll and process tasks from two queues: `default` and `dicom`
 
+### Job and Task Statuses
+
+**Job statuses** (`DicomJob.Status`): `UNVERIFIED`, `PENDING`, `IN_PROGRESS`, `CANCELING`, `CANCELED`, `SUCCESS`, `WARNING`, `FAILURE`
+
+**Task statuses** (`DicomTask.Status`): `PENDING`, `IN_PROGRESS`, `CANCELED`, `SUCCESS`, `WARNING`, `FAILURE`
+
+The job status is derived from its tasks via `post_process()`. The evaluation priority is:
+1. Any `PENDING` task → job becomes `PENDING`
+2. Any `IN_PROGRESS` task → job becomes `IN_PROGRESS`
+3. If job was `CANCELING` → job becomes `CANCELED`
+4. Otherwise the job is finished and its final status is computed from the combination of `SUCCESS`, `WARNING`, and `FAILURE` tasks
+
+### Job Actions
+
+All job actions are defined in `adit/core/views.py`. Staff users can act on any job; regular users can only act on their own jobs.
+
+| Action | Available when | Who can use | Effect on job | Effect on tasks |
+|---|---|---|---|---|
+| **Verify** | `UNVERIFIED` | Staff only | Sets job to `PENDING`, queues all pending tasks | Tasks are queued for processing |
+| **Delete** | `UNVERIFIED` or `PENDING` (and no non-pending tasks) | Owner or staff | Job is deleted | All tasks are deleted (cascade) |
+| **Cancel** | `PENDING` or `IN_PROGRESS` | Owner or staff | Sets job to `CANCELED` (or `CANCELING` if tasks are in progress) | Pending tasks → `CANCELED` (queued jobs canceled). In-progress tasks are aborted via Procrastinate |
+| **Resume** | `CANCELED` | Owner or staff | Sets job to `PENDING`, queues pending tasks | Canceled tasks → `PENDING`, then queued for processing |
+| **Retry** | `FAILURE` | Owner or staff | Sets job to `PENDING`, queues pending tasks | Only failed tasks are reset (`PENDING`, attempts/message/log cleared) and re-queued. Successful/warning tasks are left untouched |
+| **Restart** | `CANCELED`, `SUCCESS`, `WARNING`, or `FAILURE` | Staff only | Sets job to `PENDING`, clears message, queues all tasks | All tasks are reset (`PENDING`, attempts/message/log cleared) and re-queued |
+
+### Task Actions
+
+All task actions are defined in `adit/core/views.py`. Staff users can act on any task; regular users can only act on tasks belonging to their own jobs.
+
+| Action | Available when | Who can use | Effect on task | Effect on job |
+|---|---|---|---|---|
+| **Delete** | `PENDING` | Owner or staff | Task is deleted | Job status is re-evaluated via `post_process()` |
+| **Reset** | `CANCELED`, `SUCCESS`, `WARNING`, or `FAILURE` | Owner or staff | Task is reset to `PENDING` (attempts, message, log cleared), then re-queued | Job status is re-evaluated via `post_process()` — typically becomes `PENDING` |
+| **Kill** | `IN_PROGRESS` | Staff only | Queued Procrastinate job is aborted and deleted | Job status is not immediately changed; the killed task's processor will update status when it terminates |
+| **Force Retry** | Any status | Staff only | Same as Reset but skips the status check, allowing retry of tasks in any state (e.g. stuck `IN_PROGRESS` or erroneously `SUCCESS` tasks) | Job status is re-evaluated via `post_process()` — typically becomes `PENDING` |
+
+**Reset/Force Retry internals**: The `reset_tasks()` utility in `adit/core/utils/model_utils.py` clears the task back to its initial state: `status=PENDING`, `queued_job_id=None`, `attempts=0`, `message=""`, `log=""`, `start=None`, `end=None`. After resetting, the task is immediately re-queued via `queue_pending_task()` and the job status is re-evaluated via `post_process()`.
+
 ### DICOM Connectivity (`adit/core/utils/`)
 
 High-level abstraction layers for PACS communication:

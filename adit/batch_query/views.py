@@ -29,7 +29,6 @@ from adit.core.views import (
     DicomTaskKillView,
     DicomTaskResetView,
 )
-from adit.selective_transfer.mixins import SelectiveTransferLockedMixin
 
 from .filters import BatchQueryJobFilter, BatchQueryResultFilter, BatchQueryTaskFilter
 from .forms import BatchQueryJobForm
@@ -142,19 +141,19 @@ class BatchQueryTaskDetailView(
         return task.results.all()
 
 
-class BatchQueryTaskDeleteView(SelectiveTransferLockedMixin, DicomTaskDeleteView):
+class BatchQueryTaskDeleteView(BatchQueryLockedMixin, DicomTaskDeleteView):
     model = BatchQueryTask
 
 
-class BatchQueryTaskResetView(SelectiveTransferLockedMixin, DicomTaskResetView):
+class BatchQueryTaskResetView(BatchQueryLockedMixin, DicomTaskResetView):
     model = BatchQueryTask
 
 
-class BatchQueryTaskForceRetryView(SelectiveTransferLockedMixin, DicomTaskForceRetryView):
+class BatchQueryTaskForceRetryView(BatchQueryLockedMixin, DicomTaskForceRetryView):
     model = BatchQueryTask
 
 
-class BatchQueryTaskKillView(SelectiveTransferLockedMixin, DicomTaskKillView):
+class BatchQueryTaskKillView(BatchQueryLockedMixin, DicomTaskKillView):
     model = BatchQueryTask
 
 
