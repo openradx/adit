@@ -17,6 +17,7 @@ from adit.core.errors import (
     DicomError,
     NoSpatialDataError,
     NoValidDicomError,
+    PartialConversionWarning,
     RetriableDicomError,
 )
 from adit.core.models import DicomServer
@@ -263,6 +264,9 @@ async def _process_single_fetch(
             # The series passed the modality check but still failed conversion.
             # This is unexpected and worth logging as a warning.
             logger.warning(f"Series conversion failed unexpectedly: {e}")
+            return
+        except PartialConversionWarning as e:
+            logger.warning(f"Partial NIfTI conversion: {e}")
             return
         except Exception as e:
             logger.exception(f"Error during DICOM to NIfTI conversion: {e}")
