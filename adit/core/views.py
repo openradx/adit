@@ -395,18 +395,15 @@ class DicomTaskResetView(LoginRequiredMixin, SingleObjectMixin, View):
             return self.model.objects.all()
         return self.model.objects.filter(job__owner=self.request.user)
 
-    def check_task(self, task: DicomTask) -> None:
-        if not task.is_resettable:
-            raise SuspiciousOperation(
-                f"Task with ID {task.pk} and status "
-                f"{task.get_status_display()} is not resettable."
-            )
-
     def post(self, request: AuthenticatedHttpRequest, *args, **kwargs) -> HttpResponse:
         task = cast(DicomTask, self.get_object())
-        self.check_task(task)
+        if not task.is_resettable:
+            raise SuspiciousOperation(
+                f"Task with ID {task.pk} and status {task.get_status_display()} is not resettable."
+            )
 
         reset_tasks(self.model.objects.filter(pk=task.pk))
+        ## Refresh the task object from database to get the updated status
         task.refresh_from_db()
         task.queue_pending_task()
         task.job.post_process()
