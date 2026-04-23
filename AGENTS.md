@@ -79,8 +79,8 @@ Transfer operations follow a Job -> Task pattern:
 **Task statuses** (`DicomTask.Status`): `PENDING`, `IN_PROGRESS`, `CANCELED`, `SUCCESS`, `WARNING`, `FAILURE`
 
 The job status is derived from its tasks via `post_process()`. The evaluation priority is:
-1. Any `PENDING` task → job becomes `PENDING`
-2. Any `IN_PROGRESS` task → job becomes `IN_PROGRESS`
+1. Any PENDING task → job becomes PENDING (unless job is CANCELING)
+2. Any IN_PROGRESS task → job becomes IN_PROGRESS (unless job is CANCELING)
 3. If job was `CANCELING` → job becomes `CANCELED`
 4. Otherwise the job is finished and its final status is computed from the combination of `SUCCESS`, `WARNING`, and `FAILURE` tasks
 
