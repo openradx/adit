@@ -279,10 +279,15 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
             and destination_node.dicomfolder.suspended
         ):
             return {
-                "status": MassTransferTask.Status.WARNING,
+                "status": MassTransferTask.Status.FAILURE,
                 "message": f"Destination '{destination_node.name}' is suspended.",
                 "log": "Task skipped because the destination folder is suspended.",
             }
+
+        if destination_node.node_type == DicomNode.NodeType.FOLDER:
+            low_space = self._check_disk_space(destination_node)
+            if low_space:
+                return low_space
 
         job = self.mass_task.job
         source_node = self.mass_task.source
@@ -393,6 +398,67 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
             f"Error: {err}\n\n"
             f"Please fix the underlying issue and unsuspend the folder in the admin panel.",
         )
+
+    def _check_disk_space(
+        self, destination_node: DicomNode
+    ) -> dict | None:
+        """Check disk space before processing. Returns a failure dict or None."""
+        folder = destination_node.dicomfolder
+        if folder.warn_size is None:
+            return None
+
+        usage = shutil.disk_usage(folder.path)
+        used_gb = usage.used / (1024**3)
+
+        if used_gb <= folder.warn_size:
+            return None
+
+        job = self.mass_task.job
+
+        # Suspend the folder so concurrent/future tasks skip immediately
+        folder.suspended = True
+        folder.save(update_fields=["suspended"])
+
+        # Fail remaining pending tasks for this job. The WHERE status='PE'
+        # filter is idempotent, so parallel workers running this concurrently
+        # is safe — some will update 0 rows.
+        failed_count = (
+            MassTransferTask.objects.filter(
+                job=job, status=DicomTask.Status.PENDING
+            )
+            .exclude(pk=self.mass_task.pk)
+            .update(
+                status=DicomTask.Status.FAILURE,
+                message=f"Destination '{destination_node.name}' suspended: "
+                f"disk usage {used_gb:.1f} GB exceeds warn threshold "
+                f"{folder.warn_size} GB.",
+            )
+        )
+
+        free_gb = usage.free / (1024**3)
+        msg = (
+            f"Disk space low on '{destination_node.name}': "
+            f"{used_gb:.1f} GB used, {free_gb:.1f} GB free "
+            f"(warn threshold: {folder.warn_size} GB). "
+            f"Destination suspended. {failed_count} pending tasks failed."
+        )
+        logger.critical(msg)
+
+        from adit.core.utils.mail import send_mail_to_admins
+
+        send_mail_to_admins(
+            f"Mass transfer destination '{destination_node.name}' suspended",
+            f"{msg}\n\n"
+            f"Please free disk space and unsuspend the folder in the "
+            f"admin panel, then retry the failed tasks.",
+        )
+
+        return {
+            "status": MassTransferTask.Status.FAILURE,
+            "message": f"Destination '{destination_node.name}' suspended: "
+            f"low disk space.",
+            "log": msg,
+        }
 
     def _create_pending_volumes(
         self,

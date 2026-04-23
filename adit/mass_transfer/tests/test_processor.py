@@ -2095,7 +2095,7 @@ def test_process_continues_on_regular_error(mocker: MockerFixture, mass_transfer
 
 @pytest.mark.django_db
 def test_process_skips_when_destination_suspended(mocker: MockerFixture, mass_transfer_env):
-    """When the destination folder is suspended, process() returns WARNING immediately."""
+    """When the destination folder is suspended, process() returns FAILURE immediately."""
     env = mass_transfer_env
     env.destination.suspended = True
     env.destination.save()
@@ -2105,7 +2105,7 @@ def test_process_skips_when_destination_suspended(mocker: MockerFixture, mass_tr
 
     result = processor.process()
 
-    assert result["status"] == MassTransferTask.Status.WARNING
+    assert result["status"] == MassTransferTask.Status.FAILURE
     assert "suspended" in result["message"].lower()
     discover_mock.assert_not_called()
 
@@ -2125,5 +2125,134 @@ def test_process_does_not_suspend_on_regular_error(mocker: MockerFixture, mass_t
 
     assert result["status"] == MassTransferTask.Status.FAILURE
 
+    env.destination.refresh_from_db()
+    assert env.destination.suspended is False
+
+
+# ---------------------------------------------------------------------------
+# Disk space pre-check tests
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+def test_process_fails_when_disk_space_exceeds_warn_size(
+    mocker: MockerFixture, mass_transfer_env
+):
+    """When used disk space exceeds warn_size, the task fails and destination is suspended."""
+    env = mass_transfer_env
+    env.destination.warn_size = 100  # 100 GB threshold
+    env.destination.save()
+
+    # Simulate 150 GB used, 50 GB free, 200 GB total
+    mocker.patch(
+        "shutil.disk_usage",
+        return_value=mocker.Mock(
+            used=150 * 1024**3, free=50 * 1024**3, total=200 * 1024**3
+        ),
+    )
+    mocker.patch("adit.core.utils.mail.send_mail_to_admins")
+
+    processor = MassTransferTaskProcessor(env.task)
+    discover_mock = mocker.patch.object(processor, "_discover_series")
+
+    result = processor.process()
+
+    assert result["status"] == MassTransferTask.Status.FAILURE
+    assert "suspended" in result["message"].lower()
+    discover_mock.assert_not_called()
+
+    env.destination.refresh_from_db()
+    assert env.destination.suspended is True
+
+
+@pytest.mark.django_db
+def test_process_fails_pending_tasks_when_disk_full(
+    mocker: MockerFixture, mass_transfer_env
+):
+    """Pending sibling tasks are also failed when disk space is low."""
+    env = mass_transfer_env
+    env.destination.warn_size = 100
+    env.destination.save()
+
+    # Create additional pending tasks for the same job
+    now = timezone.now()
+    pending_task = MassTransferTask.objects.create(
+        job=env.job,
+        source=env.source,
+        destination=env.destination,
+        patient_id="",
+        study_uid="",
+        partition_start=now,
+        partition_end=now + timedelta(hours=23, minutes=59, seconds=59),
+        partition_key="20240102",
+    )
+
+    mocker.patch(
+        "shutil.disk_usage",
+        return_value=mocker.Mock(
+            used=150 * 1024**3, free=50 * 1024**3, total=200 * 1024**3
+        ),
+    )
+    mocker.patch("adit.core.utils.mail.send_mail_to_admins")
+
+    processor = MassTransferTaskProcessor(env.task)
+    mocker.patch.object(processor, "_discover_series")
+
+    processor.process()
+
+    pending_task.refresh_from_db()
+    assert pending_task.status == MassTransferTask.Status.FAILURE
+    assert "disk usage" in pending_task.message.lower()
+
+
+@pytest.mark.django_db
+def test_process_skips_disk_check_when_warn_size_not_set(
+    mocker: MockerFixture, mass_transfer_env
+):
+    """When warn_size is None, disk space check is skipped."""
+    env = mass_transfer_env
+    assert env.destination.warn_size is None
+
+    processor = MassTransferTaskProcessor(env.task)
+    series = [_make_discovered(patient_id="PAT1", series_uid="s-1")]
+    mocker.patch.object(processor, "_discover_series", return_value=series)
+    mocker.patch("adit.mass_transfer.processors.DicomOperator")
+    mocker.patch.object(processor, "_export_series", return_value=(1, "", ""))
+
+    disk_usage_mock = mocker.patch("shutil.disk_usage")
+
+    processor.process()
+
+    # shutil.disk_usage should not have been called
+    disk_usage_mock.assert_not_called()
+
+
+@pytest.mark.django_db
+def test_process_continues_when_disk_usage_below_warn_size(
+    mocker: MockerFixture, mass_transfer_env
+):
+    """When used space is below warn_size, processing continues normally."""
+    env = mass_transfer_env
+    env.destination.warn_size = 100
+    env.destination.save()
+
+    # 50 GB used, well below 100 GB threshold
+    mocker.patch(
+        "shutil.disk_usage",
+        return_value=mocker.Mock(
+            used=50 * 1024**3, free=150 * 1024**3, total=200 * 1024**3
+        ),
+    )
+
+    processor = MassTransferTaskProcessor(env.task)
+    series = [_make_discovered(patient_id="PAT1", series_uid="s-1")]
+    mocker.patch.object(processor, "_discover_series", return_value=series)
+    mocker.patch("adit.mass_transfer.processors.DicomOperator")
+    mocker.patch.object(processor, "_export_series", return_value=(1, "", ""))
+
+    result = processor.process()
+
+    # Task should process normally, not fail
+    assert result["status"] != MassTransferTask.Status.FAILURE
     env.destination.refresh_from_db()
     assert env.destination.suspended is False
