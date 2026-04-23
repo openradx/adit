@@ -9,7 +9,7 @@ import time
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from pathlib import Path
-from typing import cast
+from typing import Literal, cast
 
 import pydicom
 from django.conf import settings
@@ -42,7 +42,7 @@ class FilterSpec:
     Built from a plain dict from the job's filters_json field.
     """
 
-    mode: str = "include"
+    mode: Literal["include", "exclude"] = "include"
     modality: str = ""
     institution_name: str = ""
     apply_institution_on_study: bool = True
@@ -55,8 +55,11 @@ class FilterSpec:
 
     @classmethod
     def from_dict(cls, d: dict) -> "FilterSpec":
+        mode = d.get("mode", "include")
+        if mode not in ("include", "exclude"):
+            raise DicomError(f"Invalid filter mode: {mode!r}")
         return cls(
-            mode=d.get("mode", "include"),
+            mode=mode,
             modality=d.get("modality", ""),
             institution_name=d.get("institution_name", ""),
             apply_institution_on_study=d.get("apply_institution_on_study", True),
@@ -795,6 +798,9 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
 
         include_filters = [mf for mf in filters if mf.mode != "exclude"]
         exclude_filters = [mf for mf in filters if mf.mode == "exclude"]
+
+        if not include_filters:
+            raise DicomError("Mass transfer requires at least one include filter.")
 
         found: dict[str, DiscoveredSeries] = {}
 

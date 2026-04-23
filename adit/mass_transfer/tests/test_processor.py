@@ -575,6 +575,20 @@ def test_discover_series_exclude_matches_any_of_multiple(mocker: MockerFixture):
     assert series_uids == {"1.2.3.801"}
 
 
+def test_discover_series_rejects_all_exclude_filters(mocker: MockerFixture):
+    """Processor-side guard: a filter set with no include filter must fail loudly."""
+    processor = _make_processor(mocker)
+    processor.mass_task.partition_start = datetime(2024, 1, 1, 0, 0)
+    processor.mass_task.partition_end = datetime(2024, 1, 1, 23, 59, 59)
+
+    operator = mocker.create_autospec(DicomOperator)
+    operator.server = mocker.MagicMock(max_search_results=200)
+
+    filters = [FilterSpec(mode="exclude", series_description="Scout")]
+    with pytest.raises(DicomError, match="at least one include filter"):
+        processor._discover_series(operator, filters)
+
+
 def test_discover_series_exclude_by_institution(mocker: MockerFixture):
     processor = _make_processor(mocker)
     processor.mass_task.partition_start = datetime(2024, 1, 1, 0, 0)
@@ -1532,6 +1546,11 @@ def test_filter_spec_from_dict_default_mode_is_include():
 def test_filter_spec_from_dict_respects_exclude_mode():
     fs = FilterSpec.from_dict({"mode": "exclude", "series_description": "Scout"})
     assert fs.mode == "exclude"
+
+
+def test_filter_spec_from_dict_rejects_invalid_mode():
+    with pytest.raises(DicomError, match="Invalid filter mode"):
+        FilterSpec.from_dict({"mode": "maybe", "modality": "CT"})
 
 
 # ---------------------------------------------------------------------------
