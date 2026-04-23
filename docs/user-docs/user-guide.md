@@ -22,7 +22,7 @@ All operations in ADIT (selective transfers, batch queries, batch transfers, mas
 
 **Task statuses**: `Pending`, `In Progress`, `Canceled`, `Success`, `Warning`, `Failure`
 
-The job status is automatically derived from the status of its tasks. If any task is still pending, the job is pending. If any task is in progress, the job is in progress. Once all tasks are finished, the job status reflects the overall outcome (success, warning, or failure).
+The job status is automatically derived from the status of its tasks. If any task is still pending, the job is pending (unless it is being canceled). If any task is in progress, the job is in progress (or canceling). Once all tasks are finished, the job status reflects the overall outcome (success, warning, failure, or canceled).
 
 ### Job Actions
 
