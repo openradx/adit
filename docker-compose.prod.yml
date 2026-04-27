@@ -1,5 +1,5 @@
 x-app: &default-app
-  image: ghcr.io/openradx/adit:latest
+  image: ${ADIT_IMAGE:-ghcr.io/openradx/adit:latest}
   volumes:
     - web_data:/var/www/web
     - ${SSL_SERVER_CERT_FILE:?}:/etc/web/ssl/cert.pem
@@ -92,7 +92,7 @@ services:
   receiver:
     <<: *default-app
     ports:
-      - 11112:11112
+      - ${RECEIVER_PORT:-11112}:11112
     command: ./manage.py receiver
     deploy:
       <<: *deploy
