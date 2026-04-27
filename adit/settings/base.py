@@ -49,6 +49,10 @@ ALLOWED_HOSTS = env.list("DJANGO_ALLOWED_HOSTS")
 
 CSRF_TRUSTED_ORIGINS = env.list("DJANGO_CSRF_TRUSTED_ORIGINS")
 
+_stack_name = env.str("STACK_NAME", default="")
+SESSION_COOKIE_NAME = f"sessionid_{_stack_name}" if _stack_name else "sessionid"
+CSRF_COOKIE_NAME = f"csrftoken_{_stack_name}" if _stack_name else "csrftoken"
+
 INSTALLED_APPS = [
     "daphne",
     "whitenoise.runserver_nostatic",
