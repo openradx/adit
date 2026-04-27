@@ -1,10 +1,35 @@
-x-observability: &observability
+# Observability overlay for ADIT.
+#
+# Tags every signal sent to OpenObserve with:
+#   service.name           = the stack name (e.g. adit_prod, adit_staging)
+#                            from OTEL_SERVICE_NAME=${STACK_NAME}
+#   service.component      = the compose service that emitted it
+#                            from SERVICE_COMPONENT, read by adit_radis_shared/telemetry.py
+#   service.namespace      = openradx
+#   deployment.environment = production by default; change per stack (see below)
+#
+# PER-STACK SETUP:
+#   1. cp docker-compose.override.yml.example docker-compose.override.yml
+#   2. If this is a staging or development deployment, edit the
+#      `deployment.environment=production` value inside `OTEL_RESOURCE_ATTRIBUTES`
+#      below to `staging` or `development`:
+#        sed -i 's/deployment.environment=production/deployment.environment=staging/' \
+#          docker-compose.override.yml
+#
+# STACK_NAME is dynamically resolved by adit-radis-shared's CommandHelper and
+# injected into the compose subprocess env by cli compose-up / compose-build /
+# stack-deploy. No new .env entry required.
+
+x-observability-net: &observability-net
   networks:
     - default
     - openradx-observability
-  environment:
-    OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
-    OTEL_PYTHON_DJANGO_EXCLUDED_URLS: "health/,static/.*"
+
+x-observability-env: &observability-env
+  OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
+  OTEL_PYTHON_DJANGO_EXCLUDED_URLS: "health/,static/.*"
+  OTEL_SERVICE_NAME: ${STACK_NAME}
+  OTEL_RESOURCE_ATTRIBUTES: "service.namespace=openradx,deployment.environment=production"
 
 networks:
   openradx-observability:
@@ -12,14 +37,37 @@ networks:
 
 services:
   init:
-    <<: *observability
+    <<: *observability-net
+    environment:
+      <<: *observability-env
+      SERVICE_COMPONENT: init
+
   web:
-    <<: *observability
+    <<: *observability-net
+    environment:
+      <<: *observability-env
+      SERVICE_COMPONENT: web
+
   default_worker:
-    <<: *observability
+    <<: *observability-net
+    environment:
+      <<: *observability-env
+      SERVICE_COMPONENT: default_worker
+
   dicom_worker:
-    <<: *observability
+    <<: *observability-net
+    environment:
+      <<: *observability-env
+      SERVICE_COMPONENT: dicom_worker
+
   mass_transfer_worker:
-    <<: *observability
+    <<: *observability-net
+    environment:
+      <<: *observability-env
+      SERVICE_COMPONENT: mass_transfer_worker
+
   receiver:
-    <<: *observability
+    <<: *observability-net
+    environment:
+      <<: *observability-env
+      SERVICE_COMPONENT: receiver
