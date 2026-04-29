@@ -225,7 +225,7 @@ async def wado_retrieve_nifti(
     except DicomError as err:
         raise BadGatewayApiError(str(err)) from err
     except DcmToNiftiConversionError as err:
-        raise BadGatewayApiError(str(err))
+        raise BadGatewayApiError(str(err)) from err
 
 
 async def _process_single_fetch(
