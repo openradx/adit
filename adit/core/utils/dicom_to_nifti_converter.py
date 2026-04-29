@@ -88,21 +88,6 @@ class DicomToNiftiConverter:
                     f"No DICOM images found in input folder: {error_msg}",
                     kind=ErrorKind.NO_VALID_DICOM,
                 )
-            elif exit_code == DcmToNiftiExitCode.VERSION_REPORT:
-                raise DcmToNiftiConversionError(
-                    f"dcm2niix returned a version report instead of converting (exit code 3). "
-                    f"Check that dcm2niix is invoked correctly: {error_msg}"
-                )
-            elif exit_code == DcmToNiftiExitCode.CORRUPT_DICOM:
-                raise DcmToNiftiConversionError(f"Corrupt DICOM file: {error_msg}")
-            elif exit_code == DcmToNiftiExitCode.INVALID_INPUT_FOLDER:
-                raise DcmToNiftiConversionError(f"Input folder invalid: {error_msg}")
-            elif exit_code == DcmToNiftiExitCode.INVALID_OUTPUT_FOLDER:
-                raise DcmToNiftiConversionError(f"Output folder invalid: {error_msg}")
-            elif exit_code == DcmToNiftiExitCode.WRITE_PERMISSION_ERROR:
-                raise DcmToNiftiConversionError(
-                    f"Unable to write to output folder (check permissions): {error_msg}"
-                )
             elif exit_code == DcmToNiftiExitCode.PARTIAL_CONVERSION:
                 logger.warning(f"Converted some but not all input DICOMs: {error_msg}")
                 if "Too many NIFTI" in error_msg:
@@ -117,8 +102,6 @@ class DicomToNiftiConverter:
                     f"Details: {error_msg}",
                     kind=ErrorKind.PARTIAL_CONVERSION,
                 )
-            elif exit_code == DcmToNiftiExitCode.RENAME_ERROR:
-                raise DcmToNiftiConversionError(f"Unable to rename files: {error_msg}")
             else:
                 raise DcmToNiftiConversionError(
                     f"Unspecified error (exit code {exit_code}): {error_msg}"

@@ -64,7 +64,7 @@ class TestDicomToNiftiConverter:
         monkeypatch.setattr(subprocess, "run", lambda *args, **kwargs: _make_completed_process(4))
 
         converter = DicomToNiftiConverter()
-        with pytest.raises(DcmToNiftiConversionError, match="Corrupt DICOM") as exc_info:
+        with pytest.raises(DcmToNiftiConversionError, match="Unspecified error") as exc_info:
             converter.convert(dicom_folder, output_folder)
         assert exc_info.value.kind is None
 
@@ -76,7 +76,7 @@ class TestDicomToNiftiConverter:
         monkeypatch.setattr(subprocess, "run", lambda *args, **kwargs: _make_completed_process(5))
 
         converter = DicomToNiftiConverter()
-        with pytest.raises(DcmToNiftiConversionError, match="Input folder invalid") as exc_info:
+        with pytest.raises(DcmToNiftiConversionError, match="Unspecified error") as exc_info:
             converter.convert(dicom_folder, output_folder)
         assert exc_info.value.kind is None
 
@@ -88,7 +88,7 @@ class TestDicomToNiftiConverter:
         monkeypatch.setattr(subprocess, "run", lambda *args, **kwargs: _make_completed_process(6))
 
         converter = DicomToNiftiConverter()
-        with pytest.raises(DcmToNiftiConversionError, match="Output folder invalid") as exc_info:
+        with pytest.raises(DcmToNiftiConversionError, match="Unspecified error") as exc_info:
             converter.convert(dicom_folder, output_folder)
         assert exc_info.value.kind is None
 
@@ -100,7 +100,7 @@ class TestDicomToNiftiConverter:
         monkeypatch.setattr(subprocess, "run", lambda *args, **kwargs: _make_completed_process(7))
 
         converter = DicomToNiftiConverter()
-        with pytest.raises(DcmToNiftiConversionError, match="Unable to write") as exc_info:
+        with pytest.raises(DcmToNiftiConversionError, match="Unspecified error") as exc_info:
             converter.convert(dicom_folder, output_folder)
         assert exc_info.value.kind is None
 
@@ -124,7 +124,7 @@ class TestDicomToNiftiConverter:
         monkeypatch.setattr(subprocess, "run", lambda *args, **kwargs: _make_completed_process(9))
 
         converter = DicomToNiftiConverter()
-        with pytest.raises(DcmToNiftiConversionError, match="Unable to rename"):
+        with pytest.raises(DcmToNiftiConversionError, match="Unspecified error"):
             converter.convert(dicom_folder, output_folder)
 
     def test_convert_unspecified_error(self, tmp_path, monkeypatch):
