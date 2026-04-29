@@ -479,6 +479,11 @@ MAX_BATCH_TRANSFER_SIZE = 500
 # See example.env
 EXCLUDE_MODALITIES = env.list("EXCLUDE_MODALITIES", default=[])
 
+# Modalities to skip during NIfTI conversion (SR = Structured Reports,
+# KO = Key Object Selection, PR = Presentation State cannot produce NIfTI output).
+# Distinct from EXCLUDE_MODALITIES which controls pseudonymisation exclusions.
+MODALITIES_EXCLUDED_FROM_NIFTI_CONVERSION = {"SR", "KO", "PR"}
+
 # If an ethics committee approval is required for batch transfer
 ETHICS_COMMITTEE_APPROVAL_REQUIRED = True
 

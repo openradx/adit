@@ -10,8 +10,7 @@ from pydicom import Dataset
 from adit.core.errors import (
     DcmToNiftiConversionError,
     DicomError,
-    NoSpatialDataError,
-    NoValidDicomError,
+    ErrorKind,
     RetriableDicomError,
 )
 from adit.core.models import DicomServer
@@ -309,9 +308,11 @@ class TestProcessSingleFetch:
 
     @pytest.mark.asyncio
     async def test_no_valid_dicom_logs_warning(self, tmp_path, monkeypatch, caplog):
-        """NoValidDicomError should log a warning and yield nothing."""
+        """ErrorKind.NO_VALID_DICOM should log a warning and yield nothing."""
         converter_mock = MagicMock()
-        converter_mock.convert.side_effect = NoValidDicomError("no dicom")
+        converter_mock.convert.side_effect = DcmToNiftiConversionError(
+            "no dicom", kind=ErrorKind.NO_VALID_DICOM
+        )
 
         monkeypatch.setattr(wadors_utils, "DicomToNiftiConverter", lambda: converter_mock)
         monkeypatch.setattr(wadors_utils, "write_dataset", lambda ds, path: None)
@@ -335,9 +336,11 @@ class TestProcessSingleFetch:
 
     @pytest.mark.asyncio
     async def test_no_spatial_data_logs_warning(self, tmp_path, monkeypatch, caplog):
-        """NoSpatialDataError should log a warning and yield nothing."""
+        """DcmToNiftiConversionError with NO_SPATIAL_DATA should log a warning and yield nothing."""
         converter_mock = MagicMock()
-        converter_mock.convert.side_effect = NoSpatialDataError("no spatial")
+        converter_mock.convert.side_effect = DcmToNiftiConversionError(
+            "no spatial", kind=ErrorKind.NO_SPATIAL_DATA
+        )
 
         monkeypatch.setattr(wadors_utils, "DicomToNiftiConverter", lambda: converter_mock)
         monkeypatch.setattr(wadors_utils, "write_dataset", lambda ds, path: None)
@@ -410,7 +413,9 @@ class TestProcessSingleFetch:
         nifti_output_dir.mkdir()
 
         converter_mock = MagicMock()
-        converter_mock.convert.side_effect = NoValidDicomError("no dicom")
+        converter_mock.convert.side_effect = DcmToNiftiConversionError(
+            "no dicom", kind=ErrorKind.NO_VALID_DICOM
+        )
 
         monkeypatch.setattr(wadors_utils, "DicomToNiftiConverter", lambda: converter_mock)
         monkeypatch.setattr(wadors_utils, "write_dataset", lambda ds, path: None)

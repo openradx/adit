@@ -1,7 +1,7 @@
 import importlib.metadata
 import os
 from io import BytesIO
-from typing import Iterator, Union
+from typing import Iterator
 
 from dicomweb_client import DICOMwebClient, session_utils
 from pydicom import Dataset
@@ -293,7 +293,7 @@ class AditClient:
             raise ValueError("Content-Disposition filename resolved to empty string")
         return filename
 
-    def _extract_part_content_with_headers(self, part: bytes) -> Union[bytes, None]:
+    def _extract_part_content_with_headers(self, part: bytes) -> bytes | None:
         """Extract content from a multipart part, keeping headers intact.
 
         Used to patch DICOMwebClient's _extract_part_content to allow access

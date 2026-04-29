@@ -10,14 +10,13 @@ import aiofiles
 import aiofiles.os
 from adrf.views import sync_to_async
 from aiofiles.tempfile import TemporaryDirectory
+from django.conf import settings
 from pydicom import Dataset
 
 from adit.core.errors import (
     DcmToNiftiConversionError,
     DicomError,
-    NoSpatialDataError,
-    NoValidDicomError,
-    PartialConversionWarning,
+    ErrorKind,
     RetriableDicomError,
 )
 from adit.core.models import DicomServer
@@ -30,10 +29,6 @@ from adit.core.utils.dicom_utils import write_dataset
 from ..errors import BadGatewayApiError, ServiceUnavailableApiError
 
 logger = logging.getLogger(__name__)
-
-# Modalities that are known to not contain image data and cannot be converted to NIfTI.
-# SR = Structured Reports, KO = Key Object Selection, PR = Presentation State.
-NON_IMAGE_MODALITIES = {"SR", "KO", "PR"}
 
 
 async def wado_retrieve(
@@ -199,7 +194,7 @@ async def wado_retrieve_nifti(
 
             for series in series_list:
                 modality = getattr(series, "Modality", None)
-                if modality in NON_IMAGE_MODALITIES:
+                if modality in settings.MODALITIES_EXCLUDED_FROM_NIFTI_CONVERSION:
                     logger.debug(
                         f"Skipping non-image series {series.SeriesInstanceUID} "
                         f"(modality: {modality})"
@@ -241,7 +236,7 @@ async def _process_single_fetch(
     For each conversion output group (identified by base filename), yields files in order:
     JSON sidecar first, then NIfTI (.nii.gz or .nii), then bval, then bvec.
 
-    If conversion fails with NoValidDicomError or NoSpatialDataError, a warning is logged
+    If conversion fails with ErrorKind.NO_VALID_DICOM or NO_SPATIAL_DATA, a warning is logged
     because the series was expected to contain image data (non-image modalities are filtered
     out before this function is called).
     """
@@ -260,14 +255,17 @@ async def _process_single_fetch(
             await sync_to_async(converter.convert, thread_sensitive=False)(
                 temp_path, nifti_output_dir
             )
-        except (NoValidDicomError, NoSpatialDataError) as e:
-            # The series passed the modality check but still failed conversion.
-            # This is unexpected and worth logging as a warning.
-            logger.warning(f"Series conversion failed unexpectedly: {e}")
-            return
-        except PartialConversionWarning as e:
-            logger.warning(f"Partial NIfTI conversion: {e}")
-            return
+        except DcmToNiftiConversionError as e:
+            if e.kind in (ErrorKind.NO_VALID_DICOM, ErrorKind.NO_SPATIAL_DATA):
+                # The series passed the modality check but still failed conversion.
+                # This is unexpected and worth logging as a warning.
+                logger.warning(f"Series conversion failed unexpectedly: {e}")
+                return
+            if e.kind == ErrorKind.PARTIAL_CONVERSION:
+                logger.warning(f"Partial NIfTI conversion: {e}")
+                return
+            logger.exception(f"Error during DICOM to NIfTI conversion: {e}")
+            raise
         except Exception as e:
             logger.exception(f"Error during DICOM to NIfTI conversion: {e}")
             raise

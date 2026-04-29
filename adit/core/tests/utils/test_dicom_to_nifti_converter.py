@@ -4,15 +4,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from adit.core.errors import (
-    DcmToNiftiConversionError,
-    ExternalToolError,
-    InputDirectoryError,
-    InvalidDicomError,
-    NoValidDicomError,
-    OutputDirectoryError,
-    PartialConversionWarning,
-)
+from adit.core.errors import DcmToNiftiConversionError, ErrorKind
 from adit.core.utils.dicom_to_nifti_converter import DicomToNiftiConverter
 
 CONVERTER_LOGGER = "adit.core.utils.dicom_to_nifti_converter"
@@ -60,8 +52,9 @@ class TestDicomToNiftiConverter:
         monkeypatch.setattr(subprocess, "run", lambda *args, **kwargs: _make_completed_process(2))
 
         converter = DicomToNiftiConverter()
-        with pytest.raises(NoValidDicomError, match="No DICOM images found"):
+        with pytest.raises(DcmToNiftiConversionError, match="No DICOM images found") as exc_info:
             converter.convert(dicom_folder, output_folder)
+        assert exc_info.value.kind == ErrorKind.NO_VALID_DICOM
 
     def test_convert_corrupt_dicom(self, tmp_path, monkeypatch):
         dicom_folder = tmp_path / "dicom"
@@ -71,8 +64,9 @@ class TestDicomToNiftiConverter:
         monkeypatch.setattr(subprocess, "run", lambda *args, **kwargs: _make_completed_process(4))
 
         converter = DicomToNiftiConverter()
-        with pytest.raises(InvalidDicomError, match="Corrupt DICOM"):
+        with pytest.raises(DcmToNiftiConversionError, match="Corrupt DICOM") as exc_info:
             converter.convert(dicom_folder, output_folder)
+        assert exc_info.value.kind is None
 
     def test_convert_invalid_input_folder(self, tmp_path, monkeypatch):
         dicom_folder = tmp_path / "dicom"
@@ -82,8 +76,9 @@ class TestDicomToNiftiConverter:
         monkeypatch.setattr(subprocess, "run", lambda *args, **kwargs: _make_completed_process(5))
 
         converter = DicomToNiftiConverter()
-        with pytest.raises(InputDirectoryError, match="Input folder invalid"):
+        with pytest.raises(DcmToNiftiConversionError, match="Input folder invalid") as exc_info:
             converter.convert(dicom_folder, output_folder)
+        assert exc_info.value.kind is None
 
     def test_convert_invalid_output_folder(self, tmp_path, monkeypatch):
         dicom_folder = tmp_path / "dicom"
@@ -93,8 +88,9 @@ class TestDicomToNiftiConverter:
         monkeypatch.setattr(subprocess, "run", lambda *args, **kwargs: _make_completed_process(6))
 
         converter = DicomToNiftiConverter()
-        with pytest.raises(OutputDirectoryError, match="Output folder invalid"):
+        with pytest.raises(DcmToNiftiConversionError, match="Output folder invalid") as exc_info:
             converter.convert(dicom_folder, output_folder)
+        assert exc_info.value.kind is None
 
     def test_convert_write_permission_error(self, tmp_path, monkeypatch):
         dicom_folder = tmp_path / "dicom"
@@ -104,8 +100,9 @@ class TestDicomToNiftiConverter:
         monkeypatch.setattr(subprocess, "run", lambda *args, **kwargs: _make_completed_process(7))
 
         converter = DicomToNiftiConverter()
-        with pytest.raises(OutputDirectoryError, match="Unable to write"):
+        with pytest.raises(DcmToNiftiConversionError, match="Unable to write") as exc_info:
             converter.convert(dicom_folder, output_folder)
+        assert exc_info.value.kind is None
 
     def test_convert_partial_conversion(self, tmp_path, monkeypatch):
         dicom_folder = tmp_path / "dicom"
@@ -115,8 +112,9 @@ class TestDicomToNiftiConverter:
         monkeypatch.setattr(subprocess, "run", lambda *args, **kwargs: _make_completed_process(8))
 
         converter = DicomToNiftiConverter()
-        with pytest.raises(PartialConversionWarning):
+        with pytest.raises(DcmToNiftiConversionError) as exc_info:
             converter.convert(dicom_folder, output_folder)
+        assert exc_info.value.kind == ErrorKind.PARTIAL_CONVERSION
 
     def test_convert_rename_error(self, tmp_path, monkeypatch):
         dicom_folder = tmp_path / "dicom"
@@ -151,8 +149,11 @@ class TestDicomToNiftiConverter:
         monkeypatch.setattr(subprocess, "run", raise_subprocess_error)
 
         converter = DicomToNiftiConverter()
-        with pytest.raises(ExternalToolError, match="Failed to execute dcm2niix"):
+        with pytest.raises(
+            DcmToNiftiConversionError, match="Failed to execute dcm2niix"
+        ) as exc_info:
             converter.convert(dicom_folder, output_folder)
+        assert exc_info.value.kind is None
 
     def test_convert_nonexistent_dicom_folder(self, tmp_path):
         dicom_folder = tmp_path / "nonexistent"

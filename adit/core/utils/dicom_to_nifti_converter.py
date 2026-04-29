@@ -3,16 +3,7 @@ import subprocess
 from enum import IntEnum
 from pathlib import Path
 
-from adit.core.errors import (
-    DcmToNiftiConversionError,
-    ExternalToolError,
-    InputDirectoryError,
-    InvalidDicomError,
-    NoSpatialDataError,
-    NoValidDicomError,
-    OutputDirectoryError,
-    PartialConversionWarning,
-)
+from adit.core.errors import DcmToNiftiConversionError, ErrorKind
 
 logger = logging.getLogger(__name__)
 
@@ -50,13 +41,7 @@ class DicomToNiftiConverter:
             output_folder: Path to the folder where NIfTI files will be saved.
         Raises:
             ValueError: If the dicom_folder doesn't exist.
-            NoValidDicomError: If no valid DICOM files are found.
-            NoSpatialDataError: If conversion succeeds but produces no NIfTI output.
-            InvalidDicomError: If DICOM files are invalid or corrupt.
-            OutputDirectoryError: If there are issues with the output directory.
-            InputDirectoryError: If there are issues with the input directory.
-            ExternalToolError: If there are issues with the dcm2niix tool.
-            DcmToNiftiConversionError: For other conversion errors.
+            DcmToNiftiConversionError: For all conversion errors; check .kind for the ErrorKind.
         """
         dicom_folder = Path(dicom_folder)
         output_folder = Path(output_folder)
@@ -93,38 +78,44 @@ class DicomToNiftiConverter:
 
             if exit_code == DcmToNiftiExitCode.SUCCESS:
                 if not any(output_folder.glob("*.nii*")):
-                    raise NoSpatialDataError(
+                    raise DcmToNiftiConversionError(
                         "Conversion succeeded but produced no NIfTI files. "
-                        "DICOM data may lack spatial attributes."
+                        "DICOM data may lack spatial attributes.",
+                        kind=ErrorKind.NO_SPATIAL_DATA,
                     )
             elif exit_code == DcmToNiftiExitCode.NO_DICOM_FOUND:
-                raise NoValidDicomError(f"No DICOM images found in input folder: {error_msg}")
+                raise DcmToNiftiConversionError(
+                    f"No DICOM images found in input folder: {error_msg}",
+                    kind=ErrorKind.NO_VALID_DICOM,
+                )
             elif exit_code == DcmToNiftiExitCode.VERSION_REPORT:
                 raise DcmToNiftiConversionError(
                     f"dcm2niix returned a version report instead of converting (exit code 3). "
                     f"Check that dcm2niix is invoked correctly: {error_msg}"
                 )
             elif exit_code == DcmToNiftiExitCode.CORRUPT_DICOM:
-                raise InvalidDicomError(f"Corrupt DICOM file: {error_msg}")
+                raise DcmToNiftiConversionError(f"Corrupt DICOM file: {error_msg}")
             elif exit_code == DcmToNiftiExitCode.INVALID_INPUT_FOLDER:
-                raise InputDirectoryError(f"Input folder invalid: {error_msg}")
+                raise DcmToNiftiConversionError(f"Input folder invalid: {error_msg}")
             elif exit_code == DcmToNiftiExitCode.INVALID_OUTPUT_FOLDER:
-                raise OutputDirectoryError(f"Output folder invalid: {error_msg}")
+                raise DcmToNiftiConversionError(f"Output folder invalid: {error_msg}")
             elif exit_code == DcmToNiftiExitCode.WRITE_PERMISSION_ERROR:
-                raise OutputDirectoryError(
+                raise DcmToNiftiConversionError(
                     f"Unable to write to output folder (check permissions): {error_msg}"
                 )
             elif exit_code == DcmToNiftiExitCode.PARTIAL_CONVERSION:
                 logger.warning(f"Converted some but not all input DICOMs: {error_msg}")
                 if "Too many NIFTI" in error_msg:
-                    raise PartialConversionWarning(
+                    raise DcmToNiftiConversionError(
                         "Too many NIfTI images with the same name: dcm2niix could not assign "
                         "unique filenames to all converted files. The series may contain too many "
-                        "subgroups sharing the same series description."
+                        "subgroups sharing the same series description.",
+                        kind=ErrorKind.PARTIAL_CONVERSION,
                     )
-                raise PartialConversionWarning(
+                raise DcmToNiftiConversionError(
                     f"Partial NIfTI conversion: dcm2niix converted some but not all input DICOMs. "
-                    f"Details: {error_msg}"
+                    f"Details: {error_msg}",
+                    kind=ErrorKind.PARTIAL_CONVERSION,
                 )
             elif exit_code == DcmToNiftiExitCode.RENAME_ERROR:
                 raise DcmToNiftiConversionError(f"Unable to rename files: {error_msg}")
@@ -134,7 +125,7 @@ class DicomToNiftiConverter:
                 )
 
         except subprocess.SubprocessError as e:
-            raise ExternalToolError(f"Failed to execute dcm2niix: {e}") from e
+            raise DcmToNiftiConversionError(f"Failed to execute dcm2niix: {e}") from e
 
         logger.debug(
             f"DICOM files in {dicom_folder} successfully converted to NIfTI format "

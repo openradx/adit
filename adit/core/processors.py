@@ -14,7 +14,7 @@ from pydicom import Dataset
 from adit.core.utils.dicom_manipulator import DicomManipulator
 from adit.core.utils.dicom_to_nifti_converter import DicomToNiftiConverter
 
-from .errors import DicomError, PartialConversionWarning
+from .errors import DcmToNiftiConversionError, DicomError, ErrorKind
 from .models import DicomAppSettings, DicomNode, DicomTask, TransferTask
 from .types import DicomLogEntry, ProcessingResult
 from .utils.dicom_dataset import QueryDataset, ResultDataset
@@ -134,8 +134,45 @@ class TransferTaskProcessor(DicomTaskProcessor):
             _add_to_archive(archive_path, archive_password, patient_folder)
 
     def _transfer_to_nifti(self) -> None:
+        excluded = settings.MODALITIES_EXCLUDED_FROM_NIFTI_CONVERSION
+        series_uids_override = None
+
+        if excluded:
+            task_series_uids = set(self.transfer_task.series_uids)
+            convertible = []
+            for s in self.source_operator.find_series(
+                QueryDataset.create(
+                    PatientID=self.transfer_task.patient_id,
+                    StudyInstanceUID=self.transfer_task.study_uid,
+                )
+            ):
+                if task_series_uids and s.SeriesInstanceUID not in task_series_uids:
+                    continue
+                modality = getattr(s, "Modality", None)
+                if modality in excluded:
+                    logger.debug(
+                        f"Skipping series {s.SeriesInstanceUID} "
+                        f"(modality {modality} excluded from NIfTI conversion)"
+                    )
+                else:
+                    convertible.append(s)
+
+            if not convertible:
+                self.logs.append(
+                    {
+                        "level": "Warning",
+                        "title": "NIfTI conversion skipped",
+                        "message": "All series have modalities excluded from NIfTI conversion.",
+                    }
+                )
+                return
+
+            series_uids_override = [s.SeriesInstanceUID for s in convertible]
+
         with tempfile.TemporaryDirectory(prefix="adit_") as tmpdir:
-            patient_folder = self._download_to_folder(Path(tmpdir))
+            patient_folder = self._download_to_folder(
+                Path(tmpdir), series_uids_override=series_uids_override
+            )
             subfolders = [f for f in patient_folder.iterdir() if f.is_dir()]
             assert len(subfolders) == 1
             patient_folder_name, study_folder_name = subfolders[0].parts[-2:]
@@ -148,11 +185,17 @@ class TransferTaskProcessor(DicomTaskProcessor):
             converter = DicomToNiftiConverter()
             try:
                 converter.convert(patient_folder, nifti_folder)
-            except PartialConversionWarning as exc:
+            except DcmToNiftiConversionError as exc:
+                if exc.kind not in (
+                    ErrorKind.PARTIAL_CONVERSION,
+                    ErrorKind.NO_VALID_DICOM,
+                    ErrorKind.NO_SPATIAL_DATA,
+                ):
+                    raise
                 self.logs.append(
                     {
                         "level": "Warning",
-                        "title": "Partial NIfTI conversion",
+                        "title": "NIfTI conversion warning",
                         "message": str(exc),
                     }
                 )
@@ -175,6 +218,7 @@ class TransferTaskProcessor(DicomTaskProcessor):
     def _download_to_folder(
         self,
         download_folder: Path,
+        series_uids_override: list[str] | None = None,
     ) -> Path:
         pseudonym = self.transfer_task.pseudonym or None
         if pseudonym:
@@ -193,7 +237,11 @@ class TransferTaskProcessor(DicomTaskProcessor):
 
         # If some series are explicitly chosen then check if their Series Instance UIDs
         # are correct and only use those modalities for the name of the study folder.
-        series_uids = self.transfer_task.series_uids
+        series_uids = (
+            series_uids_override
+            if series_uids_override is not None
+            else self.transfer_task.series_uids
+        )
         if series_uids:
             modalities = set()
             for series_uid in series_uids:

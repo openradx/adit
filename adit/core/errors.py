@@ -1,3 +1,5 @@
+from enum import Enum
+
 from rest_framework.exceptions import ErrorDetail
 
 
@@ -49,55 +51,18 @@ def is_retriable_http_status(status_code: int) -> bool:
     return status_code in retriable_status_codes
 
 
+class ErrorKind(Enum):
+    NO_VALID_DICOM = "no_valid_dicom"
+    NO_SPATIAL_DATA = "no_spatial_data"
+    PARTIAL_CONVERSION = "partial_conversion"
+
+
 class DcmToNiftiConversionError(Exception):
-    """Base exception for DICOM to NIfTI conversion errors."""
+    """Exception for DICOM to NIfTI conversion errors. Use kind to distinguish subtypes."""
 
-    pass
-
-
-class NoValidDicomError(DcmToNiftiConversionError):
-    """Exception raised when no valid DICOM files are found."""
-
-    pass
-
-
-class InvalidDicomError(DcmToNiftiConversionError):
-    """Exception raised when DICOM files are invalid or corrupt."""
-
-    pass
-
-
-class OutputDirectoryError(DcmToNiftiConversionError):
-    """Exception raised when there are issues with the output directory."""
-
-    pass
-
-
-class InputDirectoryError(DcmToNiftiConversionError):
-    """Exception raised when there are issues with the input directory."""
-
-    pass
-
-
-class ExternalToolError(DcmToNiftiConversionError):
-    """Exception raised when there are issues with the external dcm2niix tool."""
-
-    pass
-
-
-class NoSpatialDataError(DcmToNiftiConversionError):
-    """Exception raised when DICOM data doesn't have spatial attributes."""
-
-    pass
-
-
-class PartialConversionWarning(DcmToNiftiConversionError):
-    """Raised when dcm2niix converts some but not all input DICOMs (exit code 8).
-
-    Treated as a warning, not a hard failure — some NIfTI output was produced.
-    """
-
-    pass
+    def __init__(self, message: str, kind: "ErrorKind | None" = None) -> None:
+        super().__init__(message)
+        self.kind = kind
 
 
 class BatchFileSizeError(Exception):
