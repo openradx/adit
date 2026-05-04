@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import secrets
-from typing import Annotated, cast
+from typing import Annotated, Literal, cast
 
 from adit_radis_shared.accounts.models import User
 from codemirror.widgets import CodeMirror
@@ -23,6 +23,7 @@ from .utils.partitions import build_partitions
 class FilterSchema(BaseModel):
     """Pydantic model for validating mass transfer filter JSON objects."""
 
+    mode: Literal["include", "exclude"] = "include"
     modality: str = ""
     institution_name: str = ""
     apply_institution_on_study: bool = True
@@ -54,10 +55,29 @@ class FilterSchema(BaseModel):
             raise ValueError(f"min_age ({self.min_age}) cannot exceed max_age ({self.max_age})")
         return self
 
+    @model_validator(mode="after")
+    def check_exclude_has_criteria(self):
+        if self.mode != "exclude":
+            return self
+        has_criterion = bool(
+            self.modality
+            or self.institution_name
+            or self.study_description
+            or self.series_description
+            or self.series_number is not None
+            or self.min_age is not None
+            or self.max_age is not None
+            or self.min_number_of_series_related_instances is not None
+        )
+        if not has_criterion:
+            raise ValueError("exclude filter must specify at least one criterion")
+        return self
+
 
 FILTERS_JSON_EXAMPLE = json.dumps(
     [
         {
+            "mode": "include",
             "modality": "MR",
             "institution_name": "Neuroradiologie",
             "study_description": "",
@@ -67,7 +87,11 @@ FILTERS_JSON_EXAMPLE = json.dumps(
             "min_age": 18,
             "max_age": 90,
             "min_number_of_series_related_instances": None,
-        }
+        },
+        {
+            "mode": "exclude",
+            "series_description": "localizer",
+        },
     ],
     indent=2,
 )
@@ -80,10 +104,15 @@ class MassTransferJobForm(forms.ModelForm):
         widget=CodeMirror(mode={"name": "javascript", "json": True}),
         help_text=(
             "A JSON array of filter objects. Each filter can have: "
+            "mode ('include' or 'exclude', default 'include'), "
             "modality, institution_name, apply_institution_on_study, "
             "study_description, series_description, series_number, "
             "min_age, max_age, min_number_of_series_related_instances. "
-            "A series matching ANY filter is included."
+            "A series matching ANY include filter is included, then any "
+            "series also matching an exclude filter is removed. "
+            "At least one include filter is required. "
+            "apply_institution_on_study is ignored on exclude filters "
+            "(institution is matched at series level)."
         ),
     )
 
@@ -268,6 +297,9 @@ class MassTransferJobForm(forms.ModelForm):
             except PydanticValidationError as e:
                 errors = "; ".join(err["msg"] for err in e.errors())
                 raise ValidationError(f"Filter #{i + 1}: {errors}")
+
+        if not any(f.get("mode", "include") == "include" for f in validated):
+            raise ValidationError("At least one filter must have mode=include.")
 
         return validated
 

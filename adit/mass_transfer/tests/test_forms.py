@@ -290,6 +290,50 @@ def test_clean_filters_json_extra_fields(form_env):
     assert "filters_json" in form.errors
 
 
+@pytest.mark.django_db
+def test_clean_filters_json_exclude_filter_accepted(form_env):
+    form = _make_form(
+        form_env,
+        filters_json=json.dumps(
+            [
+                {"modality": "CT"},
+                {"mode": "exclude", "series_description": "Localizer"},
+            ]
+        ),
+    )
+    assert form.is_valid(), form.errors
+
+
+@pytest.mark.django_db
+def test_clean_filters_json_rejects_all_exclude(form_env):
+    form = _make_form(
+        form_env,
+        filters_json=json.dumps([{"mode": "exclude", "series_description": "Localizer"}]),
+    )
+    assert not form.is_valid()
+    assert "filters_json" in form.errors
+
+
+@pytest.mark.django_db
+def test_clean_filters_json_rejects_empty_exclude(form_env):
+    form = _make_form(
+        form_env,
+        filters_json=json.dumps([{"modality": "CT"}, {"mode": "exclude"}]),
+    )
+    assert not form.is_valid()
+    assert "filters_json" in form.errors
+
+
+@pytest.mark.django_db
+def test_clean_filters_json_rejects_unknown_mode(form_env):
+    form = _make_form(
+        form_env,
+        filters_json=json.dumps([{"mode": "maybe", "modality": "CT"}]),
+    )
+    assert not form.is_valid()
+    assert "filters_json" in form.errors
+
+
 # --- clean / clean_source validation tests ---
 
 

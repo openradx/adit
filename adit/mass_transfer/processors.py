@@ -9,7 +9,7 @@ import time
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from pathlib import Path
-from typing import cast
+from typing import Literal, cast
 
 import pydicom
 from django.conf import settings
@@ -42,6 +42,7 @@ class FilterSpec:
     Built from a plain dict from the job's filters_json field.
     """
 
+    mode: Literal["include", "exclude"] = "include"
     modality: str = ""
     institution_name: str = ""
     apply_institution_on_study: bool = True
@@ -54,7 +55,11 @@ class FilterSpec:
 
     @classmethod
     def from_dict(cls, d: dict) -> "FilterSpec":
+        mode = d.get("mode", "include")
+        if mode not in ("include", "exclude"):
+            raise DicomError(f"Invalid filter mode: {mode!r}")
         return cls(
+            mode=mode,
             modality=d.get("modality", ""),
             institution_name=d.get("institution_name", ""),
             apply_institution_on_study=d.get("apply_institution_on_study", True),
@@ -227,6 +232,52 @@ def _birth_date_range(
         latest_birth = study_end
 
     return (earliest_birth, latest_birth)
+
+
+def _series_matches_filter(
+    series: DiscoveredSeries,
+    mf: FilterSpec,
+    check_institution: bool = True,
+    age_permissive: bool = False,
+) -> bool:
+    """Test whether *series* satisfies all non-empty criteria on *mf*.
+
+    ``check_institution=False`` skips the institution check — the include
+    path uses this when ``apply_institution_on_study`` has already resolved
+    the check at study level.  ``age_permissive=True`` treats an unknown
+    ``patient_birth_date`` as passing (mirrors the existing include
+    behavior); excludes use the strict default so an unknown birth date
+    never causes an accidental exclusion.
+    """
+    if mf.modality and mf.modality != series.modality:
+        return False
+    if check_institution and mf.institution_name:
+        if not _dicom_match(mf.institution_name, series.institution_name):
+            return False
+    if mf.study_description and not _dicom_match(
+        mf.study_description, series.study_description
+    ):
+        return False
+    if mf.series_description and not _dicom_match(
+        mf.series_description, series.series_description
+    ):
+        return False
+    if mf.series_number is not None:
+        if series.series_number is None or mf.series_number != series.series_number:
+            return False
+    if mf.min_age is not None or mf.max_age is not None:
+        if series.patient_birth_date:
+            age = _age_at_study(series.patient_birth_date, series.study_datetime.date())
+            if mf.min_age is not None and age < mf.min_age:
+                return False
+            if mf.max_age is not None and age > mf.max_age:
+                return False
+        elif not age_permissive:
+            return False
+    if mf.min_number_of_series_related_instances is not None:
+        if series.number_of_images < mf.min_number_of_series_related_instances:
+            return False
+    return True
 
 
 def _destination_base_dir(node: DicomNode, job: MassTransferJob) -> Path:
@@ -745,9 +796,15 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
         start = self.mass_task.partition_start
         end = self.mass_task.partition_end
 
+        include_filters = [mf for mf in filters if mf.mode != "exclude"]
+        exclude_filters = [mf for mf in filters if mf.mode == "exclude"]
+
+        if not include_filters:
+            raise DicomError("Mass transfer requires at least one include filter.")
+
         found: dict[str, DiscoveredSeries] = {}
 
-        for mf in filters:
+        for mf in include_filters:
             studies = self._find_studies(operator, mf, start, end)
 
             for study in studies:
@@ -787,44 +844,12 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
                     if not series_uid:
                         continue
 
-                    series_number = _parse_int(series.get("SeriesNumber"), default=None)
-
-                    if (
-                        mf.institution_name
-                        and not mf.apply_institution_on_study
-                        and not _dicom_match(
-                            mf.institution_name, series.get("InstitutionName", None)
-                        )
-                    ):
-                        continue
-
-                    if mf.modality and mf.modality != series.Modality:
-                        continue
-
-                    if mf.series_description and not _dicom_match(
-                        mf.series_description, series.SeriesDescription
-                    ):
-                        continue
-
-                    if mf.series_number is not None:
-                        try:
-                            if series_number is None or mf.series_number != series_number:
-                                continue
-                        except (TypeError, ValueError):
-                            continue
-
-                    if mf.min_number_of_series_related_instances is not None:
-                        num_instances = (
-                            _parse_int(series.get("NumberOfSeriesRelatedInstances"), default=0) or 0
-                        )
-                        if num_instances < mf.min_number_of_series_related_instances:
-                            continue
-
                     if series_uid in found:
                         continue
 
+                    series_number = _parse_int(series.get("SeriesNumber"), default=None)
                     study_dt = _study_datetime(study)
-                    found[series_uid] = DiscoveredSeries(
+                    discovered = DiscoveredSeries(
                         patient_id=str(study.PatientID),
                         accession_number=str(study.get("AccessionNumber", "")),
                         study_instance_uid=str(study.StudyInstanceUID),
@@ -842,7 +867,24 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
                         patient_birth_date=birth_date,
                     )
 
-        return list(found.values())
+                    if not _series_matches_filter(
+                        discovered,
+                        mf,
+                        check_institution=not mf.apply_institution_on_study,
+                        age_permissive=True,
+                    ):
+                        continue
+
+                    found[series_uid] = discovered
+
+        if not exclude_filters:
+            return list(found.values())
+
+        return [
+            series
+            for series in found.values()
+            if not any(_series_matches_filter(series, mf) for mf in exclude_filters)
+        ]
 
     def _find_studies(
         self,
