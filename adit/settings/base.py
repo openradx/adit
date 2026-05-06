@@ -340,12 +340,24 @@ CODEMIRROR_CONFIG = {
 # Cave, changing the salt after some tokens were already generated makes them all invalid!
 TOKEN_AUTHENTICATION_SALT = env.str("TOKEN_AUTHENTICATION_SALT")
 
-# django-dbbackup
-DBBACKUP_STORAGE = "django.core.files.storage.FileSystemStorage"
-DBBACKUP_STORAGE_OPTIONS = {
-    "location": env.str("DBBACKUP_STORAGE_LOCATION", default="/tmp/backups-adit")
+# Django default storage and django-dbbackup
+STORAGES = {
+    "default": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+    },
+    "staticfiles": {
+        "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+    },
+    "dbbackup": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+        "OPTIONS": {
+            "location": env.str("DBBACKUP_STORAGE_LOCATION", default="/tmp/backups-adit")
+        },
+    },
 }
 DBBACKUP_CLEANUP_KEEP = 30
+BACKUP_ENABLED = env.bool("BACKUP_ENABLED", default=True)
+BACKUP_CRON = env.str("BACKUP_CRON", default="0 3 * * *")
 
 # Orthanc servers are integrated in ADIT by using a reverse proxy (django-revproxy).
 ORTHANC1_HOST = env.str("ORTHANC1_HOST", default="localhost")
