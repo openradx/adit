@@ -10,7 +10,7 @@ from django.utils import timezone
 from pydicom import Dataset
 from pytest_mock import MockerFixture
 
-from adit.core.errors import DicomError, RetriableDicomError
+from adit.core.errors import DcmToNiftiConversionError, DicomError, ErrorKind, RetriableDicomError
 from adit.core.factories import DicomFolderFactory, DicomServerFactory
 from adit.core.models import DicomNode
 from adit.core.utils.dicom_dataset import ResultDataset
@@ -984,7 +984,7 @@ def test_convert_series_raises_on_dcm2niix_failure(mocker: MockerFixture, tmp_pa
 
     mocker.patch(
         "adit.core.utils.dicom_to_nifti_converter.DicomToNiftiConverter.convert",
-        side_effect=RuntimeError("conversion failed"),
+        side_effect=DcmToNiftiConversionError("conversion failed"),
     )
 
     with pytest.raises(DicomError, match="Conversion failed"):
@@ -1008,7 +1008,7 @@ def test_convert_series_raises_when_no_nifti_output(mocker: MockerFixture, tmp_p
         processor._convert_series(volume, dicom_dir, output_path)
 
 
-def test_convert_series_skips_non_image_dicom(mocker: MockerFixture, tmp_path: Path):
+def test_convert_series_skips_no_valid_dicom(mocker: MockerFixture, tmp_path: Path):
     processor = _make_processor(mocker)
     volume = MassTransferVolume(series_instance_uid="1.2.3", study_datetime=timezone.now())
 
@@ -1018,11 +1018,50 @@ def test_convert_series_skips_non_image_dicom(mocker: MockerFixture, tmp_path: P
 
     mocker.patch(
         "adit.core.utils.dicom_to_nifti_converter.DicomToNiftiConverter.convert",
-        side_effect=RuntimeError("No valid DICOM images were found"),
+        side_effect=DcmToNiftiConversionError("no dicom", kind=ErrorKind.NO_VALID_DICOM),
     )
 
-    # Should not raise — non-image DICOMs are silently skipped
-    processor._convert_series(volume, dicom_dir, output_path)
+    result = processor._convert_series(volume, dicom_dir, output_path)
+    assert result == []
+
+
+def test_convert_series_skips_no_spatial_data(mocker: MockerFixture, tmp_path: Path):
+    processor = _make_processor(mocker)
+    volume = MassTransferVolume(series_instance_uid="1.2.3", study_datetime=timezone.now())
+
+    dicom_dir = tmp_path / "dicom_input"
+    dicom_dir.mkdir()
+    output_path = tmp_path / "output"
+
+    mocker.patch(
+        "adit.core.utils.dicom_to_nifti_converter.DicomToNiftiConverter.convert",
+        side_effect=DcmToNiftiConversionError("no spatial data", kind=ErrorKind.NO_SPATIAL_DATA),
+    )
+
+    result = processor._convert_series(volume, dicom_dir, output_path)
+    assert result == []
+
+
+def test_convert_series_returns_partial_files_on_partial_conversion(
+    mocker: MockerFixture, tmp_path: Path
+):
+    processor = _make_processor(mocker)
+    volume = MassTransferVolume(series_instance_uid="1.2.3", study_datetime=timezone.now())
+
+    dicom_dir = tmp_path / "dicom_input"
+    dicom_dir.mkdir()
+    output_path = tmp_path / "output"
+    output_path.mkdir()
+    (output_path / "partial.nii.gz").touch()
+
+    mocker.patch(
+        "adit.core.utils.dicom_to_nifti_converter.DicomToNiftiConverter.convert",
+        side_effect=DcmToNiftiConversionError("partial", kind=ErrorKind.PARTIAL_CONVERSION),
+    )
+
+    result = processor._convert_series(volume, dicom_dir, output_path)
+    assert len(result) == 1
+    assert result[0].name == "partial.nii.gz"
 
 
 # ---------------------------------------------------------------------------

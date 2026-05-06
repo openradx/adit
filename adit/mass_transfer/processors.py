@@ -17,7 +17,7 @@ from django.utils import timezone
 from pydicom import Dataset
 from pydicom.errors import InvalidDicomError
 
-from adit.core.errors import DicomError, RetriableDicomError
+from adit.core.errors import DcmToNiftiConversionError, DicomError, ErrorKind, RetriableDicomError
 from adit.core.models import DicomNode, DicomTask
 from adit.core.processors import DicomTaskProcessor
 from adit.core.utils.dicom_dataset import QueryDataset, ResultDataset
@@ -509,13 +509,21 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
                 )
 
                 if job.convert_to_nifti:
-                    self._export_and_convert_series(
-                        operator,
-                        volume,
-                        pseudonymizer,
-                        subject_id,
-                        output_path,
-                    )
+                    if volume.modality in settings.MODALITIES_EXCLUDED_FROM_NIFTI_CONVERSION:
+                        logger.debug(
+                            f"Skipping series {volume.series_instance_uid} "
+                            f"(modality {volume.modality} excluded from NIfTI conversion)"
+                        )
+                        volume.status = MassTransferVolume.Status.SKIPPED
+                        volume.log = f"Modality {volume.modality} excluded from NIfTI conversion"
+                    else:
+                        self._export_and_convert_series(
+                            operator,
+                            volume,
+                            pseudonymizer,
+                            subject_id,
+                            output_path,
+                        )
                 else:
                     self._export_series_to_folder(
                         operator,
@@ -1038,18 +1046,24 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
         converter = DicomToNiftiConverter()
         try:
             converter.convert(dicom_dir, output_path)
-        except RuntimeError as exc:
-            err_msg = str(exc)
-            if "No valid DICOM" in err_msg:
+        except DcmToNiftiConversionError as exc:
+            if exc.kind in (ErrorKind.NO_VALID_DICOM, ErrorKind.NO_SPATIAL_DATA):
                 try:
                     if output_path.exists() and not any(output_path.iterdir()):
                         output_path.rmdir()
                 except OSError:
                     logger.debug("Failed to remove empty directory %s", output_path, exc_info=True)
                 return []
-            raise DicomError(
-                f"Conversion failed for series {volume.series_instance_uid}: {err_msg}"
-            )
+            if exc.kind == ErrorKind.PARTIAL_CONVERSION:
+                logger.warning(
+                    "Partial NIfTI conversion for series %s: %s",
+                    volume.series_instance_uid,
+                    exc,
+                )
+            else:
+                raise DicomError(
+                    f"Conversion failed for series {volume.series_instance_uid}: {exc}"
+                )
 
         nifti_files = sorted(output_path.glob("*.nii.gz"))
         if not nifti_files:

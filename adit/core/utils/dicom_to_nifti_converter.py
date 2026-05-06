@@ -1,8 +1,26 @@
 import logging
 import subprocess
+from enum import IntEnum
 from pathlib import Path
 
+from adit.core.errors import DcmToNiftiConversionError, ErrorKind
+
 logger = logging.getLogger(__name__)
+
+
+class DcmToNiftiExitCode(IntEnum):
+    """Exit codes for dcm2niix as documented in https://github.com/rordenlab/dcm2niix"""
+
+    SUCCESS = 0
+    UNSPECIFIED_ERROR = 1
+    NO_DICOM_FOUND = 2
+    VERSION_REPORT = 3
+    CORRUPT_DICOM = 4
+    INVALID_INPUT_FOLDER = 5
+    INVALID_OUTPUT_FOLDER = 6
+    WRITE_PERMISSION_ERROR = 7
+    PARTIAL_CONVERSION = 8
+    RENAME_ERROR = 9
 
 
 class DicomToNiftiConverter:
@@ -22,7 +40,8 @@ class DicomToNiftiConverter:
             dicom_folder: Path to the folder containing DICOM files.
             output_folder: Path to the folder where NIfTI files will be saved.
         Raises:
-            RuntimeError: If the conversion fails.
+            ValueError: If the dicom_folder doesn't exist.
+            DcmToNiftiConversionError: For all conversion errors; check .kind for the ErrorKind.
         """
         dicom_folder = Path(dicom_folder)
         output_folder = Path(output_folder)
@@ -45,9 +64,51 @@ class DicomToNiftiConverter:
         ]
 
         try:
-            subprocess.run(cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        except subprocess.CalledProcessError as e:
-            raise RuntimeError(f"Failed to convert DICOM to NIfTI: {e.stderr.decode('utf-8')}")
+            result = subprocess.run(
+                cmd, check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+            )
+            stderr = result.stderr.decode("utf-8", errors="replace")
+            stdout = result.stdout.decode("utf-8", errors="replace")
+
+            if "Warning:" in stderr or "Warning:" in stdout:
+                logger.warning(f"Warnings during conversion: {stderr}\n{stdout}")
+
+            exit_code = result.returncode
+            error_msg = f"{stderr}\n{stdout}".strip()
+
+            if exit_code == DcmToNiftiExitCode.SUCCESS:
+                if not any(output_folder.glob("*.nii*")):
+                    raise DcmToNiftiConversionError(
+                        "Conversion succeeded but produced no NIfTI files. "
+                        "DICOM data may lack spatial attributes.",
+                        kind=ErrorKind.NO_SPATIAL_DATA,
+                    )
+            elif exit_code == DcmToNiftiExitCode.NO_DICOM_FOUND:
+                raise DcmToNiftiConversionError(
+                    f"No DICOM images found in input folder: {error_msg}",
+                    kind=ErrorKind.NO_VALID_DICOM,
+                )
+            elif exit_code == DcmToNiftiExitCode.PARTIAL_CONVERSION:
+                logger.warning(f"Converted some but not all input DICOMs: {error_msg}")
+                if "Too many NIFTI" in error_msg:
+                    raise DcmToNiftiConversionError(
+                        "Too many NIfTI images with the same name: dcm2niix could not assign "
+                        "unique filenames to all converted files. The series may contain too many "
+                        "subgroups sharing the same series description.",
+                        kind=ErrorKind.PARTIAL_CONVERSION,
+                    )
+                raise DcmToNiftiConversionError(
+                    f"Partial NIfTI conversion: dcm2niix converted some but not all input DICOMs. "
+                    f"Details: {error_msg}",
+                    kind=ErrorKind.PARTIAL_CONVERSION,
+                )
+            else:
+                raise DcmToNiftiConversionError(
+                    f"Unspecified error (exit code {exit_code}): {error_msg}"
+                )
+
+        except subprocess.SubprocessError as e:
+            raise DcmToNiftiConversionError(f"Failed to execute dcm2niix: {e}") from e
 
         logger.debug(
             f"DICOM files in {dicom_folder} successfully converted to NIfTI format "

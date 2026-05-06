@@ -87,6 +87,52 @@ class WadoMultipartApplicationDicomRenderer(DicomWebWadoRenderer):
         return stream.getvalue()
 
 
+class WadoMultipartApplicationNiftiRenderer(DicomWebWadoRenderer):
+    media_type = "multipart/related; type=application/octet-stream"
+    format = "multipart"
+    subtype: str = "application/octet-stream"
+    boundary: str = "nifti-boundary"
+    charset: str = "utf-8"
+
+    @property
+    def content_type(self) -> str:
+        return f"{self.media_type}; boundary={self.boundary}"
+
+    def _error_stream(self, err: Exception) -> bytes:
+        stream = BytesIO()
+        stream.write(f"\r\n--{self.boundary}\r\n".encode())
+        stream.write(b"Content-Type: text/plain\r\n\r\n")
+        stream.write(f"Error: Failed to retrieve NIfTI data: {err}\r\n".encode())
+        return stream.getvalue()
+
+    def render(self, images: AsyncIterator[tuple[str, BytesIO]]) -> AsyncIterator[bytes]:
+        async def streaming_content():
+            first_part = True
+            try:
+                async for filename, file_content in images:
+                    if first_part:
+                        yield f"--{self.boundary}\r\n".encode()
+                        first_part = False
+                    else:
+                        yield f"\r\n--{self.boundary}\r\n".encode()
+
+                    yield "Content-Type: application/octet-stream\r\n".encode()
+                    safe_filename = "".join(
+                        c for c in filename if c.isprintable() and c != '"'
+                    )[:255]
+                    disposition = f'Content-Disposition: attachment; filename="{safe_filename}"'
+                    yield f"{disposition}\r\n\r\n".encode()
+
+                    yield file_content.getvalue()
+            except Exception as err:
+                yield self._error_stream(err)
+
+            if not first_part:
+                yield f"\r\n--{self.boundary}--\r\n".encode()
+
+        return streaming_content()
+
+
 class WadoApplicationDicomJsonRenderer(DicomWebWadoRenderer):
     media_type = "application/dicom+json"
     format = "json"

@@ -1,6 +1,7 @@
 import json
 import logging
 from contextlib import asynccontextmanager
+from io import BytesIO
 from typing import AsyncIterator, Literal, Union, cast
 
 from adit_radis_shared.common.types import AuthenticatedApiRequest, User
@@ -33,10 +34,11 @@ from .renderers import (
     StowApplicationDicomJsonRenderer,
     WadoApplicationDicomJsonRenderer,
     WadoMultipartApplicationDicomRenderer,
+    WadoMultipartApplicationNiftiRenderer,
 )
 from .utils.qidors_utils import qido_find
 from .utils.stowrs_utils import stow_store
-from .utils.wadors_utils import wado_retrieve
+from .utils.wadors_utils import wado_retrieve, wado_retrieve_nifti
 
 logger = logging.getLogger(__name__)
 
@@ -237,6 +239,25 @@ class RetrieveAPIView(WebDicomAPIView):
 
         return peekable_images
 
+    async def peek_nifti_files(
+        self, files: AsyncIterator[tuple[str, BytesIO]]
+    ) -> AsyncPeekable[tuple[str, BytesIO]]:
+        # In the middle of a StreamingHttpResponse we can't just throw an exception anymore to
+        # just return an error response as the stream has already started. That's why we peek
+        # the first file here and throw an exception to return an error response if something
+        # initially went wrong. If in the middle of the StreamingHttpResponse an error happens
+        # we return an error message inside the streamed response, but this leads to a truncated
+        # and unreadable NIfTI file on the client side.
+        peekable_files = AsyncPeekable(files)
+        try:
+            await peekable_files.peek()
+        except StopAsyncIteration:
+            pass
+        except Exception as err:
+            logger.exception(err)
+            raise
+        return peekable_files
+
     async def extract_metadata(self, images: AsyncIterator[Dataset]) -> list[dict]:
         metadata: list[dict] = []
         async for image in images:
@@ -323,6 +344,32 @@ class RetrieveStudyAPIView(RetrieveAPIView):
             )
 
 
+class RetrieveNiftiStudyAPIView(RetrieveAPIView):
+    renderer_classes = [WadoMultipartApplicationNiftiRenderer]
+
+    async def get(
+        self, request: AuthenticatedApiRequest, ae_title: str, study_uid: str
+    ) -> StreamingHttpResponse:
+        async with self.track_session(request.user) as session:
+            source_server = await self._get_dicom_server(request, ae_title)
+
+            query = self.query.copy()
+            query["StudyInstanceUID"] = study_uid
+
+            images = wado_retrieve_nifti(source_server, query, "STUDY")
+            images = await self.peek_nifti_files(images)
+
+            renderer = cast(
+                WadoMultipartApplicationNiftiRenderer, getattr(request, "accepted_renderer")
+            )
+            return StreamingHttpResponse(
+                streaming_content=_StreamingSessionWrapper(
+                    renderer.render(images), session, self._finalize_statistic
+                ),
+                content_type=renderer.content_type,
+            )
+
+
 class RetrieveStudyMetadataAPIView(RetrieveStudyAPIView):
     async def get(
         self, request: AuthenticatedApiRequest, ae_title: str, study_uid: str
@@ -380,6 +427,33 @@ class RetrieveSeriesAPIView(RetrieveAPIView):
             images = await self.peek_images(images)
 
             renderer = cast(DicomWebWadoRenderer, getattr(request, "accepted_renderer"))
+            return StreamingHttpResponse(
+                streaming_content=_StreamingSessionWrapper(
+                    renderer.render(images), session, self._finalize_statistic
+                ),
+                content_type=renderer.content_type,
+            )
+
+
+class RetrieveNiftiSeriesAPIView(RetrieveAPIView):
+    renderer_classes = [WadoMultipartApplicationNiftiRenderer]
+
+    async def get(
+        self, request: AuthenticatedApiRequest, ae_title: str, study_uid: str, series_uid: str
+    ) -> StreamingHttpResponse:
+        async with self.track_session(request.user) as session:
+            source_server = await self._get_dicom_server(request, ae_title)
+
+            query = self.query.copy()
+            query["StudyInstanceUID"] = study_uid
+            query["SeriesInstanceUID"] = series_uid
+
+            images = wado_retrieve_nifti(source_server, query, "SERIES")
+            images = await self.peek_nifti_files(images)
+
+            renderer = cast(
+                WadoMultipartApplicationNiftiRenderer, getattr(request, "accepted_renderer")
+            )
             return StreamingHttpResponse(
                 streaming_content=_StreamingSessionWrapper(
                     renderer.render(images), session, self._finalize_statistic
@@ -452,6 +526,39 @@ class RetrieveImageAPIView(RetrieveAPIView):
             images = await self.peek_images(images)
 
             renderer = cast(DicomWebWadoRenderer, getattr(request, "accepted_renderer"))
+            return StreamingHttpResponse(
+                streaming_content=_StreamingSessionWrapper(
+                    renderer.render(images), session, self._finalize_statistic
+                ),
+                content_type=renderer.content_type,
+            )
+
+
+class RetrieveNiftiImageAPIView(RetrieveAPIView):
+    renderer_classes = [WadoMultipartApplicationNiftiRenderer]
+
+    async def get(
+        self,
+        request: AuthenticatedApiRequest,
+        ae_title: str,
+        study_uid: str,
+        series_uid: str,
+        image_uid: str,
+    ) -> StreamingHttpResponse:
+        async with self.track_session(request.user) as session:
+            source_server = await self._get_dicom_server(request, ae_title)
+
+            query = self.query.copy()
+            query["StudyInstanceUID"] = study_uid
+            query["SeriesInstanceUID"] = series_uid
+            query["SOPInstanceUID"] = image_uid
+
+            images = wado_retrieve_nifti(source_server, query, "IMAGE")
+            images = await self.peek_nifti_files(images)
+
+            renderer = cast(
+                WadoMultipartApplicationNiftiRenderer, getattr(request, "accepted_renderer")
+            )
             return StreamingHttpResponse(
                 streaming_content=_StreamingSessionWrapper(
                     renderer.render(images), session, self._finalize_statistic
