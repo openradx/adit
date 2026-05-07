@@ -146,9 +146,10 @@ pyvenv.cfg
 # Certificate files
 *.pem
 
-# ADIT specific
+# Project specific
 /backups/*
 !/backups/.gitkeep
+.docker-data/
 
 # Override overlay (opt-in, copied from .example)
 docker-compose.override.yml
