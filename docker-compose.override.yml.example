@@ -30,6 +30,9 @@ x-observability-env: &observability-env
   OTEL_PYTHON_DJANGO_EXCLUDED_URLS: "health/,static/.*"
   OTEL_SERVICE_NAME: ${STACK_NAME}
   OTEL_RESOURCE_ATTRIBUTES: "service.namespace=openradx,deployment.environment=production"
+  # Swarm interpolates {{.Task.Slot}} to the replica ordinal (1, 2, 3…); plain
+  # `docker compose up` passes the literal through, which telemetry.py drops.
+  TASK_SLOT: "{{.Task.Slot}}"
 
 networks:
   openradx-observability:
