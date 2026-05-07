@@ -8,7 +8,6 @@ from typing import cast
 import pglock
 from django import db
 from django.conf import settings
-from django.core.management import call_command
 from django.utils import timezone
 from pebble import ProcessFuture, concurrent
 from procrastinate import JobContext, RetryStrategy
@@ -45,12 +44,6 @@ def check_disk_space(*args, **kwargs):
             )
             logger.warning(msg)
             send_mail_to_admins("Warning, low disk space!", msg)
-
-
-@app.periodic(cron="0 3 * * * ")  # every day at 3am
-@app.task
-def backup_db(*args, **kwargs):
-    call_command("dbbackup", "--clean", "-v 2")
 
 
 DICOM_TASK_RETRY_STRATEGY = RetryStrategy(
