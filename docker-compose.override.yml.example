@@ -33,6 +33,13 @@ x-observability-env: &observability-env
   # Swarm interpolates {{.Task.Slot}} to the replica ordinal (1, 2, 3…); plain
   # `docker compose up` passes the literal through, which telemetry.py drops.
   TASK_SLOT: "{{.Task.Slot}}"
+  # Cap OTLP HTTP exporter retry deadline at 2 seconds. The default is 10s
+  # with exponential backoff, which previously exceeded Docker's 10s
+  # stop-grace-period during redeploys: when otel-collector was shut down
+  # before the apps, the OTel batch processors blocked on flush() trying
+  # to reach an unreachable collector, causing apps to be SIGKILLed
+  # (exit 137) instead of shutting down cleanly.
+  OTEL_EXPORTER_OTLP_TIMEOUT: ${OTEL_EXPORTER_OTLP_TIMEOUT:-2}
 
 networks:
   openradx-observability:
