@@ -7,7 +7,7 @@ version = "0.0.0"
 readme = "README.md"
 requires-python = ">=3.12,<4.0"
 dependencies = [
-    "adit-radis-shared @ git+https://github.com/openradx/adit-radis-shared.git@0.21.0",
+    "adit-radis-shared @ git+https://github.com/openradx/adit-radis-shared.git@0.22.0",
     "adrf>=0.1.9",
     "aiofiles>=24.1.0",
     "asyncinotify>=4.2.0",
@@ -23,7 +23,7 @@ dependencies = [
     "django-codemirror>=1.0.1",
     "django-cotton>=1.6.0",
     "django-crispy-forms>=2.3",
-    "django-dbbackup>=4.2.1",
+    "django-dbbackup>=5.3.0",
     "django-extensions>=3.2.3",
     "django-filter>=25.1",
     "django-htmx>=1.22.0",

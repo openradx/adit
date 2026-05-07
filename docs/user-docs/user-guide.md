@@ -12,6 +12,45 @@ When you log into ADIT, you'll see the home page with several sections:
 - **DICOM Explorer**: Explore the DICOM data of a PACS server
 - **DICOM Upload**: Upload DICOM files from your local system to a PACS server
 
+## Managing Jobs and Tasks
+
+All operations in ADIT (selective transfers, batch queries, batch transfers, mass transfers) follow a **Job → Task** pattern. A job contains one or more tasks, and each task processes a single unit of work (e.g. one study transfer or one query). Both jobs and tasks have a status that reflects their current state.
+
+### Job and Task Statuses
+
+**Job statuses**: `Unverified`, `Pending`, `In Progress`, `Canceling`, `Canceled`, `Success`, `Warning`, `Failure`
+
+**Task statuses**: `Pending`, `In Progress`, `Canceled`, `Success`, `Warning`, `Failure`
+
+The job status is automatically derived from the status of its tasks. If any task is still pending, the job is pending (unless it is being canceled). If any task is in progress, the job is in progress (or canceling). Once all tasks are finished, the job status reflects the overall outcome (success, warning, failure, or canceled).
+
+### Job Actions
+
+Staff users can act on any job. Regular users can only act on their own jobs.
+
+| Action | Available when | Who can use | What it does |
+|---|---|---|---|
+| **Verify** | `Unverified` | Staff only | Approves the job, sets it to `Pending`, and queues all tasks for processing |
+| **Delete** | `Unverified` or `Pending` (with no tasks already started) | Owner or staff | Permanently deletes the job and all its tasks |
+| **Cancel** | `Pending` or `In Progress` | Owner or staff | Stops the job. Pending tasks are canceled immediately. In-progress tasks are aborted |
+| **Resume** | `Canceled` | Owner or staff | Resumes a canceled job by re-queuing all canceled tasks |
+| **Retry** | `Failure` | Owner or staff | Re-queues only the failed tasks. Successful and warning tasks are left untouched |
+| **Restart** | `Canceled`, `Success`, `Warning`, or `Failure` | Staff only | Resets and re-queues all tasks, starting the entire job from scratch |
+
+### Task Actions
+
+Staff users can act on any task. Regular users can only act on tasks belonging to their own jobs.
+
+| Action | Available when | Who can use | What it does |
+|---|---|---|---|
+| **Delete** | `Pending` | Owner or staff | Permanently deletes the task |
+| **Reset** | `Canceled`, `Success`, `Warning`, or `Failure` | Owner or staff | Resets the task to `Pending` and re-queues it for processing. The job status updates accordingly |
+| **Kill** | `In Progress` | Staff only | Forcefully stops a running task |
+
+---
+
+## Functionalities
+
 ### 1. Selective Transfer
 
 To transfer a single DICOM study:
