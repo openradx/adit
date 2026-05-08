@@ -589,6 +589,49 @@ def test_discover_series_rejects_all_exclude_filters(mocker: MockerFixture):
         processor._discover_series(operator, filters)
 
 
+def test_discover_series_include_age_drops_unknown_birth_date(mocker: MockerFixture):
+    """Include filter with age constraint must drop a series whose birth date is unknown."""
+    processor = _make_processor(mocker)
+    processor.mass_task.partition_start = datetime(2024, 1, 1, 0, 0)
+    processor.mass_task.partition_end = datetime(2024, 1, 1, 23, 59, 59)
+
+    operator = mocker.create_autospec(DicomOperator)
+    operator.server = mocker.MagicMock(max_search_results=200)
+
+    study = _make_study("1.2.3.100")  # no PatientBirthDate
+    study.dataset.ModalitiesInStudy = ["CT"]
+    operator.find_studies.return_value = [study]
+    operator.find_series.return_value = [_make_series_result("1.2.3.601")]
+
+    filters = [_make_filter(modality="CT", min_age=18)]
+    result = processor._discover_series(operator, filters)
+
+    assert result == []
+
+
+def test_discover_series_exclude_age_drops_unknown_birth_date(mocker: MockerFixture):
+    """Exclude filter with age constraint must drop a series whose birth date is unknown."""
+    processor = _make_processor(mocker)
+    processor.mass_task.partition_start = datetime(2024, 1, 1, 0, 0)
+    processor.mass_task.partition_end = datetime(2024, 1, 1, 23, 59, 59)
+
+    operator = mocker.create_autospec(DicomOperator)
+    operator.server = mocker.MagicMock(max_search_results=200)
+
+    study = _make_study("1.2.3.100")  # no PatientBirthDate
+    study.dataset.ModalitiesInStudy = ["CT"]
+    operator.find_studies.return_value = [study]
+    operator.find_series.return_value = [_make_series_result("1.2.3.601")]
+
+    filters = [
+        _make_filter(modality="CT"),  # include without age constraint -> series enters `found`
+        FilterSpec(mode="exclude", min_age=18),
+    ]
+    result = processor._discover_series(operator, filters)
+
+    assert result == []
+
+
 def test_discover_series_exclude_by_institution(mocker: MockerFixture):
     processor = _make_processor(mocker)
     processor.mass_task.partition_start = datetime(2024, 1, 1, 0, 0)

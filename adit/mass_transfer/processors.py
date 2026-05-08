@@ -245,9 +245,11 @@ def _series_matches_filter(
     ``check_institution=False`` skips the institution check — the include
     path uses this when ``apply_institution_on_study`` has already resolved
     the check at study level.  ``age_permissive=True`` treats an unknown
-    ``patient_birth_date`` as passing (mirrors the existing include
-    behavior); excludes use the strict default so an unknown birth date
-    never causes an accidental exclusion.
+    ``patient_birth_date`` as passing the age check; excludes set this so
+    a series with an unverifiable age is dropped by an age-bounded exclude
+    filter.  The strict default is used by include filters so that an
+    unknown age also fails inclusion — in both directions, a series whose
+    age can't be determined is dropped.
     """
     if mf.modality and mf.modality != series.modality:
         return False
@@ -871,7 +873,6 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
                         discovered,
                         mf,
                         check_institution=not mf.apply_institution_on_study,
-                        age_permissive=True,
                     ):
                         continue
 
@@ -883,7 +884,9 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
         return [
             series
             for series in found.values()
-            if not any(_series_matches_filter(series, mf) for mf in exclude_filters)
+            if not any(
+                _series_matches_filter(series, mf, age_permissive=True) for mf in exclude_filters
+            )
         ]
 
     def _find_studies(
