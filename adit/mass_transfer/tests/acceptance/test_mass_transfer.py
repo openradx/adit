@@ -45,16 +45,10 @@ def _fill_mass_transfer_form(
         pseudonymize_checkbox.click(force=True)
 
     if convert_to_nifti:
-        # Alpine.js toggles this checkbox's `disabled` reactively when the
-        # destination changes, and disabled fields are stripped from the
-        # POST. Force-enable + check via JS so submission always carries the
-        # value, regardless of Alpine.js scheduling.
-        page.evaluate(
-            """() => {
-                const cb = document.getElementById('id_convert_to_nifti');
-                if (cb) { cb.disabled = false; cb.checked = true; }
-            }"""
-        )
+        # set_checked auto-waits for the element to be actionable (enabled);
+        # without force=True, this avoids racing with Alpine.js's reactive
+        # disabling of this checkbox during destination changes.
+        page.get_by_label("Convert to NIfTI").set_checked(True)
 
     # Set filters in CodeMirror editor
     page.evaluate(
