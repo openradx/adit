@@ -45,7 +45,10 @@ def _fill_mass_transfer_form(
         pseudonymize_checkbox.click(force=True)
 
     if convert_to_nifti:
-        page.get_by_label("Convert to NIfTI").click(force=True)
+        # set_checked auto-waits for the element to be actionable (enabled);
+        # without force=True, this avoids racing with Alpine.js's reactive
+        # disabling of this checkbox during destination changes.
+        page.get_by_label("Convert to NIfTI").set_checked(True)
 
     # Set filters in CodeMirror editor
     page.evaluate(
