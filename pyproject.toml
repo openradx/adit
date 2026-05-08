@@ -54,6 +54,9 @@ dependencies = [
     "whitenoise>=6.9.0",
 ]
 
+[project.scripts]
+cli = "cli:app"
+
 [dependency-groups]
 docs = ["mkdocs-material>=9.7.0", "mkdocs-minify-plugin>=0.8.0"]
 dev = [
@@ -94,9 +97,6 @@ dev = [
 ]
 client = ["adit-client"]
 
-[project.scripts]
-cli = "cli:app"
-
 [tool.uv]
 default-groups = ["dev", "client", "docs"]
 constraint-dependencies = ["autobahn<25.11.1"]
@@ -109,7 +109,7 @@ ignore = ["**/migrations", "**/*.ipynb"]
 typeCheckingMode = "basic"
 reportUnnecessaryTypeIgnoreComment = true
 
-[tool.pytest.ini_options]
+[tool.pytest]
 DJANGO_SETTINGS_MODULE = "adit.settings.development"
 python_files = ["tests.py", "test_*.py", "*_tests.py"]
 testpaths = ["adit/**/tests", "adit-client/**/tests"]
@@ -126,7 +126,7 @@ filterwarnings = [
     'ignore:.*Use timezone-aware objects to represent datetimes in UTC.*:DeprecationWarning',
     'ignore:.*get_frame_offsets is deprecated and will be removed in v4.0.*:DeprecationWarning',
 ]
-timeout = 60
+timeout = "60"
 
 [tool.coverage.run]
 branch = true
@@ -147,9 +147,9 @@ profile = "django"
 max_line_length = 120
 ignore = "H021,H030,H031,T002"
 
+[tool.hatch.metadata]
+allow-direct-references = true
+
 [build-system]
 requires = ["hatchling", "uv-dynamic-versioning"]
 build-backend = "hatchling.build"
-
-[tool.hatch.metadata]
-allow-direct-references = true
