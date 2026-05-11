@@ -5,6 +5,8 @@ x-app: &default-app
   depends_on:
     - postgres
   environment:
+    BACKUP_CRON: ${BACKUP_CRON:-0 3 * * *}
+    BACKUP_ENABLED: ${BACKUP_ENABLED:-true}
     CALLING_AE_TITLE: ${CALLING_AE_TITLE:?}
     DATABASE_URL: postgres://postgres:postgres@postgres.local:5432/postgres
     DBBACKUP_STORAGE_LOCATION: /backups
@@ -43,6 +45,7 @@ x-app: &default-app
     TIME_ZONE: ${TIME_ZONE:?}
     TOKEN_AUTHENTICATION_SALT: ${TOKEN_AUTHENTICATION_SALT:?}
     ANONYMIZATION_SEED: ${ANONYMIZATION_SEED:-}
+    STACK_NAME: ${STACK_NAME:-}
 
 services:
   init:
@@ -79,7 +82,7 @@ services:
       - postgres_data:/var/lib/postgresql/data
 
   orthanc1:
-    image: jodogne/orthanc-plugins:1.12.10
+    image: jodogne/orthanc-plugins:1.12.11
     hostname: orthanc1.local
     configs:
       - source: orthanc1_config
@@ -88,7 +91,7 @@ services:
       - orthanc1_data:/var/lib/orthanc/db
 
   orthanc2:
-    image: jodogne/orthanc-plugins:1.12.10
+    image: jodogne/orthanc-plugins:1.12.11
     hostname: orthanc2.local
     configs:
       - source: orthanc2_config

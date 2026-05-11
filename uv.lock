@@ -104,7 +104,7 @@ docs = [
 
 [package.metadata]
 requires-dist = [
-    { name = "adit-radis-shared", git = "https://github.com/openradx/adit-radis-shared.git?rev=0.20.0" },
+    { name = "adit-radis-shared", git = "https://github.com/openradx/adit-radis-shared.git?rev=0.23.0" },
     { name = "adrf", specifier = ">=0.1.9" },
     { name = "aiofiles", specifier = ">=24.1.0" },
     { name = "asyncinotify", specifier = ">=4.2.0" },
@@ -120,7 +120,7 @@ requires-dist = [
     { name = "django-codemirror", specifier = ">=1.0.1" },
     { name = "django-cotton", specifier = ">=1.6.0" },
     { name = "django-crispy-forms", specifier = ">=2.3" },
-    { name = "django-dbbackup", specifier = ">=4.2.1" },
+    { name = "django-dbbackup", specifier = ">=5.3.0" },
     { name = "django-extensions", specifier = ">=3.2.3" },
     { name = "django-filter", specifier = ">=25.1" },
     { name = "django-htmx", specifier = ">=1.22.0" },
@@ -213,7 +213,7 @@ requires-dist = [
 [[package]]
 name = "adit-radis-shared"
 version = "0.0.0"
-source = { git = "https://github.com/openradx/adit-radis-shared.git?rev=0.20.0#bd890355a6d78b6015cead0fb82c15ea12d03d2c" }
+source = { git = "https://github.com/openradx/adit-radis-shared.git?rev=0.23.0#2ea948f4492496de1c65f4aad04a603c1175d83a" }
 dependencies = [
     { name = "channels" },
     { name = "crispy-bootstrap5" },
@@ -867,16 +867,16 @@ wheels = [
 
 [[package]]
 name = "django"
-version = "6.0.4"
+version = "6.0.5"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "asgiref" },
     { name = "sqlparse" },
     { name = "tzdata", marker = "sys_platform == 'win32'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/60/b9/4155091ad1788b38563bd77a7258c0834e8c12a7f56f6975deaf54f8b61d/django-6.0.4.tar.gz", hash = "sha256:8cfa2572b3f2768b2e84983cf3c4811877a01edb64e817986ec5d60751c113ac", size = 10907407, upload-time = "2026-04-07T13:55:44.961Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/5e/f1/bf85f0d29ef76abf901f193fe8fef4769d3da7794197832bc30151c071d8/django-6.0.5.tar.gz", hash = "sha256:bc6d6872e98a2864c836e42edd644b362db311147dd5aa8d5b82ba7a032f5269", size = 10924131, upload-time = "2026-05-05T13:54:39.329Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/e9/47/3d61d611609764aa71a37f7037b870e7bfb22937366974c4fd46cada7bab/django-6.0.4-py3-none-any.whl", hash = "sha256:14359c809fc16e8f81fd2b59d7d348e4d2d799da6840b10522b6edf7b8afc1da", size = 8368342, upload-time = "2026-04-07T13:55:37.999Z" },
+    { url = "https://files.pythonhosted.org/packages/94/5b/1328f8b84fce040c404f76822bf8c57d254e368e8cbd8bd67ec2b26d75f5/django-6.0.5-py3-none-any.whl", hash = "sha256:9d58a7cb49244e74c8e161d5e403a46d6209f1009ba40f5a66d6aa0d0786a8f0", size = 8368680, upload-time = "2026-05-05T13:54:33.532Z" },
 ]
 
 [[package]]
@@ -948,14 +948,14 @@ wheels = [
 
 [[package]]
 name = "django-dbbackup"
-version = "5.1.1"
+version = "5.3.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "django" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/5b/a1/3416a388b58b0b1d3256575f99e3a7b0db9fd3ce44086b3f7a2eb40515a6/django_dbbackup-5.1.1.tar.gz", hash = "sha256:bfefa6fcf64a602fd5416bc7fff679509bf7eee35c114eee295730df8e9589c9", size = 26371, upload-time = "2026-01-08T05:32:50.719Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/2b/8b/6a963f6e3d13eb689a842c8d942a22bd0f477f328c1ce98e40334ac0031b/django_dbbackup-5.3.0.tar.gz", hash = "sha256:2c880dba7650539e8a724174fedb5213062c4fcda3aa09e1c5f3f573192106cb", size = 27843, upload-time = "2026-04-10T01:49:43.02Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/08/dd/e4d197dacb333a30b5756b0a059f84d0e27e7b2b694365caf145896de390/django_dbbackup-5.1.1-py3-none-any.whl", hash = "sha256:371d82803743f6963d7d6d44ee145472213ddd287c43576ddbc11f2277972c1d", size = 34626, upload-time = "2026-01-08T05:32:49.191Z" },
+    { url = "https://files.pythonhosted.org/packages/6e/fa/24891c73c6fc76e6005389a496fa1752a69d6ff8c609692f86513ab373ad/django_dbbackup-5.3.0-py3-none-any.whl", hash = "sha256:ff80b5facd524e3f6479235aeb330b094a1c982f8b0b9503c24ba0dc613162ed", size = 36170, upload-time = "2026-04-10T01:49:41.534Z" },
 ]
 
 [[package]]
@@ -2898,11 +2898,11 @@ wheels = [
 
 [[package]]
 name = "python-dotenv"
-version = "1.2.1"
+version = "1.2.2"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/f0/26/19cadc79a718c5edbec86fd4919a6b6d3f681039a2f6d66d14be94e75fb9/python_dotenv-1.2.1.tar.gz", hash = "sha256:42667e897e16ab0d66954af0e60a9caa94f0fd4ecf3aaf6d2d260eec1aa36ad6", size = 44221, upload-time = "2025-10-26T15:12:10.434Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/82/ed/0301aeeac3e5353ef3d94b6ec08bbcabd04a72018415dcb29e588514bba8/python_dotenv-1.2.2.tar.gz", hash = "sha256:2c371a91fbd7ba082c2c1dc1f8bf89ca22564a087c2c287cd9b662adde799cf3", size = 50135, upload-time = "2026-03-01T16:00:26.196Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/14/1b/a298b06749107c305e1fe0f814c6c74aea7b2f1e10989cb30f544a1b3253/python_dotenv-1.2.1-py3-none-any.whl", hash = "sha256:b81ee9561e9ca4004139c6cbba3a238c32b03e4894671e181b671e8cb8425d61", size = 21230, upload-time = "2025-10-26T15:12:09.109Z" },
+    { url = "https://files.pythonhosted.org/packages/0b/d7/1959b9648791274998a9c3526f6d0ec8fd2233e4d4acce81bbae76b44b2a/python_dotenv-1.2.2-py3-none-any.whl", hash = "sha256:1d8214789a24de455a8b8bd8ae6fe3c6b69a5e3d64aa8a8e5d68e694bbcb285a", size = 22101, upload-time = "2026-03-01T16:00:25.09Z" },
 ]
 
 [[package]]

@@ -1,3 +1,5 @@
+from enum import Enum
+
 from rest_framework.exceptions import ErrorDetail
 
 
@@ -47,6 +49,20 @@ def is_retriable_http_status(status_code: int) -> bool:
     """
     retriable_status_codes = [408, 409, 429, 500, 503, 504]
     return status_code in retriable_status_codes
+
+
+class ErrorKind(Enum):
+    NO_VALID_DICOM = "no_valid_dicom"
+    NO_SPATIAL_DATA = "no_spatial_data"
+    PARTIAL_CONVERSION = "partial_conversion"
+
+
+class DcmToNiftiConversionError(Exception):
+    """Exception for DICOM to NIfTI conversion errors. Use kind to distinguish subtypes."""
+
+    def __init__(self, message: str, kind: "ErrorKind | None" = None) -> None:
+        super().__init__(message)
+        self.kind = kind
 
 
 class BatchFileSizeError(Exception):

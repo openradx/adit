@@ -9,7 +9,7 @@ import time
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from pathlib import Path
-from typing import cast
+from typing import Literal, cast
 
 import pydicom
 from django.conf import settings
@@ -17,7 +17,7 @@ from django.utils import timezone
 from pydicom import Dataset
 from pydicom.errors import InvalidDicomError
 
-from adit.core.errors import DicomError, RetriableDicomError
+from adit.core.errors import DcmToNiftiConversionError, DicomError, ErrorKind, RetriableDicomError
 from adit.core.models import DicomNode, DicomTask
 from adit.core.processors import DicomTaskProcessor
 from adit.core.utils.dicom_dataset import QueryDataset, ResultDataset
@@ -42,6 +42,7 @@ class FilterSpec:
     Built from a plain dict from the job's filters_json field.
     """
 
+    mode: Literal["include", "exclude"] = "include"
     modality: str = ""
     institution_name: str = ""
     apply_institution_on_study: bool = True
@@ -54,7 +55,11 @@ class FilterSpec:
 
     @classmethod
     def from_dict(cls, d: dict) -> "FilterSpec":
+        mode = d.get("mode", "include")
+        if mode not in ("include", "exclude"):
+            raise DicomError(f"Invalid filter mode: {mode!r}")
         return cls(
+            mode=mode,
             modality=d.get("modality", ""),
             institution_name=d.get("institution_name", ""),
             apply_institution_on_study=d.get("apply_institution_on_study", True),
@@ -227,6 +232,54 @@ def _birth_date_range(
         latest_birth = study_end
 
     return (earliest_birth, latest_birth)
+
+
+def _series_matches_filter(
+    series: DiscoveredSeries,
+    mf: FilterSpec,
+    check_institution: bool = True,
+    age_permissive: bool = False,
+) -> bool:
+    """Test whether *series* satisfies all non-empty criteria on *mf*.
+
+    ``check_institution=False`` skips the institution check — the include
+    path uses this when ``apply_institution_on_study`` has already resolved
+    the check at study level.  ``age_permissive=True`` treats an unknown
+    ``patient_birth_date`` as passing the age check; excludes set this so
+    a series with an unverifiable age is dropped by an age-bounded exclude
+    filter.  The strict default is used by include filters so that an
+    unknown age also fails inclusion — in both directions, a series whose
+    age can't be determined is dropped.
+    """
+    if mf.modality and mf.modality != series.modality:
+        return False
+    if check_institution and mf.institution_name:
+        if not _dicom_match(mf.institution_name, series.institution_name):
+            return False
+    if mf.study_description and not _dicom_match(
+        mf.study_description, series.study_description
+    ):
+        return False
+    if mf.series_description and not _dicom_match(
+        mf.series_description, series.series_description
+    ):
+        return False
+    if mf.series_number is not None:
+        if series.series_number is None or mf.series_number != series.series_number:
+            return False
+    if mf.min_age is not None or mf.max_age is not None:
+        if series.patient_birth_date:
+            age = _age_at_study(series.patient_birth_date, series.study_datetime.date())
+            if mf.min_age is not None and age < mf.min_age:
+                return False
+            if mf.max_age is not None and age > mf.max_age:
+                return False
+        elif not age_permissive:
+            return False
+    if mf.min_number_of_series_related_instances is not None:
+        if series.number_of_images < mf.min_number_of_series_related_instances:
+            return False
+    return True
 
 
 def _destination_base_dir(node: DicomNode, job: MassTransferJob) -> Path:
@@ -509,13 +562,21 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
                 )
 
                 if job.convert_to_nifti:
-                    self._export_and_convert_series(
-                        operator,
-                        volume,
-                        pseudonymizer,
-                        subject_id,
-                        output_path,
-                    )
+                    if volume.modality in settings.MODALITIES_EXCLUDED_FROM_NIFTI_CONVERSION:
+                        logger.debug(
+                            f"Skipping series {volume.series_instance_uid} "
+                            f"(modality {volume.modality} excluded from NIfTI conversion)"
+                        )
+                        volume.status = MassTransferVolume.Status.SKIPPED
+                        volume.log = f"Modality {volume.modality} excluded from NIfTI conversion"
+                    else:
+                        self._export_and_convert_series(
+                            operator,
+                            volume,
+                            pseudonymizer,
+                            subject_id,
+                            output_path,
+                        )
                 else:
                     self._export_series_to_folder(
                         operator,
@@ -745,9 +806,15 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
         start = self.mass_task.partition_start
         end = self.mass_task.partition_end
 
+        include_filters = [mf for mf in filters if mf.mode != "exclude"]
+        exclude_filters = [mf for mf in filters if mf.mode == "exclude"]
+
+        if not include_filters:
+            raise DicomError("Mass transfer requires at least one include filter.")
+
         found: dict[str, DiscoveredSeries] = {}
 
-        for mf in filters:
+        for mf in include_filters:
             studies = self._find_studies(operator, mf, start, end)
 
             for study in studies:
@@ -787,44 +854,12 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
                     if not series_uid:
                         continue
 
-                    series_number = _parse_int(series.get("SeriesNumber"), default=None)
-
-                    if (
-                        mf.institution_name
-                        and not mf.apply_institution_on_study
-                        and not _dicom_match(
-                            mf.institution_name, series.get("InstitutionName", None)
-                        )
-                    ):
-                        continue
-
-                    if mf.modality and mf.modality != series.Modality:
-                        continue
-
-                    if mf.series_description and not _dicom_match(
-                        mf.series_description, series.SeriesDescription
-                    ):
-                        continue
-
-                    if mf.series_number is not None:
-                        try:
-                            if series_number is None or mf.series_number != series_number:
-                                continue
-                        except (TypeError, ValueError):
-                            continue
-
-                    if mf.min_number_of_series_related_instances is not None:
-                        num_instances = (
-                            _parse_int(series.get("NumberOfSeriesRelatedInstances"), default=0) or 0
-                        )
-                        if num_instances < mf.min_number_of_series_related_instances:
-                            continue
-
                     if series_uid in found:
                         continue
 
+                    series_number = _parse_int(series.get("SeriesNumber"), default=None)
                     study_dt = _study_datetime(study)
-                    found[series_uid] = DiscoveredSeries(
+                    discovered = DiscoveredSeries(
                         patient_id=str(study.PatientID),
                         accession_number=str(study.get("AccessionNumber", "")),
                         study_instance_uid=str(study.StudyInstanceUID),
@@ -842,7 +877,25 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
                         patient_birth_date=birth_date,
                     )
 
-        return list(found.values())
+                    if not _series_matches_filter(
+                        discovered,
+                        mf,
+                        check_institution=not mf.apply_institution_on_study,
+                    ):
+                        continue
+
+                    found[series_uid] = discovered
+
+        if not exclude_filters:
+            return list(found.values())
+
+        return [
+            series
+            for series in found.values()
+            if not any(
+                _series_matches_filter(series, mf, age_permissive=True) for mf in exclude_filters
+            )
+        ]
 
     def _find_studies(
         self,
@@ -1038,18 +1091,24 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
         converter = DicomToNiftiConverter()
         try:
             converter.convert(dicom_dir, output_path)
-        except RuntimeError as exc:
-            err_msg = str(exc)
-            if "No valid DICOM" in err_msg:
+        except DcmToNiftiConversionError as exc:
+            if exc.kind in (ErrorKind.NO_VALID_DICOM, ErrorKind.NO_SPATIAL_DATA):
                 try:
                     if output_path.exists() and not any(output_path.iterdir()):
                         output_path.rmdir()
                 except OSError:
                     logger.debug("Failed to remove empty directory %s", output_path, exc_info=True)
                 return []
-            raise DicomError(
-                f"Conversion failed for series {volume.series_instance_uid}: {err_msg}"
-            )
+            if exc.kind == ErrorKind.PARTIAL_CONVERSION:
+                logger.warning(
+                    "Partial NIfTI conversion for series %s: %s",
+                    volume.series_instance_uid,
+                    exc,
+                )
+            else:
+                raise DicomError(
+                    f"Conversion failed for series {volume.series_instance_uid}: {exc}"
+                )
 
         nifti_files = sorted(output_path.glob("*.nii.gz"))
         if not nifti_files:
