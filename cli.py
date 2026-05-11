@@ -73,11 +73,29 @@ def scale_mass_transfer_worker(
     else:
         grace_period = raw_grace
 
+    # Read current service stop-grace-period so we can restore it after scaling.
+    inspect_cmd = f"""
+        docker service inspect --format '{{{{.Spec.TaskTemplate.StopGracePeriod}}}}'{service_name}
+    """
+    try:
+        previous = helper.capture_cmd(inspect_cmd).strip()
+    except Exception:
+        previous = ""
+
+    # Apply temporary stop-grace-period for this scaling operation only.
     helper.execute_cmd(
         f"docker service update --stop-grace-period {shlex.quote(grace_period)} {service_name}"
     )
 
-    helper.execute_cmd(f"docker service scale {service_name}={replicas}")
+    try:
+        helper.execute_cmd(f"docker service scale {service_name}={replicas}")
+    finally:
+        # Restore previous setting. If previous is empty, fall back to 0s to avoid leaving
+        # the temporary value in the service spec.
+        restore_value = previous if previous else "0s"
+        helper.execute_cmd(
+            f"docker service update --stop-grace-period {shlex.quote(restore_value)} {service_name}"
+        )
 
 
 @app.command()
@@ -125,12 +143,15 @@ def configure_mass_transfer_worker_cron():
 
     log_file = f"{logs_dir}/mass_transfer_worker_cron.log"
 
+    uv_path = shutil.which("uv") or "uv"
+    uv_cmd = shlex.quote(uv_path)
+
     scale_up_cmd = (
-        f"cd {project_root} && /usr/local/bin/uv run cli scale-mass-transfer-worker {up_replicas}"
+        f"cd {project_root} && {uv_cmd} run cli scale-mass-transfer-worker {up_replicas}"
         f" >> {log_file} 2>&1"
     )
     scale_down_cmd = (
-        f"cd {project_root} && /usr/local/bin/uv run cli scale-mass-transfer-worker {down_replicas}"
+        f"cd {project_root} && {uv_cmd} run cli scale-mass-transfer-worker {down_replicas}"
         f" >> {log_file} 2>&1"
     )
 
@@ -144,7 +165,7 @@ def configure_mass_transfer_worker_cron():
             cron_marker_end,
         ]
     )
-    typer.echo("Executed: {}".format(cron_block))
+    typer.echo("Installed Cron Block: {}".format(cron_block))
 
     escaped_start = cron_marker_start.replace("/", "\\/")
     escaped_end = cron_marker_end.replace("/", "\\/")
