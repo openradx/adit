@@ -66,6 +66,17 @@ def scale_mass_transfer_worker(
         raise typer.Exit(code=1)
 
     service_name = f"{helper.get_stack_name()}_mass_transfer_worker"
+    env = helper.load_config_from_env_file()
+    raw_grace = (env.get("MASS_TRANSFER_WORKER_STOP_GRACE_PERIOD") or "").strip()
+    if not raw_grace:
+        grace_period = "10s"
+    else:
+        grace_period = raw_grace
+
+    helper.execute_cmd(
+        f"docker service update --stop-grace-period {shlex.quote(grace_period)} {service_name}"
+    )
+
     helper.execute_cmd(f"docker service scale {service_name}={replicas}")
 
 

@@ -89,12 +89,16 @@ def test_scale_mass_transfer_worker_scales_up_and_down_without_touching_queued_j
     helper.is_production.return_value = True
     helper.get_stack_name.return_value = "adit-prod"
     mocker.patch("cli.cli_helper.CommandHelper", return_value=helper)
+    # Ensure load_config_from_env_file returns a mapping so .get()/.strip() work
+    helper.load_config_from_env_file.return_value = {}
 
     scale_mass_transfer_worker(replicas=3)
     scale_mass_transfer_worker(replicas=0)
 
     assert helper.execute_cmd.call_args_list == [
+        call("docker service update --stop-grace-period 10s adit-prod_mass_transfer_worker"),
         call("docker service scale adit-prod_mass_transfer_worker=3"),
+        call("docker service update --stop-grace-period 10s adit-prod_mass_transfer_worker"),
         call("docker service scale adit-prod_mass_transfer_worker=0"),
     ]
 
@@ -162,6 +166,8 @@ def test_scale_mass_transfer_worker_scale_down_finishes_current_job_and_blocks_n
         helper.is_production.return_value = True
         helper.get_stack_name.return_value = "adit-prod"
         mocker.patch("cli.cli_helper.CommandHelper", return_value=helper)
+        # Ensure load_config_from_env_file returns a mapping so .get()/.strip() work
+        helper.load_config_from_env_file.return_value = {}
 
         def execute_cmd_side_effect(command: str):
             if command == "docker service scale adit-prod_mass_transfer_worker=0":
@@ -186,7 +192,9 @@ def test_scale_mass_transfer_worker_scale_down_finishes_current_job_and_blocks_n
         assert final_blocked_status_1 == "todo"
         assert final_blocked_status_2 == "todo"
         assert helper.execute_cmd.call_args_list == [
+            call("docker service update --stop-grace-period 10s adit-prod_mass_transfer_worker"),
             call("docker service scale adit-prod_mass_transfer_worker=1"),
+            call("docker service update --stop-grace-period 10s adit-prod_mass_transfer_worker"),
             call("docker service scale adit-prod_mass_transfer_worker=0"),
         ]
     finally:
