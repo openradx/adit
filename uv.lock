@@ -10,7 +10,7 @@ name = "adit"
 version = "0.0.0"
 source = { editable = "." }
 dependencies = [
-    { name = "adit-radis-shared" },
+    { name = "adit-radis-shared", extra = ["django"] },
     { name = "adrf" },
     { name = "aiofiles" },
     { name = "asyncinotify" },
@@ -104,7 +104,7 @@ docs = [
 
 [package.metadata]
 requires-dist = [
-    { name = "adit-radis-shared", git = "https://github.com/openradx/adit-radis-shared.git?rev=0.23.0" },
+    { name = "adit-radis-shared", extras = ["django"], git = "https://github.com/openradx/adit-radis-shared.git?rev=0.24.0" },
     { name = "adrf", specifier = ">=0.1.9" },
     { name = "aiofiles", specifier = ">=24.1.0" },
     { name = "asyncinotify", specifier = ">=4.2.0" },
@@ -213,7 +213,7 @@ requires-dist = [
 [[package]]
 name = "adit-radis-shared"
 version = "0.0.0"
-source = { git = "https://github.com/openradx/adit-radis-shared.git?rev=0.23.0#2ea948f4492496de1c65f4aad04a603c1175d83a" }
+source = { git = "https://github.com/openradx/adit-radis-shared.git?rev=0.24.0#39955cf5dbb2fd8ab421a5bfb404d518b39d14ec" }
 dependencies = [
     { name = "channels" },
     { name = "crispy-bootstrap5" },
@@ -236,8 +236,6 @@ dependencies = [
     { name = "environs", extra = ["django"] },
     { name = "opentelemetry-api" },
     { name = "opentelemetry-exporter-otlp-proto-http" },
-    { name = "opentelemetry-instrumentation-django" },
-    { name = "opentelemetry-instrumentation-psycopg" },
     { name = "opentelemetry-sdk" },
     { name = "procrastinate", extra = ["django"] },
     { name = "psycopg", extra = ["binary"] },
@@ -247,6 +245,12 @@ dependencies = [
     { name = "wait-for-it" },
     { name = "watchfiles" },
     { name = "whitenoise" },
+]
+
+[package.optional-dependencies]
+django = [
+    { name = "opentelemetry-instrumentation-django" },
+    { name = "opentelemetry-instrumentation-psycopg" },
 ]
 
 [[package]]

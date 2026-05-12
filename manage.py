@@ -25,8 +25,10 @@ def main():
 
     # Initialize OpenTelemetry before Django loads to ensure all requests are traced
     from adit_radis_shared.telemetry import setup_opentelemetry
+    from opentelemetry.instrumentation.django import DjangoInstrumentor
+    from opentelemetry.instrumentation.psycopg import PsycopgInstrumentor
 
-    setup_opentelemetry()
+    setup_opentelemetry(instrumentors=[DjangoInstrumentor, PsycopgInstrumentor])
 
     initialize_debugger()
 
