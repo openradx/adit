@@ -62,11 +62,10 @@ services:
   default_worker:
     <<: *default-app
     image: adit_staging-default_worker:latest
-    # Same as dev - debug logging, autoreload
     command: >
       bash -c "
         wait-for-it -s postgres.local:5432 -t 60 &&
-        ./manage.py bg_worker -l debug -q default --autoreload
+        ./manage.py bg_worker -l info -q default --autoreload
       "
     deploy:
       <<: *deploy
@@ -75,11 +74,10 @@ services:
   dicom_worker:
     <<: *default-app
     image: adit_staging-dicom_worker:latest
-    # Same as dev - debug logging, autoreload
     command: >
       bash -c "
         wait-for-it -s postgres.local:5432 -t 60 &&
-        ./manage.py bg_worker -l debug -q dicom --autoreload
+        ./manage.py bg_worker -l info -q dicom --autoreload
       "
     deploy:
       <<: *deploy
@@ -88,11 +86,10 @@ services:
   mass_transfer_worker:
     <<: *default-app
     image: adit_staging-mass_transfer_worker:latest
-    # Same as dev - debug logging, autoreload
     command: >
       bash -c "
         wait-for-it -s postgres.local:5432 -t 60 &&
-        ./manage.py bg_worker -l debug -q mass_transfer --autoreload
+        ./manage.py bg_worker -l info -q mass_transfer --autoreload
       "
     deploy:
       <<: *deploy
