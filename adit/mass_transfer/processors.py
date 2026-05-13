@@ -118,6 +118,22 @@ def _parse_int(value: object, default: int | None = None) -> int | None:
         return default
 
 
+def _is_unretrievable_ai_series(
+    modality: str, series_number: int | None, description: str
+) -> bool:
+    """Workaround: skip Annalise-AI prediction result series that cannot be fetched from the PACS.
+
+    These OT series with SeriesNumber 10001 raise RetriableDicomError on fetch, which retries
+    the whole task and blocks subsequent pending volumes. Filtering them out of discovery means
+    they never become volumes and never trigger a retry.
+    """
+    return (
+        modality == "OT"
+        and series_number == 10001
+        and "annalise" in description.lower()
+    )
+
+
 def _study_datetime(study: ResultDataset) -> datetime:
     study_date = study.StudyDate
     study_time = study.StudyTime
@@ -845,6 +861,20 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
                             continue
 
                     if series_uid in found:
+                        continue
+
+                    series_description = series.get("SeriesDescription", "")
+                    if _is_unretrievable_ai_series(
+                        series.Modality, series_number, series_description
+                    ):
+                        logger.info(
+                            "Skipping unretrievable AI prediction series %s "
+                            "(modality=%s, number=%s, desc=%s)",
+                            series_uid,
+                            series.Modality,
+                            series_number,
+                            series_description,
+                        )
                         continue
 
                     study_dt = _study_datetime(study)
