@@ -129,6 +129,9 @@ node_modules/
 # The Orthanc storage folders
 OrthancStorage*
 
+# Application logs
+logs/
+
 # Redis DB dump
 dump.rdb
 
