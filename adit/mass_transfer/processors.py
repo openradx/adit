@@ -105,7 +105,7 @@ def _dicom_match(pattern: str, value: str | None) -> bool:
     if value is None:
         return False
     regex = convert_to_python_regex(pattern)
-    return bool(regex.search(str(value)))
+    return bool(regex.fullmatch(str(value)))
 
 
 def _short_error_reason(error: str) -> str:
