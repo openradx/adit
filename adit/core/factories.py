@@ -21,7 +21,10 @@ class AbstractDicomNodeFactory[T](BaseDjangoModelFactory[T]):
     class Meta:
         model: DicomNode
 
-    name = factory.Faker("domain_word")
+    # Sequence guarantees uniqueness on DicomNode.name across DicomServer and
+    # DicomFolder factories within a test session — Faker("domain_word") draws
+    # from a small pool and collides often enough to flake CI.
+    name = factory.Sequence(lambda n: f"dicom-node-{n}")
 
 
 def random_dicom_node_factory():
