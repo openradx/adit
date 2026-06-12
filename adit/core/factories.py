@@ -1,3 +1,5 @@
+import itertools
+
 import factory
 from adit_radis_shared.accounts.factories import UserFactory
 from adit_radis_shared.common.factories import BaseDjangoModelFactory
@@ -16,15 +18,17 @@ from .models import (
 
 fake = Faker()
 
+# Shared across all DicomNode subclass factories so DicomServer and DicomFolder
+# never collide on DicomNode.name. factory.Sequence has per-class counters
+# which is not enough here (subclasses would each restart at 0).
+_dicom_node_name_counter = itertools.count()
+
 
 class AbstractDicomNodeFactory[T](BaseDjangoModelFactory[T]):
     class Meta:
         model: DicomNode
 
-    # Sequence guarantees uniqueness on DicomNode.name across DicomServer and
-    # DicomFolder factories within a test session — Faker("domain_word") draws
-    # from a small pool and collides often enough to flake CI.
-    name = factory.Sequence(lambda n: f"dicom-node-{n}")
+    name = factory.LazyFunction(lambda: f"dicom-node-{next(_dicom_node_name_counter)}")
 
 
 def random_dicom_node_factory():
