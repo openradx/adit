@@ -100,11 +100,14 @@ class DiscoveredSeries:
 
 
 def _dicom_match(pattern: str, value: str | None) -> bool:
+    # Callers only pass non-PN fields (institution_name, study_description,
+    # series_description); those are compared case-sensitively. PN fields use
+    # the case-insensitive default of convert_to_python_regex directly.
     if not pattern:
         return True
     if value is None:
         return False
-    regex = convert_to_python_regex(pattern)
+    regex = convert_to_python_regex(pattern, case_sensitive=True)
     return bool(regex.fullmatch(str(value)))
 
 

@@ -205,7 +205,9 @@ class DicomOperator:
         for result in results:
             # Optionally filter by its study description, if the server doesn't support it
             if query.has("StudyDescription"):
-                study_description_pattern = convert_to_python_regex(query.StudyDescription)
+                study_description_pattern = convert_to_python_regex(
+                    query.StudyDescription, case_sensitive=True
+                )
                 if not study_description_pattern.fullmatch(result.StudyDescription):
                     continue
 
@@ -310,7 +312,9 @@ class DicomOperator:
 
             # Optionally filter by series description, if the server doesn't support it
             if query.has("SeriesDescription"):
-                series_description_pattern = convert_to_python_regex(query.SeriesDescription)
+                series_description_pattern = convert_to_python_regex(
+                    query.SeriesDescription, case_sensitive=True
+                )
                 if not series_description_pattern.fullmatch(result.SeriesDescription):
                     continue
 
