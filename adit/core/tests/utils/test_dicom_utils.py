@@ -58,7 +58,7 @@ def test_convert_to_python_regex_exact_match():
     # No wildcard = exact whole-value match (DICOM Single Value Matching)
     pattern = convert_to_python_regex("query")
     assert pattern.fullmatch("query") is not None
-    assert pattern.fullmatch("QUERY") is not None  # case-insensitive by default
+    assert pattern.fullmatch("QUERY") is None  # case-sensitive by default
     assert pattern.fullmatch("queryX") is None
     assert pattern.fullmatch("Xquery") is None
     assert pattern.fullmatch("XqueryX") is None
@@ -103,11 +103,18 @@ def test_convert_to_python_regex_single_char_wildcard():
     assert pattern.fullmatch("XqueryX") is None  # not anchored
 
 
-def test_convert_to_python_regex_case_sensitive():
-    pattern = convert_to_python_regex("query", case_sensitive=True)
+def test_convert_to_python_regex_case_sensitive_by_default():
+    pattern = convert_to_python_regex("query")
     assert pattern.fullmatch("query") is not None
     assert pattern.fullmatch("QUERY") is None
     assert pattern.fullmatch("Query") is None
+
+
+def test_convert_to_python_regex_case_insensitive():
+    pattern = convert_to_python_regex("query", case_insensitive=True)
+    assert pattern.fullmatch("query") is not None
+    assert pattern.fullmatch("QUERY") is not None
+    assert pattern.fullmatch("Query") is not None
 
 
 def test_convert_to_python_regex_escapes_regex_metacharacters():

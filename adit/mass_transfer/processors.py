@@ -106,7 +106,7 @@ def _dicom_match(pattern: str, value: str | None) -> bool:
         return True
     if value is None:
         return False
-    regex = convert_to_python_regex(pattern, case_sensitive=True)
+    regex = convert_to_python_regex(pattern)
     return bool(regex.fullmatch(str(value)))
 
 

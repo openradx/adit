@@ -141,7 +141,9 @@ class DicomOperator:
                     continue
 
             if query.has("PatientName"):
-                patient_name_pattern = convert_to_python_regex(query.PatientName)
+                patient_name_pattern = convert_to_python_regex(
+                    query.PatientName, case_insensitive=True
+                )
                 if not patient_name_pattern.fullmatch(result.PatientName):
                     continue
 
@@ -205,9 +207,7 @@ class DicomOperator:
         for result in results:
             # Optionally filter by its study description, if the server doesn't support it
             if query.has("StudyDescription"):
-                study_description_pattern = convert_to_python_regex(
-                    query.StudyDescription, case_sensitive=True
-                )
+                study_description_pattern = convert_to_python_regex(query.StudyDescription)
                 if not study_description_pattern.fullmatch(result.StudyDescription):
                     continue
 
@@ -312,9 +312,7 @@ class DicomOperator:
 
             # Optionally filter by series description, if the server doesn't support it
             if query.has("SeriesDescription"):
-                series_description_pattern = convert_to_python_regex(
-                    query.SeriesDescription, case_sensitive=True
-                )
+                series_description_pattern = convert_to_python_regex(query.SeriesDescription)
                 if not series_description_pattern.fullmatch(result.SeriesDescription):
                     continue
 
