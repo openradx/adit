@@ -141,8 +141,10 @@ class DicomOperator:
                     continue
 
             if query.has("PatientName"):
-                patient_name_pattern = convert_to_python_regex(query.PatientName)
-                if not patient_name_pattern.search(result.PatientName):
+                patient_name_pattern = convert_to_python_regex(
+                    query.PatientName, case_insensitive=True
+                )
+                if not patient_name_pattern.fullmatch(result.PatientName):
                     continue
 
             if query.has("PatientSex"):
@@ -206,7 +208,7 @@ class DicomOperator:
             # Optionally filter by its study description, if the server doesn't support it
             if query.has("StudyDescription"):
                 study_description_pattern = convert_to_python_regex(query.StudyDescription)
-                if not study_description_pattern.search(result.StudyDescription):
+                if not study_description_pattern.fullmatch(result.StudyDescription):
                     continue
 
             # TODO: I guess this won't work as we are in the middle of a C-FIND request (we
@@ -311,7 +313,7 @@ class DicomOperator:
             # Optionally filter by series description, if the server doesn't support it
             if query.has("SeriesDescription"):
                 series_description_pattern = convert_to_python_regex(query.SeriesDescription)
-                if not series_description_pattern.search(result.SeriesDescription):
+                if not series_description_pattern.fullmatch(result.SeriesDescription):
                     continue
 
             yield result

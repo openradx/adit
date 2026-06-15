@@ -100,12 +100,14 @@ class DiscoveredSeries:
 
 
 def _dicom_match(pattern: str, value: str | None) -> bool:
+    # Callers only pass non-PN fields (institution_name, study_description,
+    # series_description); those are compared case-sensitively.
     if not pattern:
         return True
     if value is None:
         return False
     regex = convert_to_python_regex(pattern)
-    return bool(regex.search(str(value)))
+    return bool(regex.fullmatch(str(value)))
 
 
 def _short_error_reason(error: str) -> str:
@@ -256,13 +258,9 @@ def _series_matches_filter(
     if check_institution and mf.institution_name:
         if not _dicom_match(mf.institution_name, series.institution_name):
             return False
-    if mf.study_description and not _dicom_match(
-        mf.study_description, series.study_description
-    ):
+    if mf.study_description and not _dicom_match(mf.study_description, series.study_description):
         return False
-    if mf.series_description and not _dicom_match(
-        mf.series_description, series.series_description
-    ):
+    if mf.series_description and not _dicom_match(mf.series_description, series.series_description):
         return False
     if mf.series_number is not None:
         if series.series_number is None or mf.series_number != series.series_number:

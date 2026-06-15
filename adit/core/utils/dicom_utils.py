@@ -45,8 +45,11 @@ def has_wildcards(value: str) -> bool:
     return False
 
 
-def convert_to_python_regex(value: str, case_sensitive=False) -> re.Pattern[str]:
+def convert_to_python_regex(value: str, case_insensitive=False) -> re.Pattern[str]:
     """Convert a DICOM wildcard string to a Python regex pattern.
+
+    DICOM Wild Card Matching is whole-value, so callers must use
+    ``.fullmatch()`` (not ``.search()``) on the returned pattern.
 
     https://dicom.nema.org/medical/dicom/current/output/chtml/part04/sect_c.2.2.2.4.html
     """
@@ -55,7 +58,7 @@ def convert_to_python_regex(value: str, case_sensitive=False) -> re.Pattern[str]
     value = value.replace("\\?", ".")
 
     flags = re.NOFLAG
-    if not case_sensitive:
+    if case_insensitive:
         flags |= re.IGNORECASE
 
     return re.compile(value, flags)
