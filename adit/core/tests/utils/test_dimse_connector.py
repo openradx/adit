@@ -130,6 +130,7 @@ class TestDimseConnectorRetry:
         assert connector.assoc is None
         assert association_mock.release.called
 
+
 @pytest.mark.django_db
 class TestDimseConnectorConnectionLifecycle:
     """Test connection lifecycle management."""

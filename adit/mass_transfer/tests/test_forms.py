@@ -283,9 +283,7 @@ def test_clean_filters_json_inverted_age_range(form_env):
 
 @pytest.mark.django_db
 def test_clean_filters_json_extra_fields(form_env):
-    form = _make_form(
-        form_env, filters_json=json.dumps([{"modality": "CT", "unknown_field": "x"}])
-    )
+    form = _make_form(form_env, filters_json=json.dumps([{"modality": "CT", "unknown_field": "x"}]))
     assert not form.is_valid()
     assert "filters_json" in form.errors
 

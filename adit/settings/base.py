@@ -350,9 +350,7 @@ STORAGES = {
     },
     "dbbackup": {
         "BACKEND": "django.core.files.storage.FileSystemStorage",
-        "OPTIONS": {
-            "location": env.str("DBBACKUP_STORAGE_LOCATION", default="/tmp/backups-adit")
-        },
+        "OPTIONS": {"location": env.str("DBBACKUP_STORAGE_LOCATION", default="/tmp/backups-adit")},
     },
 }
 DBBACKUP_CLEANUP_KEEP = 30

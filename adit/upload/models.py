@@ -8,5 +8,3 @@ class UploadSettings(DicomAppSettings):
         permissions = [
             ("can_upload_data", "Can upload data"),
         ]
-
-

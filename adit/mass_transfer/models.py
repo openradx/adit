@@ -190,5 +190,3 @@ class MassTransferVolume(models.Model):
         if self.log:
             self.log += "\n"
         self.log += msg
-
-

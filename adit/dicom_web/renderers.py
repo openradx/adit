@@ -117,9 +117,9 @@ class WadoMultipartApplicationNiftiRenderer(DicomWebWadoRenderer):
                         yield f"\r\n--{self.boundary}\r\n".encode()
 
                     yield "Content-Type: application/octet-stream\r\n".encode()
-                    safe_filename = "".join(
-                        c for c in filename if c.isprintable() and c != '"'
-                    )[:255]
+                    safe_filename = "".join(c for c in filename if c.isprintable() and c != '"')[
+                        :255
+                    ]
                     disposition = f'Content-Disposition: attachment; filename="{safe_filename}"'
                     yield f"{disposition}\r\n\r\n".encode()
 

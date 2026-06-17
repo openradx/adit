@@ -58,9 +58,7 @@ class DicomNodeManager(models.Manager[TModel]):
         # Separate .filter() calls would create independent JOINs, allowing
         # permissions from one group to leak to another group's users.
         if all_groups:
-            accessible_nodes = self.filter(
-                accesses__group__in=user.groups.all(), **access_filter
-            )
+            accessible_nodes = self.filter(accesses__group__in=user.groups.all(), **access_filter)
         else:
             accessible_nodes = self.filter(accesses__group=user.active_group, **access_filter)
 
@@ -156,9 +154,7 @@ class DicomServer(DicomNode):
     dicomweb_authorization_header = models.CharField(blank=True, max_length=2000)
 
     # C-FIND result limit before recursive time-window splitting
-    max_search_results = models.PositiveIntegerField(
-        default=200, validators=[MinValueValidator(1)]
-    )
+    max_search_results = models.PositiveIntegerField(default=200, validators=[MinValueValidator(1)])
 
     objects: DicomNodeManager["DicomServer"] = DicomNodeManager["DicomServer"]()
 
@@ -421,7 +417,6 @@ class DicomTask(models.Model):
         return f"{self.__class__.__name__} [{self.pk}]"
 
     def get_absolute_url(self) -> str: ...
-
 
     def queue_pending_task(self) -> None:
         """Queues a dicom task."""

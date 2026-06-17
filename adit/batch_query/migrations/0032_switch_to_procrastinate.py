@@ -14,7 +14,7 @@ def increase_attempt(apps: AppConfig, schema_editor):
 def decrease_attempt(apps: AppConfig, schema_editor):
     BatchQueryTask = apps.get_model("batch_query.BatchQueryTask")
     BatchQueryTask.objects.update(attempts=models.F("attempts") - 1)
-    
+
 
 class Migration(migrations.Migration):
 
