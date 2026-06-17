@@ -1,6 +1,6 @@
 import json
+from collections.abc import AsyncIterator
 from io import BytesIO
-from typing import AsyncIterator
 
 from pydicom import Dataset
 from rest_framework.renderers import BaseRenderer
@@ -75,7 +75,7 @@ class WadoMultipartApplicationDicomRenderer(DicomWebWadoRenderer):
         stream.write(b"\r\n")
         stream.write(b"\r\n")
         # message
-        stream.write(f"Error: Failed to fetch DICOM data: {err}\r\n".encode("utf-8"))
+        stream.write(f"Error: Failed to fetch DICOM data: {err}\r\n".encode())
         stream.write(b"\r\n")
         return stream.getvalue()
 
@@ -116,7 +116,7 @@ class WadoMultipartApplicationNiftiRenderer(DicomWebWadoRenderer):
                     else:
                         yield f"\r\n--{self.boundary}\r\n".encode()
 
-                    yield "Content-Type: application/octet-stream\r\n".encode()
+                    yield b"Content-Type: application/octet-stream\r\n"
                     safe_filename = "".join(c for c in filename if c.isprintable() and c != '"')[
                         :255
                     ]

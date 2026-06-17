@@ -1,8 +1,9 @@
 import json
 import logging
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from io import BytesIO
-from typing import AsyncIterator, Literal, Union, cast
+from typing import Literal, cast
 
 from adit_radis_shared.common.types import AuthenticatedApiRequest, User
 from adrf.views import APIView as AsyncApiView
@@ -99,7 +100,7 @@ class QueryAPIView(WebDicomAPIView):
         request: AuthenticatedApiRequest,
         study_uid: str | None = None,
         series_uid: str | None = None,
-    ) -> tuple[QueryDataset, Union[int, None]]:
+    ) -> tuple[QueryDataset, int | None]:
         """
         Filters a valid DICOMweb requests GET parameters and returns a QueryDataset and a
         limit value to match ADIT implementation

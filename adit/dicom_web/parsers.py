@@ -1,6 +1,6 @@
 import io
 import logging
-from typing import AsyncIterator
+from collections.abc import AsyncIterator
 
 from django.http import HttpRequest
 from pydicom import Dataset
@@ -22,7 +22,7 @@ async def parse_request_in_chunks(
     except (IndexError, AssertionError):
         raise NotAcceptable("Invalid multipart request with no boundary")
 
-    part: bytes = bytes()
+    part: bytes = b""
     while True:
         chunk: bytes = request.read(chunk_size)
 
@@ -42,7 +42,7 @@ async def parse_request_in_chunks(
                 if ds is not None:
                     yield ds
 
-            part = bytes()
+            part = b""
             part += chunk[idx + len(boundary) :]
 
         else:

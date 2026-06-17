@@ -3,7 +3,7 @@ import logging
 import re
 from os import PathLike
 from pathlib import Path
-from typing import Any, BinaryIO, Optional
+from typing import Any, BinaryIO
 
 from django.conf import settings
 from pydicom import Dataset, dcmread, dcmwrite, valuerep
@@ -158,7 +158,7 @@ def construct_download_file_path(
     study_date: datetime.date,
     study_time: datetime.time,
     study_modalities: list[str],
-    pseudonym: Optional[str] = None,
+    pseudonym: str | None = None,
 ) -> Path:
     """Constructs the file path for a DICOM instance when transferring/downloading"""
 

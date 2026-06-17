@@ -81,7 +81,7 @@ async def dicom_explorer_resources_view(
         timeout = settings.DICOM_EXPLORER_RESPONSE_TIMEOUT
         response = await asyncio.wait_for(future, timeout=timeout)
         return response
-    except asyncio.TimeoutError:
+    except TimeoutError:
         return render_error(request, "Connection to server timed out. Please try again later.")
 
 

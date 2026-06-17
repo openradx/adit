@@ -1,4 +1,5 @@
-from typing import Callable, Literal, TypeVar
+from collections.abc import Callable
+from typing import Literal, TypeVar
 
 from adit_radis_shared.accounts.models import User
 from adit_radis_shared.common.models import AppSettings

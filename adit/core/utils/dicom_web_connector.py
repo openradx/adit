@@ -1,10 +1,11 @@
 import inspect
 import logging
+from collections.abc import Callable, Iterator
 from functools import wraps
 from http import HTTPStatus
 from os import PathLike
 from pathlib import Path
-from typing import Callable, Iterator, NoReturn
+from typing import NoReturn
 
 from dicomweb_client import DICOMwebClient
 from pydicom import Dataset

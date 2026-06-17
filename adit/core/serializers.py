@@ -1,5 +1,3 @@
-from typing import Type
-
 from django.utils import formats
 from rest_framework import serializers
 
@@ -18,7 +16,7 @@ class BatchTaskListSerializer(serializers.ListSerializer):
 
 class BatchTaskSerializer(serializers.ModelSerializer):
     class Meta:
-        model: Type[DicomTask]
+        model: type[DicomTask]
         fields: list[str]
         list_serializer_class = BatchTaskListSerializer
 

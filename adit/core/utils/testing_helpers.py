@@ -1,7 +1,8 @@
 import functools
 import io
 import os
-from typing import Any, Iterable
+from collections.abc import Iterable
+from typing import Any
 from unittest.mock import MagicMock, create_autospec
 
 import pandas as pd
@@ -192,7 +193,7 @@ def load_sample_dicoms(patient_id: str | None = None) -> Iterable[Dataset]:
             yield ds
 
 
-@functools.lru_cache(maxsize=None)
+@functools.cache
 def load_sample_dicoms_metadata(patient_id: str | None = None) -> pd.DataFrame:
     metadata = []
     for ds in load_sample_dicoms(patient_id):

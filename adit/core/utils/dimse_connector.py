@@ -1,9 +1,10 @@
 import inspect
 import logging
+from collections.abc import Callable, Iterator
 from functools import wraps
 from os import PathLike
 from pathlib import Path
-from typing import Callable, Iterator, Literal
+from typing import Literal
 
 from django.conf import settings
 from pydicom import Dataset

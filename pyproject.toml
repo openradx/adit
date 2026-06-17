@@ -141,7 +141,7 @@ show_missing = true
 target-version = "py312"
 exclude = ["migrations", "notebooks"]
 line-length = 100
-lint.select = ["E", "F", "I", "DJ"]
+lint.select = ["E", "F", "I", "DJ", "UP"]
 
 [tool.djlint]
 profile = "django"
