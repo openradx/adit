@@ -56,3 +56,9 @@ repos:
         language: system
         files: ^(pyproject\.toml|uv\.lock)$
         pass_filenames: false
+      - id: uv-lock-adit-client
+        name: uv lock check (adit-client)
+        entry: uv lock --check --project adit-client
+        language: system
+        files: ^adit-client/(pyproject\.toml|uv\.lock)$
+        pass_filenames: false
