@@ -19,4 +19,3 @@ class DicomNodeSelect(Select):
                 option["attrs"]["data-node_id"] = dicom_node.id
 
         return option
-

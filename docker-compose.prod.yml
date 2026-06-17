@@ -26,7 +26,7 @@ services:
     hostname: init.local
     command: >
       bash -c "
-        wait-for-it -s postgres.local:5432 -t 60 && 
+        wait-for-it -s postgres.local:5432 -t 60 &&
         ./manage.py migrate &&
         ./manage.py collectstatic --no-input &&
         ./manage.py create_superuser &&
@@ -45,7 +45,7 @@ services:
       - ${WEB_HTTPS_PORT:-443}:443
     command: >
       bash -c "
-        wait-for-it -s init.local:8000 -t 300 && 
+        wait-for-it -s init.local:8000 -t 300 &&
         echo 'Starting web server ...' &&
         daphne -b 0.0.0.0 -p 80 \\
           -e ssl:443:privateKey=/etc/web/ssl/key.pem:certKey=/etc/web/ssl/cert.pem \\

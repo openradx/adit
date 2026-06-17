@@ -131,9 +131,7 @@ def test_pseudonymized_mass_transfer_to_server(
 @pytest.mark.order("last")
 @pytest.mark.django_db(transaction=True)
 @pytest.mark.parametrize("transfer_protocol", ["c-move", "c-get", "dicomweb"])
-def test_mass_transfer_to_folder(
-    page: Page, live_server: LiveServer, transfer_protocol: str
-):
+def test_mass_transfer_to_folder(page: Page, live_server: LiveServer, transfer_protocol: str):
     user = create_and_login_example_user(page, live_server.url)
     group = create_mass_transfer_group()
     add_user_to_group(user, group)

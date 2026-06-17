@@ -230,7 +230,8 @@ class DimseConnector:
             if rejected:
                 logger.warning(
                     "C-GET: %d presentation contexts rejected by SCP: %s",
-                    len(rejected), rejected,
+                    len(rejected),
+                    rejected,
                 )
             accepted = [cx.abstract_syntax for cx in self.assoc.accepted_contexts]
             logger.debug("C-GET: %d presentation contexts accepted", len(accepted))
@@ -249,7 +250,7 @@ class DimseConnector:
             self.assoc.abort()
             self.assoc = None
             self._current_service = None
-    
+
     @retry_dimse_find
     @connect_to_server("C-FIND")
     def send_c_find(
@@ -508,8 +509,7 @@ class DimseConnector:
                         and not warning_suboperations
                     ):
                         logger.warning(
-                            "%s returned success with 0 sub-operations — "
-                            "PACS may be busy.",
+                            "%s returned success with 0 sub-operations — PACS may be busy.",
                             op,
                         )
 

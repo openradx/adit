@@ -123,11 +123,7 @@ def main(argv: list[str] | None = None) -> None:
         raise SystemExit("Error: --min-age must be non-negative")
     if args.max_age is not None and args.max_age < 0:
         raise SystemExit("Error: --max-age must be non-negative")
-    if (
-        args.min_age is not None
-        and args.max_age is not None
-        and args.min_age > args.max_age
-    ):
+    if args.min_age is not None and args.max_age is not None and args.min_age > args.max_age:
         raise SystemExit(
             f"Error: --min-age ({args.min_age}) cannot exceed --max-age ({args.max_age})"
         )

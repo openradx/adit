@@ -1,0 +1,64 @@
+# Vendored/generated third-party assets must not be reformatted.
+exclude: '^(adit/upload/static/vendor/|adit/mass_transfer/static/mass_transfer/vendor/)'
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: check-case-conflict
+      - id: check-json
+        exclude: ^(\.vscode/|orthanc/)  # .vscode and Orthanc configs are JSONC (allow comments)
+      - id: check-toml
+      - id: check-yaml
+        exclude: ^mkdocs\.yml$  # uses !!python/name: custom tags the safe loader rejects
+      - id: check-merge-conflict
+      - id: check-added-large-files
+      - id: check-ast
+      - id: debug-statements
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+      - id: mixed-line-ending
+
+  # Local `uv run` hooks so tool versions come from pyproject.toml/uv.lock (single source of truth).
+  - repo: local
+    hooks:
+      # --force-exclude so ruff honors `exclude` (e.g. migrations); pre-commit passes
+      # explicit filenames, which otherwise bypass it. The upstream ruff hook adds this too.
+      - id: ruff
+        name: ruff check
+        entry: uv run ruff check --force-exclude --fix --show-fixes
+        language: system
+        types: [python]
+      - id: ruff-format
+        name: ruff format
+        entry: uv run ruff format --force-exclude
+        language: system
+        types: [python]
+      - id: djlint-format
+        name: djlint format
+        entry: uv run djlint --reformat
+        language: system
+        types_or: [html, jinja]
+      - id: djlint-lint
+        name: djlint lint
+        entry: uv run djlint --lint
+        language: system
+        types_or: [html, jinja]
+      - id: pyright
+        name: pyright
+        entry: uv run pyright
+        language: system
+        types: [python]
+        pass_filenames: false
+      - id: uv-lock
+        name: uv lock check
+        entry: uv lock --check
+        language: system
+        files: ^(pyproject\.toml|uv\.lock)$
+        pass_filenames: false
+      - id: uv-lock-adit-client
+        name: uv lock check (adit-client)
+        entry: uv lock --check --project adit-client
+        language: system
+        files: ^adit-client/(pyproject\.toml|uv\.lock)$
+        pass_filenames: false

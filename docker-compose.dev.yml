@@ -34,7 +34,7 @@ services:
       - ${REMOTE_DEBUGGING_PORT:-5678}:5678
     command: >
       bash -c "
-        wait-for-it -s postgres.local:5432 -t 60 && 
+        wait-for-it -s postgres.local:5432 -t 60 &&
         ./manage.py migrate &&
         ./manage.py create_superuser &&
         ./manage.py create_example_users &&

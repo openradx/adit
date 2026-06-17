@@ -9,7 +9,7 @@ import django.db.models.deletion
 # core/migrations/0012_remove_dicomnode_institutes_dicomnode_groups_and_more.py
 # This dependency was deleted to make account independent of the main project.
 # This squash here is to get rid of institutes from the main project as
-# otherwise a failure will arise during migration as Institute will be deleted 
+# otherwise a failure will arise during migration as Institute will be deleted
 # too early.
 
 class Migration(migrations.Migration):

@@ -543,7 +543,9 @@ class DicomOperator:
             except Exception as err:
                 logger.error(
                     "Store handler failed for SOP %s: %s",
-                    ds.SOPInstanceUID, err, exc_info=True,
+                    ds.SOPInstanceUID,
+                    err,
+                    exc_info=True,
                 )
                 store_errors.append(err)
 
