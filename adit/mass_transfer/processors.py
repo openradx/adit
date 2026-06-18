@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import json
 import logging
 import secrets
@@ -54,7 +52,7 @@ class FilterSpec:
     min_number_of_series_related_instances: int | None = None
 
     @classmethod
-    def from_dict(cls, d: dict) -> FilterSpec:
+    def from_dict(cls, d: dict) -> "FilterSpec":
         mode = d.get("mode", "include")
         if mode not in ("include", "exclude"):
             raise DicomError(f"Invalid filter mode: {mode!r}")
