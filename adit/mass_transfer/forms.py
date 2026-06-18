@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import json
 import secrets
 from typing import Annotated, Literal, cast

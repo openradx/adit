@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import json
 import secrets
 from typing import TYPE_CHECKING
@@ -61,14 +59,14 @@ class MassTransferJob(TransferJob):
             return json.dumps(self.filters_json, indent=2)
         return ""
 
-    def get_filters(self) -> list[FilterSpec]:
+    def get_filters(self) -> list["FilterSpec"]:
         from .processors import FilterSpec
 
         if not self.filters_json:
             return []
         return [FilterSpec.from_dict(d) for d in self.filters_json]
 
-    tasks: models.QuerySet[MassTransferTask]
+    tasks: models.QuerySet["MassTransferTask"]
 
     def get_absolute_url(self):
         return reverse("mass_transfer_job_detail", args=[self.pk])
@@ -100,7 +98,7 @@ class MassTransferTask(TransferTask):
     partition_end = models.DateTimeField()
     partition_key = models.CharField(max_length=64)
 
-    volumes: models.QuerySet[MassTransferVolume]
+    volumes: models.QuerySet["MassTransferVolume"]
 
     class Meta:
         constraints = [
