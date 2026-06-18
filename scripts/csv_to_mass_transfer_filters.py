@@ -14,8 +14,6 @@ Usage examples:
     python scripts/csv_to_mass_transfer_filters.py filters.csv -o output.json
 """
 
-from __future__ import annotations
-
 import argparse
 import csv
 import json
