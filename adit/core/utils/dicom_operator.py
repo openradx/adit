@@ -14,9 +14,9 @@ import errno
 import logging
 import threading
 import time
+from collections.abc import Callable, Iterable, Iterator
 from concurrent.futures import ThreadPoolExecutor
 from os import PathLike
-from typing import Callable, Iterable, Iterator
 
 from aiofiles import os as async_os
 from django.conf import settings

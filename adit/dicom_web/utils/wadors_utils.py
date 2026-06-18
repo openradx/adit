@@ -1,10 +1,10 @@
 import asyncio
 import logging
 import os
-from collections.abc import Callable
+from collections.abc import AsyncIterator, Callable
 from io import BytesIO
 from pathlib import Path
-from typing import AsyncIterator, Literal
+from typing import Literal
 
 import aiofiles
 import aiofiles.os

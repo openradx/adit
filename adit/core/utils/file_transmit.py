@@ -2,8 +2,8 @@ import asyncio
 import json
 import logging
 import struct
+from collections.abc import Awaitable, Callable
 from os import PathLike
-from typing import Awaitable, Callable
 
 import aiofiles
 from aiofiles import os, tempfile

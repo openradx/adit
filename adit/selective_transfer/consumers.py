@@ -2,9 +2,10 @@ import asyncio
 import contextlib
 import logging
 import threading
+from collections.abc import Iterator
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
-from typing import Any, Iterator, Literal, cast
+from typing import Any, Literal, cast
 from urllib.parse import urlencode
 
 from adit_radis_shared.accounts.models import User
@@ -285,8 +286,7 @@ class SelectiveTransferConsumer(AsyncJsonWebsocketConsumer):
             limit_results=limit_results,
         )
 
-        for study in studies:
-            yield study
+        yield from studies
 
     @debounce()
     def send_query_response(

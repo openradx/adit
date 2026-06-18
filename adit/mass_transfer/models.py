@@ -68,7 +68,7 @@ class MassTransferJob(TransferJob):
             return []
         return [FilterSpec.from_dict(d) for d in self.filters_json]
 
-    tasks: models.QuerySet["MassTransferTask"]
+    tasks: models.QuerySet[MassTransferTask]
 
     def get_absolute_url(self):
         return reverse("mass_transfer_job_detail", args=[self.pk])
@@ -100,7 +100,7 @@ class MassTransferTask(TransferTask):
     partition_end = models.DateTimeField()
     partition_key = models.CharField(max_length=64)
 
-    volumes: models.QuerySet["MassTransferVolume"]
+    volumes: models.QuerySet[MassTransferVolume]
 
     class Meta:
         constraints = [

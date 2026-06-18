@@ -1,7 +1,7 @@
 import importlib.metadata
 import os
+from collections.abc import Iterator
 from io import BytesIO
-from typing import Iterator
 
 from dicomweb_client import DICOMwebClient, session_utils
 from pydicom import Dataset
@@ -89,8 +89,7 @@ class AditClient:
         self, ae_title: str, study_uid: str, pseudonym: str | None = None
     ) -> Iterator[Dataset]:
         """Iterate over all instances of a study."""
-        for image in self._create_dicom_web_client(ae_title).iter_study(study_uid):
-            yield image
+        yield from self._create_dicom_web_client(ae_title).iter_study(study_uid)
 
     def retrieve_series(
         self,
@@ -140,10 +139,9 @@ class AditClient:
         pseudonym: str | None = None,
     ) -> Iterator[Dataset]:
         """Iterate over all instances of a series."""
-        for image in self._create_dicom_web_client(ae_title).iter_series(
+        yield from self._create_dicom_web_client(ae_title).iter_series(
             study_uid, series_instance_uid=series_uid
-        ):
-            yield image
+        )
 
     def retrieve_image(
         self,
