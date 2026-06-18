@@ -198,5 +198,5 @@ def test_mass_transfer_to_folder_with_nifti_conversion(
         assert len(nifti_files) > 0, "No NIfTI files were generated."
 
         for nifti_file in nifti_files:
-            img = nib.load(nifti_file)  # type: ignore
+            img = nib.load(nifti_file)
             assert img is not None, f"Invalid NIfTI file: {nifti_file}"

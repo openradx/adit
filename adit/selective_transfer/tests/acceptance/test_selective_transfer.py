@@ -146,7 +146,7 @@ def test_unpseudonymized_urgent_selective_transfer_and_convert_to_nifti(
         # Validate NIfTI file content
         for nifti_file in nifti_files:
             try:
-                img = nib.load(nifti_file)  # type: ignore # Load the NIfTI file using nibabel
+                img = nib.load(nifti_file)  # Load the NIfTI file using nibabel
                 assert img is not None, f"Invalid NIfTI file: {nifti_file}"
             except Exception as e:
                 raise AssertionError(f"Failed to validate NIfTI file {nifti_file}: {e}")

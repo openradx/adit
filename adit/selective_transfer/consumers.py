@@ -200,7 +200,7 @@ class SelectiveTransferConsumer(AsyncJsonWebsocketConsumer):
                 self.pool, self._generate_and_send_query_response, form, message_id
             )
         except HTTPError as e:
-            status_code = e.response.status_code
+            status_code = e.response.status_code if e.response is not None else None
             additional_error_text = ""
             if status_code == 400:  # Bad request
                 additional_error_text = "The source did not understand the ADIT request."

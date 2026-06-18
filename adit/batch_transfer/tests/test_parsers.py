@@ -15,7 +15,7 @@ def data():
             ["222", "1.2.4", "1.2.4.1", "pseudo2"],
             ["222", "1.2.4", "1.2.4.2", "pseudo2"],
         ],
-        columns=["PatientID", "StudyInstanceUID", "SeriesInstanceUID", "Pseudonym"],  # type: ignore
+        columns=["PatientID", "StudyInstanceUID", "SeriesInstanceUID", "Pseudonym"],
     )
 
 
@@ -23,7 +23,7 @@ def data():
 def create_batch_file():
     def _create_batch_file(df: pd.DataFrame):
         batch_file = BytesIO()
-        df.to_excel(batch_file, index=False, engine="openpyxl")  # type: ignore
+        df.to_excel(batch_file, index=False, engine="openpyxl")
         return batch_file
 
     return _create_batch_file

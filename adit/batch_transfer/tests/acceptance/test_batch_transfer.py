@@ -36,7 +36,7 @@ def test_unpseudonymized_urgent_batch_transfer(
     # Arrange
     df = pd.DataFrame(
         [["1005", "1.2.840.113845.11.1000000001951524609.20200705173311.2689472"]],
-        columns=["PatientID", "StudyInstanceUID"],  # type: ignore
+        columns=["PatientID", "StudyInstanceUID"],
     )
     batch_file = create_excel_file(df, "batch_file.xlsx")
 
@@ -86,7 +86,7 @@ def test_unpseudonymized_urgent_batch_transfer_and_convert_to_nifti(
     test_patient_id = "1005"
     df = pd.DataFrame(
         [[test_patient_id, study_uid]],
-        columns=["PatientID", "StudyInstanceUID"],  # type: ignore
+        columns=["PatientID", "StudyInstanceUID"],
     )
     batch_file = create_excel_file(df, "batch_file.xlsx")
 
@@ -158,7 +158,7 @@ def test_unpseudonymized_urgent_batch_transfer_and_convert_to_nifti(
         # Validate NIfTI file content
         for nifti_file in nifti_files:
             try:
-                img = nib.load(nifti_file)  # type: ignore # Load the NIfTI file using nibabel
+                img = nib.load(nifti_file)  # Load the NIfTI file using nibabel
                 assert img is not None, f"Invalid NIfTI file: {nifti_file}"
             except Exception as e:
                 raise AssertionError(f"Failed to validate NIfTI file {nifti_file}: {e}")

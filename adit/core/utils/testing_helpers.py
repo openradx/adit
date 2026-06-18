@@ -152,7 +152,7 @@ def setup_dicomweb_orthancs() -> tuple[DicomServer, DicomServer]:
 
 def create_excel_file(df: pd.DataFrame, filename: str) -> FilePayload:
     output = io.BytesIO()
-    df.to_excel(output, index=False, engine="openpyxl")  # type: ignore
+    df.to_excel(output, index=False, engine="openpyxl")
 
     return {
         "name": filename,
