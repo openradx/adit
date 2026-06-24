@@ -58,6 +58,15 @@ def render_error_message(message) -> str:
 
 
 class SelectiveTransferConsumer(AsyncJsonWebsocketConsumer):
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        # Initialize attributes that disconnect() relies on here so that a
+        # disconnect after a rejected connect() (which returns before accepting)
+        # does not raise AttributeError.
+        self.query_operators: list[DicomOperator] = []
+        self.current_message_id: int = 0
+        self.pool = ThreadPoolExecutor()
+
     async def connect(self):
         logger.debug("Connected to WebSocket client.")
 
@@ -69,9 +78,6 @@ class SelectiveTransferConsumer(AsyncJsonWebsocketConsumer):
         assert isinstance(scope_user, User)
         self.user: User = scope_user
         self.user_language = self._activate_user_language()
-        self.query_operators: list[DicomOperator] = []
-        self.current_message_id: int = 0
-        self.pool = ThreadPoolExecutor()
 
         await self.accept()
 
