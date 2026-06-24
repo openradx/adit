@@ -58,7 +58,7 @@ class BatchTransferTaskSerializer(BatchTaskSerializer):
         kwargs["child"] = cls(*args, **kwargs)
         del kwargs["can_transfer_unpseudonymized"]
         kwargs["model"] = cls.Meta.model
-        return BatchTaskListSerializer(*args, **kwargs)
+        return cls.Meta.list_serializer_class(*args, **kwargs)
 
     def __init__(self, instance=None, data=None, **kwargs):
         self.can_transfer_unpseudonymized = kwargs.pop("can_transfer_unpseudonymized")

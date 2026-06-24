@@ -4,7 +4,11 @@ import pandas as pd
 import pytest
 
 from adit.batch_transfer.parsers import BatchTransferFileParser
-from adit.core.errors import BatchFileContentError
+from adit.core.errors import (
+    BatchFileContentError,
+    BatchFileFormatError,
+    BatchFileSizeError,
+)
 
 
 @pytest.fixture
@@ -67,10 +71,65 @@ def test_can_not_transfer_unpseudonymized_without_permission(create_batch_file, 
         parser.parse(file, 100)
 
 
-# TODO: test with invalid file
+def test_consistent_rows_pass(create_batch_file, data):
+    # The default fixture data is internally consistent (the repeated study/
+    # patient rows agree on patient_id and pseudonym), so it must validate.
+    file = create_batch_file(data)
 
-# TODO: test same patient_id only has one pseudonym
+    parser = BatchTransferFileParser(can_transfer_unpseudonymized=True)
+    tasks = parser.parse(file, 100)
 
-# TODO: same study_uid belongt to only one patient_id
+    assert len(tasks) == 2
 
-# TODO: test max batch size
+
+def test_same_study_uid_with_different_patient_id_raises(create_batch_file):
+    # Two rows share StudyInstanceUID 1.2.3 but map it to different PatientIDs.
+    df = pd.DataFrame(
+        [
+            ["111", "1.2.3", "1.2.3.1", "pseudo1"],
+            ["222", "1.2.3", "1.2.3.2", "pseudo1"],
+        ],
+        columns=["PatientID", "StudyInstanceUID", "SeriesInstanceUID", "Pseudonym"],  # type: ignore
+    )
+    file = create_batch_file(df)
+
+    parser = BatchTransferFileParser(can_transfer_unpseudonymized=True)
+    with pytest.raises(BatchFileContentError) as exc_info:
+        parser.parse(file, 100)
+
+    assert "can't belong to different Patient IDs" in str(exc_info.value)
+
+
+def test_same_patient_id_with_different_pseudonym_raises(create_batch_file):
+    # Two rows share PatientID 111 but assign it conflicting pseudonyms.
+    df = pd.DataFrame(
+        [
+            ["111", "1.2.3", "1.2.3.1", "pseudo1"],
+            ["111", "1.2.4", "1.2.4.1", "pseudo2"],
+        ],
+        columns=["PatientID", "StudyInstanceUID", "SeriesInstanceUID", "Pseudonym"],  # type: ignore
+    )
+    file = create_batch_file(df)
+
+    parser = BatchTransferFileParser(can_transfer_unpseudonymized=True)
+    with pytest.raises(BatchFileContentError) as exc_info:
+        parser.parse(file, 100)
+
+    assert "can't have different pseudonyms" in str(exc_info.value)
+
+
+def test_invalid_file_raises_format_error():
+    parser = BatchTransferFileParser(can_transfer_unpseudonymized=True)
+    not_a_spreadsheet = BytesIO(b"definitely not an xlsx file")
+
+    with pytest.raises(BatchFileFormatError):
+        parser.parse(not_a_spreadsheet, 100)
+
+
+def test_exceeding_max_batch_size_raises(create_batch_file, data):
+    # The fixture has three rows; capping the batch below that must raise.
+    file = create_batch_file(data)
+
+    parser = BatchTransferFileParser(can_transfer_unpseudonymized=True)
+    with pytest.raises(BatchFileSizeError):
+        parser.parse(file, 2)
