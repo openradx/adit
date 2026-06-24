@@ -242,14 +242,11 @@ def test_form_view_accession_number_redirects_with_query_params(client):
 
 @pytest.mark.asyncio
 @pytest.mark.django_db(transaction=True)
-async def test_resources_view_invalid_patient_id_does_not_short_circuit(mocker: MockerFixture):
-    """BUG: dicom_explorer_resources_view computes a render_error() for an invalid
-    Patient ID (views.py:63-64) but discards it (no ``return``), so the invalid-id
-    guard is ineffective: the view proceeds to query the PACS with the bad id.
+async def test_resources_view_invalid_patient_id_short_circuits(mocker: MockerFixture):
+    """An invalid Patient ID must short-circuit before any PACS query.
 
-    This test exercises the invalid-id branch and documents the *current* behavior
-    (the collector is still constructed). The xfail below asserts the *intended*
-    behavior (an "Invalid Patient ID" error page) that the missing return would give.
+    dicom_explorer_resources_view validates the id (views.py:63-64) and returns the
+    render_error() response, so the DicomDataCollector is never constructed.
     """
     user, server = await _setup_permitted_user_and_server()
     client = AsyncClient()
@@ -262,17 +259,12 @@ async def test_resources_view_invalid_patient_id_does_not_short_circuit(mocker: 
     response = await client.get(f"/dicom-explorer/servers/{server.pk}/patients/%2A/")
 
     assert response.status_code == 200
-    # Current (buggy) behavior: invalid id did NOT stop the PACS query.
-    collector_mock.assert_called_once()
+    # The guard short-circuits: no PACS query is attempted for an invalid id.
+    collector_mock.assert_not_called()
 
 
 @pytest.mark.asyncio
 @pytest.mark.django_db(transaction=True)
-@pytest.mark.xfail(
-    reason="BUG: invalid-id render_error() result is discarded (no return) in "
-    "dicom_explorer_resources_view (views.py:63-68); the guard never short-circuits.",
-    strict=True,
-)
 async def test_resources_view_invalid_patient_id_should_return_error(mocker: MockerFixture):
     user, server = await _setup_permitted_user_and_server()
     client = AsyncClient()
@@ -283,7 +275,7 @@ async def test_resources_view_invalid_patient_id_should_return_error(mocker: Moc
 
     response = await client.get(f"/dicom-explorer/servers/{server.pk}/patients/%2A/")
 
-    # Intended behavior once the missing return is added.
+    # The invalid-id guard renders the error page and does not query the PACS.
     assert b"Invalid Patient ID" in response.content
     collector_mock.assert_not_called()
 

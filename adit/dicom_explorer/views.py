@@ -61,11 +61,11 @@ async def dicom_explorer_resources_view(
     series_uid: str | None = None,
 ) -> HttpResponse:
     if patient_id is not None and not is_valid_id(patient_id):
-        render_error(request, f"Invalid Patient ID {patient_id}.")
+        return render_error(request, f"Invalid Patient ID {patient_id}.")
     if study_uid is not None and not is_valid_id(study_uid):
-        render_error(request, f"Invalid Study Instance UID {study_uid}.")
+        return render_error(request, f"Invalid Study Instance UID {study_uid}.")
     if series_uid is not None and not is_valid_id(series_uid):
-        render_error(request, f"Invalid Sereis Instance UID {series_uid}.")
+        return render_error(request, f"Invalid Sereis Instance UID {series_uid}.")
 
     loop = asyncio.get_event_loop()
     try:
