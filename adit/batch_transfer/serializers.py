@@ -25,7 +25,7 @@ class BatchTransferTaskListSerializer(BatchTaskListSerializer):
         patient_id_to_pseudonym = {}
         for data in attrs:
             patient_id = data["patient_id"]
-            pseudonym = data["pseudonym"]
+            pseudonym = data.get("pseudonym", "")
             if patient_id not in patient_id_to_pseudonym:
                 patient_id_to_pseudonym[patient_id] = pseudonym
             if patient_id_to_pseudonym[patient_id] != pseudonym:

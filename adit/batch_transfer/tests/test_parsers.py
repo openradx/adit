@@ -118,6 +118,24 @@ def test_same_patient_id_with_different_pseudonym_raises(create_batch_file):
     assert "can't have different pseudonyms" in str(exc_info.value)
 
 
+def test_unpseudonymized_batch_passes_cross_row_validation(create_batch_file):
+    # No Pseudonym column at all (an unpseudonymized transfer). The cross-row
+    # validation must not raise KeyError on the absent pseudonym field.
+    df = pd.DataFrame(
+        [
+            ["111", "1.2.3", "1.2.3.1"],
+            ["222", "1.2.4", "1.2.4.1"],
+        ],
+        columns=["PatientID", "StudyInstanceUID", "SeriesInstanceUID"],
+    )
+    file = create_batch_file(df)
+
+    parser = BatchTransferFileParser(can_transfer_unpseudonymized=True)
+    tasks = parser.parse(file, 100)
+
+    assert len(tasks) == 2
+
+
 def test_invalid_file_raises_format_error():
     parser = BatchTransferFileParser(can_transfer_unpseudonymized=True)
     not_a_spreadsheet = BytesIO(b"definitely not an xlsx file")
