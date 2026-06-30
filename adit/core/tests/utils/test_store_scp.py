@@ -34,6 +34,7 @@ from unittest.mock import MagicMock
 
 import pytest
 from pydicom import Dataset
+from pydicom.dataset import FileMetaDataset
 
 from adit.core.utils import store_scp as store_scp_module
 from adit.core.utils.store_scp import StoreScp
@@ -130,7 +131,7 @@ def test_handle_store_retains_calling_ae_as_filename_prefix(store_scp, monkeypat
 def test_handle_store_attaches_file_meta_to_dataset(store_scp, monkeypatch):
     """The handler must attach `event.file_meta` onto the dataset before it is
     written (the dataset arrives without file meta over the wire)."""
-    seen_file_meta: list[object] = []
+    seen_file_meta: list[FileMetaDataset] = []
 
     def fake_write_dataset(ds, fn):
         seen_file_meta.append(ds.file_meta)

@@ -14,7 +14,7 @@ from io import BytesIO
 import pytest
 from pydicom import Dataset
 from pydicom.dataset import FileMetaDataset
-from pydicom.uid import ExplicitVRLittleEndian, generate_uid
+from pydicom.uid import UID, ExplicitVRLittleEndian, generate_uid
 
 from adit.dicom_web.renderers import (
     DicomWebWadoRenderer,
@@ -110,8 +110,8 @@ def _make_dataset(sop_instance_uid: str = "1.2.3") -> Dataset:
     ds.SOPInstanceUID = sop_instance_uid
 
     file_meta = FileMetaDataset()
-    file_meta.MediaStorageSOPClassUID = ds.SOPClassUID
-    file_meta.MediaStorageSOPInstanceUID = sop_instance_uid
+    file_meta.MediaStorageSOPClassUID = UID(ds.SOPClassUID)
+    file_meta.MediaStorageSOPInstanceUID = UID(sop_instance_uid)
     file_meta.TransferSyntaxUID = ExplicitVRLittleEndian
     ds.file_meta = file_meta
     ds.set_original_encoding(False, True)

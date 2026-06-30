@@ -55,7 +55,7 @@ def test_parses_valid_spreadsheet(columns):
             ["", "Coconut, Coco", "1976-12-09", "", "", "", "MR", "", "", "", ""],
             ["1003", "", "", "0062094311", "", "", "", "", "", "", ""],
         ],
-        columns=columns,  # type: ignore
+        columns=columns,
     )
 
     tasks = parse(df)
@@ -86,7 +86,7 @@ def test_parses_valid_spreadsheet(columns):
 def test_series_numbers_are_split_on_comma(columns):
     df = pd.DataFrame(
         [["1001", "", "", "", "", "", "CT", "", "", "1, 2 , 3", ""]],
-        columns=columns,  # type: ignore
+        columns=columns,
     )
 
     tasks = parse(df)
@@ -97,7 +97,7 @@ def test_series_numbers_are_split_on_comma(columns):
 def test_empty_date_columns_become_none(columns):
     df = pd.DataFrame(
         [["1001", "", "", "", "", "", "CT", "", "", "", ""]],
-        columns=columns,  # type: ignore
+        columns=columns,
     )
 
     tasks = parse(df)
@@ -114,7 +114,7 @@ def test_fully_empty_rows_are_skipped(columns):
             ["", "", "", "", "", "", "", "", "", "", ""],
             ["1002", "", "", "", "", "", "MR", "", "", "", ""],
         ],
-        columns=columns,  # type: ignore
+        columns=columns,
     )
 
     tasks = parse(df)
@@ -128,7 +128,7 @@ def test_fully_empty_rows_are_skipped(columns):
 
 
 def test_header_only_file_yields_no_tasks(columns):
-    df = pd.DataFrame([], columns=columns)  # type: ignore
+    df = pd.DataFrame([], columns=columns)
 
     tasks = parse(df)
 
@@ -149,7 +149,7 @@ def test_non_xlsx_input_raises_format_error():
 def test_truncated_xlsx_input_raises_format_error(columns):
     df = pd.DataFrame(
         [["1001", "", "", "", "", "", "CT", "", "", "", ""]],
-        columns=columns,  # type: ignore
+        columns=columns,
     )
     payload = create_excel_file(df, "batch_query.xlsx")
     # Corrupt the zip container by keeping only a prefix of the bytes.
@@ -173,7 +173,7 @@ def test_wrong_columns_yield_no_tasks():
     # None of the expected columns are present, so the parser recognizes no
     # values: every row counts as empty and is skipped, leaving no tasks. The
     # data in the unknown columns is simply ignored rather than raising.
-    df = pd.DataFrame([["foo", "bar"]], columns=["Alpha", "Beta"])  # type: ignore
+    df = pd.DataFrame([["foo", "bar"]], columns=["Alpha", "Beta"])
 
     assert parse(df) == []
 
@@ -181,7 +181,7 @@ def test_wrong_columns_yield_no_tasks():
 def test_missing_modality_column_raises_content_error(columns):
     # PatientID present but no Modality and no AccessionNumber -> clean() fails.
     cols = [c for c in columns if c != "Modality"]
-    df = pd.DataFrame([["1001", "", "", "", "", "", "", "", "", ""]], columns=cols)  # type: ignore
+    df = pd.DataFrame([["1001", "", "", "", "", "", "", "", "", ""]], columns=cols)
 
     with pytest.raises(BatchFileContentError):
         parse(df)
@@ -192,7 +192,7 @@ def test_unidentifiable_patient_raises_content_error(columns):
     # PatientName + PatientBirthDate pair) -> clean() fails.
     df = pd.DataFrame(
         [["", "", "", "", "", "", "CT", "", "", "", ""]],
-        columns=columns,  # type: ignore
+        columns=columns,
     )
 
     with pytest.raises(BatchFileContentError):
@@ -205,7 +205,7 @@ def test_unidentifiable_patient_raises_content_error(columns):
 def test_garbage_date_raises_content_error(columns):
     df = pd.DataFrame(
         [["1001", "", "not-a-date", "", "", "", "CT", "", "", "", ""]],
-        columns=columns,  # type: ignore
+        columns=columns,
     )
 
     with pytest.raises(BatchFileContentError):
@@ -216,7 +216,7 @@ def test_non_letter_modality_raises_content_error(columns):
     # modalities are validated with letters_validator; digits are rejected.
     df = pd.DataFrame(
         [["1001", "", "", "", "", "", "123", "", "", "", ""]],
-        columns=columns,  # type: ignore
+        columns=columns,
     )
 
     with pytest.raises(BatchFileContentError):
@@ -230,7 +230,7 @@ def test_exceeding_max_batch_size_raises_size_error(columns):
     rows = [
         [str(1000 + i), "", "", "", "", "", "CT", "", "", "", ""] for i in range(3)
     ]
-    df = pd.DataFrame(rows, columns=columns)  # type: ignore
+    df = pd.DataFrame(rows, columns=columns)
 
     with pytest.raises(BatchFileSizeError):
         parse(df, max_batch_size=2)
@@ -240,7 +240,7 @@ def test_at_max_batch_size_is_allowed(columns):
     rows = [
         [str(1000 + i), "", "", "", "", "", "CT", "", "", "", ""] for i in range(2)
     ]
-    df = pd.DataFrame(rows, columns=columns)  # type: ignore
+    df = pd.DataFrame(rows, columns=columns)
 
     tasks = parse(df, max_batch_size=2)
 
@@ -251,7 +251,7 @@ def test_no_max_batch_size_allows_any_number(columns):
     rows = [
         [str(1000 + i), "", "", "", "", "", "CT", "", "", "", ""] for i in range(5)
     ]
-    df = pd.DataFrame(rows, columns=columns)  # type: ignore
+    df = pd.DataFrame(rows, columns=columns)
 
     tasks = parse(df, max_batch_size=None)
 

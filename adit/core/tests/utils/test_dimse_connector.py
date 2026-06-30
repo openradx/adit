@@ -1,7 +1,9 @@
 """Tests for DimseConnector retry behavior and connection management."""
 
 import tempfile
+from collections.abc import Iterator
 from pathlib import Path
+from typing import cast
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -355,7 +357,9 @@ class TestHandleGetAndMoveResponses:
 
     def test_missing_status_raises(self):
         connector = self._connector()
-        responses = iter([(None, None)])
+        # A missing status (None) models a timed-out C-MOVE; cast because the
+        # method is typed for real status Datasets but must handle this edge.
+        responses = cast(Iterator[tuple[Dataset, Dataset | None]], iter([(None, None)]))
         with pytest.raises(RetriableDicomError, match="Connection timed out"):
             connector._handle_get_and_move_responses(responses, "C-MOVE")
 
@@ -431,7 +435,7 @@ class TestSendCGetMoveModelSelection:
 class TestSendCStore:
     """Cover C-STORE success, warnings and the non-retriable error branches."""
 
-    def _connector_with_assoc(self, mocker, status_code=Status.SUCCESS):
+    def _connector_with_assoc(self, mocker, status_code: int = Status.SUCCESS):
         server = DicomServerFactory.create()
         connector = DimseConnector(server, auto_connect=True)
         associate_mock = mocker.patch("adit.core.utils.dimse_connector.AE.associate")

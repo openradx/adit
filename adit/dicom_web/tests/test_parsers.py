@@ -7,11 +7,13 @@ tests do not depend on any sample files or a running PACS.
 """
 
 import io
+from typing import cast
 
 import pytest
+from django.http import HttpRequest
 from pydicom import Dataset
 from pydicom.dataset import FileMetaDataset
-from pydicom.uid import ExplicitVRLittleEndian, generate_uid
+from pydicom.uid import UID, ExplicitVRLittleEndian, generate_uid
 from rest_framework.exceptions import NotAcceptable
 
 from adit.core.utils.dicom_utils import write_dataset
@@ -29,8 +31,8 @@ def _make_dataset(sop_instance_uid: str = "1.2.3", patient_id: str = "P1") -> Da
     ds.SOPInstanceUID = sop_instance_uid
 
     file_meta = FileMetaDataset()
-    file_meta.MediaStorageSOPClassUID = ds.SOPClassUID
-    file_meta.MediaStorageSOPInstanceUID = sop_instance_uid
+    file_meta.MediaStorageSOPClassUID = UID(ds.SOPClassUID)
+    file_meta.MediaStorageSOPInstanceUID = UID(sop_instance_uid)
     file_meta.TransferSyntaxUID = ExplicitVRLittleEndian
     ds.file_meta = file_meta
     ds.set_original_encoding(False, True)
@@ -68,7 +70,7 @@ class FakeRequest:
 
 async def _collect(request: FakeRequest, **kwargs) -> list[Dataset]:
     results: list[Dataset] = []
-    async for ds in parse_request_in_chunks(request, **kwargs):
+    async for ds in parse_request_in_chunks(cast(HttpRequest, request), **kwargs):
         results.append(ds)
     return results
 

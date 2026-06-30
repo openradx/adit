@@ -6,6 +6,7 @@ needed: each processor's `operator` attribute is replaced with a mock whose
 """
 
 from datetime import date
+from unittest.mock import MagicMock
 
 import pytest
 from pydicom import Dataset
@@ -78,8 +79,13 @@ def _make_processor(
     series_numbers=None,
     study_date_start=None,
     study_date_end=None,
-) -> BatchQueryTaskProcessor:
-    """Create a DB-backed BatchQueryTask and a processor with a mocked operator."""
+) -> tuple[BatchQueryTaskProcessor, MagicMock]:
+    """Create a DB-backed BatchQueryTask and a processor with a mocked operator.
+
+    Returns the processor together with the operator mock so tests can program
+    its ``find_patients`` / ``find_studies`` / ``find_series`` return values
+    without tripping the static type of ``processor.operator``.
+    """
     source = DicomServerFactory.create()
     job = BatchQueryJobFactory.create()
     task = BatchQueryTaskFactory.create(
@@ -97,11 +103,12 @@ def _make_processor(
         study_date_end=study_date_end,
     )
     processor = BatchQueryTaskProcessor(task)
-    processor.operator = mocker.MagicMock()
-    processor.operator.get_logs.return_value = []
+    operator = mocker.MagicMock()
+    processor.operator = operator
+    operator.get_logs.return_value = []
     # Each processor instance must not share the class-level logs list
     processor.logs = []
-    return processor
+    return processor, operator
 
 
 # ---------------------------------------------------------------------------
@@ -111,8 +118,8 @@ def _make_processor(
 
 @pytest.mark.django_db
 def test_find_patients_by_patient_id(mocker: MockerFixture):
-    processor = _make_processor(mocker, patient_id="1001")
-    processor.operator.find_patients.return_value = iter([_patient(patient_id="1001")])
+    processor, operator = _make_processor(mocker, patient_id="1001")
+    operator.find_patients.return_value = iter([_patient(patient_id="1001")])
 
     patients = processor._find_patients()
 
@@ -122,8 +129,8 @@ def test_find_patients_by_patient_id(mocker: MockerFixture):
 
 @pytest.mark.django_db
 def test_find_patients_by_patient_id_no_patient_raises(mocker: MockerFixture):
-    processor = _make_processor(mocker, patient_id="9999")
-    processor.operator.find_patients.return_value = iter([])
+    processor, operator = _make_processor(mocker, patient_id="9999")
+    operator.find_patients.return_value = iter([])
 
     with pytest.raises(DicomError, match="No patient found with this PatientID"):
         processor._find_patients()
@@ -131,8 +138,8 @@ def test_find_patients_by_patient_id_no_patient_raises(mocker: MockerFixture):
 
 @pytest.mark.django_db
 def test_find_patients_by_patient_id_multiple_raises(mocker: MockerFixture):
-    processor = _make_processor(mocker, patient_id="1001")
-    processor.operator.find_patients.return_value = iter(
+    processor, operator = _make_processor(mocker, patient_id="1001")
+    operator.find_patients.return_value = iter(
         [_patient(patient_id="1001"), _patient(patient_id="1001")]
     )
 
@@ -142,8 +149,8 @@ def test_find_patients_by_patient_id_multiple_raises(mocker: MockerFixture):
 
 @pytest.mark.django_db
 def test_find_patients_patient_name_mismatch_raises(mocker: MockerFixture):
-    processor = _make_processor(mocker, patient_id="1001", patient_name="Other^Name")
-    processor.operator.find_patients.return_value = iter(
+    processor, operator = _make_processor(mocker, patient_id="1001", patient_name="Other^Name")
+    operator.find_patients.return_value = iter(
         [_patient(patient_id="1001", name="Foo^Bar")]
     )
 
@@ -153,12 +160,12 @@ def test_find_patients_patient_name_mismatch_raises(mocker: MockerFixture):
 
 @pytest.mark.django_db
 def test_find_patients_birth_date_mismatch_raises(mocker: MockerFixture):
-    processor = _make_processor(
+    processor, operator = _make_processor(
         mocker, patient_id="1001", patient_birth_date=date(1999, 12, 31)
     )
     found = _patient(patient_id="1001")
     # ResultDataset.PatientBirthDate returns a date object; mismatch with task value
-    processor.operator.find_patients.return_value = iter([found])
+    operator.find_patients.return_value = iter([found])
 
     with pytest.raises(DicomError, match="PatientBirthDate doesn't match"):
         processor._find_patients()
@@ -166,13 +173,13 @@ def test_find_patients_birth_date_mismatch_raises(mocker: MockerFixture):
 
 @pytest.mark.django_db
 def test_find_patients_by_name_and_birth_date(mocker: MockerFixture):
-    processor = _make_processor(
+    processor, operator = _make_processor(
         mocker,
         patient_id="",
         patient_name="Foo^Bar",
         patient_birth_date=date(2000, 1, 1),
     )
-    processor.operator.find_patients.return_value = iter([_patient()])
+    operator.find_patients.return_value = iter([_patient()])
 
     patients = processor._find_patients()
 
@@ -181,13 +188,13 @@ def test_find_patients_by_name_and_birth_date(mocker: MockerFixture):
 
 @pytest.mark.django_db
 def test_find_patients_by_name_and_birth_date_none_found_raises(mocker: MockerFixture):
-    processor = _make_processor(
+    processor, operator = _make_processor(
         mocker,
         patient_id="",
         patient_name="Foo^Bar",
         patient_birth_date=date(2000, 1, 1),
     )
-    processor.operator.find_patients.return_value = iter([])
+    operator.find_patients.return_value = iter([])
 
     with pytest.raises(DicomError, match="No patient found with this PatientName"):
         processor._find_patients()
@@ -195,7 +202,7 @@ def test_find_patients_by_name_and_birth_date_none_found_raises(mocker: MockerFi
 
 @pytest.mark.django_db
 def test_find_patients_without_identifiers_raises(mocker: MockerFixture):
-    processor = _make_processor(
+    processor, operator = _make_processor(
         mocker, patient_id="", patient_name="", patient_birth_date=None
     )
 
@@ -210,27 +217,27 @@ def test_find_patients_without_identifiers_raises(mocker: MockerFixture):
 
 @pytest.mark.django_db
 def test_find_studies_without_modalities(mocker: MockerFixture):
-    processor = _make_processor(mocker)
+    processor, operator = _make_processor(mocker)
     s1 = _study(study_uid="1.2.3", study_date="20240102")
     s2 = _study(study_uid="1.2.4", study_date="20240101")
-    processor.operator.find_studies.return_value = iter([s1, s2])
+    operator.find_studies.return_value = iter([s1, s2])
 
     studies = processor._find_studies("1001")
 
     # Returned sorted by StudyDate ascending
     assert [s.StudyInstanceUID for s in studies] == ["1.2.4", "1.2.3"]
-    processor.operator.find_studies.assert_called_once()
+    operator.find_studies.assert_called_once()
 
 
 @pytest.mark.django_db
 def test_find_studies_with_modalities_deduplicates(mocker: MockerFixture):
-    processor = _make_processor(mocker, modalities=["CT", "MR"])
+    processor, operator = _make_processor(mocker, modalities=["CT", "MR"])
 
     # One query per modality; same study returned for both must be deduplicated
     ct_study = _study(study_uid="1.2.3", modalities=["CT"])
     mr_study = _study(study_uid="1.2.3", modalities=["MR"])
     other = _study(study_uid="1.2.9", modalities=["MR"])
-    processor.operator.find_studies.side_effect = [
+    operator.find_studies.side_effect = [
         iter([ct_study]),
         iter([mr_study, other]),
     ]
@@ -240,7 +247,7 @@ def test_find_studies_with_modalities_deduplicates(mocker: MockerFixture):
     uids = sorted(s.StudyInstanceUID for s in studies)
     assert uids == ["1.2.3", "1.2.9"]
     # Two queries: one per modality
-    assert processor.operator.find_studies.call_count == 2
+    assert operator.find_studies.call_count == 2
 
 
 # ---------------------------------------------------------------------------
@@ -250,8 +257,8 @@ def test_find_studies_with_modalities_deduplicates(mocker: MockerFixture):
 
 @pytest.mark.django_db
 def test_find_series_without_series_numbers(mocker: MockerFixture):
-    processor = _make_processor(mocker, series_description="Axial")
-    processor.operator.find_series.return_value = iter(
+    processor, operator = _make_processor(mocker, series_description="Axial")
+    operator.find_series.return_value = iter(
         [_series(series_uid="1.2.3.4", number=2), _series(series_uid="1.2.3.5", number=1)]
     )
 
@@ -263,12 +270,12 @@ def test_find_series_without_series_numbers(mocker: MockerFixture):
 
 @pytest.mark.django_db
 def test_find_series_with_series_numbers_deduplicates(mocker: MockerFixture):
-    processor = _make_processor(mocker, series_numbers=["1", "2"])
+    processor, operator = _make_processor(mocker, series_numbers=["1", "2"])
 
     s1 = _series(series_uid="1.2.3.5", number=1)
     s2 = _series(series_uid="1.2.3.4", number=2)
     # Same series returned twice across number queries -> dedup
-    processor.operator.find_series.side_effect = [
+    operator.find_series.side_effect = [
         iter([s1]),
         iter([s1, s2]),
     ]
@@ -277,7 +284,7 @@ def test_find_series_with_series_numbers_deduplicates(mocker: MockerFixture):
 
     uids = [s.SeriesInstanceUID for s in series]
     assert uids == ["1.2.3.5", "1.2.3.4"]
-    assert processor.operator.find_series.call_count == 2
+    assert operator.find_series.call_count == 2
 
 
 # ---------------------------------------------------------------------------
@@ -287,9 +294,9 @@ def test_find_series_with_series_numbers_deduplicates(mocker: MockerFixture):
 
 @pytest.mark.django_db
 def test_process_study_query_creates_results(mocker: MockerFixture):
-    processor = _make_processor(mocker, patient_id="1001")
-    processor.operator.find_patients.return_value = iter([_patient(patient_id="1001")])
-    processor.operator.find_studies.return_value = iter(
+    processor, operator = _make_processor(mocker, patient_id="1001")
+    operator.find_patients.return_value = iter([_patient(patient_id="1001")])
+    operator.find_studies.return_value = iter(
         [_study(study_uid="1.2.3"), _study(study_uid="1.2.4")]
     )
 
@@ -307,9 +314,9 @@ def test_process_study_query_creates_results(mocker: MockerFixture):
 
 @pytest.mark.django_db
 def test_process_single_study_uses_singular_message(mocker: MockerFixture):
-    processor = _make_processor(mocker, patient_id="1001")
-    processor.operator.find_patients.return_value = iter([_patient(patient_id="1001")])
-    processor.operator.find_studies.return_value = iter([_study(study_uid="1.2.3")])
+    processor, operator = _make_processor(mocker, patient_id="1001")
+    operator.find_patients.return_value = iter([_patient(patient_id="1001")])
+    operator.find_studies.return_value = iter([_study(study_uid="1.2.3")])
 
     result = processor.process()
 
@@ -318,12 +325,12 @@ def test_process_single_study_uses_singular_message(mocker: MockerFixture):
 
 @pytest.mark.django_db
 def test_process_series_query_creates_series_results(mocker: MockerFixture):
-    processor = _make_processor(
+    processor, operator = _make_processor(
         mocker, patient_id="1001", series_description="Axial"
     )
-    processor.operator.find_patients.return_value = iter([_patient(patient_id="1001")])
-    processor.operator.find_studies.return_value = iter([_study(study_uid="1.2.3")])
-    processor.operator.find_series.return_value = iter(
+    operator.find_patients.return_value = iter([_patient(patient_id="1001")])
+    operator.find_studies.return_value = iter([_study(study_uid="1.2.3")])
+    operator.find_series.return_value = iter(
         [_series(series_uid="1.2.3.4", modality="CT")]
     )
 
@@ -341,10 +348,10 @@ def test_process_series_query_creates_series_results(mocker: MockerFixture):
 
 @pytest.mark.django_db
 def test_process_warning_status_from_logs(mocker: MockerFixture):
-    processor = _make_processor(mocker, patient_id="1001")
-    processor.operator.find_patients.return_value = iter([_patient(patient_id="1001")])
-    processor.operator.find_studies.return_value = iter([_study(study_uid="1.2.3")])
-    processor.operator.get_logs.return_value = [
+    processor, operator = _make_processor(mocker, patient_id="1001")
+    operator.find_patients.return_value = iter([_patient(patient_id="1001")])
+    operator.find_studies.return_value = iter([_study(study_uid="1.2.3")])
+    operator.get_logs.return_value = [
         {"level": "Warning", "title": "Something", "message": "a warning"}
     ]
 
@@ -357,9 +364,9 @@ def test_process_warning_status_from_logs(mocker: MockerFixture):
 @pytest.mark.django_db
 def test_query_studies_indistinct_patients_warning(mocker: MockerFixture):
     """When studies for more than one patient are returned a warning is logged."""
-    processor = _make_processor(mocker)
+    processor, operator = _make_processor(mocker)
     # Two patient ids, both returning studies -> the second triggers the warning
-    processor.operator.find_studies.side_effect = [
+    operator.find_studies.side_effect = [
         iter([_study(patient_id="1001", study_uid="1.2.3")]),
         iter([_study(patient_id="1002", study_uid="1.2.4")]),
     ]
@@ -373,12 +380,12 @@ def test_query_studies_indistinct_patients_warning(mocker: MockerFixture):
 @pytest.mark.django_db
 def test_query_series_indistinct_patients_warning(mocker: MockerFixture):
     """The series flow also logs an indistinct-patients warning across patients."""
-    processor = _make_processor(mocker, series_description="Axial")
-    processor.operator.find_studies.side_effect = [
+    processor, operator = _make_processor(mocker, series_description="Axial")
+    operator.find_studies.side_effect = [
         iter([_study(patient_id="1001", study_uid="1.2.3")]),
         iter([_study(patient_id="1002", study_uid="1.2.4")]),
     ]
-    processor.operator.find_series.side_effect = [
+    operator.find_series.side_effect = [
         iter([_series(series_uid="1.2.3.4")]),
         iter([_series(series_uid="1.2.4.4")]),
     ]

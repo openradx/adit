@@ -1,8 +1,10 @@
 from concurrent import futures
 from types import SimpleNamespace
+from typing import cast
 
 import pytest
 from adit_radis_shared.common.utils.testing_helpers import run_worker_once
+from procrastinate import JobContext
 from pytest_mock import MockerFixture
 
 from adit.core import tasks as tasks_module
@@ -276,9 +278,11 @@ def _install_pebble_stubs(
     mocker.patch.object(tasks_module.concurrent, "thread", side_effect=fake_thread)
 
 
-def _make_context(attempts: int = 0):
+def _make_context(attempts: int = 0) -> JobContext:
     job = SimpleNamespace(attempts=attempts)
-    return SimpleNamespace(job=job, should_abort=lambda: False)
+    # _run_dicom_task only reads context.job.attempts and context.should_abort();
+    # a SimpleNamespace duck-types those without building a full JobContext.
+    return cast(JobContext, SimpleNamespace(job=job, should_abort=lambda: False))
 
 
 @pytest.mark.django_db(transaction=True)

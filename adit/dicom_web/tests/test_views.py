@@ -17,6 +17,8 @@ The views are async (adrf ``AsyncApiView``) and must be driven with Django's
 ``test_authorization.py`` for why).
 """
 
+from collections.abc import AsyncIterator
+from typing import cast
 from unittest.mock import patch
 
 import pytest
@@ -24,6 +26,7 @@ from adit_radis_shared.accounts.factories import GroupFactory, UserFactory
 from adit_radis_shared.common.utils.testing_helpers import add_user_to_group
 from adit_radis_shared.token_authentication.models import Token
 from asgiref.sync import sync_to_async
+from django.http import StreamingHttpResponse
 from django.test import AsyncClient
 from django.urls import reverse
 from pydicom import Dataset
@@ -285,7 +288,14 @@ class TestRetrieveStudyStreaming:
 
         assert response.status_code == 200
         assert response["Content-Type"].startswith("multipart/related")
-        body = b"".join([chunk async for chunk in response.streaming_content])
+        body = b"".join(
+            [
+                chunk
+                async for chunk in cast(
+                    AsyncIterator[bytes], cast(StreamingHttpResponse, response).streaming_content
+                )
+            ]
+        )
         # The multipart body must contain a boundary and the DICOM part header.
         assert b"adit-boundary" in body
         assert b"application/dicom" in body
@@ -311,7 +321,12 @@ class TestRetrieveStudyStreaming:
         with patch("adit.dicom_web.views.wado_retrieve", new=fake_wado_retrieve):
             response = await AsyncClient().get(full_url, headers=headers)
             # Consume the stream so the view body runs to completion.
-            [chunk async for chunk in response.streaming_content]
+            [
+                chunk
+                async for chunk in cast(
+                    AsyncIterator[bytes], cast(StreamingHttpResponse, response).streaming_content
+                )
+            ]
 
         assert response.status_code == 200
         assert captured["level"] == "STUDY"
@@ -329,9 +344,7 @@ class TestRetrieveStudyStreaming:
         headers = {**_auth(token), "accept": WADO_DICOM_ACCEPT}
         # Backslash makes the pseudonym invalid -> ParseError (views.py:251-255).
         with _patch_wado([]):
-            response = await AsyncClient().get(
-                f"{url}?pseudonym=bad%5Cvalue", headers=headers
-            )
+            response = await AsyncClient().get(f"{url}?pseudonym=bad%5Cvalue", headers=headers)
 
         assert response.status_code == 400
 
@@ -379,9 +392,7 @@ class TestRetrieveStudyMetadata:
         )
         image.PixelData = b"\x00\x01\x02\x03"
 
-        url = reverse(
-            "wado_rs-study_metadata_with_study_uid", args=[server.ae_title, STUDY_UID]
-        )
+        url = reverse("wado_rs-study_metadata_with_study_uid", args=[server.ae_title, STUDY_UID])
         headers = {**_auth(token), "accept": WADO_JSON_ACCEPT}
         with _patch_wado([image]):
             response = await AsyncClient().get(url, headers=headers)
@@ -421,7 +432,15 @@ class TestRetrieveSeries:
         headers = {**_auth(token), "accept": WADO_DICOM_ACCEPT}
         with patch("adit.dicom_web.views.wado_retrieve", new=fake_wado_retrieve):
             response = await AsyncClient().get(url, headers=headers)
-            body = b"".join([chunk async for chunk in response.streaming_content])
+            body = b"".join(
+                [
+                    chunk
+                    async for chunk in cast(
+                        AsyncIterator[bytes],
+                        cast(StreamingHttpResponse, response).streaming_content,
+                    )
+                ]
+            )
 
         assert response.status_code == 200
         assert captured["level"] == "SERIES"
@@ -476,7 +495,15 @@ class TestRetrieveImage:
         headers = {**_auth(token), "accept": WADO_DICOM_ACCEPT}
         with patch("adit.dicom_web.views.wado_retrieve", new=fake_wado_retrieve):
             response = await AsyncClient().get(url, headers=headers)
-            body = b"".join([chunk async for chunk in response.streaming_content])
+            body = b"".join(
+                [
+                    chunk
+                    async for chunk in cast(
+                        AsyncIterator[bytes],
+                        cast(StreamingHttpResponse, response).streaming_content,
+                    )
+                ]
+            )
 
         assert response.status_code == 200
         assert captured["level"] == "IMAGE"
@@ -554,7 +581,7 @@ class TestRetrieveServerSupport:
 STOW_CONTENT_TYPE = "multipart/related; type=application/dicom; boundary=adittest"
 
 
-def _patch_parse(datasets: list[Dataset]):
+def _patch_parse(datasets: list[Dataset | None]):
     async def fake_parse(request):
         for ds in datasets:
             yield ds
@@ -597,9 +624,7 @@ class TestStoreImages:
             return _stow_result(instance), False  # not failed
 
         url = reverse("stow_rs-series", args=[server.ae_title])
-        with _patch_parse([ds]), patch(
-            "adit.dicom_web.views.stow_store", new=fake_stow_store
-        ):
+        with _patch_parse([ds]), patch("adit.dicom_web.views.stow_store", new=fake_stow_store):
             response = await AsyncClient().post(
                 url, data=b"body", content_type=STOW_CONTENT_TYPE, headers=_auth(token)
             )
@@ -630,9 +655,7 @@ class TestStoreImages:
             return result, True  # failed
 
         url = reverse("stow_rs-series", args=[server.ae_title])
-        with _patch_parse([ds]), patch(
-            "adit.dicom_web.views.stow_store", new=fake_stow_store
-        ):
+        with _patch_parse([ds]), patch("adit.dicom_web.views.stow_store", new=fake_stow_store):
             response = await AsyncClient().post(
                 url, data=b"body", content_type=STOW_CONTENT_TYPE, headers=_auth(token)
             )
@@ -662,9 +685,7 @@ class TestStoreImages:
             return _stow_result(instance), False
 
         url = reverse("stow_rs-series_with_study_uid", args=[server.ae_title, STUDY_UID])
-        with _patch_parse([ds]), patch(
-            "adit.dicom_web.views.stow_store", new=fake_stow_store
-        ):
+        with _patch_parse([ds]), patch("adit.dicom_web.views.stow_store", new=fake_stow_store):
             response = await AsyncClient().post(
                 url, data=b"body", content_type=STOW_CONTENT_TYPE, headers=_auth(token)
             )
@@ -693,9 +714,7 @@ class TestStoreImages:
             return _stow_result(instance), False
 
         url = reverse("stow_rs-series_with_study_uid", args=[server.ae_title, STUDY_UID])
-        with _patch_parse([ds]), patch(
-            "adit.dicom_web.views.stow_store", new=fake_stow_store
-        ):
+        with _patch_parse([ds]), patch("adit.dicom_web.views.stow_store", new=fake_stow_store):
             response = await AsyncClient().post(
                 url, data=b"body", content_type=STOW_CONTENT_TYPE, headers=_auth(token)
             )
@@ -726,8 +745,9 @@ class TestStoreImages:
 
         url = reverse("stow_rs-series", args=[server.ae_title])
         # Yield a None followed by a real dataset.
-        with _patch_parse([None, ds]), patch(  # type: ignore[list-item]
-            "adit.dicom_web.views.stow_store", new=fake_stow_store
+        with (
+            _patch_parse([None, ds]),
+            patch("adit.dicom_web.views.stow_store", new=fake_stow_store),
         ):
             response = await AsyncClient().post(
                 url, data=b"body", content_type=STOW_CONTENT_TYPE, headers=_auth(token)

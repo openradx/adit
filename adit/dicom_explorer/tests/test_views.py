@@ -1,7 +1,8 @@
-import asyncio
+from typing import cast
 
 import pytest
 from adit_radis_shared.accounts.factories import GroupFactory, UserFactory
+from adit_radis_shared.common.types import AuthenticatedHttpRequest
 from adit_radis_shared.common.utils.testing_helpers import add_permission
 from asgiref.sync import sync_to_async
 from django.http import HttpResponse
@@ -84,7 +85,7 @@ async def test_resources_view_requires_query_permission(mocker: MockerFixture):
     )
 
     assert response.status_code == 302
-    assert "/accounts/login/" in response.url
+    assert "/accounts/login/" in response["Location"]
     # No PACS query may be attempted when the permission gate blocks the request.
     collector_mock.assert_not_called()
 
@@ -294,7 +295,7 @@ async def test_resources_view_timeout_renders_error(mocker: MockerFixture):
         # Cancel the underlying future to avoid a dangling executor task.
         if hasattr(future, "cancel"):
             future.cancel()
-        raise asyncio.TimeoutError()
+        raise TimeoutError()
 
     mocker.patch("adit.dicom_explorer.views.asyncio.wait_for", side_effect=fake_wait_for)
 
@@ -312,12 +313,14 @@ async def test_resources_view_timeout_renders_error(mocker: MockerFixture):
 # ---------------------------------------------------------------------------
 
 
-def _make_request(mocker: MockerFixture, user, path: str, get_params: dict | None = None):
+def _make_request(
+    mocker: MockerFixture, user, path: str, get_params: dict | None = None
+) -> AuthenticatedHttpRequest:
     from django.test import RequestFactory
 
     request = RequestFactory().get(path, data=get_params or {})
     request.user = user
-    return request
+    return cast(AuthenticatedHttpRequest, request)
 
 
 class TestRenderServerQuery:

@@ -27,6 +27,7 @@ Notes:
     cross the async/sync (and thread) boundary and need committed rows.
 """
 
+from typing import cast
 from unittest.mock import MagicMock
 
 import pytest
@@ -110,8 +111,13 @@ async def _connect(user) -> WebsocketCommunicator:
     communicator = WebsocketCommunicator(
         SelectiveTransferConsumer.as_asgi(), "/ws/selective-transfer"
     )
-    communicator.scope["user"] = user
+    communicator.scope["user"] = user  # type: ignore[typeddict-unknown-key]
     return communicator
+
+
+async def _receive_text(communicator: WebsocketCommunicator, *, timeout: float = 5.0) -> str:
+    """Receive a single text frame as ``str`` (the consumer only sends text)."""
+    return cast(str, await communicator.receive_from(timeout=timeout))
 
 
 async def _drain(communicator: WebsocketCommunicator, *, timeout: float = 6.0) -> str:
@@ -119,7 +125,7 @@ async def _drain(communicator: WebsocketCommunicator, *, timeout: float = 6.0) -
     collected: list[str] = []
     while True:
         try:
-            collected.append(await communicator.receive_from(timeout=timeout))
+            collected.append(await _receive_text(communicator, timeout=timeout))
         except BaseException:
             # TimeoutError ends the drain; CancelledError (BaseException in
             # py3.11+) can surface if the consumer's background task is cancelled.
@@ -209,7 +215,7 @@ async def test_receive_without_permission_returns_access_denied():
     assert connected is True
 
     await communicator.send_json_to({"action": "query"})
-    response = await communicator.receive_from(timeout=5)
+    response = await _receive_text(communicator, timeout=5)
     assert "Access denied" in response
     assert "don&#x27;t have the proper permission" in response or "permission" in response
     await communicator.disconnect()
@@ -223,7 +229,7 @@ async def test_invalid_action_is_rejected():
     await communicator.connect()
 
     await communicator.send_json_to({"action": "frobnicate"})
-    response = await communicator.receive_from(timeout=5)
+    response = await _receive_text(communicator, timeout=5)
     assert "Invalid action to process: frobnicate" in response
     await communicator.disconnect()
 
@@ -260,7 +266,7 @@ async def test_query_dispatches_to_operator_and_streams_results(monkeypatch):
     await communicator.send_json_to(_query_payload(source, destination))
 
     # First frame is the "in progress" spinner (sent synchronously).
-    first = await communicator.receive_from(timeout=5)
+    first = await _receive_text(communicator, timeout=5)
     assert "Searching" in first or "spinner-border" in first
 
     # The results are sent via a debounced (≈1s) callback from a worker thread.
@@ -354,7 +360,7 @@ async def test_transfer_creates_job_and_enqueues_tasks():
     selected = ["PAT1\\1.2.3.4.5", "PAT2\\1.2.3.4.6"]
     await communicator.send_json_to(_transfer_payload(source, destination, selected))
 
-    response = await communicator.receive_from(timeout=8)
+    response = await _receive_text(communicator, timeout=8)
     assert "Successfully submitted transfer job" in response
 
     @database_sync_to_async
@@ -387,7 +393,7 @@ async def test_transfer_single_selected_study_as_string():
     payload["selected_studies"] = "PATX\\9.9.9.9"  # single string, not a list
     await communicator.send_json_to(payload)
 
-    response = await communicator.receive_from(timeout=8)
+    response = await _receive_text(communicator, timeout=8)
     assert "Successfully submitted transfer job" in response
 
     @database_sync_to_async
@@ -418,7 +424,7 @@ async def test_transfer_over_limit_rejected_for_non_staff():
     selected = [f"PAT{i}\\1.2.3.{i}" for i in range(11)]  # 11 > 10
     await communicator.send_json_to(_transfer_payload(source, destination, selected))
 
-    response = await communicator.receive_from(timeout=8)
+    response = await _receive_text(communicator, timeout=8)
     assert "Maximum 10 studies per selective transfer are allowed." in response
     assert "Successfully submitted" not in response
 
@@ -445,7 +451,7 @@ async def test_transfer_over_limit_allowed_for_staff():
     selected = [f"PAT{i}\\1.2.3.{i}" for i in range(11)]
     await communicator.send_json_to(_transfer_payload(source, destination, selected))
 
-    response = await communicator.receive_from(timeout=10)
+    response = await _receive_text(communicator, timeout=10)
     assert "Successfully submitted transfer job" in response
 
     @database_sync_to_async

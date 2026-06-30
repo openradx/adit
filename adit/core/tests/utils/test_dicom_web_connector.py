@@ -239,6 +239,7 @@ class TestSendQidoRs:
             with pytest.raises(HTTPError) as exc_info:
                 connector.send_qido_rs(QueryDataset.create(QueryRetrieveLevel="STUDY"))
 
+        assert exc_info.value.response is not None
         assert exc_info.value.response.status_code == 404
 
 
@@ -377,6 +378,7 @@ class TestSendWadoRs:
             with pytest.raises(HTTPError) as exc_info:
                 list(connector.send_wado_rs(query))
 
+        assert exc_info.value.response is not None
         assert exc_info.value.response.status_code == 404
 
 
@@ -452,6 +454,7 @@ class TestSendStowRs:
             with pytest.raises(HTTPError) as exc_info:
                 connector.send_stow_rs([make_dataset("1.1")])
 
+        assert exc_info.value.response is not None
         assert exc_info.value.response.status_code == 400
 
 

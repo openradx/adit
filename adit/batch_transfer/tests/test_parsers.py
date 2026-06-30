@@ -89,7 +89,7 @@ def test_same_study_uid_with_different_patient_id_raises(create_batch_file):
             ["111", "1.2.3", "1.2.3.1", "pseudo1"],
             ["222", "1.2.3", "1.2.3.2", "pseudo1"],
         ],
-        columns=["PatientID", "StudyInstanceUID", "SeriesInstanceUID", "Pseudonym"],  # type: ignore
+        columns=["PatientID", "StudyInstanceUID", "SeriesInstanceUID", "Pseudonym"],
     )
     file = create_batch_file(df)
 
@@ -107,7 +107,7 @@ def test_same_patient_id_with_different_pseudonym_raises(create_batch_file):
             ["111", "1.2.3", "1.2.3.1", "pseudo1"],
             ["111", "1.2.4", "1.2.4.1", "pseudo2"],
         ],
-        columns=["PatientID", "StudyInstanceUID", "SeriesInstanceUID", "Pseudonym"],  # type: ignore
+        columns=["PatientID", "StudyInstanceUID", "SeriesInstanceUID", "Pseudonym"],
     )
     file = create_batch_file(df)
 

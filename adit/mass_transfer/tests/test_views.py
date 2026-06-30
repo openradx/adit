@@ -130,7 +130,7 @@ def test_csv_export_owner_gets_own_volumes(client: Client):
     assert response["Content-Type"] == "text/csv"
     assert f'filename="mass_transfer_job_{job.pk}.csv"' in response["Content-Disposition"]
 
-    body = response.getvalue().decode()
+    body = response.content.decode()
     # Salt is emitted as a leading comment line, then the header, then rows.
     assert "# Pseudonym salt: abc123" in body
     assert "patient_id" in body  # header row
@@ -164,7 +164,7 @@ def test_csv_export_staff_can_export_foreign_job(client: Client):
     response = client.get(reverse("mass_transfer_job_csv_export", args=[job.pk]))
 
     assert response.status_code == 200
-    assert "PID-STAFF" in response.getvalue().decode()
+    assert "PID-STAFF" in response.content.decode()
 
 
 @pytest.mark.django_db
@@ -177,7 +177,7 @@ def test_csv_export_no_salt_omits_salt_comment(client: Client):
     response = client.get(reverse("mass_transfer_job_csv_export", args=[job.pk]))
 
     assert response.status_code == 200
-    assert "# Pseudonym salt:" not in response.getvalue().decode()
+    assert "# Pseudonym salt:" not in response.content.decode()
 
 
 # --- Create POST writes the expected DB objects -----------------------------

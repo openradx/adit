@@ -1,3 +1,5 @@
+from functools import partial
+
 import pytest
 from adit_radis_shared.accounts.factories import UserFactory
 from adit_radis_shared.common.utils.testing_helpers import (
@@ -129,7 +131,7 @@ def test_fetch_put_study_excludes_modalities_when_pseudonymizing(
         patient_id="1001",
         study_uid="1.2.3",
         pseudonymize=True,
-        modifier=lambda ds: None,
+        modifier=partial(lambda ds: None),
         loop=mocker.MagicMock(),
     )
 
@@ -158,7 +160,7 @@ def test_fetch_put_study_rechecks_access_and_raises_not_found(
             patient_id="1001",
             study_uid="1.2.3",
             pseudonymize=False,
-            modifier=lambda ds: None,
+            modifier=partial(lambda ds: None),
             loop=mocker.MagicMock(),
         )
 
@@ -186,7 +188,7 @@ def test_fetch_put_study_fetches_whole_study_without_pseudonym(
         patient_id="1001",
         study_uid="1.2.3",
         pseudonymize=False,
-        modifier=lambda ds: None,
+        modifier=partial(lambda ds: None),
         loop=mocker.MagicMock(),
     )
 
