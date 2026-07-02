@@ -47,7 +47,7 @@ jobs:
         run: uv run cli lint
       - name: Run unit and integration tests
         shell: 'script -q -e -c "bash {0}"'
-        run: uv run cli test -- --cov -m '"not acceptance"'
+        run: uv run cli test -- --cov -m 'not acceptance'
       - name: Run acceptance tests
         # Run acceptance tests in a separate pytest process from the unit and
         # integration tests above. The async ASGI tests (Django AsyncClient,
