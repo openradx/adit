@@ -33,7 +33,7 @@ import pytest
 from adit_radis_shared.accounts.factories import GroupFactory, UserFactory
 from adit_radis_shared.common.utils.testing_helpers import add_user_to_group
 from adit_radis_shared.token_authentication.models import Token
-from asgiref.sync import sync_to_async
+from channels.db import database_sync_to_async
 from django.test import AsyncClient
 from django.urls import reverse
 
@@ -73,27 +73,27 @@ def _stow_url(ae_title: str) -> str:
 # --- async-safe setup helpers (ORM access must go through sync_to_async) -----
 
 
-@sync_to_async
+@database_sync_to_async
 def create_server():
     return DicomServerFactory.create()
 
 
-@sync_to_async
+@database_sync_to_async
 def create_web_server():
     return DicomWebServerFactory.create()
 
 
-@sync_to_async
+@database_sync_to_async
 def create_group():
     return GroupFactory.create()
 
 
-@sync_to_async
+@database_sync_to_async
 def grant(group, server, *, source=False, destination=False):
     grant_access(group, server, source=source, destination=destination)
 
 
-@sync_to_async
+@database_sync_to_async
 def create_user_with_token():
     """User in a single group (no DICOM access granted yet) + a valid token."""
     user = UserFactory.create()
@@ -103,7 +103,7 @@ def create_user_with_token():
     return user, group, token_string
 
 
-@sync_to_async
+@database_sync_to_async
 def create_user_in_two_groups():
     """User whose *active* group differs from the group used to grant access."""
     user = UserFactory.create()

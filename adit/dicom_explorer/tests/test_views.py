@@ -4,7 +4,7 @@ import pytest
 from adit_radis_shared.accounts.factories import GroupFactory, UserFactory
 from adit_radis_shared.common.types import AuthenticatedHttpRequest
 from adit_radis_shared.common.utils.testing_helpers import add_permission
-from asgiref.sync import sync_to_async
+from channels.db import database_sync_to_async
 from django.http import HttpResponse
 from django.test import AsyncClient
 from pydicom import Dataset
@@ -34,7 +34,7 @@ def _grant_query_permission(group) -> None:
     add_permission(group, "dicom_explorer", "query_dicom_server")
 
 
-@sync_to_async
+@database_sync_to_async
 def _setup_user_and_server(*, with_permission: bool, grant_source: bool):
     user, group = _make_user_with_group()
     if with_permission:
@@ -165,7 +165,7 @@ def _patch_render(mocker: MockerFixture):
     )
 
 
-@sync_to_async
+@database_sync_to_async
 def _setup_permitted_user_and_server():
     user, group = _make_user_with_group()
     _grant_query_permission(group)

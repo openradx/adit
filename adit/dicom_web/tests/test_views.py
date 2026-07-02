@@ -25,7 +25,7 @@ import pytest
 from adit_radis_shared.accounts.factories import GroupFactory, UserFactory
 from adit_radis_shared.common.utils.testing_helpers import add_user_to_group
 from adit_radis_shared.token_authentication.models import Token
-from asgiref.sync import sync_to_async
+from channels.db import database_sync_to_async
 from django.http import StreamingHttpResponse
 from django.test import AsyncClient
 from django.urls import reverse
@@ -52,7 +52,7 @@ def _auth(token_string: str) -> dict:
 # --- async-safe ORM setup helpers -------------------------------------------
 
 
-@sync_to_async
+@database_sync_to_async
 def setup_user_and_server(*, web: bool = False, source: bool = True, destination: bool = False):
     """Create a user with a token + a server the user's group can access."""
     user = UserFactory.create()
@@ -540,7 +540,7 @@ class TestRetrieveServerSupport:
         """A plain DIMSE server lacking GET/MOVE/WADO support is rejected (views.py:216)."""
         from adit.core.models import DicomServer
 
-        @sync_to_async
+        @database_sync_to_async
         def setup():
             user = UserFactory.create()
             group = GroupFactory.create()
