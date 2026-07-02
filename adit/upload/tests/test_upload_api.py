@@ -9,21 +9,6 @@ these paths, or ``read_dataset`` is stubbed).
 (the synchronous test ``Client`` deadlocks an async view whose body awaits
 ``sync_to_async``/native-async ORM). The repo's
 dicom_web/tests/test_authorization.py documents the same constraint.
-
-KNOWN HARNESS-LEVEL ORDERING ISSUE (flagged): the app always applies
-``nest_asyncio`` (adit/conftest.py). Running these session-auth ``AsyncClient``
-tests leaves event-loop/connection state in the process that wedges the
-*pre-existing*
-selective_transfer/tests/test_download.py::test_download_with_invalid_server_returns_404,
-which drives an async view through a bare ``async_to_sync(view)()`` -- it then
-deadlocks (pytest-timeout fires at 60 s). The same full ``pytest`` run also fails
-the unrelated, pre-existing ProcessPool tests in core/tests/test_tasks.py (those
-fail even run alone). These upload tests pass on their own
-(``pytest adit/upload/tests/test_upload_api.py`` -> 5 passed); the repo's
-existing async tests use the same ``AsyncClient`` pattern. No clean test-side
-teardown was found that both releases the leaked state and preserves the
-non-transactional sync tests, so the interaction is documented rather than
-papered over.
 """
 
 import io
@@ -31,7 +16,7 @@ import io
 import pytest
 from adit_radis_shared.accounts.factories import UserFactory
 from adit_radis_shared.common.utils.testing_helpers import add_user_to_group
-from asgiref.sync import sync_to_async
+from channels.db import database_sync_to_async
 from django.test import AsyncClient
 from django.urls import reverse
 
@@ -44,7 +29,7 @@ def _data_upload_url(node_id) -> str:
     return reverse("data_upload", kwargs={"node_id": node_id})
 
 
-@sync_to_async
+@database_sync_to_async
 def _setup(*, with_permission: bool, grant_destination: bool):
     """Async-safe ORM setup: build a user and a destination server."""
     user = UserFactory.create(is_active=True)
