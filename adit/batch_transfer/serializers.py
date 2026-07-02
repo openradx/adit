@@ -56,7 +56,7 @@ class BatchTransferTaskSerializer(BatchTaskSerializer):
         # provide can_transfer_unpseudonymized to BatchTransferTaskSerializer, but not to
         # BatchTaskListSerializer (otherwise we would an unexpected argument error there).
         kwargs["child"] = cls(*args, **kwargs)
-        del kwargs["can_transfer_unpseudonymized"]
+        kwargs.pop("can_transfer_unpseudonymized", None)
         kwargs["model"] = cls.Meta.model
         return cls.Meta.list_serializer_class(*args, **kwargs)
 

@@ -65,7 +65,7 @@ async def dicom_explorer_resources_view(
     if study_uid is not None and not is_valid_id(study_uid):
         return render_error(request, f"Invalid Study Instance UID {study_uid}.")
     if series_uid is not None and not is_valid_id(series_uid):
-        return render_error(request, f"Invalid Sereis Instance UID {series_uid}.")
+        return render_error(request, f"Invalid Series Instance UID {series_uid}.")
 
     loop = asyncio.get_event_loop()
     try:

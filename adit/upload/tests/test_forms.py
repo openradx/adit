@@ -12,34 +12,7 @@ from adit_radis_shared.common.utils.testing_helpers import add_user_to_group
 
 from adit.core.factories import DicomServerFactory
 from adit.core.utils.auth_utils import grant_access
-from adit.upload.forms import MultipleFileInput, UploadForm
-
-
-def test_multiple_file_input_is_currently_broken():
-    """BUG: ``MultipleFileInput`` cannot be instantiated under the installed Django.
-
-    Its ``__init__`` sets ``attrs["multiple"] = True`` and calls the base
-    ``forms.widgets.FileInput.__init__``, which raises ``ValueError`` because
-    ``FileInput.allow_multiple_selected`` is ``False``. The widget is also dead code:
-    it is never referenced anywhere outside its own definition (``UploadForm`` does
-    not use it). Documenting the current behavior here; see the xfail below for the
-    intended (working) behavior.
-    """
-    with pytest.raises(ValueError, match="doesn't support uploading multiple files"):
-        MultipleFileInput()
-
-
-@pytest.mark.xfail(
-    reason="BUG: MultipleFileInput extends FileInput (allow_multiple_selected=False) "
-    "and sets attrs['multiple'], so instantiation raises ValueError under Django 6. "
-    "It is also unused dead code.",
-    strict=True,
-    raises=ValueError,
-)
-def test_multiple_file_input_should_be_instantiable():
-    widget = MultipleFileInput()
-    assert widget.attrs["multiple"] is True
-    assert widget.attrs["webkitdirectory"] is True
+from adit.upload.forms import UploadForm
 
 
 def _user_with_destination():

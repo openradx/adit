@@ -154,7 +154,7 @@ def test_fetch_put_study_rechecks_access_and_raises_not_found(
     )
 
     downloader = DicomDownloader(server_id=str(server.pk))
-    with pytest.raises(NotFound, match="Invalid DICOM server."):
+    with pytest.raises(NotFound, match=r"Invalid DICOM server\."):
         downloader._fetch_put_study(
             user=user,
             patient_id="1001",
