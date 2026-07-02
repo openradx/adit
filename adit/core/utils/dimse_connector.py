@@ -474,7 +474,7 @@ class DimseConnector:
                                 "message": message,
                             }
                         )
-                        logger.warn(message)
+                        logger.warning(message)
 
                     if warning_suboperations:
                         message = f"{warning_suboperations} sub-operations with warnings."
@@ -485,7 +485,7 @@ class DimseConnector:
                                 "message": message,
                             }
                         )
-                        logger.warn(message)
+                        logger.warning(message)
                 else:
                     if status_category == STATUS_WARNING:
                         message = f"Unknown warning:\n{status}"
@@ -496,7 +496,7 @@ class DimseConnector:
                                 "message": message,
                             }
                         )
-                        logger.warn(message)
+                        logger.warning(message)
 
                     # Log "silent empty" responses: PACS returns Success with
                     # 0 completed, 0 failed, 0 warning.  This happens on IMPAX

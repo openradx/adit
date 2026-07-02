@@ -246,14 +246,20 @@ def test_find_patients_with_qido_and_dedup(mocker: MockerFixture):
 def test_find_patients_filters_by_birth_date_name_and_sex(mocker: MockerFixture):
     operator = create_dicom_operator()
     results = [
-        _make_result(PatientID="1", PatientName="Foo^Bar", PatientBirthDate="20000101", PatientSex="M"),  # noqa: E501
-        _make_result(PatientID="2", PatientName="Foo^Baz", PatientBirthDate="20000101", PatientSex="M"),  # noqa: E501
-        _make_result(PatientID="3", PatientName="Foo^Bar", PatientBirthDate="19991231", PatientSex="M"),  # noqa: E501
-        _make_result(PatientID="4", PatientName="Foo^Bar", PatientBirthDate="20000101", PatientSex="F"),  # noqa: E501
+        _make_result(
+            PatientID="1", PatientName="Foo^Bar", PatientBirthDate="20000101", PatientSex="M"
+        ),  # noqa: E501
+        _make_result(
+            PatientID="2", PatientName="Foo^Baz", PatientBirthDate="20000101", PatientSex="M"
+        ),  # noqa: E501
+        _make_result(
+            PatientID="3", PatientName="Foo^Bar", PatientBirthDate="19991231", PatientSex="M"
+        ),  # noqa: E501
+        _make_result(
+            PatientID="4", PatientName="Foo^Bar", PatientBirthDate="20000101", PatientSex="F"
+        ),  # noqa: E501
     ]
-    mocker.patch.object(
-        operator.dimse_connector, "send_c_find", return_value=iter(results)
-    )
+    mocker.patch.object(operator.dimse_connector, "send_c_find", return_value=iter(results))
 
     # PatientSex is not a `create()` kwarg, so build the query dataset directly.
     query_ds = Dataset()
@@ -318,6 +324,9 @@ def test_find_studies_raises_when_no_method_supported(mocker: MockerFixture):
 
 
 @pytest.mark.django_db
+# "1.*" is an intentionally invalid (wildcard) StudyInstanceUID used to assert it
+# is rejected; pydicom's VR validation warns on it, which is expected here.
+@pytest.mark.filterwarnings("ignore:Invalid value for VR UI:UserWarning")
 def test_find_series_requires_valid_study_uid():
     operator = create_dicom_operator()
 
@@ -344,21 +353,19 @@ def test_find_series_filters_number_modality_and_description(mocker: MockerFixtu
     operator = create_dicom_operator()
     results = [
         _make_result(
-            SeriesInstanceUID="s1", SeriesNumber=1, Modality="CT", SeriesDescription="Axial"
+            SeriesInstanceUID="1.2.3.1", SeriesNumber=1, Modality="CT", SeriesDescription="Axial"
         ),
         _make_result(
-            SeriesInstanceUID="s2", SeriesNumber=2, Modality="CT", SeriesDescription="Axial"
+            SeriesInstanceUID="1.2.3.2", SeriesNumber=2, Modality="CT", SeriesDescription="Axial"
         ),
         _make_result(
-            SeriesInstanceUID="s3", SeriesNumber=1, Modality="MR", SeriesDescription="Axial"
+            SeriesInstanceUID="1.2.3.3", SeriesNumber=1, Modality="MR", SeriesDescription="Axial"
         ),
         _make_result(
-            SeriesInstanceUID="s4", SeriesNumber=1, Modality="CT", SeriesDescription="Sagittal"
+            SeriesInstanceUID="1.2.3.4", SeriesNumber=1, Modality="CT", SeriesDescription="Sagittal"
         ),
     ]
-    mocker.patch.object(
-        operator.dimse_connector, "send_c_find", return_value=iter(results)
-    )
+    mocker.patch.object(operator.dimse_connector, "send_c_find", return_value=iter(results))
 
     query = QueryDataset.create(
         PatientID="1",
@@ -369,13 +376,13 @@ def test_find_series_filters_number_modality_and_description(mocker: MockerFixtu
     )
     series = list(operator.find_series(query))
 
-    assert [s.SeriesInstanceUID for s in series] == ["s1"]
+    assert [s.SeriesInstanceUID for s in series] == ["1.2.3.1"]
 
 
 @pytest.mark.django_db
 def test_find_series_uses_qido_when_only_dicomweb(mocker: MockerFixture):
     operator = create_dicomweb_operator()
-    results = [_make_result(SeriesInstanceUID="s1", PatientID="1", StudyInstanceUID="1.123")]
+    results = [_make_result(SeriesInstanceUID="1.2.3.1", PatientID="1", StudyInstanceUID="1.123")]
     qido_mock = mocker.patch.object(
         operator.dicom_web_connector, "send_qido_rs", return_value=iter(results)
     )
@@ -385,7 +392,7 @@ def test_find_series_uses_qido_when_only_dicomweb(mocker: MockerFixture):
     )
 
     qido_mock.assert_called_once()
-    assert series[0].SeriesInstanceUID == "s1"
+    assert series[0].SeriesInstanceUID == "1.2.3.1"
 
 
 @pytest.mark.django_db
@@ -393,7 +400,7 @@ def test_find_images_requires_valid_study_and_series_uid():
     operator = create_dicom_operator()
 
     with pytest.raises(DicomError, match="valid StudyInstanceUID is required"):
-        list(operator.find_images(QueryDataset.create(PatientID="1", SeriesInstanceUID="s1")))
+        list(operator.find_images(QueryDataset.create(PatientID="1", SeriesInstanceUID="1.2.3.1")))
 
     with pytest.raises(DicomError, match="valid SeriesInstanceUID is required"):
         list(operator.find_images(QueryDataset.create(PatientID="1", StudyInstanceUID="1.123")))
@@ -408,7 +415,7 @@ def test_find_images_patient_root_requires_patient_id(mocker: MockerFixture):
     with pytest.raises(DicomError, match="PatientID is required for querying images"):
         list(
             operator.find_images(
-                QueryDataset.create(StudyInstanceUID="1.123", SeriesInstanceUID="s1")
+                QueryDataset.create(StudyInstanceUID="1.123", SeriesInstanceUID="1.2.3.1")
             )
         )
 
@@ -416,37 +423,41 @@ def test_find_images_patient_root_requires_patient_id(mocker: MockerFixture):
 @pytest.mark.django_db
 def test_find_images_with_c_find(mocker: MockerFixture):
     operator = create_dicom_operator()
-    results = [_make_result(SOPInstanceUID="i1"), _make_result(SOPInstanceUID="i2")]
+    results = [_make_result(SOPInstanceUID="1.2.4.1"), _make_result(SOPInstanceUID="1.2.4.2")]
     find_mock = mocker.patch.object(
         operator.dimse_connector, "send_c_find", return_value=iter(results)
     )
 
     images = list(
         operator.find_images(
-            QueryDataset.create(PatientID="1", StudyInstanceUID="1.123", SeriesInstanceUID="s1")
+            QueryDataset.create(
+                PatientID="1", StudyInstanceUID="1.123", SeriesInstanceUID="1.2.3.1"
+            )
         )
     )
 
     find_mock.assert_called_once()
-    assert [i.SOPInstanceUID for i in images] == ["i1", "i2"]
+    assert [i.SOPInstanceUID for i in images] == ["1.2.4.1", "1.2.4.2"]
 
 
 @pytest.mark.django_db
 def test_find_images_with_qido(mocker: MockerFixture):
     operator = create_dicomweb_operator()
-    results = [_make_result(SOPInstanceUID="i1")]
+    results = [_make_result(SOPInstanceUID="1.2.4.1")]
     qido_mock = mocker.patch.object(
         operator.dicom_web_connector, "send_qido_rs", return_value=iter(results)
     )
 
     images = list(
         operator.find_images(
-            QueryDataset.create(PatientID="1", StudyInstanceUID="1.123", SeriesInstanceUID="s1")
+            QueryDataset.create(
+                PatientID="1", StudyInstanceUID="1.123", SeriesInstanceUID="1.2.3.1"
+            )
         )
     )
 
     qido_mock.assert_called_once()
-    assert images[0].SOPInstanceUID == "i1"
+    assert images[0].SOPInstanceUID == "1.2.4.1"
 
 
 @pytest.mark.django_db
@@ -459,7 +470,9 @@ def test_find_images_raises_when_no_method_supported(mocker: MockerFixture):
     with pytest.raises(DicomError, match="No supported method to find images"):
         list(
             operator.find_images(
-                QueryDataset.create(PatientID="1", StudyInstanceUID="1.123", SeriesInstanceUID="s1")
+                QueryDataset.create(
+                    PatientID="1", StudyInstanceUID="1.123", SeriesInstanceUID="1.2.3.1"
+                )
             )
         )
 
@@ -473,7 +486,7 @@ def test_find_images_raises_when_no_method_supported(mocker: MockerFixture):
 def test_fetch_study_prefers_wado(mocker: MockerFixture):
     operator = create_dicomweb_operator()
     image = Dataset()
-    image.SOPInstanceUID = "i1"
+    image.SOPInstanceUID = "1.2.4.1"
     wado_mock = mocker.patch.object(
         operator.dicom_web_connector, "send_wado_rs", return_value=iter([image])
     )
@@ -482,7 +495,7 @@ def test_fetch_study_prefers_wado(mocker: MockerFixture):
     operator.fetch_study("1", "1.123", received.append)
 
     wado_mock.assert_called_once()
-    assert received[0].SOPInstanceUID == "i1"
+    assert received[0].SOPInstanceUID == "1.2.4.1"
 
 
 @pytest.mark.django_db
@@ -514,23 +527,23 @@ def test_fetch_series_raises_when_no_method(mocker: MockerFixture):
         setattr(operator.server, attr, False)
 
     with pytest.raises(DicomError, match="No supported method to fetch a series"):
-        operator.fetch_series("1", "1.123", "s1", lambda ds: None)
+        operator.fetch_series("1", "1.123", "1.2.3.1", lambda ds: None)
 
 
 @pytest.mark.django_db
 def test_fetch_image_prefers_wado(mocker: MockerFixture):
     operator = create_dicomweb_operator()
     image = Dataset()
-    image.SOPInstanceUID = "i1"
+    image.SOPInstanceUID = "1.2.4.1"
     wado_mock = mocker.patch.object(
         operator.dicom_web_connector, "send_wado_rs", return_value=iter([image])
     )
 
     received: list[Dataset] = []
-    operator.fetch_image("1", "1.123", "s1", "i1", received.append)
+    operator.fetch_image("1", "1.123", "1.2.3.1", "1.2.4.1", received.append)
 
     wado_mock.assert_called_once()
-    assert received[0].SOPInstanceUID == "i1"
+    assert received[0].SOPInstanceUID == "1.2.4.1"
 
 
 @pytest.mark.django_db
@@ -546,7 +559,7 @@ def test_fetch_image_raises_when_no_method(mocker: MockerFixture):
         setattr(operator.server, attr, False)
 
     with pytest.raises(DicomError, match="No supported method to fetch an image"):
-        operator.fetch_image("1", "1.123", "s1", "i1", lambda ds: None)
+        operator.fetch_image("1", "1.123", "1.2.3.1", "1.2.4.1", lambda ds: None)
 
 
 # ---------------------------------------------------------------------------
@@ -620,12 +633,12 @@ def test_move_series_sends_c_move(mocker: MockerFixture):
     operator = create_dicom_operator()
     move_mock = mocker.patch.object(operator.dimse_connector, "send_c_move")
 
-    operator.move_series("1", "1.123", "s1", "DEST_AE")
+    operator.move_series("1", "1.123", "1.2.3.1", "DEST_AE")
 
     move_mock.assert_called_once()
     query, dest = move_mock.call_args.args
     assert query.QueryRetrieveLevel == "SERIES"
-    assert query.SeriesInstanceUID == "s1"
+    assert query.SeriesInstanceUID == "1.2.3.1"
     assert dest == "DEST_AE"
 
 
@@ -636,7 +649,7 @@ def test_move_series_raises_when_unsupported():
     operator.server.study_root_move_support = False
 
     with pytest.raises(DicomError, match="does not support moving a series"):
-        operator.move_series("1", "1.123", "s1", "DEST_AE")
+        operator.move_series("1", "1.123", "1.2.3.1", "DEST_AE")
 
 
 # ---------------------------------------------------------------------------
@@ -654,7 +667,7 @@ def test_fetch_with_c_get_store_handler_success(mocker: MockerFixture):
         # Simulate pynetdicom firing the store handler with one event
         event = mocker.MagicMock()
         ds = Dataset()
-        ds.SOPInstanceUID = "i1"
+        ds.SOPInstanceUID = "1.2.4.1"
         event.dataset = ds
         event.file_meta = Dataset()
         captured["rc"] = store_handler(event, store_errors)
@@ -662,10 +675,10 @@ def test_fetch_with_c_get_store_handler_success(mocker: MockerFixture):
     mocker.patch.object(operator.dimse_connector, "send_c_get", side_effect=fake_send_c_get)
 
     received: list[Dataset] = []
-    operator.fetch_series("1", "1.123", "s1", received.append)
+    operator.fetch_series("1", "1.123", "1.2.3.1", received.append)
 
     assert captured["rc"] == 0x0000
-    assert received[0].SOPInstanceUID == "i1"
+    assert received[0].SOPInstanceUID == "1.2.4.1"
 
 
 @pytest.mark.django_db
@@ -681,7 +694,7 @@ def test_fetch_with_c_get_store_handler_error_aborts_and_raises(mocker: MockerFi
     def fake_send_c_get(query, store_handler, store_errors, *args, **kwargs):
         event = mocker.MagicMock()
         ds = Dataset()
-        ds.SOPInstanceUID = "i1"
+        ds.SOPInstanceUID = "1.2.4.1"
         event.dataset = ds
         event.file_meta = Dataset()
         rc = store_handler(event, store_errors)
@@ -691,7 +704,7 @@ def test_fetch_with_c_get_store_handler_error_aborts_and_raises(mocker: MockerFi
     mocker.patch.object(operator.dimse_connector, "send_c_get", side_effect=fake_send_c_get)
 
     with pytest.raises(DicomError, match="Failed to handle image"):
-        operator.fetch_series("1", "1.123", "s1", bad_callback)
+        operator.fetch_series("1", "1.123", "1.2.3.1", bad_callback)
 
     abort_mock.assert_called_once()
 
@@ -705,7 +718,7 @@ def test_fetch_with_c_get_store_handler_error_aborts_and_raises(mocker: MockerFi
 def test_handle_fetched_image_out_of_space(mocker: MockerFixture):
     operator = create_dicom_operator()
     ds = Dataset()
-    ds.SOPInstanceUID = "i1"
+    ds.SOPInstanceUID = "1.2.4.1"
 
     def callback(_ds: Dataset) -> None:
         err = OSError("no space")
@@ -721,12 +734,12 @@ def test_handle_fetched_image_out_of_space(mocker: MockerFixture):
 def test_handle_fetched_image_generic_error(mocker: MockerFixture):
     operator = create_dicom_operator()
     ds = Dataset()
-    ds.SOPInstanceUID = "i1"
+    ds.SOPInstanceUID = "1.2.4.1"
 
     def callback(_ds: Dataset) -> None:
         raise RuntimeError("unexpected")
 
-    with pytest.raises(DicomError, match="Failed to handle image 'i1'"):
+    with pytest.raises(DicomError, match="Failed to handle image '1.2.4.1'"):
         operator._handle_fetched_image(ds, callback)
 
 

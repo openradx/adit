@@ -84,6 +84,11 @@ def _build_date_time_datetime_range(
 ):
     start_date = str(vr_class(start)) if start else ""
     end_date = str(vr_class(end)) if end else ""
+    # No bounds at all means "match anything" — send an empty (universal match)
+    # value rather than a bare "-", which is not a valid DA/TM/DT value and makes
+    # pydicom emit an "Invalid value for VR" warning.
+    if not start_date and not end_date:
+        return ""
     return f"{start_date}-{end_date}"
 
 

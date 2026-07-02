@@ -682,7 +682,7 @@ class DicomOperator:
                             RetriableDicomError("Failed to fetch all images with C-MOVE.")
                         )
 
-                    logger.warn(
+                    logger.warning(
                         "These images of study %s were not received: %s",
                         study_uid,
                         ", ".join(remaining_image_uids),

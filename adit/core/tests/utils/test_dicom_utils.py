@@ -27,6 +27,9 @@ def test_convert_to_dicom_date():
     assert convert_to_dicom_date("20220309 - 20230831") == "20220309-20230831"
     assert convert_to_dicom_date((date(2022, 3, 9), date(2023, 8, 31))) == "20220309-20230831"
 
+    # An unbounded range (no start and no end) is universal match, not a bare "-"
+    assert convert_to_dicom_date((None, None)) == ""
+
 
 def test_convert_to_dicom_time():
     # Test with single times

@@ -651,7 +651,7 @@ class TestStoreImages:
 
         async def fake_stow_store(dest, instance):
             result = _stow_result(instance)
-            result.FailureReason = "0110"
+            result.FailureReason = 0x0110
             return result, True  # failed
 
         url = reverse("stow_rs-series", args=[server.ae_title])
