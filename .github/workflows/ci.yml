@@ -45,9 +45,19 @@ jobs:
         # https://github.com/actions/runner/issues/241#issuecomment-745902718
         shell: 'script -q -e -c "bash {0}"'
         run: uv run cli lint
-      - name: Run tests
+      - name: Run unit and integration tests
         shell: 'script -q -e -c "bash {0}"'
-        run: uv run cli test -- --cov
+        run: uv run cli test -- --cov -m 'not acceptance'
+      - name: Run acceptance tests
+        # Run acceptance tests in a separate pytest process from the unit and
+        # integration tests above. The async ASGI tests (Django AsyncClient,
+        # channels consumers) and the pytest-playwright acceptance tests fight
+        # over the event loop when collected into one process (pytest-asyncio
+        # vs. playwright's per-suite loop), making the channels acceptance tests
+        # fail with "this event loop is already running". Separate processes
+        # keep each loop setup clean.
+        shell: 'script -q -e -c "bash {0}"'
+        run: uv run cli test -- -m acceptance
       - name: Stop Docker containers
         if: ${{ always() }}
         run: uv run cli compose-down

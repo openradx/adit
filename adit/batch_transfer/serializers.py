@@ -25,7 +25,7 @@ class BatchTransferTaskListSerializer(BatchTaskListSerializer):
         patient_id_to_pseudonym = {}
         for data in attrs:
             patient_id = data["patient_id"]
-            pseudonym = data["pseudonym"]
+            pseudonym = data.get("pseudonym", "")
             if patient_id not in patient_id_to_pseudonym:
                 patient_id_to_pseudonym[patient_id] = pseudonym
             if patient_id_to_pseudonym[patient_id] != pseudonym:
@@ -56,9 +56,9 @@ class BatchTransferTaskSerializer(BatchTaskSerializer):
         # provide can_transfer_unpseudonymized to BatchTransferTaskSerializer, but not to
         # BatchTaskListSerializer (otherwise we would an unexpected argument error there).
         kwargs["child"] = cls(*args, **kwargs)
-        del kwargs["can_transfer_unpseudonymized"]
+        kwargs.pop("can_transfer_unpseudonymized", None)
         kwargs["model"] = cls.Meta.model
-        return BatchTaskListSerializer(*args, **kwargs)
+        return cls.Meta.list_serializer_class(*args, **kwargs)
 
     def __init__(self, instance=None, data=None, **kwargs):
         self.can_transfer_unpseudonymized = kwargs.pop("can_transfer_unpseudonymized")
