@@ -7,8 +7,8 @@ ENVIRONMENT = "development"
 
 INTERNAL_IPS = env.list("DJANGO_INTERNAL_IPS")
 
-REMOTE_DEBUGGING_ENABLED = env.bool("REMOTE_DEBUGGING_ENABLED")
-REMOTE_DEBUGGING_PORT = env.int("REMOTE_DEBUGGING_PORT")
+REMOTE_DEBUGGING_ENABLED = env.bool("REMOTE_DEBUGGING_ENABLED", default=False)
+REMOTE_DEBUGGING_PORT = env.int("REMOTE_DEBUGGING_PORT", default=5678)
 
 EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 
@@ -23,7 +23,7 @@ MIDDLEWARE += [  # noqa: F405
     "django_browser_reload.middleware.BrowserReloadMiddleware",
 ]
 
-if env.bool("FORCE_DEBUG_TOOLBAR"):
+if env.bool("FORCE_DEBUG_TOOLBAR", default=True):
     DEBUG_TOOLBAR_CONFIG = {"SHOW_TOOLBAR_CALLBACK": lambda _: True}
 
 LOGGING["loggers"]["adit"]["level"] = "DEBUG"  # noqa: F405
