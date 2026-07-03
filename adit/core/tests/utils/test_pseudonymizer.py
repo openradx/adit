@@ -99,6 +99,54 @@ class TestPseudonymizer:
 
         assert ds.AcquisitionDateTime == "20230101120000"
 
+    def test_pseudonymize_removes_common_phi(self, pseudonymizer: Pseudonymizer):
+        """PHI sweep: identifying tags must not survive anonymization with their original values.
+
+        The other tests only check that PatientID/PatientName are set and that the kept date
+        fields survive. This guards the inverse: a future change to the de-identification path
+        must not silently stop scrubbing a PHI field. We assert the *original* value is gone
+        (using .get so a removed element passes too), not the specific replacement.
+        """
+        ds = create_base_dataset()
+        ds.PatientBirthDate = "19800101"
+        ds.PatientAddress = "123 Secret Street"
+        ds.PatientTelephoneNumbers = "555-0100"
+        ds.OtherPatientIDs = "OTHER-ID-999"
+        ds.AccessionNumber = "ACC-123456"
+        ds.ReferringPhysicianName = "Referring^Doctor"
+        ds.PerformingPhysicianName = "Performing^Doctor"
+        ds.InstitutionName = "Secret Hospital"
+        ds.InstitutionAddress = "456 Hospital Road"
+
+        pseudonymizer.pseudonymize(ds, "PSEUDONYM123")
+
+        # Patient identity is replaced with the pseudonym ...
+        assert ds.PatientID == "PSEUDONYM123"
+        assert ds.PatientName == "PSEUDONYM123"
+        # ... and none of the original identifying values survive in their fields.
+        assert str(ds.get("PatientBirthDate", "")) != "19800101"
+        assert str(ds.get("PatientAddress", "")) != "123 Secret Street"
+        assert str(ds.get("PatientTelephoneNumbers", "")) != "555-0100"
+        assert str(ds.get("OtherPatientIDs", "")) != "OTHER-ID-999"
+        assert str(ds.get("AccessionNumber", "")) != "ACC-123456"
+        assert str(ds.get("ReferringPhysicianName", "")) != "Referring^Doctor"
+        assert str(ds.get("PerformingPhysicianName", "")) != "Performing^Doctor"
+        assert str(ds.get("InstitutionName", "")) != "Secret Hospital"
+        assert str(ds.get("InstitutionAddress", "")) != "456 Hospital Road"
+
+    def test_pseudonymize_regenerates_instance_uids(self, pseudonymizer: Pseudonymizer):
+        """Study/Series/SOP UIDs are regenerated so the output can't be linked by original UID."""
+        ds = create_base_dataset()
+        original_study_uid = ds.StudyInstanceUID
+        original_series_uid = ds.SeriesInstanceUID
+        original_sop_uid = ds.SOPInstanceUID
+
+        pseudonymizer.pseudonymize(ds, "PSEUDONYM123")
+
+        assert ds.StudyInstanceUID != original_study_uid
+        assert ds.SeriesInstanceUID != original_series_uid
+        assert ds.SOPInstanceUID != original_sop_uid
+
 
 class TestComputePseudonym:
     def test_deterministic_same_seed(self):

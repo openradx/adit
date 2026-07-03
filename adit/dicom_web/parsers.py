@@ -22,31 +22,32 @@ async def parse_request_in_chunks(
     except (IndexError, AssertionError):
         raise NotAcceptable("Invalid multipart request with no boundary")
 
-    part: bytes = b""
+    buffer: bytes = b""
     while True:
         chunk: bytes = request.read(chunk_size)
 
         if not chunk:
-            if part:
-                ds = await _get_dicom_from_part(part)
+            # Flush any part still buffered at the end of the stream.
+            if buffer:
+                ds = await _get_dicom_from_part(buffer)
                 if ds is not None:
                     yield ds
             break
 
-        if boundary in chunk:
-            idx = chunk.index(boundary)
-            part += chunk[:idx]
+        buffer += chunk
 
+        # A single read may contain several boundaries (multiple small parts),
+        # so split out every complete part, not just the first one. Any partial
+        # trailing part (or a boundary split across reads) stays in the buffer.
+        idx = buffer.find(boundary)
+        while idx != -1:
+            part = buffer[:idx]
             if part:
                 ds = await _get_dicom_from_part(part)
                 if ds is not None:
                     yield ds
-
-            part = b""
-            part += chunk[idx + len(boundary) :]
-
-        else:
-            part += chunk
+            buffer = buffer[idx + len(boundary) :]
+            idx = buffer.find(boundary)
 
 
 async def _get_dicom_from_part(part: bytes) -> Dataset | None:
