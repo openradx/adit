@@ -201,6 +201,14 @@ class FileTransmitClient:
                 if finished:
                     break
         finally:
-            # The client reports that is well served and doesn't need any  further
-            # files by writing an eof.
-            writer.write_eof()
+            # The client reports that it is well served and doesn't need any further
+            # files by writing an eof, then closes the connection.
+            try:
+                writer.write_eof()
+            except OSError:
+                pass  # the connection may already be gone
+            writer.close()
+            try:
+                await writer.wait_closed()
+            except OSError:
+                pass
