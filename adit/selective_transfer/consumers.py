@@ -15,6 +15,7 @@ from channels.db import database_sync_to_async
 from channels.generic.websocket import AsyncJsonWebsocketConsumer
 from crispy_forms.utils import render_crispy_form
 from django.conf import settings
+from django.db import close_old_connections
 from django.template.loader import render_to_string
 from django.utils.translation import (
     get_supported_language_variant,
@@ -272,6 +273,8 @@ class SelectiveTransferConsumer(AsyncJsonWebsocketConsumer):
             with lock:
                 if operator in self.query_operators:
                     self.query_operators.remove(operator)
+            # Runs in a pool thread; close this thread's db connections.
+            close_old_connections()
 
         return None
 
@@ -301,42 +304,46 @@ class SelectiveTransferConsumer(AsyncJsonWebsocketConsumer):
         studies: list[ResultDataset],
         max_results_reached: bool,
     ) -> None:
-        # Rerender form to remove potential previous error messages
-        with override(getattr(self, "user_language", settings.LANGUAGE_CODE)):
-            rendered_form = render_crispy_form(form)
+        # Runs debounced in a timer thread; close this thread's db connections.
+        try:
+            # Rerender form to remove potential previous error messages
+            with override(getattr(self, "user_language", settings.LANGUAGE_CODE)):
+                rendered_form = render_crispy_form(form)
 
-            studies = sorted(
-                studies,
-                key=lambda study: datetime.combine(study.StudyDate, study.StudyTime),
-                reverse=True,
-            )
+                studies = sorted(
+                    studies,
+                    key=lambda study: datetime.combine(study.StudyDate, study.StudyTime),
+                    reverse=True,
+                )
 
-            source = cast(DicomNode, form.cleaned_data["source"])
-            server_id = source.dicomserver.pk
-            can_download = self.user.has_perm("selective_transfer.can_download_study")
+                source = cast(DicomNode, form.cleaned_data["source"])
+                server_id = source.dicomserver.pk
+                can_download = self.user.has_perm("selective_transfer.can_download_study")
 
-            pseudo_params = {
-                "pseudonym": form.cleaned_data["pseudonym"],
-                "trial_protocol_id": form.cleaned_data["trial_protocol_id"],
-                "trial_protocol_name": form.cleaned_data["trial_protocol_name"],
-            }
+                pseudo_params = {
+                    "pseudonym": form.cleaned_data["pseudonym"],
+                    "trial_protocol_id": form.cleaned_data["trial_protocol_id"],
+                    "trial_protocol_name": form.cleaned_data["trial_protocol_name"],
+                }
 
-            pseudo_params = {k: v for k, v in pseudo_params.items() if v}
-            encoded_pseudo_params = urlencode(pseudo_params)
+                pseudo_params = {k: v for k, v in pseudo_params.items() if v}
+                encoded_pseudo_params = urlencode(pseudo_params)
 
-            rendered_query_results = render_to_string(
-                "selective_transfer/_query_results.html",
-                {
-                    "query": True,
-                    "query_results": studies,
-                    "max_results_reached": max_results_reached,
-                    "server_id": server_id,
-                    "pseudo_params": encoded_pseudo_params,
-                    "can_download": can_download,
-                },
-            )
+                rendered_query_results = render_to_string(
+                    "selective_transfer/_query_results.html",
+                    {
+                        "query": True,
+                        "query_results": studies,
+                        "max_results_reached": max_results_reached,
+                        "server_id": server_id,
+                        "pseudo_params": encoded_pseudo_params,
+                        "can_download": can_download,
+                    },
+                )
 
-        async_to_sync(self.send)(rendered_form + rendered_query_results)
+            async_to_sync(self.send)(rendered_form + rendered_query_results)
+        finally:
+            close_old_connections()
 
     async def make_transfer(self, form: SelectiveTransferJobForm) -> None:
         selected_studies: str | list[str] | None = form.data.get("selected_studies")

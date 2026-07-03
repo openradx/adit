@@ -5,6 +5,7 @@ from adit_radis_shared.common.types import AuthenticatedHttpRequest
 from django.conf import settings
 from django.contrib.auth.decorators import login_required, permission_required
 from django.core.exceptions import ValidationError
+from django.db import close_old_connections
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import redirect, render
 from django.urls import resolve, reverse
@@ -71,7 +72,7 @@ async def dicom_explorer_resources_view(
     try:
         future = loop.run_in_executor(
             None,
-            render_query_result,
+            _render_query_result_in_worker,
             request,
             server_id,
             patient_id,
@@ -98,6 +99,14 @@ def is_valid_id(value):
 
 def render_error(request: HttpRequest, error_message: str) -> HttpResponse:
     return render(request, "dicom_explorer/error_message.html", {"error_message": error_message})
+
+
+def _render_query_result_in_worker(*args) -> HttpResponse:
+    # Runs in an executor thread; close this thread's db connections when done.
+    try:
+        return render_query_result(*args)
+    finally:
+        close_old_connections()
 
 
 def render_query_result(
