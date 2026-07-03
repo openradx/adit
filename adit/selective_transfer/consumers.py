@@ -15,7 +15,7 @@ from channels.db import database_sync_to_async
 from channels.generic.websocket import AsyncJsonWebsocketConsumer
 from crispy_forms.utils import render_crispy_form
 from django.conf import settings
-from django.db import close_old_connections
+from django.db import connections
 from django.template.loader import render_to_string
 from django.utils.translation import (
     get_supported_language_variant,
@@ -274,7 +274,7 @@ class SelectiveTransferConsumer(AsyncJsonWebsocketConsumer):
                 if operator in self.query_operators:
                     self.query_operators.remove(operator)
             # Runs in a pool thread; close this thread's db connections.
-            close_old_connections()
+            connections.close_all()
 
         return None
 
@@ -343,7 +343,7 @@ class SelectiveTransferConsumer(AsyncJsonWebsocketConsumer):
 
             async_to_sync(self.send)(rendered_form + rendered_query_results)
         finally:
-            close_old_connections()
+            connections.close_all()
 
     async def make_transfer(self, form: SelectiveTransferJobForm) -> None:
         selected_studies: str | list[str] | None = form.data.get("selected_studies")
