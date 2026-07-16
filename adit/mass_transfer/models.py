@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import json
 import secrets
 from typing import TYPE_CHECKING
@@ -61,7 +59,7 @@ class MassTransferJob(TransferJob):
             return json.dumps(self.filters_json, indent=2)
         return ""
 
-    def get_filters(self) -> list[FilterSpec]:
+    def get_filters(self) -> list["FilterSpec"]:
         from .processors import FilterSpec
 
         if not self.filters_json:
@@ -190,5 +188,3 @@ class MassTransferVolume(models.Model):
         if self.log:
             self.log += "\n"
         self.log += msg
-
-

@@ -64,9 +64,7 @@ class DicomToNiftiConverter:
         ]
 
         try:
-            result = subprocess.run(
-                cmd, check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE
-            )
+            result = subprocess.run(cmd, check=False, capture_output=True)
             stderr = result.stderr.decode("utf-8", errors="replace")
             stdout = result.stdout.decode("utf-8", errors="replace")
 

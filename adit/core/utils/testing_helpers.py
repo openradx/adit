@@ -1,7 +1,8 @@
 import functools
 import io
 import os
-from typing import Any, Iterable
+from collections.abc import Iterable
+from typing import Any
 from unittest.mock import MagicMock, create_autospec
 
 import pandas as pd
@@ -151,7 +152,7 @@ def setup_dicomweb_orthancs() -> tuple[DicomServer, DicomServer]:
 
 def create_excel_file(df: pd.DataFrame, filename: str) -> FilePayload:
     output = io.BytesIO()
-    df.to_excel(output, index=False, engine="openpyxl")  # type: ignore
+    df.to_excel(output, index=False, engine="openpyxl")
 
     return {
         "name": filename,
@@ -192,7 +193,7 @@ def load_sample_dicoms(patient_id: str | None = None) -> Iterable[Dataset]:
             yield ds
 
 
-@functools.lru_cache(maxsize=None)
+@functools.cache
 def load_sample_dicoms_metadata(patient_id: str | None = None) -> pd.DataFrame:
     metadata = []
     for ds in load_sample_dicoms(patient_id):

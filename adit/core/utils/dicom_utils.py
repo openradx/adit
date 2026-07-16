@@ -3,7 +3,7 @@ import logging
 import re
 from os import PathLike
 from pathlib import Path
-from typing import Any, BinaryIO, Optional
+from typing import Any, BinaryIO
 
 from django.conf import settings
 from pydicom import Dataset, dcmread, dcmwrite, valuerep
@@ -45,8 +45,11 @@ def has_wildcards(value: str) -> bool:
     return False
 
 
-def convert_to_python_regex(value: str, case_sensitive=False) -> re.Pattern[str]:
+def convert_to_python_regex(value: str, case_insensitive=False) -> re.Pattern[str]:
     """Convert a DICOM wildcard string to a Python regex pattern.
+
+    DICOM Wild Card Matching is whole-value, so callers must use
+    ``.fullmatch()`` (not ``.search()``) on the returned pattern.
 
     https://dicom.nema.org/medical/dicom/current/output/chtml/part04/sect_c.2.2.2.4.html
     """
@@ -55,7 +58,7 @@ def convert_to_python_regex(value: str, case_sensitive=False) -> re.Pattern[str]
     value = value.replace("\\?", ".")
 
     flags = re.NOFLAG
-    if not case_sensitive:
+    if case_insensitive:
         flags |= re.IGNORECASE
 
     return re.compile(value, flags)
@@ -81,6 +84,11 @@ def _build_date_time_datetime_range(
 ):
     start_date = str(vr_class(start)) if start else ""
     end_date = str(vr_class(end)) if end else ""
+    # No bounds at all means "match anything" — send an empty (universal match)
+    # value rather than a bare "-", which is not a valid DA/TM/DT value and makes
+    # pydicom emit an "Invalid value for VR" warning.
+    if not start_date and not end_date:
+        return ""
     return f"{start_date}-{end_date}"
 
 
@@ -155,7 +163,7 @@ def construct_download_file_path(
     study_date: datetime.date,
     study_time: datetime.time,
     study_modalities: list[str],
-    pseudonym: Optional[str] = None,
+    pseudonym: str | None = None,
 ) -> Path:
     """Constructs the file path for a DICOM instance when transferring/downloading"""
 

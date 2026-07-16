@@ -3,9 +3,9 @@ import errno
 import logging
 import os
 import threading
+from collections.abc import Callable
 from pathlib import Path
 from tempfile import NamedTemporaryFile
-from typing import Callable
 
 from pynetdicom import debug_logger, evt
 from pynetdicom.ae import ApplicationEntity as AE
@@ -38,7 +38,7 @@ class StoreScp:
         exists = os.path.exists(self._folder)
         is_dir = os.path.isdir(self._folder)
         if not exists or not is_dir:
-            raise IOError(f"Invalid folder to store DICOM files: {self._folder}")
+            raise OSError(f"Invalid folder to store DICOM files: {self._folder}")
 
         self._ae = AE(ae_title=self._ae_title)
 

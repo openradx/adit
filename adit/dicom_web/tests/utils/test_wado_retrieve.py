@@ -250,7 +250,7 @@ async def test_wado_retrieve_with_non_retriable_error(monkeypatch):
 
 
 """
-Mock test simulating the race condition in the old implementation and 
+Mock test simulating the race condition in the old implementation and
 how adding a sentinel resolves it. Can be removed if deemed unnecessary.
 """
 

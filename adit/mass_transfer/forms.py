@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import json
 import secrets
 from typing import Annotated, Literal, cast
@@ -47,11 +45,7 @@ class FilterSchema(BaseModel):
             and self.min_number_of_series_related_instances < 1
         ):
             raise ValueError("min_number_of_series_related_instances must be >= 1")
-        if (
-            self.min_age is not None
-            and self.max_age is not None
-            and self.min_age > self.max_age
-        ):
+        if self.min_age is not None and self.max_age is not None and self.min_age > self.max_age:
             raise ValueError(f"min_age ({self.min_age}) cannot exceed max_age ({self.max_age})")
         return self
 
@@ -154,8 +148,7 @@ class MassTransferJobForm(forms.ModelForm):
                 "(leave the field blank)."
             ),
             "convert_to_nifti": (
-                "When enabled, exported DICOM series are converted to NIfTI format "
-                "using dcm2niix."
+                "When enabled, exported DICOM series are converted to NIfTI format using dcm2niix."
             ),
         }
         widgets = {
@@ -181,9 +174,7 @@ class MassTransferJobForm(forms.ModelForm):
         self.fields["destination"].widget.attrs["x-init"] = "initDestination($el)"
         self.fields["destination"].widget.attrs["@change"] = "onDestinationChange($event)"
 
-        self.fields["partition_granularity"].widget.attrs["@change"] = (
-            "onGranularityChange($event)"
-        )
+        self.fields["partition_granularity"].widget.attrs["@change"] = "onGranularityChange($event)"
 
         self.fields["pseudonymize"].widget.attrs["x-model"] = "pseudonymize"
 

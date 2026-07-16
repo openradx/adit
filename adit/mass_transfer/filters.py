@@ -28,6 +28,4 @@ class MassTransferVolumeFilter(django_filters.FilterSet):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        with_form_helper(self.form).helper = SingleFilterFieldFormHelper(
-            self.request.GET, "status"
-        )
+        with_form_helper(self.form).helper = SingleFilterFieldFormHelper(self.request.GET, "status")

@@ -1,9 +1,10 @@
 import inspect
 import logging
+from collections.abc import Callable, Iterator
 from functools import wraps
 from os import PathLike
 from pathlib import Path
-from typing import Callable, Iterator, Literal
+from typing import Literal
 
 from django.conf import settings
 from pydicom import Dataset
@@ -230,7 +231,8 @@ class DimseConnector:
             if rejected:
                 logger.warning(
                     "C-GET: %d presentation contexts rejected by SCP: %s",
-                    len(rejected), rejected,
+                    len(rejected),
+                    rejected,
                 )
             accepted = [cx.abstract_syntax for cx in self.assoc.accepted_contexts]
             logger.debug("C-GET: %d presentation contexts accepted", len(accepted))
@@ -249,7 +251,7 @@ class DimseConnector:
             self.assoc.abort()
             self.assoc = None
             self._current_service = None
-    
+
     @retry_dimse_find
     @connect_to_server("C-FIND")
     def send_c_find(
@@ -472,7 +474,7 @@ class DimseConnector:
                                 "message": message,
                             }
                         )
-                        logger.warn(message)
+                        logger.warning(message)
 
                     if warning_suboperations:
                         message = f"{warning_suboperations} sub-operations with warnings."
@@ -483,7 +485,7 @@ class DimseConnector:
                                 "message": message,
                             }
                         )
-                        logger.warn(message)
+                        logger.warning(message)
                 else:
                     if status_category == STATUS_WARNING:
                         message = f"Unknown warning:\n{status}"
@@ -494,7 +496,7 @@ class DimseConnector:
                                 "message": message,
                             }
                         )
-                        logger.warn(message)
+                        logger.warning(message)
 
                     # Log "silent empty" responses: PACS returns Success with
                     # 0 completed, 0 failed, 0 warning.  This happens on IMPAX
@@ -508,8 +510,7 @@ class DimseConnector:
                         and not warning_suboperations
                     ):
                         logger.warning(
-                            "%s returned success with 0 sub-operations — "
-                            "PACS may be busy.",
+                            "%s returned success with 0 sub-operations — PACS may be busy.",
                             op,
                         )
 

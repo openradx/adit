@@ -1,7 +1,8 @@
 import datetime
 import logging
+from collections.abc import Iterable
 from datetime import date, time
-from typing import Any, Iterable, Literal
+from typing import Any, Literal
 
 from pydicom import DataElement, Dataset, datadict
 

@@ -1,4 +1,5 @@
-from typing import TYPE_CHECKING, Callable, NamedTuple
+from collections.abc import Callable
+from typing import TYPE_CHECKING, NamedTuple
 
 if TYPE_CHECKING:
     from .models import DicomJob

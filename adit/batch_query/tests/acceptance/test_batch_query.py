@@ -26,7 +26,7 @@ def test_urgent_batch_query_with_dimse_server(page: Page, live_server: LiveServe
     # Arrange
     df = pd.DataFrame(
         [["1005", "0062115904"]],
-        columns=["PatientID", "AccessionNumber"],  # type: ignore
+        columns=["PatientID", "AccessionNumber"],
     )
     batch_file = create_excel_file(df, "batch_file.xlsx")
 
@@ -62,7 +62,7 @@ def test_urgent_batch_query_with_dicomweb_server(page: Page, live_server: LiveSe
     # Arrange
     df = pd.DataFrame(
         [["1005", "0062115904"]],
-        columns=["PatientID", "AccessionNumber"],  # type: ignore
+        columns=["PatientID", "AccessionNumber"],
     )
     batch_file = create_excel_file(df, "batch_file.xlsx")
 

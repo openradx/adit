@@ -199,5 +199,3 @@ class MassTransferTaskResetView(MassTransferLockedMixin, DicomTaskResetView):
 
 class MassTransferTaskKillView(MassTransferLockedMixin, DicomTaskKillView):
     model = MassTransferTask
-
-

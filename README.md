@@ -18,7 +18,7 @@ The detailed documentation of ADIT can be found at <https://openradx.github.io/a
 
 <table>
   <tr>
-    
+
   </tr>
   <tr>
     <td align="center"><a href="https://www.ukbonn.de/"><img src="https://github.com/user-attachments/assets/97a47dc2-5e9d-4903-ad4c-e79206dfb073" height="120" width="auto" alt="UK Bonn"/><br />Universitätsklinikum Bonn</a></td>

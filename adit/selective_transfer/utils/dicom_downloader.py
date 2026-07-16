@@ -2,12 +2,13 @@ import asyncio
 import logging
 import threading
 import time
+from collections.abc import AsyncGenerator, Coroutine
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial
 from io import BytesIO
 from pathlib import Path
 from stat import S_IFREG
-from typing import Any, AsyncGenerator, Coroutine
+from typing import Any
 
 from adit_radis_shared.accounts.models import User
 from adrf.views import sync_to_async
@@ -286,5 +287,5 @@ class DicomDownloader:
             # Because we cannot change the httpresponse once it has started streaming,
             # we add an error.txt file in the downloaded zip
             err = self._download_error
-            err_buf = BytesIO(f"Error during study download:\n\n{err}".encode("utf-8"))
+            err_buf = BytesIO(f"Error during study download:\n\n{err}".encode())
             yield buffer_to_gen(err_buf.getvalue()), "error.txt"

@@ -131,9 +131,7 @@ def test_pseudonymized_mass_transfer_to_server(
 @pytest.mark.order("last")
 @pytest.mark.django_db(transaction=True)
 @pytest.mark.parametrize("transfer_protocol", ["c-move", "c-get", "dicomweb"])
-def test_mass_transfer_to_folder(
-    page: Page, live_server: LiveServer, transfer_protocol: str
-):
+def test_mass_transfer_to_folder(page: Page, live_server: LiveServer, transfer_protocol: str):
     user = create_and_login_example_user(page, live_server.url)
     group = create_mass_transfer_group()
     add_user_to_group(user, group)
@@ -200,5 +198,5 @@ def test_mass_transfer_to_folder_with_nifti_conversion(
         assert len(nifti_files) > 0, "No NIfTI files were generated."
 
         for nifti_file in nifti_files:
-            img = nib.load(nifti_file)  # type: ignore
+            img = nib.load(nifti_file)
             assert img is not None, f"Invalid NIfTI file: {nifti_file}"

@@ -14,9 +14,9 @@ import errno
 import logging
 import threading
 import time
+from collections.abc import Callable, Iterable, Iterator
 from concurrent.futures import ThreadPoolExecutor
 from os import PathLike
-from typing import Callable, Iterable, Iterator
 
 from aiofiles import os as async_os
 from django.conf import settings
@@ -141,8 +141,10 @@ class DicomOperator:
                     continue
 
             if query.has("PatientName"):
-                patient_name_pattern = convert_to_python_regex(query.PatientName)
-                if not patient_name_pattern.search(result.PatientName):
+                patient_name_pattern = convert_to_python_regex(
+                    query.PatientName, case_insensitive=True
+                )
+                if not patient_name_pattern.fullmatch(result.PatientName):
                     continue
 
             if query.has("PatientSex"):
@@ -206,7 +208,7 @@ class DicomOperator:
             # Optionally filter by its study description, if the server doesn't support it
             if query.has("StudyDescription"):
                 study_description_pattern = convert_to_python_regex(query.StudyDescription)
-                if not study_description_pattern.search(result.StudyDescription):
+                if not study_description_pattern.fullmatch(result.StudyDescription):
                     continue
 
             # TODO: I guess this won't work as we are in the middle of a C-FIND request (we
@@ -311,7 +313,7 @@ class DicomOperator:
             # Optionally filter by series description, if the server doesn't support it
             if query.has("SeriesDescription"):
                 series_description_pattern = convert_to_python_regex(query.SeriesDescription)
-                if not series_description_pattern.search(result.SeriesDescription):
+                if not series_description_pattern.fullmatch(result.SeriesDescription):
                     continue
 
             yield result
@@ -541,7 +543,9 @@ class DicomOperator:
             except Exception as err:
                 logger.error(
                     "Store handler failed for SOP %s: %s",
-                    ds.SOPInstanceUID, err, exc_info=True,
+                    ds.SOPInstanceUID,
+                    err,
+                    exc_info=True,
                 )
                 store_errors.append(err)
 
@@ -678,7 +682,7 @@ class DicomOperator:
                             RetriableDicomError("Failed to fetch all images with C-MOVE.")
                         )
 
-                    logger.warn(
+                    logger.warning(
                         "These images of study %s were not received: %s",
                         study_uid,
                         ", ".join(remaining_image_uids),

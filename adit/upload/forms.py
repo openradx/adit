@@ -6,16 +6,6 @@ from adit.core.fields import DicomNodeChoiceField
 from adit.core.validators import no_backslash_char_validator, no_control_chars_validator
 
 
-class MultipleFileInput(forms.widgets.FileInput):
-    def __init__(self, attrs=None):
-        attrs = attrs or {}
-        attrs["onchange"] = "chooseFolder(event)"
-        attrs["webkitdirectory"] = True
-        attrs["directory"] = True
-        attrs["multiple"] = True
-        super().__init__(attrs)
-
-
 class UploadForm(forms.Form):
     pseudonym = forms.CharField(
         required=True,

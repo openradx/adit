@@ -117,12 +117,10 @@ def _run_dicom_task(
         dicom_task.message = "Task was canceled."
         ensure_db_connection()
 
-
     except futures.TimeoutError:
         dicom_task.message = "Task was aborted due to timeout."
         dicom_task.status = DicomTask.Status.FAILURE
         ensure_db_connection()
-
 
     except RetriableDicomError as err:
         logger.exception("Retriable error occurred during %s.", dicom_task)
@@ -160,7 +158,6 @@ def _run_dicom_task(
         dicom_task.log += traceback.format_exc()
 
         ensure_db_connection()
-
 
     finally:
         dicom_task.end = timezone.now()

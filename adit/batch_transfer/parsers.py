@@ -1,5 +1,5 @@
 from collections import defaultdict
-from typing import IO, DefaultDict
+from typing import IO
 
 from adit.core.parsers import BatchFileParser
 
@@ -44,7 +44,7 @@ class BatchTransferFileParser(BatchFileParser[BatchTransferTask]):
         # This is necessary for pseudonymization, so that the whole study
         # (with its series) are processed by only one worker and get the same
         # pseudonymized Study Instance UID.
-        tasks_by_study: DefaultDict[str, list[BatchTransferTask]] = defaultdict(list)
+        tasks_by_study: defaultdict[str, list[BatchTransferTask]] = defaultdict(list)
         for task in tasks:
             tasks_by_study[task.study_uid].append(task)
 

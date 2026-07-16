@@ -5,6 +5,7 @@ from adit_radis_shared.common.types import AuthenticatedHttpRequest
 from django.conf import settings
 from django.contrib.auth.decorators import login_required, permission_required
 from django.core.exceptions import ValidationError
+from django.db import close_old_connections
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import redirect, render
 from django.urls import resolve, reverse
@@ -61,17 +62,17 @@ async def dicom_explorer_resources_view(
     series_uid: str | None = None,
 ) -> HttpResponse:
     if patient_id is not None and not is_valid_id(patient_id):
-        render_error(request, f"Invalid Patient ID {patient_id}.")
+        return render_error(request, f"Invalid Patient ID {patient_id}.")
     if study_uid is not None and not is_valid_id(study_uid):
-        render_error(request, f"Invalid Study Instance UID {study_uid}.")
+        return render_error(request, f"Invalid Study Instance UID {study_uid}.")
     if series_uid is not None and not is_valid_id(series_uid):
-        render_error(request, f"Invalid Sereis Instance UID {series_uid}.")
+        return render_error(request, f"Invalid Series Instance UID {series_uid}.")
 
     loop = asyncio.get_event_loop()
     try:
         future = loop.run_in_executor(
             None,
-            render_query_result,
+            _render_query_result_in_worker,
             request,
             server_id,
             patient_id,
@@ -81,7 +82,7 @@ async def dicom_explorer_resources_view(
         timeout = settings.DICOM_EXPLORER_RESPONSE_TIMEOUT
         response = await asyncio.wait_for(future, timeout=timeout)
         return response
-    except asyncio.TimeoutError:
+    except TimeoutError:
         return render_error(request, "Connection to server timed out. Please try again later.")
 
 
@@ -98,6 +99,14 @@ def is_valid_id(value):
 
 def render_error(request: HttpRequest, error_message: str) -> HttpResponse:
     return render(request, "dicom_explorer/error_message.html", {"error_message": error_message})
+
+
+def _render_query_result_in_worker(*args) -> HttpResponse:
+    # Runs in an executor thread; close this thread's db connections when done.
+    try:
+        return render_query_result(*args)
+    finally:
+        close_old_connections()
 
 
 def render_query_result(

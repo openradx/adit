@@ -1,5 +1,5 @@
 from collections import deque
-from typing import AsyncIterator, Deque, Optional
+from collections.abc import AsyncIterator
 
 
 class AsyncPeekable[T](AsyncIterator[T]):
@@ -24,7 +24,7 @@ class AsyncPeekable[T](AsyncIterator[T]):
 
     def __init__(self, iterable: AsyncIterator[T]) -> None:
         self._it = iterable
-        self._cache: Deque[T] = deque()
+        self._cache: deque[T] = deque()
 
     def __aiter__(self) -> "AsyncPeekable":
         return self
@@ -35,7 +35,7 @@ class AsyncPeekable[T](AsyncIterator[T]):
 
         return await self._it.__anext__()
 
-    async def peek(self, default: Optional[T] = None) -> T:
+    async def peek(self, default: T | None = None) -> T:
         """Return the item that will be next returned from ``__anext__``.
 
         Return ``default`` if there are no items left. If ``default`` is not

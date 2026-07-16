@@ -3,9 +3,9 @@ import logging
 import os
 import subprocess
 import tempfile
+from collections.abc import Callable
 from functools import partial
 from pathlib import Path
-from typing import Callable
 
 from django.conf import settings
 from django.utils import timezone

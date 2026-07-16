@@ -1,5 +1,5 @@
 from abc import ABC
-from typing import IO, Type, TypeVar, cast
+from typing import IO, TypeVar, cast
 from zipfile import BadZipFile
 
 import pandas as pd
@@ -16,7 +16,7 @@ T = TypeVar("T", bound=DicomTask)
 
 
 class BatchFileParser[T](ABC):
-    serializer_class: Type[BatchTaskSerializer] | None = None
+    serializer_class: type[BatchTaskSerializer] | None = None
 
     def __init__(self, mapping: dict[str, str]) -> None:
         self.mapping = mapping
