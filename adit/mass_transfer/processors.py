@@ -11,6 +11,7 @@ from typing import Literal, cast
 
 import pydicom
 from django.conf import settings
+from django.db import transaction
 from django.utils import timezone
 from pydicom import Dataset
 from pydicom.errors import InvalidDicomError
@@ -353,7 +354,15 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
             if job.pseudonymize and job.pseudonym_salt:
                 pseudonymizer = Pseudonymizer(seed=job.pseudonym_salt)
             elif job.pseudonymize:
-                pseudonymizer = Pseudonymizer()
+                # Without a job-wide salt the anonymizer key must still be
+                # stable across automatic retries, or a resumed attempt would
+                # pseudonymize UIDs/dates differently than the volumes already
+                # transferred (splitting studies, duplicating instances on
+                # server destinations).
+                if is_fresh_cycle or not self.mass_task.anonymizer_seed:
+                    self.mass_task.anonymizer_seed = secrets.token_hex(20)
+                    self.mass_task.save(update_fields=["anonymizer_seed"])
+                pseudonymizer = Pseudonymizer(seed=self.mass_task.anonymizer_seed)
 
             operator = DicomOperator(source_node.dicomserver, persistent=True)
 
@@ -450,7 +459,11 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
                 )
             )
 
-        return MassTransferVolume.objects.bulk_create(volumes)
+        # Atomic so a worker kill mid-create rolls back to zero rows and the
+        # next attempt re-runs discovery, instead of resuming from a partial
+        # row set that silently drops the missing series.
+        with transaction.atomic():
+            return MassTransferVolume.objects.bulk_create(volumes)
 
     @staticmethod
     def _group_volumes(

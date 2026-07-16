@@ -98,6 +98,11 @@ class MassTransferTask(TransferTask):
     partition_end = models.DateTimeField()
     partition_key = models.CharField(max_length=64)
 
+    # Anonymizer seed for jobs without a fixed pseudonym_salt. Generated on the
+    # first attempt of a queue cycle and reused by automatic retries so that a
+    # resumed run pseudonymizes UIDs/dates consistently with earlier attempts.
+    anonymizer_seed = models.CharField(max_length=64, blank=True, default="")
+
     volumes: models.QuerySet["MassTransferVolume"]
 
     class Meta:
