@@ -167,6 +167,9 @@ class MassTransferVolume(models.Model):
     converted_file = models.TextField(blank=True, default="")
 
     status = models.CharField(max_length=16, choices=Status.choices, default=Status.PENDING)
+    # Only meaningful with status=ERROR: the failure was a RetriableDicomError,
+    # so a later task attempt resets this volume to PENDING and re-transfers it.
+    retriable = models.BooleanField(default=False)
     log = models.TextField(blank=True, default="")
 
     created = models.DateTimeField(auto_now_add=True)
