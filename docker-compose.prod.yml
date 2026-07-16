@@ -1,5 +1,10 @@
 x-app: &default-app
   image: ${ADIT_IMAGE:-ghcr.io/openradx/adit:latest}
+  # docker stack deploy doesn't set the compose project label on containers,
+  # so container tools (e.g. the VS Code Containers view) can't group them by
+  # stack. STACK_NAME is injected by the cli stack-deploy command.
+  labels:
+    com.docker.compose.project: ${STACK_NAME:-adit_prod}
   volumes:
     - web_data:/var/www/web
     - ${SSL_SERVER_CERT_FILE:?}:/etc/web/ssl/cert.pem
@@ -95,16 +100,22 @@ services:
       <<: *deploy
 
   postgres:
+    labels:
+      com.docker.compose.project: ${STACK_NAME:-adit_prod}
     environment:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?}
     deploy:
       <<: *deploy
 
   orthanc1:
+    labels:
+      com.docker.compose.project: ${STACK_NAME:-adit_prod}
     deploy:
       <<: *deploy
 
   orthanc2:
+    labels:
+      com.docker.compose.project: ${STACK_NAME:-adit_prod}
     deploy:
       <<: *deploy
 
