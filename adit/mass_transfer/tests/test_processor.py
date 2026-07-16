@@ -6,7 +6,6 @@ from unittest.mock import MagicMock
 
 import pytest
 from adit_radis_shared.accounts.factories import UserFactory
-from django.conf import settings
 from django.utils import timezone
 from pydicom import Dataset
 from pytest_mock import MockerFixture
@@ -688,9 +687,10 @@ def _make_process_env(
 
     processor.mass_task.pk = 42
     processor.mass_task.partition_key = "20240101"
-    # Default to a non-final attempt so per-volume retriable errors re-raise.
-    # Tests that exercise the final-attempt-continue path opt in explicitly.
-    processor.mass_task.attempts = settings.DICOM_TASK_MAX_ATTEMPTS - 1
+    # Default to the first attempt of a queue cycle (fresh run: wipe +
+    # discovery). Resume behavior (attempts >= 2) is covered by the DB
+    # integration tests, which need real querysets.
+    processor.mass_task.attempts = 1
 
     mocker.patch.object(processor, "is_suspended", return_value=False)
     mocker.patch("adit.mass_transfer.processors.DicomOperator")
@@ -738,9 +738,10 @@ def _make_process_env_server_dest(
 
     processor.mass_task.pk = 42
     processor.mass_task.partition_key = "20240101"
-    # Default to a non-final attempt so per-volume retriable errors re-raise.
-    # Tests that exercise the final-attempt-continue path opt in explicitly.
-    processor.mass_task.attempts = settings.DICOM_TASK_MAX_ATTEMPTS - 1
+    # Default to the first attempt of a queue cycle (fresh run: wipe +
+    # discovery). Resume behavior (attempts >= 2) is covered by the DB
+    # integration tests, which need real querysets.
+    processor.mass_task.attempts = 1
 
     mocker.patch.object(processor, "is_suspended", return_value=False)
 
@@ -769,21 +770,39 @@ def _make_process_env_server_dest(
     return processor, dest_operator
 
 
-def test_process_reraises_retriable_dicom_error(mocker: MockerFixture, tmp_path: Path):
+@pytest.mark.django_db
+def test_process_transfers_all_volumes_then_raises_retriable(mocker: MockerFixture, tmp_path: Path):
+    """A retriable failure no longer aborts the partition: the remaining
+    volumes still transfer, and one RetriableDicomError is raised at the end
+    so Procrastinate retries only the failed volumes."""
     processor = _make_process_env(mocker, tmp_path)
-    series = [_make_discovered(series_uid="s-1")]
-
+    series = [
+        _make_discovered(series_uid="s-1"),
+        _make_discovered(series_uid="s-2"),
+    ]
     mocker.patch.object(processor, "_discover_series", return_value=series)
-    mocker.patch.object(
-        processor,
-        "_export_series",
-        side_effect=RetriableDicomError("PACS connection lost"),
-    )
 
-    with pytest.raises(RetriableDicomError, match="PACS connection lost"):
+    captured: dict[str, MassTransferVolume] = {}
+
+    def fake_export(*args, **kwargs):
+        volume = args[1]
+        captured[volume.series_instance_uid] = volume
+        if volume.series_instance_uid == "s-1":
+            raise RetriableDicomError("PACS connection lost")
+        return (1, "", "")
+
+    mocker.patch.object(processor, "_export_series", side_effect=fake_export)
+
+    with pytest.raises(RetriableDicomError, match="1 of 2 volumes"):
         processor.process()
 
+    # The healthy volume was still transferred before the raise
+    assert captured["s-2"].status == MassTransferVolume.Status.EXPORTED
+    assert captured["s-1"].status == MassTransferVolume.Status.ERROR
+    assert captured["s-1"].retriable is True
 
+
+@pytest.mark.django_db
 def test_process_returns_warning_on_partial_failure(mocker: MockerFixture, tmp_path: Path):
     processor = _make_process_env(mocker, tmp_path)
     series = [
@@ -810,6 +829,7 @@ def test_process_returns_warning_on_partial_failure(mocker: MockerFixture, tmp_p
     assert "Failed: 1" in result["log"]
 
 
+@pytest.mark.django_db
 def test_process_returns_failure_when_all_fail(mocker: MockerFixture, tmp_path: Path):
     processor = _make_process_env(mocker, tmp_path)
     series = [
@@ -855,6 +875,7 @@ def test_process_returns_failure_when_no_filters(mocker: MockerFixture, tmp_path
     assert "filter" in result["log"].lower()
 
 
+@pytest.mark.django_db
 def test_process_returns_success_for_empty_partition(mocker: MockerFixture, tmp_path: Path):
     processor = _make_process_env(mocker, tmp_path)
     mocker.patch.object(processor, "_discover_series", return_value=[])
@@ -865,8 +886,10 @@ def test_process_returns_success_for_empty_partition(mocker: MockerFixture, tmp_
     assert "No series found" in result["message"]
 
 
-def test_process_cleans_partition_on_retry(mocker: MockerFixture, tmp_path: Path):
-    """On retry, ALL pre-existing volumes for the partition are deleted and rediscovered."""
+@pytest.mark.django_db
+def test_process_cleans_partition_on_fresh_cycle(mocker: MockerFixture, tmp_path: Path):
+    """On the first attempt of a queue cycle, ALL pre-existing volumes for the
+    partition are deleted and rediscovered (user Retry/Restart semantics)."""
     processor = _make_process_env(mocker, tmp_path)
     series = [
         _make_discovered(series_uid="s-1"),
@@ -901,6 +924,7 @@ def test_process_cleans_partition_on_retry(mocker: MockerFixture, tmp_path: Path
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.django_db
 def test_process_server_destination_exports_and_uploads(mocker: MockerFixture):
     processor, mock_dest_operator = _make_process_env_server_dest(mocker)
     series = [_make_discovered(series_uid="s-1")]
@@ -920,7 +944,8 @@ def test_process_server_destination_exports_and_uploads(mocker: MockerFixture):
     assert result["status"] == MassTransferTask.Status.SUCCESS
 
 
-def test_process_server_destination_cleans_volumes_on_retry(mocker: MockerFixture):
+@pytest.mark.django_db
+def test_process_server_destination_cleans_volumes_on_fresh_cycle(mocker: MockerFixture):
     """Server destination should still delete old DB volume records on retry."""
     processor, _ = _make_process_env_server_dest(mocker)
     series = [_make_discovered(series_uid="s-1")]
@@ -937,6 +962,7 @@ def test_process_server_destination_cleans_volumes_on_retry(mocker: MockerFixtur
     mock_filter_qs.delete.assert_called_once()
 
 
+@pytest.mark.django_db
 def test_process_server_destination_closes_dest_operator(mocker: MockerFixture):
     """dest_operator.close() should be called even if transfer fails."""
     processor, mock_dest_operator = _make_process_env_server_dest(mocker)
@@ -992,6 +1018,7 @@ def test_export_series_to_server_skips_non_image_series(mocker: MockerFixture):
     assert volume.status == MassTransferVolume.Status.SKIPPED
 
 
+@pytest.mark.django_db
 def test_server_destination_upload_dicom_error_marks_failure(mocker: MockerFixture):
     """When upload_images raises DicomError, the series should be marked as failed."""
     processor, mock_dest_operator = _make_process_env_server_dest(mocker)
@@ -1010,8 +1037,12 @@ def test_server_destination_upload_dicom_error_marks_failure(mocker: MockerFixtu
     assert result["status"] == MassTransferTask.Status.FAILURE
 
 
-def test_server_destination_upload_retriable_error_propagates(mocker: MockerFixture):
-    """When upload_images raises RetriableDicomError, it must propagate up."""
+@pytest.mark.django_db
+def test_server_destination_upload_retriable_error_marks_volume_and_raises_at_end(
+    mocker: MockerFixture,
+):
+    """When upload_images raises RetriableDicomError, the volume is marked
+    retriable and the aggregated end-of-loop error is raised."""
     processor, mock_dest_operator = _make_process_env_server_dest(mocker)
     series = [_make_discovered(series_uid="s-1")]
 
@@ -1023,10 +1054,21 @@ def test_server_destination_upload_retriable_error_propagates(mocker: MockerFixt
     mocker.patch.object(processor, "_export_series", side_effect=fake_export)
     mock_dest_operator.upload_images.side_effect = RetriableDicomError("Connection reset")
 
-    with pytest.raises(RetriableDicomError, match="Connection reset"):
+    with pytest.raises(RetriableDicomError, match="1 of 1 volumes"):
         processor.process()
 
 
+def test_process_retriable_error_during_discovery_propagates(mocker: MockerFixture, tmp_path: Path):
+    """A RetriableDicomError raised before any volumes exist (discovery)
+    still aborts and retries the whole task unchanged."""
+    processor = _make_process_env(mocker, tmp_path)
+    mocker.patch.object(processor, "_discover_series", side_effect=RetriableDicomError("PACS down"))
+
+    with pytest.raises(RetriableDicomError, match="PACS down"):
+        processor.process()
+
+
+@pytest.mark.django_db
 def test_process_none_mode_uses_patient_id_as_subject(mocker: MockerFixture, tmp_path: Path):
     """When pseudonymize=False, no pseudonymizer is used."""
     processor = _make_process_env(mocker, tmp_path, pseudonymize=False, pseudonym_salt="")
@@ -1051,6 +1093,7 @@ def test_process_none_mode_uses_patient_id_as_subject(mocker: MockerFixture, tmp
     assert result["status"] == MassTransferTask.Status.SUCCESS
 
 
+@pytest.mark.django_db
 def test_process_pseudonymize_mode_same_study_same_pseudonym(mocker: MockerFixture, tmp_path: Path):
     """In non-linking mode, series in the same study share a pseudonym."""
     processor = _make_process_env(mocker, tmp_path, pseudonym_salt="")
@@ -1077,6 +1120,7 @@ def test_process_pseudonymize_mode_same_study_same_pseudonym(mocker: MockerFixtu
     assert subject_ids[0] != "PAT1"
 
 
+@pytest.mark.django_db
 def test_process_pseudonymize_mode_different_studies_different_pseudonyms(
     mocker: MockerFixture, tmp_path: Path
 ):
@@ -1105,6 +1149,7 @@ def test_process_pseudonymize_mode_different_studies_different_pseudonyms(
     assert subject_ids[0] != "PAT1"
 
 
+@pytest.mark.django_db
 def test_process_linking_mode_uses_deterministic_pseudonym(mocker: MockerFixture, tmp_path: Path):
     """In linking mode (pseudonymize with non-empty salt), pseudonyms are deterministic."""
     processor = _make_process_env(
@@ -1964,6 +2009,7 @@ def test_create_pending_volumes_deterministic_pseudonym():
     assert "PAT2" in grouped
 
 
+@pytest.mark.django_db
 def test_create_pending_volumes_no_anonymization(mocker: MockerFixture):
     """Without pseudonymizer, volumes have empty pseudonym."""
     processor = _make_processor(mocker)
@@ -1987,6 +2033,7 @@ def test_create_pending_volumes_no_anonymization(mocker: MockerFixture):
     assert volumes[1].pseudonym == ""
 
 
+@pytest.mark.django_db
 def test_create_pending_volumes_random_assigns_per_study(mocker: MockerFixture):
     """With pseudonymizer but no salt, volumes get per-study random pseudonyms."""
     from adit.core.utils.pseudonymizer import Pseudonymizer
@@ -2066,6 +2113,7 @@ def test_group_volumes_multi_patient_multi_study():
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.django_db
 def test_retriable_error_saves_volume_as_error(mocker: MockerFixture, tmp_path: Path):
     """RetriableDicomError should save the current volume as ERROR before propagating."""
     processor = _make_process_env(mocker, tmp_path)
@@ -2323,25 +2371,18 @@ def test_process_output_path_includes_job_folder(mocker: MockerFixture, tmp_path
 
 
 # ---------------------------------------------------------------------------
-# final-attempt-continue tests (see
-# docs/.../mass-transfer-final-attempt-continue-design.md)
+# resumable-retries tests (see
+# docs/superpowers/specs/2026-07-16-mass-transfer-resumable-retries-design.md)
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize(
-    "attempts,should_raise",
-    [
-        (settings.DICOM_TASK_MAX_ATTEMPTS - 1, True),
-        (settings.DICOM_TASK_MAX_ATTEMPTS, False),
-    ],
-)
-def test_transfer_single_series_final_attempt_boundary(
-    mocker: MockerFixture, tmp_path: Path, attempts: int, should_raise: bool
+def test_transfer_single_series_marks_retriable_and_continues(
+    mocker: MockerFixture, tmp_path: Path
 ):
-    """A per-volume RetriableDicomError re-raises on non-final attempts but is
-    swallowed (volume marked ERROR, loop continues) on the final attempt."""
+    """A per-volume RetriableDicomError no longer propagates: the volume is
+    marked ERROR + retriable so a later attempt re-transfers it, and the
+    partition loop can continue."""
     processor = _make_processor(mocker)
-    processor.mass_task.attempts = attempts
     processor.mass_task.partition_key = "20240101"
     job = processor.mass_task.job
     job.convert_to_nifti = False
@@ -2351,29 +2392,76 @@ def test_transfer_single_series_final_attempt_boundary(
         series_instance_uid="s-1", study_datetime=timezone.now(), number_of_images=5
     )
 
-    if should_raise:
-        with pytest.raises(RetriableDicomError, match="boom"):
-            processor._transfer_single_series(
-                mocker.MagicMock(), volume, job, None, "subj", tmp_path, None
-            )
-        assert "will be retried" in volume.log
-    else:
-        # Must NOT raise on the final attempt.
-        processor._transfer_single_series(
-            mocker.MagicMock(), volume, job, None, "subj", tmp_path, None
-        )
-        assert "exhausting retries" in volume.log
-        assert "boom" in volume.log
+    # Must not raise
+    processor._transfer_single_series(mocker.MagicMock(), volume, job, None, "subj", tmp_path, None)
 
     assert volume.status == MassTransferVolume.Status.ERROR
+    assert volume.retriable is True
+    assert "boom" in volume.log
 
 
+def test_transfer_single_series_permanent_error_not_retriable(
+    mocker: MockerFixture, tmp_path: Path
+):
+    processor = _make_processor(mocker)
+    processor.mass_task.partition_key = "20240101"
+    job = processor.mass_task.job
+    job.convert_to_nifti = False
+    mocker.patch.object(processor, "_export_series", side_effect=DicomError("bad series"))
+    mocker.patch.object(MassTransferVolume, "save")
+    volume = MassTransferVolume(
+        series_instance_uid="s-1", study_datetime=timezone.now(), number_of_images=5
+    )
+
+    processor._transfer_single_series(mocker.MagicMock(), volume, job, None, "subj", tmp_path, None)
+
+    assert volume.status == MassTransferVolume.Status.ERROR
+    assert volume.retriable is False
+
+
+def test_transfer_single_series_cleans_stale_series_folder(mocker: MockerFixture, tmp_path: Path):
+    """A partially written series folder from a previous attempt is removed
+    before re-export (folder exports are not atomic)."""
+    processor = _make_processor(mocker)
+    processor.mass_task.partition_key = "20240101"
+    job = processor.mass_task.job
+    job.convert_to_nifti = False
+    mocker.patch.object(MassTransferVolume, "save")
+    volume = MassTransferVolume(
+        series_instance_uid="s-1",
+        study_description="Brain CT",
+        series_description="Axial",
+        series_number=1,
+        study_datetime=timezone.now(),
+        number_of_images=5,
+    )
+    output_path = (
+        tmp_path
+        / "20240101"
+        / "subj"
+        / _study_folder_name(volume.study_description, volume.study_datetime)
+        / _series_folder_name(
+            volume.series_description, volume.series_number, volume.series_instance_uid
+        )
+    )
+    output_path.mkdir(parents=True)
+    stale_file = output_path / "stale.dcm"
+    stale_file.write_bytes(b"partial")
+
+    mocker.patch.object(processor, "_export_series", side_effect=_fake_export_success)
+
+    processor._transfer_single_series(mocker.MagicMock(), volume, job, None, "subj", tmp_path, None)
+
+    assert not stale_file.exists()
+    assert volume.status == MassTransferVolume.Status.EXPORTED
+
+
+@pytest.mark.django_db
 def test_process_continues_past_dead_series_on_final_attempt(mocker: MockerFixture, tmp_path: Path):
     """On the final attempt, one dead series among healthy ones yields WARNING:
-    the dead volume is ERROR, the others are EXPORTED, and the partition is not
-    aborted."""
+    the dead volume stays ERROR and no exception propagates."""
     processor = _make_process_env(mocker, tmp_path)
-    processor.mass_task.attempts = settings.DICOM_TASK_MAX_ATTEMPTS
+    processor.is_final_attempt = True
     series = [
         _make_discovered(series_uid="s-1"),
         _make_discovered(series_uid="s-2"),
@@ -2397,14 +2485,15 @@ def test_process_continues_past_dead_series_on_final_attempt(mocker: MockerFixtu
     assert "Processed: 1" in result["log"]
     assert "Failed: 1" in result["log"]
     assert captured["s-1"].status == MassTransferVolume.Status.ERROR
-    assert "exhausting retries" in captured["s-1"].log
+    assert "PACS connection lost" in captured["s-1"].log
     assert captured["s-2"].status == MassTransferVolume.Status.EXPORTED
 
 
+@pytest.mark.django_db
 def test_process_final_attempt_all_dead_is_failure(mocker: MockerFixture, tmp_path: Path):
-    """On the final attempt where every series is dead, the task is still FAILURE."""
+    """On the final attempt where every series is dead, the task is FAILURE."""
     processor = _make_process_env(mocker, tmp_path)
-    processor.mass_task.attempts = settings.DICOM_TASK_MAX_ATTEMPTS
+    processor.is_final_attempt = True
     series = [
         _make_discovered(series_uid="s-1"),
         _make_discovered(series_uid="s-2"),
@@ -2416,3 +2505,221 @@ def test_process_final_attempt_all_dead_is_failure(mocker: MockerFixture, tmp_pa
 
     assert result["status"] == MassTransferTask.Status.FAILURE
     assert "Failed: 2" in result["log"]
+
+
+@pytest.mark.django_db
+def test_process_resumes_without_wipe_or_rediscovery(mocker: MockerFixture, mass_transfer_env):
+    """An automatic retry (attempts >= 2) keeps completed volumes and their
+    files, skips discovery, and re-transfers only retriable volumes."""
+    env = mass_transfer_env
+    env.task.attempts = 2
+    now = timezone.now()
+
+    exported = MassTransferVolume.objects.create(
+        job=env.job,
+        task=env.task,
+        partition_key=env.task.partition_key,
+        patient_id="PAT1",
+        study_instance_uid="study-1",
+        series_instance_uid="s-1",
+        study_datetime=now,
+        number_of_images=5,
+        status=MassTransferVolume.Status.EXPORTED,
+    )
+    retriable = MassTransferVolume.objects.create(
+        job=env.job,
+        task=env.task,
+        partition_key=env.task.partition_key,
+        patient_id="PAT1",
+        study_instance_uid="study-1",
+        series_instance_uid="s-2",
+        study_datetime=now,
+        number_of_images=5,
+        status=MassTransferVolume.Status.ERROR,
+        retriable=True,
+        log="old retriable error",
+    )
+    permanent = MassTransferVolume.objects.create(
+        job=env.job,
+        task=env.task,
+        partition_key=env.task.partition_key,
+        patient_id="PAT1",
+        study_instance_uid="study-1",
+        series_instance_uid="s-3",
+        study_datetime=now,
+        number_of_images=5,
+        status=MassTransferVolume.Status.ERROR,
+        retriable=False,
+        log="unreadable series",
+    )
+
+    # A file written by the previous attempt must survive the resumed run
+    base_dir = _destination_base_dir(env.destination, env.job)
+    prior_file = base_dir / env.task.partition_key / "done.dcm"
+    prior_file.parent.mkdir(parents=True, exist_ok=True)
+    prior_file.write_bytes(b"already transferred")
+
+    processor = MassTransferTaskProcessor(env.task)
+    mocker.patch("adit.mass_transfer.processors.DicomOperator")
+    discover_mock = mocker.patch.object(processor, "_discover_series")
+    exported_uids: list[str] = []
+
+    def fake_export(op, volume, *args, **kwargs):
+        exported_uids.append(volume.series_instance_uid)
+        return (1, "", "")
+
+    mocker.patch.object(processor, "_export_series", side_effect=fake_export)
+
+    result = processor.process()
+
+    discover_mock.assert_not_called()
+    assert exported_uids == ["s-2"]
+    assert prior_file.exists()
+
+    exported.refresh_from_db()
+    retriable.refresh_from_db()
+    permanent.refresh_from_db()
+    assert exported.status == MassTransferVolume.Status.EXPORTED
+    assert retriable.status == MassTransferVolume.Status.EXPORTED
+    assert retriable.retriable is False
+    assert permanent.status == MassTransferVolume.Status.ERROR
+
+    # Summary covers the whole partition, not just the resumed volumes
+    assert result["status"] == MassTransferTask.Status.WARNING
+    assert "Series found: 3" in result["log"]
+    assert "Processed: 2" in result["log"]
+    assert "Failed: 1" in result["log"]
+
+
+@pytest.mark.django_db
+def test_process_fresh_cycle_wipes_stale_volumes_and_rediscovers(
+    mocker: MockerFixture, mass_transfer_env
+):
+    """attempts <= 1 (fresh job or user Retry/Restart) keeps today's
+    clean-slate semantics: rows and folder are wiped, discovery runs."""
+    env = mass_transfer_env
+    env.task.attempts = 1
+
+    MassTransferVolume.objects.create(
+        job=env.job,
+        task=env.task,
+        partition_key=env.task.partition_key,
+        patient_id="PAT1",
+        study_instance_uid="study-old",
+        series_instance_uid="stale-1",
+        study_datetime=timezone.now(),
+        status=MassTransferVolume.Status.EXPORTED,
+    )
+
+    processor = MassTransferTaskProcessor(env.task)
+    mocker.patch("adit.mass_transfer.processors.DicomOperator")
+    mocker.patch.object(
+        processor, "_discover_series", return_value=[_make_discovered(series_uid="s-new")]
+    )
+    mocker.patch.object(processor, "_export_series", side_effect=_fake_export_success)
+
+    result = processor.process()
+
+    assert not MassTransferVolume.objects.filter(series_instance_uid="stale-1").exists()
+    new_volume = MassTransferVolume.objects.get(job=env.job, series_instance_uid="s-new")
+    assert new_volume.status == MassTransferVolume.Status.EXPORTED
+    assert result["status"] == MassTransferTask.Status.SUCCESS
+
+
+@pytest.mark.django_db
+def test_process_persists_retriable_flag_for_next_attempt(mocker: MockerFixture, mass_transfer_env):
+    """The retriable flag round-trips through the DB so the NEXT attempt can
+    find and reset the volume."""
+    env = mass_transfer_env
+    env.task.attempts = 1
+
+    processor = MassTransferTaskProcessor(env.task)
+    mocker.patch("adit.mass_transfer.processors.DicomOperator")
+    mocker.patch.object(
+        processor,
+        "_discover_series",
+        return_value=[
+            _make_discovered(series_uid="s-1"),
+            _make_discovered(series_uid="s-2"),
+        ],
+    )
+
+    def fake_export(op, volume, *args, **kwargs):
+        if volume.series_instance_uid == "s-1":
+            raise RetriableDicomError("PACS connection lost")
+        return (1, "", "")
+
+    mocker.patch.object(processor, "_export_series", side_effect=fake_export)
+
+    with pytest.raises(RetriableDicomError, match="1 of 2 volumes"):
+        processor.process()
+
+    dead = MassTransferVolume.objects.get(job=env.job, series_instance_uid="s-1")
+    healthy = MassTransferVolume.objects.get(job=env.job, series_instance_uid="s-2")
+    assert dead.status == MassTransferVolume.Status.ERROR
+    assert dead.retriable is True
+    assert "PACS connection lost" in dead.log
+    assert healthy.status == MassTransferVolume.Status.EXPORTED
+    assert healthy.retriable is False
+
+
+@pytest.mark.django_db
+def test_process_random_mode_generates_and_persists_anonymizer_seed(
+    mocker: MockerFixture, mass_transfer_env
+):
+    """Fresh cycle in random mode: a seed is generated, saved on the task, and
+    used to construct the Pseudonymizer."""
+    env = mass_transfer_env
+    env.job.pseudonymize = True
+    env.job.pseudonym_salt = ""
+    env.job.save(update_fields=["pseudonymize", "pseudonym_salt"])
+    env.task.attempts = 1
+
+    processor = MassTransferTaskProcessor(env.task)
+    mocker.patch("adit.mass_transfer.processors.DicomOperator")
+    pseudonymizer_mock = mocker.patch("adit.mass_transfer.processors.Pseudonymizer")
+    mocker.patch.object(processor, "_discover_series", return_value=[])
+
+    processor.process()
+
+    env.task.refresh_from_db()
+    assert env.task.anonymizer_seed != ""
+    pseudonymizer_mock.assert_called_once_with(seed=env.task.anonymizer_seed)
+
+
+@pytest.mark.django_db
+def test_process_random_mode_reuses_anonymizer_seed_on_resume(
+    mocker: MockerFixture, mass_transfer_env
+):
+    """A resumed attempt must construct the Pseudonymizer with the seed
+    persisted by the previous attempt, not a new one."""
+    env = mass_transfer_env
+    env.job.pseudonymize = True
+    env.job.pseudonym_salt = ""
+    env.job.save(update_fields=["pseudonymize", "pseudonym_salt"])
+    env.task.attempts = 2
+    env.task.anonymizer_seed = "seed-from-first-attempt"
+    env.task.save(update_fields=["anonymizer_seed"])
+
+    MassTransferVolume.objects.create(
+        job=env.job,
+        task=env.task,
+        partition_key=env.task.partition_key,
+        patient_id="PAT1",
+        study_instance_uid="study-1",
+        series_instance_uid="s-1",
+        study_datetime=timezone.now(),
+        status=MassTransferVolume.Status.EXPORTED,
+    )
+
+    processor = MassTransferTaskProcessor(env.task)
+    mocker.patch("adit.mass_transfer.processors.DicomOperator")
+    pseudonymizer_mock = mocker.patch("adit.mass_transfer.processors.Pseudonymizer")
+    discover_mock = mocker.patch.object(processor, "_discover_series")
+
+    processor.process()
+
+    discover_mock.assert_not_called()
+    env.task.refresh_from_db()
+    assert env.task.anonymizer_seed == "seed-from-first-attempt"
+    pseudonymizer_mock.assert_called_once_with(seed="seed-from-first-attempt")
