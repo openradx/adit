@@ -333,16 +333,21 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
                     "log": "Mass transfer requires at least one filter.",
                 }
 
-            # Clean up on retry
-            if output_base:
-                partition_path = output_base / self.mass_task.partition_key
-                if partition_path.exists():
-                    shutil.rmtree(partition_path)
+            # A fresh queue cycle starts from a clean slate. Automatic
+            # Procrastinate retries (attempts >= 2) resume from the volumes
+            # persisted by the previous attempt. User-initiated Retry/Restart
+            # reset attempts to 0 via reset_tasks(), so they wipe again.
+            is_fresh_cycle = self.mass_task.attempts <= 1
+            if is_fresh_cycle:
+                if output_base:
+                    partition_path = output_base / self.mass_task.partition_key
+                    if partition_path.exists():
+                        shutil.rmtree(partition_path)
 
-            MassTransferVolume.objects.filter(
-                job=job,
-                partition_key=self.mass_task.partition_key,
-            ).delete()
+                MassTransferVolume.objects.filter(
+                    job=job,
+                    partition_key=self.mass_task.partition_key,
+                ).delete()
 
             pseudonymizer: Pseudonymizer | None = None
             if job.pseudonymize and job.pseudonym_salt:
@@ -352,18 +357,32 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
 
             operator = DicomOperator(source_node.dicomserver, persistent=True)
 
-            # Discovery: query the source server for all matching series
-            discovered = self._discover_series(operator, filters)
-            operator.close()
+            volumes: list[MassTransferVolume] = []
+            if not is_fresh_cycle:
+                volumes = list(
+                    MassTransferVolume.objects.filter(
+                        job=job,
+                        partition_key=self.mass_task.partition_key,
+                    )
+                )
 
-            # Create PENDING volumes so they appear in the UI immediately
-            volumes = self._create_pending_volumes(discovered, job, pseudonymizer)
-            grouped_volumes = self._group_volumes(volumes)
+            if volumes:
+                # Resumed run: re-queue only the volumes that failed retriably.
+                self._reset_retriable_volumes(volumes)
+            else:
+                # Discovery: query the source server for all matching series.
+                # Also reached on a resumed run that was interrupted before
+                # any volumes were created.
+                discovered = self._discover_series(operator, filters)
+                operator.close()
 
-            # Transfer: fetch series grouped by study
+                # Create PENDING volumes so they appear in the UI immediately
+                volumes = self._create_pending_volumes(discovered, job, pseudonymizer)
+
+            # Transfer: fetch pending series grouped by study
             return self._transfer_grouped_series(
                 operator,
-                grouped_volumes,
+                volumes,
                 job,
                 pseudonymizer,
                 output_base,
@@ -445,26 +464,43 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
             )
         return grouped
 
+    @staticmethod
+    def _reset_retriable_volumes(volumes: list[MassTransferVolume]) -> None:
+        """Reset volumes that failed retriably in a previous attempt to PENDING."""
+        retriable_volumes = [
+            volume
+            for volume in volumes
+            if volume.status == MassTransferVolume.Status.ERROR and volume.retriable
+        ]
+        for volume in retriable_volumes:
+            volume.status = MassTransferVolume.Status.PENDING
+            volume.retriable = False
+            volume.log = ""
+            volume.converted_file = ""
+        MassTransferVolume.objects.bulk_update(
+            retriable_volumes, ["status", "retriable", "log", "converted_file"]
+        )
+
     def _transfer_grouped_series(
         self,
         operator: DicomOperator,
-        grouped_volumes: dict[str, dict[str, list[MassTransferVolume]]],
+        volumes: list[MassTransferVolume],
         job: MassTransferJob,
         pseudonymizer: Pseudonymizer | None,
         output_base: Path | None,
         dest_operator: DicomOperator | None = None,
     ) -> dict:
-        """Transfer all grouped series.
+        """Transfer all pending volumes and summarize the whole partition.
 
-        Iterates patients -> studies -> volumes, updating each volume in place.
+        Iterates patients -> studies -> volumes, updating each volume in
+        place. Volumes already completed by a previous attempt are left
+        untouched. Raises RetriableDicomError at the end when retriable
+        failures remain and this is not the final task attempt.
         """
-        total_processed = 0
-        total_skipped = 0
-        total_failed = 0
-        total_volumes = 0
-        study_count = 0
-        failed_reasons: dict[str, int] = {}
+        pending = [v for v in volumes if v.status == MassTransferVolume.Status.PENDING]
+        grouped_volumes = self._group_volumes(pending)
 
+        study_count = 0
         for patient_id, studies in grouped_volumes.items():
             for study_uid, volumes_list in studies.items():
                 study_count += 1
@@ -481,8 +517,6 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
                 # One fetch association per study
                 try:
                     for volume in volumes_list:
-                        total_volumes += 1
-
                         subject_id = volume.pseudonym or sanitize_filename(volume.patient_id)
                         self._transfer_single_series(
                             operator,
@@ -493,26 +527,19 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
                             output_base,
                             dest_operator,
                         )
-
-                        if volume.status == MassTransferVolume.Status.ERROR:
-                            total_failed += 1
-                            reason = _short_error_reason(volume.log) if volume.log else "Unknown"
-                            failed_reasons[reason] = failed_reasons.get(reason, 0) + 1
-                        elif volume.status == MassTransferVolume.Status.SKIPPED:
-                            total_skipped += 1
-                        else:
-                            total_processed += 1
                 finally:
                     operator.close()
 
-        return self._build_task_summary(
-            total_volumes,
-            study_count,
-            total_processed,
-            total_skipped,
-            total_failed,
-            failed_reasons,
+        retriable_failures = sum(
+            1 for v in volumes if v.status == MassTransferVolume.Status.ERROR and v.retriable
         )
+        if retriable_failures and not self.is_final_attempt:
+            raise RetriableDicomError(
+                f"{retriable_failures} of {len(volumes)} volumes failed retriably "
+                "and will be retried."
+            )
+
+        return self._build_task_summary(volumes)
 
     def _transfer_single_series(
         self,
@@ -755,16 +782,27 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
                 f"Fetch returned 0 images (PACS reports {volume.number_of_images} instances)"
             )
 
-    def _build_task_summary(
-        self,
-        total_volumes: int,
-        study_count: int,
-        total_processed: int,
-        total_skipped: int,
-        total_failed: int,
-        failed_reasons: dict[str, int],
-    ) -> dict:
-        """Build the final status dict returned to the task processor."""
+    def _build_task_summary(self, volumes: list[MassTransferVolume]) -> dict:
+        """Build the final status dict from the state of all partition volumes.
+
+        Counts cover the whole partition (including volumes completed by
+        earlier attempts), not just the volumes processed in this run.
+        """
+        total_volumes = len(volumes)
+        study_count = len({v.study_instance_uid for v in volumes})
+        total_processed = sum(
+            1
+            for v in volumes
+            if v.status in (MassTransferVolume.Status.EXPORTED, MassTransferVolume.Status.CONVERTED)
+        )
+        total_skipped = sum(1 for v in volumes if v.status == MassTransferVolume.Status.SKIPPED)
+        failed_volumes = [v for v in volumes if v.status == MassTransferVolume.Status.ERROR]
+        total_failed = len(failed_volumes)
+        failed_reasons: dict[str, int] = {}
+        for volume in failed_volumes:
+            reason = _short_error_reason(volume.log) if volume.log else "Unknown"
+            failed_reasons[reason] = failed_reasons.get(reason, 0) + 1
+
         log_lines = [
             f"Partition {self.mass_task.partition_key}",
             f"Studies found: {study_count}",
