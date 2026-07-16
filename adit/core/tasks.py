@@ -168,7 +168,11 @@ def _run_dicom_task(
 
     finally:
         dicom_task.end = timezone.now()
-        dicom_task.save()
+        # Only the fields this runner owns: a full-field save here would
+        # clobber task fields the processor subprocess persisted mid-run
+        # (e.g. MassTransferTask.anonymizer_seed) with this stale parent
+        # instance.
+        dicom_task.save(update_fields=["status", "message", "log", "end"])
         logger.info(f"Processing of {dicom_task} ended.")
 
         with pglock.advisory(DISTRIBUTED_LOCK):

@@ -468,6 +468,54 @@ def test_run_dicom_task_accepts_in_progress_task_on_retry(mocker: MockerFixture)
     assert dicom_task.message == "recovered"
 
 
+@pytest.mark.django_db(transaction=True)
+def test_run_dicom_task_final_save_does_not_clobber_subprocess_writes(mocker: MockerFixture):
+    """The processor subprocess may persist task fields mid-run (e.g.
+    MassTransferTask.anonymizer_seed). The runner's finally-save uses a stale
+    parent-process instance and must therefore only write the fields it owns."""
+    dicom_job = ExampleTransferJobFactory.create(status=DicomJob.Status.PENDING)
+    dicom_task = ExampleTransferTaskFactory.create(status=DicomTask.Status.PENDING, job=dicom_job)
+    model_label = get_model_label(ExampleTransferTask)
+
+    result: ProcessingResult = {
+        "status": DicomTask.Status.SUCCESS,
+        "message": "ok",
+        "log": "",
+    }
+
+    def fake_process(*p_args, **p_kwargs):
+        def decorator(func):
+            def wrapper(*args, **kwargs):
+                # Simulate the subprocess persisting a field mid-run, after the
+                # parent already loaded its stale copy of the task.
+                ExampleTransferTask.objects.filter(pk=dicom_task.pk).update(attempts=99)
+                return _FakeFuture(result=result)
+
+            return wrapper
+
+        return decorator
+
+    def fake_thread(*t_args, **t_kwargs):
+        def decorator(func):
+            def wrapper(*args, **kwargs):
+                return None
+
+            return wrapper
+
+        return decorator
+
+    mocker.patch.object(tasks_module.concurrent, "process", side_effect=fake_process)
+    mocker.patch.object(tasks_module.concurrent, "thread", side_effect=fake_thread)
+
+    tasks_module._run_dicom_task(_make_context(), model_label, dicom_task.pk)
+
+    dicom_task.refresh_from_db()
+    assert dicom_task.status == DicomTask.Status.SUCCESS
+    assert dicom_task.attempts == 99, (
+        "runner's finally-save clobbered a field written from the subprocess"
+    )
+
+
 @pytest.mark.django_db
 def test_check_disk_space_warns_when_over_limit(mocker: MockerFixture):
     from adit.core.factories import DicomFolderFactory
