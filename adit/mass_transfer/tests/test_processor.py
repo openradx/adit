@@ -2323,25 +2323,18 @@ def test_process_output_path_includes_job_folder(mocker: MockerFixture, tmp_path
 
 
 # ---------------------------------------------------------------------------
-# final-attempt-continue tests (see
-# docs/.../mass-transfer-final-attempt-continue-design.md)
+# resumable-retries tests (see
+# docs/superpowers/specs/2026-07-16-mass-transfer-resumable-retries-design.md)
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize(
-    "attempts,should_raise",
-    [
-        (settings.DICOM_TASK_MAX_ATTEMPTS - 1, True),
-        (settings.DICOM_TASK_MAX_ATTEMPTS, False),
-    ],
-)
-def test_transfer_single_series_final_attempt_boundary(
-    mocker: MockerFixture, tmp_path: Path, attempts: int, should_raise: bool
+def test_transfer_single_series_marks_retriable_and_continues(
+    mocker: MockerFixture, tmp_path: Path
 ):
-    """A per-volume RetriableDicomError re-raises on non-final attempts but is
-    swallowed (volume marked ERROR, loop continues) on the final attempt."""
+    """A per-volume RetriableDicomError no longer propagates: the volume is
+    marked ERROR + retriable so a later attempt re-transfers it, and the
+    partition loop can continue."""
     processor = _make_processor(mocker)
-    processor.mass_task.attempts = attempts
     processor.mass_task.partition_key = "20240101"
     job = processor.mass_task.job
     job.convert_to_nifti = False
@@ -2351,21 +2344,76 @@ def test_transfer_single_series_final_attempt_boundary(
         series_instance_uid="s-1", study_datetime=timezone.now(), number_of_images=5
     )
 
-    if should_raise:
-        with pytest.raises(RetriableDicomError, match="boom"):
-            processor._transfer_single_series(
-                mocker.MagicMock(), volume, job, None, "subj", tmp_path, None
-            )
-        assert "will be retried" in volume.log
-    else:
-        # Must NOT raise on the final attempt.
-        processor._transfer_single_series(
-            mocker.MagicMock(), volume, job, None, "subj", tmp_path, None
-        )
-        assert "exhausting retries" in volume.log
-        assert "boom" in volume.log
+    # Must not raise
+    processor._transfer_single_series(
+        mocker.MagicMock(), volume, job, None, "subj", tmp_path, None
+    )
 
     assert volume.status == MassTransferVolume.Status.ERROR
+    assert volume.retriable is True
+    assert "boom" in volume.log
+
+
+def test_transfer_single_series_permanent_error_not_retriable(
+    mocker: MockerFixture, tmp_path: Path
+):
+    processor = _make_processor(mocker)
+    processor.mass_task.partition_key = "20240101"
+    job = processor.mass_task.job
+    job.convert_to_nifti = False
+    mocker.patch.object(processor, "_export_series", side_effect=DicomError("bad series"))
+    mocker.patch.object(MassTransferVolume, "save")
+    volume = MassTransferVolume(
+        series_instance_uid="s-1", study_datetime=timezone.now(), number_of_images=5
+    )
+
+    processor._transfer_single_series(
+        mocker.MagicMock(), volume, job, None, "subj", tmp_path, None
+    )
+
+    assert volume.status == MassTransferVolume.Status.ERROR
+    assert volume.retriable is False
+
+
+def test_transfer_single_series_cleans_stale_series_folder(
+    mocker: MockerFixture, tmp_path: Path
+):
+    """A partially written series folder from a previous attempt is removed
+    before re-export (folder exports are not atomic)."""
+    processor = _make_processor(mocker)
+    processor.mass_task.partition_key = "20240101"
+    job = processor.mass_task.job
+    job.convert_to_nifti = False
+    mocker.patch.object(MassTransferVolume, "save")
+    volume = MassTransferVolume(
+        series_instance_uid="s-1",
+        study_description="Brain CT",
+        series_description="Axial",
+        series_number=1,
+        study_datetime=timezone.now(),
+        number_of_images=5,
+    )
+    output_path = (
+        tmp_path
+        / "20240101"
+        / "subj"
+        / _study_folder_name(volume.study_description, volume.study_datetime)
+        / _series_folder_name(
+            volume.series_description, volume.series_number, volume.series_instance_uid
+        )
+    )
+    output_path.mkdir(parents=True)
+    stale_file = output_path / "stale.dcm"
+    stale_file.write_bytes(b"partial")
+
+    mocker.patch.object(processor, "_export_series", side_effect=_fake_export_success)
+
+    processor._transfer_single_series(
+        mocker.MagicMock(), volume, job, None, "subj", tmp_path, None
+    )
+
+    assert not stale_file.exists()
+    assert volume.status == MassTransferVolume.Status.EXPORTED
 
 
 def test_process_continues_past_dead_series_on_final_attempt(mocker: MockerFixture, tmp_path: Path):

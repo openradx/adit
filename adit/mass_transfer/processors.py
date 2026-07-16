@@ -514,15 +514,6 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
             failed_reasons,
         )
 
-    def _is_final_attempt(self) -> bool:
-        """Whether the current run is the task's last Procrastinate attempt.
-
-        ``DicomTask.attempts`` is incremented and saved by the task runner before
-        ``process()`` runs (adit/core/tasks.py), so on the final attempt it equals
-        ``settings.DICOM_TASK_MAX_ATTEMPTS``.
-        """
-        return self.mass_task.attempts >= settings.DICOM_TASK_MAX_ATTEMPTS
-
     def _transfer_single_series(
         self,
         operator: DicomOperator,
@@ -535,8 +526,10 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
     ) -> None:
         """Export (and optionally convert) a single series.
 
-        Updates volume fields in place and saves. Never raises except for
-        RetriableDicomError.
+        Updates volume fields in place and saves. Never raises: a retriable
+        failure is recorded on the volume (status=ERROR, retriable=True) so
+        that process() can schedule a task retry after the whole partition
+        was attempted.
         """
         try:
             if dest_operator:
@@ -566,6 +559,11 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
                     / series_folder
                 )
 
+                if output_path.exists():
+                    # A previous attempt may have written a partial series
+                    # (folder exports are not atomic) — start clean.
+                    shutil.rmtree(output_path)
+
                 if job.convert_to_nifti:
                     if volume.modality in settings.MODALITIES_EXCLUDED_FROM_NIFTI_CONVERSION:
                         logger.debug(
@@ -591,21 +589,12 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
                         output_path,
                     )
         except RetriableDicomError as err:
+            # Don't abort the partition for one dead series. process() checks
+            # for retriable volumes after the loop and raises once if a task
+            # retry should re-transfer them.
             volume.status = MassTransferVolume.Status.ERROR
-            if self._is_final_attempt():
-                # Final attempt: don't abort the whole partition for one dead
-                # series. Mark it ERROR and fall through (no re-raise) so the
-                # remaining volumes still transfer and the task completes as
-                # WARNING instead of FAILURE.
-                #
-                # Edge: after a cancel -> resume, DicomTask.attempts is not reset,
-                # so a resumed run may treat its first attempt as final and
-                # continue past dead volumes instead of retrying. This is an
-                # accepted graceful degradation.
-                volume.log = f"Transfer failed after exhausting retries: {err}"
-            else:
-                volume.log = "Transfer interrupted by retriable error; task will be retried."
-                raise
+            volume.retriable = True
+            volume.log = str(err)
         except Exception as err:
             logger.exception(
                 "Mass transfer failed for series %s",
@@ -625,6 +614,7 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
                 volume.save(
                     update_fields=[
                         "status",
+                        "retriable",
                         "log",
                         "study_instance_uid_pseudonymized",
                         "series_instance_uid_pseudonymized",
