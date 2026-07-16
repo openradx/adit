@@ -4,6 +4,7 @@ from typing import cast
 
 import pytest
 from adit_radis_shared.common.utils.testing_helpers import run_worker_once
+from django.conf import settings
 from procrastinate import JobContext
 from pytest_mock import MockerFixture
 
@@ -506,3 +507,60 @@ def test_check_disk_space_no_warning_when_under_limit(mocker: MockerFixture):
     tasks_module.check_disk_space()
 
     mail_mock.assert_not_called()
+
+
+@pytest.mark.django_db(transaction=True)
+@pytest.mark.parametrize(
+    "procrastinate_attempts,expected_final",
+    [
+        (0, False),
+        (settings.DICOM_TASK_MAX_ATTEMPTS - 1, True),
+    ],
+)
+def test_run_dicom_task_passes_is_final_attempt_to_subprocess(
+    mocker: MockerFixture, procrastinate_attempts: int, expected_final: bool
+):
+    """The runner computes is_final_attempt from Procrastinate's 0-indexed
+    per-job attempt counter and passes it into the processor subprocess."""
+    dicom_job = ExampleTransferJobFactory.create(status=DicomJob.Status.PENDING)
+    dicom_task = ExampleTransferTaskFactory.create(status=DicomTask.Status.PENDING, job=dicom_job)
+    model_label = get_model_label(ExampleTransferTask)
+
+    result: ProcessingResult = {
+        "status": DicomTask.Status.SUCCESS,
+        "message": "ok",
+        "log": "",
+    }
+    captured: dict[str, tuple] = {}
+
+    def fake_process(*p_args, **p_kwargs):
+        def decorator(func):
+            def wrapper(*args, **kwargs):
+                captured["args"] = args
+                return _FakeFuture(result=result)
+
+            return wrapper
+
+        return decorator
+
+    def fake_thread(*t_args, **t_kwargs):
+        def decorator(func):
+            def wrapper(*args, **kwargs):
+                return None
+
+            return wrapper
+
+        return decorator
+
+    mocker.patch.object(tasks_module.concurrent, "process", side_effect=fake_process)
+    mocker.patch.object(tasks_module.concurrent, "thread", side_effect=fake_thread)
+
+    tasks_module._run_dicom_task(
+        _make_context(attempts=procrastinate_attempts), model_label, dicom_task.pk
+    )
+
+    assert captured["args"] == (model_label, dicom_task.pk, expected_final)
+
+
+def test_dicom_task_processor_is_final_attempt_defaults_to_false():
+    assert DicomTaskProcessor.is_final_attempt is False

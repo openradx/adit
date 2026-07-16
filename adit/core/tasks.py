@@ -87,10 +87,21 @@ def _run_dicom_task(
 
     logger.info(f"Processing of {dicom_task} started.")
 
+    # Cave, the attempts of the Procrastinate job must not be the same number
+    # as the attempts of the DicomTask. The DicomTask could be started by multiple
+    # Procrastinate jobs (e.g. if the user canceled and resumed the same task).
+    # Procrastinate's attempts is 0-indexed (counts previous attempts).
+    # On attempt N, attempts = N-1, so the final attempt is when
+    # attempts + 1 >= max_attempts.
+    is_final_attempt = context.job.attempts + 1 >= settings.DICOM_TASK_MAX_ATTEMPTS
+
     @concurrent.process(timeout=process_timeout, daemon=True)
-    def _process_dicom_task(model_label: str, task_id: int) -> ProcessingResult:
+    def _process_dicom_task(
+        model_label: str, task_id: int, is_final_attempt: bool
+    ) -> ProcessingResult:
         dicom_task = get_dicom_task(model_label, task_id)
         processor = get_dicom_processor(dicom_task)
+        processor.is_final_attempt = is_final_attempt
 
         logger.info(f"Start processing of {dicom_task}.")
         return processor.process()
@@ -104,7 +115,9 @@ def _run_dicom_task(
         db.close_old_connections()
 
     try:
-        future = cast(ProcessFuture, _process_dicom_task(model_label, task_id))
+        future = cast(
+            ProcessFuture, _process_dicom_task(model_label, task_id, is_final_attempt)
+        )
         _monitor_task(context, future)
         result: ProcessingResult = future.result()
         dicom_task.status = result["status"]
@@ -125,13 +138,7 @@ def _run_dicom_task(
     except RetriableDicomError as err:
         logger.exception("Retriable error occurred during %s.", dicom_task)
 
-        # Cave, the the attempts of the Procrastinate job must not be the same number
-        # as the attempts of the DicomTask. The DicomTask could be started by multiple
-        # Procrastinate jobs (e.g. if the user canceled and resumed the same task).
-        # Procrastinate's attempts is 0-indexed (counts previous attempts).
-        # On attempt N, attempts = N-1. We want FAILURE on the final attempt,
-        # which is when attempts + 1 >= max_attempts.
-        if context.job.attempts + 1 < settings.DICOM_TASK_MAX_ATTEMPTS:
+        if not is_final_attempt:
             dicom_task.status = DicomTask.Status.PENDING
             dicom_task.message = "Task failed, but will be retried."
             if dicom_task.log:

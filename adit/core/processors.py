@@ -30,6 +30,10 @@ class DicomTaskProcessor(abc.ABC):
     dicom_task_class: type[DicomTask]
     app_settings_class: type[DicomAppSettings]
     logs: list[DicomLogEntry] = []
+    # Set by the task runner before process() runs: True when the current run
+    # is the last Procrastinate attempt of this queued job, i.e. no automatic
+    # retry will follow a RetriableDicomError.
+    is_final_attempt: bool = False
 
     def __init__(self, dicom_task: DicomTask) -> None:
         self.dicom_task = dicom_task
