@@ -1,0 +1,173 @@
+# Mass Transfer: Resumable Automatic Retries (Durable Volume Progress)
+
+**Date:** 2026-07-16
+**Status:** Approved
+**Supersedes:** `2026-06-12-mass-transfer-final-attempt-continue-design.md`
+
+## Problem
+
+A mass transfer task (one partition) wipes all of its state at the start of every run:
+the destination partition folder is `rmtree`'d and all `MassTransferVolume` rows for the
+partition are deleted (`adit/mass_transfer/processors.py:337-345`). Because of this, a
+task retry is all-or-nothing:
+
+- A single volume that exhausts the stamina network retries raises `RetriableDicomError`,
+  which aborts the whole partition. Procrastinate retries the task, the wipe discards all
+  progress, every healthy series is re-fetched from the PACS, and the same dead series
+  aborts the run again — until attempts are exhausted and the task ends `FAILURE` with an
+  incomplete transfer.
+- The stop-gap fix (2026-06-12 design) continues past dead volumes on the *final* attempt
+  only, turning the outcome into `WARNING`. It works, but it introduces an asymmetry
+  between attempts, still re-fetches the entire partition on every retry, and carries an
+  accepted edge case: after cancel → resume, `DicomTask.attempts` is not reset, so a
+  resumed run may wrongly treat its first attempt as final.
+
+The root cause is the unconditional wipe. The data model already supports durable
+progress: `MassTransferVolume` rows persist per-series status, log, pseudonym, and
+pseudonymized UIDs, with a `(job, series_instance_uid)` unique constraint.
+
+## Decision
+
+Make automatic Procrastinate retries **resume** instead of restart:
+
+- Wipe (folder + volume rows) only on the first attempt of a queue cycle
+  (`DicomTask.attempts <= 1`). User-initiated **Retry**/**Restart** reset `attempts` to 0
+  via `reset_tasks()`, so they keep today's clean-slate semantics.
+- On an automatic retry, skip discovery, reuse the existing volume rows, and re-process
+  only the volumes that have not completed.
+- A per-volume `RetriableDicomError` no longer aborts the loop on *any* attempt: mark the
+  volume and continue with the rest of the partition.
+- Retry scheduling happens once, at the end of the loop, by raising a single
+  `RetriableDicomError` — but only when retriable volumes remain *and* attempts remain.
+
+This supersedes the final-attempt special case, which is removed.
+
+### Rejected alternatives
+
+- **Keep the wipe, continue-and-raise-at-end on every attempt:** no model change, but
+  every retry re-transfers the whole partition — the PACS-load objection from the
+  2026-06-12 design stands.
+- **Per-volume attempt counters:** only matters for a volume that first fails late in the
+  attempt sequence (it gets fewer tries than max). Not worth an extra field and the
+  bookkeeping; the task-level attempt cap bounds every volume adequately.
+- **Detect the final attempt from `DicomTask.attempts` in the processor (stop-gap
+  approach):** wrong after cancel → resume because `DicomTask.attempts` is cumulative
+  across queue cycles while Procrastinate's retry budget is per queued job. The runner
+  already computes the correct predicate (`adit/core/tasks.py:134`); pass it down instead.
+
+## Design
+
+### Model change
+
+Add to `MassTransferVolume`:
+
+```python
+retriable = models.BooleanField(default=False)
+```
+
+Kept alongside `status=ERROR` (not a new status value), so the UI and the existing
+summary logic are unaffected. One migration; no data migration needed (existing rows
+default to `False`).
+
+### Core change: pass `is_final_attempt` into the processor
+
+`_run_dicom_task` (`adit/core/tasks.py`) computes
+`is_final_attempt = context.job.attempts + 1 >= settings.DICOM_TASK_MAX_ATTEMPTS`
+(Procrastinate's `attempts` is 0-indexed — same arithmetic as the existing handler at
+line 134) and passes it through `_process_dicom_task` into the subprocess, which sets it
+as an attribute on the processor (`DicomTaskProcessor.is_final_attempt`, default
+`False`). This uses the per-queue-cycle Procrastinate counter, so the cancel → resume
+edge case of the stop-gap design disappears.
+
+### Processor flow (`adit/mass_transfer/processors.py`)
+
+`process()`:
+
+1. **Wipe only on a fresh cycle:** if `self.mass_task.attempts <= 1`, delete the
+   partition folder and the partition's volume rows (exactly today's cleanup). Otherwise
+   skip the wipe.
+2. **Discovery only when needed:** if no volume rows exist for the partition, run
+   discovery and bulk-create `PENDING` volumes (today's behavior). Otherwise load the
+   existing rows. (The row-existence check, not the attempt number, guards discovery —
+   this also covers a task canceled before discovery finished and resumed later.)
+3. **Reset retriable volumes:** bulk-update the partition's volumes with
+   `status=ERROR, retriable=True` back to `status=PENDING, retriable=False, log=""`,
+   clearing `converted_file`. The transfer loop then processes only `PENDING` volumes;
+   `EXPORTED` / `CONVERTED` / `SKIPPED` and permanent-`ERROR` volumes are never touched
+   again. Studies whose volumes are all complete are skipped entirely (no association,
+   no pacing delay).
+4. **Per-series cleanup before re-export:** for folder destinations, if the volume's
+   series folder exists, delete it before exporting. The path is fully deterministic from
+   the volume row (`subject_id` from pseudonym/patient_id, study folder from
+   description + datetime, series folder from description + number + UID) — this replaces
+   the partition-wide `rmtree` as the defense against partially-written series
+   (`_export_series_to_folder` writes non-atomically). Server destinations need no
+   cleanup: re-running C-STORE is idempotent per SOP Instance UID.
+5. **Continue past retriable errors:** in `_transfer_single_series`, the
+   `except RetriableDicomError` branch sets `status=ERROR, retriable=True`, logs the
+   error, and returns normally (no re-raise, no final-attempt branch).
+   `_is_final_attempt()` and its special case are deleted.
+6. **Raise once at the end:** after the loop, if any volume in the partition has
+   `status=ERROR, retriable=True` and `not self.is_final_attempt`, raise
+   `RetriableDicomError(f"{n} of {total} volumes failed retriably and will be retried.")`.
+   The existing runner handler marks the task `PENDING` ("Task failed, but will be
+   retried.") and Procrastinate reschedules with backoff. On the final attempt, return
+   the summary instead — retriable errors count as failures in it.
+
+### Summary computed from the database
+
+`_build_task_summary` currently aggregates loop-local counters, which would undercount on
+a resumed run (the loop only sees the remaining volumes). Recompute the summary from the
+partition's volume rows at the end of the run: processed = `EXPORTED` + `CONVERTED`,
+skipped = `SKIPPED`, failed = `ERROR`, study count = distinct `study_instance_uid`,
+failure reasons via `_short_error_reason(volume.log)`. Status mapping is unchanged
+(`WARNING` for partial failure, `FAILURE` when all volumes failed, `SUCCESS` otherwise).
+
+### Behavior summary by entry path
+
+| Entry path | `DicomTask.attempts` on arrival | Behavior |
+|---|---|---|
+| Fresh task | 0 → runs as 1 | Wipe, discover, transfer (today's behavior) |
+| Automatic retry (`RetriableDicomError`) | ≥ 1 → runs as ≥ 2 | Resume: no wipe, no discovery, only retriable/pending volumes re-processed |
+| UI **Retry** / **Restart** (`reset_tasks()`) | reset to 0 → runs as 1 | Clean slate, as today |
+| Cancel → **Resume** | not reset → runs as ≥ 2 | Resumes from existing volumes (improvement: previously redid the whole partition) |
+| Worker killed mid-partition, Procrastinate retries | ≥ 1 → runs as ≥ 2 | Resume; the in-flight volume is still `PENDING`, its series folder is cleaned and re-exported |
+
+## Error handling
+
+- `RetriableDicomError` raised *outside* the per-volume loop (discovery, before volumes
+  exist) still propagates and retries the whole task — unchanged, and safe: with no rows
+  created, the retry re-runs discovery.
+- Permanent per-volume exceptions keep today's behavior: `status=ERROR`,
+  `retriable=False`, loop continues.
+- Zero-image fetches keep their current statuses (`SKIPPED` / permanent `ERROR`).
+- The volume-save failure path and the PENDING-after-transfer guard in the `finally`
+  block are unchanged.
+
+## Testing
+
+Rework/extend `adit/mass_transfer/tests/test_processor.py`:
+
+1. Per-volume `RetriableDicomError` on a non-final attempt: volume `ERROR` +
+   `retriable=True`, remaining volumes still transferred, task raises
+   `RetriableDicomError` at the end.
+2. Final attempt (`processor.is_final_attempt = True`): no raise, task result `WARNING`,
+   dead volume `ERROR`, healthy volumes `EXPORTED`.
+3. Resume run (`attempts >= 2`, existing volume rows): no wipe, no discovery call,
+   completed volumes untouched (status, files on disk), only retriable/pending volumes
+   re-processed; retriable volumes reset to `PENDING` before the loop.
+4. Per-series cleanup: a partially-written series folder from a prior attempt is deleted
+   before re-export; sibling completed series folders survive.
+5. All volumes dead on final attempt: task result `FAILURE`.
+6. Summary correctness on a resumed run: counts reflect the whole partition, not just the
+   volumes processed in the final run.
+7. Core runner: `is_final_attempt` is `True` exactly when
+   `context.job.attempts + 1 >= DICOM_TASK_MAX_ATTEMPTS`.
+
+## Relationship to the stop-gap PR
+
+The 2026-06-12 stop-gap (`fix/mass-transfer-final-attempt-continue`) remains valid as an
+immediate rescue for prod mass transfer job 1. This design deletes its special case
+(`_is_final_attempt()` and the final-attempt branch) as part of implementation; whether
+the stop-gap merges first or is replaced on the branch is a sequencing choice at
+implementation time.
