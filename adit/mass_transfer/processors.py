@@ -97,14 +97,16 @@ class DiscoveredSeries:
     patient_birth_date: date | None = None
 
 
-def _dicom_match(pattern: str, value: str | None) -> bool:
+def _dicom_match(pattern: str, value: str | None, case_insensitive: bool = False) -> bool:
     # Callers only pass non-PN fields (institution_name, study_description,
-    # series_description); those are compared case-sensitively.
+    # series_description). Include filters compare case-sensitively to stay
+    # consistent with PACS-side matching of non-PN fields; exclude filters are
+    # applied client-side only and pass case_insensitive=True.
     if not pattern:
         return True
     if value is None:
         return False
-    regex = convert_to_python_regex(pattern)
+    regex = convert_to_python_regex(pattern, case_insensitive=case_insensitive)
     return bool(regex.fullmatch(str(value)))
 
 
@@ -250,15 +252,26 @@ def _series_matches_filter(
     filter.  The strict default is used by include filters so that an
     unknown age also fails inclusion — in both directions, a series whose
     age can't be determined is dropped.
+
+    String criteria on include filters are matched case-sensitively, in line
+    with PACS-side matching of non-PN fields.  Exclude filters are applied
+    client-side only (they never reach the PACS), so they match
+    case-insensitively — scanner naming conventions vary in capitalization
+    (COR/Cor/cor) and an exclude should catch all variants.
     """
+    case_insensitive = mf.mode == "exclude"
     if mf.modality and mf.modality != series.modality:
         return False
     if check_institution and mf.institution_name:
-        if not _dicom_match(mf.institution_name, series.institution_name):
+        if not _dicom_match(mf.institution_name, series.institution_name, case_insensitive):
             return False
-    if mf.study_description and not _dicom_match(mf.study_description, series.study_description):
+    if mf.study_description and not _dicom_match(
+        mf.study_description, series.study_description, case_insensitive
+    ):
         return False
-    if mf.series_description and not _dicom_match(mf.series_description, series.series_description):
+    if mf.series_description and not _dicom_match(
+        mf.series_description, series.series_description, case_insensitive
+    ):
         return False
     if mf.series_number is not None:
         if series.series_number is None or mf.series_number != series.series_number:
