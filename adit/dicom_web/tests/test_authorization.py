@@ -21,10 +21,14 @@ deadlocks on the second request in a thread (asgiref ``async_to_sync``
 current-thread-executor reentrancy), which is a test-harness limitation, not an
 application bug.
 
-Known gap (see module-level TODOs in views.py): the per-operation permissions
-``can_query`` / ``can_retrieve`` / ``can_store`` are not enforced. Tests
-asserting that a user with server access but without the specific operation
-permission is denied are therefore marked ``xfail``.
+Known gap, tracked in #380 (see module-level TODOs in views.py): the per-operation
+permissions ``can_query`` / ``can_retrieve`` / ``can_store`` are NOT enforced.
+Enabling enforcement is a breaking change rather than a bug fix -- the permissions
+exist (migration 0003) but are assigned to no existing group, so enforcing them
+would 403 every current user and integration until a data migration grants them.
+The tests below therefore assert the *intended* (secure) behavior as ``strict``
+``xfail`` markers, so the gap stays visible in the test report and flips to a
+failure (xpass) the moment enforcement lands.
 """
 
 from unittest.mock import patch
@@ -341,12 +345,18 @@ class TestGrantedAccessPassesAuthLayer:
 
 
 # ---------------------------------------------------------------------------
-# KNOWN GAP: per-operation permissions can_query / can_retrieve / can_store
-# are not enforced (TODOs in views.py). A user with server access but WITHOUT
-# the specific operation permission is currently NOT denied. These xfail tests
-# document the expected (but unimplemented) behavior. The network layer is
-# stubbed so the assertion fails cleanly (200 != 403) instead of the request
-# proceeding to a (non-existent) PACS.
+# KNOWN GAP (tracked in #380): per-operation permissions can_query /
+# can_retrieve / can_store are not enforced (TODOs in views.py). A user with
+# server access but WITHOUT the specific operation permission is currently NOT
+# denied.
+#
+# Enabling enforcement is a breaking change, not a bug fix: the permissions exist
+# (migration 0003) but are assigned to no existing group, so enforcing them would
+# 403 every current user and integration until a data migration grants them. See
+# #380 for the rollout. These strict xfail tests encode the intended (secure)
+# behavior so it stays visible and flips to a failure (xpass) once enforcement
+# lands. The network layer is stubbed so the assertion fails cleanly (200 != 403)
+# instead of reaching a (non-existent) PACS.
 # ---------------------------------------------------------------------------
 
 
@@ -354,7 +364,7 @@ class TestPerOperationPermissionsNotEnforced:
     @pytest.mark.asyncio
     @pytest.mark.django_db(transaction=True)
     @pytest.mark.xfail(
-        reason="can_query not enforced yet - dicom_web/views.py TODO",
+        reason="can_query not enforced yet - breaking change pending rollout, see #380",
         strict=True,
     )
     async def test_qido_denied_without_can_query_permission(self, stub_dicom_network):
@@ -370,7 +380,7 @@ class TestPerOperationPermissionsNotEnforced:
     @pytest.mark.asyncio
     @pytest.mark.django_db(transaction=True)
     @pytest.mark.xfail(
-        reason="can_retrieve not enforced yet - dicom_web/views.py TODO",
+        reason="can_retrieve not enforced yet - breaking change pending rollout, see #380",
         strict=True,
     )
     async def test_wado_denied_without_can_retrieve_permission(self, stub_dicom_network):
@@ -384,7 +394,7 @@ class TestPerOperationPermissionsNotEnforced:
     @pytest.mark.asyncio
     @pytest.mark.django_db(transaction=True)
     @pytest.mark.xfail(
-        reason="can_store not enforced yet - dicom_web/views.py TODO",
+        reason="can_store not enforced yet - breaking change pending rollout, see #380",
         strict=True,
     )
     async def test_stow_denied_without_can_store_permission(self, stub_dicom_network):
