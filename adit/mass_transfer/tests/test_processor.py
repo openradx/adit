@@ -522,6 +522,34 @@ def test_discover_series_exclude_removes_matching_series(mocker: MockerFixture):
     assert series_uids == {"1.2.3.601"}
 
 
+def test_discover_series_exclude_is_case_insensitive(mocker: MockerFixture):
+    """Exclude filters are matched case-insensitively: scanner naming varies
+    in capitalization (COR, Cor, cor), and excludes never touch the PACS."""
+    processor = _make_processor(mocker)
+    processor.mass_task.partition_start = datetime(2024, 1, 1, 0, 0)
+    processor.mass_task.partition_end = datetime(2024, 1, 1, 23, 59, 59)
+
+    operator = mocker.create_autospec(DicomOperator)
+    operator.server = mocker.MagicMock(max_search_results=200)
+
+    study = _make_study("1.2.3.100")
+    study.dataset.ModalitiesInStudy = ["CT"]
+    operator.find_studies.return_value = [study]
+
+    axial = _make_series_result("1.2.3.601", series_description="Axial T1")
+    topogram = _make_series_result("1.2.3.602", series_description="TOPOGRAM 1.0 T20s")
+    operator.find_series.return_value = [axial, topogram]
+
+    filters = [
+        _make_filter(modality="CT"),
+        FilterSpec(mode="exclude", series_description="*topo*"),
+    ]
+    result = processor._discover_series(operator, filters)
+
+    series_uids = {s.series_instance_uid for s in result}
+    assert series_uids == {"1.2.3.601"}
+
+
 def test_discover_series_exclude_does_not_trigger_find(mocker: MockerFixture):
     """Exclude filters must not issue their own C-FIND calls."""
     processor = _make_processor(mocker)
@@ -1674,6 +1702,24 @@ def test_series_matches_filter_series_number_exact():
 def test_series_matches_filter_series_number_unknown_fails_match():
     series = _make_discovered(series_number=None)
     assert _series_matches_filter(series, FilterSpec(series_number=1)) is False
+
+
+def test_series_matches_filter_exclude_series_description_case_insensitive():
+    series = _make_discovered(series_description="COR 2mm")
+    mf = FilterSpec(mode="exclude", series_description="*cor*")
+    assert _series_matches_filter(series, mf, age_permissive=True) is True
+
+
+def test_series_matches_filter_exclude_institution_case_insensitive():
+    series = _make_discovered()  # institution_name "Radiology"
+    mf = FilterSpec(mode="exclude", institution_name="RADIOLOGY")
+    assert _series_matches_filter(series, mf, age_permissive=True) is True
+
+
+def test_series_matches_filter_include_series_description_stays_case_sensitive():
+    series = _make_discovered(series_description="COR 2mm")
+    mf = FilterSpec(series_description="*cor*")
+    assert _series_matches_filter(series, mf) is False
 
 
 def test_series_matches_filter_institution_checked_by_default():
