@@ -106,7 +106,15 @@ class MassTransferJobForm(forms.ModelForm):
             "series also matching an exclude filter is removed. "
             "At least one include filter is required. "
             "apply_institution_on_study is ignored on exclude filters "
-            "(institution is matched at series level)."
+            "(institution is matched at series level). "
+            "String criteria support DICOM wildcards (* and ?) and are "
+            "matched against the whole value. On include filters they are "
+            "matched CASE-SENSITIVELY, consistent with how a "
+            "standard-conformant PACS matches non-PN fields in C-FIND. "
+            "Exclude filters never reach the PACS — they are applied "
+            "client-side to the retrieved results — and are matched "
+            "CASE-INSENSITIVELY, so e.g. '*cor*' also removes series "
+            "described 'COR' or 'Cor'."
         ),
     )
 
