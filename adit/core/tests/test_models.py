@@ -199,6 +199,45 @@ class TestDicomJob:
         assert job.status == DicomJob.Status.FAILURE
 
     @pytest.mark.django_db
+    def test_job_post_process_success_and_canceled_does_not_claim_all_succeeded(self):
+        job = ExampleTransferJobFactory.create(status=DicomJob.Status.PENDING)
+
+        ExampleTransferTaskFactory.create(job=job, status=DicomTask.Status.SUCCESS)
+        ExampleTransferTaskFactory.create(job=job, status=DicomTask.Status.CANCELED)
+
+        job.post_process()
+        job.refresh_from_db()
+
+        assert job.status == DicomJob.Status.SUCCESS
+        assert job.message == "Some tasks were canceled."
+
+    @pytest.mark.django_db
+    def test_job_post_process_failure_and_canceled_does_not_claim_all_failed(self):
+        job = ExampleTransferJobFactory.create(status=DicomJob.Status.PENDING)
+
+        ExampleTransferTaskFactory.create(job=job, status=DicomTask.Status.FAILURE)
+        ExampleTransferTaskFactory.create(job=job, status=DicomTask.Status.CANCELED)
+
+        job.post_process()
+        job.refresh_from_db()
+
+        assert job.status == DicomJob.Status.FAILURE
+        assert job.message == "Some tasks failed."
+
+    @pytest.mark.django_db
+    def test_job_post_process_warning_and_canceled_does_not_claim_all_warned(self):
+        job = ExampleTransferJobFactory.create(status=DicomJob.Status.PENDING)
+
+        ExampleTransferTaskFactory.create(job=job, status=DicomTask.Status.WARNING)
+        ExampleTransferTaskFactory.create(job=job, status=DicomTask.Status.CANCELED)
+
+        job.post_process()
+        job.refresh_from_db()
+
+        assert job.status == DicomJob.Status.WARNING
+        assert job.message == "Some tasks have warnings."
+
+    @pytest.mark.django_db
     @time_machine.travel("2025-01-15 14:30:00+00:00")
     def test_job_timezone_correctness(self):
         job = ExampleTransferJobFactory.create(status=DicomJob.Status.PENDING)

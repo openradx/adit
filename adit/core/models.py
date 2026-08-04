@@ -293,9 +293,10 @@ class DicomJob(models.Model):
         has_failure = self.tasks.filter(status=DicomTask.Status.FAILURE).exists()
         has_canceled = self.tasks.filter(status=DicomTask.Status.CANCELED).exists()
 
+        # An "All tasks ..." message would be untrue when some tasks were canceled instead.
         if has_success and not has_warning and not has_failure:
             self.status = DicomJob.Status.SUCCESS
-            self.message = "All tasks succeeded."
+            self.message = "Some tasks were canceled." if has_canceled else "All tasks succeeded."
         elif has_success and has_failure or has_warning and has_failure:
             self.status = DicomJob.Status.FAILURE
             self.message = "Some tasks failed."
@@ -304,10 +305,12 @@ class DicomJob(models.Model):
             self.message = "Some tasks have warnings."
         elif has_warning:
             self.status = DicomJob.Status.WARNING
-            self.message = "All tasks have warnings."
+            self.message = (
+                "Some tasks have warnings." if has_canceled else "All tasks have warnings."
+            )
         elif has_failure:
             self.status = DicomJob.Status.FAILURE
-            self.message = "All tasks failed."
+            self.message = "Some tasks failed." if has_canceled else "All tasks failed."
         elif has_canceled:
             self.status = DicomJob.Status.CANCELED
             self.message = "All tasks were canceled."
