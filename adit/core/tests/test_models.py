@@ -170,9 +170,8 @@ class TestDicomJob:
 
     @pytest.mark.django_db
     def test_job_post_process_all_tasks_canceled(self):
-        # A job that is no longer CANCELING (so it reaches the final evaluation)
-        # but whose tasks all ended up canceled, e.g. after killing them from the
-        # admin. Without a canceled branch this raised an AssertionError.
+        # Status is PENDING, not CANCELING, so this reaches the final evaluation, where
+        # an all-canceled job raised AssertionError (e.g. all tasks killed from the admin).
         job = ExampleTransferJobFactory.create(status=DicomJob.Status.PENDING)
 
         ExampleTransferTaskFactory.create(job=job, status=DicomTask.Status.CANCELED)
@@ -188,8 +187,7 @@ class TestDicomJob:
 
     @pytest.mark.django_db
     def test_job_post_process_canceled_task_does_not_mask_failure(self):
-        # A canceled task alongside a failed one must still resolve to FAILURE;
-        # the canceled branch only applies when nothing else is present.
+        # The canceled branch is last in the chain, so it must not shadow a failure.
         job = ExampleTransferJobFactory.create(status=DicomJob.Status.PENDING)
 
         ExampleTransferTaskFactory.create(job=job, status=DicomTask.Status.CANCELED)
