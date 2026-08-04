@@ -169,6 +169,38 @@ class TestDicomJob:
         assert job.end is None
 
     @pytest.mark.django_db
+    def test_job_post_process_all_tasks_canceled(self):
+        # A job that is no longer CANCELING (so it reaches the final evaluation)
+        # but whose tasks all ended up canceled, e.g. after killing them from the
+        # admin. Without a canceled branch this raised an AssertionError.
+        job = ExampleTransferJobFactory.create(status=DicomJob.Status.PENDING)
+
+        ExampleTransferTaskFactory.create(job=job, status=DicomTask.Status.CANCELED)
+        ExampleTransferTaskFactory.create(job=job, status=DicomTask.Status.CANCELED)
+
+        result = job.post_process()
+        job.refresh_from_db()
+
+        assert result is True
+        assert job.status == DicomJob.Status.CANCELED
+        assert job.message == "All tasks were canceled."
+        assert job.end is not None
+
+    @pytest.mark.django_db
+    def test_job_post_process_canceled_task_does_not_mask_failure(self):
+        # A canceled task alongside a failed one must still resolve to FAILURE;
+        # the canceled branch only applies when nothing else is present.
+        job = ExampleTransferJobFactory.create(status=DicomJob.Status.PENDING)
+
+        ExampleTransferTaskFactory.create(job=job, status=DicomTask.Status.CANCELED)
+        ExampleTransferTaskFactory.create(job=job, status=DicomTask.Status.FAILURE)
+
+        job.post_process()
+        job.refresh_from_db()
+
+        assert job.status == DicomJob.Status.FAILURE
+
+    @pytest.mark.django_db
     @time_machine.travel("2025-01-15 14:30:00+00:00")
     def test_job_timezone_correctness(self):
         job = ExampleTransferJobFactory.create(status=DicomJob.Status.PENDING)

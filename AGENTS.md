@@ -82,7 +82,7 @@ The job status is derived from its tasks via `post_process()`. The evaluation pr
 1. Any PENDING task → job becomes PENDING (unless job is CANCELING)
 2. Any IN_PROGRESS task → job becomes IN_PROGRESS (unless job is CANCELING)
 3. If job was `CANCELING` → job becomes `CANCELED`
-4. Otherwise the job is finished and its final status is computed from the combination of `SUCCESS`, `WARNING`, and `FAILURE` tasks
+4. Otherwise the job is finished and its final status is computed from the combination of `SUCCESS`, `WARNING`, and `FAILURE` tasks. If none of those are present but canceled tasks are, the job becomes `CANCELED`
 
 ### Job Actions
 
