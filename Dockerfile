@@ -1,4 +1,4 @@
-# syntax=docker/dockerfile:1.25-labs # TODO remove when ADD --exclude is stable
+# syntax=docker/dockerfile:1.26-labs # TODO remove when ADD --exclude is stable
 # Ideas from https://docs.astral.sh/uv/guides/integration/docker/
 # and https://hynek.me/articles/docker-uv/
 
@@ -23,7 +23,7 @@ RUN apt-get update \
   p7zip-full \
   && rm -rf /var/lib/apt/lists/*
 
-COPY --from=ghcr.io/astral-sh/uv:0.11.32 /uv /uvx /bin/
+COPY --from=ghcr.io/astral-sh/uv:0.12.1 /uv /uvx /bin/
 
 WORKDIR /app
 
