@@ -11,7 +11,7 @@ from pynetdicom.sop_class import (
     PatientRootQueryRetrieveInformationModelFind,  # type: ignore
     StudyRootQueryRetrieveInformationModelFind,  # type: ignore
 )
-from pytest_django.fixtures import SettingsWrapper
+from pytest_django.fixtures import Settings
 from pytest_mock import MockerFixture
 
 from adit.core.errors import DicomError
@@ -164,7 +164,7 @@ def test_download_series_with_c_get(mocker: MockerFixture):
 
 
 @pytest.mark.django_db
-def test_download_series_with_c_move(settings: SettingsWrapper, mocker: MockerFixture):
+def test_download_series_with_c_move(settings: Settings, mocker: MockerFixture):
     # Arrange
     settings.FILE_TRANSMIT_HOST = "127.0.0.1"
     settings.FILE_TRANSMIT_PORT = 17999
