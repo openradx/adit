@@ -7,7 +7,7 @@ from django.test import Client
 from django.urls import reverse
 from procrastinate.contrib.django.models import ProcrastinateJob
 from pytest_django.asserts import assertTemplateUsed
-from pytest_django.fixtures import SettingsWrapper
+from pytest_django.fixtures import Settings
 
 from adit.batch_transfer.factories import BatchTransferJobFactory, BatchTransferTaskFactory
 from adit.batch_transfer.models import BatchTransferJob, BatchTransferTask
@@ -46,7 +46,7 @@ def test_logged_in_user_with_permission_can_access_form(client: Client):
 
 
 @pytest.mark.django_db
-def test_batch_job_created_and_enqueued_with_auto_verify(client: Client, settings: SettingsWrapper):
+def test_batch_job_created_and_enqueued_with_auto_verify(client: Client, settings: Settings):
     settings.START_BATCH_TRANSFER_UNVERIFIED = True
 
     user = UserFactory.create()
@@ -69,7 +69,7 @@ def test_batch_job_created_and_enqueued_with_auto_verify(client: Client, setting
 
 @pytest.mark.django_db
 def test_batch_job_created_and_not_enqueued_without_auto_verify(
-    client: Client, settings: SettingsWrapper
+    client: Client, settings: Settings
 ):
     settings.START_BATCH_TRANSFER_UNVERIFIED = False
 
