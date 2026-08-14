@@ -8,9 +8,13 @@ jobs:
   ci:
     runs-on: "ubuntu-latest"
     timeout-minutes: 25
+    permissions:
+      contents: read
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
+        with:
+          persist-credentials: false
       - name: Install uv
         uses: astral-sh/setup-uv@v9.0.0
         with:

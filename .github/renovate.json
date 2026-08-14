@@ -1,6 +1,6 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": ["config:recommended", "group:allNonMajor", "schedule:weekly"],
+  "extends": ["config:best-practices", "group:allNonMajor", "group:allDigest", "schedule:weekly"],
   "pre-commit": { "enabled": true },
   "lockFileMaintenance": {
     "enabled": true,
@@ -8,24 +8,36 @@
     "schedule": ["before 5am on Monday"]
   },
   "automerge": true,
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "Track the adit-radis-shared git tag pinned in pyproject.toml (pep621 cannot resolve direct git URLs).",
+      "managerFilePatterns": ["/(^|/)pyproject\\.toml$/"],
+      "matchStrings": [
+        "adit-radis-shared\\s*@\\s*git\\+https://github\\.com/openradx/adit-radis-shared\\.git@(?<currentValue>[^\"'\\s]+)"
+      ],
+      "depNameTemplate": "openradx/adit-radis-shared",
+      "datasourceTemplate": "github-tags"
+    }
+  ],
   "packageRules": [
     {
-      "managers": ["docker-compose"],
+      "matchManagers": ["docker-compose"],
       "matchPackageNames": ["postgres"],
       "allowedVersions": "<=17"
     },
     {
-      "managers": ["dockerfile"],
+      "matchManagers": ["dockerfile"],
       "matchPackageNames": ["python"],
       "allowedVersions": "<=3.13"
     },
     {
-      "managers": ["pep621"],
+      "matchManagers": ["pep621"],
       "matchPackageNames": ["factory-boy"],
       "allowedVersions": "<=3.3.2"
     },
     {
-      "managers": ["pep621"],
+      "matchManagers": ["pep621"],
       "matchPackageNames": ["autobahn"],
       "allowedVersions": "<25.11.1"
     }
