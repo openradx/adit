@@ -1,6 +1,6 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": ["config:best-practices", "group:allNonMajor", "schedule:weekly"],
+  "extends": ["config:best-practices", "group:allNonMajor", "group:allDigest", "schedule:weekly"],
   "pre-commit": { "enabled": true },
   "lockFileMaintenance": {
     "enabled": true,
@@ -21,11 +21,6 @@
     }
   ],
   "packageRules": [
-    {
-      "description": "Opt out of Docker digest pinning from config:best-practices; GitHub Action digests stay pinned.",
-      "matchDatasources": ["docker"],
-      "pinDigests": false
-    },
     {
       "matchManagers": ["docker-compose"],
       "matchPackageNames": ["postgres"],
