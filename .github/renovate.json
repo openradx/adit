@@ -8,18 +8,6 @@
     "schedule": ["before 5am on Monday"]
   },
   "automerge": true,
-  "customManagers": [
-    {
-      "customType": "regex",
-      "description": "Track the adit-radis-shared git tag pinned in pyproject.toml (pep621 cannot resolve direct git URLs).",
-      "managerFilePatterns": ["/(^|/)pyproject\\.toml$/"],
-      "matchStrings": [
-        "adit-radis-shared\\s*@\\s*git\\+https://github\\.com/openradx/adit-radis-shared\\.git@(?<currentValue>[^\"'\\s]+)"
-      ],
-      "depNameTemplate": "openradx/adit-radis-shared",
-      "datasourceTemplate": "github-tags"
-    }
-  ],
   "packageRules": [
     {
       "matchManagers": ["docker-compose"],
