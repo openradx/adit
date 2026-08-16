@@ -152,6 +152,15 @@ Key variables in `.env` (see `example.env`):
 - **Line Length**: 100 characters (Ruff), 120 for templates (djlint)
 - **Type Checking**: pyright in basic mode (migrations excluded)
 - **Linting**: Ruff with E, F, I, DJ rules
+- **Comments**: write one only where the code cannot speak for itself — an invariant, a
+  constraint that is not visible locally, or a decision a future reader would otherwise
+  undo. Explain *why*, never restate *what*. A comment earns its place if removing it
+  would let someone reintroduce a bug; if it only describes the line below it, delete it.
+- **Comments describe the code as it is now**, never how it used to be or why it changed.
+  No "previously we used X", no "changed after review", no narrating the fix or the
+  discussion that produced it. That belongs in the commit message, where it stays attached
+  to the change instead of ageing in the source. The same goes for docstrings: they tell a
+  caller how to use the thing, not what it replaced.
 
 ### Assertions
 
