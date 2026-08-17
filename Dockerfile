@@ -1,8 +1,8 @@
-# syntax=docker/dockerfile:1.26-labs # TODO remove when ADD --exclude is stable
+# syntax=docker/dockerfile:1.26-labs@sha256:63e440b412b6acba117974e793b7e7f702e58ee65e044bdff1b8d388ee0d853b # TODO remove when ADD --exclude is stable
 # Ideas from https://docs.astral.sh/uv/guides/integration/docker/
 # and https://hynek.me/articles/docker-uv/
 
-FROM python:3.13-bookworm AS builder-base
+FROM python:3.13-bookworm@sha256:62eafe52c91cad83c2c74e630bfde917da8c253673e695665d454def84fc9a13 AS builder-base
 
 ENV PYTHONUNBUFFERED=1 \
   PYTHONDONTWRITEBYTECODE=1 \
@@ -23,7 +23,7 @@ RUN apt-get update \
   p7zip-full \
   && rm -rf /var/lib/apt/lists/*
 
-COPY --from=ghcr.io/astral-sh/uv:0.12.3 /uv /uvx /bin/
+COPY --from=ghcr.io/astral-sh/uv:0.12.3@sha256:2d890623d310b57771ce840f0da5eed5fc6d657da05ffaa45d82797b53fa3abc /uv /uvx /bin/
 
 WORKDIR /app
 
