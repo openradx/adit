@@ -8,6 +8,7 @@ from typing import cast
 import pglock
 from django import db
 from django.conf import settings
+from django.db.models import F
 from django.utils import timezone
 from pebble import ProcessFuture, concurrent
 from procrastinate import JobContext, RetryStrategy
@@ -63,12 +64,28 @@ def _run_dicom_task(
     assert context.job
 
     dicom_task = get_dicom_task(model_label, task_id)
-    # The assertion status == PENDING assumed that tasks always arrive fresh,
-    # but in reality a retried task can arrive in a half-finished state.
-    # A task may still be IN_PROGRESS if the worker was killed before the
-    # finally block could update its status.  Accept both PENDING and
-    # IN_PROGRESS so the retry can proceed.
-    assert dicom_task.status in (DicomTask.Status.PENDING, DicomTask.Status.IN_PROGRESS)
+
+    # Claim the task with one UPDATE. Procrastinate delivers at least once, so a row can
+    # arrive after another run already claimed or finished this task; then we do nothing
+    # and let the row finish. A task left IN_PROGRESS by a killed worker is put back to
+    # PENDING by the stale task sweep (adit/core/utils/recovery.py).
+    claimed = (
+        type(dicom_task)
+        .objects.filter(pk=task_id, status=DicomTask.Status.PENDING)
+        .update(
+            status=DicomTask.Status.IN_PROGRESS,
+            start=timezone.now(),
+            attempts=F("attempts") + 1,
+        )
+    )
+    if not claimed:
+        logger.warning(
+            "%s is %s, not pending; skipping this delivery.",
+            dicom_task,
+            dicom_task.get_status_display(),
+        )
+        return
+    dicom_task.refresh_from_db()
 
     # When the first DICOM task of a job is processed then the status of the
     # job switches from PENDING to IN_PROGRESS
@@ -78,11 +95,6 @@ def _run_dicom_task(
         dicom_job.start = timezone.now()
         dicom_job.save()
         logger.info(f"Processing of {dicom_job} started.")
-
-    dicom_task.status = DicomTask.Status.IN_PROGRESS
-    dicom_task.start = timezone.now()
-    dicom_task.attempts += 1
-    dicom_task.save()
 
     logger.info(f"Processing of {dicom_task} started.")
 
