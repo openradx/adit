@@ -20,6 +20,7 @@ from .types import ProcessingResult
 from .utils.db_utils import ensure_db_connection
 from .utils.mail import send_mail_to_admins
 from .utils.model_utils import DICOM_JOB_POST_PROCESS_LOCK
+from .utils.recovery import sweep_stale_dicom_tasks
 from .utils.task_utils import get_dicom_processor, get_dicom_task
 
 logger = logging.getLogger(__name__)
@@ -44,6 +45,13 @@ def check_disk_space(*args, **kwargs):
             )
             logger.warning(msg)
             send_mail_to_admins("Warning, low disk space!", msg)
+
+
+@app.periodic(cron=settings.DICOM_TASK_SWEEP_CRON)
+@app.task(queueing_lock="sweep_stale_tasks")
+def sweep_stale_tasks_periodic(timestamp: int) -> None:
+    # A failing run just logs an error; queueing_lock keeps runs from piling up.
+    sweep_stale_dicom_tasks()
 
 
 DICOM_TASK_RETRY_STRATEGY = RetryStrategy(
