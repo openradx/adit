@@ -18,9 +18,8 @@ from .models import DicomFolder, DicomJob, DicomTask
 from .types import ProcessingResult
 from .utils.db_utils import ensure_db_connection
 from .utils.mail import send_mail_to_admins
+from .utils.model_utils import DICOM_JOB_POST_PROCESS_LOCK
 from .utils.task_utils import get_dicom_processor, get_dicom_task
-
-DISTRIBUTED_LOCK = "process_dicom_task_lock"
 
 logger = logging.getLogger(__name__)
 
@@ -164,7 +163,7 @@ def _run_dicom_task(
         dicom_task.save()
         logger.info(f"Processing of {dicom_task} ended.")
 
-        with pglock.advisory(DISTRIBUTED_LOCK):
+        with pglock.advisory(DICOM_JOB_POST_PROCESS_LOCK):
             dicom_job.refresh_from_db()
             job_finished = dicom_job.post_process()
 
