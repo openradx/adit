@@ -1,7 +1,9 @@
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 
+import pglock
 from django.apps import apps
+from django.conf import settings
 from django.db import transaction
 from django.db.models import Q
 from django.utils import timezone
@@ -9,6 +11,7 @@ from procrastinate.contrib.django.models import ProcrastinateJob
 from procrastinate.jobs import Status
 
 from ..models import DicomJob, DicomTask
+from .model_utils import DICOM_JOB_POST_PROCESS_LOCK
 
 logger = logging.getLogger(__name__)
 
@@ -97,3 +100,52 @@ def _resolve_stale_task(task: DicomTask, owner_gone: Q) -> str | None:
                 task.queue_pending_task()
 
     return "pending" if new_status == DicomTask.Status.PENDING else "canceled"
+
+
+def sweep_stale_dicom_tasks() -> None:
+    """Repair tasks left IN_PROGRESS by a killed worker, across all DicomTask models."""
+    cutoff = timezone.now() - timedelta(seconds=settings.DICOM_TASK_STALLED_WORKER_GRACE_SECONDS)
+    owner_gone = _owner_gone_q(cutoff)
+
+    summary: list[str] = []
+    repaired_total = 0
+    affected_jobs: dict[tuple[str, int], DicomJob] = {}
+
+    for model in dicom_task_models():
+        pending = canceled = 0
+        candidates = (
+            model.objects.filter(status=DicomTask.Status.IN_PROGRESS)
+            .filter(owner_gone)
+            .select_related("job", "queued_job", "queued_job__worker")
+        )
+        for task in candidates:
+            outcome = _resolve_stale_task(task, owner_gone)
+            if outcome == "pending":
+                pending += 1
+            elif outcome == "canceled":
+                canceled += 1
+            else:
+                continue
+            affected_jobs[(task.job._meta.label, task.job.pk)] = task.job
+
+        repaired_total += pending + canceled
+        total = pending + canceled
+        summary.append(f"{model.__name__} {total} ({pending} pending, {canceled} canceled)")
+
+    for job in affected_jobs.values():
+        # Recompute the job from its tasks, under the same lock the task finalizer uses.
+        # A finished job is recomputed too if it still has open tasks: a repaired task
+        # must never hang under a job that already reports a final result.
+        with pglock.advisory(DICOM_JOB_POST_PROCESS_LOCK):
+            job.refresh_from_db()
+            has_open_tasks = job.tasks.filter(
+                status__in=(DicomTask.Status.PENDING, DicomTask.Status.IN_PROGRESS)
+            ).exists()
+            if job.status not in _TERMINAL_JOB_STATUSES or has_open_tasks:
+                job.post_process()
+
+    message = "Stale dicom task sweep: " + ", ".join(summary)
+    if repaired_total:
+        logger.info(message)
+    else:
+        logger.debug(message)

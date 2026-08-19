@@ -1,3 +1,4 @@
+import logging
 from datetime import timedelta
 from unittest.mock import patch
 
@@ -238,3 +239,108 @@ def test_reset_rolls_back_when_requeue_fails():
 
     task.refresh_from_db()
     assert task.status == DicomTask.Status.IN_PROGRESS
+
+
+@pytest.mark.django_db
+def test_sweep_drains_job_stuck_in_canceling():
+    # Worker killed while a task ran, row gone, user pressed Cancel: nothing ends the job.
+    task = make_stale_task(DicomJob.Status.CANCELING, row=None)
+
+    recovery.sweep_stale_dicom_tasks()
+
+    task.refresh_from_db()
+    task.job.refresh_from_db()
+    assert task.status == DicomTask.Status.CANCELED
+    assert task.job.status == DicomJob.Status.CANCELED
+    assert not ProcrastinateJob.objects.exists()
+
+
+@pytest.mark.django_db
+def test_sweep_requeues_orphan_and_job_goes_back_to_pending():
+    task = make_stale_task(DicomJob.Status.IN_PROGRESS, row=None)
+
+    recovery.sweep_stale_dicom_tasks()
+
+    task.refresh_from_db()
+    task.job.refresh_from_db()
+    assert task.status == DicomTask.Status.PENDING
+    assert task.queued_job is not None
+    assert task.job.status == DicomJob.Status.PENDING
+
+
+@pytest.mark.django_db
+def test_sweep_leaves_running_and_finished_tasks_alone():
+    running = make_stale_task(
+        DicomJob.Status.IN_PROGRESS,
+        row=create_row("doing", worker=create_worker(heartbeat_age_seconds=0)),
+    )
+    job = ExampleTransferJobFactory.create(status=DicomJob.Status.IN_PROGRESS)
+    pending = ExampleTransferTaskFactory.create(job=job, status=DicomTask.Status.PENDING)
+    done = ExampleTransferTaskFactory.create(job=job, status=DicomTask.Status.SUCCESS)
+
+    recovery.sweep_stale_dicom_tasks()
+
+    for task, status in (
+        (running, DicomTask.Status.IN_PROGRESS),
+        (pending, DicomTask.Status.PENDING),
+        (done, DicomTask.Status.SUCCESS),
+    ):
+        task.refresh_from_db()
+        assert task.status == status
+    assert ProcrastinateJob.objects.count() == 1
+
+
+@pytest.mark.django_db
+def test_sweep_reevaluates_finished_job_with_stray_in_progress_task():
+    # Should not happen, but a repaired task must never hang under a finished job.
+    job = ExampleTransferJobFactory.create(status=DicomJob.Status.SUCCESS)
+    ExampleTransferTaskFactory.create(job=job, status=DicomTask.Status.SUCCESS)
+    stray = ExampleTransferTaskFactory.create(
+        job=job, status=DicomTask.Status.IN_PROGRESS, queued_job=None
+    )
+
+    recovery.sweep_stale_dicom_tasks()
+
+    stray.refresh_from_db()
+    job.refresh_from_db()
+    assert stray.status == DicomTask.Status.PENDING
+    assert job.status == DicomJob.Status.PENDING
+
+
+@pytest.mark.django_db
+def test_sweep_covers_every_task_model():
+    example = make_stale_task(DicomJob.Status.IN_PROGRESS, row=None)
+    mass_job = MassTransferJobFactory.create(status=DicomJob.Status.IN_PROGRESS)
+    mass = MassTransferTaskFactory.create(
+        job=mass_job, status=DicomTask.Status.IN_PROGRESS, queued_job=None
+    )
+
+    recovery.sweep_stale_dicom_tasks()
+
+    example.refresh_from_db()
+    mass.refresh_from_db()
+    assert example.status == DicomTask.Status.PENDING
+    assert mass.status == DicomTask.Status.PENDING
+
+
+@pytest.mark.django_db
+def test_sweep_logs_info_only_when_something_was_repaired(caplog):
+    caplog.set_level(logging.DEBUG, logger="adit.core.utils.recovery")
+
+    recovery.sweep_stale_dicom_tasks()
+    recovery_info = [
+        r
+        for r in caplog.records
+        if r.levelno == logging.INFO and r.name == "adit.core.utils.recovery"
+    ]
+    assert not recovery_info
+
+    make_stale_task(DicomJob.Status.IN_PROGRESS, row=None)
+    recovery.sweep_stale_dicom_tasks()
+    recovery_info = [
+        r
+        for r in caplog.records
+        if r.levelno == logging.INFO and r.name == "adit.core.utils.recovery"
+    ]
+    assert len(recovery_info) == 1
+    assert "ExampleTransferTask 1 (1 pending, 0 canceled)" in recovery_info[0].getMessage()
