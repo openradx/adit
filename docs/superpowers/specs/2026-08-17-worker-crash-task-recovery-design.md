@@ -181,6 +181,12 @@ limit.
 3. **Sweep vs Cancel race**: cancel lands between select and resolve → task re-queued
    `PENDING` under a `CANCELING` job → self-heals when the row fires.
 4. **Grace floor documented, not enforced.**
+5. **Recovered run is unkillable until it ends.** When the sweep resets a task whose old
+   queue row is still alive, it clears `queued_job` and does not create a new row; the
+   re-delivered row re-runs the task without re-linking `queued_job`, so Kill/Cancel
+   cannot abort that run — it settles when the run finishes — and the re-run waits for
+   `retry_stalled_jobs` (up to 10 min). Follow-up idea (not in this branch): have the
+   claim UPDATE set `queued_job_id` from the delivering row's id.
 
 ## 8. Follow-ups (out of scope)
 

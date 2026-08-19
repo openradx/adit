@@ -95,7 +95,7 @@ When a worker dies mid-task the task stays `IN_PROGRESS`. The stale task sweep (
 
 `_run_dicom_task` claims a task with a single `PENDING → IN_PROGRESS` UPDATE and skips the delivery otherwise — Procrastinate delivers at least once, so a row may arrive for a task another run already handled.
 
-Accepted: a worker frozen for more than the grace period but still alive can lead to the same task running twice (idempotent at the PACS, wasted work only); a task that repeatedly kills its worker is revived without a cap until canceled; `PENDING` tasks without a queue row are not repaired (use Restart/Reset).
+Accepted: a worker frozen for more than the grace period but still alive can lead to the same task running twice (idempotent at the PACS, wasted work only); a task that repeatedly kills its worker is revived without a cap until canceled; `PENDING` tasks without a queue row are not repaired (use Restart/Reset); a task revived while its old queue row is still alive re-runs without a `queued_job` link, so Kill/Cancel cannot abort that run (it settles when the run ends) and the re-run waits for `retry_stalled_jobs` (up to 10 min).
 
 ### Job Actions
 
@@ -140,7 +140,7 @@ Data modification pattern: download to temp folder -> transform (pseudonymize) -
 - **web**: Django dev server (port 8000) - main application
 - **default_worker**: General background task processor (Procrastinate queue: `default`); each worker runs `sweep_stale_tasks` before `bg_worker`
 - **dicom_worker**: DICOM-specific task processor (Procrastinate queue: `dicom`); each worker runs `sweep_stale_tasks` before `bg_worker`
-- **mass_transfer_worker**: Mass transfer task processor (Procrastinate queue: `mass_transfer`)
+- **mass_transfer_worker**: Mass transfer task processor (Procrastinate queue: `mass_transfer`); each worker runs `sweep_stale_tasks` before `bg_worker`
 - **receiver**: C-STORE SCP server (port 11112 internal, 11122 on host) - receives DICOM from C-MOVE
 - **postgres**: PostgreSQL 17 database (port 5432)
 - **orthanc1**: Test DICOM server (ports 4242 DICOM, 7501 web)
