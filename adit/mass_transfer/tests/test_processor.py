@@ -1,4 +1,5 @@
 import json
+import warnings
 from datetime import date, datetime, timedelta
 from pathlib import Path
 from types import SimpleNamespace
@@ -46,6 +47,17 @@ def _make_study(study_uid: str, study_date: str = "20240101") -> ResultDataset:
     ds.PatientID = "PAT1"
     ds.ModalitiesInStudy = ["CT"]
     return ResultDataset(ds)
+
+
+def _set_nonconformant(ds: Dataset, keyword: str, value: str) -> None:
+    """Assign a non-conformant value as a PACS can return it over the network.
+
+    pydicom validates (and warns) on assignment, but network-decoded datasets
+    bypass that validation, so suppress the warning here.
+    """
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", UserWarning)
+        setattr(ds, keyword, value)
 
 
 def _fake_export_success(*args, **kwargs):
@@ -685,6 +697,74 @@ def test_discover_series_exclude_by_institution(mocker: MockerFixture):
 
     series_uids = {s.series_instance_uid for s in result}
     assert series_uids == {"1.2.3.901"}
+
+
+def test_discover_series_salvages_malformed_study_time(mocker: MockerFixture):
+    """A non-conformant StudyTime (as returned by some PACS) falls back to midnight."""
+    processor = _make_processor(mocker)
+    processor.mass_task.partition_start = datetime(2024, 1, 1, 0, 0)
+    processor.mass_task.partition_end = datetime(2024, 1, 1, 23, 59, 59)
+
+    operator = mocker.create_autospec(DicomOperator)
+    operator.server = mocker.MagicMock(max_search_results=200)
+
+    study = _make_study("1.2.3.100")
+    # TM only allows a fractional part after full HHMMSS, so HHMM.fff is invalid
+    _set_nonconformant(study.dataset, "StudyTime", "1113.672")
+    operator.find_studies.return_value = [study]
+    operator.find_series.return_value = [_make_series_result("1.2.3.201")]
+
+    result = processor._discover_series(operator, [_make_filter(modality="CT")])
+
+    assert len(result) == 1
+    assert result[0].study_datetime == datetime(2024, 1, 1, 0, 0, 0)
+
+
+def test_discover_series_skips_study_with_malformed_study_date(mocker: MockerFixture):
+    """A study with an unparseable StudyDate is skipped instead of failing the whole task."""
+    processor = _make_processor(mocker)
+    processor.mass_task.partition_start = datetime(2024, 1, 1, 0, 0)
+    processor.mass_task.partition_end = datetime(2024, 1, 1, 23, 59, 59)
+
+    operator = mocker.create_autospec(DicomOperator)
+    operator.server = mocker.MagicMock(max_search_results=200)
+
+    bad_study = _make_study("1.2.3.666")
+    _set_nonconformant(bad_study.dataset, "StudyDate", "20143822")
+    good_study = _make_study("1.2.3.100")
+    operator.find_studies.return_value = [bad_study, good_study]
+    operator.find_series.return_value = [_make_series_result("1.2.3.201")]
+
+    result = processor._discover_series(operator, [_make_filter(modality="CT")])
+
+    assert [s.study_instance_uid for s in result] == ["1.2.3.100"]
+
+    summary = processor._build_task_summary(1, 1, 1, 0, 0, {})
+    assert summary["status"] == MassTransferTask.Status.WARNING
+    assert "1.2.3.666" in summary["log"]
+
+
+def test_discover_series_all_studies_malformed_warns(mocker: MockerFixture):
+    """Even if nothing is transferable, skipped studies must surface as a warning."""
+    processor = _make_processor(mocker)
+    processor.mass_task.partition_start = datetime(2024, 1, 1, 0, 0)
+    processor.mass_task.partition_end = datetime(2024, 1, 1, 23, 59, 59)
+
+    operator = mocker.create_autospec(DicomOperator)
+    operator.server = mocker.MagicMock(max_search_results=200)
+
+    bad_study = _make_study("1.2.3.666")
+    _set_nonconformant(bad_study.dataset, "StudyDate", "20143822")
+    operator.find_studies.return_value = [bad_study]
+    operator.find_series.return_value = [_make_series_result("1.2.3.201")]
+
+    result = processor._discover_series(operator, [_make_filter(modality="CT")])
+
+    assert result == []
+
+    summary = processor._build_task_summary(0, 0, 0, 0, 0, {})
+    assert summary["status"] == MassTransferTask.Status.WARNING
+    assert "skipped" in summary["message"].lower()
 
 
 # ---------------------------------------------------------------------------
