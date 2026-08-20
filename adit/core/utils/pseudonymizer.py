@@ -4,7 +4,8 @@ import string
 from dicognito.anonymizer import Anonymizer
 from dicognito.value_keeper import ValueKeeper
 from django.conf import settings
-from pydicom import Dataset
+from pydicom import DataElement, Dataset
+from pydicom.multival import MultiValue
 
 _PSEUDONYM_ALPHABET = string.ascii_uppercase + string.digits  # A-Z0-9
 
@@ -67,6 +68,22 @@ class Pseudonymizer:
         if not pseudonym:
             raise ValueError("A valid pseudonym must be provided for pseudonymization.")
 
+        ds.walk(_drop_empty_person_name_components)
         self.anonymizer.anonymize(ds)
         ds.PatientID = pseudonym
         ds.PatientName = pseudonym
+
+
+def _drop_empty_person_name_components(_: Dataset, element: DataElement) -> None:
+    """Remove empty components from multi-valued PN elements.
+
+    dicognito (<= 0.19.0) only coerces truthy PersonName values to ``str`` before
+    hashing them, so an empty component inside a multi-valued PN element (e.g.
+    OtherPatientNames ``"Doe^John\\"``) raises ``TypeError`` and aborts the
+    transfer of the whole series. Empty components carry no information, so we
+    drop them before anonymization.
+    """
+    if element.VR != "PN" or not isinstance(element.value, MultiValue):
+        return
+    names = [str(name) for name in element.value if str(name)]
+    element.value = names if len(names) > 1 else (names[0] if names else "")

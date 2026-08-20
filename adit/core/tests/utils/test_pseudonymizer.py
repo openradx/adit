@@ -178,3 +178,37 @@ class TestComputePseudonym:
         """Pseudonyms must not change across code updates (breaks cross-transfer linking)."""
         assert compute_pseudonym("my-salt", "PAT1", 12) == "81T9LZGKTAM3"
         assert compute_pseudonym("my-salt", "PAT1", 14) == "81T9LZGKTAM3UV"
+
+
+class TestPseudonymizePersonNameEdgeCases:
+    """dicognito 0.19.0 crashes on falsy (empty) PersonName components inside
+    multi-valued PN elements (e.g. OtherPatientNames "Doe^John\\"), which aborted
+    C-GET transfers in production. The pseudonymizer must tolerate these values."""
+
+    def test_empty_component_in_multivalued_person_name(self, pseudonymizer: Pseudonymizer):
+        ds = create_base_dataset()
+        ds.OtherPatientNames = ["Doe^John", ""]
+
+        pseudonymizer.pseudonymize(ds, "PSEUDO")
+
+        assert "Doe^John" not in [str(n) for n in ds.OtherPatientNames]
+
+    def test_trailing_backslash_person_name(self, pseudonymizer: Pseudonymizer):
+        ds = create_base_dataset()
+        ds.OtherPatientNames = "Doe^John\\"
+
+        pseudonymizer.pseudonymize(ds, "PSEUDO")
+
+        assert "Doe^John" not in str(ds.OtherPatientNames)
+
+    def test_empty_person_name_in_sequence_item(self, pseudonymizer: Pseudonymizer):
+        from pydicom.sequence import Sequence
+
+        ds = create_base_dataset()
+        item = Dataset()
+        item.PersonName = ["Doe^John", ""]
+        ds.OtherPatientIDsSequence = Sequence([item])
+
+        pseudonymizer.pseudonymize(ds, "PSEUDO")
+
+        assert "Doe^John" not in [str(n) for n in ds.OtherPatientIDsSequence[0].PersonName]
