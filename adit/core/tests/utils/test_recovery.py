@@ -157,8 +157,10 @@ def test_resolve_under_canceling_job_cancels_without_requeue(job_status):
 
 @pytest.mark.django_db
 @pytest.mark.parametrize("row_status", ["todo", "doing"])
-def test_resolve_keeps_live_row_and_does_not_requeue(row_status):
-    # retry_stalled_jobs will re-deliver this very row; a second row would run the task twice.
+def test_resolve_keeps_live_row_and_its_link_and_does_not_requeue(row_status):
+    # retry_stalled_jobs will re-deliver this very row; a second row would run the task
+    # twice. The task keeps pointing at the row, so after the row runs again the sweep
+    # still sees who owns the task.
     row = create_row(row_status, worker=create_worker(heartbeat_age_seconds=60))
     task = make_stale_task(DicomJob.Status.IN_PROGRESS, row=row)
 
@@ -166,9 +168,39 @@ def test_resolve_keeps_live_row_and_does_not_requeue(row_status):
 
     task.refresh_from_db()
     assert task.status == DicomTask.Status.PENDING
-    assert task.queued_job is None  # link cleared; the row itself is untouched
+    assert task.queued_job_id == row.pk
     assert ProcrastinateJob.objects.count() == 1
     assert ProcrastinateJob.objects.get(pk=row.pk).status == row_status
+
+
+@pytest.mark.django_db
+def test_second_sweep_tick_leaves_the_recovered_run_alone():
+    # The 9a bug shape: crash -> sweep resets the task but leaves the row to run again ->
+    # the row runs again on a healthy worker -> the next sweep tick must not touch the
+    # running task or create a second row.
+    row = create_row("doing", worker=create_worker(heartbeat_age_seconds=60))
+    task = make_stale_task(DicomJob.Status.IN_PROGRESS, row=row)
+
+    recovery.sweep_stale_dicom_tasks()
+
+    task.refresh_from_db()
+    assert task.status == DicomTask.Status.PENDING
+    assert task.queued_job_id == row.pk
+
+    # retry_stalled_jobs hands the same row to a healthy worker, whose claim takes the
+    # task (mirrors the claim UPDATE in adit/core/tasks.py including the owner stamp).
+    ProcrastinateJob.objects.filter(pk=row.pk).update(worker=create_worker(heartbeat_age_seconds=0))
+    claimed = ExampleTransferTask.objects.filter(
+        pk=task.pk, status=DicomTask.Status.PENDING
+    ).update(status=DicomTask.Status.IN_PROGRESS, start=timezone.now(), queued_job_id=row.pk)
+    assert claimed == 1
+
+    recovery.sweep_stale_dicom_tasks()
+
+    task.refresh_from_db()
+    assert task.status == DicomTask.Status.IN_PROGRESS
+    assert task.queued_job_id == row.pk
+    assert ProcrastinateJob.objects.count() == 1
 
 
 @pytest.mark.django_db
