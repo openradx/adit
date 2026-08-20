@@ -77,6 +77,9 @@ def _run_dicom_task(
     # arrive after another run already claimed or finished this task; then we do nothing
     # and let the row finish. A task left IN_PROGRESS by a killed worker is put back to
     # PENDING by the stale task sweep (adit/core/utils/recovery.py).
+    # The claim also records which queue row runs the task: a revived task may be claimed
+    # by a row it no longer points to, and the sweep and the Kill action both need the
+    # real owner.
     claimed = (
         type(dicom_task)
         .objects.filter(pk=task_id, status=DicomTask.Status.PENDING)
@@ -84,6 +87,7 @@ def _run_dicom_task(
             status=DicomTask.Status.IN_PROGRESS,
             start=timezone.now(),
             attempts=F("attempts") + 1,
+            queued_job_id=context.job.id,
         )
     )
     if not claimed:

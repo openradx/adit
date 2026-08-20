@@ -6,6 +6,7 @@ from typing import cast
 import pytest
 from adit_radis_shared.common.utils.testing_helpers import run_worker_once
 from procrastinate import JobContext
+from procrastinate.contrib.django.models import ProcrastinateJob
 from pytest_mock import MockerFixture
 
 from adit.core import tasks as tasks_module
@@ -17,6 +18,12 @@ from adit.core.utils.model_utils import get_model_label
 
 from .example_app.factories import ExampleTransferJobFactory, ExampleTransferTaskFactory
 from .example_app.models import ExampleAppSettings, ExampleTransferTask
+
+
+@pytest.fixture(autouse=True)
+def writable_procrastinate(settings):
+    # Procrastinate's Django models are read-only by default; these tests create rows.
+    settings.PROCRASTINATE_READONLY_MODELS = False
 
 
 class ExampleProcessor(DicomTaskProcessor):
@@ -179,7 +186,6 @@ def test_process_dicom_task_transitions_to_failure_after_max_retries(mocker: Moc
     We simulate the final attempt by setting the queued job's attempts to max_attempts-1.
     """
     from django.conf import settings
-    from procrastinate.contrib.django.models import ProcrastinateJob
 
     dicom_job = ExampleTransferJobFactory.create(status=DicomJob.Status.PENDING)
     dicom_task = ExampleTransferTaskFactory.create(
@@ -280,9 +286,19 @@ def _install_pebble_stubs(
 
 
 def _make_context(attempts: int = 0) -> JobContext:
-    job = SimpleNamespace(attempts=attempts)
-    # _run_dicom_task only reads context.job.attempts and context.should_abort();
-    # a SimpleNamespace duck-types those without building a full JobContext.
+    # The claim stamps context.job.id onto the task, so the row must really exist.
+    row = ProcrastinateJob.objects.create(
+        queue_name="dicom",
+        task_name="adit.core.tasks.process_dicom_task",
+        priority=0,
+        args={},
+        status="doing",
+        attempts=attempts,
+        abort_requested=False,
+    )
+    job = SimpleNamespace(attempts=attempts, id=row.pk)
+    # _run_dicom_task only reads context.job.attempts, context.job.id and
+    # context.should_abort(); a SimpleNamespace duck-types those.
     return cast(JobContext, SimpleNamespace(job=job, should_abort=lambda: False))
 
 
@@ -463,6 +479,32 @@ def test_run_dicom_task_claim_increments_attempts_and_sets_start(mocker: MockerF
     assert dicom_task.attempts == 3
     assert dicom_task.start is not None
     assert dicom_task.status == DicomTask.Status.SUCCESS
+
+
+@pytest.mark.django_db(transaction=True)
+def test_run_dicom_task_claim_stamps_the_delivering_row(mocker: MockerFixture):
+    # A task revived after a crash can be claimed by a row it no longer points to. The
+    # claim must record that row, so the sweep sees a live owner and Kill can abort it.
+    dicom_job = ExampleTransferJobFactory.create(status=DicomJob.Status.IN_PROGRESS)
+    dicom_task = ExampleTransferTaskFactory.create(
+        status=DicomTask.Status.PENDING, job=dicom_job, queued_job=None
+    )
+    model_label = get_model_label(ExampleTransferTask)
+
+    result: ProcessingResult = {
+        "status": DicomTask.Status.SUCCESS,
+        "message": "All good",
+        "log": "",
+    }
+    _install_pebble_stubs(mocker, future=_FakeFuture(result=result))
+
+    context = _make_context()
+    assert context.job
+    tasks_module._run_dicom_task(context, model_label, dicom_task.pk)
+
+    dicom_task.refresh_from_db()
+    assert dicom_task.status == DicomTask.Status.SUCCESS
+    assert dicom_task.queued_job_id == context.job.id
 
 
 @pytest.mark.django_db
