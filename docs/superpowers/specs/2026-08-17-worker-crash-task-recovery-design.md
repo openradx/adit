@@ -61,19 +61,28 @@ runs for hours in its pebble subprocess is *not* stale: the parent worker keeps
 heartbeating.
 
 ### Resolve one stale task
-`_resolve_stale_task(task)`, all inside one `transaction.atomic()`:
+`_resolve_stale_task(task, owner_gone)`, all inside one `transaction.atomic()`:
 
-1. Target status: `CANCELED` (with `end=now`) if the job is `CANCELING` or `CANCELED`,
-   else `PENDING` (with `end=None`).
-2. Conditional UPDATE:
-   `Model.objects.filter(pk, status=IN_PROGRESS).filter(owner_gone).update(status=target,
-   message="The worker processing this task was terminated.", end=…, queued_job_id=None)`.
-   0 rows → another sweep or a live worker got there first → return `None`.
-   `attempts` is left untouched.
-3. If target is `PENDING`: fresh query — is the old row still `todo`/`doing`? If yes,
-   `retry_stalled_jobs` will re-deliver it; do not create a second row. If no,
-   `task.refresh_from_db(); task.queue_pending_task()` — the model's own method picks
-   the right task function and queue (`process_dicom_task`/`dicom` or
+1. If the job is `CANCELING` or `CANCELED`: one conditional UPDATE —
+   `Model.objects.filter(pk, status=IN_PROGRESS).filter(owner_gone).update(status=CANCELED,
+   message="The worker processing this task was terminated.", end=now, queued_job_id=None)`.
+   The link is always cleared here: Resume turns a `CANCELED` task back into `PENDING` and
+   queues it fresh, which needs a cleared link, and if the old row still fires it finds the
+   task not `PENDING` and does nothing. 0 rows → another sweep or a live worker got there
+   first → return `None`. `attempts` is left untouched.
+2. Otherwise: one conditional UPDATE — same shape, `status=PENDING, end=None` — but it does
+   **not** touch `queued_job_id`. 0 rows → return `None`.
+3. Fresh query — is the old row still `todo`/`doing`? If yes, the task keeps pointing at it
+   and the resolve stops here: `retry_stalled_jobs` will re-deliver that row, and the
+   claim UPDATE (§4) re-stamps `queued_job_id` with its own id once the row starts running,
+   so the next sweep tick reads the task as owned and leaves it alone. **The link must not
+   be nulled in this branch.** RADIS PR #276 shipped exactly that null, and paid for it: a
+   healthy worker picking up the re-fired row ran under a `NULL` link, the next sweep tick
+   read `NULL` as "owner gone", reset the running task, and enqueued a second row — turning
+   every normal crash recovery into a double run. The sweep must not erase its own evidence.
+   If the old row is gone instead, `queued_job_id` is cleared right here, then
+   `task.refresh_from_db(); task.queue_pending_task()` — the model's own method picks the
+   right task function and queue (`process_dicom_task`/`dicom` or
    `process_mass_transfer_task`/`mass_transfer`).
 
 Reset and re-queue share the transaction so a failed `defer()` rolls the task back to
@@ -91,7 +100,13 @@ invisible forever. Procrastinate's Django connector defers on Django's connectio
   `pglock.advisory(DISTRIBUTED_LOCK)` (the same lock the task finalizer in
   `adit/core/tasks.py` uses). Terminal jobs are re-evaluated too if they still have
   `PENDING`/`IN_PROGRESS` tasks;
-- one summary log line; INFO only if something was repaired, DEBUG otherwise.
+- both the resolve of one task and the `post_process()` of one job are wrapped in their
+  own `try/except`: one broken entry is logged with its pk and skipped, the loop moves
+  on to the rest. A task that failed to resolve is untouched and stays `IN_PROGRESS`
+  for the next tick to retry; a job whose re-evaluation failed is covered in §7;
+- one summary log line; INFO only if something was repaired, DEBUG otherwise. If any
+  entry raised, one `RuntimeError` naming the error count is raised after the summary
+  log, so the periodic run still shows as failed and the command still logs it (§5).
 
 ## 4. Task claim — `adit/core/tasks.py::_run_dicom_task`
 
@@ -99,7 +114,10 @@ Replace the tolerant assert with one conditional UPDATE:
 
 ```python
 claimed = type(dicom_task).objects.filter(pk=task_id, status=PENDING).update(
-    status=IN_PROGRESS, start=timezone.now(), attempts=F("attempts") + 1
+    status=IN_PROGRESS,
+    start=timezone.now(),
+    attempts=F("attempts") + 1,
+    queued_job_id=context.job.id,
 )
 if not claimed:
     logger.warning("%s is not PENDING (%s); skipping this delivery.", dicom_task, dicom_task.status)
@@ -110,6 +128,17 @@ dicom_task.refresh_from_db()
 - 0 rows: the row finishes normally and is deleted. A truly orphaned `IN_PROGRESS`
   task is repaired by the sweep; a late duplicate delivery of a `SUCCESS`/`CANCELED`
   task does nothing.
+- The claim stamps `queued_job_id` with the id of the row that is delivering right now
+  (`context.job.id`), not just the status/start/attempts fields. A task can be running
+  under a row it was never linked to — the sweep's resolve (§3) deliberately leaves a
+  revived task pointing at its old row while a fresh delivery of that same row is what
+  actually claims it. Without the stamp the task's link can go stale or stay `NULL` while
+  a real worker is running it, and both the sweep and Kill would misjudge who owns the
+  task: the sweep would treat a live run as abandoned (see the §3 rationale), and Kill —
+  which aborts through `queued_job` — would have no live row to target. Stamping the
+  delivering row's id on every successful claim keeps the link true to reality at all
+  times, so the task always names its real owner, the sweep never resets a healthy run,
+  and Kill can abort a recovered run exactly like any other.
 - The job flip `PENDING → IN_PROGRESS`, the pebble subprocess, monitor thread, retry
   logic and `finally` block are unchanged. `process_mass_transfer_task` inherits the
   change through `_run_dicom_task`.
@@ -163,8 +192,11 @@ limit.
 - **Reset ok, re-queue failed**: single transaction; rollback to `IN_PROGRESS`.
 - **Row vanished between select and resolve**: row liveness is a fresh query after
   the UPDATE, not the candidate snapshot.
-- **Sweep raises**: command exits 0 and logs; the periodic run fails and Procrastinate
-  schedules the next one.
+- **One task or job entry raises mid-sweep**: caught and logged at that entry, the loop
+  continues; the earlier repairs it already committed stand. Only the final summary
+  `RuntimeError` (if any entry failed) propagates, so the command still exits 0 and
+  logs, and the periodic run still shows as failed and Procrastinate schedules the next
+  one.
 - **Job re-evaluation vs finishing worker**: `post_process()` under the shared advisory
   lock.
 
@@ -181,15 +213,18 @@ limit.
 3. **Sweep vs Cancel race**: cancel lands between select and resolve → task re-queued
    `PENDING` under a `CANCELING` job → self-heals when the row fires.
 4. **Grace floor documented, not enforced.**
-5. **Recovered run is unkillable until it ends.** When the sweep resets a task whose old
-   queue row is still alive, it clears `queued_job` and does not create a new row; the
-   re-delivered row re-runs the task without re-linking `queued_job`, so Kill/Cancel
-   cannot abort that run — it settles when the run finishes — and the re-run waits for
-   `retry_stalled_jobs` (up to 10 min). Follow-up idea (not in this branch): have the
-   claim UPDATE set `queued_job_id` from the delivering row's id.
+5. **A job whose `post_process()` fails during a sweep keeps its stale status.** Its
+   tasks are already repaired (the isolated try/except around the sweep loop commits
+   each task repair independently of the job re-evaluation that follows it), so no
+   later tick revisits that job unless one of its other tasks goes stale too. Mitigated:
+   ADIT saves the job status before sending the finished mail, so a bounced mail cannot
+   cause this.
 
 ## 8. Follow-ups (out of scope)
 
+- ~~Have the claim UPDATE set `queued_job_id` from the delivering row's id.~~ Done on
+  this branch (§4) — the recovered-run-is-unkillable risk this was meant to close no
+  longer applies.
 - `PENDING` tasks with no queue row under a `PENDING`/`IN_PROGRESS` job (Reset/Resume
   view dying between `reset_tasks()` and `queue_pending_task()`;
   `queue_mass_transfer_tasks` exhausting its retries mid-enqueue). Needs a job-status-
@@ -208,10 +243,11 @@ Pytest-django with the `example_app` factories and `ProcrastinateJob`/
 1. Owner-gone predicate, one test per branch (no row; row `succeeded`/`failed`/`todo`;
    `doing` + no worker; `doing` + stale heartbeat) and the negatives (`doing` + fresh
    heartbeat untouched; `PENDING`/`SUCCESS` tasks untouched).
-2. Reset outcome: `PENDING`, `queued_job_id=None`, message, `end=None`, `attempts`
-   unchanged; under `CANCELING`/`CANCELED` job → `CANCELED` with `end` set.
-3. Re-queue rule: row gone → new row linked, right task name/queue for a core task and
-   for a `MassTransferTask`; row `todo`/`doing` alive → no new row.
+2. Reset outcome: `PENDING`, message, `end=None`, `attempts` unchanged; under
+   `CANCELING`/`CANCELED` job → `CANCELED` with `end` set and `queued_job_id=None`.
+3. Re-queue rule: row gone → `queued_job_id` cleared, new row linked, right task
+   name/queue for a core task and for a `MassTransferTask`; row `todo`/`doing` alive →
+   `queued_job_id` still points at that row, no new row created.
 4. Atomicity: `queue_pending_task` patched to raise → task stays `IN_PROGRESS`, no row.
 5. CAS guard: task flipped to `SUCCESS` between select and resolve → 0 updated, nothing
    re-queued.
