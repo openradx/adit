@@ -252,7 +252,7 @@ Pytest-django with the `example_app` factories and `ProcrastinateJob`/
 5. CAS guard: task flipped to `SUCCESS` between select and resolve → 0 updated, nothing
    re-queued.
 6. Job re-evaluation: `CANCELING` job drains to `CANCELED`; `IN_PROGRESS` job returns to
-   `PENDING`; a `SUCCESS` job with a stray `IN_PROGRESS` task is re-evaluated.
+   `PENDING`.
 7. Summary log INFO only when something was repaired.
 8. End-to-end (DB-only): "row deleted, job stuck `IN_PROGRESS`" → one sweep → task
    `PENDING` with new row, job `PENDING`; "job stuck `CANCELING`" → task and job

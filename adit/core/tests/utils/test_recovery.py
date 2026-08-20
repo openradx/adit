@@ -323,23 +323,6 @@ def test_sweep_leaves_running_and_finished_tasks_alone():
 
 
 @pytest.mark.django_db
-def test_sweep_reevaluates_finished_job_with_stray_in_progress_task():
-    # Should not happen, but a repaired task must never hang under a finished job.
-    job = ExampleTransferJobFactory.create(status=DicomJob.Status.SUCCESS)
-    ExampleTransferTaskFactory.create(job=job, status=DicomTask.Status.SUCCESS)
-    stray = ExampleTransferTaskFactory.create(
-        job=job, status=DicomTask.Status.IN_PROGRESS, queued_job=None
-    )
-
-    recovery.sweep_stale_dicom_tasks()
-
-    stray.refresh_from_db()
-    job.refresh_from_db()
-    assert stray.status == DicomTask.Status.PENDING
-    assert job.status == DicomJob.Status.PENDING
-
-
-@pytest.mark.django_db
 def test_sweep_covers_every_task_model():
     example = make_stale_task(DicomJob.Status.IN_PROGRESS, row=None)
     mass_job = MassTransferJobFactory.create(status=DicomJob.Status.IN_PROGRESS)

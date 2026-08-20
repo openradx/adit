@@ -153,16 +153,11 @@ def sweep_stale_dicom_tasks() -> None:
 
     for job in affected_jobs.values():
         # Recompute the job from its tasks, under the same lock the task finalizer uses.
-        # A finished job is recomputed too if it still has open tasks: a repaired task
-        # must never hang under a job that already reports a final result.
         # One failing recount must not stop the recounts of the other jobs.
         try:
             with pglock.advisory(DICOM_JOB_POST_PROCESS_LOCK):
                 job.refresh_from_db()
-                has_open_tasks = job.tasks.filter(
-                    status__in=(DicomTask.Status.PENDING, DicomTask.Status.IN_PROGRESS)
-                ).exists()
-                if job.status not in _TERMINAL_JOB_STATUSES or has_open_tasks:
+                if job.status not in _TERMINAL_JOB_STATUSES:
                     job.post_process()
         except Exception:
             logger.exception("Stale task sweep failed to re-evaluate %s.", job)
