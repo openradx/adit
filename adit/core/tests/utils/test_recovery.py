@@ -12,7 +12,7 @@ from adit.core.utils import recovery
 from adit.mass_transfer.factories import MassTransferJobFactory, MassTransferTaskFactory
 
 from ..example_app.factories import ExampleTransferJobFactory, ExampleTransferTaskFactory
-from ..example_app.models import ExampleTransferTask
+from ..example_app.models import ExampleTransferJob, ExampleTransferTask
 
 
 @pytest.fixture(autouse=True)
@@ -376,3 +376,54 @@ def test_sweep_logs_info_only_when_something_was_repaired(caplog):
     ]
     assert len(recovery_info) == 1
     assert "ExampleTransferTask 1 (1 pending, 0 canceled)" in recovery_info[0].getMessage()
+
+
+@pytest.mark.django_db
+def test_sweep_repairs_remaining_tasks_when_one_repair_fails():
+    broken = make_stale_task(DicomJob.Status.IN_PROGRESS, row=None)
+    mass_job = MassTransferJobFactory.create(status=DicomJob.Status.IN_PROGRESS)
+    healthy = MassTransferTaskFactory.create(
+        job=mass_job, status=DicomTask.Status.IN_PROGRESS, queued_job=None
+    )
+
+    with patch.object(
+        ExampleTransferTask, "queue_pending_task", autospec=True, side_effect=RuntimeError("db")
+    ):
+        with pytest.raises(RuntimeError, match="1 error"):
+            recovery.sweep_stale_dicom_tasks()
+
+    broken.refresh_from_db()
+    healthy.refresh_from_db()
+    mass_job.refresh_from_db()
+    assert broken.status == DicomTask.Status.IN_PROGRESS  # rolled back; next tick retries
+    assert healthy.status == DicomTask.Status.PENDING
+    assert mass_job.status == DicomJob.Status.PENDING
+
+
+@pytest.mark.django_db
+def test_sweep_reevaluates_remaining_jobs_when_one_recount_fails():
+    broken_task = make_stale_task(DicomJob.Status.CANCELING, row=None)
+    healthy_task = make_stale_task(DicomJob.Status.CANCELING, row=None)
+    real_post_process = ExampleTransferJob.post_process
+
+    def failing_post_process(self, *args, **kwargs):
+        if self.pk == broken_task.job.pk:
+            raise RuntimeError("mail bounced")
+        return real_post_process(self, *args, **kwargs)
+
+    with patch.object(
+        ExampleTransferJob, "post_process", autospec=True, side_effect=failing_post_process
+    ):
+        with pytest.raises(RuntimeError, match="1 error"):
+            recovery.sweep_stale_dicom_tasks()
+
+    broken_task.refresh_from_db()
+    healthy_task.refresh_from_db()
+    broken_task.job.refresh_from_db()
+    healthy_task.job.refresh_from_db()
+    assert broken_task.status == DicomTask.Status.CANCELED
+    assert healthy_task.status == DicomTask.Status.CANCELED
+    # The broken job keeps its old status until something re-evaluates it (documented
+    # residual: its tasks are repaired, so no later sweep tick revisits it by itself).
+    assert broken_task.job.status == DicomJob.Status.CANCELING
+    assert healthy_task.job.status == DicomJob.Status.CANCELED

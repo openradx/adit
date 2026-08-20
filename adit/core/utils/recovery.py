@@ -120,6 +120,7 @@ def sweep_stale_dicom_tasks() -> None:
 
     summary: list[str] = []
     repaired_total = 0
+    errors = 0
     affected_jobs: dict[tuple[str, int], DicomJob] = {}
 
     for model in dicom_task_models():
@@ -130,7 +131,14 @@ def sweep_stale_dicom_tasks() -> None:
             .select_related("job", "queued_job", "queued_job__worker")
         )
         for task in candidates:
-            outcome = _resolve_stale_task(task, owner_gone)
+            # One broken repair must not stop the sweep; the task stays IN_PROGRESS
+            # (the reset rolls back) and the next run tries it again.
+            try:
+                outcome = _resolve_stale_task(task, owner_gone)
+            except Exception:
+                logger.exception("Stale task sweep failed to repair %s.", task)
+                errors += 1
+                continue
             if outcome == "pending":
                 pending += 1
             elif outcome == "canceled":
@@ -147,16 +155,24 @@ def sweep_stale_dicom_tasks() -> None:
         # Recompute the job from its tasks, under the same lock the task finalizer uses.
         # A finished job is recomputed too if it still has open tasks: a repaired task
         # must never hang under a job that already reports a final result.
-        with pglock.advisory(DICOM_JOB_POST_PROCESS_LOCK):
-            job.refresh_from_db()
-            has_open_tasks = job.tasks.filter(
-                status__in=(DicomTask.Status.PENDING, DicomTask.Status.IN_PROGRESS)
-            ).exists()
-            if job.status not in _TERMINAL_JOB_STATUSES or has_open_tasks:
-                job.post_process()
+        # One failing recount must not stop the recounts of the other jobs.
+        try:
+            with pglock.advisory(DICOM_JOB_POST_PROCESS_LOCK):
+                job.refresh_from_db()
+                has_open_tasks = job.tasks.filter(
+                    status__in=(DicomTask.Status.PENDING, DicomTask.Status.IN_PROGRESS)
+                ).exists()
+                if job.status not in _TERMINAL_JOB_STATUSES or has_open_tasks:
+                    job.post_process()
+        except Exception:
+            logger.exception("Stale task sweep failed to re-evaluate %s.", job)
+            errors += 1
 
     message = "Stale dicom task sweep: " + ", ".join(summary)
     if repaired_total:
         logger.info(message)
     else:
         logger.debug(message)
+
+    if errors:
+        raise RuntimeError(f"Stale dicom task sweep hit {errors} error(s), see logs.")
