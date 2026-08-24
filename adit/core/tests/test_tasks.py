@@ -1,3 +1,4 @@
+import logging
 from concurrent import futures
 from types import SimpleNamespace
 from typing import cast
@@ -5,6 +6,7 @@ from typing import cast
 import pytest
 from adit_radis_shared.common.utils.testing_helpers import run_worker_once
 from procrastinate import JobContext
+from procrastinate.contrib.django.models import ProcrastinateJob
 from pytest_mock import MockerFixture
 
 from adit.core import tasks as tasks_module
@@ -16,6 +18,12 @@ from adit.core.utils.model_utils import get_model_label
 
 from .example_app.factories import ExampleTransferJobFactory, ExampleTransferTaskFactory
 from .example_app.models import ExampleAppSettings, ExampleTransferTask
+
+
+@pytest.fixture(autouse=True)
+def writable_procrastinate(settings):
+    # Procrastinate's Django models are read-only by default; these tests create rows.
+    settings.PROCRASTINATE_READONLY_MODELS = False
 
 
 class ExampleProcessor(DicomTaskProcessor):
@@ -178,7 +186,6 @@ def test_process_dicom_task_transitions_to_failure_after_max_retries(mocker: Moc
     We simulate the final attempt by setting the queued job's attempts to max_attempts-1.
     """
     from django.conf import settings
-    from procrastinate.contrib.django.models import ProcrastinateJob
 
     dicom_job = ExampleTransferJobFactory.create(status=DicomJob.Status.PENDING)
     dicom_task = ExampleTransferTaskFactory.create(
@@ -279,18 +286,26 @@ def _install_pebble_stubs(
 
 
 def _make_context(attempts: int = 0) -> JobContext:
-    job = SimpleNamespace(attempts=attempts)
-    # _run_dicom_task only reads context.job.attempts and context.should_abort();
-    # a SimpleNamespace duck-types those without building a full JobContext.
+    # The claim stamps context.job.id onto the task, so the row must really exist.
+    row = ProcrastinateJob.objects.create(
+        queue_name="dicom",
+        task_name="adit.core.tasks.process_dicom_task",
+        priority=0,
+        args={},
+        status="doing",
+        attempts=attempts,
+        abort_requested=False,
+    )
+    job = SimpleNamespace(attempts=attempts, id=row.pk)
+    # _run_dicom_task only reads context.job.attempts, context.job.id and
+    # context.should_abort(); a SimpleNamespace duck-types those.
     return cast(JobContext, SimpleNamespace(job=job, should_abort=lambda: False))
 
 
 @pytest.mark.django_db(transaction=True)
 def test_run_dicom_task_success_sets_job_in_progress_then_finishes(mocker: MockerFixture):
     dicom_job = ExampleTransferJobFactory.create(status=DicomJob.Status.PENDING)
-    dicom_task = ExampleTransferTaskFactory.create(
-        status=DicomTask.Status.PENDING, job=dicom_job
-    )
+    dicom_task = ExampleTransferTaskFactory.create(status=DicomTask.Status.PENDING, job=dicom_job)
     model_label = get_model_label(ExampleTransferTask)
 
     result: ProcessingResult = {
@@ -319,14 +334,10 @@ def test_run_dicom_task_handles_cancellation(mocker: MockerFixture):
     # In the real flow a cancel request first moves the job to CANCELING; the
     # task then surfaces a CancelledError. post_process resolves CANCELING -> CANCELED.
     dicom_job = ExampleTransferJobFactory.create(status=DicomJob.Status.CANCELING)
-    dicom_task = ExampleTransferTaskFactory.create(
-        status=DicomTask.Status.PENDING, job=dicom_job
-    )
+    dicom_task = ExampleTransferTaskFactory.create(status=DicomTask.Status.PENDING, job=dicom_job)
     model_label = get_model_label(ExampleTransferTask)
 
-    _install_pebble_stubs(
-        mocker, future=_FakeFuture(exc=futures.CancelledError())
-    )
+    _install_pebble_stubs(mocker, future=_FakeFuture(exc=futures.CancelledError()))
 
     tasks_module._run_dicom_task(_make_context(), model_label, dicom_task.pk)
 
@@ -340,9 +351,7 @@ def test_run_dicom_task_handles_cancellation(mocker: MockerFixture):
 @pytest.mark.django_db(transaction=True)
 def test_run_dicom_task_handles_timeout(mocker: MockerFixture):
     dicom_job = ExampleTransferJobFactory.create(status=DicomJob.Status.PENDING)
-    dicom_task = ExampleTransferTaskFactory.create(
-        status=DicomTask.Status.PENDING, job=dicom_job
-    )
+    dicom_task = ExampleTransferTaskFactory.create(status=DicomTask.Status.PENDING, job=dicom_job)
     model_label = get_model_label(ExampleTransferTask)
 
     _install_pebble_stubs(mocker, future=_FakeFuture(exc=futures.TimeoutError()))
@@ -359,14 +368,10 @@ def test_run_dicom_task_retriable_error_below_max_marks_pending_and_reraises(
     mocker: MockerFixture,
 ):
     dicom_job = ExampleTransferJobFactory.create(status=DicomJob.Status.PENDING)
-    dicom_task = ExampleTransferTaskFactory.create(
-        status=DicomTask.Status.PENDING, job=dicom_job
-    )
+    dicom_task = ExampleTransferTaskFactory.create(status=DicomTask.Status.PENDING, job=dicom_job)
     model_label = get_model_label(ExampleTransferTask)
 
-    _install_pebble_stubs(
-        mocker, future=_FakeFuture(exc=RetriableDicomError("transient"))
-    )
+    _install_pebble_stubs(mocker, future=_FakeFuture(exc=RetriableDicomError("transient")))
 
     # attempts=0 -> 0 + 1 < 3 -> should be retried
     with pytest.raises(RetriableDicomError, match="transient"):
@@ -383,14 +388,10 @@ def test_run_dicom_task_retriable_error_on_final_attempt_marks_failure(
     mocker: MockerFixture,
 ):
     dicom_job = ExampleTransferJobFactory.create(status=DicomJob.Status.PENDING)
-    dicom_task = ExampleTransferTaskFactory.create(
-        status=DicomTask.Status.PENDING, job=dicom_job
-    )
+    dicom_task = ExampleTransferTaskFactory.create(status=DicomTask.Status.PENDING, job=dicom_job)
     model_label = get_model_label(ExampleTransferTask)
 
-    _install_pebble_stubs(
-        mocker, future=_FakeFuture(exc=RetriableDicomError("permanent"))
-    )
+    _install_pebble_stubs(mocker, future=_FakeFuture(exc=RetriableDicomError("permanent")))
 
     # attempts=2 -> 2 + 1 < 3 is False -> FAILURE (with default DICOM_TASK_MAX_ATTEMPTS=3)
     with pytest.raises(RetriableDicomError, match="permanent"):
@@ -406,14 +407,10 @@ def test_run_dicom_task_unexpected_error_marks_failure_with_traceback(
     mocker: MockerFixture,
 ):
     dicom_job = ExampleTransferJobFactory.create(status=DicomJob.Status.PENDING)
-    dicom_task = ExampleTransferTaskFactory.create(
-        status=DicomTask.Status.PENDING, job=dicom_job
-    )
+    dicom_task = ExampleTransferTaskFactory.create(status=DicomTask.Status.PENDING, job=dicom_job)
     model_label = get_model_label(ExampleTransferTask)
 
-    _install_pebble_stubs(
-        mocker, future=_FakeFuture(exc=ValueError("kaboom"))
-    )
+    _install_pebble_stubs(mocker, future=_FakeFuture(exc=ValueError("kaboom")))
 
     tasks_module._run_dicom_task(_make_context(), model_label, dicom_task.pk)
 
@@ -427,14 +424,10 @@ def test_run_dicom_task_unexpected_error_marks_failure_with_traceback(
 @pytest.mark.django_db(transaction=True)
 def test_run_dicom_task_non_retriable_dicom_error_marks_failure(mocker: MockerFixture):
     dicom_job = ExampleTransferJobFactory.create(status=DicomJob.Status.PENDING)
-    dicom_task = ExampleTransferTaskFactory.create(
-        status=DicomTask.Status.PENDING, job=dicom_job
-    )
+    dicom_task = ExampleTransferTaskFactory.create(status=DicomTask.Status.PENDING, job=dicom_job)
     model_label = get_model_label(ExampleTransferTask)
 
-    _install_pebble_stubs(
-        mocker, future=_FakeFuture(exc=DicomError("bad config"))
-    )
+    _install_pebble_stubs(mocker, future=_FakeFuture(exc=DicomError("bad config")))
 
     tasks_module._run_dicom_task(_make_context(), model_label, dicom_task.pk)
 
@@ -444,27 +437,74 @@ def test_run_dicom_task_non_retriable_dicom_error_marks_failure(mocker: MockerFi
 
 
 @pytest.mark.django_db(transaction=True)
-def test_run_dicom_task_accepts_in_progress_task_on_retry(mocker: MockerFixture):
-    """A retried task may arrive IN_PROGRESS (worker killed before finally ran)."""
+@pytest.mark.parametrize("task_status", [DicomTask.Status.IN_PROGRESS, DicomTask.Status.SUCCESS])
+def test_run_dicom_task_skips_delivery_when_task_is_not_pending(
+    mocker: MockerFixture, task_status, caplog
+):
+    # Procrastinate delivers at least once. A row that arrives for a task another run
+    # already claimed or finished must do nothing (the sweep repairs real orphans).
     dicom_job = ExampleTransferJobFactory.create(status=DicomJob.Status.IN_PROGRESS)
     dicom_task = ExampleTransferTaskFactory.create(
-        status=DicomTask.Status.IN_PROGRESS, job=dicom_job
+        status=task_status, job=dicom_job, attempts=1, message="untouched"
+    )
+    model_label = get_model_label(ExampleTransferTask)
+    process = mocker.patch.object(ExampleProcessor, "process")
+    _install_pebble_stubs(mocker, future=_FakeFuture(result=None))
+
+    tasks_module._run_dicom_task(_make_context(), model_label, dicom_task.pk)
+
+    process.assert_not_called()
+    dicom_task.refresh_from_db()
+    dicom_job.refresh_from_db()
+    assert dicom_task.status == task_status
+    assert dicom_task.attempts == 1
+    assert dicom_task.message == "untouched"
+    assert dicom_job.status == DicomJob.Status.IN_PROGRESS
+    assert any("skipping" in r.getMessage() for r in caplog.records if r.levelno == logging.WARNING)
+
+
+@pytest.mark.django_db(transaction=True)
+def test_run_dicom_task_claim_increments_attempts_and_sets_start(mocker: MockerFixture):
+    dicom_job = ExampleTransferJobFactory.create(status=DicomJob.Status.PENDING)
+    dicom_task = ExampleTransferTaskFactory.create(
+        status=DicomTask.Status.PENDING, job=dicom_job, attempts=2
+    )
+    model_label = get_model_label(ExampleTransferTask)
+    result: ProcessingResult = {"status": DicomTask.Status.SUCCESS, "message": "", "log": ""}
+    _install_pebble_stubs(mocker, future=_FakeFuture(result=result))
+
+    tasks_module._run_dicom_task(_make_context(), model_label, dicom_task.pk)
+
+    dicom_task.refresh_from_db()
+    assert dicom_task.attempts == 3
+    assert dicom_task.start is not None
+    assert dicom_task.status == DicomTask.Status.SUCCESS
+
+
+@pytest.mark.django_db(transaction=True)
+def test_run_dicom_task_claim_stamps_the_delivering_row(mocker: MockerFixture):
+    # A task revived after a crash can be claimed by a row it no longer points to. The
+    # claim must record that row, so the sweep sees a live owner and Kill can abort it.
+    dicom_job = ExampleTransferJobFactory.create(status=DicomJob.Status.IN_PROGRESS)
+    dicom_task = ExampleTransferTaskFactory.create(
+        status=DicomTask.Status.PENDING, job=dicom_job, queued_job=None
     )
     model_label = get_model_label(ExampleTransferTask)
 
     result: ProcessingResult = {
         "status": DicomTask.Status.SUCCESS,
-        "message": "recovered",
+        "message": "All good",
         "log": "",
     }
     _install_pebble_stubs(mocker, future=_FakeFuture(result=result))
 
-    # Should not raise the PENDING/IN_PROGRESS assertion
-    tasks_module._run_dicom_task(_make_context(), model_label, dicom_task.pk)
+    context = _make_context()
+    assert context.job
+    tasks_module._run_dicom_task(context, model_label, dicom_task.pk)
 
     dicom_task.refresh_from_db()
     assert dicom_task.status == DicomTask.Status.SUCCESS
-    assert dicom_task.message == "recovered"
+    assert dicom_task.queued_job_id == context.job.id
 
 
 @pytest.mark.django_db
@@ -477,9 +517,7 @@ def test_check_disk_space_warns_when_over_limit(mocker: MockerFixture):
     folder.save()
 
     # du returns size in MB; 5000 MB ~= 4.88 GB > 1 GB warn threshold
-    mocker.patch.object(
-        tasks_module.subprocess, "check_output", return_value=b"5000\t/some/path\n"
-    )
+    mocker.patch.object(tasks_module.subprocess, "check_output", return_value=b"5000\t/some/path\n")
     mail_mock = mocker.patch.object(tasks_module, "send_mail_to_admins")
 
     tasks_module.check_disk_space()
@@ -498,9 +536,7 @@ def test_check_disk_space_no_warning_when_under_limit(mocker: MockerFixture):
     folder.save()
 
     # 5000 MB ~= 4.88 GB < 100 GB threshold
-    mocker.patch.object(
-        tasks_module.subprocess, "check_output", return_value=b"5000\t/some/path\n"
-    )
+    mocker.patch.object(tasks_module.subprocess, "check_output", return_value=b"5000\t/some/path\n")
     mail_mock = mocker.patch.object(tasks_module, "send_mail_to_admins")
 
     tasks_module.check_disk_space()

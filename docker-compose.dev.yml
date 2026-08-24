@@ -50,6 +50,7 @@ services:
     command: >
       bash -c "
         wait-for-it -s postgres.local:5432 -t ${WAIT_POSTGRES_TIMEOUT:-180} &&
+        ./manage.py sweep_stale_tasks &&
         ./manage.py bg_worker -l debug -q default --autoreload
       "
 
@@ -59,6 +60,7 @@ services:
     command: >
       bash -c "
         wait-for-it -s postgres.local:5432 -t ${WAIT_POSTGRES_TIMEOUT:-180} &&
+        ./manage.py sweep_stale_tasks &&
         ./manage.py bg_worker -l debug -q dicom --autoreload
       "
 
@@ -68,6 +70,7 @@ services:
     command: >
       bash -c "
         wait-for-it -s postgres.local:5432 -t ${WAIT_POSTGRES_TIMEOUT:-180} &&
+        ./manage.py sweep_stale_tasks &&
         ./manage.py bg_worker -l debug -q mass_transfer --autoreload
       "
 
