@@ -8,6 +8,7 @@ from typing import cast
 import pglock
 from django import db
 from django.conf import settings
+from django.db.models import F
 from django.utils import timezone
 from pebble import ProcessFuture, concurrent
 from procrastinate import JobContext, RetryStrategy
@@ -18,9 +19,9 @@ from .models import DicomFolder, DicomJob, DicomTask
 from .types import ProcessingResult
 from .utils.db_utils import ensure_db_connection
 from .utils.mail import send_mail_to_admins
+from .utils.model_utils import DICOM_JOB_POST_PROCESS_LOCK
+from .utils.recovery import sweep_stale_dicom_tasks
 from .utils.task_utils import get_dicom_processor, get_dicom_task
-
-DISTRIBUTED_LOCK = "process_dicom_task_lock"
 
 logger = logging.getLogger(__name__)
 
@@ -46,6 +47,13 @@ def check_disk_space(*args, **kwargs):
             send_mail_to_admins("Warning, low disk space!", msg)
 
 
+@app.periodic(cron=settings.DICOM_TASK_SWEEP_CRON)
+@app.task(queueing_lock="sweep_stale_tasks")
+def sweep_stale_tasks_periodic(timestamp: int) -> None:
+    # A failing run just logs an error; queueing_lock keeps runs from piling up.
+    sweep_stale_dicom_tasks()
+
+
 DICOM_TASK_RETRY_STRATEGY = RetryStrategy(
     max_attempts=settings.DICOM_TASK_MAX_ATTEMPTS,
     wait=settings.DICOM_TASK_RETRY_WAIT,
@@ -64,12 +72,32 @@ def _run_dicom_task(
     assert context.job
 
     dicom_task = get_dicom_task(model_label, task_id)
-    # The assertion status == PENDING assumed that tasks always arrive fresh,
-    # but in reality a retried task can arrive in a half-finished state.
-    # A task may still be IN_PROGRESS if the worker was killed before the
-    # finally block could update its status.  Accept both PENDING and
-    # IN_PROGRESS so the retry can proceed.
-    assert dicom_task.status in (DicomTask.Status.PENDING, DicomTask.Status.IN_PROGRESS)
+
+    # Claim the task with one UPDATE. Procrastinate delivers at least once, so a row can
+    # arrive after another run already claimed or finished this task; then we do nothing
+    # and let the row finish. A task left IN_PROGRESS by a killed worker is put back to
+    # PENDING by the stale task sweep (adit/core/utils/recovery.py).
+    # The claim also records which queue row runs the task: a revived task may be claimed
+    # by a row it no longer points to, and the sweep and the Kill action both need the
+    # real owner.
+    claimed = (
+        type(dicom_task)
+        .objects.filter(pk=task_id, status=DicomTask.Status.PENDING)
+        .update(
+            status=DicomTask.Status.IN_PROGRESS,
+            start=timezone.now(),
+            attempts=F("attempts") + 1,
+            queued_job_id=context.job.id,
+        )
+    )
+    if not claimed:
+        logger.warning(
+            "%s is %s, not pending; skipping this delivery.",
+            dicom_task,
+            dicom_task.get_status_display(),
+        )
+        return
+    dicom_task.refresh_from_db()
 
     # When the first DICOM task of a job is processed then the status of the
     # job switches from PENDING to IN_PROGRESS
@@ -79,11 +107,6 @@ def _run_dicom_task(
         dicom_job.start = timezone.now()
         dicom_job.save()
         logger.info(f"Processing of {dicom_job} started.")
-
-    dicom_task.status = DicomTask.Status.IN_PROGRESS
-    dicom_task.start = timezone.now()
-    dicom_task.attempts += 1
-    dicom_task.save()
 
     logger.info(f"Processing of {dicom_task} started.")
 
@@ -164,7 +187,7 @@ def _run_dicom_task(
         dicom_task.save()
         logger.info(f"Processing of {dicom_task} ended.")
 
-        with pglock.advisory(DISTRIBUTED_LOCK):
+        with pglock.advisory(DICOM_JOB_POST_PROCESS_LOCK):
             dicom_job.refresh_from_db()
             job_finished = dicom_job.post_process()
 
