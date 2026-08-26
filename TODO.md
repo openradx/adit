@@ -20,28 +20,23 @@
 - Add permissions to dicom_web views (see TODOs there)
 - Update documentation
 - Just warn when one only one series of the study could not be transferred (only error when all series could not be transferred)
-- test job_utils
-- Test canceled task/job in test_workers.py
+- test adit/core/utils/model_utils.py
 - Make sure all views are atomic
   - Use ATOMIC_REQUESTS database setting
   - Unfortunately we can't just set ATOMIC_REQUESTS in the database settings globally as those don't seem to work with async views
-  - Try this again when Django 5.0 is released
+  - Check again whether this still fails with async views in the current Django version
   - Otherwise tell those async views to be @transaction.non_atomic_requests
   - Alternative is to decorate all appropriate views with @transaction.atomic
 - Use DicomLogEntry during C-STORE
 - Fix dicom explorer search over Accession Number
 - Make warning when only one image fails
-- Exclude SR and PR when in pseudonymization mode
-- Cancel processing tasks actively
-  - When cancelling a job we currently wait for an already processing task to be completed before setting the job as canceled
-  - Those tasks should get actively killed, which is already implemented when killing the task from UI (staff only)
-  - But maybe we can do it more gracefully by passing a is_aborted() somehow down to the connectors
+- Cancel processing tasks more gracefully
+  - Canceling a job or killing a task aborts the task process, but maybe we can do it more gracefully by passing a is_aborted() somehow down to the connectors
   - In DimseConnector we could check a provided is_cancelled function if the next series should be fetched (or even the association be aborted)
   - in DicomWebConnector we chould also check such an function an close the Session <https://requests.readthedocs.io/en/latest/api/#requests.Session.close>. We can handle the Session manually when using DicomWebClient <https://dicomweb-client.readthedocs.io/en/latest/package.html#dicomweb_client.api.DICOMwebClient>
 - Make registration Email unique and required. Also maybe check if an Email is of specific domains (optional).
   - We must first delete those users with duplicate or non existing Emails
   - Do this also for RADIS
-- Make sure temporary folder created in retrieve DICOM web API is cleaned up (see TODO in /home/adm-adit/workspace/adit/adit/dicom_web/views.py)
 - Look into how we can stream the file from disc (from the temp folder) with WADO (see <https://chat.openai.com/share/d5a2f27f-4854-4deb-85df-b7f574638ae3>)
 - Look into how we can improve STOW (do we have to upload one file at a time, can we stream it somehow)
 - DICOMwebClient currently does not support to access warnings when transferring images
@@ -56,21 +51,17 @@
   - For DimseConnector this is already partly implemented by using generators (see `yield` there)
 - Remove files in test folders from autoreload
 - Selective transfer choose series
-- Locked info for other apps like batch_transfer_locked.html
+- Locked info page for the other apps (like for batch transfer)
 - Encrypt data between swarm containers
   - <https://docs.docker.com/network/drivers/overlay/#encrypt-traffic-on-an-overlay-network>
   - <https://forums.docker.com/t/configuring-encryption-for-swarm-overlay-network-in-compose/29469/2>
   - We can also make the network attachable to do the "exec" stuff in tasks.py using one off containers using "run"
-- Redirect after restart/retry/delete job
 - Option in batch query to query whole study or explicit series
 - Make whole receiver crash if one asyncio task crashes
 - Auto refresh job pages und success or failure
 - Query with StudyDateStart, StudyDateEnd, StudyDate
 - Common search query Websocket component
 - Improve cancel during transfer
-- Allow admin to kill a job (with task revoke(terminate=True))
-- Fix the ineffective stuff in transfer_utils, see TODO there
-- Write test_parsers.py
 - DICOM data that does not need to be modified can be directly transferred between the source and destination server (C-MOVE). The only exception is when source and destination server are the same, then the data will still be downloaded and uploaded again. This may be helpful when the PACS server treats the data somehow differently when sent by ADIT.
 
 ## Fix
@@ -96,7 +87,7 @@
   - Button: Start Transfer (only when no task is querying)
   - Allow to add tasks to an already existing job (even if already transferred)
   - Delete batch query
-- Upload portal with drag&drop
+- Upload portal
   - Store those files perhaps in ORTHANC
   - Preview uploaded images
   - Allow to transfer thow uploaded image to a PACS
@@ -106,11 +97,6 @@
   - Currently we don't allow this, but this can happen when a patient has multiple PatientIDs in the same PACS (e.g. has external images)
 - exclude test folders from autorelad in ServerCommand (maybe a custom filter is needed)
 - Switch from Daphne to Uvicorn (maybe it has faster restart times during development)
-- Upgrade postgres server to v15, but we have to migrate the data then as the database files are incompatible a newer version
-  - <https://hollo.me/devops/upgrade-postgresql-database-with-docker.html>
-  - <https://thomasbandt.com/postgres-docker-major-version-upgrade>
-  - <https://betterprogramming.pub/how-to-upgrade-your-postgresql-version-using-docker-d1e81dbbbdf9>
-  - look into <https://github.com/tianon/docker-postgres-upgrade>
 - Allow to search multiple source servers with one query (maybe only in dicom explorer)
 - Bring everything behind Nginx as reverse proxy
   - Orthanc could then be directly behind Nginx (without Django-revproxy)
@@ -122,7 +108,7 @@
   - <https://playwright.dev/python/docs/auth>
   - Unfortunately, we can't use live_server fixture inside session fixtures
   - example <https://github.com/automationneemo/PlaywrightDemoYt>
-- Evaluate if services should be better restarted with pywatchman instead of watchdog and watchmedo
+- Evaluate if services should be better restarted with pywatchman instead of watchfiles
   - pywatchman is used by Django autoreload
   - See <https://github.com/django/django/blob/main/django/utils/autoreload.py>
   - Unfortunately, I could not get it to work with Django autoreload itself, but we can use something similiar by using watchman directly and integrate it in ServerCommand
@@ -133,7 +119,6 @@
 - <https://stackoverflow.com/questions/14259852/how-to-identify-image-receive-in-c-store-as-result-of-a-c-move-query>
 - <https://www.yergler.net/2009/09/27/nested-formsets-with-django/>
 - <http://the-frey.github.io/2014/08/18/monitoring-docker-containers-with-monit>
-- move or get rid of hijack_logger and store_log_in_task in task_utils
 - log debug -> info in connector also in production
 - Link owner in templates to user profile
 - Improve .zip file encryption
@@ -155,6 +140,4 @@
 - Setup pgadmin
   - <https://stackoverflow.com/questions/64620446/adding-postgress-connections-to-pgadmin-in-docker-file>
   - Not sure if we really need this as we have Django admin and can view data in there
-- Replace ass AssertionError with assert
-
-## RADIS
+- Replace raise AssertionError with assert
