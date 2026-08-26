@@ -26,7 +26,7 @@ Click it, and VS Code will automatically build and open the development environm
 git clone https://github.com/openradx/adit.git
 cd adit
 uv sync  # installs Python dependencies into a virtual environment
-uv run cli init-workspace  # creates .env from example.env
+cp ./example.env ./.env  # adjust the environment variables to your needs
 uv run pre-commit install  # installs the Git hooks
 uv run cli compose-up -- --watch  # builds and starts the Docker containers
 ```

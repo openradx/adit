@@ -5,7 +5,7 @@ Thank you for your interest in contributing! Quick start:
 ```terminal
 git clone https://github.com/openradx/adit.git && cd adit
 uv sync                            # install Python dependencies
-uv run cli init-workspace          # create .env from example.env
+cp ./example.env ./.env            # adjust the environment variables to your needs
 uv run cli compose-up -- --watch   # build and start the dev containers on http://localhost:8000
 uv run cli lint                    # ruff, pyright, djlint
 uv run cli test                    # pytest inside the web container
