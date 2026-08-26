@@ -4,96 +4,51 @@ The Admin Guide is intended for system administrators and technical staff respon
 
 ## Installation
 
-ADIT runs in production as a Docker Swarm stack. The `cli` helper (run through `uv`) wraps the required Docker commands.
+On the server ADIT lives in a production folder (e.g. `adit_prod`) that holds the checkout and the `.env` file:
 
-1. **Clone the repository** and install the CLI dependencies:
-
-    ```bash
-    git clone https://github.com/openradx/adit.git
-    cd adit
-    uv sync
-    ```
-
-2. **Create the `.env` file** from `example.env`:
-
-    ```bash
-    uv run cli init-workspace
-    ```
-
-3. **Edit `.env`** for your deployment. At least set `ENVIRONMENT=production`, `DJANGO_ALLOWED_HOSTS`, `DJANGO_CSRF_TRUSTED_ORIGINS`, `SITE_DOMAIN`, `CALLING_AE_TITLE`, `RECEIVER_AE_TITLE`, the SSL certificate files, the ports and the email settings (see [Environment Variables](#environment-variables)). Generate the secrets with `uv run cli generate-django-secret-key`, `uv run cli generate-secure-password` and `uv run cli generate-auth-token` and paste them into `.env` (`DJANGO_SECRET_KEY`, `POSTGRES_PASSWORD`, `TOKEN_AUTHENTICATION_SALT`, `SUPERUSER_PASSWORD`, `SUPERUSER_AUTH_TOKEN`).
-
-4. **Pull the Docker image** (the image set in `ADIT_IMAGE`, by default `ghcr.io/openradx/adit:latest`):
-
-    ```bash
-    uv run cli compose-pull
-    ```
-
-5. **Deploy the stack**:
-
-    ```bash
-    uv run cli stack-deploy
-    ```
-
-!!! warning "No quotes in .env"
-    Values in `.env` must not be wrapped in quotes. The file is passed to the containers as is, and Docker Swarm treats the quotes as part of the value. `stack-deploy` refuses to run when it finds quoted values, and it only runs when `ENVIRONMENT=production`.
+```terminal
+git clone https://github.com/openradx/adit.git adit_prod
+cd adit_prod
+uv sync
+cp ./example.env ./.env  # set ENVIRONMENT=production and adjust the variables (see below)
+uv run cli compose-pull  # pulls the Docker image (ADIT_IMAGE, default ghcr.io/openradx/adit:latest)
+uv run cli stack-deploy  # starts the Docker Swarm stack
+```
 
 ### Environment Variables
 
-All settings are read from the `.env` file. The comments in `example.env` are the authoritative reference; the most important variables are:
+All settings are read from `.env`; the comments in `example.env` describe every variable. For production at least set:
 
-| Variable | Meaning | Default in `example.env` |
-|---|---|---|
-| `ENVIRONMENT` | `development` or `production`. Selects the compose file and Django settings | `development` |
-| `ADIT_IMAGE` | Docker image used for the app services. Override to run a locally built image (e.g. for staging) | `ghcr.io/openradx/adit:latest` (commented out) |
-| `STACK_NAME` | Name of the Docker Swarm stack. Also used to derive unique session and CSRF cookie names for multiple stacks on one host | `adit_prod` / `adit_dev` (commented out) |
-| `WEB_HTTP_PORT`, `WEB_HTTPS_PORT`, `RECEIVER_PORT` | Host ports of the web server and the C-STORE receiver in production | `80`, `443`, `11112` |
-| `WEB_DEV_PORT`, `POSTGRES_DEV_PORT` | Host ports mapped during development | `8000`, `5432` |
-| `DJANGO_SECRET_KEY` | Key used for cryptographic signing. Must be unique and secret | placeholder |
-| `POSTGRES_PASSWORD` | Database password (production only) | placeholder |
-| `DJANGO_ALLOWED_HOSTS` | Comma-separated host names ADIT may be served under | `localhost,127.0.0.1` |
-| `DJANGO_CSRF_TRUSTED_ORIGINS` | Comma-separated origins (with scheme) trusted for CSRF, e.g. `https://adit.example.com` | empty |
-| `DJANGO_INTERNAL_IPS` | IPs that see debug information (development only) | `127.0.0.1` |
-| `DJANGO_SECURE_SSL_REDIRECT` | Redirect all HTTP requests to HTTPS (production only) | `true` |
-| `TOKEN_AUTHENTICATION_SALT` | Salt used to hash API tokens. Changing it invalidates all existing tokens | placeholder |
-| `DJANGO_SERVER_EMAIL`, `DJANGO_EMAIL_URL` | Sender address and SMTP URL for emails to users and admins. In development emails are logged to the console | `server@example-project.example`, `smtp://localhost:25` |
-| `DJANGO_ADMIN_EMAIL`, `DJANGO_ADMIN_FULL_NAME` | Admin who receives critical error notifications and account approval requests | `admin@adit.example`, `ADIT Admin` |
-| `SUPPORT_EMAIL` | Support address shown to users | `support@adit.example` |
-| `SUPERUSER_USERNAME`, `SUPERUSER_EMAIL`, `SUPERUSER_PASSWORD`, `SUPERUSER_AUTH_TOKEN` | Superuser created on startup (with an optional API token) | `superuser`, placeholders |
-| `BACKUP_DIR` | Host folder for database backups | `./.docker-data/backups` |
-| `BACKUP_ENABLED`, `BACKUP_CRON` | Enable the periodic database backup and its schedule | `true`, `0 3 * * *` |
-| `SITE_NAME`, `SITE_DOMAIN` | Site name and domain used by the Django sites framework (e.g. in emails) | `ADIT`, `localhost` |
-| `SSL_HOSTNAME`, `SSL_IP_ADDRESSES` | Hostname and IPs written into a generated self-signed certificate (`uv run cli generate-certificate-files`) | `localhost`, `127.0.0.1` |
-| `SSL_SERVER_CERT_FILE`, `SSL_SERVER_KEY_FILE`, `SSL_SERVER_CHAIN_FILE` | Certificate, key and chain files mounted into the web container (production only). Use `uv run cli generate-certificate-chain` for a certificate signed by your CA | `./cert.pem`, `./key.pem`, `./chain.pem` |
-| `TIME_ZONE` | Time zone of the server | `Europe/Berlin` |
-| `WAIT_POSTGRES_TIMEOUT` | Seconds the containers wait for PostgreSQL on startup | `180` |
-| `CALLING_AE_TITLE` | AE title ADIT uses when calling DICOM servers. Required, no default | `ADIT1DEV` |
-| `RECEIVER_AE_TITLE` | AE title of the C-STORE receiver (the target of C-MOVE). Required, no default | `ADIT1DEV` |
-| `EXCLUDE_MODALITIES` | Comma-separated modalities skipped when a study is transferred or downloaded pseudonymized through the web interface (does not affect the ADIT client) | `PR,SR` |
-| `WEB_REPLICAS`, `DICOM_WORKER_REPLICAS`, `MASS_TRANSFER_WORKER_REPLICAS` | Number of replicas of the web server, the DICOM workers and the mass transfer workers (production) | `5`, `3`, `5` |
-| `DICOM_TASK_STALLED_WORKER_GRACE_SECONDS` | Seconds without a worker heartbeat before a task in progress counts as abandoned. Never set below 30 | `30` |
-| `DICOM_TASK_SWEEP_CRON` | Schedule (cron syntax) of the sweep that repairs abandoned tasks | `* * * * *` |
-| `MOUNT_DIR` | Host directory that contains the download folders (mounted as `/mnt` in the containers, see [Folder Management](#folder-management)) | `./.docker-data/mount` |
-| `ANONYMIZATION_SEED` | Seed for the client-side pseudonymization in the upload portal. Required | `123456789` |
-| `HTTP_PROXY`, `HTTPS_PROXY`, `NO_PROXY` | Proxy settings for the containers. `NO_PROXY` must contain `.local` | commented out |
-| `OTEL_EXPORTER_OTLP_ENDPOINT` | OTLP HTTP endpoint of an OpenTelemetry collector | `http://otel-collector.local:4318` |
+- `ENVIRONMENT=production`
+- Secrets: `DJANGO_SECRET_KEY`, `POSTGRES_PASSWORD`, `TOKEN_AUTHENTICATION_SALT`, `SUPERUSER_PASSWORD`, `SUPERUSER_AUTH_TOKEN` (generate with `uv run cli generate-django-secret-key`, `generate-secure-password`, `generate-auth-token`)
+- Hosts: `DJANGO_ALLOWED_HOSTS`, `DJANGO_CSRF_TRUSTED_ORIGINS`, `SITE_DOMAIN`
+- DICOM: `CALLING_AE_TITLE`, `RECEIVER_AE_TITLE` (both required), `RECEIVER_PORT`
+- SSL: `SSL_SERVER_CERT_FILE`, `SSL_SERVER_KEY_FILE`, `SSL_SERVER_CHAIN_FILE` (`uv run cli generate-certificate-chain` builds the chain from your CA-signed certificate)
+- Email: `DJANGO_EMAIL_URL`, `DJANGO_SERVER_EMAIL`, `DJANGO_ADMIN_EMAIL`, `SUPPORT_EMAIL`
+- Folders: `MOUNT_DIR` (download folders, see [Folder Management](#folder-management)), `BACKUP_DIR`
+- `ANONYMIZATION_SEED` for the upload portal
+
+Optional tuning: `WEB_REPLICAS`, `DICOM_WORKER_REPLICAS`, `MASS_TRANSFER_WORKER_REPLICAS` (service scaling), `EXCLUDE_MODALITIES` (modalities skipped in pseudonymized web transfers, default `PR,SR`), `BACKUP_CRON`, `DICOM_TASK_STALLED_WORKER_GRACE_SECONDS` and `DICOM_TASK_SWEEP_CRON` (see [Worker Crash Recovery](#worker-crash-recovery)), `ADIT_IMAGE` and `STACK_NAME` (a second stack such as staging on the same host).
+
+!!! warning "No quotes in .env"
+    Values must not be wrapped in quotes; Docker Swarm treats them as part of the value, and `stack-deploy` refuses to run when it finds any.
 
 ## Updating ADIT
 
-Follow these steps to safely update your ADIT:
-
-1. **Verify no active jobs**: Navigate to **Admin Section** → **Job Overview** (available at `/admin-section/`) and confirm nothing is pending or in progress
-2. **Enable maintenance mode**: In Django Admin, navigate to **Common** → **Project settings** and check the "Maintenance" checkbox, then save
-3. **Backup database**: Run `uv run cli db-backup` to create a database backup
-4. **Remove stack**: Run `uv run cli stack-rm` to remove all Docker containers and services
-5. **Pull latest changes**: Run `git pull origin main` to fetch the latest code updates
-6. **Update environment**: Compare `example.env` with your `.env` file and add any new environment variables or update changed values. If you pinned `ADIT_IMAGE` to a specific tag, update it to the version you want to run. Keep `STACK_NAME` unchanged, otherwise a second stack is deployed next to the old one
-7. **Pull Docker images**: Run `uv run cli compose-pull` to download the image set in `ADIT_IMAGE`
-8. **Deploy stack**: Run `uv run cli stack-deploy` to start all services with the updated image
-9. **Disable maintenance mode**: In Django Admin, navigate to **Common** → **Project settings** and uncheck the "Maintenance" checkbox, then save
+1. **Verify no active jobs**: **Admin Section** → **Job Overview** (`/admin-section/`) shows nothing pending or in progress
+2. **Enable maintenance mode**: In Django Admin, **Common** → **Project settings**, check "Maintenance" and save
+3. **Navigate to the production folder** (e.g. `adit_prod`)
+4. **Backup database**: `uv run cli db-backup`
+5. **Remove stack**: `uv run cli stack-rm`
+6. **Pull latest changes**: `git pull origin main`
+7. **Update environment**: Compare `example.env` with your `.env` and add new or changed variables. Keep `STACK_NAME` unchanged, otherwise a second stack is deployed next to the old one
+8. **Pull Docker images**: `uv run cli compose-pull`
+9. **Deploy stack**: `uv run cli stack-deploy`
+10. **Disable maintenance mode**: Uncheck "Maintenance" in **Project settings** and save
 
 ### Worker Crash Recovery
 
-Tasks are processed by worker containers. When a worker dies (crash, restart, redeploy) while a task is in progress, the task stays in the `In Progress` state. ADIT repairs such tasks automatically: a sweep (`./manage.py sweep_stale_tasks`) runs at every worker start and periodically (`DICOM_TASK_SWEEP_CRON`, every minute by default) and puts every task whose worker sent no heartbeat for `DICOM_TASK_STALLED_WORKER_GRACE_SECONDS` (30 s by default) back to `Pending` so it is processed again (or to `Canceled` if its job is being canceled). No manual intervention is needed after a worker crash; a task that stays `In Progress` for longer than the grace period plus one sweep interval indicates that the worker is still alive but blocked.
+When a worker dies while a task is in progress, the task stays `In Progress` until a periodic sweep (every minute by default, `DICOM_TASK_SWEEP_CRON`; also at every worker start) puts it back to `Pending` once its worker has sent no heartbeat for `DICOM_TASK_STALLED_WORKER_GRACE_SECONDS` (30 s by default). No manual intervention is needed; a task that stays `In Progress` much longer than that means the worker is alive but blocked.
 
 ## User and Group Management
 
