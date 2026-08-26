@@ -46,9 +46,10 @@ sequenceDiagram
     participant ADIT as ADIT Server
     participant PACS as PACS Server
 
-    Client->>ADIT: HTTP GET /api/dicom-web/{ae_title}/qidors/studies?PatientAge=020-030&Modality=CT
-    Note over ADIT: Receives DICOMweb/REST request<br/>Converts REST → DIMSE
+    Client->>ADIT: HTTP GET .../qidors/studies?Modality=CT
+    Note over ADIT: Receives DICOMweb/REST request
 
+    Note over ADIT: Converts REST → DIMSE
     ADIT->>PACS: C-FIND (DIMSE Protocol)
     PACS-->>ADIT: DICOM Response
 
