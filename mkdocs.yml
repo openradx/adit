@@ -83,6 +83,8 @@ nav:
       - Contributing: dev-docs/contributing.md
       - Architecture: dev-docs/architecture.md
       - Core Components: dev-docs/core_components.md
+      - Backups: Backups.md
+      - Maintenance: Maintenance.md
 
 extra:
   social:

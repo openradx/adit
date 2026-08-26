@@ -1,39 +1,31 @@
-# Contributing to Our Project
+# Contributing to ADIT
 
-We're excited that you're interested in contributing to our project! This document outlines the
-guidelines for contributing to our codebase. We follow the Google Python Style Guide to maintain
-consistency and readability across our project.
-
-Code Style
-We adhere to the Google Python Style [Guide](https://google.github.io/styleguide/pyguide.html).
-
-## Getting Started
+Thank you for your interest in contributing! Quick start:
 
 ```terminal
-git clone https://github.com/openradx/adit.git
-cd adit
-uv sync
-cp ./example.env ./.env  # adjust the environment variables to your needs
-uv run cli compose-up -- --watch
+git clone https://github.com/openradx/adit.git && cd adit
+uv sync                            # install Python dependencies
+uv run cli init-workspace          # create .env from example.env
+uv run cli compose-up -- --watch   # build and start the dev containers on http://localhost:8000
+uv run cli lint                    # ruff, pyright, djlint
+uv run cli test                    # pytest inside the web container
 ```
 
-The development server of the example project will be started on <http://localhost:8000>
-
-File changes will be automatically detected and the servers will be restarted. When library
-dependencies are changed, the containers will automatically be rebuilt and restarted.
+The full developer guide (dev container, pre-commit hooks, code style, testing, updating your
+environment) is in [docs/dev-docs/contributing.md](docs/dev-docs/contributing.md), also published
+at <https://openradx.github.io/adit/dev-docs/contributing/>.
 
 ## Reporting Issues
 
-If you encounter bugs or have feature requests, please open an issue on GitHub. Include as much detail as possible, including steps to reproduce the issue.
+If you encounter bugs or have feature requests, please open an issue on GitHub. Include as much
+detail as possible, including steps to reproduce the issue.
 
 ## Making Changes
 
 1. Fork the repository and create a new branch for your feature or bug fix.
-2. Make your changes and ensure that they adhere to the Google Python Style Guide.
-3. Write tests for your changes and ensure that all tests pass.
-4. Commit your changes to a new branch with a clear and descriptive commit message.
-5. Push your changes to your forked repository and create a pull request against the main repository.
-6. Ensure that your pull request is linked to an issue in the main repository.
+2. Make your changes and make sure `uv run cli lint` and `uv run cli test` pass.
+3. Commit with a clear and descriptive commit message.
+4. Push to your fork and open a pull request against `main`, linked to an issue where possible.
 
 ## License
 
