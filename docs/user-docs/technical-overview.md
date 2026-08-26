@@ -44,6 +44,18 @@ flowchart LR
 - **WADO-RS:** Retrieve using HTTP GET requests
 - **STOW-RS:** Store using HTTP POST requests
 
+ADIT exposes these services under `/api/dicom-web/{ae_title}/qidors/`, `/api/dicom-web/{ae_title}/wadors/` and `/api/dicom-web/{ae_title}/stowrs/`, where `{ae_title}` is the AE title of the DICOM server configured in ADIT.
+
+#### NIfTI Retrieval
+
+In addition to the standard WADO-RS resources, ADIT offers non-standard `/nifti` resources that return the retrieved data converted to NIfTI (using [dcm2niix](https://github.com/rordenlab/dcm2niix)) instead of DICOM:
+
+- `/api/dicom-web/{ae_title}/wadors/studies/{study_uid}/nifti`
+- `/api/dicom-web/{ae_title}/wadors/studies/{study_uid}/series/{series_uid}/nifti`
+- `/api/dicom-web/{ae_title}/wadors/studies/{study_uid}/series/{series_uid}/instances/{image_uid}/nifti`
+
+The response is a multipart message containing, per converted series, the NIfTI file together with the JSON sidecar and (if present) the bval and bvec files written by dcm2niix. The ADIT Client provides `retrieve_nifti_study`, `retrieve_nifti_series` and `retrieve_nifti_image` for these resources.
+
 ## How ADIT Bridges the Gap
 
 ADIT acts as a **translation layer** between modern web APIs and traditional DICOM protocols:
@@ -52,21 +64,15 @@ ADIT acts as a **translation layer** between modern web APIs and traditional DIC
 sequenceDiagram
     participant Client as Your Script/App
     participant ADIT as ADIT Server
-    participant Worker as ADIT Worker
     participant PACS as PACS Server
 
-    Client->>ADIT: HTTP GET /dicomweb/studies?PatientAge=020-030&Modality=CT
-    Note over ADIT: Receives DICOMweb/REST request
+    Client->>ADIT: HTTP GET /api/dicom-web/{ae_title}/qidors/studies?PatientAge=020-030&Modality=CT
+    Note over ADIT: Receives DICOMweb/REST request<br/>Converts REST → DIMSE
 
-    ADIT->>Worker: Internal translation
-    Note over Worker: Converts REST → DIMSE
+    ADIT->>PACS: C-FIND (DIMSE Protocol)
+    PACS-->>ADIT: DICOM Response
 
-    Worker->>PACS: C-FIND (DIMSE Protocol)
-    PACS-->>Worker: DICOM Response
-
-    Worker->>ADIT: Internal processing
     Note over ADIT: Converts DIMSE → REST
-
     ADIT-->>Client: HTTP 200 + JSON Response
 ```
 

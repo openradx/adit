@@ -44,21 +44,15 @@ ADIT acts as a **translation layer** between modern web APIs and traditional DIC
 sequenceDiagram
     participant Client as Your Script/App
     participant ADIT as ADIT Server
-    participant Worker as ADIT Worker
     participant PACS as PACS Server
 
-    Client->>ADIT: HTTP GET /dicomweb/studies?PatientAge=020-030&Modality=CT
-    Note over ADIT: Receives DICOMweb/REST request
+    Client->>ADIT: HTTP GET /api/dicom-web/{ae_title}/qidors/studies?PatientAge=020-030&Modality=CT
+    Note over ADIT: Receives DICOMweb/REST request<br/>Converts REST → DIMSE
 
-    ADIT->>Worker: Internal translation
-    Note over Worker: Converts REST → DIMSE
+    ADIT->>PACS: C-FIND (DIMSE Protocol)
+    PACS-->>ADIT: DICOM Response
 
-    Worker->>PACS: C-FIND (DIMSE Protocol)
-    PACS-->>Worker: DICOM Response
-
-    Worker->>ADIT: Internal processing
     Note over ADIT: Converts DIMSE → REST
-
     ADIT-->>Client: HTTP 200 + JSON Response
 ```
 
@@ -71,8 +65,12 @@ sequenceDiagram
 - Easy web interface to select which studies to transfer or download
 - Upload a batch file to make multiple queries on a DICOM server
 - Upload a batch file to transfer or download multiple studies
-- A REST API and API client to manage transfers programmatically by an external script (see below)
-- Define when transfers should happen (for example, more workers at night to reduce server load on a PACS)
+- Mass transfer of large volumes of imaging data over a date range using include and exclude filters
+- Convert downloaded DICOM series to NIfTI
+- Protect downloaded archives with a password
+- Explore the DICOM data of a server interactively (DICOM Explorer)
+- A DICOMweb API (QIDO-RS, WADO-RS, STOW-RS) and a Python client to query, retrieve and store DICOM data programmatically
+- Priority-based processing of jobs (urgent jobs first) and scalable worker replicas to control the load on a PACS
 - Fine-grained control of what users can or can't do and what they can access
 - Help modals with detailed information for the most important features
 - An upload portal to upload DICOM images through a web interface that can be pseudonymized on the client (before the transfer happens)
@@ -85,11 +83,11 @@ sequenceDiagram
 
 The backend of ADIT is built using the Django web framework, and data is stored in a PostgreSQL database. For DICOM transfer [pynetdicom](https://pydicom.github.io/pynetdicom/stable/) of the [pydicom](https://pydicom.github.io/) project is used.
 
-A transfer job contains one or more transfer tasks that describe what studies or series to transfer. A task contains how to transfer it (source, destination, pseudonym). A transfer task is processed by a background worker running in its own Docker container and that is constantly polling queued pending tasks from the database.
+A transfer job contains one or more transfer tasks that describe what studies or series to transfer. A task contains how to transfer it (source, destination, pseudonym). Tasks are queued with [Procrastinate](https://procrastinate.readthedocs.io/) (a PostgreSQL-backed task queue) and processed by background workers running in their own Docker containers. There are three worker services, each consuming one queue: `default_worker` (`default` queue, e.g. periodic maintenance), `dicom_worker` (`dicom` queue, selective transfers, batch queries and batch transfers) and `mass_transfer_worker` (`mass_transfer` queue). The number of DICOM and mass transfer workers can be scaled with the `DICOM_WORKER_REPLICAS` and `MASS_TRANSFER_WORKER_REPLICAS` settings.
 
-When the DICOM data to transfer needs to be modified (e.g. pseudonymized) it is downloaded temporarily to the ADIT web server, then transformed and uploaded to the destination server resp. moved to the destination folder.
+When the DICOM data to transfer needs to be modified (e.g. pseudonymized) it is downloaded temporarily by the worker, then transformed and uploaded to the destination server resp. moved to the destination folder.
 
-Downloading data from a DICOM server can done by using a DIMSE operation or by using DICOMweb REST calls. When using DIMSE operations C-GET is prioritized over C-MOVE as a worker can fetch the DICOM data directly from the server. When downloading data using a C-MOVE operation, ADIT commands the source DICOM server to send the data to a C-STORE SCP server of ADIT running in a separate container (`Receiver`) that receives the DICOM data and sends it back to the worker using a TCP Socket connection (`FileTransmitter`).
+Downloading data from a DICOM server can done by using a DIMSE operation or by using DICOMweb REST calls. When using DIMSE operations C-GET is prioritized over C-MOVE as a worker can fetch the DICOM data directly from the server. When downloading data using a C-MOVE operation, ADIT commands the source DICOM server to send the data to a C-STORE SCP server of ADIT running in a separate container (`Receiver`) that receives the DICOM data and sends it back to the worker using a TCP socket connection (`FileTransmitServer` in the receiver, `FileTransmitClient` in the worker).
 
 ## Screenshots
 
