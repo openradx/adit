@@ -66,8 +66,16 @@ ADIT simplifies interaction with DICOM systems through the following process:
 - [Universitätsklinikum Heidelberg](https://www.klinikum.uni-heidelberg.de/kliniken-institute/kliniken/diagnostische-und-interventionelle-radiologie/klinik-fuer-diagnostische-und-interventionelle-radiologie/)
 
 !!! important "Beta Status"
-ADIT is currently in early beta stage. While we are actively building and refining its features, users should anticipate ongoing updates and potential breaking changes as the platform evolves. We appreciate your understanding and welcome feedback to help us shape the future of ADIT.
+    ADIT is currently in early beta stage. While we are actively building and refining its features, users should anticipate ongoing updates and potential breaking changes as the platform evolves. We appreciate your understanding and welcome feedback to help us shape the future of ADIT.
 
 **Admin Guide**: Explore system administration, configuration, and management features in the [Admin Guide](user-docs/admin-guide.md)
 
-**User Guide**: Explore the application’s features, and how to execute common workflows in a clear and practical manner in our [User Guide](user-docs/user-guide.md)
+**User Guide**: Explore the application's features, and how to execute common workflows in a clear and practical manner in our [User Guide](user-docs/user-guide.md)
+
+**Technical Overview**: Learn how ADIT bridges DICOMweb and DIMSE in the [Technical Overview](user-docs/technical-overview.md)
+
+**Features**: See what ADIT can do in the [Features](user-docs/features.md) list
+
+**FAQ**: Find answers to common questions, e.g. about pseudonymization, in the [FAQ](user-docs/faq.md)
+
+**Developer Documentation**: Set up a development environment and learn about the internals in [Contributing](dev-docs/contributing.md), [Architecture](dev-docs/architecture.md), [Core Components](dev-docs/core_components.md), [Backups](Backups.md) and [Maintenance](Maintenance.md)
