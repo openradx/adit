@@ -1,6 +1,6 @@
 # Contributing to Our Project
 
-We're excited that you're interested in contributing to our project! This document outlines the guidelines for contributing to our codebase. We follow the Google Python Style Guide to maintain consistency and readability across our project.
+This document describes how to set up a development environment for ADIT, the tooling we use and the conventions contributions are expected to follow. We follow the Google Python Style Guide to keep the codebase consistent and readable.
 
 **Code Style:**
 We adhere to the Google Python Style [Guide](https://google.github.io/styleguide/pyguide.html). The enforced configuration lives in `pyproject.toml`:
@@ -13,7 +13,7 @@ Run `uv run cli lint` to check all three and `uv run cli format-code` to format.
 
 ## Getting Started
 
-This repository includes a [Dev Container](https://code.visualstudio.com/docs/devcontainers/create-dev-container). The **Dev Container** is a Docker container that provides the development environment (VS Code, Git, Docker CLI, Node.js, Python tools). It uses Docker-in-Docker to run the application containers inside it. This ensures all developers have identical environments and can manage ADIT's multi-container setup seamlessly.
+This repository includes a [Dev Container](https://code.visualstudio.com/docs/devcontainers/create-dev-container). The **Dev Container** is a Docker container that provides the development environment (VS Code, Git, Docker CLI, Node.js, Python tools). It uses [Docker outside of Docker](https://github.com/devcontainers/features/tree/main/src/docker-outside-of-docker): the host's Docker socket is mounted into the Dev Container, so ADIT's application containers are started on the host's Docker daemon and run next to the Dev Container, not inside it. This gives all developers an identical toolchain while keeping the Docker Compose commands the same as outside the Dev Container.
 If you open the project in VS Code after cloning, you should see a prompt:
 
 “Reopen in Dev Container”

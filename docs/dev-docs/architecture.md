@@ -54,7 +54,7 @@ Server-side rendered with Django templates and HTMX for dynamic interactions. Us
 
 ## Docker Container Architecture
 
-ADIT runs as multiple Docker containers that work together. In development, these containers run inside a VS Code **dev container** which provides a consistent development environment with Docker-in-Docker support, allowing you to run and manage the application containers from within the development container.
+ADIT runs as multiple Docker containers that work together. In development, you work inside a VS Code **dev container** that provides a consistent toolchain; it mounts the host's Docker socket (Docker outside of Docker), so the application containers run on the host's Docker daemon next to the dev container and can be managed from within it.
 
 ### Container Types
 
