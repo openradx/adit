@@ -19,6 +19,15 @@
 - The SECRET_KEY should not start with a dollar sign (\$), django-environ has problems with it (see Proxy value in the documentation)
 - Multi table inheritance extensions: <https://github.com/django-polymorphic/django-polymorphic> and <https://github.com/jazzband/django-model-utils>
 
+### Procrastinate delivers at least once
+
+A queue row can be delivered again after a worker crash (`retry_stalled_jobs`), so a task
+entry point may see a task that is not `PENDING`. Never `assert` on the status there:
+claim with a conditional UPDATE and skip otherwise. Tasks left `IN_PROGRESS` by a dead
+worker are repaired by `sweep_stale_dicom_tasks` (`adit/core/utils/recovery.py`), which
+runs at worker start and every minute. `cleanup_jobs_and_tasks` remains the manual
+sledgehammer that marks everything in progress as failed.
+
 ## DICOM
 
 - All available DICOM tags: <https://dicom.nema.org/medical/dicom/current/output/chtml/part06/chapter_6.html>

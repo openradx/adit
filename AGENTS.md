@@ -70,7 +70,7 @@ Transfer operations follow a Job -> Task pattern:
 - A **TransferJob** contains multiple **TransferTasks**
 - Tasks define: source server, destination node, study selection, pseudonymization options
 - Status flow: `PENDING` -> `IN_PROGRESS` -> `SUCCESS`/`WARNING`/`FAILURE`
-- Background workers (Procrastinate) poll and process tasks from two queues: `default` and `dicom`
+- Background workers (Procrastinate) poll and process tasks from three queues: `default`, `dicom` and `mass_transfer`
 
 ### Job and Task Statuses
 
@@ -83,6 +83,19 @@ The job status is derived from its tasks via `post_process()`. The evaluation pr
 2. Any IN_PROGRESS task → job becomes IN_PROGRESS (unless job is CANCELING)
 3. If job was `CANCELING` → job becomes `CANCELED`
 4. Otherwise the job is finished and its final status is computed from the combination of `SUCCESS`, `WARNING`, and `FAILURE` tasks. If none of those are present but canceled tasks are, the job becomes `CANCELED`
+
+### Worker Crash Recovery
+
+Two layers hold the state of a running task and heal independently:
+
+- **Queue rows** (`procrastinate_jobs`, `todo → doing → succeeded/failed`, deleted on finish). Healed by Procrastinate plus `retry_stalled_jobs` (web boot + every 10 min): a `doing` row whose worker heartbeat is older than 30 s goes back to `todo`.
+- **Task rows** (`DicomTask`, `PENDING → IN_PROGRESS → …`). Only app code inside a running task moves them.
+
+When a worker dies mid-task the task stays `IN_PROGRESS`. The stale task sweep (`adit/core/utils/recovery.py`) repairs it: every `IN_PROGRESS` task whose queue row is gone, finished, or owned by a worker silent for `DICOM_TASK_STALLED_WORKER_GRACE_SECONDS` (default 30, never lower) is put back to `PENDING` (or `CANCELED` if the job is canceling) with one conditional UPDATE. If the old queue row will not run again the task is re-queued; otherwise the task keeps pointing at that row, so later sweeps recognize the run it starts. Each repair and each job re-evaluation (`post_process()`) is isolated: one failure is logged and the sweep continues, reporting one summary error at the end. It runs at every worker start (`./manage.py sweep_stale_tasks`, never exits non-zero) and periodically (`DICOM_TASK_SWEEP_CRON`, default every minute, `default` queue).
+
+`_run_dicom_task` claims a task with a single `PENDING → IN_PROGRESS` UPDATE that also stamps the delivering queue row onto `queued_job`, and skips the delivery otherwise — Procrastinate delivers at least once, so a row may arrive for a task another run already handled.
+
+Accepted: a worker frozen for more than the grace period but still alive can lead to the same task running twice (idempotent at the PACS, wasted work only); a task that repeatedly kills its worker is revived without a cap until canceled; `PENDING` tasks without a queue row are not repaired (use Restart/Reset); a task revived while its old queue row is still alive waits for `retry_stalled_jobs` to run that row again (up to 10 min); a job whose re-evaluation fails during a sweep keeps its stale status until a later action touches it.
 
 ### Job Actions
 
@@ -105,7 +118,7 @@ All task actions are defined in `adit/core/views.py`. Staff users can act on any
 |---|---|---|---|---|
 | **Delete** | `PENDING` | Owner or staff | Task is deleted | Job status is re-evaluated via `post_process()` |
 | **Reset** | `CANCELED`, `SUCCESS`, `WARNING`, or `FAILURE` | Owner or staff | Task is reset to `PENDING` (attempts, message, log cleared), then re-queued | Job status is re-evaluated via `post_process()` — typically becomes `PENDING` |
-| **Kill** | `IN_PROGRESS` | Staff only | Queued Procrastinate job is aborted and deleted | Job status is not immediately changed; the killed task's processor will update status when it terminates |
+| **Kill** | `IN_PROGRESS` | Staff only | Queued Procrastinate job is asked to abort (the row itself is not deleted while running) | Job status is not immediately changed; the task's processor sets it when it stops. If the worker is already dead, the stale task sweep repairs the task |
 
 **Reset internals**: The `reset_tasks()` utility in `adit/core/utils/model_utils.py` clears the task back to its initial state: `status=PENDING`, `queued_job_id=None`, `attempts=0`, `message=""`, `log=""`, `start=None`, `end=None`. After resetting, the task is immediately re-queued via `queue_pending_task()` and the job status is re-evaluated via `post_process()`.
 
@@ -125,8 +138,9 @@ Data modification pattern: download to temp folder -> transform (pseudonymize) -
 ### Docker Services
 
 - **web**: Django dev server (port 8000) - main application
-- **default_worker**: General background task processor (Procrastinate queue: `default`)
-- **dicom_worker**: DICOM-specific task processor (Procrastinate queue: `dicom`)
+- **default_worker**: General background task processor (Procrastinate queue: `default`); each worker runs `sweep_stale_tasks` before `bg_worker`
+- **dicom_worker**: DICOM-specific task processor (Procrastinate queue: `dicom`); each worker runs `sweep_stale_tasks` before `bg_worker`
+- **mass_transfer_worker**: Mass transfer task processor (Procrastinate queue: `mass_transfer`); each worker runs `sweep_stale_tasks` before `bg_worker`
 - **receiver**: C-STORE SCP server (port 11112 internal, 11122 on host) - receives DICOM from C-MOVE
 - **postgres**: PostgreSQL 17 database (port 5432)
 - **orthanc1**: Test DICOM server (ports 4242 DICOM, 7501 web)
@@ -145,6 +159,8 @@ Key variables in `.env` (see `example.env`):
 - `EXCLUDE_MODALITIES`: Modalities to skip in pseudonymization (default: PR,SR)
 - `ANONYMIZATION_SEED`: Seed for client-side anonymization consistency
 - `MOUNT_DIR`: Directory for mounting download folders
+- `DICOM_TASK_STALLED_WORKER_GRACE_SECONDS`: Seconds without worker heartbeat before an `IN_PROGRESS` task counts as abandoned (default 30, never lower)
+- `DICOM_TASK_SWEEP_CRON`: Schedule of the stale task sweep (default `* * * * *`)
 
 ## Code Standards
 
