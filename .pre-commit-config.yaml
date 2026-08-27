@@ -62,3 +62,10 @@ repos:
         language: system
         files: ^adit-client/(pyproject\.toml|uv\.lock)$
         pass_filenames: false
+      # --offline keeps the local run fast and token-free; CI runs the online audits.
+      - id: zizmor
+        name: zizmor
+        entry: uv run zizmor --offline .
+        language: system
+        files: ^(\.github/|\.pre-commit-config\.yaml$)
+        pass_filenames: false
