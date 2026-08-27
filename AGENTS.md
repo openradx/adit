@@ -200,6 +200,9 @@ quoted: the file is passed to the containers as is, and `docker stack deploy` ke
 - **Comments**: only where the code cannot speak for itself; explain *why*, not *what*
 - **No history in comments**: describe the code as it is, not how it changed — that
   belongs in the commit message (docstrings too)
+- **Keep the docs in sync**: when a change adds a feature or alters behaviour that the docs
+  describe (README.md, docs/, this file, in-app help templates such as
+  `adit/*/templates/*/_*_help.html`), update them in the same PR
 
 ### Assertions
 
