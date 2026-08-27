@@ -94,6 +94,7 @@ dev = [
     "tqdm>=4.67.1",
     "typer>=0.19.2",
     "vermin>=1.6.0",
+    "zizmor>=1.29.0",
 ]
 client = ["adit-client"]
 
