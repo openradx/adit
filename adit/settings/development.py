@@ -10,7 +10,11 @@ INTERNAL_IPS = env.list("DJANGO_INTERNAL_IPS")
 REMOTE_DEBUGGING_ENABLED = env.bool("REMOTE_DEBUGGING_ENABLED", default=False)
 REMOTE_DEBUGGING_PORT = env.int("REMOTE_DEBUGGING_PORT", default=5678)
 
-EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+MAILERS = {
+    "default": {
+        "BACKEND": "django.core.mail.backends.console.EmailBackend",
+    },
+}
 
 INSTALLED_APPS += [  # noqa: F405
     "debug_toolbar",
