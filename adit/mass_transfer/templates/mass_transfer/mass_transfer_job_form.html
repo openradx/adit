@@ -60,12 +60,12 @@
 {% endblock css %}
 {% block heading %}
     <c-page-heading title="New Mass Transfer Job">
-    <c-slot name="right">
-    <a href="{% url 'mass_transfer_job_list' %}" class="btn btn-secondary">
-        {% bootstrap_icon "list" %}
-        Previous Jobs
-    </a>
-    </c-slot>
+        <c-slot name="right">
+            <a href="{% url 'mass_transfer_job_list' %}" class="btn btn-secondary">
+                {% bootstrap_icon "list" %}
+                Previous Jobs
+            </a>
+        </c-slot>
     </c-page-heading>
 {% endblock heading %}
 {% block content %}

@@ -58,7 +58,7 @@ docs in `docs/dev-docs/`).
 
 Version floors are from `pyproject.toml`; the exact resolved version is in `uv.lock`.
 
-- **Backend**: Python 3.12+ (images run 3.13), Django 5.1+ (locked 6.1), PostgreSQL 17
+- **Backend**: Python 3.12+ (images run 3.13), Django 6.1+ (locked 6.1), PostgreSQL 17
 - **DICOM**: pynetdicom 2.1+ (locked 3.0), pydicom 2.4+ (locked 3.0), dicognito 0.17+ (anonymization)
 - **Async**: Channels 4.2+ (locked 4.3), Daphne 4.1+ (locked 4.2) (ASGI/WebSockets)
 - **Task Queue**: Procrastinate 3.0+ (locked 3.9) (PostgreSQL-backed)
