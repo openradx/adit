@@ -30,7 +30,7 @@ services:
       - ${REMOTE_DEBUGGING_PORT:-5678}:5678
     command: >
       bash -c "
-        wait-for-it -s postgres.local:5432 -t 60 &&
+        wait-for-it -s postgres.local:5432 -t ${WAIT_POSTGRES_TIMEOUT:-180} &&
         ./manage.py migrate &&
         ./manage.py create_superuser &&
         ./manage.py create_example_users &&
@@ -49,7 +49,8 @@ services:
     image: adit_dev-default_worker:latest
     command: >
       bash -c "
-        wait-for-it -s postgres.local:5432 -t 60 &&
+        wait-for-it -s postgres.local:5432 -t ${WAIT_POSTGRES_TIMEOUT:-180} &&
+        ./manage.py sweep_stale_tasks &&
         ./manage.py bg_worker -l debug -q default --autoreload
       "
 
@@ -58,7 +59,8 @@ services:
     image: adit_dev-dicom_worker:latest
     command: >
       bash -c "
-        wait-for-it -s postgres.local:5432 -t 60 &&
+        wait-for-it -s postgres.local:5432 -t ${WAIT_POSTGRES_TIMEOUT:-180} &&
+        ./manage.py sweep_stale_tasks &&
         ./manage.py bg_worker -l debug -q dicom --autoreload
       "
 
@@ -67,7 +69,8 @@ services:
     image: adit_dev-mass_transfer_worker:latest
     command: >
       bash -c "
-        wait-for-it -s postgres.local:5432 -t 60 &&
+        wait-for-it -s postgres.local:5432 -t ${WAIT_POSTGRES_TIMEOUT:-180} &&
+        ./manage.py sweep_stale_tasks &&
         ./manage.py bg_worker -l debug -q mass_transfer --autoreload
       "
 

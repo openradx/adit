@@ -4,28 +4,51 @@ The Admin Guide is intended for system administrators and technical staff respon
 
 ## Installation
 
+On the server ADIT lives in a production folder (e.g. `adit_prod`) that holds the checkout and the `.env` file:
+
 ```terminal
-Clone the repository: `git clone https://github.com/openradx/adit.git`
-cd adit
+git clone https://github.com/openradx/adit.git adit_prod
+cd adit_prod
 uv sync
-cp ./example.env ./.env  # copy example environment to .env
-uv run cli stack-deploy  # builds and starts Docker containers for production (Docker Swarm)
+cp ./example.env ./.env  # set ENVIRONMENT=production and adjust the variables (see below)
+uv run cli compose-pull  # pulls the Docker image (ADIT_IMAGE, default ghcr.io/openradx/adit:latest)
+uv run cli stack-deploy  # starts the Docker Swarm stack
 ```
+
+### Environment Variables
+
+All settings are read from `.env`; the comments in `example.env` describe every variable. For production at least set:
+
+- `ENVIRONMENT=production`
+- Secrets: `DJANGO_SECRET_KEY`, `POSTGRES_PASSWORD`, `TOKEN_AUTHENTICATION_SALT`, `SUPERUSER_PASSWORD`, `SUPERUSER_AUTH_TOKEN` (generate with `uv run cli generate-django-secret-key`, `generate-secure-password`, `generate-auth-token`)
+- Hosts: `DJANGO_ALLOWED_HOSTS`, `DJANGO_CSRF_TRUSTED_ORIGINS`, `SITE_DOMAIN`
+- DICOM: `CALLING_AE_TITLE`, `RECEIVER_AE_TITLE` (both required), `RECEIVER_PORT`
+- SSL: `SSL_SERVER_CERT_FILE`, `SSL_SERVER_KEY_FILE`, `SSL_SERVER_CHAIN_FILE` (`uv run cli generate-certificate-chain` builds the chain from your CA-signed certificate)
+- Email: `DJANGO_EMAIL_URL`, `DJANGO_SERVER_EMAIL`, `DJANGO_ADMIN_EMAIL`, `SUPPORT_EMAIL`
+- Folders: `MOUNT_DIR` (download folders, see [Folder Management](#folder-management)), `BACKUP_DIR`
+- `ANONYMIZATION_SEED` for the upload portal
+
+Optional tuning: `WEB_REPLICAS`, `DICOM_WORKER_REPLICAS`, `MASS_TRANSFER_WORKER_REPLICAS` (service scaling), `EXCLUDE_MODALITIES` (modalities skipped in pseudonymized web transfers, default `PR,SR`), `BACKUP_CRON`, `DICOM_TASK_STALLED_WORKER_GRACE_SECONDS` and `DICOM_TASK_SWEEP_CRON` (see [Worker Crash Recovery](#worker-crash-recovery)), `ADIT_IMAGE` and `STACK_NAME` (a second stack such as staging on the same host).
+
+!!! warning "No quotes in .env"
+    Values must not be wrapped in quotes; Docker Swarm treats them as part of the value, and `stack-deploy` refuses to run when it finds any.
 
 ## Updating ADIT
 
-Follow these steps to safely update your ADIT:
+1. **Verify no active jobs**: **Admin Section** → **Job Overview** (`/admin-section/`) shows nothing pending or in progress
+2. **Enable maintenance mode**: In Django Admin, **Common** → **Project settings**, check "Maintenance" and save
+3. **Navigate to the production folder** (e.g. `adit_prod`)
+4. **Backup database**: `uv run cli db-backup`
+5. **Remove stack**: `uv run cli stack-rm`
+6. **Pull latest changes**: `git pull origin main`
+7. **Update environment**: Compare `example.env` with your `.env` and add new or changed variables. Keep `STACK_NAME` unchanged, otherwise a second stack is deployed next to the old one
+8. **Pull Docker images**: `uv run cli compose-pull`
+9. **Deploy stack**: `uv run cli stack-deploy`
+10. **Disable maintenance mode**: Uncheck "Maintenance" in **Project settings** and save
 
-1. **Verify no active jobs**: Navigate to Django Admin → **Jobs Overview** and confirm nothing is running
-2. **Enable maintenance mode**: In Django Admin, navigate to **Common** → **Project Settings** and check the "Maintenance mode" checkbox, then save
-3. Navigate to Production folder
-4. **Backup database**: Run `uv run cli db-backup` to create a database backup
-5. **Remove stack**: Run `uv run cli stack-rm` to remove all Docker containers and services
-6. **Pull latest changes**: Run `git pull origin main` to fetch the latest code updates
-7. **Update environment**: Compare `example.env` with your `.env` file and add any new environment variables or update changed values
-8. **Pull Docker images**: Run `uv run cli compose-pull` to download the latest Docker images
-9. **Deploy stack**: Run `uv run cli stack-deploy` to rebuild and start all services with the updated code
-10. **Disable maintenance mode**: In Django Admin, navigate to **Common** → **Project Settings** and uncheck the "Maintenance mode" checkbox, then save
+### Worker Crash Recovery
+
+When a worker dies while a task is in progress, the task stays `In Progress` until a periodic sweep (every minute by default, `DICOM_TASK_SWEEP_CRON`; also at every worker start) puts it back to `Pending` once its worker has sent no heartbeat for `DICOM_TASK_STALLED_WORKER_GRACE_SECONDS` (30 s by default). No manual intervention is needed; a task that stays `In Progress` much longer than that means the worker is alive but blocked.
 
 ## User and Group Management
 
@@ -99,49 +122,44 @@ To add or configure DICOM servers, use the Django Admin interface:
    - **Dicomweb stow prefix**: URL prefix for STOW-RS endpoints
    - **Dicomweb authorization header**: Authentication header for DICOMweb requests
 
+   **Query Settings:**
+   - **Max search results**: Maximum number of C-FIND results per query (default 200). When a search hits this limit, ADIT splits the queried time range into smaller windows and searches again
+
 6. **Configure Group Access**: In the **DICOM node group accesses** section, specify which groups can use this server as source or destination
 
 !!! note "DICOM Protocol Support"
-To determine which DICOM protocols are supported by a server, consult the server's DICOM Conformance Statement.
+    To determine which DICOM protocols are supported by a server, consult the server's DICOM Conformance Statement.
 
 ### Folder Management
 
-Administrators can configure upload folders and storage locations for DICOM files:
+DICOM folders are destinations on a mounted network drive to which users can download data (instead of transferring it to a server). The folder paths must be located below the directory set in `MOUNT_DIR`, which is mounted as `/mnt` in the containers.
 
-1. **Access Django Admin**: Navigate to **Django Admin** → **Admin Section**
-2. **Configure Folders**: Go to **Core** → **DICOM Folders**
+1. **Access Django Admin**: Navigate to **Admin Section** → **Django Admin**
+2. **Configure Folders**: Go to **Core** → **Dicom folders**
 3. **Add or Edit Folder**:
-   - Click **Add Folder** to create a new folder configuration
-   - Enter a **Name** for the folder (e.g., "Research Uploads", "Clinical Archive")
+   - Click **Add dicom folder** to create a new folder configuration
+   - Enter a **Name** for the folder (e.g., "Research Downloads")
    - Specify the **Path** where DICOM files should be stored
-   - Set the **Quota**: Define the disk quota for this folder in GB
-   - Configure **When to inform admin**: Set the threshold (as a percentage or absolute value) at which administrators should be notified about quota usage
-4. **Assign to Groups**: Link folders to groups to control which users can access specific storage locations
+   - Set the **Quota**: The disk quota of this folder in GB
+   - Set the **Warn size**: The used space in GB at which the admins are informed by email
+4. **Assign to Groups**: In the **DICOM node group accesses** section, specify which groups can use this folder as destination (a folder is never a source)
 5. **Save**: Click **Save** to apply changes
 
 !!! tip "Quota Monitoring"
-Administrators will receive notifications when folder usage reaches the configured threshold, allowing proactive storage management.
+    Administrators receive an email when the used space of a folder reaches the configured warn size, allowing proactive storage management.
 
 ## Job Overview
 
-The Admin section includes a **Job Overview** section where administrators can:
+The **Admin Section** (available at `/admin-section/` for staff users) includes a **Job Overview** table with one row per job type (Selective Transfer, Batch Query, Batch Transfer, Mass Transfer) and one column per status: Unverified, Pending, In Progress, Canceling, Canceled, Success, Warning, Failure. Each cell shows the number of jobs and links to the filtered job list of all users, where you can open individual jobs for details.
 
-- Monitor real-time job status across all transfer operations
-- View jobs by status: Pending, In Progress, Completed, Failed, or Cancelled
-- Track job history
-
-To access the Job Overview:
-
-1. Navigate to **Admin Section** → **Job Overview**
-2. Click on individual jobs for detailed information
+Below the Job Overview, the **API Usage** table lists per user the time of the last DICOMweb API request, the total response size and the total number of requests.
 
 ### Broadcasting Messages
 
-Administrators can send broadcast emails to all users:
+Administrators can send an email to all users:
 
-1. Navigate to **Django Admin** → **Admin Section**
-2. Look for the broadcast or messaging feature
-3. Compose your message and send to all users
+1. Navigate to **Admin Section** → **Send Email to all users** (available at `/admin-section/broadcast/`)
+2. Enter a subject and the message and send it
 
 ## System Announcements
 
@@ -149,7 +167,7 @@ System administrators can inform users about important updates, maintenance sche
 
 ### Creating Announcements
 
-1. **Access Admin Interface**: Navigate to the Django admin interface (typically accessible at `/admin/`)
+1. **Access Admin Interface**: Navigate to **Admin Section** → **Django Admin** (available at `/django-admin/`)
 2. **Find Project Settings**: Go to the "Common" section and select "Project settings"
 3. **Edit Announcement**: In the Project Settings form, locate the "Announcement" field
 4. **Enter Message**: Type your announcement message. HTML formatting is supported for rich text display
@@ -172,7 +190,7 @@ transfers accordingly.
 
 ## ADIT Client
 
-ADIT client could be used to access all the features of ADIT without using the web interface.
+The [ADIT Client](https://pypi.org/project/adit-client/) is a Python library that accesses the DICOMweb API of ADIT. It can query (QIDO-RS), retrieve (WADO-RS, including the NIfTI resources) and store (STOW-RS) DICOM data on the servers the user has access to. It cannot create or manage selective, batch or mass transfer jobs; those are only available in the web interface.
 
 **Basic Usage:**
 
@@ -180,18 +198,23 @@ ADIT client could be used to access all the features of ADIT without using the w
 from adit_client import AditClient
 
 # Initialize client
-client = AditClient(base_url="https://your-adit-server.com", token="your-api-token")
+client = AditClient(server_url="https://adit.example.com", auth_token="your-api-token")
 
-# Search for studies
-studies = client.search_studies(patient_id="12345")
+# Search for studies. The first parameter is the AE title of the DICOM server
+# to query, the second a dictionary of DICOM query keys.
+studies = client.search_for_studies("ORTHANC1", {"PatientID": "12345"})
 
-# Transfer studies
-client.transfer_study(study_uid="1.2.3.4.5", destination="TARGET_AE")
+# Retrieve all images of a study as pydicom datasets,
+# optionally pseudonymized on the fly.
+images = client.retrieve_study("ORTHANC1", studies[0].StudyInstanceUID, pseudonym="XFE3TEW2N")
+
+# Store the images on another DICOM server
+client.store_images("ORTHANC2", images)
 ```
 
 To create an API token for programmatic access:
 
-1. **Navigate** to **Token Authentication** by going to **"Profile"** --> **"Manage API Token"**
+1. **Navigate** to **Token Authentication** by going to **"Profile"** --> **"Manage API Tokens"**
 2. **Description** & **Expiry Time** : Add a description (optional) and expiry time for the token.
 3. **Click** on **"Generate Token"**.
 4. This token will only be visible once, so make sure to copy it now and store it in a safe place. As you will not be able to see it again, you will have to generate a new token if you lose it.

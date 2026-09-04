@@ -1,4 +1,4 @@
-# RESOURCES.md
+# KNOWLEDGE
 
 ## Django
 
@@ -19,6 +19,15 @@
 - The SECRET_KEY should not start with a dollar sign (\$), django-environ has problems with it (see Proxy value in the documentation)
 - Multi table inheritance extensions: <https://github.com/django-polymorphic/django-polymorphic> and <https://github.com/jazzband/django-model-utils>
 
+### Procrastinate delivers at least once
+
+A queue row can be delivered again after a worker crash (`retry_stalled_jobs`), so a task
+entry point may see a task that is not `PENDING`. Never `assert` on the status there:
+claim with a conditional UPDATE and skip otherwise. Tasks left `IN_PROGRESS` by a dead
+worker are repaired by `sweep_stale_dicom_tasks` (`adit/core/utils/recovery.py`), which
+runs at worker start and every minute. `cleanup_jobs_and_tasks` remains the manual
+sledgehammer that marks everything in progress as failed.
+
 ## DICOM
 
 - All available DICOM tags: <https://dicom.nema.org/medical/dicom/current/output/chtml/part06/chapter_6.html>
@@ -26,9 +35,10 @@
 ### pydicom and datetime
 
 - To automatically convert dates to the datetime.date class this config must be set explicitly (default is False): config.datetime_conversion = True
+- ADIT does not set this option anywhere, so the string representation applies
 - Then the type is valuerep.DA (<https://pydicom.github.io/pydicom/dev/reference/generated/pydicom.valuerep.DA.html#>) which is an instance of datetime.date
 - Otherwise dates and times are represented as strings (e.g. 19760831)
-- Same is true for datetime.time (valuerep.DT)
+- Same is true for datetime.time (valuerep.TM) and datetime.datetime (valuerep.DT)
 
 ### C-CANCEL support
 
@@ -70,9 +80,9 @@ and <https://forums.docker.com/t/docker-swarm-mode-not-picking-up-proxy-configur
 
 ### Testing and coverage commands
 
-- docker exec -it adit_dev_web_1 pytest
+- uv run cli test # Run all tests inside the web container (adit_dev-web-1)
 - ptw --runner 'pytest -s --testmon' # Watch only changed tests with pytest watch
-- python manage.py test -v 2 app_name # Show print outputs during test
+- uv run cli test -- -s adit/core/tests/ # Run tests of one app and show print outputs
 - coverage run --source=. -m pytest # Run coverage only
 - coverage report # Show coverage report
 - coverage annotate # Annotate files with coverage
@@ -87,7 +97,7 @@ and <https://forums.docker.com/t/docker-swarm-mode-not-picking-up-proxy-configur
 ### Docker commands
 
 - docker build . --target development -t adit_dev # Build a volume from our Dockerfile
-- docker run -v C:\Users\kaisc\Projects\adit:/src -it adit_dev /bin/bash # Run the built container with src folder mounted from host
+- docker run -v $(pwd):/app -it adit_dev /bin/bash # Run the built container with the project folder mounted from host
 - docker ps -a --filter volume=vol_name # Find container that mounts volume
 - docker run -v=adit_dev_web_data:/var/www/web -it busybox /bin/sh # Start interactive shell with named volume mounted
 - docker run --rm -i -v=adit_dev_web_data:/foo busybox find /foo # List files in named volume
@@ -99,7 +109,7 @@ and <https://forums.docker.com/t/docker-swarm-mode-not-picking-up-proxy-configur
 - docker swarm init
 - docker swarm join --token SWMTKN-1-3x8erolqchsrbia8u0kkrgbd8ny9e9kdv1nl83q9xxipee5buw-9f5ax65llltbx3eiq3nsbaouw 161.42.235.115:2377
 - docker node ls
-- docker stack deploy -c compose/docker-compose.base.yml -c compose/docker-compose.dev.yml foobar
+- uv run cli stack-deploy # Deploys docker-compose.base.yml + docker-compose.prod.yml, needs ENVIRONMENT=production in .env
 - docker stack ls
 - docker stack ps foobar
 - docker stack services foobar
@@ -107,8 +117,8 @@ and <https://forums.docker.com/t/docker-swarm-mode-not-picking-up-proxy-configur
 
 ## Deployment for production
 
-- Copy cert.pem and key.pem from N:\Dokumente\Projekte\ADIT_Server\ssl_certificate to /var/www/web/ssl/
-- Restart adit_prod_web container
+- Point SSL_SERVER_CERT_FILE and SSL_SERVER_KEY_FILE in .env to cert.pem and key.pem on the host, they get mounted into the web container as /etc/web/ssl/cert.pem and /etc/web/ssl/key.pem (see docker-compose.prod.yml)
+- After swapping the certificate files restart the web service (e.g. `uv run cli stack-deploy` again)
 - Add the DICOM servers and folders
 
 ## Python

@@ -195,6 +195,14 @@ REGISTRATION_FORM = "adit_radis_shared.accounts.forms.RegistrationForm"
 ACCOUNT_ACTIVATION_DAYS = 14
 REGISTRATION_OPEN = True
 
+# The mailers available for sending email, overridden per environment.
+MAILERS = {
+    "default": {
+        "BACKEND": "django.core.mail.backends.smtp.EmailBackend",
+        "OPTIONS": {"host": "localhost", "port": 25},
+    },
+}
+
 EMAIL_SUBJECT_PREFIX = "[ADIT] "
 
 # The email address critical error messages of the server will be sent from.
@@ -419,6 +427,17 @@ MASS_TRANSFER_URGENT_PRIORITY = 5
 
 # The priority for stalled jobs that are retried.
 STALLED_JOBS_RETRY_PRIORITY = 10
+
+# A task still IN_PROGRESS whose queue row is gone, or whose worker sent no heartbeat
+# for this many seconds, is treated as abandoned and repaired by the sweep.
+# Never below 30: Procrastinate itself declares a worker stalled after 30 s, and a
+# stricter value here would reset tasks whose worker is merely slow, running them twice.
+DICOM_TASK_STALLED_WORKER_GRACE_SECONDS = env.int(
+    "DICOM_TASK_STALLED_WORKER_GRACE_SECONDS", default=30
+)
+
+# Cron schedule of the periodic sweep that repairs tasks left IN_PROGRESS by killed workers.
+DICOM_TASK_SWEEP_CRON = env.str("DICOM_TASK_SWEEP_CRON", default="* * * * *")
 
 # The used archive type when creating a new archive in selective transfer.
 # .7z is more the secure as the names of files and folder can't be viewed

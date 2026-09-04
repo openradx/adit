@@ -7,7 +7,7 @@ version = "0.0.0"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    "adit-radis-shared @ git+https://github.com/openradx/adit-radis-shared.git@0.25.0",
+    "adit-radis-shared",
     "adrf>=0.1.9",
     "aiofiles>=24.1.0",
     "asyncinotify>=4.2.0",
@@ -18,7 +18,7 @@ dependencies = [
     "dcm2niix>=1.0.20250506",
     "dicognito>=0.17.0",
     "dicomweb-client>=0.60.0",
-    "Django>=5.1.6",
+    "Django>=6.1",
     "django-block-fragments>=0.1.1",
     "django-codemirror>=1.0.1",
     "django-cotton>=1.6.0",
@@ -67,7 +67,7 @@ dev = [
     "django-stubs>=5.2.0",
     "django-test-migrations>=1.4.0",
     "djangorestframework-stubs>=3.15.3",
-    "djlint>=1.36.4",
+    "djlint>=1.45.0",
     "factory-boy >=3.3.0, <3.3.3",
     "Faker>=36.1.1",
     "ipykernel>=6.29.5",
@@ -94,6 +94,7 @@ dev = [
     "tqdm>=4.67.1",
     "typer>=0.19.2",
     "vermin>=1.6.0",
+    "zizmor>=1.29.0",
 ]
 client = ["adit-client"]
 
@@ -103,6 +104,7 @@ constraint-dependencies = ["autobahn<25.11.1"]
 
 [tool.uv.sources]
 adit-client = { path = "./adit-client", editable = true }
+adit-radis-shared = { git = "https://github.com/openradx/adit-radis-shared.git", tag = "0.27.0" }
 
 [tool.pyright]
 ignore = ["**/migrations", "**/*.ipynb"]

@@ -142,7 +142,15 @@ def _parse_int(value: object, default: int | None = None) -> int | None:
 
 def _study_datetime(study: ResultDataset) -> datetime:
     study_date = study.StudyDate
-    study_time = study.StudyTime
+    try:
+        study_time = study.StudyTime
+    except ValueError:
+        # Some PACS return non-conformant times (e.g. "1113.672"); the time is
+        # only cosmetic (folder naming), so fall back to midnight.
+        logger.warning(
+            "Invalid StudyTime in study %s, falling back to midnight.", study.StudyInstanceUID
+        )
+        study_time = None
     if study_time is None:
         study_time = datetime.min.time()
     return datetime.combine(study_date, study_time)
@@ -326,6 +334,7 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
         assert isinstance(dicom_task, MassTransferTask)
         super().__init__(dicom_task)
         self.mass_task = dicom_task
+        self._discovery_skips: list[str] = []
 
     def process(self):
         if self.is_suspended():
@@ -860,6 +869,8 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
         failed_reasons: dict[str, int],
     ) -> dict:
         """Build the final status dict returned to the task processor."""
+        discovery_skips = getattr(self, "_discovery_skips", [])
+
         log_lines = [
             f"Partition {self.mass_task.partition_key}",
             f"Studies found: {study_count}",
@@ -874,10 +885,21 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
             log_lines.append("Failure reasons:")
             for reason, count in failed_reasons.items():
                 log_lines.append(f"  {count}x {reason}")
+        if discovery_skips:
+            log_lines.append("Studies skipped due to invalid DICOM metadata:")
+            for entry in discovery_skips:
+                log_lines.append(f"  {entry}")
 
         if total_volumes == 0:
-            status = MassTransferTask.Status.SUCCESS
-            message = "No series found for this partition."
+            if discovery_skips:
+                status = MassTransferTask.Status.WARNING
+                message = (
+                    f"No series transferred; {len(discovery_skips)} studies skipped "
+                    "due to invalid DICOM metadata."
+                )
+            else:
+                status = MassTransferTask.Status.SUCCESS
+                message = "No series found for this partition."
         elif total_failed and not total_processed:
             status = MassTransferTask.Status.FAILURE
             message = f"All {total_failed} series failed during mass transfer."
@@ -890,9 +912,13 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
                 parts.append(f"{total_skipped} skipped")
 
             status = (
-                MassTransferTask.Status.WARNING if total_failed else MassTransferTask.Status.SUCCESS
+                MassTransferTask.Status.WARNING
+                if total_failed or discovery_skips
+                else MassTransferTask.Status.SUCCESS
             )
             message = f"{study_count} studies, {total_series} series ({', '.join(parts)})."
+            if discovery_skips:
+                message += f" {len(discovery_skips)} studies skipped due to invalid DICOM metadata."
 
         return {
             "status": status,
@@ -915,78 +941,21 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
             raise DicomError("Mass transfer requires at least one include filter.")
 
         found: dict[str, DiscoveredSeries] = {}
+        self._discovery_skips = []
 
         for mf in include_filters:
             studies = self._find_studies(operator, mf, start, end)
 
             for study in studies:
-                if mf.modality and mf.modality not in study.ModalitiesInStudy:
-                    continue
-
-                if mf.study_description and not _dicom_match(
-                    mf.study_description, study.StudyDescription
-                ):
-                    continue
-
-                if mf.institution_name and mf.apply_institution_on_study:
-                    if not self._study_has_institution(operator, study, mf.institution_name):
-                        continue
-
-                # Exact client-side age filtering using actual StudyDate and
-                # PatientBirthDate (the query birth date range is approximate).
-                birth_date = study.PatientBirthDate
-                has_age_filter = mf.min_age is not None or mf.max_age is not None
-                if birth_date and study.StudyDate and has_age_filter:
-                    age = _age_at_study(birth_date, study.StudyDate)
-                    if mf.min_age is not None and age < mf.min_age:
-                        continue
-                    if mf.max_age is not None and age > mf.max_age:
-                        continue
-
-                series_query = QueryDataset.create(
-                    PatientID=study.PatientID,
-                    StudyInstanceUID=study.StudyInstanceUID,
-                )
-                series_query.dataset.InstitutionName = ""
-
-                series_list = list(operator.find_series(series_query))
-
-                for series in series_list:
-                    series_uid = series.SeriesInstanceUID
-                    if not series_uid:
-                        continue
-
-                    if series_uid in found:
-                        continue
-
-                    series_number = _parse_int(series.get("SeriesNumber"), default=None)
-                    study_dt = _study_datetime(study)
-                    discovered = DiscoveredSeries(
-                        patient_id=str(study.PatientID),
-                        accession_number=str(study.get("AccessionNumber", "")),
-                        study_instance_uid=str(study.StudyInstanceUID),
-                        series_instance_uid=str(series_uid),
-                        modality=str(series.Modality),
-                        study_description=str(study.get("StudyDescription", "")),
-                        series_description=str(series.get("SeriesDescription", "")),
-                        series_number=series_number,
-                        study_datetime=study_dt,
-                        institution_name=str(series.get("InstitutionName", "")),
-                        number_of_images=_parse_int(
-                            series.get("NumberOfSeriesRelatedInstances"), default=0
-                        )
-                        or 0,
-                        patient_birth_date=birth_date,
-                    )
-
-                    if not _series_matches_filter(
-                        discovered,
-                        mf,
-                        check_institution=not mf.apply_institution_on_study,
-                    ):
-                        continue
-
-                    found[series_uid] = discovered
+                try:
+                    self._discover_study_series(operator, study, mf, found)
+                except ValueError as err:
+                    # Some PACS return studies with non-conformant date/time
+                    # metadata; skip them but keep the partition going and
+                    # surface a warning on the task.
+                    uid = str(study.StudyInstanceUID)
+                    logger.warning("Skipping study %s with invalid DICOM metadata: %s", uid, err)
+                    self._discovery_skips.append(f"{uid}: {err}")
 
         if not exclude_filters:
             return list(found.values())
@@ -998,6 +967,78 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
                 _series_matches_filter(series, mf, age_permissive=True) for mf in exclude_filters
             )
         ]
+
+    def _discover_study_series(
+        self,
+        operator: DicomOperator,
+        study: ResultDataset,
+        mf: FilterSpec,
+        found: dict[str, DiscoveredSeries],
+    ) -> None:
+        """Collect all series of *study* matching the include filter *mf* into *found*."""
+        if mf.modality and mf.modality not in study.ModalitiesInStudy:
+            return
+
+        if mf.study_description and not _dicom_match(mf.study_description, study.StudyDescription):
+            return
+
+        if mf.institution_name and mf.apply_institution_on_study:
+            if not self._study_has_institution(operator, study, mf.institution_name):
+                return
+
+        # Exact client-side age filtering using actual StudyDate and
+        # PatientBirthDate (the query birth date range is approximate).
+        birth_date = study.PatientBirthDate
+        has_age_filter = mf.min_age is not None or mf.max_age is not None
+        if birth_date and study.StudyDate and has_age_filter:
+            age = _age_at_study(birth_date, study.StudyDate)
+            if mf.min_age is not None and age < mf.min_age:
+                return
+            if mf.max_age is not None and age > mf.max_age:
+                return
+
+        series_query = QueryDataset.create(
+            PatientID=study.PatientID,
+            StudyInstanceUID=study.StudyInstanceUID,
+        )
+        series_query.dataset.InstitutionName = ""
+
+        series_list = list(operator.find_series(series_query))
+
+        for series in series_list:
+            series_uid = series.SeriesInstanceUID
+            if not series_uid:
+                continue
+
+            if series_uid in found:
+                continue
+
+            series_number = _parse_int(series.get("SeriesNumber"), default=None)
+            study_dt = _study_datetime(study)
+            discovered = DiscoveredSeries(
+                patient_id=str(study.PatientID),
+                accession_number=str(study.get("AccessionNumber", "")),
+                study_instance_uid=str(study.StudyInstanceUID),
+                series_instance_uid=str(series_uid),
+                modality=str(series.Modality),
+                study_description=str(study.get("StudyDescription", "")),
+                series_description=str(series.get("SeriesDescription", "")),
+                series_number=series_number,
+                study_datetime=study_dt,
+                institution_name=str(series.get("InstitutionName", "")),
+                number_of_images=_parse_int(series.get("NumberOfSeriesRelatedInstances"), default=0)
+                or 0,
+                patient_birth_date=birth_date,
+            )
+
+            if not _series_matches_filter(
+                discovered,
+                mf,
+                check_institution=not mf.apply_institution_on_study,
+            ):
+                continue
+
+            found[series_uid] = discovered
 
     def _find_studies(
         self,

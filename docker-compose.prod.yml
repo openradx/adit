@@ -1,5 +1,5 @@
 x-app: &default-app
-  image: ${ADIT_IMAGE:-ghcr.io/openradx/adit:latest}
+  image: ${ADIT_IMAGE:-ghcr.io/openradx/adit:latest@sha256:b7a53281abfb4e39f48e75f7ddde172df97c8d371161cf0db81a0634a5579adc}
   volumes:
     - web_data:/var/www/web
     - ${SSL_SERVER_CERT_FILE:?}:/etc/web/ssl/cert.pem
@@ -23,7 +23,7 @@ services:
     hostname: init.local
     command: >
       bash -c "
-        wait-for-it -s postgres.local:5432 -t 60 &&
+        wait-for-it -s postgres.local:5432 -t ${WAIT_POSTGRES_TIMEOUT:-180} &&
         ./manage.py migrate &&
         ./manage.py collectstatic --no-input &&
         ./manage.py create_superuser &&
@@ -58,7 +58,8 @@ services:
     <<: *default-app
     command: >
       bash -c "
-        wait-for-it -s postgres.local:5432 -t 60 &&
+        wait-for-it -s postgres.local:5432 -t ${WAIT_POSTGRES_TIMEOUT:-180} &&
+        ./manage.py sweep_stale_tasks &&
         ./manage.py bg_worker -q default
       "
     deploy:
@@ -68,7 +69,8 @@ services:
     <<: *default-app
     command: >
       bash -c "
-        wait-for-it -s postgres.local:5432 -t 60 &&
+        wait-for-it -s postgres.local:5432 -t ${WAIT_POSTGRES_TIMEOUT:-180} &&
+        ./manage.py sweep_stale_tasks &&
         ./manage.py bg_worker -q dicom
       "
     deploy:
@@ -79,7 +81,8 @@ services:
     <<: *default-app
     command: >
       bash -c "
-        wait-for-it -s postgres.local:5432 -t 60 &&
+        wait-for-it -s postgres.local:5432 -t ${WAIT_POSTGRES_TIMEOUT:-180} &&
+        ./manage.py sweep_stale_tasks &&
         ./manage.py bg_worker -q mass_transfer
       "
     deploy:

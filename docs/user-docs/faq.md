@@ -25,11 +25,12 @@ The following date/time tags are preserved to maintain clinical context:
 - Series Date, Series Time
 - Acquisition Date/Time
 - Content Date/Time
+- Frame Reference Date/Time
 
 **Q: Does ADIT preserve patient age during anonymization?**
 
-A: Yes. While PatientBirthDate is anonymized (shifted by a random offset), ADIT uses the dicognito library which preserves the patient's age relative to the study date. This means an 80-year-old patient will still appear as 80 years old in the anonymized data, not as a 20-year-old. This is important for maintaining clinically relevant information while protecting patient identity.
+A: Only approximately. dicognito shifts all dates in the data set backwards by a random offset between 62 and 730 days, including the PatientBirthDate. ADIT keeps the study, series, acquisition, content and frame reference dates and times unchanged (see above) to preserve the clinical timeline. As a consequence, an age calculated from the anonymized birth date and the original study date is between 2 months and 2 years higher than the real age. A PatientAge tag in the header is not modified. If the exact age matters for your analysis, record it before the transfer (e.g. with a batch query).
 
 **Q: Which DICOM protocols are supported for my server?**
 
-To determine which DICOM protocols are supported by a server, consult the server's DICOM Conformance Statement.
+A: To determine which DICOM protocols are supported by a server, consult the server's DICOM Conformance Statement.
