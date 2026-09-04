@@ -6,21 +6,21 @@
 {% endblock title %}
 {% block heading %}
     <c-page-heading title="New Batch Query Job">
-    <c-slot name="left">
-    <button type="button"
-            class="btn btn-info"
-            hx-get="{% url 'batch_query_help' %}"
-            hx-target="#htmx-dialog">
-        Help
-        {% bootstrap_icon "question-circle" %}
-    </button>
-    </c-slot>
-    <c-slot name="right">
-    <a href="{% url 'batch_query_job_list' %}" class="btn btn-secondary">
-        {% bootstrap_icon "list" %}
-        Previous Jobs
-    </a>
-    </c-slot>
+        <c-slot name="left">
+            <button type="button"
+                    class="btn btn-info"
+                    hx-get="{% url 'batch_query_help' %}"
+                    hx-target="#htmx-dialog">
+                Help
+                {% bootstrap_icon "question-circle" %}
+            </button>
+        </c-slot>
+        <c-slot name="right">
+            <a href="{% url 'batch_query_job_list' %}" class="btn btn-secondary">
+                {% bootstrap_icon "list" %}
+                Previous Jobs
+            </a>
+        </c-slot>
     </c-page-heading>
 {% endblock heading %}
 {% block content %}

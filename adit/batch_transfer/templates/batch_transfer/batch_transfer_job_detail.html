@@ -9,12 +9,12 @@
 {% endblock title %}
 {% block heading %}
     <c-page-heading title="Batch Transfer Job">
-    <c-slot name="right">
-    <a href="{% url 'batch_transfer_job_list' %}" class="btn btn-secondary">
-        {% bootstrap_icon "list" %}
-        Job List
-    </a>
-    </c-slot>
+        <c-slot name="right">
+            <a href="{% url 'batch_transfer_job_list' %}" class="btn btn-secondary">
+                {% bootstrap_icon "list" %}
+                Job List
+            </a>
+        </c-slot>
     </c-page-heading>
 {% endblock heading %}
 {% block content %}
@@ -68,9 +68,9 @@
         </dd>
     </dl>
     <c-table-heading title="Transfer Tasks">
-    <c-slot name="right">
-    {% crispy filter.form %}
-    </c-slot>
+        <c-slot name="right">
+            {% crispy filter.form %}
+        </c-slot>
     </c-table-heading>
     {% render_table table %}
     {% job_control_panel %}

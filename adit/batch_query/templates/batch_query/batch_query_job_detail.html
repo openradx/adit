@@ -9,12 +9,12 @@
 {% endblock title %}
 {% block heading %}
     <c-page-heading title="Batch Query Job">
-    <c-slot name="left">
-    <a href="{% url 'batch_query_job_list' %}" class="btn btn-secondary">
-        {% bootstrap_icon "list" %}
-        Job List
-    </a>
-    </c-slot>
+        <c-slot name="left">
+            <a href="{% url 'batch_query_job_list' %}" class="btn btn-secondary">
+                {% bootstrap_icon "list" %}
+                Job List
+            </a>
+        </c-slot>
     </c-page-heading>
 {% endblock heading %}
 {% block content %}
@@ -60,16 +60,16 @@
         </dd>
     </dl>
     <c-table-heading title="Study Queries">
-    <c-slot name="left">
-    <a href="{% url 'batch_query_result_list' job.id %}"
-       class="btn btn-sm btn-primary">
-        {% bootstrap_icon "eye" %}
-        View Results
-    </a>
-    </c-slot>
-    <c-slot name="right">
-    {% crispy filter.form %}
-    </c-slot>
+        <c-slot name="left">
+            <a href="{% url 'batch_query_result_list' job.id %}"
+               class="btn btn-sm btn-primary">
+                {% bootstrap_icon "eye" %}
+                View Results
+            </a>
+        </c-slot>
+        <c-slot name="right">
+            {% crispy filter.form %}
+        </c-slot>
     </c-table-heading>
     {% render_table table %}
     {% job_control_panel %}

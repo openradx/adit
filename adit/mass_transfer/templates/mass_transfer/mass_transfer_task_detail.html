@@ -9,13 +9,13 @@
 {% endblock title %}
 {% block heading %}
     <c-page-heading title="Mass Transfer Task">
-    <c-slot name="right">
-    <a href="{% url 'mass_transfer_job_detail' task.job.pk %}"
-       class="btn btn-secondary">
-        {% bootstrap_icon "arrow-left" %}
-        Back to Job
-    </a>
-    </c-slot>
+        <c-slot name="right">
+            <a href="{% url 'mass_transfer_job_detail' task.job.pk %}"
+               class="btn btn-secondary">
+                {% bootstrap_icon "arrow-left" %}
+                Back to Job
+            </a>
+        </c-slot>
     </c-page-heading>
 {% endblock heading %}
 {% block content %}
@@ -47,9 +47,9 @@
         </dd>
     </dl>
     <c-table-heading title="Volumes">
-    <c-slot name="right">
-    {% crispy filter.form %}
-    </c-slot>
+        <c-slot name="right">
+            {% crispy filter.form %}
+        </c-slot>
     </c-table-heading>
     {% render_table table %}
     {% task_control_panel %}
