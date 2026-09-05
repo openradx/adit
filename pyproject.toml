@@ -104,7 +104,7 @@ constraint-dependencies = ["autobahn<25.11.1"]
 
 [tool.uv.sources]
 adit-client = { path = "./adit-client", editable = true }
-adit-radis-shared = { git = "https://github.com/openradx/adit-radis-shared.git", tag = "0.28.0" }
+adit-radis-shared = { git = "https://github.com/openradx/adit-radis-shared.git", tag = "0.28.1" }
 
 [tool.pyright]
 ignore = ["**/migrations", "**/*.ipynb"]
