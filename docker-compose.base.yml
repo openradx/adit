@@ -64,7 +64,7 @@ services:
       - postgres_data:/var/lib/postgresql/data
 
   orthanc1:
-    image: jodogne/orthanc-plugins:1.13.0@sha256:76a3bdb330314940d8aca978ac6eb43e6d347d4997b4e3ab3e4e281c81fa8205
+    image: jodogne/orthanc-plugins:1.13.0@sha256:f02a20b72ab45311c5177e4647af0cfa2d0745b9c608694461756bf71a6e3ea9
     hostname: orthanc1.local
     configs:
       - source: orthanc1_config
@@ -73,7 +73,7 @@ services:
       - orthanc1_data:/var/lib/orthanc/db
 
   orthanc2:
-    image: jodogne/orthanc-plugins:1.13.0@sha256:76a3bdb330314940d8aca978ac6eb43e6d347d4997b4e3ab3e4e281c81fa8205
+    image: jodogne/orthanc-plugins:1.13.0@sha256:f02a20b72ab45311c5177e4647af0cfa2d0745b9c608694461756bf71a6e3ea9
     hostname: orthanc2.local
     configs:
       - source: orthanc2_config
