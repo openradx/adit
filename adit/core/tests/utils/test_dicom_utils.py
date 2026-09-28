@@ -61,8 +61,18 @@ def test_convert_to_python_date():
     assert convert_to_python_date("20230831") == date(2023, 8, 31)
 
 
+def test_convert_to_python_date_rejects_empty_value():
+    with pytest.raises(ValueError):
+        convert_to_python_date("")
+
+
 def test_convert_to_python_time():
     assert convert_to_python_time("080000") == time(8, 0, 0)
+
+
+def test_convert_to_python_time_rejects_empty_value():
+    with pytest.raises(ValueError):
+        convert_to_python_time("")
 
 
 def test_convert_to_python_regex_exact_match():
