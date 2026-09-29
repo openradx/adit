@@ -143,16 +143,24 @@ def convert_to_dicom_datetime(value: str | datetime.datetime | DateTimeRange) ->
 
 
 def convert_to_python_date(value: str) -> datetime.date:
-    """Convert a DICOM date string to a Python date object."""
+    """Convert a DICOM date string to a Python date object.
+
+    Raises ValueError if the value is empty or invalid.
+    """
     date_valuerep = valuerep.DA(value)
-    assert date_valuerep is not None
+    if date_valuerep is None:
+        raise ValueError(f"Empty DICOM date: {value!r}")
     return datetime.date.fromisoformat(date_valuerep.isoformat())
 
 
 def convert_to_python_time(value: str) -> datetime.time:
-    """Convert a DICOM date string to a Python date object."""
+    """Convert a DICOM time string to a Python time object.
+
+    Raises ValueError if the value is empty or invalid.
+    """
     time_valuerep = valuerep.TM(value)
-    assert time_valuerep is not None
+    if time_valuerep is None:
+        raise ValueError(f"Empty DICOM time: {value!r}")
     return datetime.time.fromisoformat(time_valuerep.isoformat())
 
 
