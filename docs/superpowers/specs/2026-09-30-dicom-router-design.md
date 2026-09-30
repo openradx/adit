@@ -4,8 +4,8 @@ Date: 2026-09-30
 Status: approved in brainstorm, awaiting spec review
 Reference: issue [#143](https://github.com/openradx/adit/issues/143) and its analysis comment of
 2026-09-24. Related: #415 (receiver hardening), #406 (AE titles in the Orthanc test configs),
-#141 (series-level transfer), #251 (`EXCLUDE_MODALITIES` visibility). In-flight PRs #374 and #349
-both rewrite `adit/mass_transfer/processors.py`.
+#141 (series-level transfer). In-flight PRs #374 and #349 both rewrite
+`adit/mass_transfer/processors.py`.
 
 ## 1. Goal
 
@@ -30,7 +30,7 @@ that ADIT itself started, and drops everything else.
 | Late images | A new batch of the same study, sent as a follow-up with the same pseudonym and replacement UIDs | The destination ends up complete. Dropping late images would leave partial studies |
 | Partial studies | No study is sent before it closes; a delivery counts only when every image was accepted; the rest is covered by late batches | DICOM has no end-of-study message and no way to take images back |
 | Pseudonyms | Deterministic per rule: `compute_pseudonym(rule salt, PatientID)`, dicognito seeded with the same salt | The same patient lands under one XNAT subject, different rules are unlinkable, late batches join the first, and mass transfer with the same salt produces the same output |
-| What is sent | The series a rule selects, with mass transfer filter semantics; a rule without series-level conditions sends the whole study | One filter language across ADIT, and series such as dose screenshots can be left out |
+| What is sent | The series a rule selects, with mass transfer filter semantics; a rule without series-level conditions sends the whole study; `EXCLUDE_MODALITIES` does not apply, as in mass transfer | One filter language and the same selection as mass transfer; series such as dose screenshots can be left out with exclude filters |
 | Several rules | Independent: a batch is sent once per matching rule | Different projects must not interfere |
 | Who writes rules | Staff only, as a mass transfer JSON filter list in the same editor; the creator is recorded | A rule is a standing export of patient data. A users-create/staff-approve flow can follow (§11) |
 | Job structure | One `RouterJob` per (rule, batch) with one `RouterTask`; owner = the rule's creator | Every job has a clear owner (RADIS gives subscription jobs the subscription's owner), and a rule's page lists its own jobs |
@@ -122,8 +122,7 @@ behind by a crash between closing and deciding.
    Build one `DiscoveredSeries` per series (the dataclass mass transfer uses,
    `adit/mass_transfer/processors.py:85`) with `number_of_images` counted from the files, plus a
    map from series to SOP Instance UIDs.
-2. For each enabled rule, select series as in §4. If the rule pseudonymizes, drop series whose
-   modality is in `EXCLUDE_MODALITIES`. Drop the SOP instances already listed in
+2. For each enabled rule, select series as in §4. Drop the SOP instances already listed in
    `sent_instance_uids` of this rule's earlier `SUCCESS`/`WARNING` tasks for the same study and
    destination. The rule matches if at least one image is left.
 3. If no rule matches, delete the folder and log the sender, study and image count. No database
@@ -196,10 +195,9 @@ is read at run time, and it cannot change once the rule has jobs (§5.2).
   match an include filter with age bounds.
 - Modality is a series-level condition: `"modality": "CT"` selects the CT series of a study. A rule
   without series-level conditions selects every series.
-- When the rule pseudonymizes, series whose modality is in `EXCLUDE_MODALITIES` (default `PR,SR`)
-  are dropped, as selective and batch transfers do (`adit/core/processors.py:232-236`). Mass
-  transfer does not apply `EXCLUDE_MODALITIES`, so a backfill with mass transfer needs explicit
-  exclude filters for those modalities.
+- `EXCLUDE_MODALITIES` does not apply, the same as in mass transfer: only the rule's filters decide
+  what is sent. Staff who want to leave out presentation states or structured reports add exclude
+  filters, for example `{"mode": "exclude", "modality": "SR"}`.
 
 ## 5. Data model: `adit/router/models.py`
 
@@ -326,8 +324,9 @@ All router views require `is_staff`. The main menu gets a "Router" item with `st
     CT only);
   - registering senders and writing rules;
   - the XNAT project via the trial protocol ID;
-  - backfill with mass transfer: the same filters and salt, plus exclude filters for
-    `EXCLUDE_MODALITIES`;
+  - leaving out PR or SR series with exclude filters, since `EXCLUDE_MODALITIES` does not apply;
+  - backfill with mass transfer: the same filters and salt give the same selection, pseudonyms and
+    UIDs;
   - how long data stays in the spool;
   - security: only the PACS network may reach the router port, AE titles are not authentication,
     and the spool belongs on an encrypted disk.
@@ -411,8 +410,8 @@ One pull request each:
   - the spool writer, including the rename race;
   - closing by quiet period and by maximum open time;
   - deciding folders without a row;
-  - rule selection: include and exclude filters, whole study, missing birth date,
-    `EXCLUDE_MODALITIES`;
+  - rule selection: include and exclude filters, whole study, missing birth date, PR and SR series
+    sent when the filters select them;
   - "already sent" filtering;
   - clean-up and retention decisions.
 - **Listener tests** with fake pynetdicom events, in the style of
