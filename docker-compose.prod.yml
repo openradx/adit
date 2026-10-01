@@ -97,6 +97,18 @@ services:
     deploy:
       <<: *deploy
 
+  router:
+    <<: *default-app
+    ports:
+      - ${ROUTER_PORT:-11113}:11112
+    command: >
+      bash -c "
+        wait-for-it -s init.local:8000 -t 300 &&
+        ./manage.py router
+      "
+    deploy:
+      <<: *deploy
+
   postgres:
     environment:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?}

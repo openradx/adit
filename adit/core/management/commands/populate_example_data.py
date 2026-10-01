@@ -21,6 +21,7 @@ from adit.core.factories import (
 )
 from adit.core.models import DicomFolder, DicomServer
 from adit.core.utils.auth_utils import grant_access
+from adit.router.models import RouterSender
 from adit.selective_transfer.factories import (
     SelectiveTransferJobFactory,
     SelectiveTransferTaskFactory,
@@ -45,6 +46,7 @@ def create_server_nodes(groups: list[Group]) -> list[DicomServer]:
         port=settings.ORTHANC1_DICOM_PORT,
     )
     grant_access(groups[0], orthanc1, source=True, destination=True)
+    RouterSender.objects.create(server=orthanc1)
     servers.append(orthanc1)
 
     orthanc2 = DicomServerFactory.create(
