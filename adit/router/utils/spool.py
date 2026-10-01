@@ -1,7 +1,7 @@
 """The router's spool: images on disk between receiving and routing.
 
 All folders live on one filesystem, so moving a file or folder inside the spool is a
-single atomic rename.
+single atomic rename. The spool holds identifiable images, so only its owner may read it.
 """
 
 import os
@@ -46,7 +46,9 @@ def is_valid_uid(value: object) -> bool:
 
 def ensure_spool_dirs(spool_root: Path) -> None:
     for name in (TMP, INCOMING, BATCHES, QUARANTINE):
-        _ensure_dir(spool_root / name)
+        path = spool_root / name
+        _ensure_dir(path)
+        path.chmod(0o700)
 
 
 def incoming_study_dir(spool_root: Path, sender_id: int, study_uid: str) -> Path:
@@ -68,7 +70,8 @@ def store_dataset(spool_root: Path, sender_id: int, ds: Dataset) -> Path:
 
     tmp_path = spool_root / TMP / f"{uuid.uuid4().hex}.dcm"
     try:
-        with open(tmp_path, "wb") as f:
+        fd = os.open(tmp_path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        with os.fdopen(fd, "wb") as f:
             write_dataset(ds, f)
             f.flush()
             os.fsync(f.fileno())
@@ -97,8 +100,8 @@ def _move_into_study_dir(
     tmp_path: Path, file_stat: os.stat_result, study_dir: Path, filename: str
 ) -> Path:
     for _ in range(_MAX_MOVE_ATTEMPTS):
-        _ensure_dir(study_dir)
         try:
+            _ensure_dir(study_dir)
             # Opened before the move so the fsync reaches the folder even if it is
             # renamed to batches/ right after the move.
             dir_fd = os.open(study_dir, os.O_RDONLY)
@@ -139,7 +142,7 @@ def _ensure_dir(path: Path) -> None:
         return
     _ensure_dir(path.parent)
     try:
-        path.mkdir()
+        path.mkdir(mode=0o700)
     except FileExistsError:
         pass
     # Also after FileExistsError: the store that created the folder may not have

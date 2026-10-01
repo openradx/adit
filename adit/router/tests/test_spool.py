@@ -41,6 +41,16 @@ def test_ensure_spool_dirs_creates_the_layout(tmp_path):
         assert (tmp_path / name).is_dir()
 
 
+def test_ensure_spool_dirs_closes_an_existing_spool_to_others(tmp_path):
+    incoming = tmp_path / spool.INCOMING
+    incoming.mkdir()
+    incoming.chmod(0o755)
+
+    spool.ensure_spool_dirs(tmp_path)
+
+    assert stat.S_IMODE(incoming.stat().st_mode) == 0o700
+
+
 def test_store_dataset_writes_into_the_senders_study_folder(spool_root):
     ds = _dataset()
 
@@ -55,6 +65,13 @@ def test_store_dataset_leaves_nothing_in_tmp(spool_root):
     spool.store_dataset(spool_root, 7, _dataset())
 
     assert list((spool_root / spool.TMP).iterdir()) == []
+
+
+def test_spooled_images_are_only_readable_by_the_owner(spool_root):
+    path = spool.store_dataset(spool_root, 7, _dataset())
+
+    assert stat.S_IMODE(path.stat().st_mode) == 0o600
+    assert stat.S_IMODE(path.parent.stat().st_mode) == 0o700
 
 
 def test_resending_an_image_replaces_it(spool_root):
@@ -217,3 +234,25 @@ def test_gives_up_when_the_study_folder_keeps_closing(spool_root, monkeypatch):
     assert len(attempts) == 5
     assert list((spool_root / spool.TMP).iterdir()) == []
     assert all(not any(folder.iterdir()) for folder in closed.iterdir())
+
+
+def test_parent_folder_vanishing_while_the_study_folder_is_created_is_retried(
+    spool_root, monkeypatch
+):
+    ds = _dataset()
+    real_ensure_dir = spool._ensure_dir
+    calls: list[Path] = []
+
+    def ensure_dir_racing_with_cleanup(path: Path) -> None:
+        calls.append(path)
+        if len(calls) == 1:
+            raise FileNotFoundError(errno.ENOENT, "No such file or directory", str(path.parent))
+        real_ensure_dir(path)
+
+    monkeypatch.setattr(spool, "_ensure_dir", ensure_dir_racing_with_cleanup)
+
+    path = spool.store_dataset(spool_root, 7, ds)
+
+    study_dir = spool_root / spool.INCOMING / "7" / ds.StudyInstanceUID
+    assert path == study_dir / f"{ds.SOPInstanceUID}.dcm"
+    assert path.is_file()
