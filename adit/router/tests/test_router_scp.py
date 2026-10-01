@@ -5,12 +5,14 @@ from pathlib import Path
 
 import pytest
 from pydicom import Dataset
+from pydicom.data import get_testdata_file
 from pydicom.dataset import FileMetaDataset
 from pydicom.uid import CTImageStorage, ExplicitVRLittleEndian, JPEGLosslessSV1, generate_uid
 from pynetdicom import AE
 from pynetdicom.association import Association
 from pynetdicom.sop_class import Verification  # pyright: ignore
 
+from adit.core.utils.dicom_utils import read_dataset
 from adit.core.utils.store_scp import StoreScp
 from adit.core.utils.testing_helpers import free_port, wait_until_scp_accepts, wait_until_scp_idle
 from adit.router.utils import spool
@@ -125,6 +127,27 @@ def test_compressed_images_are_accepted_as_sent(router):
     assoc.release()
 
     assert accepted == [JPEGLosslessSV1]
+
+
+def test_compressed_image_is_stored_as_sent(router):
+    original = get_testdata_file("MR_small_jpeg_ls_lossless.dcm", read=True)
+    assert isinstance(original, Dataset)
+    assoc = _associate(
+        router.port,
+        "PACS1",
+        sop_class=original.SOPClassUID,
+        transfer_syntax=original.file_meta.TransferSyntaxUID,
+    )
+    assert assoc.is_established
+
+    status = assoc.send_c_store(original)
+    assoc.release()
+
+    assert status.Status == 0x0000
+    study_dir = router.spool_root / spool.INCOMING / "7" / original.StudyInstanceUID
+    spooled = read_dataset(study_dir / f"{original.SOPInstanceUID}.dcm")
+    assert spooled.file_meta.TransferSyntaxUID == original.file_meta.TransferSyntaxUID
+    assert spooled.PixelData == original.PixelData
 
 
 def test_suspended_router_answers_out_of_resources(router):
