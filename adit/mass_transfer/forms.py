@@ -12,7 +12,7 @@ from pydantic import ValidationError as PydanticValidationError
 
 from adit.core.fields import DicomNodeChoiceField
 from adit.core.models import DicomNode
-from adit.core.utils.filters import FilterSchema
+from adit.core.utils.series_filters import FilterSchema
 
 from .models import MassTransferJob, MassTransferTask
 from .utils.partitions import build_partitions

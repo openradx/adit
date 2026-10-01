@@ -8,8 +8,8 @@ from django.urls import reverse
 from procrastinate.contrib.django import app
 
 from adit.core.models import DicomAppSettings, DicomJob, DicomTask, TransferJob, TransferTask
-from adit.core.utils.filters import FilterSpec
 from adit.core.utils.model_utils import get_model_label
+from adit.core.utils.series_filters import FilterSpec
 
 
 class MassTransferSettings(DicomAppSettings):

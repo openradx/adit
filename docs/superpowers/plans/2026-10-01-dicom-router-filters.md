@@ -7,7 +7,7 @@
 mass transfer does.
 
 **Architecture:** This is a pure refactor.
-- **New module `adit/core/utils/filters.py`** holds `FilterSchema`, `FilterSpec`,
+- **New module `adit/core/utils/series_filters.py`** holds `FilterSchema`, `FilterSpec`,
   `DiscoveredSeries`, `dicom_match`, `age_at_study` and `series_matches_filter`, moved verbatim
   and made public.
 - **New function `study_matches_filter`** is the study-level check that today lives inside
@@ -75,12 +75,12 @@ stacks on this branch.
 
 | File | Responsibility |
 |---|---|
-| `adit/core/utils/filters.py` (create) | filter schema and spec, discovered series, matching functions |
+| `adit/core/utils/series_filters.py` (create) | filter schema and spec, discovered series, matching functions |
 | `adit/core/utils/pseudonymizer.py` (modify) | pseudonym lengths and `deterministic_pseudonym` |
 | `adit/mass_transfer/processors.py` (modify) | uses the core filters and pseudonym; old definitions removed |
 | `adit/mass_transfer/forms.py` (modify) | imports `FilterSchema` from core |
 | `adit/mass_transfer/models.py` (modify) | imports `FilterSpec` from core |
-| `adit/core/tests/utils/test_filters.py` (create) | tests of `study_matches_filter` |
+| `adit/core/tests/utils/test_series_filters.py` (create) | tests of `study_matches_filter` |
 | `adit/core/tests/utils/test_pseudonymizer.py` (modify) | test of `deterministic_pseudonym` |
 | `adit/mass_transfer/tests/test_processor.py` (modify) | imports and renamed calls only |
 | `CLAUDE.md` (modify) | where the filters live |
@@ -90,16 +90,16 @@ stacks on this branch.
 ### Task 1: Core filters module and deterministic pseudonym
 
 **Files:**
-- Create: `adit/core/utils/filters.py`
+- Create: `adit/core/utils/series_filters.py`
 - Modify: `adit/core/utils/pseudonymizer.py` (after the imports, and after `compute_pseudonym`)
-- Test: `adit/core/tests/utils/test_filters.py` (create)
+- Test: `adit/core/tests/utils/test_series_filters.py` (create)
 - Test: `adit/core/tests/utils/test_pseudonymizer.py` (append; extend the import)
 
 **Interfaces:**
 - Consumes: `adit.core.errors.DicomError`, `adit.core.utils.dicom_utils.convert_to_python_regex`,
   `adit.core.utils.dicom_dataset.ResultDataset` and
   `adit.core.utils.pseudonymizer.compute_pseudonym`.
-- Produces, in `adit/core/utils/filters.py`:
+- Produces, in `adit/core/utils/series_filters.py`:
   - `FilterSchema`, a pydantic model.
   - `FilterSpec`, a frozen dataclass, with `FilterSpec.from_dict(d: dict) -> FilterSpec`.
   - `DiscoveredSeries`, a frozen dataclass.
@@ -113,7 +113,7 @@ stacks on this branch.
 
 - [ ] **Step 1: Write the failing tests for `study_matches_filter`**
 
-Create `adit/core/tests/utils/test_filters.py`:
+Create `adit/core/tests/utils/test_series_filters.py`:
 
 ```python
 from typing import cast
@@ -121,7 +121,7 @@ from typing import cast
 from pydicom import Dataset
 
 from adit.core.utils.dicom_dataset import ResultDataset
-from adit.core.utils.filters import FilterSpec, study_matches_filter
+from adit.core.utils.series_filters import FilterSpec, study_matches_filter
 
 
 def _study(**values) -> ResultDataset:
@@ -228,12 +228,12 @@ def test_deterministic_pseudonym_matches_compute_pseudonym():
 
 - [ ] **Step 3: Run the tests and confirm they fail**
 
-Run: `uv run cli test -- adit/core/tests/utils/test_filters.py adit/core/tests/utils/test_pseudonymizer.py -v`
+Run: `uv run cli test -- adit/core/tests/utils/test_series_filters.py adit/core/tests/utils/test_pseudonymizer.py -v`
 
-Expected: FAIL with `ModuleNotFoundError: No module named 'adit.core.utils.filters'` and
+Expected: FAIL with `ModuleNotFoundError: No module named 'adit.core.utils.series_filters'` and
 `ImportError: cannot import name 'DETERMINISTIC_PSEUDONYM_LENGTH'`.
 
-- [ ] **Step 4: Create `adit/core/utils/filters.py`**
+- [ ] **Step 4: Create `adit/core/utils/series_filters.py`**
 
 The classes and functions below are copied from `adit/mass_transfer/processors.py` and
 `adit/mass_transfer/forms.py`; only the names and two docstrings change.
@@ -492,15 +492,15 @@ def deterministic_pseudonym(salt: str, patient_id: str) -> str:
 
 - [ ] **Step 6: Run the tests and confirm they pass**
 
-Run: `uv run cli test -- adit/core/tests/utils/test_filters.py adit/core/tests/utils/test_pseudonymizer.py -v`
+Run: `uv run cli test -- adit/core/tests/utils/test_series_filters.py adit/core/tests/utils/test_pseudonymizer.py -v`
 
 Expected: PASS.
 
 - [ ] **Step 7: Commit**
 
 ```bash
-git add adit/core/utils/filters.py adit/core/utils/pseudonymizer.py \
-  adit/core/tests/utils/test_filters.py adit/core/tests/utils/test_pseudonymizer.py
+git add adit/core/utils/series_filters.py adit/core/utils/pseudonymizer.py \
+  adit/core/tests/utils/test_series_filters.py adit/core/tests/utils/test_pseudonymizer.py
 git commit -m "Add series filters and the deterministic pseudonym to core"
 ```
 
@@ -540,7 +540,7 @@ In `adit/mass_transfer/processors.py`:
    - Change `from adit.core.utils.pseudonymizer import Pseudonymizer, compute_pseudonym` to:
 
      ```python
-     from adit.core.utils.filters import (
+     from adit.core.utils.series_filters import (
          DiscoveredSeries,
          FilterSpec,
          age_at_study,
@@ -647,13 +647,13 @@ In `adit/mass_transfer/forms.py`:
 - change `from typing import Annotated, Literal, cast` to `from typing import cast`;
 - delete `from pydantic import BaseModel, model_validator`. Keep
   `from pydantic import ValidationError as PydanticValidationError`;
-- add `from adit.core.utils.filters import FilterSchema` after
+- add `from adit.core.utils.series_filters import FilterSchema` after
   `from adit.core.models import DicomNode`.
 
 In `adit/mass_transfer/models.py`:
 - delete `from typing import TYPE_CHECKING` and the block
   `if TYPE_CHECKING:` / `    from .processors import FilterSpec`;
-- add `from adit.core.utils.filters import FilterSpec` after
+- add `from adit.core.utils.series_filters import FilterSpec` after
   `from adit.core.models import ...`;
 - in `get_filters`, change the return annotation to `list[FilterSpec]` and delete the local
   `from .processors import FilterSpec` line.
@@ -696,7 +696,7 @@ from adit.mass_transfer.processors import (
 with:
 
 ```python
-from adit.core.utils.filters import (
+from adit.core.utils.series_filters import (
     DiscoveredSeries,
     FilterSpec,
     age_at_study,
@@ -724,7 +724,7 @@ Expected: no output.
 In the `**mass_transfer/**` entry, replace
 `Series are discovered with JSON include/exclude filters (`FilterSpec`: modality, institution, study/series description, series number, age)`
 with
-`Series are discovered with JSON include/exclude filters (`FilterSpec` in `adit/core/utils/filters.py`, shared with the DICOM router: modality, institution, study/series description, series number, age)`.
+`Series are discovered with JSON include/exclude filters (`FilterSpec` in `adit/core/utils/series_filters.py`, shared with the DICOM router: modality, institution, study/series description, series number, age)`.
 
 - [ ] **Step 5: Run the affected suites, check migrations, and lint**
 

@@ -21,14 +21,6 @@ from adit.core.utils.dicom_dataset import QueryDataset, ResultDataset
 from adit.core.utils.dicom_manipulator import DicomManipulator
 from adit.core.utils.dicom_operator import DicomOperator
 from adit.core.utils.dicom_utils import write_dataset
-from adit.core.utils.filters import (
-    DiscoveredSeries,
-    FilterSpec,
-    age_at_study,
-    dicom_match,
-    series_matches_filter,
-    study_matches_filter,
-)
 from adit.core.utils.pseudonymizer import (
     RANDOM_PSEUDONYM_LENGTH,
     Pseudonymizer,
@@ -36,6 +28,14 @@ from adit.core.utils.pseudonymizer import (
     deterministic_pseudonym,
 )
 from adit.core.utils.sanitize import sanitize_filename
+from adit.core.utils.series_filters import (
+    DiscoveredSeries,
+    FilterSpec,
+    age_at_study,
+    dicom_match,
+    series_matches_filter,
+    study_matches_filter,
+)
 
 from .models import (
     MassTransferJob,

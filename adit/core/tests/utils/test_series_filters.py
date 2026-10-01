@@ -1,9 +1,10 @@
 from typing import cast
 
+import pytest
 from pydicom import Dataset
 
 from adit.core.utils.dicom_dataset import ResultDataset
-from adit.core.utils.filters import FilterSpec, study_matches_filter
+from adit.core.utils.series_filters import FilterSpec, study_matches_filter
 
 
 def _study(**values) -> ResultDataset:

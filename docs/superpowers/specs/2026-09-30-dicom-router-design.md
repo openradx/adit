@@ -382,8 +382,8 @@ before it.
 
 1. **Filters into core.** Move `FilterSpec`, `FilterSchema`, `DiscoveredSeries`, `_dicom_match`,
    `_age_at_study`, `_series_matches_filter` and the study-level checks of `_discover_study_series`
-   into `adit/core/utils/filters.py`, and the deterministic pseudonym helper (salt + Patient ID,
-   `_DETERMINISTIC_PSEUDONYM_LENGTH`) into `adit/core/utils/pseudonymizer.py`. Mass transfer
+   into `adit/core/utils/series_filters.py`, and the deterministic pseudonym helper (salt + Patient
+   ID, `_DETERMINISTIC_PSEUDONYM_LENGTH`) into `adit/core/utils/pseudonymizer.py`. Mass transfer
    imports them from there. A pure refactor. #374 doesn't touch the moved code; whichever of the
    two merges second resolves a small conflict in the imports and the pseudonym code.
 2. **Router inbox.** The `adit/router` app with `RouterSender` and `RouterSettings`, the `StoreScp`

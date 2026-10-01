@@ -17,7 +17,7 @@ from adit.core.factories import DicomFolderFactory, DicomServerFactory
 from adit.core.models import DicomNode
 from adit.core.utils.dicom_dataset import ResultDataset
 from adit.core.utils.dicom_operator import DicomOperator
-from adit.core.utils.filters import (
+from adit.core.utils.series_filters import (
     DiscoveredSeries,
     FilterSpec,
     age_at_study,
