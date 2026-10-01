@@ -1,3 +1,4 @@
+from pydicom.uid import UID
 from pynetdicom._globals import DEFAULT_TRANSFER_SYNTAXES
 from pynetdicom.presentation import (
     AllStoragePresentationContexts,
@@ -179,19 +180,26 @@ def storage_scp_contexts() -> list[PresentationContext]:
     """Presentation contexts for a Storage SCP that keeps datasets as received.
 
     Covers every storage SOP class pynetdicom knows plus the ones listed above, with
-    pynetdicom's default transfer syntaxes. Image SOP classes are also accepted in the
+    pynetdicom's default transfer syntaxes. Image SOP classes (those in the list above
+    plus any whose pydicom keyword names it as image storage) are accepted in the
     compressed transfer syntaxes, as the SCP stores pixel data without decoding it.
+    The keyword is needed because ADIT's list misses newer image SOP classes.
     """
     default_syntaxes = [str(ts) for ts in DEFAULT_TRANSFER_SYNTAXES]
-    image_storage = set(_image_storage)
     uids = {str(cx.abstract_syntax) for cx in AllStoragePresentationContexts}
-    uids |= image_storage | set(_non_image_storage)
+    uids |= set(_image_storage) | set(_non_image_storage)
+    # An image class is one in ADIT's list or whose pydicom keyword names it as image.
+    image_storage = set(_image_storage) | {
+        uid for uid in uids if "ImageStorage" in UID(uid).keyword
+    }
     return [
         build_context(
             uid,
-            default_syntaxes + _compressed_transfer_syntaxes
-            if uid in image_storage
-            else default_syntaxes,
+            (
+                default_syntaxes + _compressed_transfer_syntaxes
+                if uid in image_storage
+                else default_syntaxes
+            ),
         )
         for uid in sorted(uids)
     ]

@@ -42,3 +42,15 @@ def test_non_image_classes_accept_only_uncompressed_syntaxes():
 
     assert ImplicitVRLittleEndian in syntaxes
     assert JPEGLosslessSV1 not in syntaxes
+
+
+def test_newer_image_classes_accept_compressed_syntaxes():
+    syntaxes = _syntaxes_by_class()
+
+    # Breast Projection X-Ray Image Storage For Presentation
+    breast_projection = "1.2.840.10008.5.1.4.1.1.13.1.4"
+    assert JPEGLosslessSV1 in syntaxes[breast_projection]
+
+    # Enhanced RT Image Storage
+    enhanced_rt = "1.2.840.10008.5.1.4.1.1.481.23"
+    assert JPEGLosslessSV1 in syntaxes[enhanced_rt]
