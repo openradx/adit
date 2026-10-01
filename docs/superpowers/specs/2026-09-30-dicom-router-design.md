@@ -4,8 +4,9 @@ Date: 2026-09-30
 Status: approved in brainstorm, awaiting spec review
 Reference: issue [#143](https://github.com/openradx/adit/issues/143) and its analysis comment of
 2026-09-24. Related: #415 (receiver hardening), #406 (AE titles in the Orthanc test configs),
-#141 (series-level transfer). In-flight PRs #374 and #349 both rewrite
-`adit/mass_transfer/processors.py`.
+#141 (series-level transfer). In-flight PR #374 also changes `adit/mass_transfer/processors.py`,
+but not the filter code that stage 1 moves; #349 touches `docker-compose.dev.yml` and
+`example.env`.
 
 ## 1. Goal
 
@@ -376,13 +377,15 @@ All router views require `is_staff`. The main menu gets a "Router" item with `st
 
 ## 10. Build stages
 
-One pull request each:
+One pull request each, stacked: stage 1 is based on main and every later stage on the one
+before it.
 
 1. **Filters into core.** Move `FilterSpec`, `FilterSchema`, `DiscoveredSeries`, `_dicom_match`,
    `_age_at_study`, `_series_matches_filter` and the study-level checks of `_discover_study_series`
    into `adit/core/utils/filters.py`, and the deterministic pseudonym helper (salt + Patient ID,
    `_DETERMINISTIC_PSEUDONYM_LENGTH`) into `adit/core/utils/pseudonymizer.py`. Mass transfer
-   imports them from there. A pure refactor, done after #374 and #349 are merged.
+   imports them from there. A pure refactor. #374 doesn't touch the moved code; whichever of the
+   two merges second resolves a small conflict in the imports and the pseudonym code.
 2. **Router inbox.** The `adit/router` app with `RouterSender` and `RouterSettings`, the `StoreScp`
    additions, the `router` command and spool writer, and the compose, env and Orthanc config
    changes. With no sender registered it refuses everything.
