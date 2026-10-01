@@ -1,5 +1,6 @@
 import errno
 import os
+import stat
 import warnings
 from pathlib import Path
 
@@ -7,7 +8,7 @@ import pytest
 from pydicom import Dataset
 from pydicom import config as pydicom_config
 from pydicom.dataset import FileMetaDataset
-from pydicom.uid import CTImageStorage, ExplicitVRLittleEndian, generate_uid
+from pydicom.uid import UID, CTImageStorage, ExplicitVRLittleEndian, generate_uid
 
 from adit.core.utils.dicom_utils import read_dataset
 from adit.router.utils import spool
@@ -24,7 +25,7 @@ def _dataset(study_uid: str | None = None, instance_uid: str | None = None) -> D
     ds.file_meta = FileMetaDataset()
     ds.file_meta.TransferSyntaxUID = ExplicitVRLittleEndian
     ds.file_meta.MediaStorageSOPClassUID = CTImageStorage
-    ds.file_meta.MediaStorageSOPInstanceUID = ds.SOPInstanceUID  # type: ignore
+    ds.file_meta.MediaStorageSOPInstanceUID = UID(ds.SOPInstanceUID)
     return ds
 
 
@@ -67,16 +68,17 @@ def test_resending_an_image_replaces_it(spool_root):
     assert [p.name for p in study_dir.iterdir()] == [f"{instance_uid}.dcm"]
 
 
+@pytest.mark.parametrize("field", ["StudyInstanceUID", "SOPInstanceUID"])
 @pytest.mark.parametrize("bad_uid", ["", "../../etc", "1.2.x", "1..2", "1" * 65, None])
-def test_store_dataset_refuses_uids_that_are_not_path_safe(spool_root, bad_uid):
+def test_store_dataset_refuses_uids_that_are_not_path_safe(spool_root, field, bad_uid):
     ds = _dataset()
     if bad_uid is None:
-        del ds.StudyInstanceUID
+        delattr(ds, field)
     else:
         with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
+            warnings.filterwarnings("ignore", category=UserWarning)
             with pydicom_config.disable_value_validation():
-                ds.StudyInstanceUID = bad_uid
+                setattr(ds, field, bad_uid)
 
     with pytest.raises(spool.InvalidUidError):
         spool.store_dataset(spool_root, 7, ds)
@@ -135,3 +137,85 @@ def test_clean_tmp_removes_leftovers_of_a_crash(spool_root):
 
 def test_free_bytes_reports_the_spool_filesystem(spool_root):
     assert spool.free_bytes(spool_root) > 0
+
+
+@pytest.mark.parametrize("value", ["1.2.3\n", "1.2.3 ", "\n1.2.3", "1.2.3\x00"])
+def test_is_valid_uid_requires_the_whole_value_to_be_a_uid(value):
+    assert not spool.is_valid_uid(value)
+
+
+@pytest.mark.parametrize("value", ["1", "1.2.840.10008.1.2", "9" * 64])
+def test_is_valid_uid_accepts_uids(value):
+    assert spool.is_valid_uid(value)
+
+
+def test_file_moved_into_a_recreated_study_folder_is_still_made_durable(spool_root, monkeypatch):
+    """Store A opens the study folder, the closing task renames it to batches/, and
+    store B re-creates it before A moves its file in. The file lands in the new folder,
+    which A's folder fd doesn't point to, so A must fall back to a full sync."""
+    ds = _dataset()
+    study_dir = spool_root / spool.INCOMING / "7" / ds.StudyInstanceUID
+    closed_dir = spool_root / spool.BATCHES / "7" / "closed"
+    closed_dir.parent.mkdir(parents=True)
+    real_replace = os.replace
+    syncs: list[str] = []
+
+    def replace_after_close_and_recreate(src, dst):
+        if not closed_dir.exists():
+            os.rename(study_dir, closed_dir)
+            study_dir.mkdir()
+        return real_replace(src, dst)
+
+    monkeypatch.setattr(spool.os, "replace", replace_after_close_and_recreate)
+    monkeypatch.setattr(spool.os, "sync", lambda: syncs.append("sync"))
+
+    path = spool.store_dataset(spool_root, 7, ds)
+
+    assert path == study_dir / f"{ds.SOPInstanceUID}.dcm"
+    assert path.is_file()
+    assert list(closed_dir.iterdir()) == []
+    assert syncs == ["sync"]
+
+
+def test_file_and_folder_are_flushed_around_the_move(spool_root, monkeypatch):
+    events: list[str] = []
+    real_fsync, real_replace = os.fsync, os.replace
+
+    def recording_fsync(fd):
+        events.append("dir" if stat.S_ISDIR(os.fstat(fd).st_mode) else "file")
+        real_fsync(fd)
+
+    def recording_replace(src, dst):
+        events.append("replace")
+        real_replace(src, dst)
+
+    monkeypatch.setattr(spool.os, "fsync", recording_fsync)
+    monkeypatch.setattr(spool.os, "replace", recording_replace)
+
+    spool.store_dataset(spool_root, 7, _dataset())
+
+    assert events.index("file") < events.index("replace")
+    assert events[events.index("replace") + 1 :] == ["dir"]
+
+
+def test_gives_up_when_the_study_folder_keeps_closing(spool_root, monkeypatch):
+    ds = _dataset()
+    study_dir = spool_root / spool.INCOMING / "7" / ds.StudyInstanceUID
+    closed = spool_root / spool.BATCHES / "7"
+    closed.mkdir(parents=True)
+    real_replace = os.replace
+    attempts: list[int] = []
+
+    def replace_always_after_close(src, dst):
+        attempts.append(1)
+        os.rename(study_dir, closed / f"closed-{len(attempts)}")
+        return real_replace(src, dst)
+
+    monkeypatch.setattr(spool.os, "replace", replace_always_after_close)
+
+    with pytest.raises(spool.SpoolError):
+        spool.store_dataset(spool_root, 7, ds)
+
+    assert len(attempts) == 5
+    assert list((spool_root / spool.TMP).iterdir()) == []
+    assert all(not any(folder.iterdir()) for folder in closed.iterdir())

@@ -40,13 +40,13 @@ def is_valid_uid(value: object) -> bool:
     return (
         isinstance(value, str)
         and len(value) <= _MAX_UID_LENGTH
-        and _UID_PATTERN.match(value) is not None
+        and _UID_PATTERN.fullmatch(value) is not None
     )
 
 
 def ensure_spool_dirs(spool_root: Path) -> None:
     for name in (TMP, INCOMING, BATCHES, QUARANTINE):
-        (spool_root / name).mkdir(parents=True, exist_ok=True)
+        _ensure_dir(spool_root / name)
 
 
 def incoming_study_dir(spool_root: Path, sender_id: int, study_uid: str) -> Path:
@@ -72,8 +72,9 @@ def store_dataset(spool_root: Path, sender_id: int, ds: Dataset) -> Path:
             write_dataset(ds, f)
             f.flush()
             os.fsync(f.fileno())
+            file_stat = os.fstat(f.fileno())
         study_dir = incoming_study_dir(spool_root, sender_id, study_uid)
-        return _move_into_study_dir(tmp_path, study_dir, f"{instance_uid}.dcm")
+        return _move_into_study_dir(tmp_path, file_stat, study_dir, f"{instance_uid}.dcm")
     except BaseException:
         tmp_path.unlink(missing_ok=True)
         raise
@@ -92,7 +93,9 @@ def free_bytes(spool_root: Path) -> int:
     return shutil.disk_usage(spool_root).free
 
 
-def _move_into_study_dir(tmp_path: Path, study_dir: Path, filename: str) -> Path:
+def _move_into_study_dir(
+    tmp_path: Path, file_stat: os.stat_result, study_dir: Path, filename: str
+) -> Path:
     for _ in range(_MAX_MOVE_ATTEMPTS):
         _ensure_dir(study_dir)
         try:
@@ -102,14 +105,32 @@ def _move_into_study_dir(tmp_path: Path, study_dir: Path, filename: str) -> Path
         except FileNotFoundError:
             continue
         try:
-            os.replace(tmp_path, study_dir / filename)
-            os.fsync(dir_fd)
+            try:
+                os.replace(tmp_path, study_dir / filename)
+            except FileNotFoundError:
+                continue
+            _fsync_moved_entry(dir_fd, filename, file_stat)
             return study_dir / filename
-        except FileNotFoundError:
-            continue
         finally:
             os.close(dir_fd)
     raise SpoolError(f"Could not move {filename} into {study_dir}.")
+
+
+def _fsync_moved_entry(dir_fd: int, filename: str, file_stat: os.stat_result) -> None:
+    """Make the folder entry of the moved file durable.
+
+    The file normally lands in the folder dir_fd points to. If that folder was closed and
+    re-created by another store in between, the file is in the new folder, which may already
+    have been closed again; only a full sync reliably covers that case.
+    """
+    try:
+        landed_here = os.path.samestat(os.stat(filename, dir_fd=dir_fd), file_stat)
+    except FileNotFoundError:
+        landed_here = False
+    if landed_here:
+        os.fsync(dir_fd)
+    else:
+        os.sync()
 
 
 def _ensure_dir(path: Path) -> None:
@@ -120,7 +141,9 @@ def _ensure_dir(path: Path) -> None:
     try:
         path.mkdir()
     except FileExistsError:
-        return
+        pass
+    # Also after FileExistsError: the store that created the folder may not have
+    # flushed its entry yet.
     _fsync_dir(path.parent)
 
 
