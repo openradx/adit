@@ -81,6 +81,11 @@ class RouterStoreHandler:
         except OSError:
             logger.exception("Could not spool image from %s.", calling_ae)
             return STATUS_OUT_OF_RESOURCES
+        except Exception:
+            # Content the router cannot encode is a permanent failure; "out of resources"
+            # would make the sender retry it forever.
+            logger.exception("Could not encode image from %s.", calling_ae)
+            return STATUS_CANNOT_UNDERSTAND
 
         return STATUS_SUCCESS
 

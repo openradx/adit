@@ -102,6 +102,17 @@ def test_disk_full_while_writing_is_out_of_resources(tmp_path, monkeypatch):
     assert _spooled(tmp_path) == []
 
 
+def test_image_that_cannot_be_encoded_is_not_understood(tmp_path, monkeypatch):
+    def broken_encoding(ds, f):
+        raise ValueError("cannot encode")
+
+    monkeypatch.setattr(spool, "write_dataset", broken_encoding)
+
+    assert _handler(tmp_path)(_event()) == 0xC000
+    assert list((tmp_path / spool.TMP).iterdir()) == []
+    assert _spooled(tmp_path) == []
+
+
 @pytest.mark.django_db
 def test_load_intake_config_lists_enabled_senders_and_the_suspended_flag():
     enabled = RouterSenderFactory.create(calling_ae_title="PACS1")
