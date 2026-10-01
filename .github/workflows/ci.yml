@@ -47,6 +47,7 @@ jobs:
             adit_dev-dicom_worker:latest
             adit_dev-mass_transfer_worker:latest
             adit_dev-receiver:latest
+            adit_dev-router:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
       - name: Start Docker containers
