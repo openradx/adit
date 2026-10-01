@@ -91,6 +91,7 @@ INSTALLED_APPS = [
     "adit.upload.apps.UploadConfig",
     "adit.dicom_explorer.apps.DicomExplorerConfig",
     "adit.dicom_web.apps.DicomWebConfig",
+    "adit.router.apps.RouterConfig",
     "channels",
 ]
 
