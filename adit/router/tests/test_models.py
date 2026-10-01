@@ -59,3 +59,24 @@ def test_calling_ae_title_rejects_a_backslash():
         sender.full_clean()
 
     assert "calling_ae_title" in exc_info.value.message_dict
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("ae_title", ["PACS KÖLN", "PACS\tA"])
+def test_calling_ae_title_rejects_what_pynetdicom_refuses(ae_title):
+    sender = RouterSender(server=DicomServerFactory.create(), calling_ae_title=ae_title)
+
+    with pytest.raises(ValidationError) as exc_info:
+        sender.full_clean()
+
+    assert "calling_ae_title" in exc_info.value.message_dict
+
+
+@pytest.mark.django_db
+def test_full_clean_rejects_an_invalid_server_ae_title_as_calling_ae_title():
+    sender = RouterSender(server=DicomServerFactory.create(ae_title="BAD\\AE"))
+
+    with pytest.raises(ValidationError) as exc_info:
+        sender.full_clean()
+
+    assert "calling_ae_title" in exc_info.value.message_dict

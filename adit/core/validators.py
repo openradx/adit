@@ -39,6 +39,13 @@ def validate_uids(value: list[str]) -> None:
         uid_chars_validator(uid)
 
 
+# DICOM AE titles: printable ASCII without the backslash (pynetdicom rejects anything else).
+ae_title_chars_validator = RegexValidator(
+    regex=r"^[\x20-\x5b\x5d-\x7e]*\Z",
+    message="Only printable ASCII characters without a backslash are allowed.",
+)
+
+
 ###
 # Unused validators that are only used in old migrations.
 # TODO: Delete them after squashing migrations.

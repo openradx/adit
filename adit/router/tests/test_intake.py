@@ -10,7 +10,7 @@ from pydicom.dataset import FileMetaDataset
 from pydicom.uid import CTImageStorage, ExplicitVRLittleEndian, generate_uid
 
 from adit.router.factories import RouterSenderFactory
-from adit.router.models import RouterSettings
+from adit.router.models import RouterSender, RouterSettings
 from adit.router.utils import spool
 from adit.router.utils.intake import IntakeConfig, RouterStoreHandler, load_intake_config
 
@@ -135,4 +135,21 @@ def test_missing_router_settings_keep_intake_suspended(caplog):
     assert config == IntakeConfig(sender_ids={"PACS1": sender.pk}, suspended=True)
     assert [r.getMessage() for r in caplog.records if r.levelno == logging.WARNING] == [
         "The router settings are missing; intake stays suspended."
+    ]
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("invalid_title", ["PACS\tA", ""])
+def test_load_intake_config_ignores_senders_with_an_invalid_ae_title(caplog, invalid_title):
+    valid = RouterSenderFactory.create(calling_ae_title="PACS1")
+    invalid = RouterSenderFactory.create(calling_ae_title="PACS2")
+    # update() bypasses save(), which would replace an empty title.
+    RouterSender.objects.filter(pk=invalid.pk).update(calling_ae_title=invalid_title)
+
+    config = load_intake_config()
+
+    assert config.sender_ids == {"PACS1": valid.pk}
+    errors = [r.getMessage() for r in caplog.records if r.levelno == logging.ERROR]
+    assert errors == [
+        f"Router sender {invalid.pk} has an invalid AE title {invalid_title!r} and is ignored."
     ]

@@ -4,10 +4,12 @@ import logging
 from dataclasses import dataclass
 from pathlib import Path
 
+from django.core.exceptions import ValidationError
 from pynetdicom.events import Event
 
 from adit.core.utils.presentation_contexts import storage_scp_contexts
 from adit.core.utils.store_scp import StoreScp
+from adit.core.validators import ae_title_chars_validator
 
 from ..models import RouterSender, RouterSettings
 from . import spool
@@ -34,11 +36,21 @@ def load_intake_config() -> IntakeConfig:
     if router_settings is None:
         logger.warning("The router settings are missing; intake stays suspended.")
     suspended = router_settings is None or router_settings.suspended
+
+    sender_ids: dict[str, int] = {}
     senders = RouterSender.objects.filter(enabled=True).values_list("calling_ae_title", "pk")
-    return IntakeConfig(
-        sender_ids={ae_title.strip(): pk for ae_title, pk in senders},
-        suspended=suspended,
-    )
+    for ae_title, pk in senders:
+        title = ae_title.strip()
+        # pynetdicom refuses such a title, both on the wire and in require_calling_aet.
+        try:
+            if not title:
+                raise ValidationError("empty")
+            ae_title_chars_validator(title)
+        except ValidationError:
+            logger.error("Router sender %d has an invalid AE title %r and is ignored.", pk, title)
+            continue
+        sender_ids[title] = pk
+    return IntakeConfig(sender_ids=sender_ids, suspended=suspended)
 
 
 class RouterStoreHandler:

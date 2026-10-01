@@ -1,7 +1,8 @@
+from django.core.exceptions import ValidationError
 from django.db import models
 
 from adit.core.models import DicomAppSettings, DicomServer
-from adit.core.validators import no_backslash_char_validator, no_control_chars_validator
+from adit.core.validators import ae_title_chars_validator
 
 
 class RouterSettings(DicomAppSettings):
@@ -19,7 +20,7 @@ class RouterSender(models.Model):
         max_length=16,
         blank=True,
         default="",
-        validators=[no_backslash_char_validator, no_control_chars_validator],
+        validators=[ae_title_chars_validator],
         help_text="The AE title the server sends from. Leave empty to use its AE title.",
     )
     enabled = models.BooleanField(default=True)
@@ -37,3 +38,7 @@ class RouterSender(models.Model):
     def clean(self) -> None:
         if self.server_id:
             self.calling_ae_title = self.calling_ae_title.strip() or self.server.ae_title
+            try:
+                ae_title_chars_validator(self.calling_ae_title)
+            except ValidationError as err:
+                raise ValidationError({"calling_ae_title": err.messages}) from err
