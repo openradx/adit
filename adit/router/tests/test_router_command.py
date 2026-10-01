@@ -10,6 +10,14 @@ from adit.router.management.commands import router as router_command
 from adit.router.utils import spool
 from adit.router.utils.intake import IntakeConfig, RouterStoreHandler, build_router_scp
 
+# A database that isn't ready yet, and an error from outside the database.
+LOAD_ERRORS = [
+    pytest.param(
+        ProgrammingError('relation "router_routersettings" does not exist'), id="database"
+    ),
+    pytest.param(ValueError("Invalid 'require_calling_aet' value"), id="other"),
+]
+
 
 @pytest.fixture
 def command() -> router_command.Command:
@@ -58,14 +66,15 @@ def test_disabling_a_sender_takes_effect_at_the_next_refresh(command, handler_an
     assert scp._allowed_calling_aets == frozenset()
 
 
-def test_startup_waits_for_the_database(command, handler_and_scp, monkeypatch):
+@pytest.mark.parametrize("error", LOAD_ERRORS)
+def test_startup_retries_until_the_senders_load(command, handler_and_scp, monkeypatch, error):
     handler, scp = handler_and_scp
     attempts: list[int] = []
 
     def flaky_load():
         attempts.append(1)
         if len(attempts) == 1:
-            raise ProgrammingError('relation "router_routersettings" does not exist')
+            raise error
         return IntakeConfig(sender_ids={"PACS1": 1}, suspended=False)
 
     monkeypatch.setattr(router_command, "load_intake_config", flaky_load)
@@ -89,13 +98,12 @@ def test_startup_gives_up_when_the_command_stops(command, handler_and_scp, monke
     assert command._load_config_until_ready(scp, handler) is False
 
 
-def test_periodic_refresh_keeps_going_after_a_database_error(
-    command, handler_and_scp, monkeypatch, settings
-):
+@pytest.mark.parametrize("error", LOAD_ERRORS)
+def test_periodic_refresh_survives_errors(command, handler_and_scp, monkeypatch, settings, error):
     handler, scp = handler_and_scp
     settings.ROUTER_SENDER_REFRESH_SECONDS = 0
     results: list[Exception | IntakeConfig] = [
-        ProgrammingError("database restarting"),
+        error,
         IntakeConfig(sender_ids={"PACS1": 1}, suspended=False),
     ]
 

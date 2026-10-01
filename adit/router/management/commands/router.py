@@ -74,7 +74,7 @@ class Command(ServerCommand):
         store_scp.set_allowed_calling_aets(config.sender_ids.keys())
 
     def _load_config_until_ready(self, store_scp: StoreScp, handler: RouterStoreHandler) -> bool:
-        """Retry until the database answers; returns False if the command stops first.
+        """Retry until the senders load; returns False if the command stops first.
 
         In development the router can start before the web container has migrated
         the database.
@@ -85,14 +85,18 @@ class Command(ServerCommand):
                 return True
             except DatabaseError:
                 logger.warning("Router senders could not be loaded yet, retrying.", exc_info=True)
-                self._stopped.wait(STARTUP_RETRY_SECONDS)
+            except Exception:
+                logger.exception("Could not load the router senders, retrying.")
+            # A failed query can leave the connection unusable; the next attempt reconnects.
+            db.connection.close()
+            self._stopped.wait(STARTUP_RETRY_SECONDS)
         return False
 
     def _refresh_periodically(self, store_scp: StoreScp, handler: RouterStoreHandler) -> None:
         while not self._stopped.wait(settings.ROUTER_SENDER_REFRESH_SECONDS):
             try:
                 self._refresh(store_scp, handler)
-            except DatabaseError:
+            except Exception:
                 logger.exception("Could not reload the router senders; keeping the last ones.")
             finally:
                 db.connection.close()

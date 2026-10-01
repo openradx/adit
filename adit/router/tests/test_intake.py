@@ -1,4 +1,5 @@
 import errno
+import logging
 from pathlib import Path
 from unittest.mock import MagicMock
 
@@ -122,3 +123,16 @@ def test_load_intake_config_lists_enabled_senders_and_the_suspended_flag():
     config = load_intake_config()
 
     assert config == IntakeConfig(sender_ids={"PACS1": enabled.pk}, suspended=True)
+
+
+@pytest.mark.django_db
+def test_missing_router_settings_keep_intake_suspended(caplog):
+    sender = RouterSenderFactory.create(calling_ae_title="PACS1")
+    RouterSettings.objects.all().delete()
+
+    config = load_intake_config()
+
+    assert config == IntakeConfig(sender_ids={"PACS1": sender.pk}, suspended=True)
+    assert [r.getMessage() for r in caplog.records if r.levelno == logging.WARNING] == [
+        "The router settings are missing; intake stays suspended."
+    ]

@@ -29,12 +29,15 @@ REFUSE_ALL = IntakeConfig(sender_ids={}, suspended=True)
 
 
 def load_intake_config() -> IntakeConfig:
-    router_settings = RouterSettings.get()
-    assert isinstance(router_settings, RouterSettings)
+    # The row is missing between the migration and post_migrate, or once deleted in the admin.
+    router_settings = RouterSettings.objects.first()
+    if router_settings is None:
+        logger.warning("The router settings are missing; intake stays suspended.")
+    suspended = router_settings is None or router_settings.suspended
     senders = RouterSender.objects.filter(enabled=True).values_list("calling_ae_title", "pk")
     return IntakeConfig(
         sender_ids={ae_title.strip(): pk for ae_title, pk in senders},
-        suspended=router_settings.suspended,
+        suspended=suspended,
     )
 
 
