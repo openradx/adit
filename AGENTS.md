@@ -76,7 +76,7 @@ Version floors are from `pyproject.toml`; the exact resolved version is in `uv.l
 - **dicom_explorer/**: Browse DICOM servers and their studies/series interactively. Models: `DicomExplorerSettings`, `PermissionSupport`.
 - **upload/**: Web portal for uploading DICOM files with client-side pseudonymization using dcmjs and dicom-web-anonymizer. Models: `UploadSettings`.
 - **dicom_web/**: DICOMweb REST API endpoints - QIDO-RS (query), WADO-RS (retrieve, plus `.../nifti` endpoints that return studies/series/images converted to NIfTI), STOW-RS (store). Models: `DicomWebSettings`, `APIUsage`.
-- **router/**: DICOM router inbox. `./manage.py router` (the router container) accepts C-STORE on `ROUTER_AE_TITLE` from enabled `RouterSender`s (a `DicomServer` plus the AE title it sends from, managed in the Django admin) and writes each image durably to `incoming/<sender id>/<StudyInstanceUID>/` in the spool (`ROUTER_SPOOL_PATH`). Unknown senders are rejected; while `RouterSettings.suspended` is set or the spool is low on space, images are answered with `0xA700`. Models: `RouterSettings`, `RouterSender`.
+- **router/**: DICOM router inbox. `./manage.py router` (the router container) accepts C-STORE (and answers C-ECHO) on `ROUTER_AE_TITLE` from enabled `RouterSender`s (a `DicomServer` plus the AE title it sends from, managed in the Django admin) and writes each image durably to `incoming/<sender id>/<StudyInstanceUID>/` in the spool (`ROUTER_SPOOL_PATH`). Unknown senders are rejected; while `RouterSettings.suspended` is set or the spool is low on space, images are answered with `0xA700`. Nothing reads or deletes the spool yet: routing rules and delivery are not implemented. Models: `RouterSettings`, `RouterSender`.
 
 ### Job/Task Processing Model
 
@@ -154,7 +154,7 @@ Data modification pattern: download to temp folder -> transform (pseudonymize) -
 
 ### Docker Services
 
-- **init**: One-shot bootstrap in production: `migrate`, `collectstatic`, `create_superuser`, `retry_stalled_jobs`, then an `ok_server` the web replicas wait for. In dev it is behind `profiles: [never]`; the web container runs the bootstrap itself
+- **init**: One-shot bootstrap in production: `migrate`, `collectstatic`, `create_superuser`, `retry_stalled_jobs`, then an `ok_server` the web replicas and the router wait for. In dev it is behind `profiles: [never]`; the web container runs the bootstrap itself
 - **web**: Main application. Dev: Django dev server on `WEB_DEV_PORT` (8000), boots with `migrate`, superuser/example users/groups/data, `populate_orthancs`, `retry_stalled_jobs`. Prod: Daphne on 80/443, `WEB_REPLICAS` replicas
 - **default_worker**: General background task processor (Procrastinate queue: `default`); each worker runs `sweep_stale_tasks` before `bg_worker`
 - **dicom_worker**: DICOM-specific task processor (Procrastinate queue: `dicom`); each worker runs `sweep_stale_tasks` before `bg_worker`

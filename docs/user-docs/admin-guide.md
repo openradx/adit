@@ -28,7 +28,7 @@ All settings are read from `.env`; the comments in `example.env` describe every 
 - Folders: `MOUNT_DIR` (download folders, see [Folder Management](#folder-management)), `BACKUP_DIR`
 - `ANONYMIZATION_SEED` for the upload portal
 
-Optional tuning: `WEB_REPLICAS`, `DICOM_WORKER_REPLICAS`, `MASS_TRANSFER_WORKER_REPLICAS` (service scaling), `EXCLUDE_MODALITIES` (modalities skipped in pseudonymized web transfers, default `PR,SR`), `BACKUP_CRON`, `DICOM_TASK_STALLED_WORKER_GRACE_SECONDS` and `DICOM_TASK_SWEEP_CRON` (see [Worker Crash Recovery](#worker-crash-recovery)), `ADIT_IMAGE` and `STACK_NAME` (a second stack such as staging on the same host), and `ROUTER_AE_TITLE`, `ROUTER_PORT` and `ROUTER_SPOOL_DIR` for the DICOM router (an empty `ROUTER_AE_TITLE` disables it; put the spool on an encrypted disk).
+Optional tuning: `WEB_REPLICAS`, `DICOM_WORKER_REPLICAS`, `MASS_TRANSFER_WORKER_REPLICAS` (service scaling), `EXCLUDE_MODALITIES` (modalities skipped in pseudonymized web transfers, default `PR,SR`), `BACKUP_CRON`, `DICOM_TASK_STALLED_WORKER_GRACE_SECONDS` and `DICOM_TASK_SWEEP_CRON` (see [Worker Crash Recovery](#worker-crash-recovery)), `ADIT_IMAGE` and `STACK_NAME` (a second stack such as staging on the same host), and `ROUTER_AE_TITLE`, `ROUTER_PORT` and `ROUTER_SPOOL_DIR` for the DICOM router (an empty `ROUTER_AE_TITLE` disables it; put the spool on an encrypted disk). The router only receives so far: nothing reads or deletes the spooled images yet, so don't register router senders in production before routing rules are available.
 
 !!! warning "No quotes in .env"
     Values must not be wrapped in quotes; Docker Swarm treats them as part of the value, and `stack-deploy` refuses to run when it finds any.

@@ -76,7 +76,7 @@ Every worker runs `./manage.py sweep_stale_tasks` before starting `bg_worker`.
 
 **C-STORE Receiver Container (`adit_dev-receiver-1`)**: Accepts incoming DICOM data from C-MOVE operations. Ports: 11112 (DICOM, published as 11122 on the host in development and as `RECEIVER_PORT` in production), 14638 (file transmit). Forwards data to workers via TCP.
 
-**DICOM Router Container (`adit_dev-router-1`)**: Accepts C-STORE on `ROUTER_AE_TITLE` from the DICOM servers registered as router senders and writes each image durably to the router spool (`/spool`, the `router_spool` volume or `ROUTER_SPOOL_DIR`). Port 11112 (DICOM, published as 11123 on the host in development and as `ROUTER_PORT` in production). Idles when `ROUTER_AE_TITLE` is empty.
+**DICOM Router Container (`adit_dev-router-1`)**: Accepts C-STORE (and answers C-ECHO) on `ROUTER_AE_TITLE` from the DICOM servers registered as router senders and writes each image durably to the router spool (`/spool`, the `router_spool` volume or `ROUTER_SPOOL_DIR`). Port 11112 (DICOM, published as 11123 on the host in development and as `ROUTER_PORT` in production). Idles when `ROUTER_AE_TITLE` is empty.
 
 **Orthanc Containers (`adit_dev-orthanc1-1`, `adit_dev-orthanc2-1`)**: Development PACS instances for testing. Official Orthanc image. DICOM ports 7501/7502 (published on the host in development only); their HTTP/DICOMweb ports 6501/6502 are internal and reachable in the web UI through a reverse proxy. Uses SQLite for development.
 
@@ -111,7 +111,7 @@ Every worker runs `./manage.py sweep_stale_tasks` before starting `bg_worker`.
 
 #### **DICOM Router** (`adit.router`)
 
-- **Router inbox**: `./manage.py router` (the router container) accepts the images a PACS forwards. Only enabled `RouterSender`s (a `DicomServer` plus the AE title it sends from, managed in the Django admin) may connect, and each image is written durably to `incoming/<sender id>/<StudyInstanceUID>/` in the spool. While `RouterSettings.suspended` is set or the spool is low on space, images are answered with Out of Resources (`0xA700`), so the PACS retries them later.
+- **Router inbox**: `./manage.py router` (the router container) accepts the images a PACS forwards. Only enabled `RouterSender`s (a `DicomServer` plus the AE title it sends from, managed in the Django admin) may connect, and each image is written durably to `incoming/<sender id>/<StudyInstanceUID>/` in the spool. While `RouterSettings.suspended` is set or the spool is low on space, images are answered with Out of Resources (`0xA700`), so the PACS retries them later. Nothing reads or deletes the spool yet: routing rules and delivery are not implemented.
 
 ## Primary Models
 
