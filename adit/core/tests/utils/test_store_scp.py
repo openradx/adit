@@ -359,14 +359,15 @@ def test_empty_allow_list_aborts_every_association(store_scp):
 def test_allow_list_is_handed_to_pynetdicom(store_scp):
     """A non-empty allow-list becomes pynetdicom's require_calling_aet, so unknown
     AEs are rejected during negotiation. pynetdicom reads [] as "anyone", so an
-    empty allow-list maps to [] and _on_established aborts instead."""
+    empty allow-list maps to the SCP's own AE title, which rejects every other AE;
+    _on_established aborts a peer that calls with it."""
     store_scp._ae = AE(ae_title="ADIT_RECEIVER")
 
     store_scp.set_allowed_calling_aets(["PACS2 ", "PACS1"])
     assert store_scp._ae.require_calling_aet == ["PACS1", "PACS2"]
 
     store_scp.set_allowed_calling_aets([])
-    assert store_scp._ae.require_calling_aet == []
+    assert store_scp._ae.require_calling_aet == [store_scp._ae_title]
 
     store_scp.set_allowed_calling_aets(None)
     assert store_scp._ae.require_calling_aet == []

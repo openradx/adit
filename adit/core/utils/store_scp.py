@@ -110,9 +110,15 @@ class StoreScp:
     def _apply_allowed_calling_aets(self) -> None:
         if self._ae is None:
             return
-        # pynetdicom reads an empty list as "accept any AE title", so an empty
-        # allow-list is enforced by _on_established instead.
-        self._ae.require_calling_aet = sorted(self._allowed_calling_aets or [])
+        allowed = self._allowed_calling_aets
+        if allowed is None:
+            self._ae.require_calling_aet = []
+        elif allowed:
+            self._ae.require_calling_aet = sorted(allowed)
+        else:
+            # pynetdicom reads [] as "anyone", so the SCP's own AE title stands in for
+            # nobody; _on_established refuses a peer that calls with it.
+            self._ae.require_calling_aet = [self._ae_title]
 
     def _on_connect(self, event: Event):
         address = event.assoc.remote["address"]

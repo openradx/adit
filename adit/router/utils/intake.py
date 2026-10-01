@@ -6,6 +6,7 @@ from pathlib import Path
 
 from django.core.exceptions import ValidationError
 from pynetdicom.events import Event
+from pynetdicom.presentation import VerificationPresentationContexts
 
 from adit.core.utils.presentation_contexts import storage_scp_contexts
 from adit.core.utils.store_scp import StoreScp
@@ -119,7 +120,7 @@ def build_router_scp(
         host=host,
         port=port,
         debug=debug,
-        supported_contexts=storage_scp_contexts(),
+        supported_contexts=storage_scp_contexts() + VerificationPresentationContexts,
         require_called_aet=True,
     )
     scp.set_store_handler(handler)

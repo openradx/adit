@@ -9,6 +9,7 @@ from pydicom.dataset import FileMetaDataset
 from pydicom.uid import CTImageStorage, ExplicitVRLittleEndian, JPEGLosslessSV1, generate_uid
 from pynetdicom import AE
 from pynetdicom.association import Association
+from pynetdicom.sop_class import Verification  # pyright: ignore
 
 from adit.core.utils.store_scp import StoreScp
 from adit.core.utils.testing_helpers import free_port, wait_until_scp_accepts, wait_until_scp_idle
@@ -46,12 +47,13 @@ def _associate(
     port: int,
     calling_ae: str,
     called_ae: str = ROUTER_AE,
+    sop_class: str = CTImageStorage,
     transfer_syntax: str = ExplicitVRLittleEndian,
 ) -> Association:
     ae = AE(ae_title=calling_ae)
     ae.acse_timeout = 5
     ae.dimse_timeout = 5
-    ae.add_requested_context(CTImageStorage, transfer_syntax)
+    ae.add_requested_context(sop_class, transfer_syntax)
     return ae.associate("127.0.0.1", port, ae_title=called_ae)
 
 
@@ -95,13 +97,23 @@ def test_wrong_called_ae_title_is_rejected(router):
     assert assoc.is_rejected
 
 
+def test_known_sender_can_verify_the_connection(router):
+    """PACS administrators run a C-ECHO when they add the router as a destination."""
+    assoc = _associate(router.port, "PACS1", sop_class=Verification)
+    assert assoc.is_established
+
+    status = assoc.send_c_echo()
+    assoc.release()
+
+    assert status.Status == 0x0000
+
+
 def test_no_enabled_sender_refuses_every_association(router):
     router.scp.set_allowed_calling_aets([])
 
     assoc = _associate(router.port, "PACS1")
 
-    assert assoc.is_aborted
-    assert not assoc.is_established
+    assert assoc.is_rejected
 
 
 def test_compressed_images_are_accepted_as_sent(router):
