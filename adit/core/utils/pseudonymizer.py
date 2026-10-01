@@ -9,6 +9,11 @@ from pydicom.multival import MultiValue
 
 _PSEUDONYM_ALPHABET = string.ascii_uppercase + string.digits  # A-Z0-9
 
+# Deterministic pseudonyms use 14 characters. Random pseudonyms use 15 so the
+# two modes can be distinguished by length.
+DETERMINISTIC_PSEUDONYM_LENGTH = 14
+RANDOM_PSEUDONYM_LENGTH = 15
+
 
 def compute_pseudonym(seed: str, identifier: str, length: int) -> str:
     """Derive a pseudonym from a seed and identifier using SHA-256.
@@ -23,6 +28,11 @@ def compute_pseudonym(seed: str, identifier: str, length: int) -> str:
         big_int, idx = divmod(big_int, len(_PSEUDONYM_ALPHABET))
         chars.append(_PSEUDONYM_ALPHABET[idx])
     return "".join(chars)
+
+
+def deterministic_pseudonym(salt: str, patient_id: str) -> str:
+    """The pseudonym a patient always gets for *salt* (mass transfer, router)."""
+    return compute_pseudonym(salt, patient_id, length=DETERMINISTIC_PSEUDONYM_LENGTH)
 
 
 class Pseudonymizer:

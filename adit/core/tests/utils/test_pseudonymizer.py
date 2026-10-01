@@ -3,7 +3,12 @@ from pydicom import Dataset
 from pydicom.dataset import FileMetaDataset
 from pydicom.uid import UID
 
-from adit.core.utils.pseudonymizer import Pseudonymizer, compute_pseudonym
+from adit.core.utils.pseudonymizer import (
+    DETERMINISTIC_PSEUDONYM_LENGTH,
+    Pseudonymizer,
+    compute_pseudonym,
+    deterministic_pseudonym,
+)
 
 
 @pytest.fixture
@@ -212,3 +217,12 @@ class TestPseudonymizePersonNameEdgeCases:
         pseudonymizer.pseudonymize(ds, "PSEUDO")
 
         assert "Doe^John" not in [str(n) for n in ds.OtherPatientIDsSequence[0].PersonName]
+
+
+def test_deterministic_pseudonym_matches_compute_pseudonym():
+    pseudonym = deterministic_pseudonym("salt", "PAT1")
+
+    assert pseudonym == compute_pseudonym("salt", "PAT1", length=DETERMINISTIC_PSEUDONYM_LENGTH)
+    assert len(pseudonym) == 14
+    assert deterministic_pseudonym("salt", "PAT1") == pseudonym
+    assert deterministic_pseudonym("other salt", "PAT1") != pseudonym
