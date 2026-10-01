@@ -1,7 +1,6 @@
 import errno
 import os
 import stat
-import warnings
 from pathlib import Path
 
 import pytest
@@ -75,10 +74,9 @@ def test_store_dataset_refuses_uids_that_are_not_path_safe(spool_root, field, ba
     if bad_uid is None:
         delattr(ds, field)
     else:
-        with warnings.catch_warnings():
-            warnings.filterwarnings("ignore", category=UserWarning)
-            with pydicom_config.disable_value_validation():
-                setattr(ds, field, bad_uid)
+        with pydicom_config.disable_value_validation():
+            delattr(ds, field)
+            setattr(ds, field, bad_uid)
 
     with pytest.raises(spool.InvalidUidError):
         spool.store_dataset(spool_root, 7, ds)
