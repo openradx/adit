@@ -60,17 +60,27 @@ class RouterStoreHandler:
     def __init__(self, spool_root: Path, min_free_bytes: int) -> None:
         self._spool_root = spool_root
         self._min_free_bytes = min_free_bytes
-        self._config = REFUSE_ALL
+        self._config: IntakeConfig | None = None
+        # State changes are logged once, not per image. Without a lock, concurrent
+        # associations can at worst log a change twice.
+        self._low_on_space = False
 
     @property
     def config(self) -> IntakeConfig:
-        return self._config
+        return self._config or REFUSE_ALL
 
     def update_config(self, config: IntakeConfig) -> None:
+        if self._config is None or self._config.suspended != config.suspended:
+            if config.suspended:
+                logger.warning(
+                    "Router intake is suspended; images are refused until it is resumed."
+                )
+            else:
+                logger.info("Router intake accepts images.")
         self._config = config
 
     def __call__(self, event: Event) -> int:
-        config = self._config
+        config = self.config
         calling_ae = event.assoc.remote["ae_title"].strip()
 
         sender_id = config.sender_ids.get(calling_ae)
@@ -84,8 +94,15 @@ class RouterStoreHandler:
             return STATUS_OUT_OF_RESOURCES
 
         if spool.free_bytes(self._spool_root) < self._min_free_bytes:
-            logger.error("Refusing image from %s: the router spool is low on space.", calling_ae)
+            if not self._low_on_space:
+                self._low_on_space = True
+                logger.error(
+                    "The router spool is low on space; images are refused until space is freed."
+                )
             return STATUS_OUT_OF_RESOURCES
+        if self._low_on_space:
+            self._low_on_space = False
+            logger.info("The router spool has enough free space again.")
 
         try:
             ds = event.dataset

@@ -82,6 +82,62 @@ def test_low_spool_space_refuses_images(tmp_path):
     assert _spooled(tmp_path) == []
 
 
+def test_low_spool_space_is_logged_once(tmp_path, caplog):
+    handler = _handler(tmp_path, min_free_bytes=10**18)
+
+    assert handler(_event()) == 0xA700
+    assert handler(_event()) == 0xA700
+
+    assert [r.getMessage() for r in caplog.records if r.levelno == logging.ERROR] == [
+        "The router spool is low on space; images are refused until space is freed."
+    ]
+
+
+def test_freed_spool_space_is_logged(tmp_path, caplog, monkeypatch):
+    caplog.set_level(logging.INFO, logger="adit.router.utils.intake")
+    free = [0, 10**12]
+    monkeypatch.setattr(spool, "free_bytes", lambda spool_root: free.pop(0))
+    handler = _handler(tmp_path, min_free_bytes=1)
+    caplog.clear()
+
+    assert handler(_event()) == 0xA700
+    assert handler(_event()) == 0x0000
+
+    assert [(r.levelno, r.getMessage()) for r in caplog.records] == [
+        (
+            logging.ERROR,
+            "The router spool is low on space; images are refused until space is freed.",
+        ),
+        (logging.INFO, "The router spool has enough free space again."),
+    ]
+
+
+def test_suspending_and_resuming_intake_are_logged_once_each(tmp_path, caplog):
+    caplog.set_level(logging.INFO, logger="adit.router.utils.intake")
+    handler = _handler(tmp_path)
+    caplog.clear()
+
+    handler.update_config(IntakeConfig(sender_ids={"PACS1": 7}, suspended=True))
+    handler.update_config(IntakeConfig(sender_ids={"PACS1": 7}, suspended=True))
+    handler.update_config(IntakeConfig(sender_ids={"PACS1": 7}, suspended=False))
+
+    assert [(r.levelno, r.getMessage()) for r in caplog.records] == [
+        (logging.WARNING, "Router intake is suspended; images are refused until it is resumed."),
+        (logging.INFO, "Router intake accepts images."),
+    ]
+
+
+def test_intake_state_is_logged_when_first_known_but_not_repeated(tmp_path, caplog):
+    caplog.set_level(logging.INFO, logger="adit.router.utils.intake")
+    spool.ensure_spool_dirs(tmp_path)
+    handler = RouterStoreHandler(tmp_path, min_free_bytes=0)
+
+    handler.update_config(IntakeConfig(sender_ids={"PACS1": 7}, suspended=False))
+    handler.update_config(IntakeConfig(sender_ids={"PACS1": 7, "PACS2": 8}, suspended=False))
+
+    assert [r.getMessage() for r in caplog.records] == ["Router intake accepts images."]
+
+
 def test_image_with_an_unsafe_uid_is_not_understood(tmp_path):
     event = _event()
     with pydicom_config.disable_value_validation():
