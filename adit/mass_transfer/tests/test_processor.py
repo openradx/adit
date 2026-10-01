@@ -17,6 +17,13 @@ from adit.core.factories import DicomFolderFactory, DicomServerFactory
 from adit.core.models import DicomNode
 from adit.core.utils.dicom_dataset import ResultDataset
 from adit.core.utils.dicom_operator import DicomOperator
+from adit.core.utils.filters import (
+    DiscoveredSeries,
+    FilterSpec,
+    age_at_study,
+    dicom_match,
+    series_matches_filter,
+)
 from adit.mass_transfer.models import (
     MassTransferJob,
     MassTransferSettings,
@@ -24,16 +31,11 @@ from adit.mass_transfer.models import (
     MassTransferVolume,
 )
 from adit.mass_transfer.processors import (
-    DiscoveredSeries,
-    FilterSpec,
     MassTransferTaskProcessor,
-    _age_at_study,
     _birth_date_range,
     _destination_base_dir,
-    _dicom_match,
     _parse_int,
     _series_folder_name,
-    _series_matches_filter,
     _study_datetime,
     _study_folder_name,
 )
@@ -1237,13 +1239,12 @@ def test_process_linking_mode_uses_deterministic_pseudonym(mocker: MockerFixture
     assert subject_ids[0] != ""
     assert subject_ids[0] != "PAT1"
     # Pseudonym should be deterministic — running again with same salt gives same result
-    from adit.core.utils.pseudonymizer import compute_pseudonym
-    from adit.mass_transfer.processors import _DETERMINISTIC_PSEUDONYM_LENGTH
+    from adit.core.utils.pseudonymizer import DETERMINISTIC_PSEUDONYM_LENGTH, compute_pseudonym
 
     expected = compute_pseudonym(
         "test-salt-for-deterministic-pseudonyms",
         "PAT1",
-        length=_DETERMINISTIC_PSEUDONYM_LENGTH,
+        length=DETERMINISTIC_PSEUDONYM_LENGTH,
     )
     assert subject_ids[0] == expected
 
@@ -1398,23 +1399,23 @@ def test_study_datetime_with_midnight():
 
 
 def test_dicom_match_empty_pattern_matches_anything():
-    assert _dicom_match("", "anything") is True
-    assert _dicom_match("", None) is True
-    assert _dicom_match("", "") is True
+    assert dicom_match("", "anything") is True
+    assert dicom_match("", None) is True
+    assert dicom_match("", "") is True
 
 
 def test_dicom_match_none_value_never_matches():
-    assert _dicom_match("CT", None) is False
+    assert dicom_match("CT", None) is False
 
 
 def test_dicom_match_exact():
-    assert _dicom_match("CT", "CT") is True
-    assert _dicom_match("CT", "MR") is False
+    assert dicom_match("CT", "CT") is True
+    assert dicom_match("CT", "MR") is False
 
 
 def test_dicom_match_wildcard():
-    assert _dicom_match("Head*", "Head CT") is True
-    assert _dicom_match("Head*", "Foot CT") is False
+    assert dicom_match("Head*", "Head CT") is True
+    assert dicom_match("Head*", "Foot CT") is False
 
 
 # ---------------------------------------------------------------------------
@@ -1664,14 +1665,14 @@ def test_process_pseudonymize_mode_not_linked_across_partitions(
 
 
 def test_age_at_study_basic():
-    assert _age_at_study(date(1990, 6, 15), date(2025, 6, 15)) == 35
-    assert _age_at_study(date(1990, 6, 15), date(2025, 6, 14)) == 34
-    assert _age_at_study(date(1990, 6, 15), date(2025, 6, 16)) == 35
+    assert age_at_study(date(1990, 6, 15), date(2025, 6, 15)) == 35
+    assert age_at_study(date(1990, 6, 15), date(2025, 6, 14)) == 34
+    assert age_at_study(date(1990, 6, 15), date(2025, 6, 16)) == 35
 
 
 def test_age_at_study_leap_year():
-    assert _age_at_study(date(2000, 2, 29), date(2025, 2, 28)) == 24
-    assert _age_at_study(date(2000, 2, 29), date(2025, 3, 1)) == 25
+    assert age_at_study(date(2000, 2, 29), date(2025, 2, 28)) == 24
+    assert age_at_study(date(2000, 2, 29), date(2025, 3, 1)) == 25
 
 
 def test_birth_date_range_no_age_limits():
@@ -1758,48 +1759,48 @@ def test_filter_spec_from_dict_rejects_invalid_mode():
 def test_series_matches_filter_all_criteria_match():
     series = _make_discovered()
     mf = FilterSpec(modality="CT", series_description="Axial*")
-    assert _series_matches_filter(series, mf) is True
+    assert series_matches_filter(series, mf) is True
 
 
 def test_series_matches_filter_modality_mismatch():
     series = _make_discovered(modality="CT")
     mf = FilterSpec(modality="MR")
-    assert _series_matches_filter(series, mf) is False
+    assert series_matches_filter(series, mf) is False
 
 
 def test_series_matches_filter_series_description_mismatch():
     series = _make_discovered(series_description="Localizer")
     mf = FilterSpec(series_description="Axial*")
-    assert _series_matches_filter(series, mf) is False
+    assert series_matches_filter(series, mf) is False
 
 
 def test_series_matches_filter_series_number_exact():
     series = _make_discovered(series_number=3)
-    assert _series_matches_filter(series, FilterSpec(series_number=3)) is True
-    assert _series_matches_filter(series, FilterSpec(series_number=4)) is False
+    assert series_matches_filter(series, FilterSpec(series_number=3)) is True
+    assert series_matches_filter(series, FilterSpec(series_number=4)) is False
 
 
 def test_series_matches_filter_series_number_unknown_fails_match():
     series = _make_discovered(series_number=None)
-    assert _series_matches_filter(series, FilterSpec(series_number=1)) is False
+    assert series_matches_filter(series, FilterSpec(series_number=1)) is False
 
 
 def test_series_matches_filter_exclude_series_description_case_insensitive():
     series = _make_discovered(series_description="COR 2mm")
     mf = FilterSpec(mode="exclude", series_description="*cor*")
-    assert _series_matches_filter(series, mf, age_permissive=True) is True
+    assert series_matches_filter(series, mf, age_permissive=True) is True
 
 
 def test_series_matches_filter_exclude_institution_case_insensitive():
     series = _make_discovered()  # institution_name "Radiology"
     mf = FilterSpec(mode="exclude", institution_name="RADIOLOGY")
-    assert _series_matches_filter(series, mf, age_permissive=True) is True
+    assert series_matches_filter(series, mf, age_permissive=True) is True
 
 
 def test_series_matches_filter_include_series_description_stays_case_sensitive():
     series = _make_discovered(series_description="COR 2mm")
     mf = FilterSpec(series_description="*cor*")
-    assert _series_matches_filter(series, mf) is False
+    assert series_matches_filter(series, mf) is False
 
 
 def test_series_matches_filter_institution_checked_by_default():
@@ -1817,7 +1818,7 @@ def test_series_matches_filter_institution_checked_by_default():
         number_of_images=10,
     )
     mf = FilterSpec(institution_name="Radiology")
-    assert _series_matches_filter(series, mf) is False
+    assert series_matches_filter(series, mf) is False
 
 
 def test_series_matches_filter_institution_skipped_when_check_false():
@@ -1835,7 +1836,7 @@ def test_series_matches_filter_institution_skipped_when_check_false():
         number_of_images=10,
     )
     mf = FilterSpec(institution_name="Radiology")
-    assert _series_matches_filter(series, mf, check_institution=False) is True
+    assert series_matches_filter(series, mf, check_institution=False) is True
 
 
 def test_series_matches_filter_age_with_birth_date():
@@ -1853,25 +1854,25 @@ def test_series_matches_filter_age_with_birth_date():
         number_of_images=10,
         patient_birth_date=date(2000, 1, 1),
     )
-    assert _series_matches_filter(series, FilterSpec(min_age=18)) is True
-    assert _series_matches_filter(series, FilterSpec(min_age=30)) is False
-    assert _series_matches_filter(series, FilterSpec(max_age=24)) is True
-    assert _series_matches_filter(series, FilterSpec(max_age=20)) is False
+    assert series_matches_filter(series, FilterSpec(min_age=18)) is True
+    assert series_matches_filter(series, FilterSpec(min_age=30)) is False
+    assert series_matches_filter(series, FilterSpec(max_age=24)) is True
+    assert series_matches_filter(series, FilterSpec(max_age=20)) is False
 
 
 def test_series_matches_filter_age_permissive_unknown_birth_date():
     series = _make_discovered()  # patient_birth_date=None
     mf = FilterSpec(min_age=18)
-    assert _series_matches_filter(series, mf, age_permissive=True) is True
-    assert _series_matches_filter(series, mf, age_permissive=False) is False
+    assert series_matches_filter(series, mf, age_permissive=True) is True
+    assert series_matches_filter(series, mf, age_permissive=False) is False
 
 
 def test_series_matches_filter_min_instances():
     series = _make_discovered()  # number_of_images=10
     mf_ok = FilterSpec(min_number_of_series_related_instances=5)
     mf_fail = FilterSpec(min_number_of_series_related_instances=20)
-    assert _series_matches_filter(series, mf_ok) is True
-    assert _series_matches_filter(series, mf_fail) is False
+    assert series_matches_filter(series, mf_ok) is True
+    assert series_matches_filter(series, mf_fail) is False
 
 
 # ---------------------------------------------------------------------------
@@ -2060,15 +2061,14 @@ def test_create_pending_volumes_deterministic_pseudonym():
         partition_key="20240101",
     )
 
-    from adit.core.utils.pseudonymizer import compute_pseudonym
-    from adit.mass_transfer.processors import _DETERMINISTIC_PSEUDONYM_LENGTH
+    from adit.core.utils.pseudonymizer import DETERMINISTIC_PSEUDONYM_LENGTH, compute_pseudonym
 
     ps = Pseudonymizer(seed="test-seed-123")
     expected_pat1 = compute_pseudonym(
-        "test-seed-123", "PAT1", length=_DETERMINISTIC_PSEUDONYM_LENGTH
+        "test-seed-123", "PAT1", length=DETERMINISTIC_PSEUDONYM_LENGTH
     )
     expected_pat2 = compute_pseudonym(
-        "test-seed-123", "PAT2", length=_DETERMINISTIC_PSEUDONYM_LENGTH
+        "test-seed-123", "PAT2", length=DETERMINISTIC_PSEUDONYM_LENGTH
     )
 
     series = [

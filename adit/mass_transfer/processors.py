@@ -4,10 +4,9 @@ import secrets
 import shutil
 import tempfile
 import time
-from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from pathlib import Path
-from typing import Literal, cast
+from typing import cast
 
 import pydicom
 from django.conf import settings
@@ -21,8 +20,21 @@ from adit.core.processors import DicomTaskProcessor
 from adit.core.utils.dicom_dataset import QueryDataset, ResultDataset
 from adit.core.utils.dicom_manipulator import DicomManipulator
 from adit.core.utils.dicom_operator import DicomOperator
-from adit.core.utils.dicom_utils import convert_to_python_regex, write_dataset
-from adit.core.utils.pseudonymizer import Pseudonymizer, compute_pseudonym
+from adit.core.utils.dicom_utils import write_dataset
+from adit.core.utils.filters import (
+    DiscoveredSeries,
+    FilterSpec,
+    age_at_study,
+    dicom_match,
+    series_matches_filter,
+    study_matches_filter,
+)
+from adit.core.utils.pseudonymizer import (
+    RANDOM_PSEUDONYM_LENGTH,
+    Pseudonymizer,
+    compute_pseudonym,
+    deterministic_pseudonym,
+)
 from adit.core.utils.sanitize import sanitize_filename
 
 from .models import (
@@ -32,82 +44,10 @@ from .models import (
     MassTransferVolume,
 )
 
-
-@dataclass(frozen=True)
-class FilterSpec:
-    """Unified filter representation used by the processor.
-
-    Built from a plain dict from the job's filters_json field.
-    """
-
-    mode: Literal["include", "exclude"] = "include"
-    modality: str = ""
-    institution_name: str = ""
-    apply_institution_on_study: bool = True
-    study_description: str = ""
-    series_description: str = ""
-    series_number: int | None = None
-    min_age: int | None = None
-    max_age: int | None = None
-    min_number_of_series_related_instances: int | None = None
-
-    @classmethod
-    def from_dict(cls, d: dict) -> "FilterSpec":
-        mode = d.get("mode", "include")
-        if mode not in ("include", "exclude"):
-            raise DicomError(f"Invalid filter mode: {mode!r}")
-        return cls(
-            mode=mode,
-            modality=d.get("modality", ""),
-            institution_name=d.get("institution_name", ""),
-            apply_institution_on_study=d.get("apply_institution_on_study", True),
-            study_description=d.get("study_description", ""),
-            series_description=d.get("series_description", ""),
-            series_number=d.get("series_number"),
-            min_age=d.get("min_age"),
-            max_age=d.get("max_age"),
-            min_number_of_series_related_instances=d.get("min_number_of_series_related_instances"),
-        )
-
-
 logger = logging.getLogger(__name__)
 
 _MIN_SPLIT_WINDOW = timedelta(minutes=30)
 _DELAY_BETWEEN_STUDIES = 0.5  # seconds between studies to avoid overwhelming the PACS
-
-# Deterministic pseudonyms use 14 characters. Random pseudonyms use 15 so the
-# two modes can be distinguished by length.
-_DETERMINISTIC_PSEUDONYM_LENGTH = 14
-_RANDOM_PSEUDONYM_LENGTH = 15
-
-
-@dataclass(frozen=True)
-class DiscoveredSeries:
-    patient_id: str
-    accession_number: str
-    study_instance_uid: str
-    series_instance_uid: str
-    modality: str
-    study_description: str
-    series_description: str
-    series_number: int | None
-    study_datetime: datetime
-    institution_name: str
-    number_of_images: int
-    patient_birth_date: date | None = None
-
-
-def _dicom_match(pattern: str, value: str | None, case_insensitive: bool = False) -> bool:
-    # Callers only pass non-PN fields (institution_name, study_description,
-    # series_description). Include filters compare case-sensitively to stay
-    # consistent with PACS-side matching of non-PN fields; exclude filters are
-    # applied client-side only and pass case_insensitive=True.
-    if not pattern:
-        return True
-    if value is None:
-        return False
-    regex = convert_to_python_regex(pattern, case_insensitive=case_insensitive)
-    return bool(regex.fullmatch(str(value)))
 
 
 def _short_error_reason(error: str) -> str:
@@ -179,7 +119,7 @@ def _extract_dicom_metadata(dicom_dir: Path) -> dict[str, str]:
             try:
                 bd = date(int(birth_str[:4]), int(birth_str[4:6]), int(birth_str[6:8]))
                 sd = date(int(study_str[:4]), int(study_str[4:6]), int(study_str[6:8]))
-                fields["PatientAgeAtStudy"] = str(_age_at_study(bd, sd))
+                fields["PatientAgeAtStudy"] = str(age_at_study(bd, sd))
             except (ValueError, OverflowError):
                 pass
 
@@ -202,14 +142,6 @@ def _merge_dicom_metadata(output_path: Path, fields: dict[str, str]) -> None:
             sidecar_path.write_text(json.dumps(merged, indent=2))
         except (OSError, TypeError, ValueError, json.JSONDecodeError):
             logger.warning("Failed to merge metadata into %s", sidecar_path, exc_info=True)
-
-
-def _age_at_study(birth_date: date, study_date: date) -> int:
-    """Return the patient's age in whole years on the study date."""
-    age = study_date.year - birth_date.year
-    if (study_date.month, study_date.day) < (birth_date.month, birth_date.day):
-        age -= 1
-    return age
 
 
 def _birth_date_range(
@@ -242,61 +174,6 @@ def _birth_date_range(
         latest_birth = study_end
 
     return (earliest_birth, latest_birth)
-
-
-def _series_matches_filter(
-    series: DiscoveredSeries,
-    mf: FilterSpec,
-    check_institution: bool = True,
-    age_permissive: bool = False,
-) -> bool:
-    """Test whether *series* satisfies all non-empty criteria on *mf*.
-
-    ``check_institution=False`` skips the institution check — the include
-    path uses this when ``apply_institution_on_study`` has already resolved
-    the check at study level.  ``age_permissive=True`` treats an unknown
-    ``patient_birth_date`` as passing the age check; excludes set this so
-    a series with an unverifiable age is dropped by an age-bounded exclude
-    filter.  The strict default is used by include filters so that an
-    unknown age also fails inclusion — in both directions, a series whose
-    age can't be determined is dropped.
-
-    String criteria on include filters are matched case-sensitively, in line
-    with PACS-side matching of non-PN fields.  Exclude filters are applied
-    client-side only (they never reach the PACS), so they match
-    case-insensitively — scanner naming conventions vary in capitalization
-    (COR/Cor/cor) and an exclude should catch all variants.
-    """
-    case_insensitive = mf.mode == "exclude"
-    if mf.modality and mf.modality != series.modality:
-        return False
-    if check_institution and mf.institution_name:
-        if not _dicom_match(mf.institution_name, series.institution_name, case_insensitive):
-            return False
-    if mf.study_description and not _dicom_match(
-        mf.study_description, series.study_description, case_insensitive
-    ):
-        return False
-    if mf.series_description and not _dicom_match(
-        mf.series_description, series.series_description, case_insensitive
-    ):
-        return False
-    if mf.series_number is not None:
-        if series.series_number is None or mf.series_number != series.series_number:
-            return False
-    if mf.min_age is not None or mf.max_age is not None:
-        if series.patient_birth_date:
-            age = _age_at_study(series.patient_birth_date, series.study_datetime.date())
-            if mf.min_age is not None and age < mf.min_age:
-                return False
-            if mf.max_age is not None and age > mf.max_age:
-                return False
-        elif not age_permissive:
-            return False
-    if mf.min_number_of_series_related_instances is not None:
-        if series.number_of_images < mf.min_number_of_series_related_instances:
-            return False
-    return True
 
 
 def _destination_base_dir(node: DicomNode, job: MassTransferJob) -> Path:
@@ -418,15 +295,13 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
 
             if pseudonymizer and job.pseudonym_salt:
                 if pid not in deterministic_ids:
-                    deterministic_ids[pid] = compute_pseudonym(
-                        job.pseudonym_salt, pid, length=_DETERMINISTIC_PSEUDONYM_LENGTH
-                    )
+                    deterministic_ids[pid] = deterministic_pseudonym(job.pseudonym_salt, pid)
                 pseudonym = deterministic_ids[pid]
             elif pseudonymizer:
                 if study_uid not in random_pseudonyms:
                     random_seed = secrets.token_hex(16)
                     random_pseudonyms[study_uid] = compute_pseudonym(
-                        random_seed, pid, length=_RANDOM_PSEUDONYM_LENGTH
+                        random_seed, pid, length=RANDOM_PSEUDONYM_LENGTH
                     )
                 pseudonym = random_pseudonyms[study_uid]
             else:
@@ -892,7 +767,7 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
             series
             for series in found.values()
             if not any(
-                _series_matches_filter(series, mf, age_permissive=True) for mf in exclude_filters
+                series_matches_filter(series, mf, age_permissive=True) for mf in exclude_filters
             )
         ]
 
@@ -904,26 +779,12 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
         found: dict[str, DiscoveredSeries],
     ) -> None:
         """Collect all series of *study* matching the include filter *mf* into *found*."""
-        if mf.modality and mf.modality not in study.ModalitiesInStudy:
+        if not study_matches_filter(
+            mf, study, lambda name: self._study_has_institution(operator, study, name)
+        ):
             return
 
-        if mf.study_description and not _dicom_match(mf.study_description, study.StudyDescription):
-            return
-
-        if mf.institution_name and mf.apply_institution_on_study:
-            if not self._study_has_institution(operator, study, mf.institution_name):
-                return
-
-        # Exact client-side age filtering using actual StudyDate and
-        # PatientBirthDate (the query birth date range is approximate).
         birth_date = study.PatientBirthDate
-        has_age_filter = mf.min_age is not None or mf.max_age is not None
-        if birth_date and study.StudyDate and has_age_filter:
-            age = _age_at_study(birth_date, study.StudyDate)
-            if mf.min_age is not None and age < mf.min_age:
-                return
-            if mf.max_age is not None and age > mf.max_age:
-                return
 
         series_query = QueryDataset.create(
             PatientID=study.PatientID,
@@ -959,7 +820,7 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
                 patient_birth_date=birth_date,
             )
 
-            if not _series_matches_filter(
+            if not series_matches_filter(
                 discovered,
                 mf,
                 check_institution=not mf.apply_institution_on_study,
@@ -1060,7 +921,7 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
 
         series_list = list(operator.find_series(series_query))
         return any(
-            _dicom_match(institution_name, series.get("InstitutionName", None))
+            dicom_match(institution_name, series.get("InstitutionName", None))
             for series in series_list
         )
 

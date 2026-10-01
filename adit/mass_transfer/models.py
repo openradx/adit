@@ -1,6 +1,5 @@
 import json
 import secrets
-from typing import TYPE_CHECKING
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
@@ -9,10 +8,8 @@ from django.urls import reverse
 from procrastinate.contrib.django import app
 
 from adit.core.models import DicomAppSettings, DicomJob, DicomTask, TransferJob, TransferTask
+from adit.core.utils.filters import FilterSpec
 from adit.core.utils.model_utils import get_model_label
-
-if TYPE_CHECKING:
-    from .processors import FilterSpec
 
 
 class MassTransferSettings(DicomAppSettings):
@@ -59,9 +56,7 @@ class MassTransferJob(TransferJob):
             return json.dumps(self.filters_json, indent=2)
         return ""
 
-    def get_filters(self) -> list["FilterSpec"]:
-        from .processors import FilterSpec
-
+    def get_filters(self) -> list[FilterSpec]:
         if not self.filters_json:
             return []
         return [FilterSpec.from_dict(d) for d in self.filters_json]

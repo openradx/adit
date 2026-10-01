@@ -1,6 +1,6 @@
 import json
 import secrets
-from typing import Annotated, Literal, cast
+from typing import cast
 
 from adit_radis_shared.accounts.models import User
 from codemirror.widgets import CodeMirror
@@ -8,65 +8,14 @@ from crispy_forms.helper import FormHelper
 from crispy_forms.layout import HTML, Column, Div, Field, Layout, Row, Submit
 from django import forms
 from django.core.exceptions import ValidationError
-from pydantic import BaseModel, model_validator
 from pydantic import ValidationError as PydanticValidationError
 
 from adit.core.fields import DicomNodeChoiceField
 from adit.core.models import DicomNode
+from adit.core.utils.filters import FilterSchema
 
 from .models import MassTransferJob, MassTransferTask
 from .utils.partitions import build_partitions
-
-
-class FilterSchema(BaseModel):
-    """Pydantic model for validating mass transfer filter JSON objects."""
-
-    mode: Literal["include", "exclude"] = "include"
-    modality: str = ""
-    institution_name: str = ""
-    apply_institution_on_study: bool = True
-    study_description: str = ""
-    series_description: str = ""
-    series_number: int | None = None
-    min_age: Annotated[int, "non-negative"] | None = None
-    max_age: Annotated[int, "non-negative"] | None = None
-    min_number_of_series_related_instances: int | None = None
-
-    model_config = {"extra": "forbid"}
-
-    @model_validator(mode="after")
-    def check_age_range(self):
-        if self.min_age is not None and self.min_age < 0:
-            raise ValueError("min_age must be non-negative")
-        if self.max_age is not None and self.max_age < 0:
-            raise ValueError("max_age must be non-negative")
-        if (
-            self.min_number_of_series_related_instances is not None
-            and self.min_number_of_series_related_instances < 1
-        ):
-            raise ValueError("min_number_of_series_related_instances must be >= 1")
-        if self.min_age is not None and self.max_age is not None and self.min_age > self.max_age:
-            raise ValueError(f"min_age ({self.min_age}) cannot exceed max_age ({self.max_age})")
-        return self
-
-    @model_validator(mode="after")
-    def check_exclude_has_criteria(self):
-        if self.mode != "exclude":
-            return self
-        has_criterion = bool(
-            self.modality
-            or self.institution_name
-            or self.study_description
-            or self.series_description
-            or self.series_number is not None
-            or self.min_age is not None
-            or self.max_age is not None
-            or self.min_number_of_series_related_instances is not None
-        )
-        if not has_criterion:
-            raise ValueError("exclude filter must specify at least one criterion")
-        return self
-
 
 FILTERS_JSON_EXAMPLE = json.dumps(
     [
