@@ -1,7 +1,7 @@
 # DICOM router — design
 
 Date: 2026-09-30
-Status: approved in brainstorm, awaiting spec review
+Status: approved; stage 1 (filters into core) implemented on feat/dicom-router-filters
 Reference: issue [#143](https://github.com/openradx/adit/issues/143) and its analysis comment of
 2026-09-24. Related: #415 (receiver hardening), #406 (AE titles in the Orthanc test configs),
 #141 (series-level transfer). In-flight PR #374 also changes `adit/mass_transfer/processors.py`,
@@ -120,9 +120,8 @@ moved in) is older than `ROUTER_QUIET_PERIOD_SECONDS`, or when its oldest file i
 behind by a crash between closing and deciding.
 
 1. Read the headers of every file (`stop_before_pixels`). Unreadable files move to `quarantine/`.
-   Build one `DiscoveredSeries` per series (the dataclass mass transfer uses,
-   `adit/mass_transfer/processors.py:85`) with `number_of_images` counted from the files, plus a
-   map from series to SOP Instance UIDs.
+   Build one `DiscoveredSeries` per series (`adit/core/utils/series_filters.py`) with
+   `number_of_images` counted from the files, plus a map from series to SOP Instance UIDs.
 2. For each enabled rule, select series as in §4. Drop the SOP instances already listed in
    `sent_instance_uids` of this rule's earlier `SUCCESS`/`WARNING` tasks for the same study and
    destination. The rule matches if at least one image is left.
@@ -184,12 +183,11 @@ is read at run time, and it cannot change once the rule has jobs (§5.2).
 ## 4. Rule semantics
 
 - `filters_json` is a list of `FilterSchema` objects, validated as in the mass transfer form
-  (`adit/mass_transfer/forms.py:279`): a non-empty list with at least one include filter.
+  (`MassTransferJobForm.clean_filters_json`): a non-empty list with at least one include filter.
 - A series is selected when it matches at least one include filter and no exclude filter, using
-  `_series_matches_filter` and the study-level checks of `_discover_study_series`
-  (`adit/mass_transfer/processors.py:247` and `:899`). Include filters match case-sensitively.
-  Exclude filters match case-insensitively, and an exclude filter with age bounds also excludes
-  series whose birth date is unknown, exactly as in mass transfer.
+  `series_matches_filter` and `study_matches_filter` (`adit/core/utils/series_filters.py`). Include
+  filters match case-sensitively. Exclude filters match case-insensitively, and an exclude filter
+  with age bounds also excludes series whose birth date is unknown, exactly as in mass transfer.
 - Study-level conditions (modality present in the study, study description, institution on study,
   age) are evaluated on the batch's own series.
 - Age is computed from Patient Birth Date and Study Date. A study without a birth date does not

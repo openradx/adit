@@ -780,7 +780,7 @@ class MassTransferTaskProcessor(DicomTaskProcessor):
     ) -> None:
         """Collect all series of *study* matching the include filter *mf* into *found*."""
         if not study_matches_filter(
-            mf, study, lambda name: self._study_has_institution(operator, study, name)
+            mf, study, lambda pattern: self._study_has_institution(operator, study, pattern)
         ):
             return
 

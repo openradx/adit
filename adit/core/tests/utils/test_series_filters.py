@@ -82,3 +82,36 @@ def test_age_bounds_use_birth_date_and_study_date():
 
 def test_unknown_birth_date_is_left_to_the_series_check():
     assert study_matches_filter(FilterSpec(min_age=20), _study(), _no_institution_lookup)
+
+
+def test_series_only_filter_does_not_read_study_fields():
+    study = cast(ResultDataset, _StudyWithoutKeys())
+    mf = FilterSpec(series_description="Ax*")
+
+    assert study_matches_filter(mf, study, _no_institution_lookup)
+
+
+def test_institution_filter_not_applied_on_study_does_not_read_study_fields():
+    study = cast(ResultDataset, _StudyWithoutKeys())
+    mf = FilterSpec(institution_name="Uni*", apply_institution_on_study=False)
+
+    assert study_matches_filter(mf, study, _no_institution_lookup)
+
+
+def test_institution_lookup_returning_true_matches():
+    mf = FilterSpec(institution_name="Uni*")
+
+    assert study_matches_filter(mf, _study(), lambda pattern: True)
+
+
+def test_age_bounds_are_inclusive():
+    study = _study(birth_date="19990615", study_date="20240601")  # 24 on the study date
+
+    assert study_matches_filter(FilterSpec(min_age=24, max_age=24), study, _no_institution_lookup)
+
+
+def test_study_matches_filter_rejects_exclude_mode():
+    mf = FilterSpec(mode="exclude", modality="CT")
+
+    with pytest.raises(AssertionError):
+        study_matches_filter(mf, _study(), _no_institution_lookup)

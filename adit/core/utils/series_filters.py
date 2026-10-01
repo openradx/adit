@@ -1,4 +1,4 @@
-"""Filters that select the series of a study, shared by mass transfer and the router."""
+"""Filters that select the series of a study."""
 
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -142,10 +142,15 @@ def study_matches_filter(
     """Test whether *study* can hold series selected by the include filter *mf*.
 
     Only checks what is known on study level; the series are tested afterwards with
-    series_matches_filter. Study fields are read only when the filter uses them, and
-    *has_institution* is only called when the filter asks for an institution on study
-    level, so callers can look the institutions up lazily.
+    series_matches_filter. Study fields are read only when the filter uses them.
+
+    *has_institution* receives the filter's institution pattern (DICOM wildcards) and
+    answers whether any series of the study has an InstitutionName matching it,
+    case-sensitively as dicom_match does. It is only called when the filter asks for an
+    institution on study level and the earlier checks passed, so callers can look the
+    institutions up lazily.
     """
+    assert mf.mode == "include"
     if mf.modality and mf.modality not in study.ModalitiesInStudy:
         return False
 

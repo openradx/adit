@@ -701,6 +701,56 @@ def test_discover_series_exclude_by_institution(mocker: MockerFixture):
     assert series_uids == {"1.2.3.901"}
 
 
+def test_discover_series_include_institution_admits_whole_study(mocker: MockerFixture):
+    """apply_institution_on_study defaults to True: a study-level institution match
+    admits every series, so the series-level institution check is skipped."""
+    processor = _make_processor(mocker)
+    processor.mass_task.partition_start = datetime(2024, 1, 1, 0, 0)
+    processor.mass_task.partition_end = datetime(2024, 1, 1, 23, 59, 59)
+
+    operator = mocker.create_autospec(DicomOperator)
+    operator.server = mocker.MagicMock(max_search_results=200)
+
+    study = _make_study("1.2.3.100")
+    study.dataset.ModalitiesInStudy = ["CT"]
+    operator.find_studies.return_value = [study]
+
+    here = _make_series_result("1.2.3.910", institution_name="Radiology")
+    there = _make_series_result("1.2.3.911", institution_name="External")
+    operator.find_series.return_value = [here, there]
+
+    filters = [_make_filter(modality="CT", institution_name="Radio*")]
+    result = processor._discover_series(operator, filters)
+
+    series_uids = {s.series_instance_uid for s in result}
+    assert series_uids == {"1.2.3.910", "1.2.3.911"}
+
+
+def test_discover_series_include_institution_rejects_study_without_match(mocker: MockerFixture):
+    """When no series matches the study-level institution pattern, the study is
+    dropped and the series are never listed for selection."""
+    processor = _make_processor(mocker)
+    processor.mass_task.partition_start = datetime(2024, 1, 1, 0, 0)
+    processor.mass_task.partition_end = datetime(2024, 1, 1, 23, 59, 59)
+
+    operator = mocker.create_autospec(DicomOperator)
+    operator.server = mocker.MagicMock(max_search_results=200)
+
+    study = _make_study("1.2.3.100")
+    study.dataset.ModalitiesInStudy = ["CT"]
+    operator.find_studies.return_value = [study]
+
+    here = _make_series_result("1.2.3.920", institution_name="External")
+    there = _make_series_result("1.2.3.921", institution_name="Other")
+    operator.find_series.return_value = [here, there]
+
+    filters = [_make_filter(modality="CT", institution_name="Radio*")]
+    result = processor._discover_series(operator, filters)
+
+    assert result == []
+    assert operator.find_series.call_count == 1
+
+
 def test_discover_series_salvages_malformed_study_time(mocker: MockerFixture):
     """A non-conformant StudyTime (as returned by some PACS) falls back to midnight."""
     processor = _make_processor(mocker)
@@ -1752,7 +1802,7 @@ def test_filter_spec_from_dict_rejects_invalid_mode():
 
 
 # ---------------------------------------------------------------------------
-# _series_matches_filter tests
+# series_matches_filter tests
 # ---------------------------------------------------------------------------
 
 

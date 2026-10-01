@@ -31,7 +31,7 @@ def compute_pseudonym(seed: str, identifier: str, length: int) -> str:
 
 
 def deterministic_pseudonym(salt: str, patient_id: str) -> str:
-    """The pseudonym a patient always gets for *salt* (mass transfer, router)."""
+    """The pseudonym a patient always gets for *salt*."""
     return compute_pseudonym(salt, patient_id, length=DETERMINISTIC_PSEUDONYM_LENGTH)
 
 
