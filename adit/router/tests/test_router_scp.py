@@ -1,6 +1,4 @@
-import socket
 import threading
-import time
 from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
@@ -13,6 +11,7 @@ from pynetdicom import AE
 from pynetdicom.association import Association
 
 from adit.core.utils.store_scp import StoreScp
+from adit.core.utils.testing_helpers import free_port, wait_until_scp_accepts, wait_until_scp_idle
 from adit.router.utils import spool
 from adit.router.utils.intake import IntakeConfig, RouterStoreHandler, build_router_scp
 
@@ -27,35 +26,18 @@ class Router:
     spool_root: Path
 
 
-def _free_port() -> int:
-    with socket.socket() as s:
-        s.bind(("127.0.0.1", 0))
-        return s.getsockname()[1]
-
-
-def _wait_until_listening(port: int) -> None:
-    deadline = time.monotonic() + 5
-    while True:
-        try:
-            with socket.create_connection(("127.0.0.1", port), timeout=0.2):
-                return
-        except OSError:
-            if time.monotonic() > deadline:
-                raise
-            time.sleep(0.05)
-
-
 @pytest.fixture
 def router(tmp_path: Path) -> Iterator[Router]:
     spool.ensure_spool_dirs(tmp_path)
     handler = RouterStoreHandler(tmp_path, min_free_bytes=0)
     handler.update_config(IntakeConfig(sender_ids={"PACS1": 7}, suspended=False))
-    port = _free_port()
+    port = free_port()
     scp = build_router_scp(tmp_path, handler, ae_title=ROUTER_AE, host="127.0.0.1", port=port)
     thread = threading.Thread(target=scp.start, daemon=True)
     thread.start()
-    _wait_until_listening(port)
+    wait_until_scp_accepts(port, "PACS1", ROUTER_AE)
     yield Router(scp, handler, port, tmp_path)
+    wait_until_scp_idle(scp)
     scp.stop()
     thread.join(timeout=5)
 

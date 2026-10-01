@@ -1,11 +1,10 @@
 import io
-import socket
 import threading
-import time
 
 import pytest
 from django.db import ProgrammingError
 
+from adit.core.utils.testing_helpers import free_port, wait_until_scp_accepts, wait_until_scp_idle
 from adit.router.factories import RouterSenderFactory
 from adit.router.management.commands import router as router_command
 from adit.router.utils import spool
@@ -90,24 +89,6 @@ def test_startup_gives_up_when_the_command_stops(command, handler_and_scp, monke
     assert command._load_config_until_ready(scp, handler) is False
 
 
-def _free_port() -> int:
-    with socket.socket() as s:
-        s.bind(("127.0.0.1", 0))
-        return s.getsockname()[1]
-
-
-def _wait_until_listening(port: int) -> None:
-    deadline = time.monotonic() + 5
-    while True:
-        try:
-            with socket.create_connection(("127.0.0.1", port), timeout=0.2):
-                return
-        except OSError:
-            if time.monotonic() > deadline:
-                raise
-            time.sleep(0.05)
-
-
 def test_periodic_refresh_keeps_going_after_a_database_error(
     command, handler_and_scp, monkeypatch, settings
 ):
@@ -138,7 +119,7 @@ def test_periodic_refresh_keeps_going_after_a_database_error(
 def test_router_serves_the_loaded_senders_and_stops_on_shutdown(
     command, tmp_path, monkeypatch, settings
 ):
-    port = _free_port()
+    port = free_port()
     settings.ROUTER_AE_TITLE = "ROUTERTEST"
     settings.ROUTER_SPOOL_PATH = str(tmp_path)
     settings.ROUTER_SCP_PORT = port
@@ -152,12 +133,13 @@ def test_router_serves_the_loaded_senders_and_stops_on_shutdown(
 
     thread = threading.Thread(target=command.run_server, daemon=True)
     thread.start()
-    _wait_until_listening(port)
+    wait_until_scp_accepts(port, "PACS1", "ROUTERTEST")
 
     assert list((tmp_path / spool.TMP).iterdir()) == []
     assert command._store_scp is not None
     assert command._store_scp._allowed_calling_aets == frozenset({"PACS1"})
 
+    wait_until_scp_idle(command._store_scp)
     command.on_shutdown()
     thread.join(timeout=10)
 

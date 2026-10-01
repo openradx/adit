@@ -1,6 +1,8 @@
 import functools
 import io
 import os
+import socket
+import time
 from collections.abc import Iterable
 from typing import Any
 from unittest.mock import MagicMock, create_autospec
@@ -13,6 +15,8 @@ from django.conf import settings
 from django.core.management import call_command
 from playwright.sync_api import FilePayload
 from pydicom import Dataset
+from pydicom.uid import CTImageStorage
+from pynetdicom import AE
 from pynetdicom.association import Association
 from pynetdicom.status import Status
 
@@ -21,6 +25,7 @@ from adit.core.models import DicomServer
 from adit.core.utils.dicom_dataset import ResultDataset
 from adit.core.utils.dicom_operator import DicomOperator
 from adit.core.utils.dicom_utils import read_dataset
+from adit.core.utils.store_scp import StoreScp
 
 Response = tuple[Dataset, Dataset | None]
 
@@ -207,3 +212,36 @@ def load_sample_dicoms_metadata(patient_id: str | None = None) -> pd.DataFrame:
             }
         )
     return pd.DataFrame(metadata)
+
+
+def free_port() -> int:
+    with socket.socket() as s:
+        s.bind(("127.0.0.1", 0))
+        return s.getsockname()[1]
+
+
+def wait_until_scp_accepts(port: int, calling_ae: str, called_ae: str) -> None:
+    """Wait until the storage SCP on *port* accepts an association from *calling_ae*."""
+    time.sleep(0.1)  # Give the SCP time to fully bind to its port
+    ae = AE(ae_title=calling_ae)
+    ae.add_requested_context(CTImageStorage)
+    deadline = time.monotonic() + 10
+    while True:
+        assoc = ae.associate("127.0.0.1", port, ae_title=called_ae)
+        if assoc.is_established:
+            assoc.release()
+            return
+        assert time.monotonic() < deadline, f"No SCP on port {port} accepted {calling_ae}."
+        time.sleep(0.05)
+
+
+def wait_until_scp_idle(scp: StoreScp) -> None:
+    """Wait until *scp* has no association left, so that stopping it aborts none.
+
+    pynetdicom raises InvalidEventError in its reactor thread when it aborts an association
+    that hasn't sent its request yet or is waiting for the peer to close the connection.
+    """
+    deadline = time.monotonic() + 10
+    while scp._ae is not None and scp._ae.active_associations:
+        assert time.monotonic() < deadline, "The SCP still has an open association."
+        time.sleep(0.01)
