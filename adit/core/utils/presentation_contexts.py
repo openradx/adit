@@ -1,4 +1,7 @@
+from pynetdicom._globals import DEFAULT_TRANSFER_SYNTAXES
 from pynetdicom.presentation import (
+    AllStoragePresentationContexts,
+    PresentationContext,
     build_context,
 )
 
@@ -170,3 +173,25 @@ data.
 """
 
 assert len(StoragePresentationContexts) <= 120
+
+
+def storage_scp_contexts() -> list[PresentationContext]:
+    """Presentation contexts for a Storage SCP that keeps datasets as received.
+
+    Covers every storage SOP class pynetdicom knows plus the ones listed above, with
+    pynetdicom's default transfer syntaxes. Image SOP classes are also accepted in the
+    compressed transfer syntaxes, as the SCP stores pixel data without decoding it.
+    """
+    default_syntaxes = [str(ts) for ts in DEFAULT_TRANSFER_SYNTAXES]
+    image_storage = set(_image_storage)
+    uids = {str(cx.abstract_syntax) for cx in AllStoragePresentationContexts}
+    uids |= image_storage | set(_non_image_storage)
+    return [
+        build_context(
+            uid,
+            default_syntaxes + _compressed_transfer_syntaxes
+            if uid in image_storage
+            else default_syntaxes,
+        )
+        for uid in sorted(uids)
+    ]

@@ -3,32 +3,46 @@ import errno
 import logging
 import os
 import threading
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 
 from pynetdicom import debug_logger, evt
 from pynetdicom.ae import ApplicationEntity as AE
 from pynetdicom.events import Event
-from pynetdicom.presentation import AllStoragePresentationContexts
+from pynetdicom.presentation import AllStoragePresentationContexts, PresentationContext
 
 from .dicom_utils import write_dataset
 
 logger = logging.getLogger(__name__)
 
 FileReceivedHandler = Callable[[str], None]
+StoreHandler = Callable[[Event], int]
 
 
 class StoreScp:
     _ae: AE | None = None
     _file_received_handler: FileReceivedHandler | None = None
+    _store_handler: StoreHandler | None = None
 
-    def __init__(self, folder: os.PathLike, ae_title: str, host: str, port: int, debug=False):
+    def __init__(
+        self,
+        folder: os.PathLike,
+        ae_title: str,
+        host: str,
+        port: int,
+        debug=False,
+        supported_contexts: list[PresentationContext] | None = None,
+        require_called_aet: bool = False,
+    ):
         self._folder = folder
         self._ae_title = ae_title
         self._host = host
         self._port = port
         self._debug = debug
+        self._supported_contexts = supported_contexts or AllStoragePresentationContexts
+        self._require_called_aet = require_called_aet
+        self._allowed_calling_aets: frozenset[str] | None = None
         self._stopped = threading.Event()
 
     def start(self):
@@ -46,7 +60,10 @@ class StoreScp:
         # https://pydicom.github.io/pynetdicom/stable/examples/storage.html#storage-scp
         self._ae.maximum_pdu_size = 0
 
-        self._ae.supported_contexts = AllStoragePresentationContexts
+        self._ae.supported_contexts = self._supported_contexts
+        self._ae.require_called_aet = self._require_called_aet
+        self._apply_allowed_calling_aets()
+
         handlers = [
             (evt.EVT_CONN_OPEN, self._on_connect),
             (evt.EVT_CONN_CLOSE, self._on_close),
@@ -76,6 +93,27 @@ class StoreScp:
     def set_file_received_handler(self, handler: FileReceivedHandler):
         self._file_received_handler = handler
 
+    def set_store_handler(self, handler: StoreHandler | None) -> None:
+        """Let *handler* store each received dataset and return the C-STORE status."""
+        self._store_handler = handler
+
+    def set_allowed_calling_aets(self, ae_titles: Iterable[str] | None) -> None:
+        """Only accept associations from these calling AE titles; None accepts any.
+
+        An empty collection refuses every association.
+        """
+        self._allowed_calling_aets = (
+            None if ae_titles is None else frozenset(title.strip() for title in ae_titles)
+        )
+        self._apply_allowed_calling_aets()
+
+    def _apply_allowed_calling_aets(self) -> None:
+        if self._ae is None:
+            return
+        # pynetdicom reads an empty list as "accept any AE title", so an empty
+        # allow-list is enforced by _on_established instead.
+        self._ae.require_calling_aet = sorted(self._allowed_calling_aets or [])
+
     def _on_connect(self, event: Event):
         address = event.assoc.remote["address"]
         port = event.assoc.remote["port"]
@@ -90,6 +128,18 @@ class StoreScp:
         calling_ae = event.assoc.remote["ae_title"]
         address = event.assoc.remote["address"]
         port = event.assoc.remote["port"]
+
+        allowed = self._allowed_calling_aets
+        if allowed is not None and calling_ae.strip() not in allowed:
+            logger.warning(
+                "Association from %s [%s:%d] refused: calling AE title not allowed.",
+                calling_ae,
+                address,
+                port,
+            )
+            event.assoc.abort()
+            return
+
         logger.info("Association to %s [%s:%d] established.", calling_ae, address, port)
 
     def _on_released(self, event: Event):
@@ -107,9 +157,12 @@ class StoreScp:
     def _handle_store(self, event: Event):
         """Handle a C-STORE request event.
 
-        The request is initiated with a C-MOVE request by ADIT itself to
-        fetch images from a DICOM server that doesn't support C-GET requests.
+        Without a store handler the request is a sub-operation of a C-MOVE that ADIT
+        itself started, to fetch images from a DICOM server that doesn't support C-GET.
         """
+        if self._store_handler:
+            return self._store_handler(event)
+
         # We retain the calling AE title in the filename so that we can use it in the
         # transmitter for the topic.
         calling_ae = event.assoc.remote["ae_title"]
