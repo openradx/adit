@@ -1,7 +1,7 @@
 import errno
 import logging
 from pathlib import Path
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, PropertyMock
 
 import pytest
 from pydicom import Dataset
@@ -110,6 +110,15 @@ def test_image_that_cannot_be_encoded_is_not_understood(tmp_path, monkeypatch):
     monkeypatch.setattr(spool, "write_dataset", broken_encoding)
 
     assert _handler(tmp_path)(_event()) == 0xC000
+    assert list((tmp_path / spool.TMP).iterdir()) == []
+    assert _spooled(tmp_path) == []
+
+
+def test_image_that_cannot_be_decoded_is_not_understood(tmp_path):
+    event = _event()
+    type(event).dataset = PropertyMock(side_effect=ValueError("cannot decode"))
+
+    assert _handler(tmp_path)(event) == 0xC000
     assert list((tmp_path / spool.TMP).iterdir()) == []
     assert _spooled(tmp_path) == []
 

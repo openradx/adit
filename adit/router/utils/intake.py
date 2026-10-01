@@ -87,9 +87,9 @@ class RouterStoreHandler:
             logger.error("Refusing image from %s: the router spool is low on space.", calling_ae)
             return STATUS_OUT_OF_RESOURCES
 
-        ds = event.dataset
-        ds.file_meta = event.file_meta
         try:
+            ds = event.dataset
+            ds.file_meta = event.file_meta
             spool.store_dataset(self._spool_root, sender_id, ds)
         except spool.InvalidUidError as err:
             logger.warning("Refusing image from %s: %s", calling_ae, err)
@@ -98,9 +98,9 @@ class RouterStoreHandler:
             logger.exception("Could not spool image from %s.", calling_ae)
             return STATUS_OUT_OF_RESOURCES
         except Exception:
-            # Content the router cannot encode is a permanent failure; "out of resources"
-            # would make the sender retry it forever.
-            logger.exception("Could not encode image from %s.", calling_ae)
+            # Content the router cannot decode or encode is a permanent failure; "out of
+            # resources" would make the sender retry it forever.
+            logger.exception("Could not decode or encode image from %s.", calling_ae)
             return STATUS_CANNOT_UNDERSTAND
 
         return STATUS_SUCCESS
