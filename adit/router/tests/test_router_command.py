@@ -1,4 +1,7 @@
 import io
+import socket
+import threading
+import time
 
 import pytest
 from django.db import ProgrammingError
@@ -85,3 +88,77 @@ def test_startup_gives_up_when_the_command_stops(command, handler_and_scp, monke
     monkeypatch.setattr(router_command, "STARTUP_RETRY_SECONDS", 0)
 
     assert command._load_config_until_ready(scp, handler) is False
+
+
+def _free_port() -> int:
+    with socket.socket() as s:
+        s.bind(("127.0.0.1", 0))
+        return s.getsockname()[1]
+
+
+def _wait_until_listening(port: int) -> None:
+    deadline = time.monotonic() + 5
+    while True:
+        try:
+            with socket.create_connection(("127.0.0.1", port), timeout=0.2):
+                return
+        except OSError:
+            if time.monotonic() > deadline:
+                raise
+            time.sleep(0.05)
+
+
+def test_periodic_refresh_keeps_going_after_a_database_error(
+    command, handler_and_scp, monkeypatch, settings
+):
+    handler, scp = handler_and_scp
+    settings.ROUTER_SENDER_REFRESH_SECONDS = 0
+    results: list[Exception | IntakeConfig] = [
+        ProgrammingError("database restarting"),
+        IntakeConfig(sender_ids={"PACS1": 1}, suspended=False),
+    ]
+
+    def load() -> IntakeConfig:
+        result = results.pop(0)
+        if not results:
+            command._stopped.set()
+        if isinstance(result, Exception):
+            raise result
+        return result
+
+    monkeypatch.setattr(router_command, "load_intake_config", load)
+
+    command._refresh_periodically(scp, handler)
+
+    assert results == []
+    assert handler.config.sender_ids == {"PACS1": 1}
+    assert scp._allowed_calling_aets == frozenset({"PACS1"})
+
+
+def test_router_serves_the_loaded_senders_and_stops_on_shutdown(
+    command, tmp_path, monkeypatch, settings
+):
+    port = _free_port()
+    settings.ROUTER_AE_TITLE = "ROUTERTEST"
+    settings.ROUTER_SPOOL_PATH = str(tmp_path)
+    settings.ROUTER_SCP_PORT = port
+    (tmp_path / spool.TMP).mkdir()
+    (tmp_path / spool.TMP / "leftover.dcm").write_bytes(b"partial")
+    monkeypatch.setattr(
+        router_command,
+        "load_intake_config",
+        lambda: IntakeConfig(sender_ids={"PACS1": 1}, suspended=False),
+    )
+
+    thread = threading.Thread(target=command.run_server, daemon=True)
+    thread.start()
+    _wait_until_listening(port)
+
+    assert list((tmp_path / spool.TMP).iterdir()) == []
+    assert command._store_scp is not None
+    assert command._store_scp._allowed_calling_aets == frozenset({"PACS1"})
+
+    command.on_shutdown()
+    thread.join(timeout=10)
+
+    assert not thread.is_alive()
