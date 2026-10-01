@@ -60,7 +60,7 @@ own plans after this one.
 - **Defaults:** `ROUTER_SENDER_REFRESH_SECONDS=30`, `ROUTER_SPOOL_MIN_FREE_GB=20`.
 - **Receiver:** its behaviour must not change. Every new `StoreScp` option defaults to today's
   behaviour.
-- **Docs in this PR:** keep `CLAUDE.md`, `example.env` and `docs/user-docs/admin-guide.md` in
+- **Docs in this PR:** keep `AGENTS.md` (which `CLAUDE.md` links to), `example.env` and `docs/user-docs/admin-guide.md` in
   sync.
 - **Branch:** `feat/dicom-router-inbox`, stacked on `feat/dicom-router-filters` (stage 1). If
   stage 1 gained commits after this branch was created, rebase onto it before Task 1:
@@ -115,7 +115,7 @@ own plans after this one.
 | `adit/settings/base.py` (modify) | app registration and the `ROUTER_*` settings |
 | `docker-compose.*.yml`, `orthanc/*.json`, `example.env` (modify) | the `router` service and its configuration |
 | `adit/core/management/commands/populate_example_data.py` (modify) | registers Orthanc 1 as a sender |
-| `CLAUDE.md`, `docs/user-docs/admin-guide.md` (modify) | docs |
+| `AGENTS.md` (which `CLAUDE.md` links to), `docs/user-docs/admin-guide.md` (modify) | docs |
 
 Tests: `adit/core/tests/utils/test_store_scp.py` (extend),
 `adit/core/tests/utils/test_presentation_contexts.py`, and `adit/router/tests/` with
@@ -1873,7 +1873,7 @@ git commit -m "Add the router command that runs the router SCP"
 - Modify: `orthanc/orthanc1.json:8-11` and `orthanc/orthanc2.json:8-11` (`DicomModalities`)
 - Modify: `example.env` (the production ports block, plus the AE title block after `RECEIVER_AE_TITLE`)
 - Modify: `adit/core/management/commands/populate_example_data.py` (`create_server_nodes`)
-- Modify: `CLAUDE.md` (lines 46, 77, 148, 160 and 185)
+- Modify: `AGENTS.md`, which `CLAUDE.md` is a symlink to (lines 46, 77, 148, 160 and 185)
 - Modify: `docs/user-docs/admin-guide.md:31` (the "Optional tuning" paragraph)
 
 **Interfaces:**
@@ -2018,7 +2018,7 @@ In `adit/core/management/commands/populate_example_data.py`, add the import
     servers.append(orthanc1)
 ```
 
-- [ ] **Step 6: Update `CLAUDE.md`**
+- [ ] **Step 6: Update `AGENTS.md` (`CLAUDE.md` is a symlink to it)**
 
 Under `# Management commands (run inside the web container)`, after the
 `./manage.py receiver` line, add:
@@ -2117,6 +2117,6 @@ Expected: all tests pass, and lint reports no errors.
 ```bash
 git add docker-compose.base.yml docker-compose.dev.yml docker-compose.prod.yml \
   orthanc/orthanc1.json orthanc/orthanc2.json example.env \
-  adit/core/management/commands/populate_example_data.py CLAUDE.md docs/user-docs/admin-guide.md
+  adit/core/management/commands/populate_example_data.py AGENTS.md docs/user-docs/admin-guide.md
 git commit -m "Run the DICOM router as its own container"
 ```
