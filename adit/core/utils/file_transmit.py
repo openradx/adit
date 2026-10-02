@@ -66,11 +66,11 @@ class FileTransmitServer:
     _server: asyncio.Server | None = None
     _subscribe_handler: SubscribeHandler | None = None
     _unsubscribe_handler: UnsubscribeHandler | None = None
-    _sessions: list[FileTransmitSession] = []
 
     def __init__(self, host: str, port: int):
         self._host = host
         self._port = port
+        self._sessions: list[FileTransmitSession] = []
 
     def set_subscribe_handler(self, subscribe_handler: SubscribeHandler | None):
         """Called when a client subscribes to a topic."""
@@ -91,7 +91,9 @@ class FileTransmitServer:
         Returns the number of clients the file was sent to.
         """
         sent_count = 0
-        for session in self._sessions:
+        # Iterate over a copy as sessions of disconnecting clients are removed concurrently,
+        # which would otherwise skip the next session.
+        for session in list(self._sessions):
             if session.topic == topic:
                 await session.send_file(file_path, metadata)
                 sent_count += 1
