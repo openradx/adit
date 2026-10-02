@@ -110,15 +110,8 @@ class StoreScp:
         The request is initiated with a C-MOVE request by ADIT itself to
         fetch images from a DICOM server that doesn't support C-GET requests.
         """
-        # We retain the calling AE title in the filename so that we can use it in the
-        # transmitter for the topic.
-        calling_ae = event.assoc.remote["ae_title"]
-        file_prefix = calling_ae + "_"
-
         try:
-            with NamedTemporaryFile(
-                prefix=file_prefix, suffix=".dcm", dir=self._folder, delete=False
-            ) as file:
+            with NamedTemporaryFile(suffix=".dcm", dir=self._folder, delete=False) as file:
                 # There are two ways to save the file. We use the first one and prefer
                 # reliability over speed. (See file history for second method.)
                 # https://pydicom.github.io/pynetdicom/stable/examples/storage.html#storage-scp

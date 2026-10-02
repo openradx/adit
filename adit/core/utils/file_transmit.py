@@ -85,11 +85,17 @@ class FileTransmitServer:
         topic: str,
         file_path: PathLike | str,
         metadata: dict[str, str] | None = None,
-    ):
-        """Publishes a file to all clients that subscribed to the given topic."""
+    ) -> int:
+        """Publishes a file to all clients that subscribed to the given topic.
+
+        Returns the number of clients the file was sent to.
+        """
+        sent_count = 0
         for session in self._sessions:
             if session.topic == topic:
                 await session.send_file(file_path, metadata)
+                sent_count += 1
+        return sent_count
 
     async def start(self):
         self._server = await asyncio.start_server(self._handle_connection, self._host, self._port)

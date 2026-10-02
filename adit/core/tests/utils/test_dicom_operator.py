@@ -214,7 +214,7 @@ def test_download_series_with_c_move(settings: Settings, mocker: MockerFixture):
     )
 
     # Assert
-    assert subscribed_topic == (f"{dicom_operator.server.ae_title}\\{ds.StudyInstanceUID}")
+    assert subscribed_topic == ds.StudyInstanceUID
     association_mock.send_c_move.assert_called_once()
     assert received_ds[0] == ds
 
@@ -266,9 +266,8 @@ def test_c_move_images_sent_right_away_reach_the_worker(settings: Settings, mock
 
     def send_c_move(*args, **kwargs):
         # The PACS starts sending images as soon as it got the C-MOVE request
-        topic = f"{dicom_operator.server.ae_title}\\{ds.StudyInstanceUID}"
         publish = transmit_server.publish_file(
-            topic, file_path, {"SOPInstanceUID": ds.SOPInstanceUID}
+            ds.StudyInstanceUID, file_path, {"SOPInstanceUID": ds.SOPInstanceUID}
         )
         asyncio.run_coroutine_threadsafe(publish, loop).result(timeout=5)
         return DicomTestHelper.create_successful_c_move_response()
