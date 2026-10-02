@@ -211,7 +211,8 @@ class FileTransmitClient:
                     remaining_bytes = file_size
                     while remaining_bytes > 0:
                         chunk_size = min(remaining_bytes, BUFFER_SIZE)
-                        data = await reader.read(chunk_size)
+                        # Raises IncompleteReadError if the server goes away mid-file
+                        data = await reader.readexactly(chunk_size)
                         await f.write(data)
                         remaining_bytes -= len(data)
 

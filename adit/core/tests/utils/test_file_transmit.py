@@ -1,4 +1,5 @@
 import asyncio
+import struct
 from pathlib import Path
 
 import pytest
@@ -6,7 +7,12 @@ from aiofiles import os
 from django.conf import settings
 
 from adit.core.utils.dicom_utils import read_dataset
-from adit.core.utils.file_transmit import FileTransmitClient, FileTransmitServer, Metadata
+from adit.core.utils.file_transmit import (
+    SUBSCRIBED_ACK,
+    FileTransmitClient,
+    FileTransmitServer,
+    Metadata,
+)
 
 HOST = "127.0.0.1"
 PORT = 9999
@@ -120,3 +126,33 @@ async def test_subscribe_fails_without_acknowledgement():
         await server.wait_closed()
 
     assert not subscribed
+
+
+@pytest.mark.asyncio
+async def test_subscribe_raises_when_connection_drops_mid_file():
+    async def handle_connection(reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
+        await reader.readline()
+        writer.write(SUBSCRIBED_ACK)
+        # Announce 1000 bytes but only send 10 of them before closing
+        writer.write(struct.pack("!I", 1000))
+        writer.write(b"{}\n")
+        writer.write(b"x" * 10)
+        await writer.drain()
+        writer.close()
+        await writer.wait_closed()
+
+    server = await asyncio.start_server(handle_connection, HOST, PORT)
+    received: list[str] = []
+
+    try:
+        client = FileTransmitClient(HOST, PORT)
+        with pytest.raises(asyncio.IncompleteReadError):
+            await asyncio.wait_for(
+                client.subscribe("foobar", lambda filename, metadata: received.append(filename)),
+                timeout=5,
+            )
+    finally:
+        server.close()
+        await server.wait_closed()
+
+    assert received == []
