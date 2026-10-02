@@ -1,6 +1,8 @@
 import asyncio
 import struct
+from os import PathLike
 from pathlib import Path
+from unittest.mock import MagicMock
 
 import pytest
 from aiofiles import os
@@ -11,11 +13,13 @@ from adit.core.utils.file_transmit import (
     SUBSCRIBED_ACK,
     FileTransmitClient,
     FileTransmitServer,
+    FileTransmitSession,
     Metadata,
 )
 
 HOST = "127.0.0.1"
 PORT = 9999
+OTHER_PORT = 9998
 NUM_TRANSFER_FILES = 5
 
 
@@ -156,3 +160,67 @@ async def test_subscribe_raises_when_connection_drops_mid_file():
         await server.wait_closed()
 
     assert received == []
+
+
+@pytest.mark.asyncio
+async def test_publish_file_only_reaches_subscribers_of_the_same_server():
+    sample_file = next(Path(f"{settings.BASE_PATH}/samples/dicoms").rglob("*.dcm"))
+
+    server = FileTransmitServer(HOST, PORT)
+    other_server = FileTransmitServer(HOST, OTHER_PORT)
+    server_task = asyncio.create_task(server.start())
+    await asyncio.sleep(0.5)
+
+    subscribed = asyncio.Event()
+    received: list[str] = []
+
+    async def file_received_handler(filename: str, metadata: Metadata):
+        received.append(filename)
+        await os.remove(filename)
+        return True
+
+    client = FileTransmitClient(HOST, PORT)
+    client_task = asyncio.create_task(
+        client.subscribe("foobar", file_received_handler, subscribed_handler=subscribed.set)
+    )
+    await subscribed.wait()
+
+    try:
+        assert await other_server.publish_file("foobar", sample_file) == 0
+        assert await server.publish_file("barfoo", sample_file) == 0
+        assert await server.publish_file("foobar", sample_file) == 1
+        await asyncio.wait_for(client_task, timeout=5)
+    finally:
+        await server.stop()
+        await server_task
+
+    assert len(received) == 1
+
+
+class _RecordingSession(FileTransmitSession):
+    def __init__(self, name: str, topic: str, delivered: list[str]):
+        super().__init__(topic, MagicMock(), MagicMock())
+        self.name = name
+        self.delivered = delivered
+        self.on_send = lambda: None
+
+    async def send_file(self, file_path: PathLike | str, metadata: dict[str, str] | None = None):
+        self.on_send()
+        self.delivered.append(self.name)
+
+
+@pytest.mark.asyncio
+async def test_publish_file_reaches_all_subscribers_when_one_disconnects_meanwhile():
+    server = FileTransmitServer(HOST, PORT)
+    delivered: list[str] = []
+    first = _RecordingSession("first", "foobar", delivered)
+    second = _RecordingSession("second", "foobar", delivered)
+    # The connection handler removes a session when its client goes away, which can happen
+    # while a file is being sent to it.
+    first.on_send = lambda: server._sessions.remove(first)
+    server._sessions.extend([first, second])
+
+    sent_count = await server.publish_file("foobar", "unused.dcm")
+
+    assert delivered == ["first", "second"]
+    assert sent_count == 2
