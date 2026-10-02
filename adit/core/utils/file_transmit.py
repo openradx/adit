@@ -10,9 +10,12 @@ from aiofiles import os, tempfile
 
 BUFFER_SIZE = 64 * 1024  # 64kb
 
+SUBSCRIBED_ACK = b"subscribed\n"
+
 SubscribeHandler = Callable[[str], None | Awaitable[None]]
 UnsubscribeHandler = Callable[[str], None | Awaitable[None]]
 FileSentHandler = Callable[[], None]
+SubscribedHandler = Callable[[], None]
 Metadata = dict[str, str]
 FileReceivedHandler = Callable[[str, Metadata], Awaitable[bool | None] | bool | None]
 
@@ -115,6 +118,11 @@ class FileTransmitServer:
         self._sessions.append(session)
 
         try:
+            # Written before the first await, so it precedes any file published to this session.
+            # Clients wait for it before triggering anything that publishes files to them.
+            writer.write(SUBSCRIBED_ACK)
+            await writer.drain()
+
             if self._subscribe_handler:
                 if asyncio.iscoroutinefunction(self._subscribe_handler):
                     await self._subscribe_handler(topic)
@@ -155,6 +163,7 @@ class FileTransmitClient:
         self,
         topic: str,
         file_received_handler: FileReceivedHandler,
+        subscribed_handler: SubscribedHandler | None = None,
     ):
         """Subscribes to a topic and receives all files that are published to this topic.
 
@@ -162,6 +171,8 @@ class FileTransmitClient:
         path to the file received. The handler should process the file, maybe move it to a
         new location or delete it afterward. If the file_received_handler returns True,
         the client will unsubscribe from the topic.
+        The subscribed_handler is called once the server has registered the subscription,
+        so that files published from then on reach this client.
         The filename generator is called when the metadata is received and should return
         the filename to use for the file that is received. If no filename generator is
         set, the filename is randomly generated.
@@ -172,6 +183,13 @@ class FileTransmitClient:
         try:
             writer.write(f"{topic}\n".encode())
             await writer.drain()
+
+            ack = await reader.readline()
+            if ack != SUBSCRIBED_ACK:
+                raise ConnectionError(f"File transmit server did not acknowledge topic {topic}.")
+
+            if subscribed_handler:
+                subscribed_handler()
 
             # And wait for the server to send files regarding this topic
             while True:

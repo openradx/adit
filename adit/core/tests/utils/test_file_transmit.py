@@ -59,3 +59,64 @@ async def test_start_transmit_file():
     await asyncio.gather(client_task, server_task)
 
     assert counter == NUM_TRANSFER_FILES
+
+
+@pytest.mark.asyncio
+async def test_subscribed_handler_is_called_before_first_file():
+    sample_file = next(Path(f"{settings.BASE_PATH}/samples/dicoms").rglob("*.dcm"))
+
+    server = FileTransmitServer(HOST, PORT)
+
+    async def subscribe_handler(topic: str):
+        # Publishing right away is the earliest a file can reach the client
+        await server.publish_file(topic, sample_file)
+
+    async def unsubscribe_handler(topic: str):
+        await server.stop()
+
+    server.set_subscribe_handler(subscribe_handler)
+    server.set_unsubscribe_handler(unsubscribe_handler)
+    server_task = asyncio.create_task(server.start())
+    await asyncio.sleep(0.5)
+
+    events: list[str] = []
+
+    async def file_received_handler(filename: str, metadata: Metadata):
+        events.append("file")
+        await os.remove(filename)
+        return True
+
+    client = FileTransmitClient(HOST, PORT)
+    await client.subscribe(
+        "foobar", file_received_handler, subscribed_handler=lambda: events.append("subscribed")
+    )
+    await server_task
+
+    assert events == ["subscribed", "file"]
+
+
+@pytest.mark.asyncio
+async def test_subscribe_fails_without_acknowledgement():
+    async def handle_connection(reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
+        await reader.readline()
+        writer.close()
+        await writer.wait_closed()
+
+    server = await asyncio.start_server(handle_connection, HOST, PORT)
+    subscribed = False
+
+    def subscribed_handler():
+        nonlocal subscribed
+        subscribed = True
+
+    try:
+        client = FileTransmitClient(HOST, PORT)
+        with pytest.raises(ConnectionError):
+            await client.subscribe(
+                "foobar", lambda filename, metadata: True, subscribed_handler=subscribed_handler
+            )
+    finally:
+        server.close()
+        await server.wait_closed()
+
+    assert not subscribed
