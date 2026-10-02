@@ -736,10 +736,9 @@ class DicomOperator:
 
                 return False
 
-            topic = f"{self.server.ae_title}\\{study_uid}"
             subscribe_task = asyncio.create_task(
                 file_transmit.subscribe(
-                    topic, handle_received_file, subscribed_handler=subscribed_event.set
+                    study_uid, handle_received_file, subscribed_handler=subscribed_event.set
                 )
             )
 

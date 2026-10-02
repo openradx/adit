@@ -10,8 +10,6 @@ What is covered:
   * A valid C-STORE event writes the dataset, attaches the file meta, invokes
     the registered file-received handler, and returns the DICOM `Success`
     (0x0000) status.
-  * The calling AE title is retained as the temp-file prefix (the receiver
-    relies on this for the file-transmit topic).
   * A disk-write failure aborts the association and returns `Out of Resources`
     (0xA702).
   * An out-of-disc-space (ENOSPC) failure also aborts and returns 0xA702.
@@ -109,25 +107,6 @@ def test_handle_store_success_returns_success_status(store_scp, tmp_path, monkey
     assert written[0].endswith(".dcm")
 
 
-def test_handle_store_retains_calling_ae_as_filename_prefix(store_scp, monkeypatch):
-    """The receiver depends on the calling AE title being encoded as the temp
-    file prefix (`<AE>_...dcm`) so it can derive the file-transmit topic."""
-    captured: list[str] = []
-
-    def fake_write_dataset(ds, fn):
-        captured.append(os.path.basename(fn))
-
-    monkeypatch.setattr(store_scp_module, "write_dataset", fake_write_dataset)
-
-    event = _make_event(calling_ae="REMOTE_PACS")
-    store_scp._handle_store(event)
-
-    assert len(captured) == 1
-    assert captured[0].startswith("REMOTE_PACS_")
-    # And the calling AE can be recovered the way receiver.py does it.
-    assert captured[0].split("_")[0] == "REMOTE"  # split on first underscore
-
-
 def test_handle_store_attaches_file_meta_to_dataset(store_scp, monkeypatch):
     """The handler must attach `event.file_meta` onto the dataset before it is
     written (the dataset arrives without file meta over the wire)."""
@@ -164,7 +143,6 @@ def test_handle_store_invokes_file_received_handler_with_written_path(store_scp,
     assert status == 0x0000
     assert len(received) == 1
     assert received[0].endswith(".dcm")
-    assert "PACS1_" in os.path.basename(received[0])
 
 
 def test_handle_store_without_handler_still_succeeds(store_scp, monkeypatch):
