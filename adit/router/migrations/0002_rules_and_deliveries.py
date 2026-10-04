@@ -48,7 +48,7 @@ class Migration(migrations.Migration):
                 ('filters_json', models.JSONField(help_text='The filters that select the series to send, in the mass transfer format.')),
                 ('pseudonymize', models.BooleanField(default=True)),
                 ('pseudonym_salt', models.CharField(blank=True, default=secrets.token_hex, max_length=64)),
-                ('trial_protocol_id', models.CharField(blank=True, default='', help_text='XNAT files the images under this project ID.', max_length=64, validators=[django.core.validators.RegexValidator(inverse_match=True, message='Contains invalid backslash character', regex='\\\\')])),
+                ('trial_protocol_id', models.CharField(blank=True, default='', help_text='With pseudonymization, XNAT files the images under this project ID.', max_length=64, validators=[django.core.validators.RegexValidator(inverse_match=True, message='Contains invalid backslash character', regex='\\\\')])),
                 ('trial_protocol_name', models.CharField(blank=True, default='', max_length=64, validators=[django.core.validators.RegexValidator(inverse_match=True, message='Contains invalid backslash character', regex='\\\\')])),
                 ('created', models.DateTimeField(auto_now_add=True)),
                 ('updated', models.DateTimeField(auto_now=True)),

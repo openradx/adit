@@ -76,7 +76,7 @@ class RoutingRule(models.Model):
         default="",
         max_length=64,
         validators=[no_backslash_char_validator],
-        help_text="XNAT files the images under this project ID.",
+        help_text="With pseudonymization, XNAT files the images under this project ID.",
     )
     trial_protocol_name = models.CharField(
         blank=True, default="", max_length=64, validators=[no_backslash_char_validator]
