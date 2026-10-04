@@ -118,9 +118,9 @@ def test_low_space_mails_the_admins_at_most_once_per_period(spool_root, mocker, 
     assert closer.mail_if_low_on_space(spool_root, now + timedelta(hours=7))
 
     assert mail.call_count == 2
-    assert (
-        RouterSettings.get().low_space_mailed_at == now + timedelta(hours=7)  # type: ignore
-    )
+    router_settings = RouterSettings.get()
+    assert isinstance(router_settings, RouterSettings)
+    assert router_settings.low_space_mailed_at == now + timedelta(hours=7)
 
 
 @pytest.mark.django_db
