@@ -1,3 +1,4 @@
+from datetime import UTC, datetime
 from pathlib import Path
 
 from pytest_mock import MockerFixture
@@ -33,3 +34,13 @@ def test_failure_report_also_clears_old_sent_lists(mocker: MockerFixture):
 
     report.assert_called_once()
     clear.assert_called_once()
+
+
+def test_failure_report_is_anchored_to_the_periodic_tick(mocker: MockerFixture):
+    report = mocker.patch.object(tasks, "report_failed_deliveries")
+    mocker.patch.object(tasks, "clear_old_sent_lists")
+    tick = 1_700_000_000
+
+    tasks.report_router_failures(timestamp=tick)
+
+    report.assert_called_once_with(datetime.fromtimestamp(tick, tz=UTC))

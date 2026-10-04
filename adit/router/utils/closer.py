@@ -27,14 +27,21 @@ _FINISHED = (
 
 
 def run_spool_cycle(spool_root: Path, now: datetime) -> None:
-    """Close the due studies, decide the new batches and clean up the spool."""
+    """Close the due studies, decide the new batches and clean up the spool.
+
+    Each step is independent: one failing step is logged and the rest still run, the
+    same way a single broken batch doesn't hold up the others below.
+    """
     spool.ensure_spool_dirs(spool_root)
-    spool.close_due_studies(
-        spool_root,
-        now.timestamp(),
-        settings.ROUTER_QUIET_PERIOD_SECONDS,
-        settings.ROUTER_MAX_OPEN_SECONDS,
-    )
+    try:
+        spool.close_due_studies(
+            spool_root,
+            now.timestamp(),
+            settings.ROUTER_QUIET_PERIOD_SECONDS,
+            settings.ROUTER_MAX_OPEN_SECONDS,
+        )
+    except Exception:
+        logger.exception("Could not close the due router studies.")
 
     today = timezone.localdate(now)
     for batch in spool.list_batches(spool_root):
@@ -44,10 +51,29 @@ def run_spool_cycle(spool_root: Path, now: datetime) -> None:
             # One broken batch must not hold up the others; the next run tries it again.
             logger.exception("Could not decide router batch %s.", batch.path)
 
-    delete_finished_batches(spool_root, now)
-    spool.clean_quarantine(spool_root, today, settings.ROUTER_QUARANTINE_RETENTION_DAYS)
-    spool.clean_old_tmp(spool_root, now.timestamp(), TMP_MAX_AGE_SECONDS)
-    mail_if_low_on_space(spool_root, now)
+    try:
+        delete_finished_batches(spool_root, now)
+    except Exception:
+        logger.exception("Could not delete the finished router batches.")
+
+    try:
+        spool.clean_quarantine(spool_root, today, settings.ROUTER_QUARANTINE_RETENTION_DAYS)
+    except Exception:
+        logger.exception("Could not clean the router quarantine.")
+
+    try:
+        spool.clean_old_tmp(spool_root, now.timestamp(), TMP_MAX_AGE_SECONDS)
+    except Exception:
+        logger.exception("Could not clean the router tmp folder.")
+
+    # Deployments that don't run the router still mount the spool (default_worker
+    # mounts it unconditionally), so skip the mail entirely rather than warn about a
+    # router that refuses nothing.
+    if settings.ROUTER_AE_TITLE:
+        try:
+            mail_if_low_on_space(spool_root, now)
+        except Exception:
+            logger.exception("Could not check or mail about router spool space.")
 
 
 def delete_finished_batches(spool_root: Path, now: datetime) -> int:
@@ -60,15 +86,19 @@ def delete_finished_batches(spool_root: Path, now: datetime) -> int:
     deleted = 0
     batches = RouterBatch.objects.filter(files_deleted_at__isnull=True).prefetch_related("jobs")
     for batch in batches:
-        statuses = [job.status for job in batch.jobs.all()]
-        if not statuses or any(status not in _FINISHED for status in statuses):
-            continue
-        if RouterJob.Status.FAILURE in statuses and batch.closed_at > failed_cutoff:
-            continue
-        spool.delete_batch(spool.batch_dir(spool_root, batch.sender_id, batch.batch_id))
-        batch.files_deleted_at = now
-        batch.save(update_fields=["files_deleted_at"])
-        deleted += 1
+        try:
+            statuses = [job.status for job in batch.jobs.all()]
+            if not statuses or any(status not in _FINISHED for status in statuses):
+                continue
+            if RouterJob.Status.FAILURE in statuses and batch.closed_at > failed_cutoff:
+                continue
+            spool.delete_batch(spool.batch_dir(spool_root, batch.sender_id, batch.batch_id))
+            batch.files_deleted_at = now
+            batch.save(update_fields=["files_deleted_at"])
+            deleted += 1
+        except Exception:
+            # One broken batch must not hold up the others; the next run tries it again.
+            logger.exception("Could not delete finished router batch %s.", batch.batch_id)
     return deleted
 
 

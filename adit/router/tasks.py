@@ -1,4 +1,5 @@
 import logging
+from datetime import UTC, datetime
 from pathlib import Path
 
 from django.conf import settings
@@ -32,6 +33,8 @@ def close_router_batches(timestamp: int) -> None:
 @app.periodic(cron="0 7 * * *")  # every day at 7am
 @app.task(queue="default", queueing_lock="report_router_failures")
 def report_router_failures(timestamp: int) -> None:
-    now = timezone.now()
-    report_failed_deliveries(now)
-    clear_old_sent_lists(now)
+    # Anchored to the scheduled tick, not the run time, so the 24-hour window doesn't
+    # shift with jitter in when the worker actually gets to it.
+    tick = datetime.fromtimestamp(timestamp, tz=UTC)
+    report_failed_deliveries(tick)
+    clear_old_sent_lists(timezone.now())

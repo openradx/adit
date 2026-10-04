@@ -107,6 +107,40 @@ def test_failed_batches_are_kept_until_their_retention_ends(spool_root, settings
 
 
 @pytest.mark.django_db
+def test_no_low_space_mail_when_the_router_is_off(spool_root, mocker, settings):
+    settings.ROUTER_AE_TITLE = ""
+    mocker.patch.object(closer.spool, "free_bytes", return_value=0)
+    mail = mocker.patch.object(closer, "send_mail_to_admins")
+
+    closer.run_spool_cycle(spool_root, timezone.now())
+
+    mail.assert_not_called()
+
+
+@pytest.mark.django_db
+def test_low_space_mail_is_sent_when_the_router_is_on(spool_root, mocker, settings):
+    settings.ROUTER_AE_TITLE = "ROUTERAE"
+    mocker.patch.object(closer.spool, "free_bytes", return_value=0)
+    mail = mocker.patch.object(closer, "send_mail_to_admins")
+
+    closer.run_spool_cycle(spool_root, timezone.now())
+
+    mail.assert_called_once()
+
+
+@pytest.mark.django_db
+def test_a_failing_step_does_not_stop_the_low_space_mail(spool_root, mocker, settings):
+    settings.ROUTER_AE_TITLE = "ROUTERAE"
+    mocker.patch.object(closer, "delete_finished_batches", side_effect=Exception("boom"))
+    mocker.patch.object(closer.spool, "free_bytes", return_value=0)
+    mail = mocker.patch.object(closer, "send_mail_to_admins")
+
+    closer.run_spool_cycle(spool_root, timezone.now())
+
+    mail.assert_called_once()
+
+
+@pytest.mark.django_db
 def test_low_space_mails_the_admins_at_most_once_per_period(spool_root, mocker, settings):
     settings.ROUTER_LOW_SPACE_MAIL_HOURS = 6
     mocker.patch.object(closer.spool, "free_bytes", return_value=0)

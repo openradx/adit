@@ -92,7 +92,8 @@ def clean_tmp(spool_root: Path) -> int:
     """Delete files left in tmp/ by a crash while writing; returns how many."""
     removed = 0
     for path in (spool_root / TMP).iterdir():
-        path.unlink()
+        # clean_old_tmp (the default worker) may delete the same file concurrently.
+        path.unlink(missing_ok=True)
         removed += 1
     return removed
 
@@ -187,9 +188,14 @@ def close_due_studies(
     closed: list[BatchDir] = []
     for sender_id, sender_dir in _sender_dirs(spool_root / INCOMING):
         for study_dir in _subdirs(sender_dir):
-            batch = _close_if_due(
-                spool_root, sender_id, study_dir, now, quiet_seconds, max_open_seconds
-            )
+            try:
+                batch = _close_if_due(
+                    spool_root, sender_id, study_dir, now, quiet_seconds, max_open_seconds
+                )
+            except Exception:
+                # One broken folder must not hold up the others; the next run retries it.
+                logger.exception("Could not close router study folder %s.", study_dir)
+                continue
             if batch is not None:
                 closed.append(batch)
     return closed

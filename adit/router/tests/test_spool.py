@@ -313,6 +313,28 @@ def test_quiet_empty_study_folder_is_removed(spool_root):
     assert not study_dir.exists()
 
 
+def test_one_broken_folder_does_not_stop_the_others_from_closing(spool_root, monkeypatch):
+    spool.store_dataset(spool_root, 7, _dataset(study_uid="1.2.3"))
+    spool.store_dataset(spool_root, 7, _dataset(study_uid="1.2.4"))
+    sender_dir = spool_root / spool.INCOMING / "7"
+    now = max(p.stat().st_mtime for p in sender_dir.rglob("*.dcm")) + 301
+    real_rename = os.rename
+
+    def rename_failing_for_one_study(src, dst):
+        if Path(src).name == "1.2.3":
+            raise OSError("Simulated rename failure.")
+        return real_rename(src, dst)
+
+    monkeypatch.setattr(spool.os, "rename", rename_failing_for_one_study)
+
+    closed = spool.close_due_studies(spool_root, now, quiet_seconds=300, max_open_seconds=3600)
+
+    assert len(closed) == 1
+    assert closed[0].path.name != "1.2.3"
+    # The broken folder is untouched and tried again on the next cycle.
+    assert (sender_dir / "1.2.3").is_dir()
+
+
 def test_image_arriving_after_closing_starts_the_next_batch(spool_root):
     study_dir = _open_study(spool_root)
     spool.close_due_studies(
