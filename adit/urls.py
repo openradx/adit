@@ -30,6 +30,7 @@ urlpatterns = [
     path("mass-transfer/", include("adit.mass_transfer.urls")),
     path("upload/", include("adit.upload.urls")),
     path("dicom-explorer/", include("adit.dicom_explorer.urls")),
+    path("router/", include("adit.router.urls")),
     path("token-authentication/", include("adit_radis_shared.token_authentication.urls")),
     path("api/dicom-web/", include("adit.dicom_web.urls")),
 ]

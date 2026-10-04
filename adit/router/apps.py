@@ -15,12 +15,20 @@ class RouterConfig(AppConfig):
 
 
 def register_app():
-    from adit.core.site import register_dicom_processor
+    from adit.core.site import JobStats, register_dicom_processor, register_job_stats_collector
 
-    from .models import RouterTask
+    from .models import RouterJob, RouterTask
     from .processors import RouterTaskProcessor
 
     register_dicom_processor(get_model_label(RouterTask), RouterTaskProcessor)
+
+    def collect_job_stats() -> JobStats:
+        counts: dict[RouterJob.Status, int] = {}
+        for status in RouterJob.Status:
+            counts[status] = RouterJob.objects.filter(status=status).count()
+        return JobStats("Router", "router_job_list", counts)
+
+    register_job_stats_collector(collect_job_stats)
 
 
 def init_db(**kwargs):
