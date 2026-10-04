@@ -7,6 +7,7 @@ from procrastinate.contrib.django.models import ProcrastinateJob
 from pydicom import Dataset
 from pydicom.data import get_testdata_file
 from pydicom.uid import JPEGLSLossless, MRImageStorage
+from pynetdicom.presentation import PresentationContext
 from pytest_mock import MockerFixture
 
 from adit.core.errors import DicomError
@@ -38,7 +39,7 @@ class _Uploads:
 
     def __init__(self, mocker: MockerFixture):
         self.datasets: list[Dataset] = []
-        self.store_contexts = None
+        self.store_contexts: list[PresentationContext] | None = None
 
         def make_operator(server, store_contexts=None, **kwargs):
             self.store_contexts = store_contexts
@@ -180,7 +181,7 @@ def test_delivery_of_a_missing_batch_folder_fails_clearly(spool_root, mocker):
 def test_delivery_requests_the_stored_transfer_syntax(spool_root, mocker):
     uploads = _Uploads(mocker)
     path = get_testdata_file("MR_small_jpeg_ls_lossless.dcm")
-    assert path is not None
+    assert isinstance(path, str)
     task = _task(spool_root, [read_dataset(path)], RoutingRuleFactory.create(pseudonymize=False))
 
     RouterTaskProcessor(task).process()
