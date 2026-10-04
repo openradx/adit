@@ -5,7 +5,7 @@ from django.db.models import Count, Max, Q, QuerySet
 from django.urls import reverse
 from django.utils.html import format_html, format_html_join
 
-from adit.core.tables import RecordIdColumn, TransferJobTable
+from adit.core.tables import DicomTaskTable, RecordIdColumn, TransferJobTable
 from adit.core.templatetags.core_extras import dicom_job_status_css_class
 
 from .models import RouterJob, RouterTask, RoutingRule
@@ -107,3 +107,9 @@ class RouterJobTable(TransferJobTable):
         model = RouterJob
         fields = ("id", "rule", "status", "message", "created")
         empty_text = "No router jobs to show"
+
+
+class RouterTaskTable(DicomTaskTable):
+    class Meta(DicomTaskTable.Meta):
+        model = RouterTask
+        empty_text = "No delivery tasks to show"

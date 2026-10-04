@@ -14,10 +14,26 @@ from django.views.generic.detail import SingleObjectMixin
 from django_filters.views import FilterView
 from django_tables2 import SingleTableMixin, SingleTableView
 
-from .filters import RouterJobFilter, RoutingRuleJobFilter
+from adit.core.views import (
+    DicomJobCancelView,
+    DicomJobDetailView,
+    DicomJobRestartView,
+    DicomJobRetryView,
+    DicomTaskDetailView,
+    DicomTaskKillView,
+    DicomTaskResetView,
+)
+
+from .filters import RouterJobFilter, RouterTaskFilter, RoutingRuleJobFilter
 from .mixins import RouterStaffRequiredMixin
-from .models import RouterJob, RoutingRule
-from .tables import RouterJobTable, RoutingRuleJobTable, RoutingRuleTable, with_deliveries
+from .models import RouterJob, RouterTask, RoutingRule
+from .tables import (
+    RouterJobTable,
+    RouterTaskTable,
+    RoutingRuleJobTable,
+    RoutingRuleTable,
+    with_deliveries,
+)
 
 
 class RouterJobListView(
@@ -127,3 +143,40 @@ class RoutingRuleRetryFailedView(RouterStaffRequiredMixin, SingleObjectMixin, Vi
         else:
             messages.info(request, "This rule has no failed deliveries.")
         return redirect(rule)
+
+
+class RouterJobDetailView(RouterStaffRequiredMixin, DicomJobDetailView):
+    table_class = RouterTaskTable
+    filterset_class = RouterTaskFilter
+    model = RouterJob
+    context_object_name = "job"
+    template_name = "router/router_job_detail.html"
+
+    def get_queryset(self) -> QuerySet[RouterJob]:
+        return RouterJob.objects.select_related("rule", "owner", "batch__sender__server")
+
+
+class RouterJobCancelView(RouterStaffRequiredMixin, DicomJobCancelView):
+    model = RouterJob
+
+
+class RouterJobRetryView(RouterStaffRequiredMixin, DicomJobRetryView):
+    model = RouterJob
+
+
+class RouterJobRestartView(RouterStaffRequiredMixin, DicomJobRestartView):
+    model = RouterJob
+
+
+class RouterTaskDetailView(RouterStaffRequiredMixin, DicomTaskDetailView):
+    model = RouterTask
+    job_url_name = "router_job_detail"
+    template_name = "router/router_task_detail.html"
+
+
+class RouterTaskResetView(RouterStaffRequiredMixin, DicomTaskResetView):
+    model = RouterTask
+
+
+class RouterTaskKillView(RouterStaffRequiredMixin, DicomTaskKillView):
+    model = RouterTask

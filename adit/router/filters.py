@@ -5,9 +5,9 @@ from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Div, Field, Hidden, Layout, Submit
 from django.http import HttpRequest, QueryDict
 
-from adit.core.filters import DicomJobFilter
+from adit.core.filters import DicomJobFilter, DicomTaskFilter
 
-from .models import RouterJob
+from .models import RouterJob, RouterTask
 
 FILTER_FIELD_TEMPLATE = "common/_filter_set_field.html"
 
@@ -61,3 +61,8 @@ class RouterJobFilter(django_filters.FilterSet):
 class RoutingRuleJobFilter(DicomJobFilter):
     class Meta(DicomJobFilter.Meta):
         model = RouterJob
+
+
+class RouterTaskFilter(DicomTaskFilter):
+    class Meta(DicomTaskFilter.Meta):
+        model = RouterTask

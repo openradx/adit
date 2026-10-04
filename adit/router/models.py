@@ -185,7 +185,7 @@ class RouterJob(TransferJob):
         ]
 
     def get_absolute_url(self) -> str:
-        return reverse("admin:router_routerjob_change", args=[self.pk])
+        return reverse("router_job_detail", args=[self.pk])
 
     @property
     def is_deletable(self) -> bool:
@@ -219,7 +219,7 @@ class RouterTask(TransferTask):
         indexes = [models.Index(fields=["study_uid"])]
 
     def get_absolute_url(self) -> str:
-        return reverse("admin:router_routertask_change", args=[self.pk])
+        return reverse("router_task_detail", args=[self.pk])
 
     @property
     def is_deletable(self) -> bool:

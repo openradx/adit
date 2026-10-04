@@ -1,0 +1,93 @@
+{% extends "core/core_layout.html" %}
+{% load crispy from crispy_forms_tags %}
+{% load render_table from django_tables2 %}
+{% load bootstrap_icon from common_extras %}
+{% load dicom_job_status_css_class from core_extras %}
+{% load job_control_panel from router_extras %}
+{% block title %}
+    Router Job
+{% endblock title %}
+{% block heading %}
+    <c-page-heading title="Router Job">
+        <c-slot name="right">
+            <a href="{% url 'router_job_list' %}" class="btn btn-secondary">
+                {% bootstrap_icon "list" %}
+                Job List
+            </a>
+        </c-slot>
+    </c-page-heading>
+{% endblock heading %}
+{% block content %}
+    {% if job.batch.files_deleted_at %}
+        <div class="alert alert-info" role="alert">
+            The images of this batch were deleted from the spool, so this delivery can't be
+            retried, restarted or reset. To send the study again, have the PACS forward it to the router.
+        </div>
+    {% endif %}
+    <dl class="row">
+        <dt class="col-sm-3">Job ID</dt>
+        <dd class="col-sm-9">
+            {{ job.id }}
+        </dd>
+        <dt class="col-sm-3">Routing Rule</dt>
+        <dd class="col-sm-9">
+            <a href="{{ job.rule.get_absolute_url }}">{{ job.rule.name }}</a>
+        </dd>
+        <dt class="col-sm-3">Status</dt>
+        <dd class="col-sm-9">
+            <span class="{{ job.status|dicom_job_status_css_class }}"
+                  data-status="{{ job.status }}">{{ job.get_status_display }}</span>
+        </dd>
+        <dt class="col-sm-3">Message</dt>
+        <dd class="col-sm-9">
+            {{ job.message|default:"—" }}
+        </dd>
+        <dt class="col-sm-3">Created At</dt>
+        <dd class="col-sm-9">
+            {{ job.created }}
+        </dd>
+        <dt class="col-sm-3">Created By</dt>
+        <dd class="col-sm-9">
+            {{ job.owner }}
+        </dd>
+        <dt class="col-sm-3">Trial Protocol ID</dt>
+        <dd class="col-sm-9">
+            {{ job.trial_protocol_id|default:"—" }}
+        </dd>
+        <dt class="col-sm-3">Trial Protocol Name</dt>
+        <dd class="col-sm-9">
+            {{ job.trial_protocol_name|default:"—" }}
+        </dd>
+        <dt class="col-sm-3">Batch ID</dt>
+        <dd class="col-sm-9">
+            {{ job.batch.batch_id }}
+        </dd>
+        <dt class="col-sm-3">Sender</dt>
+        <dd class="col-sm-9">
+            {{ job.batch.sender.server }} ({{ job.batch.sender.calling_ae_title }})
+        </dd>
+        <dt class="col-sm-3">Study Instance UID</dt>
+        <dd class="col-sm-9">
+            {{ job.batch.study_instance_uid }}
+        </dd>
+        <dt class="col-sm-3">Images Received</dt>
+        <dd class="col-sm-9">
+            {{ job.batch.number_of_images }}
+        </dd>
+        <dt class="col-sm-3">Closed At</dt>
+        <dd class="col-sm-9">
+            {{ job.batch.closed_at }}
+        </dd>
+        <dt class="col-sm-3">Images Deleted At</dt>
+        <dd class="col-sm-9">
+            {{ job.batch.files_deleted_at|default:"—" }}
+        </dd>
+    </dl>
+    <c-table-heading title="Delivery Task">
+        <c-slot name="right">
+            {% crispy filter.form %}
+        </c-slot>
+    </c-table-heading>
+    {% render_table table %}
+    {% job_control_panel %}
+{% endblock content %}

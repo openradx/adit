@@ -1,0 +1,12 @@
+{% extends "core/core_layout.html" %}
+{% load task_control_panel from router_extras %}
+{% block title %}
+    Router Task
+{% endblock title %}
+{% block heading %}
+    <c-page-heading title="Router Task" />
+{% endblock heading %}
+{% block content %}
+    {% include "core/_transfer_task_detail.html" %}
+    {% task_control_panel %}
+{% endblock content %}

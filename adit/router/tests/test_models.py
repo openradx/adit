@@ -211,12 +211,11 @@ def test_already_sent_collects_the_rules_finished_deliveries_of_the_study():
 
 
 @pytest.mark.django_db
-def test_router_job_and_task_link_to_their_admin_pages():
+def test_router_job_and_task_link_to_their_staff_pages():
     task = RouterTaskFactory.create()
 
-    assert task.get_absolute_url() == f"/django-admin/router/routertask/{task.pk}/change/"
-    assert task.job.get_absolute_url() == (f"/django-admin/router/routerjob/{task.job.pk}/change/")
-    assert isinstance(task.job, RouterJob)
+    assert task.get_absolute_url() == f"/router/tasks/{task.pk}/"
+    assert task.job.get_absolute_url() == f"/router/jobs/{task.job.pk}/"
 
 
 @pytest.mark.django_db
