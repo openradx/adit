@@ -420,6 +420,30 @@ ROUTER_SENDER_REFRESH_SECONDS = env.int("ROUTER_SENDER_REFRESH_SECONDS", default
 # The router refuses new images while the spool has less free space than this.
 ROUTER_SPOOL_MIN_FREE_GB = env.int("ROUTER_SPOOL_MIN_FREE_GB", default=20)
 
+# A spooled study closes after this long without a new image.
+ROUTER_QUIET_PERIOD_SECONDS = env.int("ROUTER_QUIET_PERIOD_SECONDS", default=300)
+
+# A spooled study closes at the latest this long after its first image.
+ROUTER_MAX_OPEN_SECONDS = env.int("ROUTER_MAX_OPEN_SECONDS", default=3600)
+
+# The schedule of close_router_batches, which closes, decides and cleans up batches.
+ROUTER_CLOSE_CRON = env.str("ROUTER_CLOSE_CRON", default="* * * * *")
+
+# The admins get at most one mail about a low router spool per this many hours.
+ROUTER_LOW_SPACE_MAIL_HOURS = env.int("ROUTER_LOW_SPACE_MAIL_HOURS", default=6)
+
+# How long the images of a batch with a failed delivery stay in the spool.
+ROUTER_FAILED_RETENTION_DAYS = env.int("ROUTER_FAILED_RETENTION_DAYS", default=7)
+
+# How long unreadable files stay in the spool's quarantine.
+ROUTER_QUARANTINE_RETENTION_DAYS = env.int("ROUTER_QUARANTINE_RETENTION_DAYS", default=7)
+
+# How long a delivery's sent SOP Instance UIDs are kept to leave out images sent again.
+ROUTER_SENT_LIST_RETENTION_DAYS = env.int("ROUTER_SENT_LIST_RETENTION_DAYS", default=30)
+
+# The process timeout of one router delivery, in seconds.
+ROUTER_PROCESS_TIMEOUT = env.int("ROUTER_PROCESS_TIMEOUT", default=3600)
+
 # Usually a transfer job must be verified by an admin. By setting
 # this option to True ADIT will schedule unverified transfers
 # (and directly set the status of the job to PENDING).
@@ -440,6 +464,8 @@ BATCH_QUERY_DEFAULT_PRIORITY = 3
 BATCH_QUERY_URGENT_PRIORITY = 7
 MASS_TRANSFER_DEFAULT_PRIORITY = 1
 MASS_TRANSFER_URGENT_PRIORITY = 5
+ROUTER_DEFAULT_PRIORITY = 3
+ROUTER_URGENT_PRIORITY = 7
 
 # The priority for stalled jobs that are retried.
 STALLED_JOBS_RETRY_PRIORITY = 10
