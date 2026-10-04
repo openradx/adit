@@ -542,3 +542,35 @@ def test_check_disk_space_no_warning_when_under_limit(mocker: MockerFixture):
     tasks_module.check_disk_space()
 
     mail_mock.assert_not_called()
+
+
+@pytest.mark.django_db(transaction=True)
+def test_run_dicom_task_keeps_fields_the_processor_saved(mocker: MockerFixture):
+    """The processor runs in a child process and may save fields of its task; the runner
+    must not write them back from its older copy when it saves the result."""
+    dicom_job = ExampleTransferJobFactory.create(status=DicomJob.Status.PENDING)
+    dicom_task = ExampleTransferTaskFactory.create(
+        status=DicomTask.Status.PENDING, job=dicom_job, pseudonym="BEFORE"
+    )
+    result: ProcessingResult = {"status": DicomTask.Status.SUCCESS, "message": "ok", "log": ""}
+
+    def process_that_saves_a_field(*p_args, **p_kwargs):
+        def decorator(func):
+            def wrapper(*args, **kwargs):
+                ExampleTransferTask.objects.filter(pk=dicom_task.pk).update(pseudonym="CHILD")
+                return _FakeFuture(result=result)
+
+            return wrapper
+
+        return decorator
+
+    _install_pebble_stubs(mocker, future=_FakeFuture(result=result))
+    mocker.patch.object(tasks_module.concurrent, "process", side_effect=process_that_saves_a_field)
+
+    tasks_module._run_dicom_task(
+        _make_context(), get_model_label(ExampleTransferTask), dicom_task.pk
+    )
+
+    dicom_task.refresh_from_db()
+    assert dicom_task.status == DicomTask.Status.SUCCESS
+    assert dicom_task.pseudonym == "CHILD"

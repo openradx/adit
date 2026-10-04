@@ -184,7 +184,9 @@ def _run_dicom_task(
 
     finally:
         dicom_task.end = timezone.now()
-        dicom_task.save()
+        # Only the fields this runner owns: the processor ran in a child process and may
+        # have saved fields of its own, which this older copy would overwrite.
+        dicom_task.save(update_fields=["status", "message", "log", "end"])
         logger.info(f"Processing of {dicom_task} ended.")
 
         with pglock.advisory(DICOM_JOB_POST_PROCESS_LOCK):

@@ -22,6 +22,7 @@ from aiofiles import os as async_os
 from django.conf import settings
 from pydicom import Dataset
 from pynetdicom.events import Event
+from pynetdicom.presentation import PresentationContext
 
 from ..errors import DicomError, RetriableDicomError
 from ..models import DicomServer
@@ -45,12 +46,14 @@ class DicomOperator:
         server: DicomServer,
         persistent: bool = False,
         dimse_timeout: int | None = 60,
+        store_contexts: list[PresentationContext] | None = None,
     ):
         self.server = server
         self.dimse_connector = DimseConnector(
             server,
             auto_close=not persistent,
             dimse_timeout=dimse_timeout,
+            store_contexts=store_contexts,
         )
         # TODO: also make retries and timeouts possible in DicomWebConnector
         self.dicom_web_connector = DicomWebConnector(server)
