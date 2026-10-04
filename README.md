@@ -67,6 +67,7 @@ sequenceDiagram
 - Upload a batch file to make multiple queries on a DICOM server
 - Upload a batch file to transfer or download multiple studies
 - Mass transfer of large volumes of imaging data over a date range using include and exclude filters
+- A DICOM router that receives the studies a PACS forwards and sends the series that staff-defined rules select to other DICOM servers, optionally pseudonymized and filed into XNAT projects
 - Convert downloaded DICOM series to NIfTI
 - Protect downloaded archives with a password
 - Explore the DICOM data of a server interactively (DICOM Explorer)
