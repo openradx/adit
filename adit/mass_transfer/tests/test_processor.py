@@ -22,6 +22,7 @@ from adit.core.utils.series_filters import (
     FilterSpec,
     age_at_study,
     dicom_match,
+    select_study_series,
     series_matches_filter,
 )
 from adit.mass_transfer.models import (
@@ -2315,6 +2316,86 @@ def test_partition_cleanup_deletes_folder_and_volumes(mocker: MockerFixture, mas
     vol = vols.first()
     assert vol is not None
     assert vol.series_instance_uid == "1.2.3.new"
+
+
+# ---------------------------------------------------------------------------
+# Router parity tests (select_study_series matches _discover_series)
+# ---------------------------------------------------------------------------
+
+
+_PARITY_SERIES = [
+    # SeriesInstanceUID, Modality, SeriesDescription, InstitutionName, images
+    ("1.2.3.201", "CT", "Axial", "Radiology", 10),
+    ("1.2.3.202", "CT", "Coronal", "External", 3),
+    ("1.2.3.203", "MR", "Ax T1", "Radiology", 20),
+    ("1.2.3.204", "SR", "Dose report", "Radiology", 1),
+]
+
+
+@pytest.mark.parametrize(
+    "filters",
+    [
+        [FilterSpec(modality="CT")],
+        [FilterSpec(modality="MR")],
+        [FilterSpec(series_description="Ax*")],
+        [FilterSpec(institution_name="Radio*")],
+        [FilterSpec(institution_name="Radio*", apply_institution_on_study=False)],
+        [FilterSpec(study_description="Head*"), FilterSpec(modality="SR")],
+        [FilterSpec(min_age=20, max_age=30)],
+        [FilterSpec(min_age=40)],
+        [FilterSpec(min_number_of_series_related_instances=5)],
+        [FilterSpec(modality="CT"), FilterSpec(mode="exclude", series_description="cor*")],
+        [FilterSpec(), FilterSpec(mode="exclude", max_age=30)],
+        [FilterSpec(), FilterSpec(mode="exclude", modality="SR")],
+    ],
+)
+def test_router_selection_matches_mass_transfer_discovery(mocker: MockerFixture, filters):
+    """The DICOM router selects series with select_study_series. For the same study and
+    filters it must select exactly what mass transfer discovers."""
+    processor = _make_processor(mocker)
+    processor.mass_task.partition_start = datetime(2024, 1, 1, 0, 0)
+    processor.mass_task.partition_end = datetime(2024, 1, 1, 23, 59, 59)
+    operator = mocker.create_autospec(DicomOperator)
+    operator.server = mocker.MagicMock(max_search_results=200)
+
+    study = _make_study("1.2.3.100")
+    study.dataset.ModalitiesInStudy = ["CT", "MR", "SR"]
+    study.dataset.StudyDescription = "Head routine"
+    study.dataset.PatientBirthDate = "19990101"
+    operator.find_studies.return_value = [study]
+    operator.find_series.return_value = [
+        _make_series_result(
+            uid,
+            modality=modality,
+            series_description=description,
+            institution_name=institution,
+            num_images=images,
+        )
+        for uid, modality, description, institution, images in _PARITY_SERIES
+    ]
+
+    discovered = processor._discover_series(operator, filters)
+
+    batch_series = [
+        DiscoveredSeries(
+            patient_id="PAT1",
+            accession_number="",
+            study_instance_uid="1.2.3.100",
+            series_instance_uid=uid,
+            modality=modality,
+            study_description="Head routine",
+            series_description=description,
+            series_number=1,
+            study_datetime=datetime(2024, 1, 1, 12, 0),
+            institution_name=institution,
+            number_of_images=images,
+            patient_birth_date=date(1999, 1, 1),
+        )
+        for uid, modality, description, institution, images in _PARITY_SERIES
+    ]
+    selected = select_study_series(study, batch_series, filters)
+
+    assert {s.series_instance_uid for s in selected} == {s.series_instance_uid for s in discovered}
 
 
 # ---------------------------------------------------------------------------
