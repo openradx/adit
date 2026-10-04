@@ -1,25 +1,19 @@
 {% extends "core/core_layout.html" %}
-{% load crispy from crispy_forms_tags %}
 {% load render_table from django_tables2 %}
 {% load bootstrap_icon from common_extras %}
 {% block title %}
-    Router Jobs
+    Routing Rules
 {% endblock title %}
 {% block heading %}
-    <c-page-heading title="Router Jobs">
+    <c-page-heading title="Routing Rules">
         <c-slot name="right">
-            <a href="{% url 'router_rule_list' %}" class="btn btn-secondary">
+            <a href="{% url 'router_job_list' %}" class="btn btn-secondary">
                 {% bootstrap_icon "list" %}
-                Routing Rules
+                Router Jobs
             </a>
         </c-slot>
     </c-page-heading>
 {% endblock heading %}
 {% block content %}
-    <c-table-heading>
-        <c-slot name="right">
-            {% crispy filter.form %}
-        </c-slot>
-    </c-table-heading>
     {% render_table table %}
 {% endblock content %}

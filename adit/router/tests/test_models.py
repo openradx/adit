@@ -274,3 +274,10 @@ def test_retrying_a_rules_failed_deliveries_skips_those_without_images():
     ):
         assert RouterTask.objects.get(pk=task.pk).status == status
         assert RouterJob.objects.get(pk=task.job.pk).status == status
+
+
+@pytest.mark.django_db
+def test_rule_links_to_its_page():
+    rule = RoutingRuleFactory.create()
+
+    assert rule.get_absolute_url() == f"/router/rules/{rule.pk}/"

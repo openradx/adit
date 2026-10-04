@@ -96,6 +96,9 @@ class RoutingRule(models.Model):
     def __str__(self) -> str:
         return self.name
 
+    def get_absolute_url(self) -> str:
+        return reverse("router_rule_detail", args=[self.pk])
+
     def clean(self) -> None:
         try:
             self.filters_json = parse_filters(self.filters_json)
