@@ -4,6 +4,7 @@ from django.contrib.admin.sites import AdminSite
 from django.contrib.auth.models import Permission
 from django.test import RequestFactory
 
+from adit.core.factories import DicomServerFactory
 from adit.router.admin import RouterBatchAdmin, RoutingRuleAdmin
 from adit.router.factories import RouterBatchFactory, RouterJobFactory, RoutingRuleFactory
 from adit.router.models import RouterBatch, RoutingRule
@@ -20,6 +21,17 @@ def _rule_editor():
     user = UserFactory.create(is_staff=True)
     user.user_permissions.add(
         Permission.objects.get(content_type__app_label="router", codename="change_routingrule")
+    )
+    return user
+
+
+def _rule_editor_allowed_unpseudonymized():
+    """A staff user who may also switch pseudonymization off."""
+    user = _rule_editor()
+    user.user_permissions.add(
+        Permission.objects.get(
+            content_type__app_label="router", codename="can_transfer_unpseudonymized"
+        )
     )
     return user
 
@@ -59,6 +71,69 @@ def test_switching_pseudonymization_off_needs_the_permission():
 
     assert not form.is_valid()
     assert "pseudonymize" in form.errors
+
+
+@pytest.mark.django_db
+def test_new_unpseudonymized_rule_is_refused():
+    admin = RoutingRuleAdmin(RoutingRule, AdminSite())
+    request = _request(_rule_editor())
+    form_class = admin.get_form(request, None, change=False)
+    data = {
+        "name": "New rule",
+        "enabled": "on",
+        "filters_json": '[{"modality": "CT"}]',
+        "destination": DicomServerFactory.create().pk,
+        "pseudonym_salt": "",
+        "trial_protocol_id": "",
+        "trial_protocol_name": "",
+    }
+
+    form = form_class(data=data)
+
+    assert not form.is_valid()
+    assert "pseudonymize" in form.errors
+
+
+@pytest.mark.django_db
+def test_existing_unpseudonymized_rule_without_jobs_can_be_disabled():
+    admin = RoutingRuleAdmin(RoutingRule, AdminSite())
+    rule = RoutingRuleFactory.create(pseudonymize=False)
+    request = _request(_rule_editor())
+    form_class = admin.get_form(request, rule, change=True)
+    data = {
+        "name": rule.name,
+        # "enabled" left unchecked: disabling the rule itself, not pseudonymization.
+        "filters_json": '[{"modality": "CT"}]',
+        "destination": rule.destination.pk,
+        "pseudonym_salt": "",
+        "trial_protocol_id": "",
+        "trial_protocol_name": "",
+    }
+
+    form = form_class(data=data, instance=rule)
+
+    assert form.is_valid(), form.errors
+
+
+@pytest.mark.django_db
+def test_switching_pseudonymization_off_is_allowed_with_the_permission():
+    admin = RoutingRuleAdmin(RoutingRule, AdminSite())
+    rule = RoutingRuleFactory.create()
+    request = _request(_rule_editor_allowed_unpseudonymized())
+    form_class = admin.get_form(request, rule, change=True)
+    data = {
+        "name": rule.name,
+        "enabled": "on",
+        "filters_json": '[{"modality": "CT"}]',
+        "destination": rule.destination.pk,
+        "pseudonym_salt": "",
+        "trial_protocol_id": "",
+        "trial_protocol_name": "",
+    }
+
+    form = form_class(data=data, instance=rule)
+
+    assert form.is_valid(), form.errors
 
 
 @pytest.mark.django_db

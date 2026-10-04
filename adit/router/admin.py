@@ -30,9 +30,16 @@ class RoutingRuleAdminForm(forms.ModelForm):
             and user is not None
             and not user.has_perm("router.can_transfer_unpseudonymized")
         ):
-            self.add_error(
-                "pseudonymize", "You are not allowed to send studies without pseudonymization."
-            )
+            # Only turning pseudonymization off needs the permission: a new rule
+            # saved that way, or an existing one flipping from True to False.
+            # Editing, enabling or disabling an already-unpseudonymized rule doesn't.
+            is_new = self.instance.pk is None
+            switched_off = "pseudonymize" in self.changed_data
+            if is_new or switched_off:
+                self.add_error(
+                    "pseudonymize",
+                    "You are not allowed to send studies without pseudonymization.",
+                )
         return self.cleaned_data
 
 
