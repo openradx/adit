@@ -3,6 +3,7 @@ import io
 import os
 import socket
 import time
+import warnings
 from collections.abc import Iterable
 from typing import Any
 from unittest.mock import MagicMock, create_autospec
@@ -222,12 +223,16 @@ def free_port() -> int:
 
 def wait_until_scp_accepts(port: int, calling_ae: str, called_ae: str) -> None:
     """Wait until the storage SCP on *port* accepts an association from *calling_ae*."""
-    time.sleep(0.1)  # Give the SCP time to fully bind to its port
     ae = AE(ae_title=calling_ae)
     ae.add_requested_context(CTImageStorage)
     deadline = time.monotonic() + 10
     while True:
-        assoc = ae.associate("127.0.0.1", port, ae_title=called_ae)
+        # Until the SCP listens, pynetdicom drops each refused socket unclosed (its
+        # _shutdown_socket() skips close() when shutdown() fails), and filterwarnings = error
+        # would turn that ResourceWarning into a test failure.
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", ResourceWarning)
+            assoc = ae.associate("127.0.0.1", port, ae_title=called_ae)
         if assoc.is_established:
             assoc.release()
             return
