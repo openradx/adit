@@ -5,14 +5,17 @@ from django.contrib.postgres.fields import ArrayField
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.urls import reverse
+from procrastinate.contrib.django import app
 
 from adit.core.models import (
     DicomAppSettings,
+    DicomJob,
     DicomServer,
     DicomTask,
     TransferJob,
     TransferTask,
 )
+from adit.core.utils.model_utils import get_model_label
 from adit.core.utils.series_filters import FilterSpec, parse_filters
 from adit.core.validators import ae_title_chars_validator, no_backslash_char_validator
 
@@ -164,6 +167,11 @@ class RouterJob(TransferJob):
     def get_absolute_url(self) -> str:
         return reverse("admin:router_routerjob_change", args=[self.pk])
 
+    def queue_pending_tasks(self) -> None:
+        assert self.status == DicomJob.Status.PENDING
+        for task in self.tasks.filter(status=DicomTask.Status.PENDING):
+            task.queue_pending_task()
+
 
 class RouterTask(TransferTask):
     job = models.ForeignKey(RouterJob, on_delete=models.CASCADE, related_name="tasks")
@@ -188,3 +196,14 @@ class RouterTask(TransferTask):
         for uids in tasks.values_list("sent_instance_uids", flat=True):
             sent.update(uids)
         return sent
+
+    def queue_pending_task(self) -> None:
+        assert self.status == DicomTask.Status.PENDING
+        assert self.queued_job is None
+
+        priority = self.job.urgent_priority if self.job.urgent else self.job.default_priority
+        queued_job_id = app.configure_task(
+            "adit.router.tasks.process_router_task", allow_unknown=False, priority=priority
+        ).defer(model_label=get_model_label(self.__class__), task_id=self.pk)
+        self.queued_job_id = queued_job_id
+        self.save()
