@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from pathlib import Path
 
 import requests
@@ -50,6 +52,31 @@ class OrthancRestHandler:
 
     def find(self, query):
         r = self.session.post(f"http://{self.host}:{self.port}/tools/find", json=query)
+        r.raise_for_status()
+        return r.json()
+
+    def add_modality(self, name: str, ae_title: str, host: str, port: int) -> None:
+        r = self.session.put(
+            f"http://{self.host}:{self.port}/modalities/{name}",
+            json={"AET": ae_title, "Host": host, "Port": port},
+        )
+        r.raise_for_status()
+
+    def remove_modality(self, name: str) -> None:
+        r = self.session.delete(f"http://{self.host}:{self.port}/modalities/{name}")
+        r.raise_for_status()
+
+    def send_to_modality(self, name: str, resource_ids: list[str]) -> None:
+        r = self.session.post(
+            f"http://{self.host}:{self.port}/modalities/{name}/store",
+            json={"Resources": resource_ids, "Synchronous": True},
+        )
+        r.raise_for_status()
+
+    def instance_tags(self, instance_id: str) -> dict:
+        r = self.session.get(
+            f"http://{self.host}:{self.port}/instances/{instance_id}/simplified-tags"
+        )
         r.raise_for_status()
         return r.json()
 

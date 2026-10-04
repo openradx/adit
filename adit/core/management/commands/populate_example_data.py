@@ -21,7 +21,7 @@ from adit.core.factories import (
 )
 from adit.core.models import DicomFolder, DicomServer
 from adit.core.utils.auth_utils import grant_access
-from adit.router.models import RouterSender
+from adit.router.models import RouterSender, RoutingRule
 from adit.selective_transfer.factories import (
     SelectiveTransferJobFactory,
     SelectiveTransferTaskFactory,
@@ -70,6 +70,22 @@ def create_server_nodes(groups: list[Group]) -> list[DicomServer]:
         servers.append(server)
 
     return servers
+
+
+def create_router_example_rule(users: list[User], servers: list[DicomServer]) -> None:
+    owner = next((user for user in users if user.is_staff), None)
+    destination = next((server for server in servers if server.ae_title == "ORTHANC2"), None)
+    if owner is None or destination is None:
+        return
+
+    RoutingRule.objects.create(
+        name="Example: CT to Orthanc 2",
+        enabled=False,
+        filters_json=[{"mode": "include", "modality": "CT"}],
+        destination=destination,
+        trial_protocol_id="EXAMPLE",
+        created_by=owner,
+    )
 
 
 def create_folder_nodes(groups: list[Group]) -> list[DicomFolder]:
@@ -167,6 +183,7 @@ class Command(BaseCommand):
             groups = list(Group.objects.all())
 
             servers = create_server_nodes(groups)
+            create_router_example_rule(users, servers)
             folders = create_folder_nodes(groups)
 
             create_jobs(users, servers, folders)

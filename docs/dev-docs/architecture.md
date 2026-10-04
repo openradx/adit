@@ -66,9 +66,9 @@ The Compose project is named `adit_dev` in development and `adit_prod` in produc
 
 **PostgreSQL Container (`adit_dev-postgres-1`)**: PostgreSQL 17 database storing all data (users, jobs, tasks, logs, Procrastinate queue). Port 5432. Uses Docker volumes for persistence.
 
-**Default Worker Container (`adit_dev-default_worker-1`)**: Processes background tasks in the `default` queue: disk space checks, database backups, `queue_mass_transfer_tasks`, `retry_stalled_jobs`, and the periodic stale task sweep.
+**Default Worker Container (`adit_dev-default_worker-1`)**: Processes background tasks in the `default` queue: disk space checks, database backups, `queue_mass_transfer_tasks`, `retry_stalled_jobs`, the periodic stale task sweep, `close_router_batches` and `report_router_failures`. Mounts the router spool.
 
-**DICOM Worker Container (`adit_dev-dicom_worker-1`)**: Executes DICOM transfer tasks from the `dicom` queue. Multiple instances can run for scaling (`DICOM_WORKER_REPLICAS`).
+**DICOM Worker Container (`adit_dev-dicom_worker-1`)**: Executes DICOM transfer tasks from the `dicom` queue and router deliveries (`RouterTask`), with the router spool mounted. Multiple instances can run for scaling (`DICOM_WORKER_REPLICAS`).
 
 **Mass Transfer Worker Container (`adit_dev-mass_transfer_worker-1`)**: Executes mass transfer tasks from the `mass_transfer` queue (`MASS_TRANSFER_WORKER_REPLICAS`).
 
@@ -111,7 +111,7 @@ Every worker runs `./manage.py sweep_stale_tasks` before starting `bg_worker`.
 
 #### **DICOM Router** (`adit.router`)
 
-- **Router inbox**: `./manage.py router` (the router container) accepts the images a PACS forwards. Only enabled `RouterSender`s (a `DicomServer` plus the AE title it sends from, managed in the Django admin) may connect, and each image is written durably to `incoming/<sender id>/<StudyInstanceUID>/` in the spool. While `RouterSettings.suspended` is set or the spool is low on space, images are answered with Out of Resources (`0xA700`), so the PACS retries them later. Nothing reads or deletes the spool yet: routing rules and delivery are not implemented.
+- **Router inbox and routing**: `./manage.py router` (the router container) accepts the images a PACS forwards from enabled `RouterSender`s and writes each one durably to `incoming/<sender id>/<StudyInstanceUID>/` in the spool. `close_router_batches` closes quiet studies into batches, selects series per enabled `RoutingRule` with the mass transfer filters (`select_study_series`), and creates a `RouterBatch` with one `RouterJob`/`RouterTask` per matching rule in one transaction. `RouterTaskProcessor` pseudonymizes with the rule's salt, sends over one association that requests exactly the stored (SOP class, transfer syntax) pairs, and records the sent SOP Instance UIDs so images forwarded again are left out.
 
 ## Primary Models
 
