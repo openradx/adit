@@ -20,38 +20,20 @@ class RoutingRuleAdminForm(forms.ModelForm):
 
     class Meta:
         model = RoutingRule
-        fields = [
-            "name",
-            "enabled",
-            "filters_json",
-            "destination",
-            "pseudonymize",
-            "pseudonym_salt",
-            "trial_protocol_id",
-            "trial_protocol_name",
-        ]
-
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
-        super().__init__(*args, **kwargs)
-        # Ensure pseudonymize field exists even if Django excluded it
-        if "pseudonymize" not in self.fields:
-            self.fields["pseudonymize"] = forms.BooleanField(required=False)
+        fields = "__all__"  # noqa: DJ007
 
     def clean(self) -> dict[str, Any]:
-        cleaned_data = super().clean() or {}
+        super().clean()
         user = self.request_user
-        # Check if attempting to switch pseudonymization off
-        # In HTML, an unchecked checkbox is not included in form data
-        is_currently_pseudonymizing = self.instance.pseudonymize if self.instance else True
-        is_switching_off = is_currently_pseudonymizing and "pseudonymize" not in self.data
-
-        has_permission = user is None or user.has_perm("router.can_transfer_unpseudonymized")
-        if is_switching_off and not has_permission:
+        if (
+            self.cleaned_data.get("pseudonymize") is False
+            and user is not None
+            and not user.has_perm("router.can_transfer_unpseudonymized")
+        ):
             self.add_error(
-                "pseudonymize",
-                "You are not allowed to send studies without pseudonymization.",
+                "pseudonymize", "You are not allowed to send studies without pseudonymization."
             )
-        return cleaned_data
+        return self.cleaned_data
 
 
 class RoutingRuleAdmin(admin.ModelAdmin):
@@ -69,15 +51,9 @@ class RoutingRuleAdmin(admin.ModelAdmin):
     def get_form(
         self, request: HttpRequest, obj: Any = None, change: bool = False, **kwargs: Any
     ) -> Any:
-        form_class = cast(
-            type[RoutingRuleAdminForm], super().get_form(request, obj, change, **kwargs)
-        )
-
-        # Create a wrapper form class that stores the request user
-        class WrappedForm(form_class):
-            request_user = request.user
-
-        return WrappedForm
+        form = cast(type[RoutingRuleAdminForm], super().get_form(request, obj, change, **kwargs))
+        form.request_user = request.user
+        return form
 
     def save_model(self, request: HttpRequest, obj: Any, form: Any, change: bool) -> None:
         if not change:
