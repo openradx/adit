@@ -49,6 +49,10 @@ def read_batch(spool_root: Path, batch_path: Path, today: date) -> BatchContents
     for path in sorted(p for p in batch_path.iterdir() if p.is_file()):
         try:
             headers.append((path, _read_header(path)))
+        except OSError:
+            # Transient (e.g. the underlying volume hiccuped): keep the file in place
+            # and let the next cycle retry it, instead of quarantining a valid image.
+            raise
         except Exception:
             logger.warning(
                 "Moving unreadable file %s to the router quarantine.",
@@ -61,9 +65,12 @@ def read_batch(spool_root: Path, batch_path: Path, today: date) -> BatchContents
         return BatchContents("", "", BatchStudy([], "", None, None), [], [])
 
     first = headers[0][1]
-    birth_date = _parse_date(first.get("PatientBirthDate"), "PatientBirthDate", batch_path)
-    study_date = _parse_date(first.get("StudyDate"), "StudyDate", batch_path)
-    study_time = _parse_time(first.get("StudyTime"))
+    patient_id = _first_nonempty_str(headers, "PatientID")
+    accession_number = _first_nonempty_str(headers, "AccessionNumber")
+    study_description = _first_nonempty_str(headers, "StudyDescription")
+    birth_date = _first_parseable_date(headers, "PatientBirthDate", batch_path)
+    study_date = _first_parseable_date(headers, "StudyDate", batch_path)
+    study_time = _first_parseable_time(headers, "StudyTime")
     # The age needs both dates; without a study date it counts as unknown.
     series_birth_date = birth_date if study_date else None
     study_datetime = datetime.combine(study_date or date.min, study_time or time())
@@ -77,12 +84,12 @@ def read_batch(spool_root: Path, batch_path: Path, today: date) -> BatchContents
         ds = datasets[0]
         series.append(
             DiscoveredSeries(
-                patient_id=str(first.get("PatientID", "")),
-                accession_number=str(first.get("AccessionNumber", "")),
+                patient_id=patient_id,
+                accession_number=accession_number,
                 study_instance_uid=str(first.StudyInstanceUID),
                 series_instance_uid=series_uid,
                 modality=str(ds.get("Modality", "")),
-                study_description=str(first.get("StudyDescription", "")),
+                study_description=study_description,
                 series_description=str(ds.get("SeriesDescription", "")),
                 series_number=_parse_int(ds.get("SeriesNumber")),
                 study_datetime=study_datetime,
@@ -93,11 +100,11 @@ def read_batch(spool_root: Path, batch_path: Path, today: date) -> BatchContents
         )
 
     return BatchContents(
-        patient_id=str(first.get("PatientID", "")),
+        patient_id=patient_id,
         study_instance_uid=str(first.StudyInstanceUID),
         study=BatchStudy(
             ModalitiesInStudy=sorted({s.modality for s in series if s.modality}),
-            StudyDescription=str(first.get("StudyDescription", "")),
+            StudyDescription=study_description,
             PatientBirthDate=birth_date,
             StudyDate=study_date,
         ),
@@ -123,7 +130,49 @@ def _read_header(path: Path) -> Dataset:
     for keyword in _REQUIRED_UIDS:
         if not ds.get(keyword):
             raise ValueError(f"{keyword} is missing.")
+    # Study and SOP Instance UID are validated at intake; Series Instance UID isn't,
+    # and an invalid one would otherwise make every later decide_batch cycle raise.
+    if not spool.is_valid_uid(str(ds.SeriesInstanceUID)):
+        raise ValueError(f"SeriesInstanceUID {ds.SeriesInstanceUID!r} is invalid.")
     return ds
+
+
+def _first_nonempty_str(headers: list[tuple[Path, Dataset]], keyword: str) -> str:
+    """The first header's *keyword*, among those sorted by SOP Instance UID, that is
+    present and non-empty after stripping."""
+    for _, ds in headers:
+        value = str(ds.get(keyword, "")).strip()
+        if value:
+            return value
+    return ""
+
+
+def _first_parseable_date(
+    headers: list[tuple[Path, Dataset]], keyword: str, batch_path: Path
+) -> date | None:
+    """The first header's *keyword*, among those sorted by SOP Instance UID, that
+    parses as a date."""
+    for _, ds in headers:
+        value = ds.get(keyword)
+        if not value:
+            continue
+        parsed = _parse_date(value, keyword, batch_path)
+        if parsed is not None:
+            return parsed
+    return None
+
+
+def _first_parseable_time(headers: list[tuple[Path, Dataset]], keyword: str) -> time | None:
+    """The first header's *keyword*, among those sorted by SOP Instance UID, that
+    parses as a time."""
+    for _, ds in headers:
+        value = ds.get(keyword)
+        if not value:
+            continue
+        parsed = _parse_time(value)
+        if parsed is not None:
+            return parsed
+    return None
 
 
 def _parse_date(value: object, keyword: str, batch_path: Path) -> date | None:

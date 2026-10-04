@@ -5,6 +5,7 @@ from datetime import date
 from pathlib import Path
 
 from django.db import IntegrityError, transaction
+from django.db.models import CharField
 
 from adit.core.utils.pseudonymizer import deterministic_pseudonym
 from adit.core.utils.series_filters import select_study_series
@@ -14,6 +15,13 @@ from . import spool
 from .batches import BatchContents, read_batch
 
 logger = logging.getLogger(__name__)
+
+_patient_id_field = RouterTask._meta.get_field("patient_id")
+assert isinstance(_patient_id_field, CharField)
+assert _patient_id_field.max_length is not None
+# Postgres raises DataError (not IntegrityError) for a value over the column's
+# max_length, which would otherwise make every later cycle fail on this batch.
+_MAX_PATIENT_ID_LENGTH: int = _patient_id_field.max_length
 
 
 def decide_batch(spool_root: Path, batch: spool.BatchDir, today: date) -> list[RouterJob]:
@@ -49,6 +57,19 @@ def decide_batch(spool_root: Path, batch: spool.BatchDir, today: date) -> list[R
             sender.calling_ae_title,
             contents.study_instance_uid,
             len(contents.images),
+        )
+        spool.delete_batch(batch.path)
+        return []
+
+    if len(contents.patient_id) > _MAX_PATIENT_ID_LENGTH:
+        logger.warning(
+            "Deleting router batch %s of %s (study %s, %d images): its Patient ID is "
+            "longer than %d characters.",
+            batch.batch_id,
+            sender.calling_ae_title,
+            contents.study_instance_uid,
+            len(contents.images),
+            _MAX_PATIENT_ID_LENGTH,
         )
         spool.delete_batch(batch.path)
         return []

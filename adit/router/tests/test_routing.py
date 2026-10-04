@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pytest
 from pydicom import Dataset
+from pydicom import config as pydicom_config
 
 from adit.core.models import DicomTask
 from adit.core.utils.dicom_utils import write_dataset
@@ -86,6 +87,7 @@ def test_disabled_rules_are_ignored(spool_root):
 
     assert decide_batch(spool_root, batch, TODAY) == []
     assert not batch.path.exists()
+    assert not RouterBatch.objects.exists()
 
 
 @pytest.mark.django_db
@@ -135,6 +137,22 @@ def test_study_without_patient_id_is_not_routed(spool_root):
     batch = _closed_batch(spool_root, RouterSenderFactory.create(), datasets)
 
     assert decide_batch(spool_root, batch, TODAY) == []
+    assert not batch.path.exists()
+    assert not RouterBatch.objects.exists()
+
+
+@pytest.mark.django_db
+def test_patient_id_too_long_for_the_column_is_not_routed(spool_root):
+    RoutingRuleFactory.create()
+    datasets = _study()
+    with pydicom_config.disable_value_validation():
+        for ds in datasets:
+            ds.PatientID = "1" * 65
+        batch = _closed_batch(spool_root, RouterSenderFactory.create(), datasets)
+
+        # Reading the over-long value back also validates it, under the same setting.
+        assert decide_batch(spool_root, batch, TODAY) == []
+
     assert not batch.path.exists()
     assert not RouterBatch.objects.exists()
 
