@@ -16,6 +16,25 @@ from adit.core.tests.example_app.factories import (
 
 class TestDicomJob:
     @pytest.mark.django_db
+    def test_retry_resets_and_queues_only_the_failed_tasks(self):
+        job = ExampleTransferJobFactory.create(status=DicomJob.Status.FAILURE)
+        failed = ExampleTransferTaskFactory.create(
+            job=job, status=DicomTask.Status.FAILURE, attempts=3, message="Failed"
+        )
+        succeeded = ExampleTransferTaskFactory.create(job=job, status=DicomTask.Status.SUCCESS)
+
+        job.retry()
+
+        job.refresh_from_db()
+        failed.refresh_from_db()
+        succeeded.refresh_from_db()
+        assert job.status == DicomJob.Status.PENDING
+        assert (failed.status, failed.attempts, failed.message) == (DicomTask.Status.PENDING, 0, "")
+        assert failed.queued_job is not None
+        assert succeeded.status == DicomTask.Status.SUCCESS
+        assert succeeded.queued_job is None
+
+    @pytest.mark.django_db
     def test_job_post_process_all_tasks_succeed(self):
         job = ExampleTransferJobFactory.create(status=DicomJob.Status.PENDING)
 

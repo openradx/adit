@@ -13,6 +13,7 @@ from adit.router.factories import (
     RoutingRuleFactory,
 )
 from adit.router.models import RouterJob, RouterSender, RouterSettings, RouterTask, RoutingRule
+from adit.router.utils.testing_helpers import create_delivery
 
 
 @pytest.mark.django_db
@@ -216,3 +217,60 @@ def test_router_job_and_task_link_to_their_admin_pages():
     assert task.get_absolute_url() == f"/django-admin/router/routertask/{task.pk}/change/"
     assert task.job.get_absolute_url() == (f"/django-admin/router/routerjob/{task.job.pk}/change/")
     assert isinstance(task.job, RouterJob)
+
+
+@pytest.mark.django_db
+def test_router_jobs_and_tasks_are_never_deleted():
+    task = create_delivery(RouterJob.Status.PENDING)
+
+    assert not task.job.is_deletable
+    assert not task.is_deletable
+
+
+@pytest.mark.django_db
+def test_canceled_router_jobs_are_restarted_not_resumed():
+    task = create_delivery(RouterJob.Status.CANCELED)
+
+    assert not task.job.is_resumable
+    assert task.job.is_restartable
+
+
+@pytest.mark.django_db
+def test_failed_delivery_can_be_sent_again_while_its_images_are_in_the_spool():
+    task = create_delivery(RouterJob.Status.FAILURE)
+
+    assert task.job.is_retriable
+    assert task.job.is_restartable
+    assert task.is_resettable
+
+
+@pytest.mark.django_db
+def test_delivery_whose_images_were_deleted_cannot_be_sent_again():
+    task = create_delivery(RouterJob.Status.FAILURE, files_deleted=True)
+
+    assert not task.job.is_retriable
+    assert not task.job.is_restartable
+    assert not task.is_resettable
+
+
+@pytest.mark.django_db
+def test_retrying_a_rules_failed_deliveries_skips_those_without_images():
+    rule = RoutingRuleFactory.create()
+    retriable = create_delivery(RouterJob.Status.FAILURE, rule=rule)
+    images_deleted = create_delivery(RouterJob.Status.FAILURE, rule=rule, files_deleted=True)
+    succeeded = create_delivery(RouterJob.Status.SUCCESS, rule=rule)
+    other_rule = create_delivery(RouterJob.Status.FAILURE)
+
+    assert rule.retry_failed_deliveries() == (1, 1)
+
+    retried_task = RouterTask.objects.get(pk=retriable.pk)
+    assert retried_task.status == RouterTask.Status.PENDING
+    assert retried_task.queued_job is not None
+    assert RouterJob.objects.get(pk=retriable.job.pk).status == RouterJob.Status.PENDING
+    for task, status in (
+        (images_deleted, RouterTask.Status.FAILURE),
+        (succeeded, RouterTask.Status.SUCCESS),
+        (other_rule, RouterTask.Status.FAILURE),
+    ):
+        assert RouterTask.objects.get(pk=task.pk).status == status
+        assert RouterJob.objects.get(pk=task.job.pk).status == status
