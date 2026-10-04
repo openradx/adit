@@ -3,6 +3,7 @@ from typing import Any, cast
 
 from adit_radis_shared.common.mixins import PageSizeSelectMixin, RelatedFilterMixin
 from adit_radis_shared.common.types import AuthenticatedHttpRequest
+from adit_radis_shared.common.views import HtmxTemplateView
 from django.contrib import messages
 from django.core.exceptions import SuspiciousOperation, ValidationError
 from django.db.models import QuerySet
@@ -11,6 +12,7 @@ from django.shortcuts import redirect
 from django.template.defaultfilters import pluralize
 from django.views.generic import DetailView, View
 from django.views.generic.detail import SingleObjectMixin
+from django.views.generic.edit import CreateView, UpdateView
 from django_filters.views import FilterView
 from django_tables2 import SingleTableMixin, SingleTableView
 
@@ -25,6 +27,7 @@ from adit.core.views import (
 )
 
 from .filters import RouterJobFilter, RouterTaskFilter, RoutingRuleJobFilter
+from .forms import RoutingRuleForm
 from .mixins import RouterStaffRequiredMixin
 from .models import RouterJob, RouterTask, RoutingRule
 from .tables import (
@@ -180,3 +183,40 @@ class RouterTaskResetView(RouterStaffRequiredMixin, DicomTaskResetView):
 
 class RouterTaskKillView(RouterStaffRequiredMixin, DicomTaskKillView):
     model = RouterTask
+
+
+class RoutingRuleCreateView(RouterStaffRequiredMixin, CreateView):
+    model = RoutingRule
+    form_class = RoutingRuleForm
+    template_name = "router/routing_rule_form.html"
+    extra_context = {"page_title": "New Routing Rule"}
+
+    def get_form_kwargs(self) -> dict[str, Any]:
+        kwargs = super().get_form_kwargs()
+        kwargs["user"] = self.request.user
+        return kwargs
+
+    def form_valid(self, form: RoutingRuleForm) -> HttpResponse:
+        form.instance.created_by = self.request.user
+        messages.success(self.request, f'Routing rule "{form.instance.name}" was created.')
+        return super().form_valid(form)
+
+
+class RoutingRuleUpdateView(RouterStaffRequiredMixin, UpdateView):
+    model = RoutingRule
+    form_class = RoutingRuleForm
+    template_name = "router/routing_rule_form.html"
+    extra_context = {"page_title": "Edit Routing Rule"}
+
+    def get_form_kwargs(self) -> dict[str, Any]:
+        kwargs = super().get_form_kwargs()
+        kwargs["user"] = self.request.user
+        return kwargs
+
+    def form_valid(self, form: RoutingRuleForm) -> HttpResponse:
+        messages.success(self.request, f'Routing rule "{form.instance.name}" was saved.')
+        return super().form_valid(form)
+
+
+class RouterHelpView(RouterStaffRequiredMixin, HtmxTemplateView):
+    template_name = "router/_routing_rule_help.html"

@@ -11,6 +11,10 @@
                 {% bootstrap_icon "list" %}
                 Router Jobs
             </a>
+            <a href="{% url 'router_rule_create' %}" class="btn btn-primary">
+                {% bootstrap_icon "plus-lg" %}
+                New Rule
+            </a>
         </c-slot>
     </c-page-heading>
 {% endblock heading %}

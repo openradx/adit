@@ -1,14 +1,17 @@
 import pytest
 from adit_radis_shared.accounts.factories import UserFactory
 from adit_radis_shared.accounts.models import User
+from adit_radis_shared.common.utils.testing_helpers import add_permission
 from django.conf import settings
 from django.db import connection
 from django.test import Client
 from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
-from pytest_django.asserts import assertContains, assertNotContains
+from pytest_django.asserts import assertContains, assertNotContains, assertTemplateUsed
 
+from adit.core.factories import DicomServerFactory
 from adit.core.models import DicomServer
+from adit.core.utils.series_filters import parse_filters
 from adit.router.factories import RouterJobFactory, RoutingRuleFactory
 from adit.router.models import RouterJob, RouterTask, RoutingRule
 from adit.router.utils.testing_helpers import create_delivery
@@ -306,3 +309,144 @@ def test_retry_failed_deliveries_of_a_rule_without_failures(client: Client):
     response = client.post(reverse("router_rule_retry_failed", args=[rule.pk]), follow=True)
 
     assert _messages(response) == ["This rule has no failed deliveries."]
+
+
+def _form_data(**overrides: str | None) -> dict[str, str]:
+    """POST data of the rule form; an override of None leaves the field out."""
+    data: dict[str, str | None] = {
+        "name": "CT to XNAT",
+        "enabled": "on",
+        "destination": str(DicomServerFactory.create().pk),
+        "filters_json": '[{"modality": "CT"}]',
+        "pseudonymize": "on",
+        "pseudonym_salt": "a" * 64,
+        "trial_protocol_id": "XNATPROJ",
+        "trial_protocol_name": "",
+    }
+    data.update(overrides)
+    return {key: value for key, value in data.items() if value is not None}
+
+
+@pytest.mark.django_db
+def test_rule_form_pages_need_a_login(client: Client):
+    rule = RoutingRuleFactory.create()
+
+    for url in (reverse("router_rule_create"), reverse("router_rule_update", args=[rule.pk])):
+        response = client.get(url)
+        assert response.status_code == 302, url
+        assert response["Location"].startswith(settings.LOGIN_URL), url
+
+
+@pytest.mark.django_db
+def test_rule_form_pages_and_help_are_refused_to_non_staff(client: Client):
+    creator = UserFactory.create()
+    rule = RoutingRuleFactory.create(created_by=creator)
+    client.force_login(creator)
+
+    assert client.get(reverse("router_rule_create")).status_code == 403
+    assert client.post(reverse("router_rule_create"), _form_data()).status_code == 403
+    assert client.get(reverse("router_rule_update", args=[rule.pk])).status_code == 403
+    assert client.get(reverse("router_help"), HTTP_HX_REQUEST="true").status_code == 403
+    assert not RoutingRule.objects.filter(name="CT to XNAT").exists()
+
+
+@pytest.mark.django_db
+def test_help_is_an_htmx_dialog(client: Client):
+    client.force_login(_staff())
+
+    dialog = client.get(reverse("router_help"), HTTP_HX_REQUEST="true")
+    page = client.get(reverse("router_help"))
+
+    assertContains(dialog, "Routing Rule Help")
+    assert page.status_code == 400
+
+
+@pytest.mark.django_db
+def test_rule_form_has_the_filter_editor_and_its_help(client: Client):
+    client.force_login(_staff())
+
+    response = client.get(reverse("router_rule_create"))
+
+    assertTemplateUsed(response, "router/routing_rule_form.html")
+    assertContains(response, "CodeMirror.fromTextArea")
+    assertContains(response, '[data-bs-theme="dark"] .CodeMirror')
+    assertContains(response, reverse("router_help"))
+    assertContains(response, "XNAT files the images under this project ID")
+
+
+@pytest.mark.django_db
+def test_staff_create_a_rule(client: Client):
+    user = _staff()
+    client.force_login(user)
+
+    response = client.post(reverse("router_rule_create"), _form_data())
+
+    rule = RoutingRule.objects.get(name="CT to XNAT")
+    assert response["Location"] == rule.get_absolute_url()
+    assert rule.created_by == user
+    assert rule.filters_json == parse_filters([{"modality": "CT"}])
+    assert rule.trial_protocol_id == "XNATPROJ"
+
+
+@pytest.mark.django_db
+def test_creating_an_unpseudonymized_rule_needs_the_permission(client: Client):
+    client.force_login(_staff())
+
+    refused = client.post(reverse("router_rule_create"), _form_data(pseudonymize=None))
+
+    assert refused.status_code == 200
+    assertContains(refused, "You are not allowed to send studies without pseudonymization.")
+    assert not RoutingRule.objects.exists()
+
+    allowed_user = _staff()
+    add_permission(allowed_user, "router", "can_transfer_unpseudonymized")
+    client.force_login(allowed_user)
+    client.post(reverse("router_rule_create"), _form_data(pseudonymize=None))
+
+    rule = RoutingRule.objects.get()
+    assert rule.pseudonymize is False
+    assert rule.pseudonym_salt == ""
+
+
+@pytest.mark.django_db
+def test_staff_edit_a_rule(client: Client):
+    rule = RoutingRuleFactory.create()
+    client.force_login(_staff())
+    data = _form_data(name="Renamed", pseudonym_salt=rule.pseudonym_salt)
+
+    response = client.post(reverse("router_rule_update", args=[rule.pk]), data)
+
+    assert response["Location"] == rule.get_absolute_url()
+    rule.refresh_from_db()
+    assert rule.name == "Renamed"
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "locked_fields",
+    [
+        # What a browser posts: nothing for the disabled inputs.
+        {"pseudonymize": None, "pseudonym_salt": None},
+        # A crafted POST that tries to switch pseudonymization off and change the salt.
+        {"pseudonymize": None, "pseudonym_salt": "0" * 64},
+    ],
+)
+def test_editing_a_rule_with_deliveries_keeps_its_pseudonymization(
+    client: Client, locked_fields: dict[str, str | None]
+):
+    rule = RoutingRuleFactory.create(pseudonymize=True)
+    RouterJobFactory.create(rule=rule)
+    salt = rule.pseudonym_salt
+    client.force_login(_staff())
+    page = client.get(reverse("router_rule_update", args=[rule.pk]))
+
+    response = client.post(
+        reverse("router_rule_update", args=[rule.pk]), _form_data(name="Renamed", **locked_fields)
+    )
+
+    assertContains(page, "Fixed once the rule has sent studies.")
+    assert response["Location"] == rule.get_absolute_url()
+    rule.refresh_from_db()
+    assert rule.name == "Renamed"
+    assert rule.pseudonymize is True
+    assert rule.pseudonym_salt == salt

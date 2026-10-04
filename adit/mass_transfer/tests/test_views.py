@@ -12,6 +12,7 @@ from adit_radis_shared.accounts.factories import GroupFactory, UserFactory
 from adit_radis_shared.common.utils.testing_helpers import add_permission, add_user_to_group
 from django.test import Client
 from django.urls import reverse
+from pytest_django.asserts import assertContains
 
 from adit.core.factories import DicomFolderFactory, DicomServerFactory
 from adit.core.models import DicomJob
@@ -288,3 +289,16 @@ def test_task_detail_foreign_task_is_not_found(client: Client, settings_no_toolb
     response = client.get(reverse("mass_transfer_task_detail", args=[task.pk]))
 
     assert response.status_code == 404
+
+
+@pytest.mark.django_db
+def test_create_form_has_the_dark_theme_of_the_filter_editor(client: Client, settings_no_toolbar):
+    user = UserFactory.create(is_active=True)
+    group = GroupFactory.create()
+    add_user_to_group(user, group)
+    add_permission(user, "mass_transfer", "add_masstransferjob")
+    client.force_login(user)
+
+    response = client.get(reverse("mass_transfer_job_create"))
+
+    assertContains(response, '[data-bs-theme="dark"] .CodeMirror')

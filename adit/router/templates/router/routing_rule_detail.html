@@ -63,6 +63,11 @@
         </dd>
     </dl>
     <div class="d-flex mb-4">
+        <a href="{% url 'router_rule_update' rule.pk %}"
+           class="btn btn-primary me-3">
+            {% bootstrap_icon "pencil" %}
+            Edit Rule
+        </a>
         <form class="me-3"
               action="{% url 'router_rule_toggle' rule.pk %}"
               method="post">

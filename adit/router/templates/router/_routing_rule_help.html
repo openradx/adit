@@ -1,0 +1,73 @@
+<div class="modal-content">
+    <div class="modal-header">
+        <h5 class="modal-title">Routing Rule Help</h5>
+        <button type="button"
+                class="btn-close"
+                data-bs-dismiss="modal"
+                aria-label="Close" />
+    </div>
+    <div class="modal-body">
+        <p>
+            A routing rule decides which of the studies a PACS forwards to the DICOM router are sent where. The router
+            checks every enabled rule once per study, when no image of the study has arrived for a few minutes. Every
+            matching rule sends the series it selects to its destination, independently of the other rules. A changed
+            rule applies to the studies checked afterwards, and a study checked while a rule is disabled is not sent
+            for that rule later.
+        </p>
+        <h6>Filters</h6>
+        <p>
+            The filters are a JSON array in the format of the mass transfer filters, and they select the same series.
+            A series is sent when it matches at least one include filter and no exclude filter. At least one include
+            filter is required. Text conditions accept the DICOM wildcards * and ? and must match the whole value:
+            include filters match case-sensitively, exclude filters case-insensitively.
+        </p>
+        <dl>
+            <dt>Study-level conditions</dt>
+            <dd>
+                study_description, min_age and max_age (the age on the study date; a study without a birth date
+                matches no include filter with an age), and institution_name while apply_institution_on_study is
+                true, which is the default. They are checked on the images of the study the router received.
+            </dd>
+            <dt>Series-level conditions</dt>
+            <dd>
+                modality ("CT" selects the CT series of a study), series_description, series_number,
+                min_number_of_series_related_instances, and institution_name when apply_institution_on_study is
+                false. A rule without series-level conditions sends the whole study.
+            </dd>
+        </dl>
+        <p>
+            This rule sends every series of the studies described as head examinations of patients aged 20 to 30,
+            without presentation states and structured reports:
+        </p>
+        <pre>[
+  {"mode": "include", "study_description": "*Head*", "min_age": 20, "max_age": 30},
+  {"mode": "exclude", "modality": "PR"},
+  {"mode": "exclude", "modality": "SR"}
+]</pre>
+        <h6>Presentation states and structured reports</h6>
+        <p>
+            EXCLUDE_MODALITIES does not apply to the router; only the rule's filters decide what is sent. Leave out
+            presentation states (PR), structured reports (SR) or dose screenshots with exclude filters, as above.
+        </p>
+        <h6>Pseudonyms</h6>
+        <p>
+            A pseudonymizing rule computes each patient's pseudonym from its salt and the Patient ID. The same patient
+            always gets the same pseudonym under a rule, and different rules give different pseudonyms. Once the rule
+            has sent a study, Pseudonymize and the salt are fixed; create a new rule to change them. A mass transfer
+            job with the same filters and salt gives the same pseudonyms, which is how older studies are sent
+            afterwards. Sending without pseudonymization needs the permission to transfer unpseudonymized.
+        </p>
+        <h6>XNAT</h6>
+        <p>
+            Set the trial protocol ID to the XNAT project ID. When the rule pseudonymizes, the router writes
+            "Project:&lt;trial protocol ID&gt; Subject:&lt;pseudonym&gt; Session:…" into the Patient Comments of every
+            image, and XNAT files the images under that project and subject.
+        </p>
+        <h6>Late images</h6>
+        <p>
+            Images that arrive after a study was checked are checked again as a new batch of the same study and sent
+            as a follow-up, with the same pseudonym and the same replacement UIDs, so the destination ends up with the
+            whole study. Images the rule sent before are not sent again.
+        </p>
+    </div>
+</div>
