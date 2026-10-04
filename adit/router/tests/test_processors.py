@@ -25,6 +25,7 @@ from adit.router.factories import (
 from adit.router.models import RouterTask, RoutingRule
 from adit.router.processors import RouterTaskProcessor
 from adit.router.utils import spool
+from adit.router.utils.batches import read_series_images as _real_read_series_images
 
 
 @pytest.fixture
@@ -172,6 +173,28 @@ def test_delivery_of_a_missing_batch_folder_fails_clearly(spool_root, mocker):
     task = _task(spool_root, _ct_images()[:1], RoutingRuleFactory.create())
     batch = task.job.batch
     spool.delete_batch(spool.batch_dir(spool_root, batch.sender_id, batch.batch_id))
+
+    with pytest.raises(DicomError, match="forward the study again"):
+        RouterTaskProcessor(task).process()
+
+
+@pytest.mark.django_db
+def test_delivery_of_a_file_that_disappears_before_being_read_fails_clearly(spool_root, mocker):
+    """A Reset, Retry or Resume landing between selecting and reading a batch's files
+    (not reachable yet in stage 3, but coming in stage 4) must not surface a bare
+    FileNotFoundError."""
+    _Uploads(mocker)
+    images = _ct_images()[:2]
+    task = _task(spool_root, images, RoutingRuleFactory.create())
+
+    def vanish_after_selecting(path, series_uids):
+        selected = _real_read_series_images(path, series_uids)
+        selected[0].path.unlink()
+        return selected
+
+    mocker.patch(
+        "adit.router.processors.read_series_images", side_effect=vanish_after_selecting
+    )
 
     with pytest.raises(DicomError, match="forward the study again"):
         RouterTaskProcessor(task).process()

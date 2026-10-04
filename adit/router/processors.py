@@ -46,11 +46,14 @@ class RouterTaskProcessor(DicomTaskProcessor):
             raise DicomError(f"The batch folder {batch_path} is missing. {_FORWARD_AGAIN}")
 
         already_sent = RouterTask.already_sent(job.rule_id, task.study_uid, task.destination_id)
-        images = [
-            image
-            for image in read_series_images(batch_path, set(task.series_uids))
-            if image.sop_instance_uid not in already_sent
-        ]
+        try:
+            images = [
+                image
+                for image in read_series_images(batch_path, set(task.series_uids))
+                if image.sop_instance_uid not in already_sent
+            ]
+        except FileNotFoundError as err:
+            raise DicomError(f"A batch file is missing. {_FORWARD_AGAIN}") from err
         if not images:
             return {
                 "status": RouterTask.Status.SUCCESS,
@@ -67,16 +70,19 @@ class RouterTaskProcessor(DicomTaskProcessor):
 
         with tempfile.TemporaryDirectory(prefix="adit_router_") as tmpdir:
             pairs: set[tuple[str, str]] = set()
-            for image in images:
-                ds = read_dataset(image.path)
-                manipulator.manipulate(
-                    ds,
-                    pseudonym=task.pseudonym or None,
-                    trial_protocol_id=job.trial_protocol_id or None,
-                    trial_protocol_name=job.trial_protocol_name or None,
-                )
-                pairs.add((str(ds.SOPClassUID), str(ds.file_meta.TransferSyntaxUID)))
-                write_dataset(ds, Path(tmpdir) / f"{image.sop_instance_uid}.dcm")
+            try:
+                for image in images:
+                    ds = read_dataset(image.path)
+                    manipulator.manipulate(
+                        ds,
+                        pseudonym=task.pseudonym or None,
+                        trial_protocol_id=job.trial_protocol_id or None,
+                        trial_protocol_name=job.trial_protocol_name or None,
+                    )
+                    pairs.add((str(ds.SOPClassUID), str(ds.file_meta.TransferSyntaxUID)))
+                    write_dataset(ds, Path(tmpdir) / f"{image.sop_instance_uid}.dcm")
+            except FileNotFoundError as err:
+                raise DicomError(f"A batch file is missing. {_FORWARD_AGAIN}") from err
 
             operator = DicomOperator(
                 destination.dicomserver, store_contexts=requested_store_contexts(pairs)

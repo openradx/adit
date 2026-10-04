@@ -59,9 +59,31 @@ def test_requested_store_contexts_has_one_context_per_pair():
     assert [
         (str(cx.abstract_syntax), [str(ts) for ts in cx.transfer_syntax]) for cx in contexts
     ] == [
-        (CTImageStorage, [ExplicitVRLittleEndian]),
+        (CTImageStorage, [ExplicitVRLittleEndian, ImplicitVRLittleEndian]),
         (CTImageStorage, [JPEGLosslessSV1]),
     ]
+
+
+def test_requested_store_contexts_offers_the_other_little_endian_syntax():
+    contexts = requested_store_contexts(
+        [
+            (CTImageStorage, ExplicitVRLittleEndian),
+            (CTImageStorage, ImplicitVRLittleEndian),
+        ]
+    )
+
+    assert [
+        (str(cx.abstract_syntax), [str(ts) for ts in cx.transfer_syntax]) for cx in contexts
+    ] == [
+        (CTImageStorage, [ImplicitVRLittleEndian, ExplicitVRLittleEndian]),
+        (CTImageStorage, [ExplicitVRLittleEndian, ImplicitVRLittleEndian]),
+    ]
+
+
+def test_requested_store_contexts_does_not_offer_a_fallback_for_other_syntaxes():
+    contexts = requested_store_contexts([(CTImageStorage, JPEGLosslessSV1)])
+
+    assert [str(ts) for ts in contexts[0].transfer_syntax] == [JPEGLosslessSV1]
 
 
 def test_requested_store_contexts_refuses_more_than_one_association_carries():

@@ -13,6 +13,7 @@ _uncompressed_transfer_syntaxes = [
     "1.2.840.10008.1.2",  # Implicit VR Little Endian
     "1.2.840.10008.1.2.1",  # Explicit VR Little Endian
 ]
+_implicit_vr_little_endian, _explicit_vr_little_endian = _uncompressed_transfer_syntaxes
 
 _compressed_transfer_syntaxes = [
     "1.2.840.10008.1.2.4.50",  # JPEG Baseline
@@ -197,9 +198,19 @@ def requested_store_contexts(pairs: Iterable[tuple[str, str]]) -> list[Presentat
     """One requested presentation context per (SOP class, transfer syntax) pair.
 
     Lets a C-STORE send datasets exactly as they are stored, whatever their SOP class
-    and transfer syntax.
+    and transfer syntax. A pair stored in one of the uncompressed little-endian
+    syntaxes also offers the other, because pynetdicom converts between them when the
+    destination's SCP accepts only the other one.
     """
-    contexts = [build_context(sop_class, syntax) for sop_class, syntax in sorted(set(pairs))]
+    contexts = []
+    for sop_class, syntax in sorted(set(pairs)):
+        if syntax == _explicit_vr_little_endian:
+            syntaxes = [_explicit_vr_little_endian, _implicit_vr_little_endian]
+        elif syntax == _implicit_vr_little_endian:
+            syntaxes = [_implicit_vr_little_endian, _explicit_vr_little_endian]
+        else:
+            syntaxes = [syntax]
+        contexts.append(build_context(sop_class, syntaxes))
     if len(contexts) > 128:
         raise DicomError(
             f"The images need {len(contexts)} presentation contexts, more than one "
