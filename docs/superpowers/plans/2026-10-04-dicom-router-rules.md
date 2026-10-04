@@ -59,7 +59,7 @@
   - The tasks are queued inside the deciding transaction, so their queue rows appear only at commit.
 - **Pseudonyms:**
   - The pseudonym is `deterministic_pseudonym(rule.pseudonym_salt, PatientID)` when the rule pseudonymizes, otherwise empty.
-  - A batch without a Patient ID keys the pseudonym with its StudyInstanceUID, so unrelated patients never share one.
+  - A batch without a Patient ID is not routed. It is deleted with a warning, because a study in a PACS always has one and pseudonyms are keyed by it.
   - Images are pseudonymized with `Pseudonymizer(seed=rule.pseudonym_salt)` through `DicomManipulator.manipulate(ds, pseudonym, trial_protocol_id, trial_protocol_name)`.
 - **Delivery:**
   - One association per delivery, requesting one presentation context per (SOP class, transfer syntax) pair present.
@@ -2543,17 +2543,16 @@ def test_batch_of_a_removed_sender_is_deleted(spool_root):
 
 
 @pytest.mark.django_db
-def test_study_without_patient_id_gets_a_pseudonym_from_its_study_uid(spool_root):
-    rule = RoutingRuleFactory.create()
+def test_study_without_patient_id_is_not_routed(spool_root):
+    RoutingRuleFactory.create()
     datasets = _study()
     for ds in datasets:
         ds.PatientID = ""
     batch = _closed_batch(spool_root, RouterSenderFactory.create(), datasets)
 
-    [job] = decide_batch(spool_root, batch, TODAY)
-
-    expected = deterministic_pseudonym(rule.pseudonym_salt, str(datasets[0].StudyInstanceUID))
-    assert job.tasks.get().pseudonym == expected
+    assert decide_batch(spool_root, batch, TODAY) == []
+    assert not batch.path.exists()
+    assert not RouterBatch.objects.exists()
 
 
 @pytest.mark.django_db
@@ -2609,9 +2608,9 @@ logger = logging.getLogger(__name__)
 def decide_batch(spool_root: Path, batch: spool.BatchDir, today: date) -> list[RouterJob]:
     """Decide a closed batch and return the router jobs created for it.
 
-    A batch that matches no enabled rule, or whose images were all sent before, is
-    deleted. A batch that was decided before is left alone, and the unique constraints
-    keep a concurrent second decision from creating anything.
+    A batch that has no Patient ID, matches no enabled rule, or whose images were all
+    sent before, is deleted. A batch that was decided before is left alone, and the
+    unique constraints keep a concurrent second decision from creating anything.
     """
     if RouterBatch.objects.filter(batch_id=batch.batch_id).exists():
         return []
@@ -2629,6 +2628,17 @@ def decide_batch(spool_root: Path, batch: spool.BatchDir, today: date) -> list[R
     contents = read_batch(spool_root, batch.path, today)
     if not contents.images:
         logger.warning("Deleting router batch %s: none of its files could be read.", batch.batch_id)
+        spool.delete_batch(batch.path)
+        return []
+
+    if not contents.patient_id:
+        logger.warning(
+            "Deleting router batch %s of %s (study %s, %d images): it has no Patient ID.",
+            batch.batch_id,
+            sender.calling_ae_title,
+            contents.study_instance_uid,
+            len(contents.images),
+        )
         spool.delete_batch(batch.path)
         return []
 
@@ -2719,10 +2729,7 @@ def _create_job(
 def _pseudonym(rule: RoutingRule, contents: BatchContents) -> str:
     if not rule.pseudonymize:
         return ""
-    # Without a Patient ID the study UID keys the pseudonym: unrelated patients don't
-    # share one, and the late batches of the study still get the same.
-    key = contents.patient_id or contents.study_instance_uid
-    return deterministic_pseudonym(rule.pseudonym_salt, key)
+    return deterministic_pseudonym(rule.pseudonym_salt, contents.patient_id)
 ```
 
 - [ ] **Step 4: Run the tests to verify they pass**
