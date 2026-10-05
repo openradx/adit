@@ -88,7 +88,9 @@ class RoutingRuleDetailView(
     def get_context_data(self, **kwargs: Any) -> dict[str, Any]:
         context = super().get_context_data(**kwargs)
         context["filters_json"] = json.dumps(self.object.filters_json, indent=2)
-        context["failed_count"] = self.object.jobs.filter(status=RouterJob.Status.FAILURE).count()
+        context["failed_count"] = self.object.jobs.filter(
+            status=RouterJob.Status.FAILURE, batch__files_deleted_at__isnull=True
+        ).count()
         return context
 
 

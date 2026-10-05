@@ -89,5 +89,11 @@
         </c-slot>
     </c-table-heading>
     {% render_table table %}
+    {% if job.is_cancelable %}
+        <p class="text-muted small">
+            Canceling is final: the study's images are deleted at the next clean-up once its
+            other deliveries are done.
+        </p>
+    {% endif %}
     {% job_control_panel %}
 {% endblock content %}

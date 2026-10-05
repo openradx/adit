@@ -193,6 +193,19 @@ def test_canceled_job_is_offered_a_restart(client: Client):
 
 
 @pytest.mark.django_db
+def test_job_page_warns_canceling_is_final_only_while_cancelable(client: Client):
+    pending = create_delivery(RouterJob.Status.PENDING)
+    finished = create_delivery(RouterJob.Status.SUCCESS)
+    client.force_login(_staff())
+
+    pending_page = client.get(reverse("router_job_detail", args=[pending.job.pk]))
+    finished_page = client.get(reverse("router_job_detail", args=[finished.job.pk]))
+
+    assertContains(pending_page, "Canceling is final")
+    assertNotContains(finished_page, "Canceling is final")
+
+
+@pytest.mark.django_db
 def test_cancel_stops_a_pending_delivery(client: Client):
     task = create_delivery(RouterJob.Status.PENDING)
     client.force_login(_staff())

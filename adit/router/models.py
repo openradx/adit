@@ -194,7 +194,9 @@ class RouterJob(TransferJob):
 
     @property
     def is_resumable(self) -> bool:
-        # A router job has one task, so Restart covers a canceled job.
+        # A canceled delivery's images are deleted at the next clean-up once the batch's
+        # other deliveries are done, so it can only be restarted until then; Resume would
+        # add nothing over Restart for a one-task job.
         return False
 
     @property

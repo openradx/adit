@@ -176,6 +176,17 @@ def test_rule_page_filters_the_deliveries_by_status(client: Client):
     assertContains(response, "Retry Failed Deliveries (1)")
 
 
+@pytest.mark.django_db
+def test_rule_page_hides_retry_button_when_only_failures_have_deleted_images(client: Client):
+    rule = RoutingRuleFactory.create()
+    create_delivery(RouterJob.Status.FAILURE, rule=rule, files_deleted=True)
+    client.force_login(_staff())
+
+    response = client.get(reverse("router_rule_detail", args=[rule.pk]))
+
+    assertNotContains(response, "Retry Failed Deliveries")
+
+
 def _destination_cannot_receive(rule: RoutingRule) -> None:
     DicomServer.objects.filter(pk=rule.destination_id).update(
         store_scp_support=False, dicomweb_stow_support=False
