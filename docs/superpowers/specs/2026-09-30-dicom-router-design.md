@@ -25,7 +25,7 @@ that ADIT itself started, and drops everything else.
 
 | Decision | Choice | Why |
 |---|---|---|
-| How studies arrive | The PACS forwards them by C-STORE to a separate router AE title and port | Works with any PACS. Polling the PACS was rejected. Instance Availability Notification (IHE RAD-49) depends on the PACS and is deferred (§11) |
+| How studies arrive | The PACS forwards them by C-STORE to a separate router AE title and port | Works with any PACS. Polling the PACS was rejected (§2.1). Instance Availability Notification (IHE RAD-49) depends on the PACS and is deferred (§11) |
 | Where the work runs | A `router` container that only receives and spools, like the receiver; closing, rule checks and delivery run in the existing workers | Reuses the task runner, retries, crash recovery and job/task pages. Rejected: a self-contained router daemon (rebuilds all of that) and Orthanc as the inbox (a third-party container in production, and not "like the receiver") |
 | Unit of decision | Per study, once no image of it has arrived for a quiet period | Rules describe studies. XNAT files a session after its own 5-minute quiet period, so one burst per study suits it |
 | Late images | A new batch of the same study, sent as a follow-up with the same pseudonym and replacement UIDs | The destination ends up complete. Dropping late images would leave partial studies |
@@ -36,6 +36,40 @@ that ADIT itself started, and drops everything else.
 | Who writes rules | Staff only, as a mass transfer JSON filter list in the same editor; the creator is recorded | A rule is a standing export of patient data. A users-create/staff-approve flow can follow (§11) |
 | Job structure | One `RouterJob` per (rule, batch) with one `RouterTask`; owner = the rule's creator | Every job has a clear owner (RADIS gives subscription jobs the subscription's owner), and a rule's page lists its own jobs |
 | Senders | A `RouterSender` model with its own calling AE title, managed in the Django admin | Some PACS send under a different AE title than the one they answer queries on |
+
+### 2.1 Push or poll
+
+The router could also find new studies itself: query the PACS on a schedule (C-FIND), check the
+rules against the answers, and retrieve the matches (C-MOVE or C-GET). ADIT already does all of
+this for mass transfer, so a poll would be an open-ended mass transfer job that re-runs its latest
+partition every few minutes (option A in the #143 analysis). This design uses push instead: the
+PACS forwards every new study to the router. The two compare as follows.
+
+| | Push (this design) | Poll |
+|---|---|---|
+| Set-up at the PACS | A forwarding rule to the router's AE title and port, set up by the PACS administrator | None beyond what ADIT already needs: the PACS is a `DicomServer` that answers C-FIND and C-MOVE/C-GET |
+| Set-up at ADIT | An open router port, a spool volume (on an encrypted disk), registered senders | A schedule per rule; no inbound port, no spool |
+| Which studies are new | Arrival itself: whatever the PACS forwards is new | A watermark. StudyDate is not arrival time (late scans, imported priors, corrected studies), and standard C-FIND can't ask "received since". So a poll either rescans a window and keeps a ledger of handled studies, or misses studies |
+| When a study is complete | No end-of-study signal: a quiet period, then late images as follow-up batches | The PACS holds what has arrived so far, but a study that is still arriving looks the same; it needs a stability check across polls (instance counts unchanged), with the same late-image problem |
+| Latency | The quiet period (5 minutes by default) plus the delivery | The poll interval plus the quiet check plus the retrieval |
+| Load on the PACS | One extra send per forwarded study; no queries | Repeated study-level C-FINDs per rule and interval, series-level C-FINDs for candidates, then a retrieval of the matches only |
+| Data moved | Everything the forwarding filter lets through; studies no rule matches are received and deleted. A narrow forwarding filter (for example CT only) keeps this small | Only the selected series of matching studies |
+| Facts the rules see | The real headers: birth date, descriptions, modality per series | What the PACS returns in C-FIND. Optional keys such as ModalitiesInStudy, PatientBirthDate or SeriesDescription are missing on some PACS, and an age or description rule then can't be checked |
+| Data held by ADIT | Images in the spool until delivered, bounded by the retention settings | Only the temporary files of a running transfer |
+| ADIT down or suspended | The PACS's forwarding queue retries (answers are `0xA700`); how long depends on the PACS | Nothing is lost; the next poll catches up within its window |
+| Past studies | Not covered: rules apply to studies arriving after they exist; backfill with mass transfer | The same mechanism, with a longer window |
+
+Push was chosen because a router is asked for as a listener on its own port, because arrival is a
+reliable "new study" signal while every poll watermark is a guess, because rules should see the
+real headers rather than what a PACS's C-FIND happens to return, and because the delay is minutes,
+not a poll interval. Its costs are the PACS-side set-up, the open port, and the spool with patient
+data at rest; the admin guide covers the firewall, the encrypted disk and a narrow forwarding
+filter.
+
+Polling remains the better fit where a PACS can't forward or its administrators won't set up a
+forwarding rule, and for the past: mass transfer with a rule's filters and salt already gives the
+same selection, pseudonyms and UIDs (§7). Instance Availability Notification (§11) would combine
+the two: the PACS announces each new study and ADIT retrieves only the matches.
 
 ## 3. Components and data flow
 
