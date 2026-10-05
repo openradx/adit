@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 
 def get_dicom_task(model_label: str, task_id: int) -> DicomTask:
-    DicomTaskModel = cast(DicomTask, apps.get_model(model_label))
+    DicomTaskModel = cast(type[DicomTask], apps.get_model(model_label))
     return DicomTaskModel.objects.get(id=task_id)
 
 
