@@ -168,7 +168,7 @@ The router only accepts images from registered senders and rejects everyone else
 3. Choose the PACS as **Server**. Leave **Calling AE title** empty to use the server's AE title, or enter the AE title the PACS sends from if it differs from the one it answers queries on
 4. Save. Unchecking **Enabled** later makes the router refuse that sender
 
-Senders are managed only in the Django admin. **Router** → **Router settings** → **Suspended** pauses receiving: the router answers every image with "out of resources", so the PACS keeps the images and sends them again later. Deliveries continue while the router is suspended.
+Senders are managed only in the Django admin. **Django Admin** → **Router** → **Router settings** → **Suspended** pauses receiving: the router answers every image with "out of resources", so the PACS keeps the images and sends them again later. Deliveries continue while the router is suspended.
 
 ### Writing Routing Rules
 
@@ -204,7 +204,7 @@ The router only sees the studies the PACS forwards from now on. To send older st
 
 ### Deliveries and Retention
 
-For every study a rule matches, and for every follow-up batch of it, the router creates a router job with one delivery task, owned by the rule's creator. The jobs are listed on the rule's page and under **Router Jobs**, and the [Job Overview](#job-overview) counts them. A job can be canceled, retried, restarted and reset, and a running task killed, like other jobs; it can't be deleted, so canceling keeps its history. Images that arrive after a study was checked are sent as a follow-up batch with the same pseudonym. Images a rule sent before are not sent again for `ROUTER_SENT_LIST_RETENTION_DAYS` (30 days).
+For every study a rule matches, and for every follow-up batch of it, the router creates a router job with one delivery task, owned by the rule's creator. The jobs are listed on the rule's page and under **Router Jobs**, and the [Job Overview](#job-overview) counts them. A job can be canceled, retried, restarted and reset, and a running task killed, like other jobs; it can't be deleted, so canceling keeps its history. Canceling is final: the study's images are deleted at the next clean-up once its other deliveries are done, so a canceled job can only be restarted until then. Images that arrive after a study was checked are sent as a follow-up batch with the same pseudonym. Images a rule sent before are not sent again for `ROUTER_SENT_LIST_RETENTION_DAYS` (30 days).
 
 How long data stays in the spool:
 
@@ -222,6 +222,7 @@ When the spool has less than `ROUTER_SPOOL_MIN_FREE_GB` (20) free, the router re
 - An AE title is not authentication. Anyone who can reach the port and knows a sender's AE title can send images, and the rules forward them.
 - The spool holds identifiable images, so it belongs on an encrypted disk (`ROUTER_SPOOL_DIR`).
 - A routing rule is a standing export of patient data, so only staff users can see and change rules and router jobs.
+- Every staff user can create, edit, enable and retry rules on the Router pages; the Django admin's model permissions (`add_routingrule`, `change_routingrule`, …) don't apply there. Grant staff status accordingly.
 
 ## Job Overview
 
