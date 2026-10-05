@@ -1,5 +1,5 @@
 x-app: &default-app
-  image: ${ADIT_IMAGE:-ghcr.io/openradx/adit:latest@sha256:b7a53281abfb4e39f48e75f7ddde172df97c8d371161cf0db81a0634a5579adc}
+  image: ${ADIT_IMAGE:-ghcr.io/openradx/adit:latest@sha256:d21e05661e4c2be00992cb74d400aec534545d22b102e15da616cd989d8adea3}
   volumes:
     - web_data:/var/www/web
     - ${SSL_SERVER_CERT_FILE:?}:/etc/web/ssl/cert.pem
