@@ -255,6 +255,14 @@ class DicomJob(models.Model):
 
         reset_tasks(tasks)
 
+    def retry(self) -> None:
+        """Reset the failed tasks and queue them again."""
+        assert self.is_retriable
+        self.reset_tasks(only_failed=True)
+        self.status = DicomJob.Status.PENDING
+        self.save()
+        self.queue_pending_tasks()
+
     def post_process(self, suppress_email=False) -> bool:
         """Evaluates all the tasks of a dicom job and sets the job state accordingly.
 

@@ -3,7 +3,7 @@ import secrets
 from django.conf import settings
 from django.contrib.postgres.fields import ArrayField
 from django.core.exceptions import ValidationError
-from django.db import models
+from django.db import models, transaction
 from django.urls import reverse
 from procrastinate.contrib.django import app
 
@@ -96,6 +96,9 @@ class RoutingRule(models.Model):
     def __str__(self) -> str:
         return self.name
 
+    def get_absolute_url(self) -> str:
+        return reverse("router_rule_detail", args=[self.pk])
+
     def clean(self) -> None:
         try:
             self.filters_json = parse_filters(self.filters_json)
@@ -128,6 +131,23 @@ class RoutingRule(models.Model):
 
     def get_filters(self) -> list[FilterSpec]:
         return [FilterSpec.from_dict(d) for d in self.filters_json]
+
+    def retry_failed_deliveries(self) -> tuple[int, int]:
+        """Retry the rule's failed deliveries whose images are still in the spool.
+
+        Returns how many deliveries were retried and how many could not be, because the
+        images of their batch were deleted.
+        """
+        retried = not_retriable = 0
+        with transaction.atomic():
+            failed = self.jobs.filter(status=DicomJob.Status.FAILURE).select_related("batch")
+            for job in failed:
+                if job.is_retriable:
+                    job.retry()
+                    retried += 1
+                else:
+                    not_retriable += 1
+        return retried, not_retriable
 
 
 class RouterBatch(models.Model):
@@ -165,7 +185,27 @@ class RouterJob(TransferJob):
         ]
 
     def get_absolute_url(self) -> str:
-        return reverse("admin:router_routerjob_change", args=[self.pk])
+        return reverse("router_job_detail", args=[self.pk])
+
+    @property
+    def is_deletable(self) -> bool:
+        # Canceling stops a delivery and keeps its history.
+        return False
+
+    @property
+    def is_resumable(self) -> bool:
+        # A canceled delivery's images are deleted at the next clean-up once the batch's
+        # other deliveries are done, so it can only be restarted until then; Resume would
+        # add nothing over Restart for a one-task job.
+        return False
+
+    @property
+    def is_retriable(self) -> bool:
+        return super().is_retriable and self.batch.files_deleted_at is None
+
+    @property
+    def is_restartable(self) -> bool:
+        return super().is_restartable and self.batch.files_deleted_at is None
 
     def queue_pending_tasks(self) -> None:
         assert self.status == DicomJob.Status.PENDING
@@ -181,7 +221,16 @@ class RouterTask(TransferTask):
         indexes = [models.Index(fields=["study_uid"])]
 
     def get_absolute_url(self) -> str:
-        return reverse("admin:router_routertask_change", args=[self.pk])
+        return reverse("router_task_detail", args=[self.pk])
+
+    @property
+    def is_deletable(self) -> bool:
+        # Like its job, a delivery task keeps its history.
+        return False
+
+    @property
+    def is_resettable(self) -> bool:
+        return super().is_resettable and self.job.batch.files_deleted_at is None
 
     @classmethod
     def already_sent(cls, rule_id: int, study_uid: str, destination_id: int) -> set[str]:

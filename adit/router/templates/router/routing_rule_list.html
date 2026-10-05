@@ -1,0 +1,23 @@
+{% extends "core/core_layout.html" %}
+{% load render_table from django_tables2 %}
+{% load bootstrap_icon from common_extras %}
+{% block title %}
+    Routing Rules
+{% endblock title %}
+{% block heading %}
+    <c-page-heading title="Routing Rules">
+        <c-slot name="right">
+            <a href="{% url 'router_job_list' %}" class="btn btn-secondary">
+                {% bootstrap_icon "list" %}
+                Router Jobs
+            </a>
+            <a href="{% url 'router_rule_create' %}" class="btn btn-primary">
+                {% bootstrap_icon "plus-lg" %}
+                New Rule
+            </a>
+        </c-slot>
+    </c-page-heading>
+{% endblock heading %}
+{% block content %}
+    {% render_table table %}
+{% endblock content %}

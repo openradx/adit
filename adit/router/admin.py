@@ -1,11 +1,12 @@
 from typing import Any, cast
 
-from django import forms
+from adit_radis_shared.accounts.models import User
 from django.contrib import admin
 from django.http import HttpRequest
 
 from adit.core.admin import DicomJobAdmin, DicomTaskAdmin
 
+from .forms import RoutingRuleForm
 from .models import RouterBatch, RouterJob, RouterSender, RouterSettings, RouterTask, RoutingRule
 
 
@@ -14,37 +15,8 @@ class RouterSenderAdmin(admin.ModelAdmin):
     list_filter = ("enabled",)
 
 
-class RoutingRuleAdminForm(forms.ModelForm):
-    # Set by RoutingRuleAdmin.get_form to the user editing the rule.
-    request_user: Any = None
-
-    class Meta:
-        model = RoutingRule
-        fields = "__all__"  # noqa: DJ007
-
-    def clean(self) -> dict[str, Any]:
-        super().clean()
-        user = self.request_user
-        if (
-            self.cleaned_data.get("pseudonymize") is False
-            and user is not None
-            and not user.has_perm("router.can_transfer_unpseudonymized")
-        ):
-            # Only turning pseudonymization off needs the permission: a new rule
-            # saved that way, or an existing one flipping from True to False.
-            # Editing, enabling or disabling an already-unpseudonymized rule doesn't.
-            is_new = self.instance.pk is None
-            switched_off = "pseudonymize" in self.changed_data
-            if is_new or switched_off:
-                self.add_error(
-                    "pseudonymize",
-                    "You are not allowed to send studies without pseudonymization.",
-                )
-        return self.cleaned_data
-
-
 class RoutingRuleAdmin(admin.ModelAdmin):
-    form = RoutingRuleAdminForm
+    form = RoutingRuleForm
     list_display = ("name", "enabled", "destination", "pseudonymize", "created_by")
     list_filter = ("enabled",)
 
@@ -58,9 +30,15 @@ class RoutingRuleAdmin(admin.ModelAdmin):
     def get_form(
         self, request: HttpRequest, obj: Any = None, change: bool = False, **kwargs: Any
     ) -> Any:
-        form = cast(type[RoutingRuleAdminForm], super().get_form(request, obj, change, **kwargs))
-        form.request_user = request.user
-        return form
+        form_class = cast(type[RoutingRuleForm], super().get_form(request, obj, change, **kwargs))
+        user = cast(User, request.user)
+
+        # The admin creates the form itself, so the subclass hands over the user.
+        class UserRoutingRuleForm(form_class):
+            def __init__(self, *args: Any, **form_kwargs: Any) -> None:
+                super().__init__(*args, user=user, **form_kwargs)
+
+        return UserRoutingRuleForm
 
     def save_model(self, request: HttpRequest, obj: Any, form: Any, change: bool) -> None:
         if not change:

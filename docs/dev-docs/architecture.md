@@ -112,6 +112,7 @@ Every worker runs `./manage.py sweep_stale_tasks` before starting `bg_worker`.
 #### **DICOM Router** (`adit.router`)
 
 - **Router inbox and routing**: `./manage.py router` (the router container) accepts the images a PACS forwards from enabled `RouterSender`s and writes each one durably to `incoming/<sender id>/<StudyInstanceUID>/` in the spool. `close_router_batches` closes quiet studies into batches, selects series per enabled `RoutingRule` with the mass transfer filters (`select_study_series`), and creates a `RouterBatch` with one `RouterJob`/`RouterTask` per matching rule in one transaction. `RouterTaskProcessor` pseudonymizes with the rule's salt, sends over one association that requests exactly the stored (SOP class, transfer syntax) pairs, and records the sent SOP Instance UIDs so images forwarded again are left out.
+- **Staff pages**: `/router/` (staff only, `RouterStaffRequiredMixin`) lists the rules with their deliveries by status, edits them with `RoutingRuleForm` (shared with the Django admin, where senders are managed), and shows router jobs and tasks on subclasses of the generic core job and task views. `RouterJob` and `RouterTask` are never deleted or resumed, and refuse Retry, Restart and Reset once `RouterBatch.files_deleted_at` is set.
 
 ## Primary Models
 

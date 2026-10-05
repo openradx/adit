@@ -7,6 +7,7 @@ from django.test import RequestFactory
 from adit.core.factories import DicomServerFactory
 from adit.router.admin import RouterBatchAdmin, RoutingRuleAdmin
 from adit.router.factories import RouterBatchFactory, RouterJobFactory, RoutingRuleFactory
+from adit.router.forms import RoutingRuleForm
 from adit.router.models import RouterBatch, RoutingRule
 
 
@@ -165,3 +166,13 @@ def test_rule_with_jobs_stays_editable_without_the_permission():
     form = form_class(data=data, instance=rule)
 
     assert form.is_valid(), form.errors
+
+
+@pytest.mark.django_db
+def test_admin_edits_rules_with_the_form_of_the_router_pages():
+    admin = RoutingRuleAdmin(RoutingRule, AdminSite())
+    rule = RoutingRuleFactory.create()
+
+    form_class = admin.get_form(_request(_rule_editor()), rule, change=True)
+
+    assert issubclass(form_class, RoutingRuleForm)

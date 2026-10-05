@@ -1,0 +1,34 @@
+{% extends "core/core_layout.html" %}
+{% load crispy from crispy_forms_tags %}
+{% load bootstrap_icon from common_extras %}
+{% block title %}
+    {{ page_title }}
+{% endblock title %}
+{% block css %}
+    {{ block.super }}
+    {{ form.media.css }}
+    {% include "core/_codemirror_css.html" %}
+{% endblock css %}
+{% block heading %}
+    <c-page-heading title="{{ page_title }}">
+        <c-slot name="left">
+            <button type="button"
+                    class="btn btn-info"
+                    hx-get="{% url 'router_help' %}"
+                    hx-target="#htmx-dialog">
+                Help
+                {% bootstrap_icon "question-circle" %}
+            </button>
+        </c-slot>
+        <c-slot name="right">
+            <a href="{% url 'router_rule_list' %}" class="btn btn-secondary">
+                {% bootstrap_icon "list" %}
+                Routing Rules
+            </a>
+        </c-slot>
+    </c-page-heading>
+{% endblock heading %}
+{% block content %}
+    {# crispy renders form.media, so the editor's JavaScript loads before the editor #}
+    {% crispy form %}
+{% endblock content %}

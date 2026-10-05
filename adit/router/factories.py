@@ -50,6 +50,7 @@ class RouterJobFactory(AbstractTransferJobFactory[RouterJob]):
     status = RouterJob.Status.PENDING
     urgent = False
     rule = factory.SubFactory(RoutingRuleFactory)
+    owner = factory.LazyAttribute(lambda job: job.rule.created_by)
     batch = factory.SubFactory(RouterBatchFactory)
 
 

@@ -295,12 +295,7 @@ class DicomJobRetryView(LoginRequiredMixin, SingleObjectMixin, View):
                 f"Job with ID {job.pk} and status {job.get_status_display()} is not retriable."
             )
 
-        job.reset_tasks(only_failed=True)
-
-        job.status = DicomJob.Status.PENDING
-        job.save()
-
-        job.queue_pending_tasks()
+        job.retry()
 
         messages.success(request, self.success_message % job.__dict__)
         return redirect(job)
