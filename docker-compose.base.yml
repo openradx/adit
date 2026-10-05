@@ -44,10 +44,18 @@ services:
   default_worker:
     <<: *default-app
     hostname: default_worker.local
+    volumes:
+      - ${BACKUP_DIR:?}:/backups
+      - ${MOUNT_DIR:?}:/mnt
+      - ${ROUTER_SPOOL_DIR:-router_spool}:/spool
 
   dicom_worker:
     <<: *default-app
     hostname: dicom_worker.local
+    volumes:
+      - ${BACKUP_DIR:?}:/backups
+      - ${MOUNT_DIR:?}:/mnt
+      - ${ROUTER_SPOOL_DIR:-router_spool}:/spool
 
   mass_transfer_worker:
     <<: *default-app

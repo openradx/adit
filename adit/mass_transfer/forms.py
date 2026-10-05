@@ -8,11 +8,10 @@ from crispy_forms.helper import FormHelper
 from crispy_forms.layout import HTML, Column, Div, Field, Layout, Row, Submit
 from django import forms
 from django.core.exceptions import ValidationError
-from pydantic import ValidationError as PydanticValidationError
 
 from adit.core.fields import DicomNodeChoiceField
 from adit.core.models import DicomNode
-from adit.core.utils.series_filters import FilterSchema
+from adit.core.utils.series_filters import parse_filters
 
 from .models import MassTransferJob, MassTransferTask
 from .utils.partitions import build_partitions
@@ -232,24 +231,10 @@ class MassTransferJobForm(forms.ModelForm):
         except json.JSONDecodeError as e:
             raise ValidationError(f"Invalid JSON: {e}")
 
-        if not isinstance(data, list) or not data:
-            raise ValidationError("Filters must be a non-empty JSON array.")
-
-        validated: list[dict] = []
-        for i, item in enumerate(data):
-            if not isinstance(item, dict):
-                raise ValidationError(f"Filter #{i + 1} must be a JSON object.")
-            try:
-                fs = FilterSchema(**item)
-                validated.append(fs.model_dump(exclude_none=True))
-            except PydanticValidationError as e:
-                errors = "; ".join(err["msg"] for err in e.errors())
-                raise ValidationError(f"Filter #{i + 1}: {errors}")
-
-        if not any(f.get("mode", "include") == "include" for f in validated):
-            raise ValidationError("At least one filter must have mode=include.")
-
-        return validated
+        try:
+            return parse_filters(data)
+        except ValueError as e:
+            raise ValidationError(str(e))
 
     def _save_tasks(self, job: MassTransferJob) -> None:
         partitions = build_partitions(

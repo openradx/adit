@@ -21,6 +21,7 @@ from pynetdicom.association import Association
 from pynetdicom.events import EVT_C_STORE, Event
 from pynetdicom.presentation import (
     BasicWorklistManagementPresentationContexts,
+    PresentationContext,
     QueryRetrievePresentationContexts,
     UnifiedProcedurePresentationContexts,
     build_role,
@@ -137,6 +138,7 @@ class DimseConnector:
         connection_timeout: int | None = None,
         dimse_timeout: int | None = 60,
         network_timeout: int | None = 120,
+        store_contexts: list[PresentationContext] | None = None,
     ) -> None:
         self.server = server
         self.auto_connect = auto_connect
@@ -145,6 +147,7 @@ class DimseConnector:
         self.connection_timeout = connection_timeout
         self.dimse_timeout = dimse_timeout
         self.network_timeout = network_timeout
+        self.store_contexts = store_contexts
         self.logs: list[DicomLogEntry] = []
         self._current_service: DimseService | None = None
 
@@ -210,7 +213,7 @@ class DimseConnector:
         elif service == "C-MOVE":
             ae.requested_contexts = QueryRetrievePresentationContexts
         elif service == "C-STORE":
-            ae.requested_contexts = StoragePresentationContexts
+            ae.requested_contexts = self.store_contexts or StoragePresentationContexts
         else:
             raise DicomError(f"Invalid DIMSE service: {service}")
 

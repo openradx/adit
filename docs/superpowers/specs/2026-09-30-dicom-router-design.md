@@ -1,7 +1,7 @@
 # DICOM router — design
 
 Date: 2026-09-30
-Status: approved; stage 1 (filters into core) implemented on feat/dicom-router-filters
+Status: approved; stages 1 and 2 implemented (feat/dicom-router-filters, feat/dicom-router-inbox), stage 3 on feat/dicom-router-rules
 Reference: issue [#143](https://github.com/openradx/adit/issues/143) and its analysis comment of
 2026-09-24. Related: #415 (receiver hardening), #406 (AE titles in the Orthanc test configs),
 #141 (series-level transfer). In-flight PR #374 also changes `adit/mass_transfer/processors.py`,

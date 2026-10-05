@@ -1,4 +1,5 @@
-from pydicom.uid import UID
+from collections.abc import Iterable
+
 from pynetdicom._globals import DEFAULT_TRANSFER_SYNTAXES
 from pynetdicom.presentation import (
     AllStoragePresentationContexts,
@@ -6,10 +7,13 @@ from pynetdicom.presentation import (
     build_context,
 )
 
+from ..errors import DicomError
+
 _uncompressed_transfer_syntaxes = [
     "1.2.840.10008.1.2",  # Implicit VR Little Endian
     "1.2.840.10008.1.2.1",  # Explicit VR Little Endian
 ]
+_implicit_vr_little_endian, _explicit_vr_little_endian = _uncompressed_transfer_syntaxes
 
 _compressed_transfer_syntaxes = [
     "1.2.840.10008.1.2.4.50",  # JPEG Baseline
@@ -179,27 +183,37 @@ assert len(StoragePresentationContexts) <= 120
 def storage_scp_contexts() -> list[PresentationContext]:
     """Presentation contexts for a Storage SCP that keeps datasets as received.
 
-    Covers every storage SOP class pynetdicom knows plus the ones listed above, with
-    pynetdicom's default transfer syntaxes. Image SOP classes (those in the list above
-    plus any whose pydicom keyword names it as image storage) are accepted in the
-    compressed transfer syntaxes, as the SCP stores pixel data without decoding it.
-    The keyword is needed because ADIT's list misses newer image SOP classes.
+    Covers every storage SOP class pynetdicom knows plus the ones listed above, each
+    with pynetdicom's default and the compressed transfer syntaxes. The SCP stores data
+    without decoding it, and whoever forwards it later requests exactly the pairs it
+    holds (requested_store_contexts).
     """
-    default_syntaxes = [str(ts) for ts in DEFAULT_TRANSFER_SYNTAXES]
+    syntaxes = [str(ts) for ts in DEFAULT_TRANSFER_SYNTAXES] + _compressed_transfer_syntaxes
     uids = {str(cx.abstract_syntax) for cx in AllStoragePresentationContexts}
     uids |= set(_image_storage) | set(_non_image_storage)
-    # An image class is one in ADIT's list or whose pydicom keyword names it as image.
-    image_storage = set(_image_storage) | {
-        uid for uid in uids if "ImageStorage" in UID(uid).keyword
-    }
-    return [
-        build_context(
-            uid,
-            (
-                default_syntaxes + _compressed_transfer_syntaxes
-                if uid in image_storage
-                else default_syntaxes
-            ),
+    return [build_context(uid, syntaxes) for uid in sorted(uids)]
+
+
+def requested_store_contexts(pairs: Iterable[tuple[str, str]]) -> list[PresentationContext]:
+    """One requested presentation context per (SOP class, transfer syntax) pair.
+
+    Lets a C-STORE send datasets exactly as they are stored, whatever their SOP class
+    and transfer syntax. A pair stored in one of the uncompressed little-endian
+    syntaxes also offers the other, because pynetdicom converts between them when the
+    destination's SCP accepts only the other one.
+    """
+    contexts = []
+    for sop_class, syntax in sorted(set(pairs)):
+        if syntax == _explicit_vr_little_endian:
+            syntaxes = [_explicit_vr_little_endian, _implicit_vr_little_endian]
+        elif syntax == _implicit_vr_little_endian:
+            syntaxes = [_implicit_vr_little_endian, _explicit_vr_little_endian]
+        else:
+            syntaxes = [syntax]
+        contexts.append(build_context(sop_class, syntaxes))
+    if len(contexts) > 128:
+        raise DicomError(
+            f"The images need {len(contexts)} presentation contexts, more than one "
+            "association can request (128)."
         )
-        for uid in sorted(uids)
-    ]
+    return contexts

@@ -8,12 +8,14 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from pydicom import Dataset
+from pydicom.uid import CTImageStorage, JPEGLosslessSV1, generate_uid
 from pynetdicom.status import Status
 
 from adit.core.errors import DicomError, RetriableDicomError
 from adit.core.factories import DicomMoveServerFactory, DicomServerFactory
 from adit.core.utils.dicom_dataset import QueryDataset
 from adit.core.utils.dimse_connector import DimseConnector
+from adit.core.utils.presentation_contexts import requested_store_contexts
 from adit.core.utils.testing_helpers import DicomTestHelper, create_association_mock
 
 
@@ -553,3 +555,29 @@ class TestOpenCloseConnection:
         assoc.release.assert_called_once()
         assert connector.assoc is None
         assert connector._current_service is None
+
+
+@pytest.mark.django_db
+def test_c_store_requests_the_given_contexts(mocker):
+    server = DicomServerFactory.create(store_scp_support=True)
+    contexts = requested_store_contexts([(CTImageStorage, JPEGLosslessSV1)])
+    association = create_association_mock()
+    association.is_alive.return_value = True
+    status = Dataset()
+    status.Status = 0x0000
+    association.send_c_store.return_value = status
+    associate = mocker.patch(
+        "adit.core.utils.dimse_connector.AE.associate", autospec=True, return_value=association
+    )
+    ds = Dataset()
+    ds.SOPClassUID = CTImageStorage
+    ds.SOPInstanceUID = generate_uid()
+    ds.StudyInstanceUID = generate_uid()
+
+    DimseConnector(server, store_contexts=contexts).send_c_store([ds])
+
+    ae = associate.call_args.args[0]
+    assert [
+        (str(cx.abstract_syntax), [str(ts) for ts in cx.transfer_syntax])
+        for cx in ae.requested_contexts
+    ] == [(CTImageStorage, [JPEGLosslessSV1])]

@@ -5,6 +5,7 @@ from adit.batch_query.models import BatchQueryJob, BatchQueryTask
 from adit.batch_transfer.models import BatchTransferJob, BatchTransferTask
 from adit.core.models import DicomJob, DicomTask
 from adit.mass_transfer.models import MassTransferJob, MassTransferTask
+from adit.router.models import RouterJob, RouterTask
 from adit.selective_transfer.models import SelectiveTransferJob, SelectiveTransferTask
 
 
@@ -70,5 +71,7 @@ class Command(BaseCommand):
         self.cleanup_jobs(BatchTransferJob)
         self.cleanup_tasks(MassTransferTask)
         self.cleanup_jobs(MassTransferJob)
+        self.cleanup_tasks(RouterTask)
+        self.cleanup_jobs(RouterJob)
 
         self.stdout.write("Done")

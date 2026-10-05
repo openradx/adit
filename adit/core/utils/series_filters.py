@@ -1,14 +1,13 @@
 """Filters that select the series of a study."""
 
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from datetime import date, datetime
-from typing import Annotated, Literal
+from typing import Annotated, Literal, Protocol
 
-from pydantic import BaseModel, model_validator
+from pydantic import BaseModel, ValidationError, model_validator
 
 from ..errors import DicomError
-from .dicom_dataset import ResultDataset
 from .dicom_utils import convert_to_python_regex
 
 
@@ -60,6 +59,31 @@ class FilterSchema(BaseModel):
         if not has_criterion:
             raise ValueError("exclude filter must specify at least one criterion")
         return self
+
+
+def parse_filters(data: object) -> list[dict]:
+    """Validate a filters_json value and return it normalized.
+
+    Raises ValueError, with a message meant for the user, unless *data* is a non-empty
+    list of filter objects with at least one include filter.
+    """
+    if not isinstance(data, list) or not data:
+        raise ValueError("Filters must be a non-empty JSON array.")
+
+    validated: list[dict] = []
+    for i, item in enumerate(data):
+        if not isinstance(item, dict):
+            raise ValueError(f"Filter #{i + 1} must be a JSON object.")
+        try:
+            validated.append(FilterSchema(**item).model_dump(exclude_none=True))
+        except ValidationError as err:
+            errors = "; ".join(e["msg"] for e in err.errors())
+            raise ValueError(f"Filter #{i + 1}: {errors}") from err
+
+    if not any(f.get("mode", "include") == "include" for f in validated):
+        raise ValueError("At least one filter must have mode=include.")
+
+    return validated
 
 
 @dataclass(frozen=True)
@@ -115,6 +139,26 @@ class DiscoveredSeries:
     patient_birth_date: date | None = None
 
 
+class StudyFacts(Protocol):
+    """What study_matches_filter reads about a study.
+
+    A ResultDataset of a study found on a PACS provides it, and the DICOM router builds
+    it from the headers of the images it received.
+    """
+
+    @property
+    def ModalitiesInStudy(self) -> list[str]: ...
+
+    @property
+    def StudyDescription(self) -> str: ...
+
+    @property
+    def PatientBirthDate(self) -> date | None: ...
+
+    @property
+    def StudyDate(self) -> date | None: ...
+
+
 def dicom_match(pattern: str, value: str | None, case_insensitive: bool = False) -> bool:
     # Callers only pass non-PN fields (institution_name, study_description,
     # series_description). Include filters compare case-sensitively to stay
@@ -137,7 +181,7 @@ def age_at_study(birth_date: date, study_date: date) -> int:
 
 
 def study_matches_filter(
-    mf: FilterSpec, study: ResultDataset, has_institution: Callable[[str], bool]
+    mf: FilterSpec, study: StudyFacts, has_institution: Callable[[str], bool]
 ) -> bool:
     """Test whether *study* can hold series selected by the include filter *mf*.
 
@@ -227,3 +271,36 @@ def series_matches_filter(
         if series.number_of_images < mf.min_number_of_series_related_instances:
             return False
     return True
+
+
+def select_study_series(
+    study: StudyFacts, series: Sequence[DiscoveredSeries], filters: Sequence[FilterSpec]
+) -> list[DiscoveredSeries]:
+    """Select the series of one study the way mass transfer discovers them.
+
+    A series is selected when an include filter matches it, its study-level conditions
+    first, and no exclude filter does. *series* must hold every series of *study*,
+    because the study-level institution condition looks at all of them.
+    """
+    selected: dict[str, DiscoveredSeries] = {}
+    for mf in filters:
+        if mf.mode != "include":
+            continue
+        if not study_matches_filter(
+            mf,
+            study,
+            lambda pattern: any(dicom_match(pattern, s.institution_name) for s in series),
+        ):
+            continue
+        for s in series:
+            if s.series_instance_uid not in selected and series_matches_filter(
+                s, mf, check_institution=not mf.apply_institution_on_study
+            ):
+                selected[s.series_instance_uid] = s
+
+    excludes = [mf for mf in filters if mf.mode == "exclude"]
+    return [
+        s
+        for s in selected.values()
+        if not any(series_matches_filter(s, mf, age_permissive=True) for mf in excludes)
+    ]
