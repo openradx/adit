@@ -82,6 +82,17 @@ services:
     command: |
       ./manage.py receiver --autoreload
 
+  router:
+    <<: *default-app
+    image: adit_dev-router:latest
+    ports:
+      - 11123:11112
+    command: >
+      bash -c "
+        wait-for-it -s postgres.local:5432 -t ${WAIT_POSTGRES_TIMEOUT:-180} &&
+        ./manage.py router --autoreload
+      "
+
   postgres:
     environment:
       POSTGRES_PASSWORD: postgres

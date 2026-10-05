@@ -57,6 +57,12 @@ services:
     <<: *default-app
     hostname: receiver.local
 
+  router:
+    <<: *default-app
+    hostname: router.local
+    volumes:
+      - ${ROUTER_SPOOL_DIR:-router_spool}:/spool
+
   postgres:
     image: postgres:17@sha256:d74eeac9a635390a49bc21bd49fccd973de707e2a53a76ac49b552b8712ec46f
     hostname: postgres.local
@@ -91,3 +97,4 @@ volumes:
   postgres_data:
   orthanc1_data:
   orthanc2_data:
+  router_spool:

@@ -81,3 +81,9 @@ services:
     environment:
       <<: *observability-env
       SERVICE_COMPONENT: receiver
+
+  router:
+    <<: *observability-net
+    environment:
+      <<: *observability-env
+      SERVICE_COMPONENT: router

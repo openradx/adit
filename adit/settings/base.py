@@ -91,6 +91,7 @@ INSTALLED_APPS = [
     "adit.upload.apps.UploadConfig",
     "adit.dicom_explorer.apps.DicomExplorerConfig",
     "adit.dicom_web.apps.DicomWebConfig",
+    "adit.router.apps.RouterConfig",
     "channels",
 ]
 
@@ -403,6 +404,21 @@ STORE_SCP_PORT = env.int("STORE_SCP_PORT", 11112)
 # not be a problem as it is inside the docker network).
 FILE_TRANSMIT_HOST = env.str("FILE_TRANSMIT_HOST", "localhost")
 FILE_TRANSMIT_PORT = env.int("FILE_TRANSMIT_PORT", 14638)
+
+# The AE title of the DICOM router. Senders forward studies to it. Empty disables the router.
+ROUTER_AE_TITLE = env.str("ROUTER_AE_TITLE", default="")
+
+# The port the DICOM router listens on inside its container.
+ROUTER_SCP_PORT = env.int("ROUTER_SCP_PORT", default=11112)
+
+# The folder of the router spool inside the containers.
+ROUTER_SPOOL_PATH = env.str("ROUTER_SPOOL_PATH", default="/spool")
+
+# How often the router reloads its senders and the suspended flag from the database.
+ROUTER_SENDER_REFRESH_SECONDS = env.int("ROUTER_SENDER_REFRESH_SECONDS", default=30)
+
+# The router refuses new images while the spool has less free space than this.
+ROUTER_SPOOL_MIN_FREE_GB = env.int("ROUTER_SPOOL_MIN_FREE_GB", default=20)
 
 # Usually a transfer job must be verified by an admin. By setting
 # this option to True ADIT will schedule unverified transfers

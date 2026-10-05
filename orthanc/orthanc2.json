@@ -7,7 +7,8 @@
   "StorageDirectory": "/var/lib/orthanc/db",
   "DicomModalities": {
     "ORTHANC1": ["ORTHANC1", "orthanc1", 7502],
-    "ADIT": ["ADIT1DEV", "receiver", 11112]
+    "ADIT": ["ADIT1DEV", "receiver", 11112],
+    "ROUTER": ["ADIT1DEVROUTER", "router", 11112]
   },
   "Plugins": ["/usr/share/orthanc/plugins", "/usr/local/share/orthanc/plugins"],
   "RemoteAccessAllowed": true,

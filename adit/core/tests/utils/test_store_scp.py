@@ -35,6 +35,7 @@ from unittest.mock import MagicMock
 import pytest
 from pydicom import Dataset
 from pydicom.dataset import FileMetaDataset
+from pynetdicom.ae import ApplicationEntity as AE
 
 from adit.core.utils import store_scp as store_scp_module
 from adit.core.utils.store_scp import StoreScp
@@ -299,3 +300,74 @@ def test_stop_is_safe_when_server_not_started(store_scp):
     assert store_scp._ae is None
     store_scp.stop()  # should not raise
     assert store_scp._ae is None
+
+
+# ---------------------------------------------------------------------------
+# Options used by the DICOM router
+# ---------------------------------------------------------------------------
+
+
+def test_custom_store_handler_decides_the_status(store_scp, monkeypatch):
+    """With a store handler set, the handler stores the dataset and its return
+    value is the C-STORE status; the default temp-file path is not used."""
+    written: list[str] = []
+    monkeypatch.setattr(store_scp_module, "write_dataset", lambda ds, fn: written.append(fn))
+
+    seen: list[object] = []
+
+    def handler(event):
+        seen.append(event)
+        return 0xA700
+
+    store_scp.set_store_handler(handler)
+    event = _make_event()
+
+    assert store_scp._handle_store(event) == 0xA700
+    assert seen == [event]
+    assert written == []
+
+
+def test_no_allow_list_accepts_every_calling_ae(store_scp):
+    event = _make_event(calling_ae="ANYONE")
+
+    store_scp._on_established(event)
+
+    event.assoc.abort.assert_not_called()
+
+
+def test_allow_list_aborts_associations_from_other_calling_aes(store_scp):
+    store_scp.set_allowed_calling_aets(["PACS1"])
+    allowed = _make_event(calling_ae="PACS1")
+    other = _make_event(calling_ae="STRANGER")
+
+    store_scp._on_established(allowed)
+    store_scp._on_established(other)
+
+    allowed.assoc.abort.assert_not_called()
+    other.assoc.abort.assert_called_once()
+
+
+def test_empty_allow_list_aborts_every_association(store_scp):
+    store_scp.set_allowed_calling_aets([])
+    event = _make_event(calling_ae="PACS1")
+
+    store_scp._on_established(event)
+
+    event.assoc.abort.assert_called_once()
+
+
+def test_allow_list_is_handed_to_pynetdicom(store_scp):
+    """A non-empty allow-list becomes pynetdicom's require_calling_aet, so unknown
+    AEs are rejected during negotiation. pynetdicom reads [] as "anyone", so an
+    empty allow-list maps to the SCP's own AE title, which rejects every other AE;
+    _on_established aborts a peer that calls with it."""
+    store_scp._ae = AE(ae_title="ADIT_RECEIVER")
+
+    store_scp.set_allowed_calling_aets(["PACS2 ", "PACS1"])
+    assert store_scp._ae.require_calling_aet == ["PACS1", "PACS2"]
+
+    store_scp.set_allowed_calling_aets([])
+    assert store_scp._ae.require_calling_aet == [store_scp._ae_title]
+
+    store_scp.set_allowed_calling_aets(None)
+    assert store_scp._ae.require_calling_aet == []

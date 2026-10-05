@@ -44,6 +44,7 @@ uv run cli copy-statics                    # Sync JS libs to vendor folder
 ./manage.py populate_example_data          # Example DICOM servers, folders and jobs (dev boot)
 ./manage.py cleanup_jobs_and_tasks         # Mark stuck jobs/tasks FAILURE; interactive, workers idle
 ./manage.py receiver                       # Run the C-STORE SCP (what the receiver container does)
+./manage.py router                         # Run the DICOM router (what the router container does)
 ./manage.py sweep_stale_tasks              # Repair IN_PROGRESS tasks of dead workers (worker boot)
 ```
 
@@ -75,6 +76,7 @@ Version floors are from `pyproject.toml`; the exact resolved version is in `uv.l
 - **dicom_explorer/**: Browse DICOM servers and their studies/series interactively. Models: `DicomExplorerSettings`, `PermissionSupport`.
 - **upload/**: Web portal for uploading DICOM files with client-side pseudonymization using dcmjs and dicom-web-anonymizer. Models: `UploadSettings`.
 - **dicom_web/**: DICOMweb REST API endpoints - QIDO-RS (query), WADO-RS (retrieve, plus `.../nifti` endpoints that return studies/series/images converted to NIfTI), STOW-RS (store). Models: `DicomWebSettings`, `APIUsage`.
+- **router/**: DICOM router inbox. `./manage.py router` (the router container) accepts C-STORE (and answers C-ECHO) on `ROUTER_AE_TITLE` from enabled `RouterSender`s (a `DicomServer` plus the AE title it sends from, managed in the Django admin) and writes each image durably to `incoming/<sender id>/<StudyInstanceUID>/` in the spool (`ROUTER_SPOOL_PATH`). Unknown senders are rejected; while `RouterSettings.suspended` is set or the spool is low on space, images are answered with `0xA700`. Nothing reads or deletes the spool yet: routing rules and delivery are not implemented. Models: `RouterSettings`, `RouterSender`.
 
 ### Job/Task Processing Model
 
@@ -145,19 +147,20 @@ High-level abstraction layers for PACS communication:
 - **DimseConnector**: DIMSE protocol (C-FIND, C-GET, C-MOVE) via pynetdicom
 - **DicomWebConnector**: DICOMweb REST API via dicomweb-client
 - **FileTransmitClient**: Inter-container TCP file transfer for C-MOVE operations
-- **StoreScp** (`store_scp.py`): C-STORE SCP server, run by `./manage.py receiver` in the receiver container
+- **StoreScp** (`store_scp.py`): C-STORE SCP server, run by `./manage.py receiver` in the receiver container and by `./manage.py router` in the router container (with a calling-AE allow-list and its own store handler)
 - **Pseudonymizer**: DICOM anonymization/pseudonymization using dicognito
 
 Data modification pattern: download to temp folder -> transform (pseudonymize) -> upload to destination
 
 ### Docker Services
 
-- **init**: One-shot bootstrap in production: `migrate`, `collectstatic`, `create_superuser`, `retry_stalled_jobs`, then an `ok_server` the web replicas wait for. In dev it is behind `profiles: [never]`; the web container runs the bootstrap itself
+- **init**: One-shot bootstrap in production: `migrate`, `collectstatic`, `create_superuser`, `retry_stalled_jobs`, then an `ok_server` the web replicas and the router wait for. In dev it is behind `profiles: [never]`; the web container runs the bootstrap itself
 - **web**: Main application. Dev: Django dev server on `WEB_DEV_PORT` (8000), boots with `migrate`, superuser/example users/groups/data, `populate_orthancs`, `retry_stalled_jobs`. Prod: Daphne on 80/443, `WEB_REPLICAS` replicas
 - **default_worker**: General background task processor (Procrastinate queue: `default`); each worker runs `sweep_stale_tasks` before `bg_worker`
 - **dicom_worker**: DICOM-specific task processor (Procrastinate queue: `dicom`); each worker runs `sweep_stale_tasks` before `bg_worker`
 - **mass_transfer_worker**: Mass transfer task processor (Procrastinate queue: `mass_transfer`); each worker runs `sweep_stale_tasks` before `bg_worker`
 - **receiver**: C-STORE SCP server (port 11112 internal; 11122 on host in dev, `RECEIVER_PORT` in prod) - receives DICOM from C-MOVE
+- **router**: DICOM router C-STORE SCP (port 11112 internal; 11123 on host in dev, `ROUTER_PORT` in prod); spool in the `router_spool` volume or `ROUTER_SPOOL_DIR`; idles when `ROUTER_AE_TITLE` is empty
 - **postgres**: PostgreSQL 17 database (port 5432, published on the host only in dev via `POSTGRES_DEV_PORT`)
 - **orthanc1**: Test DICOM server (DICOM port 7501, published on host; HTTP 6501 internal, admin proxy at `/orthanc1/`)
 - **orthanc2**: Test DICOM server (DICOM port 7502, published on host; HTTP 6502 internal, admin proxy at `/orthanc2/`)
@@ -183,6 +186,7 @@ quoted: the file is passed to the containers as is, and `docker stack deploy` ke
 - `TIME_ZONE`: Server timezone (default `UTC`)
 - `CALLING_AE_TITLE`: ADIT's DICOM Application Entity title (required; `example.env` uses `ADIT1DEV`)
 - `RECEIVER_AE_TITLE`: C-STORE receiver AE title (required; `example.env` uses `ADIT1DEV`)
+- `ROUTER_AE_TITLE`: DICOM router AE title (empty disables the router; `example.env` uses `ADIT1DEVROUTER`). Also `ROUTER_PORT` (prod host port, default 11113), `ROUTER_SPOOL_DIR` (host folder of the spool, default a Docker volume), `ROUTER_SPOOL_MIN_FREE_GB` (images are refused below this free space, default 20), `ROUTER_SENDER_REFRESH_SECONDS` (default 30)
 - `EXCLUDE_MODALITIES`: Modalities skipped when a study is transferred or downloaded pseudonymized via the web UI; does not affect the client (default empty; `example.env` sets `PR,SR`)
 - `ANONYMIZATION_SEED`: Seed for client-side anonymization consistency
 - `MOUNT_DIR`: Directory for mounting download folders
