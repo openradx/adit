@@ -3,6 +3,7 @@ import json
 import logging
 import struct
 from collections.abc import Awaitable, Callable
+from contextlib import suppress
 from os import PathLike
 
 import aiofiles
@@ -210,13 +211,20 @@ class FileTransmitClient:
                 metadata: Metadata = json.loads(metadata_bytes.decode().strip())
 
                 async with tempfile.NamedTemporaryFile(delete=False) as f:
-                    remaining_bytes = file_size
-                    while remaining_bytes > 0:
-                        chunk_size = min(remaining_bytes, BUFFER_SIZE)
-                        # Raises IncompleteReadError if the server goes away mid-file
-                        data = await reader.readexactly(chunk_size)
-                        await f.write(data)
-                        remaining_bytes -= len(data)
+                    try:
+                        remaining_bytes = file_size
+                        while remaining_bytes > 0:
+                            chunk_size = min(remaining_bytes, BUFFER_SIZE)
+                            # Raises IncompleteReadError if the server goes away mid-file
+                            data = await reader.readexactly(chunk_size)
+                            await f.write(data)
+                            remaining_bytes -= len(data)
+                    except BaseException:
+                        # Also on cancellation, as the partial file may contain patient data.
+                        # A failing removal must not replace the original error.
+                        with suppress(OSError):
+                            await os.remove(f.name)  # type: ignore
+                        raise
 
                 # The file handler can report that no further files are needed by
                 # returning True which stops reading further data from the server.
