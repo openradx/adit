@@ -64,11 +64,7 @@ class Command(AsyncServerCommand):
     async def _send_files(self):
         while True:
             file_path = await self._queue.async_q.get()
-
-            # The calling AE title is retained by the StoreScp class in the filename so
-            # that we can use it for the topic when transmitting the file.
-            filename: str = os.path.basename(file_path)
-            calling_ae = filename.split("_")[0]
+            filename = os.path.basename(file_path)
 
             study_uid = "Unknown"
             series_uid = "Unknown"
@@ -78,10 +74,20 @@ class Command(AsyncServerCommand):
                 study_uid = ds.StudyInstanceUID
                 series_uid = ds.SeriesInstanceUID
                 instance_uid = ds.SOPInstanceUID
-                topic = f"{calling_ae}\\{study_uid}"
-                await self._file_transmit.publish_file(
-                    topic, file_path, {"SOPInstanceUID": instance_uid}
+                # Routed on the StudyInstanceUID only, as the calling AE title of the C-STOREs
+                # may differ from the AE title ADIT queried (e.g. PACS clusters or a separate
+                # sending AE). SOPInstanceUIDs are globally unique, so workers dedupe on them.
+                sent_count = await self._file_transmit.publish_file(
+                    study_uid, file_path, {"SOPInstanceUID": instance_uid}
                 )
+                if not sent_count:
+                    # Also happens for late duplicates after the worker got all its images
+                    logger.warning(
+                        "No worker subscribed to study '%s', discarding received DICOM file "
+                        "with SOPInstanceUID '%s'.",
+                        study_uid,
+                        instance_uid,
+                    )
 
             except Exception as err:
                 # TODO: Maybe store unreadable files in some special folder for later analysis

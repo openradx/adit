@@ -457,6 +457,9 @@ DICOM_EXPLORER_RESPONSE_TIMEOUT = 3  # seconds
 # The timeout we wait for images of a C-MOVE download
 C_MOVE_DOWNLOAD_TIMEOUT = 30  # seconds
 
+# The timeout we wait for the receiver to register our subscription before sending a C-MOVE
+C_MOVE_SUBSCRIBE_TIMEOUT = 10  # seconds
+
 # Pebble process timeout for mass transfer tasks. A task processes an entire partition
 # (discovery + export + convert) and can run for hours.
 MASS_TRANSFER_PROCESS_TIMEOUT = 24 * 60 * 60  # seconds (24 hours)
