@@ -699,8 +699,17 @@ def test_discover_series_exclude_by_institution(mocker: MockerFixture):
     assert series_uids == {"1.2.3.901"}
 
 
-def test_discover_series_salvages_malformed_study_time(mocker: MockerFixture):
-    """A non-conformant StudyTime (as returned by some PACS) falls back to midnight."""
+@pytest.mark.parametrize(
+    "study_time",
+    [
+        # TM only allows a fractional part after full HHMMSS, so HHMM.fff is invalid
+        pytest.param("1113.672", id="non-conformant"),
+        # StudyTime is Type 2, so a PACS may return it empty
+        pytest.param("", id="empty"),
+    ],
+)
+def test_discover_series_salvages_unparseable_study_time(mocker: MockerFixture, study_time: str):
+    """A StudyTime that can't be parsed (as returned by some PACS) falls back to midnight."""
     processor = _make_processor(mocker)
     processor.mass_task.partition_start = datetime(2024, 1, 1, 0, 0)
     processor.mass_task.partition_end = datetime(2024, 1, 1, 23, 59, 59)
@@ -709,8 +718,7 @@ def test_discover_series_salvages_malformed_study_time(mocker: MockerFixture):
     operator.server = mocker.MagicMock(max_search_results=200)
 
     study = _make_study("1.2.3.100")
-    # TM only allows a fractional part after full HHMMSS, so HHMM.fff is invalid
-    _set_nonconformant(study.dataset, "StudyTime", "1113.672")
+    _set_nonconformant(study.dataset, "StudyTime", study_time)
     operator.find_studies.return_value = [study]
     operator.find_series.return_value = [_make_series_result("1.2.3.201")]
 
