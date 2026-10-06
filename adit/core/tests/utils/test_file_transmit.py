@@ -1,5 +1,6 @@
 import asyncio
 import struct
+import tempfile
 from os import PathLike
 from pathlib import Path
 from unittest.mock import MagicMock
@@ -133,7 +134,11 @@ async def test_subscribe_fails_without_acknowledgement():
 
 
 @pytest.mark.asyncio
-async def test_subscribe_raises_when_connection_drops_mid_file():
+async def test_subscribe_raises_when_connection_drops_mid_file(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    monkeypatch.setattr(tempfile, "tempdir", str(tmp_path))
+
     async def handle_connection(reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
         await reader.readline()
         writer.write(SUBSCRIBED_ACK)
@@ -160,6 +165,48 @@ async def test_subscribe_raises_when_connection_drops_mid_file():
         await server.wait_closed()
 
     assert received == []
+    # The partially received file must not be left behind (it may contain patient data)
+    assert list(tmp_path.iterdir()) == []
+
+
+@pytest.mark.asyncio
+async def test_partial_file_is_removed_when_subscription_is_cancelled_mid_file(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    monkeypatch.setattr(tempfile, "tempdir", str(tmp_path))
+
+    async def handle_connection(reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
+        await reader.readline()
+        writer.write(SUBSCRIBED_ACK)
+        # Announce 1000 bytes, send 10 of them and keep the connection open
+        writer.write(struct.pack("!I", 1000))
+        writer.write(b"{}\n")
+        writer.write(b"x" * 10)
+        await writer.drain()
+        await reader.read()
+        writer.close()
+        await writer.wait_closed()
+
+    async def wait_for_partial_file():
+        while not list(tmp_path.iterdir()):
+            await asyncio.sleep(0.05)
+
+    server = await asyncio.start_server(handle_connection, HOST, PORT)
+
+    try:
+        client = FileTransmitClient(HOST, PORT)
+        subscribe_task = asyncio.create_task(
+            client.subscribe("foobar", lambda filename, metadata: True)
+        )
+        await asyncio.wait_for(wait_for_partial_file(), timeout=5)
+        subscribe_task.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await subscribe_task
+    finally:
+        server.close()
+        await server.wait_closed()
+
+    assert list(tmp_path.iterdir()) == []
 
 
 @pytest.mark.asyncio
