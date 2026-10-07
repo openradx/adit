@@ -20,7 +20,7 @@ from pynetdicom.sop_class import (
 from pytest_django.fixtures import Settings
 from pytest_mock import MockerFixture
 
-from adit.core.errors import DicomError, RetriableDicomError
+from adit.core.errors import DicomError, IncompleteFetchError, RetriableDicomError
 from adit.core.factories import DicomWebServerFactory
 from adit.core.utils.dicom_dataset import QueryDataset, ResultDataset
 from adit.core.utils.dicom_operator import DicomOperator
@@ -249,6 +249,7 @@ def _setup_c_move_operator(settings: Settings, mocker: MockerFixture, port: int)
     settings.C_MOVE_DOWNLOAD_TIMEOUT = 1
     settings.C_MOVE_REFETCH_ATTEMPTS = 2
     settings.C_MOVE_REFETCH_MAX_MISSING_PERCENT = 50
+    settings.C_MOVE_FAIL_ON_INCOMPLETE = True
     associate_mock = mocker.patch("adit.core.utils.dimse_connector.AE.associate")
     association_mock = create_association_mock()
     associate_mock.return_value = association_mock
@@ -447,6 +448,7 @@ def test_c_move_images_of_other_fetches_do_not_extend_the_wait(
         return DicomTestHelper.create_successful_c_move_response()
 
     association_mock.send_c_move.side_effect = send_c_move
+    settings.C_MOVE_FAIL_ON_INCOMPLETE = False
     settings.C_MOVE_REFETCH_ATTEMPTS = 0
 
     # Act
@@ -691,6 +693,7 @@ def test_c_move_refetch_rounds_only_request_images_still_missing(
     # Arrange: image B arrives in the first re-fetch round, image C never
     dicom_operator, ds, requested, stop = _setup_refetch(settings, mocker, 17992, deliver={IMAGE_B})
     settings.C_MOVE_REFETCH_ATTEMPTS = attempts
+    settings.C_MOVE_FAIL_ON_INCOMPLETE = False
 
     # Act
     try:
@@ -764,6 +767,7 @@ def test_c_move_refetch_skips_images_that_arrived_meanwhile(
     # Arrange: image C arrives late while image B is fetched again, B never arrives
     dicom_operator, ds, requested, stop = _setup_refetch(settings, mocker, 17983, deliver={"late"})
     settings.C_MOVE_REFETCH_ATTEMPTS = 1
+    settings.C_MOVE_FAIL_ON_INCOMPLETE = False
     received: list[str] = []
 
     # Act
@@ -796,9 +800,10 @@ def test_c_move_refetch_is_skipped_when_too_many_images_are_missing(
 
     # Act
     try:
-        dicom_operator.fetch_series(
-            ds.PatientID, ds.StudyInstanceUID, ds.SeriesInstanceUID, lambda ds: None
-        )
+        with contextlib.suppress(RetriableDicomError):
+            dicom_operator.fetch_series(
+                ds.PatientID, ds.StudyInstanceUID, ds.SeriesInstanceUID, lambda ds: None
+            )
     finally:
         stop()
 
@@ -830,6 +835,29 @@ def test_c_move_refetch_cap_allows_exactly_the_configured_percentage(
 
 
 @pytest.mark.django_db
+def test_c_move_fails_as_a_whole_when_too_many_images_are_missing(
+    settings: Settings, mocker: MockerFixture
+):
+    # Arrange: two of three images (67 %) are missing, more than the cap allows to fetch again;
+    # the delivery is broken as a whole, so even a configured warning doesn't apply
+    dicom_operator, ds, _, stop = _setup_refetch(settings, mocker, 17979, deliver=set())
+    settings.C_MOVE_FAIL_ON_INCOMPLETE = False
+    settings.C_MOVE_REFETCH_MAX_MISSING_PERCENT = 60
+
+    # Act
+    try:
+        with pytest.raises(RetriableDicomError, match="2 of 3 images") as error:
+            dicom_operator.fetch_series(
+                ds.PatientID, ds.StudyInstanceUID, ds.SeriesInstanceUID, lambda ds: None
+            )
+    finally:
+        stop()
+
+    # Assert: retried as a whole, not an incomplete result after the re-fetch
+    assert not isinstance(error.value, IncompleteFetchError)
+
+
+@pytest.mark.django_db
 def test_c_move_refetch_continues_after_a_failing_move_without_retrying_it(
     settings: Settings, mocker: MockerFixture
 ):
@@ -838,6 +866,7 @@ def test_c_move_refetch_continues_after_a_failing_move_without_retrying_it(
         settings, mocker, 17991, deliver={IMAGE_C, "fail"}
     )
     settings.C_MOVE_REFETCH_ATTEMPTS = 1
+    settings.C_MOVE_FAIL_ON_INCOMPLETE = False
     open_connection = mocker.spy(dicom_operator.dimse_connector, "open_connection")
     received: list[str] = []
 
@@ -885,6 +914,50 @@ def test_c_move_refetch_stops_when_the_association_is_lost(
 
 
 @pytest.mark.django_db
+def test_c_move_fails_when_images_are_still_missing(settings: Settings, mocker: MockerFixture):
+    # Arrange: images B and C never arrive
+    dicom_operator, ds, _, stop = _setup_refetch(settings, mocker, 17990, deliver=set())
+    settings.C_MOVE_REFETCH_ATTEMPTS = 0
+
+    # Act
+    try:
+        with pytest.raises(IncompleteFetchError, match="2 of 3 images") as error:
+            dicom_operator.fetch_series(
+                ds.PatientID, ds.StudyInstanceUID, ds.SeriesInstanceUID, lambda ds: None
+            )
+    finally:
+        stop()
+
+    # Assert
+    assert error.value.study_uid == ds.StudyInstanceUID
+    assert error.value.missing_image_uids == [IMAGE_B, IMAGE_C]
+    assert error.value.image_count == 3
+
+
+@pytest.mark.django_db
+def test_c_move_only_warns_about_missing_images_when_configured(
+    settings: Settings, mocker: MockerFixture
+):
+    # Arrange: images B and C never arrive
+    dicom_operator, ds, _, stop = _setup_refetch(settings, mocker, 17989, deliver=set())
+    settings.C_MOVE_REFETCH_ATTEMPTS = 0
+    settings.C_MOVE_FAIL_ON_INCOMPLETE = False
+
+    # Act
+    try:
+        dicom_operator.fetch_series(
+            ds.PatientID, ds.StudyInstanceUID, ds.SeriesInstanceUID, lambda ds: None
+        )
+    finally:
+        stop()
+
+    # Assert
+    assert [log["title"] for log in dicom_operator.get_logs()] == [
+        "Some images could not be fetched"
+    ]
+
+
+@pytest.mark.django_db
 @pytest.mark.parametrize("max_missing_percent", [50, 100])
 def test_c_move_does_not_refetch_when_no_image_arrived(
     settings: Settings, mocker: MockerFixture, max_missing_percent: int
@@ -909,6 +982,29 @@ def test_c_move_does_not_refetch_when_no_image_arrived(
 
     # Only the first C-MOVE, no IMAGE-level C-MOVE per image of the study
     assert association_mock.send_c_move.call_count == 1
+
+
+@pytest.mark.django_db
+def test_c_move_fails_when_no_image_arrives_even_if_configured_to_warn(
+    settings: Settings, mocker: MockerFixture
+):
+    # Arrange: the C-MOVE succeeds, but the receiver never delivers anything
+    dicom_operator, association_mock, _, ds = _setup_c_move_operator(settings, mocker, 17988)
+    settings.C_MOVE_REFETCH_ATTEMPTS = 0
+    settings.C_MOVE_FAIL_ON_INCOMPLETE = False
+    association_mock.send_c_find.return_value = DicomTestHelper.create_successful_c_find_responses(
+        [{"SOPInstanceUID": ds.SOPInstanceUID}]
+    )
+    transmit_server, loop = _start_transmit_server(17988)
+
+    # Act / Assert
+    try:
+        with pytest.raises(RetriableDicomError, match="Failed to fetch all images"):
+            dicom_operator.fetch_series(
+                ds.PatientID, ds.StudyInstanceUID, ds.SeriesInstanceUID, lambda ds: None
+            )
+    finally:
+        asyncio.run_coroutine_threadsafe(transmit_server.stop(), loop).result(timeout=5)
 
 
 # ---------------------------------------------------------------------------

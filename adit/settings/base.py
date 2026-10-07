@@ -468,10 +468,16 @@ if C_MOVE_REFETCH_ATTEMPTS < 0:
     raise ImproperlyConfigured("C_MOVE_REFETCH_ATTEMPTS must not be negative")
 
 # When more than this percentage of the images is missing (0-100), the delivery is broken
-# as a whole and there is no re-fetch, as one C-MOVE per image would only add load.
+# as a whole: no re-fetch (one C-MOVE per image would only add load), the download fails
+# and is retried later, regardless of C_MOVE_FAIL_ON_INCOMPLETE.
 C_MOVE_REFETCH_MAX_MISSING_PERCENT = env.int("C_MOVE_REFETCH_MAX_MISSING_PERCENT", default=50)
 if not 0 <= C_MOVE_REFETCH_MAX_MISSING_PERCENT <= 100:
     raise ImproperlyConfigured("C_MOVE_REFETCH_MAX_MISSING_PERCENT must be between 0 and 100")
+
+# Whether a C-MOVE download with images still missing after the re-fetch fails (and is
+# retried as a whole) instead of only logging a warning. A download without any image
+# always fails.
+C_MOVE_FAIL_ON_INCOMPLETE = env.bool("C_MOVE_FAIL_ON_INCOMPLETE", default=True)
 
 # Pebble process timeout for mass transfer tasks. A task processes an entire partition
 # (discovery + export + convert) and can run for hours.
