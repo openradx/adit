@@ -249,9 +249,7 @@ class TestHandleGetAndMoveResponses:
 
     def test_success_with_completed_suboperations(self):
         connector = self._connector()
-        responses = iter(
-            [(_status(Status.SUCCESS, NumberOfCompletedSuboperations=3), None)]
-        )
+        responses = iter([(_status(Status.SUCCESS, NumberOfCompletedSuboperations=3), None)])
         # Should not raise and should not log warnings
         connector._handle_get_and_move_responses(responses, "C-GET")
         assert connector.logs == []
@@ -553,3 +551,18 @@ class TestOpenCloseConnection:
         assoc.release.assert_called_once()
         assert connector.assoc is None
         assert connector._current_service is None
+
+
+@pytest.mark.django_db
+def test_c_move_batch_keeps_message_ids_within_16_bit(mocker):
+    connector = DimseConnector(DicomServerFactory.create(), auto_connect=True)
+    associate_mock = mocker.patch("adit.core.utils.dimse_connector.AE.associate")
+    associate_mock.return_value = create_association_mock()
+    send_c_move = mocker.patch.object(connector, "_send_c_move")
+    query = QueryDataset.create(PatientID="1", StudyInstanceUID="1.123")
+
+    connector.send_c_move_batch([query] * 0x10001, "DEST_AE")
+
+    msg_ids = [call.args[2] for call in send_c_move.call_args_list]
+    assert max(msg_ids) == 0xFFFF
+    assert msg_ids[0xFFFF] == 1

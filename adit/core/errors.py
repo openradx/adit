@@ -30,6 +30,12 @@ class RetriableDicomError(DicomError):
     pass
 
 
+class AssociationLostError(RetriableDicomError):
+    """The association ended during a DIMSE operation (timeout, abort or invalid response)."""
+
+    pass
+
+
 def is_retriable_http_status(status_code: int) -> bool:
     """Check if an HTTP status code indicates a transient error that should be retried.
 

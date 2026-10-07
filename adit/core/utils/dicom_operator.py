@@ -573,10 +573,11 @@ class DicomOperator:
         callback: Callable[[Dataset], None],
     ) -> None:
         # When downloading images with C-MOVE we first must know all the SOPInstanceUIDs
-        # in advance so that we can check if all were received.
-        image_uids: set[str]
+        # in advance so that we can check if all were received. Their SeriesInstanceUIDs
+        # are needed to fetch missing images again.
+        image_uids: dict[str, str]  # SOPInstanceUID -> SeriesInstanceUID
         if image_uid := query.get("SOPInstanceUID"):
-            image_uids = {image_uid}
+            image_uids = {image_uid: query.SeriesInstanceUID}
         elif series_uid := query.get("SeriesInstanceUID"):
             query_dataset = QueryDataset.create(
                 PatientID=query.PatientID,
@@ -584,7 +585,7 @@ class DicomOperator:
                 SeriesInstanceUID=series_uid,
             )
             images = self.find_images(query_dataset)
-            image_uids = {image.SOPInstanceUID for image in images}
+            image_uids = {image.SOPInstanceUID: series_uid for image in images}
         else:
             # If SeriesInstanceUID not provided or needed it is still necessary for
             # querying on IMAGE level
@@ -598,7 +599,7 @@ class DicomOperator:
             series_list = list(self.find_series(query_dataset))
 
             image_uids = {
-                image.SOPInstanceUID
+                image.SOPInstanceUID: series.SeriesInstanceUID
                 for series in series_list
                 for image in self.find_images(
                     QueryDataset.create(
@@ -610,7 +611,7 @@ class DicomOperator:
             }
 
         # The images not received yet, the consumer removes each one it handed over
-        missing_images = set(image_uids)
+        missing_images = dict(image_uids)
 
         # When the consumer last received an expected image
         last_image_at = [time.monotonic()]
@@ -652,6 +653,28 @@ class DicomOperator:
                     receiving_errors,
                 )
 
+                # When nothing or most of it arrived, the delivery is broken as a whole (or the
+                # PACS is overloaded), so one C-MOVE per image would only add load.
+                delivery_broken = bool(missing_images) and (
+                    len(missing_images) == len(image_uids)
+                    or 100 * len(missing_images) / len(image_uids)
+                    > settings.C_MOVE_REFETCH_MAX_MISSING_PERCENT
+                )
+
+                for _ in range(0 if delivery_broken else settings.C_MOVE_REFETCH_ATTEMPTS):
+                    if not missing_images or receiving_errors or consume_future.done():
+                        break
+                    self._refetch_missing_images(
+                        query, missing_images, consume_future, receiving_errors
+                    )
+                    self._wait_for_images(
+                        missing_images,
+                        last_image_at,
+                        time.monotonic(),
+                        consume_future,
+                        receiving_errors,
+                    )
+
                 if not receiving_errors:
                     self._check_images_received(query.StudyInstanceUID, image_uids, missing_images)
             except Exception as err:
@@ -680,9 +703,44 @@ class DicomOperator:
             if consume_future.done() or time.monotonic() > deadline:
                 raise RetriableDicomError("Could not subscribe to the DICOM receiver.")
 
+    def _refetch_missing_images(
+        self,
+        query: QueryDataset,
+        missing_images: dict[str, str],
+        consume_future: Future[None],
+        receiving_errors: list[Exception],
+    ) -> None:
+        # The images are the same a SERIES or STUDY level C-MOVE sends (one C-STORE each),
+        # but every C-MOVE costs the PACS a query resolution and its own association to the
+        # receiver. Many of them in a row can strain a PACS (association limits, empty
+        # SUCCESS responses under rapid association requests, see DimseConnector). So they
+        # share one association, are not retried (the re-fetch rounds are the retries) and
+        # a lost association ends the round, leaving it to the task retry.
+        logger.info(
+            "Fetching %d missing images of study %s again.",
+            len(missing_images),
+            query.StudyInstanceUID,
+        )
+
+        def image_queries() -> Iterator[QueryDataset]:
+            # A copy, as the consumer thread removes images that arrive meanwhile
+            for image_uid, series_uid in missing_images.copy().items():
+                if receiving_errors or consume_future.done():
+                    return
+                if image_uid in missing_images:
+                    yield QueryDataset.create(
+                        QueryRetrieveLevel="IMAGE",
+                        PatientID=query.PatientID,
+                        StudyInstanceUID=query.StudyInstanceUID,
+                        SeriesInstanceUID=series_uid,
+                        SOPInstanceUID=image_uid,
+                    )
+
+        self.dimse_connector.send_c_move_batch(image_queries(), settings.RECEIVER_AE_TITLE)
+
     def _wait_for_images(
         self,
-        missing_images: set[str],
+        missing_images: dict[str, str],
         last_image_at: list[float],
         moves_finished_at: float,
         consume_future: Future[None],
@@ -703,8 +761,8 @@ class DicomOperator:
     def _check_images_received(
         self,
         study_uid: str,
-        image_uids: set[str],
-        missing_images: set[str],
+        image_uids: dict[str, str],
+        missing_images: dict[str, str],
     ) -> None:
         if not missing_images:
             return
@@ -730,7 +788,7 @@ class DicomOperator:
     def _consume_from_receiver(
         self,
         study_uid: str,
-        missing_images: set[str],
+        missing_images: dict[str, str],
         last_image_at: list[float],
         callback: Callable[[Dataset], None],
         subscribed_event: threading.Event,
@@ -758,7 +816,7 @@ class DicomOperator:
                         await asyncio.to_thread(read_and_handle_image, filename)
                         # Only removed once handed over, so that the image doesn't count as
                         # received while it is still processed.
-                        missing_images.remove(image_uid)
+                        del missing_images[image_uid]
                         last_image_at[0] = time.monotonic()
                 except Exception as err:
                     receiving_errors.append(err)

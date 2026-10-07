@@ -10,6 +10,7 @@ from pathlib import Path
 from time import sleep
 
 import pytest
+import stamina
 from django.conf import settings
 from pydicom import Dataset
 from pynetdicom.sop_class import (
@@ -30,6 +31,10 @@ from adit.core.utils.testing_helpers import (
     create_association_mock,
     create_dicom_operator,
 )
+
+# SOPInstanceUIDs of images the re-fetch tests expect besides the sample image
+IMAGE_B = "1.2.3.4.5.901"
+IMAGE_C = "1.2.3.4.5.902"
 
 
 def _make_result(**kwargs) -> ResultDataset:
@@ -242,6 +247,8 @@ def _setup_c_move_operator(settings: Settings, mocker: MockerFixture, port: int)
     settings.FILE_TRANSMIT_HOST = "127.0.0.1"
     settings.FILE_TRANSMIT_PORT = port
     settings.C_MOVE_DOWNLOAD_TIMEOUT = 1
+    settings.C_MOVE_REFETCH_ATTEMPTS = 2
+    settings.C_MOVE_REFETCH_MAX_MISSING_PERCENT = 50
     associate_mock = mocker.patch("adit.core.utils.dimse_connector.AE.associate")
     association_mock = create_association_mock()
     associate_mock.return_value = association_mock
@@ -367,6 +374,7 @@ def test_c_move_images_arriving_after_a_long_move_are_received(
         settings, mocker, 17995
     )
     settings.C_MOVE_DOWNLOAD_TIMEOUT = 2
+    settings.C_MOVE_REFETCH_ATTEMPTS = 0
     association_mock.send_c_find.return_value = DicomTestHelper.create_successful_c_find_responses(
         [{"SOPInstanceUID": ds.SOPInstanceUID}]
     )
@@ -439,6 +447,7 @@ def test_c_move_images_of_other_fetches_do_not_extend_the_wait(
         return DicomTestHelper.create_successful_c_move_response()
 
     association_mock.send_c_move.side_effect = send_c_move
+    settings.C_MOVE_REFETCH_ATTEMPTS = 0
 
     # Act
     start = time.time()
@@ -508,6 +517,398 @@ def test_c_move_study_fetch_finishes_the_series_query_before_querying_images(
     # Assert
     assert nested_queries == []
     assert received_ds == [ds]
+
+
+def _failed_c_move_response():
+    status = Dataset()
+    status.Status = 0xA702  # Out of resources
+    return iter([(status, None)])
+
+
+def _setup_refetch(
+    settings: Settings,
+    mocker: MockerFixture,
+    port: int,
+    deliver: set[str],
+    images: dict[str, str | None] | None = None,
+):
+    """The sample image and `images` (by default B and C) are expected, each image maps to
+    its series (None for the series of the sample image). The first C-MOVE only delivers
+    the sample image, IMAGE-level
+    C-MOVEs deliver the requested image if it is in `deliver`, otherwise they fail with a
+    failure status ("fail" in `deliver`), lose the association ("lose", or "peer abort" while
+    the association still counts as alive) or deliver nothing.
+    With "late", image C arrives late while image B (not delivered) is fetched again. With
+    "delayed", the requested images arrive shortly after their C-MOVE finished."""
+    dicom_operator, association_mock, file_path, ds = _setup_c_move_operator(settings, mocker, port)
+    # Most images are missing after the first C-MOVE
+    settings.C_MOVE_REFETCH_MAX_MISSING_PERCENT = 100
+    image_series = {ds.SOPInstanceUID: ds.SeriesInstanceUID} | {
+        image_uid: series_uid or ds.SeriesInstanceUID
+        for image_uid, series_uid in (images or {IMAGE_B: None, IMAGE_C: None}).items()
+    }
+
+    def send_c_find(query_ds: Dataset, *args, **kwargs):
+        if query_ds.QueryRetrieveLevel == "SERIES":
+            series_uids = dict.fromkeys(image_series.values())
+            data = [{"SeriesInstanceUID": uid, "Modality": ds.Modality} for uid in series_uids]
+        else:
+            data = [
+                {"SOPInstanceUID": image_uid}
+                for image_uid, series_uid in image_series.items()
+                if series_uid == query_ds.SeriesInstanceUID
+            ]
+        return DicomTestHelper.create_successful_c_find_responses(data)
+
+    association_mock.send_c_find.side_effect = send_c_find
+    refetch_missing_images = mocker.spy(dicom_operator, "_refetch_missing_images")
+    transmit_server, loop = _start_transmit_server(port)
+    requested: list[tuple[str, str, str]] = []
+    delayed_publishes: list[threading.Timer] = []
+    # The receiver publishes one file after the other, concurrent publishes to the same
+    # subscriber would interleave their data.
+    publish_lock = threading.Lock()
+
+    def publish(image_uid: str):
+        publish = transmit_server.publish_file(
+            ds.StudyInstanceUID, file_path, {"SOPInstanceUID": image_uid}
+        )
+        with publish_lock:
+            asyncio.run_coroutine_threadsafe(publish, loop).result(timeout=5)
+
+    def send_c_move(query_ds: Dataset, *args, **kwargs):
+        if query_ds.QueryRetrieveLevel != "IMAGE":
+            publish(ds.SOPInstanceUID)
+            return DicomTestHelper.create_successful_c_move_response()
+
+        image_uid = query_ds.SOPInstanceUID
+        requested.append((query_ds.QueryRetrieveLevel, query_ds.SeriesInstanceUID, image_uid))
+        if "late" in deliver and image_uid == IMAGE_B:
+            publish(IMAGE_C)
+            # Let the consumer hand it over
+            missing_images = refetch_missing_images.call_args.args[1]
+            deadline = time.monotonic() + 5
+            while IMAGE_C in missing_images:
+                assert time.monotonic() < deadline
+                sleep(0.01)
+        if image_uid in deliver and "delayed" in deliver:
+            delay = 0.6 * settings.C_MOVE_DOWNLOAD_TIMEOUT
+            delayed_publishes.append(threading.Timer(delay, publish, args=[image_uid]))
+            delayed_publishes[-1].start()
+        elif image_uid in deliver:
+            publish(image_uid)
+        elif "fail" in deliver:
+            return _failed_c_move_response()
+        elif "lose" in deliver:
+            # How pynetdicom reports a timed out or aborted association
+            association_mock.is_alive.return_value = False
+            return iter([(Dataset(), None)])
+        elif "peer abort" in deliver:
+            # Its reactor thread only stops a moment after an A-ABORT of the peer
+            return iter([(Dataset(), None)])
+        return DicomTestHelper.create_successful_c_move_response()
+
+    association_mock.send_c_move.side_effect = send_c_move
+
+    def stop():
+        for delayed_publish in delayed_publishes:
+            delayed_publish.join()
+        asyncio.run_coroutine_threadsafe(transmit_server.stop(), loop).result(timeout=5)
+
+    return dicom_operator, ds, requested, stop
+
+
+@pytest.mark.django_db
+def test_c_move_refetches_missing_images_on_one_association(
+    settings: Settings, mocker: MockerFixture
+):
+    # Arrange
+    dicom_operator, ds, requested, stop = _setup_refetch(
+        settings, mocker, 17993, deliver={IMAGE_B, IMAGE_C}
+    )
+    settings.C_MOVE_REFETCH_ATTEMPTS = 1
+    open_connection = mocker.spy(dicom_operator.dimse_connector, "open_connection")
+    received: list[str] = []
+
+    # Act
+    try:
+        dicom_operator.fetch_series(
+            ds.PatientID,
+            ds.StudyInstanceUID,
+            ds.SeriesInstanceUID,
+            lambda ds: received.append(ds.SOPInstanceUID),
+        )
+    finally:
+        stop()
+
+    # Assert
+    assert len(received) == 3
+    assert requested == [
+        ("IMAGE", ds.SeriesInstanceUID, IMAGE_B),
+        ("IMAGE", ds.SeriesInstanceUID, IMAGE_C),
+    ]
+    # C-FIND, first C-MOVE and one association for both IMAGE-level C-MOVEs
+    assert open_connection.call_count == 3
+    assert dicom_operator.dimse_connector.auto_close is True
+    assert dicom_operator.dimse_connector.assoc is None
+
+
+@pytest.mark.django_db
+def test_c_move_study_refetch_requests_each_image_with_its_own_series(
+    settings: Settings, mocker: MockerFixture
+):
+    # Arrange: image B belongs to the series of the sample image, image C to another one
+    dicom_operator, ds, requested, stop = _setup_refetch(
+        settings,
+        mocker,
+        17978,
+        deliver={IMAGE_B, IMAGE_C},
+        images={IMAGE_B: None, IMAGE_C: "1.2.3.4.5.77"},
+    )
+    settings.C_MOVE_REFETCH_ATTEMPTS = 1
+
+    # Act
+    try:
+        dicom_operator.fetch_study(ds.PatientID, ds.StudyInstanceUID, lambda ds: None)
+    finally:
+        stop()
+
+    # Assert
+    assert requested == [
+        ("IMAGE", ds.SeriesInstanceUID, IMAGE_B),
+        ("IMAGE", "1.2.3.4.5.77", IMAGE_C),
+    ]
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "attempts, refetched",
+    [(0, []), (1, [IMAGE_B, IMAGE_C]), (3, [IMAGE_B, IMAGE_C, IMAGE_C, IMAGE_C])],
+)
+def test_c_move_refetch_rounds_only_request_images_still_missing(
+    settings: Settings, mocker: MockerFixture, attempts: int, refetched: list[str]
+):
+    # Arrange: image B arrives in the first re-fetch round, image C never
+    dicom_operator, ds, requested, stop = _setup_refetch(settings, mocker, 17992, deliver={IMAGE_B})
+    settings.C_MOVE_REFETCH_ATTEMPTS = attempts
+
+    # Act
+    try:
+        dicom_operator.fetch_series(
+            ds.PatientID, ds.StudyInstanceUID, ds.SeriesInstanceUID, lambda ds: None
+        )
+    finally:
+        stop()
+
+    # Assert
+    assert [image_uid for _, _, image_uid in requested] == refetched
+
+
+@pytest.mark.django_db
+def test_c_move_refetch_round_waits_for_images_arriving_after_its_moves(
+    settings: Settings, mocker: MockerFixture
+):
+    # Arrange: the first round already waited the download timeout, the re-fetched images
+    # arrive shortly after their C-MOVEs finished
+    dicom_operator, ds, requested, stop = _setup_refetch(
+        settings, mocker, 17981, deliver={IMAGE_B, IMAGE_C, "delayed"}
+    )
+    settings.C_MOVE_REFETCH_ATTEMPTS = 1
+    settings.C_MOVE_DOWNLOAD_TIMEOUT = 2
+    received: list[str] = []
+
+    # Act
+    try:
+        dicom_operator.fetch_series(
+            ds.PatientID,
+            ds.StudyInstanceUID,
+            ds.SeriesInstanceUID,
+            lambda ds: received.append(ds.SOPInstanceUID),
+        )
+    finally:
+        stop()
+
+    # Assert
+    assert len(received) == 3
+
+
+@pytest.mark.django_db
+def test_c_move_refetch_keeps_the_association_of_a_persistent_operator(
+    settings: Settings, mocker: MockerFixture
+):
+    # Arrange: a persistent operator (as mass transfer uses) doesn't close its association
+    dicom_operator, ds, _, stop = _setup_refetch(
+        settings, mocker, 17980, deliver={IMAGE_B, IMAGE_C}
+    )
+    settings.C_MOVE_REFETCH_ATTEMPTS = 1
+    dicom_operator.dimse_connector.auto_close = False
+    open_connection = mocker.spy(dicom_operator.dimse_connector, "open_connection")
+
+    # Act
+    try:
+        dicom_operator.fetch_series(
+            ds.PatientID, ds.StudyInstanceUID, ds.SeriesInstanceUID, lambda ds: None
+        )
+    finally:
+        stop()
+
+    # Assert: C-FIND, then one C-MOVE association used for the first move and the re-fetch
+    assert open_connection.call_count == 2
+    assert dicom_operator.dimse_connector.assoc is not None
+
+
+@pytest.mark.django_db
+def test_c_move_refetch_skips_images_that_arrived_meanwhile(
+    settings: Settings, mocker: MockerFixture
+):
+    # Arrange: image C arrives late while image B is fetched again, B never arrives
+    dicom_operator, ds, requested, stop = _setup_refetch(settings, mocker, 17983, deliver={"late"})
+    settings.C_MOVE_REFETCH_ATTEMPTS = 1
+    received: list[str] = []
+
+    # Act
+    try:
+        dicom_operator.fetch_series(
+            ds.PatientID,
+            ds.StudyInstanceUID,
+            ds.SeriesInstanceUID,
+            lambda ds: received.append(ds.SOPInstanceUID),
+        )
+    finally:
+        stop()
+
+    # Assert
+    assert [image_uid for _, _, image_uid in requested] == [IMAGE_B]
+    assert len(received) == 2
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("max_missing_percent, refetched", [(70, [IMAGE_B, IMAGE_C]), (60, [])])
+def test_c_move_refetch_is_skipped_when_too_many_images_are_missing(
+    settings: Settings, mocker: MockerFixture, max_missing_percent: int, refetched: list[str]
+):
+    # Arrange: two of three images (67 %) are missing after the first C-MOVE
+    dicom_operator, ds, requested, stop = _setup_refetch(
+        settings, mocker, 17984, deliver={IMAGE_B, IMAGE_C}
+    )
+    settings.C_MOVE_REFETCH_ATTEMPTS = 1
+    settings.C_MOVE_REFETCH_MAX_MISSING_PERCENT = max_missing_percent
+
+    # Act
+    try:
+        dicom_operator.fetch_series(
+            ds.PatientID, ds.StudyInstanceUID, ds.SeriesInstanceUID, lambda ds: None
+        )
+    finally:
+        stop()
+
+    # Assert
+    assert [image_uid for _, _, image_uid in requested] == refetched
+
+
+@pytest.mark.django_db
+def test_c_move_refetch_cap_allows_exactly_the_configured_percentage(
+    settings: Settings, mocker: MockerFixture
+):
+    # Arrange: one of two images (50 %) is missing after the first C-MOVE
+    dicom_operator, ds, requested, stop = _setup_refetch(
+        settings, mocker, 17977, deliver={IMAGE_B}, images={IMAGE_B: None}
+    )
+    settings.C_MOVE_REFETCH_ATTEMPTS = 1
+    settings.C_MOVE_REFETCH_MAX_MISSING_PERCENT = 50
+
+    # Act
+    try:
+        dicom_operator.fetch_series(
+            ds.PatientID, ds.StudyInstanceUID, ds.SeriesInstanceUID, lambda ds: None
+        )
+    finally:
+        stop()
+
+    # Assert
+    assert [image_uid for _, _, image_uid in requested] == [IMAGE_B]
+
+
+@pytest.mark.django_db
+def test_c_move_refetch_continues_after_a_failing_move_without_retrying_it(
+    settings: Settings, mocker: MockerFixture
+):
+    # Arrange: the re-fetch of image B fails, image C arrives
+    dicom_operator, ds, requested, stop = _setup_refetch(
+        settings, mocker, 17991, deliver={IMAGE_C, "fail"}
+    )
+    settings.C_MOVE_REFETCH_ATTEMPTS = 1
+    open_connection = mocker.spy(dicom_operator.dimse_connector, "open_connection")
+    received: list[str] = []
+
+    # Act: network retries without their waits
+    try:
+        with stamina.set_testing(True, attempts=10, cap=True):
+            dicom_operator.fetch_series(
+                ds.PatientID,
+                ds.StudyInstanceUID,
+                ds.SeriesInstanceUID,
+                lambda ds: received.append(ds.SOPInstanceUID),
+            )
+    finally:
+        stop()
+
+    # Assert: the failing C-MOVE was sent once and the next image still fetched
+    assert [image_uid for _, _, image_uid in requested] == [IMAGE_B, IMAGE_C]
+    assert len(received) == 2
+    # A failure status doesn't end the association: C-FIND, first C-MOVE, re-fetch
+    assert open_connection.call_count == 3
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("loss", ["lose", "peer abort"])
+def test_c_move_refetch_stops_when_the_association_is_lost(
+    settings: Settings, mocker: MockerFixture, loss: str
+):
+    # Arrange: the association is lost while image B is fetched again
+    dicom_operator, ds, requested, stop = _setup_refetch(
+        settings, mocker, 17985, deliver={IMAGE_C, loss}
+    )
+    settings.C_MOVE_REFETCH_ATTEMPTS = 2
+
+    # Act / Assert: no further C-MOVEs, the task retry takes over
+    try:
+        with stamina.set_testing(True, attempts=10, cap=True):
+            with pytest.raises(RetriableDicomError, match="association"):
+                dicom_operator.fetch_series(
+                    ds.PatientID, ds.StudyInstanceUID, ds.SeriesInstanceUID, lambda ds: None
+                )
+    finally:
+        stop()
+
+    assert [image_uid for _, _, image_uid in requested] == [IMAGE_B]
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("max_missing_percent", [50, 100])
+def test_c_move_does_not_refetch_when_no_image_arrived(
+    settings: Settings, mocker: MockerFixture, max_missing_percent: int
+):
+    # Arrange: the C-MOVE succeeds, but the receiver delivers none of the two images; even
+    # a cap that allows any share of missing images doesn't re-fetch all of them
+    dicom_operator, association_mock, _, ds = _setup_c_move_operator(settings, mocker, 17986)
+    settings.C_MOVE_REFETCH_MAX_MISSING_PERCENT = max_missing_percent
+    association_mock.send_c_find.return_value = DicomTestHelper.create_successful_c_find_responses(
+        [{"SOPInstanceUID": ds.SOPInstanceUID}, {"SOPInstanceUID": IMAGE_B}]
+    )
+    transmit_server, loop = _start_transmit_server(17986)
+
+    # Act / Assert
+    try:
+        with pytest.raises(RetriableDicomError, match="Failed to fetch all images"):
+            dicom_operator.fetch_series(
+                ds.PatientID, ds.StudyInstanceUID, ds.SeriesInstanceUID, lambda ds: None
+            )
+    finally:
+        asyncio.run_coroutine_threadsafe(transmit_server.stop(), loop).result(timeout=5)
+
+    # Only the first C-MOVE, no IMAGE-level C-MOVE per image of the study
+    assert association_mock.send_c_move.call_count == 1
 
 
 # ---------------------------------------------------------------------------
