@@ -23,7 +23,7 @@ from django.conf import settings
 from pydicom import Dataset
 from pynetdicom.events import Event
 
-from ..errors import DicomError, RetriableDicomError
+from ..errors import DicomError, IncompleteFetchError, RetriableDicomError
 from ..models import DicomServer
 from ..types import DicomLogEntry
 from .dicom_dataset import QueryDataset, ResultDataset
@@ -654,7 +654,8 @@ class DicomOperator:
                 )
 
                 # When nothing or most of it arrived, the delivery is broken as a whole (or the
-                # PACS is overloaded), so one C-MOVE per image would only add load.
+                # PACS is overloaded), so one C-MOVE per image would only add load. The
+                # download fails instead and is retried as a whole.
                 delivery_broken = bool(missing_images) and (
                     len(missing_images) == len(image_uids)
                     or 100 * len(missing_images) / len(image_uids)
@@ -676,7 +677,9 @@ class DicomOperator:
                     )
 
                 if not receiving_errors:
-                    self._check_images_received(query.StudyInstanceUID, image_uids, missing_images)
+                    self._check_images_received(
+                        query.StudyInstanceUID, image_uids, missing_images, delivery_broken
+                    )
             except Exception as err:
                 # We check here if an error occurred in the consumer thread and
                 # and only re-raise the error when non occurred.
@@ -763,6 +766,7 @@ class DicomOperator:
         study_uid: str,
         image_uids: dict[str, str],
         missing_images: dict[str, str],
+        delivery_broken: bool,
     ) -> None:
         if not missing_images:
             return
@@ -776,6 +780,15 @@ class DicomOperator:
             study_uid,
             ", ".join(missing_images),
         )
+
+        if delivery_broken:
+            raise RetriableDicomError(
+                f"{len(missing_images)} of {len(image_uids)} images of study {study_uid} "
+                "could not be fetched with C-MOVE, too many to fetch them again one by one."
+            )
+
+        if settings.C_MOVE_FAIL_ON_INCOMPLETE:
+            raise IncompleteFetchError(study_uid, list(missing_images), len(image_uids))
 
         self.logs.append(
             {

@@ -36,6 +36,23 @@ class AssociationLostError(RetriableDicomError):
     pass
 
 
+class IncompleteFetchError(RetriableDicomError):
+    """Images of a C-MOVE download are still missing after all re-fetch rounds.
+
+    Retriable like any RetriableDicomError. Carries the missing SOPInstanceUIDs to report
+    or handle exactly those images.
+    """
+
+    def __init__(self, study_uid: str, missing_image_uids: list[str], image_count: int) -> None:
+        super().__init__(
+            f"{len(missing_image_uids)} of {image_count} images of study {study_uid} "
+            "could not be fetched with C-MOVE."
+        )
+        self.study_uid = study_uid
+        self.missing_image_uids = missing_image_uids
+        self.image_count = image_count
+
+
 def is_retriable_http_status(status_code: int) -> bool:
     """Check if an HTTP status code indicates a transient error that should be retried.
 
