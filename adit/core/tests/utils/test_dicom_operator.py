@@ -1,9 +1,11 @@
 import asyncio
+import contextlib
 import errno
 import json
 import socket
 import struct
 import threading
+import time
 from pathlib import Path
 from time import sleep
 
@@ -334,6 +336,177 @@ def test_c_move_fails_when_receiver_connection_drops(settings: Settings, mocker:
             )
     finally:
         listener.close()
+    assert received_ds == [ds]
+
+
+@pytest.mark.django_db
+def test_c_move_raises_errors_of_the_consumer_itself(settings: Settings, mocker: MockerFixture):
+    # Arrange: the consumer thread fails before it could subscribe
+    dicom_operator, association_mock, _, ds = _setup_c_move_operator(settings, mocker, 17982)
+    association_mock.send_c_find.return_value = DicomTestHelper.create_successful_c_find_responses(
+        [{"SOPInstanceUID": ds.SOPInstanceUID}]
+    )
+    mocker.patch(
+        "adit.core.utils.dicom_operator.FileTransmitClient", side_effect=RuntimeError("bug")
+    )
+
+    # Act / Assert: the real cause, not a misleading "could not subscribe"
+    with pytest.raises(RuntimeError, match="bug"):
+        dicom_operator.fetch_series(
+            ds.PatientID, ds.StudyInstanceUID, ds.SeriesInstanceUID, lambda ds: None
+        )
+
+
+@pytest.mark.django_db
+def test_c_move_images_arriving_after_a_long_move_are_received(
+    settings: Settings, mocker: MockerFixture
+):
+    # Arrange: the move takes longer than the download timeout and the receiver only
+    # delivers the image shortly after the move finished
+    dicom_operator, association_mock, file_path, ds = _setup_c_move_operator(
+        settings, mocker, 17995
+    )
+    settings.C_MOVE_DOWNLOAD_TIMEOUT = 2
+    association_mock.send_c_find.return_value = DicomTestHelper.create_successful_c_find_responses(
+        [{"SOPInstanceUID": ds.SOPInstanceUID}]
+    )
+    transmit_server, loop = _start_transmit_server(17995)
+
+    def publish():
+        publish = transmit_server.publish_file(
+            ds.StudyInstanceUID, file_path, {"SOPInstanceUID": ds.SOPInstanceUID}
+        )
+        asyncio.run_coroutine_threadsafe(publish, loop).result(timeout=5)
+
+    delayed_publish = threading.Timer(1.2, publish)
+
+    def send_c_move(*args, **kwargs):
+        sleep(settings.C_MOVE_DOWNLOAD_TIMEOUT + 0.5)
+        delayed_publish.start()
+        return DicomTestHelper.create_successful_c_move_response()
+
+    association_mock.send_c_move.side_effect = send_c_move
+    received_ds = []
+
+    # Act
+    try:
+        dicom_operator.fetch_series(
+            ds.PatientID, ds.StudyInstanceUID, ds.SeriesInstanceUID, received_ds.append
+        )
+    finally:
+        delayed_publish.cancel()
+        if delayed_publish.ident is not None:
+            delayed_publish.join()
+        asyncio.run_coroutine_threadsafe(transmit_server.stop(), loop).result(timeout=5)
+
+    # Assert
+    assert received_ds == [ds]
+
+
+@pytest.mark.django_db
+def test_c_move_images_of_other_fetches_do_not_extend_the_wait(
+    settings: Settings, mocker: MockerFixture
+):
+    # Arrange: one of two expected images never arrives, while another fetch of the same
+    # study keeps receiving images on the same topic
+    dicom_operator, association_mock, file_path, ds = _setup_c_move_operator(
+        settings, mocker, 17994
+    )
+    association_mock.send_c_find.return_value = DicomTestHelper.create_successful_c_find_responses(
+        [{"SOPInstanceUID": ds.SOPInstanceUID}, {"SOPInstanceUID": "1.2.3.4.5.999"}]
+    )
+    transmit_server, loop = _start_transmit_server(17994)
+    stop_other_fetch = threading.Event()
+
+    def publish(image_uid: str):
+        publish = transmit_server.publish_file(
+            ds.StudyInstanceUID, file_path, {"SOPInstanceUID": image_uid}
+        )
+        asyncio.run_coroutine_threadsafe(publish, loop).result(timeout=5)
+
+    def other_fetch():
+        deadline = time.time() + 8
+        while not stop_other_fetch.wait(0.2) and time.time() < deadline:
+            # The fetch under test may end its subscription in the middle of a publish
+            with contextlib.suppress(Exception):
+                publish("9.9.9.9")
+
+    other_fetch_thread = threading.Thread(target=other_fetch, daemon=True)
+
+    def send_c_move(*args, **kwargs):
+        publish(ds.SOPInstanceUID)
+        other_fetch_thread.start()
+        return DicomTestHelper.create_successful_c_move_response()
+
+    association_mock.send_c_move.side_effect = send_c_move
+
+    # Act
+    start = time.time()
+    try:
+        dicom_operator.fetch_series(
+            ds.PatientID, ds.StudyInstanceUID, ds.SeriesInstanceUID, lambda ds: None
+        )
+    finally:
+        stop_other_fetch.set()
+        if other_fetch_thread.ident is not None:
+            other_fetch_thread.join()
+        asyncio.run_coroutine_threadsafe(transmit_server.stop(), loop).result(timeout=5)
+
+    # Assert: the wait ends one download timeout after the last expected image
+    assert time.time() - start < settings.C_MOVE_DOWNLOAD_TIMEOUT + 2
+
+
+@pytest.mark.django_db
+def test_c_move_study_fetch_finishes_the_series_query_before_querying_images(
+    settings: Settings, mocker: MockerFixture
+):
+    # Arrange: a PACS mixes up the responses when a second C-FIND is sent on the
+    # association while the first one still streams its results
+    dicom_operator, association_mock, file_path, ds = _setup_c_move_operator(
+        settings, mocker, 17987
+    )
+    streaming_queries: list[str] = []
+    nested_queries: list[str] = []
+
+    def send_c_find(query_ds: Dataset, *args, **kwargs):
+        level = query_ds.QueryRetrieveLevel
+        if streaming_queries:
+            nested_queries.append(level)
+
+        def responses():
+            streaming_queries.append(level)
+            try:
+                if level == "SERIES":
+                    data = [{"SeriesInstanceUID": ds.SeriesInstanceUID, "Modality": ds.Modality}]
+                else:
+                    data = [{"SOPInstanceUID": ds.SOPInstanceUID}]
+                yield from DicomTestHelper.create_successful_c_find_responses(data)
+            finally:
+                streaming_queries.remove(level)
+
+        return responses()
+
+    association_mock.send_c_find.side_effect = send_c_find
+    transmit_server, loop = _start_transmit_server(17987)
+
+    def send_c_move(*args, **kwargs):
+        publish = transmit_server.publish_file(
+            ds.StudyInstanceUID, file_path, {"SOPInstanceUID": ds.SOPInstanceUID}
+        )
+        asyncio.run_coroutine_threadsafe(publish, loop).result(timeout=5)
+        return DicomTestHelper.create_successful_c_move_response()
+
+    association_mock.send_c_move.side_effect = send_c_move
+    received_ds = []
+
+    # Act
+    try:
+        dicom_operator.fetch_study(ds.PatientID, ds.StudyInstanceUID, received_ds.append)
+    finally:
+        asyncio.run_coroutine_threadsafe(transmit_server.stop(), loop).result(timeout=5)
+
+    # Assert
+    assert nested_queries == []
     assert received_ds == [ds]
 
 
