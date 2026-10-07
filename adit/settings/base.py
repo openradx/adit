@@ -460,6 +460,19 @@ C_MOVE_DOWNLOAD_TIMEOUT = 30  # seconds
 # The timeout we wait for the receiver to register our subscription before sending a C-MOVE
 C_MOVE_SUBSCRIBE_TIMEOUT = 10  # seconds
 
+# How often images still missing after a C-MOVE are requested again, one IMAGE-level
+# C-MOVE per image (0 disables it). Each of those costs the PACS its own association to
+# the receiver, so it is meant for the few images a C-MOVE missed.
+C_MOVE_REFETCH_ATTEMPTS = env.int("C_MOVE_REFETCH_ATTEMPTS", default=2)
+if C_MOVE_REFETCH_ATTEMPTS < 0:
+    raise ImproperlyConfigured("C_MOVE_REFETCH_ATTEMPTS must not be negative")
+
+# When more than this percentage of the images is missing (0-100), the delivery is broken
+# as a whole and there is no re-fetch, as one C-MOVE per image would only add load.
+C_MOVE_REFETCH_MAX_MISSING_PERCENT = env.int("C_MOVE_REFETCH_MAX_MISSING_PERCENT", default=50)
+if not 0 <= C_MOVE_REFETCH_MAX_MISSING_PERCENT <= 100:
+    raise ImproperlyConfigured("C_MOVE_REFETCH_MAX_MISSING_PERCENT must be between 0 and 100")
+
 # Pebble process timeout for mass transfer tasks. A task processes an entire partition
 # (discovery + export + convert) and can run for hours.
 MASS_TRANSFER_PROCESS_TIMEOUT = 24 * 60 * 60  # seconds (24 hours)
