@@ -152,7 +152,7 @@ requires-dist = [
     { name = "pydantic", specifier = ">=2.12.5" },
     { name = "pydicom", specifier = ">=2.4.4" },
     { name = "pynetdicom", specifier = ">=2.1.1" },
-    { name = "stamina", specifier = ">=24.2.0" },
+    { name = "stamina", specifier = ">=25.1.0" },
     { name = "stream-zip", specifier = ">=0.0.83" },
     { name = "twisted", extras = ["tls", "http2"], specifier = ">=24.11.0" },
     { name = "wait-for-it", specifier = ">=2.3.0" },

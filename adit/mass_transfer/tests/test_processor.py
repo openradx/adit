@@ -12,11 +12,18 @@ from django.utils import timezone
 from pydicom import Dataset
 from pytest_mock import MockerFixture
 
-from adit.core.errors import DcmToNiftiConversionError, DicomError, ErrorKind, RetriableDicomError
+from adit.core.errors import (
+    DcmToNiftiConversionError,
+    DicomError,
+    ErrorKind,
+    IncompleteFetchError,
+    RetriableDicomError,
+)
 from adit.core.factories import DicomFolderFactory, DicomServerFactory
 from adit.core.models import DicomNode
 from adit.core.utils.dicom_dataset import ResultDataset
 from adit.core.utils.dicom_operator import DicomOperator
+from adit.core.utils.dicom_utils import read_dataset
 from adit.mass_transfer.models import (
     MassTransferJob,
     MassTransferSettings,
@@ -2525,6 +2532,45 @@ def test_process_continues_past_dead_series_on_final_attempt(mocker: MockerFixtu
     assert captured["s-1"].status == MassTransferVolume.Status.ERROR
     assert "exhausting retries" in captured["s-1"].log
     assert captured["s-2"].status == MassTransferVolume.Status.EXPORTED
+
+
+@pytest.mark.parametrize(
+    "error",
+    [
+        IncompleteFetchError("study-1", ["1.2.3.901"], 2),
+        RetriableDicomError("1 of 2 images could not be fetched, too many to fetch again."),
+        DicomError("Out of disk space."),
+    ],
+)
+def test_export_series_removes_only_its_own_files_when_it_fails(
+    mocker: MockerFixture, tmp_path: Path, error: DicomError
+):
+    """A failed series is not exported, so its files go. Series with the same description and
+    number share their folder, so the files of the other one stay."""
+    processor = _make_processor(mocker)
+    output_path = tmp_path / "Axial_1"
+    output_path.mkdir()
+    (output_path / "other-series-image.dcm").write_text("dummy")
+    sample_file = next((Path(settings.BASE_PATH) / "samples" / "dicoms").rglob("*.dcm"))
+
+    def fetch_series(*, callback, **kwargs):
+        callback(read_dataset(sample_file))
+        raise error
+
+    operator = mocker.MagicMock()
+    operator.fetch_series.side_effect = fetch_series
+    volume = MassTransferVolume(
+        patient_id="PAT1",
+        study_instance_uid="study-1",
+        series_instance_uid="s-1",
+        study_datetime=timezone.now(),
+        number_of_images=2,
+    )
+
+    with pytest.raises(type(error)):
+        processor._export_series(operator, volume, output_path, "subj", None)
+
+    assert [path.name for path in output_path.iterdir()] == ["other-series-image.dcm"]
 
 
 def test_process_final_attempt_all_dead_is_failure(mocker: MockerFixture, tmp_path: Path):
