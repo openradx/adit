@@ -11,7 +11,9 @@ in the Patient Root Query/Retrieve Information Model
 
 import asyncio
 import errno
+import itertools
 import logging
+import queue
 import threading
 import time
 from collections.abc import Callable, Iterable, Iterator
@@ -616,6 +618,13 @@ class DicomOperator:
         # When the consumer last received an expected image
         last_image_at = [time.monotonic()]
 
+        # Sync requests the consumer sends to the receiver, the tokens it confirmed, and the
+        # images still missing at the last confirmation
+        sync_requests: queue.SimpleQueue[str] = queue.SimpleQueue()
+        synced_tokens: set[str] = set()
+        missing_at_sync: set[str] = set()
+        tokens = itertools.count()
+
         # A list of errors that may occur while receiving the images
         receiving_errors: list[Exception] = []
 
@@ -638,6 +647,9 @@ class DicomOperator:
                 subscribed_event,
                 stop_consumer_event,
                 receiving_errors,
+                sync_requests,
+                synced_tokens,
+                missing_at_sync,
             )
 
             try:
@@ -645,10 +657,14 @@ class DicomOperator:
                 self._wait_for_subscription(subscribed_event, consume_future)
 
                 self.dimse_connector.send_c_move(query, settings.RECEIVER_AE_TITLE)
-                self._wait_for_images(
+                self._wait_for_delivery(
+                    query.StudyInstanceUID,
+                    image_uids,
                     missing_images,
                     last_image_at,
-                    time.monotonic(),
+                    sync_requests,
+                    synced_tokens,
+                    tokens,
                     consume_future,
                     receiving_errors,
                 )
@@ -666,12 +682,16 @@ class DicomOperator:
                     if not missing_images or receiving_errors or consume_future.done():
                         break
                     self._refetch_missing_images(
-                        query, missing_images, consume_future, receiving_errors
+                        query, missing_images, consume_future, receiving_errors, missing_at_sync
                     )
-                    self._wait_for_images(
+                    self._wait_for_delivery(
+                        query.StudyInstanceUID,
+                        image_uids,
                         missing_images,
                         last_image_at,
-                        time.monotonic(),
+                        sync_requests,
+                        synced_tokens,
+                        tokens,
                         consume_future,
                         receiving_errors,
                     )
@@ -712,6 +732,7 @@ class DicomOperator:
         missing_images: dict[str, str],
         consume_future: Future[None],
         receiving_errors: list[Exception],
+        missing_at_sync: set[str],
     ) -> None:
         # The images are the same a SERIES or STUDY level C-MOVE sends (one C-STORE each),
         # but every C-MOVE costs the PACS a query resolution and its own association to the
@@ -731,6 +752,8 @@ class DicomOperator:
                 if receiving_errors or consume_future.done():
                     return
                 if image_uid in missing_images:
+                    # Requested again, so its arrival is expected and not late
+                    missing_at_sync.discard(image_uid)
                     yield QueryDataset.create(
                         QueryRetrieveLevel="IMAGE",
                         PatientID=query.PatientID,
@@ -741,23 +764,106 @@ class DicomOperator:
 
         self.dimse_connector.send_c_move_batch(image_queries(), settings.RECEIVER_AE_TITLE)
 
-    def _wait_for_images(
+    def _wait_for_delivery(
         self,
+        study_uid: str,
+        image_uids: dict[str, str],
         missing_images: dict[str, str],
         last_image_at: list[float],
-        moves_finished_at: float,
+        sync_requests: queue.SimpleQueue[str],
+        synced_tokens: set[str],
+        tokens: Iterator[int],
         consume_future: Future[None],
         receiving_errors: list[Exception],
     ) -> None:
-        """Wait until all images arrived or none for C_MOVE_DOWNLOAD_TIMEOUT.
+        """Wait until it is known which images of the C-MOVE operations didn't arrive.
 
-        The timeout starts when the C-MOVE operations finished at the earliest, as the
-        receiver may still deliver images the PACS already sent.
+        The receiver confirms when it has forwarded everything it got before our sync request,
+        which follows the final C-MOVE response, so its delays can't make images count as
+        missing. Images still missing then are waited for C_MOVE_DOWNLOAD_TIMEOUT, as some PACS
+        send images after their final C-MOVE response, and the receiver is asked again. They
+        count as missing once such a round brought nothing new. The receiver's confirmation is
+        read only after every image sent before it was handed over, so asking again also waits
+        for a slow callback.
         """
+
+        def received() -> int:
+            return len(image_uids) - len(missing_images)
+
+        received_before: int | None = None
         while missing_images and not receiving_errors and not consume_future.done():
-            idle_time = time.monotonic() - max(last_image_at[0], moves_finished_at)
+            synced_at = self._sync_with_receiver(
+                study_uid,
+                str(next(tokens)),
+                missing_images,
+                last_image_at,
+                sync_requests,
+                synced_tokens,
+                consume_future,
+                receiving_errors,
+            )
+            if synced_at is None or not missing_images:
+                return
+
+            if received_before is not None and received() == received_before:
+                logger.info(
+                    "%d images of study %s did not arrive within %d s after the receiver "
+                    "confirmed the delivery.",
+                    len(missing_images),
+                    study_uid,
+                    settings.C_MOVE_DOWNLOAD_TIMEOUT,
+                )
+                return
+
+            received_before = received()
+            self._wait_for_late_images(
+                synced_at,
+                missing_images,
+                last_image_at,
+                consume_future,
+                receiving_errors,
+            )
+
+    def _sync_with_receiver(
+        self,
+        study_uid: str,
+        token: str,
+        missing_images: dict[str, str],
+        last_image_at: list[float],
+        sync_requests: queue.SimpleQueue[str],
+        synced_tokens: set[str],
+        consume_future: Future[None],
+        receiving_errors: list[Exception],
+    ) -> float | None:
+        """Wait for the receiver to confirm the sync request with this token.
+
+        Returns when it was confirmed, or None if there is nothing to wait for anymore.
+        """
+        sync_requests.put(token)
+        requested_at = time.monotonic()
+        while missing_images and not receiving_errors and not consume_future.done():
+            if token in synced_tokens:
+                return time.monotonic()
+
+            idle_time = time.monotonic() - max(last_image_at[0], requested_at)
+            if idle_time > settings.C_MOVE_SYNC_TIMEOUT:
+                raise RetriableDicomError(
+                    f"The DICOM receiver did not confirm the delivery of study {study_uid} in time."
+                )
+            time.sleep(0.1)
+        return None
+
+    def _wait_for_late_images(
+        self,
+        synced_at: float,
+        missing_images: dict[str, str],
+        last_image_at: list[float],
+        consume_future: Future[None],
+        receiving_errors: list[Exception],
+    ) -> None:
+        while missing_images and not receiving_errors and not consume_future.done():
+            idle_time = time.monotonic() - max(last_image_at[0], synced_at)
             if idle_time > settings.C_MOVE_DOWNLOAD_TIMEOUT:
-                logger.warning("C-MOVE download timed out after %d seconds.", round(idle_time))
                 return
             time.sleep(0.1)
 
@@ -807,8 +913,13 @@ class DicomOperator:
         subscribed_event: threading.Event,
         stop_consumer_event: threading.Event,
         receiving_errors: list[Exception],
+        sync_requests: queue.SimpleQueue[str],
+        synced_tokens: set[str],
+        missing_at_sync: set[str],
     ) -> None:
         async def consume():
+            late_logged = False
+
             file_transmit = FileTransmitClient(
                 settings.FILE_TRANSMIT_HOST, settings.FILE_TRANSMIT_PORT
             )
@@ -818,12 +929,24 @@ class DicomOperator:
                 self._handle_fetched_image(ds, callback)
 
             async def handle_received_file(filename: str, metadata: Metadata):
+                nonlocal late_logged
                 image_uid = metadata["SOPInstanceUID"]
 
                 try:
                     # Duplicates and images of other fetches of the same study are ignored
                     # and must not keep the wait for the missing images alive.
                     if image_uid in missing_images:
+                        if image_uid in missing_at_sync:
+                            missing_at_sync.discard(image_uid)
+                            if not late_logged:
+                                late_logged = True
+                                logger.info(
+                                    "Image %s of study %s arrived after the receiver confirmed "
+                                    "the delivery: the PACS sends images after its final C-MOVE "
+                                    "response, or a C-MOVE of the round failed.",
+                                    image_uid,
+                                    study_uid,
+                                )
                         last_image_at[0] = time.monotonic()
                         # Good to know, exceptions will be propagated by asyncio.to_thread
                         await asyncio.to_thread(read_and_handle_image, filename)
@@ -838,14 +961,28 @@ class DicomOperator:
 
                 return not missing_images
 
+            def handle_synced(token: str):
+                # The snapshot comes first, as the main thread acts as soon as it sees the token
+                missing_at_sync.clear()
+                missing_at_sync.update(missing_images)
+                synced_tokens.add(token)
+
             subscribe_task = asyncio.create_task(
                 file_transmit.subscribe(
-                    study_uid, handle_received_file, subscribed_handler=subscribed_event.set
+                    study_uid,
+                    handle_received_file,
+                    subscribed_handler=subscribed_event.set,
+                    synced_handler=handle_synced,
                 )
             )
 
             while True:
                 await asyncio.sleep(0.1)
+
+                # Not sent once the subscription ended, as then nothing is missing anymore or
+                # the broken connection is reported below
+                while not sync_requests.empty():
+                    await file_transmit.request_sync(sync_requests.get())
 
                 if stop_consumer_event.is_set():
                     subscribe_task.cancel()

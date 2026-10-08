@@ -57,7 +57,7 @@ def test_c_move_refetches_images_lost_on_the_way_to_the_worker(
         client: FileTransmitClient,
         topic: str,
         file_received_handler: FileReceivedHandler,
-        subscribed_handler=None,
+        **kwargs,
     ):
         async def handle_received_file(filename: str, metadata: dict[str, str]):
             if metadata["SOPInstanceUID"] in lost:
@@ -66,7 +66,7 @@ def test_c_move_refetches_images_lost_on_the_way_to_the_worker(
                 return False
             return await file_received_handler(filename, metadata)  # type: ignore
 
-        return await subscribe(client, topic, handle_received_file, subscribed_handler)
+        return await subscribe(client, topic, handle_received_file, **kwargs)
 
     mocker.patch.object(FileTransmitClient, "subscribe", lossy_subscribe)
     send_c_move = mocker.spy(operator.dimse_connector, "_send_c_move")
