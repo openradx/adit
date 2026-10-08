@@ -52,6 +52,11 @@ class IncompleteFetchError(RetriableDicomError):
         self.missing_image_uids = missing_image_uids
         self.image_count = image_count
 
+    def __reduce__(self) -> tuple[type["IncompleteFetchError"], tuple[str, list[str], int]]:
+        # The error leaves the Pebble task process pickled. By default an exception is
+        # rebuilt from self.args, which only holds the message.
+        return (type(self), (self.study_uid, self.missing_image_uids, self.image_count))
+
 
 def is_retriable_http_status(status_code: int) -> bool:
     """Check if an HTTP status code indicates a transient error that should be retried.
