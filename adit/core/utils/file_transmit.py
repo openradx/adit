@@ -17,6 +17,8 @@ SubscribeHandler = Callable[[str], None | Awaitable[None]]
 UnsubscribeHandler = Callable[[str], None | Awaitable[None]]
 FileSentHandler = Callable[[], None]
 SubscribedHandler = Callable[[], None]
+SyncedHandler = Callable[[str], None]
+SyncRequestHandler = Callable[["FileTransmitSession", str], Awaitable[None]]
 Metadata = dict[str, str]
 FileReceivedHandler = Callable[[str, Metadata], Awaitable[bool | None] | bool | None]
 
@@ -31,7 +33,9 @@ class FileTransmitSession:
     """Each client connection to the server is represented by a session.
 
     A session has its own queue of frames and one sender task that writes them, so a client that
-    reads slowly or not at all only holds up its own files.
+    reads slowly or not at all only holds up its own files. Besides files, the frames include
+    control frames: frames of size 0 whose metadata has a "control" key, e.g. the answer to a
+    sync request of the client.
     """
 
     def __init__(self, topic: str, writer: asyncio.StreamWriter, write_timeout: float):
@@ -60,6 +64,14 @@ class FileTransmitSession:
             return False
         self._frames.put_nowait((header, file_path, release))
         return True
+
+    def queue_synced(self, token: str) -> bool:
+        """Queue the answer to a sync request behind the frames queued before it.
+
+        Returns False if the session is closed.
+        """
+        metadata = {"control": "synced", "token": token}
+        return self.queue_frame(struct.pack("!I", 0) + (json.dumps(metadata) + "\n").encode())
 
     async def close(self) -> None:
         self.closed = True
@@ -125,6 +137,7 @@ class FileTransmitServer:
     _server: asyncio.Server | None = None
     _subscribe_handler: SubscribeHandler | None = None
     _unsubscribe_handler: UnsubscribeHandler | None = None
+    _sync_request_handler: SyncRequestHandler | None = None
 
     def __init__(self, host: str, port: int, write_timeout: float):
         self._host = host
@@ -139,6 +152,14 @@ class FileTransmitServer:
     def set_unsubscribe_handler(self, unsubscribe_handler: UnsubscribeHandler | None):
         """Called when a client unsubscribes from a topic."""
         self._unsubscribe_handler = unsubscribe_handler
+
+    def set_sync_request_handler(self, handler: SyncRequestHandler | None):
+        """Called with the session and the token when a client requests a sync.
+
+        The handler answers with `session.queue_synced(token)` once everything that should
+        precede the answer was queued to the session.
+        """
+        self._sync_request_handler = handler
 
     async def publish_file(
         self,
@@ -216,12 +237,18 @@ class FileTransmitServer:
                 else:
                     self._subscribe_handler(topic)
 
+            # The client sends control lines until it is well served and finished, which it
+            # communicates by writing an eof.
             while True:
-                # The client communicates that it is well served and finished
-                # by writing an eof that we check for here
-                data = await reader.read()
-                if not data and reader.at_eof():
+                try:
+                    line = await reader.readline()
+                except ValueError:
+                    # Longer than the stream limit; the reader stays usable
+                    logger.warning("Ignoring an over-long control line on topic %s.", topic)
+                    continue
+                if not line.endswith(b"\n"):
                     break
+                await self._handle_control_line(session, line.decode(errors="replace").strip())
         except Exception as err:
             logger.error(f"Exception occurred on topic {topic}: {err}")
         finally:
@@ -237,6 +264,13 @@ class FileTransmitServer:
                 else:
                     self._unsubscribe_handler(topic)
 
+    async def _handle_control_line(self, session: FileTransmitSession, line: str) -> None:
+        command, _, argument = line.partition(" ")
+        if command == "sync" and argument and self._sync_request_handler:
+            await self._sync_request_handler(session, argument)
+        else:
+            logger.warning("Ignoring control line %r on topic %s.", line, session.topic)
+
 
 class FileTransmitClient:
     """A file transmit client that can be used to receive files from a server."""
@@ -246,12 +280,14 @@ class FileTransmitClient:
     def __init__(self, host: str, port: int):
         self._host = host
         self._port = port
+        self._writer: asyncio.StreamWriter | None = None
 
     async def subscribe(
         self,
         topic: str,
         file_received_handler: FileReceivedHandler,
         subscribed_handler: SubscribedHandler | None = None,
+        synced_handler: SyncedHandler | None = None,
     ):
         """Subscribes to a topic and receives all files that are published to this topic.
 
@@ -261,6 +297,8 @@ class FileTransmitClient:
         the client will unsubscribe from the topic.
         The subscribed_handler is called once the server has registered the subscription,
         so that files published from then on reach this client.
+        The synced_handler is called with the token of each answered `request_sync`, after
+        all files the server sent before its answer.
         The filename generator is called when the metadata is received and should return
         the filename to use for the file that is received. If no filename generator is
         set, the filename is randomly generated.
@@ -276,6 +314,7 @@ class FileTransmitClient:
             if ack != SUBSCRIBED_ACK:
                 raise ConnectionError(f"File transmit server did not acknowledge topic {topic}.")
 
+            self._writer = writer
             if subscribed_handler:
                 subscribed_handler()
 
@@ -287,7 +326,17 @@ class FileTransmitClient:
 
                 # Receive metadata
                 metadata_bytes = await reader.readline()
+                if not metadata_bytes.endswith(b"\n"):
+                    raise asyncio.IncompleteReadError(metadata_bytes, None)
                 metadata: Metadata = json.loads(metadata_bytes.decode().strip())
+
+                if control := metadata.get("control"):
+                    if control == "synced":
+                        if synced_handler:
+                            synced_handler(metadata["token"])
+                    else:
+                        logger.warning("Ignoring unknown control frame %r.", control)
+                    continue
 
                 async with tempfile.NamedTemporaryFile(delete=False) as f:
                     try:
@@ -315,6 +364,9 @@ class FileTransmitClient:
                 if finished:
                     break
         finally:
+            # No more sync requests once the connection is being closed
+            self._writer = None
+
             # The client reports that it is well served and doesn't need any further
             # files by writing an eof, then closes the connection.
             try:
@@ -326,3 +378,19 @@ class FileTransmitClient:
                 await writer.wait_closed()
             except OSError:
                 pass
+
+    async def request_sync(self, token: str) -> bool:
+        """Ask the server to answer with `synced` once it sent everything it holds back.
+
+        Returns False if the request could not be sent, because the subscription ended or the
+        connection broke (which the running subscription reports itself).
+        """
+        if not self._writer:
+            return False
+        try:
+            self._writer.write(f"sync {token}\n".encode())
+            await self._writer.drain()
+        except (ConnectionError, OSError, RuntimeError) as err:
+            logger.debug("Could not send sync request %s: %s", token, err)
+            return False
+        return True

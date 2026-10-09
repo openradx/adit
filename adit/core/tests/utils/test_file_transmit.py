@@ -1,4 +1,5 @@
 import asyncio
+import json
 import logging
 import struct
 import tempfile
@@ -17,6 +18,7 @@ from adit.core.utils.file_transmit import (
     FileTransmitServer,
     FileTransmitSession,
     Metadata,
+    SyncRequestHandler,
 )
 from adit.core.utils.testing_helpers import stall_session, wait_until
 
@@ -257,9 +259,12 @@ def _largest_sample() -> Path:
 
 
 async def _serve(
-    port: int, write_timeout: float = WRITE_TIMEOUT
+    port: int,
+    write_timeout: float = WRITE_TIMEOUT,
+    sync_request_handler: SyncRequestHandler | None = None,
 ) -> tuple[FileTransmitServer, asyncio.Task]:
     server = FileTransmitServer(HOST, port, write_timeout=write_timeout)
+    server.set_sync_request_handler(sync_request_handler)
     server_task = asyncio.create_task(server.start())
     await asyncio.sleep(0.5)
     return server, server_task
@@ -538,3 +543,231 @@ async def test_a_worker_that_finishes_with_files_still_queued_ends_quietly(
         await _stop(server, server_task, client)
 
     assert not [r for r in caplog.records if r.levelno >= logging.WARNING]
+
+
+async def _answer_right_away(session: FileTransmitSession, token: str):
+    session.queue_synced(token)
+
+
+async def _read_frame(reader: asyncio.StreamReader) -> tuple[int, dict]:
+    size = struct.unpack("!I", await reader.readexactly(4))[0]
+    return size, json.loads(await reader.readline())
+
+
+@pytest.mark.asyncio
+async def test_sync_request_reaches_the_sync_handler():
+    requests: list[tuple[str, str]] = []
+    requested = asyncio.Event()
+
+    async def sync_handler(session: FileTransmitSession, token: str):
+        requests.append((session.topic, token))
+        requested.set()
+
+    server, server_task = await _serve(9979, sync_request_handler=sync_handler)
+    subscribed = asyncio.Event()
+    client = FileTransmitClient(HOST, 9979)
+    client_task = asyncio.create_task(
+        client.subscribe(
+            "foobar", lambda filename, metadata: True, subscribed_handler=subscribed.set
+        )
+    )
+    try:
+        await asyncio.wait_for(subscribed.wait(), timeout=5)
+        assert await client.request_sync("1")
+        await asyncio.wait_for(requested.wait(), timeout=5)
+    finally:
+        await _stop(server, server_task, client_task)
+
+    assert requests == [("foobar", "1")]
+
+
+@pytest.mark.asyncio
+async def test_synced_arrives_after_the_files_published_before_it(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    monkeypatch.setattr(tempfile, "tempdir", str(tmp_path))
+    sample_files = list(Path(f"{settings.BASE_PATH}/samples/dicoms").rglob("*.dcm"))[:2]
+    server, server_task = await _serve(9977)
+    subscribed = asyncio.Event()
+    synced = asyncio.Event()
+    events: list[str] = []
+
+    async def file_received_handler(filename: str, metadata: Metadata):
+        events.append(metadata["name"])
+        await os.remove(filename)
+        return False
+
+    def synced_handler(token: str):
+        events.append(f"synced {token}")
+        synced.set()
+
+    client = FileTransmitClient(HOST, 9977)
+    client_task = asyncio.create_task(
+        client.subscribe(
+            "foobar",
+            file_received_handler,
+            subscribed_handler=subscribed.set,
+            synced_handler=synced_handler,
+        )
+    )
+    try:
+        await asyncio.wait_for(subscribed.wait(), timeout=5)
+        await server.publish_file("foobar", sample_files[0], {"name": "first"})
+        await server.publish_file("foobar", sample_files[1], {"name": "second"})
+        assert server._sessions[0].queue_synced("1")
+        await asyncio.wait_for(synced.wait(), timeout=5)
+    finally:
+        await _stop(server, server_task, client_task)
+
+    assert events == ["first", "second", "synced 1"]
+    # A control frame carries no file
+    assert list(tmp_path.iterdir()) == []
+
+
+@pytest.mark.asyncio
+async def test_server_ignores_unknown_and_over_long_control_lines(caplog: pytest.LogCaptureFixture):
+    server, server_task = await _serve(9976, sync_request_handler=_answer_right_away)
+    reader, writer = await asyncio.open_connection(HOST, 9976)
+    try:
+        writer.write(b"foobar\n")
+        assert await reader.readline() == SUBSCRIBED_ACK
+        with caplog.at_level(logging.WARNING):
+            writer.write(b"bogus 1\n")
+            writer.write(b"x" * (70 * 1024) + b"\n")
+            writer.write(b"sync 2\n")
+            await writer.drain()
+            size, metadata = await asyncio.wait_for(_read_frame(reader), timeout=5)
+    finally:
+        writer.close()
+        await writer.wait_closed()
+        await _stop(server, server_task)
+
+    assert (size, metadata) == (0, {"control": "synced", "token": "2"})
+    assert len([r for r in caplog.records if r.levelno == logging.WARNING]) >= 2
+
+
+@pytest.mark.asyncio
+async def test_session_ends_on_a_partial_control_line():
+    server, server_task = await _serve(9975)
+    unsubscribed = asyncio.Event()
+    server.set_unsubscribe_handler(lambda topic: unsubscribed.set())
+    reader, writer = await asyncio.open_connection(HOST, 9975)
+    try:
+        writer.write(b"foobar\n")
+        assert await reader.readline() == SUBSCRIBED_ACK
+        writer.write(b"sync 1")
+        writer.write_eof()
+        await asyncio.wait_for(unsubscribed.wait(), timeout=5)
+        # No synced answer for the cut off request
+        assert await reader.read() == b""
+    finally:
+        writer.close()
+        await writer.wait_closed()
+        await _stop(server, server_task)
+
+
+@pytest.mark.asyncio
+async def test_client_ignores_unknown_control_frames(caplog: pytest.LogCaptureFixture):
+    async def handle_connection(reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
+        await reader.readline()
+        writer.write(SUBSCRIBED_ACK)
+        writer.write(struct.pack("!I", 0) + b'{"control": "bogus"}\n')
+        writer.write(struct.pack("!I", 3) + b'{"name": "file"}\n' + b"abc")
+        await writer.drain()
+        await reader.read()
+        writer.close()
+        await writer.wait_closed()
+
+    server = await asyncio.start_server(handle_connection, HOST, 9974)
+    received: list[str] = []
+
+    async def file_received_handler(filename: str, metadata: Metadata):
+        received.append(metadata["name"])
+        await os.remove(filename)
+        return True
+
+    try:
+        with caplog.at_level(logging.WARNING):
+            client = FileTransmitClient(HOST, 9974)
+            await asyncio.wait_for(client.subscribe("foobar", file_received_handler), timeout=5)
+    finally:
+        server.close()
+        await server.wait_closed()
+
+    assert received == ["file"]
+    assert any("bogus" in r.getMessage() for r in caplog.records)
+
+
+@pytest.mark.asyncio
+async def test_client_raises_when_a_metadata_line_is_cut_off():
+    async def handle_connection(reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
+        await reader.readline()
+        writer.write(SUBSCRIBED_ACK)
+        writer.write(struct.pack("!I", 0) + b'{"control": "syn')
+        await writer.drain()
+        writer.close()
+        await writer.wait_closed()
+
+    server = await asyncio.start_server(handle_connection, HOST, 9973)
+    try:
+        client = FileTransmitClient(HOST, 9973)
+        with pytest.raises(asyncio.IncompleteReadError):
+            await asyncio.wait_for(
+                client.subscribe("foobar", lambda filename, metadata: True), timeout=5
+            )
+    finally:
+        server.close()
+        await server.wait_closed()
+
+
+@pytest.mark.asyncio
+async def test_request_sync_after_the_subscription_ended_returns_false():
+    sample_file = next(Path(f"{settings.BASE_PATH}/samples/dicoms").rglob("*.dcm"))
+    server, server_task = await _serve(9971)
+    subscribed = asyncio.Event()
+
+    async def file_received_handler(filename: str, metadata: Metadata):
+        await os.remove(filename)
+        return True
+
+    client = FileTransmitClient(HOST, 9971)
+    client_task = asyncio.create_task(
+        client.subscribe("foobar", file_received_handler, subscribed_handler=subscribed.set)
+    )
+    try:
+        await asyncio.wait_for(subscribed.wait(), timeout=5)
+        await server.publish_file("foobar", sample_file)
+        await asyncio.wait_for(client_task, timeout=5)
+
+        assert await client.request_sync("1") is False
+    finally:
+        await _stop(server, server_task, client_task)
+
+
+@pytest.mark.asyncio
+async def test_request_sync_returns_false_when_the_connection_broke():
+    server, server_task = await _serve(9970)
+    subscribed = asyncio.Event()
+    client = FileTransmitClient(HOST, 9970)
+    client_task = asyncio.create_task(
+        client.subscribe(
+            "foobar", lambda filename, metadata: True, subscribed_handler=subscribed.set
+        )
+    )
+    try:
+        await asyncio.wait_for(subscribed.wait(), timeout=5)
+        assert client._writer
+        client._writer.drain = MagicMock(side_effect=ConnectionResetError())
+
+        assert await client.request_sync("1") is False
+    finally:
+        await _stop(server, server_task, client_task)
+
+
+@pytest.mark.asyncio
+async def test_queue_synced_to_a_closed_session_returns_false():
+    session = FileTransmitSession("foobar", MagicMock(), write_timeout=WRITE_TIMEOUT)
+    session.closed = True
+
+    assert session.queue_synced("1") is False
+    assert session._frames.empty()
