@@ -731,6 +731,89 @@ def test_c_move_refetches_missing_images_on_one_association(
 
 
 @pytest.mark.django_db
+def test_c_move_activity_counts_every_frame_of_its_images(
+    settings: Settings, mocker: MockerFixture
+):
+    # Arrange: a PACS sending a study again after a retry sends duplicates first, which
+    # must keep the C-MOVE alive as well, while images of other fetches of the study must not
+    dicom_operator, association_mock, file_path, ds = _setup_c_move_operator(
+        settings, mocker, 17966
+    )
+    association_mock.send_c_find.return_value = DicomTestHelper.create_successful_c_find_responses(
+        [{"SOPInstanceUID": ds.SOPInstanceUID}, {"SOPInstanceUID": IMAGE_B}]
+    )
+    transmit_server, loop = _start_transmit_server(17966)
+    send_c_move_spy = mocker.spy(dicom_operator.dimse_connector, "_send_c_move")
+    advanced: list[bool] = []
+
+    def publish(image_uid: str):
+        publish = transmit_server.publish_file(
+            ds.StudyInstanceUID, file_path, {"SOPInstanceUID": image_uid}
+        )
+        asyncio.run_coroutine_threadsafe(publish, loop).result(timeout=5)
+
+    def publish_and_wait_for_activity(
+        image_uid: str, last_activity: Callable[[], float], wait: float = 5
+    ):
+        before = last_activity()
+        sleep(0.01)
+        publish(image_uid)
+        deadline = time.monotonic() + wait
+        while last_activity() == before and time.monotonic() < deadline:
+            sleep(0.01)
+        advanced.append(last_activity() > before)
+
+    def send_c_move(*args, **kwargs):
+        last_activity = send_c_move_spy.call_args.args[3]
+        publish_and_wait_for_activity(ds.SOPInstanceUID, last_activity)
+        publish_and_wait_for_activity(ds.SOPInstanceUID, last_activity)  # A duplicate
+        publish_and_wait_for_activity("9.9.9.9", last_activity, wait=1)  # Of another fetch
+        publish_and_wait_for_activity(IMAGE_B, last_activity)
+        # Nothing is missing anymore, while the PACS may still be sending
+        publish_and_wait_for_activity(ds.SOPInstanceUID, last_activity)
+        return DicomTestHelper.create_successful_c_move_response()
+
+    association_mock.send_c_move.side_effect = send_c_move
+
+    # Act
+    try:
+        dicom_operator.fetch_series(
+            ds.PatientID, ds.StudyInstanceUID, ds.SeriesInstanceUID, lambda ds: None
+        )
+    finally:
+        asyncio.run_coroutine_threadsafe(transmit_server.stop(), loop).result(timeout=5)
+
+    # Assert
+    assert advanced == [True, True, False, True, True]
+
+
+@pytest.mark.django_db
+def test_c_move_refetch_passes_the_activity_to_the_batch(settings: Settings, mocker: MockerFixture):
+    # Arrange
+    dicom_operator, ds, requested, stop = _setup_refetch(
+        settings, mocker, 17965, deliver={IMAGE_B, IMAGE_C}
+    )
+    send_c_move_spy = mocker.spy(dicom_operator.dimse_connector, "_send_c_move")
+    fetch_started_at = time.monotonic()
+
+    # Act
+    try:
+        dicom_operator.fetch_series(
+            ds.PatientID, ds.StudyInstanceUID, ds.SeriesInstanceUID, lambda ds: None
+        )
+    finally:
+        stop()
+
+    # Assert: the study C-MOVE and both IMAGE-level C-MOVEs of the re-fetch round watch the
+    # same activity, the frames received
+    levels = [call.args[0].QueryRetrieveLevel for call in send_c_move_spy.call_args_list]
+    assert levels == ["SERIES", "IMAGE", "IMAGE"]
+    activities = {call.args[3]() for call in send_c_move_spy.call_args_list}
+    assert len(activities) == 1
+    assert activities.pop() > fetch_started_at
+
+
+@pytest.mark.django_db
 def test_c_move_study_refetch_requests_each_image_with_its_own_series(
     settings: Settings, mocker: MockerFixture
 ):
