@@ -196,7 +196,7 @@ def test_download_series_with_c_move(settings: Settings, mocker: MockerFixture):
     subscribed_topic = ""
 
     def start_transmit_server():
-        transmit_server = FileTransmitServer("127.0.0.1", 17999)
+        transmit_server = FileTransmitServer("127.0.0.1", 17999, write_timeout=30)
 
         async def on_subscribe(topic: str):
             nonlocal subscribed_topic
@@ -228,7 +228,7 @@ def test_download_series_with_c_move(settings: Settings, mocker: MockerFixture):
 
 def _start_transmit_server(port: int) -> tuple[FileTransmitServer, asyncio.AbstractEventLoop]:
     """Run a file transmit server in its own thread like the receiver container does."""
-    server = FileTransmitServer("127.0.0.1", port)
+    server = FileTransmitServer("127.0.0.1", port, write_timeout=30)
     loops: list[asyncio.AbstractEventLoop] = []
     started = threading.Event()
 

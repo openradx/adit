@@ -1,7 +1,9 @@
 import asyncio
+import functools
 import logging
 import os
 import tempfile
+from contextlib import suppress
 from pathlib import Path
 
 import janus
@@ -42,7 +44,7 @@ class Command(AsyncServerCommand):
 
             self._queue: janus.Queue[str] = janus.Queue()
 
-            self._file_transmit = FileTransmitServer("0.0.0.0", settings.FILE_TRANSMIT_PORT)
+            self._file_transmit = self._create_file_transmit()
             self._store_scp.set_file_received_handler(self._handle_received_file)
             store_scp_thread = asyncio.to_thread(self._store_scp.start)
 
@@ -57,6 +59,19 @@ class Command(AsyncServerCommand):
                 self._store_scp.stop()
 
                 logger.exception(err)
+
+    def _create_file_transmit(self) -> FileTransmitServer:
+        return FileTransmitServer(
+            "0.0.0.0",
+            settings.FILE_TRANSMIT_PORT,
+            write_timeout=settings.FILE_TRANSMIT_WRITE_TIMEOUT,
+        )
+
+    def _delete_received_file(self, file_path: str) -> None:
+        # The temp folder is gone once a failed task ended the server, and an error here would
+        # end the sender of the worker's session that released the file.
+        with suppress(FileNotFoundError):
+            os.unlink(file_path)
 
     def _handle_received_file(self, file_path):
         self._queue.sync_q.put(file_path)
@@ -78,7 +93,11 @@ class Command(AsyncServerCommand):
                 # may differ from the AE title ADIT queried (e.g. PACS clusters or a separate
                 # sending AE). SOPInstanceUIDs are globally unique, so workers dedupe on them.
                 sent_count = await self._file_transmit.publish_file(
-                    study_uid, file_path, {"SOPInstanceUID": instance_uid}
+                    study_uid,
+                    file_path,
+                    {"SOPInstanceUID": instance_uid},
+                    # Deleted once every worker it was queued to is done with it
+                    release=functools.partial(self._delete_received_file, file_path),
                 )
                 if not sent_count:
                     # Also happens for late duplicates after the worker got all its images
@@ -97,8 +116,7 @@ class Command(AsyncServerCommand):
                     f"SOPInstanceUID '{instance_uid}'."
                 )
                 logger.exception(err)
-            finally:
-                os.unlink(file_path)
+                self._delete_received_file(file_path)
 
     def on_shutdown(self):
         self._store_scp.stop()

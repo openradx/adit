@@ -404,6 +404,11 @@ STORE_SCP_PORT = env.int("STORE_SCP_PORT", 11112)
 FILE_TRANSMIT_HOST = env.str("FILE_TRANSMIT_HOST", "localhost")
 FILE_TRANSMIT_PORT = env.int("FILE_TRANSMIT_PORT", 14638)
 
+# How long the receiver waits for a worker to take data it sends before it disconnects that
+# worker (e.g. a hung process) and gives up its files. A live worker pauses reading only while it
+# hands over one image.
+FILE_TRANSMIT_WRITE_TIMEOUT = 300  # seconds
+
 # Usually a transfer job must be verified by an admin. By setting
 # this option to True ADIT will schedule unverified transfers
 # (and directly set the status of the job to PENDING).

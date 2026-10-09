@@ -23,38 +23,96 @@ FileReceivedHandler = Callable[[str, Metadata], Awaitable[bool | None] | bool | 
 logger = logging.getLogger(__name__)
 
 
+# Header bytes, the file to send after them (None for a control frame) and the release of the file
+Frame = tuple[bytes, PathLike | str | None, Callable[[], None] | None]
+
+
 class FileTransmitSession:
-    """Each client connection to the server is represented by a session."""
+    """Each client connection to the server is represented by a session.
 
-    def __init__(self, topic: str, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
+    A session has its own queue of frames and one sender task that writes them, so a client that
+    reads slowly or not at all only holds up its own files.
+    """
+
+    def __init__(self, topic: str, writer: asyncio.StreamWriter, write_timeout: float):
         self.topic = topic
-        self._reader = reader
+        self.closed = False
         self._writer = writer
+        self._write_timeout = write_timeout
+        self._frames: asyncio.Queue[Frame] = asyncio.Queue()
+        self._sender: asyncio.Task | None = None
 
-    async def send_file(self, file_path: PathLike | str, metadata: dict[str, str] | None = None):
-        # Send file size
-        file_size = await os.path.getsize(file_path)
-        data = struct.pack("!I", file_size)  # encodes unsigned int to exactly 4 bytes
-        self._writer.write(data)
-        await self._writer.drain()
+    def start(self) -> None:
+        self._sender = asyncio.create_task(self._send_frames())
 
-        # Send metadata
-        if not metadata:
-            metadata = {}
-        metadata_bytes = (json.dumps(metadata) + "\n").encode()
-        self._writer.write(metadata_bytes)
-        await self._writer.drain()
+    def queue_frame(
+        self,
+        header: bytes,
+        file_path: PathLike | str | None = None,
+        release: Callable[[], None] | None = None,
+    ) -> bool:
+        """Queue a frame, the header followed by the file if any, behind the frames before it.
 
-        # Send the file itself
-        remaining_bytes = file_size
+        Returns False if the session is closed. Otherwise `release` is called once the session
+        is done with the frame: sent, failed or closed.
+        """
+        if self.closed:
+            return False
+        self._frames.put_nowait((header, file_path, release))
+        return True
+
+    async def close(self) -> None:
+        self.closed = True
+        if self._sender:
+            self._sender.cancel()
+        # The cancelled sender takes no further frame, so these are released only here
+        while not self._frames.empty():
+            _, _, release = self._frames.get_nowait()
+            if release:
+                release()
+        if self._sender:
+            await asyncio.wait([self._sender])
+
+    async def _send_frames(self) -> None:
+        while True:
+            header, file_path, release = await self._frames.get()
+            try:
+                await self._write_frame(header, file_path)
+            except Exception as err:
+                # The frame is cut off, so the client can no longer read this stream. Closing
+                # the connection makes the connection handler close the session, which releases
+                # the frames still queued.
+                reason = (
+                    f"took no data for {self._write_timeout} s"
+                    if isinstance(err, TimeoutError)
+                    else repr(err)
+                )
+                logger.warning(
+                    "Disconnecting a subscriber of topic %s, sending failed: %s", self.topic, reason
+                )
+                self.closed = True
+                self._writer.transport.abort()
+                return
+            finally:
+                if release:
+                    release()
+
+    async def _write_frame(self, header: bytes, file_path: PathLike | str | None) -> None:
+        if file_path is None:
+            self._writer.write(header)
+            await self._drain()
+            return
+
         async with aiofiles.open(file_path, mode="rb") as file:
-            # The client writes an eof if it is well served and doesn't need files anymore
-            while remaining_bytes > 0 and not self._reader.at_eof():
-                chunk_size = min(remaining_bytes, BUFFER_SIZE)
-                chunk = await file.read(chunk_size)
+            self._writer.write(header)
+            await self._drain()
+            while chunk := await file.read(BUFFER_SIZE):
                 self._writer.write(chunk)
-                await self._writer.drain()
-                remaining_bytes -= chunk_size
+                await self._drain()
+
+    async def _drain(self) -> None:
+        # A client that takes no data for this long is regarded as hung
+        await asyncio.wait_for(self._writer.drain(), self._write_timeout)
 
 
 class FileTransmitServer:
@@ -68,9 +126,10 @@ class FileTransmitServer:
     _subscribe_handler: SubscribeHandler | None = None
     _unsubscribe_handler: UnsubscribeHandler | None = None
 
-    def __init__(self, host: str, port: int):
+    def __init__(self, host: str, port: int, write_timeout: float):
         self._host = host
         self._port = port
+        self._write_timeout = write_timeout
         self._sessions: list[FileTransmitSession] = []
 
     def set_subscribe_handler(self, subscribe_handler: SubscribeHandler | None):
@@ -86,19 +145,36 @@ class FileTransmitServer:
         topic: str,
         file_path: PathLike | str,
         metadata: dict[str, str] | None = None,
+        release: Callable[[], None] | None = None,
     ) -> int:
-        """Publishes a file to all clients that subscribed to the given topic.
+        """Queues a file to all clients that subscribed to the given topic.
 
-        Returns the number of clients the file was sent to.
+        Returns the number of clients that took the file. `release` is called once all of them
+        are done with it (sent, failed or disconnected), right away if none took it. If the file
+        can't be framed (e.g. it doesn't exist), the error propagates and nothing is queued.
         """
-        sent_count = 0
-        # Iterate over a copy as sessions of disconnecting clients are removed concurrently,
-        # which would otherwise skip the next session.
-        for session in list(self._sessions):
-            if session.topic == topic:
-                await session.send_file(file_path, metadata)
-                sent_count += 1
-        return sent_count
+        file_size = await os.path.getsize(file_path)
+        header = struct.pack("!I", file_size) + (json.dumps(metadata or {}) + "\n").encode()
+
+        remaining = 0
+
+        def release_one():
+            nonlocal remaining
+            assert remaining > 0
+            remaining -= 1
+            if remaining == 0 and release:
+                release()
+
+        # No await from here on: the sessions can't change meanwhile, and no session can be done
+        # with the file before all of them are counted.
+        taken = 0
+        for session in self._sessions:
+            if session.topic == topic and session.queue_frame(header, file_path, release_one):
+                taken += 1
+        remaining = taken
+        if not taken and release:
+            release()
+        return taken
 
     async def start(self):
         self._server = await asyncio.start_server(self._handle_connection, self._host, self._port)
@@ -123,14 +199,16 @@ class FileTransmitServer:
         line = await reader.readline()
         topic = line.decode().rstrip()
 
-        session = FileTransmitSession(topic, reader, writer)
+        session = FileTransmitSession(topic, writer, self._write_timeout)
         self._sessions.append(session)
 
         try:
-            # Written before the first await, so it precedes any file published to this session.
-            # Clients wait for it before triggering anything that publishes files to them.
+            # Files published from now on are queued and only sent once the sender starts, so
+            # the ack precedes them. Clients wait for it before triggering anything that
+            # publishes files to them.
             writer.write(SUBSCRIBED_ACK)
             await writer.drain()
+            session.start()
 
             if self._subscribe_handler:
                 if asyncio.iscoroutinefunction(self._subscribe_handler):
@@ -148,6 +226,7 @@ class FileTransmitServer:
             logger.error(f"Exception occurred on topic {topic}: {err}")
         finally:
             self._sessions.remove(session)
+            await session.close()
             if not writer.is_closing():
                 writer.close()
                 await writer.wait_closed()
