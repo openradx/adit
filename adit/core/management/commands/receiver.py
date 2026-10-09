@@ -4,6 +4,7 @@ import logging
 import os
 import tempfile
 from contextlib import suppress
+from dataclasses import dataclass
 from pathlib import Path
 
 import janus
@@ -11,10 +12,18 @@ from adit_radis_shared.common.management.base.server_command import AsyncServerC
 from django.conf import settings
 
 from ...utils.dicom_utils import read_dataset
-from ...utils.file_transmit import FileTransmitServer
+from ...utils.file_transmit import FileTransmitServer, FileTransmitSession
 from ...utils.store_scp import StoreScp
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass(frozen=True)
+class SyncRequest:
+    """A worker's request to confirm that everything received before it was sent to it."""
+
+    session: FileTransmitSession
+    token: str
 
 
 class Command(AsyncServerCommand):
@@ -42,7 +51,7 @@ class Command(AsyncServerCommand):
                 debug=settings.ENABLE_DICOM_DEBUG_LOGGER,
             )
 
-            self._queue: janus.Queue[str] = janus.Queue()
+            self._queue: janus.Queue[str | SyncRequest] = janus.Queue()
 
             self._file_transmit = self._create_file_transmit()
             self._store_scp.set_file_received_handler(self._handle_received_file)
@@ -61,11 +70,13 @@ class Command(AsyncServerCommand):
                 logger.exception(err)
 
     def _create_file_transmit(self) -> FileTransmitServer:
-        return FileTransmitServer(
+        file_transmit = FileTransmitServer(
             "0.0.0.0",
             settings.FILE_TRANSMIT_PORT,
             write_timeout=settings.FILE_TRANSMIT_WRITE_TIMEOUT,
         )
+        file_transmit.set_sync_request_handler(self._handle_sync)
+        return file_transmit
 
     def _delete_received_file(self, file_path: str) -> None:
         # The temp folder is gone once a failed task ended the server, and an error here would
@@ -74,11 +85,24 @@ class Command(AsyncServerCommand):
             os.unlink(file_path)
 
     def _handle_received_file(self, file_path):
+        # Queued before the Store SCP answers the C-STORE, so the final C-MOVE response of a
+        # compliant PACS, and with it the worker's sync request, come after the file.
         self._queue.sync_q.put(file_path)
+
+    async def _handle_sync(self, session: FileTransmitSession, token: str):
+        # Behind the files queued so far, so the answer follows them on the session's stream
+        await self._queue.async_q.put(SyncRequest(session, token))
 
     async def _send_files(self):
         while True:
-            file_path = await self._queue.async_q.get()
+            item = await self._queue.async_q.get()
+
+            if isinstance(item, SyncRequest):
+                # A closed session takes nothing, so there is nobody to answer
+                item.session.queue_synced(item.token)
+                continue
+
+            file_path = item
             filename = os.path.basename(file_path)
 
             study_uid = "Unknown"
