@@ -404,6 +404,11 @@ STORE_SCP_PORT = env.int("STORE_SCP_PORT", 11112)
 FILE_TRANSMIT_HOST = env.str("FILE_TRANSMIT_HOST", "localhost")
 FILE_TRANSMIT_PORT = env.int("FILE_TRANSMIT_PORT", 14638)
 
+# How long the receiver waits for a worker to take data it sends before it disconnects that
+# worker (e.g. a hung process) and gives up its files. A live worker pauses reading only while it
+# hands over one image.
+FILE_TRANSMIT_WRITE_TIMEOUT = 300  # seconds
+
 # Usually a transfer job must be verified by an admin. By setting
 # this option to True ADIT will schedule unverified transfers
 # (and directly set the status of the job to PENDING).
@@ -454,11 +459,18 @@ DICOM_EXPLORER_RESULT_LIMIT = 101
 # The timeout in dicom_explorer a DICOM server must respond
 DICOM_EXPLORER_RESPONSE_TIMEOUT = 3  # seconds
 
-# The timeout we wait for images of a C-MOVE download
+# How long images still missing after the receiver confirmed a C-MOVE delivery are waited for
+# while no expected image arrives, before the receiver is asked again, as some PACS send images
+# after their final C-MOVE response
 C_MOVE_DOWNLOAD_TIMEOUT = 30  # seconds
 
 # The timeout we wait for the receiver to register our subscription before sending a C-MOVE
 C_MOVE_SUBSCRIBE_TIMEOUT = 10  # seconds
+
+# How long we wait for the receiver to confirm a C-MOVE delivery while no expected image
+# arrives. Longer than C_MOVE_DOWNLOAD_TIMEOUT, as a backlogged receiver already holds the
+# images and waiting for it costs the PACS nothing.
+C_MOVE_SYNC_TIMEOUT = 120  # seconds
 
 # How often images still missing after a C-MOVE are requested again, one IMAGE-level
 # C-MOVE per image (0 disables it). Each of those costs the PACS its own association to
