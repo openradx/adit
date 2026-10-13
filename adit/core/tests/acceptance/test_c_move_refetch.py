@@ -257,3 +257,34 @@ def test_c_move_takes_images_only_from_accepted_calling_ae_titles(
                 PATIENT_ID, STUDY_UID, series_uid, lambda ds: received.append(ds.SOPInstanceUID)
             )
         assert received == []
+
+
+@pytest.mark.acceptance
+@pytest.mark.order("last")
+@pytest.mark.django_db
+def test_c_move_gets_the_images_the_receiver_still_holds(settings: Settings, mocker: MockerFixture):
+    # Arrange: the images of a series reached the receiver while no worker was subscribed,
+    # as when the worker of an earlier attempt restarted mid-download
+    operator = _setup_operator(settings, download_timeout=3)
+    series_uid, image_uids = _largest_series(operator)
+    operator.dimse_connector.send_c_move(
+        QueryDataset.create(
+            QueryRetrieveLevel="SERIES",
+            PatientID=PATIENT_ID,
+            StudyInstanceUID=STUDY_UID,
+            SeriesInstanceUID=series_uid,
+        ),
+        settings.RECEIVER_AE_TITLE,
+    )
+    time.sleep(2)  # Until the receiver handled them
+    send_c_move = mocker.spy(operator.dimse_connector, "_send_c_move")
+    received: list[str] = []
+
+    # Act
+    operator.fetch_series(
+        PATIENT_ID, STUDY_UID, series_uid, lambda ds: received.append(ds.SOPInstanceUID)
+    )
+
+    # Assert: the receiver replayed them, so the PACS wasn't asked again
+    assert sorted(received) == sorted(image_uids)
+    send_c_move.assert_not_called()

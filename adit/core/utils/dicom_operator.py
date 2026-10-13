@@ -693,7 +693,8 @@ class DicomOperator:
             try:
                 # Images the PACS sends before the receiver knows about us would be discarded
                 self._wait_for_subscription(fetch)
-                self._move(fetch)
+                if self._receive_replay(fetch):
+                    self._move(fetch)
                 delivery_broken = fetch.delivery_broken()
                 if not delivery_broken:
                     self._refetch(fetch)
@@ -786,6 +787,46 @@ class DicomOperator:
         while not fetch.subscribed.wait(timeout=0.1):
             if fetch.consumer.done() or time.monotonic() > deadline:
                 raise RetriableDicomError("Could not subscribe to the DICOM receiver.")
+
+    def _receive_replay(self, fetch: _CMoveFetch) -> bool:
+        """Take the images the receiver still holds and return whether the C-MOVE is needed.
+
+        The receiver holds images of the study, e.g. those an earlier attempt didn't get as its
+        worker restarted. With the list, the PACS is then only asked for the others: one by one
+        if they are few enough to be re-fetched, otherwise with the C-MOVE as a whole.
+        """
+        if not fetch.image_uids:
+            return True
+        study_uid = fetch.query.StudyInstanceUID
+        try:
+            self._sync_with_receiver(
+                fetch, REPLAY_SYNC_TOKEN, stop_when_complete=False, request=False
+            )
+        except RetriableDicomError:
+            # The replay only saves work, e.g. an older receiver doesn't confirm it
+            logger.info("The receiver didn't confirm its replay for study %s.", study_uid)
+        if not fetch.receiving():
+            # Nobody would take the images of a C-MOVE
+            raise RetriableDicomError("Connection to the DICOM receiver failed.")
+
+        # Images of the study or series the list misses show that it is capped, so the C-MOVE
+        # as a whole is needed to find the others
+        if not fetch.received or not fetch.received.keys() <= fetch.image_uids.keys():
+            return True
+        image_count = len(fetch.image_uids)
+        missing = len(fetch.missing_images)
+        if missing and not (
+            settings.C_MOVE_REFETCH_ATTEMPTS
+            and 100 * missing / image_count <= settings.C_MOVE_REFETCH_MAX_MISSING_PERCENT
+        ):
+            return True
+        logger.info(
+            "%d of %d requested images of study %s were still held by the receiver.",
+            image_count - missing,
+            image_count,
+            study_uid,
+        )
+        return False
 
     def _move(self, fetch: _CMoveFetch) -> None:
         """Send the C-MOVE and wait until it is known which of its images didn't arrive."""
@@ -942,13 +983,19 @@ class DicomOperator:
             self._wait_for_late_images(fetch, synced_at)
 
     def _sync_with_receiver(
-        self, fetch: _CMoveFetch, token: str, stop_when_complete: bool = True
+        self,
+        fetch: _CMoveFetch,
+        token: str,
+        stop_when_complete: bool = True,
+        request: bool = True,
     ) -> float | None:
         """Wait for the receiver to confirm the sync request with this token.
 
-        Returns when it was confirmed, or None if there is nothing to wait for anymore.
+        Returns when it was confirmed, or None if there is nothing to wait for anymore. Without
+        `request`, the receiver confirms the token on its own, as the replay after subscribing.
         """
-        fetch.sync_requests.put(token)
+        if request:
+            fetch.sync_requests.put(token)
         requested_at = time.monotonic()
         while (fetch.missing_count() or not stop_when_complete) and fetch.receiving():
             if token in fetch.synced_tokens:
@@ -1082,6 +1129,8 @@ class DicomOperator:
                     handle_received_file,
                     subscribed_handler=fetch.subscribed.set,
                     synced_handler=handle_synced,
+                    # So that the receiver replays only the images of the requested series
+                    scope=fetch.query.get("SeriesInstanceUID"),
                 )
             )
 

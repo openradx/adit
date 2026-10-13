@@ -203,20 +203,29 @@ def test_download_series_with_c_move(settings: Settings, mocker: MockerFixture):
     )
 
     subscribed_topic = ""
+    subscribed_scope: str | None = None
+    loops: list[asyncio.AbstractEventLoop] = []
+    transmit_server = FileTransmitServer("127.0.0.1", 17999, write_timeout=30)
 
     def start_transmit_server():
-        transmit_server = FileTransmitServer("127.0.0.1", 17999, write_timeout=30)
-
-        async def on_subscribe(session: FileTransmitSession):
-            nonlocal subscribed_topic
+        def on_subscribe(session: FileTransmitSession):
+            nonlocal subscribed_topic, subscribed_scope
             subscribed_topic = session.topic
-            await transmit_server.publish_file(
-                session.topic, file_path, {"SOPInstanceUID": ds.SOPInstanceUID}
-            )
+            subscribed_scope = session.scope
+            loops.append(asyncio.get_running_loop())
+            session.queue_synced(REPLAY_SYNC_TOKEN)  # Nothing replayed
 
         transmit_server.set_subscribe_handler(on_subscribe)
         asyncio.run(transmit_server.start(), debug=True)
 
+    def send_c_move(*args, **kwargs):
+        publish = transmit_server.publish_file(
+            subscribed_topic, file_path, {"SOPInstanceUID": ds.SOPInstanceUID}
+        )
+        asyncio.run_coroutine_threadsafe(publish, loops[0]).result(timeout=5)
+        return DicomTestHelper.create_successful_c_move_response()
+
+    association_mock.send_c_move.side_effect = send_c_move
     threading.Thread(target=start_transmit_server, daemon=True).start()
 
     # Make sure transmit server is started
@@ -231,6 +240,8 @@ def test_download_series_with_c_move(settings: Settings, mocker: MockerFixture):
 
     # Assert
     assert subscribed_topic == ds.StudyInstanceUID
+    # So that the receiver replays only the images of the series
+    assert subscribed_scope == ds.SeriesInstanceUID
     association_mock.send_c_move.assert_called_once()
     assert received_ds[0] == ds
 
@@ -245,12 +256,14 @@ def _start_transmit_server(
     answer_sync: bool = True,
     before_sync: list[threading.Thread] | None = None,
     on_sync: Callable[[FileTransmitSession, str], Awaitable[bool]] | None = None,
-    replay: bool = False,
+    replayed: list[tuple[Path, dict[str, str]]] | None = None,
+    replay_interval: float = 0,
+    confirm_replay: bool = True,
 ) -> tuple[FileTransmitServer, asyncio.AbstractEventLoop]:
     """Run a file transmit server in its own thread like the receiver container does.
 
-    With `replay`, it confirms the replay of its spooled files (it holds none) right after
-    each subscription, as the receiver does.
+    Like the receiver, it replays the files it holds for the study (`replayed`, each with its
+    metadata, `replay_interval` s apart) right after each subscription and confirms that.
 
     Like the receiver, it answers a sync request only after the publishes the test scheduled
     before it (`before_sync`, e.g. the receiver's backlog). `on_sync` runs on the server's loop
@@ -269,12 +282,15 @@ def _start_transmit_server(
             session.queue_synced(token)
 
     server.set_sync_request_handler(sync_handler)
-    if replay:
 
-        def confirm_replay(session: FileTransmitSession) -> None:
+    async def replay(session: FileTransmitSession) -> None:
+        for file_path, metadata in replayed or []:
+            await asyncio.sleep(replay_interval)
+            session.queue_frame(_frame_header(file_path, metadata), file_path)
+        if confirm_replay:
             session.queue_synced(REPLAY_SYNC_TOKEN)
 
-        server.set_subscribe_handler(confirm_replay)
+    server.set_subscribe_handler(replay)
     loops: list[asyncio.AbstractEventLoop] = []
     started = threading.Event()
 
@@ -356,7 +372,7 @@ def test_c_move_replay_confirmation_is_no_delivery_confirmation(
     association_mock.send_c_find.return_value = DicomTestHelper.create_successful_c_find_responses(
         [{"SOPInstanceUID": ds.SOPInstanceUID}]
     )
-    transmit_server, loop = _start_transmit_server(17952, replay=True)
+    transmit_server, loop = _start_transmit_server(17952)
 
     def send_c_move(*args, **kwargs):
         publish = transmit_server.publish_file(
@@ -430,6 +446,8 @@ def test_c_move_fails_when_receiver_connection_drops(settings: Settings, mocker:
     finally:
         listener.close()
     assert received_ds == [ds]
+    # Nobody would take the images of a C-MOVE
+    association_mock.send_c_move.assert_not_called()
 
 
 @pytest.mark.django_db
@@ -633,6 +651,7 @@ def _setup_refetch(
     deliver: set[str],
     images: dict[str, str | None] | None = None,
     on_sync: Callable[[FileTransmitSession, str], Awaitable[bool]] | None = None,
+    replayed: list[str | None] | None = None,
 ):
     """The sample image and `images` (by default B and C) are expected, each image maps to
     its series (None for the series of the sample image). The first C-MOVE only delivers
@@ -645,7 +664,8 @@ def _setup_refetch(
     grace when their C-MOVE finished. With "after sync", the images in `deliver` arrive half a
     grace after the first sync was answered, as from a PACS that sends after its final C-MOVE
     response. With "slow sync", the first sync is answered only after 1.5 graces without any
-    image. `on_sync` is passed to the transmit server."""
+    image. `on_sync` is passed to the transmit server, which replays the `replayed` images
+    (None for the sample image)."""
     dicom_operator, association_mock, file_path, ds = _setup_c_move_operator(settings, mocker, port)
     # Most images are missing after the first C-MOVE
     settings.C_MOVE_REFETCH_MAX_MISSING_PERCENT = 100
@@ -688,7 +708,12 @@ def _setup_refetch(
         return await on_sync(session, token) if on_sync else True
 
     transmit_server, loop = _start_transmit_server(
-        port, before_sync=delayed_publishes, on_sync=answer_sync
+        port,
+        before_sync=delayed_publishes,
+        on_sync=answer_sync,
+        replayed=[
+            (file_path, {"SOPInstanceUID": uid or ds.SOPInstanceUID}) for uid in replayed or []
+        ],
     )
 
     def publish(image_uid: str):
@@ -779,6 +804,191 @@ def test_c_move_refetches_missing_images_on_one_association(
     assert open_connection.call_count == 3
     assert dicom_operator.dimse_connector.auto_close is True
     assert dicom_operator.dimse_connector.assoc is None
+
+
+@pytest.mark.django_db
+def test_c_move_skipped_when_the_receiver_replays_every_image(
+    settings: Settings, mocker: MockerFixture
+):
+    # Arrange: the receiver still holds every image, e.g. from an attempt whose worker restarted
+    dicom_operator, ds, requested, stop = _setup_refetch(
+        settings, mocker, 17951, deliver=set(), replayed=[None, IMAGE_B, IMAGE_C]
+    )
+    received: list[str] = []
+    send_c_move = mocker.spy(dicom_operator.dimse_connector, "_send_c_move")
+
+    # Act
+    try:
+        dicom_operator.fetch_series(
+            ds.PatientID,
+            ds.StudyInstanceUID,
+            ds.SeriesInstanceUID,
+            lambda ds: received.append(ds.SOPInstanceUID),
+        )
+    finally:
+        stop()
+
+    # Assert
+    assert len(received) == 3
+    send_c_move.assert_not_called()
+
+
+@pytest.mark.django_db
+def test_c_move_refetches_only_what_the_replay_missed(settings: Settings, mocker: MockerFixture):
+    # Arrange: the receiver still holds two of the three images
+    dicom_operator, ds, requested, stop = _setup_refetch(
+        settings, mocker, 17950, deliver={IMAGE_C}, replayed=[None, IMAGE_B]
+    )
+    settings.C_MOVE_REFETCH_MAX_MISSING_PERCENT = 50
+    send_c_move = mocker.spy(dicom_operator.dimse_connector, "_send_c_move")
+    received: list[str] = []
+
+    # Act
+    try:
+        dicom_operator.fetch_series(
+            ds.PatientID,
+            ds.StudyInstanceUID,
+            ds.SeriesInstanceUID,
+            lambda ds: received.append(ds.SOPInstanceUID),
+        )
+    finally:
+        stop()
+
+    # Assert: only the missing image is requested from the PACS
+    assert len(received) == 3
+    assert requested == [("IMAGE", ds.SeriesInstanceUID, IMAGE_C)]
+    assert [call.args[0].QueryRetrieveLevel for call in send_c_move.call_args_list] == ["IMAGE"]
+
+
+@pytest.mark.django_db
+def test_c_move_full_move_when_the_replay_brought_little(settings: Settings, mocker: MockerFixture):
+    # Arrange: the receiver still holds one of the three images, too few to request the
+    # others one by one
+    dicom_operator, ds, requested, stop = _setup_refetch(
+        settings, mocker, 17949, deliver={IMAGE_C}, replayed=[IMAGE_B]
+    )
+    settings.C_MOVE_REFETCH_MAX_MISSING_PERCENT = 50
+    send_c_move = mocker.spy(dicom_operator.dimse_connector, "_send_c_move")
+    received: list[str] = []
+
+    # Act
+    try:
+        dicom_operator.fetch_series(
+            ds.PatientID,
+            ds.StudyInstanceUID,
+            ds.SeriesInstanceUID,
+            lambda ds: received.append(ds.SOPInstanceUID),
+        )
+    finally:
+        stop()
+
+    # Assert: the C-MOVE of the series delivers the sample, image C comes one by one
+    assert len(received) == 3
+    levels = [call.args[0].QueryRetrieveLevel for call in send_c_move.call_args_list]
+    assert levels == ["SERIES", "IMAGE"]
+    assert requested == [("IMAGE", ds.SeriesInstanceUID, IMAGE_C)]
+
+
+@pytest.mark.django_db
+def test_c_move_waits_for_a_long_replay(settings: Settings, mocker: MockerFixture):
+    # Arrange: replaying the images takes longer than the sync timeout, while each one
+    # comes within it
+    dicom_operator, association_mock, file_path, ds = _setup_c_move_operator(
+        settings, mocker, 17948
+    )
+    settings.C_MOVE_SYNC_TIMEOUT = 1
+    association_mock.send_c_find.return_value = DicomTestHelper.create_successful_c_find_responses(
+        [{"SOPInstanceUID": uid} for uid in [ds.SOPInstanceUID, IMAGE_B, IMAGE_C]]
+    )
+    transmit_server, loop = _start_transmit_server(
+        17948,
+        replayed=[
+            (file_path, {"SOPInstanceUID": uid}) for uid in [ds.SOPInstanceUID, IMAGE_B, IMAGE_C]
+        ],
+        replay_interval=0.6,
+    )
+    received: list[Dataset] = []
+
+    # Act
+    try:
+        dicom_operator.fetch_series(
+            ds.PatientID, ds.StudyInstanceUID, ds.SeriesInstanceUID, received.append
+        )
+    finally:
+        asyncio.run_coroutine_threadsafe(transmit_server.stop(), loop).result(timeout=5)
+
+    # Assert
+    assert len(received) == 3
+    association_mock.send_c_move.assert_not_called()
+
+
+@pytest.mark.django_db
+def test_c_move_goes_on_without_a_replay_confirmation(settings: Settings, mocker: MockerFixture):
+    # Arrange: the receiver doesn't confirm a replay, e.g. an older one during an update
+    dicom_operator, association_mock, file_path, ds = _setup_c_move_operator(
+        settings, mocker, 17947
+    )
+    settings.C_MOVE_SYNC_TIMEOUT = 1
+    association_mock.send_c_find.return_value = DicomTestHelper.create_successful_c_find_responses(
+        [{"SOPInstanceUID": ds.SOPInstanceUID}]
+    )
+    transmit_server, loop = _start_transmit_server(17947, confirm_replay=False)
+
+    def send_c_move(*args, **kwargs):
+        publish = transmit_server.publish_file(
+            ds.StudyInstanceUID, file_path, {"SOPInstanceUID": ds.SOPInstanceUID}
+        )
+        asyncio.run_coroutine_threadsafe(publish, loop).result(timeout=5)
+        return DicomTestHelper.create_successful_c_move_response()
+
+    association_mock.send_c_move.side_effect = send_c_move
+    received: list[Dataset] = []
+
+    # Act
+    try:
+        dicom_operator.fetch_series(
+            ds.PatientID, ds.StudyInstanceUID, ds.SeriesInstanceUID, received.append
+        )
+    finally:
+        asyncio.run_coroutine_threadsafe(transmit_server.stop(), loop).result(timeout=5)
+
+    # Assert: the replay only saves work, so the download doesn't depend on it
+    assert received == [ds]
+
+
+@pytest.mark.django_db
+def test_c_move_is_sent_when_the_replay_shows_the_list_is_short(
+    settings: Settings, mocker: MockerFixture
+):
+    # Arrange: the receiver replays the listed image and one of the series the list misses,
+    # so the list is capped and more images may be missing
+    dicom_operator, association_mock, file_path, ds = _setup_c_move_operator(
+        settings, mocker, 17946
+    )
+    association_mock.send_c_find.return_value = DicomTestHelper.create_successful_c_find_responses(
+        [{"SOPInstanceUID": ds.SOPInstanceUID}]
+    )
+    series_metadata = {"SeriesInstanceUID": ds.SeriesInstanceUID}
+    transmit_server, loop = _start_transmit_server(
+        17946,
+        replayed=[
+            (file_path, {"SOPInstanceUID": ds.SOPInstanceUID} | series_metadata),
+            (file_path, {"SOPInstanceUID": IMAGE_B} | series_metadata),
+        ],
+    )
+    received: list[Dataset] = []
+
+    # Act
+    try:
+        dicom_operator.fetch_series(
+            ds.PatientID, ds.StudyInstanceUID, ds.SeriesInstanceUID, received.append
+        )
+    finally:
+        asyncio.run_coroutine_threadsafe(transmit_server.stop(), loop).result(timeout=5)
+
+    # Assert
+    assert len(received) == 2
+    association_mock.send_c_move.assert_called_once()
 
 
 @pytest.mark.django_db
