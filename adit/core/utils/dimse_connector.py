@@ -368,10 +368,10 @@ class DimseConnector:
             try:
                 self._send_c_move(query, dest_aet, msg_id, last_activity)
             except DicomError as err:
-                # After an A-ABORT of the peer the association may still count as alive
-                # for a moment.
+                # After an A-ABORT or A-RELEASE of the peer the thread of the association may
+                # still be alive for a moment, but it is no longer established.
                 if isinstance(err, AssociationLostError) or not (
-                    self.assoc and self.assoc.is_alive()
+                    self.assoc and self.assoc.is_established
                 ):
                     raise RetriableDicomError(
                         "Lost the association while sending C-MOVEs."
@@ -402,7 +402,8 @@ class DimseConnector:
                 "No valid Query/Retrieve Information Model for C-MOVE could be selected."
             )
 
-        assert self.assoc and self.assoc.is_alive()
+        if not (self.assoc and self.assoc.is_established):
+            raise AssociationLostError("The association was lost before sending the C-MOVE.")
         responses = self.assoc.send_c_move(query.dataset, dest_aet, query_model, msg_id)
 
         if last_activity is None or self.dimse_timeout is None:
