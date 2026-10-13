@@ -15,6 +15,8 @@ import pytest
 import stamina
 from django.conf import settings
 from pydicom import Dataset
+from pydicom.dataelem import RawDataElement
+from pydicom.tag import Tag
 from pynetdicom.sop_class import (
     PatientRootQueryRetrieveInformationModelFind,  # type: ignore
     StudyRootQueryRetrieveInformationModelFind,  # type: ignore
@@ -1020,6 +1022,345 @@ def test_c_move_reported_count_equal_to_the_list_changes_nothing(
     # Assert
     assert received == [ds]
     assert _capped_entries(caplog) == []
+
+
+SERIES_1 = "1.2.3.4.5.801"
+SERIES_2 = "1.2.3.4.5.802"
+
+# The images (SOPInstanceUID, SeriesInstanceUID) a C-MOVE delivers and the count it reports
+Move = tuple[list[tuple[str, str]], int | None]
+
+
+def _setup_without_list(
+    settings: Settings,
+    mocker: MockerFixture,
+    port: int,
+    counts: dict[str, int | bytes | None],
+    moves: dict[str | None, Move],
+    backlog: bool = False,
+):
+    """A study fetch from a server without IMAGE-level C-FIND. `counts` maps each series of
+    the study to the NumberOfSeriesRelatedInstances its SERIES-level C-FIND returns (None if it
+    returns none, bytes for the raw value as received). `moves` maps the SeriesInstanceUID of a
+    SERIES-level C-MOVE (None for the study C-MOVE) to what it does; other C-MOVEs deliver
+    nothing and report nothing. With `backlog`, the images of the study C-MOVE are still in the
+    receiver's backlog when it ends.
+    Returns the operator, the sample, the C-MOVEs sent (level, series) and a stop function."""
+    dicom_operator, association_mock, file_path, ds = _setup_c_move_operator(settings, mocker, port)
+    dicom_operator.server.image_level_find_support = False
+
+    def send_c_find(query_ds: Dataset, *args, **kwargs):
+        if query_ds.QueryRetrieveLevel != "SERIES":
+            return DicomTestHelper.create_successful_c_find_responses([])
+        data = [
+            {"SeriesInstanceUID": series_uid, "Modality": ds.Modality}
+            | ({"NumberOfSeriesRelatedInstances": count} if isinstance(count, int) else {})
+            for series_uid, count in counts.items()
+        ]
+        responses = list(DicomTestHelper.create_successful_c_find_responses(data))
+        for (_, identifier), count in zip(responses, counts.values()):
+            if isinstance(count, bytes):
+                assert identifier
+                tag = Tag("NumberOfSeriesRelatedInstances")
+                identifier[tag] = RawDataElement(tag, "IS", len(count), count, 0, True, True)
+        return iter(responses)
+
+    association_mock.send_c_find.side_effect = send_c_find
+    pending_publishes: list[threading.Thread] = []
+    transmit_server, loop = _start_transmit_server(port, before_sync=pending_publishes)
+    moved: list[tuple[str, str | None]] = []
+
+    def publish(images: list[tuple[str, str]]):
+        for image_uid, series_uid in images:
+            metadata = {"SOPInstanceUID": image_uid, "SeriesInstanceUID": series_uid}
+            publish = transmit_server.publish_file(ds.StudyInstanceUID, file_path, metadata)
+            asyncio.run_coroutine_threadsafe(publish, loop).result(timeout=5)
+
+    def send_c_move(query_ds: Dataset, *args, **kwargs):
+        level = query_ds.QueryRetrieveLevel
+        series_uid = query_ds.SeriesInstanceUID if level == "SERIES" else None
+        moved.append((level, series_uid))
+        images, count = moves.get(series_uid, ([], None))
+        if backlog and series_uid is None:
+            pending_publishes.append(threading.Timer(0.5, publish, args=[images]))
+            pending_publishes[-1].start()
+        else:
+            publish(images)
+        if count is None:
+            return DicomTestHelper.create_successful_c_move_response()
+        return _c_move_response(count)
+
+    association_mock.send_c_move.side_effect = send_c_move
+
+    def stop():
+        for publish_thread in pending_publishes:
+            publish_thread.join()
+        asyncio.run_coroutine_threadsafe(transmit_server.stop(), loop).result(timeout=5)
+
+    return dicom_operator, ds, moved, stop
+
+
+@pytest.mark.django_db
+def test_c_move_without_image_level_find_skips_find_images(
+    settings: Settings, mocker: MockerFixture
+):
+    # Arrange
+    dicom_operator, ds, moved, stop = _setup_without_list(
+        settings,
+        mocker,
+        17958,
+        counts={SERIES_1: 1, SERIES_2: 1},
+        moves={None: ([(IMAGE_B, SERIES_1), (IMAGE_C, SERIES_2)], 2)},
+    )
+    find_images = mocker.spy(dicom_operator, "find_images")
+    received: list[Dataset] = []
+
+    # Act
+    try:
+        dicom_operator.fetch_study(ds.PatientID, ds.StudyInstanceUID, received.append)
+    finally:
+        stop()
+
+    # Assert
+    find_images.assert_not_called()
+    assert len(received) == 2
+    assert moved == [("STUDY", None)]
+
+
+@pytest.mark.django_db
+def test_c_move_without_list_refetches_only_the_short_series(
+    settings: Settings, mocker: MockerFixture
+):
+    # Arrange: the study C-MOVE, which reports nothing, misses an image of the first series
+    dicom_operator, ds, moved, stop = _setup_without_list(
+        settings,
+        mocker,
+        17957,
+        counts={SERIES_1: 2, SERIES_2: 1},
+        moves={
+            None: ([(IMAGE_B, SERIES_1), (IMAGE_C, SERIES_2)], None),
+            SERIES_1: ([(IMAGE_B, SERIES_1), ("1.2.3.4.5.903", SERIES_1)], 2),
+        },
+    )
+    received: list[Dataset] = []
+
+    # Act
+    try:
+        dicom_operator.fetch_study(ds.PatientID, ds.StudyInstanceUID, received.append)
+    finally:
+        stop()
+
+    # Assert
+    assert len(received) == 3
+    assert moved == [("STUDY", None), ("SERIES", SERIES_1)]
+
+
+@pytest.mark.django_db
+def test_c_move_without_list_trusts_the_series_move_count(
+    settings: Settings, mocker: MockerFixture
+):
+    # Arrange: the series count includes an image the PACS can't send, which its C-MOVE of
+    # the series reports
+    dicom_operator, ds, moved, stop = _setup_without_list(
+        settings,
+        mocker,
+        17956,
+        counts={SERIES_1: 3},
+        moves={
+            None: ([(IMAGE_B, SERIES_1), (IMAGE_C, SERIES_1)], None),
+            SERIES_1: ([(IMAGE_B, SERIES_1), (IMAGE_C, SERIES_1)], 2),
+        },
+    )
+    received: list[Dataset] = []
+
+    # Act
+    try:
+        dicom_operator.fetch_study(ds.PatientID, ds.StudyInstanceUID, received.append)
+    finally:
+        stop()
+
+    # Assert: complete after one re-fetch round
+    assert len(received) == 2
+    assert moved == [("STUDY", None), ("SERIES", SERIES_1)]
+
+
+@pytest.mark.django_db
+def test_c_move_without_list_series_fetch_trusts_the_count_of_its_refetch(
+    settings: Settings, mocker: MockerFixture
+):
+    # Arrange: the series count includes an image the PACS can't send, which each C-MOVE of
+    # the series reports. As the first one may also have failed for a while, the series is
+    # requested once again.
+    dicom_operator, ds, moved, stop = _setup_without_list(
+        settings,
+        mocker,
+        17953,
+        counts={SERIES_1: 3},
+        moves={SERIES_1: ([(IMAGE_B, SERIES_1), (IMAGE_C, SERIES_1)], 2)},
+    )
+    received: list[Dataset] = []
+
+    # Act
+    try:
+        dicom_operator.fetch_series(ds.PatientID, ds.StudyInstanceUID, SERIES_1, received.append)
+    finally:
+        stop()
+
+    # Assert
+    assert len(received) == 2
+    assert moved == [("SERIES", SERIES_1), ("SERIES", SERIES_1)]
+
+
+@pytest.mark.django_db
+def test_c_move_without_list_empty_success_is_no_count(settings: Settings, mocker: MockerFixture):
+    # Arrange: two of the three images of the series arrive, and a busy PACS answers each
+    # C-MOVE of the series with success and no sub-operation
+    dicom_operator, ds, moved, stop = _setup_without_list(
+        settings,
+        mocker,
+        17945,
+        counts={SERIES_1: 3},
+        moves={SERIES_1: ([(IMAGE_B, SERIES_1), (IMAGE_C, SERIES_1)], 0)},
+    )
+
+    # Act
+    try:
+        with pytest.raises(IncompleteFetchError) as error:
+            dicom_operator.fetch_series(
+                ds.PatientID, ds.StudyInstanceUID, SERIES_1, lambda ds: None
+            )
+    finally:
+        stop()
+
+    # Assert: the re-fetches didn't count as reporting the series empty
+    assert error.value.missing_count == 1
+    assert moved == [("SERIES", SERIES_1)] * (1 + settings.C_MOVE_REFETCH_ATTEMPTS)
+
+
+@pytest.mark.django_db
+def test_c_move_without_any_count_completes_after_one_sync(
+    settings: Settings, mocker: MockerFixture, caplog: pytest.LogCaptureFixture
+):
+    # Arrange: neither the C-FIND nor the C-MOVE reports how many images there are, and the
+    # images are still in the receiver's backlog when the C-MOVE ends
+    dicom_operator, ds, moved, stop = _setup_without_list(
+        settings,
+        mocker,
+        17955,
+        counts={SERIES_1: None},
+        moves={None: ([(IMAGE_B, SERIES_1), (IMAGE_C, SERIES_1)], None)},
+        backlog=True,
+    )
+    received: list[Dataset] = []
+
+    # Act
+    try:
+        with caplog.at_level(logging.INFO):
+            dicom_operator.fetch_study(ds.PatientID, ds.StudyInstanceUID, received.append)
+    finally:
+        stop()
+
+    # Assert
+    assert len(received) == 2
+    assert moved == [("STUDY", None)]
+    assert any("can't be checked" in record.getMessage() for record in caplog.records)
+
+
+@pytest.mark.django_db
+def test_c_move_without_any_count_fails_when_nothing_arrives(
+    settings: Settings, mocker: MockerFixture
+):
+    # Arrange: neither the C-FIND nor the C-MOVE reports how many images there are, as a busy
+    # PACS answers the C-MOVE with success and no sub-operation
+    dicom_operator, ds, moved, stop = _setup_without_list(
+        settings, mocker, 17943, counts={SERIES_1: None}, moves={None: ([], 0)}
+    )
+
+    # Act / Assert
+    try:
+        with pytest.raises(RetriableDicomError, match="Failed to fetch all images"):
+            dicom_operator.fetch_study(ds.PatientID, ds.StudyInstanceUID, lambda ds: None)
+    finally:
+        stop()
+    assert moved == [("STUDY", None)]
+
+
+@pytest.mark.django_db
+def test_c_move_without_any_count_refetches_a_series_without_images(
+    settings: Settings, mocker: MockerFixture
+):
+    # Arrange: no count, and the study C-MOVE delivers nothing of the second series
+    dicom_operator, ds, moved, stop = _setup_without_list(
+        settings,
+        mocker,
+        17942,
+        counts={SERIES_1: None, SERIES_2: None},
+        moves={
+            None: ([(IMAGE_B, SERIES_1)], None),
+            SERIES_2: ([(IMAGE_C, SERIES_2)], None),
+        },
+    )
+    received: list[Dataset] = []
+
+    # Act
+    try:
+        dicom_operator.fetch_study(ds.PatientID, ds.StudyInstanceUID, received.append)
+    finally:
+        stop()
+
+    # Assert
+    assert len(received) == 2
+    assert moved == [("STUDY", None), ("SERIES", SERIES_2)]
+
+
+@pytest.mark.django_db
+@pytest.mark.filterwarnings("ignore:Invalid value for VR IS")
+def test_c_move_without_list_ignores_an_invalid_count(settings: Settings, mocker: MockerFixture):
+    # Arrange: the C-FIND returns a NumberOfSeriesRelatedInstances that isn't a number
+    dicom_operator, ds, moved, stop = _setup_without_list(
+        settings,
+        mocker,
+        17941,
+        counts={SERIES_1: b"many"},
+        moves={None: ([(IMAGE_B, SERIES_1)], 1)},
+    )
+    received: list[Dataset] = []
+
+    # Act
+    try:
+        dicom_operator.fetch_study(ds.PatientID, ds.StudyInstanceUID, received.append)
+    finally:
+        stop()
+
+    # Assert
+    assert len(received) == 1
+    assert moved == [("STUDY", None)]
+
+
+@pytest.mark.django_db
+def test_c_move_without_list_unattributed_shortfall_is_incomplete(
+    settings: Settings, mocker: MockerFixture
+):
+    # Arrange: only the study C-MOVE reports a count, and one image of it never arrives
+    dicom_operator, ds, moved, stop = _setup_without_list(
+        settings,
+        mocker,
+        17954,
+        counts={SERIES_1: None, SERIES_2: None},
+        moves={None: ([(IMAGE_B, SERIES_1), (IMAGE_C, SERIES_2)], 3)},
+    )
+
+    # Act
+    try:
+        with pytest.raises(IncompleteFetchError) as error:
+            dicom_operator.fetch_study(ds.PatientID, ds.StudyInstanceUID, lambda ds: None)
+    finally:
+        stop()
+
+    # Assert: which series it belongs to is unknown, so nothing is fetched again
+    assert error.value.missing_count == 1
+    assert error.value.image_count == 3
+    assert moved == [("STUDY", None)]
 
 
 @pytest.mark.django_db

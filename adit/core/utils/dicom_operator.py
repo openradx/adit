@@ -16,6 +16,7 @@ import logging
 import queue
 import threading
 import time
+from collections import Counter
 from collections.abc import Callable, Iterable, Iterator
 from concurrent.futures import Future, ThreadPoolExecutor
 from os import PathLike
@@ -574,12 +575,16 @@ class DicomOperator:
         query: QueryDataset,
         callback: Callable[[Dataset], None],
     ) -> None:
-        # When downloading images with C-MOVE we first must know all the SOPInstanceUIDs
-        # in advance so that we can check if all were received. Their SeriesInstanceUIDs
-        # are needed to fetch missing images again.
-        image_uids: dict[str, str]  # SOPInstanceUID -> SeriesInstanceUID
+        # When downloading images with C-MOVE we first list all the SOPInstanceUIDs, so that
+        # we can check if all were received. Their SeriesInstanceUIDs are needed to fetch
+        # missing images again. Without IMAGE-level queries, the images of each series are
+        # counted instead, as far as the PACS reports how many there are.
+        image_uids: dict[str, str] = {}  # SOPInstanceUID -> SeriesInstanceUID
+        series_counts: dict[str, int | None] = {}  # SeriesInstanceUID -> image count
         if image_uid := query.get("SOPInstanceUID"):
             image_uids = {image_uid: query.SeriesInstanceUID}
+        elif not self.server.image_level_find_support:
+            series_counts = self._count_series_images(query)
         elif series_uid := query.get("SeriesInstanceUID"):
             query_dataset = QueryDataset.create(
                 PatientID=query.PatientID,
@@ -615,8 +620,8 @@ class DicomOperator:
         # The images not received yet, the consumer removes each one it handed over
         missing_images = dict(image_uids)
 
-        # The images the consumer handed over
-        received: set[str] = set()
+        # The images the consumer handed over: SOPInstanceUID -> SeriesInstanceUID (if known)
+        received: dict[str, str | None] = {}
 
         def in_scope(metadata: Metadata) -> bool:
             # Besides the listed images, every image of the requested study or series belongs
@@ -682,21 +687,77 @@ class DicomOperator:
                     settings.RECEIVER_AE_TITLE,
                     last_activity=lambda: last_received_at[0],
                 )
-                if reported is not None and reported > len(image_uids):
+                if image_uids and reported is not None and reported > len(image_uids):
                     logger.warning(
                         "The IMAGE-level C-FIND of %s listed %d images of study %s, but its "
-                        "C-MOVE sent %d. Its C-FIND results may be capped.",
+                        "C-MOVE sent %d. Its C-FIND results may be capped (see the image "
+                        "level find support of the server).",
                         self.server.ae_title,
                         len(image_uids),
                         query.StudyInstanceUID,
                         reported,
                     )
-                expected_count = max(len(image_uids), reported or 0)
+                series_uid = query.get("SeriesInstanceUID")
+                if reported is not None and series_uid in series_counts:
+                    # What the PACS sent of the series counts once it is more than the series'
+                    # count, a lower one only after a re-fetch (the first C-MOVE may have
+                    # failed in part only for a while)
+                    count = series_counts[series_uid]
+                    if count is None or reported > count:
+                        series_counts[series_uid] = reported
+
+                def series_count(series_uid: str) -> int:
+                    # A series the C-FIND found holds an image at least, also without a count
+                    return max(series_counts[series_uid] or 0, 1)
+
+                def expected_count() -> int:
+                    return max(
+                        len(image_uids),
+                        reported or 0,
+                        sum(series_count(series_uid) for series_uid in series_counts),
+                    )
+
+                def short_series() -> dict[str, int]:
+                    # Copied first, as the consumer adds to it meanwhile
+                    received_per_series = Counter(list(received.values()))
+                    shortfalls = {
+                        uid: series_count(uid) - received_per_series[uid] for uid in series_counts
+                    }
+                    return {
+                        uid: shortfall for uid, shortfall in shortfalls.items() if shortfall > 0
+                    }
 
                 def missing_count() -> int:
-                    # Images the PACS reports as sent beyond the listed ones are missing too,
-                    # though it is unknown which ones
-                    return max(len(missing_images), (reported or 0) - len(received))
+                    # Images the PACS reports beyond the listed or counted ones that arrived are
+                    # missing too, though it is unknown which ones
+                    return max(
+                        len(missing_images),
+                        sum(short_series().values()),
+                        (reported or 0) - len(received),
+                    )
+
+                if not image_uids:
+                    # Images that are not known nor counted are only waited for until the
+                    # receiver confirmed what it got
+                    self._sync_with_receiver(
+                        query.StudyInstanceUID,
+                        str(next(tokens)),
+                        lambda: 1,
+                        last_image_at,
+                        last_received_at,
+                        sync_requests,
+                        synced_tokens,
+                        consume_future,
+                        receiving_errors,
+                    )
+                    if reported is None and all(c is None for c in series_counts.values()):
+                        logger.info(
+                            "The completeness of study %s can't be checked beyond an image per "
+                            "series, as %s reports neither image counts nor C-MOVE "
+                            "sub-operations.",
+                            query.StudyInstanceUID,
+                            self.server.ae_title,
+                        )
 
                 self._wait_for_delivery(
                     query.StudyInstanceUID,
@@ -716,22 +777,35 @@ class DicomOperator:
                 # download fails instead and is retried as a whole.
                 delivery_broken = bool(missing_count()) and (
                     not received
-                    or 100 * missing_count() / expected_count
+                    or 100 * missing_count() / expected_count()
                     > settings.C_MOVE_REFETCH_MAX_MISSING_PERCENT
                 )
 
-                # Only listed images can be requested again, the others are unknown
+                # Listed images are requested again one by one, counted ones with their series.
+                # Images that are neither are unknown.
                 for _ in range(0 if delivery_broken else settings.C_MOVE_REFETCH_ATTEMPTS):
-                    if not missing_images or receiving_errors or consume_future.done():
+                    if receiving_errors or consume_future.done():
                         break
-                    self._refetch_missing_images(
-                        query,
-                        missing_images,
-                        last_received_at,
-                        consume_future,
-                        receiving_errors,
-                        missing_at_sync,
-                    )
+                    if missing_images:
+                        self._refetch_missing_images(
+                            query,
+                            missing_images,
+                            last_received_at,
+                            consume_future,
+                            receiving_errors,
+                            missing_at_sync,
+                        )
+                    elif short_series():
+                        self._refetch_short_series(
+                            query,
+                            short_series,
+                            series_counts,
+                            last_received_at,
+                            consume_future,
+                            receiving_errors,
+                        )
+                    else:
+                        break
                     self._wait_for_delivery(
                         query.StudyInstanceUID,
                         received,
@@ -751,7 +825,7 @@ class DicomOperator:
                         received,
                         missing_images,
                         missing_count(),
-                        expected_count,
+                        expected_count(),
                         delivery_broken,
                     )
             except Exception as err:
@@ -771,6 +845,28 @@ class DicomOperator:
                 # A failure of the consumer itself, not of receiving an image
                 if consume_future.done() and (consumer_error := consume_future.exception()):
                     raise consumer_error
+
+    def _count_series_images(self, query: QueryDataset) -> dict[str, int | None]:
+        """The series of the query, each with its image count if the PACS returns it."""
+        series_query = QueryDataset.create(
+            PatientID=query.PatientID, StudyInstanceUID=query.StudyInstanceUID
+        )
+        if series_uid := query.get("SeriesInstanceUID"):
+            series_query = QueryDataset.create(
+                PatientID=query.PatientID,
+                StudyInstanceUID=query.StudyInstanceUID,
+                SeriesInstanceUID=series_uid,
+            )
+
+        series_counts: dict[str, int | None] = {}
+        for series in list(self.find_series(series_query)):
+            try:
+                count = int(series.get("NumberOfSeriesRelatedInstances"))
+            except (TypeError, ValueError):
+                # Not returned, or not a number
+                count = None
+            series_counts[series.SeriesInstanceUID] = count
+        return series_counts
 
     def _wait_for_subscription(
         self, subscribed_event: threading.Event, consume_future: Future[None]
@@ -823,10 +919,49 @@ class DicomOperator:
             last_activity=lambda: last_received_at[0],
         )
 
+    def _refetch_short_series(
+        self,
+        query: QueryDataset,
+        short_series: Callable[[], dict[str, int]],
+        series_counts: dict[str, int | None],
+        last_received_at: list[float],
+        consume_future: Future[None],
+        receiving_errors: list[Exception],
+    ) -> None:
+        # Like the IMAGE-level re-fetch (see there), but one SERIES-level C-MOVE for each series
+        # with images missing. What the PACS reports as sent then counts for that series, as
+        # its image count may include images it can't send.
+        series_uids = list(short_series())
+        logger.info(
+            "Fetching %d series of study %s again, as images of them are missing.",
+            len(series_uids),
+            query.StudyInstanceUID,
+        )
+
+        def series_queries() -> Iterator[QueryDataset]:
+            for series_uid in series_uids:
+                if receiving_errors or consume_future.done():
+                    return
+                yield QueryDataset.create(
+                    QueryRetrieveLevel="SERIES",
+                    PatientID=query.PatientID,
+                    StudyInstanceUID=query.StudyInstanceUID,
+                    SeriesInstanceUID=series_uid,
+                )
+
+        reported = self.dimse_connector.send_c_move_batch(
+            series_queries(),
+            settings.RECEIVER_AE_TITLE,
+            last_activity=lambda: last_received_at[0],
+        )
+        for series_uid, count in zip(series_uids, reported):
+            if count is not None:
+                series_counts[series_uid] = count
+
     def _wait_for_delivery(
         self,
         study_uid: str,
-        received: set[str],
+        received: dict[str, str | None],
         missing_count: Callable[[], int],
         last_image_at: list[float],
         last_received_at: list[float],
@@ -931,7 +1066,7 @@ class DicomOperator:
     def _check_images_received(
         self,
         study_uid: str,
-        received: set[str],
+        received: dict[str, str | None],
         missing_images: dict[str, str],
         missing_count: int,
         expected_count: int,
@@ -975,7 +1110,7 @@ class DicomOperator:
         self,
         study_uid: str,
         in_scope: Callable[[Metadata], bool],
-        received: set[str],
+        received: dict[str, str | None],
         missing_images: dict[str, str],
         last_image_at: list[float],
         last_received_at: list[float],
@@ -1024,7 +1159,7 @@ class DicomOperator:
                         await asyncio.to_thread(read_and_handle_image, filename)
                         # Only removed once handed over, so that the image doesn't count as
                         # received while it is still processed.
-                        received.add(image_uid)
+                        received[image_uid] = metadata.get("SeriesInstanceUID")
                         missing_images.pop(image_uid, None)
                         last_image_at[0] = time.monotonic()
                 except Exception as err:
