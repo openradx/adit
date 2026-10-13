@@ -677,15 +677,31 @@ class DicomOperator:
                 # Images the PACS sends before the receiver knows about us would be discarded
                 self._wait_for_subscription(subscribed_event, consume_future)
 
-                self.dimse_connector.send_c_move(
+                reported = self.dimse_connector.send_c_move(
                     query,
                     settings.RECEIVER_AE_TITLE,
                     last_activity=lambda: last_received_at[0],
                 )
+                if reported is not None and reported > len(image_uids):
+                    logger.warning(
+                        "The IMAGE-level C-FIND of %s listed %d images of study %s, but its "
+                        "C-MOVE sent %d. Its C-FIND results may be capped.",
+                        self.server.ae_title,
+                        len(image_uids),
+                        query.StudyInstanceUID,
+                        reported,
+                    )
+                expected_count = max(len(image_uids), reported or 0)
+
+                def missing_count() -> int:
+                    # Images the PACS reports as sent beyond the listed ones are missing too,
+                    # though it is unknown which ones
+                    return max(len(missing_images), (reported or 0) - len(received))
+
                 self._wait_for_delivery(
                     query.StudyInstanceUID,
-                    image_uids,
-                    missing_images,
+                    received,
+                    missing_count,
                     last_image_at,
                     last_received_at,
                     sync_requests,
@@ -698,12 +714,13 @@ class DicomOperator:
                 # When nothing or most of it arrived, the delivery is broken as a whole (or the
                 # PACS is overloaded), so one C-MOVE per image would only add load. The
                 # download fails instead and is retried as a whole.
-                delivery_broken = bool(missing_images) and (
-                    len(missing_images) == len(image_uids)
-                    or 100 * len(missing_images) / len(image_uids)
+                delivery_broken = bool(missing_count()) and (
+                    not received
+                    or 100 * missing_count() / expected_count
                     > settings.C_MOVE_REFETCH_MAX_MISSING_PERCENT
                 )
 
+                # Only listed images can be requested again, the others are unknown
                 for _ in range(0 if delivery_broken else settings.C_MOVE_REFETCH_ATTEMPTS):
                     if not missing_images or receiving_errors or consume_future.done():
                         break
@@ -717,8 +734,8 @@ class DicomOperator:
                     )
                     self._wait_for_delivery(
                         query.StudyInstanceUID,
-                        image_uids,
-                        missing_images,
+                        received,
+                        missing_count,
                         last_image_at,
                         last_received_at,
                         sync_requests,
@@ -730,7 +747,12 @@ class DicomOperator:
 
                 if not receiving_errors:
                     self._check_images_received(
-                        query.StudyInstanceUID, image_uids, missing_images, delivery_broken
+                        query.StudyInstanceUID,
+                        received,
+                        missing_images,
+                        missing_count(),
+                        expected_count,
+                        delivery_broken,
                     )
             except Exception as err:
                 # We check here if an error occurred in the consumer thread and
@@ -804,8 +826,8 @@ class DicomOperator:
     def _wait_for_delivery(
         self,
         study_uid: str,
-        image_uids: dict[str, str],
-        missing_images: dict[str, str],
+        received: set[str],
+        missing_count: Callable[[], int],
         last_image_at: list[float],
         last_received_at: list[float],
         sync_requests: queue.SimpleQueue[str],
@@ -825,15 +847,12 @@ class DicomOperator:
         for a slow callback.
         """
 
-        def received() -> int:
-            return len(image_uids) - len(missing_images)
-
         received_before: int | None = None
-        while missing_images and not receiving_errors and not consume_future.done():
+        while missing_count() and not receiving_errors and not consume_future.done():
             synced_at = self._sync_with_receiver(
                 study_uid,
                 str(next(tokens)),
-                missing_images,
+                missing_count,
                 last_image_at,
                 last_received_at,
                 sync_requests,
@@ -841,23 +860,23 @@ class DicomOperator:
                 consume_future,
                 receiving_errors,
             )
-            if synced_at is None or not missing_images:
+            if synced_at is None or not missing_count():
                 return
 
-            if received_before is not None and received() == received_before:
+            if received_before is not None and len(received) == received_before:
                 logger.info(
                     "%d images of study %s did not arrive within %d s after the receiver "
                     "confirmed the delivery.",
-                    len(missing_images),
+                    missing_count(),
                     study_uid,
                     settings.C_MOVE_DOWNLOAD_TIMEOUT,
                 )
                 return
 
-            received_before = received()
+            received_before = len(received)
             self._wait_for_late_images(
                 synced_at,
-                missing_images,
+                missing_count,
                 last_image_at,
                 consume_future,
                 receiving_errors,
@@ -867,7 +886,7 @@ class DicomOperator:
         self,
         study_uid: str,
         token: str,
-        missing_images: dict[str, str],
+        missing_count: Callable[[], int],
         last_image_at: list[float],
         last_received_at: list[float],
         sync_requests: queue.SimpleQueue[str],
@@ -881,7 +900,7 @@ class DicomOperator:
         """
         sync_requests.put(token)
         requested_at = time.monotonic()
-        while missing_images and not receiving_errors and not consume_future.done():
+        while missing_count() and not receiving_errors and not consume_future.done():
             if token in synced_tokens:
                 return time.monotonic()
 
@@ -898,12 +917,12 @@ class DicomOperator:
     def _wait_for_late_images(
         self,
         synced_at: float,
-        missing_images: dict[str, str],
+        missing_count: Callable[[], int],
         last_image_at: list[float],
         consume_future: Future[None],
         receiving_errors: list[Exception],
     ) -> None:
-        while missing_images and not receiving_errors and not consume_future.done():
+        while missing_count() and not receiving_errors and not consume_future.done():
             idle_time = time.monotonic() - max(last_image_at[0], synced_at)
             if idle_time > settings.C_MOVE_DOWNLOAD_TIMEOUT:
                 return
@@ -912,31 +931,37 @@ class DicomOperator:
     def _check_images_received(
         self,
         study_uid: str,
-        image_uids: dict[str, str],
+        received: set[str],
         missing_images: dict[str, str],
+        missing_count: int,
+        expected_count: int,
         delivery_broken: bool,
     ) -> None:
-        if not missing_images:
+        if not missing_count:
             return
 
-        if len(missing_images) == len(image_uids):
+        if not received:
             logger.error("No images of study %s received.", study_uid)
             raise RetriableDicomError("Failed to fetch all images with C-MOVE.")
 
         logger.warning(
-            "These images of study %s were not received: %s",
+            "%d of %d images of study %s were not received: %s",
+            missing_count,
+            expected_count,
             study_uid,
-            ", ".join(missing_images),
+            ", ".join(missing_images) or "unknown which ones",
         )
 
         if delivery_broken:
             raise RetriableDicomError(
-                f"{len(missing_images)} of {len(image_uids)} images of study {study_uid} "
+                f"{missing_count} of {expected_count} images of study {study_uid} "
                 "could not be fetched with C-MOVE, too many to fetch them again one by one."
             )
 
         if settings.C_MOVE_FAIL_ON_INCOMPLETE:
-            raise IncompleteFetchError(study_uid, list(missing_images), len(image_uids))
+            raise IncompleteFetchError(
+                study_uid, missing_count, expected_count, list(missing_images)
+            )
 
         self.logs.append(
             {

@@ -659,7 +659,7 @@ def _study_query() -> QueryDataset:
     return QueryDataset.create(QueryRetrieveLevel="STUDY", PatientID="1", StudyInstanceUID="1.2.3")
 
 
-def _run(call: Callable[[], None], timeout: float = 15) -> BaseException | None:
+def _run(call: Callable[[], object], timeout: float = 15) -> BaseException | None:
     """Run the call in a thread, so that a hanging C-MOVE fails the test instead of blocking it."""
     outcome: list[BaseException | None] = []
 
@@ -821,3 +821,109 @@ def test_guard_firing_as_the_move_ends_spares_the_next_move():
     finally:
         connector.close_connection()
         scp.shutdown()
+
+
+@pytest.mark.django_db
+def test_c_move_returns_the_images_the_pacs_reports_as_sent():
+    store_scp = _start_store_scp(9947)
+    scp = _start_move_scp(9946, silence=0, store_port=9947, images=2)
+    connector = _move_connector(9946)
+    try:
+        with stamina.set_testing(True):
+            assert connector.send_c_move(_study_query(), "STORESCP") == 2
+    finally:
+        scp.shutdown()
+        store_scp.shutdown()
+
+
+@pytest.mark.django_db
+class TestCMoveReportedCount:
+    def _connector(self, mocker, *responses: list[tuple[Dataset, Dataset | None]]):
+        associate_mock = mocker.patch("adit.core.utils.dimse_connector.AE.associate")
+        association_mock = create_association_mock()
+        association_mock.is_alive.return_value = True
+        association_mock.send_c_move.side_effect = [iter(r) for r in responses]
+        associate_mock.return_value = association_mock
+        return DimseConnector(DicomServerFactory.create())
+
+    def test_final_response_counts_completed_and_warning(self, mocker):
+        connector = self._connector(
+            mocker,
+            [
+                (
+                    _status(
+                        0xFF00, NumberOfRemainingSuboperations=2, NumberOfCompletedSuboperations=1
+                    ),
+                    None,
+                ),
+                (
+                    _status(
+                        0xB000,
+                        NumberOfCompletedSuboperations=2,
+                        NumberOfWarningSuboperations=1,
+                        NumberOfFailedSuboperations=1,
+                    ),
+                    None,
+                ),
+            ],
+        )
+        with stamina.set_testing(True):
+            assert connector.send_c_move(_study_query(), "DEST") == 3
+
+    def test_without_final_counters_the_last_pending_response_counts(self, mocker):
+        connector = self._connector(
+            mocker,
+            [
+                (
+                    _status(
+                        0xFF00, NumberOfRemainingSuboperations=3, NumberOfCompletedSuboperations=0
+                    ),
+                    None,
+                ),
+                (
+                    _status(
+                        0xFF00,
+                        NumberOfRemainingSuboperations=2,
+                        NumberOfCompletedSuboperations=1,
+                        NumberOfWarningSuboperations=0,
+                    ),
+                    None,
+                ),
+                (_status(0x0000), None),
+            ],
+        )
+        with stamina.set_testing(True):
+            assert connector.send_c_move(_study_query(), "DEST") == 3
+
+    def test_without_any_counters_nothing_is_reported(self, mocker):
+        connector = self._connector(mocker, [(_status(0x0000), None)])
+        with stamina.set_testing(True):
+            assert connector.send_c_move(_study_query(), "DEST") is None
+
+    def test_a_success_without_any_sub_operation_reports_nothing(self, mocker):
+        # The empty success of a busy PACS doesn't tell how many images there are
+        connector = self._connector(
+            mocker,
+            [
+                (
+                    _status(
+                        0x0000,
+                        NumberOfCompletedSuboperations=0,
+                        NumberOfFailedSuboperations=0,
+                        NumberOfWarningSuboperations=0,
+                    ),
+                    None,
+                )
+            ],
+        )
+        with stamina.set_testing(True):
+            assert connector.send_c_move(_study_query(), "DEST") is None
+
+    def test_batch_reports_each_move_in_order(self, mocker):
+        connector = self._connector(
+            mocker,
+            [(_status(0x0000, NumberOfCompletedSuboperations=1), None)],
+            [(_status(0xA702), None)],  # A failure status, skipped
+            [(_status(0x0000), None)],
+        )
+        assert connector.send_c_move_batch([_study_query()] * 3, "DEST") == [1, None, None]

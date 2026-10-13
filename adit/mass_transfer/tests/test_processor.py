@@ -2546,7 +2546,7 @@ def test_process_continues_past_dead_series_on_final_attempt(mocker: MockerFixtu
 @pytest.mark.parametrize(
     "error",
     [
-        IncompleteFetchError("study-1", ["1.2.3.901"], 2),
+        IncompleteFetchError("study-1", 1, 2, ["1.2.3.901"]),
         RetriableDicomError("1 of 2 images could not be fetched, too many to fetch again."),
         DicomError("Out of disk space."),
     ],

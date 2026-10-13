@@ -873,6 +873,155 @@ def test_c_move_series_fetch_ignores_other_series(settings: Settings, mocker: Mo
     assert other_series_advanced == [False]
 
 
+def _c_move_response(completed: int):
+    """The final response of a C-MOVE that reports how many images it sent."""
+    status = Dataset()
+    status.Status = 0x0000
+    status.NumberOfCompletedSuboperations = completed
+    status.NumberOfFailedSuboperations = 0
+    status.NumberOfWarningSuboperations = 0
+    return iter([(status, None)])
+
+
+def _capped_entries(caplog: pytest.LogCaptureFixture) -> list[str]:
+    return [record.getMessage() for record in caplog.records if "capped" in record.getMessage()]
+
+
+def _setup_short_list(settings: Settings, mocker: MockerFixture, port: int, reported: int):
+    """A series fetch whose IMAGE-level C-FIND lists only the sample image, while the C-MOVE
+    reports `reported` images sent. The C-MOVE delivers the sample image, image B (unlisted)
+    stays in the receiver's backlog until the sync. Returns the operator, the sample and a
+    stop function."""
+    dicom_operator, association_mock, file_path, ds = _setup_c_move_operator(settings, mocker, port)
+    association_mock.send_c_find.return_value = DicomTestHelper.create_successful_c_find_responses(
+        [{"SOPInstanceUID": ds.SOPInstanceUID}]
+    )
+    pending_publishes: list[threading.Thread] = []
+    transmit_server, loop = _start_transmit_server(port, before_sync=pending_publishes)
+
+    def publish(image_uid: str):
+        metadata = {"SOPInstanceUID": image_uid, "SeriesInstanceUID": ds.SeriesInstanceUID}
+        publish = transmit_server.publish_file(ds.StudyInstanceUID, file_path, metadata)
+        asyncio.run_coroutine_threadsafe(publish, loop).result(timeout=5)
+
+    def send_c_move(*args, **kwargs):
+        publish(ds.SOPInstanceUID)
+        backlog = threading.Timer(0.5, publish, args=[IMAGE_B])
+        pending_publishes.append(backlog)
+        backlog.start()
+        return _c_move_response(reported)
+
+    association_mock.send_c_move.side_effect = send_c_move
+
+    def stop():
+        for publish_thread in pending_publishes:
+            publish_thread.join()
+        asyncio.run_coroutine_threadsafe(transmit_server.stop(), loop).result(timeout=5)
+
+    return dicom_operator, association_mock, ds, stop
+
+
+@pytest.mark.django_db
+def test_c_move_waits_for_images_beyond_a_short_list(
+    settings: Settings, mocker: MockerFixture, caplog: pytest.LogCaptureFixture
+):
+    # Arrange: the PACS reports both images sent, while its C-FIND listed only one
+    dicom_operator, _, ds, stop = _setup_short_list(settings, mocker, 17961, reported=2)
+    received: list[Dataset] = []
+
+    # Act
+    try:
+        dicom_operator.fetch_series(
+            ds.PatientID, ds.StudyInstanceUID, ds.SeriesInstanceUID, received.append
+        )
+    finally:
+        stop()
+
+    # Assert: the unlisted image still in the receiver's backlog was waited for
+    assert len(received) == 2
+    assert len(_capped_entries(caplog)) == 1
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("fail_on_incomplete", [True, False])
+def test_c_move_short_list_with_lost_images_is_incomplete(
+    settings: Settings,
+    mocker: MockerFixture,
+    caplog: pytest.LogCaptureFixture,
+    fail_on_incomplete: bool,
+):
+    # Arrange: the PACS reports three images sent, but only two of them arrive
+    dicom_operator, association_mock, ds, stop = _setup_short_list(
+        settings, mocker, 17960, reported=3
+    )
+    settings.C_MOVE_FAIL_ON_INCOMPLETE = fail_on_incomplete
+
+    # Act
+    try:
+        if fail_on_incomplete:
+            with pytest.raises(IncompleteFetchError) as error:
+                dicom_operator.fetch_series(
+                    ds.PatientID, ds.StudyInstanceUID, ds.SeriesInstanceUID, lambda ds: None
+                )
+        else:
+            dicom_operator.fetch_series(
+                ds.PatientID, ds.StudyInstanceUID, ds.SeriesInstanceUID, lambda ds: None
+            )
+    finally:
+        stop()
+
+    # Assert: which image is missing is unknown, so it is not fetched again
+    if fail_on_incomplete:
+        assert error.value.missing_count == 1
+        assert error.value.image_count == 3
+        assert error.value.missing_image_uids == []
+        assert str(error.value) == (
+            f"1 of 3 images of study {ds.StudyInstanceUID} could not be fetched with C-MOVE."
+        )
+    else:
+        assert [log["title"] for log in dicom_operator.get_logs()] == [
+            "Some images could not be fetched"
+        ]
+    assert association_mock.send_c_move.call_count == 1
+    assert len(_capped_entries(caplog)) == 1
+
+
+@pytest.mark.django_db
+def test_c_move_reported_count_equal_to_the_list_changes_nothing(
+    settings: Settings, mocker: MockerFixture, caplog: pytest.LogCaptureFixture
+):
+    # Arrange: the C-FIND listed every image the C-MOVE reports
+    dicom_operator, association_mock, file_path, ds = _setup_c_move_operator(
+        settings, mocker, 17959
+    )
+    association_mock.send_c_find.return_value = DicomTestHelper.create_successful_c_find_responses(
+        [{"SOPInstanceUID": ds.SOPInstanceUID}]
+    )
+    transmit_server, loop = _start_transmit_server(17959)
+
+    def send_c_move(*args, **kwargs):
+        publish = transmit_server.publish_file(
+            ds.StudyInstanceUID, file_path, {"SOPInstanceUID": ds.SOPInstanceUID}
+        )
+        asyncio.run_coroutine_threadsafe(publish, loop).result(timeout=5)
+        return _c_move_response(1)
+
+    association_mock.send_c_move.side_effect = send_c_move
+    received: list[Dataset] = []
+
+    # Act
+    try:
+        dicom_operator.fetch_series(
+            ds.PatientID, ds.StudyInstanceUID, ds.SeriesInstanceUID, received.append
+        )
+    finally:
+        asyncio.run_coroutine_threadsafe(transmit_server.stop(), loop).result(timeout=5)
+
+    # Assert
+    assert received == [ds]
+    assert _capped_entries(caplog) == []
+
+
 @pytest.mark.django_db
 def test_c_move_refetch_passes_the_activity_to_the_batch(settings: Settings, mocker: MockerFixture):
     # Arrange
