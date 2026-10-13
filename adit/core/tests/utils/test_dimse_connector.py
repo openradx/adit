@@ -576,6 +576,38 @@ def test_c_move_batch_keeps_message_ids_within_16_bit(mocker):
     assert msg_ids[0xFFFF] == 1
 
 
+@pytest.mark.django_db
+def test_c_move_batch_fails_retriably_once_the_association_is_no_longer_established(mocker):
+    connector = DimseConnector(DicomServerFactory.create(), auto_connect=True)
+    associate_mock = mocker.patch("adit.core.utils.dimse_connector.AE.associate")
+    assoc = create_association_mock()
+    associate_mock.return_value = assoc
+
+    def send_c_move(*args, **kwargs):
+        # Like pynetdicom: the peer released or aborted after a failing C-MOVE, and the thread
+        # of the association is still alive for a moment
+        if not assoc.is_established:
+            raise RuntimeError("The association must be established")
+        assoc.is_established = False
+        return iter([(_status(0xA701), None)])
+
+    assoc.send_c_move.side_effect = send_c_move
+    assoc.is_alive.return_value = True
+    queries = [
+        QueryDataset.create(
+            QueryRetrieveLevel="IMAGE",
+            PatientID="1",
+            StudyInstanceUID="1.123",
+            SeriesInstanceUID="1.123.1",
+            SOPInstanceUID=f"1.123.1.{index}",
+        )
+        for index in range(2)
+    ]
+
+    with pytest.raises(RetriableDicomError, match="Lost the association"):
+        connector.send_c_move_batch(queries, "DEST_AE")
+
+
 # C-MOVE guard, against a real move SCP that sends no Pending responses while it is silent
 
 
