@@ -788,6 +788,92 @@ def test_c_move_activity_counts_every_frame_of_its_images(
 
 
 @pytest.mark.django_db
+def test_c_move_hands_over_images_missing_from_the_list(settings: Settings, mocker: MockerFixture):
+    # Arrange: the IMAGE-level C-FIND of a PACS that caps its results lists only one of the
+    # series' images, while the C-MOVE sends all of them
+    dicom_operator, association_mock, file_path, ds = _setup_c_move_operator(
+        settings, mocker, 17963
+    )
+    association_mock.send_c_find.return_value = DicomTestHelper.create_successful_c_find_responses(
+        [{"SOPInstanceUID": ds.SOPInstanceUID}]
+    )
+    transmit_server, loop = _start_transmit_server(17963)
+
+    def publish(image_uid: str):
+        metadata = {"SOPInstanceUID": image_uid, "SeriesInstanceUID": ds.SeriesInstanceUID}
+        publish = transmit_server.publish_file(ds.StudyInstanceUID, file_path, metadata)
+        asyncio.run_coroutine_threadsafe(publish, loop).result(timeout=5)
+
+    def send_c_move(*args, **kwargs):
+        publish(IMAGE_B)
+        publish(IMAGE_B)  # A duplicate
+        publish(ds.SOPInstanceUID)
+        return DicomTestHelper.create_successful_c_move_response()
+
+    association_mock.send_c_move.side_effect = send_c_move
+    received: list[str] = []
+
+    # Act
+    try:
+        dicom_operator.fetch_series(
+            ds.PatientID,
+            ds.StudyInstanceUID,
+            ds.SeriesInstanceUID,
+            lambda ds: received.append(ds.SOPInstanceUID),
+        )
+    finally:
+        asyncio.run_coroutine_threadsafe(transmit_server.stop(), loop).result(timeout=5)
+
+    # Assert: the image outside the list is part of the series, so it is handed over once
+    assert received == [ds.SOPInstanceUID, ds.SOPInstanceUID]  # The file holds the sample
+    assert dicom_operator.dimse_connector.assoc is None
+
+
+@pytest.mark.django_db
+def test_c_move_series_fetch_ignores_other_series(settings: Settings, mocker: MockerFixture):
+    # Arrange: while a series is fetched, another fetch of the study receives another series
+    dicom_operator, association_mock, file_path, ds = _setup_c_move_operator(
+        settings, mocker, 17962
+    )
+    association_mock.send_c_find.return_value = DicomTestHelper.create_successful_c_find_responses(
+        [{"SOPInstanceUID": ds.SOPInstanceUID}]
+    )
+    transmit_server, loop = _start_transmit_server(17962)
+    send_c_move_spy = mocker.spy(dicom_operator.dimse_connector, "_send_c_move")
+    other_series_advanced: list[bool] = []
+
+    def publish(image_uid: str, series_uid: str):
+        metadata = {"SOPInstanceUID": image_uid, "SeriesInstanceUID": series_uid}
+        publish = transmit_server.publish_file(ds.StudyInstanceUID, file_path, metadata)
+        asyncio.run_coroutine_threadsafe(publish, loop).result(timeout=5)
+
+    def send_c_move(*args, **kwargs):
+        last_activity = send_c_move_spy.call_args.args[3]
+        before = last_activity()
+        sleep(0.01)
+        publish(IMAGE_B, "1.2.3.4.5.6.7.8.9")
+        sleep(1)
+        other_series_advanced.append(last_activity() > before)
+        publish(ds.SOPInstanceUID, ds.SeriesInstanceUID)
+        return DicomTestHelper.create_successful_c_move_response()
+
+    association_mock.send_c_move.side_effect = send_c_move
+    received: list[Dataset] = []
+
+    # Act
+    try:
+        dicom_operator.fetch_series(
+            ds.PatientID, ds.StudyInstanceUID, ds.SeriesInstanceUID, received.append
+        )
+    finally:
+        asyncio.run_coroutine_threadsafe(transmit_server.stop(), loop).result(timeout=5)
+
+    # Assert
+    assert received == [ds]
+    assert other_series_advanced == [False]
+
+
+@pytest.mark.django_db
 def test_c_move_refetch_passes_the_activity_to_the_batch(settings: Settings, mocker: MockerFixture):
     # Arrange
     dicom_operator, ds, requested, stop = _setup_refetch(
