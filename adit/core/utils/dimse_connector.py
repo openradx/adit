@@ -347,8 +347,9 @@ class DimseConnector:
         dest_aet: str,
         msg_id: int = 1,
         last_activity: Callable[[], float] | None = None,
-    ) -> None:
-        self._send_c_move(query, dest_aet, msg_id, last_activity)
+    ) -> int | None:
+        """Send a C-MOVE and return how many images the PACS reports as sent, if it does."""
+        return self._send_c_move(query, dest_aet, msg_id, last_activity)
 
     @connect_to_server("C-MOVE")
     def send_c_move_batch(
@@ -356,17 +357,19 @@ class DimseConnector:
         queries: Iterable[QueryDataset],
         dest_aet: str,
         last_activity: Callable[[], float] | None = None,
-    ) -> None:
+    ) -> list[int | None]:
         """Send several C-MOVEs over one association without retrying them.
 
         A failing C-MOVE is only logged as long as the association survives it (e.g. a
-        failure status for a single image), a lost association ends the batch.
+        failure status for a single image), a lost association ends the batch. Returns how
+        many images the PACS reports as sent for each C-MOVE sent, None for a failed one.
         """
+        reported: list[int | None] = []
         for index, query in enumerate(queries):
             # Message IDs are 16 bit
             msg_id = index % 0xFFFF + 1
             try:
-                self._send_c_move(query, dest_aet, msg_id, last_activity)
+                reported.append(self._send_c_move(query, dest_aet, msg_id, last_activity))
             except DicomError as err:
                 # After an A-ABORT or A-RELEASE of the peer the thread of the association may
                 # still be alive for a moment, but it is no longer established.
@@ -377,6 +380,8 @@ class DimseConnector:
                         "Lost the association while sending C-MOVEs."
                     ) from err
                 logger.warning("C-MOVE failed, continuing with the next one: %s", err)
+                reported.append(None)
+        return reported
 
     def _send_c_move(
         self,
@@ -384,7 +389,7 @@ class DimseConnector:
         dest_aet: str,
         msg_id: int,
         last_activity: Callable[[], float] | None,
-    ) -> None:
+    ) -> int | None:
         logger.debug("Sending C-MOVE with query:\n%s", query)
 
         # Transfer of only one study at a time is supported by ADIT
@@ -407,8 +412,7 @@ class DimseConnector:
         responses = self.assoc.send_c_move(query.dataset, dest_aet, query_model, msg_id)
 
         if last_activity is None or self.dimse_timeout is None:
-            self._handle_get_and_move_responses(responses, "C-MOVE")
-            return
+            return self._handle_get_and_move_responses(responses, "C-MOVE")
 
         # Pending responses are optional, so a PACS may send none while its images are
         # flowing. Instead of the DIMSE timeout, a guard aborts the C-MOVE once neither a
@@ -431,7 +435,7 @@ class DimseConnector:
         assoc.dimse_timeout = None
         guard.start()
         try:
-            self._handle_get_and_move_responses(stamped_responses(), "C-MOVE")
+            return self._handle_get_and_move_responses(stamped_responses(), "C-MOVE")
         finally:
             move_done.set()
             guard.join()
@@ -541,7 +545,15 @@ class DimseConnector:
 
     def _handle_get_and_move_responses(
         self, responses: Iterator[tuple[Dataset, Dataset | None]], op: Literal["C-GET", "C-MOVE"]
-    ) -> None:
+    ) -> int | None:
+        """Handle the responses and return how many images the PACS reports as sent.
+
+        That is the completed and warning sub-operations of the final response. As those are
+        optional there, else the ones of the last Pending response plus its remaining ones,
+        and None if the PACS reports neither. A response without any sub-operation, as a busy
+        PACS sends, reports nothing either.
+        """
+        reported: int | None = None
         for status, identifier in responses:
             if not status:
                 raise AssociationLostError(
@@ -550,16 +562,26 @@ class DimseConnector:
 
             status_category = code_to_category(status.Status)
 
+            # Optional operation primitive parameters
+            # https://pydicom.github.io/pynetdicom/dev/reference/generated/pynetdicom.dimse_primitives.C_GET.html
+            # https://pydicom.github.io/pynetdicom/dev/reference/generated/pynetdicom.dimse_primitives.C_MOVE.html
+            completed_suboperations: int | None = status.get("NumberOfCompletedSuboperations")
+            failed_suboperations: int | None = status.get("NumberOfFailedSuboperations")
+            warning_suboperations: int | None = status.get("NumberOfWarningSuboperations")
+
+            if completed_suboperations is not None:
+                remaining = (
+                    status.get("NumberOfRemainingSuboperations") or 0
+                    if status_category == STATUS_PENDING
+                    else 0
+                )
+                count = completed_suboperations + (warning_suboperations or 0) + remaining
+                if count or failed_suboperations:
+                    reported = count
+
             logger.debug(f"Received {op} status response [{status_category}]:\n{status}")
 
             if status_category in [STATUS_SUCCESS, STATUS_WARNING]:
-                # Optional operation primitive parameters
-                # https://pydicom.github.io/pynetdicom/dev/reference/generated/pynetdicom.dimse_primitives.C_GET.html
-                # https://pydicom.github.io/pynetdicom/dev/reference/generated/pynetdicom.dimse_primitives.C_MOVE.html
-                completed_suboperations: int | None = status.get("NumberOfCompletedSuboperations")
-                failed_suboperations: int | None = status.get("NumberOfFailedSuboperations")
-                warning_suboperations: int | None = status.get("NumberOfWarningSuboperations")
-
                 if failed_suboperations or warning_suboperations:
                     # On some PACS (GE and Synapse) we get a SUCCESS response even when all
                     # sub-operations failed.
@@ -632,3 +654,5 @@ class DimseConnector:
                 raise RetriableDicomError(
                     f"Unexpected error during {op} [{status_category}]:\n{status}"
                 )
+
+        return reported
