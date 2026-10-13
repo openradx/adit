@@ -12,9 +12,13 @@ from aiofiles import os
 
 BUFFER_SIZE = 64 * 1024  # 64kb
 
+# A new subscriber gets two confirmations: the ack line once the server registered it, before
+# any frame, and later a `synced` control frame with the replay token, behind the files the
+# server still held for its topic (if any). The client's own sync tokens must differ from it.
 SUBSCRIBED_ACK = b"subscribed\n"
+REPLAY_SYNC_TOKEN = "replay"
 
-SubscribeHandler = Callable[[str], None | Awaitable[None]]
+SubscribeHandler = Callable[["FileTransmitSession"], None | Awaitable[None]]
 UnsubscribeHandler = Callable[[str], None | Awaitable[None]]
 FileSentHandler = Callable[[], None]
 SubscribedHandler = Callable[[], None]
@@ -26,8 +30,16 @@ FileReceivedHandler = Callable[[str, Metadata], Awaitable[bool | None] | bool | 
 logger = logging.getLogger(__name__)
 
 
+# Called once a session is done with a file, with whether the session sent it completely
+Release = Callable[[bool], None]
+
 # Header bytes, the file to send after them (None for a control frame) and the release of the file
-Frame = tuple[bytes, PathLike | str | None, Callable[[], None] | None]
+Frame = tuple[bytes, PathLike | str | None, Release | None]
+
+
+def file_frame_header(file_size: int, metadata: Metadata | None) -> bytes:
+    """The header of a frame that sends a file of that size with the metadata."""
+    return struct.pack("!I", file_size) + (json.dumps(metadata or {}) + "\n").encode()
 
 
 class FileTransmitSession:
@@ -36,11 +48,19 @@ class FileTransmitSession:
     A session has its own queue of frames and one sender task that writes them, so a client that
     reads slowly or not at all only holds up its own files. Besides files, the frames include
     control frames: frames of size 0 whose metadata has a "control" key, e.g. the answer to a
-    sync request of the client.
+    sync request of the client. The client may name a scope within its topic, which only the
+    subscribe handler interprets.
     """
 
-    def __init__(self, topic: str, writer: asyncio.StreamWriter, write_timeout: float):
+    def __init__(
+        self,
+        topic: str,
+        writer: asyncio.StreamWriter,
+        write_timeout: float,
+        scope: str | None = None,
+    ):
         self.topic = topic
+        self.scope = scope
         self.closed = False
         self._writer = writer
         self._write_timeout = write_timeout
@@ -54,12 +74,13 @@ class FileTransmitSession:
         self,
         header: bytes,
         file_path: PathLike | str | None = None,
-        release: Callable[[], None] | None = None,
+        release: Release | None = None,
     ) -> bool:
         """Queue a frame, the header followed by the file if any, behind the frames before it.
 
         Returns False if the session is closed. Otherwise `release` is called once the session
-        is done with the frame: sent, failed or closed.
+        is done with the frame, with True if it was sent and False if it failed or the session
+        closed before.
         """
         if self.closed:
             return False
@@ -82,15 +103,17 @@ class FileTransmitSession:
         while not self._frames.empty():
             _, _, release = self._frames.get_nowait()
             if release:
-                release()
+                release(False)
         if self._sender:
             await asyncio.wait([self._sender])
 
     async def _send_frames(self) -> None:
         while True:
             header, file_path, release = await self._frames.get()
+            sent = False
             try:
                 await self._write_frame(header, file_path)
+                sent = True
             except Exception as err:
                 # The frame is cut off, so the client can no longer read this stream. Closing
                 # the connection makes the connection handler close the session, which releases
@@ -114,7 +137,7 @@ class FileTransmitSession:
                 return
             finally:
                 if release:
-                    release()
+                    release(sent)
 
     async def _write_frame(self, header: bytes, file_path: PathLike | str | None) -> None:
         if file_path is None:
@@ -175,7 +198,10 @@ class FileTransmitServer:
         self._sessions: list[FileTransmitSession] = []
 
     def set_subscribe_handler(self, subscribe_handler: SubscribeHandler | None):
-        """Called when a client subscribes to a topic."""
+        """Called with the session of a client once its subscription is acknowledged.
+
+        Frames the handler queues to the session follow the files published to it so far.
+        """
         self._subscribe_handler = subscribe_handler
 
     def set_unsubscribe_handler(self, unsubscribe_handler: UnsubscribeHandler | None):
@@ -195,25 +221,27 @@ class FileTransmitServer:
         topic: str,
         file_path: PathLike | str,
         metadata: dict[str, str] | None = None,
-        release: Callable[[], None] | None = None,
+        release: Release | None = None,
     ) -> int:
         """Queues a file to all clients that subscribed to the given topic.
 
         Returns the number of clients that took the file. `release` is called once all of them
-        are done with it (sent, failed or disconnected), right away if none took it. If the file
-        can't be framed (e.g. it doesn't exist), the error propagates and nothing is queued.
+        are done with it (sent, failed or disconnected), right away if none took it, with
+        whether any of them sent it. If the file can't be framed (e.g. it doesn't exist), the
+        error propagates and nothing is queued.
         """
-        file_size = await os.path.getsize(file_path)
-        header = struct.pack("!I", file_size) + (json.dumps(metadata or {}) + "\n").encode()
+        header = file_frame_header(await os.path.getsize(file_path), metadata)
 
         remaining = 0
+        delivered = False
 
-        def release_one():
-            nonlocal remaining
+        def release_one(sent: bool):
+            nonlocal remaining, delivered
             assert remaining > 0
             remaining -= 1
+            delivered = delivered or sent
             if remaining == 0 and release:
-                release()
+                release(delivered)
 
         # No await from here on: the sessions can't change meanwhile, and no session can be done
         # with the file before all of them are counted.
@@ -223,7 +251,7 @@ class FileTransmitServer:
                 taken += 1
         remaining = taken
         if not taken and release:
-            release()
+            release(False)
         return taken
 
     async def start(self):
@@ -247,9 +275,9 @@ class FileTransmitServer:
 
     async def _handle_connection(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
         line = await reader.readline()
-        topic = line.decode().rstrip()
+        topic, _, scope = line.decode().rstrip().partition(" ")
 
-        session = FileTransmitSession(topic, writer, self._write_timeout)
+        session = FileTransmitSession(topic, writer, self._write_timeout, scope or None)
         self._sessions.append(session)
 
         try:
@@ -262,9 +290,9 @@ class FileTransmitServer:
 
             if self._subscribe_handler:
                 if asyncio.iscoroutinefunction(self._subscribe_handler):
-                    await self._subscribe_handler(topic)
+                    await self._subscribe_handler(session)
                 else:
-                    self._subscribe_handler(topic)
+                    self._subscribe_handler(session)
 
             # The client sends control lines until it is well served and finished, which it
             # communicates by writing an eof.
@@ -322,6 +350,7 @@ class FileTransmitClient:
         file_received_handler: FileReceivedHandler,
         subscribed_handler: SubscribedHandler | None = None,
         synced_handler: SyncedHandler | None = None,
+        scope: str | None = None,
     ):
         """Subscribes to a topic and receives all files that are published to this topic.
 
@@ -333,6 +362,8 @@ class FileTransmitClient:
         so that files published from then on reach this client.
         The synced_handler is called with the token of each answered `request_sync`, after
         all files the server sent before its answer.
+        The scope names the part of the topic the client wants, for the server's subscribe
+        handler (e.g. the receiver replays only the files of that series).
         The filename generator is called when the metadata is received and should return
         the filename to use for the file that is received. If no filename generator is
         set, the filename is randomly generated.
@@ -341,7 +372,7 @@ class FileTransmitClient:
 
         # Send the topic to the server
         try:
-            writer.write(f"{topic}\n".encode())
+            writer.write(f"{topic} {scope}\n".encode() if scope else f"{topic}\n".encode())
             await writer.drain()
 
             ack = await reader.readline()

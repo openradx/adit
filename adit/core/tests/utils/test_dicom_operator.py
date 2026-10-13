@@ -30,6 +30,7 @@ from adit.core.utils.dicom_dataset import QueryDataset, ResultDataset
 from adit.core.utils.dicom_operator import DicomOperator
 from adit.core.utils.dicom_utils import read_dataset
 from adit.core.utils.file_transmit import (
+    REPLAY_SYNC_TOKEN,
     SUBSCRIBED_ACK,
     FileTransmitServer,
     FileTransmitSession,
@@ -206,11 +207,11 @@ def test_download_series_with_c_move(settings: Settings, mocker: MockerFixture):
     def start_transmit_server():
         transmit_server = FileTransmitServer("127.0.0.1", 17999, write_timeout=30)
 
-        async def on_subscribe(topic: str):
+        async def on_subscribe(session: FileTransmitSession):
             nonlocal subscribed_topic
-            subscribed_topic = topic
+            subscribed_topic = session.topic
             await transmit_server.publish_file(
-                topic, file_path, {"SOPInstanceUID": ds.SOPInstanceUID}
+                session.topic, file_path, {"SOPInstanceUID": ds.SOPInstanceUID}
             )
 
         transmit_server.set_subscribe_handler(on_subscribe)
@@ -244,8 +245,12 @@ def _start_transmit_server(
     answer_sync: bool = True,
     before_sync: list[threading.Thread] | None = None,
     on_sync: Callable[[FileTransmitSession, str], Awaitable[bool]] | None = None,
+    replay: bool = False,
 ) -> tuple[FileTransmitServer, asyncio.AbstractEventLoop]:
     """Run a file transmit server in its own thread like the receiver container does.
+
+    With `replay`, it confirms the replay of its spooled files (it holds none) right after
+    each subscription, as the receiver does.
 
     Like the receiver, it answers a sync request only after the publishes the test scheduled
     before it (`before_sync`, e.g. the receiver's backlog). `on_sync` runs on the server's loop
@@ -264,6 +269,12 @@ def _start_transmit_server(
             session.queue_synced(token)
 
     server.set_sync_request_handler(sync_handler)
+    if replay:
+
+        def confirm_replay(session: FileTransmitSession) -> None:
+            session.queue_synced(REPLAY_SYNC_TOKEN)
+
+        server.set_subscribe_handler(confirm_replay)
     loops: list[asyncio.AbstractEventLoop] = []
     started = threading.Event()
 
@@ -331,6 +342,44 @@ def test_c_move_images_sent_right_away_reach_the_worker(settings: Settings, mock
 
     # Assert
     assert received_ds == [ds]
+
+
+@pytest.mark.django_db
+def test_c_move_replay_confirmation_is_no_delivery_confirmation(
+    settings: Settings, mocker: MockerFixture, caplog: pytest.LogCaptureFixture
+):
+    # Arrange: the receiver confirms its replay right after the subscription, the C-MOVE's
+    # images only come later
+    dicom_operator, association_mock, file_path, ds = _setup_c_move_operator(
+        settings, mocker, 17952
+    )
+    association_mock.send_c_find.return_value = DicomTestHelper.create_successful_c_find_responses(
+        [{"SOPInstanceUID": ds.SOPInstanceUID}]
+    )
+    transmit_server, loop = _start_transmit_server(17952, replay=True)
+
+    def send_c_move(*args, **kwargs):
+        publish = transmit_server.publish_file(
+            ds.StudyInstanceUID, file_path, {"SOPInstanceUID": ds.SOPInstanceUID}
+        )
+        asyncio.run_coroutine_threadsafe(publish, loop).result(timeout=5)
+        return DicomTestHelper.create_successful_c_move_response()
+
+    association_mock.send_c_move.side_effect = send_c_move
+    received: list[Dataset] = []
+
+    # Act
+    try:
+        with caplog.at_level(logging.INFO):
+            dicom_operator.fetch_series(
+                ds.PatientID, ds.StudyInstanceUID, ds.SeriesInstanceUID, received.append
+            )
+    finally:
+        asyncio.run_coroutine_threadsafe(transmit_server.stop(), loop).result(timeout=5)
+
+    # Assert: the image of the C-MOVE didn't arrive late
+    assert received == [ds]
+    assert not _late_image_entries(caplog)
 
 
 @pytest.mark.django_db

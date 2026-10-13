@@ -38,7 +38,7 @@ from .dicom_utils import (
 )
 from .dicom_web_connector import DicomWebConnector
 from .dimse_connector import DimseConnector
-from .file_transmit import FileTransmitClient, Metadata
+from .file_transmit import REPLAY_SYNC_TOKEN, FileTransmitClient, Metadata
 
 logger = logging.getLogger(__name__)
 
@@ -1068,9 +1068,12 @@ class DicomOperator:
                 return False
 
             def handle_synced(token: str):
-                # The snapshot comes first, as the main thread acts as soon as it sees the token
-                fetch.missing_at_sync.clear()
-                fetch.missing_at_sync.update(fetch.missing_images)
+                # The snapshot comes first, as the main thread acts as soon as it sees the token.
+                # The confirmed replay of the receiver precedes any C-MOVE, so images missing
+                # then are still to come.
+                if token != REPLAY_SYNC_TOKEN:
+                    fetch.missing_at_sync.clear()
+                    fetch.missing_at_sync.update(fetch.missing_images)
                 fetch.synced_tokens.add(token)
 
             subscribe_task = asyncio.create_task(

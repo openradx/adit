@@ -192,6 +192,7 @@ quoted: the file is passed to the containers as is, and `docker stack deploy` ke
 - `C_MOVE_REFETCH_ATTEMPTS`: Rounds in which images still missing after a C-MOVE download are requested again with one IMAGE-level C-MOVE each, or one SERIES-level C-MOVE per series with missing images for a server without `image_level_find_support` (default 2, 0 disables it)
 - `C_MOVE_REFETCH_MAX_MISSING_PERCENT`: When more than this percentage of the images is missing (default 50), there is no re-fetch and the download fails with `RetriableDicomError`, also with `C_MOVE_FAIL_ON_INCOMPLETE=false`
 - `C_MOVE_FAIL_ON_INCOMPLETE`: Whether a C-MOVE download with images still missing after the re-fetch raises `IncompleteFetchError`, a `RetriableDicomError` (default `true`), or only logs a warning
+- `RECEIVER_SPOOL_TTL`, `RECEIVER_SPOOL_MAX_SIZE`: How long (default 600 s) and up to which total size (default 2048 MB) the receiver keeps C-MOVE images no worker took, for the next worker that subscribes to their study (0 for either disables it; lost when the receiver restarts)
 
 ## Git Worktrees
 
