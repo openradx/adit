@@ -1396,6 +1396,58 @@ def test_c_move_fails_when_the_receiver_does_not_confirm(settings: Settings, moc
 
 
 @pytest.mark.django_db
+def test_c_move_sync_wait_counts_duplicates_as_progress(settings: Settings, mocker: MockerFixture):
+    # Arrange: duplicates (e.g. of a retried C-MOVE) trickle in ahead of the last missing image,
+    # 0.6 s apart, which takes longer than the sync timeout as a whole
+    dicom_operator, association_mock, file_path, ds = _setup_c_move_operator(
+        settings, mocker, 17964
+    )
+    settings.C_MOVE_SYNC_TIMEOUT = 2
+    association_mock.send_c_find.return_value = DicomTestHelper.create_successful_c_find_responses(
+        [{"SOPInstanceUID": ds.SOPInstanceUID}, {"SOPInstanceUID": IMAGE_B}]
+    )
+    backlog: list[threading.Thread] = []
+    transmit_server, loop = _start_transmit_server(17964, before_sync=backlog)
+
+    def publish(image_uid: str):
+        publish = transmit_server.publish_file(
+            ds.StudyInstanceUID, file_path, {"SOPInstanceUID": image_uid}
+        )
+        asyncio.run_coroutine_threadsafe(publish, loop).result(timeout=5)
+
+    def trickle():
+        for image_uid in [ds.SOPInstanceUID] * 4 + [IMAGE_B]:
+            sleep(0.6)
+            publish(image_uid)
+
+    def send_c_move(*args, **kwargs):
+        publish(ds.SOPInstanceUID)
+        backlog.append(threading.Thread(target=trickle))
+        backlog[-1].start()
+        return DicomTestHelper.create_successful_c_move_response()
+
+    association_mock.send_c_move.side_effect = send_c_move
+    received: list[str] = []
+
+    # Act
+    try:
+        dicom_operator.fetch_series(
+            ds.PatientID,
+            ds.StudyInstanceUID,
+            ds.SeriesInstanceUID,
+            lambda ds: received.append(ds.SOPInstanceUID),
+        )
+    finally:
+        for publish_thread in backlog:
+            publish_thread.join()
+        asyncio.run_coroutine_threadsafe(transmit_server.stop(), loop).result(timeout=5)
+
+    # Assert
+    assert len(received) == 2
+    assert association_mock.send_c_move.call_count == 1
+
+
+@pytest.mark.django_db
 def test_c_move_keeps_waiting_for_the_sync_while_images_arrive(
     settings: Settings, mocker: MockerFixture
 ):
