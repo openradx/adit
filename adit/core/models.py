@@ -143,6 +143,16 @@ class DicomServer(DicomNode):
     study_root_get_support = models.BooleanField(default=False)
     study_root_move_support = models.BooleanField(default=False)
     store_scp_support = models.BooleanField(default=False)
+    # Whether a C-MOVE download may list the images of a study or series with IMAGE-level
+    # queries first. Without it, its completeness is checked with the image counts the PACS
+    # reports.
+    image_level_find_support = models.BooleanField(
+        default=True,
+        help_text=(
+            "Whether the server answers IMAGE-level queries completely. Turn it off for a "
+            "PACS that doesn't support them, caps their results or is slow at them."
+        ),
+    )
 
     # (optional) DICOMweb support
     dicomweb_root_url = models.CharField(blank=True, max_length=2000)

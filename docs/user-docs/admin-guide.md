@@ -111,6 +111,7 @@ To add or configure DICOM servers, use the Django Admin interface:
    - **Study root get support**: Enable C-GET at study root level
    - **Study root move support**: Enable C-MOVE at study root level
    - **Store scp support**: Enable C-STORE SCP operations
+   - **Image level find support** (default on): Whether the server answers IMAGE-level queries completely. A C-MOVE download first lists the images of the study or series with them, to check that each one arrived and to request missing ones again one by one. Turn it off for a PACS that doesn't support these queries, caps their results (ADIT logs a warning when a C-MOVE sends more images than the list held) or is slow at them. Downloads then count the images of each series instead, as far as the PACS reports how many there are, and request a series with missing images again as a whole. When the PACS reports no counts at all, ADIT only checks that an image of each series arrived, and images it sends after its final C-MOVE response are lost
 
    **DICOMweb Settings (if applicable):**
    - **Dicomweb root url**: Base URL for DICOMweb services

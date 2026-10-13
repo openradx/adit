@@ -180,3 +180,49 @@ def test_c_move_tolerates_an_image_the_pacs_sends_after_the_move(
     assert not lost
     assert not [call for call in send_c_move.call_args_list if call.args[0].get("SOPInstanceUID")]
     assert len(_log_messages(caplog, "arrived after the receiver confirmed")) == 1
+
+
+@pytest.mark.acceptance
+@pytest.mark.order("last")
+@pytest.mark.django_db
+def test_c_move_without_image_level_find_refetches_the_short_series(
+    settings: Settings, mocker: MockerFixture
+):
+    # Arrange: a server without IMAGE-level queries, and the worker loses the first delivery
+    # of one image of the largest series
+    operator = _setup_operator(settings, download_timeout=3)
+    series_uid, image_uids = _largest_series(operator)
+    study_image_uids = [
+        image.SOPInstanceUID
+        for series in list(
+            operator.find_series(
+                QueryDataset.create(PatientID=PATIENT_ID, StudyInstanceUID=STUDY_UID)
+            )
+        )
+        for image in operator.find_images(
+            QueryDataset.create(
+                PatientID=PATIENT_ID,
+                StudyInstanceUID=STUDY_UID,
+                SeriesInstanceUID=series.SeriesInstanceUID,
+            )
+        )
+    ]
+    operator.server.image_level_find_support = False
+    lost = {image_uids[1]}
+    _lose_first_deliveries(mocker, lost)
+    find_images = mocker.spy(operator, "find_images")
+    send_c_move = mocker.spy(operator.dimse_connector, "_send_c_move")
+    received: list[str] = []
+
+    # Act
+    operator.fetch_study(PATIENT_ID, STUDY_UID, lambda ds: received.append(ds.SOPInstanceUID))
+
+    # Assert: every image arrived once, the lost one by a C-MOVE of its series
+    find_images.assert_not_called()
+    assert sorted(received) == sorted(study_image_uids)
+    assert not lost
+    moves = [
+        (call.args[0].QueryRetrieveLevel, call.args[0].get("SeriesInstanceUID"))
+        for call in send_c_move.call_args_list
+    ]
+    assert moves == [("STUDY", None), ("SERIES", series_uid)]

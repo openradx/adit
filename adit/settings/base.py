@@ -473,8 +473,9 @@ C_MOVE_SUBSCRIBE_TIMEOUT = 10  # seconds
 C_MOVE_SYNC_TIMEOUT = 120  # seconds
 
 # How often images still missing after a C-MOVE are requested again, one IMAGE-level
-# C-MOVE per image (0 disables it). Each of those costs the PACS its own association to
-# the receiver, so it is meant for the few images a C-MOVE missed.
+# C-MOVE per image, or one SERIES-level C-MOVE per series with missing images for a server
+# without image level find support (0 disables it). Each of those costs the PACS its own
+# association to the receiver, so it is meant for the few images a C-MOVE missed.
 C_MOVE_REFETCH_ATTEMPTS = env.int("C_MOVE_REFETCH_ATTEMPTS", default=2)
 if C_MOVE_REFETCH_ATTEMPTS < 0:
     raise ImproperlyConfigured("C_MOVE_REFETCH_ATTEMPTS must not be negative")
