@@ -409,6 +409,18 @@ FILE_TRANSMIT_PORT = env.int("FILE_TRANSMIT_PORT", 14638)
 # hands over one image.
 FILE_TRANSMIT_WRITE_TIMEOUT = 300  # seconds
 
+# How long the receiver keeps a file no worker took (none subscribed to its study, or the
+# worker went away first), to hand it to the next worker that subscribes to the study, e.g.
+# the retry of a download whose worker restarted. Longer than a task retry waits (up to
+# 240 s). The files are kept in the receiver's temp folder, at most RECEIVER_SPOOL_MAX_SIZE
+# MB (the oldest go first), and are lost when the receiver restarts. 0 for either disables it.
+RECEIVER_SPOOL_TTL = env.int("RECEIVER_SPOOL_TTL", default=600)  # seconds
+RECEIVER_SPOOL_MAX_SIZE = env.int("RECEIVER_SPOOL_MAX_SIZE", default=2048)  # MB
+if RECEIVER_SPOOL_TTL < 0 or RECEIVER_SPOOL_MAX_SIZE < 0:
+    raise ImproperlyConfigured(
+        "RECEIVER_SPOOL_TTL and RECEIVER_SPOOL_MAX_SIZE must not be negative"
+    )
+
 # Usually a transfer job must be verified by an admin. By setting
 # this option to True ADIT will schedule unverified transfers
 # (and directly set the status of the job to PENDING).

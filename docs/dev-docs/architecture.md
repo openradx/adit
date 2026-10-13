@@ -131,6 +131,7 @@ With C-MOVE, the server sends the data to ADIT's C-STORE SCP in a separate conta
 - **Completeness:** a download is checked against the images its IMAGE-level C-FIND listed and the number of images the PACS reports as sent, which also reveals a capped C-FIND. For a server without `image_level_find_support`, it is checked against each series' `NumberOfSeriesRelatedInstances` instead.
 - **Delivery confirmation:** after a C-MOVE the worker sends a `sync` request, which the receiver answers once it forwarded everything it got before, so a receiver backlog doesn't count as missing. As some PACS send images after their final C-MOVE response, missing images are then waited for up to `C_MOVE_DOWNLOAD_TIMEOUT`.
 - **Re-fetch:** missing images are requested again, one IMAGE-level C-MOVE each (one SERIES-level C-MOVE per short series without the list), for up to `C_MOVE_REFETCH_ATTEMPTS` rounds. When nothing arrived or more than `C_MOVE_REFETCH_MAX_MISSING_PERCENT` is missing, the download fails right away with a `RetriableDicomError` and is retried as a whole. Images still missing after the re-fetch raise an `IncompleteFetchError` (only a warning with `C_MOVE_FAIL_ON_INCOMPLETE=false`).
+- **Spool:** the receiver keeps files no worker took, e.g. while a worker restarted, for `RECEIVER_SPOOL_TTL` up to `RECEIVER_SPOOL_MAX_SIZE`, and replays them to the next worker that subscribes to their study (to a series fetch only those of its series), followed by a `synced` with the token `replay`. The spool is lost when the receiver restarts.
 
 ## Related Projects
 

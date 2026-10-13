@@ -39,7 +39,7 @@ async def test_start_transmit_file():
 
     server = FileTransmitServer(HOST, PORT, write_timeout=WRITE_TIMEOUT)
 
-    async def subscribe_handler(topic: str):
+    async def subscribe_handler(session: FileTransmitSession):
         for file in sample_files:
             await server.publish_file("foobar", file, {"filename": file.name})
 
@@ -86,9 +86,9 @@ async def test_subscribed_handler_is_called_before_first_file():
 
     server = FileTransmitServer(HOST, PORT, write_timeout=WRITE_TIMEOUT)
 
-    async def subscribe_handler(topic: str):
+    async def subscribe_handler(session: FileTransmitSession):
         # Publishing right away is the earliest a file can reach the client
-        await server.publish_file(topic, sample_file)
+        await server.publish_file(session.topic, sample_file)
 
     async def unsubscribe_handler(topic: str):
         await server.stop()
@@ -112,6 +112,38 @@ async def test_subscribed_handler_is_called_before_first_file():
     await server_task
 
     assert events == ["subscribed", "file"]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("scope", ["1.2.3.4", None])
+async def test_a_subscription_names_its_scope(scope: str | None):
+    server = FileTransmitServer(HOST, 9992, write_timeout=WRITE_TIMEOUT)
+    sessions: list[FileTransmitSession] = []
+    server.set_subscribe_handler(sessions.append)
+    server_task = asyncio.create_task(server.start())
+    await asyncio.sleep(0.5)
+
+    async def file_received_handler(filename: str, metadata: Metadata):
+        return False
+
+    subscribed = asyncio.Event()
+    client_task = asyncio.create_task(
+        FileTransmitClient(HOST, 9992).subscribe(
+            "foobar", file_received_handler, subscribed_handler=subscribed.set, scope=scope
+        )
+    )
+    try:
+        await asyncio.wait_for(subscribed.wait(), timeout=5)
+        await wait_until(lambda: bool(sessions))
+    finally:
+        client_task.cancel()
+        with suppress(asyncio.CancelledError):
+            await client_task
+        await server.stop()
+        await server_task
+
+    assert sessions[0].topic == "foobar"
+    assert sessions[0].scope == scope
 
 
 @pytest.mark.asyncio
@@ -324,7 +356,7 @@ async def test_publish_file_keeps_sending_to_the_others_when_one_session_fails()
     server, server_task = await _serve(9969)
     first_received: list[str] = []
     second_received: list[str] = []
-    released: list[str] = []
+    released: list[bool] = []
     first = await _subscribe(9969, "foobar", first_received)
     second = await _subscribe(9969, "foobar", second_received)
     # The connection of the first subscriber breaks once the frame header was written
@@ -332,7 +364,7 @@ async def test_publish_file_keeps_sending_to_the_others_when_one_session_fails()
     failing_session._writer.drain = MagicMock(side_effect=ConnectionResetError())
     try:
         publish = server.publish_file(
-            "foobar", _sample(), {"name": "file"}, release=lambda: released.append("file")
+            "foobar", _sample(), {"name": "file"}, release=released.append
         )
         assert await asyncio.wait_for(publish, 5) == 2
 
@@ -340,7 +372,8 @@ async def test_publish_file_keeps_sending_to_the_others_when_one_session_fails()
         with pytest.raises((asyncio.IncompleteReadError, ConnectionError)):
             await asyncio.wait_for(first, timeout=5)
         await wait_until(lambda: failing_session not in server._sessions)
-        await wait_until(lambda: released == ["file"])
+        # Delivered, as the second subscriber got it
+        await wait_until(lambda: released == [True])
     finally:
         await _stop(server, server_task, first, second)
 
@@ -359,7 +392,7 @@ async def test_publish_file_releases_the_file_after_the_last_session():
     resume = stall_session(server._sessions[1])
     try:
         publish = server.publish_file(
-            "foobar", _sample(), {"name": "file"}, release=lambda: released.append("file")
+            "foobar", _sample(), {"name": "file"}, release=lambda sent: released.append("file")
         )
         assert await asyncio.wait_for(publish, 5) == 2
         await wait_until(lambda: first_received == ["file"])
@@ -377,16 +410,33 @@ async def test_publish_file_releases_the_file_after_the_last_session():
 
 
 @pytest.mark.asyncio
+async def test_publish_file_releases_a_sent_file_as_delivered():
+    server, server_task = await _serve(9958)
+    received: list[str] = []
+    released: list[bool] = []
+    client = await _subscribe(9958, "foobar", received)
+    try:
+        publish = server.publish_file(
+            "foobar", _sample(), {"name": "file"}, release=released.append
+        )
+        assert await asyncio.wait_for(publish, 5) == 1
+
+        await wait_until(lambda: released == [True])
+    finally:
+        await _stop(server, server_task, client)
+
+    assert received == ["file"]
+
+
+@pytest.mark.asyncio
 async def test_publish_file_without_subscriber_releases_right_away():
     server = FileTransmitServer(HOST, 9952, write_timeout=WRITE_TIMEOUT)
-    released: list[str] = []
+    released: list[bool] = []
 
-    sent_count = await server.publish_file(
-        "nobody", _sample(), release=lambda: released.append("file")
-    )
+    sent_count = await server.publish_file("nobody", _sample(), release=released.append)
 
     assert sent_count == 0
-    assert released == ["file"]
+    assert released == [False]
 
 
 @pytest.mark.asyncio
@@ -398,7 +448,7 @@ async def test_publish_file_of_a_missing_file_queues_nothing():
     try:
         with pytest.raises(FileNotFoundError):
             await server.publish_file(
-                "foobar", "missing.dcm", release=lambda: released.append("missing")
+                "foobar", "missing.dcm", release=lambda sent: released.append("missing")
             )
         assert not server._sessions[0].closed
 
@@ -422,7 +472,9 @@ async def test_publish_file_too_large_for_a_frame_queues_nothing(monkeypatch: py
 
         monkeypatch.setattr("adit.core.utils.file_transmit.os.path.getsize", getsize)
         with pytest.raises(struct.error):
-            await server.publish_file("foobar", _sample(), release=lambda: released.append("f"))
+            await server.publish_file(
+                "foobar", _sample(), release=lambda sent: released.append("f")
+            )
         assert not server._sessions[0].closed
     finally:
         await _stop(server, server_task, client)
@@ -436,13 +488,15 @@ async def test_closing_a_session_releases_its_queued_files(
 ):
     monkeypatch.setattr(tempfile, "tempdir", str(tmp_path))
     server, server_task = await _serve(9953)
-    released: list[str] = []
+    released: list[tuple[str, bool]] = []
     client = await _subscribe(9953, "foobar", [])
     resume = stall_session(server._sessions[0])
     try:
         for name in ["1", "2", "3"]:
             publish = server.publish_file(
-                "foobar", _largest_sample(), release=lambda name=name: released.append(name)
+                "foobar",
+                _largest_sample(),
+                release=lambda sent, name=name: released.append((name, sent)),
             )
             assert await asyncio.wait_for(publish, 5) == 1
         # The client has started on the first file when it goes away
@@ -451,9 +505,11 @@ async def test_closing_a_session_releases_its_queued_files(
         with suppress(asyncio.CancelledError):
             await client
 
-        await wait_until(lambda: sorted(released) == ["1", "2", "3"])
+        # None of them reached the client, also not the one it started on
+        expected = [("1", False), ("2", False), ("3", False)]
+        await wait_until(lambda: sorted(released) == expected)
         await asyncio.sleep(0.2)
-        assert sorted(released) == ["1", "2", "3"]
+        assert sorted(released) == expected
     finally:
         resume.set()
         await _stop(server, server_task)
@@ -479,10 +535,15 @@ async def test_a_worker_that_reads_nothing_is_disconnected_after_the_write_timeo
         other = await _subscribe(9957, "other", received)
 
         with caplog.at_level(logging.WARNING):
-            publish = server.publish_file("hung", big_file, release=lambda: released.append("big"))
+            publish = server.publish_file(
+                "hung", big_file, release=lambda sent: released.append("big")
+            )
             assert await asyncio.wait_for(publish, 5) == 1
             publish = server.publish_file(
-                "other", _sample(), {"name": "small"}, release=lambda: released.append("small")
+                "other",
+                _sample(),
+                {"name": "small"},
+                release=lambda sent: released.append("small"),
             )
             assert await asyncio.wait_for(publish, 5) == 1
 
@@ -504,12 +565,12 @@ async def test_a_worker_that_reads_nothing_is_disconnected_after_the_write_timeo
 async def test_close_before_start_releases_the_queue():
     # The connection handler closes a session whose subscription ack could not be sent
     session = FileTransmitSession("foobar", MagicMock(), write_timeout=WRITE_TIMEOUT)
-    released: list[str] = []
-    assert session.queue_frame(b"header", _sample(), lambda: released.append("file"))
+    released: list[bool] = []
+    assert session.queue_frame(b"header", _sample(), released.append)
 
     await session.close()
 
-    assert released == ["file"]
+    assert released == [False]
     assert session.closed
 
 
@@ -535,7 +596,9 @@ async def test_a_worker_that_finishes_with_files_still_queued_ends_quietly(
         with caplog.at_level(logging.WARNING):
             for name in ["1", "2", "3", "4", "5"]:
                 publish = server.publish_file(
-                    "foobar", _largest_sample(), release=lambda name=name: released.append(name)
+                    "foobar",
+                    _largest_sample(),
+                    release=lambda sent, name=name: released.append(name),
                 )
                 assert await asyncio.wait_for(publish, 5) == 1
             await asyncio.wait_for(client, timeout=5)
@@ -579,17 +642,15 @@ async def test_a_client_gone_while_sending_ends_its_session_quietly(
     caplog: pytest.LogCaptureFixture,
 ):
     server, server_task = await _serve(9956)
-    released: list[str] = []
+    released: list[bool] = []
     client = await _subscribe(9956, "foobar", [])
     try:
         with caplog.at_level(logging.INFO):
             server._sessions[0]._writer.drain = MagicMock(side_effect=BrokenPipeError())
-            publish = server.publish_file(
-                "foobar", _sample(), release=lambda: released.append("file")
-            )
+            publish = server.publish_file("foobar", _sample(), release=released.append)
             assert await asyncio.wait_for(publish, 5) == 1
 
-            await wait_until(lambda: released == ["file"])
+            await wait_until(lambda: released == [False])
             await wait_until(lambda: not server._sessions)
     finally:
         await _stop(server, server_task, client)
