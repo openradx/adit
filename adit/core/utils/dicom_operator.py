@@ -673,6 +673,7 @@ class DicomOperator:
                     image_uids,
                     missing_images,
                     last_image_at,
+                    last_received_at,
                     sync_requests,
                     synced_tokens,
                     tokens,
@@ -705,6 +706,7 @@ class DicomOperator:
                         image_uids,
                         missing_images,
                         last_image_at,
+                        last_received_at,
                         sync_requests,
                         synced_tokens,
                         tokens,
@@ -791,6 +793,7 @@ class DicomOperator:
         image_uids: dict[str, str],
         missing_images: dict[str, str],
         last_image_at: list[float],
+        last_received_at: list[float],
         sync_requests: queue.SimpleQueue[str],
         synced_tokens: set[str],
         tokens: Iterator[int],
@@ -818,6 +821,7 @@ class DicomOperator:
                 str(next(tokens)),
                 missing_images,
                 last_image_at,
+                last_received_at,
                 sync_requests,
                 synced_tokens,
                 consume_future,
@@ -851,6 +855,7 @@ class DicomOperator:
         token: str,
         missing_images: dict[str, str],
         last_image_at: list[float],
+        last_received_at: list[float],
         sync_requests: queue.SimpleQueue[str],
         synced_tokens: set[str],
         consume_future: Future[None],
@@ -866,7 +871,9 @@ class DicomOperator:
             if token in synced_tokens:
                 return time.monotonic()
 
-            idle_time = time.monotonic() - max(last_image_at[0], requested_at)
+            # Every image of this fetch received meanwhile, duplicates too, was queued before
+            # the confirmation, so it brings the confirmation closer
+            idle_time = time.monotonic() - max(last_image_at[0], last_received_at[0], requested_at)
             if idle_time > settings.C_MOVE_SYNC_TIMEOUT:
                 raise RetriableDicomError(
                     f"The DICOM receiver did not confirm the delivery of study {study_uid} in time."
