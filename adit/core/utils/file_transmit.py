@@ -94,14 +94,20 @@ class FileTransmitSession:
                 # The frame is cut off, so the client can no longer read this stream. Closing
                 # the connection makes the connection handler close the session, which releases
                 # the frames still queued.
-                reason = (
-                    f"took no data for {self._write_timeout} s"
-                    if isinstance(err, TimeoutError)
-                    else repr(err)
-                )
-                logger.warning(
-                    "Disconnecting a subscriber of topic %s, sending failed: %s", self.topic, reason
-                )
+                if isinstance(err, ConnectionError):
+                    # Also when a client is finished while frames are still on their way to it
+                    logger.info("Subscriber of topic %s disconnected: %r", self.topic, err)
+                else:
+                    reason = (
+                        f"took no data for {self._write_timeout} s"
+                        if isinstance(err, TimeoutError)
+                        else repr(err)
+                    )
+                    logger.warning(
+                        "Disconnecting a subscriber of topic %s, sending failed: %s",
+                        self.topic,
+                        reason,
+                    )
                 self.closed = True
                 self._writer.transport.abort()
                 return
@@ -246,6 +252,11 @@ class FileTransmitServer:
                     # Longer than the stream limit; the reader stays usable
                     logger.warning("Ignoring an over-long control line on topic %s.", topic)
                     continue
+                except ConnectionError as err:
+                    # E.g. a client finished while frames were still on their way to it, which
+                    # resets the connection
+                    logger.info("Subscriber of topic %s disconnected: %r", topic, err)
+                    break
                 if not line.endswith(b"\n"):
                     break
                 await self._handle_control_line(session, line.decode(errors="replace").strip())
