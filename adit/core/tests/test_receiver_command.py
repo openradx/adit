@@ -41,7 +41,8 @@ async def _close_queue(command: Command):
 
 @pytest.mark.asyncio
 async def test_send_files_routes_on_study_instance_uid(received_file: Path, settings: Settings):
-    study_uid = read_dataset(received_file).StudyInstanceUID
+    ds = read_dataset(received_file)
+    study_uid = ds.StudyInstanceUID
 
     command = _create_command(settings)
     server_task = asyncio.create_task(command._file_transmit.start())
@@ -72,7 +73,10 @@ async def test_send_files_routes_on_study_instance_uid(received_file: Path, sett
         await server_task
         await _close_queue(command)
 
-    assert len(received) == 1
+    # The series lets a worker tell the images of its series from others of the study
+    assert received == [
+        {"SOPInstanceUID": ds.SOPInstanceUID, "SeriesInstanceUID": ds.SeriesInstanceUID}
+    ]
 
 
 @pytest.mark.asyncio

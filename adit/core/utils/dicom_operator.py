@@ -615,12 +615,25 @@ class DicomOperator:
         # The images not received yet, the consumer removes each one it handed over
         missing_images = dict(image_uids)
 
-        # When the consumer last received an expected image
+        # The images the consumer handed over
+        received: set[str] = set()
+
+        def in_scope(metadata: Metadata) -> bool:
+            # Besides the listed images, every image of the requested study or series belongs
+            # to the fetch, as the IMAGE-level C-FIND of some PACS silently caps its results
+            if metadata["SOPInstanceUID"] in image_uids:
+                return True
+            if query.get("SOPInstanceUID"):
+                return False
+            series_uid = query.get("SeriesInstanceUID")
+            return not series_uid or metadata.get("SeriesInstanceUID") == series_uid
+
+        # When the consumer last handed over an image
         last_image_at = [time.monotonic()]
 
         # When the consumer last received any image of this fetch. Duplicates count too, as a
         # PACS sends the whole study again when a C-MOVE is retried, but images of other
-        # fetches of the study don't.
+        # series of a series fetch don't.
         last_received_at = [time.monotonic()]
 
         # Sync requests the consumer sends to the receiver, the tokens it confirmed, and the
@@ -646,7 +659,8 @@ class DicomOperator:
             consume_future = executor.submit(
                 self._consume_from_receiver,
                 query.StudyInstanceUID,
-                image_uids,
+                in_scope,
+                received,
                 missing_images,
                 last_image_at,
                 last_received_at,
@@ -935,7 +949,8 @@ class DicomOperator:
     def _consume_from_receiver(
         self,
         study_uid: str,
-        image_uids: dict[str, str],
+        in_scope: Callable[[Metadata], bool],
+        received: set[str],
         missing_images: dict[str, str],
         last_image_at: list[float],
         last_received_at: list[float],
@@ -961,13 +976,13 @@ class DicomOperator:
             async def handle_received_file(filename: str, metadata: Metadata):
                 nonlocal late_logged
                 image_uid = metadata["SOPInstanceUID"]
-                if image_uid in image_uids:
+                if in_scope(metadata):
                     last_received_at[0] = time.monotonic()
 
                 try:
-                    # Duplicates and images of other fetches of the same study are ignored
+                    # Duplicates and images of other series of a series fetch are ignored
                     # and must not keep the wait for the missing images alive.
-                    if image_uid in missing_images:
+                    if in_scope(metadata) and image_uid not in received:
                         if image_uid in missing_at_sync:
                             missing_at_sync.discard(image_uid)
                             if not late_logged:
@@ -984,7 +999,8 @@ class DicomOperator:
                         await asyncio.to_thread(read_and_handle_image, filename)
                         # Only removed once handed over, so that the image doesn't count as
                         # received while it is still processed.
-                        del missing_images[image_uid]
+                        received.add(image_uid)
+                        missing_images.pop(image_uid, None)
                         last_image_at[0] = time.monotonic()
                 except Exception as err:
                     receiving_errors.append(err)

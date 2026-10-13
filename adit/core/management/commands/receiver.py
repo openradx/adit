@@ -116,10 +116,11 @@ class Command(AsyncServerCommand):
                 # Routed on the StudyInstanceUID only, as the calling AE title of the C-STOREs
                 # may differ from the AE title ADIT queried (e.g. PACS clusters or a separate
                 # sending AE). SOPInstanceUIDs are globally unique, so workers dedupe on them.
+                # The series lets a worker that fetches one series skip the others.
                 sent_count = await self._file_transmit.publish_file(
                     study_uid,
                     file_path,
-                    {"SOPInstanceUID": instance_uid},
+                    {"SOPInstanceUID": instance_uid, "SeriesInstanceUID": series_uid},
                     # Deleted once every worker it was queued to is done with it
                     release=functools.partial(self._delete_received_file, file_path),
                 )
