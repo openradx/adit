@@ -1,6 +1,7 @@
 import asyncio
 import json
 import logging
+import socket
 import struct
 import tempfile
 from contextlib import suppress
@@ -597,6 +598,56 @@ async def test_a_worker_that_finishes_with_files_still_queued_ends_quietly(
         await _stop(server, server_task, client)
 
     assert not [r for r in caplog.records if r.levelno >= logging.WARNING]
+
+
+@pytest.mark.asyncio
+async def test_a_client_reset_while_sending_control_lines_ends_its_session_quietly(
+    caplog: pytest.LogCaptureFixture,
+):
+    server, server_task = await _serve(9955)
+    try:
+        with caplog.at_level(logging.INFO):
+            reader, writer = await asyncio.open_connection(HOST, 9955)
+            writer.write(b"foobar\n")
+            await writer.drain()
+            assert await reader.readline() == SUBSCRIBED_ACK
+            await wait_until(lambda: bool(server._sessions))
+
+            # Closed with a reset, as a client closing with data still unread does
+            sock = writer.get_extra_info("socket")
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_LINGER, struct.pack("ii", 1, 0))
+            writer.transport.abort()
+
+            await wait_until(lambda: not server._sessions)
+    finally:
+        await _stop(server, server_task)
+
+    assert not [r for r in caplog.records if r.levelno >= logging.WARNING]
+    assert any("disconnected" in r.getMessage() for r in caplog.records)
+
+
+@pytest.mark.asyncio
+async def test_a_client_gone_while_sending_ends_its_session_quietly(
+    caplog: pytest.LogCaptureFixture,
+):
+    server, server_task = await _serve(9956)
+    released: list[str] = []
+    client = await _subscribe(9956, "foobar", [])
+    try:
+        with caplog.at_level(logging.INFO):
+            server._sessions[0]._writer.drain = MagicMock(side_effect=BrokenPipeError())
+            publish = server.publish_file(
+                "foobar", _sample(), release=lambda: released.append("file")
+            )
+            assert await asyncio.wait_for(publish, 5) == 1
+
+            await wait_until(lambda: released == ["file"])
+            await wait_until(lambda: not server._sessions)
+    finally:
+        await _stop(server, server_task, client)
+
+    assert not [r for r in caplog.records if r.levelno >= logging.WARNING]
+    assert any("disconnected" in r.getMessage() for r in caplog.records)
 
 
 async def _answer_right_away(session: FileTransmitSession, token: str):
