@@ -16,7 +16,8 @@ from .dicom_utils import write_dataset
 
 logger = logging.getLogger(__name__)
 
-FileReceivedHandler = Callable[[str], None]
+# Called with the path of a received file and the AE title the C-STORE came from
+FileReceivedHandler = Callable[[str, str], None]
 
 
 class StoreScp:
@@ -137,7 +138,7 @@ class StoreScp:
 
         try:
             if self._file_received_handler:
-                self._file_received_handler(file.name)
+                self._file_received_handler(file.name, event.assoc.remote["ae_title"])
         except Exception as err:
             logger.error("Unable to handle received file %s: %s", file.name, err)
             logger.exception(err)

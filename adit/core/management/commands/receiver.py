@@ -19,6 +19,14 @@ logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
+class ReceivedFile:
+    """A file the Store SCP received, with the AE title the C-STORE came from."""
+
+    path: str
+    calling_ae_title: str
+
+
+@dataclass(frozen=True)
 class SyncRequest:
     """A worker's request to confirm that everything received before it was sent to it."""
 
@@ -51,7 +59,7 @@ class Command(AsyncServerCommand):
                 debug=settings.ENABLE_DICOM_DEBUG_LOGGER,
             )
 
-            self._queue: janus.Queue[str | SyncRequest] = janus.Queue()
+            self._queue: janus.Queue[ReceivedFile | SyncRequest] = janus.Queue()
 
             self._file_transmit = self._create_file_transmit()
             self._store_scp.set_file_received_handler(self._handle_received_file)
@@ -84,10 +92,10 @@ class Command(AsyncServerCommand):
         with suppress(FileNotFoundError):
             os.unlink(file_path)
 
-    def _handle_received_file(self, file_path):
+    def _handle_received_file(self, file_path: str, calling_ae_title: str):
         # Queued before the Store SCP answers the C-STORE, so the final C-MOVE response of a
         # compliant PACS, and with it the worker's sync request, come after the file.
-        self._queue.sync_q.put(file_path)
+        self._queue.sync_q.put(ReceivedFile(file_path, calling_ae_title))
 
     async def _handle_sync(self, session: FileTransmitSession, token: str):
         # Behind the files queued so far, so the answer follows them on the session's stream
@@ -102,7 +110,7 @@ class Command(AsyncServerCommand):
                 item.session.queue_synced(item.token)
                 continue
 
-            file_path = item
+            file_path = item.path
             filename = os.path.basename(file_path)
 
             study_uid = "Unknown"
@@ -116,11 +124,16 @@ class Command(AsyncServerCommand):
                 # Routed on the StudyInstanceUID only, as the calling AE title of the C-STOREs
                 # may differ from the AE title ADIT queried (e.g. PACS clusters or a separate
                 # sending AE). SOPInstanceUIDs are globally unique, so workers dedupe on them.
-                # The series lets a worker that fetches one series skip the others.
+                # The series lets a worker that fetches one series skip the others, the calling
+                # AE title one whose server accepts only some.
                 sent_count = await self._file_transmit.publish_file(
                     study_uid,
                     file_path,
-                    {"SOPInstanceUID": instance_uid, "SeriesInstanceUID": series_uid},
+                    {
+                        "SOPInstanceUID": instance_uid,
+                        "SeriesInstanceUID": series_uid,
+                        "CallingAETitle": item.calling_ae_title,
+                    },
                     # Deleted once every worker it was queued to is done with it
                     release=functools.partial(self._delete_received_file, file_path),
                 )
