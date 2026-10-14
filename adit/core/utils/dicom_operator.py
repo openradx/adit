@@ -15,7 +15,7 @@ import logging
 import threading
 import time
 from collections.abc import Callable, Iterable, Iterator
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import Future, ThreadPoolExecutor
 from os import PathLike
 
 from aiofiles import os as async_os
@@ -613,6 +613,9 @@ class DicomOperator:
         # A list of errors that may occur while receiving the images
         receiving_errors: list[Exception] = []
 
+        # An event to signal that the receiver registered our subscription
+        subscribed_event = threading.Event()
+
         # An event queue to signal the consumer when the C-MOVE operation finished
         c_move_finished_event = threading.Event()
 
@@ -628,12 +631,16 @@ class DicomOperator:
                 query.StudyInstanceUID,
                 image_uids,
                 callback,
+                subscribed_event,
                 c_move_finished_event,
                 stop_consumer_event,
                 receiving_errors,
             )
 
             try:
+                # Images the PACS sends before the receiver knows about us would be discarded
+                self._wait_for_subscription(subscribed_event, consume_future)
+
                 self.dimse_connector.send_c_move(query, settings.RECEIVER_AE_TITLE)
 
                 # Signal consumer that C-MOVE operation is finished
@@ -657,11 +664,20 @@ class DicomOperator:
                 if receiving_errors:
                     raise receiving_errors[0]
 
+    def _wait_for_subscription(
+        self, subscribed_event: threading.Event, consume_future: Future[None]
+    ) -> None:
+        deadline = time.time() + settings.C_MOVE_SUBSCRIBE_TIMEOUT
+        while not subscribed_event.wait(timeout=0.1):
+            if consume_future.done() or time.time() > deadline:
+                raise RetriableDicomError("Could not subscribe to the DICOM receiver.")
+
     def _consume_from_receiver(
         self,
         study_uid: str,
         image_uids: list[str],
         callback: Callable[[Dataset], None],
+        subscribed_event: threading.Event,
         c_move_finished_event: threading.Event,
         stop_consumer_event: threading.Event,
         receiving_errors: list[Exception],
@@ -720,9 +736,10 @@ class DicomOperator:
 
                 return False
 
-            topic = f"{self.server.ae_title}\\{study_uid}"
             subscribe_task = asyncio.create_task(
-                file_transmit.subscribe(topic, handle_received_file)
+                file_transmit.subscribe(
+                    study_uid, handle_received_file, subscribed_handler=subscribed_event.set
+                )
             )
 
             while True:
@@ -732,12 +749,16 @@ class DicomOperator:
                     subscribe_task.cancel()
                     break
 
+                if subscribe_task.done():
+                    if err := subscribe_task.exception():
+                        error = RetriableDicomError("Connection to the DICOM receiver failed.")
+                        error.__cause__ = err
+                        receiving_errors.append(error)
+                    break
+
                 # Start checking the timeout only after the C-MOVE operation is finished
                 if not c_move_finished_event.is_set():
                     continue
-
-                if subscribe_task.done():
-                    break
 
                 time_since_last_image = time.time() - last_image_at
                 if time_since_last_image > settings.C_MOVE_DOWNLOAD_TIMEOUT:
