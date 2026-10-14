@@ -4,9 +4,11 @@ import logging
 import socket
 import struct
 import tempfile
+import threading
+import time
 from contextlib import suppress
 from pathlib import Path
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from aiofiles import os
@@ -876,3 +878,34 @@ async def test_queue_synced_to_a_closed_session_returns_false():
 
     assert session.queue_synced("1") is False
     assert session._frames.empty()
+
+
+@pytest.mark.asyncio
+async def test_closing_a_session_while_it_opens_a_file_leaves_it_closed(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    # Arrange: opening the file to send takes a while, as on a busy disk
+    opened: list = []
+    opening = threading.Event()
+    real_open = open
+
+    def slow_open(*args, **kwargs):
+        opening.set()
+        time.sleep(0.3)
+        opened.append(real_open(*args, **kwargs))
+        return opened[-1]
+
+    monkeypatch.setattr("builtins.open", slow_open)
+    writer = MagicMock()
+    writer.drain = AsyncMock()
+    session = FileTransmitSession("foobar", writer, write_timeout=WRITE_TIMEOUT)
+    session.queue_frame(b"header", _sample())
+    session.start()
+
+    # Act: the session closes while the file is being opened
+    await asyncio.to_thread(opening.wait, 5)
+    await session.close()
+
+    # Assert: the file the cancelled sender opened is closed again
+    await wait_until(lambda: bool(opened) and opened[0].closed)
+    assert len(opened) == 1

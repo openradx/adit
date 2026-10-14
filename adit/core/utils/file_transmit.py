@@ -6,8 +6,8 @@ import tempfile
 from collections.abc import Awaitable, Callable
 from contextlib import suppress
 from os import PathLike
+from typing import Any, BinaryIO
 
-import aiofiles
 from aiofiles import os
 
 BUFFER_SIZE = 64 * 1024  # 64kb
@@ -122,16 +122,38 @@ class FileTransmitSession:
             await self._drain()
             return
 
-        async with aiofiles.open(file_path, mode="rb") as file:
+        file = await _open_to_read(file_path)
+        try:
             self._writer.write(header)
             await self._drain()
-            while chunk := await file.read(BUFFER_SIZE):
+            while chunk := await asyncio.to_thread(file.read, BUFFER_SIZE):
                 self._writer.write(chunk)
                 await self._drain()
+        finally:
+            file.close()
 
     async def _drain(self) -> None:
         # A client that takes no data for this long is regarded as hung
         await asyncio.wait_for(self._writer.drain(), self._write_timeout)
+
+
+async def _open_to_read(file_path: PathLike | str) -> BinaryIO:
+    """Open a file to read in a thread, and close it if the caller is cancelled meanwhile.
+
+    The thread goes on after a cancellation (e.g. of the sender of a session that closes), so
+    otherwise the file it opened would be left to the garbage collector.
+    """
+    opening = asyncio.ensure_future(asyncio.to_thread(open, file_path, "rb"))
+    try:
+        return await asyncio.shield(opening)
+    except asyncio.CancelledError:
+        opening.add_done_callback(_close_opened_file)
+        raise
+
+
+def _close_opened_file(opening: asyncio.Future[Any]) -> None:
+    if not opening.cancelled() and opening.exception() is None:
+        opening.result().close()
 
 
 class FileTransmitServer:
