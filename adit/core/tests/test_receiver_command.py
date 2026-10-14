@@ -11,7 +11,7 @@ from aiofiles import os
 from django.conf import settings
 from pytest_django.fixtures import Settings
 
-from adit.core.management.commands.receiver import Command, SyncRequest
+from adit.core.management.commands.receiver import Command, ReceivedFile, SyncRequest
 from adit.core.utils.dicom_utils import read_dataset
 from adit.core.utils.file_transmit import FileTransmitClient, FileTransmitSession, Metadata
 from adit.core.utils.testing_helpers import stall_session, wait_until
@@ -64,7 +64,7 @@ async def test_send_files_routes_on_study_instance_uid(received_file: Path, sett
 
     send_task = asyncio.create_task(command._send_files())
     try:
-        command._queue.sync_q.put(str(received_file))
+        command._queue.sync_q.put(ReceivedFile(str(received_file), "PACS1"))
         await asyncio.wait_for(client_task, timeout=5)
         await wait_until(lambda: not received_file.exists())
     finally:
@@ -75,7 +75,11 @@ async def test_send_files_routes_on_study_instance_uid(received_file: Path, sett
 
     # The series lets a worker tell the images of its series from others of the study
     assert received == [
-        {"SOPInstanceUID": ds.SOPInstanceUID, "SeriesInstanceUID": ds.SeriesInstanceUID}
+        {
+            "SOPInstanceUID": ds.SOPInstanceUID,
+            "SeriesInstanceUID": ds.SeriesInstanceUID,
+            "CallingAETitle": "PACS1",
+        }
     ]
 
 
@@ -89,7 +93,7 @@ async def test_send_files_warns_when_no_worker_is_subscribed(
     send_task = asyncio.create_task(command._send_files())
     try:
         with caplog.at_level(logging.WARNING):
-            command._queue.sync_q.put(str(received_file))
+            command._queue.sync_q.put(ReceivedFile(str(received_file), "PACS1"))
             await wait_until(lambda: not received_file.exists())
     finally:
         send_task.cancel()
@@ -131,8 +135,8 @@ async def test_the_dispatcher_moves_on_while_a_worker_is_stalled(
 
     send_task = asyncio.create_task(command._send_files())
     try:
-        command._queue.sync_q.put(str(received_file))
-        command._queue.sync_q.put(str(other_file))
+        command._queue.sync_q.put(ReceivedFile(str(received_file), "PACS1"))
+        command._queue.sync_q.put(ReceivedFile(str(other_file), "PACS1"))
         # The file of a study nobody subscribed to is handled meanwhile
         await wait_until(lambda: not other_file.exists())
         assert received_file.exists()
@@ -166,8 +170,8 @@ async def test_send_files_deletes_a_file_it_could_not_publish(
 
     send_task = asyncio.create_task(command._send_files())
     try:
-        command._queue.sync_q.put(str(received_file))
-        command._queue.sync_q.put(str(second_file))
+        command._queue.sync_q.put(ReceivedFile(str(received_file), "PACS1"))
+        command._queue.sync_q.put(ReceivedFile(str(second_file), "PACS1"))
         await wait_until(lambda: not received_file.exists() and not second_file.exists())
     finally:
         send_task.cancel()
@@ -198,8 +202,8 @@ async def test_release_of_a_file_already_gone_is_silent(
     send_task = asyncio.create_task(command._send_files())
     try:
         with caplog.at_level(logging.WARNING):
-            command._queue.sync_q.put(str(received_file))
-            command._queue.sync_q.put(str(second_file))
+            command._queue.sync_q.put(ReceivedFile(str(received_file), "PACS1"))
+            command._queue.sync_q.put(ReceivedFile(str(second_file), "PACS1"))
             await wait_until(lambda: len(published) == 2)
     finally:
         send_task.cancel()
@@ -242,7 +246,7 @@ async def test_sync_is_answered_after_the_files_queued_before_it(
     await subscribed.wait()
 
     # The file is queued before the sync request, as a C-STORE before the final C-MOVE response
-    command._queue.sync_q.put(str(received_file))
+    command._queue.sync_q.put(ReceivedFile(str(received_file), "PACS1"))
     assert await client.request_sync("1")
     await wait_until(lambda: command._queue.async_q.qsize() == 2)
 
@@ -270,7 +274,7 @@ async def test_sync_request_of_a_closed_session_is_skipped(received_file: Path, 
     send_task = asyncio.create_task(command._send_files())
     try:
         command._queue.sync_q.put(SyncRequest(closed_session, "1"))
-        command._queue.sync_q.put(str(received_file))
+        command._queue.sync_q.put(ReceivedFile(str(received_file), "PACS1"))
         # The dispatcher went on to the file
         await wait_until(lambda: not received_file.exists())
     finally:

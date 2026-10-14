@@ -623,7 +623,22 @@ class DicomOperator:
         # The images the consumer handed over: SOPInstanceUID -> SeriesInstanceUID (if known)
         received: dict[str, str | None] = {}
 
+        # The AE titles of images skipped as the server doesn't accept them, logged once
+        rejected_calling_ae_titles: set[str | None] = set()
+
         def in_scope(metadata: Metadata) -> bool:
+            calling_ae_title = metadata.get("CallingAETitle")
+            if not self.server.accepts_calling_ae_title(calling_ae_title):
+                if calling_ae_title not in rejected_calling_ae_titles:
+                    rejected_calling_ae_titles.add(calling_ae_title)
+                    logger.warning(
+                        "Skipping images of study %s from AE title %s, which is not accepted "
+                        "for %s.",
+                        query.StudyInstanceUID,
+                        calling_ae_title,
+                        self.server.ae_title,
+                    )
+                return False
             # Besides the listed images, every image of the requested study or series belongs
             # to the fetch, as the IMAGE-level C-FIND of some PACS silently caps its results
             if metadata["SOPInstanceUID"] in image_uids:

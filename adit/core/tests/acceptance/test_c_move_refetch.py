@@ -8,6 +8,7 @@ import pytest
 from pytest_django.fixtures import Settings
 from pytest_mock import MockerFixture
 
+from adit.core.errors import RetriableDicomError
 from adit.core.utils.dicom_dataset import QueryDataset
 from adit.core.utils.dicom_operator import DicomOperator
 from adit.core.utils.file_transmit import FileReceivedHandler, FileTransmitClient
@@ -226,3 +227,33 @@ def test_c_move_without_image_level_find_refetches_the_short_series(
         for call in send_c_move.call_args_list
     ]
     assert moves == [("STUDY", None), ("SERIES", series_uid)]
+
+
+@pytest.mark.acceptance
+@pytest.mark.order("last")
+@pytest.mark.django_db
+@pytest.mark.parametrize("accepted", [True, False])
+def test_c_move_takes_images_only_from_accepted_calling_ae_titles(
+    settings: Settings, accepted: bool
+):
+    # Arrange: Orthanc sends its C-STOREs from its own AE title
+    operator = _setup_operator(settings, download_timeout=3)
+    settings.C_MOVE_REFETCH_ATTEMPTS = 0
+    series_uid, image_uids = _largest_series(operator)
+    operator.server.accepted_calling_ae_titles = (
+        f"OTHER, {operator.server.ae_title}" if accepted else "OTHER"
+    )
+    received: list[str] = []
+
+    # Act / Assert
+    if accepted:
+        operator.fetch_series(
+            PATIENT_ID, STUDY_UID, series_uid, lambda ds: received.append(ds.SOPInstanceUID)
+        )
+        assert sorted(received) == sorted(image_uids)
+    else:
+        with pytest.raises(RetriableDicomError, match="Failed to fetch all images"):
+            operator.fetch_series(
+                PATIENT_ID, STUDY_UID, series_uid, lambda ds: received.append(ds.SOPInstanceUID)
+            )
+        assert received == []

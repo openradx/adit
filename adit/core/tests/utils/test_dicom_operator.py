@@ -875,6 +875,61 @@ def test_c_move_series_fetch_ignores_other_series(settings: Settings, mocker: Mo
     assert other_series_advanced == [False]
 
 
+@pytest.mark.django_db
+@pytest.mark.parametrize("calling_ae", ["PACS_SEND", "FORGER"])
+def test_c_move_takes_images_only_from_accepted_calling_ae_titles(
+    settings: Settings, mocker: MockerFixture, caplog: pytest.LogCaptureFixture, calling_ae: str
+):
+    # Arrange: the server accepts images only from the AE title its PACS sends them with
+    dicom_operator, association_mock, file_path, ds = _setup_c_move_operator(
+        settings, mocker, 17944
+    )
+    settings.C_MOVE_REFETCH_ATTEMPTS = 0
+    dicom_operator.server.accepted_calling_ae_titles = "PACS_SEND, PACS_QR"
+    association_mock.send_c_find.return_value = DicomTestHelper.create_successful_c_find_responses(
+        [{"SOPInstanceUID": ds.SOPInstanceUID}]
+    )
+    transmit_server, loop = _start_transmit_server(17944)
+    send_c_move_spy = mocker.spy(dicom_operator.dimse_connector, "_send_c_move")
+    advanced: list[bool] = []
+
+    def send_c_move(*args, **kwargs):
+        last_activity = send_c_move_spy.call_args.args[3]
+        before = last_activity()
+        sleep(0.01)
+        metadata = {"SOPInstanceUID": ds.SOPInstanceUID, "CallingAETitle": calling_ae}
+        publish = transmit_server.publish_file(ds.StudyInstanceUID, file_path, metadata)
+        asyncio.run_coroutine_threadsafe(publish, loop).result(timeout=5)
+        sleep(0.5)
+        advanced.append(last_activity() > before)
+        return DicomTestHelper.create_successful_c_move_response()
+
+    association_mock.send_c_move.side_effect = send_c_move
+    received: list[Dataset] = []
+
+    # Act
+    try:
+        with caplog.at_level(logging.WARNING):
+            if calling_ae == "PACS_SEND":
+                dicom_operator.fetch_series(
+                    ds.PatientID, ds.StudyInstanceUID, ds.SeriesInstanceUID, received.append
+                )
+            else:
+                with pytest.raises(RetriableDicomError, match="Failed to fetch all images"):
+                    dicom_operator.fetch_series(
+                        ds.PatientID, ds.StudyInstanceUID, ds.SeriesInstanceUID, received.append
+                    )
+    finally:
+        asyncio.run_coroutine_threadsafe(transmit_server.stop(), loop).result(timeout=5)
+
+    # Assert: an image from another AE title is neither taken nor counted as activity
+    accepted = calling_ae == "PACS_SEND"
+    assert received == ([ds] if accepted else [])
+    assert advanced == [accepted]
+    skipped = [r.getMessage() for r in caplog.records if "not accepted" in r.getMessage()]
+    assert len(skipped) == (0 if accepted else 1)
+
+
 def _c_move_response(completed: int):
     """The final response of a C-MOVE that reports how many images it sent."""
     status = Dataset()
