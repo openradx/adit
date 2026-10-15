@@ -658,7 +658,7 @@ def _setup_refetch(
         if "late" in deliver and image_uid == IMAGE_B:
             publish(IMAGE_C)
             # Let the consumer hand it over
-            missing_images = refetch_missing_images.call_args.args[1]
+            missing_images = refetch_missing_images.call_args.args[0].missing_images
             deadline = time.monotonic() + 5
             while IMAGE_C in missing_images:
                 assert time.monotonic() < deadline
