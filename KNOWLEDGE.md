@@ -107,7 +107,7 @@ and <https://forums.docker.com/t/docker-swarm-mode-not-picking-up-proxy-configur
 ### Docker swarm commands
 
 - docker swarm init
-- docker swarm join --token <token> <manager-ip>:2377 # Token from `docker swarm join-token worker` on a manager
+- docker swarm join --token TOKEN MANAGER_IP:2377 # Token from `docker swarm join-token worker` on a manager
 - docker node ls
 - uv run cli stack-deploy # Deploys docker-compose.base.yml + docker-compose.prod.yml, needs ENVIRONMENT=production in .env
 - docker stack ls
