@@ -129,6 +129,9 @@ filterwarnings = [
     'ignore:.*use of fork\(\) may lead to deadlocks.*:DeprecationWarning',
     'ignore:.*Use timezone-aware objects to represent datetimes in UTC.*:DeprecationWarning',
     'ignore:.*get_frame_offsets is deprecated and will be removed in v4.0.*:DeprecationWarning',
+    # txaio, which Daphne uses for WebSockets, keeps this call until Python 3.16 removes it
+    # (crossbario/txaio#230); the module part limits the exception to txaio
+    "ignore:'asyncio.iscoroutinefunction' is deprecated:DeprecationWarning:txaio",
 ]
 timeout = "60"
 
