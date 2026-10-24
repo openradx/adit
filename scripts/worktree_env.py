@@ -15,17 +15,28 @@ points at one of those ports moves with it, and the names from names() become
 unique to the worktree. The slot is recorded at the top of the worktree's .env;
 later runs keep the ports already set there and only fill in missing ones, so a
 port changed by hand or moved off a busy port stays, until --slot rewrites them
-all. In the main checkout the script does nothing.
+all. In the main checkout the script changes nothing.
+
+Every checkout, the main one included, also records its ports in a directory
+shared by the projects on this machine that use this script (REGISTRY). A
+worktree takes no slot whose ports another repository's checkout has recorded,
+whether or not that stack is running. A port of this checkout that another
+repository's checkout also records is only warned about, with a free one to set
+in .env instead.
 
     uv run --script scripts/worktree_env.py [--slot N]
 """
 
 import argparse
+import hashlib
+import json
+import os
 import re
 import shutil
 import socket
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 ENV_EXAMPLE = "example.env"
@@ -49,6 +60,7 @@ def names(worktree: str, slot: int) -> dict[str, str]:
 
 PORT_STEP = 100
 MAX_SLOT = 50
+REGISTRY = Path(os.environ.get("XDG_STATE_HOME") or Path.home() / ".local" / "state") / "dev-ports"
 
 MARKER = re.compile(r"^# worktree slot: (\d+)\b")
 ASSIGNMENT = re.compile(r"^\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=(.*?)\r?$")
@@ -119,6 +131,49 @@ def shifted(base: dict[str, int], slot: int) -> dict[str, int]:
     return {var: port + slot * PORT_STEP for var, port in base.items()}
 
 
+def claims(repository: Path) -> list[tuple[str, str, int]]:
+    """(checkout, variable, port) for the ports of other repositories' checkouts."""
+    found = []
+    for file in sorted(REGISTRY.glob("*.json")):
+        try:
+            entry = json.loads(file.read_text())
+        except (OSError, ValueError):
+            continue  # pruned by a concurrent run, or not JSON
+        if not Path(entry["checkout"]).is_dir():
+            file.unlink(missing_ok=True)  # the checkout was deleted
+        elif entry["repository"] != str(repository):
+            found += [(entry["checkout"], var, port) for var, port in entry["ports"].items()]
+    return found
+
+
+def record(root: Path, repository: Path, ports: dict[str, int]) -> None:
+    entry = {"repository": str(repository), "checkout": str(root), "ports": ports}
+    target = REGISTRY / f"{hashlib.sha256(str(root).encode()).hexdigest()[:16]}.json"
+    try:
+        REGISTRY.mkdir(parents=True, exist_ok=True)
+        # Replaced, not rewritten, so a concurrent claims() never reads half a file.
+        with tempfile.NamedTemporaryFile("w", dir=REGISTRY, suffix=".tmp", delete=False) as tmp:
+            json.dump(entry, tmp, indent=2)
+        os.replace(tmp.name, target)
+    except OSError as error:
+        print(f"warning: could not record the ports in {REGISTRY}: {error}")
+
+
+def warn_about_claims(ports: dict[str, int], claimed: list[tuple[str, str, int]]) -> bool:
+    used = set(ports.values()) | {port for _, _, port in claimed}
+    warned = False
+    for var, port in ports.items():
+        if owners := [f"{checkout} ({other})" for checkout, other, p in claimed if p == port]:
+            free = next(p for p in range(port + 1, 65536) if p not in used and not in_use(p))
+            used.add(free)
+            warned = True
+            print(
+                f"warning: {var}={port} is also used by {', '.join(owners)};"
+                f" set another port in .env, e.g. {var}={free}"
+            )
+    return warned
+
+
 def clashes(base: dict[str, int], slot: int, taken: set[int]) -> set[int]:
     """Ports of `slot` that the main checkout or a taken slot also publishes.
 
@@ -129,10 +184,19 @@ def clashes(base: dict[str, int], slot: int, taken: set[int]) -> set[int]:
     return set(shifted(base, slot).values()) & others
 
 
-def choose_slot(base: dict[str, int], taken: set[int]) -> int:
-    for slot in range(1, MAX_SLOT + 1):
-        if slot in taken or clashes(base, slot, taken):
-            continue
+def open_slots(base: dict[str, int], taken: set[int], claimed: set[int]) -> list[int]:
+    """Slots none of whose ports another checkout, of any repository, uses."""
+    return [
+        slot
+        for slot in range(1, MAX_SLOT + 1)
+        if slot not in taken
+        and not clashes(base, slot, taken)
+        and not set(shifted(base, slot).values()) & claimed
+    ]
+
+
+def choose_slot(base: dict[str, int], taken: set[int], claimed: set[int]) -> int:
+    for slot in open_slots(base, taken, claimed):
         busy = [port for port in shifted(base, slot).values() if in_use(port)]
         if not busy:
             return slot
@@ -203,20 +267,22 @@ def main() -> None:
 
     root = Path(git("rev-parse", "--show-toplevel", cwd=Path.cwd())).resolve()
     main_root, *linked = worktree_roots(root)
-    if root == main_root:
-        print("Main checkout (slot 0): nothing to change.")
-        return
-
     env_file = root / ".env"
     main_env_file = main_root / ".env"
-    if not env_file.is_file():
-        source = main_env_file if main_env_file.is_file() else root / ENV_EXAMPLE
-        shutil.copyfile(source, env_file)
-        print(f"Created .env from {source}")
-    # Without a main .env, the worktree's .env came from the example.
+    # Without a main .env, a worktree's .env comes from the example.
     base_file = main_env_file if main_env_file.is_file() else root / ENV_EXAMPLE
     main_env = parse_env(base_file.read_text())
     base = {var: port_value(main_env, var, default) for var, default in PORTS.items()}
+    claimed = claims(main_root)
+    claimed_ports = {port for _, _, port in claimed}
+    if root == main_root:
+        record(root, main_root, base)
+        warn_about_claims(base, claimed)
+        return
+
+    if not env_file.is_file():
+        shutil.copyfile(base_file, env_file)
+        print(f"Created .env from {base_file}")
 
     kept: dict[str, str] = {}
     taken = {
@@ -231,12 +297,14 @@ def main() -> None:
             sys.exit(f"error: slot {args.slot} is taken by {taken[args.slot]}")
         if clash := clashes(base, args.slot, set(taken)):
             sys.exit(f"error: slot {args.slot} would reuse ports {sorted(clash)}")
+        if recorded := sorted(set(shifted(base, args.slot).values()) & claimed_ports):
+            sys.exit(f"error: slot {args.slot} would reuse ports {recorded} of another repository")
         slot = args.slot
     elif (own := recorded_slot(env_file)) is not None and own not in taken:
         slot = own
         kept = parse_env(env_file.read_text())
     else:
-        slot = choose_slot(base, set(taken))
+        slot = choose_slot(base, set(taken), claimed_ports)
 
     ports = {var: port_value(kept, var, port) for var, port in shifted(base, slot).items()}
     worktree = re.sub(r"[^a-z0-9_-]+", "-", root.name.lower()).strip("-_") or "worktree"
@@ -244,6 +312,9 @@ def main() -> None:
     # The slot keeps the names apart where worktree directory names coincide.
     updates |= names(worktree, slot)
     updates |= moved_urls(main_env, base, ports)
+    record(root, main_root, ports)
+    if warn_about_claims(ports, claimed) and (free := open_slots(base, set(taken), claimed_ports)):
+        print(f"  or move this worktree to a slot whose ports are free: --slot {free[0]}")
 
     text = env_file.read_text()
     rendered = render(text, slot, updates)

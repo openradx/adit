@@ -192,12 +192,14 @@ quoted: the file is passed to the containers as is, and `docker stack deploy` ke
 
 ## Git Worktrees
 
-Claude Code creates worktrees under `.claude/worktrees/<name>` (`claude --worktree`, background agents, subagents with `isolation: worktree`) and copies the gitignored files listed in `.worktreeinclude` into them: `.env`, `docker-compose.override.yml` and `.claude/settings.local.json`. With that `.env` unchanged, the CLI would run the worktree's stack as the main checkout's compose project `adit_dev`, recreating its containers from the worktree's code on its database, on the same host ports. So in a worktree, every `uv run cli` command first runs `scripts/worktree_env.py` (a no-op in the main checkout). It gives the worktree a slot N ≥ 1 (the main checkout is slot 0), recorded on the first line of its `.env`, and writes into `.env`:
+Claude Code creates worktrees under `.claude/worktrees/<name>` (`claude --worktree`, background agents, subagents with `isolation: worktree`) and copies the gitignored files listed in `.worktreeinclude` into them: `.env`, `docker-compose.override.yml` and `.claude/settings.local.json`. With that `.env` unchanged, the CLI would run the worktree's stack as the main checkout's compose project `adit_dev`, recreating its containers from the worktree's code on its database, on the same host ports. So every `uv run cli` command first runs `scripts/worktree_env.py`. In a worktree it gives the worktree a slot N ≥ 1 (the main checkout is slot 0), recorded on the first line of its `.env`, and writes into `.env`:
 
 - every dev host port as the main checkout's value + N × 100 (slot 1: web 8100, Postgres 5532, debugger 5778, receiver 11222, Orthancs 7601 and 7602), and any localhost URL in `.env` that points at one of them;
 - `STACK_NAME` (`adit_wt<N>_<name>`): a compose project of its own, so its own containers and volumes and a fresh database, and session and CSRF cookie names that don't overwrite the main checkout's login.
 
 Later runs keep the ports already in `.env`, such as one you changed by hand, and only fill in missing ones; `uv run --script scripts/worktree_env.py --slot N` picks the slot by hand and rewrites them all. A slot is skipped while one of its ports is taken. Attach the debugger to the worktree's `REMOTE_DEBUGGING_PORT`, not the 5678 of `.vscode/launch.json`. Before deleting a worktree, free its volumes with `uv run cli compose-down -- -v`.
+
+Other projects on the machine publish ports too, often the same defaults (8000, 5432, 5678). So every checkout, the main one included, records the host ports it uses in `~/.local/state/dev-ports/` (`$XDG_STATE_HOME/dev-ports/` when set), a directory shared with the other projects that use this script. A worktree takes no slot whose ports another repository's checkout has recorded, whether or not that stack is running, and `--slot N` refuses one. The main checkout's ports are never moved: when another repository's checkout records one of them, every command warns and suggests a free port to set in `.env`. A checkout's record is updated by the next command run there, and dropped once the checkout is deleted.
 
 ## Code Standards
 

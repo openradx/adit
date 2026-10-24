@@ -19,11 +19,12 @@ app = typer.Typer(
 
 @app.callback()
 def worktree_guard():
-    # In a git worktree (whose .git is a file) every command first gets the worktree its
-    # own ports and stack name: with the main checkout's .env, compose-up would take
-    # over the main checkout's stack and database.
+    # Every command first runs the worktree script. In a git worktree it gives the worktree
+    # its own ports and stack name: with the main checkout's .env, compose-up would take
+    # over the main checkout's stack and database. In every checkout it records the ports
+    # for the other projects on this machine to avoid.
     root = Path(__file__).parent
-    if (root / ".git").is_file():
+    if (root / ".git").exists():
         script = root / "scripts" / "worktree_env.py"
         if subprocess.run([sys.executable, str(script)], cwd=root).returncode:
             raise typer.Exit(1)
