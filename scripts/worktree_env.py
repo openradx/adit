@@ -37,7 +37,10 @@ import socket
 import subprocess
 import sys
 import tempfile
+from collections.abc import Iterator
+from contextlib import contextmanager
 from pathlib import Path
+from typing import TextIO
 
 ENV_EXAMPLE = "example.env"
 
@@ -68,7 +71,7 @@ ASSIGNMENT = re.compile(r"^\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=(.*?)\r?
 LOCAL_URL_PORT = re.compile(r"(?<![\w.-])((?:[\w-]+\.)*localhost|127\.0\.0\.1):(\d+)\b")
 LOCAL_URL_NO_PORT = re.compile(r"\bhttp://(?:(?:[\w-]+\.)*localhost|127\.0\.0\.1)(?![\w.:-])")
 # The password of a URL, hidden in the printed summary.
-URL_PASSWORD = re.compile(r"(://[^:/@\s]+:)[^@\s]+@")
+URL_PASSWORD = re.compile(r"(://[^:/?#@\s]*:)[^/?#@\s]+@")
 
 
 def git(*args: str, cwd: Path) -> str:
@@ -131,6 +134,41 @@ def shifted(base: dict[str, int], slot: int) -> dict[str, int]:
     return {var: port + slot * PORT_STEP for var, port in base.items()}
 
 
+@contextmanager
+def registry_lock() -> Iterator[None]:
+    """Hold the registry while this run reads the records and writes its own.
+
+    Two checkouts set up at once, as parallel agents do, would otherwise both
+    see the same slot as free.
+    """
+    lock: TextIO | None
+    try:
+        REGISTRY.mkdir(parents=True, exist_ok=True)
+        lock = (REGISTRY / ".lock").open("w")
+    except OSError:
+        lock = None  # record() reports the unwritable registry
+    if lock is None:
+        yield
+        return
+    with lock:
+        if sys.platform != "win32":
+            import fcntl
+
+            fcntl.flock(lock, fcntl.LOCK_EX)
+        yield
+
+
+def replace_file(path: Path, text: str) -> None:
+    """Write `text` to `path` through a temporary file, so no reader sees half of it."""
+    with tempfile.NamedTemporaryFile(
+        "w", dir=path.parent, prefix=f".{path.name}.", suffix=".tmp", delete=False
+    ) as tmp:
+        tmp.write(text)
+    if path.exists():
+        shutil.copymode(path, tmp.name)
+    os.replace(tmp.name, path)
+
+
 def claims(root: Path) -> list[tuple[str, str, int]]:
     """(checkout, variable, port) for the ports every other checkout records."""
     found = []
@@ -151,10 +189,7 @@ def record(root: Path, ports: dict[str, int]) -> None:
     target = REGISTRY / f"{hashlib.sha256(str(root).encode()).hexdigest()[:16]}.json"
     try:
         REGISTRY.mkdir(parents=True, exist_ok=True)
-        # Replaced, not rewritten, so a concurrent claims() never reads half a file.
-        with tempfile.NamedTemporaryFile("w", dir=REGISTRY, suffix=".tmp", delete=False) as tmp:
-            json.dump(entry, tmp, indent=2)
-        os.replace(tmp.name, target)
+        replace_file(target, json.dumps(entry, indent=2))
     except OSError as error:
         print(f"warning: could not record the ports in {REGISTRY}: {error}")
 
@@ -264,7 +299,11 @@ def main() -> None:
     )
     parser.add_argument("--slot", type=int, help="use this slot instead of the next free one")
     args = parser.parse_args()
+    with registry_lock():
+        configure(args.slot)
 
+
+def configure(requested: int | None) -> None:
     root = Path(git("rev-parse", "--show-toplevel", cwd=Path.cwd())).resolve()
     main_root, *linked = worktree_roots(root)
     env_file = root / ".env"
@@ -290,16 +329,16 @@ def main() -> None:
         for other in linked
         if other != root and (slot := recorded_slot(other / ".env")) is not None
     }
-    if args.slot is not None:
-        if not 1 <= args.slot <= MAX_SLOT:
+    if requested is not None:
+        if not 1 <= requested <= MAX_SLOT:
             sys.exit(f"error: --slot must be between 1 and {MAX_SLOT}")
-        if args.slot in taken:
-            sys.exit(f"error: slot {args.slot} is taken by {taken[args.slot]}")
-        if clash := clashes(base, args.slot, set(taken)):
-            sys.exit(f"error: slot {args.slot} would reuse ports {sorted(clash)}")
-        if recorded := sorted(set(shifted(base, args.slot).values()) & claimed_ports):
-            sys.exit(f"error: slot {args.slot} would reuse ports {recorded} of another checkout")
-        slot = args.slot
+        if requested in taken:
+            sys.exit(f"error: slot {requested} is taken by {taken[requested]}")
+        if clash := clashes(base, requested, set(taken)):
+            sys.exit(f"error: slot {requested} would reuse ports {sorted(clash)}")
+        if recorded := sorted(set(shifted(base, requested).values()) & claimed_ports):
+            sys.exit(f"error: slot {requested} would reuse ports {recorded} of another checkout")
+        slot = requested
     elif (own := recorded_slot(env_file)) is not None and own not in taken:
         slot = own
         kept = parse_env(env_file.read_text())
@@ -322,7 +361,7 @@ def main() -> None:
     if rendered == text:
         print(f"Worktree slot {slot}: .env is up to date.")
         return
-    env_file.write_text(rendered)
+    replace_file(env_file, rendered)
     print(f"Worktree slot {slot}; .env now sets:")
     for var, value in updates.items():
         print(f"  {var}={URL_PASSWORD.sub(r'\1***@', value)}")
