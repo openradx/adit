@@ -15,9 +15,11 @@
       "allowedVersions": "<=17"
     },
     {
-      "matchManagers": ["dockerfile"],
-      "matchPackageNames": ["python"],
-      "allowedVersions": "<=3.13"
+      "description": "One Python version everywhere: the Docker image, the dev container and .python-version. Raise the ceiling once every dependency supports the next version.",
+      "matchManagers": ["dockerfile", "pyenv"],
+      "matchPackageNames": ["python", "mcr.microsoft.com/devcontainers/python"],
+      "allowedVersions": "<=3.14",
+      "groupName": "Python"
     },
     {
       "matchManagers": ["pep621"],

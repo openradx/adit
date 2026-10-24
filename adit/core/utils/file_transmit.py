@@ -1,4 +1,5 @@
 import asyncio
+import inspect
 import json
 import logging
 import struct
@@ -116,7 +117,7 @@ class FileTransmitServer:
 
         try:
             if self._subscribe_handler:
-                if asyncio.iscoroutinefunction(self._subscribe_handler):
+                if inspect.iscoroutinefunction(self._subscribe_handler):
                     await self._subscribe_handler(topic)
                 else:
                     self._subscribe_handler(topic)
@@ -136,7 +137,7 @@ class FileTransmitServer:
                 await writer.wait_closed()
 
             if self._unsubscribe_handler:
-                if asyncio.iscoroutinefunction(self._unsubscribe_handler):
+                if inspect.iscoroutinefunction(self._unsubscribe_handler):
                     await self._unsubscribe_handler(topic)
                 else:
                     self._unsubscribe_handler(topic)
@@ -195,7 +196,7 @@ class FileTransmitClient:
                 # returning True which stops reading further data from the server.
                 finished = (
                     await file_received_handler(f.name, metadata)  # type: ignore
-                    if asyncio.iscoroutinefunction(file_received_handler)
+                    if inspect.iscoroutinefunction(file_received_handler)
                     else file_received_handler(f.name, metadata)  # type: ignore
                 )
                 if finished:
