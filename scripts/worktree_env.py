@@ -42,9 +42,9 @@ PORTS = {
 }
 
 
-def names(worktree: str) -> dict[str, str]:
+def names(worktree: str, slot: int) -> dict[str, str]:
     # The CLI's compose project, and part of the session and CSRF cookie names.
-    return {"STACK_NAME": f"adit_wt_{worktree}"}
+    return {"STACK_NAME": f"adit_wt{slot}_{worktree}"}
 
 
 PORT_STEP = 100
@@ -55,6 +55,8 @@ ASSIGNMENT = re.compile(r"^\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=(.*?)\r?
 # A local host with its port, and an http:// URL to one that leaves port 80 implicit.
 LOCAL_URL_PORT = re.compile(r"(?<![\w.-])((?:[\w-]+\.)*localhost|127\.0\.0\.1):(\d+)\b")
 LOCAL_URL_NO_PORT = re.compile(r"\bhttp://(?:(?:[\w-]+\.)*localhost|127\.0\.0\.1)(?![\w.:-])")
+# The password of a URL, hidden in the printed summary.
+URL_PASSWORD = re.compile(r"(://[^:/@\s]+:)[^@\s]+@")
 
 
 def git(*args: str, cwd: Path) -> str:
@@ -83,8 +85,9 @@ def parse_env(text: str) -> dict[str, str]:
 
 
 def unquote(value: str) -> str:
-    if value[:1] in "\"'" and value[-1:] == value[:1]:
-        return value[1:-1]
+    """The value as dotenv reads it: inside its quotes, or before an inline comment."""
+    if value and value[0] in "\"'" and (end := value.find(value[0], 1)) != -1:
+        return value[1:end]
     return value.split(" #", 1)[0].strip()
 
 
@@ -236,9 +239,10 @@ def main() -> None:
         slot = choose_slot(base, set(taken))
 
     ports = {var: port_value(kept, var, port) for var, port in shifted(base, slot).items()}
-    worktree = re.sub(r"[^a-z0-9_-]+", "-", root.name.lower()).strip("-_") or f"slot{slot}"
+    worktree = re.sub(r"[^a-z0-9_-]+", "-", root.name.lower()).strip("-_") or "worktree"
     updates = {var: str(port) for var, port in ports.items()}
-    updates |= names(worktree)
+    # The slot keeps the names apart where worktree directory names coincide.
+    updates |= names(worktree, slot)
     updates |= moved_urls(main_env, base, ports)
 
     text = env_file.read_text()
@@ -249,7 +253,7 @@ def main() -> None:
     env_file.write_text(rendered)
     print(f"Worktree slot {slot}; .env now sets:")
     for var, value in updates.items():
-        print(f"  {var}={value}")
+        print(f"  {var}={URL_PASSWORD.sub(r'\1***@', value)}")
 
 
 if __name__ == "__main__":

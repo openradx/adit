@@ -25,7 +25,7 @@ def worktree_guard():
     root = Path(__file__).parent
     if (root / ".git").is_file():
         script = root / "scripts" / "worktree_env.py"
-        if subprocess.run([sys.executable, str(script)]).returncode:
+        if subprocess.run([sys.executable, str(script)], cwd=root).returncode:
             raise typer.Exit(1)
 
 

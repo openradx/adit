@@ -58,7 +58,7 @@ ADIT runs as multiple Docker containers that work together. In development, you 
 
 ### Container Types
 
-The Compose project is named `adit_dev` in development and `adit_prod` in production, so the containers are called `adit_dev-<service>-1` (`adit_prod-<service>-1`). All app services share one image and are configured by `docker-compose.base.yml` plus `docker-compose.dev.yml` or `docker-compose.prod.yml`.
+The Compose project is named `adit_dev` in development and `adit_prod` in production, so the containers are called `adit_dev-<service>-1` (`adit_prod-<service>-1`). A linked git worktree runs as its own project, `adit_wt<N>_<name>`, on shifted host ports (see "Git Worktrees" in `AGENTS.md`). All app services share one image and are configured by `docker-compose.base.yml` plus `docker-compose.dev.yml` or `docker-compose.prod.yml`.
 
 **Web Container (`adit_dev-web-1`)**: Runs Django application serving web UI and REST API. Ports: 8000 (dev), 80/443 (prod with SSL). Handles authentication, serves static files, enqueues tasks, and manages database connections. In development its startup command also runs migrations, creates the superuser and example data, and populates the Orthanc servers.
 
