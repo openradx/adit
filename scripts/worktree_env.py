@@ -178,10 +178,14 @@ def replace_file(path: Path, text: str) -> None:
     with tempfile.NamedTemporaryFile(
         "w", dir=path.parent, prefix=f".{path.name}.", suffix=".tmp", delete=False
     ) as tmp:
-        tmp.write(text)
-    if path.exists():
-        shutil.copymode(path, tmp.name)
-    os.replace(tmp.name, path)
+        tmp_path = Path(tmp.name)
+    try:
+        tmp_path.write_text(text)
+        if path.exists():
+            shutil.copymode(path, tmp_path)
+        os.replace(tmp_path, path)
+    finally:
+        tmp_path.unlink(missing_ok=True)  # a no-op once the replace has moved it
 
 
 def claims(root: Path) -> list[tuple[str, str, int]]:
@@ -190,15 +194,17 @@ def claims(root: Path) -> list[tuple[str, str, int]]:
     for file in sorted(REGISTRY.glob("*.json")):
         try:
             entry = json.loads(file.read_text())
-        except (OSError, ValueError):
-            continue  # pruned by a concurrent run, or not JSON
-        if not Path(entry["checkout"]).is_dir():
+            checkout = Path(entry["checkout"])
+            ports = {str(var): int(port) for var, port in entry["ports"].items()}
+        except (OSError, ValueError, KeyError, TypeError, AttributeError):
+            continue  # pruned by a concurrent run, or not a record of this script
+        if not checkout.is_dir():
             try:
                 file.unlink(missing_ok=True)  # the checkout was deleted
             except OSError:
                 pass  # a read-only registry keeps the record; it is ignored above
-        elif entry["checkout"] != str(root):
-            found += [(entry["checkout"], var, port) for var, port in entry["ports"].items()]
+        elif checkout != root:
+            found += [(str(checkout), var, port) for var, port in ports.items()]
     return found
 
 
