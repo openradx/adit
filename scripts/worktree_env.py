@@ -121,7 +121,7 @@ def marker(env_file: Path) -> tuple[int, Path] | None:
     """The slot recorded in `env_file`, and the checkout it was recorded for."""
     if not env_file.is_file():
         return None
-    for line in env_file.read_text().splitlines():
+    for line in env_file.read_text(encoding="utf-8").splitlines():
         if MARKER_LINE.match(line):
             match = MARKER.match(line)
             return (int(match[1]), Path(match[2])) if match else (0, Path())
@@ -180,7 +180,7 @@ def replace_file(path: Path, text: str) -> None:
     ) as tmp:
         tmp_path = Path(tmp.name)
     try:
-        tmp_path.write_text(text)
+        tmp_path.write_text(text, encoding="utf-8")
         if path.exists():
             shutil.copymode(path, tmp_path)
         os.replace(tmp_path, path)
@@ -193,7 +193,7 @@ def claims(root: Path) -> list[tuple[str, str, int]]:
     found = []
     for file in sorted(REGISTRY.glob("*.json")):
         try:
-            entry = json.loads(file.read_text())
+            entry = json.loads(file.read_text(encoding="utf-8"))
             checkout = Path(entry["checkout"])
             ports = {str(var): int(port) for var, port in entry["ports"].items()}
         except (OSError, ValueError, KeyError, TypeError, AttributeError):
@@ -359,7 +359,7 @@ def configure(requested: int | None) -> None:
     main_env_file = main_root / ".env"
     # Without a main .env, a worktree's .env comes from the example.
     base_file = main_env_file if main_env_file.is_file() else root / ENV_EXAMPLE
-    main_env = parse_env(base_file.read_text())
+    main_env = parse_env(base_file.read_text(encoding="utf-8"))
     base = {var: port_value(main_env, var, default) for var, default in PORTS.items()}
     claimed = claims(root)
     claimed_ports = {port for _, _, port in claimed}
@@ -372,7 +372,7 @@ def configure(requested: int | None) -> None:
         shutil.copy2(base_file, env_file)
         print(f"Created .env from {base_file}")
 
-    current = parse_env(env_file.read_text())
+    current = parse_env(env_file.read_text(encoding="utf-8"))
     copied = marker(env_file) is not None and own_slot(root) is None
     # What this worktree sets apart from the main checkout is its own.
     kept = {var: value for var, value in current.items() if value != main_env.get(var)}
@@ -424,7 +424,7 @@ def configure(requested: int | None) -> None:
         action = "reset" if free[0] == slot else "move"
         print(f"  or {action} this worktree's ports to free ones: --slot {free[0]}")
 
-    text = env_file.read_text()
+    text = env_file.read_text(encoding="utf-8")
     rendered = render(text, slot, root, updates)
     if rendered == text:
         print(f"Worktree slot {slot}: .env is up to date.")
