@@ -18,13 +18,14 @@ app = typer.Typer(
 
 
 @app.callback()
-def worktree_guard():
+def worktree_guard(ctx: typer.Context):
     # Every command first runs the worktree script. In a git worktree it gives the worktree
     # its own ports and stack name: with the main checkout's .env, compose-up would take
     # over the main checkout's stack and database. In every checkout it records the ports
-    # for the other projects on this machine to avoid.
+    # for the other projects on this machine to avoid. init-workspace writes .env from its
+    # options first, and the next command adopts what it set.
     root = Path(__file__).parent
-    if (root / ".git").exists():
+    if ctx.invoked_subcommand != "init-workspace" and (root / ".git").exists():
         script = root / "scripts" / "worktree_env.py"
         if subprocess.run([sys.executable, str(script)], cwd=root).returncode:
             raise typer.Exit(1)

@@ -159,3 +159,4 @@ docker-compose.override.yml
 
 # Claude Code worktrees
 .claude/worktrees/
+.claude/settings.local.json

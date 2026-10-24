@@ -12,10 +12,12 @@ its containers and volumes.
 Each linked worktree gets a slot N >= 1; the main checkout is slot 0. Every port
 in PORTS becomes the main checkout's value + N * PORT_STEP, a URL in .env that
 points at one of those ports moves with it, and the names from names() become
-unique to the worktree. The slot is recorded at the top of the worktree's .env;
-later runs keep the ports already set there and only fill in missing ones, so a
-port changed by hand or moved off a busy port stays, until --slot rewrites them
-all. In the main checkout the script changes nothing.
+unique to the worktree. The slot is recorded at the top of the worktree's .env,
+with the worktree's path, so a copy of that .env elsewhere is not taken for the
+slot's owner. Later runs keep what the worktree's .env sets apart from the main
+checkout's values, ports and names alike, and only fill in the rest; a worktree
+set up by hand before keeps its own the same way. --slot rewrites them all. In
+the main checkout the script changes nothing.
 
 Every checkout, the main one included, also records its ports in a directory
 shared by the projects on this machine that use this script (REGISTRY). A
@@ -65,7 +67,8 @@ PORT_STEP = 100
 MAX_SLOT = 50
 REGISTRY = Path(os.environ.get("XDG_STATE_HOME") or Path.home() / ".local" / "state") / "dev-ports"
 
-MARKER = re.compile(r"^# worktree slot: (\d+)\b")
+MARKER = re.compile(r"^# worktree slot: (\d+) of (.+) \(ports ")
+MARKER_LINE = re.compile(r"^# worktree slot: ")
 ASSIGNMENT = re.compile(r"^\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=(.*?)\r?$")
 # A local host with its port, and an http:// URL to one that leaves port 80 implicit.
 LOCAL_URL_PORT = re.compile(r"(?<![\w.-])((?:[\w-]+\.)*localhost|127\.0\.0\.1):(\d+)\b")
@@ -81,13 +84,14 @@ def git(*args: str, cwd: Path) -> str:
 
 
 def worktree_roots(cwd: Path) -> list[Path]:
-    """All worktrees of the repository, the main checkout first."""
-    porcelain = git("worktree", "list", "--porcelain", cwd=cwd)
-    return [
-        Path(line.removeprefix("worktree ")).resolve()
-        for line in porcelain.splitlines()
-        if line.startswith("worktree ")
-    ]
+    """All worktrees of the repository, the main checkout first.
+
+    Empty for a bare repository, which has no main checkout to take ports from.
+    """
+    entries = git("worktree", "list", "--porcelain", cwd=cwd).split("\n\n")
+    if "bare" in entries[0].splitlines():
+        return []
+    return [Path(entry.splitlines()[0].removeprefix("worktree ")).resolve() for entry in entries]
 
 
 def parse_env(text: str) -> dict[str, str]:
@@ -113,13 +117,21 @@ def port_value(env: dict[str, str], var: str, default: int) -> int:
         return default
 
 
-def recorded_slot(env_file: Path) -> int | None:
+def marker(env_file: Path) -> tuple[int, Path] | None:
+    """The slot recorded in `env_file`, and the checkout it was recorded for."""
     if not env_file.is_file():
         return None
     for line in env_file.read_text().splitlines():
-        if match := MARKER.match(line):
-            return int(match[1])
+        if MARKER_LINE.match(line):
+            match = MARKER.match(line)
+            return (int(match[1]), Path(match[2])) if match else (0, Path())
     return None
+
+
+def own_slot(checkout: Path) -> int | None:
+    """The slot `checkout` holds; None for a .env copied from another checkout."""
+    found = marker(checkout / ".env")
+    return found[0] if found and found[1] == checkout else None
 
 
 def in_use(port: int) -> bool:
@@ -154,7 +166,10 @@ def registry_lock() -> Iterator[None]:
         if sys.platform != "win32":
             import fcntl
 
-            fcntl.flock(lock, fcntl.LOCK_EX)
+            try:
+                fcntl.flock(lock, fcntl.LOCK_EX)
+            except OSError as error:  # e.g. ENOLCK on a network home
+                print(f"warning: could not lock {REGISTRY}: {error}")
         yield
 
 
@@ -178,7 +193,10 @@ def claims(root: Path) -> list[tuple[str, str, int]]:
         except (OSError, ValueError):
             continue  # pruned by a concurrent run, or not JSON
         if not Path(entry["checkout"]).is_dir():
-            file.unlink(missing_ok=True)  # the checkout was deleted
+            try:
+                file.unlink(missing_ok=True)  # the checkout was deleted
+            except OSError:
+                pass  # a read-only registry keeps the record; it is ignored above
         elif entry["checkout"] != str(root):
             found += [(entry["checkout"], var, port) for var, port in entry["ports"].items()]
     return found
@@ -194,7 +212,15 @@ def record(root: Path, ports: dict[str, int]) -> None:
         print(f"warning: could not record the ports in {REGISTRY}: {error}")
 
 
-def warn_about_claims(ports: dict[str, int], claimed: list[tuple[str, str, int]]) -> bool:
+def local_ports(value: str) -> set[int]:
+    found = {int(match[2]) for match in LOCAL_URL_PORT.finditer(value)}
+    return found | ({80} if LOCAL_URL_NO_PORT.search(value) else set())
+
+
+def warn_about_claims(
+    ports: dict[str, int], claimed: list[tuple[str, str, int]], env: dict[str, str]
+) -> bool:
+    """Warn about each port another checkout records; `env` is what .env sets."""
     used = set(ports.values()) | {port for _, _, port in claimed}
     warned = False
     for var, port in ports.items():
@@ -202,9 +228,11 @@ def warn_about_claims(ports: dict[str, int], claimed: list[tuple[str, str, int]]
             free = next(p for p in range(port + 1, 65536) if p not in used and not in_use(p))
             used.add(free)
             warned = True
+            urls = [name for name, value in env.items() if port in local_ports(value)]
             print(
                 f"warning: {var}={port} is also used by {', '.join(owners)};"
                 f" set another port in .env, e.g. {var}={free}"
+                + (f", and move {', '.join(urls)} to it" if urls else "")
             )
     return warned
 
@@ -261,13 +289,13 @@ def moved_urls(
     return updates
 
 
-def render(text: str, slot: int, updates: dict[str, str]) -> str:
+def render(text: str, slot: int, root: Path, updates: dict[str, str]) -> str:
     """Apply `updates` to .env text in place, keeping its comments and order.
 
     The last assignment of a variable is replaced; a variable that is only
     present commented out is uncommented; any other is appended.
     """
-    lines = [line for line in text.splitlines(keepends=True) if not MARKER.match(line)]
+    lines = [line for line in text.splitlines(keepends=True) if not MARKER_LINE.match(line)]
     appended = []
     for var, value in updates.items():
         assigned = [
@@ -287,8 +315,8 @@ def render(text: str, slot: int, updates: dict[str, str]) -> str:
             lines.append("\n")
         lines += ["\n# Worktree (scripts/worktree_env.py)\n", *appended]
     header = (
-        f"# worktree slot: {slot} (ports are the main checkout's + {slot * PORT_STEP};"
-        " written by scripts/worktree_env.py)\n"
+        f"# worktree slot: {slot} of {root} (ports are the main checkout's"
+        f" + {slot * PORT_STEP}; written by scripts/worktree_env.py)\n"
     )
     return header + "".join(lines)
 
@@ -304,8 +332,23 @@ def main() -> None:
 
 
 def configure(requested: int | None) -> None:
-    root = Path(git("rev-parse", "--show-toplevel", cwd=Path.cwd())).resolve()
-    main_root, *linked = worktree_roots(root)
+    try:
+        root = Path(git("rev-parse", "--show-toplevel", cwd=Path.cwd())).resolve()
+    except (OSError, subprocess.CalledProcessError) as error:
+        # A copy without git, or a checkout git refuses to read (another owner, a
+        # .git file pointing at another machine's path): the command must still run.
+        detail = getattr(error, "stderr", None) or error
+        print(f"Not a git checkout git can read ({str(detail).strip()}).")
+        print("Worktree ports are not managed here.")
+        return
+    git_dir = Path(git("rev-parse", "--absolute-git-dir", cwd=root)).resolve()
+    common_dir = (root / git("rev-parse", "--git-common-dir", cwd=root)).resolve()
+    is_main = git_dir == common_dir  # also with a separate git dir or a submodule
+    roots = worktree_roots(root)
+    if not roots:
+        print("Bare repository: worktree ports are not managed.")
+        return
+    main_root, *linked = [root, *roots[1:]] if is_main else roots
     env_file = root / ".env"
     main_env_file = main_root / ".env"
     # Without a main .env, a worktree's .env comes from the example.
@@ -314,20 +357,21 @@ def configure(requested: int | None) -> None:
     base = {var: port_value(main_env, var, default) for var, default in PORTS.items()}
     claimed = claims(root)
     claimed_ports = {port for _, _, port in claimed}
-    if root == main_root:
+    if is_main:
         record(root, base)
-        warn_about_claims(base, claimed)
+        warn_about_claims(base, claimed, main_env)
         return
 
     if not env_file.is_file():
-        shutil.copyfile(base_file, env_file)
+        shutil.copy2(base_file, env_file)
         print(f"Created .env from {base_file}")
 
-    kept: dict[str, str] = {}
+    current = parse_env(env_file.read_text())
+    copied = marker(env_file) is not None and own_slot(root) is None
+    # What this worktree sets apart from the main checkout is its own.
+    kept = {var: value for var, value in current.items() if value != main_env.get(var)}
     taken = {
-        slot: other
-        for other in linked
-        if other != root and (slot := recorded_slot(other / ".env")) is not None
+        slot: other for other in linked if other != root and (slot := own_slot(other)) is not None
     }
     if requested is not None:
         if not 1 <= requested <= MAX_SLOT:
@@ -339,25 +383,43 @@ def configure(requested: int | None) -> None:
         if recorded := sorted(set(shifted(base, requested).values()) & claimed_ports):
             sys.exit(f"error: slot {requested} would reuse ports {recorded} of another checkout")
         slot = requested
-    elif (own := recorded_slot(env_file)) is not None and own not in taken:
+        kept = {}
+    elif (own := own_slot(root)) is not None and own not in taken:
         slot = own
-        kept = parse_env(env_file.read_text())
     else:
+        if marker(env_file):
+            kept = {}  # a copy of another worktree's .env, or a slot held twice
         slot = choose_slot(base, set(taken), claimed_ports)
 
     ports = {var: port_value(kept, var, port) for var, port in shifted(base, slot).items()}
-    worktree = re.sub(r"[^a-z0-9_-]+", "-", root.name.lower()).strip("-_") or "worktree"
+    # Short enough for a DNS label (<service>.<project>.internal) with any suffix.
+    worktree = re.sub(r"[^a-z0-9_-]+", "-", root.name.lower())[:32].strip("-_")
     updates = {var: str(port) for var, port in ports.items()}
     # The slot keeps the names apart where worktree directory names coincide.
-    updates |= names(worktree, slot)
+    named = names(worktree or "worktree", slot)
+    updates |= {var: kept.get(var, value) for var, value in named.items()}
     updates |= moved_urls(main_env, base, ports)
     record(root, ports)
-    if warn_about_claims(ports, claimed) and (free := open_slots(base, set(taken), claimed_ports)):
+    # The names in a copy are another worktree's, so nothing of this one's is left.
+    if not copied and (
+        renamed := [
+            f"{var}={current[var]}"
+            for var in named
+            if current.get(var) not in (None, updates[var], main_env.get(var))
+        ]
+    ):
+        print(
+            f"note: {', '.join(renamed)} change; what still runs under the old names"
+            " keeps its containers, ports and volumes until you stop it"
+        )
+    if warn_about_claims(ports, claimed, current | updates) and (
+        free := open_slots(base, set(taken), claimed_ports)
+    ):
         action = "reset" if free[0] == slot else "move"
         print(f"  or {action} this worktree's ports to free ones: --slot {free[0]}")
 
     text = env_file.read_text()
-    rendered = render(text, slot, updates)
+    rendered = render(text, slot, root, updates)
     if rendered == text:
         print(f"Worktree slot {slot}: .env is up to date.")
         return
