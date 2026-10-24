@@ -188,6 +188,9 @@ quoted: the file is passed to the containers as is, and `docker stack deploy` ke
 - `MOUNT_DIR`: Directory for mounting download folders
 - `DICOM_TASK_STALLED_WORKER_GRACE_SECONDS`: Seconds without worker heartbeat before an `IN_PROGRESS` task counts as abandoned (default 30, never lower)
 - `DICOM_TASK_SWEEP_CRON`: Schedule of the stale task sweep (default `* * * * *`)
+- `C_MOVE_REFETCH_ATTEMPTS`: Rounds in which images still missing after a C-MOVE download are requested again with one IMAGE-level C-MOVE each (default 2, 0 disables it)
+- `C_MOVE_REFETCH_MAX_MISSING_PERCENT`: When more than this percentage of the images is missing (default 50), there is no re-fetch and the download fails with `RetriableDicomError`, also with `C_MOVE_FAIL_ON_INCOMPLETE=false`
+- `C_MOVE_FAIL_ON_INCOMPLETE`: Whether a C-MOVE download with images still missing after the re-fetch raises `IncompleteFetchError`, a `RetriableDicomError` (default `true`), or only logs a warning
 
 ## Code Standards
 
