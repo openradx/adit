@@ -12,10 +12,12 @@ its containers and volumes.
 Each linked worktree gets a slot N >= 1; the main checkout is slot 0. Every port
 in PORTS becomes the main checkout's value + N * PORT_STEP, a URL in .env that
 points at one of those ports moves with it, and the names from names() become
-unique to the worktree. The slot is recorded at the top of the worktree's .env,
-so a second run changes nothing. In the main checkout the script does nothing.
+unique to the worktree. The slot is recorded at the top of the worktree's .env;
+later runs keep the ports already set there and only fill in missing ones, so a
+port changed by hand or moved off a busy port stays, until --slot rewrites them
+all. In the main checkout the script does nothing.
 
-    uv run scripts/worktree_env.py [--slot N]
+    uv run --script scripts/worktree_env.py [--slot N]
 """
 
 import argparse
@@ -213,6 +215,7 @@ def main() -> None:
     main_env = parse_env(base_file.read_text())
     base = {var: port_value(main_env, var, default) for var, default in PORTS.items()}
 
+    kept: dict[str, str] = {}
     taken = {
         slot: other
         for other in linked
@@ -228,10 +231,11 @@ def main() -> None:
         slot = args.slot
     elif (own := recorded_slot(env_file)) is not None and own not in taken:
         slot = own
+        kept = parse_env(env_file.read_text())
     else:
         slot = choose_slot(base, set(taken))
 
-    ports = shifted(base, slot)
+    ports = {var: port_value(kept, var, port) for var, port in shifted(base, slot).items()}
     worktree = re.sub(r"[^a-z0-9_-]+", "-", root.name.lower()).strip("-_") or f"slot{slot}"
     updates = {var: str(port) for var, port in ports.items()}
     updates |= names(worktree)
