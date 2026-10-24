@@ -74,9 +74,9 @@ The Compose project is named `adit_dev` in development and `adit_prod` in produc
 
 Every worker runs `./manage.py sweep_stale_tasks` before starting `bg_worker`.
 
-**C-STORE Receiver Container (`adit_dev-receiver-1`)**: Accepts incoming DICOM data from C-MOVE operations. Ports: 11112 (DICOM, published as 11122 on the host in development and as `RECEIVER_PORT` in production), 14638 (file transmit). Forwards data to workers via TCP.
+**C-STORE Receiver Container (`adit_dev-receiver-1`)**: Accepts incoming DICOM data from C-MOVE operations. Ports: 11112 (DICOM, published as `RECEIVER_DEV_PORT` (11122) on the host in development and as `RECEIVER_PORT` in production), 14638 (file transmit). Forwards data to workers via TCP.
 
-**Orthanc Containers (`adit_dev-orthanc1-1`, `adit_dev-orthanc2-1`)**: Development PACS instances for testing. Official Orthanc image. DICOM ports 7501/7502 (published on the host in development only); their HTTP/DICOMweb ports 6501/6502 are internal and reachable in the web UI through a reverse proxy. Uses SQLite for development.
+**Orthanc Containers (`adit_dev-orthanc1-1`, `adit_dev-orthanc2-1`)**: Development PACS instances for testing. Official Orthanc image. DICOM ports 7501/7502 (published on the host in development only, as `ORTHANC1_DEV_PORT`/`ORTHANC2_DEV_PORT`); their HTTP/DICOMweb ports 6501/6502 are internal and reachable in the web UI through a reverse proxy. Uses SQLite for development.
 
 ## Application Architecture
 

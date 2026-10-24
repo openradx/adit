@@ -148,6 +148,8 @@ lint.select = ["E", "F", "I", "DJ", "UP"]
 
 [tool.djlint]
 profile = "django"
+# Git worktrees live under .claude/worktrees/.
+extend_exclude = ".claude"
 max_line_length = 120
 ignore = "H021,H030,H031,T002"
 

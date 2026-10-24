@@ -1,7 +1,10 @@
 #! /usr/bin/env python3
 import os
 import shutil
+import subprocess
+import sys
 from glob import glob
+from pathlib import Path
 from typing import Annotated
 
 import typer
@@ -12,6 +15,19 @@ app = typer.Typer(
     context_settings={"help_option_names": ["-h", "--help"]},
     no_args_is_help=True,
 )
+
+
+@app.callback()
+def worktree_guard():
+    # In a git worktree (whose .git is a file) every command first gets the worktree its
+    # own ports and stack name: with the main checkout's .env, compose-up would take
+    # over the main checkout's stack and database.
+    root = Path(__file__).parent
+    if (root / ".git").is_file():
+        script = root / "scripts" / "worktree_env.py"
+        if subprocess.run([sys.executable, str(script)]).returncode:
+            raise typer.Exit(1)
+
 
 app.command()(commands.init_workspace)
 app.command()(commands.randomize_env_secrets)

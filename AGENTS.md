@@ -157,10 +157,10 @@ Data modification pattern: download to temp folder -> transform (pseudonymize) -
 - **default_worker**: General background task processor (Procrastinate queue: `default`); each worker runs `sweep_stale_tasks` before `bg_worker`
 - **dicom_worker**: DICOM-specific task processor (Procrastinate queue: `dicom`); each worker runs `sweep_stale_tasks` before `bg_worker`
 - **mass_transfer_worker**: Mass transfer task processor (Procrastinate queue: `mass_transfer`); each worker runs `sweep_stale_tasks` before `bg_worker`
-- **receiver**: C-STORE SCP server (port 11112 internal; 11122 on host in dev, `RECEIVER_PORT` in prod) - receives DICOM from C-MOVE
+- **receiver**: C-STORE SCP server (port 11112 internal; `RECEIVER_DEV_PORT` (11122) on host in dev, `RECEIVER_PORT` in prod) - receives DICOM from C-MOVE
 - **postgres**: PostgreSQL 17 database (port 5432, published on the host only in dev via `POSTGRES_DEV_PORT`)
-- **orthanc1**: Test DICOM server (DICOM port 7501, published on host; HTTP 6501 internal, admin proxy at `/orthanc1/`)
-- **orthanc2**: Test DICOM server (DICOM port 7502, published on host; HTTP 6502 internal, admin proxy at `/orthanc2/`)
+- **orthanc1**: Test DICOM server (DICOM port 7501, published on host as `ORTHANC1_DEV_PORT` (7501); HTTP 6501 internal, admin proxy at `/orthanc1/`)
+- **orthanc2**: Test DICOM server (DICOM port 7502, published on host as `ORTHANC2_DEV_PORT` (7502); HTTP 6502 internal, admin proxy at `/orthanc2/`)
 
 ## Environment Variables
 
@@ -179,6 +179,7 @@ quoted: the file is passed to the containers as is, and `docker stack deploy` ke
 - `WAIT_POSTGRES_TIMEOUT`: Seconds containers wait for Postgres at startup (default 180)
 - `WEB_REPLICAS`, `DICOM_WORKER_REPLICAS`, `MASS_TRANSFER_WORKER_REPLICAS`: Service scaling (production)
 - `ADIT_IMAGE`, `STACK_NAME`: Image for the app services and Swarm stack name (default `adit_dev` / `adit_prod`; also derives session/CSRF cookie names)
+- `WEB_DEV_PORT`, `POSTGRES_DEV_PORT`, `REMOTE_DEBUGGING_PORT`, `RECEIVER_DEV_PORT`, `ORTHANC1_DEV_PORT`, `ORTHANC2_DEV_PORT`: Host ports of the development stack (a git worktree shifts them, see "Git Worktrees")
 - `OTEL_EXPORTER_OTLP_ENDPOINT`: OTLP HTTP endpoint for OpenTelemetry
 - `TIME_ZONE`: Server timezone (default `UTC`)
 - `CALLING_AE_TITLE`: ADIT's DICOM Application Entity title (required; `example.env` uses `ADIT1DEV`)
@@ -188,6 +189,15 @@ quoted: the file is passed to the containers as is, and `docker stack deploy` ke
 - `MOUNT_DIR`: Directory for mounting download folders
 - `DICOM_TASK_STALLED_WORKER_GRACE_SECONDS`: Seconds without worker heartbeat before an `IN_PROGRESS` task counts as abandoned (default 30, never lower)
 - `DICOM_TASK_SWEEP_CRON`: Schedule of the stale task sweep (default `* * * * *`)
+
+## Git Worktrees
+
+Claude Code creates worktrees under `.claude/worktrees/<name>` (`claude --worktree`, background agents, subagents with `isolation: worktree`) and copies the gitignored files listed in `.worktreeinclude` into them: `.env`, `docker-compose.override.yml` and `.claude/settings.local.json`. With that `.env` unchanged, the CLI would run the worktree's stack as the main checkout's compose project `adit_dev`, recreating its containers from the worktree's code on its database, on the same host ports. So in a worktree, every `uv run cli` command first runs `scripts/worktree_env.py` (a no-op in the main checkout). It gives the worktree a slot N ≥ 1 (the main checkout is slot 0), recorded on the first line of its `.env` so a rerun changes nothing, and writes into `.env`:
+
+- every dev host port as the main checkout's value + N × 100 (slot 1: web 8100, Postgres 5532, debugger 5778, receiver 11222, Orthancs 7601 and 7602), and any localhost URL in `.env` that points at one of them;
+- `STACK_NAME` (`adit_wt_<name>`): a compose project of its own, so its own containers and volumes and a fresh database, and session and CSRF cookie names that don't overwrite the main checkout's login.
+
+`uv run --script scripts/worktree_env.py --slot N` picks the slot by hand; a slot is skipped while one of its ports is taken. Attach the debugger to the worktree's `REMOTE_DEBUGGING_PORT`, not the 5678 of `.vscode/launch.json`. Before deleting a worktree, free its volumes with `uv run cli compose-down -- -v`.
 
 ## Code Standards
 
