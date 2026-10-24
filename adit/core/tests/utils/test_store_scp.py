@@ -134,15 +134,19 @@ def test_handle_store_invokes_file_received_handler_with_written_path(store_scp,
     of the file that was just written."""
     monkeypatch.setattr(store_scp_module, "write_dataset", lambda ds, fn: None)
 
-    received: list[str] = []
-    store_scp.set_file_received_handler(lambda path: received.append(path))
+    received: list[tuple[str, str]] = []
+    store_scp.set_file_received_handler(
+        lambda path, calling_ae: received.append((path, calling_ae))
+    )
 
-    event = _make_event()
+    event = _make_event(calling_ae="PACS_SEND")
     status = store_scp._handle_store(event)
 
     assert status == 0x0000
     assert len(received) == 1
-    assert received[0].endswith(".dcm")
+    assert received[0][0].endswith(".dcm")
+    # The AE title the PACS sent it from, which a server may restrict
+    assert received[0][1] == "PACS_SEND"
 
 
 def test_handle_store_without_handler_still_succeeds(store_scp, monkeypatch):
@@ -199,7 +203,7 @@ def test_handle_store_handler_failure_is_swallowed_and_returns_success(store_scp
     forwarding to workers is best-effort and must not fail the C-STORE."""
     monkeypatch.setattr(store_scp_module, "write_dataset", lambda ds, fn: None)
 
-    def failing_handler(path):
+    def failing_handler(path, calling_ae):
         raise ValueError("could not enqueue file")
 
     store_scp.set_file_received_handler(failing_handler)
@@ -221,7 +225,7 @@ def test_handle_store_write_failure_does_not_call_handler(store_scp, monkeypatch
     monkeypatch.setattr(store_scp_module, "write_dataset", boom)
 
     received: list[str] = []
-    store_scp.set_file_received_handler(lambda path: received.append(path))
+    store_scp.set_file_received_handler(lambda path, calling_ae: received.append(path))
 
     event = _make_event()
     status = store_scp._handle_store(event)

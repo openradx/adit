@@ -15,6 +15,8 @@ import pytest
 import stamina
 from django.conf import settings
 from pydicom import Dataset
+from pydicom.dataelem import RawDataElement
+from pydicom.tag import Tag
 from pynetdicom.sop_class import (
     PatientRootQueryRetrieveInformationModelFind,  # type: ignore
     StudyRootQueryRetrieveInformationModelFind,  # type: ignore
@@ -28,6 +30,7 @@ from adit.core.utils.dicom_dataset import QueryDataset, ResultDataset
 from adit.core.utils.dicom_operator import DicomOperator
 from adit.core.utils.dicom_utils import read_dataset
 from adit.core.utils.file_transmit import (
+    REPLAY_SYNC_TOKEN,
     SUBSCRIBED_ACK,
     FileTransmitServer,
     FileTransmitSession,
@@ -200,20 +203,29 @@ def test_download_series_with_c_move(settings: Settings, mocker: MockerFixture):
     )
 
     subscribed_topic = ""
+    subscribed_scope: str | None = None
+    loops: list[asyncio.AbstractEventLoop] = []
+    transmit_server = FileTransmitServer("127.0.0.1", 17999, write_timeout=30)
 
     def start_transmit_server():
-        transmit_server = FileTransmitServer("127.0.0.1", 17999, write_timeout=30)
-
-        async def on_subscribe(topic: str):
-            nonlocal subscribed_topic
-            subscribed_topic = topic
-            await transmit_server.publish_file(
-                topic, file_path, {"SOPInstanceUID": ds.SOPInstanceUID}
-            )
+        def on_subscribe(session: FileTransmitSession):
+            nonlocal subscribed_topic, subscribed_scope
+            subscribed_topic = session.topic
+            subscribed_scope = session.scope
+            loops.append(asyncio.get_running_loop())
+            session.queue_synced(REPLAY_SYNC_TOKEN)  # Nothing replayed
 
         transmit_server.set_subscribe_handler(on_subscribe)
         asyncio.run(transmit_server.start(), debug=True)
 
+    def send_c_move(*args, **kwargs):
+        publish = transmit_server.publish_file(
+            subscribed_topic, file_path, {"SOPInstanceUID": ds.SOPInstanceUID}
+        )
+        asyncio.run_coroutine_threadsafe(publish, loops[0]).result(timeout=5)
+        return DicomTestHelper.create_successful_c_move_response()
+
+    association_mock.send_c_move.side_effect = send_c_move
     threading.Thread(target=start_transmit_server, daemon=True).start()
 
     # Make sure transmit server is started
@@ -228,6 +240,8 @@ def test_download_series_with_c_move(settings: Settings, mocker: MockerFixture):
 
     # Assert
     assert subscribed_topic == ds.StudyInstanceUID
+    # So that the receiver replays only the images of the series
+    assert subscribed_scope == ds.SeriesInstanceUID
     association_mock.send_c_move.assert_called_once()
     assert received_ds[0] == ds
 
@@ -242,8 +256,14 @@ def _start_transmit_server(
     answer_sync: bool = True,
     before_sync: list[threading.Thread] | None = None,
     on_sync: Callable[[FileTransmitSession, str], Awaitable[bool]] | None = None,
+    replayed: list[tuple[Path, dict[str, str]]] | None = None,
+    replay_interval: float = 0,
+    confirm_replay: bool = True,
 ) -> tuple[FileTransmitServer, asyncio.AbstractEventLoop]:
     """Run a file transmit server in its own thread like the receiver container does.
+
+    Like the receiver, it replays the files it holds for the study (`replayed`, each with its
+    metadata, `replay_interval` s apart) right after each subscription and confirms that.
 
     Like the receiver, it answers a sync request only after the publishes the test scheduled
     before it (`before_sync`, e.g. the receiver's backlog). `on_sync` runs on the server's loop
@@ -262,6 +282,15 @@ def _start_transmit_server(
             session.queue_synced(token)
 
     server.set_sync_request_handler(sync_handler)
+
+    async def replay(session: FileTransmitSession) -> None:
+        for file_path, metadata in replayed or []:
+            await asyncio.sleep(replay_interval)
+            session.queue_frame(_frame_header(file_path, metadata), file_path)
+        if confirm_replay:
+            session.queue_synced(REPLAY_SYNC_TOKEN)
+
+    server.set_subscribe_handler(replay)
     loops: list[asyncio.AbstractEventLoop] = []
     started = threading.Event()
 
@@ -332,6 +361,44 @@ def test_c_move_images_sent_right_away_reach_the_worker(settings: Settings, mock
 
 
 @pytest.mark.django_db
+def test_c_move_replay_confirmation_is_no_delivery_confirmation(
+    settings: Settings, mocker: MockerFixture, caplog: pytest.LogCaptureFixture
+):
+    # Arrange: the receiver confirms its replay right after the subscription, the C-MOVE's
+    # images only come later
+    dicom_operator, association_mock, file_path, ds = _setup_c_move_operator(
+        settings, mocker, 17952
+    )
+    association_mock.send_c_find.return_value = DicomTestHelper.create_successful_c_find_responses(
+        [{"SOPInstanceUID": ds.SOPInstanceUID}]
+    )
+    transmit_server, loop = _start_transmit_server(17952)
+
+    def send_c_move(*args, **kwargs):
+        publish = transmit_server.publish_file(
+            ds.StudyInstanceUID, file_path, {"SOPInstanceUID": ds.SOPInstanceUID}
+        )
+        asyncio.run_coroutine_threadsafe(publish, loop).result(timeout=5)
+        return DicomTestHelper.create_successful_c_move_response()
+
+    association_mock.send_c_move.side_effect = send_c_move
+    received: list[Dataset] = []
+
+    # Act
+    try:
+        with caplog.at_level(logging.INFO):
+            dicom_operator.fetch_series(
+                ds.PatientID, ds.StudyInstanceUID, ds.SeriesInstanceUID, received.append
+            )
+    finally:
+        asyncio.run_coroutine_threadsafe(transmit_server.stop(), loop).result(timeout=5)
+
+    # Assert: the image of the C-MOVE didn't arrive late
+    assert received == [ds]
+    assert not _late_image_entries(caplog)
+
+
+@pytest.mark.django_db
 def test_c_move_is_not_sent_when_receiver_is_unreachable(settings: Settings, mocker: MockerFixture):
     # Arrange: nothing listens on the file transmit port
     dicom_operator, association_mock, _, ds = _setup_c_move_operator(settings, mocker, 17997)
@@ -379,6 +446,8 @@ def test_c_move_fails_when_receiver_connection_drops(settings: Settings, mocker:
     finally:
         listener.close()
     assert received_ds == [ds]
+    # Nobody would take the images of a C-MOVE
+    association_mock.send_c_move.assert_not_called()
 
 
 @pytest.mark.django_db
@@ -582,6 +651,7 @@ def _setup_refetch(
     deliver: set[str],
     images: dict[str, str | None] | None = None,
     on_sync: Callable[[FileTransmitSession, str], Awaitable[bool]] | None = None,
+    replayed: list[str | None] | None = None,
 ):
     """The sample image and `images` (by default B and C) are expected, each image maps to
     its series (None for the series of the sample image). The first C-MOVE only delivers
@@ -594,7 +664,8 @@ def _setup_refetch(
     grace when their C-MOVE finished. With "after sync", the images in `deliver` arrive half a
     grace after the first sync was answered, as from a PACS that sends after its final C-MOVE
     response. With "slow sync", the first sync is answered only after 1.5 graces without any
-    image. `on_sync` is passed to the transmit server."""
+    image. `on_sync` is passed to the transmit server, which replays the `replayed` images
+    (None for the sample image)."""
     dicom_operator, association_mock, file_path, ds = _setup_c_move_operator(settings, mocker, port)
     # Most images are missing after the first C-MOVE
     settings.C_MOVE_REFETCH_MAX_MISSING_PERCENT = 100
@@ -637,7 +708,12 @@ def _setup_refetch(
         return await on_sync(session, token) if on_sync else True
 
     transmit_server, loop = _start_transmit_server(
-        port, before_sync=delayed_publishes, on_sync=answer_sync
+        port,
+        before_sync=delayed_publishes,
+        on_sync=answer_sync,
+        replayed=[
+            (file_path, {"SOPInstanceUID": uid or ds.SOPInstanceUID}) for uid in replayed or []
+        ],
     )
 
     def publish(image_uid: str):
@@ -656,7 +732,7 @@ def _setup_refetch(
         if "late" in deliver and image_uid == IMAGE_B:
             publish(IMAGE_C)
             # Let the consumer hand it over
-            missing_images = refetch_missing_images.call_args.args[1]
+            missing_images = refetch_missing_images.call_args.args[0].missing_images
             deadline = time.monotonic() + 5
             while IMAGE_C in missing_images:
                 assert time.monotonic() < deadline
@@ -731,6 +807,191 @@ def test_c_move_refetches_missing_images_on_one_association(
 
 
 @pytest.mark.django_db
+def test_c_move_skipped_when_the_receiver_replays_every_image(
+    settings: Settings, mocker: MockerFixture
+):
+    # Arrange: the receiver still holds every image, e.g. from an attempt whose worker restarted
+    dicom_operator, ds, requested, stop = _setup_refetch(
+        settings, mocker, 17951, deliver=set(), replayed=[None, IMAGE_B, IMAGE_C]
+    )
+    received: list[str] = []
+    send_c_move = mocker.spy(dicom_operator.dimse_connector, "_send_c_move")
+
+    # Act
+    try:
+        dicom_operator.fetch_series(
+            ds.PatientID,
+            ds.StudyInstanceUID,
+            ds.SeriesInstanceUID,
+            lambda ds: received.append(ds.SOPInstanceUID),
+        )
+    finally:
+        stop()
+
+    # Assert
+    assert len(received) == 3
+    send_c_move.assert_not_called()
+
+
+@pytest.mark.django_db
+def test_c_move_refetches_only_what_the_replay_missed(settings: Settings, mocker: MockerFixture):
+    # Arrange: the receiver still holds two of the three images
+    dicom_operator, ds, requested, stop = _setup_refetch(
+        settings, mocker, 17950, deliver={IMAGE_C}, replayed=[None, IMAGE_B]
+    )
+    settings.C_MOVE_REFETCH_MAX_MISSING_PERCENT = 50
+    send_c_move = mocker.spy(dicom_operator.dimse_connector, "_send_c_move")
+    received: list[str] = []
+
+    # Act
+    try:
+        dicom_operator.fetch_series(
+            ds.PatientID,
+            ds.StudyInstanceUID,
+            ds.SeriesInstanceUID,
+            lambda ds: received.append(ds.SOPInstanceUID),
+        )
+    finally:
+        stop()
+
+    # Assert: only the missing image is requested from the PACS
+    assert len(received) == 3
+    assert requested == [("IMAGE", ds.SeriesInstanceUID, IMAGE_C)]
+    assert [call.args[0].QueryRetrieveLevel for call in send_c_move.call_args_list] == ["IMAGE"]
+
+
+@pytest.mark.django_db
+def test_c_move_full_move_when_the_replay_brought_little(settings: Settings, mocker: MockerFixture):
+    # Arrange: the receiver still holds one of the three images, too few to request the
+    # others one by one
+    dicom_operator, ds, requested, stop = _setup_refetch(
+        settings, mocker, 17949, deliver={IMAGE_C}, replayed=[IMAGE_B]
+    )
+    settings.C_MOVE_REFETCH_MAX_MISSING_PERCENT = 50
+    send_c_move = mocker.spy(dicom_operator.dimse_connector, "_send_c_move")
+    received: list[str] = []
+
+    # Act
+    try:
+        dicom_operator.fetch_series(
+            ds.PatientID,
+            ds.StudyInstanceUID,
+            ds.SeriesInstanceUID,
+            lambda ds: received.append(ds.SOPInstanceUID),
+        )
+    finally:
+        stop()
+
+    # Assert: the C-MOVE of the series delivers the sample, image C comes one by one
+    assert len(received) == 3
+    levels = [call.args[0].QueryRetrieveLevel for call in send_c_move.call_args_list]
+    assert levels == ["SERIES", "IMAGE"]
+    assert requested == [("IMAGE", ds.SeriesInstanceUID, IMAGE_C)]
+
+
+@pytest.mark.django_db
+def test_c_move_waits_for_a_long_replay(settings: Settings, mocker: MockerFixture):
+    # Arrange: replaying the images takes longer than the sync timeout, while each one
+    # comes within it
+    dicom_operator, association_mock, file_path, ds = _setup_c_move_operator(
+        settings, mocker, 17948
+    )
+    settings.C_MOVE_SYNC_TIMEOUT = 1
+    association_mock.send_c_find.return_value = DicomTestHelper.create_successful_c_find_responses(
+        [{"SOPInstanceUID": uid} for uid in [ds.SOPInstanceUID, IMAGE_B, IMAGE_C]]
+    )
+    transmit_server, loop = _start_transmit_server(
+        17948,
+        replayed=[
+            (file_path, {"SOPInstanceUID": uid}) for uid in [ds.SOPInstanceUID, IMAGE_B, IMAGE_C]
+        ],
+        replay_interval=0.6,
+    )
+    received: list[Dataset] = []
+
+    # Act
+    try:
+        dicom_operator.fetch_series(
+            ds.PatientID, ds.StudyInstanceUID, ds.SeriesInstanceUID, received.append
+        )
+    finally:
+        asyncio.run_coroutine_threadsafe(transmit_server.stop(), loop).result(timeout=5)
+
+    # Assert
+    assert len(received) == 3
+    association_mock.send_c_move.assert_not_called()
+
+
+@pytest.mark.django_db
+def test_c_move_goes_on_without_a_replay_confirmation(settings: Settings, mocker: MockerFixture):
+    # Arrange: the receiver doesn't confirm a replay, e.g. an older one during an update
+    dicom_operator, association_mock, file_path, ds = _setup_c_move_operator(
+        settings, mocker, 17947
+    )
+    settings.C_MOVE_SYNC_TIMEOUT = 1
+    association_mock.send_c_find.return_value = DicomTestHelper.create_successful_c_find_responses(
+        [{"SOPInstanceUID": ds.SOPInstanceUID}]
+    )
+    transmit_server, loop = _start_transmit_server(17947, confirm_replay=False)
+
+    def send_c_move(*args, **kwargs):
+        publish = transmit_server.publish_file(
+            ds.StudyInstanceUID, file_path, {"SOPInstanceUID": ds.SOPInstanceUID}
+        )
+        asyncio.run_coroutine_threadsafe(publish, loop).result(timeout=5)
+        return DicomTestHelper.create_successful_c_move_response()
+
+    association_mock.send_c_move.side_effect = send_c_move
+    received: list[Dataset] = []
+
+    # Act
+    try:
+        dicom_operator.fetch_series(
+            ds.PatientID, ds.StudyInstanceUID, ds.SeriesInstanceUID, received.append
+        )
+    finally:
+        asyncio.run_coroutine_threadsafe(transmit_server.stop(), loop).result(timeout=5)
+
+    # Assert: the replay only saves work, so the download doesn't depend on it
+    assert received == [ds]
+
+
+@pytest.mark.django_db
+def test_c_move_is_sent_when_the_replay_shows_the_list_is_short(
+    settings: Settings, mocker: MockerFixture
+):
+    # Arrange: the receiver replays the listed image and one of the series the list misses,
+    # so the list is capped and more images may be missing
+    dicom_operator, association_mock, file_path, ds = _setup_c_move_operator(
+        settings, mocker, 17946
+    )
+    association_mock.send_c_find.return_value = DicomTestHelper.create_successful_c_find_responses(
+        [{"SOPInstanceUID": ds.SOPInstanceUID}]
+    )
+    series_metadata = {"SeriesInstanceUID": ds.SeriesInstanceUID}
+    transmit_server, loop = _start_transmit_server(
+        17946,
+        replayed=[
+            (file_path, {"SOPInstanceUID": ds.SOPInstanceUID} | series_metadata),
+            (file_path, {"SOPInstanceUID": IMAGE_B} | series_metadata),
+        ],
+    )
+    received: list[Dataset] = []
+
+    # Act
+    try:
+        dicom_operator.fetch_series(
+            ds.PatientID, ds.StudyInstanceUID, ds.SeriesInstanceUID, received.append
+        )
+    finally:
+        asyncio.run_coroutine_threadsafe(transmit_server.stop(), loop).result(timeout=5)
+
+    # Assert
+    assert len(received) == 2
+    association_mock.send_c_move.assert_called_once()
+
+
+@pytest.mark.django_db
 def test_c_move_activity_counts_every_frame_of_its_images(
     settings: Settings, mocker: MockerFixture
 ):
@@ -785,6 +1046,635 @@ def test_c_move_activity_counts_every_frame_of_its_images(
 
     # Assert
     assert advanced == [True, True, False, True, True]
+
+
+@pytest.mark.django_db
+def test_c_move_hands_over_images_missing_from_the_list(settings: Settings, mocker: MockerFixture):
+    # Arrange: the IMAGE-level C-FIND of a PACS that caps its results lists only one of the
+    # series' images, while the C-MOVE sends all of them
+    dicom_operator, association_mock, file_path, ds = _setup_c_move_operator(
+        settings, mocker, 17963
+    )
+    association_mock.send_c_find.return_value = DicomTestHelper.create_successful_c_find_responses(
+        [{"SOPInstanceUID": ds.SOPInstanceUID}]
+    )
+    transmit_server, loop = _start_transmit_server(17963)
+
+    def publish(image_uid: str):
+        metadata = {"SOPInstanceUID": image_uid, "SeriesInstanceUID": ds.SeriesInstanceUID}
+        publish = transmit_server.publish_file(ds.StudyInstanceUID, file_path, metadata)
+        asyncio.run_coroutine_threadsafe(publish, loop).result(timeout=5)
+
+    def send_c_move(*args, **kwargs):
+        publish(IMAGE_B)
+        publish(IMAGE_B)  # A duplicate
+        publish(ds.SOPInstanceUID)
+        return DicomTestHelper.create_successful_c_move_response()
+
+    association_mock.send_c_move.side_effect = send_c_move
+    received: list[str] = []
+
+    # Act
+    try:
+        dicom_operator.fetch_series(
+            ds.PatientID,
+            ds.StudyInstanceUID,
+            ds.SeriesInstanceUID,
+            lambda ds: received.append(ds.SOPInstanceUID),
+        )
+    finally:
+        asyncio.run_coroutine_threadsafe(transmit_server.stop(), loop).result(timeout=5)
+
+    # Assert: the image outside the list is part of the series, so it is handed over once
+    assert received == [ds.SOPInstanceUID, ds.SOPInstanceUID]  # The file holds the sample
+    assert dicom_operator.dimse_connector.assoc is None
+
+
+@pytest.mark.django_db
+def test_c_move_series_fetch_ignores_other_series(settings: Settings, mocker: MockerFixture):
+    # Arrange: while a series is fetched, another fetch of the study receives another series
+    dicom_operator, association_mock, file_path, ds = _setup_c_move_operator(
+        settings, mocker, 17962
+    )
+    association_mock.send_c_find.return_value = DicomTestHelper.create_successful_c_find_responses(
+        [{"SOPInstanceUID": ds.SOPInstanceUID}]
+    )
+    transmit_server, loop = _start_transmit_server(17962)
+    send_c_move_spy = mocker.spy(dicom_operator.dimse_connector, "_send_c_move")
+    other_series_advanced: list[bool] = []
+
+    def publish(image_uid: str, series_uid: str):
+        metadata = {"SOPInstanceUID": image_uid, "SeriesInstanceUID": series_uid}
+        publish = transmit_server.publish_file(ds.StudyInstanceUID, file_path, metadata)
+        asyncio.run_coroutine_threadsafe(publish, loop).result(timeout=5)
+
+    def send_c_move(*args, **kwargs):
+        last_activity = send_c_move_spy.call_args.args[3]
+        before = last_activity()
+        sleep(0.01)
+        publish(IMAGE_B, "1.2.3.4.5.6.7.8.9")
+        sleep(1)
+        other_series_advanced.append(last_activity() > before)
+        publish(ds.SOPInstanceUID, ds.SeriesInstanceUID)
+        return DicomTestHelper.create_successful_c_move_response()
+
+    association_mock.send_c_move.side_effect = send_c_move
+    received: list[Dataset] = []
+
+    # Act
+    try:
+        dicom_operator.fetch_series(
+            ds.PatientID, ds.StudyInstanceUID, ds.SeriesInstanceUID, received.append
+        )
+    finally:
+        asyncio.run_coroutine_threadsafe(transmit_server.stop(), loop).result(timeout=5)
+
+    # Assert
+    assert received == [ds]
+    assert other_series_advanced == [False]
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("calling_ae", ["PACS_SEND", "FORGER"])
+def test_c_move_takes_images_only_from_accepted_calling_ae_titles(
+    settings: Settings, mocker: MockerFixture, caplog: pytest.LogCaptureFixture, calling_ae: str
+):
+    # Arrange: the server accepts images only from the AE title its PACS sends them with
+    dicom_operator, association_mock, file_path, ds = _setup_c_move_operator(
+        settings, mocker, 17944
+    )
+    settings.C_MOVE_REFETCH_ATTEMPTS = 0
+    dicom_operator.server.accepted_calling_ae_titles = "PACS_SEND, PACS_QR"
+    association_mock.send_c_find.return_value = DicomTestHelper.create_successful_c_find_responses(
+        [{"SOPInstanceUID": ds.SOPInstanceUID}]
+    )
+    transmit_server, loop = _start_transmit_server(17944)
+    send_c_move_spy = mocker.spy(dicom_operator.dimse_connector, "_send_c_move")
+    advanced: list[bool] = []
+
+    def send_c_move(*args, **kwargs):
+        last_activity = send_c_move_spy.call_args.args[3]
+        before = last_activity()
+        sleep(0.01)
+        metadata = {"SOPInstanceUID": ds.SOPInstanceUID, "CallingAETitle": calling_ae}
+        publish = transmit_server.publish_file(ds.StudyInstanceUID, file_path, metadata)
+        asyncio.run_coroutine_threadsafe(publish, loop).result(timeout=5)
+        sleep(0.5)
+        advanced.append(last_activity() > before)
+        return DicomTestHelper.create_successful_c_move_response()
+
+    association_mock.send_c_move.side_effect = send_c_move
+    received: list[Dataset] = []
+
+    # Act
+    try:
+        with caplog.at_level(logging.WARNING):
+            if calling_ae == "PACS_SEND":
+                dicom_operator.fetch_series(
+                    ds.PatientID, ds.StudyInstanceUID, ds.SeriesInstanceUID, received.append
+                )
+            else:
+                with pytest.raises(RetriableDicomError, match="Failed to fetch all images"):
+                    dicom_operator.fetch_series(
+                        ds.PatientID, ds.StudyInstanceUID, ds.SeriesInstanceUID, received.append
+                    )
+    finally:
+        asyncio.run_coroutine_threadsafe(transmit_server.stop(), loop).result(timeout=5)
+
+    # Assert: an image from another AE title is neither taken nor counted as activity
+    accepted = calling_ae == "PACS_SEND"
+    assert received == ([ds] if accepted else [])
+    assert advanced == [accepted]
+    skipped = [r.getMessage() for r in caplog.records if "not accepted" in r.getMessage()]
+    assert len(skipped) == (0 if accepted else 1)
+
+
+def _c_move_response(completed: int):
+    """The final response of a C-MOVE that reports how many images it sent."""
+    status = Dataset()
+    status.Status = 0x0000
+    status.NumberOfCompletedSuboperations = completed
+    status.NumberOfFailedSuboperations = 0
+    status.NumberOfWarningSuboperations = 0
+    return iter([(status, None)])
+
+
+def _capped_entries(caplog: pytest.LogCaptureFixture) -> list[str]:
+    return [record.getMessage() for record in caplog.records if "capped" in record.getMessage()]
+
+
+def _setup_short_list(settings: Settings, mocker: MockerFixture, port: int, reported: int):
+    """A series fetch whose IMAGE-level C-FIND lists only the sample image, while the C-MOVE
+    reports `reported` images sent. The C-MOVE delivers the sample image, image B (unlisted)
+    stays in the receiver's backlog until the sync. Returns the operator, the sample and a
+    stop function."""
+    dicom_operator, association_mock, file_path, ds = _setup_c_move_operator(settings, mocker, port)
+    association_mock.send_c_find.return_value = DicomTestHelper.create_successful_c_find_responses(
+        [{"SOPInstanceUID": ds.SOPInstanceUID}]
+    )
+    pending_publishes: list[threading.Thread] = []
+    transmit_server, loop = _start_transmit_server(port, before_sync=pending_publishes)
+
+    def publish(image_uid: str):
+        metadata = {"SOPInstanceUID": image_uid, "SeriesInstanceUID": ds.SeriesInstanceUID}
+        publish = transmit_server.publish_file(ds.StudyInstanceUID, file_path, metadata)
+        asyncio.run_coroutine_threadsafe(publish, loop).result(timeout=5)
+
+    def send_c_move(*args, **kwargs):
+        publish(ds.SOPInstanceUID)
+        backlog = threading.Timer(0.5, publish, args=[IMAGE_B])
+        pending_publishes.append(backlog)
+        backlog.start()
+        return _c_move_response(reported)
+
+    association_mock.send_c_move.side_effect = send_c_move
+
+    def stop():
+        for publish_thread in pending_publishes:
+            publish_thread.join()
+        asyncio.run_coroutine_threadsafe(transmit_server.stop(), loop).result(timeout=5)
+
+    return dicom_operator, association_mock, ds, stop
+
+
+@pytest.mark.django_db
+def test_c_move_waits_for_images_beyond_a_short_list(
+    settings: Settings, mocker: MockerFixture, caplog: pytest.LogCaptureFixture
+):
+    # Arrange: the PACS reports both images sent, while its C-FIND listed only one
+    dicom_operator, _, ds, stop = _setup_short_list(settings, mocker, 17961, reported=2)
+    received: list[Dataset] = []
+
+    # Act
+    try:
+        dicom_operator.fetch_series(
+            ds.PatientID, ds.StudyInstanceUID, ds.SeriesInstanceUID, received.append
+        )
+    finally:
+        stop()
+
+    # Assert: the unlisted image still in the receiver's backlog was waited for
+    assert len(received) == 2
+    assert len(_capped_entries(caplog)) == 1
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("fail_on_incomplete", [True, False])
+def test_c_move_short_list_with_lost_images_is_incomplete(
+    settings: Settings,
+    mocker: MockerFixture,
+    caplog: pytest.LogCaptureFixture,
+    fail_on_incomplete: bool,
+):
+    # Arrange: the PACS reports three images sent, but only two of them arrive
+    dicom_operator, association_mock, ds, stop = _setup_short_list(
+        settings, mocker, 17960, reported=3
+    )
+    settings.C_MOVE_FAIL_ON_INCOMPLETE = fail_on_incomplete
+
+    # Act
+    try:
+        if fail_on_incomplete:
+            with pytest.raises(IncompleteFetchError) as error:
+                dicom_operator.fetch_series(
+                    ds.PatientID, ds.StudyInstanceUID, ds.SeriesInstanceUID, lambda ds: None
+                )
+        else:
+            dicom_operator.fetch_series(
+                ds.PatientID, ds.StudyInstanceUID, ds.SeriesInstanceUID, lambda ds: None
+            )
+    finally:
+        stop()
+
+    # Assert: which image is missing is unknown, so it is not fetched again
+    if fail_on_incomplete:
+        assert error.value.missing_count == 1
+        assert error.value.image_count == 3
+        assert error.value.missing_image_uids == []
+        assert str(error.value) == (
+            f"1 of 3 images of study {ds.StudyInstanceUID} could not be fetched with C-MOVE."
+        )
+    else:
+        assert [log["title"] for log in dicom_operator.get_logs()] == [
+            "Some images could not be fetched"
+        ]
+    assert association_mock.send_c_move.call_count == 1
+    assert len(_capped_entries(caplog)) == 1
+
+
+@pytest.mark.django_db
+def test_c_move_reported_count_equal_to_the_list_changes_nothing(
+    settings: Settings, mocker: MockerFixture, caplog: pytest.LogCaptureFixture
+):
+    # Arrange: the C-FIND listed every image the C-MOVE reports
+    dicom_operator, association_mock, file_path, ds = _setup_c_move_operator(
+        settings, mocker, 17959
+    )
+    association_mock.send_c_find.return_value = DicomTestHelper.create_successful_c_find_responses(
+        [{"SOPInstanceUID": ds.SOPInstanceUID}]
+    )
+    transmit_server, loop = _start_transmit_server(17959)
+
+    def send_c_move(*args, **kwargs):
+        publish = transmit_server.publish_file(
+            ds.StudyInstanceUID, file_path, {"SOPInstanceUID": ds.SOPInstanceUID}
+        )
+        asyncio.run_coroutine_threadsafe(publish, loop).result(timeout=5)
+        return _c_move_response(1)
+
+    association_mock.send_c_move.side_effect = send_c_move
+    received: list[Dataset] = []
+
+    # Act
+    try:
+        dicom_operator.fetch_series(
+            ds.PatientID, ds.StudyInstanceUID, ds.SeriesInstanceUID, received.append
+        )
+    finally:
+        asyncio.run_coroutine_threadsafe(transmit_server.stop(), loop).result(timeout=5)
+
+    # Assert
+    assert received == [ds]
+    assert _capped_entries(caplog) == []
+
+
+SERIES_1 = "1.2.3.4.5.801"
+SERIES_2 = "1.2.3.4.5.802"
+
+# The images (SOPInstanceUID, SeriesInstanceUID) a C-MOVE delivers and the count it reports
+Move = tuple[list[tuple[str, str]], int | None]
+
+
+def _setup_without_list(
+    settings: Settings,
+    mocker: MockerFixture,
+    port: int,
+    counts: dict[str, int | bytes | None],
+    moves: dict[str | None, Move],
+    backlog: bool = False,
+):
+    """A study fetch from a server without IMAGE-level C-FIND. `counts` maps each series of
+    the study to the NumberOfSeriesRelatedInstances its SERIES-level C-FIND returns (None if it
+    returns none, bytes for the raw value as received). `moves` maps the SeriesInstanceUID of a
+    SERIES-level C-MOVE (None for the study C-MOVE) to what it does; other C-MOVEs deliver
+    nothing and report nothing. With `backlog`, the images of the study C-MOVE are still in the
+    receiver's backlog when it ends.
+    Returns the operator, the sample, the C-MOVEs sent (level, series) and a stop function."""
+    dicom_operator, association_mock, file_path, ds = _setup_c_move_operator(settings, mocker, port)
+    dicom_operator.server.image_level_find_support = False
+
+    def send_c_find(query_ds: Dataset, *args, **kwargs):
+        if query_ds.QueryRetrieveLevel != "SERIES":
+            return DicomTestHelper.create_successful_c_find_responses([])
+        data = [
+            {"SeriesInstanceUID": series_uid, "Modality": ds.Modality}
+            | ({"NumberOfSeriesRelatedInstances": count} if isinstance(count, int) else {})
+            for series_uid, count in counts.items()
+        ]
+        responses = list(DicomTestHelper.create_successful_c_find_responses(data))
+        for (_, identifier), count in zip(responses, counts.values()):
+            if isinstance(count, bytes):
+                assert identifier
+                tag = Tag("NumberOfSeriesRelatedInstances")
+                identifier[tag] = RawDataElement(tag, "IS", len(count), count, 0, True, True)
+        return iter(responses)
+
+    association_mock.send_c_find.side_effect = send_c_find
+    pending_publishes: list[threading.Thread] = []
+    transmit_server, loop = _start_transmit_server(port, before_sync=pending_publishes)
+    moved: list[tuple[str, str | None]] = []
+
+    def publish(images: list[tuple[str, str]]):
+        for image_uid, series_uid in images:
+            metadata = {"SOPInstanceUID": image_uid, "SeriesInstanceUID": series_uid}
+            publish = transmit_server.publish_file(ds.StudyInstanceUID, file_path, metadata)
+            asyncio.run_coroutine_threadsafe(publish, loop).result(timeout=5)
+
+    def send_c_move(query_ds: Dataset, *args, **kwargs):
+        level = query_ds.QueryRetrieveLevel
+        series_uid = query_ds.SeriesInstanceUID if level == "SERIES" else None
+        moved.append((level, series_uid))
+        images, count = moves.get(series_uid, ([], None))
+        if backlog and series_uid is None:
+            pending_publishes.append(threading.Timer(0.5, publish, args=[images]))
+            pending_publishes[-1].start()
+        else:
+            publish(images)
+        if count is None:
+            return DicomTestHelper.create_successful_c_move_response()
+        return _c_move_response(count)
+
+    association_mock.send_c_move.side_effect = send_c_move
+
+    def stop():
+        for publish_thread in pending_publishes:
+            publish_thread.join()
+        asyncio.run_coroutine_threadsafe(transmit_server.stop(), loop).result(timeout=5)
+
+    return dicom_operator, ds, moved, stop
+
+
+@pytest.mark.django_db
+def test_c_move_without_image_level_find_skips_find_images(
+    settings: Settings, mocker: MockerFixture
+):
+    # Arrange
+    dicom_operator, ds, moved, stop = _setup_without_list(
+        settings,
+        mocker,
+        17958,
+        counts={SERIES_1: 1, SERIES_2: 1},
+        moves={None: ([(IMAGE_B, SERIES_1), (IMAGE_C, SERIES_2)], 2)},
+    )
+    find_images = mocker.spy(dicom_operator, "find_images")
+    received: list[Dataset] = []
+
+    # Act
+    try:
+        dicom_operator.fetch_study(ds.PatientID, ds.StudyInstanceUID, received.append)
+    finally:
+        stop()
+
+    # Assert
+    find_images.assert_not_called()
+    assert len(received) == 2
+    assert moved == [("STUDY", None)]
+
+
+@pytest.mark.django_db
+def test_c_move_without_list_refetches_only_the_short_series(
+    settings: Settings, mocker: MockerFixture
+):
+    # Arrange: the study C-MOVE, which reports nothing, misses an image of the first series
+    dicom_operator, ds, moved, stop = _setup_without_list(
+        settings,
+        mocker,
+        17957,
+        counts={SERIES_1: 2, SERIES_2: 1},
+        moves={
+            None: ([(IMAGE_B, SERIES_1), (IMAGE_C, SERIES_2)], None),
+            SERIES_1: ([(IMAGE_B, SERIES_1), ("1.2.3.4.5.903", SERIES_1)], 2),
+        },
+    )
+    received: list[Dataset] = []
+
+    # Act
+    try:
+        dicom_operator.fetch_study(ds.PatientID, ds.StudyInstanceUID, received.append)
+    finally:
+        stop()
+
+    # Assert
+    assert len(received) == 3
+    assert moved == [("STUDY", None), ("SERIES", SERIES_1)]
+
+
+@pytest.mark.django_db
+def test_c_move_without_list_trusts_the_series_move_count(
+    settings: Settings, mocker: MockerFixture
+):
+    # Arrange: the series count includes an image the PACS can't send, which its C-MOVE of
+    # the series reports
+    dicom_operator, ds, moved, stop = _setup_without_list(
+        settings,
+        mocker,
+        17956,
+        counts={SERIES_1: 3},
+        moves={
+            None: ([(IMAGE_B, SERIES_1), (IMAGE_C, SERIES_1)], None),
+            SERIES_1: ([(IMAGE_B, SERIES_1), (IMAGE_C, SERIES_1)], 2),
+        },
+    )
+    received: list[Dataset] = []
+
+    # Act
+    try:
+        dicom_operator.fetch_study(ds.PatientID, ds.StudyInstanceUID, received.append)
+    finally:
+        stop()
+
+    # Assert: complete after one re-fetch round
+    assert len(received) == 2
+    assert moved == [("STUDY", None), ("SERIES", SERIES_1)]
+
+
+@pytest.mark.django_db
+def test_c_move_without_list_series_fetch_trusts_the_count_of_its_refetch(
+    settings: Settings, mocker: MockerFixture
+):
+    # Arrange: the series count includes an image the PACS can't send, which each C-MOVE of
+    # the series reports. As the first one may also have failed for a while, the series is
+    # requested once again.
+    dicom_operator, ds, moved, stop = _setup_without_list(
+        settings,
+        mocker,
+        17953,
+        counts={SERIES_1: 3},
+        moves={SERIES_1: ([(IMAGE_B, SERIES_1), (IMAGE_C, SERIES_1)], 2)},
+    )
+    received: list[Dataset] = []
+
+    # Act
+    try:
+        dicom_operator.fetch_series(ds.PatientID, ds.StudyInstanceUID, SERIES_1, received.append)
+    finally:
+        stop()
+
+    # Assert
+    assert len(received) == 2
+    assert moved == [("SERIES", SERIES_1), ("SERIES", SERIES_1)]
+
+
+@pytest.mark.django_db
+def test_c_move_without_list_empty_success_is_no_count(settings: Settings, mocker: MockerFixture):
+    # Arrange: two of the three images of the series arrive, and a busy PACS answers each
+    # C-MOVE of the series with success and no sub-operation
+    dicom_operator, ds, moved, stop = _setup_without_list(
+        settings,
+        mocker,
+        17945,
+        counts={SERIES_1: 3},
+        moves={SERIES_1: ([(IMAGE_B, SERIES_1), (IMAGE_C, SERIES_1)], 0)},
+    )
+
+    # Act
+    try:
+        with pytest.raises(IncompleteFetchError) as error:
+            dicom_operator.fetch_series(
+                ds.PatientID, ds.StudyInstanceUID, SERIES_1, lambda ds: None
+            )
+    finally:
+        stop()
+
+    # Assert: the re-fetches didn't count as reporting the series empty
+    assert error.value.missing_count == 1
+    assert moved == [("SERIES", SERIES_1)] * (1 + settings.C_MOVE_REFETCH_ATTEMPTS)
+
+
+@pytest.mark.django_db
+def test_c_move_without_any_count_completes_after_one_sync(
+    settings: Settings, mocker: MockerFixture, caplog: pytest.LogCaptureFixture
+):
+    # Arrange: neither the C-FIND nor the C-MOVE reports how many images there are, and the
+    # images are still in the receiver's backlog when the C-MOVE ends
+    dicom_operator, ds, moved, stop = _setup_without_list(
+        settings,
+        mocker,
+        17955,
+        counts={SERIES_1: None},
+        moves={None: ([(IMAGE_B, SERIES_1), (IMAGE_C, SERIES_1)], None)},
+        backlog=True,
+    )
+    received: list[Dataset] = []
+
+    # Act
+    try:
+        with caplog.at_level(logging.INFO):
+            dicom_operator.fetch_study(ds.PatientID, ds.StudyInstanceUID, received.append)
+    finally:
+        stop()
+
+    # Assert
+    assert len(received) == 2
+    assert moved == [("STUDY", None)]
+    assert any("can't be checked" in record.getMessage() for record in caplog.records)
+
+
+@pytest.mark.django_db
+def test_c_move_without_any_count_fails_when_nothing_arrives(
+    settings: Settings, mocker: MockerFixture
+):
+    # Arrange: neither the C-FIND nor the C-MOVE reports how many images there are, as a busy
+    # PACS answers the C-MOVE with success and no sub-operation
+    dicom_operator, ds, moved, stop = _setup_without_list(
+        settings, mocker, 17943, counts={SERIES_1: None}, moves={None: ([], 0)}
+    )
+
+    # Act / Assert
+    try:
+        with pytest.raises(RetriableDicomError, match="Failed to fetch all images"):
+            dicom_operator.fetch_study(ds.PatientID, ds.StudyInstanceUID, lambda ds: None)
+    finally:
+        stop()
+    assert moved == [("STUDY", None)]
+
+
+@pytest.mark.django_db
+def test_c_move_without_any_count_refetches_a_series_without_images(
+    settings: Settings, mocker: MockerFixture
+):
+    # Arrange: no count, and the study C-MOVE delivers nothing of the second series
+    dicom_operator, ds, moved, stop = _setup_without_list(
+        settings,
+        mocker,
+        17942,
+        counts={SERIES_1: None, SERIES_2: None},
+        moves={
+            None: ([(IMAGE_B, SERIES_1)], None),
+            SERIES_2: ([(IMAGE_C, SERIES_2)], None),
+        },
+    )
+    received: list[Dataset] = []
+
+    # Act
+    try:
+        dicom_operator.fetch_study(ds.PatientID, ds.StudyInstanceUID, received.append)
+    finally:
+        stop()
+
+    # Assert
+    assert len(received) == 2
+    assert moved == [("STUDY", None), ("SERIES", SERIES_2)]
+
+
+@pytest.mark.django_db
+@pytest.mark.filterwarnings("ignore:Invalid value for VR IS")
+def test_c_move_without_list_ignores_an_invalid_count(settings: Settings, mocker: MockerFixture):
+    # Arrange: the C-FIND returns a NumberOfSeriesRelatedInstances that isn't a number
+    dicom_operator, ds, moved, stop = _setup_without_list(
+        settings,
+        mocker,
+        17941,
+        counts={SERIES_1: b"many"},
+        moves={None: ([(IMAGE_B, SERIES_1)], 1)},
+    )
+    received: list[Dataset] = []
+
+    # Act
+    try:
+        dicom_operator.fetch_study(ds.PatientID, ds.StudyInstanceUID, received.append)
+    finally:
+        stop()
+
+    # Assert
+    assert len(received) == 1
+    assert moved == [("STUDY", None)]
+
+
+@pytest.mark.django_db
+def test_c_move_without_list_unattributed_shortfall_is_incomplete(
+    settings: Settings, mocker: MockerFixture
+):
+    # Arrange: only the study C-MOVE reports a count, and one image of it never arrives
+    dicom_operator, ds, moved, stop = _setup_without_list(
+        settings,
+        mocker,
+        17954,
+        counts={SERIES_1: None, SERIES_2: None},
+        moves={None: ([(IMAGE_B, SERIES_1), (IMAGE_C, SERIES_2)], 3)},
+    )
+
+    # Act
+    try:
+        with pytest.raises(IncompleteFetchError) as error:
+            dicom_operator.fetch_study(ds.PatientID, ds.StudyInstanceUID, lambda ds: None)
+    finally:
+        stop()
+
+    # Assert: which series it belongs to is unknown, so nothing is fetched again
+    assert error.value.missing_count == 1
+    assert error.value.image_count == 3
+    assert moved == [("STUDY", None)]
 
 
 @pytest.mark.django_db
