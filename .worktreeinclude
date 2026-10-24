@@ -1,0 +1,6 @@
+# Gitignored files Claude Code copies from the main checkout into each worktree
+# it creates. A worktree then needs its own ports and stack name: see "Git
+# Worktrees" in AGENTS.md.
+.env
+docker-compose.override.yml
+.claude/settings.local.json

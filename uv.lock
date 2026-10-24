@@ -114,7 +114,7 @@ docs = [
 
 [package.metadata]
 requires-dist = [
-    { name = "adit-radis-shared", git = "https://github.com/openradx/adit-radis-shared.git?tag=0.28.1" },
+    { name = "adit-radis-shared", git = "https://github.com/openradx/adit-radis-shared.git?rev=062efea7d124c536a13fac70da189c6751005b2c" },
     { name = "adrf", specifier = ">=0.1.9" },
     { name = "aiofiles", specifier = ">=24.1.0" },
     { name = "asyncinotify", specifier = ">=4.2.0" },
@@ -224,7 +224,7 @@ requires-dist = [
 [[package]]
 name = "adit-radis-shared"
 version = "0.0.0"
-source = { git = "https://github.com/openradx/adit-radis-shared.git?tag=0.28.1#c0f1bba83d2a372d1b4f955aab1e91bba0b2f7ee" }
+source = { git = "https://github.com/openradx/adit-radis-shared.git?rev=062efea7d124c536a13fac70da189c6751005b2c#062efea7d124c536a13fac70da189c6751005b2c" }
 dependencies = [
     { name = "channels" },
     { name = "crispy-bootstrap5" },

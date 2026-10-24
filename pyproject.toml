@@ -104,7 +104,7 @@ constraint-dependencies = ["autobahn<25.11.1"]
 
 [tool.uv.sources]
 adit-client = { path = "./adit-client", editable = true }
-adit-radis-shared = { git = "https://github.com/openradx/adit-radis-shared.git", tag = "0.28.1" }
+adit-radis-shared = { git = "https://github.com/openradx/adit-radis-shared.git", rev = "062efea7d124c536a13fac70da189c6751005b2c" }
 
 [tool.pyright]
 ignore = ["**/migrations", "**/*.ipynb"]
@@ -148,6 +148,8 @@ lint.select = ["E", "F", "I", "DJ", "UP"]
 
 [tool.djlint]
 profile = "django"
+# Git worktrees live under .claude/worktrees/.
+extend_exclude = ".claude"
 max_line_length = 120
 ignore = "H021,H030,H031,T002"
 
