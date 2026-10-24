@@ -19,10 +19,10 @@ all. In the main checkout the script changes nothing.
 
 Every checkout, the main one included, also records its ports in a directory
 shared by the projects on this machine that use this script (REGISTRY). A
-worktree takes no slot whose ports another repository's checkout has recorded,
-whether or not that stack is running. A port of this checkout that another
-repository's checkout also records is only warned about, with a free one to set
-in .env instead.
+worktree takes no slot whose ports another checkout, of this repository or any
+other, has recorded, whether or not that stack is running. A port of this
+checkout that another checkout also records is only warned about, with a free
+one to set in .env instead.
 
     uv run --script scripts/worktree_env.py [--slot N]
 """
@@ -131,8 +131,8 @@ def shifted(base: dict[str, int], slot: int) -> dict[str, int]:
     return {var: port + slot * PORT_STEP for var, port in base.items()}
 
 
-def claims(repository: Path) -> list[tuple[str, str, int]]:
-    """(checkout, variable, port) for the ports of other repositories' checkouts."""
+def claims(root: Path) -> list[tuple[str, str, int]]:
+    """(checkout, variable, port) for the ports every other checkout records."""
     found = []
     for file in sorted(REGISTRY.glob("*.json")):
         try:
@@ -141,13 +141,13 @@ def claims(repository: Path) -> list[tuple[str, str, int]]:
             continue  # pruned by a concurrent run, or not JSON
         if not Path(entry["checkout"]).is_dir():
             file.unlink(missing_ok=True)  # the checkout was deleted
-        elif entry["repository"] != str(repository):
+        elif entry["checkout"] != str(root):
             found += [(entry["checkout"], var, port) for var, port in entry["ports"].items()]
     return found
 
 
-def record(root: Path, repository: Path, ports: dict[str, int]) -> None:
-    entry = {"repository": str(repository), "checkout": str(root), "ports": ports}
+def record(root: Path, ports: dict[str, int]) -> None:
+    entry = {"checkout": str(root), "ports": ports}
     target = REGISTRY / f"{hashlib.sha256(str(root).encode()).hexdigest()[:16]}.json"
     try:
         REGISTRY.mkdir(parents=True, exist_ok=True)
@@ -273,10 +273,10 @@ def main() -> None:
     base_file = main_env_file if main_env_file.is_file() else root / ENV_EXAMPLE
     main_env = parse_env(base_file.read_text())
     base = {var: port_value(main_env, var, default) for var, default in PORTS.items()}
-    claimed = claims(main_root)
+    claimed = claims(root)
     claimed_ports = {port for _, _, port in claimed}
     if root == main_root:
-        record(root, main_root, base)
+        record(root, base)
         warn_about_claims(base, claimed)
         return
 
@@ -298,7 +298,7 @@ def main() -> None:
         if clash := clashes(base, args.slot, set(taken)):
             sys.exit(f"error: slot {args.slot} would reuse ports {sorted(clash)}")
         if recorded := sorted(set(shifted(base, args.slot).values()) & claimed_ports):
-            sys.exit(f"error: slot {args.slot} would reuse ports {recorded} of another repository")
+            sys.exit(f"error: slot {args.slot} would reuse ports {recorded} of another checkout")
         slot = args.slot
     elif (own := recorded_slot(env_file)) is not None and own not in taken:
         slot = own
@@ -312,9 +312,10 @@ def main() -> None:
     # The slot keeps the names apart where worktree directory names coincide.
     updates |= names(worktree, slot)
     updates |= moved_urls(main_env, base, ports)
-    record(root, main_root, ports)
+    record(root, ports)
     if warn_about_claims(ports, claimed) and (free := open_slots(base, set(taken), claimed_ports)):
-        print(f"  or move this worktree to a slot whose ports are free: --slot {free[0]}")
+        action = "reset" if free[0] == slot else "move"
+        print(f"  or {action} this worktree's ports to free ones: --slot {free[0]}")
 
     text = env_file.read_text()
     rendered = render(text, slot, updates)
